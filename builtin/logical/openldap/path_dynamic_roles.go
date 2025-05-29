@@ -6,6 +6,7 @@ package openldap
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"path"
 	"time"
@@ -140,7 +141,7 @@ func (b *backend) pathDynamicRoleCreateUpdate(ctx context.Context, req *logical.
 	}
 	if dRole == nil {
 		if req.Operation == logical.UpdateOperation {
-			return nil, fmt.Errorf("unable to update role: role does not exist")
+			return nil, errors.New("unable to update role: role does not exist")
 		}
 		dRole = &dynamicRole{}
 	}
@@ -168,11 +169,11 @@ func (b *backend) pathDynamicRoleCreateUpdate(ctx context.Context, req *logical.
 
 func validateDynamicRole(dRole *dynamicRole) error {
 	if dRole.CreationLDIF == "" {
-		return fmt.Errorf("missing creation_ldif")
+		return errors.New("missing creation_ldif")
 	}
 
 	if dRole.DeletionLDIF == "" {
-		return fmt.Errorf("missing deletion_ldif")
+		return errors.New("missing deletion_ldif")
 	}
 
 	err := assertValidLDIFTemplate(dRole.CreationLDIF)
@@ -255,7 +256,7 @@ func assertValidLDIFTemplate(rawTemplate string) error {
 	}
 
 	if len(entries.Entries) == 0 {
-		return fmt.Errorf("must specify at least one LDIF entry")
+		return errors.New("must specify at least one LDIF entry")
 	}
 
 	return nil

@@ -159,6 +159,34 @@ Usage: bao operator raft remove-peer <server_id>
   Once a node is removed, its Raft data needs to be deleted before it may be joined back into an existing cluster. This requires shutting down the OpenBao process, deleting the data, then restarting the OpenBao process on the removed node.
 :::
 
+## promote
+
+This command is used to promote a permanent [non-voter](#parameters) to a voter in the Raft cluster.
+
+```text
+Usage: bao operator raft promote <server_id>
+
+  Promotes a permanent non-voter to a voter.
+
+	  $ bao operator raft promote node1
+```
+
+## demote
+
+This command is used to demote a voter to a permanent [non-voter](#parameters) in the Raft cluster.
+
+```text
+Usage: bao operator raft demote <server_id>
+
+  Demotes voter to a permanent non-voter.
+
+	  $ bao operator raft demote node1
+```
+
+
+:::note
+  Demoting the current leader to a non-voter will not trigger a leader election. The node will become a non-voter after the leadership has changed.
+:::
 ## snapshot
 
 This command groups subcommands for operators interacting with the snapshot
@@ -222,14 +250,14 @@ This command groups subcommands for operators interacting with the autopilot
 functionality of the integrated Raft storage backend.
 
 Subcommands:
-    get-config    Returns the configuration of the autopilot subsystem under integrated storage
-    set-config    Modify the configuration of the autopilot subsystem under integrated storage
-    state         Displays the state of the raft cluster under integrated storage as seen by autopilot
+    get-config    Returns the configuration of the autopilot subsystem under Integrated Storage
+    set-config    Modify the configuration of the autopilot subsystem under Integrated Storage
+    state         Displays the state of the raft cluster under Integrated Storage as seen by autopilot
 ```
 
 ### autopilot state
 
-Displays the state of the raft cluster under integrated storage as seen by
+Displays the state of the raft cluster under Integrated Storage as seen by
 autopilot. It shows whether autopilot thinks the cluster is healthy or not,
 and how many nodes could fail before the cluster becomes unhealthy ("Failure Tolerance").
 
@@ -241,7 +269,7 @@ A node can have a status of "leader", "voter" or "non-voter".
 ```text
 Usage: bao operator raft autopilot state
 
-  Displays the state of the raft cluster under integrated storage as seen by autopilot.
+  Displays the state of the raft cluster under Integrated Storage as seen by autopilot.
 
     $ bao operator raft autopilot state
 ```
@@ -281,24 +309,24 @@ Servers:
 
 ### autopilot get-config
 
-Returns the configuration of the autopilot subsystem under integrated storage.
+Returns the configuration of the autopilot subsystem under Integrated Storage.
 
 ```text
 Usage: bao operator raft autopilot get-config
 
-  Returns the configuration of the autopilot subsystem under integrated storage.
+  Returns the configuration of the autopilot subsystem under Integrated Storage.
 
     $ bao operator raft autopilot get-config
 ```
 
 ### autopilot set-config
 
-Modify the configuration of the autopilot subsystem under integrated storage.
+Modify the configuration of the autopilot subsystem under Integrated Storage.
 
 ```text
 Usage: bao operator raft autopilot set-config [options]
 
-  Modify the configuration of the autopilot subsystem under integrated storage.
+  Modify the configuration of the autopilot subsystem under Integrated Storage.
 
 	  $ bao operator raft autopilot set-config -server-stabilization-time 10s
 

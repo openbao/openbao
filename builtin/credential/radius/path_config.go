@@ -175,6 +175,12 @@ func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, d *f
 }
 
 func (b *backend) pathConfigCreateUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	// Build a ConfigEntry struct out of the supplied FieldData
 	cfg, err := b.Config(ctx, req)
 	if err != nil {
@@ -268,6 +274,9 @@ func (b *backend) pathConfigCreateUpdate(ctx context.Context, req *logical.Reque
 		return nil, err
 	}
 
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 

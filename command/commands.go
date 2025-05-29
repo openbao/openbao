@@ -307,6 +307,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"namespace scan": func() (cli.Command, error) {
+			return &NamespaceScanCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"namespace lookup": func() (cli.Command, error) {
 			return &NamespaceLookupCommand{
 				BaseCommand: getBaseCommand(),
@@ -401,6 +406,16 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"operator raft remove-peer": func() (cli.Command, error) {
 			return &OperatorRaftRemovePeerCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"operator raft promote": func() (cli.Command, error) {
+			return &OperatorRaftPromoteCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"operator raft demote": func() (cli.Command, error) {
+			return &OperatorRaftDemoteCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
@@ -575,6 +590,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"read": func() (cli.Command, error) {
 			return &ReadCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"scan": func() (cli.Command, error) {
+			return &ScanCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
@@ -775,6 +795,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"kv metadata delete": func() (cli.Command, error) {
 			return &KVMetadataDeleteCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"kv scan": func() (cli.Command, error) {
+			return &KVScanCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},

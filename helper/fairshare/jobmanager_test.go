@@ -179,7 +179,6 @@ func TestJobManager_Stop(t *testing.T) {
 	timeout := time.After(5 * time.Second)
 	go func() {
 		j.Stop()
-		j.wg.Wait()
 		doneCh <- struct{}{}
 	}()
 
@@ -200,7 +199,6 @@ func TestFairshare_StopMultiple(t *testing.T) {
 	timeout := time.After(5 * time.Second)
 	go func() {
 		j.Stop()
-		j.wg.Wait()
 		doneCh <- struct{}{}
 	}()
 
@@ -222,7 +220,6 @@ func TestFairshare_StopMultiple(t *testing.T) {
 		}()
 
 		j.Stop()
-		j.wg.Wait()
 	}()
 
 	select {

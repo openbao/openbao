@@ -91,6 +91,18 @@ path "secret/foo" {
 }
 ```
 
+Equivalently in JSON, this would be:
+
+```json
+{
+  "paths": {
+    "secret/foo": {
+      "capabilities": ["read"]
+    }
+  }
+}
+```
+
 When this policy is assigned to a token, the token can read from `"secret/foo"`.
 However, the token cannot update or delete `"secret/foo"`, since the
 capabilities do not allow it. Because policies are **deny by default**, the
@@ -101,12 +113,14 @@ Here is a more detailed policy, and it is documented inline:
 ```ruby
 # This section grants all access on "secret/*". further restrictions can be
 # applied to this broad policy, as shown below.
+
 path "secret/*" {
-  capabilities = ["create", "read", "update", "patch", "delete", "list"]
+  capabilities = ["create", "read", "update", "patch", "delete", "list", "scan"]
 }
 
 # Even though we allowed secret/*, this line explicitly denies
 # secret/super-secret. this takes precedence.
+
 path "secret/super-secret" {
   capabilities = ["deny"]
 }
@@ -114,6 +128,7 @@ path "secret/super-secret" {
 # Policies can also specify allowed, disallowed, and required parameters. here
 # the key "secret/restricted" can only contain "foo" (any value) and "bar" (one
 # of "zip" or "zap").
+
 path "secret/restricted" {
   capabilities = ["create"]
   allowed_parameters = {
@@ -130,18 +145,21 @@ a glob pattern which instructs OpenBao to use a prefix match:
 ```ruby
 # Permit reading only "secret/foo". an attached token cannot read "secret/food"
 # or "secret/foo/bar".
+
 path "secret/foo" {
   capabilities = ["read"]
 }
 
 # Permit reading everything under "secret/bar". an attached token could read
 # "secret/bar/zip", "secret/bar/zip/zap", but not "secret/bars/zip".
+
 path "secret/bar/*" {
   capabilities = ["read"]
 }
 
 # Permit reading everything prefixed with "zip-". an attached token could read
 # "secret/zip-zap" or "secret/zip-zap/zong", but not "secret/zip/zap
+
 path "secret/zip-*" {
   capabilities = ["read"]
 }
@@ -152,11 +170,13 @@ within a single path segment:
 
 ```ruby
 # Permit reading the "teamb" path under any top-level path under secret/
+
 path "secret/+/teamb" {
   capabilities = ["read"]
 }
 
 # Permit reading secret/foo/bar/teamb, secret/bar/foo/teamb, etc.
+
 path "secret/+/+/teamb" {
   capabilities = ["read"]
 }
@@ -200,9 +220,9 @@ It _is not a regular expression_ and is only supported **as the last character o
 
 :::
 
-When providing `list` capability, it is important to note that since listing
-always operates on a prefix, policies must operate on a prefix because OpenBao
-will sanitize request paths to be prefixes.
+When providing `list` or `scan` capabilities, it is important to note that
+since listing always operates on a prefix, policies must operate on a prefix
+because OpenBao will sanitize request paths to be prefixes.
 
 ### Capabilities
 
@@ -234,6 +254,11 @@ The list of capabilities include the following:
 - `list` (`LIST`) - Allows listing values at the given path. Note that the
   keys returned by a `list` operation are _not_ filtered by policies. Do not
   encode sensitive information in key names. Not all backends support listing.
+
+- `scan` (`SCAN`) - Allows recursively listing ("scanning") values at the
+  given path. Note that the keys returned by a `list` operation are _not_
+  filtered by policies. Do not encode sensitive information in key names. Not
+  all backends support listing.
 
 In the list above, the associated HTTP verbs are shown in parenthesis next to
 the capability. When authoring policy, it is usually helpful to look at the HTTP
@@ -306,6 +331,7 @@ group.
 
 ```ruby
 # In the example below, the group ID maps a group and the path
+
 path "secret/data/groups/{{identity.groups.ids.fb036ebc-2f62-4124-9503-42aa7A869741.name}}/*" {
   capabilities = ["create", "update", "patch", "read", "delete"]
 }
@@ -338,7 +364,7 @@ kubernetes/    kubernetes    auth_kubernetes_xxxx        n/a
 token/         token         auth_token_yyyy             token based credentials
 ```
 
-The following templated policy allow to read the path associated with the
+The following templated policy allows reading of the path associated with the
 Kubernetes service account namespace of the identity:
 
 ```ruby
@@ -352,6 +378,39 @@ path "secret/data/{{identity.entity.aliases.auth_kubernetes_xxxx.metadata.servic
 In addition to the standard set of capabilities, OpenBao offers finer-grained
 control over permissions at a given path. The capabilities associated with a
 path take precedence over permissions on parameters.
+
+Each path can contain an optional, ignored field, `comment` which can be used
+to describe the contents.
+
+For instance:
+
+```hcl
+path "pki/*" {
+  capabilities = ["deny"]
+  comment = "explicitly deny access to PKI path based on discussion in TRACKER-12345."
+}
+```
+
+### Path expiration
+
+Specific paths in a policy can be set to automatically remove access at a
+point in time. This allows for lazy cleanup of policies: temporary access can
+be granted and long-term access guaranteed to be denied, without requiring
+cleanup and removal of the entire policy. When a policy is attached to an
+external authentication system's properties (e.g., LDAP groups or JWT claims)
+this is a useful additional control on top of expiring entire policies.
+
+- `expiration` `(string: <optional>)` - An optional expiration time for the
+  given path, in [`time.RFC3339` format](https://www.rfc-editor.org/rfc/rfc3339.html).
+
+For example:
+
+```hcl
+path "secret/data/in-case-of-emergency" {
+  capabilities = ["read"]
+  expiration = "2006-01-02T15:04:05Z"
+}
+```
 
 ### Parameter constraints
 
@@ -377,6 +436,7 @@ constrain requests, using the following options:
   ```ruby
   # This requires the user to create "secret/profile" with a parameter/key named
   # "name" and "id" where kv v1 is enabled at "secret/".
+
   path "secret/profile" {
     capabilities = ["create"]
     required_parameters = ["name", "id"]
@@ -394,6 +454,7 @@ constrain requests, using the following options:
     # users configured for userpass auth method. The password value can be
     # anything. However, the user cannot update other parameter values such as
     # token_ttl.
+
     path "auth/userpass/users/*" {
       capabilities = ["update"]
       allowed_parameters = {
@@ -411,6 +472,7 @@ constrain requests, using the following options:
     # "auto_rotate_period" parameter value so that the key gets rotated.
     # However, the rotation period must be "8h", "24h", or "5d". Any other value
     # will result in an error.
+
     path "transit/keys/*" {
       capabilities = ["create", "update"]
       allowed_parameters = {
@@ -429,6 +491,7 @@ constrain requests, using the following options:
     # create "secret/foo" with a parameter named "bar". The parameter "bar" can
     # only contain the values "zip" or "zap", but any other parameters may be
     # created with any value.
+
     path "secret/foo" {
       capabilities = ["create"]
       allowed_parameters = {
@@ -448,6 +511,7 @@ constrain requests, using the following options:
     # This allows the user to update the userpass auth method's user
     # configurations (e.g., "password") but cannot update the "token_policies"
     # and "policies" parameter values.
+
     path "auth/userpass/users/*" {
       capabilities = ["update"]
       denied_parameters = {
@@ -464,6 +528,7 @@ constrain requests, using the following options:
     # This allows the user to create or update token roles. However, the
     # "allowed_policies" parameter value cannot be "admin", but the user can
     # assign any other policies to the parameter.
+
     path "auth/token/roles/*" {
       capabilities = ["create", "update"]
       denied_parameters = {
@@ -479,6 +544,7 @@ constrain requests, using the following options:
     # secrets engine enabled at "transit/". However, the user cannot set any of
     # the configuration parameters. As a result, the created key will have all
     # parameters set to default values.
+
     path "transit/keys/*" {
       capabilities = ["create", "update"]
       denied_parameters = {
@@ -495,6 +561,7 @@ prepending or appending or prepending a splat (`*`) to the value:
 
 ```ruby
 # Only allow a parameter named "bar" with a value starting with "foo-*".
+
 path "secret/foo" {
   capabilities = ["create"]
   allowed_parameters = {
@@ -519,6 +586,7 @@ Given the following policy:
 
 ```ruby
 # The "no_store" parameter cannot be false
+
 path "secret/foo" {
   capabilities = ["create"]
   denied_parameters = {
@@ -580,6 +648,7 @@ or unexpected behavior:
 # passed along. seeing values like "wibble" or "wobble" getting passed to
 # "secret/foo" might surprise someone that expected the allowed_parameters
 # constraint to only allow values starting with "baz/".
+
 path "secret/foo" {
   capabilities = ["create", "update", "patch"]
   allowed_parameters = {
@@ -587,6 +656,21 @@ path "secret/foo" {
   }
 }
 ```
+
+##### Limiting pagination
+The `pagination_limit` parameter allows policy authors to control the value of
+`limit` on paginated list and scan endpoints. In conjunction with setting
+`required_parameters=["limit"]` on the ACL policy, pagination becomes fully
+required, rejecting the request if the client did not set `limit`; otherwise,
+pagination is optional but, when `limit` is specified, the maximum number of
+results is limited to the value of `pagination_limit`.
+
+It is assumed that the policy author only sets `pagination_limit` on endpoints
+conforming to the [Paginated Lists RFC](/docs/rfcs/paginated-lists/). This
+allows the API to safely translate the value `limit=max` to a numerical value,
+either `limit=0` if no value was set or to the actual limit set by the policy
+author.
+
 ### Required response wrapping TTLs
 
 These parameters can be used to set minimums/maximums on TTLs set by clients
@@ -609,6 +693,7 @@ wrapping mandatory for a particular path.
 ```ruby
 # This effectively makes response wrapping mandatory for this path by setting min_wrapping_ttl to 1 second.
 # This also sets this path's wrapped response maximum allowed TTL to 90 seconds.
+
 path "auth/approle/role/my-role/secret-id" {
     capabilities = ["create", "update"]
     min_wrapping_ttl = "1s"

@@ -130,7 +130,7 @@ func AddPersistentStorageToLeaseCache(ctx context.Context, leaseCache *cache.Lea
 		if err := leaseCache.Restore(ctx, ps); err != nil {
 			logger.Error(fmt.Sprintf("error restoring in-memory cache from persisted file: %v", err))
 			if persistConfig.ExitOnErr {
-				return nil, "", fmt.Errorf("exiting with error as exit_on_err is set to true")
+				return nil, "", errors.New("exiting with error as exit_on_err is set to true")
 			}
 		}
 		logger.Info("loaded memcache from persistent storage")
@@ -140,7 +140,7 @@ func AddPersistentStorageToLeaseCache(ctx context.Context, leaseCache *cache.Lea
 		if err != nil {
 			logger.Error(fmt.Sprintf("error in fetching previous auto-auth token: %v", err))
 			if persistConfig.ExitOnErr {
-				return nil, "", fmt.Errorf("exiting with error as exit_on_err is set to true")
+				return nil, "", errors.New("exiting with error as exit_on_err is set to true")
 			}
 		}
 		var previousToken string
@@ -149,7 +149,7 @@ func AddPersistentStorageToLeaseCache(ctx context.Context, leaseCache *cache.Lea
 			if err != nil {
 				logger.Error(fmt.Sprintf("error in deserializing previous auto-auth token cache entryn: %v", err))
 				if persistConfig.ExitOnErr {
-					return nil, "", fmt.Errorf("exiting with error as exit_on_err is set to true")
+					return nil, "", errors.New("exiting with error as exit_on_err is set to true")
 				}
 			}
 			previousToken = oldToken.Token
@@ -168,7 +168,7 @@ func AddPersistentStorageToLeaseCache(ctx context.Context, leaseCache *cache.Lea
 			if err := os.Remove(dbFile); err != nil {
 				logger.Error(fmt.Sprintf("failed to remove persistent storage file %s: %v", dbFile, err))
 				if persistConfig.ExitOnErr {
-					return nil, "", fmt.Errorf("exiting with error as exit_on_err is set to true")
+					return nil, "", errors.New("exiting with error as exit_on_err is set to true")
 				}
 			}
 			return nil, previousToken, nil

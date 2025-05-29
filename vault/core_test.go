@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/internalshared/configutil"
@@ -362,7 +363,7 @@ func TestSealConfig_Invalid(t *testing.T) {
 	}
 	err := s.Validate()
 	if err == nil {
-		t.Fatalf("expected err")
+		t.Fatal("expected err")
 	}
 }
 
@@ -371,7 +372,7 @@ func TestSealConfig_Invalid(t *testing.T) {
 func TestCore_HasVaultVersion(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	if c.versionHistory == nil {
-		t.Fatalf("Version timestamps for core were not initialized for a new core")
+		t.Fatal("Version timestamps for core were not initialized for a new core")
 	}
 	versionEntry, ok := c.versionHistory[version.Version]
 	if !ok {
@@ -381,7 +382,7 @@ func TestCore_HasVaultVersion(t *testing.T) {
 	upgradeTime := versionEntry.TimestampInstalled
 
 	if upgradeTime.After(time.Now()) || upgradeTime.Before(time.Now().Add(-1*time.Hour)) {
-		t.Fatalf("upgrade time isn't within reasonable bounds of new core initialization. " +
+		t.Fatal("upgrade time isn't within reasonable bounds of new core initialization. " +
 			fmt.Sprintf("time is: %+v, upgrade time is %+v", time.Now(), upgradeTime))
 	}
 }
@@ -407,7 +408,7 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 	}
 
 	if !c.Sealed() {
-		t.Fatalf("should be sealed")
+		t.Fatal("should be sealed")
 	}
 
 	if prog, _ := c.SecretProgress(true); prog != 0 {
@@ -427,14 +428,14 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 		}
 		if i >= 2 {
 			if !unseal {
-				t.Fatalf("should be unsealed")
+				t.Fatal("should be unsealed")
 			}
 			if prog, _ := c.SecretProgress(true); prog != 0 {
 				t.Fatalf("bad progress: %d", prog)
 			}
 		} else {
 			if unseal {
-				t.Fatalf("should not be unsealed")
+				t.Fatal("should not be unsealed")
 			}
 			if prog, _ := c.SecretProgress(true); prog != i+1 {
 				t.Fatalf("bad progress: %d", prog)
@@ -443,7 +444,7 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 	}
 
 	if c.Sealed() {
-		t.Fatalf("should not be sealed")
+		t.Fatal("should not be sealed")
 	}
 
 	err = c.Seal(res.RootToken)
@@ -458,7 +459,7 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 	}
 
 	if !c.Sealed() {
-		t.Fatalf("should be sealed")
+		t.Fatal("should be sealed")
 	}
 }
 
@@ -586,7 +587,7 @@ func TestCore_Unseal_Single(t *testing.T) {
 	}
 
 	if !c.Sealed() {
-		t.Fatalf("should be sealed")
+		t.Fatal("should be sealed")
 	}
 
 	if prog, _ := c.SecretProgress(true); prog != 0 {
@@ -599,14 +600,14 @@ func TestCore_Unseal_Single(t *testing.T) {
 	}
 
 	if !unseal {
-		t.Fatalf("should be unsealed")
+		t.Fatal("should be unsealed")
 	}
 	if prog, _ := c.SecretProgress(true); prog != 0 {
 		t.Fatalf("bad progress: %d", prog)
 	}
 
 	if c.Sealed() {
-		t.Fatalf("should not be sealed")
+		t.Fatal("should not be sealed")
 	}
 }
 
@@ -642,7 +643,7 @@ func TestCore_Route_Sealed(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !unseal {
-		t.Fatalf("should be unsealed")
+		t.Fatal("should be unsealed")
 	}
 
 	// Should not error after unseal
@@ -665,19 +666,70 @@ func TestCore_SealUnseal(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("err: should be unsealed")
+			t.Fatal("err: should be unsealed")
 		}
 	}
 }
 
-// TestCore_RunLockedUserUpdatesForStaleEntry tests that stale locked user entries
-// get deleted upon unseal
+// TestCore_LoadLoginMFAConfigs verifies proper storage of the MFA and MFA Enforcement configs
+// looking at the storage before and after saving the configs
+func TestCore_LoadLoginMFAConfigs(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(context.Background())
+	ns1 := &namespace.Namespace{Path: "ns1/"}
+	TestCoreCreateNamespaces(t, c, ns1)
+
+	// prepare views
+	nsView := NamespaceView(c.barrier, ns1)
+	mfaConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	mfaEnforcementConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+
+	// verify empty storage
+	mfaConfigKeys, err := mfaConfigBarrierView.List(ctx, "")
+	require.NoError(t, err)
+	require.Empty(t, mfaConfigKeys)
+
+	mfaEnforcementConfigKeys, err := mfaEnforcementConfigBarrierView.List(ctx, "")
+	require.NoError(t, err)
+	require.Empty(t, mfaConfigKeys)
+
+	// store configs
+	mConfig := &mfa.Config{Name: "mConfig", NamespaceID: ns1.ID, ID: "mConfigID", Type: mfaMethodTypeTOTP}
+	err = c.loginMFABackend.putMFAConfigByID(namespace.ContextWithNamespace(ctx, ns1), mConfig)
+	require.NoError(t, err)
+
+	eConfig := &mfa.MFAEnforcementConfig{Name: "eConfig", NamespaceID: ns1.ID, ID: "eConfigID"}
+	err = c.loginMFABackend.putMFALoginEnforcementConfig(ctx, eConfig)
+	require.NoError(t, err)
+
+	// check for errors when loading
+	err = c.loadLoginMFAConfigs(ctx)
+	require.NoError(t, err)
+
+	// verify storage keys after
+	mfaConfigKeys, err = mfaConfigBarrierView.List(ctx, "")
+	require.NoError(t, err)
+	require.Len(t, mfaConfigKeys, 1)
+	require.Equal(t, "mConfigID", mfaConfigKeys[0])
+
+	mfaEnforcementConfigKeys, err = mfaEnforcementConfigBarrierView.List(ctx, "")
+	require.NoError(t, err)
+	require.Len(t, mfaEnforcementConfigKeys, 1)
+	require.Equal(t, "eConfigID", mfaEnforcementConfigKeys[0])
+}
+
+// TestCore_RunLockedUserUpdatesForStaleEntry tests that
+// stale locked user entries get deleted upon unseal.
 func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 	core, keys, root := TestCoreUnsealed(t)
-	storageUserLockoutPath := fmt.Sprintf(coreLockedUsersPath + "ns1/mountAccessor1/aliasName1")
 
+	ctx := namespace.RootContext(context.Background())
+	testNamespace := &namespace.Namespace{Path: "test"}
+	TestCoreCreateNamespaces(t, core, testNamespace)
+
+	barrier := NamespaceView(core.barrier, testNamespace).SubView(coreLockedUsersPath).SubView("mountAccessor1/")
 	// cleanup
-	defer core.barrier.Delete(context.Background(), storageUserLockoutPath)
+	defer barrier.Delete(ctx, "aliasName1")
 
 	// create invalid entry in storage to test stale entries get deleted on unseal
 	// last failed login time for this path is 1970-01-01 00:00:00 +0000 UTC
@@ -690,12 +742,12 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 
 	// Create an entry
 	entry := &logical.StorageEntry{
-		Key:   storageUserLockoutPath,
+		Key:   "aliasName1",
 		Value: compressedBytes,
 	}
 
 	// Write to the physical backend
-	err = core.barrier.Put(context.Background(), entry)
+	err = barrier.Put(ctx, entry)
 	if err != nil {
 		t.Fatalf("failed to write invalid locked user entry, err: %v", err)
 	}
@@ -710,12 +762,12 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("err: should be unsealed")
+			t.Fatal("err: should be unsealed")
 		}
 	}
 
 	// locked user entry must be deleted upon unseal as it is stale
-	lastFailedLoginRaw, err := core.barrier.Get(context.Background(), storageUserLockoutPath)
+	lastFailedLoginRaw, err := barrier.Get(ctx, "aliasName1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -724,15 +776,19 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 	}
 }
 
-// TestCore_RunLockedUserUpdatesForValidEntry tests that valid locked user entries
-// do not get removed on unseal
-// Also tests that the userFailedLoginInfo map gets updated with correct information
+// TestCore_RunLockedUserUpdatesForValidEntry tests that
+// valid locked user entries do not get removed on unseal.
+// Also verifies userFailedLoginInfo map getting updated.
 func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 	core, keys, root := TestCoreUnsealed(t)
-	storageUserLockoutPath := fmt.Sprintf(coreLockedUsersPath + "ns1/mountAccessor1/aliasName1")
 
+	ctx := namespace.RootContext(context.Background())
+	testNamespace := &namespace.Namespace{Path: "test"}
+	TestCoreCreateNamespaces(t, core, testNamespace)
+
+	barrier := NamespaceView(core.barrier, testNamespace).SubView(coreLockedUsersPath).SubView("mountAccessor1/")
 	// cleanup
-	defer core.barrier.Delete(context.Background(), storageUserLockoutPath)
+	defer barrier.Delete(ctx, "aliasName1")
 
 	// create valid storage entry for locked user
 	lastFailedLoginTime := int(time.Now().Unix())
@@ -744,12 +800,12 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 
 	// Create an entry
 	entry := &logical.StorageEntry{
-		Key:   storageUserLockoutPath,
+		Key:   "aliasName1",
 		Value: compressedBytes,
 	}
 
 	// Write to the physical backend
-	err = core.barrier.Put(context.Background(), entry)
+	err = barrier.Put(ctx, entry)
 	if err != nil {
 		t.Fatalf("failed to write invalid locked user entry, err: %v", err)
 	}
@@ -764,17 +820,17 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("err: should be unsealed")
+			t.Fatal("err: should be unsealed")
 		}
 	}
 
 	// locked user entry must exist as it is still valid
-	existingEntry, err := core.barrier.Get(context.Background(), storageUserLockoutPath)
+	existingEntry, err := barrier.Get(ctx, "aliasName1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if existingEntry == nil {
-		t.Fatalf("err: entry must exist for locked user in storage")
+		t.Fatal("err: entry must exist for locked user in storage")
 	}
 
 	// userFailedLoginInfo map should have the correct information for locked user
@@ -783,15 +839,15 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 		mountAccessor: "mountAccessor1",
 	}
 
-	failedLoginInfoFromMap := core.LocalGetUserFailedLoginInfo(context.Background(), loginUserInfoKey)
+	failedLoginInfoFromMap := core.LocalGetUserFailedLoginInfo(ctx, loginUserInfoKey)
 	if failedLoginInfoFromMap == nil {
-		t.Fatalf("err: entry must exist for locked user in userFailedLoginInfo map")
+		t.Fatal("err: entry must exist for locked user in userFailedLoginInfo map")
 	}
 	if failedLoginInfoFromMap.lastFailedLoginTime != lastFailedLoginTime {
-		t.Fatalf("err: incorrect failed login time information for locked user updated in userFailedLoginInfo map")
+		t.Fatal("err: incorrect failed login time information for locked user updated in userFailedLoginInfo map")
 	}
 	if int(failedLoginInfoFromMap.count) != configutil.UserLockoutThresholdDefault {
-		t.Fatalf("err: incorrect failed login count information for locked user updated in userFailedLoginInfo map")
+		t.Fatal("err: incorrect failed login count information for locked user updated in userFailedLoginInfo map")
 	}
 }
 
@@ -811,21 +867,26 @@ func TestCore_ShutdownDone(t *testing.T) {
 	c := TestCoreWithSealAndUINoCleanup(t, &CoreConfig{})
 	testCoreUnsealed(t, c)
 	doneCh := c.ShutdownDone()
+	errs := make(chan error, 1)
 	go func() {
 		time.Sleep(100 * time.Millisecond)
 		err := c.Shutdown()
-		if err != nil {
-			t.Fatal(err)
-		}
+		errs <- err
 	}()
+
+	// wait for it
+	err := <-errs
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	select {
 	case <-doneCh:
 		if !c.Sealed() {
-			t.Fatalf("shutdown done called prematurely!")
+			t.Fatal("shutdown done called prematurely!")
 		}
 	case <-time.After(5 * time.Second):
-		t.Fatalf("shutdown notification not received")
+		t.Fatal("shutdown notification not received")
 	}
 }
 
@@ -911,7 +972,7 @@ func TestCore_Seal_SingleUse(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("err: should be unsealed")
+			t.Fatal("err: should be unsealed")
 		}
 	}
 	if err := c.Seal("foo"); err == nil {
@@ -1818,7 +1879,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !isLeader {
-		t.Fatalf("should be leader")
+		t.Fatal("should be leader")
 	}
 	if advertise != redirectOriginal {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
@@ -1852,7 +1913,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !standby {
-		t.Fatalf("should be standby")
+		t.Fatal("should be standby")
 	}
 
 	// Check the leader is not local
@@ -1861,7 +1922,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if isLeader {
-		t.Fatalf("should not be leader")
+		t.Fatal("should not be leader")
 	}
 	if advertise != redirectOriginal {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
@@ -1929,7 +1990,7 @@ func TestCore_StepDown(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !isLeader {
-		t.Fatalf("should be leader")
+		t.Fatal("should be leader")
 	}
 	if advertise != redirectOriginal {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
@@ -1964,7 +2025,7 @@ func TestCore_StepDown(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !standby {
-		t.Fatalf("should be standby")
+		t.Fatal("should be standby")
 	}
 
 	// Check the leader is not local
@@ -1973,7 +2034,7 @@ func TestCore_StepDown(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if isLeader {
-		t.Fatalf("should not be leader")
+		t.Fatal("should not be leader")
 	}
 	if advertise != redirectOriginal {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
@@ -2005,7 +2066,7 @@ func TestCore_StepDown(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !standby {
-		t.Fatalf("should be standby")
+		t.Fatal("should be standby")
 	}
 
 	// Check the leader is core2
@@ -2014,7 +2075,7 @@ func TestCore_StepDown(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !isLeader {
-		t.Fatalf("should be leader")
+		t.Fatal("should be leader")
 	}
 	if advertise != redirectOriginal2 {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal2)
@@ -2026,7 +2087,7 @@ func TestCore_StepDown(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if isLeader {
-		t.Fatalf("should not be leader")
+		t.Fatal("should not be leader")
 	}
 	if advertise != redirectOriginal2 {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal2)
@@ -2048,7 +2109,7 @@ func TestCore_StepDown(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !standby {
-		t.Fatalf("should be standby")
+		t.Fatal("should be standby")
 	}
 
 	// Check the leader is core1
@@ -2057,7 +2118,7 @@ func TestCore_StepDown(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !isLeader {
-		t.Fatalf("should be leader")
+		t.Fatal("should be leader")
 	}
 	if advertise != redirectOriginal {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
@@ -2069,7 +2130,7 @@ func TestCore_StepDown(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if isLeader {
-		t.Fatalf("should not be leader")
+		t.Fatal("should not be leader")
 	}
 	if advertise != redirectOriginal {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
@@ -2147,7 +2208,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !isLeader {
-		t.Fatalf("should be leader")
+		t.Fatal("should be leader")
 	}
 	if advertise != redirectOriginal {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
@@ -2181,7 +2242,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !standby {
-		t.Fatalf("should be standby")
+		t.Fatal("should be standby")
 	}
 
 	// Check the leader is not local
@@ -2190,7 +2251,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if isLeader {
-		t.Fatalf("should not be leader")
+		t.Fatal("should not be leader")
 	}
 	if advertise != redirectOriginal {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
@@ -2208,7 +2269,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !standby {
-		t.Fatalf("should be standby")
+		t.Fatal("should be standby")
 	}
 
 	// Wait for core2 to become active
@@ -2220,7 +2281,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if !isLeader {
-		t.Fatalf("should be leader")
+		t.Fatal("should be leader")
 	}
 	if advertise != redirectOriginal2 {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal2)
@@ -2314,7 +2375,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		t.Fatalf("err: %v", err)
 	}
 	if !isLeader {
-		t.Fatalf("should be leader")
+		t.Fatal("should be leader")
 	}
 	if advertise != redirectOriginal {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
@@ -2348,7 +2409,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		t.Fatalf("err: %v", err)
 	}
 	if !standby {
-		t.Fatalf("should be standby")
+		t.Fatal("should be standby")
 	}
 
 	// Request should fail in standby mode
@@ -2363,7 +2424,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		t.Fatalf("err: %v", err)
 	}
 	if isLeader {
-		t.Fatalf("should not be leader")
+		t.Fatal("should not be leader")
 	}
 	if advertise != redirectOriginal {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
@@ -2381,7 +2442,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		t.Fatalf("err: %v", err)
 	}
 	if !standby {
-		t.Fatalf("should be standby")
+		t.Fatal("should be standby")
 	}
 
 	// Wait for core2 to become active
@@ -2409,7 +2470,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		t.Fatalf("err: %v", err)
 	}
 	if !isLeader {
-		t.Fatalf("should be leader")
+		t.Fatal("should be leader")
 	}
 	if advertise != redirectOriginal2 {
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal2)
@@ -2418,17 +2479,17 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 	if inm.(*inmem.InmemHABackend) == inmha.(*inmem.InmemHABackend) {
 		lockSize := inm.(*inmem.InmemHABackend).LockMapSize()
 		if lockSize == 0 {
-			t.Fatalf("locks not used with only one HA backend")
+			t.Fatal("locks not used with only one HA backend")
 		}
 	} else {
 		lockSize := inmha.(*inmem.InmemHABackend).LockMapSize()
 		if lockSize == 0 {
-			t.Fatalf("locks not used with expected HA backend")
+			t.Fatal("locks not used with expected HA backend")
 		}
 
 		lockSize = inm.(*inmem.InmemHABackend).LockMapSize()
 		if lockSize != 0 {
-			t.Fatalf("locks used with unexpected HA backend")
+			t.Fatal("locks used with unexpected HA backend")
 		}
 	}
 }
@@ -2708,7 +2769,7 @@ path "secret/*" {
 
 	ps := c.policyStore
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, secretWritingPolicy)
-	if err := ps.SetPolicy(namespace.RootContext(nil), policy); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(nil), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2727,7 +2788,7 @@ path "secret/*" {
 	}
 	lresp, err := c.HandleRequest(namespace.RootContext(nil), lreq)
 	if err == nil || lresp == nil || !lresp.IsError() {
-		t.Fatalf("expected error trying to auth and receive root policy")
+		t.Fatal("expected error trying to auth and receive root policy")
 	}
 
 	// Fix and try again
@@ -2979,7 +3040,7 @@ func TestCore_HandleRequest_Headers(t *testing.T) {
 			t.Fatalf("expected: %v, got: %v", expected, val)
 		}
 	} else {
-		t.Fatalf("expected 'Should-Passthrough' to be present in the headers map")
+		t.Fatal("expected 'Should-Passthrough' to be present in the headers map")
 	}
 
 	if val, ok := headers["Should-Passthrough-Case-Insensitive"]; ok {

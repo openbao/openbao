@@ -26,6 +26,7 @@ path "stage/*" {
 # Limited read privilege to production
 path "prod/version" {
 	policy = "read"
+	comment = "this comment is stored but not parsed"
 }
 # Read access to foobar
 # Also tests stripping of leading slash and parsing of min/max as string and
@@ -89,6 +90,9 @@ path "test/req" {
 path "test/patch" {
 	capabilities = ["patch"]
 }
+path "test/scan" {
+	capabilities = ["scan"]
+}
 path "test/mfa" {
 	capabilities = ["create", "sudo"]
 	mfa_methods = ["my_totp", "my_totp2"]
@@ -108,14 +112,153 @@ path "test/+/wildcard/+/*" {
 path "test/+/wildcard/+/end*" {
 	capabilities = ["create", "sudo"]
 }
+path "paginated-kv/metadata" {
+	capabilities = ["list"]
+	pagination_limit = 12345
+}
+path "unpaginated-kv/metadata" {
+	capabilities = ["list"]
+}
+path "some-expired-path" {
+	capabilities = ["list"]
+	expiration = "2006-01-02T15:04:05Z"
+}
+`)
+
+var rawPolicyJSON = strings.TrimSpace(`
+{
+  "name": "dev",
+  "path": {
+    "*": {
+        "policy": "deny"
+    },
+    "stage/*": {
+        "policy": "sudo"
+    },
+    "prod/version": {
+        "policy": "read",
+        "comment": "this comment is stored but not parsed"
+    },
+    "/foo/bar": {
+      "policy": "read",
+      "min_wrapping_ttl": 300,
+      "max_wrapping_ttl": "1h"
+    },
+    "foo/bar": {
+      "capabilities": ["create", "sudo"],
+      "min_wrapping_ttl": "300s",
+      "max_wrapping_ttl": 3600
+    },
+    "foo/bar": {
+      "capabilities": ["create", "sudo"],
+      "allowed_parameters": {
+        "zip": [],
+        "zap": []
+      }
+    },
+    "baz/bar": {
+      "capabilities": ["create", "sudo"],
+      "denied_parameters": {
+        "zip": [],
+        "zap": []
+      }
+    },
+    "biz/bar": {
+      "capabilities": ["create", "sudo"],
+      "allowed_parameters": {
+        "zim": [],
+        "zam": []
+      },
+      "denied_parameters": {
+        "zip": [],
+        "zap": []
+      }
+    },
+    "test/types": {
+      "capabilities": ["create", "sudo"],
+      "allowed_parameters": {
+		"map": [{"good": "one"}],
+        "int": [1, 2]
+      },
+      "denied_parameters": {
+        "string": ["test"],
+        "bool": [false]
+      }
+    },
+    "test/req": {
+      "capabilities": ["create", "sudo"],
+      "required_parameters": ["foo"]
+    },
+    "test/patch": {
+      "capabilities": ["patch"]
+    },
+    "test/scan": {
+      "capabilities": ["scan"]
+    },
+    "test/mfa": {
+      "capabilities": ["create", "sudo"],
+      "mfa_methods": ["my_totp", "my_totp2"]
+    },
+    "test/+/segment": {
+      "capabilities": ["create", "sudo"]
+    },
+    "test/segment/at/end/+": {
+      "capabilities": ["create", "sudo"]
+    },
+    "test/segment/at/end/v2/+/": {
+      "capabilities": ["create", "sudo"]
+    },
+    "test/+/wildcard/+/*": {
+      "capabilities": ["create", "sudo"]
+    },
+    "test/+/wildcard/+/end*": {
+      "capabilities": ["create", "sudo"]
+    },
+    "paginated-kv/metadata": {
+      "capabilities": ["list"],
+      "pagination_limit": 12345
+    },
+    "unpaginated-kv/metadata": {
+      "capabilities": ["list"]
+    }
+  }
+}
 `)
 
 func TestPolicy_Parse(t *testing.T) {
-	p, err := ParseACLPolicy(namespace.RootNamespace, rawPolicy)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	t.Run("HCL", func(t *testing.T) {
+		pHcl, err := ParseACLPolicy(namespace.RootNamespace, rawPolicy)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
 
+		validatePolicy(t, pHcl)
+	})
+
+	/*
+		TODO(ascheel): When https://github.com/hashicorp/hcl/pull/741 merges, we'll
+		want to update and uncomment this test.
+
+		t.Run("JSON", func(t *testing.T) {
+			var parsed map[string]interface{}
+			err := json.Unmarshal([]byte(rawPolicyJSON), &parsed)
+			if err != nil {
+				t.Fatalf("failed to parse JSON: %v", err)
+			}
+
+			pJson, err := ParseACLPolicy(namespace.RootNamespace, rawPolicyJSON)
+			if err != nil {
+				t.Fatalf("err: %v", err)
+			}
+
+			t.Logf("value: %#v", pJson.Paths[8])
+
+			validatePolicy(t, pJson)
+		})
+	*/
+}
+
+func validatePolicy(t *testing.T, p *Policy) {
 	if p.Name != "dev" {
 		t.Fatalf("bad name: %q", p.Name)
 	}
@@ -258,6 +401,13 @@ func TestPolicy_Parse(t *testing.T) {
 			},
 		},
 		{
+			Path:         "test/scan",
+			Capabilities: []string{"scan"},
+			Permissions: &ACLPermissions{
+				CapabilitiesBitmap: (ScanCapabilityInt),
+			},
+		},
+		{
 			Path: "test/mfa",
 			Capabilities: []string{
 				"create",
@@ -330,6 +480,22 @@ func TestPolicy_Parse(t *testing.T) {
 			},
 			HasSegmentWildcards: true,
 		},
+		{
+			Path:         "paginated-kv/metadata",
+			Capabilities: []string{"list"},
+			Permissions: &ACLPermissions{
+				CapabilitiesBitmap: ListCapabilityInt,
+				PaginationLimit:    12345,
+			},
+			PaginationLimitHCL: 12345,
+		},
+		{
+			Path:         "unpaginated-kv/metadata",
+			Capabilities: []string{"list"},
+			Permissions: &ACLPermissions{
+				CapabilitiesBitmap: ListCapabilityInt,
+			},
+		},
 	}
 
 	if diff := deep.Equal(p.Paths, expect); diff != nil {
@@ -344,7 +510,7 @@ bad  = "foo"
 nope = "yes"
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `invalid key "bad" on line 2`) {
@@ -365,7 +531,7 @@ path "/" {
 }
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `invalid key "capabilites" on line 3`) {
@@ -380,7 +546,7 @@ path "/" {
 }
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `path "/": invalid policy "banana"`) {
@@ -397,7 +563,7 @@ path "/" {
 }
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `max_wrapping_ttl cannot be less than min_wrapping_ttl`) {
@@ -412,7 +578,7 @@ path "/" {
 }
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `path "/": invalid capability "banana"`) {
@@ -427,7 +593,7 @@ path "foo/+*" {
 }
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `path "foo/+*": invalid use of wildcards ('+*' is forbidden)`) {

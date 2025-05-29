@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	_ "github.com/jackc/pgx/v4/stdlib"
-	thpsql "github.com/openbao/openbao/helper/testhelpers/postgresql"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	thpsql "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/stretchr/testify/require"
 )

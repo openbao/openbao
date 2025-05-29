@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -17,7 +18,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
@@ -45,11 +45,7 @@ func (b *bufferedReader) Close() error {
 const MergePatchContentTypeHeader = "application/merge-patch+json"
 
 func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
-	ns, err := namespace.FromContext(r.Context())
-	if err != nil {
-		return nil, nil, http.StatusBadRequest, nil
-	}
-	path := ns.TrimmedPath(r.URL.Path[len("/v1/"):])
+	path := r.URL.Path[len("/v1/"):]
 
 	var data map[string]interface{}
 	var origBody io.ReadCloser
@@ -65,20 +61,42 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 	case "GET":
 		op = logical.ReadOperation
 		queryVals := r.URL.Query()
+
 		var list bool
+		var scan bool
 		var err error
+
 		listStr := queryVals.Get("list")
 		if listStr != "" {
 			list, err = strconv.ParseBool(listStr)
 			if err != nil {
 				return nil, nil, http.StatusBadRequest, nil
 			}
-			if list {
-				queryVals.Del("list")
-				op = logical.ListOperation
-				if !strings.HasSuffix(path, "/") {
-					path += "/"
-				}
+		}
+
+		scanStr := queryVals.Get("scan")
+		if scanStr != "" {
+			scan, err = strconv.ParseBool(scanStr)
+			if err != nil {
+				return nil, nil, http.StatusBadRequest, nil
+			}
+		}
+
+		if list && scan {
+			return nil, nil, http.StatusBadRequest, nil
+		}
+
+		if list {
+			queryVals.Del("list")
+			op = logical.ListOperation
+			if !strings.HasSuffix(path, "/") {
+				path += "/"
+			}
+		} else if scan {
+			queryVals.Del("scan")
+			op = logical.ScanOperation
+			if !strings.HasSuffix(path, "/") {
+				path += "/"
 			}
 		}
 
@@ -119,7 +137,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 			if err != nil && err != bufio.ErrBufferFull && err != io.EOF {
 				status := http.StatusBadRequest
 				logical.AdjustErrorStatusCode(&status, err)
-				return nil, nil, status, fmt.Errorf("error reading data")
+				return nil, nil, status, errors.New("error reading data")
 			}
 
 			if isForm(head, contentType) {
@@ -127,7 +145,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 				if err != nil {
 					status := http.StatusBadRequest
 					logical.AdjustErrorStatusCode(&status, err)
-					return nil, nil, status, fmt.Errorf("error parsing form data")
+					return nil, nil, status, errors.New("error parsing form data")
 				}
 
 				data = formData
@@ -140,7 +158,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 				if err != nil {
 					status := http.StatusBadRequest
 					logical.AdjustErrorStatusCode(&status, err)
-					return nil, nil, status, fmt.Errorf("error parsing JSON")
+					return nil, nil, status, errors.New("error parsing JSON")
 				}
 			}
 		}
@@ -170,11 +188,18 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		if err != nil {
 			status := http.StatusBadRequest
 			logical.AdjustErrorStatusCode(&status, err)
-			return nil, nil, status, fmt.Errorf("error parsing JSON")
+			return nil, nil, status, errors.New("error parsing JSON")
 		}
 
 	case "LIST":
 		op = logical.ListOperation
+		if !strings.HasSuffix(path, "/") {
+			path += "/"
+		}
+
+		data = parseQuery(r.URL.Query())
+	case "SCAN":
+		op = logical.ScanOperation
 		if !strings.HasSuffix(path, "/") {
 			path += "/"
 		}
@@ -222,17 +247,13 @@ func isOcspRequest(contentType string) bool {
 }
 
 func buildLogicalPath(r *http.Request) (string, int, error) {
-	ns, err := namespace.FromContext(r.Context())
-	if err != nil {
-		return "", http.StatusBadRequest, nil
-	}
-
-	path := ns.TrimmedPath(strings.TrimPrefix(r.URL.Path, "/v1/"))
+	path := r.URL.Path[len("/v1/"):]
 
 	switch r.Method {
 	case "GET":
 		var (
 			list bool
+			scan bool
 			err  error
 		)
 
@@ -244,14 +265,30 @@ func buildLogicalPath(r *http.Request) (string, int, error) {
 			if err != nil {
 				return "", http.StatusBadRequest, nil
 			}
-			if list {
-				if !strings.HasSuffix(path, "/") {
-					path += "/"
-				}
+		}
+
+		scanStr := queryVals.Get("scan")
+		if scanStr != "" {
+			scan, err = strconv.ParseBool(scanStr)
+			if err != nil {
+				return "", http.StatusBadRequest, nil
 			}
 		}
 
+		if list && scan {
+			return "", http.StatusBadRequest, nil
+		}
+
+		if list || scan {
+			if !strings.HasSuffix(path, "/") {
+				path += "/"
+			}
+		}
 	case "LIST":
+		if !strings.HasSuffix(path, "/") {
+			path += "/"
+		}
+	case "SCAN":
 		if !strings.HasSuffix(path, "/") {
 			path += "/"
 		}

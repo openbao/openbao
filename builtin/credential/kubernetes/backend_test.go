@@ -321,11 +321,12 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 			b.tlsMu.RLock()
 			if b.tlsConfigUpdaterRunning {
 				b.tlsMu.RUnlock()
-				t.Fatalf("tlsConfigUpdater started before initialize()")
+				t.Fatal("tlsConfigUpdater started before initialize()")
 			}
 			b.tlsMu.RUnlock()
 
-			ctx, _ := context.WithTimeout(tt.ctx, time.Second*30)
+			ctx, cancel := context.WithTimeout(tt.ctx, time.Second*30)
+			defer cancel()
 			err := b.initialize(ctx, tt.req)
 			if tt.wantErr && err == nil {
 				t.Errorf("initialize() error = %v, wantErr %v", err, tt.wantErr)
@@ -349,7 +350,7 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 			b.tlsMu.RLock()
 			if !b.tlsConfigUpdaterRunning {
 				b.tlsMu.RUnlock()
-				t.Fatalf("tlsConfigUpdater not started from initialize()")
+				t.Fatal("tlsConfigUpdater not started from initialize()")
 			}
 			b.tlsMu.RUnlock()
 		})
@@ -444,7 +445,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 			b.tlsMu.RLock()
 			if b.tlsConfigUpdaterRunning {
 				b.tlsMu.RUnlock()
-				t.Fatalf("tlsConfigUpdater already started")
+				t.Fatal("tlsConfigUpdater already started")
 			}
 			b.tlsMu.RUnlock()
 
@@ -467,7 +468,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 			b.tlsMu.RLock()
 			if !b.tlsConfigUpdaterRunning {
 				b.tlsMu.RUnlock()
-				t.Fatalf("tlsConfigUpdater not started")
+				t.Fatal("tlsConfigUpdater not started")
 			}
 			b.tlsMu.RUnlock()
 
@@ -488,7 +489,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 
 						time.Sleep(tt.horizon * 2)
 						if b.tlsConfig == nil {
-							t.Fatalf("runTLSConfigUpdater(), expected tlsConfig initialization")
+							t.Fatal("runTLSConfigUpdater(), expected tlsConfig initialization")
 						}
 
 						b.tlsMu.RLock()
@@ -499,7 +500,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 				}
 			} else {
 				if b.tlsConfig != nil {
-					t.Errorf("runTLSConfigUpdater(), unexpected tlsConfig initialization")
+					t.Error("runTLSConfigUpdater(), unexpected tlsConfig initialization")
 				}
 			}
 
@@ -508,7 +509,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 			b.tlsMu.RLock()
 			if b.tlsConfigUpdaterRunning {
 				b.tlsMu.RUnlock()
-				t.Fatalf("tlsConfigUpdater did not shutdown cleanly")
+				t.Fatal("tlsConfigUpdater did not shutdown cleanly")
 			}
 			b.tlsMu.RUnlock()
 		})
@@ -544,7 +545,7 @@ func getTestCertPool(t *testing.T, cert string) *x509.CertPool {
 
 	pool := x509.NewCertPool()
 	if ok := pool.AppendCertsFromPEM([]byte(cert)); !ok {
-		t.Fatalf("test certificate contains no valid certificates")
+		t.Fatal("test certificate contains no valid certificates")
 	}
 	return pool
 }

@@ -23,7 +23,7 @@ func TestTCPListener(t *testing.T) {
 	ln, _, _, err := tcpListenerFactory(&configutil.Listener{
 		Address:    "127.0.0.1:0",
 		TLSDisable: true,
-	}, nil, cli.NewMockUi())
+	}, nil, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -60,7 +60,7 @@ func TestTCPListener_tls(t *testing.T) {
 		TLSKeyFile:                    wd + "reload_foo.key",
 		TLSRequireAndVerifyClientCert: true,
 		TLSClientCAFile:               wd + "reload_ca.pem",
-	}, nil, cli.NewMockUi())
+	}, nil, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -98,7 +98,7 @@ func TestTCPListener_tls(t *testing.T) {
 		TLSRequireAndVerifyClientCert: true,
 		TLSDisableClientCerts:         true,
 		TLSClientCAFile:               wd + "reload_ca.pem",
-	}, nil, cli.NewMockUi())
+	}, nil, nil, cli.NewMockUi())
 	if err == nil {
 		t.Fatal("expected error due to mutually exclusive client cert options")
 	}
@@ -109,7 +109,7 @@ func TestTCPListener_tls(t *testing.T) {
 		TLSKeyFile:            wd + "reload_foo.key",
 		TLSDisableClientCerts: true,
 		TLSClientCAFile:       wd + "reload_ca.pem",
-	}, nil, cli.NewMockUi())
+	}, nil, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -142,7 +142,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSRequireAndVerifyClientCert: true,
 		TLSClientCAFile:               wd + "reload_ca.pem",
 		TLSMinVersion:                 "tls13",
-	}, nil, cli.NewMockUi())
+	}, nil, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -181,7 +181,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSDisableClientCerts:         true,
 		TLSClientCAFile:               wd + "reload_ca.pem",
 		TLSMinVersion:                 "tls13",
-	}, nil, cli.NewMockUi())
+	}, nil, nil, cli.NewMockUi())
 	if err == nil {
 		t.Fatal("expected error due to mutually exclusive client cert options")
 	}
@@ -193,7 +193,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSDisableClientCerts: true,
 		TLSClientCAFile:       wd + "reload_ca.pem",
 		TLSMinVersion:         "tls13",
-	}, nil, cli.NewMockUi())
+	}, nil, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -207,7 +207,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSDisableClientCerts: true,
 		TLSClientCAFile:       wd + "reload_ca.pem",
 		TLSMaxVersion:         "tls12",
-	}, nil, cli.NewMockUi())
+	}, nil, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -442,7 +442,7 @@ func TestTCPListener_proxyProtocol(t *testing.T) {
 				TLSDisable:                   true,
 				ProxyProtocolBehavior:        tc.Behavior,
 				ProxyProtocolAuthorizedAddrs: proxyProtocolAuthorizedAddrs,
-			}, nil, cli.NewMockUi())
+			}, nil, nil, cli.NewMockUi())
 			if err != nil {
 				t.Fatalf("err: %s", err)
 			}

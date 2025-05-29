@@ -41,8 +41,10 @@ func pathListRoles(b *databaseBackend) []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: b.pathRoleList,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.pathRoleList,
+				},
 			},
 
 			HelpSynopsis:    pathRoleHelpSyn,
@@ -68,8 +70,10 @@ func pathListRoles(b *databaseBackend) []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: b.pathRoleList,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.pathRoleList,
+				},
 			},
 
 			HelpSynopsis:    pathStaticRoleHelpSyn,
@@ -88,11 +92,19 @@ func pathRoles(b *databaseBackend) []*framework.Path {
 			},
 			Fields:         fieldsForType(databaseRolePath),
 			ExistenceCheck: b.pathRoleExistenceCheck,
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation:   b.pathRoleRead,
-				logical.CreateOperation: b.pathRoleCreateUpdate,
-				logical.UpdateOperation: b.pathRoleCreateUpdate,
-				logical.DeleteOperation: b.pathRoleDelete,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathRoleRead,
+				},
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathRoleCreateUpdate,
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.pathRoleCreateUpdate,
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.pathRoleDelete,
+				},
 			},
 
 			HelpSynopsis:    pathRoleHelpSyn,
@@ -107,11 +119,19 @@ func pathRoles(b *databaseBackend) []*framework.Path {
 			},
 			Fields:         fieldsForType(databaseStaticRolePath),
 			ExistenceCheck: b.pathStaticRoleExistenceCheck,
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation:   b.pathStaticRoleRead,
-				logical.CreateOperation: b.pathStaticRoleCreateUpdate,
-				logical.UpdateOperation: b.pathStaticRoleCreateUpdate,
-				logical.DeleteOperation: b.pathStaticRoleDelete,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathStaticRoleRead,
+				},
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathStaticRoleCreateUpdate,
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.pathStaticRoleCreateUpdate,
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.pathStaticRoleDelete,
+				},
 			},
 
 			HelpSynopsis:    pathStaticRoleHelpSyn,
@@ -257,6 +277,12 @@ func (b *databaseBackend) pathRoleDelete(ctx context.Context, req *logical.Reque
 }
 
 func (b *databaseBackend) pathStaticRoleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := data.Get("name").(string)
 
 	// Grab the exclusive lock
@@ -267,8 +293,7 @@ func (b *databaseBackend) pathStaticRoleDelete(ctx context.Context, req *logical
 	// Remove the item from the queue
 	_, _ = b.popFromRotationQueueByKey(name)
 
-	err := req.Storage.Delete(ctx, databaseStaticRolePath+name)
-	if err != nil {
+	if err := req.Storage.Delete(ctx, databaseStaticRolePath+name); err != nil {
 		return nil, err
 	}
 
@@ -291,6 +316,10 @@ func (b *databaseBackend) pathStaticRoleDelete(ctx context.Context, req *logical
 				merr = multierror.Append(merr, err)
 			}
 		}
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return nil, merr.ErrorOrNil()
@@ -394,6 +423,12 @@ func (b *databaseBackend) pathRoleList(ctx context.Context, req *logical.Request
 }
 
 func (b *databaseBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := data.Get("name").(string)
 	if name == "" {
 		return logical.ErrorResponse("empty role name attribute given"), nil
@@ -505,10 +540,20 @@ func (b *databaseBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 		return nil, err
 	}
 
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 
 func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := data.Get("name").(string)
 	if name == "" {
 		return logical.ErrorResponse("empty role name attribute given"), nil
@@ -656,6 +701,10 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 
 	// Add their rotation to the queue
 	if err := b.pushItem(item); err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

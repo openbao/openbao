@@ -1765,7 +1765,7 @@ func (i *IdentityStore) pathOIDCAuthorize(ctx context.Context, req *logical.Requ
 	if req.EntityID == "" {
 		return authResponse("", state, ErrAuthAccessDenied, "identity entity must be associated with the request")
 	}
-	entity, err := i.MemDBEntityByID(req.EntityID, false)
+	entity, err := i.MemDBEntityByID(ctx, req.EntityID, false)
 	if err != nil {
 		return authResponse("", state, ErrAuthServerError, err.Error())
 	}
@@ -2031,7 +2031,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	}
 
 	// Get the entity associated with the initial authorization request
-	entity, err := i.MemDBEntityByID(authCodeEntry.entityID, true)
+	entity, err := i.MemDBEntityByID(ctx, authCodeEntry.entityID, true)
 	if err != nil {
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}
@@ -2264,7 +2264,7 @@ func (i *IdentityStore) pathOIDCUserInfo(ctx context.Context, req *logical.Reque
 	if req.EntityID == "" {
 		return userInfoResponse(nil, ErrUserInfoAccessDenied, "identity entity must be associated with the request")
 	}
-	entity, err := i.MemDBEntityByID(req.EntityID, false)
+	entity, err := i.MemDBEntityByID(ctx, req.EntityID, false)
 	if err != nil {
 		return userInfoResponse(nil, ErrUserInfoServerError, err.Error())
 	}
@@ -2409,7 +2409,7 @@ func (i *IdentityStore) populateScopeTemplates(ctx context.Context, s logical.St
 	}
 
 	// Get the groups for the entity
-	groups, inheritedGroups, err := i.groupsByEntityID(entity.ID)
+	groups, inheritedGroups, err := i.groupsByEntityID(ctx, entity.ID)
 	if err != nil {
 		return nil, false, err
 	}
@@ -2466,7 +2466,7 @@ func (i *IdentityStore) entityHasAssignment(ctx context.Context, s logical.Stora
 	}
 
 	// Get the group IDs that the entity is a member of
-	groups, inheritedGroups, err := i.groupsByEntityID(entity.GetID())
+	groups, inheritedGroups, err := i.groupsByEntityID(ctx, entity.GetID())
 	if err != nil {
 		return false, err
 	}
@@ -2634,15 +2634,19 @@ func (i *IdentityStore) lazyGenerateDefaultKey(ctx context.Context, storage logi
 func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
 	i.logger.Debug("identity loading OIDC clients")
 
-	clients, err := i.view.List(ctx, clientPath)
+	if err := i.validateCtx(ctx); err != nil {
+		return err
+	}
+
+	clients, err := i.view(ctx).List(ctx, clientPath)
 	if err != nil {
 		return err
 	}
 
-	txn := i.db.Txn(true)
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 	for _, name := range clients {
-		entry, err := i.view.Get(ctx, clientPath+name)
+		entry, err := i.view(ctx).Get(ctx, clientPath+name)
 		if err != nil {
 			return err
 		}
@@ -2667,7 +2671,7 @@ func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
 // clientByID returns the client with the given ID.
 func (i *IdentityStore) clientByID(ctx context.Context, s logical.Storage, id string) (*client, error) {
 	// Read the client from memdb
-	client, err := i.memDBClientByID(id)
+	client, err := i.memDBClientByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -2685,7 +2689,7 @@ func (i *IdentityStore) clientByID(ctx context.Context, s logical.Storage, id st
 	}
 
 	// Upsert the client in memdb
-	txn := i.db.Txn(true)
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 	if err := i.memDBUpsertClientInTxn(txn, client); err != nil {
 		i.logger.Debug("failed to upsert client in memdb", "error", err)
@@ -2717,7 +2721,7 @@ func (i *IdentityStore) clientByName(ctx context.Context, s logical.Storage, nam
 	}
 
 	// Upsert the client in memdb
-	txn := i.db.Txn(true)
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 	if err := i.memDBUpsertClientInTxn(txn, client); err != nil {
 		i.logger.Debug("failed to upsert client in memdb", "error", err)
@@ -2729,12 +2733,16 @@ func (i *IdentityStore) clientByName(ctx context.Context, s logical.Storage, nam
 }
 
 // memDBClientByID returns the client with the given ID from memdb.
-func (i *IdentityStore) memDBClientByID(id string) (*client, error) {
+func (i *IdentityStore) memDBClientByID(ctx context.Context, id string) (*client, error) {
 	if id == "" {
 		return nil, errors.New("missing client ID")
 	}
 
-	txn := i.db.Txn(false)
+	if err := i.validateCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	txn := i.db(ctx).Txn(false)
 
 	return i.memDBClientByIDInTxn(txn, id)
 }
@@ -2771,7 +2779,7 @@ func (i *IdentityStore) memDBClientByName(ctx context.Context, name string) (*cl
 		return nil, errors.New("missing client name")
 	}
 
-	txn := i.db.Txn(false)
+	txn := i.db(ctx).Txn(false)
 
 	return i.memDBClientByNameInTxn(ctx, txn, name)
 }
@@ -2813,7 +2821,11 @@ func (i *IdentityStore) memDBDeleteClientByName(ctx context.Context, name string
 		return errors.New("missing client name")
 	}
 
-	txn := i.db.Txn(true)
+	if err := i.validateCtx(ctx); err != nil {
+		return err
+	}
+
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 
 	if err := i.memDBDeleteClientByNameInTxn(ctx, txn, name); err != nil {

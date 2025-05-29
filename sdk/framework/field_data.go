@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/mapstructure"
@@ -33,7 +33,7 @@ type FieldData struct {
 // trying to get data out.  Data not in the schema is not
 // an error at this point, so we don't worry about it.
 func (d *FieldData) Validate() error {
-	for field, value := range d.Raw {
+	for field := range d.Raw {
 
 		schema, ok := d.Schema[field]
 		if !ok {
@@ -46,7 +46,7 @@ func (d *FieldData) Validate() error {
 			TypeKVPairs, TypeCommaIntSlice, TypeHeader, TypeFloat, TypeTime:
 			_, _, err := d.getPrimitive(field, schema)
 			if err != nil {
-				return errwrap.Wrapf(fmt.Sprintf("error converting input %v for field %q: {{err}}", value, field), err)
+				return fmt.Errorf("error converting input for field %q: %w", field, err)
 			}
 		default:
 			return fmt.Errorf("unknown field type %q for field %q", schema.Type, field)
@@ -463,4 +463,20 @@ func (d *FieldData) getPrimitive(k string, schema *FieldSchema) (interface{}, bo
 	default:
 		panic(fmt.Sprintf("Unknown type: %s", schema.Type))
 	}
+}
+
+func (d *FieldData) GetWithExplicitDefault(field string, defaultValue interface{}) interface{} {
+	assignedValue, ok := d.GetOk(field)
+	if ok {
+		return assignedValue
+	}
+	return defaultValue
+}
+
+func (d *FieldData) GetTimeWithExplicitDefault(field string, defaultValue time.Duration) time.Duration {
+	assignedValue, ok := d.GetOk(field)
+	if ok {
+		return time.Duration(assignedValue.(int)) * time.Second
+	}
+	return defaultValue
 }

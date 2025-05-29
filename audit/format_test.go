@@ -8,7 +8,6 @@ import (
 	"io"
 	"testing"
 
-	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -48,7 +47,7 @@ func (fw *testingFormatWriter) Salt(ctx context.Context) (*salt.Salt, error) {
 // so that we can use assert.Equal to compare the expected and output values.
 func (fw *testingFormatWriter) hashExpectedValueForComparison(input map[string]interface{}) map[string]interface{} {
 	// Copy input before modifying, since we may re-use the same data in another test
-	copied, err := copystructure.Copy(input)
+	copied, err := getUnmarshaledCopy(input)
 	if err != nil {
 		panic(err)
 	}
@@ -59,12 +58,12 @@ func (fw *testingFormatWriter) hashExpectedValueForComparison(input map[string]i
 		panic(err)
 	}
 
-	err = hashMap(salter.GetIdentifiedHMAC, copiedAsMap, nil)
+	err = hashMap(salter.GetIdentifiedHMAC, input, copiedAsMap, nil, false)
 	if err != nil {
 		panic(err)
 	}
 
-	return copiedAsMap
+	return fixupElidedTestData(copiedAsMap)
 }
 
 func TestFormatRequestErrors(t *testing.T) {
@@ -170,7 +169,7 @@ func TestElideListResponses(t *testing.T) {
 				"keys": map[string]interface{}{
 					"You wouldn't expect keys to be a map": nil,
 				},
-				"key_info": []string{
+				"key_info": []interface{}{
 					"You wouldn't expect key_info to be a slice",
 				},
 			},
@@ -205,14 +204,16 @@ func TestElideListResponses(t *testing.T) {
 		config := FormatterConfig{ElideListResponses: true}
 		tc := oneInterestingTestCase
 		formatResponse(t, config, logical.ReadOperation, tc.inputData)
-		assert.Equal(t, tfw.hashExpectedValueForComparison(tc.inputData), tfw.lastResponse.Response.Data)
+		assert.Equal(t, tfw.hashExpectedValueForComparison(fixupInputData(tc.inputData)),
+			tfw.lastResponse.Response.Data)
 	})
 
 	t.Run("When ElideListResponses is false, eliding does not happen", func(t *testing.T) {
 		config := FormatterConfig{ElideListResponses: false}
 		tc := oneInterestingTestCase
 		formatResponse(t, config, logical.ListOperation, tc.inputData)
-		assert.Equal(t, tfw.hashExpectedValueForComparison(tc.inputData), tfw.lastResponse.Response.Data)
+		assert.Equal(t, tfw.hashExpectedValueForComparison(fixupInputData(tc.inputData)),
+			tfw.lastResponse.Response.Data)
 	})
 
 	t.Run("When Raw is true, eliding still happens", func(t *testing.T) {
@@ -221,4 +222,37 @@ func TestElideListResponses(t *testing.T) {
 		formatResponse(t, config, logical.ListOperation, tc.inputData)
 		assert.Equal(t, tc.expectedData, tfw.lastResponse.Response.Data)
 	})
+}
+
+func fixupInputData(inputData map[string]interface{}) map[string]interface{} {
+	// json marshalling/unmarshalling converts []string's into []interface{}
+	//  this method returns a copy of the input data with that transformation
+	//  so it can be checked against the results
+	newSlice := make([]interface{}, len(inputData["keys"].([]string)))
+	for i, v := range inputData["keys"].([]string) {
+		newSlice[i] = v
+	}
+	return map[string]interface{}{
+		"keys":     newSlice,
+		"key_info": inputData["key_info"],
+	}
+}
+
+// Because the elided real data doesn't get unmarshaled, it doesn't
+// get converted to floats.  But when the elided test-data is hashed
+// by the tfw.hashExpectedValueForComparison() method, that method
+// doesn't handle elision and the elided ints get converted to floats.
+//
+// This func corrects the issue with
+// tfw.hashExpectedValueForComparison(), by converting the floats back
+// to ints.
+func fixupElidedTestData(inputData map[string]interface{}) map[string]interface{} {
+	for k, v := range inputData {
+		if k == "keys" || k == "key_info" {
+			if f, ok := v.(float64); ok {
+				inputData[k] = int(f)
+			}
+		}
+	}
+	return inputData
 }

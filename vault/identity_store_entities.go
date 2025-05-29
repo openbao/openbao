@@ -270,10 +270,10 @@ func (i *IdentityStore) pathEntityMergeID() framework.OperationFunc {
 		i.lock.Lock()
 		defer i.lock.Unlock()
 
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
-		toEntity, err := i.MemDBEntityByID(toEntityID, true)
+		toEntity, err := i.MemDBEntityByID(ctx, toEntityID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -317,7 +317,7 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 
 		entityID := d.Get("id").(string)
 		if entityID != "" {
-			entity, err = i.MemDBEntityByID(entityID, true)
+			entity, err = i.MemDBEntityByID(ctx, entityID, true)
 			if err != nil {
 				return nil, err
 			}
@@ -443,7 +443,7 @@ func (i *IdentityStore) pathEntityIDRead() framework.OperationFunc {
 			return logical.ErrorResponse("missing entity id"), nil
 		}
 
-		entity, err := i.MemDBEntityByID(entityID, false)
+		entity, err := i.MemDBEntityByID(ctx, entityID, false)
 		if err != nil {
 			return nil, err
 		}
@@ -507,7 +507,7 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 	addExtraEntityDataToResponse(entity, respData)
 
 	// Fetch the groups this entity belongs to and return their identifiers
-	groups, inheritedGroups, err := i.groupsByEntityID(entity.ID)
+	groups, inheritedGroups, err := i.groupsByEntityID(ctx, entity.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -543,7 +543,7 @@ func (i *IdentityStore) pathEntityIDDelete() framework.OperationFunc {
 		defer i.lock.Unlock()
 
 		// Create a MemDB transaction to delete entity
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		// Fetch the entity using its ID
@@ -578,7 +578,7 @@ func (i *IdentityStore) pathEntityNameDelete() framework.OperationFunc {
 		defer i.lock.Unlock()
 
 		// Create a MemDB transaction to delete entity
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		// Fetch the entity using its name
@@ -621,7 +621,7 @@ func (i *IdentityStore) handleEntityBatchDelete() framework.OperationFunc {
 		// Sort the ids by the bucket they will be deleted from
 		byBucket := make(map[string]map[string]struct{})
 		for _, id := range entityIDs {
-			bucketKey := i.entityPacker.BucketKey(id)
+			bucketKey := i.entityPacker(ctx).BucketKey(id)
 
 			bucket, ok := byBucket[bucketKey]
 			if !ok {
@@ -639,7 +639,7 @@ func (i *IdentityStore) handleEntityBatchDelete() framework.OperationFunc {
 			// Create a MemDB transaction to delete entities from the inmem database
 			// without altering storage. Batch deletion on storage bucket items is
 			// performed directly through entityPacker.
-			txn := i.db.Txn(true)
+			txn := i.db(ctx).Txn(true)
 			defer txn.Abort()
 
 			for _, entityID := range entityIDs {
@@ -659,7 +659,7 @@ func (i *IdentityStore) handleEntityBatchDelete() framework.OperationFunc {
 			}
 
 			// Write all updates for this bucket.
-			err := i.entityPacker.DeleteMultipleItems(ctx, i.logger, entityIDs)
+			err := i.entityPacker(ctx).DeleteMultipleItems(ctx, i.logger, entityIDs)
 			if err != nil {
 				return err
 			}
@@ -726,7 +726,7 @@ func (i *IdentityStore) handleEntityDeleteCommon(ctx context.Context, txn *memdb
 
 	if update {
 		// Delete the entity from storage
-		err = i.entityPacker.DeleteItem(ctx, entity.ID)
+		err = i.entityPacker(ctx).DeleteItem(ctx, entity.ID)
 		if err != nil {
 			return err
 		}
@@ -757,7 +757,7 @@ func (i *IdentityStore) handlePathEntityListCommon(ctx context.Context, req *log
 
 	ws := memdb.NewWatchSet()
 
-	txn := i.db.Txn(false)
+	txn := i.db(ctx).Txn(false)
 
 	iter, err := txn.Get(entitiesTable, "namespace_id", ns.ID)
 	if err != nil {
@@ -887,7 +887,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 			return errors.New("to_entity_id should not be present in from_entity_ids"), nil, nil
 		}
 
-		fromEntity, err := i.MemDBEntityByID(fromEntityID, false)
+		fromEntity, err := i.MemDBEntityByID(ctx, fromEntityID, false)
 		if err != nil {
 			return nil, err, nil
 		}
@@ -916,7 +916,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 					// If it doesn't, check if it clashes with the toEntities
 					if toAlias.MountAccessor == fromAlias.MountAccessor {
 						if aliasClashError == nil {
-							aliasClashError = multierror.Append(aliasClashError, fmt.Errorf("toEntity and at least one fromEntity have aliases with the same mount accessor, repeat the merge request specifying exactly one fromEntity, clashes: "))
+							aliasClashError = multierror.Append(aliasClashError, errors.New("toEntity and at least one fromEntity have aliases with the same mount accessor, repeat the merge request specifying exactly one fromEntity, clashes: "))
 						}
 						aliasClashError = multierror.Append(aliasClashError,
 							fmt.Errorf("mountAccessor: %s, toEntity ID: %s, fromEntity ID: %s, conflicting toEntity alias ID: %s, conflicting fromEntity alias ID: %s",
@@ -997,7 +997,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 			return errors.New("to_entity_id should not be present in from_entity_ids"), nil, nil
 		}
 
-		fromEntity, err := i.MemDBEntityByID(fromEntityID, true)
+		fromEntity, err := i.MemDBEntityByID(ctx, fromEntityID, true)
 		if err != nil {
 			return nil, err, nil
 		}
@@ -1097,7 +1097,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 		if persist {
 			// Delete the entity which we are merging from in storage
-			err = i.entityPacker.DeleteItem(ctx, fromEntity.ID)
+			err = i.entityPacker(ctx).DeleteItem(ctx, fromEntity.ID)
 			if err != nil {
 				return nil, err, nil
 			}
@@ -1129,7 +1129,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 			Message: toEntityAsAny,
 		}
 
-		err = i.entityPacker.PutItem(ctx, item)
+		err = i.entityPacker(ctx).PutItem(ctx, item)
 		if err != nil {
 			return nil, err, nil
 		}

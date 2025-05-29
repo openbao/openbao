@@ -14,6 +14,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -1159,7 +1160,7 @@ func TestAcmeWithCsrIncludingBasicConstraintExtension(t *testing.T) {
 	for _, ext := range acmeCert.Extensions {
 		if ext.Id.Equal(certutil.ExtensionBasicConstraintsOID) {
 			// We shouldn't have this extension in our cert
-			t.Fatalf("acme csr contained a basic constraints extension")
+			t.Fatal("acme csr contained a basic constraints extension")
 		}
 	}
 }
@@ -1222,14 +1223,14 @@ func markAuthorizationSuccess(t *testing.T, client *api.Client, acmeClient *acme
 				// Our order seems to be in the proper status, should be safe-ish to go ahead now
 				break
 			} else {
-				t.Logf("order status was not ready, retrying")
+				t.Log("order status was not ready, retrying")
 			}
 		} else {
-			t.Logf("new challenge entries appeared after deletion, retrying")
+			t.Log("new challenge entries appeared after deletion, retrying")
 		}
 
 		if i > 5 {
-			t.Fatalf("We are constantly deleting cv entries or order status is not changing, something is wrong")
+			t.Fatal("We are constantly deleting cv entries or order status is not changing, something is wrong")
 		}
 
 		i++
@@ -1457,7 +1458,7 @@ func TestAcmeValidationError(t *testing.T) {
 		}
 
 		if challenge.Error == nil {
-			return fmt.Errorf("no error set in challenge yet")
+			return errors.New("no error set in challenge yet")
 		}
 
 		acmeError, ok := challenge.Error.(*acme.Error)
@@ -1713,7 +1714,7 @@ func TestACMEClientRequestLimits(t *testing.T) {
 		{
 			"validate-only-cn",
 			[]acme.AuthzID{
-				{"dns", "localhost"},
+				{Type: "dns", Value: "localhost"},
 			},
 			x509.CertificateRequest{
 				Subject: pkix.Name{CommonName: "localhost"},
@@ -1723,7 +1724,7 @@ func TestACMEClientRequestLimits(t *testing.T) {
 		{
 			"validate-only-san",
 			[]acme.AuthzID{
-				{"dns", "localhost"},
+				{Type: "dns", Value: "localhost"},
 			},
 			x509.CertificateRequest{
 				DNSNames: []string{"localhost"},
@@ -1733,7 +1734,7 @@ func TestACMEClientRequestLimits(t *testing.T) {
 		{
 			"validate-only-ip-address",
 			[]acme.AuthzID{
-				{"ip", "127.0.0.1"},
+				{Type: "ip", Value: "127.0.0.1"},
 			},
 			x509.CertificateRequest{
 				IPAddresses: []net.IP{{127, 0, 0, 1}},

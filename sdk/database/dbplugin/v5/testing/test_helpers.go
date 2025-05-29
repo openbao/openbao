@@ -83,7 +83,7 @@ func AssertNewUser(t *testing.T, db dbplugin.Database, req dbplugin.NewUserReque
 	}
 
 	if resp.Username == "" {
-		t.Fatalf("Missing username from NewUser response")
+		t.Fatal("Missing username from NewUser response")
 	}
 	return resp
 }

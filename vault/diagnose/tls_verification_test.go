@@ -29,10 +29,10 @@ func TestTLSValidCert(t *testing.T) {
 	warnings, errs := ListenerChecks(context.Background(), listeners)
 	if errs != nil {
 		// The test failed -- we can just return one of the errors
-		t.Fatalf(errs[0].Error())
+		t.Fatal(errs[0].Error())
 	}
 	if warnings != nil {
-		t.Fatalf("warnings returned from good listener")
+		t.Fatal("warnings returned from good listener")
 	}
 }
 
@@ -51,7 +51,7 @@ func TestTLSFakeCert(t *testing.T) {
 	}
 	_, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil {
-		t.Fatalf("TLS Config check on fake certificate should fail")
+		t.Fatal("TLS Config check on fake certificate should fail")
 	}
 	if len(errs) != 1 {
 		t.Fatalf("more than one error returned: %+v", errs)
@@ -79,7 +79,7 @@ func TestTLSTrailingData(t *testing.T) {
 	}
 	_, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil || len(errs) != 1 {
-		t.Fatalf("TLS Config check on fake certificate should fail")
+		t.Fatal("TLS Config check on fake certificate should fail")
 	}
 	if !strings.Contains(errs[0].Error(), "x509: trailing data") {
 		t.Fatalf("Bad error message: %s", errs[0])
@@ -102,13 +102,13 @@ func TestTLSExpiredCert(t *testing.T) {
 	}
 	warnings, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil || len(errs) != 1 {
-		t.Fatalf("TLS Config check on fake certificate should fail")
+		t.Fatal("TLS Config check on fake certificate should fail")
 	}
 	if !strings.Contains(errs[0].Error(), "certificate has expired or is not yet valid") {
 		t.Fatalf("Bad error message: %s", errs[0])
 	}
 	if warnings == nil || len(warnings) != 1 {
-		t.Fatalf("TLS Config check on fake certificate should warn")
+		t.Fatal("TLS Config check on fake certificate should warn")
 	}
 	if !strings.Contains(warnings[0], "expired or near expiry") {
 		t.Fatalf("Bad warning: %s", warnings[0])
@@ -131,7 +131,7 @@ func TestTLSMismatchedCryptographicInfo(t *testing.T) {
 	}
 	_, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil || len(errs) != 1 {
-		t.Fatalf("TLS Config check on fake certificate should fail")
+		t.Fatal("TLS Config check on fake certificate should fail")
 	}
 	if !strings.Contains(errs[0].Error(), "tls: private key type does not match public key type") {
 		t.Fatalf("Bad error message: %s", errs[0])
@@ -151,7 +151,7 @@ func TestTLSMismatchedCryptographicInfo(t *testing.T) {
 	}
 	_, errs = ListenerChecks(context.Background(), listeners)
 	if errs == nil || len(errs) != 1 {
-		t.Fatalf("TLS Config check on fake certificate should fail")
+		t.Fatal("TLS Config check on fake certificate should fail")
 	}
 	if !strings.Contains(errs[0].Error(), "tls: private key type does not match public key type") {
 		t.Fatalf("Bad error message: %s", errs[0])
@@ -174,7 +174,7 @@ func TestTLSMultiKeys(t *testing.T) {
 	}
 	_, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil || len(errs) != 1 {
-		t.Fatalf("TLS Config check on fake certificate should fail")
+		t.Fatal("TLS Config check on fake certificate should fail")
 	}
 	if !strings.Contains(errs[0].Error(), "PEM block does not parse to a certificate") {
 		t.Fatalf("Bad error message: %s", errs[0])
@@ -196,7 +196,7 @@ func TestTLSCertAsKey(t *testing.T) {
 	}
 	_, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil || len(errs) != 1 {
-		t.Fatalf("TLS Config check on fake certificate should fail")
+		t.Fatal("TLS Config check on fake certificate should fail")
 	}
 	if !strings.Contains(errs[0].Error(), "found a certificate rather than a key in the PEM for the private key") {
 		t.Fatalf("Bad error message: %s", errs[0])
@@ -220,7 +220,7 @@ func TestTLSInvalidRoot(t *testing.T) {
 	}
 	_, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil || len(errs) != 1 {
-		t.Fatalf("TLS Config check on fake certificate should fail")
+		t.Fatal("TLS Config check on fake certificate should fail")
 	}
 	if !strings.Contains(errs[0].Error(), "certificate signed by unknown authority") {
 		t.Fatalf("Bad error message: %s", errs[0])
@@ -245,7 +245,7 @@ func TestTLSNoRoot(t *testing.T) {
 	_, errs := ListenerChecks(context.Background(), listeners)
 
 	if errs != nil {
-		t.Fatalf("server certificate without root certificate is insecure, but still valid")
+		t.Fatal("server certificate without root certificate is insecure, but still valid")
 	}
 }
 
@@ -266,7 +266,7 @@ func TestTLSInvalidMinVersion(t *testing.T) {
 	}
 	_, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil || len(errs) != 1 {
-		t.Fatalf("TLS Config check on invalid 'tls_min_version' should fail")
+		t.Fatal("TLS Config check on invalid 'tls_min_version' should fail")
 	}
 	if !strings.Contains(errs[0].Error(), fmt.Errorf(minVersionError, "0").Error()) {
 		t.Fatalf("Bad error message: %s", errs[0])
@@ -290,7 +290,7 @@ func TestTLSInvalidMaxVersion(t *testing.T) {
 	}
 	_, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil || len(errs) != 1 {
-		t.Fatalf("TLS Config check on invalid 'tls_max_version' should fail")
+		t.Fatal("TLS Config check on invalid 'tls_max_version' should fail")
 	}
 	if !strings.Contains(errs[0].Error(), fmt.Errorf(maxVersionError, "0").Error()) {
 		t.Fatalf("Bad error message: %s", errs[0])
@@ -315,7 +315,7 @@ func TestDisabledClientCertsAndDisabledTLSClientCAVerfiy(t *testing.T) {
 	}
 	status, _ := TLSMutualExclusionCertCheck(listeners[0])
 	if status != 0 {
-		t.Fatalf("TLS config failed when both TLSRequireAndVerifyClientCert and TLSDisableClientCerts are false")
+		t.Fatal("TLS config failed when both TLSRequireAndVerifyClientCert and TLSDisableClientCerts are false")
 	}
 }
 
@@ -380,7 +380,7 @@ func TestTLSClientCAVerfiyMutualExclusion(t *testing.T) {
 	}
 	status, err := TLSMutualExclusionCertCheck(listeners[0])
 	if status == 0 {
-		t.Fatalf("TLS config check should have failed when both 'tls_disable_client_certs' and 'tls_require_and_verify_client_cert' are true")
+		t.Fatal("TLS config check should have failed when both 'tls_disable_client_certs' and 'tls_require_and_verify_client_cert' are true")
 	}
 	if !strings.Contains(err, "The tls_disable_client_certs and tls_require_and_verify_client_cert fields in the "+
 		"listener stanza of the OpenBao server configuration are mutually exclusive fields") {
@@ -405,10 +405,10 @@ func TestTLSClientCAFileCheck(t *testing.T) {
 	}
 	warnings, errs := ListenerChecks(context.Background(), listeners)
 	if errs != nil {
-		t.Fatalf("TLS config check failed while a good ClientCAFile was used")
+		t.Fatal("TLS config check failed while a good ClientCAFile was used")
 	}
 	if warnings != nil {
-		t.Fatalf("TLS config check return warning while a good ClientCAFile was used")
+		t.Fatal("TLS config check return warning while a good ClientCAFile was used")
 	}
 }
 
@@ -428,12 +428,26 @@ func TestTLSLeafCertInClientCAFile(t *testing.T) {
 		},
 	}
 	warnings, errs := ListenerChecks(context.Background(), listeners)
-	fmt.Println(warnings)
 	if errs == nil || len(errs) != 1 {
-		t.Fatalf("TLS Config check on bad ClientCAFile certificate should fail once")
+		t.Fatalf("TLS Config check on bad ClientCAFile certificate should fail once: %v", errs)
 	}
 	if warnings == nil || len(warnings) != 1 {
-		t.Fatalf("TLS Config check on bad ClientCAFile certificate should warn once")
+		// CN=Baltimore CyberTrust Root,OU=CyberTrust,O=Baltimore,C=IE global
+		// root CA is expiring soon (May '25); it has serial number 33554617
+		// and is affecting tests.
+		var skipBaltimore bool
+		if len(warnings) == 2 {
+			for _, warning := range warnings {
+				if strings.Contains(warning, "33554617") {
+					skipBaltimore = true
+					break
+				}
+			}
+		}
+
+		if !skipBaltimore {
+			t.Fatalf("TLS Config check on bad ClientCAFile certificate should warn once: %v", warnings)
+		}
 	}
 	if !strings.Contains(warnings[0], "Found at least one leaf certificate in the CA certificate file.") {
 		t.Fatalf("Bad error message: %s", warnings[0])
@@ -460,7 +474,7 @@ func TestTLSNoRootInClientCAFile(t *testing.T) {
 	}
 	_, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil {
-		t.Fatalf("TLS Config check on bad ClientCAFile certificate should fail")
+		t.Fatal("TLS Config check on bad ClientCAFile certificate should fail")
 	}
 	if !strings.Contains(errs[0].Error(), " No root certificate found") {
 		t.Fatalf("Bad error message: %s", errs[0])
@@ -484,7 +498,7 @@ func TestTLSIntermediateCertInClientCAFile(t *testing.T) {
 	}
 	warnings, _ := ListenerChecks(context.Background(), listeners)
 	if warnings == nil || len(warnings) != 1 {
-		t.Fatalf("TLS Config check on bad ClientCAFile certificate should fail")
+		t.Fatal("TLS Config check on bad ClientCAFile certificate should fail")
 	}
 	if !strings.Contains(warnings[0], "Found at least one intermediate certificate in the CA certificate file.") {
 		t.Fatalf("Bad error message: %s", warnings[0])
@@ -508,10 +522,10 @@ func TestTLSMultipleRootInClietCACert(t *testing.T) {
 	}
 	warnings, errs := ListenerChecks(context.Background(), listeners)
 	if errs != nil {
-		t.Fatalf("TLS Config check on valid certificate should not fail")
+		t.Fatal("TLS Config check on valid certificate should not fail")
 	}
 	if warnings == nil {
-		t.Fatalf("TLS Config check on valid but bad certificate should warn")
+		t.Fatal("TLS Config check on valid but bad certificate should warn")
 	}
 	if !strings.Contains(warnings[0], "Found multiple root certificates in CA Certificate file instead of just one.") {
 		t.Fatalf("Bad warning: %s", warnings[0])
@@ -535,7 +549,7 @@ func TestTLSSelfSignedCert(t *testing.T) {
 	}
 	_, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil {
-		t.Fatalf("Self-signed certificate is insecure")
+		t.Fatal("Self-signed certificate is insecure")
 	}
 	if !strings.Contains(errs[0].Error(), "No root certificate found") {
 		t.Fatalf("Bad error message: %s", errs[0])

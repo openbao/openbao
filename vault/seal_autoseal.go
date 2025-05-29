@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	mathrand "math/rand"
 	"sync"
@@ -23,11 +24,9 @@ import (
 	"github.com/openbao/openbao/vault/seal"
 )
 
-// barrierTypeUpgradeCheck checks for backwards compat on barrier type, not
-// applicable in the OSS side
 var (
-	barrierTypeUpgradeCheck     = func(_ wrapping.WrapperType, _ *SealConfig) {}
 	autoSealUnavailableDuration = []string{"seal", "unreachable", "time"}
+
 	// vars for unit testings
 	sealHealthTestIntervalNominal   = 10 * time.Minute
 	sealHealthTestIntervalUnhealthy = 1 * time.Minute
@@ -81,7 +80,7 @@ func (d *autoSeal) GetAccess() seal.Access {
 
 func (d *autoSeal) checkCore() error {
 	if d.core == nil {
-		return fmt.Errorf("seal does not have a core set")
+		return errors.New("seal does not have a core set")
 	}
 	return nil
 }
@@ -107,7 +106,7 @@ func (d *autoSeal) BarrierType() wrapping.WrapperType {
 }
 
 func (d *autoSeal) GetShamirWrapper() (*aeadwrapper.ShamirWrapper, error) {
-	return nil, fmt.Errorf("autoSeal does not use a ShamirWrapper")
+	return nil, errors.New("autoSeal does not use a ShamirWrapper")
 }
 
 func (d *autoSeal) StoredKeysSupported() seal.StoredKeysSupport {
@@ -136,7 +135,7 @@ func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {
 		return fmt.Errorf("failed to fetch stored keys: %w", err)
 	}
 	if pe == nil {
-		return fmt.Errorf("no stored keys found")
+		return errors.New("no stored keys found")
 	}
 
 	blobInfo := &wrapping.BlobInfo{}
@@ -226,8 +225,6 @@ func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 		d.logger.Error("invalid seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("%q seal validation failed: %w", sealType, err)
 	}
-
-	barrierTypeUpgradeCheck(d.BarrierType(), conf)
 
 	if conf.Type != d.BarrierType().String() {
 		d.logger.Error("barrier seal type does not match loaded type", "seal_type", conf.Type, "loaded_type", d.BarrierType())
@@ -396,7 +393,7 @@ func (d *autoSeal) SetCachedRecoveryConfig(config *SealConfig) {
 
 func (d *autoSeal) VerifyRecoveryKey(ctx context.Context, key []byte) error {
 	if key == nil {
-		return fmt.Errorf("recovery key to verify is nil")
+		return errors.New("recovery key to verify is nil")
 	}
 
 	pt, err := d.getRecoveryKeyInternal(ctx)
@@ -405,7 +402,7 @@ func (d *autoSeal) VerifyRecoveryKey(ctx context.Context, key []byte) error {
 	}
 
 	if subtle.ConstantTimeCompare(key, pt) != 1 {
-		return fmt.Errorf("recovery key does not match submitted values")
+		return errors.New("recovery key does not match submitted values")
 	}
 
 	return nil
@@ -417,7 +414,7 @@ func (d *autoSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
 	}
 
 	if key == nil {
-		return fmt.Errorf("recovery key to store is nil")
+		return errors.New("recovery key to store is nil")
 	}
 
 	// Encrypt and marshal the keys
@@ -456,7 +453,7 @@ func (d *autoSeal) getRecoveryKeyInternal(ctx context.Context) ([]byte, error) {
 	}
 	if pe == nil {
 		d.logger.Warn("no recovery key found")
-		return nil, fmt.Errorf("no recovery key found")
+		return nil, errors.New("no recovery key found")
 	}
 
 	blobInfo := &wrapping.BlobInfo{}
@@ -478,7 +475,7 @@ func (d *autoSeal) upgradeRecoveryKey(ctx context.Context) error {
 		return fmt.Errorf("failed to fetch recovery key: %w", err)
 	}
 	if pe == nil {
-		return fmt.Errorf("no recovery key found")
+		return errors.New("no recovery key found")
 	}
 
 	blobInfo := &wrapping.BlobInfo{}

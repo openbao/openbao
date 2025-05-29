@@ -33,8 +33,10 @@ func pathCredsCreate(b *databaseBackend) []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation: b.pathCredsCreateRead(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathCredsCreateRead(),
+				},
 			},
 
 			HelpSynopsis:    pathCredsCreateReadHelpSyn,
@@ -56,8 +58,10 @@ func pathCredsCreate(b *databaseBackend) []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation: b.pathStaticCredsRead(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathStaticCredsRead(),
+				},
 			},
 
 			HelpSynopsis:    pathStaticCredsReadHelpSyn,
@@ -68,6 +72,12 @@ func pathCredsCreate(b *databaseBackend) []*framework.Path {
 
 func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		txRollback, err := logical.StartTxStorage(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		defer txRollback()
+
 		name := data.Get("name").(string)
 
 		// Get the role
@@ -219,12 +229,23 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 		resp := b.Secret(SecretCredsType).Response(respData, internal)
 		resp.Secret.TTL = role.DefaultTTL
 		resp.Secret.MaxTTL = role.MaxTTL
+
+		if err := logical.EndTxStorage(ctx, req); err != nil {
+			return nil, err
+		}
+
 		return resp, nil
 	}
 }
 
 func (b *databaseBackend) pathStaticCredsRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		txRollback, err := logical.StartTxStorage(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		defer txRollback()
+
 		name := data.Get("name").(string)
 
 		role, err := b.StaticRole(ctx, req.Storage, name)
@@ -258,6 +279,10 @@ func (b *databaseBackend) pathStaticCredsRead() framework.OperationFunc {
 			respData["password"] = role.StaticAccount.Password
 		case v5.CredentialTypeRSAPrivateKey:
 			respData["rsa_private_key"] = string(role.StaticAccount.PrivateKey)
+		}
+
+		if err := logical.EndTxStorage(ctx, req); err != nil {
+			return nil, err
 		}
 
 		return &logical.Response{

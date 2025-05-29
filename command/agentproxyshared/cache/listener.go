@@ -18,6 +18,7 @@ import (
 type ListenerBundle struct {
 	Listener      net.Listener
 	TLSConfig     *tls.Config
+	CertGetter    listenerutil.ReloadableCertGetter
 	TLSReloadFunc reloadutil.ReloadFunc
 }
 
@@ -43,7 +44,7 @@ func StartListener(lnConfig *configutil.Listener) (*ListenerBundle, error) {
 		if err != nil {
 			return nil, err
 		}
-		ln = &server.TCPKeepAliveListener{ln.(*net.TCPListener)}
+		ln = &server.TCPKeepAliveListener{TCPListener: ln.(*net.TCPListener)}
 
 	case "unix":
 		var uConfig *listenerutil.UnixSocketsConfig
@@ -66,7 +67,7 @@ func StartListener(lnConfig *configutil.Listener) (*ListenerBundle, error) {
 	}
 
 	props := map[string]string{"addr": ln.Addr().String()}
-	tlsConf, reloadFunc, err := listenerutil.TLSConfig(lnConfig, props, nil)
+	tlsConf, cg, err := listenerutil.TLSConfig(lnConfig, props, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -75,9 +76,13 @@ func StartListener(lnConfig *configutil.Listener) (*ListenerBundle, error) {
 	}
 
 	cfg := &ListenerBundle{
-		Listener:      ln,
-		TLSConfig:     tlsConf,
-		TLSReloadFunc: reloadFunc,
+		Listener:  ln,
+		TLSConfig: tlsConf,
+	}
+
+	if cg != nil {
+		cfg.CertGetter = cg
+		cfg.TLSReloadFunc = cg.Reload
 	}
 
 	return cfg, nil

@@ -93,10 +93,16 @@ using the same name as specified here.`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.DeleteOperation: b.pathCRLDelete,
-			logical.ReadOperation:   b.pathCRLRead,
-			logical.UpdateOperation: b.pathCRLWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathCRLDelete,
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathCRLRead,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathCRLWrite,
+			},
 		},
 
 		HelpSynopsis:    pathCRLsHelpSyn,

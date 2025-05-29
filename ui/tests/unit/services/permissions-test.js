@@ -124,14 +124,11 @@ module('Unit | Service | permissions', function (hooks) {
   test('returns the first allowed nav route for policies', function (assert) {
     const policyPaths = {
       'sys/policies/acl': {
-        capabilities: ['deny'],
-      },
-      'sys/policies/rgp': {
         capabilities: ['read'],
       },
     };
     this.service.set('exactPaths', policyPaths);
-    assert.strictEqual(this.service.navPathParams('policies').models[0], 'rgp');
+    assert.strictEqual(this.service.navPathParams('policies').models[0], 'acl');
   });
 
   test('returns the first allowed nav route for access', function (assert) {

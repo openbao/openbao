@@ -6,6 +6,7 @@ package vault
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -46,7 +47,7 @@ type Keyring struct {
 
 // EncodedKeyring is used for serialization of the keyring
 type EncodedKeyring struct {
-	MasterKey      []byte
+	RootKey        []byte `json:"MasterKey"`
 	Keys           []*Key
 	RotationConfig KeyRotationConfig
 }
@@ -144,7 +145,7 @@ func (k *Keyring) AddKey(key *Key) (*Keyring, error) {
 func (k *Keyring) RemoveKey(term uint32) (*Keyring, error) {
 	// Ensure this is not the active key
 	if term == k.activeTerm {
-		return nil, fmt.Errorf("cannot remove active key")
+		return nil, errors.New("cannot remove active key")
 	}
 
 	// Check if this term does not exist
@@ -191,7 +192,7 @@ func (k *Keyring) RootKey() []byte {
 func (k *Keyring) Serialize() ([]byte, error) {
 	// Create the encoded entry
 	enc := EncodedKeyring{
-		MasterKey:      k.rootKey,
+		RootKey:        k.rootKey,
 		RotationConfig: k.rotationConfig,
 	}
 	for _, key := range k.keys {
@@ -213,7 +214,7 @@ func DeserializeKeyring(buf []byte) (*Keyring, error) {
 
 	// Create a new keyring
 	k := NewKeyring()
-	k.rootKey = enc.MasterKey
+	k.rootKey = enc.RootKey
 	k.rotationConfig = enc.RotationConfig
 	k.rotationConfig.Sanitize()
 	for _, key := range enc.Keys {

@@ -1,19 +1,30 @@
 # Maintainers
 
-## Organization-Level Maintainers
-
 See the information about community membership roles to learn about the role of the maintainers and the process to become one.
+
+## Organization-Level Maintainers
 
 | Name          | Email                        | GitHub                                     |
 |---------------|------------------------------|--------------------------------------------|
-| Dan Ghita     | dan.ghita@viaccess-orca.com  | [@DanGhita](https://github.com/DanGhita)   |
+| Dan Ghita     | dghita@wallix.com            | [@DanGhita](https://github.com/DanGhita)   |
 | Jan Martens   | jan@martens.eu.org           | [@JanMa](https://github.com/JanMa)         |
 | Nathan Phelps | naphelps@us.ibm.com          | [@naphelps](https://github.com/naphelps)   |
 | Alex Scheel   | alexander.m.scheel@gmail.com | [@cipherboy](https://github.com/cipherboy) |
 
+## Repository-Level Committers
+
+| Name         | GitHub                                  | Projects                                                                                          |
+| ------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Dave Dykstra | [@DrDaveD](https://github.com/DrDaveD/) | [`auth/jwt` and `auth/oidc`](https://github.com/openbao/openbao/tree/main/builtin/credential/jwt) |
+
 ## Organization-Level Moderators
 
-n/a
+| Name            | GitHub                                                   |
+| --------------- | -------------------------------------------------------- |
+| Fatima Patel    | [@fatima2003](https://github.com/fatima2003)             |
+| Christoph Voigt | [@voigt](https://github.com/voigt)                       |
+| Gabriel Santos  | [@Gabrielopesantos](https://github.com/Gabrielopesantos) |
+| Michael Hofer   | [@karras](https://github.com/karras)                     |
 
 # OpenBao Community Roles
 

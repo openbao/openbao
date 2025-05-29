@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/namespace"
-	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -125,7 +125,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 	// Reading credentials should no longer work
 	credResp, err = lb.HandleRequest(namespace.RootContext(nil), credReq)
 	if err == nil {
-		t.Fatalf("expected authentication to fail when reading credentials")
+		t.Fatal("expected authentication to fail when reading credentials")
 	}
 
 	// Put a WAL entry that will be used for rolling back the database password

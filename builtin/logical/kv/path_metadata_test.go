@@ -256,6 +256,29 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 	if len(resp.Data["versions"].(map[string]interface{})) != 1 {
 		t.Fatalf("Bad response: %#v", resp)
 	}
+
+	// Do the same via a list on detailed-metadata and compare the results.
+	// It should have a keyInfo that is the same as the read response data.
+	req = &logical.Request{
+		Operation: logical.ListOperation,
+		Path:      "detailed-metadata/",
+		Storage:   storage,
+	}
+
+	listResp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || listResp == nil || listResp.IsError() {
+		t.Fatalf("err:%s resp:%#v\n", err, listResp)
+	}
+
+	if len(listResp.Data["keys"].([]string)) != 1 || listResp.Data["keys"].([]string)[0] != "foo" {
+		t.Fatalf("expected one key (foo) - resp: %#v", listResp)
+	}
+
+	actual := listResp.Data["key_info"].(map[string]interface{})["foo"]
+	expected := resp.Data
+	if diff := deep.Equal(actual, expected); len(diff) > 0 {
+		t.Fatalf("expected detailed-metadata/ listing to have same contents as read on foo/\ndiff: %#v", diff)
+	}
 }
 
 func TestVersionedKV_Metadata_Delete(t *testing.T) {
@@ -1016,7 +1039,7 @@ func TestVersionedKV_Metadata_Patch_CasRequiredWarning(t *testing.T) {
 	}
 
 	if resp.Data["cas_required"] != false {
-		t.Fatalf("expected cas_required to be set to false despite warning")
+		t.Fatal("expected cas_required to be set to false despite warning")
 	}
 }
 
@@ -1312,7 +1335,7 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 	}
 
 	if maxVersions := resp.Data["max_versions"].(uint32); maxVersions != 10 {
-		t.Fatalf("expected max_versions to be 10")
+		t.Fatal("expected max_versions to be 10")
 	}
 
 	req = &logical.Request{
@@ -1343,6 +1366,6 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 	}
 
 	if maxVersions := resp.Data["max_versions"].(uint32); maxVersions != 0 {
-		t.Fatalf("expected max_versions to be unset to zero value")
+		t.Fatal("expected max_versions to be unset to zero value")
 	}
 }

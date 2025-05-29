@@ -41,7 +41,7 @@ func TestInspectRouter(t *testing.T) {
 			// Verify that data exists
 			data, ok := resp.Data[tag].([]map[string]interface{})
 			if !ok {
-				t.Fatalf("Router data is malformed")
+				t.Fatal("Router data is malformed")
 			}
 			for _, entry := range data {
 				for _, field := range subTreeFields[subTreeType] {

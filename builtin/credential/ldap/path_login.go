@@ -5,6 +5,7 @@ package ldap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -34,9 +35,13 @@ func pathLogin(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation:         b.pathLogin,
-			logical.AliasLookaheadOperation: b.pathLoginAliasLookahead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathLogin,
+			},
+			logical.AliasLookaheadOperation: &framework.PathOperation{
+				Callback: b.pathLoginAliasLookahead,
+			},
 		},
 
 		HelpSynopsis:    pathLoginSyn,
@@ -47,7 +52,7 @@ func pathLogin(b *backend) *framework.Path {
 func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	username := d.Get("username").(string)
 	if username == "" {
-		return nil, fmt.Errorf("missing username")
+		return nil, errors.New("missing username")
 	}
 
 	return &logical.Response{
@@ -148,7 +153,7 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 	}
 
 	if !policyutil.EquivalentPolicies(finalPolicies, req.Auth.TokenPolicies) {
-		return nil, fmt.Errorf("policies have changed, not renewing")
+		return nil, errors.New("policies have changed, not renewing")
 	}
 
 	resp.Auth = req.Auth

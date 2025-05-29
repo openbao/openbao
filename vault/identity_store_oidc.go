@@ -205,11 +205,19 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 					Description: "Comma separated string or array of role client ids allowed to use this key for signing. If empty no roles are allowed. If \"*\" all roles are allowed.",
 				},
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.CreateOperation: i.pathOIDCCreateUpdateKey,
-				logical.UpdateOperation: i.pathOIDCCreateUpdateKey,
-				logical.ReadOperation:   i.pathOIDCReadKey,
-				logical.DeleteOperation: i.pathOIDCDeleteKey,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: i.pathOIDCCreateUpdateKey,
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.pathOIDCCreateUpdateKey,
+				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: i.pathOIDCReadKey,
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: i.pathOIDCDeleteKey,
+				},
 			},
 			ExistenceCheck:  i.pathOIDCKeyExistenceCheck,
 			HelpSynopsis:    "CRUD operations for OIDC keys.",
@@ -232,8 +240,10 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 					Description: "Controls how long the public portion of a key will be available for verification after being rotated. Setting verification_ttl here will override the verification_ttl set on the key.",
 				},
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: i.pathOIDCRotateKey,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.pathOIDCRotateKey,
+				},
 			},
 			HelpSynopsis:    "Rotate a named OIDC key.",
 			HelpDescription: "Manually rotate a named OIDC key. Rotating a named key will cause a new underlying signing key to be generated. The public portion of the underlying rotated signing key will continue to live for the verification_ttl duration.",
@@ -244,8 +254,10 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 				OperationPrefix: "oidc",
 				OperationSuffix: "keys",
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: i.pathOIDCListKey,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: i.pathOIDCListKey,
+				},
 			},
 			HelpSynopsis:    "List OIDC keys",
 			HelpDescription: "List all named OIDC keys",
@@ -256,8 +268,10 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 				OperationPrefix: "oidc",
 				OperationSuffix: "open-id-configuration",
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation: i.pathOIDCDiscovery,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: i.pathOIDCDiscovery,
+				},
 			},
 			HelpSynopsis:    "Query OIDC configurations",
 			HelpDescription: "Query this path to retrieve the configured OIDC Issuer and Keys endpoints, response types, subject types, and signing algorithms used by the OIDC backend.",
@@ -268,8 +282,10 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 				OperationPrefix: "oidc",
 				OperationSuffix: "public-keys",
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation: i.pathOIDCReadPublicKeys,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: i.pathOIDCReadPublicKeys,
+				},
 			},
 			HelpSynopsis:    "Retrieve public keys",
 			HelpDescription: "Query this path to retrieve the public portion of keys used to sign OIDC tokens. Clients can use this to validate the authenticity of the OIDC token claims.",
@@ -287,8 +303,10 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 					Description: "Name of the role",
 				},
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation: i.pathOIDCGenerateToken,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: i.pathOIDCGenerateToken,
+				},
 			},
 			HelpSynopsis:    "Generate an OIDC token",
 			HelpDescription: "Generate an OIDC token against a configured role. The OpenBao token used to call this path must have a corresponding entity.",
@@ -323,11 +341,19 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 					Description: "Optional client_id",
 				},
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: i.pathOIDCCreateUpdateRole,
-				logical.CreateOperation: i.pathOIDCCreateUpdateRole,
-				logical.ReadOperation:   i.pathOIDCReadRole,
-				logical.DeleteOperation: i.pathOIDCDeleteRole,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.pathOIDCCreateUpdateRole,
+				},
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: i.pathOIDCCreateUpdateRole,
+				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: i.pathOIDCReadRole,
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: i.pathOIDCDeleteRole,
+				},
 			},
 			ExistenceCheck:  i.pathOIDCRoleExistenceCheck,
 			HelpSynopsis:    "CRUD operations on OIDC Roles",
@@ -339,8 +365,10 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 				OperationPrefix: "oidc",
 				OperationSuffix: "roles",
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: i.pathOIDCListRole,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: i.pathOIDCListRole,
+				},
 			},
 			HelpSynopsis:    "List configured OIDC roles",
 			HelpDescription: "List all configured OIDC roles in the identity backend.",
@@ -361,8 +389,10 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 					Description: "Optional client_id to verify",
 				},
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: i.pathOIDCIntrospect,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.pathOIDCIntrospect,
+				},
 			},
 			HelpSynopsis:    "Verify the authenticity of an OIDC token",
 			HelpDescription: "Use this path to verify the authenticity of an OIDC token and whether the associated entity is active and enabled.",
@@ -929,7 +959,7 @@ func (i *IdentityStore) pathOIDCGenerateToken(ctx context.Context, req *logical.
 		IssuedAt:  now.Unix(),
 	}
 
-	e, err := i.MemDBEntityByID(req.EntityID, true)
+	e, err := i.MemDBEntityByID(ctx, req.EntityID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -937,7 +967,7 @@ func (i *IdentityStore) pathOIDCGenerateToken(ctx context.Context, req *logical.
 		return nil, fmt.Errorf("error loading entity ID %q", req.EntityID)
 	}
 
-	groups, inheritedGroups, err := i.groupsByEntityID(e.ID)
+	groups, inheritedGroups, err := i.groupsByEntityID(ctx, e.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -1111,7 +1141,7 @@ func (k *namedKey) generateAndSetNextKey(ctx context.Context, logger hclog.Logge
 
 func (k *namedKey) signPayload(payload []byte) (string, error) {
 	if k.SigningKey == nil {
-		return "", fmt.Errorf("signing key is nil; rotate the key and try again")
+		return "", errors.New("signing key is nil; rotate the key and try again")
 	}
 	signingKey := jose.SigningKey{Key: k.SigningKey, Algorithm: jose.SignatureAlgorithm(k.Algorithm)}
 	signer, err := jose.NewSigner(signingKey, &jose.SignerOptions{})
@@ -1552,7 +1582,7 @@ func (i *IdentityStore) pathOIDCIntrospect(ctx context.Context, req *logical.Req
 	}
 
 	// validate entity exists and is active
-	entity, err := i.MemDBEntityByID(claims.Subject, true)
+	entity, err := i.MemDBEntityByID(ctx, claims.Subject, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1970,13 +2000,17 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 	// be run at any time safely, but there is no need to invoke them (which
 	// might be somewhat expensive if there are many roles/keys) if we're not
 	// past any rotation/expiration TTLs.
-	if now.After(nextRun) {
+	if now.Equal(nextRun) || now.After(nextRun) {
 		// Initialize to a fairly distant next run time. This will be brought in
 		// based on key rotation times.
 		nextRun = now.Add(24 * time.Hour)
 		minJwksClientCacheDuration := time.Duration(math.MaxInt64)
 
-		for _, ns := range i.namespacer.ListNamespaces(true) {
+		allNs, err := i.namespacer.ListNamespaces(ctx)
+		if err != nil {
+			i.Logger().Error("error listing namespaces", "err", err)
+		}
+		for _, ns := range allNs {
 			nsPath := ns.Path
 
 			s := i.router.MatchingStorageByAPIPath(ctx, nsPath+"identity/oidc")

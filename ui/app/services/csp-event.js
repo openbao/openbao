@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-/*eslint-disable no-constant-condition*/
 import { computed } from '@ember/object';
 
 import Service from '@ember/service';

@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -42,17 +43,24 @@ func (c *Core) IdentityStore() *IdentityStore {
 func (i *IdentityStore) resetDB(ctx context.Context) error {
 	var err error
 
-	i.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
-	if err != nil {
-		return err
-	}
+	i.views.Range(func(uuidRaw, viewsRaw any) bool {
+		uuid := uuidRaw.(string)
+		views := viewsRaw.(*identityStoreNamespaceView)
 
-	return nil
+		views.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
+		if err != nil {
+			err = fmt.Errorf("error resetting database for namespace %v: %w", uuid, err)
+			return false
+		}
+
+		return true
+	})
+
+	return err
 }
 
 func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendConfig, logger log.Logger) (*IdentityStore, error) {
 	iStore := &IdentityStore{
-		view:          config.StorageView,
 		logger:        logger,
 		router:        core.router,
 		redirectAddr:  core.redirectAddr,
@@ -66,33 +74,8 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 		mfaBackend:    core.loginMFABackend,
 	}
 
-	// Create a memdb instance, which by default, operates on lower cased
-	// identity names
-	err := iStore.resetDB(ctx)
-	if err != nil {
+	if err := iStore.AddNamespaceView(core, namespace.RootNamespace, config.StorageView); err != nil {
 		return nil, err
-	}
-
-	entitiesPackerLogger := iStore.logger.Named("storagepacker").Named("entities")
-	core.AddLogger(entitiesPackerLogger)
-	localAliasesPackerLogger := iStore.logger.Named("storagepacker").Named("local-aliases")
-	core.AddLogger(localAliasesPackerLogger)
-	groupsPackerLogger := iStore.logger.Named("storagepacker").Named("groups")
-	core.AddLogger(groupsPackerLogger)
-
-	iStore.entityPacker, err = storagepacker.NewStoragePacker(iStore.view, entitiesPackerLogger, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create entity packer: %w", err)
-	}
-
-	iStore.localAliasPacker, err = storagepacker.NewStoragePacker(iStore.view, localAliasesPackerLogger, localAliasesBucketsPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create local alias packer: %w", err)
-	}
-
-	iStore.groupPacker, err = storagepacker.NewStoragePacker(iStore.view, groupsPackerLogger, groupBucketsPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create group packer: %w", err)
 	}
 
 	iStore.Backend = &framework.Backend{
@@ -121,12 +104,136 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 	iStore.oidcCache = newOIDCCache(cache.NoExpiration, cache.NoExpiration)
 	iStore.oidcAuthCodeCache = newOIDCCache(5*time.Minute, 5*time.Minute)
 
-	err = iStore.Setup(ctx, config)
-	if err != nil {
+	if err := iStore.Setup(ctx, config); err != nil {
 		return nil, err
 	}
 
 	return iStore, nil
+}
+
+func (i *IdentityStore) AddNamespaceView(core *Core, ns *namespace.Namespace, view logical.Storage) error {
+	nsView := &identityStoreNamespaceView{
+		view: view,
+	}
+
+	// Create loggers for packers
+	entitiesPackerLogger := i.logger.Named("storagepacker").Named("entities")
+	core.AddLogger(entitiesPackerLogger)
+
+	localAliasesPackerLogger := i.logger.Named("storagepacker").Named("local-aliases")
+	core.AddLogger(localAliasesPackerLogger)
+
+	groupsPackerLogger := i.logger.Named("storagepacker").Named("groups")
+	core.AddLogger(groupsPackerLogger)
+
+	// Create packers for namespace.
+	var err error
+	nsView.entityPacker, err = storagepacker.NewStoragePacker(nsView.view, entitiesPackerLogger, "")
+	if err != nil {
+		return fmt.Errorf("failed to create entity packer: %w", err)
+	}
+
+	nsView.localAliasPacker, err = storagepacker.NewStoragePacker(nsView.view, localAliasesPackerLogger, localAliasesBucketsPrefix)
+	if err != nil {
+		return fmt.Errorf("failed to create local alias packer: %w", err)
+	}
+
+	nsView.groupPacker, err = storagepacker.NewStoragePacker(nsView.view, groupsPackerLogger, groupBucketsPrefix)
+	if err != nil {
+		return fmt.Errorf("failed to create group packer: %w", err)
+	}
+
+	nsView.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
+	if err != nil {
+		return err
+	}
+
+	i.views.Store(ns.UUID, nsView)
+
+	return nil
+}
+
+func (i *IdentityStore) RemoveNamespaceView(ns *namespace.Namespace) error {
+	i.views.Delete(ns.UUID)
+
+	if err := i.oidcCache.Flush(ns); err != nil {
+		return fmt.Errorf("failed to flush oidcCache: %w", err)
+	}
+
+	if err := i.oidcAuthCodeCache.Flush(ns); err != nil {
+		return fmt.Errorf("failed to flush oidcAuthCodeCache: %w", err)
+	}
+
+	return nil
+}
+
+func (i *IdentityStore) validateCtx(ctx context.Context) error {
+	_, err := i.getNSView(ctx)
+	return err
+}
+
+func (i *IdentityStore) getNSView(ctx context.Context) (*identityStoreNamespaceView, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	view, ok := i.views.Load(ns.UUID)
+	if !ok {
+		return nil, fmt.Errorf("namespace %v missing from identity store table", ns.UUID)
+	}
+
+	return view.(*identityStoreNamespaceView), nil
+}
+
+func (i *IdentityStore) view(ctx context.Context) logical.Storage {
+	view, err := i.getNSView(ctx)
+	if err != nil {
+		i.logger.Error("failed to get view", "err", err)
+		return nil
+	}
+
+	return view.view
+}
+
+func (i *IdentityStore) entityPacker(ctx context.Context) *storagepacker.StoragePacker {
+	view, err := i.getNSView(ctx)
+	if err != nil {
+		i.logger.Error("failed to get entityPacker", "err", err)
+		return nil
+	}
+
+	return view.entityPacker
+}
+
+func (i *IdentityStore) localAliasPacker(ctx context.Context) *storagepacker.StoragePacker {
+	view, err := i.getNSView(ctx)
+	if err != nil {
+		i.logger.Error("failed to get localAliasPacker", "err", err)
+		return nil
+	}
+
+	return view.localAliasPacker
+}
+
+func (i *IdentityStore) groupPacker(ctx context.Context) *storagepacker.StoragePacker {
+	view, err := i.getNSView(ctx)
+	if err != nil {
+		i.logger.Error("failed to get groupPacker", "err", err)
+		return nil
+	}
+
+	return view.groupPacker
+}
+
+func (i *IdentityStore) db(ctx context.Context) *memdb.MemDB {
+	view, err := i.getNSView(ctx)
+	if err != nil {
+		i.logger.Error("failed to get db", "err", err)
+		return nil
+	}
+
+	return view.db
 }
 
 func (i *IdentityStore) paths() []*framework.Path {
@@ -642,7 +749,7 @@ func (i *IdentityStore) initialize(ctx context.Context, req *logical.Initializat
 	}
 
 	// if the storage entry for caseSensitivityKey exists, remove it
-	storageEntry, err := i.view.Get(ctx, caseSensitivityKey)
+	storageEntry, err := i.view(ctx).Get(ctx, caseSensitivityKey)
 	if err != nil {
 		i.logger.Error("could not get storage entry for case sensitivity key", "error", err)
 		return nil
@@ -658,7 +765,7 @@ func (i *IdentityStore) initialize(ctx context.Context, req *logical.Initializat
 			i.logger.Error("failed to decode case sensitivity key, removing its storage entry anyway", "error", err)
 		}
 
-		err = i.view.Delete(ctx, caseSensitivityKey)
+		err = i.view(ctx).Delete(ctx, caseSensitivityKey)
 		if err != nil {
 			i.logger.Error("could not delete storage entry for case sensitivity key", "error", err)
 			return nil
@@ -678,11 +785,16 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 	i.lock.Lock()
 	defer i.lock.Unlock()
 
+	if err := i.validateCtx(ctx); err != nil {
+		i.logger.Error("got invalidation for unknown namespace", "err", err)
+		return
+	}
+
 	switch {
 	// Check if the key is a storage entry key for an entity bucket
 	case strings.HasPrefix(key, storagepacker.StoragePackerBucketsPrefix):
 		// Create a MemDB transaction
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		// Each entity object in MemDB holds the MD5 hash of the storage
@@ -713,7 +825,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		}
 
 		// Get the storage bucket entry
-		bucket, err := i.entityPacker.GetBucket(ctx, key)
+		bucket, err := i.entityPacker(ctx).GetBucket(ctx, key)
 		if err != nil {
 			i.logger.Error("failed to refresh entities", "key", key, "error", err)
 			return
@@ -736,7 +848,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 					return
 				}
 
-				localAliases, err := i.parseLocalAliases(entity.ID)
+				localAliases, err := i.parseLocalAliases(ctx, entity.ID)
 				if err != nil {
 					i.logger.Error("failed to load local aliases from storage", "error", err)
 					return
@@ -765,7 +877,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 	// For those entities that are deleted, clear up the local alias entries
 	case strings.HasPrefix(key, groupBucketsPrefix):
 		// Create a MemDB transaction
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		groupsFetched, err := i.MemDBGroupsByBucketKeyInTxn(txn, key)
@@ -792,7 +904,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		}
 
 		// Get the storage bucket entry
-		bucket, err := i.groupPacker.GetBucket(ctx, key)
+		bucket, err := i.groupPacker(ctx).GetBucket(ctx, key)
 		if err != nil {
 			i.logger.Error("failed to refresh group", "key", key, "error", err)
 			return
@@ -861,7 +973,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		// This invalidation only happens on perf standbys
 		//
 
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		// Find all the local aliases belonging to this bucket and remove it
@@ -900,7 +1012,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		}
 
 		// Now read the invalidated storage key
-		bucket, err := i.localAliasPacker.GetBucket(ctx, key)
+		bucket, err := i.localAliasPacker(ctx).GetBucket(ctx, key)
 		if err != nil {
 			i.logger.Error("failed to refresh local aliases", "key", key, "error", err)
 			return
@@ -931,7 +1043,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 						return
 					}
 					if entity == nil {
-						cachedEntityItem, err := i.localAliasPacker.GetItem(alias.CanonicalID + tmpSuffix)
+						cachedEntityItem, err := i.localAliasPacker(ctx).GetItem(alias.CanonicalID + tmpSuffix)
 						if err != nil {
 							i.logger.Error("failed to fetch cached entity", "key", key, "error", err)
 							return
@@ -963,8 +1075,8 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 	}
 }
 
-func (i *IdentityStore) parseLocalAliases(entityID string) (*identity.LocalAliases, error) {
-	item, err := i.localAliasPacker.GetItem(entityID)
+func (i *IdentityStore) parseLocalAliases(ctx context.Context, entityID string) (*identity.LocalAliases, error) {
+	item, err := i.localAliasPacker(ctx).GetItem(entityID)
 	if err != nil {
 		return nil, err
 	}
@@ -983,7 +1095,7 @@ func (i *IdentityStore) parseLocalAliases(entityID string) (*identity.LocalAlias
 
 func (i *IdentityStore) parseEntityFromBucketItem(ctx context.Context, item *storagepacker.Item) (*identity.Entity, error) {
 	if item == nil {
-		return nil, fmt.Errorf("nil item")
+		return nil, errors.New("nil item")
 	}
 
 	persistNeeded := false
@@ -1053,7 +1165,7 @@ func (i *IdentityStore) parseEntityFromBucketItem(ctx context.Context, item *sto
 		}
 
 		// Store the entity with new format
-		err = i.entityPacker.PutItem(ctx, item)
+		err = i.entityPacker(ctx).PutItem(ctx, item)
 		if err != nil {
 			return nil, err
 		}
@@ -1068,7 +1180,7 @@ func (i *IdentityStore) parseEntityFromBucketItem(ctx context.Context, item *sto
 
 func (i *IdentityStore) parseCachedEntity(item *storagepacker.Item) (*identity.Entity, error) {
 	if item == nil {
-		return nil, fmt.Errorf("nil item")
+		return nil, errors.New("nil item")
 	}
 
 	var entity identity.Entity
@@ -1086,7 +1198,7 @@ func (i *IdentityStore) parseCachedEntity(item *storagepacker.Item) (*identity.E
 
 func (i *IdentityStore) parseGroupFromBucketItem(item *storagepacker.Item) (*identity.Group, error) {
 	if item == nil {
-		return nil, fmt.Errorf("nil item")
+		return nil, errors.New("nil item")
 	}
 
 	var group identity.Group
@@ -1103,34 +1215,40 @@ func (i *IdentityStore) parseGroupFromBucketItem(item *storagepacker.Item) (*ide
 }
 
 // entityByAliasFactors fetches the entity based on factors of alias, i.e mount
-// accessor and the alias name.
-func (i *IdentityStore) entityByAliasFactors(mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
+// accessor and the alias name, using the given context.
+// This function respects namespace boundaries and will only return an entity that belongs to the
+// same namespace as the context.
+func (i *IdentityStore) entityByAliasFactors(ctx context.Context, mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
 	if mountAccessor == "" {
-		return nil, fmt.Errorf("missing mount accessor")
+		return nil, errors.New("missing mount accessor")
 	}
 
 	if aliasName == "" {
-		return nil, fmt.Errorf("missing alias name")
+		return nil, errors.New("missing alias name")
 	}
 
-	txn := i.db.Txn(false)
+	if err := i.validateCtx(ctx); err != nil {
+		return nil, err
+	}
 
-	return i.entityByAliasFactorsInTxn(txn, mountAccessor, aliasName, clone)
+	txn := i.db(ctx).Txn(false)
+
+	return i.entityByAliasFactorsInTxn(ctx, txn, mountAccessor, aliasName, clone)
 }
 
 // entityByAliasFactorsInTxn fetches the entity based on factors of alias, i.e
 // mount accessor and the alias name.
-func (i *IdentityStore) entityByAliasFactorsInTxn(txn *memdb.Txn, mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
+func (i *IdentityStore) entityByAliasFactorsInTxn(ctx context.Context, txn *memdb.Txn, mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
 	if txn == nil {
-		return nil, fmt.Errorf("nil txn")
+		return nil, errors.New("nil txn")
 	}
 
 	if mountAccessor == "" {
-		return nil, fmt.Errorf("missing mount accessor")
+		return nil, errors.New("missing mount accessor")
 	}
 
 	if aliasName == "" {
-		return nil, fmt.Errorf("missing alias name")
+		return nil, errors.New("missing alias name")
 	}
 
 	alias, err := i.MemDBAliasByFactorsInTxn(txn, mountAccessor, aliasName, false, false)
@@ -1150,7 +1268,15 @@ func (i *IdentityStore) CreateEntity(ctx context.Context) (*identity.Entity, err
 	defer metrics.MeasureSince([]string{"identity", "create_entity"}, time.Now())
 
 	entity := new(identity.Entity)
-	err := i.sanitizeEntity(ctx, entity)
+
+	// Set the namespace from the context
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	entity.NamespaceID = ns.ID
+
+	err = i.sanitizeEntity(ctx, entity)
 	if err != nil {
 		return nil, err
 	}
@@ -1158,26 +1284,19 @@ func (i *IdentityStore) CreateEntity(ctx context.Context) (*identity.Entity, err
 		return nil, err
 	}
 
-	// Emit a metric for the new entity
-	ns, err := i.namespacer.NamespaceByID(ctx, entity.NamespaceID)
-	var nsLabel metrics.Label
-	if err != nil {
-		nsLabel = metrics.Label{"namespace", "unknown"}
-	} else {
-		nsLabel = metricsutil.NamespaceLabel(ns)
-	}
 	i.metrics.IncrCounterWithLabels(
 		[]string{"identity", "entity", "creation"},
 		1,
 		[]metrics.Label{
-			nsLabel,
+			metricsutil.NamespaceLabel(ns),
 		})
 
 	return entity.Clone()
 }
 
-// CreateOrFetchEntity creates a new entity. This is used by core to
-// associate each login attempt by an alias to a unified entity in Vault.
+// CreateOrFetchEntity creates a new entity or returns an existing entity based on the alias,
+// respecting namespace boundaries defined by the context.
+// Entities and aliases are always created in the namespace from which the request originated (derived from ctx).
 func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.Alias) (*identity.Entity, bool, error) {
 	defer metrics.MeasureSince([]string{"identity", "create_or_fetch_entity"}, time.Now())
 
@@ -1187,11 +1306,11 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 	var entityCreated bool
 
 	if alias == nil {
-		return nil, false, fmt.Errorf("alias is nil")
+		return nil, false, errors.New("alias is nil")
 	}
 
 	if alias.Name == "" {
-		return nil, false, fmt.Errorf("empty alias name")
+		return nil, false, errors.New("empty alias name")
 	}
 
 	mountValidationResp := i.router.ValidateMountByAccessor(alias.MountAccessor)
@@ -1203,11 +1322,18 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 		return nil, false, fmt.Errorf("mount accessor %q is not a mount of type %q", alias.MountAccessor, alias.MountType)
 	}
 
+	// Get namespace from the context
+	ns, nsErr := namespace.FromContext(ctx)
+	if nsErr != nil {
+		return nil, false, nsErr
+	}
+
 	// Check if an entity already exists for the given alias
-	entity, err = i.entityByAliasFactors(alias.MountAccessor, alias.Name, true)
+	entity, err = i.entityByAliasFactors(ctx, alias.MountAccessor, alias.Name, true)
 	if err != nil {
 		return nil, false, err
 	}
+	// The entity lookup is already namespace aware, but we check anyway for clarity
 	if entity != nil && changedAliasIndex(entity, alias) == -1 {
 		return entity, false, nil
 	}
@@ -1216,14 +1342,15 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 	defer i.lock.Unlock()
 
 	// Create a MemDB transaction to update both alias and entity
-	txn := i.db.Txn(true)
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 
 	// Check if an entity was created before acquiring the lock
-	entity, err = i.entityByAliasFactorsInTxn(txn, alias.MountAccessor, alias.Name, true)
+	entity, err = i.entityByAliasFactorsInTxn(ctx, txn, alias.MountAccessor, alias.Name, true)
 	if err != nil {
 		return nil, false, err
 	}
+	// The entity lookup is already namespace aware, but we check anyway for clarity
 	if entity != nil {
 		idx := changedAliasIndex(entity, alias)
 		if idx == -1 {
@@ -1238,6 +1365,10 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 
 	if !update {
 		entity = new(identity.Entity)
+
+		// Set namespace ID from context
+		entity.NamespaceID = ns.ID
+
 		err = i.sanitizeEntity(ctx, entity)
 		if err != nil {
 			return nil, false, err
@@ -1252,6 +1383,7 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 			MountPath:     mountValidationResp.MountPath,
 			MountType:     mountValidationResp.MountType,
 			Local:         alias.Local,
+			NamespaceID:   entity.NamespaceID, // Ensure alias has same namespace as entity
 		}
 
 		err = i.sanitizeAlias(ctx, newAlias)
@@ -1266,21 +1398,13 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 			newAlias,
 		}
 
-		// Emit a metric for the new entity
-		ns, err := i.namespacer.NamespaceByID(ctx, entity.NamespaceID)
-		var nsLabel metrics.Label
-		if err != nil {
-			nsLabel = metrics.Label{"namespace", "unknown"}
-		} else {
-			nsLabel = metricsutil.NamespaceLabel(ns)
-		}
 		i.metrics.IncrCounterWithLabels(
 			[]string{"identity", "entity", "creation"},
 			1,
 			[]metrics.Label{
-				nsLabel,
-				{"auth_method", newAlias.MountType},
-				{"mount_point", newAlias.MountPath},
+				metricsutil.NamespaceLabel(ns),
+				{Name: "auth_method", Value: newAlias.MountType},
+				{Name: "mount_point", Value: newAlias.MountPath},
 			})
 		entityCreated = true
 	}

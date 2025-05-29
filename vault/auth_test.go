@@ -5,16 +5,17 @@ package vault
 
 import (
 	"context"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
-
 	"github.com/armon/go-metrics"
+	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
+
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -29,7 +30,7 @@ func TestAuth_ReadOnlyViewDuringMount(t *testing.T) {
 			Value: []byte("baz"),
 		})
 		if err == nil || !strings.Contains(err.Error(), logical.ErrSetupReadOnly.Error()) {
-			t.Fatalf("expected a read-only error")
+			t.Fatal("expected a read-only error")
 		}
 		return &NoopBackend{
 			BackendType: logical.TypeCredential,
@@ -77,40 +78,40 @@ func TestAuthMountMetrics(t *testing.T) {
 	loadMetric, ok = mountMetrics.Load(mountKeyName)
 	numEntriesMetric = loadMetric.(metricsutil.GaugeMetric)
 	if !ok || numEntriesMetric.Value != 2 {
-		t.Fatalf("mount metrics for num entries do not match true values")
+		t.Fatal("mount metrics for num entries do not match true values")
 	}
 	if len(numEntriesMetric.Key) != 3 ||
 		numEntriesMetric.Key[0] != "core" ||
 		numEntriesMetric.Key[1] != "mount_table" ||
 		numEntriesMetric.Key[2] != "num_entries" {
-		t.Fatalf("mount metrics for num entries have wrong key")
+		t.Fatal("mount metrics for num entries have wrong key")
 	}
 	if len(numEntriesMetric.Labels) != 2 ||
 		numEntriesMetric.Labels[0].Name != "type" ||
 		numEntriesMetric.Labels[0].Value != "auth" ||
 		numEntriesMetric.Labels[1].Name != "local" ||
 		numEntriesMetric.Labels[1].Value != "false" {
-		t.Fatalf("mount metrics for num entries have wrong labels")
+		t.Fatal("mount metrics for num entries have wrong labels")
 	}
 	mountSizeKeyName := "core.mount_table.size.type|auth||local|false||"
 	loadMetric, ok = mountMetrics.Load(mountSizeKeyName)
 	sizeMetric := loadMetric.(metricsutil.GaugeMetric)
 
 	if !ok {
-		t.Fatalf("mount metrics for size do not match exist")
+		t.Fatal("mount metrics for size do not match exist")
 	}
 	if len(sizeMetric.Key) != 3 ||
 		sizeMetric.Key[0] != "core" ||
 		sizeMetric.Key[1] != "mount_table" ||
 		sizeMetric.Key[2] != "size" {
-		t.Fatalf("mount metrics for size have wrong key")
+		t.Fatal("mount metrics for size have wrong key")
 	}
 	if len(sizeMetric.Labels) != 2 ||
 		sizeMetric.Labels[0].Name != "type" ||
 		sizeMetric.Labels[0].Value != "auth" ||
 		sizeMetric.Labels[1].Name != "local" ||
 		sizeMetric.Labels[1].Value != "false" {
-		t.Fatalf("mount metrics for size have wrong labels")
+		t.Fatal("mount metrics for size have wrong labels")
 	}
 }
 
@@ -137,13 +138,13 @@ func TestCore_DefaultAuthTable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
 	// Verify matching mount tables
-	if !reflect.DeepEqual(c.auth, c2.auth) {
-		t.Fatalf("mismatch: %v %v", c.auth, c2.auth)
+	if diff := deep.Equal(c.auth, c2.auth); diff != nil {
+		t.Fatalf("mismatch:\n\tc.auth: %#v\n\tc2.auth: %#v\n\tdiff: %#v", c.auth, c2.auth, diff)
 	}
 }
 
@@ -223,7 +224,7 @@ func TestCore_EnableCredential(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -238,8 +239,8 @@ func TestCore_EnableCredential(t *testing.T) {
 		c2Auth[entry.UUID] = entry
 	}
 
-	if !reflect.DeepEqual(cAuth, c2Auth) {
-		t.Fatalf("mismatch: %#v %#v", cAuth, c2Auth)
+	if diff := deep.Equal(cAuth, c2Auth); diff != nil {
+		t.Fatalf("mismatch:\n\tcAuth: %#v\n\tc2Auth: %#v\n\tDiff: %#v", cAuth, c2Auth, diff)
 	}
 }
 
@@ -291,7 +292,7 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -306,8 +307,8 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 		c2Auth[entry.UUID] = entry
 	}
 
-	if !reflect.DeepEqual(cAuth, c2Auth) {
-		t.Fatalf("mismatch: %#v %#v", cAuth, c2Auth)
+	if diff := deep.Equal(cAuth, c2Auth); diff != nil {
+		t.Fatalf("mismatch:\n\tcAuth: %#v\n\tc2Auth: %#v\n\tdiff: %#v", cAuth, c2Auth, diff)
 	}
 }
 
@@ -400,8 +401,8 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(oldCredential, c.auth) {
-		t.Fatalf("expected\n%#v\ngot\n%#v\n", oldCredential, c.auth)
+	if diff := deep.Equal(oldCredential, c.auth); diff != nil {
+		t.Fatalf("expected\n%#v\ngot\n%#v\ndiff: %#v\n", oldCredential, c.auth, diff)
 	}
 
 	if len(c.auth.Entries) != 2 {
@@ -432,10 +433,10 @@ func TestCore_EnableCredential_twice_409(t *testing.T) {
 	switch err2.(type) {
 	case logical.HTTPCodedError:
 		if err2.(logical.HTTPCodedError).Code() != 409 {
-			t.Fatalf("invalid code given")
+			t.Fatal("invalid code given")
 		}
 	default:
-		t.Fatalf("expected a different error type")
+		t.Fatal("expected a different error type")
 	}
 }
 
@@ -482,7 +483,7 @@ func TestCore_DisableCredential(t *testing.T) {
 
 	match := c.router.MatchingMount(namespace.RootContext(nil), "auth/foo/bar")
 	if match != "" {
-		t.Fatalf("backend present")
+		t.Fatal("backend present")
 	}
 
 	inmemSink := metrics.NewInmemSink(1000000*time.Hour, 2000000*time.Hour)
@@ -503,13 +504,13 @@ func TestCore_DisableCredential(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
 	// Verify matching mount tables
-	if !reflect.DeepEqual(c.auth, c2.auth) {
-		t.Fatalf("mismatch: %v %v", c.auth, c2.auth)
+	if diff := deep.Equal(c.auth, c2.auth); diff != nil {
+		t.Fatalf("mismatch:\n\tc.auth: %v\n\tc2.auth: %v\n\tdiff: %#v", c.auth, c2.auth, diff)
 	}
 }
 
@@ -598,7 +599,8 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 
 func TestDefaultAuthTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	table := c.defaultAuthTable()
+	table, err := c.defaultAuthTable(context.Background())
+	require.NoError(t, err)
 	verifyDefaultAuthTable(t, table)
 }
 
@@ -745,7 +747,7 @@ func TestCore_RemountCredential(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -827,6 +829,77 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 	}
 	if len(out) != 1 && out[0] != "plstokeep" {
 		t.Fatalf("bad: %#v", out)
+	}
+}
+
+func TestCore_RemountCredential_Namespaces(t *testing.T) {
+	c, keys, _ := TestCoreUnsealed(t)
+	rootCtx := namespace.RootContext(nil)
+	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
+	ns2 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
+	ns2Ctx := namespace.ContextWithNamespace(rootCtx, ns2)
+	ns3 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
+	ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
+
+	me := &MountEntry{
+		Table: credentialTableType,
+		Path:  "foo",
+		Type:  "noop",
+	}
+	err := c.enableCredential(ns2Ctx, me)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	src := namespace.MountPathDetails{
+		Namespace: ns2,
+		MountPath: "auth/foo/",
+	}
+	dst := namespace.MountPathDetails{
+		Namespace: ns3,
+		MountPath: "auth/bar/",
+	}
+
+	match := c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
+	if match != ns2.Path+"auth/foo/" {
+		t.Fatalf("missing mount, match: %q", match)
+	}
+
+	err = c.remountCredential(ns1Ctx, src, dst, true)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	match = c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
+	if match != "" {
+		t.Fatalf("auth method still at old location, match: %q", err)
+	}
+
+	match = c.router.MatchingMount(ns3Ctx, "auth/bar/baz")
+	if match != ns3.Path+"auth/bar/" {
+		t.Fatalf("auth method not at new location, match: %q", match)
+	}
+
+	c.sealInternal()
+	for i, key := range keys {
+		unseal, err := TestCoreUnseal(c, key)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if i+1 == len(keys) && !unseal {
+			t.Fatal("should be unsealed")
+		}
+	}
+
+	match = c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
+	if match != "" {
+		t.Fatalf("auth method still at old location after unseal, match: %q", match)
+	}
+
+	match = c.router.MatchingMount(ns3Ctx, "auth/bar/baz")
+	if match != ns3.Path+"auth/bar/" {
+		t.Fatalf("auth method not at new location after unseal, match: %q", match)
 	}
 }
 

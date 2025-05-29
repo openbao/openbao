@@ -64,7 +64,7 @@ func (d *Delegate) AutopilotConfig() *autopilot.Config {
 		MaxTrailingLogs:         d.autopilotConfig.MaxTrailingLogs,
 		MinQuorum:               d.autopilotConfig.MinQuorum,
 		ServerStabilizationTime: d.autopilotConfig.ServerStabilizationTime,
-		Ext:                     d.permanentNonVoters,
+		Ext:                     maps.Clone(d.permanentNonVoters),
 	}
 	return config
 }
@@ -310,7 +310,7 @@ func (d *Delegate) NonVoters() []raft.ServerID {
 func (d *Delegate) StoreNonVoters() error {
 	d.dl.RLock()
 	defer d.dl.RUnlock()
-	d.logger.Debug("updating non-voters", "non_voters", d.permanentNonVoters)
+	d.logger.Trace("updating non-voters", "non_voters", d.permanentNonVoters)
 	v, err := json.Marshal(d.permanentNonVoters)
 	if err != nil {
 		return err
@@ -332,7 +332,6 @@ func (d *Delegate) FetchNonVoters() error {
 	}
 
 	if e == nil {
-		d.logger.Debug("no non-voters")
 		return nil
 	}
 
@@ -346,6 +345,7 @@ func (d *Delegate) FetchNonVoters() error {
 	nV := d.permanentNonVoters
 	d.dl.RUnlock()
 	if !maps.Equal(nV, nonVoters) {
+		d.logger.Trace("fetched new non-voters", "non_voters", nonVoters)
 		d.dl.Lock()
 		d.permanentNonVoters = nonVoters
 		d.dl.Unlock()

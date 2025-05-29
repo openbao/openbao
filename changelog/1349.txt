@@ -1,0 +1,4 @@
+```release-note:bug
+sealing/pkcs11: OpenBao now correctly finalizes the PKCS#11 library on shutdown (https://github.com/openbao/go-kms-wrapping/pull/32).
+This is unlikely to have caused many real-world issues so far.
+```

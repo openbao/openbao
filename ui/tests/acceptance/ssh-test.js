@@ -27,6 +27,9 @@ module('Acceptance | ssh secret backend', function (hooks) {
       name: 'carole',
       async fillInCreate() {
         await click('[data-test-input="allowUserCertificates"]');
+        await click('[data-test-toggle-group="Options"]');
+        await fillIn('[data-test-input="defaultUser"]', 'carol');
+        await fillIn('[data-test-input="allowedUsers"]', '*');
       },
       async fillInGenerate() {
         await fillIn('[data-test-input="publicKey"]', PUB_KEY);

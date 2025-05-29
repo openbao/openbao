@@ -121,6 +121,4 @@ func (c *AuthMoveCommand) Run(args []string) int {
 		c.UI.Output(fmt.Sprintf("Waiting for terminal status in migration of auth method %s to %s, with migration ID %s", source, destination, remountResp.MigrationID))
 		time.Sleep(10 * time.Second)
 	}
-
-	return 0
 }

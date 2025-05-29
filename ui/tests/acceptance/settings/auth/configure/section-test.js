@@ -60,14 +60,14 @@ module('Acceptance | settings/auth/configure/section', function (hooks) {
     assert.ok(keys.includes('description'), 'passes updated description on tune');
   });
 
-  for (const type of ['aws', 'azure', 'gcp', 'github', 'kubernetes']) {
+  for (const type of ['ldap', 'kubernetes']) {
     test(`it shows tabs for auth method: ${type}`, async function (assert) {
       const path = `${type}-showtab-${this.uid}`;
       await cli.consoleInput(`write sys/auth/${path} type=${type}`);
       await cli.enter();
       await indexPage.visit({ path });
-      // aws has 4 tabs, the others will have 'Configuration' and 'Method Options' tabs
-      const numTabs = type === 'aws' ? 4 : 2;
+      // items will have 'Configuration' and 'Method Options' tabs
+      const numTabs = 2;
       assert.strictEqual(page.tabs.length, numTabs, 'shows correct number of tabs');
     });
   }

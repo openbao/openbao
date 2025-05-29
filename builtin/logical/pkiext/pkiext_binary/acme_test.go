@@ -1041,7 +1041,7 @@ func SubtestACMEStepDownNode(t *testing.T, cluster *VaultPkiCluster) {
 		t.Logf("Node: %v Raft AutoPilotState: %v\n", previousActiveNode.NodeID, state)
 
 		if !state.Healthy {
-			return fmt.Errorf("raft auto pilot state is not healthy")
+			return errors.New("raft auto pilot state is not healthy")
 		}
 
 		// Make sure that we have at least one node that can take over prior to sealing the current active node.
@@ -1054,12 +1054,12 @@ func SubtestACMEStepDownNode(t *testing.T, cluster *VaultPkiCluster) {
 		return nil
 	})
 
-	t.Logf("Sealing active node")
+	t.Log("Sealing active node")
 	err = previousActiveNode.APIClient().Sys().Seal()
 	require.NoError(t, err, "failed stepping down node")
 
 	// Add our DNS records now
-	t.Logf("Adding DNS records")
+	t.Log("Adding DNS records")
 	for dnsHost, dnsValue := range dnsTxtRecordsToAdd {
 		err = pki.AddDNSRecord(dnsHost, "TXT", dnsValue)
 		require.NoError(t, err, "failed adding DNS record: %s:%s", dnsHost, dnsValue)
@@ -1106,10 +1106,10 @@ func SubtestACMEStepDownNode(t *testing.T, cluster *VaultPkiCluster) {
 
 func getDockerLog(t *testing.T) (func(s string), *pkiext.LogConsumerWriter, *pkiext.LogConsumerWriter) {
 	logConsumer := func(s string) {
-		t.Logf(s)
+		t.Log(s)
 	}
 
-	logStdout := &pkiext.LogConsumerWriter{logConsumer}
-	logStderr := &pkiext.LogConsumerWriter{logConsumer}
+	logStdout := &pkiext.LogConsumerWriter{Consumer: logConsumer}
+	logStderr := &pkiext.LogConsumerWriter{Consumer: logConsumer}
 	return logConsumer, logStdout, logStderr
 }

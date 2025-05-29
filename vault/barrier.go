@@ -34,13 +34,9 @@ var (
 )
 
 const (
-	// barrierInitPath is the path used to store our init sentinel file
-	barrierInitPath = "barrier/init"
-
 	// keyringPath is the location of the keyring data. This is encrypted
 	// by the root key.
-	keyringPath   = "core/keyring"
-	keyringPrefix = "core/"
+	keyringPath = "core/keyring"
 
 	// keyringUpgradePrefix is the path used to store keyring update entries.
 	// When running in HA mode, the active instance will install the new key
@@ -61,7 +57,11 @@ const (
 	// have the old root key. This key can be decrypted if you have the
 	// keyring to discover the new root key. The new root key is then
 	// used to reload the keyring itself.
-	rootKeyPath = "core/master"
+	rootKeyPath = "core/root-key"
+
+	// legacyRootKeyPath is the former value of rootKeyPath and is replaced
+	// on initialization or rotation.
+	legacyRootKeyPath = "core/master"
 
 	// shamirKekPath is used with Shamir in v1.3+ to store a copy of the
 	// unseal key behind the barrier.  As with rootKeyPath this is primarily
@@ -139,7 +139,7 @@ type SecurityBarrierCore interface {
 	// SetRotationConfig updates the auto-rotation config for the barrier key
 	SetRotationConfig(ctx context.Context, config KeyRotationConfig) error
 
-	// Rekey is used to change the master key used to protect the keyring
+	// Rekey is used to change the root key used to protect the keyring
 	Rekey(context.Context, []byte) error
 
 	// For replication we must send over the keyring, so this must be available

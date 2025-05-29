@@ -29,7 +29,9 @@ package healthcheck
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/openbao/openbao/api/v2"
@@ -289,4 +291,57 @@ type Result struct {
 	StatusDisplay string       `json:"status"`
 	Endpoint      string       `json:"endpoint,omitempty"`
 	Message       string       `json:"message,omitempty"`
+}
+
+func ValidateMountType(client *api.Client, mount string, expectedType string) error {
+	switch expectedType {
+	case "pki":
+		// Provide clear error message for auth mounts.
+		if strings.HasPrefix(mount, "auth/") || strings.HasPrefix(mount, "/auth/") {
+			return errors.New("Refusing to run PKI health-check on auth mount; this command is only relevant to PKI secrets engines.")
+		}
+	}
+
+	// Attempt to read mount configuration directly.
+	info, err := client.Sys().MountInfo(mount)
+	if err == nil && info != nil {
+		if info.Type != expectedType {
+			return fmt.Errorf("Refusing to run %v health-check on mount of type %v", expectedType, info.Type)
+		}
+
+		return nil
+	}
+
+	// Attempt to read the internal/ui information instead.
+	resp, err := client.Logical().Read(path.Join("sys/internal/ui/mounts", mount))
+	if err == nil && resp != nil {
+		mountType, ok := resp.Data["type"].(string)
+		if ok {
+			if mountType != expectedType {
+				return fmt.Errorf("Refusing to run %v health-check on mount of type %v", expectedType, mountType)
+			}
+		}
+	}
+
+	// Lastly fall back to per-mount detection logic.
+	switch expectedType {
+	case "pki":
+		// Our token doesn't have permissions so fallback to expected path check.
+		resp, err := client.Logical().Read(path.Join(mount, "cert/ca"))
+		if err != nil {
+			return fmt.Errorf("Detection of PKI mount failed:\n\t%w", err)
+		}
+
+		if resp == nil {
+			return errors.New("Refusing to run PKI health-check on non-PKI mount: path cert/ca did not exist: route entry not found")
+		}
+
+		if _, ok := resp.Data["certificate"]; !ok {
+			return errors.New("Refusing to run PKI health-check on non-PKI mount: path cert/ca returned invalid data")
+		}
+
+		return nil
+	}
+
+	return nil
 }

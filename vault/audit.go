@@ -68,7 +68,7 @@ func (c *Core) enableAudit(ctx context.Context, entry *MountEntry, updateStorage
 
 	// Ensure there is a name
 	if entry.Path == "/" {
-		return fmt.Errorf("backend path must be specified")
+		return errors.New("backend path must be specified")
 	}
 
 	// Update the audit table
@@ -83,7 +83,7 @@ func (c *Core) enableAudit(ctx context.Context, entry *MountEntry, updateStorage
 		case strings.HasPrefix(ent.Path, entry.Path):
 			fallthrough
 		case strings.HasPrefix(entry.Path, ent.Path):
-			return fmt.Errorf("path already in use")
+			return errors.New("path already in use")
 		}
 	}
 
@@ -102,8 +102,12 @@ func (c *Core) enableAudit(ctx context.Context, entry *MountEntry, updateStorage
 		}
 		entry.Accessor = accessor
 	}
-	viewPath := entry.ViewPath()
-	view := NewBarrierView(c.barrier, viewPath)
+
+	view, err := c.mountEntryView(entry)
+	if err != nil {
+		return err
+	}
+
 	origViewReadOnlyErr := view.GetReadOnlyErr()
 
 	// Mark the view as read-only until the mounting is complete and
@@ -171,7 +175,7 @@ func (c *Core) disableAudit(ctx context.Context, path string, updateStorage bool
 
 	// Ensure there is a name
 	if path == "/" {
-		return false, fmt.Errorf("backend path must be specified")
+		return false, errors.New("backend path must be specified")
 	}
 
 	// Remove the entry from the mount table
@@ -186,7 +190,7 @@ func (c *Core) disableAudit(ctx context.Context, path string, updateStorage bool
 
 	// Ensure there was a match
 	if entry == nil {
-		return false, fmt.Errorf("no matching backend")
+		return false, errors.New("no matching backend")
 	}
 
 	c.removeAuditReloadFunc(entry)
@@ -285,7 +289,7 @@ func (c *Core) loadAudits(ctx context.Context) error {
 			needPersist = true
 		}
 		// Get the namespace from the namespace ID and load it in memory
-		ns, err := NamespaceByID(ctx, entry.NamespaceID, c)
+		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return err
 		}
@@ -309,7 +313,7 @@ func (c *Core) loadAudits(ctx context.Context) error {
 func (c *Core) persistAudit(ctx context.Context, table *MountTable, localOnly bool) error {
 	if table.Type != auditTableType {
 		c.logger.Error("given table to persist has wrong type", "actual_type", table.Type, "expected_type", auditTableType)
-		return fmt.Errorf("invalid table type given, not persisting")
+		return errors.New("invalid table type given, not persisting")
 	}
 
 	nonLocalAudit := &MountTable{
@@ -323,7 +327,7 @@ func (c *Core) persistAudit(ctx context.Context, table *MountTable, localOnly bo
 	for _, entry := range table.Entries {
 		if entry.Table != table.Type {
 			c.logger.Error("given entry to persist in audit table has wrong table value", "path", entry.Path, "entry_table_type", entry.Table, "actual_type", table.Type)
-			return fmt.Errorf("invalid audit entry found, not persisting")
+			return errors.New("invalid audit entry found, not persisting")
 		}
 
 		if entry.Local {
@@ -388,8 +392,11 @@ func (c *Core) setupAudits(ctx context.Context) error {
 
 	for _, entry := range c.audit.Entries {
 		// Create a barrier view using the UUID
-		viewPath := entry.ViewPath()
-		view := NewBarrierView(c.barrier, viewPath)
+		view, err := c.mountEntryView(entry)
+		if err != nil {
+			return err
+		}
+
 		origViewReadOnlyErr := view.GetReadOnlyErr()
 
 		// Mark the view as read-only until the mounting is complete and

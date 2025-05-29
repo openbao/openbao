@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	dbtesting "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/testing"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 	"github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -385,7 +385,7 @@ func TestPostgreSQL_NewUser(t *testing.T) {
 
 			resp, err := db.NewUser(ctx, test.req)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -468,7 +468,7 @@ func TestUpdateUser_Password(t *testing.T) {
 			defer cancel()
 			_, err := db.UpdateUser(ctx, updateReq)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -492,7 +492,7 @@ func TestUpdateUser_Password(t *testing.T) {
 		defer cancel()
 		_, err := db.UpdateUser(ctx, updateReq)
 		if err == nil {
-			t.Fatalf("err expected, got nil")
+			t.Fatal("err expected, got nil")
 		}
 
 		assertCredsDoNotExist(t, db.ConnectionURL, updateReq.Username, newPass)
@@ -565,7 +565,7 @@ func TestUpdateUser_Expiration(t *testing.T) {
 
 			actualExpiration := getExpiration(t, db, createResp.Username)
 			if actualExpiration.IsZero() {
-				t.Fatalf("Initial expiration is zero but should be set")
+				t.Fatal("Initial expiration is zero but should be set")
 			}
 			if !actualExpiration.Equal(initialExpiration) {
 				t.Fatalf("Actual expiration: %s Expected expiration: %s", actualExpiration, initialExpiration)
@@ -586,7 +586,7 @@ func TestUpdateUser_Expiration(t *testing.T) {
 			defer cancel()
 			_, err := db.UpdateUser(ctx, updateReq)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -732,7 +732,7 @@ func TestDeleteUser(t *testing.T) {
 
 			_, err := db.DeleteUser(ctx, deleteReq)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -773,7 +773,7 @@ func assertCredsDoNotExist(t testing.TB, connURL, username, password string) {
 	t.Helper()
 	err := testCredsExist(t, connURL, username, password)
 	if err == nil {
-		t.Fatalf("user should not exist but does")
+		t.Fatal("user should not exist but does")
 	}
 }
 
@@ -1113,7 +1113,7 @@ func TestNewUser_CustomUsername(t *testing.T) {
 func TestPostgreSQL_Repmgr(t *testing.T) {
 	_, exists := os.LookupEnv("POSTGRES_MULTIHOST_NET")
 	if !exists {
-		t.Skipf("POSTGRES_MULTIHOST_NET not set, skipping test")
+		t.Skip("POSTGRES_MULTIHOST_NET not set, skipping test")
 	}
 
 	// Run two postgres-repmgr containers in a replication cluster

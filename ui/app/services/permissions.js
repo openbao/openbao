@@ -19,8 +19,6 @@ const API_PATHS = {
   },
   policies: {
     acl: 'sys/policies/acl',
-    rgp: 'sys/policies/rgp',
-    egp: 'sys/policies/egp',
   },
   tools: {
     wrap: 'sys/wrapping/wrap',
@@ -31,7 +29,6 @@ const API_PATHS = {
     hash: 'sys/tools/hash',
   },
   status: {
-    replication: 'sys/replication',
     license: 'sys/license',
     seal: 'sys/seal',
     raft: 'sys/storage/raft/configuration',
@@ -77,7 +74,7 @@ export default Service.extend({
       const resp = yield this.store.adapterFor('permissions').query();
       this.setPaths(resp);
       return;
-    } catch (err) {
+    } catch {
       // If no policy can be found, default to showing all nav items.
       this.set('canViewAll', true);
     }

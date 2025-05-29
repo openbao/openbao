@@ -1,0 +1,3 @@
+```release-note:improvement
+transit: Use transactions for read + write policy operations
+```

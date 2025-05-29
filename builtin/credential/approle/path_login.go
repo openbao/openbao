@@ -5,6 +5,7 @@ package approle
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -74,7 +75,7 @@ func pathLogin(b *backend) *framework.Path {
 func (b *backend) pathLoginUpdateAliasLookahead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	roleID := strings.TrimSpace(data.Get("role_id").(string))
 	if roleID == "" {
-		return nil, fmt.Errorf("missing role_id")
+		return nil, errors.New("missing role_id")
 	}
 
 	return &logical.Response{
@@ -87,6 +88,12 @@ func (b *backend) pathLoginUpdateAliasLookahead(ctx context.Context, req *logica
 }
 
 func (b *backend) pathLoginResolveRole(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	// RoleID must be supplied during every login
 	roleID := strings.TrimSpace(data.Get("role_id").(string))
 	if roleID == "" {
@@ -116,12 +123,22 @@ func (b *backend) pathLoginResolveRole(ctx context.Context, req *logical.Request
 		return logical.ErrorResponse("invalid role or secret ID"), nil
 	}
 
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return logical.ResolveRoleResponse(roleName)
 }
 
 // Returns the Auth object indicating the authentication and authorization information
 // if the credentials provided are validated by the backend.
 func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	// RoleID must be supplied during every login
 	roleID := strings.TrimSpace(data.Get("role_id").(string))
 	if roleID == "" {
@@ -239,7 +256,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 			// source IP complies to it
 			if len(entry.CIDRList) != 0 {
 				if req.Connection == nil || req.Connection.RemoteAddr == "" {
-					return nil, fmt.Errorf("failed to get connection information")
+					return nil, errors.New("failed to get connection information")
 				}
 
 				belongs, err := cidrutil.IPBelongsToCIDRBlocksSlice(req.Connection.RemoteAddr, entry.CIDRList)
@@ -314,7 +331,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 			// source IP complies to it
 			if len(entry.CIDRList) != 0 {
 				if req.Connection == nil || req.Connection.RemoteAddr == "" {
-					return nil, fmt.Errorf("failed to get connection information")
+					return nil, errors.New("failed to get connection information")
 				}
 
 				belongs, err := cidrutil.IPBelongsToCIDRBlocksSlice(req.Connection.RemoteAddr, entry.CIDRList)
@@ -334,7 +351,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 
 	if len(role.SecretIDBoundCIDRs) != 0 {
 		if req.Connection == nil || req.Connection.RemoteAddr == "" {
-			return nil, fmt.Errorf("failed to get connection information")
+			return nil, errors.New("failed to get connection information")
 		}
 		belongs, err := cidrutil.IPBelongsToCIDRBlocksSlice(req.Connection.RemoteAddr, role.SecretIDBoundCIDRs)
 		if err != nil || !belongs {
@@ -382,6 +399,10 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 	// Allow for overridden token bound CIDRs
 	auth.BoundCIDRs = tokenBoundCIDRs
 
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return &logical.Response{
 		Auth: auth,
 	}, nil
@@ -391,7 +412,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	roleName := req.Auth.InternalData["role_name"].(string)
 	if roleName == "" {
-		return nil, fmt.Errorf("failed to fetch role_name during renewal")
+		return nil, errors.New("failed to fetch role_name during renewal")
 	}
 
 	lock := b.roleLock(roleName)

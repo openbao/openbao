@@ -21,8 +21,10 @@ func pathCleanupKeys(b *backend) *framework.Path {
 			OperationVerb:   "tidy",
 			OperationSuffix: "dynamic-host-keys",
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.DeleteOperation: b.handleCleanupKeys,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.handleCleanupKeys,
+			},
 		},
 		HelpSynopsis:    `This endpoint removes the stored host keys used for the removed Dynamic Key feature, if present.`,
 		HelpDescription: `For more information, refer to the API documentation.`,
@@ -30,6 +32,12 @@ func pathCleanupKeys(b *backend) *framework.Path {
 }
 
 func (b *backend) handleCleanupKeys(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	names, err := req.Storage.List(ctx, keysStoragePrefix)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list keys for removal: %w", err)
@@ -40,6 +48,10 @@ func (b *backend) handleCleanupKeys(ctx context.Context, req *logical.Request, d
 		if err := req.Storage.Delete(ctx, keyPath); err != nil {
 			return nil, fmt.Errorf("unable to delete key %v of %v: %w", index+1, len(names), err)
 		}
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return &logical.Response{

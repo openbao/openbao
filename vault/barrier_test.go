@@ -149,7 +149,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 		t.Fatalf("err: %v", err)
 	}
 	if init {
-		t.Fatalf("should not be initialized")
+		t.Fatal("should not be initialized")
 	}
 
 	// Should start sealed
@@ -158,7 +158,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 		t.Fatalf("err: %v", err)
 	}
 	if !sealed {
-		t.Fatalf("should be sealed")
+		t.Fatal("should be sealed")
 	}
 
 	// Sealing should be a no-op
@@ -193,7 +193,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 		t.Fatalf("minimum key size too small: %d", min)
 	}
 	if max < min {
-		t.Fatalf("maximum key size smaller than min")
+		t.Fatal("maximum key size smaller than min")
 	}
 
 	// Unseal should not work
@@ -217,7 +217,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 		t.Fatalf("err: %v", err)
 	}
 	if !init {
-		t.Fatalf("should be initialized")
+		t.Fatal("should be initialized")
 	}
 
 	// Should still be sealed
@@ -226,7 +226,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 		t.Fatalf("err: %v", err)
 	}
 	if !sealed {
-		t.Fatalf("should sealed")
+		t.Fatal("should sealed")
 	}
 
 	// Unseal should work
@@ -245,7 +245,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 		t.Fatalf("err: %v", err)
 	}
 	if sealed {
-		t.Fatalf("should be unsealed")
+		t.Fatal("should be unsealed")
 	}
 
 	// Verify the root key
@@ -376,7 +376,7 @@ func testBarrier_Rekey(t *testing.T, b SecurityBarrier) {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Verify the master key
+	// Verify the root key
 	if err := b.VerifyRoot(key); err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -388,12 +388,12 @@ func testBarrier_Rekey(t *testing.T, b SecurityBarrier) {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Verify the old master key
+	// Verify the old root key
 	if err := b.VerifyRoot(key); err != ErrBarrierInvalidKey {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Verify the new master key
+	// Verify the new root key
 	if err := b.VerifyRoot(newKey); err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -416,7 +416,7 @@ func testBarrier_Rekey(t *testing.T, b SecurityBarrier) {
 	// Unseal with old key should fail
 	err = b.Unseal(context.Background(), key)
 	if err == nil {
-		t.Fatalf("unseal should fail")
+		t.Fatal("unseal should fail")
 	}
 
 	// Unseal with new keys should work
@@ -472,7 +472,7 @@ func testBarrier_Upgrade(t *testing.T, b1, b2 SecurityBarrier) {
 		t.Fatalf("err: %v", err)
 	}
 	if !did || updated != newTerm {
-		t.Fatalf("failed to upgrade")
+		t.Fatal("failed to upgrade")
 	}
 
 	// Should have no upgrades pending
@@ -481,7 +481,7 @@ func testBarrier_Upgrade(t *testing.T, b1, b2 SecurityBarrier) {
 		t.Fatalf("err: %v", err)
 	}
 	if did {
-		t.Fatalf("should not have upgrade")
+		t.Fatal("should not have upgrade")
 	}
 
 	// Rotate the encryption key
@@ -508,7 +508,7 @@ func testBarrier_Upgrade(t *testing.T, b1, b2 SecurityBarrier) {
 		t.Fatalf("err: %v", err)
 	}
 	if did {
-		t.Fatalf("should not have upgrade")
+		t.Fatal("should not have upgrade")
 	}
 }
 
@@ -532,7 +532,7 @@ func testBarrier_Upgrade_Rekey(t *testing.T, b1, b2 SecurityBarrier) {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Reload the master key
+	// Reload the root key
 	err = b2.ReloadRootKey(context.Background())
 	if err != nil {
 		t.Fatalf("err: %v", err)

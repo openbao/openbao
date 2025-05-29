@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -103,8 +104,10 @@ Any batch output will preserve the order of the batch input.`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathHMACWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathHMACWrite,
+			},
 		},
 
 		HelpSynopsis:    pathHMACHelpSyn,
@@ -360,7 +363,7 @@ func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *f
 		}
 		if key == nil {
 			response[i].Error = ""
-			response[i].err = fmt.Errorf("HMAC key value could not be computed")
+			response[i].err = errors.New("HMAC key value could not be computed")
 			continue
 		}
 

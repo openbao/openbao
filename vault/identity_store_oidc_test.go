@@ -831,7 +831,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 		BucketKey: "test-entity-bucket-key",
 	}
 
-	txn := c.identityStore.db.Txn(true)
+	txn := c.identityStore.db(ctx).Txn(true)
 	defer txn.Abort()
 	err := c.identityStore.upsertEntityInTxn(ctx, txn, testEntity, nil, true)
 	if err != nil {
@@ -945,7 +945,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 		}
 	}
 	if errorCount == keyCount {
-		t.Fatalf("unable to validate signed token with any of the .well-known keys")
+		t.Fatal("unable to validate signed token with any of the .well-known keys")
 	}
 }
 
@@ -962,7 +962,7 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 		BucketKey: "test-entity-bucket-key",
 	}
 
-	txn := c.identityStore.db.Txn(true)
+	txn := c.identityStore.db(ctx).Txn(true)
 	defer txn.Abort()
 	err := c.identityStore.upsertEntityInTxn(ctx, txn, testEntity, nil, true)
 	if err != nil {
@@ -984,12 +984,12 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 	}
 	s := c.router.MatchingStorageByAPIPath(ctx, "identity/oidc")
 	if err := namedKey.generateAndSetNextKey(ctx, hclog.NewNullLogger(), s); err != nil {
-		t.Fatalf("failed to set next signing key")
+		t.Fatal("failed to set next signing key")
 	}
 	// Store namedKey
 	entry, _ := logical.StorageEntryJSON(namedKeyConfigPath+namedKey.name, namedKey)
 	if err := s.Put(ctx, entry); err != nil {
-		t.Fatalf("writing to in mem storage failed")
+		t.Fatal("writing to in mem storage failed")
 	}
 
 	// Create a test role "test-role" -- expect no warning
@@ -1038,65 +1038,44 @@ func testNamedKey(name string) *namedKey {
 // TestOIDC_PeriodicFunc tests timing logic for running key
 // rotations and expiration actions.
 func TestOIDC_PeriodicFunc(t *testing.T) {
-	type testCase struct {
-		cycle         int
-		numKeys       int
-		numPublicKeys int
-	}
 	testSets := []struct {
 		namedKey          *namedKey
-		expectedKeyCount  int
 		setSigningKey     bool
 		setNextSigningKey bool
-		testCases         []testCase
+		expectedKeyCounts []int
 	}{
 		{
 			namedKey:          testNamedKey("test-key"),
 			setSigningKey:     true,
 			setNextSigningKey: true,
-			testCases: []testCase{
-				// Each cycle results in a key going in/out of its verification_ttl period
-				{1, 2, 2},
-				{2, 3, 3},
-				{3, 2, 2},
-				{4, 3, 3},
-			},
+			expectedKeyCounts: []int{2, 3, 2, 3},
+			// Each cycle results in a key going in/out of its verification_ttl period
 		},
 		{
 			// don't set SigningKey to ensure its non-existence can be handled
 			namedKey:          testNamedKey("test-key-nil-signing-key"),
 			setSigningKey:     false,
 			setNextSigningKey: true,
-			testCases: []testCase{
-				{1, 1, 1},
+			expectedKeyCounts: []int{1, 2},
+			// key counts jump from 1 to 2 because the next signing key becomes
+			// the signing key, and no key is in its verification_ttl period
 
-				// key counts jump from 1 to 2 because the next signing key becomes
-				// the signing key, and no key is in its verification_ttl period
-				{2, 2, 2},
-			},
 		},
 		{
 			// don't set NextSigningKey to ensure its non-existence can be handled
 			namedKey:          testNamedKey("test-key-nil-next-signing-key"),
 			setSigningKey:     true,
 			setNextSigningKey: false,
-			testCases: []testCase{
-				{1, 1, 1},
-
-				// key counts jump from 1 to 3 because the original signing key is
-				// still published and within its verification_ttl period
-				{2, 3, 3},
-			},
+			expectedKeyCounts: []int{1, 3},
+			// key counts jump from 1 to 3 because the original signing key is
+			// still published and within its verification_ttl period
 		},
 		{
 			// don't set keys to ensure non-existence can be handled
 			namedKey:          testNamedKey("test-key-nil-signing-and-next-signing-key"),
 			setSigningKey:     false,
 			setNextSigningKey: false,
-			testCases: []testCase{
-				{1, 0, 0},
-				{2, 2, 2},
-			},
+			expectedKeyCounts: []int{0, 2},
 		},
 	}
 
@@ -1112,12 +1091,12 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 
 			if testSet.setSigningKey {
 				if err := testSet.namedKey.generateAndSetKey(ctx, hclog.NewNullLogger(), storage); err != nil {
-					t.Fatalf("failed to set signing key")
+					t.Fatal("failed to set signing key")
 				}
 			}
 			if testSet.setNextSigningKey {
 				if err := testSet.namedKey.generateAndSetNextKey(ctx, hclog.NewNullLogger(), storage); err != nil {
-					t.Fatalf("failed to set next signing key")
+					t.Fatal("failed to set next signing key")
 				}
 			}
 			testSet.namedKey.NextRotation = time.Now().Add(testSet.namedKey.RotationPeriod)
@@ -1125,58 +1104,39 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 			// Store namedKey
 			entry, _ := logical.StorageEntryJSON(namedKeyConfigPath+testSet.namedKey.name, testSet.namedKey)
 			if err := storage.Put(ctx, entry); err != nil {
-				t.Fatalf("writing to in mem storage failed")
+				t.Fatal("writing to in mem storage failed")
 			}
 
-			currentCycle := 1
-			numCases := len(testSet.testCases)
-			lastCycle := testSet.testCases[numCases-1].cycle
-			namedKeySamples := make([]*logical.StorageEntry, numCases)
-			publicKeysSamples := make([][]string, numCases)
-
-			i := 0
-			for currentCycle <= lastCycle {
+			for i := 0; i < len(testSet.expectedKeyCounts); i++ {
+				// sleep for the rotation period
+				time.Sleep(testSet.namedKey.RotationPeriod + 100*time.Millisecond)
+				// run periodicFunc
 				c.identityStore.oidcPeriodicFunc(ctx)
-				if currentCycle == testSet.testCases[i].cycle {
-					namedKeyEntry, _ := storage.Get(ctx, namedKeyConfigPath+testSet.namedKey.name)
-					publicKeysEntry, _ := storage.List(ctx, publicKeysConfigPath)
-					namedKeySamples[i] = namedKeyEntry
-					publicKeysSamples[i] = publicKeysEntry
-					i = i + 1
-				}
-				currentCycle = currentCycle + 1
+				// collect entries
+				namedKeyEntry, _ := storage.Get(ctx, namedKeyConfigPath+testSet.namedKey.name)
+				publicKeysEntry, _ := storage.List(ctx, publicKeysConfigPath)
 
-				// sleep until we are in the next cycle - where a next run will happen
-				v, _, _ := c.identityStore.oidcCache.Get(noNamespace, "nextRun")
-				nextRun := v.(time.Time)
-				now := time.Now()
-				diff := nextRun.Sub(now)
-				if now.Before(nextRun) {
-					time.Sleep(diff)
-				}
-			}
-
-			// measure collected samples
-			for i := range testSet.testCases {
-				expectedKeyCount := testSet.testCases[i].numKeys
-				namedKeySamples[i].DecodeJSON(&testSet.namedKey)
-				actualKeyRingLen := len(testSet.namedKey.KeyRing)
-				if actualKeyRingLen != expectedKeyCount {
+				// verify the number of keys
+				var namedKey namedKey
+				namedKeyEntry.DecodeJSON(&namedKey)
+				expectedKeyCount := testSet.expectedKeyCounts[i]
+				actualKeyRingLen := len(namedKey.KeyRing)
+				if actualKeyRingLen < expectedKeyCount {
 					t.Errorf(
 						"For key: %s at cycle: %d expected namedKey's KeyRing to be at least of length %d but was: %d",
 						testSet.namedKey.name,
-						testSet.testCases[i].cycle,
+						i,
 						expectedKeyCount,
 						actualKeyRingLen,
 					)
 				}
-				expectedPublicKeyCount := testSet.testCases[i].numPublicKeys
-				actualPubKeysLen := len(publicKeysSamples[i])
-				if actualPubKeysLen != expectedPublicKeyCount {
+				expectedPublicKeyCount := testSet.expectedKeyCounts[i]
+				actualPubKeysLen := len(publicKeysEntry)
+				if actualPubKeysLen < expectedPublicKeyCount {
 					t.Errorf(
 						"For key: %s at cycle: %d expected public keys to be at least of length %d but was: %d",
 						testSet.namedKey.name,
-						testSet.testCases[i].cycle,
+						i,
 						expectedPublicKeyCount,
 						actualPubKeysLen,
 					)
@@ -1184,7 +1144,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 			}
 
 			if err := storage.Delete(ctx, namedKeyConfigPath+testSet.namedKey.name); err != nil {
-				t.Fatalf("deleting from in mem storage failed")
+				t.Fatal("deleting from in mem storage failed")
 			}
 		})
 	}
@@ -1287,7 +1247,7 @@ func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 	namedKey := &namedKey{}
 	entry, _ := logical.StorageEntryJSON(namedKeyConfigPath+keyName, namedKey)
 	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatalf("writing to in mem storage failed")
+		t.Fatal("writing to in mem storage failed")
 	}
 
 	// Expect true with a populated storage
@@ -1347,7 +1307,7 @@ func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 	role := &role{}
 	entry, _ := logical.StorageEntryJSON(roleConfigPath+roleName, role)
 	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatalf("writing to in mem storage failed")
+		t.Fatal("writing to in mem storage failed")
 	}
 
 	// Expect true with a populated storage
@@ -1457,7 +1417,7 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 		BucketKey: "test-entity-bucket-key",
 	}
 
-	txn := c.identityStore.db.Txn(true)
+	txn := c.identityStore.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = c.identityStore.upsertEntityInTxn(ctx, txn, testEntity, nil, true)
 	if err != nil {

@@ -31,6 +31,7 @@ const (
 	SudoCapability   = "sudo"
 	RootCapability   = "root"
 	PatchCapability  = "patch"
+	ScanCapability   = "scan"
 
 	// Backwards compatibility
 	OldDenyPathPolicy  = "deny"
@@ -48,6 +49,7 @@ const (
 	ListCapabilityInt
 	SudoCapabilityInt
 	PatchCapabilityInt
+	ScanCapabilityInt
 )
 
 type PolicyType uint32
@@ -77,28 +79,35 @@ var cap2Int = map[string]uint32{
 	ListCapability:   ListCapabilityInt,
 	SudoCapability:   SudoCapabilityInt,
 	PatchCapability:  PatchCapabilityInt,
+	ScanCapability:   ScanCapabilityInt,
 }
 
 // Policy is used to represent the policy specified by an ACL configuration.
 type Policy struct {
-	Name      string       `hcl:"name"`
-	Paths     []*PathRules `hcl:"-"`
-	Raw       string
-	Type      PolicyType
-	Templated bool
-	namespace *namespace.Namespace
+	Name        string `hcl:"name"`
+	DataVersion int
+	CASRequired bool
+	Paths       []*PathRules `hcl:"-"`
+	Raw         string
+	Type        PolicyType
+	Templated   bool
+	Expiration  time.Time
+	Modified    time.Time
+	namespace   *namespace.Namespace
 }
 
 // ShallowClone returns a shallow clone of the policy. This should not be used
 // if any of the reference-typed fields are going to be modified
 func (p *Policy) ShallowClone() *Policy {
 	return &Policy{
-		Name:      p.Name,
-		Paths:     p.Paths,
-		Raw:       p.Raw,
-		Type:      p.Type,
-		Templated: p.Templated,
-		namespace: p.namespace,
+		Name:        p.Name,
+		DataVersion: p.DataVersion,
+		CASRequired: p.CASRequired,
+		Paths:       p.Paths,
+		Raw:         p.Raw,
+		Type:        p.Type,
+		Templated:   p.Templated,
+		namespace:   p.namespace,
 	}
 }
 
@@ -111,6 +120,9 @@ type PathRules struct {
 	HasSegmentWildcards bool
 	Capabilities        []string
 
+	ExpirationRaw string    `hcl:"expiration"`
+	Expiration    time.Time `hcl:"-"`
+
 	// These keys are used at the top level to make the HCL nicer; we store in
 	// the ACLPermissions object though
 	MinWrappingTTLHCL     interface{}              `hcl:"min_wrapping_ttl"`
@@ -119,6 +131,7 @@ type PathRules struct {
 	DeniedParametersHCL   map[string][]interface{} `hcl:"denied_parameters"`
 	RequiredParametersHCL []string                 `hcl:"required_parameters"`
 	MFAMethodsHCL         []string                 `hcl:"mfa_methods"`
+	PaginationLimitHCL    int                      `hcl:"pagination_limit"`
 }
 
 type IdentityFactor struct {
@@ -135,6 +148,7 @@ type ACLPermissions struct {
 	DeniedParameters    map[string][]interface{}
 	RequiredParameters  []string
 	MFAMethods          []string
+	PaginationLimit     int
 	GrantingPoliciesMap map[uint32][]logical.PolicyInfo
 }
 
@@ -144,6 +158,7 @@ func (p *ACLPermissions) Clone() (*ACLPermissions, error) {
 		MinWrappingTTL:     p.MinWrappingTTL,
 		MaxWrappingTTL:     p.MaxWrappingTTL,
 		RequiredParameters: p.RequiredParameters[:],
+		PaginationLimit:    p.PaginationLimit,
 	}
 
 	switch {
@@ -241,7 +256,7 @@ func parseACLPolicyWithTemplating(ns *namespace.Namespace, rules string, perform
 	// Top-level item should be the object list
 	list, ok := root.Node.(*ast.ObjectList)
 	if !ok {
-		return nil, fmt.Errorf("failed to parse policy: does not contain a root object")
+		return nil, errors.New("failed to parse policy: does not contain a root object")
 	}
 
 	// Check for invalid top-level keys
@@ -317,6 +332,8 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 			"min_wrapping_ttl",
 			"max_wrapping_ttl",
 			"mfa_methods",
+			"pagination_limit",
+			"expiration",
 		}
 		if err := hclutil.CheckHCLKeys(item.Val, valid); err != nil {
 			return multierror.Prefix(err, fmt.Sprintf("path %q:", key))
@@ -331,6 +348,23 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 
 		if err := hcl.DecodeObject(&pc, item.Val); err != nil {
 			return multierror.Prefix(err, fmt.Sprintf("path %q:", key))
+		}
+
+		if len(pc.ExpirationRaw) > 0 {
+			expiration, err := parseutil.ParseAbsoluteTime(pc.ExpirationRaw)
+			if err != nil {
+				return fmt.Errorf("path %q: invalid expiration time: %w", pc.Path, err)
+			}
+
+			pc.Expiration = expiration
+
+			// If this path is expired, ignore it. We assume that the policy
+			// author has set an overall expiration time of the last-valid
+			// path for automatic cleanup.
+			if time.Now().After(expiration) {
+				// Skip the path because it has expired.
+				continue
+			}
 		}
 
 		// Strip a leading '/' as paths in Vault start after the / in the API path
@@ -384,7 +418,7 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 				pc.Capabilities = []string{DenyCapability}
 				pc.Permissions.CapabilitiesBitmap = DenyCapabilityInt
 				goto PathFinished
-			case CreateCapability, ReadCapability, UpdateCapability, DeleteCapability, ListCapability, SudoCapability, PatchCapability:
+			case CreateCapability, ReadCapability, UpdateCapability, DeleteCapability, ListCapability, SudoCapability, PatchCapability, ScanCapability:
 				pc.Permissions.CapabilitiesBitmap |= cap2Int[cap]
 			default:
 				return fmt.Errorf("path %q: invalid capability %q", key, cap)
@@ -431,6 +465,7 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 			pc.Permissions.RequiredParameters = pc.RequiredParametersHCL[:]
 		}
 
+		pc.Permissions.PaginationLimit = pc.PaginationLimitHCL
 	PathFinished:
 		paths = append(paths, &pc)
 	}

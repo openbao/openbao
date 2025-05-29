@@ -95,7 +95,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		if secret.Data["foo"] != "bar" {
-			t.Fatalf("kv v1 secret did not contain expected value")
+			t.Fatal("kv v1 secret did not contain expected value")
 		}
 
 		if err := client.KVv1(v1MountPath).Delete(context.Background(), secretPath); err != nil {
@@ -111,7 +111,7 @@ func TestKVHelpers(t *testing.T) {
 	t.Run("kv v1: get secret that does not exist", func(t *testing.T) {
 		_, err = client.KVv1(v1MountPath).Get(context.Background(), "does/not/exist")
 		if err == nil {
-			t.Fatalf("KVv1.Get is expected to return an error for a missing secret")
+			t.Fatal("KVv1.Get is expected to return an error for a missing secret")
 		}
 		if !errors.Is(err, api.ErrSecretNotFound) {
 			t.Fatalf("KVv1.Get is expected to return an api.ErrSecretNotFound wrapped error for a missing secret; got %v", err)
@@ -140,7 +140,7 @@ func TestKVHelpers(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(secret.CustomMetadata, fullMetadata.CustomMetadata) {
-			t.Fatalf("custom metadata on the secret does not match the custom metadata in the full metadata")
+			t.Fatal("custom metadata on the secret does not match the custom metadata in the full metadata")
 		}
 	})
 
@@ -181,7 +181,7 @@ func TestKVHelpers(t *testing.T) {
 			t.Fatal(err)
 		}
 		if s2.Data["foo"] != "baz" {
-			t.Fatalf("second version of secret did not have expected contents")
+			t.Fatal("second version of secret did not have expected contents")
 		}
 		if s2.VersionMetadata.Version != 2 {
 			t.Fatalf("wrong version of kv v2 secret was read, expected 2 but got %d", s2.VersionMetadata.Version)
@@ -220,11 +220,11 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		if s1AfterDelete.VersionMetadata.DeletionTime.IsZero() {
-			t.Fatalf("the deletion_time in the first version of the secret was not updated")
+			t.Fatal("the deletion_time in the first version of the secret was not updated")
 		}
 
 		if s1AfterDelete.Data != nil {
-			t.Fatalf("data still exists on the first version of the secret despite this version being deleted")
+			t.Fatal("data still exists on the first version of the secret despite this version being deleted")
 		}
 
 		// undelete it
@@ -239,7 +239,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		if s1AfterUndelete.Data == nil {
-			t.Fatalf("data is empty for the first version of the secret despite this version being undeleted")
+			t.Fatal("data is empty for the first version of the secret despite this version being undeleted")
 		}
 	})
 
@@ -258,7 +258,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		if !destroyedSecret.VersionMetadata.Destroyed {
-			t.Fatalf("expected secret to be destroyed but it wasn't")
+			t.Fatal("expected secret to be destroyed but it wasn't")
 		}
 	})
 
@@ -273,7 +273,7 @@ func TestKVHelpers(t *testing.T) {
 		}, api.WithCheckAndSet(99))
 		// should fail
 		if err == nil {
-			t.Fatalf("expected error from trying to update different version from check-and-set value using WithCheckAndSet")
+			t.Fatal("expected error from trying to update different version from check-and-set value using WithCheckAndSet")
 		}
 
 		// WithOption (generic)
@@ -282,7 +282,7 @@ func TestKVHelpers(t *testing.T) {
 		}, api.WithOption("cas", 99))
 		// should fail
 		if err == nil {
-			t.Fatalf("expected error from trying to update different version from check-and-set value using generic WithOption")
+			t.Fatal("expected error from trying to update different version from check-and-set value using generic WithOption")
 		}
 	})
 
@@ -329,19 +329,19 @@ func TestKVHelpers(t *testing.T) {
 		}
 		_, ok := secretAfterPatches.Data["dog"]
 		if !ok {
-			t.Fatalf("secret did not contain data patched with implicit Patch method")
+			t.Fatal("secret did not contain data patched with implicit Patch method")
 		}
 		_, ok = secretAfterPatches.Data["rat"]
 		if !ok {
-			t.Fatalf("secret did not contain data patched with explicit Patch method")
+			t.Fatal("secret did not contain data patched with explicit Patch method")
 		}
 		_, ok = secretAfterPatches.Data["bird"]
 		if !ok {
-			t.Fatalf("secret did not contain data patched with RW method")
+			t.Fatal("secret did not contain data patched with RW method")
 		}
 		value, ok := secretAfterPatches.Data["foo"]
 		if !ok || value != "bar" {
-			t.Fatalf("secret did not keep original data after patch")
+			t.Fatal("secret did not keep original data after patch")
 		}
 
 		// patch an existing field
@@ -357,7 +357,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 		v, ok := patchedFieldKV.Data["dog"]
 		if !ok || v != "pug" {
-			t.Fatalf("secret's data was not replaced by patch")
+			t.Fatal("secret's data was not replaced by patch")
 		}
 
 		// delete a key in a secret via patch
@@ -435,7 +435,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		if versions[0].Version != 1 || versions[len(versions)-1].Version != expectedLength {
-			t.Fatalf("versions list is not ordered as expected")
+			t.Fatal("versions list is not ordered as expected")
 		}
 
 		// roll back to version 1
@@ -456,7 +456,7 @@ func TestKVHelpers(t *testing.T) {
 		// roll back but fail
 		_, err = client.KVv2(v2MountPath).Rollback(context.Background(), secretPath, 1)
 		if err == nil {
-			t.Fatalf("expected error from trying to rollback to destroyed version")
+			t.Fatal("expected error from trying to rollback to destroyed version")
 		}
 	})
 
@@ -480,10 +480,10 @@ func TestKVHelpers(t *testing.T) {
 
 		versions, err := client.KVv2(v2MountPath).GetVersionsAsList(context.Background(), secretPath)
 		if err == nil {
-			t.Fatalf("expected to be unable to get list of versions since all metadata was destroyed")
+			t.Fatal("expected to be unable to get list of versions since all metadata was destroyed")
 		}
 		if len(versions) > 0 {
-			t.Fatalf("expected no versions of secret after deleting all metadata")
+			t.Fatal("expected no versions of secret after deleting all metadata")
 		}
 	})
 
@@ -511,7 +511,7 @@ func TestKVHelpers(t *testing.T) {
 			t.Fatalf("secret metadata was not populated as expected: %v", err)
 		}
 		if len(md.Versions) > 0 {
-			t.Fatalf("no secret versions should have been created since only metadata was populated")
+			t.Fatal("no secret versions should have been created since only metadata was populated")
 		}
 	})
 
@@ -541,7 +541,7 @@ func TestKVHelpers(t *testing.T) {
 			t.Fatal(err)
 		}
 		if md.CASRequired == md2.CASRequired || md.MaxVersions == md2.MaxVersions || md.DeleteVersionAfter == md2.DeleteVersionAfter || reflect.DeepEqual(md.CustomMetadata, md2.CustomMetadata) {
-			t.Fatalf("metadata fields should have been updated by PutMetadata")
+			t.Fatal("metadata fields should have been updated by PutMetadata")
 		}
 
 		// now let's try a patch
@@ -560,13 +560,13 @@ func TestKVHelpers(t *testing.T) {
 			t.Fatal(err)
 		}
 		if md2.CASRequired != md3.CASRequired || md2.DeleteVersionAfter != md3.DeleteVersionAfter {
-			t.Fatalf("expected fields to remain unchanged but they were updated")
+			t.Fatal("expected fields to remain unchanged but they were updated")
 		}
 		if md3.MaxVersions == 0 {
-			t.Fatalf("field was reset to its zero value when it should not have been")
+			t.Fatal("field was reset to its zero value when it should not have been")
 		}
 		if md2.MaxVersions == md3.MaxVersions {
-			t.Fatalf("expected field to be updated but it remained unchanged")
+			t.Fatal("expected field to be updated but it remained unchanged")
 		}
 
 		// let's check the custom metadata was updated correctly
@@ -613,7 +613,7 @@ func TestKVHelpers(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(md4.CustomMetadata) > 0 {
-			t.Fatalf("expected empty map to cause deletion of all custom metadata")
+			t.Fatal("expected empty map to cause deletion of all custom metadata")
 		}
 
 		if md4.MaxVersions != 0 || md4.CASRequired != false {

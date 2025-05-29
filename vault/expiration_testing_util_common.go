@@ -41,7 +41,7 @@ func (c *Core) AddIrrevocableLease(ctx context.Context, pathPrefix string) (*bas
 
 	leaseID := path.Join(pathPrefix, "lease"+uuid)
 
-	if ns != namespace.RootNamespace {
+	if ns.ID != namespace.RootNamespaceID {
 		leaseID = fmt.Sprintf("%s.%s", leaseID, ns.ID)
 	}
 

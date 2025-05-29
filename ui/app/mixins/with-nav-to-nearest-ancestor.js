@@ -26,7 +26,7 @@ export default Mixin.create({
         const transition = this.transitionToRoute('vault.cluster.secrets.backend.list', nearest);
         transition.data.isDeletion = true;
         yield transition.promise;
-      } catch (e) {
+      } catch {
         // in the route error event handler, we're only throwing when it's a 404,
         // other errors will be in the route and will not be caught, so the task will complete
         errored = true;

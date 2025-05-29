@@ -21,13 +21,13 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/testhelpers/pluginhelpers"
-	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func getClusterWithFileAuditBackend(t *testing.T, typ consts.PluginType, numCores int) *vault.TestCluster {
@@ -283,7 +283,7 @@ func testExternalPlugin_ContinueOnError(t *testing.T, mismatch bool, pluginType 
 		t.Fatalf("err: %v", err)
 	}
 	if resp == nil {
-		t.Fatalf("bad: response should not be nil")
+		t.Fatal("bad: response should not be nil")
 	}
 }
 
@@ -387,7 +387,7 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 				// Lookup - expect FAILURE
 				resp, err = client.Auth().Token().Lookup(revokeToken)
 				if err == nil {
-					t.Fatalf("expected error, got nil")
+					t.Fatal("expected error, got nil")
 				}
 
 				// Reset root token
@@ -708,7 +708,7 @@ func TestExternalPlugin_Database(t *testing.T) {
 					t.Fatal(err)
 				}
 				if resp == nil {
-					t.Fatalf("lease lookup response is nil")
+					t.Fatal("lease lookup response is nil")
 				}
 
 				// Revoke
@@ -722,7 +722,7 @@ func TestExternalPlugin_Database(t *testing.T) {
 				// Lookup - expect FAILURE
 				resp, err = client.Sys().Lookup(revokeLease)
 				if err == nil {
-					t.Fatalf("expected error, got nil")
+					t.Fatal("expected error, got nil")
 				}
 			})
 		}

@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/jwt: Support lazy resolution of oidc_discovery_url or jwks_url when skip_jwks_validation=true is specified on auth/jwt/config; OIDC status is now reported on reading the configuration.
+```

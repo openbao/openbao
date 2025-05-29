@@ -6,15 +6,19 @@ package postgresql
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/openbao/openbao/helper/testhelpers/postgresql"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPostgreSQLBackend(t *testing.T) {
@@ -86,12 +90,12 @@ func TestPostgreSQLBackend(t *testing.T) {
 
 	ha1, ok := b1.(physical.HABackend)
 	if !ok {
-		t.Fatalf("PostgreSQLDB does not implement HABackend")
+		t.Fatal("PostgreSQLDB does not implement HABackend")
 	}
 
 	ha2, ok := b2.(physical.HABackend)
 	if !ok {
-		t.Fatalf("PostgreSQLDB does not implement HABackend")
+		t.Fatal("PostgreSQLDB does not implement HABackend")
 	}
 
 	if ha1.HAEnabled() && ha2.HAEnabled() {
@@ -222,7 +226,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 			t.Fatalf("err: %v", err)
 		}
 		if leaderCh == nil {
-			t.Fatalf("failed to get leader ch")
+			t.Fatal("failed to get leader ch")
 		}
 
 		if tries == 1 {
@@ -238,7 +242,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 				// Our test environment is slow enough that we failed this, retry
 				return false
 			}
-			t.Fatalf("should be held")
+			t.Fatal("should be held")
 		}
 		if val != "bar" {
 			t.Fatalf("bad value: %v", val)
@@ -270,7 +274,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 			t.Fatalf("err: %v", err)
 		}
 		if leaderCh2 == nil {
-			t.Fatalf("should get leader ch")
+			t.Fatal("should get leader ch")
 		}
 		defer lock2.Unlock()
 
@@ -284,7 +288,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 				// Our test environment is slow enough that we failed this, retry
 				return false
 			}
-			t.Fatalf("should be held")
+			t.Fatal("should be held")
 		}
 		if val != "baz" {
 			t.Fatalf("bad value: %v", val)
@@ -293,7 +297,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 	// The first lock should have lost the leader channel
 	select {
 	case <-time.After(longRenewInterval * 2):
-		t.Fatalf("original lock did not have its leader channel closed.")
+		t.Fatal("original lock did not have its leader channel closed.")
 	case <-leaderCh:
 	}
 	return true
@@ -318,7 +322,7 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 		t.Fatalf("err: %v", err)
 	}
 	if leaderCh == nil {
-		t.Fatalf("failed to get leader ch")
+		t.Fatal("failed to get leader ch")
 	}
 
 	// Check the value
@@ -327,7 +331,7 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 		t.Fatalf("err: %v", err)
 	}
 	if !held {
-		t.Fatalf("should be held")
+		t.Fatal("should be held")
 	}
 	if val != "bar" {
 		t.Fatalf("bad value: %v", val)
@@ -371,7 +375,7 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 		t.Fatalf("err: %v", err)
 	}
 	if leaderCh2 == nil {
-		t.Fatalf("should get leader ch")
+		t.Fatal("should get leader ch")
 	}
 
 	// Check the value
@@ -380,7 +384,7 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 		t.Fatalf("err: %v", err)
 	}
 	if !held {
-		t.Fatalf("should be held")
+		t.Fatal("should be held")
 	}
 	if val != "baz" {
 		t.Fatalf("bad value: %v", val)
@@ -435,7 +439,7 @@ func TestPostgreSQLBackend_NoCreateTables(t *testing.T) {
 	entry := &physical.Entry{Key: "foo", Value: []byte("data")}
 	err = b.Put(context.Background(), entry)
 	if err == nil {
-		t.Fatalf("expected put to fail due to missing tables")
+		t.Fatal("expected put to fail due to missing tables")
 	}
 
 	pg := b.(*PostgreSQLBackend)
@@ -443,4 +447,186 @@ func TestPostgreSQLBackend_NoCreateTables(t *testing.T) {
 
 	logger.Info("Running basic backend tests")
 	physical.ExerciseBackend(t, b)
+}
+
+// TestPostgreSQLBackend_PGEnv ensures that standard PostgreSQL environment
+// variables works.
+func TestPostgreSQLBackend_PGEnv(t *testing.T) {
+	logger := logging.NewVaultLogger(log.Debug)
+
+	cleanup, connURL := postgresql.PrepareTestContainer(t, "11.1")
+	defer cleanup()
+
+	defer func(host, user, password, port, sslmode string) {
+		os.Setenv("PGHOST", host)
+		os.Setenv("PGUSER", user)
+		os.Setenv("PGPASSWORD", password)
+		os.Setenv("PGPORT", port)
+		os.Setenv("PGSSLMODE", sslmode)
+	}(
+		os.Getenv("PGHOST"),
+		os.Getenv("PGUSER"),
+		os.Getenv("PGPASSWORD"),
+		os.Getenv("PGPORT"),
+		os.Getenv("PGSSLMODE"),
+	)
+
+	addr, err := url.Parse(connURL)
+	require.NoError(t, err)
+
+	password, _ := addr.User.Password()
+	os.Setenv("PGHOST", addr.Hostname())
+	os.Setenv("PGUSER", addr.User.Username())
+	os.Setenv("PGPASSWORD", password)
+	os.Setenv("PGPORT", addr.Port())
+	os.Setenv("PGSSLMODE", "disable")
+
+	_, err = NewPostgreSQLBackend(map[string]string{
+		"table":             "openbao_kv_store",
+		"ha_enabled":        "true",
+		"skip_create_table": "true",
+	}, logger)
+	if err != nil {
+		t.Fatalf("Failed to create new backend: %v", err)
+	}
+}
+
+// TestPostgreSQLBackend_Retry verifies that we will connect to a PostgreSQL
+// instance even if it is not yet ready. This is _usually_ the case as
+// TestContainerNoWait does not connect to the container and PostgreSQL
+// _usually_ takes some time to start up.
+func TestPostgreSQLBackend_Retry(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.NewVaultLogger(log.Debug)
+
+	cleanup, connURL := postgresql.TestContainerNoWait(t)
+	defer cleanup()
+
+	var b physical.Backend
+	var err error
+
+	b, err = NewPostgreSQLBackend(map[string]string{
+		"connection_url":      connURL,
+		"table":               "openbao_kv_store",
+		"ha_enabled":          "true",
+		"max_connect_retries": "1000",
+		"skip_create_table":   "true",
+	}, logger)
+	if err != nil {
+		t.Fatalf("Failed to create new backend: %v", err)
+	}
+	if b == nil {
+		t.Fatalf("failed to create backend")
+	}
+}
+
+// TestPostgreSQLBackend_Parallel ensures that max_parallel is respected.
+func TestPostgreSQLBackend_Parallel(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.NewVaultLogger(log.Debug)
+
+	cleanup, connURL := postgresql.PrepareTestContainer(t, "11.1")
+	defer cleanup()
+
+	bRaw, err := NewPostgreSQLBackend(map[string]string{
+		"connection_url": connURL,
+		"table":          "openbao_kv_store",
+		"ha_enabled":     "true",
+		"max_parallel":   "2",
+	}, logger)
+	if err != nil {
+		t.Fatalf("Failed to create new backend: %v", err)
+	}
+
+	b := bRaw.(physical.TransactionalBackend)
+
+	// Put should succeed without an error even with massively parallel
+	// requests.
+	errors := make([]error, 100)
+	var wg sync.WaitGroup
+	for j := range errors {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			entry := &physical.Entry{Key: fmt.Sprintf("foo-%v", i), Value: []byte("data")}
+			err := b.Put(context.Background(), entry)
+			if err != nil {
+				errors[i] = err
+			}
+		}(j)
+	}
+
+	wg.Wait()
+
+	for j := range errors {
+		if errors[j] != nil {
+			t.Fatalf("process %v: %v", j, errors[j])
+		}
+	}
+
+	// Use transactions so we can sleep while holding a connection.
+	var count atomic.Int32
+	for j := range errors {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			entry := &physical.Entry{Key: fmt.Sprintf("foo-%v", i), Value: []byte("data")}
+
+			tx, err := b.BeginTx(context.Background())
+			if err != nil {
+				errors[i] = err
+				return
+			}
+
+			value := count.Add(1)
+			if value > 2 {
+				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
+			}
+
+			time.Sleep(1)
+
+			value = count.Load()
+			if value > 2 {
+				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
+			}
+
+			err = tx.Put(context.Background(), entry)
+			if err != nil {
+				errors[i] = err
+				return
+			}
+
+			value = count.Load()
+			if value > 2 {
+				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
+			}
+
+			time.Sleep(1)
+
+			value = count.Load()
+			if value > 2 {
+				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
+			}
+
+			err = tx.Commit(context.Background())
+			if err != nil {
+				errors[i] = err
+				return
+			}
+
+			defer count.Add(-1)
+		}(j)
+
+	}
+
+	wg.Wait()
+
+	for j := range errors {
+		if errors[j] != nil {
+			t.Fatalf("process %v: %v", j, errors[j])
+		}
+	}
 }

@@ -5,6 +5,7 @@ package ssh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -45,8 +46,10 @@ func pathCredsCreate(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathCredsCreateWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathCredsCreateWrite,
+			},
 		},
 
 		HelpSynopsis:    pathCredsCreateHelpSyn,
@@ -55,6 +58,12 @@ func pathCredsCreate(b *backend) *framework.Path {
 }
 
 func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	roleName := d.Get("role").(string)
 	if roleName == "" {
 		return logical.ErrorResponse("Missing role"), nil
@@ -147,9 +156,13 @@ func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request
 			"otp": otp,
 		})
 	} else if role.KeyType == KeyTypeDynamic {
-		return nil, fmt.Errorf("dynamic key types have been removed")
+		return nil, errors.New("dynamic key types have been removed")
 	} else {
-		return nil, fmt.Errorf("key type unknown")
+		return nil, errors.New("key type unknown")
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return result, nil
@@ -171,6 +184,12 @@ func (b *backend) GenerateSaltedOTP(ctx context.Context) (string, string, error)
 
 // Generates an UUID OTP and creates an entry for the same in storage backend with its salted string.
 func (b *backend) GenerateOTPCredential(ctx context.Context, req *logical.Request, sshOTPEntry *sshOTP) (string, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	defer txRollback()
+
 	otp, otpSalted, err := b.GenerateSaltedOTP(ctx)
 	if err != nil {
 		return "", err
@@ -202,6 +221,11 @@ func (b *backend) GenerateOTPCredential(ctx context.Context, req *logical.Reques
 	if err := req.Storage.Put(ctx, newEntry); err != nil {
 		return "", err
 	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return "", err
+	}
+
 	return otp, nil
 }
 
@@ -226,7 +250,7 @@ func validateIP(ip, roleName, cidrList, excludeCidrList string, zeroAddressRoles
 		return err
 	}
 	if !ipMatched {
-		return fmt.Errorf("IP does not belong to role")
+		return errors.New("IP does not belong to role")
 	}
 
 	if len(excludeCidrList) == 0 {
@@ -239,7 +263,7 @@ func validateIP(ip, roleName, cidrList, excludeCidrList string, zeroAddressRoles
 		return err
 	}
 	if ipMatched {
-		return fmt.Errorf("IP does not belong to role")
+		return errors.New("IP does not belong to role")
 	}
 
 	return nil
@@ -249,7 +273,7 @@ func validateIP(ip, roleName, cidrList, excludeCidrList string, zeroAddressRoles
 // allowed users registered which creation of role.
 func validateUsername(username, allowedUsers string) error {
 	if allowedUsers == "" {
-		return fmt.Errorf("username not in allowed users list")
+		return errors.New("username not in allowed users list")
 	}
 
 	// Role was explicitly configured to allow any username.
@@ -264,7 +288,7 @@ func validateUsername(username, allowedUsers string) error {
 		}
 	}
 
-	return fmt.Errorf("username not in allowed users list")
+	return errors.New("username not in allowed users list")
 }
 
 const pathCredsCreateHelpSyn = `

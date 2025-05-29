@@ -4,6 +4,8 @@
 package policy
 
 import (
+	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -13,10 +15,12 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/credential/ldap"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	ldaphelper "github.com/openbao/openbao/helper/testhelpers/ldap"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPolicy_NoDefaultPolicy(t *testing.T) {
@@ -324,4 +328,185 @@ func TestPolicy_TokenRenewal(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPolicy_PaginationLimit(t *testing.T) {
+	coreConfig := &vault.CoreConfig{
+		CredentialBackends: map[string]logical.Factory{
+			"userpass": credUserpass.Factory,
+		},
+		LogicalBackends: map[string]logical.Factory{
+			"kv": logicalKv.VersionedKVFactory,
+		},
+	}
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	core := cluster.Cores[0].Core
+	vault.TestWaitActive(t, core)
+	client := cluster.Cores[0].Client
+
+	// Enable userpass auth
+	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
+		Type: "userpass",
+	})
+	require.NoError(t, err, "failed to enable userpass auth")
+
+	// Add a user to userpass backend
+	data := map[string]interface{}{
+		"password":       "testpassword",
+		"token_policies": "testpolicy",
+	}
+	_, err = client.Logical().Write("auth/userpass/users/testuser", data)
+	require.NoError(t, err, "failed to set ")
+
+	// Mount K/V and add some secrets.
+	err = client.Sys().Mount("kv", &api.MountInput{
+		Type: "kv",
+		Options: map[string]string{
+			"version": "2",
+		},
+	})
+	require.NoError(t, err, "failed to mount kv")
+
+	for i := 1; i <= 100; i++ {
+		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("a/key-%v", i), map[string]interface{}{
+			"value": i,
+		})
+		require.NoError(t, err, "failed writing k/v key")
+
+		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("b/key-%v", i), map[string]interface{}{
+			"value": i,
+		})
+		require.NoError(t, err, "failed writing k/v key")
+
+		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("c/key-%v", i), map[string]interface{}{
+			"value": i,
+		})
+		require.NoError(t, err, "failed writing k/v key")
+
+		_, err = client.KVv2("kv").Put(context.Background(), fmt.Sprintf("d/key-%v", i), map[string]interface{}{
+			"value": i,
+		})
+		require.NoError(t, err, "failed writing k/v key")
+	}
+
+	// Write policy and create a client token.
+	//
+	// a/ is a raw list
+	// b/ is an optionally limited list (when specified)
+	// c/ has a required parameter of limit but no pagination limit,
+	//    meaning it will be ignored
+	// d/ requires pagination.
+	err = client.Sys().PutPolicy("testpolicy", `path "kv/metadata/a" {
+	capabilities = ["list"]
+}
+
+path "kv/metadata/b" {
+	capabilities = ["list"]
+	pagination_limit = 10
+}
+
+path "kv/metadata/c" {
+	capabilities = ["list"]
+	required_parameters = ["limit"]
+}
+
+path "kv/metadata/d" {
+	capabilities = ["list"]
+	pagination_limit = 10
+	required_parameters = ["limit"]
+}
+
+path "kv/metadata/" {
+	capabilities = ["scan", "list"]
+	pagination_limit = 10
+	required_parameters = ["limit"]
+}
+`)
+	require.NoError(t, err, "failed to write policy")
+
+	resp, err := client.Logical().Write("auth/userpass/login/testuser", map[string]interface{}{
+		"password": "testpassword",
+	})
+	require.NoError(t, err, "failed to auth")
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Auth)
+
+	// root := client.Token()
+	user := resp.Auth.ClientToken
+	client.SetToken(user)
+
+	// Paths should behave ok.
+	testPagination(t, client, "a/", true, false)
+	testPagination(t, client, "b/", true, true)
+	testPagination(t, client, "c/", true, false)
+	testPagination(t, client, "d/", false, true)
+	testPagination(t, client, "", false, true)
+
+	// Test scan limits.
+	resp, err = client.Logical().Scan("kv/metadata")
+	require.Error(t, err, "expected error scanning without limits")
+
+	resp, err = client.Logical().ScanPage("kv/metadata", "", 10)
+	require.NoError(t, err, "failed to scan")
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Data)
+	// TODO - kv metadata scanning doesn't accept pagination
+	require.Equal(t, 400, len(resp.Data["keys"].([]interface{})))
+
+	// Test 'max' value.
+	resp, err = client.Logical().ReadWithData("kv/metadata/d", map[string][]string{
+		"list":  {"true"},
+		"limit": {"max"},
+	})
+	require.NoError(t, err, "failed to list with max value")
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Data)
+	require.Equal(t, 10, len(resp.Data["keys"].([]interface{})))
+
+	// This endpoint has no limit.
+	resp, err = client.Logical().ReadWithData("kv/metadata/a", map[string][]string{
+		"list":  {"true"},
+		"limit": {"max"},
+	})
+	require.NoError(t, err, "failed to list with max value")
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Data)
+	require.Equal(t, 100, len(resp.Data["keys"].([]interface{})))
+}
+
+func testPagination(t *testing.T, client *api.Client, path string, raw bool, limited bool) {
+	resp, err := client.Logical().List("kv/metadata/" + path)
+	if raw {
+		require.NoError(t, err, "failed to raw list on "+path)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.Data)
+		if limited {
+			require.LessOrEqual(t, len(resp.Data["keys"].([]interface{})), 10)
+		} else {
+			require.Equal(t, 100, len(resp.Data["keys"].([]interface{})))
+		}
+	} else {
+		require.Error(t, err, "expected failure to raw list on "+path)
+	}
+
+	resp, err = client.Logical().ListPage("kv/metadata/"+path, "", 75)
+	if limited {
+		require.Error(t, err, "expected failure to list (over limit) on "+path)
+	} else {
+		require.NoError(t, err, "failed to raw list on "+path)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.Data)
+		require.Equal(t, 75, len(resp.Data["keys"].([]interface{})))
+	}
+
+	resp, err = client.Logical().ListPage("kv/metadata/"+path, "", 10)
+	require.NoError(t, err, "failed to raw list on "+path)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Data)
+	require.LessOrEqual(t, len(resp.Data["keys"].([]interface{})), 10)
 }

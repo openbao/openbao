@@ -171,7 +171,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 
 	// Test the read by name endpoint
@@ -231,7 +231,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	// Create 2 entities
@@ -243,7 +243,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity/name/testentityname2",
@@ -253,7 +253,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 
 	// List the entities by name
@@ -488,7 +488,7 @@ func TestIdentityStore_CloneImmutability(t *testing.T) {
 	entity.Aliases[0].ID = "invalidid"
 
 	if clonedEntity.Aliases[0].ID == "invalidid" {
-		t.Fatalf("cloned entity is mutated")
+		t.Fatal("cloned entity is mutated")
 	}
 
 	clonedAlias, err := alias.Clone()
@@ -499,7 +499,7 @@ func TestIdentityStore_CloneImmutability(t *testing.T) {
 	alias.MergedFromCanonicalIDs[0] = "invalidid"
 
 	if clonedAlias.MergedFromCanonicalIDs[0] == "invalidid" {
-		t.Fatalf("cloned alias is mutated")
+		t.Fatal("cloned alias is mutated")
 	}
 }
 
@@ -536,9 +536,9 @@ func TestIdentityStore_MemDBImmutability(t *testing.T) {
 		},
 	}
 
-	entity.BucketKey = is.entityPacker.BucketKey(entity.ID)
+	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
 
-	txn := is.db.Txn(true)
+	txn := is.db(ctx).Txn(true)
 	defer txn.Abort()
 
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
@@ -548,7 +548,7 @@ func TestIdentityStore_MemDBImmutability(t *testing.T) {
 
 	txn.Commit()
 
-	entityFetched, err := is.MemDBEntityByID(entity.ID, true)
+	entityFetched, err := is.MemDBEntityByID(ctx, entity.ID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -556,7 +556,7 @@ func TestIdentityStore_MemDBImmutability(t *testing.T) {
 	// Modify the fetched entity outside of a transaction
 	entityFetched.Aliases[0].ID = "invalidaliasid"
 
-	entityFetched, err = is.MemDBEntityByID(entity.ID, false)
+	entityFetched, err = is.MemDBEntityByID(ctx, entity.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -708,7 +708,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	// Identity store will be mounted by now, just fetch it from router
 	identitystore := c.router.MatchingBackend(namespace.RootContext(nil), "identity/")
 	if identitystore == nil {
-		t.Fatalf("failed to fetch identity store from router")
+		t.Fatal("failed to fetch identity store from router")
 	}
 
 	is := identitystore.(*IdentityStore)
@@ -747,7 +747,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	}
 
 	if resp.Data["id"] != entityID {
-		t.Fatalf("failed to read the created entity")
+		t.Fatal("failed to read the created entity")
 	}
 
 	// Perform a seal/unseal cycle
@@ -777,7 +777,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	}
 
 	if resp.Data["id"] != entityID {
-		t.Fatalf("failed to read the created entity after a seal/unseal cycle")
+		t.Fatal("failed to read the created entity after a seal/unseal cycle")
 	}
 }
 
@@ -828,9 +828,9 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 		},
 	}
 
-	entity.BucketKey = is.entityPacker.BucketKey(entity.ID)
+	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
 
-	txn := is.db.Txn(true)
+	txn := is.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
 	if err != nil {
@@ -839,7 +839,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	txn.Commit()
 
 	// Fetch the entity using its ID
-	entityFetched, err := is.MemDBEntityByID(entity.ID, false)
+	entityFetched, err := is.MemDBEntityByID(ctx, entity.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -849,7 +849,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	}
 
 	// Fetch the entity using its name
-	entityFetched, err = is.MemDBEntityByName(namespace.RootContext(nil), entity.Name, false)
+	entityFetched, err = is.MemDBEntityByName(ctx, entity.Name, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -858,7 +858,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 		t.Fatalf("entity mismatched entities; expected: %#v\n actual: %#v\n", entity, entityFetched)
 	}
 
-	txn = is.db.Txn(false)
+	txn = is.db(ctx).Txn(false)
 	entitiesFetched, err := is.MemDBEntitiesByBucketKeyInTxn(txn, entity.BucketKey)
 	if err != nil {
 		t.Fatal(err)
@@ -868,12 +868,12 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 		t.Fatalf("bad: length of entities; expected: 1, actual: %d", len(entitiesFetched))
 	}
 
-	err = is.MemDBDeleteEntityByID(entity.ID)
+	err = is.MemDBDeleteEntityByID(ctx, entity.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	entityFetched, err = is.MemDBEntityByID(entity.ID, false)
+	entityFetched, err = is.MemDBEntityByID(ctx, entity.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -882,7 +882,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 		t.Fatalf("bad: entity; expected: nil, actual: %#v\n", entityFetched)
 	}
 
-	entityFetched, err = is.MemDBEntityByName(namespace.RootContext(nil), entity.Name, false)
+	entityFetched, err = is.MemDBEntityByName(ctx, entity.Name, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -919,11 +919,11 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 
 	idRaw, ok := resp.Data["id"]
 	if !ok {
-		t.Fatalf("entity id not present in response")
+		t.Fatal("entity id not present in response")
 	}
 	id := idRaw.(string)
 	if id == "" {
-		t.Fatalf("invalid entity id")
+		t.Fatal("invalid entity id")
 	}
 
 	readReq := &logical.Request{
@@ -939,7 +939,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 	if resp.Data["id"] != id ||
 		resp.Data["name"] != registerData["name"] ||
 		!reflect.DeepEqual(resp.Data["policies"], strutil.RemoveDuplicates(registerData["policies"].([]string), false)) {
-		t.Fatalf("bad: entity response")
+		t.Fatal("bad: entity response")
 	}
 
 	updateData := map[string]interface{}{
@@ -1047,7 +1047,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	entity1, err := is.MemDBEntityByID(entityID1, false)
+	entity1, err := is.MemDBEntityByID(ctx, entityID1, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1089,7 +1089,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
-	entity2, err := is.MemDBEntityByID(entityID2, false)
+	entity2, err := is.MemDBEntityByID(ctx, entityID2, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1138,7 +1138,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("entity should have been deleted")
+		t.Fatal("entity should have been deleted")
 	}
 
 	entityReq.Path = "entity/id/" + entityID1
@@ -1155,7 +1155,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 	approleAliases := 0
 	for _, aliasRaw := range entity1Aliases {
 		alias := aliasRaw.(map[string]interface{})
-		aliasLookedUp, err := is.MemDBAliasByID(alias["id"].(string), false, false)
+		aliasLookedUp, err := is.MemDBAliasByID(ctx, alias["id"].(string), false, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1183,7 +1183,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 			t.Fatalf("group id %q not found in merged entity direct groups %q", group, entity1Groups)
 		}
 
-		groupLookedUp, err := is.MemDBGroupByID(group, false)
+		groupLookedUp, err := is.MemDBGroupByID(ctx, group, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1217,7 +1217,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	entityID1 := resp.Data["id"].(string)
-	entity1, err := is.MemDBEntityByID(entityID1, false)
+	entity1, err := is.MemDBEntityByID(ctx, entityID1, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1255,7 +1255,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	entity2, err := is.MemDBEntityByID(entityID2, false)
+	entity2, err := is.MemDBEntityByID(ctx, entityID2, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1289,7 +1289,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("entity should have been deleted")
+		t.Fatal("entity should have been deleted")
 	}
 
 	entityReq.Path = "entity/id/" + entityID1
@@ -1298,7 +1298,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	entity1Lookup, err := is.MemDBEntityByID(entityID1, false)
+	entity1Lookup, err := is.MemDBEntityByID(ctx, entityID1, false)
 	if err != nil {
 		t.Fatal(err)
 	}

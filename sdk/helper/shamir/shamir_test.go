@@ -12,23 +12,23 @@ func TestSplit_invalid(t *testing.T) {
 	secret := []byte("test")
 
 	if _, err := Split(secret, 0, 0); err == nil {
-		t.Fatalf("expect error")
+		t.Fatal("expect error")
 	}
 
 	if _, err := Split(secret, 2, 3); err == nil {
-		t.Fatalf("expect error")
+		t.Fatal("expect error")
 	}
 
 	if _, err := Split(secret, 1000, 3); err == nil {
-		t.Fatalf("expect error")
+		t.Fatal("expect error")
 	}
 
 	if _, err := Split(secret, 10, 1); err == nil {
-		t.Fatalf("expect error")
+		t.Fatal("expect error")
 	}
 
 	if _, err := Split(nil, 3, 2); err == nil {
-		t.Fatalf("expect error")
+		t.Fatal("expect error")
 	}
 }
 
@@ -54,7 +54,7 @@ func TestSplit(t *testing.T) {
 func TestCombine_invalid(t *testing.T) {
 	// Not enough parts
 	if _, err := Combine(nil); err == nil {
-		t.Fatalf("should err")
+		t.Fatal("should err")
 	}
 
 	// Mis-match in length
@@ -63,7 +63,7 @@ func TestCombine_invalid(t *testing.T) {
 		[]byte("ba"),
 	}
 	if _, err := Combine(parts); err == nil {
-		t.Fatalf("should err")
+		t.Fatal("should err")
 	}
 
 	// Too short
@@ -72,7 +72,7 @@ func TestCombine_invalid(t *testing.T) {
 		[]byte("b"),
 	}
 	if _, err := Combine(parts); err == nil {
-		t.Fatalf("should err")
+		t.Fatal("should err")
 	}
 
 	parts = [][]byte{
@@ -80,7 +80,7 @@ func TestCombine_invalid(t *testing.T) {
 		[]byte("foo"),
 	}
 	if _, err := Combine(parts); err == nil {
-		t.Fatalf("should err")
+		t.Fatal("should err")
 	}
 }
 
@@ -178,7 +178,7 @@ func TestPolynomial_Eval(t *testing.T) {
 		defer func() {
 			r := recover()
 			if r == nil {
-				t.Fatalf("expected panic trying to call p.evaluate(0)")
+				t.Fatal("expected panic trying to call p.evaluate(0)")
 			}
 		}()
 

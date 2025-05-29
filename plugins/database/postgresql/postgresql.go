@@ -6,13 +6,14 @@ package postgresql
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/openbao/openbao/plugins/database/postgresql/scram"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/database/helper/connutil"
@@ -143,10 +144,10 @@ func (p *PostgreSQL) getConnection(ctx context.Context) (*sql.DB, error) {
 
 func (p *PostgreSQL) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest) (dbplugin.UpdateUserResponse, error) {
 	if req.Username == "" {
-		return dbplugin.UpdateUserResponse{}, fmt.Errorf("missing username")
+		return dbplugin.UpdateUserResponse{}, errors.New("missing username")
 	}
 	if req.Password == nil && req.Expiration == nil {
-		return dbplugin.UpdateUserResponse{}, fmt.Errorf("no changes requested")
+		return dbplugin.UpdateUserResponse{}, errors.New("no changes requested")
 	}
 
 	merr := &multierror.Error{}
@@ -169,7 +170,7 @@ func (p *PostgreSQL) changeUserPassword(ctx context.Context, username string, ch
 
 	password := changePass.NewPassword
 	if password == "" {
-		return fmt.Errorf("missing password")
+		return errors.New("missing password")
 	}
 
 	p.Lock()

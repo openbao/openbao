@@ -293,7 +293,7 @@ func TestRaft_Join(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !resp.Joined {
-			t.Fatalf("failed to join raft cluster")
+			t.Fatal("failed to join raft cluster")
 		}
 	}
 
@@ -408,7 +408,7 @@ func TestRaft_NodeIDHeader(t *testing.T) {
 					t.Fatalf("err: %s", err)
 				}
 				if resp == nil {
-					t.Fatalf("nil response")
+					t.Fatal("nil response")
 				}
 
 				rniHeader := resp.Header.Get("X-Vault-Raft-Node-ID")
@@ -738,7 +738,7 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 			Name:   "rotate",
 			Rekey:  false,
 			Rotate: true,
-			// Rotate writes a new master key upgrade using the new term, which
+			// Rotate writes a new root key upgrade using the new term, which
 			// we can no longer decrypt. We must seal here.
 			ShouldSeal: true,
 		},
@@ -1088,7 +1088,7 @@ func TestRaft_Join_InitStatus(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !resp.Joined {
-			t.Fatalf("failed to join raft cluster")
+			t.Fatal("failed to join raft cluster")
 		}
 	}
 

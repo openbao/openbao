@@ -31,7 +31,6 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
@@ -306,13 +305,13 @@ type Core struct {
 	unlockInfo *unlockInformation
 
 	// generateRootProgress holds the shares until we reach enough
-	// to verify the master key
+	// to verify the root key
 	generateRootConfig   *GenerateRootConfig
 	generateRootProgress [][]byte
 	generateRootLock     sync.Mutex
 
 	// These variables holds the config and shares we have until we reach
-	// enough to verify the appropriate master key. Note that the same lock is
+	// enough to verify the appropriate root key. Note that the same lock is
 	// used; this isn't time-critical so this shouldn't be a problem.
 	barrierRekeyConfig  *SealConfig
 	recoveryRekeyConfig *SealConfig
@@ -376,6 +375,9 @@ type Core struct {
 
 	// token store is used to manage authentication tokens
 	tokenStore *TokenStore
+
+	// namespace Store is used to manage namespaces
+	namespaceStore *NamespaceStore
 
 	// identityStore is used to manage client entities
 	identityStore *IdentityStore
@@ -808,7 +810,7 @@ func (c *CoreConfig) GetServiceRegistration() sr.ServiceRegistration {
 func CreateCore(conf *CoreConfig) (*Core, error) {
 	if conf.HAPhysical != nil && conf.HAPhysical.HAEnabled() {
 		if conf.RedirectAddr == "" {
-			return nil, fmt.Errorf("missing API address, please set in configuration or via environment")
+			return nil, errors.New("missing API address, please set in configuration or via environment")
 		}
 	}
 
@@ -819,7 +821,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		conf.MaxLeaseTTL = maxLeaseTTL
 	}
 	if conf.DefaultLeaseTTL > conf.MaxLeaseTTL {
-		return nil, fmt.Errorf("cannot have DefaultLeaseTTL larger than MaxLeaseTTL")
+		return nil, errors.New("cannot have DefaultLeaseTTL larger than MaxLeaseTTL")
 	}
 
 	// Validate the advertise addr if its given to us
@@ -830,7 +832,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		}
 
 		if u.Scheme == "" {
-			return nil, fmt.Errorf("redirect address must include scheme (ex. 'http')")
+			return nil, errors.New("redirect address must include scheme (ex. 'http')")
 		}
 	}
 
@@ -1217,6 +1219,12 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 
 		return NewTokenStore(ctx, tsLogger, c, config)
 	}
+	credentialBackends[mountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		if c.tokenStore != nil {
+			return c.tokenStore, nil
+		}
+		return nil, errors.New("token store does not exist")
+	}
 
 	c.credentialBackends = credentialBackends
 }
@@ -1238,6 +1246,12 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 
 	// Cubbyhole
 	logicalBackends[mountTypeCubbyhole] = CubbyholeBackendFactory
+	logicalBackends[mountTypeNSCubbyhole] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		if c.cubbyholeBackend != nil {
+			return c.cubbyholeBackend, nil
+		}
+		return nil, errors.New("cubbyhole backend does not exist")
+	}
 
 	// System
 	logicalBackends[mountTypeSystem] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
@@ -1249,12 +1263,27 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 		}
 		return b, nil
 	}
+	logicalBackends[mountTypeNSSystem] = logicalBackends[mountTypeSystem]
 
 	// Identity
 	logicalBackends[mountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		identityLogger := logger.Named("identity")
 		c.AddLogger(identityLogger)
 		return NewIdentityStore(ctx, c, config, identityLogger)
+	}
+	logicalBackends[mountTypeNSIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		if c.identityStore != nil {
+			ns, err := namespace.FromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := c.identityStore.AddNamespaceView(c, ns, config.StorageView); err != nil {
+				return nil, fmt.Errorf("failed to register namespace to identity store: %w", err)
+			}
+			return c.identityStore, nil
+		}
+		return nil, errors.New("identity store does not exist")
 	}
 
 	c.logicalBackends = logicalBackends
@@ -1412,8 +1441,7 @@ func (c *Core) Unseal(key []byte) (bool, error) {
 // and if we don't have enough we return early.  Otherwise we get
 // back the combined key.
 //
-// For legacy shamir the combined key *is* the master key.  For
-// shamir the combined key is used to decrypt the master key
+// For shamir the combined key is used to decrypt the root key
 // read from storage.  For autoseal the combined key isn't used
 // except to verify that the stored recovery key matches.
 //
@@ -1429,10 +1457,10 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	ctx := context.Background()
 
 	if migrate && c.migrationInfo == nil {
-		return fmt.Errorf("can't perform a seal migration, no migration seal found")
+		return errors.New("can't perform a seal migration, no migration seal found")
 	}
 	if migrate && c.isRaftUnseal() {
-		return fmt.Errorf("can't perform a seal migration while joining a raft cluster")
+		return errors.New("can't perform a seal migration while joining a raft cluster")
 	}
 	if !migrate && c.migrationInfo != nil {
 		done, err := c.sealMigrated(ctx)
@@ -1440,7 +1468,7 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 			return fmt.Errorf("error checking to see if seal is migrated: %w", err)
 		}
 		if !done {
-			return fmt.Errorf("migrate option not provided and seal migration is pending")
+			return errors.New("migrate option not provided and seal migration is pending")
 		}
 	}
 
@@ -1483,7 +1511,7 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	}
 
 	// getUnsealKey returns either a recovery key (in the case of an autoseal)
-	// or a master key (legacy shamir) or an unseal key (new-style shamir).
+	// or an unseal key (new-style shamir).
 	combinedKey, err := c.getUnsealKey(ctx, sealToUse)
 	if err != nil || combinedKey == nil {
 		return err
@@ -1495,19 +1523,17 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	if c.isRaftUnseal() {
 		return c.unsealWithRaft(combinedKey)
 	}
-	masterKey, err := c.unsealKeyToMasterKeyPreUnseal(ctx, sealToUse, combinedKey)
+	rootKey, err := c.unsealKeyToRootKeyPreUnseal(ctx, sealToUse, combinedKey)
 	if err != nil {
 		return err
 	}
-	return c.unsealInternal(ctx, masterKey)
+	return c.unsealInternal(ctx, rootKey)
 }
 
 func (c *Core) unsealWithRaft(combinedKey []byte) error {
 	ctx := context.Background()
 
 	if c.seal.BarrierType() == wrapping.WrapperTypeShamir {
-		// If this is a legacy shamir seal this serves no purpose but it
-		// doesn't hurt.
 		shamirWrapper, err := c.seal.GetShamirWrapper()
 		if err == nil {
 			err = shamirWrapper.SetAesGcmKeyBytes(combinedKey)
@@ -1541,32 +1567,32 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 	}
 
 	go func() {
-		var masterKey []byte
+		var rootKey []byte
 		keyringFound := false
 
 		// Wait until we at least have the keyring before we attempt to
 		// unseal the node.
 		for {
 			if !keyringFound {
-				keys, err := c.underlyingPhysical.List(ctx, keyringPrefix)
+				entry, err := c.underlyingPhysical.Get(ctx, keyringPath)
 				if err != nil {
 					c.logger.Error("failed to list physical keys", "error", err)
 					return
 				}
-				if strutil.StrListContains(keys, "keyring") {
+				if entry != nil {
 					keyringFound = true
 				}
 			}
-			if keyringFound && len(masterKey) == 0 {
+			if keyringFound && len(rootKey) == 0 {
 				var err error
-				masterKey, err = c.unsealKeyToMasterKeyPreUnseal(ctx, c.seal, combinedKey)
+				rootKey, err = c.unsealKeyToRootKeyPreUnseal(ctx, c.seal, combinedKey)
 				if err != nil {
-					c.logger.Error("failed to read master key", "error", err)
+					c.logger.Error("failed to read root key", "error", err)
 					return
 				}
 			}
-			if keyringFound && len(masterKey) > 0 {
-				err := c.unsealInternal(ctx, masterKey)
+			if keyringFound && len(rootKey) > 0 {
+				err := c.unsealInternal(ctx, rootKey)
 				if err != nil {
 					c.logger.Error("failed to unseal", "error", err)
 				}
@@ -1627,7 +1653,7 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 		return nil, err
 	}
 	if config == nil {
-		return nil, fmt.Errorf("failed to obtain seal/recovery configuration")
+		return nil, errors.New("failed to obtain seal/recovery configuration")
 	}
 
 	// Check if we don't have enough keys to unlock, proceed through the rest of
@@ -1668,7 +1694,7 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 // sealMigrated must be called with the stateLock held.  It returns true if
 // the seal configured in HCL and the seal configured in storage match.
 // For the auto->auto same seal migration scenario, it will return false even
-// if the preceding conditions are true but we cannot decrypt the master key
+// if the preceding conditions are true but we cannot decrypt the root key
 // in storage using the configured seal.
 func (c *Core) sealMigrated(ctx context.Context) (bool, error) {
 	if atomic.LoadUint32(c.sealMigrationDone) == 1 {
@@ -1768,7 +1794,7 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 		}
 		err = shamirWrapper.SetAesGcmKeyBytes(recoveryKey)
 		if err != nil {
-			return fmt.Errorf("failed to set master key in seal: %w", err)
+			return fmt.Errorf("failed to set root key in seal: %w", err)
 		}
 
 		barrierKeys, err := c.migrationInfo.seal.GetStoredKeys(ctx)
@@ -1783,26 +1809,25 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 	case c.seal.RecoveryKeySupported():
 		c.logger.Info("migrating from shamir to auto-unseal", "to", c.seal.BarrierType())
 		// Migration is happening from shamir -> auto. In this case use the shamir
-		// combined key that was used to store the master key as the new recovery key.
+		// combined key that was used to store the root key as the new recovery key.
 		if err := c.seal.SetRecoveryKey(ctx, c.migrationInfo.unsealKey); err != nil {
 			return fmt.Errorf("error setting new recovery key information: %w", err)
 		}
 
-		// Generate a new master key
-		newMasterKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+		// Generate a new root key
+		newRootKey, err := c.barrier.GenerateKey(c.secureRandomReader)
 		if err != nil {
-			return fmt.Errorf("error generating new master key: %w", err)
+			return fmt.Errorf("error generating new root key: %w", err)
 		}
 
-		// Rekey the barrier.  This handles the case where the shamir seal we're
-		// migrating from was a legacy seal without a stored master key.
-		if err := c.barrier.Rekey(ctx, newMasterKey); err != nil {
+		// Rekey the barrier.
+		if err := c.barrier.Rekey(ctx, newRootKey); err != nil {
 			return fmt.Errorf("error rekeying barrier during migration: %w", err)
 		}
 
-		// Store the new master key
-		if err := c.seal.SetStoredKeys(ctx, [][]byte{newMasterKey}); err != nil {
-			return fmt.Errorf("error storing new master key: %w", err)
+		// Store the new root key
+		if err := c.seal.SetStoredKeys(ctx, [][]byte{newRootKey}); err != nil {
+			return fmt.Errorf("error storing new root key: %w", err)
 		}
 
 	default:
@@ -1821,11 +1846,11 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 	return nil
 }
 
-// unsealInternal takes in the master key and attempts to unseal the barrier.
+// unsealInternal takes in the root key and attempts to unseal the barrier.
 // N.B.: This must be called with the state write lock held.
-func (c *Core) unsealInternal(ctx context.Context, masterKey []byte) error {
+func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 	// Attempt to unlock
-	if err := c.barrier.Unseal(ctx, masterKey); err != nil {
+	if err := c.barrier.Unseal(ctx, rootKey); err != nil {
 		return err
 	}
 
@@ -2144,7 +2169,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 
 		if err := c.preSeal(); err != nil {
 			c.logger.Error("pre-seal teardown failed", "error", err)
-			return fmt.Errorf("internal error")
+			return errors.New("internal error")
 		}
 	} else {
 		// If we are keeping the lock we already have the state write lock
@@ -2247,6 +2272,9 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		return err
 	}
 	if err := c.setupPluginCatalog(ctx); err != nil {
+		return err
+	}
+	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
 	if err := c.loadMounts(ctx); err != nil {
@@ -2477,6 +2505,12 @@ func (c *Core) preSeal() error {
 	if err := c.unloadMounts(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error unloading mounts: %w", err))
 	}
+	if err := c.teardownLoginMFA(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA: %w", err))
+	}
+	if err := c.teardownNamespaceStore(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down namespace store: %w", err))
+	}
 
 	if c.autoRotateCancel != nil {
 		c.autoRotateCancel()
@@ -2490,10 +2524,6 @@ func (c *Core) preSeal() error {
 
 	if seal, ok := c.seal.(*autoSeal); ok {
 		seal.StopHealthCheck()
-	}
-
-	if err := c.teardownLoginMFA(); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA, error: %w", err))
 	}
 
 	preSealPhysical(c)
@@ -2652,16 +2682,8 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 	// c.migrationInfo.seal (old seal) and c.seal (new seal) populated.
 	unwrapSeal.SetCore(c)
 
-	// No stored recovery seal config found, what about the legacy recovery config?
 	if existBarrierSealConfig.Type != wrapping.WrapperTypeShamir.String() && existRecoverySealConfig == nil {
-		entry, err := c.physical.Get(ctx, recoverySealConfigPath)
-		if err != nil {
-			return fmt.Errorf("failed to read %q recovery seal configuration: %w", existBarrierSealConfig.Type, err)
-		}
-		if entry == nil {
-			return errors.New("Recovery seal configuration not found for existing seal")
-		}
-		return errors.New("Cannot migrate seals while using a legacy recovery seal config")
+		return errors.New("Recovery seal configuration not found for existing seal")
 	}
 
 	c.migrationInfo = &migrationInformation{
@@ -2753,25 +2775,25 @@ func (c *Core) adjustSealConfigDuringMigration(existBarrierSealConfig, existReco
 }
 
 func (c *Core) unsealKeyToRootKeyPostUnseal(ctx context.Context, combinedKey []byte) ([]byte, error) {
-	return c.unsealKeyToMasterKey(ctx, c.seal, combinedKey, true, false)
+	return c.unsealKeyToRootKey(ctx, c.seal, combinedKey, true, false)
 }
 
-func (c *Core) unsealKeyToMasterKeyPreUnseal(ctx context.Context, seal Seal, combinedKey []byte) ([]byte, error) {
-	return c.unsealKeyToMasterKey(ctx, seal, combinedKey, false, true)
+func (c *Core) unsealKeyToRootKeyPreUnseal(ctx context.Context, seal Seal, combinedKey []byte) ([]byte, error) {
+	return c.unsealKeyToRootKey(ctx, seal, combinedKey, false, true)
 }
 
-// unsealKeyToMasterKey takes a key provided by the user, either a recovery key
+// unsealKeyToRootKey takes a key provided by the user, either a recovery key
 // if using an autoseal or an unseal key with Shamir.  It returns a nil error
-// if the key is valid and an error otherwise. It also returns the master key
+// if the key is valid and an error otherwise. It also returns the root key
 // that can be used to unseal the barrier.
 // If useTestSeal is true, seal will not be modified; this is used when not
 // invoked as part of an unseal process.  Otherwise in the non-legacy shamir
 // case the combinedKey will be set in the seal, which means subsequent attempts
-// to use the seal to read the master key will succeed, assuming combinedKey is
+// to use the seal to read the root key will succeed, assuming combinedKey is
 // valid.
-// If allowMissing is true, a failure to find the master key in storage results
-// in a nil error and a nil master key being returned.
-func (c *Core) unsealKeyToMasterKey(ctx context.Context, seal Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
+// If allowMissing is true, a failure to find the root key in storage results
+// in a nil error and a nil root key being returned.
+func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
 	switch seal.StoredKeysSupported() {
 	case vaultseal.StoredKeysSupportedGeneric:
 		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
@@ -2822,11 +2844,8 @@ func (c *Core) unsealKeyToMasterKey(ctx context.Context, seal Seal, combinedKey 
 			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
 		}
 		return storedKeys[0], nil
-
-	case vaultseal.StoredKeysNotSupported:
-		return combinedKey, nil
 	}
-	return nil, fmt.Errorf("invalid seal")
+	return nil, errors.New("invalid seal")
 }
 
 // IsInSealMigrationMode returns true if we're configured to perform a seal migration,
@@ -2964,11 +2983,11 @@ func (c *Core) ExistCustomResponseHeader(header string) bool {
 func (c *Core) ReloadCustomResponseHeaders() error {
 	conf := c.rawConfig.Load()
 	if conf == nil {
-		return fmt.Errorf("failed to load core raw config")
+		return errors.New("failed to load core raw config")
 	}
 	lns := conf.(*server.Config).Listeners
 	if lns == nil {
-		return fmt.Errorf("no listener configured")
+		return errors.New("no listener configured")
 	}
 
 	uiHeaders, err := c.UIHeaders()
@@ -3100,6 +3119,20 @@ func (c *Core) MatchingMount(ctx context.Context, reqPath string) string {
 	return c.router.MatchingMount(ctx, reqPath)
 }
 
+// ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'
+// header combined with the request path, returning the namespace and the
+// "trimmed" request path devoid of any namespace components.
+func (c *Core) ResolveNamespaceFromRequest(nsHeader, reqPath string) (*namespace.Namespace, string) {
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
+
+	if c.Sealed() || c.standby || c.namespaceStore == nil {
+		return nil, ""
+	}
+
+	return c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, reqPath)
+}
+
 func (c *Core) setupQuotas(ctx context.Context) error {
 	if c.quotaManager == nil {
 		return nil
@@ -3206,16 +3239,20 @@ func (c *Core) isPrimary() bool {
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {
 	eConfigs := make([]*mfa.MFAEnforcementConfig, 0)
-	allNamespaces := c.collectNamespaces()
+	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	if err != nil {
+		return err
+	}
+
 	for _, ns := range allNamespaces {
 		err := c.loginMFABackend.loadMFAMethodConfigs(ctx, ns)
 		if err != nil {
-			return fmt.Errorf("error loading MFA method Config, namespaceid %s, error: %w", ns.ID, err)
+			return fmt.Errorf("error loading MFA method Config, namespace %s, error: %w", ns.Path, err)
 		}
 
 		loadedConfigs, err := c.loginMFABackend.loadMFAEnforcementConfigs(ctx, ns)
 		if err != nil {
-			return fmt.Errorf("error loading MFA enforcement Config, namespaceid %s, error: %w", ns.ID, err)
+			return fmt.Errorf("error loading MFA enforcement Config, namespace %s, error: %w", ns.Path, err)
 		}
 
 		eConfigs = append(eConfigs, loadedConfigs...)
@@ -3310,33 +3347,19 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 		return nil
 	}
 
-	// get the list of namespaces of locked users from locked users path in storage
-	nsIDs, err := c.barrier.List(ctx, coreLockedUsersPath)
+	// get all namespaces
+	nsList, err := c.namespaceStore.ListAllNamespaces(ctx, true)
 	if err != nil {
 		return err
 	}
 
 	totalLockedUsersCount := 0
-	for _, nsID := range nsIDs {
-		// get the list of mount accessors of locked users for each namespace
-		mountAccessors, err := c.barrier.List(ctx, coreLockedUsersPath+nsID)
+	for _, ns := range nsList {
+		nsLockedUsers, err := c.runLockedUserEntryUpdatesForNamespace(ctx, ns)
 		if err != nil {
 			return err
 		}
-
-		// update the entries for locked users for each mount accessor
-		// if storage entry is stale i.e; the lockout duration has passed
-		// remove this entry from storage and userFailedLoginInfo map
-		// else check if the userFailedLoginInfo map has correct failed login information
-		// if incorrect, update the entry in userFailedLoginInfo map
-		for _, mountAccessorPath := range mountAccessors {
-			mountAccessor := strings.TrimSuffix(mountAccessorPath, "/")
-			lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, mountAccessor, coreLockedUsersPath+nsID+mountAccessorPath)
-			if err != nil {
-				return err
-			}
-			totalLockedUsersCount = totalLockedUsersCount + lockedAliasesCount
-		}
+		totalLockedUsersCount += nsLockedUsers
 	}
 
 	// emit locked user count metrics
@@ -3344,11 +3367,47 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 	return nil
 }
 
-// runLockedUserEntryUpdatesForMountAccessor updates the storage entry for each locked user (alias name)
-// if the entry is stale, it removes it from storage and userFailedLoginInfo map if present
-// if the entry is not stale, it updates the userFailedLoginInfo map with correct values for entry if incorrect
-func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, mountAccessor string, path string) (int, error) {
+// runLockedUserEntryUpdatesForNamespace runs updates for locked users storage entries
+// for a single namespace if the specified namespace was deleted, all login entries are also deleted.
+func (c *Core) runLockedUserEntryUpdatesForNamespace(ctx context.Context, namespace *namespace.Namespace) (int, error) {
+	// get the list of mount accessors of locked users of a namespace
+	view := NamespaceView(c.barrier, namespace).SubView(coreLockedUsersPath)
+	mountAccessors, err := view.List(ctx, "")
+	if err != nil {
+		return 0, err
+	}
+
+	ns, err := c.namespaceStore.GetNamespace(ctx, namespace.UUID)
+	if err != nil {
+		return 0, err
+	}
+
+	namespaceLockedUsers := 0
+	// update the entries for locked users for each mount accessor
+	// if storage entry is stale i.e; the lockout duration has
+	// passed or namespace was deleted then remove this entry
+	// from storage and userFailedLoginInfo map else check if
+	// the userFailedLoginInfo map has correct failed login information
+	// if incorrect, update the entry in userFailedLoginInfo map
+	for _, mountAccessorPath := range mountAccessors {
+		lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, view.SubView(mountAccessorPath), mountAccessorPath, ns == nil)
+		if err != nil {
+			return namespaceLockedUsers, err
+		}
+		namespaceLockedUsers += lockedAliasesCount
+	}
+
+	return namespaceLockedUsers, nil
+}
+
+// runLockedUserEntryUpdatesForMountAccessor updates the storage entry
+// for each locked user (alias name). Removes stale entries or entries
+// belonging to deleted namespace from storage and userFailedLoginInfo map.
+// For valid entries userFailedLoginInfo map gets updated with correct
+// values for entry if they were incorrect before.
+func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, view logical.Storage, mountAccessor string, forceDelete bool) (int, error) {
 	// get mount entry for mountAccessor
+	mountAccessor = strings.TrimSuffix(mountAccessor, "/")
 	mountEntry := c.router.MatchingMountByAccessor(mountAccessor)
 	if mountEntry == nil {
 		mountEntry = &MountEntry{}
@@ -3357,7 +3416,7 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, mo
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
 
 	// get the list of aliases for mount accessor
-	aliases, err := c.barrier.List(ctx, path)
+	aliases, err := view.List(ctx, "")
 	if err != nil {
 		return 0, err
 	}
@@ -3371,7 +3430,7 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, mo
 			mountAccessor: mountAccessor,
 		}
 
-		existingEntry, err := c.barrier.Get(ctx, path+alias)
+		existingEntry, err := view.Get(ctx, alias)
 		if err != nil {
 			return 0, err
 		}
@@ -3393,11 +3452,12 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, mo
 		failedLoginInfoFromMap := c.LocalGetUserFailedLoginInfo(ctx, loginUserInfoKey)
 
 		// check if the storage entry for locked user is stale
-		if time.Now().After(lastFailedLoginTimeFromStorageEntry.Add(lockoutDurationFromConfiguration)) {
+		// or force delete if the namespace is being deleted
+		if time.Now().After(lastFailedLoginTimeFromStorageEntry.Add(lockoutDurationFromConfiguration)) || forceDelete {
 			// stale entry, remove from storage
 			// leaving this as it is as this happens on the active node
 			// also handles case where namespace is deleted
-			if err := c.barrier.Delete(ctx, path+alias); err != nil {
+			if err := view.Delete(ctx, alias); err != nil {
 				return 0, err
 			}
 			// remove entry for this user from userFailedLoginInfo map if present as the user is not locked
@@ -3662,7 +3722,7 @@ func (c *Core) doResolveRoleLocked(ctx context.Context, mountPoint string, match
 
 // ResolveRoleForQuotas looks for any quotas requiring a role for early
 // computation in the RateLimitQuotaWrapping handler.
-func (c *Core) ResolveRoleForQuotas(ctx context.Context, req *quotas.Request) (bool, error) {
+func (c *Core) ResolveRoleForQuotas(req *quotas.Request) (bool, error) {
 	if c.quotaManager == nil {
 		return false, nil
 	}
@@ -3716,7 +3776,7 @@ func (c *Core) aliasNameFromLoginRequest(ctx context.Context, req *logical.Reque
 // ListMounts will provide a slice containing a deep copy each mount entry
 func (c *Core) ListMounts() ([]*MountEntry, error) {
 	if c.Sealed() {
-		return nil, fmt.Errorf("vault is sealed")
+		return nil, errors.New("vault is sealed")
 	}
 
 	c.mountsLock.RLock()
@@ -3739,7 +3799,7 @@ func (c *Core) ListMounts() ([]*MountEntry, error) {
 // ListAuths will provide a slice containing a deep copy each auth entry
 func (c *Core) ListAuths() ([]*MountEntry, error) {
 	if c.Sealed() {
-		return nil, fmt.Errorf("vault is sealed")
+		return nil, errors.New("vault is sealed")
 	}
 
 	c.authLock.RLock()
@@ -3803,12 +3863,12 @@ func (c *Core) ListenerAddresses() ([]string, error) {
 
 	conf := c.rawConfig.Load()
 	if conf == nil {
-		return nil, fmt.Errorf("failed to load core raw config")
+		return nil, errors.New("failed to load core raw config")
 	}
 
 	listeners := conf.(*server.Config).Listeners
 	if listeners == nil {
-		return nil, fmt.Errorf("no listener configured")
+		return nil, errors.New("no listener configured")
 	}
 
 	for _, listener := range listeners {

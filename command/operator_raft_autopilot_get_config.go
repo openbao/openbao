@@ -19,7 +19,6 @@ var (
 
 type OperatorRaftAutopilotGetConfigCommand struct {
 	*BaseCommand
-	flagDRToken string
 }
 
 func (c *OperatorRaftAutopilotGetConfigCommand) Synopsis() string {
@@ -37,20 +36,7 @@ Usage: bao operator raft autopilot get-config
 }
 
 func (c *OperatorRaftAutopilotGetConfigCommand) Flags() *FlagSets {
-	set := c.flagSet(FlagSetHTTP | FlagSetOutputFormat)
-
-	f := set.NewFlagSet("Command Options")
-
-	f.StringVar(&StringVar{
-		Name:       "dr-token",
-		Target:     &c.flagDRToken,
-		Default:    "",
-		EnvVar:     "",
-		Completion: complete.PredictAnything,
-		Usage:      "DR operation token used to authorize this request (if a DR secondary node).",
-	})
-
-	return set
+	return c.flagSet(FlagSetHTTP | FlagSetOutputFormat)
 }
 
 func (c *OperatorRaftAutopilotGetConfigCommand) AutocompleteArgs() complete.Predictor {
@@ -84,12 +70,7 @@ func (c *OperatorRaftAutopilotGetConfigCommand) Run(args []string) int {
 	}
 
 	var config *api.AutopilotConfig
-	switch {
-	case c.flagDRToken != "":
-		config, err = client.Sys().RaftAutopilotConfigurationWithDRToken(c.flagDRToken)
-	default:
-		config, err = client.Sys().RaftAutopilotConfiguration()
-	}
+	config, err = client.Sys().RaftAutopilotConfiguration()
 
 	if config == nil {
 		return 0

@@ -14,5 +14,8 @@
     "paths": [
       "../core"
     ]
+  },
+  "scarfSettings": {
+    "enabled": false
   }
 }

@@ -1,0 +1,3 @@
+```release-note:improvement
+core/policies: Add check-and-set support for modifying policies, allowing for protection against concurrent modifications.
+```

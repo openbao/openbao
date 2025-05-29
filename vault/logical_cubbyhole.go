@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -27,7 +28,7 @@ func CubbyholeBackendFactory(ctx context.Context, conf *logical.BackendConfig) (
 	b.Backend.Paths = append(b.Backend.Paths, b.paths()...)
 
 	if conf == nil {
-		return nil, fmt.Errorf("configuration passed into backend is nil")
+		return nil, errors.New("configuration passed into backend is nil")
 	}
 	b.Backend.Setup(ctx, conf)
 
@@ -41,8 +42,7 @@ func CubbyholeBackendFactory(ctx context.Context, conf *logical.BackendConfig) (
 type CubbyholeBackend struct {
 	*framework.Backend
 
-	saltUUID    string
-	storageView logical.Storage
+	saltUUID string
 }
 
 func (b *CubbyholeBackend) paths() []*framework.Path {
@@ -109,7 +109,7 @@ func (b *CubbyholeBackend) paths() []*framework.Path {
 
 func (b *CubbyholeBackend) revoke(ctx context.Context, view BarrierView, saltedToken string) error {
 	if saltedToken == "" {
-		return fmt.Errorf("client token empty during revocation")
+		return errors.New("client token empty during revocation")
 	}
 
 	if err := logical.ClearView(ctx, view.SubView(saltedToken+"/")); err != nil {
@@ -130,13 +130,13 @@ func (b *CubbyholeBackend) handleExistenceCheck(ctx context.Context, req *logica
 
 func (b *CubbyholeBackend) handleRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
+		return nil, errors.New("client token empty")
 	}
 
 	path := data.Get("path").(string)
 
 	if path == "" {
-		return nil, fmt.Errorf("missing path")
+		return nil, errors.New("missing path")
 	}
 
 	// Read the path
@@ -166,17 +166,17 @@ func (b *CubbyholeBackend) handleRead(ctx context.Context, req *logical.Request,
 
 func (b *CubbyholeBackend) handleWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
+		return nil, errors.New("client token empty")
 	}
 	// Check that some fields are given
 	if len(req.Data) == 0 {
-		return nil, fmt.Errorf("missing data fields")
+		return nil, errors.New("missing data fields")
 	}
 
 	path := data.Get("path").(string)
 
 	if path == "" {
-		return nil, fmt.Errorf("missing path")
+		return nil, errors.New("missing path")
 	}
 
 	// JSON encode the data
@@ -202,7 +202,7 @@ func (b *CubbyholeBackend) handleWrite(ctx context.Context, req *logical.Request
 
 func (b *CubbyholeBackend) handleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
+		return nil, errors.New("client token empty")
 	}
 
 	path := data.Get("path").(string)
@@ -217,7 +217,7 @@ func (b *CubbyholeBackend) handleDelete(ctx context.Context, req *logical.Reques
 
 func (b *CubbyholeBackend) handleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
-		return nil, fmt.Errorf("client token empty")
+		return nil, errors.New("client token empty")
 	}
 
 	// Right now we only handle directories, so ensure it ends with / We also

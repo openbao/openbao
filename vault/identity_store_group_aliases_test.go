@@ -166,7 +166,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v\n", resp, err)
 	}
 	if resp == nil || resp.Data["id"].(string) != userpassGroupAliasID {
-		t.Fatalf("failed to read userpass group alias")
+		t.Fatal("failed to read userpass group alias")
 	}
 
 	// Attach a different alias to the same group, overriding the previous one
@@ -193,7 +193,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v\n", resp, err)
 	}
 	if resp == nil || resp.Data["id"].(string) != ldapGroupAliasID {
-		t.Fatalf("failed to read ldap group alias")
+		t.Fatal("failed to read ldap group alias")
 	}
 
 	// Ensure previous alias is gone
@@ -205,7 +205,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v\n", resp, err)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 }
 
@@ -258,7 +258,7 @@ func TestIdentityStore_GroupAliasDeletionOnGroupDeletion(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 }
 
@@ -338,7 +338,7 @@ func TestIdentityStore_GroupAliases_CRUD(t *testing.T) {
 	}
 
 	if resp != nil {
-		t.Fatalf("failed to delete group alias")
+		t.Fatal("failed to delete group alias")
 	}
 }
 
@@ -364,10 +364,10 @@ func TestIdentityStore_GroupAliases_MemDBIndexes(t *testing.T) {
 		ParentGroupIDs:  []string{"testparentgroupid1", "testparentgroupid2"},
 		MemberEntityIDs: []string{"testentityid1", "testentityid2"},
 		Policies:        []string{"testpolicy1", "testpolicy2"},
-		BucketKey:       i.groupPacker.BucketKey("testgroupid"),
+		BucketKey:       i.groupPacker(ctx).BucketKey("testgroupid"),
 	}
 
-	txn := i.db.Txn(true)
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = i.MemDBUpsertAliasInTxn(txn, group.Alias, true)
 	if err != nil {
@@ -379,7 +379,7 @@ func TestIdentityStore_GroupAliases_MemDBIndexes(t *testing.T) {
 	}
 	txn.Commit()
 
-	alias, err := i.MemDBAliasByID("testgroupaliasid", false, true)
+	alias, err := i.MemDBAliasByID(ctx, "testgroupaliasid", false, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -387,7 +387,7 @@ func TestIdentityStore_GroupAliases_MemDBIndexes(t *testing.T) {
 		t.Fatalf("bad: group alias: %#v\n", alias)
 	}
 
-	group, err = i.MemDBGroupByAliasID("testgroupaliasid", false)
+	group, err = i.MemDBGroupByAliasID(ctx, "testgroupaliasid", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +395,7 @@ func TestIdentityStore_GroupAliases_MemDBIndexes(t *testing.T) {
 		t.Fatalf("bad: group: %#v\n", group)
 	}
 
-	aliasByFactors, err := i.MemDBAliasByFactors(group.Alias.MountAccessor, group.Alias.Name, false, true)
+	aliasByFactors, err := i.MemDBAliasByFactors(ctx, group.Alias.MountAccessor, group.Alias.Name, false, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -435,7 +435,7 @@ func TestIdentityStore_GroupAliases_AliasOnInternalGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 }
 

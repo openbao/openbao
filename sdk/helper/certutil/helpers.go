@@ -509,9 +509,9 @@ func ParsePublicKeyPEM(data []byte) (interface{}, error) {
 func AddPolicyIdentifiers(data *CreationBundle, certTemplate *x509.Certificate) {
 	oidOnly := true
 	for _, oidStr := range data.Params.PolicyIdentifiers {
-		oid, err := StringToOid(oidStr)
+		oid, err := x509.ParseOID(oidStr)
 		if err == nil {
-			certTemplate.PolicyIdentifiers = append(certTemplate.PolicyIdentifiers, oid)
+			certTemplate.Policies = append(certTemplate.Policies, oid)
 		}
 		if err != nil {
 			oidOnly = false
@@ -906,6 +906,20 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 		notBefore = time.Now().Add(-1 * data.Params.NotBeforeDuration)
 	} else if !data.Params.NotBefore.IsZero() {
 		notBefore = data.Params.NotBefore
+	}
+
+	// Verify that notBefore is older than notAfter.
+	if notBefore.After(data.Params.NotAfter) {
+		return nil, errutil.UserError{
+			Err: fmt.Sprintf("The certificate's Not Before (%v) is later than the certificate's Not After (%v)", notBefore.UTC().Format(time.RFC3339Nano), data.Params.NotAfter.UTC().Format(time.RFC3339Nano)),
+		}
+	}
+
+	// Disallow zero duration certificate.
+	if notBefore.Equal(data.Params.NotAfter) {
+		return nil, errutil.UserError{
+			Err: fmt.Sprintf("The certificate's Not Before (%v) is equal to the certificate's Not After (%v)", notBefore.UTC().Format(time.RFC3339Nano), data.Params.NotAfter.UTC().Format(time.RFC3339Nano)),
+		}
 	}
 
 	certTemplate := &x509.Certificate{
@@ -1734,7 +1748,7 @@ func CreateFreshestCRLExt(paths []string) (pkix.Extension, error) {
 // IsCA, MaxPathLen or error. If MaxPathLen was not set, a value of -1 will be returned.
 func ParseBasicConstraintExtension(ext pkix.Extension) (bool, int, error) {
 	if !ext.Id.Equal(ExtensionBasicConstraintsOID) {
-		return false, -1, fmt.Errorf("passed in extension was not a basic constraint extension")
+		return false, -1, errors.New("passed in extension was not a basic constraint extension")
 	}
 
 	// All elements are set to optional here, as it is possible that we receive a CSR with the extension

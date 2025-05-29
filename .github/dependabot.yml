@@ -1,15 +1,29 @@
 version: 2
 
 updates:
-  - package-ecosystem: "github-actions"
+  - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "daily"
-  - package-ecosystem: "npm"
-    directory: "/website"
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/"
+      - "/.github/actions/*"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/"
     schedule:
       interval: "weekly"
   - package-ecosystem: "npm"
     directory: "/ui"
+    schedule:
+      interval: "weekly"
+    labels:
+      - dependencies
+      - javascript
+      - ui
+  - package-ecosystem: "npm"
+    directory: "/website"
     schedule:
       interval: "weekly"

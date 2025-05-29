@@ -37,7 +37,10 @@ type barrierView struct {
 	readOnlyErrLock sync.RWMutex
 }
 
-var _ BarrierView = &barrierView{}
+var (
+	_ BarrierView           = &barrierView{}
+	_ logical.ClearableView = &barrierView{}
+)
 
 // TransactionalBarrierView is like BarrierView but transactional.
 type TransactionalBarrierView interface {
@@ -70,6 +73,7 @@ var (
 	_ BarrierView            = &barrierViewTransaction{}
 	_ logical.Transaction    = &barrierViewTransaction{}
 	_ BarrierViewTransaction = &barrierViewTransaction{}
+	_ logical.ClearableView  = &barrierViewTransaction{}
 )
 
 // NewBarrierView takes an underlying security barrier and returns

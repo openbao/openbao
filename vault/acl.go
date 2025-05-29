@@ -5,13 +5,17 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/armon/go-radix"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/helper/identity"
@@ -64,6 +68,8 @@ type SentinelResults struct {
 	GrantingPolicies []logical.PolicyInfo
 }
 
+const limitParameterName = "limit"
+
 // NewACL is used to construct a policy based ACL from a set of policies.
 func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 	// Initialize
@@ -92,17 +98,17 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 		switch policy.Type {
 		case PolicyTypeACL:
 		default:
-			return nil, fmt.Errorf("unable to parse policy (wrong type)")
+			return nil, errors.New("unable to parse policy (wrong type)")
 		}
 
 		// Check if this is root
 		if policy.Name == "root" {
 			if ns.ID != namespace.RootNamespaceID {
-				return nil, fmt.Errorf("root policy is only allowed in root namespace")
+				return nil, errors.New("root policy is only allowed in root namespace")
 			}
 
 			if len(policies) != 1 {
-				return nil, fmt.Errorf("other policies present along with root")
+				return nil, errors.New("other policies present along with root")
 			}
 			a.root = true
 		}
@@ -111,6 +117,11 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 			var raw interface{}
 			var ok bool
 			var tree *radix.Tree
+
+			if !pc.Expiration.IsZero() && time.Now().After(pc.Expiration) {
+				// Skip adding expired paths.
+				continue
+			}
 
 			switch {
 			case pc.HasSegmentWildcards:
@@ -254,6 +265,12 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 				existingPerms.MFAMethods = strutil.RemoveDuplicates(existingPerms.MFAMethods, false)
 			}
 
+			// Lowest set pagination limit wins.
+			if pc.Permissions.PaginationLimit > 0 {
+				if existingPerms.PaginationLimit <= 0 || pc.Permissions.PaginationLimit < existingPerms.PaginationLimit {
+					existingPerms.PaginationLimit = pc.Permissions.PaginationLimit
+				}
+			}
 		INSERT:
 			switch {
 			case pc.HasSegmentWildcards:
@@ -301,6 +318,9 @@ func (a *ACL) Capabilities(ctx context.Context, path string) (pathCapabilities [
 	}
 	if capabilities&PatchCapabilityInt > 0 {
 		pathCapabilities = append(pathCapabilities, PatchCapability)
+	}
+	if capabilities&ScanCapabilityInt > 0 {
+		pathCapabilities = append(pathCapabilities, ScanCapability)
 	}
 
 	// If "deny" is explicitly set or if the path has no capabilities at all,
@@ -362,7 +382,7 @@ func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheck
 		capabilities = permissions.CapabilitiesBitmap
 		goto CHECK
 	}
-	if op == logical.ListOperation {
+	if op == logical.ListOperation || op == logical.ScanOperation {
 		raw, ok = a.exactRules.Get(strings.TrimSuffix(path, "/"))
 		if ok {
 			permissions = raw.(*ACLPermissions)
@@ -371,9 +391,9 @@ func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheck
 		}
 	}
 
-	// List operations need to check without the trailing slash first, because
-	// there could be other rules with trailing wildcards that will match the
-	// path
+	// List and Scan operations need to check without the trailing slash first,
+	// because there could be other rules with trailing wildcards that will
+	// match the path.
 	if op == logical.ListOperation && strings.HasSuffix(path, "/") {
 		permissions = a.CheckAllowedFromNonExactPaths(strings.TrimSuffix(path, "/"), false)
 		if permissions != nil {
@@ -427,6 +447,9 @@ CHECK:
 	case logical.PatchOperation:
 		operationAllowed = capabilities&PatchCapabilityInt > 0
 		grantingPolicies = permissions.GrantingPoliciesMap[PatchCapabilityInt]
+	case logical.ScanOperation:
+		operationAllowed = capabilities&ScanCapabilityInt > 0
+		grantingPolicies = permissions.GrantingPoliciesMap[ScanCapabilityInt]
 
 	// These three re-use UpdateCapabilityInt since that's the most appropriate
 	// capability/operation mapping
@@ -520,6 +543,88 @@ CHECK:
 			// deny
 			if ok && !valueInParameterList(value, valueSlice) {
 				return
+			}
+		}
+	} else if op == logical.ListOperation || op == logical.ScanOperation {
+		if permissions.PaginationLimit > 0 {
+			valRaw, ok := req.Data[limitParameterName]
+			if !ok {
+				// For callers unaware of pagination, deny the request IF
+				// limit is a required parameter; this prevents integrations
+				// from silently continuing to work if they were not expecting
+				// to have pagination while also allowing them to continue
+				// working if the operator just wishes to enable pagination
+				// for them without breakage.
+
+				limitRequiredParameter := false
+				for _, parameter := range permissions.RequiredParameters {
+					if strings.ToLower(parameter) == limitParameterName {
+						limitRequiredParameter = true
+						break
+					}
+				}
+
+				if limitRequiredParameter {
+					return
+				}
+
+				// Otherwise, update our field value to the maximum allowed.
+				if req.Data == nil {
+					// A list operation may have no parameters so we need to
+					// populate this explicitly.
+					req.Data = make(map[string]interface{}, 1)
+				}
+				req.Data[limitParameterName] = strconv.Itoa(permissions.PaginationLimit)
+			} else {
+				// Value was provided on the API request and we have a
+				// non-zero limit so we know it was intended to be a limit
+				// operation on a paginated endpoint. Parse the value and
+				// ACL accordingly.
+				val, err := parseutil.SafeParseInt(valRaw)
+				if err != nil {
+					// Unable to parse provided limit as an integer; we assume
+					// the policy author is correct that this is a regular list
+					// endpoint which (optionally) takes a limit. The one
+					// exception is if the user has passed the literal value
+					// "max" to signify the maximum allowed page size, which
+					// works even if the parameter is required (versus leaving
+					// it off).
+					valStr, ok := valRaw.(string)
+					if !ok || valStr != "max" {
+						// Request denied.
+						return
+					}
+
+					// Otherwise, update our field value to the maximum allowed.
+					req.Data[limitParameterName] = strconv.Itoa(permissions.PaginationLimit)
+				} else {
+					// Deny if we exceed our allotted page size.
+					if val > permissions.PaginationLimit {
+						return
+					}
+				}
+			}
+		} else {
+			// Check if we have the value `max` and set it to 0. This allows
+			// pagination-aware applications to read all data via the same
+			// semantics, without knowing ahead of time whether they are
+			// pagination-limited on a given endpoint: they can call with
+			// after=""&limit=max and then retry with after=<last>&limit=max
+			// and see if any results are returned, repeating until none are.
+
+			valRaw, ok := req.Data[limitParameterName]
+			if ok {
+				// Failure to parse should be ignored in this case. The
+				// operator has not indicated to us that this value of
+				// limit should be an integer limit and it may be some
+				// custom plugin with alternative behavior.
+				valStr, ok := valRaw.(string)
+				if ok && valStr == "max" {
+					// Application has indicated they're aware of the value
+					// of limit and so we should set the limit to zero
+					// (maximum).
+					req.Data[limitParameterName] = "0"
+				}
 			}
 		}
 	}

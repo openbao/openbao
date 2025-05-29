@@ -689,6 +689,6 @@ func testTransit_Export_CertificateChain(t *testing.T, apiClient *api.Client, ke
 	exportedCertChainPEM := exportedKeys["1"].(string)
 
 	if exportedCertChainPEM != leafCertPEM {
-		t.Fatalf("expected exported cert chain to match with imported value")
+		t.Fatal("expected exported cert chain to match with imported value")
 	}
 }

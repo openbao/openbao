@@ -551,9 +551,11 @@ func ProtoAuthToLogicalAuth(a *Auth) (*logical.Auth, error) {
 	}
 
 	data := map[string]interface{}{}
-	err := json.Unmarshal([]byte(a.InternalData), &data)
-	if err != nil {
-		return nil, err
+	if len(a.InternalData) > 0 {
+		err := json.Unmarshal([]byte(a.InternalData), &data)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	lo, err := ProtoLeaseOptionsToLogicalLeaseOptions(a.LeaseOptions)

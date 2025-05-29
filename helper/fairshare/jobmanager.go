@@ -36,7 +36,7 @@ type JobManager struct {
 	totalJobs  int
 	metricSink *metricsutil.ClusterMetricSink
 
-	// waitgroup for testing stop functionality
+	// waitgroup to synchronize stopping of work scheduling loop
 	wg sync.WaitGroup
 
 	// protects `queues`, `workerCount`, `queuesIndex`, `lastQueueAccessed`
@@ -91,11 +91,12 @@ func (j *JobManager) Start() {
 	})
 }
 
-// Stop stops the job manager asynchronously
+// Stop stops the job manager, waiting for all workers to exit.
 func (j *JobManager) Stop() {
 	j.onceStop.Do(func() {
 		j.logger.Trace("terminating job manager...")
 		close(j.quit)
+		j.wg.Wait()
 		j.workerPool.stop()
 	})
 }
@@ -120,7 +121,7 @@ func (j *JobManager) AddJob(job Job, queueID string) {
 	j.totalJobs++
 
 	if j.metricSink != nil {
-		j.metricSink.AddSampleWithLabels([]string{j.name, "job_manager", "queue_length"}, float32(j.queues[queueID].Len()), []metrics.Label{{"queue_id", queueID}})
+		j.metricSink.AddSampleWithLabels([]string{j.name, "job_manager", "queue_length"}, float32(j.queues[queueID].Len()), []metrics.Label{{Name: "queue_id", Value: queueID}})
 		j.metricSink.AddSample([]string{j.name, "job_manager", "total_jobs"}, float32(j.totalJobs))
 	}
 }
@@ -180,7 +181,7 @@ func (j *JobManager) getNextJob() (Job, string) {
 	j.totalJobs--
 
 	if j.metricSink != nil {
-		j.metricSink.AddSampleWithLabels([]string{j.name, "job_manager", "queue_length"}, float32(j.queues[queueID].Len()), []metrics.Label{{"queue_id", queueID}})
+		j.metricSink.AddSampleWithLabels([]string{j.name, "job_manager", "queue_length"}, float32(j.queues[queueID].Len()), []metrics.Label{{Name: "queue_id", Value: queueID}})
 		j.metricSink.AddSample([]string{j.name, "job_manager", "total_jobs"}, float32(j.totalJobs))
 	}
 

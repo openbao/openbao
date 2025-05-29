@@ -12,28 +12,32 @@ the OpenBao API, including errors - except for a few paths which do not go via t
 
 The non-audited paths are:
 
-    sys/init
-    sys/seal-status
-    sys/seal
-    sys/step-down
-    sys/unseal
-    sys/leader
-    sys/health
-    sys/rekey/init
-    sys/rekey/update
-    sys/rekey/verify
-    sys/rekey-recovery-key/init
-    sys/rekey-recovery-key/update
-    sys/rekey-recovery-key/verify
-    sys/storage/raft/bootstrap
-    sys/storage/raft/join
-    sys/internal/ui/feature-flags
+```
+sys/init
+sys/seal-status
+sys/seal
+sys/step-down
+sys/unseal
+sys/leader
+sys/health
+sys/rekey/init
+sys/rekey/update
+sys/rekey/verify
+sys/rekey-recovery-key/init
+sys/rekey-recovery-key/update
+sys/rekey-recovery-key/verify
+sys/storage/raft/bootstrap
+sys/storage/raft/join
+sys/internal/ui/feature-flags
+```
 
 and also, if the relevant listener configuration settings allow unauthenticated access:
 
-    sys/metrics
-    sys/pprof/*
-    sys/in-flight-req
+```
+sys/metrics
+sys/pprof/*
+sys/in-flight-req
+```
 
 ## Enabling multiple devices
 
@@ -54,7 +58,6 @@ devices. Audit failures can prevent OpenBao from servicing requests, so it is
 important to provide at least one other device.
 
 :::
-
 
 ## Format
 
@@ -83,13 +86,11 @@ inside all JSON sent to OpenBao (i.e., that integer values are provided in quote
 
 While most strings are hashed, OpenBao does make some exceptions, such as auth and secrets, and users can enable additional exceptions using the [secrets enable](/docs/commands/secrets/enable) command, and then tune it afterward.
 
-**see also**:
+**See also**:
 
-[secrets tune](/docs/commands/secrets/tune)
-
-[auth enable](/docs/commands/auth/enable)
-
-[auth tune](/docs/commands/auth/tune)
+* [secrets tune](/docs/commands/secrets/tune)
+* [auth enable](/docs/commands/auth/enable)
+* [auth tune](/docs/commands/auth/tune)
 
 ## Enabling/Disabling audit devices
 
@@ -196,6 +197,7 @@ it will be left as is by this feature.
 Here is an example of an audit record that has been processed by this feature
 (formatted with extra whitespace, and with fields not relevant to the example
 omitted):
+
 ```json
 {
   "type": "response",

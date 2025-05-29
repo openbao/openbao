@@ -238,7 +238,7 @@ func (c *Client) Execute(cfg *Config, entries []*ldif.Entry, continueOnFailure b
 		case entry.Del != nil:
 			err = errorf("failed to run DelRequest: %w", conn.Del(entry.Del))
 		default:
-			err = fmt.Errorf("unrecognized or missing LDIF command")
+			err = errors.New("unrecognized or missing LDIF command")
 		}
 
 		if err != nil {

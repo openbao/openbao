@@ -75,7 +75,7 @@ func TestRouter_Mount(t *testing.T) {
 
 	_, mount, prefix, ok := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(nil), "logical/foo")
 	if !ok {
-		t.Fatalf("missing storage prefix")
+		t.Fatal("missing storage prefix")
 	}
 	if mount != "prod/aws/" || prefix != "logical/" {
 		t.Fatalf("Bad: %v - %v", mount, prefix)
@@ -112,7 +112,7 @@ func TestRouter_Mount(t *testing.T) {
 	}
 
 	if r.MountConflict(namespace.RootContext(nil), "prod/aws/") == "" {
-		t.Fatalf("bad: prod/aws/")
+		t.Fatal("bad: prod/aws/")
 	}
 
 	// No error is shown here because MountConflict is checked before Mount
@@ -121,7 +121,7 @@ func TestRouter_Mount(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if r.MountConflict(namespace.RootContext(nil), "prod/test") == "" {
-		t.Fatalf("bad: prod/test/")
+		t.Fatal("bad: prod/test/")
 	}
 }
 
@@ -182,7 +182,7 @@ func TestRouter_MountCredential(t *testing.T) {
 
 	_, mount, prefix, ok := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(nil), "auth/foo")
 	if !ok {
-		t.Fatalf("missing storage prefix")
+		t.Fatal("missing storage prefix")
 	}
 	if mount != "auth/aws" || prefix != credentialBarrierPrefix {
 		t.Fatalf("Bad: %v - %v", mount, prefix)
@@ -234,7 +234,7 @@ func TestRouter_Unmount(t *testing.T) {
 	}
 
 	if _, _, _, ok := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(nil), "logical/foo"); ok {
-		t.Fatalf("should not have matching storage prefix")
+		t.Fatal("should not have matching storage prefix")
 	}
 }
 
@@ -255,12 +255,12 @@ func TestRouter_Remount(t *testing.T) {
 	}
 
 	me.Path = "stage/aws/"
-	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/")
+	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/", nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/")
+	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/", nil)
 	if !strings.Contains(err.Error(), "no mount at") {
 		t.Fatalf("err: %v", err)
 	}

@@ -30,12 +30,15 @@ type TokenCounter struct {
 // countActiveTokens returns the number of active tokens
 func (c *Core) countActiveTokens(ctx context.Context) (*ActiveTokens, error) {
 	// Get all of the namespaces
-	ns := c.collectNamespaces()
+	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	if err != nil {
+		return nil, err
+	}
 
 	// Count the tokens under each namespace
 	total := 0
-	for i := 0; i < len(ns); i++ {
-		ids, err := c.tokenStore.idView(ns[i]).List(ctx, "")
+	for _, ns := range allNamespaces {
+		ids, err := c.tokenStore.idView(ns).List(ctx, "")
 		if err != nil {
 			return nil, err
 		}
@@ -61,9 +64,10 @@ type EntityCounter struct {
 	Total int `json:"total"`
 }
 
-// countActiveEntities returns the number of active entities
+// countActiveEntities returns the number of active entities across all
+// namespaces.
 func (c *Core) countActiveEntities(ctx context.Context) (*ActiveEntities, error) {
-	count, err := c.identityStore.countEntities()
+	count, err := c.identityStore.countEntities(ctx)
 	if err != nil {
 		return nil, err
 	}

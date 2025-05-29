@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -29,10 +30,12 @@ import (
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -42,7 +45,8 @@ import (
 const (
 	replTimeout                           = 1 * time.Second
 	EnvVaultDisableLocalAuthMountEntities = "BAO_DISABLE_LOCAL_AUTH_MOUNT_ENTITIES"
-	// base path to store locked users
+
+	// coreLockedUsersPath is a base path to store locked users
 	coreLockedUsersPath = "core/login/lockedUsers/"
 )
 
@@ -53,13 +57,66 @@ var (
 
 	ErrNoApplicablePolicies    = errors.New("no applicable policies")
 	ErrPolicyNotExistInTypeMap = errors.New("policy does not exist in type map")
+
+	// restrictedSysAPIs is the set of `sys/` APIs available only in the root namespace.
+	restrictedSysAPIs = pathmanager.New()
 )
+
+func init() {
+	restrictedSysAPIs.AddPaths([]string{
+		"audit-hash",
+		"audit",
+		"config/auditing",
+		"config/cors",
+		"config/reload",
+		"config/state",
+		"config/ui",
+		"decode-token",
+		"generate-recovery-token",
+		"generate-root",
+		"health",
+		"host-info",
+		"in-flight-req",
+		"init",
+		"internal/counters/activity",
+		"internal/counters/activity/export",
+		"internal/counters/activity/monthly",
+		"internal/counters/config",
+		"internal/inspect/router",
+		"key-status",
+		"loggers",
+		"managed-keys",
+		"metrics",
+		"mfa/method",
+		"monitor",
+		"pprof",
+		"quotas/config",
+		"quotas/lease-count",
+		"quotas/rate-limit",
+		"raw",
+		"rekey-recovery-key",
+		"rekey",
+		"replication/merkle-check",
+		"replication/recover",
+		"replication/reindex",
+		"replication/status",
+		"rotate",
+		"rotate/config",
+		"seal",
+		"sealwrap/rewrap",
+		"step-down",
+		"storage",
+		"sync/config",
+		"unseal",
+	})
+}
 
 // HandlerProperties is used to seed configuration into a vaulthttp.Handler.
 // It's in this package to avoid a circular dependency
 type HandlerProperties struct {
 	Core                  *Core
 	ListenerConfig        *configutil.Listener
+	AllListeners          []listenerutil.Listener
 	DisablePrintableCheck bool
 	RecoveryMode          bool
 	RecoveryToken         *uberAtomic.String
@@ -79,7 +136,8 @@ func (c *Core) fetchEntityAndDerivedPolicies(ctx context.Context, tokenNS *names
 	// c.logger.Debug("entity set on the token", "entity_id", te.EntityID)
 
 	// Fetch the entity
-	entity, err := c.identityStore.MemDBEntityByID(entityID, false)
+	nsCtx := namespace.ContextWithNamespace(ctx, tokenNS)
+	entity, err := c.identityStore.MemDBEntityByID(nsCtx, entityID, false)
 	if err != nil {
 		c.logger.Error("failed to lookup entity using its ID", "error", err)
 		return nil, nil, err
@@ -89,7 +147,7 @@ func (c *Core) fetchEntityAndDerivedPolicies(ctx context.Context, tokenNS *names
 		// If there was no corresponding entity object found, it is
 		// possible that the entity got merged into another entity. Try
 		// finding entity based on the merged entity index.
-		entity, err = c.identityStore.MemDBEntityByMergedEntityID(entityID, false)
+		entity, err = c.identityStore.MemDBEntityByMergedEntityID(nsCtx, entityID, false)
 		if err != nil {
 			c.logger.Error("failed to lookup entity in merged entity ID index", "error", err)
 			return nil, nil, err
@@ -105,7 +163,7 @@ func (c *Core) fetchEntityAndDerivedPolicies(ctx context.Context, tokenNS *names
 			policies[entity.NamespaceID] = append(policies[entity.NamespaceID], entity.Policies...)
 		}
 
-		groupPolicies, err := c.identityStore.groupPoliciesByEntityID(entity.ID)
+		groupPolicies, err := c.identityStore.groupPoliciesByEntityID(nsCtx, entity.ID)
 		if err != nil {
 			c.logger.Error("failed to fetch group policies", "error", err)
 			return nil, nil, err
@@ -154,7 +212,7 @@ func (c *Core) filterGroupPoliciesByNS(ctx context.Context, tokenNS *namespace.N
 // apply to the token based on the group policy application mode,
 // and the relationship between the token namespace and the group namespace.
 func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespace.Namespace, nsID string, nsPolicies []string, policyApplicationMode string) ([]string, error) {
-	policyNS, err := NamespaceByID(ctx, nsID, c)
+	policyNS, err := c.NamespaceByID(ctx, nsID)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +324,7 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	// Add tokens policies
 	policyNames[te.NamespaceID] = append(policyNames[te.NamespaceID], te.Policies...)
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, c)
+	tokenNS, err := c.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		c.logger.Error("failed to fetch token namespace", "error", err)
 		return nil, nil, nil, nil, ErrInternalError
@@ -507,13 +565,37 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}(ctx, httpCtx)
 
+	// A namespace was manually passed to HandleRequest, as can be the case with:
+	// 1. Synthesized logical requests not originating from an HTTP request
+	// 2. Tests
 	ns, err := namespace.FromContext(httpCtx)
+	// If the above is not the case, resolve the namespace from header & request path.
 	if err != nil {
-		cancel()
-		return nil, fmt.Errorf("could not parse namespace from http context: %w", err)
+		nsHeader := namespace.HeaderFromContext(httpCtx)
+		ns, req.Path = c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, req.Path)
+		if ns == nil {
+			return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
+		}
 	}
 
+	if ns.ID != namespace.RootNamespaceID {
+		// verify whether the namespace is either directly or inherently locked
+		lockedNS := c.namespaceStore.GetLockingNamespace(ns)
+		if lockedNS != nil && req.Operation != logical.RevokeOperation && req.Operation != logical.RollbackOperation {
+			switch req.Path {
+			case "sys/namespaces/api-lock/unlock":
+			default:
+				return logical.ErrorResponse(fmt.Sprintf("API access to this namespace has been locked by an administrator - %q must be unlocked to gain access.", lockedNS.Path)), logical.ErrLockedNamespace
+			}
+		}
+
+		if strings.HasPrefix(req.Path, "sys/") &&
+			restrictedSysAPIs.HasPathSegments(req.Path[len("sys/"):]) {
+			return nil, logical.CodedError(http.StatusBadRequest, "operation unavailable in namespaces")
+		}
+	}
 	ctx = namespace.ContextWithNamespace(ctx, ns)
+
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {
 		ctx = context.WithValue(ctx, logical.CtxKeyInFlightRequestID{}, inFlightReqID)
@@ -555,10 +637,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		return nil, err
 	}
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse namespace from http context: %w", err)
-	}
 	var requestBodyToken string
 	var returnRequestAuthToken bool
 
@@ -571,7 +649,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		te := req.TokenEntry()
 		newCtx := ctx
 		if te != nil {
-			ns, err := NamespaceByID(ctx, te.NamespaceID, c)
+			ns, err := c.NamespaceByID(ctx, te.NamespaceID)
 			if err != nil {
 				c.Logger().Warn("error looking up namespace from the token's namespace ID", "error", err)
 				return nil, err
@@ -635,7 +713,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			}
 			_, nsID := namespace.SplitIDFromString(token.(string))
 			if nsID != "" {
-				ns, err := NamespaceByID(ctx, nsID, c)
+				ns, err := c.NamespaceByID(ctx, nsID)
 				if err != nil {
 					c.Logger().Warn("error looking up namespace from the token's namespace ID", "error", err)
 					return nil, err
@@ -661,7 +739,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			}
 			_, nsID := namespace.SplitIDFromString(leaseID.(string))
 			if nsID != "" {
-				ns, err := NamespaceByID(ctx, nsID, c)
+				ns, err := c.NamespaceByID(ctx, nsID)
 				if err != nil {
 					c.Logger().Warn("error looking up namespace from the lease's namespace ID", "error", err)
 					return nil, err
@@ -679,15 +757,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		if c.standby {
 			return nil, ErrCannotForwardLocalOnly
 		}
-	}
-
-	ns, err = namespace.FromContext(ctx)
-	if err != nil {
-		return nil, errwrap.Wrapf("could not parse namespace from http context: {{err}}", err)
-	}
-
-	if ns.Path != "" {
-		return nil, logical.CodedError(403, "namespaces feature not enabled")
 	}
 
 	var auth *logical.Auth
@@ -1083,9 +1152,9 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 				1,
 				[]metrics.Label{
 					metricsutil.NamespaceLabel(ns),
-					{"secret_engine", req.MountType},
-					{"mount_point", mountPointWithoutNs},
-					{"creation_ttl", ttl_label},
+					{Name: "secret_engine", Value: req.MountType},
+					{Name: "mount_point", Value: mountPointWithoutNs},
+					{Name: "creation_ttl", Value: ttl_label},
 				},
 			)
 		}
@@ -1101,7 +1170,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 		}
 
 		// Fetch the namespace to which the token belongs
-		tokenNS, err := NamespaceByID(ctx, te.NamespaceID, c)
+		tokenNS, err := c.NamespaceByID(ctx, te.NamespaceID)
 		if err != nil {
 			c.logger.Error("failed to fetch token's namespace", "error", err)
 			retErr = multierror.Append(retErr, err)
@@ -1392,7 +1461,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 			auth.Alias.Local = mEntry.Local
 
 			if auth.Alias.Name == "" {
-				return nil, nil, fmt.Errorf("missing name in alias")
+				return nil, nil, errors.New("missing name in alias")
 			}
 
 			var err error
@@ -1403,7 +1472,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 				return nil, nil, err
 			}
 			if entity == nil {
-				return nil, nil, fmt.Errorf("failed to create an entity for the authenticated alias")
+				return nil, nil, errors.New("failed to create an entity for the authenticated alias")
 			}
 
 			if entity.Disabled {
@@ -1585,7 +1654,7 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 	// Determine mount type
 	mountEntry := c.router.MatchingMountEntry(ctx, reqPath)
 	if mountEntry == nil {
-		return false, nil, fmt.Errorf("failed to find a matching mount")
+		return false, nil, errors.New("failed to find a matching mount")
 	}
 
 	sysView := c.router.MatchingSystemView(ctx, reqPath)
@@ -1649,10 +1718,10 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 		1,
 		[]metrics.Label{
 			metricsutil.NamespaceLabel(ns),
-			{"auth_method", mountEntry.Type},
-			{"mount_point", mountPointWithoutNs},
-			{"creation_ttl", ttl_label},
-			{"token_type", auth.TokenType.String()},
+			{Name: "auth_method", Value: mountEntry.Type},
+			{Name: "mount_point", Value: mountPointWithoutNs},
+			{Name: "creation_ttl", Value: ttl_label},
+			{Name: "token_type", Value: auth.TokenType.String()},
 		},
 	)
 
@@ -1757,7 +1826,7 @@ func (c *Core) isUserLockoutDisabled(mountEntry *MountEntry) (bool, error) {
 	return false, nil
 }
 
-// isUserLocked determines if the login user is locked
+// isUserLocked determines if the login request user is locked
 func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *logical.Request) (locked bool, err error) {
 	// get userFailedLoginInfo map key for login user
 	loginUserInfoKey, err := c.getLoginUserInfoKey(ctx, mountEntry, req)
@@ -1775,13 +1844,15 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 		// entry not found in userFailedLoginInfo map, check storage to re-verify
 		ns, err := namespace.FromContext(ctx)
 		if err != nil {
-			return false, fmt.Errorf("could not parse namespace from http context: %w", err)
+			return false, fmt.Errorf("could not retrieve namespace from context: %w", err)
 		}
-		storageUserLockoutPath := fmt.Sprintf(coreLockedUsersPath+"%s/%s/%s", ns.ID, loginUserInfoKey.mountAccessor, loginUserInfoKey.aliasName)
-		existingEntry, err := c.barrier.Get(ctx, storageUserLockoutPath)
+
+		view := NamespaceView(c.barrier, ns).SubView(coreLockedUsersPath).SubView(loginUserInfoKey.mountAccessor + "/")
+		existingEntry, err := view.Get(ctx, loginUserInfoKey.aliasName)
 		if err != nil {
 			return false, err
 		}
+
 		var lastLoginTime int
 		if existingEntry == nil {
 			// no storage entry found, user is not locked
@@ -1905,7 +1976,7 @@ func (c *Core) buildMfaEnforcementResponse(eConfig *mfa.MFAEnforcementConfig) (*
 		if mConfig.Type == mfaMethodTypeDuo {
 			duoConf, ok := mConfig.Config.(*mfa.Config_DuoConfig)
 			if !ok {
-				return nil, fmt.Errorf("invalid MFA configuration type")
+				return nil, errors.New("invalid MFA configuration type")
 			}
 			duoUsePasscode = duoConf.DuoConfig.UsePasscode
 		}
@@ -2019,49 +2090,48 @@ func (c *Core) LocalGetUserFailedLoginInfo(ctx context.Context, userKey FailedLo
 // LocalUpdateUserFailedLoginInfo updates the failed login information for a user based on alias name and mountAccessor
 func (c *Core) LocalUpdateUserFailedLoginInfo(ctx context.Context, userKey FailedLoginUser, failedLoginInfo *FailedLoginInfo, deleteEntry bool) error {
 	c.userFailedLoginInfoLock.Lock()
-	switch deleteEntry {
-	case false:
-		// update entry in the map
-		c.userFailedLoginInfo[userKey] = failedLoginInfo
+	defer c.userFailedLoginInfoLock.Unlock()
 
-		// get the user lockout configuration for the user
-		mountEntry := c.router.MatchingMountByAccessor(userKey.mountAccessor)
-		if mountEntry == nil {
-			mountEntry = &MountEntry{}
-			mountEntry.NamespaceID = namespace.RootNamespaceID
-		}
-		userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
-
-		// if failed login count has reached threshold, create a storage entry as the user got locked
-		if failedLoginInfo.count >= uint(userLockoutConfiguration.LockoutThreshold) {
-			// user locked
-			storageUserLockoutPath := fmt.Sprintf(coreLockedUsersPath+"%s/%s/%s", mountEntry.NamespaceID, userKey.mountAccessor, userKey.aliasName)
-
-			compressedBytes, err := jsonutil.EncodeJSONAndCompress(failedLoginInfo.lastFailedLoginTime, nil)
-			if err != nil {
-				c.logger.Error("failed to encode or compress failed login user entry", "error", err)
-				return err
-			}
-
-			// Create an entry
-			entry := &logical.StorageEntry{
-				Key:   storageUserLockoutPath,
-				Value: compressedBytes,
-			}
-
-			// Write to the physical backend
-			if err := c.barrier.Put(ctx, entry); err != nil {
-				c.logger.Error("failed to persist failed login user entry", "error", err)
-				return err
-			}
-
-		}
-
-	default:
+	if deleteEntry {
 		// delete the entry from the map, if no key exists it is no-op
 		delete(c.userFailedLoginInfo, userKey)
+		return nil
 	}
-	c.userFailedLoginInfoLock.Unlock()
+
+	// update entry in the map
+	c.userFailedLoginInfo[userKey] = failedLoginInfo
+
+	// get the user lockout configuration for the user
+	mountEntry := c.router.MatchingMountByAccessor(userKey.mountAccessor)
+	if mountEntry == nil {
+		mountEntry = &MountEntry{namespace: namespace.RootNamespace}
+	}
+	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
+
+	// if failed login count has reached threshold, create a storage entry as the user got locked
+	if failedLoginInfo.count >= uint(userLockoutConfiguration.LockoutThreshold) {
+		// user locked
+		compressedBytes, err := jsonutil.EncodeJSONAndCompress(failedLoginInfo.lastFailedLoginTime, nil)
+		if err != nil {
+			c.logger.Error("failed to encode or compress failed login user entry", "namespace", mountEntry.namespace.Path, "error", err)
+			return err
+		}
+
+		// Create an entry
+		entry := &logical.StorageEntry{
+			Key:   userKey.aliasName,
+			Value: compressedBytes,
+		}
+
+		// Write to the physical backend
+		view := NamespaceView(c.barrier, mountEntry.namespace).SubView(coreLockedUsersPath).SubView(userKey.mountAccessor + "/")
+		if err := view.Put(ctx, entry); err != nil {
+			c.logger.Error("failed to persist failed login user entry", "namespace", mountEntry.namespace.Path, "error", err)
+			return err
+		}
+
+	}
+
 	return nil
 }
 
@@ -2177,7 +2247,7 @@ func (c *Core) DecodeSSCTokenInternal(token string) (*tokens.Token, error) {
 	// Skip batch and old style service tokens. These can have the prefix "b.",
 	// "s." (for old tokens) or "hvb."
 	if !strings.HasPrefix(token, consts.ServiceTokenPrefix) {
-		return nil, fmt.Errorf("not service token")
+		return nil, errors.New("not service token")
 	}
 
 	// Consider the suffix of the token only when unmarshalling
@@ -2185,7 +2255,7 @@ func (c *Core) DecodeSSCTokenInternal(token string) (*tokens.Token, error) {
 
 	tokenBytes, err := base64.RawURLEncoding.DecodeString(suffixToken)
 	if err != nil {
-		return nil, fmt.Errorf("can't decode token")
+		return nil, errors.New("can't decode token")
 	}
 
 	err = proto.Unmarshal(tokenBytes, signedToken)

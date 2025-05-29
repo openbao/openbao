@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -746,7 +747,7 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 	var resp *logical.Response
 	switch {
 	case role.GenerateLease == nil:
-		return nil, fmt.Errorf("generate lease in role is nil")
+		return nil, errors.New("generate lease in role is nil")
 	case !*role.GenerateLease:
 		// If lease generation is disabled do not populate `Secret` field in
 		// the response

@@ -37,8 +37,10 @@ allowed to be set when either 'min_encryption_version' or
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathTrimUpdate(),
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathTrimUpdate(),
+			},
 		},
 
 		HelpSynopsis:    pathTrimHelpSyn,
@@ -48,6 +50,12 @@ allowed to be set when either 'min_encryption_version' or
 
 func (b *backend) pathTrimUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (resp *logical.Response, retErr error) {
+		txRollback, err := logical.StartTxStorage(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		defer txRollback()
+
 		name := d.Get("name").(string)
 
 		p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
@@ -97,6 +105,10 @@ func (b *backend) pathTrimUpdate() framework.OperationFunc {
 		p.MinAvailableVersion = minAvailableVersion
 		if err := p.Persist(ctx, req.Storage); err != nil {
 			p.MinAvailableVersion = originalMinAvailableVersion
+			return nil, err
+		}
+
+		if err := logical.EndTxStorage(ctx, req); err != nil {
 			return nil, err
 		}
 

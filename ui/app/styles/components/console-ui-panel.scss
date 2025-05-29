@@ -8,13 +8,15 @@ $console-close-height: 35px;
 .console-ui-panel {
   background: var(--token-color-palette-neutral-700);
   width: -moz-available;
-  width: -webkit-fill-available;
+  width: -webkit-stretch;
   height: 0;
   min-height: 0;
   overflow: auto;
   position: fixed;
   bottom: 0;
-  transition: min-height $speed $easing, transform $speed ease-in;
+  transition:
+    min-height $speed $easing,
+    transform $speed ease-in;
   will-change: transform, min-height;
   -webkit-overflow-scrolling: touch;
   z-index: 199;

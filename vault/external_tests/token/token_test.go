@@ -102,7 +102,7 @@ func TestTokenStore_TokenInvalidEntityID(t *testing.T) {
 
 	secret, err = client.Logical().Write("auth/token/lookup-self", nil)
 	if err == nil {
-		t.Fatalf("expected error due to token being invalid when its entity is invalid")
+		t.Fatal("expected error due to token being invalid when its entity is invalid")
 	}
 }
 
@@ -192,7 +192,7 @@ func TestTokenStore_IdentityPolicies(t *testing.T) {
 	}
 	_, ok := secret.Data["identity_policies"]
 	if ok {
-		t.Fatalf("identity_policies should not have been set")
+		t.Fatal("identity_policies should not have been set")
 	}
 
 	// Extract the entity ID of the token and set some policies on the entity

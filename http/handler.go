@@ -30,6 +30,7 @@ import (
 	gziphandler "github.com/klauspost/compress/gzhttp"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
@@ -75,6 +76,11 @@ var (
 
 	alwaysRedirectPaths = pathmanager.New()
 
+	// restrictedSysAPIsNonLogical is the set of `sys/` APIs available only in the root namespace
+	// that may not pass through logical request handling but are handled in HTTP using specialized
+	// calls to core. This is a subset of `vault.restrictedSysAPIs`.
+	restrictedSysAPIsNonLogical = pathmanager.New()
+
 	injectDataIntoTopRoutes = []string{
 		"/v1/sys/audit",
 		"/v1/sys/audit/",
@@ -107,6 +113,23 @@ func init() {
 	alwaysRedirectPaths.AddPaths([]string{
 		"sys/storage/raft/snapshot",
 		"sys/storage/raft/snapshot-force",
+	})
+
+	restrictedSysAPIsNonLogical.AddPaths([]string{
+		"raw",
+		"generate-recovery-token",
+		"init",
+		"seal",
+		"step-down",
+		"unseal",
+		"health",
+		"rekey-recovery-key",
+		"rekey",
+		"storage",
+		"generate-root",
+		"metrics",
+		"pprof",
+		"in-flight-req",
 	})
 }
 
@@ -276,7 +299,8 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		input := &logical.LogInput{
 			Request: req,
 		}
-		err = core.AuditLogger().AuditRequest(r.Context(), input)
+		ctx := namespace.RootContext(r.Context())
+		err = core.AuditLogger().AuditRequest(ctx, input)
 		if err != nil {
 			respondError(w, status, err)
 			return
@@ -290,7 +314,7 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		}
 		httpResp := &logical.HTTPResponse{Data: data, Headers: cw.Header()}
 		input.Response = logical.HTTPResponseToLogicalResponse(httpResp)
-		err = core.AuditLogger().AuditResponse(r.Context(), input)
+		err = core.AuditLogger().AuditResponse(ctx, input)
 		if err != nil {
 			respondError(w, status, err)
 		}
@@ -343,8 +367,15 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
 		}
 		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
+
+		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
+		if nsHeader != "" {
+			// Setting the namespace in the header to be included in the response
+			nw.Header().Set(consts.NamespaceHeaderName, nsHeader)
+		}
+
+		ctx = namespace.ContextWithNamespaceHeader(ctx, nsHeader)
 		r = r.WithContext(ctx)
-		r = r.WithContext(namespace.ContextWithNamespace(r.Context(), namespace.RootNamespace))
 
 		// Set some response headers with raft node id (if applicable) and hostname, if available
 		if core.RaftNodeIDHeaderEnabled() {
@@ -358,17 +389,29 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			nw.Header().Set("X-Vault-Hostname", hostname)
 		}
 
-		switch {
-		case strings.HasPrefix(r.URL.Path, "/v1/"):
-			newR, status := adjustRequest(core, r)
-			if status != 0 {
-				respondError(nw, status, nil)
-				cancelFunc()
-				return
-			}
-			r = newR
+		isRestrictedSysAPI := nsHeader != "" && strings.HasPrefix(r.URL.Path, "/v1/sys/") &&
+			restrictedSysAPIsNonLogical.HasPathSegments(r.URL.Path[len("/v1/sys/"):])
 
-		case strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
+		switch {
+		case isRestrictedSysAPI:
+			respondError(nw, http.StatusBadRequest, fmt.Errorf("operation unavailable in namespaces"))
+			cancelFunc()
+			return
+
+		case strings.HasPrefix(r.URL.Path, "/v1/"), strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
+		case strings.HasPrefix(r.URL.Path, "/.well-known/acme-challenge/"):
+			for _, ln := range props.AllListeners {
+				if ln.Config == nil || ln.Config.TLSDisable {
+					continue
+				}
+
+				if acg, ok := ln.Config.TLSCertGetter.(*listenerutil.ACMECertGetter); ok {
+					if acg.HandleHTTPChallenge(w, r) {
+						cancelFunc()
+						return
+					}
+				}
+			}
 		default:
 			respondError(nw, http.StatusNotFound, nil)
 			cancelFunc()
@@ -380,7 +423,7 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		// in-flight requests, and use that to update the req data with clientID
 		inFlightReqID, err := uuid.GenerateUUID()
 		if err != nil {
-			respondError(nw, http.StatusInternalServerError, fmt.Errorf("failed to generate an identifier for the in-flight request"))
+			respondError(nw, http.StatusInternalServerError, errors.New("failed to generate an identifier for the in-flight request"))
 		}
 		// adding an entry to the context to enable updating in-flight
 		// data with ClientID in the logical layer
@@ -412,12 +455,6 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			core.FinalizeInFlightReqData(inFlightReqID, nw.StatusCode)
 		}()
 
-		// Setting the namespace in the header to be included in the error message
-		ns := r.Header.Get(consts.NamespaceHeaderName)
-		if ns != "" {
-			nw.Header().Set(consts.NamespaceHeaderName, ns)
-		}
-
 		h.ServeHTTP(nw, r)
 
 		cancelFunc()
@@ -437,7 +474,7 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 				h.ServeHTTP(w, r)
 				return
 			}
-			respondError(w, http.StatusBadRequest, fmt.Errorf("missing x-forwarded-for header and configured to reject when not present"))
+			respondError(w, http.StatusBadRequest, errors.New("missing x-forwarded-for header and configured to reject when not present"))
 			return
 		}
 
@@ -486,7 +523,7 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 				return
 			}
 
-			respondError(w, http.StatusBadRequest, fmt.Errorf("client address not authorized for x-forwarded-for and configured to reject connection"))
+			respondError(w, http.StatusBadRequest, errors.New("client address not authorized for x-forwarded-for and configured to reject connection"))
 			return
 		}
 
@@ -754,7 +791,7 @@ func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handle
 			return
 		}
 		if leaderAddr == "" {
-			respondError(w, http.StatusInternalServerError, fmt.Errorf("local node not active but active cluster node not found"))
+			respondError(w, http.StatusInternalServerError, errors.New("local node not active but active cluster node not found"))
 			return
 		}
 
@@ -776,13 +813,7 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ns, err := namespace.FromContext(r.Context())
-	if err != nil {
-		respondError(w, http.StatusBadRequest, err)
-		return
-	}
-	path := ns.TrimmedPath(r.URL.Path[len("/v1/"):])
-	if alwaysRedirectPaths.HasPath(path) {
+	if alwaysRedirectPaths.HasPath(r.URL.Path[len("/v1/"):]) {
 		respondStandby(core, w, r.URL)
 		return
 	}
@@ -981,7 +1012,7 @@ func requestWrapInfo(r *http.Request, req *logical.Request) (*logical.Request, e
 		return req, err
 	}
 	if int64(dur) < 0 {
-		return req, fmt.Errorf("requested wrap ttl cannot be negative")
+		return req, errors.New("requested wrap ttl cannot be negative")
 	}
 
 	req.WrapInfo = &logical.RequestWrapInfo{
@@ -1001,7 +1032,7 @@ func requestWrapInfo(r *http.Request, req *logical.Request) (*logical.Request, e
 // them with MFA method name as the index.
 func parseMFAHeader(req *logical.Request) error {
 	if req == nil {
-		return fmt.Errorf("request is nil")
+		return errors.New("request is nil")
 	}
 
 	if req.Headers == nil {

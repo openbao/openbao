@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { or, not } from '@ember/object/computed';
+import { not } from '@ember/object/computed';
 import { inject as service } from '@ember/service';
 import Component from '@ember/component';
 import { computed } from '@ember/object';
@@ -11,7 +11,6 @@ import { FEATURE_MACHINE_TIME } from 'vault/helpers/wizard-constants';
 
 export default Component.extend({
   wizard: service(),
-  version: service(),
   permissions: service(),
 
   init() {
@@ -24,11 +23,6 @@ export default Component.extend({
     features.forEach((feat) => {
       feat.disabled = this.doesNotHavePermission(feat.requiredPermissions);
     });
-
-    if (this.showReplication === false) {
-      const feature = this.allFeatures.findBy('key', 'replication');
-      feature.show = false;
-    }
   },
 
   doesNotHavePermission(requiredPermissions) {
@@ -103,18 +97,6 @@ export default Component.extend({
         },
       },
       {
-        key: 'replication',
-        name: 'Replication',
-        steps: ['Setting up replication', 'Your cluster information'],
-        selected: false,
-        show: true,
-        disabled: false,
-        requiredPermissions: {
-          'sys/replication/performance/primary/enable': ['update'],
-          'sys/replication/dr/primary/enable': ['update'],
-        },
-      },
-      {
         key: 'tools',
         name: 'Tools',
         steps: ['Wrapping data', 'Lookup wrapped data', 'Rewrapping your data', 'Unwrapping your data'],
@@ -130,8 +112,6 @@ export default Component.extend({
       },
     ];
   }),
-
-  showReplication: or('version.hasPerfReplication', 'version.hasDRReplication'),
 
   selectedFeatures: computed('allFeatures.@each.selected', function () {
     return this.allFeatures.filterBy('selected').mapBy('key');

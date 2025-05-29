@@ -342,31 +342,9 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 	assertMember(t, client, entityID, "engineer", devopsGroupID, true)
 
 	identityStore := cores[0].IdentityStore()
-
-	group, err := identityStore.MemDBGroupByID(shipCrewGroupID, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Remove its member entities
-	group.MemberEntityIDs = nil
-
 	ctx := namespace.RootContext(nil)
 
-	err = identityStore.UpsertGroup(ctx, group, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	group, err = identityStore.MemDBGroupByID(shipCrewGroupID, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if group.MemberEntityIDs != nil {
-		t.Fatalf("failed to remove entity ID from the group")
-	}
-
-	group, err = identityStore.MemDBGroupByID(adminStaffGroupID, true)
+	group, err := identityStore.MemDBGroupByID(ctx, shipCrewGroupID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,15 +357,15 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	group, err = identityStore.MemDBGroupByID(adminStaffGroupID, true)
+	group, err = identityStore.MemDBGroupByID(ctx, shipCrewGroupID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if group.MemberEntityIDs != nil {
-		t.Fatalf("failed to remove entity ID from the group")
+		t.Fatal("failed to remove entity ID from the group")
 	}
 
-	group, err = identityStore.MemDBGroupByID(devopsGroupID, true)
+	group, err = identityStore.MemDBGroupByID(ctx, adminStaffGroupID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,12 +378,33 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	group, err = identityStore.MemDBGroupByID(devopsGroupID, true)
+	group, err = identityStore.MemDBGroupByID(ctx, adminStaffGroupID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if group.MemberEntityIDs != nil {
-		t.Fatalf("failed to remove entity ID from the group")
+		t.Fatal("failed to remove entity ID from the group")
+	}
+
+	group, err = identityStore.MemDBGroupByID(ctx, devopsGroupID, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Remove its member entities
+	group.MemberEntityIDs = nil
+
+	err = identityStore.UpsertGroup(ctx, group, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	group, err = identityStore.MemDBGroupByID(ctx, devopsGroupID, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if group.MemberEntityIDs != nil {
+		t.Fatal("failed to remove entity ID from the group")
 	}
 
 	_, err = client.Auth().Token().Renew(token, 0)
@@ -434,12 +433,12 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	group, err = identityStore.MemDBGroupByID(devopsGroupID, true)
+	group, err = identityStore.MemDBGroupByID(ctx, devopsGroupID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if group.MemberEntityIDs != nil {
-		t.Fatalf("failed to remove entity ID from the group")
+		t.Fatal("failed to remove entity ID from the group")
 	}
 }
 
@@ -632,7 +631,7 @@ func assertMember(t *testing.T, client *api.Client, entityID, groupName, groupID
 
 	groupEntityMembers, ok := groupMap["member_entity_ids"].([]interface{})
 	if !ok && expectFound {
-		t.Fatalf("expected member_entity_ids not to be nil")
+		t.Fatal("expected member_entity_ids not to be nil")
 	}
 
 	// if type assertion fails and expectFound is false, groupEntityMembers
@@ -693,5 +692,73 @@ func addRemoveLdapGroupMember(t *testing.T, cfg *ldaputil.ConfigEntry, userCN st
 	err = conn.Modify(req)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestLDAPNamespaceMultipleCreates(t *testing.T) {
+	// Integration test for LDAP user creating multiple namespaces with the same token
+	coreConfig := &vault.CoreConfig{
+		CredentialBackends: map[string]logical.Factory{
+			"ldap": ldapcred.Factory,
+		},
+	}
+	conf, opts := teststorage.ClusterSetup(coreConfig, nil, nil)
+	cluster := vault.NewTestCluster(t, conf, opts)
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	core := cluster.Cores[0].Core
+	client := cluster.Cores[0].Client
+	vault.TestWaitActive(t, core)
+
+	cleanup, cfg := ldaphelper.PrepareTestContainer(t, "latest")
+	defer cleanup()
+
+	// Enable LDAP auth
+	require.NoError(t, client.Sys().EnableAuthWithOptions("ldap", &api.EnableAuthOptions{Type: "ldap"}))
+
+	// Configure LDAP
+	_, err := client.Logical().Write("auth/ldap/config", map[string]interface{}{
+		"url":          cfg.Url,
+		"userattr":     cfg.UserAttr,
+		"userdn":       cfg.UserDN,
+		"groupdn":      cfg.GroupDN,
+		"groupattr":    cfg.GroupAttr,
+		"binddn":       cfg.BindDN,
+		"bindpass":     cfg.BindPassword,
+		"insecure_tls": true,
+	})
+	require.NoError(t, err)
+
+	// Write namespace-admin policy
+	policy := `
+		path "sys/namespaces/*" {
+		  capabilities = ["create", "read", "update", "delete", "list"]
+		}
+		path "sys/*" {
+		  capabilities = ["read", "list"]
+		}
+		path "auth/*" {
+		  capabilities = ["read", "list"]
+		}`
+
+	require.NoError(t, client.Sys().PutPolicy("namespace-admin", policy))
+
+	// Map LDAP group to policy
+	_, err = client.Logical().Write("auth/ldap/groups/admin_staff", map[string]interface{}{"policies": "namespace-admin"})
+	require.NoError(t, err)
+
+	// Login as LDAP admin-user
+	secret, err := client.Logical().Write("auth/ldap/login/hermes conrad", map[string]interface{}{
+		"password": "hermes",
+	})
+	require.NoError(t, err)
+	token := secret.Auth.ClientToken
+	client.SetToken(token)
+
+	for _, ns := range []string{"ns1", "ns2", "ns3"} {
+		resp, err := client.Logical().Write("sys/namespaces/"+ns, nil)
+		require.NoErrorf(t, err, "failed to create namespace %s", ns)
+		require.NotNil(t, resp, "response for namespace %s is nil", ns)
 	}
 }

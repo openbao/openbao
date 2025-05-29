@@ -7,8 +7,6 @@ import { helper as buildHelper } from '@ember/component/helper';
 
 const ALL_FEATURES = [
   'HSM',
-  'Performance Replication',
-  'DR Replication',
   'MFA',
   'Seal Wrapping',
   'Control Groups',

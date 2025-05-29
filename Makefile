@@ -23,9 +23,12 @@ endif
 
 default: dev
 
-# bin generates the releasable binaries for OpenBao
+# bin generates the equivalent of releasable binaries for OpenBao
 bin: prep
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS) ui' sh -c "'$(CURDIR)/scripts/build.sh'"
+
+bin-plugin: prep
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS) ui' sh -c "'$(CURDIR)/scripts/build.sh' plugin"
 
 # dev creates binaries for testing OpenBao locally. These are put
 # into ./bin/ as well as $GOPATH/bin
@@ -266,16 +269,16 @@ fmt: ci-bootstrap
 	find . -name '*.go' | grep -v pb.go | grep -v vendor | xargs go run mvdan.cc/gofumpt@latest -w
 
 semgrep:
-	semgrep --include '*.go' --exclude 'vendor' -a -f tools/semgrep .
+	semgrep --include '*.go' -a -f tools/semgrep .
 
 semgrep-ci:
-	semgrep --error --include '*.go' --exclude 'vendor' -f tools/semgrep/ci .
+	semgrep --error --include '*.go' -f tools/semgrep/ci .
 
 docker-semgrep:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --include '*.go' --exclude 'vendor' -a -f tools/semgrep .
+	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --include '*.go' -a -f tools/semgrep .
 
 docker-semgrep-ci:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --error --include '*.go' --exclude 'vendor' -a -f tools/semgrep/ci .
+	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --error --include '*.go' -a -f tools/semgrep/ci .
 
 assetcheck:
 	@echo "==> Checking compiled UI assets..."
@@ -283,7 +286,7 @@ assetcheck:
 
 spellcheck:
 	@echo "==> Spell checking website..."
-	$(GO_CMD) run github.com/client9/misspell/cmd/misspell@latest -error -source=text website/source
+	$(GO_CMD) run github.com/golangci/misspell/cmd/misspell@latest -w -source=text website/content
 
 mysql-database-plugin:
 	@CGO_ENABLED=0 $(GO_CMD) build -o bin/mysql-database-plugin ./plugins/database/mysql/mysql-database-plugin
@@ -363,8 +366,43 @@ dev-gorelease:
 
 .PHONY: goreleaser-check
 goreleaser-check:
-	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
-	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
-	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
-	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
-	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.hsm.yaml
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.linux.yaml
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.other.yaml
+
+.PHONY: sync-deps
+sync-deps:
+	sh -c "'$(CURDIR)/scripts/sync-deps.sh'"
+
+.PHONY: ci-sync-deps
+ci-sync-deps: sync-deps
+	git diff --quiet || (echo -e "\n\nModified files:" && git status --short && echo -e "\n\nRun 'make sync-deps' locally and commit the changes.\n" && exit 1)
+
+.PHONY: bump-critical
+bump-critical:
+	grep -o 'golang.org/x/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
+	go get github.com/golang-jwt/jwt/v4@latest
+	go get github.com/golang-jwt/jwt/v5@latest
+	make sync-deps
+
+.PHONY: tag-api
+tag-api:
+	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for API tagging))
+	@:$(if $(ORIGIN),,$(error please set the ORIGIN environment variable for pushing API tags))
+	git tag api/$(THIS_RELEASE)
+	git tag api/auth/approle/$(THIS_RELEASE)
+	git tag api/auth/kubernetes/$(THIS_RELEASE)
+	git tag api/auth/ldap/$(THIS_RELEASE)
+	git tag api/auth/userpass/$(THIS_RELEASE)
+	git push $(ORIGIN) api/$(THIS_RELEASE)
+	git push $(ORIGIN) api/auth/approle/$(THIS_RELEASE)
+	git push $(ORIGIN) api/auth/kubernetes/$(THIS_RELEASE)
+	git push $(ORIGIN) api/auth/ldap/$(THIS_RELEASE)
+	git push $(ORIGIN) api/auth/userpass/$(THIS_RELEASE)
+
+.PHONY: tag-sdk
+tag-sdk:
+	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for API tagging))
+	@:$(if $(ORIGIN),,$(error please set the ORIGIN environment variable for pushing API tags))
+	git tag sdk/$(THIS_RELEASE)
+	git push $(ORIGIN) sdk/$(THIS_RELEASE)

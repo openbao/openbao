@@ -24,3 +24,23 @@ Steering Committee.
    storage semantics in `physical.Backend` and `logical.Storage` for use
    by Core and plugins. This landed in several parts concluding in
    [PR #292](https://github.com/openbao/openbao/pull/292).
+ - [SCAN operation](/docs/rfcs/scan-operation), for supporting recursive
+   lists as a native operation and as an ACL capability. This landed in
+   [PR #763](https://github.com/openbao/openbao/pull/763).
+ - [ACME TLS Listeners](/docs/rfcs/acme-tls-listeners), for supporting
+   just-in-time certificate acquisition for TLS-enabled listeners via the
+   ACME protocol.
+ - [Safely limit pagination via ACL policies](/docs/rfcs/acl-paginated-lists),
+   adding a new ACL policy parameter, `pagination_limit`, to restrict the size
+   of list and scan operation requests.
+ - [Split the mount table using transactional storage](/docs/rfcs/split-mount-tables),
+   removes mount table limits, allowing potentially hundreds of thousands of
+   mounts on a single scaled-up server. This landed in
+   [622](https://github.com/openbao/openbao/pull/622).
+ - [SSH CA Multi-issuer](/docs/rfcs/ssh-ca-multi-issuer), adds support for multiple issuers on SSH secret engine mounts.
+   Landed in [880](https://github.com/openbao/openbao/pull/880).
+ - [Best Practices for Integrating CEL in Auth, Secrets, and Elsewhere](/docs/rfcs/cel-best-practices),
+   to discuss how Google's Common Expression Language should be integrated
+   into OpenBao.
+ - [Using CEL Roles For JWT/OIDC Auth](/docs/rfcs/cel-jwt), adds support for CEL roles in JWT Auth
+   Landed in [769](https://github.com/openbao/openbao/pull/769)

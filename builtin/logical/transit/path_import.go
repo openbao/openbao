@@ -104,8 +104,10 @@ being automatically rotated. A value of 0
 key.`,
 			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathImportWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathImportWrite,
+			},
 		},
 		HelpSynopsis:    pathImportWriteSyn,
 		HelpDescription: pathImportWriteDesc,
@@ -148,8 +150,10 @@ ephemeral AES key. Can be one of "SHA1", "SHA224", "SHA256" (default), "SHA384",
 a private key is specified and the 'Latest' key is missing a private key.`,
 			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathImportVersionWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathImportVersionWrite,
+			},
 		},
 		HelpSynopsis:    pathImportVersionWriteSyn,
 		HelpDescription: pathImportVersionWriteDesc,
@@ -248,6 +252,12 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 }
 
 func (b *backend) pathImportVersionWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := d.Get("name").(string)
 
 	isCiphertextSet, err := checkKeyFieldsSet(d)
@@ -302,6 +312,10 @@ func (b *backend) pathImportVersionWrite(ctx context.Context, req *logical.Reque
 		return nil, err
 	}
 
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 
@@ -319,7 +333,7 @@ func (b *backend) decryptImportedKey(ctx context.Context, storage logical.Storag
 		return nil, err
 	}
 	if wrappingKey == nil {
-		return nil, fmt.Errorf("error importing key: wrapping key was nil")
+		return nil, errors.New("error importing key: wrapping key was nil")
 	}
 
 	privWrappingKey := wrappingKey.Keys[strconv.Itoa(wrappingKey.LatestVersion)].RSAKey

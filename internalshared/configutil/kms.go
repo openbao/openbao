@@ -6,6 +6,7 @@ package configutil
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	"github.com/openbao/go-kms-wrapping/wrappers/awskms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2"
+	"github.com/openbao/go-kms-wrapping/wrappers/kmip/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -145,7 +147,7 @@ func ParseKMSes(d string) ([]*KMS, error) {
 
 	list, ok := obj.Node.(*ast.ObjectList)
 	if !ok {
-		return nil, fmt.Errorf("error parsing: file doesn't contain a root object")
+		return nil, errors.New("error parsing: file doesn't contain a root object")
 	}
 
 	if o := list.Filter("seal"); len(o.Items) > 0 {
@@ -192,11 +194,15 @@ func configureWrapper(configKMS *KMS, infoKeys *[]string, info *map[string]strin
 			opts = append(opts, wrapping.WithKeyId(keyId))
 		}
 		wrapper, kmsInfo, err = GetOCIKMSKMSFunc(configKMS, opts...)
+
 	case wrapping.WrapperTypeTransit:
 		wrapper, kmsInfo, err = GetTransitKMSFunc(configKMS, opts...)
 
 	case wrapping.WrapperTypePkcs11:
-		return nil, fmt.Errorf("KMS type 'pkcs11' is not supported by OpenBao")
+		wrapper, kmsInfo, err = GetPKCS11KMSFunc(configKMS, opts...)
+
+	case wrapping.WrapperTypeKmip:
+		wrapper, kmsInfo, err = GetKmipKMSFunc(configKMS, opts...)
 
 	default:
 		return nil, fmt.Errorf("Unknown KMS type %q", configKMS.Type)
@@ -342,6 +348,34 @@ var GetTransitKMSFunc = func(kms *KMS, opts ...wrapping.Option) (wrapping.Wrappe
 		info["Transit Key Name"] = wrapperInfo.Metadata["key_name"]
 		if namespace, ok := wrapperInfo.Metadata["namespace"]; ok {
 			info["Transit Namespace"] = namespace
+		}
+	}
+	return wrapper, info, nil
+}
+
+func GetKmipKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
+	wrapper := kmip.NewWrapper()
+	wrapperInfo, err := wrapper.SetConfig(context.Background(), append(opts, wrapping.WithConfigMap(kms.Config))...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	info := make(map[string]string)
+	if wrapperInfo != nil {
+		info["KMIP Key ID"] = wrapperInfo.Metadata["kms_key_id"]
+		info["KMIP Endpoint"] = wrapperInfo.Metadata["endpoint"]
+		info["KMIP Timeout"] = wrapperInfo.Metadata["timeout"]
+		info["KMIP Encryption Algorithm"] = wrapperInfo.Metadata["encrypt_alg"]
+		info["KMIP Protocol Version"] = wrapperInfo.Metadata["kmip_version"]
+
+		if tlsCiphers := wrapperInfo.Metadata["kmip_tls12_ciphers"]; tlsCiphers != "" {
+			info["KMIP TLS 1.2 Ciphers"] = tlsCiphers
+		}
+		if pubKeyId := wrapperInfo.Metadata["kms_public_key_id"]; pubKeyId != "" {
+			info["KMIP Public Key ID"] = pubKeyId
+		}
+		if serverName := wrapperInfo.Metadata["server_name"]; serverName != "" {
+			info["KMIP Server Name"] = serverName
 		}
 	}
 	return wrapper, info, nil

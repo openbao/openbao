@@ -168,7 +168,7 @@ func TestCreateUser(t *testing.T) {
 			defer cancel()
 			newUserResp, err := db.NewUser(ctx, test.newUserReq)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)

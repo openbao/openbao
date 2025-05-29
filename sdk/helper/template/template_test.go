@@ -4,6 +4,7 @@
 package template
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -51,6 +52,8 @@ func TestGenerate(t *testing.T) {
 {{.String | sha256}}
 {{.String | base64}}
 {{.String | base64 | decode_base64}}
+{{.String | hex}}
+{{.String | hex | decode_hex}}
 {{.String | truncate_sha256 20}}`,
 			data: struct {
 				String string
@@ -64,11 +67,22 @@ Some.string.with.Multiple.Capitals.LETTERS
 da9872dd96609c72897defa11fe81017a62c3f44339d9d3b43fe37540ede3601
 U29tZSBzdHJpbmcgd2l0aCBNdWx0aXBsZSBDYXBpdGFscyBMRVRURVJT
 Some string with Multiple Capitals LETTERS
+536f6d6520737472696e672077697468204d756c7469706c65204361706974616c73204c455454455253
+Some string with Multiple Capitals LETTERS
 Some string 6841cf80`,
 			expectErr: false,
 		},
 		"template with invalid base64": {
 			template: `{{.String | decode_base64}}`,
+			data: struct {
+				String string
+			}{
+				String: "invalid: *",
+			},
+			expectErr: true,
+		},
+		"template with invalid hex": {
+			template: `{{.String | decode_hex}}`,
 			data: struct {
 				String string
 			}{
@@ -96,7 +110,7 @@ Some string 6841cf80`,
 
 			actual, err := st.Generate(test.data)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -208,7 +222,7 @@ func TestBadConstructorArguments(t *testing.T) {
 		st, err := NewTemplate(
 			Template("{{foo}}"),
 			Function("foo", func() (string, error) {
-				return "", fmt.Errorf("an error!")
+				return "", errors.New("an error!")
 			}),
 		)
 		require.NoError(t, err)

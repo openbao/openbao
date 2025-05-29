@@ -352,7 +352,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp == nil {
-			t.Fatalf("failed to use the auto-auth token to perform lookup-self")
+			t.Fatal("failed to use the auto-auth token to perform lookup-self")
 		}
 	}
 
@@ -414,7 +414,7 @@ func TestCache_UsingAutoAuthToken(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp == nil || resp.Data["id"] != client.Token() {
-			t.Fatalf("failed to use the cluster client token to perform lookup-self")
+			t.Fatal("failed to use the cluster client token to perform lookup-self")
 		}
 	}
 }

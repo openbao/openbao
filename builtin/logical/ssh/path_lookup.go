@@ -29,8 +29,10 @@ func pathLookup(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathLookupWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathLookupWrite,
+			},
 		},
 
 		HelpSynopsis:    pathLookupSyn,
@@ -39,6 +41,12 @@ func pathLookup(b *backend) *framework.Path {
 }
 
 func (b *backend) pathLookupWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	ipAddr := d.Get("ip").(string)
 	if ipAddr == "" {
 		return logical.ErrorResponse("Missing ip"), nil
@@ -70,6 +78,10 @@ func (b *backend) pathLookupWrite(ctx context.Context, req *logical.Request, d *
 	}
 	if zeroAddressEntry != nil {
 		matchingRoles = append(matchingRoles, zeroAddressEntry.Roles...)
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	// This list may potentially reveal more information than it is supposed to.

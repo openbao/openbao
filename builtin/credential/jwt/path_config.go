@@ -107,6 +107,10 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 					Value: true,
 				},
 			},
+			"skip_jwks_validation": {
+				Type:        framework.TypeBool,
+				Description: "When true and oidc_discovery_url or jwks_url are specified, if the connection fails to load, a warning will be issued and status can be checked later by reading the config endpoint.",
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -219,7 +223,7 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 
 	if config.OIDCDeviceAuthURL != "" {
 		if config.OIDCDeviceAuthURL == "N/A" {
-			return fmt.Errorf("no device auth endpoint url discovered")
+			return errors.New("no device auth endpoint url discovered")
 		}
 		return nil
 	}
@@ -244,7 +248,7 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 	err = json.Unmarshal(body, &daj)
 	if err != nil || daj.DeviceAuthURL == "" {
 		b.cachedConfig.OIDCDeviceAuthURL = "N/A"
-		return fmt.Errorf("no device auth endpoint url discovered")
+		return errors.New("no device auth endpoint url discovered")
 	}
 
 	b.cachedConfig.OIDCDeviceAuthURL = daj.DeviceAuthURL
@@ -296,6 +300,15 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 		},
 	}
 
+	// Check if the config is currently valid and warn otherwise.
+	_, err = b.jwtValidator(config)
+	if err != nil {
+		resp.AddWarning(fmt.Sprintf("failed to construct JWK validator: %v", err))
+		resp.Data["status"] = "invalid"
+	} else {
+		resp.Data["status"] = "valid"
+	}
+
 	return resp, nil
 }
 
@@ -315,6 +328,14 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		BoundIssuer:          d.Get("bound_issuer").(string),
 		ProviderConfig:       d.Get("provider_config").(map[string]interface{}),
 	}
+
+	skipJwksValidation := d.Get("skip_jwks_validation").(bool)
+
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
 
 	// Check if the config already exists, to determine if this is a create or
 	// an update, since req.Operation is always 'update' in this handler, and
@@ -345,6 +366,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		methodCount++
 	}
 
+	resp := &logical.Response{}
 	switch {
 	case methodCount != 1:
 		return logical.ErrorResponse("exactly one of 'jwt_validation_pubkeys', 'jwks_url' or 'oidc_discovery_url' must be set"), nil
@@ -361,8 +383,12 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 			_, err = jwt.NewOIDCDiscoveryKeySet(ctx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
 		}
 		if err != nil {
-			b.Logger().Error("error checking oidc discovery URL", "error", err)
-			return logical.ErrorResponse("error checking oidc discovery URL"), nil
+			if !skipJwksValidation {
+				b.Logger().Error("error checking oidc discovery URL", "error", err)
+				return logical.ErrorResponse("error checking oidc discovery URL"), nil
+			}
+
+			resp.AddWarning("error checking oidc discovery URL")
 		}
 
 	case config.OIDCClientID != "" && config.OIDCDiscoveryURL == "":
@@ -377,15 +403,19 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 
 		// Try to verify a correctly formatted JWT. The signature will fail to match, but other
 		// errors with fetching the remote keyset should be reported.
-		testJWT := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.Hf3E3iCHzqC5QIQ0nCqS1kw78IiQTRVzsLTuKoDIpdk"
+		testJWT := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.NHVaYe26MbtOYhSKkoKYdFVomg4i8ZJd8_-RU8VNbftc4TSMb4bXP3l3YlNWACwyXPGffz5aXHc6lty1Y2t4SWRqGteragsVdZufDn5BlnJl9pdR_kdVFUsra2rWKEofkZeIC4yWytE58sMIihvo9H1ScmmVwBcQP6XETqYd0aSHp1gOa9RdUPDvoXQ5oqygTqVtxaDr6wUFKrKItgBMzWIdNZ6y7O9E0DhEPTbE9rfBo6KTFsHAZnMg4k68CDp2woYIaXbmYTWcvbzIuHO7_37GT79XdIwkm95QJ7hYC9RiwrV7mesbY4PAahERJawntho0my942XheVLmGwLMBkQ"
 		_, err = keyset.VerifySignature(ctx, testJWT)
 		if err == nil {
 			err = errors.New("unexpected verification of JWT")
 		}
 
 		if !strings.Contains(err.Error(), "failed to verify id token signature") {
-			b.Logger().Error("error checking jwks URL", "error", err)
-			return logical.ErrorResponse("error checking jwks URL"), nil
+			if !skipJwksValidation {
+				b.Logger().Error("error checking jwks URL", "error", err)
+				return logical.ErrorResponse("error checking jwks URL"), nil
+			}
+
+			resp.AddWarning("error checking jwks URL")
 		}
 
 	case len(config.JWTValidationPubKeys) != 0:
@@ -436,6 +466,14 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	}
 
 	b.reset()
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
+	if len(resp.Warnings) > 0 {
+		return resp, nil
+	}
 
 	return nil, nil
 }

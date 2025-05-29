@@ -4,6 +4,7 @@
 package template
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"text/template"
@@ -26,10 +27,10 @@ func Template(rawTemplate string) Opt {
 func Function(name string, f interface{}) Opt {
 	return func(up *StringTemplate) error {
 		if name == "" {
-			return fmt.Errorf("missing function name")
+			return errors.New("missing function name")
 		}
 		if f == nil {
-			return fmt.Errorf("missing function")
+			return errors.New("missing function")
 		}
 		up.funcMap[name] = f
 		return nil
@@ -88,6 +89,14 @@ func Option(opts ...string) Opt {
 //   - decode_base64 decodes the previous value.
 //     Example: {{ .DisplayName | decode_base64 }}
 //
+// - hex
+//   - hex encodes the previous value.
+//     Example: {{ .DisplayName | hex }}
+//
+// - decode_hex
+//   - hex decodes the previous value.
+//     Example: {{ .DisplayName | decode_hex }}
+//
 // - unix_time
 //   - Provides the current unix time in seconds.
 //     Example: {{ unix_time }}
@@ -120,16 +129,17 @@ type StringTemplate struct {
 func NewTemplate(opts ...Opt) (up StringTemplate, err error) {
 	up = StringTemplate{
 		funcMap: map[string]interface{}{
-			"random":          base62.Random,
-			"truncate":        truncate,
-			"truncate_sha256": truncateSHA256,
-			"uppercase":       uppercase,
-			"lowercase":       lowercase,
-			"replace":         replace,
-			"sha256":          hashSHA256,
-			"base64":          encodeBase64,
-			"decode_base64":   decodeBase64,
-
+			"random":           base62.Random,
+			"truncate":         truncate,
+			"truncate_sha256":  truncateSHA256,
+			"uppercase":        uppercase,
+			"lowercase":        lowercase,
+			"replace":          replace,
+			"sha256":           hashSHA256,
+			"base64":           encodeBase64,
+			"decode_base64":    decodeBase64,
+			"hex":              encodeHex,
+			"decode_hex":       decodeHex,
 			"unix_time":        unixTime,
 			"unix_time_millis": unixTimeMillis,
 			"timestamp":        timestamp,
@@ -149,7 +159,7 @@ func NewTemplate(opts ...Opt) (up StringTemplate, err error) {
 	}
 
 	if up.rawTemplate == "" {
-		return StringTemplate{}, fmt.Errorf("missing template")
+		return StringTemplate{}, errors.New("missing template")
 	}
 
 	tmpl, err := template.New("template").
@@ -167,7 +177,7 @@ func NewTemplate(opts ...Opt) (up StringTemplate, err error) {
 // Generate based on the provided template
 func (up StringTemplate) Generate(data interface{}) (string, error) {
 	if up.tmpl == nil || up.rawTemplate == "" {
-		return "", fmt.Errorf("failed to generate: template not initialized")
+		return "", errors.New("failed to generate: template not initialized")
 	}
 	str := &strings.Builder{}
 	err := up.tmpl.Execute(str, data)

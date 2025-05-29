@@ -7,7 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"path"
 	"reflect"
 	"testing"
@@ -186,7 +186,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 				"deletion_ldif": ldifDeleteTemplate,
 			}),
 
-			putErr:   fmt.Errorf("test error"),
+			putErr:   errors.New("test error"),
 			putTimes: 1,
 
 			expectErr: true,
@@ -259,7 +259,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 
 			_, err := b.pathDynamicRoleCreateUpdate(ctx, req, test.createData)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -839,7 +839,7 @@ changetype: delete`,
 			}
 			resp, err = b.pathDynamicRoleCreateUpdate(ctx, req, updateData)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -867,7 +867,7 @@ func TestDynamicRoleRead(t *testing.T) {
 	tests := map[string]testCase{
 		"storage failure": {
 			storageResp:  nil,
-			storageErr:   fmt.Errorf("test error"),
+			storageErr:   errors.New("test error"),
 			expectedResp: nil,
 			expectErr:    true,
 		},
@@ -928,7 +928,7 @@ func TestDynamicRoleRead(t *testing.T) {
 
 			resp, err := b.pathDynamicRoleRead(ctx, req, data)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -952,7 +952,7 @@ func TestDynamicRoleList(t *testing.T) {
 	tests := map[string]testCase{
 		"storage failure": {
 			storageResp:  nil,
-			storageErr:   fmt.Errorf("test error"),
+			storageErr:   errors.New("test error"),
 			expectedResp: nil,
 			expectErr:    true,
 		},
@@ -997,7 +997,7 @@ func TestDynamicRoleList(t *testing.T) {
 
 			resp, err := b.pathDynamicRoleList(ctx, req, data)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -1023,7 +1023,7 @@ func TestDynamicRoleExistenceCheck(t *testing.T) {
 	tests := map[string]testCase{
 		"storage failure": {
 			storageResp:    nil,
-			storageErr:     fmt.Errorf("test error"),
+			storageErr:     errors.New("test error"),
 			expectedExists: false,
 			expectErr:      true,
 		},
@@ -1079,17 +1079,17 @@ userPassword: {{.Password}}`,
 
 			exists, err := b.pathDynamicRoleExistenceCheck(ctx, req, data)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
 			}
 
 			if test.expectedExists && !exists {
-				t.Fatalf("expected role to exist, did not")
+				t.Fatal("expected role to exist, did not")
 			}
 			if !test.expectedExists && exists {
-				t.Fatalf("did not expect role to exist, but did")
+				t.Fatal("did not expect role to exist, but did")
 			}
 		})
 	}
@@ -1216,7 +1216,7 @@ func TestConvertToDuration(t *testing.T) {
 			data := test.input // The original map is being modified so let's make this an explicit variable
 			err := convertToDuration(data, test.keysToConvert...)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)

@@ -1704,8 +1704,10 @@ func (b *SystemBackend) sealPaths() []*framework.Path {
 				OperationVerb:   "status",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation: b.handleKeyStatus,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleKeyStatus,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["key-status"][0]),
@@ -1787,10 +1789,6 @@ func (b *SystemBackend) sealPaths() []*framework.Path {
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "encryption-key",
 				OperationVerb:   "rotate",
-			},
-
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: b.handleRotate,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -3719,6 +3717,22 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Type:        framework.TypeString,
 					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
 				},
+				"expiration": {
+					Type:        framework.TypeTime,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
+				"ttl": {
+					Type:        framework.TypeDurationSecond,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
+				"cas": {
+					Type:        framework.TypeInt,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
+				"cas_required": {
+					Type:        framework.TypeBool,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -3734,11 +3748,27 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 								},
 								"rules": {
 									Type:     framework.TypeString,
-									Required: true,
+									Required: false,
 								},
 								"policy": {
 									Type:     framework.TypeString,
 									Required: false,
+								},
+								"expiration": {
+									Type:     framework.TypeTime,
+									Required: false,
+								},
+								"modified": {
+									Type:     framework.TypeTime,
+									Required: false,
+								},
+								"version": {
+									Type:     framework.TypeInt,
+									Required: true,
+								},
+								"cas_required": {
+									Type:     framework.TypeBool,
+									Required: true,
 								},
 							},
 						}},
@@ -3837,6 +3867,22 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Type:        framework.TypeString,
 					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
 				},
+				"expiration": {
+					Type:        framework.TypeTime,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
+				"ttl": {
+					Type:        framework.TypeDurationSecond,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
+				"cas": {
+					Type:        framework.TypeInt,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
+				"cas_required": {
+					Type:        framework.TypeBool,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -3857,6 +3903,22 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 								"policy": {
 									Type:     framework.TypeString,
 									Required: false,
+								},
+								"expiration": {
+									Type:     framework.TypeTime,
+									Required: false,
+								},
+								"modified": {
+									Type:     framework.TypeTime,
+									Required: false,
+								},
+								"version": {
+									Type:     framework.TypeInt,
+									Required: true,
+								},
+								"cas_required": {
+									Type:     framework.TypeBool,
+									Required: true,
 								},
 							},
 						}},
@@ -4032,6 +4094,25 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 			HelpDescription: "Read the rules of an existing password policy, create or update " +
 				"the rules of a password policy, or delete a password policy.",
 		},
+
+		{
+			Pattern: "policies/detailed/acl/?$",
+			Fields: map[string]*framework.FieldSchema{
+				"list": {
+					Type:        framework.TypeBool,
+					Description: "List ACL policies",
+					Query:       true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesDetailedAclList(),
+					Summary:  "List ACL policies with detailed information.",
+				},
+			},
+			HelpSynopsis:    strings.TrimSpace(sysHelp["policies"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["policies"][1]),
+		},
 	}
 }
 
@@ -4042,10 +4123,6 @@ func (b *SystemBackend) wrappingPaths() []*framework.Path {
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationVerb: "wrap",
-			},
-
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: b.handleWrappingWrap,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{

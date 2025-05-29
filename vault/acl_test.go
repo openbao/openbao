@@ -175,10 +175,10 @@ func testACLRoot(t *testing.T, ns *namespace.Namespace) {
 
 	authResults := acl.AllowOperation(ctx, request, false)
 	if !authResults.RootPrivs {
-		t.Fatalf("expected root")
+		t.Fatal("expected root")
 	}
 	if !authResults.Allowed {
-		t.Fatalf("expected permissions")
+		t.Fatal("expected permissions")
 	}
 }
 
@@ -210,7 +210,7 @@ func testACLSingle(t *testing.T, ns *namespace.Namespace) {
 
 	authResults := acl.AllowOperation(ctx, request, false)
 	if authResults.RootPrivs {
-		t.Fatalf("unexpected root")
+		t.Fatal("unexpected root")
 	}
 
 	type tcase struct {
@@ -247,6 +247,10 @@ func testACLSingle(t *testing.T, ns *namespace.Namespace) {
 		{logical.PatchOperation, "baz/quux", true, false},
 		{logical.ListOperation, "baz/quux", false, false},
 		{logical.UpdateOperation, "baz/quux", false, false},
+		{logical.ScanOperation, "baz/quux", false, false},
+
+		{logical.ScanOperation, "asdf/fdsa", true, false},
+		{logical.ListOperation, "asdf/fdsa", false, false},
 
 		// Path segment wildcards
 		{logical.ReadOperation, "test/foo/bar/segment", false, false},
@@ -315,7 +319,7 @@ func testLayeredACL(t *testing.T, acl *ACL, ns *namespace.Namespace) {
 
 	authResults := acl.AllowOperation(ctx, request, false)
 	if authResults.RootPrivs {
-		t.Fatalf("unexpected root")
+		t.Fatal("unexpected root")
 	}
 
 	type tcase struct {
@@ -378,7 +382,7 @@ func testLayeredACL(t *testing.T, acl *ACL, ns *namespace.Namespace) {
 func TestACL_ParseMalformedPolicy(t *testing.T) {
 	_, err := ParseACLPolicy(namespace.RootNamespace, `name{}`)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 }
 
@@ -1039,6 +1043,9 @@ path "1/2/+" {
 }
 path "1/2/+/+" {
 	capabilities = ["update"]
+}
+path "asdf/fdsa" {
+	capabilities = ["scan"]
 }
 `
 

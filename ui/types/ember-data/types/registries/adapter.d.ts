@@ -4,8 +4,8 @@
  */
 
 import Application from 'vault/adapters/application';
-import Adapter from 'ember-data/adapter';
-import ModelRegistry from 'ember-data/types/registries/model';
+import Adapter from '@ember-data/adapter';
+import ModelRegistry from '@ember-data/types/registries/model';
 import PkiIssuerAdapter from 'vault/adapters/pki/issuer';
 import PkiTidyAdapter from 'vault/adapters/pki/tidy';
 

@@ -111,7 +111,7 @@ func TestGauge_Creation(t *testing.T) {
 	sink.GaugeInterval = 33 * time.Minute
 
 	key := []string{"example", "count"}
-	labels := []Label{{"gauge", "test"}}
+	labels := []Label{{Name: "gauge", Value: "test"}}
 
 	p, err := sink.NewGaugeCollectionProcess(
 		key,
@@ -154,7 +154,7 @@ func TestGauge_StartDelay(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		c.EmptyCollectionFunction,
 		sink,
 		sink.GaugeInterval,
@@ -219,7 +219,7 @@ func TestGauge_StoppedDuringInitialDelay(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		c.EmptyCollectionFunction,
 		sink,
 		sink.GaugeInterval,
@@ -248,7 +248,7 @@ func TestGauge_StoppedAfterInitialDelay(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		c.EmptyCollectionFunction,
 		sink,
 		sink.GaugeInterval,
@@ -290,7 +290,7 @@ func TestGauge_Backoff(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		f,
 		sink,
 		sink.GaugeInterval,
@@ -319,7 +319,7 @@ func TestGauge_RestartTimer(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		c.EmptyCollectionFunction,
 		sink,
 		sink.GaugeInterval,
@@ -371,8 +371,8 @@ func makeLabels(numLabels int) []GaugeLabelValues {
 	values := make([]GaugeLabelValues, numLabels)
 	for i := range values {
 		values[i].Labels = []Label{
-			{"test", "true"},
-			{"which", fmt.Sprintf("%v", i)},
+			{Name: "test", Value: "true"},
+			{Name: "which", Value: fmt.Sprintf("%v", i)},
 		}
 		values[i].Value = float32(i + 1)
 	}
@@ -392,7 +392,7 @@ func TestGauge_InterruptedStreaming(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		nil, // shouldn't be called
 		sink,
 		sink.GaugeInterval,
@@ -470,7 +470,7 @@ func TestGauge_MaximumMeasurements(t *testing.T) {
 	advance := time.Duration(int(0.005 * float32(sink.GaugeInterval)))
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		c.makeFunctionForValues(values, s, advance),
 		sink,
 		sink.GaugeInterval,
@@ -538,8 +538,8 @@ func TestGauge_MeasurementError(t *testing.T) {
 	values := make([]GaugeLabelValues, numGauges)
 	for i := range values {
 		values[i].Labels = []Label{
-			{"test", "true"},
-			{"which", fmt.Sprintf("%v", i)},
+			{Name: "test", Value: "true"},
+			{Name: "which", Value: fmt.Sprintf("%v", i)},
 		}
 		values[i].Value = float32(i + 1)
 	}
@@ -552,7 +552,7 @@ func TestGauge_MeasurementError(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		f,
 		sink,
 		sink.GaugeInterval,

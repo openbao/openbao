@@ -28,8 +28,10 @@ func (b *backend) pathRotate() *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathRotateWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathRotateWrite,
+			},
 		},
 
 		HelpSynopsis:    pathRotateHelpSyn,
@@ -38,6 +40,12 @@ func (b *backend) pathRotate() *framework.Path {
 }
 
 func (b *backend) pathRotateWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := d.Get("name").(string)
 
 	// Get the policy
@@ -59,6 +67,10 @@ func (b *backend) pathRotateWrite(ctx context.Context, req *logical.Request, d *
 	// Rotate the policy
 	err = p.Rotate(ctx, req.Storage, b.GetRandomReader())
 	if err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

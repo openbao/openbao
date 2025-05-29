@@ -80,6 +80,12 @@ func (b *backend) pathConfigLdapRead(ctx context.Context, req *logical.Request, 
 }
 
 func (b *backend) pathConfigLdapWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	cfg, err := b.ConfigLdap(ctx, req)
 	if err != nil {
 		return nil, err
@@ -110,9 +116,15 @@ func (b *backend) pathConfigLdapWrite(ctx context.Context, req *logical.Request,
 	if err != nil {
 		return nil, err
 	}
+
 	if err := req.Storage.Put(ctx, entry); err != nil {
 		return nil, err
 	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	semver "github.com/hashicorp/go-version"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/audit"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/identity"
@@ -37,6 +39,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/version"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSystemBackend_RootPaths(t *testing.T) {
@@ -446,7 +449,7 @@ func TestSystemBackend_mount_force_no_cache(t *testing.T) {
 
 	mountEntry := core.router.MatchingMountEntry(namespace.RootContext(nil), "prod/secret/")
 	if mountEntry == nil {
-		t.Fatalf("missing mount entry")
+		t.Fatal("missing mount entry")
 	}
 	if !mountEntry.Config.ForceNoCache {
 		t.Fatalf("bad config %#v", mountEntry)
@@ -508,7 +511,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 	core, b, rootToken := testCoreSystemBackend(t)
 
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
-	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy)
+	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -717,7 +720,7 @@ func testCapabilities(t *testing.T, endpoint string) {
 	}
 
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
-	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy)
+	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -773,7 +776,7 @@ func TestSystemBackend_CapabilitiesAccessor_BC(t *testing.T) {
 	}
 
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
-	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy)
+	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1477,7 +1480,7 @@ func TestSystemBackend_renew(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if resp2.IsError() {
-		t.Fatalf("got an error")
+		t.Fatal("got an error")
 	}
 	if resp2.Data == nil {
 		t.Fatal("nil data")
@@ -1494,7 +1497,7 @@ func TestSystemBackend_renew(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if resp2.IsError() {
-		t.Fatalf("got an error")
+		t.Fatal("got an error")
 	}
 	if resp2.Data == nil {
 		t.Fatal("nil data")
@@ -1511,7 +1514,7 @@ func TestSystemBackend_renew(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if resp2.IsError() {
-		t.Fatalf("got an error")
+		t.Fatal("got an error")
 	}
 	if resp2.Data == nil {
 		t.Fatal("nil data")
@@ -1854,8 +1857,10 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 			MaxLeaseTTLVal:     time.Hour * 24 * 32,
 		},
 	}
+
+	ctx := namespace.RootContext(nil)
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
-	err := b.Backend.Setup(namespace.RootContext(nil), bc)
+	err := b.Backend.Setup(ctx, bc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1868,9 +1873,9 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 		TTL:         time.Hour,
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	testMakeTokenDirectly(t, ts, te)
+	testMakeTokenDirectly(t, ctx, ts, te)
 
-	te, err = ts.Lookup(namespace.RootContext(nil), "foo")
+	te, err = ts.Lookup(ctx, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1885,13 +1890,13 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 			TTL: time.Hour,
 		},
 	}
-	err = exp.RegisterAuth(namespace.RootContext(nil), te, auth, "")
+	err = exp.RegisterAuth(ctx, te, auth, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke-prefix/auth/github/")
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v %v", err, resp)
 	}
@@ -1899,7 +1904,7 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 		t.Fatalf("bad: %#v", resp)
 	}
 
-	te, err = ts.Lookup(namespace.RootContext(nil), te.ID)
+	te, err = ts.Lookup(ctx, te.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1918,8 +1923,10 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 			MaxLeaseTTLVal:     time.Hour * 24 * 32,
 		},
 	}
+
+	ctx := namespace.RootContext(nil)
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
-	err := b.Backend.Setup(namespace.RootContext(nil), bc)
+	err := b.Backend.Setup(ctx, bc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1932,9 +1939,9 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 		TTL:         time.Hour,
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	testMakeTokenDirectly(t, ts, te)
+	testMakeTokenDirectly(t, ctx, ts, te)
 
-	te, err = ts.Lookup(namespace.RootContext(nil), "foo")
+	te, err = ts.Lookup(ctx, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1949,13 +1956,13 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 			TTL: time.Hour,
 		},
 	}
-	err = exp.RegisterAuth(namespace.RootContext(nil), te, auth, "")
+	err = exp.RegisterAuth(ctx, te, auth, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "revoke-prefix/auth/github/")
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v %v", err, resp)
 	}
@@ -1963,7 +1970,7 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 		t.Fatalf("bad: %#v", resp)
 	}
 
-	te, err = ts.Lookup(namespace.RootContext(nil), te.ID)
+	te, err = ts.Lookup(ctx, te.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2254,6 +2261,99 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 	}
 }
 
+func TestSystemBackend_tuneSys(t *testing.T) {
+	// Create a noop audit backend
+	var noop *corehelpers.NoopAudit
+	c, b, root := testCoreSystemBackend(t)
+	c.auditBackends["noop"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
+		var err error
+		noop, err = corehelpers.NewNoopAudit(config.Config)
+		if err != nil {
+			return nil, err
+		}
+		return noop, nil
+	}
+
+	// Validate Tune behavior.
+	req := logical.TestRequest(t, logical.UpdateOperation, "mounts/sys/tune")
+	req.Data["audit_non_hmac_request_keys"] = "policy"
+	req.Data["audit_non_hmac_response_keys"] = "policy"
+	_, err := b.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err, "failed to perform request")
+
+	req.Data["description"] = "new sys/ description"
+	_, err = b.HandleRequest(namespace.RootContext(nil), req)
+	require.Error(t, err, "expected to fail to modify description of sys/")
+
+	req = logical.TestRequest(t, logical.UpdateOperation, "mounts/sys/tune")
+	req.Data["description"] = "new sys/ description"
+	_, err = b.HandleRequest(namespace.RootContext(nil), req)
+	require.Error(t, err, "expected to fail to modify description of sys/")
+
+	// Enable the audit backend
+	req = logical.TestRequest(t, logical.UpdateOperation, "sys/audit/noop")
+	req.Data["type"] = "noop"
+	req.ClientToken = root
+	_, err = c.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err, "failed to enable audit backend")
+
+	// Now test policies are un-HMAC'd
+	req = &logical.Request{
+		Operation:   logical.ReadOperation,
+		Path:        "sys/policies/acl/default",
+		ClientToken: root,
+	}
+
+	resp, err := c.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err, "failed to read default ACL policy")
+
+	require.Equal(t, 1, len(noop.RespNonHMACKeys))
+	require.Equal(t, noop.RespNonHMACKeys[0], []string{"policy"})
+	require.Equal(t, 2, len(noop.Resp))
+	require.Equal(t, noop.Resp[1], resp)
+	record, err := noop.GetDecodedRecord(3)
+	require.NoError(t, err)
+	require.Contains(t, record, "type")
+	recordType := record["type"].(string)
+	require.Equal(t, recordType, "response")
+	require.Contains(t, record, "response")
+	recordResp := record["response"].(map[string]interface{})
+	require.Contains(t, recordResp, "data")
+	recordData := recordResp["data"].(map[string]interface{})
+	require.Contains(t, recordData, "policy")
+	recordPolicy := recordData["policy"].(string)
+	require.NotContains(t, recordPolicy, "hmac-sha256:")
+
+	// Writing a new policy should also be un-HMAC'd.
+	req.Operation = logical.UpdateOperation
+	req.Data = map[string]interface{}{
+		"policy": `path "auth/token/lookup-self" {
+    capabilities = ["read"]
+}
+`,
+	}
+	resp, err = c.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err, "failed to read default ACL policy")
+
+	require.Equal(t, 1, len(noop.RespNonHMACKeys))
+	require.Equal(t, noop.RespNonHMACKeys[0], []string{"policy"})
+	require.Equal(t, 3, len(noop.Resp))
+	require.Equal(t, noop.Resp[2], resp)
+	record, err = noop.GetDecodedRecord(4)
+	require.NoError(t, err)
+	require.Contains(t, record, "type")
+	recordType = record["type"].(string)
+	require.Equal(t, recordType, "request")
+	require.Contains(t, record, "request")
+	recordReq := record["request"].(map[string]interface{})
+	require.Contains(t, recordReq, "data")
+	recordData = recordReq["data"].(map[string]interface{})
+	require.Contains(t, recordData, "policy")
+	recordPolicy = recordData["policy"].(string)
+	require.NotContains(t, recordPolicy, "hmac-sha256:")
+	require.Equal(t, recordPolicy, req.Data["policy"])
+}
+
 func TestSystemBackend_policyList(t *testing.T) {
 	b := testSystemBackend(t)
 	req := logical.TestRequest(t, logical.ReadOperation, "policy")
@@ -2283,6 +2383,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	b := testSystemBackend(t)
 
 	// Create the policy
+	beforeWrite := time.Now()
 	rules := `path "foo/" { policy = "read" }`
 	req := logical.TestRequest(t, logical.UpdateOperation, "policy/Foo")
 	req.Data["rules"] = rules
@@ -2317,24 +2418,39 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 		true,
 	)
 
+	// Validate date was reasonably in the past.
+	require.Contains(t, resp.Data, "modified")
+	modified := resp.Data["modified"].(time.Time)
+	require.True(t, modified.After(beforeWrite))
+	delete(resp.Data, "modified")
+
 	exp := map[string]interface{}{
-		"name":  "foo",
-		"rules": rules,
+		"name":         "foo",
+		"rules":        rules,
+		"cas_required": false,
+		"version":      1,
 	}
 	if !reflect.DeepEqual(resp.Data, exp) {
 		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)
 	}
 
-	// Read, and make sure that case has been normalized
+	// Read, and make sure that case has been normalized.
 	req = logical.TestRequest(t, logical.ReadOperation, "policy/Foo")
 	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
+	// No change; modified should be the same.
+	require.Contains(t, resp.Data, "modified")
+	require.Equal(t, resp.Data["modified"].(time.Time), modified)
+	delete(resp.Data, "modified")
+
 	exp = map[string]interface{}{
-		"name":  "foo",
-		"rules": rules,
+		"name":         "foo",
+		"rules":        rules,
+		"cas_required": false,
+		"version":      1,
 	}
 	if !reflect.DeepEqual(resp.Data, exp) {
 		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)
@@ -2399,6 +2515,49 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	}
 }
 
+func TestSystemBackend_PoliciesDetailedAcl(t *testing.T) {
+	// Create a proper test system backend with namespace context
+	_, b, _ := testCoreSystemBackend(t)
+
+	// Create a test policy to ensure we have something to list
+	// This is important as a fresh test environment might not have policies
+	policy := `
+        path "secret/*" {
+            capabilities = ["read", "list"]
+        }
+    `
+
+	// Write the test policy
+	req := logical.TestRequest(t, logical.UpdateOperation, "policy/test-policy")
+	req.Data["policy"] = policy
+
+	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+
+	// Now test the detailed ACL list endpoint
+	req = logical.TestRequest(t, logical.ListOperation, "policies/detailed/acl")
+	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	policies, ok := resp.Data["keys"].([]string)
+	require.True(t, ok, "expected keys to be []string, got: %T", resp.Data["keys"])
+	require.Greater(t, len(policies), 0, "expected at least one policy, got: %v", policies)
+	require.Contains(t, policies, "test-policy")
+
+	detailedPolicies, ok := resp.Data["key_info"].(map[string]interface{})
+	require.True(t, ok, "expected policies to be map[string]interface{}, got: %T", resp.Data["policies"])
+	require.Greater(t, len(detailedPolicies), 0, "expected at least one detailed policy, got: %v", detailedPolicies)
+
+	// Test policy should exist in the detailed info.
+	entryRaw, ok := detailedPolicies["test-policy"]
+	require.True(t, ok, "expected detailed policies to contain test-policy: %v", detailedPolicies)
+
+	entry := entryRaw.(map[string]interface{})
+	require.Contains(t, entry, "policy")
+	require.Equal(t, entry["policy"].(string), policy)
+}
+
 func TestSystemBackend_enableAudit(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 	c.auditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
@@ -2458,7 +2617,7 @@ func TestSystemBackend_decodeToken(t *testing.T) {
 		req.Data = data
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 		if err == nil {
-			t.Fatalf("no error despite missing payload")
+			t.Fatal("no error despite missing payload")
 		}
 		schema.ValidateResponse(
 			t,
@@ -2499,7 +2658,7 @@ func TestSystemBackend_auditHash(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if resp == nil || resp.Data == nil {
-		t.Fatalf("response or its data was nil")
+		t.Fatal("response or its data was nil")
 	}
 
 	schema.ValidateResponse(
@@ -2718,7 +2877,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		req = logical.TestRequest(t, logical.ReadOperation, "raw/test_raw")
 		resp, err = b.HandleRequest(namespace.RootContext(nil), req)
 		if err == nil {
-			t.Fatalf("expected error if trying to read uncompressed entry with prefix byte")
+			t.Fatal("expected error if trying to read uncompressed entry with prefix byte")
 		}
 		if !resp.IsError() {
 			t.Fatalf("bad: %v", resp)
@@ -2794,19 +2953,19 @@ func TestSystemBackend_rawWrite_ExistanceCheck(t *testing.T) {
 	req := logical.TestRequest(t, logical.CreateOperation, "raw/core/audit")
 	_, exist, err := b.HandleExistenceCheck(namespace.RootContext(nil), req)
 	if err != nil {
-		t.Fatalf("err: #{err}")
+		t.Fatal("err: #{err}")
 	}
 	if !exist {
-		t.Fatalf("raw existence check failed for actual key")
+		t.Fatal("raw existence check failed for actual key")
 	}
 
 	req = logical.TestRequest(t, logical.CreateOperation, "raw/non_existent")
 	_, exist, err = b.HandleExistenceCheck(namespace.RootContext(nil), req)
 	if err != nil {
-		t.Fatalf("err: #{err}")
+		t.Fatal("err: #{err}")
 	}
 	if exist {
-		t.Fatalf("raw existence check failed for non-existent key")
+		t.Fatal("raw existence check failed for non-existent key")
 	}
 }
 
@@ -2848,7 +3007,7 @@ func TestSystemBackend_rawReadWrite_base64(t *testing.T) {
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 		if err == nil {
-			t.Fatalf("no error")
+			t.Fatal("no error")
 		}
 
 		if err != logical.ErrInvalidRequest {
@@ -2870,7 +3029,7 @@ func TestSystemBackend_rawReadWrite_base64(t *testing.T) {
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 		if err == nil {
-			t.Fatalf("no error")
+			t.Fatal("no error")
 		}
 
 		if err != logical.ErrInvalidRequest {
@@ -3137,7 +3296,7 @@ func TestSystemBackend_rawDelete(t *testing.T) {
 		Type:      PolicyTypeACL,
 		namespace: namespace.RootNamespace,
 	}
-	err := c.policyStore.SetPolicy(namespace.RootContext(nil), p)
+	err := c.policyStore.SetPolicy(namespace.RootContext(nil), p, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3166,7 +3325,7 @@ func TestSystemBackend_rawDelete(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if out != nil {
-		t.Fatalf("policy should be gone")
+		t.Fatal("policy should be gone")
 	}
 }
 
@@ -4147,7 +4306,7 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 		}
 
 		if doc.Paths["/rotate"] == nil {
-			t.Fatalf("expected to find path '/rotate'")
+			t.Fatal("expected to find path '/rotate'")
 		}
 	}
 }
@@ -4382,7 +4541,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 
 			actualResp, err := b.handlePoliciesPasswordSet(ctx, req, test.inputData)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -4483,7 +4642,7 @@ func TestHandlePoliciesPasswordGet(t *testing.T) {
 
 			actualResp, err := b.handlePoliciesPasswordGet(ctx, req, test.inputData)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -4583,7 +4742,7 @@ func TestHandlePoliciesPasswordDelete(t *testing.T) {
 
 			actualResp, err := b.handlePoliciesPasswordDelete(ctx, req, test.inputData)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -4749,7 +4908,7 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 
 			actualResp, err := b.handlePoliciesPasswordList(ctx, req, nil)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -4842,7 +5001,7 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 
 				actualResp, err := b.handlePoliciesPasswordGenerate(ctx, req, test.inputData)
 				if test.expectErr && err == nil {
-					t.Fatalf("err expected, got nil")
+					t.Fatal("err expected, got nil")
 				}
 				if !test.expectErr && err != nil {
 					t.Fatalf("no error expected, got: %s", err)
@@ -5015,10 +5174,10 @@ type walkFunc func(*logical.StorageEntry) error
 // - vault/helper/testhelpers/teststorage
 func WalkLogicalStorage(ctx context.Context, store logical.Storage, walker walkFunc) (err error) {
 	if store == nil {
-		return fmt.Errorf("no storage provided")
+		return errors.New("no storage provided")
 	}
 	if walker == nil {
-		return fmt.Errorf("no walk function provided")
+		return errors.New("no walk function provided")
 	}
 
 	keys, err := store.List(ctx, "")
@@ -5893,9 +6052,9 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		const nonExistentBuiltinVersion = "v1.0.0+builtin"
 		var mountEntry *MountEntry
 		if tc.mountTable == "mounts" {
-			mountEntry, err = core.mounts.find(ctx, tc.pluginName+"/")
+			mountEntry, err = core.mounts.findByPath(ctx, tc.pluginName+"/")
 		} else {
-			mountEntry, err = core.auth.find(ctx, tc.pluginName+"/")
+			mountEntry, err = core.auth.findByPath(ctx, tc.pluginName+"/")
 		}
 		if err != nil {
 			t.Fatal(err)
@@ -5942,4 +6101,83 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 			t.Errorf("expected empty plugin version in config: %#v", config)
 		}
 	}
+}
+
+func TestPolicyStore_Store(t *testing.T) {
+	t.Parallel()
+
+	core, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
+
+	t.Run("ttl", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "policies/acl/ttl-test-policy")
+		req.Data["policy"] = `path "*" { capabilities = ["read"] }`
+		req.Data["ttl"] = "10s"
+
+		resp, err := core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/ttl-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "expiration")
+		require.Contains(t, resp.Data, "modified")
+		exp := resp.Data["expiration"].(time.Time)
+		modified := resp.Data["modified"].(time.Time)
+		require.LessOrEqual(t, time.Now().Sub(modified), 2*time.Second)
+
+		time.Sleep(2 * time.Second)
+
+		if time.Now().Before(exp) {
+			req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/ttl-test-policy")
+			resp, err = core.systemBackend.HandleRequest(ctx, req)
+
+			if time.Now().Before(exp) {
+				require.NoError(t, err)
+				require.NotNil(t, resp)
+				require.Contains(t, resp.Data, "expiration")
+				require.Contains(t, resp.Data, "modified")
+
+				// Modified should not change.
+				require.Equal(t, modified, resp.Data["modified"])
+			}
+		}
+
+		time.Sleep(time.Until(exp) + 10*time.Millisecond)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/ttl-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+	})
+
+	t.Run("expiration", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "policies/acl/expiration-test-policy")
+		req.Data["policy"] = `path "*" { capabilities = ["read"] }`
+
+		expectedExpiration := time.Now().Add(10 * time.Second).UTC()
+		req.Data["expiration"] = expectedExpiration.Format(time.RFC3339)
+
+		resp, err := core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/expiration-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "expiration")
+
+		exp := resp.Data["expiration"].(time.Time)
+		require.Equal(t, expectedExpiration.Format(time.RFC3339), exp.Format(time.RFC3339))
+
+		time.Sleep(time.Until(exp) + 10*time.Millisecond)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/expiration-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+	})
 }

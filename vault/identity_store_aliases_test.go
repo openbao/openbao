@@ -81,7 +81,7 @@ func TestIdentityStore_DuplicateAliases(t *testing.T) {
 
 	// Ensure that no merging activity has taken place
 	if len(aliases[0].(map[string]interface{})["merged_from_canonical_ids"].([]string)) != 0 {
-		t.Fatalf("expected no merging to take place")
+		t.Fatal("expected no merging to take place")
 	}
 }
 
@@ -200,7 +200,7 @@ func TestIdentityStore_AliasSameAliasNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp != nil {
-		t.Fatalf("expected no response since this modification should be idempotent")
+		t.Fatal("expected no response since this modification should be idempotent")
 	}
 }
 
@@ -223,9 +223,9 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 		Name: "testentityname",
 	}
 
-	entity.BucketKey = is.entityPacker.BucketKey(entity.ID)
+	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
 
-	txn := is.db.Txn(true)
+	txn := is.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
 	if err != nil {
@@ -243,10 +243,10 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 			"testkey1": "testmetadatavalue1",
 			"testkey2": "testmetadatavalue2",
 		},
-		LocalBucketKey: is.localAliasPacker.BucketKey(entity.ID),
+		LocalBucketKey: is.localAliasPacker(ctx).BucketKey(entity.ID),
 	}
 
-	txn = is.db.Txn(true)
+	txn = is.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias, false)
 	if err != nil {
@@ -254,7 +254,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	}
 	txn.Commit()
 
-	aliasFetched, err := is.MemDBAliasByID("testaliasid", false, false)
+	aliasFetched, err := is.MemDBAliasByID(ctx, "testaliasid", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 		t.Fatalf("bad: mismatched aliases; expected: %#v\n actual: %#v\n", alias, aliasFetched)
 	}
 
-	aliasFetched, err = is.MemDBAliasByFactors(validateMountResp.MountAccessor, "testaliasname", false, false)
+	aliasFetched, err = is.MemDBAliasByFactors(ctx, validateMountResp.MountAccessor, "testaliasname", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,10 +282,10 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 			"testkey1": "testmetadatavalue1",
 			"testkey3": "testmetadatavalue3",
 		},
-		LocalBucketKey: is.localAliasPacker.BucketKey(entity.ID),
+		LocalBucketKey: is.localAliasPacker(ctx).BucketKey(entity.ID),
 	}
 
-	txn = is.db.Txn(true)
+	txn = is.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias2, false)
 	if err != nil {
@@ -297,13 +297,13 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	}
 	txn.Commit()
 
-	aliasFetched, err = is.MemDBAliasByID("testaliasid", false, false)
+	aliasFetched, err = is.MemDBAliasByID(ctx, "testaliasid", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if aliasFetched != nil {
-		t.Fatalf("expected a nil alias")
+		t.Fatal("expected a nil alias")
 	}
 }
 
@@ -338,22 +338,22 @@ func TestIdentityStore_AliasRegister(t *testing.T) {
 
 	idRaw, ok := resp.Data["id"]
 	if !ok {
-		t.Fatalf("alias id not present in alias register response")
+		t.Fatal("alias id not present in alias register response")
 	}
 
 	id := idRaw.(string)
 	if id == "" {
-		t.Fatalf("invalid alias id in alias register response")
+		t.Fatal("invalid alias id in alias register response")
 	}
 
 	entityIDRaw, ok := resp.Data["canonical_id"]
 	if !ok {
-		t.Fatalf("entity id not present in alias register response")
+		t.Fatal("entity id not present in alias register response")
 	}
 
 	entityID := entityIDRaw.(string)
 	if entityID == "" {
-		t.Fatalf("invalid entity id in alias register response")
+		t.Fatal("invalid entity id in alias register response")
 	}
 }
 
@@ -647,7 +647,7 @@ func TestIdentityStore_AliasMove_DuplicateAccessor(t *testing.T) {
 	}
 
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error as alias on the github accessor exists for testentity1")
+		t.Fatal("expected an error as alias on the github accessor exists for testentity1")
 	}
 }
 
@@ -719,7 +719,7 @@ func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
 	}
 
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error as an alias on the github accessor already exists for testentity")
+		t.Fatal("expected an error as an alias on the github accessor already exists for testentity")
 	}
 }
 
@@ -771,7 +771,7 @@ func TestIdentityStore_AliasCreate_DuplicateAccessor(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error as alias already exists for this accessor and entity")
+		t.Fatal("expected an error as alias already exists for this accessor and entity")
 	}
 }
 
@@ -798,7 +798,7 @@ func TestIdentityStore_AliasUpdate_ByID(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error due to invalid alias id")
+		t.Fatal("expected an error due to invalid alias id")
 	}
 
 	customMetadata := make(map[string]string)
@@ -822,11 +822,11 @@ func TestIdentityStore_AliasUpdate_ByID(t *testing.T) {
 
 	idRaw, ok := resp.Data["id"]
 	if !ok {
-		t.Fatalf("alias id not present in response")
+		t.Fatal("alias id not present in response")
 	}
 	id := idRaw.(string)
 	if id == "" {
-		t.Fatalf("invalid alias id")
+		t.Fatal("invalid alias id")
 	}
 
 	updateReq.Path = "entity-alias/id/" + id
@@ -858,7 +858,7 @@ func TestIdentityStore_AliasUpdate_ByID(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected error due to missing alias name")
+		t.Fatal("expected error due to missing alias name")
 	}
 
 	registerReq.Data["name"] = "testaliasname"
@@ -869,7 +869,7 @@ func TestIdentityStore_AliasUpdate_ByID(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected error due to missing mount accessor")
+		t.Fatal("expected error due to missing mount accessor")
 	}
 }
 
@@ -902,11 +902,11 @@ func TestIdentityStore_AliasReadDelete(t *testing.T) {
 
 	idRaw, ok := resp.Data["id"]
 	if !ok {
-		t.Fatalf("alias id not present in response")
+		t.Fatal("alias id not present in response")
 	}
 	id := idRaw.(string)
 	if id == "" {
-		t.Fatalf("invalid alias id")
+		t.Fatal("invalid alias id")
 	}
 
 	// Read it back using alias id

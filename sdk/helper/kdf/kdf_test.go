@@ -39,11 +39,11 @@ func TestCounterMode(t *testing.T) {
 		}
 
 		if bytes.Contains(out, key) {
-			t.Fatalf("output contains key")
+			t.Fatal("output contains key")
 		}
 
 		if l == 256 && !bytes.Equal(out, expect256) {
-			t.Fatalf("mis-match")
+			t.Fatal("mis-match")
 		}
 	}
 }
@@ -57,7 +57,7 @@ func TestHMACSHA256PRF(t *testing.T) {
 	}
 
 	if uint32(len(out)*8) != HMACSHA256PRFLen {
-		t.Fatalf("Bad len")
+		t.Fatal("Bad len")
 	}
 
 	// Expect was generated in python with:
@@ -73,6 +73,6 @@ func TestHMACSHA256PRF(t *testing.T) {
 		90, 246, 133, 191, 124,
 	}
 	if !bytes.Equal(expect, out) {
-		t.Fatalf("mis-matched output")
+		t.Fatal("mis-matched output")
 	}
 }

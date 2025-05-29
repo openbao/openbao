@@ -42,19 +42,19 @@ path "secret/sample" {
 `
 	// Create the above policies
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, policy1)
-	err = c.policyStore.SetPolicy(ctx, policy)
+	err = c.policyStore.SetPolicy(ctx, policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	policy, _ = ParseACLPolicy(namespace.RootNamespace, policy2)
-	err = c.policyStore.SetPolicy(ctx, policy)
+	err = c.policyStore.SetPolicy(ctx, policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	policy, _ = ParseACLPolicy(namespace.RootNamespace, policy3)
-	err = c.policyStore.SetPolicy(ctx, policy)
+	err = c.policyStore.SetPolicy(ctx, policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -81,7 +81,7 @@ path "secret/sample" {
 		EntityID: entityID,
 		TTL:      time.Hour,
 	}
-	testMakeTokenDirectly(t, c.tokenStore, ent)
+	testMakeTokenDirectly(t, ctx, c.tokenStore, ent)
 
 	actual, err := c.Capabilities(ctx, "capabilitiestoken", "secret/sample")
 	if err != nil {
@@ -123,13 +123,15 @@ path "secret/sample" {
 func TestCapabilities_TemplatedPolicies(t *testing.T) {
 	var resp *logical.Response
 	var err error
-	i, _, c := testIdentityStoreWithAppRoleAuth(namespace.RootContext(nil), t)
+	ctx := namespace.RootContext(nil)
+
+	i, _, c := testIdentityStoreWithAppRoleAuth(ctx, t)
 	// Create an entity and assign policy1 to it
 	entityReq := &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
 	}
-	resp, err = i.HandleRequest(namespace.RootContext(nil), entityReq)
+	resp, err = i.HandleRequest(ctx, entityReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr: %#v\n", resp, err)
 	}
@@ -143,7 +145,7 @@ func TestCapabilities_TemplatedPolicies(t *testing.T) {
 		EntityID: entityID,
 		TTL:      time.Hour,
 	}
-	testMakeTokenDirectly(t, c.tokenStore, ent)
+	testMakeTokenDirectly(t, ctx, c.tokenStore, ent)
 
 	tCases := []struct {
 		policy   string
@@ -176,11 +178,11 @@ func TestCapabilities_TemplatedPolicies(t *testing.T) {
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
-		err = c.policyStore.SetPolicy(namespace.RootContext(nil), policy)
+		err = c.policyStore.SetPolicy(ctx, policy, nil)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
-		actual, err := c.Capabilities(namespace.RootContext(nil), "capabilitiestoken", tCase.path)
+		actual, err := c.Capabilities(ctx, "capabilitiestoken", tCase.path)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -194,8 +196,9 @@ func TestCapabilities_TemplatedPolicies(t *testing.T) {
 
 func TestCapabilities(t *testing.T) {
 	c, _, token := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
 
-	actual, err := c.Capabilities(namespace.RootContext(nil), token, "path")
+	actual, err := c.Capabilities(ctx, token, "path")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -206,7 +209,7 @@ func TestCapabilities(t *testing.T) {
 
 	// Create a policy
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, aclPolicy)
-	err = c.policyStore.SetPolicy(namespace.RootContext(nil), policy)
+	err = c.policyStore.SetPolicy(ctx, policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -218,9 +221,9 @@ func TestCapabilities(t *testing.T) {
 		Policies: []string{"dev"},
 		TTL:      time.Hour,
 	}
-	testMakeTokenDirectly(t, c.tokenStore, ent)
+	testMakeTokenDirectly(t, ctx, c.tokenStore, ent)
 
-	actual, err = c.Capabilities(namespace.RootContext(nil), "capabilitiestoken", "foo/bar")
+	actual, err = c.Capabilities(ctx, "capabilitiestoken", "foo/bar")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

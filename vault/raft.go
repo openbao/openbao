@@ -374,6 +374,11 @@ func (c *Core) raftTLSRotatePhased(ctx context.Context, logger hclog.Logger, raf
 			return time.Time{}, fmt.Errorf("failed to read raft TLS keyring: %w", err)
 		}
 
+		// Note that we explicitly do not skip rotation on follower-less
+		// nodes: we'd be unable to load the TLS certificates or validate
+		// the initial connection from a new peer if they expire; keep
+		// rotating in the event we run for sufficiently long period of
+		// time and later add a node.
 		switch {
 		case len(keyring.Keys) == 2 && keyring.Keys[1].AppliedIndex == 0:
 			// If this case is hit then the second write to add the applied
@@ -450,7 +455,7 @@ func (c *Core) raftTLSRotatePhased(ctx context.Context, logger hclog.Logger, raf
 		case keyring.Keys[1].AppliedIndex != keyring.AppliedIndex:
 			// We haven't fully committed the new key, continue here
 			return nil
-		case followerStates.MinIndex() < keyring.AppliedIndex:
+		case followerStates.HaveFollower() && followerStates.MinIndex() < keyring.AppliedIndex:
 			// Not all the followers have applied the latest key
 			return nil
 		}
@@ -561,7 +566,7 @@ func (c *Core) raftReadTLSKeyring(ctx context.Context) (*raft.TLSKeyring, error)
 // error.
 func (c *Core) raftCreateTLSKeyring(ctx context.Context) (*raft.TLSKeyring, error) {
 	if raftBackend := c.getRaftBackend(); raftBackend == nil {
-		return nil, fmt.Errorf("raft backend not in use")
+		return nil, errors.New("raft backend not in use")
 	}
 
 	// Check if the keyring is already present
@@ -571,7 +576,7 @@ func (c *Core) raftCreateTLSKeyring(ctx context.Context) (*raft.TLSKeyring, erro
 	}
 
 	if raftTLSEntry != nil {
-		return nil, fmt.Errorf("TLS keyring already present")
+		return nil, errors.New("TLS keyring already present")
 	}
 
 	raftTLS, err := raft.GenerateTLSKey(c.secureRandomReader)
@@ -1025,7 +1030,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 				}
 			} else {
 				// Return an error so we can retry_join
-				err = fmt.Errorf("failed to get raft challenge")
+				err = errors.New("failed to get raft challenge")
 			}
 		}
 		return err

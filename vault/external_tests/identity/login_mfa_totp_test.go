@@ -136,7 +136,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 
 		entityIDCheck := secret.Data["entity_id"].(string)
 		if entityIDCheck != entityID1 {
-			t.Fatalf("different entityID assigned")
+			t.Fatal("different entityID assigned")
 		}
 	}
 
@@ -184,28 +184,28 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	}
 
 	if len(secret.Warnings) == 0 || !strings.Contains(strings.Join(secret.Warnings, ""), "A login request was issued that is subject to MFA validation") {
-		t.Fatalf("first phase of login did not have a warning")
+		t.Fatal("first phase of login did not have a warning")
 	}
 
 	if secret.Auth == nil || secret.Auth.MFARequirement == nil {
-		t.Fatalf("two phase login returned nil MFARequirement")
+		t.Fatal("two phase login returned nil MFARequirement")
 	}
 	if secret.Auth.MFARequirement.MFARequestID == "" {
-		t.Fatalf("MFARequirement contains empty MFARequestID")
+		t.Fatal("MFARequirement contains empty MFARequestID")
 	}
 	if secret.Auth.MFARequirement.MFAConstraints == nil || len(secret.Auth.MFARequirement.MFAConstraints) == 0 {
-		t.Fatalf("MFAConstraints is nil or empty")
+		t.Fatal("MFAConstraints is nil or empty")
 	}
 	mfaConstraints, ok := secret.Auth.MFARequirement.MFAConstraints[methodID[0:4]]
 	if !ok {
-		t.Fatalf("failed to find the mfaConstrains")
+		t.Fatal("failed to find the mfaConstrains")
 	}
 	if mfaConstraints.Any == nil || len(mfaConstraints.Any) == 0 {
-		t.Fatalf("expected to see the methodID is enforced in MFAConstaint.Any")
+		t.Fatal("expected to see the methodID is enforced in MFAConstaint.Any")
 	}
 	for _, mfaAny := range mfaConstraints.Any {
 		if mfaAny.ID != methodID || mfaAny.Type != "totp" || !mfaAny.UsesPasscode {
-			t.Fatalf("Invalid mfa constraints")
+			t.Fatal("Invalid mfa constraints")
 		}
 	}
 
@@ -224,7 +224,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 			return fmt.Errorf("MFA failed: %v", err)
 		}
 		if secret.Auth == nil || secret.Auth.ClientToken == "" {
-			t.Fatalf("successful mfa validation did not return a client token")
+			t.Fatal("successful mfa validation did not return a client token")
 		}
 
 		return nil
@@ -248,7 +248,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 
 	// checking audit log
 	if noop.Req == nil {
-		t.Fatalf("no request was logged in audit log")
+		t.Fatal("no request was logged in audit log")
 	}
 	var found bool
 	for _, req := range noop.Req {
@@ -258,7 +258,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("mfa/validate was not logged in audit log")
+		t.Fatal("mfa/validate was not logged in audit log")
 	}
 
 	// check for login request expiration
@@ -270,7 +270,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	}
 
 	if secret.Auth == nil || secret.Auth.MFARequirement == nil {
-		t.Fatalf("two phase login returned nil MFARequirement")
+		t.Fatal("two phase login returned nil MFARequirement")
 	}
 
 	_, err = userClient1.Logical().WriteWithContext(context.Background(), "sys/mfa/validate", map[string]interface{}{
@@ -280,7 +280,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 		},
 	})
 	if err == nil {
-		t.Fatalf("MFA succeeded with an already used passcode")
+		t.Fatal("MFA succeeded with an already used passcode")
 	}
 	if !strings.Contains(err.Error(), "code already used") {
 		t.Fatalf("got: %+v, expected: code already used", err.Error())
@@ -305,7 +305,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 			},
 		})
 		if maxErr == nil {
-			t.Fatalf("MFA succeeded with an invalid passcode")
+			t.Fatal("MFA succeeded with an invalid passcode")
 		}
 	}
 	if !strings.Contains(maxErr.Error(), "maximum TOTP validation attempts") {

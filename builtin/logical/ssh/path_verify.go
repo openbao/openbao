@@ -25,8 +25,10 @@ func pathVerify(b *backend) *framework.Path {
 				Description: "[Required] One-Time-Key that needs to be validated",
 			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathVerifyWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathVerifyWrite,
+			},
 		},
 		HelpSynopsis:    pathVerifyHelpSyn,
 		HelpDescription: pathVerifyHelpDesc,
@@ -51,6 +53,12 @@ func (b *backend) getOTP(ctx context.Context, s logical.Storage, n string) (*ssh
 }
 
 func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	otp := d.Get("otp").(string)
 
 	// If OTP is not a UUID and a string matching VerifyEchoRequest, then the
@@ -85,6 +93,10 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 	// Delete the OTP if found. This is what makes the key an OTP.
 	err = req.Storage.Delete(ctx, "otp/"+otpSalted)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

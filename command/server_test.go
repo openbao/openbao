@@ -166,7 +166,7 @@ func TestServer_ReloadListener(t *testing.T) {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Fatalf("timeout")
+		t.Fatal("timeout")
 	}
 
 	if err := testCertificateName("foo.example.com"); err != nil {
@@ -184,7 +184,7 @@ func TestServer_ReloadListener(t *testing.T) {
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(5 * time.Second):
-		t.Fatalf("timeout")
+		t.Fatal("timeout")
 	}
 
 	if err := testCertificateName("bar.example.com"); err != nil {

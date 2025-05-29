@@ -6,7 +6,9 @@ package api
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -287,7 +289,7 @@ func (c *Config) configureTLS(t *TLSConfig) error {
 		c.curlClientCert = t.ClientCert
 		c.curlClientKey = t.ClientKey
 	case t.ClientCert != "" || t.ClientKey != "":
-		return fmt.Errorf("both client cert and client key must be provided")
+		return errors.New("both client cert and client key must be provided")
 	}
 
 	if t.CACert != "" || len(t.CACertBytes) != 0 || t.CAPath != "" {
@@ -352,7 +354,7 @@ func (c *Config) ReadEnvironment() error {
 	var envClientTimeout time.Duration
 	var envInsecure bool
 	var envTLSServerName string
-	var envMaxRetries *uint64
+	var envMaxRetries *int
 	var envSRVLookup bool
 	var limit *rate.Limiter
 	var envVaultProxy string
@@ -366,11 +368,12 @@ func (c *Config) ReadEnvironment() error {
 		envAgentAddress = v
 	}
 	if v := ReadBaoVariable(EnvVaultMaxRetries); v != "" {
-		maxRetries, err := strconv.ParseUint(v, 10, 32)
+		maxRetries, err := parseutil.SafeParseIntRange(v, 0, math.MaxInt)
 		if err != nil {
 			return err
 		}
-		envMaxRetries = &maxRetries
+		mRetries := int(maxRetries)
+		envMaxRetries = &mRetries
 	}
 	if v := ReadBaoVariable(EnvVaultCACert); v != "" {
 		envCACert = v
@@ -469,7 +472,7 @@ func (c *Config) ReadEnvironment() error {
 	}
 
 	if envMaxRetries != nil {
-		c.MaxRetries = int(*envMaxRetries)
+		c.MaxRetries = *envMaxRetries
 	}
 
 	if envClientTimeout != 0 {
@@ -519,7 +522,7 @@ func (c *Config) ParseAddress(address string) (*url.URL, error) {
 			u.Host = "localhost"
 			u.Path = ""
 		} else {
-			return nil, fmt.Errorf("attempting to specify unix:// address with non-transport transport")
+			return nil, errors.New("attempting to specify unix:// address with non-transport transport")
 		}
 	} else if strings.HasPrefix(c.Address, "unix://") {
 		// When the address being set does not begin with unix:// but the previous
@@ -572,7 +575,7 @@ type Client struct {
 func NewClient(c *Config) (*Client, error) {
 	def := DefaultConfig()
 	if def == nil {
-		return nil, fmt.Errorf("could not create/read default configuration")
+		return nil, errors.New("could not create/read default configuration")
 	}
 	if def.Error != nil {
 		return nil, errwrap.Wrapf("error encountered setting up default configuration: {{err}}", def.Error)
@@ -1297,7 +1300,7 @@ START:
 		return nil, err
 	}
 	if req == nil {
-		return nil, fmt.Errorf("nil request created")
+		return nil, errors.New("nil request created")
 	}
 
 	if outputCurlString {
@@ -1364,7 +1367,7 @@ START:
 
 		// Ensure a protocol downgrade doesn't happen
 		if req.URL.Scheme == "https" && respLoc.Scheme != "https" {
-			return result, fmt.Errorf("redirect would cause protocol downgrade")
+			return result, errors.New("redirect would cause protocol downgrade")
 		}
 
 		// Update the request
@@ -1430,10 +1433,10 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 
 	// OutputCurlString and OutputPolicy logic rely on the request type to be retryable.Request
 	if outputCurlString {
-		return nil, fmt.Errorf("output-curl-string is not implemented for this request")
+		return nil, errors.New("output-curl-string is not implemented for this request")
 	}
 	if outputPolicy {
-		return nil, fmt.Errorf("output-policy is not implemented for this request")
+		return nil, errors.New("output-policy is not implemented for this request")
 	}
 
 	req.URL.User = r.URL.User
@@ -1493,7 +1496,7 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 
 		// Ensure a protocol downgrade doesn't happen
 		if req.URL.Scheme == "https" && respLoc.Scheme != "https" {
-			return result, fmt.Errorf("redirect would cause protocol downgrade")
+			return result, errors.New("redirect would cause protocol downgrade")
 		}
 
 		// Update the request
@@ -1579,7 +1582,7 @@ func validateToken(t string) error {
 		return !unicode.IsPrint(c)
 	})
 	if idx != -1 {
-		return fmt.Errorf("configured Vault token contains non-printable characters and cannot be used")
+		return errors.New("configured Vault token contains non-printable characters and cannot be used")
 	}
 	return nil
 }

@@ -5,6 +5,7 @@ package ssh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -31,7 +32,7 @@ const (
 	// Present version of the sshRole struct; when adding a new field or are
 	// needing to perform a migration, increment this struct and read the note
 	// in checkUpgrade(...).
-	roleEntryVersion = 3
+	roleEntryVersion = 4
 )
 
 // Structure that represents a role in SSH backend. This is a common role structure
@@ -67,6 +68,7 @@ type sshRole struct {
 	AlgorithmSigner            string            `mapstructure:"algorithm_signer" json:"algorithm_signer"`
 	Version                    int               `mapstructure:"role_version" json:"role_version"`
 	NotBeforeDuration          time.Duration     `mapstructure:"not_before_duration" json:"not_before_duration"`
+	Issuer                     string            `mapstructure:"issuer_ref" json:"issuer_ref"`
 }
 
 func pathListRoles(b *backend) *framework.Path {
@@ -89,8 +91,10 @@ func pathListRoles(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ListOperation: b.pathRoleList,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.pathRoleList,
+			},
 		},
 
 		HelpSynopsis:    pathRoleHelpSyn,
@@ -392,12 +396,22 @@ func pathRoles(b *backend) *framework.Path {
 					Name: "Allow User Key IDs",
 				},
 			},
+			"issuer_ref": {
+				Type:        framework.TypeString,
+				Description: `Reference to the issuer used to sign requests serviced by this role.`,
+			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation:   b.pathRoleRead,
-			logical.UpdateOperation: b.pathRoleWrite,
-			logical.DeleteOperation: b.pathRoleDelete,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathRoleRead,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathRoleWrite,
+			},
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathRoleDelete,
+			},
 		},
 
 		HelpSynopsis:    pathRoleHelpSyn,
@@ -529,6 +543,7 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 		AlgorithmSigner:           signer,
 		Version:                   roleEntryVersion,
 		NotBeforeDuration:         time.Duration(data.Get("not_before_duration").(int)) * time.Second,
+		Issuer:                    data.Get("issuer_ref").(string),
 	}
 
 	if !role.AllowUserCertificates && !role.AllowHostCertificates {
@@ -553,6 +568,13 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 	role.DefaultCriticalOptions = defaultCriticalOptions
 	role.DefaultExtensions = defaultExtensions
 	role.AllowedUserKeyTypesLengths = allowedUserKeyLengths
+
+	// Just like in PKI, we ensure that the issuers ref is set to an non-empty value,
+	// 'default' if not set, and do not resolve the reference at role creation time;
+	// Instead, resolving it at use time.
+	if len(role.Issuer) == 0 {
+		role.Issuer = defaultRef
+	}
 
 	return role, nil
 }
@@ -652,6 +674,12 @@ func (b *backend) checkUpgrade(ctx context.Context, s logical.Storage, n string,
 		result.Version = 3
 	}
 
+	if result.Version < 4 {
+		modified = true
+		result.Issuer = defaultRef
+		result.Version = 4
+	}
+
 	// Add new migrations just before here.
 	//
 	// Condition copied from PKI builtin.
@@ -722,9 +750,10 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 			"allowed_user_key_lengths":    role.AllowedUserKeyTypesLengths,
 			"algorithm_signer":            role.AlgorithmSigner,
 			"not_before_duration":         int64(role.NotBeforeDuration.Seconds()),
+			"issuer_ref":                  role.Issuer,
 		}
 	case KeyTypeDynamic:
-		return nil, fmt.Errorf("dynamic key type roles are no longer supported")
+		return nil, errors.New("dynamic key type roles are no longer supported")
 	default:
 		return nil, fmt.Errorf("invalid key type: %v", role.KeyType)
 	}
@@ -733,6 +762,12 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 }
 
 func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	after := data.Get("after").(string)
 	limit := data.Get("limit").(int)
 	if limit <= 0 {
@@ -770,11 +805,22 @@ func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *
 			continue
 		}
 
+		entryInfo := map[string]interface{}{}
 		if keyType, ok := roleInfo["key_type"]; ok {
-			keyInfo[entry] = map[string]interface{}{
-				"key_type": keyType,
-			}
+			entryInfo["key_type"] = keyType
 		}
+
+		if issuerRef, ok := roleInfo["issuer_ref"]; ok {
+			entryInfo["issuer_ref"] = issuerRef
+		}
+
+		if len(entryInfo) != 0 {
+			keyInfo[entry] = entryInfo
+		}
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return logical.ListResponseWithInfo(entries, keyInfo), nil
@@ -800,20 +846,29 @@ func (b *backend) pathRoleRead(ctx context.Context, req *logical.Request, d *fra
 }
 
 func (b *backend) pathRoleDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	roleName := d.Get("role").(string)
 
 	// If the role was given privilege to accept any IP address, there will
 	// be an entry for this role in zero-address roles list. Before the role
 	// is removed, the entry in the list has to be removed.
-	err := b.removeZeroAddressRole(ctx, req.Storage, roleName)
-	if err != nil {
+	if err := b.removeZeroAddressRole(ctx, req.Storage, roleName); err != nil {
 		return nil, err
 	}
 
-	err = req.Storage.Delete(ctx, fmt.Sprintf("roles/%s", roleName))
-	if err != nil {
+	if err := req.Storage.Delete(ctx, fmt.Sprintf("roles/%s", roleName)); err != nil {
 		return nil, err
 	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 

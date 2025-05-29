@@ -5,6 +5,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -28,10 +29,16 @@ func secretCreds(b *databaseBackend) *framework.Secret {
 
 func (b *databaseBackend) secretCredsRenew() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		txRollback, err := logical.StartTxStorage(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		defer txRollback()
+
 		// Get the username from the internal data
 		usernameRaw, ok := req.Secret.InternalData["username"]
 		if !ok {
-			return nil, fmt.Errorf("secret is missing username internal data")
+			return nil, errors.New("secret is missing username internal data")
 		}
 		username, ok := usernameRaw.(string)
 
@@ -86,16 +93,26 @@ func (b *databaseBackend) secretCredsRenew() framework.OperationFunc {
 		resp := &logical.Response{Secret: req.Secret}
 		resp.Secret.TTL = role.DefaultTTL
 		resp.Secret.MaxTTL = role.MaxTTL
+
+		if err := logical.EndTxStorage(ctx, req); err != nil {
+			return nil, err
+		}
+
 		return resp, nil
 	}
 }
 
 func (b *databaseBackend) secretCredsRevoke() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		txRollback, err := logical.StartTxStorage(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		defer txRollback()
 		// Get the username from the internal data
 		usernameRaw, ok := req.Secret.InternalData["username"]
 		if !ok {
-			return nil, fmt.Errorf("secret is missing username internal data")
+			return nil, errors.New("secret is missing username internal data")
 		}
 		username, ok := usernameRaw.(string)
 
@@ -103,7 +120,7 @@ func (b *databaseBackend) secretCredsRevoke() framework.OperationFunc {
 
 		roleNameRaw, ok := req.Secret.InternalData["role"]
 		if !ok {
-			return nil, fmt.Errorf("no role name was provided")
+			return nil, errors.New("no role name was provided")
 		}
 
 		var dbName string
@@ -162,6 +179,11 @@ func (b *databaseBackend) secretCredsRevoke() framework.OperationFunc {
 			b.CloseIfShutdown(dbi, err)
 			return nil, err
 		}
+
+		if err := logical.EndTxStorage(ctx, req); err != nil {
+			return nil, err
+		}
+
 		return resp, nil
 	}
 }

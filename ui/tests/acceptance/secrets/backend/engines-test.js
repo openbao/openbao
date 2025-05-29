@@ -29,14 +29,13 @@ module('Acceptance | secret-engine list view', function (hooks) {
 
   test('it allows you to disable an engine', async function (assert) {
     // first mount an engine so we can disable it.
-    const enginePath = `alicloud-disable-${this.uid}`;
-    await mountSecrets.enable('alicloud', enginePath);
+    const enginePath = `pki-disable-${this.uid}`;
+    await mountSecrets.enable('pki', enginePath);
     await settled();
-    assert.ok(backendsPage.rows.filterBy('path', `${enginePath}/`)[0], 'shows the mounted engine');
-
     await backendsPage.visit();
     await settled();
     const row = backendsPage.rows.filterBy('path', `${enginePath}/`)[0];
+    assert.ok(row, 'shows the mounted engine');
     await row.menu();
     await settled();
     await backendsPage.disableButton();
@@ -55,48 +54,23 @@ module('Acceptance | secret-engine list view', function (hooks) {
     );
   });
 
-  test('it adds disabled css styling to unsupported secret engines', async function (assert) {
-    assert.expect(2);
-    // first mount engine that is not supported
-    const enginePath = `nomad-${this.uid}`;
-
-    await mountSecrets.enable('nomad', enginePath);
-    await settled();
-    await backendsPage.visit();
-    await settled();
-
-    const rows = document.querySelectorAll('[data-test-auth-backend-link]');
-    const rowUnsupported = Array.from(rows).filter((row) => row.innerText.includes('nomad'));
-    const rowSupported = Array.from(rows).filter((row) => row.innerText.includes('cubbyhole'));
-    assert
-      .dom(rowUnsupported[0])
-      .doesNotHaveClass(
-        'linked-block',
-        `the linked-block class is not added to unsupported engines, which effectively disables it.`
-      );
-    assert.dom(rowSupported[0]).hasClass('linked-block', `linked-block class is added to supported engines.`);
-
-    // cleanup
-    await consoleComponent.runCommands([`delete sys/mounts/${enginePath}`]);
-  });
-
   test('it filters by name and engine type', async function (assert) {
     assert.expect(4);
-    const enginePath1 = `aws-1-${this.uid}`;
-    const enginePath2 = `aws-2-${this.uid}`;
+    const enginePath1 = `database-1-${this.uid}`;
+    const enginePath2 = `database-2-${this.uid}`;
 
-    await mountSecrets.enable('aws', enginePath1);
-    await mountSecrets.enable('aws', enginePath2);
+    await mountSecrets.enable('database', enginePath1);
+    await mountSecrets.enable('database', enginePath2);
     await backendsPage.visit();
     await settled();
     // filter by type
     await clickTrigger('#filter-by-engine-type');
-    await searchSelect.options.objectAt(0).click();
+    await searchSelect.options.objectAt(1).click();
 
     const rows = document.querySelectorAll('[data-test-auth-backend-link]');
-    const rowsAws = Array.from(rows).filter((row) => row.innerText.includes('aws'));
+    const rowsAws = Array.from(rows).filter((row) => row.innerText.includes('database'));
 
-    assert.strictEqual(rows.length, rowsAws.length, 'all rows returned are aws');
+    assert.strictEqual(rows.length, rowsAws.length, 'all rows returned are database');
     // filter by name
     await clickTrigger('#filter-by-engine-name');
     const firstItemToSelect = searchSelect.options.objectAt(0).text;

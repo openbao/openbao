@@ -1,0 +1,3 @@
+```release-note:bug
+secrets/pki: Fix bao pki health-check detection on non-pki mounts.
+```

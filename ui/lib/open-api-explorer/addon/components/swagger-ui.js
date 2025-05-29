@@ -94,16 +94,21 @@ export default Component.extend({
     },
     proxyEvent(e) {
       const swaggerInput = this.element.querySelector('.operation-filter-input');
-      // if this breaks because of a react upgrade,
-      // change this to
-      //let originalSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-      //originalSetter.call(swaggerInput, e.target.value);
-      // see post on triggering react events externally for an explanation of
-      // why this works: https://stackoverflow.com/a/46012210
-      const evt = new Event('input', { bubbles: true });
+
+      // Set up a custom event which points to our correct target. Usually
+      // dispatchEvent(...) would handle setting the target on our event,
+      // but we're bypassing this and calling the React onChange prop.
+      //
+      // When upgrading swagger-ui-dist, it may pull in a new React version
+      // which may break this.
+      const evt = new CustomEvent('input', { bubbles: true });
+      Object.defineProperty(evt, 'target', { writable: false, value: swaggerInput });
+      Object.defineProperty(evt, 'currentTarget', { writable: false, value: swaggerInput });
       evt.simulated = true;
       swaggerInput.value = e.target.value.replace(/^(\/)+/, '');
-      swaggerInput.dispatchEvent(evt);
+
+      const rHandle = Object.keys(swaggerInput).find((k) => k.startsWith('__reactProps'));
+      swaggerInput[rHandle].onChange(evt);
     },
   },
 });

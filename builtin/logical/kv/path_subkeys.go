@@ -32,8 +32,11 @@ func pathSubkeys(b *versionedKVBackend) *framework.Path {
 				Description: "Specifies which version to retrieve. If not provided, the current version will be used.",
 			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.upgradeCheck(b.pathSubkeysRead()),
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.upgradeCheck(b.pathSubkeysRead()),
+			},
 		},
 
 		HelpSynopsis:    subkeysHelpSyn,

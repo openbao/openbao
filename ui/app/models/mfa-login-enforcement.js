@@ -59,7 +59,7 @@ export default class MfaLoginEnforcementModel extends Model {
       try {
         const { data } = await this.store.adapterFor('auth-method').findAll();
         authMethods = Object.keys(data).map((key) => ({ path: key, ...data[key] }));
-      } catch (error) {
+      } catch {
         // swallow this error
       }
     }

@@ -14,15 +14,15 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/namespace"
-	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/dbtxn"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/queue"
 	"github.com/stretchr/testify/mock"
@@ -277,7 +277,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 	// expect resp to be an error
 	resp, _ = b.HandleRequest(namespace.RootContext(nil), req)
 	if !resp.IsError() {
-		t.Fatalf("expected error rotating non-static role")
+		t.Fatal("expected error rotating non-static role")
 	}
 
 	if resp.Error().Error() != "no static role found for role name" {
@@ -654,7 +654,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 
 	password := resp.Data["password"].(string)
 	if password == walPassword {
-		t.Fatalf("expected password to not be changed by WAL, but was")
+		t.Fatal("expected password to not be changed by WAL, but was")
 	}
 }
 

@@ -4,7 +4,6 @@
 package ssh
 
 import (
-	"context"
 	"crypto/dsa"
 	"crypto/ecdsa"
 	"crypto/ed25519"
@@ -53,9 +52,13 @@ type creationBundle struct {
 	Extensions      map[string]string
 }
 
-func (b *backend) pathSignIssueCertificateHelper(ctx context.Context, req *logical.Request, data *framework.FieldData, role *sshRole, publicKey ssh.PublicKey) (*logical.Response, error) {
-	// Note that these various functions always return "user errors" so we pass
-	// them as 4xx values
+func (b *backend) pathSignIssueCertificateHelper(sc *storageContext, req *logical.Request, data *framework.FieldData, role *sshRole, publicKey ssh.PublicKey) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(sc.Context, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	keyID, err := b.calculateKeyID(data, req, role, publicKey)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
@@ -101,15 +104,19 @@ func (b *backend) pathSignIssueCertificateHelper(ctx context.Context, req *logic
 		return logical.ErrorResponse(err.Error()), nil
 	}
 
-	privateKeyEntry, err := caKey(ctx, req.Storage, caPrivateKey)
+	issuerId, err := sc.resolveIssuerReference(role.Issuer)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CA private key: %w", err)
-	}
-	if privateKeyEntry == nil || privateKeyEntry.Key == "" {
-		return nil, errors.New("failed to read CA private key")
+		return handleStorageContextErr(err)
 	}
 
-	signer, err := ssh.ParsePrivateKey([]byte(privateKeyEntry.Key))
+	issuer, err := sc.fetchIssuerById(issuerId)
+	if err != nil {
+		return handleStorageContextErr(err)
+	}
+
+	privateKey := issuer.PrivateKey
+
+	signer, err := ssh.ParsePrivateKey([]byte(privateKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse stored CA private key: %w", err)
 	}
@@ -140,11 +147,16 @@ func (b *backend) pathSignIssueCertificateHelper(ctx context.Context, req *logic
 		Data: map[string]interface{}{
 			"serial_number": strconv.FormatUint(certificate.Serial, 16),
 			"signed_key":    string(signedSSHCertificate),
+			"issuer_id":     issuerId,
 		},
 	}
 
 	if addExtTemplatingWarning {
 		response.AddWarning("default_extension templating enabled with at least one extension requiring identity templating. However, this request lacked identity entity information, causing one or more extensions to be skipped from the generated certificate.")
+	}
+
+	if err := logical.EndTxStorage(sc.Context, req); err != nil {
+		return nil, err
 	}
 
 	return response, nil
@@ -192,7 +204,7 @@ func (b *backend) calculateValidPrincipals(data *framework.FieldData, req *logic
 	switch {
 	case len(parsedPrincipals) == 0:
 		if !role.AllowEmptyPrincipals && principalsAllowedByRole != "*" {
-			return nil, fmt.Errorf("refusing to issue unsafe, globally-valid certificate with no principals specified; set valid_principals or default_user")
+			return nil, errors.New("refusing to issue unsafe, globally-valid certificate with no principals specified; set valid_principals or default_user")
 		}
 
 		// There is nothing to process
@@ -200,7 +212,7 @@ func (b *backend) calculateValidPrincipals(data *framework.FieldData, req *logic
 	case len(allowedPrincipals) == 0:
 		// User has requested principals to be set, but role is not configured
 		// with any principals
-		return nil, fmt.Errorf("role is not configured to allow any principals")
+		return nil, errors.New("role is not configured to allow any principals")
 	default:
 		// Role was explicitly configured to allow any principal.
 		if principalsAllowedByRole == "*" {
@@ -258,7 +270,7 @@ func (b *backend) calculateKeyID(data *framework.FieldData, req *logical.Request
 
 	if reqID != "" {
 		if !role.AllowUserKeyIDs {
-			return "", fmt.Errorf("setting key_id is not allowed by role")
+			return "", errors.New("setting key_id is not allowed by role")
 		}
 		return reqID, nil
 	}
@@ -499,7 +511,7 @@ func (b *creationBundle) sign() (retCert *ssh.Certificate, retErr error) {
 
 	sshAlgorithmSigner, ok := b.Signer.(ssh.AlgorithmSigner)
 	if !ok {
-		return nil, fmt.Errorf("failed to generate signed SSH key: signer is not an AlgorithmSigner")
+		return nil, errors.New("failed to generate signed SSH key: signer is not an AlgorithmSigner")
 	}
 
 	// prepare certificate for signing

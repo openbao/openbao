@@ -17,12 +17,11 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
-	_ "github.com/jackc/pgx/v4"
+	_ "github.com/jackc/pgx/v5"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/namespace"
-	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/plugins/database/postgresql"
 	v4 "github.com/openbao/openbao/sdk/v2/database/dbplugin"
@@ -31,6 +30,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
@@ -350,7 +350,7 @@ func TestBackend_BadConnectionString(t *testing.T) {
 		}
 		err = resp.Error()
 		if strings.Contains(err.Error(), "localhost") {
-			t.Fatalf("error should not contain connection info")
+			t.Fatal("error should not contain connection info")
 		}
 	}
 
@@ -502,7 +502,7 @@ func TestBackend_basic(t *testing.T) {
 			t.Fatalf("unexpected TTL of %d", credsResp.Secret.TTL)
 		}
 		if !testCredsExist(t, credsResp, connURL) {
-			t.Fatalf("Creds should exist")
+			t.Fatal("Creds should exist")
 		}
 
 		// Revoke creds
@@ -522,7 +522,7 @@ func TestBackend_basic(t *testing.T) {
 		}
 
 		if testCredsExist(t, credsResp, connURL) {
-			t.Fatalf("Creds should not exist")
+			t.Fatal("Creds should not exist")
 		}
 	}
 
@@ -540,7 +540,7 @@ func TestBackend_basic(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, credsResp)
 		}
 		if !testCredsExist(t, credsResp, connURL) {
-			t.Fatalf("Creds should exist")
+			t.Fatal("Creds should exist")
 		}
 
 		// Delete role, forcing us to rely on embedded data
@@ -573,7 +573,7 @@ func TestBackend_basic(t *testing.T) {
 		}
 
 		if testCredsExist(t, credsResp, connURL) {
-			t.Fatalf("Creds should not exist")
+			t.Fatal("Creds should not exist")
 		}
 	}
 }
@@ -734,7 +734,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 		"password": "secret",
 	})
 	if !testCredsExist(t, credsResp, credCheckURL) {
-		t.Fatalf("Creds should exist")
+		t.Fatal("Creds should exist")
 	}
 
 	// Delete Connection
@@ -1128,7 +1128,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	}
 
 	if !testCredsExist(t, credsResp, connURL) {
-		t.Fatalf("Creds should exist")
+		t.Fatal("Creds should exist")
 	}
 
 	// update connection with * allowed roles connection
@@ -1162,7 +1162,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	}
 
 	if !testCredsExist(t, credsResp, connURL) {
-		t.Fatalf("Creds should exist")
+		t.Fatal("Creds should exist")
 	}
 
 	// update connection with allowed roles
@@ -1209,7 +1209,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	}
 
 	if !testCredsExist(t, credsResp, connURL) {
-		t.Fatalf("Creds should exist")
+		t.Fatal("Creds should exist")
 	}
 }
 
@@ -1417,7 +1417,7 @@ func TestBackend_ConnectionURL_redacted(t *testing.T) {
 					t.Fatal(err)
 				}
 				if pp, _ := p.User.Password(); pp == tt.password {
-					t.Fatalf("password was not redacted by URL.Redacted()")
+					t.Fatal("password was not redacted by URL.Redacted()")
 				}
 			}
 		})

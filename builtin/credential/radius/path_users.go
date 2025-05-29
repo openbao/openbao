@@ -5,7 +5,7 @@ package radius
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -35,8 +35,10 @@ func pathUsersList(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ListOperation: b.pathUserList,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.pathUserList,
+			},
 		},
 
 		HelpSynopsis:    pathUserHelpSyn,
@@ -70,11 +72,19 @@ func pathUsers(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.DeleteOperation: b.pathUserDelete,
-			logical.ReadOperation:   b.pathUserRead,
-			logical.UpdateOperation: b.pathUserWrite,
-			logical.CreateOperation: b.pathUserWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathUserDelete,
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathUserRead,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathUserWrite,
+			},
+			logical.CreateOperation: &framework.PathOperation{
+				Callback: b.pathUserWrite,
+			},
 		},
 
 		ExistenceCheck: b.userExistenceCheck,
@@ -95,7 +105,7 @@ func (b *backend) userExistenceCheck(ctx context.Context, req *logical.Request, 
 
 func (b *backend) user(ctx context.Context, s logical.Storage, username string) (*UserEntry, error) {
 	if username == "" {
-		return nil, fmt.Errorf("missing username")
+		return nil, errors.New("missing username")
 	}
 
 	entry, err := s.Get(ctx, "user/"+strings.ToLower(username))

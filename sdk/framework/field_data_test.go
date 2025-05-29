@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -1009,7 +1010,7 @@ func TestFieldDataGet(t *testing.T) {
 			err := data.Validate()
 			switch {
 			case tc.ExpectError && err == nil:
-				t.Fatalf("expected error")
+				t.Fatal("expected error")
 			case tc.ExpectError && err != nil:
 				return
 			case !tc.ExpectError && err != nil:
@@ -1267,10 +1268,19 @@ func TestValidateStrict(t *testing.T) {
 			err := data.ValidateStrict()
 
 			if err == nil && tc.ExpectError == true {
-				t.Fatalf("expected an error, got nil")
+				t.Fatal("expected an error, got nil")
 			}
 			if err != nil && tc.ExpectError == false {
 				t.Fatalf("unexpected error: %v", err)
+			}
+			if err != nil {
+				for _, valueRaw := range tc.Raw {
+					if value, ok := valueRaw.(string); ok {
+						if strings.Contains(err.Error(), value) {
+							t.Fatalf("error contained value: value=%v / err=%v", value, err)
+						}
+					}
+				}
 			}
 		})
 	}

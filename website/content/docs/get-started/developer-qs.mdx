@@ -126,7 +126,8 @@ $ curl \
     --header "Content-Type: application/json" \
     --request POST \
     --data '{"data": {"password": "OpenBao123"}}' \
-    http://127.0.0.1:8200/v1/secret/data/my-secret-password
+    http://127.0.0.1:8200/v1/secret/data/my-secret-password &&
+    echo "Secret written successfully."
 ```
 
 </TabItem>
@@ -155,7 +156,7 @@ if err != nil {
 
 value, ok := secret.Data["password"].(string)
 if !ok {
-log.Fatalf("value type assertion failed: %T %#v", secret.Data["password"], secret.Data["password"])
+    log.Fatalf("value type assertion failed: %T %#v", secret.Data["password"], secret.Data["password"])
 }
 ```
 
@@ -184,6 +185,8 @@ if value != "OpenBao123" {
 fmt.Println("Access granted!")
 ```
 
+If the secret was fetched successfully, you should see the `Access granted!` message after you run the code.
+
 </TabItem>
 <TabItem value="Bash" group="bash" heading="Bash" group="bash">
 
@@ -191,10 +194,12 @@ fmt.Println("Access granted!")
 $ cat secrets.json | jq '.data.data'
 ```
 
+If the secret was fetched successfully, it should return the string `OpenBao123`.
+
 </TabItem>
 </Tabs>
 
-If the secret was fetched successfully, you should see the `Access granted!` message after you run the code. If not, check to see if you provided the correct path to your secret.
+If not, check to see if you provided the correct path to your secret.
 
 **That's it! You've just written and retrieved your first OpenBao secret!**
 

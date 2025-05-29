@@ -5,10 +5,11 @@ package rabbitmq
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
-	rabbithole "github.com/michaelklishin/rabbit-hole/v2"
+	rabbithole "github.com/michaelklishin/rabbit-hole/v3"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -35,8 +36,10 @@ func pathCreds(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.pathCredsRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathCredsRead,
+			},
 		},
 
 		HelpSynopsis:    pathRoleCreateReadHelpSyn,
@@ -46,6 +49,12 @@ func pathCreds(b *backend) *framework.Path {
 
 // Issues the credential based on the role name
 func (b *backend) pathCredsRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := d.Get("name").(string)
 	if name == "" {
 		return logical.ErrorResponse("missing name"), nil
@@ -105,7 +114,7 @@ func (b *backend) pathCredsRead(ctx context.Context, req *logical.Request, d *fr
 		Tags:     []string{role.Tags},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create a new user with the generated credentials")
+		return nil, errors.New("failed to create a new user with the generated credentials")
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -209,6 +218,10 @@ func (b *backend) pathCredsRead(ctx context.Context, req *logical.Request, d *fr
 	if lease != nil {
 		response.Secret.TTL = lease.TTL
 		response.Secret.MaxTTL = lease.MaxTTL
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return response, nil

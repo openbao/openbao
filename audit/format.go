@@ -6,6 +6,7 @@ package audit
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -37,15 +38,15 @@ var _ Formatter = (*AuditFormatter)(nil)
 
 func (f *AuditFormatter) FormatRequest(ctx context.Context, w io.Writer, config FormatterConfig, in *logical.LogInput) error {
 	if in == nil || in.Request == nil {
-		return fmt.Errorf("request to request-audit a nil request")
+		return errors.New("request to request-audit a nil request")
 	}
 
 	if w == nil {
-		return fmt.Errorf("writer for audit request is nil")
+		return errors.New("writer for audit request is nil")
 	}
 
 	if f.AuditFormatWriter == nil {
-		return fmt.Errorf("no format writer specified")
+		return errors.New("no format writer specified")
 	}
 
 	salt, err := f.Salt(ctx)
@@ -171,15 +172,15 @@ func (f *AuditFormatter) FormatRequest(ctx context.Context, w io.Writer, config 
 
 func (f *AuditFormatter) FormatResponse(ctx context.Context, w io.Writer, config FormatterConfig, in *logical.LogInput) error {
 	if in == nil || in.Request == nil {
-		return fmt.Errorf("request to response-audit a nil request")
+		return errors.New("request to response-audit a nil request")
 	}
 
 	if w == nil {
-		return fmt.Errorf("writer for audit request is nil")
+		return errors.New("writer for audit request is nil")
 	}
 
 	if f.AuditFormatWriter == nil {
-		return fmt.Errorf("no format writer specified")
+		return errors.New("no format writer specified")
 	}
 
 	salt, err := f.Salt(ctx)
@@ -576,14 +577,18 @@ func NewTemporaryFormatter(format, prefix string) *AuditFormatter {
 //
 // See the documentation of the controlling option in FormatterConfig for more information on the purpose.
 func doElideListResponseData(data map[string]interface{}) {
-	for k, v := range data {
+	doElideListResponseDataWithCopy(data, data)
+}
+
+func doElideListResponseDataWithCopy(inputData map[string]interface{}, outputData map[string]interface{}) {
+	for k, v := range inputData {
 		if k == "keys" {
 			if vSlice, ok := v.([]string); ok {
-				data[k] = len(vSlice)
+				outputData[k] = len(vSlice)
 			}
 		} else if k == "key_info" {
 			if vMap, ok := v.(map[string]interface{}); ok {
-				data[k] = len(vMap)
+				outputData[k] = len(vMap)
 			}
 		}
 	}

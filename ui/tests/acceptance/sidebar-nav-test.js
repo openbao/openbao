@@ -48,7 +48,7 @@ module('Acceptance | sidebar navigation', function (hooks) {
 
     const links = [
       { label: 'Raft Storage', route: '/vault/storage/raft' },
-      { label: 'Seal Vault', route: '/vault/settings/seal' },
+      { label: 'Seal OpenBao', route: '/vault/settings/seal' },
       { label: 'Secrets engines', route: '/vault/secrets' },
     ];
 

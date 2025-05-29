@@ -181,49 +181,49 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 	}{
 		{
 			[]string{"token", "count"},
-			[]metrics.Label{{"gauge", "token_by_namespace"}},
+			[]metrics.Label{{Name: "gauge", Value: "token_by_namespace"}},
 			c.tokenGaugeCollector,
 			"",
 		},
 		{
 			[]string{"token", "count", "by_policy"},
-			[]metrics.Label{{"gauge", "token_by_policy"}},
+			[]metrics.Label{{Name: "gauge", Value: "token_by_policy"}},
 			c.tokenGaugePolicyCollector,
 			"",
 		},
 		{
 			[]string{"expire", "leases", "by_expiration"},
-			[]metrics.Label{{"gauge", "leases_by_expiration"}},
+			[]metrics.Label{{Name: "gauge", Value: "leases_by_expiration"}},
 			c.leaseExpiryGaugeCollector,
 			"",
 		},
 		{
 			[]string{"token", "count", "by_auth"},
-			[]metrics.Label{{"gauge", "token_by_auth"}},
+			[]metrics.Label{{Name: "gauge", Value: "token_by_auth"}},
 			c.tokenGaugeMethodCollector,
 			"",
 		},
 		{
 			[]string{"token", "count", "by_ttl"},
-			[]metrics.Label{{"gauge", "token_by_ttl"}},
+			[]metrics.Label{{Name: "gauge", Value: "token_by_ttl"}},
 			c.tokenGaugeTtlCollector,
 			"",
 		},
 		{
 			[]string{"secret", "kv", "count"},
-			[]metrics.Label{{"gauge", "kv_secrets_by_mountpoint"}},
+			[]metrics.Label{{Name: "gauge", Value: "kv_secrets_by_mountpoint"}},
 			c.kvSecretGaugeCollector,
 			"BAO_DISABLE_KV_GAUGE",
 		},
 		{
 			[]string{"identity", "entity", "count"},
-			[]metrics.Label{{"gauge", "identity_by_namespace"}},
+			[]metrics.Label{{Name: "gauge", Value: "identity_by_namespace"}},
 			c.entityGaugeCollector,
 			"",
 		},
 		{
 			[]string{"identity", "entity", "alias", "count"},
-			[]metrics.Label{{"gauge", "identity_by_mountpoint"}},
+			[]metrics.Label{{Name: "gauge", Value: "identity_by_mountpoint"}},
 			c.entityGaugeCollectorByMount,
 			"",
 		},
@@ -302,7 +302,7 @@ func (c *Core) kvCollectionErrorCount() {
 	c.MetricSink().IncrCounterWithLabels(
 		[]string{"metrics", "collection", "error"},
 		1,
-		[]metrics.Label{{"gauge", "kv_secrets_by_mountpoint"}},
+		[]metrics.Label{{Name: "gauge", Value: "kv_secrets_by_mountpoint"}},
 	)
 }
 
@@ -389,7 +389,7 @@ func (c *Core) kvSecretGaugeCollector(ctx context.Context) ([]metricsutil.GaugeL
 
 		results[i].Labels = []metrics.Label{
 			metricsutil.NamespaceLabel(m.Namespace),
-			{"mount_point", m.MountPoint},
+			{Name: "mount_point", Value: m.MountPoint},
 		}
 
 		c.walkKvMountSecrets(ctx, m)
@@ -415,7 +415,11 @@ func (c *Core) entityGaugeCollector(ctx context.Context) ([]metricsutil.GaugeLab
 
 	// No check for expiration here; the bulk of the work should be in
 	// counting the entities.
-	allNamespaces := c.collectNamespaces()
+	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	if err != nil {
+		return []metricsutil.GaugeLabelValues{}, err
+	}
+
 	values := make([]metricsutil.GaugeLabelValues, len(allNamespaces))
 	for i := range values {
 		values[i].Labels = []metrics.Label{
@@ -459,8 +463,8 @@ func (c *Core) entityGaugeCollectorByMount(ctx context.Context) ([]metricsutil.G
 		values = append(values, metricsutil.GaugeLabelValues{
 			Labels: []metrics.Label{
 				metricsutil.NamespaceLabel(mountEntry.namespace),
-				{"auth_method", mountEntry.Type},
-				{"mount_point", "auth/" + mountEntry.Path},
+				{Name: "auth_method", Value: mountEntry.Type},
+				{Name: "mount_point", Value: "auth/" + mountEntry.Path},
 			},
 			Value: float32(count),
 		})

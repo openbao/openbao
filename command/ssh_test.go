@@ -230,6 +230,6 @@ func TestSSHCommandOmitFlagWarning(t *testing.T) {
 
 	combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
 	if strings.Contains(combined, "Command flags must be provided before positional arguments. The following arguments will not be parsed as flags") {
-		t.Fatalf("ssh command displayed flag warnings")
+		t.Fatal("ssh command displayed flag warnings")
 	}
 }

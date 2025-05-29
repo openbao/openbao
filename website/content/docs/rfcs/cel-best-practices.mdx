@@ -1,0 +1,174 @@
+---
+sidebar_label: Best Practices for Integrating CEL in Auth, Secrets, and Elsewhere
+description: |-
+  An OpenBao RFC to discuss how Google's Common Expression Language should be integrated into OpenBao.
+---
+
+# Best Practices for Integrating CEL in Auth, Secrets, and Elsewhere
+
+## Summary
+
+Two RFCs ([#493](https://github.com/openbao/openbao/issues/493#issuecomment-2549033976) and [#753](https://github.com/openbao/openbao/issues/753)) and two or more issues ([#514](https://github.com/openbao/openbao/issues/514), [#1207](https://github.com/openbao/openbao/issues/1207), and [#1227](https://github.com/openbao/openbao/issues/1227)) have sought to include CEL in OpenBao.
+
+This RFC attempts to set project-wide guidelines for its adoption to ensure a common operator experience regardless of which area of OpenBao they're using CEL in.
+
+## Problem Statement
+
+Many areas of OpenBao have a programability problem. For authentication against arbitrary objects (e.g., JWT tokens which can include custom claims of arbitrary JSON types or X.509 certificate validation or construction which may include arbitrary ASN.1-encoded extensions), OpenBao cannot know how to parse, validate, or generate everything.
+
+This leaves two alternatives for end-operators:
+
+1. Change OpenBao either through upstream contributions or a custom plugin version, or
+2. In our desired method, using [Google's Common Expression Language](https://cel.dev/) to implement their own authentication or generation.
+
+However, every place CEL is used presents an opportunity for confusion and different semantics.
+
+Currently, we have two open PRs for CEL support in OpenBao: [#794 for PKI Secrets](https://github.com/openbao/openbao/pull/794) by @fatima2003 and [#869 for JWT Auth](https://github.com/openbao/openbao/pull/869) by @suprjinx.
+
+These have two slightly different semantics:
+
+1. [PKI seeks to give CEL full issuance control](https://github.com/openbao/openbao/blob/9acf8fc25e64b670cfa20f3feb6b5c14023510e6/builtin/logical/pki/path_issue_sign.go#L868-L908) over the final certificate.
+
+   This gives the CEL author very precise control over issuance, granting fine-grained changes to the final certificate, at the expense of more complex CEL programs. This can be balanced by exposing certain role-like validation semantics while still retaining full control over the final certificate. However, in the current iteration, this only gives the CEL authors control [up to](https://github.com/openbao/openbao/blob/9acf8fc25e64b670cfa20f3feb6b5c14023510e6/builtin/logical/pki/path_cel.go#L46-L76) the [`certutil.CreationParameters`](https://github.com/openbao/openbao/blob/4511293598a5741797d97c06e264cf1963c15b37/sdk/helper/certutil/types.go#L767-L804) format; it does not grant full control over the [`x509.Certificate`](https://pkg.go.dev/crypto/x509#Certificate) object.
+
+2. [JWT seeks to give users limited control, up to setting role parameters](https://github.com/openbao/openbao/blob/e6e498a7fa6c1272139daa53f183faec95731c4a/builtin/credential/jwt/path_cel_login.go#L165-L184) to create the final authentication identity.
+
+   This limits the complexity of the CEL program and thus makes it accessible, but limits the customizations in validation and identity templating that CEL can apply.
+
+## User-facing Description
+
+This proposes three tenants of CEL programs:
+
+1. Complete customization at the lowest level.
+
+   This will allow operators to fully control any authorization that needs to occur, following the principal of least-surprise: nothing else runs, so the operator has full control here. Further, any output objects should be in the final form; for Certificate issuance this should be in `x509.Certificate`; for authentication this should be the `logical.Auth` response format. Notably, if some new protocol feature or desired validation approach comes along, this should hopefully allow operators to adopt it without requiring changes in OpenBao like we do today.
+
+   The one restriction on this is protocol-enforced validation of objects. In Certificate Authentication, we should ensure the TLS-layer signature is correct and that the leaf certificate can be parsed; choice of root should be selected by CEL, though the chain validation will ultimately be performed by Go. In JWT auth, issuer information lives on a more global layer, so parsing and signature validation of the token will occur prior to CEL evaluation; no claims will be validated here beyond issuer matching our global setting.
+
+2. Usability-focused escape hatches.
+
+   This should allow operators to fallback on existing helpers implemented by the common role system. This should take two forms:
+
+   1. Piecewise usage of components.
+
+   2. Entire role evaluation, with a custom Role object optionally starting from a role loaded from storage.
+
+   For instance, in PKI Secrets, this would allow the operator to invoke (from CEL) various role-based validation mechanisms (e.g., IP Sans, durations, &c) using custom parameters without requiring a role object. Or, in JWT, it would allow the operator to build an on-the-fly role.
+
+   In either case, this validation should return back to CEL and not to the calling Go method, allowing it to re-evaluate or potentially call multiple role validation operations.
+
+   The net result of this evaluation should be a one of three values:
+
+   1. A boolean literal `false`, indicating the default error message should be returned to the caller. For e.g., login requests, this would be `permission denied` or similar.
+   2. A string error message, giving more detailed failure rationale.
+   3. The final success response object, a Protobuf `message` mimicking e.g., `logical.Auth` or some other plugin-specific structure.
+
+   Notably, while object construction is hard to handle in general (to/from `ref.Val`), using Protobuf is simpler to cross the Go&lt;-&gt;CEL boundary. Certain areas, like [`logical.Auth`](https://github.com/openbao/openbao/blob/9bdcc26ef9ed7114f74075d196aeb46c96357a7b/sdk/logical/auth.go#L13-L117) already have [Protobuf variants](https://github.com/openbao/openbao/blob/9bdcc26ef9ed7114f74075d196aeb46c96357a7b/sdk/plugin/pb/backend.proto#L150-L227), along with [conversion helpers](https://github.com/openbao/openbao/blob/9bdcc26ef9ed7114f74075d196aeb46c96357a7b/sdk/plugin/pb/translation.go#L506-L594).
+
+3. User-Aided Extensibility; aligning with our desire for [pluginization](https://github.com/openbao/openbao/issues/569) of everything.
+
+   In the short term, like in [CEL for PKI Secrets #794](https://github.com/openbao/openbao/blob/9acf8fc25e64b670cfa20f3feb6b5c14023510e6/builtin/logical/pki/path_cel.go#L34), we will allow the operator to create variables injected into the CEL context for reusable expressions that can be utilized in the final response format.
+
+   Long-term, we will allow operators to write custom ([Go-loaded](https://github.com/hashicorp/go-plugin)) handlers that can be called from CEL. Certain operators may be hard to express in pure CEL (such as custom non-HTTP callouts), so allowing operators to implement custom handlers would be ideal.
+
+   These extensions would be globally loaded and included via mount tuning, or, in the case of policies, in `sys/config/policies/cel` or similar.
+
+### Libraries
+
+In pursuit of 3, we should introduce plugin-wide (and eventually, global) libraries for common components. These are collections of variables with the format:
+
+```json
+{
+  "variables": [
+    {
+      "name": "<var-name>",
+      "expression": "<cel-expression>"
+    }
+  ],
+  "dependencies": []
+}
+```
+
+Each variable is evaluated in order and can refer to previous variables. Likewise, dependency libraries are loaded prior to this variable; circular dependencies are not allowed.
+
+Roles should have another parameter, `libraries`, which takes a list of libraries to include; these evaluate prior to `variables` above.
+
+Eventually, global (under `sys/cel/libraries`) libraries should be created. These will have the following additional parameters:
+
+- `inherited`: whether child namespaces can read this library or whether it is limited to the current level.
+- `scope`: `secret/<type>`, `auth/<type>`, `policy`, or `all` to indicate the desired visibility of the library.
+
+Inheritance works from most specific to most general (mount -> child namespace -> parent namespace -> root namespace). This allows overwriting parent behavior, if desired.
+
+### Plugins
+
+In addition, long-term there should be operator-attached plugins specific to CEL; the design for this will be in a separate RFC. However, various builtin components will live under `sdk/helper/cel`.
+
+### Paths
+
+For layout in the engine, the following paths should be considered:
+
+- `<plugin>/cel/roles` - LIST all roles
+- `<plugin>/cel/role/<role>` - CRUD role
+- `<plugin>/cel/role/<role>/debug` - to debug execution of a role. This is privileged and outputs every step of execution (libraries, variables, and output), though may stop short of full result construction (e.g., in the case of PKI, would not sign the certificate or for login, would not create a final token).
+- `<plugin>/cel/login`, `<plugin>/cel/role/<role>/login` - for auth mounts, to perform a login, taking role as a request parameter or in the path (unauthenticated)
+- `<plugin>/cel/<plugin-specific>` - mount-specific paths, e.g., issue/sign certificates for PKI and SSH
+- `<plugin>/cel/libraries` - LIST all mount-level libraries
+- `<plugin>/cel/library/<library>` - CRUD mount-level library
+
+### Example for Policies
+
+When introducing a new `sys/policies/cel` type, this would mean:
+
+1. The CEL program takes the authentication and request information and outputs a true/false response structure (matching the [current authorization decision](https://github.com/openbao/openbao/blob/4511293598a5741797d97c06e264cf1963c15b37/vault/acl.go#L48-L64)).
+2. The CEL program can load and invoke various ACL policies based on contextual information as it sees fit, or build its own ACL policy on the fly. These could be evaluated and the results interpreted as desired.
+3. Through a custom plugin, CEL could make database calls to query for specific access information.
+
+Importantly, CEL's use in this way would allow us to side-step templating issues (as discussed in [#1207](https://github.com/openbao/openbao/issues/1207)) and potentially allow us to handle complex typed metadata. The latter would allow us to preserve the claims of the original JWT and do claim-based authorization.
+
+## Rationale and Alternatives
+
+Ultimately there's a design trade-off between complexity and ease-of use that has to occur. This admittedly falls on the side of more complexity because it is an advanced feature. For common improvement requests, we can continue to implement changes and improvements in the role and ACL policy sections. However, advanced use cases for OpenBao need to be enabled without falling back to custom upstream (or worse, internal) changes.
+
+The alternative is flipping this around and taking a role-based approach: let CEL select (and potentially, modify) role attributes based on whatever context is present, but do not give CEL any powers beyond that. That would limit it to strictly an additional-validation position. In the case of policies, this would be much weaker than Sentinel or OPA and thus likely not desired.
+
+## Downsides
+
+While consistent with design goals, the major downside is complexity.
+
+## Security Implications
+
+Operators are solely on the hook for ensuring their program behaves as expected and does not have unexpected security issues. However, CEL is a contained, non-Turing-complete language and so as far as choices for this type of hook goes, is likely one of the better choices.
+
+## User/Developer Experience
+
+For most users, the experience will not change; the role systems will continue to function as-is.
+
+For some operators who self-select into using this behavior, they will have to develop a CEL program of variable complexity: either a simpler invocation of one or more roles, piecewise usage of role helpers, or a fully complex custom validation logic that must be aware of all necessary validations and the required output format.
+
+## Unresolved Questions
+
+Not clear is the behavior of [Object construction](https://github.com/google/cel-spec):
+
+```cel
+// Object construction
+common.GeoPoint{ latitude: 10.0, longitude: -5.5 }
+```
+
+This would be ideal (for auth and for certificate creation), but may be more complex than desired.
+
+## Related Issues
+
+RFCs:
+- https://github.com/openbao/openbao/issues/493#issuecomment-2549033976
+- https://github.com/openbao/openbao/issues/753
+
+Issues:
+
+- https://github.com/openbao/openbao/issues/514
+- https://github.com/openbao/openbao/issues/1207
+- https://github.com/openbao/openbao/issues/1227
+
+## Proof of Concept
+
+n/a

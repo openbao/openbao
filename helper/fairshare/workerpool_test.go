@@ -4,6 +4,7 @@
 package fairshare
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -246,7 +247,6 @@ func TestFairshare_stop(t *testing.T) {
 
 	go func() {
 		d.stop()
-		d.wg.Wait()
 		doneCh <- struct{}{}
 	}()
 
@@ -268,7 +268,6 @@ func TestFairshare_stopMultiple(t *testing.T) {
 
 	go func() {
 		d.stop()
-		d.wg.Wait()
 		doneCh <- struct{}{}
 	}()
 
@@ -290,7 +289,6 @@ func TestFairshare_stopMultiple(t *testing.T) {
 		}()
 
 		d.stop()
-		d.wg.Wait()
 	}()
 
 	select {
@@ -350,7 +348,7 @@ func TestFairshare_dispatch(t *testing.T) {
 
 func TestFairshare_jobFailure(t *testing.T) {
 	numJobs := 10
-	testErr := fmt.Errorf("test error")
+	testErr := errors.New("test error")
 	var wg sync.WaitGroup
 
 	ex := func(_ string) error {

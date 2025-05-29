@@ -1,23 +1,23 @@
 ---
-sidebar_label: High Availability
+sidebar_label: High availability
 description: >-
   OpenBao can be highly available, allowing you to run multiple OpenBaos to protect
   against outages.
 ---
 
-# High availability mode (HA)
+# High Availability (HA) mode
 
-OpenBao supports a multi-server mode for high availability. This mode protects
-against outages by running multiple OpenBao servers. High availability mode
+OpenBao supports a multi-server mode for High Availability. This mode protects
+against outages by running multiple OpenBao servers. High Availability mode
 is automatically enabled when using a data store that supports it.
 
-You can tell if a data store supports high availability mode ("HA") by starting
+You can tell if a data store supports High Availability mode by starting
 the server and seeing if "(HA available)" is output next to the data store
 information. If it is, then OpenBao will automatically use HA mode. This
 information is also available on the
 [Configuration](/docs/configuration) page.
 
-To be highly available, one of the OpenBao server nodes grabs a lock within the
+To be Highly Available, one of the OpenBao server nodes grabs a lock within the
 data store. The successful server node then becomes the active node; all other
 nodes become standby nodes. At this point, if the standby nodes receive a
 request, they will either [forward the request](#request-forwarding) or
@@ -26,7 +26,7 @@ configuration and state of the cluster -- see the sections below for details.
 Due to this architecture, HA does not enable increased scalability. In general,
 the bottleneck of OpenBao is the data store itself, not OpenBao core.
 
-Certain storage backends can support high availability mode, which enable them
+Certain storage backends can support High Availability mode, which enable them
 to store both OpenBao's information in addition to the HA lock. However, OpenBao
 also supports split data/HA mode, whereby the lock value and the rest of the
 data live separately. This can be done by specifying both the
@@ -168,9 +168,9 @@ variable, which takes precedence.
 Currently the only officially supported storage backend that supports high
 availability is the  [Integrated
 Storage](/docs/configuration/storage/raft) backend. In addition to that,
-some community suppThese may change over time, and the [configuration
-page](/docs/configuration) should be referenced.  orted storage backends
-implement hight availability as well. 
+some community supported storage backends
+implement High Availability as well. These may change over time, and the [configuration
+page](/docs/configuration) should be referenced.
 
 The [OpenBao Integrated Storage](/docs/configuration/storage/raft) is
 recommended as the default HA backend for new deployments of OpenBao. See the

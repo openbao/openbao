@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -45,8 +46,10 @@ func groupAliasPaths(i *IdentityStore) []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: i.pathGroupAliasRegister(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.pathGroupAliasRegister(),
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(groupAliasHelp["group-alias"][0]),
@@ -111,8 +114,10 @@ func groupAliasPaths(i *IdentityStore) []*framework.Path {
 				OperationSuffix: "aliases-by-id",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: i.pathGroupAliasIDList(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: i.pathGroupAliasIDList(),
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(groupAliasHelp["group-alias-id-list"][0]),
@@ -145,7 +150,7 @@ func (i *IdentityStore) pathGroupAliasIDUpdate() framework.OperationFunc {
 		i.groupLock.Lock()
 		defer i.groupLock.Unlock()
 
-		groupAlias, err := i.MemDBAliasByID(groupAliasID, true, true)
+		groupAlias, err := i.MemDBAliasByID(ctx, groupAliasID, true, true)
 		if err != nil {
 			return nil, err
 		}
@@ -208,7 +213,7 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 	// Canonical ID handling
 	{
 		if canonicalID != "" {
-			newGroup, err = i.MemDBGroupByID(canonicalID, true)
+			newGroup, err = i.MemDBGroupByID(ctx, canonicalID, true)
 			if err != nil {
 				return nil, err
 			}
@@ -238,7 +243,7 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 			return logical.ErrorResponse("mount referenced via 'mount_accessor' not in the same namespace as alias"), logical.ErrPermissionDenied
 		}
 
-		groupAliasByFactors, err := i.MemDBAliasByFactors(mountEntry.Accessor, name, false, true)
+		groupAliasByFactors, err := i.MemDBAliasByFactors(ctx, mountEntry.Accessor, name, false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -265,12 +270,12 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 
 	default:
 		// Fetch the group, if any, to which the alias is tied to
-		previousGroup, err = i.MemDBGroupByAliasID(groupAlias.ID, true)
+		previousGroup, err = i.MemDBGroupByAliasID(ctx, groupAlias.ID, true)
 		if err != nil {
 			return nil, err
 		}
 		if previousGroup == nil {
-			return nil, fmt.Errorf("group alias is not associated with a group")
+			return nil, errors.New("group alias is not associated with a group")
 		}
 		if previousGroup.NamespaceID != groupAlias.NamespaceID {
 			return logical.ErrorResponse("previous group found for alias not in the same namespace as alias"), logical.ErrPermissionDenied
@@ -312,7 +317,7 @@ func (i *IdentityStore) pathGroupAliasIDRead() framework.OperationFunc {
 			return logical.ErrorResponse("empty group alias id"), nil
 		}
 
-		groupAlias, err := i.MemDBAliasByID(groupAliasID, false, true)
+		groupAlias, err := i.MemDBAliasByID(ctx, groupAliasID, false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -332,7 +337,7 @@ func (i *IdentityStore) pathGroupAliasIDDelete() framework.OperationFunc {
 		i.groupLock.Lock()
 		defer i.groupLock.Unlock()
 
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		alias, err := i.MemDBAliasByIDInTxn(txn, groupAliasID, false, true)
@@ -359,7 +364,7 @@ func (i *IdentityStore) pathGroupAliasIDDelete() framework.OperationFunc {
 
 		// If there is no group tied to a valid alias, something is wrong
 		if group == nil {
-			return nil, fmt.Errorf("alias not associated to a group")
+			return nil, errors.New("alias not associated to a group")
 		}
 
 		// Delete group alias in memdb

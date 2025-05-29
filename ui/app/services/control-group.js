@@ -14,12 +14,7 @@ const TOKEN_SEPARATOR = '☃';
 
 // list of endpoints that return wrapped responses
 // without `wrap-ttl`
-const WRAPPED_RESPONSE_PATHS = [
-  'sys/wrapping/rewrap',
-  'sys/wrapping/wrap',
-  'sys/replication/performance/primary/secondary-token',
-  'sys/replication/dr/primary/secondary-token',
-];
+const WRAPPED_RESPONSE_PATHS = ['sys/wrapping/rewrap', 'sys/wrapping/wrap'];
 
 const storageKey = (accessor, path) => {
   return `${CONTROL_GROUP_PREFIX}${accessor}${TOKEN_SEPARATOR}${path}`;

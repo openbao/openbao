@@ -83,15 +83,15 @@ itself is not carrying authoritative data and do not sign it.
 Via the `sys/wrapping` path, several operations can be run against wrapping
 tokens:
 
-- Lookup (`sys/wrapping/lookup`): This allows fetching the response-wrapping
+- **Lookup** (`sys/wrapping/lookup`)**:** This allows fetching the response-wrapping
   token's creation time, creation path, and TTL. This path is unauthenticated
   and available to response-wrapping tokens themselves. In other words, a
   response-wrapping token holder wishing to perform validation is always
   allowed to look up the properties of the token.
-- Unwrap (`sys/wrapping/unwrap`): Unwrap the token, returning the response
+- **Unwrap** (`sys/wrapping/unwrap`)**:** Unwrap the token, returning the response
   inside. The response that is returned will be the original wire-format
   response; it can be used directly with API clients.
-- Rewrap (`sys/wrapping/rewrap`): Allows migrating the wrapped data to a new
+- **Rewrap** (`sys/wrapping/rewrap`)**:** Allows migrating the wrapped data to a new
   response-wrapping token. This can be useful for long-lived secrets. For
   example, an organization may wish (or be required in a compliance scenario)
   to have the `pki` backend's root CA key be returned in a long-lived
@@ -101,7 +101,7 @@ tokens:
   mount. Often, compliance schemes require periodic rotation of secrets, so
   this helps achieve that compliance goal without actually exposing what's
   inside.
-- Wrap (`sys/wrapping/wrap`): A helper endpoint that echoes back the data sent
+- **Wrap** (`sys/wrapping/wrap`)**:** A helper endpoint that echoes back the data sent
   to it in a response-wrapping token. Note that blocking access to this
   endpoint does not remove the ability for arbitrary data to be wrapped, as it
   can be done elsewhere in OpenBao.

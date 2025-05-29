@@ -13,6 +13,7 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -20,26 +21,11 @@ type CELRoleEntry struct {
 	// Required, the name of the role
 	Name string `json:"name"`
 	// Required, defines validation logic
-	ValidationProgram ValidationProgram `json:"validation_program"`
-}
+	CelProgram celhelper.CelProgram `json:"validation_program"`
+	// Warnings about the request or adjustments made by the CEL policy engine.
+	// E.g., "common_name was empty so added example.com"
+	Warnings string
 
-type ValidationProgram struct {
-	// List of variables with explicit order
-	Variables []Variable `json:"variables,omitempty"`
-	// Required, the main CEL expression
-	Expressions Expressions `json:"expressions"`
-}
-
-type Variable struct {
-	// Name of the variable.
-	Name string
-	// CEL expression for the variable
-	Expression string
-}
-
-type Expressions struct {
-	// Main expression which returns the CertTemplate or an Error message.
-	MainProgram string
 	// Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.
 	GenerateLease string
 	// If set, certificates issued/signed against this role will not be stored in the storage backend.
@@ -48,9 +34,6 @@ type Expressions struct {
 	Issuer string
 	// CSR ignored if certificate is being issued.
 	CSR string
-	// Warnings about the request or adjustments made by the CEL policy engine.
-	// E.g., "common_name was empty so added example.com"
-	Warnings string
 }
 
 func pathListCelRoles(b *backend) *framework.Path {
@@ -102,9 +85,29 @@ func pathCelRoles(b *backend) *framework.Path {
 			Type:        framework.TypeString,
 			Description: "Name of the cel role",
 		},
-		"validation_program": {
+		"cel_program": {
 			Type:        framework.TypeMap,
-			Description: "CEL rules defining the validation program for the role",
+			Description: "CEL variables and expression defining the program for the role",
+		},
+		"warnings": {
+			Type:        framework.TypeString,
+			Description: "Warnings about the request or adjustments made by the CEL policy engine.",
+		},
+		"generate_lease": {
+			Type:        framework.TypeString,
+			Description: "Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.",
+		},
+		"no_store": {
+			Type:        framework.TypeString,
+			Description: "If set, certificates issued/signed against this role will not be stored in the storage backend.",
+		},
+		"issuer": {
+			Type:        framework.TypeString,
+			Description: "The issuer used to sign the certificate.",
+		},
+		"csr": {
+			Type:        framework.TypeString,
+			Description: "Certificate Signing Request.",
 		},
 	}
 
@@ -121,9 +124,29 @@ func pathCelRoles(b *backend) *framework.Path {
 				Type:        framework.TypeString,
 				Description: "Name of the cel role",
 			},
-			"validation_program": {
+			"cel_program": {
 				Type:        framework.TypeMap,
-				Description: "CEL rules defining the validation program for the role",
+				Description: "CEL variables and expression defining the program for the role",
+			},
+			"warnings": {
+				Type:        framework.TypeString,
+				Description: "Warnings about the request or adjustments made by the CEL policy engine.",
+			},
+			"generate_lease": {
+				Type:        framework.TypeString,
+				Description: "Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.",
+			},
+			"no_store": {
+				Type:        framework.TypeString,
+				Description: "If set, certificates issued/signed against this role will not be stored in the storage backend.",
+			},
+			"issuer": {
+				Type:        framework.TypeString,
+				Description: "The issuer used to sign the certificate.",
+			},
+			"csr": {
+				Type:        framework.TypeString,
+				Description: "Certificate Signing Request.",
 			},
 		},
 
@@ -187,22 +210,16 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 	}
 	name := nameRaw.(string)
 
-	validationProgram := ValidationProgram{}
-	if validationProgramRaw, ok := data.GetOk("validation_program"); !ok {
-		return logical.ErrorResponse("missing required field 'validation_program'"), nil
-
-		// Ensure "validation_program" is a map
-	} else if validationProgramMap, ok := validationProgramRaw.(map[string]interface{}); !ok {
-		return logical.ErrorResponse("'validation_program' must be a valid map"), nil
-
-		// Decode "validation_program" into the ValidationProgram struct
-	} else if err := mapstructure.Decode(validationProgramMap, &validationProgram); err != nil {
-		return logical.ErrorResponse("failed to decode 'validation_program': %v", err), nil
-	}
+	celProgram, err := celhelper.GetCELProgram(data)
 
 	entry := &CELRoleEntry{
-		Name:              name,
-		ValidationProgram: validationProgram,
+		Name:          name,
+		CelProgram:    *celProgram,
+		Warnings:      data.Get("warnings").(string),
+		GenerateLease: data.Get("generate_lease").(string),
+		NoStore:       data.Get("no_store").(string),
+		Issuer:        data.Get("issuer").(string),
+		CSR:           data.Get("csr").(string),
 	}
 
 	resp, err := validateCelRoleCreation(entry)
@@ -245,11 +262,8 @@ func (b *backend) pathCelRoleRead(ctx context.Context, req *logical.Request, dat
 	}
 
 	role, err := b.getCelRole(ctx, req.Storage, roleName)
-	if err != nil {
+	if err != nil || role == nil {
 		return nil, err
-	}
-	if role == nil {
-		return nil, nil
 	}
 
 	resp := &logical.Response{
@@ -259,6 +273,12 @@ func (b *backend) pathCelRoleRead(ctx context.Context, req *logical.Request, dat
 }
 
 func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	roleName := data.Get("name").(string)
 
 	// Retrieve the existing entry
@@ -272,18 +292,18 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 
 	// Initialize the new entry with existing values
 	entry := &CELRoleEntry{
-		Name:              oldEntry.Name,
-		ValidationProgram: oldEntry.ValidationProgram,
+		Name:       roleName,
+		CelProgram: oldEntry.CelProgram,
 	}
 
 	// Update the fields only if provided
-	if validationProgramRaw, ok := data.GetOk("validation_program"); ok {
-		validationProgramMap, ok := validationProgramRaw.(map[string]interface{})
+	if celProgramRaw, ok := data.GetOk("cel_program"); ok {
+		celProgramMap, ok := celProgramRaw.(map[string]interface{})
 		if !ok {
-			return logical.ErrorResponse("'validation_program' must be a valid map"), nil
+			return logical.ErrorResponse("'cel_program' must be a valid map"), nil
 		}
-		if err := mapstructure.Decode(validationProgramMap, &entry.ValidationProgram); err != nil {
-			return logical.ErrorResponse("failed to decode 'validation_program': %v", err), nil
+		if err := mapstructure.Decode(celProgramMap, &entry.CelProgram); err != nil {
+			return logical.ErrorResponse("failed to decode 'cel_program': %v", err), nil
 		}
 	}
 
@@ -305,6 +325,10 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 		return nil, err
 	}
 
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return resp, nil
 }
 
@@ -319,11 +343,8 @@ func (b *backend) pathCelRoleDelete(ctx context.Context, req *logical.Request, d
 
 func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName string) (*CELRoleEntry, error) {
 	entry, err := s.Get(ctx, "cel/role/"+roleName)
-	if err != nil {
+	if err != nil || entry == nil {
 		return nil, err
-	}
-	if entry == nil {
-		return nil, nil
 	}
 
 	var result CELRoleEntry
@@ -339,7 +360,7 @@ func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName st
 func validateCelRoleCreation(entry *CELRoleEntry) (*logical.Response, error) {
 	resp := &logical.Response{}
 
-	_, err := validateCelExpressions(entry.ValidationProgram)
+	_, err := validateCelExpressions(entry.CelProgram)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
@@ -357,15 +378,12 @@ const (
 
 func (r *CELRoleEntry) ToResponseData() map[string]interface{} {
 	return map[string]interface{}{
-		"name": r.Name,
-		"validation_program": map[string]interface{}{
-			"variables":   r.ValidationProgram.Variables,
-			"expressions": r.ValidationProgram.Expressions,
-		},
+		"name":        r.Name,
+		"cel_program": r.CelProgram,
 	}
 }
 
-func validateCelExpressions(validationProgram ValidationProgram) (bool, error) {
+func validateCelExpressions(celProgram celhelper.CelProgram) (bool, error) {
 	// Create a CEL environment and include the "request" object
 	envOptions := []celgo.EnvOption{
 		celgo.Declarations(
@@ -374,7 +392,7 @@ func validateCelExpressions(validationProgram ValidationProgram) (bool, error) {
 	}
 
 	// Add variables to the CEL environment
-	for _, variable := range validationProgram.Variables {
+	for _, variable := range celProgram.Variables {
 		envOptions = append(envOptions, celgo.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
 	}
 
@@ -384,7 +402,7 @@ func validateCelExpressions(validationProgram ValidationProgram) (bool, error) {
 	}
 
 	// Validate each variable's CEL syntax
-	for _, variable := range validationProgram.Variables {
+	for _, variable := range celProgram.Variables {
 		_, issues := env.Parse(variable.Expression)
 		if issues != nil && issues.Err() != nil {
 			return false, fmt.Errorf("invalid CEL syntax for variable '%s': %v", variable.Name, issues.Err())
@@ -392,7 +410,7 @@ func validateCelExpressions(validationProgram ValidationProgram) (bool, error) {
 	}
 
 	// Validate the main CEL expression
-	ast, issues := env.Parse(validationProgram.Expressions.MainProgram)
+	ast, issues := env.Parse(celProgram.Expression)
 	if issues != nil && issues.Err() != nil {
 		return false, fmt.Errorf("invalid CEL syntax for main expression: %v", issues.Err())
 	}
@@ -449,7 +467,7 @@ func evaluateExpression(prog celgo.Program, variables map[string]interface{}) (b
 }
 
 // Helper function to parse, compile, and evaluate a CEL variable's expression
-func parseCompileAndEvaluateVariable(env *celgo.Env, variable Variable, evaluationData map[string]interface{}) (ref.Val, error) {
+func parseCompileAndEvaluateVariable(env *celgo.Env, variable celhelper.CelVariable, evaluationData map[string]interface{}) (ref.Val, error) {
 	// Parse the expression
 	ast, issues := env.Parse(variable.Expression)
 	if issues != nil && issues.Err() != nil {

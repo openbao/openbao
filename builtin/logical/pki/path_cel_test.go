@@ -8,6 +8,7 @@ import (
 	"slices"
 	"testing"
 
+	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 )
@@ -20,9 +21,9 @@ func TestCRUDCelRoles(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	// Create a CEL role
-	roleData := map[string]interface{}{
-		"validation_program": map[string]interface{}{
-			"variables": []map[string]interface{}{
+	roleData := map[string]any{
+		"cel_program": map[string]any{
+			"variables": []map[string]any{
 				{
 					"name":       "require_ip_sans",
 					"expression": "size(request.ip_sans) > 0",
@@ -45,9 +46,7 @@ func TestCRUDCelRoles(t *testing.T) {
 					"expression": "'Request should have atleast 1 IP SAN.'",
 				},
 			},
-			"expressions": map[string]interface{}{
-				"mainProgram": "success ? cert : err",
-			},
+			"expression": "success ? cert : err",
 		},
 	}
 
@@ -73,7 +72,7 @@ func TestCRUDCelRoles(t *testing.T) {
 
 	// Patch (update) the CEL role
 	patchData := map[string]any{
-		"validation_program": map[string]any{
+		"cel_program": map[string]any{
 			"variables": []map[string]any{
 				{
 					"name":       "require_ip_sans",
@@ -107,8 +106,7 @@ func TestCRUDCelRoles(t *testing.T) {
 	}
 
 	// Assert the patch is correct
-	vp := resp.Data["validation_program"].(map[string]any)
-	vars := vp["variables"].([]Variable)
+	vars := resp.Data["cel_program"].(celhelper.CelProgram).Variables
 	require.Equal(t, 4, len(vars))
 
 	found := false
@@ -127,7 +125,7 @@ func TestCRUDCelRoles(t *testing.T) {
 
 	// Create a second CEL role
 	roleData2 := map[string]interface{}{
-		"validation_program": map[string]interface{}{
+		"cel_program": map[string]interface{}{
 			"variables": []map[string]any{
 				{
 					"name":       "require_cn",
@@ -136,15 +134,13 @@ func TestCRUDCelRoles(t *testing.T) {
 				{
 					"name": "cert",
 					"expression": `CertTemplate{
-						Subject: PKIX.Name{                   
+						Subject: PKIX.Name{
 							CommonName: request.common_name,
-						},						
+						},
 					}`,
 				},
 			},
-			"expressions": map[string]interface{}{
-				"mainProgram": "require_cn ? cert : 'Role requires CN.'",
-			},
+			"expression": "require_cn ? cert : 'Role requires CN.'",
 		},
 	}
 
@@ -213,7 +209,7 @@ func TestCRUDCelRoles(t *testing.T) {
 	}
 }
 
-func TestVariableHandlingWithCELMany(t *testing.T) {
+func TestVariableHandling(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {

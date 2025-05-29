@@ -820,7 +820,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	}
 
 	// Add all variable declarations to the CEL environment.
-	for _, variable := range celRole.ValidationProgram.Variables {
+	for _, variable := range celRole.CelProgram.Variables {
 		envOptions = append(envOptions, celgo.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
 	}
 
@@ -862,7 +862,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	}
 
 	// Evaluate all variables
-	for _, variable := range celRole.ValidationProgram.Variables {
+	for _, variable := range celRole.CelProgram.Variables {
 		result, err := parseCompileAndEvaluateVariable(env, variable, evaluationData)
 		if err != nil {
 			return nil, fmt.Errorf("%w", err)
@@ -875,7 +875,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 	// Evaluate MainProgram
 	result, err := evaluateCelExpression(env,
-		celRole.ValidationProgram.Expressions.MainProgram,
+		celRole.CelProgram.Expression,
 		evaluationData)
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating mainProgram: %w", err)
@@ -915,19 +915,19 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	}
 
 	// Evaluate generate_lease
-	generateLease, err := evaluateCelBooleanExpression(env, celRole.ValidationProgram.Expressions.GenerateLease, evaluationData)
+	generateLease, err := evaluateCelBooleanExpression(env, celRole.GenerateLease, evaluationData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to process generate_lease: %w", err)
 	}
 
 	// Evaluate no_store
-	noStore, err := evaluateCelBooleanExpression(env, celRole.ValidationProgram.Expressions.NoStore, evaluationData)
+	noStore, err := evaluateCelBooleanExpression(env, celRole.NoStore, evaluationData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to process no_store: %w", err)
 	}
 
 	// Fetch issuer information
-	signingBundle, _, err := b.fetchCaSigningBundle(ctx, req, data, celRole.ValidationProgram.Expressions.Issuer)
+	signingBundle, _, err := b.fetchCaSigningBundle(ctx, req, data, celRole.Issuer)
 	if err != nil {
 		return nil, err
 	}
@@ -958,7 +958,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 		parsedBundle, parseErr = generateCELCert(evaluationData, signingBundle, cert, rand.Reader)
 	} else {
-		csrString, err := evaluateCelExpression(env, celRole.ValidationProgram.Expressions.CSR, evaluationData)
+		csrString, err := evaluateCelExpression(env, celRole.CSR, evaluationData)
 		if err != nil {
 			return nil, fmt.Errorf("CSR %w", err)
 		}
@@ -1054,7 +1054,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		}
 	}
 
-	warnings := celRole.ValidationProgram.Expressions.Warnings
+	warnings := celRole.Warnings
 	if warnings != "" {
 		// Compile and add warnings to response
 		warningsExpression, err := compileExpression(env, warnings)

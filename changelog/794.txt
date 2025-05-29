@@ -1,0 +1,2 @@
+```release-note:feature
+pki: Add support for Common Expression Language (CEL) roles. CEL allows role authors to create flexible, dynamic policies with complex, custom claim validation support and arbitrary templating of issue/sign data.

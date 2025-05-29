@@ -67,7 +67,7 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 
 	// Create a CEL role
 	roleData := map[string]interface{}{
-		"validation_program": map[string]interface{}{
+		"cel_program": map[string]interface{}{
 			"variables": []map[string]interface{}{
 				{
 					"name":       "validate_cn",
@@ -112,14 +112,11 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 					"expression": "'Request should have Common name: ' + cn_value",
 				},
 			},
-			"expressions": map[string]any{
-				"mainProgram":   "validate_cn ? cert : err",
-				"generateLease": "small_ttl",
-				"noStore":       "!small_ttl",
-				"issuer":        "default",
-				"warnings":      "small_ttl ? 'generate_lease is true' : 'no_store is true'",
-			},
+			"expression": "validate_cn ? cert : err",
 		},
+		"generate_lease": "small_ttl",
+		"no_store":       "!small_ttl",
+		"issuer":         "default",
 	}
 
 	roleReq := &logical.Request{
@@ -249,7 +246,7 @@ func TestCelRoleSign(t *testing.T) {
 
 	// Create a CEL role for signing
 	roleData := map[string]interface{}{
-		"validation_program": map[string]interface{}{
+		"cel_program": map[string]interface{}{
 			"variables": []map[string]interface{}{
 				{
 					"name":       "validate_cn",
@@ -297,15 +294,13 @@ func TestCelRoleSign(t *testing.T) {
 					"expression": "'Request should have Common name: ' + request.common_name",
 				},
 			},
-			"expressions": map[string]interface{}{
-				"mainProgram":   "validate_cn ? cert : err",
-				"CSR":           "request.csr",
-				"generateLease": "true",
-				"noStore":       "false",
-				"issuer":        "default",
-				"Warnings":      "''",
-			},
+			"expression": "validate_cn ? cert : err",
 		},
+		"csr":            "request.csr",
+		"generate_lease": "true",
+		"no_store":       "false",
+		"issuer":         "default",
+		"warnings":       "''",
 	}
 
 	roleReq := &logical.Request{
@@ -467,7 +462,7 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 
 	// Create a CEL role
 	roleData := map[string]interface{}{
-		"validation_program": map[string]interface{}{
+		"cel_program": map[string]interface{}{
 			"variables": []map[string]interface{}{
 				{
 					"name":       "validate_cn",
@@ -502,14 +497,12 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 					"expression": "'Request should have Common name: ' +  cn_value",
 				},
 			},
-			"expressions": map[string]interface{}{
-				"mainProgram":   "validate_cn ? cert : err",
-				"generateLease": "small_ttl",
-				"noStore":       "!small_ttl",
-				"issuer":        "second_root",
-				"Warnings":      "''",
-			},
+			"expression": "validate_cn ? cert : err",
 		},
+		"generate_lease": "small_ttl",
+		"no_store":       "!small_ttl",
+		"issuer":         "second_root",
+		"warnings":       "''",
 	}
 
 	roleReq := &logical.Request{
@@ -613,7 +606,7 @@ func TestCelParsedCsr(t *testing.T) {
 
 	// Create a CEL role for signing
 	roleData := map[string]interface{}{
-		"validation_program": map[string]interface{}{
+		"cel_program": map[string]interface{}{
 			"variables": []map[string]interface{}{
 				{
 					"name":       "validate_cn",
@@ -634,15 +627,13 @@ func TestCelParsedCsr(t *testing.T) {
 					"expression": "'Request should have Common name: ' +  parsed_csr.Subject.CommonName",
 				},
 			},
-			"expressions": map[string]interface{}{
-				"mainProgram":   "validate_cn ? cert : err",
-				"CSR":           "request.csr",
-				"generateLease": "true",
-				"noStore":       "false",
-				"issuer":        "default",
-				"Warnings":      "''",
-			},
+			"expression": "validate_cn ? cert : err",
 		},
+		"csr":            "request.csr",
+		"generate_lease": "true",
+		"no_store":       "false",
+		"issuer":         "default",
+		"warnings":       "''",
 	}
 
 	roleReq := &logical.Request{
@@ -756,7 +747,7 @@ func TestCelCustomFunction(t *testing.T) {
 
 	// Create a CEL role
 	roleData := map[string]interface{}{
-		"validation_program": map[string]interface{}{
+		"cel_program": map[string]interface{}{
 			"variables": []map[string]interface{}{
 				{
 					"name":       "valid_emails",
@@ -782,13 +773,11 @@ func TestCelCustomFunction(t *testing.T) {
 					"expression": "'common_name should be a valid email.'",
 				},
 			},
-			"expressions": map[string]interface{}{
-				"mainProgram": "valid_emails ? cert : err",
-				"success":     "valid_emails",
-				"issuer":      "default",
-				"warnings":    "duration(request.ttl) < duration('5h') ? 'ttl has been modified to 5h.' : ''",
-			},
+			"expression": "valid_emails ? cert : err",
 		},
+		"success":  "valid_emails",
+		"issuer":   "default",
+		"warnings": "duration(request.ttl) < duration('5h') ? 'ttl has been modified to 5h.' : ''",
 	}
 
 	roleReq := &logical.Request{
@@ -896,7 +885,7 @@ func TestNotAfter(t *testing.T) {
 
 	// Create a CEL role
 	roleData := map[string]interface{}{
-		"validation_program": map[string]interface{}{
+		"cel_program": map[string]interface{}{
 			"variables": []map[string]interface{}{
 				{
 					"name":       "after",
@@ -923,9 +912,7 @@ func TestNotAfter(t *testing.T) {
 					"expression": "'TTL should be > 3h, received ' + string(ttl)",
 				},
 			},
-			"expressions": map[string]any{
-				"mainProgram": "validate_after ? cert : err",
-			},
+			"expression": "validate_after ? cert : err",
 		},
 	}
 

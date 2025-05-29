@@ -1048,13 +1048,6 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		b.ifCountEnabledIncrementTotalCertificatesCount(certsCounted, key)
 	}
 
-	if data.Get("private_key_format").(string) == "pkcs8" {
-		err = convertRespToPKCS8(resp)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	warnings := celRole.Warnings
 	if warnings != "" {
 		// Compile and add warnings to response

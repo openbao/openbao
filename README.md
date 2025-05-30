@@ -6,7 +6,7 @@
 
 ----
 
-<!-- -	Website: https://www.openbao.org -->
+- [Website](https://www.openbao.org)
 - [Mailing List](https://lists.lfedge.org/g/openbao)
 - [GitHub Discussions](https://github.com/openbao/openbao/discussions)
 - [Chat Server](https://chat.lfx.linuxfoundation.org/)
@@ -29,7 +29,7 @@ The key features of OpenBao are:
 * **Secure Secret Storage**: Arbitrary key/value secrets can be stored
   in OpenBao. OpenBao encrypts these secrets prior to writing them to persistent
   storage, so gaining access to the raw storage isn't enough to access
-  your secrets. OpenBao can write to disk, [Consul](https://www.consul.io),
+  your secrets. OpenBao can write to disk, [PostgreSQL](https://www.postgresql.org/),
   and more.
 
 * **Dynamic Secrets**: OpenBao can generate secrets on-demand for some
@@ -150,7 +150,7 @@ you're testing.
 To run the acceptance tests, invoke `make testacc`:
 
 ```sh
-$ make testacc TEST=./builtin/logical/consul
+$ make testacc TEST=./builtin/logical/pki
 ...
 ```
 

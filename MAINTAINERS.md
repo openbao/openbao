@@ -13,16 +13,23 @@ See the information about community membership roles to learn about the role of 
 
 ## Repository-Level Committers
 
-| Name         | GitHub                                  | Projects                                                                                          |
-| ------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Dave Dykstra | [@DrDaveD](https://github.com/DrDaveD/) | [`auth/jwt` and `auth/oidc`](https://github.com/openbao/openbao/tree/main/builtin/credential/jwt) |
+| Name             | GitHub                                  | Projects                                                                                          |
+| ---------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Andrii Fedorchuk | [@driif](https://github.com/driif) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
+| Christoph Voigt  | [@voigt](https://github.com/voigt) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
+| Dave Dykstra     | [@DrDaveD](https://github.com/DrDaveD) | [`auth/jwt` and `auth/oidc`](https://github.com/openbao/openbao/tree/main/builtin/credential/jwt) |
+| Jonas Köhnen     | [@satoqz](https://github.com/satoqz) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
+| Pascal Reeb      | [@pree](https://github.com/pree) | [helm](https://github.com/openbao/openbao-helm), [csi-provider](https://github.com/openbao/openbao-csi-provider), [k8s](https://github.com/openbao/openbao-k8s), and [secrets-operator](https://github.com/openbao/openbao-secrets-operator) |
+| Tom Gehrke       | [@phyrog](https://github.com/phyrog) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
+| Toni Tauro       | [@eyenx](https://github.com/eyenx) | [helm](https://github.com/openbao/openbao-helm), [csi-provider](https://github.com/openbao/openbao-csi-provider), [k8s](https://github.com/openbao/openbao-k8s), and [secrets-operator](https://github.com/openbao/openbao-secrets-operator) |
+| Wojciech Slabosz | [@wslabosz-reply](https://github.com/wslabosz-reply) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
+| Yannis           | [@Nerkho](https://github.com/Nerkho) | [helm](https://github.com/openbao/openbao-helm), [csi-provider](https://github.com/openbao/openbao-csi-provider), [k8s](https://github.com/openbao/openbao-k8s), and [secrets-operator](https://github.com/openbao/openbao-secrets-operator) |
 
 ## Organization-Level Moderators
 
 | Name            | GitHub                                                   |
 | --------------- | -------------------------------------------------------- |
 | Fatima Patel    | [@fatima2003](https://github.com/fatima2003)             |
-| Christoph Voigt | [@voigt](https://github.com/voigt)                       |
 | Gabriel Santos  | [@Gabrielopesantos](https://github.com/Gabrielopesantos) |
 | Michael Hofer   | [@karras](https://github.com/karras)                     |
 

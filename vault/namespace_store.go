@@ -889,7 +889,7 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 		return errors.New("unable to unseal root namespace")
 	}
 
-	return ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal.Path, key)
+	return ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key)
 }
 
 // ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'

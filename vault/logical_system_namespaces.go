@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -203,7 +204,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"name": namespaceNameSchema,
 				"key": {
-					Type:        framework.TypeNameString,
+					Type:        framework.TypeString,
 					Description: "Specifies a single namespace unseal key share.",
 				},
 			},
@@ -609,11 +610,49 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 			return nil, errors.New("name must not contain /")
 		}
 
-		err := b.Core.namespaceStore.UnsealNamespace(ctx, name, []byte(key))
+		if key == "" {
+			return nil, errors.New("provided key is empty")
+		}
+
+		var decodedKey []byte
+		decodedKey, err := hex.DecodeString(key)
+		if err != nil {
+			decodedKey, err = base64.StdEncoding.DecodeString(key)
+			if err != nil {
+				return handleError(err)
+			}
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
 		if err != nil {
 			return handleError(err)
 		}
 
-		return nil, nil
+		if ns == nil {
+			return nil, fmt.Errorf("namespace %q doesn't exist", name)
+		}
+
+		err = b.Core.sealManager.UnsealNamespace(ctx, ns, decodedKey)
+		if err != nil {
+			invalidKeyErr := &ErrInvalidKey{}
+			switch {
+			case errors.As(err, &invalidKeyErr):
+			case errors.Is(err, ErrBarrierInvalidKey):
+			case errors.Is(err, ErrBarrierNotInit):
+			case errors.Is(err, ErrBarrierSealed):
+			default:
+				return logical.RespondWithStatusCode(logical.ErrorResponse(err.Error()), req, http.StatusInternalServerError)
+			}
+			return handleError(err)
+		}
+
+		status, err := b.Core.sealManager.GetSealStatus(ctx, ns, true)
+		if err != nil {
+			return nil, err
+		}
+
+		return &logical.Response{Data: map[string]interface{}{
+			"seal_status": status,
+		}}, nil
 	}
 }

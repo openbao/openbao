@@ -9,6 +9,8 @@ image: https://www.edgexfoundry.org/cmsfiles/image/company-logo-lg.png
 
 We are excited to introduce **Namespaces** to the OpenBao Secret Manager – a powerful feature designed to bring robust multi-tenancy and fine-grained isolation to your secrets management workflows.
 
+<!-- truncate -->
+
 ## What Are Namespaces?
 
 Namespaces in OpenBao are logical partitions within a single OpenBao instance, functioning as isolated environments where teams, organizations, or applications can operate independently.

@@ -590,6 +590,68 @@ basic constraints.`,
 	return fields
 }
 
+func getCELIssueSignFields() map[string]*framework.FieldSchema {
+	fields := map[string]*framework.FieldSchema{}
+
+	fields["role"] = &framework.FieldSchema{
+		Type: framework.TypeString,
+		Description: `The desired role with configuration for this
+request`,
+	}
+
+	fields["not_before"] = &framework.FieldSchema{
+		Type: framework.TypeString,
+		Description: `Set the not before field of the certificate with specified date value.
+The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ`,
+	}
+
+	fields["not_after"] = &framework.FieldSchema{
+		Type: framework.TypeString,
+		Description: `Set the not after field of the certificate with specified date value.
+The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ`,
+	}
+
+	fields["ttl"] = &framework.FieldSchema{
+		Type: framework.TypeDurationSecond,
+		Description: `The requested Time To Live for the certificate;
+sets the expiration date. If not specified
+the role default, backend default, or system
+default TTL is used, in that order. Cannot
+be larger than the role max TTL.`,
+		DisplayAttrs: &framework.DisplayAttributes{
+			Name: "TTL",
+		},
+	}
+
+	fields["remove_roots_from_chain"] = &framework.FieldSchema{
+		Type:    framework.TypeBool,
+		Default: false,
+		Description: `Whether or not to remove self-signed CA certificates in the output
+of the ca_chain field.`,
+	}
+
+	fields["signature_bits"] = &framework.FieldSchema{
+		Type:    framework.TypeInt,
+		Default: 0,
+		Description: `The number of bits to use in the signature
+algorithm; accepts 256 for SHA-2-256, 384 for SHA-2-384, and 512 for
+SHA-2-512. Defaults to 0 to automatically detect based on key length
+(SHA-2-256 for RSA keys, and matching the curve size for NIST P-Curves).`,
+		DisplayAttrs: &framework.DisplayAttributes{
+			Value: 0,
+		},
+	}
+
+	fields["use_pss"] = &framework.FieldSchema{
+		Type:    framework.TypeBool,
+		Default: false,
+		Description: `Whether or not to use PSS signatures when using a
+RSA key-type issuer. Defaults to false.`,
+	}
+
+	return fields
+}
+
 func addKeyUsageRoleFields(fields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
 	fields["key_usage"] = &framework.FieldSchema{
 		Type:    framework.TypeCommaStringSlice,

@@ -14,7 +14,9 @@ $console-close-height: 35px;
   overflow: auto;
   position: fixed;
   bottom: 0;
-  transition: min-height $speed $easing, transform $speed ease-in;
+  transition:
+    min-height $speed $easing,
+    transform $speed ease-in;
   will-change: transform, min-height;
   -webkit-overflow-scrolling: touch;
   z-index: 199;

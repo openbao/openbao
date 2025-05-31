@@ -25,6 +25,10 @@ func pathConfig(b *versionedKVBackend) *framework.Path {
 				Type:        framework.TypeBool,
 				Description: "If true, the backend will require the cas parameter to be set for each write",
 			},
+			"metadata_cas_required": {
+				Type:        framework.TypeBool,
+				Description: "If true, the backend will require the metadata_cas parameter to be set for each metadata update",
+			},
 			"delete_version_after": {
 				Type: framework.TypeSignedDurationSecond,
 				Description: `
@@ -61,8 +65,9 @@ func (b *versionedKVBackend) pathConfigRead() framework.OperationFunc {
 		}
 
 		rdata := map[string]interface{}{
-			"max_versions": config.MaxVersions,
-			"cas_required": config.CasRequired,
+			"max_versions":          config.MaxVersions,
+			"cas_required":          config.CasRequired,
+			"metadata_cas_required": config.MetadataCasRequired,
 		}
 
 		var deleteVersionAfter time.Duration
@@ -97,10 +102,11 @@ func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 
 		maxRaw, mOk := data.GetOk("max_versions")
 		casRaw, cOk := data.GetOk("cas_required")
+		metadataCasRaw, mcOk := data.GetOk("metadata_cas_required")
 		dvaRaw, dvaOk := data.GetOk("delete_version_after")
 
 		// Fast path validation
-		if !mOk && !cOk && !dvaOk {
+		if !mOk && !cOk && !mcOk && !dvaOk {
 			return nil, nil
 		}
 
@@ -114,6 +120,9 @@ func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 		}
 		if cOk {
 			config.CasRequired = casRaw.(bool)
+		}
+		if mcOk {
+			config.MetadataCasRequired = metadataCasRaw.(bool)
 		}
 
 		if dvaOk {

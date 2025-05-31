@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/openbao/openbao/sdk/v2/framework"
 )
@@ -95,4 +96,53 @@ func GetCELProgram(data *framework.FieldData) (*CelProgram, error) {
 	}
 
 	return &celProgram, nil
+}
+
+func ValidateProgram(celProgram CelProgram) (bool, error) {
+	var envOptions []cel.EnvOption
+	// Add variables to the CEL environment
+	for _, variable := range celProgram.Variables {
+		envOptions = append(envOptions, cel.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
+	}
+
+	env, err := cel.NewEnv(envOptions...)
+	if err != nil {
+		return false, fmt.Errorf("failed to create CEL environment: %w", err)
+	}
+
+	// Validate each variable's CEL syntax
+	for _, variable := range celProgram.Variables {
+		_, issues := env.Parse(variable.Expression)
+		if issues != nil && issues.Err() != nil {
+			return false, fmt.Errorf("invalid CEL syntax for variable '%s': %v", variable.Name, issues.Err())
+		}
+	}
+
+	// Validate the main CEL expression
+	ast, issues := env.Parse(celProgram.Expression)
+	if issues != nil && issues.Err() != nil {
+		return false, fmt.Errorf("invalid CEL syntax for main expression: %v", issues.Err())
+	}
+
+	// Ensure the AST is non-nil
+	if ast == nil {
+		return false, fmt.Errorf("failed to compile CEL main expression: AST is nil")
+	}
+
+	// Create a CEL program to validate runtime behavior
+	_, err = env.Program(ast)
+	if err != nil {
+		return false, fmt.Errorf("failed to create CEL program for main expression: %w", err)
+	}
+
+	checked, issues := env.Check(ast) // semantic analysis
+
+	if issues != nil && issues.Err() != nil {
+		return false, fmt.Errorf("error type-checking CEL MainProgram: %v", issues.Err())
+	}
+	if checked == nil {
+		return false, fmt.Errorf("failed to type-check CEL MainProgram")
+	}
+
+	return true, nil
 }

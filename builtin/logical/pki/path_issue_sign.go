@@ -21,6 +21,7 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cel"
+	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
@@ -861,7 +862,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 	// Evaluate all variables
 	for _, variable := range celRole.CelProgram.Variables {
-		result, err := parseCompileAndEvaluateVariable(env, variable, evaluationData)
+		result, err := celhelper.ParseCompileAndEvaluateExpression(env, variable.Expression, evaluationData)
 		if err != nil {
 			return nil, fmt.Errorf("%w", err)
 		}
@@ -1040,13 +1041,9 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	warnings := celRole.Warnings
 	if warnings != "" {
 		// Compile and add warnings to response
-		warningsExpression, err := compileExpression(env, warnings)
+		evalResult, err := celhelper.ParseCompileAndEvaluateExpression(env, warnings, evaluationData)
 		if err != nil {
-			return nil, fmt.Errorf("failed to compile CEL Warnings expression: %w", err)
-		}
-		evalResult, _, err := warningsExpression.Eval(evaluationData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to evaluate CEL Warnings expression: %w", err)
+			return nil, fmt.Errorf("failed to resolve CEL Warnings: %w", err)
 		}
 		if evalResult.Type() != celgo.StringType {
 			return nil, fmt.Errorf("CEL Warnings expression did not evaluate to a String")
@@ -1156,15 +1153,9 @@ func evaluateCelExpression(env *celgo.Env, expression string, evaluationData map
 		return nil, fmt.Errorf("CEL expression is empty")
 	}
 
-	prog, err := compileExpression(env, expression)
+	evalResult, err := celhelper.ParseCompileAndEvaluateExpression(env, expression, evaluationData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to compile CEL expression: %w", err)
-	}
-
-	// Evaluate the expression
-	evalResult, _, err := prog.Eval(evaluationData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to evaluate CEL expression: %w", err)
+		return nil, err
 	}
 
 	return evalResult, nil

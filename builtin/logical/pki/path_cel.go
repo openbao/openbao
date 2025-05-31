@@ -8,9 +8,6 @@ import (
 	"fmt"
 	"net/http"
 
-	celgo "github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
-	"github.com/google/cel-go/common/types/ref"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
@@ -360,7 +357,7 @@ func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName st
 func validateCelRoleCreation(entry *CELRoleEntry) (*logical.Response, error) {
 	resp := &logical.Response{}
 
-	_, err := validateCelExpressions(entry.CelProgram)
+	_, err := celhelper.ValidateProgram(entry.CelProgram)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
@@ -381,111 +378,4 @@ func (r *CELRoleEntry) ToResponseData() map[string]interface{} {
 		"name":        r.Name,
 		"cel_program": r.CelProgram,
 	}
-}
-
-func validateCelExpressions(celProgram celhelper.CelProgram) (bool, error) {
-	// Create a CEL environment and include the "request" object
-	envOptions := []celgo.EnvOption{
-		celgo.Declarations(
-			decls.NewVar("request", decls.NewMapType(decls.String, decls.Dyn)), // Define `request` as a map
-		),
-	}
-
-	// Add variables to the CEL environment
-	for _, variable := range celProgram.Variables {
-		envOptions = append(envOptions, celgo.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
-	}
-
-	env, err := celgo.NewEnv(envOptions...)
-	if err != nil {
-		return false, fmt.Errorf("failed to create CEL environment: %w", err)
-	}
-
-	// Validate each variable's CEL syntax
-	for _, variable := range celProgram.Variables {
-		_, issues := env.Parse(variable.Expression)
-		if issues != nil && issues.Err() != nil {
-			return false, fmt.Errorf("invalid CEL syntax for variable '%s': %v", variable.Name, issues.Err())
-		}
-	}
-
-	// Validate the main CEL expression
-	ast, issues := env.Parse(celProgram.Expression)
-	if issues != nil && issues.Err() != nil {
-		return false, fmt.Errorf("invalid CEL syntax for main expression: %v", issues.Err())
-	}
-
-	// Ensure the AST is non-nil
-	if ast == nil {
-		return false, fmt.Errorf("failed to compile CEL main expression: AST is nil")
-	}
-
-	// Create a CEL program to validate runtime behavior
-	_, err = env.Program(ast)
-	if err != nil {
-		return false, fmt.Errorf("failed to create CEL program for main expression: %w", err)
-	}
-
-	checked, issues := env.Check(ast) // semantic analysis
-
-	if issues != nil && issues.Err() != nil {
-		return false, fmt.Errorf("error type-checking CEL MainProgram: %v", issues.Err())
-	}
-	if checked == nil {
-		return false, fmt.Errorf("failed to type-check CEL MainProgram")
-	}
-
-	return true, nil
-}
-
-func createEnvWithVariables(variables map[string]string) (*celgo.Env, error) {
-	var decls []celgo.EnvOption
-	for name := range variables {
-		decls = append(decls, celgo.Variable(name, celgo.StringType))
-	}
-	return celgo.NewEnv(decls...)
-}
-
-func compileExpression(env *celgo.Env, expression string) (celgo.Program, error) {
-	ast, issues := env.Parse(expression)
-	if issues.Err() != nil {
-		return nil, fmt.Errorf("%v for expression: %v", issues.Err(), expression)
-	}
-	prog, err := env.Program(ast)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile expression: %v", err)
-	}
-	return prog, nil
-}
-
-func evaluateExpression(prog celgo.Program, variables map[string]interface{}) (bool, error) {
-	evalResult, _, err := prog.Eval(variables)
-	if err != nil {
-		return false, fmt.Errorf("failed to evaluate expression: %v", err)
-	}
-	return evalResult.Value().(bool), nil
-}
-
-// Helper function to parse, compile, and evaluate a CEL variable's expression
-func parseCompileAndEvaluateVariable(env *celgo.Env, variable celhelper.CelVariable, evaluationData map[string]interface{}) (ref.Val, error) {
-	// Parse the expression
-	ast, issues := env.Parse(variable.Expression)
-	if issues != nil && issues.Err() != nil {
-		return nil, fmt.Errorf("invalid CEL syntax for variable '%s': %w", variable.Name, issues.Err())
-	}
-
-	// Compile the expression
-	prog, err := env.Program(ast)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile variable '%s': %w", variable.Name, err)
-	}
-
-	// Evaluate the expression
-	result, _, err := prog.Eval(evaluationData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to evaluate variable '%s': %w", variable.Name, err)
-	}
-
-	// Return the evaluated result
-	return result, nil
 }

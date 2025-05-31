@@ -8,6 +8,7 @@ import (
 	"slices"
 	"testing"
 
+	celgo "github.com/google/cel-go/cel"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
@@ -246,7 +247,7 @@ func TestVariableHandling(t *testing.T) {
 				"var1": "1 == 1",
 			},
 			mainExpression: "var1 && var2", // var2 is undefined
-			expectedError:  "failed to evaluate expression: no such attribute(s): var2",
+			expectedError:  "failed to evaluate expression 'var1 && var2': no such attribute(s): var2",
 			expectedResult: nil,
 		},
 		{
@@ -274,7 +275,7 @@ func TestVariableHandling(t *testing.T) {
 				"var1": "var2 > 5", // var2 is undefined
 			},
 			mainExpression: "var1",
-			expectedError:  "failed to evaluate expression: no such attribute(s): var2",
+			expectedError:  "failed to evaluate expression 'var2 > 5': no such attribute(s): var2",
 			expectedResult: nil,
 		},
 	}
@@ -282,7 +283,12 @@ func TestVariableHandling(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create the CEL environment with the declared variables
-			env, err := createEnvWithVariables(tt.variables)
+			var decls []celgo.EnvOption
+
+			for name := range tt.variables {
+				decls = append(decls, celgo.Variable(name, celgo.StringType))
+			}
+			env, err := celgo.NewEnv(decls...)
 			if err != nil {
 				t.Fatalf("Failed to create CEL environment: %v", err)
 			}
@@ -290,29 +296,18 @@ func TestVariableHandling(t *testing.T) {
 			// Parse and validate each variable expression
 			variableValues := make(map[string]interface{})
 			for name, expr := range tt.variables {
-				prog, err := compileExpression(env, expr)
-				if err != nil {
-					t.Fatalf("Failed to compile variable '%s': %v", name, err)
-				}
-
-				result, err := evaluateExpression(prog, nil)
+				result, err := celhelper.ParseCompileAndEvaluateExpression(env, expr, nil)
 				if err != nil {
 					if tt.expectedError != "" && err.Error() != tt.expectedError {
 						t.Fatalf("Expected error '%s', but got '%v'", tt.expectedError, err)
 					}
 					return
 				}
-				variableValues[name] = result
+				variableValues[name] = result.Value().(bool)
 			}
 
 			// Compile the main expression
-			prog, err := compileExpression(env, tt.mainExpression)
-			if err != nil {
-				t.Fatalf("Failed to compile main expression: %v", err)
-			}
-
-			// Evaluate the main expression
-			result, err := evaluateExpression(prog, variableValues)
+			result, err := celhelper.ParseCompileAndEvaluateExpression(env, tt.mainExpression, variableValues)
 			if err != nil {
 				if tt.expectedError != "" && err.Error() != tt.expectedError {
 					t.Fatalf("Expected error '%s', but got '%v'", tt.expectedError, err)
@@ -321,7 +316,7 @@ func TestVariableHandling(t *testing.T) {
 			}
 
 			// Assert the result matches the expected result
-			if result != tt.expectedResult {
+			if result.Value().(bool) != tt.expectedResult {
 				t.Fatalf("Expected result '%v', but got '%v'", tt.expectedResult, result)
 			}
 		})

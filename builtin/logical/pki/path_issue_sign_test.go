@@ -108,15 +108,23 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 					}`,
 				},
 				{
+					"name": "output",
+					"expression": `ValidationOutput{
+						template:        cert,
+						generate_lease:  small_ttl,
+						no_store:        !small_ttl,
+						issuer_ref:         "default",
+						key_type: request.key_type,
+						key_bits: uint(request.key_bits),
+					  }`,
+				},
+				{
 					"name":       "err",
 					"expression": "'Request should have Common name: ' + cn_value",
 				},
 			},
-			"expression": "validate_cn ? cert : err",
+			"expression": "validate_cn ? output : err",
 		},
-		"generate_lease": "small_ttl",
-		"no_store":       "!small_ttl",
-		"issuer":         "default",
 	}
 
 	roleReq := &logical.Request{
@@ -290,17 +298,23 @@ func TestCelRoleSign(t *testing.T) {
 					}`,
 				},
 				{
+					"name": "output",
+					"expression": `ValidationOutput{
+						template:        cert,
+						generate_lease: true,
+						no_store:       false,
+						issuer_ref:         "default",						
+					}`,
+				},
+				{
 					"name":       "err",
 					"expression": "'Request should have Common name: ' + request.common_name",
 				},
 			},
-			"expression": "validate_cn ? cert : err",
+			"expression": "validate_cn ? output : err",
 		},
-		"csr":            "request.csr",
-		"generate_lease": "true",
-		"no_store":       "false",
-		"issuer":         "default",
-		"warnings":       "''",
+		"csr":      "request.csr",
+		"warnings": "''",
 	}
 
 	roleReq := &logical.Request{
@@ -493,16 +507,22 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 					}`,
 				},
 				{
+					"name": "output",
+					"expression": `ValidationOutput{
+						template:        cert,
+						generate_lease: small_ttl,
+						no_store:       !small_ttl,
+						issuer_ref:         "second_root",				
+					}`,
+				},
+				{
 					"name":       "err",
 					"expression": "'Request should have Common name: ' +  cn_value",
 				},
 			},
-			"expression": "validate_cn ? cert : err",
+			"expression": "validate_cn ? output : err",
 		},
-		"generate_lease": "small_ttl",
-		"no_store":       "!small_ttl",
-		"issuer":         "second_root",
-		"warnings":       "''",
+		"warnings": "''",
 	}
 
 	roleReq := &logical.Request{
@@ -623,17 +643,22 @@ func TestCelParsedCsr(t *testing.T) {
 					}`,
 				},
 				{
+					"name": "output",
+					"expression": `ValidationOutput{
+						template:        cert,
+						generate_lease: true,
+						no_store:       false,
+					}`,
+				},
+				{
 					"name":       "err",
 					"expression": "'Request should have Common name: ' +  parsed_csr.Subject.CommonName",
 				},
 			},
-			"expression": "validate_cn ? cert : err",
+			"expression": "validate_cn ? output : err",
 		},
-		"csr":            "request.csr",
-		"generate_lease": "true",
-		"no_store":       "false",
-		"issuer":         "default",
-		"warnings":       "''",
+		"csr":      "request.csr",
+		"warnings": "''",
 	}
 
 	roleReq := &logical.Request{
@@ -769,14 +794,19 @@ func TestCelCustomFunction(t *testing.T) {
 					}`,
 				},
 				{
+					"name": "output",
+					"expression": `ValidationOutput{
+						template:        cert,						
+						issuer_ref:         "default",
+					  }`,
+				},
+				{
 					"name":       "err",
 					"expression": "'common_name should be a valid email.'",
 				},
 			},
-			"expression": "valid_emails ? cert : err",
+			"expression": "valid_emails ? output : err",
 		},
-		"success":  "valid_emails",
-		"issuer":   "default",
 		"warnings": "duration(request.ttl) < duration('5h') ? 'ttl has been modified to 5h.' : ''",
 	}
 
@@ -908,11 +938,17 @@ func TestNotAfter(t *testing.T) {
 					}`,
 				},
 				{
+					"name": "output",
+					"expression": `ValidationOutput{
+						template:        cert,
+					}`,
+				},
+				{
 					"name":       "err",
 					"expression": "'TTL should be > 3h, received ' + string(ttl)",
 				},
 			},
-			"expression": "validate_after ? cert : err",
+			"expression": "validate_after ? output : err",
 		},
 	}
 

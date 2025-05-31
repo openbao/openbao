@@ -809,6 +809,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		),
 		celgo.Types(
 			&CertTemplate{},
+			&ValidationOutput{},
 		),
 	}
 
@@ -878,12 +879,11 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		return nil, fmt.Errorf("error evaluating mainProgram: %w", err)
 	}
 
-	var cert *x509.Certificate
+	validationOutput := new(ValidationOutput)
 	switch v := result.Value().(type) {
 
 	case *dynamicpb.Message:
-		// The CEL program succeeded and produced a protobuf CertTemplate (as a dynamic message).
-		certTemp := new(CertTemplate)
+		// The CEL program succeeded.
 
 		// Marshal the dynamic message to wire-format bytes.
 		bytes, err := proto.Marshal(v)
@@ -892,14 +892,8 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		}
 
 		// Unmarshal into CertTemplate struct.
-		if err := proto.Unmarshal(bytes, certTemp); err != nil {
+		if err := proto.Unmarshal(bytes, validationOutput); err != nil {
 			return nil, fmt.Errorf("unmarshal into CertTemplate: %w", err)
-		}
-
-		// Translate to *x509.Certificate struct.
-		cert, err = CertProtoToX509(certTemp)
-		if err != nil {
-			return nil, err
 		}
 
 	case string:
@@ -907,7 +901,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		return nil, errors.New(v)
 
 	case bool:
-		// The CEL program decided the request is invalid and returned a human-readable error string.
+		// The CEL program decided the request is invalid and returned a bool.
 		return nil, errors.New("Request denied.")
 
 	default:
@@ -915,20 +909,14 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		return nil, fmt.Errorf("unexpected mainProgram result type %T", v)
 	}
 
-	// Evaluate generate_lease
-	generateLease, err := evaluateCelBooleanExpression(env, celRole.GenerateLease, evaluationData)
+	// Translate CertTemplate to *x509.Certificate struct.
+	cert, err := CertProtoToX509(validationOutput.Template)
 	if err != nil {
-		return nil, fmt.Errorf("failed to process generate_lease: %w", err)
-	}
-
-	// Evaluate no_store
-	noStore, err := evaluateCelBooleanExpression(env, celRole.NoStore, evaluationData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to process no_store: %w", err)
+		return nil, err
 	}
 
 	// Fetch issuer information
-	signingBundle, _, err := b.fetchCaSigningBundle(ctx, req, data, celRole.Issuer)
+	signingBundle, _, err := b.fetchCaSigningBundle(ctx, req, data, validationOutput.IssuerRef)
 	if err != nil {
 		return nil, err
 	}
@@ -946,13 +934,14 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		parseErr     error
 	)
 	if !useCSR {
-		_, ok := data.GetOk("key_type")
-		if !ok {
+		keyType := validationOutput.KeyType
+		if keyType == "" {
 			// Default to RSA
 			data.Raw["key_type"] = "rsa"
 		}
-		_, ok = data.GetOk("key_bits")
-		if !ok {
+		keyBits := validationOutput.KeyBits
+
+		if keyBits == 0 {
 			// Default to 2048 bits
 			data.Raw["key_bits"] = 2048
 		}
@@ -1020,7 +1009,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 	// Generate Response
 	var resp *logical.Response
-	if generateLease {
+	if validationOutput.GenerateLease {
 		// Lease-Managed Certificate
 		resp = b.Secret(SecretCertsType).Response(
 			respData,
@@ -1035,7 +1024,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		}
 	}
 
-	if !noStore {
+	if !validationOutput.NoStore {
 		key := "certs/" + normalizeSerial(cb.SerialNumber)
 		certsCounted := b.certsCounted.Load()
 		err = req.Storage.Put(ctx, &logical.StorageEntry{
@@ -1159,23 +1148,6 @@ func (b *backend) fetchCaSigningBundle(ctx context.Context, req *logical.Request
 		}
 	}
 	return signingBundle, sc, nil
-}
-
-// Helper function to evaluate a CEL expression and return a boolean value.
-func evaluateCelBooleanExpression(env *celgo.Env, expression string, evaluationData map[string]interface{}) (bool, error) {
-	if expression == "" {
-		return false, nil // Default to false if expression is empty
-	}
-	evalResult, err := evaluateCelExpression(env, expression, evaluationData)
-	if err != nil {
-		return false, fmt.Errorf("%w", err)
-	}
-	// Ensure result is a boolean
-	if evalResult.Type() != celgo.BoolType {
-		return false, fmt.Errorf("CEL expression did not return a boolean value")
-	}
-
-	return evalResult.Value().(bool), nil
 }
 
 // Helper function to evaluate a CEL expression

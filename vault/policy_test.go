@@ -123,6 +123,10 @@ path "some-expired-path" {
 	capabilities = ["list"]
 	expiration = "2006-01-02T15:04:05Z"
 }
+path "test/metadata/*" {
+	capabilities = ["list"]
+	list_scan_response_keys_filter_path = "test/metadata/{{ .key }}"
+}
 `)
 
 var rawPolicyJSON = strings.TrimSpace(`
@@ -177,7 +181,7 @@ var rawPolicyJSON = strings.TrimSpace(`
     "test/types": {
       "capabilities": ["create", "sudo"],
       "allowed_parameters": {
-		"map": [{"good": "one"}],
+        "map": [{"good": "one"}],
         "int": [1, 2]
       },
       "denied_parameters": {
@@ -220,6 +224,10 @@ var rawPolicyJSON = strings.TrimSpace(`
     },
     "unpaginated-kv/metadata": {
       "capabilities": ["list"]
+    },
+    "test/metadata/*": {
+      "capabilities": ["list"],
+      "list_scan_response_keys_filter_path": "test/metadata/{{ .key }}"
     }
   }
 }
@@ -495,6 +503,16 @@ func validatePolicy(t *testing.T, p *Policy) {
 			Permissions: &ACLPermissions{
 				CapabilitiesBitmap: ListCapabilityInt,
 			},
+		},
+		{
+			Path:         "test/metadata/",
+			Capabilities: []string{"list"},
+			Permissions: &ACLPermissions{
+				CapabilitiesBitmap:     ListCapabilityInt,
+				ResponseKeysFilterPath: "test/metadata/{{ .key }}",
+			},
+			ResponseKeysFilterPathHCL: "test/metadata/{{ .key }}",
+			IsPrefix:                  true,
 		},
 	}
 

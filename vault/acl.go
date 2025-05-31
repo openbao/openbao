@@ -56,12 +56,13 @@ type AuthResults struct {
 }
 
 type ACLResults struct {
-	Allowed            bool
-	RootPrivs          bool
-	IsRoot             bool
-	MFAMethods         []string
-	CapabilitiesBitmap uint32
-	GrantingPolicies   []logical.PolicyInfo
+	Allowed                bool
+	RootPrivs              bool
+	IsRoot                 bool
+	MFAMethods             []string
+	CapabilitiesBitmap     uint32
+	GrantingPolicies       []logical.PolicyInfo
+	ResponseKeysFilterPath string
 }
 
 type SentinelResults struct {
@@ -271,6 +272,15 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 					existingPerms.PaginationLimit = pc.Permissions.PaginationLimit
 				}
 			}
+
+			// If we do not have a ResponseKeysFilterPath value, update our
+			// existing permissions to contain it. This means that the first
+			// policy which contains non-empty
+			// list_scan_response_keys_filter_path value wins.
+			if len(pc.Permissions.ResponseKeysFilterPath) > 0 && len(existingPerms.ResponseKeysFilterPath) == 0 {
+				existingPerms.ResponseKeysFilterPath = pc.Permissions.ResponseKeysFilterPath
+			}
+
 		INSERT:
 			switch {
 			case pc.HasSegmentWildcards:
@@ -627,6 +637,13 @@ CHECK:
 				}
 			}
 		}
+	}
+
+	// Return the ResponseKeysFilterPath value from this permission: it
+	// will allow filterListResponse to evaluate list filtering without
+	// having knowledge of concrete policies.
+	if op == logical.ListOperation || op == logical.ScanOperation {
+		ret.ResponseKeysFilterPath = permissions.ResponseKeysFilterPath
 	}
 
 	ret.Allowed = true

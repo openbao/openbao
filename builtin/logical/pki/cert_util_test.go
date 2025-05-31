@@ -263,22 +263,7 @@ func TestPki_getCertificateNotBefore(t *testing.T) {
 func TestPki_getCertificateNotAfter_PastDate(t *testing.T) {
 	t.Parallel()
 
-	// Create a system view with default TTLs
-	sysView := logical.TestSystemView()
-	sysView.DefaultLeaseTTLVal = 24 * time.Hour
-	sysView.MaxLeaseTTLVal = 24 * time.Hour
-
-	// Create backend with the system view
-	config := &logical.BackendConfig{
-		StorageView: &logical.InmemStorage{},
-		System:      sysView,
-	}
-
-	b := Backend(config)
-	require.NotNil(t, b, "failed to create backend")
-
-	err := b.Setup(context.Background(), config)
-	require.NoError(t, err, "failed to setup backend")
+	b, _ := CreateBackendWithStorage(t)
 
 	// Create a CA certificate with NotAfter in the future
 	now := time.Now()

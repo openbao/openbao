@@ -381,7 +381,7 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	return acl, te, entity, identityPolicies, nil
 }
 
-func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool) (*logical.Auth, *logical.TokenEntry, error) {
+func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool) (*logical.Auth, *ACL, *logical.TokenEntry, *identity.Entity, error) {
 	defer metrics.MeasureSince([]string{"core", "check_token"}, time.Now())
 
 	var acl *ACL
@@ -399,24 +399,24 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		// unauth, we just have no information to attach to the request, so
 		// ignore errors...this was best-effort anyways
 		if err != nil && !unauth {
-			return nil, te, err
+			return nil, acl, te, entity, err
 		}
 	}
 
 	if entity != nil && entity.Disabled {
 		c.logger.Warn("permission denied as the entity on the token is disabled")
-		return nil, te, logical.ErrPermissionDenied
+		return nil, acl, te, entity, logical.ErrPermissionDenied
 	}
 	if te != nil && te.EntityID != "" && entity == nil {
 		c.logger.Warn("permission denied as the entity on the token is invalid")
-		return nil, te, logical.ErrPermissionDenied
+		return nil, acl, te, entity, logical.ErrPermissionDenied
 	}
 
 	// Check if this is a root protected path
 	rootPath := c.router.RootPath(ctx, req.Path)
 
 	if rootPath && unauth {
-		return nil, nil, errors.New("cannot access root path in unauthenticated request")
+		return nil, nil, nil, nil, errors.New("cannot access root path in unauthenticated request")
 	}
 
 	// At this point we won't be forwarding a raw request; we should delete
@@ -449,18 +449,18 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 			// fail later via bad path to avoid confusing items in the log
 			checkExists = false
 		case logical.ErrRelativePath:
-			return nil, te, errutil.UserError{Err: err.Error()}
+			return nil, acl, te, entity, errutil.UserError{Err: err.Error()}
 		case nil:
 			if existsResp != nil && existsResp.IsError() {
-				return nil, te, existsResp.Error()
+				return nil, acl, te, entity, existsResp.Error()
 			}
 			// Otherwise, continue on
 		default:
 			c.logger.Error("failed to run existence check", "error", err)
 			if _, ok := err.(errutil.UserError); ok {
-				return nil, te, err
+				return nil, acl, te, entity, err
 			} else {
-				return nil, te, ErrInternalError
+				return nil, acl, te, entity, ErrInternalError
 			}
 		}
 
@@ -516,13 +516,17 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		Allowed: authResults.Allowed,
 	}
 
+	if authResults.ACLResults != nil {
+		auth.ResponseKeysFilterPath = authResults.ACLResults.ResponseKeysFilterPath
+	}
+
 	if !authResults.Allowed {
 		retErr := authResults.Error
 
 		if authResults.Error.ErrorOrNil() == nil || authResults.DeniedError {
 			retErr = multierror.Append(retErr, logical.ErrPermissionDenied)
 		}
-		return auth, te, retErr
+		return auth, acl, te, entity, retErr
 	}
 
 	if authResults.ACLResults != nil && len(authResults.ACLResults.GrantingPolicies) > 0 {
@@ -532,7 +536,7 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		auth.PolicyResults.GrantingPolicies = append(auth.PolicyResults.GrantingPolicies, authResults.SentinelResults.GrantingPolicies...)
 	}
 
-	return auth, te, nil
+	return auth, acl, te, entity, nil
 }
 
 // HandleRequest is used to handle a new incoming request
@@ -923,7 +927,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	}
 
 	// Validate the token
-	auth, te, ctErr := c.CheckToken(ctx, req, false)
+	auth, acl, te, entity, ctErr := c.CheckToken(ctx, req, false)
 	if ctErr == logical.ErrRelativePath {
 		return logical.ErrorResponse(ctErr.Error()), nil, ctErr
 	}
@@ -1072,6 +1076,11 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 				CreationPath: creationPath,
 				SealWrap:     sealWrap,
 			}
+		}
+
+		// Ensure compliance with List operation filtering.
+		if err := c.filterListResponse(ctx, req, false, auth, acl, te, entity, resp); err != nil {
+			return nil, nil, err
 		}
 	}
 
@@ -1283,8 +1292,11 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 
 	// Do an unauth check. This will cause EGP policies to be checked
 	var auth *logical.Auth
+	var acl *ACL
+	var te *logical.TokenEntry
+	var entity *identity.Entity
 	var ctErr error
-	auth, _, ctErr = c.CheckToken(ctx, req, true)
+	auth, acl, te, entity, ctErr = c.CheckToken(ctx, req, true)
 	if ctErr == logical.ErrPerfStandbyPleaseForward {
 		return nil, nil, ctErr
 	}
@@ -1417,6 +1429,11 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 				CreationPath: creationPath,
 				SealWrap:     sealWrap,
 			}
+		}
+
+		// Ensure compliance with List operation filtering.
+		if err := c.filterListResponse(ctx, req, true, auth, acl, te, entity, resp); err != nil {
+			return nil, nil, err
 		}
 	}
 

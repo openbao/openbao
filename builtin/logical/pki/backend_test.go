@@ -7257,6 +7257,8 @@ func TestProperAuthing(t *testing.T) {
 		"cert/ca_chain":                          shouldBeUnauthedReadList,
 		"ca":                                     shouldBeUnauthedReadList,
 		"ca/pem":                                 shouldBeUnauthedReadList,
+		"cel/issue/test":                         shouldBeAuthed,
+		"cel/sign/test":                          shouldBeAuthed,
 		"cert/" + serial:                         shouldBeUnauthedReadList,
 		"cert/" + serial + "/raw":                shouldBeUnauthedReadList,
 		"cert/" + serial + "/raw/pem":            shouldBeUnauthedReadList,

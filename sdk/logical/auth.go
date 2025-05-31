@@ -114,6 +114,11 @@ type Auth struct {
 
 	// EntityCreated is set to true if an entity is created as part of a login request
 	EntityCreated bool `json:"entity_created"`
+
+	// ResponseKeysFilterPath is set to a non-empty value if the given list
+	// or scan request requires filtering of the response keys and keysInfo
+	// values for entries that are readable by the current token.
+	ResponseKeysFilterPath string `json:"list_scan_response_keys_filter_path"`
 }
 
 func (a *Auth) GoString() string {

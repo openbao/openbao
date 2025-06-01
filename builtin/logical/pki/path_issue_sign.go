@@ -70,17 +70,6 @@ only valid values outside of the empty string.`,
 		},
 	}
 
-	fields["policy_identifiers"] = &framework.FieldSchema{
-		Type:    framework.TypeCommaStringSlice,
-		Default: []string{},
-		Description: `A comma-separated string or list of policy OIDs, or a JSON list of qualified policy
-		information, which must include an oid, and may include a notice and/or cps url, using the form 
-		[{"oid"="1.3.6.1.4.1.7.8","notice"="I am a user Notice"}, {"oid"="1.3.6.1.4.1.44947.1.2.4 ","cps"="https://example.com"}].`,
-		DisplayAttrs: &framework.DisplayAttributes{
-			Value: "Policy Identifiers",
-		},
-	}
-
 	fields["not_before_duration"] = &framework.FieldSchema{
 		Type:        framework.TypeInt64,
 		Default:     30,
@@ -178,9 +167,7 @@ func buildPathIssue(b *backend, pattern string, displayAttrs *framework.DisplayA
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.metricsWrap("issue", roleRequired, func(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
-					return b.pathIssue(ctx, req, data, role)
-				}),
+				Callback: b.metricsWrap("issue", roleRequired, b.pathIssue),
 				Responses: map[int][]framework.Response{
 					http.StatusOK: {{
 						Description: "OK",
@@ -384,9 +371,7 @@ func buildPathSign(b *backend, pattern string, displayAttrs *framework.DisplayAt
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.metricsWrap("sign", roleRequired, func(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
-					return b.pathSign(ctx, req, data, role)
-				}),
+				Callback: b.metricsWrap("sign", roleRequired, b.pathSign),
 				Responses: map[int][]framework.Response{
 					http.StatusOK: {{
 						Description: "OK",
@@ -484,10 +469,7 @@ func buildPathIssuerSignVerbatim(b *backend, pattern string, displayAttrs *frame
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.metricsWrap("sign-verbatim", roleRequired, func(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
-					return b.pathSignVerbatim(ctx, req, data, role)
-				}),
-
+				Callback: b.metricsWrap("sign-verbatim", roleOptional, b.pathSignVerbatim),
 				Responses: map[int][]framework.Response{
 					http.StatusOK: {{
 						Description: "OK",

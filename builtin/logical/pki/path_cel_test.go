@@ -36,10 +36,16 @@ func TestCRUDCelRoles(t *testing.T) {
 				{
 					"name": "cert",
 					"expression": `CertTemplate{
-						Subject: PKIX.Name{                   
+						Subject: PKIX.Name{
 							CommonName: request.common_name,
-							Country:    ["ZW", "US"],     
+							Country:    ["ZW", "US"],
 						},						
+					}`,
+				},
+				{
+					"name": "output",
+					"expression": `ValidationOutput{
+						template: cert,
 					}`,
 				},
 				{
@@ -47,7 +53,7 @@ func TestCRUDCelRoles(t *testing.T) {
 					"expression": "'Request should have atleast 1 IP SAN.'",
 				},
 			},
-			"expression": "success ? cert : err",
+			"expression": "success ? output : err",
 		},
 	}
 
@@ -108,7 +114,7 @@ func TestCRUDCelRoles(t *testing.T) {
 
 	// Assert the patch is correct
 	vars := resp.Data["cel_program"].(celhelper.CelProgram).Variables
-	require.Equal(t, 4, len(vars))
+	require.Equal(t, 5, len(vars))
 
 	found := false
 	for _, v := range vars {
@@ -133,6 +139,12 @@ func TestCRUDCelRoles(t *testing.T) {
 					"expression": "has(request.common_name)",
 				},
 				{
+					"name": "output",
+					"expression": `ValidationOutput{
+						template: cert,
+					}`,
+				},
+				{
 					"name": "cert",
 					"expression": `CertTemplate{
 						Subject: PKIX.Name{
@@ -141,7 +153,7 @@ func TestCRUDCelRoles(t *testing.T) {
 					}`,
 				},
 			},
-			"expression": "require_cn ? cert : 'Role requires CN.'",
+			"expression": "require_cn ? output : 'Role requires CN.'",
 		},
 	}
 

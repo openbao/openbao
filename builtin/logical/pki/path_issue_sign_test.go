@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test issuing a certificate against a CEL role that specifies generate_lease and no_store
+// TestCelRoleIssueWithGenerateLeaseAndNoStore issuing a certificate against a CEL role that specifies generate_lease and no_store
 func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 	t.Parallel()
 
@@ -228,7 +228,7 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 	}
 }
 
-// Test signing a certificate against a CEL role
+// TestCelRoleSign signing a certificate against a CEL role
 func TestCelRoleSign(t *testing.T) {
 	t.Parallel()
 
@@ -399,7 +399,7 @@ func TestCelRoleSign(t *testing.T) {
 	}
 }
 
-// Test issuing a certificate against a CEL role where multiple roots are present
+// TestCelRoleIssueWithMultipleRootsPresent issuing a certificate against a CEL role where multiple roots are present
 func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 	t.Parallel()
 
@@ -599,7 +599,7 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 	}
 }
 
-// Test with CSR extensions being validated by CEL Role
+// TestCelParsedCsr with CSR extensions being validated by CEL Role
 func TestCelParsedCsr(t *testing.T) {
 	t.Parallel()
 
@@ -728,7 +728,7 @@ func TestCelParsedCsr(t *testing.T) {
 	}
 }
 
-// Test custom CEL function
+// TestCelCustomFunction custom CEL function
 func TestCelCustomFunction(t *testing.T) {
 	t.Parallel()
 
@@ -865,7 +865,7 @@ func TestCelCustomFunction(t *testing.T) {
 	require.Equal(t, "example.com", cert.Subject.CommonName, "Common Name should be example.com")
 }
 
-// Test parameter that uses time duration
+// TestNotAfter parameter that uses time duration
 func TestNotAfter(t *testing.T) {
 	t.Parallel()
 

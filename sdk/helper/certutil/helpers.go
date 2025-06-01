@@ -1027,7 +1027,7 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 			var chain []*CertBlock
 
 			signingChain := data.SigningBundle.CAChain
-			// Some bundles already include the root included in the chain, so don't include it twice.
+			// Some bundles already include the root in the chain, so don't include it twice.
 			if len(signingChain) == 0 || !bytes.Equal(signingChain[0].Bytes, data.SigningBundle.CertificateBytes) {
 				chain = append(chain, &CertBlock{
 					Certificate: data.SigningBundle.Certificate,
@@ -1171,27 +1171,24 @@ func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[stri
 		return nil, errutil.InternalError{Err: fmt.Sprintf("unable to parse created certificate: %s", err)}
 	}
 
-	if caSign != nil {
-		if (len(caSign.Certificate.AuthorityKeyId) > 0 &&
-			!bytes.Equal(caSign.Certificate.AuthorityKeyId, caSign.Certificate.SubjectKeyId)) ||
-			caSign != nil {
-			var chain []*CertBlock
+	if caSign != nil &&
+		len(caSign.Certificate.AuthorityKeyId) > 0 &&
+		!bytes.Equal(caSign.Certificate.AuthorityKeyId, caSign.Certificate.SubjectKeyId) {
 
-			signingChain := caSign.CAChain
-			// Some bundles already include the root included in the chain, so don't include it twice.
-			if len(signingChain) == 0 || !bytes.Equal(signingChain[0].Bytes, caSign.CertificateBytes) {
-				chain = append(chain, &CertBlock{
-					Certificate: caSign.Certificate,
-					Bytes:       caSign.CertificateBytes,
-				})
-			}
+		var chain []*CertBlock
+		signingChain := caSign.CAChain
 
-			if len(signingChain) > 0 {
-				chain = append(chain, signingChain...)
-			}
-
-			result.CAChain = chain
+		// Some bundles already include the root in the chain; avoid duplication.
+		if len(signingChain) == 0 ||
+			!bytes.Equal(signingChain[0].Bytes, caSign.CertificateBytes) {
+			chain = append(chain, &CertBlock{
+				Certificate: caSign.Certificate,
+				Bytes:       caSign.CertificateBytes,
+			})
 		}
+
+		chain = append(chain, signingChain...)
+		result.CAChain = chain
 	}
 
 	return result, nil

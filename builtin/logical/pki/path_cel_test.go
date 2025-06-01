@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test creating, reading, updating and deleting CEL roles
+// TestCRUDCelRoles creating, reading, updating and deleting CEL roles
 func TestCRUDCelRoles(t *testing.T) {
 	t.Parallel()
 	var resp *logical.Response
@@ -222,6 +222,7 @@ func TestCRUDCelRoles(t *testing.T) {
 	}
 }
 
+// TestVariableHandling checks variable evaluation and ordering in CEL.
 func TestVariableHandling(t *testing.T) {
 	t.Parallel()
 

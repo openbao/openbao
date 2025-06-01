@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestCELHelpers tests CEL helper functions work as intended.
 func TestCELHelpers(t *testing.T) {
 	t.Parallel()
 

@@ -156,6 +156,9 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 	name := nameRaw.(string)
 
 	celProgram, err := celhelper.GetCELProgram(data)
+	if err != nil {
+		return nil, err
+	}
 
 	entry := &CELRoleEntry{
 		Name:       name,
@@ -278,7 +281,7 @@ func (b *backend) pathCelRoleDelete(ctx context.Context, req *logical.Request, d
 		return nil, err
 	}
 
-	return nil, nil
+	return &logical.Response{}, nil
 }
 
 func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName string) (*CELRoleEntry, error) {

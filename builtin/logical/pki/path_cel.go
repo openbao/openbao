@@ -19,18 +19,6 @@ type CELRoleEntry struct {
 	Name string `json:"name"`
 	// Required, defines validation logic
 	CelProgram celhelper.CelProgram `json:"validation_program"`
-	// Warnings about the request or adjustments made by the CEL policy engine.
-	// E.g., "common_name was empty so added example.com"
-	Warnings string
-
-	// Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.
-	GenerateLease string
-	// If set, certificates issued/signed against this role will not be stored in the storage backend.
-	NoStore string
-	// The issuer used to sign the certificate.
-	Issuer string
-	// CSR ignored if certificate is being issued.
-	CSR string
 }
 
 func pathListCelRoles(b *backend) *framework.Path {
@@ -86,26 +74,6 @@ func pathCelRoles(b *backend) *framework.Path {
 			Type:        framework.TypeMap,
 			Description: "CEL variables and expression defining the program for the role",
 		},
-		"warnings": {
-			Type:        framework.TypeString,
-			Description: "Warnings about the request or adjustments made by the CEL policy engine.",
-		},
-		"generate_lease": {
-			Type:        framework.TypeString,
-			Description: "Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.",
-		},
-		"no_store": {
-			Type:        framework.TypeString,
-			Description: "If set, certificates issued/signed against this role will not be stored in the storage backend.",
-		},
-		"issuer": {
-			Type:        framework.TypeString,
-			Description: "The issuer used to sign the certificate.",
-		},
-		"csr": {
-			Type:        framework.TypeString,
-			Description: "Certificate Signing Request.",
-		},
 	}
 
 	return &framework.Path{
@@ -124,26 +92,6 @@ func pathCelRoles(b *backend) *framework.Path {
 			"cel_program": {
 				Type:        framework.TypeMap,
 				Description: "CEL variables and expression defining the program for the role",
-			},
-			"warnings": {
-				Type:        framework.TypeString,
-				Description: "Warnings about the request or adjustments made by the CEL policy engine.",
-			},
-			"generate_lease": {
-				Type:        framework.TypeString,
-				Description: "Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.",
-			},
-			"no_store": {
-				Type:        framework.TypeString,
-				Description: "If set, certificates issued/signed against this role will not be stored in the storage backend.",
-			},
-			"issuer": {
-				Type:        framework.TypeString,
-				Description: "The issuer used to sign the certificate.",
-			},
-			"csr": {
-				Type:        framework.TypeString,
-				Description: "Certificate Signing Request.",
 			},
 		},
 
@@ -210,13 +158,8 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 	celProgram, err := celhelper.GetCELProgram(data)
 
 	entry := &CELRoleEntry{
-		Name:          name,
-		CelProgram:    *celProgram,
-		Warnings:      data.Get("warnings").(string),
-		GenerateLease: data.Get("generate_lease").(string),
-		NoStore:       data.Get("no_store").(string),
-		Issuer:        data.Get("issuer").(string),
-		CSR:           data.Get("csr").(string),
+		Name:       name,
+		CelProgram: *celProgram,
 	}
 
 	resp, err := validateCelRoleCreation(entry)

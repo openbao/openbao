@@ -949,15 +949,10 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 		parsedBundle, parseErr = generateCELCert(evaluationData, signingBundle, cert, rand.Reader)
 	} else {
-		csrString, err := evaluateCelExpression(env, celRole.CSR, evaluationData)
-		if err != nil {
-			return nil, fmt.Errorf("CSR %w", err)
-		}
+		raw := data.Get("csr").(string)
 
-		csrBytes, ok := csrString.Value().([]byte)
-		if !ok {
-			return nil, fmt.Errorf("expected CSR as []byte, got %T", csrString.Value())
-		}
+		// convert string → []byte
+		csrBytes := []byte(raw)
 
 		pemBlock, _ := pem.Decode(csrBytes)
 		if pemBlock == nil {
@@ -1038,18 +1033,9 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		b.ifCountEnabledIncrementTotalCertificatesCount(certsCounted, key)
 	}
 
-	warnings := celRole.Warnings
+	warnings := validationOutput.Warnings
 	if warnings != "" {
-		// Compile and add warnings to response
-		evalResult, err := celhelper.ParseCompileAndEvaluateExpression(env, warnings, evaluationData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve CEL Warnings: %w", err)
-		}
-		if evalResult.Type() != celgo.StringType {
-			return nil, fmt.Errorf("CEL Warnings expression did not evaluate to a String")
-		}
-
-		resp.AddWarning(evalResult.Value().(string))
+		resp.AddWarning(warnings)
 	}
 
 	return resp, nil

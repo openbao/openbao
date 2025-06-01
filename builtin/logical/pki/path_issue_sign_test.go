@@ -303,7 +303,8 @@ func TestCelRoleSign(t *testing.T) {
 						template:        cert,
 						generate_lease: true,
 						no_store:       false,
-						issuer_ref:         "default",						
+						issuer_ref:         "default",
+						warnings: '',
 					}`,
 				},
 				{
@@ -313,8 +314,6 @@ func TestCelRoleSign(t *testing.T) {
 			},
 			"expression": "validate_cn ? output : err",
 		},
-		"csr":      "request.csr",
-		"warnings": "''",
 	}
 
 	roleReq := &logical.Request{
@@ -512,7 +511,8 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 						template:        cert,
 						generate_lease: small_ttl,
 						no_store:       !small_ttl,
-						issuer_ref:         "second_root",				
+						issuer_ref:         "second_root",
+						warnings: '',
 					}`,
 				},
 				{
@@ -522,7 +522,6 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 			},
 			"expression": "validate_cn ? output : err",
 		},
-		"warnings": "''",
 	}
 
 	roleReq := &logical.Request{
@@ -648,6 +647,7 @@ func TestCelParsedCsr(t *testing.T) {
 						template:        cert,
 						generate_lease: true,
 						no_store:       false,
+						warnings: '',
 					}`,
 				},
 				{
@@ -657,8 +657,6 @@ func TestCelParsedCsr(t *testing.T) {
 			},
 			"expression": "validate_cn ? output : err",
 		},
-		"csr":      "request.csr",
-		"warnings": "''",
 	}
 
 	roleReq := &logical.Request{
@@ -798,6 +796,7 @@ func TestCelCustomFunction(t *testing.T) {
 					"expression": `ValidationOutput{
 						template:        cert,						
 						issuer_ref:         "default",
+						warnings: duration(request.ttl) < duration('5h') ? 'ttl has been modified to 5h.' : '',
 					  }`,
 				},
 				{
@@ -807,7 +806,6 @@ func TestCelCustomFunction(t *testing.T) {
 			},
 			"expression": "valid_emails ? output : err",
 		},
-		"warnings": "duration(request.ttl) < duration('5h') ? 'ttl has been modified to 5h.' : ''",
 	}
 
 	roleReq := &logical.Request{

@@ -44,7 +44,7 @@ message net {
 }
 
 message Userinfo {
-	string username      = 1;   // RFC‑2396 allows empty.
+    string username      = 1;   // RFC‑2396 allows empty.
     string password      = 2;   // Empty when not supplied.
     bool   password_set  = 3;   // If true, then password field is meaningful.
 }
@@ -112,13 +112,17 @@ message ValidationOutput {
     uint32 signature_bits = 4;
     bool generate_lease = 5;
     bool no_store = 6;
-  
+
+    // Warnings about the request or adjustments made by the CEL policy engine.
+    // E.g., "common_name was empty so added example.com"
+    string warnings = 7;
+
     // For CSR:
-    bytes subject_key_id = 7; // This value is auto-computed by certutil for generated keys.
+    bytes subject_key_id = 8; // This value is auto-computed by certutil for generated keys.
 
     // For key generation/"issue"
-    string key_type = 8;
-    uint64 key_bits = 9;
+    string key_type = 9;
+    uint64 key_bits = 10;
 }
 
 // Mirrors x509.Certificate

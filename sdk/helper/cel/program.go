@@ -124,11 +124,6 @@ func ValidateProgram(celProgram CelProgram) (bool, error) {
 		return false, fmt.Errorf("invalid CEL syntax for main expression: %v", issues.Err())
 	}
 
-	// Ensure the AST is non-nil
-	if ast == nil {
-		return false, fmt.Errorf("failed to compile CEL main expression: AST is nil")
-	}
-
 	// Create a CEL program to validate runtime behavior
 	_, err = env.Program(ast)
 	if err != nil {

@@ -304,7 +304,7 @@ func TestCelRoleSign(t *testing.T) {
 						generate_lease: true,
 						no_store:       false,
 						issuer_ref:         "default",
-						warnings: '',
+						warnings: [''],
 					}`,
 				},
 				{
@@ -512,7 +512,7 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 						generate_lease: small_ttl,
 						no_store:       !small_ttl,
 						issuer_ref:         "second_root",
-						warnings: '',
+						warnings: [''],
 					}`,
 				},
 				{
@@ -647,7 +647,7 @@ func TestCelParsedCsr(t *testing.T) {
 						template:        cert,
 						generate_lease: true,
 						no_store:       false,
-						warnings: '',
+						warnings: [''],
 					}`,
 				},
 				{
@@ -796,7 +796,7 @@ func TestCelCustomFunction(t *testing.T) {
 					"expression": `ValidationOutput{
 						template:        cert,						
 						issuer_ref:         "default",
-						warnings: duration(request.ttl) < duration('5h') ? 'ttl has been modified to 5h.' : '',
+						warnings: [duration(request.ttl) < duration('5h') ? 'ttl has been modified to 5h.' : ''],
 					  }`,
 				},
 				{

@@ -121,7 +121,7 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
 
     // Check that namespaces is enabled and if not,
     // clear the namespace by transition to this route w/o it
-    if (this.namespaceService.path && !this.version.hasNamespaces) {
+    if (this.namespaceService.path) {
       return this.transitionTo(this.routeName, { queryParams: { namespace: '' } });
     }
     return this.transitionToTargetRoute(transition);

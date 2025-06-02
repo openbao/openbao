@@ -35,7 +35,17 @@ var pathInternalUINamespacesRead = func(b *SystemBackend) framework.OperationFun
 			return nil, logical.ErrPermissionDenied
 		}
 
-		return logical.ListResponse([]string{""}), nil
+		list, err := b.Core.ListNamespaces(ctx)
+		if err != nil {
+			return nil, errors.New("failed to list namespaces")
+		}
+
+		var nsList []string
+		for _, entry := range list {
+			nsList = append(nsList, entry.Path)
+		}
+
+		return logical.ListResponse(nsList), nil
 	}
 }
 

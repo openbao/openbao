@@ -672,12 +672,13 @@ func TLSConnectionStateToProtoConnectionState(connState *tls.ConnectionState) *C
 	}
 
 	return &ConnectionState{
-		Version:                     uint32(connState.Version),
-		HandshakeComplete:           connState.HandshakeComplete,
-		DidResume:                   connState.DidResume,
-		CipherSuite:                 uint32(connState.CipherSuite),
-		NegotiatedProtocol:          connState.NegotiatedProtocol,
-		NegotiatedProtocolIsMutual:  connState.NegotiatedProtocolIsMutual,
+		Version:            uint32(connState.Version),
+		HandshakeComplete:  connState.HandshakeComplete,
+		DidResume:          connState.DidResume,
+		CipherSuite:        uint32(connState.CipherSuite),
+		NegotiatedProtocol: connState.NegotiatedProtocol,
+		// Deprecated: (*tls.ConnectionState).NegotiatedProtocolIsMutual is always true
+		NegotiatedProtocolIsMutual:  true,
 		ServerName:                  connState.ServerName,
 		PeerCertificates:            CertificateChainToProtoCertificateChain(connState.PeerCertificates),
 		VerifiedChains:              verifiedChains,
@@ -712,12 +713,13 @@ func ProtoConnectionStateToTLSConnectionState(cs *ConnectionState) (*tls.Connect
 	}
 
 	connState := &tls.ConnectionState{
-		Version:                     uint16(cs.Version),
-		HandshakeComplete:           cs.HandshakeComplete,
-		DidResume:                   cs.DidResume,
-		CipherSuite:                 uint16(cs.CipherSuite),
-		NegotiatedProtocol:          cs.NegotiatedProtocol,
-		NegotiatedProtocolIsMutual:  cs.NegotiatedProtocolIsMutual,
+		Version:            uint16(cs.Version),
+		HandshakeComplete:  cs.HandshakeComplete,
+		DidResume:          cs.DidResume,
+		CipherSuite:        uint16(cs.CipherSuite),
+		NegotiatedProtocol: cs.NegotiatedProtocol,
+		// Deprecated: (*tls.ConnectionState).NegotiatedProtocolIsMutual is always true
+		NegotiatedProtocolIsMutual:  true,
 		ServerName:                  cs.ServerName,
 		PeerCertificates:            peerCertificates,
 		VerifiedChains:              verifiedChains,

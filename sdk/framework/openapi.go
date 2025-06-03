@@ -1086,6 +1086,8 @@ func (d *OASDocument) CreateOperationIDs(context string) {
 	}
 	sort.Strings(paths)
 
+	titleCaser := cases.Title(language.English, cases.NoLower)
+
 	for _, path := range paths {
 		pi := d.Paths[path]
 		for _, method := range []string{"get", "post", "delete"} {
@@ -1112,7 +1114,7 @@ func (d *OASDocument) CreateOperationIDs(context string) {
 
 			// Space-split on non-words, title case everything, recombine
 			opID := nonWordRe.ReplaceAllString(strings.ToLower(path), " ")
-			opID = strings.Title(opID)
+			opID = titleCaser.String(opID)
 			opID = method + strings.ReplaceAll(opID, " ", "")
 
 			// deduplicate operationIds. This is a safeguard, since generated IDs should

@@ -3513,19 +3513,22 @@ func (x *Connection) GetConnectionState() *ConnectionState {
 }
 
 type ConnectionState struct {
-	state                       protoimpl.MessageState `protogen:"open.v1"`
-	Version                     uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
-	HandshakeComplete           bool                   `protobuf:"varint,2,opt,name=handshake_complete,json=handshakeComplete,proto3" json:"handshake_complete,omitempty"`
-	DidResume                   bool                   `protobuf:"varint,3,opt,name=did_resume,json=didResume,proto3" json:"did_resume,omitempty"`
-	CipherSuite                 uint32                 `protobuf:"varint,4,opt,name=cipher_suite,json=cipherSuite,proto3" json:"cipher_suite,omitempty"`
-	NegotiatedProtocol          string                 `protobuf:"bytes,5,opt,name=negotiated_protocol,json=negotiatedProtocol,proto3" json:"negotiated_protocol,omitempty"`
-	NegotiatedProtocolIsMutual  bool                   `protobuf:"varint,6,opt,name=negotiated_protocol_is_mutual,json=negotiatedProtocolIsMutual,proto3" json:"negotiated_protocol_is_mutual,omitempty"`
-	ServerName                  string                 `protobuf:"bytes,7,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`
-	PeerCertificates            *CertificateChain      `protobuf:"bytes,8,opt,name=peer_certificates,json=peerCertificates,proto3" json:"peer_certificates,omitempty"`
-	VerifiedChains              []*CertificateChain    `protobuf:"bytes,9,rep,name=verified_chains,json=verifiedChains,proto3" json:"verified_chains,omitempty"`
-	SignedCertificateTimestamps [][]byte               `protobuf:"bytes,10,rep,name=signed_certificate_timestamps,json=signedCertificateTimestamps,proto3" json:"signed_certificate_timestamps,omitempty"`
-	OcspResponse                []byte                 `protobuf:"bytes,11,opt,name=ocsp_response,json=ocspResponse,proto3" json:"ocsp_response,omitempty"`
-	TlsUnique                   []byte                 `protobuf:"bytes,12,opt,name=tls_unique,json=tlsUnique,proto3" json:"tls_unique,omitempty"`
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Version            uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	HandshakeComplete  bool                   `protobuf:"varint,2,opt,name=handshake_complete,json=handshakeComplete,proto3" json:"handshake_complete,omitempty"`
+	DidResume          bool                   `protobuf:"varint,3,opt,name=did_resume,json=didResume,proto3" json:"did_resume,omitempty"`
+	CipherSuite        uint32                 `protobuf:"varint,4,opt,name=cipher_suite,json=cipherSuite,proto3" json:"cipher_suite,omitempty"`
+	NegotiatedProtocol string                 `protobuf:"bytes,5,opt,name=negotiated_protocol,json=negotiatedProtocol,proto3" json:"negotiated_protocol,omitempty"`
+	// negotiated_protocol_is_mutual is always true
+	//
+	// Deprecated: Marked as deprecated in sdk/plugin/pb/backend.proto.
+	NegotiatedProtocolIsMutual  bool                `protobuf:"varint,6,opt,name=negotiated_protocol_is_mutual,json=negotiatedProtocolIsMutual,proto3" json:"negotiated_protocol_is_mutual,omitempty"`
+	ServerName                  string              `protobuf:"bytes,7,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`
+	PeerCertificates            *CertificateChain   `protobuf:"bytes,8,opt,name=peer_certificates,json=peerCertificates,proto3" json:"peer_certificates,omitempty"`
+	VerifiedChains              []*CertificateChain `protobuf:"bytes,9,rep,name=verified_chains,json=verifiedChains,proto3" json:"verified_chains,omitempty"`
+	SignedCertificateTimestamps [][]byte            `protobuf:"bytes,10,rep,name=signed_certificate_timestamps,json=signedCertificateTimestamps,proto3" json:"signed_certificate_timestamps,omitempty"`
+	OcspResponse                []byte              `protobuf:"bytes,11,opt,name=ocsp_response,json=ocspResponse,proto3" json:"ocsp_response,omitempty"`
+	TlsUnique                   []byte              `protobuf:"bytes,12,opt,name=tls_unique,json=tlsUnique,proto3" json:"tls_unique,omitempty"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
@@ -3595,6 +3598,7 @@ func (x *ConnectionState) GetNegotiatedProtocol() string {
 	return ""
 }
 
+// Deprecated: Marked as deprecated in sdk/plugin/pb/backend.proto.
 func (x *ConnectionState) GetNegotiatedProtocolIsMutual() bool {
 	if x != nil {
 		return x.NegotiatedProtocolIsMutual
@@ -4003,15 +4007,15 @@ const file_sdk_plugin_pb_backend_proto_rawDesc = "" +
 	"remoteAddr\x12\x1f\n" +
 	"\vremote_port\x18\x03 \x01(\x05R\n" +
 	"remotePort\x12>\n" +
-	"\x10connection_state\x18\x02 \x01(\v2\x13.pb.ConnectionStateR\x0fconnectionState\"\xbb\x04\n" +
+	"\x10connection_state\x18\x02 \x01(\v2\x13.pb.ConnectionStateR\x0fconnectionState\"\xbf\x04\n" +
 	"\x0fConnectionState\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12-\n" +
 	"\x12handshake_complete\x18\x02 \x01(\bR\x11handshakeComplete\x12\x1d\n" +
 	"\n" +
 	"did_resume\x18\x03 \x01(\bR\tdidResume\x12!\n" +
 	"\fcipher_suite\x18\x04 \x01(\rR\vcipherSuite\x12/\n" +
-	"\x13negotiated_protocol\x18\x05 \x01(\tR\x12negotiatedProtocol\x12A\n" +
-	"\x1dnegotiated_protocol_is_mutual\x18\x06 \x01(\bR\x1anegotiatedProtocolIsMutual\x12\x1f\n" +
+	"\x13negotiated_protocol\x18\x05 \x01(\tR\x12negotiatedProtocol\x12E\n" +
+	"\x1dnegotiated_protocol_is_mutual\x18\x06 \x01(\bB\x02\x18\x01R\x1anegotiatedProtocolIsMutual\x12\x1f\n" +
 	"\vserver_name\x18\a \x01(\tR\n" +
 	"serverName\x12A\n" +
 	"\x11peer_certificates\x18\b \x01(\v2\x14.pb.CertificateChainR\x10peerCertificates\x12=\n" +

@@ -713,7 +713,8 @@ message ConnectionState {
 	bool             did_resume                     = 3;
 	uint32           cipher_suite                   = 4;
 	string           negotiated_protocol            = 5;
-	bool             negotiated_protocol_is_mutual  = 6;
+	// negotiated_protocol_is_mutual is always true
+	bool             negotiated_protocol_is_mutual  = 6 [deprecated = true];
 	string           server_name                    = 7;
 	CertificateChain peer_certificates              = 8;
 

@@ -235,7 +235,7 @@ func (cb *crlBuilder) invalidateCRLBuildTime() {
 // Update the config to mark the modified CRL. See note in
 // updateDefaultIssuerId about why this is necessary.
 func (cb *crlBuilder) flushCRLBuildTimeInvalidation(sc *storageContext) error {
-	if cb.invalidate.CAS(true, false) {
+	if cb.invalidate.CompareAndSwap(true, false) {
 		// Flush out our invalidation.
 		cfg, err := sc.getLocalCRLConfig()
 		if err != nil {

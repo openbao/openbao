@@ -179,7 +179,7 @@ func (ts *Server) Run(ctx context.Context, incoming chan string, templates []*ct
 					ts.logger.Error("template server failed with new Vault token", "error", runnerErr)
 					continue
 				}
-				ts.runnerStarted.CAS(false, true)
+				ts.runnerStarted.CompareAndSwap(false, true)
 				go ts.runner.Start()
 			}
 
@@ -231,7 +231,7 @@ func (ts *Server) Run(ctx context.Context, incoming chan string, templates []*ct
 }
 
 func (ts *Server) Stop() {
-	if ts.stopped.CAS(false, true) {
+	if ts.stopped.CompareAndSwap(false, true) {
 		close(ts.DoneCh)
 	}
 }

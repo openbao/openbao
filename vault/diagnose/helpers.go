@@ -15,6 +15,8 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -245,8 +247,9 @@ func CapitalizeFirstLetter(msg string) string {
 	if len(words) == 0 {
 		return ""
 	}
+	titleCaser := cases.Title(language.English, cases.NoLower)
 	if len(words) > 1 {
-		return strings.Title(words[0]) + " " + strings.Join(words[1:], " ")
+		return titleCaser.String(words[0]) + " " + strings.Join(words[1:], " ")
 	}
-	return strings.Title(words[0])
+	return titleCaser.String(words[0])
 }

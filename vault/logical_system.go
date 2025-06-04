@@ -152,6 +152,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Backend.Paths = append(b.Backend.Paths, b.lockedUserPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.leasePaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.policyPaths()...)
+	b.Backend.Paths = append(b.Backend.Paths, b.namespaceSealPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.namespacePaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.wrappingPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.toolsPaths()...)
@@ -5848,12 +5849,21 @@ This path responds to the following HTTP methods.
 
 	DELETE /<name>
 		Delete a namespace.
+		`,
+	},
+	"namespaces-seal": {
+		"Seal, unseal and check seal status of a namespace.",
+		`
+This path responds to the following HTTP methods.
 
 	POST /<name>/seal
 		Seal a namespace.
 
 	POST /<name>/unseal
 		Unseal a namespace.
+		
+    GET /<name>/seal-status
+        Returns the seal status of the namespace.
 		`,
 	},
 	"namespaces-lock": {

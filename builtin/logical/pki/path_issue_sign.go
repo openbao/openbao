@@ -807,6 +807,9 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		envOptions = append(envOptions, celgo.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
 	}
 
+	// Add identity information into the environment
+	envOptions = append(envOptions, celhelper.IdentityDeclarations()...)
+
 	// Create the CEL environment using the prepared declarations.
 	env, err := celgo.NewEnv(envOptions...)
 	if err != nil {
@@ -825,6 +828,10 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	evaluationData := map[string]interface{}{
 		"request": data.Raw,
 		"now":     time.Now(),
+	}
+
+	if err := celhelper.AddIdentity(b.System(), req, evaluationData); err != nil {
+		return nil, err
 	}
 
 	// Parse then add the CSR to the evaluationData

@@ -104,7 +104,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 		}
 
 		for _, item := range bucket.Items {
-			group, err := i.parseGroupFromBucketItem(item)
+			group, err := i.parseGroupFromBucketItem(ctx, item)
 			if err != nil {
 				return err
 			}

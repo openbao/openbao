@@ -181,9 +181,14 @@ func (sm *SealManager) SecretProgress(ns *namespace.Namespace, lock bool) (int, 
 }
 
 func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespace, lock bool) (*SealStatusResponse, error) {
+	// Verify that any kind of seal exists for a namespace
+	seals, ok := sm.sealsByNamespace[ns.UUID]
+	if !ok {
+		return nil, nil
+	}
+
 	// Check the barrier first
 	barrier := sm.NamespaceBarrier(ns.Path)
-
 	init, err := barrier.Initialized(ctx)
 	if err != nil {
 		sm.logger.Error("namespace barrier init check failed", "namespace", ns.Path, "error", err)
@@ -194,7 +199,7 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 		return nil, nil
 	}
 
-	seal := sm.sealsByNamespace[ns.UUID]["default"]
+	seal := seals["default"]
 	// Verify the seal configuration
 	sealConf, err := seal.Config(ctx)
 	if err != nil {

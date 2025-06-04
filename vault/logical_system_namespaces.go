@@ -5,7 +5,6 @@ package vault
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -170,57 +169,6 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-unlock"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["namespaces-unlock"][1]),
-		},
-
-		{
-			Pattern: "namespaces/(?P<name>.+)/seal",
-
-			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "namespaces",
-			},
-			Fields: map[string]*framework.FieldSchema{
-				"name": namespaceNameSchema,
-			},
-
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.UpdateOperation: &framework.PathOperation{
-					Summary:  "Seal a namespace.",
-					Callback: b.handleNamespacesSeal(),
-					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
-					},
-				},
-			},
-
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
-		},
-		{
-			Pattern: "namespaces/(?P<name>.+)/unseal",
-
-			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "namespaces",
-			},
-			Fields: map[string]*framework.FieldSchema{
-				"name": namespaceNameSchema,
-				"key": {
-					Type:        framework.TypeString,
-					Description: "Specifies a single namespace unseal key share.",
-				},
-			},
-
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.UpdateOperation: &framework.PathOperation{
-					Summary:  "Unseal a namespace.",
-					Callback: b.handleNamespacesUnseal(),
-					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
-					},
-				},
-			},
-
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
 		},
 
 		{
@@ -579,80 +527,5 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 				"status": status,
 			},
 		}, nil
-	}
-}
-
-// handleNamespacesSeal handles the "/sys/namespaces/<name>/seal" endpoint to seal the namespace.
-func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		name := namespace.Canonicalize(data.Get("name").(string))
-
-		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
-			return nil, errors.New("name must not contain /")
-		}
-
-		err := b.Core.namespaceStore.SealNamespace(ctx, name)
-		if err != nil {
-			return handleError(err)
-		}
-
-		return nil, nil
-	}
-}
-
-// handleNamespacesUnseal handles the "/sys/namespaces/<name>/unseal" endpoint to unseal the namespace.
-func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		name := namespace.Canonicalize(data.Get("name").(string))
-		key := data.Get("key").(string)
-
-		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
-			return nil, errors.New("name must not contain /")
-		}
-
-		if key == "" {
-			return nil, errors.New("provided key is empty")
-		}
-
-		var decodedKey []byte
-		decodedKey, err := hex.DecodeString(key)
-		if err != nil {
-			decodedKey, err = base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				return handleError(err)
-			}
-		}
-
-		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
-		if err != nil {
-			return handleError(err)
-		}
-
-		if ns == nil {
-			return nil, fmt.Errorf("namespace %q doesn't exist", name)
-		}
-
-		err = b.Core.sealManager.UnsealNamespace(ctx, ns, decodedKey)
-		if err != nil {
-			invalidKeyErr := &ErrInvalidKey{}
-			switch {
-			case errors.As(err, &invalidKeyErr):
-			case errors.Is(err, ErrBarrierInvalidKey):
-			case errors.Is(err, ErrBarrierNotInit):
-			case errors.Is(err, ErrBarrierSealed):
-			default:
-				return logical.RespondWithStatusCode(logical.ErrorResponse(err.Error()), req, http.StatusInternalServerError)
-			}
-			return handleError(err)
-		}
-
-		status, err := b.Core.sealManager.GetSealStatus(ctx, ns, true)
-		if err != nil {
-			return nil, err
-		}
-
-		return &logical.Response{Data: map[string]interface{}{
-			"seal_status": status,
-		}}, nil
 	}
 }

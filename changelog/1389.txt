@@ -1,0 +1,3 @@
+```release-note:feature
+**Allow filtering LIST, SCAN responses** via the `list_scan_response_keys_filter_path` parameter to restrict information to only readable or listable values.
+```

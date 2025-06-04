@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -35,14 +36,20 @@ var pathInternalUINamespacesRead = func(b *SystemBackend) framework.OperationFun
 			return nil, logical.ErrPermissionDenied
 		}
 
-		list, err := b.Core.ListNamespaces(ctx)
+		parent, err := namespace.FromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		list, err := b.Core.namespaceStore.ListNamespaces(ctx, false, false)
 		if err != nil {
 			return nil, errors.New("failed to list namespaces")
 		}
 
 		var nsList []string
 		for _, entry := range list {
-			nsList = append(nsList, entry.Path)
+			relativePath := parent.TrimmedPath(entry.Path)
+			nsList = append(nsList, relativePath)
 		}
 
 		return logical.ListResponse(nsList), nil

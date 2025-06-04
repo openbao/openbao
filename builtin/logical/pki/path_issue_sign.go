@@ -944,7 +944,17 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		evaluationData["signature_bits"] = signatureBits
 		evaluationData["use_pss"] = usePSS
 	} else {
-		if err := certutil.ValidateSignatureLength(string(signingBundle.PrivateKeyType), signatureBits); err != nil {
+		signingKeyType := string(signingBundle.PrivateKeyType)
+		signingKeyBits, err := signingBundle.GetKeyBits()
+		if err != nil {
+			return nil, fmt.Errorf("unable to get signing key information: %w", err)
+		}
+
+		if signatureBits, err = certutil.DefaultOrValueHashBits(signingKeyType, signingKeyBits, signatureBits); err != nil {
+			return nil, err
+		}
+
+		if err := certutil.ValidateSignatureLength(signingKeyType, signatureBits); err != nil {
 			return nil, err
 		}
 

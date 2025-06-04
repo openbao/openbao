@@ -3,9 +3,33 @@
 # Everything
 * @openbao/openbao-org-maintainers
 
+# Core team ownership
+api/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+audit/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+builtin/logical/kv/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+command/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+helper/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+http/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+internalshared/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+physical/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+sdk/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+vault/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+website/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+
+# Kubernetes team ownership
+api/auth/kubernetes @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-k8s-committers
+command/agentproxyshared/auth/kubernetes/ @openbao/openbao-org-maintainers @openbao/openbao-k8s-committers
+builtin/credential/kubernetes/ @openbao/openbao-org-maintainers @openbao/openbao-k8s-committers
+builtin/logical/kubernetes/ @openbao/openbao-org-maintainers @openbao/openbao-k8s-committers
+serviceregistration/kubernetes/ @openbao/openbao-org-maintainers @openbao/openbao-k8s-committers
+ui/**/*kubernetes* @openbao/openbao-org-maintainers @openbao/openbao-k8s-committers
+ui/**/*kubernetes*/** @openbao/openbao-org-maintainers @openbao/openbao-k8s-committers
+website/content/docs/platform/k8s/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-k8s-committers
+website/content/partials/helm/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-k8s-committers
+
 # JWT Auth Plugin
 builtin/credential/jwt @openbao/openbao-org-maintainers @openbao/openbao-auth-jwt-committers
 command/agentproxyshared/auth/jwt @openbao/openbao-org-maintainers @openbao/openbao-auth-jwt-committers
-website/content/docs/auth/jwt/ @openbao/openbao-org-maintainers @openbao/openbao-auth-jwt-committers
-website/content/api-docs/auth/jwt.mdx @openbao/openbao-org-maintainers @openbao/openbao-auth-jwt-committers
-website/content/docs/agent-and-proxy/autoauth/methods/jwt.mdx @openbao/openbao-org-maintainers @openbao/openbao-auth-jwt-committers
+website/content/docs/auth/jwt/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-auth-jwt-committers
+website/content/api-docs/auth/jwt.mdx @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-auth-jwt-committers
+website/content/docs/agent-and-proxy/autoauth/methods/jwt.mdx @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-auth-jwt-committers

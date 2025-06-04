@@ -35,24 +35,26 @@ export default Service.extend({
     const store = this.store;
     const adapter = store.adapterFor('namespace');
     const userRoot = this.auth.authData.userRootNamespace;
+
+    // Use current namespace path, fallback to userRoot for initial load
+    const currentNamespace = this.path || userRoot || '';
+
     try {
       const ns = yield adapter.findAll(store, 'namespace', null, {
         adapterOptions: {
           forUser: true,
-          namespace: userRoot,
+          namespace: currentNamespace,
         },
       });
       const keys = ns.data.keys || [];
+
       this.set(
         'accessibleNamespaces',
         keys.map((n) => {
           let fullNS = n;
-          // if the user's root isn't '', then we need to construct
-          // the paths so they connect to the user root to the list
-          // otherwise using the current ns to grab the correct leaf
-          // node in the graph doesn't work
-          if (userRoot) {
-            fullNS = `${userRoot}/${n}`;
+          // if we're in a namespace, construct full paths
+          if (currentNamespace) {
+            fullNS = `${currentNamespace}/${n}`;
           }
           return fullNS.replace(/\/$/, '');
         })

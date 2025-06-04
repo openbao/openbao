@@ -29,21 +29,31 @@ Steering Committee.
    [PR #763](https://github.com/openbao/openbao/pull/763).
  - [ACME TLS Listeners](/docs/rfcs/acme-tls-listeners), for supporting
    just-in-time certificate acquisition for TLS-enabled listeners via the
-   ACME protocol.
+   ACME protocol. This landed in [PR #857](https://github.com/openbao/openbao/pull/857).
  - [Safely limit pagination via ACL policies](/docs/rfcs/acl-paginated-lists),
    adding a new ACL policy parameter, `pagination_limit`, to restrict the size
-   of list and scan operation requests.
+   of list and scan operation requests. This landed in
+   [PR #802](https://github.com/openbao/openbao/pull/802).
  - [Split the mount table using transactional storage](/docs/rfcs/split-mount-tables),
    removes mount table limits, allowing potentially hundreds of thousands of
    mounts on a single scaled-up server. This landed in
    [622](https://github.com/openbao/openbao/pull/622).
  - [SSH CA Multi-issuer](/docs/rfcs/ssh-ca-multi-issuer), adds support for multiple issuers on SSH secret engine mounts.
    Landed in [880](https://github.com/openbao/openbao/pull/880).
+ - [Using CEL Roles For JWT/OIDC Auth](/docs/rfcs/cel-jwt), adds support for CEL roles in JWT Auth
+   Landed in [769](https://github.com/openbao/openbao/pull/769)
+ - [Filtering list and scan results](/docs/rfcs/filtering-list) to only
+   results visible by the client token. This landed in
+   [PR #1389](https://github.com/openbao/openbao/pull/1389).
+
+## Strategic
+
  - [Best Practices for Integrating CEL in Auth, Secrets, and Elsewhere](/docs/rfcs/cel-best-practices),
    to discuss how Google's Common Expression Language should be integrated
    into OpenBao.
- - [Using CEL Roles For JWT/OIDC Auth](/docs/rfcs/cel-jwt), adds support for CEL roles in JWT Auth
-   Landed in [769](https://github.com/openbao/openbao/pull/769)
- - [Static Auto-Unseal](/docs/rfcs/static-auto-unseal), introducing a new
+
+## Accepted
+
+- [Static Auto-Unseal](/docs/rfcs/static-auto-unseal), introducing a new
    auto-unseal mechanism, `static`, which loads keys from the environment,
    filesystem, or directly in the configuration file.

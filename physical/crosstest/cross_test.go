@@ -32,7 +32,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -159,7 +158,7 @@ func Test_ExerciseTransactionalBackends(t *testing.T) {
 }
 
 func getFile(t *testing.T, logger log.Logger) (physical.Backend, func()) {
-	backendPath, err := ioutil.TempDir("", "vault")
+	backendPath, err := os.MkdirTemp("", "vault")
 	require.NoError(t, err, "error while creating file storage")
 
 	b, err := file.NewFileBackend(map[string]string{

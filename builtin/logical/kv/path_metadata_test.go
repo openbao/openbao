@@ -1369,3 +1369,47 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 		t.Fatal("expected max_versions to be unset to zero value")
 	}
 }
+
+// TestVersionedKV_ListDetailedMetadata ensures that detailed listing in
+// KVv2 does not cause a panic due to directories with missing metadata
+// entries.
+func TestVersionedKV_ListDetailedMetadata(t *testing.T) {
+	b, storage := getBackend(t)
+
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "data/subdir/entry",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"data": map[string]interface{}{
+				"value": 10,
+			},
+		},
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("create request failed, err: %#v, resp: %#v", err, resp)
+	}
+
+	req = &logical.Request{
+		Operation: logical.ListOperation,
+		Path:      "detailed-metadata/",
+		Storage:   storage,
+	}
+
+	listResp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || listResp == nil || listResp.IsError() {
+		t.Fatalf("err:%s resp:%#v\n", err, listResp)
+	}
+
+	if len(listResp.Data["keys"].([]string)) != 1 || listResp.Data["keys"].([]string)[0] != "subdir/" {
+		t.Fatalf("expected one key (foo) - resp: %#v", listResp)
+	}
+
+	value := listResp.Data["key_info"].(map[string]interface{})["subdir"]
+
+	if value != nil && len(value.(map[string]interface{})) != 0 {
+		t.Fatalf("unexpected info about directory in detailed list response: %v", listResp.Data)
+	}
+}

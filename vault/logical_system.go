@@ -153,6 +153,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Paths = append(b.Paths, b.lockedUserPaths()...)
 	b.Paths = append(b.Paths, b.leasePaths()...)
 	b.Paths = append(b.Paths, b.policyPaths()...)
+	b.Paths = append(b.Paths, b.namespaceSealPaths()...)
 	b.Paths = append(b.Paths, b.namespacePaths()...)
 	b.Paths = append(b.Paths, b.wrappingPaths()...)
 	b.Paths = append(b.Paths, b.toolsPaths()...)
@@ -4580,7 +4581,7 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 			Sealed:           true,
 			RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
 			RecoverySealType: recoveryType,
-			StorageType:  	  core.StorageType(),
+			StorageType:      core.StorageType(),
 			Version:          version.GetVersion().VersionNumber(),
 			BuildDate:        version.BuildDate,
 		}
@@ -5886,12 +5887,21 @@ This path responds to the following HTTP methods.
 
 	DELETE /<name>
 		Delete a namespace.
+		`,
+	},
+	"namespaces-seal": {
+		"Seal, unseal and check seal status of a namespace.",
+		`
+This path responds to the following HTTP methods.
 
 	POST /<name>/seal
 		Seal a namespace.
 
 	POST /<name>/unseal
 		Unseal a namespace.
+		
+    GET /<name>/seal-status
+        Returns the seal status of the namespace.
 		`,
 	},
 	"namespaces-lock": {

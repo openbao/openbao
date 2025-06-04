@@ -15,15 +15,15 @@ import (
 var (
 	// ErrBarrierSealed is returned if an operation is performed on
 	// a sealed barrier. No operation is expected to succeed before unsealing
-	ErrBarrierSealed = errors.New("Vault is sealed")
+	ErrBarrierSealed = errors.New("Barrier is sealed")
 
 	// ErrBarrierAlreadyInit is returned if the barrier is already
 	// initialized. This prevents a re-initialization.
-	ErrBarrierAlreadyInit = errors.New("Vault is already initialized")
+	ErrBarrierAlreadyInit = errors.New("Barrier is already initialized")
 
 	// ErrBarrierNotInit is returned if a non-initialized barrier
 	// is attempted to be unsealed.
-	ErrBarrierNotInit = errors.New("Vault is not initialized")
+	ErrBarrierNotInit = errors.New("Barrier is not initialized")
 
 	// ErrBarrierInvalidKey is returned if the Unseal key is invalid
 	ErrBarrierInvalidKey = errors.New("Unseal failed, invalid key")

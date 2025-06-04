@@ -1197,9 +1197,14 @@ func (i *IdentityStore) sanitizeAlias(ctx context.Context, alias *identity.Alias
 		return fmt.Errorf("invalid alias metadata: %w", err)
 	}
 
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Create an ID if there isn't one already
 	if alias.ID == "" {
-		alias.ID, err = uuid.GenerateUUID()
+		alias.ID, err = ns.GenerateUUID()
 		if err != nil {
 			return errors.New("failed to generate alias ID")
 		}
@@ -1208,19 +1213,15 @@ func (i *IdentityStore) sanitizeAlias(ctx context.Context, alias *identity.Alias
 	}
 
 	if alias.NamespaceID == "" {
-		ns, err := namespace.FromContext(ctx)
-		if err != nil {
-			return err
-		}
 		alias.NamespaceID = ns.ID
 	}
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
 	if ns.ID != alias.NamespaceID {
 		return errors.New("alias belongs to a different namespace")
+	}
+
+	if err := ns.ValidateUUID(alias.ID); err != nil {
+		return fmt.Errorf("alias's namespace suffix is invalid: %w", err)
 	}
 
 	// Set the creation and last update times
@@ -1241,9 +1242,14 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 		return errors.New("entity is nil")
 	}
 
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Create an ID if there isn't one already
 	if entity.ID == "" {
-		entity.ID, err = uuid.GenerateUUID()
+		entity.ID, err = ns.GenerateUUID()
 		if err != nil {
 			return errors.New("failed to generate entity id")
 		}
@@ -1252,10 +1258,6 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 		entity.BucketKey = i.entityPacker(ctx).BucketKey(entity.ID)
 	}
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
 	if entity.NamespaceID == "" {
 		entity.NamespaceID = ns.ID
 	}
@@ -1263,9 +1265,13 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 		return errors.New("entity does not belong to this namespace")
 	}
 
+	if err := ns.ValidateUUID(entity.ID); err != nil {
+		return fmt.Errorf("entity's namespace suffix is invalid: %w", err)
+	}
+
 	// Create a name if there isn't one already
 	if entity.Name == "" {
-		entity.Name, err = i.generateName(ctx, "entity")
+		entity.Name, err = i.generateName(ctx, "entity", ns.ID)
 		if err != nil {
 			return errors.New("failed to generate entity name")
 		}
@@ -1301,9 +1307,14 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 		return errors.New("group is nil")
 	}
 
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Create an ID if there isn't one already
 	if group.ID == "" {
-		group.ID, err = uuid.GenerateUUID()
+		group.ID, err = ns.GenerateUUID()
 		if err != nil {
 			return errors.New("failed to generate group id")
 		}
@@ -1313,23 +1324,19 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 	}
 
 	if group.NamespaceID == "" {
-		ns, err := namespace.FromContext(ctx)
-		if err != nil {
-			return err
-		}
 		group.NamespaceID = ns.ID
-	}
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
 	}
 	if ns.ID != group.NamespaceID {
 		return errors.New("group does not belong to this namespace")
 	}
 
+	if err := ns.ValidateUUID(group.ID); err != nil {
+		return fmt.Errorf("group's namespace suffix is invalid: %w", err)
+	}
+
 	// Create a name if there isn't one already
 	if group.Name == "" {
-		group.Name, err = i.generateName(ctx, "group")
+		group.Name, err = i.generateName(ctx, "group", ns.ID)
 		if err != nil {
 			return errors.New("failed to generate group name")
 		}
@@ -2078,7 +2085,7 @@ func (i *IdentityStore) memberGroupIDsByID(ctx context.Context, groupID string) 
 	return memberGroupIDs, nil
 }
 
-func (i *IdentityStore) generateName(ctx context.Context, entryType string) (string, error) {
+func (i *IdentityStore) generateName(ctx context.Context, entryType string, nsId string) (string, error) {
 	var name string
 OUTER:
 	for {
@@ -2087,6 +2094,10 @@ OUTER:
 			return "", err
 		}
 		name = fmt.Sprintf("%s_%s", entryType, fmt.Sprintf("%08x", randBytes[0:4]))
+
+		if nsId != "" {
+			name = fmt.Sprintf("%v.%v", name, nsId)
+		}
 
 		switch entryType {
 		case "entity":

@@ -1455,7 +1455,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 	t.Run("entity_without_namespace", func(t *testing.T) {
 		// Create an entity with no namespace ID to test sanitization
 		entity := &identity.Entity{
-			ID:       "test-no-namespace",
+			ID:       "d9d20def-d59e-4a9b-8379-c927ceb7fe10",
 			Name:     "test-no-namespace",
 			Policies: []string{"default"},
 		}
@@ -1469,7 +1469,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 	t.Run("alias_without_namespace", func(t *testing.T) {
 		// Create an alias with no namespace ID
 		alias := &identity.Alias{
-			ID:            "test-alias-no-namespace",
+			ID:            "d9d20def-d59e-4a9b-8379-c927ceb7fe10." + ns1.ID,
 			CanonicalID:   "test-entity-id",
 			MountType:     "userpass",
 			MountAccessor: rootAccessor, // Use a valid accessor that exists in the root namespace
@@ -1485,7 +1485,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 	t.Run("namespace_mismatch", func(t *testing.T) {
 		// Create an entity in ns1
 		entity := &identity.Entity{
-			ID:          "mismatch-entity",
+			ID:          "d9d20def-d59e-4a9b-8379-c927ceb7fe10",
 			Name:        "mismatch-entity",
 			NamespaceID: ns1.ID,
 		}

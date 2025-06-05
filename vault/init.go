@@ -448,7 +448,7 @@ func (c *Core) UnsealWithStoredKeys(ctx context.Context) error {
 	// This usually happens when auto-unseal is configured, but the servers have
 	// not been initialized yet.
 	if len(keys) == 0 {
-		return NewNonFatalError(errors.New("stored unseal keys are supported, but none were found"))
+		return NewNonFatalError(errors.New("stored unseal keys are supported, but none were found: is the server initialized?"))
 	}
 	if len(keys) != 1 {
 		return NewNonFatalError(errors.New("expected exactly one stored key"))

@@ -148,8 +148,7 @@ const config: Config = {
             },
             {
               label: "Charter",
-              to: "pathname:///assets/OpenBao-Technical-Charter-Final-2024-05-08.pdf",
-              target: "_blank",
+              href: "https://github.com/openbao/openbao/blob/main/CHARTER.md",
             },
             {
               label: "Policies",

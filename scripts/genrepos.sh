@@ -38,6 +38,21 @@ function build_createrepo() {
 	createrepo="/tmp/createrepo/build/src/createrepo_c"
 }
 
+
+# Map architectures from Goreleaser to RPM ones
+function map_arch_rpm() {
+  case "$1" in
+    amd64) echo "x86_64" ;;
+    arm64) echo "aarch64" ;;
+    armv6) echo "armv6hl" ;;
+    armv7) echo "armv7hl" ;;
+    ppc64le) echo "ppc64le" ;;
+    riscv64) echo "riscv64" ;;
+    s390x) echo "s390x" ;;
+    *) echo "$1" ;;
+  esac
+}
+
 # Fetch the latest OpenBao release information and compare to cache; if
 # we're the latest, assume we're done. Make sure we copy the updated
 # release info as the very last thing.
@@ -77,6 +92,7 @@ function build_repos_rpms() {(
 		local arch
 		local name
 		arch="$(grep -o '_linux_[a-zA-Z0-9]*\.rpm' <<< "$rpm" | sed 's/\(_linux_\|\.rpm$\)//g')"
+    arch="$(map_arch_rpm "$arch")"
 		name="$(basename "$rpm")"
 
 		local dir="$repo_base/$arch"

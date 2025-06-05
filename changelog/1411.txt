@@ -1,0 +1,3 @@
+```release-note:improvement
+auto-unsealing: The warning logged when the server is still uninitialized and auto-unsealing is configured is now less confusing
+```

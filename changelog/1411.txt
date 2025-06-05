@@ -1,3 +1,3 @@
 ```release-note:improvement
-auto-unsealing: The warning logged when the server is still uninitialized and auto-unsealing is configured is now less confusing
+auto-unsealing: Improved the clarity of the warning message logged when the server is uninitialized and auto-unsealing is configured.
 ```

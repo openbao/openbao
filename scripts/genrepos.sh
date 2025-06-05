@@ -6,6 +6,8 @@ export createrepo="createrepo_c"
 export DEBIAN_FRONTEND=noninteractive
 export DEBIAN_PRIORITY=critical
 
+export GPG_SIGNING_KEY="${GPG_SIGNING_KEY:-E617DCD4065C2AFC0B2CF7A7BA8BC08C0F691F94}"
+
 if ! command -v sudo 2>/dev/null ; then
     # Shim sudo to support running in a container without it.
     #
@@ -126,7 +128,7 @@ Codename: stable
 Architectures: amd64 armel armhf arm64 ppc64el riscv64 s390x
 Components: main
 Description: Official apt repository for OpenBao
-SignWith: E617DCD4065C2AFC0B2CF7A7BA8BC08C0F691F94
+SignWith: $GPG_SIGNING_KEY
 _EOF
     cat > "$conf_base/options" <<_EOF
 verbose

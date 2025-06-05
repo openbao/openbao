@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { alias, equal } from '@ember/object/computed';
+import { equal, computed } from '@ember/object/computed';
 import Service, { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
 
@@ -11,7 +11,12 @@ const ROOT_NAMESPACE = '';
 export default Service.extend({
   store: service(),
   auth: service(),
-  userRootNamespace: alias('auth.authData.userRootNamespace'),
+
+  // Safe computed property for userRootNamespace
+  userRootNamespace: computed('auth.authData.userRootNamespace', function () {
+    return this.auth?.authData?.userRootNamespace || '';
+  }),
+
   //populated by the query param on the cluster route
   path: '',
   // list of namespaces available to the current user under the
@@ -34,7 +39,9 @@ export default Service.extend({
     // want to keep track of these separately
     const store = this.store;
     const adapter = store.adapterFor('namespace');
-    const userRoot = this.auth.authData.userRootNamespace;
+
+    // Safe access to userRootNamespace using ES5 getter
+    const userRoot = this.userRootNamespace;
 
     // Use current namespace path, fallback to userRoot for initial load
     const currentNamespace = this.path || userRoot || '';

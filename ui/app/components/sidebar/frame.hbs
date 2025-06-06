@@ -29,6 +29,14 @@
       <:body>
         <Hds::SideNav::Portal::Target aria-label="sidebar navigation links" />
       </:body>
+
+      <:footer>
+        <NamespacePicker
+          @namespace={{this.clusterController.namespaceQueryParam}}
+          class="hds-side-nav-hide-when-minimized"
+        />
+      </:footer>
+
     </Hds::SideNav>
   </Frame.Sidebar>
   <Frame.Main id="app-main-content" class={{if this.console.isOpen "main--console-open"}}>

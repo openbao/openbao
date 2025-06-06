@@ -76,6 +76,35 @@
           </div>
         </Toolbar>
       </Page.sub-header>
+    {{else}}
+      <Page.sub-header>
+        <Toolbar class="toolbar-namespace-picker">
+          <div class="field is-horizontal" data-test-namespace-toolbar>
+            <div class="field-label is-normal">
+              <label class="is-label" for="namespace">Namespace</label>
+            </div>
+            <div class="field-body">
+              <div class="field">
+                <div class="control">
+                  <input
+                    data-test-auth-form-ns-input
+                    value={{this.namespaceQueryParam}}
+                    placeholder="/ (Root)"
+                    oninput={{perform this.updateNamespace value="target.value"}}
+                    autocomplete="off"
+                    spellcheck="false"
+                    name="namespace"
+                    id="namespace"
+                    class="input"
+                    type="text"
+                    disabled={{this.oidcProvider}}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </Toolbar>
+      </Page.sub-header>
     {{/if}}
   {{/unless}}
   <Page.content>

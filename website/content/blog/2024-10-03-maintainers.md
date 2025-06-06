@@ -21,7 +21,7 @@ Good news: Our community roles are [approved and live](https://github.com/openba
 
 ## How were the community roles created?
 
-Open discussions on what roles should exist in the community started [early in the community's history](https://github.com/orgs/openbao/discussions/228). Eventually, I put forward [a proposal](https://lists.lfedge.org/g/openbao/topic/proposal_community/108163995) for review [by the community](https://lf-edge.atlassian.net/wiki/spaces/OP/pages/15211863/OpenBao+Meetings) (on August 29th, 2024) and with the support of the [TSC](https://lf-edge.atlassian.net/wiki/spaces/OP/pages/15212291/2024-08-08+OpenBao+TSC+Meeting). This was adopted officially on September 30th, 2024 thanks to unanimous votes [by the TSC](https://lists.lfedge.org/g/OpenBao-TSC/topic/announce_roadmap/108738128)!
+Open discussions on what roles should exist in the community started [early in the community's history](https://github.com/orgs/openbao/discussions/228). Eventually, I put forward [a proposal](https://lists.openssf.org/g/openbao/topic/proposal_community/108163995) for review [by the community](https://lf-edge.atlassian.net/wiki/spaces/OP/pages/15211863/OpenBao+Meetings) (on August 29th, 2024) and with the support of the [TSC](https://lf-edge.atlassian.net/wiki/spaces/OP/pages/15212291/2024-08-08+OpenBao+TSC+Meeting). This was adopted officially on September 30th, 2024 thanks to unanimous votes [by the TSC](https://lists.openssf.org/g/OpenBao-TSC/topic/announce_roadmap/108738128)!
 
 ## What are our community roles?
 
@@ -35,7 +35,7 @@ These roles have _increasing barriers to entry_: being a security-sensitive proj
 
 ## How do I apply?
 
-When eligibility requirements are met, application is usually as simple as collecting some evidence and accomplishments in the community and sending an email to [the mailing list](https://lists.lfedge.org/g/openbao)! Then a relevant body of contributors will vote on applicants.
+When eligibility requirements are met, application is usually as simple as collecting some evidence and accomplishments in the community and sending an email to [the mailing list](https://lists.openssf.org/g/openbao)! Then a relevant body of contributors will vote on applicants.
 
 ## Why is this important?
 

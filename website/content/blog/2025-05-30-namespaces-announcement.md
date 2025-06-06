@@ -150,7 +150,7 @@ While we have many plans on extending namespace capabilities in the future to ma
 
 Namespaces will give organisations the possibility to better structure and isolate secret information. However, the introduction of namespaces is just the first step. Our vision includes supporting _lazy loading_ of namespaces and mounts, allowing OpenBao clusters to efficiently serve workloads with many infrequently accessed resources. This will enable even greater scalability and resilience, as nodes will no longer need to load the entire system state at once. 
 
-[Here](https://openbao.org/blog/vision-for-namespaces/) is another article that you can read more about OpenBaos' scalability efforts. Sounds interesting? Reach out to the project via [Github](https://github.com/orgs/openbao/discussions), [Matrix](https://github.com/openbao#contact), or [Mailinglist](https://lists.lfedge.org/g/openbao) if you want to support our work in the areas of namespaces or scalability.
+[Here](https://openbao.org/blog/vision-for-namespaces/) is another article that you can read more about OpenBaos' scalability efforts. Sounds interesting? Reach out to the project via [Github](https://github.com/orgs/openbao/discussions), [Matrix](https://github.com/openbao#contact), or [Mailinglist](https://lists.openssf.org/g/openbao) if you want to support our work in the areas of namespaces or scalability.
 
 ## Get Started
 

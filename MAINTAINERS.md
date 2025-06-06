@@ -94,7 +94,7 @@ Eligibility requirements may be waived by 2/3rds majority TSC vote.
 #### Applications
 
 Applications to become organization-level maintainers will be sent to the
-[OpenBao mailing list](https://lists.lfedge.org/g/openbao) and should contain
+[OpenBao mailing list](https://lists.openssf.org/g/openbao) and should contain
 motivation and confirmation of eligibility.
 
 #### Elections
@@ -133,7 +133,7 @@ Eligibility requirements may be waived by simple majority TSC vote.
 #### Applications
 
 Applications to become committers will be sent to the
-[OpenBao mailing list](https://lists.lfedge.org/g/openbao) and should contain
+[OpenBao mailing list](https://lists.openssf.org/g/openbao) and should contain
 brief motivation, confirmation of eligibility, and the repository/repositories
 to receive committer access.
 
@@ -167,7 +167,7 @@ organization-level maintainers vote.
 
 #### Applications
 
-Applications to become moderators will be sent to the [OpenBao mailing list](https://lists.lfedge.org/g/openbao).
+Applications to become moderators will be sent to the [OpenBao mailing list](https://lists.openssf.org/g/openbao).
 
 #### Elections
 

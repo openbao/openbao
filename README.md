@@ -2,12 +2,12 @@
 
 ----
 
-**Please note**: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, _please responsibly disclose_ by contacting us at [openbao-security@lists.lfedge.org](mailto:openbao-security@lists.lfedge.org).
+**Please note**: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, _please responsibly disclose_ by contacting us at [openbao-security@lists.openssf.org](mailto:openbao-security@lists.openssf.org).
 
 ----
 
 - [Website](https://www.openbao.org)
-- [Mailing List](https://lists.lfedge.org/g/openbao)
+- [Mailing List](https://lists.openssf.org/g/openbao)
 - [GitHub Discussions](https://github.com/openbao/openbao/discussions)
 - [Chat Server](https://chat.lfx.linuxfoundation.org/)
   - `#openbao-announcements` ([matrix client](https://matrix.to/#/#openbao-announcements:chat.lfx.linuxfoundation.org), [home server](https://chat.lfx.linuxfoundation.org/#/room/#openbao-announcements:chat.lfx.linuxfoundation.org))

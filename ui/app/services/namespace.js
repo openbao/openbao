@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { equal, computed } from '@ember/object/computed';
+import { equal } from '@ember/object/computed';
+import { computed } from '@ember/object';
 import Service, { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
 

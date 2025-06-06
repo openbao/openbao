@@ -9,9 +9,9 @@ assignees: ''
 
 <!-- Please reserve GitHub issues for bug reports and feature requests.
 
-For questions, the best place to get answers is on our [mailing list](https://lists.lfedge.org/g/openbao), as they will get more visibility from experienced users than the issue tracker.
+For questions, the best place to get answers is on our [mailing list](https://lists.openssf.org/g/openbao), as they will get more visibility from experienced users than the issue tracker.
 
-Please note: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, please responsibly disclose by contacting us at openbao-security@lists.lfedge.org.
+Please note: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, please responsibly disclose by contacting us at openbao-security@lists.openssf.org.
 
 -->
 

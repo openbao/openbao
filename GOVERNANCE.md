@@ -17,7 +17,7 @@ There are two types of membership on OpenBao's TSC:
 
 Individual memberships are eligible for only a single position with no backup.
 
-Corporate memberships may designate a primary representative and a single backup representative, both with voting permissions on behalf of the organization (counting towards a single vote). Either official representative may designate, in writing to the [TSC mailing list](https://lists.lfedge.org/g/openbao-tsc), a fallback individual with voting permissions specifically for a particular meeting(s). Other employees of the company, not expressly authorized, will not have voting permissions.
+Corporate memberships may designate a primary representative and a single backup representative, both with voting permissions on behalf of the organization (counting towards a single vote). Either official representative may designate, in writing to the [TSC mailing list](https://lists.openssf.org/g/openbao-tsc), a fallback individual with voting permissions specifically for a particular meeting(s). Other employees of the company, not expressly authorized, will not have voting permissions.
 
 Individuals may not be both a corporate representative and an individual member. An individual may either be a designated corporate representative or an individual member at a given time; they resign their existing position upon successful acceptance as a member in another role (either by voting of the TSC to become an individual member if their employer no longer wishes to be a member but they wish to continue in a personal capacity; or by appointment as a primary or backup member of a TSC corporate member if their employment changes or their company becomes a TSC member directly). Only one vote on the TSC is allowed per corporate entity, in the broadest sense including subsidiaries, parent company, and employer/employee relationships, is permitted.
 
@@ -47,7 +47,7 @@ These criteria are to be evaluated by the TSC based on the membership applicatio
 
 ## Membership Application
 
-Any eligible member may submit an application to the [TSC mailing list](https://lists.lfedge.org/g/openbao-tsc). This email should document evidence of meeting one or more of the above eligibility criteria.
+Any eligible member may submit an application to the [TSC mailing list](https://lists.openssf.org/g/openbao-tsc). This email should document evidence of meeting one or more of the above eligibility criteria.
 
 At the next TSC meeting and immediately via email, the TSC will consider the validity of the request and ask any necessary clarifying questions of the individual or corporation. It is encouraged the individual or corporation be present at the meeting, though in lieu, may answer questions via email.
 
@@ -67,7 +67,7 @@ While charter clause 2.g implies that TSC Chair appointments are indefinite barr
 
 Membership lasts for a period of 2 years from approval, or for founding TSC members, 2 years from the approval of the TSC Charter (June 13th, 2024). Members are subsequently eligible to re-apply indefinitely.
 
-A member may opt to terminate their membership at any time, by sending an email to the [TSC mailing list](https://lists.lfedge.org/g/openbao-tsc).
+A member may opt to terminate their membership at any time, by sending an email to the [TSC mailing list](https://lists.openssf.org/g/openbao-tsc).
 
 Under charter clause 8.a, removing a member may occur through 2/3rds vote of the existing TSC, subject to approval by OpenSSF.
 

@@ -2,7 +2,7 @@
 
 **Please note:** We take OpenBao's security and our users' trust very seriously.
 If you believe you have found a security issue in OpenBao, please responsibly
-disclose by contacting us at openbao-security@lists.lfedge.org.
+disclose by contacting us at openbao-security@lists.openssf.org.
 
 **First:** if you're unsure or afraid of _anything_, just ask or submit the
 issue or pull request anyways. You won't be yelled at for giving it your best

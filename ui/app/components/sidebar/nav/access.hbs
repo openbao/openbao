@@ -33,6 +33,9 @@
   {{#if (has-permission "access" routeParams=(array "namespaces" "groups" "entities"))}}
     <Nav.Title data-test-sidebar-nav-heading="Organization">Organization</Nav.Title>
   {{/if}}
+  {{#if (has-permission "access" routeParams="namespaces")}}
+    <Nav.Link @route="vault.cluster.access.namespaces" @text="Namespaces" data-test-sidebar-nav-link="Namespaces" />
+  {{/if}}
   {{#if (has-permission "access" routeParams="groups")}}
     <Nav.Link @route="vault.cluster.access.identity" @model="groups" @text="Groups" data-test-sidebar-nav-link="Groups" />
   {{/if}}

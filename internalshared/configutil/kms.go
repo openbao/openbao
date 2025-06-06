@@ -25,6 +25,7 @@ import (
 	"github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/kmip/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2"
+	statickms "github.com/openbao/go-kms-wrapping/wrappers/static/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -204,6 +205,9 @@ func configureWrapper(configKMS *KMS, infoKeys *[]string, info *map[string]strin
 	case wrapping.WrapperTypeKmip:
 		wrapper, kmsInfo, err = GetKmipKMSFunc(configKMS, opts...)
 
+	case wrapping.WrapperTypeStatic:
+		wrapper, kmsInfo, err = GetStaticKMSFunc(configKMS, opts...)
+
 	default:
 		return nil, fmt.Errorf("Unknown KMS type %q", configKMS.Type)
 	}
@@ -377,6 +381,25 @@ func GetKmipKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[st
 		if serverName := wrapperInfo.Metadata["server_name"]; serverName != "" {
 			info["KMIP Server Name"] = serverName
 		}
+	}
+	return wrapper, info, nil
+}
+
+func GetStaticKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
+	wrapper := statickms.NewWrapper()
+	wrapperInfo, err := wrapper.SetConfig(context.Background(), append(opts, wrapping.WithConfigMap(kms.Config))...)
+	if err != nil {
+		// If the error is any other than logical.KeyNotFoundError, return the error
+		if !errwrap.ContainsType(err, new(logical.KeyNotFoundError)) {
+			return nil, nil, err
+		}
+	}
+	info := make(map[string]string)
+	if wrapperInfo != nil {
+		if prev, ok := wrapperInfo.Metadata["previous_key_id"]; ok {
+			info["Static KMS Previous Key ID"] = prev
+		}
+		info["Static KMS Key ID"] = wrapperInfo.Metadata["current_key_id"]
 	}
 	return wrapper, info, nil
 }

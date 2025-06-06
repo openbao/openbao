@@ -109,7 +109,7 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/oklog/run v1.1.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
-	github.com/openbao/go-kms-wrapping/v2 v2.4.0
+	github.com/openbao/go-kms-wrapping/v2 v2.4.1-0.20250606024053-86fbd91248d1
 	github.com/openbao/go-kms-wrapping/wrappers/aead/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.3.0
@@ -118,6 +118,7 @@ require (
 	github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.0.0-20250321181437-1a1c5b0c79b1
 	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.3.0
+	github.com/openbao/go-kms-wrapping/wrappers/static/v2 v2.0.0-20250617164049-260a841b78c4
 	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.5.0
 	github.com/openbao/openbao-template v1.0.1
 	github.com/openbao/openbao/api/auth/approle/v2 v2.0.0

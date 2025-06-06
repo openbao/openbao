@@ -45,7 +45,7 @@ report_sizes: true
 nfpms:
   - vendor: OpenBao
     homepage: https://openbao.org
-    maintainer: OpenBao <openbao@lists.lfedge.org>
+    maintainer: OpenBao <openbao@lists.openssf.org>
     description: |
       OpenBao exists to provide a software solution to manage, store, and distribute
       sensitive data including secrets, certificates, and keys.

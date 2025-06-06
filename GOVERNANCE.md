@@ -2,7 +2,7 @@
 
 ## Background
 
-OpenBao's TSC was formed [in June 2024](https://wiki.lfedge.org/display/OH/2024-06-13+OpenBao+TSC+Meeting), initiating the startup period defined [in the charter, clause 2.b](https://openbao.org/assets/OpenBao-Technical-Charter-Final-2024-05-08.pdf). During the startup period, one of the requirements is to define a process for TSC membership, per charter clause 2.c. This document aims to define TSC membership roles and processes for the selection of members.
+OpenBao's TSC was formed [in June 2024](https://wiki.lfedge.org/display/OH/2024-06-13+OpenBao+TSC+Meeting), initiating the startup period defined [in the charter, clause 2.b](https://github.com/openbao/openbao/blob/main/CHARTER.md). During the startup period, one of the requirements is to define a process for TSC membership, per charter clause 2.c. This document aims to define TSC membership roles and processes for the selection of members.
 
 In May 2025, OpenBao moved from LF Edge [to the OpenSSF](https://github.com/ossf/tac/pull/461), becoming a sandbox project there.
 

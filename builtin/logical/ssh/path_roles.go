@@ -363,7 +363,7 @@ func pathRoles(b *backend) *framework.Path {
 				When supplied, this value specifies a signing algorithm for the key. Possible values:
 				ssh-rsa, rsa-sha2-256, rsa-sha2-512, default, or the empty string.
 				`,
-				AllowedValues: []interface{}{"", DefaultAlgorithmSigner, ssh.SigAlgoRSA, ssh.SigAlgoRSASHA2256, ssh.SigAlgoRSASHA2512},
+				AllowedValues: []interface{}{"", DefaultAlgorithmSigner, ssh.KeyAlgoRSA, ssh.KeyAlgoRSASHA256, ssh.KeyAlgoRSASHA512},
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name: "Signing Algorithm",
 				},
@@ -488,7 +488,7 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 		if ok {
 			algorithmSigner = algorithmSignerRaw.(string)
 			switch algorithmSigner {
-			case ssh.SigAlgoRSA, ssh.SigAlgoRSASHA2256, ssh.SigAlgoRSASHA2512:
+			case ssh.KeyAlgoRSA, ssh.KeyAlgoRSASHA256, ssh.KeyAlgoRSASHA512:
 			case "", DefaultAlgorithmSigner:
 				// This case is valid, and the sign operation will use the signer's
 				// default algorithm. Explicitly reset the value to the default value
@@ -657,7 +657,7 @@ func (b *backend) checkUpgrade(ctx context.Context, s logical.Storage, n string,
 			// Vault. By making it explicit, operators can see that this is
 			// the value and move it to a newer algorithm in the future.
 			if publicKey.Type() == ssh.KeyAlgoRSA && result.AlgorithmSigner == "" {
-				result.AlgorithmSigner = ssh.SigAlgoRSA
+				result.AlgorithmSigner = ssh.KeyAlgoRSA
 			}
 
 			result.Version = 2

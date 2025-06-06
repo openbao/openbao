@@ -9,7 +9,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
@@ -137,7 +136,7 @@ func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger
 	if l.TLSACMECARoot != "" {
 		caPool := x509.NewCertPool()
 
-		data, err := ioutil.ReadFile(l.TLSACMECARoot)
+		data, err := os.ReadFile(l.TLSACMECARoot)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read ACME CA file: %w", err)
 		}

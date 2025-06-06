@@ -822,7 +822,6 @@ func autoVerify(depth int, t *testing.T, p *Policy, input []byte, sig *SigningRe
 
 func Test_RSA_PSS(t *testing.T) {
 	t.Log("Testing RSA PSS")
-	mathrand.Seed(time.Now().UnixNano())
 
 	var userError errutil.UserError
 	ctx := context.Background()

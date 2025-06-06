@@ -5,7 +5,6 @@ package pki
 
 import (
 	"context"
-	"encoding/asn1"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -197,9 +196,9 @@ func TestBackend_CRL_AllKeyTypeSigAlgos(t *testing.T) {
 		crl := getParsedCrlFromBackend(t, b, s, "crl")
 		if strings.HasSuffix(tc.SigAlgo, "PSS") {
 			algo := crl.SignatureAlgorithm
-			pssOid := asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 10}
-			if !algo.Algorithm.Equal(pssOid) {
-				t.Fatalf("tc %v failed: expected sig-alg to be %v / got %v", index, pssOid, algo)
+			expectedAlgoName := strings.ReplaceAll(tc.SigAlgo, "With", "-")
+			if algo.String() != expectedAlgoName {
+				t.Fatalf("tc %v failed: expected sig-alg to be %v / got %v", index, expectedAlgoName, algo)
 			}
 		}
 	}
@@ -294,8 +293,8 @@ func crlEnableDisableTestForBackend(t *testing.T, b *backend, s logical.Storage,
 	}
 
 	test := func(numRevokedExpected int, expectedSerials ...string) {
-		certList := getParsedCrlFromBackend(t, b, s, "crl").TBSCertList
-		lenList := len(certList.RevokedCertificates)
+		certList := getParsedCrlFromBackend(t, b, s, "crl")
+		lenList := len(certList.RevokedCertificateEntries)
 		if lenList != numRevokedExpected {
 			t.Fatalf("expected %d revoked certificates, found %d", numRevokedExpected, lenList)
 		}
@@ -310,8 +309,8 @@ func crlEnableDisableTestForBackend(t *testing.T, b *backend, s logical.Storage,
 
 		// Since this test assumes a complete CRL was rebuilt, we can grab
 		// the delta CRL and ensure it is empty.
-		deltaList := getParsedCrlFromBackend(t, b, s, "crl/delta").TBSCertList
-		lenDeltaList := len(deltaList.RevokedCertificates)
+		deltaList := getParsedCrlFromBackend(t, b, s, "crl/delta")
+		lenDeltaList := len(deltaList.RevokedCertificateEntries)
 		if lenDeltaList != 0 {
 			t.Fatalf("expected zero revoked certificates on the delta CRL due to complete CRL rebuild, found %d", lenDeltaList)
 		}
@@ -368,12 +367,12 @@ func crlEnableDisableTestForBackend(t *testing.T, b *backend, s logical.Storage,
 	test(6)
 
 	// The rotate command should reset the update time of the CRL.
-	crlCreationTime1 := getParsedCrlFromBackend(t, b, s, "crl").TBSCertList.ThisUpdate
+	crlCreationTime1 := getParsedCrlFromBackend(t, b, s, "crl").ThisUpdate
 	time.Sleep(1 * time.Second)
 	_, err = CBRead(b, s, "crl/rotate")
 	require.NoError(t, err)
 
-	crlCreationTime2 := getParsedCrlFromBackend(t, b, s, "crl").TBSCertList.ThisUpdate
+	crlCreationTime2 := getParsedCrlFromBackend(t, b, s, "crl").ThisUpdate
 	require.NotEqual(t, crlCreationTime1, crlCreationTime2)
 }
 
@@ -796,13 +795,13 @@ func TestIssuerRevocation(t *testing.T) {
 
 	// Ensure the old cert isn't on its own CRL.
 	crl := getParsedCrlFromBackend(t, b, s, "issuer/root2/crl/der")
-	if requireSerialNumberInCRL(nil, crl.TBSCertList, revokedRootSerial) {
+	if requireSerialNumberInCRL(nil, crl, revokedRootSerial) {
 		t.Fatalf("the serial number %v should not be on its own CRL as self-CRL appearance should not occur", revokedRootSerial)
 	}
 
 	// Ensure the old cert isn't on the one's CRL.
 	crl = getParsedCrlFromBackend(t, b, s, "issuer/root/crl/der")
-	if requireSerialNumberInCRL(nil, crl.TBSCertList, revokedRootSerial) {
+	if requireSerialNumberInCRL(nil, crl, revokedRootSerial) {
 		t.Fatalf("the serial number %v should not be on %v's CRL as they're separate roots", revokedRootSerial, oldRootSerial)
 	}
 
@@ -877,9 +876,9 @@ func TestIssuerRevocation(t *testing.T) {
 	_, err = CBRead(b, s, "crl/rotate")
 	require.NoError(t, err)
 	crl = getParsedCrlFromBackend(t, b, s, "issuer/root/crl/der")
-	requireSerialNumberInCRL(t, crl.TBSCertList, intCertSerial)
+	requireSerialNumberInCRL(t, crl, intCertSerial)
 	crl = getParsedCrlFromBackend(t, b, s, "issuer/root/crl/delta/der")
-	if requireSerialNumberInCRL(nil, crl.TBSCertList, intCertSerial) {
+	if requireSerialNumberInCRL(nil, crl, intCertSerial) {
 		t.Fatal("expected intermediate serial NOT to appear on root's delta CRL, but did")
 	}
 
@@ -894,7 +893,7 @@ func TestIssuerRevocation(t *testing.T) {
 	_, err = CBRead(b, s, "crl/rotate")
 	require.NoError(t, err)
 	crl = getParsedCrlFromBackend(t, b, s, "issuer/int1/crl/der")
-	requireSerialNumberInCRL(t, crl.TBSCertList, issuedSerial)
+	requireSerialNumberInCRL(t, crl, issuedSerial)
 
 	// Ensure we can't fetch the intermediate's cert by serial any more.
 	resp, err = CBRead(b, s, "cert/"+intCertSerial)
@@ -1004,7 +1003,7 @@ func TestAutoRebuild(t *testing.T) {
 	require.NoError(t, err)
 
 	defaultCrlPath := "/v1/pki/crl"
-	crl := getParsedCrlAtPath(t, client, defaultCrlPath).TBSCertList
+	crl := getParsedCrlAtPath(t, client, defaultCrlPath)
 	lastCRLNumber := getCRLNumber(t, crl)
 	lastCRLExpiry := crl.NextUpdate
 	requireSerialNumberInCRL(t, crl, leafSerial)
@@ -1148,10 +1147,10 @@ func TestAutoRebuild(t *testing.T) {
 			haveUpdatedDeltaCRL = true
 
 			// Ensure it has what we want.
-			deltaCrl := getParsedCrlAtPath(t, client, "/v1/pki/crl/delta").TBSCertList
+			deltaCrl := getParsedCrlAtPath(t, client, "/v1/pki/crl/delta")
 			if !requireSerialNumberInCRL(nil, deltaCrl, newLeafSerial) {
 				// Check if it is on the main CRL because its already regenerated.
-				mainCRL := getParsedCrlAtPath(t, client, defaultCrlPath).TBSCertList
+				mainCRL := getParsedCrlAtPath(t, client, defaultCrlPath)
 				requireSerialNumberInCRL(t, mainCRL, newLeafSerial)
 			} else {
 				referenceCrlNum := getCrlReferenceFromDelta(t, deltaCrl)
@@ -1550,7 +1549,7 @@ func TestRevokeExpiredCert(t *testing.T) {
 
 	// Check that CRL does NOT contain any certificates
 	crl := getParsedCrlFromBackend(t, b, s, "crl")
-	require.True(t, len(crl.TBSCertList.RevokedCertificates) == 0)
+	require.True(t, len(crl.RevokedCertificateEntries) == 0)
 
 	// Enable expired certification revocation
 	_, err = CBWrite(b, s, "config/crl", map[string]interface{}{
@@ -1580,5 +1579,5 @@ func TestRevokeExpiredCert(t *testing.T) {
 
 	// Ensure that the certificate is in the CRL
 	crl = getParsedCrlFromBackend(t, b, s, "crl")
-	requireSerialNumberInCRL(t, crl.TBSCertList, newLeafSerial)
+	requireSerialNumberInCRL(t, crl, newLeafSerial)
 }

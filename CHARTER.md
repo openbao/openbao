@@ -105,11 +105,11 @@ This Charter sets forth the responsibilities and procedures for technical contri
 
       * i. All new inbound code contributions to the Project must be made using Mozilla Public License, Version 2.0 (the “Project License”).
 
-      * ii. All new inbound code contributions must also be accompanied by a Developer Certificate of Origin (http://developercertificate.org) sign-off in the source code system that is submitted through a TSC-approved contribution process which will bind the authorized contributor and, if not self-employed, their employer to the applicable license;
+      * ii. All new inbound code contributions must also be accompanied by a Developer Certificate of Origin (https://developercertificate.org) sign-off in the source code system that is submitted through a TSC-approved contribution process which will bind the authorized contributor and, if not self-employed, their employer to the applicable license;
 
       * iii. All outbound code will be made available under the Project License.
 
-      * iv. Documentation will be received and made available by the Project under the Creative Commons Attribution 4.0 International License (available at http://creativecommons.org/licenses/by/4.0/).
+      * iv. Documentation will be received and made available by the Project under the Creative Commons Attribution 4.0 International License (available at https://creativecommons.org/licenses/by/4.0/).
 
       * v. The Project may seek to integrate and contribute back to other open source projects (“Upstream Projects”). In such cases, the Project will conform to all license requirements of the Upstream Projects, including dependencies, leveraged by the Project. Upstream Project code contributions not stored within the Project’s main code repository will comply with the contribution process and license terms for the applicable Upstream Project.
 

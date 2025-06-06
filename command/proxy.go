@@ -682,7 +682,7 @@ func (c *ProxyCommand) Run(args []string) int {
 	// Server configuration output
 	padding := 24
 	sort.Strings(infoKeys)
-	caser := cases.Title(language.English)
+	caser := cases.Title(language.English, cases.NoLower)
 	c.UI.Output("==> OpenBao Proxy configuration:\n")
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(

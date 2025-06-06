@@ -14,8 +14,8 @@ import (
 
 	"github.com/armon/go-metrics"
 	"github.com/openbao/openbao/helper/metricsutil"
+	"google.golang.org/protobuf/proto"
 
-	proto "github.com/golang/protobuf/proto"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"

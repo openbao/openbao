@@ -134,7 +134,7 @@ func TestCluster_ListenForRequests(t *testing.T) {
 			switch {
 			case connState.Version != tls.VersionTLS12 && connState.Version != tls.VersionTLS13:
 				t.Fatal("version mismatch")
-			case connState.NegotiatedProtocol != consts.RequestForwardingALPN || !connState.NegotiatedProtocolIsMutual:
+			case connState.NegotiatedProtocol != consts.RequestForwardingALPN:
 				t.Fatal("bad protocol negotiation")
 			}
 			t.Logf("testing %s successful", clnAddr)

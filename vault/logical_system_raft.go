@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/mitchellh/mapstructure"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/namespace"
@@ -23,6 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"golang.org/x/crypto/hkdf"
+	"google.golang.org/protobuf/proto"
 )
 
 // Previously server_id was of unbounded size (capped by max_request_size);

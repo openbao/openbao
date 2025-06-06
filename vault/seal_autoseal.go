@@ -16,8 +16,8 @@ import (
 	"time"
 
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	"google.golang.org/protobuf/proto"
 
-	proto "github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/physical"

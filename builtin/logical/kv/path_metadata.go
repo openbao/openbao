@@ -12,8 +12,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/mapstructure"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -288,11 +289,10 @@ func (b *versionedKVBackend) metadataResponseData(meta *KeyMetadata) (map[string
 
 	var deleteVersionAfter time.Duration
 	if meta.GetDeleteVersionAfter() != nil {
-		var err error
-		deleteVersionAfter, err = ptypes.Duration(meta.GetDeleteVersionAfter())
-		if err != nil {
+		if err := meta.GetDeleteVersionAfter().CheckValid(); err != nil {
 			return nil, err
 		}
+		deleteVersionAfter = meta.GetDeleteVersionAfter().AsDuration()
 	}
 
 	return map[string]interface{}{
@@ -493,7 +493,7 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 			return nil, err
 		}
 		if meta == nil {
-			now := ptypes.TimestampNow()
+			now := timestamppb.Now()
 			meta = &KeyMetadata{
 				Key:         key,
 				Versions:    map[uint64]*VersionMetadata{},
@@ -509,7 +509,7 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 			meta.CasRequired = casRaw.(bool)
 		}
 		if dvaOk {
-			meta.DeleteVersionAfter = ptypes.DurationProto(time.Duration(deleteVersionAfterRaw.(int)) * time.Second)
+			meta.DeleteVersionAfter = durationpb.New(time.Duration(deleteVersionAfterRaw.(int)) * time.Second)
 		}
 		if cmOk {
 			meta.CustomMetadata = customMetadataMap
@@ -543,7 +543,7 @@ func metadataPatchPreprocessor() framework.PatchPreprocessorFunc {
 		for _, k := range patchableKeys {
 			if v, ok := input[k]; ok {
 				if k == "delete_version_after" {
-					patchData[k] = ptypes.DurationProto(time.Duration(v.(int)) * time.Second)
+					patchData[k] = durationpb.New(time.Duration(v.(int)) * time.Second)
 				} else {
 					patchData[k] = v
 				}
@@ -723,6 +723,6 @@ const (
 	metadataHelpSyn  = `Allows interaction with key metadata and settings in the KV store.`
 	metadataHelpDesc = `
 This endpoint allows for reading, information about a key in the key-value
-store, writing key settings, and permanently deleting a key and all versions. 
+store, writing key settings, and permanently deleting a key and all versions.
 `
 )

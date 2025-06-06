@@ -691,14 +691,14 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	wg.Add(1)
 	var seenLogs uberAtomic.Bool
 	logConsumer := func(s string) {
-		if seenLogs.CAS(false, true) {
+		if seenLogs.CompareAndSwap(false, true) {
 			wg.Done()
 		}
 		n.Logger.Trace(s)
 	}
 	logStdout := &LogConsumerWriter{logConsumer}
 	logStderr := &LogConsumerWriter{func(s string) {
-		if seenLogs.CAS(false, true) {
+		if seenLogs.CompareAndSwap(false, true) {
 			wg.Done()
 		}
 		testcluster.JSONLogNoTimestamp(n.Logger, s)

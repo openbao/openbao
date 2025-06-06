@@ -10,9 +10,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"hash"
 
-	"github.com/hashicorp/errwrap"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -82,7 +82,7 @@ func NewSalt(ctx context.Context, view logical.Storage, config *Config) (*Salt, 
 	if view != nil {
 		raw, err = view.Get(ctx, config.Location)
 		if err != nil {
-			return nil, errwrap.Wrapf("failed to read salt: {{err}}", err)
+			return nil, fmt.Errorf("failed to read salt: %w", err)
 		}
 	}
 
@@ -95,7 +95,7 @@ func NewSalt(ctx context.Context, view logical.Storage, config *Config) (*Salt, 
 	if s.salt == "" {
 		s.salt, err = uuid.GenerateUUID()
 		if err != nil {
-			return nil, errwrap.Wrapf("failed to generate uuid: {{err}}", err)
+			return nil, fmt.Errorf("failed to generate uuid: %w", err)
 		}
 		s.generated = true
 		if view != nil {
@@ -104,7 +104,7 @@ func NewSalt(ctx context.Context, view logical.Storage, config *Config) (*Salt, 
 				Value: []byte(s.salt),
 			}
 			if err := view.Put(ctx, raw); err != nil {
-				return nil, errwrap.Wrapf("failed to persist salt: {{err}}", err)
+				return nil, fmt.Errorf("failed to persist salt: %w", err)
 			}
 		}
 	}

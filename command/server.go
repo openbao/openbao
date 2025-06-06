@@ -62,6 +62,8 @@ import (
 	"github.com/sasha-s/go-deadlock"
 	"go.uber.org/atomic"
 	"golang.org/x/net/http/httpproxy"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -607,11 +609,13 @@ func (c *ServerCommand) runRecoveryMode() int {
 	sort.Strings(infoKeys)
 	c.UI.Output("==> OpenBao server configuration:\n")
 
+	titleCaser := cases.Title(language.English, cases.NoLower)
+
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
 			"%s%s: %s",
 			strings.Repeat(" ", padding-len(k)),
-			strings.Title(k),
+			titleCaser.String(k),
 			info[k]))
 	}
 
@@ -1303,10 +1307,12 @@ func (c *ServerCommand) Run(args []string) int {
 	sort.Strings(infoKeys)
 	c.UI.Output("==> OpenBao server configuration:\n")
 
+	titleCaser := cases.Title(language.English, cases.NoLower)
+
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
 			"%24s: %s",
-			strings.Title(k),
+			titleCaser.String(k),
 			info[k]))
 	}
 
@@ -1869,11 +1875,13 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	sort.Strings(infoKeys)
 	c.UI.Output("==> OpenBao server configuration:\n")
 
+	titleCaser := cases.Title(language.English, cases.NoLower)
+
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
 			"%s%s: %s",
 			strings.Repeat(" ", padding-len(k)),
-			strings.Title(k),
+			titleCaser.String(k),
 			info[k]))
 	}
 

@@ -95,7 +95,7 @@ func (d *Runner) Start(ctx context.Context) (*types.ContainerJSON, error) {
 			return nil, fmt.Errorf("error preparing copy from %q -> %q: %v", from, to, err)
 		}
 		defer content.Close()
-		err = d.dockerAPI.CopyToContainer(ctx, containerObj.ID, dstDir, content, types.CopyToContainerOptions{})
+		err = d.dockerAPI.CopyToContainer(ctx, containerObj.ID, dstDir, content, container.CopyToContainerOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("error copying from %q -> %q: %v", from, to, err)
 		}

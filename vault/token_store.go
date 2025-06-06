@@ -19,7 +19,6 @@ import (
 
 	"github.com/armon/go-metrics"
 	"github.com/armon/go-radix"
-	"github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -39,6 +38,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	"github.com/openbao/openbao/vault/tokens"
+	"google.golang.org/protobuf/proto"
 )
 
 const (

@@ -15,6 +15,9 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -36,7 +39,7 @@ var MainSection = trace.WithAttributes(attribute.Key("diagnose").String("main-se
 
 var (
 	diagnoseSession = struct{}{}
-	noopTracer      = trace.NewNoopTracerProvider().Tracer("vault-diagnose")
+	noopTracer      = noop.NewTracerProvider().Tracer("vault-diagnose")
 )
 
 type testFunction func(context.Context) error
@@ -245,8 +248,9 @@ func CapitalizeFirstLetter(msg string) string {
 	if len(words) == 0 {
 		return ""
 	}
+	titleCaser := cases.Title(language.English, cases.NoLower)
 	if len(words) > 1 {
-		return strings.Title(words[0]) + " " + strings.Join(words[1:], " ")
+		return titleCaser.String(words[0]) + " " + strings.Join(words[1:], " ")
 	}
-	return strings.Title(words[0])
+	return titleCaser.String(words[0])
 }

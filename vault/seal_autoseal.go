@@ -295,6 +295,12 @@ func (d *autoSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
 		return nil, fmt.Errorf("failed to read %q seal configuration: %w", sealType, err)
 	}
 
+	// If the seal configuration is missing, we are not initialized
+	if entry == nil {
+		d.logger.Info("seal configuration missing, not initialized")
+		return nil, nil
+	}
+
 	conf := &SealConfig{}
 	if err := json.Unmarshal(entry.Value, conf); err != nil {
 		d.logger.Error("failed to decode seal configuration", "seal_type", sealType, "error", err)

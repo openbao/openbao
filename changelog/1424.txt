@@ -1,0 +1,3 @@
+```release-note:change
+vault/seal: removal of deprecated migration path of an old (encrypted) recovery config location
+```

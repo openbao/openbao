@@ -277,7 +277,7 @@ func (d *autoSeal) RecoveryType() string {
 	return RecoveryTypeShamir
 }
 
-// RecoveryConfig returns the recovery config on recoverySealConfigPlaintextPath.
+// RecoveryConfig returns the recovery config on recoverySealConfigPath.
 func (d *autoSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
 	if d.recoveryConfig.Load().(*SealConfig) != nil {
 		return d.recoveryConfig.Load().(*SealConfig).Clone(), nil
@@ -289,40 +289,10 @@ func (d *autoSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
 
 	sealType := "recovery"
 
-	var entry *physical.Entry
-	var err error
-	entry, err = d.core.physical.Get(ctx, recoverySealConfigPlaintextPath)
+	entry, err := d.core.physical.Get(ctx, recoverySealConfigPath)
 	if err != nil {
 		d.logger.Error("failed to read seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("failed to read %q seal configuration: %w", sealType, err)
-	}
-
-	if entry == nil {
-		if d.core.Sealed() {
-			d.logger.Info("seal configuration missing, but cannot check old path as core is sealed", "seal_type", sealType)
-			return nil, nil
-		}
-
-		// Check the old recovery seal config path so an upgraded standby will
-		// return the correct seal config
-		be, err := d.core.barrier.Get(ctx, recoverySealConfigPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read old recovery seal configuration: %w", err)
-		}
-
-		// If the seal configuration is missing, then we are not initialized.
-		if be == nil {
-			if d.logger.IsInfo() {
-				d.logger.Info("seal configuration missing, not initialized", "seal_type", sealType)
-			}
-			return nil, nil
-		}
-
-		// Reconstruct the physical entry
-		entry = &physical.Entry{
-			Key:   be.Key,
-			Value: be.Value,
-		}
 	}
 
 	conf := &SealConfig{}
@@ -353,11 +323,6 @@ func (d *autoSeal) SetRecoveryConfig(ctx context.Context, conf *SealConfig) erro
 		return err
 	}
 
-	// Perform migration if applicable
-	if err := d.migrateRecoveryConfig(ctx); err != nil {
-		return err
-	}
-
 	if conf == nil {
 		d.recoveryConfig.Store((*SealConfig)(nil))
 		return nil
@@ -373,7 +338,7 @@ func (d *autoSeal) SetRecoveryConfig(ctx context.Context, conf *SealConfig) erro
 
 	// Store the seal configuration directly in the physical storage
 	pe := &physical.Entry{
-		Key:   recoverySealConfigPlaintextPath,
+		Key:   recoverySealConfigPath,
 		Value: buf,
 	}
 
@@ -499,43 +464,6 @@ func (d *autoSeal) upgradeRecoveryKey(ctx context.Context) error {
 			return fmt.Errorf("failed to save upgraded recovery key: %w", err)
 		}
 	}
-	return nil
-}
-
-// migrateRecoveryConfig is a helper func to migrate the recovery config to
-// live outside the barrier. This is called from SetRecoveryConfig which is
-// always called with the stateLock.
-func (d *autoSeal) migrateRecoveryConfig(ctx context.Context) error {
-	// Get config from the old recoverySealConfigPath path
-	be, err := d.core.barrier.Get(ctx, recoverySealConfigPath)
-	if err != nil {
-		return fmt.Errorf("failed to read old recovery seal configuration during migration: %w", err)
-	}
-
-	// If this entry is nil, then skip migration
-	if be == nil {
-		return nil
-	}
-
-	// Only log if we are performing the migration
-	d.logger.Debug("migrating recovery seal configuration")
-	defer d.logger.Debug("done migrating recovery seal configuration")
-
-	// Perform migration
-	pe := &physical.Entry{
-		Key:   recoverySealConfigPlaintextPath,
-		Value: be.Value,
-	}
-
-	if err := d.core.physical.Put(ctx, pe); err != nil {
-		return fmt.Errorf("failed to write recovery seal configuration during migration: %w", err)
-	}
-
-	// Perform deletion of the old entry
-	if err := d.core.barrier.Delete(ctx, recoverySealConfigPath); err != nil {
-		return fmt.Errorf("failed to delete old recovery seal configuration during migration: %w", err)
-	}
-
 	return nil
 }
 

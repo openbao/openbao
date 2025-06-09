@@ -2588,7 +2588,7 @@ func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfi
 	}
 
 	var recoveryConf *SealConfig
-	pe, err = c.physical.Get(ctx, recoverySealConfigPlaintextPath)
+	pe, err = c.physical.Get(ctx, recoverySealConfigPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch seal configuration at migration check time: %w", err)
 	}
@@ -2740,7 +2740,7 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 		if err := c.seal.SetRecoveryConfig(ctx, rc); err != nil {
 			return fmt.Errorf("error storing recovery config after migration: %w", err)
 		}
-	} else if err := c.physical.Delete(ctx, recoverySealConfigPlaintextPath); err != nil {
+	} else if err := c.physical.Delete(ctx, recoverySealConfigPath); err != nil {
 		return fmt.Errorf("failed to delete old recovery seal configuration during migration: %w", err)
 	}
 

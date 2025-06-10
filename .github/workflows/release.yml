@@ -218,6 +218,10 @@ jobs:
           # TODO: remove version pinning when Goreleaser 2.8 is released
           version: v2.5.1
 
+      - name: Install C compiler for arm64 CGO cross-compilation
+        if: matrix.release_os == 'hsm'
+        run: sudo apt install -y gcc-aarch64-linux-gnu
+
       - name: "GoReleaser: Release"
         if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
         run: |

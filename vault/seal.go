@@ -32,15 +32,9 @@ const (
 	// parts must be used to reconstruct the unseal key.
 	barrierSealConfigPath = "core/seal-config"
 
-	// recoverySealConfigPath is the path to the recovery key seal
-	// configuration. It lives inside the barrier.
-	// DEPRECATED: Use recoverySealConfigPlaintextPath instead.
-	recoverySealConfigPath = "core/recovery-seal-config"
-
-	// recoverySealConfigPlaintextPath is the path to the recovery key seal
-	// configuration. This is stored in plaintext so that we can perform
-	// auto-unseal.
-	recoverySealConfigPlaintextPath = "core/recovery-config"
+	// recoverySealConfigPath is the path to the recovery key seal configuration.
+	// This is stored in plaintext so that we can perform auto-unseal.
+	recoverySealConfigPath = "core/recovery-config"
 
 	// recoveryKeyPath is the path to the recovery key
 	recoveryKeyPath = "core/recovery-key"

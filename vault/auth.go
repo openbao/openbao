@@ -1156,21 +1156,30 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 
 	if c.auth != nil {
 		authTable := c.auth.shallowClone()
-		for _, e := range authTable.Entries {
-			backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.namespace), credentialRoutePrefix+e.Path)
-			if backend != nil {
-				backend.Cleanup(ctx)
-			}
-		}
+		c.cleanupMountBackends(ctx, authTable, credentialRoutePrefix, false, func(e *MountEntry) bool { return true })
 	}
 
 	c.auth = nil
-
 	if c.tokenStore != nil {
 		c.tokenStore.teardown()
 		c.tokenStore = nil
 	}
+	return nil
+}
 
+// UnloadNamespaceCredentialMounts is used before we seal the namespace to reset the mounts to
+// their unloaded state, calling Cleanup if defined
+func (c *Core) UnloadNamespaceCredentialMounts(ctx context.Context, ns *namespace.Namespace, predicate func(*MountEntry) bool) error {
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
+
+	if c.auth != nil {
+		authTable := c.auth.shallowClone()
+		c.cleanupMountBackends(ctx, authTable, credentialRoutePrefix, false, predicate)
+	}
+	if c.logger.IsInfo() {
+		c.logger.Info(fmt.Sprintf("successfully unmounted namespace %q mounts from auth table", ns.Path))
+	}
 	return nil
 }
 

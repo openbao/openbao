@@ -62,7 +62,6 @@ func (c *Core) setupSealManager() {
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("core/seal-config", nil)
-
 }
 
 // teardownSealManager is used to remove seal manager
@@ -129,14 +128,28 @@ func (sm *SealManager) StorageAccessForPath(path string) StorageAccess {
 }
 
 // SealNamespace seals the barriers of the given namespace and all of its children.
-func (sm *SealManager) SealNamespace(ns *namespace.Namespace) error {
+func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespace) error {
 	var errs error
 	sm.barrierByNamespace.WalkPrefix(ns.Path, func(p string, v any) bool {
 		s := v.(SecurityBarrier)
 		if s.Sealed() {
 			return false
 		}
-		err := s.Seal()
+		descendantNamespace, err := sm.core.namespaceStore.getNamespaceByPathLocked(ctx, namespace.Canonicalize(p), false)
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
+		if descendantNamespace == nil {
+			errs = errors.Join(errs, fmt.Errorf("namespace not found for path: %s", p))
+		}
+		sm.core.namespaceStore.clearNamespacePolicies(ctx, descendantNamespace, false)
+		if err := sm.core.namespaceStore.UnloadNamespaceCredentials(ctx, descendantNamespace); err != nil {
+			errs = errors.Join(errs, err)
+		}
+		if err := sm.core.namespaceStore.UnloadNamespaceMounts(ctx, descendantNamespace); err != nil {
+			errs = errors.Join(errs, err)
+		}
+		err = s.Seal()
 		if err != nil {
 			errs = errors.Join(errs, err)
 		}

@@ -104,7 +104,7 @@ func TestDefaultSeal_IsNSSealed(t *testing.T) {
 	err := sm.SetSeal(ctx, sealConfig, ns, true)
 	require.NoError(t, err)
 
-	err = sm.SealNamespace(ns)
+	err = sm.SealNamespace(ctx, ns)
 	require.NoError(t, err)
 	require.True(t, c.IsNSSealed(ns))
 }

@@ -143,9 +143,11 @@ func (i *IdentityStore) AddNamespaceView(core *Core, ns *namespace.Namespace, vi
 		return fmt.Errorf("failed to create group packer: %w", err)
 	}
 
-	nsView.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
-	if err != nil {
-		return err
+	if ns.ID == namespace.RootNamespaceID || !core.unsafeCrossNamespaceIdentity {
+		nsView.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
+		if err != nil {
+			return err
+		}
 	}
 
 	i.views.Store(ns.UUID, nsView)
@@ -154,6 +156,35 @@ func (i *IdentityStore) AddNamespaceView(core *Core, ns *namespace.Namespace, vi
 }
 
 func (i *IdentityStore) RemoveNamespaceView(ns *namespace.Namespace) error {
+	if ns.ID == namespace.RootNamespaceID {
+		return fmt.Errorf("refusing to remove root namespace from identity store")
+	}
+
+	view, ok := i.views.Load(ns.UUID)
+	if ok && view.(*identityStoreNamespaceView).db == nil {
+		rootView, ok := i.views.Load(namespace.RootNamespaceUUID)
+		if !ok {
+			return fmt.Errorf("failed to get root namespace db")
+		}
+
+		// Clean up all memdb entries associated with the namespace.
+		if err := func() error {
+			db := rootView.(*identityStoreNamespaceView).db
+			txn := db.Txn(true)
+			defer txn.Commit()
+
+			for _, table := range []string{entityAliasesTable, entitiesTable, groupsTable, groupAliasesTable, oidcClientsTable} {
+				if _, err := txn.DeleteAll(table, "namespace_id", ns.ID); err != nil {
+					return fmt.Errorf("failed to clean up %v: %w", table, err)
+				}
+			}
+
+			return nil
+		}(); err != nil {
+			return fmt.Errorf("failed to cleanup identity store: %w", err)
+		}
+	}
+
 	i.views.Delete(ns.UUID)
 
 	if err := i.oidcCache.Flush(ns); err != nil {
@@ -231,6 +262,16 @@ func (i *IdentityStore) db(ctx context.Context) *memdb.MemDB {
 	if err != nil {
 		i.logger.Error("failed to get db", "err", err)
 		return nil
+	}
+
+	if view.db == nil {
+		rootView, ok := i.views.Load(namespace.RootNamespaceUUID)
+		if !ok || rootView == nil {
+			i.logger.Error("failed to get root namespace db")
+			return nil
+		}
+
+		return rootView.(*identityStoreNamespaceView).db
 	}
 
 	return view.db

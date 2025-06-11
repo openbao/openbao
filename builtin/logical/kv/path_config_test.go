@@ -14,9 +14,10 @@ func TestVersionedKV_Config(t *testing.T) {
 
 	d := 5 * time.Minute
 	data := map[string]interface{}{
-		"max_versions":         4,
-		"cas_required":         true,
-		"delete_version_after": d.String(),
+		"max_versions":          4,
+		"cas_required":          true,
+		"metadata_cas_required": true,
+		"delete_version_after":  d.String(),
 	}
 
 	req := &logical.Request{
@@ -47,6 +48,10 @@ func TestVersionedKV_Config(t *testing.T) {
 	}
 
 	if resp.Data["cas_required"] != true {
+		t.Fatalf("Bad response: %#v", resp)
+	}
+
+	if resp.Data["metadata_cas_required"] != true {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 

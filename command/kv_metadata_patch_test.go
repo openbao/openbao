@@ -239,8 +239,31 @@ func TestKvMetadataPatchCommand_Flags(t *testing.T) {
 				t.Fatalf("metadata read failed, err: %#v", err)
 			}
 
+			if tc.code == 0 { // Only check version increment on successful operations
+				// Verify metadata version incremented
+				if initialVersion, ok := initialMetadata.Data["current_metadata_version"].(json.Number); ok {
+					if patchedVersion, ok := patchedMetadata.Data["current_metadata_version"].(json.Number); ok {
+						initial, _ := initialVersion.Int64()
+						patched, _ := patchedVersion.Int64()
+						if patched != initial+1 {
+							t.Fatalf("expected current_metadata_version to increment from %d to %d, got %d",
+								initial, initial+1, patched)
+						}
+					}
+				}
+
+				// Verify updated_time changed
+				if patchedMetadata.Data["updated_time"] == initialMetadata.Data["updated_time"] {
+					t.Fatal("expected updated_time to change after patch")
+				}
+			}
+
 			for k, v := range patchedMetadata.Data {
 				var expectedVal interface{}
+
+				if k == "current_metadata_version" || k == "updated_time" {
+					continue
+				}
 
 				if inputVal, ok := tc.expectedUpdates[k]; ok {
 					expectedVal = inputVal

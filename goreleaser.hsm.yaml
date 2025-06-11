@@ -20,10 +20,14 @@ builds:
       - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.BuildDate={{ .Date }} -X github.com/openbao/openbao/version.VersionMetadata=hsm
     env:
       - CGO_ENABLED=1
+      - >-
+        {{- if eq .Arch "amd64"}}CC=x86_64-linux-gnu-gcc{{- end}}
+        {{- if eq .Arch "arm64"}}CC=aarch64-linux-gnu-gcc{{- end}}
     goos:
       - linux
     goarch:
       - amd64
+      - arm64
     ignore:
       - goos: darwin
       - goos: dragonfly
@@ -35,8 +39,6 @@ builds:
       - goos: windows
       - goos: linux
         goarch: arm
-      - goos: linux
-        goarch: arm64
       - goos: linux
         goarch: ppc64le
       - goos: linux
@@ -113,6 +115,79 @@ checksum:
   disable: false
 
 dockers:
+  - id: hsm-alpine-amd64
+    use: buildx
+    goos: linux
+    goarch: amd64
+    skip_push: false
+    ids:
+      - builds-hsm
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{.ProjectName}}"
+      - "--build-arg=REVISION={{.FullCommit}}"
+      - "--build-arg=VERSION={{.Version}}"
+      - "--build-arg=EXTRA_PACKAGES=gcompat"
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=release={{ .Version }}"
+      - "--label=revision={{ .FullCommit }}"
+      - "--label=version={{ .Version }}"
+      - "--target=default"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+    extra_files:
+      - ./LICENSE
+      - ./.release/docker/docker-entrypoint.sh
+      - ./CHANGELOG.md
+  - id: hsm-alpine-arm64
+    use: buildx
+    goos: linux
+    goarch: arm64
+    goarm: "8"
+    skip_push: false
+    ids:
+      - builds-hsm
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--build-arg=EXTRA_PACKAGES=gcompat"
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=release={{ .Version }}"
+      - "--label=revision={{ .FullCommit }}"
+      - "--label=version={{ .Version }}"
+      - "--target=default"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
+    extra_files:
+      - ./LICENSE
+      - ./.release/docker/docker-entrypoint.sh
+      - ./CHANGELOG.md
   - id: hsm-ubi-amd64
     use: buildx
     goos: linux
@@ -144,6 +219,42 @@ dockers:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
       - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
       - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+    extra_files:
+      - ./LICENSE
+      - ./.release/docker/ubi-docker-entrypoint.sh
+      - ./CHANGELOG.md
+  - id: hsm-ubi-arm64
+    use: buildx
+    goos: linux
+    goarch: arm64
+    goarm: "8"
+    skip_push: false
+    ids:
+      - builds-hsm
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=release={{ .Version }}"
+      - "--label=revision={{ .FullCommit }}"
+      - "--label=version={{ .Version }}"
+      - "--target=ubi"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
     extra_files:
       - ./LICENSE
       - ./.release/docker/ubi-docker-entrypoint.sh

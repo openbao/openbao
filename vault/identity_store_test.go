@@ -18,11 +18,14 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
 	uuid "github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/audit"
+	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/storagepacker"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -1578,22 +1581,15 @@ func setupNamespaces(t *testing.T, c *Core, ctx context.Context) (*namespace.Nam
 	return ns1, ns2
 }
 
-// Test cross-namespace isolation with comprehensive matrix of lookup attempts
-func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
-	// Register auth backend
-	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
-	require.NoError(t, err)
-	defer ClearTestCredentialBackends()
-
-	// Setup core and namespaces
-	c, _, _ := TestCoreUnsealed(t)
+func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *namespace.Namespace, ns1Ctx context.Context, ns2 *namespace.Namespace, ns2Ctx context.Context, rootAccessor string, ns1Accessor string, ns2Accessor string, commonUser string, rootAlias *logical.Alias, ns1Alias *logical.Alias, ns2Alias *logical.Alias, rootEntity *identity.Entity, ns1Entity *identity.Entity, ns2Entity *identity.Entity, groupName string, rootGroup *identity.Group, ns1Group *identity.Group, ns2Group *identity.Group) {
+	var err error
 	is := c.identityStore
-	rootCtx := namespace.RootContext(context.Background())
-	ns1, ns2 := setupNamespaces(t, c, rootCtx)
+	rootCtx = namespace.RootContext(context.Background())
+	ns1, ns2 = setupNamespaces(t, c, rootCtx)
 
 	// Create namespace contexts
-	ns1Ctx := namespace.ContextWithNamespace(context.Background(), ns1)
-	ns2Ctx := namespace.ContextWithNamespace(context.Background(), ns2)
+	ns1Ctx = namespace.ContextWithNamespace(context.Background(), ns1)
+	ns2Ctx = namespace.ContextWithNamespace(context.Background(), ns2)
 
 	// Enable auth methods in all namespaces
 	rootMount := &MountEntry{
@@ -1604,7 +1600,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 	}
 	err = c.enableCredential(rootCtx, rootMount)
 	require.NoError(t, err)
-	rootAccessor := rootMount.Accessor
+	rootAccessor = rootMount.Accessor
 
 	ns1Mount := &MountEntry{
 		Table:       credentialTableType,
@@ -1614,7 +1610,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 	}
 	err = c.enableCredential(ns1Ctx, ns1Mount)
 	require.NoError(t, err)
-	ns1Accessor := ns1Mount.Accessor
+	ns1Accessor = ns1Mount.Accessor
 
 	ns2Mount := &MountEntry{
 		Table:       credentialTableType,
@@ -1624,42 +1620,88 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 	}
 	err = c.enableCredential(ns2Ctx, ns2Mount)
 	require.NoError(t, err)
-	ns2Accessor := ns2Mount.Accessor
+	ns2Accessor = ns2Mount.Accessor
 
 	// Create identical aliases in all three namespaces
-	commonUser := "isolation-user"
+	commonUser = "isolation-user"
 
-	rootAlias := &logical.Alias{
+	rootAlias = &logical.Alias{
 		Name:          commonUser,
 		MountAccessor: rootAccessor,
 		MountType:     "userpass",
 	}
 
-	ns1Alias := &logical.Alias{
+	ns1Alias = &logical.Alias{
 		Name:          commonUser,
 		MountAccessor: ns1Accessor,
 		MountType:     "userpass",
 	}
 
-	ns2Alias := &logical.Alias{
+	ns2Alias = &logical.Alias{
 		Name:          commonUser,
 		MountAccessor: ns2Accessor,
 		MountType:     "userpass",
 	}
 
-	rootEntity, _, err := is.CreateOrFetchEntity(rootCtx, rootAlias)
+	rootEntity, _, err = is.CreateOrFetchEntity(rootCtx, rootAlias)
 	require.NoError(t, err)
 
-	ns1Entity, _, err := is.CreateOrFetchEntity(ns1Ctx, ns1Alias)
+	ns1Entity, _, err = is.CreateOrFetchEntity(ns1Ctx, ns1Alias)
 	require.NoError(t, err)
 
-	ns2Entity, _, err := is.CreateOrFetchEntity(ns2Ctx, ns2Alias)
+	ns2Entity, _, err = is.CreateOrFetchEntity(ns2Ctx, ns2Alias)
 	require.NoError(t, err)
 
 	// Verify all three entities are different
 	require.NotEqual(t, rootEntity.ID, ns1Entity.ID)
 	require.NotEqual(t, rootEntity.ID, ns2Entity.ID)
 	require.NotEqual(t, ns1Entity.ID, ns2Entity.ID)
+
+	// Create group aliases.
+	groupName = "isolation-group"
+
+	rootGroup = &identity.Group{
+		Name: groupName,
+	}
+
+	ns1Group = &identity.Group{
+		Name: groupName,
+	}
+
+	ns2Group = &identity.Group{
+		Name: groupName,
+	}
+
+	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(ns2Ctx, ns2Group, nil, nil)
+	require.NoError(t, err)
+
+	require.NotEqual(t, rootGroup.ID, ns1Group.ID)
+	require.NotEqual(t, rootGroup.ID, ns2Group.ID)
+	require.NotEqual(t, ns1Group.ID, ns2Group.ID)
+
+	t.Logf("setupIdentityTestEnv:\n\tns1: accessor=%v / uuid=%v\n\tns2: accessor=%v / uuid=%v\n\tuserpass accessors root=%v / ns1=%v / ns2=%v\n\tentity alias: name=%v / root=%v / ns1=%v / ns2=%v\n\tentity: root=%v / ns1=%v / ns2=%v\n\tgroup: name=%v / root=%v / ns1=%v / ns2=%v", ns1.ID, ns1.UUID, ns2.ID, ns2.UUID, rootAccessor, ns1Accessor, ns2Accessor, commonUser, rootAlias.ID, ns1Alias.ID, ns2Alias.ID, rootEntity.ID, ns1Entity.ID, ns2Entity.ID, groupName, rootGroup.ID, ns1Group.ID, ns2Group.ID)
+
+	return
+}
+
+// Test cross-namespace isolation with comprehensive matrix of lookup attempts
+func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
+	// Register auth backend
+	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	require.NoError(t, err)
+	defer ClearTestCredentialBackends()
+
+	// Setup core and namespaces
+	c, _, _ := TestCoreUnsealed(t)
+	is := c.identityStore
+
+	rootCtx, ns1, ns1Ctx, ns2, ns2Ctx, rootAccessor, ns1Accessor, ns2Accessor, commonUser, _, _, _, rootEntity, ns1Entity, ns2Entity, _, _, _, _ := setupIdentityTestEnv(t, c)
 
 	// Comprehensive matrix of cross-namespace lookups
 	crossLookups := []struct {
@@ -1958,4 +2000,89 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestIdentityStore_StrictGroupIsloation(t *testing.T) {
+	// Register auth backend
+	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	require.NoError(t, err)
+	defer ClearTestCredentialBackends()
+
+	// Setup core and namespaces
+	c, _, _ := TestCoreUnsealed(t)
+	is := c.identityStore
+
+	rootCtx, _, ns1Ctx, _, _, _, _, _, _, _, _, _, _, _, _, _, rootGroup, ns1Group, ns2Group := setupIdentityTestEnv(t, c)
+
+	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns1Group.ID})
+	require.Error(t, err)
+
+	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns2Group.ID})
+	require.Error(t, err)
+
+	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{rootGroup.ID})
+	require.Error(t, err)
+
+	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{ns2Group.ID})
+	require.Error(t, err)
+
+	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
+	require.NoError(t, err)
+}
+
+func TestIdentityStore_UnsafeCrossNamespace(t *testing.T) {
+	// Register auth backend
+	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	require.NoError(t, err)
+	defer ClearTestCredentialBackends()
+
+	// Setup core and namespaces
+	c := TestCoreWithConfig(t, &CoreConfig{
+		Seal:            nil,
+		EnableUI:        false,
+		EnableRaw:       false,
+		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
+		AuditBackends: map[string]audit.Factory{
+			"file": auditFile.Factory,
+		},
+		UnsafeCrossNamespaceIdentity: true,
+	})
+
+	c, _, _ = testCoreUnsealed(t, c)
+	is := c.identityStore
+
+	rootCtx, _, ns1Ctx, _, _, _, _, _, _, _, _, _, _, _, _, _, rootGroup, ns1Group, ns2Group := setupIdentityTestEnv(t, c)
+
+	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns1Group.ID})
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns2Group.ID})
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{rootGroup.ID})
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{ns2Group.ID})
+	require.NoError(t, err)
+
+	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
+	require.NoError(t, err)
 }

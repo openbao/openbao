@@ -5,6 +5,7 @@ package command
 
 import (
 	"context"
+	"crypto/fips140"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -593,6 +594,12 @@ func (c *ServerCommand) runRecoveryMode() int {
 	if verInfo.Revision != "" {
 		info["version sha"] = strings.Trim(verInfo.Revision, "'")
 		infoKeys = append(infoKeys, "version sha")
+	}
+
+	infoKeys = append(infoKeys, "fips140")
+	info["fips140"] = "disabled"
+	if fips140.Enabled() {
+		info["fips140"] = "enabled"
 	}
 
 	infoKeys = append(infoKeys, "recovery mode")
@@ -1291,6 +1298,12 @@ func (c *ServerCommand) Run(args []string) int {
 		info["cgo"] = "enabled"
 	}
 
+	infoKeys = append(infoKeys, "fips140")
+	info["fips140"] = "disabled"
+	if fips140.Enabled() {
+		info["fips140"] = "enabled"
+	}
+
 	infoKeys = append(infoKeys, "recovery mode")
 	info["recovery mode"] = "false"
 
@@ -1858,6 +1871,12 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	info["cgo"] = "disabled"
 	if version.CgoEnabled {
 		info["cgo"] = "enabled"
+	}
+
+	infoKeys = append(infoKeys, "fips140")
+	info["fips140"] = "disabled"
+	if fips140.Enabled() {
+		info["fips140"] = "enabled"
 	}
 
 	infoKeys = append(infoKeys, "go version")

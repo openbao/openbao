@@ -19,6 +19,7 @@ builds:
       - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.BuildDate={{ .Date }}
     env:
       - CGO_ENABLED=0
+      - GOFIPS140=v1.0.0
     goos:
       - linux
     goarch:

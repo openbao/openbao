@@ -153,6 +153,9 @@ type ExpirationManager struct {
 
 	jobManager      *fairshare.JobManager
 	revokeRetryBase time.Duration
+	leaseView       func(*namespace.Namespace) BarrierView
+	tokenIndexView  func(*namespace.Namespace) BarrierView
+	transactional   bool
 }
 
 type ExpireLeaseStrategy func(context.Context, *ExpirationManager, string, *namespace.Namespace)
@@ -363,6 +366,26 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 		jobManager:      jobManager,
 		revokeRetryBase: c.expirationRevokeRetryBase,
 	}
+
+	exp.leaseView = func(ns *namespace.Namespace) BarrierView {
+		if ns.ID == namespace.RootNamespaceID {
+			return exp.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
+		}
+		return exp.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+leaseViewPrefix)
+	}
+
+	exp.tokenIndexView = func(ns *namespace.Namespace) BarrierView {
+		if ns.ID == namespace.RootNamespaceID {
+			return exp.core.systemBarrierView.SubView(expirationSubPath + tokenViewPrefix)
+		}
+		return exp.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+tokenViewPrefix)
+	}
+
+	// determine whether this instance has transaction-aware storage
+	if _, ok := exp.leaseView(namespace.RootNamespace).(*transactionalBarrierView); ok {
+		exp.transactional = true
+	}
+
 	exp.expireFunc.Store(&e)
 	if exp.revokeRetryBase == 0 {
 		exp.revokeRetryBase = revokeRetryBase
@@ -446,20 +469,6 @@ func (c *Core) stopExpiration() error {
 		c.expiration = nil
 	}
 	return nil
-}
-
-func (m *ExpirationManager) leaseView(ns *namespace.Namespace) BarrierView {
-	if ns.ID == namespace.RootNamespaceID {
-		return m.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
-	}
-	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+leaseViewPrefix)
-}
-
-func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) BarrierView {
-	if ns.ID == namespace.RootNamespaceID {
-		return m.core.systemBarrierView.SubView(expirationSubPath + tokenViewPrefix)
-	}
-	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+tokenViewPrefix)
 }
 
 func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, int, error) {
@@ -924,30 +933,86 @@ func (m *ExpirationManager) LazyRevoke(ctx context.Context, leaseID string) erro
 	return m.lazyRevokeInternal(ctx, leaseID)
 }
 
+// WithTransaction is used to run a function with a transaction for the lease and token index views.
+func (m *ExpirationManager) WithTransaction(
+	ctx context.Context,
+	fn func(context.Context, *ExpirationManager) error) error {
+
+	if m.transactional {
+		originalLeaseView := m.leaseView
+		originalStorageView := m.tokenIndexView
+		defer func() {
+			m.leaseView = originalLeaseView
+			m.tokenIndexView = originalStorageView
+		}()
+
+		var lvTx *barrierViewTransaction
+		var tivTx *barrierViewTransaction
+
+		m.leaseView = func(ns *namespace.Namespace) BarrierView {
+			if lvTx != nil {
+				return lvTx
+			}
+			bv := originalLeaseView(ns)
+			if bvtx, ok := bv.(*transactionalBarrierView); ok {
+				lvTx, err := bvtx.BeginTx(ctx)
+				if err != nil {
+					// If we fail to begin a transaction, log and return the original view
+					m.logger.Error("failed to begin transaction for lease view", "error", err)
+					return bv
+				}
+				return lvTx.(BarrierView)
+			}
+			return bv
+		}
+
+		m.tokenIndexView = func(ns *namespace.Namespace) BarrierView {
+			if tivTx != nil {
+				return tivTx
+			}
+			bv := originalStorageView(ns)
+			if bvtx, ok := bv.(*transactionalBarrierView); ok {
+				tivTx, err := bvtx.BeginTx(ctx)
+				if err != nil {
+					// If we fail to begin a transaction, log and return the original view
+					m.logger.Error("failed to begin transaction for token index view", "error", err)
+					return bv
+				}
+				return tivTx.(BarrierView)
+			}
+			return bv
+		}
+	}
+
+	return fn(ctx, m)
+}
+
 // Mark a lease as expiring immediately
 func (m *ExpirationManager) lazyRevokeInternal(ctx context.Context, leaseID string) error {
 	leaseLock := m.lockForLeaseID(leaseID)
 	leaseLock.Lock()
 	defer leaseLock.Unlock()
 
-	// Load the entry
-	le, err := m.loadEntry(ctx, leaseID)
-	if err != nil {
-		return err
-	}
+	err := m.WithTransaction(ctx, func(ctx context.Context, mtx *ExpirationManager) error {
+		// Load the entry
+		le, err := mtx.loadEntry(ctx, leaseID)
+		if err != nil {
+			return err
+		}
 
-	// If there is no entry, nothing to revoke
-	if le == nil {
+		// If there is no entry, nothing to revoke
+		if le == nil {
+			return nil
+		}
+
+		le.ExpireTime = time.Now()
+		if err := mtx.persistEntry(ctx, le); err != nil {
+			return err
+		}
+		mtx.updatePending(le)
 		return nil
-	}
-
-	le.ExpireTime = time.Now()
-	if err := m.persistEntry(ctx, le); err != nil {
-		return err
-	}
-	m.updatePending(le)
-
-	return nil
+	})
+	return err
 }
 
 // should be run on a schedule. something like once a day, maybe once a week

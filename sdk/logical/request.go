@@ -57,6 +57,7 @@ const (
 	NoClientToken ClientTokenSource = iota
 	ClientTokenFromVaultHeader
 	ClientTokenFromAuthzHeader
+	ClientTokenFromInlineAuth
 )
 
 // Request is a struct that stores the parameters and context of a request
@@ -212,6 +213,15 @@ type Request struct {
 
 	// When a request has been forwarded, contains information of the host the request was forwarded 'from'
 	ForwardedFrom string `json:"forwarded_from,omitempty"`
+
+	// Whether we are an inline authentication request; in this case, we
+	// should not persist the generated token to storage.
+	IsInlineAuth bool `json:"is_inline_auth,omitempty" sentinel:""`
+
+	// Results from inline authentication to bypass storage-based token
+	// resolution. Only valid when HasInlineAuth=true.
+	HasInlineAuth bool  `json:"has_inline_auth,omitempty" sentinel:""`
+	InlineAuth    *Auth `json:"-" sentinel:""`
 }
 
 // Clone returns a deep copy of the request by using copystructure

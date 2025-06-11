@@ -1890,7 +1890,7 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 			TTL: time.Hour,
 		},
 	}
-	err = exp.RegisterAuth(ctx, te, auth, "")
+	err = exp.RegisterAuth(ctx, te, auth, "", true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1956,7 +1956,7 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 			TTL: time.Hour,
 		},
 	}
-	err = exp.RegisterAuth(ctx, te, auth, "")
+	err = exp.RegisterAuth(ctx, te, auth, "", true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -4353,7 +4353,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 		Policies:    []string{"default", "foo"},
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	if err := core.tokenStore.create(ctx, te); err != nil {
+	if err := core.tokenStore.create(ctx, te, true); err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("token id: %s", te.ID)
@@ -4365,7 +4365,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 		ClientToken: te.ID,
 		Accessor:    te.Accessor,
 		Orphan:      true,
-	}, ""); err != nil {
+	}, "", true); err != nil {
 		t.Fatal(err)
 	}
 

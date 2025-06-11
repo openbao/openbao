@@ -80,6 +80,17 @@ const sidebars: SidebarsConfig = {
                 "concepts/duration-format",
                 "concepts/user-lockout",
             ],
+            Guides: [
+                {
+                    Unsealing: [
+                        {
+                            "PKCS#11": [
+                                "guides/unseal/pkcs11/securosys"
+                            ]
+                        }
+                    ]
+                }
+            ],
             Configuration: [
                 "configuration/index",
                 {

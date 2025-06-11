@@ -38,14 +38,23 @@ func (c *Core) loadIdentityStoreArtifacts(ctx context.Context) error {
 	}
 
 	loadFunc := func(context.Context) error {
-		if err := c.identityStore.loadEntities(ctx); err != nil {
-			return err
+		allNs, err := c.ListNamespaces(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list namespaces: %w", err)
 		}
-		if err := c.identityStore.loadGroups(ctx); err != nil {
-			return err
-		}
-		if err := c.identityStore.loadOIDCClients(ctx); err != nil {
-			return err
+
+		for _, ns := range allNs {
+			nsCtx := namespace.ContextWithNamespace(ctx, ns)
+
+			if err := c.identityStore.loadEntities(nsCtx); err != nil {
+				return err
+			}
+			if err := c.identityStore.loadGroups(nsCtx); err != nil {
+				return err
+			}
+			if err := c.identityStore.loadOIDCClients(nsCtx); err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -86,7 +95,12 @@ func (i *IdentityStore) sanitizeName(name string) string {
 }
 
 func (i *IdentityStore) loadGroups(ctx context.Context) error {
-	i.logger.Debug("identity loading groups")
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	i.logger.Debug("identity loading groups", "namespace", ns.Path)
 	existing, err := i.groupPacker(ctx).View().List(ctx, groupBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for groups: %w", err)
@@ -183,7 +197,12 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 
 func (i *IdentityStore) loadEntities(ctx context.Context) error {
 	// Accumulate existing entities
-	i.logger.Debug("loading entities")
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	i.logger.Debug("loading entities", "namespace", ns.Path)
 	existing, err := i.entityPacker(ctx).View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for entities: %w", err)

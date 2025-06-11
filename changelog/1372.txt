@@ -1,0 +1,3 @@
+```release-note:improvement
+secrets/kv: Add CAS (Compare-And-Swap) support for metadata operations in KV v2 secrets engine. Metadata updates now support versioning via `metadata_cas` parameter and `metadata_cas_required` configuration option to prevent concurrent modification conflicts.
+```

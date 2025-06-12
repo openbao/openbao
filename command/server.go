@@ -2701,11 +2701,11 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 					if c.flagDevTLS {
 						if runtime.GOOS == "windows" {
 							c.UI.Warn("PowerShell:")
-							c.UI.Warn(fmt.Sprintf("    $env:BAO_CACERT=\"%s/vault-ca.pem\"", certDir))
+							c.UI.Warn(fmt.Sprintf("    $env:BAO_CACERT=\"%s/openbao-ca.pem\"", certDir))
 							c.UI.Warn("cmd.exe:")
-							c.UI.Warn(fmt.Sprintf("    set BAO_CACERT=%s/vault-ca.pem", certDir))
+							c.UI.Warn(fmt.Sprintf("    set BAO_CACERT=%s/openbao-ca.pem", certDir))
 						} else {
-							c.UI.Warn(fmt.Sprintf("    $ export BAO_CACERT='%s/vault-ca.pem'", certDir))
+							c.UI.Warn(fmt.Sprintf("    $ export BAO_CACERT='%s/openbao-ca.pem'", certDir))
 						}
 						c.UI.Warn("")
 					}

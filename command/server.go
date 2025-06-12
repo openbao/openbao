@@ -899,15 +899,15 @@ func configureDevTLS(c *ServerCommand) (func(), *server.Config, string, error) {
 		config, err = server.DevTLSConfig(devStorageType, certDir)
 
 		f = func() {
-			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.VaultDevCAFilename)); err != nil {
+			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.BaoDevCAFilename)); err != nil {
 				c.UI.Error(err.Error())
 			}
 
-			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.VaultDevCertFilename)); err != nil {
+			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.BaoDevCertFilename)); err != nil {
 				c.UI.Error(err.Error())
 			}
 
-			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.VaultDevKeyFilename)); err != nil {
+			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.BaoDevKeyFilename)); err != nil {
 				c.UI.Error(err.Error())
 			}
 
@@ -1420,7 +1420,7 @@ func (c *ServerCommand) Run(args []string) int {
 			},
 		}
 		if c.flagDevTLS {
-			clusterJson.CACertPath = fmt.Sprintf("%s/%s", certDir, server.VaultDevCAFilename)
+			clusterJson.CACertPath = fmt.Sprintf("%s/%s", certDir, server.BaoDevCAFilename)
 		}
 
 		if c.flagDevClusterJson != "" && !c.flagDevThreeNode {

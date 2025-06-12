@@ -899,15 +899,15 @@ func configureDevTLS(c *ServerCommand) (func(), *server.Config, string, error) {
 		config, err = server.DevTLSConfig(devStorageType, certDir)
 
 		f = func() {
-			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.BaoDevCAFilename)); err != nil {
+			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.VaultDevCAFilename)); err != nil {
 				c.UI.Error(err.Error())
 			}
 
-			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.BaoDevCertFilename)); err != nil {
+			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.VaultDevCertFilename)); err != nil {
 				c.UI.Error(err.Error())
 			}
 
-			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.BaoDevKeyFilename)); err != nil {
+			if err := os.Remove(fmt.Sprintf("%s/%s", certDir, server.VaultDevKeyFilename)); err != nil {
 				c.UI.Error(err.Error())
 			}
 
@@ -1420,7 +1420,7 @@ func (c *ServerCommand) Run(args []string) int {
 			},
 		}
 		if c.flagDevTLS {
-			clusterJson.CACertPath = fmt.Sprintf("%s/%s", certDir, server.BaoDevCAFilename)
+			clusterJson.CACertPath = fmt.Sprintf("%s/%s", certDir, server.VaultDevCAFilename)
 		}
 
 		if c.flagDevClusterJson != "" && !c.flagDevThreeNode {
@@ -2701,11 +2701,11 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 					if c.flagDevTLS {
 						if runtime.GOOS == "windows" {
 							c.UI.Warn("PowerShell:")
-							c.UI.Warn(fmt.Sprintf("    $env:BAO_CACERT=\"%s/openbao-ca.pem\"", certDir))
+							c.UI.Warn(fmt.Sprintf("    $env:BAO_CACERT=\"%s/vault-ca.pem\"", certDir))
 							c.UI.Warn("cmd.exe:")
-							c.UI.Warn(fmt.Sprintf("    set BAO_CACERT=%s/openbao-ca.pem", certDir))
+							c.UI.Warn(fmt.Sprintf("    set BAO_CACERT=%s/vault-ca.pem", certDir))
 						} else {
-							c.UI.Warn(fmt.Sprintf("    $ export BAO_CACERT='%s/openbao-ca.pem'", certDir))
+							c.UI.Warn(fmt.Sprintf("    $ export BAO_CACERT='%s/vault-ca.pem'", certDir))
 						}
 						c.UI.Warn("")
 					}

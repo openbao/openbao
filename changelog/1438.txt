@@ -1,3 +1,0 @@
-```release-note:change
-Refactors openbao's dev server cert naming.
-```

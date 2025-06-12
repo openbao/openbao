@@ -1,0 +1,189 @@
+---
+sidebar_label: Inline authentication
+description: |-
+  An OpenBao RFC for allowing write-less authentication sent inline with a
+  normal operation if the main request does not create a lease.
+---
+
+# Support inline authentication for non-leased operations
+
+## Summary
+
+Inline authentication allows direct requests to OpenBao to perform actions
+which are authenticated by including login information with the action
+request. This authentication occurs prior to the main request body being
+processed, with the caveat that the generated token is not stored. This allows
+for better scalability to future standby nodes which support read-request
+processing, by avoiding write operations that occur in the course of regular
+login requests.
+
+## Problem Statement
+
+Authentication is one of the few non-scalable requests in OpenBao; while
+[theoretical work to allow per-namespace storage and active leader
+designation](https://openbao.org/blog/vision-for-namespaces/) would allow
+scaling, this still requires all login requests be processed by the active
+leader. Certain access patterns, such as listing or reading from K/V or
+issuing certificates without storing, are otherwise broadly horizontally
+scalable. Furthermore, sometimes this authentication is discarded; such as
+when fetching secrets from a CI/CD pipeline, each pipeline run will start
+with a fresh token as usually authentication is tied to some parent JWT and
+no authentication information or secrets are persisted across runs, usually
+due to lack of persistent, secure storage and reproducibility.
+
+Scaling login requests thus becomes important depending on the workload
+patterns.
+
+Using the standard authentication flow incurs three storage write operations:
+
+Two to the token store:
+
+- `sys/token/id/{id}`
+- `sys/token/accessor/{accessor}`
+
+and one to the expiration manager:
+
+- `sys/expire/id/auth/{mount_uuid}/login/{id}`
+
+As leadership changes in a cluster, the standby nodes read these entries
+to check for expirations of tokens and thus incur storage pressure on
+leadership changes. Switching to inline, writeless tokens will reduce this
+storage pressure significantly, depending on workload patterns.
+
+This also helps integration for developers: rather than having to manage a
+specific OpenBao identity or token, the authentication source can instead
+be directly used on many requests and workflows. Confusion, such as expressed
+by a few users on Matrix about authentication, can be avoided; an auth method
+can be configured and "tokens" can be ignored in favor of inline
+authentication.
+
+We suggest calling the existing, persistent auth flow **standard**
+authentication and the new flow **inline** authentication.
+
+## User-facing Description
+
+Inline authentication requires the user be able to modify headers on the
+request; no other modification to the request body is necessary. The
+`X-Vault-Inline-Auth-Path` header indicates that inline authentication is
+to be performed; one or more headers beginning with the prefix
+`X-Vault-Inline-Auth-Parameter-` specify parameters. These are URL-safe,
+without padding, Base64 encoded JSON encoded maps of the form:
+
+```
+{
+    "key": "<name of key>",
+    "value": <value of key
+}
+```
+
+An optional header, `X-Vault-Inline-Auth-Operation`, allows controlling
+the operation type; this defaults to `update` by default.
+
+These headers are collected and form the basis of a new request:
+
+```
+[update or value of X-Vault-Inline-Auth-Operation] /auth/<value of X-Vault-Inline-Auth-Path>`
+{
+    ... <key field of X-Vault-Inline-Auth-Parameter- >: <value field of X-Vault-Inline-Auth-Parameter-> ...
+}
+```
+
+In the event the request generates a lease when inline authentication is used,
+it is immediately revoked and an error returned.
+
+The generated token is not returned to the user as it would not be valid on
+subsequent requests.
+
+## Technical Description
+
+This hooks into `core.switchedLockHandleRequest(...)` called from
+`core.HandleRequest(...)` and thus has fairly broad support. Before executing
+the given request, we check for inline authentication in
+`core.handleInlineAuth(...)`, supplementing the original request with the
+result of authentication. Authentication is performed by also calling
+`core.handleCancelableRequest(...)` (the same method the main request is
+subsequently handled by), resulting in audit logs for both the authentication
+and the main request. Because the main request is modified to have
+authentication, audit logs correctly point to the inline authentication as if
+it occurred just prior to the request.
+
+Various storage entries in the token store and expiration manager are created
+in memory but not written. These are attached to the response from the inline
+authentication, to be attached to the inbound request. As this inline
+authentication response is not returned to the caller, it remains private.
+Coupled with the fact that it is not persisted to storage, even if this token
+were to leak somehow, it would not be useful outside of this immediate request
+context.
+
+### Integration in Ecosystem
+
+Other projects in the ecosystem, such as OpenBao Agent, and k8s secrets operator
+will need to be updated to support this. Each auth method will need to be
+checked for support. This does not need to occur at the same time as the main
+implementation but should be saved as future work.
+
+Note that OpenBao Auto-Authing Proxy may not be able to function with this
+change; it will need to gracefully handle leases and will be likely used with
+many requests so the benefits are minimal.
+
+## Rationale and Alternatives
+
+Improving the efficacy of future horizontal scalability is important; this
+change helps with that. This improves overall performance as well, if inline
+authentication is used more broadly by reducing the total number of storage
+operations made by OpenBao.
+
+One alternative would be for applications to use longer-lived authentication;
+in many workloads, this is not possible.
+
+## Downsides
+
+The complexity of this change is rather small (~300LOC without tests).
+However, it does introduce a few new code paths as expected by a change of
+this nature.
+
+## Security Implications
+
+Authentication will still be performed; this is equivalent to a three-request
+operation:
+
+ 1. Authenticate to OpenBao.
+ 2. Issue actual request.
+ 3. Revoke token.
+
+However, the application does not see the token ever so this change helps to
+limit the scope of exposure. Instead, the root secret is directly passed to
+OpenBao for authentication on each request.
+
+Importantly, because we incur only a single inbound request, we count only
+once in the quota system. This should largely be fine: requests sent in the
+authentication headers are limited to unauthenticated requests as we'll deny
+requests with both inline auth and explicit tokens. At most, this would allow
+a 2x request amplification against unauthenticated endpoints, but the benefits
+of not storing tokens on standard requests will greatly improve performance
+with broad adoption.
+
+## User/Developer Experience
+
+This change is backwards compatible with previous API versions, including to
+HashiCorp's Vault API client. As long as the operator can modify each
+request's headers or authentication values are sufficiently static, this
+should work with third-party clients, especially those that expect to talk
+to Agent for transparent authentication.
+
+## Unresolved Questions
+
+Not clear is if header-size limiting become an issue for certain request
+types. This will likely only be understood in the context of understanding
+of middleware between OpenBao and the client. It is certainly conceivable that
+certain authentication formats will require large individual parameters (like
+large JWTs) and certain middleware implementations will constrain this beyond
+a useful value.
+
+## Related Issues
+
+- https://gitlab.com/gitlab-org/gitlab/-/issues/540889
+
+## Proof of Concept
+
+https://github.com/cipherboy/openbao/pull/new/inline-authentication

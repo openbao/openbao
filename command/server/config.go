@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	VaultDevCAFilename   = "vault-ca.pem"
-	VaultDevCertFilename = "vault-cert.pem"
-	VaultDevKeyFilename  = "vault-key.pem"
+	BaoDevCAFilename   = "openbao-ca.pem"
+	BaoDevCertFilename = "openbao-cert.pem"
+	BaoDevKeyFilename  = "openbao-key.pem"
 )
 
 var entConfigValidate = func(_ *Config, _ string) []configutil.ConfigError {
@@ -176,15 +176,15 @@ func DevTLSConfig(storageType, certDir string) (*Config, error) {
 		return nil, err
 	}
 
-	if err := os.WriteFile(fmt.Sprintf("%s/%s", certDir, VaultDevCAFilename), []byte(ca.PEM), 0o444); err != nil {
+	if err := os.WriteFile(fmt.Sprintf("%s/%s", certDir, BaoDevCAFilename), []byte(ca.PEM), 0o444); err != nil {
 		return nil, err
 	}
 
-	if err := os.WriteFile(fmt.Sprintf("%s/%s", certDir, VaultDevCertFilename), []byte(cert), 0o400); err != nil {
+	if err := os.WriteFile(fmt.Sprintf("%s/%s", certDir, BaoDevCertFilename), []byte(cert), 0o400); err != nil {
 		return nil, err
 	}
 
-	if err := os.WriteFile(fmt.Sprintf("%s/%s", certDir, VaultDevKeyFilename), []byte(key), 0o400); err != nil {
+	if err := os.WriteFile(fmt.Sprintf("%s/%s", certDir, BaoDevKeyFilename), []byte(key), 0o400); err != nil {
 		return nil, err
 	}
 	return parseDevTLSConfig(storageType, certDir)
@@ -194,8 +194,8 @@ func parseDevTLSConfig(storageType, certDir string) (*Config, error) {
 	hclStr := `
 listener "tcp" {
 	address = "[::]:8200"
-	tls_cert_file = "%s/vault-cert.pem"
-	tls_key_file = "%s/vault-key.pem"
+	tls_cert_file = "%s/openbao-cert.pem"
+	tls_key_file = "%s/openbao-key.pem"
 	proxy_protocol_behavior = "allow_authorized"
 	proxy_protocol_authorized_addrs = "[::]:8200"
 }

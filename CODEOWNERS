@@ -3,11 +3,17 @@
 # Everything
 * @openbao/openbao-org-maintainers
 
+# Anyone can modify changelog entries
+changelog/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers @openbao/openbao-auth-jwt-committers @openbao/openbao-k8s-committers
+
 # Core team ownership
 api/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 audit/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 builtin/logical/kv/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 command/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+.go-version @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+go.mod @openbao/openbao-org-maintainers @openbao/openbao-core-committers
+go.sum @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 helper/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 http/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 internalshared/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers

@@ -509,6 +509,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/cel-jwt",
                 "rfcs/filtering-list",
                 "rfcs/static-auto-unseal",
+                "rfcs/inline-auth",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

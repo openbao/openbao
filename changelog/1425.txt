@@ -1,0 +1,3 @@
+```release-note:feature
+core/seal: Add static key unseal mechanism to allow auto-unseal in environments with explicit trust chaining.
+```

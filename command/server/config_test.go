@@ -104,8 +104,8 @@ func Test_parseDevTLSConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg, err := parseDevTLSConfig("file", tt.certDirectory)
 			require.NoError(t, err)
-			require.Equal(t, fmt.Sprintf("%s/%s", tt.certDirectory, BaoDevCertFilename), cfg.Listeners[0].TLSCertFile)
-			require.Equal(t, fmt.Sprintf("%s/%s", tt.certDirectory, BaoDevKeyFilename), cfg.Listeners[0].TLSKeyFile)
+			require.Equal(t, fmt.Sprintf("%s/%s", tt.certDirectory, VaultDevCertFilename), cfg.Listeners[0].TLSCertFile)
+			require.Equal(t, fmt.Sprintf("%s/%s", tt.certDirectory, VaultDevKeyFilename), cfg.Listeners[0].TLSKeyFile)
 		})
 	}
 }

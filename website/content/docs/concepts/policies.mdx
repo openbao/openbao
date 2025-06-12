@@ -658,6 +658,7 @@ path "secret/foo" {
 ```
 
 ##### Limiting pagination
+
 The `pagination_limit` parameter allows policy authors to control the value of
 `limit` on paginated list and scan endpoints. In conjunction with setting
 `required_parameters=["limit"]` on the ACL policy, pagination becomes fully
@@ -670,6 +671,47 @@ conforming to the [Paginated Lists RFC](/docs/rfcs/paginated-lists/). This
 allows the API to safely translate the value `limit=max` to a numerical value,
 either `limit=0` if no value was set or to the actual limit set by the policy
 author.
+
+##### Filtering list or scan results
+
+By granting `list` or `scan` capabilities on a path, all results are returned
+from the plugin, including entries which correlate to paths the token cannot
+access. To filter these results, restricting them to only visible entries, use
+the `list_scan_response_keys_filter_path` parameter. This parameter takes a
+path containing a `{{ .key }}` template for which the line item is
+substituted. When this key is an entry (without a trailing `/`), the path is
+checked for `read` capability; when the key is a folder (with a trailing `/`),
+this path is checked for `list` capability. The path of the `list` or `scan`
+request is available via the `{{ .path }}` member. This path supports the
+[templating](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2/helper/template#StringTemplate)
+helpers.
+
+For example, restrict results in a KVv2 mount, based on whether the token
+can read the metadata:
+
+```
+path "test/metadata/*" {
+    capabilities = ["list", "scan"]
+    list_scan_response_keys_filter_path = "{{ .path }}{{ .key }}"
+}
+```
+
+or on the ability to read the data:
+
+```
+path "test/metadata/*" {
+    capabilities = ["list", "scan"]
+    list_scan_response_keys_filter_path = "{{ .path | replace \"test/metadata/\" \"test/data/\" }}{{ .key }}"
+}
+```
+
+:::warning
+
+We currently do not support this capability when policy evaluation for
+individual entries requires additional parameters; in this case, the list
+result may be completely empty.
+
+:::
 
 ### Required response wrapping TTLs
 

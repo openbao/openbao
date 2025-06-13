@@ -506,6 +506,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/acl-paginated-lists",
                 "rfcs/ssh-ca-multi-issuer",
                 "rfcs/cel-best-practices",
+                "rfcs/cel-pki",
                 "rfcs/cel-jwt",
                 "rfcs/filtering-list",
                 "rfcs/static-auto-unseal",

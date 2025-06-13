@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
@@ -153,10 +154,7 @@ func (c *Core) GenerateRootInit(otp, pgpKey string, strategy GenerateRootStrateg
 	if c.Sealed() && !c.recoveryMode {
 		return consts.ErrSealed
 	}
-	barrierSealed, err := c.barrier.Sealed()
-	if err != nil {
-		return errors.New("unable to check barrier seal status")
-	}
+	barrierSealed := c.barrier.Sealed()
 	if !barrierSealed && c.recoveryMode {
 		return errors.New("attempt to generate recovery operation token when already unsealed")
 	}
@@ -221,7 +219,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 			return nil, err
 		}
 	} else {
-		config, err = c.seal.BarrierConfig(ctx)
+		config, err = c.seal.BarrierConfig(ctx, namespace.RootNamespace)
 		if err != nil {
 			return nil, err
 		}
@@ -239,10 +237,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, consts.ErrSealed
 	}
 
-	barrierSealed, err := c.barrier.Sealed()
-	if err != nil {
-		return nil, errors.New("unable to check barrier seal status")
-	}
+	barrierSealed := c.barrier.Sealed()
 	if !barrierSealed && c.recoveryMode {
 		return nil, errors.New("attempt to generate recovery operation token when already unsealed")
 	}

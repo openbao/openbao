@@ -2095,7 +2095,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 			}
 		`, name),
 	}
-	err = i.tokenStorer.CreateToken(ctx, accessToken)
+	err = i.tokenStorer.CreateToken(ctx, accessToken, true)
 	if err != nil {
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}

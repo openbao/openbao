@@ -55,3 +55,57 @@ However, any existing token remain valid for the original grant period unless
 they are explicitly revoked within OpenBao. Operators should set appropriate
 [token TTLs](/docs/concepts/tokens#the-general-case) when using external
 authN methods.
+
+## Authentication Flows
+
+There are two primary flows client applications use to talk to OpenBao.
+
+### Standard Authentication
+
+In this flow, client applications first make calls to specific login
+endpoints, specific to the desired auth engine. These operations return an
+auth token which are subsequently passed in the `X-Vault-Token` header on
+following authenticated requests. This token has an expiration and may be
+renewable. Any leases created by the subsequent authenticated requests are
+associated with this token and are usually revoked when the token expires or
+is revoked.
+
+### Inline Authentication
+
+In contrast to [standard authentication](#standard-authentication), inline
+authentication is sent with the main, authenticated request. No ahead-of-time
+token acquisition occurs; an ephemeral token is created but not persisted to
+storage so authenticated operations which incur leases will not work and will
+result in an error (with any lease created being immediately revoked). This
+token will not be returned to the client application.
+
+To use, specify the following headers:
+
+ - `X-Vault-Inline-Auth-Path`, the path to authenticate against; required.
+ - `X-Vault-Inline-Auth-Operation`, the operation to use; optional,
+   defaults to `update`.
+ - `X-Vault-Inline-Auth-Namespace`, the namespace to authenticate against;
+   optional, defaults to the `X-Vault-Namespace` value if specified.
+ - `X-Vault-Inline-Auth-Parameter-*`, user-specified parameters taking a
+   URL-Safe Base64 encoded JSON object having a `key` and `value`
+   parameter to inject into the request data.
+
+
+:::warning
+
+Login calls made with this authentication mechanism must be one-shot: MFA
+(without the use of `X-Vault-MFA`) and other multi-step auth schemes such as
+certain OIDC flows will not work.
+
+:::
+
+If an auth method imposes a number of uses on source identity information,
+such as AppRole's `secret_id_num_uses`, each request with inline
+authentication will count against those limits separately.
+
+This improves scalability: standard authentication incurs several storage
+writes as a result of successful authentication and thus must happen on the
+active node. Additionally, these persisted entries are refreshed on leadership
+changes, which may cause churn and excessive disk and CPU usage. Depending on
+the workload patterns, a client application using inline authentication may
+result in a more performant OpenBao instance than standard authentication.

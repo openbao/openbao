@@ -26,10 +26,13 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/audit"
+	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
@@ -126,6 +129,26 @@ func TestTokenStore_CubbyholeTidy(t *testing.T) {
 
 func TestTokenStore_CubbyholeTidyNamespace(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
+	ns := &namespace.Namespace{ID: "ns1-id", Path: "ns1"}
+	TestCoreCreateNamespaces(t, c, ns)
+
+	testTokenStore_CubbyholeTidy(t, c, root, ns)
+}
+
+func TestTokenStore_CubbyholeTidyCrossNamespaceIdentity(t *testing.T) {
+	c := TestCoreWithConfig(t, &CoreConfig{
+		Seal:            nil,
+		EnableUI:        false,
+		EnableRaw:       false,
+		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
+		AuditBackends: map[string]audit.Factory{
+			"file": auditFile.Factory,
+		},
+		UnsafeCrossNamespaceIdentity: true,
+	})
+
+	c, _, root := testCoreUnsealed(t, c)
+
 	ns := &namespace.Namespace{ID: "ns1-id", Path: "ns1"}
 	TestCoreCreateNamespaces(t, c, ns)
 

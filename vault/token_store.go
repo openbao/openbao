@@ -1687,6 +1687,11 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 		persistNeeded = true
 	}
 
+	if entry.EntityID != "" && entry.NamespaceID != namespace.RootNamespaceID && !strings.HasSuffix(entry.EntityID, entry.NamespaceID) {
+		entry.EntityID = fmt.Sprintf("%v.%v", entry.EntityID, entry.NamespaceID)
+		persistNeeded = true
+	}
+
 	// It's a root token with unlimited creation TTL (so never had an
 	// expiration); this may or may not have a lease (based on when it was
 	// generated, for later revocation purposes) but it doesn't matter, it's
@@ -1737,6 +1742,9 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 		if err != nil {
 			return nil, err
 		}
+
+		// Never persist if we're revoking.
+		persistNeeded = false
 
 	// Only return if we're not past lease expiration (or if tainted is true),
 	// otherwise assume expmgr is working on revocation

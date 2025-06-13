@@ -638,6 +638,10 @@ type Core struct {
 
 	// Config value for "detect_deadlocks".
 	detectDeadlocks []string
+
+	// Whether we use a single global memdb instance for identity; see
+	// commentary below.
+	unsafeCrossNamespaceIdentity bool
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
@@ -784,6 +788,13 @@ type CoreConfig struct {
 	AdministrativeNamespacePath string
 
 	NumRollbackWorkers int
+
+	// UnsafeCrossNamespaceIdentity is used to comply with Vault Enterprise's
+	// loose tenancy separation afforded by their namespace implementation.
+	// They allow cross-namespace group association.
+	//
+	// See also: https://github.com/openbao/openbao/issues/1110
+	UnsafeCrossNamespaceIdentity bool
 }
 
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
@@ -961,6 +972,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		numRollbackWorkers:             conf.NumRollbackWorkers,
 		impreciseLeaseRoleTracking:     conf.ImpreciseLeaseRoleTracking,
 		detectDeadlocks:                detectDeadlocks,
+		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
 	}
 
 	c.standbyStopCh.Store(make(chan struct{}))

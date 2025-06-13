@@ -109,6 +109,8 @@ type Config struct {
 	EnableResponseHeaderRaftNodeIDRaw interface{} `hcl:"enable_response_header_raft_node_id"`
 
 	DisableSSCTokens *bool `hcl:"-"`
+
+	UnsafeCrossNamespaceIdentity bool `hcl:"unsafe_cross_namespace_identity"`
 }
 
 const (

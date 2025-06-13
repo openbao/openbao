@@ -34,7 +34,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 var (

@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
@@ -27,6 +26,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 )
 
 func connectPeers(nodes ...*RaftBackend) {

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/armon/go-metrics"
-	"github.com/golang/protobuf/ptypes"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -23,6 +22,8 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/patrickmn/go-cache"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -1065,7 +1066,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 				}
 
 				var localAliases identity.LocalAliases
-				err = ptypes.UnmarshalAny(item.Message, &localAliases)
+				err = item.Message.UnmarshalTo(&localAliases)
 				if err != nil {
 					i.logger.Error("failed to parse local aliases during invalidation", "error", err)
 					return
@@ -1130,7 +1131,7 @@ func (i *IdentityStore) parseLocalAliases(ctx context.Context, entityID string) 
 		}
 
 		localAliases = new(identity.LocalAliases)
-		err = ptypes.UnmarshalAny(item.Message, localAliases)
+		err = item.Message.UnmarshalTo(localAliases)
 		if err != nil {
 			return err
 		}
@@ -1148,7 +1149,7 @@ func (i *IdentityStore) parseLocalAliases(ctx context.Context, entityID string) 
 		}
 
 		if persistNeeded {
-			aliasesAsAny, err := ptypes.MarshalAny(localAliases)
+			aliasesAsAny, err := anypb.New(localAliases)
 			if err != nil {
 				return err
 			}
@@ -1177,13 +1178,13 @@ func (i *IdentityStore) parseEntityFromBucketItem(ctx context.Context, item *sto
 	persistNeeded := false
 
 	var entity identity.Entity
-	err := ptypes.UnmarshalAny(item.Message, &entity)
+	err := item.Message.UnmarshalTo(&entity)
 	if err != nil {
 		// If we encounter an error, it would mean that the format of the
 		// entity is an older one. Try decoding using the older format and if
 		// successful, upgrage the storage with the newer format.
 		var oldEntity identity.EntityStorageEntry
-		oldEntityErr := ptypes.UnmarshalAny(item.Message, &oldEntity)
+		oldEntityErr := item.Message.UnmarshalTo(&oldEntity)
 		if oldEntityErr != nil {
 			return nil, fmt.Errorf("failed to decode entity from storage bucket item: %w", err)
 		}
@@ -1240,7 +1241,7 @@ func (i *IdentityStore) parseEntityFromBucketItem(ctx context.Context, item *sto
 	}
 
 	if persistNeeded {
-		entityAsAny, err := ptypes.MarshalAny(&entity)
+		entityAsAny, err := anypb.New(&entity)
 		if err != nil {
 			return nil, err
 		}
@@ -1289,7 +1290,7 @@ func (i *IdentityStore) parseCachedEntity(item *storagepacker.Item) (*identity.E
 	}
 
 	var entity identity.Entity
-	err := ptypes.UnmarshalAny(item.Message, &entity)
+	err := item.Message.UnmarshalTo(&entity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode cached entity from storage bucket item: %w", err)
 	}
@@ -1307,7 +1308,7 @@ func (i *IdentityStore) parseGroupFromBucketItem(ctx context.Context, item *stor
 	}
 
 	var group identity.Group
-	err := ptypes.UnmarshalAny(item.Message, &group)
+	err := item.Message.UnmarshalTo(&group)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode group from storage bucket item: %w", err)
 	}
@@ -1324,7 +1325,7 @@ func (i *IdentityStore) parseGroupFromBucketItem(ctx context.Context, item *stor
 	}
 
 	if persistNeeded {
-		groupAsAny, err := ptypes.MarshalAny(&group)
+		groupAsAny, err := anypb.New(&group)
 		if err != nil {
 			return nil, err
 		}
@@ -1491,7 +1492,7 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 		}
 		a := entity.Aliases[idx]
 		a.Metadata = alias.Metadata
-		a.LastUpdateTime = ptypes.TimestampNow()
+		a.LastUpdateTime = timestamppb.Now()
 
 		update = true
 	}

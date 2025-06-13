@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
@@ -17,6 +17,8 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/custommetadata"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // aliasPaths returns the API endpoints to operate on aliases.
@@ -361,7 +363,7 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
 		return nil, nil
 	}
 
-	alias.LastUpdateTime = ptypes.TimestampNow()
+	alias.LastUpdateTime = timestamppb.Now()
 
 	// Get our current entity, which may be the same as the new one if the
 	// canonical ID hasn't changed
@@ -553,8 +555,8 @@ func (i *IdentityStore) handleAliasReadCommon(ctx context.Context, alias *identi
 	}
 
 	// Convert protobuf timestamp into RFC3339 format
-	respData["creation_time"] = ptypes.TimestampString(alias.CreationTime)
-	respData["last_update_time"] = ptypes.TimestampString(alias.LastUpdateTime)
+	respData["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339)
+	respData["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339)
 
 	return &logical.Response{
 		Data: respData,
@@ -640,7 +642,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 				}
 			}
 
-			marshaledAliases, err := ptypes.MarshalAny(localAliases)
+			marshaledAliases, err := anypb.New(localAliases)
 			if err != nil {
 				return nil, err
 			}

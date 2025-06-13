@@ -12,8 +12,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/mapstructure"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -298,11 +299,10 @@ func (b *versionedKVBackend) metadataResponseData(meta *KeyMetadata) (map[string
 
 	var deleteVersionAfter time.Duration
 	if meta.GetDeleteVersionAfter() != nil {
-		var err error
-		deleteVersionAfter, err = ptypes.Duration(meta.GetDeleteVersionAfter())
-		if err != nil {
+		if err := meta.GetDeleteVersionAfter().CheckValid(); err != nil {
 			return nil, err
 		}
+		deleteVersionAfter = meta.GetDeleteVersionAfter().AsDuration()
 	}
 
 	return map[string]interface{}{
@@ -524,7 +524,7 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 			return logical.ErrorResponse("metadata check-and-set parameter required for this call"), nil
 		}
 
-		now := ptypes.TimestampNow()
+		now := timestamppb.Now()
 		if meta == nil {
 			if mcasValueOk {
 				metadataCasValue := uint64(metadataCasValueRaw.(int))
@@ -563,7 +563,7 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 			meta.MetadataCasRequired = metadataCasRaw.(bool)
 		}
 		if dvaOk {
-			meta.DeleteVersionAfter = ptypes.DurationProto(time.Duration(deleteVersionAfterRaw.(int)) * time.Second)
+			meta.DeleteVersionAfter = durationpb.New(time.Duration(deleteVersionAfterRaw.(int)) * time.Second)
 		}
 		if cmOk {
 			meta.CustomMetadata = customMetadataMap
@@ -596,7 +596,7 @@ func metadataPatchPreprocessor(patchableKeys []string) framework.PatchPreprocess
 		for _, k := range patchableKeys {
 			if v, ok := input[k]; ok {
 				if k == "delete_version_after" {
-					patchData[k] = ptypes.DurationProto(time.Duration(v.(int)) * time.Second)
+					patchData[k] = durationpb.New(time.Duration(v.(int)) * time.Second)
 				} else {
 					patchData[k] = v
 				}
@@ -729,7 +729,7 @@ func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 
 		// Increment metadata version after patching
 		patchedMetadata.CurrentMetadataVersion++
-		patchedMetadata.UpdatedTime = ptypes.TimestampNow()
+		patchedMetadata.UpdatedTime = timestamppb.Now()
 
 		if err = b.writeKeyMetadata(ctx, req.Storage, patchedMetadata); err != nil {
 			return nil, err
@@ -817,6 +817,6 @@ const (
 	metadataHelpSyn  = `Allows interaction with key metadata and settings in the KV store.`
 	metadataHelpDesc = `
 This endpoint allows for reading, information about a key in the key-value
-store, writing key settings, and permanently deleting a key and all versions. 
+store, writing key settings, and permanently deleting a key and all versions.
 `
 )

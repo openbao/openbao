@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
@@ -152,7 +152,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 
 	// Persist the second entity directly without the regular flow. This will skip
 	// merging of these enties.
-	entity2Any, err := ptypes.MarshalAny(entity2)
+	entity2Any, err := anypb.New(entity2)
 	if err != nil {
 		t.Fatal(err)
 	}

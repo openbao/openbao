@@ -9,13 +9,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (b *versionedKVBackend) perfSecondaryCheck() bool {
@@ -119,7 +119,7 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 	}
 
 	upgradeInfo := &UpgradeInfo{
-		StartedTime: ptypes.TimestampNow(),
+		StartedTime: timestamppb.Now(),
 	}
 
 	// Encode the canary
@@ -170,7 +170,7 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 
 		version := &Version{
 			Data:        data.Value,
-			CreatedTime: ptypes.TimestampNow(),
+			CreatedTime: timestamppb.Now(),
 		}
 
 		buf, err := proto.Marshal(version)

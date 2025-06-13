@@ -5,10 +5,10 @@ import (
 	"path"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/proto"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 )
 
 // pathConfig returns the path configuration for CRUD operations on the backend
@@ -72,10 +72,10 @@ func (b *versionedKVBackend) pathConfigRead() framework.OperationFunc {
 
 		var deleteVersionAfter time.Duration
 		if config.GetDeleteVersionAfter() != nil {
-			deleteVersionAfter, err = ptypes.Duration(config.GetDeleteVersionAfter())
-			if err != nil {
+			if err := config.GetDeleteVersionAfter().CheckValid(); err != nil {
 				return nil, err
 			}
+			deleteVersionAfter = config.GetDeleteVersionAfter().AsDuration()
 		}
 		rdata["delete_version_after"] = deleteVersionAfter.String()
 
@@ -133,7 +133,7 @@ func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 			case dva == 0:
 				config.ResetDeleteVersionAfter()
 			default:
-				config.DeleteVersionAfter = ptypes.DurationProto(time.Duration(dva) * time.Second)
+				config.DeleteVersionAfter = durationpb.New(time.Duration(dva) * time.Second)
 			}
 		}
 

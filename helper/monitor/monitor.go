@@ -95,7 +95,7 @@ func (d *monitor) Stop() {
 func (d *monitor) Start() <-chan []byte {
 	// Check to see if this has already been started. If not, flag
 	// it and proceed. If so, bail out early.
-	if !d.started.CAS(false, true) {
+	if !d.started.CompareAndSwap(false, true) {
 		return nil
 	}
 

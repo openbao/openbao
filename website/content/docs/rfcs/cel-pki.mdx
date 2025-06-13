@@ -1,0 +1,286 @@
+---
+sidebar_label: PKI CEL Policies
+description: |-
+    Adds Common Expression Language (CEL) support to OpenBao’s PKI engine
+    for validating certificate issuance and signing requests.
+---
+
+# CEL Support for Certificate Issuance Policies
+
+**Status**: this landed in [PR #794](https://github.com/openbao/openbao/pull/794).
+
+## Summary
+OpenBao’s PKI engine now allows using [Common Expression Language (CEL)](https://github.com/google/cel-spec) 
+programs to create a flexible framework for administrators to craft custom certificate issuance policies. 
+CEL will allow administrators to define fine-grained rules and dynamic templates for certificate issuance and signing, replacing the limitations of static role-based policies.
+
+A CEL policy can:
+
+* Reject a request that fails validation and return a custom error message.
+* Add or modify incoming certificate fields (e.g., validity period, SANs, key usage).
+* Decide whether to attach a lease, skip storage, or pick an issuer.
+
+---
+
+## Problem Statement
+The OpenBao role system allows operators to define constraints that users must meet to have certificates 
+issued under a specific role. However, this role system is not expressive. Administrators cannot enforce 
+complex constraints, such as requiring specific combinations of domains without modifying the codebase. 
+This restricts flexibility and requires frequent code changes for new use cases.
+
+The challenge is to provide a dynamic, user-configurable solution that can address these limitations 
+while minimizing complexity and maintenance overhead.
+
+---
+
+## User-facing description
+
+**_Administrators_** can define CEL policies under a new endpoint, `pki/cel/role/:name`.
+
+**_Users_** can request against the role when they ask the PKI engine to:
+- issue a new key and cert `POST pki/cel/issue/:name`
+- sign a CSR they supply `POST pki/cel/sign/:name`
+
+For example, take the following CEL program: 
+```go
+"name": "simple_policy",
+"cel_program": map[string]interface{}{
+  "variables": []map[string]interface{}{
+    {
+      "name":       "cn_value",
+      "expression": "request.common_name",
+    },
+
+    // Validates CN is empty OR exactly "example.com"
+    {
+      "name":       "validate_cn",
+      "expression": `has(cn_value) ? cn_value == "example.com" : true`,
+    },
+
+    // Short TTL (< 4 h)?
+    {
+      "name":       "small_ttl",
+      "expression": `has(request.ttl) && duration(request.ttl) < duration("4h")`,
+    },
+    {
+      "name":       "not_after",
+      "expression": "now + duration(request.ttl)",
+    },
+
+    // Certificate template (inject default CN when absent)
+    {
+      "name": "cert",
+      "expression": `CertTemplate{
+        Subject: PKIX.Name{                   
+          CommonName: has(cn_value) ? cn_value : "example.com",
+          Country:    ["ZW", "US"],     
+        },
+        NotBefore: now,
+        NotAfter: not_after,
+      }`,
+    },
+
+    // Normalised output for the PKI engine
+    {
+      "name": "output",
+      "expression": `ValidationOutput{
+        template:       cert,
+        generate_lease: small_ttl,
+        no_store:       !small_ttl,
+        issuer_ref:     "default",
+      }`,
+    },
+
+    // Error message when CN was supplied but wrong
+    {
+      "name":       "err",
+      "expression": "'Request should have Common name: example.com but got: ' + cn_value",
+    },
+  },
+  "expression": "validate_cn ? output : err",
+},
+```
+
+The CEL role is called `simple_policy` and enforces that every issued certificate ultimately contains 
+the DNS name `example.com`. If the requester omits a `common_name`, the policy inserts `example.com`. 
+If a different CN is supplied, the request is rejected. The policy can also decide based on the user's 
+TTL whether the resulting certificate should be stored or issued as a lease-only secret.
+
+- If the validation is successful, it generates the certificate based on the approved request. 
+- If the validation fails, an error message is returned detailing why the request was denied, 'Request 
+should have Common name: example.com but got _request.common_name_'.
+
+---
+
+## Technical Description
+CEL roles allow certificate issuance and sign requests to be dynamically evaluated, modified and rejected. Each field in an 
+X509 certificate can be evaluated as a CEL expression. The CEL program can return a custom error message which is also a CEL 
+expression. `generate_lease`, `no_store` and `issuer_ref` can be dynamically set depending on the users request.
+
+The following parameters are supplied by the CEL policy engine and can be used in any of the CEL expressions:
+- `now`: the time right now.
+- `request`: the users request.
+- `parsed_csr`: the CSR provided by the user parsed into its fields.
+
+### CEL Role Format
+A CEL role is defined as a JSON object with the following fields:
+```json
+{
+  "name": "string",
+  "cel_program": {
+    "variables": [
+      {
+        "name": "string",
+        "expression": "string"
+      }
+    ],
+    // main expression
+    "expression": "string",
+  },
+}
+```
+
+- The variables are evaluated in order of declaration so care should be taken not to reference latter variables.
+- The main expression should always return a `ValidationOutput` object if successful and a string/bool if rejecting. The following 
+expression syntax is appropriate: 
+```json
+condition ? ValidationOutput : error string/boolean
+```
+
+- The `ValidationOutput` object contains the following fields:
+    - `template` `(CertTemplate: required)`
+      Mirrors x509.Certificate
+    - `issuer_ref` `(string: optional)`
+      The name of the issuer.
+    - `use_pss` `(bool: optional)`
+      Whether the token is renewable.
+    - `signature_bits` `(bool: optional)`
+      Specifies the number of bits to use in the signature algorithm
+    - `generate_lease` `(bool: optional)`
+      Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.
+    - `no_store` `(bool: optional)`
+      If set, certificates issued/signed against this role will not be stored in the storage backend.
+    - `warnings` `([]string: optional)`
+      Warnings about the request or adjustments made by the CEL policy engine. 
+    - `subject_key_id` `(bytes: optional)`
+      Provide when signing a CSR if you want to override the SKID that would normally be copied or derived from the CSR’s public-key.
+    - `key_type` `(string: optional)`
+       The private key type.
+    - `key_bits` `(uint64: optional)`
+       The private key length.
+
+* The `CertTemplate` object mirrors x509 certificate and provides the following fields:
+    - `Version` `(int64: optional)`
+    - `Subject` `(PKIX.Name: optional)`
+    - `NotBefore` `(google.protobuf.Timestamp: optional)`
+    - `NotAfter` `(google.protobuf.Timestamp: optional)`
+    - `KeyUsage` `(KeyUsage: optional)`
+    - `ExtraExtensions` `([]PKIX.Extension: optional)`
+    - `ExtKeyUsage` `(int64: optional)`
+    - `UnknownExtKeyUsage` `(int64: optional)`
+    - `BasicConstraintsValid` `(int64: optional)`
+    - `IsCA` `(int64: optional)`
+    - `MaxPathLen` `(int64: optional)`
+    - `MaxPathLenZero` `(int64: optional)`
+    - `SubjectKeyId` `(int64: optional)`
+    - `DNSNames` `(int64: optional)`
+    - `EmailAddresses` `(int64: optional)`
+    - `IPAddresses` `(int64: optional)`
+    - `URIs` `(int64: optional)`
+    - `PermittedDNSDomainsCritical` `(int64: optional)`
+    - `PermittedDNSDomains` `(int64: optional)`
+    - `ExcludedDNSDomains` `(int64: optional)`
+    - `PermittedIPRanges` `(int64: optional)`
+    - `ExcludedIPRanges` `(int64: optional)`
+    - `PermittedEmailAddresses` `(int64: optional)`
+    - `ExcludedEmailAddresses` `(int64: optional)`
+    - `PermittedURIDomains` `(int64: optional)`
+    - `ExcludedURIDomains` `(int64: optional)`
+    - `PolicyIdentifiers` `(int64: optional)`
+    - `Policies` `(int64: optional)`
+    - `InhibitAnyPolicy` `(int64: optional)`
+    - `InhibitAnyPolicyZero` `(int64: optional)`
+    - `InhibitPolicyMapping` `(int64: optional)`
+    - `InhibitPolicyMappingZero` `(int64: optional)`
+    - `RequireExplicitPolicy` `(int64: optional)`
+    - `RequireExplicitPolicyZero` `(int64: optional)`
+    - `PolicyMappings` `([]PolicyMappings: optional)`
+
+### **API Endpoints**
+
+| Use                      | Method   | Path                       |
+|--------------------------|----------|----------------------------|
+| List CEL roles           | `LIST`   | `pki/cel/roles`       |
+| Retrieve a specific CEL role | `GET`| `pki/cel/roles/:name` |
+| Create a CEL role        | `POST`   | `pki/cel/roles/:name` |
+| Update a CEL role        | `PATCH`  | `pki/cel/roles/:name` |
+| Delete a CEL role        | `DELETE` | `pki/cel/roles/:name` |
+
+**List CEL Policies** 
+* This endpoint returns a list of available cel policies. Only the policy names are returned, not any values. It is useful 
+to both operators and users.
+* List with pagination has been implemented similarly to #678.
+
+**Read CEL Policy**
+* This endpoint fetches the full definition of the specified policy by its `name`, including the `cel_program`. 
+It is useful for operators to manage policies and for users to understand policy configurations.
+
+**Create a CEL Policy**
+* Parameter `name` `(string: <required>)` specifies the name of the policy to be updated. This is part of the request URL.
+* A policy consists of a `cel_program`, which evaluates incoming parameters to either approve or reject a request.
+It and returns a `ValidationOutput` object if the request is approved and a `string` or `bool` if it is rejected.
+* The response includes an error message, which is `nil` if the policy is successfully created or updated, or provides details if an error occurs.
+
+**Update a CEL Policy**
+* Similar to creating a policy, but in this case, the policy already exists. Only the parameters included in the request 
+are updated, leaving any unspecified parameters unchanged. A CEL author can overwrite a single `variable` without affecting 
+the others.
+
+**Generate Certificate and Key**
+* This endpoint generates a new set of credentials (private key and certificate) based on the policy named in the endpoint. 
+It takes in a set of parameters  like `common_name`, `alt_names`, &c similar to [pki/issue/:name](https://openbao.org/api-docs/secret/pki/#generate-certificate-and-key).
+The issuing CA certificate and full CA chain is returned as well, so that only the root CA need be in a client's trust store. 
+Choice of issuing CA is determined by the policy.
+
+**Sign Certificate**
+* This endpoint signs a new certificate based upon the provided `CSR` and the supplied parameters (like `common_name`, 
+`alt_names`, &c similar to [pki/sign/:name](https://openbao.org/api-docs/secret/pki/#sign-certificate)), subject to the 
+restrictions contained in the policy named in the endpoint. The issuing CA certificate and the full CA chain is returned 
+as well, so that only the root CA need be in a client's trust store.
+
+_Access to these endpoints should be managed via ACLs. For instance, admin roles can create or update CEL policies, while operator roles can only list or retrieve them. Issuance and signing endpoints should also be restricted to roles with specific permissions._
+
+---
+
+## Rationale and alternatives
+
+Certain policies can be implemented using [roles](https://openbao.org/api-docs/secret/pki/#createupdate-role), 
+for instance, `allow_localhost` but for more flexible scenarios, such as validating specific request 
+metadata, or generating custom certificate templates based on runtime parameters, CEL policies would 
+provide the necessary adaptability and control. For example, a CEL policy could enforce a rule that 
+`alt_name` should contain `sale.org`.
+
+Alternatively, a web hook approach like [Vault's CIEPS](https://developer.hashicorp.com/vault/docs/secrets/pki/cieps) 
+could be used to achieve similar flexibility. In this approach, requests are sent to an external 
+service for validation and certificate generation logic, allowing for custom behaviors. However, 
+relying on a web hook introduces additional network overhead, potential latency, and dependency 
+on an external system's availability. CEL policies, in contrast, embed the logic directly into 
+OpenBao, eliminating external dependencies on out-of-process mechanisms.
+
+## Downsides
+
+Downgrading to a previous version of OpenBao or upstream wouldn’t break anything but new paths will be unreachable.
+
+## Security Implications
+
+There is no known increase/decrease in OpenBao's security. The use of this feature
+is optional; while a complex validation engine, the language is not Turing complete
+and is thus restricted from the rest of the program. Additionally, this allows the
+operator finer control over certificates and validation, taking on more risk, but
+also allowing them to enforce additional validation that could not occur under
+the role system. This should be used carefully, but when used properly, can greatly
+increase the security posture of the issued certificates.
+
+## User/Developer Experience
+
+This feature will not affect current users/developers or their existing setups. They are not required to make changes unless they wish to adopt this new functionality.

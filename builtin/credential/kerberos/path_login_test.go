@@ -96,7 +96,7 @@ func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
 	}
 
 	runOpts := &dockertest.RunOptions{
-		Repository: "osixia/openldap",
+		Repository: "quay.io/minio/openldap",
 		Tag:        "latest",
 		Env:        []string{"LDAP_TLS=false"},
 	}

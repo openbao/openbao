@@ -936,7 +936,10 @@ func (m *ExpirationManager) LazyRevoke(ctx context.Context, leaseID string) erro
 // WithTransaction is used to run a function with a transaction for the lease and token index views.
 func (m *ExpirationManager) WithTransaction(
 	ctx context.Context,
-	fn func(context.Context, *ExpirationManager) error) error {
+	callbackFn func(context.Context) error) error {
+
+	var lvTx *barrierViewTransaction
+	var tivTx *barrierViewTransaction
 
 	if m.transactional {
 		originalLeaseView := m.leaseView
@@ -945,9 +948,6 @@ func (m *ExpirationManager) WithTransaction(
 			m.leaseView = originalLeaseView
 			m.tokenIndexView = originalStorageView
 		}()
-
-		var lvTx *barrierViewTransaction
-		var tivTx *barrierViewTransaction
 
 		m.leaseView = func(ns *namespace.Namespace) BarrierView {
 			if lvTx != nil {
@@ -984,7 +984,31 @@ func (m *ExpirationManager) WithTransaction(
 		}
 	}
 
-	return fn(ctx, m)
+	if err := callbackFn(ctx); err != nil {
+		if lvTx != nil {
+			if err := lvTx.Rollback(ctx); err != nil {
+				m.logger.Error("failed to rollback lease view transaction", "error", err)
+			}
+		}
+		if tivTx != nil {
+			if err := tivTx.Rollback(ctx); err != nil {
+				m.logger.Error("failed to rollback token index view transaction", "error", err)
+			}
+		}
+		return err
+	} else {
+		if lvTx != nil {
+			if err := lvTx.Commit(ctx); err != nil {
+				m.logger.Error("failed to commit lease view transaction", "error", err)
+			}
+		}
+		if tivTx != nil {
+			if err := tivTx.Commit(ctx); err != nil {
+				m.logger.Error("failed to commit token index view transaction", "error", err)
+			}
+		}
+		return nil
+	}
 }
 
 // Mark a lease as expiring immediately
@@ -993,9 +1017,9 @@ func (m *ExpirationManager) lazyRevokeInternal(ctx context.Context, leaseID stri
 	leaseLock.Lock()
 	defer leaseLock.Unlock()
 
-	err := m.WithTransaction(ctx, func(ctx context.Context, mtx *ExpirationManager) error {
+	err := m.WithTransaction(ctx, func(ctx context.Context) error {
 		// Load the entry
-		le, err := mtx.loadEntry(ctx, leaseID)
+		le, err := m.loadEntry(ctx, leaseID)
 		if err != nil {
 			return err
 		}
@@ -1006,10 +1030,10 @@ func (m *ExpirationManager) lazyRevokeInternal(ctx context.Context, leaseID stri
 		}
 
 		le.ExpireTime = time.Now()
-		if err := mtx.persistEntry(ctx, le); err != nil {
+		if err := m.persistEntry(ctx, le); err != nil {
 			return err
 		}
-		mtx.updatePending(le)
+		m.updatePending(le)
 		return nil
 	})
 	return err
@@ -1425,81 +1449,85 @@ func (m *ExpirationManager) RenewToken(ctx context.Context, req *logical.Request
 	leaseLock.Lock()
 	defer leaseLock.Unlock()
 
-	// Load the entry
-	le, err := m.loadEntry(ctx, leaseID)
-	if err != nil {
-		return nil, err
-	}
-	if le == nil {
-		return logical.ErrorResponse("invalid lease ID"), logical.ErrInvalidRequest
-	}
-
-	// Check if the lease is renewable. Note that this also checks for a nil
-	// lease and errors in that case as well.
-	if _, err := le.renewable(); err != nil {
-		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-	}
-
-	// Attempt to renew the auth entry
-	resp, err := m.renewAuthEntry(ctx, req, le, increment)
-	if err != nil {
-		return nil, err
-	}
-	if resp == nil {
-		return nil, nil
-	}
-	if resp.IsError() {
-		return &logical.Response{
-			Data: resp.Data,
-		}, nil
-	}
-	if resp.Auth == nil {
-		return nil, nil
-	}
-
-	sysViewCtx := namespace.ContextWithNamespace(ctx, le.namespace)
-	sysView := m.router.MatchingSystemView(sysViewCtx, le.Path)
-	if sysView == nil {
-		return nil, errors.New("unable to retrieve system view from router")
-	}
-
-	ttl, warnings, err := framework.CalculateTTL(sysView, increment, resp.Auth.TTL, resp.Auth.Period, resp.Auth.MaxTTL, resp.Auth.ExplicitMaxTTL, le.IssueTime)
-	if err != nil {
-		return nil, err
-	}
 	retResp := &logical.Response{}
-	for _, warning := range warnings {
-		retResp.AddWarning(warning)
-	}
-	resp.Auth.TTL = ttl
 
-	// Attach the ClientToken
-	resp.Auth.ClientToken = te.ID
-
-	// Refresh groups
-	if resp.Auth.EntityID != "" && m.core.identityStore != nil {
-		mountAccessor := ""
-		if resp.Auth.Alias != nil {
-			mountAccessor = resp.Auth.Alias.MountAccessor
-		}
-		validAliases, err := m.core.identityStore.refreshExternalGroupMembershipsByEntityID(ctx, resp.Auth.EntityID, resp.Auth.GroupAliases, mountAccessor)
+	if err := m.WithTransaction(ctx, func(ctx context.Context) error {
+		// Load the entry
+		le, err := m.loadEntry(ctx, leaseID)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		resp.Auth.GroupAliases = validAliases
+		if le == nil {
+			return logical.ErrInvalidRequest
+		}
+
+		// Check if the lease is renewable. Note that this also checks for a nil
+		// lease and errors in that case as well.
+		if _, err := le.renewable(); err != nil {
+			return logical.ErrInvalidRequest
+		}
+
+		// Attempt to renew the auth entry
+		resp, err := m.renewAuthEntry(ctx, req, le, increment)
+		if err != nil {
+			return err
+		}
+		if resp == nil {
+			return nil
+		}
+		if resp.IsError() {
+			return errors.New(resp.Error().Error())
+		}
+		if resp.Auth == nil {
+			return nil
+		}
+
+		sysViewCtx := namespace.ContextWithNamespace(ctx, le.namespace)
+		sysView := m.router.MatchingSystemView(sysViewCtx, le.Path)
+		if sysView == nil {
+			return errors.New("unable to retrieve system view from router")
+		}
+
+		ttl, warnings, err := framework.CalculateTTL(sysView, increment, resp.Auth.TTL, resp.Auth.Period, resp.Auth.MaxTTL, resp.Auth.ExplicitMaxTTL, le.IssueTime)
+		if err != nil {
+			return err
+		}
+		for _, warning := range warnings {
+			retResp.AddWarning(warning)
+		}
+		resp.Auth.TTL = ttl
+
+		// Attach the ClientToken
+		resp.Auth.ClientToken = te.ID
+
+		// Refresh groups
+		if resp.Auth.EntityID != "" && m.core.identityStore != nil {
+			mountAccessor := ""
+			if resp.Auth.Alias != nil {
+				mountAccessor = resp.Auth.Alias.MountAccessor
+			}
+			validAliases, err := m.core.identityStore.refreshExternalGroupMembershipsByEntityID(ctx, resp.Auth.EntityID, resp.Auth.GroupAliases, mountAccessor)
+			if err != nil {
+				return err
+			}
+			resp.Auth.GroupAliases = validAliases
+		}
+
+		// Update the lease entry
+		le.Auth = resp.Auth
+		le.ExpireTime = resp.Auth.ExpirationTime()
+		le.LastRenewalTime = time.Now()
+
+		if err := m.persistEntry(ctx, le); err != nil {
+			return err
+		}
+		m.updatePending(le)
+
+		retResp.Auth = resp.Auth
+		return nil
+	}); err != nil {
+		return logical.ErrorResponse(err.Error()), nil
 	}
-
-	// Update the lease entry
-	le.Auth = resp.Auth
-	le.ExpireTime = resp.Auth.ExpirationTime()
-	le.LastRenewalTime = time.Now()
-
-	if err := m.persistEntry(ctx, le); err != nil {
-		return nil, err
-	}
-	m.updatePending(le)
-
-	retResp.Auth = resp.Auth
 	return retResp, nil
 }
 

@@ -14,6 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
@@ -165,6 +166,44 @@ func (n *Namespace) Clone(withUnlock bool) *Namespace {
 	}
 
 	return data
+}
+
+// GenerateUUID creates a UUID with a suffix representing the accessor of
+// this namespace, when not the root namespace. This is of the form:
+//
+//	<uuid>.<accessor>
+//
+// Namespaced UUIDs can be useful for cross-namespace lookup operations and
+// easy identification of which namespace a particular UUID belongs to. This
+// can be validated by ValidateUUID(...) against a particular namespace.
+func (n *Namespace) GenerateUUID() (string, error) {
+	u, err := uuid.GenerateUUID()
+	if err != nil {
+		return "", err
+	}
+
+	if n.ID != RootNamespaceID {
+		u = fmt.Sprintf("%v.%v", u, n.ID)
+	}
+
+	return u, nil
+}
+
+// ValidateUUID takes a candidate identifier and ensures that this identifier
+// matches this particular namespace. See ns.GenerateUUID(...) for expected
+// format.
+func (n *Namespace) ValidateUUID(candidate string) error {
+	u, id := SplitIDFromString(candidate)
+	_, err := uuid.ParseUUID(u)
+	if err != nil {
+		return fmt.Errorf("invalid uuid: %w", err)
+	}
+
+	if id != n.ID && (id != "" || n.ID != RootNamespaceID) {
+		return errors.New("identifier has suffix of different namespace than expected")
+	}
+
+	return nil
 }
 
 // ContextWithNamespace adds the given namespace to the given context

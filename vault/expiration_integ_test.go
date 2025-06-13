@@ -42,8 +42,8 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 
 	// Tune the mount
 	err = client.Sys().TuneMount("auth/approle", api.MountConfigInput{
-		DefaultLeaseTTL: "5s",
-		MaxLeaseTTL:     "5s",
+		DefaultLeaseTTL: "7s",
+		MaxLeaseTTL:     "7s",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -51,7 +51,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 
 	// Create role
 	resp, err := client.Logical().Write("auth/approle/role/role-period", map[string]interface{}{
-		"period": "5s",
+		"period": "7s",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +164,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 		t.Fatalf("unable to convert ttl to int: %s", err)
 	}
 	ttl = time.Duration(ttlInt) * time.Second
-	if ttl < 4*time.Second {
-		t.Fatal("expected ttl value to be around 5s")
+	if ttl < 6*time.Second {
+		t.Fatal("expected ttl value to be around 7s")
 	}
 }

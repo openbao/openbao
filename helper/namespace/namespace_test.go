@@ -432,6 +432,13 @@ func TestParseSpecifier(t *testing.T) {
 			spec:  "foo/bar/",
 			rest:  "some/trailing/rest:baz/",
 		},
+		{
+			input: "path:foo/bar/:::",
+			kind:  "path",
+			spec:  "foo/bar/",
+			rest:  "::",
+		},
+		{input: "path:::", kind: "path", spec: "", rest: ":"},
 		// Nonsense case that is valid for all we care:
 		{input: "path:", kind: "path", spec: ""},
 		// Bad inputs:

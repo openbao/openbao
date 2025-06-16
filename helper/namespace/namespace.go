@@ -227,7 +227,7 @@ func ParseSpecifier(value string) (kind, spec, rest string, err error) {
 		return "", "", "", fmt.Errorf("unknown namespace specifier kind: %q", kind)
 	}
 	// Optionally split at a second ":" if there is a trailing value.
-	// "foo/bar/:rest" -> ["foo/bar/", ":rest"]
+	// "foo/bar/:rest" -> ["foo/bar/", "rest"]
 	spec, rest, _ = strings.Cut(rest, ":")
 	return kind, spec, rest, err
 }

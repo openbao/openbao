@@ -54,8 +54,8 @@ type TransactionalStorage interface {
 	Transactional
 }
 
-// FromContext will return Transaction from context where available
-func FromContext(ctx context.Context) (Transaction, error) {
+// TransactionFromContext will return Transaction from context where available
+func TransactionFromContext(ctx context.Context) (Transaction, error) {
 	if ctx == nil {
 		return nil, errors.New("context was nil")
 	}

@@ -464,7 +464,7 @@ func (m *ExpirationManager) leaseViewFromLeaseID(ctx context.Context, leaseID st
 }
 
 func (m *ExpirationManager) leaseView(ctx context.Context, ns *namespace.Namespace) BarrierView {
-	if tx, err := logical.FromContext(ctx); err == nil && tx != nil {
+	if tx, err := logical.TransactionFromContext(ctx); err == nil && tx != nil {
 		return tx.(BarrierViewTransaction)
 	}
 

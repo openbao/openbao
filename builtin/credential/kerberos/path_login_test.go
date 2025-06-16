@@ -6,10 +6,8 @@ package kerberos
 import (
 	"context"
 	"fmt"
-	"net"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -100,7 +98,10 @@ func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
 	runOpts := &dockertest.RunOptions{
 		Repository: "quay.io/minio/openldap",
 		Tag:        "latest",
-		Env:        []string{"LDAP_TLS=false"},
+		Env: []string{
+			"LDAP_TLS=false",
+			"LDAP_DOMAIN=min.io", // Required for minio/openldap to boot up...
+		},
 	}
 	resource, err := pool.RunWithOptions(runOpts)
 	if err != nil {
@@ -115,25 +116,20 @@ func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
 
 	retURL = fmt.Sprintf("ldap://localhost:%s", resource.GetPort("389/tcp"))
 
-	retries := 0
-
 	// exponential backoff-retry
 	if err = pool.Retry(func() error {
-		retries++
-		fmt.Printf("retry #%d...\n", retries)
-		dialer := &net.Dialer{Timeout: time.Second}
-		conn, err := ldap.DialURL(retURL, ldap.DialWithDialer(dialer))
+		conn, err := ldap.DialURL(retURL)
 		if err != nil {
 			return err
 		}
 		defer conn.Close()
 
-		if err := conn.Bind("cn=admin,dc=example,dc=org", "admin"); err != nil {
+		if err := conn.Bind("cn=admin,dc=min,dc=io", "admin"); err != nil {
 			return err
 		}
 
 		searchRequest := ldap.NewSearchRequest(
-			"dc=example,dc=org",
+			"dc=min,dc=io",
 			ldap.ScopeWholeSubtree,
 			ldap.NeverDerefAliases,
 			0,

@@ -6,8 +6,10 @@ package kerberos
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -111,12 +113,12 @@ func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
 		}
 	}
 
-	ldapAddr := fmt.Sprintf("localhost:%s", resource.GetPort("389/tcp"))
-	retURL = "ldap://" + ldapAddr
+	retURL = fmt.Sprintf("ldap://localhost:%s", resource.GetPort("389/tcp"))
 
 	// exponential backoff-retry
 	if err = pool.Retry(func() error {
-		conn, err := ldap.Dial("tcp", ldapAddr)
+		dialer := &net.Dialer{Timeout: time.Second * 5}
+		conn, err := ldap.DialURL(retURL, ldap.DialWithDialer(dialer))
 		if err != nil {
 			return err
 		}

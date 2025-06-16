@@ -153,9 +153,6 @@ type ExpirationManager struct {
 
 	jobManager      *fairshare.JobManager
 	revokeRetryBase time.Duration
-	leaseView       func(*namespace.Namespace) BarrierView
-	tokenIndexView  func(*namespace.Namespace) BarrierView
-	transactional   bool
 }
 
 type ExpireLeaseStrategy func(context.Context, *ExpirationManager, string, *namespace.Namespace)
@@ -366,26 +363,6 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 		jobManager:      jobManager,
 		revokeRetryBase: c.expirationRevokeRetryBase,
 	}
-
-	exp.leaseView = func(ns *namespace.Namespace) BarrierView {
-		if ns.ID == namespace.RootNamespaceID {
-			return exp.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
-		}
-		return exp.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+leaseViewPrefix)
-	}
-
-	exp.tokenIndexView = func(ns *namespace.Namespace) BarrierView {
-		if ns.ID == namespace.RootNamespaceID {
-			return exp.core.systemBarrierView.SubView(expirationSubPath + tokenViewPrefix)
-		}
-		return exp.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+tokenViewPrefix)
-	}
-
-	// determine whether this instance has transaction-aware storage
-	if _, ok := exp.leaseView(namespace.RootNamespace).(*transactionalBarrierView); ok {
-		exp.transactional = true
-	}
-
 	exp.expireFunc.Store(&e)
 	if exp.revokeRetryBase == 0 {
 		exp.revokeRetryBase = revokeRetryBase
@@ -470,6 +447,55 @@ func (c *Core) stopExpiration() error {
 	}
 	return nil
 }
+func (m *ExpirationManager) leaseViewFromLeaseID(ctx context.Context, leaseID string) BarrierView {
+	// Get the namespace from the lease ID
+	_, nsID := namespace.SplitIDFromString(leaseID)
+	if nsID == "" {
+		return m.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
+	}
+
+	ns, err := m.core.NamespaceByID(m.quitContext, nsID)
+	if err != nil {
+		m.logger.Error("failed to get namespace from lease ID", "error", err, "lease_id", leaseID)
+		return nil
+	}
+
+	return m.leaseView(ctx, ns)
+}
+
+func (m *ExpirationManager) leaseView(ctx context.Context, ns *namespace.Namespace) BarrierView {
+	if tx, err := logical.FromContext(ctx); err == nil && tx != nil {
+		return tx.(BarrierViewTransaction)
+	}
+
+	if ns.ID == namespace.RootNamespaceID {
+		return m.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
+	}
+	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+leaseViewPrefix)
+}
+
+func (m *ExpirationManager) tokenIndexViewFromToken(token string) BarrierView {
+	// Get the namespace from the token ID
+	_, nsID := namespace.SplitIDFromString(token)
+	if nsID == "" {
+		return m.core.systemBarrierView.SubView(expirationSubPath + tokenViewPrefix)
+	}
+
+	ns, err := m.core.NamespaceByID(m.quitContext, nsID)
+	if err != nil {
+		m.logger.Error("failed to get namespace from token ID", "error", err, "token_id", token)
+		return nil
+	}
+
+	return m.tokenIndexView(ns)
+}
+
+func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) BarrierView {
+	if ns.ID == namespace.RootNamespaceID {
+		return m.core.systemBarrierView.SubView(expirationSubPath + tokenViewPrefix)
+	}
+	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+tokenViewPrefix)
+}
 
 func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, int, error) {
 	leaseCount := 0
@@ -480,7 +506,7 @@ func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, 
 	}
 
 	for _, namespace := range namespaces {
-		view := m.leaseView(namespace)
+		view := m.leaseView(m.quitContext, namespace)
 		keys, err := logical.CollectKeys(m.quitContext, view)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan for leases: %w", err)
@@ -676,7 +702,7 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	leaseView := m.leaseView(ns)
+	leaseView := m.leaseView(ctx, ns)
 	if err := logical.ScanView(m.quitContext, leaseView, tidyFunc); err != nil {
 		return err
 	}
@@ -931,84 +957,6 @@ func (m *ExpirationManager) Revoke(ctx context.Context, leaseID string) error {
 func (m *ExpirationManager) LazyRevoke(ctx context.Context, leaseID string) error {
 	defer metrics.MeasureSince([]string{"expire", "lazy-revoke"}, time.Now())
 	return m.lazyRevokeInternal(ctx, leaseID)
-}
-
-// WithTransaction is used to run a function with a transaction for the lease and token index views.
-func (m *ExpirationManager) WithTransaction(
-	ctx context.Context,
-	callbackFn func(context.Context) error) error {
-
-	var lvTx *barrierViewTransaction
-	var tivTx *barrierViewTransaction
-
-	if m.transactional {
-		originalLeaseView := m.leaseView
-		originalStorageView := m.tokenIndexView
-		defer func() {
-			m.leaseView = originalLeaseView
-			m.tokenIndexView = originalStorageView
-		}()
-
-		m.leaseView = func(ns *namespace.Namespace) BarrierView {
-			if lvTx != nil {
-				return lvTx
-			}
-			bv := originalLeaseView(ns)
-			if bvtx, ok := bv.(*transactionalBarrierView); ok {
-				lvTx, err := bvtx.BeginTx(ctx)
-				if err != nil {
-					// If we fail to begin a transaction, log and return the original view
-					m.logger.Error("failed to begin transaction for lease view", "error", err)
-					return bv
-				}
-				return lvTx.(BarrierView)
-			}
-			return bv
-		}
-
-		m.tokenIndexView = func(ns *namespace.Namespace) BarrierView {
-			if tivTx != nil {
-				return tivTx
-			}
-			bv := originalStorageView(ns)
-			if bvtx, ok := bv.(*transactionalBarrierView); ok {
-				tivTx, err := bvtx.BeginTx(ctx)
-				if err != nil {
-					// If we fail to begin a transaction, log and return the original view
-					m.logger.Error("failed to begin transaction for token index view", "error", err)
-					return bv
-				}
-				return tivTx.(BarrierView)
-			}
-			return bv
-		}
-	}
-
-	if err := callbackFn(ctx); err != nil {
-		if lvTx != nil {
-			if err := lvTx.Rollback(ctx); err != nil {
-				m.logger.Error("failed to rollback lease view transaction", "error", err)
-			}
-		}
-		if tivTx != nil {
-			if err := tivTx.Rollback(ctx); err != nil {
-				m.logger.Error("failed to rollback token index view transaction", "error", err)
-			}
-		}
-		return err
-	} else {
-		if lvTx != nil {
-			if err := lvTx.Commit(ctx); err != nil {
-				m.logger.Error("failed to commit lease view transaction", "error", err)
-			}
-		}
-		if tivTx != nil {
-			if err := tivTx.Commit(ctx); err != nil {
-				m.logger.Error("failed to commit token index view transaction", "error", err)
-			}
-		}
-		return nil
-	}
 }
 
 // Mark a lease as expiring immediately
@@ -1271,7 +1219,7 @@ func (m *ExpirationManager) revokePrefixCommon(ctx context.Context, prefix strin
 	if err != nil {
 		return err
 	}
-	view := m.leaseView(ns).SubView(prefix)
+	view := m.leaseView(ctx, ns).SubView(prefix)
 	existing, err := logical.CollectKeys(ctx, view)
 	if err != nil {
 		return fmt.Errorf("failed to scan for leases: %w", err)
@@ -2092,19 +2040,6 @@ func (m *ExpirationManager) loadEntry(ctx context.Context, leaseID string) (*lea
 		}
 	}
 
-	_, nsID := namespace.SplitIDFromString(leaseID)
-	if nsID != "" {
-		leaseNS, err := m.core.NamespaceByID(ctx, nsID)
-		if err != nil {
-			return nil, err
-		}
-		if leaseNS != nil {
-			ctx = namespace.ContextWithNamespace(ctx, leaseNS)
-		}
-	} else {
-		ctx = namespace.ContextWithNamespace(ctx, namespace.RootNamespace)
-	}
-
 	// If a lease entry is nil, proactively delete the lease lock, in case we
 	// created one erroneously.
 	// If there was an error, we don't know whether the lease entry exists or not.
@@ -2115,6 +2050,14 @@ func (m *ExpirationManager) loadEntry(ctx context.Context, leaseID string) (*lea
 	return leaseEntry, err
 }
 
+func (m *ExpirationManager) namespaceFromLeaseID(ctx context.Context, leaseID string) (*namespace.Namespace, error) {
+	_, nsID := namespace.SplitIDFromString(leaseID)
+	if nsID != "" {
+		return m.core.NamespaceByID(ctx, nsID)
+	}
+	return nil, errors.New("namespace not found in leaseID")
+}
+
 // loadEntryInternal is used when you need to load an entry but also need to
 // control the lifecycle of the restoreLock
 func (m *ExpirationManager) loadEntryInternal(ctx context.Context, leaseID string, restoreMode bool, checkRestored bool) (*leaseEntry, error) {
@@ -2123,7 +2066,7 @@ func (m *ExpirationManager) loadEntryInternal(ctx context.Context, leaseID strin
 		return nil, err
 	}
 
-	out, err := m.leaseView(ns).Get(ctx, leaseID)
+	out, err := m.leaseView(ctx, ns).Get(ctx, leaseID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read lease entry %s: %w", leaseID, err)
 	}
@@ -2173,7 +2116,7 @@ func (m *ExpirationManager) persistEntry(ctx context.Context, le *leaseEntry) er
 		ent.SealWrap = true
 	}
 
-	if err := m.leaseView(le.namespace).Put(ctx, &ent); err != nil {
+	if err := m.leaseView(ctx, le.namespace).Put(ctx, &ent); err != nil {
 		return fmt.Errorf("failed to persist lease entry: %w", err)
 	}
 	return nil
@@ -2181,7 +2124,7 @@ func (m *ExpirationManager) persistEntry(ctx context.Context, le *leaseEntry) er
 
 // deleteEntry is used to delete a lease entry
 func (m *ExpirationManager) deleteEntry(ctx context.Context, le *leaseEntry) error {
-	if err := m.leaseView(le.namespace).Delete(ctx, le.LeaseID); err != nil {
+	if err := m.leaseView(ctx, le.namespace).Delete(ctx, le.LeaseID); err != nil {
 		return fmt.Errorf("failed to delete lease entry: %w", err)
 	}
 	return nil

@@ -117,7 +117,7 @@ func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
 
 	// exponential backoff-retry
 	if err = pool.Retry(func() error {
-		dialer := &net.Dialer{Timeout: time.Second * 5}
+		dialer := &net.Dialer{Timeout: time.Second}
 		conn, err := ldap.DialURL(retURL, ldap.DialWithDialer(dialer))
 		if err != nil {
 			return err

@@ -408,6 +408,7 @@ func TestValidate(t *testing.T) {
 	}
 }
 
+// TestParseSpecifier validates the behavior of [ParseSpecifier].
 func TestParseSpecifier(t *testing.T) {
 	tcases := []struct {
 		input     string
@@ -452,6 +453,7 @@ func TestParseSpecifier(t *testing.T) {
 	}
 }
 
+// TestCompareSpecifier validates the behavior of [Namespace.CompareSpecifier].
 func TestCompareSpecifier(t *testing.T) {
 	ns := &Namespace{
 		Path: "foo/bar/",

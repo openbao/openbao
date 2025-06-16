@@ -115,8 +115,12 @@ func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
 
 	retURL = fmt.Sprintf("ldap://localhost:%s", resource.GetPort("389/tcp"))
 
+	retries := 0
+
 	// exponential backoff-retry
 	if err = pool.Retry(func() error {
+		retries++
+		fmt.Printf("retry #%d...\n", retries)
 		dialer := &net.Dialer{Timeout: time.Second}
 		conn, err := ldap.DialURL(retURL, ldap.DialWithDialer(dialer))
 		if err != nil {

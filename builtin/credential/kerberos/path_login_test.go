@@ -98,7 +98,10 @@ func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
 	runOpts := &dockertest.RunOptions{
 		Repository: "quay.io/minio/openldap",
 		Tag:        "latest",
-		Env:        []string{"LDAP_TLS=false"},
+		Env: []string{
+			"LDAP_TLS=false",
+			"LDAP_DOMAIN=min.io", // Required for minio/openldap to boot up...
+		},
 	}
 	resource, err := pool.RunWithOptions(runOpts)
 	if err != nil {
@@ -111,23 +114,22 @@ func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
 		}
 	}
 
-	ldapAddr := fmt.Sprintf("localhost:%s", resource.GetPort("389/tcp"))
-	retURL = "ldap://" + ldapAddr
+	retURL = fmt.Sprintf("ldap://localhost:%s", resource.GetPort("389/tcp"))
 
 	// exponential backoff-retry
 	if err = pool.Retry(func() error {
-		conn, err := ldap.Dial("tcp", ldapAddr)
+		conn, err := ldap.DialURL(retURL)
 		if err != nil {
 			return err
 		}
 		defer conn.Close()
 
-		if err := conn.Bind("cn=admin,dc=example,dc=org", "admin"); err != nil {
+		if err := conn.Bind("cn=admin,dc=min,dc=io", "admin"); err != nil {
 			return err
 		}
 
 		searchRequest := ldap.NewSearchRequest(
-			"dc=example,dc=org",
+			"dc=min,dc=io",
 			ldap.ScopeWholeSubtree,
 			ldap.NeverDerefAliases,
 			0,

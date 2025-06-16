@@ -407,3 +407,76 @@ func TestValidate(t *testing.T) {
 		require.Equal(t, tc.wantError, (gotErr != nil))
 	}
 }
+
+func TestParseSpecifier(t *testing.T) {
+	tcases := []struct {
+		input     string
+		kind      string
+		spec      string
+		rest      string
+		wantError bool
+	}{
+		// Happy cases without trailing rest:
+		{input: "path:foo/bar/", kind: "path", spec: "foo/bar/"},
+		{input: "id:De0z6N", kind: "id", spec: "De0z6N"},
+		{
+			input: "uuid:013fb57a-c56a-437f-9452-1996c0b68c27",
+			kind:  "uuid",
+			spec:  "013fb57a-c56a-437f-9452-1996c0b68c27",
+		},
+		// Happy case with trailing rest:
+		{
+			input: "path:foo/bar/:some/trailing/rest:baz/",
+			kind:  "path",
+			spec:  "foo/bar/",
+			rest:  "some/trailing/rest:baz/",
+		},
+		// Nonsense case that is valid for all we care:
+		{input: "path:", kind: "path", spec: ""},
+		// Bad inputs:
+		{input: "", wantError: true},
+		{input: "uuid", wantError: true},
+		{input: "pat:foo/bar/", wantError: true},
+		{input: "pat:foo/bar/:baz", wantError: true},
+	}
+
+	for _, tc := range tcases {
+		kind, spec, rest, err := ParseSpecifier(tc.input)
+		if tc.wantError {
+			require.Error(t, err)
+		} else {
+			require.Equal(t, kind, tc.kind)
+			require.Equal(t, spec, tc.spec)
+			require.Equal(t, rest, tc.rest)
+		}
+	}
+}
+
+func TestCompareSpecifier(t *testing.T) {
+	ns := &Namespace{
+		Path: "foo/bar/",
+		ID:   "De0z6N",
+		UUID: "013fb57a-c56a-437f-9452-1996c0b68c27",
+	}
+
+	tcases := []struct {
+		kind string
+		spec string
+		want bool
+	}{
+		// Happy cases:
+		{kind: "path", spec: ns.Path, want: true},
+		{kind: "id", spec: ns.ID, want: true},
+		{kind: "uuid", spec: ns.UUID, want: true},
+		// Unhappy cases, values don't match:
+		{kind: "path", spec: ns.ID, want: false},
+		{kind: "id", spec: ns.UUID, want: false},
+		// Unhappy cases, nonsense inputs:
+		{kind: "", spec: "", want: false},
+		{kind: "foo", spec: "bar", want: false},
+	}
+
+	for _, tc := range tcases {
+		require.Equal(t, tc.want, ns.CompareSpecifier(tc.kind, tc.spec))
+	}
+}

@@ -5,6 +5,8 @@ package transit
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"strconv"
 	"testing"
 
@@ -15,26 +17,55 @@ import (
 func TestTransit_ECDH_NominalCase(t *testing.T) {
 	t.Parallel()
 
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "")
+	nonce := make([]byte, 8)
+	rand.Read(nonce)
+	nonceBase64 := base64.StdEncoding.EncodeToString(nonce)
 
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes128-gcm96")
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes128-gcm96")
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes128-gcm96")
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "", nonceBase64)
 
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes256-gcm96")
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes256-gcm96")
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes256-gcm96")
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes128-gcm96", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes128-gcm96", nonceBase64)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes128-gcm96", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes128-gcm96", nonceBase64)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes128-gcm96", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes128-gcm96", nonceBase64)
 
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "chacha20-poly1305")
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "chacha20-poly1305")
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "chacha20-poly1305")
+	nonce = make([]byte, 16)
+	rand.Read(nonce)
+	nonceBase64 = base64.StdEncoding.EncodeToString(nonce)
 
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "xchacha20-poly1305")
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "xchacha20-poly1305")
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "xchacha20-poly1305")
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes256-gcm96", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes256-gcm96", nonceBase64)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes256-gcm96", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes256-gcm96", nonceBase64)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes256-gcm96", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes256-gcm96", nonceBase64)
+
+	nonce = make([]byte, 32)
+	rand.Read(nonce)
+	nonceBase64 = base64.StdEncoding.EncodeToString(nonce)
+
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "chacha20-poly1305", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "chacha20-poly1305", nonceBase64)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "chacha20-poly1305", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "chacha20-poly1305", nonceBase64)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "chacha20-poly1305", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "chacha20-poly1305", nonceBase64)
+
+	nonce = make([]byte, 64)
+	rand.Read(nonce)
+	nonceBase64 = base64.StdEncoding.EncodeToString(nonce)
+
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "xchacha20-poly1305", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "xchacha20-poly1305", nonceBase64)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "xchacha20-poly1305", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "xchacha20-poly1305", nonceBase64)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "xchacha20-poly1305", "")
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "xchacha20-poly1305", nonceBase64)
 }
 
-func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType string) {
+func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType string, nonce string) {
 	var resp *logical.Response
 	var err error
 
@@ -148,6 +179,10 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 		policyReq.Data["derived_key_type"] = derivedKeyType
 	}
 
+	if len(nonce) > 0 {
+		policyReq.Data["nonce"] = nonce
+	}
+
 	resp, err = b.HandleRequest(context.Background(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
@@ -192,6 +227,10 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 
 	if len(derivedKeyType) > 0 {
 		policyReq.Data["derived_key_type"] = derivedKeyType
+	}
+
+	if len(nonce) > 0 {
+		policyReq.Data["nonce"] = nonce
 	}
 
 	resp, err = b.HandleRequest(context.Background(), policyReq)

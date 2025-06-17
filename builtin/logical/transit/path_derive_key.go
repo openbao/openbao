@@ -5,6 +5,7 @@ package transit
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -39,9 +40,16 @@ func (b *backend) pathDeriveKey() *framework.Path {
 Defaults to "ecdh".`,
 			},
 
+			"nonce": {
+				Type: framework.TypeString,
+				Description: `Base64 encoded optional nonce used as salt by the underlying HMAC Key Derivation Function.
+When this parameter is used, the both parties have to provide the same nonce for getting the same derived key.`,
+			},
+
 			"peer_public_key": {
-				Type:        framework.TypeString,
-				Description: "The pem-encoded other party's ECC public key",
+				Type: framework.TypeString,
+				Description: `The pem-encoded other party's ECC public key.
+This API assumes that only trusted public keys are provided by the caller.`,
 			},
 
 			"base_key_name": {
@@ -89,6 +97,19 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 		derivationAlgorithm = defaultKeyDerivationAlgorithm
 	} else if derivationAlgorithm != defaultKeyDerivationAlgorithm {
 		return logical.ErrorResponse("key derivation algorithm %s not supported", derivationAlgorithm), logical.ErrInvalidRequest
+	}
+
+	var nonce []byte = nil
+	nonceBase64 := d.Get("nonce").(string)
+	if len(nonceBase64) != 0 {
+		if len(nonceBase64) > 2*1024 {
+			return logical.ErrorResponse("nonce wrong size"), logical.ErrInvalidRequest
+		}
+
+		nonce, err = base64.StdEncoding.DecodeString(nonceBase64)
+		if err != nil {
+			return logical.ErrorResponse("invalid nonce provided, must be base64 encoded"), logical.ErrInvalidRequest
+		}
 	}
 
 	peerPublicKeyPem := d.Get("peer_public_key").(string)
@@ -150,7 +171,7 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 		return logical.ErrorResponse("base key type %v does not support key agreement", p.Type), logical.ErrInvalidRequest
 	}
 
-	derivedKey, err := p.DeriveKeyECDH(baseKeyVer, []byte(peerPublicKeyPem), derivedKeySizeInBytes)
+	derivedKey, err := p.DeriveKeyECDH(baseKeyVer, []byte(peerPublicKeyPem), nonce, derivedKeySizeInBytes)
 	if err != nil {
 		return nil, err
 	}

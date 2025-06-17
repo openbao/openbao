@@ -380,9 +380,21 @@ ci-sync-deps: sync-deps
 
 .PHONY: bump-critical
 bump-critical:
-	grep -o 'golang.org/x/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
 	go get github.com/golang-jwt/jwt/v4@latest
 	go get github.com/golang-jwt/jwt/v5@latest
+	go get github.com/ProtonMail/go-crypto@latest
+	go get github.com/go-jose/go-jose/v3@latest
+	go get github.com/caddyserver/certmagic@latest
+	go get github.com/mholt/acmez/v3@latest
+	go get github.com/google/cel-go@latest
+	go get github.com/jackc/pgx/v5@latest
+	go get github.com/hashicorp/cap@latest
+	go get github.com/hashicorp/raft@latest
+	go get github.com/tink-crypto/tink-go/v2@latest
+	go get go.etcd.io/bbolt@latest
+	go get google.golang.org/grpc@latest
+	grep -o 'golang.org/x/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
+	grep -o 'github.com/hashicorp/go-secure-stdlib/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
 	make sync-deps
 
 .PHONY: tag-api

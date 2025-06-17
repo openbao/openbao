@@ -19,7 +19,7 @@ var (
 	CgoEnabled bool
 
 	// Filled by Goreleaser
-	fullVersion                   = "2.0.0-HEAD"
+	fullVersion                   = "2.3.0"
 	Version, VersionPrerelease, _ = strings.Cut(strings.TrimSpace(fullVersion), "-")
 	VersionMetadata               = ""
 )

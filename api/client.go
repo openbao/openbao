@@ -59,6 +59,30 @@ const (
 	// SSRF protection.
 	RequestHeaderName = "X-Vault-Request"
 
+	// Path to perform inline authentication against. Any authentication
+	// performed must be single-request.
+	InlineAuthPathHeaderName = "X-Vault-Inline-Auth-Path"
+
+	// Request operation to perform inline authentication with. Defaults to
+	// update.
+	InlineAuthOperationHeaderName = "X-Vault-Inline-Auth-Operation"
+
+	// Namespace to perform inline authentication with. Defaults to
+	// the value of X-Vault-Namespace; can be combined with any potential
+	// namespace in X-Vault-Inline-Auth-Path.
+	InlineAuthNamespaceHeaderName = "X-Vault-Inline-Auth-Namespace"
+
+	// Prefix of user-specified parameters sent to the endpoint specified
+	// in InlineAuthPathHeaderName. Each parameter is a base64 url-safe
+	// encoded JSON object containing:
+	//
+	// { "key": <name>, "value": <value> }
+	//
+	// so that typing of the value and case sensitivity of the key can be
+	// preserved. The remainder of the header value (after the trailing
+	// dash) is ignored. Any repeated header keys result in request failure.
+	InlineAuthParameterHeaderPrefix = "X-Vault-Inline-Auth-Parameter-"
+
 	TLSErrorString = "This error usually means that the server is running with TLS disabled\n" +
 		"but the client is configured to use TLS. Please either enable TLS\n" +
 		"on the server or run the client with -address set to an address\n" +

@@ -940,7 +940,7 @@ func TestCore_OneTenPlus_BatchTokens(t *testing.T) {
 		NamespaceID: namespace.RootNamespaceID,
 		Type:        logical.TokenTypeBatch,
 	}
-	err = c.tokenStore.create(namespace.RootContext(nil), te)
+	err = c.tokenStore.create(namespace.RootContext(nil), te, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -959,7 +959,7 @@ func TestCore_Seal_SingleUse(t *testing.T) {
 		NumUses:     1,
 		Policies:    []string{"root"},
 		NamespaceID: namespace.RootNamespaceID,
-	})
+	}, true)
 	if err := c.Seal("foo"); err != nil {
 		t.Fatalf("err: %v", err)
 	}

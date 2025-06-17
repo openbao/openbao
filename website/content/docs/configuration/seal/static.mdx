@@ -1,0 +1,88 @@
+---
+sidebar_label: Static Key
+description: |-
+  The static key seal configures OpenBao to use static keys provided alongside
+  the configuration file as the Auto Anseal mechanism.
+---
+# `static` seal
+
+The static key seal configures OpenBao to use static keys provided alongside
+the configuration file as the Auto Unseal mechanism. These can either be provided
+directly, in base64 or hex form, as an environment variable (using the `env://`
+syntax), or as a file (using the `file://` syntax). This key must be a 32-bytes
+for use as a AES-256-GCM-96 key. Other key algorithms are currently not
+supported.
+
+OpenBao's static key unseal support is activated by the following:
+
+- The presence of a `seal "static"` block in OpenBao's configuration file.
+
+:::warning
+
+Carefully evaluate use of Static Key Auto Unseal to see if its use meets the
+desired security properties. This mechanism is only recommended when an
+existing source of trust, such as another third-party secrets manager, already
+exists in the operating environment and it is desirable to chain OpenBao to
+that secrets manager. It is imperative that any key material be injected
+properly.
+
+:::
+
+## `static` example
+
+This example shows configuring static seal through the OpenBao configuration
+file by providing all the required values:
+
+```hcl
+seal "static" {
+  current_key_id = "20250606-1"
+  current_key = "file:///openbao/secrets/unseal-20250606-1.key"
+  previous_key_id = "20250306-1"
+  previous_key = "file:///openbao/secrets/unseal-20250306-1.key"
+}
+```
+
+To create a sample key, use the `openssl rand` command:
+
+```
+$ openssl rand -out /openbao/secrets/unseal-20250606-1.key 32
+```
+
+## `static` parameters
+
+These parameters apply to the `static` stanza in the OpenBao configuration
+file:
+
+- `current_key_id` `(string: <required>)`: permanent identifier of the key
+  in the `current_key` field; whenever the final value of `current_key`
+  changes (either directly or via modifying the referenced environment
+  variable or file).
+
+- `current_key` `(string: <required>)`: key to use for new seal operations;
+  may have an `env://` or `file://` prefix to reference an environment
+  variable or file respectively. Must be a 32-byte key to be used as an
+  AES-256-GCM-96 key.
+
+- `previous_key_id` `(string: <optional>)`: permanent identifier of the key
+  in the `previous_key` field; whenever the final value of `previous_key`
+  changes (either directly or via modifying the referenced environment
+  variable or file). Must be present if `previous_key` is specified.
+
+- `previous_key` `(string: <optional>)`: key to use for new seal operations;
+  may have an `env://` or `file://` prefix to reference an environment
+  variable or file respectively. Must be a 32-byte key to be used as an
+  AES-256-GCM-96 key. Used for rotating seal keys; set `current_key` to the
+  new key and `previous_key` to the value currently used to encrypt storage.
+
+- `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from
+  an auto seal configuration. Otherwise, set to `false`.
+
+Refer to the [Seal Migration](/docs/concepts/seal#seal-migration)
+documentation for more information about the seal migration process.
+
+## Key rotation
+
+This mechanism supports `n-1` to `n` key rotation using the `previous_key` and
+`current_key` fields, plus corresponding labels. Note that the key identifier
+MUST always match the underlying key. It is suggested to use some scheme to
+automatically compute this value from the underlying key.

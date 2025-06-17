@@ -20,6 +20,7 @@ a `CelProgram` in any part of OpenBao.
  - [Main expression](#main-expression)
  - [Variables in a CelProgram](#variables-in-a-celprogram)
  - [CelProgram](#celprogram)
+ - [The Request Object](#therequestobject)
 
 ---
 
@@ -131,3 +132,12 @@ Expression: string
   "expression": "validate_cn ? output : err",
 },
 ```
+
+## The Request Object
+- Every key/value pair in the request body is copied verbatim to the CEL
+`request` map. The CEL program (not the endpoint) decides which
+of these parameters to honour, ignore, or override.
+
+- To avoid breaking existing automation, consider re-using familiar field
+names such as `common_name` or `ttl`, even though CEL roles are not required
+to follow the traditional role schema.

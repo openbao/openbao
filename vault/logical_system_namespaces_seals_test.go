@@ -12,6 +12,39 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNamespaceBackend_KeyStatus(t *testing.T) {
+	t.Parallel()
+	b := testSystemBackend(t)
+	rootCtx := namespace.RootContext(context.Background())
+
+	t.Run("returns error for non-existent namespace", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/noop/key-status")
+		resp, err := b.HandleRequest(rootCtx, req)
+		require.ErrorContains(t, err, "namespace \"noop/\" doesn't exist")
+		require.Empty(t, resp)
+	})
+
+	t.Run("returns error for non-sealable namespace", func(t *testing.T) {
+		testCreateNamespace(t, rootCtx, b, "foo", nil)
+		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/foo/key-status")
+		resp, err := b.HandleRequest(rootCtx, req)
+		require.ErrorContains(t, err, "namespace \"foo/\" doesn't have a barrier setup")
+		require.Empty(t, resp)
+	})
+
+	t.Run("returns key info for sealable namespace", func(t *testing.T) {
+		sealConfig := map[string]interface{}{"type": "shamir", "secret_shares": 3, "secret_threshold": 2}
+		testCreateNamespace(t, rootCtx, b, "bar", map[string]interface{}{"seals": sealConfig})
+		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/bar/key-status")
+		resp, err := b.HandleRequest(rootCtx, req)
+
+		require.NoError(t, err)
+		require.Equal(t, resp.Data["term"], 1)
+		require.NotEmpty(t, resp.Data["encryptions"])
+		require.NotEmpty(t, resp.Data["install_time"])
+	})
+}
+
 func TestNamespaceBackend_SealStatus(t *testing.T) {
 	t.Parallel()
 	b := testSystemBackend(t)

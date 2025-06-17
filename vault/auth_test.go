@@ -835,11 +835,11 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 func TestCore_RemountCredential_Namespaces(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
 	rootCtx := namespace.RootContext(nil)
-	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+	ns1, _ := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
 	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
-	ns2 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
+	ns2, _ := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
 	ns2Ctx := namespace.ContextWithNamespace(rootCtx, ns2)
-	ns3 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
+	ns3, _ := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
 	ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
 
 	me := &MountEntry{

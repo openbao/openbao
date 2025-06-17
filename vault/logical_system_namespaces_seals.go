@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -18,21 +19,121 @@ import (
 )
 
 func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
+	namespaceFieldsSchema := map[string]*framework.FieldSchema{
+		"name": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Name of the namespace.",
+		},
+		"key": {
+			Type:        framework.TypeString,
+			Description: "Specifies a single namespace unseal key share.",
+		},
+	}
+
+	sealStatusSchema := map[string]*framework.FieldSchema{
+		"type": {
+			Type:     framework.TypeString,
+			Required: true,
+		},
+		"initialized": {
+			Type:     framework.TypeBool,
+			Required: true,
+		},
+		"sealed": {
+			Type:     framework.TypeBool,
+			Required: true,
+		},
+		"t": {
+			Type:     framework.TypeInt,
+			Required: true,
+		},
+		"n": {
+			Type:     framework.TypeInt,
+			Required: true,
+		},
+		"progress": {
+			Type:     framework.TypeInt,
+			Required: true,
+		},
+		"nonce": {
+			Type:     framework.TypeString,
+			Required: true,
+		},
+		"version": {
+			Type:     framework.TypeString,
+			Required: true,
+		},
+		"build_date": {
+			Type:     framework.TypeString,
+			Required: true,
+		},
+		"migration": {
+			Type: framework.TypeBool,
+		},
+		"cluster_name": {
+			Type: framework.TypeString,
+		},
+		"cluster_id": {
+			Type: framework.TypeString,
+		},
+		"recovery_seal": {
+			Type: framework.TypeBool,
+		},
+		"storage_type": {
+			Type: framework.TypeString,
+		},
+	}
+
 	return []*framework.Path{
 		{
-			Pattern: "namespaces/(?P<name>.+)/seal-status",
-
+			Pattern: "namespaces/(?P<name>.+)/key-status",
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
 				OperationVerb:   "status",
+				OperationSuffix: "encryption-key",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"name": namespaceFieldsSchema["name"],
 			},
 
-			Fields: map[string]*framework.FieldSchema{
-				"name": {
-					Type:        framework.TypeString,
-					Required:    true,
-					Description: "Name of the namespace.",
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Summary:  "Provides information about the namespace backend encryption key.",
+					Callback: b.handleNamespaceKeyStatus,
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Fields: map[string]*framework.FieldSchema{
+								"term": {
+									Type:     framework.TypeInt,
+									Required: true,
+								},
+								"install_time": {
+									Type:     framework.TypeTime,
+									Required: true,
+								},
+								"encryptions": {
+									Type:     framework.TypeInt64,
+									Required: true,
+								},
+							},
+						}},
+					},
 				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-seal"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces-seal"][1]),
+		},
+		{
+			Pattern: "namespaces/(?P<name>.+)/seal-status",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+				OperationVerb:   "status",
+				OperationSuffix: "seal",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"name": namespaceFieldsSchema["name"],
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -41,64 +142,8 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 					Callback: b.handleNamespaceSealStatus(),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
-							Fields: map[string]*framework.FieldSchema{
-								"type": {
-									Type:     framework.TypeString,
-									Required: true,
-								},
-								"initialized": {
-									Type:     framework.TypeBool,
-									Required: true,
-								},
-								"sealed": {
-									Type:     framework.TypeBool,
-									Required: true,
-								},
-								"t": {
-									Type:     framework.TypeInt,
-									Required: true,
-								},
-								"n": {
-									Type:     framework.TypeInt,
-									Required: true,
-								},
-								"progress": {
-									Type:     framework.TypeInt,
-									Required: true,
-								},
-								"nonce": {
-									Type:     framework.TypeString,
-									Required: true,
-								},
-								"version": {
-									Type:     framework.TypeString,
-									Required: true,
-								},
-								"build_date": {
-									Type:     framework.TypeString,
-									Required: true,
-								},
-								"migration": {
-									Type:     framework.TypeBool,
-									Required: true,
-								},
-								"cluster_name": {
-									Type:     framework.TypeString,
-									Required: false,
-								},
-								"cluster_id": {
-									Type:     framework.TypeString,
-									Required: false,
-								},
-								"recovery_seal": {
-									Type:     framework.TypeBool,
-									Required: true,
-								},
-								"storage_type": {
-									Type:     framework.TypeString,
-									Required: false,
-								},
-							},
+							Description: http.StatusText(http.StatusOK),
+							Fields:      sealStatusSchema,
 						}},
 					},
 				},
@@ -110,17 +155,11 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 
 		{
 			Pattern: "namespaces/(?P<name>.+)/seal",
-
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
 			},
-
 			Fields: map[string]*framework.FieldSchema{
-				"name": {
-					Type:        framework.TypeString,
-					Required:    true,
-					Description: "Name of the namespace.",
-				},
+				"name": namespaceFieldsSchema["name"],
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -138,29 +177,20 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 		},
 		{
 			Pattern: "namespaces/(?P<name>.+)/unseal",
-
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
 			},
-
-			Fields: map[string]*framework.FieldSchema{
-				"name": {
-					Type:        framework.TypeString,
-					Required:    true,
-					Description: "Name of the namespace.",
-				},
-				"key": {
-					Type:        framework.TypeString,
-					Description: "Specifies a single namespace unseal key share.",
-				},
-			},
+			Fields: namespaceFieldsSchema,
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Summary:  "Unseal a namespace.",
 					Callback: b.handleNamespacesUnseal(),
 					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
+						http.StatusOK: {{
+							Description: http.StatusText(http.StatusOK),
+							Fields:      sealStatusSchema,
+						}},
 					},
 				},
 			},
@@ -171,8 +201,44 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 	}
 }
 
-// TODO: adjust comment when known what it does
-// handleNamespaceSealStatus handles the "/sys/namespaces/<name>/seal-status" endpoint to .
+// handleNamespaceKeyStatus handles the "/sys/namespaces/<name>/key-status" endpoint
+// to return status information about the namespace-owned backend key.
+func (b *SystemBackend) handleNamespaceKeyStatus(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	name := namespace.Canonicalize(data.Get("name").(string))
+	if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+		return nil, errors.New("name must not contain /")
+	}
+
+	ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+	if err != nil {
+		return handleError(err)
+	}
+
+	if ns == nil {
+		return nil, fmt.Errorf("namespace %q doesn't exist", name)
+	}
+
+	barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
+	if barrier == nil {
+		return nil, fmt.Errorf("namespace %q doesn't have a barrier setup", ns.Path)
+	}
+
+	info, err := barrier.ActiveKeyInfo()
+	if err != nil {
+		return handleError(err)
+	}
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"term":         info.Term,
+			"install_time": info.InstallTime.Format(time.RFC3339Nano),
+			"encryptions":  info.Encryptions,
+		},
+	}, nil
+}
+
+// handleNamespaceSealStatus handles the "/sys/namespaces/<name>/seal-status" endpoint
+// to retrieve a seal status of the namespace.
 func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		name := namespace.Canonicalize(data.Get("name").(string))
@@ -198,7 +264,9 @@ func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 			return nil, nil
 		}
 
-		return &logical.Response{Data: map[string]interface{}{"seal_status": status}}, nil
+		return &logical.Response{
+			Data: map[string]interface{}{"seal_status": status},
+		}, nil
 	}
 }
 

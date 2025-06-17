@@ -210,7 +210,7 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 		EntityID:     entity.ID,
 		NamespaceID:  namespace.RootNamespaceID,
 	}
-	if err := core.tokenStore.create(ctx, ent); err != nil {
+	if err := core.tokenStore.create(ctx, ent, true); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 

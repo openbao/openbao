@@ -85,6 +85,9 @@ type Response struct {
 	// Headers will contain the http headers from the plugin that it wishes to
 	// have as part of the output
 	Headers map[string][]string `json:"headers" structs:"headers" mapstructure:"headers"`
+
+	// When performing an inline auth, preserved inline authentication information.
+	InlineAuthTokenEntry *TokenEntry `json:"-" structs:"" mapstructure:""`
 }
 
 // AddWarning adds a warning into the response's warning list

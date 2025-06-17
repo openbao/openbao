@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -273,7 +274,7 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 		return nil, nil, nil, nil, logical.ErrPermissionDenied
 	}
 
-	if c.tokenStore == nil {
+	if c.tokenStore == nil && req.TokenEntry() == nil {
 		c.logger.Error("token store is unavailable")
 		return nil, nil, nil, nil, ErrInternalError
 	}
@@ -392,7 +393,7 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 	// Even if unauth, if a token is provided, there's little reason not to
 	// gather as much info as possible for the audit log and to e.g. control
 	// trace mode for EGPs.
-	if !unauth || (unauth && req.ClientToken != "") {
+	if !unauth || (unauth && (req.ClientToken != "" || req.HasInlineAuth)) {
 		var err error
 		acl, te, entity, identityPolicies, err = c.fetchACLTokenEntryAndEntity(ctx, req)
 		// In the unauth case we don't want to fail the command, since it's
@@ -434,6 +435,14 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 				retHeaders = append(retHeaders, v)
 			}
 			req.Headers["Authorization"] = retHeaders
+		}
+	case logical.ClientTokenFromInlineAuth:
+		delete(req.Headers, consts.InlineAuthPathHeaderName)
+		delete(req.Headers, consts.InlineAuthOperationHeaderName)
+		for header := range req.Headers {
+			if !strings.HasPrefix(header, consts.InlineAuthParameterHeaderPrefix) {
+				delete(req.Headers, header)
+			}
 		}
 	}
 
@@ -573,9 +582,10 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	// 1. Synthesized logical requests not originating from an HTTP request
 	// 2. Tests
 	ns, err := namespace.FromContext(httpCtx)
-	// If the above is not the case, resolve the namespace from header & request path.
+	var nsHeader string
 	if err != nil {
-		nsHeader := namespace.HeaderFromContext(httpCtx)
+		// If the above is not the case, resolve the namespace from header & request path.
+		nsHeader = namespace.HeaderFromContext(httpCtx)
 		ns, req.Path = c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, req.Path)
 		if ns == nil {
 			return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
@@ -612,10 +622,140 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	if ok {
 		ctx = logical.CreateContextOriginalBody(ctx, body)
 	}
+	if err = c.handleInlineAuth(ctx, req, nsHeader); err != nil {
+		return nil, fmt.Errorf("failed to perform inline authentication: %w", err)
+	}
 	resp, err = c.handleCancelableRequest(ctx, req)
 	req.SetTokenEntry(nil)
 	cancel()
 	return resp, err
+}
+
+func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHeader string) error {
+	// Find the path of the request.
+	authPath, present := req.Headers[consts.InlineAuthPathHeaderName]
+	if !present {
+		return nil
+	}
+	if len(authPath) != 1 {
+		return fmt.Errorf("expected exactly one value for %v", consts.InlineAuthPathHeaderName)
+	}
+
+	if _, present := req.Headers[consts.AuthHeaderName]; present {
+		return fmt.Errorf("cannot layer inline authentication with explicit token authentication")
+	}
+
+	if _, present := req.Headers["Authorization"]; present {
+		return fmt.Errorf("cannot layer inline authentication with bearer authentication")
+	}
+
+	// Build an entirely new request; this will be executed before req
+	requestId, err := uuid.GenerateUUID()
+	if err != nil {
+		return fmt.Errorf("failed to generate identifier for the inline authentication request: %w", err)
+	}
+
+	authReq := &logical.Request{
+		ID:           requestId,
+		Path:         authPath[0],
+		Storage:      req.Storage,
+		Connection:   req.Connection,
+		Headers:      req.Headers,
+		IsInlineAuth: true,
+	}
+
+	// Find the optional operation; this defaults to Update if missing.
+	authOperation, present := req.Headers[consts.InlineAuthOperationHeaderName]
+	if !present {
+		authOperation = []string{logical.UpdateOperation}
+	}
+	if len(authOperation) != 1 {
+		return fmt.Errorf("expected exactly one value for %v", consts.InlineAuthOperationHeaderName)
+	}
+	authReq.Operation = logical.Operation(authOperation[0])
+
+	// Find the optional namespace header; this defaults to X-Vault-Namespace
+	// if missing.
+	authNamespace, present := req.Headers[consts.InlineAuthNamespaceHeaderName]
+	switch {
+	case !present:
+		authNamespace = []string{nsHeader}
+	case len(authNamespace) == 0:
+		authNamespace = []string{""}
+	case len(authNamespace) > 1:
+		return fmt.Errorf("expected at most one value for %v", consts.InlineAuthNamespaceHeaderName)
+	}
+
+	var authNs *namespace.Namespace
+	authNs, authReq.Path = c.namespaceStore.ResolveNamespaceFromRequest(authNamespace[0], authReq.Path)
+	if authNs == nil {
+		return fmt.Errorf("inline auth namespace was not found")
+	}
+
+	authCtx := namespace.ContextWithNamespace(ctx, authNs)
+
+	// Find all login request parameters. Usually we have at least two
+	// parameters: a token of some sort and a role. This becomes our request
+	// data.
+	loginParams := make(map[string]interface{}, 2)
+	for header, values := range req.Headers {
+		if !strings.HasPrefix(header, consts.InlineAuthParameterHeaderPrefix) {
+			continue
+		}
+
+		if len(values) != 1 {
+			return fmt.Errorf("expected exactly one value for each auth header parameter")
+		}
+
+		encodedHeader, err := base64.RawURLEncoding.DecodeString(values[0])
+		if err != nil {
+			return fmt.Errorf("failed raw url-safe base64 decoding header value")
+		}
+
+		var paramInfo map[string]interface{}
+		if err := json.Unmarshal(encodedHeader, &paramInfo); err != nil {
+			return errors.New("failed json decoding header value")
+		}
+
+		paramKeyRaw, present := paramInfo["key"]
+		if !present {
+			return errors.New("decoded header lacked `key` field")
+		}
+		paramKey, ok := paramKeyRaw.(string)
+		if !ok {
+			return errors.New("decoded header had incorrect type for `key` field")
+		}
+
+		paramValue, present := paramInfo["value"]
+		if !present {
+			return errors.New("decoded header lacked `value` field")
+		}
+
+		if len(paramInfo) != 2 {
+			return errors.New("unexpected field in decoded request parameter")
+		}
+
+		loginParams[paramKey] = paramValue
+	}
+
+	authReq.Data = loginParams
+
+	// Perform authentication but do not persist the underlying token.
+	resp, err := c.handleCancelableRequest(authCtx, authReq)
+	if err != nil {
+		return err
+	}
+
+	// Now extract the token from the response and set it on our original
+	// request.
+	req.ClientToken = resp.Auth.ClientToken
+	req.ClientTokenSource = logical.ClientTokenFromInlineAuth
+
+	req.HasInlineAuth = true
+	req.InlineAuth = resp.Auth
+	req.SetTokenEntry(resp.InlineAuthTokenEntry)
+
+	return nil
 }
 
 func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request) (resp *logical.Response, err error) {
@@ -1130,6 +1270,21 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 		}
 
 		if registerLease {
+			if req.HasInlineAuth {
+				// When we've performed inline authentication and see a lease created,
+				// we must revoke this lease even though it isn't yet persisted. Throw
+				// an error.
+				revokeLease, err := c.router.Route(ctx, logical.RevokeRequest(req.Path, resp.Secret, resp.Data))
+				if err != nil {
+					return nil, nil, fmt.Errorf("failed to revoke ephemeral lease generated during inline authentication: %w", err)
+				}
+				if revokeLease != nil && revokeLease.IsError() {
+					return nil, nil, fmt.Errorf("failed to revoke ephemeral lease generated during inline authentication: %w", revokeLease.Error())
+				}
+
+				return nil, nil, errutil.UserError{Err: "requests with inline authentication cannot generate leases"}
+			}
+
 			sysView := c.router.MatchingSystemView(ctx, req.Path)
 			if sysView == nil {
 				c.logger.Error("unable to look up sys view for login path", "request_path", req.Path)
@@ -1226,7 +1381,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 				}
 
 				// Only logins apply to role based quotas, so we can omit the role here, as we are not logging in.
-				if err := c.expiration.RegisterAuth(ctx, registeredTokenEntry, resp.Auth, ""); err != nil {
+				if err := c.expiration.RegisterAuth(ctx, registeredTokenEntry, resp.Auth, "", true /* persist */); err != nil {
 					// Best-effort clean up on error, so we log the cleanup error as
 					// a warning but still return as internal error.
 					if err := c.tokenStore.revokeOrphan(ctx, resp.Auth.ClientToken); err != nil {
@@ -1553,6 +1708,10 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 					}
 				}
 			} else if len(matchedMfaEnforcementList) > 0 && len(req.MFACreds) == 0 {
+				if req.IsInlineAuth {
+					return nil, nil, fmt.Errorf("unable to perform inline authentication with login MFA; use the X-Vault-MFA header to specify MFA information on the inline auth request")
+				}
+
 				mfaRequestID, err := uuid.GenerateUUID()
 				if err != nil {
 					return nil, nil, err
@@ -1614,7 +1773,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 			role = c.DetermineRoleFromLoginRequest(ctx, req.MountPoint, req.Data)
 		}
 
-		_, respTokenCreate, errCreateToken := c.LoginCreateToken(ctx, ns, req.Path, source, role, resp)
+		_, respTokenCreate, errCreateToken := c.LoginCreateToken(ctx, ns, req.Path, source, role, resp, req.IsInlineAuth)
 		if errCreateToken != nil {
 			return respTokenCreate, nil, errCreateToken
 		}
@@ -1660,7 +1819,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 // LoginCreateToken creates a token as a result of a login request.
 // If MFA is enforced, mfa/validate endpoint calls this functions
 // after successful MFA validation to generate the token.
-func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, reqPath, mountPoint, role string, resp *logical.Response) (bool, *logical.Response, error) {
+func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, reqPath, mountPoint, role string, resp *logical.Response, isInlineAuth bool) (bool, *logical.Response, error) {
 	auth := resp.Auth
 	source := strings.TrimPrefix(mountPoint, credentialRoutePrefix)
 	source = strings.ReplaceAll(source, "/", "-")
@@ -1709,7 +1868,7 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 	}
 
 	leaseGenerated := false
-	err = c.RegisterAuth(ctx, tokenTTL, reqPath, auth, role)
+	te, err := c.RegisterAuth(ctx, tokenTTL, reqPath, auth, role, !isInlineAuth)
 	switch {
 	case err == nil:
 		if auth.TokenType != logical.TokenTypeBatch {
@@ -1741,6 +1900,10 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 			{Name: "token_type", Value: auth.TokenType.String()},
 		},
 	)
+
+	if isInlineAuth {
+		resp.InlineAuthTokenEntry = te
+	}
 
 	return leaseGenerated, resp, nil
 }
@@ -2012,7 +2175,7 @@ func (c *Core) buildMfaEnforcementResponse(eConfig *mfa.MFAEnforcementConfig) (*
 // store, and registers a corresponding token lease to the expiration manager.
 // role is the login role used as part of the creation of the token entry. If not
 // relevant, can be omitted (by being provided as "").
-func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path string, auth *logical.Auth, role string) error {
+func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path string, auth *logical.Auth, role string, persistToken bool) (*logical.TokenEntry, error) {
 	// We first assign token policies to what was returned from the backend
 	// via auth.Policies. Then, we get the full set of policies into
 	// auth.Policies from the backend + entity information -- this is not
@@ -2022,7 +2185,7 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 	// Generate a token
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	te := logical.TokenEntry{
 		Path:           path,
@@ -2042,12 +2205,12 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 
 	if te.TTL == 0 && (len(te.Policies) != 1 || te.Policies[0] != "root") {
 		c.logger.Error("refusing to create a non-root zero TTL token")
-		return ErrInternalError
+		return nil, ErrInternalError
 	}
 
-	if err := c.tokenStore.create(ctx, &te); err != nil {
+	if err := c.tokenStore.create(ctx, &te, persistToken); err != nil {
 		c.logger.Error("failed to create token", "error", err)
-		return ErrInternalError
+		return nil, ErrInternalError
 	}
 
 	// Populate the client token, accessor, and TTL
@@ -2062,12 +2225,12 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 		auth.Renewable = false
 	case logical.TokenTypeService:
 		// Register with the expiration manager
-		if err := c.expiration.RegisterAuth(ctx, &te, auth, role); err != nil {
+		if err := c.expiration.RegisterAuth(ctx, &te, auth, role, persistToken); err != nil {
 			if err := c.tokenStore.revokeOrphan(ctx, te.ID); err != nil {
 				c.logger.Warn("failed to clean up token lease during login request", "request_path", path, "error", err)
 			}
 			c.logger.Error("failed to register token lease during login request", "request_path", path, "error", err)
-			return ErrInternalError
+			return nil, ErrInternalError
 		}
 		if te.ExternalID != "" {
 			auth.ClientToken = te.ExternalID
@@ -2086,11 +2249,11 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 			// unlocked and we only add storage entry when the user gets locked.
 			err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
-	return nil
+	return &te, nil
 }
 
 // LocalGetUserFailedLoginInfo gets the failed login information for a user based on alias name and mountAccessor

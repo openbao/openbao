@@ -140,7 +140,7 @@ DONELISTHANDLING:
 		NamespaceID:    ns.ID,
 	}
 
-	if err := c.CreateToken(ctx, &te); err != nil {
+	if err := c.CreateToken(ctx, &te, true); err != nil {
 		c.logger.Error("failed to create wrapping token", "error", err)
 		return nil, ErrInternalError
 	}
@@ -325,7 +325,7 @@ DONELISTHANDLING:
 
 	// Register the wrapped token with the expiration manager. We skip the role
 	// lookup here as we are not logging in, and only logins apply to role based quotas.
-	if err := c.expiration.RegisterAuth(ctx, &te, wAuth, ""); err != nil {
+	if err := c.expiration.RegisterAuth(ctx, &te, wAuth, "", true /* persist */); err != nil {
 		// Revoke since it's not yet being tracked for expiration
 		c.tokenStore.revokeOrphan(ctx, te.ID)
 		c.logger.Error("failed to register cubbyhole wrapping token lease", "request_path", req.Path, "error", err)

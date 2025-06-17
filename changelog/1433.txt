@@ -1,0 +1,8 @@
+```release-note:feature
+**Inline, Write-less Authentication**: support passing authentication
+  information inline with the desired main operation to avoid the need
+  for separate authentication calls, storing and maintaining tokens. This
+  authentication form will not work with operations that create leases.
+  In this form of authentication, no storage writes occur as a result of
+  authentication allowing its use on future read-enabled standby nodes.
+```

@@ -61,8 +61,7 @@ func (c *Core) setupSealManager() {
 	c.sealManager = NewSealManager(c, sealLogger)
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
-	c.sealManager.barrierByStoragePath.Insert("core/seal-config", nil)
-
+	c.sealManager.barrierByStoragePath.Insert(sealConfigPath, nil)
 }
 
 // teardownSealManager is used to remove seal manager
@@ -161,21 +160,34 @@ func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespac
 	return errs
 }
 
+// ParentNamespaceBarrier returns a barrier of a first parent in hierarchy that
+// has the barrier setup, going up to root namespace.
 func (sm *SealManager) ParentNamespaceBarrier(ns *namespace.Namespace) SecurityBarrier {
 	parentPath, ok := ns.ParentPath()
 	if !ok {
 		return nil
 	}
 
-	return sm.NamespaceBarrier(parentPath)
+	return sm.NamespaceBarrierByLongestPrefix(parentPath)
 }
 
-func (sm *SealManager) NamespaceBarrier(nsPath string) SecurityBarrier {
+// NamespaceBarrierByLongestPrefix returns a barrier of a namespace matching
+// the longest prefix of the provided path, going up to root namespace.
+func (sm *SealManager) NamespaceBarrierByLongestPrefix(nsPath string) SecurityBarrier {
 	// this should acquire a lock
 	_, v, _ := sm.barrierByNamespace.LongestPrefix(nsPath)
-	barrier := v.(SecurityBarrier)
+	return v.(SecurityBarrier)
+}
 
-	return barrier
+// NamespaceBarrier returns a barrier of a namespace with provided path.
+func (sm *SealManager) NamespaceBarrier(nsPath string) SecurityBarrier {
+	// this should acquire a lock
+	v, exists := sm.barrierByNamespace.Get(nsPath)
+	if !exists {
+		return nil
+	}
+
+	return v.(SecurityBarrier)
 }
 
 // SecretProgress returns the number of keys provided so far. Lock
@@ -402,10 +414,10 @@ func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combin
 	return nil, errors.New("invalid seal")
 }
 
-// NamespaceView finds the correct barrier to use for the namespace and returns
-// the a BarrierView restricted to the data of the given namespace.
+// NamespaceView finds the correct barrier to use for the namespace
+// and returns BarrierView restricted to the data of the given namespace.
 func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
-	barrier := c.sealManager.NamespaceBarrier(ns.Path)
+	barrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
 	return NamespaceView(barrier, ns)
 }
 

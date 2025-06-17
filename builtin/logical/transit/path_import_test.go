@@ -21,7 +21,7 @@ import (
 
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/tink-crypto/tink-go/kwp/subtle"
+	"github.com/tink-crypto/tink-go/v2/kwp/subtle"
 )
 
 var keyTypes = []string{

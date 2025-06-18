@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -21,51 +22,61 @@ func TestTransit_ECDH_NominalCase(t *testing.T) {
 	rand.Read(nonce)
 	nonceBase64 := base64.StdEncoding.EncodeToString(nonce)
 
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "", nonceBase64)
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "", nonceBase64, nonceBase64, true)
 
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes128-gcm96", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes128-gcm96", nonceBase64)
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes128-gcm96", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes128-gcm96", nonceBase64)
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes128-gcm96", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes128-gcm96", nonceBase64)
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes128-gcm96", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes128-gcm96", nonceBase64, nonceBase64, true)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes128-gcm96", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes128-gcm96", nonceBase64, nonceBase64, true)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes128-gcm96", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes128-gcm96", nonceBase64, nonceBase64, true)
 
 	nonce = make([]byte, 16)
 	rand.Read(nonce)
 	nonceBase64 = base64.StdEncoding.EncodeToString(nonce)
 
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes256-gcm96", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes256-gcm96", nonceBase64)
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes256-gcm96", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes256-gcm96", nonceBase64)
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes256-gcm96", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes256-gcm96", nonceBase64)
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes256-gcm96", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes256-gcm96", nonceBase64, nonceBase64, true)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes256-gcm96", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes256-gcm96", nonceBase64, nonceBase64, true)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes256-gcm96", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes256-gcm96", nonceBase64, nonceBase64, true)
 
 	nonce = make([]byte, 32)
 	rand.Read(nonce)
 	nonceBase64 = base64.StdEncoding.EncodeToString(nonce)
 
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "chacha20-poly1305", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "chacha20-poly1305", nonceBase64)
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "chacha20-poly1305", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "chacha20-poly1305", nonceBase64)
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "chacha20-poly1305", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "chacha20-poly1305", nonceBase64)
+	nonce = make([]byte, 32)
+	rand.Read(nonce)
+	nonceBobBase64 := base64.StdEncoding.EncodeToString(nonce)
+
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "chacha20-poly1305", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "chacha20-poly1305", nonceBase64, nonceBase64, true)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "chacha20-poly1305", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "chacha20-poly1305", nonceBase64, nonceBase64, true)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "chacha20-poly1305", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "chacha20-poly1305", nonceBase64, nonceBase64, true)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "chacha20-poly1305", nonceBase64, nonceBobBase64, false)
 
 	nonce = make([]byte, 64)
 	rand.Read(nonce)
 	nonceBase64 = base64.StdEncoding.EncodeToString(nonce)
 
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "xchacha20-poly1305", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p256", "xchacha20-poly1305", nonceBase64)
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "xchacha20-poly1305", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p384", "xchacha20-poly1305", nonceBase64)
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "xchacha20-poly1305", "")
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "xchacha20-poly1305", nonceBase64)
+	nonce = make([]byte, 64)
+	rand.Read(nonce)
+	nonceBobBase64 = base64.StdEncoding.EncodeToString(nonce)
+
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "xchacha20-poly1305", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "xchacha20-poly1305", nonceBase64, nonceBase64, true)
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "xchacha20-poly1305", nonceBase64, nonceBobBase64, false)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "xchacha20-poly1305", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "xchacha20-poly1305", nonceBase64, nonceBase64, true)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "xchacha20-poly1305", "", "", true)
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "xchacha20-poly1305", nonceBase64, nonceBase64, true)
 }
 
-func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType string, nonce string) {
+func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType string, nonceAlice string, nonceBob string, isSuccess bool) {
 	var resp *logical.Response
 	var err error
 
@@ -179,8 +190,8 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 		policyReq.Data["derived_key_type"] = derivedKeyType
 	}
 
-	if len(nonce) > 0 {
-		policyReq.Data["nonce"] = nonce
+	if len(nonceAlice) > 0 {
+		policyReq.Data["nonce"] = nonceAlice
 	}
 
 	resp, err = b.HandleRequest(context.Background(), policyReq)
@@ -229,8 +240,8 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 		policyReq.Data["derived_key_type"] = derivedKeyType
 	}
 
-	if len(nonce) > 0 {
-		policyReq.Data["nonce"] = nonce
+	if len(nonceBob) > 0 {
+		policyReq.Data["nonce"] = nonceBob
 	}
 
 	resp, err = b.HandleRequest(context.Background(), policyReq)
@@ -250,10 +261,23 @@ func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType s
 	}
 	resp, err = b.HandleRequest(context.Background(), decReq)
 	if err != nil || (resp != nil && resp.IsError()) {
+		// Warning: the string "message authentication failed" may change over the time in the underlying implementation and therefore falsely trigger a failed test!
+		if !isSuccess && strings.Contains(resp.Error().Error(), "message authentication failed") {
+			// Expected failure, return early
+			return
+		}
+
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	if resp.Data["plaintext"] != plaintext {
-		t.Fatalf("bad: plaintext. Expected: %q, Actual: %q", plaintext, resp.Data["plaintext"])
+	if isSuccess {
+		if resp.Data["plaintext"] != plaintext {
+			t.Fatalf("bad: plaintext. Expected: %q, Actual: %q", plaintext, resp.Data["plaintext"])
+		}
+	} else {
+		// This is for non-authencticated encryption algorithms, where the decryption may fail because of a wrong nonce.
+		if resp.Data["plaintext"] == plaintext {
+			t.Fatal("bad: expecting decryption to fail, but it succeeded")
+		}
 	}
 }

@@ -101,9 +101,10 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 
 	var nonce []byte = nil
 	nonceBase64 := d.Get("nonce").(string)
-	if len(nonceBase64) != 0 {
-		if len(nonceBase64) > 2*1024 {
-			return logical.ErrorResponse("nonce wrong size"), logical.ErrInvalidRequest
+	if len(nonceBase64) > 0 {
+		// Input sanity check
+		if len(nonceBase64) > (4 * keysutil.HmacMaxKeySize) {
+			return logical.ErrorResponse("invalid nonce provided, wrong size: %d", len(nonceBase64)), logical.ErrInvalidRequest
 		}
 
 		nonce, err = base64.StdEncoding.DecodeString(nonceBase64)

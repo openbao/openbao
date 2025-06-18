@@ -88,7 +88,8 @@ only valid values outside of the empty string.`,
 			OperationSuffix: "with-cel-role",
 		},
 
-		Fields: fields,
+		Fields:              fields,
+		TakesArbitraryInput: true,
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
@@ -292,7 +293,8 @@ basic constraints.`,
 			OperationSuffix: "with-cel-role",
 		},
 
-		Fields: fields,
+		Fields:              fields,
+		TakesArbitraryInput: true,
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
@@ -805,6 +807,9 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		envOptions = append(envOptions, celgo.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
 	}
 
+	// Add identity information into the environment
+	envOptions = append(envOptions, celhelper.IdentityDeclarations()...)
+
 	// Create the CEL environment using the prepared declarations.
 	env, err := celgo.NewEnv(envOptions...)
 	if err != nil {
@@ -823,6 +828,10 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	evaluationData := map[string]interface{}{
 		"request": data.Raw,
 		"now":     time.Now(),
+	}
+
+	if err := celhelper.AddIdentity(b.System(), req, evaluationData); err != nil {
+		return nil, err
 	}
 
 	// Parse then add the CSR to the evaluationData
@@ -916,19 +925,52 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		parsedBundle *certutil.ParsedCertBundle
 		parseErr     error
 	)
+
+	// Move validated data into evaluationData for use by certutil. We use
+	// the output copies to ensure they've been validated and any CEL-created
+	// defaults applied, rather than overwriting data.Raw and potentially
+	// using unsanitized values.
+	signatureBits := int(validationOutput.SignatureBits)
+	usePSS := validationOutput.UsePss
 	if !useCSR {
 		keyType := validationOutput.KeyType
 		if keyType == "" {
 			// Default to RSA
-			data.Raw["key_type"] = "rsa"
-		}
-		keyBits := validationOutput.KeyBits
-
-		if keyBits == 0 {
-			// Default to 2048 bits
-			data.Raw["key_bits"] = 2048
+			keyType = "rsa"
 		}
 
+		keyBits := int(validationOutput.KeyBits)
+
+		keyBits, signatureBits, err = certutil.ValidateDefaultOrValueKeyTypeSignatureLength(keyType, keyBits, signatureBits)
+		if err != nil {
+			return nil, fmt.Errorf("invalid cel response for key type, key bits, or signature bits: %w", err)
+		}
+
+		evaluationData["key_type"] = keyType
+		evaluationData["key_bits"] = keyBits
+		evaluationData["signature_bits"] = signatureBits
+		evaluationData["use_pss"] = usePSS
+	} else {
+		signingKeyType := string(signingBundle.PrivateKeyType)
+		signingKeyBits, err := signingBundle.GetKeyBits()
+		if err != nil {
+			return nil, fmt.Errorf("unable to get signing key information: %w", err)
+		}
+
+		if signatureBits, err = certutil.DefaultOrValueHashBits(signingKeyType, signingKeyBits, signatureBits); err != nil {
+			return nil, err
+		}
+
+		if err := certutil.ValidateSignatureLength(signingKeyType, signatureBits); err != nil {
+			return nil, err
+		}
+
+		evaluationData["signature_bits"] = signatureBits
+		evaluationData["use_pss"] = usePSS
+		evaluationData["subject_key_id"] = validationOutput.SubjectKeyId
+	}
+
+	if !useCSR {
 		parsedBundle, parseErr = generateCELCert(evaluationData, signingBundle, cert, rand.Reader)
 	} else {
 		raw := data.Get("csr").(string)
@@ -949,13 +991,13 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		parsedBundle, parseErr = signCELCert(evaluationData, signingBundle, cert, csr)
 	}
 	if parseErr != nil {
-		switch err.(type) {
+		switch parseErr.(type) {
 		case errutil.UserError:
-			return logical.ErrorResponse(err.Error()), nil
+			return logical.ErrorResponse(parseErr.Error()), nil
 		case errutil.InternalError:
-			return nil, err
+			return nil, parseErr
 		default:
-			return nil, fmt.Errorf("error signing/generating certificate: %w", err)
+			return nil, fmt.Errorf("error signing/generating certificate: %w", parseErr)
 		}
 	}
 
@@ -1015,9 +1057,10 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		b.ifCountEnabledIncrementTotalCertificatesCount(certsCounted, key)
 	}
 
-	warnings := validationOutput.Warnings
-	if warnings != "" {
-		resp.AddWarning(warnings)
+	for _, warning := range validationOutput.Warnings {
+		if len(warning) > 0 {
+			resp.AddWarning(warning)
+		}
 	}
 
 	return resp, nil

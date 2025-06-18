@@ -5,8 +5,10 @@ import (
 	"net/mail"
 
 	celgo "github.com/google/cel-go/cel"
+	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // checkValidEmail validates if the input is a properly formatted email address according to RFC 5322.
@@ -48,4 +50,46 @@ func RegisterAllCelFunctions(env *celgo.Env) (*celgo.Env, error) {
 	}
 
 	return env, nil
+}
+
+// IdentityDeclarations adds declarations relevant to the identity subsystem,
+// and is useful for secret engines.
+func IdentityDeclarations() []celgo.EnvOption {
+	return []celgo.EnvOption{
+		celgo.Declarations(
+			decls.NewVar("client_token", decls.String),
+			decls.NewVar("entity_id", decls.String),
+			decls.NewVar("entity_groups", decls.NewListType(decls.Dyn)),
+			decls.NewVar("entity_info", decls.NewMapType(decls.String, decls.Dyn)),
+		),
+	}
+}
+
+// AddIdentity adds values for the identity system and is useful for secret
+// engines. IdentityDeclarations must be called to add these definitions to
+// to the environment first.
+func AddIdentity(view logical.SystemView, req *logical.Request, data map[string]interface{}) error {
+	data["client_token"] = req.ClientToken
+	data["entity_id"] = req.EntityID
+
+	if len(req.EntityID) > 0 {
+		groups, err := view.GroupsForEntity(req.EntityID)
+		if err != nil {
+			return fmt.Errorf("unable to resolve groups: %w", err)
+		}
+
+		data["entity_groups"] = groups
+
+		info, err := view.EntityInfo(req.EntityID)
+		if err != nil {
+			return fmt.Errorf("unable to resolve entity info: %w", err)
+		}
+
+		data["entity_info"] = info
+	} else {
+		data["entity_groups"] = nil
+		data["entity_info"] = nil
+	}
+
+	return nil
 }

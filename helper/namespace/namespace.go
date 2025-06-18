@@ -206,6 +206,48 @@ func (n *Namespace) ValidateUUID(candidate string) error {
 	return nil
 }
 
+// ParseSpecifier parses a "namespace specifier" into its kind, spec value
+// and an optional trailing rest.
+//
+// A namespace specifier has the following format:
+// <kind>:<spec>[:<rest>]
+//
+// Valid values for <kind> are currently: path, id, uuid
+func ParseSpecifier(value string) (kind, spec, rest string, err error) {
+	var ok bool
+	// Split up to the first ":".
+	// "path:foo/bar/:rest" -> ["path", "foo/bar/:rest"]
+	kind, rest, ok = strings.Cut(value, ":")
+	if !ok {
+		return "", "", "", fmt.Errorf("invalid namespace specifier")
+	}
+	switch kind {
+	case "path", "id", "uuid":
+	default:
+		return "", "", "", fmt.Errorf("unknown namespace specifier kind: %q", kind)
+	}
+	// Optionally split at a second ":" if there is a trailing value.
+	// "foo/bar/:rest" -> ["foo/bar/", "rest"]
+	spec, rest, _ = strings.Cut(rest, ":")
+	return kind, spec, rest, err
+}
+
+// CompareSpecifier returns true if the namespace matches the passed specifier,
+// comparing by Path, ID and UUID respectively depending on the passed kind.
+// Also see [ParseSpecifier].
+func (n *Namespace) CompareSpecifier(kind, spec string) bool {
+	switch kind {
+	case "path":
+		return n.Path == Canonicalize(spec)
+	case "id":
+		return n.ID == spec
+	case "uuid":
+		return n.UUID == spec
+	default:
+		return false
+	}
+}
+
 // ContextWithNamespace adds the given namespace to the given context
 func ContextWithNamespace(ctx context.Context, ns *Namespace) context.Context {
 	return context.WithValue(ctx, contextNamespace, ns)

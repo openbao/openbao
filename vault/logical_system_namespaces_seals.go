@@ -198,6 +198,30 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-seal"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["namespaces-seal"][1]),
 		},
+		{
+			Pattern: "namespaces/(?P<name>.+)/rotate",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"name": namespaceFieldsSchema["name"],
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Rotate the namespace key.",
+					Callback: b.handleNamespacesRotate(),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-rotate"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces-rotate"][1]),
+		},
 	}
 }
 
@@ -282,6 +306,33 @@ func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
 		err := b.Core.namespaceStore.SealNamespace(ctx, name)
 		if err != nil {
 			return handleError(err)
+		}
+
+		return nil, nil
+	}
+}
+
+// handleNamespacesRotate handles the "/sys/namespaces/<name>/rotate" endpoint to rotate the namespace encryption key.
+func (b *SystemBackend) handleNamespacesRotate() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		name := namespace.Canonicalize(data.Get("name").(string))
+
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return nil, errors.New("name must not contain /")
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if ns == nil {
+			return nil, fmt.Errorf("namespace %q doesn't exist", name)
+		}
+
+		err = b.Core.sealManager.RotateNamespaceBarrierKey(ctx, ns)
+		if err != nil {
+			return nil, err
 		}
 
 		return nil, nil

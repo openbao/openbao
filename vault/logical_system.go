@@ -5899,14 +5899,15 @@ This path responds to the following HTTP methods.
 
 	POST /<name>/unseal
 		Unseal a namespace.
-		
+
     GET /<name>/seal-status
         Returns the seal status of the namespace.
-		
-	Get /<name>/key-status
+
+	GET /<name>/key-status
 		Provides the namespace current backend encryption key term and installation time.
 		`,
 	},
+
 	"namespaces-lock": {
 		"Lock a namespace.",
 		`
@@ -5923,6 +5924,15 @@ This path responds to the following HTTP methods.
 
 	PUT /<name>
 		Unlock the API for a namespace.
+		`,
+	},
+
+	"namespaces-rotate": {
+		"Rotates the backend encryption key used to persist data for this namespace.",
+		`
+		Rotate generates a new encryption key which is used to encrypt all data
+		of this namespace going to the storage backend. The old encryption keys
+		are kept so that data encrypted using those keys can still be decrypted.
 		`,
 	},
 }

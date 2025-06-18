@@ -558,6 +558,19 @@ func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Name
 	return true, nil
 }
 
+// RotateNamespaceBarrierKey rotates the barrier key of the given namespace.
+// It will return an error if the given namespace is not a sealable namespace.
+func (sm *SealManager) RotateNamespaceBarrierKey(ctx context.Context, namespace *namespace.Namespace) error {
+	nsBarrier, found := sm.barrierByNamespace.Get(namespace.Path)
+	nsSecurityBarrier, ok := nsBarrier.(SecurityBarrier)
+	if !found || !ok {
+		return fmt.Errorf("namespace %q is not a sealable namespace", namespace.Path)
+	}
+
+	_, err := nsSecurityBarrier.Rotate(ctx, sm.core.secureRandomReader)
+	return err
+}
+
 type StorageAccess interface {
 	Put(context.Context, string, []byte) error
 	Get(context.Context, string) ([]byte, error)

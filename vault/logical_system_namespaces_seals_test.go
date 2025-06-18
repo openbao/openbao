@@ -161,3 +161,50 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func TestNamespaceBackend_Rotate(t *testing.T) {
+	t.Parallel()
+	c, _, _ := TestCoreUnsealed(t)
+	b := c.systemBackend
+	rootCtx := namespace.RootContext(context.Background())
+
+	t.Run("cannot rotate keys on non-existent namespace", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bar/rotate")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "namespace \"bar/\" doesn't exist")
+		require.Empty(t, res)
+	})
+
+	t.Run("returns error for non-sealable namespace", func(t *testing.T) {
+		testCreateNamespace(t, rootCtx, b, "foo", nil)
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo/rotate")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.ErrorContains(t, err, "namespace \"foo/\" is not a sealable namespace")
+		require.Empty(t, res)
+	})
+
+	t.Run("rotates the barrier key for a sealable namespace", func(t *testing.T) {
+		sealConfig := map[string]any{"type": "shamir", "secret_shares": 3, "secret_threshold": 2}
+		testCreateNamespace(t, rootCtx, b, "foobar", map[string]any{"seals": sealConfig})
+
+		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/foobar/key-status")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, res.Data["term"], 1)
+		require.NotEmpty(t, res.Data["encryptions"])
+		require.NotEmpty(t, res.Data["install_time"])
+
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/foobar/rotate")
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foobar/key-status")
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, res.Data["term"], 2)
+		require.Empty(t, res.Data["encryptions"])
+		require.NotEmpty(t, res.Data["install_time"])
+	})
+}

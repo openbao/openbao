@@ -482,6 +482,7 @@ func (d *FieldData) GetTimeWithExplicitDefault(field string, defaultValue time.D
 	return defaultValue
 }
 
+// LegacyStringToSliceHookFunc(sep string) is a duplicates the old mapstructure's StringToSliceHookFunc, which supports weak conversion.
 func LegacyStringToSliceHookFunc(sep string) mapstructure.DecodeHookFunc {
 	return func(
 		f reflect.Kind,

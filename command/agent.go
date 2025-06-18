@@ -677,6 +677,8 @@ func (c *AgentCommand) Run(args []string) int {
 			LogLevel:      c.logger.GetLevel(),
 			LogWriter:     c.logWriter,
 			AgentConfig:   c.config,
+			MinBackoff:    config.AutoAuth.Method.MinBackoff,
+			MaxBackoff:    config.AutoAuth.Method.MaxBackoff,
 			Namespace:     templateNamespace,
 			ExitAfterAuth: config.ExitAfterAuth,
 		})

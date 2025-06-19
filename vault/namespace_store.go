@@ -247,6 +247,14 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			return false, err
 		}
 
+		isSealed, err := ns.core.sealManager.RegisterNamespace(ctx, &namespace)
+		if err != nil {
+			return false, fmt.Errorf("failed to register namespace %s with seal manager: %w", namespace.ID, err)
+		}
+		if isSealed {
+			return true, nil
+		}
+
 		childView := ns.core.NamespaceView(&namespace).SubView(namespaceStoreSubPath)
 		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
 			return false, err

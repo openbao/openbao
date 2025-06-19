@@ -310,7 +310,34 @@ jobs:
           path: test-results/go-test
           pattern: test-results-*
           merge-multiple: true
-      - run: |
-          ls -lhR test-results/go-test
-          find test-results/go-test -type f -mindepth 1 -mtime +3 -delete
-          ls -lhR test-results/go-test
+      - env:
+          EXPECTED_IDS: ${{ needs.test-matrix.outputs.matrix_ids }}
+        run: |
+          echo "Expected matrix IDs: $EXPECTED_IDS"
+
+          # Parse expected IDs and check for corresponding result files
+          missing_results=0
+          for id in $(echo "$EXPECTED_IDS" | jq -r '.[]'); do
+            if ! ls test-results/go-test/results-${id}.* 2>/dev/null; then
+              echo "Error: Missing results for matrix ID $id"
+              missing_results=1
+            else
+              echo "Found results for matrix ID: $id"
+            fi
+          done
+
+          # Exit with error if any results are missing
+          if [ $missing_results -eq 1 ]; then
+            echo ""
+            echo "Some Go test matrix jobs did not upload results"
+            echo "Failed matrix IDs:"
+            for id in $(echo "$EXPECTED_IDS" | jq -r '.[]'); do
+              if ! ls test-results/go-test/results-${id}.* >/dev/null 2>&1; then
+                echo "  - $id"
+              fi
+            done
+            exit 1
+          fi
+
+          echo ""
+          echo "All Go test matrix jobs completed successfully"

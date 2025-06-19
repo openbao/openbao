@@ -124,6 +124,7 @@ var _ LocalNode = &Core{}
 type Namespacer interface {
 	NamespaceByID(context.Context, string) (*namespace.Namespace, error)
 	ListNamespaces(context.Context) ([]*namespace.Namespace, error)
+	IsNSSealed(ns *namespace.Namespace) bool
 }
 
 var _ Namespacer = &Core{}

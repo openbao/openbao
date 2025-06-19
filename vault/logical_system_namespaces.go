@@ -427,7 +427,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		keySharesMap := make(map[string][]string)
 		// TODO(wslabosz): write all the provided configs
 		if len(sealConfigs) > 0 {
-			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry); err != nil {
+			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry, true); err != nil {
 				return handleError(err)
 			}
 

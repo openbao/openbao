@@ -173,8 +173,8 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 
 func (b *SystemBackend) rawPaths() []*framework.Path {
 	r := &RawBackend{
-		barrier: b.Core.barrier,
-		logger:  b.logger,
+		core:   b.Core,
+		logger: b.logger,
 	}
 	return rawPaths("", r)
 }
@@ -5893,6 +5893,12 @@ This path responds to the following HTTP methods.
 
 	DELETE /<path>
 		Delete a namespace.
+
+	POST /<name>/seal
+		Seal a namespace.
+
+	POST /<name/unseal
+		Unseal a namespace.
 		`,
 	},
 	"namespaces-lock": {

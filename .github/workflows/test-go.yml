@@ -53,6 +53,11 @@ on:
         required: false
         default: false
         type: boolean
+      raceonly:
+        description: Whether to run the tests in racemode.
+        required: false
+        default: false
+        type: boolean
       checkout-ref:
         description: The ref to use for checkout.
         required: false
@@ -201,6 +206,10 @@ jobs:
            RERUN_FAILS="--rerun-fails"
           fi
 
+          if [[ ${{ inputs.raceonly }} == 'false' ]] && [[ ${{ inputs.testonly }} == 'false' ]]; then
+            COVERAGE="-covermode=count -coverprofile=test-results/go-test/coverage-${{ matrix.id }}.out"
+          fi
+
           # shellcheck disable=SC2086 # can't quote RERUN_FAILS
           GOARCH="$INPUTS_GO_ARCH" \
             gotestsum --format=short-verbose \
@@ -213,6 +222,7 @@ jobs:
               -tags "$INPUTS_GO_TAGS" \
               -timeout=${{ env.TIMEOUT_IN_MINUTES }}m \
               -parallel=${{ inputs.go-test-parallelism }} \
+              $COVERAGE \
               $INPUTS_EXTRA_FLAGS \
       - name: Archive test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -300,6 +310,10 @@ jobs:
     needs: test-go
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ inputs.checkout-ref }}
+          persist-credentials: false
       - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: test-results/go-test
@@ -314,3 +328,24 @@ jobs:
           ls -lhR test-results/go-test
           find test-results/go-test -type f -mindepth 1 -mtime +3 -delete
           ls -lhR test-results/go-test
+      - name: Combine Coverage files
+        run: |
+          set -e
+          COVERAGE_FILE="test-results/go-test/combined-coverage.out"
+          # Combine all coverage files into one
+          echo "mode: count" > "$COVERAGE_FILE"
+          find test-results/go-test -name 'coverage-*.out' -exec tail -n +2 {} \; >> "$COVERAGE_FILE"
+
+          # Calculate the global coverage percentage
+          go tool cover -func="$COVERAGE_FILE" > test-results/go-test/final-coverage.txt
+          go tool cover -html="$COVERAGE_FILE" -o test-results/go-test/final-coverage.html
+          # Extract the last line of the coverage report
+          # and print the global coverage percentage
+          cat test-results/go-test/final-coverage.txt | tail -n 1 | awk '{print "Global Test Coverage: " $3}'
+        if: ${{ !inputs.raceonly && !inputs.testonly }}
+      - name: Archive coverage results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-report
+          path: test-results/go-test/final-coverage.*
+        if: ${{ !inputs.raceonly && !inputs.testonly }}

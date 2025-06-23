@@ -14,7 +14,8 @@ import (
 	"net/url"
 	"regexp"
 
-	"github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 )
 
 const (
@@ -131,7 +132,7 @@ func VaultPluginTLSProviderContext(ctx context.Context, apiTLSConfig *TLSConfig)
 	return func() (*tls.Config, error) {
 		unwrapToken := ReadBaoVariable(PluginUnwrapTokenEnv)
 
-		parsedJWT, err := jwt.ParseSigned(unwrapToken)
+		parsedJWT, err := jwt.ParseSigned(unwrapToken, []jose.SignatureAlgorithm{jose.ES512})
 		if err != nil {
 			return nil, fmt.Errorf("error parsing wrapping token: %w", err)
 		}

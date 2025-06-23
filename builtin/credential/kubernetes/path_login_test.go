@@ -21,7 +21,8 @@ import (
 	"testing"
 	"time"
 
-	josejwt "github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
@@ -1419,7 +1420,7 @@ func Test_kubeAuthBackend_getAliasName(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			tok, err := josejwt.ParseSigned(s)
+			tok, err := josejwt.ParseSigned(s, []jose.SignatureAlgorithm{jose.ES256, jose.ES512, jose.EdDSA})
 			if err != nil {
 				t.Fatal(err)
 			}

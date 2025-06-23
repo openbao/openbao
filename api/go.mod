@@ -5,13 +5,13 @@ module github.com/openbao/openbao/api/v2
 // automatically track the Go version used to build Vault itself.  Many projects import
 // the api module and we don't want to impose a newer version on them any more than we
 // have to.
-go 1.23.0
+go 1.24
 
-toolchain go1.23.8
+toolchain go1.24.3
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
-	github.com/go-jose/go-jose/v3 v3.0.4
+	github.com/go-jose/go-jose/v4 v4.1.0
 	github.com/go-test/deep v1.1.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/hashicorp/go-cleanhttp v0.5.2

@@ -10,7 +10,7 @@ import (
 	"slices"
 	"time"
 
-	josejwt "github.com/go-jose/go-jose/v3/jwt"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
@@ -445,7 +445,7 @@ func createRoleWithWAL(ctx context.Context, client *client, s logical.Storage, n
 }
 
 func getTokenTTL(token string) (time.Duration, error) {
-	parsed, err := josejwt.ParseSigned(token)
+	parsed, err := josejwt.ParseSigned(token, consts.AllowedJWTSignatureAlgorithmsK8s)
 	if err != nil {
 		return 0, err
 	}

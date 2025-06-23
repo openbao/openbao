@@ -170,6 +170,20 @@ If this process is automated, you may need to wait to ensure the certificate has
      | base64 --decode > ${TMPDIR}/openbao.ca
    ```
 
+   Check that the generated file is not empty and contains a certificate.
+   ```bash
+   cat ${TMPDIR}/openbao.ca
+   ```
+
+   If it is empty, you might want to try
+   ```bash
+   kubectl config view --raw --minify --flatten \
+     -o jsonpath='{.clusters[].cluster.certificate-authority-data}' \
+     | base64 --decode > ${TMPDIR}/openbao.ca
+   ```
+   
+   See [https://github.com/kubernetes/kubernetes/issues/61572](https://github.com/kubernetes/kubernetes/issues/61572)
+
 4. Create the namespace.
 
     ```shell-session

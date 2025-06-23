@@ -158,7 +158,7 @@ require (
 	golang.org/x/tools v0.34.0
 	google.golang.org/api v0.220.0
 	google.golang.org/grpc v1.73.0
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0
 	gotest.tools/gotestsum v1.12.1

@@ -1,0 +1,179 @@
+syntax = "proto3";
+
+package openbao.pki;
+
+option go_package = "github.com/openbao/openbao/builtin/logical/pki";
+
+import "google/protobuf/timestamp.proto";
+
+message PKIX {
+    message Name {
+        repeated string Country = 1;
+        repeated string Organization = 2;
+        repeated string OrganizationUnit = 3;
+        repeated string Locality = 4;
+        repeated string Province = 5;
+        repeated string StreetAddress = 6;
+        repeated string PostalCode = 7;
+        string SerialNumber = 8;
+        string CommonName = 9;
+    }
+    message Extension {
+        repeated int64 Id  = 1;
+        bool Critical = 2;
+        bytes Value = 3;
+    }
+}
+
+message ObjectIdentifier {
+    // 1.2.840.113549 → [1, 2, 840, 113549]
+    repeated uint32 arc = 1;
+}
+
+message net {
+    message IP {
+        bytes IP = 1;
+    }
+    message IPNet {
+        net.IP IP = 1;          // network number
+        IPMask Mask = 2;
+    }
+    message IPMask {
+        bytes IPMask = 1;
+    }
+}
+
+message Userinfo {
+    string username      = 1;   // RFC‑2396 allows empty.
+    string password      = 2;   // Empty when not supplied.
+    bool   password_set  = 3;   // If true, then password field is meaningful.
+}
+
+message url {
+    message URL {
+        string Scheme = 1;
+        string Opaque = 2;
+        Userinfo User = 3;
+        string Host = 4;
+        string Path = 5;
+        string RawPath = 6;
+        bool OmitHost = 7;
+        bool ForceQuery = 8;
+        string RawQuery = 9;
+        string Fragment = 10;
+        string RawFragment = 11;
+    }
+}
+
+// An OID represents an ASN.1 OBJECT IDENTIFIER.
+message OID {
+    repeated uint64 arc = 1;    // 1.2.840.113549 → [1, 2, 840, 113549]
+}
+
+message PolicyMapping {	
+    OID IssuerDomainPolicy = 1;	
+    OID SubjectDomainPolicy = 2;
+}
+
+enum KeyUsage {
+    KeyUsageUnspecified = 0;
+    KeyUsageDigitalSignature = 1;
+    KeyUsageContentCommitment = 2;
+    KeyUsageKeyEncipherment = 3;
+    KeyUsageDataEncipherment = 4;
+    KeyUsageKeyAgreement = 5;
+    KeyUsageCertSign = 6;
+    KeyUsageCRLSign = 7;
+    KeyUsageEncipherOnly = 8;
+    KeyUsageDecipherOnly = 9;
+}
+
+enum ExtKeyUsage {
+    ExtKeyUsageAny = 0;
+    ExtKeyUsageServerAuth = 1;
+    ExtKeyUsageClientAuth = 2;
+    ExtKeyUsageCodeSigning = 3;
+    ExtKeyUsageEmailProtection = 4;
+    ExtKeyUsageIPSECEndSystem = 5;
+    ExtKeyUsageIPSECTunnel = 6;
+    ExtKeyUsageIPSECUser = 7;
+    ExtKeyUsageTimeStamping = 8;
+    ExtKeyUsageOCSPSigning = 9;
+    ExtKeyUsageMicrosoftServerGatedCrypto = 10;
+    ExtKeyUsageNetscapeServerGatedCrypto = 11;
+    ExtKeyUsageMicrosoftCommercialCodeSigning = 12;
+    ExtKeyUsageMicrosoftKernelCodeSigning = 13;
+}
+
+message ValidationOutput {
+    CertTemplate template = 1;
+    string issuer_ref = 2;
+    bool use_pss = 3;
+    uint32 signature_bits = 4;
+    bool generate_lease = 5;
+    bool no_store = 6;
+
+    // Warnings about the request or adjustments made by the CEL policy engine.
+    // E.g., "common_name was empty so added example.com"
+    string warnings = 7;
+
+    // For CSR:
+    bytes subject_key_id = 8; // This value is auto-computed by certutil for generated keys.
+
+    // For key generation/"issue"
+    string key_type = 9;
+    uint64 key_bits = 10;
+}
+
+// Mirrors x509.Certificate
+message CertTemplate {
+    int64 Version = 1;
+    PKIX.Name Subject = 2;
+    google.protobuf.Timestamp NotBefore = 3;
+    google.protobuf.Timestamp NotAfter  = 4;
+    KeyUsage KeyUsage = 5;
+    
+    repeated PKIX.Extension Extensions = 6;
+    repeated PKIX.Extension ExtraExtensions = 7;
+    repeated ObjectIdentifier UnhandledCriticalExtensions = 8;
+
+    repeated ExtKeyUsage ExtKeyUsage = 9;
+    repeated ObjectIdentifier UnknownExtKeyUsage = 10;
+
+    bool BasicConstraintsValid =11;
+    bool IsCA = 12;
+
+    int64 MaxPathLen = 13;
+    bool MaxPathLenZero = 14;
+
+    bytes SubjectKeyId = 15;
+
+    repeated string DNSNames = 16;
+    repeated string EmailAddresses = 17;
+    repeated net.IP IPAddresses = 18;
+    repeated url.URL URIs = 19;
+
+    // Name constraints
+    bool PermittedDNSDomainsCritical = 20; // if true then the name constraints are marked critical.
+    repeated string PermittedDNSDomains = 21;
+    repeated string ExcludedDNSDomains = 22;
+    repeated net.IPNet PermittedIPRanges = 23;
+    repeated net.IPNet ExcludedIPRanges = 24;
+    repeated string PermittedEmailAddresses = 25;
+    repeated string ExcludedEmailAddresses = 26;
+    repeated string PermittedURIDomains = 27;
+    repeated string ExcludedURIDomains = 28;
+
+    repeated ObjectIdentifier PolicyIdentifiers = 29;
+    repeated OID Policies = 30;
+
+    int64 InhibitAnyPolicy = 31;
+    bool InhibitAnyPolicyZero = 32;
+
+    int64 InhibitPolicyMapping = 33;
+    bool InhibitPolicyMappingZero = 34;
+
+    int64 RequireExplicitPolicy = 35;
+    bool RequireExplicitPolicyZero = 36;
+    repeated PolicyMapping PolicyMappings = 37;
+}

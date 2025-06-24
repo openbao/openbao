@@ -41,7 +41,7 @@ func handleSysRekeyInit(core *vault.Core, recovery bool) http.Handler {
 }
 
 func handleSysRekeyInitGet(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
-	barrierConfig, barrierConfErr := core.SealAccess().BarrierConfig(ctx)
+	barrierConfig, barrierConfErr := core.SealAccess().Config(ctx)
 	if barrierConfErr != nil {
 		respondError(w, http.StatusInternalServerError, barrierConfErr)
 		return
@@ -242,7 +242,7 @@ func handleSysRekeyVerify(core *vault.Core, recovery bool) http.Handler {
 }
 
 func handleSysRekeyVerifyGet(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
-	barrierConfig, barrierConfErr := core.SealAccess().BarrierConfig(ctx)
+	barrierConfig, barrierConfErr := core.SealAccess().Config(ctx)
 	if barrierConfErr != nil {
 		respondError(w, http.StatusInternalServerError, barrierConfErr)
 		return

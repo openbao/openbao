@@ -27,11 +27,11 @@ import (
 )
 
 const (
-	// barrierSealConfigPath is the path used to store our seal configuration.
+	// sealConfigPath is the path used to store our seal configuration.
 	// This value is stored in plaintext, since we must be able to read it even
 	// with the Vault sealed. This is required so that we know how many secret
 	// parts must be used to reconstruct the unseal key.
-	barrierSealConfigPath = "core/seal-config"
+	sealConfigPath = "core/seal-config"
 
 	// recoverySealConfigPath is the path to the recovery key seal configuration.
 	// This is stored in plaintext so that we can perform auto-unseal.
@@ -58,13 +58,13 @@ type Seal interface {
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
 	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
-	SealWrapable() bool
+	Wrapable() bool
 	SetStoredKeys(context.Context, [][]byte) error
 	GetStoredKeys(context.Context) ([][]byte, error)
-	BarrierType() wrapping.WrapperType                                        // SealAccess
-	BarrierConfig(context.Context, *namespace.Namespace) (*SealConfig, error) // SealAccess
-	SetBarrierConfig(context.Context, *SealConfig, *namespace.Namespace) error
-	SetCachedBarrierConfig(*SealConfig)
+	WrapperType() wrapping.WrapperType           // SealAccess
+	Config(context.Context) (*SealConfig, error) // SealAccess
+	SetConfig(context.Context, *SealConfig) error
+	SetCachedConfig(*SealConfig)
 	RecoveryKeySupported() bool // SealAccess
 	RecoveryType() string
 	RecoveryConfig(context.Context) (*SealConfig, error) // SealAccess
@@ -94,7 +94,7 @@ func NewDefaultSeal(lowLevel seal.Access) Seal {
 	return ret
 }
 
-func (d *defaultSeal) SealWrapable() bool {
+func (d *defaultSeal) Wrapable() bool {
 	return false
 }
 
@@ -129,7 +129,7 @@ func (d *defaultSeal) Finalize(ctx context.Context) error {
 	return nil
 }
 
-func (d *defaultSeal) BarrierType() wrapping.WrapperType {
+func (d *defaultSeal) WrapperType() wrapping.WrapperType {
 	return wrapping.WrapperTypeShamir
 }
 
@@ -150,7 +150,12 @@ func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
 	return keys, err
 }
 
-func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (*SealConfig, error) {
+func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := d.config.Load().(*SealConfig)
 	if cfg != nil {
 		return cfg.Clone(), nil
@@ -160,10 +165,10 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace
 		return nil, err
 	}
 
-	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
+	view := d.core.NamespaceView(ns).SubView(sealConfigPath)
 	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
 
-	// Fetch the core configuration
+	// Fetch the seal configuration
 	valueBytes, err := barrier.Get(ctx, view.Prefix())
 	if err != nil {
 		d.core.logger.Error("failed to read seal configuration", "error", err)
@@ -178,7 +183,7 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace
 
 	var conf SealConfig
 
-	// Decode the barrier entry
+	// Decode the seal config entry
 	if err := jsonutil.DecodeJSON(valueBytes, &conf); err != nil {
 		d.core.logger.Error("failed to decode seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to decode seal configuration: %w", err)
@@ -187,11 +192,11 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace
 	switch conf.Type {
 	// This case should not be valid for other types as only this is the default
 	case "":
-		conf.Type = d.BarrierType().String()
-	case d.BarrierType().String():
+		conf.Type = d.WrapperType().String()
+	case d.WrapperType().String():
 	default:
-		d.core.logger.Error("barrier seal type does not match expected type", "barrier_seal_type", conf.Type, "loaded_seal_type", d.BarrierType())
-		return nil, fmt.Errorf("barrier seal type of %q does not match expected type of %q", conf.Type, d.BarrierType())
+		d.core.logger.Error("seal type does not match expected type", "seal_type", conf.Type, "loaded_seal_type", d.WrapperType())
+		return nil, fmt.Errorf("seal type of %q does not match expected type of %q", conf.Type, d.WrapperType())
 	}
 
 	// Check for a valid seal configuration
@@ -200,11 +205,16 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace
 		return nil, fmt.Errorf("seal validation failed: %w", err)
 	}
 
-	d.SetCachedBarrierConfig(&conf)
+	d.SetCachedConfig(&conf)
 	return conf.Clone(), nil
 }
 
-func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig, ns *namespace.Namespace) error {
+func (d *defaultSeal) SetConfig(ctx context.Context, config *SealConfig) error {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	if err := d.checkCore(); err != nil {
 		return err
 	}
@@ -216,9 +226,9 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig, 
 		return nil
 	}
 
-	config.Type = d.BarrierType().String()
+	config.Type = d.WrapperType().String()
 
-	// If we are doing a raft unseal we do not want to persist the barrier config
+	// If we are doing a raft unseal we do not want to persist the seal config
 	// because storage isn't setup yet.
 	if d.core.isRaftUnseal() {
 		d.config.Store(config.Clone())
@@ -231,19 +241,19 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig, 
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
+	view := d.core.NamespaceView(ns).SubView(sealConfigPath)
 	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
 	if err := barrier.Put(ctx, view.Prefix(), buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
 
-	d.SetCachedBarrierConfig(config.Clone())
+	d.SetCachedConfig(config.Clone())
 
 	return nil
 }
 
-func (d *defaultSeal) SetCachedBarrierConfig(config *SealConfig) {
+func (d *defaultSeal) SetCachedConfig(config *SealConfig) {
 	d.config.Store(config)
 }
 
@@ -263,8 +273,7 @@ func (d *defaultSeal) SetRecoveryConfig(ctx context.Context, config *SealConfig)
 	return errors.New("recovery not supported")
 }
 
-func (d *defaultSeal) SetCachedRecoveryConfig(config *SealConfig) {
-}
+func (d *defaultSeal) SetCachedRecoveryConfig(config *SealConfig) {}
 
 func (d *defaultSeal) VerifyRecoveryKey(ctx context.Context, key []byte) error {
 	return errors.New("recovery not supported")
@@ -502,7 +511,7 @@ func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix st
 		return nil, &ErrDecrypt{Err: fmt.Errorf("failed to decrypt keys from storage: %w", err)}
 	}
 
-	// Decode the barrier entry
+	// Decode the stored keys entry
 	var keys [][]byte
 	if err := json.Unmarshal(pt, &keys); err != nil {
 		return nil, fmt.Errorf("failed to decode stored keys: %v", err)

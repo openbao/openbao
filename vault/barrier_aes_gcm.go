@@ -60,16 +60,15 @@ var (
 
 // AESGCMBarrier is a SecurityBarrier implementation that uses the AES
 // cipher core and the Galois Counter Mode block mode. It defaults to
-// the golang NONCE default value of 12 and a key size of 256
-// bit. AES-GCM is high performance, and provides both confidentiality
+// the golang NONCE default value of 12 and a key size of 256 bit.
+// AES-GCM is high performance, and provides both confidentiality
 // and integrity.
 type AESGCMBarrier struct {
-	backend physical.Backend
+	backend    physical.Backend
+	metaPrefix string
 
 	l      sync.RWMutex
 	sealed bool
-
-	metaPrefix string
 
 	// keyring is used to maintain all of the encryption keys, including
 	// the active key used for encryption, but also prior keys to allow
@@ -129,7 +128,7 @@ func (b *AESGCMBarrier) SetRotationConfig(ctx context.Context, rotConfig KeyRota
 
 // NewAESGCMBarrier is used to construct a new barrier that uses
 // the provided physical backend for storage.
-func NewAESGCMBarrier(storage physical.Backend, metaPrefix string) (SecurityBarrier, error) {
+func NewAESGCMBarrier(storage physical.Backend, metaPrefix string) SecurityBarrier {
 	b := &AESGCMBarrier{
 		backend:                  storage,
 		metaPrefix:               metaPrefix,
@@ -144,10 +143,10 @@ func NewAESGCMBarrier(storage physical.Backend, metaPrefix string) (SecurityBarr
 	if _, ok := storage.(physical.TransactionalBackend); ok {
 		return &TransactionalAESGCMBarrier{
 			b,
-		}, nil
+		}
 	}
 
-	return b, nil
+	return b
 }
 
 // Initialized checks if the barrier has been initialized
@@ -213,11 +212,10 @@ func (b *AESGCMBarrier) Initialize(ctx context.Context, key, sealKey []byte, rea
 			return err
 		}
 
-		err = b.putInternal(ctx, b.backend, 1, primary, &logical.StorageEntry{
+		if err = b.putInternal(ctx, b.backend, 1, primary, &logical.StorageEntry{
 			Key:   b.metaPrefix + shamirKekPath,
 			Value: sealKey,
-		})
-		if err != nil {
+		}); err != nil {
 			return fmt.Errorf("failed to store new seal key: %w", err)
 		}
 	}
@@ -829,31 +827,27 @@ func (b *AESGCMBarrier) lockSwitchedGet(ctx context.Context, backend physical.Ba
 	if getLock {
 		b.l.RLock()
 	}
-	if b.sealed {
-		if getLock {
+
+	unlock := true
+	defer func() {
+		if getLock && unlock {
 			b.l.RUnlock()
 		}
+	}()
+
+	if b.sealed {
 		return nil, ErrBarrierSealed
 	}
 
 	// Read the key from the backend
 	pe, err := backend.Get(ctx, key)
 	if err != nil {
-		if getLock {
-			b.l.RUnlock()
-		}
 		return nil, err
 	} else if pe == nil {
-		if getLock {
-			b.l.RUnlock()
-		}
 		return nil, nil
 	}
 
 	if len(pe.Value) < 4 {
-		if getLock {
-			b.l.RUnlock()
-		}
 		return nil, errors.New("invalid value")
 	}
 
@@ -864,14 +858,16 @@ func (b *AESGCMBarrier) lockSwitchedGet(ctx context.Context, backend physical.Ba
 	// It is expensive to do this first but it is not a
 	// normal case that this won't match
 	gcm, err := b.aeadForTerm(term)
-	if getLock {
-		b.l.RUnlock()
-	}
 	if err != nil {
 		return nil, err
 	}
 	if gcm == nil {
 		return nil, fmt.Errorf("no decryption key available for term %d", term)
+	}
+
+	unlock = false
+	if getLock {
+		b.l.RUnlock()
 	}
 
 	// Decrypt the ciphertext

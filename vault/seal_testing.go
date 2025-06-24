@@ -7,6 +7,7 @@ import (
 	"context"
 
 	testing "github.com/mitchellh/go-testing-interface"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -23,14 +24,15 @@ func TestCoreUnsealedWithConfigSealOpts(t testing.T, barrierConf, recoveryConf *
 	t.Helper()
 	seal := NewTestSeal(t, sealOpts)
 	core := TestCoreWithSeal(t, seal, false)
-	result, err := core.Initialize(context.Background(), &InitParams{
+	ctx := namespace.RootContext(context.Background())
+	result, err := core.Initialize(ctx, &InitParams{
 		BarrierConfig:  barrierConf,
 		RecoveryConfig: recoveryConf,
 	})
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	err = core.UnsealWithStoredKeys(context.Background())
+	err = core.UnsealWithStoredKeys(ctx)
 	if err != nil && IsFatalError(err) {
 		t.Fatalf("err: %s", err)
 	}

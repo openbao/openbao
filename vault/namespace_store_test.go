@@ -295,7 +295,7 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 
 	// verify that modifying a locked namespace does not affect lock
 	// status.
-	ret, err = c.namespaceStore.ModifyNamespaceByPath(ctx, testNamespace.Path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+	ret, _, err = c.namespaceStore.ModifyNamespaceByPath(ctx, testNamespace.Path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 		ns.CustomMetadata["testing"] = "pass"
 
 		// Ensure we do not see the unlock key during modification either.

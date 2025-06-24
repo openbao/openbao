@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/mediocregopher/radix/v4"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/database/helper/connutil"
 )
 

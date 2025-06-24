@@ -9,13 +9,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 )
 
@@ -289,7 +290,7 @@ func (d *FieldData) getPrimitive(k string, schema *FieldSchema) (interface{}, bo
 		config := &mapstructure.DecoderConfig{
 			Result:           &result,
 			WeaklyTypedInput: true,
-			DecodeHook:       mapstructure.StringToSliceHookFunc(","),
+			DecodeHook:       LegacyStringToSliceHookFunc(","),
 		}
 		decoder, err := mapstructure.NewDecoder(config)
 		if err != nil {
@@ -479,4 +480,24 @@ func (d *FieldData) GetTimeWithExplicitDefault(field string, defaultValue time.D
 		return time.Duration(assignedValue.(int)) * time.Second
 	}
 	return defaultValue
+}
+
+// LegacyStringToSliceHookFunc(sep string) is a duplicates the old mapstructure's StringToSliceHookFunc, which supports weak conversion.
+func LegacyStringToSliceHookFunc(sep string) mapstructure.DecodeHookFunc {
+	return func(
+		f reflect.Kind,
+		t reflect.Kind,
+		data interface{},
+	) (interface{}, error) {
+		if f != reflect.String || t != reflect.Slice {
+			return data, nil
+		}
+
+		raw := data.(string)
+		if raw == "" {
+			return []string{}, nil
+		}
+
+		return strings.Split(raw, sep), nil
+	}
 }

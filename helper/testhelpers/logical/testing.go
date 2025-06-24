@@ -199,7 +199,7 @@ func Test(tt TestT, c TestCase) {
 	}
 
 	// Initialize the core
-	init, err := core.Initialize(context.Background(), &vault.InitParams{
+	init, err := core.Initialize(namespace.RootContext(context.Background()), &vault.InitParams{
 		BarrierConfig: &vault.SealConfig{
 			SecretShares:    1,
 			SecretThreshold: 1,

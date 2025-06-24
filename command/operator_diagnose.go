@@ -399,7 +399,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		seal := seal // capture range variable
 		// Ensure that the seal finalizer is called, even if using verify-only
 		defer func(seal *vault.Seal) {
-			sealType := diagnose.CapitalizeFirstLetter((*seal).BarrierType().String())
+			sealType := diagnose.CapitalizeFirstLetter((*seal).WrapperType().String())
 			finalizeSealContext, finalizeSealSpan := diagnose.StartSpan(ctx, "Finalize "+sealType+" Seal")
 			err = (*seal).Finalize(finalizeSealContext)
 			if err != nil {
@@ -592,7 +592,7 @@ SEALFAIL:
 		if barrierSeal == nil {
 			return errors.New("Diagnose could not create a barrier seal object.")
 		}
-		if barrierSeal.BarrierType() == wrapping.WrapperTypeShamir {
+		if barrierSeal.WrapperType() == wrapping.WrapperTypeShamir {
 			diagnose.Skipped(ctx, "Skipping barrier encryption test. Only supported for auto-unseal.")
 			return nil
 		}

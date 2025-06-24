@@ -1096,11 +1096,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// Construct a new AES-GCM barrier
-	c.barrier, err = NewAESGCMBarrier(c.physical, "")
-	if err != nil {
-		return nil, fmt.Errorf("barrier setup failed: %w", err)
-	}
-
+	c.barrier = NewAESGCMBarrier(c.physical, "")
 	if err := c.setupSealManager(); err != nil {
 		return nil, fmt.Errorf("seal manager setup failed: %w", err)
 	}
@@ -1474,28 +1470,28 @@ func (c *Core) Unseal(key []byte) (bool, error) {
 // target threshold.
 //
 // The provided key should be a recovery key fragment if the seal
-// is an autoseal, or a regular seal key fragment for shamir.  In
+// is an autoseal, or a regular seal key fragment for shamir. In
 // migration scenarios "seal" in the preceding sentence refers to
 // the migration seal in c.migrationInfo.seal.
 //
 // We use getUnsealKey to work out if we have enough fragments,
-// and if we don't have enough we return early.  Otherwise we get
+// and if we don't have enough we return early. Otherwise we get
 // back the combined key.
 //
 // For shamir the combined key is used to decrypt the root key
-// read from storage.  For autoseal the combined key isn't used
+// read from storage. For autoseal the combined key isn't used
 // except to verify that the stored recovery key matches.
 //
 // In migration scenarios a side-effect of unsealing is that
 // the members of c.migrationInfo are populated (excluding
-// .seal, which must already be populated before unseal is called.)
+// .seal, which must already be populated before unseal is called).
 func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	defer metrics.MeasureSince([]string{"core", "unseal"}, time.Now())
 
 	c.stateLock.Lock()
 	defer c.stateLock.Unlock()
 
-	ctx := context.Background()
+	ctx := namespace.RootContext(context.Background())
 
 	if migrate && c.migrationInfo == nil {
 		return errors.New("can't perform a seal migration, no migration seal found")
@@ -1574,7 +1570,7 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 func (c *Core) unsealWithRaft(combinedKey []byte) error {
 	ctx := context.Background()
 
-	if c.seal.BarrierType() == wrapping.WrapperTypeShamir {
+	if c.seal.WrapperType() == wrapping.WrapperTypeShamir {
 		shamirWrapper, err := c.seal.GetShamirWrapper()
 		if err == nil {
 			err = shamirWrapper.SetAesGcmKeyBytes(combinedKey)
@@ -1688,7 +1684,7 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 		// configuration.
 		config = raftInfo.leaderBarrierConfig
 	default:
-		config, err = seal.BarrierConfig(ctx, namespace.RootNamespace)
+		config, err = seal.Config(ctx)
 	}
 	if err != nil {
 		return nil, err
@@ -1747,14 +1743,14 @@ func (c *Core) sealMigrated(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	if existBarrierSealConfig.Type != c.seal.BarrierType().String() {
+	if existBarrierSealConfig.Type != c.seal.WrapperType().String() {
 		return false, nil
 	}
 	if c.seal.RecoveryKeySupported() && existRecoverySealConfig.Type != c.seal.RecoveryType() {
 		return false, nil
 	}
 
-	if c.seal.BarrierType() != c.migrationInfo.seal.BarrierType() {
+	if c.seal.WrapperType() != c.migrationInfo.seal.WrapperType() {
 		return true, nil
 	}
 
@@ -1798,7 +1794,7 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 	switch {
 	case c.migrationInfo.seal.RecoveryKeySupported() && c.seal.RecoveryKeySupported():
 		c.logger.Info("migrating from one auto-unseal to another", "from",
-			c.migrationInfo.seal.BarrierType(), "to", c.seal.BarrierType())
+			c.migrationInfo.seal.WrapperType(), "to", c.seal.WrapperType())
 
 		// Set the recovery and barrier keys to be the same.
 		recoveryKey, err := c.migrationInfo.seal.RecoveryKey(ctx)
@@ -1820,7 +1816,7 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 		}
 
 	case c.migrationInfo.seal.RecoveryKeySupported():
-		c.logger.Info("migrating from one auto-unseal to shamir", "from", c.migrationInfo.seal.BarrierType())
+		c.logger.Info("migrating from one auto-unseal to shamir", "from", c.migrationInfo.seal.WrapperType())
 		// Auto to Shamir, since recovery key isn't supported on new seal
 
 		recoveryKey, err := c.migrationInfo.seal.RecoveryKey(ctx)
@@ -1848,7 +1844,7 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 		}
 
 	case c.seal.RecoveryKeySupported():
-		c.logger.Info("migrating from shamir to auto-unseal", "to", c.seal.BarrierType())
+		c.logger.Info("migrating from shamir to auto-unseal", "to", c.seal.WrapperType())
 		// Migration is happening from shamir -> auto. In this case use the shamir
 		// combined key that was used to store the root key as the new recovery key.
 		if err := c.seal.SetRecoveryKey(ctx, c.migrationInfo.unsealKey); err != nil {
@@ -2423,7 +2419,7 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	}
 
 	// Purge these for safety in case of a rotation
-	_ = c.seal.SetBarrierConfig(ctx, nil, namespace.RootNamespace)
+	_ = c.seal.SetConfig(ctx, nil)
 	if c.seal.RecoveryKeySupported() {
 		_ = c.seal.SetRecoveryConfig(ctx, nil)
 	}
@@ -2608,7 +2604,7 @@ func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {
 }
 
 func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfig, error) {
-	pe, err := c.physical.Get(ctx, barrierSealConfigPath)
+	pe, err := c.physical.Get(ctx, sealConfigPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch barrier seal configuration at migration check time: %w", err)
 	}
@@ -2692,11 +2688,11 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 		// from shamir.
 
 		switch {
-		case existBarrierSealConfig.Type == c.seal.BarrierType().String():
+		case existBarrierSealConfig.Type == c.seal.WrapperType().String():
 			// We have the same barrier type and the unwrap seal is nil so we're not
 			// migrating from same to same, IOW we assume it's not a migration.
 			return nil
-		case c.seal.BarrierType() == wrapping.WrapperTypeShamir:
+		case c.seal.WrapperType() == wrapping.WrapperTypeShamir:
 			// The stored barrier config is not shamir, there is no disabled seal
 			// in config, and either no configured seal (which equates to Shamir)
 			// or an explicitly configured Shamir seal.
@@ -2711,13 +2707,13 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 			// that it does not match the stored non-Shamir seal config, and that
 			// there is no explicit disabled seal stanza.
 			return fmt.Errorf("cannot seal migrate from %q to %q, no disabled seal in configuration",
-				existBarrierSealConfig.Type, c.seal.BarrierType())
+				existBarrierSealConfig.Type, c.seal.WrapperType())
 		}
 	} else {
 		// If we're not coming from Shamir we expect the previous seal to be
 		// in the config and disabled.
 
-		if unwrapSeal.BarrierType() == wrapping.WrapperTypeShamir {
+		if unwrapSeal.WrapperType() == wrapping.WrapperTypeShamir {
 			return errors.New("Shamir seals cannot be set disabled (they should simply not be set)")
 		}
 	}
@@ -2733,13 +2729,13 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 	c.migrationInfo = &migrationInformation{
 		seal: unwrapSeal,
 	}
-	if existBarrierSealConfig.Type != c.seal.BarrierType().String() {
+	if existBarrierSealConfig.Type != c.seal.WrapperType().String() {
 		// It's unnecessary to call this when doing an auto->auto
 		// same-seal-type migration, since they'll have the same configs before
 		// and after migration.
 		c.adjustSealConfigDuringMigration(existBarrierSealConfig, existRecoverySealConfig)
 	}
-	c.logger.Warn("entering seal migration mode; Vault will not automatically unseal even if using an autoseal", "from_barrier_type", c.migrationInfo.seal.BarrierType(), "to_barrier_type", c.seal.BarrierType())
+	c.logger.Warn("entering seal migration mode; Vault will not automatically unseal even if using an autoseal", "from_barrier_type", c.migrationInfo.seal.WrapperType(), "to_barrier_type", c.seal.WrapperType())
 
 	return nil
 }
@@ -2766,7 +2762,7 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 		// recovery config to a clone of shamir's barrier config with stored
 		// keys set to 0.
 		bc = &SealConfig{
-			Type:            c.seal.BarrierType().String(),
+			Type:            c.seal.WrapperType().String(),
 			SecretShares:    1,
 			SecretThreshold: 1,
 			StoredShares:    1,
@@ -2776,7 +2772,7 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 		rc.StoredShares = 0
 	}
 
-	if err := c.seal.SetBarrierConfig(ctx, bc, namespace.RootNamespace); err != nil {
+	if err := c.seal.SetConfig(ctx, bc); err != nil {
 		return fmt.Errorf("error storing barrier config after migration: %w", err)
 	}
 
@@ -2799,18 +2795,18 @@ func (c *Core) adjustSealConfigDuringMigration(existBarrierSealConfig, existReco
 		// case the migration is assumed to already have been performed.
 		newSealConfig := existRecoverySealConfig.Clone()
 		newSealConfig.StoredShares = 1
-		c.seal.SetCachedBarrierConfig(newSealConfig)
+		c.seal.SetCachedConfig(newSealConfig)
 	case !c.migrationInfo.seal.RecoveryKeySupported() && c.seal.RecoveryKeySupported():
 		// Migrating from shamir->auto, set a new barrier config and set
 		// recovery config to a clone of shamir's barrier config with stored
 		// keys set to 0.
 		newBarrierSealConfig := &SealConfig{
-			Type:            c.seal.BarrierType().String(),
+			Type:            c.seal.WrapperType().String(),
 			SecretShares:    1,
 			SecretThreshold: 1,
 			StoredShares:    1,
 		}
-		c.seal.SetCachedBarrierConfig(newBarrierSealConfig)
+		c.seal.SetCachedConfig(newBarrierSealConfig)
 
 		newRecoveryConfig := existBarrierSealConfig.Clone()
 		newRecoveryConfig.StoredShares = 0
@@ -2861,11 +2857,11 @@ func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []
 		if useTestSeal {
 			testseal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
 			testseal.SetCore(c)
-			cfg, err := seal.BarrierConfig(ctx, namespace.RootNamespace)
+			cfg, err := seal.Config(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to setup test barrier config: %w", err)
 			}
-			testseal.SetCachedBarrierConfig(cfg)
+			testseal.SetCachedConfig(cfg)
 			seal = testseal
 		}
 

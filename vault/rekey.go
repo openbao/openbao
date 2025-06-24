@@ -84,7 +84,7 @@ func (c *Core) RekeyThreshold(ctx context.Context, recovery bool) (int, logical.
 	if recovery || c.seal.RecoveryKeySupported() {
 		config, err = c.seal.RecoveryConfig(ctx)
 	} else {
-		config, err = c.seal.BarrierConfig(ctx, namespace.RootNamespace)
+		config, err = c.seal.Config(namespace.RootContext(ctx))
 	}
 	if err != nil {
 		return 0, logical.CodedError(http.StatusInternalServerError, "unable to look up config: %v", err)
@@ -167,7 +167,7 @@ func (c *Core) RekeyInit(config *SealConfig, recovery bool) logical.HTTPCodedErr
 
 // BarrierRekeyInit is used to initialize the rekey settings for the barrier key
 func (c *Core) BarrierRekeyInit(config *SealConfig) logical.HTTPCodedError {
-	switch c.seal.BarrierType() {
+	switch c.seal.WrapperType() {
 	case wrapping.WrapperTypeShamir:
 		// As of Vault 1.3 all seals use StoredShares==1.
 		if config.StoredShares != 1 {
@@ -334,7 +334,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 		existingConfig, err = c.seal.RecoveryConfig(ctx)
 		useRecovery = true
 	} else {
-		existingConfig, err = c.seal.BarrierConfig(ctx, namespace.RootNamespace)
+		existingConfig, err = c.seal.Config(namespace.RootContext(ctx))
 	}
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, "failed to fetch existing config: %v", err)
@@ -394,7 +394,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 			c.logger.Error("rekey recovery key verification failed", "error", err)
 			return nil, logical.CodedError(http.StatusBadRequest, "recovery key verification failed: %v", err)
 		}
-	case c.seal.BarrierType() == wrapping.WrapperTypeShamir:
+	case c.seal.WrapperType() == wrapping.WrapperTypeShamir:
 		if c.seal.StoredKeysSupported() == seal.StoredKeysSupportedShamirRoot {
 			shamirWrapper := aeadwrapper.NewShamirWrapper()
 			testseal := NewDefaultSeal(seal.NewAccess(shamirWrapper))
@@ -403,11 +403,11 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 			if err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup unseal key: %v", err)
 			}
-			cfg, err := c.seal.BarrierConfig(ctx, namespace.RootNamespace)
+			cfg, err := c.seal.Config(namespace.RootContext(ctx))
 			if err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup test barrier config: %v", err)
 			}
-			testseal.SetCachedBarrierConfig(cfg)
+			testseal.SetCachedConfig(cfg)
 			stored, err := testseal.GetStoredKeys(ctx)
 			if err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, "failed to read root key: %v", err)
@@ -556,7 +556,7 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 
 	c.rootRotationConfig.VerificationKey = nil
 
-	if err := c.seal.SetBarrierConfig(ctx, c.rootRotationConfig, namespace.RootNamespace); err != nil {
+	if err := c.seal.SetConfig(namespace.RootContext(ctx), c.rootRotationConfig); err != nil {
 		c.logger.Error("error saving rekey seal configuration", "error", err)
 		return logical.CodedError(http.StatusInternalServerError, "failed to save rekey seal configuration: %v", err)
 	}

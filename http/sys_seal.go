@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/errwrap"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
@@ -164,7 +165,7 @@ func handleSysSealStatus(core *vault.Core) http.Handler {
 }
 
 func handleSysSealStatusRaw(core *vault.Core, w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := namespace.RootContext(context.Background())
 	status, err := core.GetSealStatus(ctx, true)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	testing "github.com/mitchellh/go-testing-interface"
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/vault/seal"
 )
@@ -26,7 +27,7 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 	case seal.StoredKeysSupportedShamirRoot:
 		newSeal := NewDefaultSeal(seal.NewAccess(aeadwrapper.NewShamirWrapper()))
 		// Need StoredShares set or this will look like a legacy shamir seal.
-		newSeal.SetCachedBarrierConfig(&SealConfig{
+		newSeal.SetCachedConfig(&SealConfig{
 			StoredShares:    1,
 			SecretThreshold: 1,
 			SecretShares:    1,
@@ -58,14 +59,15 @@ func TestCoreUnsealedWithConfigSealOpts(t testing.T, barrierConf, recoveryConf *
 	t.Helper()
 	seal := NewTestSeal(t, sealOpts)
 	core := TestCoreWithSeal(t, seal, false)
-	result, err := core.Initialize(context.Background(), &InitParams{
+	ctx := namespace.RootContext(context.Background())
+	result, err := core.Initialize(ctx, &InitParams{
 		BarrierConfig:  barrierConf,
 		RecoveryConfig: recoveryConf,
 	})
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	err = core.UnsealWithStoredKeys(context.Background())
+	err = core.UnsealWithStoredKeys(ctx)
 	if err != nil && IsFatalError(err) {
 		t.Fatalf("err: %s", err)
 	}

@@ -673,7 +673,7 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 		if err != nil {
 			// The snapshot contained a root key or keyring we couldn't
 			// recover
-			switch c.seal.BarrierType() {
+			switch c.seal.WrapperType() {
 			case wrapping.WrapperTypeShamir:
 				// If we are a shamir seal we can't do anything. Just
 				// seal all nodes.
@@ -818,8 +818,8 @@ func (c *Core) getRaftChallenge(leaderInfo *raft.LeaderJoinInfo) (*raftInformati
 		return nil, err
 	}
 
-	if sealConfig.Type != c.seal.BarrierType().String() {
-		return nil, fmt.Errorf("mismatching seal types between raft leader (%s) and follower (%s)", sealConfig.Type, c.seal.BarrierType())
+	if sealConfig.Type != c.seal.WrapperType().String() {
+		return nil, fmt.Errorf("mismatching seal types between raft leader (%s) and follower (%s)", sealConfig.Type, c.seal.WrapperType())
 	}
 
 	challengeB64, ok := secret.Data["challenge"]
@@ -927,9 +927,9 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		// If we're using Shamir and using raft for both physical and HA, we
 		// need to block until the node is unsealed, unless retry is set to
 		// false.
-		if c.seal.BarrierType() == wrapping.WrapperTypeShamir && !c.isRaftHAOnly() {
+		if c.seal.WrapperType() == wrapping.WrapperTypeShamir && !c.isRaftHAOnly() {
 			c.raftInfo.Store(raftInfo)
-			if err := c.seal.SetBarrierConfig(ctx, raftInfo.leaderBarrierConfig, namespace.RootNamespace); err != nil {
+			if err := c.seal.SetConfig(namespace.RootContext(ctx), raftInfo.leaderBarrierConfig); err != nil {
 				return err
 			}
 
@@ -950,7 +950,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 			return fmt.Errorf("failed to send answer to raft leader node: %w", err)
 		}
 
-		if c.seal.BarrierType() == wrapping.WrapperTypeShamir && !isRaftHAOnly {
+		if c.seal.WrapperType() == wrapping.WrapperTypeShamir && !isRaftHAOnly {
 			// Reset the state
 			c.raftInfo.Store((*raftInformation)(nil))
 

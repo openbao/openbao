@@ -1025,14 +1025,13 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, namespa
 func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error {
 	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 
-	if err := ns.checkInvalidation(ctx); err != nil {
+	unlock, err := ns.lockWithInvalidation(ctx, true)
+	if err != nil {
 		return err
 	}
+	defer unlock()
 
-	ns.lock.Lock()
-	defer ns.lock.Unlock()
-
-	namespaceToSeal, err := ns.getNamespaceByPathLocked(ctx, path)
+	namespaceToSeal, err := ns.getNamespaceByPathLocked(ctx, path, false)
 	if err != nil {
 		return err
 	}
@@ -1045,16 +1044,11 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return errors.New("unable to seal root namespace")
 	}
 
-	if namespaceToSeal.Tainted || namespaceToSeal.IsDeleting {
-		return errors.New("unable to seal tainted or actively deleting namespace")
+	if namespaceToSeal.Tainted {
+		return errors.New("unable to seal tainted namespace")
 	}
 
-	err = ns.core.sealManager.SealNamespace(namespaceToSeal)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ns.core.sealManager.SealNamespace(namespaceToSeal)
 }
 
 // UnsealNamespace unseals namespace with a given path, using provided key
@@ -1062,17 +1056,17 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key []byte) error {
 	defer metrics.MeasureSince([]string{"namespace", "unseal_namespace"}, time.Now())
 
-	if err := ns.checkInvalidation(ctx); err != nil {
-		return err
-	}
-
-	ns.lock.Lock()
-	defer ns.lock.Unlock()
-
-	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path)
+	unlock, err := ns.lockWithInvalidation(ctx, true)
 	if err != nil {
 		return err
 	}
+	defer unlock()
+
+	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path, false)
+	if err != nil {
+		return err
+	}
+
 	if namespaceToUnseal == nil {
 		return nil
 	}
@@ -1081,12 +1075,7 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 		return errors.New("unable to unseal root namespace")
 	}
 
-	err = ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal.Path, key)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal.Path, key)
 }
 
 // ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'

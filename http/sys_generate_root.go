@@ -34,7 +34,7 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 	defer cancel()
 
 	// Get the current seal configuration
-	barrierConfig, err := core.SealAccess().BarrierConfig(ctx)
+	barrierConfig, err := core.SealAccess().Config(ctx)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)
 		return

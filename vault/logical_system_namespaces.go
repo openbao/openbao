@@ -67,6 +67,12 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 	}
 
+	namespaceNameSchema := &framework.FieldSchema{
+		Type:        framework.TypeString,
+		Required:    true,
+		Description: "Name of the namespace.",
+	}
+
 	return []*framework.Path{
 		{
 			Pattern: "namespaces/?$",
@@ -102,18 +108,13 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			// .../lock/<path_to_namespace> capturing the "path_to_namespace"
 			// but should not match
 			// .../lockkk or any malformation of "lock" string
-			Pattern: "namespaces/api-lock/lock(?:$|/(?P<path>.+))",
+			Pattern: "namespaces/api-lock/lock(?:$|/(?P<name>.+))",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
 			},
-
 			Fields: map[string]*framework.FieldSchema{
-				"path": {
-					Type:        framework.TypeString,
-					Required:    false,
-					Description: "Path of the namespace.",
-				},
+				"name": namespaceNameSchema,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -142,18 +143,13 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			// .../unlock/<path_to_namespace> capturing the "path_to_namespace"
 			// but should not match
 			// .../unlockkk or any malformation of "unlock" string
-			Pattern: "namespaces/api-lock/unlock(?:$|/(?P<path>.+))",
+			Pattern: "namespaces/api-lock/unlock(?:$|/(?P<name>.+))",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
 			},
-
 			Fields: map[string]*framework.FieldSchema{
-				"path": {
-					Type:        framework.TypeString,
-					Required:    false,
-					Description: "Path of the namespace.",
-				},
+				"name": namespaceNameSchema,
 				"unlock_key": {
 					Type:        framework.TypeString,
 					Required:    true,
@@ -181,13 +177,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
 			},
-
 			Fields: map[string]*framework.FieldSchema{
-				"name": {
-					Type:        framework.TypeString,
-					Required:    true,
-					Description: "Name of the namespace.",
-				},
+				"name": namespaceNameSchema,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -209,13 +200,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
 			},
-
 			Fields: map[string]*framework.FieldSchema{
-				"name": {
-					Type:        framework.TypeString,
-					Required:    true,
-					Description: "Name of the namespace.",
-				},
+				"name": namespaceNameSchema,
 				"key": {
 					Type:        framework.TypeNameString,
 					Description: "Specifies a single namespace unseal key share.",
@@ -237,18 +223,13 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "namespaces/(?P<path>.+)",
+			Pattern: "namespaces/(?P<name>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
 			},
-
 			Fields: map[string]*framework.FieldSchema{
-				"path": {
-					Type:        framework.TypeString,
-					Required:    true,
-					Description: "Path of the namespace.",
-				},
+				"name": namespaceNameSchema,
 				"custom_metadata": {
 					Type:        framework.TypeMap,
 					Description: "User provided key-value pairs.",
@@ -308,21 +289,21 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 }
 
 // createNamespaceDataResponse is the standard response object
-// for any operations concerning a namespace
-func createNamespaceDataResponse(ns *namespace.Namespace, keySharesMap ...map[string][]string) map[string]any {
-	var keySharesPerSeal map[string][]string
-	if len(keySharesMap) > 0 {
-		keySharesPerSeal = keySharesMap[0]
-	}
-	return map[string]any{
+// for any operations concerning a namespace.
+func createNamespaceDataResponse(ns *namespace.Namespace, keySharesMap map[string][]string) map[string]any {
+	ret := map[string]any{
 		"uuid":            ns.UUID,
 		"path":            ns.Path,
 		"id":              ns.ID,
 		"tainted":         ns.Tainted,
 		"locked":          ns.Locked,
 		"custom_metadata": ns.CustomMetadata,
-		"key_shares":      keySharesPerSeal,
 	}
+	if len(keySharesMap) > 0 {
+		ret["key_shares"] = keySharesMap
+	}
+
+	return ret
 }
 
 // handleNamespacesList handles "/sys/namespaces" endpoint to list the enabled namespaces.
@@ -342,7 +323,7 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
-			keyInfo[p] = createNamespaceDataResponse(entry)
+			keyInfo[p] = createNamespaceDataResponse(entry, nil)
 		}
 
 		return logical.ListResponseWithInfo(keys, keyInfo), nil
@@ -366,23 +347,23 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
-			keyInfo[p] = createNamespaceDataResponse(entry)
+			keyInfo[p] = createNamespaceDataResponse(entry, nil)
 		}
 
 		return logical.ListResponseWithInfo(keys, keyInfo), nil
 	}
 }
 
-// handleNamespacesRead handles the "/sys/namespaces/<path>" endpoints to read a namespace.
+// handleNamespacesRead handles the "/sys/namespaces/<name>" endpoints to read a namespace.
 func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
+		name := namespace.Canonicalize(data.Get("name").(string))
 
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return nil, errors.New("name must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
 		if err != nil {
 			return nil, err
 		}
@@ -391,17 +372,17 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 			return nil, nil
 		}
 
-		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
+		return &logical.Response{Data: createNamespaceDataResponse(ns, nil)}, nil
 	}
 }
 
-// handleNamespaceSet handles the "/sys/namespaces/<path>" endpoint to set a namespace.
+// handleNamespaceSet handles the "/sys/namespaces/<name>" endpoint to set a namespace.
 func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
+		name := namespace.Canonicalize(data.Get("name").(string))
 
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return logical.ErrorResponse("path must not contain /"), logical.ErrInvalidRequest
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return logical.ErrorResponse("name must not contain /"), logical.ErrInvalidRequest
 		}
 
 		imetadata, ok := data.GetOk("custom_metadata")
@@ -425,37 +406,46 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		entry, new, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		entry, new, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, name, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			ns.CustomMetadata = metadata
 			return ns, nil
 		})
 		if err != nil {
 			return handleError(err)
 		}
-		keySharesMap := make(map[string][]string)
-		if new {
-			// TODO(wslabosz): write all the provided configs
-			if len(sealConfigs) > 0 {
-				if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry); err != nil {
-					return handleError(err)
-				}
 
-				nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, entry)
-				if err != nil {
-					return logical.ErrorResponse(fmt.Sprintf("%s", err.Error())), err
-				}
-				var keyShares []string
-				for _, keyShare := range nsSealKeyShares {
-					keyShares = append(keyShares, hex.EncodeToString(keyShare))
-				}
-				if len(keyShares) > 0 {
-					keySharesMap["default"] = keyShares
-				}
+		if !new {
+			if sealConfigs != nil {
+				return nil, errors.New("cannot update existing namespace and modify its seal config")
 			}
+			return &logical.Response{Data: createNamespaceDataResponse(entry, nil)}, nil
+		}
 
-			if err := b.Core.namespaceStore.initializeNamespace(ctx, entry); err != nil {
+		// overwrite namespace in context with the one just created
+		ctx = namespace.ContextWithNamespace(ctx, entry)
+		keySharesMap := make(map[string][]string)
+		// TODO(wslabosz): write all the provided configs
+		if len(sealConfigs) > 0 {
+			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry); err != nil {
 				return handleError(err)
 			}
+
+			nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, entry)
+			if err != nil {
+				return handleError(err)
+			}
+
+			var keyShares []string
+			for _, keyShare := range nsSealKeyShares {
+				keyShares = append(keyShares, hex.EncodeToString(keyShare))
+			}
+			if len(keyShares) > 0 {
+				keySharesMap["default"] = keyShares
+			}
+		}
+
+		if err := b.Core.namespaceStore.initializeNamespace(ctx, entry); err != nil {
+			return handleError(err)
 		}
 
 		return &logical.Response{Data: createNamespaceDataResponse(entry, keySharesMap)}, nil
@@ -478,16 +468,16 @@ func customMetadataPatchPreprocessor(input map[string]interface{}) (map[string]i
 	return metadata, nil
 }
 
-// handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace's custom metadata.
+// handleNamespacesPatch handles the "/sys/namespace/<name>" endpoints to update a namespace's custom metadata.
 func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
+		name := namespace.Canonicalize(data.Get("name").(string))
 
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return nil, errors.New("name must not contain /")
 		}
 
-		ns, _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		ns, _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, name, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			if ns.UUID == "" {
 				return nil, fmt.Errorf("requested namespace does not exist")
 			}
@@ -514,15 +504,15 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 
-		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
+		return &logical.Response{Data: createNamespaceDataResponse(ns, nil)}, nil
 	}
 }
 
-// handleNamespacesLock handles the "/sys/namespaces/api-lock/lock/<path>" endpoint to lock a namespace.
+// handleNamespacesLock handles the "/sys/namespaces/api-lock/lock/<name>" endpoint to lock a namespace.
 func (b *SystemBackend) handleNamespacesLock() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
-		unlockKey, err := b.Core.namespaceStore.LockNamespace(ctx, path)
+		name := namespace.Canonicalize(data.Get("name").(string))
+		unlockKey, err := b.Core.namespaceStore.LockNamespace(ctx, name)
 		if err != nil {
 			return handleError(err)
 		}
@@ -537,10 +527,10 @@ func (b *SystemBackend) handleNamespacesLock() framework.OperationFunc {
 	}
 }
 
-// handleNamespacesUnlock handles the "/sys/namespaces/api-lock/unlock/<path>" endpoint to unlock a namespace.
+// handleNamespacesUnlock handles the "/sys/namespaces/api-lock/unlock/<name>" endpoint to unlock a namespace.
 func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
+		name := namespace.Canonicalize(data.Get("name").(string))
 		unlockKey := data.Get("unlock_key").(string)
 
 		// sudo check
@@ -550,7 +540,7 @@ func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
 		}
 
 		// unlockKey can only be empty if the request was made with token having sudo capability
-		err := b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, path)
+		err := b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, name)
 		if err != nil {
 			return handleError(err)
 		}
@@ -563,16 +553,16 @@ func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
 	}
 }
 
-// handleNamespacesDelete handles the "/sys/namespace/<path>" endpoint to delete a namespace.
+// handleNamespacesDelete handles the "/sys/namespace/<name>" endpoint to delete a namespace.
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := namespace.Canonicalize(data.Get("path").(string))
+		name := namespace.Canonicalize(data.Get("name").(string))
 
-		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return nil, errors.New("name must not contain /")
 		}
 
-		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path)
+		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, name)
 		if err != nil {
 			return handleError(err)
 		}

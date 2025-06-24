@@ -158,7 +158,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	if recovery {
 		expType = c.seal.RecoveryType()
 	} else {
-		expType = c.seal.BarrierType().String()
+		expType = c.seal.WrapperType().String()
 	}
 
 	newConf := &SealConfig{
@@ -180,10 +180,11 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		t.Fatal("bad: no rekey config received")
 	}
 
+	ctx := namespace.RootContext(context.Background())
 	// Provide the root/recovery keys
 	var result *RekeyResult
 	for _, key := range keys {
-		result, err = c.RekeyUpdate(context.Background(), key, rkconf.Nonce, recovery)
+		result, err = c.RekeyUpdate(ctx, key, rkconf.Nonce, recovery)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -212,9 +213,9 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	// SealConfig should update
 	var sealConf *SealConfig
 	if recovery {
-		sealConf, err = c.seal.RecoveryConfig(context.Background())
+		sealConf, err = c.seal.RecoveryConfig(ctx)
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
+		sealConf, err = c.seal.Config(ctx)
 	}
 	if err != nil {
 		t.Fatalf("seal config retrieval error: %v", err)
@@ -276,7 +277,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	// Provide the parts root
 	oldResult := result
 	for i := 0; i < 3; i++ {
-		result, err = c.RekeyUpdate(context.Background(), TestKeyCopy(oldResult.SecretShares[i]), rkconf.Nonce, recovery)
+		result, err = c.RekeyUpdate(ctx, TestKeyCopy(oldResult.SecretShares[i]), rkconf.Nonce, recovery)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -313,9 +314,9 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 
 	// SealConfig should update
 	if recovery {
-		sealConf, err = c.seal.RecoveryConfig(context.Background())
+		sealConf, err = c.seal.RecoveryConfig(ctx)
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
+		sealConf, err = c.seal.Config(ctx)
 	}
 	if err != nil {
 		t.Fatalf("err: %v", err)

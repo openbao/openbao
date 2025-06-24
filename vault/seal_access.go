@@ -8,7 +8,6 @@ import (
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -27,12 +26,12 @@ func (s *SealAccess) StoredKeysSupported() seal.StoredKeysSupport {
 	return s.seal.StoredKeysSupported()
 }
 
-func (s *SealAccess) BarrierType() wrapping.WrapperType {
-	return s.seal.BarrierType()
+func (s *SealAccess) WrapperType() wrapping.WrapperType {
+	return s.seal.WrapperType()
 }
 
-func (s *SealAccess) BarrierConfig(ctx context.Context) (*SealConfig, error) {
-	return s.seal.BarrierConfig(ctx, namespace.RootNamespace)
+func (s *SealAccess) Config(ctx context.Context) (*SealConfig, error) {
+	return s.seal.Config(ctx)
 }
 
 func (s *SealAccess) RecoveryKeySupported() bool {
@@ -53,7 +52,7 @@ func (s *SealAccess) VerifyRecoveryKey(ctx context.Context, key []byte) error {
 
 // TODO(SEALHA): This looks like it belongs in Seal instead, it only has two callers
 func (s *SealAccess) ClearCaches(ctx context.Context) {
-	s.seal.SetBarrierConfig(ctx, nil, namespace.RootNamespace)
+	s.seal.SetConfig(ctx, nil)
 	if s.RecoveryKeySupported() {
 		s.seal.SetRecoveryConfig(ctx, nil)
 	}

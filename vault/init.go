@@ -107,7 +107,7 @@ func (c *Core) InitializedLocally(ctx context.Context) (bool, error) {
 	}
 
 	// Verify the seal configuration
-	sealConf, err := c.seal.BarrierConfig(ctx, namespace.RootNamespace)
+	sealConf, err := c.seal.Config(namespace.RootContext(ctx))
 	if err != nil {
 		return false, err
 	}
@@ -318,7 +318,9 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		return nil, fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	// TODO: we are here
+	// deprecatedBarrierKeyShares are only used in the tests, as it is
+	// initializing an old-style Shamir seal which are not used anymore
+	// TODO: (wslabosz) look into removal of those
 	barrierKey, deprecatedBarrierKeyShares, err := c.generateShares(barrierConfig)
 	if err != nil {
 		c.logger.Error("error generating shares", "error", err)
@@ -328,7 +330,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 	var sealKey []byte
 	var sealKeyShares [][]byte
 
-	if barrierConfig.StoredShares == 1 && c.seal.BarrierType() == wrapping.WrapperTypeShamir {
+	if barrierConfig.StoredShares == 1 && c.seal.WrapperType() == wrapping.WrapperTypeShamir {
 		sealKey, sealKeyShares, err = c.generateShares(barrierConfig)
 		if err != nil {
 			c.logger.Error("error generating shares", "error", err)
@@ -361,7 +363,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		}
 	}()
 
-	err = c.seal.SetBarrierConfig(ctx, barrierConfig, namespace.RootNamespace)
+	err = c.seal.SetConfig(ctx, barrierConfig)
 	if err != nil {
 		c.logger.Error("failed to save barrier configuration", "error", err)
 		return nil, fmt.Errorf("barrier configuration saving failed: %w", err)
@@ -490,7 +492,7 @@ func (c *Core) UnsealWithStoredKeys(ctx context.Context) error {
 	c.unsealWithStoredKeysLock.Lock()
 	defer c.unsealWithStoredKeysLock.Unlock()
 
-	if c.seal.BarrierType() == wrapping.WrapperTypeShamir {
+	if c.seal.WrapperType() == wrapping.WrapperTypeShamir {
 		return nil
 	}
 

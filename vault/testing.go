@@ -311,7 +311,7 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 		BarrierConfig:  barrierConfig,
 		RecoveryConfig: recoveryConfig,
 	}
-	result, err := core.Initialize(namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace), initParams)
+	result, err := core.Initialize(namespace.RootContext(context.Background()), initParams)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -430,8 +430,7 @@ func testCoreAddSecretMountContext(ctx context.Context, t testing.T, core *Core,
 }
 
 func testCoreAddSecretMount(t testing.T, core *Core, token string) {
-	rootCtx := namespace.RootContext(nil)
-	testCoreAddSecretMountContext(rootCtx, t, core, "secret/", token)
+	testCoreAddSecretMountContext(namespace.RootContext(context.Background()), t, core, "secret/", token)
 }
 
 func TestCoreUnsealedBackend(t testing.T, backend physical.Backend) (*Core, [][]byte, string) {
@@ -2067,7 +2066,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		}
 	}
 
-	ctx := context.Background()
+	ctx := namespace.RootContext(context.Background())
 
 	// If stored keys is supported, the above will no no-op, so trigger auto-unseal
 	// using stored keys to try to unseal
@@ -2110,7 +2109,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		t.Fatal(err)
 	}
 
-	cfg, err := leader.seal.BarrierConfig(ctx, namespace.RootNamespace)
+	cfg, err := leader.seal.Config(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2119,7 +2118,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 	numCores := len(tc.Cores)
 	if (opts == nil || !opts.KeepStandbysSealed) && numCores > 1 {
 		for i := 1; i < numCores; i++ {
-			tc.Cores[i].seal.SetCachedBarrierConfig(cfg)
+			tc.Cores[i].seal.SetCachedConfig(cfg)
 			for _, key := range bKeys {
 				if _, err := tc.Cores[i].Unseal(TestKeyCopy(key)); err != nil {
 					t.Fatalf("unseal err: %s", err)

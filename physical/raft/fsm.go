@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/go-raftchunking"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/raft"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
@@ -667,7 +668,7 @@ func (f *FSM) applyBatchNonTxOps(b *bolt.Bucket, txnState *fsmTxnCommitIndexAppl
 		case restoreCallbackOp:
 			if f.restoreCb != nil {
 				// Kick off the restore callback function in a go routine
-				go f.restoreCb(context.Background())
+				go f.restoreCb(namespace.RootContext(context.Background()))
 			}
 		default:
 			if _, ok := f.unknownOpTypes.Load(op.OpType); !ok {

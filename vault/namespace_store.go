@@ -226,18 +226,23 @@ func (ns *NamespaceStore) SetNamespace(ctx context.Context, namespace *namespace
 
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()
+	// setNamespaceLocked handles unlocking
 	new, err := ns.setNamespaceLocked(ctx, namespace)
-	ns.lock.Unlock()
+	if err != nil {
+		return err
+	}
+
 	// TODO: might want to support calling (*SealManager).SetSeal here
 	if new {
 		ns.initializeNamespace(ctx, namespace)
 	}
-	return err
+	return nil
 }
 
 // setNamespaceLocked must be called while holding a write lock over the
 // NamespaceStore.
 func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *namespace.Namespace) (new bool, err error) {
+	defer ns.lock.Unlock()
 	// Copy the entry before validating and potentially mutating it.
 	entry := nsEntry.Clone(true /* preserve unlock */)
 	if err := entry.Validate(); err != nil {
@@ -514,7 +519,12 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 	}
 
 	ns.lock.Lock()
-	defer ns.lock.Unlock()
+	unlock := true
+	defer func() {
+		if unlock {
+			ns.lock.Unlock()
+		}
+	}()
 
 	entry := ns.namespacesByPath.Get(path)
 	if entry != nil {
@@ -542,6 +552,8 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		entry.UnlockKey = unlockKey
 	}
 
+	// setNamespaceLocked handles unlocking
+	unlock = false
 	new, err := ns.setNamespaceLocked(ctx, entry)
 	if err != nil {
 		return nil, new, err
@@ -800,12 +812,7 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return errors.New("unable to seal tainted or actively deleting namespace")
 	}
 
-	err = ns.core.sealManager.SealNamespace(namespaceToSeal)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ns.core.sealManager.SealNamespace(namespaceToSeal)
 }
 
 // UnsealNamespace unseals namespace with a given path, using provided key
@@ -824,6 +831,7 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 	if err != nil {
 		return err
 	}
+
 	if namespaceToUnseal == nil {
 		return nil
 	}
@@ -832,12 +840,7 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 		return errors.New("unable to unseal root namespace")
 	}
 
-	err = ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal.Path, key)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal.Path, key)
 }
 
 // ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'
@@ -946,7 +949,7 @@ func (ns *NamespaceStore) unlockNamespaceLocked(ctx context.Context, target *nam
 	}
 	parentCtx := namespace.ContextWithNamespace(ctx, parentNs)
 
-	// setNamespaceLocked now handles unlocking.
+	// setNamespaceLocked handles unlocking.
 	unlock = false
 	_, err := ns.setNamespaceLocked(parentCtx, item)
 	return err
@@ -1018,6 +1021,7 @@ func (ns *NamespaceStore) lockNamespaceLocked(ctx context.Context, target *names
 	parentCtx := namespace.ContextWithNamespace(ctx, parentNs)
 
 	unlock = false
+	// setNamespaceLocked handles unlocking.
 	if _, err := ns.setNamespaceLocked(parentCtx, item); err != nil {
 		return "", fmt.Errorf("unable to save locked namespace: %v", target.ID)
 	}

@@ -14,24 +14,16 @@ import (
 )
 
 func testBarrier(t *testing.T, b SecurityBarrier) {
-	var prefix string
-	switch cb := b.(type) {
-	case *AESGCMBarrier:
-		prefix = cb.metaPrefix
-	case *TransactionalAESGCMBarrier:
-		prefix = cb.metaPrefix
-	}
-
 	err, e, key := testInitAndUnseal(t, b)
 	require.NoError(t, err)
 
 	// Operations should work
-	out, err := b.Get(context.Background(), prefix+"test")
+	out, err := b.Get(context.Background(), "test")
 	require.NoError(t, err)
 	require.Nil(t, out)
 
 	// List should have only "core/"
-	keys, err := b.List(context.Background(), prefix)
+	keys, err := b.List(context.Background(), "")
 	require.NoError(t, err)
 	require.Len(t, keys, 1)
 	require.Equal(t, "core/", keys[0])
@@ -41,32 +33,32 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	require.NoError(t, err)
 
 	// Should be equal
-	out, err = b.Get(context.Background(), prefix+"test")
+	out, err = b.Get(context.Background(), "test")
 	require.NoError(t, err)
 	require.Equal(t, e, out)
 
 	// List should show the items
-	keys, err = b.List(context.Background(), prefix)
+	keys, err = b.List(context.Background(), "")
 	require.NoError(t, err)
 	require.Len(t, keys, 2)
 	require.Equal(t, "core/", keys[0])
 	require.Equal(t, "test", keys[1])
 
 	// Delete should clear
-	err = b.Delete(context.Background(), prefix+"test")
+	err = b.Delete(context.Background(), "test")
 	require.NoError(t, err)
 
 	// Double Delete is fine
-	err = b.Delete(context.Background(), prefix+"test")
+	err = b.Delete(context.Background(), "test")
 	require.NoError(t, err)
 
 	// Should be nil
-	out, err = b.Get(context.Background(), prefix+"test")
+	out, err = b.Get(context.Background(), "test")
 	require.NoError(t, err)
 	require.Nil(t, out)
 
 	// List should have nothing
-	keys, err = b.List(context.Background(), prefix)
+	keys, err = b.List(context.Background(), "")
 	require.NoError(t, err)
 	require.Len(t, keys, 1)
 	require.Equal(t, "core/", keys[0])
@@ -80,7 +72,7 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	require.NoError(t, err)
 
 	// No access allowed
-	_, err = b.Get(context.Background(), prefix+"test")
+	_, err = b.Get(context.Background(), "test")
 	require.ErrorIs(t, err, ErrBarrierSealed)
 
 	// Unseal should work
@@ -88,12 +80,12 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	require.NoError(t, err)
 
 	// Should be equal
-	out, err = b.Get(context.Background(), prefix+"test")
+	out, err = b.Get(context.Background(), "test")
 	require.NoError(t, err)
 	require.Equal(t, e, out)
 
 	// Final cleanup
-	err = b.Delete(context.Background(), prefix+"test")
+	err = b.Delete(context.Background(), "test")
 	require.NoError(t, err)
 
 	// Reseal should prevent any updates
@@ -109,13 +101,6 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 }
 
 func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.StorageEntry, []byte) {
-	var prefix string
-	switch cb := b.(type) {
-	case *AESGCMBarrier:
-		prefix = cb.metaPrefix
-	case *TransactionalAESGCMBarrier:
-		prefix = cb.metaPrefix
-	}
 	// Should not be initialized
 	init, err := b.Initialized(context.Background())
 	require.NoError(t, err)
@@ -130,14 +115,14 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 	require.NoError(t, err)
 
 	// All operations should fail
-	e := &logical.StorageEntry{Key: prefix + "test", Value: []byte("test")}
+	e := &logical.StorageEntry{Key: "test", Value: []byte("test")}
 	err = b.Put(context.Background(), e)
 	require.ErrorIs(t, err, ErrBarrierSealed)
-	_, err = b.Get(context.Background(), prefix+"test")
+	_, err = b.Get(context.Background(), "test")
 	require.ErrorIs(t, err, ErrBarrierSealed)
-	err = b.Delete(context.Background(), prefix+"test")
+	err = b.Delete(context.Background(), "test")
 	require.ErrorIs(t, err, ErrBarrierSealed)
-	_, err = b.List(context.Background(), prefix)
+	_, err = b.List(context.Background(), "")
 	require.ErrorIs(t, err, ErrBarrierSealed)
 
 	// Get a new key

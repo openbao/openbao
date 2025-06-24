@@ -297,7 +297,7 @@ jobs:
 
   test-collect-reports:
     if: ${{ ! cancelled() }}
-    needs: test-go
+    needs: [test-go, test-matrix]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3

@@ -3,6 +3,7 @@ sidebar_label: Overview
 description: |-
   An announcement page to communicate feature deprecations and plans.
 ---
+
 # Feature deprecation notice and plans
 
 This announcement page is maintained and updated periodically to communicate important decisions made concerning End of Support(EoS) for OpenBao features as well as features we have removed or disabled from the project. We document the removal of features, enable the community with a plan and timeline for eventual deprecations, and supply alternative paths to explore and evaluate to minimize business disruptions. If you have questions or concerns about a deprecated feature, please create a topic on [the community forum](https://github.com/orgs/openbao/discussions). Please refer to the [FAQ](/docs/deprecation/faq) page for frequently asked questions concerning OpenBao feature deprecations.
@@ -19,6 +20,6 @@ This announcement page is maintained and updated periodically to communicate imp
 
 :::
 
-| Feature | Deprecation announcement | End of Support | Feature Removal | Migration Path/Impact | Resources |
-|---------|--------------------------|----------------|-----------------|-----------------------|-----------|
-
+| Feature                                                                                                                                                                                                                                                                                                                         | Deprecation announcement | End of Support | Feature Removal | Migration Path/Impact                                                                                                                                                                                                                                   | Resources                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | -------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Configuration of PKCS#11 auto-unseal using the duplicate and undocumented `module`, `token` and `key` options is now deprecated. Use the documented alternative options `lib`, `token_label` and `key_label` instead, respectively. ([More details](https://github.com/openbao/go-kms-wrapping/pull/33#discussion_r2112177962)) | v2.2.2                   | TBD            | No              | Modify your configuration file to use the respective supported option, see [PKCS#11 Unseal](/docs/configuration/seal/pkcs11). Impact is minimal as the deprecated options were undocumented. The switch to the supported options should be trivial.     | [PKCS#11 Unseal](/docs/configuration/seal/pkcs11) |

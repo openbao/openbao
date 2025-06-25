@@ -5,9 +5,16 @@ description: Release notes for OpenBao 2.3.x
 
 # OpenBao 2.3.0 release notes
 
-## v2.3.0
+## v2.3.1
 
 **Release date:** June 25, 2025
+
+:::info
+
+OpenBao v2.3.0 is unreleased due to a bug in Illumos builds. Illumos has been
+removed from v2.3.1 as a result, [per policy](https://github.com/openbao/openbao/issues/711).
+
+:::
 
 ### SECURITY
 
@@ -18,6 +25,7 @@ description: Release notes for OpenBao 2.3.x
 
 * packaging/systemd: Do not set LimitNOFILE, allowing Go to automatically manage this value on behalf of the server. See also https://github.com/golang/go/issues/46279. [[GH-1179](https://github.com/openbao/openbao/pull/1179)]
 * storage/postgresql: Support empty connection URLs to use standard component-wise variables [[GH-1297](https://github.com/openbao/openbao/pull/1297)]
+* packaging: Support for Illumos removed due to broken builds [[GH-1503](https://github.com/openbao/openbao/pull/1503)]
 
 ### FEATURES
 

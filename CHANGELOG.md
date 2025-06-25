@@ -1,4 +1,4 @@
-## 2.3.0
+## 2.3.1
 ## June 25, 2025
 
 SECURITY:
@@ -10,6 +10,7 @@ CHANGES:
 
 * packaging/systemd: Do not set LimitNOFILE, allowing Go to automatically manage this value on behalf of the server. See also https://github.com/golang/go/issues/46279. [[GH-1179](https://github.com/openbao/openbao/pull/1179)]
 * storage/postgresql: Support empty connection URLs to use standard component-wise variables [[GH-1297](https://github.com/openbao/openbao/pull/1297)]
+* packaging: Support for Illumos removed due to broken builds [[GH-1503](https://github.com/openbao/openbao/pull/1503)]
 
 FEATURES:
 

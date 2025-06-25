@@ -1064,25 +1064,21 @@ func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[stri
 	}
 	certTemplate.SerialNumber = serialNumber
 
-	if req, ok := evaluationData["request"].(map[string]any); ok {
-		if v, ok := req["key_type"].(string); ok {
-			keyType = v
-		}
-		if v, ok := req["key_bits"].(int); ok {
-			keyBits = v
-		}
-		if v, ok := req["use_pss"].(bool); ok {
-			usePSS = v
-		}
-		if v, ok := req["signature_bits"].(int); ok {
-			signatureBits = v
-		}
+	if v, ok := evaluationData["key_type"].(string); ok {
+		keyType = v
+	}
+	if v, ok := evaluationData["key_bits"].(int); ok {
+		keyBits = v
+	}
+	if v, ok := evaluationData["use_pss"].(bool); ok {
+		usePSS = v
+	}
+	if v, ok := evaluationData["signature_bits"].(int); ok {
+		signatureBits = v
 	}
 
 	result := &ParsedCertBundle{}
-	if err := privateKeyGenerator(keyType,
-		keyBits,
-		result, randReader); err != nil {
+	if err := privateKeyGenerator(keyType, keyBits, result, randReader); err != nil {
 		return nil, err
 	}
 
@@ -1507,16 +1503,14 @@ func signCertificateWithTemplate(caSign *CAInfoBundle, CSR *x509.CertificateRequ
 	}
 	certTemplate.SerialNumber = serialNumber
 
-	if req, ok := evaluationData["request"].(map[string]any); ok {
-		if v, ok := req["use_pss"].(bool); ok {
-			usePSS = v
-		}
-		if v, ok := req["signature_bits"].(int); ok {
-			signatureBits = v
-		}
-		if v, ok := req["subject_key_id"].([]byte); ok {
-			subjKeyID = v
-		}
+	if v, ok := evaluationData["use_pss"].(bool); ok {
+		usePSS = v
+	}
+	if v, ok := evaluationData["signature_bits"].(int); ok {
+		signatureBits = v
+	}
+	if v, ok := evaluationData["subject_key_id"].([]byte); ok {
+		subjKeyID = v
 	}
 
 	if len(subjKeyID) == 0 {

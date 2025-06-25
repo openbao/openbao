@@ -175,11 +175,6 @@ func CertProtoToX509(tpl *CertTemplate) (*x509.Certificate, error) {
 		policyIdentifiers = append(policyIdentifiers, protoOIDToASN1(o))
 	}
 
-	var unhandledCriticalExtensions []asn1.ObjectIdentifier
-	for _, o := range tpl.GetUnhandledCriticalExtensions() {
-		unhandledCriticalExtensions = append(unhandledCriticalExtensions, protoOIDToASN1(o))
-	}
-
 	var extKeyUsage []x509.ExtKeyUsage
 	for _, v := range tpl.GetExtKeyUsage() {
 		extKeyUsage = append(extKeyUsage, x509.ExtKeyUsage(v)) // int32 -> ExtKeyUsage
@@ -199,14 +194,9 @@ func CertProtoToX509(tpl *CertTemplate) (*x509.Certificate, error) {
 		policies = append(policies, po)
 	}
 
-	var exts []pkix.Extension
-	for _, e := range tpl.GetExtensions() {
-		exts = append(exts, protoToPKIXExt(e))
-	}
-
 	var extraExts []pkix.Extension
 	for _, e := range tpl.GetExtraExtensions() {
-		exts = append(exts, protoToPKIXExt(e))
+		extraExts = append(extraExts, protoToPKIXExt(e))
 	}
 
 	ips, err := protoIPSliceToNet(tpl.GetIPAddresses())
@@ -240,9 +230,7 @@ func CertProtoToX509(tpl *CertTemplate) (*x509.Certificate, error) {
 		NotBefore:                   tpl.GetNotBefore().AsTime(),
 		NotAfter:                    tpl.GetNotAfter().AsTime(),
 		KeyUsage:                    x509.KeyUsage(tpl.GetKeyUsage()),
-		Extensions:                  exts,
 		ExtraExtensions:             extraExts,
-		UnhandledCriticalExtensions: unhandledCriticalExtensions,
 		ExtKeyUsage:                 extKeyUsage,
 		UnknownExtKeyUsage:          unknownExtKeyUsage,
 		BasicConstraintsValid:       tpl.GetBasicConstraintsValid(),

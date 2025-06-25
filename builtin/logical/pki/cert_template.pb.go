@@ -494,7 +494,7 @@ type ValidationOutput struct {
 	NoStore       bool                   `protobuf:"varint,6,opt,name=no_store,json=noStore,proto3" json:"no_store,omitempty"`
 	// Warnings about the request or adjustments made by the CEL policy engine.
 	// E.g., "common_name was empty so added example.com"
-	Warnings string `protobuf:"bytes,7,opt,name=warnings,proto3" json:"warnings,omitempty"`
+	Warnings []string `protobuf:"bytes,7,rep,name=warnings,proto3" json:"warnings,omitempty"`
 	// For CSR:
 	SubjectKeyId []byte `protobuf:"bytes,8,opt,name=subject_key_id,json=subjectKeyId,proto3" json:"subject_key_id,omitempty"` // This value is auto-computed by certutil for generated keys.
 	// For key generation/"issue"
@@ -576,11 +576,11 @@ func (x *ValidationOutput) GetNoStore() bool {
 	return false
 }
 
-func (x *ValidationOutput) GetWarnings() string {
+func (x *ValidationOutput) GetWarnings() []string {
 	if x != nil {
 		return x.Warnings
 	}
-	return ""
+	return nil
 }
 
 func (x *ValidationOutput) GetSubjectKeyId() []byte {
@@ -606,45 +606,43 @@ func (x *ValidationOutput) GetKeyBits() uint64 {
 
 // Mirrors x509.Certificate
 type CertTemplate struct {
-	state                       protoimpl.MessageState `protogen:"open.v1"`
-	Version                     int64                  `protobuf:"varint,1,opt,name=Version,proto3" json:"Version,omitempty"`
-	Subject                     *PKIX_Name             `protobuf:"bytes,2,opt,name=Subject,proto3" json:"Subject,omitempty"`
-	NotBefore                   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=NotBefore,proto3" json:"NotBefore,omitempty"`
-	NotAfter                    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=NotAfter,proto3" json:"NotAfter,omitempty"`
-	KeyUsage                    KeyUsage               `protobuf:"varint,5,opt,name=KeyUsage,proto3,enum=openbao.pki.KeyUsage" json:"KeyUsage,omitempty"`
-	Extensions                  []*PKIX_Extension      `protobuf:"bytes,6,rep,name=Extensions,proto3" json:"Extensions,omitempty"`
-	ExtraExtensions             []*PKIX_Extension      `protobuf:"bytes,7,rep,name=ExtraExtensions,proto3" json:"ExtraExtensions,omitempty"`
-	UnhandledCriticalExtensions []*ObjectIdentifier    `protobuf:"bytes,8,rep,name=UnhandledCriticalExtensions,proto3" json:"UnhandledCriticalExtensions,omitempty"`
-	ExtKeyUsage                 []ExtKeyUsage          `protobuf:"varint,9,rep,packed,name=ExtKeyUsage,proto3,enum=openbao.pki.ExtKeyUsage" json:"ExtKeyUsage,omitempty"`
-	UnknownExtKeyUsage          []*ObjectIdentifier    `protobuf:"bytes,10,rep,name=UnknownExtKeyUsage,proto3" json:"UnknownExtKeyUsage,omitempty"`
-	BasicConstraintsValid       bool                   `protobuf:"varint,11,opt,name=BasicConstraintsValid,proto3" json:"BasicConstraintsValid,omitempty"`
-	IsCA                        bool                   `protobuf:"varint,12,opt,name=IsCA,proto3" json:"IsCA,omitempty"`
-	MaxPathLen                  int64                  `protobuf:"varint,13,opt,name=MaxPathLen,proto3" json:"MaxPathLen,omitempty"`
-	MaxPathLenZero              bool                   `protobuf:"varint,14,opt,name=MaxPathLenZero,proto3" json:"MaxPathLenZero,omitempty"`
-	SubjectKeyId                []byte                 `protobuf:"bytes,15,opt,name=SubjectKeyId,proto3" json:"SubjectKeyId,omitempty"`
-	DNSNames                    []string               `protobuf:"bytes,16,rep,name=DNSNames,proto3" json:"DNSNames,omitempty"`
-	EmailAddresses              []string               `protobuf:"bytes,17,rep,name=EmailAddresses,proto3" json:"EmailAddresses,omitempty"`
-	IPAddresses                 []*Net_IP              `protobuf:"bytes,18,rep,name=IPAddresses,proto3" json:"IPAddresses,omitempty"`
-	URIs                        []*Url_URL             `protobuf:"bytes,19,rep,name=URIs,proto3" json:"URIs,omitempty"`
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Version               int64                  `protobuf:"varint,1,opt,name=Version,proto3" json:"Version,omitempty"`
+	Subject               *PKIX_Name             `protobuf:"bytes,2,opt,name=Subject,proto3" json:"Subject,omitempty"`
+	NotBefore             *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=NotBefore,proto3" json:"NotBefore,omitempty"`
+	NotAfter              *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=NotAfter,proto3" json:"NotAfter,omitempty"`
+	KeyUsage              KeyUsage               `protobuf:"varint,5,opt,name=KeyUsage,proto3,enum=openbao.pki.KeyUsage" json:"KeyUsage,omitempty"`
+	ExtraExtensions       []*PKIX_Extension      `protobuf:"bytes,6,rep,name=ExtraExtensions,proto3" json:"ExtraExtensions,omitempty"`
+	ExtKeyUsage           []ExtKeyUsage          `protobuf:"varint,7,rep,packed,name=ExtKeyUsage,proto3,enum=openbao.pki.ExtKeyUsage" json:"ExtKeyUsage,omitempty"`
+	UnknownExtKeyUsage    []*ObjectIdentifier    `protobuf:"bytes,8,rep,name=UnknownExtKeyUsage,proto3" json:"UnknownExtKeyUsage,omitempty"`
+	BasicConstraintsValid bool                   `protobuf:"varint,9,opt,name=BasicConstraintsValid,proto3" json:"BasicConstraintsValid,omitempty"`
+	IsCA                  bool                   `protobuf:"varint,10,opt,name=IsCA,proto3" json:"IsCA,omitempty"`
+	MaxPathLen            int64                  `protobuf:"varint,11,opt,name=MaxPathLen,proto3" json:"MaxPathLen,omitempty"`
+	MaxPathLenZero        bool                   `protobuf:"varint,12,opt,name=MaxPathLenZero,proto3" json:"MaxPathLenZero,omitempty"`
+	SubjectKeyId          []byte                 `protobuf:"bytes,13,opt,name=SubjectKeyId,proto3" json:"SubjectKeyId,omitempty"`
+	DNSNames              []string               `protobuf:"bytes,14,rep,name=DNSNames,proto3" json:"DNSNames,omitempty"`
+	EmailAddresses        []string               `protobuf:"bytes,15,rep,name=EmailAddresses,proto3" json:"EmailAddresses,omitempty"`
+	IPAddresses           []*Net_IP              `protobuf:"bytes,16,rep,name=IPAddresses,proto3" json:"IPAddresses,omitempty"`
+	URIs                  []*Url_URL             `protobuf:"bytes,17,rep,name=URIs,proto3" json:"URIs,omitempty"`
 	// Name constraints
-	PermittedDNSDomainsCritical bool                `protobuf:"varint,20,opt,name=PermittedDNSDomainsCritical,proto3" json:"PermittedDNSDomainsCritical,omitempty"` // if true then the name constraints are marked critical.
-	PermittedDNSDomains         []string            `protobuf:"bytes,21,rep,name=PermittedDNSDomains,proto3" json:"PermittedDNSDomains,omitempty"`
-	ExcludedDNSDomains          []string            `protobuf:"bytes,22,rep,name=ExcludedDNSDomains,proto3" json:"ExcludedDNSDomains,omitempty"`
-	PermittedIPRanges           []*Net_IPNet        `protobuf:"bytes,23,rep,name=PermittedIPRanges,proto3" json:"PermittedIPRanges,omitempty"`
-	ExcludedIPRanges            []*Net_IPNet        `protobuf:"bytes,24,rep,name=ExcludedIPRanges,proto3" json:"ExcludedIPRanges,omitempty"`
-	PermittedEmailAddresses     []string            `protobuf:"bytes,25,rep,name=PermittedEmailAddresses,proto3" json:"PermittedEmailAddresses,omitempty"`
-	ExcludedEmailAddresses      []string            `protobuf:"bytes,26,rep,name=ExcludedEmailAddresses,proto3" json:"ExcludedEmailAddresses,omitempty"`
-	PermittedURIDomains         []string            `protobuf:"bytes,27,rep,name=PermittedURIDomains,proto3" json:"PermittedURIDomains,omitempty"`
-	ExcludedURIDomains          []string            `protobuf:"bytes,28,rep,name=ExcludedURIDomains,proto3" json:"ExcludedURIDomains,omitempty"`
-	PolicyIdentifiers           []*ObjectIdentifier `protobuf:"bytes,29,rep,name=PolicyIdentifiers,proto3" json:"PolicyIdentifiers,omitempty"`
-	Policies                    []*OID              `protobuf:"bytes,30,rep,name=Policies,proto3" json:"Policies,omitempty"`
-	InhibitAnyPolicy            int64               `protobuf:"varint,31,opt,name=InhibitAnyPolicy,proto3" json:"InhibitAnyPolicy,omitempty"`
-	InhibitAnyPolicyZero        bool                `protobuf:"varint,32,opt,name=InhibitAnyPolicyZero,proto3" json:"InhibitAnyPolicyZero,omitempty"`
-	InhibitPolicyMapping        int64               `protobuf:"varint,33,opt,name=InhibitPolicyMapping,proto3" json:"InhibitPolicyMapping,omitempty"`
-	InhibitPolicyMappingZero    bool                `protobuf:"varint,34,opt,name=InhibitPolicyMappingZero,proto3" json:"InhibitPolicyMappingZero,omitempty"`
-	RequireExplicitPolicy       int64               `protobuf:"varint,35,opt,name=RequireExplicitPolicy,proto3" json:"RequireExplicitPolicy,omitempty"`
-	RequireExplicitPolicyZero   bool                `protobuf:"varint,36,opt,name=RequireExplicitPolicyZero,proto3" json:"RequireExplicitPolicyZero,omitempty"`
-	PolicyMappings              []*PolicyMapping    `protobuf:"bytes,37,rep,name=PolicyMappings,proto3" json:"PolicyMappings,omitempty"`
+	PermittedDNSDomainsCritical bool                `protobuf:"varint,18,opt,name=PermittedDNSDomainsCritical,proto3" json:"PermittedDNSDomainsCritical,omitempty"` // if true then the name constraints are marked critical.
+	PermittedDNSDomains         []string            `protobuf:"bytes,19,rep,name=PermittedDNSDomains,proto3" json:"PermittedDNSDomains,omitempty"`
+	ExcludedDNSDomains          []string            `protobuf:"bytes,20,rep,name=ExcludedDNSDomains,proto3" json:"ExcludedDNSDomains,omitempty"`
+	PermittedIPRanges           []*Net_IPNet        `protobuf:"bytes,21,rep,name=PermittedIPRanges,proto3" json:"PermittedIPRanges,omitempty"`
+	ExcludedIPRanges            []*Net_IPNet        `protobuf:"bytes,22,rep,name=ExcludedIPRanges,proto3" json:"ExcludedIPRanges,omitempty"`
+	PermittedEmailAddresses     []string            `protobuf:"bytes,23,rep,name=PermittedEmailAddresses,proto3" json:"PermittedEmailAddresses,omitempty"`
+	ExcludedEmailAddresses      []string            `protobuf:"bytes,24,rep,name=ExcludedEmailAddresses,proto3" json:"ExcludedEmailAddresses,omitempty"`
+	PermittedURIDomains         []string            `protobuf:"bytes,25,rep,name=PermittedURIDomains,proto3" json:"PermittedURIDomains,omitempty"`
+	ExcludedURIDomains          []string            `protobuf:"bytes,26,rep,name=ExcludedURIDomains,proto3" json:"ExcludedURIDomains,omitempty"`
+	PolicyIdentifiers           []*ObjectIdentifier `protobuf:"bytes,27,rep,name=PolicyIdentifiers,proto3" json:"PolicyIdentifiers,omitempty"`
+	Policies                    []*OID              `protobuf:"bytes,28,rep,name=Policies,proto3" json:"Policies,omitempty"`
+	InhibitAnyPolicy            int64               `protobuf:"varint,29,opt,name=InhibitAnyPolicy,proto3" json:"InhibitAnyPolicy,omitempty"`
+	InhibitAnyPolicyZero        bool                `protobuf:"varint,30,opt,name=InhibitAnyPolicyZero,proto3" json:"InhibitAnyPolicyZero,omitempty"`
+	InhibitPolicyMapping        int64               `protobuf:"varint,31,opt,name=InhibitPolicyMapping,proto3" json:"InhibitPolicyMapping,omitempty"`
+	InhibitPolicyMappingZero    bool                `protobuf:"varint,32,opt,name=InhibitPolicyMappingZero,proto3" json:"InhibitPolicyMappingZero,omitempty"`
+	RequireExplicitPolicy       int64               `protobuf:"varint,33,opt,name=RequireExplicitPolicy,proto3" json:"RequireExplicitPolicy,omitempty"`
+	RequireExplicitPolicyZero   bool                `protobuf:"varint,34,opt,name=RequireExplicitPolicyZero,proto3" json:"RequireExplicitPolicyZero,omitempty"`
+	PolicyMappings              []*PolicyMapping    `protobuf:"bytes,35,rep,name=PolicyMappings,proto3" json:"PolicyMappings,omitempty"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
@@ -714,23 +712,9 @@ func (x *CertTemplate) GetKeyUsage() KeyUsage {
 	return KeyUsage_KeyUsageUnspecified
 }
 
-func (x *CertTemplate) GetExtensions() []*PKIX_Extension {
-	if x != nil {
-		return x.Extensions
-	}
-	return nil
-}
-
 func (x *CertTemplate) GetExtraExtensions() []*PKIX_Extension {
 	if x != nil {
 		return x.ExtraExtensions
-	}
-	return nil
-}
-
-func (x *CertTemplate) GetUnhandledCriticalExtensions() []*ObjectIdentifier {
-	if x != nil {
-		return x.UnhandledCriticalExtensions
 	}
 	return nil
 }
@@ -1437,54 +1421,50 @@ const file_builtin_logical_pki_cert_template_proto_rawDesc = "" +
 	"\x0esignature_bits\x18\x04 \x01(\rR\rsignatureBits\x12%\n" +
 	"\x0egenerate_lease\x18\x05 \x01(\bR\rgenerateLease\x12\x19\n" +
 	"\bno_store\x18\x06 \x01(\bR\anoStore\x12\x1a\n" +
-	"\bwarnings\x18\a \x01(\tR\bwarnings\x12$\n" +
+	"\bwarnings\x18\a \x03(\tR\bwarnings\x12$\n" +
 	"\x0esubject_key_id\x18\b \x01(\fR\fsubjectKeyId\x12\x19\n" +
 	"\bkey_type\x18\t \x01(\tR\akeyType\x12\x19\n" +
 	"\bkey_bits\x18\n" +
-	" \x01(\x04R\akeyBits\"\xcf\x0f\n" +
+	" \x01(\x04R\akeyBits\"\xb1\x0e\n" +
 	"\fCertTemplate\x12\x18\n" +
 	"\aVersion\x18\x01 \x01(\x03R\aVersion\x120\n" +
 	"\aSubject\x18\x02 \x01(\v2\x16.openbao.pki.PKIX.NameR\aSubject\x128\n" +
 	"\tNotBefore\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tNotBefore\x126\n" +
 	"\bNotAfter\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\bNotAfter\x121\n" +
-	"\bKeyUsage\x18\x05 \x01(\x0e2\x15.openbao.pki.KeyUsageR\bKeyUsage\x12;\n" +
+	"\bKeyUsage\x18\x05 \x01(\x0e2\x15.openbao.pki.KeyUsageR\bKeyUsage\x12E\n" +
+	"\x0fExtraExtensions\x18\x06 \x03(\v2\x1b.openbao.pki.PKIX.ExtensionR\x0fExtraExtensions\x12:\n" +
+	"\vExtKeyUsage\x18\a \x03(\x0e2\x18.openbao.pki.ExtKeyUsageR\vExtKeyUsage\x12M\n" +
+	"\x12UnknownExtKeyUsage\x18\b \x03(\v2\x1d.openbao.pki.ObjectIdentifierR\x12UnknownExtKeyUsage\x124\n" +
+	"\x15BasicConstraintsValid\x18\t \x01(\bR\x15BasicConstraintsValid\x12\x12\n" +
+	"\x04IsCA\x18\n" +
+	" \x01(\bR\x04IsCA\x12\x1e\n" +
 	"\n" +
-	"Extensions\x18\x06 \x03(\v2\x1b.openbao.pki.PKIX.ExtensionR\n" +
-	"Extensions\x12E\n" +
-	"\x0fExtraExtensions\x18\a \x03(\v2\x1b.openbao.pki.PKIX.ExtensionR\x0fExtraExtensions\x12_\n" +
-	"\x1bUnhandledCriticalExtensions\x18\b \x03(\v2\x1d.openbao.pki.ObjectIdentifierR\x1bUnhandledCriticalExtensions\x12:\n" +
-	"\vExtKeyUsage\x18\t \x03(\x0e2\x18.openbao.pki.ExtKeyUsageR\vExtKeyUsage\x12M\n" +
-	"\x12UnknownExtKeyUsage\x18\n" +
-	" \x03(\v2\x1d.openbao.pki.ObjectIdentifierR\x12UnknownExtKeyUsage\x124\n" +
-	"\x15BasicConstraintsValid\x18\v \x01(\bR\x15BasicConstraintsValid\x12\x12\n" +
-	"\x04IsCA\x18\f \x01(\bR\x04IsCA\x12\x1e\n" +
-	"\n" +
-	"MaxPathLen\x18\r \x01(\x03R\n" +
+	"MaxPathLen\x18\v \x01(\x03R\n" +
 	"MaxPathLen\x12&\n" +
-	"\x0eMaxPathLenZero\x18\x0e \x01(\bR\x0eMaxPathLenZero\x12\"\n" +
-	"\fSubjectKeyId\x18\x0f \x01(\fR\fSubjectKeyId\x12\x1a\n" +
-	"\bDNSNames\x18\x10 \x03(\tR\bDNSNames\x12&\n" +
-	"\x0eEmailAddresses\x18\x11 \x03(\tR\x0eEmailAddresses\x125\n" +
-	"\vIPAddresses\x18\x12 \x03(\v2\x13.openbao.pki.net.IPR\vIPAddresses\x12(\n" +
-	"\x04URIs\x18\x13 \x03(\v2\x14.openbao.pki.url.URLR\x04URIs\x12@\n" +
-	"\x1bPermittedDNSDomainsCritical\x18\x14 \x01(\bR\x1bPermittedDNSDomainsCritical\x120\n" +
-	"\x13PermittedDNSDomains\x18\x15 \x03(\tR\x13PermittedDNSDomains\x12.\n" +
-	"\x12ExcludedDNSDomains\x18\x16 \x03(\tR\x12ExcludedDNSDomains\x12D\n" +
-	"\x11PermittedIPRanges\x18\x17 \x03(\v2\x16.openbao.pki.net.IPNetR\x11PermittedIPRanges\x12B\n" +
-	"\x10ExcludedIPRanges\x18\x18 \x03(\v2\x16.openbao.pki.net.IPNetR\x10ExcludedIPRanges\x128\n" +
-	"\x17PermittedEmailAddresses\x18\x19 \x03(\tR\x17PermittedEmailAddresses\x126\n" +
-	"\x16ExcludedEmailAddresses\x18\x1a \x03(\tR\x16ExcludedEmailAddresses\x120\n" +
-	"\x13PermittedURIDomains\x18\x1b \x03(\tR\x13PermittedURIDomains\x12.\n" +
-	"\x12ExcludedURIDomains\x18\x1c \x03(\tR\x12ExcludedURIDomains\x12K\n" +
-	"\x11PolicyIdentifiers\x18\x1d \x03(\v2\x1d.openbao.pki.ObjectIdentifierR\x11PolicyIdentifiers\x12,\n" +
-	"\bPolicies\x18\x1e \x03(\v2\x10.openbao.pki.OIDR\bPolicies\x12*\n" +
-	"\x10InhibitAnyPolicy\x18\x1f \x01(\x03R\x10InhibitAnyPolicy\x122\n" +
-	"\x14InhibitAnyPolicyZero\x18  \x01(\bR\x14InhibitAnyPolicyZero\x122\n" +
-	"\x14InhibitPolicyMapping\x18! \x01(\x03R\x14InhibitPolicyMapping\x12:\n" +
-	"\x18InhibitPolicyMappingZero\x18\" \x01(\bR\x18InhibitPolicyMappingZero\x124\n" +
-	"\x15RequireExplicitPolicy\x18# \x01(\x03R\x15RequireExplicitPolicy\x12<\n" +
-	"\x19RequireExplicitPolicyZero\x18$ \x01(\bR\x19RequireExplicitPolicyZero\x12B\n" +
-	"\x0ePolicyMappings\x18% \x03(\v2\x1a.openbao.pki.PolicyMappingR\x0ePolicyMappings*\x94\x02\n" +
+	"\x0eMaxPathLenZero\x18\f \x01(\bR\x0eMaxPathLenZero\x12\"\n" +
+	"\fSubjectKeyId\x18\r \x01(\fR\fSubjectKeyId\x12\x1a\n" +
+	"\bDNSNames\x18\x0e \x03(\tR\bDNSNames\x12&\n" +
+	"\x0eEmailAddresses\x18\x0f \x03(\tR\x0eEmailAddresses\x125\n" +
+	"\vIPAddresses\x18\x10 \x03(\v2\x13.openbao.pki.net.IPR\vIPAddresses\x12(\n" +
+	"\x04URIs\x18\x11 \x03(\v2\x14.openbao.pki.url.URLR\x04URIs\x12@\n" +
+	"\x1bPermittedDNSDomainsCritical\x18\x12 \x01(\bR\x1bPermittedDNSDomainsCritical\x120\n" +
+	"\x13PermittedDNSDomains\x18\x13 \x03(\tR\x13PermittedDNSDomains\x12.\n" +
+	"\x12ExcludedDNSDomains\x18\x14 \x03(\tR\x12ExcludedDNSDomains\x12D\n" +
+	"\x11PermittedIPRanges\x18\x15 \x03(\v2\x16.openbao.pki.net.IPNetR\x11PermittedIPRanges\x12B\n" +
+	"\x10ExcludedIPRanges\x18\x16 \x03(\v2\x16.openbao.pki.net.IPNetR\x10ExcludedIPRanges\x128\n" +
+	"\x17PermittedEmailAddresses\x18\x17 \x03(\tR\x17PermittedEmailAddresses\x126\n" +
+	"\x16ExcludedEmailAddresses\x18\x18 \x03(\tR\x16ExcludedEmailAddresses\x120\n" +
+	"\x13PermittedURIDomains\x18\x19 \x03(\tR\x13PermittedURIDomains\x12.\n" +
+	"\x12ExcludedURIDomains\x18\x1a \x03(\tR\x12ExcludedURIDomains\x12K\n" +
+	"\x11PolicyIdentifiers\x18\x1b \x03(\v2\x1d.openbao.pki.ObjectIdentifierR\x11PolicyIdentifiers\x12,\n" +
+	"\bPolicies\x18\x1c \x03(\v2\x10.openbao.pki.OIDR\bPolicies\x12*\n" +
+	"\x10InhibitAnyPolicy\x18\x1d \x01(\x03R\x10InhibitAnyPolicy\x122\n" +
+	"\x14InhibitAnyPolicyZero\x18\x1e \x01(\bR\x14InhibitAnyPolicyZero\x122\n" +
+	"\x14InhibitPolicyMapping\x18\x1f \x01(\x03R\x14InhibitPolicyMapping\x12:\n" +
+	"\x18InhibitPolicyMappingZero\x18  \x01(\bR\x18InhibitPolicyMappingZero\x124\n" +
+	"\x15RequireExplicitPolicy\x18! \x01(\x03R\x15RequireExplicitPolicy\x12<\n" +
+	"\x19RequireExplicitPolicyZero\x18\" \x01(\bR\x19RequireExplicitPolicyZero\x12B\n" +
+	"\x0ePolicyMappings\x18# \x03(\v2\x1a.openbao.pki.PolicyMappingR\x0ePolicyMappings*\x94\x02\n" +
 	"\bKeyUsage\x12\x17\n" +
 	"\x13KeyUsageUnspecified\x10\x00\x12\x1c\n" +
 	"\x18KeyUsageDigitalSignature\x10\x01\x12\x1d\n" +
@@ -1555,26 +1535,24 @@ var file_builtin_logical_pki_cert_template_proto_depIdxs = []int32{
 	17, // 4: openbao.pki.CertTemplate.NotBefore:type_name -> google.protobuf.Timestamp
 	17, // 5: openbao.pki.CertTemplate.NotAfter:type_name -> google.protobuf.Timestamp
 	0,  // 6: openbao.pki.CertTemplate.KeyUsage:type_name -> openbao.pki.KeyUsage
-	12, // 7: openbao.pki.CertTemplate.Extensions:type_name -> openbao.pki.PKIX.Extension
-	12, // 8: openbao.pki.CertTemplate.ExtraExtensions:type_name -> openbao.pki.PKIX.Extension
-	3,  // 9: openbao.pki.CertTemplate.UnhandledCriticalExtensions:type_name -> openbao.pki.ObjectIdentifier
-	1,  // 10: openbao.pki.CertTemplate.ExtKeyUsage:type_name -> openbao.pki.ExtKeyUsage
-	3,  // 11: openbao.pki.CertTemplate.UnknownExtKeyUsage:type_name -> openbao.pki.ObjectIdentifier
-	13, // 12: openbao.pki.CertTemplate.IPAddresses:type_name -> openbao.pki.net.IP
-	16, // 13: openbao.pki.CertTemplate.URIs:type_name -> openbao.pki.url.URL
-	14, // 14: openbao.pki.CertTemplate.PermittedIPRanges:type_name -> openbao.pki.net.IPNet
-	14, // 15: openbao.pki.CertTemplate.ExcludedIPRanges:type_name -> openbao.pki.net.IPNet
-	3,  // 16: openbao.pki.CertTemplate.PolicyIdentifiers:type_name -> openbao.pki.ObjectIdentifier
-	7,  // 17: openbao.pki.CertTemplate.Policies:type_name -> openbao.pki.OID
-	8,  // 18: openbao.pki.CertTemplate.PolicyMappings:type_name -> openbao.pki.PolicyMapping
-	13, // 19: openbao.pki.net.IPNet.IP:type_name -> openbao.pki.net.IP
-	15, // 20: openbao.pki.net.IPNet.Mask:type_name -> openbao.pki.net.IPMask
-	5,  // 21: openbao.pki.url.URL.User:type_name -> openbao.pki.Userinfo
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	12, // 7: openbao.pki.CertTemplate.ExtraExtensions:type_name -> openbao.pki.PKIX.Extension
+	1,  // 8: openbao.pki.CertTemplate.ExtKeyUsage:type_name -> openbao.pki.ExtKeyUsage
+	3,  // 9: openbao.pki.CertTemplate.UnknownExtKeyUsage:type_name -> openbao.pki.ObjectIdentifier
+	13, // 10: openbao.pki.CertTemplate.IPAddresses:type_name -> openbao.pki.net.IP
+	16, // 11: openbao.pki.CertTemplate.URIs:type_name -> openbao.pki.url.URL
+	14, // 12: openbao.pki.CertTemplate.PermittedIPRanges:type_name -> openbao.pki.net.IPNet
+	14, // 13: openbao.pki.CertTemplate.ExcludedIPRanges:type_name -> openbao.pki.net.IPNet
+	3,  // 14: openbao.pki.CertTemplate.PolicyIdentifiers:type_name -> openbao.pki.ObjectIdentifier
+	7,  // 15: openbao.pki.CertTemplate.Policies:type_name -> openbao.pki.OID
+	8,  // 16: openbao.pki.CertTemplate.PolicyMappings:type_name -> openbao.pki.PolicyMapping
+	13, // 17: openbao.pki.net.IPNet.IP:type_name -> openbao.pki.net.IP
+	15, // 18: openbao.pki.net.IPNet.Mask:type_name -> openbao.pki.net.IPMask
+	5,  // 19: openbao.pki.url.URL.User:type_name -> openbao.pki.Userinfo
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_builtin_logical_pki_cert_template_proto_init() }

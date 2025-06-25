@@ -259,43 +259,8 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		return nil, fmt.Errorf("failed to parse value for `skip_create_table`: %w", err)
 	}
 	if !skip_create_table {
-		txn, err := db.BeginTx(context.TODO(), &sql.TxOptions{
-			Isolation: sql.LevelRepeatableRead,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to begin transaction to attempt table creation: %w", err)
-		}
-
-		defer txn.Rollback()
-
-		createTableQuery := "CREATE TABLE IF NOT EXISTS " + quoted_table + " (" +
-			`parent_path TEXT COLLATE "C" NOT NULL,` +
-			`  path        TEXT COLLATE "C",` +
-			`  key         TEXT COLLATE "C",` +
-			`  value       BYTEA,` +
-			`  CONSTRAINT pkey PRIMARY KEY (path, key)` +
-			`);`
-		if _, err := db.Exec(createTableQuery); err != nil {
-			return nil, fmt.Errorf("failed to create table: %w", err)
-		}
-
-		createIndexQuery := `CREATE INDEX IF NOT EXISTS parent_path_idx ON ` + quoted_table + ` (parent_path);`
-		if _, err := db.Exec(createIndexQuery); err != nil {
-			return nil, fmt.Errorf("failed to create index on table: %w", err)
-		}
-
-		if m.haEnabled {
-			// Successfully detected that there is no table; create it.
-			createTableQuery := `CREATE TABLE IF NOT EXISTS ` + quoted_ha_table + ` (` +
-				`  ha_key      TEXT COLLATE "C" NOT NULL,` +
-				`  ha_identity TEXT COLLATE "C" NOT NULL,` +
-				`  ha_value    TEXT COLLATE "C",` +
-				`  valid_until TIMESTAMP WITH TIME ZONE NOT NULL,` +
-				`  CONSTRAINT ha_key PRIMARY KEY (ha_key)` +
-				`);`
-			if _, err := db.Exec(createTableQuery); err != nil {
-				return nil, fmt.Errorf("failed to create ha table: %w", err)
-			}
+		if err := m.createTables(); err != nil {
+			return nil, fmt.Errorf("failed to create tables: %w", err)
 		}
 	}
 
@@ -345,6 +310,58 @@ func doRetryConnect(logger log.Logger, connURL string, retries uint64) (*sql.DB,
 	}
 
 	return db, nil
+}
+
+func (m *PostgreSQLBackend) createTables() error {
+	txn, err := m.client.BeginTx(context.TODO(), &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer txn.Rollback()
+
+	createTableQuery := "CREATE TABLE IF NOT EXISTS " + m.table + " (" +
+		`parent_path TEXT COLLATE "C" NOT NULL,` +
+		`  path        TEXT COLLATE "C",` +
+		`  key         TEXT COLLATE "C",` +
+		`  value       BYTEA,` +
+		`  CONSTRAINT pkey PRIMARY KEY (path, key)` +
+		`);`
+	if _, err := txn.Exec(createTableQuery); err != nil {
+		if strings.Contains(err.Error(), "SQLSTATE 25006") {
+			m.logger.Warn("Skipping table creation as database is marked read-only", "err", err)
+			return nil
+		}
+
+		return fmt.Errorf("failed to execute create query: %w", err)
+	}
+
+	createIndexQuery := `CREATE INDEX IF NOT EXISTS parent_path_idx ON ` + m.table + ` (parent_path);`
+	if _, err := txn.Exec(createIndexQuery); err != nil {
+		return fmt.Errorf("failed to create index on table: %w", err)
+	}
+
+	if m.haEnabled {
+		// Successfully detected that there is no table; create it.
+		createTableQuery := `CREATE TABLE IF NOT EXISTS ` + m.ha_table + ` (` +
+			`  ha_key      TEXT COLLATE "C" NOT NULL,` +
+			`  ha_identity TEXT COLLATE "C" NOT NULL,` +
+			`  ha_value    TEXT COLLATE "C",` +
+			`  valid_until TIMESTAMP WITH TIME ZONE NOT NULL,` +
+			`  CONSTRAINT ha_key PRIMARY KEY (ha_key)` +
+			`);`
+		if _, err := txn.Exec(createTableQuery); err != nil {
+			return fmt.Errorf("failed to create ha table: %w", err)
+		}
+	}
+
+	if err := txn.Commit(); err != nil {
+		return fmt.Errorf("failed to apply transaction: %w", err)
+	}
+
+	return nil
 }
 
 // splitKey is a helper to split a full path key into individual

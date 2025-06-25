@@ -20,7 +20,7 @@ import (
 
 	"github.com/openbao/openbao/api/v2"
 
-	"github.com/tink-crypto/tink-go/kwp/subtle"
+	"github.com/tink-crypto/tink-go/v2/kwp/subtle"
 
 	"github.com/hashicorp/cli"
 	"github.com/posener/complete"

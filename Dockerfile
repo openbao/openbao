@@ -14,7 +14,7 @@ ARG PRODUCT_REVISION
 # Additional metadata labels used by container registries, platforms
 # and certification scanners.
 LABEL name="OpenBao" \
-      maintainer="OpenBao <openbao@lists.lfedge.org>" \
+      maintainer="OpenBao <openbao@lists.openssf.org>" \
       vendor="OpenBao" \
       version=${PRODUCT_VERSION} \
       release=${PRODUCT_REVISION} \
@@ -85,7 +85,7 @@ ARG PRODUCT_REVISION
 # Additional metadata labels used by container registries, platforms
 # and certification scanners.
 LABEL name="OpenBao" \
-      maintainer="OpenBao <openbao@lists.lfedge.org>" \
+      maintainer="OpenBao <openbao@lists.openssf.org>" \
       vendor="OpenBao" \
       version=${PRODUCT_VERSION} \
       release=${PRODUCT_REVISION} \

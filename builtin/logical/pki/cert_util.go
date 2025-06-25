@@ -824,6 +824,34 @@ func generateCert(sc *storageContext,
 	return parsedBundle, warnings, nil
 }
 
+// Generate a certificate evaluating params against CEL role
+func generateCELCert(
+	evaluationData map[string]interface{},
+	caSign *certutil.CAInfoBundle,
+	cert *x509.Certificate,
+	randomSource io.Reader,
+) (*certutil.ParsedCertBundle, error) {
+	parsedBundle, err := certutil.CreateCertificateWithTemplate(caSign, evaluationData, *cert, randomSource)
+	if err != nil {
+		return nil, err
+	}
+	return parsedBundle, nil
+}
+
+// Generate a certificate evaluating params against CEL role
+func signCELCert(
+	evaluationData map[string]interface{},
+	caSign *certutil.CAInfoBundle,
+	cert *x509.Certificate,
+	csr *x509.CertificateRequest,
+) (*certutil.ParsedCertBundle, error) {
+	parsedBundle, err := certutil.SignCertificateWithTemplate(caSign, csr, evaluationData, *cert)
+	if err != nil {
+		return nil, err
+	}
+	return parsedBundle, nil
+}
+
 // N.B.: This is only meant to be used for generating intermediate CAs.
 // It skips some sanity checks.
 func generateIntermediateCSR(sc *storageContext, input *inputBundle, randomSource io.Reader) (*certutil.ParsedCSRBundle, []string, error) {
@@ -1433,7 +1461,6 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 		StreetAddress:      strutil.RemoveDuplicatesStable(data.role.StreetAddress, false),
 		PostalCode:         strutil.RemoveDuplicatesStable(data.role.PostalCode, false),
 	}
-
 	// Get certificate's Not Before
 	notBefore, err := getCertificateNotBefore(data)
 	if err != nil {

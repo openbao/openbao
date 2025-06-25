@@ -478,7 +478,7 @@ const sidebars: SidebarsConfig = {
         },
         "known-issues",
         {
-            "Deprecation Notices": ["deprecation/index", "deprecation/faq"],
+            "Deprecation Notices": ["deprecation/index", "deprecation/faq", "deprecation/unauthed-rekey"],
             Policies: [
                 "policies/index",
                 "policies/brand",

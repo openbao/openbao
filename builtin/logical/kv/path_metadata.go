@@ -207,6 +207,12 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 				return nil, fmt.Errorf("[%d] failed to read entry: %w", index, err)
 			}
 
+			// No metadata for a directory or deleted entry.
+			if meta == nil {
+				keyInfos[subKey] = map[string]interface{}{}
+				continue
+			}
+
 			data, err := b.metadataResponseData(meta)
 			if err != nil {
 				return nil, fmt.Errorf("[%d] failed to format metadata: %w", index, err)

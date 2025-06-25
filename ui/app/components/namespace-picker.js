@@ -96,7 +96,7 @@ export default Component.extend({
   }),
 
   maybeAddRoot(leaves) {
-    const userRoot = this.auth.authData.userRootNamespace;
+    const userRoot = this.auth?.authData?.userRootNamespace;
     if (userRoot === '') {
       leaves.unshift('');
     }

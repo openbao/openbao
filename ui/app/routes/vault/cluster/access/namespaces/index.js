@@ -26,24 +26,21 @@ export default Route.extend(UnloadModel, {
   },
 
   model(params) {
-    if (this.version.hasNamespaces) {
-      return this.store
-        .lazyPaginatedQuery('namespace', {
-          responsePath: 'data.keys',
-          page: Number(params?.page) || 1,
-        })
-        .then((model) => {
-          return model;
-        })
-        .catch((err) => {
-          if (err.httpStatus === 404) {
-            return [];
-          } else {
-            throw err;
-          }
-        });
-    }
-    return null;
+    return this.store
+      .lazyPaginatedQuery('namespace', {
+        responsePath: 'data.keys',
+        page: Number(params?.page) || 1,
+      })
+      .then((model) => {
+        return model;
+      })
+      .catch((err) => {
+        if (err.httpStatus === 404) {
+          return [];
+        } else {
+          throw err;
+        }
+      });
   },
 
   setupController(controller, model) {

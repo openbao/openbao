@@ -2632,7 +2632,12 @@ func (i *IdentityStore) lazyGenerateDefaultKey(ctx context.Context, storage logi
 }
 
 func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
-	i.logger.Debug("identity loading OIDC clients")
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	i.logger.Debug("identity loading OIDC clients", "namespace", ns.Path)
 
 	if err := i.validateCtx(ctx); err != nil {
 		return err

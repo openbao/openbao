@@ -23,7 +23,6 @@ This endpoint reads the configuration and progress of the current rekey attempt.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     http://127.0.0.1:8200/v1/sys/rekey/init
 ```
 
@@ -105,7 +104,6 @@ and starting a new rekey, which will also provide a new nonce.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request POST \
     --data @payload.json \
     http://127.0.0.1:8200/v1/sys/rekey/init
@@ -126,7 +124,6 @@ during the verification flow, the current unseal keys remain valid.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request DELETE \
     http://127.0.0.1:8200/v1/sys/rekey/init
 ```
@@ -216,7 +213,6 @@ for the verification operation.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request POST \
     --data @payload.json \
     http://127.0.0.1:8200/v1/sys/rekey/update
@@ -254,7 +250,6 @@ verification attempt.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     http://127.0.0.1:8200/v1/sys/rekey/verify
 ```
 
@@ -290,7 +285,6 @@ nonce.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request DELETE \
     http://127.0.0.1:8200/v1/sys/rekey/verify
 ```
@@ -343,7 +337,6 @@ below; otherwise the response will be the same as the `GET` method against
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request POST \
     --data @payload.json \
     http://127.0.0.1:8200/v1/sys/rekey/verify

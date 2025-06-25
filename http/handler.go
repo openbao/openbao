@@ -177,16 +177,28 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/leader", handleSysLeader(core))
 		mux.Handle("/v1/sys/health", handleSysHealth(core))
 		mux.Handle("/v1/sys/monitor", handleLogicalNoForward(core))
+
 		mux.Handle("/v1/sys/generate-root/attempt", handleRequestForwarding(core,
 			handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy))))
 		mux.Handle("/v1/sys/generate-root/update", handleRequestForwarding(core,
 			handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy))))
-		mux.Handle("/v1/sys/rekey/init", handleRequestForwarding(core, handleSysRekeyInit(core, false)))
-		mux.Handle("/v1/sys/rekey/update", handleRequestForwarding(core, handleSysRekeyUpdate(core, false)))
-		mux.Handle("/v1/sys/rekey/verify", handleRequestForwarding(core, handleSysRekeyVerify(core, false)))
-		mux.Handle("/v1/sys/rekey-recovery-key/init", handleRequestForwarding(core, handleSysRekeyInit(core, true)))
-		mux.Handle("/v1/sys/rekey-recovery-key/update", handleRequestForwarding(core, handleSysRekeyUpdate(core, true)))
-		mux.Handle("/v1/sys/rekey-recovery-key/verify", handleRequestForwarding(core, handleSysRekeyVerify(core, true)))
+
+		// Register without unauthenticated rekey, if necessary.
+		if props.ListenerConfig == nil || !props.ListenerConfig.DisableUnauthedRekeyEndpoints {
+			mux.Handle("/v1/sys/rekey/init", handleRequestForwarding(core,
+				handleAuditNonLogical(core, handleSysRekeyInit(core, false))))
+			mux.Handle("/v1/sys/rekey/update", handleRequestForwarding(core,
+				handleAuditNonLogical(core, handleSysRekeyUpdate(core, false))))
+			mux.Handle("/v1/sys/rekey/verify", handleRequestForwarding(core,
+				handleAuditNonLogical(core, handleSysRekeyVerify(core, false))))
+			mux.Handle("/v1/sys/rekey-recovery-key/init", handleRequestForwarding(core,
+				handleAuditNonLogical(core, handleSysRekeyInit(core, true))))
+			mux.Handle("/v1/sys/rekey-recovery-key/update", handleRequestForwarding(core,
+				handleAuditNonLogical(core, handleSysRekeyUpdate(core, true))))
+			mux.Handle("/v1/sys/rekey-recovery-key/verify", handleRequestForwarding(core,
+				handleAuditNonLogical(core, handleSysRekeyVerify(core, true))))
+		}
+
 		mux.Handle("/v1/sys/storage/raft/bootstrap", handleSysRaftBootstrap(core))
 		mux.Handle("/v1/sys/storage/raft/join", handleSysRaftJoin(core))
 		mux.Handle("/v1/sys/internal/ui/feature-flags", handleSysInternalFeatureFlags(core))

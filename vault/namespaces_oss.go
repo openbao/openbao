@@ -20,8 +20,10 @@ func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*namespace.Names
 	return ns, nil
 }
 
+// ListNamespaces returns back a list of all namespaces, including root, skipping
+// all sealed namespaces.
 func (c *Core) ListNamespaces(ctx context.Context) ([]*namespace.Namespace, error) {
-	return c.namespaceStore.ListAllNamespaces(ctx, true)
+	return c.namespaceStore.ListAllNamespaces(ctx, true, true)
 }
 
 func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView {

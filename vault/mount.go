@@ -1538,6 +1538,15 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (b
 			needPersist = true
 		}
 		c.tableMetrics(len(c.mounts.Entries), false, false, len(raw.Value))
+
+		unsealedMounts := make([]*MountEntry, 0)
+		for _, entry := range c.mounts.Entries {
+			if c.IsNSSealed(entry.namespace) {
+				continue
+			}
+			unsealedMounts = append(unsealedMounts, entry)
+		}
+		c.mounts.Entries = unsealedMounts
 	}
 
 	if rawLocal != nil {
@@ -1548,7 +1557,12 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (b
 		}
 		if localMountTable != nil && len(localMountTable.Entries) > 0 {
 			c.tableMetrics(len(localMountTable.Entries), true, false, len(rawLocal.Value))
-			c.mounts.Entries = append(c.mounts.Entries, localMountTable.Entries...)
+			for _, entry := range localMountTable.Entries {
+				if c.IsNSSealed(entry.namespace) {
+					continue
+				}
+				c.mounts.Entries = append(c.mounts.Entries, entry)
+			}
 		}
 	}
 

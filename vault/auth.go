@@ -702,6 +702,15 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 			needPersist = true
 		}
 		c.tableMetrics(len(c.auth.Entries), false, true, len(raw.Value))
+
+		unsealedAuthMounts := make([]*MountEntry, 0)
+		for _, entry := range c.auth.Entries {
+			if c.IsNSSealed(entry.namespace) {
+				continue
+			}
+			unsealedAuthMounts = append(unsealedAuthMounts, entry)
+		}
+		c.auth.Entries = unsealedAuthMounts
 	}
 	if rawLocal != nil {
 		localAuthTable, err := c.decodeMountTable(ctx, rawLocal.Value)
@@ -710,8 +719,13 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 			return false, err
 		}
 		if localAuthTable != nil && len(localAuthTable.Entries) > 0 {
-			c.auth.Entries = append(c.auth.Entries, localAuthTable.Entries...)
 			c.tableMetrics(len(localAuthTable.Entries), true, true, len(rawLocal.Value))
+			for _, entry := range localAuthTable.Entries {
+				if c.IsNSSealed(entry.namespace) {
+					continue
+				}
+				c.auth.Entries = append(c.auth.Entries, entry)
+			}
 		}
 	}
 

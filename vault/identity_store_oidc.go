@@ -2011,9 +2011,6 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 			i.Logger().Error("error listing namespaces", "err", err)
 		}
 		for _, ns := range allNs {
-			if i.namespacer.IsNSSealed(ns) {
-				continue
-			}
 			nsPath := ns.Path
 
 			s := i.router.MatchingStorageByAPIPath(ctx, nsPath+"identity/oidc")

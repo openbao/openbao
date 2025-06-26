@@ -413,7 +413,7 @@ func (c *Core) entityGaugeCollector(ctx context.Context) ([]metricsutil.GaugeLab
 
 	// No check for expiration here; the bulk of the work should be in
 	// counting the entities.
-	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true, true)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}

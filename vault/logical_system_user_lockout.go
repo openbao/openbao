@@ -100,15 +100,18 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 		return totalCounts, lockedUsersResponse, nil
 	}
 
-	// no mount_accessor is provided in request, get information for current namespace and its child namespaces
-
-	// get all the namespaces
+	// no mount_accessor is provided in request, get information
+	// for current namespace and its all unsealed child namespaces
 	nsList, err := b.Core.namespaceStore.ListNamespaces(ctx, true, true)
 	if err != nil {
 		return 0, nil, err
 	}
 
 	for _, ns := range nsList {
+		// skip sealed namespaces
+		if b.Core.IsNSSealed(ns) {
+			continue
+		}
 		// get mount accessors of locked users for this namespace
 		view := NamespaceView(b.Core.barrier, ns).SubView(coreLockedUsersPath)
 		mountAccessors, err := view.List(ctx, "")

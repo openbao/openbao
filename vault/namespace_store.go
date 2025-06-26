@@ -801,8 +801,9 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 }
 
 // ListAllNamespaces lists all available namespaces, optionally including the
-// root namespace.
-func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot bool) ([]*namespace.Namespace, error) {
+// root namespace. skipSealed flag dictates whether sealed namespaces are
+// filtered out from the result slice.
+func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot, skipSealed bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_all_namespaces"}, time.Now())
 
 	unlock, err := ns.lockWithInvalidation(ctx, false)
@@ -816,6 +817,9 @@ func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot boo
 		if !includeRoot && entry.ID == namespace.RootNamespaceID {
 			continue
 		}
+		if skipSealed && ns.core.IsNSSealed(entry) {
+			continue
+		}
 		namespaces = append(namespaces, entry.Clone(false))
 	}
 
@@ -823,9 +827,9 @@ func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot boo
 }
 
 // ListNamespaces is used to list namespaces below a parent namespace.
-// Optionally it can include the parent namespace itself and/or include all
-// descendants of the child namespaces.
-func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool, recursive bool) ([]*namespace.Namespace, error) {
+// Optionally it can include the parent namespace itself and/or include
+// all descendants of the child namespaces.
+func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent, recursive bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_entries"}, time.Now())
 
 	parent, err := namespace.FromContext(ctx)

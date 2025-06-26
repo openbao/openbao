@@ -111,6 +111,8 @@ type Config struct {
 	DisableSSCTokens *bool `hcl:"-"`
 
 	UnsafeCrossNamespaceIdentity bool `hcl:"unsafe_cross_namespace_identity"`
+
+	Initialization []*Initialize `hcl:"-"`
 }
 
 const (
@@ -732,6 +734,14 @@ func ParseConfig(d, source string) (*Config, error) {
 		delete(result.UnusedKeys, "service_registration")
 		if err := parseServiceRegistration(result, o, "service_registration"); err != nil {
 			return nil, fmt.Errorf("error parsing 'service_registration': %w", err)
+		}
+	}
+
+	// Parse self-initialization stanzas.
+	if o := list.Filter("initialize"); len(o.Items) > 0 {
+		delete(result.UnusedKeys, "initialize")
+		if err := parseInitialization(result, o); err != nil {
+			return nil, fmt.Errorf("error parsing 'initialize': %w", err)
 		}
 	}
 

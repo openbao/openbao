@@ -83,6 +83,31 @@ const (
 	// dash) is ignored. Any repeated header keys result in request failure.
 	InlineAuthParameterHeaderPrefix = "X-Vault-Inline-Auth-Parameter-"
 
+	// HostNameHeader is the header containing the hostname information for the Vault server
+	// It helps identify which specific Vault instance is handling the request.
+	HostNameHeader = "X-Vault-Hostname"
+
+	// RaftNodeIDHeader is the header containing the Raft node ID for distributed Vault clusters
+	// Used in Raft consensus protocol for node identification and leader election.
+	// This header is essential for cluster coordination and replication in HA deployments.
+	RaftNodeIDHeader = "X-Vault-Raft-Node-ID"
+
+	// RawErrorHeader is the header for raw error information that bypasses error formatting
+	// When this header is present, Vault returns unprocessed error details for debugging purposes.
+	RawErrorHeader = "X-Vault-Raw-Error"
+
+	// WrapTTLHeader is the header for response wrapping TTL (Time To Live)
+	// Specifies how long a wrapped response should be valid before automatic unwrapping.
+	WrapTTLHeader = "X-Vault-Wrap-TTL"
+
+	// MFAHeader is the header for multi-factor authentication credentials
+	// Used to pass MFA challenge responses during authentication.
+	MFAHeader = "X-Vault-MFA"
+
+	// PolicyOverrideHeader is the header for policy override requests
+	// Allows privileged users to bypass soft-mandatory Sentinel policies (RGPs and EGPs).
+	PolicyOverrideHeader = "X-Vault-Policy-Override"
+
 	TLSErrorString = "This error usually means that the server is running with TLS disabled\n" +
 		"but the client is configured to use TLS. Please either enable TLS\n" +
 		"on the server or run the client with -address set to an address\n" +
@@ -1472,17 +1497,17 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 	}
 
 	if len(r.WrapTTL) != 0 {
-		req.Header.Set("X-Vault-Wrap-TTL", r.WrapTTL)
+		req.Header.Set(WrapTTLHeader, r.WrapTTL)
 	}
 
 	if len(r.MFAHeaderVals) != 0 {
 		for _, mfaHeaderVal := range r.MFAHeaderVals {
-			req.Header.Add("X-Vault-MFA", mfaHeaderVal)
+			req.Header.Add(MFAHeader, mfaHeaderVal)
 		}
 	}
 
 	if r.PolicyOverride {
-		req.Header.Set("X-Vault-Policy-Override", "true")
+		req.Header.Set(PolicyOverrideHeader, "true")
 	}
 
 	if limiter != nil {

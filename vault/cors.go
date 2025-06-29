@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -22,14 +23,14 @@ const (
 
 var StdAllowedHeaders = []string{
 	"Content-Type",
-	"X-Requested-With",
-	"X-Vault-AWS-IAM-Server-ID",
-	"X-Vault-MFA",
-	"X-Vault-No-Request-Forwarding",
-	"X-Vault-Wrap-Format",
-	"X-Vault-Wrap-TTL",
-	"X-Vault-Policy-Override",
-	"Authorization",
+	consts.RequestedWithHeader,
+	consts.AWSIAMServerIDHeader,
+	consts.MFAHeader,
+	consts.NoRequestForwardingHeader,
+	consts.WrapFormatHeader,
+	api.WrapTTLHeader,
+	api.PolicyOverrideHeader,
+	consts.AuthzHeaderName,
 	consts.AuthHeaderName,
 }
 

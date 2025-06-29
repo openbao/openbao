@@ -77,7 +77,7 @@ func testHttpData(t *testing.T, method string, token string, addr string, body i
 	req.Header.Set("Content-Type", "application/json")
 
 	if wrapTTL > 0 {
-		req.Header.Set("X-Vault-Wrap-TTL", wrapTTL.String())
+		req.Header.Set(WrapTTLHeaderName, wrapTTL.String())
 	}
 
 	if len(token) != 0 {

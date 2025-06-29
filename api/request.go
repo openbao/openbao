@@ -135,17 +135,17 @@ func (r *Request) toRetryableHTTP() (*retryablehttp.Request, error) {
 	}
 
 	if len(r.WrapTTL) != 0 {
-		req.Header.Set("X-Vault-Wrap-TTL", r.WrapTTL)
+		req.Header.Set(WrapTTLHeader, r.WrapTTL)
 	}
 
 	if len(r.MFAHeaderVals) != 0 {
 		for _, mfaHeaderVal := range r.MFAHeaderVals {
-			req.Header.Add("X-Vault-MFA", mfaHeaderVal)
+			req.Header.Add(MFAHeader, mfaHeaderVal)
 		}
 	}
 
 	if r.PolicyOverride {
-		req.Header.Set("X-Vault-Policy-Override", "true")
+		req.Header.Set(PolicyOverrideHeader, "true")
 	}
 
 	return req, nil

@@ -476,7 +476,7 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 // returning the CRL information on the PKI backends.
 func respondRaw(w http.ResponseWriter, r *http.Request, resp *logical.Response) {
 	retErr := func(w http.ResponseWriter, err string) {
-		w.Header().Set("X-Vault-Raw-Error", err)
+		w.Header().Set(consts.RawErrorHeader, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(nil)
 	}

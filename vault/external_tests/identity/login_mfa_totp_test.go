@@ -19,6 +19,7 @@ import (
 	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
@@ -143,7 +144,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	// helper function to clear the MFA request header
 	clearMFARequestHeaders := func(c *api.Client) {
 		headers := c.Headers()
-		headers.Del("X-Vault-MFA")
+		headers.Del(consts.MFAHeader)
 		c.SetHeaders(headers)
 	}
 
@@ -153,7 +154,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 
 	singlePhaseLoginFunc := func() error {
 		totpPasscode := testhelpers.GetTOTPCodeFromEngine(t, client, enginePath1)
-		userClient1.AddHeader("X-Vault-MFA", fmt.Sprintf("%s:%s", methodIdentifier, totpPasscode))
+		userClient1.AddHeader(consts.MFAHeader, fmt.Sprintf("%s:%s", methodIdentifier, totpPasscode))
 		defer clearMFARequestHeaders(userClient1)
 		secret, err = userClient1.Logical().WriteWithContext(context.Background(), userpassPath, map[string]interface{}{
 			"password": "testpassword",

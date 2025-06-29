@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/xor"
 	"github.com/openbao/openbao/vault"
 )
@@ -693,7 +694,7 @@ func TestMetricSinkProvider(gaugeInterval time.Duration) func(string) (*metricsu
 func SysMetricsReq(client *api.Client, cluster *vault.TestCluster, unauth bool) (*SysMetricsJSON, error) {
 	r := client.NewRequest("GET", "/v1/sys/metrics")
 	if !unauth {
-		r.Headers.Set("X-Vault-Token", cluster.RootToken)
+		r.Headers.Set(consts.AuthHeaderName, cluster.RootToken)
 	}
 	var data SysMetricsJSON
 	resp, err := client.RawRequestWithContext(context.Background(), r)

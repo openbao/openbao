@@ -393,12 +393,12 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		if core.RaftNodeIDHeaderEnabled() {
 			nodeID := core.GetRaftNodeID()
 			if nodeID != "" {
-				nw.Header().Set("X-Vault-Raft-Node-ID", nodeID)
+				nw.Header().Set(consts.RaftNodeIDHeader, nodeID)
 			}
 		}
 
 		if core.HostnameHeaderEnabled() && hostname != "" {
-			nw.Header().Set("X-Vault-Hostname", hostname)
+			nw.Header().Set(consts.HostNameHeader, hostname)
 		}
 
 		isRestrictedSysAPI := nsHeader != "" && strings.HasPrefix(r.URL.Path, "/v1/sys/") &&

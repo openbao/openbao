@@ -145,7 +145,10 @@ jobs:
 
   test-go:
     needs: test-matrix
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:

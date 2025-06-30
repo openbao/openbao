@@ -42,6 +42,7 @@ import (
 	loghelper "github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/helper/useragent"
 	vaulthttp "github.com/openbao/openbao/http"
@@ -1369,6 +1370,13 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
+	// Else if we're in production mode, initialize the core as well.
+	err = c.Initialize(core, config)
+	if err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+
 	// Initialize the HTTP servers
 	err = startHttpServers(c, core, config, lns)
 	if err != nil {
@@ -1678,6 +1686,150 @@ func (c *ServerCommand) notifySystemd(status string) {
 			c.logger.Debug("would have sent systemd notification (systemd not present)", "notification", status)
 		}
 	}
+}
+
+func (c *ServerCommand) waitForLeader(core *vault.Core) (bool, error) {
+	// By definition of self-initialization, we can't have added any follower
+	// nodes yet because key material was just created prior to this. We can
+	// only ever become the leader unless we were somehow started as a
+	// non-voting node. Assume we'll become leader.
+	isLeader, _, _, err := core.Leader()
+	if err != nil && err != vault.ErrHANotEnabled {
+		return false, fmt.Errorf("failed to check active status: %w", err)
+	}
+	if err == nil {
+		// Raft is slower than dev mode.
+		leaderCount := 35
+		for !isLeader {
+			if leaderCount == 0 {
+				buf := make([]byte, 1<<16)
+				runtime.Stack(buf, true)
+				return false, fmt.Errorf("failed to get active status (is this node a non-voter?); call stack is\n%s", buf)
+			}
+
+			time.Sleep(1 * time.Second)
+			isLeader, _, _, err = core.Leader()
+			if err != nil {
+				return false, fmt.Errorf("failed to check active status: %w", err)
+			}
+			leaderCount--
+		}
+	}
+
+	return isLeader, nil
+}
+
+// Initialize performs declarative self-initialization of a production-mode
+// OpenBao core. This will exit early if there is no configuration for this
+// or if the core is already initialized.
+func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) error {
+	if len(config.Initialization) == 0 {
+		return nil
+	}
+
+	if !core.SealAccess().RecoveryKeySupported() {
+		return errors.New("self-initialization requires auto-unseal as there is no way to persist the Shamir's keys")
+	}
+
+	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+
+	// Fast path skipping self-initialization if already initialized.
+	inited, err := core.Initialized(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to check core initialization status: %w", err)
+	}
+	if inited {
+		// We refuse to rerun self-initialization as it is a highly privileged
+		// way of sidestepping authentication. At first startup there is no
+		// other authentication information but on subsequent startups
+		// presumably the admin has created an alternative mechanism we should
+		// defer to.
+		return nil
+	}
+
+	// Initialize it with a basic single recovery key.
+	//
+	// XXX (ascheel): identify if we can drop these to zero and generate
+	// recovery keys later. See https://github.com/openbao/openbao/pull/1512.
+	var recoveryConfig *vault.SealConfig
+	barrierConfig := &vault.SealConfig{
+		SecretShares:    1,
+		SecretThreshold: 1,
+		StoredShares:    1,
+	}
+
+	recoveryConfig = &vault.SealConfig{
+		SecretShares:    1,
+		SecretThreshold: 1,
+	}
+
+	init, err := core.Initialize(ctx, &vault.InitParams{
+		BarrierConfig:  barrierConfig,
+		RecoveryConfig: recoveryConfig,
+	})
+	if err != nil {
+		return fmt.Errorf("self-initialization failed: %w", err)
+	}
+
+	if ok, err := core.Unseal(init.RecoveryShares[0]); err != nil || !ok {
+		return fmt.Errorf("unesal after self-initialization failed: err=%w ok=%v", err, ok)
+	}
+
+	// Wait for leadership; if we don't get the leadership status, it means
+	// that someone has brought up more than one node at a time and we've
+	// lost the race. This is bad and they should reset storage and ensure
+	// only one active node.
+	isLeader, err := c.waitForLeader(core)
+	if err != nil {
+		return fmt.Errorf("failed to wait for leadership: %w", err)
+	}
+	if !isLeader {
+		return fmt.Errorf("initializing node did not win leadership election: ensure only one active, voting node during initialization")
+	}
+
+	// Now perform the component requests of self-initialization.
+	return c.doSelfInit(ctx, core, config, init.RootToken)
+}
+
+// doSelfInit is the internal helper that uses the profile system with this
+// freshly initialized core to perform the component requests of the
+// self-initialization process.
+func (c *ServerCommand) doSelfInit(ctx context.Context, core *vault.Core, config *server.Config, rootToken string) error {
+	c.UI.Warn("Beginning post-unseal configuration")
+	p, err := profiles.NewEngine(
+		// Set up the profile system with relevant parameter sources:
+		// - Environment variables
+		// - Files
+		// - Other requests & responses
+		profiles.WithEnvSource(),
+		profiles.WithFileSource(),
+		profiles.WithRequestSource(),
+		profiles.WithResponseSource(),
+
+		// Because we're initializing, we have a default (root) token to use.
+		profiles.WithDefaultToken(rootToken),
+
+		// Our outer block is called initialize, to contain multiple requests.
+		profiles.WithOuterBlockName("initialize"),
+
+		// The actual profile we're executing is contained in our
+		// server configuration.
+		profiles.WithProfile(config.Initialization),
+
+		// Hook the profile system directly up to our core request handler.
+		profiles.WithRequestHandler(func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
+			return core.HandleRequest(ctx, req)
+		}),
+
+		// Create a named logger for this, to allow operators to debug
+		// initialization issues.
+		profiles.WithLogger(c.logger.Named("self-init")),
+	)
+	if err != nil {
+		return err
+	}
+
+	return p.Evaluate(ctx)
 }
 
 func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig) (*vault.InitResult, error) {

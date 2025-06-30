@@ -1,3 +1,4 @@
+// Copyright The OpenBao Contributors
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
@@ -13,9 +14,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"go.uber.org/atomic"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/hashicorp/go-hclog"
 	ctconfig "github.com/openbao/openbao-template/config"
 	"github.com/openbao/openbao-template/manager"
@@ -24,6 +27,13 @@ import (
 	"github.com/openbao/openbao/command/agent/internal/ctmanager"
 	"github.com/openbao/openbao/helper/useragent"
 	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
+)
+
+const (
+	defaultMinBackoff          = 1 * time.Second
+	defaultMaxBackoff          = 5 * time.Minute
+	backoffMultiplier          = 2
+	backoffRandomizationFactor = 0.25
 )
 
 // ServerConfig is a config struct for setting up the basic parts of the
@@ -35,6 +45,9 @@ type ServerConfig struct {
 
 	ExitAfterAuth bool
 	Namespace     string
+
+	MaxBackoff time.Duration
+	MinBackoff time.Duration
 
 	// LogLevel is needed to set the internal Consul Template Runner's log level
 	// to match the log level of Vault Agent. The internal Runner creates it's own
@@ -67,6 +80,9 @@ type Server struct {
 	DoneCh  chan struct{}
 	stopped *atomic.Bool
 
+	maxBackoff time.Duration
+	minBackoff time.Duration
+
 	logger        hclog.Logger
 	exitAfterAuth bool
 }
@@ -77,6 +93,9 @@ func NewServer(conf *ServerConfig) *Server {
 		DoneCh:        make(chan struct{}),
 		stopped:       atomic.NewBool(false),
 		runnerStarted: atomic.NewBool(false),
+
+		maxBackoff: conf.MaxBackoff,
+		minBackoff: conf.MinBackoff,
 
 		logger:        conf.Logger,
 		config:        conf,
@@ -106,6 +125,35 @@ func (ts *Server) Run(ctx context.Context, incoming chan string, templates []*ct
 		<-ctx.Done()
 		return nil
 	}
+
+	// Prepare backoff mechanism
+	if ts.minBackoff <= 0 {
+		ts.minBackoff = defaultMinBackoff
+	}
+
+	if ts.maxBackoff <= 0 {
+		ts.maxBackoff = defaultMaxBackoff
+	}
+
+	if ts.minBackoff > ts.maxBackoff {
+		return fmt.Errorf("min backoff is larger than max backoff")
+	}
+
+	var errBackoff backoff.BackOff = backoff.NewExponentialBackOff(
+		backoff.WithInitialInterval(ts.minBackoff),
+		backoff.WithMaxInterval(ts.maxBackoff),
+		backoff.WithMultiplier(backoffMultiplier),
+		backoff.WithRandomizationFactor(backoffRandomizationFactor),
+	)
+
+	// If ExitOnRetryFailure is set, disallow retry
+	if ts.config.AgentConfig.TemplateConfig != nil && ts.config.AgentConfig.TemplateConfig.ExitOnRetryFailure {
+		errBackoff = backoff.WithMaxRetries(errBackoff, 0)
+	}
+
+	// timer to time backoffs
+	backoffTimer := time.NewTimer(ts.minBackoff)
+	defer backoffTimer.Stop()
 
 	// construct a consul template vault config based the agents vault
 	// configuration
@@ -184,13 +232,20 @@ func (ts *Server) Run(ctx context.Context, incoming chan string, templates []*ct
 			}
 
 		case err := <-ts.runner.ErrCh:
-			ts.logger.Error("template server error", "error", err.Error())
+			nextBackoff := errBackoff.NextBackOff()
+
+			ts.logger.Error("template server error", "error", err.Error(), "backoff", nextBackoff)
 			ts.runner.StopImmediately()
 
-			// Return after stopping the runner if exit on retry failure was
-			// specified
-			if ts.config.AgentConfig.TemplateConfig != nil && ts.config.AgentConfig.TemplateConfig.ExitOnRetryFailure {
+			// Return after stopping the runner if backoff indicates stop
+			if nextBackoff == backoff.Stop {
 				return fmt.Errorf("template server: %w", err)
+			}
+			// Otherwise back off to retry
+			backoffTimer.Reset(nextBackoff)
+			select {
+			case <-backoffTimer.C:
+			case <-ctx.Done():
 			}
 
 			ts.runner, err = manager.NewRunner(runnerConfig, false)
@@ -202,6 +257,9 @@ func (ts *Server) Run(ctx context.Context, incoming chan string, templates []*ct
 		case <-ts.runner.TemplateRenderedCh():
 			// A template has been rendered, figure out what to do
 			events := ts.runner.RenderEvents()
+
+			// Reset backoff for every successfully rendered template
+			errBackoff.Reset()
 
 			// events are keyed by template ID, and can be matched up to the id's from
 			// the lookupMap

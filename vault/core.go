@@ -3220,27 +3220,30 @@ func (c *Core) autoRotateBarrierLoop(ctx context.Context) {
 func (c *Core) checkBarrierAutoRotate(ctx context.Context) {
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
-	if c.isPrimary() {
-		reason, err := c.barrier.CheckBarrierAutoRotate(ctx)
-		if err != nil {
-			lf := c.logger.Error
-			if strings.HasSuffix(err.Error(), "context canceled") {
-				lf = c.logger.Debug
-			}
-			lf("error in barrier auto rotation", "error", err)
-			return
-		}
-		if reason != "" {
-			// Time to rotate.  Invoke the rotation handler in order to both rotate and create
-			// the replication canary
-			c.logger.Info("automatic barrier key rotation triggered", "reason", reason)
 
-			_, err := c.systemBackend.handleRotate(ctx, nil, nil)
-			if err != nil {
-				c.logger.Error("error automatically rotating barrier key", "error", err)
-			} else {
-				metrics.IncrCounter(barrierRotationsMetric, 1)
-			}
+	if !c.isPrimary() {
+		return
+	}
+
+	reason, err := c.barrier.CheckBarrierAutoRotate(ctx)
+	if err != nil {
+		lf := c.logger.Error
+		if strings.HasSuffix(err.Error(), "context canceled") {
+			lf = c.logger.Debug
+		}
+		lf("error in barrier auto rotation", "error", err)
+		return
+	}
+
+	if reason != "" {
+		// Time to rotate. Invoke the rotation handler in order to both rotate and create
+		// the replication canary
+		c.logger.Info("automatic barrier key rotation triggered", "reason", reason)
+
+		if err := c.systemBackend.rotateBarrierKey(ctx); err != nil {
+			c.logger.Error("error automatically rotating barrier key", "error", err)
+		} else {
+			metrics.IncrCounter(barrierRotationsMetric, 1)
 		}
 	}
 }

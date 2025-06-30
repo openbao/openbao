@@ -99,6 +99,7 @@ var (
 		"/v1/sys/mounts/",
 		"/v1/sys/policy",
 		"/v1/sys/policy/",
+		// TODO: verify
 		"/v1/sys/rekey/backup",
 		"/v1/sys/rekey/recovery-key-backup",
 		"/v1/sys/remount",
@@ -125,6 +126,10 @@ func init() {
 		"health",
 		"rekey-recovery-key",
 		"rekey",
+		// TODO: verify
+		// doubled with "rekey"
+		"rotate/recovery",
+		"rotate/root",
 		"storage",
 		"generate-root",
 		"metrics",

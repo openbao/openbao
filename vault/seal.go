@@ -332,7 +332,7 @@ type SealConfig struct {
 // baseValidate is used as a shared base between `Validate` and `ValidateRecovery`
 // functions
 func (s *SealConfig) baseValidate() error {
-	if s.SecretShares > 1 && s.SecretThreshold == 1 {
+	if s.SecretShares > 1 && s.SecretThreshold < 2 {
 		return errors.New("threshold must be greater than one for multiple shares")
 	}
 	if s.SecretShares > 255 {

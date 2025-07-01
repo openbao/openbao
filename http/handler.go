@@ -99,11 +99,13 @@ var (
 		"/v1/sys/mounts/",
 		"/v1/sys/policy",
 		"/v1/sys/policy/",
-		// TODO: verify
 		"/v1/sys/rekey/backup",
 		"/v1/sys/rekey/recovery-key-backup",
+		"/v1/sys/rotate/root/backup",
+		"/v1/sys/rotate/recovery/backup",
 		"/v1/sys/remount",
 		"/v1/sys/rotate",
+		"/v1/sys/rotate/keyring",
 		"/v1/sys/wrapping/wrap",
 	}
 
@@ -125,10 +127,8 @@ func init() {
 		"unseal",
 		"health",
 		"rekey-recovery-key",
-		"rekey",
-		// TODO: verify
-		// doubled with "rekey"
 		"rotate/recovery",
+		"rekey",
 		"rotate/root",
 		"storage",
 		"generate-root",

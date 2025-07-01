@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/proto"
-	"github.com/openbao/openbao/sdk/v2/helper/base62"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"google.golang.org/grpc/codes"
@@ -169,12 +169,12 @@ func (g *gRPCServer) NewUser(ctx context.Context, req *proto.NewUserRequest) (*p
 
 func (g *gRPCServer) UpdateUser(ctx context.Context, req *proto.UpdateUserRequest) (*proto.UpdateUserResponse, error) {
 	if req.GetUsername() == "" {
-		return &proto.UpdateUserResponse{}, status.Errorf(codes.InvalidArgument, "no username provided")
+		return &proto.UpdateUserResponse{}, status.Error(codes.InvalidArgument, "no username provided")
 	}
 
 	dbReq, err := getUpdateUserRequest(req)
 	if err != nil {
-		return &proto.UpdateUserResponse{}, status.Errorf(codes.InvalidArgument, err.Error())
+		return &proto.UpdateUserResponse{}, status.Errorf(codes.InvalidArgument, "%s", err.Error())
 	}
 
 	impl, err := g.getDatabase(ctx)
@@ -249,7 +249,7 @@ func hasChange(dbReq UpdateUserRequest) bool {
 
 func (g *gRPCServer) DeleteUser(ctx context.Context, req *proto.DeleteUserRequest) (*proto.DeleteUserResponse, error) {
 	if req.GetUsername() == "" {
-		return &proto.DeleteUserResponse{}, status.Errorf(codes.InvalidArgument, "no username provided")
+		return &proto.DeleteUserResponse{}, status.Error(codes.InvalidArgument, "no username provided")
 	}
 	dbReq := DeleteUserRequest{
 		Username:   req.GetUsername(),

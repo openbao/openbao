@@ -221,7 +221,7 @@ func fetchCertBySerial(sc *storageContext, prefix, serial string) (*logical.Stor
 		return nil, errutil.InternalError{Err: fmt.Sprintf("error fetching certificate %s: %s", serial, err)}
 	}
 	if certEntry != nil {
-		if certEntry.Value == nil || len(certEntry.Value) == 0 {
+		if len(certEntry.Value) == 0 {
 			return nil, errutil.InternalError{Err: fmt.Sprintf("returned certificate bytes for serial %s were empty", serial)}
 		}
 		return certEntry, nil
@@ -240,7 +240,7 @@ func fetchCertBySerial(sc *storageContext, prefix, serial string) (*logical.Stor
 	if certEntry == nil {
 		return nil, nil
 	}
-	if certEntry.Value == nil || len(certEntry.Value) == 0 {
+	if len(certEntry.Value) == 0 {
 		return nil, errutil.InternalError{Err: fmt.Sprintf("returned certificate bytes for serial %s were empty", serial)}
 	}
 
@@ -1026,7 +1026,8 @@ func signCert(b *backend,
 	//
 	// This validation needs to occur regardless of the role's key type, so
 	// that we always validate both RSA and ECDSA key sizes.
-	if actualKeyType == "rsa" {
+	switch actualKeyType {
+	case "rsa":
 		if actualKeyBits < data.role.KeyBits {
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 				"role requires a minimum of a %d-bit key, but CSR's key is %d bits",
@@ -1038,7 +1039,7 @@ func signCert(b *backend,
 				"OpenBao requires a minimum of a 2048-bit key, but CSR's key is %d bits",
 				actualKeyBits)}
 		}
-	} else if actualKeyType == "ec" {
+	case "ec":
 		if actualKeyBits < data.role.KeyBits {
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 				"role requires a minimum of a %d-bit key, but CSR's key is %d bits",
@@ -1389,7 +1390,24 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 						return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 							"the value %q is not a valid IP address", v)}
 					}
-					ipAddresses = append(ipAddresses, parsedIP)
+					if len(data.role.AllowedIPSANsCIDR) > 0 {
+						valid := false
+						for _, allowedNetwork := range data.role.AllowedIPSANsCIDR {
+							if allowedNetwork.Contains(parsedIP) {
+								valid = true
+								break
+							}
+						}
+
+						if !valid {
+							return nil, nil, errutil.UserError{Err: fmt.Sprintf(
+								"the IP address %q is not allowed in this role", v)}
+						}
+
+						ipAddresses = append(ipAddresses, parsedIP)
+					} else {
+						ipAddresses = append(ipAddresses, parsedIP)
+					}
 				}
 			}
 		}

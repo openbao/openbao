@@ -13,20 +13,16 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/crypto/ssh"
-
-	"github.com/mikesmitty/edkey"
 )
 
 type keyStorageEntry struct {
-	Key string `json:"key" structs:"key" mapstructure:"key"`
+	Key string `json:"key" mapstructure:"key"`
 }
 
 func pathConfigCA(b *backend) *framework.Path {
@@ -140,11 +136,7 @@ func caKey(ctx context.Context, storage logical.Storage, keyType string) (*keySt
 	return &keyEntry, nil
 }
 
-func generateSSHKeyPair(randomSource io.Reader, keyType string, keyBits int) (string, string, error) {
-	if randomSource == nil {
-		randomSource = rand.Reader
-	}
-
+func generateSSHKeyPair(keyType string, keyBits int) (string, string, error) {
 	var publicKey crypto.PublicKey
 	var privateBlock *pem.Block
 
@@ -158,7 +150,7 @@ func generateSSHKeyPair(randomSource io.Reader, keyType string, keyBits int) (st
 			return "", "", fmt.Errorf("refusing to generate weak %v key: %v bits < 2048 bits", keyType, keyBits)
 		}
 
-		privateSeed, err := rsa.GenerateKey(randomSource, keyBits)
+		privateSeed, err := rsa.GenerateKey(rand.Reader, keyBits)
 		if err != nil {
 			return "", "", err
 		}
@@ -192,7 +184,7 @@ func generateSSHKeyPair(randomSource io.Reader, keyType string, keyBits int) (st
 			}
 		}
 
-		privateSeed, err := ecdsa.GenerateKey(curve, randomSource)
+		privateSeed, err := ecdsa.GenerateKey(curve, rand.Reader)
 		if err != nil {
 			return "", "", err
 		}
@@ -210,20 +202,14 @@ func generateSSHKeyPair(randomSource io.Reader, keyType string, keyBits int) (st
 
 		publicKey = privateSeed.Public()
 	case ssh.KeyAlgoED25519, "ed25519":
-		_, privateSeed, err := ed25519.GenerateKey(randomSource)
+		_, privateSeed, err := ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			return "", "", err
 		}
 
-		marshalled := edkey.MarshalED25519PrivateKey(privateSeed)
-		if marshalled == nil {
-			return "", "", errors.New("unable to marshal ed25519 private key")
-		}
-
-		privateBlock = &pem.Block{
-			Type:    "OPENSSH PRIVATE KEY",
-			Headers: nil,
-			Bytes:   marshalled,
+		privateBlock, err = ssh.MarshalPrivateKey(privateSeed, "")
+		if err != nil {
+			return "", "", fmt.Errorf("failed to marshal ed25519 key: %w", err)
 		}
 
 		publicKey = privateSeed.Public()

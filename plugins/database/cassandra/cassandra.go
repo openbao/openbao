@@ -20,7 +20,7 @@ import (
 
 const (
 	defaultUserCreationCQL   = `CREATE USER '{{username}}' WITH PASSWORD '{{password}}' NOSUPERUSER;`
-	defaultUserDeletionCQL   = `DROP USER '{{username}}';`
+	defaultUserDeletionCQL   = `DROP USER IF EXISTS '{{username}}';`
 	defaultChangePasswordCQL = `ALTER USER '{{username}}' WITH PASSWORD '{{password}}';`
 	cassandraTypeName        = "cassandra"
 

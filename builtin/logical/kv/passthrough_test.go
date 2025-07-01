@@ -70,11 +70,11 @@ func TestPassthroughBackend_Read(t *testing.T) {
 		req := logical.TestRequest(t, logical.UpdateOperation, "foo")
 		req.Data["raw"] = "test"
 		var reqTTL interface{}
-		switch ttl.(type) {
+		switch tt := ttl.(type) {
 		case int64:
-			reqTTL = ttl.(int64)
+			reqTTL = tt
 		case string:
-			reqTTL = ttl.(string)
+			reqTTL = tt
 		default:
 			t.Fatal("unknown ttl type")
 		}
@@ -101,7 +101,7 @@ func TestPassthroughBackend_Read(t *testing.T) {
 		// What comes back if an int is passed in is a json.Number which is
 		// actually aliased as a string so to make the deep equal happy if it's
 		// actually a number we set it to an int64
-		var respTTL interface{} = resp.Data[ttlType]
+		respTTL := resp.Data[ttlType]
 		_, ok := respTTL.(json.Number)
 		if ok {
 			respTTL, err = respTTL.(json.Number).Int64()

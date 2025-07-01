@@ -1,0 +1,3 @@
+```release-note:improvement
+deps: Update go-jose v3 to go-jose v4
+```

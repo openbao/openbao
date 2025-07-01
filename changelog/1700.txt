@@ -1,0 +1,3 @@
+```release-note:feature
+**Configuration-Based Audit Devices**: Create and remove audit devices through server configuration updates. Changes are applied on restart and SIGHUP with issues appearing in the logs.
+```

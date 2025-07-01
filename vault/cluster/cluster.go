@@ -18,10 +18,11 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/tlsdebug"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
-	"github.com/openbao/openbao/sdk/v2/helper/tlsutil"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"golang.org/x/net/http2"
 )
@@ -56,7 +57,7 @@ type ClusterHook interface {
 	StopHandler(alpn string)
 	TLSConfig(ctx context.Context) (*tls.Config, error)
 	Addr() net.Addr
-	GetDialerFunc(ctx context.Context, alpnProto string) func(string, time.Duration) (net.Conn, error)
+	GetContextDialerFunc(ctx context.Context, alpnProto string) func(context.Context, string) (net.Conn, error)
 }
 
 // Listener is the source of truth for cluster handlers and connection
@@ -65,7 +66,7 @@ type ClusterHook interface {
 type Listener struct {
 	handlers   map[string]Handler
 	clients    map[string]Client
-	shutdown   *uint32
+	shutdown   atomic.Bool
 	shutdownWg *sync.WaitGroup
 	server     *http2.Server
 
@@ -106,7 +107,6 @@ func NewListener(networkLayer NetworkLayer, cipherSuites []uint16, logger log.Lo
 	return &Listener{
 		handlers:   make(map[string]Handler),
 		clients:    make(map[string]Client),
-		shutdown:   new(uint32),
 		shutdownWg: &sync.WaitGroup{},
 		server:     h2Server,
 
@@ -259,14 +259,14 @@ func (cl *Listener) TLSConfig(ctx context.Context) (*tls.Config, error) {
 		return nil, errors.New("unsupported protocol")
 	}
 
-	return &tls.Config{
+	return tlsdebug.Inject(cl.logger, &tls.Config{
 		ClientAuth:           tls.RequireAndVerifyClientCert,
 		GetCertificate:       serverLookup,
 		GetClientCertificate: clientLookup,
 		GetConfigForClient:   serverConfigLookup,
 		MinVersion:           tls.VersionTLS12,
 		CipherSuites:         cl.cipherSuites,
-	}, nil
+	}), nil
 }
 
 // Run starts the tcp listeners and will accept connections until stop is
@@ -315,7 +315,7 @@ func (cl *Listener) Run(ctx context.Context) error {
 
 			var loopDelay time.Duration
 			for {
-				if atomic.LoadUint32(cl.shutdown) > 0 {
+				if cl.shutdown.Load() {
 					return
 				}
 
@@ -421,7 +421,7 @@ func (cl *Listener) Run(ctx context.Context) error {
 func (cl *Listener) Stop() {
 	// Set the shutdown flag. This will cause the listeners to shut down
 	// within the deadline in clusterListenerAcceptDeadline
-	atomic.StoreUint32(cl.shutdown, 1)
+	cl.shutdown.Store(true)
 	cl.logger.Info("forwarding rpc listeners stopped")
 
 	// Wait for them all to shut down
@@ -429,10 +429,8 @@ func (cl *Listener) Stop() {
 	cl.logger.Info("rpc listeners successfully shut down")
 }
 
-// GetDialerFunc returns a function that looks up the TLS information for the
-// provided alpn name and calls the network layer's dial function.
-func (cl *Listener) GetDialerFunc(ctx context.Context, alpn string) func(string, time.Duration) (net.Conn, error) {
-	return func(addr string, timeout time.Duration) (net.Conn, error) {
+func (cl *Listener) GetContextDialerFunc(ctx context.Context, alpn string) func(context.Context, string) (net.Conn, error) {
+	return func(dctx context.Context, addr string) (net.Conn, error) {
 		tlsConfig, err := cl.TLSConfig(ctx)
 		if err != nil {
 			cl.logger.Error("failed to get tls configuration", "error", err)
@@ -466,7 +464,7 @@ func (cl *Listener) GetDialerFunc(ctx context.Context, alpn string) func(string,
 		tlsConfig.NextProtos = []string{alpn}
 		cl.logger.Debug("creating rpc dialer", "address", addr, "alpn", alpn, "host", tlsConfig.ServerName)
 
-		conn, err := cl.networkLayer.Dial(addr, timeout, tlsConfig)
+		conn, err := cl.networkLayer.DialContext(dctx, addr, tlsConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -502,7 +500,7 @@ type NetworkListener interface {
 type NetworkLayer interface {
 	Addrs() []net.Addr
 	Listeners() []NetworkListener
-	Dial(address string, timeout time.Duration, tlsConfig *tls.Config) (*tls.Conn, error)
+	DialContext(ctx context.Context, address string, tlsConfig *tls.Config) (*tls.Conn, error)
 	Close() error
 }
 

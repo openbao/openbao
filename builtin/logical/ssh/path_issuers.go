@@ -393,7 +393,7 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 	defer b.issuersLock.Unlock()
 
 	// This handler is used by two endpoints, `config/ca` and `issuers/import/{issuer_name}`
-	// If called from `config/ca`, we don't want to explicity set a name neither check if `set_default` is set
+	// If called from `config/ca`, we don't want to explicitly set a name neither check if `set_default` is set
 	isConfigCARequest := req.Path == "config/ca"
 
 	publicKey, privateKey, generatedKeyMaterial, err := b.handleKeyGeneration(d)

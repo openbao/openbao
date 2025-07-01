@@ -36,23 +36,22 @@ func (b *databaseBackend) secretCredsRenew() framework.OperationFunc {
 		defer txRollback()
 
 		// Get the username from the internal data
-		usernameRaw, ok := req.Secret.InternalData["username"]
+		username, ok := req.Secret.InternalData["username"].(string)
 		if !ok {
-			return nil, errors.New("secret is missing username internal data")
-		}
-		username, ok := usernameRaw.(string)
-
-		roleNameRaw, ok := req.Secret.InternalData["role"]
-		if !ok {
-			return nil, fmt.Errorf("could not find role with name: %q", req.Secret.InternalData["role"])
+			return nil, errors.New(`secret is missing "username" field in internal data`)
 		}
 
-		role, err := b.Role(ctx, req.Storage, roleNameRaw.(string))
+		roleName, ok := req.Secret.InternalData["role"].(string)
+		if !ok {
+			return nil, errors.New(`secret is missing "role" field in internal data`)
+		}
+
+		role, err := b.Role(ctx, req.Storage, roleName)
 		if err != nil {
 			return nil, err
 		}
 		if role == nil {
-			return nil, fmt.Errorf("error during renew: could not find role with name %q", req.Secret.InternalData["role"])
+			return nil, fmt.Errorf("error during renew: could not find role with name %q", roleName)
 		}
 
 		// Get the Database object
@@ -115,6 +114,9 @@ func (b *databaseBackend) secretCredsRevoke() framework.OperationFunc {
 			return nil, errors.New("secret is missing username internal data")
 		}
 		username, ok := usernameRaw.(string)
+		if !ok {
+			return nil, fmt.Errorf("expected username to be a string, but is %T", username)
+		}
 
 		var resp *logical.Response
 
@@ -124,7 +126,7 @@ func (b *databaseBackend) secretCredsRevoke() framework.OperationFunc {
 		}
 
 		var dbName string
-		var statements v4.Statements
+		var statements *v4.Statements
 
 		role, err := b.Role(ctx, req.Storage, roleNameRaw.(string))
 		if err != nil {
@@ -132,7 +134,7 @@ func (b *databaseBackend) secretCredsRevoke() framework.OperationFunc {
 		}
 		if role != nil {
 			dbName = role.DBName
-			statements = role.Statements
+			statements = &role.Statements
 		} else {
 			dbNameRaw, ok := req.Secret.InternalData["db_name"]
 			if !ok {
@@ -145,11 +147,12 @@ func (b *databaseBackend) secretCredsRevoke() framework.OperationFunc {
 				return nil, fmt.Errorf("error during revoke: could not find role with name %q or embedded revocation statement data", req.Secret.InternalData["role"])
 			}
 
+			statements = &v4.Statements{}
 			// If we don't actually have any statements, because none were
 			// set in the role, we'll end up with an empty one and the
 			// default for the db type will be attempted
 			if statementsRaw != nil {
-				statementsSlice, ok := statementsRaw.([]interface{})
+				statementsSlice, ok := statementsRaw.([]any)
 				if !ok {
 					return nil, fmt.Errorf("error during revoke: could not find role with name %q and embedded reovcation data could not be read", req.Secret.InternalData["role"])
 				}

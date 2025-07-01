@@ -4,33 +4,32 @@
 package vault
 
 import (
-	"context"
-	"reflect"
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
+	"github.com/openbao/openbao/vault/seal"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCore_Init(t *testing.T) {
-	c, conf := testCore_NewTestCore(t, nil)
-	testCore_Init_Common(t, c, conf, &SealConfig{SecretShares: 5, SecretThreshold: 3}, nil)
+	testCoreInitCommon(t, nil, &SealConfig{SecretShares: 5, SecretThreshold: 3}, nil)
+
+	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
+	autoSeal, err := NewAutoSeal(testSeal)
+	require.NoError(t, err)
+	testCoreInitCommon(t, autoSeal, &SealConfig{SecretShares: 1, SecretThreshold: 1}, &SealConfig{SecretShares: 0, SecretThreshold: 0})
 }
 
-func testCore_NewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {
-	return testCore_NewTestCoreLicensing(t, seal)
-}
-
-func testCore_NewTestCoreLicensing(t *testing.T, seal Seal) (*Core, *CoreConfig) {
+func testCoreNewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {
 	logger := logging.NewVaultLogger(log.Trace)
-
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	conf := &CoreConfig{
 		Physical: inm,
 		LogicalBackends: map[string]logical.Factory{
@@ -39,9 +38,7 @@ func testCore_NewTestCoreLicensing(t *testing.T, seal Seal) (*Core, *CoreConfig)
 		Seal: seal,
 	}
 	c, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		defer func() {
@@ -54,128 +51,87 @@ func testCore_NewTestCoreLicensing(t *testing.T, seal Seal) (*Core, *CoreConfig)
 	return c, conf
 }
 
-func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, recoveryConf *SealConfig) {
-	init, err := c.Initialized(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	if init {
-		t.Fatal("should not be init")
-	}
+func testCoreInitCommon(t *testing.T, s Seal, barrierConf, recoveryConf *SealConfig) {
+	c, conf := testCoreNewTestCore(t, s)
+	ctx := namespace.RootContext(t.Context())
+	init, err := c.Initialized(ctx)
+	require.NoError(t, err)
+	require.False(t, init)
 
 	// Check the seal configuration
-	outConf, err := c.seal.BarrierConfig(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if outConf != nil {
-		t.Fatalf("bad: %v", outConf)
-	}
+	outConf, err := c.seal.BarrierConfig(ctx)
+	require.NoError(t, err)
+	require.Empty(t, outConf)
+
 	if recoveryConf != nil {
-		outConf, err := c.seal.RecoveryConfig(context.Background())
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
-		if outConf != nil {
-			t.Fatalf("bad: %v", outConf)
-		}
+		outConf, err := c.seal.RecoveryConfig(ctx)
+		require.NoError(t, err)
+		require.Empty(t, outConf)
 	}
 
-	res, err := c.Initialize(context.Background(), &InitParams{
+	res, err := c.Initialize(ctx, &InitParams{
 		BarrierConfig:  barrierConf,
 		RecoveryConfig: recoveryConf,
 	})
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
-	if c.seal.BarrierType() == wrapping.WrapperTypeShamir && len(res.SecretShares) != barrierConf.SecretShares {
-		t.Fatalf("Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *barrierConf)
-	}
+	require.Falsef(t,
+		c.seal.BarrierType() == seal.WrapperTypeShamir && len(res.SecretShares) != barrierConf.SecretShares,
+		"Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *barrierConf,
+	)
+
 	if recoveryConf != nil {
-		if len(res.RecoveryShares) != recoveryConf.SecretShares {
-			t.Fatalf("Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *recoveryConf)
-		}
+		require.Falsef(t,
+			len(res.RecoveryShares) != recoveryConf.SecretShares,
+			"Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *recoveryConf,
+		)
 	}
 
-	if res.RootToken == "" {
-		t.Fatalf("Bad: %#v", res)
-	}
+	require.NotEmpty(t, res.RootToken)
 
-	_, err = c.Initialize(context.Background(), &InitParams{
+	_, err = c.Initialize(ctx, &InitParams{
 		BarrierConfig:  barrierConf,
 		RecoveryConfig: recoveryConf,
 	})
-	if err != ErrAlreadyInit {
-		t.Fatalf("err: %v", err)
-	}
+	require.ErrorIs(t, err, ErrAlreadyInit)
 
-	init, err = c.Initialized(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	if !init {
-		t.Fatal("should be init")
-	}
+	init, err = c.Initialized(ctx)
+	require.NoError(t, err)
+	require.True(t, init)
 
 	// Check the seal configuration
-	outConf, err = c.seal.BarrierConfig(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if !reflect.DeepEqual(outConf, barrierConf) {
-		t.Fatalf("bad: %v expect: %v", outConf, barrierConf)
-	}
+	outConf, err = c.seal.BarrierConfig(ctx)
+	require.NoError(t, err)
+	require.Equal(t, barrierConf, outConf)
+
 	if recoveryConf != nil {
-		outConf, err = c.seal.RecoveryConfig(context.Background())
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
-		if !reflect.DeepEqual(outConf, recoveryConf) {
-			t.Fatalf("bad: %v expect: %v", outConf, recoveryConf)
-		}
+		outConf, err = c.seal.RecoveryConfig(ctx)
+		require.NoError(t, err)
+		require.Equal(t, recoveryConf, outConf)
 	}
 
 	// New Core, same backend
 	c2, err := NewCore(conf)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
-	_, err = c2.Initialize(context.Background(), &InitParams{
+	_, err = c2.Initialize(ctx, &InitParams{
 		BarrierConfig:  barrierConf,
 		RecoveryConfig: recoveryConf,
 	})
-	if err != ErrAlreadyInit {
-		t.Fatalf("err: %v", err)
-	}
+	require.ErrorIs(t, err, ErrAlreadyInit)
 
-	init, err = c2.Initialized(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	if !init {
-		t.Fatal("should be init")
-	}
+	init, err = c2.Initialized(ctx)
+	require.NoError(t, err)
+	require.True(t, init)
 
 	// Check the seal configuration
-	outConf, err = c2.seal.BarrierConfig(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if !reflect.DeepEqual(outConf, barrierConf) {
-		t.Fatalf("bad: %v expect: %v", outConf, barrierConf)
-	}
+	outConf, err = c2.seal.BarrierConfig(ctx)
+	require.NoError(t, err)
+	require.Equal(t, barrierConf, outConf)
+
 	if recoveryConf != nil {
-		outConf, err = c2.seal.RecoveryConfig(context.Background())
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
-		if !reflect.DeepEqual(outConf, recoveryConf) {
-			t.Fatalf("bad: %v expect: %v", outConf, recoveryConf)
-		}
+		outConf, err = c2.seal.RecoveryConfig(ctx)
+		require.NoError(t, err)
+		require.Equal(t, recoveryConf, outConf)
 	}
 }

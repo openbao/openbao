@@ -23,12 +23,14 @@ import (
 	_ "github.com/openbao/openbao/helper/builtinplugins"
 
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
+	auditHttp "github.com/openbao/openbao/builtin/audit/http"
 	auditSocket "github.com/openbao/openbao/builtin/audit/socket"
 	auditSyslog "github.com/openbao/openbao/builtin/audit/syslog"
 
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	credOIDC "github.com/openbao/openbao/builtin/credential/jwt"
 	credKerb "github.com/openbao/openbao/builtin/credential/kerberos"
+	credKube "github.com/openbao/openbao/builtin/credential/kubernetes"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
@@ -93,8 +95,6 @@ const (
 	flagNameAllowedResponseHeaders = "allowed-response-headers"
 	// flagNameTokenType is the flag name used to force a specific token type
 	flagNameTokenType = "token-type"
-	// flagNameAllowedManagedKeys is the flag name used for auth/secrets enable
-	flagNameAllowedManagedKeys = "allowed-managed-keys"
 	// flagNamePluginVersion selects what version of a plugin should be used.
 	flagNamePluginVersion = "plugin-version"
 	// flagNameUserLockoutThreshold is the flag name used for tuning the auth mount lockout threshold parameter
@@ -109,8 +109,6 @@ const (
 	flagNameDisableRedirects = "disable-redirects"
 	// flagNameCombineLogs is used to specify whether log output should be combined and sent to stdout
 	flagNameCombineLogs = "combine-logs"
-	// flagDisableGatedLogs is used to disable gated logs and immediately show the vault logs as they become available
-	flagDisableGatedLogs = "disable-gated-logs"
 	// flagNameLogFile is used to specify the path to the log file that Vault should use for logging
 	flagNameLogFile = "log-file"
 	// flagNameLogRotateBytes is the flag used to specify the number of bytes a log file should be before it is rotated.
@@ -129,6 +127,7 @@ const (
 var (
 	auditBackends = map[string]audit.Factory{
 		"file":   auditFile.Factory,
+		"http":   auditHttp.Factory,
 		"socket": auditSocket.Factory,
 		"syslog": auditSyslog.Factory,
 	}
@@ -164,6 +163,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 	loginHandlers := map[string]LoginHandler{
 		"cert":     &credCert.CLIHandler{},
 		"kerberos": &credKerb.CLIHandler{},
+		"kubernetes": &credKube.CLIHandler{},
 		"ldap":     &credLdap.CLIHandler{},
 		"oidc":     &credOIDC.CLIHandler{},
 		"radius": &credUserpass.CLIHandler{
@@ -367,6 +367,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"operator members": func() (cli.Command, error) {
+			return &OperatorMembersCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"operator migrate": func() (cli.Command, error) {
 			return &OperatorMigrateCommand{
 				BaseCommand:      getBaseCommand(),
@@ -444,6 +449,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"operator rotate-keys": func() (cli.Command, error) {
+			return &OperatorRotateKeysCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"operator seal": func() (cli.Command, error) {
 			return &OperatorSealCommand{
 				BaseCommand: getBaseCommand(),
@@ -459,8 +469,8 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
-		"operator members": func() (cli.Command, error) {
-			return &OperatorMembersCommand{
+		"operator validate-config": func() (cli.Command, error) {
+			return &OperatorValidateConfigCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
@@ -516,6 +526,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"plugin info": func() (cli.Command, error) {
 			return &PluginInfoCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"plugin init": func() (cli.Command, error) {
+			return &PluginInitCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},

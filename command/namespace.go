@@ -23,7 +23,7 @@ func (c *NamespaceCommand) Help() string {
 	helpText := `
 Usage: bao namespace <subcommand> [options] [args]
 
-  This command groups subcommands for interacting with Vault namespaces.
+  This command groups subcommands for interacting with OpenBao namespaces.
   These subcommands operate in the context of the namespace that the
   currently logged in token belongs to.
 

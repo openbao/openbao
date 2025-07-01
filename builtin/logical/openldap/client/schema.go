@@ -5,8 +5,8 @@ package client
 
 import (
 	"fmt"
+	"slices"
 
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"golang.org/x/text/encoding/unicode"
 )
 
@@ -25,7 +25,7 @@ func SupportedSchemas() []string {
 
 // ValidSchema checks if the configured schema is supported by the plugin.
 func ValidSchema(schema string) bool {
-	return strutil.StrListContains(SupportedSchemas(), schema)
+	return slices.Contains(SupportedSchemas(), schema)
 }
 
 // GetSchemaFieldRegistry type switches field registries depending on the configured schema.

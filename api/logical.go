@@ -6,7 +6,6 @@ package api
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,8 +17,6 @@ import (
 const (
 	wrappedResponseLocation = "cubbyhole/response"
 )
-
-type InlineAuthOpts func() map[string][]string
 
 var (
 	// The default TTL that will be used with `sys/wrapping/wrap`, can be
@@ -50,77 +47,6 @@ type Logical struct {
 // Logical is used to return the client for logical-backend API calls.
 func (c *Client) Logical() *Logical {
 	return &Logical{c: c}
-}
-
-// InlineWithNamespace is used with WithInlineAuth(...) to set the namespace
-// of the inline authentication call.
-func InlineWithNamespace(ns string) InlineAuthOpts {
-	return func() map[string][]string {
-		return map[string][]string{
-			InlineAuthNamespaceHeaderName: {ns},
-		}
-	}
-}
-
-// InlineWithOperation is used with WithInlineAuth(...) to set the operation
-// of the inline authentication call.
-func InlineWithOperation(op string) InlineAuthOpts {
-	return func() map[string][]string {
-		return map[string][]string{
-			InlineAuthOperationHeaderName: {op},
-		}
-	}
-}
-
-// WithInlineAuth returns a client with no authentication information but
-// which sets headers which perform inline authentication. This
-// re-authenticates on every request and does not persist any token.
-// Operations which result in lease creation will not work.
-//
-// Refer to the OpenBao documentation for more information.
-func (c *Logical) WithInlineAuth(path string, data map[string]interface{}, opts ...InlineAuthOpts) (*Logical, error) {
-	client, err := c.c.Clone()
-	if err != nil {
-		return nil, fmt.Errorf("error cloning client: %w", err)
-	}
-
-	headers := client.Headers()
-	for h := range client.Headers() {
-		if strings.HasPrefix(h, InlineAuthParameterHeaderPrefix) {
-			delete(headers, h)
-		}
-	}
-
-	delete(headers, InlineAuthOperationHeaderName)
-	delete(headers, InlineAuthNamespaceHeaderName)
-	delete(headers, AuthHeaderName)
-
-	headers[InlineAuthPathHeaderName] = []string{path}
-
-	for _, opt := range opts {
-		oHeader := opt()
-		for name, value := range oHeader {
-			headers[name] = value
-		}
-	}
-
-	for key, value := range data {
-		jEncoded, err := json.Marshal(map[string]interface{}{
-			"key":   key,
-			"value": value,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to encode inline auth data key `%v`: %w", key, err)
-		}
-
-		b64Encoded := base64.RawURLEncoding.EncodeToString(jEncoded)
-		headers[fmt.Sprintf("%v%v", InlineAuthParameterHeaderPrefix, key)] = []string{b64Encoded}
-	}
-
-	client.ClearToken()
-	client.SetHeaders(headers)
-
-	return &Logical{c: client}, nil
 }
 
 func (c *Logical) Read(path string) (*Secret, error) {
@@ -188,7 +114,7 @@ func (c *Logical) ReadRawWithDataWithContext(ctx context.Context, path string, d
 
 func (c *Logical) ParseRawResponseAndCloseBody(resp *Response, err error) (*Secret, error) {
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -247,7 +173,7 @@ func (c *Logical) ListWithContext(ctx context.Context, path string) (*Secret, er
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -288,7 +214,7 @@ func (c *Logical) ListPageWithContext(ctx context.Context, path string, after st
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -327,7 +253,7 @@ func (c *Logical) ScanWithContext(ctx context.Context, path string) (*Secret, er
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -368,7 +294,7 @@ func (c *Logical) ScanPageWithContext(ctx context.Context, path string, after st
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -431,7 +357,7 @@ func (c *Logical) write(ctx context.Context, request *Request) (*Secret, error) 
 
 	resp, err := c.c.rawRequestWithContext(ctx, request)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -487,7 +413,7 @@ func (c *Logical) DeleteWithDataWithContext(ctx context.Context, path string, da
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -536,7 +462,7 @@ func (c *Logical) UnwrapWithContext(ctx context.Context, wrappingToken string) (
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp == nil || resp.StatusCode != 404 {
 		if err != nil {

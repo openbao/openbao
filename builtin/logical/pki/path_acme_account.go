@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -232,7 +231,7 @@ func (b *backend) acmeAccountSearchHandler(acmeCtx *acmeContext, userCtx *jwsCtx
 	// > If a client sends such a request and an account does not exist,
 	// > then the server MUST return an error response with status code
 	// > 400 (Bad Request) and type "urn:ietf:params:acme:error:accountDoesNotExist".
-	return nil, fmt.Errorf("An account with this key does not exist: %w", ErrAccountDoesNotExist)
+	return nil, fmt.Errorf("an account with this key does not exist: %w", ErrAccountDoesNotExist)
 }
 
 func (b *backend) acmeNewAccountCreateHandler(acmeCtx *acmeContext, userCtx *jwsCtx, contact []string, termsOfServiceAgreed bool, r *logical.Request, eabData map[string]interface{}) (*logical.Response, error) {

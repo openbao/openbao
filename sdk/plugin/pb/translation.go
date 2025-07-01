@@ -74,30 +74,30 @@ func ErrToProtoErr(e error) *ProtoError {
 		ErrType: ErrTypeUnknown,
 	}
 
-	switch e.(type) {
+	switch err := e.(type) {
 	case errutil.UserError:
 		pbErr.ErrType = ErrTypeUserError
 	case errutil.InternalError:
 		pbErr.ErrType = ErrTypeInternalError
 	case logical.HTTPCodedError:
 		pbErr.ErrType = ErrTypeCodedError
-		pbErr.ErrCode = int64(e.(logical.HTTPCodedError).Code())
+		pbErr.ErrCode = int64(err.Code())
 	case *logical.StatusBadRequest:
 		pbErr.ErrType = ErrTypeStatusBadRequest
 	}
 
-	switch {
-	case e == logical.ErrUnsupportedOperation:
+	switch e {
+	case logical.ErrUnsupportedOperation:
 		pbErr.ErrType = ErrTypeUnsupportedOperation
-	case e == logical.ErrUnsupportedPath:
+	case logical.ErrUnsupportedPath:
 		pbErr.ErrType = ErrTypeUnsupportedPath
-	case e == logical.ErrInvalidRequest:
+	case logical.ErrInvalidRequest:
 		pbErr.ErrType = ErrTypeInvalidRequest
-	case e == logical.ErrPermissionDenied:
+	case logical.ErrPermissionDenied:
 		pbErr.ErrType = ErrTypePermissionDenied
-	case e == logical.ErrMultiAuthzPending:
+	case logical.ErrMultiAuthzPending:
 		pbErr.ErrType = ErrTypeMultiAuthzPending
-	case e == logical.ErrUnrecoverable:
+	case logical.ErrUnrecoverable:
 		pbErr.ErrType = ErrTypeUnrecoverable
 	}
 

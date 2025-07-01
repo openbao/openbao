@@ -34,7 +34,7 @@ func XORBase64(a, b string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error decoding first base64 value: %w", err)
 	}
-	if aBytes == nil || len(aBytes) == 0 {
+	if len(aBytes) == 0 {
 		return nil, errors.New("decoded first base64 value is nil or empty")
 	}
 
@@ -42,7 +42,7 @@ func XORBase64(a, b string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error decoding second base64 value: %w", err)
 	}
-	if bBytes == nil || len(bBytes) == 0 {
+	if len(bBytes) == 0 {
 		return nil, errors.New("decoded second base64 value is nil or empty")
 	}
 

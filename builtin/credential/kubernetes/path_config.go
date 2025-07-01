@@ -6,13 +6,9 @@ package kubeauth
 import (
 	"context"
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
-	"errors"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -170,7 +166,7 @@ func (b *kubeAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Requ
 
 	var err error
 	for i, pem := range pemList {
-		config.PublicKeys[i], err = parsePublicKeyPEM([]byte(pem))
+		config.PublicKeys[i], err = certutil.ParsePublicKeyPEM([]byte(pem))
 		if err != nil {
 			return logical.ErrorResponse(err.Error()), nil
 		}
@@ -214,31 +210,6 @@ type kubeConfig struct {
 	// the local CA cert and service account jwt when running in a Kubernetes
 	// pod
 	DisableLocalCAJwt bool `json:"disable_local_ca_jwt"`
-}
-
-// PasrsePublicKeyPEM is used to parse RSA and ECDSA public keys from PEMs
-func parsePublicKeyPEM(data []byte) (crypto.PublicKey, error) {
-	block, data := pem.Decode(data)
-	if block != nil {
-		var rawKey interface{}
-		var err error
-		if rawKey, err = x509.ParsePKIXPublicKey(block.Bytes); err != nil {
-			if cert, err := x509.ParseCertificate(block.Bytes); err == nil {
-				rawKey = cert.PublicKey
-			} else {
-				return nil, err
-			}
-		}
-
-		if rsaPublicKey, ok := rawKey.(*rsa.PublicKey); ok {
-			return rsaPublicKey, nil
-		}
-		if ecPublicKey, ok := rawKey.(*ecdsa.PublicKey); ok {
-			return ecPublicKey, nil
-		}
-	}
-
-	return nil, errors.New("data does not contain any valid RSA or ECDSA public keys")
 }
 
 const (

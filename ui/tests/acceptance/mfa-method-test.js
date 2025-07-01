@@ -5,7 +5,7 @@
 
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
-import { click, currentRouteName, currentURL, fillIn, visit } from '@ember/test-helpers';
+import { click, currentRouteName, currentURL, fillIn, visit, settled } from '@ember/test-helpers';
 import authPage from 'vault/tests/pages/auth';
 import logout from 'vault/tests/pages/logout';
 import { setupMirage } from 'ember-cli-mirage/test-support';
@@ -24,10 +24,11 @@ module('Acceptance | mfa-method', function (hooks) {
     this.store = this.owner.lookup('service:store');
     this.getMethods = () =>
       ['Totp', 'Duo', 'Okta', 'Pingid'].reduce((methods, type) => {
-        methods.addObjects(this.server.db[`mfa${type}Methods`].where({}));
+        methods = [...new Set([...methods, ...this.server.db[`mfa${type}Methods`].where({})])];
         return methods;
       }, []);
     await logout.visit();
+    await settled();
     return authPage.login();
   });
   hooks.after(function () {
@@ -97,7 +98,7 @@ module('Acceptance | mfa-method', function (hooks) {
     // ensure methods are tied to an enforcement
     this.server.get('/identity/mfa/login-enforcement', () => {
       const record = this.server.create('mfa-login-enforcement', {
-        mfa_method_ids: this.getMethods().mapBy('id'),
+        mfa_method_ids: this.getMethods().map((x) => x.id),
       });
       return {
         data: {

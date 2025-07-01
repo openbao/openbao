@@ -173,8 +173,8 @@ type Request struct {
 	// accessible.
 	Unauthenticated bool `json:"unauthenticated" structs:"unauthenticated" mapstructure:"unauthenticated"`
 
-	// MFACreds holds the parsed MFA information supplied over the API as part of
-	// X-Vault-MFA header
+	// MFACreds holds the parsed MFA information supplied over the API as part
+	// of the X-Vault-MFA header.
 	MFACreds MFACreds `json:"mfa_creds" structs:"mfa_creds" mapstructure:"mfa_creds" sentinel:""`
 
 	// Cached token entry. This avoids another lookup in request handling when
@@ -185,12 +185,8 @@ type Request struct {
 	// properly use the token.
 	tokenEntry *TokenEntry
 
-	// For replication, contains the last WAL on the remote side after handling
-	// the request, used for best-effort avoidance of stale read-after-write
-	lastRemoteWAL uint64
-
-	// ClientTokenSource tells us where the client token was sourced from, so
-	// we can delete it before sending off to plugins
+	// ClientTokenSource tells us where the client token was sourced from, so we
+	// can delete it before sending off to plugins
 	ClientTokenSource ClientTokenSource
 
 	// HTTPRequest, if set, can be used to access fields from the HTTP request
@@ -364,21 +360,21 @@ type Operation string
 const (
 	// The operations below are called per path
 	CreateOperation         Operation = "create"
-	ReadOperation                     = "read"
-	UpdateOperation                   = "update"
-	PatchOperation                    = "patch"
-	DeleteOperation                   = "delete"
-	ListOperation                     = "list"
-	ScanOperation                     = "scan"
-	HelpOperation                     = "help"
-	AliasLookaheadOperation           = "alias-lookahead"
-	ResolveRoleOperation              = "resolve-role"
-	HeaderOperation                   = "header"
+	ReadOperation           Operation = "read"
+	UpdateOperation         Operation = "update"
+	PatchOperation          Operation = "patch"
+	DeleteOperation         Operation = "delete"
+	ListOperation           Operation = "list"
+	ScanOperation           Operation = "scan"
+	HelpOperation           Operation = "help"
+	AliasLookaheadOperation Operation = "alias-lookahead"
+	ResolveRoleOperation    Operation = "resolve-role"
+	HeaderOperation         Operation = "header"
 
 	// The operations below are called globally, the path is less relevant.
 	RevokeOperation   Operation = "revoke"
-	RenewOperation              = "renew"
-	RollbackOperation           = "rollback"
+	RenewOperation    Operation = "renew"
+	RollbackOperation Operation = "rollback"
 )
 
 type MFACreds map[string][]string

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v5"
 )
 
 var (
@@ -281,7 +281,7 @@ func (r *LifetimeWatcher) doRenewWithOptions(tokenMode bool, nonRenewable bool, 
 		}
 
 		var remainingLeaseDuration time.Duration
-		fallbackLeaseDuration := initialTime.Add(priorDuration).Sub(time.Now())
+		fallbackLeaseDuration := time.Until(initialTime.Add(priorDuration))
 		var renewal *Secret
 		var err error
 
@@ -305,17 +305,14 @@ func (r *LifetimeWatcher) doRenewWithOptions(tokenMode bool, nonRenewable bool, 
 				}
 
 				// Calculate remaining duration until initial token lease expires
-				remainingLeaseDuration = initialTime.Add(time.Duration(initLeaseDuration) * time.Second).Sub(time.Now())
+				remainingLeaseDuration = time.Until(initialTime.Add(time.Duration(initLeaseDuration) * time.Second))
 				if errorBackoff == nil {
 					errorBackoff = &backoff.ExponentialBackOff{
-						MaxElapsedTime:      remainingLeaseDuration,
 						RandomizationFactor: backoff.DefaultRandomizationFactor,
 						InitialInterval:     initialRetryInterval,
 						MaxInterval:         5 * time.Minute,
 						Multiplier:          2,
-						Clock:               backoff.SystemClock,
 					}
-					errorBackoff.Reset()
 				}
 				break
 			}
@@ -349,7 +346,7 @@ func (r *LifetimeWatcher) doRenewWithOptions(tokenMode bool, nonRenewable bool, 
 
 		if errorBackoff == nil {
 			sleepDuration = r.calculateSleepDuration(remainingLeaseDuration, priorDuration)
-		} else if errorBackoff.NextBackOff() == backoff.Stop {
+		} else if errorBackoff.NextBackOff() == backoff.Stop || remainingLeaseDuration < 0 {
 			return err
 		}
 

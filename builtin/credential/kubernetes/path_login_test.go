@@ -21,9 +21,10 @@ import (
 	"testing"
 	"time"
 
-	josejwt "github.com/go-jose/go-jose/v3/jwt"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -137,11 +138,11 @@ var (
 }`
 
 	// computed below by init()
-	jwtGoodDataToken          = ""
-	jwtBadServiceAccountToken = ""
-	jwtBadSigningKeyToken     = ""
-	jwtProjectedDataExpired   = ""
-	jwtProjectedData          = ""
+	jwtGoodDataToken          func() string
+	jwtBadServiceAccountToken func() string
+	jwtBadSigningKeyToken     func() string
+	jwtProjectedDataExpired   func() string
+	jwtProjectedData          func() string
 )
 
 func init() {
@@ -157,21 +158,27 @@ func init() {
 
 	var blockBytes []byte
 	blockBytes, err = x509.MarshalPKIXPublicKey(ecdsaPrivateKey.Public())
+	if err != nil {
+		panic(err)
+	}
+
 	ecdsaPublicKeyText := pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: blockBytes,
 	})
 	testDefaultPEMs = []string{string(ecdsaPublicKeyText)}
 
-	jwtGoodDataToken = jwtSign(jwtES256Header, patchIat(jwtGoodDataPayload), ecdsaPrivateKey)
-	jwtBadServiceAccountToken = jwtSign(jwtES256Header, patchIat(jwtBadServiceAccountPayload), ecdsaPrivateKey)
+	jwtGoodDataToken = func() string { return jwtSign(jwtES256Header, patchIat(jwtGoodDataPayload), ecdsaPrivateKey) }
+	jwtBadServiceAccountToken = func() string { return jwtSign(jwtES256Header, patchIat(jwtBadServiceAccountPayload), ecdsaPrivateKey) }
 
-	jwtProjectedData = jwtSign(jwtES256Header, patchExp(patchIat(jwtProjectedDataPayload)), ecdsaPrivateKey)
+	jwtProjectedData = func() string {
+		return jwtSign(jwtES256Header, patchExp(patchIat(jwtProjectedDataPayload)), ecdsaPrivateKey)
+	}
 	// don't patch Issued At
-	jwtProjectedDataExpired = jwtSign(jwtES256Header, jwtProjectedDataExpiredPayload, ecdsaPrivateKey)
+	jwtProjectedDataExpired = func() string { return jwtSign(jwtES256Header, jwtProjectedDataExpiredPayload, ecdsaPrivateKey) }
 
 	// sign with an unknown key
-	jwtBadSigningKeyToken = jwtSign(jwtES256Header, patchIat(jwtInvalidPayload), ecdsaOtherPrivateKey)
+	jwtBadSigningKeyToken = func() string { return jwtSign(jwtES256Header, patchIat(jwtInvalidPayload), ecdsaOtherPrivateKey) }
 }
 
 // patches in the Issued At time to be now
@@ -217,10 +224,12 @@ func jwtSign(header string, payload string, privateKey *ecdsa.PrivateKey) string
 	if err != nil {
 		panic(err)
 	}
-	rBytes := r.Bytes()
-	sBytes := s.Bytes()
-	rBytes = append(rBytes, sBytes...)
-	sig64 := strings.ReplaceAll(base64.URLEncoding.EncodeToString(rBytes), "=", "")
+	curveKeyLenBytes := (privateKey.Curve.Params().BitSize + 7) / 8 // rounding up for P521
+	sig := make([]byte, 2*curveKeyLenBytes)
+	r.FillBytes(sig[:curveKeyLenBytes])
+	s.FillBytes(sig[curveKeyLenBytes:])
+
+	sig64 := strings.ReplaceAll(base64.URLEncoding.EncodeToString(sig), "=", "")
 	return toSign + "." + sig64
 }
 
@@ -296,6 +305,10 @@ func setupBackend(t *testing.T, config *testBackendConfig) (logical.Backend, log
 func TestLogin(t *testing.T) {
 	b, storage := setupBackend(t, defaultTestBackendConfig())
 
+	jwtGoodDataToken := jwtGoodDataToken()
+	jwtBadServiceAccountToken := jwtBadServiceAccountToken()
+	jwtBadSigningKeyToken := jwtBadSigningKeyToken()
+
 	// Test bad inputs
 	data := map[string]interface{}{
 		"jwt": jwtGoodDataToken,
@@ -309,8 +322,11 @@ func TestLogin(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp == nil || !resp.IsError() {
-		t.Fatal("expected error")
+		t.Fatal("expected error response")
 	}
 	if resp.Error().Error() != "missing role" {
 		t.Fatalf("unexpected error: %s", resp.Error())
@@ -328,6 +344,9 @@ func TestLogin(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -348,6 +367,9 @@ func TestLogin(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -370,7 +392,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -394,7 +416,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("Expected error")
 	} else if !errors.Is(err, logical.ErrPermissionDenied) {
@@ -478,7 +500,7 @@ func TestLogin_ContextError(t *testing.T) {
 
 	data := map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtGoodDataToken,
+		"jwt":  jwtGoodDataToken(),
 	}
 
 	req := &logical.Request{
@@ -526,7 +548,7 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 	// test successful login
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtGoodDataToken,
+		"jwt":  jwtGoodDataToken(),
 	}
 
 	req = &logical.Request{
@@ -552,7 +574,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 	// test bad jwt service account
 	data := map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtBadServiceAccountToken,
+		"jwt":  jwtBadServiceAccountToken(),
 	}
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -564,7 +586,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -576,7 +598,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 	// test successful login
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtGoodDataToken,
+		"jwt":  jwtGoodDataToken(),
 	}
 
 	req = &logical.Request{
@@ -589,7 +611,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -600,6 +622,8 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	config.saName = "*"
 	config.saNamespace = "*"
 	b, storage := setupBackend(t, config)
+
+	jwtGoodDataToken := jwtGoodDataToken()
 
 	// Test bad inputs
 	data := map[string]interface{}{
@@ -613,7 +637,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, _ := b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -632,7 +656,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -652,7 +676,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -663,7 +687,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	// test bad jwt service account
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtBadServiceAccountToken,
+		"jwt":  jwtBadServiceAccountToken(),
 	}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -675,18 +699,18 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if !errors.Is(logical.ErrPermissionDenied, err) {
+	if !errors.Is(err, logical.ErrPermissionDenied) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
 	// test bad jwt key
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtBadSigningKeyToken,
+		"jwt":  jwtBadSigningKeyToken(),
 	}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -698,10 +722,10 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("Expected error")
-	} else if !errors.Is(logical.ErrPermissionDenied, err) {
+	} else if !errors.Is(err, logical.ErrPermissionDenied) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
@@ -803,7 +827,7 @@ func TestLoginSvcAcctNamespaceSelector(t *testing.T) {
 
 			data := map[string]interface{}{
 				"role": "plugin-test",
-				"jwt":  jwtGoodDataToken,
+				"jwt":  jwtGoodDataToken(),
 			}
 
 			req := &logical.Request{
@@ -850,12 +874,12 @@ func TestAliasLookAhead(t *testing.T) {
 	}{
 		"default": {
 			role:              "plugin-test",
-			jwt:               jwtGoodDataToken,
+			jwt:               jwtGoodDataToken(),
 			config:            defaultTestBackendConfig(),
 			expectedAliasName: testUID,
 		},
 		"no_role": {
-			jwt:     jwtGoodDataToken,
+			jwt:     jwtGoodDataToken(),
 			config:  defaultTestBackendConfig(),
 			wantErr: errors.New("missing role"),
 		},
@@ -867,13 +891,13 @@ func TestAliasLookAhead(t *testing.T) {
 		"invalid_jwt": {
 			role:        "plugin-test",
 			config:      defaultTestBackendConfig(),
-			jwt:         jwtBadServiceAccountToken,
+			jwt:         jwtBadServiceAccountToken(),
 			wantErr:     errors.New("service account name not authorized"),
 			wantErrCode: http.StatusForbidden,
 		},
 		"wrong_namespace": {
 			role: "plugin-test",
-			jwt:  jwtGoodDataToken,
+			jwt:  jwtGoodDataToken(),
 			config: func() *testBackendConfig {
 				config := defaultTestBackendConfig()
 				config.saNamespace = "wrong-namespace"
@@ -884,7 +908,7 @@ func TestAliasLookAhead(t *testing.T) {
 		},
 		"serviceaccount_uid": {
 			role: "plugin-test",
-			jwt:  jwtGoodDataToken,
+			jwt:  jwtGoodDataToken(),
 			config: &testBackendConfig{
 				pems:            testDefaultPEMs,
 				saName:          testName,
@@ -895,7 +919,7 @@ func TestAliasLookAhead(t *testing.T) {
 		},
 		"serviceaccount_name": {
 			role: "plugin-test",
-			jwt:  jwtGoodDataToken,
+			jwt:  jwtGoodDataToken(),
 			config: &testBackendConfig{
 				pems:            testDefaultPEMs,
 				saName:          testName,
@@ -957,6 +981,8 @@ func TestLoginIssValidation(t *testing.T) {
 	config := defaultTestBackendConfig()
 	b, storage := setupBackend(t, config)
 
+	jwtGoodDataToken := jwtGoodDataToken()
+
 	// test iss validation enabled with default "kubernetes/serviceaccount" issuer
 	data := map[string]interface{}{
 		"kubernetes_host":        "host",
@@ -974,22 +1000,6 @@ func TestLoginIssValidation(t *testing.T) {
 	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
-
-	// test successful login with default issuer
-	data = map[string]interface{}{
-		"role": "plugin-test",
-		"jwt":  jwtGoodDataToken,
-	}
-
-	req = &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "login",
-		Storage:   storage,
-		Data:      data,
-		Connection: &logical.Connection{
-			RemoteAddr: "127.0.0.1",
-		},
 	}
 
 	// test iss validation enabled with explicitly defined issuer
@@ -1071,7 +1081,7 @@ func TestLoginIssValidation(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -1159,29 +1169,29 @@ func TestLoginProjectedToken(t *testing.T) {
 	}{
 		"normal": {
 			role:        "plugin-test",
-			jwt:         jwtGoodDataToken,
+			jwt:         jwtGoodDataToken(),
 			tokenReview: testMockTokenReviewFactory,
 		},
 		"fail": {
 			role:        "plugin-test-x",
-			jwt:         jwtGoodDataToken,
+			jwt:         jwtGoodDataToken(),
 			tokenReview: testMockTokenReviewFactory,
 			e:           roleNameError,
 		},
 		"projected-token": {
 			role:        "plugin-test",
-			jwt:         jwtProjectedData,
+			jwt:         jwtProjectedData(),
 			tokenReview: testProjectedMockTokenReviewFactory,
 		},
 		"projected-token-expired": {
 			role:        "plugin-test",
-			jwt:         jwtProjectedDataExpired,
+			jwt:         jwtProjectedDataExpired(),
 			tokenReview: testProjectedMockTokenReviewFactory,
 			e:           errors.New("invalid expiration time (exp) claim: token is expired"),
 		},
 		"projected-token-invalid-role": {
 			role:        "plugin-test-x",
-			jwt:         jwtProjectedData,
+			jwt:         jwtProjectedData(),
 			tokenReview: testProjectedMockTokenReviewFactory,
 			e:           roleNameError,
 		},
@@ -1239,7 +1249,7 @@ func TestAliasLookAheadProjectedToken(t *testing.T) {
 	b, storage := setupBackend(t, config)
 
 	data := map[string]interface{}{
-		"jwt":  jwtProjectedData,
+		"jwt":  jwtProjectedData(),
 		"role": "plugin-test",
 	}
 
@@ -1429,7 +1439,7 @@ func Test_kubeAuthBackend_getAliasName(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			tok, err := josejwt.ParseSigned(s)
+			tok, err := josejwt.ParseSigned(s, consts.AllowedJWTSignatureAlgorithmsK8s)
 			if err != nil {
 				t.Fatal(err)
 			}

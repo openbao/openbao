@@ -20,14 +20,15 @@ type Operation string
 
 const (
 	DeleteOperation Operation = "delete"
-	GetOperation              = "get"
-	ListOperation             = "list"
-	PutOperation              = "put"
+	GetOperation    Operation = "get"
+	ListOperation   Operation = "list"
+	PutOperation    Operation = "put"
 )
 
 const (
-	ErrValueTooLarge = "put failed due to value being too large"
-	ErrKeyTooLarge   = "put failed due to key being too large"
+	ErrValueTooLarge     = "put failed due to value being too large"
+	ErrKeyTooLarge       = "put failed due to key being too large"
+	ErrFencedWriteFailed = "lock has changed ownership before attempting write"
 )
 
 // Backend is the interface required for a physical
@@ -59,6 +60,16 @@ type Backend interface {
 	// thus may be omitted.
 	ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error)
 }
+
+// CacheInvalidationBackend is an extension to the standard physical
+// backend to support cache invalidation. OpenBao can serve read requests
+// from standby nodes, but only if the storage backend can inform standby
+// nodes when writes happen on the leader (to ensure caches are flushed)
+type CacheInvalidationBackend interface {
+	HookInvalidate(hook InvalidateFunc)
+}
+
+type InvalidateFunc func(key ...string)
 
 // HABackend is an extensions to the standard physical
 // backend to support high-availability. Vault only expects to
@@ -140,6 +151,7 @@ func IsUnfencedWrite(ctx context.Context) bool {
 // cache, don't use it for other things.
 type ToggleablePurgemonster interface {
 	Purge(ctx context.Context)
+	Invalidate(ctx context.Context, key string)
 	SetEnabled(bool)
 }
 
@@ -154,7 +166,7 @@ type RedirectDetect interface {
 type Lock interface {
 	// Lock is used to acquire the given lock
 	// The stopCh is optional and if closed should interrupt the lock
-	// acquisition attempt. The return struct should be closed when
+	// acquisition attempt. The returned channel will be closed when
 	// leadership is lost.
 	Lock(stopCh <-chan struct{}) (<-chan struct{}, error)
 
@@ -163,6 +175,14 @@ type Lock interface {
 
 	// Returns the value of the lock and if it is held by _any_ node
 	Value() (bool, string, error)
+}
+
+// When Lock is implemented by a remote server, typically RemoteLock
+// should also be implemented.
+type RemoteLock interface {
+	// IsActivelyHeld allows callers to online validate that this lock
+	// instance is valid, independently of a closed leader loss channel.
+	IsActivelyHeld(ctx context.Context) (bool, error)
 }
 
 // Factory is the factory function to create a physical backend.

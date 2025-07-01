@@ -5,7 +5,6 @@
 
 import { assign } from '@ember/polyfills';
 import { assert } from '@ember/debug';
-import ControlGroupError from 'vault/lib/control-group-error';
 import ApplicationAdapter from '../application';
 import { allSettled } from 'rsvp';
 import { addToArray } from 'vault/helpers/add-to-array';
@@ -78,9 +77,6 @@ export default ApplicationAdapter.extend({
       ([staticResp, dynamicResp]) => {
         if (staticResp.state === 'rejected' && dynamicResp.state === 'rejected') {
           let reason = staticResp.reason;
-          if (dynamicResp.reason instanceof ControlGroupError) {
-            throw dynamicResp.reason;
-          }
           if (reason?.httpStatus < dynamicResp.reason?.httpStatus) {
             reason = dynamicResp.reason;
           }

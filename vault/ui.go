@@ -13,6 +13,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 const (
@@ -164,7 +165,7 @@ func (c *UIConfig) get(ctx context.Context) (*uiConfigEntry, error) {
 	configRaw, uiConfigGetErr := c.barrierStorage.Get(ctx, uiConfigKey)
 
 	// Respond with error only if not sealed, otherwise do not throw the error
-	if uiConfigGetErr != nil && !strings.Contains(uiConfigGetErr.Error(), ErrBarrierSealed.Error()) {
+	if uiConfigGetErr != nil && !strings.Contains(uiConfigGetErr.Error(), barrier.ErrBarrierSealed.Error()) {
 		return nil, uiConfigGetErr
 	}
 	if configRaw == nil {
@@ -172,9 +173,6 @@ func (c *UIConfig) get(ctx context.Context) (*uiConfigEntry, error) {
 	}
 
 	config := new(uiConfigEntry)
-	if config == nil {
-		return nil, nil
-	}
 	if err := json.Unmarshal(configRaw.Value, config); err != nil {
 		return nil, err
 	}

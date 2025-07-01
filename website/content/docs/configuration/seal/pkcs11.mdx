@@ -1,13 +1,14 @@
 ---
 sidebar_label: PKCS#11 Unseal
 description: |-
-  The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the
-  autounseal mechanism.
+  The PKCS#11 seal configures OpenBao to use an HSM with PKCS#11 as the
+  auto-unseal mechanism.
 ---
+
 # `pkcs11` seal
 
-The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the autounseal
-mechanism. OpenBao's HSM PKCS11 support is activated by one of the following:
+The PKCS#11 seal configures OpenBao to use an HSM with PKCS#11 as the auto-unseal
+mechanism. OpenBao's PKCS#11 support is activated by one of the following:
 
 - The presence of a `seal "pkcs11"` block in OpenBao's configuration file
 - The presence of the environment variable `BAO_HSM_LIB` set to the library's
@@ -26,7 +27,7 @@ key material.
 :::warning
 
 Because PKCS#11 auto-unseal was not present in Vault v1.14 OSS, it is not
-expected that it is [seal-compatible](/docs/policies/migration/); manual
+expected that it is [seal-compatible](../../policies/migration.mdx); manual
 migration of data between nodes may be required.
 
 :::
@@ -41,7 +42,7 @@ The following software packages are required for OpenBao:
 
 ## `pkcs11` example
 
-This example shows configuring HSM PKCS11 seal through the OpenBao configuration
+This example shows configuring a PKCS#11 seal through the OpenBao configuration
 file by providing all the required values:
 
 ```hcl
@@ -57,7 +58,11 @@ seal "pkcs11" {
 To create the key in the HSM, use a utility like `pkcs11-tool`:
 
 ```bash
+# Example RSA key with 4096 bits
 $ pkcs11-tool --module "/usr/lib64/softhsm/libsofthsm.so" --token-label "OpenBao" --so-pin 1234 --pin 4321 --keypairgen --key-type rsa:4096 --label "bao-root-key-rsa"
+
+# Example AES key with 256 bits (32 bytes)
+$ pkcs11-tool --module "/usr/lib64/softhsm/libsofthsm.so" --token-label "OpenBao" --so-pin 1234 --pin 4321 --keygen --key-type aes:32 --label "bao-root-key-aes"
 ```
 
 ## `pkcs11` parameters
@@ -67,28 +72,28 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 - `lib` `(string: <required>)`: The path to the PKCS#11 library shared object
   file. May also be specified by the `BAO_HSM_LIB` environment variable.
 
-:::info
+  :::info
 
-Depending on your HSM, the value of the `lib` parameter may be
-either a binary or a dynamic library, and its use may require other libraries
-depending on which system the OpenBao binary is currently running on (e.g.: a
-Linux system may require other libraries to interpret Windows .dll files).
+  Depending on your HSM, the value of the `lib` parameter may be either a binary
+  or a dynamic library, and its use may require other libraries depending on
+  which system the OpenBao binary is currently running on (e.g.: a Linux system
+  may require other libraries to interpret Windows .dll files).
 
-:::
+  :::
 
 - `slot` `(string: <slot or token label required>)`: The slot number to use,
   specified as a string (e.g. `"2305843009213693953"`). May also be specified by
   the `BAO_HSM_SLOT` environment variable.
 
-:::info
+  :::info
 
-Slots are typically listed as hex-decimal values in the OS setup
-utility but this configuration uses their decimal equivalent. For example, using the
-HSM command-line `pkcs11-tool`, a slot listed as `0x2000000000000001`in hex is equal
-to `2305843009213693953` in decimal; these values may be listed shorter or
-differently as determined by the HSM in use.
+  Slots are typically listed as hex-decimal values in the OS setup utility but
+  this configuration uses their decimal equivalent. For example, using the HSM
+  command-line `pkcs11-tool`, a slot listed as `0x2000000000000001`in hex is
+  equal to `2305843009213693953` in decimal; these values may be listed shorter
+  or differently as determined by the HSM in use.
 
-:::
+  :::
 
 - `token_label` `(string: <slot or token label required>)`: The slot token label to
   use. May also be specified by the `BAO_HSM_TOKEN_LABEL` environment variable.
@@ -100,37 +105,37 @@ differently as determined by the HSM in use.
 - `key_label` `(string: <required>)`: The label of the key to use. May also be specified by the `BAO_HSM_KEY_LABEL`
   environment variable.
 
-- `default_key_label` `(string: "")`: This is the default key label for decryption
-  operations. Prior to 0.10.1, key labels were not stored with the ciphertext.
-  Seal entries now track the label used in encryption operations. The default value
-  for this field is the `key_label`. If `key_label` is rotated and this value is not
-  set, decryption may fail. May also be specified by the `BAO_HSM_DEFAULT_KEY_LABEL`
-  environment variable. This value is ignored in new installations.
-
 - `key_id` `(string: "")`: The ID of the key to use. The value should be a hexadecimal
   string (e.g., "0x33333435363434373537"). May also be specified by the
   `BAO_HSM_KEY_ID` environment variable.
 
-- `mechanism` `(string: <best available>)`: The encryption/decryption mechanism to use,
-  specified as a decimal or hexadecimal (prefixed by `0x`) string. May also be
-  specified by the `BAO_HSM_MECHANISM` environment variable.
-  Currently supported mechanisms (in order of precedence):
+- `mechanism` `(string: <best available>)`: The encryption/decryption mechanism
+  to use, specified either by name, or by decimal or hexadecimal (prefixed by
+  `0x`) string. May also be specified by the `BAO_HSM_MECHANISM` environment
+  variable. Currently supported mechanisms (in order of precedence):
 
-  - `0x1087` `CKM_AES_GCM`
-  - `0x0009` `CKM_RSA_PKCS_OAEP`
+  - Names: `AES_GCM`, `CKM_AES_GCM`, Hexadecimal: `0x1087`
+  - Names: `RSA_PKCS_OAEP`, `CKM_RSA_PKCS_OAEP`, Hexadecimal: `0x0009`
 
-:::warning
+  :::warning
 
-Unlike Vault Enterprise, OpenBao only supports AEAD-enabled algorithms and
-will not support Encrypt-Then-MAC constructs (like `CKM_AES_CBC_PAD` with
-explicit HMACing).
+  Unlike Vault Enterprise, OpenBao only supports AEAD-enabled algorithms and
+  will not support Encrypt-Then-MAC constructs (like `CKM_AES_CBC_PAD` with
+  explicit HMACing).
 
-:::
+  :::
+
+- `disable_software_encryption` `(bool: false)`: For RSA-based mechanisms,
+  OpenBao performs the encryption operation locally in memory by exporting the
+  public key from the HSM. Set this option to `true` to force calling out to the
+  HSM for all encryption operations. This option is available starting with
+  OpenBao v2.4.0. All prior versions always call out to the HSM for encryption
+  and never perform encryption in software.
 
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
-Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
-  
+Refer to the [Seal Migration](../../concepts/seal.mdx#seal-migration) documentation for more information about the seal migration process.
+
 ### Mechanism specific flags
 
 - `rsa_oaep_hash` `(string: "sha256")`: Specify the hash algorithm to use for RSA
@@ -150,7 +155,6 @@ BAO_HSM_SLOT
 BAO_HSM_TOKEN_LABEL
 BAO_HSM_PIN
 BAO_HSM_KEY_LABEL
-BAO_HSM_DEFAULT_KEY_LABEL
 BAO_HSM_KEY_ID
 BAO_HSM_MECHANISM
 BAO_HSM_RSA_OAEP_HASH
@@ -163,3 +167,11 @@ the key value, generate a new key in a different key label in the HSM and update
 configuration with the new key label value. Restart your OpenBao instance to pick up the new key
 label and all new encryption operations will use the updated key label. Old keys must not be disabled
 or deleted and are used to decrypt older data.
+
+## Tested HSM Vendors and Models
+
+| Vendor       | Model               | Unsealing   | Installation Guide                                         |
+| ------------ | --------------------| ------------| -----------------------------------------------------------|
+| Securosys SA | Primus HSM          | Yes         | [Installation Guide](../../guides/unseal/pkcs11/securosys.mdx) |
+| Utimaco      | u.trust GP HSM      | Yes         | [Installation Guide](../../guides/unseal/pkcs11/utimaco.mdx)   |
+| Utimaco      | CryptoServer CP5    | Yes         | [Installation Guide](../../guides/unseal/pkcs11/utimaco.mdx)   |

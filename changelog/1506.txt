@@ -1,0 +1,13 @@
+```release-note:feature
+**Declarative Self-Initialization**: allow server operators to define initial
+  service state through request-driven initialization that occurs
+  automatically on first server start. Operators can reference environment
+  variables and files to provision initial authentication, audit, and secret
+  mounts in addition to having full control over general requests to OpenBao
+  It is suggested to put the minimal necessary configuration in this and use
+  a proper IaC platform like OpenTofu to perform further configuration of the
+  instance.
+```
+```release-note:bug
+storage/postgresql: more graceful handling of parallel table creation
+```

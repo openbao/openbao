@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -74,7 +73,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -94,7 +93,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -108,7 +107,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -130,7 +129,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -147,7 +146,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -164,7 +163,7 @@ func TestBackend_StaticRole_Rotate_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -220,7 +219,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -240,7 +239,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -253,7 +252,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -275,7 +274,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 		Data:      data,
 	}
 	// expect resp to be an error
-	resp, _ = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, _ = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if !resp.IsError() {
 		t.Fatal("expected error rotating non-static role")
 	}
@@ -324,7 +323,7 @@ func TestBackend_StaticRole_Revoke_user(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -368,7 +367,7 @@ func TestBackend_StaticRole_Revoke_user(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -382,7 +381,7 @@ func TestBackend_StaticRole_Revoke_user(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -404,7 +403,7 @@ func TestBackend_StaticRole_Revoke_user(t *testing.T) {
 				Storage:   config.StorageView,
 			}
 
-			resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -420,10 +419,10 @@ func createTestPGUser(t *testing.T, connURL string, username, password, query st
 	log.Printf("[TRACE] Creating test user")
 
 	db, err := sql.Open("pgx", connURL)
-	defer db.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer db.Close()
 
 	// Start a transaction
 	ctx := context.Background()
@@ -508,14 +507,13 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 	cluster, sys := getCluster(t)
 	defer cluster.Cleanup()
 
-	ctx := context.Background()
-
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
+	ctx := namespace.RootContext(t.Context())
 	roleName := "test-discard-by-date"
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(ctx, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -545,7 +543,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -572,20 +570,20 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
 	// Allow the first rotation to occur, setting LastVaultRotation
-	time.Sleep(time.Second * 12)
+	time.Sleep(time.Second * 11)
 
 	// Cleanup the backend, then create a WAL for the role with a
 	// LastVaultRotation of 1 hour ago, so that when we recreate the backend the
 	// WAL will be read but discarded
 	b.Cleanup(ctx)
 	b = nil
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second)
 
 	// Make a fake WAL entry with an older time
 	oldRotationTime := roleTime.Add(time.Hour * -1)
@@ -603,7 +601,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 	assertWALCount(t, config.StorageView, 1, staticWALKey)
 
 	// Reload backend
-	lb, err = Factory(context.Background(), config)
+	lb, err = Factory(ctx, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -614,7 +612,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 	defer b.Cleanup(ctx)
 
 	// Allow enough time for populateQueue to work after boot
-	time.Sleep(time.Second * 12)
+	time.Sleep(time.Second * 10)
 
 	// PopulateQueue should have processed the entry
 	assertWALCount(t, config.StorageView, 0, staticWALKey)
@@ -627,7 +625,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -647,7 +645,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 		Path:      "static-creds/" + roleName,
 		Storage:   config.StorageView,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -754,7 +752,7 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -782,7 +780,7 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -801,7 +799,7 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -829,18 +827,18 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 		if len(v) < 3 {
 			t.Fatalf("expected to find 3 passwords for (%s), only found (%d)", k, len(v))
 		}
-		switch {
-		case k == "plugin-static-role-10":
+		switch k {
+		case "plugin-static-role-10":
 			// expect all passwords to be different
 			if v[0] == v[1] || v[1] == v[2] || v[0] == v[2] {
 				pass = false
 			}
-		case k == "plugin-static-role-20":
+		case "plugin-static-role-20":
 			// expect the first two to be equal, but different from the third
 			if v[0] != v[1] || v[0] == v[2] {
 				pass = false
 			}
-		case k == "plugin-static-role-100":
+		case "plugin-static-role-100":
 			// expect all passwords to be equal
 			if v[0] != v[1] || v[1] != v[2] {
 				pass = false
@@ -852,12 +850,6 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 	if !pass {
 		t.Fatalf("password rotations did not match expected: %#v", pws)
 	}
-}
-
-type createUserCommand struct {
-	Username string        `bson:"createUser"`
-	Password string        `bson:"pwd"`
-	Roles    []interface{} `bson:"roles"`
 }
 
 // Demonstrates a bug fix for the credential rotation not releasing locks
@@ -897,7 +889,7 @@ func TestBackend_StaticRole_LockRegression(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -917,7 +909,7 @@ func TestBackend_StaticRole_LockRegression(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -929,7 +921,7 @@ func TestBackend_StaticRole_LockRegression(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -981,7 +973,7 @@ func TestBackend_StaticRole_Rotate_Invalid_Role(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1001,7 +993,7 @@ func TestBackend_StaticRole_Rotate_Invalid_Role(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1022,7 +1014,7 @@ func TestBackend_StaticRole_Rotate_Invalid_Role(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -1315,7 +1307,7 @@ func setupMockDB(b *databaseBackend) *mockNewDatabase {
 // plugin init code paths, allowing us to use a manually populated mock DB object.
 func configureDBMount(t *testing.T, storage logical.Storage) {
 	t.Helper()
-	entry, err := logical.StorageEntryJSON(fmt.Sprintf("config/mockv5"), &DatabaseConfig{
+	entry, err := logical.StorageEntryJSON("config/mockv5", &DatabaseConfig{
 		AllowedRoles: []string{"*"},
 	})
 	if err != nil {
@@ -1340,7 +1332,7 @@ func capturePasswords(t *testing.T, b logical.Backend, config *logical.BackendCo
 			Path:      "static-creds/" + roleName,
 			Storage:   config.StorageView,
 		}
-		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}

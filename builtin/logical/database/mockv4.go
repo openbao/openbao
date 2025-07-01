@@ -52,10 +52,10 @@ func (m MockDatabaseV4) Initialize(ctx context.Context, config map[string]interf
 	return err
 }
 
-func (m MockDatabaseV4) CreateUser(ctx context.Context, statements v4.Statements, usernameConfig v4.UsernameConfig, expiration time.Time) (username string, password string, err error) {
+func (m MockDatabaseV4) CreateUser(ctx context.Context, statements v4.Statements, usernameConfig v4.UsernameConfig, expiration time.Time) (username string, password string, err error) { //nolint:govet // we can't change this, the interface is released
 	log.Default().Info("CreateUser called",
-		"statements", statements,
-		"usernameConfig", usernameConfig,
+		"statements", &statements,
+		"usernameConfig", &usernameConfig,
 		"expiration", expiration)
 
 	now := time.Now()
@@ -67,18 +67,18 @@ func (m MockDatabaseV4) CreateUser(ctx context.Context, statements v4.Statements
 	return user, pass, nil
 }
 
-func (m MockDatabaseV4) RenewUser(ctx context.Context, statements v4.Statements, username string, expiration time.Time) error {
+func (m MockDatabaseV4) RenewUser(ctx context.Context, statements v4.Statements, username string, expiration time.Time) error { //nolint:govet // we can't change this, the interface is released
 	log.Default().Info("RenewUser called",
-		"statements", statements,
+		"statements", &statements,
 		"username", username,
 		"expiration", expiration)
 
 	return nil
 }
 
-func (m MockDatabaseV4) RevokeUser(ctx context.Context, statements v4.Statements, username string) error {
+func (m MockDatabaseV4) RevokeUser(ctx context.Context, statements v4.Statements, username string) error { //nolint:govet // we can't change this, the interface is released
 	log.Default().Info("RevokeUser called",
-		"statements", statements,
+		"statements", &statements,
 		"username", username)
 
 	return nil
@@ -92,15 +92,15 @@ func (m MockDatabaseV4) RotateRootCredentials(ctx context.Context, statements []
 	if err != nil {
 		return config, fmt.Errorf("failed to generate credentials: %w", err)
 	}
-	config["password"] = newPassword
+	m.config["password"] = newPassword
 
 	return m.config, nil
 }
 
-func (m MockDatabaseV4) SetCredentials(ctx context.Context, statements v4.Statements, staticConfig v4.StaticUserConfig) (username string, password string, err error) {
+func (m MockDatabaseV4) SetCredentials(ctx context.Context, statements v4.Statements, staticConfig v4.StaticUserConfig) (username string, password string, err error) { //nolint:govet // we can't change this, the interface is released
 	log.Default().Info("SetCredentials called",
-		"statements", statements,
-		"staticConfig", staticConfig)
+		"statements", &statements,
+		"staticConfig", &staticConfig)
 	return "", "", nil
 }
 

@@ -11,8 +11,9 @@ import (
 	"fmt"
 	"net/url"
 	"sync/atomic"
+	"time"
 
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/vault/seal"
 
@@ -37,7 +38,7 @@ type InitResult struct {
 	RootToken      string
 }
 
-var initInProgress uint32
+var initInProgress atomic.Bool
 
 func (c *Core) InitializeRecovery(ctx context.Context) error {
 	if !c.recoveryMode {
@@ -79,7 +80,7 @@ func (c *Core) Initialized(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
-	rb := c.getRaftBackend()
+	rb := c.GetRaftBackend()
 	if rb != nil && rb.Initialized() {
 		return true, nil
 	}
@@ -88,11 +89,12 @@ func (c *Core) Initialized(ctx context.Context) (bool, error) {
 }
 
 // InitializedLocally checks if the Vault is already initialized from the
-// local node's perspective.  This is the same thing as Initialized, unless
+// local node's perspective. This is the same thing as Initialized, unless
 // using Raft, in which case Initialized may return true (because a peer
 // we're joining to has been initialized) while InitializedLocally returns
 // false (because we're not done bootstrapping raft on the local node).
 func (c *Core) InitializedLocally(ctx context.Context) (bool, error) {
+	ctx = namespace.RootContext(ctx)
 	// Check the barrier first
 	init, err := c.barrier.Initialized(ctx)
 	if err != nil {
@@ -118,7 +120,7 @@ func (c *Core) InitializedLocally(ctx context.Context) (bool, error) {
 
 func (c *Core) generateShares(sc *SealConfig) ([]byte, [][]byte, error) {
 	// Generate a root key
-	rootKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+	rootKey, err := c.barrier.GenerateKey()
 	if err != nil {
 		return nil, nil, fmt.Errorf("key generation failed: %w", err)
 	}
@@ -155,8 +157,37 @@ func (c *Core) generateShares(sc *SealConfig) ([]byte, [][]byte, error) {
 // Initialize is used to initialize the Vault with the given
 // configurations.
 func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitResult, error) {
-	atomic.StoreUint32(&initInProgress, 1)
-	defer atomic.StoreUint32(&initInProgress, 0)
+	results, err := c.initializeInternal(ctx, initParams)
+	if err != nil {
+		return results, err
+	}
+
+	if c.seal.RecoveryKeySupported() {
+		recoveryConfig, err := c.seal.RecoveryConfig(ctx)
+		if err != nil {
+			// Discard the error; we know we initialized successfully.
+			c.logger.Error("failed to read recovery configuration", "err", err)
+			return results, nil
+		}
+
+		if recoveryConfig.SecretShares == 0 {
+			// When we have no recovery keys generated on an auto-unseal
+			// mechanism, the caller has no option but to restart the service.
+			// This ensures we can start using the node immediately.
+			if err := c.UnsealWithStoredKeys(ctx); err != nil {
+				// Discard this error; caller will need the root key to debug.
+				c.logger.Error("failed to automatically unseal after initialization with no recovery keys", "err", err)
+				return results, nil
+			}
+		}
+	}
+
+	return results, nil
+}
+
+func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (*InitResult, error) {
+	initInProgress.Store(true)
+	defer initInProgress.Store(false)
 	barrierConfig := initParams.BarrierConfig
 	recoveryConfig := initParams.RecoveryConfig
 
@@ -168,43 +199,12 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 	// which means both that the shares will be different *AND* there would
 	// need to be a way to actually allow fetching of the generated keys by
 	// operators.
-	if c.SealAccess().StoredKeysSupported() == seal.StoredKeysSupportedGeneric {
+	if c.SealAccess().BarrierType() != seal.WrapperTypeShamir {
 		if len(barrierConfig.PGPKeys) > 0 {
-			return nil, errors.New("PGP keys not supported when storing shares")
+			return nil, errors.New("PGP keys not supported when using auto unseal")
 		}
 		barrierConfig.SecretShares = 1
 		barrierConfig.SecretThreshold = 1
-		if barrierConfig.StoredShares != 1 {
-			c.Logger().Warn("stored keys supported on init, forcing shares/threshold to 1")
-		}
-	}
-
-	barrierConfig.StoredShares = 1
-
-	if len(barrierConfig.PGPKeys) > 0 && len(barrierConfig.PGPKeys) != barrierConfig.SecretShares {
-		return nil, errors.New("incorrect number of PGP keys")
-	}
-
-	if c.SealAccess().RecoveryKeySupported() {
-		if len(recoveryConfig.PGPKeys) > 0 && len(recoveryConfig.PGPKeys) != recoveryConfig.SecretShares {
-			return nil, errors.New("incorrect number of PGP keys for recovery")
-		}
-	}
-
-	if c.seal.RecoveryKeySupported() {
-		if recoveryConfig == nil {
-			return nil, errors.New("recovery configuration must be supplied")
-		}
-
-		if recoveryConfig.SecretShares < 1 {
-			return nil, errors.New("recovery configuration must specify a positive number of shares")
-		}
-
-		// Check if the seal configuration is valid
-		if err := recoveryConfig.Validate(); err != nil {
-			c.logger.Error("invalid recovery configuration", "error", err)
-			return nil, fmt.Errorf("invalid recovery configuration: %w", err)
-		}
 	}
 
 	// Check if the seal configuration is valid
@@ -213,7 +213,19 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		return nil, fmt.Errorf("invalid seal configuration: %w", err)
 	}
 
-	// Avoid an initialization race
+	if c.seal.RecoveryKeySupported() {
+		if recoveryConfig == nil {
+			return nil, errors.New("recovery configuration must be supplied")
+		}
+
+		// Check if the seal configuration is valid
+		if err := recoveryConfig.ValidateRecovery(); err != nil {
+			c.logger.Error("invalid recovery configuration", "error", err)
+			return nil, fmt.Errorf("invalid recovery configuration: %w", err)
+		}
+	}
+
+	// Avoid an initialization race on the local node.
 	c.stateLock.Lock()
 	defer c.stateLock.Unlock()
 
@@ -228,7 +240,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 
 	// Bootstrap the raft backend if that's provided as the physical or
 	// HA backend.
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	if raftBackend != nil {
 		err := c.RaftBootstrap(ctx, true)
 		if err != nil {
@@ -244,22 +256,72 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		}()
 	}
 
-	err = c.seal.Init(ctx)
-	if err != nil {
+	// If we have a HA backend, acquire an initialization lock. This type of
+	// race condition is possible on some storage backends which allow
+	// multiple writers, such as PostgreSQL, with declarative initialization
+	// if multiple nodes come up at the same exact time.
+	if c.ha != nil {
+		// Create a lock
+		uuid, err := uuid.GenerateUUID()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate uuid: %w", err)
+		}
+		lock, err := c.ha.LockWith(CoreInitLockPath, uuid)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create initialization lock: %w", err)
+		}
+
+		stopCh := make(chan struct{})
+		go func() {
+			// Add a timeout for lock acquisition: if multiple nodes race to
+			// acquire this lock, we wish to stop the losing nodes rather than
+			// hang indefinitely. One initialization is sufficient in this
+			// case.
+			time.Sleep(5 * time.Second)
+			stopCh <- struct{}{}
+		}()
+
+		// This lock should not be held long enough to trigger a loss of
+		// leadership so ignore the loss channel.
+		_, err = lock.Lock(stopCh)
+		if err != nil {
+			c.logger.Error("got error acquiring lock", "error", err)
+			return nil, ErrParallelInit
+		}
+
+		// Check if we are initialized again after acquiring this lock.
+		init, err = c.InitializedLocally(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if init {
+			return nil, ErrAlreadyInit
+		}
+
+		c.logger.Info("acquired HA initialization lock")
+
+		defer func() {
+			if err := lock.Unlock(); err != nil {
+				c.logger.Error("failed to unlock initialization lock", "error", err)
+			}
+		}()
+	}
+
+	if err = c.seal.Init(ctx); err != nil {
 		c.logger.Error("failed to initialize seal", "error", err)
 		return nil, fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	barrierKey, barrierKeyShares, err := c.generateShares(barrierConfig)
+	barrierKey, err := c.barrier.GenerateKey()
 	if err != nil {
-		c.logger.Error("error generating shares", "error", err)
+		c.logger.Error("error generating barrier root key", "error", err)
 		return nil, err
 	}
 
 	var sealKey []byte
 	var sealKeyShares [][]byte
 
-	if barrierConfig.StoredShares == 1 && c.seal.BarrierType() == wrapping.WrapperTypeShamir {
+	if c.seal.BarrierType() == seal.WrapperTypeShamir {
 		sealKey, sealKeyShares, err = c.generateShares(barrierConfig)
 		if err != nil {
 			c.logger.Error("error generating shares", "error", err)
@@ -268,12 +330,12 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 	}
 
 	// Initialize the barrier
-	if err := c.barrier.Initialize(ctx, barrierKey, sealKey, c.secureRandomReader); err != nil {
+	if err := c.barrier.Initialize(ctx, barrierKey, sealKey); err != nil {
 		c.logger.Error("failed to initialize barrier", "error", err)
 		return nil, fmt.Errorf("failed to initialize barrier: %w", err)
 	}
 	if c.logger.IsInfo() {
-		c.logger.Info("security barrier initialized", "stored", barrierConfig.StoredShares, "shares", barrierConfig.SecretShares, "threshold", barrierConfig.SecretThreshold)
+		c.logger.Info("security barrier initialized", "shares", barrierConfig.SecretShares, "threshold", barrierConfig.SecretThreshold)
 	}
 
 	// Unseal the barrier
@@ -287,8 +349,8 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		// Defers are LIFO so we need to run this here too to ensure the stop
 		// happens before sealing. preSeal also stops, so we just make the
 		// stopping safe against multiple calls.
-		if err := c.barrier.Seal(); err != nil {
-			c.logger.Error("failed to seal barrier", "error", err)
+		if err := c.sealManager.sealAll(); err != nil {
+			c.logger.Error("failed to seal all barriers", "error", err)
 		}
 	}()
 
@@ -302,10 +364,9 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		SecretShares: [][]byte{},
 	}
 
-	// If we are storing shares, pop them out of the returned results and push
-	// them through the seal
-	switch c.seal.StoredKeysSupported() {
-	case seal.StoredKeysSupportedShamirRoot:
+	// Pop generated shares out of the returned results and push through the seal.
+	switch c.seal.BarrierType() {
+	case seal.WrapperTypeShamir:
 		keysToStore := [][]byte{barrierKey}
 		shamirWrapper, err := c.seal.GetShamirWrapper()
 		if err != nil {
@@ -320,16 +381,12 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 			return nil, fmt.Errorf("failed to store keys: %w", err)
 		}
 		results.SecretShares = sealKeyShares
-	case seal.StoredKeysSupportedGeneric:
+	default:
 		keysToStore := [][]byte{barrierKey}
 		if err := c.seal.SetStoredKeys(ctx, keysToStore); err != nil {
 			c.logger.Error("failed to store keys", "error", err)
 			return nil, fmt.Errorf("failed to store keys: %w", err)
 		}
-	default:
-		// We don't support initializing an old-style Shamir seal anymore, so
-		// this case is only reachable by tests.
-		results.SecretShares = barrierKeyShares
 	}
 
 	// Perform initial setup
@@ -338,7 +395,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		return nil, err
 	}
 
-	activeCtx, ctxCancel := context.WithCancel(namespace.RootContext(nil))
+	activeCtx, ctxCancel := context.WithCancel(namespace.RootContext(ctx))
 	if err := c.postUnseal(activeCtx, ctxCancel, standardUnsealStrategy{}); err != nil {
 		c.logger.Error("post-unseal setup failed during init", "error", err)
 		return nil, err
@@ -421,7 +478,7 @@ func (c *Core) UnsealWithStoredKeys(ctx context.Context) error {
 	c.unsealWithStoredKeysLock.Lock()
 	defer c.unsealWithStoredKeysLock.Unlock()
 
-	if c.seal.BarrierType() == wrapping.WrapperTypeShamir {
+	if c.seal.BarrierType() == seal.WrapperTypeShamir {
 		return nil
 	}
 

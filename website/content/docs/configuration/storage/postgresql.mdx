@@ -10,10 +10,17 @@ description: |-
 The PostgreSQL storage backend is used to persist OpenBao's data in a
 [PostgreSQL][postgresql] server or cluster.
 
+:::info
+
+The minimum supported PostgreSQL is version 9.5. Support for the legacy upsert
+functionality was dropped in OpenBao v2.4.0.
+
+:::
+
 :::tip
 
 **High Availability** – the PostgreSQL storage backend supports High
-Availability. Requires PostgreSQL 9.5 or later.
+Availability.
 
 :::
 
@@ -69,10 +76,6 @@ to disable SSL.
 - `ha_table` `(string: "openbao_ha_locks")` – Specifies the name of the table to use
   for storing High Availability information. OpenBao will attempt to create it
   if missing and `skip_create_table=false` (the default).
-
-- `upsert_function` `(string: "openbao_kv_put")` – Specifies the name of the
-  function to execute for upsert capabilities on PostgreSQL versions earlier
-  than 9.5. This function must already exist. See above documentation.
 
 - `skip_create_table` `(string: "true|false", default "false")` - When enabled,
   will not attempt to automatically create database tables if missing. Requires
@@ -134,36 +137,6 @@ CREATE TABLE openbao_ha_locks (
   valid_until                                 TIMESTAMP WITH TIME ZONE NOT NULL,
   CONSTRAINT ha_key PRIMARY KEY (ha_key)
 );
-```
-
-If you're using a version of PostgreSQL prior to 9.5, create the following function:
-
-```sql
-CREATE FUNCTION openbao_kv_put(_parent_path TEXT, _path TEXT, _key TEXT, _value BYTEA) RETURNS VOID AS
-$$
-BEGIN
-    LOOP
-        -- first try to update the key
-        UPDATE openbao_kv_store
-          SET (parent_path, path, key, value) = (_parent_path, _path, _key, _value)
-          WHERE _path = path AND key = _key;
-        IF found THEN
-            RETURN;
-        END IF;
-        -- not there, so try to insert the key
-        -- if someone else inserts the same key concurrently,
-        -- we could get a unique-key failure
-        BEGIN
-            INSERT INTO openbao_kv_store (parent_path, path, key, value)
-              VALUES (_parent_path, _path, _key, _value);
-            RETURN;
-        EXCEPTION WHEN unique_violation THEN
-            -- Do nothing, and loop to try the UPDATE again.
-        END;
-    END LOOP;
-END;
-$$
-LANGUAGE plpgsql;
 ```
 
 [golang_setmaxidleconns]: https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns

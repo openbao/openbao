@@ -1,0 +1,5 @@
+```release-note:change
+sdk/helper: Removed `sdk/helper/base62`, `sdk/helper/mlock`, `sdk/helper/parseutil`, `sdk/helper/password`, `sdk/helper/strutil`, and `sdk/helper/tlsutil` packages.
+Please use `github.com/openbao/go-secure-stdlib/xxx` or `github.com/hashicorp/go-secure-stdlib/xxx` instead.
+sdk/database/helper/connutil: Removed `Initialize` from `ConnectionProducer` interface, and `SQLConnectionProducer` struct.
+```

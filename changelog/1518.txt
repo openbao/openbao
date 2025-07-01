@@ -1,0 +1,6 @@
+```release-note:feature
+**Delay recovery key generation for auto-unseal mechanisms and make rotation authenticated**:
+  Add authenticated root and recovery key rotation endpoints, allow
+  delayed recovery key generation (setting initial shares to 0).
+  Solve the issue with the unauthenticated recovery key rotation APIs.
+```

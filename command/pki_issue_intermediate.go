@@ -19,11 +19,6 @@ import (
 type PKIIssueCACommand struct {
 	*BaseCommand
 
-	flagConfig          string
-	flagReturnIndicator string
-	flagDefaultDisabled bool
-	flagList            bool
-
 	flagKeyStorageSource string
 	flagNewIssuerName    string
 }
@@ -36,9 +31,9 @@ func (c *PKIIssueCACommand) Help() string {
 	helpText := `
 Usage: bao pki issue PARENT CHILD_MOUNT options
 
-PARENT is the fully qualified path of the Certificate Authority in vault which will issue the new intermediate certificate.
+PARENT is the fully qualified path of the Certificate Authority in OpenBao which will issue the new intermediate certificate.
 
-CHILD_MOUNT is the path of the mount in vault where the new issuer is saved.
+CHILD_MOUNT is the path of the mount in OpenBao where the new issuer is saved.
 
 options are the superset of the options passed to generate/intermediate and sign-intermediate commands.  At least one option must be set.
 
@@ -323,7 +318,7 @@ func (state inCaseOfFailure) toContinue() string {
 	if !state.csrSigned {
 		message += fmt.Sprintf("You can continue to work with this Certificate Signing Request CSR PEM, by saving"+
 			" it as `pki_int.csr`: %v \n Then call `vault write %v/sign-intermediate csr=@pki_int.csr ...` adding the "+
-			"same key-value arguements as to `pki issue` (except key_type and issuer_name) to generate the certificate "+
+			"same key-value arguments as to `pki issue` (except key_type and issuer_name) to generate the certificate "+
 			"and ca_chain", state.csr, state.parentIssuer)
 	}
 	if !state.certImported {

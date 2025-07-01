@@ -1,0 +1,3 @@
+```release-note:improvement
+core: sys/seal-status: endpoint now always returns the barrier seal type, explicitly adds recovery seal type
+```

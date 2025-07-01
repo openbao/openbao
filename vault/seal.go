@@ -13,7 +13,6 @@ import (
 	"strings"
 	"sync/atomic"
 
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -22,6 +21,7 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -41,9 +41,6 @@ const (
 
 	// StoredBarrierKeysPath is the path used for storing HSM-encrypted unseal keys
 	StoredBarrierKeysPath = "core/hsm/barrier-unseal-keys"
-
-	// hsmStoredIVPath is the path to the initialization vector for stored keys
-	hsmStoredIVPath = "core/hsm/iv"
 )
 
 const (
@@ -54,15 +51,15 @@ const (
 type Seal interface {
 	SetCore(*Core)
 	Init(context.Context) error
+	SetMetaPrefix(string)
 	Finalize(context.Context) error
-	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
-	SealWrapable() bool
 	SetStoredKeys(context.Context, [][]byte) error
 	GetStoredKeys(context.Context) ([][]byte, error)
 	BarrierType() wrapping.WrapperType                  // SealAccess
 	BarrierConfig(context.Context) (*SealConfig, error) // SealAccess
 	SetBarrierConfig(context.Context, *SealConfig) error
 	SetCachedBarrierConfig(*SealConfig)
+	SetConfigAccess(barrier.SecurityBarrier)
 	RecoveryKeySupported() bool // SealAccess
 	RecoveryType() string
 	RecoveryConfig(context.Context) (*SealConfig, error) // SealAccess
@@ -72,27 +69,22 @@ type Seal interface {
 	SetRecoveryKey(context.Context, []byte) error
 	VerifyRecoveryKey(context.Context, []byte) error // SealAccess
 	GetAccess() seal.Access                          // SealAccess
-	GetShamirWrapper() (*aeadwrapper.ShamirWrapper, error)
+	GetShamirWrapper() (*seal.ShamirWrapper, error)
 }
 
 type defaultSeal struct {
-	access seal.Access
-	config atomic.Value
-	core   *Core
+	core       *Core
+	access     seal.Access
+	metaPrefix string
+
+	config       atomic.Pointer[SealConfig]
+	configAccess StorageAccess
 }
 
 var _ Seal = (*defaultSeal)(nil)
 
 func NewDefaultSeal(lowLevel seal.Access) Seal {
-	ret := &defaultSeal{
-		access: lowLevel,
-	}
-	ret.config.Store((*SealConfig)(nil))
-	return ret
-}
-
-func (d *defaultSeal) SealWrapable() bool {
-	return false
+	return &defaultSeal{access: lowLevel}
 }
 
 func (d *defaultSeal) checkCore() error {
@@ -112,10 +104,19 @@ func (d *defaultSeal) SetAccess(access seal.Access) {
 
 func (d *defaultSeal) SetCore(core *Core) {
 	d.core = core
+	// By default, we assume that seal config information is stored in
+	// plain text right on the physical storage, as is the case for the
+	// root namespace. For per-namespace seals, this can be overridden by
+	// [Seal.SetConfigAccess].
+	d.configAccess = &directStorageAccess{physical: core.physical}
 }
 
 func (d *defaultSeal) Init(ctx context.Context) error {
 	return nil
+}
+
+func (d *defaultSeal) SetMetaPrefix(metaPrefix string) {
+	d.metaPrefix = metaPrefix
 }
 
 func (d *defaultSeal) Finalize(ctx context.Context) error {
@@ -123,11 +124,7 @@ func (d *defaultSeal) Finalize(ctx context.Context) error {
 }
 
 func (d *defaultSeal) BarrierType() wrapping.WrapperType {
-	return wrapping.WrapperTypeShamir
-}
-
-func (d *defaultSeal) StoredKeysSupported() seal.StoredKeysSupport {
-	return seal.StoredKeysSupportedShamirRoot
+	return seal.WrapperTypeShamir
 }
 
 func (d *defaultSeal) RecoveryKeySupported() bool {
@@ -135,16 +132,15 @@ func (d *defaultSeal) RecoveryKeySupported() bool {
 }
 
 func (d *defaultSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.access, keys)
+	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access, keys)
 }
 
 func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	keys, err := readStoredKeys(ctx, d.core.physical, d.access)
-	return keys, err
+	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access)
 }
 
 func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
-	cfg := d.config.Load().(*SealConfig)
+	cfg := d.config.Load()
 	if cfg != nil {
 		return cfg.Clone(), nil
 	}
@@ -153,15 +149,15 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 		return nil, err
 	}
 
-	// Fetch the core configuration
-	pe, err := d.core.physical.Get(ctx, barrierSealConfigPath)
+	// Fetch the seal configuration
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+barrierSealConfigPath)
 	if err != nil {
 		d.core.logger.Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
 	}
 
 	// If the seal configuration is missing, we are not initialized
-	if pe == nil {
+	if valueBytes == nil {
 		d.core.logger.Info("seal configuration missing, not initialized")
 		return nil, nil
 	}
@@ -169,7 +165,7 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	var conf SealConfig
 
 	// Decode the barrier entry
-	if err := jsonutil.DecodeJSON(pe.Value, &conf); err != nil {
+	if err := jsonutil.DecodeJSON(valueBytes, &conf); err != nil {
 		d.core.logger.Error("failed to decode seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to decode seal configuration: %w", err)
 	}
@@ -202,7 +198,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 	// Provide a way to wipe out the cached value (also prevents actually
 	// saving a nil config)
 	if config == nil {
-		d.config.Store((*SealConfig)(nil))
+		d.config.Store(nil)
 		return nil
 	}
 
@@ -221,13 +217,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	// Store the seal configuration
-	pe := &physical.Entry{
-		Key:   barrierSealConfigPath,
-		Value: buf,
-	}
-
-	if err := d.core.physical.Put(ctx, pe); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+barrierSealConfigPath, buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
@@ -239,6 +229,10 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 
 func (d *defaultSeal) SetCachedBarrierConfig(config *SealConfig) {
 	d.config.Store(config)
+}
+
+func (d *defaultSeal) SetConfigAccess(barrier barrier.SecurityBarrier) {
+	d.configAccess = &secureStorageAccess{barrier: barrier}
 }
 
 func (d *defaultSeal) RecoveryType() string {
@@ -268,10 +262,10 @@ func (d *defaultSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
 	return errors.New("recovery not supported")
 }
 
-func (d *defaultSeal) GetShamirWrapper() (*aeadwrapper.ShamirWrapper, error) {
+func (d *defaultSeal) GetShamirWrapper() (*seal.ShamirWrapper, error) {
 	// defaultSeal is meant to be for Shamir seals, so it should always have a ShamirWrapper.
 	// Nonetheless, NewDefaultSeal does not check, so let's play it safe.
-	w, ok := d.GetAccess().GetWrapper().(*aeadwrapper.ShamirWrapper)
+	w, ok := d.GetAccess().GetWrapper().(*seal.ShamirWrapper)
 	if !ok {
 		return nil, fmt.Errorf("expected defaultSeal to have a ShamirWrapper, but found a %T instead", d.GetAccess().GetWrapper())
 	}
@@ -297,22 +291,17 @@ type SealConfig struct {
 	PGPKeys []string `json:"pgp_keys" mapstructure:"pgp_keys"`
 
 	// Nonce is a nonce generated by Vault used to ensure that when unseal keys
-	// are submitted for a rekey operation, the rekey operation itself is the
-	// one intended. This prevents hijacking of the rekey operation, since it
-	// is unauthenticated.
+	// are submitted for a rotation, the operation itself is the one intended.
 	Nonce string `json:"nonce" mapstructure:"nonce"`
 
 	// Backup indicates whether or not a backup of PGP-encrypted unseal keys
-	// should be stored at coreUnsealKeysBackupPath after successful rekeying.
+	// should be stored at coreUnsealKeysBackupPath after successful rotation.
 	Backup bool `json:"backup" mapstructure:"backup"`
 
-	// How many keys to store, for seals that support storage.  Always 0 or 1.
-	StoredShares uint `json:"stored_shares" mapstructure:"stored_shares"`
+	// Stores the progress of the rotation (key shares).
+	RotationProgress [][]byte `json:"-"`
 
-	// Stores the progress of the rekey operation (key shares)
-	RekeyProgress [][]byte `json:"-"`
-
-	// VerificationRequired indicates that after a rekey validation must be
+	// VerificationRequired indicates that after a rotation validation must be
 	// performed (via providing shares from the new key) before the new key is
 	// actually installed. This is omitted from JSON as we don't persist the
 	// new key, it lives only in memory.
@@ -329,15 +318,10 @@ type SealConfig struct {
 	VerificationProgress [][]byte `json:"-"`
 }
 
-// Validate is used to sanity check the seal configuration
-func (s *SealConfig) Validate() error {
-	if s.SecretShares < 1 {
-		return errors.New("shares must be at least one")
-	}
-	if s.SecretThreshold < 1 {
-		return errors.New("threshold must be at least one")
-	}
-	if s.SecretShares > 1 && s.SecretThreshold == 1 {
+// baseValidate is used as a shared base between `Validate` and `ValidateRecovery`
+// functions
+func (s *SealConfig) baseValidate() error {
+	if s.SecretShares > 1 && s.SecretThreshold < 2 {
 		return errors.New("threshold must be greater than one for multiple shares")
 	}
 	if s.SecretShares > 255 {
@@ -349,13 +333,10 @@ func (s *SealConfig) Validate() error {
 	if s.SecretThreshold > s.SecretShares {
 		return errors.New("threshold cannot be larger than shares")
 	}
-	if s.StoredShares > 1 {
-		return errors.New("stored keys cannot be larger than 1")
-	}
-	if len(s.PGPKeys) > 0 && len(s.PGPKeys) != s.SecretShares {
-		return errors.New("count mismatch between number of provided PGP keys and number of shares")
-	}
 	if len(s.PGPKeys) > 0 {
+		if len(s.PGPKeys) != s.SecretShares {
+			return errors.New("count mismatch between number of provided PGP keys and number of shares")
+		}
 		for _, keystring := range s.PGPKeys {
 			data, err := base64.StdEncoding.DecodeString(keystring)
 			if err != nil {
@@ -370,6 +351,23 @@ func (s *SealConfig) Validate() error {
 	return nil
 }
 
+// Validate is used to sanity check the (barrier) seal configuration
+func (s *SealConfig) Validate() error {
+	if s.SecretShares < 1 {
+		return errors.New("shares must be at least one")
+	}
+	if s.SecretThreshold < 1 {
+		return errors.New("threshold must be at least one")
+	}
+
+	return s.baseValidate()
+}
+
+// ValidateRecovery is used to sanity check the (recovery) seal configuration
+func (s *SealConfig) ValidateRecovery() error {
+	return s.baseValidate()
+}
+
 func (s *SealConfig) Clone() *SealConfig {
 	ret := &SealConfig{
 		Type:                 s.Type,
@@ -377,7 +375,6 @@ func (s *SealConfig) Clone() *SealConfig {
 		SecretThreshold:      s.SecretThreshold,
 		Nonce:                s.Nonce,
 		Backup:               s.Backup,
-		StoredShares:         s.StoredShares,
 		VerificationRequired: s.VerificationRequired,
 		VerificationNonce:    s.VerificationNonce,
 	}
@@ -422,7 +419,7 @@ func (e *ErrDecrypt) Is(target error) bool {
 	return ok || errors.Is(e.Err, target)
 }
 
-func writeStoredKeys(ctx context.Context, storage physical.Backend, encryptor seal.Access, keys [][]byte) error {
+func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access, keys [][]byte) error {
 	if keys == nil {
 		return errors.New("keys were nil")
 	}
@@ -448,7 +445,7 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, encryptor se
 
 	// Store the seal configuration.
 	pe := &physical.Entry{
-		Key:   StoredBarrierKeysPath, // TODO(SEALHA): will we need to store more than one set of keys?
+		Key:   metaPrefix + StoredBarrierKeysPath, // TODO(SEALHA): will we need to store more than one set of keys?
 		Value: value,
 	}
 
@@ -459,8 +456,8 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, encryptor se
 	return nil
 }
 
-func readStoredKeys(ctx context.Context, storage physical.Backend, encryptor seal.Access) ([][]byte, error) {
-	pe, err := storage.Get(ctx, StoredBarrierKeysPath)
+func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access) ([][]byte, error) {
+	pe, err := storage.Get(ctx, metaPrefix+StoredBarrierKeysPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch stored keys: %w", err)
 	}

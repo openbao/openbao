@@ -5,6 +5,7 @@ package misc
 
 import (
 	"path"
+	"sync/atomic"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -14,7 +15,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
-	"go.uber.org/atomic"
 )
 
 func TestRecovery(t *testing.T) {
@@ -70,7 +70,7 @@ func TestRecovery(t *testing.T) {
 
 	{
 		// Now bring it up in recovery mode.
-		var tokenRef atomic.String
+		var tokenRef atomic.Value
 		conf := vault.CoreConfig{
 			Physical:     inm,
 			Logger:       logger,

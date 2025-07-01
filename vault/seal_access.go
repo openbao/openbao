@@ -22,10 +22,6 @@ func NewSealAccess(seal Seal) *SealAccess {
 	return &SealAccess{seal: seal}
 }
 
-func (s *SealAccess) StoredKeysSupported() seal.StoredKeysSupport {
-	return s.seal.StoredKeysSupported()
-}
-
 func (s *SealAccess) BarrierType() wrapping.WrapperType {
 	return s.seal.BarrierType()
 }
@@ -36,6 +32,10 @@ func (s *SealAccess) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 
 func (s *SealAccess) RecoveryKeySupported() bool {
 	return s.seal.RecoveryKeySupported()
+}
+
+func (s *SealAccess) RecoveryType() string {
+	return s.seal.RecoveryType()
 }
 
 func (s *SealAccess) RecoveryConfig(ctx context.Context) (*SealConfig, error) {

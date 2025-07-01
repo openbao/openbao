@@ -108,6 +108,7 @@ func TestStatusFormat(t *testing.T) {
 
 	expectedOutputString := `Key                           Value
 ---                           -----
+Seal Type                     type
 Recovery Seal Type            type
 Initialized                   true
 Sealed                        true
@@ -117,15 +118,13 @@ Unseal Progress               3/1
 Unseal Nonce                  nonce
 Seal Migration in Progress    true
 Version                       version
-Build Date                    build date
+Commit Date                   commit date
 Storage Type                  storage type
 Cluster Name                  cluster name
 Cluster ID                    cluster id
 HA Enabled                    true
 Raft Committed Index          3
-Raft Applied Index            4
-Last WAL                      2
-Warnings                      [warning]`
+Raft Applied Index            4`
 
 	if expectedOutputString != output {
 		fmt.Printf("%s\n%+v\n %s\n%+v\n", "output found was: ", output, "versus", expectedOutputString)
@@ -140,6 +139,7 @@ Warnings                      [warning]`
 
 	expectedOutputString = `Key                           Value
 ---                           -----
+Seal Type                     type
 Recovery Seal Type            type
 Initialized                   true
 Sealed                        true
@@ -149,8 +149,8 @@ Unseal Progress               3/1
 Unseal Nonce                  nonce
 Seal Migration in Progress    true
 Version                       version
-Build Date                    build date
-Storage Type                  n/a
+Commit Date                   commit date
+Storage Type                  type
 HA Enabled                    false`
 
 	if expectedOutputString != output {
@@ -167,21 +167,21 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 	var sealStatusResponseMock api.SealStatusResponse
 	if !emptyFields {
 		sealStatusResponseMock = api.SealStatusResponse{
-			Type:         "type",
-			Initialized:  true,
-			Sealed:       true,
-			T:            1,
-			N:            2,
-			Progress:     3,
-			Nonce:        "nonce",
-			Version:      "version",
-			BuildDate:    "build date",
-			Migration:    true,
-			ClusterName:  "cluster name",
-			ClusterID:    "cluster id",
-			RecoverySeal: true,
-			StorageType:  "storage type",
-			Warnings:     []string{"warning"},
+			Type:             "type",
+			RecoverySealType: "type",
+			Initialized:      true,
+			Sealed:           true,
+			T:                1,
+			N:                2,
+			Progress:         3,
+			Nonce:            "nonce",
+			Version:          "version",
+			CommitDate:       "commit date",
+			Migration:        true,
+			ClusterName:      "cluster name",
+			ClusterID:        "cluster id",
+			RecoverySeal:     true,
+			StorageType:      "storage type",
 		}
 
 		// must initialize this struct without explicit field names due to embedding
@@ -192,28 +192,26 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			time.Time{}.UTC(),        // ActiveTime
 			"leader address",         // LeaderAddress
 			"leader cluster address", // LeaderClusterAddress
-			true,                     // PerfStandby
-			1,                        // PerfStandbyLastRemoteWAL
-			2,                        // LastWAL
 			3,                        // RaftCommittedIndex
 			4,                        // RaftAppliedIndex
 		}
 	} else {
 		sealStatusResponseMock = api.SealStatusResponse{
-			Type:         "type",
-			Initialized:  true,
-			Sealed:       true,
-			T:            1,
-			N:            2,
-			Progress:     3,
-			Nonce:        "nonce",
-			Version:      "version",
-			BuildDate:    "build date",
-			Migration:    true,
-			ClusterName:  "",
-			ClusterID:    "",
-			RecoverySeal: true,
-			StorageType:  "",
+			Type:             "type",
+			RecoverySealType: "type",
+			Initialized:      true,
+			Sealed:           true,
+			T:                1,
+			N:                2,
+			Progress:         3,
+			Nonce:            "nonce",
+			Version:          "version",
+			CommitDate:       "commit date",
+			Migration:        true,
+			ClusterName:      "",
+			ClusterID:        "",
+			RecoverySeal:     true,
+			StorageType:      "type",
 		}
 
 		// must initialize this struct without explicit field names due to embedding
@@ -224,9 +222,6 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			time.Time{}.UTC(), // ActiveTime
 			"",                // LeaderAddress
 			"",                // LeaderClusterAddress
-			false,             // PerfStandby
-			0,                 // PerfStandbyLastRemoteWAL
-			0,                 // LastWAL
 			0,                 // RaftCommittedIndex
 			0,                 // RaftAppliedIndex
 		}

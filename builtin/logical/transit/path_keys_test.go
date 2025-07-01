@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/builtin/audit/file"
+	"github.com/openbao/openbao/command/server"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
@@ -24,6 +25,9 @@ import (
 
 func TestTransit_Issue_2958(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
+		RawConfig: &server.Config{
+			UnsafeAllowAPIAuditCreation: true,
+		},
 		LogicalBackends: map[string]logical.Factory{
 			"transit": Factory,
 		},

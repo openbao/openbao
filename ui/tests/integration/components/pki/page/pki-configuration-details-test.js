@@ -56,7 +56,6 @@ module('Integration | Component | Page::PkiConfigurationDetails', function (hook
       config: this.store.createRecord('mount-config', {
         defaultLease: '12h',
         maxLeaseTtl: '400h',
-        allowedManagedKeys: true,
       }),
     };
   });
@@ -185,12 +184,6 @@ module('Integration | Component | Page::PkiConfigurationDetails', function (hook
       .hasText('Yes', 'seal wrap row value renders Yes if sealWrap is true');
     assert.dom(SELECTORS.rowLabel('Max lease TTL')).hasText('Max lease TTL', 'max lease label renders');
     assert.dom(SELECTORS.rowValue('Max lease TTL')).hasText('400h', 'max lease value renders');
-    assert
-      .dom(SELECTORS.rowLabel('Allowed managed keys'))
-      .hasText('Allowed managed keys', 'allowed managed keys label renders');
-    assert
-      .dom(SELECTORS.rowValue('Allowed managed keys'))
-      .hasText('Yes', 'allowed managed keys value renders');
   });
 
   test('shows mount configuration when hasConfig is false', async function (assert) {
@@ -218,11 +211,5 @@ module('Integration | Component | Page::PkiConfigurationDetails', function (hook
       .hasText('Yes', 'seal wrap row value renders Yes if sealWrap is true');
     assert.dom(SELECTORS.rowLabel('Max lease TTL')).hasText('Max lease TTL', 'max lease label renders');
     assert.dom(SELECTORS.rowValue('Max lease TTL')).hasText('400h', 'max lease value renders');
-    assert
-      .dom(SELECTORS.rowLabel('Allowed managed keys'))
-      .hasText('Allowed managed keys', 'allowed managed keys label renders');
-    assert
-      .dom(SELECTORS.rowValue('Allowed managed keys'))
-      .hasText('Yes', 'allowed managed keys value renders');
   });
 });

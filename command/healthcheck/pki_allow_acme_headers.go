@@ -120,7 +120,6 @@ func (h *AllowAcmeHeaders) Evaluate(e *Executor) ([]*Result, error) {
 	}
 
 	foundAllHeaders := strutil.EquivalentSlices(requiredResponseHeaders, foundResponseHeaders)
-
 	if !foundAllHeaders {
 		ret := Result{
 			Status:   ResultWarning,
@@ -139,17 +138,18 @@ func (h *AllowAcmeHeaders) Evaluate(e *Executor) ([]*Result, error) {
 }
 
 func craftInsufficientPermissionResult(e *Executor, path, errorMsg string) []*Result {
-	ret := Result{
-		Status:   ResultInsufficientPermissions,
-		Endpoint: path,
-		Message:  errorMsg,
-	}
-
+	var retMsg string
 	if e.Client.Token() == "" {
-		ret.Message = "No token available so unable read the tune endpoint for this mount. " + ret.Message
+		retMsg = fmt.Sprintf("No token available, unable to read the tune endpoint for this mount. %s", errorMsg)
 	} else {
-		ret.Message = "This token lacks permission to read the tune endpoint for this mount. " + ret.Message
+		retMsg = fmt.Sprintf("Token lacks permission to read the tune endpoint for this mount. %s", errorMsg)
 	}
 
-	return []*Result{&ret}
+	return []*Result{
+		{
+			Status:   ResultInsufficientPermissions,
+			Endpoint: path,
+			Message:  retMsg,
+		},
+	}
 }

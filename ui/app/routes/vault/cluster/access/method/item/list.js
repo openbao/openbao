@@ -6,11 +6,27 @@
 import { inject as service } from '@ember/service';
 import Route from '@ember/routing/route';
 import { singularize } from 'ember-inflector';
-import ListRoute from 'vault/mixins/list-route';
 
-export default Route.extend(ListRoute, {
+export default Route.extend({
   store: service(),
   pathHelp: service('path-help'),
+
+  queryParams: {
+    page: {
+      refreshModel: true,
+    },
+    pageFilter: {
+      refreshModel: true,
+    },
+  },
+
+  resetController(controller, isExiting) {
+    this._super(...arguments);
+    if (isExiting) {
+      controller.set('pageFilter', null);
+      controller.set('filter', null);
+    }
+  },
 
   getMethodAndModelInfo() {
     const { item_type: itemType } = this.paramsFor('vault.cluster.access.method.item');
@@ -56,9 +72,11 @@ export default Route.extend(ListRoute, {
     },
   },
 
-  setupController(controller) {
+  setupController(controller, resolvedModel) {
     this._super(...arguments);
     const { apiPath, authMethodPath, itemType, methodModel } = this.getMethodAndModelInfo();
+    const { pageFilter } = this.paramsFor(this.routeName);
+
     controller.set('itemType', itemType);
     controller.set('methodModel', methodModel);
     this.pathHelp.getPaths(apiPath, authMethodPath, itemType).then((paths) => {
@@ -66,6 +84,10 @@ export default Route.extend(ListRoute, {
         'paths',
         paths.paths.filter((path) => path.navigation && path.itemType.includes(itemType))
       );
+    });
+    controller.setProperties({
+      filter: pageFilter || '',
+      page: resolvedModel?.meta?.currentPage || 1,
     });
   },
 });

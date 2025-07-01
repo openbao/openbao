@@ -31,7 +31,6 @@
  */
 
 import Component from '@glimmer/component';
-import ControlGroupError from 'vault/lib/control-group-error';
 import Ember from 'ember';
 import keys from 'vault/lib/keycodes';
 import { action, set } from '@ember/object';
@@ -52,7 +51,6 @@ export default class SecretCreateOrUpdate extends Component {
   @tracked validationErrorCount = 0;
   @tracked validationMessages = null;
 
-  @service controlGroup;
   @service flashMessages;
   @service router;
   @service store;
@@ -122,7 +120,7 @@ export default class SecretCreateOrUpdate extends Component {
     const secret = this.args.model;
     const secretData = this.args.modelForData;
     const isV2 = this.args.isV2;
-    let key = secretData.get('path') || secret.id;
+    let key = secretData.path || secret.id;
 
     if (key.startsWith('/')) {
       key = key.replace(/^\/+/g, '');
@@ -163,11 +161,6 @@ export default class SecretCreateOrUpdate extends Component {
         }
       })
       .catch((error) => {
-        if (error instanceof ControlGroupError) {
-          const errorMessage = this.controlGroup.logFromError(error);
-          this.error = errorMessage.content;
-          this.controlGroup.saveTokenFromError(error);
-        }
         throw error;
       });
   }
@@ -208,7 +201,7 @@ export default class SecretCreateOrUpdate extends Component {
   addRow() {
     const data = this.args.secretData;
     // fired off on init
-    if (isNone(data.findBy('name', ''))) {
+    if (isNone(data.find((x) => x.name === ''))) {
       data.pushObject({ name: '', value: '' });
       this.handleChange();
     }
@@ -239,7 +232,6 @@ export default class SecretCreateOrUpdate extends Component {
 
     const secretPath = type === 'create' ? this.args.modelForData.path : this.args.model.id;
     this.persistKey(() => {
-      // Show flash message in case there's a control group on read
       this.flashMessages.success(
         `Secret ${secretPath} ${type === 'create' ? 'created' : 'updated'} successfully.`
       );
@@ -249,7 +241,7 @@ export default class SecretCreateOrUpdate extends Component {
   @action
   deleteRow(name) {
     const data = this.args.secretData;
-    const item = data.findBy('name', name);
+    const item = data.find((x) => x.name === name);
     if (isBlank(item.name)) {
       return;
     }

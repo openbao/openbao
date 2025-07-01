@@ -47,10 +47,10 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 			}
 
 			var keys []string
-			switch keysRaw.(type) {
+			switch k := keysRaw.(type) {
 			case []interface{}:
-				keys = make([]string, len(keysRaw.([]interface{})))
-				for i, el := range keysRaw.([]interface{}) {
+				keys = make([]string, len(k))
+				for i, el := range k {
 					s, ok := el.(string)
 					if !ok {
 						return http.StatusInternalServerError, nil
@@ -59,7 +59,7 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 				}
 
 			case []string:
-				keys = keysRaw.([]string)
+				keys = k
 			default:
 				return http.StatusInternalServerError, nil
 			}
@@ -159,23 +159,21 @@ func AdjustErrorStatusCode(status *int, err error) {
 		}
 	}
 
-	// Adjust status code when sealed
-	if errwrap.Contains(err, consts.ErrSealed.Error()) {
-		*status = http.StatusServiceUnavailable
-	}
-
-	if errwrap.Contains(err, consts.ErrAPILocked.Error()) {
-		*status = http.StatusServiceUnavailable
-	}
-
-	// Adjust status code on
-	if errwrap.Contains(err, "http: request body too large") {
-		*status = http.StatusRequestEntityTooLarge
-	}
-
 	// Allow HTTPCoded error passthrough to specify a code
-	if t, ok := err.(HTTPCodedError); ok {
-		*status = t.Code()
+	var hce HTTPCodedError = &codedError{}
+	switch {
+	case errwrap.Contains(err, consts.ErrSealed.Error()),
+		errwrap.Contains(err, consts.ErrNamespaceSealed.Error()),
+		errwrap.Contains(err, consts.ErrAPILocked.Error()):
+		*status = http.StatusServiceUnavailable
+	case errwrap.Contains(err, "http: request body too large"):
+		*status = http.StatusRequestEntityTooLarge
+	case errwrap.ContainsType(err, hce):
+		if t := errwrap.GetType(err, hce); t != nil {
+			if coded, ok := t.(HTTPCodedError); ok {
+				*status = coded.Code()
+			}
+		}
 	}
 }
 

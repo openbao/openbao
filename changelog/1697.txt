@@ -1,0 +1,6 @@
+```release-note:improvement
+cel: Add cel-go ext helpers for string, list, optional, regex, math, set, and encoder operations
+```
+```release-note:improvement
+cel: Unify CEL helper functions between JWT and PKI modules, making email validation and other utilities available across both authentication and certificate management
+```

@@ -35,7 +35,7 @@ func (c *TokenAuth) CreateWithContext(ctx context.Context, opts *TokenCreateRequ
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }
@@ -57,7 +57,7 @@ func (c *TokenAuth) CreateOrphanWithContext(ctx context.Context, opts *TokenCrea
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }
@@ -79,7 +79,7 @@ func (c *TokenAuth) CreateWithRoleWithContext(ctx context.Context, opts *TokenCr
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }
@@ -103,7 +103,7 @@ func (c *TokenAuth) LookupWithContext(ctx context.Context, token string) (*Secre
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }
@@ -127,7 +127,7 @@ func (c *TokenAuth) LookupAccessorWithContext(ctx context.Context, accessor stri
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }
@@ -146,7 +146,7 @@ func (c *TokenAuth) LookupSelfWithContext(ctx context.Context) (*Secret, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }
@@ -171,7 +171,7 @@ func (c *TokenAuth) RenewAccessorWithContext(ctx context.Context, accessor strin
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }
@@ -196,7 +196,7 @@ func (c *TokenAuth) RenewWithContext(ctx context.Context, token string, incremen
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }
@@ -220,7 +220,7 @@ func (c *TokenAuth) RenewSelfWithContext(ctx context.Context, increment int) (*S
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }
@@ -248,7 +248,7 @@ func (c *TokenAuth) RenewTokenAsSelfWithContext(ctx context.Context, token strin
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }
@@ -275,7 +275,7 @@ func (c *TokenAuth) RevokeAccessorWithContext(ctx context.Context, accessor stri
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }
@@ -302,7 +302,7 @@ func (c *TokenAuth) RevokeOrphanWithContext(ctx context.Context, token string) e
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }
@@ -325,7 +325,7 @@ func (c *TokenAuth) RevokeSelfWithContext(ctx context.Context, token string) err
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }
@@ -353,7 +353,7 @@ func (c *TokenAuth) RevokeTreeWithContext(ctx context.Context, token string) err
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }

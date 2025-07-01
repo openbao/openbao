@@ -423,8 +423,7 @@ listener "tcp" {
 	// Test against a listener configuration that sets 'require_request_header'
 	// to 'true', with the header missing from the request.
 	agentClient = newApiClient("http://"+listenAddr3, false)
-	req = agentClient.NewRequest("GET", "/v1/sys/health")
-	resp, err := agentClient.RawRequest(req)
+	resp, err := agentClient.Logical().ReadRaw("sys/health")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -438,8 +437,7 @@ listener "tcp" {
 	h := agentClient.Headers()
 	h[consts.RequestHeaderName] = []string{"bogus"}
 	agentClient.SetHeaders(h)
-	req = agentClient.NewRequest("GET", "/v1/sys/health")
-	resp, err = agentClient.RawRequest(req)
+	resp, err = agentClient.Logical().ReadRaw("sys/health")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -533,11 +531,7 @@ func TestAgent_Template_UserAgent(t *testing.T) {
 
 	// make a temp directory to hold renders. Each test will create a temp dir
 	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
+	tmpDirRoot := t.TempDir()
 	// create temp dir for this test run
 	tmpDir, err := os.MkdirTemp(tmpDirRoot, "TestAgent_Template_UserAgent")
 	if err != nil {
@@ -653,7 +647,7 @@ auto_auth {
 					continue
 				}
 				if string(c) != templateRendered(i)+suffix {
-					err = fmt.Errorf("expected=%q, got=%q", templateRendered(i)+suffix, string(c))
+					err = fmt.Errorf("expected=%q, got=%q", templateRendered(i)+suffix, string(c)) //nolint:ineffassign,staticcheck // false positive: after a timeout the last error is returned
 					continue
 				}
 			}
@@ -705,11 +699,7 @@ func TestAgent_Template_Basic(t *testing.T) {
 
 	// make a temp directory to hold renders. Each test will create a temp dir
 	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
+	tmpDirRoot := t.TempDir()
 
 	// start test cases here
 	testCases := map[string]struct {
@@ -777,20 +767,17 @@ auto_auth {
 }
 
 %s
-
-%s
 `
-
-			// conditionally set the exit_after_auth flag
-			exitAfterAuth := ""
-			if tc.exitAfterAuth {
-				exitAfterAuth = "exit_after_auth = true"
-			}
 
 			// flatten the template configs
 			templateConfig := strings.Join(templateConfigStrings, " ")
+			config = fmt.Sprintf(config, serverClient.Address(), roleIDPath, secretIDPath, templateConfig)
 
-			config = fmt.Sprintf(config, serverClient.Address(), roleIDPath, secretIDPath, templateConfig, exitAfterAuth)
+			// conditionally set the exit_after_auth flag
+			if tc.exitAfterAuth {
+				config = fmt.Sprintf("%s\n\n %s", config, "exit_after_auth = true")
+			}
+
 			configPath := makeTempFile(t, "config.hcl", config)
 			defer os.Remove(configPath)
 
@@ -800,16 +787,14 @@ auto_auth {
 			cmd.startedCh = make(chan struct{})
 
 			wg := &sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
+			wg.Go(func() {
 				code := cmd.Run([]string{"-config", configPath})
 				if code != 0 {
 					t.Errorf("non-zero return code when running agent: %d", code)
 					t.Logf("STDOUT from agent:\n%s", ui.OutputWriter.String())
 					t.Logf("STDERR from agent:\n%s", ui.ErrorWriter.String())
 				}
-				wg.Done()
-			}()
+			})
 
 			select {
 			case <-cmd.startedCh:
@@ -834,7 +819,7 @@ auto_auth {
 				// the temp dir before Agent has had time to render and will
 				// likely fail the test
 				tick := time.Tick(1 * time.Second)
-				timeout := time.After(20 * time.Second)
+				timeout := time.After(25 * time.Second)
 				var err error
 				for {
 					select {
@@ -863,7 +848,7 @@ auto_auth {
 							continue
 						}
 						if string(c) != templateRendered(i)+suffix {
-							err = fmt.Errorf("expected=%q, got=%q", templateRendered(i)+suffix, string(c))
+							err = fmt.Errorf("expected=%q, got=%q", templateRendered(i)+suffix, string(c)) //nolint:ineffassign,staticcheck // false positive: after a timeout the last error is returned
 							continue
 						}
 					}
@@ -1004,14 +989,6 @@ func TestAgent_Template_VaultClientFromEnv(t *testing.T) {
 
 	roleIDPath, secretIDPath := setupAppRoleAndKVMounts(t, serverClient)
 
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
-
 	vaultAddr := "https://" + cluster.Cores[0].Listeners[0].Address.String()
 	testCases := map[string]struct {
 		env map[string]string
@@ -1106,6 +1083,7 @@ auto_auth {
 			// likely fail the test
 			tick := time.Tick(1 * time.Second)
 			timeout := time.After(10 * time.Second)
+			var err error
 			for {
 				select {
 				case <-timeout:
@@ -1156,7 +1134,7 @@ func testListFiles(t *testing.T, dir, extension string) int {
 // similar to TestAgent_Template_Basic, but differs by using a consistent number
 // of secrets from multiple sources, where as the basic test could possibly
 // generate a random number of secrets, but all using the same source. This test
-// reproduces https://github.com/openbao/openbao/issues/7883
+// reproduces https://github.com/hashicorp/vault/issues/7883
 func TestAgent_Template_ExitCounter(t *testing.T) {
 	//----------------------------------------------------
 	// Start the server and agent
@@ -1190,11 +1168,7 @@ func TestAgent_Template_ExitCounter(t *testing.T) {
 
 	// make a temp directory to hold renders. Each test will create a temp dir
 	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
+	tmpDirRoot := t.TempDir()
 
 	// create temp dir for this test run
 	tmpDir, err := os.MkdirTemp(tmpDirRoot, "agent-test")
@@ -1417,7 +1391,6 @@ func (h *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 // by Vault
 type userAgentHandler struct {
 	props                *vault.HandlerProperties
-	failCount            int
 	userAgentToCheckFor  string
 	pathToCheck          string
 	requestMethodToCheck string
@@ -1427,7 +1400,7 @@ type userAgentHandler struct {
 func (h *userAgentHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method == h.requestMethodToCheck && strings.Contains(req.RequestURI, h.pathToCheck) {
 		userAgent := req.UserAgent()
-		if !(userAgent == h.userAgentToCheckFor) {
+		if userAgent != h.userAgentToCheckFor {
 			h.t.Fatalf("User-Agent string not as expected. Expected to find %s, got %s", h.userAgentToCheckFor, userAgent)
 		}
 	}
@@ -1497,11 +1470,7 @@ func TestAgent_Template_Retry(t *testing.T) {
 
 	// make a temp directory to hold renders. Each test will create a temp dir
 	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
+	tmpDirRoot := t.TempDir()
 
 	intRef := func(i int) *int {
 		return &i
@@ -2342,11 +2311,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 
 	// make a temp directory to hold renders. Each test will create a temp dir
 	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
+	tmpDirRoot := t.TempDir()
 
 	// Note that missing key is different from a non-existent secret. A missing
 	// key (2xx response with missing keys in the response map) can still yield
@@ -3162,7 +3127,7 @@ auto_auth {
 	go func() {
 		exitCode := cmd.Run([]string{"-config", configFileName, "-log-format", "json", "-log-file", logFilePath, "-log-level", "trace"})
 		if exitCode != 0 {
-			panic(fmt.Sprintf("expected zero exit code from agent invocation"))
+			panic("expected zero exit code from agent invocation")
 		}
 	}()
 

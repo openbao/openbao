@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	"github.com/openbao/go-kms-wrapping/v2/aead"
 )
 
 var _ KeyManager = (*PassthroughKeyManager)(nil)
@@ -23,7 +23,7 @@ type PassthroughKeyManager struct {
 // If a key is provided, it will be used as the encryption key for the wrapper,
 // otherwise one will be generated.
 func NewPassthroughKeyManager(ctx context.Context, key []byte) (*PassthroughKeyManager, error) {
-	var rootKey []byte = nil
+	var rootKey []byte
 	switch len(key) {
 	case 0:
 		newKey := make([]byte, 32)

@@ -11,11 +11,13 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/builtin/logical/transit"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/seal"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSysInit_get(t *testing.T) {
@@ -87,7 +89,6 @@ func TestSysInit_pgpKeysEntriesForRecovery(t *testing.T) {
 	resp := testHttpPut(t, "", addr+"/v1/sys/init", map[string]interface{}{
 		"secret_shares":      1,
 		"secret_threshold":   1,
-		"stored_shares":      1,
 		"recovery_shares":    5,
 		"recovery_threshold": 3,
 		"recovery_pgp_keys":  []string{"pgpkey1"},
@@ -152,8 +153,49 @@ func TestSysInit_Put_ValidateParams(t *testing.T) {
 	}
 }
 
+func TestSysInit_Put_AutoUnseal(t *testing.T) {
+	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
+	autoSeal, err := vault.NewAutoSeal(testSeal)
+	require.NoError(t, err)
+
+	// Create the transit server.
+	conf := &vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"transit": transit.Factory,
+		},
+		Seal: autoSeal,
+	}
+	opts := &vault.TestClusterOptions{
+		NumCores:    1,
+		HandlerFunc: Handler,
+		SkipInit:    true,
+		Logger:      logging.NewVaultLogger(hclog.Trace).Named(t.Name()).Named("transit-seal" + strconv.Itoa(0)),
+	}
+	cluster := vault.NewTestCluster(t, conf, opts)
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	cores := cluster.Cores
+	core := cores[0].Core
+
+	ln, addr := TestServer(t, core)
+	defer ln.Close()
+
+	resp := testHttpPut(t, "", addr+"/v1/sys/init", map[string]interface{}{
+		"recovery_shares":    0,
+		"recovery_threshold": 0,
+	})
+	testResponseStatus(t, resp, http.StatusOK)
+	body := map[string]any{}
+	testResponseBody(t, resp, &body)
+
+	require.Empty(t, body["keys"])
+	require.Empty(t, body["keys_base64"])
+	require.NotEmpty(t, body["root_token"])
+}
+
 func TestSysInit_Put_ValidateParams_AutoUnseal(t *testing.T) {
-	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Name: "transit"})
+	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTransit})
 	autoSeal, err := vault.NewAutoSeal(testSeal)
 	if err != nil {
 		t.Fatal(err)

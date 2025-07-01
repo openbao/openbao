@@ -22,7 +22,7 @@ func TestNamespaceStore(t *testing.T) {
 	ctx := namespace.RootContext(context.TODO())
 
 	// Initial store should be empty.
-	ns, err := s.ListAllNamespaces(ctx, false)
+	ns, err := s.ListAllNamespaces(ctx, false, true)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -43,7 +43,7 @@ func TestNamespaceStore(t *testing.T) {
 	itemPath := item.Path
 
 	// We should now have one item.
-	ns, err = s.ListAllNamespaces(ctx, false)
+	ns, err = s.ListAllNamespaces(ctx, false, true)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0].UUID, item.UUID)
@@ -85,7 +85,7 @@ func TestNamespaceStore(t *testing.T) {
 	s = c.namespaceStore
 
 	// We should still have one item.
-	ns, err = s.ListAllNamespaces(ctx, false)
+	ns, err = s.ListAllNamespaces(ctx, false, true)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0].UUID, itemUUID)
@@ -98,7 +98,7 @@ func TestNamespaceStore(t *testing.T) {
 	// Wait until deletion has finished.
 	maxRetries := 50
 	for range maxRetries {
-		ns, err = s.ListAllNamespaces(ctx, false)
+		ns, err = s.ListAllNamespaces(ctx, false, true)
 		require.NoError(t, err)
 		if len(ns) > 0 {
 			time.Sleep(1 * time.Millisecond)
@@ -108,7 +108,7 @@ func TestNamespaceStore(t *testing.T) {
 	}
 
 	// Store should be empty.
-	ns, err = s.ListAllNamespaces(ctx, false)
+	ns, err = s.ListAllNamespaces(ctx, false, true)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -129,7 +129,7 @@ func TestNamespaceStore(t *testing.T) {
 	// however, the s.SetNamespace function is still using the previous namespace.
 	s = c.namespaceStore
 
-	ns, err = s.ListAllNamespaces(ctx, false)
+	ns, err = s.ListAllNamespaces(ctx, false, true)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -179,7 +179,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	}
 
 	// verify namespace deletion
-	nsList, err := s.ListAllNamespaces(ctx, false)
+	nsList, err := s.ListAllNamespaces(ctx, false, true)
 	require.NoError(t, err)
 	require.Empty(t, nsList)
 
@@ -309,7 +309,7 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 	require.Empty(t, ret.UnlockKey)
 
 	// Verify that listing does not return locks.
-	all, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	all, err := c.namespaceStore.ListAllNamespaces(ctx, true, true)
 	require.NoError(t, err)
 	for index, ns := range all {
 		require.Empty(t, ns.UnlockKey, "namespace: %v / index: %v", ns, index)
@@ -405,7 +405,7 @@ func TestNamespaceHierarchy(t *testing.T) {
 	ctx := namespace.RootContext(context.TODO())
 
 	// Initial store should be empty.
-	ns, err := s.ListAllNamespaces(ctx, false)
+	ns, err := s.ListAllNamespaces(ctx, false, true)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -431,14 +431,14 @@ func TestNamespaceHierarchy(t *testing.T) {
 	for idx, ns := range namespaces {
 		err := s.SetNamespace(ns.Context, ns.Namespace)
 		require.NoError(t, err)
-		require.NotEmpty(t, ns.Namespace.UUID)
-		require.NotEmpty(t, ns.Namespace.ID)
-		require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[idx].Namespace.Path))
+		require.NotEmpty(t, ns.UUID)
+		require.NotEmpty(t, ns.ID)
+		require.Equal(t, ns.Path, namespace.Canonicalize(namespaces[idx].Path))
 	}
 
 	t.Run("ListNamespaces", func(t *testing.T) {
 		t.Run("no root namespace", func(t *testing.T) {
-			nsList, err := s.ListAllNamespaces(ctx, false)
+			nsList, err := s.ListAllNamespaces(ctx, false, true)
 			require.NoError(t, err)
 			containsRoot := false
 			for _, nss := range nsList {
@@ -451,7 +451,7 @@ func TestNamespaceHierarchy(t *testing.T) {
 			require.Equal(t, len(namespaces), len(nsList), "ListAllNamespaces must return all namespaces, excluding root")
 		})
 		t.Run("with root namespace", func(t *testing.T) {
-			nsList, err := s.ListAllNamespaces(ctx, true)
+			nsList, err := s.ListAllNamespaces(ctx, true, true)
 			require.NoError(t, err)
 			containsRoot := false
 			for _, nss := range nsList {
@@ -538,11 +538,11 @@ func TestNamespaceTree(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, beforeSize-1, tree.size)
 
-	entries, err := tree.List("", false, false)
+	entries, err := tree.List("", false, false, map[string]bool{})
 	require.NoError(t, err)
 	require.Equal(t, 2, len(entries))
 
-	entries, err = tree.List("", true, true)
+	entries, err = tree.List("", true, true, map[string]bool{})
 	require.NoError(t, err)
 	require.Equal(t, tree.size, len(entries))
 
@@ -626,7 +626,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 
 	b.Run("ListAllNamespaces", func(b *testing.B) {
 		for b.Loop() {
-			s.ListAllNamespaces(ctx, false)
+			_, _ = s.ListAllNamespaces(ctx, false, true)
 		}
 	})
 
@@ -675,7 +675,8 @@ func BenchmarkClearNamespaceResources(b *testing.B) {
 
 	for b.Loop() {
 		ns := randomNamespace(s)
-		s.clearNamespaceResources(ctx, ns)
+		err := s.clearNamespaceResources(ctx, namespace.RootNamespace, ns, true)
+		require.NoError(b, err)
 	}
 }
 
@@ -717,7 +718,7 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 	ns3Entry := &namespace.Namespace{Path: "ns1/ns2/ns3/"}
 
 	// Create namespaces
-	rootCtx := namespace.RootContext(nil)
+	rootCtx := namespace.RootContext(context.TODO())
 
 	// Set child into root
 	require.NoError(t, nsStore.SetNamespace(rootCtx, ns1Entry))
@@ -832,7 +833,7 @@ func TestNamespaceStorage(t *testing.T) {
 	}
 	TestCoreCreateNamespaces(t, c, namespaces...)
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	nsKeys, err := s.storage.List(ctx, namespaceStoreSubPath)
 	require.NoError(t, err)

@@ -88,7 +88,7 @@ func (c *AuthTuneCommand) Flags() *FlagSets {
 		EnvVar:     "",
 		Completion: complete.PredictAnything,
 		Usage: "The default lease TTL for this auth method. If unspecified, this " +
-			"defaults to the Vault server's globally configured default lease TTL, " +
+			"defaults to the OpenBao server's globally configured default lease TTL, " +
 			"or a previously configured value for the auth method.",
 	})
 
@@ -113,7 +113,7 @@ func (c *AuthTuneCommand) Flags() *FlagSets {
 		EnvVar:     "",
 		Completion: complete.PredictAnything,
 		Usage: "The maximum lease TTL for this auth method. If unspecified, this " +
-			"defaults to the Vault server's globally configured maximum lease TTL, " +
+			"defaults to the OpenBao server's globally configured maximum lease TTL, " +
 			"or a previously configured value for the auth method.",
 	})
 
@@ -156,7 +156,7 @@ func (c *AuthTuneCommand) Flags() *FlagSets {
 		Name:   flagNameUserLockoutThreshold,
 		Target: &c.flagUserLockoutThreshold,
 		Usage: "The threshold for user lockout for this auth method. If unspecified, this " +
-			"defaults to the Vault server's globally configured user lockout threshold, " +
+			"defaults to the OpenBao server's globally configured user lockout threshold, " +
 			"or a previously configured value for the auth method.",
 	})
 
@@ -165,7 +165,7 @@ func (c *AuthTuneCommand) Flags() *FlagSets {
 		Target:     &c.flagUserLockoutDuration,
 		Completion: complete.PredictAnything,
 		Usage: "The user lockout duration for this auth method. If unspecified, this " +
-			"defaults to the Vault server's globally configured user lockout duration, " +
+			"defaults to the OpenBao server's globally configured user lockout duration, " +
 			"or a previously configured value for the auth method.",
 	})
 
@@ -174,7 +174,7 @@ func (c *AuthTuneCommand) Flags() *FlagSets {
 		Target:     &c.flagUserLockoutCounterResetDuration,
 		Completion: complete.PredictAnything,
 		Usage: "The user lockout counter reset duration for this auth method. If unspecified, this " +
-			"defaults to the Vault server's globally configured user lockout counter reset duration, " +
+			"defaults to the OpenBao server's globally configured user lockout counter reset duration, " +
 			"or a previously configured value for the auth method.",
 	})
 
@@ -183,7 +183,7 @@ func (c *AuthTuneCommand) Flags() *FlagSets {
 		Target:  &c.flagUserLockoutDisable,
 		Default: false,
 		Usage: "Disable user lockout for this auth method. If unspecified, this " +
-			"defaults to the Vault server's globally configured user lockout disable, " +
+			"defaults to the OpenBao server's globally configured user lockout disable, " +
 			"or a previously configured value for the auth method.",
 	})
 

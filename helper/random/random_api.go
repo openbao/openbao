@@ -4,22 +4,18 @@
 package random
 
 import (
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
-	"io"
 	"strconv"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/xor"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const APIMaxBytes = 128 * 1024
 
-func HandleRandomAPI(d *framework.FieldData, additionalSource io.Reader) (*logical.Response, error) {
+func HandleRandomAPI(d *framework.FieldData) (*logical.Response, error) {
 	bytes := 0
 	// Parsing is convoluted here, but allows operators to ACL both source and byte count
 	maybeUrlBytes := d.Raw["urlbytes"]
@@ -34,23 +30,23 @@ func HandleRandomAPI(d *framework.FieldData, additionalSource io.Reader) (*logic
 	} else if maybeUrlBytes == "" {
 		bytes, err = strconv.Atoi(maybeSource.(string))
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("error parsing url-set byte count: %s", err)), nil
+			return logical.ErrorResponse("error parsing url-set byte count: %s", err), nil
 		}
 	} else {
 		source = maybeSource.(string)
 		bytes, err = strconv.Atoi(maybeUrlBytes.(string))
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("error parsing url-set byte count: %s", err)), nil
+			return logical.ErrorResponse("error parsing url-set byte count: %s", err), nil
 		}
 	}
 	format := d.Get("format").(string)
 
 	if bytes < 1 {
-		return logical.ErrorResponse(`"bytes" cannot be less than 1`), nil
+		return logical.ErrorResponse("'bytes' cannot be less than 1"), nil
 	}
 
 	if bytes > APIMaxBytes {
-		return logical.ErrorResponse(`"bytes" should be less than %d`, APIMaxBytes), nil
+		return logical.ErrorResponse("'bytes' should be less than %d", APIMaxBytes), nil
 	}
 
 	switch format {
@@ -69,19 +65,10 @@ func HandleRandomAPI(d *framework.FieldData, additionalSource io.Reader) (*logic
 			return nil, err
 		}
 	case "seal":
-		if rand.Reader == additionalSource {
-			warning = "no seal/entropy augmentation available, using platform entropy source"
-		}
-		randBytes, err = uuid.GenerateRandomBytesWithReader(bytes, additionalSource)
+		warning = "no seal/entropy augmentation available, using platform entropy source"
+		fallthrough
 	case "all":
 		randBytes, err = uuid.GenerateRandomBytes(bytes)
-		if err == nil && rand.Reader != additionalSource {
-			var sealBytes []byte
-			sealBytes, err = uuid.GenerateRandomBytesWithReader(bytes, additionalSource)
-			if err == nil {
-				randBytes, err = xor.XORBytes(sealBytes, randBytes)
-			}
-		}
 	default:
 		return logical.ErrorResponse("unsupported entropy source %q; must be \"platform\" or \"seal\", or \"all\"", source), nil
 	}

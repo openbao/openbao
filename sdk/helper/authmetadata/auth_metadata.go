@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -121,7 +122,7 @@ func (h *Handler) ParseAuthMetadata(data *framework.FieldData) error {
 	}
 
 	// Validate and store the input.
-	if strutil.StrListContains(userProvided, "default") {
+	if slices.Contains(userProvided, "default") {
 		return fmt.Errorf("%q contains default - default can't be used in combination with other fields",
 			userProvided)
 	}
@@ -159,7 +160,7 @@ func (h *Handler) PopulateDesiredMetadata(auth *logical.Auth, available map[stri
 			// Don't bother setting fields for which there is no value.
 			continue
 		}
-		if strutil.StrListContains(fieldsToInclude, availableField) {
+		if slices.Contains(fieldsToInclude, availableField) {
 			auth.Metadata[availableField] = itsValue
 			auth.Alias.Metadata[availableField] = itsValue
 		}

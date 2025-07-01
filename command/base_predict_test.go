@@ -5,6 +5,7 @@ package command
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -385,7 +386,7 @@ func TestPredict_Plugins(t *testing.T) {
 
 				act := p.plugins()
 
-				if !strutil.StrListContains(act, "keymgmt") {
+				if !slices.Contains(act, "keymgmt") {
 					for i, v := range tc.exp {
 						if v == "keymgmt" {
 							tc.exp = append(tc.exp[:i], tc.exp[i+1:]...)
@@ -393,7 +394,7 @@ func TestPredict_Plugins(t *testing.T) {
 						}
 					}
 				}
-				if !strutil.StrListContains(act, "kmip") {
+				if !slices.Contains(act, "kmip") {
 					for i, v := range tc.exp {
 						if v == "kmip" {
 							tc.exp = append(tc.exp[:i], tc.exp[i+1:]...)
@@ -401,7 +402,7 @@ func TestPredict_Plugins(t *testing.T) {
 						}
 					}
 				}
-				if !strutil.StrListContains(act, "transform") {
+				if !slices.Contains(act, "transform") {
 					for i, v := range tc.exp {
 						if v == "transform" {
 							tc.exp = append(tc.exp[:i], tc.exp[i+1:]...)

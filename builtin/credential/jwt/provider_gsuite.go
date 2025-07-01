@@ -45,7 +45,7 @@ type GSuiteProviderConfig struct {
 	// without using a service account key. The service account vault is
 	// running under must be granted the `iam.serviceAccounts.signJwt`
 	// permission on this service account. If AdminImpersonateEmail is
-	// specifed, that Workspace user will be impersonated.
+	// specified, that Workspace user will be impersonated.
 	ImpersonatePrincipal string `mapstructure:"impersonate_principal"`
 
 	// If set to true, groups will be fetched from the Google Workspace

@@ -35,7 +35,7 @@ func createBackendWithStorage(t *testing.T) (*backend, logical.Storage) {
 		t.Fatal("failed to create backend")
 	}
 
-	err := b.Backend.Setup(context.Background(), config)
+	err := b.Setup(context.Background(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	b, storage := createBackendWithStorage(t)
 
 	// Create group "testgroup"
-	resp, err := b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "groups/testgroup",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -60,7 +60,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	}
 
 	// Create group "nested/testgroup"
-	resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "groups/nested/testgroup",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -73,7 +73,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	}
 
 	// Create user "testuser"
-	resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "users/testuser",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -87,7 +87,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	}
 
 	// Create user "nested/testuser"
-	resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "users/nested/testuser",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -101,7 +101,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	}
 
 	// List users
-	resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "users/",
 		Operation: logical.ListOperation,
 		Storage:   storage,
@@ -115,7 +115,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	}
 
 	// List groups
-	resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "groups/",
 		Operation: logical.ListOperation,
 		Storage:   storage,
@@ -135,6 +135,53 @@ func TestLdapAuthBackend_CaseSensitivity(t *testing.T) {
 	b, storage := createBackendWithStorage(t)
 
 	ctx := context.Background()
+
+	// testLoginNormalized helps to validate that HCSEC-2025-16 (CVE-2025-6004)
+	// as applicable to LDAP and HCSEC-2025-20 (CVE-2025-6013) are both
+	// remediated in the respective configurations. Notably, the user lockout
+	// lookahead alias needs not be the same as the final alias returned by
+	// the login.
+	testLoginNormalized := func() {
+		loginReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "login/Hermes Conrad",
+			Data: map[string]interface{}{
+				"password": "hermes",
+			},
+			Storage:    storage,
+			Connection: &logical.Connection{},
+		}
+		resp, err = b.HandleRequest(ctx, loginReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v", err, resp)
+		}
+		expected := []string{"grouppolicy", "userpolicy"}
+		if !reflect.DeepEqual(expected, resp.Auth.Policies) {
+			t.Fatalf("bad: policies: expected: %q, actual: %q", expected, resp.Auth.Policies)
+		}
+
+		// Redo the operation with a trailing space and ensure alias is
+		// correctly normalized by the server.
+		loginReq = &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "login/Hermes Conrad ",
+			Data: map[string]interface{}{
+				"password": "hermes",
+			},
+			Storage:    storage,
+			Connection: &logical.Connection{},
+		}
+		spaceResp, err := b.HandleRequest(ctx, loginReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v", err, resp)
+		}
+		if !reflect.DeepEqual(expected, resp.Auth.Policies) {
+			t.Fatalf("bad: policies: expected: %q, actual: %q", expected, resp.Auth.Policies)
+		}
+		if !reflect.DeepEqual(resp, spaceResp) {
+			t.Fatalf("bad: expected same response:\n\tresp: %#v\n\tspace resp: %#v", resp, spaceResp)
+		}
+	}
 
 	testVals := func(caseSensitive bool) {
 		// Clear storage
@@ -249,23 +296,25 @@ func TestLdapAuthBackend_CaseSensitivity(t *testing.T) {
 			}
 		}
 
-		loginReq := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      "login/Hermes Conrad",
-			Data: map[string]interface{}{
-				"password": "hermes",
-			},
-			Storage:    storage,
-			Connection: &logical.Connection{},
+		testLoginNormalized()
+
+		// Adjust the configuration use username as aliases and redo the
+		// above normalization check.
+		configEntry, err := b.Config(ctx, configReq)
+		if err != nil {
+			t.Fatal(err)
 		}
-		resp, err = b.HandleRequest(ctx, loginReq)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v", err, resp)
+		configEntry.UsernameAsAlias = true
+		entry, err := logical.StorageEntryJSON("config", configEntry)
+		if err != nil {
+			t.Fatal(err)
 		}
-		expected := []string{"grouppolicy", "userpolicy"}
-		if !reflect.DeepEqual(expected, resp.Auth.Policies) {
-			t.Fatalf("bad: policies: expected: %q, actual: %q", expected, resp.Auth.Policies)
+		err = configReq.Storage.Put(ctx, entry)
+		if err != nil {
+			t.Fatal(err)
 		}
+
+		testLoginNormalized()
 	}
 
 	cleanup, cfg := ldap.PrepareTestContainer(t, "latest")

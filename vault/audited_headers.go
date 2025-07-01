@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 // N.B.: While we could use textproto to get the canonical mime header, HTTP/2
@@ -32,7 +33,7 @@ type auditedHeaderSettings struct {
 type AuditedHeadersConfig struct {
 	Headers map[string]*auditedHeaderSettings
 
-	view BarrierView
+	view barrier.View
 	sync.RWMutex
 }
 

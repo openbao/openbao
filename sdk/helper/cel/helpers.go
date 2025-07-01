@@ -1,13 +1,15 @@
 package cel
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/mail"
+	"reflect"
 
-	celgo "github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/ext"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -27,41 +29,39 @@ func checkValidEmail(value ref.Val) ref.Val {
 	return types.Bool(true)
 }
 
-// registerCheckValidEmailFunction registers the check_valid_email function in the CEL environment.
-func registerCheckValidEmailFunction(env *celgo.Env) (*celgo.Env, error) {
-	return env.Extend(
-		celgo.Function("check_valid_email",
-			celgo.Overload("check_valid_email_string",
-				[]*celgo.Type{celgo.StringType}, // Takes a string input
-				celgo.BoolType,                  // Returns a boolean
-				celgo.UnaryBinding(checkValidEmail),
-			),
+// checkValidEmailFunction adds the check_valid_email function.
+func CheckValidEmailFunction() cel.EnvOption {
+	return cel.Function("check_valid_email",
+		cel.Overload("check_valid_email_string",
+			[]*cel.Type{cel.StringType}, // Takes a string input
+			cel.BoolType,                // Returns a boolean
+			cel.UnaryBinding(checkValidEmail),
 		),
 	)
 }
 
-// RegisterAllCelFunctions registers all custom CEL functions into the provided environment.
-func RegisterAllCelFunctions(env *celgo.Env) (*celgo.Env, error) {
-	var err error
+func CelGoExtFunctions() []cel.EnvOption {
+	var options []cel.EnvOption
 
-	env, err = registerCheckValidEmailFunction(env)
-	if err != nil {
-		return nil, fmt.Errorf("failed to register check_valid_email function: %w", err)
-	}
+	options = append(options, ext.Strings())
+	options = append(options, ext.Lists())
+	options = append(options, cel.OptionalTypes())
+	options = append(options, ext.Regex())
+	options = append(options, ext.Math())
+	options = append(options, ext.Sets())
+	options = append(options, ext.Encoders())
 
-	return env, nil
+	return options
 }
 
 // IdentityDeclarations adds declarations relevant to the identity subsystem,
 // and is useful for secret engines.
-func IdentityDeclarations() []celgo.EnvOption {
-	return []celgo.EnvOption{
-		celgo.Declarations(
-			decls.NewVar("client_token", decls.String),
-			decls.NewVar("entity_id", decls.String),
-			decls.NewVar("entity_groups", decls.NewListType(decls.Dyn)),
-			decls.NewVar("entity_info", decls.NewMapType(decls.String, decls.Dyn)),
-		),
+func IdentityDeclarations() []cel.EnvOption {
+	return []cel.EnvOption{
+		cel.Variable("client_token", types.DynType),
+		cel.Variable("entity_id", types.StringType),
+		cel.Variable("entity_groups", types.NewListType(types.DynType)),
+		cel.Variable("entity_info", types.NewMapType(types.StringType, types.DynType)),
 	}
 }
 
@@ -92,4 +92,55 @@ func AddIdentity(view logical.SystemView, req *logical.Request, data map[string]
 	}
 
 	return nil
+}
+
+func encodeJSON(value ref.Val) ref.Val {
+	native, err := value.ConvertToNative(
+		reflect.TypeOf(map[string]any{}),
+	)
+	if err != nil {
+		return types.Bool(false)
+	}
+
+	b, err := json.Marshal(native)
+	if err != nil {
+		return types.Bool(false)
+	}
+	return types.String(string(b))
+}
+
+func decodeJSON(value ref.Val) ref.Val {
+	raw, ok := value.Value().(string)
+	if !ok {
+		return types.Bool(false)
+	}
+	var v any
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
+		return types.Bool(false)
+	}
+	return types.DefaultTypeAdapter.NativeToValue(v)
+}
+
+// EncodeJSONFunction adds the encode_json function.
+func EncodeJSONFunction() cel.EnvOption {
+	return cel.Function("encode_json",
+		cel.Overload(
+			"encode_json_dyn",
+			[]*cel.Type{cel.DynType},
+			cel.StringType,
+			cel.UnaryBinding(encodeJSON),
+		),
+	)
+}
+
+// DecodeJSONFunction adds the decode_json function.
+func DecodeJSONFunction() cel.EnvOption {
+	return cel.Function("decode_json",
+		cel.Overload(
+			"decode_json_string",
+			[]*cel.Type{cel.StringType},
+			cel.DynType,
+			cel.UnaryBinding(decodeJSON),
+		),
+	)
 }

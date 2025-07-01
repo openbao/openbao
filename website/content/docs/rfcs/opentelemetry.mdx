@@ -1,0 +1,96 @@
+# Switch to OpenTelemetry
+
+## Summary
+
+Should we drop [`go-metrics`][] library and thereby support for the metrics
+protocols of:
+
+- Circonus
+- Datadog
+- Stackdriver
+- Statsd
+- Statssite
+
+in favor of [`opentelemetry-go`][]?
+
+## Problem Statement
+
+Supporting vendor specific protocols only really makes sense, if we actually
+make use of their distinctive features. But as we are supporting them through a
+generic API, we don't do this. The downside would be, that this is breaking
+change.
+
+It is probably safe to say that OpenTelemetry won the format war on telemetry
+(at least for the time being, until the next big thing comes). At some point
+most - if not all - metrics consumers/sink will either support it or become
+irrelevant.
+
+We could also use the chance to clean up the existing metrics:
+
+- use labels instead of dynamic names ([as discussed on GitHub][metric names
+  discussion])
+- define an API for plugins to expose metrics, with proper namespacing
+- etc.
+
+We can also mark the new metrics as experimental at first, which would give us
+the flexibility to iterate on them for a few releases while gathering feedback.
+
+## User Migration Path
+
+We should first add the OpenTelemetry based metrics and deprecate the
+[`go-metrics`][] in one release and in later releases remove them all together.
+
+### Circonus
+
+[Circonus was acquired by Apica][circonus was acquired] in February 2024.
+
+Citing Apica:
+
+> As a leader in this space, Apica recognizes that OpenTelemetry isn’t just a
+> trend—it’s becoming the foundation of modern observability strategies.
+> https://www.apica.io/blog/opentelemetry-the-foundation-of-modern-observability-strategy/
+
+This sound a bit like Circonus proprietary APIs might even get deprecated at
+some point in favor of OpenTelemetry and we should be fine.
+
+### Datadog
+
+[Datadog supports OpenTelemetry][datadog-otel]
+
+### Stackdriver (now called Google Cloud Observability)
+
+[Google Cloud Observability supports OpenTelemetry][gcloud-otel]
+
+### Statsd
+
+One could use [Vector][] with an [OpenTelemetry Source][vector-otel-source] and
+a [Statsd Sink][vector-statsd-sink] (untested).
+
+### Statsite
+
+> Statsite is a metrics aggregation server. Statsite is based heavily on Etsy'ss
+> StatsD https://github.com/etsy/statsd, and is wire compatible.
+> https://github.com/statsite/statsite/
+
+Being wire compatible with Statsd means the same solution should work there.
+
+The last release was in 2016, the last commit in 2019, so the project might be
+dead anyway.
+
+## Raft metrics
+
+The [raft library][] used by OpenBao uses [`go-metric` directly][go-metric in go
+mod]. To preserve its metrics we can register a custom sink and re-expose them
+via the OpenTelemetry API.
+
+[circonus was acquired]: https://www.apica.io/news/apica-acquires-telemetry-data-management-pioneer-circonus-and-lands-new-funding/
+[datadog-otel]: https://docs.datadoghq.com/opentelemetry/
+[`go-metrics`]: https://github.com/hashicorp/go-metrics
+[go-metric in go mod]: https://github.com/hashicorp/raft/blob/c4fb904a43d299a2b9ba1000ae18a5b3f60994ab/go.mod#L9
+[gcloud-otel]: https://cloud.google.com/stackdriver/docs/managed-prometheus/setup-otel
+[metric names discussion]: https://github.com/orgs/openbao/discussions/1663
+[`opentelemetry-go`]: https://github.com/open-telemetry/opentelemetry-go
+[raft library]: https://github.com/hashicorp/raft
+[vector-otel-source]: https://vector.dev/docs/reference/configuration/sources/opentelemetry/
+[vector-statsd-sink]: https://vector.dev/docs/reference/configuration/sinks/statsd/
+[Vector]: https://vector.dev/

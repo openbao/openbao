@@ -25,7 +25,7 @@ func DefaultTokenHelper(vaultAddr string) (token.TokenHelper, error) {
 		return nil, err
 	}
 
-	// If the user specifed the address to connect to on the command line instead
+	// If the user specified the address to connect to on the command line instead
 	// of through an environment variable, we propagate the address to the token
 	// helper through an environment variable. Otherwise the token helper may
 	// read BAO_ADDR and assume a different address than the one we are using.

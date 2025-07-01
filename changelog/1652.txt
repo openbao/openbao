@@ -1,0 +1,3 @@
+```release-note:improvement
+ui: change the message 'Vault is sealed to 'OpenBao is Sealed' by changing the title of the unseal template
+```

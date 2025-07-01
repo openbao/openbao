@@ -280,6 +280,7 @@ func testTransit_SignVerify_ECDSA(t *testing.T, bits int) {
 	// Bad value
 	req.Data["marshaling_algorithm"] = "asn2"
 	sig = signRequest(req, true, "")
+	verifyRequest(req, true, "", sig)
 	// Use the default, verify we can't validate with jws
 	req.Data["marshaling_algorithm"] = "asn1"
 	sig = signRequest(req, false, "")
@@ -604,7 +605,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 
 	// Test a missing context
 	delete(req.Data, "context")
-	sig = signRequest(req, true, "bar")
+	signRequest(req, true, "bar")
 
 	// Rotate and set min decryption version
 	err = fooP.Rotate(context.Background(), storage, b.GetRandomReader())
@@ -700,7 +701,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 		"batch_input": batchInput,
 	}
 
-	sig = signRequest(req, false, "bar")
+	signRequest(req, false, "bar")
 
 	outcome[0].requestOk = true
 	outcome[0].valid = true

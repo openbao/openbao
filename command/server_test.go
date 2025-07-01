@@ -15,6 +15,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"testing"
@@ -79,6 +80,16 @@ cloud {
     client_secret = "N9JtHZyOnHrIvJZs82pqa54vd4jnkyU3xCcqhFXuQKJZZuxqxxbP1xCfBZVB82vY"
 }
 `
+
+	auditHCL = `
+audit "file" "to-stdout" {
+  description = "This audit device should never fail."
+  options {
+    file_path = "/dev/stdout"
+    log_raw = "true"
+  }
+}
+`
 )
 
 func testServerCommand(tb testing.TB) (*cli.MockUi, *ServerCommand) {
@@ -107,25 +118,21 @@ func TestServer_ReloadListener(t *testing.T) {
 	t.Parallel()
 
 	wd, _ := os.Getwd()
-	wd += "/server/test-fixtures/reload/"
+	wd = path.Join(wd, "server", "test-fixtures", "reload")
 
-	td, err := os.MkdirTemp("", "vault-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(td)
+	td := t.TempDir()
 
 	wg := &sync.WaitGroup{}
 	// Setup initial certs
-	inBytes, _ := os.ReadFile(wd + "reload_foo.pem")
-	os.WriteFile(td+"/reload_cert.pem", inBytes, 0o777)
-	inBytes, _ = os.ReadFile(wd + "reload_foo.key")
-	os.WriteFile(td+"/reload_key.pem", inBytes, 0o777)
+	inBytes, _ := os.ReadFile(path.Join(wd, "reload_foo.pem"))
+	_ = os.WriteFile(path.Join(td, "reload_cert.pem"), inBytes, 0o777)
+	inBytes, _ = os.ReadFile(path.Join(wd, "reload_foo.key"))
+	_ = os.WriteFile(path.Join(td, "reload_key.pem"), inBytes, 0o777)
 
 	relhcl := strings.ReplaceAll(reloadHCL, "TMPDIR", td)
-	os.WriteFile(td+"/reload.hcl", []byte(relhcl), 0o777)
+	_ = os.WriteFile(path.Join(td, "reload.hcl"), []byte(relhcl), 0o777)
 
-	inBytes, _ = os.ReadFile(wd + "reload_ca.pem")
+	inBytes, _ = os.ReadFile(path.Join(wd, "reload_ca.pem"))
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM(inBytes)
 	if !ok {
@@ -136,7 +143,7 @@ func TestServer_ReloadListener(t *testing.T) {
 	_ = ui
 
 	wg.Add(1)
-	args := []string{"-config", td + "/reload.hcl"}
+	args := []string{"-config", path.Join(td, "reload.hcl")}
 	go func() {
 		if code := cmd.Run(args); code != 0 {
 			output := ui.ErrorWriter.String() + ui.OutputWriter.String()
@@ -174,11 +181,11 @@ func TestServer_ReloadListener(t *testing.T) {
 	}
 
 	relhcl = strings.ReplaceAll(reloadHCL, "TMPDIR", td)
-	inBytes, _ = os.ReadFile(wd + "reload_bar.pem")
-	os.WriteFile(td+"/reload_cert.pem", inBytes, 0o777)
-	inBytes, _ = os.ReadFile(wd + "reload_bar.key")
-	os.WriteFile(td+"/reload_key.pem", inBytes, 0o777)
-	os.WriteFile(td+"/reload.hcl", []byte(relhcl), 0o777)
+	inBytes, _ = os.ReadFile(path.Join(wd, "reload_bar.pem"))
+	_ = os.WriteFile(path.Join(td, "reload_cert.pem"), inBytes, 0o777)
+	inBytes, _ = os.ReadFile(path.Join(wd, "reload_bar.key"))
+	_ = os.WriteFile(path.Join(td, "reload_key.pem"), inBytes, 0o777)
+	_ = os.WriteFile(path.Join(td, "reload.hcl"), []byte(relhcl), 0o777)
 
 	cmd.SighupCh <- struct{}{}
 	select {
@@ -223,7 +230,7 @@ func TestServer(t *testing.T) {
 		{
 			"bad_separate_ha",
 			testBaseHCL(t, "") + inmemHCL + badHAInmemHCL,
-			"Specified HA storage does not support HA",
+			"specified HA storage does not support HA",
 			1,
 			[]string{"-test-verify-only"},
 		},
@@ -275,6 +282,13 @@ func TestServer(t *testing.T) {
 			"",
 			0,
 			[]string{"-test-verify-only", "-recovery"},
+		},
+		{
+			"audit_config",
+			testBaseHCL(t, "") + inmemHCL + auditHCL,
+			"",
+			0,
+			[]string{"-test-verify-only"},
 		},
 	}
 

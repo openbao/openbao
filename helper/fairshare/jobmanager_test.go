@@ -135,7 +135,6 @@ func TestJobManager_StartAndPause(t *testing.T) {
 
 	select {
 	case <-doneCh:
-		break
 	case <-timeout:
 		t.Fatal("timed out")
 	}
@@ -161,7 +160,6 @@ func TestJobManager_StartAndPause(t *testing.T) {
 
 		select {
 		case <-doneCh:
-			break
 		case <-timeout:
 			t.Fatal("timed out")
 		}
@@ -447,17 +445,10 @@ func TestJobManager_EndToEnd(t *testing.T) {
 	order := make([]string, 0)
 
 	go func() {
-		for {
-			select {
-			case res, ok := <-resultsCh:
-				if !ok {
-					return
-				}
-
-				mu.Lock()
-				order = append(order, res)
-				mu.Unlock()
-			}
+		for res := range resultsCh {
+			mu.Lock()
+			order = append(order, res)
+			mu.Unlock()
 		}
 	}()
 

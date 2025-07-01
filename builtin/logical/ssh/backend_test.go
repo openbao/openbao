@@ -38,8 +38,6 @@ const (
 	testCIDRList      = "127.0.0.1/32"
 	testAtRoleName    = "test@RoleName"
 	testOTPRoleName   = "testOTPRoleName"
-	// testKeyName is the name of the entry that will be written to SSHMOUNTPOINT/ssh/keys
-	testKeyName = "testKeyName"
 	// testSharedPrivateKey is the value of the entry that will be written to SSHMOUNTPOINT/ssh/keys
 	testSharedPrivateKey = `
 -----BEGIN RSA PRIVATE KEY-----
@@ -197,7 +195,7 @@ func prepareTestContainer(t *testing.T, tag, caPublicKeyPEM string) (func(), str
 		}
 
 		// Install util-linux for non-busybox flock that supports timeout option
-		err = testSSH("vaultssh", sshAddress, ssh.PublicKeys(signer), fmt.Sprintf(`
+		err = testSSH(testUserName, sshAddress, ssh.PublicKeys(signer), fmt.Sprintf(`
 			set -e;
 			sudo ln -s /config /home/vaultssh
 			sudo apk add util-linux;
@@ -300,7 +298,7 @@ func TestBackend_AllowedUsers(t *testing.T) {
 
 	credsData["username"] = "random"
 	resp, err = b.HandleRequest(context.Background(), credsReq)
-	if err != nil || resp == nil || (resp != nil && !resp.IsError()) {
+	if err != nil || resp == nil || !resp.IsError() {
 		t.Fatalf("expected failure: resp:%#v err:%s", resp, err)
 	}
 
@@ -324,7 +322,7 @@ func TestBackend_AllowedUsers(t *testing.T) {
 
 	credsData["username"] = "test"
 	resp, err = b.HandleRequest(context.Background(), credsReq)
-	if err != nil || resp == nil || (resp != nil && !resp.IsError()) {
+	if err != nil || resp == nil || !resp.IsError() {
 		t.Fatalf("expected failure: resp:%#v err:%s", resp, err)
 	}
 
@@ -520,21 +518,18 @@ func TestBackend_DefaultUserTemplateFalse_AllowedUsersTemplateFalse(t *testing.T
 	}
 	actualPrincipals := parsedKey.(*ssh.Certificate).ValidPrincipals
 	if len(actualPrincipals) < 1 {
-		t.Fatal(
-			fmt.Sprintf("No ValidPrincipals returned: should have been %v",
-				[]string{"{{identity.entity.metadata.ssh_username}}"}),
+		t.Fatalf("No ValidPrincipals returned: should have been %v",
+			[]string{"{{identity.entity.metadata.ssh_username}}"},
 		)
 	}
 	if len(actualPrincipals) > 1 {
-		t.Error(
-			fmt.Sprintf("incorrect number ValidPrincipals, expected only 1: %v should be %v",
-				actualPrincipals, []string{"{{identity.entity.metadata.ssh_username}}"}),
+		t.Errorf("incorrect number ValidPrincipals, expected only 1: %v should be %v",
+			actualPrincipals, []string{"{{identity.entity.metadata.ssh_username}}"},
 		)
 	}
 	if actualPrincipals[0] != "{{identity.entity.metadata.ssh_username}}" {
-		t.Fatal(
-			fmt.Sprintf("incorrect ValidPrincipals: %v should be %v",
-				actualPrincipals, []string{"{{identity.entity.metadata.ssh_username}}"}),
+		t.Fatalf("incorrect ValidPrincipals: %v should be %v",
+			actualPrincipals, []string{"{{identity.entity.metadata.ssh_username}}"},
 		)
 	}
 }
@@ -653,11 +648,7 @@ func TestSSHBackend_OTPRoleCrud(t *testing.T) {
 
 func TestSSHBackend_OTPCreate(t *testing.T) {
 	cleanup, sshAddress := prepareTestContainer(t, "", "")
-	defer func() {
-		if !t.Failed() {
-			cleanup()
-		}
-	}()
+	defer cleanup()
 
 	host, port, err := net.SplitHostPort(sshAddress)
 	if err != nil {
@@ -1510,7 +1501,7 @@ func TestBackend_DefExtTemplatingEnabled(t *testing.T) {
 	invalidUserProvidedExtensionPermissions := map[string]string{
 		"login@foobar.com": "{{identity.entity.metadata}}",
 	}
-	resp, err = client.Logical().Write("ssh/sign/test", map[string]interface{}{
+	_, err = client.Logical().Write("ssh/sign/test", map[string]interface{}{
 		"public_key": publicKey4096,
 		"extensions": invalidUserProvidedExtensionPermissions,
 	})
@@ -1902,9 +1893,8 @@ func testDefaultUserTemplate(t *testing.T, testDefaultUserTemplate string,
 	}
 	actualPrincipals := parsedKey.(*ssh.Certificate).ValidPrincipals
 	if actualPrincipals[0] != expectedValidPrincipal {
-		t.Fatal(
-			fmt.Sprintf("incorrect ValidPrincipals: %v should be %v",
-				actualPrincipals, []string{expectedValidPrincipal}),
+		t.Fatalf("incorrect ValidPrincipals: %v should be %v",
+			actualPrincipals, []string{expectedValidPrincipal},
 		)
 	}
 }
@@ -1953,9 +1943,8 @@ func testAllowedPrincipalsTemplate(t *testing.T, testAllowedDomainsTemplate stri
 	}
 	actualPrincipals := parsedKey.(*ssh.Certificate).ValidPrincipals
 	if actualPrincipals[0] != expectedValidPrincipal {
-		t.Fatal(
-			fmt.Sprintf("incorrect ValidPrincipals: %v should be %v",
-				actualPrincipals, []string{expectedValidPrincipal}),
+		t.Fatalf("incorrect ValidPrincipals: %v should be %v",
+			actualPrincipals, []string{expectedValidPrincipal},
 		)
 	}
 }
@@ -2109,12 +2098,12 @@ func validateSSHCertificate(cert *ssh.Certificate, keyID string, certType int, v
 		return fmt.Errorf("incorrect Signature: %v", cert.Signature)
 	}
 
-	if !reflect.DeepEqual(cert.Permissions.Extensions, extensionPermissions) {
-		return fmt.Errorf("incorrect Permissions.Extensions: Expected: %v, Actual: %v", extensionPermissions, cert.Permissions.Extensions)
+	if !reflect.DeepEqual(cert.Extensions, extensionPermissions) {
+		return fmt.Errorf("incorrect Permissions.Extensions: Expected: %v, Actual: %v", extensionPermissions, cert.Extensions)
 	}
 
-	if !reflect.DeepEqual(cert.Permissions.CriticalOptions, criticalOptionPermissions) {
-		return fmt.Errorf("incorrect Permissions.CriticalOptions: %v", cert.Permissions.CriticalOptions)
+	if !reflect.DeepEqual(cert.CriticalOptions, criticalOptionPermissions) {
+		return fmt.Errorf("incorrect Permissions.CriticalOptions: %v", cert.CriticalOptions)
 	}
 
 	return nil
@@ -2176,7 +2165,7 @@ func testConfigZeroAddressRead(t *testing.T, expected map[string]interface{}) lo
 func testVerifyWrite(t *testing.T, data map[string]interface{}, expected map[string]interface{}) logicaltest.TestStep {
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
-		Path:      fmt.Sprintf("verify"),
+		Path:      "verify",
 		Data:      data,
 		Check: func(resp *logical.Response) error {
 			var ac api.SSHVerifyResponse
@@ -2703,18 +2692,6 @@ func TestProperAuthing(t *testing.T) {
 		}
 
 		openapi_data := raw_data.(map[string]interface{})
-		hasList := false
-		rawGetData, hasGet := openapi_data["get"]
-		if hasGet {
-			getData := rawGetData.(map[string]interface{})
-			getParams, paramsPresent := getData["parameters"].(map[string]interface{})
-			if getParams != nil && paramsPresent {
-				if _, hasList = getParams["list"]; hasList {
-					// LIST is exclusive from GET on the same endpoint usually.
-					hasGet = false
-				}
-			}
-		}
 		_, hasPost := openapi_data["post"]
 		_, hasDelete := openapi_data["delete"]
 
@@ -2727,26 +2704,6 @@ func TestProperAuthing(t *testing.T) {
 
 	if !validatedPath {
 		t.Fatal("Expected to have validated at least one path.")
-	}
-}
-
-func submitCAIssuerStep(issuerName string, parameters map[string]interface{}) logicaltest.TestStep {
-	path := "issuers/import"
-	if issuerName != "" {
-		path += "/" + issuerName
-	}
-	return logicaltest.TestStep{
-		Operation: logical.UpdateOperation,
-		Path:      path,
-		Data:      parameters,
-	}
-}
-
-func updateIssuersConfigStep(parameters map[string]interface{}) logicaltest.TestStep {
-	return logicaltest.TestStep{
-		Operation: logical.UpdateOperation,
-		Path:      "config/issuers",
-		Data:      parameters,
 	}
 }
 
@@ -2931,7 +2888,7 @@ func TestSSHBackend_IssuerLifecycle(t *testing.T) {
 		issuerId := resp.Data["issuer_id"].(string)
 
 		// Delete the issuer
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		_, err = b.HandleRequest(context.Background(), &logical.Request{
 			Operation: logical.DeleteOperation,
 			Path:      "issuer/" + issuerId,
 			Storage:   s,
@@ -2948,7 +2905,7 @@ func TestSSHBackend_IssuerLifecycle(t *testing.T) {
 		require.True(t, resp.IsError())
 
 		// Test bulk deletion via config/ca
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		_, err = b.HandleRequest(context.Background(), &logical.Request{
 			Operation: logical.DeleteOperation,
 			Path:      "config/ca",
 			Storage:   s,
@@ -3013,7 +2970,7 @@ func TestSSHBackend_IssuerLifecycle(t *testing.T) {
 			},
 			Storage: s,
 		}
-		resp, err = b.HandleRequest(context.Background(), updateReq)
+		_, err = b.HandleRequest(context.Background(), updateReq)
 		require.NoError(t, err)
 
 		resp, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -3110,7 +3067,7 @@ func TestSSHBackend_BasicIssuerOperations(t *testing.T) {
 		t.Fatalf("expected key signing to have failed as no issuer is configured, got resp: %+v, err: %v", resp, err)
 	}
 
-	// submit an issuer to be used by the role and don't set it explicity
+	// submit an issuer to be used by the role and don't set it explicitly
 	// as the first issuer imported is set as default
 	importIssuerReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -3273,7 +3230,7 @@ func TestSSHBackend_RoleIssuerBinding(t *testing.T) {
 
 		require.NotEqual(t, issuer1ID, issuer2ID, "issuer IDs should be different")
 
-		// Create role with issuer1 explicity bound
+		// Create role with issuer1 explicitly bound
 		role1Name := "role-with-issuer1"
 		role1Req := &logical.Request{
 			Operation: logical.UpdateOperation,

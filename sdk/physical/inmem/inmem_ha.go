@@ -4,6 +4,7 @@
 package inmem
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -17,6 +18,8 @@ type InmemHABackend struct {
 	l      *sync.Mutex
 	cond   *sync.Cond
 	logger log.Logger
+
+	invalidators []physical.InvalidateFunc
 }
 
 // NewInmemHA constructs a new in-memory HA backend. This is only for testing.
@@ -44,6 +47,13 @@ func (i *InmemHABackend) LockWith(key, value string) (physical.Lock, error) {
 		value: value,
 	}
 	return l, nil
+}
+
+func (i *InmemHABackend) HookInvalidate(hook physical.InvalidateFunc) {
+	i.l.Lock()
+	defer i.l.Unlock()
+
+	i.invalidators = append(i.invalidators, hook)
 }
 
 // LockMapSize is used in some tests to determine whether this backend has ever
@@ -142,4 +152,31 @@ func (i *InmemLock) Value() (bool, string, error) {
 	val, ok := i.in.locks[i.key]
 	i.in.l.Unlock()
 	return ok, val, nil
+}
+
+func (i *InmemHABackend) invalidateAll(key string) {
+	i.l.Lock()
+	defer i.l.Unlock()
+
+	for _, handler := range i.invalidators {
+		go handler(key)
+	}
+}
+
+func (i *InmemHABackend) Put(ctx context.Context, entry *physical.Entry) error {
+	err := i.Backend.Put(ctx, entry)
+	if err == nil {
+		i.invalidateAll(entry.Key)
+	}
+
+	return err
+}
+
+func (i *InmemHABackend) Delete(ctx context.Context, key string) error {
+	err := i.Backend.Delete(ctx, key)
+	if err == nil {
+		i.invalidateAll(key)
+	}
+
+	return err
 }

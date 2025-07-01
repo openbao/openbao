@@ -5,25 +5,26 @@ package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/cli"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault"
-	"github.com/pkg/errors"
 	"github.com/posener/complete"
 	"golang.org/x/sync/errgroup"
 )
@@ -33,7 +34,7 @@ var (
 	_ cli.CommandAutocomplete = (*OperatorMigrateCommand)(nil)
 )
 
-var errAbort = errors.New("Migration aborted")
+var errAbort = errors.New("migration aborted")
 
 type OperatorMigrateCommand struct {
 	*BaseCommand
@@ -55,7 +56,7 @@ type migratorConfig struct {
 }
 
 func (c *OperatorMigrateCommand) Synopsis() string {
-	return "Migrates Vault data between storage backends"
+	return "Migrates OpenBao data between storage backends"
 }
 
 func (c *OperatorMigrateCommand) Help() string {
@@ -64,7 +65,7 @@ Usage: bao operator migrate [options]
 
   This command starts a storage backend migration process to copy all data
   from one backend to another. This operates directly on encrypted data and
-  does not require a Vault server, nor any unsealing.
+  does not require an OpenBao server, nor any unsealing.
 
   Start a migration with a configuration file:
 
@@ -83,6 +84,7 @@ func (c *OperatorMigrateCommand) Flags() *FlagSets {
 
 	f.StringVar(&StringVar{
 		Name:   "config",
+		EnvVar: "BAO_MIGRATE_CONFIG_PATH",
 		Target: &c.flagConfig,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
@@ -141,7 +143,7 @@ func (c *OperatorMigrateCommand) Run(args []string) int {
 	}
 	c.flagLogLevel = strings.ToLower(c.flagLogLevel)
 	validLevels := []string{"trace", "debug", "info", "warn", "error"}
-	if !strutil.StrListContains(validLevels, c.flagLogLevel) {
+	if !slices.Contains(validLevels, c.flagLogLevel) {
 		c.UI.Error(fmt.Sprintf("%s is an unknown log level. Valid log levels are: %s", c.flagLogLevel, validLevels))
 		return 1
 	}
@@ -182,7 +184,7 @@ func (c *OperatorMigrateCommand) Run(args []string) int {
 
 // migrate attempts to instantiate the source and destinations backends,
 // and then invoke the migration the root of the keyspace.
-func (c *OperatorMigrateCommand) migrate(config *migratorConfig) error {
+func (c *OperatorMigrateCommand) migrate(config *migratorConfig) (err error) {
 	from, err := c.newBackend(config.StorageSource.Type, config.StorageSource.Config)
 	if err != nil {
 		return fmt.Errorf("error mounting 'storage_source': %w", err)
@@ -219,7 +221,9 @@ func (c *OperatorMigrateCommand) migrate(config *migratorConfig) error {
 			return fmt.Errorf("error setting migration lock: %w", err)
 		}
 
-		defer SetStorageMigration(from, false)
+		defer func() {
+			err = errors.Join(err, SetStorageMigration(from, false))
+		}()
 	}
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -330,7 +334,7 @@ func (c *OperatorMigrateCommand) loadMigratorConfig(path string) (*migratorConfi
 		return nil, err
 	}
 
-	obj, err := hcl.ParseBytes(d)
+	obj, err := hclutil.ParseConfig(d)
 	if err != nil {
 		return nil, err
 	}

@@ -15,7 +15,7 @@ There are several options to install OpenBao:
 
 1. Install [from source](#compiling-from-source).
 
-1. [Helm for Kubernetes](/docs/platform/k8s/helm)
+1. [Helm for Kubernetes](platform/k8s/helm/index.mdx)
 
 
 ## Package manager
@@ -35,17 +35,35 @@ $ pkg install openbao
 
 ### Linux
 
-:::info
+OpenBao manages packages for Amazon Linux, Debian, Fedora, RHEL, Ubuntu and
+other distributions. The packages are available for both direct download
+and native package managers on the [downloads](/downloads) page.
 
+In addition, OpenBao packages are available more directly in Arch Linux, Fedora and RHEL.
 
-OpenBao does not yet have a package repository. For now you need to download and
-install packages manually.
+For Arch Linux they can be installed by
 
-:::
+```shell-session
+$ pacman -Sy openbao
+```
 
-OpenBao manages packages for Ubuntu, Debian, Fedora, RHEL, Amazon Linux, and
-other distributions. [Download](/downloads) the appropriate package for your
-operating system and architecture.
+Plugins are available as well and can be listed by
+
+```shell-session
+$ pacman -Ss ^openbao-plugin
+```
+
+For RHEL (and derivatives) they are in EPEL which can be enabled by
+
+```shell-session
+$ dnf install -y epel-release
+```
+
+and then installed on Fedora or RHEL by
+
+```shell-session
+$ dnf install -y openbao
+```
 
 ## Container registries
 
@@ -76,9 +94,6 @@ additional files are required to run OpenBao.
 Copy the binary to your system. If you intend to access it from the
 command-line, ensure that you place the binary somewhere on your `PATH`.
 
-Refer to the [OpenBao Tutorials][learn-vault-dev-server] to start a server, `put`
-your first secret, and use other features of OpenBao.
-
 ## Compiling from source
 
 :::warning
@@ -86,7 +101,7 @@ your first secret, and use other features of OpenBao.
 These instructions are for a **development** build; do not rely on them for
 release binaries.
 
-Instead, [refer to our packaging guide](/docs/contributing/packaging).
+Instead, [refer to our packaging guide](contributing/packaging.mdx).
 
 :::
 

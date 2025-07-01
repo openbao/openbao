@@ -1,0 +1,5 @@
+```release-note:security
+audit: Add server configuration options to disable audit mount creation via the API and to disable audit log prefixing.
+  - `unsafe_allow_api_audit_creation (default: false)` controls the ability to create audit mounts via the API
+  - `allow_audit_log_prefixing (default: false)` controls the availability of the prefix audit mount option
+```

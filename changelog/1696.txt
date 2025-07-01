@@ -1,0 +1,9 @@
+```release-note:bug
+secrets/pki: Prevent infinite loop in tidy stemming from incorrect list pagination
+```
+```release-note:bug
+core/namespaces: Prevent infinite loop in namespace loading due to incorrect list pagination when more than 100 sibling namespaces exist under a given parent
+```
+```release-note:change
+sdk/logical: Introduce context to logical.HandleListPage(...).
+```

@@ -1,0 +1,247 @@
+---
+sidebar_label: External Keys from KMSs and HSMs
+description: |-
+  External Key Configuration for KMS and HSM Access
+---
+
+# External Key Configuration for KMS and HSM Access
+
+## Summary
+
+For better security of cryptographic material, keys within OpenBao should
+optionally be backed by a KMS or HSM solution. We design a per-namespace
+repository of seal configurations, with mount-specific key information to
+prevent cross-mount usage of keys except via explicit reuse.
+
+We call this solution External Keys to differentiate it from HashiCorp
+Vault Enterprise's Managed Keys.
+
+## Problem Statement
+
+Upstream HashiCorp Vault Enterprise implemented Managed Keys, which have
+the following properties:
+
+1. KMS library configurations live in storage and apply to any namespace;
+   this takes a `type` and a `name` in a `kms_library` stanza. This sets
+   global configuration for the provider; per
+   [documentation](https://developer.hashicorp.com/vault/docs/configuration/kms-library)
+   this is only a PKCS#11 library configuration as it is the only type that
+   requires elements in storage.
+
+2. Within each namespace, a repository of keys accessible only to that
+   namespace exist.
+
+  - Each `type` of key can be listed (via  `LIST /sys/managed-keys/<:type>`),
+    to show which keys with the particular type exist).
+  - Creating a key sets its name (`POST /sys/managed-keys/<:type>/<:key-name>`),
+    the name of the library (if PKCS#11), and all credential information.
+
+  In particular, this means that there is no central repository (within a
+  namespace) of credentials, making rotation harder.
+
+Further, while less restrictive, any namespace can use any `kms_library` or
+seal type; a namespace admin has full control over policies and thus a global
+operator cannot restrict types.
+
+## User-facing Description
+
+We suggest the following design for external keys:
+
+1. The `external_keys` stanzas take an optional `namespaces = []` parameter,
+   taking items of the form `uuid:<ns-uuid>`, `id:<ns-accessor>`, or
+   `path:<ns-path>`, to identify namespaces that this library is allowed to be
+   used in. This prevents cross-tenant library usage problems by preventing them
+   from using the underlying library. An empty `namespaces` parameter implicitly
+   allows the root namespace, a non-empty list must explicitly include the root
+   namespace (e.g., via `id:root`) to keep it allowed besides any other listed
+   namespaces.
+
+   - In the future, when support for pluginized KMS integrations are added, we
+     can use an `external_keys "binary" { ... }` stanza to limit access to
+     specific external libraries or hosts that they run on.
+
+   - The `name` of this stanza gets registered as the library type; it must
+     not conflict with any existing type and `pkcs11` will not be a valid
+     type, instead requiring a named configuration. E.g., `gcpckms`, `thales`,
+     `entrust`, and `securosys` might all be valid `types` for the endpoints
+     below, specified in the `name` field in the stanza.
+
+   For example, to register the SoftHSM PKCS#11 library as library type
+   `"softhsm"` and allow its usage in two namespaces:
+
+   ```hcl
+   external_keys "pkcs11" {
+     name       = "softhsm"
+     library    = "/usr/lib/softhsm/libsofthsm2.so"
+     namespaces = ["path:foo/bar", "uuid:c0de1570-688e-41ad-ad97-1395fe30cbbd"]
+   }
+   ```
+
+2. We add a new path `sys/namespaces/<:path>/external-keys`, with an option,
+   `types`, which limits the allowed HSM and KMS types within this namespace
+   and all children. This allows both the root operator to restrict immediate
+   children, but also for future tenant operators to restrict their own child
+   namespaces. This reflects the hierarchical nature of access (that a parent
+   namespace operator can create a policy that effectively grants them full
+   access to a child namespace).
+
+3. Within the `sys/external-keys` space, we implement the following APIs:
+
+   - `configs/<:config-name>`, to configure KMS or HSM _access_ information,
+     such as type (above) or credentials. This gives a single point of rotation
+     for any given key using this provider.
+
+     A configuration may be inherited from a direct parent namespace via the
+     special `inherits = "<:config-name>"` key. This inheritance mechanism
+     is chosen over a `inherited = true` flag in the child namespace or over
+     a `inheritable=true` flag in the parent namespace to avoid potential
+     naming conflicts across the namespace hierarchy, or alternatively to avoid
+     the need for a mechanism/format to address a specific ancestor namespace.
+     Inherited configurations are similar to symbolic links; they do not copy
+     information to the child namespace or enable read/write access to the
+     original configuration in any way. To propagate configurations across
+     several levels of child namespaces, you would build a chain of inherited
+     configurations.
+
+     `/` and `:` will be forbidden identifiers for `config-name`.
+
+   - `configs/<:config-name>/keys/<:key-name>`, to maintain mappings of keys
+     and their access information. A `key-name` is unique per `config-name`, not
+     per namespace. The key will have a UUID associated with it to allow it to
+     be referenced independently of `config-name`. Otherwise, use in plugins
+     will require the `<config-name>/<key-name>` format.
+
+   - `configs/<:config-name>/keys/<:key-name>/grants/<:mount-path>` will be
+     used to add or remove mounts from accessing the key.
+
+     Grants handle both mount paths local to the key configuration's namespace
+     just as mount paths of any child namespaces, e.g. `my-child/pki`. Combined
+     with inherited configurations via `inherits = ...`, this lets a namespace
+     pass down a key to select mounts in child namespaces. Note that grants
+     can only be configured at the "origin" configuration and cannot be set for
+     inherited configurations.
+
+Notably, unlike Vault Enterprise, no key material is implicitly created at
+the key association step; it must already exist within the KMS or HSM and this
+is just a linking.
+
+Furthermore, rather than relying on mount tuning, the use of explicit grants,
+with mounts in the path, allows for fine-grained delegation of permission via
+the standard ACL models, assuming the operator does not have policy
+modification permissions.
+
+In the future, key creation may be supported as a follow-up RFC.
+
+Individual mount types (PKI, SSH, Identity, ...) will need to be updated to
+support "creating" keys via using external keys instead of existing keys. This
+will be done with the `config-name` plus `key-name` association.
+
+## Technical Description
+
+This requires an improvement to the configuration, along with allowing these new
+stanzas to be reloaded via `SIGHUP`.
+
+Unlike the seal mechanism, where key rotation is automatically detected by the
+wrapper and the root key is transparently re-encrypted, binding in the
+external keys layer is assumed to be to an exact underlying key at a very
+specific version and not to a set of key (or a keyring).
+
+### SystemView Changes
+
+Elided from the above user-facing description is the core technical
+improvement: plugins interact with core via the `logical.SystemView`
+[interface](https://github.com/openbao/openbao/blob/48e7bd6f8358191056bdd0d2ac8b11e9e253254d/sdk/logical/system_view.go#L18-L99),
+which will need to be extended to support the following new APIs:
+
+1. `ListKeys() (map[string]*ExternalKeyInfo, error)` - to return information
+   about external keys accessible to this mount.
+2. `GetKey() (logical.ExternalKey, error)` - to return a helper to
+   use external keys. This will be implemented in `go-kms-wrapper` as a new
+   key type which _always_ performs direct operations via underlying keys.
+   We will need to make this compatible with the `crypto` standard library
+   (to support e.g., `crypto.Signer` and other such interfaces like the
+   limited [`crypto11` library](https://github.com/ThalesGroup/crypto11)
+   does). `GetKey()` would likely take both a `config-name` and `key-name`
+   parameter to uniquely identify a key.
+
+`ExternalKey` will implement a selection of standard Go interfaces, depending on
+the capabilities of the underlying keys:
+
+- `crypto.Signer`
+- `crypto.Decrypter`
+- `cipher.AEAD`
+
+Once an `ExternalKey` has been retrieved via `GetKey()`, a secret
+engine can check for interface support by type casting. Access to private keys
+will not be returned.
+
+In the future, HMAC-based keys may be supported. This means that initially,
+Transit will not support modes which require HMAC.
+
+### Plugin Key Usage
+
+Upstream HashiCorp Vault Enterprise uses the `managed_key_name` and
+`managed_key_uuid` fields. We will support an `external_key_name` field as
+well as an equivalent alternative `managed_key_name` field to offer some
+compatibility with existing workflows that target upstream. UUID fields are
+unsupported, external keys are addressed by config name + key name only.
+
+The intention here is that plugin authors will enable external keys via an
+explicit key type (`key_type=external_key` or `key_type=managed_key`). The
+actual key type will be inferred from the underlying external key instance.
+When providing these parameters, the above `external_key_name` or
+`managed_key_name` fields will need to be provided, which will be used for
+the lookup via the SystemView API.
+
+In Transit in particular, each key version could reference a different external
+key via the `external_key_name` value. Any automatic rotation will be disabled.
+
+## Rationale and Alternatives
+
+Reimplementing Managed Keys as it exists in Vault Enterprise does not match
+the future semantics we hope to include for namespaces, such as stronger
+multi-tenant separation (e.g., [namespace-level sealing](https://github.com/openbao/openbao/issues/1170)).
+
+Another alternative would be to implement a HSM or KMS library as a top-level
+secrets engine in OpenBao. This would directly expose actions on keys as
+top-level APIs. With a cross-plugin communication mechanism, this could open
+up a fully-pluggable system for such keys. However, this opens a significant
+weakness: OpenBao is assumed (in e.g., the PKI, SSH, and OIDC Identity
+Provider) to _control_ signing capabilities. Users are not allowed to sign
+arbitrary blobs but are instead restricted to values explicitly allowed by
+these engines' roles. This means that opening up such cross-plugin
+communication directly via users' existing token on a request would mean they
+have to have API access to bypass these controls. Thus the only viable approach
+is a per-mount identity, policy, and tokens, and would be significantly more
+work.
+
+## Downsides
+
+One downside of this change is that users of managed keys will not be able
+to directly transition to external keys. However, because managed keys are
+transparent from an API caller's perspective and are only visible to
+operators, this should only be a one-time impact on migration from Vault
+Enterprise to OpenBao.
+
+## Security Implications
+
+This improves the overall security posture of the upstream feature and of
+OpenBao: backing key material by a HSM or KMS is one of the strongest storage
+mechanisms we could support.
+
+## User/Developer Experience
+
+This may have some impact on request time depending on the latency and
+throughput of the external HSM or KMS.
+
+## Unresolved Questions
+
+n/a
+
+## Related Issues
+
+n/a
+
+## Proof of Concept
+
+n/a

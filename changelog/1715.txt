@@ -1,0 +1,3 @@
+```release-note:bug
+identity: fix nil panic when collecting metrics with unsafe_cross_namespace_identity=true.
+```

@@ -20,7 +20,7 @@ func (c *Sys) StepDownWithContext(ctx context.Context) error {
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil && resp.Body != nil {
-		resp.Body.Close()
+		resp.Body.Close() //nolint:errcheck
 	}
 	return err
 }

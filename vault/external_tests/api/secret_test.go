@@ -2059,10 +2059,12 @@ path "sys/mounts/pki" {
 	require.NoError(t, err)
 
 	// Try inline authentication.
-	logical, err := client.Logical().WithInlineAuth("auth/userpass/login/admin", map[string]interface{}{
+	inlineClient, err := client.WithInlineAuth("auth/userpass/login/admin", map[string]interface{}{
 		"password": "admin",
 	})
 	require.NoError(t, err)
+
+	logical := inlineClient.Logical()
 
 	resp, err := logical.Read("sys/policies/acl/my-admin")
 	require.NoError(t, err)

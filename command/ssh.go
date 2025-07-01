@@ -6,11 +6,13 @@ package command
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -18,7 +20,7 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/logical/ssh"
-	"github.com/pkg/errors"
+	"github.com/openbao/openbao/helper/homedir"
 	"github.com/posener/complete"
 )
 
@@ -156,20 +158,20 @@ func (c *SSHCommand) Flags() *FlagSets {
 	f.StringVar(&StringVar{
 		Name:       "public-key-path",
 		Target:     &c.flagPublicKeyPath,
-		Default:    "~/.ssh/id_rsa.pub",
+		Default:    "",
 		EnvVar:     "",
 		Completion: complete.PredictFiles("*"),
-		Usage:      "Path to the SSH public key to send to OpenBao for signing.",
+		Usage:      "Path to the SSH public key to send to OpenBao for signing. If not set, ~/.ssh/id_ed25519.pub, ~/.ssh/id_ecdsa.pub and ~/.ssh/id_rsa.pub will be searched in order.",
 	})
 
 	f.StringVar(&StringVar{
 		Name:       "private-key-path",
 		Target:     &c.flagPrivateKeyPath,
-		Default:    "~/.ssh/id_rsa",
+		Default:    "",
 		EnvVar:     "",
 		Completion: complete.PredictFiles("*"),
 		Usage: "Path to the SSH private key to use for authentication. This must " +
-			"be the corresponding private key to -public-key-path.",
+			"be the corresponding private key to -public-key-path. If not set, ~/.ssh/id_ed25519, ~/.ssh/id_ecdsa and ~/.ssh/id_rsa will be searched in order.",
 	})
 
 	f.StringVar(&StringVar{
@@ -244,6 +246,40 @@ func (c *SSHCommand) Run(args []string) int {
 	if err := f.Parse(args, DisableDisplayFlagWarning(true)); err != nil {
 		c.UI.Error(err.Error())
 		return 1
+	}
+
+	// Try to find SSH keys
+	if strings.ToLower(c.flagMode) == ssh.KeyTypeCA {
+		home, _ := homedir.Dir()
+		if home != "" && c.flagPublicKeyPath == "" && c.flagPrivateKeyPath == "" {
+			for _, p := range []string{"id_ed25519", "id_ecdsa", "id_rsa"} {
+				keyPath := filepath.Join(home, ".ssh", p)
+				_, keyErr := os.Stat(keyPath)
+				_, pubErr := os.Stat(keyPath + ".pub")
+				if keyErr == nil && pubErr == nil {
+					c.flagPrivateKeyPath = keyPath
+					c.flagPublicKeyPath = keyPath + ".pub"
+					break
+				}
+			}
+		} else if c.flagPrivateKeyPath != "" && c.flagPublicKeyPath == "" {
+			if _, err := os.Stat(c.flagPrivateKeyPath + ".pub"); err == nil {
+				c.flagPublicKeyPath = c.flagPrivateKeyPath + ".pub"
+			}
+		} else if c.flagPublicKeyPath != "" && c.flagPrivateKeyPath == "" {
+			privPath := strings.TrimSuffix(c.flagPublicKeyPath, ".pub")
+			if _, err := os.Stat(privPath); err == nil && privPath != c.flagPublicKeyPath {
+				c.flagPrivateKeyPath = privPath
+			}
+		}
+		if c.flagPublicKeyPath == "" {
+			c.UI.Error("Could not find an SSH public key. Specify with -public-key-path.")
+			return 1
+		}
+		if c.flagPrivateKeyPath == "" {
+			c.UI.Error("Could not find an SSH private key. Specify with -private-key-path.")
+			return 1
+		}
 	}
 
 	// Use homedir to expand any relative paths such as ~/.ssh
@@ -411,8 +447,12 @@ func (c *SSHCommand) handleTypeCA(username, ip, port string, sshArgs []string) i
 		// Write the known_hosts file
 		name := fmt.Sprintf("vault_ssh_ca_known_hosts_%s_%s", username, ip)
 		data := fmt.Sprintf("@cert-authority %s %s", c.flagHostKeyHostnames, publicKey)
-		knownHosts, err, closer := c.writeTemporaryFile(name, []byte(data), 0o644)
-		defer closer()
+		knownHosts, closer, err := c.writeTemporaryFile(name, []byte(data), 0o644)
+		defer func() {
+			if err := closer(); err != nil {
+				c.UI.Error(fmt.Sprintf("failed to delete temporary file: %s", err))
+			}
+		}()
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("failed to write host public key: %s", err))
 			return 1
@@ -425,8 +465,12 @@ func (c *SSHCommand) handleTypeCA(username, ip, port string, sshArgs []string) i
 
 	// Write the signed public key to disk
 	name := fmt.Sprintf("vault_ssh_ca_%s_%s", username, ip)
-	signedPublicKeyPath, err, closer := c.writeTemporaryKey(name, []byte(key))
-	defer closer()
+	signedPublicKeyPath, closer, err := c.writeTemporaryKey(name, []byte(key))
+	defer func() {
+		if err := closer(); err != nil {
+			c.UI.Error(fmt.Sprintf("failed to delete temporary key: %s", err))
+		}
+	}()
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("failed to write signed public key: %s", err))
 		return 2
@@ -592,8 +636,12 @@ func (c *SSHCommand) handleTypeDynamic(username, ip, port string, sshArgs []stri
 
 	// Write the dynamic key to disk
 	name := fmt.Sprintf("vault_ssh_dynamic_%s_%s", username, ip)
-	keyPath, err, closer := c.writeTemporaryKey(name, []byte(cred.Key))
-	defer closer()
+	keyPath, closer, err := c.writeTemporaryKey(name, []byte(cred.Key))
+	defer func() {
+		if err := closer(); err != nil {
+			c.UI.Error(fmt.Sprintf("failed to delete temporary key: %s", err))
+		}
+	}()
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("failed to write dynamic key: %s", err))
 		return 1
@@ -658,7 +706,7 @@ func (c *SSHCommand) generateCredential(username, ip string) (*api.Secret, *SSHC
 		"ip":       ip,
 	})
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to get credentials")
+		return nil, nil, fmt.Errorf("failed to get credentials: %w", err)
 	}
 	if secret == nil || secret.Data == nil {
 		return nil, nil, errors.New("vault returned empty credentials")
@@ -673,12 +721,12 @@ func (c *SSHCommand) generateCredential(username, ip string) (*api.Secret, *SSHC
 	// Use mapstructure to decode the response
 	var resp SSHCredentialResp
 	if err := mapstructure.Decode(secret.Data, &resp); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to decode credential")
+		return nil, nil, fmt.Errorf("failed to decode credential: %w", err)
 	}
 
 	// Check for an empty key response
 	if len(resp.Key) == 0 {
-		return nil, nil, errors.New("vault returned an invalid key")
+		return nil, nil, fmt.Errorf("vault returned an invalid key: %w", err)
 	}
 
 	return secret, &resp, nil
@@ -686,31 +734,31 @@ func (c *SSHCommand) generateCredential(username, ip string) (*api.Secret, *SSHC
 
 // writeTemporaryFile writes a file to a temp location with the given data and
 // file permissions.
-func (c *SSHCommand) writeTemporaryFile(name string, data []byte, perms os.FileMode) (string, error, func() error) {
+func (c *SSHCommand) writeTemporaryFile(name string, data []byte, perms os.FileMode) (string, func() error, error) {
 	// default closer to prevent panic
 	closer := func() error { return nil }
 
 	f, err := os.CreateTemp("", name)
 	if err != nil {
-		return "", errors.Wrap(err, "creating temporary file"), closer
+		return "", closer, fmt.Errorf("creating temporary file: %w", err)
 	}
 
 	closer = func() error { return os.Remove(f.Name()) }
 
 	if err := os.WriteFile(f.Name(), data, perms); err != nil {
-		return "", errors.Wrap(err, "writing temporary key"), closer
+		return "", closer, fmt.Errorf("writing temporary key: %w", err)
 	}
 
 	if err := f.Close(); err != nil {
-		return "", errors.Wrap(err, "closing temporary key"), closer
+		return "", closer, fmt.Errorf("closing temporary key: %w", err)
 	}
 
-	return f.Name(), nil, closer
+	return f.Name(), closer, nil
 }
 
 // writeTemporaryKey writes the key to a temporary file and returns the path.
 // The caller should defer the closer to cleanup the key.
-func (c *SSHCommand) writeTemporaryKey(name string, data []byte) (string, error, func() error) {
+func (c *SSHCommand) writeTemporaryKey(name string, data []byte) (string, func() error, error) {
 	return c.writeTemporaryFile(name, data, 0o600)
 }
 
@@ -809,10 +857,7 @@ func (c *SSHCommand) parseSSHCommand(args []string) (hostname string, username s
 
 	}
 	if hostname == "" {
-		return "", "", "", errors.Wrap(
-			err,
-			fmt.Sprintf("failed to find a hostname in ssh command %q", strings.Join(args, " ")),
-		)
+		return "", "", "", fmt.Errorf("failed to find a hostname in ssh command %q: %w", strings.Join(args, " "), err)
 	}
 	return hostname, username, port, nil
 }
@@ -822,7 +867,7 @@ func (c *SSHCommand) resolveHostname(hostname string) (ip string, err error) {
 	// Vault only deals with IP addresses.
 	ipAddr, err := net.ResolveIPAddr("ip", hostname)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to resolve IP address")
+		return "", fmt.Errorf("failed to resolve IP address: %w", err)
 	}
 	ip = ipAddr.String()
 	return ip, nil

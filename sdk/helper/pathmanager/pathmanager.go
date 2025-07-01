@@ -60,9 +60,7 @@ func (p *PathManager) RemovePaths(paths []string) {
 		}
 
 		// Exceptions aren't stored with the leading ! so strip it
-		if strings.HasPrefix(prefix, "!") {
-			prefix = strings.TrimPrefix(prefix, "!")
-		}
+		prefix = strings.TrimPrefix(prefix, "!")
 
 		// We trim any trailing *, but we don't touch whether it is a trailing
 		// slash or not since we want to be able to ignore prefixes that fully

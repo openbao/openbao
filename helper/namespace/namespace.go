@@ -38,15 +38,12 @@ type (
 )
 
 type Namespace struct {
-	ID        string `json:"id" mapstructure:"id"`
-	UUID      string `json:"uuid" mapstructure:"uuid"`
-	Path      string `json:"path" mapstructure:"path"`
-	Tainted   bool   `json:"tainted" mapstructure:"tainted"`
-	Locked    bool   `json:"-"`
-	UnlockKey string `json:"unlock_key" mapstructure:"unlock_key"`
-	// IsDeleting tracks whether there's an ongoing deletion process of the specified namespace
-	// If tainted is true, but IsDeleting not, then namespace deletion operation has to be retried.
-	IsDeleting     bool              `json:"-"`
+	ID             string            `json:"id" mapstructure:"id"`
+	UUID           string            `json:"uuid" mapstructure:"uuid"`
+	Path           string            `json:"path" mapstructure:"path"`
+	Tainted        bool              `json:"tainted" mapstructure:"tainted"`
+	Locked         bool              `json:"-"`
+	UnlockKey      string            `json:"unlock_key" mapstructure:"unlock_key"`
 	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
 }
 
@@ -105,7 +102,6 @@ var (
 		Path:           "",
 		Tainted:        false,
 		Locked:         false,
-		IsDeleting:     false,
 		CustomMetadata: make(map[string]string),
 	}
 )
@@ -157,7 +153,6 @@ func (n *Namespace) Clone(withUnlock bool) *Namespace {
 		Path:           n.Path,
 		Tainted:        n.Tainted,
 		Locked:         n.Locked,
-		IsDeleting:     n.IsDeleting,
 		CustomMetadata: meta,
 	}
 
@@ -262,15 +257,15 @@ func HeaderFromContext(ctx context.Context) string {
 // Canonicalize trims any prefix '/' and adds a trailing '/' to the
 // provided string. The canonical root namespace path is the empty string.
 func Canonicalize(nsPath string) string {
-	if nsPath == "" || nsPath == "/" {
-		return ""
-	}
-
 	// Canonicalize the path to not have a '/' prefix
 	nsPath = strings.TrimPrefix(nsPath, "/")
 
 	// Remove duplicate slashes and any ../ values if present.
 	nsPath = path.Clean(nsPath)
+
+	if nsPath == "." || nsPath == "root" {
+		return ""
+	}
 
 	// Canonicalize the path to always having a '/' suffix
 	if !strings.HasSuffix(nsPath, "/") {

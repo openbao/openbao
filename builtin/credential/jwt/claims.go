@@ -7,11 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/pointerstructure"
 	"github.com/ryanuber/go-glob"
 )
@@ -113,7 +113,7 @@ func validateAudience(boundAudiences, audClaim []string, strict bool) error {
 
 	if len(boundAudiences) > 0 {
 		for _, v := range boundAudiences {
-			if strutil.StrListContains(audClaim, v) {
+			if slices.Contains(audClaim, v) {
 				return nil
 			}
 		}

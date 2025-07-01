@@ -7,6 +7,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
@@ -174,6 +175,43 @@ func TestClearUnpaginatedView(t *testing.T) {
 	keys, err = CollectKeys(context.Background(), s)
 	require.Nil(t, err)
 	require.Empty(t, keys)
+}
+
+func TestHandleListPageTermination(t *testing.T) {
+	s := prepKeyStorage(t)
+
+	keys, err := s.List(context.Background(), "")
+	require.NoError(t, err)
+
+	var seenKeys []string
+	var batchCount int
+	err = HandleListPage(context.Background(), s, "", 2, func(page int, index int, entry string) (bool, error) {
+		seenKeys = append(seenKeys, entry)
+		return true, nil
+	}, func(page int, entries []string) (bool, error) {
+		batchCount += 1
+		return true, nil
+	})
+	require.NoError(t, err)
+	require.ElementsMatch(t, seenKeys, keys)
+	require.Equal(t, batchCount, len(keys)/2)
+
+	var immediateCancel bool
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err = HandleListPage(ctx, s, "", 2, func(page int, index int, entry string) (bool, error) {
+		immediateCancel = false
+		time.Sleep(1 * time.Second)
+		return true, nil
+	}, func(page int, entries []string) (bool, error) {
+		immediateCancel = false
+		time.Sleep(1 * time.Second)
+		return true, nil
+	})
+
+	require.Error(t, err)
+	require.False(t, immediateCancel)
+	require.Contains(t, err.Error(), "context")
 }
 
 func prepKeyStorage(t *testing.T) Storage {

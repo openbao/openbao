@@ -5,28 +5,23 @@ package cert
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"fmt"
-	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
-
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
+	"github.com/tsaarni/certyaml"
 )
 
 func TestCRLFetch(t *testing.T) {
+	tc := setupTestCerts(t)
 	storage := &logical.InmemStorage{}
 
 	lb, err := Factory(context.Background(), &logical.BackendConfig{
@@ -47,7 +42,6 @@ func TestCRLFetch(t *testing.T) {
 			case <-t.C:
 				b.PeriodicFunc(context.Background(), &logical.Request{Storage: storage})
 			case <-closeChan:
-				break
 			}
 		}
 	}()
@@ -56,37 +50,23 @@ func TestCRLFetch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
-	connState, err := testConnState("test-fixtures/keys/cert.pem",
-		"test-fixtures/keys/key.pem", "test-fixtures/root/rootcacert.pem")
+	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
 	require.NoError(t, err)
-	caPEM, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	require.NoError(t, err)
-	caKeyPEM, err := os.ReadFile("test-fixtures/keys/key.pem")
-	require.NoError(t, err)
-	certPEM, err := os.ReadFile("test-fixtures/keys/cert.pem")
 
-	caBundle, err := certutil.ParsePEMBundle(string(caPEM))
-	require.NoError(t, err)
-	bundle, err := certutil.ParsePEMBundle(string(certPEM) + "\n" + string(caKeyPEM))
-	require.NoError(t, err)
-	//  Entry with one cert first
+	revokedCert1 := &certyaml.Certificate{Subject: "cn=revoked1", Issuer: tc.exampleCA}
+	revokedCert2 := &certyaml.Certificate{Subject: "cn=revoked2", Issuer: tc.exampleCA}
 
-	revocationListTemplate := &x509.RevocationList{
-		RevokedCertificates: []pkix.RevokedCertificate{
-			{
-				SerialNumber:   big.NewInt(1),
-				RevocationTime: time.Now(),
-			},
-		},
-		Number:             big.NewInt(1),
-		ThisUpdate:         time.Now(),
-		NextUpdate:         time.Now().Add(50 * time.Millisecond),
-		SignatureAlgorithm: x509.SHA1WithRSA,
+	nextUpdate := time.Now().Add(50 * time.Millisecond)
+	crl1 := &certyaml.CRL{
+		Issuer:     tc.exampleCA,
+		Revoked:    []*certyaml.Certificate{revokedCert1},
+		NextUpdate: &nextUpdate,
 	}
+	crlDER, err := crl1.DER()
+	require.NoError(t, err)
 
 	var crlBytesLock sync.Mutex
-	crlBytes, err := x509.CreateRevocationList(rand.Reader, revocationListTemplate, caBundle.Certificate, bundle.PrivateKey)
-	require.NoError(t, err)
+	crlBytes := crlDER
 
 	var serverURL *url.URL
 	crlServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -111,13 +91,13 @@ func TestCRLFetch(t *testing.T) {
 	fd := &framework.FieldData{
 		Raw: map[string]interface{}{
 			"name":        "test",
-			"certificate": string(caPEM),
+			"certificate": tc.exampleCA.CertPEM(),
 			"policies":    "foo,bar",
 		},
 		Schema: pathCerts(b).Fields,
 	}
 
-	resp, err := b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +106,7 @@ func TestCRLFetch(t *testing.T) {
 		Raw:    map[string]interface{}{},
 		Schema: pathLogin(b).Fields,
 	}
-	resp, err = b.pathLogin(context.Background(), req, empty_login_fd)
+	resp, err := b.pathLogin(context.Background(), req, empty_login_fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,25 +152,18 @@ func TestCRLFetch(t *testing.T) {
 	}
 	b.crlUpdateMutex.Unlock()
 
-	// Add a cert to the CRL, then wait to see if it gets automatically picked up
-	revocationListTemplate.RevokedCertificates = []pkix.RevokedCertificate{
-		{
-			SerialNumber:   big.NewInt(1),
-			RevocationTime: revocationListTemplate.RevokedCertificates[0].RevocationTime,
-		},
-		{
-			SerialNumber:   big.NewInt(2),
-			RevocationTime: time.Now(),
-		},
+	nextUpdate2 := time.Now().Add(1 * time.Minute)
+	crl2 := &certyaml.CRL{
+		Issuer:     tc.exampleCA,
+		Revoked:    []*certyaml.Certificate{revokedCert1, revokedCert2},
+		NextUpdate: &nextUpdate2,
 	}
-	revocationListTemplate.ThisUpdate = time.Now()
-	revocationListTemplate.NextUpdate = time.Now().Add(1 * time.Minute)
-	revocationListTemplate.Number = big.NewInt(2)
+	crlDER2, err := crl2.DER()
+	require.NoError(t, err)
 
 	crlBytesLock.Lock()
-	crlBytes, err = x509.CreateRevocationList(rand.Reader, revocationListTemplate, caBundle.Certificate, bundle.PrivateKey)
+	crlBytes = crlDER2
 	crlBytesLock.Unlock()
-	require.NoError(t, err)
 
 	// Give ourselves a little extra room on slower CI systems to ensure we
 	// can fetch the new CRL.

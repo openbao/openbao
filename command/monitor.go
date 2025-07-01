@@ -6,10 +6,10 @@ package command
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/cli"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/posener/complete"
 )
 
@@ -94,14 +94,14 @@ func (c *MonitorCommand) Run(args []string) int {
 
 	c.logLevel = strings.ToLower(c.logLevel)
 	validLevels := []string{"trace", "debug", "info", "warn", "error"}
-	if !strutil.StrListContains(validLevels, c.logLevel) {
+	if !slices.Contains(validLevels, c.logLevel) {
 		c.UI.Error(fmt.Sprintf("%s is an unknown log level. Valid log levels are: %s", c.logLevel, validLevels))
 		return 1
 	}
 
 	c.logFormat = strings.ToLower(c.logFormat)
 	validFormats := []string{"standard", "json"}
-	if !strutil.StrListContains(validFormats, c.logFormat) {
+	if !slices.Contains(validFormats, c.logFormat) {
 		c.UI.Error(fmt.Sprintf("%s is an unknown log format. Valid log formats are: %s", c.logFormat, validFormats))
 		return 1
 	}

@@ -75,7 +75,7 @@ func execute(ctx context.Context, stmt *sql.Stmt) error {
 }
 
 func parseQuery(m map[string]string, tpl string) string {
-	if m == nil || len(m) <= 0 {
+	if len(m) == 0 {
 		return tpl
 	}
 

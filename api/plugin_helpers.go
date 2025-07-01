@@ -14,7 +14,8 @@ import (
 	"net/url"
 	"regexp"
 
-	"github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 )
 
 const (
@@ -64,8 +65,11 @@ var sudoPaths = map[string]*regexp.Regexp{
 	"/sys/revoke-force/{prefix}":                    regexp.MustCompile(`^/sys/revoke-force/.+$`),
 	"/sys/revoke-prefix/{prefix}":                   regexp.MustCompile(`^/sys/revoke-prefix/.+$`),
 	"/sys/rotate":                                   regexp.MustCompile(`^/sys/rotate$`),
-	"/sys/internal/inspect/request":                 regexp.MustCompile(`^/sys/internal/inspect/request$`),
-	"/sys/internal/inspect/router/{tag}":            regexp.MustCompile(`^/sys/internal/inspect/router/.+$`),
+	// equivalent of '/sys/rotate'
+	"/sys/rotate/keyring":                regexp.MustCompile(`^/sys/rotate/keyring$`),
+	"/sys/rotate/root":                   regexp.MustCompile(`^/sys/rotate/root$`),
+	"/sys/internal/inspect/request":      regexp.MustCompile(`^/sys/internal/inspect/request$`),
+	"/sys/internal/inspect/router/{tag}": regexp.MustCompile(`^/sys/internal/inspect/router/.+$`),
 }
 
 // PluginAPIClientMeta is a helper that plugins can use to configure TLS connections
@@ -128,7 +132,7 @@ func VaultPluginTLSProviderContext(ctx context.Context, apiTLSConfig *TLSConfig)
 	return func() (*tls.Config, error) {
 		unwrapToken := ReadBaoVariable(PluginUnwrapTokenEnv)
 
-		parsedJWT, err := jwt.ParseSigned(unwrapToken)
+		parsedJWT, err := jwt.ParseSigned(unwrapToken, []jose.SignatureAlgorithm{jose.ES512})
 		if err != nil {
 			return nil, fmt.Errorf("error parsing wrapping token: %w", err)
 		}

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
@@ -346,7 +347,7 @@ func (b *databaseBackend) setStaticAccount(ctx context.Context, s logical.Storag
 
 	// If role name isn't in the database's allowed roles, send back a
 	// permission denied.
-	if !strutil.StrListContains(dbConfig.AllowedRoles, "*") && !strutil.StrListContainsGlob(dbConfig.AllowedRoles, input.RoleName) {
+	if !slices.Contains(dbConfig.AllowedRoles, "*") && !strutil.StrListContainsGlob(dbConfig.AllowedRoles, input.RoleName) {
 		return output, fmt.Errorf("%q is not an allowed role", input.RoleName)
 	}
 

@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
@@ -227,19 +228,14 @@ func enableNoopAudit(t *testing.T, token string, core *vault.Core) {
 	}
 }
 
-func testCoreUnsealedWithAudit(t *testing.T, records **[][]byte) (*vault.Core, [][]byte, string) {
-	conf := &vault.CoreConfig{
-		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
+func testServerWithAudit(t *testing.T, records **[][]byte) (net.Listener, string, string, [][]byte) {
+	core, keys, token := vault.TestCoreUnsealedWithConfig(t, &vault.CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
 		AuditBackends: map[string]audit.Factory{
 			"noop": corehelpers.NoopAuditFactory(records),
 		},
-	}
-	core, keys, token := vault.TestCoreUnsealedWithConfig(t, conf)
-	return core, keys, token
-}
+	})
 
-func testServerWithAudit(t *testing.T, records **[][]byte) (net.Listener, string, string, [][]byte) {
-	core, keys, token := testCoreUnsealedWithAudit(t, records)
 	ln, addr := TestServer(t, core)
 	TestServerAuth(t, addr, token)
 	enableNoopAudit(t, token, core)
@@ -322,12 +318,12 @@ func TestSysGenerateRoot_Update_OTP(t *testing.T) {
 	if actual["encoded_token"] == nil || actual["encoded_token"] == "" {
 		t.Fatal("no encoded token found in response")
 	}
-	if actual["encoded_root_token"] == nil || actual["encoded_root-token"] == "" {
+	expected["encoded_token"] = actual["encoded_token"]
+
+	if actual["encoded_root_token"] == nil || actual["encoded_root_token"] == "" {
 		t.Fatal("no encoded root token found in response")
 	}
-	expected["encoded_token"] = actual["encoded_token"]
 	expected["encoded_root_token"] = actual["encoded_root_token"]
-	expected["encoded_token"] = actual["encoded_token"]
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("\nexpected: %#v\nactual: %#v", expected, actual)
@@ -426,12 +422,12 @@ func TestSysGenerateRoot_Update_PGP(t *testing.T) {
 	if actual["encoded_token"] == nil || actual["encoded_token"] == "" {
 		t.Fatal("no encoded token found in response")
 	}
-	if actual["encoded_root_token"] == nil || actual["encoded_root-token"] == "" {
+	expected["encoded_token"] = actual["encoded_token"]
+
+	if actual["encoded_root_token"] == nil || actual["encoded_root_token"] == "" {
 		t.Fatal("no encoded root token found in response")
 	}
-	expected["encoded_token"] = actual["encoded_token"]
 	expected["encoded_root_token"] = actual["encoded_root_token"]
-	expected["encoded_token"] = actual["encoded_token"]
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("\nexpected: %#v\nactual: %#v", expected, actual)

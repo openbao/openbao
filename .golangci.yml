@@ -1,0 +1,21 @@
+version: "2"
+linters:
+  enable:
+    - cyclop
+    - misspell
+  settings:
+    cyclop:
+      # Lower cyclomatic complexity threshold after the max complexity is lowered
+      # 135 -> 124
+      # Highest: (*ServerCommand).Run (123) in command/server.go
+      max-complexity: 124
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      module-path: github.com/openbao/openbao
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

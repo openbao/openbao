@@ -6,16 +6,13 @@ package server
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
-	"math/rand"
 	"net"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-sockaddr"
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/pires/go-proxyproto"
 )
 
@@ -23,7 +20,7 @@ func TestTCPListener(t *testing.T) {
 	ln, _, _, err := tcpListenerFactory(&configutil.Listener{
 		Address:    "127.0.0.1:0",
 		TLSDisable: true,
-	}, nil, nil, cli.NewMockUi())
+	}, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -40,12 +37,6 @@ func TestTCPListener_tls(t *testing.T) {
 	wd, _ := os.Getwd()
 	wd += "/test-fixtures/reload/"
 
-	td, err := os.MkdirTemp("", fmt.Sprintf("vault-test-%d", rand.New(rand.NewSource(time.Now().Unix())).Int63()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(td)
-
 	// Setup initial certs
 	inBytes, _ := os.ReadFile(wd + "reload_ca.pem")
 	certPool := x509.NewCertPool()
@@ -60,7 +51,7 @@ func TestTCPListener_tls(t *testing.T) {
 		TLSKeyFile:                    wd + "reload_foo.key",
 		TLSRequireAndVerifyClientCert: true,
 		TLSClientCAFile:               wd + "reload_ca.pem",
-	}, nil, nil, cli.NewMockUi())
+	}, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -98,7 +89,7 @@ func TestTCPListener_tls(t *testing.T) {
 		TLSRequireAndVerifyClientCert: true,
 		TLSDisableClientCerts:         true,
 		TLSClientCAFile:               wd + "reload_ca.pem",
-	}, nil, nil, cli.NewMockUi())
+	}, nil, cli.NewMockUi())
 	if err == nil {
 		t.Fatal("expected error due to mutually exclusive client cert options")
 	}
@@ -109,7 +100,7 @@ func TestTCPListener_tls(t *testing.T) {
 		TLSKeyFile:            wd + "reload_foo.key",
 		TLSDisableClientCerts: true,
 		TLSClientCAFile:       wd + "reload_ca.pem",
-	}, nil, nil, cli.NewMockUi())
+	}, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -120,12 +111,6 @@ func TestTCPListener_tls(t *testing.T) {
 func TestTCPListener_tls13(t *testing.T) {
 	wd, _ := os.Getwd()
 	wd += "/test-fixtures/reload/"
-
-	td, err := os.MkdirTemp("", fmt.Sprintf("vault-test-%d", rand.New(rand.NewSource(time.Now().Unix())).Int63()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(td)
 
 	// Setup initial certs
 	inBytes, _ := os.ReadFile(wd + "reload_ca.pem")
@@ -142,7 +127,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSRequireAndVerifyClientCert: true,
 		TLSClientCAFile:               wd + "reload_ca.pem",
 		TLSMinVersion:                 "tls13",
-	}, nil, nil, cli.NewMockUi())
+	}, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -181,7 +166,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSDisableClientCerts:         true,
 		TLSClientCAFile:               wd + "reload_ca.pem",
 		TLSMinVersion:                 "tls13",
-	}, nil, nil, cli.NewMockUi())
+	}, nil, cli.NewMockUi())
 	if err == nil {
 		t.Fatal("expected error due to mutually exclusive client cert options")
 	}
@@ -193,7 +178,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSDisableClientCerts: true,
 		TLSClientCAFile:       wd + "reload_ca.pem",
 		TLSMinVersion:         "tls13",
-	}, nil, nil, cli.NewMockUi())
+	}, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -207,7 +192,7 @@ func TestTCPListener_tls13(t *testing.T) {
 		TLSDisableClientCerts: true,
 		TLSClientCAFile:       wd + "reload_ca.pem",
 		TLSMaxVersion:         "tls12",
-	}, nil, nil, cli.NewMockUi())
+	}, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -442,7 +427,7 @@ func TestTCPListener_proxyProtocol(t *testing.T) {
 				TLSDisable:                   true,
 				ProxyProtocolBehavior:        tc.Behavior,
 				ProxyProtocolAuthorizedAddrs: proxyProtocolAuthorizedAddrs,
-			}, nil, nil, cli.NewMockUi())
+			}, nil, cli.NewMockUi())
 			if err != nil {
 				t.Fatalf("err: %s", err)
 			}

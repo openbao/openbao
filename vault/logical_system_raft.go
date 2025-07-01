@@ -15,12 +15,12 @@ import (
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/vault/seal"
 	"golang.org/x/crypto/hkdf"
 	"google.golang.org/protobuf/proto"
 )
@@ -57,7 +57,7 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleRaftBootstrapAnswerWrite(),
-					Summary:  "Accepts an answer from the peer to be joined to the fact cluster.",
+					Summary:  "Accepts an answer from the peer to be joined to the raft cluster.",
 				},
 			},
 
@@ -94,8 +94,9 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRaftRemovePeerUpdate(),
-					Summary:  "Remove a peer from the raft cluster.",
+					Callback:                  b.handleRaftRemovePeerUpdate(),
+					Summary:                   "Remove a peer from the raft cluster.",
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -113,8 +114,9 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRaftPromoteUpdate(),
-					Summary:  "Promotes a permanent non-voter to a voter.",
+					Callback:                  b.handleRaftPromoteUpdate(),
+					Summary:                   "Promotes a permanent non-voter to a voter.",
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -132,8 +134,9 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRaftDemoteUpdate(),
-					Summary:  "Demotes a voter to a permanent non-voter.",
+					Callback:                  b.handleRaftDemoteUpdate(),
+					Summary:                   "Demotes a voter to a permanent non-voter.",
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -158,7 +161,7 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleStorageRaftSnapshotRead(),
-					Summary:  "Returns a snapshot of the current state of vault.",
+					Summary:  "Returns a snapshot of the current state of OpenBao.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleStorageRaftSnapshotWrite(false),
@@ -229,10 +232,12 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleStorageRaftAutopilotConfigRead(),
+					Callback:                  b.handleStorageRaftAutopilotConfigRead(),
+					ForwardPerformanceStandby: true,
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleStorageRaftAutopilotConfigUpdate(),
+					Callback:                  b.handleStorageRaftAutopilotConfigUpdate(),
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -244,7 +249,7 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 func (b *SystemBackend) handleRaftConfigurationGet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -269,7 +274,7 @@ func (b *SystemBackend) handleRaftRemovePeerUpdate() framework.OperationFunc {
 			return logical.ErrorResponse("no server id provided"), logical.ErrInvalidRequest
 		}
 
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -291,7 +296,7 @@ func (b *SystemBackend) handleRaftPromoteUpdate() framework.OperationFunc {
 			return logical.ErrorResponse("no server id provided"), logical.ErrInvalidRequest
 		}
 
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -311,7 +316,7 @@ func (b *SystemBackend) handleRaftDemoteUpdate() framework.OperationFunc {
 			return logical.ErrorResponse("no server id provided"), logical.ErrInvalidRequest
 		}
 
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -394,7 +399,7 @@ func (b *SystemBackend) handleRaftBootstrapChallengeWrite() framework.OperationF
 
 func (b *SystemBackend) handleRaftBootstrapAnswerWrite() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -502,7 +507,7 @@ func (b *SystemBackend) handleStorageRaftSnapshotRead() framework.OperationFunc 
 
 func (b *SystemBackend) handleStorageRaftAutopilotState() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -530,7 +535,7 @@ func (b *SystemBackend) handleStorageRaftAutopilotState() framework.OperationFun
 
 func (b *SystemBackend) handleStorageRaftAutopilotConfigRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -555,7 +560,7 @@ func (b *SystemBackend) handleStorageRaftAutopilotConfigRead() framework.Operati
 
 func (b *SystemBackend) handleStorageRaftAutopilotConfigUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -609,11 +614,11 @@ func (b *SystemBackend) handleStorageRaftAutopilotConfigUpdate() framework.Opera
 		effectiveConf.Merge(config)
 
 		if effectiveConf.CleanupDeadServers && effectiveConf.MinQuorum < 3 {
-			return logical.ErrorResponse(fmt.Sprintf("min_quorum must be set when cleanup_dead_servers is set and it should at least be 3; cleanup_dead_servers: %#v, min_quorum: %#v", effectiveConf.CleanupDeadServers, effectiveConf.MinQuorum)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("min_quorum must be set when cleanup_dead_servers is set and it should at least be 3; cleanup_dead_servers: %#v, min_quorum: %#v", effectiveConf.CleanupDeadServers, effectiveConf.MinQuorum), logical.ErrInvalidRequest
 		}
 
 		if effectiveConf.CleanupDeadServers && effectiveConf.DeadServerLastContactThreshold.Seconds() < 60 {
-			return logical.ErrorResponse(fmt.Sprintf("dead_server_last_contact_threshold should not be set to less than 1m; received: %v", deadServerLastContactThreshold)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("dead_server_last_contact_threshold should not be set to less than 1m; received: %v", deadServerLastContactThreshold), logical.ErrInvalidRequest
 		}
 
 		// Persist only the user supplied fields
@@ -659,12 +664,12 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 		case err == nil:
 		case strings.Contains(err.Error(), "failed to open the sealed hashes"):
 			switch b.Core.seal.BarrierType() {
-			case wrapping.WrapperTypeShamir:
+			case seal.WrapperTypeShamir:
 				return logical.ErrorResponse("could not verify hash file, possibly the snapshot is using a different set of unseal keys; use the snapshot-force API to bypass this check"), logical.ErrInvalidRequest
 			default:
 				return logical.ErrorResponse("could not verify hash file, possibly the snapshot is using a different autoseal key; use the snapshot-force API to bypass this check"), logical.ErrInvalidRequest
 			}
-		case err != nil:
+		default:
 			b.Core.logger.Error("raft snapshot restore: failed to write snapshot", "error", err)
 			return nil, err
 		}
@@ -680,7 +685,7 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 			go l.grab()
 			if stopped := l.lockOrStop(); stopped {
 				b.Core.logger.Error("not applying snapshot; shutting down")
-				return
+				return retErr
 			}
 			defer b.Core.stateLock.Unlock()
 
@@ -688,13 +693,14 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 			// it's in an unknown state
 			defer func() {
 				if retErr != nil {
-					if err := b.Core.sealInternalWithOptions(false, false, true); err != nil {
+					if err := b.Core.sealInternalWithOptions(false); err != nil {
 						b.Core.logger.Error("failed to seal node", "error", err)
 					}
 				}
 			}()
 
-			ctx, ctxCancel := context.WithCancel(namespace.RootContext(nil))
+			// don't use the incoming request context, as it's short-lived
+			ctx, ctxCancel := context.WithCancel(namespace.RootContext(context.TODO()))
 			defer func() {
 				if retErr != nil {
 					ctxCancel()

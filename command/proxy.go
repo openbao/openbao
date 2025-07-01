@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/cli"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/kr/pretty"
@@ -37,11 +36,11 @@ import (
 	"github.com/openbao/openbao/command/agentproxyshared/sink/inmem"
 	"github.com/openbao/openbao/command/agentproxyshared/winsvc"
 	proxyConfig "github.com/openbao/openbao/command/proxy/config"
+	"github.com/openbao/openbao/helper/configutil"
+	"github.com/openbao/openbao/helper/listenerutil"
 	"github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/useragent"
-	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/version"
@@ -76,7 +75,6 @@ type ProxyCommand struct {
 	tlsReloadFuncs     []reloadutil.ReloadFunc
 
 	logWriter io.Writer
-	logGate   *gatedwriter.Writer
 	logger    log.Logger
 
 	// Telemetry object
@@ -123,6 +121,7 @@ func (c *ProxyCommand) Flags() *FlagSets {
 
 	f.StringSliceVar(&StringSliceVar{
 		Name:   "config",
+		EnvVar: "BAO_PROXY_CONFIG_PATH",
 		Target: &c.flagConfigs,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
@@ -176,11 +175,7 @@ func (c *ProxyCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Create a logger. We wrap it in a gated writer so that it doesn't
-	// start logging too early.
-	c.logGate = gatedwriter.NewWriter(os.Stderr)
-	c.logWriter = c.logGate
-
+	c.logWriter = os.Stderr
 	if c.logFlags.flagCombineLogs {
 		c.logWriter = os.Stdout
 	}
@@ -210,11 +205,6 @@ func (c *ProxyCommand) Run(args []string) int {
 		return 1
 	}
 	c.logger = l
-
-	// release log gate if the disable-gated-logs flag is set
-	if c.logFlags.flagDisableGatedLogs {
-		c.logGate.Flush()
-	}
 
 	infoKeys := make([]string, 0, 10)
 	info := make(map[string]string)
@@ -374,7 +364,7 @@ func (c *ProxyCommand) Run(args []string) int {
 
 	// Output the header that the proxy has started
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> OpenBao Proxy started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao Proxy started!")
 	}
 
 	var leaseCache *cache.LeaseCache
@@ -440,15 +430,38 @@ func (c *ProxyCommand) Run(args []string) int {
 			}
 			previousToken = oldToken
 			if deferFunc != nil {
-				defer deferFunc()
+				defer func() {
+					if err := deferFunc(); err != nil {
+						c.UI.Error(fmt.Sprintf("Error running close function: %v", err))
+					}
+				}()
 			}
 		}
 	}
 
-	var listeners []net.Listener
-
 	// Ensure we've added all the reload funcs for TLS before anyone triggers a reload.
 	c.tlsReloadFuncsLock.Lock()
+
+	var (
+		listeners []net.Listener
+		servers   []*http.Server
+	)
+
+	// Ensure that listeners and HTTP servers are closed at all the exits.
+	defer func() {
+		var errs error
+		for _, srv := range servers {
+			errs = errors.Join(srv.Close())
+		}
+		// Closing an HTTP server will close the underlying listener, so avoid
+		// double-closing it.
+		for _, ln := range listeners[len(servers):] {
+			errs = errors.Join(errs, ln.Close())
+		}
+		if errs != nil {
+			c.UI.Error(fmt.Sprintf("Error closing listeners: %v", errs))
+		}
+	}()
 
 	for i, lnConfig := range config.Listeners {
 		var ln net.Listener
@@ -505,7 +518,7 @@ func (c *ProxyCommand) Run(args []string) int {
 
 		// Parse 'require_request_header' listener config option, and wrap
 		// the request handler if necessary
-		if lnConfig.RequireRequestHeader && ("metrics_only" != lnConfig.Role) {
+		if lnConfig.RequireRequestHeader && (lnConfig.Role != "metrics_only") {
 			muxHandler = verifyRequestHeader(muxHandler)
 		}
 
@@ -514,7 +527,7 @@ func (c *ProxyCommand) Run(args []string) int {
 		quitEnabled := lnConfig.ProxyAPI != nil && lnConfig.ProxyAPI.EnableQuit
 
 		mux.Handle(consts.ProxyPathMetrics, c.handleMetrics())
-		if "metrics_only" != lnConfig.Role {
+		if lnConfig.Role != "metrics_only" {
 			mux.Handle(consts.ProxyPathCacheClear, leaseCache.HandleCacheClear(ctx))
 			mux.Handle(consts.ProxyPathQuit, c.handleQuit(quitEnabled))
 			mux.Handle("/", muxHandler)
@@ -542,18 +555,16 @@ func (c *ProxyCommand) Run(args []string) int {
 			ErrorLog:          apiProxyLogger.StandardLogger(nil),
 		}
 
-		go server.Serve(ln)
+		go func(ln net.Listener) {
+			if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				c.UI.Error(fmt.Sprintf("HTTP server (listening on %s) exited with error: %v", ln.Addr().String(), err))
+			}
+		}(ln)
+
+		servers = append(servers, server)
 	}
 
 	c.tlsReloadFuncsLock.Unlock()
-
-	// Ensure that listeners are closed at all the exits
-	listenerCloseFunc := func() {
-		for _, ln := range listeners {
-			ln.Close()
-		}
-	}
-	defer c.cleanupGuard.Do(listenerCloseFunc)
 
 	// Inform any tests that the server is ready
 	if c.startedCh != nil {
@@ -683,7 +694,7 @@ func (c *ProxyCommand) Run(args []string) int {
 	padding := 24
 	sort.Strings(infoKeys)
 	caser := cases.Title(language.English, cases.NoLower)
-	c.UI.Output("==> OpenBao Proxy configuration:\n")
+	c.UI.Output("\n==> OpenBao Proxy configuration:\n")
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
 			"%s%s: %s",
@@ -692,9 +703,6 @@ func (c *ProxyCommand) Run(args []string) int {
 			info[k]))
 	}
 	c.UI.Output("")
-
-	// Release the log gate.
-	c.logGate.Flush()
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.storePidFile(config.PidFile); err != nil {
@@ -851,7 +859,7 @@ func (c *ProxyCommand) setBoolFlag(f *FlagSets, configVal bool, fVar *BoolVar) {
 }
 
 // storePidFile is used to write out our PID to a file if necessary
-func (c *ProxyCommand) storePidFile(pidPath string) error {
+func (c *ProxyCommand) storePidFile(pidPath string) (err error) {
 	// Quit fast if no pidfile
 	if pidPath == "" {
 		return nil
@@ -862,11 +870,13 @@ func (c *ProxyCommand) storePidFile(pidPath string) error {
 	if err != nil {
 		return fmt.Errorf("could not open pid file: %w", err)
 	}
-	defer pidFile.Close()
+	defer func() {
+		err = errors.Join(err, pidFile.Close())
+	}()
 
 	// Write out the PID
 	pid := os.Getpid()
-	_, err = pidFile.WriteString(fmt.Sprintf("%d", pid))
+	_, err = fmt.Fprintf(pidFile, "%d", pid)
 	if err != nil {
 		return fmt.Errorf("could not write to pid file: %w", err)
 	}
@@ -907,10 +917,10 @@ func (c *ProxyCommand) handleMetrics() http.Handler {
 		switch v := resp.Data[logical.HTTPRawBody].(type) {
 		case string:
 			w.WriteHeader(status)
-			w.Write([]byte(v))
+			w.Write([]byte(v)) //nolint:errcheck
 		case []byte:
 			w.WriteHeader(status)
-			w.Write(v)
+			w.Write(v) //nolint:errcheck
 		default:
 			logical.RespondError(w, http.StatusInternalServerError, errors.New("wrong response returned"))
 		}

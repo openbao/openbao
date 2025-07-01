@@ -6,9 +6,9 @@ package http
 import (
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -48,13 +48,17 @@ func wrapCORSHandler(h http.Handler, core *vault.Core) http.Handler {
 			return
 		}
 
-		if req.Method == http.MethodOptions && !strutil.StrListContains(allowedMethods, requestMethod) {
+		if req.Method == http.MethodOptions && !slices.Contains(allowedMethods, requestMethod) {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
 
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Vary", "Origin")
+
+		if corsConf.AllowCredentials {
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
 
 		// apply headers for preflight requests
 		if req.Method == http.MethodOptions {
@@ -66,6 +70,5 @@ func wrapCORSHandler(h http.Handler, core *vault.Core) http.Handler {
 		}
 
 		h.ServeHTTP(w, req)
-		return
 	})
 }

@@ -1,0 +1,3 @@
+```release-note:security
+secrets/totp: Fix TOTP verification reuse bypass when the TOTP code contains spaces. HCSEC-2025-17 / CVE-2025-6014.
+```

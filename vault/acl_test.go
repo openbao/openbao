@@ -13,6 +13,7 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestACL_NewACL(t *testing.T) {
@@ -153,32 +154,38 @@ func testACLCapabilities(t *testing.T, ns *namespace.Namespace) {
 }
 
 func TestACL_Root(t *testing.T) {
-	t.Run("root-ns", func(t *testing.T) {
+	t.Run("root namespace", func(t *testing.T) {
 		t.Parallel()
 		testACLRoot(t, namespace.RootNamespace)
+	})
+
+	t.Run("child namespace", func(t *testing.T) {
+		t.Parallel()
+		testACLRoot(t, &namespace.Namespace{Path: "ns1"})
 	})
 }
 
 func testACLRoot(t *testing.T, ns *namespace.Namespace) {
 	// Create the root policy ACL. Always create on root namespace regardless of
 	// which namespace to ACL check on.
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	policy := []*Policy{{Name: "root"}}
-	acl, err := NewACL(namespace.RootContext(context.Background()), policy)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	acl, err := NewACL(ctx, policy)
+	require.NoError(t, err)
 
-	request := new(logical.Request)
-	request.Operation = logical.UpdateOperation
-	request.Path = "sys/mount/foo"
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	request := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "sys/mount/foo",
+	}
 
 	authResults := acl.AllowOperation(ctx, request, false)
-	if !authResults.RootPrivs {
-		t.Fatal("expected root")
-	}
-	if !authResults.Allowed {
-		t.Fatal("expected permissions")
+	require.True(t, authResults.RootPrivs)
+	require.True(t, authResults.Allowed)
+
+	if ns.ID != namespace.RootNamespaceID {
+		authResults := acl.AllowOperation(namespace.RootContext(ctx), request, false)
+		require.False(t, authResults.RootPrivs)
+		require.False(t, authResults.Allowed)
 	}
 }
 

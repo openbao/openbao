@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -11,13 +12,14 @@ import (
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	ident "github.com/openbao/openbao/vault/identity"
 )
 
 // Issue 5729
 func TestIdentityStore_DuplicateAliases(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 
-	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "auth",
 		Operation: logical.ReadOperation,
 	})
@@ -28,7 +30,7 @@ func TestIdentityStore_DuplicateAliases(t *testing.T) {
 	tokenMountAccessor := resp.Data["token/"].(map[string]interface{})["accessor"].(string)
 
 	// Create an entity and attach an alias to it
-	resp, err = c.identityStore.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = c.identityStore.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity-alias",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -42,7 +44,7 @@ func TestIdentityStore_DuplicateAliases(t *testing.T) {
 	aliasID := resp.Data["id"].(string)
 
 	// Create another entity without an alias
-	resp, err = c.identityStore.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = c.identityStore.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
 	})
@@ -53,7 +55,7 @@ func TestIdentityStore_DuplicateAliases(t *testing.T) {
 
 	// Set the second entity ID as the canonical ID for the previous alias,
 	// initiating an alias transfer
-	resp, err = c.identityStore.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = c.identityStore.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity-alias/id/" + aliasID,
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -65,7 +67,7 @@ func TestIdentityStore_DuplicateAliases(t *testing.T) {
 	}
 
 	// Read the new entity
-	resp, err = c.identityStore.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = c.identityStore.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity/id/" + entityID2,
 		Operation: logical.ReadOperation,
 	})
@@ -86,7 +88,7 @@ func TestIdentityStore_DuplicateAliases(t *testing.T) {
 }
 
 func TestIdentityStore_CaseInsensitiveEntityAliasName(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity
@@ -174,7 +176,7 @@ func TestIdentityStore_AliasSameAliasNames(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	aliasData := map[string]interface{}{
@@ -207,13 +209,13 @@ func TestIdentityStore_AliasSameAliasNames(t *testing.T) {
 func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	var err error
 
-	ctx := namespace.RootContext(nil)
-	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
+	ctx := namespace.RootContext(context.TODO())
+	is, approleAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
 	if is == nil {
 		t.Fatal("failed to create test identity store")
 	}
 
-	validateMountResp := is.router.ValidateMountByAccessor(approleAccessor)
+	validateMountResp := core.router.ValidateMountByAccessor(approleAccessor)
 	if validateMountResp == nil {
 		t.Fatal("failed to validate github auth mount")
 	}
@@ -223,9 +225,9 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 		Name: "testentityname",
 	}
 
-	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
+	entity.BucketKey = is.EntityPacker(ctx).BucketKey(entity.ID)
 
-	txn := is.db(ctx).Txn(true)
+	txn := is.Txn(ctx, true)
 	defer txn.Abort()
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
 	if err != nil {
@@ -243,10 +245,10 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 			"testkey1": "testmetadatavalue1",
 			"testkey2": "testmetadatavalue2",
 		},
-		LocalBucketKey: is.localAliasPacker(ctx).BucketKey(entity.ID),
+		LocalBucketKey: is.LocalAliasPacker(ctx).BucketKey(entity.ID),
 	}
 
-	txn = is.db(ctx).Txn(true)
+	txn = is.Txn(ctx, true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias, false)
 	if err != nil {
@@ -282,10 +284,10 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 			"testkey1": "testmetadatavalue1",
 			"testkey3": "testmetadatavalue3",
 		},
-		LocalBucketKey: is.localAliasPacker(ctx).BucketKey(entity.ID),
+		LocalBucketKey: is.LocalAliasPacker(ctx).BucketKey(entity.ID),
 	}
 
-	txn = is.db(ctx).Txn(true)
+	txn = is.Txn(ctx, true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias2, false)
 	if err != nil {
@@ -311,7 +313,7 @@ func TestIdentityStore_AliasRegister(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	if is == nil {
@@ -358,7 +360,7 @@ func TestIdentityStore_AliasRegister(t *testing.T) {
 }
 
 func TestIdentityStore_AliasUpdate(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	tests := []struct {
@@ -557,7 +559,7 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 			checkValues(t, tt.createData, resp.Data)
 
 			// check update
-			resp = handleRequest(t, &logical.Request{
+			handleRequest(t, &logical.Request{
 				Operation: logical.UpdateOperation,
 				Path:      readReq.Path,
 				Data:      tt.updateData,
@@ -573,7 +575,7 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 func TestIdentityStore_AliasMove_DuplicateAccessor(t *testing.T) {
 	var err error
 	var resp *logical.Response
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create 2 entities and 1 alias on each, against the same github mount
@@ -654,11 +656,24 @@ func TestIdentityStore_AliasMove_DuplicateAccessor(t *testing.T) {
 // Test that the alias cannot be changed to a mount for which
 // the entity already has an alias
 func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
+	ctx := namespace.RootContext(context.Background())
+
+	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
+
+	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor)
+}
+
+func TestIdentityStore_AliasUpdate_DuplicateAccessor_UnsafeShared(t *testing.T) {
+	ctx := namespace.RootContext(context.Background())
+
+	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
+
+	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor)
+}
+
+func testIdentityStoreAliasUpdateDuplicateAccessor(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string) {
 	var err error
 	var resp *logical.Response
-	ctx := namespace.RootContext(nil)
-
-	is, ghAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t)
 
 	// Create 1 entity and 2 aliases on it, one for each mount
 	resp, err = is.HandleRequest(ctx, &logical.Request{
@@ -675,7 +690,7 @@ func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
 
 	alias1Data := map[string]interface{}{
 		"name":           "testaliasname1",
-		"mount_accessor": ghAccessor,
+		"mount_accessor": approleAccessor,
 		"canonical_id":   entityID,
 	}
 
@@ -708,7 +723,7 @@ func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
 
 	// Attempt to update the userpass mount to point to the github mount
 	updateData := map[string]interface{}{
-		"mount_accessor": ghAccessor,
+		"mount_accessor": approleAccessor,
 	}
 
 	aliasReq.Data = updateData
@@ -728,7 +743,7 @@ func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
 func TestIdentityStore_AliasCreate_DuplicateAccessor(t *testing.T) {
 	var err error
 	var resp *logical.Response
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	resp, err = is.HandleRequest(ctx, &logical.Request{
@@ -778,7 +793,7 @@ func TestIdentityStore_AliasCreate_DuplicateAccessor(t *testing.T) {
 func TestIdentityStore_AliasUpdate_ByID(t *testing.T) {
 	var err error
 	var resp *logical.Response
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	updateData := map[string]interface{}{
@@ -877,7 +892,7 @@ func TestIdentityStore_AliasReadDelete(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	customMetadata := make(map[string]string)

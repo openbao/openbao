@@ -16,7 +16,7 @@ import (
 // end-to-end tests of these interrelated endpoints.
 func TestCheckOuts(t *testing.T) {
 	ctx := context.Background()
-	b, s := getBackend(false)
+	b, s := getBackend(t, false)
 	defer b.Cleanup(ctx)
 
 	req := &logical.Request{
@@ -69,7 +69,7 @@ func TestCheckOutRaces(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	b, s := getBackend(false)
+	b, s := getBackend(t, false)
 	defer b.Cleanup(ctx)
 
 	// Get 100 goroutines ready to go.
@@ -404,7 +404,7 @@ func ListSets(b logical.Backend, s logical.Storage) func(t *testing.T) {
 		if len(listedKeys) != 1 {
 			t.Fatalf("expected 1 key but received %s", listedKeys)
 		}
-		if "test-set" != listedKeys[0] {
+		if listedKeys[0] != "test-set" {
 			t.Fatal("expected test-set to be the only listed item")
 		}
 	}

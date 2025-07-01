@@ -84,7 +84,7 @@ func TestBackend_KeyName(t *testing.T) {
 	}
 	var resp *logical.Response
 	for _, tc := range tests {
-		resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 			Path:      "keys/" + tc.KeyName,
 			Operation: logical.UpdateOperation,
 			Storage:   config.StorageView,
@@ -102,7 +102,7 @@ func TestBackend_KeyName(t *testing.T) {
 		} else if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("bad: test name: %q\nresp: %#v\nerr: %v", tc.Name, resp, err)
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 			Path:      "code/" + tc.KeyName,
 			Operation: logical.ReadOperation,
 			Storage:   config.StorageView,
@@ -330,7 +330,11 @@ func TestBackend_keyCrudDefaultValues(t *testing.T) {
 	}
 
 	code, _ := generateCode(key, 30, otplib.DigitsSix, otplib.AlgorithmSHA1)
-	invalidCode := "12345678"
+	invalidCode := "1234567890"
+	sameLengthInvalidCode := invalidCode[0:len(code)]
+	if sameLengthInvalidCode == code {
+		sameLengthInvalidCode = invalidCode[1 : len(code)+1]
+	}
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		LogicalBackend: b,
@@ -340,7 +344,14 @@ func TestBackend_keyCrudDefaultValues(t *testing.T) {
 			testAccStepValidateCode(t, "test", code, true, false),
 			// Next step should fail because it should be in the used cache
 			testAccStepValidateCode(t, "test", code, false, true),
-			testAccStepValidateCode(t, "test", invalidCode, false, false),
+			// Next step should fail because it is of invalid length and thus
+			// won't hit the used cache; this was part of HCSEC-2025-17
+			// (CVE-2025-6014).
+			testAccStepValidateCode(t, "test", code+" ", false, true),
+			// Next step should fail because it is of invalid length as well.
+			testAccStepValidateCode(t, "test", invalidCode, false, true),
+			// This will be an invalid code of the correct length.
+			testAccStepValidateCode(t, "test", sameLengthInvalidCode, false, false),
 			testAccStepDeleteKey(t, "test"),
 			testAccStepReadKey(t, "test", nil),
 		},

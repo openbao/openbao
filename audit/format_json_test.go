@@ -118,7 +118,7 @@ func TestFormatJSON_formatRequest(t *testing.T) {
 			Request:  tc.Req,
 			OuterErr: tc.Err,
 		}
-		if err := formatter.FormatRequest(namespace.RootContext(nil), &buf, config, in); err != nil {
+		if err := formatter.FormatRequest(namespace.RootContext(context.TODO()), &buf, config, in); err != nil {
 			t.Fatalf("bad: %s\nerr: %s", name, err)
 		}
 
@@ -134,7 +134,7 @@ func TestFormatJSON_formatRequest(t *testing.T) {
 		expectedjson.Request.Namespace = &AuditNamespace{ID: "root"}
 
 		actualjson := new(AuditRequestEntry)
-		if err := jsonutil.DecodeJSON([]byte(buf.String())[len(tc.Prefix):], &actualjson); err != nil {
+		if err := jsonutil.DecodeJSON(buf.Bytes()[len(tc.Prefix):], &actualjson); err != nil {
 			t.Fatalf("bad json: %s", err)
 		}
 

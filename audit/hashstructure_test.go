@@ -100,10 +100,13 @@ func TestCopy_response(t *testing.T) {
 
 func TestHashString(t *testing.T) {
 	inmemStorage := &logical.InmemStorage{}
-	inmemStorage.Put(context.Background(), &logical.StorageEntry{
+	err := inmemStorage.Put(context.Background(), &logical.StorageEntry{
 		Key:   "salt",
 		Value: []byte("foo"),
 	})
+	if err != nil {
+		t.Fatalf("Error storing salt: %s", err)
+	}
 	localSalt, err := salt.NewSalt(context.Background(), inmemStorage, &salt.Config{
 		HMAC:     sha256.New,
 		HMACType: "hmac-sha256",
@@ -148,10 +151,13 @@ func TestHashAuth(t *testing.T) {
 	}
 
 	inmemStorage := &logical.InmemStorage{}
-	inmemStorage.Put(context.Background(), &logical.StorageEntry{
+	err := inmemStorage.Put(context.Background(), &logical.StorageEntry{
 		Key:   "salt",
 		Value: []byte("foo"),
 	})
+	if err != nil {
+		t.Fatalf("Error storing salt: %s", err)
+	}
 	localSalt, err := salt.NewSalt(context.Background(), inmemStorage, &salt.Config{
 		HMAC:     sha256.New,
 		HMACType: "hmac-sha256",
@@ -210,10 +216,13 @@ func TestHashRequest(t *testing.T) {
 	}
 
 	inmemStorage := &logical.InmemStorage{}
-	inmemStorage.Put(context.Background(), &logical.StorageEntry{
+	err := inmemStorage.Put(context.Background(), &logical.StorageEntry{
 		Key:   "salt",
 		Value: []byte("foo"),
 	})
+	if err != nil {
+		t.Fatalf("Error storing salt: %s", err)
+	}
 	localSalt, err := salt.NewSalt(context.Background(), inmemStorage, &salt.Config{
 		HMAC:     sha256.New,
 		HMACType: "hmac-sha256",
@@ -276,6 +285,50 @@ func TestHashResponse(t *testing.T) {
 				},
 			},
 			[]string{"read_json"},
+			true,
+		},
+		{
+			&logical.Response{
+				Data: map[string]interface{}{
+					"foo": map[string]interface{}{
+						"first": testTopicPermission{Write: "bar", Read: "baz"},
+						"second": map[string]interface{}{
+							"nested": testTopicPermission{Write: "war", Read: "waz"},
+						},
+					},
+				},
+				WrapInfo: &wrapping.ResponseWrapInfo{
+					TTL:             60,
+					Token:           "bar",
+					Accessor:        "flimflam",
+					CreationTime:    now,
+					WrappedAccessor: "bar",
+				},
+			},
+			&logical.Response{
+				Data: map[string]interface{}{
+					"foo": map[string]interface{}{
+						"first": map[string]interface{}{
+							"write_json": "bar",
+							"read_json":  "hmac-sha256:57fe23dcea29b442ce536b9486b53999513079c8850b2c4ac83bb48529a00bfe",
+						},
+						"second": map[string]interface{}{
+							"nested": map[string]interface{}{
+								"write_json": "war",
+								"read_json":  "hmac-sha256:5c69f2a46b323680e94d5a0f50b3347a5dfeb8382db7ff38dfaae1516f8a142c",
+							},
+						},
+					},
+				},
+				WrapInfo: &wrapping.ResponseWrapInfo{
+					TTL:             60,
+					Token:           "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+					Accessor:        "hmac-sha256:7c9c6fe666d0af73b3ebcfbfabe6885015558213208e6635ba104047b22f6390",
+					CreationTime:    now,
+					WrappedAccessor: "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+				},
+			},
+			[]string{"write_json"},
 			true,
 		},
 		// Confirm int keys are converted to string keys
@@ -345,6 +398,85 @@ func TestHashResponse(t *testing.T) {
 			[]string{"baz"},
 			true,
 		},
+		{
+			&logical.Response{
+				Data: map[string]interface{}{
+					"key_info": map[string]interface{}{
+						"random_string": map[string]interface{}{
+							"name":                "test",
+							"num_member_entities": 0,
+							"num_parent_groups":   0,
+							"deeply_nested_map": map[string]interface{}{
+								"random_array": []string{"item", "another_item"},
+							},
+						},
+					},
+					"keys": "random_string",
+				},
+				WrapInfo: &wrapping.ResponseWrapInfo{
+					TTL:             60,
+					Token:           "bar",
+					Accessor:        "flimflam",
+					CreationTime:    now,
+					WrappedAccessor: "bar",
+				},
+			},
+			&logical.Response{
+				Data: map[string]interface{}{
+					"key_info": map[string]interface{}{
+						"random_string": map[string]interface{}{
+							"deeply_nested_map": map[string]interface{}{
+								"random_array": []interface{}{
+									"hmac-sha256:5a4325952fec282c8dbfd0242cca5d018a210bb629e9ebc9278f58b5f4d73db1",
+									"hmac-sha256:0176bac06c07b7ccb59bda70be3cf50f5560d25328bf8043796d24be71177d2d",
+								},
+							},
+							"name":                "hmac-sha256:3a5c1437614283a4c557670f3196c56d34dbc5109f2bf3db73e631cb1370a4e2",
+							"num_member_entities": float64(0),
+							"num_parent_groups":   float64(0),
+						},
+					},
+					"keys": "hmac-sha256:c735e47de746c4b6607851f5aa107ebac9c53d8af0c807009c150672d6388609",
+				},
+				WrapInfo: &wrapping.ResponseWrapInfo{
+					TTL:             60,
+					Token:           "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+					Accessor:        "hmac-sha256:7c9c6fe666d0af73b3ebcfbfabe6885015558213208e6635ba104047b22f6390",
+					CreationTime:    now,
+					WrappedAccessor: "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+				},
+			},
+			[]string{},
+			true,
+		},
+		{
+			&logical.Response{
+				Data: map[string]interface{}{
+					logical.HTTPRawBody: []byte("Response"),
+				},
+				WrapInfo: &wrapping.ResponseWrapInfo{
+					TTL:             60,
+					Token:           "bar",
+					Accessor:        "flimflam",
+					CreationTime:    now,
+					WrappedAccessor: "bar",
+				},
+			},
+			&logical.Response{
+				Data: map[string]interface{}{
+					logical.HTTPRawBody: "hmac-sha256:cf0faf58d6106e1f46cdfaf93353ae0fe08b21948de64a402ae9b77dbd9b07d1",
+				},
+				WrapInfo: &wrapping.ResponseWrapInfo{
+					TTL:             60,
+					Token:           "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+					Accessor:        "hmac-sha256:7c9c6fe666d0af73b3ebcfbfabe6885015558213208e6635ba104047b22f6390",
+					CreationTime:    now,
+					WrappedAccessor: "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+				},
+			},
+			[]string{},
+			true,
+		},
 	}
 
 	inmemStorage := &logical.InmemStorage{}
@@ -366,7 +498,7 @@ func TestHashResponse(t *testing.T) {
 			t.Fatalf("err: %s\n\n%s", err, input)
 		}
 		if diff := deep.Equal(out, tc.Output); len(diff) > 0 {
-			t.Fatalf("bad:\nInput:\n%s\nDiff:\n%#v", input, diff)
+			t.Fatalf("bad:\nOutput:\n%#v\nExpected:\n%#v\nDiff:\n%#v", tc.Output, out, diff)
 		}
 	}
 }
@@ -398,15 +530,15 @@ func TestHashWalker(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		copy, _ := getUnmarshaledCopy(tc.Input)
-		err := HashStructure(tc.Input, copy, func(string) string {
+		data, _ := getUnmarshaledCopy(tc.Input)
+		err := HashStructure(data, func(string) string {
 			return replaceText
 		}, nil, false)
 		if err != nil {
 			t.Fatalf("err: %s\n\n%#v", err, tc.Input)
 		}
-		if !reflect.DeepEqual(copy, tc.Output) {
-			t.Fatalf("bad:\n\n%#v\n\n%#v", copy, tc.Output)
+		if !reflect.DeepEqual(data, tc.Output) {
+			t.Fatalf("bad:\n\n%#v\n\n%#v", data, tc.Output)
 		}
 	}
 }
@@ -440,15 +572,15 @@ func TestHashWalker_TimeStructs(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		copy, _ := getUnmarshaledCopy(tc.Input)
-		err := HashStructure(tc.Input, copy, func(s string) string {
+		data, _ := getUnmarshaledCopy(tc.Input)
+		err := HashStructure(data, func(s string) string {
 			return s + replaceText
 		}, nil, false)
 		if err != nil {
 			t.Fatalf("err: %v\n\n%#v", err, tc.Input)
 		}
-		if !reflect.DeepEqual(copy, tc.Output) {
-			t.Fatalf("bad:\n\n%#v\n\n%#v", copy, tc.Output)
+		if !reflect.DeepEqual(data, tc.Output) {
+			t.Fatalf("bad:\n\n%#v\n\n%#v", data, tc.Output)
 		}
 	}
 }

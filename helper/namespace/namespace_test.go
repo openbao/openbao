@@ -19,6 +19,14 @@ func TestCanonicalize(t *testing.T) {
 			"",
 		},
 		{
+			"/",
+			"",
+		},
+		{
+			"root",
+			"",
+		},
+		{
 			"ns1",
 			"ns1/",
 		},
@@ -30,12 +38,31 @@ func TestCanonicalize(t *testing.T) {
 			"ns1/ns2",
 			"ns1/ns2/",
 		},
+		{
+			"ns1/ns2/..",
+			"ns1/",
+		},
+		{
+			"ns1/ns2/../..",
+			"",
+		},
+		{
+			"ns1////ns2/",
+			"ns1/ns2/",
+		},
 	}
 
 	for i, c := range tcases {
 		result := Canonicalize(c.nsPath)
 		if result != c.result {
-			t.Fatalf("bad test case %d: %s != %s", i, result, c.result)
+			t.Logf("bad test case %d: %q != %q", i, result, c.result)
+			t.Fail()
+		}
+
+		again := Canonicalize(result)
+		if result != again {
+			t.Logf("bad test case, Canonicalize is not idempotent %d: %q != %q", i, result, again)
+			t.Fail()
 		}
 	}
 }

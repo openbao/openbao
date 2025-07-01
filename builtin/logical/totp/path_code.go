@@ -6,6 +6,7 @@ package totp
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -63,7 +64,7 @@ func (b *backend) pathReadCode(ctx context.Context, req *logical.Request, data *
 		return nil, err
 	}
 	if key == nil {
-		return logical.ErrorResponse(fmt.Sprintf("unknown key: %s", name)), nil
+		return logical.ErrorResponse("unknown key: %s", name), nil
 	}
 
 	// Generate password using totp library
@@ -88,18 +89,21 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 	name := data.Get("name").(string)
 	code := data.Get("code").(string)
 
-	// Enforce input value requirements
-	if code == "" {
-		return logical.ErrorResponse("the code value is required"), nil
-	}
-
 	// Get the key's stored values
 	key, err := b.Key(ctx, req.Storage, name)
 	if err != nil {
 		return nil, err
 	}
 	if key == nil {
-		return logical.ErrorResponse(fmt.Sprintf("unknown key: %s", name)), nil
+		return logical.ErrorResponse("unknown key: %s", name), nil
+	}
+
+	// Enforce input value requirements
+	if code == "" {
+		return logical.ErrorResponse("the code value is required"), nil
+	}
+	if strings.TrimSpace(code) != code || len(code) != key.Digits.Length() {
+		return logical.ErrorResponse("invalid number of digits for the code"), nil
 	}
 
 	usedName := fmt.Sprintf("%s_%s", name, code)
@@ -121,7 +125,7 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 
 	// Take the key skew, add two for behind and in front, and multiple that by
 	// the period to cover the full possibility of the validity of the key
-	err = b.usedCodes.Add(usedName, nil, time.Duration(
+	err = b.usedCodes.AddWithExpire(usedName, struct{}{}, time.Duration(
 		int64(time.Second)*
 			int64(key.Period)*
 			int64((2+key.Skew))))

@@ -7,8 +7,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/stretchr/testify/require"
@@ -101,6 +101,63 @@ func TestCache_Purge(t *testing.T) {
 	if out != nil {
 		t.Fatal("should not have key")
 	}
+}
+
+func TestCache_Invalidate(t *testing.T) {
+	logger := logging.NewVaultLogger(log.Debug)
+	require := require.New(t)
+
+	inm, err := NewInmem(nil, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache := physical.NewCache(inm, 0, logger, &metrics.BlackholeSink{})
+	cache.SetEnabled(true)
+
+	// Store some value
+	require.NoError(cache.Put(context.Background(), &physical.Entry{
+		Key:   "foo",
+		Value: []byte("bar"),
+	}))
+
+	// Start a transaction
+	tx, err := cache.(physical.TransactionalBackend).BeginTx(context.Background())
+	require.NoError(err)
+
+	// Modify in underlying backend
+	require.NoError(inm.Put(context.Background(), &physical.Entry{
+		Key:   "foo",
+		Value: []byte("bazz"),
+	}))
+
+	// Read should return old value
+	out, err := cache.Get(context.Background(), "foo")
+	require.NoError(err)
+	require.NotNil(out, "should have key")
+	require.EqualValues("bar", out.Value)
+
+	// Read from transaction should return old value
+	out, err = tx.Get(context.Background(), "foo")
+	require.NoError(err)
+	require.NotNil(out, "transaction should have key")
+	require.EqualValues("bar", out.Value)
+
+	// Clear the cache
+	cache.Invalidate(context.Background(), "foo")
+
+	// Read should return new value
+	out, err = cache.Get(context.Background(), "foo")
+	require.NoError(err)
+	require.NotNil(out, "should have key")
+	require.EqualValues("bazz", out.Value)
+
+	// Read from transaction should still return old value
+	out, err = tx.Get(context.Background(), "foo")
+	require.NoError(err)
+	require.NotNil(out, "transaction should have key")
+	require.EqualValues("bar", out.Value)
+
+	require.NoError(tx.Rollback(context.Background()))
 }
 
 func TestCache_Disable(t *testing.T) {

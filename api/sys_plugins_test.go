@@ -8,9 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"testing"
-
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
 func TestRegisterPlugin(t *testing.T) {
@@ -110,7 +109,7 @@ func TestListPlugins(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if !strutil.StrListContains(tc.expectedPlugins[pluginType], actual.Name) {
+				if !slices.Contains(tc.expectedPlugins[pluginType], actual.Name) {
 					t.Errorf("Did not expect to find %s in details", actual.Name)
 				}
 			}

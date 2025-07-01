@@ -15,6 +15,10 @@ Steering Committee.
  - [Authenticated rekey](/docs/rfcs/authenticated-rekey), to make the rekey
    root and rekey recovery keys endpoints authenticated and additionally
    authorized by a token and its policy.
+ - [Declarative Self-Initialization](/docs/rfcs/self-init), to allow operators
+   to define initial mounts, auth, policies, and audit logs from a static
+   configuration applied once on early startup, preventing the need to call
+   manual `sys/init` except with manual unseal mechanisms.
 
 ## Landed
 
@@ -57,7 +61,7 @@ Steering Committee.
    auto-unseal mechanism, `static`, which loads keys from the environment,
    filesystem, or directly in the configuration file. Landed in
    [PR #1425](https://github.com/openbao/openbao/pull/1425).
-- [Support inline authentication for non-leased operations](/docs/rfcs/inline-auth),
+ - [Support inline authentication for non-leased operations](/docs/rfcs/inline-auth),
    to discuss how to incorporate authentication sent via the main operation,
    without returning or storing the resulting token, for operations that do
    not create leases. Landed in [PR #1433](https://github.com/openbao/openbao/pull/1433).

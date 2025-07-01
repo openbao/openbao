@@ -49,9 +49,12 @@ We suggest the following design for external keys:
 
 1. The `external_keys` stanzas take an optional `namespaces = []` parameter,
    taking items of the form `uuid:<ns-uuid>`, `id:<ns-accessor>`, or
-   `path:<ns-path>`, to identify namespaces that this library is allowed to
-   be used in. This prevents cross-tenant library usage problems by preventing
-   them from using the underlying library.
+   `path:<ns-path>`, to identify namespaces that this library is allowed to be
+   used in. This prevents cross-tenant library usage problems by preventing them
+   from using the underlying library. An empty `namespaces` parameter implicitly
+   allows the root namespace, a non-empty list must explicitly include the root
+   namespace (e.g., via `id:root`) to keep it allowed besides any other listed
+   namespaces.
 
    - In the future, when support for pluginized KMS integrations are added, we
      can use an `external_keys "binary" { ... }` stanza to limit access to
@@ -63,25 +66,55 @@ We suggest the following design for external keys:
      `entrust`, and `securosys` might all be valid `types` for the endpoints
      below.
 
-2. Within `sys/namespaces/<:path>`, we add a new option, `types`, which limits
-   the allowed HSM and KMS types within this namespace and all children. This
-   allows both the root operator to restrict immediate children, but also for
-   future tenant operators to restrict their own child namespaces. This
-   reflects the hierarchical nature of access (that a parent namespace
+   For example, to register the SoftHSM PKCS#11 library as library type
+   `"softhsm"` and allow its usage in two namespaces:
+
+   ```hcl
+   external_keys "pkcs11" {
+     name       = "softhsm"
+     library    = "/usr/lib/softhsm/libsofthsm2.so"
+     namespaces = ["path:foo/bar", "uuid:c0de1570-688e-41ad-ad97-1395fe30cbbd"]
+   }
+   ```
+
+2. Within `sys/namespaces/<:path>/*`, we add a new option, `external_key_types`,
+   which limits the allowed HSM and KMS types within this namespace and all
+   children. This allows both the root operator to restrict immediate children,
+   but also for future tenant operators to restrict their own child namespaces.
+   This reflects the hierarchical nature of access (that a parent namespace
    operator can create a policy that effectively grants them full access to a
    child namespace).
 
 3. Within the `sys/external-keys` space, we implement the following APIs:
 
    - `configs/<:config-name>`, to configure KMS or HSM _access_ information,
-     such as type (above) or credentials. This gives a single point of
-     rotation for any given key using this provider.
+     such as type (above) or credentials. This gives a single point of rotation
+     for any given key using this provider.
+
+     A configuration may be inherited from a direct parent namespace via the
+     special `inherits = "<:config-name>"` key. This inheritance mechanism
+     is chosen over a top-level `inheritable = true` flag to avoid potential
+     naming conflicts across the namespace hierarchy, or alternatively to avoid
+     the need for a mechanism/format to address a specific ancestor namespace.
+     Inherited configurations are similar to symbolic links; they do not copy
+     information to the child namespace or enable read/write access to the
+     original configuration in any way. To propagate configurations across
+     several levels of child namespaces, you would build a chain of inherited
+     configurations.
 
    - `configs/<:config-name>/keys/<:key-name>`, to maintain mappings of keys
-     and their access information.
+     and their access information. A `key-name` is unique per `config-name`, not
+     per namespace.
 
-   - `configs/<:config-name>/keys/<-key-name>/grants/:mount_path` will be
+   - `configs/<:config-name>/keys/<:key-name>/grants/<:mount-path>` will be
      used to add or remove mounts from accessing the key.
+
+     Grants handle both mount paths local to the key configuration's namespace
+     just as mount paths of any child namespaces, e.g. `my-child/pki`. Combined
+     with inherited configurations via `inherits = ...`, this lets a namespace
+     pass down a key to select mounts in child namespaces. Note that grants
+     can only be configured at the "origin" configuration and cannot be set for
+     inherited configurations.
 
 Notably, unlike Vault Enterprise, no key material is implicitly created at
 the key association step; it must already exist within the KMS or HSM and this
@@ -96,7 +129,7 @@ In the future, key creation may be supported as a follow-up RFC.
 
 Individual mount types (PKI, SSH, Identity, ...) will need to be updated to
 support "creating" keys via using external keys instead of existing keys. This
-will be done with the `key-name` association.
+will be done with the `config-name` plus `key-name` association.
 
 ## Technical Description
 
@@ -115,14 +148,17 @@ which will need to be extended to support the following new APIs:
 2. `GetKey() (go-kms-wrapper.ExternalKey, error)` - to return a helper to
    use external keys. This will be implemented in `go-kms-wrapper` as a new
    key type which _always_ performs direct operations via underlying keys.
-   We will keep to make this compatible with the `crypto` standard library
+   We will need to make this compatible with the `crypto` standard library
    (to support e.g., `crypto.Signer` and other such interfaces like the
    limited [`crypto11` library](https://github.com/ThalesGroup/crypto11)
-   does).
+   does). `GetKey()` would likely take both a `config-name` and `key-name`
+   parameter to uniquely identify a key.
 
 `ExternalKey` will implement two standard Go types, depending on the
-capabilities of the underlying keys: `crypto.Decrypter` and `crypto.Signer`;
-access to private keys will not be returned.
+capabilities of the underlying keys: `crypto.Decrypter` and `crypto.Signer`.
+Once an `ExternalKey` has been retrieved via `GetKey()`, a secret engine can
+check for interface support by type casting. Access to private keys will not be
+returned.
 
 In the future, support for HMAC-based keys may be supported. This means that
 initially, Transit will not support modes which require HMAC.

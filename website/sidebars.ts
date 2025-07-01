@@ -513,6 +513,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/static-auto-unseal",
                 "rfcs/inline-auth",
                 "rfcs/authenticated-rekey",
+                "rfcs/self-init",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

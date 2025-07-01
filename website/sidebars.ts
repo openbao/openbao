@@ -512,6 +512,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/filtering-list",
                 "rfcs/static-auto-unseal",
                 "rfcs/inline-auth",
+                "rfcs/authenticated-rekey",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

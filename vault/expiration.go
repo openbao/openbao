@@ -1406,7 +1406,7 @@ func (m *ExpirationManager) RenewToken(ctx context.Context, req *logical.Request
 			return err
 		}
 		if le == nil {
-			return logical.ErrInvalidRequest
+			return errors.New("invalid lease ID")
 		}
 
 		// Check if the lease is renewable. Note that this also checks for a nil

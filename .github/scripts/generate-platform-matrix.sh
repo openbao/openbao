@@ -44,18 +44,40 @@ fi
 json="$(echo "$pairs" | awk -F'|' '
 {
   goos=$1; arch=$2;
+  
+  # Filter out invalid combinations based on GoReleaser ignore rules
   if (goos=="darwin") {
-    if (arch=="amd64") runner="macos-latest"; else if (arch=="arm64") runner="macos-latest-arm64"; else next;
+    # darwin only supports amd64 and arm64
+    if (arch!="amd64" && arch!="arm64") next;
+    runner="macos-latest";
   } else if (goos=="windows") {
-    # GitHub offers the same runner label for all Windows arches.
+    # windows only supports amd64 and arm64
     if (arch!="amd64" && arch!="arm64") next;
     runner="windows-latest";
   } else if (goos=="linux") {
+    # linux supports: amd64, arm, arm64, ppc64le, riscv64, s390x
+    runner="ubuntu-latest";
+  } else if (goos=="freebsd") {
+    # freebsd supports: amd64, arm, arm64, riscv64
+    if (arch!="amd64" && arch!="arm" && arch!="arm64" && arch!="riscv64") next;
+    runner="ubuntu-latest";
+  } else if (goos=="illumos") {
+    # illumos supports: amd64
+    if (arch!="amd64") next;
+    runner="ubuntu-latest";
+  } else if (goos=="netbsd") {
+    # netbsd supports: amd64, arm, arm64
+    if (arch!="amd64" && arch!="arm" && arch!="arm64") next;
+    runner="ubuntu-latest";
+  } else if (goos=="openbsd") {
+    # openbsd supports: amd64, arm, arm64
+    if (arch!="amd64" && arch!="arm" && arch!="arm64") next;
     runner="ubuntu-latest";
   } else {
-    # Map *BSD/Illumos etc. to ubuntu runner; cross-compile only
+    # Map other OSes to ubuntu runner; cross-compile only
     runner="ubuntu-latest";
   }
+  
   # Determine if this platform should use Docker buildx (exotic archs we cannot compile natively)
   buildx = "false"
   if (arch == "riscv64" || arch == "s390x" || arch == "ppc64" || arch == "ppc64le") {

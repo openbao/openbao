@@ -1,11 +1,8 @@
-# syntax=docker/dockerfile:1
+ARG VERSION
 
-# Multi-arch builder image
 FROM golang:${VERSION} AS builder
-
 ARG GOOS
 ARG GOARCH
-# Disable CGO for static binary unless explicitly enabled elsewhere
 ENV CGO_ENABLED=0
 
 WORKDIR /src
@@ -15,7 +12,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
     GOOS=${GOOS} GOARCH=${GOARCH} \
     go build -trimpath -o /out/bao ./cmd/bao
+    go build -trimpath -o /out/bao-${GOOS}-${GOARCH} .
 
 # Export binary only; rely on `--output=type=local` to fetch it
 FROM scratch AS export
-COPY --from=builder /out/bao /bao 
+COPY --from=builder /out/bao /bao ARG GOOS
+ARG GOARCH
+COPY --from=builder /out/bao-${GOOS}-${GOARCH} /bao-${GOOS}-${GOARCH}

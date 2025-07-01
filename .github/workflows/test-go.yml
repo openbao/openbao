@@ -192,8 +192,14 @@ jobs:
           fi
 
           # shellcheck disable=SC2034
-          if [ -f bin/bao ]; then
-            BAO_BINARY="$(pwd)/bin/bao"
+          # Determine binary name based on OS
+          BAO_BINARY_NAME="bao"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            BAO_BINARY_NAME="bao.exe"
+          fi
+
+          if [ -f "bin/$BAO_BINARY_NAME" ]; then
+            BAO_BINARY="$(pwd)/bin/$BAO_BINARY_NAME"
             export BAO_BINARY
           fi
 

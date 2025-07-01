@@ -97,6 +97,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/kmip",
                         "configuration/seal/ocikms",
                         "configuration/seal/pkcs11",
+                        "configuration/seal/static",
                         "configuration/seal/transit",
                     ],
                     service_registration: [
@@ -511,6 +512,8 @@ const sidebars: SidebarsConfig = {
                 "rfcs/filtering-list",
                 "rfcs/static-auto-unseal",
                 "rfcs/inline-auth",
+                "rfcs/authenticated-rekey",
+                "rfcs/self-init",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

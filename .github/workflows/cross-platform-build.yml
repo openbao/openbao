@@ -24,17 +24,24 @@ jobs:
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
 
-      - name: Build binary (native)
-        if: ${{ matrix.buildx != true }}
-        id: native
-        run: ./.github/scripts/cross-compile-binary.sh
+      - name: Build binary (native) - Unix
+        if: ${{ matrix.buildx != true && matrix.goos != 'windows' }}
+        id: native_unix
+        run: ./.github/scripts/build-binary.sh
+        shell: bash
+
+      - name: Build binary (native) - Windows
+        if: ${{ matrix.buildx != true && matrix.goos == 'windows' }}
+        id: native_windows
+        run: ./.github/scripts/build-binary.ps1
+        shell: pwsh
 
       - name: Upload artifact (native)
         if: ${{ matrix.buildx != true }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: bao-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: ${{ steps.native.outputs.out }}
+          path: ${{ steps.native_unix.outputs.out || steps.native_windows.outputs.out }}
 
       - name: Set up QEMU
         if: ${{ matrix.buildx == true }}
@@ -44,15 +51,19 @@ jobs:
         if: ${{ matrix.buildx == true }}
         uses: docker/setup-buildx-action@v3
 
+      - name: Get Go version
+        id: go-version
+        run: echo "v=$(cat .go-version)" >> $GITHUB_OUTPUT
+
       - name: Build binary (buildx)
         if: ${{ matrix.buildx == true }}
         id: buildx
         run: |
           docker buildx build \
-            --platform=${{ matrix.goos }}/${{ matrix.goarch }} \
             --file .github/docker/Dockerfile.cross \
             --build-arg GOOS=${{ matrix.goos }} \
             --build-arg GOARCH=${{ matrix.goarch }} \
+            --build-arg VERSION=${{ steps.go-version.outputs.v }} \
             --output=type=local,dest=out \
             --progress=plain \
             .
@@ -62,4 +73,14 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: bao-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: out/bao
+          path: out/bao-${{ matrix.goos }}-${{ matrix.goarch }}
+
+      - name: Compile test binary
+        if: always()
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          echo "Compile tests for ${{ matrix.goos }}/${{ matrix.goarch }}"
+          make testcompile

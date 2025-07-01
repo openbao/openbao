@@ -4301,8 +4301,8 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 		}
 
 		doc := resp.Data["openapi"].(*framework.OASDocument)
-		if len(doc.Paths) != 1 {
-			t.Fatalf("expected 1 path, actual: %d", len(doc.Paths))
+		if len(doc.Paths) != 2 {
+			t.Fatalf("expected 2 path, actual: %d", len(doc.Paths))
 		}
 
 		if doc.Paths["/rotate"] == nil {

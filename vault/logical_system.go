@@ -86,7 +86,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"raw",
 				"raw/*",
 				"rotate",
-				"rotate/root",
+				"rotate/keyring",
 				"config/cors",
 				"config/auditing/*",
 				"config/ui/headers/*",
@@ -119,9 +119,8 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"generate-root/update",
 				"decode-token",
 				"mfa/validate",
-				// these endpoint are only unauthenticated only with
-				// "disable_unauthed_rekey_endpoints" listener property
-				// set to true
+				// these endpoint are unauthenticated only with
+				// "disable_unauthed_rekey_endpoints" listener property set to true
 				"rekey/init",
 				"rekey/update",
 				"rekey/verify",

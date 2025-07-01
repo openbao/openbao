@@ -37,7 +37,7 @@ a request.
   failure. The error message can be constructed using a CEL expression.
   For instance: 
   ```go
-  !has(request.common_name) ? 'request should have a common_name' : 'request rejected'
+  require_cn ? 'request should have a common_name' : (validate_ttl ? 'request has invalid TTL' : "Request Rejected")
   ```
 
 - Use a ternary operator when writing a main expression for clarity

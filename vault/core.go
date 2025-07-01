@@ -2609,7 +2609,7 @@ func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfi
 		if err := jsonutil.DecodeJSON(pe.Value, recoveryConf); err != nil {
 			return nil, nil, fmt.Errorf("failed to decode seal configuration at migration check time: %w", err)
 		}
-		err = recoveryConf.Validate()
+		err = recoveryConf.ValidateRecovery()
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to validate seal configuration at migration check time: %w", err)
 		}

@@ -1912,10 +1912,10 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 	if rawVal, ok := data.GetOk("token_type"); ok {
 		if !strings.HasPrefix(path, "auth/") {
-			return logical.ErrorResponse(fmt.Sprintf("'token_type' can only be modified on auth mounts")), logical.ErrInvalidRequest
+			return logical.ErrorResponse("'token_type' can only be modified on auth mounts"), logical.ErrInvalidRequest
 		}
 		if mountEntry.Type == mountTypeToken || mountEntry.Type == mountTypeNSToken {
-			return logical.ErrorResponse(fmt.Sprintf("'token_type' cannot be set for 'token' or 'ns_token' auth mounts")), logical.ErrInvalidRequest
+			return logical.ErrorResponse("'token_type' cannot be set for 'token' or 'ns_token' auth mounts"), logical.ErrInvalidRequest
 		}
 
 		tokenType := logical.TokenTypeDefaultService
@@ -1930,8 +1930,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		case "batch":
 			tokenType = logical.TokenTypeBatch
 		default:
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid value for 'token_type'")), logical.ErrInvalidRequest
+			return logical.ErrorResponse("invalid value for 'token_type'"), logical.ErrInvalidRequest
 		}
 
 		oldVal := mountEntry.Config.TokenType
@@ -2477,8 +2476,7 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	case "batch":
 		config.TokenType = logical.TokenTypeBatch
 	default:
-		return logical.ErrorResponse(fmt.Sprintf(
-			"invalid value for 'token_type'")), logical.ErrInvalidRequest
+		return logical.ErrorResponse("invalid value for 'token_type'"), logical.ErrInvalidRequest
 	}
 
 	switch logicalType {

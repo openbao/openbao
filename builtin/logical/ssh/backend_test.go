@@ -2176,7 +2176,7 @@ func testConfigZeroAddressRead(t *testing.T, expected map[string]interface{}) lo
 func testVerifyWrite(t *testing.T, data map[string]interface{}, expected map[string]interface{}) logicaltest.TestStep {
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
-		Path:      fmt.Sprintf("verify"),
+		Path:      "verify",
 		Data:      data,
 		Check: func(resp *logical.Response) error {
 			var ac api.SSHVerifyResponse

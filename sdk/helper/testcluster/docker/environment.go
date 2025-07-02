@@ -861,7 +861,7 @@ func (n *DockerClusterNode) PartitionFromCluster(ctx context.Context) error {
 	stdout, stderr, exitCode, err := n.Runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
 		"/bin/sh",
 		"-xec", strings.Join([]string{
-			fmt.Sprintf("echo partitioning container from network"),
+			"echo partitioning container from network",
 			"apk add iproute2",
 			// Get the gateway address for the bridge so we can allow host to
 			// container traffic still.
@@ -895,7 +895,7 @@ func (n *DockerClusterNode) UnpartitionFromCluster(ctx context.Context) error {
 	stdout, stderr, exitCode, err := n.Runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
 		"/bin/sh",
 		"-xec", strings.Join([]string{
-			fmt.Sprintf("echo un-partitioning container from network"),
+			"echo un-partitioning container from network",
 			// Get the gateway address for the bridge so we can allow host to
 			// container traffic still.
 			"GW=$(ip r | grep default | grep eth0 | cut -f 3 -d' ')",

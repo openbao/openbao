@@ -7,7 +7,6 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
@@ -94,7 +93,7 @@ func Test_StrictIPBinding(t *testing.T) {
 	curlRunner, err := hDocker.NewServiceRunner(hDocker.RunOptions{
 		ImageRepo:     "docker.mirror.hashicorp.services/curlimages/curl",
 		ImageTag:      "8.4.0",
-		ContainerName: fmt.Sprintf("curl_test_ip_binding"),
+		ContainerName: "curl_test_ip_binding",
 		NetworkName:   vaultNetwork,
 		Entrypoint:    []string{"sleep", sleepTimer},
 		LogConsumer: func(s string) {

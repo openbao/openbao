@@ -1123,7 +1123,7 @@ func (p *Policy) DecryptWithFactory(context, nonce []byte, value string, factori
 		}
 		key := keyEntry.RSAKey
 		if key == nil {
-			return "", errutil.InternalError{Err: fmt.Sprintf("cannot decrypt ciphertext, key version does not have a private counterpart")}
+			return "", errutil.InternalError{Err: "cannot decrypt ciphertext, key version does not have a private counterpart"}
 		}
 		plain, err = rsa.DecryptOAEP(sha256.New(), rand.Reader, key, decoded, nil)
 		if err != nil {
@@ -1989,7 +1989,7 @@ func (p *Policy) SymmetricEncryptRaw(ver int, encKey, plaintext []byte, opts Sym
 		switch convergentVersion {
 		case 3:
 			if len(opts.HMACKey) == 0 {
-				return nil, errutil.InternalError{Err: fmt.Sprintf("invalid hmac key length of zero")}
+				return nil, errutil.InternalError{Err: "invalid hmac key length of zero"}
 			}
 			nonceHmac := hmac.New(sha256.New, opts.HMACKey)
 			nonceHmac.Write(plaintext)

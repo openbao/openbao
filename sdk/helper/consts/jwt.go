@@ -33,6 +33,9 @@ var (
 		jose.ES384,
 		jose.ES512,
 		jose.EdDSA,
+		jose.HS256,
+		jose.HS384,
+		jose.HS512,
 	}
 
 	// AllowedJWTSignatureAlgorithmsOIDC defines the JWT signature algorithms

@@ -281,7 +281,7 @@ func TestCSRBundleConversion(t *testing.T) {
 
 		err = compareCSRBundleToParsedCSRBundle(csrbut, pcsrbut)
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Fatalf("%s", err.Error())
 		}
 
 		csrbut, err = pcsrbut.ToCSRBundle()
@@ -291,7 +291,7 @@ func TestCSRBundleConversion(t *testing.T) {
 
 		err = compareCSRBundleToParsedCSRBundle(csrbut, pcsrbut)
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Fatalf("%s", err.Error())
 		}
 	}
 }

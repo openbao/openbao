@@ -143,6 +143,25 @@ func TestNamespaceBackend_Set(t *testing.T) {
 		require.Equal(t, res.Data["custom_metadata"], newMetadata,
 			"read custom_metadata does not match original custom_metadata")
 	})
+
+	t.Run("create namespace with bad seal config should fail", func(t *testing.T) {
+		sealConfig := map[string]interface{}{
+			"type":             "shamir",
+			"secret_shares":    0, // Invalid secret_shares
+			"secret_threshold": 0, // Invalid secret_threshold
+		}
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bad_seal_ns")
+		req.Data["seals"] = sealConfig
+		_, err := b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+
+		// namespace should not have been created
+		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/bad_seal_ns")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res, "expected empty response")
+	})
 }
 
 func TestNamespaceBackend_Read(t *testing.T) {

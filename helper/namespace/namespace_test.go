@@ -434,3 +434,76 @@ func TestValidate(t *testing.T) {
 		require.Equal(t, tc.wantError, (gotErr != nil))
 	}
 }
+
+// TestParseSpecifier validates the behavior of [ParseSpecifier].
+func TestParseSpecifier(t *testing.T) {
+	tcases := []struct {
+		input     string
+		kind      string
+		value     string
+		rest      string
+		wantError bool
+	}{
+		// Good inputs:
+		{input: "path:foo/bar/", kind: "path", value: "foo/bar/"},
+		{input: "path:foo/bar:baz", kind: "path", value: "foo/bar:baz"},
+		{input: "path:::", kind: "path", value: "::"},
+		{input: "id:De0z6N", kind: "id", value: "De0z6N"},
+		{
+			input: "uuid:013fb57a-c56a-437f-9452-1996c0b68c27",
+			kind:  "uuid",
+			value: "013fb57a-c56a-437f-9452-1996c0b68c27",
+		},
+
+		// Nonsense input, but valid for all we care:
+		{input: "path:", kind: "path", value: ""},
+
+		// Bad inputs:
+		{input: "", wantError: true},
+		{input: ":", wantError: true},
+		{input: "uuid", wantError: true},
+		{input: "pat:foo/bar/", wantError: true},
+	}
+
+	for _, tc := range tcases {
+		kind, spec, err := ParseSpecifier(tc.input)
+		if tc.wantError {
+			require.Error(t, err)
+		} else {
+			require.Equal(t, kind, tc.kind)
+			require.Equal(t, spec, tc.value)
+		}
+	}
+}
+
+// TestCompareSpecifier validates the behavior of [Namespace.CompareSpecifier].
+func TestCompareSpecifier(t *testing.T) {
+	ns := &Namespace{
+		Path: "foo/bar/",
+		ID:   "De0z6N",
+		UUID: "013fb57a-c56a-437f-9452-1996c0b68c27",
+	}
+
+	tcases := []struct {
+		kind string
+		spec string
+		want bool
+	}{
+		// Good inputs:
+		{kind: "path", spec: ns.Path, want: true},
+		{kind: "id", spec: ns.ID, want: true},
+		{kind: "uuid", spec: ns.UUID, want: true},
+
+		// Bad inputs (value don't match):
+		{kind: "path", spec: ns.ID, want: false},
+		{kind: "id", spec: ns.UUID, want: false},
+
+		// Bad inputs (nonsense kinds):
+		{kind: "", spec: "", want: false},
+		{kind: "foo", spec: "bar", want: false},
+	}
+
+	for _, tc := range tcases {
+		require.Equal(t, tc.want, ns.CompareSpecifier(tc.kind, tc.spec))
+	}
+}

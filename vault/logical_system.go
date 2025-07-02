@@ -87,6 +87,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"raw/*",
 				"rotate",
 				"rotate/keyring",
+				"rotate/root",
 				"config/cors",
 				"config/auditing/*",
 				"config/ui/headers/*",
@@ -5500,6 +5501,7 @@ Enable a new audit backend or disable an existing backend.
 		"How long after installation of an active key term that the key will be automatically rotated.",
 		"",
 	},
+
 	"rotate": {
 		"Rotates the backend encryption key used to persist data.",
 		`
@@ -5508,7 +5510,27 @@ Enable a new audit backend or disable an existing backend.
 		that data encrypted using those keys can still be decrypted.
 		`,
 	},
-
+	"rotate_root": {
+		"Perform a root key rotation without requiring key shares to be provided.",
+		"",
+	},
+	"rotate_init": {
+		"Intialize, read status or cancel the process of the rotation of the root or recovery key",
+		"",
+	},
+	"rotate_update": {
+		"Progress the rotation process by providing a single key share.",
+		`This endpoint is used to enter a single key share to progress the
+		rotation of the recovery or root key. If the threshold number of key
+		shares is reached, rotation will be completed. Otherwise, this API
+		must be called multiple times until that threshold is met.
+		The rotation nonce operation must be provided with each call.
+		`,
+	},
+	"rotate_verify": {
+		"Read status of, progress or cancel the verification process of the rotation attempt",
+		"",
+	},
 	"rekey_backup": {
 		"Allows fetching or deleting the backup of the rotated unseal keys.",
 		"",

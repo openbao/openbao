@@ -193,9 +193,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			// TODO:
-			// HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-root"][0]),
-			// HelpDescription: strings.TrimSpace(sysHelp["rotate-root"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_root"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate_root"][1]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/init",
@@ -248,9 +247,9 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 					Description: "This clears the rotate settings as well as any progress made. This must be called to change the parameters of the rotate. Note: verification is still a part of a rotate. If rotating is canceled during the verification flow, the current unseal keys remain valid.",
 				},
 			},
-			// TODO:
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate_backup"][0]),
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_init"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate_init"][0]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/update",
@@ -281,9 +280,9 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 					Summary: "Enter a single unseal key share to progress the rotation of the root key of OpenBao.",
 				},
 			},
-			// TODO:
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate_backup"][0]),
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_update"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate_update"][0]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/verify",
@@ -360,9 +359,9 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 					Description: "This clears any progress made and resets the nonce. Unlike a `DELETE` against `sys/rotate/(root/recovery)/init`, this only resets the current verification operation, not the entire rotate atttempt.",
 				},
 			},
-			// TODO:
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate_backup"][0]),
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_verify"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate_verify"][0]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/backup",
@@ -404,9 +403,10 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			// TODO:
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate_backup"][0]),
+			// the sysHelp is `rekey_backup` as it's shared between this and the old
+			// deprecated endpoints of `rekey/backup` and `rekey/recovery-key-backup`
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rekey_backup"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rekey_backup"][0]),
 		},
 	}
 }
@@ -499,13 +499,38 @@ func (b *SystemBackend) handleKeyRotationConfigUpdate() framework.OperationFunc 
 	}
 }
 
-// TODO: handleRotateRoot
+// handleRotateRoot handles the POST `/sys/rotate/root` endpoint performing
+// a root key rotation without requiring existing key shares to be provided.
 func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 	return func(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-		// if err := b.rotateBarrierKey(ctx); err != nil {
-		// 	b.Backend.Logger().Error("error handling key rotation", "error", err)
-		// 	return handleError(err)
-		// }
+		// Get the seal configuration
+		existingConfig, err := b.Core.seal.BarrierConfig(ctx)
+		if err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to fetch existing config: %w", err).Error())
+		}
+
+		// Ensure the barrier is initialized
+		if existingConfig == nil {
+			return handleError(ErrNotInit)
+		}
+
+		// Set the rotation config
+		b.Core.barrierRekeyConfig = existingConfig.Clone()
+
+		// Generate a new key
+		newKey, err := b.Core.barrier.GenerateKey(b.Core.secureRandomReader)
+		if err != nil {
+			b.Core.logger.Error("failed to generate root key", "error", err)
+			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("root key generation failed: %w", err).Error())
+		}
+
+		// Perform the rotation
+		if err := b.Core.performBarrierRekey(ctx, newKey); err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform barrier rekey: %w", err).Error())
+		}
+
+		// Remove the rotation config
+		b.Core.barrierRekeyConfig = nil
 		return nil, nil
 	}
 }
@@ -856,7 +881,7 @@ func (b *SystemBackend) handleRotateBackupDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		recovery := strings.Contains(req.Path, "recovery")
 		if err := b.Core.RekeyDeleteBackup(ctx, recovery); err != nil {
-			return handleError(fmt.Errorf("error during deletion of backed-up keys: %w", err))
+			return handleError(err)
 		}
 
 		return nil, nil

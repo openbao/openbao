@@ -51,6 +51,8 @@ func TestSystemBackend_RootPaths(t *testing.T) {
 		"raw",
 		"raw/*",
 		"rotate",
+		"rotate/keyring",
+		"rotate/root",
 		"config/cors",
 		"config/auditing/*",
 		"config/ui/headers/*",
@@ -4302,7 +4304,7 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 
 		doc := resp.Data["openapi"].(*framework.OASDocument)
 		if len(doc.Paths) != 2 {
-			t.Fatalf("expected 2 path, actual: %d", len(doc.Paths))
+			t.Fatalf("expected 2 paths, actual: %d", len(doc.Paths))
 		}
 
 		if doc.Paths["/rotate"] == nil {

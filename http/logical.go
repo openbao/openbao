@@ -468,7 +468,6 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 
 	// Respond
 	respondOk(w, ret)
-	return
 }
 
 // respondRaw is used when the response is using HTTPContentType and HTTPRawBody

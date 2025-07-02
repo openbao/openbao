@@ -91,7 +91,6 @@ func ProxyHandler(ctx context.Context, logger hclog.Logger, proxier Proxier, inm
 
 		// Set response body
 		io.Copy(w, resp.Response.Body)
-		return
 	})
 }
 

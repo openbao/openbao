@@ -626,8 +626,6 @@ func (c *LeaseCache) HandleCacheClear(ctx context.Context) http.Handler {
 			logical.RespondError(w, httpStatus, fmt.Errorf("failed to clear cache: %w", err))
 			return
 		}
-
-		return
 	})
 }
 

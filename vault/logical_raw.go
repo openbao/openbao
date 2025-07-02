@@ -183,23 +183,19 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 			config = &compressutil.CompressionConfig{
 				Type: compressutil.CompressionTypeLZ4,
 			}
-			break
 		case compressutil.CompressionTypeLZW:
 			config = &compressutil.CompressionConfig{
 				Type: compressutil.CompressionTypeLZW,
 			}
-			break
 		case compressutil.CompressionTypeGzip:
 			config = &compressutil.CompressionConfig{
 				Type:                 compressutil.CompressionTypeGzip,
 				GzipCompressionLevel: gzip.BestCompression,
 			}
-			break
 		case compressutil.CompressionTypeSnappy:
 			config = &compressutil.CompressionConfig{
 				Type: compressutil.CompressionTypeSnappy,
 			}
-			break
 		default:
 			err := fmt.Sprintf("invalid compression type %q", compressionType)
 			return logical.ErrorResponse(err), logical.ErrInvalidRequest

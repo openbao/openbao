@@ -790,8 +790,6 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 	if err != nil {
 		ns.logger.Error("failed to clean up locked user entries", "namespace", namespaceToDelete.Path, "error", err.Error())
 	}
-
-	return
 }
 
 // ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'

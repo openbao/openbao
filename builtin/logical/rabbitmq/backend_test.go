@@ -138,7 +138,7 @@ func TestBackend_roleCrud(t *testing.T) {
 
 func TestBackend_roleWithPasswordPolicy(t *testing.T) {
 	if os.Getenv(logicaltest.TestEnvVar) == "" {
-		t.Skip(fmt.Sprintf("Acceptance tests skipped unless env %q set", logicaltest.TestEnvVar))
+		t.Skipf("Acceptance tests skipped unless env %q set", logicaltest.TestEnvVar)
 		return
 	}
 

@@ -367,16 +367,14 @@ func (s *SealConfig) baseValidate() error {
 
 // Validate is used to sanity check the (barrier) seal configuration
 func (s *SealConfig) Validate() error {
-	if err := s.baseValidate(); err != nil {
-		return err
-	}
 	if s.SecretShares < 1 {
 		return errors.New("shares must be at least one")
 	}
 	if s.SecretThreshold < 1 {
 		return errors.New("threshold must be at least one")
 	}
-	return nil
+
+	return s.baseValidate()
 }
 
 // ValidateRecovery is used to sanity check the (recovery) seal configuration

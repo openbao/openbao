@@ -353,6 +353,13 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			if err != nil {
 				return logical.ErrorResponse("error while extracting seal configs"), err
 			}
+
+			// Check if all the seal configs are valid
+			for _, sealConfig := range sealConfigs {
+				if err := sealConfig.Validate(); err != nil {
+					return logical.ErrorResponse("invalid seal config: %v", err), err
+				}
+			}
 		}
 
 		entry, new, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, name, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {

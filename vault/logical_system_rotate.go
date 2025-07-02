@@ -704,25 +704,25 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 			return handleError(err)
 		}
 
-		resp := &logical.Response{}
 		if result != nil {
-			resp.Data["complete"] = true
-			resp.Data["nonce"] = reqNonce
-			resp.Data["backup"] = result.Backup
-			resp.Data["pgp_fingerprints"] = result.PGPFingerprints
-			resp.Data["verification_required"] = result.VerificationRequired
-			resp.Data["verification_nonce"] = result.VerificationNonce
-
 			keys := make([]string, 0, len(result.SecretShares))
 			keysB64 := make([]string, 0, len(result.SecretShares))
 			for _, k := range result.SecretShares {
 				keys = append(keys, hex.EncodeToString(k))
 				keysB64 = append(keysB64, base64.StdEncoding.EncodeToString(k))
 			}
-			resp.Data["keys"] = keys
-			resp.Data["keys_b64"] = keysB64
-
-			return resp, nil
+			return &logical.Response{
+				Data: map[string]interface{}{
+					"complete":              true,
+					"nonce":                 reqNonce,
+					"backup":                result.Backup,
+					"pgp_fingerprints":      result.PGPFingerprints,
+					"verification_required": result.VerificationRequired,
+					"verification_nonce":    result.VerificationNonce,
+					"keys":                  keys,
+					"keys_base64":           keysB64,
+				},
+			}, nil
 		} else {
 			return b.handleRotateInitGet()(ctx, req, data)
 		}

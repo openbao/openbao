@@ -314,7 +314,7 @@ func (p *ParsedCertBundle) ToCertBundle() (*CertBundle, error) {
 		result.SerialNumber = strings.TrimSpace(GetHexFormatted(p.Certificate.SerialNumber.Bytes(), ":"))
 	}
 
-	if p.CertificateBytes != nil && len(p.CertificateBytes) > 0 {
+	if len(p.CertificateBytes) > 0 {
 		block.Bytes = p.CertificateBytes
 		result.Certificate = strings.TrimSpace(string(pem.EncodeToMemory(&block)))
 	}
@@ -326,7 +326,7 @@ func (p *ParsedCertBundle) ToCertBundle() (*CertBundle, error) {
 		result.CAChain = append(result.CAChain, certificate)
 	}
 
-	if p.PrivateKeyBytes != nil && len(p.PrivateKeyBytes) > 0 {
+	if len(p.PrivateKeyBytes) > 0 {
 		block.Type = string(p.PrivateKeyFormat)
 		block.Bytes = p.PrivateKeyBytes
 		result.PrivateKeyType = p.PrivateKeyType
@@ -410,7 +410,7 @@ func (p *ParsedCertBundle) getSigner() (crypto.Signer, error) {
 	var signer crypto.Signer
 	var err error
 
-	if p.PrivateKeyBytes == nil || len(p.PrivateKeyBytes) == 0 {
+	if len(p.PrivateKeyBytes) == 0 {
 		return nil, errutil.UserError{Err: "Given parsed cert bundle does not have private key information"}
 	}
 
@@ -568,12 +568,12 @@ func (p *ParsedCSRBundle) ToCSRBundle() (*CSRBundle, error) {
 		Type: "CERTIFICATE REQUEST",
 	}
 
-	if p.CSRBytes != nil && len(p.CSRBytes) > 0 {
+	if len(p.CSRBytes) > 0 {
 		block.Bytes = p.CSRBytes
 		result.CSR = strings.TrimSpace(string(pem.EncodeToMemory(&block)))
 	}
 
-	if p.PrivateKeyBytes != nil && len(p.PrivateKeyBytes) > 0 {
+	if len(p.PrivateKeyBytes) > 0 {
 		block.Bytes = p.PrivateKeyBytes
 		switch p.PrivateKeyType {
 		case RSAPrivateKey:
@@ -602,7 +602,7 @@ func (p *ParsedCSRBundle) getSigner() (crypto.Signer, error) {
 	var signer crypto.Signer
 	var err error
 
-	if p.PrivateKeyBytes == nil || len(p.PrivateKeyBytes) == 0 {
+	if len(p.PrivateKeyBytes) == 0 {
 		return nil, errutil.UserError{Err: "Given parsed cert bundle does not have private key information"}
 	}
 
@@ -661,7 +661,7 @@ func (p *ParsedCertBundle) GetTLSConfig(usage TLSUsage) (*tls.Config, error) {
 		tlsCert.PrivateKey = p.PrivateKey
 	}
 
-	if p.CertificateBytes != nil && len(p.CertificateBytes) > 0 {
+	if len(p.CertificateBytes) > 0 {
 		tlsCert.Certificate = append(tlsCert.Certificate, p.CertificateBytes)
 	}
 
@@ -691,7 +691,7 @@ func (p *ParsedCertBundle) GetTLSConfig(usage TLSUsage) (*tls.Config, error) {
 		}
 	}
 
-	if tlsCert.Certificate != nil && len(tlsCert.Certificate) > 0 {
+	if len(tlsCert.Certificate) > 0 {
 		tlsConfig.Certificates = []tls.Certificate{tlsCert}
 	}
 
@@ -928,7 +928,7 @@ func (p *KeyBundle) SetParsedPrivateKey(privateKey crypto.Signer, privateKeyType
 func (p *KeyBundle) ToPrivateKeyPemString() (string, error) {
 	block := pem.Block{}
 
-	if p.PrivateKeyBytes != nil && len(p.PrivateKeyBytes) > 0 {
+	if len(p.PrivateKeyBytes) > 0 {
 		block.Bytes = p.PrivateKeyBytes
 		switch p.PrivateKeyType {
 		case RSAPrivateKey:

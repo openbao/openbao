@@ -680,7 +680,7 @@ func (p *Policy) Serialize() ([]byte, error) {
 
 func (p *Policy) NeedsUpgrade() bool {
 	// Ensure we've moved from Key -> Keys
-	if p.Key != nil && len(p.Key) > 0 {
+	if len(p.Key) > 0 {
 		return true
 	}
 
@@ -740,7 +740,7 @@ func (p *Policy) Upgrade(ctx context.Context, storage logical.Storage, randReade
 
 	persistNeeded := false
 	// Ensure we've moved from Key -> Keys
-	if p.Key != nil && len(p.Key) > 0 {
+	if len(p.Key) > 0 {
 		p.MigrateKeyToKeysMap()
 		persistNeeded = true
 	}
@@ -1444,7 +1444,7 @@ func (p *Policy) VerifySignatureWithOptions(context, input []byte, sig string, o
 			if err != nil {
 				return false, errutil.UserError{Err: "supplied signature is invalid"}
 			}
-			if rest != nil && len(rest) != 0 {
+			if len(rest) != 0 {
 				return false, errutil.UserError{Err: "supplied signature contains extra data"}
 			}
 
@@ -1760,7 +1760,7 @@ func (p *Policy) RotateInMemory(randReader io.Reader) (retErr error) {
 			Bytes: derBytes,
 		}
 		pemBytes := pem.EncodeToMemory(pemBlock)
-		if pemBytes == nil || len(pemBytes) == 0 {
+		if len(pemBytes) == 0 {
 			return errors.New("error PEM-encoding public key")
 		}
 		entry.FormattedPublicKey = string(pemBytes)
@@ -2352,7 +2352,7 @@ func (ke *KeyEntry) parseFromKey(PolKeyType KeyType, parsedKey any) error {
 			Bytes: derBytes,
 		}
 		pemBytes := pem.EncodeToMemory(pemBlock)
-		if pemBytes == nil || len(pemBytes) == 0 {
+		if len(pemBytes) == 0 {
 			return errors.New("error PEM-encoding public key")
 		}
 		ke.FormattedPublicKey = string(pemBytes)

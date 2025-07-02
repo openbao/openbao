@@ -116,7 +116,7 @@ func (c *Core) loadLocalClusterTLS(adv activeAdvertisement) (retErr error) {
 		c.logger.Error("unknown local cluster key type", "key_type", adv.ClusterKeyParams.Type)
 		return errors.New("failed to find valid local cluster key type")
 
-	case adv.ClusterCert == nil || len(adv.ClusterCert) == 0:
+	case len(adv.ClusterCert) == 0:
 		c.logger.Error("no local cluster cert found")
 		return errors.New("no local cluster cert found")
 
@@ -311,7 +311,7 @@ func (c *Core) startClusterListener(ctx context.Context) error {
 		return nil
 	}
 
-	if c.clusterListenerAddrs == nil || len(c.clusterListenerAddrs) == 0 {
+	if len(c.clusterListenerAddrs) == 0 {
 		c.logger.Warn("clustering not disabled but no addresses to listen on")
 		return errors.New("cluster addresses not found")
 	}

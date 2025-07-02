@@ -193,14 +193,14 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	if secret.Auth.MFARequirement.MFARequestID == "" {
 		t.Fatal("MFARequirement contains empty MFARequestID")
 	}
-	if secret.Auth.MFARequirement.MFAConstraints == nil || len(secret.Auth.MFARequirement.MFAConstraints) == 0 {
+	if len(secret.Auth.MFARequirement.MFAConstraints) == 0 {
 		t.Fatal("MFAConstraints is nil or empty")
 	}
 	mfaConstraints, ok := secret.Auth.MFARequirement.MFAConstraints[methodID[0:4]]
 	if !ok {
 		t.Fatal("failed to find the mfaConstrains")
 	}
-	if mfaConstraints.Any == nil || len(mfaConstraints.Any) == 0 {
+	if len(mfaConstraints.Any) == 0 {
 		t.Fatal("expected to see the methodID is enforced in MFAConstaint.Any")
 	}
 	for _, mfaAny := range mfaConstraints.Any {

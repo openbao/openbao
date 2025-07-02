@@ -986,7 +986,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 				"unable to parse given auth config information"),
 			logical.ErrInvalidRequest
 	}
-	if configMap != nil && len(configMap) != 0 {
+	if len(configMap) != 0 {
 		err := mapstructure.Decode(configMap, &apiConfig)
 		if err != nil {
 			return logical.ErrorResponse(
@@ -1670,7 +1670,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 		userLockoutConfigMap := data.Get("user_lockout_config").(map[string]interface{})
 		var err error
-		if userLockoutConfigMap != nil && len(userLockoutConfigMap) != 0 {
+		if len(userLockoutConfigMap) != 0 {
 			err := mapstructure.Decode(userLockoutConfigMap, &apiuserLockoutConfig)
 			if err != nil {
 				return logical.ErrorResponse(
@@ -2420,7 +2420,7 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 				"unable to parse given auth config information"),
 			logical.ErrInvalidRequest
 	}
-	if configMap != nil && len(configMap) != 0 {
+	if len(configMap) != 0 {
 		err := mapstructure.Decode(configMap, &apiConfig)
 		if err != nil {
 			return logical.ErrorResponse(

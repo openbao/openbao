@@ -137,7 +137,7 @@ func (b *backend) tidySecretIDinternal(s logical.Storage) {
 				return nil
 			}
 
-			if secretIDEntry.Value == nil || len(secretIDEntry.Value) == 0 {
+			if len(secretIDEntry.Value) == 0 {
 				return fmt.Errorf("found entry for SecretID %q but actual SecretID is empty", secretIDHMAC)
 			}
 

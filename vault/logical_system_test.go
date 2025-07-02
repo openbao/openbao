@@ -3349,7 +3349,7 @@ func TestSystemBackend_keyStatus(t *testing.T) {
 	}
 }
 
-func TestSystemBackend_rotateConfig(t *testing.T) {
+func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {
 	b := testSystemBackend(t)
 	req := logical.TestRequest(t, logical.ReadOperation, "rotate/config")
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
@@ -3410,7 +3410,57 @@ func TestSystemBackend_rotateConfig(t *testing.T) {
 	}
 }
 
-func TestSystemBackend_rotate(t *testing.T) {
+func TestSystemBackend_rotateConfig(t *testing.T) {
+	b := testSystemBackend(t)
+	req := logical.TestRequest(t, logical.ReadOperation, "rotate/keyring/config")
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
+
+	schema.ValidateResponse(
+		t,
+		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation),
+		resp,
+		true,
+	)
+
+	exp := map[string]interface{}{
+		"max_operations": absoluteOperationMaximum,
+		"interval":       0,
+		"enabled":        true,
+	}
+	require.Equalf(t, resp.Data, exp, "got: %#v expect: %#v", resp.Data, exp)
+
+	req2 := logical.TestRequest(t, logical.UpdateOperation, "rotate/keyring/config")
+	req2.Data["max_operations"] = int64(3221225472)
+	req2.Data["interval"] = "5432h0m0s"
+	req2.Data["enabled"] = false
+
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req2)
+	require.NoError(t, err)
+	schema.ValidateResponse(
+		t,
+		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req2.Path), req2.Operation),
+		resp,
+		true,
+	)
+
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
+	schema.ValidateResponse(
+		t,
+		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation), resp,
+		true,
+	)
+
+	exp = map[string]interface{}{
+		"max_operations": int64(3221225472),
+		"interval":       "5432h0m0s",
+		"enabled":        false,
+	}
+	require.Equalf(t, resp.Data, exp, "got: %#v expect: %#v", resp.Data, exp)
+}
+
+func TestSystemBackend_deprecatedRotate(t *testing.T) {
 	b := testSystemBackend(t)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "rotate")
@@ -3436,6 +3486,27 @@ func TestSystemBackend_rotate(t *testing.T) {
 	if !reflect.DeepEqual(resp.Data, exp) {
 		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)
 	}
+}
+
+func TestSystemBackend_rotate(t *testing.T) {
+	b := testSystemBackend(t)
+
+	req := logical.TestRequest(t, logical.UpdateOperation, "rotate/keyring")
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
+	require.Empty(t, resp)
+
+	req = logical.TestRequest(t, logical.ReadOperation, "key-status")
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
+
+	exp := map[string]interface{}{
+		"term": 2,
+	}
+	delete(resp.Data, "install_time")
+	delete(resp.Data, "encryptions")
+
+	require.Equalf(t, resp.Data, exp, "got: %#v expect: %#v", resp.Data, exp)
 }
 
 func testSystemBackend(t *testing.T) logical.Backend {

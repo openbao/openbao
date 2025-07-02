@@ -132,7 +132,7 @@ func TestCertBundleParsing(t *testing.T) {
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
 		if err != nil {
 			t.Logf("Error occurred with bundle %d in test array (index %d).\n", i+1, i)
-			t.Fatal(err.Error())
+			t.Fatalf("%s", err.Error())
 		}
 
 		dataMap := structs.New(cbut).Map()
@@ -144,7 +144,7 @@ func TestCertBundleParsing(t *testing.T) {
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
 		if err != nil {
 			t.Logf("Error occurred with bundle %d in test array (index %d).\n", i+1, i)
-			t.Fatal(err.Error())
+			t.Fatalf("%s", err.Error())
 		}
 
 		pcbut, err = ParsePEMBundle(cbut.ToPEMBundle())
@@ -155,7 +155,7 @@ func TestCertBundleParsing(t *testing.T) {
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
 		if err != nil {
 			t.Logf("Error occurred with bundle %d in test array (index %d).\n", i+1, i)
-			t.Fatal(err.Error())
+			t.Fatalf("%s", err.Error())
 		}
 	}
 }

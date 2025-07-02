@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -21,6 +22,7 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/osutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -33,10 +35,6 @@ const (
 	VaultDevKeyFilename  = "vault-key.pem"
 )
 
-var entConfigValidate = func(_ *Config, _ string) []configutil.ConfigError {
-	return nil
-}
-
 // Config is the configuration for the vault server.
 type Config struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
@@ -48,6 +46,8 @@ type Config struct {
 	HAStorage *Storage `hcl:"-"`
 
 	ServiceRegistration *ServiceRegistration `hcl:"-"`
+
+	ExternalKeys map[string]*ExternalKeysConfig `hcl:"-"`
 
 	CacheSize                int         `hcl:"cache_size"`
 	DisableCache             bool        `hcl:"-"`
@@ -128,12 +128,7 @@ func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 	for _, l := range c.Listeners {
 		results = append(results, l.Validate(sourceFilePath)...)
 	}
-	results = append(results, c.validateEnt(sourceFilePath)...)
 	return results
-}
-
-func (c *Config) validateEnt(sourceFilePath string) []configutil.ConfigError {
-	return entConfigValidate(c, sourceFilePath)
 }
 
 // DevConfig is a Config that is used for dev mode of OpenBao.
@@ -251,6 +246,33 @@ func (b *ServiceRegistration) GoString() string {
 	return fmt.Sprintf("*%#v", *b)
 }
 
+// ExternalKeys is the server configuration for external keys.
+type ExternalKeysConfig struct {
+	// Type of external keys stanza, e.g. "pkcs11".
+	Type string // E.g. "pkcs11"
+	// Namespaces to whitelist this configuration in.
+	Namespaces []*NamespaceSpecifier
+	// Type-specific parameters, e.g. lib="/usr/lib/..." for type "pkcs11".
+	Config map[string]string
+}
+
+func (e *ExternalKeysConfig) GoString() string {
+	return fmt.Sprintf("*%#v", *e)
+}
+
+// NamespaceSpecifier references a namespace to whitelist as part of an
+// [ExternalKeysConfig] configuration. Also see [namespace.ParseSpecifier].
+type NamespaceSpecifier struct {
+	// One of "path", "id", "uuid".
+	Kind string
+	// Matching value for Kind.
+	Value string
+}
+
+func (n *NamespaceSpecifier) GoString() string {
+	return fmt.Sprintf("*%#v", *n)
+}
+
 func NewConfig() *Config {
 	return &Config{
 		SharedConfig: new(configutil.SharedConfig),
@@ -284,6 +306,9 @@ func (c *Config) Merge(c2 *Config) *Config {
 	if c2.ServiceRegistration != nil {
 		result.ServiceRegistration = c2.ServiceRegistration
 	}
+
+	result.ExternalKeys = c.ExternalKeys
+	maps.Copy(result.ExternalKeys, c2.ExternalKeys)
 
 	result.CacheSize = c.CacheSize
 	if c2.CacheSize != 0 {
@@ -735,6 +760,14 @@ func ParseConfig(d, source string) (*Config, error) {
 		}
 	}
 
+	// Parse external keys
+	if o := list.Filter("external_keys"); len(o.Items) > 0 {
+		delete(result.UnusedKeys, "external_keys")
+		if err := parseExternalKeys(result, o, "external_keys"); err != nil {
+			return nil, fmt.Errorf("error parsing 'external_keys': %w", err)
+		}
+	}
+
 	// Remove all unused keys from Config that were satisfied by SharedConfig.
 	result.UnusedKeys = configutil.UnusedFieldDifference(result.UnusedKeys, nil, append(result.FoundKeys, sharedConfig.FoundKeys...))
 	// Assign file info
@@ -1010,6 +1043,73 @@ func parseServiceRegistration(result *Config, list *ast.ObjectList, name string)
 	return nil
 }
 
+func parseExternalKeys(result *Config, list *ast.ObjectList, blockName string) error {
+	cfgs := make(map[string]*ExternalKeysConfig)
+	for _, item := range list.Items {
+		var e ExternalKeysConfig
+
+		// We expect 'external_keys "type" { ... }'
+		if len(item.Keys) != 1 {
+			return fmt.Errorf("%s: expected exactly one key", blockName)
+		}
+		key := item.Keys[0].Token.Value().(string)
+		e.Type = strings.ToLower(key)
+
+		var m map[string]any
+		if err := hcl.DecodeObject(&m, item.Val); err != nil {
+			return fmt.Errorf("%s.%s: %w", blockName, key, err)
+		}
+
+		// Parse 'namespaces' array:
+		if v, ok := m["namespaces"]; ok {
+			namespaces, ok := v.([]any)
+			if !ok {
+				return fmt.Errorf("%s.%s: unable to parse 'namespaces', expected an array", blockName, key)
+			}
+			for idx, spec := range namespaces {
+				s, err := parseutil.ParseString(spec)
+				if err != nil {
+					return fmt.Errorf("%s.%s: unable to parse 'namespaces' at array index %d: %w", blockName, key, idx, err)
+				}
+				kind, value, err := namespace.ParseSpecifier(s)
+				if err != nil {
+					return fmt.Errorf("%s.%s: unable to parse 'namespaces' at array index %d: %w", blockName, key, idx, err)
+				}
+				e.Namespaces = append(e.Namespaces, &NamespaceSpecifier{Kind: kind, Value: value})
+			}
+			delete(m, "namespaces")
+		}
+		// Default an empty list of namespaces to the root namespace:
+		if len(e.Namespaces) == 0 {
+			e.Namespaces = append(e.Namespaces, &NamespaceSpecifier{Kind: "id", Value: namespace.RootNamespaceID})
+		}
+
+		// Convert all remaining fields to strings:
+		e.Config = make(map[string]string, len(m))
+		for k, v := range m {
+			s, err := parseutil.ParseString(v)
+			if err != nil {
+				return fmt.Errorf("%s.%s: %w", blockName, key, err)
+			}
+			e.Config[k] = s
+		}
+
+		name, ok := e.Config["name"]
+		if !ok {
+			return fmt.Errorf("%s.%s: missing 'name'", blockName, key)
+		}
+		delete(e.Config, "name")
+
+		if _, ok := cfgs[blockName]; ok {
+			return fmt.Errorf("%s.%s: duplicate 'name' %q", blockName, key, name)
+		}
+		cfgs[name] = &e
+	}
+
+	result.ExternalKeys = cfgs
+	return nil
+}
+
 // Sanitized returns a copy of the config with all values that are considered
 // sensitive stripped. It also strips all `*Raw` values that are mainly
 // used for parsing.
@@ -1019,6 +1119,8 @@ func parseServiceRegistration(result *Config, list *ast.ObjectList, name string)
 // - HAStorage.Config
 // - Seals.Config
 // - Telemetry.CirconusAPIToken
+// - ServiceRegistration.Config
+// - ExternalKeys[].Config
 func (c *Config) Sanitized() map[string]interface{} {
 	// Create shared config if it doesn't exist (e.g. in tests) so that map
 	// keys are actually populated
@@ -1069,9 +1171,7 @@ func (c *Config) Sanitized() map[string]interface{} {
 
 		"imprecise_lease_role_tracking": c.ImpreciseLeaseRoleTracking,
 	}
-	for k, v := range sharedResult {
-		result[k] = v
-	}
+	maps.Copy(result, sharedResult)
 
 	// Sanitize storage stanza
 	if c.Storage != nil {
@@ -1117,6 +1217,18 @@ func (c *Config) Sanitized() map[string]interface{} {
 			"type": c.ServiceRegistration.Type,
 		}
 		result["service_registration"] = sanitizedServiceRegistration
+	}
+
+	// Sanitize external_keys stanzas
+	if len(c.ExternalKeys) != 0 {
+		var sanitizedExternalKeys []map[string]string
+		for name, e := range c.ExternalKeys {
+			sanitizedExternalKeys = append(sanitizedExternalKeys, map[string]string{
+				"name": name,
+				"type": e.Type,
+			})
+		}
+		result["external_keys"] = sanitizedExternalKeys
 	}
 
 	return result

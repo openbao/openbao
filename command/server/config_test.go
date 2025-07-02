@@ -62,6 +62,12 @@ func TestParseStorage(t *testing.T) {
 	testParseStorageTemplate(t)
 }
 
+// TestParseExternalKeys tests parsing of 'external_keys "type" { ... }'
+// stanzas.
+func TestParseExternalKeys(t *testing.T) {
+	testParseExternalKeys(t)
+}
+
 // TestConfigWithAdministrativeNamespace tests that .hcl and .json configurations are correctly parsed when the administrative_namespace_path is present.
 func TestConfigWithAdministrativeNamespace(t *testing.T) {
 	testConfigWithAdministrativeNamespaceHcl(t)

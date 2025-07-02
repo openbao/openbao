@@ -1528,6 +1528,9 @@ func (c *ServerCommand) Run(args []string) int {
 				core.SetLogLevel(level)
 			}
 
+			// Reload external key configurations
+			core.ReloadExternalKeys()
+
 		RUNRELOADFUNCS:
 			if err := c.Reload(c.reloadFuncsLock, c.reloadFuncs, c.flagConfigs, core); err != nil {
 				c.UI.Error(fmt.Sprintf("Error(s) were encountered during reload: %s", err))

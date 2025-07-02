@@ -58,7 +58,7 @@ func TestCertBundleConversion(t *testing.T) {
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
 		if err != nil {
 			t.Logf("Error occurred with bundle %d in test array (index %d).\n", i+1, i)
-			t.Error(err.Error())
+			t.Errorf("%s", err.Error())
 		}
 
 		cbut, err := pcbut.ToCertBundle()
@@ -68,7 +68,7 @@ func TestCertBundleConversion(t *testing.T) {
 
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Fatalf("%s", err.Error())
 		}
 	}
 }

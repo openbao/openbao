@@ -5942,4 +5942,11 @@ This path responds to the following HTTP methods.
 		are kept so that data encrypted using those keys can still be decrypted.
 		`,
 	},
+
+	"namespaces-rotate-config": {
+		"Configures settings related to the namespace encryption key management.",
+		`
+		Configures settings related to the automatic rotation of the namespace encryption key.
+		`,
+	},
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/parseutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -82,6 +83,23 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 		},
 		"storage_type": {
 			Type: framework.TypeString,
+		},
+	}
+
+	rotationConfigSchema := map[string]*framework.FieldSchema{
+		"max_operations": {
+			Type:     framework.TypeInt64,
+			Default:  absoluteOperationMaximum,
+			Required: false,
+		},
+		"enabled": {
+			Type:     framework.TypeBool,
+			Default:  true,
+			Required: false,
+		},
+		"interval": {
+			Type:     framework.TypeString,
+			Required: false,
 		},
 	}
 
@@ -198,6 +216,44 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-seal"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["namespaces-seal"][1]),
 		},
+		{
+			Pattern: "namespaces/(?P<name>.+)/rotate/config",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"name":           namespaceFieldsSchema["name"],
+				"max_operations": rotationConfigSchema["max_operations"],
+				"interval":       rotationConfigSchema["interval"],
+				"enabled":        rotationConfigSchema["enabled"],
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Configure automatic key rotation.",
+					Callback: b.handleNamespacesUpdateRotateConfig(),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
+					},
+				},
+				logical.ReadOperation: &framework.PathOperation{
+					Summary:  "Get the automatic key rotation config.",
+					Callback: b.handleNamespacesGetRotateConfig(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: http.StatusText(http.StatusOK),
+							Fields:      rotationConfigSchema,
+						}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-rotate-config"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces-rotate-config"][1]),
+		},
+
 		{
 			Pattern: "namespaces/(?P<name>.+)/rotate",
 
@@ -393,5 +449,118 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 		return &logical.Response{Data: map[string]interface{}{
 			"seal_status": status,
 		}}, nil
+	}
+}
+
+// handleNamespacesGetRotateConfig handles the GET "/sys/namespaces/<name>/rotate/config" endpoint to read the automatic key rotation config.
+func (b *SystemBackend) handleNamespacesGetRotateConfig() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		name := namespace.Canonicalize(data.Get("name").(string))
+
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return nil, errors.New("name must not contain /")
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if ns == nil {
+			return nil, fmt.Errorf("namespace %q doesn't exist", name)
+		}
+
+		barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
+		if barrier == nil {
+			return nil, fmt.Errorf("namespace %q is not a sealable namespace", ns.Path)
+		}
+
+		rotConfig, err := barrier.RotationConfig()
+		if err != nil {
+			return nil, err
+		}
+
+		resp := &logical.Response{
+			Data: map[string]any{
+				"max_operations": rotConfig.MaxOperations,
+				"enabled":        !rotConfig.Disabled,
+			},
+		}
+		if rotConfig.Interval > 0 {
+			resp.Data["interval"] = rotConfig.Interval.String()
+		}
+		return resp, nil
+	}
+}
+
+// handleNamespacesUpdateRotateConfig handles the POST "/sys/namespaces/<name>/rotate/config" endpoint to update the automatic key rotation config.
+func (b *SystemBackend) handleNamespacesUpdateRotateConfig() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		name := namespace.Canonicalize(data.Get("name").(string))
+
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return nil, errors.New("name must not contain /")
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if ns == nil {
+			return nil, fmt.Errorf("namespace %q doesn't exist", name)
+		}
+
+		barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
+		if barrier == nil {
+			return nil, fmt.Errorf("namespace %q is not a sealable namespace", ns.Path)
+		}
+
+		rotConfig, err := barrier.RotationConfig()
+		if err != nil {
+			return nil, err
+		}
+		maxOps, ok, err := data.GetOkErr("max_operations")
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			rotConfig.MaxOperations = maxOps.(int64)
+		}
+		interval, ok, err := data.GetOkErr("interval")
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			rotConfig.Interval, err = parseutil.ParseDurationSecond(interval)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		enabled, ok, err := data.GetOkErr("enabled")
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			rotConfig.Disabled = !enabled.(bool)
+		}
+
+		// Reject out of range settings
+		if rotConfig.Interval < minimumRotationInterval && rotConfig.Interval != 0 {
+			return logical.ErrorResponse("interval must be greater or equal to %s", minimumRotationInterval.String()), logical.ErrInvalidRequest
+		}
+
+		if rotConfig.MaxOperations < absoluteOperationMinimum || rotConfig.MaxOperations > absoluteOperationMaximum {
+			return logical.ErrorResponse("max_operations must be in the range [%d,%d]", absoluteOperationMinimum, absoluteOperationMaximum), logical.ErrInvalidRequest
+		}
+
+		// Store the rotation config
+		err = barrier.SetRotationConfig(ctx, rotConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, nil
 	}
 }

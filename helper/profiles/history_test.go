@@ -1,5 +1,3 @@
-// helper/profiles/history_test.go
-
 package profiles
 
 import (

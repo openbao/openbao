@@ -10,6 +10,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
@@ -65,7 +66,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	// Check the seal configuration
-	outConf, err := c.seal.BarrierConfig(context.Background())
+	outConf, err := c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -121,7 +122,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	// Check the seal configuration
-	outConf, err = c.seal.BarrierConfig(context.Background())
+	outConf, err = c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -162,7 +163,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	// Check the seal configuration
-	outConf, err = c2.seal.BarrierConfig(context.Background())
+	outConf, err = c2.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

@@ -74,14 +74,14 @@ func ErrToProtoErr(e error) *ProtoError {
 		ErrType: ErrTypeUnknown,
 	}
 
-	switch e.(type) {
+	switch err := e.(type) {
 	case errutil.UserError:
 		pbErr.ErrType = ErrTypeUserError
 	case errutil.InternalError:
 		pbErr.ErrType = ErrTypeInternalError
 	case logical.HTTPCodedError:
 		pbErr.ErrType = ErrTypeCodedError
-		pbErr.ErrCode = int64(e.(logical.HTTPCodedError).Code())
+		pbErr.ErrCode = int64(err.Code())
 	case *logical.StatusBadRequest:
 		pbErr.ErrType = ErrTypeStatusBadRequest
 	}

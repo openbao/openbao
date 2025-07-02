@@ -3479,12 +3479,12 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 		rawBody := httpResp.Data[logical.HTTPRawBody]
 		if rawBody != nil {
 			// Decode here so that we can audit properly
-			switch rawBody.(type) {
+			switch bod := rawBody.(type) {
 			case string:
 				// Best effort decoding; if this works, the original value was
 				// probably a []byte instead of a string, but was marshaled
 				// when the value was saved, so this restores it as it was
-				decBytes, err := base64.StdEncoding.DecodeString(rawBody.(string))
+				decBytes, err := base64.StdEncoding.DecodeString(bod)
 				if err == nil {
 					// We end up with []byte, will not be HMAC'd
 					resp.Data[logical.HTTPRawBody] = decBytes

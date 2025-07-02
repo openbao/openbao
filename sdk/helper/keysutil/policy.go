@@ -2263,9 +2263,8 @@ func (p *Policy) ImportPrivateKeyForVersion(ctx context.Context, storage logical
 		}
 	}
 
-	switch parsedPrivateKey.(type) {
+	switch ppk := parsedPrivateKey.(type) {
 	case *ecdsa.PrivateKey:
-		ecdsaKey := parsedPrivateKey.(*ecdsa.PrivateKey)
 		pemBlock, _ := pem.Decode([]byte(keyEntry.FormattedPublicKey))
 		if pemBlock == nil {
 			return errors.New("failed to parse key entry public key: invalid PEM blob")
@@ -2274,21 +2273,19 @@ func (p *Policy) ImportPrivateKeyForVersion(ctx context.Context, storage logical
 		if err != nil || publicKey == nil {
 			return fmt.Errorf("failed to parse key entry public key: %v", err)
 		}
-		if !publicKey.(*ecdsa.PublicKey).Equal(&ecdsaKey.PublicKey) {
+		if !publicKey.(*ecdsa.PublicKey).Equal(&ppk.PublicKey) {
 			return errors.New("cannot import key, key pair does not match")
 		}
 	case *rsa.PrivateKey:
-		rsaKey := parsedPrivateKey.(*rsa.PrivateKey)
-		if !rsaKey.PublicKey.Equal(keyEntry.RSAPublicKey) {
+		if !ppk.PublicKey.Equal(keyEntry.RSAPublicKey) {
 			return errors.New("cannot import key, key pair does not match")
 		}
 	case ed25519.PrivateKey:
-		ed25519Key := parsedPrivateKey.(ed25519.PrivateKey)
 		publicKey, err := base64.StdEncoding.DecodeString(keyEntry.FormattedPublicKey)
 		if err != nil {
 			return fmt.Errorf("failed to parse key entry public key: %v", err)
 		}
-		if !ed25519.PublicKey(publicKey).Equal(ed25519Key.Public()) {
+		if !ed25519.PublicKey(publicKey).Equal(ppk.Public()) {
 			return errors.New("cannot import key, key pair does not match")
 		}
 	}

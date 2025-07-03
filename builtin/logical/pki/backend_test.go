@@ -3948,9 +3948,6 @@ func setCerts() {
 		Bytes: marshaledKey,
 	}
 	ecCAKey = strings.TrimSpace(string(pem.EncodeToMemory(keyPEMBlock)))
-	if err != nil {
-		panic(err)
-	}
 	subjKeyID, err := certutil.GetSubjKeyID(cak)
 	if err != nil {
 		panic(err)
@@ -3987,9 +3984,6 @@ func setCerts() {
 		Bytes: marshaledKey,
 	}
 	rsaCAKey = strings.TrimSpace(string(pem.EncodeToMemory(keyPEMBlock)))
-	if err != nil {
-		panic(err)
-	}
 	_, err = certutil.GetSubjKeyID(rak)
 	if err != nil {
 		panic(err)
@@ -4017,9 +4011,6 @@ func setCerts() {
 		Bytes: marshaledKey,
 	}
 	edCAKey = strings.TrimSpace(string(pem.EncodeToMemory(keyPEMBlock)))
-	if err != nil {
-		panic(err)
-	}
 	_, err = certutil.GetSubjKeyID(edk)
 	if err != nil {
 		panic(err)

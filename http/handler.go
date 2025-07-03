@@ -731,13 +731,9 @@ func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) (
 	// Limit the maximum number of bytes to MaxRequestSize to protect
 	// against an indefinite amount of data being read.
 	reader := r.Body
-	var origBody io.ReadWriter
 	err := jsonutil.DecodeJSONFromReader(reader, out)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to parse JSON input: %w", err)
-	}
-	if origBody != nil {
-		return io.NopCloser(origBody), err
 	}
 	return nil, err
 }

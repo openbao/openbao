@@ -3619,6 +3619,15 @@ func (c *Core) ReloadIntrospectionEndpointEnabled() {
 	c.introspectionEnabled = conf.(*server.Config).EnableIntrospectionEndpoint
 }
 
+func (c *Core) ReloadExternalKeys() {
+	conf := c.rawConfig.Load()
+	if conf == nil {
+		return
+	}
+	// TODO(satoqz): Reload all affected external key configs.
+	// externalKeyStanzas := conf.(*server.Config).ExternalKeys
+}
+
 type PeerNode struct {
 	Hostname       string    `json:"hostname"`
 	APIAddress     string    `json:"api_address"`

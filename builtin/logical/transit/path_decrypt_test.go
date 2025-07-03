@@ -66,7 +66,7 @@ func TestTransit_BatchDecryption(t *testing.T) {
 	expectedResult := "[{\"plaintext\":\"\",\"reference\":\"foo\"},{\"plaintext\":\"Cg==\",\"reference\":\"bar\"},{\"plaintext\":\"dGhlIHF1aWNrIGJyb3duIGZveA==\",\"reference\":\"baz\"}]"
 
 	jsonResponse, err := json.Marshal(batchDecryptionResponseItems)
-	if err != nil || err == nil && string(jsonResponse) != expectedResult {
+	if err != nil || string(jsonResponse) != expectedResult {
 		t.Fatalf("bad: expected json response [%s]", jsonResponse)
 	}
 }

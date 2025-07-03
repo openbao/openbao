@@ -305,9 +305,7 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 			respondError(w, status, err)
 			return
 		}
-		if origBody != nil {
-			r.Body = io.NopCloser(origBody)
-		}
+		r.Body = io.NopCloser(origBody)
 		input := &logical.LogInput{
 			Request: req,
 		}

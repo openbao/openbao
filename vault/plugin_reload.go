@@ -218,26 +218,24 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	// Set the backend back
 	re.backend = backend
 
-	if backend != nil {
-		// Initialize the backend after reload. This is a no-op for backends < v5 which
-		// rely on lazy loading for initialization. v5 backends do not rely on lazy loading
-		// for initialization unless the plugin process is killed. Reload of a v5 backend
-		// results in a new plugin process, so we must initialize the backend here.
-		err := backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
+	// Initialize the backend after reload. This is a no-op for backends < v5 which
+	// rely on lazy loading for initialization. v5 backends do not rely on lazy loading
+	// for initialization unless the plugin process is killed. Reload of a v5 backend
+	// results in a new plugin process, so we must initialize the backend here.
+	err = backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
+	if err != nil {
+		return err
+	}
+
+	// Set paths as well
+	paths := backend.SpecialPaths()
+	if paths != nil {
+		re.rootPaths.Store(pathsToRadix(paths.Root))
+		loginPathsEntry, err := parseUnauthenticatedPaths(paths.Unauthenticated)
 		if err != nil {
 			return err
 		}
-
-		// Set paths as well
-		paths := backend.SpecialPaths()
-		if paths != nil {
-			re.rootPaths.Store(pathsToRadix(paths.Root))
-			loginPathsEntry, err := parseUnauthenticatedPaths(paths.Unauthenticated)
-			if err != nil {
-				return err
-			}
-			re.loginPaths.Store(loginPathsEntry)
-		}
+		re.loginPaths.Store(loginPathsEntry)
 	}
 
 	return nil

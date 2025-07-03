@@ -24,12 +24,12 @@ type Operation string
 
 const (
 	WriteOperation  Operation = "create"
-	UpdateOperation           = "update"
-	ReadOperation             = "read"
-	DeleteOperation           = "delete"
-	ListOperation             = "list"
-	ScanOperation             = "scan"
-	HelpOperation             = "help"
+	UpdateOperation Operation = "update"
+	ReadOperation   Operation = "read"
+	DeleteOperation Operation = "delete"
+	ListOperation   Operation = "list"
+	ScanOperation   Operation = "scan"
+	HelpOperation   Operation = "help"
 )
 
 // Environment is the interface Environments need to implement to be used in

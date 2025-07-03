@@ -241,8 +241,8 @@ type PatchOperation string
 
 const (
 	Unset   PatchOperation = "unset"
-	Add                    = "add"
-	Replace                = "replace"
+	Add     PatchOperation = "add"
+	Replace PatchOperation = "replace"
 )
 
 type Patch struct {

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/openbao/openbao/api/v2"
@@ -27,7 +28,7 @@ var ErrInvalidMountPath = errors.New("invalid auth method mount path specified")
 
 // ErrNoRoleName is an error, which is returned when no role name was specified
 // when creating a [JWTAuth].
-var ErrNoRole = errors.New("no role name specified")
+var ErrNoRoleName = errors.New("no role name specified")
 
 // JWTAuth implements support for the [JWT Authentication Method].
 //
@@ -62,7 +63,7 @@ type Option func(a *JWTAuth) error
 // [WithTokenFromEnv] options.
 func New(roleName string, opts ...Option) (*JWTAuth, error) {
 	if roleName == "" {
-		return nil, ErrNoRole
+		return nil, ErrNoRoleName
 	}
 
 	jwtAuth := &JWTAuth{
@@ -114,7 +115,7 @@ func WithToken(token string) Option {
 // token from the given path.
 func WithTokenFromPath(path string) Option {
 	opt := func(a *JWTAuth) error {
-		token, err := os.ReadFile(path)
+		token, err := os.ReadFile(filepath.Clean(path))
 		if err != nil {
 			return err
 		}

@@ -2487,7 +2487,6 @@ func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[strin
 				err = fmt.Errorf("context cancelled during namespace %v", uuid)
 				return false
 			default:
-				break
 			}
 
 			// Count in the namespace attached to the entity.
@@ -2531,7 +2530,6 @@ func (i *IdentityStore) countEntitiesByMountAccessor(ctx context.Context) (map[s
 				err = fmt.Errorf("context cancelled during namespace %v", uuid)
 				return false
 			default:
-				break
 			}
 
 			// Count each alias separately; will translate to mount point and type

@@ -1324,7 +1324,6 @@ func (b *LoginMFABackend) mfaMethodList(ctx context.Context, methodType string) 
 		case <-ctx.Done():
 			return keys, configInfo, nil
 		default:
-			break
 		}
 
 		raw := iter.Next()
@@ -1381,7 +1380,6 @@ func (b *LoginMFABackend) mfaLoginEnforcementList(ctx context.Context) ([]string
 		case <-ctx.Done():
 			return keys, enforcementInfo, nil
 		default:
-			break
 		}
 
 		raw := iter.Next()

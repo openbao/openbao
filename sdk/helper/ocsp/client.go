@@ -539,6 +539,7 @@ func (c *Client) GetRevocationStatus(ctx context.Context, subject, issuer *x509.
 	var ret *ocspStatus
 	ocspRes := ocspResponses[0]
 	var firstError error
+LOOP:
 	for i := range ocspHosts {
 		if allErrors[i] != nil {
 			if firstError == nil {
@@ -549,7 +550,7 @@ func (c *Client) GetRevocationStatus(ctx context.Context, subject, issuer *x509.
 			case ocspStatusRevoked:
 				ret = ocspStatuses[i]
 				ocspRes = ocspResponses[i]
-				break
+				break LOOP
 			case ocspStatusGood:
 				// Use this response only if we don't have a status already, or if what we have was unknown
 				if ret == nil || ret.code == ocspStatusUnknown {

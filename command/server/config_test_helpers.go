@@ -166,7 +166,6 @@ func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
 
 		DisableSSCTokens: &disableSSCTs,
 	}
-	addExpectedEntConfig(expected, []string{})
 
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -258,7 +257,6 @@ func testLoadConfigFile_json2(t *testing.T, entropy *configutil.Entropy) {
 
 		DisableSSCTokens: &disableSSCTs,
 	}
-	addExpectedEntConfig(expected, []string{"http"})
 
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -411,8 +409,6 @@ func testLoadConfigFile(t *testing.T) {
 
 		DisableSSCTokens: &disableSSCTs,
 	}
-
-	addExpectedEntConfig(expected, []string{})
 
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -610,8 +606,6 @@ func testLoadConfigFile_json(t *testing.T) {
 		DisableSSCTokens:     &disableSSCTs,
 	}
 
-	addExpectedEntConfig(expected, []string{})
-
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
 		t.Fatal(diff)
@@ -672,8 +666,6 @@ func testLoadConfigDir(t *testing.T) {
 		MaxLeaseTTL:     10 * time.Hour,
 		DefaultLeaseTTL: 10 * time.Hour,
 	}
-
-	addExpectedEntConfig(expected, []string{"http"})
 
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -783,8 +775,6 @@ func testConfig_Sanitized(t *testing.T) {
 		"unsafe_allow_api_audit_creation": false,
 		"allow_audit_log_prefixing":       false,
 	}
-
-	addExpectedEntSanitizedConfig(expected, []string{"http"})
 
 	config.Prune()
 	if diff := deep.Equal(sanitizedConfig, expected); len(diff) > 0 {
@@ -1078,9 +1068,52 @@ func testParseSeals(t *testing.T) {
 		},
 		DisableSSCTokens: &disableSSCTs,
 	}
-	addExpectedDefaultEntConfig(expected)
 	config.Prune()
 	require.Equal(t, config, expected)
+}
+
+func testParseExternalKeys(t *testing.T) {
+	config, err := ParseConfig(`
+external_keys "pkcs11" {
+  name = "foo"
+  lib = "/usr/lib/softhsm/libsofthsm2.so"
+}
+
+external_keys "pkcs11" {
+  name = "bar"
+  lib = "/usr/lib/pkcs11_R2/libcs_pkcs11_R2.so"
+  namespaces = ["id:root", "path:my-namespace"]
+}`, "")
+	require.NoError(t, err)
+
+	disableSSCTs := true
+	expected := &Config{
+		SharedConfig: &configutil.SharedConfig{},
+		ExternalKeys: map[string]*ExternalKeysConfig{
+			"foo": {
+				Type: "pkcs11",
+				Namespaces: []*NamespaceSpecifier{
+					{Kind: "id", Value: "root"},
+				},
+				Config: map[string]string{
+					"lib": "/usr/lib/softhsm/libsofthsm2.so",
+				},
+			},
+			"bar": {
+				Type: "pkcs11",
+				Namespaces: []*NamespaceSpecifier{
+					{Kind: "id", Value: "root"},
+					{Kind: "path", Value: "my-namespace"},
+				},
+				Config: map[string]string{
+					"lib": "/usr/lib/pkcs11_R2/libcs_pkcs11_R2.so",
+				},
+			},
+		},
+		DisableSSCTokens: &disableSSCTs,
+	}
+	config.Prune()
+	require.Equal(t, expected, config)
 }
 
 func testLoadConfigFileLeaseMetrics(t *testing.T) {
@@ -1165,8 +1198,6 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 		DefaultLeaseTTLRaw: "10h",
 		DisableSSCTokens:   &disableSSCTs,
 	}
-
-	addExpectedEntConfig(expected, []string{})
 
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {

@@ -60,6 +60,10 @@ type NamespaceStore struct {
 	namespacesByUUID     map[string]*namespace.Namespace
 	namespacesByAccessor map[string]*namespace.Namespace
 
+	// deletionMap tracks actively deleted namespaces, enabling us to
+	// retry the deletion process if the namespace is tainted, but isn't
+	// present in the said map.
+	deletionMap           map[string]bool
 	deletionJobGroup      sync.WaitGroup
 	deletionJobContext    context.Context
 	deletionJobCancelFunc context.CancelFunc
@@ -78,6 +82,7 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 		namespacesByPath:     newNamespaceTree(nil),
 		namespacesByUUID:     make(map[string]*namespace.Namespace),
 		namespacesByAccessor: make(map[string]*namespace.Namespace),
+		deletionMap:          make(map[string]bool),
 	}
 
 	ns.deletionJobContext, ns.deletionJobCancelFunc = context.WithCancel(core.activeContext)
@@ -92,6 +97,9 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 }
 
 func (c *Core) cancelNamespaceDeletion() {
+	if c.namespaceStore == nil {
+		return
+	}
 	c.namespaceStore.deletionJobCancelFunc()
 	c.namespaceStore.deletionJobGroup.Wait()
 }
@@ -632,11 +640,9 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 	}
 
 	ns.namespacesByUUID[namespaceToTaint.UUID].Tainted = true
-	ns.namespacesByUUID[namespaceToTaint.UUID].IsDeleting = true
 	ns.namespacesByAccessor[namespaceToTaint.ID].Tainted = true
-	ns.namespacesByAccessor[namespaceToTaint.ID].IsDeleting = true
 	namespaceToTaint.Tainted = true
-	namespaceToTaint.IsDeleting = true
+	ns.deletionMap[namespaceToTaint.UUID] = true
 	err := ns.namespacesByPath.Insert(namespaceToTaint)
 	if err != nil {
 		return fmt.Errorf("failed to modify namespace tree: %w", err)
@@ -669,7 +675,8 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 		return "", nil
 	}
 
-	if namespaceToDelete.Tainted && namespaceToDelete.IsDeleting {
+	isNamespaceDeleting := ns.deletionMap[namespaceToDelete.UUID]
+	if namespaceToDelete.Tainted && isNamespaceDeleting {
 		return "in-progress", nil
 	}
 
@@ -697,7 +704,6 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 		return "", fmt.Errorf("error loading parent namespace from context: %w", err)
 	}
 
-	// quitCtx := namespace.ContextWithNamespace(ns.core.activeContext, parent)
 	quitCtx := namespace.ContextWithNamespace(ns.deletionJobContext, parent)
 	ns.deletionJobGroup.Add(1)
 	go ns.clearNamespaceResources(quitCtx, namespaceToDelete)
@@ -706,7 +712,14 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 }
 
 func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespaceToDelete *namespace.Namespace) {
+	succeded := false
+	defer func() {
+		if !succeded {
+			ns.deletionMap[namespaceToDelete.UUID] = false
+		}
+	}()
 	defer ns.deletionJobGroup.Done()
+
 	nsCtx := namespace.ContextWithNamespace(ctx, namespaceToDelete)
 	// clear ACL policies
 	policiesToClear, err := ns.core.policyStore.ListPolicies(nsCtx, PolicyTypeACL, false)
@@ -798,6 +811,7 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 	if err != nil {
 		ns.logger.Error("failed to delete namespace storage", "namespace", namespaceToDelete.Path, "error", err.Error())
 	}
+	succeded = true
 }
 
 // ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'

@@ -330,7 +330,6 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		if err != nil {
 			respondError(w, status, err)
 		}
-		return
 	})
 }
 
@@ -470,7 +469,6 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		h.ServeHTTP(nw, r)
 
 		cancelFunc()
-		return
 	})
 }
 
@@ -569,7 +567,6 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 
 		r.RemoteAddr = net.JoinHostPort(acc[indexToUse], port)
 		h.ServeHTTP(w, r)
-		return
 	})
 }
 
@@ -597,11 +594,9 @@ func handleUIHeaders(core *vault.Core, h http.Handler) http.Handler {
 			respondError(w, http.StatusInternalServerError, err)
 			return
 		}
-		if userHeaders != nil {
-			for k := range userHeaders {
-				v := userHeaders.Get(k)
-				header.Set(k, v)
-			}
+		for k := range userHeaders {
+			v := userHeaders.Get(k)
+			header.Set(k, v)
 		}
 		h.ServeHTTP(w, req)
 	})
@@ -614,7 +609,6 @@ func handleUI(h http.Handler) http.Handler {
 		// here.
 		req.URL.Path = strings.TrimSuffix(req.URL.Path, "/")
 		h.ServeHTTP(w, req)
-		return
 	})
 }
 
@@ -692,7 +686,6 @@ func handleUIStub() http.Handler {
 func handleUIRedirect() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, "/ui/", 307)
-		return
 	})
 }
 
@@ -808,7 +801,6 @@ func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handle
 		}
 
 		forwardRequest(core, w, r)
-		return
 	})
 }
 
@@ -846,10 +838,8 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if header != nil {
-		for k, v := range header {
-			w.Header()[k] = v
-		}
+	for k, v := range header {
+		w.Header()[k] = v
 	}
 
 	w.WriteHeader(statusCode)

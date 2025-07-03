@@ -111,7 +111,6 @@ func (b *backend) updatedConfig(config *config) {
 	defer b.ocspClientMutex.Unlock()
 	b.initOCSPClient(config.OcspCacheSize)
 	b.configUpdated.Store(false)
-	return
 }
 
 func (b *backend) fetchCRL(ctx context.Context, storage logical.Storage, name string, crl *CRLInfo) error {

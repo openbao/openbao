@@ -253,7 +253,7 @@ func TLSFileWarningChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) 
 	var warnings []string
 	// add a warning for when there are more than one leaf certs
 	if len(leafCerts) > 1 {
-		warnings = append(warnings, fmt.Sprintf("More than one leaf certificate detected. Please ensure that there is one unique leaf certificate being supplied to OpenBao in the OpenBao server configuration file."))
+		warnings = append(warnings, "More than one leaf certificate detected. Please ensure that there is one unique leaf certificate being supplied to OpenBao in the OpenBao server configuration file.")
 	}
 
 	for _, c := range leafCerts {
@@ -320,7 +320,7 @@ func TLSCAFileCheck(CAFilePath string) ([]string, error) {
 		return nil, errors.New("No root certificate found in CA certificate file.")
 	}
 	if len(rootCerts) > 1 {
-		warningsSlc = append(warningsSlc, fmt.Sprintf("Found multiple root certificates in CA Certificate file instead of just one."))
+		warningsSlc = append(warningsSlc, "Found multiple root certificates in CA Certificate file instead of just one.")
 	}
 
 	// Checking for Self-Signed cert and return an explicit error about it.

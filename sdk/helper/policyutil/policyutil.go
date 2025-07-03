@@ -27,14 +27,14 @@ func ParsePolicies(policiesRaw interface{}) []string {
 	}
 
 	var policies []string
-	switch policiesRaw.(type) {
+	switch pols := policiesRaw.(type) {
 	case string:
-		if policiesRaw.(string) == "" {
+		if pols == "" {
 			return []string{}
 		}
-		policies = strings.Split(policiesRaw.(string), ",")
+		policies = strings.Split(pols, ",")
 	case []string:
-		policies = policiesRaw.([]string)
+		policies = pols
 	}
 
 	return SanitizePolicies(policies, false)

@@ -465,7 +465,7 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	case "": // Prompt using the tty
 		// Nonce value is not required if we are prompting via the terminal
 		if c.flagNonInteractive {
-			c.UI.Error(wrapAtLength(fmt.Sprintf("Refusing to read from stdin with -non-interactive specified; specify nonce via the -nonce flag")))
+			c.UI.Error(wrapAtLength("Refusing to read from stdin with -non-interactive specified; specify nonce via the -nonce flag"))
 			return 1
 		}
 

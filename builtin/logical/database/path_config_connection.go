@@ -221,7 +221,7 @@ func (b *databaseBackend) connectionExistenceCheck() framework.ExistenceFunc {
 
 func pathListPluginConnection(b *databaseBackend) *framework.Path {
 	return &framework.Path{
-		Pattern: fmt.Sprintf("config/?$"),
+		Pattern: "config/?$",
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixDatabase,

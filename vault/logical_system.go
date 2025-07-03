@@ -986,7 +986,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 				"unable to parse given auth config information"),
 			logical.ErrInvalidRequest
 	}
-	if configMap != nil && len(configMap) != 0 {
+	if len(configMap) != 0 {
 		err := mapstructure.Decode(configMap, &apiConfig)
 		if err != nil {
 			return logical.ErrorResponse(
@@ -1670,7 +1670,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 		userLockoutConfigMap := data.Get("user_lockout_config").(map[string]interface{})
 		var err error
-		if userLockoutConfigMap != nil && len(userLockoutConfigMap) != 0 {
+		if len(userLockoutConfigMap) != 0 {
 			err := mapstructure.Decode(userLockoutConfigMap, &apiuserLockoutConfig)
 			if err != nil {
 				return logical.ErrorResponse(
@@ -1912,10 +1912,10 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 	if rawVal, ok := data.GetOk("token_type"); ok {
 		if !strings.HasPrefix(path, "auth/") {
-			return logical.ErrorResponse(fmt.Sprintf("'token_type' can only be modified on auth mounts")), logical.ErrInvalidRequest
+			return logical.ErrorResponse("'token_type' can only be modified on auth mounts"), logical.ErrInvalidRequest
 		}
 		if mountEntry.Type == mountTypeToken || mountEntry.Type == mountTypeNSToken {
-			return logical.ErrorResponse(fmt.Sprintf("'token_type' cannot be set for 'token' or 'ns_token' auth mounts")), logical.ErrInvalidRequest
+			return logical.ErrorResponse("'token_type' cannot be set for 'token' or 'ns_token' auth mounts"), logical.ErrInvalidRequest
 		}
 
 		tokenType := logical.TokenTypeDefaultService
@@ -1930,8 +1930,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		case "batch":
 			tokenType = logical.TokenTypeBatch
 		default:
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid value for 'token_type'")), logical.ErrInvalidRequest
+			return logical.ErrorResponse("invalid value for 'token_type'"), logical.ErrInvalidRequest
 		}
 
 		oldVal := mountEntry.Config.TokenType
@@ -2420,7 +2419,7 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 				"unable to parse given auth config information"),
 			logical.ErrInvalidRequest
 	}
-	if configMap != nil && len(configMap) != 0 {
+	if len(configMap) != 0 {
 		err := mapstructure.Decode(configMap, &apiConfig)
 		if err != nil {
 			return logical.ErrorResponse(
@@ -2477,8 +2476,7 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	case "batch":
 		config.TokenType = logical.TokenTypeBatch
 	default:
-		return logical.ErrorResponse(fmt.Sprintf(
-			"invalid value for 'token_type'")), logical.ErrInvalidRequest
+		return logical.ErrorResponse("invalid value for 'token_type'"), logical.ErrInvalidRequest
 	}
 
 	switch logicalType {
@@ -3479,12 +3477,12 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 		rawBody := httpResp.Data[logical.HTTPRawBody]
 		if rawBody != nil {
 			// Decode here so that we can audit properly
-			switch rawBody.(type) {
+			switch bod := rawBody.(type) {
 			case string:
 				// Best effort decoding; if this works, the original value was
 				// probably a []byte instead of a string, but was marshaled
 				// when the value was saved, so this restores it as it was
-				decBytes, err := base64.StdEncoding.DecodeString(rawBody.(string))
+				decBytes, err := base64.StdEncoding.DecodeString(bod)
 				if err == nil {
 					// We end up with []byte, will not be HMAC'd
 					resp.Data[logical.HTTPRawBody] = decBytes
@@ -5007,9 +5005,7 @@ func sanitizePath(path string) string {
 		path += "/"
 	}
 
-	if strings.HasPrefix(path, "/") {
-		path = path[1:]
-	}
+	path = strings.TrimPrefix(path, "/")
 
 	return path
 }

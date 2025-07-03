@@ -257,7 +257,7 @@ func (b *backendGRPCPluginServer) Cleanup(ctx context.Context, _ *pb.Empty) (*pb
 			return nil, err
 		}
 		delete(b.instances, id)
-	} else if _, ok := b.instances[singleImplementationID]; ok {
+	} else {
 		delete(b.instances, singleImplementationID)
 	}
 

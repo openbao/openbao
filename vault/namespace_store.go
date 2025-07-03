@@ -60,6 +60,10 @@ type NamespaceStore struct {
 	namespacesByUUID     map[string]*namespace.Namespace
 	namespacesByAccessor map[string]*namespace.Namespace
 
+	deletionJobGroup      sync.WaitGroup
+	deletionJobContext    context.Context
+	deletionJobCancelFunc context.CancelFunc
+
 	// logger is the server logger copied over from core
 	logger hclog.Logger
 }
@@ -76,6 +80,8 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 		namespacesByAccessor: make(map[string]*namespace.Namespace),
 	}
 
+	ns.deletionJobContext, ns.deletionJobCancelFunc = context.WithCancel(core.activeContext)
+
 	// Add namespaces from storage to our table. We can do this without
 	// holding a lock as we've not returned ns to anyone yet.
 	if err := ns.loadNamespacesLocked(ctx); err != nil {
@@ -83,6 +89,11 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	}
 
 	return ns, nil
+}
+
+func (c *Core) cancelNamespaceDeletion() {
+	c.namespaceStore.deletionJobCancelFunc()
+	c.namespaceStore.deletionJobGroup.Wait()
 }
 
 func (ns *NamespaceStore) checkInvalidation(ctx context.Context) error {
@@ -686,13 +697,16 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 		return "", fmt.Errorf("error loading parent namespace from context: %w", err)
 	}
 
-	quitCtx := namespace.ContextWithNamespace(ns.core.activeContext, parent)
+	// quitCtx := namespace.ContextWithNamespace(ns.core.activeContext, parent)
+	quitCtx := namespace.ContextWithNamespace(ns.deletionJobContext, parent)
+	ns.deletionJobGroup.Add(1)
 	go ns.clearNamespaceResources(quitCtx, namespaceToDelete)
 
 	return "in-progress", nil
 }
 
 func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespaceToDelete *namespace.Namespace) {
+	defer ns.deletionJobGroup.Done()
 	nsCtx := namespace.ContextWithNamespace(ctx, namespaceToDelete)
 	// clear ACL policies
 	policiesToClear, err := ns.core.policyStore.ListPolicies(nsCtx, PolicyTypeACL, false)
@@ -739,26 +753,29 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 		}
 	}
 
+	// clear identity store
 	if err := ns.core.identityStore.RemoveNamespaceView(namespaceToDelete); err != nil {
 		ns.logger.Error("failed to clean identity store", "namespace", namespaceToDelete.Path, "error", err.Error())
 		return
 	}
 
+	// clear quotas
 	err = ns.core.quotaManager.HandleNamespaceDeletion(nsCtx, namespaceToDelete.Path)
 	if err != nil {
 		ns.logger.Error("failed to update quotas after deleting namespace", "namespace", namespaceToDelete.Path, "error", err.Error())
 		return
 	}
 
+	// clear locked users entries
+	_, err = ns.core.runLockedUserEntryUpdatesForNamespace(ctx, namespaceToDelete, true)
+	if err != nil {
+		ns.logger.Error("failed to clean up locked user entries", "namespace", namespaceToDelete.Path, "error", err.Error())
+		return
+	}
+
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()
-	unlocked := false
-	defer func() {
-		if !unlocked {
-			ns.lock.Unlock()
-			unlocked = true
-		}
-	}()
+	defer ns.lock.Unlock()
 
 	err = ns.namespacesByPath.Delete(namespaceToDelete.Path)
 	if err != nil {
@@ -780,15 +797,6 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 	})
 	if err != nil {
 		ns.logger.Error("failed to delete namespace storage", "namespace", namespaceToDelete.Path, "error", err.Error())
-	}
-
-	ns.lock.Unlock()
-	unlocked = true
-
-	// clear locked users entries
-	_, err = ns.core.runLockedUserEntryUpdatesForNamespace(ctx, namespaceToDelete)
-	if err != nil {
-		ns.logger.Error("failed to clean up locked user entries", "namespace", namespaceToDelete.Path, "error", err.Error())
 	}
 }
 

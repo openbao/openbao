@@ -3310,7 +3310,6 @@ func (c *Core) setupCachedMFAResponseAuth() {
 			}
 		}
 	}()
-	return
 }
 
 // updateLockedUserEntries runs every 15 mins to remove stale user entries from storage
@@ -3341,7 +3340,6 @@ func (c *Core) updateLockedUserEntries() {
 			}
 		}
 	}()
-	return
 }
 
 // runLockedUserEntryUpdates runs updates for locked user storage entries and userFailedLoginInfo map

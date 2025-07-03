@@ -1527,10 +1527,8 @@ func TestExpiration_RevokeByToken_Blocking(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
 		defer cancel()
 
-		select {
-		case <-ctx.Done():
-			return noop.Response, nil
-		}
+		<-ctx.Done()
+		return noop.Response, nil
 	}
 
 	_, barrier, _ := mockBarrier(t)

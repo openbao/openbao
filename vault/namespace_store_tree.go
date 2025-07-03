@@ -99,8 +99,6 @@ func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespa
 
 		node = n
 	}
-
-	return
 }
 
 // List lists child Namespace entries at a given path, optionally including the

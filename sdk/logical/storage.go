@@ -220,11 +220,7 @@ func ClearViewWithLogging(ctx context.Context, view ClearableView, logger hclog.
 		logger = hclog.NewNullLogger()
 	}
 
-	if paginated, ok := view.(ClearableView); ok {
-		return ClearViewWithPagination(ctx, paginated, logger)
-	}
-
-	return ClearViewWithoutPagination(ctx, view, logger)
+	return ClearViewWithPagination(ctx, view, logger)
 }
 
 func ClearViewWithPagination(ctx context.Context, view ClearableView, logger hclog.Logger) error {

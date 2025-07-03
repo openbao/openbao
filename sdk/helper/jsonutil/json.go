@@ -58,7 +58,7 @@ func EncodeJSONAndCompress(in interface{}, config *compressutil.CompressionConfi
 // is JSON decoded directly. Otherwise the decompressed data will be JSON
 // decoded.
 func DecodeJSON(data []byte, out interface{}) error {
-	if data == nil || len(data) == 0 {
+	if len(data) == 0 {
 		return errors.New("'data' being decoded is nil")
 	}
 	if out == nil {
@@ -70,7 +70,7 @@ func DecodeJSON(data []byte, out interface{}) error {
 	if err != nil {
 		return fmt.Errorf("failed to decompress JSON: %w", err)
 	}
-	if !uncompressed && (decompressedBytes == nil || len(decompressedBytes) == 0) {
+	if !uncompressed && len(decompressedBytes) == 0 {
 		return errors.New("decompressed data being decoded is invalid")
 	}
 

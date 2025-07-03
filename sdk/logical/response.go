@@ -321,8 +321,6 @@ func (w *StatusHeaderResponseWriter) setCustomResponseHeaders(status int) {
 	if val, ok := sch[strconv.Itoa(status)]; ok {
 		setter(val)
 	}
-
-	return
 }
 
 var _ WrappingResponseWriter = &StatusHeaderResponseWriter{}

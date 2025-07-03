@@ -1819,7 +1819,7 @@ func TestTidyPagination(t *testing.T) {
 	// the tidy operation can process certificates less than its the page size.
 	for i := 0; i < 4; i++ {
 		resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
-			"common_name": fmt.Sprintf("revoked.com"),
+			"common_name": "revoked.com",
 			"ttl":         "1s",
 		})
 		require.NoError(t, err)

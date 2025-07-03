@@ -157,7 +157,7 @@ func DecompressWithCanary(data []byte) ([]byte, string, bool, error) {
 	var err error
 	var reader io.ReadCloser
 	var compressionType string
-	if data == nil || len(data) == 0 {
+	if len(data) == 0 {
 		return nil, "", false, errors.New("'data' being decompressed is empty")
 	}
 

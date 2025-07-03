@@ -250,7 +250,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 	}
 	connState := req.Connection.ConnState
 
-	if connState.PeerCertificates == nil || len(connState.PeerCertificates) == 0 {
+	if len(connState.PeerCertificates) == 0 {
 		return nil, logical.ErrorResponse("client certificate must be supplied"), nil
 	}
 	clientCert := connState.PeerCertificates[0]

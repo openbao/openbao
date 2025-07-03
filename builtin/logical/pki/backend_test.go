@@ -6253,8 +6253,6 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 	if b.revokedCertCount.Load() != 4 {
 		t.Fatalf("Failed to count revoked certificates A,B,C,D counted %d certs", b.revokedCertCount.Load())
 	}
-
-	return
 }
 
 // Verify that our default values are consistent when creating an issuer and when we do an

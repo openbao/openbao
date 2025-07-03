@@ -539,7 +539,7 @@ func TestDecrypt_InvalidCipherLength(t *testing.T) {
 		t.Fatal("expected error when given empty cipher")
 	}
 
-	badTermLengthCipher := make([]byte, 3, 3)
+	badTermLengthCipher := make([]byte, 3)
 	if _, err = b.Decrypt(ctx, "", badTermLengthCipher); err == nil {
 		t.Fatal("expected error when given cipher with too short term")
 	}

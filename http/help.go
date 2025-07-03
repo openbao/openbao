@@ -25,7 +25,6 @@ func wrapHelpHandler(h http.Handler, core *vault.Core) http.Handler {
 		}
 
 		h.ServeHTTP(writer, req)
-		return
 	})
 }
 

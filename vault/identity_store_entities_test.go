@@ -597,7 +597,7 @@ func TestIdentityStore_ContextCancel(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
-	if resp.Warnings == nil || len(resp.Warnings) == 0 {
+	if len(resp.Warnings) == 0 {
 		t.Fatalf("expected warning for cancelled context. resp:%#v", resp)
 	}
 }

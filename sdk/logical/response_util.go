@@ -47,10 +47,10 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 			}
 
 			var keys []string
-			switch keysRaw.(type) {
+			switch k := keysRaw.(type) {
 			case []interface{}:
-				keys = make([]string, len(keysRaw.([]interface{})))
-				for i, el := range keysRaw.([]interface{}) {
+				keys = make([]string, len(k))
+				for i, el := range k {
 					s, ok := el.(string)
 					if !ok {
 						return http.StatusInternalServerError, nil
@@ -59,7 +59,7 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 				}
 
 			case []string:
-				keys = keysRaw.([]string)
+				keys = k
 			default:
 				return http.StatusInternalServerError, nil
 			}

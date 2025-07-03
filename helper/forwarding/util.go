@@ -152,7 +152,7 @@ func ParseForwardedRequest(fq *Request) (*http.Request, error) {
 		ret.Header[k] = v.Values
 	}
 
-	if fq.PeerCertificates != nil && len(fq.PeerCertificates) > 0 {
+	if len(fq.PeerCertificates) > 0 {
 		ret.TLS = &tls.ConnectionState{
 			PeerCertificates: make([]*x509.Certificate, len(fq.PeerCertificates)),
 		}

@@ -221,7 +221,7 @@ func fetchCertBySerial(sc *storageContext, prefix, serial string) (*logical.Stor
 		return nil, errutil.InternalError{Err: fmt.Sprintf("error fetching certificate %s: %s", serial, err)}
 	}
 	if certEntry != nil {
-		if certEntry.Value == nil || len(certEntry.Value) == 0 {
+		if len(certEntry.Value) == 0 {
 			return nil, errutil.InternalError{Err: fmt.Sprintf("returned certificate bytes for serial %s were empty", serial)}
 		}
 		return certEntry, nil
@@ -240,7 +240,7 @@ func fetchCertBySerial(sc *storageContext, prefix, serial string) (*logical.Stor
 	if certEntry == nil {
 		return nil, nil
 	}
-	if certEntry.Value == nil || len(certEntry.Value) == 0 {
+	if len(certEntry.Value) == 0 {
 		return nil, errutil.InternalError{Err: fmt.Sprintf("returned certificate bytes for serial %s were empty", serial)}
 	}
 

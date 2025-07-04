@@ -10,6 +10,7 @@ var (
 	// allowed for OpenBao.
 	AllowedJWTSignatureAlgorithmsBao = []jose.SignatureAlgorithm{
 		jose.ES256,
+		jose.ES384,
 		jose.ES512,
 		jose.EdDSA,
 		jose.RS256,

@@ -2702,7 +2702,7 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 						c.UI.Warn("PowerShell:")
 						c.UI.Warn(fmt.Sprintf("    $env:BAO_ADDR=\"%s\"", endpointURL))
 						c.UI.Warn("cmd.exe:")
-						c.UI.Warn(fmt.Sprintf("    set BAOT_ADDR=%s", endpointURL))
+						c.UI.Warn(fmt.Sprintf("    set BAO_ADDR=%s", endpointURL))
 					} else {
 						c.UI.Warn(fmt.Sprintf("    $ export BAO_ADDR='%s'", endpointURL))
 					}

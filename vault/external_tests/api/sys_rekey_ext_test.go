@@ -16,25 +16,33 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/seal"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSysRekey_Verification(t *testing.T) {
 	testcases := []struct {
-		recovery bool
+		recovery   bool
+		deprecated bool
 	}{
-		{recovery: true},
-		{recovery: false},
+		{recovery: true, deprecated: true},
+		{recovery: false, deprecated: true},
+		{recovery: true, deprecated: false},
+		{recovery: false, deprecated: false},
 	}
 
 	for _, tc := range testcases {
-		t.Run(fmt.Sprintf("recovery=%v", tc.recovery), func(t *testing.T) {
+		t.Run(fmt.Sprintf("deprecated=%v with recovery=%v", tc.deprecated, tc.recovery), func(t *testing.T) {
 			t.Parallel()
-			testSysRekey_Verification(t, tc.recovery)
+			if tc.deprecated {
+				testSysRekey_VerificationDeprecated(t, tc.recovery)
+			} else {
+				testSysRotate_Verification(t, tc.recovery)
+			}
 		})
 	}
 }
 
-func testSysRekey_Verification(t *testing.T, recovery bool) {
+func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 	opts := &vault.TestClusterOptions{
 		HandlerFunc: vaulthttp.Handler,
 	}
@@ -283,6 +291,201 @@ func testSysRekey_Verification(t *testing.T, recovery bool) {
 		if err := client.Sys().GenerateRootCancel(); err != nil {
 			t.Fatal(err)
 		}
+		testhelpers.GenerateRoot(t, cluster, testhelpers.GenerateRootRegular)
+	}
+}
+
+func testSysRotate_Verification(t *testing.T, recovery bool) {
+	opts := &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	}
+
+	if recovery {
+		opts.SealFunc = func() vault.Seal {
+			return vault.NewTestSeal(t, &seal.TestSealOpts{
+				StoredKeys: seal.StoredKeysSupportedGeneric,
+			})
+		}
+	}
+
+	inm, err := inmem.NewInmemHA(nil, logging.NewVaultLogger(hclog.Debug))
+	require.NoError(t, err)
+
+	conf := vault.CoreConfig{
+		Physical: inm,
+	}
+	cluster := vault.NewTestCluster(t, &conf, opts)
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	vault.TestWaitActive(t, cluster.Cores[0].Core)
+	client := cluster.Cores[0].Client
+	client.SetMaxRetries(0)
+
+	initFunc := client.Sys().RotateInit
+	updateFunc := client.Sys().RotateUpdate
+	verificationUpdateFunc := client.Sys().RotateVerificationUpdate
+	verificationStatusFunc := client.Sys().RotateVerificationStatus
+	verificationCancelFunc := client.Sys().RotateVerificationCancel
+
+	var verificationNonce string
+	var newKeys []string
+	doRekeyInitialSteps := func() {
+		status, err := initFunc(&api.RekeyInitRequest{
+			SecretShares:        5,
+			SecretThreshold:     3,
+			RequireVerification: true,
+		}, recovery)
+		require.NoError(t, err)
+		require.NotNil(t, status)
+		require.True(t, status.VerificationRequired)
+
+		keys := cluster.BarrierKeys
+		if recovery {
+			keys = cluster.RecoveryKeys
+		}
+
+		var resp *api.RekeyUpdateResponse
+		for i := range 3 {
+			resp, err = updateFunc(base64.StdEncoding.EncodeToString(keys[i]), status.Nonce, recovery)
+			require.NoError(t, err)
+		}
+
+		require.True(t, resp.Complete)
+		require.True(t, resp.VerificationRequired)
+		require.NotEmpty(t, resp.VerificationNonce)
+
+		verificationNonce = resp.VerificationNonce
+		newKeys = resp.KeysB64
+		t.Logf("verification nonce: %q", verificationNonce)
+	}
+
+	doRekeyInitialSteps()
+
+	// We are still going, so should not be able to init again
+	_, err = initFunc(&api.RekeyInitRequest{
+		SecretShares:        5,
+		SecretThreshold:     3,
+		RequireVerification: true,
+	}, recovery)
+	require.Error(t, err)
+
+	// Sealing should clear state, so after this we should be able to perform
+	// the above again
+	cluster.EnsureCoresSealed(t)
+	err = cluster.UnsealCoresWithError(recovery)
+	require.NoError(t, err)
+
+	doRekeyInitialSteps()
+
+	doStartVerify := func() {
+		// Start the process
+		for i := range 2 {
+			status, err := verificationUpdateFunc(newKeys[i], verificationNonce, recovery)
+			require.NoError(t, err)
+			require.Equalf(t, status.Nonce, verificationNonce, "unexpected nonce, expected %q, got %q", verificationNonce, status.Nonce)
+			require.False(t, status.Complete)
+		}
+
+		// Check status
+		vStatus, err := verificationStatusFunc(recovery)
+		require.NoError(t, err)
+		require.Equalf(t, vStatus.Nonce, verificationNonce, "unexpected nonce, expected %q, got %q", verificationNonce, vStatus.Nonce)
+		require.Equal(t, vStatus.T, 3)
+		require.Equal(t, vStatus.N, 5)
+		require.Equal(t, vStatus.Progress, 2)
+	}
+
+	doStartVerify()
+
+	// Cancel; this should still keep the rekey process going but just cancel
+	// the verification operation
+	err = verificationCancelFunc(recovery)
+	require.NoError(t, err)
+
+	// Verify cannot init again
+	_, err = initFunc(&api.RekeyInitRequest{
+		SecretShares:        5,
+		SecretThreshold:     3,
+		RequireVerification: true,
+	}, recovery)
+	require.Error(t, err)
+
+	vStatus, err := verificationStatusFunc(recovery)
+	require.NoError(t, err)
+	require.NotEqualf(t, vStatus.Nonce, verificationNonce, "unexpected nonce, expected not-%q but got it", verificationNonce)
+	require.Equal(t, vStatus.T, 3)
+	require.Equal(t, vStatus.N, 5)
+	require.Equal(t, vStatus.Progress, 0)
+
+	verificationNonce = vStatus.Nonce
+	doStartVerify()
+
+	if !recovery {
+		// Sealing should clear state, but we never actually finished, so it should
+		// still be the old keys (which are still currently set)
+		cluster.EnsureCoresSealed(t)
+		cluster.UnsealCores(t)
+		vault.TestWaitActive(t, cluster.Cores[0].Core)
+
+		// Should be able to init again and get back to where we were
+		doRekeyInitialSteps()
+		doStartVerify()
+	} else {
+		// We haven't finished, so generating a root token should still be the
+		// old keys (which are still currently set)
+		testhelpers.GenerateRoot(t, cluster, testhelpers.GenerateRootRegular)
+	}
+
+	// Provide the final new key
+	vuStatus, err := verificationUpdateFunc(newKeys[2], verificationNonce, recovery)
+	require.NoError(t, err)
+	require.Equalf(t, vuStatus.Nonce, verificationNonce, "unexpected nonce, expected %q, got %q", verificationNonce, vuStatus.Nonce)
+	require.True(t, vuStatus.Complete)
+
+	if !recovery {
+		// Seal and unseal -- it should fail to unseal because the key has now been
+		// rotated
+		cluster.EnsureCoresSealed(t)
+
+		// Simulate restarting Vault rather than just a seal/unseal, because
+		// the standbys may not have had time to learn about the new key before
+		// we sealed them.  We could sleep, but that's unreliable.
+		oldKeys := cluster.BarrierKeys
+		opts.SkipInit = true
+		opts.SealFunc = nil // post rekey we should use the barrier config on disk
+		cluster = vault.NewTestCluster(t, &conf, opts)
+		cluster.BarrierKeys = oldKeys
+		cluster.Start()
+		defer cluster.Cleanup()
+
+		err = cluster.UnsealCoresWithError(false)
+		require.Error(t, err)
+
+		// Swap out the keys with our new ones and try again
+		var newKeyBytes [][]byte
+		for _, key := range newKeys {
+			val, err := base64.StdEncoding.DecodeString(key)
+			require.NoError(t, err)
+			newKeyBytes = append(newKeyBytes, val)
+		}
+		cluster.BarrierKeys = newKeyBytes
+		err := cluster.UnsealCoresWithError(false)
+		require.NoError(t, err)
+	} else {
+		// The old keys should no longer work
+		_, err := testhelpers.GenerateRootWithError(t, cluster, testhelpers.GenerateRootRegular)
+		require.Error(t, err)
+
+		// Put the new keys in place and run again
+		cluster.RecoveryKeys = nil
+		for _, key := range newKeys {
+			dec, err := base64.StdEncoding.DecodeString(key)
+			require.NoError(t, err)
+			cluster.RecoveryKeys = append(cluster.RecoveryKeys, dec)
+		}
+		err = client.Sys().GenerateRootCancel()
+		require.NoError(t, err)
 		testhelpers.GenerateRoot(t, cluster, testhelpers.GenerateRootRegular)
 	}
 }

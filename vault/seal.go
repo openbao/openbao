@@ -329,15 +329,10 @@ type SealConfig struct {
 	VerificationProgress [][]byte `json:"-"`
 }
 
-// Validate is used to sanity check the seal configuration
-func (s *SealConfig) Validate() error {
-	if s.SecretShares < 1 {
-		return errors.New("shares must be at least one")
-	}
-	if s.SecretThreshold < 1 {
-		return errors.New("threshold must be at least one")
-	}
-	if s.SecretShares > 1 && s.SecretThreshold == 1 {
+// baseValidate is used as a shared base between `Validate` and `ValidateRecovery`
+// functions
+func (s *SealConfig) baseValidate() error {
+	if s.SecretShares > 1 && s.SecretThreshold < 2 {
 		return errors.New("threshold must be greater than one for multiple shares")
 	}
 	if s.SecretShares > 255 {
@@ -352,10 +347,10 @@ func (s *SealConfig) Validate() error {
 	if s.StoredShares > 1 {
 		return errors.New("stored keys cannot be larger than 1")
 	}
-	if len(s.PGPKeys) > 0 && len(s.PGPKeys) != s.SecretShares {
-		return errors.New("count mismatch between number of provided PGP keys and number of shares")
-	}
 	if len(s.PGPKeys) > 0 {
+		if len(s.PGPKeys) != s.SecretShares {
+			return errors.New("count mismatch between number of provided PGP keys and number of shares")
+		}
 		for _, keystring := range s.PGPKeys {
 			data, err := base64.StdEncoding.DecodeString(keystring)
 			if err != nil {
@@ -368,6 +363,23 @@ func (s *SealConfig) Validate() error {
 		}
 	}
 	return nil
+}
+
+// Validate is used to sanity check the (barrier) seal configuration
+func (s *SealConfig) Validate() error {
+	if s.SecretShares < 1 {
+		return errors.New("shares must be at least one")
+	}
+	if s.SecretThreshold < 1 {
+		return errors.New("threshold must be at least one")
+	}
+
+	return s.baseValidate()
+}
+
+// ValidateRecovery is used to sanity check the (recovery) seal configuration
+func (s *SealConfig) ValidateRecovery() error {
+	return s.baseValidate()
 }
 
 func (s *SealConfig) Clone() *SealConfig {

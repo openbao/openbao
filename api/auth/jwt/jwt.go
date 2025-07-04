@@ -43,6 +43,9 @@ type JWTAuth struct {
 	// token specifies the JWT token which will be used for authenticating
 	// against the OpenBao Authentication Method endpoint.
 	token string
+
+	// tokenPath specifies a path from which to read the JWT token.
+	tokenPath string
 }
 
 var _ api.AuthMethod = &JWTAuth{}
@@ -77,7 +80,7 @@ func New(roleName string, opts ...Option) (*JWTAuth, error) {
 		}
 	}
 
-	if jwtAuth.token == "" {
+	if jwtAuth.token == "" && jwtAuth.tokenPath == "" {
 		return nil, ErrNoToken
 	}
 
@@ -90,9 +93,22 @@ func New(roleName string, opts ...Option) (*JWTAuth, error) {
 
 // Login implements the [api.AuthMethod] interface.
 func (a *JWTAuth) Login(ctx context.Context, client *api.Client) (*api.Secret, error) {
+	var token string
+
+	switch {
+	case a.token != "":
+		token = a.token
+	case a.tokenPath != "":
+		data, err := os.ReadFile(filepath.Clean(a.tokenPath))
+		if err != nil {
+			return nil, err
+		}
+		token = string(data)
+	}
+
 	path := fmt.Sprintf("auth/%s/login", a.mountPath)
 	data := map[string]any{
-		"jwt":  a.token,
+		"jwt":  token,
 		"role": a.roleName,
 	}
 
@@ -115,11 +131,7 @@ func WithToken(token string) Option {
 // token from the given path.
 func WithTokenFromPath(path string) Option {
 	opt := func(a *JWTAuth) error {
-		token, err := os.ReadFile(filepath.Clean(path))
-		if err != nil {
-			return err
-		}
-		a.token = string(token)
+		a.tokenPath = path
 
 		return nil
 	}

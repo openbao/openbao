@@ -3534,7 +3534,7 @@ func (b *SystemBackend) responseWrappingUnwrap(ctx context.Context, te *logical.
 	if cubbyResp == nil {
 		return "no information found; wrapping token may be from a previous OpenBao version", ErrInternalError
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp.Error().Error(), nil
 	}
 	if cubbyResp.Data == nil {
@@ -3779,7 +3779,7 @@ func (b *SystemBackend) handleWrappingLookup(ctx context.Context, req *logical.R
 	if cubbyResp == nil {
 		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
@@ -3860,7 +3860,7 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 	if cubbyResp == nil {
 		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
@@ -3898,7 +3898,7 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 	if cubbyResp == nil {
 		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {

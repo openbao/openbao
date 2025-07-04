@@ -664,7 +664,7 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 			default:
 				return logical.ErrorResponse("could not verify hash file, possibly the snapshot is using a different autoseal key; use the snapshot-force API to bypass this check"), logical.ErrInvalidRequest
 			}
-		case err != nil:
+		default:
 			b.Core.logger.Error("raft snapshot restore: failed to write snapshot", "error", err)
 			return nil, err
 		}

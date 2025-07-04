@@ -784,7 +784,6 @@ func (i *IdentityStore) handlePathEntityListCommon(ctx context.Context, req *log
 			resp.AddWarning("partial response due to timeout")
 			return resp, nil
 		default:
-			break
 		}
 
 		raw := iter.Next()

@@ -300,7 +300,7 @@ func TestBackend_AllowedUsers(t *testing.T) {
 
 	credsData["username"] = "random"
 	resp, err = b.HandleRequest(context.Background(), credsReq)
-	if err != nil || resp == nil || (resp != nil && !resp.IsError()) {
+	if err != nil || resp == nil || !resp.IsError() {
 		t.Fatalf("expected failure: resp:%#v err:%s", resp, err)
 	}
 
@@ -324,7 +324,7 @@ func TestBackend_AllowedUsers(t *testing.T) {
 
 	credsData["username"] = "test"
 	resp, err = b.HandleRequest(context.Background(), credsReq)
-	if err != nil || resp == nil || (resp != nil && !resp.IsError()) {
+	if err != nil || resp == nil || !resp.IsError() {
 		t.Fatalf("expected failure: resp:%#v err:%s", resp, err)
 	}
 

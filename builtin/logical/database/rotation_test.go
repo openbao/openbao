@@ -419,10 +419,10 @@ func createTestPGUser(t *testing.T, connURL string, username, password, query st
 	log.Printf("[TRACE] Creating test user")
 
 	db, err := sql.Open("pgx", connURL)
-	defer db.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer db.Close()
 
 	// Start a transaction
 	ctx := context.Background()

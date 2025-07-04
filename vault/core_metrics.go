@@ -320,7 +320,6 @@ func (c *Core) walkKvMountSecrets(ctx context.Context, m *kvMount) {
 		case <-ctx.Done():
 			return
 		default:
-			break
 		}
 
 		currentDirectory := subdirectories[0]
@@ -384,7 +383,6 @@ func (c *Core) kvSecretGaugeCollector(ctx context.Context) ([]metricsutil.GaugeL
 		case <-ctx.Done():
 			return []metricsutil.GaugeLabelValues{}, nil
 		default:
-			break
 		}
 
 		results[i].Labels = []metrics.Label{
@@ -451,7 +449,6 @@ func (c *Core) entityGaugeCollectorByMount(ctx context.Context) ([]metricsutil.G
 		case <-ctx.Done():
 			return values, errors.New("context cancelled")
 		default:
-			break
 		}
 
 		c.stateLock.RLock()

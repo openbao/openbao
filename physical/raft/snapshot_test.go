@@ -897,7 +897,7 @@ func TestBoltSnapshotStore_BadPerm(t *testing.T) {
 	if err = os.Chmod(dir2, 0o00); err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	defer os.Chmod(dir2, 777) // Set perms back for delete
+	defer os.Chmod(dir2, 0o777) // Set perms back for delete
 
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:  "raft",

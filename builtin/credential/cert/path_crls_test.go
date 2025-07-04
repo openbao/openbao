@@ -47,7 +47,6 @@ func TestCRLFetch(t *testing.T) {
 			case <-t.C:
 				b.PeriodicFunc(context.Background(), &logical.Request{Storage: storage})
 			case <-closeChan:
-				break
 			}
 		}
 	}()

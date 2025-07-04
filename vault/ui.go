@@ -172,9 +172,6 @@ func (c *UIConfig) get(ctx context.Context) (*uiConfigEntry, error) {
 	}
 
 	config := new(uiConfigEntry)
-	if config == nil {
-		return nil, nil
-	}
 	if err := json.Unmarshal(configRaw.Value, config); err != nil {
 		return nil, err
 	}

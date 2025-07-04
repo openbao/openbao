@@ -3775,9 +3775,7 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 	} else {
 		_, ok = data.GetOk("period")
 		if ok {
-			if resp == nil {
-				resp = &logical.Response{}
-			}
+			resp = &logical.Response{}
 			resp.AddWarning("Both 'token_period' and deprecated 'period' value supplied, ignoring the deprecated value")
 		}
 		entry.Period = 0

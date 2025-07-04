@@ -748,10 +748,10 @@ func TestMySQL_UpdateUser(t *testing.T) {
 func createTestMySQLUser(t *testing.T, connURL, username, password, query string) {
 	t.Helper()
 	db, err := sql.Open("mysql", connURL)
-	defer db.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer db.Close()
 
 	// Start a transaction
 	ctx := context.Background()

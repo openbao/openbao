@@ -2433,7 +2433,7 @@ func (i *IdentityStore) handleAliasListCommon(ctx context.Context, groupAlias bo
 // countEntities returns the sum of all entities across all namespaces.
 func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 	var count int
-	var err error
+	var outErr error
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
@@ -2442,7 +2442,7 @@ func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 
 		iter, err := txn.Get(entitiesTable, "id")
 		if err != nil {
-			err = fmt.Errorf("failed to get entities table for namespace %v: %w", uuid, err)
+			outErr = fmt.Errorf("failed to get entities table for namespace %v: %w", uuid, err)
 			return false
 		}
 
@@ -2455,8 +2455,8 @@ func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 		return true
 	})
 
-	if err != nil {
-		return -1, err
+	if outErr != nil {
+		return -1, outErr
 	}
 
 	return count, nil
@@ -2487,7 +2487,6 @@ func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[strin
 				err = fmt.Errorf("context cancelled during namespace %v", uuid)
 				return false
 			default:
-				break
 			}
 
 			// Count in the namespace attached to the entity.
@@ -2531,7 +2530,6 @@ func (i *IdentityStore) countEntitiesByMountAccessor(ctx context.Context) (map[s
 				err = fmt.Errorf("context cancelled during namespace %v", uuid)
 				return false
 			default:
-				break
 			}
 
 			// Count each alias separately; will translate to mount point and type

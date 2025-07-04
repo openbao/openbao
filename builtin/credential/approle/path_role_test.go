@@ -800,7 +800,7 @@ func TestAppRole_RoleDeleteSecretID(t *testing.T) {
 	resp = b.requestNoErr(t, roleReq)
 
 	resp, err := b.HandleRequest(context.Background(), listReq)
-	if err != nil || resp == nil || (resp != nil && !resp.IsError()) {
+	if err != nil || resp == nil || !resp.IsError() {
 		t.Fatalf("expected an error. err:%v resp:%#v", err, resp)
 	}
 }

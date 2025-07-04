@@ -15,6 +15,7 @@ import (
 
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -504,7 +505,7 @@ func (b *SystemBackend) handleKeyRotationConfigUpdate() framework.OperationFunc 
 func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 	return func(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 		// Get the seal configuration
-		existingConfig, err := b.Core.seal.BarrierConfig(ctx)
+		existingConfig, err := b.Core.SealAccess().BarrierConfig(ctx)
 		if err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to fetch existing config: %w", err).Error())
 		}
@@ -549,12 +550,8 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		rotConf, err := b.Core.RekeyConfig(recovery)
-		if err != nil {
-			return handleError(err)
-		}
-
-		sealThreshold, err := b.Core.RekeyThreshold(ctx, recovery)
+		rotConf := b.Core.RotationConfig(recovery)
+		sealThreshold, err := b.Core.RotationThreshold(ctx, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -569,7 +566,7 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 		}
 
 		if rotConf != nil {
-			started, progress, err := b.Core.RekeyProgress(recovery, false)
+			started, progress, err := b.Core.RotationProgress(recovery, false)
 			if err != nil {
 				return handleError(err)
 			}
@@ -640,7 +637,7 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.RekeyInit(rotateConf, recovery); err != nil {
+		if err := b.Core.InitRotation(rotateConf, recovery); err != nil {
 			return handleError(err)
 		}
 
@@ -653,7 +650,7 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 func (b *SystemBackend) handleRotateInitDelete() framework.OperationFunc {
 	return func(_ context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.RekeyCancel(recovery); err != nil {
+		if err := b.Core.CancelRotation(recovery); err != nil {
 			return handleError(err)
 		}
 		return nil, nil
@@ -682,11 +679,11 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 		}
 		reqNonce := inonce.(string)
 
-		// Decode the key, which is base64 or hex encoded
-		min, max := b.Core.BarrierKeyLength()
-		key, err := hex.DecodeString(reqKey)
 		// We check min and max here to ensure that a string that is base64 encoded
 		// but also valid hex will not be valid and we instead base64 decode it
+		min, max := b.Core.BarrierKeyLength()
+		max += shamir.ShareOverhead
+		key, err := hex.DecodeString(reqKey)
 		if err != nil || len(key) < min || len(key) > max {
 			key, err = base64.StdEncoding.DecodeString(reqKey)
 			if err != nil {
@@ -699,7 +696,7 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 
 		// Use the key to make progress on rotation (rekey)
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.RekeyUpdate(ctx, key, reqNonce, recovery)
+		result, err := b.Core.UpdateRotation(ctx, key, reqNonce, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -742,15 +739,12 @@ func (b *SystemBackend) handleRotateVerifyGet() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		rotateConf, err := b.Core.RekeyConfig(recovery)
-		if err != nil {
-			return handleError(err)
-		}
+		rotateConf := b.Core.RotationConfig(recovery)
 		if rotateConf == nil {
 			return handleError(errors.New("no rotation configuration found"))
 		}
 
-		started, progress, err := b.Core.RekeyProgress(recovery, true)
+		started, progress, err := b.Core.RotationProgress(recovery, true)
 		if err != nil {
 			return handleError(err)
 		}
@@ -789,8 +783,8 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 		}
 		reqNonce := inonce.(string)
 
-		// Decode the key, which is base64 or hex encoded
 		min, max := b.Core.BarrierKeyLength()
+		max += shamir.ShareOverhead
 		key, err := hex.DecodeString(reqKey)
 		// We check min and max here to ensure that a string that is base64 encoded
 		// but also valid hex will not be valid and we instead base64 decode it
@@ -806,7 +800,7 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 
 		// Use the key to make progress on rotation (rekey) verification
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.RekeyVerify(ctx, key, reqNonce, recovery)
+		result, err := b.Core.VerifyRotation(ctx, key, reqNonce, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -829,7 +823,7 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 func (b *SystemBackend) handleRotateVerifyDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.RekeyVerifyRestart(recovery); err != nil {
+		if err := b.Core.RestartRotationVerification(recovery); err != nil {
 			return handleError(err)
 		}
 		return b.handleRotateVerifyGet()(ctx, req, data)
@@ -841,7 +835,7 @@ func (b *SystemBackend) handleRotateVerifyDelete() framework.OperationFunc {
 func (b *SystemBackend) handleRotateBackupRetrieve() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		recovery := strings.Contains(req.Path, "recovery")
-		backup, err := b.Core.RekeyRetrieveBackup(ctx, recovery)
+		backup, err := b.Core.RetrieveRotationBackup(ctx, recovery)
 		if err != nil {
 			return handleError(fmt.Errorf("unable to look up backed-up keys: %w", err))
 		}
@@ -880,7 +874,7 @@ func (b *SystemBackend) handleRotateBackupRetrieve() framework.OperationFunc {
 func (b *SystemBackend) handleRotateBackupDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.RekeyDeleteBackup(ctx, recovery); err != nil {
+		if err := b.Core.DeleteRotationBackup(ctx, recovery); err != nil {
 			return handleError(err)
 		}
 

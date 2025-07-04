@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-jose/go-jose/v3"
-	"github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -56,7 +56,7 @@ func GetTestJWT(t *testing.T) (string, *ecdsa.PrivateKey) {
 		t.Fatal(err)
 	}
 
-	raw, err := jwt.Signed(sig).Claims(cl).Claims(privateCl).CompactSerialize()
+	raw, err := jwt.Signed(sig).Claims(cl).Claims(privateCl).Serialize()
 	if err != nil {
 		t.Fatal(err)
 	}

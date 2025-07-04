@@ -66,7 +66,7 @@ func (s *ResponseSource) Validate(_ context.Context) ([]string, []string, error)
 	s.responseName = respName
 	responseName += respName
 
-	rawFieldSelector := s.field["field_selector"]
+	rawFieldSelector, present := s.field["field_selector"]
 	if present {
 		switch rawFieldSelector.(type) {
 		case string:

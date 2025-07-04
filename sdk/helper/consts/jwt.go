@@ -6,9 +6,9 @@ import jose "github.com/go-jose/go-jose/v4"
 // These slices define the supported signing algorithms for JWT tokens
 // in various authentication and authorization contexts.
 var (
-	// AllowedJWTSignatureAlgorithmsK8s defines the JWT signature algorithms
-	// allowed for Kubernetes authentication.
-	AllowedJWTSignatureAlgorithmsK8s = []jose.SignatureAlgorithm{
+	// AllowedJWTSignatureAlgorithmsBao defines the JWT signature algorithms
+	// allowed for OpenBao.
+	AllowedJWTSignatureAlgorithmsBao = []jose.SignatureAlgorithm{
 		jose.ES256,
 		jose.ES512,
 		jose.EdDSA,
@@ -38,19 +38,11 @@ var (
 		jose.HS512,
 	}
 
-	// AllowedJWTSignatureAlgorithmsOIDC defines the JWT signature algorithms
-	// allowed for OIDC operations.
-	AllowedJWTSignatureAlgorithmsOIDC = []jose.SignatureAlgorithm{
-		jose.RS256,
-		jose.RS384,
-		jose.RS512,
-		jose.ES256,
-		jose.ES384,
-		jose.ES512,
-		jose.EdDSA,
-	}
+	// AllowedJWTSignatureAlgorithmsK8s defines the JWT signature algorithms
+	// that are supported by Kubernetes.
+	AllowedJWTSignatureAlgorithmsK8s = AllowedJWTSignatureAlgorithmsBao
 
-	// AllowedJWTSignatureAlgorithmsBao defines the JWT signature algorithms
-	// that are supported by OpenBao. Currently uses the same algorithms as OIDC.
-	AllowedJWTSignatureAlgorithmsBao = AllowedJWTSignatureAlgorithmsOIDC
+	// AllowedJWTSignatureAlgorithmsOIDC defines the JWT signature algorithms
+	// that are supported by OIDC.
+	AllowedJWTSignatureAlgorithmsOIDC = AllowedJWTSignatureAlgorithmsBao
 )

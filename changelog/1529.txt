@@ -1,0 +1,3 @@
+```release-note:improvement
+core/auth: allow inline auth to work with kerberos auth
+```

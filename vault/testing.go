@@ -338,6 +338,33 @@ func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.
 	}
 }
 
+// TestCoreCreateSealedNamespaces creates sealed namespaces with 3 key shares and returns the
+// key for each created namespace in a map.
+func TestCoreCreateSealedNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) map[string][][]byte {
+	t.Helper()
+	sealConfig := &SealConfig{
+		Type:            "shamir",
+		SecretShares:    3,
+		SecretThreshold: 3,
+	}
+	keysPerNamespace := make(map[string][][]byte)
+	ctx := namespace.RootContext(context.Background())
+	for _, ns := range namespaces {
+		parentPath, _ := ns.ParentPath()
+		parent, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
+		require.NoError(t, err)
+		parentCtx := namespace.ContextWithNamespace(ctx, parent)
+		err = core.namespaceStore.SetNamespace(parentCtx, ns)
+		require.NoError(t, err)
+		err = core.sealManager.SetSeal(ctx, sealConfig, ns, true)
+		require.NoError(t, err)
+		nsSealKeyShares, err := core.sealManager.InitializeBarrier(ctx, ns)
+		require.NoError(t, err)
+		keysPerNamespace[ns.Path] = nsSealKeyShares
+	}
+	return keysPerNamespace
+}
+
 // TestCoreUnsealed returns a pure in-memory core that is already
 // initialized and unsealed.
 func TestCoreUnsealed(t testing.T) (*Core, [][]byte, string) {

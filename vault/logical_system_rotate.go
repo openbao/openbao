@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
@@ -691,7 +692,7 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 			}
 		}
 
-		ctx, cancel := b.Core.GetContext()
+		ctx, cancel := context.WithCancel(namespace.RootContext(b.Core.activeContext))
 		defer cancel()
 
 		// Use the key to make progress on rotation (rekey)
@@ -795,7 +796,7 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 			}
 		}
 
-		ctx, cancel := b.Core.GetContext()
+		ctx, cancel := context.WithCancel(namespace.RootContext(b.Core.activeContext))
 		defer cancel()
 
 		// Use the key to make progress on rotation (rekey) verification

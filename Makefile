@@ -9,8 +9,7 @@ TEST?=$$($(GO_CMD) list ./... github.com/openbao/openbao/api/v2/... github.com/o
 TEST_TIMEOUT?=45m
 EXTENDED_TEST_TIMEOUT=60m
 INTEG_TEST_TIMEOUT=120m
-VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
-GOFMT_FILES?=$$(find . -name '*.go' | grep -v pb.go | grep -v vendor)
+GO_MODS?=$$(find . -name 'go.mod' | xargs -L 1 dirname)
 SED?=$(shell command -v gsed || command -v sed)
 
 GO_VERSION_MIN=$$(cat $(CURDIR)/.go-version)
@@ -102,82 +101,39 @@ cover:
 
 # vet runs the Go source code static analysis tool `vet` to find
 # any common errors.
+.PHONY: vet
 vet:
-	@$(GO_CMD) list -f '{{.Dir}}' ./... | grep -v /vendor/ \
-		| grep -v '.*github.com/hashicorp/vault$$' \
-		| xargs $(GO_CMD) vet ; if [ $$? -eq 1 ]; then \
+	@for dir in $(GO_MODS); do \
+		cd $$dir && $(GO_CMD) vet ./...; if [ $$? -eq 1 ]; then \
 			echo ""; \
 			echo "Vet found suspicious constructs. Please check the reported constructs"; \
 			echo "and fix them if necessary before submitting the code for reviewal."; \
-		fi
-	@$(GO_CMD) list -f '{{.Dir}}' github.com/openbao/openbao/api/v2/... | grep -v /vendor/ \
-		| grep -v '.*github.com/hashicorp/vault$$' \
-		| xargs $(GO_CMD) vet ; if [ $$? -eq 1 ]; then \
-			echo ""; \
-			echo "Vet found suspicious constructs. Please check the reported constructs"; \
-			echo "and fix them if necessary before submitting the code for reviewal."; \
-		fi
-	@$(GO_CMD) list -f '{{.Dir}}' github.com/openbao/openbao/sdk/v2/... | grep -v /vendor/ \
-		| grep -v '.*github.com/hashicorp/vault$$' \
-		| xargs $(GO_CMD) vet ; if [ $$? -eq 1 ]; then \
-			echo ""; \
-			echo "Vet found suspicious constructs. Please check the reported constructs"; \
-			echo "and fix them if necessary before submitting the code for reviewal."; \
-		fi
+		fi; \
+		cd $(CURDIR); \
+	done
 
 # deprecations runs staticcheck tool to look for deprecations. Checks entire code to see if it
 # has deprecated function, variable, constant or field
-deprecations: bootstrap prep
-	@BUILD_TAGS='$(BUILD_TAGS)' ./scripts/deprecations-checker.sh ""
+.PHONY: deprecations
+deprecations: LINT_FLAGS += "-c=$(CURDIR)/.golangci.deprecations.yml"
+deprecations: lint
 
-# ci-deprecations runs staticcheck tool to look for deprecations. All output gets piped to revgrep
-# which will only return an error if changes that is not on main has deprecated function, variable, constant or field
-ci-deprecations: ci-bootstrap prep
-	@BUILD_TAGS='$(BUILD_TAGS)' ./scripts/deprecations-checker.sh main
+# lint-new runs golangci-lint on the current commit
+.PHONY: lint-new
+lint-new: LINT_FLAGS += "-n"
+lint-new: lint
 
-tools/codechecker/.bin/codechecker:
-	@cd tools/codechecker && $(GO_CMD) build -o .bin/codechecker .
-
-# vet-codechecker runs our custom linters on the test functions. All output gets
-# piped to revgrep which will only return an error if new piece of code violates
-# the check
-vet-codechecker: bootstrap tools/codechecker/.bin/codechecker prep
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) ./... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/api/v2/... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/sdk/v2/... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest
-
-# vet-codechecker runs our custom linters on the test functions. All output gets
-# piped to revgrep which will only return an error if new piece of code that is
-# not on main violates the check
-ci-vet-codechecker: ci-bootstrap tools/codechecker/.bin/codechecker prep
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) ./... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest origin/main
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/api/v2/... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest origin/main
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/sdk/v2/... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest origin/main
-
-# lint runs vet plus a number of other checkers, it is more comprehensive, but louder
+# lint runs golangci-lint, it is more comprehensive than vet, but louder
+.PHONY: lint
 lint:
-	@$(GO_CMD) list -f '{{.Dir}}' ./... | grep -v /vendor/ \
-		| xargs golangci-lint run; if [ $$? -eq 1 ]; then \
+	@for dir in $(GO_MODS); do \
+		cd $$dir && golangci-lint run $(LINT_FLAGS); if [ $$? -eq 1 ]; then \
 			echo ""; \
 			echo "Lint found suspicious constructs. Please check the reported constructs"; \
 			echo "and fix them if necessary before submitting the code for reviewal."; \
-		fi
-	@$(GO_CMD) list -f '{{.Dir}}' github.com/openbao/openbao/api/v2/... | grep -v /vendor/ \
-		| xargs golangci-lint run; if [ $$? -eq 1 ]; then \
-			echo ""; \
-			echo "Lint found suspicious constructs. Please check the reported constructs"; \
-			echo "and fix them if necessary before submitting the code for reviewal."; \
-		fi
-	@$(GO_CMD) list -f '{{.Dir}}' github.com/openbao/openbao/sdk/v2/... | grep -v /vendor/ \
-		| xargs golangci-lint run; if [ $$? -eq 1 ]; then \
-			echo ""; \
-			echo "Lint found suspicious constructs. Please check the reported constructs"; \
-			echo "and fix them if necessary before submitting the code for reviewal."; \
-		fi
-
-# for ci jobs, runs lint against the changed packages in the commit
-ci-lint:
-	@golangci-lint run --deadline 10m --new-from-rev=HEAD~
+		fi; \
+		cd $(CURDIR); \
+	done
 
 # prep runs `go generate` to build the dynamically generated
 # source files.
@@ -194,7 +150,7 @@ prep:
 	@if [ -d .git/hooks ]; then cp .hooks/* .git/hooks/; fi
 
 # bootstrap the build by downloading additional tools that may be used by devs
-bootstrap: ci-bootstrap
+bootstrap:
 	go generate -tags tools tools/tools.go
 
 # Note: if you have plugins in GOPATH you can update all of them via something like:
@@ -264,11 +220,15 @@ proto: bootstrap
 	protoc-go-inject-tag -input=./helper/identity/types.pb.go
 	protoc-go-inject-tag -input=./helper/identity/mfa/types.pb.go
 
-fmtcheck:
-	@sh -c "'$(CURDIR)/scripts/gofmtcheck.sh'"
+.PHONY: fmtcheck
+fmtcheck: LINT_FLAGS+="-c=$(CURDIR)/.golangci.fmt.yml"
+fmtcheck: lint
 
-fmt: ci-bootstrap
-	find . -name '*.go' | grep -v pb.go | grep -v vendor | xargs go run mvdan.cc/gofumpt@latest -w
+.PHONY: fmt
+fmt:
+	@for dir in $(GO_MODS); do \
+		cd $$dir; golangci-lint fmt; cd $(CURDIR); \
+	done
 
 semgrep:
 	semgrep --include '*.go' -a -f tools/semgrep .

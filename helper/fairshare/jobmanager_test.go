@@ -135,7 +135,6 @@ func TestJobManager_StartAndPause(t *testing.T) {
 
 	select {
 	case <-doneCh:
-		break
 	case <-timeout:
 		t.Fatal("timed out")
 	}
@@ -161,7 +160,6 @@ func TestJobManager_StartAndPause(t *testing.T) {
 
 		select {
 		case <-doneCh:
-			break
 		case <-timeout:
 			t.Fatal("timed out")
 		}

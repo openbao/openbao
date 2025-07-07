@@ -258,7 +258,7 @@ func (c *Core) loadAudits(ctx context.Context) error {
 			c.logger.Error("failed to decode local audit table", "error", err)
 			return errLoadAuditFailed
 		}
-		if localAuditTable != nil && len(localAuditTable.Entries) > 0 {
+		if len(localAuditTable.Entries) > 0 {
 			c.audit.Entries = append(c.audit.Entries, localAuditTable.Entries...)
 		}
 	}

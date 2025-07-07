@@ -1324,7 +1324,6 @@ func (b *LoginMFABackend) mfaMethodList(ctx context.Context, methodType string) 
 		case <-ctx.Done():
 			return keys, configInfo, nil
 		default:
-			break
 		}
 
 		raw := iter.Next()
@@ -1381,7 +1380,6 @@ func (b *LoginMFABackend) mfaLoginEnforcementList(ctx context.Context) ([]string
 		case <-ctx.Done():
 			return keys, enforcementInfo, nil
 		default:
-			break
 		}
 
 		raw := iter.Next()
@@ -1793,14 +1791,14 @@ ECONFIG_LOOP:
 		}
 
 		for _, acc := range eConfig.AuthMethodAccessors {
-			if me != nil && me.Accessor == acc {
+			if me.Accessor == acc {
 				matchedMfaEnforcementConfig = append(matchedMfaEnforcementConfig, eConfig)
 				continue ECONFIG_LOOP
 			}
 		}
 
 		for _, authT := range eConfig.AuthMethodTypes {
-			if me != nil && me.Type == authT {
+			if me.Type == authT {
 				matchedMfaEnforcementConfig = append(matchedMfaEnforcementConfig, eConfig)
 				continue ECONFIG_LOOP
 			}

@@ -15,17 +15,24 @@ import (
 
 func TestCore_GenerateRoot_Lifecycle(t *testing.T) {
 	c, rootKeys, _ := TestCoreUnsealed(t)
-	testCore_GenerateRoot_Lifecycle_Common(t, c, rootKeys)
+	testCore_GenerateRoot_Lifecycle_Common(t, c, rootKeys, namespace.RootNamespace)
 }
 
-func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte) {
+func TestCore_NS_GenerateRoot_Lifecycle(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ns := &namespace.Namespace{Path: "test1/"}
+	keysPerNamespace := TestCoreCreateSealedNamespaces(t, c, ns)
+	testCore_GenerateRoot_Lifecycle_Common(t, c, keysPerNamespace[ns.Path], ns)
+}
+
+func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte, ns *namespace.Namespace) {
 	// Verify update not allowed
-	if _, err := c.GenerateRootUpdate(namespace.RootContext(nil), keys[0], "", GenerateStandardRootTokenStrategy); err == nil {
+	if _, err := c.GenerateRootUpdate(namespace.RootContext(nil), keys[0], "", GenerateStandardRootTokenStrategy, ns); err == nil {
 		t.Fatal("no root generation in progress")
 	}
 
 	// Should be no progress
-	num, err := c.GenerateRootProgress()
+	num, err := c.GenerateRootProgress(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -34,7 +41,7 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 	}
 
 	// Should be no config
-	conf, err := c.GenerateRootConfiguration()
+	conf, err := c.GenerateRootConfiguration(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -43,24 +50,28 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 	}
 
 	// Cancel should be idempotent
-	err = c.GenerateRootCancel()
+	err = c.GenerateRootCancel(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	otp, err := base62.Random(TokenPrefixLength + TokenLength)
+	tokenLength := TokenLength
+	if ns.UUID != namespace.RootNamespaceUUID {
+		tokenLength = NSTokenLength
+	}
+	otp, err := base62.Random(TokenPrefixLength + tokenLength)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Start a root generation
-	err = c.GenerateRootInit(otp, "", GenerateStandardRootTokenStrategy)
+	err = c.GenerateRootInit(otp, "", GenerateStandardRootTokenStrategy, ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Should get config
-	conf, err = c.GenerateRootConfiguration()
+	conf, err = c.GenerateRootConfiguration(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -69,13 +80,13 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 	}
 
 	// Cancel should be clear
-	err = c.GenerateRootCancel()
+	err = c.GenerateRootCancel(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Should be no config
-	conf, err = c.GenerateRootConfiguration()
+	conf, err = c.GenerateRootConfiguration(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -86,27 +97,38 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 
 func TestCore_GenerateRoot_Init(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	testCore_GenerateRoot_Init_Common(t, c)
+	testCore_GenerateRoot_Init_Common(t, c, namespace.RootNamespace)
 
 	bc := &SealConfig{SecretShares: 5, SecretThreshold: 3, StoredShares: 1}
 	rc := &SealConfig{SecretShares: 5, SecretThreshold: 3}
 	c, _, _, _ = TestCoreUnsealedWithConfigs(t, bc, rc)
-	testCore_GenerateRoot_Init_Common(t, c)
+	testCore_GenerateRoot_Init_Common(t, c, namespace.RootNamespace)
 }
 
-func testCore_GenerateRoot_Init_Common(t *testing.T, c *Core) {
-	otp, err := base62.Random(TokenPrefixLength + TokenLength)
+func TestCore_NS_GenerateRoot_Init(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ns := &namespace.Namespace{Path: "test1/"}
+	TestCoreCreateSealedNamespaces(t, c, ns)
+	testCore_GenerateRoot_Init_Common(t, c, ns)
+}
+
+func testCore_GenerateRoot_Init_Common(t *testing.T, c *Core, ns *namespace.Namespace) {
+	tokenLength := TokenLength
+	if ns.UUID != namespace.RootNamespaceUUID {
+		tokenLength = NSTokenLength
+	}
+	otp, err := base62.Random(TokenPrefixLength + tokenLength)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = c.GenerateRootInit(otp, "", GenerateStandardRootTokenStrategy)
+	err = c.GenerateRootInit(otp, "", GenerateStandardRootTokenStrategy, ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Second should fail
-	err = c.GenerateRootInit("", pgpkeys.TestPubKey1, GenerateStandardRootTokenStrategy)
+	err = c.GenerateRootInit("", pgpkeys.TestPubKey1, GenerateStandardRootTokenStrategy, ns)
 	if err == nil {
 		t.Fatal("should fail")
 	}
@@ -116,22 +138,36 @@ func TestCore_GenerateRoot_InvalidRootNonce(t *testing.T) {
 	c, rootKeys, _ := TestCoreUnsealed(t)
 	// Pass in root keys as they'll be invalid
 	rootKeys[0][0]++
-	testCore_GenerateRoot_InvalidRootNonce_Common(t, c, rootKeys)
+	testCore_GenerateRoot_InvalidRootNonce_Common(t, c, rootKeys, namespace.RootNamespace)
 }
 
-func testCore_GenerateRoot_InvalidRootNonce_Common(t *testing.T, c *Core, keys [][]byte) {
-	otp, err := base62.Random(TokenPrefixLength + TokenLength)
+func TestCore_NS_GenerateRoot_InvalidRootNonce(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ns := &namespace.Namespace{Path: "test1/"}
+	keysPerNamespace := TestCoreCreateSealedNamespaces(t, c, ns)
+	keys := keysPerNamespace[ns.Path]
+	keys[0][0]++
+	testCore_GenerateRoot_InvalidRootNonce_Common(t, c, keys, ns)
+}
+
+func testCore_GenerateRoot_InvalidRootNonce_Common(t *testing.T, c *Core, keys [][]byte, ns *namespace.Namespace) {
+	tokenLength := TokenLength
+	if ns.UUID != namespace.RootNamespaceUUID {
+		tokenLength = NSTokenLength
+	}
+
+	otp, err := base62.Random(TokenPrefixLength + tokenLength)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = c.GenerateRootInit(otp, "", GenerateStandardRootTokenStrategy)
+	err = c.GenerateRootInit(otp, "", GenerateStandardRootTokenStrategy, ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Fetch new config with generated nonce
-	rgconf, err := c.GenerateRootConfiguration()
+	rgconf, err := c.GenerateRootConfiguration(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -140,14 +176,14 @@ func testCore_GenerateRoot_InvalidRootNonce_Common(t *testing.T, c *Core, keys [
 	}
 
 	// Provide the nonce (invalid)
-	_, err = c.GenerateRootUpdate(namespace.RootContext(nil), keys[0], "abcd", GenerateStandardRootTokenStrategy)
+	_, err = c.GenerateRootUpdate(namespace.RootContext(nil), keys[0], "abcd", GenerateStandardRootTokenStrategy, ns)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	// Provide the root (invalid)
 	for _, key := range keys {
-		_, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rgconf.Nonce, GenerateStandardRootTokenStrategy)
+		_, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rgconf.Nonce, GenerateStandardRootTokenStrategy, ns)
 	}
 	if err == nil {
 		t.Fatal("expected error")
@@ -156,23 +192,35 @@ func testCore_GenerateRoot_InvalidRootNonce_Common(t *testing.T, c *Core, keys [
 
 func TestCore_GenerateRoot_Update_OTP(t *testing.T) {
 	c, rootKeys, _ := TestCoreUnsealed(t)
-	testCore_GenerateRoot_Update_OTP_Common(t, c, rootKeys)
+	testCore_GenerateRoot_Update_OTP_Common(t, c, rootKeys, namespace.RootNamespace)
 }
 
-func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byte) {
-	otp, err := base62.Random(TokenPrefixLength + TokenLength)
+func TestCore_NS_GenerateRoot_Update_OTP(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ns := &namespace.Namespace{Path: "test1/"}
+	keysPerNamespace := TestCoreCreateSealedNamespaces(t, c, ns)
+	testCore_GenerateRoot_Update_OTP_Common(t, c, keysPerNamespace[ns.Path], ns)
+}
+
+func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byte, ns *namespace.Namespace) {
+	tokenLength := TokenLength
+	if ns.UUID != namespace.RootNamespaceUUID {
+		tokenLength = NSTokenLength
+	}
+
+	otp, err := base62.Random(TokenPrefixLength + tokenLength)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Start a root generation
-	err = c.GenerateRootInit(otp, "", GenerateStandardRootTokenStrategy)
+	err = c.GenerateRootInit(otp, "", GenerateStandardRootTokenStrategy, ns)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Fetch new config with generated nonce
-	rkconf, err := c.GenerateRootConfiguration()
+	rkconf, err := c.GenerateRootConfiguration(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -183,7 +231,7 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byt
 	// Provide the keys
 	var result *GenerateRootResult
 	for _, key := range keys {
-		result, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rkconf.Nonce, GenerateStandardRootTokenStrategy)
+		result, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rkconf.Nonce, GenerateStandardRootTokenStrategy, ns)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -198,7 +246,7 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byt
 	encodedToken := result.EncodedToken
 
 	// Should be no progress
-	num, err := c.GenerateRootProgress()
+	num, err := c.GenerateRootProgress(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -207,7 +255,7 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byt
 	}
 
 	// Should be no config
-	conf, err := c.GenerateRootConfiguration()
+	conf, err := c.GenerateRootConfiguration(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -243,18 +291,25 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byt
 
 func TestCore_GenerateRoot_Update_PGP(t *testing.T) {
 	c, rootKeys, _ := TestCoreUnsealed(t)
-	testCore_GenerateRoot_Update_PGP_Common(t, c, rootKeys)
+	testCore_GenerateRoot_Update_PGP_Common(t, c, rootKeys, namespace.RootNamespace)
 }
 
-func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byte) {
+func TestCore_NS_GenerateRoot_Update_PGP(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ns := &namespace.Namespace{Path: "test1/"}
+	keysPerNamespace := TestCoreCreateSealedNamespaces(t, c, ns)
+	testCore_GenerateRoot_Update_PGP_Common(t, c, keysPerNamespace[ns.Path], ns)
+}
+
+func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byte, ns *namespace.Namespace) {
 	// Start a root generation
-	err := c.GenerateRootInit("", pgpkeys.TestPubKey1, GenerateStandardRootTokenStrategy)
+	err := c.GenerateRootInit("", pgpkeys.TestPubKey1, GenerateStandardRootTokenStrategy, ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Fetch new config with generated nonce
-	rkconf, err := c.GenerateRootConfiguration()
+	rkconf, err := c.GenerateRootConfiguration(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -265,7 +320,7 @@ func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byt
 	// Provide the keys
 	var result *GenerateRootResult
 	for _, key := range keys {
-		result, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rkconf.Nonce, GenerateStandardRootTokenStrategy)
+		result, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rkconf.Nonce, GenerateStandardRootTokenStrategy, ns)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -280,7 +335,7 @@ func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byt
 	encodedToken := result.EncodedToken
 
 	// Should be no progress
-	num, err := c.GenerateRootProgress()
+	num, err := c.GenerateRootProgress(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -289,7 +344,7 @@ func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byt
 	}
 
 	// Should be no config
-	conf, err := c.GenerateRootConfiguration()
+	conf, err := c.GenerateRootConfiguration(ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

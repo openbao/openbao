@@ -633,7 +633,7 @@ func TestExpiration_Tidy(t *testing.T) {
 		t.Fatalf("expected to see a warning saying operation in progress, output is %s", logOut.String())
 	}
 
-	root, err := exp.tokenStore.rootToken(context.Background())
+	root, err := exp.tokenStore.rootToken(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1093,7 +1093,7 @@ func TestExpiration_Register_BatchToken(t *testing.T) {
 func TestExpiration_RegisterAuth(t *testing.T) {
 	exp := mockExpiration(t)
 
-	root, err := exp.tokenStore.rootToken(context.Background())
+	root, err := exp.tokenStore.rootToken(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1127,7 +1127,7 @@ func TestExpiration_RegisterAuth(t *testing.T) {
 func TestExpiration_RegisterAuth_Role(t *testing.T) {
 	exp := mockExpiration(t)
 	role := "role1"
-	root, err := exp.tokenStore.rootToken(context.Background())
+	root, err := exp.tokenStore.rootToken(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1160,7 +1160,7 @@ func TestExpiration_RegisterAuth_Role(t *testing.T) {
 
 func TestExpiration_RegisterAuth_NoLease(t *testing.T) {
 	exp := mockExpiration(t)
-	root, err := exp.tokenStore.rootToken(context.Background())
+	root, err := exp.tokenStore.rootToken(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1214,7 +1214,7 @@ func TestExpiration_RegisterAuth_NoTTL(t *testing.T) {
 	exp := c.expiration
 	ctx := namespace.RootContext(nil)
 
-	root, err := exp.tokenStore.rootToken(context.Background())
+	root, err := exp.tokenStore.rootToken(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1618,7 +1618,7 @@ func TestExpiration_RevokeByToken_Blocking(t *testing.T) {
 
 func TestExpiration_RenewToken(t *testing.T) {
 	exp := mockExpiration(t)
-	root, err := exp.tokenStore.rootToken(context.Background())
+	root, err := exp.tokenStore.rootToken(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1721,7 +1721,7 @@ func TestExpiration_RenewToken_period(t *testing.T) {
 
 func TestExpiration_RenewToken_period_backend(t *testing.T) {
 	exp := mockExpiration(t)
-	root, err := exp.tokenStore.rootToken(context.Background())
+	root, err := exp.tokenStore.rootToken(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1806,7 +1806,7 @@ func TestExpiration_RenewToken_period_backend(t *testing.T) {
 
 func TestExpiration_RenewToken_NotRenewable(t *testing.T) {
 	exp := mockExpiration(t)
-	root, err := exp.tokenStore.rootToken(context.Background())
+	root, err := exp.tokenStore.rootToken(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2228,7 +2228,7 @@ func TestExpiration_revokeEntry(t *testing.T) {
 
 func TestExpiration_revokeEntry_token(t *testing.T) {
 	exp := mockExpiration(t)
-	root, err := exp.tokenStore.rootToken(context.Background())
+	root, err := exp.tokenStore.rootToken(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2814,7 +2814,7 @@ func badRenewFactory(ctx context.Context, conf *logical.BackendConfig) (logical.
 func sampleToken(t *testing.T, exp *ExpirationManager, path string, expiring bool, policy string) *logical.TokenEntry {
 	t.Helper()
 
-	root, err := exp.tokenStore.rootToken(context.Background())
+	root, err := exp.tokenStore.rootToken(context.Background(), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

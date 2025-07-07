@@ -360,7 +360,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 	}
 
 	// Generate a new root token
-	rootToken, err := c.tokenStore.rootToken(ctx)
+	rootToken, err := c.tokenStore.rootToken(ctx, namespace.RootNamespace)
 	if err != nil {
 		c.logger.Error("root token generation failed", "error", err)
 		return nil, err

@@ -110,21 +110,11 @@ func TestDefaultSeal_IsNSSealed(t *testing.T) {
 }
 
 func TestRegisterNamespace(t *testing.T) {
-	sealConfig := &SealConfig{
-		Type:            "shamir",
-		SecretShares:    4,
-		SecretThreshold: 2,
-	}
 	c, keys, _ := TestCoreUnsealed(t)
-	sm := c.sealManager
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
 
 	ns := &namespace.Namespace{Path: "test/"}
-	TestCoreCreateNamespaces(t, c, ns)
+	TestCoreCreateSealedNamespaces(t, c, ns)
 	require.False(t, c.IsNSSealed(ns))
-
-	err := sm.SetSeal(ctx, sealConfig, ns, true)
-	require.NoError(t, err)
 
 	TestCoreSeal(c)
 	for i := 0; i < len(keys); i++ {

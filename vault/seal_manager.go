@@ -62,6 +62,9 @@ func (c *Core) setupSealManager() {
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert(sealConfigPath, nil)
+
+	coreSeal := c.seal
+	c.sealManager.sealsByNamespace[namespace.RootNamespaceUUID] = map[string]Seal{"default": coreSeal}
 }
 
 // teardownSealManager is used to remove seal manager
@@ -386,7 +389,25 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 // If allowMissing is true, a failure to find the root key in storage results
 // in a nil error and a nil root key being returned.
 func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, allowMissing bool) ([]byte, error) {
-	if seal.StoredKeysSupported() == vaultseal.StoredKeysSupportedShamirRoot {
+	switch seal.StoredKeysSupported() {
+	case vaultseal.StoredKeysSupportedGeneric:
+		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
+			return nil, fmt.Errorf("recovery key verification failed: %w", err)
+		}
+
+		storedKeys, err := seal.GetStoredKeys(ctx)
+		if storedKeys == nil && err == nil && allowMissing {
+			return nil, nil
+		}
+
+		if err == nil && len(storedKeys) != 1 {
+			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
+		}
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
+		}
+		return storedKeys[0], nil
+	case vaultseal.StoredKeysSupportedShamirRoot:
 		shamirWrapper, err := seal.GetShamirWrapper()
 		if err != nil {
 			return nil, err
@@ -410,7 +431,6 @@ func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combin
 		}
 		return storedKeys[0], nil
 	}
-
 	return nil, errors.New("invalid seal")
 }
 

@@ -955,7 +955,7 @@ func TestTokenStore_HandleRequest_Renew_Revoke_Accessor(t *testing.T) {
 	exp := mockExpiration(t)
 	ts := exp.tokenStore
 
-	rootToken, err := ts.rootToken(namespace.RootContext(nil))
+	rootToken, err := ts.rootToken(namespace.RootContext(nil), namespace.RootNamespace)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1111,7 +1111,7 @@ func TestTokenStore_RootToken(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ts := c.tokenStore
 
-	te, err := ts.rootToken(namespace.RootContext(nil))
+	te, err := ts.rootToken(namespace.RootContext(nil), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2378,7 +2378,7 @@ func TestTokenStore_HandleRequest_Revoke(t *testing.T) {
 	exp := mockExpiration(t)
 	ts := exp.tokenStore
 
-	rootToken, err := ts.rootToken(namespace.RootContext(nil))
+	rootToken, err := ts.rootToken(namespace.RootContext(nil), namespace.RootNamespace)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2808,7 +2808,7 @@ func TestTokenStore_HandleRequest_Renew(t *testing.T) {
 	ts := exp.tokenStore
 
 	// Create new token
-	root, err := ts.rootToken(namespace.RootContext(nil))
+	root, err := ts.rootToken(namespace.RootContext(nil), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3298,7 +3298,7 @@ func TestTokenStore_HandleRequest_RenewSelf(t *testing.T) {
 	ts := exp.tokenStore
 
 	// Create new token
-	root, err := ts.rootToken(namespace.RootContext(nil))
+	root, err := ts.rootToken(namespace.RootContext(nil), namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -5511,7 +5511,7 @@ func TestTokenStore_RevokeUseCountToken(t *testing.T) {
 
 	exp := mockExpiration(t)
 	ts := exp.tokenStore
-	root, _ := exp.tokenStore.rootToken(namespace.RootContext(nil))
+	root, _ := exp.tokenStore.rootToken(namespace.RootContext(nil), namespace.RootNamespace)
 
 	tokenReq := &logical.Request{
 		Path:        "create",
@@ -5964,7 +5964,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	ctx := namespace.RootContext(context.Background())
 
 	// Create new token
-	root, err := ts.rootToken(ctx)
+	root, err := ts.rootToken(ctx, namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

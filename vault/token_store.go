@@ -76,6 +76,10 @@ const (
 	// any namespace information
 	TokenLength = 24
 
+	// NSTokenLength is the size of tokens we are currently generating, for
+	// sealed Namespaces
+	NSTokenLength = 31
+
 	// MaxNsIdLength is the maximum namespace ID length (5 characters prepended by a ".")
 	MaxNsIdLength = 6
 
@@ -1132,15 +1136,20 @@ func (ts *TokenStore) SaltID(ctx context.Context, id string) (string, error) {
 }
 
 // rootToken is used to generate a new token with root privileges and no parent
-func (ts *TokenStore) rootToken(ctx context.Context) (*logical.TokenEntry, error) {
-	ctx = namespace.ContextWithNamespace(ctx, namespace.RootNamespace)
+func (ts *TokenStore) rootToken(ctx context.Context, ns *namespace.Namespace) (*logical.TokenEntry, error) {
+	ctx = namespace.ContextWithNamespace(ctx, ns)
+	view := ts.core.NamespaceView(ns)
 	te := &logical.TokenEntry{
 		Policies:     []string{"root"},
-		Path:         "auth/token/root",
-		DisplayName:  "root",
+		Path:         view.Prefix() + "auth/token/root",
 		CreationTime: time.Now().Unix(),
-		NamespaceID:  namespace.RootNamespaceID,
+		NamespaceID:  ns.ID,
 		Type:         logical.TokenTypeService,
+	}
+	if ns.UUID == namespace.RootNamespaceUUID {
+		te.DisplayName = "root"
+	} else {
+		te.DisplayName = ns.ID + "_root"
 	}
 	if err := ts.create(ctx, te, true /* persist */); err != nil {
 		return nil, err

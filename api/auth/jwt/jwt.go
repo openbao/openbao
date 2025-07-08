@@ -108,7 +108,7 @@ func (a *JWTAuth) Login(ctx context.Context, client *api.Client) (*api.Secret, e
 
 	path := fmt.Sprintf("auth/%s/login", a.mountPath)
 	data := map[string]any{
-		"jwt":  token,
+		"jwt":  strings.TrimSpace(token),
 		"role": a.roleName,
 	}
 

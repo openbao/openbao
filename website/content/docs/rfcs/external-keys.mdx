@@ -77,13 +77,13 @@ We suggest the following design for external keys:
    }
    ```
 
-2. We add a new path `sys/namespaces/<:path>/external_keys`, with an option,
-   `external_key_types`, which limits the allowed HSM and KMS types within
-   this namespace and all children. This allows both the root operator to
-   restrict immediate children, but also for future tenant operators to
-   restrict their own child namespaces. This reflects the hierarchical nature
-   of access (that a parent namespace operator can create a policy that
-   effectively grants them full access to a child namespace).
+2. We add a new path `sys/namespaces/<:path>/external-keys`, with an option,
+   `types`, which limits the allowed HSM and KMS types within this namespace
+   and all children. This allows both the root operator to restrict immediate
+   children, but also for future tenant operators to restrict their own child
+   namespaces. This reflects the hierarchical nature of access (that a parent
+   namespace operator can create a policy that effectively grants them full
+   access to a child namespace).
 
 3. Within the `sys/external-keys` space, we implement the following APIs:
 
@@ -164,11 +164,16 @@ which will need to be extended to support the following new APIs:
    does). `GetKey()` would likely take both a `config-name` and `key-name`
    parameter to uniquely identify a key.
 
-`ExternalKey` will implement one or two standard Go types, depending on the
-capabilities of the underlying keys: `crypto.Decrypter` and `crypto.Signer`.
-Once an `ExternalKey` has been retrieved via `GetKey()`, a secret engine can
-check for interface support by type casting. Access to private keys will not be
-returned.
+`ExternalKey` will implement a selection of standard Go interfaces, depending on
+the capabilities of the underlying keys:
+
+- `crypto.Signer`
+- `crypto.Decrypter`
+- `cipher.AEAD`
+
+Once an `ExternalKey` has been retrieved via `GetKey()`, a secret
+engine can check for interface support by type casting. Access to private keys
+will not be returned.
 
 In the future, HMAC-based keys may be supported. This means that initially,
 Transit will not support modes which require HMAC.
@@ -176,19 +181,20 @@ Transit will not support modes which require HMAC.
 ### Plugin Key Usage
 
 Upstream HashiCorp Vault Enterprise uses the `managed_key_name` and
-`managed_key_uuid` fields. We will support these as well as the
-`external_key_name` and `external_key_uuid` fields.
+`managed_key_uuid` fields. We will support an `external_key_name` field as
+well as an equivalent alternative `managed_key_name` field to offer some
+compatibility with existing workflows that target upstream. UUID fields are
+unsupported, external keys are addressed by config name + key name only.
 
 The intention here is that plugin authors will enable external keys via an
-explicit key type (`key_type=managed_key` or `key_type=external_key`). The
+explicit key type (`key_type=external_key` or `key_type=managed_key`). The
 actual key type will be inferred from the underlying external key instance.
 When providing these parameters, the above `external_key_name` or
-`external_key_uuid` fields will need to be provided, which will be used for
+`managed_key_name` fields will need to be provided, which will be used for
 the lookup via the SystemView API.
 
-In Transit in particular, each key version could reference different values
-for `external_key_name` and `external_key_uuid`, giving different versions.
-Any automatic rotation will be disabled.
+In Transit in particular, each key version could reference a different external
+key via the `external_key_name` value. Any automatic rotation will be disabled.
 
 ## Rationale and Alternatives
 

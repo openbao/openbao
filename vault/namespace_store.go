@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -976,4 +977,35 @@ func (ns *NamespaceStore) lockNamespaceLocked(ctx context.Context, target *names
 	}
 
 	return lockKey, nil
+}
+
+// ExternalKeyTypeAllowed determines whether usage of the given External
+// Key type is allowed in the given namespace. An External Key type is only
+// allowed if the namespace itself and all of its ancestors (excluding the root
+// namespace) allow it.
+func (ns *NamespaceStore) ExternalKeyTypeAllowed(n *namespace.Namespace, ty string) bool {
+	if n.ID == namespace.RootNamespaceID {
+		return true
+	}
+
+	ns.lock.RLock()
+	defer ns.lock.RUnlock()
+
+	var last *namespace.Namespace
+	allowed := true
+
+	ns.namespacesByPath.WalkPath(n.Path, func(other *namespace.Namespace) bool {
+		last = other
+		if slices.Contains(other.ExternalKeyTypes, ty) {
+			return false // Continue walking.
+		} else {
+			allowed = false
+			return true // Stop walking.
+		}
+	})
+
+	return allowed &&
+		// Ensure that the final namespace evaluated while walking matches the
+		// input namespace.
+		last != nil && last.UUID == n.UUID
 }

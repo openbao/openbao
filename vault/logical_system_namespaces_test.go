@@ -813,3 +813,58 @@ func TestNamespaceBackend_Unlock(t *testing.T) {
 		require.Equal(t, "Namespace unlocked using sudo capabilities", res.Warnings[0])
 	})
 }
+
+// TestNamespaceBackend_ExternalKeys tests the
+// /sys/namespaces/<path>/external-keys endpoints.
+func TestNamespaceBackend_ExternalKeys(t *testing.T) {
+	b := testSystemBackend(t)
+
+	rootCtx := namespace.RootContext(context.Background())
+	ns := testCreateNamespace(t, rootCtx, b, "foo", nil)
+
+	path := path.Join("namespaces", ns.Path, "external-keys")
+
+	t.Run("empty by default", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.ReadOperation, path)
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, []string{}, res.Data["types"])
+	})
+
+	t.Run("create, update, clear", func(t *testing.T) {
+		types := []string{"softhsm", "awskms"}
+		req := logical.TestRequest(t, logical.UpdateOperation, path)
+		req.Data = map[string]any{"types": types}
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, types, res.Data["types"])
+
+		// Reduce items in list:
+		types = []string{"softhsm"}
+		req = logical.TestRequest(t, logical.UpdateOperation, path)
+		req.Data = map[string]any{"types": types}
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, types, res.Data["types"])
+
+		// Ensure read yields the same:
+		req = logical.TestRequest(t, logical.ReadOperation, path)
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, types, res.Data["types"])
+
+		// Set to empty list:
+		types = []string{}
+		req = logical.TestRequest(t, logical.UpdateOperation, path)
+		req.Data = map[string]any{"types": types}
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, types, res.Data["types"])
+
+		// Ensure read yields the same:
+		req = logical.TestRequest(t, logical.ReadOperation, path)
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, types, res.Data["types"])
+	})
+}

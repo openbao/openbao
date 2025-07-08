@@ -5913,4 +5913,16 @@ This path responds to the following HTTP methods.
 		Unlock the API for a namespace.
 		`,
 	},
+	"namespaces-external-keys": {
+		"Manage the External Key types allowed in a namespace.",
+		`
+This path responds to the following HTTP methods.
+
+	GET /<path>/external-keys
+		Retrieve the allowed External Key types for a namespace.
+
+	PUT /<path>/external-keys
+		Update the allowed External Key types for a namespace.
+			`,
+	},
 }

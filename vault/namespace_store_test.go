@@ -396,6 +396,46 @@ func TestNamespaceStore_UnlockNamespace(t *testing.T) {
 	require.Equal(t, false, s.namespacesByPath.Get(childNamespace.Path).Locked)
 }
 
+func TestNamespaceStore_ExternalKeyTypeAllowed(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+
+	foo := &namespace.Namespace{Path: "foo/", ExternalKeyTypes: []string{"softhsm"}}
+	bar := &namespace.Namespace{Path: "foo/bar/", ExternalKeyTypes: []string{"softhsm", "awskms"}}
+	baz := &namespace.Namespace{Path: "foo/bar/baz/", ExternalKeyTypes: []string{"awskms"}}
+	TestCoreCreateNamespaces(t, c, foo, bar, baz)
+
+	tcs := []struct {
+		namespace *namespace.Namespace
+		ty        string
+		expected  bool
+	}{
+		{namespace.RootNamespace, "softhsm", true},
+		{namespace.RootNamespace, "awskms", true},
+
+		{foo, "softhsm", true},
+		{bar, "softhsm", true},
+		{baz, "softhsm", false},
+
+		{foo, "awskms", false},
+		{bar, "awskms", false},
+		{baz, "awskms", false},
+	}
+
+	for _, tc := range tcs {
+		allowed := s.ExternalKeyTypeAllowed(tc.namespace, tc.ty)
+		if tc.expected {
+			require.True(t, allowed, fmt.Sprintf(
+				"Type %q should be allowed in namespace %q, but wasn't", tc.ty, tc.namespace.Path))
+		} else {
+			require.False(t, allowed, fmt.Sprintf(
+				"Type %q should not be allowed in namespace %q, but was", tc.ty, tc.namespace.Path))
+		}
+	}
+}
+
 func TestNamespaceHierarchy(t *testing.T) {
 	t.Parallel()
 

@@ -834,6 +834,9 @@ func (ns *NamespaceStore) ResolveNamespaceFromRequest(nsHeader, reqPath string) 
 // a locked namespace, starting from one of the root children,
 // ending at the namespace provided as a argument to the function.
 func (ns *NamespaceStore) GetLockingNamespace(n *namespace.Namespace) *namespace.Namespace {
+	ns.lock.RLock()
+	defer ns.lock.RUnlock()
+
 	var lockedNS *namespace.Namespace
 	ns.namespacesByPath.WalkPath(n.Path, func(curNS *namespace.Namespace) bool {
 		if curNS.Locked {
@@ -852,10 +855,6 @@ func (ns *NamespaceStore) GetLockingNamespace(n *namespace.Namespace) *namespace
 // UnlockNamespace attempts to unlock the namespace with provided namespace path.
 func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path string) error {
 	defer metrics.MeasureSince([]string{"namespace", "unlock_namespace"}, time.Now())
-
-	if err := ns.checkInvalidation(ctx); err != nil {
-		return err
-	}
 
 	namespaceToUnlock, err := ns.GetNamespaceByPath(ctx, path)
 	if err != nil {
@@ -923,10 +922,6 @@ func (ns *NamespaceStore) unlockNamespaceLocked(ctx context.Context, target *nam
 // LockNamespace attempts to lock the namespace with provided path.
 func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "lock_namespace"}, time.Now())
-
-	if err := ns.checkInvalidation(ctx); err != nil {
-		return "", err
-	}
 
 	namespaceToLock, err := ns.GetNamespaceByPath(ctx, path)
 	if err != nil {

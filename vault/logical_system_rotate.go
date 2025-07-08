@@ -638,8 +638,32 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.InitRotation(rotateConf, recovery); err != nil {
+		result, err := b.Core.InitRotation(ctx, rotateConf, recovery)
+		if err != nil {
 			return handleError(err)
+		}
+
+		// this can only happen in case of autoseal recovery rotation
+		// due to keys not existing before, as the instance was initialized
+		// with recovery config secret shares set to 0
+		if result != nil {
+			keys := make([]string, 0, len(result.SecretShares))
+			keysB64 := make([]string, 0, len(result.SecretShares))
+			for _, k := range result.SecretShares {
+				keys = append(keys, hex.EncodeToString(k))
+				keysB64 = append(keysB64, base64.StdEncoding.EncodeToString(k))
+			}
+			return &logical.Response{
+				Data: map[string]interface{}{
+					"complete":              true,
+					"backup":                result.Backup,
+					"pgp_fingerprints":      result.PGPFingerprints,
+					"verification_required": result.VerificationRequired,
+					"verification_nonce":    result.VerificationNonce,
+					"keys":                  keys,
+					"keys_base64":           keysB64,
+				},
+			}, nil
 		}
 
 		return b.handleRotateInitGet()(ctx, req, data)

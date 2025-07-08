@@ -58,8 +58,9 @@ func testCoreRotateLifecycleCommon(t *testing.T, c *Core, recovery bool) {
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	err = c.InitRotation(newConf, recovery)
+	rotationResult, err := c.InitRotation(context.Background(), newConf, recovery)
 	require.NoError(t, err)
+	require.Empty(t, rotationResult)
 
 	// Should get config
 	conf = c.RotationConfig(recovery)
@@ -88,8 +89,9 @@ func testCoreInitRotationCommon(t *testing.T, c *Core, recovery bool) {
 		SecretThreshold: 5,
 		SecretShares:    1,
 	}
-	err := c.InitRotation(badConf, recovery)
+	rotationResult, err := c.InitRotation(context.Background(), badConf, recovery)
 	require.Error(t, err)
+	require.Empty(t, rotationResult)
 
 	// Start rotation
 	newConf := &SealConfig{
@@ -102,12 +104,14 @@ func testCoreInitRotationCommon(t *testing.T, c *Core, recovery bool) {
 		newConf.Type = c.seal.RecoveryType()
 	}
 
-	err = c.InitRotation(newConf, recovery)
+	rotationResult, err = c.InitRotation(context.Background(), newConf, recovery)
 	require.NoError(t, err)
+	require.Empty(t, rotationResult)
 
 	// Second should fail
-	err = c.InitRotation(newConf, recovery)
+	rotationResult, err = c.InitRotation(context.Background(), newConf, recovery)
 	require.Error(t, err)
+	require.Empty(t, rotationResult)
 }
 
 func TestCoreUpdateRotation(t *testing.T) {
@@ -134,8 +138,9 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	hErr := c.InitRotation(newConf, recovery)
+	rotationResult, hErr := c.InitRotation(context.Background(), newConf, recovery)
 	require.NoError(t, hErr)
+	require.Empty(t, rotationResult)
 
 	// Fetch new config with generated nonce
 	rotConfig := c.RotationConfig(recovery)
@@ -197,8 +202,9 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 		SecretThreshold: 1,
 		SecretShares:    1,
 	}
-	err = c.InitRotation(newConf, recovery)
+	rotationResult, err = c.InitRotation(context.Background(), newConf, recovery)
 	require.NoError(t, err)
+	require.Empty(t, rotationResult)
 
 	// Fetch new config with generated nonce
 	rotConfig = c.RotationConfig(recovery)
@@ -259,8 +265,9 @@ func testCoreRotateInvalidCommon(t *testing.T, c *Core, keys [][]byte, recovery 
 		SecretShares:    5,
 	}
 	// Start rotation
-	err := c.InitRotation(newConf, recovery)
+	rotationResult, err := c.InitRotation(context.Background(), newConf, recovery)
 	require.NoError(t, err)
+	require.Empty(t, rotationResult)
 
 	// Fetch new config with generated nonce
 	rotConfig := c.RotationConfig(recovery)
@@ -334,7 +341,7 @@ func TestCoreRotationStandby(t *testing.T) {
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
-	err = core.InitRotation(newConf, false)
+	_, err = core.InitRotation(context.Background(), newConf, false)
 	require.NoError(t, err)
 
 	// Fetch new config with generated nonce
@@ -356,7 +363,7 @@ func TestCoreRotationStandby(t *testing.T) {
 	TestWaitActive(t, core2)
 
 	// Rotate the root key again
-	err = core2.InitRotation(newConf, false)
+	_, err = core2.InitRotation(context.Background(), newConf, false)
 	require.NoError(t, err)
 
 	// Fetch new config with generated nonce
@@ -387,4 +394,22 @@ func TestRotationVerficationInvalid(t *testing.T) {
 		StoredShares:         1,
 	}, nonce)
 	require.ErrorContainsf(t, err, "requiring verification not supported", "unexpected error: %v", err)
+}
+
+func TestRotationGenerateRecoveryKey(t *testing.T) {
+	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
+		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
+		&SealConfig{SecretShares: 0, SecretThreshold: 0},
+		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
+
+	// Rotate (generate) the recovery key
+	rotConfig := &SealConfig{
+		SecretShares:    5,
+		SecretThreshold: 3,
+	}
+
+	result, err := core.InitRotation(context.Background(), rotConfig, true)
+	require.NoError(t, err)
+	require.Len(t, result.SecretShares, 5)
+	require.Empty(t, result.PGPFingerprints)
 }

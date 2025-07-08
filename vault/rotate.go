@@ -98,25 +98,71 @@ func (c *Core) RotationProgress(recovery, verification bool) (bool, int, error) 
 
 // InitRotation will either initialize the rotation of barrier or recovery key
 // depending on the value of recovery parameter.
-func (c *Core) InitRotation(config *SealConfig, recovery bool) logical.HTTPCodedError {
+func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bool) (*RekeyResult, logical.HTTPCodedError) {
 	// Initialize the nonce for rotation operation
 	nonce, err := uuid.GenerateUUID()
 	if err != nil {
-		return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("error generating nonce for procedure: %w", err).Error())
+		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("error generating nonce for procedure: %w", err).Error())
 	}
 
 	if recovery {
 		if c.recoveryRekeyConfig != nil {
-			return logical.CodedError(http.StatusBadRequest, "rotation already in progress")
+			return nil, logical.CodedError(http.StatusBadRequest, "rotation already in progress")
 		}
-		return c.initRecoveryRotation(config, nonce)
+
+		var initErr logical.HTTPCodedError
+		initErr = c.initRecoveryRotation(config, nonce)
+		if initErr != nil {
+			return nil, initErr
+		}
+
+		// if no key shares exist, meaning we've initalized the instance
+		// without creating them at time, then return the keys immediately
+		existingRecoveryConfig, err := c.seal.RecoveryConfig(ctx)
+		if err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to fetch existing recovery config: %w", err).Error())
+		}
+
+		if existingRecoveryConfig == nil {
+			return nil, logical.CodedError(http.StatusBadRequest, ErrNotInit.Error())
+		}
+
+		if existingRecoveryConfig.SecretShares == 0 {
+			newRecoveryKey, result, err := c.generateKey(c.recoveryRekeyConfig, true)
+			if err != nil {
+				return nil, err
+			}
+
+			// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
+			if len(c.recoveryRekeyConfig.PGPKeys) > 0 {
+				var encryptError error
+				result, encryptError = c.pgpEncryptShares(ctx, c.recoveryRekeyConfig, result)
+				if encryptError != nil {
+					return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
+				}
+			}
+
+			// If we are requiring validation, return now; otherwise save the recovery key
+			if c.recoveryRekeyConfig.VerificationRequired {
+				return c.requireVerification(c.recoveryRekeyConfig, result, newRecoveryKey)
+			}
+
+			if err := c.performRecoveryRekey(ctx, newRecoveryKey); err != nil {
+				return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform recovery rotation: %w", err).Error())
+			}
+
+			c.recoveryRekeyConfig = nil
+			return result, nil
+		}
+
+		return nil, nil
 	}
 
 	if c.barrierRekeyConfig != nil {
-		return logical.CodedError(http.StatusBadRequest, "rotation already in progress")
+		return nil, logical.CodedError(http.StatusBadRequest, "rotation already in progress")
 	}
 
-	return c.initBarrierRotation(config, nonce)
+	return nil, c.initBarrierRotation(config, nonce)
 }
 
 // initRecoveryRotation initializes rotation of recovery key.

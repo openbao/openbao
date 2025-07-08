@@ -5525,6 +5525,7 @@ Enable a new audit backend or disable an existing backend.
 		shares is reached, rotation will be completed. Otherwise, this API
 		must be called multiple times until that threshold is met.
 		The rotation nonce operation must be provided with each call.
+		On the final call, any new key shares will be returned immediately.
 		`,
 	},
 	"rotate_verify": {

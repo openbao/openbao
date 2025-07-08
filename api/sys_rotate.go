@@ -283,12 +283,12 @@ func (c *Sys) RotateVerificationCancelWithContext(ctx context.Context, recovery 
 	return resp.Body.Close()
 }
 
-// Deprecated: use RotateKeyring instead.
+// Alias of RotateKeyring function.
 func (c *Sys) Rotate() error {
 	return c.RotateWithContext(context.Background())
 }
 
-// Depreacted: use RotateKeyringWithContext instead.
+// Alias of RotateKeyringWithContext function.
 func (c *Sys) RotateWithContext(ctx context.Context) error {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
@@ -303,7 +303,7 @@ func (c *Sys) RotateWithContext(ctx context.Context) error {
 }
 
 func (c *Sys) RotateKeyring() error {
-	return c.RotateWithContext(context.Background())
+	return c.RotateKeyringWithContext(context.Background())
 }
 
 func (c *Sys) RotateKeyringWithContext(ctx context.Context) error {

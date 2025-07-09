@@ -659,6 +659,7 @@ func (c jwtConfig) hasType(t string) bool {
 	return strutil.StrListContains(c.OIDCResponseTypes, t)
 }
 
+// Adapted from similar code in https://github.com/golang/go/blob/86fca3dcb63157b8e45e565e821e7fb098fcf368/src/crypto/tls/handshake_client.go#L1160-L1181
 func fipsAllowedChains(chains [][]*x509.Certificate) ([][]*x509.Certificate, error) {
 	if !fips140.Enabled() {
 		return chains, nil

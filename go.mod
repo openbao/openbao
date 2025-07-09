@@ -40,7 +40,7 @@ require (
 	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/go-ldap/ldap/v3 v3.4.9
 	github.com/go-ldap/ldif v0.0.0-20200320164324-fd88d9b715b3
-	github.com/go-sql-driver/mysql v1.9.2
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/go-test/deep v1.1.0
 	github.com/go-viper/mapstructure/v2 v2.3.0
 	github.com/gocql/gocql v1.7.0

@@ -11,6 +11,7 @@ import (
 	"hash"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/go-jose/go-jose/v3"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -107,4 +108,21 @@ func authCodeUsedPKCE(entry *authCodeCacheEntry) bool {
 func basicAuth(req *logical.Request) (string, string, bool) {
 	headerReq := &http.Request{Header: req.Headers}
 	return headerReq.BasicAuth()
+}
+
+// lowercaseIdentityIDs lowercases the UUID segments of given entity IDs
+// without affecting namespace accessor.
+func lowercaseIdentityIDs(identities []string) []string {
+	out := make([]string, len(identities))
+
+	for i, identityID := range identities {
+		id, namespaceID, ok := strings.Cut(identityID, ".")
+		if !ok { // bare ID with no namespace
+			out[i] = strings.ToLower(identityID)
+			continue
+		}
+		out[i] = strings.ToLower(id) + "." + namespaceID
+	}
+
+	return out
 }

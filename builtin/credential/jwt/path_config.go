@@ -292,20 +292,20 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"oidc_discovery_url":             config.OIDCDiscoveryURL,
-			"oidc_discovery_ca_pem":          config.OIDCDiscoveryCAPEM,
-			"oidc_client_id":                 config.OIDCClientID,
-			"oidc_response_mode":             config.OIDCResponseMode,
-			"oidc_response_types":            config.OIDCResponseTypes,
-			"default_role":                   config.DefaultRole,
-			"jwt_validation_pubkeys":         config.JWTValidationPubKeys,
-			"jwt_supported_algs":             config.JWTSupportedAlgs,
-			"jwks_url":                       config.JWKSURL,
-			"jwks_ca_pem":                    config.JWKSCAPEM,
-			"bound_issuer":                   config.BoundIssuer,
-			"provider_config":                providerConfig,
-			"override_allowed_server_names":  config.OverrideAllowedServerNames,
-			"namespace_in_state":             config.NamespaceInState,
+			"oidc_discovery_url":            config.OIDCDiscoveryURL,
+			"oidc_discovery_ca_pem":         config.OIDCDiscoveryCAPEM,
+			"oidc_client_id":                config.OIDCClientID,
+			"oidc_response_mode":            config.OIDCResponseMode,
+			"oidc_response_types":           config.OIDCResponseTypes,
+			"default_role":                  config.DefaultRole,
+			"jwt_validation_pubkeys":        config.JWTValidationPubKeys,
+			"jwt_supported_algs":            config.JWTSupportedAlgs,
+			"jwks_url":                      config.JWKSURL,
+			"jwks_ca_pem":                   config.JWKSCAPEM,
+			"bound_issuer":                  config.BoundIssuer,
+			"provider_config":               providerConfig,
+			"override_allowed_server_names": config.OverrideAllowedServerNames,
+			"namespace_in_state":            config.NamespaceInState,
 		},
 	}
 
@@ -323,20 +323,20 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 
 func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	config := &jwtConfig{
-		OIDCDiscoveryURL:             d.Get("oidc_discovery_url").(string),
-		OIDCDiscoveryCAPEM:           d.Get("oidc_discovery_ca_pem").(string),
-		OIDCClientID:                 d.Get("oidc_client_id").(string),
-		OIDCClientSecret:             d.Get("oidc_client_secret").(string),
-		OIDCResponseMode:             d.Get("oidc_response_mode").(string),
-		OIDCResponseTypes:            d.Get("oidc_response_types").([]string),
-		JWKSURL:                      d.Get("jwks_url").(string),
-		JWKSCAPEM:                    d.Get("jwks_ca_pem").(string),
-		DefaultRole:                  d.Get("default_role").(string),
-		JWTValidationPubKeys:         d.Get("jwt_validation_pubkeys").([]string),
-		JWTSupportedAlgs:             d.Get("jwt_supported_algs").([]string),
-		BoundIssuer:                  d.Get("bound_issuer").(string),
-		ProviderConfig:               d.Get("provider_config").(map[string]interface{}),
-		OverrideAllowedServerNames:   d.Get("override_allowed_server_names").([]string),
+		OIDCDiscoveryURL:           d.Get("oidc_discovery_url").(string),
+		OIDCDiscoveryCAPEM:         d.Get("oidc_discovery_ca_pem").(string),
+		OIDCClientID:               d.Get("oidc_client_id").(string),
+		OIDCClientSecret:           d.Get("oidc_client_secret").(string),
+		OIDCResponseMode:           d.Get("oidc_response_mode").(string),
+		OIDCResponseTypes:          d.Get("oidc_response_types").([]string),
+		JWKSURL:                    d.Get("jwks_url").(string),
+		JWKSCAPEM:                  d.Get("jwks_ca_pem").(string),
+		DefaultRole:                d.Get("default_role").(string),
+		JWTValidationPubKeys:       d.Get("jwt_validation_pubkeys").([]string),
+		JWTSupportedAlgs:           d.Get("jwt_supported_algs").([]string),
+		BoundIssuer:                d.Get("bound_issuer").(string),
+		ProviderConfig:             d.Get("provider_config").(map[string]interface{}),
+		OverrideAllowedServerNames: d.Get("override_allowed_server_names").([]string),
 	}
 
 	skipJwksValidation := d.Get("skip_jwks_validation").(bool)
@@ -540,7 +540,7 @@ func (b *jwtAuthBackend) createCAContext(ctx context.Context, caPEM string, allo
 	return caCtx, nil
 }
 
-func (b *jwtAuthBackend) OverrideRootCAs(config *tls.Config, caPEM string) (error) {
+func (b *jwtAuthBackend) OverrideRootCAs(config *tls.Config, caPEM string) error {
 	if caPEM != "" {
 		certPool := x509.NewCertPool()
 		if ok := certPool.AppendCertsFromPEM([]byte(caPEM)); !ok {
@@ -554,7 +554,7 @@ func (b *jwtAuthBackend) OverrideRootCAs(config *tls.Config, caPEM string) (erro
 }
 
 // allowedServerNames contain a list of hostnames for which we will accept a *valid* certificate for.
-func (b *jwtAuthBackend) OverrideAllowedServerNames(config *tls.Config, allowedServerNames []string) (error) {
+func (b *jwtAuthBackend) OverrideAllowedServerNames(config *tls.Config, allowedServerNames []string) error {
 	if len(allowedServerNames) > 0 {
 		// Set InsecureSkipVerify to skip the default validation we are
 		// replacing. This will not disable VerifyConnection.
@@ -567,7 +567,7 @@ func (b *jwtAuthBackend) OverrideAllowedServerNames(config *tls.Config, allowedS
 				opts := x509.VerifyOptions{
 					DNSName:       allowedServerName,
 					Intermediates: x509.NewCertPool(),
-					Roots: config.RootCAs,
+					Roots:         config.RootCAs,
 				}
 
 				for _, cert := range cs.PeerCertificates[1:] {
@@ -602,21 +602,21 @@ func (b *jwtAuthBackend) OverrideAllowedServerNames(config *tls.Config, allowedS
 }
 
 type jwtConfig struct {
-	OIDCDiscoveryURL     string                 `json:"oidc_discovery_url"`
-	OIDCDiscoveryCAPEM   string                 `json:"oidc_discovery_ca_pem"`
-	OIDCClientID         string                 `json:"oidc_client_id"`
-	OIDCClientSecret     string                 `json:"oidc_client_secret"`
-	OIDCResponseMode     string                 `json:"oidc_response_mode"`
-	OIDCResponseTypes    []string               `json:"oidc_response_types"`
-	JWKSURL              string                 `json:"jwks_url"`
-	JWKSCAPEM            string                 `json:"jwks_ca_pem"`
-	JWTValidationPubKeys []string               `json:"jwt_validation_pubkeys"`
-	JWTSupportedAlgs     []string               `json:"jwt_supported_algs"`
-	BoundIssuer          string                 `json:"bound_issuer"`
-	DefaultRole          string                 `json:"default_role"`
-	ProviderConfig       map[string]interface{} `json:"provider_config"`
-	OverrideAllowedServerNames   []string       `json:"override_allowed_server_names"`
-	NamespaceInState     bool                   `json:"namespace_in_state"`
+	OIDCDiscoveryURL           string                 `json:"oidc_discovery_url"`
+	OIDCDiscoveryCAPEM         string                 `json:"oidc_discovery_ca_pem"`
+	OIDCClientID               string                 `json:"oidc_client_id"`
+	OIDCClientSecret           string                 `json:"oidc_client_secret"`
+	OIDCResponseMode           string                 `json:"oidc_response_mode"`
+	OIDCResponseTypes          []string               `json:"oidc_response_types"`
+	JWKSURL                    string                 `json:"jwks_url"`
+	JWKSCAPEM                  string                 `json:"jwks_ca_pem"`
+	JWTValidationPubKeys       []string               `json:"jwt_validation_pubkeys"`
+	JWTSupportedAlgs           []string               `json:"jwt_supported_algs"`
+	BoundIssuer                string                 `json:"bound_issuer"`
+	DefaultRole                string                 `json:"default_role"`
+	ProviderConfig             map[string]interface{} `json:"provider_config"`
+	OverrideAllowedServerNames []string               `json:"override_allowed_server_names"`
+	NamespaceInState           bool                   `json:"namespace_in_state"`
 
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
 	// These are looked up from OIDCDiscoveryURL when needed

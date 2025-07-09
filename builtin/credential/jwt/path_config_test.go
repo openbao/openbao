@@ -6,7 +6,6 @@ package jwtauth
 import (
 	"bytes"
 	"context"
-	"net"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -14,41 +13,43 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"github.com/go-test/deep"
-	"github.com/openbao/openbao/sdk/v2/helper/certutil"
-	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/oauth2"
 	"io"
 	"math/big"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-test/deep"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 )
 
 func TestConfig_JWT_Read(t *testing.T) {
 	b, storage := getBackend(t)
 
 	data := map[string]interface{}{
-		"oidc_discovery_url":     "",
-		"oidc_discovery_ca_pem":  "",
-		"oidc_client_id":         "",
-		"oidc_response_mode":     "",
-		"oidc_response_types":    []string{},
-		"override_allowed_server_names":    []string{},
-		"default_role":           "",
-		"jwt_validation_pubkeys": []string{testJWTPubKey},
-		"jwt_supported_algs":     []string{},
-		"jwks_url":               "",
-		"jwks_ca_pem":            "",
-		"bound_issuer":           "http://vault.example.com/",
-		"provider_config":        map[string]interface{}{},
-		"namespace_in_state":     false,
-		"status":                 "valid",
+		"oidc_discovery_url":            "",
+		"oidc_discovery_ca_pem":         "",
+		"oidc_client_id":                "",
+		"oidc_response_mode":            "",
+		"oidc_response_types":           []string{},
+		"override_allowed_server_names": []string{},
+		"default_role":                  "",
+		"jwt_validation_pubkeys":        []string{testJWTPubKey},
+		"jwt_supported_algs":            []string{},
+		"jwks_url":                      "",
+		"jwks_ca_pem":                   "",
+		"bound_issuer":                  "http://vault.example.com/",
+		"provider_config":               map[string]interface{}{},
+		"namespace_in_state":            false,
+		"status":                        "valid",
 	}
 
 	req := &logical.Request{
@@ -151,14 +152,14 @@ func TestConfig_JWT_Write(t *testing.T) {
 	}
 
 	expected := &jwtConfig{
-		ParsedJWTPubKeys:              []crypto.PublicKey{pubkey},
-		JWTValidationPubKeys:          []string{testJWTPubKey},
-		JWTSupportedAlgs:              []string{},
-		OIDCResponseTypes:             []string{},
-		OverrideAllowedServerNames:    []string{},
-		BoundIssuer:                   "http://vault.example.com/",
-		ProviderConfig:                map[string]interface{}{},
-		NamespaceInState:              true,
+		ParsedJWTPubKeys:           []crypto.PublicKey{pubkey},
+		JWTValidationPubKeys:       []string{testJWTPubKey},
+		JWTSupportedAlgs:           []string{},
+		OIDCResponseTypes:          []string{},
+		OverrideAllowedServerNames: []string{},
+		BoundIssuer:                "http://vault.example.com/",
+		ProviderConfig:             map[string]interface{}{},
+		NamespaceInState:           true,
 	}
 
 	conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
@@ -183,21 +184,21 @@ func TestConfig_JWKS_Update(t *testing.T) {
 	}
 
 	data := map[string]interface{}{
-		"jwks_url":                         s.server.URL + "/certs",
-		"jwks_ca_pem":                      cert,
-		"oidc_discovery_url":               "",
-		"oidc_discovery_ca_pem":            "",
-		"oidc_client_id":                   "",
-		"oidc_response_mode":               "form_post",
-		"oidc_response_types":              []string{},
-		"override_allowed_server_names":    []string{},
-		"default_role":                     "",
-		"jwt_validation_pubkeys":           []string{},
-		"jwt_supported_algs":               []string{},
-		"bound_issuer":                     "",
-		"provider_config":                  map[string]interface{}{},
-		"namespace_in_state":               false,
-		"status":                           "valid",
+		"jwks_url":                      s.server.URL + "/certs",
+		"jwks_ca_pem":                   cert,
+		"oidc_discovery_url":            "",
+		"oidc_discovery_ca_pem":         "",
+		"oidc_client_id":                "",
+		"oidc_response_mode":            "form_post",
+		"oidc_response_types":           []string{},
+		"override_allowed_server_names": []string{},
+		"default_role":                  "",
+		"jwt_validation_pubkeys":        []string{},
+		"jwt_supported_algs":            []string{},
+		"bound_issuer":                  "",
+		"provider_config":               map[string]interface{}{},
+		"namespace_in_state":            false,
+		"status":                        "valid",
 	}
 
 	req := &logical.Request{
@@ -365,15 +366,15 @@ func TestConfig_OIDC_Write(t *testing.T) {
 	}
 
 	expected := &jwtConfig{
-		JWTValidationPubKeys:          []string{},
-		JWTSupportedAlgs:              []string{},
-		OIDCResponseTypes:             []string{},
-		OverrideAllowedServerNames:    []string{},
-		OIDCDiscoveryURL:              "https://team-vault.auth0.com/",
-		OIDCClientID:                  "abc",
-		OIDCClientSecret:              "def",
-		ProviderConfig:                map[string]interface{}{},
-		NamespaceInState:              true,
+		JWTValidationPubKeys:       []string{},
+		JWTSupportedAlgs:           []string{},
+		OIDCResponseTypes:          []string{},
+		OverrideAllowedServerNames: []string{},
+		OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
+		OIDCClientID:               "abc",
+		OIDCClientSecret:           "def",
+		ProviderConfig:             map[string]interface{}{},
+		NamespaceInState:           true,
 	}
 
 	conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
@@ -457,11 +458,11 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 		}
 
 		expected := &jwtConfig{
-			JWTValidationPubKeys:          []string{},
-			JWTSupportedAlgs:              []string{},
-			OIDCResponseTypes:             []string{},
-			OverrideAllowedServerNames:    []string{},
-			OIDCDiscoveryURL:              "https://team-vault.auth0.com/",
+			JWTValidationPubKeys:       []string{},
+			JWTSupportedAlgs:           []string{},
+			OIDCResponseTypes:          []string{},
+			OverrideAllowedServerNames: []string{},
+			OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
 			ProviderConfig: map[string]interface{}{
 				"provider":     "azure",
 				"extraOptions": "abound",
@@ -522,9 +523,9 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			JWTSupportedAlgs:           []string{},
 			OIDCResponseTypes:          []string{},
 			OverrideAllowedServerNames: []string{},
-			OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
-			ProviderConfig:       map[string]interface{}{},
-			NamespaceInState:     true,
+			OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
+			ProviderConfig:             map[string]interface{}{},
+			NamespaceInState:           true,
 		}
 
 		conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
@@ -549,13 +550,13 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 			},
 			expected: jwtConfig{
-				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
-				NamespaceInState:     true,
-				OIDCResponseTypes:             []string{},
-				OverrideAllowedServerNames:    []string{},
-				JWTSupportedAlgs:              []string{},
-				JWTValidationPubKeys:          []string{},
-				ProviderConfig:       map[string]interface{}{},
+				OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
+				NamespaceInState:           true,
+				OIDCResponseTypes:          []string{},
+				OverrideAllowedServerNames: []string{},
+				JWTSupportedAlgs:           []string{},
+				JWTValidationPubKeys:       []string{},
+				ProviderConfig:             map[string]interface{}{},
 			},
 		},
 		"namespace_in_state true": {
@@ -564,13 +565,13 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 				"namespace_in_state": true,
 			},
 			expected: jwtConfig{
-				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
-				NamespaceInState:     true,
-				OIDCResponseTypes:             []string{},
-				OverrideAllowedServerNames:    []string{},
-				JWTSupportedAlgs:              []string{},
-				JWTValidationPubKeys:          []string{},
-				ProviderConfig:       map[string]interface{}{},
+				OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
+				NamespaceInState:           true,
+				OIDCResponseTypes:          []string{},
+				OverrideAllowedServerNames: []string{},
+				JWTSupportedAlgs:           []string{},
+				JWTValidationPubKeys:       []string{},
+				ProviderConfig:             map[string]interface{}{},
 			},
 		},
 		"namespace_in_state false": {
@@ -579,13 +580,13 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 				"namespace_in_state": false,
 			},
 			expected: jwtConfig{
-				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
-				NamespaceInState:     false,
-				OIDCResponseTypes:             []string{},
-				OverrideAllowedServerNames:    []string{},
-				JWTSupportedAlgs:              []string{},
-				JWTValidationPubKeys:          []string{},
-				ProviderConfig:       map[string]interface{}{},
+				OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
+				NamespaceInState:           false,
+				OIDCResponseTypes:          []string{},
+				OverrideAllowedServerNames: []string{},
+				JWTSupportedAlgs:           []string{},
+				JWTValidationPubKeys:       []string{},
+				ProviderConfig:             map[string]interface{}{},
 			},
 		},
 	}
@@ -628,13 +629,13 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				"namespace_in_state": true,
 			},
 			expected: jwtConfig{
-				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
-				NamespaceInState:     true,
-				OIDCResponseTypes:    []string{},
-				JWTSupportedAlgs:     []string{},
-				OverrideAllowedServerNames:     []string{},
-				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
+				OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
+				NamespaceInState:           true,
+				OIDCResponseTypes:          []string{},
+				JWTSupportedAlgs:           []string{},
+				OverrideAllowedServerNames: []string{},
+				JWTValidationPubKeys:       []string{},
+				ProviderConfig:             map[string]interface{}{},
 			},
 		},
 		"existing false, update something else": {
@@ -647,14 +648,14 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				"default_role":       "ui",
 			},
 			expected: jwtConfig{
-				OIDCDiscoveryURL:               "https://team-vault.auth0.com/",
-				NamespaceInState:               false,
-				DefaultRole:                    "ui",
-				OIDCResponseTypes:              []string{},
-				OverrideAllowedServerNames:     []string{},
-				JWTSupportedAlgs:               []string{},
-				JWTValidationPubKeys:           []string{},
-				ProviderConfig:                 map[string]interface{}{},
+				OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
+				NamespaceInState:           false,
+				DefaultRole:                "ui",
+				OIDCResponseTypes:          []string{},
+				OverrideAllowedServerNames: []string{},
+				JWTSupportedAlgs:           []string{},
+				JWTValidationPubKeys:       []string{},
+				ProviderConfig:             map[string]interface{}{},
 			},
 		},
 		"existing true, update to false": {
@@ -667,13 +668,13 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				"namespace_in_state": false,
 			},
 			expected: jwtConfig{
-				OIDCDiscoveryURL:               "https://team-vault.auth0.com/",
-				NamespaceInState:               false,
-				OIDCResponseTypes:              []string{},
-				OverrideAllowedServerNames:     []string{},
-				JWTSupportedAlgs:               []string{},
-				JWTValidationPubKeys:           []string{},
-				ProviderConfig:                 map[string]interface{}{},
+				OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
+				NamespaceInState:           false,
+				OIDCResponseTypes:          []string{},
+				OverrideAllowedServerNames: []string{},
+				JWTSupportedAlgs:           []string{},
+				JWTValidationPubKeys:       []string{},
+				ProviderConfig:             map[string]interface{}{},
 			},
 		},
 		"existing true, update something else": {
@@ -686,14 +687,14 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				"default_role":       "ui",
 			},
 			expected: jwtConfig{
-				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
-				NamespaceInState:     true,
-				DefaultRole:          "ui",
-				OIDCResponseTypes:              []string{},
-				OverrideAllowedServerNames:     []string{},
-				JWTSupportedAlgs:               []string{},
-				JWTValidationPubKeys:           []string{},
-				ProviderConfig:       map[string]interface{}{},
+				OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
+				NamespaceInState:           true,
+				DefaultRole:                "ui",
+				OIDCResponseTypes:          []string{},
+				OverrideAllowedServerNames: []string{},
+				JWTSupportedAlgs:           []string{},
+				JWTValidationPubKeys:       []string{},
+				ProviderConfig:             map[string]interface{}{},
 			},
 		},
 	}
@@ -775,39 +776,39 @@ func TestConfig_OIDC_Ignore(t *testing.T) {
 // certificate is valid for *.badssl.com, badssl.com, not wrong.host.badssl.com
 func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 	type testCase struct {
-		nameInCertificate string
-		allowedServerNames []string
+		nameInCertificate     string
+		allowedServerNames    []string
 		expectedFailureString string
-		expectSuccess bool
-		addRootCA bool
+		expectSuccess         bool
+		addRootCA             bool
 	}
 	tests := map[string]testCase{
 		"domain not in list": {
-			nameInCertificate: "example.com",
-			allowedServerNames: []string{"invalid.com"},
-			addRootCA: true,
-			expectSuccess: false,
+			nameInCertificate:     "example.com",
+			allowedServerNames:    []string{"invalid.com"},
+			addRootCA:             true,
+			expectSuccess:         false,
 			expectedFailureString: "certificate is valid for example.com, not invalid.com",
 		},
 		"invalid root CA": {
-			nameInCertificate: "example.com",
-			allowedServerNames: []string{"example.com"},
-			addRootCA: false,
-			expectSuccess: false,
+			nameInCertificate:     "example.com",
+			allowedServerNames:    []string{"example.com"},
+			addRootCA:             false,
+			expectSuccess:         false,
 			expectedFailureString: "",
 		},
 		"domain in list, list size 1": {
-			nameInCertificate: "example.com",
-			allowedServerNames: []string{"example.com"},
-			addRootCA: true,
-			expectSuccess: true,
+			nameInCertificate:     "example.com",
+			allowedServerNames:    []string{"example.com"},
+			addRootCA:             true,
+			expectSuccess:         true,
 			expectedFailureString: "",
 		},
 		"domain in list, list size 3": {
-			nameInCertificate: "example.com",
-			allowedServerNames: []string{"test.com", "example.com", "test2.com"},
-			addRootCA: true,
-			expectSuccess: true,
+			nameInCertificate:     "example.com",
+			allowedServerNames:    []string{"test.com", "example.com", "test2.com"},
+			addRootCA:             true,
+			expectSuccess:         true,
 			expectedFailureString: "",
 		},
 	}
@@ -854,7 +855,6 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 					}
 				}
 			}
-
 		})
 	}
 }
@@ -960,7 +960,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 
 	serverTLSConf = &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
-		ServerName: hostname,
+		ServerName:   hostname,
 	}
 
 	return

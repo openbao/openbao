@@ -783,9 +783,13 @@ func (i *IdentityStore) pathOIDCCreateUpdateAssignment(ctx context.Context, req 
 		assignment.GroupIDs = d.Get("group_ids").([]string)
 	}
 
-	// remove duplicates and lowercase entities and groups
-	assignment.EntityIDs = strutil.RemoveDuplicates(assignment.EntityIDs, true)
-	assignment.GroupIDs = strutil.RemoveDuplicates(assignment.GroupIDs, true)
+	// lowercase UUID segments
+	assignment.EntityIDs = lowercaseIdentityIDs(assignment.EntityIDs)
+	assignment.GroupIDs = lowercaseIdentityIDs(assignment.GroupIDs)
+
+	// remove duplicates
+	assignment.EntityIDs = strutil.RemoveDuplicates(assignment.EntityIDs, false)
+	assignment.GroupIDs = strutil.RemoveDuplicates(assignment.GroupIDs, false)
 
 	// store assignment
 	entry, err := logical.StorageEntryJSON(assignmentPath+name, assignment)

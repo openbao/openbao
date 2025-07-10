@@ -1,0 +1,3 @@
+```release-note:improvement
+builtin/credential/jwt: Support TLS authentication against explicit alt name/subject.
+```

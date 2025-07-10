@@ -427,7 +427,7 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
-		err = b.Core.sealManager.UnsealNamespace(ctx, ns, decodedKey)
+		err = b.Core.namespaceStore.UnsealNamespace(ctx, name, decodedKey)
 		if err != nil {
 			invalidKeyErr := &ErrInvalidKey{}
 			switch {

@@ -170,6 +170,56 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
+			Pattern: "namespaces/(?P<path>.+)/external-keys",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"path": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Path of the namespace.",
+				},
+				"types": {
+					Type:        framework.TypeCommaStringSlice,
+					Required:    true,
+					Description: "External Key types allowed in the namespace.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleNamespaceExternalKeysRead(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: http.StatusText(http.StatusOK),
+							Fields: map[string]*framework.FieldSchema{
+								"types": {
+									Type:        framework.TypeStringSlice,
+									Required:    true,
+									Description: "External Key types allowed in the namespace.",
+								},
+							},
+						}},
+					},
+					Summary: "Read the External Keys configuration of a namespace.",
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleNamespaceExternalKeysWrite(),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
+					},
+					Summary: "Update the External Keys configuration of a namespace.",
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-external-keys"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces-external-keys"][1]),
+		},
+
+		{
 			Pattern: "namespaces/(?P<path>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -367,7 +417,7 @@ func customMetadataPatchPreprocessor(input map[string]interface{}) (map[string]i
 	return metadata, nil
 }
 
-// handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace's custom metadata.
+// handleNamespacesPatch handles the "/sys/namespaces/<path>" endpoints to update a namespace's custom metadata.
 func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
@@ -452,7 +502,7 @@ func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
 	}
 }
 
-// handleNamespacesDelete handles the "/sys/namespace/<path>" endpoint to delete a namespace.
+// handleNamespacesDelete handles the "/sys/namespaces/<path>" endpoint to delete a namespace.
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
@@ -477,5 +527,67 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 				"status": status,
 			},
 		}, nil
+	}
+}
+
+// handleNamespaceExternalKeysRead handles the
+// "/sys/namespaces/<path>/external-keys" endpoint to read a namespace's
+// external keys configuration.
+func (b *SystemBackend) handleNamespaceExternalKeysRead() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
+			return nil, errors.New("path must not contain /")
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+		if ns == nil {
+			return nil, logical.CodedError(http.StatusNotFound, "requested namespace does not exist")
+		}
+
+		types := ns.ExternalKeyTypes
+		// Avoid the need to always set an empty array for each namespace,
+		// but still return "[]" to the user.
+		if types == nil {
+			types = []string{}
+		}
+
+		return &logical.Response{
+			Data: map[string]interface{}{
+				"types": types,
+			},
+		}, nil
+	}
+}
+
+// handleNamespaceExternalKeysWrite handles the
+// "/sys/namespaces/<path>/external-keys" endpoint to update a namespace's
+// external keys configuration.
+func (b *SystemBackend) handleNamespaceExternalKeysWrite() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
+			return nil, errors.New("path must not contain /")
+		}
+
+		callback := func(ctx context.Context, n *namespace.Namespace) (*namespace.Namespace, error) {
+			if n.UUID == "" {
+				return nil, logical.CodedError(http.StatusNotFound, "requested namespace does not exist")
+			}
+			n.ExternalKeyTypes = data.Get("types").([]string)
+			return n, nil
+		}
+
+		if _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, callback); err != nil {
+			return handleError(err)
+		}
+
+		// TODO(satoqz): Call into the External Keys registry to recursively kill off
+		// any cached clients/connections for types that are now disabled.
+
+		return nil, nil
 	}
 }

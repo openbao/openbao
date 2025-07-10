@@ -160,6 +160,101 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		res, err = b.HandleRequest(nsCtx, req)
 		require.NoError(t, err)
 	})
+
+	t.Run("preserve mounts after unsealing namespaces", func(t *testing.T) {
+		namespaceName := "unseal_preserve_mount"
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/"+namespaceName)
+		req.Data["seals"] = map[string]interface{}{"type": "shamir", "secret_shares": 3, "secret_threshold": 2}
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+
+		keyshares := res.Data["key_shares"].(map[string][]string)["default"]
+
+		ns, err := c.namespaceStore.GetNamespaceByPath(rootCtx, namespaceName)
+		require.NoError(t, err)
+		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+
+		// mount a kv engine
+		req = logical.TestRequest(t, logical.UpdateOperation, "mounts/my_secrets")
+		req.Data["type"] = "kv"
+		_, err = b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+
+		// mount should appear
+		req = logical.TestRequest(t, logical.ReadOperation, "mounts")
+		res, err = b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+		require.NotNil(t, res.Data["my_secrets/"])
+
+		// store something to the mount
+		req = logical.TestRequest(t, logical.UpdateOperation, "my_secrets/abc")
+		req.Data["test_key"] = "test_value"
+		_, err = c.router.Route(nsCtx, req)
+		require.NoError(t, err)
+
+		// mount an auth and use it
+		req = logical.TestRequest(t, logical.UpdateOperation, "auth/my_approle")
+		req.Data["type"] = "approle"
+		_, err = b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "auth")
+		res, err = b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+		require.NotNil(t, res.Data["my_approle/"])
+
+		req = logical.TestRequest(t, logical.CreateOperation, "auth/my_approle/role/myrole")
+		req.Data["token_policies"] = []string{"default"}
+		_, err = c.router.Route(nsCtx, req)
+		require.NoError(t, err)
+
+		// then seal the namespace
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/"+namespaceName+"/seal")
+		_, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+
+		// unseal the namespace
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/"+namespaceName+"/unseal")
+		req.Data["key"] = keyshares[0]
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, 1, res.Data["seal_status"].(*SealStatusResponse).Progress)
+		require.Equal(t, true, res.Data["seal_status"].(*SealStatusResponse).Sealed)
+
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/"+namespaceName+"/unseal")
+		req.Data["key"] = keyshares[1]
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		// progress reset
+		require.Equal(t, 0, res.Data["seal_status"].(*SealStatusResponse).Progress)
+		require.Equal(t, false, res.Data["seal_status"].(*SealStatusResponse).Sealed)
+
+		// mount should appear
+		req = logical.TestRequest(t, logical.ReadOperation, "mounts")
+		res, err = b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+		require.NotNil(t, res.Data["my_secrets/"])
+
+		// reading from mount should work
+		req = logical.TestRequest(t, logical.ReadOperation, "my_secrets/abc")
+		res, err = c.router.Route(nsCtx, req)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, "test_value", res.Data["test_key"])
+
+		// auth should appear
+		req = logical.TestRequest(t, logical.ReadOperation, "auth")
+		res, err = b.HandleRequest(nsCtx, req)
+		require.NoError(t, err)
+		require.NotNil(t, res.Data["my_approle/"])
+
+		// Reading from auth should work
+		req = logical.TestRequest(t, logical.ReadOperation, "auth/my_approle/role/myrole")
+		res, err = c.router.Route(nsCtx, req)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	})
 }
 
 func TestNamespaceBackend_Rotate(t *testing.T) {

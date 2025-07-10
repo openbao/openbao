@@ -963,6 +963,11 @@ func (c *Core) removeMountEntry(ctx context.Context, path string, updateStorage 
 	c.mountsLock.Lock()
 	defer c.mountsLock.Unlock()
 
+	return c.removeMountEntryLocked(ctx, path, updateStorage)
+}
+
+// removeMountEntry should only be called when c.mountsLock is locked
+func (c *Core) removeMountEntryLocked(ctx context.Context, path string, updateStorage bool) error {
 	// Remove the entry from the mount table
 	newTable := c.mounts.shallowClone()
 	entry, err := newTable.remove(ctx, path)
@@ -1459,6 +1464,111 @@ func listTransactionalMountsForNamespace(ctx context.Context, barrier logical.St
 	return globalEntries, localEntries, nil
 }
 
+// loadMountsForNamespace is used to load the mounts of a namespace to the mount table
+func (c *Core) loadMountsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+	c.mountsLock.Lock()
+	defer c.mountsLock.Unlock()
+
+	// Check if we're on a non-transactional storage
+	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
+		return c.loadLegacyMountsForNamespace(ctx, ns)
+	}
+	return c.loadTransactionalMountsForNamespace(ctx, ns)
+}
+
+// loadLegacyMountsForNamespace is used to load the mounts of a namespace on a legacy single-entry format
+// from a non-transactional storage to the mount table
+func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+	if ns == nil {
+		return fmt.Errorf("namespace is nil")
+	}
+
+	if c.IsNSSealed(ns) {
+		return fmt.Errorf("namespace is sealed")
+	}
+
+	view := c.NamespaceView(ns)
+
+	raw, err := view.Get(ctx, coreMountConfigPath)
+	if err != nil {
+		c.logger.Error("failed to read legacy mount table", "error", err)
+		return errLoadMountsFailed
+	}
+	rawLocal, err := view.Get(ctx, coreLocalMountConfigPath)
+	if err != nil {
+		c.logger.Error("failed to read legacy local mount table", "error", err)
+		return errLoadMountsFailed
+	}
+
+	if raw != nil {
+		mountTable, err := c.decodeMountTable(ctx, raw.Value)
+		if err != nil {
+			c.logger.Error("failed to decompress and/or decode the legacy mount table", "error", err)
+			return err
+		}
+
+		if mountTable != nil {
+			c.mounts.Entries = append(c.mounts.Entries, mountTable.Entries...)
+		}
+	}
+
+	if rawLocal != nil {
+		localMountTable, err := c.decodeMountTable(ctx, rawLocal.Value)
+		if err != nil {
+			c.logger.Error("failed to decompress and/or decode the legacy local mount table", "error", err)
+			return err
+		}
+
+		if localMountTable != nil {
+			c.mounts.Entries = append(c.mounts.Entries, localMountTable.Entries...)
+		}
+	}
+
+	return nil
+}
+
+// loadTransactionalMountsForNamespace is used to load the mounts of a namespace on a transactional storage
+// to the mount table
+func (c *Core) loadTransactionalMountsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
+	if ns == nil {
+		return fmt.Errorf("namespace is nil")
+	}
+
+	if c.IsNSSealed(ns) {
+		return fmt.Errorf("namespace is sealed")
+	}
+
+	view := c.NamespaceView(ns)
+	globalEntries, localEntries, err := listTransactionalMountsForNamespace(ctx, view)
+	if err != nil {
+		return fmt.Errorf("failed to list mounts for namespace: %w", err)
+	}
+
+	for index, uuid := range globalEntries {
+		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreMountConfigPath, uuid)
+		if err != nil {
+			return fmt.Errorf("error loading mount table entry (%v %v/%v): %w", ns.ID, index, uuid, err)
+		}
+
+		if entry != nil {
+			c.mounts.Entries = append(c.mounts.Entries, entry)
+		}
+	}
+
+	for index, uuid := range localEntries {
+		entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalMountConfigPath, uuid)
+		if err != nil {
+			return fmt.Errorf("error loading local mount table entry (%v %v/%v): %w", ns.ID, index, uuid, err)
+		}
+
+		if entry != nil {
+			c.mounts.Entries = append(c.mounts.Entries, entry)
+		}
+	}
+
+	return nil
+}
+
 // This function reads the legacy, single-entry combined mount table,
 // returning true if it was used. This will let us know (if we're inside
 // a transaction) if we need to do an upgrade.
@@ -1872,6 +1982,121 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 	return nil
 }
 
+// setupMount is invoked on a mount entry to initialize the logical backends and setup the router
+func (c *Core) setupMount(ctx context.Context, entry *MountEntry) (func(), error) {
+	// Initialize the backend, special casing for system
+	view, err := c.mountEntryView(entry)
+	if err != nil {
+		return nil, err
+	}
+
+	origReadOnlyErr := view.GetReadOnlyErr()
+
+	// Mark the view as read-only until the mounting is complete and
+	// ensure that it is reset after. This ensures that there will be no
+	// writes during the construction of the backend.
+	view.SetReadOnlyErr(logical.ErrSetupReadOnly)
+	if slices.Contains(singletonMounts, entry.Type) {
+		defer view.SetReadOnlyErr(origReadOnlyErr)
+	}
+
+	// Create the new backend
+	var backend logical.Backend
+	sysView := c.mountEntrySysView(entry)
+	backend, entry.RunningSha256, err = c.newLogicalBackend(ctx, entry, sysView, view)
+	if err != nil {
+		c.logger.Error("failed to create mount entry", "path", entry.Path, "error", err)
+
+		if c.isMountable(ctx, entry, consts.PluginTypeSecrets) {
+			c.logger.Warn("skipping plugin-based mount entry", "path", entry.Path)
+			goto ROUTER_MOUNT
+		}
+		return nil, errLoadMountsFailed
+	}
+	if backend == nil {
+		return nil, fmt.Errorf("created mount entry of type %q is nil", entry.Type)
+	}
+
+	// update the entry running version with the configured version, which was verified during registration.
+	entry.RunningVersion = entry.Version
+	if entry.RunningVersion == "" {
+		// don't set the running version to a builtin if it is running as an external plugin
+		if entry.RunningSha256 == "" {
+			entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeSecrets, entry.Type)
+		}
+	}
+
+	// Do not start up deprecated builtin plugins. If this is a major
+	// upgrade, stop unsealing and shutdown. If we've already mounted this
+	// plugin, proceed with unsealing and skip backend initialization.
+	if versions.IsBuiltinVersion(entry.RunningVersion) {
+		_, err := c.handleDeprecatedMountEntry(ctx, entry, consts.PluginTypeSecrets)
+		if c.isMajorVersionFirstMount(ctx) && err != nil {
+			go c.ShutdownCoreError(fmt.Errorf("could not mount %q: %w", entry.Type, err))
+			return nil, errLoadMountsFailed
+		} else if err != nil {
+			c.logger.Error("skipping deprecated mount entry", "name", entry.Type, "path", entry.Path, "error", err)
+			backend.Cleanup(ctx)
+			backend = nil
+			goto ROUTER_MOUNT
+		}
+	}
+
+	{
+		// Check for the correct backend type
+		backendType := backend.Type()
+
+		if backendType != logical.TypeLogical {
+			if err := knownMountType(entry.Type); err != nil {
+				return nil, err
+			}
+		}
+
+		c.setCoreBackend(entry, backend, view)
+	}
+
+ROUTER_MOUNT:
+	// Mount the backend
+	err = c.router.Mount(backend, entry.Path, entry, view)
+	if err != nil {
+		c.logger.Error("failed to mount entry", "path", entry.Path, "error", err)
+		return nil, errLoadMountsFailed
+	}
+
+	// Bind locally
+	localEntry := entry
+	postUnsealFunc := func() {
+		postUnsealLogger := c.logger.With("type", localEntry.Type, "version", localEntry.RunningVersion, "path", localEntry.Path)
+		if backend == nil {
+			postUnsealLogger.Error("skipping initialization for nil backend", "path", localEntry.Path)
+			return
+		}
+		if !slices.Contains(singletonMounts, localEntry.Type) {
+			view.SetReadOnlyErr(origReadOnlyErr)
+		}
+
+		err := backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
+		if err != nil {
+			postUnsealLogger.Error("failed to initialize mount backend", "error", err)
+		}
+	}
+
+	if c.logger.IsInfo() {
+		c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace())
+	}
+
+	// Ensure the path is tainted if set in the mount table
+	if entry.Tainted {
+		// Calculate any namespace prefixes here, because when Taint() is called, there won't be
+		// a namespace to pull from the context. This is similar to what we do above in c.router.Mount().
+		path := entry.Namespace().Path + entry.Path
+		c.logger.Debug("tainting a mount due to it being marked as tainted in mount table", "entry.path", entry.Path, "entry.namespace.path", entry.Namespace().Path, "full_path", path)
+		c.router.Taint(ctx, path)
+	}
+
+	return postUnsealFunc, nil
+}
+
 // setupMounts is invoked after we've loaded the mount table to
 // initialize the logical backends and setup the router
 func (c *Core) setupMounts(ctx context.Context) error {
@@ -1879,117 +2104,44 @@ func (c *Core) setupMounts(ctx context.Context) error {
 	defer c.mountsLock.Unlock()
 
 	for _, entry := range c.mounts.sortEntriesByPathDepth().Entries {
-		// Initialize the backend, special casing for system
-		view, err := c.mountEntryView(entry)
+		postUnsealFunc, err := c.setupMount(ctx, entry)
 		if err != nil {
 			return err
 		}
 
-		origReadOnlyErr := view.GetReadOnlyErr()
-
-		// Mark the view as read-only until the mounting is complete and
-		// ensure that it is reset after. This ensures that there will be no
-		// writes during the construction of the backend.
-		view.SetReadOnlyErr(logical.ErrSetupReadOnly)
-		if slices.Contains(singletonMounts, entry.Type) {
-			defer view.SetReadOnlyErr(origReadOnlyErr)
-		}
-
-		// Create the new backend
-		var backend logical.Backend
-		sysView := c.mountEntrySysView(entry)
-		backend, entry.RunningSha256, err = c.newLogicalBackend(ctx, entry, sysView, view)
-		if err != nil {
-			c.logger.Error("failed to create mount entry", "path", entry.Path, "error", err)
-
-			if c.isMountable(ctx, entry, consts.PluginTypeSecrets) {
-				c.logger.Warn("skipping plugin-based mount entry", "path", entry.Path)
-				goto ROUTER_MOUNT
-			}
-			return errLoadMountsFailed
-		}
-		if backend == nil {
-			return fmt.Errorf("created mount entry of type %q is nil", entry.Type)
-		}
-
-		// update the entry running version with the configured version, which was verified during registration.
-		entry.RunningVersion = entry.Version
-		if entry.RunningVersion == "" {
-			// don't set the running version to a builtin if it is running as an external plugin
-			if entry.RunningSha256 == "" {
-				entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeSecrets, entry.Type)
-			}
-		}
-
-		// Do not start up deprecated builtin plugins. If this is a major
-		// upgrade, stop unsealing and shutdown. If we've already mounted this
-		// plugin, proceed with unsealing and skip backend initialization.
-		if versions.IsBuiltinVersion(entry.RunningVersion) {
-			_, err := c.handleDeprecatedMountEntry(ctx, entry, consts.PluginTypeSecrets)
-			if c.isMajorVersionFirstMount(ctx) && err != nil {
-				go c.ShutdownCoreError(fmt.Errorf("could not mount %q: %w", entry.Type, err))
-				return errLoadMountsFailed
-			} else if err != nil {
-				c.logger.Error("skipping deprecated mount entry", "name", entry.Type, "path", entry.Path, "error", err)
-				backend.Cleanup(ctx)
-				backend = nil
-				goto ROUTER_MOUNT
-			}
-		}
-
-		{
-			// Check for the correct backend type
-			backendType := backend.Type()
-
-			if backendType != logical.TypeLogical {
-				if err := knownMountType(entry.Type); err != nil {
-					return err
-				}
-			}
-
-			c.setCoreBackend(entry, backend, view)
-		}
-
-	ROUTER_MOUNT:
-		// Mount the backend
-		err = c.router.Mount(backend, entry.Path, entry, view)
-		if err != nil {
-			c.logger.Error("failed to mount entry", "path", entry.Path, "error", err)
-			return errLoadMountsFailed
-		}
-
-		// Bind locally
-		localEntry := entry
-		c.postUnsealFuncs = append(c.postUnsealFuncs, func() {
-			postUnsealLogger := c.logger.With("type", localEntry.Type, "version", localEntry.RunningVersion, "path", localEntry.Path)
-			if backend == nil {
-				postUnsealLogger.Error("skipping initialization for nil backend", "path", localEntry.Path)
-				return
-			}
-			if !slices.Contains(singletonMounts, localEntry.Type) {
-				view.SetReadOnlyErr(origReadOnlyErr)
-			}
-
-			err := backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
-			if err != nil {
-				postUnsealLogger.Error("failed to initialize mount backend", "error", err)
-			}
-		})
-
-		if c.logger.IsInfo() {
-			c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace())
-		}
-
-		// Ensure the path is tainted if set in the mount table
-		if entry.Tainted {
-			// Calculate any namespace prefixes here, because when Taint() is called, there won't be
-			// a namespace to pull from the context. This is similar to what we do above in c.router.Mount().
-			path := entry.Namespace().Path + entry.Path
-			c.logger.Debug("tainting a mount due to it being marked as tainted in mount table", "entry.path", entry.Path, "entry.namespace.path", entry.Namespace().Path, "full_path", path)
-			c.router.Taint(ctx, path)
+		if postUnsealFunc != nil {
+			c.postUnsealFuncs = append(c.postUnsealFuncs, postUnsealFunc)
 		}
 	}
+
 	return nil
+}
+
+// setupMountsForNamespace is invoked after we've loaded the mounts of a namespace to the mount table to
+// initialize the logical backends and setup the router
+func (c *Core) setupMountsForNamespace(ctx context.Context, ns *namespace.Namespace) ([]func(), error) {
+	c.mountsLock.Lock()
+	defer c.mountsLock.Unlock()
+
+	postUnsealFuncs := make([]func(), 0)
+
+	for _, entry := range c.mounts.sortEntriesByPath().Entries {
+		// Only process entries with matching namespace ID
+		if entry.NamespaceID != ns.ID {
+			continue
+		}
+
+		postUnsealFunc, err := c.setupMount(ctx, entry)
+		if err != nil {
+			return postUnsealFuncs, err
+		}
+
+		if postUnsealFunc != nil {
+			postUnsealFuncs = append(postUnsealFuncs, postUnsealFunc)
+		}
+	}
+
+	return postUnsealFuncs, nil
 }
 
 // unloadMounts is used before we seal the vault to reset the mounts to
@@ -2020,6 +2172,9 @@ func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespac
 		if err := c.cleanupMountBackends(ctx, mountTable, "", true, predicate); err != nil {
 			return err
 		}
+		if err := c.cleanupMountEntriesLocked(ctx, mountTable, false, predicate); err != nil {
+			return err
+		}
 	}
 	if c.logger.IsInfo() {
 		c.logger.Info(fmt.Sprintf("successfully unmounted namespace %q mounts from mount table", ns.Path))
@@ -2031,14 +2186,32 @@ func (c *Core) cleanupMountBackends(ctx context.Context, mountTable *MountTable,
 	for _, e := range mountTable.Entries {
 		if predicate(e) {
 			nsCtx := namespace.ContextWithNamespace(ctx, e.namespace)
+
+			// router.Unmount already calls backend.Cleanup so we're checking if we need to call Unmount first
+			if unmountRouter {
+				if err := c.router.Unmount(nsCtx, pathPrefix+e.Path); err != nil {
+					return err
+				}
+				continue
+			}
+
 			backend := c.router.MatchingBackend(nsCtx, pathPrefix+e.Path)
 			if backend != nil {
 				backend.Cleanup(ctx)
 			}
-			if unmountRouter {
-				if err := c.router.Unmount(nsCtx, e.Path); err != nil {
-					return err
-				}
+
+		}
+	}
+	return nil
+}
+
+// cleanupMountEntriesLocked cleans up the mount entries matching the predicate,should only be called when mountsLock is locked
+func (c *Core) cleanupMountEntriesLocked(ctx context.Context, mountTable *MountTable, updateStorage bool, predicate func(*MountEntry) bool) error {
+	for _, e := range mountTable.Entries {
+		if predicate(e) {
+			nsCtx := namespace.ContextWithNamespace(ctx, e.namespace)
+			if err := c.removeMountEntryLocked(nsCtx, e.Path, updateStorage); err != nil {
+				return err
 			}
 		}
 	}

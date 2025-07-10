@@ -920,14 +920,49 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 	}
 
 	if namespaceToUnseal == nil {
-		return nil
+		return fmt.Errorf("namespace %q not found", path)
 	}
 
 	if namespaceToUnseal.ID == namespace.RootNamespaceID {
 		return errors.New("unable to unseal root namespace")
 	}
 
-	return ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key)
+	if err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key); err != nil {
+		return err
+	}
+
+	// If namespace is still sealed meaning we do not have enough shards yet, return early
+	if ns.core.IsNSSealed(namespaceToUnseal) {
+		return nil
+	}
+
+	// Then proceed to load mounts and credentials
+	if err := ns.core.loadMountsForNamespace(ctx, namespaceToUnseal); err != nil {
+		return err
+	}
+
+	postUnsealFuncs := make([]func(), 0)
+
+	if postUnsealMountFuncs, err := ns.core.setupMountsForNamespace(ctx, namespaceToUnseal); err != nil {
+		return err
+	} else {
+		postUnsealFuncs = append(postUnsealFuncs, postUnsealMountFuncs...)
+	}
+
+	if err := ns.core.loadCredentialsForNamespace(ctx, namespaceToUnseal); err != nil {
+		return err
+	}
+
+	if postUnsealCredFuncs, err := ns.core.setupCredentialsForNamespace(ctx, namespaceToUnseal); err != nil {
+		return err
+	} else {
+		postUnsealFuncs = append(postUnsealFuncs, postUnsealCredFuncs...)
+	}
+
+	// now we run the collected post unseal functions to finalize unsealing
+	ns.core.runPostUnsealFuncs(postUnsealFuncs)
+
+	return nil
 }
 
 // ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'

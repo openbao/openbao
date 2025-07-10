@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/parseutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -427,7 +427,7 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
-		err = b.Core.sealManager.UnsealNamespace(ctx, ns, decodedKey)
+		err = b.Core.namespaceStore.UnsealNamespace(ctx, name, decodedKey)
 		if err != nil {
 			invalidKeyErr := &ErrInvalidKey{}
 			switch {

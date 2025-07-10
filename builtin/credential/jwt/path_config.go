@@ -6,6 +6,11 @@ package jwtauth
 import (
 	"context"
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
+	"crypto/fips140"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -97,6 +102,10 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name: "Provider Config",
 				},
+			},
+			"override_allowed_server_names": {
+				Type:        framework.TypeCommaStringSlice,
+				Description: "A list of hostnames to accept when performing TLS validation, which applies both to OIDC and JWKS. This overrides default checks that expect the TLS subject to match the hostname specified in the connection URL",
 			},
 			"namespace_in_state": {
 				Type:        framework.TypeBool,
@@ -227,7 +236,7 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 		return nil
 	}
 
-	caCtx, err := b.createCAContext(b.providerCtx, config.OIDCDiscoveryCAPEM)
+	caCtx, err := b.createCAContext(b.providerCtx, config.OIDCDiscoveryCAPEM, config.OverrideAllowedServerNames)
 	if err != nil {
 		return fmt.Errorf("error creating context for device auth: %w", err)
 	}
@@ -283,19 +292,20 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"oidc_discovery_url":     config.OIDCDiscoveryURL,
-			"oidc_discovery_ca_pem":  config.OIDCDiscoveryCAPEM,
-			"oidc_client_id":         config.OIDCClientID,
-			"oidc_response_mode":     config.OIDCResponseMode,
-			"oidc_response_types":    config.OIDCResponseTypes,
-			"default_role":           config.DefaultRole,
-			"jwt_validation_pubkeys": config.JWTValidationPubKeys,
-			"jwt_supported_algs":     config.JWTSupportedAlgs,
-			"jwks_url":               config.JWKSURL,
-			"jwks_ca_pem":            config.JWKSCAPEM,
-			"bound_issuer":           config.BoundIssuer,
-			"provider_config":        providerConfig,
-			"namespace_in_state":     config.NamespaceInState,
+			"oidc_discovery_url":            config.OIDCDiscoveryURL,
+			"oidc_discovery_ca_pem":         config.OIDCDiscoveryCAPEM,
+			"oidc_client_id":                config.OIDCClientID,
+			"oidc_response_mode":            config.OIDCResponseMode,
+			"oidc_response_types":           config.OIDCResponseTypes,
+			"default_role":                  config.DefaultRole,
+			"jwt_validation_pubkeys":        config.JWTValidationPubKeys,
+			"jwt_supported_algs":            config.JWTSupportedAlgs,
+			"jwks_url":                      config.JWKSURL,
+			"jwks_ca_pem":                   config.JWKSCAPEM,
+			"bound_issuer":                  config.BoundIssuer,
+			"provider_config":               providerConfig,
+			"override_allowed_server_names": config.OverrideAllowedServerNames,
+			"namespace_in_state":            config.NamespaceInState,
 		},
 	}
 
@@ -313,19 +323,20 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 
 func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	config := &jwtConfig{
-		OIDCDiscoveryURL:     d.Get("oidc_discovery_url").(string),
-		OIDCDiscoveryCAPEM:   d.Get("oidc_discovery_ca_pem").(string),
-		OIDCClientID:         d.Get("oidc_client_id").(string),
-		OIDCClientSecret:     d.Get("oidc_client_secret").(string),
-		OIDCResponseMode:     d.Get("oidc_response_mode").(string),
-		OIDCResponseTypes:    d.Get("oidc_response_types").([]string),
-		JWKSURL:              d.Get("jwks_url").(string),
-		JWKSCAPEM:            d.Get("jwks_ca_pem").(string),
-		DefaultRole:          d.Get("default_role").(string),
-		JWTValidationPubKeys: d.Get("jwt_validation_pubkeys").([]string),
-		JWTSupportedAlgs:     d.Get("jwt_supported_algs").([]string),
-		BoundIssuer:          d.Get("bound_issuer").(string),
-		ProviderConfig:       d.Get("provider_config").(map[string]interface{}),
+		OIDCDiscoveryURL:           d.Get("oidc_discovery_url").(string),
+		OIDCDiscoveryCAPEM:         d.Get("oidc_discovery_ca_pem").(string),
+		OIDCClientID:               d.Get("oidc_client_id").(string),
+		OIDCClientSecret:           d.Get("oidc_client_secret").(string),
+		OIDCResponseMode:           d.Get("oidc_response_mode").(string),
+		OIDCResponseTypes:          d.Get("oidc_response_types").([]string),
+		JWKSURL:                    d.Get("jwks_url").(string),
+		JWKSCAPEM:                  d.Get("jwks_ca_pem").(string),
+		DefaultRole:                d.Get("default_role").(string),
+		JWTValidationPubKeys:       d.Get("jwt_validation_pubkeys").([]string),
+		JWTSupportedAlgs:           d.Get("jwt_supported_algs").([]string),
+		BoundIssuer:                d.Get("bound_issuer").(string),
+		ProviderConfig:             d.Get("provider_config").(map[string]interface{}),
+		OverrideAllowedServerNames: d.Get("override_allowed_server_names").([]string),
 	}
 
 	skipJwksValidation := d.Get("skip_jwks_validation").(bool)
@@ -504,22 +515,22 @@ func (b *jwtAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, erro
 
 // createCAContext returns a context with custom TLS client, configured with the root certificates
 // from caPEM. If no certificates are configured, the original context is returned.
-func (b *jwtAuthBackend) createCAContext(ctx context.Context, caPEM string) (context.Context, error) {
-	if caPEM == "" {
-		return ctx, nil
+func (b *jwtAuthBackend) createCAContext(ctx context.Context, caPEM string, allowedServerNames []string) (context.Context, error) {
+	tlsConfig := &tls.Config{}
+
+	err := b.OverrideRootCAs(tlsConfig, caPEM)
+	if err != nil {
+		return nil, err
 	}
 
-	certPool := x509.NewCertPool()
-	if ok := certPool.AppendCertsFromPEM([]byte(caPEM)); !ok {
-		return nil, errors.New("could not parse CA PEM value successfully")
+	err = b.OverrideAllowedServerNames(tlsConfig, allowedServerNames)
+	if err != nil {
+		return nil, err
 	}
 
 	tr := cleanhttp.DefaultPooledTransport()
-	if certPool != nil {
-		tr.TLSClientConfig = &tls.Config{
-			RootCAs: certPool,
-		}
-	}
+	tr.TLSClientConfig = tlsConfig
+
 	tc := &http.Client{
 		Transport: tr,
 	}
@@ -529,21 +540,83 @@ func (b *jwtAuthBackend) createCAContext(ctx context.Context, caPEM string) (con
 	return caCtx, nil
 }
 
+func (b *jwtAuthBackend) OverrideRootCAs(config *tls.Config, caPEM string) error {
+	if caPEM != "" {
+		certPool := x509.NewCertPool()
+		if ok := certPool.AppendCertsFromPEM([]byte(caPEM)); !ok {
+			return errors.New("could not parse CA PEM value successfully")
+		}
+
+		config.RootCAs = certPool
+	}
+
+	return nil
+}
+
+// allowedServerNames contain a list of hostnames for which we will accept a *valid* certificate for.
+func (b *jwtAuthBackend) OverrideAllowedServerNames(config *tls.Config, allowedServerNames []string) error {
+	if len(allowedServerNames) > 0 {
+		// Set InsecureSkipVerify to skip the default validation we are
+		// replacing. This will not disable VerifyConnection.
+		config.InsecureSkipVerify = true
+		config.VerifyConnection = func(cs tls.ConnectionState) error {
+			var err error
+			var successfulValidation bool
+
+			for _, allowedServerName := range allowedServerNames {
+				opts := x509.VerifyOptions{
+					DNSName:       allowedServerName,
+					Intermediates: x509.NewCertPool(),
+					Roots:         config.RootCAs,
+				}
+
+				for _, cert := range cs.PeerCertificates[1:] {
+					opts.Intermediates.AddCert(cert)
+				}
+
+				chains, verifyErr := cs.PeerCertificates[0].Verify(opts)
+				if verifyErr != nil {
+					err = verifyErr
+					continue
+				}
+
+				_, fipsErr := fipsAllowedChains(chains)
+				if fipsErr != nil {
+					err = fipsErr
+					continue
+				}
+
+				successfulValidation = true
+				break
+			}
+
+			if !successfulValidation {
+				return err
+			} else {
+				return nil
+			}
+		}
+	}
+
+	return nil
+}
+
 type jwtConfig struct {
-	OIDCDiscoveryURL     string                 `json:"oidc_discovery_url"`
-	OIDCDiscoveryCAPEM   string                 `json:"oidc_discovery_ca_pem"`
-	OIDCClientID         string                 `json:"oidc_client_id"`
-	OIDCClientSecret     string                 `json:"oidc_client_secret"`
-	OIDCResponseMode     string                 `json:"oidc_response_mode"`
-	OIDCResponseTypes    []string               `json:"oidc_response_types"`
-	JWKSURL              string                 `json:"jwks_url"`
-	JWKSCAPEM            string                 `json:"jwks_ca_pem"`
-	JWTValidationPubKeys []string               `json:"jwt_validation_pubkeys"`
-	JWTSupportedAlgs     []string               `json:"jwt_supported_algs"`
-	BoundIssuer          string                 `json:"bound_issuer"`
-	DefaultRole          string                 `json:"default_role"`
-	ProviderConfig       map[string]interface{} `json:"provider_config"`
-	NamespaceInState     bool                   `json:"namespace_in_state"`
+	OIDCDiscoveryURL           string                 `json:"oidc_discovery_url"`
+	OIDCDiscoveryCAPEM         string                 `json:"oidc_discovery_ca_pem"`
+	OIDCClientID               string                 `json:"oidc_client_id"`
+	OIDCClientSecret           string                 `json:"oidc_client_secret"`
+	OIDCResponseMode           string                 `json:"oidc_response_mode"`
+	OIDCResponseTypes          []string               `json:"oidc_response_types"`
+	JWKSURL                    string                 `json:"jwks_url"`
+	JWKSCAPEM                  string                 `json:"jwks_ca_pem"`
+	JWTValidationPubKeys       []string               `json:"jwt_validation_pubkeys"`
+	JWTSupportedAlgs           []string               `json:"jwt_supported_algs"`
+	BoundIssuer                string                 `json:"bound_issuer"`
+	DefaultRole                string                 `json:"default_role"`
+	ProviderConfig             map[string]interface{} `json:"provider_config"`
+	OverrideAllowedServerNames []string               `json:"override_allowed_server_names"`
+	NamespaceInState           bool                   `json:"namespace_in_state"`
 
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
 	// These are looked up from OIDCDiscoveryURL when needed
@@ -584,6 +657,53 @@ func (c jwtConfig) hasType(t string) bool {
 	}
 
 	return strutil.StrListContains(c.OIDCResponseTypes, t)
+}
+
+// Adapted from similar code in https://github.com/golang/go/blob/86fca3dcb63157b8e45e565e821e7fb098fcf368/src/crypto/tls/handshake_client.go#L1160-L1181
+func fipsAllowedChains(chains [][]*x509.Certificate) ([][]*x509.Certificate, error) {
+	if !fips140.Enabled() {
+		return chains, nil
+	}
+
+	permittedChains := make([][]*x509.Certificate, 0, len(chains))
+	for _, chain := range chains {
+		if fipsAllowChain(chain) {
+			permittedChains = append(permittedChains, chain)
+		}
+	}
+
+	if len(permittedChains) == 0 {
+		return nil, errors.New("tls: no FIPS compatible certificate chains found")
+	}
+
+	return permittedChains, nil
+}
+
+func fipsAllowChain(chain []*x509.Certificate) bool {
+	if len(chain) == 0 {
+		return false
+	}
+
+	for _, cert := range chain {
+		if !isCertificateAllowedFIPS(cert) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func isCertificateAllowedFIPS(c *x509.Certificate) bool {
+	switch k := c.PublicKey.(type) {
+	case *rsa.PublicKey:
+		return k.N.BitLen() >= 2048
+	case *ecdsa.PublicKey:
+		return k.Curve == elliptic.P256() || k.Curve == elliptic.P384() || k.Curve == elliptic.P521()
+	case ed25519.PublicKey:
+		return true
+	default:
+		return false
+	}
 }
 
 const (

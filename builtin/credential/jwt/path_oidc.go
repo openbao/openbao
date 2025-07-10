@@ -295,7 +295,7 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("error getting provider for login operation: %w", err)
 	}
 
-	oidcCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM)
+	oidcCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM, config.OverrideAllowedServerNames)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing context for login operation: %w", err)
 	}
@@ -513,7 +513,7 @@ func (b *jwtAuthBackend) pathPoll(ctx context.Context, req *logical.Request, d *
 			return logical.ErrorResponse(errLoginFailed + " Could not load configuration"), nil
 		}
 
-		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM)
+		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM, config.OverrideAllowedServerNames)
 		if err != nil {
 			return nil, err
 		}
@@ -642,8 +642,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 	}
 
 	if role.CallbackMode == callbackModeDevice {
-		// start a device flow
-		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM)
+		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM, config.OverrideAllowedServerNames)
 		if err != nil {
 			return nil, err
 		}

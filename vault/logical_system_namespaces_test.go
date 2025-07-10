@@ -832,39 +832,38 @@ func TestNamespaceBackend_ExternalKeys(t *testing.T) {
 	})
 
 	t.Run("create, update, clear", func(t *testing.T) {
+		// Set initial types:
 		types := []string{"softhsm", "awskms"}
 		req := logical.TestRequest(t, logical.UpdateOperation, path)
 		req.Data = map[string]any{"types": types}
-		res, err := b.HandleRequest(rootCtx, req)
+		_, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Equal(t, types, res.Data["types"])
+
+		check := func() {
+			req = logical.TestRequest(t, logical.ReadOperation, path)
+			res, err := b.HandleRequest(rootCtx, req)
+			require.NoError(t, err)
+			require.Equal(t, types, res.Data["types"])
+		}
+
+		check()
 
 		// Reduce items in list:
 		types = []string{"softhsm"}
 		req = logical.TestRequest(t, logical.UpdateOperation, path)
 		req.Data = map[string]any{"types": types}
-		res, err = b.HandleRequest(rootCtx, req)
+		_, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Equal(t, types, res.Data["types"])
 
-		// Ensure read yields the same:
-		req = logical.TestRequest(t, logical.ReadOperation, path)
-		res, err = b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-		require.Equal(t, types, res.Data["types"])
+		check()
 
 		// Set to empty list:
 		types = []string{}
 		req = logical.TestRequest(t, logical.UpdateOperation, path)
 		req.Data = map[string]any{"types": types}
-		res, err = b.HandleRequest(rootCtx, req)
+		_, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Equal(t, types, res.Data["types"])
 
-		// Ensure read yields the same:
-		req = logical.TestRequest(t, logical.ReadOperation, path)
-		res, err = b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-		require.Equal(t, types, res.Data["types"])
+		check()
 	})
 }

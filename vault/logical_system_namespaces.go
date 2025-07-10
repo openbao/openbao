@@ -193,20 +193,23 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleNamespaceExternalKeysRead(),
 					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK", Fields: map[string]*framework.FieldSchema{
-							"types": {
-								Type:        framework.TypeStringSlice,
-								Required:    true,
-								Description: "External Key types allowed in the namespace.",
+						http.StatusOK: {{
+							Description: http.StatusText(http.StatusOK),
+							Fields: map[string]*framework.FieldSchema{
+								"types": {
+									Type:        framework.TypeStringSlice,
+									Required:    true,
+									Description: "External Key types allowed in the namespace.",
+								},
 							},
-						}}},
+						}},
 					},
 					Summary: "Read the External Keys configuration of a namespace.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleNamespaceExternalKeysWrite(),
 					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{Description: "No Content"}},
+						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
 					},
 					Summary: "Update the External Keys configuration of a namespace.",
 				},
@@ -578,18 +581,13 @@ func (b *SystemBackend) handleNamespaceExternalKeysWrite() framework.OperationFu
 			return n, nil
 		}
 
-		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, callback)
-		if err != nil {
-			return nil, err
+		if _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, callback); err != nil {
+			return handleError(err)
 		}
 
 		// TODO(satoqz): Call into the External Keys registry to recursively kill off
 		// any cached clients/connections for types that are now disabled.
 
-		return &logical.Response{
-			Data: map[string]interface{}{
-				"types": ns.ExternalKeyTypes,
-			},
-		}, nil
+		return nil, nil
 	}
 }

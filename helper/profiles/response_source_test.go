@@ -52,11 +52,40 @@ func TestValidate_MissingField(t *testing.T) {
 	}
 }
 
+func TestValidate_MissingOuterNameField(t *testing.T) {
+	rs := &ResponseSource{
+		outer: "profile",
+		field: map[string]interface{}{
+			"resp_name": "r1",
+		},
+	}
+	_, _, err := rs.Validate(context.Background())
+	want := "response source is missing required field 'profile_name'"
+	if err == nil || err.Error() != want {
+		t.Fatalf("expected error %q, got %v", want, err)
+	}
+}
+
 func TestValidate_WrongType(t *testing.T) {
 	source := &ResponseSource{field: map[string]interface{}{"resp_name": 1}}
 	_, _, err := source.Validate(context.Background())
 	if err == nil {
 		t.Fatal("expected type error for 'resp_name', got nil")
+	}
+}
+
+func TestValidate_OuterNameWrongType(t *testing.T) {
+	rs := &ResponseSource{
+		outer: "profile",
+		field: map[string]interface{}{
+			"profile_name": 123,
+			"resp_name":    "r1",
+		},
+	}
+	_, _, err := rs.Validate(context.Background())
+	want := "field 'profile_name' is of wrong type: expected 'string' got 'int'"
+	if err == nil || err.Error() != want {
+		t.Fatalf("expected error %q, got %v", want, err)
 	}
 }
 

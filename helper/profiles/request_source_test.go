@@ -61,16 +61,19 @@ func TestRequestSource_ValidateMissingField(t *testing.T) {
 	}
 }
 
-func TestRequestSource_ValidateWrongType(t *testing.T) {
-	source := &RequestSource{field: map[string]interface{}{"req_name": 123}}
-	ctx := context.Background()
-
-	_, _, err := source.Validate(ctx)
-	if err == nil {
-		t.Fatal("expected type error")
+func TestRequestSource_Validate_MissingOuterNameField(t *testing.T) {
+	rs := &RequestSource{
+		outer: "profile",
+		field: map[string]interface{}{"req_name": "r1"},
 	}
-	if !strings.HasPrefix(err.Error(), "field 'req_name' is of wrong type") {
-		t.Fatalf("unexpected error: %v", err)
+
+	_, _, err := rs.Validate(context.Background())
+	want := "request source is missing required field 'profile_name'"
+	if err == nil {
+		t.Fatalf("expected error %q, got nil", want)
+	}
+	if err.Error() != want {
+		t.Fatalf("expected error %q, got %q", want, err.Error())
 	}
 }
 
@@ -88,6 +91,45 @@ func TestRequestSource_Validate_Success(t *testing.T) {
 	}
 	if source.requestName != "mount-userpass" {
 		t.Errorf("expected requestName 'mount-userpass', got %q", source.requestName)
+	}
+}
+
+func TestRequestValidate_OuterNameWrongType(t *testing.T) {
+	rs := &RequestSource{
+		outer: "profile",
+		field: map[string]interface{}{"profile_name": 123, "req_name": "r1"},
+	}
+
+	_, _, err := rs.Validate(context.Background())
+	want := "field 'profile_name' is of wrong type: expected 'string' got 'int'"
+	if err == nil {
+		t.Fatalf("expected error %q, got nil", want)
+	}
+	if err.Error() != want {
+		t.Fatalf("expected error %q, got %q", want, err.Error())
+	}
+}
+
+func TestRequestValidate_OuterNameOK(t *testing.T) {
+	rs := &RequestSource{
+		outer: "profile",
+		field: map[string]interface{}{
+			"profile_name": "outer1",
+			"req_name":     "r1",
+		},
+	}
+
+	gotReqDeps, gotRespDeps, err := rs.Validate(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	wantDeps := []string{"outer1.r1"}
+	if !reflect.DeepEqual(gotReqDeps, wantDeps) {
+		t.Errorf("requestDeps = %v; want %v", gotReqDeps, wantDeps)
+	}
+	if len(gotRespDeps) != 0 {
+		t.Errorf("responseDeps = %v; want empty", gotRespDeps)
 	}
 }
 

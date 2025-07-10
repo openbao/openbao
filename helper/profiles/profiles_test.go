@@ -25,8 +25,16 @@ func (m *minimalSource) Evaluate(ctx context.Context, hist *EvaluationHistory) (
 }
 func (m *minimalSource) Close(ctx context.Context) error { return nil }
 
-func testBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) (Source, error) {
-	return nil, nil
+func testBuilder(evalResult interface{}, evalErr error) SourceBuilder {
+	return func(ctx context.Context, _ *ProfileEngine, field map[string]interface{}) (Source, error) {
+		if evalResult == nil && evalErr == nil {
+			return nil, nil
+		}
+		return &minimalSource{
+			validateFunc: func(context.Context) ([]string, []string, error) { return nil, nil, nil },
+			evalFunc:     func(context.Context, *EvaluationHistory) (interface{}, error) { return evalResult, evalErr },
+		}, nil
+	}
 }
 
 var testHandler = RequestHandlerFunc(func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
@@ -65,7 +73,8 @@ func TestNewEngine_Success(t *testing.T) {
 
 func TestWithSourceBuilder(t *testing.T) {
 	engine := &ProfileEngine{sourceBuilders: make(map[string]SourceBuilder)}
-	WithSourceBuilder("foo", testBuilder)(engine)
+	sb := testBuilder(nil, nil)
+	WithSourceBuilder("foo", sb)(engine)
 
 	builder, ok := engine.sourceBuilders["foo"]
 	if !ok {
@@ -73,7 +82,7 @@ func TestWithSourceBuilder(t *testing.T) {
 	}
 
 	got := reflect.ValueOf(builder).Pointer()
-	want := reflect.ValueOf(testBuilder).Pointer()
+	want := reflect.ValueOf(sb).Pointer()
 	if got != want {
 		t.Errorf("builder pointer = %v; want %v", got, want)
 	}
@@ -300,6 +309,127 @@ func TestValidate_SingleBlockEmptyOuterName(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("expected no error for single block, got: %v", err)
+	}
+}
+
+func Test_Evaluate_Success(t *testing.T) {
+	ctx := context.Background()
+
+	engine, err := NewEngine(
+		WithProfile([]*OuterConfig{
+			{
+				Type: "test",
+				Requests: []*RequestConfig{
+					{
+						Type:      "testr",
+						Operation: "read",
+						Path:      "sys/health",
+					},
+				},
+			},
+		}),
+		WithRequestHandler(testHandler),
+		WithOuterBlockName("test"),
+	)
+	if err != nil {
+		t.Fatalf("NewEngine error: %v", err)
+	}
+
+	err = engine.Evaluate(ctx)
+	if err != nil {
+		t.Fatalf("Evaluate error: %v", err)
+	}
+}
+
+func TestBuildRequest_BasicRequestCreation(t *testing.T) {
+	engine := &ProfileEngine{
+		sourceBuilders: map[string]SourceBuilder{},
+		requestHandler: testHandler,
+	}
+
+	hist := &EvaluationHistory{
+		Requests:  map[string]map[string]map[string]interface{}{},
+		Responses: map[string]map[string]map[string]interface{}{},
+	}
+
+	outerConfig := &OuterConfig{Type: "outer"}
+	requestConfig := &RequestConfig{
+		Type:      "test-request",
+		Operation: "read",
+		Path:      "secret/test",
+		Data: map[string]interface{}{
+			"key": "value",
+		},
+	}
+
+	req, allowFailure, err := engine.buildRequest(context.Background(), hist, 0, outerConfig, 0, requestConfig)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if req == nil {
+		t.Fatal("expected non-nil request")
+	}
+
+	if req.Operation != logical.ReadOperation {
+		t.Errorf("expected operation %v, got %v", logical.ReadOperation, req.Operation)
+	}
+
+	if req.Path != "secret/test" {
+		t.Errorf("expected path 'secret/test', got '%s'", req.Path)
+	}
+
+	if req.Data["key"] != "value" {
+		t.Errorf("expected data key 'value', got %v", req.Data["key"])
+	}
+
+	if allowFailure {
+		t.Error("expected allowFailure to be false by default")
+	}
+}
+
+func TestEvaluateField_NilDestination(t *testing.T) {
+	engine := &ProfileEngine{
+		sourceBuilders: map[string]SourceBuilder{},
+		requestHandler: testHandler,
+	}
+	hist := &EvaluationHistory{Requests: map[string]map[string]map[string]interface{}{}, Responses: map[string]map[string]map[string]interface{}{}}
+	err := engine.evaluateField(context.Background(), hist, "foo", nil)
+	if err == nil {
+		t.Fatal("expected error for nil destination, got nil")
+	}
+}
+
+func TestEvaluateField_EvalSourceSuccess(t *testing.T) {
+	engine := &ProfileEngine{
+		sourceBuilders: map[string]SourceBuilder{"b": testBuilder("hello", nil)},
+		requestHandler: testHandler,
+	}
+	hist := &EvaluationHistory{Requests: map[string]map[string]map[string]interface{}{}, Responses: map[string]map[string]map[string]interface{}{"": {}}}
+
+	field := map[string]interface{}{"eval_source": "b", "eval_type": "string"}
+	var dest string
+	err := engine.evaluateField(context.Background(), hist, field, &dest)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if dest != "hello" {
+		t.Errorf("dest = %q; want \"hello\"", dest)
+	}
+}
+
+func TestEvaluateField_EvalSourceError(t *testing.T) {
+	engine := &ProfileEngine{
+		sourceBuilders: map[string]SourceBuilder{"b": testBuilder(nil, errors.New("fail"))},
+		requestHandler: testHandler,
+	}
+	hist := &EvaluationHistory{Requests: map[string]map[string]map[string]interface{}{}, Responses: map[string]map[string]map[string]interface{}{"": {}}}
+
+	field := map[string]interface{}{"eval_source": "b", "eval_type": "string"}
+	var dest string
+	err := engine.evaluateField(context.Background(), hist, field, &dest)
+	if err == nil || !strings.Contains(err.Error(), "fail") {
+		t.Fatalf("expected evaluation error, got %v", err)
 	}
 }
 

@@ -45,6 +45,8 @@ type Namespace struct {
 	Locked         bool              `json:"-"`
 	UnlockKey      string            `json:"unlock_key" mapstructure:"unlock_key"`
 	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
+	// External Key types allowed in the namespace.
+	ExternalKeyTypes []string `json:"external_key_types" mapstructure:"external_key_types"`
 }
 
 func (n *Namespace) String() string {
@@ -148,12 +150,13 @@ func (n *Namespace) Clone(withUnlock bool) *Namespace {
 	maps.Copy(meta, n.CustomMetadata)
 
 	data := &Namespace{
-		ID:             n.ID,
-		UUID:           n.UUID,
-		Path:           n.Path,
-		Tainted:        n.Tainted,
-		Locked:         n.Locked,
-		CustomMetadata: meta,
+		ID:               n.ID,
+		UUID:             n.UUID,
+		Path:             n.Path,
+		Tainted:          n.Tainted,
+		Locked:           n.Locked,
+		CustomMetadata:   meta,
+		ExternalKeyTypes: slices.Clone(n.ExternalKeyTypes),
 	}
 
 	if withUnlock {

@@ -410,7 +410,7 @@ func TestNamespaceStore_ExternalKeyTypeAllowed(t *testing.T) {
 	tcs := []struct {
 		namespace *namespace.Namespace
 		ty        string
-		expected  bool
+		wantErr   bool
 	}{
 		{namespace.RootNamespace, "softhsm", true},
 		{namespace.RootNamespace, "awskms", true},
@@ -425,13 +425,13 @@ func TestNamespaceStore_ExternalKeyTypeAllowed(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		allowed := s.ExternalKeyTypeAllowed(tc.namespace, tc.ty)
-		if tc.expected {
-			require.True(t, allowed, fmt.Sprintf(
-				"Type %q should be allowed in namespace %q, but wasn't", tc.ty, tc.namespace.Path))
-		} else {
-			require.False(t, allowed, fmt.Sprintf(
+		err := s.ExternalKeyTypeAllowed(tc.namespace, tc.ty)
+		if tc.wantErr {
+			require.NoError(t, err, fmt.Sprintf(
 				"Type %q should not be allowed in namespace %q, but was", tc.ty, tc.namespace.Path))
+		} else {
+			require.Error(t, err, fmt.Sprintf(
+				"Type %q should be allowed in namespace %q, but wasn't", tc.ty, tc.namespace.Path))
 		}
 	}
 }

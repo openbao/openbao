@@ -2093,7 +2093,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		}
 	}
 
-	ctx := context.Background()
+	ctx := namespace.RootContext(context.Background())
 
 	// If stored keys is supported, the above will no no-op, so trigger auto-unseal
 	// using stored keys to try to unseal
@@ -2128,7 +2128,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 			},
 		},
 	}
-	resp, err := leader.Core.HandleRequest(namespace.RootContext(ctx), kvReq)
+	resp, err := leader.Core.HandleRequest(ctx, kvReq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2136,7 +2136,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		t.Fatal(err)
 	}
 
-	cfg, err := leader.Core.seal.Config(namespace.RootContext(ctx))
+	cfg, err := leader.Core.seal.Config(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2178,7 +2178,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 	//
 	// Set test cluster core(s) and test cluster
 	//
-	cluster, err := leader.Core.Cluster(context.Background())
+	cluster, err := leader.Core.Cluster(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2194,7 +2194,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 				"type": "noop",
 			},
 		}
-		resp, err = leader.Core.HandleRequest(namespace.RootContext(ctx), auditReq)
+		resp, err = leader.Core.HandleRequest(ctx, auditReq)
 		if err != nil {
 			t.Fatal(err)
 		}

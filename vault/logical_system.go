@@ -4526,7 +4526,7 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 	if core.SealAccess().RecoveryKeySupported() {
 		sealConfig, err = core.SealAccess().RecoveryConfig(ctx)
 	} else {
-		sealConfig, err = core.SealAccess().BarrierConfig(ctx)
+		sealConfig, err = core.SealAccess().Config(ctx)
 	}
 	if err != nil {
 		return nil, err
@@ -4534,7 +4534,7 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 
 	if sealConfig == nil {
 		s := &SealStatusResponse{
-			Type:         core.SealAccess().BarrierType().String(),
+			Type:         core.SealAccess().WrapperType().String(),
 			Initialized:  initialized,
 			Sealed:       true,
 			RecoverySeal: core.SealAccess().RecoveryKeySupported(),
@@ -5827,22 +5827,22 @@ This path responds to the following HTTP methods.
 		`
 This path responds to the following HTTP methods.
 
-	GET /<path>
+	GET /<name>
 		Retrieve a namespace.
 
-	PUT /<path>
+	PUT /<name>
 		Create or update a namespace.
 
-	PATCH /<path>
+	PATCH /<name>
 		Update a namespace's custom metadata.
 
-	DELETE /<path>
+	DELETE /<name>
 		Delete a namespace.
 
 	POST /<name>/seal
 		Seal a namespace.
 
-	POST /<name/unseal
+	POST /<name>/unseal
 		Unseal a namespace.
 		`,
 	},
@@ -5851,7 +5851,7 @@ This path responds to the following HTTP methods.
 		`
 This path responds to the following HTTP methods.
 
-	PUT /<path>
+	PUT /<name>
 		Lock the API for a namespace.
 		`,
 	},
@@ -5860,7 +5860,7 @@ This path responds to the following HTTP methods.
 		`
 This path responds to the following HTTP methods.
 
-	PUT /<path>
+	PUT /<name>
 		Unlock the API for a namespace.
 		`,
 	},

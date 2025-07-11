@@ -25,7 +25,7 @@ type SealManager struct {
 	// lock        sync.RWMutex
 	// invalidated atomic.Bool
 
-	sealsByNamespace     map[string][]*Seal
+	sealsByNamespace     map[string][]Seal
 	barrierByNamespace   *radix.Tree
 	barrierByStoragePath *radix.Tree
 
@@ -37,7 +37,7 @@ type SealManager struct {
 func NewSealManager(core *Core, logger hclog.Logger) (*SealManager, error) {
 	return &SealManager{
 		core:                 core,
-		sealsByNamespace:     make(map[string][]*Seal),
+		sealsByNamespace:     make(map[string][]Seal),
 		barrierByNamespace:   radix.New(),
 		barrierByStoragePath: radix.New(),
 		logger:               logger,
@@ -94,17 +94,21 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	sm.barrierByStoragePath.Insert(metaPrefix, barrier)
 	parentBarrier := sm.ParentNamespaceBarrier(ns)
 	if parentBarrier != nil {
-		sm.barrierByStoragePath.Insert(metaPrefix+barrierSealConfigPath, parentBarrier)
+		sm.barrierByStoragePath.Insert(metaPrefix+sealConfigPath, parentBarrier)
 	}
-	sm.sealsByNamespace[ns.UUID] = []*Seal{&defaultSeal}
-	err = defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
+	sm.sealsByNamespace[ns.UUID] = []Seal{defaultSeal}
+	err = defaultSeal.SetConfig(ctx, sealConfig)
 	if err != nil {
-		return fmt.Errorf("failed to set barrier config: %w", err)
+		return fmt.Errorf("failed to set config: %w", err)
 	}
 
 	return nil
 }
 
+// StorageAccessForPath takes a path string and returns back a storage access interface
+// which is either a SecurityBarrier existing "on a specified path", or a direct storage
+// physical backend whenever there's no security barrier, and we need to access the storage
+// layer directly (e.g. reading entries that are cannot be encrypted by the barrier).
 func (sm *SealManager) StorageAccessForPath(path string) StorageAccess {
 	_, v, _ := sm.barrierByStoragePath.LongestPrefix(path)
 	if v == nil {
@@ -183,9 +187,12 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) error {
 }
 
 func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Namespace) ([][]byte, error) {
-	nsSeal := *sm.sealsByNamespace[ns.UUID][0]
+	nsSeal := sm.sealsByNamespace[ns.UUID][0]
+	if nsSeal == nil {
+		return nil, errors.New("namespace is not sealable")
+	}
 
-	sealConfig, err := nsSeal.BarrierConfig(ctx, ns)
+	sealConfig, err := nsSeal.Config(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve seal config: %w", err)
 	}
@@ -198,11 +205,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	var nsSealKey []byte
 	var nsSealKeyShares [][]byte
 
-	if nsSeal == nil {
-		return nil, fmt.Errorf("unable to retrieve seal: %w", err)
-	}
-
-	if sealConfig.StoredShares == 1 && nsSeal.BarrierType() == wrapping.WrapperTypeShamir {
+	if sealConfig.StoredShares == 1 && nsSeal.WrapperType() == wrapping.WrapperTypeShamir {
 		nsSealKey, nsSealKeyShares, err = sm.core.generateShares(sealConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate namespace seal key: %w", err)

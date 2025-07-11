@@ -2137,7 +2137,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		t.Fatal(err)
 	}
 
-	cfg, err := leader.Core.seal.BarrierConfig(ctx, namespace.RootNamespace)
+	cfg, err := leader.Core.seal.Config(namespace.RootContext(ctx))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2146,7 +2146,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 	numCores := len(tc.Cores)
 	if (opts == nil || !opts.KeepStandbysSealed) && numCores > 1 {
 		for i := 1; i < numCores; i++ {
-			tc.Cores[i].Core.seal.SetCachedBarrierConfig(cfg)
+			tc.Cores[i].Core.seal.SetCachedConfig(cfg)
 			for _, key := range bKeys {
 				if _, err := tc.Cores[i].Core.Unseal(TestKeyCopy(key)); err != nil {
 					t.Fatalf("unseal err: %s", err)

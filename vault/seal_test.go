@@ -22,16 +22,16 @@ func TestDefaultSeal_Config(t *testing.T) {
 		SecretThreshold: 2,
 	}
 	core, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+	ctx := namespace.RootContext(context.Background())
 
 	defSeal := NewDefaultSeal(nil)
 	defSeal.SetCore(core)
-	err := defSeal.SetBarrierConfig(ctx, bc, namespace.RootNamespace)
+	err := defSeal.SetConfig(ctx, bc)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	newBc, err := defSeal.BarrierConfig(ctx, namespace.RootNamespace)
+	newBc, err := defSeal.Config(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestDefaultSeal_Config(t *testing.T) {
 	// Now, test without the benefit of the cached value in the seal
 	defSeal = NewDefaultSeal(nil)
 	defSeal.SetCore(core)
-	newBc, err = defSeal.BarrierConfig(ctx, namespace.RootNamespace)
+	newBc, err = defSeal.Config(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,14 +58,15 @@ func TestDefaultSeal_Config(t *testing.T) {
 	nsTest := &namespace.Namespace{Path: "test/"}
 	TestCoreCreateNamespaces(t, core, nsTest)
 
+	nsCtx := namespace.ContextWithNamespace(ctx, nsTest)
 	defSeal = NewDefaultSeal(nil)
 	defSeal.SetCore(core)
-	err = defSeal.SetBarrierConfig(ctx, nsSealConfig, nsTest)
+	err = defSeal.SetConfig(nsCtx, nsSealConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	newNSSealConfig, err := defSeal.BarrierConfig(ctx, nsTest)
+	newNSSealConfig, err := defSeal.Config(nsCtx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +77,7 @@ func TestDefaultSeal_Config(t *testing.T) {
 	// Now, test without the benefit of the cached value in the seal
 	defSeal = NewDefaultSeal(nil)
 	defSeal.SetCore(core)
-	newNSSealConfig, err = defSeal.BarrierConfig(ctx, nsTest)
+	newNSSealConfig, err = defSeal.Config(nsCtx)
 	if err != nil {
 		t.Fatal(err)
 	}

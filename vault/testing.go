@@ -341,7 +341,7 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 		BarrierConfig:  barrierConfig,
 		RecoveryConfig: recoveryConfig,
 	}
-	result, err := core.Initialize(namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace), initParams)
+	result, err := core.Initialize(namespace.RootContext(context.Background()), initParams)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -460,8 +460,7 @@ func testCoreAddSecretMountContext(ctx context.Context, t testing.T, core *Core,
 }
 
 func testCoreAddSecretMount(t testing.T, core *Core, token string) {
-	rootCtx := namespace.RootContext(nil)
-	testCoreAddSecretMountContext(rootCtx, t, core, "secret/", token)
+	testCoreAddSecretMountContext(namespace.RootContext(context.Background()), t, core, "secret/", token)
 }
 
 func TestCoreUnsealedBackend(t testing.T, backend physical.Backend) (*Core, [][]byte, string) {

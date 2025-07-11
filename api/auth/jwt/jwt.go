@@ -156,8 +156,7 @@ func WithTokenFromEnv(env string) Option {
 // mount path for the OpenBao Authentication Method.
 func WithMountPath(mountPath string) Option {
 	opt := func(a *JWTAuth) error {
-		// Remove any trailing slashes from the given mount path
-		a.mountPath = strings.TrimRight(mountPath, "/")
+		a.mountPath = mountPath
 
 		return nil
 	}

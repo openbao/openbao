@@ -29,6 +29,11 @@ func NewView(backend Backend, prefix string) *View {
 	}
 }
 
+// Prefix returns back prefix of the view
+func (v *View) Prefix() string {
+	return v.prefix
+}
+
 // List the contents of the prefixed view
 func (v *View) List(ctx context.Context, prefix string) ([]string, error) {
 	if err := v.sanityCheck(prefix); err != nil {

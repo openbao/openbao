@@ -1074,11 +1074,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// Construct a new AES-GCM barrier
-	c.barrier, err = NewAESGCMBarrier(c.physical, "")
-	if err != nil {
-		return nil, fmt.Errorf("barrier setup failed: %w", err)
-	}
-
+	c.barrier = NewAESGCMBarrier(c.physical, "")
 	if err := c.setupSealManager(); err != nil {
 		return nil, fmt.Errorf("seal manager setup failed: %w", err)
 	}

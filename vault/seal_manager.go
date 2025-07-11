@@ -85,10 +85,8 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		return fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	barrier, err := NewAESGCMBarrier(sm.core.physical, metaPrefix)
-	if err != nil {
-		return fmt.Errorf("failed to construct namespace barrier: %w", err)
-	}
+	barrier := NewAESGCMBarrier(sm.core.physical, metaPrefix)
+
 	// barrier.Initialize(ctx context.Context, rootKey []byte, sealKey []byte, random io.Reader)
 	sm.barrierByNamespace.Insert(ns.Path, barrier)
 	sm.barrierByStoragePath.Insert(metaPrefix, barrier)
@@ -97,8 +95,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		sm.barrierByStoragePath.Insert(metaPrefix+sealConfigPath, parentBarrier)
 	}
 	sm.sealsByNamespace[ns.UUID] = []Seal{defaultSeal}
-	err = defaultSeal.SetConfig(ctx, sealConfig)
-	if err != nil {
+	if err := defaultSeal.SetConfig(ctx, sealConfig); err != nil {
 		return fmt.Errorf("failed to set config: %w", err)
 	}
 

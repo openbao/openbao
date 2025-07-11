@@ -236,7 +236,9 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		return nil, fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	// TODO: we are here
+	// deprecatedBarrierKeyShares are only used in the tests, as it is
+	// initializing an old-style Shamir seal which are not used anymore
+	// TODO: (wslabosz) look into removal of those
 	barrierKey, deprecatedBarrierKeyShares, err := c.generateShares(barrierConfig)
 	if err != nil {
 		c.logger.Error("error generating shares", "error", err)

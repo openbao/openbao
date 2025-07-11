@@ -1,0 +1,143 @@
+---
+sidebar_label: Common Expression Language in OpenBao
+description: How is Common Expression Language implemented in OpenBao.
+---
+
+# CEL in OpenBao
+
+The Common Expression Language (CEL) is used in PKI and JWT to declare validation rules
+and policies:
+- [CEL for JWT Auth](https://openbao.org/docs/rfcs/cel-jwt/)
+- [CEL in PKI](https://openbao.org/docs/rfcs/cel-pki/)
+
+The main CEL `Expression` in a `Celprogram` is typically one line of code. This can be broken down
+into multiple CEL expressions by using `CelVariable`'s. The following sections cover how to build
+a `CelProgram` in any part of OpenBao.
+
+---
+
+## Table of contents
+ - [Main expression](#main-expression)
+ - [Variables in a CelProgram](#variables-in-a-celprogram)
+ - [CelProgram](#celprogram)
+ - [The Request Object](#therequestobject)
+
+---
+
+## Main expression
+- This is the main expression that determines whether a CEL program has accepted or rejected
+a request.
+
+- The main expression in the `CelProgram` should return the engine's
+  specific output object on success, for instance:
+    * PKI → `ValidationOutput`
+    * JWT/OIDC → `pb.Auth`
+
+- A custom `string` error message or `bool` should be returned on
+  failure. The error message can be constructed using a CEL expression.
+  For instance: 
+  ```go
+  require_cn ? 'request should have a common_name' : (validate_ttl ? 'request has invalid TTL' : "Request Rejected")
+  ```
+
+- Use a ternary operator when writing a main expression for clarity
+  and to guarantee a value is always produced:
+  ```go
+  cond ? SuccessObject : error string/bool
+  ```
+
+## Variables in a CelProgram
+- A variable is a named expression that can be referred later in other variables and expressions.
+
+- They are useful if an expression is too long or has reusable parts.
+
+- The order of variables matters since they are added into the CEL environment in the order they
+  are defined. A variable can reference only variables declared _before_ it, not ones that come later.
+
+### Definition
+```go
+// Name of the variable.
+Name: string
+// CEL expression for the variable
+Expression: string
+```
+
+### Example
+``` go
+{
+  "name":       "small_ttl",
+  "expression": `has(request.ttl) && duration(request.ttl) < duration("4h")`,
+},
+```
+
+## CelProgram
+- A `CelProgram` is made of 2 parts:
+  - A list of `CelVariable`'s.
+  The CEL variables are declared in the CEL env so that they can be accessed by other
+  variables as well as the main expression.
+
+  - A main expression which determines whether the CEL program succeeds or fails.
+
+### Definition
+```go
+// List of variables with explicit order (optional)
+Variables: []CelVariable
+// Required, the main CEL expression
+Expression: string
+```
+
+### Example
+```go
+"cel_program": map[string]interface{}{
+  "variables": []map[string]interface{}{
+    {
+      "name":       "validate_cn",
+      "expression": `has(request.common_name) && request.common_name == "example.com"`,
+    },
+    {
+      "name":       "small_ttl",
+      "expression": `has(request.ttl) && duration(request.ttl) < duration("4h")`,
+    },
+    {
+      "name":       "cn_value",
+      "expression": "request.common_name",
+    },
+    {
+      "name":       "not_after",
+      "expression": "now + duration(request.ttl)",
+    },
+    {
+      "name": "cert",
+      "expression": `CertTemplate{
+        Subject: PKIX.Name{                   
+        CommonName: cn_value,
+        },
+        NotBefore: now,
+        NotAfter: not_after,						
+      }`,
+    },
+    {
+      "name": "output",
+      "expression": `ValidationOutput{
+        template:        cert,
+        generate_lease:  small_ttl,
+        no_store:        !small_ttl,						
+      }`,
+    },
+    {
+      "name":       "err",
+      "expression": "'Request should have common_name'",
+    },
+  },
+  "expression": "validate_cn ? output : err",
+},
+```
+
+## The Request Object
+- Every key/value pair in the request body is copied verbatim to the CEL
+`request` map. The CEL program (not the endpoint) decides which
+of these parameters to honour, ignore, or override.
+
+- To avoid breaking existing automation, consider re-using familiar field
+names such as `common_name` or `ttl`, even though CEL roles are not required
+to follow the traditional role schema.

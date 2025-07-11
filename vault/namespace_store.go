@@ -104,25 +104,64 @@ func (c *Core) cancelNamespaceDeletion() {
 	c.namespaceStore.deletionJobGroup.Wait()
 }
 
-func (ns *NamespaceStore) checkInvalidation(ctx context.Context) error {
+// checkInvalidation checks if the store has been marked as invalidated, and if
+// so, reloads namespaces from disk.
+// checkInvalidation returns true if it acquired a write-lock as part of the
+// store reload and is handing the lock over to the caller.
+// If checkInvalidation returns an error, it never keeps a write lock for the
+// caller, so there is no need to check the bool before propagating an error.
+func (ns *NamespaceStore) checkInvalidation(ctx context.Context) (bool, error) {
 	if !ns.invalidated.Load() {
-		return nil
+		return false, nil
 	}
 
 	ns.lock.Lock()
-	defer ns.lock.Unlock()
 
 	// Status might have changed
 	if !ns.invalidated.Load() {
-		return nil
+		return true, nil
 	}
 
 	if err := ns.loadNamespacesLocked(ctx); err != nil {
-		return fmt.Errorf("error handling invalidation: %w", err)
+		// Caller likely just wants to propagate the error,
+		// so don't keep the lock for them.
+		ns.lock.Unlock()
+		return false, fmt.Errorf("error handling invalidation: %w", err)
 	}
 
 	ns.invalidated.Store(false)
-	return nil
+	return true, nil
+}
+
+// lockWithInvalidation is a helper calls [checkInvalidation] and acquires the
+// desired type of lock, potentially carrying it over from [checkInvalidation].
+// This is useful for most namespace store operations that initially revalidate
+// the store and then need a lock to perform the main read and/or write
+// operation.
+//
+// lockWithInvalidation in write = false mode may actually yield a write lock if
+// one was acquired by [checkInvalidation].
+// lockWithInvalidation in write = true mode will always yield a write lock.
+//
+// The returned unlock function will be the correct one to unlock the respective
+// type of lock acquired under the hood. The caller must not call the unlock
+// function if a non-nil error is returned.
+func (ns *NamespaceStore) lockWithInvalidation(ctx context.Context, write bool) (func(), error) {
+	locked, err := ns.checkInvalidation(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	switch {
+	case locked:
+		return ns.lock.Unlock, nil
+	case write:
+		ns.lock.Lock()
+		return ns.lock.Unlock, nil
+	default:
+		ns.lock.RLock()
+		return ns.lock.RUnlock, nil
+	}
 }
 
 // loadNamespaces loads all stored namespaces from disk. It assumes the lock
@@ -239,12 +278,10 @@ func (ns *NamespaceStore) invalidate(ctx context.Context, path string) error {
 func (ns *NamespaceStore) SetNamespace(ctx context.Context, namespace *namespace.Namespace) error {
 	defer metrics.MeasureSince([]string{"namespace", "set_namespace"}, time.Now())
 
-	if err := ns.checkInvalidation(ctx); err != nil {
+	if _, err := ns.lockWithInvalidation(ctx, true); err != nil {
 		return err
 	}
 
-	// Now grab write lock so that we can write to storage.
-	ns.lock.Lock()
 	return ns.setNamespaceLocked(ctx, namespace)
 }
 
@@ -459,12 +496,11 @@ func (ns *NamespaceStore) createMounts(ctx context.Context) error {
 func (ns *NamespaceStore) GetNamespace(ctx context.Context, uuid string) (*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "get_namespace"}, time.Now())
 
-	if err := ns.checkInvalidation(ctx); err != nil {
+	unlock, err := ns.lockWithInvalidation(ctx, false)
+	if err != nil {
 		return nil, err
 	}
-
-	ns.lock.RLock()
-	defer ns.lock.RUnlock()
+	defer unlock()
 
 	item, ok := ns.namespacesByUUID[uuid]
 	if !ok {
@@ -478,12 +514,11 @@ func (ns *NamespaceStore) GetNamespace(ctx context.Context, uuid string) (*names
 func (ns *NamespaceStore) GetNamespaceByAccessor(ctx context.Context, id string) (*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "get_namespace_by_accessor"}, time.Now())
 
-	if err := ns.checkInvalidation(ctx); err != nil {
+	unlock, err := ns.lockWithInvalidation(ctx, false)
+	if err != nil {
 		return nil, err
 	}
-
-	ns.lock.RLock()
-	defer ns.lock.RUnlock()
+	defer unlock()
 
 	item, ok := ns.namespacesByAccessor[id]
 	if !ok {
@@ -510,17 +545,18 @@ func (ns *NamespaceStore) GetNamespaceByLongestPrefix(ctx context.Context, path 
 func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "get_namespace_by_path"}, time.Now())
 
-	if err := ns.checkInvalidation(ctx); err != nil {
+	unlock, err := ns.lockWithInvalidation(ctx, false)
+	if err != nil {
 		return nil, err
 	}
+	defer unlock()
 
-	ns.lock.RLock()
-	defer ns.lock.RUnlock()
-
-	return ns.getNamespaceByPathLocked(ctx, path)
+	return ns.getNamespaceByPathLocked(ctx, path, false)
 }
 
-func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path string) (*namespace.Namespace, error) {
+func (ns *NamespaceStore) getNamespaceByPathLocked(
+	ctx context.Context, path string, withUnlockKey bool,
+) (*namespace.Namespace, error) {
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -531,7 +567,7 @@ func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path str
 		return nil, nil
 	}
 
-	return item.Clone(false), nil
+	return item.Clone(withUnlockKey), nil
 }
 
 // ModifyNamespace is used to perform modifications to a namespace while
@@ -539,10 +575,6 @@ func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path str
 // at the same time.
 func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string, callback func(context.Context, *namespace.Namespace) (*namespace.Namespace, error)) (*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "modify_namespace"}, time.Now())
-
-	if err := ns.checkInvalidation(ctx); err != nil {
-		return nil, err
-	}
 
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -554,12 +586,15 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		return nil, logical.CodedError(http.StatusBadRequest, "refusing to modify root namespace")
 	}
 
-	ns.lock.Lock()
+	unlock, err := ns.lockWithInvalidation(ctx, true)
+	if err != nil {
+		return nil, err
+	}
 
 	entry := ns.namespacesByPath.Get(path)
 	if entry != nil {
 		if entry.Tainted {
-			ns.lock.Unlock()
+			unlock()
 			return nil, errors.New("namespace with that name exists and is currently tainted")
 		}
 		entry = entry.Clone(true /* preserve unlock key so we can copy it */)
@@ -576,7 +611,7 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		entry.UnlockKey = ""
 		entry, err = callback(ctx, entry)
 		if err != nil {
-			ns.lock.Unlock()
+			unlock()
 			return nil, err
 		}
 
@@ -597,8 +632,11 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_all_namespaces"}, time.Now())
 
-	ns.lock.RLock()
-	defer ns.lock.RUnlock()
+	unlock, err := ns.lockWithInvalidation(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
 
 	namespaces := make([]*namespace.Namespace, 0, len(ns.namespacesByUUID))
 	for _, entry := range ns.namespacesByUUID {
@@ -617,17 +655,16 @@ func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot boo
 func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool, recursive bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_entries"}, time.Now())
 
-	if err := ns.checkInvalidation(ctx); err != nil {
-		return nil, err
-	}
-
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	ns.lock.RLock()
-	defer ns.lock.RUnlock()
+	unlock, err := ns.lockWithInvalidation(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
 
 	return ns.namespacesByPath.List(parent.Path, includeParent, recursive)
 }
@@ -659,14 +696,13 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "delete_namespace"}, time.Now())
 
-	if err := ns.checkInvalidation(ctx); err != nil {
+	unlock, err := ns.lockWithInvalidation(ctx, true)
+	if err != nil {
 		return "", err
 	}
+	defer unlock()
 
-	ns.lock.Lock()
-	defer ns.lock.Unlock()
-
-	namespaceToDelete, err := ns.getNamespaceByPathLocked(ctx, path)
+	namespaceToDelete, err := ns.getNamespaceByPathLocked(ctx, path, false)
 	if err != nil {
 		return "", err
 	}
@@ -834,6 +870,13 @@ func (ns *NamespaceStore) ResolveNamespaceFromRequest(nsHeader, reqPath string) 
 // a locked namespace, starting from one of the root children,
 // ending at the namespace provided as a argument to the function.
 func (ns *NamespaceStore) GetLockingNamespace(n *namespace.Namespace) *namespace.Namespace {
+	ns.lock.RLock()
+	defer ns.lock.RUnlock()
+
+	return ns.getLockingNamespace(n)
+}
+
+func (ns *NamespaceStore) getLockingNamespace(n *namespace.Namespace) *namespace.Namespace {
 	var lockedNS *namespace.Namespace
 	ns.namespacesByPath.WalkPath(n.Path, func(curNS *namespace.Namespace) bool {
 		if curNS.Locked {
@@ -853,11 +896,18 @@ func (ns *NamespaceStore) GetLockingNamespace(n *namespace.Namespace) *namespace
 func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path string) error {
 	defer metrics.MeasureSince([]string{"namespace", "unlock_namespace"}, time.Now())
 
-	if err := ns.checkInvalidation(ctx); err != nil {
+	unlock, err := ns.lockWithInvalidation(ctx, true)
+	if err != nil {
 		return err
 	}
 
-	namespaceToUnlock, err := ns.GetNamespaceByPath(ctx, path)
+	defer func() {
+		if unlock != nil {
+			unlock()
+		}
+	}()
+
+	namespaceToUnlock, err := ns.getNamespaceByPathLocked(ctx, path, true)
 	if err != nil {
 		return err
 	}
@@ -874,61 +924,49 @@ func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path s
 		return fmt.Errorf("namespace %q is not locked", namespaceToUnlock.Path)
 	}
 
-	lockingNamespace := ns.GetLockingNamespace(namespaceToUnlock)
+	lockingNamespace := ns.getLockingNamespace(namespaceToUnlock)
 	if lockingNamespace.ID != namespaceToUnlock.ID {
 		return fmt.Errorf("cannot unlock %q with namespace %q being locked", namespaceToUnlock.Path, lockingNamespace.Path)
 	}
 
-	ns.lock.Lock()
-	return ns.unlockNamespaceLocked(ctx, namespaceToUnlock, unlockKey)
-}
-
-// unlockNamespaceLocked reads namespace lock from the storage, compares it to the
-// provided unlock key, with match deletes the storage entry, modifies namespace
-// tree structure and namespace maps changing the 'Locked' field to false.
-func (ns *NamespaceStore) unlockNamespaceLocked(ctx context.Context, target *namespace.Namespace, unlockKey string) error {
-	unlock := true
-	defer func() {
-		if unlock {
-			ns.lock.Unlock()
-		}
-	}()
-
-	item, ok := ns.namespacesByUUID[target.UUID]
-	if !ok {
-		return fmt.Errorf("unable to unlock unknown namespace %v", target.ID)
-	}
-
 	// verify lock or skip when provided unlock key is empty
 	// (meaning namespace is unlocked using root capability)
-	if unlockKey != "" && subtle.ConstantTimeCompare([]byte(item.UnlockKey), []byte(unlockKey)) != 1 {
+	if unlockKey != "" &&
+		subtle.ConstantTimeCompare([]byte(namespaceToUnlock.UnlockKey), []byte(unlockKey)) != 1 {
 		return errors.New("incorrect unlock key")
 	}
 
-	item.Locked = false
-	item.UnlockKey = ""
+	namespaceToUnlock.Locked = false
+	namespaceToUnlock.UnlockKey = ""
 
-	parentPath, _ := item.ParentPath()
+	parentPath, _ := namespaceToUnlock.ParentPath()
 	parentNs := ns.namespacesByPath.Get(parentPath)
 	if parentNs == nil {
-		return fmt.Errorf("namespace %v has no parent", target.ID)
+		return fmt.Errorf("namespace %q has no parent", namespaceToUnlock.Path)
 	}
 	parentCtx := namespace.ContextWithNamespace(ctx, parentNs)
 
 	// setNamespaceLocked now handles unlocking.
-	unlock = false
-	return ns.setNamespaceLocked(parentCtx, item)
+	unlock = nil
+	return ns.setNamespaceLocked(parentCtx, namespaceToUnlock)
 }
 
 // LockNamespace attempts to lock the namespace with provided path.
 func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "lock_namespace"}, time.Now())
 
-	if err := ns.checkInvalidation(ctx); err != nil {
+	unlock, err := ns.lockWithInvalidation(ctx, true)
+	if err != nil {
 		return "", err
 	}
 
-	namespaceToLock, err := ns.GetNamespaceByPath(ctx, path)
+	defer func() {
+		if unlock != nil {
+			unlock()
+		}
+	}()
+
+	namespaceToLock, err := ns.getNamespaceByPathLocked(ctx, path, false)
 	if err != nil {
 		return "", err
 	}
@@ -941,26 +979,12 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 		return "", errors.New("root namespace cannot be locked/unlocked")
 	}
 
-	lockedNamespace := ns.GetLockingNamespace(namespaceToLock)
+	lockedNamespace := ns.getLockingNamespace(namespaceToLock)
 	if lockedNamespace != nil && lockedNamespace.ID == namespaceToLock.ID {
 		return "", fmt.Errorf("cannot lock namespace %q: is already locked", namespaceToLock.Path)
 	} else if lockedNamespace != nil {
 		return "", fmt.Errorf("cannot lock namespace %q: ancestor namespace %q is already locked", namespaceToLock.Path, lockedNamespace.Path)
 	}
-
-	ns.lock.Lock()
-	return ns.lockNamespaceLocked(ctx, namespaceToLock)
-}
-
-// lockNamespaceLocked creates a namespace lock in storage
-// and sets the Locked field of the namespace in memory to true.
-func (ns *NamespaceStore) lockNamespaceLocked(ctx context.Context, target *namespace.Namespace) (string, error) {
-	unlock := true
-	defer func() {
-		if unlock {
-			ns.lock.Unlock()
-		}
-	}()
 
 	// create lock
 	lockKey, err := base62.Random(24)
@@ -968,26 +992,20 @@ func (ns *NamespaceStore) lockNamespaceLocked(ctx context.Context, target *names
 		return "", fmt.Errorf("unable to generate namespace lock key: %w", err)
 	}
 
-	// Get the original copy to modify its lock status; this is elided from
-	// get operations.
-	item, ok := ns.namespacesByUUID[target.UUID]
-	if !ok {
-		return "", fmt.Errorf("unable to lock unknown namespace %v", target.ID)
-	}
+	namespaceToLock.Locked = true
+	namespaceToLock.UnlockKey = lockKey
 
-	item.Locked = true
-	item.UnlockKey = lockKey
-
-	parentPath, _ := item.ParentPath()
+	parentPath, _ := namespaceToLock.ParentPath()
 	parentNs := ns.namespacesByPath.Get(parentPath)
 	if parentNs == nil {
-		return "", fmt.Errorf("namespace %v has no parent", target.ID)
+		return "", fmt.Errorf("namespace %q has no parent", namespaceToLock.Path)
 	}
 	parentCtx := namespace.ContextWithNamespace(ctx, parentNs)
 
-	unlock = false
-	if err := ns.setNamespaceLocked(parentCtx, item); err != nil {
-		return "", fmt.Errorf("unable to save locked namespace: %v", target.ID)
+	// setNamespaceLocked now handles unlocking.
+	unlock = nil
+	if err := ns.setNamespaceLocked(parentCtx, namespaceToLock); err != nil {
+		return "", fmt.Errorf("unable to save locked namespace %q", namespaceToLock.Path)
 	}
 
 	return lockKey, nil

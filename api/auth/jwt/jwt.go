@@ -104,6 +104,9 @@ func (a *JWTAuth) Login(ctx context.Context, client *api.Client) (*api.Secret, e
 			return nil, err
 		}
 		token = string(data)
+		if token == "" {
+			return nil, fmt.Errorf("%w: got empty token from %s", ErrNoToken, a.tokenPath)
+		}
 	}
 
 	path := fmt.Sprintf("auth/%s/login", a.mountPath)

@@ -79,6 +79,7 @@ const sidebars: SidebarsConfig = {
                 "concepts/mount-migration",
                 "concepts/duration-format",
                 "concepts/user-lockout",
+                "concepts/cel",
             ],
             Configuration: [
                 "configuration/index",

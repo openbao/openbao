@@ -50,8 +50,9 @@ func TestGetKeyValues(t *testing.T) {
 	node := NewLeafNode("leaf")
 
 	// Test non-existing key
-	values := node.GetKeyValues("key1")
+	values, keyFound := node.GetKeyValues("key1")
 	require.Empty(t, values)
+	require.False(t, keyFound)
 
 	// Add values
 	node.InsertKeyValue("key1", "value1")
@@ -59,16 +60,19 @@ func TestGetKeyValues(t *testing.T) {
 	node.InsertKeyValue("key2", "value3")
 
 	// Test existing key with multiple values
-	values = node.GetKeyValues("key1")
+	values, keyFound = node.GetKeyValues("key1")
 	require.Equal(t, []string{"value1", "value2"}, values)
+	require.True(t, keyFound)
 
 	// Test existing key with single value
-	values = node.GetKeyValues("key2")
+	values, keyFound = node.GetKeyValues("key2")
 	require.Equal(t, []string{"value3"}, values)
+	require.True(t, keyFound)
 
 	// Test non-existing key
-	values = node.GetKeyValues("key3")
+	values, keyFound = node.GetKeyValues("key3")
 	require.Empty(t, values)
+	require.False(t, keyFound)
 }
 
 func TestGetAllKeys(t *testing.T) {
@@ -188,7 +192,8 @@ func TestRemoveValueFromKey(t *testing.T) {
 	result, err := node.RemoveValueFromKey("key1", "value2")
 	require.NoError(t, err)
 	require.Equal(t, ValueRemoved, result)
-	require.Equal(t, []string{"value1"}, node.GetKeyValues("key1"))
+	values, _ := node.GetKeyValues("key1")
+	require.Equal(t, []string{"value1"}, values)
 
 	// Remove non-existing value
 	result, err = node.RemoveValueFromKey("key1", "nonexistent")
@@ -296,7 +301,7 @@ func TestRemoveKeyChildAt(t *testing.T) {
 	require.Contains(t, err.Error(), "index out of bounds")
 }
 
-func TestGetChildAt(t *testing.T) {
+func TestGetChildAtIndex(t *testing.T) {
 	node := NewInternalNode("internal")
 
 	// Pre-populate with left-most child
@@ -307,20 +312,20 @@ func TestGetChildAt(t *testing.T) {
 	node.InsertKeyChild("key2", "child2")
 
 	// Test valid indices
-	childID, err := node.GetChildAt(0)
+	childID, err := node.GetChildAtIndex(0)
 	require.NoError(t, err)
 	require.Equal(t, "child0", childID)
 
-	childID, err = node.GetChildAt(1)
+	childID, err = node.GetChildAtIndex(1)
 	require.NoError(t, err)
 	require.Equal(t, "child1", childID)
 
-	childID, err = node.GetChildAt(2)
+	childID, err = node.GetChildAtIndex(2)
 	require.NoError(t, err)
 	require.Equal(t, "child2", childID)
 
 	// Test invalid index
-	_, err = node.GetChildAt(3)
+	_, err = node.GetChildAtIndex(3)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "index out of bounds")
 }
@@ -336,21 +341,21 @@ func TestGetKeyAt(t *testing.T) {
 	node.InsertKeyChild("key2", "child2")
 
 	// Test valid indices
-	key, err := node.GetKeyAt(0)
+	key, err := node.GetKeyAtIndex(0)
 	require.NoError(t, err)
 	require.Equal(t, "key1", key)
 
-	key, err = node.GetKeyAt(1)
+	key, err = node.GetKeyAtIndex(1)
 	require.NoError(t, err)
 	require.Equal(t, "key2", key)
 
 	// Test invalid index
-	_, err = node.GetKeyAt(2)
+	_, err = node.GetKeyAtIndex(2)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "index out of bounds")
 }
 
-func TestGetChildForKey(t *testing.T) {
+func TestGetChildForKeyTraversal(t *testing.T) {
 	node := NewInternalNode("internal")
 
 	// Pre-populate with left-most child
@@ -364,27 +369,27 @@ func TestGetChildForKey(t *testing.T) {
 	node.InsertKeyChild("key4", "child2")
 
 	// Test key less than first key
-	childID, err := node.GetChildForKey("key1")
+	childID, err := node.GetChildForKeyTraversal("key1")
 	require.NoError(t, err)
 	require.Equal(t, "child0", childID)
 
 	// Test key equal to first key
-	childID, err = node.GetChildForKey("key2")
+	childID, err = node.GetChildForKeyTraversal("key2")
 	require.NoError(t, err)
 	require.Equal(t, "child1", childID)
 
 	// Test key between keys
-	childID, err = node.GetChildForKey("key3")
+	childID, err = node.GetChildForKeyTraversal("key3")
 	require.NoError(t, err)
 	require.Equal(t, "child1", childID)
 
 	// Test key equal to second key
-	childID, err = node.GetChildForKey("key4")
+	childID, err = node.GetChildForKeyTraversal("key4")
 	require.NoError(t, err)
 	require.Equal(t, "child2", childID)
 
 	// Test key greater than all keys
-	childID, err = node.GetChildForKey("key5")
+	childID, err = node.GetChildForKeyTraversal("key5")
 	require.NoError(t, err)
 	require.Equal(t, "child2", childID)
 }

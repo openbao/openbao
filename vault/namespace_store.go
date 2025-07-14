@@ -301,7 +301,6 @@ func (ns *NamespaceStore) SetNamespace(ctx context.Context, namespace *namespace
 // setNamespaceLocked must be called while holding a write lock over the
 // NamespaceStore.
 func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *namespace.Namespace) (new bool, err error) {
-	defer ns.lock.Unlock()
 	// Copy the entry before validating and potentially mutating it.
 	entry := nsEntry.Clone(true /* preserve unlock */)
 	if err := entry.Validate(); err != nil {

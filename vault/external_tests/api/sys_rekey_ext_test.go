@@ -322,11 +322,18 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 	client := cluster.Cores[0].Client
 	client.SetMaxRetries(0)
 
-	initFunc := client.Sys().RotateInit
-	updateFunc := client.Sys().RotateUpdate
-	verificationUpdateFunc := client.Sys().RotateVerificationUpdate
-	verificationStatusFunc := client.Sys().RotateVerificationStatus
-	verificationCancelFunc := client.Sys().RotateVerificationCancel
+	initFunc := client.Sys().RotateRootInit
+	updateFunc := client.Sys().RotateRootUpdate
+	verificationUpdateFunc := client.Sys().RotateRootVerificationUpdate
+	verificationStatusFunc := client.Sys().RotateRootVerificationStatus
+	verificationCancelFunc := client.Sys().RotateRootVerificationCancel
+	if recovery {
+		initFunc = client.Sys().RotateRecoveryInit
+		updateFunc = client.Sys().RotateRecoveryUpdate
+		verificationUpdateFunc = client.Sys().RotateRecoveryVerificationUpdate
+		verificationStatusFunc = client.Sys().RotateRecoveryVerificationStatus
+		verificationCancelFunc = client.Sys().RotateRecoveryVerificationCancel
+	}
 
 	var verificationNonce string
 	var newKeys []string
@@ -335,7 +342,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 			SecretShares:        5,
 			SecretThreshold:     3,
 			RequireVerification: true,
-		}, recovery)
+		})
 		require.NoError(t, err)
 		require.NotNil(t, status)
 		require.True(t, status.VerificationRequired)
@@ -347,7 +354,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 
 		var resp *api.RekeyUpdateResponse
 		for i := range 3 {
-			resp, err = updateFunc(base64.StdEncoding.EncodeToString(keys[i]), status.Nonce, recovery)
+			resp, err = updateFunc(base64.StdEncoding.EncodeToString(keys[i]), status.Nonce)
 			require.NoError(t, err)
 		}
 
@@ -367,7 +374,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 		SecretShares:        5,
 		SecretThreshold:     3,
 		RequireVerification: true,
-	}, recovery)
+	})
 	require.Error(t, err)
 
 	// Sealing should clear state, so after this we should be able to perform
@@ -381,14 +388,14 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 	doStartVerify := func() {
 		// Start the process
 		for i := range 2 {
-			status, err := verificationUpdateFunc(newKeys[i], verificationNonce, recovery)
+			status, err := verificationUpdateFunc(newKeys[i], verificationNonce)
 			require.NoError(t, err)
 			require.Equalf(t, status.Nonce, verificationNonce, "unexpected nonce, expected %q, got %q", verificationNonce, status.Nonce)
 			require.False(t, status.Complete)
 		}
 
 		// Check status
-		vStatus, err := verificationStatusFunc(recovery)
+		vStatus, err := verificationStatusFunc()
 		require.NoError(t, err)
 		require.Equalf(t, vStatus.Nonce, verificationNonce, "unexpected nonce, expected %q, got %q", verificationNonce, vStatus.Nonce)
 		require.Equal(t, vStatus.T, 3)
@@ -400,7 +407,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 
 	// Cancel; this should still keep the rekey process going but just cancel
 	// the verification operation
-	err = verificationCancelFunc(recovery)
+	err = verificationCancelFunc()
 	require.NoError(t, err)
 
 	// Verify cannot init again
@@ -408,10 +415,10 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 		SecretShares:        5,
 		SecretThreshold:     3,
 		RequireVerification: true,
-	}, recovery)
+	})
 	require.Error(t, err)
 
-	vStatus, err := verificationStatusFunc(recovery)
+	vStatus, err := verificationStatusFunc()
 	require.NoError(t, err)
 	require.NotEqualf(t, vStatus.Nonce, verificationNonce, "unexpected nonce, expected not-%q but got it", verificationNonce)
 	require.Equal(t, vStatus.T, 3)
@@ -438,7 +445,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 	}
 
 	// Provide the final new key
-	vuStatus, err := verificationUpdateFunc(newKeys[2], verificationNonce, recovery)
+	vuStatus, err := verificationUpdateFunc(newKeys[2], verificationNonce)
 	require.NoError(t, err)
 	require.Equalf(t, vuStatus.Nonce, verificationNonce, "unexpected nonce, expected %q, got %q", verificationNonce, vuStatus.Nonce)
 	require.True(t, vuStatus.Complete)

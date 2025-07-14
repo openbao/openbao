@@ -691,7 +691,7 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 			return handleError(err)
 		}
 		if !ok || ikey.(string) == "" {
-			return handleError(errors.New("'key' must be specified in request body as JSON"))
+			return handleError(errors.New("missing required field 'key'"))
 		}
 		reqKey := ikey.(string)
 
@@ -700,7 +700,7 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 			return handleError(err)
 		}
 		if !ok || inonce.(string) == "" {
-			return handleError(errors.New("'nonce' must be specified in request body as JSON"))
+			return handleError(errors.New("missing required field 'nonce'"))
 		}
 		reqNonce := inonce.(string)
 
@@ -795,7 +795,7 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 			return handleError(err)
 		}
 		if !ok || ikey.(string) == "" {
-			return handleError(errors.New("'key' must be specified in request body as JSON"))
+			return handleError(errors.New("missing required field 'key'"))
 		}
 		reqKey := ikey.(string)
 
@@ -804,7 +804,7 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 			return handleError(err)
 		}
 		if !ok || inonce.(string) == "" {
-			return handleError(errors.New("'nonce' must be specified in request body as JSON"))
+			return handleError(errors.New("missing required field 'nonce'"))
 		}
 		reqNonce := inonce.(string)
 

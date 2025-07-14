@@ -13,21 +13,14 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 )
 
-func (c *Sys) RotateStatus(recovery bool) (*RekeyStatusResponse, error) {
-	return c.RotateStatusWithContext(context.Background(), recovery)
+func (c *Sys) RotateRootStatus() (*RekeyStatusResponse, error) {
+	return c.RotateRootStatusWithContext(context.Background())
 }
 
-func (c *Sys) RotateStatusWithContext(ctx context.Context, recovery bool) (*RekeyStatusResponse, error) {
+func (c *Sys) RotateRootStatusWithContext(ctx context.Context) (*RekeyStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
-
-	var requestPath string
-	if recovery {
-		requestPath = "/v1/sys/rotate/recovery/init"
-	} else {
-		requestPath = "/v1/sys/rotate/root/init"
-	}
-	r := c.c.NewRequest(http.MethodGet, requestPath)
+	r := c.c.NewRequest(http.MethodGet, "/v1/sys/rotate/root/init")
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err != nil {
@@ -42,21 +35,37 @@ func (c *Sys) RotateStatusWithContext(ctx context.Context, recovery bool) (*Reke
 	return result.Data, err
 }
 
-func (c *Sys) RotateInit(config *RekeyInitRequest, recovery bool) (*RekeyStatusResponse, error) {
-	return c.RotateInitWithContext(context.Background(), config, recovery)
+func (c *Sys) RotateRecoveryStatus() (*RekeyStatusResponse, error) {
+	return c.RotateRecoveryStatusWithContext(context.Background())
 }
 
-func (c *Sys) RotateInitWithContext(ctx context.Context, config *RekeyInitRequest, recovery bool) (*RekeyStatusResponse, error) {
+func (c *Sys) RotateRecoveryStatusWithContext(ctx context.Context) (*RekeyStatusResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+	r := c.c.NewRequest(http.MethodGet, "/v1/sys/rotate/recovery/init")
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Data *RekeyStatusResponse
+	}
+	err = resp.DecodeJSON(&result)
+	return result.Data, err
+}
+
+func (c *Sys) RotateRootInit(config *RekeyInitRequest) (*RekeyStatusResponse, error) {
+	return c.RotateRootInitWithContext(context.Background(), config)
+}
+
+func (c *Sys) RotateRootInitWithContext(ctx context.Context, config *RekeyInitRequest) (*RekeyStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	var requestPath string
-	if recovery {
-		requestPath = "/v1/sys/rotate/recovery/init"
-	} else {
-		requestPath = "/v1/sys/rotate/root/init"
-	}
-	r := c.c.NewRequest(http.MethodPost, requestPath)
+	r := c.c.NewRequest(http.MethodPost, "/v1/sys/rotate/root/init")
 	if err := r.SetJSONBody(config); err != nil {
 		return nil, err
 	}
@@ -74,21 +83,40 @@ func (c *Sys) RotateInitWithContext(ctx context.Context, config *RekeyInitReques
 	return result.Data, err
 }
 
-func (c *Sys) RotateCancel(recovery bool) error {
-	return c.RotateCancelWithContext(context.Background(), recovery)
+func (c *Sys) RotateRecoveryInit(config *RekeyInitRequest) (*RekeyStatusResponse, error) {
+	return c.RotateRecoveryInitWithContext(context.Background(), config)
 }
 
-func (c *Sys) RotateCancelWithContext(ctx context.Context, recovery bool) error {
+func (c *Sys) RotateRecoveryInitWithContext(ctx context.Context, config *RekeyInitRequest) (*RekeyStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	var requestPath string
-	if recovery {
-		requestPath = "/v1/sys/rotate/recovery/init"
-	} else {
-		requestPath = "/v1/sys/rotate/root/init"
+	r := c.c.NewRequest(http.MethodPost, "/v1/sys/rotate/recovery/init")
+	if err := r.SetJSONBody(config); err != nil {
+		return nil, err
 	}
-	r := c.c.NewRequest(http.MethodDelete, requestPath)
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Data *RekeyStatusResponse
+	}
+	err = resp.DecodeJSON(&result)
+	return result.Data, err
+}
+
+func (c *Sys) RotateRootCancel() error {
+	return c.RotateRootCancelWithContext(context.Background())
+}
+
+func (c *Sys) RotateRootCancelWithContext(ctx context.Context) error {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+	r := c.c.NewRequest(http.MethodDelete, "/v1/sys/rotate/root/init")
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err != nil {
@@ -97,11 +125,27 @@ func (c *Sys) RotateCancelWithContext(ctx context.Context, recovery bool) error 
 	return resp.Body.Close()
 }
 
-func (c *Sys) RotateUpdate(shard, nonce string, recovery bool) (*RekeyUpdateResponse, error) {
-	return c.RotateUpdateWithContext(context.Background(), shard, nonce, recovery)
+func (c *Sys) RotateRecoveryCancel() error {
+	return c.RotateRecoveryCancelWithContext(context.Background())
 }
 
-func (c *Sys) RotateUpdateWithContext(ctx context.Context, shard, nonce string, recovery bool) (*RekeyUpdateResponse, error) {
+func (c *Sys) RotateRecoveryCancelWithContext(ctx context.Context) error {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+	r := c.c.NewRequest(http.MethodDelete, "/v1/sys/rotate/recovery/init")
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return err
+	}
+	return resp.Body.Close()
+}
+
+func (c *Sys) RotateRootUpdate(shard, nonce string) (*RekeyUpdateResponse, error) {
+	return c.RotateRootUpdateWithContext(context.Background(), shard, nonce)
+}
+
+func (c *Sys) RotateRootUpdateWithContext(ctx context.Context, shard, nonce string) (*RekeyUpdateResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -110,13 +154,7 @@ func (c *Sys) RotateUpdateWithContext(ctx context.Context, shard, nonce string, 
 		"nonce": nonce,
 	}
 
-	var requestPath string
-	if recovery {
-		requestPath = "/v1/sys/rotate/recovery/update"
-	} else {
-		requestPath = "/v1/sys/rotate/root/update"
-	}
-	r := c.c.NewRequest(http.MethodPut, requestPath)
+	r := c.c.NewRequest(http.MethodPut, "/v1/sys/rotate/root/update")
 	if err := r.SetJSONBody(body); err != nil {
 		return nil, err
 	}
@@ -134,21 +172,46 @@ func (c *Sys) RotateUpdateWithContext(ctx context.Context, shard, nonce string, 
 	return result.Data, err
 }
 
-func (c *Sys) RotateRetrieveBackup(recovery bool) (*RekeyRetrieveResponse, error) {
-	return c.RotateRetrieveBackupWithContext(context.Background(), recovery)
+func (c *Sys) RotateRecoveryUpdate(shard, nonce string) (*RekeyUpdateResponse, error) {
+	return c.RotateRecoveryUpdateWithContext(context.Background(), shard, nonce)
 }
 
-func (c *Sys) RotateRetrieveBackupWithContext(ctx context.Context, recovery bool) (*RekeyRetrieveResponse, error) {
+func (c *Sys) RotateRecoveryUpdateWithContext(ctx context.Context, shard, nonce string) (*RekeyUpdateResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	var requestPath string
-	if recovery {
-		requestPath = "/v1/sys/rotate/recovery/backup"
-	} else {
-		requestPath = "/v1/sys/rotate/root/backup"
+	body := map[string]interface{}{
+		"key":   shard,
+		"nonce": nonce,
 	}
-	r := c.c.NewRequest(http.MethodGet, requestPath)
+
+	r := c.c.NewRequest(http.MethodPut, "/v1/sys/rotate/recovery/update")
+	if err := r.SetJSONBody(body); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Data *RekeyUpdateResponse
+	}
+	err = resp.DecodeJSON(&result)
+	return result.Data, err
+}
+
+func (c *Sys) RotateRootRetrieveBackup() (*RekeyRetrieveResponse, error) {
+	return c.RotateRootRetrieveBackupWithContext(context.Background())
+}
+
+func (c *Sys) RotateRootRetrieveBackupWithContext(ctx context.Context) (*RekeyRetrieveResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodGet, "/v1/sys/rotate/root/backup")
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err != nil {
 		return nil, err
@@ -172,21 +235,47 @@ func (c *Sys) RotateRetrieveBackupWithContext(ctx context.Context, recovery bool
 	return &result, err
 }
 
-func (c *Sys) RotateDeleteBackup(recovery bool) error {
-	return c.RekeyDeleteBackupWithContext(context.Background())
+func (c *Sys) RotateRecoveryRetrieveBackup() (*RekeyRetrieveResponse, error) {
+	return c.RotateRecoveryRetrieveBackupWithContext(context.Background())
 }
 
-func (c *Sys) RotateDeleteBackupWithContext(ctx context.Context, recovery bool) error {
+func (c *Sys) RotateRecoveryRetrieveBackupWithContext(ctx context.Context) (*RekeyRetrieveResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	var requestPath string
-	if recovery {
-		requestPath = "/v1/sys/rotate/recovery/backup"
-	} else {
-		requestPath = "/v1/sys/rotate/root/backup"
+	r := c.c.NewRequest(http.MethodGet, "/v1/sys/rotate/recovery/backup")
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
 	}
-	r := c.c.NewRequest(http.MethodDelete, requestPath)
+	defer resp.Body.Close()
+
+	secret, err := ParseSecret(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if secret == nil || secret.Data == nil {
+		return nil, errors.New("data from server response is empty")
+	}
+
+	var result RekeyRetrieveResponse
+	err = mapstructure.Decode(secret.Data, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, err
+}
+
+func (c *Sys) RotateRootDeleteBackup() error {
+	return c.RotateRootDeleteBackupWithContext(context.Background())
+}
+
+func (c *Sys) RotateRootDeleteBackupWithContext(ctx context.Context) error {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodDelete, "/v1/sys/rotate/root/backup")
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err != nil {
@@ -195,21 +284,32 @@ func (c *Sys) RotateDeleteBackupWithContext(ctx context.Context, recovery bool) 
 	return resp.Body.Close()
 }
 
-func (c *Sys) RotateVerificationStatus(recovery bool) (*RekeyVerificationStatusResponse, error) {
-	return c.RotateVerificationStatusWithContext(context.Background(), recovery)
+func (c *Sys) RotateRecoveryDeleteBackup() error {
+	return c.RotateRecoveryDeleteBackupWithContext(context.Background())
 }
 
-func (c *Sys) RotateVerificationStatusWithContext(ctx context.Context, recovery bool) (*RekeyVerificationStatusResponse, error) {
+func (c *Sys) RotateRecoveryDeleteBackupWithContext(ctx context.Context) error {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	var requestPath string
-	if recovery {
-		requestPath = "/v1/sys/rotate/recovery/verify"
-	} else {
-		requestPath = "/v1/sys/rotate/root/verify"
+	r := c.c.NewRequest(http.MethodDelete, "/v1/sys/rotate/recovery/backup")
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return err
 	}
-	r := c.c.NewRequest(http.MethodGet, requestPath)
+	return resp.Body.Close()
+}
+
+func (c *Sys) RotateRootVerificationStatus() (*RekeyVerificationStatusResponse, error) {
+	return c.RotateRootVerificationStatusWithContext(context.Background())
+}
+
+func (c *Sys) RotateRootVerificationStatusWithContext(ctx context.Context) (*RekeyVerificationStatusResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodGet, "/v1/sys/rotate/root/verify")
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err != nil {
 		return nil, err
@@ -223,11 +323,33 @@ func (c *Sys) RotateVerificationStatusWithContext(ctx context.Context, recovery 
 	return result.Data, err
 }
 
-func (c *Sys) RotateVerificationUpdate(shard, nonce string, recovery bool) (*RekeyVerificationUpdateResponse, error) {
-	return c.RotateVerificationUpdateWithContext(context.Background(), shard, nonce, recovery)
+func (c *Sys) RotateRecoveryVerificationStatus() (*RekeyVerificationStatusResponse, error) {
+	return c.RotateRecoveryVerificationStatusWithContext(context.Background())
 }
 
-func (c *Sys) RotateVerificationUpdateWithContext(ctx context.Context, shard, nonce string, recovery bool) (*RekeyVerificationUpdateResponse, error) {
+func (c *Sys) RotateRecoveryVerificationStatusWithContext(ctx context.Context) (*RekeyVerificationStatusResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodGet, "/v1/sys/rotate/recovery/verify")
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Data *RekeyVerificationStatusResponse
+	}
+	err = resp.DecodeJSON(&result)
+	return result.Data, err
+}
+
+func (c *Sys) RotateRootVerificationUpdate(shard, nonce string) (*RekeyVerificationUpdateResponse, error) {
+	return c.RotateRootVerificationUpdateWithContext(context.Background(), shard, nonce)
+}
+
+func (c *Sys) RotateRootVerificationUpdateWithContext(ctx context.Context, shard, nonce string) (*RekeyVerificationUpdateResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -236,13 +358,7 @@ func (c *Sys) RotateVerificationUpdateWithContext(ctx context.Context, shard, no
 		"nonce": nonce,
 	}
 
-	var requestPath string
-	if recovery {
-		requestPath = "/v1/sys/rotate/recovery/verify"
-	} else {
-		requestPath = "/v1/sys/rotate/root/verify"
-	}
-	r := c.c.NewRequest(http.MethodPut, requestPath)
+	r := c.c.NewRequest(http.MethodPut, "/v1/sys/rotate/root/verify")
 	if err := r.SetJSONBody(body); err != nil {
 		return nil, err
 	}
@@ -260,21 +376,46 @@ func (c *Sys) RotateVerificationUpdateWithContext(ctx context.Context, shard, no
 	return result.Data, err
 }
 
-func (c *Sys) RotateVerificationCancel(recovery bool) error {
-	return c.RotateVerificationCancelWithContext(context.Background(), recovery)
+func (c *Sys) RotateRecoveryVerificationUpdate(shard, nonce string) (*RekeyVerificationUpdateResponse, error) {
+	return c.RotateRecoveryVerificationUpdateWithContext(context.Background(), shard, nonce)
 }
 
-func (c *Sys) RotateVerificationCancelWithContext(ctx context.Context, recovery bool) error {
+func (c *Sys) RotateRecoveryVerificationUpdateWithContext(ctx context.Context, shard, nonce string) (*RekeyVerificationUpdateResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	var requestPath string
-	if recovery {
-		requestPath = "/v1/sys/rotate/recovery/verify"
-	} else {
-		requestPath = "/v1/sys/rotate/root/verify"
+	body := map[string]interface{}{
+		"key":   shard,
+		"nonce": nonce,
 	}
-	r := c.c.NewRequest(http.MethodDelete, requestPath)
+
+	r := c.c.NewRequest(http.MethodPut, "/v1/sys/rotate/recovery/verify")
+	if err := r.SetJSONBody(body); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Data *RekeyVerificationUpdateResponse
+	}
+	err = resp.DecodeJSON(&result)
+	return result.Data, err
+}
+
+func (c *Sys) RotateRootVerificationCancel() error {
+	return c.RotateRootVerificationCancelWithContext(context.Background())
+}
+
+func (c *Sys) RotateRootVerificationCancelWithContext(ctx context.Context) error {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodDelete, "/v1/sys/rotate/root/verify")
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err != nil {
@@ -283,12 +424,29 @@ func (c *Sys) RotateVerificationCancelWithContext(ctx context.Context, recovery 
 	return resp.Body.Close()
 }
 
-// Alias of RotateKeyring function.
+func (c *Sys) RotateRecoveryVerificationCancel() error {
+	return c.RotateRecoveryVerificationCancelWithContext(context.Background())
+}
+
+func (c *Sys) RotateRecoveryVerificationCancelWithContext(ctx context.Context) error {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodDelete, "/v1/sys/rotate/recovery/verify")
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return err
+	}
+	return resp.Body.Close()
+}
+
+// Deprecated: use RotateKeyring instead.
 func (c *Sys) Rotate() error {
 	return c.RotateWithContext(context.Background())
 }
 
-// Alias of RotateKeyringWithContext function.
+// Deprecated: use RotateKeyringWithContext instead.
 func (c *Sys) RotateWithContext(ctx context.Context) error {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()

@@ -64,9 +64,7 @@ var (
 // AES-GCM is high performance, and provides both confidentiality
 // and integrity.
 type AESGCMBarrier struct {
-	// needed for transactional backend
-	backend physical.Backend
-	view    *physical.View
+	view physical.View
 
 	l      sync.RWMutex
 	sealed bool
@@ -131,7 +129,6 @@ func (b *AESGCMBarrier) SetRotationConfig(ctx context.Context, rotConfig KeyRota
 // the provided physical backend for storage.
 func NewAESGCMBarrier(storage physical.Backend, metaPrefix string) SecurityBarrier {
 	b := &AESGCMBarrier{
-		backend:                  storage,
 		view:                     physical.NewView(storage, metaPrefix),
 		sealed:                   true,
 		cache:                    make(map[uint32]cipher.AEAD),
@@ -1270,7 +1267,7 @@ func (b *AESGCMBarrier) encryptions() int64 {
 }
 
 func (b *TransactionalAESGCMBarrier) BeginReadOnlyTx(ctx context.Context) (logical.Transaction, error) {
-	txn, err := b.AESGCMBarrier.backend.(physical.TransactionalBackend).BeginReadOnlyTx(ctx)
+	txn, err := b.AESGCMBarrier.view.(physical.TransactionalView).BeginReadOnlyTx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1282,7 +1279,7 @@ func (b *TransactionalAESGCMBarrier) BeginReadOnlyTx(ctx context.Context) (logic
 }
 
 func (b *TransactionalAESGCMBarrier) BeginTx(ctx context.Context) (logical.Transaction, error) {
-	txn, err := b.AESGCMBarrier.backend.(physical.TransactionalBackend).BeginTx(ctx)
+	txn, err := b.AESGCMBarrier.view.(physical.TransactionalView).BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}

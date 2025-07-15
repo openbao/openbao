@@ -405,7 +405,7 @@ func (t *BPlusTree) Delete(ctx context.Context, storage Storage, key string) (bo
 	}
 
 	// Remove the key-value pair from the leaf
-	if err := leaf.RemoveKeyAtImdex(idx); err != nil {
+	if err := leaf.RemoveKeyAtIndex(idx); err != nil {
 		return false, fmt.Errorf("failed to remove key: %w", err)
 	}
 	if err := leaf.RemoveValueAtIndex(idx); err != nil {
@@ -968,8 +968,10 @@ func (t *BPlusTree) mergeWithRightSibling(ctx context.Context, storage Storage, 
 
 	// Remove the separator key from parent
 	separatorIndex := nodeIndex
-	parent.Keys = slices.Delete(parent.Keys, separatorIndex, separatorIndex+1)
-	parent.ChildrenIDs = slices.Delete(parent.ChildrenIDs, nodeIndex+1, nodeIndex+2)
+	err := parent.RemoveKeyChildAtIndex(separatorIndex)
+	if err != nil {
+		return err
+	}
 
 	// Save the merged node and parent
 	if err := storage.SaveNode(ctx, node); err != nil {
@@ -1034,10 +1036,9 @@ func (t *BPlusTree) removeOrphanedSplitKeyInNode(ctx context.Context, storage St
 	successor, err := t.findSuccessorKey(ctx, storage, node, separatorIndex)
 	if err != nil { // TODO: Not on all errors...
 		// No right subtree available, remove the separator key entirely
-		node.Keys = slices.Delete(node.Keys, separatorIndex, separatorIndex+1)
-		// Also remove the corresponding child pointer
-		if separatorIndex+1 < len(node.ChildrenIDs) {
-			node.ChildrenIDs = slices.Delete(node.ChildrenIDs, separatorIndex+1, separatorIndex+2)
+		err := node.RemoveKeyChildAtIndex(separatorIndex)
+		if err != nil {
+			return false, err
 		}
 
 		// Save the node after removing the separator

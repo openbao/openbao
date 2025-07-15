@@ -217,9 +217,9 @@ func (n *Node) InsertKeyChild(key, childID string) error {
 	return nil
 }
 
-// RemoveKeyChildAt removes a key and its associated child at the specified index (internal nodes only)
+// RemoveKeyChildAtIndex removes a key and its associated child at the specified index (internal nodes only)
 // NOTE (gabrielopesantos): This is also not correct.
-func (n *Node) RemoveKeyChildAt(idx int) error {
+func (n *Node) RemoveKeyChildAtIndex(idx int) error {
 	if n.IsLeaf {
 		return ErrNotAnInternalNode
 	}
@@ -282,8 +282,8 @@ func (n *Node) RemoveKeyValuesEntry(key string) (RemovalResult, error) {
 	return KeyRemoved, nil
 }
 
-// RemoveKeyAtImdex removes a key at the specified index (low-level operation)
-func (n *Node) RemoveKeyAtImdex(idx int) error {
+// RemoveKeyAtIndex removes a key at the specified index (low-level operation)
+func (n *Node) RemoveKeyAtIndex(idx int) error {
 	if idx < 0 || idx >= len(n.Keys) {
 		return ErrKeyIndexOutOfBounds
 	}
@@ -365,7 +365,7 @@ func (n *Node) RemoveLastKeyValue() (string, []string, error) {
 	copy(valuesCopy, values)
 
 	// Remove the key and values
-	if err := n.RemoveKeyAtImdex(lastIdx); err != nil {
+	if err := n.RemoveKeyAtIndex(lastIdx); err != nil {
 		return "", nil, err
 	}
 	if err := n.RemoveValueAtIndex(lastIdx); err != nil {
@@ -394,7 +394,7 @@ func (n *Node) RemoveFirstKeyValue() (string, []string, error) {
 	copy(valuesCopy, values)
 
 	// Remove the key and values
-	if err := n.RemoveKeyAtImdex(0); err != nil {
+	if err := n.RemoveKeyAtIndex(0); err != nil {
 		return "", nil, err
 	}
 	if err := n.RemoveValueAtIndex(0); err != nil {
@@ -619,7 +619,7 @@ func (n *Node) BorrowLastKeyChildFromLeft(leftSibling *Node, separatorKey string
 	borrowedChild := leftSibling.ChildrenIDs[len(leftSibling.ChildrenIDs)-1]
 
 	// Remove from left sibling
-	if err := leftSibling.RemoveKeyAtImdex(len(leftSibling.Keys) - 1); err != nil {
+	if err := leftSibling.RemoveKeyAtIndex(len(leftSibling.Keys) - 1); err != nil {
 		return "", "", fmt.Errorf("failed to remove key from left sibling: %w", err)
 	}
 	leftSibling.ChildrenIDs = leftSibling.ChildrenIDs[:len(leftSibling.ChildrenIDs)-1]
@@ -646,7 +646,7 @@ func (n *Node) BorrowFirstKeyChildFromRight(rightSibling *Node, separatorKey str
 	borrowedChild := rightSibling.ChildrenIDs[0]
 
 	// Remove from right sibling
-	if err := rightSibling.RemoveKeyAtImdex(0); err != nil {
+	if err := rightSibling.RemoveKeyAtIndex(0); err != nil {
 		return "", "", fmt.Errorf("failed to remove key from right sibling: %w", err)
 	}
 	rightSibling.ChildrenIDs = rightSibling.ChildrenIDs[1:]

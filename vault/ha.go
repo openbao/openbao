@@ -395,6 +395,18 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}) {
 	defer close(manualStepDownCh)
 	c.logger.Info("entering standby mode")
 
+	// wipe any existing mount tables
+	if err := c.preSeal(); err != nil {
+		c.logger.Error("pre-seal teardown failed", "error", err)
+	}
+
+	perfCtx, perfCancel := context.WithCancel(namespace.RootContext(nil))
+	if err := c.postUnseal(perfCtx, perfCancel, readonlyUnsealStrategy{}); err != nil {
+		c.logger.Error("read-only post-unseal setup failed", "error", err)
+		c.barrier.Seal()
+		c.logger.Warn("vault is sealed")
+	}
+
 	var g run.Group
 	newLeaderCh := addEnterpriseHaActors(c, &g)
 	{
@@ -628,6 +640,11 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			c.logger.Error("leader advertisement setup failed", "error", err)
 			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 			continue
+		}
+
+		// wipe any existing mount tables before stepping up as leader
+		if err := c.preSeal(); err != nil {
+			c.logger.Error("pre-seal teardown failed", "error", err)
 		}
 
 		// Attempt the post-unseal process

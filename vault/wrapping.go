@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/armon/go-metrics"
-	"github.com/go-jose/go-jose/v3"
-	"github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -221,7 +221,7 @@ DONELISTHANDLING:
 			c.logger.Error("failed to create JWT builder", "error", err)
 			return nil, ErrInternalError
 		}
-		ser, err := jwt.Signed(sig).Claims(claims).Claims(priClaims).CompactSerialize()
+		ser, err := jwt.Signed(sig).Claims(claims).Claims(priClaims).Serialize()
 		if err != nil {
 			c.tokenStore.revokeOrphan(ctx, te.ID)
 			c.logger.Error("failed to serialize JWT", "error", err)
@@ -404,7 +404,7 @@ func (c *Core) validateWrappingToken(ctx context.Context, req *logical.Request) 
 	// and then a dot.
 	if IsJWT(token) {
 		// Implement the jose library way
-		parsedJWT, err := jwt.ParseSigned(token)
+		parsedJWT, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.ES512})
 		if err != nil {
 			return false, fmt.Errorf("wrapping token could not be parsed: %w", err)
 		}

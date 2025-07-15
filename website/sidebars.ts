@@ -514,6 +514,11 @@ const sidebars: SidebarsConfig = {
                 "rfcs/inline-auth",
                 "rfcs/authenticated-rekey",
                 "rfcs/self-init",
+                {
+                    "Horizontal Scalability": [
+                        "rfcs/standby-nodes-handle-read-requests",
+                    ],
+                },
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

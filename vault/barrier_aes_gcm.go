@@ -826,31 +826,27 @@ func (b *AESGCMBarrier) lockSwitchedGet(ctx context.Context, backend physical.Ba
 	if getLock {
 		b.l.RLock()
 	}
-	if b.sealed {
-		if getLock {
+
+	unlock := true
+	defer func() {
+		if getLock && unlock {
 			b.l.RUnlock()
 		}
+	}()
+
+	if b.sealed {
 		return nil, ErrBarrierSealed
 	}
 
 	// Read the key from the backend
 	pe, err := backend.Get(ctx, key)
 	if err != nil {
-		if getLock {
-			b.l.RUnlock()
-		}
 		return nil, err
 	} else if pe == nil {
-		if getLock {
-			b.l.RUnlock()
-		}
 		return nil, nil
 	}
 
 	if len(pe.Value) < 4 {
-		if getLock {
-			b.l.RUnlock()
-		}
 		return nil, errors.New("invalid value")
 	}
 
@@ -861,14 +857,16 @@ func (b *AESGCMBarrier) lockSwitchedGet(ctx context.Context, backend physical.Ba
 	// It is expensive to do this first but it is not a
 	// normal case that this won't match
 	gcm, err := b.aeadForTerm(term)
-	if getLock {
-		b.l.RUnlock()
-	}
 	if err != nil {
 		return nil, err
 	}
 	if gcm == nil {
 		return nil, fmt.Errorf("no decryption key available for term %d", term)
+	}
+
+	unlock = false
+	if getLock {
+		b.l.RUnlock()
 	}
 
 	// Decrypt the ciphertext

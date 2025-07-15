@@ -95,10 +95,9 @@ func (v *view) Get(ctx context.Context, key string) (*Entry, error) {
 	if entry == nil {
 		return nil, nil
 	}
-	entry.Key = v.truncateKey(entry.Key)
 
 	return &Entry{
-		Key:   entry.Key,
+		Key:   v.truncateKey(entry.Key),
 		Value: entry.Value,
 	}, nil
 }

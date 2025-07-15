@@ -561,16 +561,6 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		c.stateLock.RLock()
 		defer c.stateLock.RUnlock()
 	}
-	if c.Sealed() {
-		return nil, consts.ErrSealed
-	}
-	if c.standby {
-		return nil, consts.ErrStandby
-	}
-
-	if c.activeContext == nil || c.activeContext.Err() != nil {
-		return nil, errors.New("active context canceled after getting state lock")
-	}
 
 	ctx, cancel := context.WithCancel(c.activeContext)
 	go func(ctx context.Context, httpCtx context.Context) {

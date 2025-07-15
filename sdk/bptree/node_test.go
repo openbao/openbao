@@ -278,25 +278,25 @@ func TestRemoveKeyChildAt(t *testing.T) {
 	node.InsertKeyChild("key3", "child3")
 
 	// Remove middle entry
-	err := node.RemoveKeyChildAt(1)
+	err := node.RemoveKeyChildAtIndex(1)
 	require.NoError(t, err)
 	require.Equal(t, []string{"key1", "key3"}, node.Keys)
 	require.Equal(t, []string{"child0", "child1", "child3"}, node.ChildrenIDs)
 
 	// Remove first entry
-	err = node.RemoveKeyChildAt(0)
+	err = node.RemoveKeyChildAtIndex(0)
 	require.NoError(t, err)
 	require.Equal(t, []string{"key3"}, node.Keys)
 	require.Equal(t, []string{"child0", "child3"}, node.ChildrenIDs)
 
 	// Remove last entry
-	err = node.RemoveKeyChildAt(0)
+	err = node.RemoveKeyChildAtIndex(0)
 	require.NoError(t, err)
 	require.Empty(t, node.Keys)
 	require.Equal(t, []string{"child0"}, node.ChildrenIDs)
 
 	// Remove from empty node
-	err = node.RemoveKeyChildAt(0)
+	err = node.RemoveKeyChildAtIndex(0)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "index out of bounds")
 }

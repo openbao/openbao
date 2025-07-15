@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/cli"
+	"github.com/openbao/openbao/vault"
 	"github.com/posener/complete"
 )
 
@@ -107,7 +108,7 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return 2
 	}
 
-	seals, err := c.parseSeals()
+	sealConfigs, err := c.parseSeals()
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error parsing seal configs: %s", err))
 		return 2
@@ -115,7 +116,7 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 
 	data := map[string]interface{}{
 		"custom_metadata": c.flagCustomMetadata,
-		"seals":           seals,
+		"seals":           sealConfigs,
 	}
 
 	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath, data)
@@ -129,19 +130,19 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return PrintRawField(c.UI, secret, c.flagField)
 	}
 
-	if len(seals) > 0 {
-		// TODO: (wslabosz)
-		// Handle Output for multiple seals
-		// Improve this response parsing
-		keySharesMap := secret.Data["key_shares"].(map[string]interface{})
-		if keySharesMap != nil {
+	if len(sealConfigs) > 0 {
+		// TODO(wslabosz): handle output for multiple seals
+		keySharesMap, ok := secret.Data["key_shares"].(map[string]interface{})
+		if ok {
 			defaultKeyShares := keySharesMap["default"].([]interface{})
 			for i, key := range defaultKeyShares {
 				c.UI.Output(fmt.Sprintf("Unseal Key %d: %s", i+1, key))
 			}
 		}
-		secretShares := int(seals[0]["secret_shares"].(float64))
-		secretThreshold := int(seals[0]["secret_threshold"].(float64))
+
+		// for now the assumption is that there's just one config
+		secretShares := sealConfigs[0].SecretShares
+		secretThreshold := sealConfigs[0].SecretThreshold
 
 		c.UI.Output("")
 		c.UI.Output(wrapAtLength(fmt.Sprintf(
@@ -158,7 +159,7 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 	return OutputSecret(c.UI, secret)
 }
 
-func (c *NamespaceCreateCommand) parseSeals() ([]map[string]interface{}, error) {
+func (c *NamespaceCreateCommand) parseSeals() ([]*vault.SealConfig, error) {
 	path := c.flagSealsConfigPath
 	if path == "" {
 		return nil, nil
@@ -169,10 +170,10 @@ func (c *NamespaceCreateCommand) parseSeals() ([]map[string]interface{}, error) 
 		return nil, err
 	}
 
-	var rawSeals []map[string]interface{}
-	if err := json.Unmarshal(data, &rawSeals); err != nil {
+	var sealConfigs []*vault.SealConfig
+	if err := json.Unmarshal(data, &sealConfigs); err != nil {
 		return nil, err
 	}
 
-	return rawSeals, nil
+	return sealConfigs, nil
 }

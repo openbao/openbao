@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 
@@ -299,10 +300,9 @@ func createNamespaceDataResponse(ns *namespace.Namespace, keySharesMap map[strin
 		"locked":          ns.Locked,
 		"custom_metadata": ns.CustomMetadata,
 	}
-	if len(keySharesMap) != 0 {
-		for sealName, shares := range keySharesMap {
-			ret["key_shares"].(map[string][]string)[sealName] = shares
-		}
+	if len(keySharesMap) > 0 {
+		ret["key_shares"] = make(map[string][]string, len(keySharesMap))
+		maps.Copy(ret["key_shares"].(map[string][]string), keySharesMap)
 	}
 
 	return ret

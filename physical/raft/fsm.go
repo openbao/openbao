@@ -923,7 +923,7 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 	}
 
 	if f.invalidateHook != nil {
-		go func() { // Call the callback asynchronously, to keep time we hold the db look low
+		go func() { // Call the callback asynchronously, to keep time we hold the db lock low
 			for _, commandRaw := range commands {
 				switch command := commandRaw.(type) {
 				case *LogData:

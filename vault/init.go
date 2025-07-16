@@ -181,14 +181,10 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 
 	barrierConfig.StoredShares = 1
 
-	if len(barrierConfig.PGPKeys) > 0 && len(barrierConfig.PGPKeys) != barrierConfig.SecretShares {
-		return nil, errors.New("incorrect number of PGP keys")
-	}
-
-	if c.SealAccess().RecoveryKeySupported() {
-		if len(recoveryConfig.PGPKeys) > 0 && len(recoveryConfig.PGPKeys) != recoveryConfig.SecretShares {
-			return nil, errors.New("incorrect number of PGP keys for recovery")
-		}
+	// Check if the seal configuration is valid
+	if err := barrierConfig.Validate(); err != nil {
+		c.logger.Error("invalid seal configuration", "error", err)
+		return nil, fmt.Errorf("invalid seal configuration: %w", err)
 	}
 
 	if c.seal.RecoveryKeySupported() {
@@ -196,21 +192,11 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 			return nil, errors.New("recovery configuration must be supplied")
 		}
 
-		if recoveryConfig.SecretShares < 1 {
-			return nil, errors.New("recovery configuration must specify a positive number of shares")
-		}
-
 		// Check if the seal configuration is valid
-		if err := recoveryConfig.Validate(); err != nil {
+		if err := recoveryConfig.ValidateRecovery(); err != nil {
 			c.logger.Error("invalid recovery configuration", "error", err)
 			return nil, fmt.Errorf("invalid recovery configuration: %w", err)
 		}
-	}
-
-	// Check if the seal configuration is valid
-	if err := barrierConfig.Validate(); err != nil {
-		c.logger.Error("invalid seal configuration", "error", err)
-		return nil, fmt.Errorf("invalid seal configuration: %w", err)
 	}
 
 	// Avoid an initialization race

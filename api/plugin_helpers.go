@@ -64,8 +64,11 @@ var sudoPaths = map[string]*regexp.Regexp{
 	"/sys/revoke-force/{prefix}":                    regexp.MustCompile(`^/sys/revoke-force/.+$`),
 	"/sys/revoke-prefix/{prefix}":                   regexp.MustCompile(`^/sys/revoke-prefix/.+$`),
 	"/sys/rotate":                                   regexp.MustCompile(`^/sys/rotate$`),
-	"/sys/internal/inspect/request":                 regexp.MustCompile(`^/sys/internal/inspect/request$`),
-	"/sys/internal/inspect/router/{tag}":            regexp.MustCompile(`^/sys/internal/inspect/router/.+$`),
+	// equivalent of '/sys/rotate'
+	"/sys/rotate/keyring":                regexp.MustCompile(`^/sys/rotate/keyring$`),
+	"/sys/rotate/root":                   regexp.MustCompile(`^/sys/rotate/root$`),
+	"/sys/internal/inspect/request":      regexp.MustCompile(`^/sys/internal/inspect/request$`),
+	"/sys/internal/inspect/router/{tag}": regexp.MustCompile(`^/sys/internal/inspect/router/.+$`),
 }
 
 // PluginAPIClientMeta is a helper that plugins can use to configure TLS connections

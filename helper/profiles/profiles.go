@@ -478,13 +478,25 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 
 	defer sourceEval.Close(ctx)
 
-	// XXX (ascheel) - We will need to validate that history aligns with our
-	// expectations at this point in time, however, our actual builder
-	// initialization and validation call will be moved earlier to profile
-	// validation.
-	_, _, err = sourceEval.Validate(ctx)
+	accessedRequests, accessedResponses, err := sourceEval.Validate(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source '%v': %w", source, err)
+	}
+
+	if len(accessedRequests) == 0 && len(accessedResponses) == 0 {
+		return nil, fmt.Errorf("no valid requests or responses found")
+	}
+
+	for _, req := range accessedRequests {
+		if req == "" {
+			return nil, fmt.Errorf("invalid empty request name found")
+		}
+	}
+
+	for _, resp := range accessedResponses {
+		if resp == "" {
+			return nil, fmt.Errorf("invalid empty response name found")
+		}
 	}
 
 	val, err := sourceEval.Evaluate(ctx, history)
@@ -493,9 +505,6 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 	}
 
 	for outerName, innerMap := range history.Requests {
-		if outerName == "" {
-			return nil, fmt.Errorf("history request: missing outer block name")
-		}
 		for reqName := range innerMap {
 			if _, ok := history.Responses[outerName][reqName]; !ok {
 				return nil, fmt.Errorf(
@@ -505,9 +514,6 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 			}
 		}
 	}
-	// XXX (ascheel) - add handling of objType here; make sure val is
-	// assertable to the desired type, which might require another call to
-	// mapstructure here.
 
 	convertedVal, err := p.convertToType(val, objType)
 	if err != nil {
@@ -526,28 +532,28 @@ func (p *ProfileEngine) convertToType(val interface{}, objType string) (interfac
 	case "string":
 		var result string
 		if err := mapstructure.WeakDecode(val, &result); err != nil {
-			return nil, fmt.Errorf("cannot convert to string: %w", err)
+			return nil, fmt.Errorf("conversion-error: cannot convert value to type '%s'", objType)
 		}
 		return result, nil
 
 	case "int":
 		var result int
 		if err := mapstructure.WeakDecode(val, &result); err != nil {
-			return nil, fmt.Errorf("cannot convert to int: %w", err)
+			return nil, fmt.Errorf("conversion-error: cannot convert value to type '%s'", objType)
 		}
 		return result, nil
 
 	case "float64":
 		var result float64
 		if err := mapstructure.WeakDecode(val, &result); err != nil {
-			return nil, fmt.Errorf("cannot convert to float64: %w", err)
+			return nil, fmt.Errorf("conversion-error: cannot convert value to type '%s'", objType)
 		}
 		return result, nil
 
 	case "bool":
 		var result bool
 		if err := mapstructure.WeakDecode(val, &result); err != nil {
-			return nil, fmt.Errorf("cannot convert to bool: %w", err)
+			return nil, fmt.Errorf("conversion-error: cannot convert value to type '%s'", objType)
 		}
 		return result, nil
 
@@ -565,7 +571,7 @@ func (p *ProfileEngine) convertToType(val interface{}, objType string) (interfac
 		}
 		return result, nil
 
-	case "interface{}":
+	case "any", "interface{}":
 		return val, nil
 
 	default:

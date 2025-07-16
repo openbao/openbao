@@ -64,10 +64,11 @@ var getMmapFlags = func(string) int { return 0 }
 
 // Verify RaftBackend satisfies the correct interfaces
 var (
-	_ physical.Backend       = (*RaftBackend)(nil)
-	_ physical.Transactional = (*RaftBackend)(nil)
-	_ physical.HABackend     = (*RaftBackend)(nil)
-	_ physical.Lock          = (*RaftLock)(nil)
+	_ physical.Backend                  = (*RaftBackend)(nil)
+	_ physical.Transactional            = (*RaftBackend)(nil)
+	_ physical.HABackend                = (*RaftBackend)(nil)
+	_ physical.CacheInvalidationBackend = (*RaftBackend)(nil)
+	_ physical.Lock                     = (*RaftLock)(nil)
 )
 
 var (
@@ -204,6 +205,16 @@ type RaftBackend struct {
 
 	effectiveSDKVersion string
 	failGetInTxn        *uint32
+}
+
+// HookInvalidate implements physical.CacheInvalidationBackend.
+func (r *RaftBackend) HookInvalidate(hook physical.InvalidateFunc) {
+	r.fsm.hookInvalidate(func(key string) {
+		_, leaderId := r.raft.LeaderWithID()
+		if r.localID != string(leaderId) {
+			hook(key)
+		}
+	})
 }
 
 // LeaderJoinInfo contains information required by a node to join itself as a

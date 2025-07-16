@@ -136,6 +136,8 @@ type FSM struct {
 
 	// tracker for fast application of transactions
 	fastTxnTracker *fsmTxnCommitIndexTracker
+
+	invalidateHook physical.InvalidateFunc
 }
 
 // NewFSM constructs a FSM using the given directory
@@ -176,6 +178,13 @@ func NewFSM(path string, localID string, logger log.Logger) (*FSM, error) {
 	}
 
 	return f, nil
+}
+
+func (f *FSM) hookInvalidate(hook physical.InvalidateFunc) {
+	f.l.Lock()
+	defer f.l.Unlock()
+
+	f.invalidateHook = hook
 }
 
 func (f *FSM) getDB() *bolt.DB {
@@ -921,6 +930,22 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 
 	if lowestActiveIndex != nil {
 		f.fastTxnTracker.clearOldEntries(*lowestActiveIndex)
+	}
+
+	if f.invalidateHook != nil {
+		go func() { // Call the callback asynchronously, to keep time we hold the db lock low
+			for _, commandRaw := range commands {
+				switch command := commandRaw.(type) {
+				case *LogData:
+					for _, op := range command.Operations {
+						switch op.OpType {
+						case putOp, deleteOp:
+							f.invalidateHook(op.Key)
+						}
+					}
+				}
+			}
+		}()
 	}
 
 	// If we advanced the latest value, update the in-memory representation too.

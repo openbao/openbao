@@ -253,6 +253,7 @@ proto: bootstrap
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative vault/tokens/token.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative sdk/helper/pluginutil/*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative builtin/logical/pki/*.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative sdk/joinplugin/pb/*.proto
 
 	# No additional sed expressions should be added to this list. Going forward
 	# we should just use the variable names chosen by protobuf. These are left
@@ -313,6 +314,9 @@ hana-database-plugin:
 
 mongodb-database-plugin:
 	@CGO_ENABLED=0 $(GO_CMD) build -o bin/mongodb-database-plugin ./plugins/database/mongodb/mongodb-database-plugin
+
+discover-join-plugin:
+	@CGO_ENABLED=0 $(GO_CMD) build -o bin/discover-join-plugin ./plugins/join/discover/discover-join-plugin
 
 .PHONY: bin default prep test vet bootstrap ci-bootstrap fmt fmtcheck mysql-database-plugin mysql-legacy-database-plugin cassandra-database-plugin influxdb-database-plugin postgresql-database-plugin mssql-database-plugin hana-database-plugin mongodb-database-plugin ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-openbao-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
 

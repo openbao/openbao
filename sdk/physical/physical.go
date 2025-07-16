@@ -60,6 +60,16 @@ type Backend interface {
 	ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error)
 }
 
+// CacheInvalidationBackend is an extension to the standard physical
+// backend to support cache invalidation. OpenBao can serve read requests
+// from standby nodes, but only if the storage backend can inform standby
+// nodes when writes happen on the leader (to ensure caches are flushed)
+type CacheInvalidationBackend interface {
+	HookInvalidate(hook InvalidateFunc)
+}
+
+type InvalidateFunc func(key string)
+
 // HABackend is an extensions to the standard physical
 // backend to support high-availability. Vault only expects to
 // use mutual exclusion to allow multiple instances to act as a

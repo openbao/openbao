@@ -101,8 +101,11 @@ var (
 		"/v1/sys/policy/",
 		"/v1/sys/rekey/backup",
 		"/v1/sys/rekey/recovery-key-backup",
+		"/v1/sys/rotate/root/backup",
+		"/v1/sys/rotate/recovery/backup",
 		"/v1/sys/remount",
 		"/v1/sys/rotate",
+		"/v1/sys/rotate/keyring",
 		"/v1/sys/wrapping/wrap",
 	}
 

@@ -86,6 +86,8 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"raw",
 				"raw/*",
 				"rotate",
+				"rotate/keyring",
+				"rotate/root",
 				"config/cors",
 				"config/auditing/*",
 				"config/ui/headers/*",
@@ -117,13 +119,15 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"generate-root/attempt",
 				"generate-root/update",
 				"decode-token",
+				"mfa/validate",
+				// these endpoint are unauthenticated only with
+				// "disable_unauthed_rekey_endpoints" listener property set to true
 				"rekey/init",
 				"rekey/update",
 				"rekey/verify",
 				"rekey-recovery-key/init",
 				"rekey-recovery-key/update",
 				"rekey-recovery-key/verify",
-				"mfa/validate",
 			},
 
 			LocalStorage: []string{
@@ -135,6 +139,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 
 	b.Backend.Paths = append(b.Backend.Paths, b.configPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.rekeyPaths()...)
+	b.Backend.Paths = append(b.Backend.Paths, b.rotatePaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.sealPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.statusPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.pluginsCatalogListPaths()...)
@@ -3283,84 +3288,6 @@ func (b *SystemBackend) handleKeyStatus(ctx context.Context, req *logical.Reques
 	return resp, nil
 }
 
-// handleKeyRotationConfigRead returns the barrier key rotation config
-func (b *SystemBackend) handleKeyRotationConfigRead(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	// Get the key info
-	rotConfig, err := b.Core.barrier.RotationConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &logical.Response{
-		Data: map[string]interface{}{
-			"max_operations": rotConfig.MaxOperations,
-			"enabled":        !rotConfig.Disabled,
-		},
-	}
-	if rotConfig.Interval > 0 {
-		resp.Data["interval"] = rotConfig.Interval.String()
-	} else {
-		resp.Data["interval"] = 0
-	}
-	return resp, nil
-}
-
-// handleKeyRotationConfigRead returns the barrier key rotation config
-func (b *SystemBackend) handleKeyRotationConfigUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	rotConfig, err := b.Core.barrier.RotationConfig()
-	if err != nil {
-		return nil, err
-	}
-	maxOps, ok, err := data.GetOkErr("max_operations")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.MaxOperations = maxOps.(int64)
-	}
-	interval, ok, err := data.GetOkErr("interval")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.Interval = time.Second * time.Duration(interval.(int))
-	}
-
-	enabled, ok, err := data.GetOkErr("enabled")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.Disabled = !enabled.(bool)
-	}
-
-	// Reject out of range settings
-	if rotConfig.Interval < minimumRotationInterval && rotConfig.Interval != 0 {
-		return logical.ErrorResponse("interval must be greater or equal to %s", minimumRotationInterval.String()), logical.ErrInvalidRequest
-	}
-
-	if rotConfig.MaxOperations < absoluteOperationMinimum || rotConfig.MaxOperations > absoluteOperationMaximum {
-		return logical.ErrorResponse("max_operations must be in the range [%d,%d]", absoluteOperationMinimum, absoluteOperationMaximum), logical.ErrInvalidRequest
-	}
-
-	// Store the rotation config
-	err = b.Core.barrier.SetRotationConfig(ctx, rotConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-// handleRotate is used to trigger a key rotation
-func (b *SystemBackend) handleRotate(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	if err := b.rotateBarrierKey(ctx); err != nil {
-		b.Backend.Logger().Error("error handling key rotation", "error", err)
-		return handleError(err)
-	}
-	return nil, nil
-}
-
 func (b *SystemBackend) handleWrappingPubkey(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	x, _ := b.Core.wrappingJWTKey.X.MarshalText()
 	y, _ := b.Core.wrappingJWTKey.Y.MarshalText()
@@ -5574,6 +5501,7 @@ Enable a new audit backend or disable an existing backend.
 		"How long after installation of an active key term that the key will be automatically rotated.",
 		"",
 	},
+
 	"rotate": {
 		"Rotates the backend encryption key used to persist data.",
 		`
@@ -5582,7 +5510,28 @@ Enable a new audit backend or disable an existing backend.
 		that data encrypted using those keys can still be decrypted.
 		`,
 	},
-
+	"rotate_root": {
+		"Perform a root key rotation without requiring key shares to be provided.",
+		"",
+	},
+	"rotate_init": {
+		"Intialize, read status or cancel the process of the rotation of the root or recovery key",
+		"",
+	},
+	"rotate_update": {
+		"Progress the rotation process by providing a single key share.",
+		`This endpoint is used to enter a single key share to progress the
+		rotation of the recovery or root key. If the threshold number of key
+		shares is reached, rotation will be completed. Otherwise, this API
+		must be called multiple times until that threshold is met.
+		The rotation nonce operation must be provided with each call.
+		On the final call, any new key shares will be returned immediately.
+		`,
+	},
+	"rotate_verify": {
+		"Read status of, progress or cancel the verification process of the rotation attempt",
+		"",
+	},
 	"rekey_backup": {
 		"Allows fetching or deleting the backup of the rotated unseal keys.",
 		"",

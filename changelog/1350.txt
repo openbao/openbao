@@ -1,0 +1,3 @@
+```release-note:feature
+**Transit**: Update documentation concerning the ECDH key agreement Transit API.
+```

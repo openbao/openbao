@@ -1,0 +1,3 @@
+```release-note:feature
+storage/raft: auto-join is now a pluggable feature, allowing support for new environments with custom plugins.
+```

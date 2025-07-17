@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"net/http"
 	"strings"
 
@@ -290,7 +289,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 }
 
 // createNamespaceDataResponse is the standard response object
-// for any operations concerning a namespace
+// for any operations concerning a namespace.
 func createNamespaceDataResponse(ns *namespace.Namespace, keySharesMap map[string][]string) map[string]any {
 	ret := map[string]any{
 		"uuid":            ns.UUID,
@@ -301,8 +300,7 @@ func createNamespaceDataResponse(ns *namespace.Namespace, keySharesMap map[strin
 		"custom_metadata": ns.CustomMetadata,
 	}
 	if len(keySharesMap) > 0 {
-		ret["key_shares"] = make(map[string][]string, len(keySharesMap))
-		maps.Copy(ret["key_shares"].(map[string][]string), keySharesMap)
+		ret["key_shares"] = keySharesMap
 	}
 
 	return ret

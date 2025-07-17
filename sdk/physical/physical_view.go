@@ -33,10 +33,7 @@ type ViewTransaction interface {
 	ViewCore
 }
 
-var (
-	_ Backend = &view{}
-	_ View    = &view{}
-)
+var _ Backend = &view{}
 
 // View represents a prefixed view of a physical backend
 type view struct {
@@ -47,24 +44,20 @@ type view struct {
 // NewView takes an underlying physical backend and returns
 // a view of it that can only operate with the given prefix.
 func NewView(backend Backend, prefix string) View {
-	v := &view{
+	v := view{
 		backend: backend,
 		prefix:  prefix,
 	}
 
 	if _, ok := backend.(TransactionalBackend); ok {
-		return &transactionalView{
-			*v,
-		}
+		return &transactionalView{v}
 	}
 
 	if _, ok := backend.(Transaction); ok {
-		return &viewTransaction{
-			*v,
-		}
+		return &viewTransaction{v}
 	}
 
-	return v
+	return &v
 }
 
 // List the contents of the prefixed view
@@ -152,7 +145,6 @@ type transactionalView struct {
 
 var (
 	_ Backend              = &transactionalView{}
-	_ View                 = &transactionalView{}
 	_ TransactionalBackend = &transactionalView{}
 	_ TransactionalView    = &transactionalView{}
 )
@@ -163,7 +155,6 @@ type viewTransaction struct {
 
 var (
 	_ Backend         = &viewTransaction{}
-	_ View            = &viewTransaction{}
 	_ Transaction     = &viewTransaction{}
 	_ ViewTransaction = &viewTransaction{}
 )

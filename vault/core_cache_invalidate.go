@@ -34,12 +34,11 @@ func (c *Core) Invalidate(key string) {
 	case strings.HasPrefix(namespacedKey, namespaceStoreSubPath):
 		c.namespaceStore.invalidate(ctx, "")
 
-	case strings.HasPrefix(namespacedKey, "sys/policy/"):
+	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath):
 		policyType := PolicyTypeACL // for now it is safe to assume type is ACL
-		c.policyStore.invalidate(ctx, strings.TrimPrefix(namespacedKey, "sys/policy/"), policyType)
+		c.policyStore.invalidate(ctx, strings.TrimPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath), policyType)
 
 	default:
 		c.logger.Warn("no idea how to invalidate cache. Maybe it's not cached and this is fine, maybe not", "key", key)
 	}
-
 }

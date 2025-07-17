@@ -50,7 +50,6 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 	req := logical.TestRequest(t, logical.ReadOperation, "sys/namespaces/ns")
 	req.ClientToken = root
 	resp, err := c.HandleRequest(namespace.RootContext(nil), req)
-
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -63,7 +62,6 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 }
 
 func TestCore_Invalidate_Policy(t *testing.T) {
-
 	testCases := map[string]func(t *testing.T, c *Core) (storagePath string, ctx context.Context){
 		"global": func(t *testing.T, c *Core) (storagePath string, ctx context.Context) {
 			return "sys/policy/test-policy", namespace.RootContext(t.Context())
@@ -93,9 +91,9 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 					path "test/path/*" {
 						capabilities = ["read"]
 					}
-			`}
+			`,
+			}
 			resp, err := c.HandleRequest(ctx, req)
-
 			if err != nil {
 				t.Fatalf("err: %v", err)
 			}

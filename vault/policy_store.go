@@ -237,6 +237,17 @@ func (c *Core) teardownPolicyStore() error {
 	return nil
 }
 
+func (ps *PolicyStore) invalidateNamespace(uuid string) {
+	ps.modifyLock.Lock()
+	defer ps.modifyLock.Unlock()
+
+	for _, key := range ps.tokenPoliciesLRU.Keys() {
+		if strings.HasPrefix(key, uuid) {
+			ps.tokenPoliciesLRU.Remove(key)
+		}
+	}
+}
+
 func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType PolicyType) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -774,7 +785,7 @@ func (ps *PolicyStore) sanitizeName(name string) string {
 }
 
 func (ps *PolicyStore) cacheKey(ns *namespace.Namespace, name string) string {
-	return path.Join(ns.ID, name)
+	return path.Join(ns.UUID, name)
 }
 
 // loadDefaultPolicies loads default policies for the namespace in the provided context

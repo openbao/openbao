@@ -20,11 +20,13 @@ func (c *Core) Invalidate(key string) {
 		namespaceUUID, namespacedKey, _ = strings.Cut(keySuffix, "/")
 		var err error
 		ns, err = c.namespaceStore.GetNamespace(ctx, namespaceUUID)
-
 		if err != nil {
-			c.logger.Error("error while invalidating cache: could not find namespace", "key", key, "error", err.Error())
-			// We can't find the namespace, but let's still try to invalidate the cache
-			ns = namespace.RootNamespace
+			c.logger.Debug("error while invalidating cache: could not find namespace", "key", key, "error", err.Error())
+			// We can't find the namespace, this can happen for two reasons:
+			// 1. The namespace was deleted already
+			// 2. The namespace has just been created (and the core/namespaces/<uuid> key was not yet invalidated)
+			// We will also recive a invalidation request for the core/namespaces/<uuid> key in both cases, so we are fine
+			return
 		}
 	}
 
@@ -33,6 +35,7 @@ func (c *Core) Invalidate(key string) {
 	switch {
 	case strings.HasPrefix(namespacedKey, namespaceStoreSubPath):
 		c.namespaceStore.invalidate(ctx, "")
+		c.policyStore.invalidateNamespace(strings.TrimPrefix(namespacedKey, namespaceStoreSubPath))
 
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath):
 		policyType := PolicyTypeACL // for now it is safe to assume type is ACL

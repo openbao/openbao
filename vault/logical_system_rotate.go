@@ -503,7 +503,7 @@ func (b *SystemBackend) handleKeyRotationConfigUpdate() framework.OperationFunc 
 func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 	return func(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 		// Get the seal configuration
-		existingConfig, err := b.Core.SealAccess().BarrierConfig(ctx)
+		existingConfig, err := b.Core.SealAccess().Config(ctx)
 		if err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to fetch existing config: %w", err).Error())
 		}
@@ -538,7 +538,7 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 // endpoints retrieving the on-going rotation (if there's any) operation status.
 func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		barrierConfig, err := b.Core.SealAccess().BarrierConfig(ctx)
+		barrierConfig, err := b.Core.SealAccess().Config(ctx)
 		if err != nil {
 			return handleError(err)
 		}
@@ -752,7 +752,7 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 // endpoints retrieving the on-going rotation verification (if there's any) operation status.
 func (b *SystemBackend) handleRotateVerifyGet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		barrierConfig, err := b.Core.SealAccess().BarrierConfig(ctx)
+		barrierConfig, err := b.Core.SealAccess().Config(ctx)
 		if err != nil {
 			return handleError(err)
 		}

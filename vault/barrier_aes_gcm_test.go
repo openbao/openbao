@@ -674,27 +674,21 @@ func TestBarrier_persistKeyring_Context(t *testing.T) {
 
 func TestAESGCMBarrier_Prefix_Basic(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	b := NewAESGCMBarrier(inm, "prefix/")
 	testBarrier(t, b.(*TransactionalAESGCMBarrier))
 }
 
 func TestAESGCMBarrier_Prefix_Rotate(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	b := NewAESGCMBarrier(inm, "prefix/")
 	testBarrier_Rotate(t, b.(*TransactionalAESGCMBarrier))
 }
 
 func TestAESGCMBarrier_Prefix_MissingRotateConfig(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	sb := NewAESGCMBarrier(inm, "prefix/")
 	b := sb.(*TransactionalAESGCMBarrier)
 
@@ -718,9 +712,7 @@ func TestAESGCMBarrier_Prefix_MissingRotateConfig(t *testing.T) {
 
 func TestAESGCMBarrier_Prefix_Upgrade(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	b1 := NewAESGCMBarrier(inm, "prefix/")
 	b2 := NewAESGCMBarrier(inm, "prefix/")
 	testBarrier_Upgrade(t, b1.(*TransactionalAESGCMBarrier), b2.(*TransactionalAESGCMBarrier))
@@ -728,9 +720,7 @@ func TestAESGCMBarrier_Prefix_Upgrade(t *testing.T) {
 
 func TestAESGCMBarrier_Prefix_Upgrade_Rekey(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	b1 := NewAESGCMBarrier(inm, "prefix/")
 	b2 := NewAESGCMBarrier(inm, "prefix/")
 	testBarrier_Upgrade_Rekey(t, b1.(*TransactionalAESGCMBarrier), b2.(*TransactionalAESGCMBarrier))
@@ -738,9 +728,7 @@ func TestAESGCMBarrier_Prefix_Upgrade_Rekey(t *testing.T) {
 
 func TestAESGCMBarrier_Prefix_Rekey(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 	b := NewAESGCMBarrier(inm, "prefix/")
 	testBarrier_Rekey(t, b.(*TransactionalAESGCMBarrier))
 }

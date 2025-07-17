@@ -59,7 +59,7 @@ func (c *Core) RotationThreshold(ctx context.Context, recovery bool) (int, logic
 	if recovery || c.seal.RecoveryKeySupported() {
 		config, err = c.seal.RecoveryConfig(ctx)
 	} else {
-		config, err = c.seal.BarrierConfig(ctx)
+		config, err = c.seal.Config(ctx)
 	}
 
 	if err != nil {
@@ -203,7 +203,7 @@ func (c *Core) initBarrierRotation(config *SealConfig, nonce string) logical.HTT
 		config.StoredShares = 1
 	}
 
-	if c.seal.BarrierType() != wrapping.WrapperTypeShamir {
+	if c.seal.WrapperType() != wrapping.WrapperTypeShamir {
 		config.SecretShares = 1
 		config.SecretThreshold = 1
 
@@ -268,7 +268,7 @@ func (c *Core) UpdateRotation(ctx context.Context, key []byte, nonce string, rec
 		config, err = c.seal.RecoveryConfig(ctx)
 		useRecovery = true
 	} else {
-		config, err = c.seal.BarrierConfig(ctx)
+		config, err = c.seal.Config(ctx)
 	}
 
 	if err != nil {
@@ -353,7 +353,7 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 			c.logger.Error("recovery key verification failed", "error", err)
 			return nil, logical.CodedError(http.StatusBadRequest, "recovery key verification failed: %v", err)
 		}
-	case c.seal.BarrierType() == wrapping.WrapperTypeShamir:
+	case c.seal.WrapperType() == wrapping.WrapperTypeShamir:
 		if c.seal.StoredKeysSupported() == seal.StoredKeysSupportedShamirRoot {
 			shamirWrapper := aeadwrapper.NewShamirWrapper()
 			testseal := NewDefaultSeal(seal.NewAccess(shamirWrapper))
@@ -363,11 +363,11 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup unseal key: %v", err)
 			}
 
-			cfg, err := c.seal.BarrierConfig(ctx)
+			cfg, err := c.seal.Config(ctx)
 			if err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup test barrier config: %v", err)
 			}
-			testseal.SetCachedBarrierConfig(cfg)
+			testseal.SetCachedConfig(cfg)
 
 			stored, err := testseal.GetStoredKeys(ctx)
 			if err != nil {

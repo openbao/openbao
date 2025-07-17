@@ -4,14 +4,25 @@
 package vault
 
 import (
+	"context"
 	"strings"
+	"time"
 
 	"github.com/openbao/openbao/helper/namespace"
 )
 
 func (c *Core) Invalidate(key string) {
-	ctx := c.activeContext
+	ctx, cancel := context.WithTimeout(c.activeContext, 2*time.Second)
+	defer cancel()
 
+	err := c.invalidateInternal(ctx, key)
+	if err != nil {
+		c.logger.Error("cache invalidation failed", "key", key, "error", err.Error())
+		// TODO(phil9909): It's not save to continue, restart the core
+	}
+}
+
+func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 	namespacedKey := key
 	ns := namespace.RootNamespace
 	namespaceUUID := namespace.RootNamespaceUUID
@@ -26,7 +37,7 @@ func (c *Core) Invalidate(key string) {
 			// 1. The namespace was deleted already
 			// 2. The namespace has just been created (and the core/namespaces/<uuid> key was not yet invalidated)
 			// We will also recive a invalidation request for the core/namespaces/<uuid> key in both cases, so we are fine
-			return
+			return nil
 		}
 	}
 
@@ -34,7 +45,10 @@ func (c *Core) Invalidate(key string) {
 
 	switch {
 	case strings.HasPrefix(namespacedKey, namespaceStoreSubPath):
-		c.namespaceStore.invalidate(ctx, "")
+		err := c.namespaceStore.invalidate(ctx, "")
+		if err != nil {
+			return err
+		}
 		c.policyStore.invalidateNamespace(strings.TrimPrefix(namespacedKey, namespaceStoreSubPath))
 
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath):
@@ -44,4 +58,6 @@ func (c *Core) Invalidate(key string) {
 	default:
 		c.logger.Warn("no idea how to invalidate cache. Maybe it's not cached and this is fine, maybe not", "key", key)
 	}
+
+	return ctx.Err()
 }

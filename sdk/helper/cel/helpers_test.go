@@ -1,6 +1,7 @@
 package cel
 
 import (
+	"encoding/json"
 	"testing"
 
 	celgo "github.com/google/cel-go/cel"
@@ -47,6 +48,38 @@ func TestCELHelpers(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("decode_JSON_roundtrip", func(t *testing.T) {
+		t.Parallel()
+
+		expr := `decode_JSON(encode_JSON({'foo':'bar','num':42}))['foo'] == 'bar'`
+		prog := buildTestProgram(t, env, expr)
+		val, _, err := prog.Eval(interpreter.EmptyActivation())
+		require.NoError(t, err)
+		assert.Equal(t, true, val.Value())
+	})
+
+	t.Run("decode_JSON", func(t *testing.T) {
+		t.Parallel()
+		expr := `decode_JSON("{\"k\":\"v\"}")['k']`
+		prog := buildTestProgram(t, env, expr)
+		val, _, err := prog.Eval(interpreter.EmptyActivation())
+		require.NoError(t, err)
+		assert.Equal(t, "v", val.Value())
+	})
+
+	t.Run("encode_JSON", func(t *testing.T) {
+		t.Parallel()
+		expr := `encode_JSON({'a':1,'b':2})`
+		prog := buildTestProgram(t, env, expr)
+		val, _, err := prog.Eval(interpreter.EmptyActivation())
+		require.NoError(t, err)
+
+		// Unmarshal and compare
+		var got map[string]int
+		require.NoError(t, json.Unmarshal([]byte(val.Value().(string)), &got))
+		assert.Equal(t, map[string]int{"a": 1, "b": 2}, got)
+	})
 }
 
 // buildTestProgram compiles and runs CEL expressions in the test
@@ -69,6 +102,22 @@ func (customLibrary) CompileOptions() []celgo.EnvOption {
 				[]*celgo.Type{celgo.StringType},
 				celgo.BoolType,
 				celgo.UnaryBinding(checkValidEmail),
+			),
+		),
+		// decode_JSON
+		celgo.Function("decode_JSON",
+			celgo.Overload("decode_JSON_string",
+				[]*celgo.Type{celgo.StringType},
+				celgo.DynType,
+				celgo.UnaryBinding(decodeJSON),
+			),
+		),
+		// encode_JSON
+		celgo.Function("encode_JSON",
+			celgo.Overload("encode_JSON_dyn",
+				[]*celgo.Type{celgo.DynType},
+				celgo.StringType,
+				celgo.UnaryBinding(encodeJSON),
 			),
 		),
 	}

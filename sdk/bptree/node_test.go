@@ -28,24 +28,6 @@ func TestNewInternalNode(t *testing.T) {
 	require.Empty(t, node.ChildrenIDs)
 }
 
-func TestHasKey(t *testing.T) {
-	node := NewLeafNode("leaf")
-
-	// Empty node
-	require.False(t, node.HasKey("key1"))
-
-	// Add some keys
-	node.InsertKeyValue("key1", "value1")
-	node.InsertKeyValue("key3", "value3")
-
-	// Test existing keys
-	require.True(t, node.HasKey("key1"))
-	require.True(t, node.HasKey("key3"))
-
-	// Test non-existing key
-	require.False(t, node.HasKey("key2"))
-}
-
 func TestGetKeyValues(t *testing.T) {
 	node := NewLeafNode("leaf")
 
@@ -73,23 +55,6 @@ func TestGetKeyValues(t *testing.T) {
 	values, keyFound = node.GetKeyValues("key3")
 	require.Empty(t, values)
 	require.False(t, keyFound)
-}
-
-func TestGetAllKeys(t *testing.T) {
-	node := NewLeafNode("leaf")
-
-	// Empty node
-	keys := node.GetAllKeys()
-	require.Empty(t, keys)
-
-	// Add keys
-	node.InsertKeyValue("key3", "value3")
-	node.InsertKeyValue("key1", "value1")
-	node.InsertKeyValue("key2", "value2")
-
-	// Keys should be sorted
-	keys = node.GetAllKeys()
-	require.Equal(t, []string{"key1", "key2", "key3"}, keys)
 }
 
 func TestKeyCount(t *testing.T) {
@@ -121,26 +86,12 @@ func TestIsEmpty(t *testing.T) {
 	require.False(t, node.IsEmpty())
 
 	// Remove key
-	node.RemoveKeyValuesEntry("key1")
+	result, err := node.RemoveKeyValuesAtIndex(0)
+	require.NoError(t, err)
+	require.Equal(t, KeyRemoved, result)
+
+	// Check if the node is empty again
 	require.True(t, node.IsEmpty())
-}
-
-func TestIsFull(t *testing.T) {
-	node := NewLeafNode("leaf")
-	maxKeys := 3 // Set max for testing
-
-	// Empty node
-	require.False(t, node.IsFull(maxKeys))
-
-	// Add keys up to limit
-	node.InsertKeyValue("key1", "value1")
-	require.False(t, node.IsFull(maxKeys))
-
-	node.InsertKeyValue("key2", "value2")
-	require.False(t, node.IsFull(maxKeys))
-
-	node.InsertKeyValue("key3", "value3")
-	require.True(t, node.IsFull(maxKeys))
 }
 
 func TestInsertKeyValue(t *testing.T) {
@@ -204,31 +155,11 @@ func TestRemoveValueFromKey(t *testing.T) {
 	result, err = node.RemoveValueFromKey("key1", "value1")
 	require.NoError(t, err)
 	require.Equal(t, KeyRemoved, result)
-	require.False(t, node.HasKey("key1"))
+	_, hasKey := node.GetKeyValues("key1")
+	require.False(t, hasKey)
 
 	// Remove from non-existing key
 	result, err = node.RemoveValueFromKey("nonexistent", "value")
-	require.NoError(t, err)
-	require.Equal(t, KeyNotFound, result)
-}
-
-func TestRemoveKeyValuesEntry(t *testing.T) {
-	node := NewLeafNode("leaf")
-
-	// Setup test data
-	node.InsertKeyValue("key1", "value1")
-	node.InsertKeyValue("key1", "value2")
-	node.InsertKeyValue("key2", "value3")
-
-	// Remove existing key
-	result, err := node.RemoveKeyValuesEntry("key1")
-	require.NoError(t, err)
-	require.Equal(t, KeyRemoved, result)
-	require.False(t, node.HasKey("key1"))
-	require.Equal(t, []string{"key2"}, node.Keys)
-
-	// Remove non-existing key
-	result, err = node.RemoveKeyValuesEntry("nonexistent")
 	require.NoError(t, err)
 	require.Equal(t, KeyNotFound, result)
 }

@@ -88,13 +88,7 @@ func (n *Node) FindKeyIndex(key string) (int, bool) {
 			return i, false
 		}
 	}
-	return len(n.Keys), false
-}
-
-// HasKey returns true if the node contains the specified key
-func (n *Node) HasKey(key string) bool {
-	_, found := n.FindKeyIndex(key)
-	return found
+	return n.KeyCount(), false
 }
 
 // GetKeyValues returns all values associated with a key
@@ -115,13 +109,6 @@ func (n *Node) GetKeyValues(key string) ([]string, bool) {
 	return result, true
 }
 
-// GetAllKeys returns all keys in the node
-func (n *Node) GetAllKeys() []string {
-	result := make([]string, len(n.Keys))
-	copy(result, n.Keys)
-	return result
-}
-
 // KeyCount returns the number of keys in the node
 func (n *Node) KeyCount() int {
 	return len(n.Keys)
@@ -129,17 +116,12 @@ func (n *Node) KeyCount() int {
 
 // IsEmpty returns true if the node has no keys
 func (n *Node) IsEmpty() bool {
-	return len(n.Keys) == 0
-}
-
-// IsFull returns true if the node has reached the maximum number of keys
-func (n *Node) IsFull(maxKeys int) bool {
-	return len(n.Keys) >= maxKeys
+	return n.KeyCount() == 0
 }
 
 // GetKeyAtIndex returns the key at the specified index
 func (n *Node) GetKeyAtIndex(idx int) (string, error) {
-	if idx < 0 || idx >= len(n.Keys) {
+	if idx < 0 || idx >= n.KeyCount() {
 		return "", ErrKeyIndexOutOfBounds
 	}
 
@@ -172,7 +154,7 @@ func (n *Node) GetChildForKeyTraversal(key string) (string, error) {
 
 	// Find the appropriate child index for the key
 	i := 0
-	for i < len(n.Keys) && key >= n.Keys[i] {
+	for i < n.KeyCount() && key >= n.Keys[i] {
 		i++
 	}
 
@@ -224,7 +206,7 @@ func (n *Node) RemoveKeyChildAtIndex(idx int) error {
 		return ErrNotAnInternalNode
 	}
 
-	if idx < 0 || idx >= len(n.Keys) {
+	if idx < 0 || idx >= n.KeyCount() {
 		return ErrKeyIndexOutOfBounds
 	}
 
@@ -266,32 +248,33 @@ func (n *Node) RemoveValueFromKey(key, value string) (RemovalResult, error) {
 	return ValueRemoved, nil
 }
 
-// RemoveKeyValuesEntry removes a key and all values associated with it
-func (n *Node) RemoveKeyValuesEntry(key string) (RemovalResult, error) {
+// RemoveKeyValuesAtIndex removes the key and its associated values at the specified index
+func (n *Node) RemoveKeyValuesAtIndex(idx int) (RemovalResult, error) {
 	if !n.IsLeaf {
 		return Nil, ErrNotALeafNode
 	}
 
-	idx, found := n.FindKeyIndex(key)
-	if !found {
-		return KeyNotFound, nil
+	if idx < 0 || idx >= n.KeyCount() {
+		return Nil, ErrKeyIndexOutOfBounds
 	}
 
+	// Remove the key and its associated values
 	n.Keys = slices.Delete(n.Keys, idx, idx+1)
 	n.Values = slices.Delete(n.Values, idx, idx+1)
+
 	return KeyRemoved, nil
 }
 
-// RemoveKeyAtIndex removes a key at the specified index (low-level operation)
+// RemoveKeyAtIndex removes a key at the specified index
 func (n *Node) RemoveKeyAtIndex(idx int) error {
-	if idx < 0 || idx >= len(n.Keys) {
+	if idx < 0 || idx >= n.KeyCount() {
 		return ErrKeyIndexOutOfBounds
 	}
 	n.Keys = slices.Delete(n.Keys, idx, idx+1)
 	return nil
 }
 
-// RemoveValueAtIndex removes values at the specified index (low-level operation, leaf nodes only)
+// RemoveValueAtIndex removes values at the specified index (leaf nodes only)
 func (n *Node) RemoveValueAtIndex(idx int) error {
 	if !n.IsLeaf {
 		return ErrNotALeafNode
@@ -305,7 +288,7 @@ func (n *Node) RemoveValueAtIndex(idx int) error {
 
 // GetFirstKey returns the first key in the node, or empty string if no keys
 func (n *Node) GetFirstKey() (string, bool) {
-	if len(n.Keys) == 0 {
+	if n.KeyCount() == 0 {
 		return "", false
 	}
 	return n.Keys[0], true
@@ -313,37 +296,10 @@ func (n *Node) GetFirstKey() (string, bool) {
 
 // GetLastKey returns the last key in the node, or empty string if no keys
 func (n *Node) GetLastKey() (string, bool) {
-	if len(n.Keys) == 0 {
+	if n.KeyCount() == 0 {
 		return "", false
 	}
-	return n.Keys[len(n.Keys)-1], true
-}
-
-// GetLastKeyValue returns the last key-value pair in a leaf node
-func (n *Node) GetLastKeyValue() (string, []string, error) {
-	if !n.IsLeaf {
-		return "", nil, ErrNotALeafNode
-	}
-
-	if len(n.Keys) == 0 {
-		return "", nil, ErrKeyIndexOutOfBounds
-	}
-
-	lastIdx := len(n.Keys) - 1
-	return n.Keys[lastIdx], n.Values[lastIdx], nil
-}
-
-// GetFirstKeyValue returns the first key-value pair in a leaf node
-func (n *Node) GetFirstKeyValue() (string, []string, error) {
-	if !n.IsLeaf {
-		return "", nil, ErrNotALeafNode
-	}
-
-	if len(n.Keys) == 0 {
-		return "", nil, ErrKeyIndexOutOfBounds
-	}
-
-	return n.Keys[0], n.Values[0], nil
+	return n.Keys[n.KeyCount()-1], true
 }
 
 // RemoveLastKeyValue removes and returns the last key-value pair from a leaf node
@@ -352,11 +308,11 @@ func (n *Node) RemoveLastKeyValue() (string, []string, error) {
 		return "", nil, ErrNotALeafNode
 	}
 
-	if len(n.Keys) == 0 {
+	if n.KeyCount() == 0 {
 		return "", nil, ErrKeyIndexOutOfBounds
 	}
 
-	lastIdx := len(n.Keys) - 1
+	lastIdx := n.KeyCount() - 1
 	key := n.Keys[lastIdx]
 	values := n.Values[lastIdx]
 
@@ -382,7 +338,7 @@ func (n *Node) RemoveFirstKeyValue() (string, []string, error) {
 		return "", nil, ErrNotALeafNode
 	}
 
-	if len(n.Keys) == 0 {
+	if n.KeyCount() == 0 {
 		return "", nil, ErrKeyIndexOutOfBounds
 	}
 
@@ -438,7 +394,7 @@ func (n *Node) SplitLeafAtIndex(splitIndex int) (*Node, error) {
 		return nil, ErrNotALeafNode
 	}
 
-	if splitIndex < 0 || splitIndex >= len(n.Keys) {
+	if splitIndex < 0 || splitIndex >= n.KeyCount() {
 		return nil, ErrKeyIndexOutOfBounds
 	}
 
@@ -474,7 +430,7 @@ func (n *Node) SplitInternalAtIndex(splitIndex int) (*Node, string, error) {
 		return nil, "", ErrNotAnInternalNode
 	}
 
-	if splitIndex < 0 || splitIndex >= len(n.Keys) {
+	if splitIndex < 0 || splitIndex >= n.KeyCount() {
 		return nil, "", ErrKeyIndexOutOfBounds
 	}
 
@@ -671,8 +627,8 @@ func (n *Node) AppendKeyValue(key string, values []string) error {
 
 // SetKeyAtIndex sets the key at a specific index
 func (n *Node) SetKeyAtIndex(index int, key string) error {
-	if index < 0 || index >= len(n.Keys) {
-		return fmt.Errorf("index %d out of bounds [0, %d)", index, len(n.Keys))
+	if index < 0 || index >= n.KeyCount() {
+		return fmt.Errorf("index %d out of bounds [0, %d)", index, n.KeyCount())
 	}
 	n.Keys[index] = key
 	return nil

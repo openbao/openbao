@@ -447,7 +447,8 @@ func (t *BPlusTree) DeleteValue(ctx context.Context, storage Storage, key string
 	}
 
 	// Check if the key exists in the leaf node
-	if !leaf.HasKey(key) {
+	_, hasKey := leaf.FindKeyIndex(key)
+	if !hasKey {
 		return false, nil
 	}
 

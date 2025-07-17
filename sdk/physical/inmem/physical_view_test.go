@@ -12,6 +12,10 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
+func TestPhysicalView_impl(t *testing.T) {
+	var _ physical.Backend = new(physical.View)
+}
+
 func newInmemTestBackend() (physical.Backend, error) {
 	logger := logging.NewVaultLogger(log.Debug)
 	return NewInmem(nil, logger)

@@ -64,7 +64,8 @@ var (
 // AES-GCM is high performance, and provides both confidentiality
 // and integrity.
 type AESGCMBarrier struct {
-	view physical.View
+	backend    physical.Backend
+	metaPrefix string
 
 	l      sync.RWMutex
 	sealed bool
@@ -129,7 +130,8 @@ func (b *AESGCMBarrier) SetRotationConfig(ctx context.Context, rotConfig KeyRota
 // the provided physical backend for storage.
 func NewAESGCMBarrier(storage physical.Backend, metaPrefix string) SecurityBarrier {
 	b := &AESGCMBarrier{
-		view:                     physical.NewView(storage, metaPrefix),
+		backend:                  storage,
+		metaPrefix:               metaPrefix,
 		sealed:                   true,
 		cache:                    make(map[uint32]cipher.AEAD),
 		currentAESGCMVersionByte: byte(AESGCMVersion2),
@@ -155,7 +157,7 @@ func (b *AESGCMBarrier) Initialized(ctx context.Context) (bool, error) {
 	}
 
 	// Read the keyring file
-	entry, err := b.view.Get(ctx, keyringPath)
+	entry, err := b.backend.Get(ctx, b.metaPrefix+keyringPath)
 	if err != nil {
 		return false, fmt.Errorf("failed to check for initialization: %w", err)
 	}
@@ -210,11 +212,10 @@ func (b *AESGCMBarrier) Initialize(ctx context.Context, key, sealKey []byte, rea
 			return err
 		}
 
-		err = b.putInternal(ctx, b.view, 1, primary, &logical.StorageEntry{
-			Key:   shamirKekPath,
+		if err = b.putInternal(ctx, b.backend, 1, primary, &logical.StorageEntry{
+			Key:   b.metaPrefix + shamirKekPath,
 			Value: sealKey,
-		})
-		if err != nil {
+		}); err != nil {
 			return fmt.Errorf("failed to store new seal key: %w", err)
 		}
 	}
@@ -251,14 +252,14 @@ func (b *AESGCMBarrier) persistKeyringInternal(ctx context.Context, keyring *Key
 	}
 
 	// Encrypt the barrier init value
-	value, err := b.encrypt(keyringPath, initialKeyTerm, gcm, keyringBuf)
+	value, err := b.encrypt(b.metaPrefix+keyringPath, initialKeyTerm, gcm, keyringBuf)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt barrier initial value: %w", err)
 	}
 
 	// Create the keyring physical entry
 	pe := &physical.Entry{
-		Key:   keyringPath,
+		Key:   b.metaPrefix + keyringPath,
 		Value: value,
 	}
 
@@ -272,7 +273,7 @@ func (b *AESGCMBarrier) persistKeyringInternal(ctx context.Context, keyring *Key
 		defer cancelKeyring()
 	}
 
-	if err := b.view.Put(ctxKeyring, pe); err != nil {
+	if err := b.backend.Put(ctxKeyring, pe); err != nil {
 		return fmt.Errorf("failed to persist keyring: %w", err)
 	}
 
@@ -294,25 +295,25 @@ func (b *AESGCMBarrier) persistKeyringInternal(ctx context.Context, keyring *Key
 	if err != nil {
 		return fmt.Errorf("failed to retrieve AES-GCM AEAD from active key: %w", err)
 	}
-	value, err = b.encryptTracked(rootKeyPath, activeKey.Term, aead, keyBuf)
+	value, err = b.encryptTracked(b.metaPrefix+rootKeyPath, activeKey.Term, aead, keyBuf)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt and track active key value: %w", err)
 	}
 
 	// Update the rootKeyPath for standby instances
 	pe = &physical.Entry{
-		Key:   rootKeyPath,
+		Key:   b.metaPrefix + rootKeyPath,
 		Value: value,
 	}
 
 	// Use the longer timeout from the original context, for the follow-up write
 	// to persist the root key, as the initial storage of the keyring was successful.
-	if err := b.view.Put(ctx, pe); err != nil {
+	if err := b.backend.Put(ctx, pe); err != nil {
 		return fmt.Errorf("failed to persist root key: %w", err)
 	}
 
 	// Delete the legacy value if it exists.
-	if err := b.view.Delete(ctx, legacyRootKeyPath); err != nil {
+	if err := b.backend.Delete(ctx, legacyRootKeyPath); err != nil {
 		return fmt.Errorf("failed to remove legacy root key path: %w", err)
 	}
 
@@ -369,7 +370,7 @@ func (b *AESGCMBarrier) ReloadKeyring(ctx context.Context) error {
 	}
 
 	// Read in the keyring
-	out, err := b.view.Get(ctx, keyringPath)
+	out, err := b.backend.Get(ctx, b.metaPrefix+keyringPath)
 	if err != nil {
 		return fmt.Errorf("failed to check for keyring: %w", err)
 	}
@@ -387,7 +388,7 @@ func (b *AESGCMBarrier) ReloadKeyring(ctx context.Context) error {
 	}
 
 	// Decrypt the barrier init key
-	plain, err := b.decrypt(keyringPath, gcm, out.Value)
+	plain, err := b.decrypt(b.metaPrefix+keyringPath, gcm, out.Value)
 	defer memzero(plain)
 	if err != nil {
 		if strings.Contains(err.Error(), "message authentication failed") {
@@ -422,7 +423,7 @@ func (b *AESGCMBarrier) recoverKeyring(plaintext []byte) error {
 // is available for keyring reloading.
 func (b *AESGCMBarrier) ReloadRootKey(ctx context.Context) error {
 	// Read the rootKeyPath upgrade
-	out, err := b.Get(ctx, rootKeyPath)
+	out, err := b.Get(ctx, b.metaPrefix+rootKeyPath)
 	if err != nil {
 		return fmt.Errorf("failed to read root key path: %w", err)
 	}
@@ -445,13 +446,13 @@ func (b *AESGCMBarrier) ReloadRootKey(ctx context.Context) error {
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	out, err = b.lockSwitchedGet(ctx, b.view, rootKeyPath, false)
+	out, err = b.lockSwitchedGet(ctx, b.backend, b.metaPrefix+rootKeyPath, false)
 	if err != nil {
 		return fmt.Errorf("failed to read root key path: %w", err)
 	}
 
 	if out == nil {
-		out, err = b.lockSwitchedGet(ctx, b.view, legacyRootKeyPath, false)
+		out, err = b.lockSwitchedGet(ctx, b.backend, legacyRootKeyPath, false)
 		if err != nil {
 			return fmt.Errorf("failed to read legacy root key path: %w", err)
 		}
@@ -498,7 +499,7 @@ func (b *AESGCMBarrier) Unseal(ctx context.Context, key []byte) error {
 	}
 
 	// Read in the keyring
-	out, err := b.view.Get(ctx, keyringPath)
+	out, err := b.backend.Get(ctx, b.metaPrefix+keyringPath)
 	if err != nil {
 		return fmt.Errorf("failed to check for keyring: %w", err)
 	}
@@ -513,7 +514,7 @@ func (b *AESGCMBarrier) Unseal(ctx context.Context, key []byte) error {
 	}
 
 	// Decrypt the barrier init key
-	plain, err := b.decrypt(keyringPath, gcm, out.Value)
+	plain, err := b.decrypt(b.metaPrefix+keyringPath, gcm, out.Value)
 	defer memzero(plain)
 	if err != nil {
 		if strings.Contains(err.Error(), "message authentication failed") {
@@ -617,7 +618,7 @@ func (b *AESGCMBarrier) CreateUpgrade(ctx context.Context, term uint32) error {
 		return err
 	}
 
-	key := fmt.Sprintf("%s%d", keyringUpgradePrefix, prevTerm)
+	key := fmt.Sprintf("%s%d", b.metaPrefix+keyringUpgradePrefix, prevTerm)
 	value, err := b.encryptTracked(key, prevTerm, primary, buf)
 	b.l.RUnlock()
 	if err != nil {
@@ -628,12 +629,12 @@ func (b *AESGCMBarrier) CreateUpgrade(ctx context.Context, term uint32) error {
 		Key:   key,
 		Value: value,
 	}
-	return b.view.Put(ctx, pe)
+	return b.backend.Put(ctx, pe)
 }
 
 // DestroyUpgrade destroys the upgrade path key to the given term
 func (b *AESGCMBarrier) DestroyUpgrade(ctx context.Context, term uint32) error {
-	path := fmt.Sprintf("%s%d", keyringUpgradePrefix, term-1)
+	path := fmt.Sprintf("%s%d", b.metaPrefix+keyringUpgradePrefix, term-1)
 	return b.Delete(ctx, path)
 }
 
@@ -649,8 +650,8 @@ func (b *AESGCMBarrier) CheckUpgrade(ctx context.Context) (bool, uint32, error) 
 	activeTerm := b.keyring.ActiveTerm()
 
 	// Check for an upgrade key
-	upgrade := fmt.Sprintf("%s%d", keyringUpgradePrefix, activeTerm)
-	entry, err := b.lockSwitchedGet(ctx, b.view, upgrade, false)
+	upgrade := fmt.Sprintf("%s%d", b.metaPrefix+keyringUpgradePrefix, activeTerm)
+	entry, err := b.lockSwitchedGet(ctx, b.backend, upgrade, false)
 	if err != nil {
 		b.l.RUnlock()
 		return false, 0, err
@@ -675,8 +676,8 @@ func (b *AESGCMBarrier) CheckUpgrade(ctx context.Context) (bool, uint32, error) 
 
 	activeTerm = b.keyring.ActiveTerm()
 
-	upgrade = fmt.Sprintf("%s%d", keyringUpgradePrefix, activeTerm)
-	entry, err = b.lockSwitchedGet(ctx, b.view, upgrade, false)
+	upgrade = fmt.Sprintf("%s%d", b.metaPrefix+keyringUpgradePrefix, activeTerm)
+	entry, err = b.lockSwitchedGet(ctx, b.backend, upgrade, false)
 	if err != nil {
 		return false, 0, err
 	}
@@ -782,7 +783,7 @@ func (b *AESGCMBarrier) updateRootKeyCommon(key []byte) (*Keyring, error) {
 
 // Put is used to insert or update an entry
 func (b *AESGCMBarrier) Put(ctx context.Context, entry *logical.StorageEntry) error {
-	return b.putWithBackend(ctx, b.view, entry)
+	return b.putWithBackend(ctx, b.backend, entry)
 }
 
 func (b *AESGCMBarrier) putWithBackend(ctx context.Context, backend physical.Backend, entry *logical.StorageEntry) error {
@@ -818,7 +819,7 @@ func (b *AESGCMBarrier) putInternal(ctx context.Context, backend physical.Backen
 
 // Get is used to fetch an entry
 func (b *AESGCMBarrier) Get(ctx context.Context, key string) (*logical.StorageEntry, error) {
-	return b.lockSwitchedGet(ctx, b.view, key, true)
+	return b.lockSwitchedGet(ctx, b.backend, key, true)
 }
 
 func (b *AESGCMBarrier) lockSwitchedGet(ctx context.Context, backend physical.Backend, key string, getLock bool) (*logical.StorageEntry, error) {
@@ -886,7 +887,7 @@ func (b *AESGCMBarrier) lockSwitchedGet(ctx context.Context, backend physical.Ba
 
 // Delete is used to permanently delete an entry
 func (b *AESGCMBarrier) Delete(ctx context.Context, key string) error {
-	return b.deleteWithBackend(ctx, b.view, key)
+	return b.deleteWithBackend(ctx, b.backend, key)
 }
 
 func (b *AESGCMBarrier) deleteWithBackend(ctx context.Context, backend physical.Backend, key string) error {
@@ -912,13 +913,13 @@ func (b *AESGCMBarrier) List(ctx context.Context, prefix string) ([]string, erro
 		return nil, ErrBarrierSealed
 	}
 
-	return b.view.List(ctx, prefix)
+	return b.backend.List(ctx, prefix)
 }
 
 // ListPage is used to list a subset of the keys under a given
 // prefix, up to the next prefix.
 func (b *AESGCMBarrier) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
-	return b.listPageWithBackend(ctx, b.view, prefix, after, limit)
+	return b.listPageWithBackend(ctx, b.backend, prefix, after, limit)
 }
 
 func (b *AESGCMBarrier) listPageWithBackend(ctx context.Context, backend physical.Backend, prefix string, after string, limit int) ([]string, error) {
@@ -1021,7 +1022,7 @@ func (b *AESGCMBarrier) encrypt(path string, term uint32, gcm cipher.AEAD, plain
 	case AESGCMVersion2:
 		aad := []byte(nil)
 		if path != "" {
-			aad = []byte(b.view.Prefix() + path)
+			aad = []byte(path)
 		}
 		out = gcm.Seal(out, nonce, plain, aad)
 	default:
@@ -1057,7 +1058,7 @@ func (b *AESGCMBarrier) decrypt(path string, gcm cipher.AEAD, cipher []byte) ([]
 	case AESGCMVersion2:
 		aad := []byte(nil)
 		if path != "" {
-			aad = []byte(b.view.Prefix() + path)
+			aad = []byte(path)
 		}
 		return gcm.Open(out, nonce, raw, aad)
 	default:
@@ -1265,7 +1266,7 @@ func (b *AESGCMBarrier) encryptions() int64 {
 }
 
 func (b *TransactionalAESGCMBarrier) BeginReadOnlyTx(ctx context.Context) (logical.Transaction, error) {
-	txn, err := b.AESGCMBarrier.view.(physical.TransactionalView).BeginReadOnlyTx(ctx)
+	txn, err := b.AESGCMBarrier.backend.(physical.TransactionalBackend).BeginReadOnlyTx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1277,7 +1278,7 @@ func (b *TransactionalAESGCMBarrier) BeginReadOnlyTx(ctx context.Context) (logic
 }
 
 func (b *TransactionalAESGCMBarrier) BeginTx(ctx context.Context) (logical.Transaction, error) {
-	txn, err := b.AESGCMBarrier.view.(physical.TransactionalView).BeginTx(ctx)
+	txn, err := b.AESGCMBarrier.backend.(physical.TransactionalBackend).BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}

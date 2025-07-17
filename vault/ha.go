@@ -395,6 +395,13 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}) {
 	defer close(manualStepDownCh)
 	c.logger.Info("entering standby mode")
 
+	perfCtx, perfCancel := context.WithCancel(namespace.RootContext(nil))
+	if err := c.postUnseal(perfCtx, perfCancel, readonlyUnsealStrategy{}); err != nil {
+		c.logger.Error("read-only post-unseal setup failed", "error", err)
+		c.barrier.Seal()
+		c.logger.Warn("vault is sealed")
+	}
+
 	var g run.Group
 	newLeaderCh := addEnterpriseHaActors(c, &g)
 	{

@@ -554,23 +554,11 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, storage logic
 	// while we'd like to, it has cache interaction semantics which makes
 	// it difficult to do correctly. This likely requires hooks such as
 	// https://github.com/openbao/openbao/issues/1988.
-	if err := ns.initializeNamespacePolicies(nsCtx); err != nil {
-		return err
-	}
-
-	if err := ns.createMounts(nsCtx, storage); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// initializeNamespacePolicies loads the default policies for the namespace store.
-func (ns *NamespaceStore) initializeNamespacePolicies(ctx context.Context) error {
 	if err := ns.core.policyStore.loadDefaultPolicies(ctx); err != nil {
 		return fmt.Errorf("error creating default policies: %w", err)
 	}
-	return nil
+
+	return ns.createMounts(nsCtx, storage)
 }
 
 // createMounts handles creation of sys/ and token/ mounts for this new
@@ -1098,7 +1086,13 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 	if err != nil {
 		return err
 	}
-	defer unlock()
+
+	releaseNsLock := true
+	defer func() {
+		if releaseNsLock {
+			unlock()
+		}
+	}()
 
 	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path, false)
 	if err != nil {
@@ -1116,6 +1110,8 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 	if err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key); err != nil {
 		return err
 	}
+	releaseNsLock = false
+	unlock()
 
 	// If namespace is still sealed meaning we do not have enough shards yet, return early
 	if ns.core.IsNSSealed(namespaceToUnseal) {

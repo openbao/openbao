@@ -34,7 +34,10 @@ type GenerateRootStrategy interface {
 type generateStandardRootToken struct{}
 
 func (g generateStandardRootToken) authenticate(ctx context.Context, c *Core, combinedKey []byte, ns *namespace.Namespace) error {
-	nsSeal := c.sealManager.sealsByNamespace[ns.UUID]["default"]
+	nsSeal, found := c.sealManager.sealsByNamespace[ns.UUID]["default"]
+	if !found {
+		return fmt.Errorf("no seal found for namespace")
+	}
 	rootKey, err := c.sealManager.unsealKeyToRootKey(ctx, nsSeal, combinedKey, false)
 	if err != nil {
 		return fmt.Errorf("unable to authenticate: %w", err)

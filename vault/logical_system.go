@@ -153,6 +153,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Paths = append(b.Paths, b.lockedUserPaths()...)
 	b.Paths = append(b.Paths, b.leasePaths()...)
 	b.Paths = append(b.Paths, b.policyPaths()...)
+	b.Paths = append(b.Paths, b.namespaceGenerateRootPaths()...)
 	b.Paths = append(b.Paths, b.namespaceSealPaths()...)
 	b.Paths = append(b.Paths, b.namespacePaths()...)
 	b.Paths = append(b.Paths, b.wrappingPaths()...)
@@ -4290,7 +4291,7 @@ func (b *SystemBackend) pathInternalUIResultantACL(ctx context.Context, req *log
 		},
 	}
 
-	if acl.root {
+	if acl.root != nil {
 		resp.Data["root"] = true
 		return resp, nil
 	}

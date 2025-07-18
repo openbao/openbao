@@ -1,0 +1,14 @@
+version: "2"
+linters:
+  enable:
+    - nilnil
+    - misspell
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      module-path: github.com/openbao/openbao
+issues:
+  max-issues-per-linter: 0

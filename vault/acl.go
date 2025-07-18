@@ -36,7 +36,10 @@ type ACL struct {
 	segmentWildcardPaths map[string]interface{}
 
 	// root is enabled if the "root" named policy is present.
-	root bool
+	root *namespace.Namespace
+
+	// Stores policies that are actually RGPs for later fetching
+	rgpPolicies []*Policy
 }
 
 type PolicyCheckOpts struct {
@@ -76,7 +79,6 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 		exactRules:           radix.New(),
 		prefixRules:          radix.New(),
 		segmentWildcardPaths: make(map[string]interface{}, len(policies)),
-		root:                 false,
 	}
 
 	ns, err := namespace.FromContext(ctx)
@@ -102,14 +104,11 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 
 		// Check if this is root
 		if policy.Name == "root" {
-			if ns.ID != namespace.RootNamespaceID {
-				return nil, errors.New("root policy is only allowed in root namespace")
-			}
 
 			if len(policies) != 1 {
 				return nil, errors.New("other policies present along with root")
 			}
-			a.root = true
+			a.root = ns
 		}
 
 		for _, pc := range policy.Paths {
@@ -343,15 +342,22 @@ func (a *ACL) Capabilities(ctx context.Context, path string) (pathCapabilities [
 func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheckOnly bool) (ret *ACLResults) {
 	ret = new(ACLResults)
 
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return
+	}
 	// Fast-path root
-	if a.root {
+	if a.root != nil {
+		if !ns.HasParent(a.root) {
+			return
+		}
 		ret.Allowed = true
 		ret.RootPrivs = true
 		ret.IsRoot = true
 		ret.GrantingPolicies = []logical.PolicyInfo{{
 			Name:          "root",
-			NamespaceId:   "root",
-			NamespacePath: "",
+			NamespaceId:   a.root.ID,
+			NamespacePath: a.root.Path,
 			Type:          "acl",
 		}}
 		return
@@ -366,10 +372,6 @@ func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheck
 
 	var permissions *ACLPermissions
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return
-	}
 	path := ns.Path + req.Path
 
 	// The request path should take care of this already but this is useful for

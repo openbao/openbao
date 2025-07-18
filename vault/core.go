@@ -2321,9 +2321,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
-
-	c.setupSealManager()
-
 	if err := c.loadMounts(ctx); err != nil {
 		return err
 	}
@@ -2562,9 +2559,6 @@ func (c *Core) preSeal() error {
 	}
 	if err := c.teardownLoginMFA(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA: %w", err))
-	}
-	if err := c.teardownSealManager(); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error tearing down seal manager: %w", err))
 	}
 	if err := c.teardownNamespaceStore(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down namespace store: %w", err))

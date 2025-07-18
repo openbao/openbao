@@ -117,16 +117,11 @@ func TestRegisterNamespace(t *testing.T) {
 	require.False(t, c.IsNSSealed(ns))
 
 	TestCoreSeal(c)
-	for i := 0; i < len(keys); i++ {
+	for i := range keys {
 		_, err := TestCoreUnseal(c, keys[i])
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
+		require.NoError(t, err)
 	}
 
-	if c.Sealed() {
-		t.Fatal("should not be sealed")
-	}
-
+	require.False(t, c.Sealed())
 	require.True(t, c.IsNSSealed(ns))
 }

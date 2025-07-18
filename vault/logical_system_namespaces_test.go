@@ -27,6 +27,12 @@ func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, n
 	res, err := b.HandleRequest(ctx, req)
 	require.NoError(t, err)
 
+	var mapOfKeyShares map[string][]string
+	keyShares, ok := res.Data["key_shares"]
+	if ok {
+		mapOfKeyShares = keyShares.(map[string][]string)
+	}
+
 	return &namespace.Namespace{
 		ID:             res.Data["id"].(string),
 		UUID:           res.Data["uuid"].(string),
@@ -34,7 +40,7 @@ func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, n
 		Tainted:        res.Data["tainted"].(bool),
 		Locked:         res.Data["locked"].(bool),
 		CustomMetadata: res.Data["custom_metadata"].(map[string]string),
-	}, res.Data["key_shares"].(map[string][]string)
+	}, mapOfKeyShares
 }
 
 func TestNamespaceBackend_Set(t *testing.T) {

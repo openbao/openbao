@@ -182,6 +182,72 @@ func testACLRoot(t *testing.T, ns *namespace.Namespace) {
 	}
 }
 
+func TestACL_Namespace_Root(t *testing.T) {
+	t.Run("root-ns", func(t *testing.T) {
+		t.Parallel()
+		c, _, _ := TestCoreUnsealed(t)
+		rootCtx := namespace.RootContext(nil)
+		ns1, _ := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+		ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
+		testACLNamespaceRoot(t, ns1Ctx, ns1)
+	})
+}
+
+func testACLNamespaceRoot(t *testing.T, ctx context.Context, ns *namespace.Namespace) {
+	// Create the root policy ACL. Always create on root namespace regardless of
+	// which namespace to ACL check on.
+	policy := []*Policy{{Name: "root"}}
+	acl, err := NewACL(ctx, policy)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	request := new(logical.Request)
+	request.Operation = logical.UpdateOperation
+	request.Path = ns.Path
+
+	authResults := acl.AllowOperation(ctx, request, false)
+	if !authResults.RootPrivs {
+		t.Fatal("expected root")
+	}
+	if !authResults.Allowed {
+		t.Fatal("expected permissions")
+	}
+}
+
+func TestACL_Namespace_Root_Fail(t *testing.T) {
+	t.Run("root-ns", func(t *testing.T) {
+		t.Parallel()
+		c, _, _ := TestCoreUnsealed(t)
+		rootCtx := namespace.RootContext(nil)
+		ns1, _ := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+		ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
+		testACLNamespaceRootFail(t, ns1Ctx)
+	})
+}
+
+func testACLNamespaceRootFail(t *testing.T, ctx context.Context) {
+	// Create the root policy ACL. Always create on root namespace regardless of
+	// which namespace to ACL check on.
+	policy := []*Policy{{Name: "root"}}
+	acl, err := NewACL(ctx, policy)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	request := new(logical.Request)
+	request.Operation = logical.UpdateOperation
+	request.Path = "sys/mount/foo"
+
+	authResults := acl.AllowOperation(namespace.RootContext(context.Background()), request, false)
+	if authResults.RootPrivs {
+		t.Fatal("didn't expected root")
+	}
+	if authResults.Allowed {
+		t.Fatal("didn't expected permissions")
+	}
+}
+
 func TestACL_Single(t *testing.T) {
 	t.Run("root-ns", func(t *testing.T) {
 		t.Parallel()

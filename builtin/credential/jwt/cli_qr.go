@@ -1,0 +1,75 @@
+package jwtauth
+
+import (
+	"fmt"
+	"io"
+	"strings"
+
+	"github.com/yeqown/go-qrcode/v2"
+)
+
+type qrWriter struct {
+	writer io.Writer
+}
+
+// Close implements qrcode.Writer.
+func (q qrWriter) Close() error {
+	return nil
+}
+
+// Write implements qrcode.Writer.
+func (q qrWriter) Write(mat qrcode.Matrix) error {
+	b := mat.Bitmap()
+	get := func(row int, col int) bool {
+		if row < 0 || col < 0 {
+			return false
+		}
+		if row >= len(b) || col >= len(b[row]) {
+			return false
+		}
+		return b[row][col]
+	}
+
+	builder := strings.Builder{}
+
+	for row := -2; row < mat.Height()+2; row += 2 {
+		builder.WriteString("\033[38;2;255;255;255m") // set forground color to white
+		builder.WriteString("\033[48;2;0;0;0m")       // set background color to black
+
+		for col := -2; col < mat.Width()+2; col += 1 {
+			top := get(row, col)
+			bottom := get(row+1, col)
+
+			switch {
+			case top && bottom:
+				builder.WriteString(" ")
+			case !top && bottom:
+				builder.WriteString("▀")
+			case top && !bottom:
+				builder.WriteString("▄")
+			case !top && !bottom:
+				builder.WriteString("█")
+			}
+		}
+
+		builder.WriteString("\033[0m") // clear colors
+		builder.WriteString("\n")
+	}
+
+	fmt.Fprint(q.writer, builder.String())
+	return nil
+}
+
+func printQR(writer io.Writer, authURL string) {
+	qr, err := qrcode.NewWith(authURL, qrcode.WithErrorCorrectionLevel(qrcode.ErrorCorrectionLow))
+	if err != nil {
+		fmt.Fprintln(writer, "could not generate QR code:", err.Error())
+	}
+
+	err = qr.Save(qrWriter{
+		writer: writer,
+	})
+	if err != nil {
+		fmt.Fprintln(writer, "could not display QR code:", err.Error())
+	}
+}

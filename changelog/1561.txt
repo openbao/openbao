@@ -1,3 +1,3 @@
-```release-note:feature
-auth/oidc: Add new `show_qr=true` option to display a QR code of the login URL.
+```release-note:improvement
+auth/oidc: Add new `show_qr=true` cli option to display a QR code of the login URL.
 ```

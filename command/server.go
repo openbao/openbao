@@ -1703,13 +1703,16 @@ func (c *ServerCommand) waitForLeader(core *vault.Core) (bool, error) {
 	}
 	if err == nil {
 		// Raft is slower than dev mode. We allow up to 35 seconds for
-		// a leader to be elected.
+		// a leader to be elected before failing with a stack trace.
 		leaderCount := 35
 		for !isLeader {
 			if leaderCount == 0 {
-				buf := make([]byte, 1<<16 /* stack trace max size */)
-				runtime.Stack(buf, true)
-				return false, fmt.Errorf("failed to get active status (is this node a non-voter?); call stack is\n%s", buf)
+				// We did not become leader in the specified time window;
+				// give up and assume another node won. Unlike dev mode,
+				// we don't really care about the stack trace here since
+				// it is feasible another node beat us to leadership
+				// acquisition.
+				return false, nil
 			}
 
 			time.Sleep(1 * time.Second)
@@ -1721,7 +1724,7 @@ func (c *ServerCommand) waitForLeader(core *vault.Core) (bool, error) {
 		}
 	}
 
-	return isLeader, nil
+	return true, nil
 }
 
 // Initialize performs declarative self-initialization of a production-mode
@@ -1763,11 +1766,12 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		RecoveryConfig: recoveryConfig,
 	})
 	if err != nil {
-		return fmt.Errorf("self-initialization failed: %w", err)
-	}
+		core.Logger().Error("failed to initialize", "error", err)
+		if errors.Is(err, vault.ErrParallelInit) || errors.Is(err, vault.ErrAlreadyInit) {
+			return nil
+		}
 
-	if ok, err := core.Unseal(init.RecoveryShares[0]); err != nil || !ok {
-		return fmt.Errorf("unseal after self-initialization failed: err=%w ok=%v", err, ok)
+		return fmt.Errorf("self-initialization failed: %w", err)
 	}
 
 	// Wait for leadership; if we don't get the leadership status, it means

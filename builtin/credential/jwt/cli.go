@@ -427,7 +427,8 @@ Configuration:
     Toggle the automatic launching of the default browser to the login URL. (default: false).
 
   %s=<bool>
-    Display a QR code to the login URL. Require UTF-8 support (default: false).
+    Display a QR code of the login URL. Requires UTF-8 support from your
+    terminal emulator (default: false).
 
   %s=<bool>
     Abort on any error. (default: false).

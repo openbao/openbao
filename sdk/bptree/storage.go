@@ -98,27 +98,21 @@ func NewNodeStorage(
 	}, nil
 }
 
-// NewTransactionalNodeStorage creates a new transactional adapter for the logical.Storage interface
-// if the underlying storage supports transactions. Otherwise, it returns a regular NodeStorage.
+// NewTransactionalNodeStorage ...
 func NewTransactionalNodeStorage(
-	storage logical.Storage,
+	storage logical.TransactionalStorage,
 	serializer NodeSerializer,
 	cacheSize int,
-) (Storage, error) {
+) (TransactionalStorage, error) {
 	nodeStorage, err := NewNodeStorage(storage, serializer, cacheSize)
 	if err != nil {
 		return nil, err
 	}
 
-	// Check if the underlying storage supports transactions
-	if _, ok := storage.(logical.TransactionalStorage); ok {
-		return &TransactionalNodeStorage{
-			NodeStorage: nodeStorage,
-		}, nil
-	}
-
-	// Return regular NodeStorage if transactions not supported
-	return nodeStorage, nil
+	// Return a new TransactionalNodeStorage instance
+	return &TransactionalNodeStorage{
+		NodeStorage: nodeStorage,
+	}, nil
 }
 
 // configKey constructs the storage key for tree metadata, using tree ID from context if available

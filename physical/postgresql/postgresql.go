@@ -334,12 +334,20 @@ func (m *PostgreSQLBackend) createTables() error {
 			m.logger.Warn("Skipping table creation as database is marked read-only", "err", err)
 			return nil
 		}
+		if strings.Contains(err.Error(), "SQLSTATE 23505") {
+			m.logger.Warn("Skipping table creation as other processes have already created the table", "err", err)
+			return nil
+		}
 
 		return fmt.Errorf("failed to execute create query: %w", err)
 	}
 
 	createIndexQuery := `CREATE INDEX IF NOT EXISTS parent_path_idx ON ` + m.table + ` (parent_path);`
 	if _, err := txn.Exec(createIndexQuery); err != nil {
+		if strings.Contains(err.Error(), "SQLSTATE 23505") {
+			m.logger.Warn("Skipping table creation as other processes have already created the index", "err", err)
+			return nil
+		}
 		return fmt.Errorf("failed to create index on table: %w", err)
 	}
 
@@ -353,11 +361,19 @@ func (m *PostgreSQLBackend) createTables() error {
 			`  CONSTRAINT ha_key PRIMARY KEY (ha_key)` +
 			`);`
 		if _, err := txn.Exec(createTableQuery); err != nil {
+			if strings.Contains(err.Error(), "SQLSTATE 23505") {
+				m.logger.Warn("Skipping table creation as other processes have already created the table", "err", err)
+				return nil
+			}
 			return fmt.Errorf("failed to create ha table: %w", err)
 		}
 	}
 
 	if err := txn.Commit(); err != nil {
+		if strings.Contains(err.Error(), "SQLSTATE 23505") {
+			m.logger.Warn("Skipping table creation as other processes have already created the table", "err", err)
+			return nil
+		}
 		return fmt.Errorf("failed to apply transaction: %w", err)
 	}
 

@@ -68,6 +68,10 @@ const (
 	// for a highly-available deploy.
 	CoreLockPath = "core/lock"
 
+	// CoreInitLockPath is the path used to acquire a coordinating lock
+	// for a highly-available deployment which is undergoing initialization.
+	CoreInitLockPath = "core/initialize-lock"
+
 	// The poison pill is used as a check during certain scenarios to indicate
 	// to standby nodes that they should seal
 	poisonPillPath = "core/poison-pill"
@@ -117,6 +121,10 @@ var (
 	// ErrAlreadyInit is returned if the core is already
 	// initialized. This prevents a re-initialization.
 	ErrAlreadyInit = errors.New("Vault is already initialized")
+
+	// ErrParallelInit is returned if the core is undergoing
+	// initialization on another node. This prevents a re-initialization.
+	ErrParallelInit = errors.New("Vault is being initialized on another node")
 
 	// ErrNotInit is returned if a non-initialized barrier
 	// is attempted to be unsealed.

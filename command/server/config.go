@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/osutil"
+	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
@@ -111,6 +112,13 @@ type Config struct {
 	DisableSSCTokens *bool `hcl:"-"`
 
 	UnsafeCrossNamespaceIdentity bool `hcl:"unsafe_cross_namespace_identity"`
+
+	// Initialization is a configuration object that helps to initialize
+	// OpenBao. It can be specified multiple times and each instance can
+	// contain one or more `request` objects. This is used by the
+	// declarative self-initialization subsystem on non-dev-mode instances
+	// and is part of the profile system.
+	Initialization []*profiles.OuterConfig `hcl:"-"`
 }
 
 const (
@@ -733,6 +741,17 @@ func ParseConfig(d, source string) (*Config, error) {
 		if err := parseServiceRegistration(result, o, "service_registration"); err != nil {
 			return nil, fmt.Errorf("error parsing 'service_registration': %w", err)
 		}
+	}
+
+	// Parse self-initialization stanzas.
+	if o := list.Filter("initialize"); len(o.Items) > 0 {
+		delete(result.UnusedKeys, "initialize")
+		init, err := profiles.ParseOuterConfig("initialize", result.Initialization, o)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing 'initialize': %w", err)
+		}
+
+		result.Initialization = init
 	}
 
 	// Remove all unused keys from Config that were satisfied by SharedConfig.

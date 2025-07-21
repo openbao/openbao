@@ -8,12 +8,10 @@ import (
 )
 
 // EnvSourceBuilder allows reading environment variables from the system.
-func EnvSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) (Source, error) {
-	s := &EnvSource{
+func EnvSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+	return &EnvSource{
 		field: field,
 	}
-
-	return s, nil
 }
 
 var _ SourceBuilder = EnvSourceBuilder

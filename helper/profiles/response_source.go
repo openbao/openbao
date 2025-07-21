@@ -6,13 +6,11 @@ import (
 )
 
 // ResponseSourceBuilder allows reading inputs from past responses.
-func ResponseSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) (Source, error) {
-	s := &ResponseSource{
+func ResponseSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+	return &ResponseSource{
 		outer: engine.outerBlockName,
 		field: field,
 	}
-
-	return s, nil
 }
 
 var _ SourceBuilder = ResponseSourceBuilder
@@ -41,12 +39,12 @@ func (s *ResponseSource) Validate(_ context.Context) ([]string, []string, error)
 		outerFieldName := fmt.Sprintf("%v_name", s.outer)
 		rawOuterName, present := s.field[outerFieldName]
 		if !present {
-			return nil, nil, fmt.Errorf("response source is missing required field '%v'", outerFieldName)
+			return nil, nil, fmt.Errorf("response source is missing required field %q", outerFieldName)
 		}
 
 		outerName, ok := rawOuterName.(string)
 		if !ok {
-			return nil, nil, fmt.Errorf("field '%v' is of wrong type: expected 'string' got '%T'", outerFieldName, rawOuterName)
+			return nil, nil, fmt.Errorf("field %q is of wrong type: expected 'string' got '%T'", outerFieldName, rawOuterName)
 		}
 
 		responseName = outerName + "."

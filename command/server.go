@@ -1693,16 +1693,21 @@ func (c *ServerCommand) waitForLeader(core *vault.Core) (bool, error) {
 	// nodes yet because key material was just created prior to this. We can
 	// only ever become the leader unless we were somehow started as a
 	// non-voting node. Assume we'll become leader.
+	//
+	// When HA mode is not enabled, core.Leader() returns ErrHANotEnabled,
+	// which means we'll vacuously become the leader so we can skip the
+	// subsequent loop to wait for leadership.
 	isLeader, _, _, err := core.Leader()
 	if err != nil && err != vault.ErrHANotEnabled {
 		return false, fmt.Errorf("failed to check active status: %w", err)
 	}
 	if err == nil {
-		// Raft is slower than dev mode.
+		// Raft is slower than dev mode. We allow up to 35 seconds for
+		// a leader to be elected.
 		leaderCount := 35
 		for !isLeader {
 			if leaderCount == 0 {
-				buf := make([]byte, 1<<16)
+				buf := make([]byte, 1<<16 /* stack trace max size */)
 				runtime.Stack(buf, true)
 				return false, fmt.Errorf("failed to get active status (is this node a non-voter?); call stack is\n%s", buf)
 			}
@@ -1731,7 +1736,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		return errors.New("self-initialization requires auto-unseal as there is no way to persist the Shamir's keys")
 	}
 
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+	ctx := namespace.RootContext(context.Background())
 
 	// Fast path skipping self-initialization if already initialized.
 	inited, err := core.Initialized(ctx)
@@ -1747,21 +1752,11 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		return nil
 	}
 
-	// Initialize it with a basic single recovery key.
-	//
-	// XXX (ascheel): identify if we can drop these to zero and generate
-	// recovery keys later. See https://github.com/openbao/openbao/pull/1512.
+	// Initialize the cluster without recovery keys; a root token can be
+	// used to create recovery keys in the future.
 	var recoveryConfig *vault.SealConfig
-	barrierConfig := &vault.SealConfig{
-		SecretShares:    1,
-		SecretThreshold: 1,
-		StoredShares:    1,
-	}
-
-	recoveryConfig = &vault.SealConfig{
-		SecretShares:    1,
-		SecretThreshold: 1,
-	}
+	barrierConfig := &vault.SealConfig{}
+	recoveryConfig = &vault.SealConfig{}
 
 	init, err := core.Initialize(ctx, &vault.InitParams{
 		BarrierConfig:  barrierConfig,
@@ -1772,7 +1767,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	}
 
 	if ok, err := core.Unseal(init.RecoveryShares[0]); err != nil || !ok {
-		return fmt.Errorf("unesal after self-initialization failed: err=%w ok=%v", err, ok)
+		return fmt.Errorf("unseal after self-initialization failed: err=%w ok=%v", err, ok)
 	}
 
 	// Wait for leadership; if we don't get the leadership status, it means

@@ -8,7 +8,7 @@ import (
 	"github.com/openbao/openbao/internalshared/configutil"
 )
 
-// Outer is a named configuration object that contains one or more request
+// OuterConfig is a named configuration object that contains one or more request
 // objects. This allows the splitting of a single large profile into smaller
 // sub-profiles while still allowing references across the entire space.
 type OuterConfig struct {

@@ -74,7 +74,7 @@ func WithDefaultToken(token string) func(*ProfileEngine) {
 	}
 }
 
-// Sets the profile
+// Sets the profile.
 func WithProfile(profile []*OuterConfig) func(*ProfileEngine) {
 	return func(p *ProfileEngine) {
 		p.profile = profile
@@ -106,7 +106,7 @@ func WithLogger(logger hclog.Logger) func(*ProfileEngine) {
 
 // SourceBuilder creates a new concrete source mapped to a particular
 // instance of a field.
-type SourceBuilder func(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) (Source, error)
+type SourceBuilder func(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source
 
 // RequestHandler takes logical requests and executes them.
 type RequestHandlerFunc func(ctx context.Context, req *logical.Request) (*logical.Response, error)
@@ -387,18 +387,14 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 		return nil, fmt.Errorf("unknown value for 'eval_source': %v", source)
 	}
 
-	sourceEval, err := sourceBuilder(ctx, p, obj)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize source '%v': %w", source, err)
-	}
-
+	sourceEval := sourceBuilder(ctx, p, obj)
 	defer sourceEval.Close(ctx)
 
 	// XXX (ascheel) - We will need to validate that history aligns with our
 	// expectations at this point in time, however, our actual builder
 	// initialization and validation call will be moved earlier to profile
 	// validation.
-	_, _, err = sourceEval.Validate(ctx)
+	_, _, err := sourceEval.Validate(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source '%v': %w", source, err)
 	}

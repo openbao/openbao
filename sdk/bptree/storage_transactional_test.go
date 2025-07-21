@@ -31,7 +31,7 @@ func createTransactionalStorage(t *testing.T) logical.TransactionalStorage {
 }
 
 // initTransactionalNodeStorageTest initializes a transactional node storage for testing
-func initTransactionalNodeStorageTest(t *testing.T) (context.Context, Storage) {
+func initTransactionalNodeStorageTest(t *testing.T) (context.Context, TransactionalStorage) {
 	ctx := context.Background()
 	// Create transactional storage
 	s := createTransactionalStorage(t)
@@ -47,13 +47,9 @@ func initTransactionalNodeStorageTest(t *testing.T) (context.Context, Storage) {
 func TestTransactionalStorageBasics(t *testing.T) {
 	ctx, storage := initTransactionalNodeStorageTest(t)
 
-	// Check if storage supports transactions
-	txnStorage, ok := storage.(TransactionalStorage)
-	require.True(t, ok, "Storage should support transactions")
-
 	t.Run("EmptyTransactionCommit", func(t *testing.T) {
 		// Empty transaction should commit successfully
-		txn, err := txnStorage.BeginTx(ctx)
+		txn, err := storage.BeginTx(ctx)
 		require.NoError(t, err, "Failed to begin transaction")
 
 		err = txn.Commit(ctx)
@@ -66,7 +62,7 @@ func TestTransactionalStorageBasics(t *testing.T) {
 
 	t.Run("EmptyTransactionRollback", func(t *testing.T) {
 		// Empty transaction should rollback successfully
-		txn, err := txnStorage.BeginTx(ctx)
+		txn, err := storage.BeginTx(ctx)
 		require.NoError(t, err, "Failed to begin transaction")
 
 		err = txn.Rollback(ctx)
@@ -79,7 +75,7 @@ func TestTransactionalStorageBasics(t *testing.T) {
 
 	t.Run("EmptyReadOnlyTransactionCommit", func(t *testing.T) {
 		// Empty read-only transaction should commit successfully
-		txn, err := txnStorage.BeginReadOnlyTx(ctx)
+		txn, err := storage.BeginReadOnlyTx(ctx)
 		require.NoError(t, err, "Failed to begin read-only transaction")
 
 		err = txn.Commit(ctx)
@@ -92,7 +88,7 @@ func TestTransactionalStorageBasics(t *testing.T) {
 
 	t.Run("CommitThenRollback", func(t *testing.T) {
 		// Commit then rollback should fail
-		txn, err := txnStorage.BeginTx(ctx)
+		txn, err := storage.BeginTx(ctx)
 		require.NoError(t, err, "Failed to begin transaction")
 
 		err = txn.Commit(ctx)
@@ -104,7 +100,7 @@ func TestTransactionalStorageBasics(t *testing.T) {
 
 	t.Run("RollbackThenCommit", func(t *testing.T) {
 		// Rollback then commit should fail
-		txn, err := txnStorage.BeginTx(ctx)
+		txn, err := storage.BeginTx(ctx)
 		require.NoError(t, err, "Failed to begin transaction")
 
 		err = txn.Rollback(ctx)

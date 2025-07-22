@@ -5,6 +5,7 @@ package jwtauth
 
 import (
 	"bytes"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -12,9 +13,6 @@ import (
 )
 
 func TestPrintQR(t *testing.T) {
-	b := bytes.Buffer{}
-	printQR(&b, "https://auth.url/")
-
 	expectedQR := strings.Join([]string{
 		"\033[38;2;255;255;255m\033[48;2;0;0;0m█████████████████████████\033[0m",
 		"\033[38;2;255;255;255m\033[48;2;0;0;0m██ ▄▄▄▄▄ █▀ ▀███ ▄▄▄▄▄ ██\033[0m",
@@ -30,5 +28,18 @@ func TestPrintQR(t *testing.T) {
 		"\033[38;2;255;255;255m\033[48;2;0;0;0m██▄▄▄▄▄▄▄█▄▄▄█▄▄▄█▄██▄███\033[0m",
 		"\033[38;2;255;255;255m\033[48;2;0;0;0m█████████████████████████\033[0m\n",
 	}, "\n")
-	assert.Equal(t, expectedQR, b.String())
+
+	t.Run("with 24-bit color support", func(t *testing.T) {
+		t.Setenv("COLORTERM", "truecolor")
+		b := bytes.Buffer{}
+		printQR(&b, "https://auth.url/")
+		assert.Equal(t, expectedQR, b.String())
+	})
+
+	t.Run("without 24-bit color support", func(t *testing.T) {
+		t.Setenv("COLORTERM", "")
+		b := bytes.Buffer{}
+		printQR(&b, "https://auth.url/")
+		assert.Equal(t, regexp.MustCompile("\033.*?m").ReplaceAllString(expectedQR, ""), b.String())
+	})
 }

@@ -6,6 +6,7 @@ package jwtauth
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/yeqown/go-qrcode/v2"
@@ -35,9 +36,16 @@ func (q qrWriter) Write(mat qrcode.Matrix) error {
 
 	builder := strings.Builder{}
 
+	var clearColors, setColors string
+	colorterm := strings.TrimSpace(strings.ToLower(os.Getenv("COLORTERM")))
+	if colorterm == "truecolor" || colorterm == "24bit" {
+		setColors = "\033[38;2;255;255;255m" + // set forground color to white
+			"\033[48;2;0;0;0m" // set background color to black
+		clearColors = "\033[0m"
+	}
+
 	for row := -2; row < mat.Height()+2; row += 2 {
-		builder.WriteString("\033[38;2;255;255;255m") // set forground color to white
-		builder.WriteString("\033[48;2;0;0;0m")       // set background color to black
+		builder.WriteString(setColors)
 
 		for col := -2; col < mat.Width()+2; col += 1 {
 			top := get(row, col)
@@ -55,7 +63,7 @@ func (q qrWriter) Write(mat qrcode.Matrix) error {
 			}
 		}
 
-		builder.WriteString("\033[0m") // clear colors
+		builder.WriteString(clearColors)
 		builder.WriteString("\n")
 	}
 

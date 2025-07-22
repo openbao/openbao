@@ -9,12 +9,10 @@ import (
 )
 
 // FileSourceBuilder allows reading files from disk.
-func FileSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) (Source, error) {
-	s := &FileSource{
+func FileSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+	return &FileSource{
 		field: field,
 	}
-
-	return s, nil
 }
 
 var _ SourceBuilder = FileSourceBuilder

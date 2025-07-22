@@ -20,9 +20,9 @@ type Operation string
 
 const (
 	DeleteOperation Operation = "delete"
-	GetOperation              = "get"
-	ListOperation             = "list"
-	PutOperation              = "put"
+	GetOperation    Operation = "get"
+	ListOperation   Operation = "list"
+	PutOperation    Operation = "put"
 )
 
 const (

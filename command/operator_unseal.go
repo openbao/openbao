@@ -130,7 +130,7 @@ func (c *OperatorUnsealCommand) Run(args []string) int {
 
 	if unsealKey == "" {
 		if c.flagNonInteractive {
-			c.UI.Error(wrapAtLength(fmt.Sprintf("Refusing to read from stdin with -non-interactive specified; specify unseal key as an argument to this command")))
+			c.UI.Error(wrapAtLength("Refusing to read from stdin with -non-interactive specified; specify unseal key as an argument to this command"))
 			return 1
 		}
 

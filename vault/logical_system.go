@@ -86,6 +86,8 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"raw",
 				"raw/*",
 				"rotate",
+				"rotate/keyring",
+				"rotate/root",
 				"config/cors",
 				"config/auditing/*",
 				"config/ui/headers/*",
@@ -117,13 +119,15 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"generate-root/attempt",
 				"generate-root/update",
 				"decode-token",
+				"mfa/validate",
+				// these endpoint are unauthenticated only with
+				// "disable_unauthed_rekey_endpoints" listener property set to true
 				"rekey/init",
 				"rekey/update",
 				"rekey/verify",
 				"rekey-recovery-key/init",
 				"rekey-recovery-key/update",
 				"rekey-recovery-key/verify",
-				"mfa/validate",
 			},
 
 			LocalStorage: []string{
@@ -135,6 +139,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 
 	b.Backend.Paths = append(b.Backend.Paths, b.configPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.rekeyPaths()...)
+	b.Backend.Paths = append(b.Backend.Paths, b.rotatePaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.sealPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.statusPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.pluginsCatalogListPaths()...)
@@ -986,7 +991,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 				"unable to parse given auth config information"),
 			logical.ErrInvalidRequest
 	}
-	if configMap != nil && len(configMap) != 0 {
+	if len(configMap) != 0 {
 		err := mapstructure.Decode(configMap, &apiConfig)
 		if err != nil {
 			return logical.ErrorResponse(
@@ -1670,7 +1675,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 		userLockoutConfigMap := data.Get("user_lockout_config").(map[string]interface{})
 		var err error
-		if userLockoutConfigMap != nil && len(userLockoutConfigMap) != 0 {
+		if len(userLockoutConfigMap) != 0 {
 			err := mapstructure.Decode(userLockoutConfigMap, &apiuserLockoutConfig)
 			if err != nil {
 				return logical.ErrorResponse(
@@ -1912,10 +1917,10 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 	if rawVal, ok := data.GetOk("token_type"); ok {
 		if !strings.HasPrefix(path, "auth/") {
-			return logical.ErrorResponse(fmt.Sprintf("'token_type' can only be modified on auth mounts")), logical.ErrInvalidRequest
+			return logical.ErrorResponse("'token_type' can only be modified on auth mounts"), logical.ErrInvalidRequest
 		}
 		if mountEntry.Type == mountTypeToken || mountEntry.Type == mountTypeNSToken {
-			return logical.ErrorResponse(fmt.Sprintf("'token_type' cannot be set for 'token' or 'ns_token' auth mounts")), logical.ErrInvalidRequest
+			return logical.ErrorResponse("'token_type' cannot be set for 'token' or 'ns_token' auth mounts"), logical.ErrInvalidRequest
 		}
 
 		tokenType := logical.TokenTypeDefaultService
@@ -1930,8 +1935,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		case "batch":
 			tokenType = logical.TokenTypeBatch
 		default:
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid value for 'token_type'")), logical.ErrInvalidRequest
+			return logical.ErrorResponse("invalid value for 'token_type'"), logical.ErrInvalidRequest
 		}
 
 		oldVal := mountEntry.Config.TokenType
@@ -2420,7 +2424,7 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 				"unable to parse given auth config information"),
 			logical.ErrInvalidRequest
 	}
-	if configMap != nil && len(configMap) != 0 {
+	if len(configMap) != 0 {
 		err := mapstructure.Decode(configMap, &apiConfig)
 		if err != nil {
 			return logical.ErrorResponse(
@@ -2477,8 +2481,7 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	case "batch":
 		config.TokenType = logical.TokenTypeBatch
 	default:
-		return logical.ErrorResponse(fmt.Sprintf(
-			"invalid value for 'token_type'")), logical.ErrInvalidRequest
+		return logical.ErrorResponse("invalid value for 'token_type'"), logical.ErrInvalidRequest
 	}
 
 	switch logicalType {
@@ -3285,84 +3288,6 @@ func (b *SystemBackend) handleKeyStatus(ctx context.Context, req *logical.Reques
 	return resp, nil
 }
 
-// handleKeyRotationConfigRead returns the barrier key rotation config
-func (b *SystemBackend) handleKeyRotationConfigRead(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	// Get the key info
-	rotConfig, err := b.Core.barrier.RotationConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &logical.Response{
-		Data: map[string]interface{}{
-			"max_operations": rotConfig.MaxOperations,
-			"enabled":        !rotConfig.Disabled,
-		},
-	}
-	if rotConfig.Interval > 0 {
-		resp.Data["interval"] = rotConfig.Interval.String()
-	} else {
-		resp.Data["interval"] = 0
-	}
-	return resp, nil
-}
-
-// handleKeyRotationConfigRead returns the barrier key rotation config
-func (b *SystemBackend) handleKeyRotationConfigUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	rotConfig, err := b.Core.barrier.RotationConfig()
-	if err != nil {
-		return nil, err
-	}
-	maxOps, ok, err := data.GetOkErr("max_operations")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.MaxOperations = maxOps.(int64)
-	}
-	interval, ok, err := data.GetOkErr("interval")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.Interval = time.Second * time.Duration(interval.(int))
-	}
-
-	enabled, ok, err := data.GetOkErr("enabled")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.Disabled = !enabled.(bool)
-	}
-
-	// Reject out of range settings
-	if rotConfig.Interval < minimumRotationInterval && rotConfig.Interval != 0 {
-		return logical.ErrorResponse("interval must be greater or equal to %s", minimumRotationInterval.String()), logical.ErrInvalidRequest
-	}
-
-	if rotConfig.MaxOperations < absoluteOperationMinimum || rotConfig.MaxOperations > absoluteOperationMaximum {
-		return logical.ErrorResponse("max_operations must be in the range [%d,%d]", absoluteOperationMinimum, absoluteOperationMaximum), logical.ErrInvalidRequest
-	}
-
-	// Store the rotation config
-	err = b.Core.barrier.SetRotationConfig(ctx, rotConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-// handleRotate is used to trigger a key rotation
-func (b *SystemBackend) handleRotate(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	if err := b.rotateBarrierKey(ctx); err != nil {
-		b.Backend.Logger().Error("error handling key rotation", "error", err)
-		return handleError(err)
-	}
-	return nil, nil
-}
-
 func (b *SystemBackend) handleWrappingPubkey(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	x, _ := b.Core.wrappingJWTKey.X.MarshalText()
 	y, _ := b.Core.wrappingJWTKey.Y.MarshalText()
@@ -3479,12 +3404,12 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 		rawBody := httpResp.Data[logical.HTTPRawBody]
 		if rawBody != nil {
 			// Decode here so that we can audit properly
-			switch rawBody.(type) {
+			switch bod := rawBody.(type) {
 			case string:
 				// Best effort decoding; if this works, the original value was
 				// probably a []byte instead of a string, but was marshaled
 				// when the value was saved, so this restores it as it was
-				decBytes, err := base64.StdEncoding.DecodeString(rawBody.(string))
+				decBytes, err := base64.StdEncoding.DecodeString(bod)
 				if err == nil {
 					// We end up with []byte, will not be HMAC'd
 					resp.Data[logical.HTTPRawBody] = decBytes
@@ -3536,7 +3461,7 @@ func (b *SystemBackend) responseWrappingUnwrap(ctx context.Context, te *logical.
 	if cubbyResp == nil {
 		return "no information found; wrapping token may be from a previous OpenBao version", ErrInternalError
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp.Error().Error(), nil
 	}
 	if cubbyResp.Data == nil {
@@ -3781,7 +3706,7 @@ func (b *SystemBackend) handleWrappingLookup(ctx context.Context, req *logical.R
 	if cubbyResp == nil {
 		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
@@ -3862,7 +3787,7 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 	if cubbyResp == nil {
 		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
@@ -3900,7 +3825,7 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 	if cubbyResp == nil {
 		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
@@ -5007,9 +4932,7 @@ func sanitizePath(path string) string {
 		path += "/"
 	}
 
-	if strings.HasPrefix(path, "/") {
-		path = path[1:]
-	}
+	path = strings.TrimPrefix(path, "/")
 
 	return path
 }
@@ -5578,6 +5501,7 @@ Enable a new audit backend or disable an existing backend.
 		"How long after installation of an active key term that the key will be automatically rotated.",
 		"",
 	},
+
 	"rotate": {
 		"Rotates the backend encryption key used to persist data.",
 		`
@@ -5586,7 +5510,28 @@ Enable a new audit backend or disable an existing backend.
 		that data encrypted using those keys can still be decrypted.
 		`,
 	},
-
+	"rotate_root": {
+		"Perform a root key rotation without requiring key shares to be provided.",
+		"",
+	},
+	"rotate_init": {
+		"Intialize, read status or cancel the process of the rotation of the root or recovery key",
+		"",
+	},
+	"rotate_update": {
+		"Progress the rotation process by providing a single key share.",
+		`This endpoint is used to enter a single key share to progress the
+		rotation of the recovery or root key. If the threshold number of key
+		shares is reached, rotation will be completed. Otherwise, this API
+		must be called multiple times until that threshold is met.
+		The rotation nonce operation must be provided with each call.
+		On the final call, any new key shares will be returned immediately.
+		`,
+	},
+	"rotate_verify": {
+		"Read status of, progress or cancel the verification process of the rotation attempt",
+		"",
+	},
 	"rekey_backup": {
 		"Allows fetching or deleting the backup of the rotated unseal keys.",
 		"",

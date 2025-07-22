@@ -496,13 +496,6 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	if rekeyResult2 == nil {
 		t.Fatal("rekey failed")
 	}
-
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if rekeyResult2 == nil {
-		t.Fatal("rekey failed")
-	}
 }
 
 // verifies that if we are using recovery keys to force a

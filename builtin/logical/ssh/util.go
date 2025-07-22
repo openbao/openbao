@@ -186,7 +186,7 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (publicKey stri
 		return
 	// generation of signing key not set and only one key material provided
 	default:
-		err = errutil.UserError{Err: fmt.Sprintf("only one of public_key and private_key set; both must be set to use, or both must be blank to auto-generate")}
+		err = errutil.UserError{Err: "only one of public_key and private_key set; both must be set to use, or both must be blank to auto-generate"}
 		return
 	}
 

@@ -8,3 +8,6 @@
   a proper IaC platform like OpenTofu to perform further configuration of the
   instance.
 ```
+```release-note:bug
+storage/postgresql: more graceful handling of parallel table creation
+```

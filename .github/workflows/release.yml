@@ -110,7 +110,6 @@ jobs:
           - hsm
           - darwin
           - freebsd
-          - illumos
           - netbsd
           - openbsd
           - windows

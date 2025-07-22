@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 
+
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -75,7 +76,7 @@ func WithDefaultToken(token string) func(*ProfileEngine) {
 	}
 }
 
-// Sets the profile
+// Sets the profile.
 func WithProfile(profile []*OuterConfig) func(*ProfileEngine) {
 	return func(p *ProfileEngine) {
 		p.profile = profile
@@ -107,7 +108,7 @@ func WithLogger(logger hclog.Logger) func(*ProfileEngine) {
 
 // SourceBuilder creates a new concrete source mapped to a particular
 // instance of a field.
-type SourceBuilder func(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) (Source, error)
+type SourceBuilder func(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source
 
 // RequestHandler takes logical requests and executes them.
 type RequestHandlerFunc func(ctx context.Context, req *logical.Request) (*logical.Response, error)
@@ -126,6 +127,7 @@ func (p *ProfileEngine) validate() error {
 		if name == "" {
 			return fmt.Errorf("a source is missing a name")
 		}
+    
 		if builder == nil {
 			return fmt.Errorf("source '%v' has nil builder", name)
 		}
@@ -134,6 +136,7 @@ func (p *ProfileEngine) validate() error {
 	if len(p.profile) > 1 && p.outerBlockName == "" {
 		return fmt.Errorf("must have named outer block when providing more than one outer config")
 	}
+
 
 	if err := p.validateOuterBlockUniqueness(); err != nil {
 		return err
@@ -479,6 +482,7 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 	defer sourceEval.Close(ctx)
 
 	accessedRequests, accessedResponses, err := sourceEval.Validate(ctx)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source '%v': %w", source, err)
 	}
@@ -577,4 +581,5 @@ func (p *ProfileEngine) convertToType(val interface{}, objType string) (interfac
 	default:
 		return nil, fmt.Errorf("unsupported type conversion: %s", objType)
 	}
+
 }

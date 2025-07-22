@@ -680,7 +680,7 @@ func (p *Policy) Serialize() ([]byte, error) {
 
 func (p *Policy) NeedsUpgrade() bool {
 	// Ensure we've moved from Key -> Keys
-	if p.Key != nil && len(p.Key) > 0 {
+	if len(p.Key) > 0 {
 		return true
 	}
 
@@ -740,7 +740,7 @@ func (p *Policy) Upgrade(ctx context.Context, storage logical.Storage, randReade
 
 	persistNeeded := false
 	// Ensure we've moved from Key -> Keys
-	if p.Key != nil && len(p.Key) > 0 {
+	if len(p.Key) > 0 {
 		p.MigrateKeyToKeysMap()
 		persistNeeded = true
 	}
@@ -1123,7 +1123,7 @@ func (p *Policy) DecryptWithFactory(context, nonce []byte, value string, factori
 		}
 		key := keyEntry.RSAKey
 		if key == nil {
-			return "", errutil.InternalError{Err: fmt.Sprintf("cannot decrypt ciphertext, key version does not have a private counterpart")}
+			return "", errutil.InternalError{Err: "cannot decrypt ciphertext, key version does not have a private counterpart"}
 		}
 		plain, err = rsa.DecryptOAEP(sha256.New(), rand.Reader, key, decoded, nil)
 		if err != nil {
@@ -1444,7 +1444,7 @@ func (p *Policy) VerifySignatureWithOptions(context, input []byte, sig string, o
 			if err != nil {
 				return false, errutil.UserError{Err: "supplied signature is invalid"}
 			}
-			if rest != nil && len(rest) != 0 {
+			if len(rest) != 0 {
 				return false, errutil.UserError{Err: "supplied signature contains extra data"}
 			}
 
@@ -1760,7 +1760,7 @@ func (p *Policy) RotateInMemory(randReader io.Reader) (retErr error) {
 			Bytes: derBytes,
 		}
 		pemBytes := pem.EncodeToMemory(pemBlock)
-		if pemBytes == nil || len(pemBytes) == 0 {
+		if len(pemBytes) == 0 {
 			return errors.New("error PEM-encoding public key")
 		}
 		entry.FormattedPublicKey = string(pemBytes)
@@ -1989,7 +1989,7 @@ func (p *Policy) SymmetricEncryptRaw(ver int, encKey, plaintext []byte, opts Sym
 		switch convergentVersion {
 		case 3:
 			if len(opts.HMACKey) == 0 {
-				return nil, errutil.InternalError{Err: fmt.Sprintf("invalid hmac key length of zero")}
+				return nil, errutil.InternalError{Err: "invalid hmac key length of zero"}
 			}
 			nonceHmac := hmac.New(sha256.New, opts.HMACKey)
 			nonceHmac.Write(plaintext)
@@ -2263,9 +2263,8 @@ func (p *Policy) ImportPrivateKeyForVersion(ctx context.Context, storage logical
 		}
 	}
 
-	switch parsedPrivateKey.(type) {
+	switch ppk := parsedPrivateKey.(type) {
 	case *ecdsa.PrivateKey:
-		ecdsaKey := parsedPrivateKey.(*ecdsa.PrivateKey)
 		pemBlock, _ := pem.Decode([]byte(keyEntry.FormattedPublicKey))
 		if pemBlock == nil {
 			return errors.New("failed to parse key entry public key: invalid PEM blob")
@@ -2274,21 +2273,19 @@ func (p *Policy) ImportPrivateKeyForVersion(ctx context.Context, storage logical
 		if err != nil || publicKey == nil {
 			return fmt.Errorf("failed to parse key entry public key: %v", err)
 		}
-		if !publicKey.(*ecdsa.PublicKey).Equal(&ecdsaKey.PublicKey) {
+		if !publicKey.(*ecdsa.PublicKey).Equal(&ppk.PublicKey) {
 			return errors.New("cannot import key, key pair does not match")
 		}
 	case *rsa.PrivateKey:
-		rsaKey := parsedPrivateKey.(*rsa.PrivateKey)
-		if !rsaKey.PublicKey.Equal(keyEntry.RSAPublicKey) {
+		if !ppk.PublicKey.Equal(keyEntry.RSAPublicKey) {
 			return errors.New("cannot import key, key pair does not match")
 		}
 	case ed25519.PrivateKey:
-		ed25519Key := parsedPrivateKey.(ed25519.PrivateKey)
 		publicKey, err := base64.StdEncoding.DecodeString(keyEntry.FormattedPublicKey)
 		if err != nil {
 			return fmt.Errorf("failed to parse key entry public key: %v", err)
 		}
-		if !ed25519.PublicKey(publicKey).Equal(ed25519Key.Public()) {
+		if !ed25519.PublicKey(publicKey).Equal(ppk.Public()) {
 			return errors.New("cannot import key, key pair does not match")
 		}
 	}
@@ -2355,7 +2352,7 @@ func (ke *KeyEntry) parseFromKey(PolKeyType KeyType, parsedKey any) error {
 			Bytes: derBytes,
 		}
 		pemBytes := pem.EncodeToMemory(pemBlock)
-		if pemBytes == nil || len(pemBytes) == 0 {
+		if len(pemBytes) == 0 {
 			return errors.New("error PEM-encoding public key")
 		}
 		ke.FormattedPublicKey = string(pemBytes)

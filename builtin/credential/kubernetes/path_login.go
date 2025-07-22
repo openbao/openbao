@@ -350,8 +350,7 @@ func (b *kubeAuthBackend) parseAndValidateJWT(ctx context.Context, client *http.
 	// verify the service account name is allowed
 	if len(role.ServiceAccountNames) > 1 || role.ServiceAccountNames[0] != "*" {
 		if !strutil.StrListContainsGlob(role.ServiceAccountNames, sa.name()) {
-			return nil, logical.CodedError(http.StatusForbidden,
-				fmt.Sprintf("service account name not authorized"))
+			return nil, logical.CodedError(http.StatusForbidden, "service account name not authorized")
 		}
 	}
 

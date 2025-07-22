@@ -103,7 +103,7 @@ func (eh *EvaluationHistory) GetRequestField(outerBlock string, requestBlock str
 
 	val, err := eh.getField(values, fieldSelector)
 	if err != nil {
-		return nil, fmt.Errorf("error resolving field; %w", err)
+		return nil, fmt.Errorf("error resolving field: %w", err)
 	}
 
 	return val, nil

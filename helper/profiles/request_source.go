@@ -6,13 +6,11 @@ import (
 )
 
 // RequestSourceBuilder allows reading inputs from past requests.
-func RequestSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) (Source, error) {
-	s := &RequestSource{
+func RequestSourceBuilder(ctx context.Context, engine *ProfileEngine, field map[string]interface{}) Source {
+	return &RequestSource{
 		outer: engine.outerBlockName,
 		field: field,
 	}
-
-	return s, nil
 }
 
 var _ SourceBuilder = RequestSourceBuilder
@@ -55,7 +53,7 @@ func (s *RequestSource) Validate(_ context.Context) ([]string, []string, error) 
 
 	rawReqName, present := s.field["req_name"]
 	if !present {
-		return nil, nil, fmt.Errorf("request source is missing required field '%v'", "req_name")
+		return nil, nil, fmt.Errorf("request source is missing required field %q", "req_name")
 	}
 
 	reqName, ok := rawReqName.(string)
@@ -66,7 +64,8 @@ func (s *RequestSource) Validate(_ context.Context) ([]string, []string, error) 
 	s.requestName = reqName
 	requestName += reqName
 
-	rawFieldSelector, present := s.field["field_selector"]
+	rawFieldSelector := s.field["field_selector"]
+
 	if present {
 		switch rawFieldSelector.(type) {
 		case string:

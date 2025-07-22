@@ -66,6 +66,5 @@ func wrapCORSHandler(h http.Handler, core *vault.Core) http.Handler {
 		}
 
 		h.ServeHTTP(w, req)
-		return
 	})
 }

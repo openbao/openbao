@@ -264,7 +264,7 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 	if ok {
 		groupType := groupTypeRaw.(string)
 		if group.Type != "" && groupType != group.Type {
-			return logical.ErrorResponse(fmt.Sprintf("group type cannot be changed")), nil
+			return logical.ErrorResponse("group type cannot be changed"), nil
 		}
 
 		group.Type = groupType

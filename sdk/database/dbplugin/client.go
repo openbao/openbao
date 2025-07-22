@@ -76,9 +76,9 @@ func NewPluginClient(ctx context.Context, sys pluginutil.RunnerUtil, pluginRunne
 	// We should have a database type now. This feels like a normal interface
 	// implementation but is in fact over an RPC connection.
 	var db Database
-	switch raw.(type) {
+	switch d := raw.(type) {
 	case *gRPCClient:
-		db = raw.(*gRPCClient)
+		db = d
 	default:
 		return nil, errors.New("unsupported client type")
 	}

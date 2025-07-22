@@ -214,7 +214,7 @@ func TestDebugCommand_Archive(t *testing.T) {
 				header, err = unarchived.Next()
 			}
 
-			if err != nil && !errors.Is(err, io.EOF) {
+			if !errors.Is(err, io.EOF) {
 				t.Fatalf("failed reading file: %v", err)
 			}
 		})
@@ -334,7 +334,7 @@ func TestDebugCommand_CaptureTargets(t *testing.T) {
 				header, err = unarchived.Next()
 			}
 
-			if err != nil && !errors.Is(err, io.EOF) {
+			if !errors.Is(err, io.EOF) {
 				t.Fatalf("failed reading file: %v", err)
 			}
 
@@ -755,7 +755,7 @@ func TestDebugCommand_PartialPermissions(t *testing.T) {
 		header, err = unarchived.Next()
 	}
 
-	if err != nil && !errors.Is(err, io.EOF) {
+	if !errors.Is(err, io.EOF) {
 		t.Fatalf("failed reading file: %v", err)
 	}
 }
@@ -865,7 +865,7 @@ func TestDebugCommand_InsecureUmask(t *testing.T) {
 					header, err = unarchived.Next()
 				}
 
-				if err != nil && !errors.Is(err, io.EOF) {
+				if !errors.Is(err, io.EOF) {
 					t.Fatalf("failed reading file: %v", err)
 				}
 			case false:

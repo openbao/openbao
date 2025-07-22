@@ -918,7 +918,6 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 				}
 
 				atomic.AddInt32(lopCount, -1)
-				return
 			}()
 		case <-stopCh:
 			timer.Stop()

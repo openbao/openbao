@@ -102,7 +102,10 @@ func init() {
 		"replication/reindex",
 		"replication/status",
 		"rotate",
+		"rotate/root",
 		"rotate/config",
+		"rotate/keyring",
+		"rotate/keyring/config",
 		"seal",
 		"sealwrap/rewrap",
 		"step-down",
@@ -667,7 +670,7 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 	// Find the optional operation; this defaults to Update if missing.
 	authOperation, present := req.Headers[consts.InlineAuthOperationHeaderName]
 	if !present {
-		authOperation = []string{logical.UpdateOperation}
+		authOperation = []string{string(logical.UpdateOperation)}
 	}
 	if len(authOperation) != 1 {
 		return fmt.Errorf("expected exactly one value for %v", consts.InlineAuthOperationHeaderName)

@@ -277,8 +277,6 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 	if out == nil {
 		ps.switchedDeletePolicy(ctx, name, policyType, false, true)
 	}
-
-	return
 }
 
 // SetPolicy is used to create or update the given policy

@@ -543,7 +543,7 @@ func TestHTTP_Forwarding_ClientTLS(t *testing.T) {
 		if secret.Auth == nil {
 			t.Fatal("auth is nil")
 		}
-		if secret.Auth.Policies == nil || len(secret.Auth.Policies) == 0 || secret.Auth.Policies[0] != "default" {
+		if len(secret.Auth.Policies) == 0 || secret.Auth.Policies[0] != "default" {
 			t.Fatalf("bad policies: %#v", secret.Auth.Policies)
 		}
 		if secret.Auth.ClientToken == "" {
@@ -557,7 +557,7 @@ func TestHTTP_Forwarding_ClientTLS(t *testing.T) {
 		if secret == nil {
 			t.Fatal("secret is nil")
 		}
-		if secret.Data == nil || len(secret.Data) == 0 {
+		if len(secret.Data) == 0 {
 			t.Fatal("secret data was empty")
 		}
 	}

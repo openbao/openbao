@@ -805,9 +805,7 @@ func (b *backend) ifCountEnabledIncrementTotalCertificatesCount(certsCounted boo
 		switch {
 		case !certsCounted:
 			// This is unsafe, but a good best-attempt
-			if strings.HasPrefix(newSerial, "certs/") {
-				newSerial = newSerial[6:]
-			}
+			newSerial = strings.TrimPrefix(newSerial, "certs/")
 			b.possibleDoubleCountedSerials = append(b.possibleDoubleCountedSerials, newSerial)
 		default:
 			if b.publishCertCountMetrics.Load() {
@@ -845,9 +843,8 @@ func (b *backend) ifCountEnabledIncrementTotalRevokedCertificatesCount(certsCoun
 		switch {
 		case !certsCounted:
 			// This is unsafe, but a good best-attempt
-			if strings.HasPrefix(newSerial, "revoked/") { // allow passing in the path (revoked/serial) OR the serial
-				newSerial = newSerial[8:]
-			}
+			// allow passing in the path (revoked/serial) OR the serial
+			newSerial = strings.TrimPrefix(newSerial, "revoked/")
 			b.possibleDoubleCountedRevokedSerials = append(b.possibleDoubleCountedRevokedSerials, newSerial)
 		default:
 			if b.publishCertCountMetrics.Load() {

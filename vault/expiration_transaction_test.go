@@ -12,6 +12,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
+// TestExpiration_WithTransaction validates transaction callback success
 func TestExpiration_WithTransaction(t *testing.T) {
 	exp := mockExpiration(t)
 	ctx := namespace.RootContext(nil)
@@ -47,6 +48,7 @@ func TestExpiration_WithTransaction(t *testing.T) {
 	}
 }
 
+// TestExpiration_WithTransaction_CallbackError validates transaction callback error
 func TestExpiration_WithTransaction_CallbackError(t *testing.T) {
 	exp := mockExpiration(t)
 	ctx := namespace.RootContext(nil)

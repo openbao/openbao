@@ -14,10 +14,8 @@ func TestFileSourceBuilder_Success(t *testing.T) {
 	ctx := context.Background()
 	engine := &ProfileEngine{sourceBuilders: make(map[string]SourceBuilder)}
 	field := map[string]interface{}{"path": "dummy"}
-	src, err := FileSourceBuilder(ctx, engine, field)
-	if err != nil {
-		t.Fatalf("FileSourceBuilder, error: %v", err)
-	}
+	src := FileSourceBuilder(ctx, engine, field)
+
 	fs, ok := src.(*FileSource)
 	if !ok {
 		t.Fatalf("expected *FileSource, got %T", src)
@@ -58,7 +56,6 @@ func TestFileSource_Validate_Success(t *testing.T) {
 	if src.file == nil {
 		t.Fatal("expected src.file to be set after Validate")
 	}
-	// Clean up file descriptor
 	if err := src.Close(context.Background()); err != nil {
 		t.Errorf("Close, error: %v", err)
 	}

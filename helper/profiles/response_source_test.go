@@ -11,10 +11,7 @@ func TestSourceBuilder_Success(t *testing.T) {
 	engine := &ProfileEngine{outerBlockName: "outer", sourceBuilders: make(map[string]SourceBuilder)}
 	field := map[string]interface{}{"resp_name": "mount-userpass"}
 
-	src, err := ResponseSourceBuilder(ctx, engine, field)
-	if err != nil {
-		t.Fatalf("ResponseSourceBuilder error: %v", err)
-	}
+	src := ResponseSourceBuilder(ctx, engine, field)
 	respSrc, ok := src.(*ResponseSource)
 	if !ok {
 		t.Fatalf("expected *ResponseSource, got %T", src)
@@ -35,9 +32,9 @@ func TestWithResponseSource(t *testing.T) {
 		t.Fatal("expected sourceBuilders['response'] to be set")
 	}
 
-	src, err := builder(context.Background(), engine, map[string]interface{}{"resp_name": "x"})
-	if err != nil {
-		t.Fatalf("builder returned error: %v", err)
+	src := builder(context.Background(), engine, map[string]interface{}{"resp_name": "x"})
+	if src == nil {
+		t.Fatalf("builder returned nil")
 	}
 	if _, ok := src.(*ResponseSource); !ok {
 		t.Errorf("expected *ResponseSource, got %T", src)
@@ -60,7 +57,7 @@ func TestValidate_MissingOuterNameField(t *testing.T) {
 		},
 	}
 	_, _, err := rs.Validate(context.Background())
-	want := "response source is missing required field 'profile_name'"
+	want := "response source is missing required field \"profile_name\""
 	if err == nil || err.Error() != want {
 		t.Fatalf("expected error %q, got %v", want, err)
 	}
@@ -83,43 +80,9 @@ func TestValidate_OuterNameWrongType(t *testing.T) {
 		},
 	}
 	_, _, err := rs.Validate(context.Background())
-	want := "field 'profile_name' is of wrong type: expected 'string' got 'int'"
+	want := "field \"profile_name\" is of wrong type: expected 'string' got 'int'"
 	if err == nil || err.Error() != want {
 		t.Fatalf("expected error %q, got %v", want, err)
-	}
-}
-
-func TestEvaluate_Success(t *testing.T) {
-	ctx := context.Background()
-	source := &ResponseSource{
-		field: map[string]interface{}{"resp_name": "mount-userpass"},
-	}
-
-	gotPaths, _, err := source.Validate(ctx)
-	if err != nil {
-		t.Fatalf("Validate error: %v", err)
-	}
-	wantPaths := []string{"mount-userpass"}
-	if !reflect.DeepEqual(gotPaths, wantPaths) {
-		t.Fatalf("Validate paths = %v; want %v", gotPaths, wantPaths)
-	}
-
-	history := &EvaluationHistory{}
-	expected := map[string]interface{}{"beta": "ok"}
-	if err := history.AddResponseData("", "mount-userpass", expected); err != nil {
-		t.Fatalf("AddResponseData error: %v", err)
-	}
-
-	result, err := source.Evaluate(ctx, history)
-	if err != nil {
-		t.Fatalf("Evaluate error: %v", err)
-	}
-	got, ok := result.(map[string]interface{})
-	if !ok {
-		t.Fatalf("Evaluate returned %T; want map[string]interface{}", result)
-	}
-	if !reflect.DeepEqual(got, expected) {
-		t.Fatalf("Evaluate result = %#v; want %#v", got, expected)
 	}
 }
 

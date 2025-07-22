@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"regexp"
 
-
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -127,7 +126,7 @@ func (p *ProfileEngine) validate() error {
 		if name == "" {
 			return fmt.Errorf("a source is missing a name")
 		}
-    
+
 		if builder == nil {
 			return fmt.Errorf("source '%v' has nil builder", name)
 		}
@@ -136,7 +135,6 @@ func (p *ProfileEngine) validate() error {
 	if len(p.profile) > 1 && p.outerBlockName == "" {
 		return fmt.Errorf("must have named outer block when providing more than one outer config")
 	}
-
 
 	if err := p.validateOuterBlockUniqueness(); err != nil {
 		return err
@@ -474,15 +472,11 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 		return nil, fmt.Errorf("unknown value for 'eval_source': %v", source)
 	}
 
-	sourceEval, err := sourceBuilder(ctx, p, obj)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize source '%v': %w", source, err)
-	}
+	sourceEval := sourceBuilder(ctx, p, obj)
 
 	defer sourceEval.Close(ctx)
 
 	accessedRequests, accessedResponses, err := sourceEval.Validate(ctx)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source '%v': %w", source, err)
 	}
@@ -581,5 +575,4 @@ func (p *ProfileEngine) convertToType(val interface{}, objType string) (interfac
 	default:
 		return nil, fmt.Errorf("unsupported type conversion: %s", objType)
 	}
-
 }

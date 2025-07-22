@@ -11,13 +11,9 @@ func TestEnvSourceBuilder_Success(t *testing.T) {
 	ctx := context.Background()
 	engine := &ProfileEngine{sourceBuilders: make(map[string]SourceBuilder)}
 	field := map[string]interface{}{"env_var": "TEST_VAR"}
-
-	src, err := EnvSourceBuilder(ctx, engine, field)
-	if err != nil {
-		t.Fatalf("EnvSourceBuilder, error: %v", err)
-	}
+	src := EnvSourceBuilder(ctx, engine, field)
 	if src == nil {
-		t.Fatalf("Expected non-nil source")
+		t.Errorf("Expected non-nil source")
 	}
 	if _, ok := src.(*EnvSource); !ok {
 		t.Errorf("Expected *EnvSource, got %T", src)

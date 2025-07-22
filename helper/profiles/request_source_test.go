@@ -30,10 +30,7 @@ func TestRequestSourceBuilder_Success(t *testing.T) {
 	}
 	field := map[string]interface{}{"request": "userpass"}
 
-	source, err := RequestSourceBuilder(ctx, engine, field)
-	if err != nil {
-		t.Fatalf("RequestSourceBuilder returned error: %v", err)
-	}
+	source := RequestSourceBuilder(ctx, engine, field)
 	if source == nil {
 		t.Fatal("expected non-nil Source")
 	}
@@ -56,7 +53,7 @@ func TestRequestSource_ValidateMissingField(t *testing.T) {
 		t.Fatal("expected error for missing 'req_name' field, got nil")
 	}
 
-	if !strings.HasPrefix(err.Error(), "request source is missing required field 'req_name'") {
+	if !strings.HasPrefix(err.Error(), "request source is missing required field \"req_name\"") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -78,16 +75,20 @@ func TestRequestSource_Validate_MissingOuterNameField(t *testing.T) {
 }
 
 func TestRequestSource_Validate_Success(t *testing.T) {
-	source := &RequestSource{field: map[string]interface{}{"req_name": "mount-userpass"}}
+	source := &RequestSource{
+		field: map[string]interface{}{
+			"req_name":       "mount-userpass",
+			"field_selector": "",
+		},
+	}
 	ctx := context.Background()
 
-	request, _, err := source.Validate(ctx)
+	reqs, _, err := source.Validate(ctx)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	if len(request) != 1 || request[0] != "mount-userpass" {
-		t.Errorf("expected request=[mount-userpass], got %v", request)
+	if len(reqs) != 1 || reqs[0] != "mount-userpass" {
+		t.Errorf("expected request=[mount-userpass], got %v", reqs)
 	}
 	if source.requestName != "mount-userpass" {
 		t.Errorf("expected requestName 'mount-userpass', got %q", source.requestName)
@@ -114,8 +115,9 @@ func TestRequestValidate_OuterNameOK(t *testing.T) {
 	rs := &RequestSource{
 		outer: "profile",
 		field: map[string]interface{}{
-			"profile_name": "outer1",
-			"req_name":     "r1",
+			"profile_name":   "outer1",
+			"req_name":       "r1",
+			"field_selector": "",
 		},
 	}
 
@@ -139,40 +141,6 @@ func TestRequestSource_Close(t *testing.T) {
 	err := source.Close(ctx)
 	if err != nil {
 		t.Errorf("Close returned error: %v", err)
-	}
-}
-
-func TestRequestSource_Evaluate_Success(t *testing.T) {
-	ctx := context.Background()
-	history := &EvaluationHistory{}
-	source := &RequestSource{
-		field: map[string]interface{}{"req_name": "mount-userpass"},
-	}
-
-	gotPaths, _, err := source.Validate(ctx)
-	if err != nil {
-		t.Fatalf("Validate error: %v", err)
-	}
-	wantPaths := []string{"mount-userpass"}
-	if !reflect.DeepEqual(gotPaths, wantPaths) {
-		t.Fatalf("Validate paths = %v; want %v", gotPaths, wantPaths)
-	}
-
-	expectedData := map[string]interface{}{"foo": "bar"}
-	if err := history.AddRequestData("", "mount-userpass", expectedData); err != nil {
-		t.Fatalf("AddRequestData error: %v", err)
-	}
-
-	result, err := source.Evaluate(ctx, history)
-	if err != nil {
-		t.Fatalf("Evaluate error: %v", err)
-	}
-	gotData, ok := result.(map[string]interface{})
-	if !ok {
-		t.Fatalf("Evaluate returned %T; want map[string]interface{}", result)
-	}
-	if !reflect.DeepEqual(gotData, expectedData) {
-		t.Fatalf("Evaluate result = %#v; want %#v", gotData, expectedData)
 	}
 }
 

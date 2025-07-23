@@ -1,3 +1,0 @@
-```release-note:bug
-command: fixes misspellings in comments and code throughout the codebase
-```

@@ -1,0 +1,11 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - staticcheck
+  settings:
+    staticcheck:
+      checks:
+        - SA1019
+issues:
+  max-issues-per-linter: 0

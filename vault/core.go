@@ -1068,8 +1068,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 func NewCore(conf *CoreConfig) (*Core, error) {
 	// NOTE: The order of configuration of the core has some importance, as we can
 	// make use of an early return if we are running this new core in recovery mode.
-	conf.DisableCache = true
-
 	c, err := CreateCore(conf)
 	if err != nil {
 		return nil, err
@@ -2416,7 +2414,6 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 
 	// Enable the cache
 	c.physicalCache.Purge(ctx)
-	fmt.Printf("\n\n\n c.cachingDisabled: %v \n\n\n", c.cachingDisabled)
 	if !c.cachingDisabled {
 		c.physicalCache.SetEnabled(true)
 	}

@@ -237,22 +237,27 @@ func (c *Core) teardownPolicyStore() error {
 	return nil
 }
 
-func (ps *PolicyStore) invalidateNamespace(uuid string) {
+func (ps *PolicyStore) invalidateNamespace(ctx context.Context, uuid string) error {
 	ps.modifyLock.Lock()
 	defer ps.modifyLock.Unlock()
 
 	for _, key := range ps.tokenPoliciesLRU.Keys() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if strings.HasPrefix(key, uuid) {
 			ps.tokenPoliciesLRU.Remove(key)
 		}
 	}
+
+	return nil
 }
 
-func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType PolicyType) {
+func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType PolicyType) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		ps.logger.Error("unable to invalidate key, no namespace info passed", "key", name)
-		return
+		return nil
 	}
 
 	// This may come with a prefixed "/" due to joining the file path
@@ -261,6 +266,10 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 
 	ps.modifyLock.Lock()
 	defer ps.modifyLock.Unlock()
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	// We don't lock before removing from the LRU here because the worst that
 	// can happen is we load again if something since added it
@@ -272,7 +281,7 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 
 	default:
 		// Can't do anything
-		return
+		return nil
 	}
 
 	// Force a reload
@@ -288,6 +297,8 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 	if out == nil {
 		ps.switchedDeletePolicy(ctx, name, policyType, false, true)
 	}
+
+	return nil
 }
 
 // SetPolicy is used to create or update the given policy

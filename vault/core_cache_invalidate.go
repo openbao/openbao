@@ -49,11 +49,18 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 		if err != nil {
 			return err
 		}
-		c.policyStore.invalidateNamespace(strings.TrimPrefix(namespacedKey, namespaceStoreSubPath))
+
+		err = c.policyStore.invalidateNamespace(ctx, strings.TrimPrefix(namespacedKey, namespaceStoreSubPath))
+		if err != nil {
+			return err
+		}
 
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath):
 		policyType := PolicyTypeACL // for now it is safe to assume type is ACL
-		c.policyStore.invalidate(ctx, strings.TrimPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath), policyType)
+		err := c.policyStore.invalidate(ctx, strings.TrimPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath), policyType)
+		if err != nil {
+			return err
+		}
 
 	default:
 		c.logger.Warn("no idea how to invalidate cache. Maybe it's not cached and this is fine, maybe not", "key", key)

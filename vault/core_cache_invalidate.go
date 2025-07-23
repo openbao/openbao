@@ -23,6 +23,8 @@ func (c *Core) Invalidate(key string) {
 }
 
 func (c *Core) invalidateInternal(ctx context.Context, key string) error {
+	c.physicalCache.Invalidate(ctx, key)
+
 	namespacedKey := key
 	ns := namespace.RootNamespace
 	namespaceUUID := namespace.RootNamespaceUUID

@@ -412,3 +412,13 @@ func (c *cacheTransaction) Rollback(ctx context.Context) error {
 
 	return nil
 }
+
+// Invalidate removes the value for key from the cache.
+// This will not affect transactions that have already been started.
+func (c *cache) Invalidate(ctx context.Context, key string) {
+	lock := locksutil.LockForKey(c.locks, key)
+	lock.Lock()
+	defer lock.Unlock()
+
+	c.lru.Remove(key)
+}

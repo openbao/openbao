@@ -150,6 +150,7 @@ func IsUnfencedWrite(ctx context.Context) bool {
 // cache, don't use it for other things.
 type ToggleablePurgemonster interface {
 	Purge(ctx context.Context)
+	Invalidate(ctx context.Context, key string)
 	SetEnabled(bool)
 }
 

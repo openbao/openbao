@@ -11,6 +11,8 @@ import (
 	"os"
 	"testing"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/openbao/openbao/sdk/v2/helper/docker"
 )
 
@@ -20,7 +22,7 @@ func PrepareTestContainer(t *testing.T, version string) (func(), string) {
 		"POSTGRES_DB=database",
 	}
 
-	_, cleanup, url, _ := prepareTestContainer(t, "postgres", "docker.mirror.hashicorp.services/postgres", version, "secret", true, false, false, env, true)
+	_, _, cleanup, url, _ := PrepareTestContainerRaw(t, "postgres", "docker.mirror.hashicorp.services/postgres", version, "secret", true, false, false, env, true, "")
 
 	return cleanup, url
 }
@@ -34,7 +36,7 @@ func TestContainerNoWait(t *testing.T) (func(), string) {
 		"POSTGRES_DB=database",
 	}
 
-	_, cleanup, url, _ := prepareTestContainer(t, "postgres", "docker.mirror.hashicorp.services/postgres", "17", "secret", true, false, false, env, false)
+	_, _, cleanup, url, _ := PrepareTestContainerRaw(t, "postgres", "docker.mirror.hashicorp.services/postgres", "17", "secret", true, false, false, env, false, "")
 
 	return cleanup, url
 }
@@ -48,7 +50,7 @@ func PrepareTestContainerWithVaultUser(t *testing.T, ctx context.Context, versio
 		"POSTGRES_DB=database",
 	}
 
-	runner, cleanup, url, id := prepareTestContainer(t, "postgres", "docker.mirror.hashicorp.services/postgres", version, "secret", true, false, false, env, true)
+	runner, _, cleanup, url, id := PrepareTestContainerRaw(t, "postgres", "docker.mirror.hashicorp.services/postgres", version, "secret", true, false, false, env, true, "")
 
 	cmd := []string{"psql", "-U", "postgres", "-c", "CREATE USER vaultadmin WITH LOGIN PASSWORD 'vaultpass' SUPERUSER"}
 	_, err := runner.RunCmdInBackground(ctx, id, cmd)
@@ -65,7 +67,7 @@ func PrepareTestContainerWithPassword(t *testing.T, version, password string) (f
 		"POSTGRES_DB=database",
 	}
 
-	_, cleanup, url, _ := prepareTestContainer(t, "postgres", "docker.mirror.hashicorp.services/postgres", version, password, true, false, false, env, true)
+	_, _, cleanup, url, _ := PrepareTestContainerRaw(t, "postgres", "docker.mirror.hashicorp.services/postgres", version, password, true, false, false, env, true, "")
 
 	return cleanup, url
 }
@@ -77,14 +79,16 @@ func PrepareTestContainerRepmgr(t *testing.T, name, version string, envVars []st
 		"REPMGR_PASSWORD=repmgrpass",
 		"POSTGRESQL_PASSWORD=secret")
 
-	return prepareTestContainer(t, name, "docker.mirror.hashicorp.services/bitnami/postgresql-repmgr", version, "secret", false, true, true, env, true)
+	runner, _, cleanup, url, id := PrepareTestContainerRaw(t, name, "docker.mirror.hashicorp.services/bitnami/postgresql-repmgr", version, "secret", false, true, true, env, true, "")
+	return runner, cleanup, url, id
 }
 
-func prepareTestContainer(t *testing.T, name, repo, version, password string,
+func PrepareTestContainerRaw(t *testing.T, name, repo, version, password string,
 	addSuffix, forceLocalAddr, doNotAutoRemove bool, envVars []string, wait bool,
-) (*docker.Runner, func(), string, string) {
+	network string,
+) (*docker.Runner, *docker.Service, func(), string, string) {
 	if os.Getenv("PG_URL") != "" {
-		return nil, func() {}, "", os.Getenv("PG_URL")
+		return nil, nil, func() {}, "", os.Getenv("PG_URL")
 	}
 
 	if version == "" {
@@ -98,6 +102,7 @@ func prepareTestContainer(t *testing.T, name, repo, version, password string,
 		Env:             envVars,
 		Ports:           []string{"5432/tcp"},
 		DoNotAutoRemove: doNotAutoRemove,
+		NetworkName:     network,
 	}
 	if repo == "bitnami/postgresql-repmgr" {
 		runOpts.NetworkID = os.Getenv("POSTGRES_MULTIHOST_NET")
@@ -118,7 +123,7 @@ func prepareTestContainer(t *testing.T, name, repo, version, password string,
 		t.Fatalf("Could not start docker Postgres: %s", err)
 	}
 
-	return runner, svc.Cleanup, svc.Config.URL().String(), containerID
+	return runner, svc, svc.Cleanup, svc.Config.URL().String(), containerID
 }
 
 func connectPostgres(password, repo string) docker.ServiceAdapter {
@@ -131,15 +136,18 @@ func connectPostgres(password, repo string) docker.ServiceAdapter {
 			RawQuery: "sslmode=disable",
 		}
 
+		fmt.Fprintf(os.Stderr, "opening database\n")
+
 		db, err := sql.Open("pgx", u.String())
 		if err != nil {
 			return nil, err
 		}
 		defer db.Close()
 
-		if err = db.Ping(); err != nil {
+		if err = db.PingContext(ctx); err != nil {
 			return nil, err
 		}
+
 		return docker.NewServiceURL(u), nil
 	}
 }

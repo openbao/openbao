@@ -37,6 +37,7 @@ const (
 	FieldPort           = "port"
 	FieldCallbackPort   = "callbackport"
 	FieldSkipBrowser    = "skip_browser"
+	FieldQRCode         = "show_qr"
 	FieldAbortOnError   = "abort_on_error"
 )
 
@@ -134,6 +135,13 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		skipBrowserLaunch = v
 	}
 
+	var showQR bool
+	if v, err := parseBool(FieldQRCode, false); err != nil {
+		return nil, err
+	} else {
+		showQR = v
+	}
+
 	var abortOnError bool
 	if v, err := parseBool(FieldAbortOnError, false); err != nil {
 		return nil, err
@@ -200,6 +208,9 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "Complete the login via your OIDC provider. Open the following link in your browser:\n\n    %s\n\n\n", authURL)
+	}
+	if showQR {
+		printQR(os.Stderr, authURL)
 	}
 	fmt.Fprintf(os.Stderr, "Waiting for OIDC authentication to complete...\n")
 
@@ -416,12 +427,16 @@ Configuration:
     Toggle the automatic launching of the default browser to the login URL. (default: false).
 
   %s=<bool>
+    Display a QR code of the login URL. Requires UTF-8 support from your
+    terminal emulator (default: false).
+
+  %s=<bool>
     Abort on any error. (default: false).
 `,
 		FieldCallbackMode,
 		FieldListenAddress, FieldPort, FieldCallbackMethod,
 		FieldCallbackHost, FieldCallbackPort, FieldSkipBrowser,
-		FieldAbortOnError,
+		FieldQRCode, FieldAbortOnError,
 	)
 
 	return strings.TrimSpace(help)

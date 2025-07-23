@@ -14,6 +14,19 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
+func testCore_Invalidate_sneakValueAroundCache(t *testing.T, c *Core, entry *logical.StorageEntry) {
+	t.Helper()
+
+	// we breifly disable the physical cache, this will put the value into the backing strorage, but not update the cache
+	c.physicalCache.SetEnabled(false)
+	defer c.physicalCache.SetEnabled(true)
+
+	err := c.barrier.Put(t.Context(), entry)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+}
+
 func TestCore_Invalidate_Namespaces(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
 
@@ -38,10 +51,7 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	err = c.barrier.Put(context.TODO(), newEntry)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
 
 	// 3. Invalidate Path
 	c.Invalidate(storagePath)
@@ -116,10 +126,7 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 				t.Fatalf("err: %v", err)
 			}
 
-			err = c.barrier.Put(ctx, newEntry)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
 
 			// 3. Invalidate Path
 			c.Invalidate(storagePath)

@@ -116,7 +116,7 @@ func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bo
 			return nil, initErr
 		}
 
-		// if no key shares exist, meaning we've initalized the instance
+		// if no key shares exist, meaning we've initialized the instance
 		// without creating them at time, then return the keys immediately
 		existingRecoveryConfig, err := c.seal.RecoveryConfig(ctx)
 		if err != nil {

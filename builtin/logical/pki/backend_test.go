@@ -3842,7 +3842,7 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 	}
 
 	if resp != nil {
-		t.Fatalf("response should have been emtpy but was:\n%#v", resp)
+		t.Fatalf("response should have been empty but was:\n%#v", resp)
 	}
 
 	// Write role PKI.
@@ -4800,7 +4800,7 @@ func requireCertInCaChainArray(t *testing.T, chain []string, cert string, msgAnd
 func requireCertInCaChainString(t *testing.T, chain string, cert string, msgAndArgs ...interface{}) {
 	count := strings.Count(chain, cert)
 	if count != 1 {
-		failMsg := fmt.Sprintf("Found %d occurrances of the cert in the provided chain", count)
+		failMsg := fmt.Sprintf("Found %d occurrences of the cert in the provided chain", count)
 		require.FailNow(t, failMsg, msgAndArgs...)
 	}
 }

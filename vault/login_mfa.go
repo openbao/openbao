@@ -2083,7 +2083,7 @@ func (c *Core) validateOkta(ctx context.Context, mConfig *mfa.Config, username s
 
 	for {
 		// Okta provides an SDK method `GetFactorTransactionStatus` but does not provide the transaction id in
-		// the VerifyFactor respone. This code effectively reimplements that method.
+		// the VerifyFactor response. This code effectively reimplements that method.
 		rq := client.CloneRequestExecutor()
 		req, err := rq.WithAccept("application/json").WithContentType("application/json").NewRequest("GET", url.String(), nil)
 		if err != nil {

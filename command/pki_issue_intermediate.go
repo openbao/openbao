@@ -323,7 +323,7 @@ func (state inCaseOfFailure) toContinue() string {
 	if !state.csrSigned {
 		message += fmt.Sprintf("You can continue to work with this Certificate Signing Request CSR PEM, by saving"+
 			" it as `pki_int.csr`: %v \n Then call `vault write %v/sign-intermediate csr=@pki_int.csr ...` adding the "+
-			"same key-value arguements as to `pki issue` (except key_type and issuer_name) to generate the certificate "+
+			"same key-value arguments as to `pki issue` (except key_type and issuer_name) to generate the certificate "+
 			"and ca_chain", state.csr, state.parentIssuer)
 	}
 	if !state.certImported {

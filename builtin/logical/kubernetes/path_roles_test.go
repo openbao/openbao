@@ -103,7 +103,7 @@ func TestRoles(t *testing.T) {
 		assert.EqualError(t, resp.Error(), "unable to initialize name template: unable to parse template: template: template:1: unclosed action")
 	})
 
-	t.Run("delete role - non-existant and blank", func(t *testing.T) {
+	t.Run("delete role - non-existent and blank", func(t *testing.T) {
 		resp, err := testRolesDelete(t, b, s, "nope")
 		assert.NoError(t, err)
 		assert.Nil(t, resp)

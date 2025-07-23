@@ -67,20 +67,20 @@ func (q qrWriter) Write(mat qrcode.Matrix) error {
 		builder.WriteString("\n")
 	}
 
-	fmt.Fprint(q.writer, builder.String())
-	return nil
+	_, err := fmt.Fprint(q.writer, builder.String())
+	return err
 }
 
 func printQR(writer io.Writer, authURL string) {
 	qr, err := qrcode.NewWith(authURL, qrcode.WithErrorCorrectionLevel(qrcode.ErrorCorrectionLow))
 	if err != nil {
-		fmt.Fprintln(writer, "could not generate QR code:", err.Error())
+		fmt.Fprintln(writer, "could not generate QR code:", err.Error()) //nolint:errcheck
 	}
 
 	err = qr.Save(qrWriter{
 		writer: writer,
 	})
 	if err != nil {
-		fmt.Fprintln(writer, "could not display QR code:", err.Error())
+		fmt.Fprintln(writer, "could not display QR code:", err.Error()) //nolint:errcheck
 	}
 }

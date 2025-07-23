@@ -651,7 +651,7 @@ func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot boo
 
 // ListNamespaces is used to list namespaces below a parent namespace.
 // Optionally it can include the parent namespace itself and/or include all
-// decendents of the child namespaces.
+// descendants of the child namespaces.
 func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool, recursive bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_entries"}, time.Now())
 

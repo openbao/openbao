@@ -3105,7 +3105,7 @@ func TestSSHBackend_BasicIssuerOperations(t *testing.T) {
 		t.Fatalf("expected key signing to have failed as no issuer is configured, got resp: %+v, err: %v", resp, err)
 	}
 
-	// submit an issuer to be used by the role and don't set it explicity
+	// submit an issuer to be used by the role and don't set it explicitly
 	// as the first issuer imported is set as default
 	importIssuerReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -3268,7 +3268,7 @@ func TestSSHBackend_RoleIssuerBinding(t *testing.T) {
 
 		require.NotEqual(t, issuer1ID, issuer2ID, "issuer IDs should be different")
 
-		// Create role with issuer1 explicity bound
+		// Create role with issuer1 explicitly bound
 		role1Name := "role-with-issuer1"
 		role1Req := &logical.Request{
 			Operation: logical.UpdateOperation,

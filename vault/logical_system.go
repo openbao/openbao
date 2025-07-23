@@ -5515,7 +5515,7 @@ Enable a new audit backend or disable an existing backend.
 		"",
 	},
 	"rotate_init": {
-		"Intialize, read status or cancel the process of the rotation of the root or recovery key",
+		"Initialize, read status or cancel the process of the rotation of the root or recovery key",
 		"",
 	},
 	"rotate_update": {

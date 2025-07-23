@@ -23,9 +23,16 @@ func TestEnvSourceBuilder_Success(t *testing.T) {
 func TestEnvSource_Validate_SuccessRequired(t *testing.T) {
 	const name = "REQ_VAR"
 	const val = "value"
-	os.Setenv(name, val)
-	defer os.Unsetenv(name)
-
+	err := os.Setenv(name, val)
+	if err != nil {
+		t.Fatalf("Setenv, error: %v", err)
+	}
+	defer func() {
+		err := os.Unsetenv(name)
+		if err != nil {
+			t.Fatalf("Unsetenv, error: %v", err)
+		}
+	}()
 	src := &EnvSource{field: map[string]interface{}{
 		"env_var":         name,
 		"require_present": true,

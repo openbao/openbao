@@ -155,7 +155,10 @@ func TestFileSource_Evaluate_ReadError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
-	tmp.Close()
+	err = tmp.Close()
+	if err != nil {
+		t.Fatalf("failed to close temp file: %v", err)
+	}
 	src := &FileSource{
 		file: tmp,
 	}

@@ -50,9 +50,6 @@ requires `glibc`.
     FROM ghcr.io/openbao/openbao-hsm-ubi:$BAO_VERSION
 
     COPY primus /usr/local/primus
-    ENV PRIMUS_HOME "/usr/local/primus"
-    ENV PATH "$PATH:$PRIMUS_HOME/bin"
-    ENV LD_LIBRARY_PATH "$LD_LIBRARY_PATH:$PRIMUS_HOME/lib"
     ```
 
 4.  Build and push the container image:
@@ -94,7 +91,7 @@ requires `glibc`.
               lib       = "/usr/local/primus/lib/libprimusP11.so"
               slot      = "0"
               key_label = "bao-root-key-aes"
-              mechanism = "0x1087" # CKM_AES_GCM
+              mechanism = "CKM_AES_GCM"
             }
       extraSecretEnvironmentVars:
         - envName: BAO_HSM_PIN
@@ -190,7 +187,7 @@ artifact registry, such as JFrog Artifactory.
               lib       = "/usr/local/primus/lib/libprimusP11.so"
               slot      = "0"
               key_label = "bao-root-key-aes"
-              mechanism = "0x1087" # CKM_AES_GCM
+              mechanism = "CKM_AES_GCM"
             }
       extraSecretEnvironmentVars:
         - envName: BAO_HSM_PIN
@@ -237,18 +234,16 @@ use a utility such as `pkcs11-tool`.
 $ pkcs11-tool --module "/usr/local/primus/lib/libprimusP11.so" \
   --slot 0 \
   --pin 4321 \ # Replace with your actual user PIN.
-  --keypairgen \
+  --keygen \
   --key-type aes:32 \
   --label "bao-root-key-aes" \
-  --type secrkey \
   --sensitive
 ```
 In this command:
 * `--module`: Specifies the path to the PKCS#11 library.
 * `--slot 0`: Specifies HSM slot 0. This value depends on your configuration.
 * `--pin 4321`: Specifies the user PIN for authentication.
-* `--keypairgen`: Generates a new key pair.
+* `--keygen`: Generates a new key.
 * `--key-type aes:32`: Uses AES-256 for the key. For example, to use RSA, specify `rsa:4096`.
 * `--label "bao-root-key-aes"`: Sets the label of the key in the HSM.
-* `--type secrkey`: Specifies the object type as a secret key in the HSM.
 * `--sensitive`: Sets the `CKA_SENSITIVE` attribute, which prevents the key from being revealed in plaintext.

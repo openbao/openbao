@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/vault/quotas"
 )
 
 func (c *Core) Invalidate(key string) {
@@ -63,6 +64,9 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 		if err != nil {
 			return err
 		}
+
+	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+quotas.StoragePrefix):
+		c.quotaManager.Invalidate(strings.TrimPrefix(key, systemBarrierPrefix+quotas.StoragePrefix))
 
 	default:
 		c.logger.Warn("no idea how to invalidate cache. Maybe it's not cached and this is fine, maybe not", "key", key)

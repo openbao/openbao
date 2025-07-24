@@ -3,7 +3,6 @@ package profiles
 import (
 	"context"
 	"os"
-	"reflect"
 	"testing"
 )
 
@@ -85,17 +84,24 @@ func TestEnvSource_Validate_ErrorWrongTypes(t *testing.T) {
 		field map[string]interface{}
 		want  string
 	}{
-		{map[string]interface{}{"env_var": 123}, "field 'env_var' is of wrong type: expected 'string'"},
 		{
-			map[string]interface{}{"env_var": "X", "require_present": "yes"},
-			"field 'require_present' is of wrong type: expecting 'bool'",
+			field: map[string]interface{}{"env_var": 123},
+			want:  "field 'env_var' is of wrong type: expected 'string' got 'int'",
+		},
+		{
+			field: map[string]interface{}{"env_var": "X", "require_present": "yes"},
+			want:  "field 'require_present' is of wrong type: expecting 'bool' got 'string'",
 		},
 	}
+
 	for _, c := range cases {
 		src := &EnvSource{field: c.field}
 		_, _, err := src.Validate(context.Background())
-		if err == nil || !reflect.DeepEqual(err.Error()[:len(c.want)], c.want) {
-			t.Errorf("field=%v: expected error prefix %q, got %v", c.field, c.want, err)
+		if err == nil {
+			t.Fatalf("field=%v: expected error %q, got nil", c.field, c.want)
+		}
+		if err.Error() != c.want {
+			t.Fatalf("field=%v: expected error %q, got %q", c.field, c.want, err.Error())
 		}
 	}
 }

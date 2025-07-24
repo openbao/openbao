@@ -57,7 +57,7 @@ seal "pkcs11" {
 To create the key in the HSM, use a utility like `pkcs11-tool`:
 
 ```bash
-$ pkcs11-tool --module "/usr/lib64/softhsm/libsofthsm.so" --token-label "OpenBao" --so-pin 1234 --pin 4321 --keypairgen --key-type rsa:4096 --label "bao-root-key-rsa"
+$ pkcs11-tool --module "/usr/lib64/softhsm/libsofthsm.so" --token-label "OpenBao" --so-pin 1234 --pin 4321 --keygen --key-type rsa:4096 --label "bao-root-key-rsa"
 ```
 
 ## `pkcs11` parameters

@@ -65,6 +65,7 @@ func (s *RequestSource) Validate(_ context.Context) ([]string, []string, error) 
 	requestName += reqName
 
 	rawFieldSelector := s.field["field_selector"]
+
 	if present {
 		switch rawFieldSelector.(type) {
 		case string:

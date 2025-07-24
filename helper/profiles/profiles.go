@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
@@ -135,16 +136,100 @@ func (p *ProfileEngine) validate() error {
 		return fmt.Errorf("must have named outer block when providing more than one outer config")
 	}
 
+	if err := p.validateOuterBlockUniqueness(); err != nil {
+		return err
+	}
+
+	if err := p.validateRequestNameUniqueness(); err != nil {
+		return err
+	}
+
+	for _, outer := range p.profile {
+		if err := validateNameConvention("outer block", outer.Type); err != nil {
+			return err
+		}
+		for _, req := range outer.Requests {
+			if err := validateNameConvention(fmt.Sprintf("request in block '%s'", outer.Type), req.Type); err != nil {
+				return err
+			}
+		}
+	}
+
+	// 5. Ensure we've set a request handler.
+	if p.requestHandler == nil {
+		return fmt.Errorf("profile engine is missing a request handler; set p.requestHandler before Evaluate")
+	}
 	// XXX (ascheel) - additional validations:
-	//
-	// 1. Outer blocks have unique names.
-	// 2. Requests have unique names within their outer blocks.
-	// 3. All names conform exclude some special characters (.[](){}_ /-),
-	//    or we limit to a-zA-Z0-9.
 	// 4. Validate and store all sources up-front, letting us simply call
 	//    evaluate later.
-	// 5. Ensure we've set a request handler.
 
+	return nil
+}
+
+// 1. Outer blocks have unique names.
+func (p *ProfileEngine) validateOuterBlockUniqueness() error {
+	if len(p.profile) <= 1 {
+		return nil
+	}
+
+	seenNames := make(map[string]int)
+
+	for index, outerBlock := range p.profile {
+		if outerBlock == nil {
+			return fmt.Errorf("outer block at index %d is nil", index)
+		}
+
+		blockName := outerBlock.Type
+
+		if blockName == "" {
+			return fmt.Errorf("outer block at index %d has empty name", index)
+		}
+
+		if existingIndex, exists := seenNames[blockName]; exists {
+			return fmt.Errorf("duplicate outer block name '%s' found at indices %d and %d",
+				blockName, existingIndex, index)
+		}
+
+		seenNames[blockName] = index
+	}
+
+	return nil
+}
+
+// 2. Requests have unique names within their outer blocks.
+func (p *ProfileEngine) validateRequestNameUniqueness() error {
+	for index, outer := range p.profile {
+		if outer == nil {
+			return fmt.Errorf("outer block at index %d is nil", index)
+		}
+		seen := make(map[string]int)
+		for reqIndex, req := range outer.Requests {
+			if req == nil {
+				return fmt.Errorf("request at index %d in outer block '%s' is nil", reqIndex, outer.Type)
+			}
+
+			name := req.Type
+			if name == "" {
+				return fmt.Errorf("empty request name at index %d in outer block '%s'", reqIndex, outer.Type)
+			}
+			if firstRequestIndex, exists := seen[name]; exists {
+				return fmt.Errorf(
+					"duplicate request name '%s' in outer block '%s' at indices %d and %d",
+					name, outer.Type, firstRequestIndex, reqIndex,
+				)
+			}
+			seen[name] = reqIndex
+		}
+	}
+	return nil
+}
+
+// 3. All names conform exclude some special characters (.[](){}_ /-) or we limit to a-zA-Z0-9
+func validateNameConvention(kind, name string) error {
+	validName := regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]*$`)
+	if !validName.MatchString(name) {
+		return fmt.Errorf("%s name '%s' is invalid: must start with a letter or underscore and contain only letters, digits", kind, name)
+	}
 	return nil
 }
 
@@ -388,15 +473,24 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 	}
 
 	sourceEval := sourceBuilder(ctx, p, obj)
+
 	defer sourceEval.Close(ctx)
 
-	// XXX (ascheel) - We will need to validate that history aligns with our
-	// expectations at this point in time, however, our actual builder
-	// initialization and validation call will be moved earlier to profile
-	// validation.
-	_, _, err := sourceEval.Validate(ctx)
+	accessedRequests, accessedResponses, err := sourceEval.Validate(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source '%v': %w", source, err)
+	}
+
+	for _, req := range accessedRequests {
+		if req == "" {
+			return nil, fmt.Errorf("invalid empty request name found")
+		}
+	}
+
+	for _, resp := range accessedResponses {
+		if resp == "" {
+			return nil, fmt.Errorf("invalid empty response name found")
+		}
 	}
 
 	val, err := sourceEval.Evaluate(ctx, history)
@@ -404,9 +498,66 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 		return nil, fmt.Errorf("failed to evaluate source '%v': %w", source, err)
 	}
 
-	// XXX (ascheel) - add handling of objType here; make sure val is
-	// assertable to the desired type, which might require another call to
-	// mapstructure here.
+	convertedVal, err := p.convertToType(val, objType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert value to type '%s': %w", objType, err)
+	}
 
-	return val, nil
+	return convertedVal, nil
+}
+
+func (p *ProfileEngine) convertToType(val interface{}, objType string) (interface{}, error) {
+	if objType == "" {
+		return val, nil
+	}
+
+	switch objType {
+	case "string":
+		var result string
+		if err := mapstructure.WeakDecode(val, &result); err != nil {
+			return nil, fmt.Errorf("conversion-error: cannot convert value to type '%s'", objType)
+		}
+		return result, nil
+
+	case "int":
+		var result int
+		if err := mapstructure.WeakDecode(val, &result); err != nil {
+			return nil, fmt.Errorf("conversion-error: cannot convert value to type '%s'", objType)
+		}
+		return result, nil
+
+	case "float64":
+		var result float64
+		if err := mapstructure.WeakDecode(val, &result); err != nil {
+			return nil, fmt.Errorf("conversion-error: cannot convert value to type '%s'", objType)
+		}
+		return result, nil
+
+	case "bool":
+		var result bool
+		if err := mapstructure.WeakDecode(val, &result); err != nil {
+			return nil, fmt.Errorf("conversion-error: cannot convert value to type '%s'", objType)
+		}
+		return result, nil
+
+	case "[]string":
+		var result []string
+		if err := mapstructure.WeakDecode(val, &result); err != nil {
+			return nil, fmt.Errorf("cannot convert to []string: %w", err)
+		}
+		return result, nil
+
+	case "map[string]interface{}":
+		var result map[string]interface{}
+		if err := mapstructure.WeakDecode(val, &result); err != nil {
+			return nil, fmt.Errorf("cannot convert to map[string]interface{}: %w", err)
+		}
+		return result, nil
+
+	case "any", "interface{}":
+		return val, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported type conversion: %s", objType)
+	}
 }

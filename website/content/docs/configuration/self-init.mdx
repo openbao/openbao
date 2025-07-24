@@ -1,0 +1,265 @@
+---
+sidebar_label: initialize
+description: |-
+  The initialize stanza allows request-based one-time initialization of OpenBao
+  from the configuration file.
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# `initialize` stanza
+
+The `initialize` stanza specifies various configurations for OpenBao to
+initialize itself once, on initial startup. To repeat the operation, remove
+all storage and re-initialize from scratch. Debugging can be performed by
+starting OpenBao with the `TRACE` log level, which shows all request/response
+pairs and thus **contains sensitive information**.
+
+When self-initialization fails, it logs an error to the server; this allows
+operators to debug partial failures and remediate as necessary. The intention
+is to give operators enough facility to bootstrap a proper initialization
+process without requiring one-time side-effecting setup like generating the
+initial root token and handling recovery keys.
+
+<Tabs groupId="config">
+<TabItem value="JSON">
+
+```json
+{
+  "initialize": [
+    {
+      "audit": {
+        "request": [
+          {
+            "enable-audit": {
+              "operation": "update",
+              "path": "sys/audit/stdout",
+              "data": {
+                "type": "file",
+                "options": {
+                  "file_path": "/dev/stdout",
+                  "log_raw": true
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+</TabItem>
+<TabItem value="HCL">
+
+```hcl
+initialize "audit" {
+  request "enable-audit" {
+    operation = "update"
+    path = "sys/audit/stdout"
+    data = {
+      type = "file"
+      options = {
+        file_path = "/dev/stdout"
+        log_raw = true
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+:::info
+
+Use of this feature requires using an [auto-unseal](/docs/configuration/seal)
+mechanism. No recovery keys are generated; instead, use the [authenticated
+recovery key rotation](/api-docs/system/rotate) endpoints.
+
+The root token is not returned to the caller and is revoked after use.
+
+:::
+
+Multiple `initialize` stanzas may exist and are executed in the order they
+are specified in the configuration file(s). Multiple `request` blocks may
+exist inside a single `initialize` stanza and are executed in the order they
+appear in the specified `initialize` block. No two blocks of either type may
+share a name. Names must conform to the regex `^[A-Za-z_][A-Za-z0-9_-]*$`.
+
+## `initialize` parameters
+
+The `initialize` stanza can only contain one or more `request` stanzas. Each
+`initialize` and `request` stanza must have a single name.
+
+### `request` parameters
+
+- `operation` `(value[string]: <required>)` - type of operation to perform; see
+  [ACL Capabilities](/docs/concepts/policies#capabilities) for a list.
+- `path` `(value[string]: <required>)` - path to perform the given operation
+  on.
+- `token` `(value[string]: <optional>)` - the OpenBao API token to use for
+  authentication. When not specified, defaults to the root token.
+- `data` `(value[map]: <optional>)` - the request data for this call.
+- `allow_failure` `(value[bool]: false)` - when true, allows this call to fail
+  without erring out the entire self-initialization process.
+
+## `value` Type
+
+Values may be of the following types:
+
+- A literal, such as a `string` or `map`. For example the following are valid
+  literals:
+
+  ```hcl
+  path = "sys/audit/stdout"
+  ```
+
+  or
+
+  ```hcl
+  data = {
+    type = "file"
+  }
+  ```
+
+- A data source evaluation. These take the form:
+
+  ```hcl
+  {
+    eval_source = "<source name>"
+    eval_type = "<resulting type>"
+
+    ... additional source-specific parameters ...
+  }
+  ```
+
+  where
+
+  - `eval_source` `(string: <required>)` - the name of the given source; valid
+    values are defined below.
+  - `eval_type` `(string: <required>)` - the output type after evaluation;
+    recognized Go types are `string`, `int`, `float64`, `bool`, `[]string`,
+    `map` (alias for `map[string]interface{}`), and `any` (alias for
+    `interface{}`). If the output of the source evaluation is not convertable
+    to the desired type, a runtime error will occur.
+
+Note that fields within a source evaluation statement may not be themselves
+be source evaluations.
+
+#### `env` source
+
+- `env_var` `(string: <required>)` - the name of an environment variable to
+  return the value of.
+- `require_present` `(bool: false)` - when asserted, require that the named
+  environment variable must be present and err otherwise.
+
+For example, to reference an initial admin password from an environment
+variable:
+
+```hcl
+initialize "identity" {
+  request "userpass-add-admin" {
+    operation = "update"
+    path = "auth/userpass/users/admin"
+    data = {
+      "password" = {
+        eval_type = "string"
+        eval_source = "env"
+        env_var = "INITIAL_ADMIN_PASSWORD"
+        require_present = true
+      }
+      "token_policies" = ["superuser"]
+    }
+  }
+}
+```
+
+#### `file` source
+
+- `path` `(string: <required>)` - the path to the file to read. This file is
+  only ever read once and is closed after use; thus a single piece of data
+  could be provided on `/dev/stdin`. Errs if the file is not readable.
+
+For example, to load a X.509 root CA into a PKI engine:
+
+```hcl
+initialize "ca-setup" {
+  request "provision-root-ca" {
+    operation = "update"
+    path = "pki/issuers/import/cert"
+    data = {
+      "pem_bundle" = {
+        eval_type = "string"
+        eval_source = "file"
+        path = "/data/root-ca.pem"
+      }
+    }
+  }
+}
+```
+
+#### `request` source
+
+- `initialize_name` `(string: <required>)` - name of the initialize block to
+  reference.
+- `request_name` `(string: <required>)` - name of the request block inside the
+  initialize block to reference. Must have already been executed.
+- `field_selector` `(string or []string: <required>)` - field within the request
+  to reference; for nesting, specify multiple values as a list. The request is
+  marshalled directly; for example, to reference the path, use
+  `field_selector = "path"`; to reference a specific field of input data, use
+  `field_selector = ["data", "my_top_level_field"]`.
+
+For example, to reference a previous request's input for a subsequent call:
+
+```hcl
+initialize "namespace-identity" {
+  request "namespace-userpass-add-admin" {
+    operation = "update"
+    path = "ns1/auth/userpass/users/admin"
+    data = {
+      "password" = {
+        eval_type = "string"
+        eval_source = "request"
+        initialize_name = "identity"
+        request_name = "userpass-add-admin"
+        field_selector = ["data", "password"]
+      }
+      "token_policies" = ["superuser"]
+    }
+  }
+}
+```
+
+#### `response` source
+
+- `initialize_name` `(string: <required>)` - name of the initialize block to
+  reference.
+- `request_name` `(string: <required>)` - name of the request block inside the
+  initialize block, to reference the corresponding response of. Must have
+  already been executed.
+- `field_selector` `(string or []string: <required>)` - field within the
+  response to reference; for nesting, specify multiple values as a list. The
+  response is marshalled directly; for example, to reference a specific field
+  of output data, use `field_selector = ["data", "my_top_level_field"]`.
+
+For example, to reference a login token in a subsequent call:
+
+```hcl
+initialize "example" {
+  request "use-auth" {
+    operation = "update"
+    path = "sys/namespaces/ns1"
+    token = {
+      eval_type = "string"
+      eval_source = "response"
+      initialize_name = "authenticate"
+      request_name = "admin-userpass"
+      field_selector = ["auth", "client_token"]
+    }
+    data = {}
+  }
+}
+```

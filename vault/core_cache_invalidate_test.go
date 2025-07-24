@@ -12,6 +12,8 @@ import (
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/quotas"
+	"github.com/stretchr/testify/require"
 )
 
 func testCore_Invalidate_sneakValueAroundCache(t *testing.T, c *Core, entry *logical.StorageEntry) {
@@ -142,4 +144,58 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCore_Invalidate_Quota(t *testing.T) {
+	c, _, root := TestCoreUnsealed(t)
+
+	// 1. Create some qutoa to populate cache
+	req := logical.TestRequest(t, logical.CreateOperation, "sys/quotas/rate-limit/test-quota")
+	req.ClientToken = root
+	req.Data = map[string]any{
+		"rate":     3.141,
+		"interval": "42s",
+	}
+	resp, err := c.HandleRequest(t.Context(), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	if resp.IsError() {
+		t.Fatalf("err: %v", resp.Error())
+	}
+
+	// 2. Manipulate Storage
+	quota, err := c.quotaManager.QuotaByName("rate-limit", "test-quota")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	clone := quota.Clone().(*quotas.RateLimitQuota)
+	clone.Interval = 1 * time.Second
+
+	newEntry, err := logical.StorageEntryJSON("sys/quotas/rate-limit/test-quota", clone)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
+
+	// 3. Invalidate Path
+	c.Invalidate("sys/quotas/rate-limit/test-quota")
+
+	// 4. Check cache was properly invalidated
+	req = logical.TestRequest(t, logical.ReadOperation, "sys/quotas/rate-limit/test-quota")
+	req.ClientToken = root
+
+	resp, err = c.HandleRequest(t.Context(), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	if resp.IsError() {
+		t.Fatalf("err: %v", resp.Error())
+	}
+
+	require.Equal(t, 1, resp.Data["interval"])
 }

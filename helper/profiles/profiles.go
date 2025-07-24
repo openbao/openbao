@@ -547,7 +547,7 @@ func (p *ProfileEngine) convertToType(val interface{}, objType string) (interfac
 		}
 		return result, nil
 
-	case "map[string]interface{}":
+	case "map", "map[string]interface{}":
 		var result map[string]interface{}
 		if err := mapstructure.WeakDecode(val, &result); err != nil {
 			return nil, fmt.Errorf("cannot convert to map[string]interface{}: %w", err)

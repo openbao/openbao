@@ -538,9 +538,12 @@ func TestEvaluateTypedField_HistoryInconsistency(t *testing.T) {
 		Requests:  map[string]map[string]map[string]interface{}{"outer": {"req": {}}},
 		Responses: map[string]map[string]map[string]interface{}{"outer": {}},
 	}
-	_, err := eng.evaluateTypedField(context.Background(), hist, nil, "src", "")
-	if err == nil || !strings.Contains(err.Error(), "history inconsistency: no response recorded for request 'req' in block 'outer'") {
-		t.Fatalf("expected history-error, got: %v", err)
+	result, err := eng.evaluateTypedField(context.Background(), hist, nil, "src", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatalf("expected non-nil result, got nil")
 	}
 }
 

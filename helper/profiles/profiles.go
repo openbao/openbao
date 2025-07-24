@@ -226,7 +226,7 @@ func (p *ProfileEngine) validateRequestNameUniqueness() error {
 
 // 3. All names conform exclude some special characters (.[](){}_ /-) or we limit to a-zA-Z0-9
 func validateNameConvention(kind, name string) error {
-	validName := regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]*$`)
+	validName := regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_-]*$`)
 	if !validName.MatchString(name) {
 		return fmt.Errorf("%s name '%s' is invalid: must start with a letter or underscore and contain only letters, digits", kind, name)
 	}

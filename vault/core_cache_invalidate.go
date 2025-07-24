@@ -69,7 +69,17 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 		c.quotaManager.Invalidate(strings.TrimPrefix(key, systemBarrierPrefix+quotas.StoragePrefix))
 
 	case c.router.Invalidate(ctx, key):
-		// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched
+	// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched
+
+	case key == coreAuditConfigPath || key == coreLocalAuditConfigPath:
+		err := c.reconcileAudits(reconcileAuditsRequests{
+			ctx:       ctx,
+			readonly:  true,
+			isInitial: false,
+		})
+		if err != nil {
+			return err
+		}
 
 	default:
 		c.logger.Warn("no idea how to invalidate cache. Maybe it's not cached and this is fine, maybe not", "key", key)

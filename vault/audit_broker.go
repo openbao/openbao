@@ -67,6 +67,12 @@ func (a *AuditBroker) IsRegistered(name string) bool {
 	return ok
 }
 
+// Count returns the number of regiesterd backends
+func (a *AuditBroker) Count() int {
+	a.RLock()
+	return len(a.backends)
+}
+
 // IsLocal is used to check if a given audit backend is registered
 func (a *AuditBroker) IsLocal(name string) (bool, error) {
 	a.RLock()

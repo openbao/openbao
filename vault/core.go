@@ -2265,11 +2265,7 @@ type standardUnsealStrategy struct {
 }
 
 func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c *Core) error {
-	c.logger.Info("standard unseal starting")
-	if !c.Sealed() {
-		logger.Debug("core already unsealed... skipping unseal")
-		return nil
-	}
+	c.logger.Debug("standard unseal starting")
 
 	// Clear forwarding clients; we're active
 	c.requestForwardingConnectionLock.Lock()
@@ -2324,7 +2320,7 @@ type readonlyUnsealStrategy struct{}
 func (readonlyUnsealStrategy) unseal(
 	ctx context.Context, logger log.Logger, c *Core,
 ) error {
-	c.logger.Info("read-only unseal starting")
+	c.logger.Debug("read-only unseal starting")
 
 	if err := postUnsealPhysical(c); err != nil {
 		return err

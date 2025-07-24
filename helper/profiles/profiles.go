@@ -498,17 +498,6 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 		return nil, fmt.Errorf("failed to evaluate source '%v': %w", source, err)
 	}
 
-	for outerName, innerMap := range history.Requests {
-		for reqName := range innerMap {
-			if _, ok := history.Responses[outerName][reqName]; !ok {
-				return nil, fmt.Errorf(
-					"history inconsistency: no response recorded for request '%s' in block '%s'",
-					reqName, outerName,
-				)
-			}
-		}
-	}
-
 	convertedVal, err := p.convertToType(val, objType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert value to type '%s': %w", objType, err)

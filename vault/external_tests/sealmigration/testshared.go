@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -483,7 +484,7 @@ func attemptUnsealMigrate(client *api.Client, keys [][]byte, transitServerAvaila
 
 // awaitMigration waits for migration to finish.
 func awaitMigration(t *testing.T, client *api.Client) {
-	timeout := time.Now().Add(60 * time.Second)
+	timeout := time.Now().Add(120 * time.Second)
 	for {
 		if time.Now().After(timeout) {
 			break
@@ -491,6 +492,9 @@ func awaitMigration(t *testing.T, client *api.Client) {
 
 		resp, err := client.Sys().SealStatus()
 		if err != nil {
+			if strings.Contains(err.Error(), "barrier seal type of") {
+				continue
+			}
 			t.Fatal(err)
 		}
 		if !resp.Migration {

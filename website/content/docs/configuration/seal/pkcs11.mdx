@@ -57,7 +57,11 @@ seal "pkcs11" {
 To create the key in the HSM, use a utility like `pkcs11-tool`:
 
 ```bash
-$ pkcs11-tool --module "/usr/lib64/softhsm/libsofthsm.so" --token-label "OpenBao" --so-pin 1234 --pin 4321 --keygen --key-type rsa:4096 --label "bao-root-key-rsa"
+# Example RSA key with 4096 bits
+$ pkcs11-tool --module "/usr/lib64/softhsm/libsofthsm.so" --token-label "OpenBao" --so-pin 1234 --pin 4321 --keypairgen --key-type rsa:4096 --label "bao-root-key-rsa"
+
+# Example AES key with 256 bits (32 bytes)
+$ pkcs11-tool --module "/usr/lib64/softhsm/libsofthsm.so" --token-label "OpenBao" --so-pin 1234 --pin 4321 --keygen --key-type aes:32 --label "bao-root-key-aes"
 ```
 
 ## `pkcs11` parameters
@@ -163,3 +167,9 @@ the key value, generate a new key in a different key label in the HSM and update
 configuration with the new key label value. Restart your OpenBao instance to pick up the new key
 label and all new encryption operations will use the updated key label. Old keys must not be disabled
 or deleted and are used to decrypt older data.
+
+## Tested HSM Vendors and Models
+
+| Vendor       | Model      | Unsealing | Installation Guide                                         |
+| ------------ | ---------- | --------- | ---------------------------------------------------------- |
+| Securosys SA | Primus HSM | Yes       | [Installation Guide](/docs/guides/unseal/pkcs11/securosys) |

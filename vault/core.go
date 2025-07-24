@@ -2364,9 +2364,6 @@ func (readonlyUnsealStrategy) unseal(
 	if err := c.setupExpiration(expireLeaseStrategyFairsharing); err != nil {
 		return err
 	}
-	if err := c.loadAudits(ctx); err != nil {
-		return err
-	}
 	if err := c.setupAudits(ctx); err != nil {
 		return err
 	}

@@ -244,6 +244,6 @@ In this command:
 * `--slot 0`: Specifies HSM slot 0. This value depends on your configuration.
 * `--pin 4321`: Specifies the user PIN for authentication.
 * `--keygen`: Generates a new key.
-* `--key-type aes:32`: Uses AES-256 for the key. For example, to use RSA, specify `rsa:4096`.
+* `--key-type aes:32`: Specifies an AES-256 key suitable for `CKM_AES_GCM`. To use RSA with `CKM_RSA_OAEP`, specify `rsa:4096` and swap `--keygen` for `--keypairgen`.
 * `--label "bao-root-key-aes"`: Sets the label of the key in the HSM.
 * `--sensitive`: Sets the `CKA_SENSITIVE` attribute, which prevents the key from being revealed in plaintext.

@@ -481,10 +481,6 @@ func (p *ProfileEngine) evaluateTypedField(ctx context.Context, history *Evaluat
 		return nil, fmt.Errorf("failed to validate source '%v': %w", source, err)
 	}
 
-	if len(accessedRequests) == 0 && len(accessedResponses) == 0 {
-		return nil, fmt.Errorf("no valid requests or responses found")
-	}
-
 	for _, req := range accessedRequests {
 		if req == "" {
 			return nil, fmt.Errorf("invalid empty request name found")

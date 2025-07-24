@@ -163,3 +163,9 @@ the key value, generate a new key in a different key label in the HSM and update
 configuration with the new key label value. Restart your OpenBao instance to pick up the new key
 label and all new encryption operations will use the updated key label. Old keys must not be disabled
 or deleted and are used to decrypt older data.
+
+## Tested HSM Vendors and Models
+
+| Vendor       | Model      | Unsealing | Installation Guide                                         |
+| ------------ | ---------- | --------- | ---------------------------------------------------------- |
+| Securosys SA | Primus HSM | Yes       | [Installation Guide](/docs/guides/unseal/pkcs11/securosys) |

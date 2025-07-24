@@ -6,13 +6,16 @@ package vault
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/quotas"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -198,4 +201,85 @@ func TestCore_Invalidate_Quota(t *testing.T) {
 	}
 
 	require.Equal(t, 1, resp.Data["interval"])
+}
+
+func TestCore_Invalidate_Plugin(t *testing.T) {
+	testCases := map[string]func(t *testing.T, c *Core) (nsPrefix string, ctx context.Context){
+		"global": func(t *testing.T, c *Core) (nsPrefix string, ctx context.Context) {
+			return "", namespace.RootContext(t.Context())
+		},
+
+		"local": func(t *testing.T, c *Core) (nsPrefix string, ctx context.Context) {
+			ns := &namespace.Namespace{
+				ID:   "ns",
+				Path: "ns",
+			}
+			TestCoreCreateNamespaces(t, c, ns)
+
+			return fmt.Sprintf("namespaces/%s/", ns.UUID), namespace.ContextWithNamespace(t.Context(), ns)
+		},
+	}
+
+	for name, init := range testCases {
+		t.Run(name, func(t *testing.T) {
+			c, _, root := TestCoreUnsealed(t)
+			nsPrefix, ctx := init(t, c)
+
+			// 1. Inject a dummy plugin
+			var invalidatedKeyLock sync.Mutex
+			invalidatedKey := []string{}
+
+			c.logicalBackends["kv"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+				b := new(framework.Backend)
+				b.BackendType = logical.TypeCredential
+				b.Invalidate = func(ctx context.Context, key string) {
+					invalidatedKeyLock.Lock()
+					defer invalidatedKeyLock.Unlock()
+					invalidatedKey = append(invalidatedKey, key)
+				}
+				return b, b.Setup(ctx, config)
+			}
+
+			// 2. Mount the plugin
+			registerReq := &logical.Request{
+				Operation:   logical.UpdateOperation,
+				ClientToken: root,
+				Path:        "sys/mounts/my-kv-mount",
+				Data: map[string]interface{}{
+					"type": "kv",
+				},
+			}
+			resp, err := c.HandleRequest(ctx, registerReq)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp.IsError() {
+				t.Fatal(err)
+			}
+
+			// 3. Get the UUID
+			readReq := &logical.Request{
+				Operation:   logical.ReadOperation,
+				ClientToken: root,
+				Path:        "sys/mounts/my-kv-mount",
+			}
+			resp, err = c.HandleRequest(ctx, readReq)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp.IsError() {
+				t.Fatal(err)
+			}
+
+			uuid := resp.Data["uuid"].(string)
+			fmt.Printf("%#v\n", resp)
+
+			// 4. Invalidate Paths
+			c.Invalidate(nsPrefix + "logical/" + uuid + "/foo")
+			c.Invalidate(nsPrefix + "logical/" + uuid + "/bar/bazz")
+
+			// 5. Check callback was called
+			assert.Equal(t, invalidatedKey, []string{"foo", "bar/bazz"})
+		})
+	}
 }

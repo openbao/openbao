@@ -547,11 +547,11 @@ func (r *Router) MatchingSystemView(ctx context.Context, path string) logical.Sy
 }
 
 func (r *Router) MatchingMountByAPIPath(ctx context.Context, path string) string {
-	me, _, _ := r.matchingMountEntryByPath(ctx, path, true)
-	if me == nil {
+	re, _ := r.matchingRouteEntryByPath(ctx, path, true)
+	if re == nil {
 		return ""
 	}
-	return me.Path
+	return re.mountEntry.Path
 }
 
 // MatchingStoragePrefixByAPIPath the storage prefix for the given api path
@@ -562,27 +562,30 @@ func (r *Router) MatchingStoragePrefixByAPIPath(ctx context.Context, path string
 	}
 	path = ns.Path + path
 
-	_, prefix, found := r.matchingMountEntryByPath(ctx, path, true)
-	return prefix, found
+	re, found := r.matchingRouteEntryByPath(ctx, path, true)
+	if !found {
+		return "", false
+	}
+	return re.storagePrefix, true
 }
 
 // MatchingAPIPrefixByStoragePath the api path information for the given storage path
 func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string) (*namespace.Namespace, string, string, bool) {
-	me, prefix, found := r.matchingMountEntryByPath(ctx, path, false)
+	re, found := r.matchingRouteEntryByPath(ctx, path, false)
 	if !found {
 		return nil, "", "", found
 	}
 
-	mountPath := me.Path
+	mountPath := re.mountEntry.Path
 	// Add back the prefix for credential backends
 	if strings.HasPrefix(path, credentialBarrierPrefix) {
 		mountPath = credentialRoutePrefix + mountPath
 	}
 
-	return me.Namespace(), mountPath, prefix, found
+	return re.mountEntry.Namespace(), mountPath, re.storagePrefix, found
 }
 
-func (r *Router) matchingMountEntryByPath(ctx context.Context, path string, apiPath bool) (*MountEntry, string, bool) {
+func (r *Router) matchingRouteEntryByPath(ctx context.Context, path string, apiPath bool) (*routeEntry, bool) {
 	var raw interface{}
 	var ok bool
 	r.l.RLock()
@@ -593,14 +596,13 @@ func (r *Router) matchingMountEntryByPath(ctx context.Context, path string, apiP
 	}
 	r.l.RUnlock()
 	if !ok {
-		return nil, "", false
+		return nil, false
 	}
 
 	// Extract the mount path and storage prefix
 	re := raw.(*routeEntry)
-	prefix := re.storagePrefix
 
-	return re.mountEntry, prefix, true
+	return re, true
 }
 
 // Route is used to route a given request
@@ -1110,4 +1112,14 @@ func filteredHeaders(origHeaders map[string][]string, candidateHeaders, deniedHe
 	}
 
 	return retHeaders
+}
+
+// Invalidate is used to route a cache invalidation request to the correct plugin
+func (r *Router) Invalidate(ctx context.Context, key string) bool {
+	re, ok := r.matchingRouteEntryByPath(ctx, key, false)
+	if ok && strings.HasPrefix(key, re.storagePrefix) {
+		re.backend.InvalidateKey(ctx, strings.TrimPrefix(key, re.storagePrefix))
+		return true
+	}
+	return false
 }

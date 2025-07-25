@@ -1,8 +1,10 @@
 package cel
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/mail"
+	"reflect"
 
 	celgo "github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
@@ -25,31 +27,6 @@ func checkValidEmail(value ref.Val) ref.Val {
 	}
 
 	return types.Bool(true)
-}
-
-// registerCheckValidEmailFunction registers the check_valid_email function in the CEL environment.
-func registerCheckValidEmailFunction(env *celgo.Env) (*celgo.Env, error) {
-	return env.Extend(
-		celgo.Function("check_valid_email",
-			celgo.Overload("check_valid_email_string",
-				[]*celgo.Type{celgo.StringType}, // Takes a string input
-				celgo.BoolType,                  // Returns a boolean
-				celgo.UnaryBinding(checkValidEmail),
-			),
-		),
-	)
-}
-
-// RegisterAllCelFunctions registers all custom CEL functions into the provided environment.
-func RegisterAllCelFunctions(env *celgo.Env) (*celgo.Env, error) {
-	var err error
-
-	env, err = registerCheckValidEmailFunction(env)
-	if err != nil {
-		return nil, fmt.Errorf("failed to register check_valid_email function: %w", err)
-	}
-
-	return env, nil
 }
 
 // IdentityDeclarations adds declarations relevant to the identity subsystem,
@@ -92,4 +69,81 @@ func AddIdentity(view logical.SystemView, req *logical.Request, data map[string]
 	}
 
 	return nil
+}
+
+func decodeJSON(value ref.Val) ref.Val {
+	raw, ok := value.Value().(string)
+	if !ok {
+		return types.Bool(false)
+	}
+	var v any
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
+		return types.Bool(false)
+	}
+	return types.DefaultTypeAdapter.NativeToValue(v)
+}
+
+func encodeJSON(value ref.Val) ref.Val {
+	native, err := value.ConvertToNative(
+		reflect.TypeOf(map[string]any{}),
+	)
+	if err != nil {
+		return types.Bool(false)
+	}
+
+	b, err := json.Marshal(native)
+	if err != nil {
+		return types.Bool(false)
+	}
+	return types.String(string(b))
+}
+
+// registerCheckValidEmailFunction registers the check_valid_email function in the CEL environment.
+func registerCheckValidEmailFunction(env *celgo.Env) (*celgo.Env, error) {
+	return env.Extend(
+		celgo.Function("check_valid_email",
+			celgo.Overload("check_valid_email_string",
+				[]*celgo.Type{celgo.StringType}, // Takes a string input
+				celgo.BoolType,                  // Returns a boolean
+				celgo.UnaryBinding(checkValidEmail),
+			),
+		),
+	)
+}
+
+// registerDecodeEncodeJSONFunctions registers decode_JSON and encode_JSON
+func registerDecodeEncodeJSONFunctions(env *celgo.Env) (*celgo.Env, error) {
+	return env.Extend(
+		celgo.Function("decode_JSON",
+			celgo.Overload(
+				"decode_JSON_string",
+				[]*celgo.Type{celgo.StringType},
+				celgo.DynType,
+				celgo.UnaryBinding(decodeJSON)),
+		),
+		celgo.Function("encode_JSON",
+			celgo.Overload(
+				"encode_JSON_dyn",
+				[]*celgo.Type{celgo.DynType},
+				celgo.StringType,
+				celgo.UnaryBinding(encodeJSON)),
+		),
+	)
+}
+
+// RegisterAllCelFunctions registers all custom CEL functions into the provided environment.
+func RegisterAllCelFunctions(env *celgo.Env) (*celgo.Env, error) {
+	var err error
+
+	env, err = registerCheckValidEmailFunction(env)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register check_valid_email function: %w", err)
+	}
+
+	env, err = registerDecodeEncodeJSONFunctions(env)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register JSON helpers: %w", err)
+	}
+
+	return env, nil
 }

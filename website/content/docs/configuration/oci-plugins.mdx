@@ -1,0 +1,131 @@
+---
+description: >-
+  OpenBao server configuration reference for OCI plugin parameters.
+---
+
+# OCI plugin configuration
+
+This page documents the OCI plugin configuration options for OpenBao server configuration files.
+
+## `plugins`
+
+The `plugins` block defines OCI-based plugins to download.
+
+```hcl
+plugins {
+  "plugin-name" {
+    url         = "registry.example.com/org/plugin:tag"
+    binary_name = "plugin-binary-name"  
+    sha256sum   = "sha256-checksum"
+  }
+}
+```
+
+### Parameters
+
+- `url` `(string: required)` - Full OCI image URL including registry, repository, and tag.
+
+- `binary_name` `(string: required)` - Name of the plugin binary file within the OCI image.
+
+- `sha256sum` `(string: required)` - Expected SHA256 checksum of the plugin binary. Must be a 64-character hexadecimal string.
+
+### Example
+
+```hcl
+plugins {
+  "secrets-aws" {
+    url         = "ghcr.io/openbao/openbao-plugin-secrets-aws:v1.0.0"
+    binary_name = "openbao-plugin-secrets-aws"
+    sha256sum   = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+  }
+}
+```
+
+## `plugin_download_behavior`
+
+Controls server behavior when plugin downloads fail.
+
+```hcl
+plugin_download_behavior = "fail"
+```
+
+### Values
+
+- `"fail"` `(default)` - Server startup fails if any plugin download fails
+- `"warn"` - Log warnings for failed downloads but continue startup
+
+## `plugin_oci_auth`
+
+Configures authentication for private OCI registries.
+
+```hcl
+plugin_oci_auth {
+  "registry.example.com" {
+    username = "user"
+    password = "pass"
+  }
+}
+```
+
+### Registry parameters
+
+- `username` `(string: optional)` - Username for basic authentication
+- `password` `(string: optional)` - Password for basic authentication  
+- `token` `(string: optional)` - Bearer token for token-based authentication
+
+Use either `username`/`password` combination OR `token`, not both.
+
+### Examples
+
+**GitHub Container Registry:**
+```hcl
+plugin_oci_auth {
+  "ghcr.io" {
+    username = "github-username"
+    password = "ghp_personal_access_token"
+  }
+}
+```
+
+**Bearer token:**
+```hcl
+plugin_oci_auth {
+  "registry.company.com" {
+    token = "bearer-token-here"
+  }
+}
+```
+
+## Complete example
+
+```hcl
+storage "raft" {
+  path = "/opt/openbao/data"
+}
+
+listener "tcp" {
+  address = "0.0.0.0:8200"
+}
+
+plugin_directory = "/opt/openbao/plugins"
+plugin_download_behavior = "fail"
+
+plugins {
+  "secrets-aws" {
+    url         = "ghcr.io/openbao/openbao-plugin-secrets-aws:v1.0.0"
+    binary_name = "openbao-plugin-secrets-aws"
+    sha256sum   = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+  }
+}
+
+plugin_oci_auth {
+  "ghcr.io" {
+    username = "${GITHUB_USERNAME}"
+    password = "${GITHUB_TOKEN}"
+  }
+}
+```
+
+## Environment variables
+
+Configuration supports environment variable interpolation using `${VARIABLE_NAME}` syntax.

@@ -77,6 +77,14 @@ type PostgreSQLBackend struct {
 
 	fenceLock sync.RWMutex
 	fence     *PostgreSQLLock
+
+	invalidateLock       sync.RWMutex
+	invalidationStrategy InvalidationStrategy
+	invalidate           physical.InvalidateFunc
+	invalidateDoneCh     chan struct{}
+
+	walTable                string
+	tableWalInvalidateQuery string
 }
 
 // PostgreSQLLock implements a lock using an PostgreSQL client.
@@ -188,11 +196,32 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		return nil, errors.New("PostgreSQL version must be at least 9.5")
 	}
 
+	haEnabled := conf["ha_enabled"] == "true"
+	if !upsertAvailable && haEnabled {
+		return nil, errors.New("ha_enabled=true in config but PG version doesn't support HA, must be at least 9.5")
+	}
+
 	unquotedHaTable, ok := conf["haTable"]
 	if !ok {
 		unquotedHaTable = "openbao_ha_locks"
 	}
 	quotedHaTable := dbutil.QuoteIdentifier(unquotedHaTable)
+
+	unquotedWalTable, ok := conf["wal_table"]
+	if !ok {
+		unquotedWalTable = "openbao_wal_store"
+	}
+	quotedWalTable := dbutil.QuoteIdentifier(unquotedWalTable)
+
+	invalidationStrategy, ok := conf["invalidation_strategy"]
+	if !ok {
+		invalidationStrategy = string(WALTableInvalidationStrategy)
+	}
+	switch InvalidationStrategy(invalidationStrategy) {
+	case WALTableInvalidationStrategy:
+	default:
+		return nil, fmt.Errorf("unknown value for invalidation_strategy (%v): supported values are %q", invalidationStrategy, WALTableInvalidationStrategy)
+	}
 
 	// Setup the backend.
 	m := &PostgreSQLBackend{
@@ -237,6 +266,11 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		// No initial fence, but if a fence is here, we'll validate it inside
 		// write transactions.
 		fence: nil,
+
+		invalidationStrategy: InvalidationStrategy(invalidationStrategy),
+		walTable:             quotedWalTable,
+		tableWalInvalidateQuery: `INSERT INTO ` + quotedWalTable + `(path) VALUES($1) ` +
+			`RETURNING idx`,
 	}
 
 	// Determine if we should create tables.
@@ -356,6 +390,20 @@ func (m *PostgreSQLBackend) createTables() error {
 				return nil
 			}
 			return fmt.Errorf("failed to create ha table: %w", err)
+		}
+
+		if m.invalidationStrategy == WALTableInvalidationStrategy {
+			createTableQuery = `CREATE TABLE IF NOT EXISTS ` + m.walTable + ` (` +
+				`  idx BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,` +
+				`  path  TEXT COLLATE "C" NOT NULL,` +
+				`);`
+			if _, err := txn.Exec(createTableQuery); err != nil {
+				if strings.Contains(err.Error(), "SQLSTATE 23505") {
+					m.logger.Warn("Skipping table creation as other processes have already created the table", "err", err)
+					return nil
+				}
+				return fmt.Errorf("failed to create wal table: %w", err)
+			}
 		}
 	}
 

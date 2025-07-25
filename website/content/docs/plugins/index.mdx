@@ -20,19 +20,26 @@ be registered.
 See [Plugin Upgrade Procedure](../upgrading/plugins.mdx#plugin-upgrade-procedure)
 for details on how to upgrade a built-in plugin in-place.
 
-## Built-In plugins
+## Plugin distribution methods
+
+### Built-In plugins
 
 Built-in plugins are shipped with OpenBao, often for commonly used integrations,
 and can be used without any prerequisite steps.
 
-## External plugins
+### External plugins
 
 External plugins are not shipped with OpenBao and require additional operator
-intervention to run.
+steps to be installed, configured, and registered with OpenBao before they can be
+used.
 
 To run an external plugin, a binary of the plugin is required. Plugin
-binaries can be obtained from [releases.hashicorp.com](https://releases.hashicorp.com/)
-or they can be [built from source](plugin-development.mdx#building-a-plugin-from-source).
+binaries can be obtained from the [openbao-plugins](https://github.com/openbao/openbao-plugins) repository
+or they can be [built from source](plugin-development.mdx#building-a-plugin-from-source). 
+OpenBao also supports downloading and managing plugins distributed as OCI (Open
+Container Initiative) images from container registries.  See the [OCI
+Plugin](../configuration/oci-plugins.mdx) configuration reference for complete
+documentation.
 
 OpenBao's external plugins are completely separate, standalone applications that
 OpenBao executes and communicates with over RPC. Each time an OpenBao secret engine,
@@ -67,21 +74,38 @@ plugin code got built into OpenBao as a dependency. For example:
 $ bao plugin list secret
 Name                Version
 ----                -------
-kubernetes      v0.5.0+builtin
-kv              v0.15.0+builtin
-ldap            v1.14.8+builtin.openbao
-openldap        v0.11.1+builtin
-pki             v1.14.8+builtin.openbao
-rabbitmq        v1.14.8+builtin.openbao
-ssh             v1.14.8+builtin.openbao
-totp            v1.14.8+builtin.openbao
-transit         v1.14.8+builtin.openbao
+approle                         auth        v2.0.0+builtin.bao
+cert                            auth        v2.0.0+builtin.bao
+jwt                             auth        v2.0.0+builtin.bao
+kerberos                        auth        v2.0.0+builtin.bao
+kubernetes                      auth        v2.0.0+builtin.bao
+ldap                            auth        v2.0.0+builtin.bao
+oidc                            auth        v2.0.0+builtin.bao
+radius                          auth        v2.0.0+builtin.bao
+userpass                        auth        v2.0.0+builtin.bao
+cassandra-database-plugin       database    v2.0.0+builtin.bao
+influxdb-database-plugin        database    v2.0.0+builtin.bao
+mysql-aurora-database-plugin    database    v2.0.0+builtin.bao
+mysql-database-plugin           database    v2.0.0+builtin.bao
+mysql-legacy-database-plugin    database    v2.0.0+builtin.bao
+mysql-rds-database-plugin       database    v2.0.0+builtin.bao
+postgresql-database-plugin      database    v2.0.0+builtin.bao
+redis-database-plugin           database    v2.0.0+builtin.bao
+valkey-database-plugin          database    v2.0.0+builtin.bao
+kubernetes                      secret      v2.0.0+builtin.bao
+kv                              secret      v2.0.0+builtin.bao
+ldap                            secret      v2.0.0+builtin.bao
+openldap                        secret      v2.0.0+builtin.bao
+pki                             secret      v2.0.0+builtin.bao
+rabbitmq                        secret      v2.0.0+builtin.bao
+ssh                             secret      v2.0.0+builtin.bao
+totp                            secret      v2.0.0+builtin.bao
+transit                         secret      v2.0.0+builtin.bao
 ```
 
-Here, OpenBao has a dependency on `v0.15.0` of the [openbao-plugin-secrets-kv](https://github.com/openbao/openbao-plugin-secrets-kv)
-repo, and the `openbao` metadata identifier for `pki` indicates that plugin's code was
-within the OpenBao repo. For plugins within the OpenBao repo, OpenBao's own major, minor,
+The `bao` metadata identifier indicates that plugin's code was within the
+OpenBao repo. For plugins within the OpenBao repo, OpenBao's own major, minor,
 and patch versions are used to form the plugin version.
 
-The `builtin` metadata identifier is reserved and cannot be used when registering
-external plugins.
+The `builtin` metadata identifier is reserved and cannot be used when
+registering external plugins.

@@ -19,12 +19,14 @@ import (
 	"github.com/hashicorp/go-plugin"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	semver "github.com/hashicorp/go-version"
+	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/versions"
 	v4 "github.com/openbao/openbao/sdk/v2/database/dbplugin"
 	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil/oci"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/version"
@@ -188,6 +190,32 @@ func (c *Core) setupPluginCatalog(ctx context.Context) error {
 		c.logger.Info("successfully setup plugin catalog", "plugin-directory", c.pluginDirectory)
 	}
 
+	return nil
+}
+
+// reconcileOCIPlugins handles downloading and validating OCI-based plugins configured in the server
+func (c *Core) reconcileOCIPlugins(ctx context.Context) error {
+	logger := c.logger.Named("oci-plugins")
+	logger.Info("starting OCI plugin reconciliation")
+
+	// Load the current configuration
+	conf := c.rawConfig.Load()
+	if conf == nil {
+		logger.Error("nil config")
+		return nil
+	}
+
+	config := conf.(*server.Config)
+
+	// Create OCI plugin downloader
+	downloader := oci.NewPluginDownloader(c.pluginDirectory, config, logger)
+
+	err := downloader.ReconcilePlugins(ctx)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("OCI plugin reconciliation completed")
 	return nil
 }
 

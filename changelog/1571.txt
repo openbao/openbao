@@ -1,0 +1,3 @@
+```release-note:improvement
+storage/postgresql: implement physical.FencingHABackend to minimize chances that writes on secondary nodes occur
+```

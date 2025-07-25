@@ -18,6 +18,16 @@ will automatically attempt to determine the `api_addr` as well.
 Detailed information regarding the plugin system can be found in the
 [internals documentation](index.mdx).
 
+## Plugin distribution methods
+
+OpenBao supports two methods for distributing external plugins:
+
+1. **Manual management** - Manual download of plugin binaries and registration via CLI/API
+2. **OCI-based distribution** - Automatic download from container registries with declarative configuration and registation via CLI/API
+
+See the [OCI Plugin](/docs/configuration/oci-plugins) configuration reference
+for complete documentation.
+
 ## Registering external plugins
 
 Before an external plugin can be mounted, it needs to be

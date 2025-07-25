@@ -12,6 +12,15 @@ the plugin catalog
 
 ## Examples
 
+Download OCI-based plugins configured in server configuration:
+
+```shell-session
+$ bao plugin init -config=/etc/openbao/openbao.hcl
+Plugin directory: /opt/openbao/plugins
+Found 2 OCI plugin(s) configured
+[INFO] plugins downloaded successfully
+```
+
 List all available secret plugins in the catalog:
 
 ```shell-session
@@ -58,6 +67,7 @@ Usage: bao plugin <subcommand> [options] [args]
 Subcommands:
     deregister       Deregister an existing plugin in the catalog
     info             Read information about a plugin in the catalog
+    init             Download and initialize OCI-based plugins from configuration
     list             Lists available plugins
     register         Registers a new plugin in the catalog
     reload           Reload mounted plugin backend

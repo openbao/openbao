@@ -69,6 +69,10 @@ func (t *PostgreSQLBackendTransaction) Put(ctx context.Context, entry *physical.
 		return err
 	}
 
+	if err := t.b.writeInvalidation(ctx, t.tx, entry.Key); err != nil {
+		return err
+	}
+
 	t.haveWritten = true
 
 	return nil
@@ -89,6 +93,10 @@ func (t *PostgreSQLBackendTransaction) Delete(ctx context.Context, fullPath stri
 
 	_, err := t.tx.ExecContext(ctx, t.b.deleteQuery, path, key)
 	if err != nil {
+		return err
+	}
+
+	if err := t.b.writeInvalidation(ctx, t.tx, fullPath); err != nil {
 		return err
 	}
 

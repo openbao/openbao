@@ -12,8 +12,14 @@ import (
 )
 
 func (c *Core) Invalidate(key string) {
+	if c.Sealed() {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(c.activeContext, 2*time.Second)
 	defer cancel()
+
+	c.logger.Trace("handling invalidation", "key", key)
 
 	err := c.invalidateInternal(ctx, key)
 	if err != nil {

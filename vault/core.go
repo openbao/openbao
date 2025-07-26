@@ -2012,16 +2012,6 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 		return errors.New("nil request to seal")
 	}
 
-	// Since there is no token store in standby nodes, sealing cannot be done.
-	// Ideally, the request has to be forwarded to leader node for validation
-	// and the operation should be performed. But for now, just returning with
-	// an error and recommending a vault restart, which essentially does the
-	// same thing.
-	if c.standby {
-		c.logger.Error("vault cannot seal when in standby mode; please restart instead")
-		return errors.New("vault cannot seal when in standby mode; please restart instead")
-	}
-
 	err := c.PopulateTokenEntry(ctx, req)
 	if err != nil {
 		if errwrap.Contains(err, logical.ErrPermissionDenied.Error()) {
@@ -3158,7 +3148,7 @@ func (c *Core) ResolveNamespaceFromRequest(nsHeader, reqPath string) (*namespace
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
 
-	if c.Sealed() || c.standby || c.namespaceStore == nil {
+	if c.Sealed() || c.namespaceStore == nil {
 		return nil, ""
 	}
 

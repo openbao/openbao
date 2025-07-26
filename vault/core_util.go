@@ -11,6 +11,18 @@ import (
 
 func coreInit(c *Core, conf *CoreConfig) error {
 	phys := conf.Physical
+
+	// Set our invalidation hook.
+	invalidating, ok := phys.(physical.CacheInvalidationBackend)
+	if !ok && !conf.DisableCache && conf.HAPhysical != nil && conf.HAPhysical.HAEnabled() {
+		// Disabling caching on HA-enabled backends.
+		conf.DisableCache = true
+		c.cachingDisabled = true
+	} else if ok {
+		c.logger.Trace("hooking invalidation")
+		invalidating.HookInvalidate(c.Invalidate)
+	}
+
 	// Wrap the physical backend in a cache layer if enabled
 	cacheLogger := c.baseLogger.Named("storage.cache")
 	c.allLoggers = append(c.allLoggers, cacheLogger)

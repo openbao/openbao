@@ -347,10 +347,6 @@ func (c *Core) validateWrappingToken(ctx context.Context, req *logical.Request) 
 		return false, consts.ErrSealed
 	}
 
-	if c.standby {
-		return false, consts.ErrStandby
-	}
-
 	defer func() {
 		// Perform audit logging before returning if there's an issue with checking
 		// the wrapping token

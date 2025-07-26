@@ -776,32 +776,14 @@ func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handle
 		// Note: in an HA setup, this call will also ensure that connections to
 		// the leader are set up, as that happens once the advertised cluster
 		// values are read during this function
-		isLeader, leaderAddr, _, err := core.Leader()
-		if err != nil {
-			if err == vault.ErrHANotEnabled {
-				// Standalone node, serve request normally
-				handler.ServeHTTP(w, r)
-				return
-			}
-			// Some internal error occurred
-			respondError(w, http.StatusInternalServerError, err)
-			return
-		}
-		if isLeader {
-			// No forwarding needed, we're leader
-			handler.ServeHTTP(w, r)
-			return
-		}
-		if leaderAddr == "" {
-			respondError(w, http.StatusInternalServerError, errors.New("local node not active but active cluster node not found"))
-			return
-		}
-
-		forwardRequest(core, w, r)
+		// XXX: Attempt to handle this request unless we're a forward-only standby.
+		handler.ServeHTTP(w, r)
 	})
 }
 
 func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
+	core.Logger().Debug("forwarding request", "req.path", r.URL.Path)
+
 	if r.Header.Get(vault.IntNoForwardingHeaderName) != "" {
 		respondStandby(core, w, r.URL)
 		return
@@ -819,6 +801,17 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, leaderAddr, _, err := core.Leader()
+	if err != nil {
+		// Some internal error occurred
+		respondError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if leaderAddr == "" {
+		respondError(w, http.StatusInternalServerError, errors.New("local node not active but active cluster node not found"))
+		return
+	}
+
 	// Attempt forwarding the request. If we cannot forward -- perhaps it's
 	// been disabled on the active node -- this will return with an
 	// ErrCannotForward and we simply fall back
@@ -831,6 +824,7 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Fall back to redirection
+		core.Logger().Debug("falling back to request redirection", "req.path", r.URL.Path)
 		respondStandby(core, w, r.URL)
 		return
 	}
@@ -848,10 +842,10 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 func request(core *vault.Core, w http.ResponseWriter, rawReq *http.Request, r *logical.Request) (*logical.Response, bool, bool) {
 	resp, err := core.HandleRequest(rawReq.Context(), r)
 	if errwrap.Contains(err, consts.ErrStandby.Error()) {
-		respondStandby(core, w, rawReq.URL)
-		return resp, false, false
+		core.Logger().Debug("got issues handling request because we're a standby, forwarding", "error", err)
+		return resp, false, true
 	}
-	if err != nil && errwrap.Contains(err, logical.ErrPerfStandbyPleaseForward.Error()) {
+	if err != nil && errwrap.Contains(err, logical.ErrPerfStandbyPleaseForward.Error()) || errwrap.Contains(err, logical.ErrReadOnly.Error()) {
 		return nil, false, true
 	}
 
@@ -898,6 +892,8 @@ func request(core *vault.Core, w http.ResponseWriter, rawReq *http.Request, r *l
 
 // respondStandby is used to trigger a redirect in the case that this Vault is currently a hot standby
 func respondStandby(core *vault.Core, w http.ResponseWriter, reqURL *url.URL) {
+	core.Logger().Debug("responding standby for some reason", "req.path", reqURL.Path)
+
 	// Request the leader address
 	_, redirectAddr, _, err := core.Leader()
 	if err != nil {

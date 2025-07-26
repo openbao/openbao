@@ -78,10 +78,13 @@ type PostgreSQLBackend struct {
 	fenceLock sync.RWMutex
 	fence     *PostgreSQLLock
 
-	invalidateLock       sync.RWMutex
 	invalidationStrategy InvalidationStrategy
-	invalidate           physical.InvalidateFunc
-	invalidateDoneCh     chan struct{}
+
+	invalidateLock        sync.RWMutex
+	invalidate            physical.InvalidateFunc
+	invalidateDoneCh      chan struct{}
+	standbyNodes          map[string]struct{}
+	consumedInvalidations map[int64]struct{}
 
 	walTable                string
 	tableWalInvalidateQuery string
@@ -196,11 +199,6 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		return nil, errors.New("PostgreSQL version must be at least 9.5")
 	}
 
-	haEnabled := conf["ha_enabled"] == "true"
-	if !upsertAvailable && haEnabled {
-		return nil, errors.New("ha_enabled=true in config but PG version doesn't support HA, must be at least 9.5")
-	}
-
 	unquotedHaTable, ok := conf["haTable"]
 	if !ok {
 		unquotedHaTable = "openbao_ha_locks"
@@ -267,9 +265,13 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		// write transactions.
 		fence: nil,
 
-		invalidationStrategy: InvalidationStrategy(invalidationStrategy),
-		walTable:             quotedWalTable,
-		tableWalInvalidateQuery: `INSERT INTO ` + quotedWalTable + `(path) VALUES($1) ` +
+		invalidationStrategy:  InvalidationStrategy(invalidationStrategy),
+		standbyNodes:          make(map[string]struct{}),
+		consumedInvalidations: make(map[int64]struct{}),
+
+		walTable: quotedWalTable,
+		tableWalInvalidateQuery: `INSERT INTO ` + quotedWalTable +
+			` (path) VALUES ($1) ` +
 			`RETURNING idx`,
 	}
 
@@ -395,7 +397,7 @@ func (m *PostgreSQLBackend) createTables() error {
 		if m.invalidationStrategy == WALTableInvalidationStrategy {
 			createTableQuery = `CREATE TABLE IF NOT EXISTS ` + m.walTable + ` (` +
 				`  idx BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,` +
-				`  path  TEXT COLLATE "C" NOT NULL,` +
+				`  path  TEXT COLLATE "C" NOT NULL` +
 				`);`
 			if _, err := txn.Exec(createTableQuery); err != nil {
 				if strings.Contains(err.Error(), "SQLSTATE 23505") {
@@ -448,14 +450,37 @@ func (m *PostgreSQLBackend) Put(ctx context.Context, entry *physical.Entry) erro
 
 	parentPath, path, key := m.splitKey(entry.Key)
 
+	// Do this outside of the transaction to avoid reading stale data.
 	if err := m.validateFence(ctx); err != nil {
 		return err
 	}
 
-	_, err := m.client.ExecContext(ctx, m.putQuery, parentPath, path, key, entry.Value)
+	txn, err := m.client.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+	})
 	if err != nil {
 		return err
 	}
+
+	// Rollback the commit in the event we do not commit it. We discard this error.
+	defer txn.Rollback()
+
+	// Write the entry.
+	_, err = txn.ExecContext(ctx, m.putQuery, parentPath, path, key, entry.Value)
+	if err != nil {
+		return err
+	}
+
+	// Write the invalidation entry.
+	if err := m.writeInvalidation(ctx, txn, entry.Key); err != nil {
+		return err
+	}
+
+	// Commit the combined result.
+	if err := txn.Commit(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -487,14 +512,36 @@ func (m *PostgreSQLBackend) Delete(ctx context.Context, fullPath string) error {
 
 	_, path, key := m.splitKey(fullPath)
 
+	// Do this outside of the transaction to avoid reading stale data.
 	if err := m.validateFence(ctx); err != nil {
 		return err
 	}
 
-	_, err := m.client.ExecContext(ctx, m.deleteQuery, path, key)
+	txn, err := m.client.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+	})
 	if err != nil {
 		return err
 	}
+
+	// Rollback the commit in the event we do not commit it. We discard this error.
+	defer txn.Rollback()
+
+	_, err = txn.ExecContext(ctx, m.deleteQuery, path, key)
+	if err != nil {
+		return err
+	}
+
+	// Write the invalidation entry.
+	if err := m.writeInvalidation(ctx, txn, fullPath); err != nil {
+		return err
+	}
+
+	// Commit the combined result.
+	if err := txn.Commit(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -593,6 +640,7 @@ func (p *PostgreSQLBackend) validateFence(ctx context.Context) error {
 	defer p.fenceLock.RUnlock()
 
 	if p.fence == nil {
+		p.logger.Trace("skipping fencing because no lock is held")
 		return nil
 	}
 
@@ -607,6 +655,8 @@ func (p *PostgreSQLBackend) validateFence(ctx context.Context) error {
 	if !held || value != p.fence.value {
 		return fmt.Errorf("%v: lock values differed", physical.ErrFencedWriteFailed)
 	}
+
+	p.logger.Trace("fence was ok", "lock value", value, "local value", p.fence.value)
 
 	return nil
 }

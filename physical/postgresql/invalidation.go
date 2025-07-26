@@ -25,8 +25,10 @@ func (p *PostgreSQLBackend) HookInvalidate(hook physical.InvalidateFunc) {
 	}
 
 	p.invalidate = hook
+	p.consumedInvalidations = make(map[int64]struct{})
 
 	if hook != nil {
+		p.logger.Trace("starting invalidation processing...")
 		p.invalidateDoneCh = make(chan struct{})
 		go p.ProcessInvalidations(p.invalidateDoneCh)
 	}
@@ -36,13 +38,15 @@ func (p *PostgreSQLBackend) ProcessInvalidations(closeCh chan struct{}) {
 	for {
 		select {
 		case <-closeCh:
+			p.logger.Trace("quitting invalidation processing...")
 			return
+		default:
 		}
 
 		var err error
 		switch p.invalidationStrategy {
 		case WALTableInvalidationStrategy:
-			err = p.doOneTableInvalidation(closeCh)
+			err = p.doAllTableInvalidation(closeCh)
 		}
 
 		if err != nil {
@@ -55,10 +59,18 @@ func (p *PostgreSQLBackend) ProcessInvalidations(closeCh chan struct{}) {
 	}
 }
 
-func (p *PostgreSQLBackend) writeInvalidation(ctx context.Context, path string, txn *sql.Tx) error {
+func (p *PostgreSQLBackend) writeInvalidation(ctx context.Context, txn *sql.Tx, key string) error {
+	p.fenceLock.RLock()
+	haveLock := p.fence != nil
+	p.fenceLock.RUnlock()
+
+	if !haveLock {
+		return nil
+	}
+
 	switch p.invalidationStrategy {
 	case WALTableInvalidationStrategy:
-		_, err := txn.ExecContext(ctx, p.tableWalInvalidateQuery, path)
+		_, err := txn.ExecContext(ctx, p.tableWalInvalidateQuery, key)
 		if err != nil {
 			return fmt.Errorf("failed to write invalidation: %w", err)
 		}
@@ -69,6 +81,91 @@ func (p *PostgreSQLBackend) writeInvalidation(ctx context.Context, path string, 
 	return nil
 }
 
-func (p *PostgreSQLBackend) doOneTableInvalidation(closeCh chan struct{}) error {
+func (p *PostgreSQLBackend) doAllTableInvalidation(closeCh chan struct{}) error {
+	p.fenceLock.RLock()
+	haveLock := p.fence != nil
+	p.fenceLock.RUnlock()
+
+	switch haveLock {
+	case true:
+		// Prune the table.
+		return p.pruneInvalidationTable(closeCh)
+	case false:
+		// Check for invalidations
+		return p.consumeInvalidationTable(closeCh)
+	}
+
+	return nil
+}
+
+func (p *PostgreSQLBackend) pruneInvalidationTable(closeCh chan struct{}) error {
+	// XXX - we need to know if there's any entries in the able which can be deleted because all registered clients have consumed them.
+	return nil
+}
+
+func (p *PostgreSQLBackend) consumeInvalidationTable(closeCh chan struct{}) error {
+	// There is no filtering we can do here that will help reduce the size of
+	// this table. In the event a client remains out of date, the leader
+	// should prune that node and force them to catch up via the checkpoint
+	// wait system. In particular, the following methods do not work:
+	//
+	// 1. WAL value: this is the value when stashing the write not when the
+	//    transaction commits the WAL write to disk. Thus we could see the
+	//    (higher) WAL value B before we see A and if we use it to filter,
+	//    would miss A altogether.
+	// 2. Date/time: same as above; Now() evaluates at the time the statement
+	//    is sent and not the time of commit.
+	// 3. SERIAL or equivalent: this is not guaranteed to be monotonically
+	//    increasing and values may be skipped and/or before already seen
+	//    values.
+	//
+	// We thus load every value from the table, send invalidations, and
+	// discard any entries from our seen table that no longer exist in the
+	// WAL table.
+	rows, err := p.client.Query("SELECT idx, path FROM " + p.walTable)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		return err
+	}
+
+	defer rows.Close()
+
+	seenEntries := make(map[int64]struct{})
+	for rows.Next() {
+		select {
+		case <-closeCh:
+			return fmt.Errorf("invalidation cancelled")
+		default:
+		}
+
+		var index int64
+		var key string
+		if err := rows.Scan(&index, &key); err != nil {
+			return err
+		}
+
+		p.invalidateLock.RLock()
+		_, seen := p.consumedInvalidations[index]
+		if !seen && p.invalidate != nil {
+			p.logger.Trace("invalidating key...", "key", key)
+			p.invalidate(key)
+		}
+		p.invalidateLock.RUnlock()
+
+		seenEntries[index] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		return err
+	}
+
+	p.invalidateLock.Lock()
+	p.consumedInvalidations = seenEntries
+	p.invalidateLock.Unlock()
+
 	return nil
 }

@@ -142,6 +142,9 @@ var (
 	// enabled in the configuration file
 	ErrIntrospectionNotEnabled = errors.New("The Vault configuration must set \"introspection_endpoint\" to true to enable this endpoint")
 
+	// ErrNoMatchingMount is returned if the mount is not found
+	errNoMatchingMount = errors.New("no matching mount")
+
 	// manualStepDownSleepPeriod is how long to sleep after a user-initiated
 	// step down of the active node, to prevent instantly regrabbing the lock.
 	// It's var not const so that tests can manipulate it.

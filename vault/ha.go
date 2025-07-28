@@ -403,7 +403,9 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}) {
 	perfCtx, perfCancel := context.WithCancel(namespace.RootContext(context.Background()))
 	if err := c.postUnseal(perfCtx, perfCancel, readonlyUnsealStrategy{}); err != nil {
 		c.logger.Error("read-only post-unseal setup failed", "error", err)
-		c.barrier.Seal()
+		if err := c.barrier.Seal(); err != nil {
+			c.logger.Error("failed to re-seal barrier after post-unseal setup failed", "error", err)
+		}
 		c.logger.Warn("vault is sealed")
 	}
 

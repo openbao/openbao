@@ -400,7 +400,7 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}) {
 		c.logger.Error("pre-seal teardown failed", "error", err)
 	}
 
-	perfCtx, perfCancel := context.WithCancel(namespace.RootContext(nil))
+	perfCtx, perfCancel := context.WithCancel(namespace.RootContext(context.Background()))
 	if err := c.postUnseal(perfCtx, perfCancel, readonlyUnsealStrategy{}); err != nil {
 		c.logger.Error("read-only post-unseal setup failed", "error", err)
 		c.barrier.Seal()

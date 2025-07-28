@@ -44,7 +44,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.3.0
 	github.com/gocql/gocql v1.7.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
-	github.com/google/cel-go v0.25.0
+	github.com/google/cel-go v0.26.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-metrics-stackdriver v0.2.0
 	github.com/hashicorp/cap v0.9.0
@@ -166,7 +166,7 @@ require (
 )
 
 require (
-	cel.dev/expr v0.23.1 // indirect
+	cel.dev/expr v0.24.0 // indirect
 	cloud.google.com/go v0.121.2 // indirect
 	cloud.google.com/go/auth v0.16.2 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect

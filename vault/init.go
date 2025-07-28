@@ -304,8 +304,11 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		}
 
 		c.logger.Info("acquired HA initialization lock")
+		c.notifyPhysicalLeadership(true)
 
 		defer func() {
+			c.notifyPhysicalLeadership(false)
+
 			if err := lock.Unlock(); err != nil {
 				c.logger.Error("failed to unlock initialization lock", "error", err)
 			}

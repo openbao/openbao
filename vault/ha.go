@@ -562,6 +562,9 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		// Store the lock so that we can manually clear it later if needed
 		c.heldHALock = lock
 
+		// Notify storage that we're now the leader.
+		c.notifyPhysicalLeadership(true)
+
 		// Create the active context
 		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(nil))
 		c.activeContext = activeCtx
@@ -709,6 +712,9 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			if err := c.preSeal(); err != nil {
 				c.logger.Error("pre-seal teardown failed", "error", err)
 			}
+
+			// Notify storage that we're no longer leader.
+			c.notifyPhysicalLeadership(false)
 
 			// If we are not meant to keep the HA lock, clear it
 			if atomic.LoadUint32(c.keepHALockOnStepDown) == 0 {

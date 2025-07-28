@@ -46,3 +46,9 @@ func preSealPhysical(c *Core) {
 func postUnsealPhysical(c *Core) error {
 	return nil
 }
+
+func (c *Core) notifyPhysicalLeadership(active bool) {
+	if notifiable, ok := c.ha.(physical.LeadershipChangedBackend); ok {
+		notifiable.LeadershipChange(active)
+	}
+}

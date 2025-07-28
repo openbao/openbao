@@ -15,6 +15,10 @@ const (
 	WALTableInvalidationStrategy InvalidationStrategy = "wal_table"
 )
 
+func (p *PostgreSQLBackend) LeadershipChange(active bool) {
+	p.active.Store(active)
+}
+
 func (p *PostgreSQLBackend) HookInvalidate(hook physical.InvalidateFunc) {
 	p.invalidateLock.Lock()
 	defer p.invalidateLock.Unlock()
@@ -35,6 +39,8 @@ func (p *PostgreSQLBackend) HookInvalidate(hook physical.InvalidateFunc) {
 }
 
 func (p *PostgreSQLBackend) ProcessInvalidations(closeCh chan struct{}) {
+	lastWasActive = p.active.Load()
+
 	for {
 		select {
 		case <-closeCh:
@@ -43,15 +49,19 @@ func (p *PostgreSQLBackend) ProcessInvalidations(closeCh chan struct{}) {
 		default:
 		}
 
+		active := p.active.Load()
+
 		var err error
 		switch p.invalidationStrategy {
 		case WALTableInvalidationStrategy:
-			err = p.doAllTableInvalidation(closeCh)
+			err = p.doAllTableInvalidation(closeCh, lastWasActive, active)
 		}
 
 		if err != nil {
 			p.logger.Error("invalidation process failed", "error", err)
 		}
+
+		lastWasActive = active
 
 		// Provide for backoff; some strategies may be long-running, others
 		// might be expecting us to loop for them.
@@ -60,11 +70,7 @@ func (p *PostgreSQLBackend) ProcessInvalidations(closeCh chan struct{}) {
 }
 
 func (p *PostgreSQLBackend) writeInvalidation(ctx context.Context, txn *sql.Tx, key string) error {
-	p.fenceLock.RLock()
-	haveLock := p.fence != nil
-	p.fenceLock.RUnlock()
-
-	if !haveLock {
+	if !p.active.Load() {
 		return nil
 	}
 
@@ -82,11 +88,7 @@ func (p *PostgreSQLBackend) writeInvalidation(ctx context.Context, txn *sql.Tx, 
 }
 
 func (p *PostgreSQLBackend) doAllTableInvalidation(closeCh chan struct{}) error {
-	p.fenceLock.RLock()
-	haveLock := p.fence != nil
-	p.fenceLock.RUnlock()
-
-	switch haveLock {
+	switch p.active.Load() {
 	case true:
 		// Prune the table.
 		return p.pruneInvalidationTable(closeCh)

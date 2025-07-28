@@ -163,6 +163,12 @@ type RedirectDetect interface {
 	DetectHostAddr() (string, error)
 }
 
+// LeadershipChangedBackend is an interface for backends which need to be told
+// whether they're the active leader or not.
+type LeadershipChangedBackend interface {
+	LeadershipChange(active bool)
+}
+
 type Lock interface {
 	// Lock is used to acquire the given lock
 	// The stopCh is optional and if closed should interrupt the lock

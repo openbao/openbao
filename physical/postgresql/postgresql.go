@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/armon/go-metrics"
@@ -21,6 +22,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
@@ -76,6 +78,7 @@ type PostgreSQLBackend struct {
 	txnPermitPool *physical.PermitPool
 
 	fenceLock sync.RWMutex
+	active    atomic.Bool
 	fence     *PostgreSQLLock
 
 	invalidationStrategy InvalidationStrategy
@@ -639,7 +642,12 @@ func (p *PostgreSQLBackend) validateFence(ctx context.Context) error {
 	p.fenceLock.RLock()
 	defer p.fenceLock.RUnlock()
 
-	if p.fence == nil {
+	active := p.active.Load()
+	if !active {
+		return logical.ErrReadOnly
+	}
+
+	if p.fence == nil && p.active.Load() {
 		p.logger.Trace("skipping fencing because no lock is held")
 		return nil
 	}

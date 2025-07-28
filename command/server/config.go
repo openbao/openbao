@@ -246,14 +246,11 @@ func (b *ServiceRegistration) GoString() string {
 	return fmt.Sprintf("*%#v", *b)
 }
 
-// ExternalKeys is the server configuration for external keys.
+// ExternalKeys is the server-level configuration for External Keys.
 type ExternalKeysConfig struct {
-	// Type of external keys stanza, e.g. "pkcs11".
-	Type string // E.g. "pkcs11"
-	// Namespaces to whitelist this configuration in.
-	Namespaces []*NamespaceSpecifier
-	// Type-specific parameters, e.g. lib="/usr/lib/..." for type "pkcs11".
-	Config map[string]string
+	Type       string                // Type of external_keys stanza, e.g. "pkcs11".
+	Values     map[string]string     // Type-specific parameters, e.g. lib="/usr/lib/..." for type "pkcs11".
+	Namespaces []*NamespaceSpecifier // Namespaces to enable this configuration in.
 }
 
 func (e *ExternalKeysConfig) GoString() string {
@@ -263,10 +260,8 @@ func (e *ExternalKeysConfig) GoString() string {
 // NamespaceSpecifier references a namespace to whitelist as part of an
 // [ExternalKeysConfig] configuration. Also see [namespace.ParseSpecifier].
 type NamespaceSpecifier struct {
-	// One of "path", "id", "uuid".
-	Kind string
-	// Matching value for Kind.
-	Value string
+	Kind  string // One of "path", "id", "uuid".
+	Value string // Matching value for Kind.
 }
 
 func (n *NamespaceSpecifier) GoString() string {
@@ -1085,20 +1080,20 @@ func parseExternalKeys(result *Config, list *ast.ObjectList, blockName string) e
 		}
 
 		// Convert all remaining fields to strings:
-		e.Config = make(map[string]string, len(m))
+		e.Values = make(map[string]string, len(m))
 		for k, v := range m {
 			s, err := parseutil.ParseString(v)
 			if err != nil {
 				return fmt.Errorf("%s.%s: %w", blockName, key, err)
 			}
-			e.Config[k] = s
+			e.Values[k] = s
 		}
 
-		name, ok := e.Config["name"]
+		name, ok := e.Values["name"]
 		if !ok {
 			return fmt.Errorf("%s.%s: missing 'name'", blockName, key)
 		}
-		delete(e.Config, "name")
+		delete(e.Values, "name")
 
 		if _, ok := cfgs[blockName]; ok {
 			return fmt.Errorf("%s.%s: duplicate 'name' %q", blockName, key, name)

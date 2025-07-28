@@ -5,7 +5,6 @@ package vault
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -36,9 +35,9 @@ type ExternalKeyRegistry struct {
 	core   *Core
 	logger hclog.Logger
 
-	// storageLock is used in some edge cases where transactions are not enough
-	// to ensure config <-> key consistency, essentially because we have no
-	// concept of foreign key constraints.
+	// storageLock ensures consistency both within and between configs and keys.
+	// In the unlikely event this ever becomes a bottleneck, we can shard this
+	// lock per config via locksutil.
 	storageLock sync.RWMutex
 }
 
@@ -233,35 +232,37 @@ func (r *ExternalKeyRegistry) PutConfig(
 	name := data.Get("config").(string)
 	storage := r.storageViewForRequest(req)
 
-	if err := logical.WithTransaction(ctx, storage, func(storage logical.Storage) error {
-		// Check for an existing config, we may have a conflict e.g. when trying
-		// to change a a typed config to an inherited config.
-		config, err := r.getConfigCommon(ctx, storage, name)
-		if err != nil {
-			return err
-		}
+	r.storageLock.Lock()
+	defer r.storageLock.Unlock()
 
-		// Create a new config if it doesn't exist yet.
-		if config == nil {
-			config = &ExternalKeyConfig{}
-		}
+	// Check for an existing config, we may have a conflict e.g. when trying
+	// to change a a typed config to an inherited config.
+	config, err := r.getConfigCommon(ctx, storage, name)
+	if err != nil {
+		return handleError(err)
+	}
 
-		if err := r.validateConfigTransition(
-			config.Type != "", ty != "", config.Inherits != "", inherits != "",
-		); err != nil {
-			return err
-		}
+	// Create a new config if it doesn't exist yet.
+	if config == nil {
+		config = &ExternalKeyConfig{}
+	}
 
-		config.Type = ty
-		config.Inherits = inherits
-		config.Values = values
+	if err := r.validateConfigTransition(
+		config.Type != "", ty != "", config.Inherits != "", inherits != "",
+	); err != nil {
+		return handleError(err)
+	}
 
-		if config.Inherits != "" && len(config.Values) != 0 {
-			return fmt.Errorf("setting field %q requires that no other fields are set", "inherits")
-		}
+	config.Type = ty
+	config.Inherits = inherits
+	config.Values = values
 
-		return r.putConfigCommon(ctx, storage, name, config)
-	}); err != nil {
+	if config.Inherits != "" && len(config.Values) != 0 {
+		return handleError(fmt.Errorf("setting field %q requires that no other fields are set",
+			"inherits"))
+	}
+
+	if err := r.putConfigCommon(ctx, storage, name, config); err != nil {
 		return handleError(err)
 	}
 
@@ -275,115 +276,86 @@ func (r *ExternalKeyRegistry) PatchConfig(
 	name := data.Get("config").(string)
 	storage := r.storageViewForRequest(req)
 
-	if err := logical.WithTransaction(ctx, storage, func(storage logical.Storage) error {
-		config, err := r.getConfigCommon(ctx, storage, name)
-		switch {
-		case err != nil:
-			return err
-		case config == nil:
-			return logical.CodedError(http.StatusNotFound, "config not found")
+	r.storageLock.Lock()
+	defer r.storageLock.Unlock()
+
+	config, err := r.getConfigCommon(ctx, storage, name)
+	switch {
+	case err != nil:
+		return handleError(err)
+	case config == nil:
+		return nil, logical.CodedError(http.StatusNotFound, "config not found")
+	}
+
+	// Bit of a hack, but makes patching easier.
+	config.Values["type"] = config.Type
+	config.Values["inherits"] = config.Inherits
+
+	// This is effectively a JSON merge patch (https://datatracker.ietf.org/doc/html/rfc7386).
+	// We could use the json-patch library, but that's overkill for single-level string maps.
+	for k, v := range req.Data {
+		switch v := v.(type) {
+		case string:
+			config.Values[k] = v
+		case nil:
+			delete(config.Values, k)
+		default:
+			return handleError(fmt.Errorf("expected field %q to be a string or null", k))
 		}
+	}
 
-		// Bit of a hack, but makes patching easier.
-		config.Values["type"] = config.Type
-		config.Values["inherits"] = config.Inherits
+	ty, inherits := config.Values["type"], config.Values["inherits"]
+	delete(config.Values, "type")
+	delete(config.Values, "inherits")
 
-		// This is effectively a JSON merge patch (https://datatracker.ietf.org/doc/html/rfc7386).
-		// We could use the json-patch library, but that's overkill for single-level string maps.
-		for k, v := range req.Data {
-			switch v := v.(type) {
-			case string:
-				config.Values[k] = v
-			case nil:
-				delete(config.Values, k)
-			default:
-				return fmt.Errorf("expected field %q to be a string or null", k)
-			}
-		}
+	if err := r.validateConfigTransition(
+		config.Type != "", ty != "", config.Inherits != "", inherits != "",
+	); err != nil {
+		return handleError(err)
+	}
 
-		ty, inherits := config.Values["type"], config.Values["inherits"]
-		delete(config.Values, "type")
-		delete(config.Values, "inherits")
+	config.Type = ty
+	config.Inherits = inherits
 
-		if err := r.validateConfigTransition(
-			config.Type != "", ty != "", config.Inherits != "", inherits != "",
-		); err != nil {
-			return err
-		}
+	if config.Inherits != "" && len(config.Values) != 0 {
+		return handleError(fmt.Errorf("setting field %q requires that no other fields are set",
+			"inherits"))
+	}
 
-		config.Type = ty
-		config.Inherits = inherits
-
-		if config.Inherits != "" && len(config.Values) != 0 {
-			return fmt.Errorf("setting field %q requires that no other fields are set", "inherits")
-		}
-
-		return r.putConfigCommon(ctx, storage, name, config)
-	}); err != nil {
+	if err := r.putConfigCommon(ctx, storage, name, config); err != nil {
 		return handleError(err)
 	}
 
 	return nil, nil
 }
 
-// validateConfigTransition enforces the invariants defined below.
+// validateConfigTransition enforces invariants for modifications to External
+// Key config entries. There are a few here, but the general idea is that a
+// config must be either inherited or "typed", and we can move from an inherited
+// config to a typed config, but not the other way.
 func (r *ExternalKeyRegistry) validateConfigTransition(
-	// Whether the "type" field was set before the change
-	typeBefore bool,
-	// Whether the "type" field will be set after the change
-	typeAfter bool,
-	// Whether the "inherits" field was set before the change
-	inheritsBefore bool,
-	// Whether the "inherits" field will be set after the change
-	inheritsAfter bool,
+	typeBefore bool, // Was "type" set before the change?
+	typeAfter bool, // Is "type" set after the change?
+	inheritsBefore bool, // Was "inherits" set before the change?
+	inheritsAfter bool, // Is "inherits" set after the change?
 ) error {
-	for _, invariant := range externalKeyConfigTransitionInvariants {
-		if invariant.cond(typeBefore, typeAfter, inheritsBefore, inheritsAfter) {
-			return errors.New(invariant.err)
-		}
+	switch {
+	case (typeBefore && inheritsBefore) || (typeAfter && inheritsAfter):
+		return fmt.Errorf(`the "type" and "inherits" fields are mutually exclusive`)
+	case !typeAfter && !inheritsAfter:
+		return fmt.Errorf(`either the "type" or the "inherits" field must be set`)
+
+	case typeBefore && !typeAfter:
+		return fmt.Errorf(`cannot remove field "type"`)
+
+	case inheritsBefore && !inheritsAfter && !typeAfter:
+		return fmt.Errorf(`removing field "inherits" requires adding field "type"`)
+	case inheritsBefore && inheritsAfter && typeAfter:
+		return fmt.Errorf(`adding field "type" requires removing field "inherits"`)
+
+	default:
+		return nil
 	}
-
-	return nil
-}
-
-// externalKeyConfigTransitionInvariants holds invariants for modifications to
-// External Key config entries. There are a few here, but the general idea is
-// that a config must be either inherited or "typed", and we can move from an
-// inherited config to a typed config, but not the other way.
-var externalKeyConfigTransitionInvariants = []struct {
-	err  string
-	cond func(typeBefore, typeAfter, inheritsBefore, inheritsAfter bool) bool
-}{
-	{
-		`the "type" and "inherits" fields are mutually exclusive`,
-		func(typeBefore, typeAfter, inheritsBefore, inheritsAfter bool) bool {
-			return (typeBefore && inheritsBefore) || (typeAfter && inheritsAfter)
-		},
-	},
-	{
-		`either the "type" or the "inherits" field must be set`,
-		func(typeBefore, typeAfter, inheritsBefore, inheritsAfter bool) bool {
-			return !typeAfter && !inheritsAfter
-		},
-	},
-	{
-		`cannot remove field "type"`,
-		func(typeBefore, typeAfter, inheritsBefore, inheritsAfter bool) bool {
-			return typeBefore && !typeAfter
-		},
-	},
-	{
-		`removing field "inherits" requires adding field "type"`,
-		func(typeBefore, typeAfter, inheritsBefore, inheritsAfter bool) bool {
-			return inheritsBefore && !inheritsAfter && !typeAfter
-		},
-	},
-	{
-		`adding field "type" requires removing field "inherits"`,
-		func(typeBefore, typeAfter, inheritsBefore, inheritsAfter bool) bool {
-			return inheritsBefore && inheritsAfter && typeAfter
-		},
-	},
 }
 
 // DELETE /sys/external-keys/configs/:config-name
@@ -393,8 +365,6 @@ func (r *ExternalKeyRegistry) DeleteConfig(
 	name := data.Get("config").(string)
 	storage := r.storageViewForRequest(req)
 
-	// We need to lock here to ensure config deletion doesn't race against key
-	// creation and leaves a dangling key. Also see comment in PutKey(...).
 	r.storageLock.Lock()
 	defer r.storageLock.Unlock()
 
@@ -466,47 +436,40 @@ func (r *ExternalKeyRegistry) PutKey(
 
 	storage := r.storageViewForRequest(req)
 
-	if err := logical.WithTransaction(ctx, storage, func(storage logical.Storage) error {
-		key, err := r.getKeyCommon(ctx, storage, fullName)
-		if err != nil {
-			return err
+	r.storageLock.Lock()
+	defer r.storageLock.Unlock()
+
+	key, err := r.getKeyCommon(ctx, storage, fullName)
+	if err != nil {
+		return handleError(err)
+	}
+
+	// Create a new key if it doesn't exist yet.
+	if key == nil {
+		// Ensure that the config we're creating this key in actually exists.
+		config, err := r.getConfigCommon(ctx, storage, configName)
+		switch {
+		case err != nil:
+			return handleError(err)
+		case config == nil:
+			return nil, logical.CodedError(http.StatusNotFound, "config not found")
 		}
 
-		// Create a new key if it doesn't exist yet.
-		if key == nil {
-			// If the corresponding config gets deleted before we create a new
-			// key, that wouldn't fail this transaction and we'd create a
-			// dangling key. Thus lock within the application. We don't need to
-			// do this if the key already exists, since config deletion deletes
-			// all its keys first, which _would_ fail the transaction.
-			r.storageLock.RLock()
-			defer r.storageLock.RUnlock()
-
-			// Ensure that the config we're creating this key in actually exists.
-			config, err := r.getConfigCommon(ctx, storage, configName)
-			switch {
-			case err != nil:
-				return err
-			case config == nil:
-				return logical.CodedError(http.StatusNotFound, "config not found")
-			}
-
-			if config.Inherits != "" {
-				return fmt.Errorf(
-					"cannot create key for inherited config, create it for the original one")
-			}
-
-			key = &ExternalKey{
-				Grants: []string{}, // For consistency.
-			}
+		if config.Inherits != "" {
+			return handleError(fmt.Errorf(
+				"cannot create key for inherited config, create it for the original one"))
 		}
 
-		// Update Values, make sure not to override Grants, these should stay
-		// if the key already existed.
-		key.Values = values
+		key = &ExternalKey{
+			Grants: []string{}, // For consistency.
+		}
+	}
 
-		return r.putKeyCommon(ctx, storage, fullName, key)
-	}); err != nil {
+	// Update Values, make sure not to override Grants, these should stay
+	// if the key already existed.
+	key.Values = values
+
+	if err := r.putKeyCommon(ctx, storage, fullName, key); err != nil {
 		return handleError(err)
 	}
 
@@ -520,30 +483,31 @@ func (r *ExternalKeyRegistry) PatchKey(
 	name := path.Join(data.Get("config").(string), data.Get("key").(string))
 	storage := r.storageViewForRequest(req)
 
-	if err := logical.WithTransaction(ctx, storage, func(storage logical.Storage) error {
-		key, err := r.getKeyCommon(ctx, storage, name)
-		switch {
-		case err != nil:
-			return err
-		case key == nil:
-			return logical.CodedError(http.StatusNotFound, "key not found")
-		}
+	r.storageLock.Lock()
+	defer r.storageLock.Unlock()
 
-		// This is effectively a JSON merge patch (https://datatracker.ietf.org/doc/html/rfc7386).
-		// We could use the json-patch library, but that's overkill for single-level string maps.
-		for k, v := range req.Data {
-			switch v := v.(type) {
-			case string:
-				key.Values[k] = v
-			case nil:
-				delete(key.Values, k)
-			default:
-				return fmt.Errorf("expected field %q to be a string or null", k)
-			}
-		}
+	key, err := r.getKeyCommon(ctx, storage, name)
+	switch {
+	case err != nil:
+		return handleError(err)
+	case key == nil:
+		return nil, logical.CodedError(http.StatusNotFound, "key not found")
+	}
 
-		return r.putKeyCommon(ctx, storage, name, key)
-	}); err != nil {
+	// This is effectively a JSON merge patch (https://datatracker.ietf.org/doc/html/rfc7386).
+	// We could use the json-patch library, but that's overkill for single-level string maps.
+	for k, v := range req.Data {
+		switch v := v.(type) {
+		case string:
+			key.Values[k] = v
+		case nil:
+			delete(key.Values, k)
+		default:
+			return handleError(fmt.Errorf("expected field %q to be a string or null", k))
+		}
+	}
+
+	if err := r.putKeyCommon(ctx, storage, name, key); err != nil {
 		return handleError(err)
 	}
 
@@ -556,6 +520,9 @@ func (r *ExternalKeyRegistry) DeleteKey(
 ) (*logical.Response, error) {
 	name := path.Join(data.Get("config").(string), data.Get("key").(string))
 	storage := r.storageViewForRequest(req)
+
+	r.storageLock.Lock()
+	defer r.storageLock.Unlock()
 
 	if err := storage.Delete(ctx, r.keyPath(name)); err != nil {
 		return handleError(err)
@@ -591,27 +558,28 @@ func (r *ExternalKeyRegistry) PutGrant(
 
 	storage := r.storageViewForRequest(req)
 
-	if err := logical.WithTransaction(ctx, storage, func(storage logical.Storage) error {
-		key, err := r.getKeyCommon(ctx, storage, name)
-		switch {
-		case err != nil:
-			return err
-		case key == nil:
-			return logical.CodedError(http.StatusNotFound, "key not found")
-		}
+	r.storageLock.Lock()
+	defer r.storageLock.Unlock()
 
-		// Canonicalize the mount path; both for comparison with other paths and
-		// to get a consistent representation for display.
-		mount = strings.Trim(mount, "/") + "/"
+	key, err := r.getKeyCommon(ctx, storage, name)
+	switch {
+	case err != nil:
+		return handleError(err)
+	case key == nil:
+		return nil, logical.CodedError(http.StatusNotFound, "key not found")
+	}
 
-		if slices.Contains(key.Grants, mount) {
-			return nil
-		}
+	// Canonicalize the mount path; both for comparison with other paths and
+	// to get a consistent representation for display.
+	mount = strings.Trim(mount, "/") + "/"
 
-		key.Grants = append(key.Grants, mount)
+	if slices.Contains(key.Grants, mount) {
+		return nil, nil
+	}
 
-		return r.putKeyCommon(ctx, storage, name, key)
-	}); err != nil {
+	key.Grants = append(key.Grants, mount)
+
+	if err := r.putKeyCommon(ctx, storage, name, key); err != nil {
 		return handleError(err)
 	}
 
@@ -627,29 +595,30 @@ func (r *ExternalKeyRegistry) DeleteGrant(
 
 	storage := r.storageViewForRequest(req)
 
-	if err := logical.WithTransaction(ctx, storage, func(storage logical.Storage) error {
-		key, err := r.getKeyCommon(ctx, storage, name)
-		switch {
-		case err != nil:
-			return err
-		case key == nil:
-			return logical.CodedError(http.StatusNotFound, "key not found")
-		}
+	r.storageLock.Lock()
+	defer r.storageLock.Unlock()
 
-		// Canonicalize the mount path; both for comparison with other paths and
-		// to get a consistent representation for display.
-		mount = strings.Trim(mount, "/") + "/"
+	key, err := r.getKeyCommon(ctx, storage, name)
+	switch {
+	case err != nil:
+		return handleError(err)
+	case key == nil:
+		return nil, logical.CodedError(http.StatusNotFound, "key not found")
+	}
 
-		if !slices.Contains(key.Grants, mount) {
-			return nil
-		}
+	// Canonicalize the mount path; both for comparison with other paths and
+	// to get a consistent representation for display.
+	mount = strings.Trim(mount, "/") + "/"
 
-		key.Grants = slices.DeleteFunc(key.Grants, func(grant string) bool {
-			return grant == mount
-		})
+	if !slices.Contains(key.Grants, mount) {
+		return nil, nil
+	}
 
-		return r.putKeyCommon(ctx, storage, name, key)
-	}); err != nil {
+	key.Grants = slices.DeleteFunc(key.Grants, func(grant string) bool {
+		return grant == mount
+	})
+
+	if err := r.putKeyCommon(ctx, storage, name, key); err != nil {
 		return handleError(err)
 	}
 

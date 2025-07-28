@@ -731,14 +731,16 @@ func parseQuery(values url.Values) map[string]interface{} {
 }
 
 func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) (io.ReadCloser, error) {
-	// Limit the maximum number of bytes to MaxRequestSize to protect
-	// against an indefinite amount of data being read.
-	reader := r.Body
+	origBody := new(bytes.Buffer)
+	reader := io.NopCloser(io.TeeReader(r.Body, origBody))
 	err := jsonutil.DecodeJSONFromReader(reader, out)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to parse JSON input: %w", err)
 	}
-	return nil, err
+	if err == nil {
+		r.Body = io.NopCloser(origBody)
+	}
+	return io.NopCloser(origBody), err
 }
 
 // parseFormRequest parses values from a form POST.

@@ -82,6 +82,7 @@ const sidebars: SidebarsConfig = {
             ],
             Configuration: [
                 "configuration/index",
+                "configuration/self-init",
                 {
                     listener: [
                         "configuration/listener/index",

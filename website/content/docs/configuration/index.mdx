@@ -125,6 +125,9 @@ to specify where the configuration is.
   the read cache used by the physical storage subsystem. This will very
   significantly impact performance.
 
+- `initialize` `([Initialize][initialize]: <none>)` – Specifies one-time
+  declarative self-initialization.
+
 - `plugin_directory` `(string: "")` – A directory from which plugins are
   allowed to be loaded. OpenBao must have permission to read files in this
   directory to successfully load plugins, and the value cannot be a symbolic link.
@@ -258,6 +261,7 @@ The following parameters are used on backends that support [High Availability][h
 [listener]: /docs/configuration/listener
 [seal]: /docs/configuration/seal
 [telemetry]: /docs/configuration/telemetry
+[initialize]: /docs/configuration/self-init
 [sentinel]: /docs/configuration/sentinel
 [high-availability]: /docs/concepts/ha
 [plugins]: /docs/plugins

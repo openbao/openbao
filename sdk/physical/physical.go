@@ -169,6 +169,31 @@ type LeadershipChangedBackend interface {
 	LeadershipChange(active bool)
 }
 
+// HALeaderSync is an interface for backends which do not keep a long-running
+// WAL but which need a checkpoint on leadership changes to know where the WAL
+// starts. After a standby reaches this point, invalidations should be assumed
+// to be processed as usual.
+//
+// These checkpoints are opaque to OpenBao and intended to be handled by the
+// server.
+type HALeaderSync interface {
+	// GetHACheckpoint is called on the active node to get the minimum
+	// storage state after registering a new client. It yields a state
+	// that can be safely sent to the client. This should only ever be
+	// called after registering a new client.
+	GetHACheckpoint(ctx context.Context) (string, error)
+
+	// GetCurrentHACheckpoint is called on standby nodes to return the current
+	// standby node state. This is because waiting for the checkpoint requires
+	// us to re-seal and unseal again, which may decrease availability on
+	// manual-unseal nodes.
+	GetCurrentHACheckpoint(ctx context.Context) (string, error)
+
+	// WaitHACheckpoint takes a value yielded by GetHACheckpoint(...) and
+	// waits for storage to replicate at least this far.
+	WaitHACheckpoint(ctx context.Context, checkpoint string) error
+}
+
 type Lock interface {
 	// Lock is used to acquire the given lock
 	// The stopCh is optional and if closed should interrupt the lock

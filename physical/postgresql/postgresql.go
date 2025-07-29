@@ -91,6 +91,8 @@ type PostgreSQLBackend struct {
 
 	walTable                string
 	tableWalInvalidateQuery string
+	tableWalEmptyQuery      string
+	lastSeenWal             string
 }
 
 // PostgreSQLLock implements a lock using an PostgreSQL client.

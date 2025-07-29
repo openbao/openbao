@@ -52,3 +52,27 @@ func (c *Core) notifyPhysicalLeadership(active bool) {
 		notifiable.LeadershipChange(active)
 	}
 }
+
+func (c *Core) getActivePhysicalCheckpoint(ctx context.Context) (string, error) {
+	if checkpointable, ok := c.ha.(physical.HALeaderSync); ok {
+		return checkpointable.GetHACheckpoint(ctx)
+	}
+
+	return "", nil
+}
+
+func (c *Core) getStandbyPhysicalCheckpoint(ctx context.Context) (string, error) {
+	if checkpointable, ok := c.ha.(physical.HALeaderSync); ok {
+		return checkpointable.GetCurrentHACheckpoint(ctx)
+	}
+
+	return "", nil
+}
+
+func (c *Core) waitPhysicalCheckpoint(ctx context.Context, checkpoint string) error {
+	if checkpointable, ok := c.ha.(physical.HALeaderSync); ok {
+		return checkpointable.WaitHACheckpoint(ctx, checkpoint)
+	}
+
+	return nil
+}

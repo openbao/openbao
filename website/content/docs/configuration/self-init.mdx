@@ -7,6 +7,16 @@ description: |-
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
+# Self-Initialization
+
+Self-Initialization allows server operators to define initial
+service state through request-driven initialization that occurs
+automatically on first server start. Operators can reference environment
+variables and files to provision initial authentication, audit, and secret
+mounts in addition to having full control over general requests.
+Instead of manually executing multiple API commands after starting the server, 
+all necessary settings can be defined in advance.
+
 # `initialize` stanza
 
 The `initialize` stanza specifies various configurations for OpenBao to
@@ -104,162 +114,3 @@ The `initialize` stanza can only contain one or more `request` stanzas. Each
 - `data` `(value[map]: <optional>)` - the request data for this call.
 - `allow_failure` `(value[bool]: false)` - when true, allows this call to fail
   without erring out the entire self-initialization process.
-
-## `value` Type
-
-Values may be of the following types:
-
-- A literal, such as a `string` or `map`. For example the following are valid
-  literals:
-
-  ```hcl
-  path = "sys/audit/stdout"
-  ```
-
-  or
-
-  ```hcl
-  data = {
-    type = "file"
-  }
-  ```
-
-- A data source evaluation. These take the form:
-
-  ```hcl
-  {
-    eval_source = "<source name>"
-    eval_type = "<resulting type>"
-
-    ... additional source-specific parameters ...
-  }
-  ```
-
-  where
-
-  - `eval_source` `(string: <required>)` - the name of the given source; valid
-    values are defined below.
-  - `eval_type` `(string: <required>)` - the output type after evaluation;
-    recognized Go types are `string`, `int`, `float64`, `bool`, `[]string`,
-    `map` (alias for `map[string]interface{}`), and `any` (alias for
-    `interface{}`). If the output of the source evaluation is not convertable
-    to the desired type, a runtime error will occur.
-
-Note that fields within a source evaluation statement may not be themselves
-be source evaluations.
-
-#### `env` source
-
-- `env_var` `(string: <required>)` - the name of an environment variable to
-  return the value of.
-- `require_present` `(bool: false)` - when asserted, require that the named
-  environment variable must be present and err otherwise.
-
-For example, to reference an initial admin password from an environment
-variable:
-
-```hcl
-initialize "identity" {
-  request "userpass-add-admin" {
-    operation = "update"
-    path = "auth/userpass/users/admin"
-    data = {
-      "password" = {
-        eval_type = "string"
-        eval_source = "env"
-        env_var = "INITIAL_ADMIN_PASSWORD"
-        require_present = true
-      }
-      "token_policies" = ["superuser"]
-    }
-  }
-}
-```
-
-#### `file` source
-
-- `path` `(string: <required>)` - the path to the file to read. This file is
-  only ever read once and is closed after use; thus a single piece of data
-  could be provided on `/dev/stdin`. Errs if the file is not readable.
-
-For example, to load a X.509 root CA into a PKI engine:
-
-```hcl
-initialize "ca-setup" {
-  request "provision-root-ca" {
-    operation = "update"
-    path = "pki/issuers/import/cert"
-    data = {
-      "pem_bundle" = {
-        eval_type = "string"
-        eval_source = "file"
-        path = "/data/root-ca.pem"
-      }
-    }
-  }
-}
-```
-
-#### `request` source
-
-- `initialize_name` `(string: <required>)` - name of the initialize block to
-  reference.
-- `request_name` `(string: <required>)` - name of the request block inside the
-  initialize block to reference. Must have already been executed.
-- `field_selector` `(string or []string: <required>)` - field within the request
-  to reference; for nesting, specify multiple values as a list. The request is
-  marshalled directly; for example, to reference the path, use
-  `field_selector = "path"`; to reference a specific field of input data, use
-  `field_selector = ["data", "my_top_level_field"]`.
-
-For example, to reference a previous request's input for a subsequent call:
-
-```hcl
-initialize "namespace-identity" {
-  request "namespace-userpass-add-admin" {
-    operation = "update"
-    path = "ns1/auth/userpass/users/admin"
-    data = {
-      "password" = {
-        eval_type = "string"
-        eval_source = "request"
-        initialize_name = "identity"
-        request_name = "userpass-add-admin"
-        field_selector = ["data", "password"]
-      }
-      "token_policies" = ["superuser"]
-    }
-  }
-}
-```
-
-#### `response` source
-
-- `initialize_name` `(string: <required>)` - name of the initialize block to
-  reference.
-- `request_name` `(string: <required>)` - name of the request block inside the
-  initialize block, to reference the corresponding response of. Must have
-  already been executed.
-- `field_selector` `(string or []string: <required>)` - field within the
-  response to reference; for nesting, specify multiple values as a list. The
-  response is marshalled directly; for example, to reference a specific field
-  of output data, use `field_selector = ["data", "my_top_level_field"]`.
-
-For example, to reference a login token in a subsequent call:
-
-```hcl
-initialize "example" {
-  request "use-auth" {
-    operation = "update"
-    path = "sys/namespaces/ns1"
-    token = {
-      eval_type = "string"
-      eval_source = "response"
-      initialize_name = "authenticate"
-      request_name = "admin-userpass"
-      field_selector = ["auth", "client_token"]
-    }
-    data = {}
-  }
-}
-```

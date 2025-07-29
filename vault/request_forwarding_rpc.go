@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
 type forwardedRequestRPCServer struct {
@@ -93,9 +94,21 @@ func (s *forwardedRequestRPCServer) Echo(ctx context.Context, in *EchoRequest) (
 		})
 	}
 
+	if in.Checkpoint != "" {
+		// XXX(ascheel): make configurable the multiple
+		s.core.notifyPhysicalStandby(in.NodeInfo.Uuid, in.Checkpoint, time.Now().Add(10*s.core.clusterHeartbeatInterval))
+	}
+
+	checkpoint, err := s.core.getActivePhysicalCheckpoint(ctx)
+	if err != nil {
+		s.core.logger.Debug("forwarding: error getting current checkpoint; continuing without", "error", err)
+		err = nil
+	}
+
 	reply := &EchoReply{
 		Message:          "pong",
 		ReplicationState: uint32(s.core.ReplicationState()),
+		Checkpoint:       checkpoint,
 	}
 
 	if raftBackend := s.core.getRaftBackend(); raftBackend != nil {
@@ -106,11 +119,22 @@ func (s *forwardedRequestRPCServer) Echo(ctx context.Context, in *EchoRequest) (
 	return reply, nil
 }
 
+func (s *forwardedRequestRPCServer) NotifyInvalidation(ctx context.Context, req *InvalidationRequest) (*InvalidationResponse, error) {
+	confirming, ok := s.core.ha.(physical.HAGRPCInvalidateConfirm)
+	if ok {
+		confirming.ConfirmedInvalidate(req.Node, req.Value)
+	}
+
+	reply := &InvalidationResponse{}
+	return reply, nil
+}
+
 type forwardingClient struct {
 	RequestForwardingClient
 	core        *Core
 	echoTicker  *time.Ticker
 	echoContext context.Context
+	uuid        string
 }
 
 // NOTE: we also take advantage of gRPC's keepalive bits, but as we send data
@@ -123,6 +147,7 @@ func (c *forwardingClient) startHeartbeat() {
 			ApiAddr:  c.core.redirectAddr,
 			Hostname: hostname,
 			Mode:     "standby",
+			Uuid:     c.uuid,
 		}
 		tick := func() {
 			labels := make([]metrics.Label, 0, 1)
@@ -142,6 +167,14 @@ func (c *forwardingClient) startHeartbeat() {
 				req.RaftDesiredSuffrage = raftBackend.DesiredSuffrage()
 				req.RaftUpgradeVersion = raftBackend.EffectiveVersion()
 				labels = append(labels, metrics.Label{Name: "peer_id", Value: raftBackend.NodeID()})
+			}
+
+			checkpoint, err := c.core.getStandbyPhysicalCheckpoint(c.echoContext)
+			if err != nil {
+				c.core.logger.Debug("forwarding: error getting physical checkpoint; continuing without", "error", err)
+				err = nil
+			} else {
+				req.Checkpoint = checkpoint
 			}
 
 			ctx, cancel := context.WithTimeout(c.echoContext, 2*time.Second)
@@ -179,4 +212,12 @@ func (c *forwardingClient) startHeartbeat() {
 			}
 		}
 	}()
+}
+
+func (c *forwardingClient) ConfirmInvalidate(identifier string) error {
+	_, err := c.RequestForwardingClient.NotifyInvalidation(c.core.rpcClientConnContext, &InvalidationRequest{
+		Node:  c.uuid,
+		Value: identifier,
+	})
+	return err
 }

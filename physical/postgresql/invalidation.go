@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -30,13 +31,44 @@ func (p *PostgreSQLBackend) HookInvalidate(hook physical.InvalidateFunc) {
 	}
 
 	p.invalidate = hook
-	p.consumedInvalidations = make(map[int64]struct{})
+	p.locallyConsumedInvalidations = make(map[int64]struct{})
 
 	if hook != nil {
 		p.logger.Trace("starting invalidation processing...")
 		p.invalidateDoneCh = make(chan struct{})
 		go p.ProcessInvalidations(p.invalidateDoneCh)
 	}
+}
+
+func (p *PostgreSQLBackend) HookConfirmInvalidate(hook physical.InvalidateConfirmFunc) {
+	p.invalidateLock.Lock()
+	defer p.invalidateLock.Unlock()
+
+	p.invalidateConfirm = hook
+}
+
+func (p *PostgreSQLBackend) ConfirmedInvalidate(node string, identifier string) {
+	p.invalidateLock.Lock()
+	defer p.invalidateLock.Unlock()
+
+	idx, err := strconv.ParseInt(identifier, 10, 64)
+	if err != nil {
+		p.logger.Trace("invalid invalidation", "node", node, "identifier", identifier, "err", err)
+		return
+	}
+
+	nodes, present := p.consumedInvalidations[idx]
+	if !present {
+		p.logger.Trace("unknown index to invalidate", "node", node, "identifier", identifier)
+		return
+	}
+
+	if _, present := nodes[node]; !present {
+		p.logger.Trace("node not required to invalidate entry", "node", node, "identifier", identifier)
+		return
+	}
+
+	nodes[node] = true
 }
 
 func (p *PostgreSQLBackend) ProcessInvalidations(closeCh chan struct{}) {
@@ -70,22 +102,73 @@ func (p *PostgreSQLBackend) ProcessInvalidations(closeCh chan struct{}) {
 	}
 }
 
-func (p *PostgreSQLBackend) writeInvalidation(ctx context.Context, txn *sql.Tx, key string) error {
+func (p *PostgreSQLBackend) writeInvalidation(ctx context.Context, txn *sql.Tx, key string) (int64, error) {
 	if !p.active.Load() {
-		return nil
+		return -1, nil
 	}
 
 	switch p.invalidationStrategy {
 	case WALTableInvalidationStrategy:
-		_, err := txn.ExecContext(ctx, p.tableWalInvalidateQuery, key)
-		if err != nil {
-			return fmt.Errorf("failed to write invalidation: %w", err)
+		var identifier int64
+		if err := txn.QueryRowContext(ctx, p.tableWalInvalidateQuery, key).Scan(&identifier); err != nil {
+			return -1, fmt.Errorf("failed to write invalidation: %w", err)
 		}
+
+		return identifier, nil
 	default:
-		return fmt.Errorf("unknown invalidation strategy: %v", p.invalidationStrategy)
+		return -1, fmt.Errorf("unknown invalidation strategy: %v", p.invalidationStrategy)
 	}
 
-	return nil
+	return -1, nil
+}
+
+func (p *PostgreSQLBackend) saveInvalidation(id int64) {
+	p.invalidateLock.Lock()
+	defer p.invalidateLock.Unlock()
+
+	// We pre-register all standby nodes at the current moment. That way when
+	// new ones join, we can require they be up to date after the point where
+	// they join and these existing invalidations do not need to be handled by
+	// them.
+	p.consumedInvalidations[id] = make(map[string]bool, len(p.standbyNodes))
+	for nodeId := range p.standbyNodes {
+		p.consumedInvalidations[id][nodeId] = false
+	}
+}
+
+func (p *PostgreSQLBackend) StandbyHeartbeat(id string, checkpoint string, expiry time.Time) {
+	p.invalidateLock.Lock()
+	defer p.invalidateLock.Unlock()
+
+	entry, present := p.standbyNodes[id]
+	if !present {
+		entry = &standbyRegistration{}
+		p.standbyNodes[id] = entry
+
+		p.logger.Trace("registering new standby node", "uuid", id)
+	}
+
+	entry.lastCheckpoint = checkpoint
+	entry.expiration = expiry
+
+	p.pruneStandbyNodes()
+}
+
+func (p *PostgreSQLBackend) pruneStandbyNodes() {
+	var expired []string
+	for id, info := range p.standbyNodes {
+		if time.Now().After(info.expiration) {
+			expired = append(expired, id)
+			p.logger.Trace("removing expired standby node")
+		}
+	}
+
+	for _, id := range expired {
+		delete(p.standbyNodes, id)
+		for _, consumed := range p.consumedInvalidations {
+			delete(consumed, id)
+		}
+	}
 }
 
 func (p *PostgreSQLBackend) doAllTableInvalidation(closeCh chan struct{}, lastWasActive bool, nowActive bool) error {
@@ -104,7 +187,47 @@ func (p *PostgreSQLBackend) doAllTableInvalidation(closeCh chan struct{}, lastWa
 func (p *PostgreSQLBackend) pruneInvalidationTable(closeCh chan struct{}, lastWasActive bool) error {
 	// XXX - we need to know if there's any entries in the able which can be deleted because all registered clients have consumed them.
 	if lastWasActive {
-		// Nothing to do right now.
+
+		p.invalidateLock.Lock()
+		// First prune standby nodes. This gives us greater potential to remove
+		// more invalidations.
+		p.pruneStandbyNodes()
+
+		// Read invalidations and see if we can clean up any.
+		var removable []int64
+		for idx, nodes := range p.consumedInvalidations {
+			allClear := true
+			for _, value := range nodes {
+				if !value {
+					allClear = false
+					break
+				}
+			}
+
+			if allClear {
+				removable = append(removable, idx)
+			}
+		}
+		p.invalidateLock.Unlock()
+
+		if len(removable) == 0 {
+			return nil
+		}
+
+		p.logger.Trace("removing completed invalidation entries", "count", len(removable))
+
+		query := "DELETE FROM " + p.walTable + " WHERE idx = ANY($1::bigint[])"
+
+		if _, err := p.client.Exec(query, removable); err != nil {
+			return fmt.Errorf("failed removing stale invalidations: %w", err)
+		}
+
+		p.invalidateLock.Lock()
+		for _, idx := range removable {
+			delete(p.consumedInvalidations, idx)
+		}
+		p.invalidateLock.Unlock()
+
 		return nil
 	}
 
@@ -229,10 +352,14 @@ func (p *PostgreSQLBackend) consumeInvalidationTable(closeCh chan struct{}) erro
 		}
 
 		p.invalidateLock.RLock()
-		_, seen := p.consumedInvalidations[index]
+		_, seen := p.locallyConsumedInvalidations[index]
 		if !seen && p.invalidate != nil {
 			p.logger.Trace("invalidating key...", "key", key)
 			p.invalidate(key)
+
+			if p.invalidateConfirm != nil {
+				p.invalidateConfirm(fmt.Sprintf("%v", index))
+			}
 		}
 		p.invalidateLock.RUnlock()
 
@@ -246,7 +373,7 @@ func (p *PostgreSQLBackend) consumeInvalidationTable(closeCh chan struct{}) erro
 	}
 
 	p.invalidateLock.Lock()
-	p.consumedInvalidations = seenEntries
+	p.locallyConsumedInvalidations = seenEntries
 	p.invalidateLock.Unlock()
 
 	return nil

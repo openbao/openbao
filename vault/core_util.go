@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"time"
 
 	"github.com/openbao/openbao/sdk/v2/physical"
 )
@@ -21,6 +22,11 @@ func coreInit(c *Core, conf *CoreConfig) error {
 	} else if ok {
 		c.logger.Trace("hooking invalidation")
 		invalidating.HookInvalidate(c.Invalidate)
+	}
+
+	confirming, ok := phys.(physical.HAGRPCInvalidateConfirm)
+	if ok {
+		confirming.HookConfirmInvalidate(c.InvalidateConfirm)
 	}
 
 	// Wrap the physical backend in a cache layer if enabled
@@ -75,4 +81,25 @@ func (c *Core) waitPhysicalCheckpoint(ctx context.Context, checkpoint string) er
 	}
 
 	return nil
+}
+
+func (c *Core) notifyPhysicalStandby(id string, checkpoint string, expiry time.Time) {
+	if notifiable, ok := c.ha.(physical.LeadershipChangedBackend); ok {
+		notifiable.StandbyHeartbeat(id, checkpoint, expiry)
+	}
+}
+
+func (c *Core) InvalidateConfirm(identifier string) {
+	c.requestForwardingConnectionLock.RLock()
+	defer c.requestForwardingConnectionLock.RUnlock()
+
+	if c.rpcForwardingClient == nil {
+		c.logger.Trace("no forwarding client when confirming invalidation", "identifier", identifier)
+		return
+	}
+
+	if err := c.rpcForwardingClient.ConfirmInvalidate(identifier); err != nil {
+		c.logger.Error("error confirming invalidation; initiating preseal", "error", err)
+		return
+	}
 }

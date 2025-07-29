@@ -6,6 +6,7 @@ package physical
 import (
 	"context"
 	"strings"
+	"time"
 
 	log "github.com/hashicorp/go-hclog"
 )
@@ -164,9 +165,16 @@ type RedirectDetect interface {
 }
 
 // LeadershipChangedBackend is an interface for backends which need to be told
-// whether they're the active leader or not.
+// of active and standby nodes.
 type LeadershipChangedBackend interface {
+	// LeadershipChangedBackend is an interface for backends which need to be told
+	// whether they're the active leader or not.
 	LeadershipChange(active bool)
+
+	// StandbyHeartbeat is called when a standby node sends their regular
+	// heartbeat to the server. This includes the initial registration and
+	// subsequent maintenance of it.
+	StandbyHeartbeat(uuid string, checkpoint string, expiry time.Time)
 }
 
 // HALeaderSync is an interface for backends which do not keep a long-running
@@ -176,6 +184,11 @@ type LeadershipChangedBackend interface {
 //
 // These checkpoints are opaque to OpenBao and intended to be handled by the
 // server.
+//
+// For instance, a Raft-based backend could collapse WALs after a certain
+// point, removing old logs and compressing data, in which case rejoined
+// standby nodes with an old copy of data would need to wait to synchronize a
+// full copy of the data before newer WALs could be streamed to them.
 type HALeaderSync interface {
 	// GetHACheckpoint is called on the active node to get the minimum
 	// storage state after registering a new client. It yields a state
@@ -193,6 +206,22 @@ type HALeaderSync interface {
 	// waits for storage to replicate at least this far.
 	WaitHACheckpoint(ctx context.Context, checkpoint string) error
 }
+
+// HAGRPCInvalidateConfirm is an interface for backends which require
+// out-of-band confirmation of invalidations. This usually occurs for which
+// native WAL functionality does not exist and so must be written to storage
+// directly, perhaps in a separate table. In this case, we do not wish to
+// maintain WAL entries indefinitely, as the storage engine itself handles
+// replication at that layer, and so we wish to only maintain them as long
+// as necessary for all current nodes to confirm that they've processed them.
+//
+// Usually such a backend would also implement the HALeaderSync interface.
+type HAGRPCInvalidateConfirm interface {
+	HookConfirmInvalidate(hook InvalidateConfirmFunc)
+	ConfirmedInvalidate(node string, identifier string)
+}
+
+type InvalidateConfirmFunc func(identifier string)
 
 type Lock interface {
 	// Lock is used to acquire the given lock

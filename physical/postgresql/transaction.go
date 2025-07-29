@@ -20,6 +20,7 @@ type PostgreSQLBackendTransaction struct {
 	readOnly       bool
 	haveWritten    bool
 	haveFinishedTx bool
+	invalidations  []int64
 }
 
 func (b *PostgreSQLBackend) newTransaction(ctx context.Context, readOnly bool) (physical.Transaction, error) {
@@ -69,9 +70,12 @@ func (t *PostgreSQLBackendTransaction) Put(ctx context.Context, entry *physical.
 		return err
 	}
 
-	if err := t.b.writeInvalidation(ctx, t.tx, entry.Key); err != nil {
+	idx, err := t.b.writeInvalidation(ctx, t.tx, entry.Key)
+	if err != nil {
 		return err
 	}
+
+	t.invalidations = append(t.invalidations, idx)
 
 	t.haveWritten = true
 
@@ -96,9 +100,11 @@ func (t *PostgreSQLBackendTransaction) Delete(ctx context.Context, fullPath stri
 		return err
 	}
 
-	if err := t.b.writeInvalidation(ctx, t.tx, fullPath); err != nil {
+	idx, err := t.b.writeInvalidation(ctx, t.tx, fullPath)
+	if err != nil {
 		return err
 	}
+	t.invalidations = append(t.invalidations, idx)
 
 	t.haveWritten = true
 
@@ -216,6 +222,10 @@ func (t *PostgreSQLBackendTransaction) Commit(ctx context.Context) error {
 
 	if err := t.tx.Commit(); err != nil {
 		return fmt.Errorf("%v: %w", err, physical.ErrTransactionCommitFailure)
+	}
+
+	for _, idx := range t.invalidations {
+		t.b.saveInvalidation(idx)
 	}
 
 	return nil

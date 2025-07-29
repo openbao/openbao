@@ -18,6 +18,7 @@ import (
 
 	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/vault/cluster"
@@ -262,6 +263,12 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 		core: c,
 	})
 
+	// Generate client identifier.
+	clientUuid, err := uuid.GenerateUUID()
+	if err != nil {
+		return err
+	}
+
 	// Set up grpc forwarding handling
 	// It's not really insecure, but we have to dial manually to get the
 	// ALPN header right. It's just "insecure" because GRPC isn't managing
@@ -282,6 +289,7 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 		c.logger.Error("err setting up forwarding rpc client", "error", err)
 		return err
 	}
+
 	c.rpcClientConnContext = dctx
 	c.rpcClientConnCancelFunc = cancelFunc
 	c.rpcForwardingClient = &forwardingClient{
@@ -289,6 +297,7 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 		core:                    c,
 		echoTicker:              time.NewTicker(c.clusterHeartbeatInterval),
 		echoContext:             dctx,
+		uuid:                    clientUuid,
 	}
 	c.rpcForwardingClient.startHeartbeat()
 

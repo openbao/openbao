@@ -83,16 +83,23 @@ type PostgreSQLBackend struct {
 
 	invalidationStrategy InvalidationStrategy
 
-	invalidateLock        sync.RWMutex
-	invalidate            physical.InvalidateFunc
-	invalidateDoneCh      chan struct{}
-	standbyNodes          map[string]struct{}
-	consumedInvalidations map[int64]struct{}
+	invalidateLock               sync.RWMutex
+	invalidate                   physical.InvalidateFunc
+	invalidateConfirm            physical.InvalidateConfirmFunc
+	invalidateDoneCh             chan struct{}
+	standbyNodes                 map[string]*standbyRegistration
+	consumedInvalidations        map[int64]map[string]bool
+	locallyConsumedInvalidations map[int64]struct{}
 
 	walTable                string
 	tableWalInvalidateQuery string
 	tableWalEmptyQuery      string
 	lastSeenWal             string
+}
+
+type standbyRegistration struct {
+	lastCheckpoint string
+	expiration     time.Time
 }
 
 // PostgreSQLLock implements a lock using an PostgreSQL client.
@@ -270,9 +277,10 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		// write transactions.
 		fence: nil,
 
-		invalidationStrategy:  InvalidationStrategy(invalidationStrategy),
-		standbyNodes:          make(map[string]struct{}),
-		consumedInvalidations: make(map[int64]struct{}),
+		invalidationStrategy:         InvalidationStrategy(invalidationStrategy),
+		standbyNodes:                 make(map[string]*standbyRegistration),
+		consumedInvalidations:        make(map[int64]map[string]bool),
+		locallyConsumedInvalidations: make(map[int64]struct{}),
 
 		walTable: quotedWalTable,
 		tableWalInvalidateQuery: `INSERT INTO ` + quotedWalTable +
@@ -477,7 +485,8 @@ func (m *PostgreSQLBackend) Put(ctx context.Context, entry *physical.Entry) erro
 	}
 
 	// Write the invalidation entry.
-	if err := m.writeInvalidation(ctx, txn, entry.Key); err != nil {
+	idx, err := m.writeInvalidation(ctx, txn, entry.Key)
+	if err != nil {
 		return err
 	}
 
@@ -485,6 +494,9 @@ func (m *PostgreSQLBackend) Put(ctx context.Context, entry *physical.Entry) erro
 	if err := txn.Commit(); err != nil {
 		return err
 	}
+
+	// Save the invalidation entry.
+	m.saveInvalidation(idx)
 
 	return nil
 }
@@ -538,7 +550,8 @@ func (m *PostgreSQLBackend) Delete(ctx context.Context, fullPath string) error {
 	}
 
 	// Write the invalidation entry.
-	if err := m.writeInvalidation(ctx, txn, fullPath); err != nil {
+	idx, err := m.writeInvalidation(ctx, txn, fullPath)
+	if err != nil {
 		return err
 	}
 
@@ -546,6 +559,9 @@ func (m *PostgreSQLBackend) Delete(ctx context.Context, fullPath string) error {
 	if err := txn.Commit(); err != nil {
 		return err
 	}
+
+	// Save the invalidation entry.
+	m.saveInvalidation(idx)
 
 	return nil
 }

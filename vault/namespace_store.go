@@ -818,6 +818,9 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, namespa
 	for _, me := range mountEntries {
 		err := ns.core.unmountInternal(nsCtx, me.Path, true)
 		if err != nil {
+			if errors.Is(err, errNoMatchingMount) {
+				continue
+			}
 			ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
 			return false
 		}

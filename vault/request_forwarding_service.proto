@@ -25,6 +25,13 @@ message EchoRequest {
 	string raft_desired_suffrage = 8;
 	string raft_upgrade_version = 9;
 	string sdk_version = 11;
+
+    // OpenBao values
+
+    // checkpoint is the HA backend's last seen storage checkpoint on this
+    // standby node. This allows the active server to gauge how far behind
+    // a given client is.
+    string checkpoint = 400;
 }
 
 message EchoReply {
@@ -34,6 +41,13 @@ message EchoReply {
 	uint64 raft_applied_index = 4;
 	string raft_node_id = 5;
 	NodeInformation node_info = 6;
+
+    // OpenBao values
+
+    // checkpoint is the HA backend's minimum required storage checkpoint on
+    // as understood by the active node. This allows the standby node to
+    // seal and unseal if it is out of date due to missing invalidations.
+    string checkpoint = 400;
 }
 
 message NodeInformation {
@@ -43,6 +57,13 @@ message NodeInformation {
 	string node_id = 4;
 	uint32 replication_state = 5;
 	string hostname = 6;
+
+    // OpenBao values
+
+    // uuid is the client-assigned identifier of this host, dynamically
+    // assigned on client creation. Past clients should timeout on the
+    // server after a number of missed heartbeats.
+    string uuid = 400;
 }
 
 message ClientKey {

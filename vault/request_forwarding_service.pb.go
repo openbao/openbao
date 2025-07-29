@@ -41,8 +41,12 @@ type EchoRequest struct {
 	RaftDesiredSuffrage string           `protobuf:"bytes,8,opt,name=raft_desired_suffrage,json=raftDesiredSuffrage,proto3" json:"raft_desired_suffrage,omitempty"`
 	RaftUpgradeVersion  string           `protobuf:"bytes,9,opt,name=raft_upgrade_version,json=raftUpgradeVersion,proto3" json:"raft_upgrade_version,omitempty"`
 	SdkVersion          string           `protobuf:"bytes,11,opt,name=sdk_version,json=sdkVersion,proto3" json:"sdk_version,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// checkpoint is the HA backend's last seen storage checkpoint on this
+	// standby node. This allows the active server to gauge how far behind
+	// a given client is.
+	Checkpoint    string `protobuf:"bytes,400,opt,name=checkpoint,proto3" json:"checkpoint,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EchoRequest) Reset() {
@@ -145,6 +149,13 @@ func (x *EchoRequest) GetSdkVersion() string {
 	return ""
 }
 
+func (x *EchoRequest) GetCheckpoint() string {
+	if x != nil {
+		return x.Checkpoint
+	}
+	return ""
+}
+
 type EchoReply struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Message          string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
@@ -153,8 +164,12 @@ type EchoReply struct {
 	RaftAppliedIndex uint64                 `protobuf:"varint,4,opt,name=raft_applied_index,json=raftAppliedIndex,proto3" json:"raft_applied_index,omitempty"`
 	RaftNodeID       string                 `protobuf:"bytes,5,opt,name=raft_node_id,json=raftNodeId,proto3" json:"raft_node_id,omitempty"`
 	NodeInfo         *NodeInformation       `protobuf:"bytes,6,opt,name=node_info,json=nodeInfo,proto3" json:"node_info,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// checkpoint is the HA backend's minimum required storage checkpoint on
+	// as understood by the active node. This allows the standby node to
+	// seal and unseal if it is out of date due to missing invalidations.
+	Checkpoint    string `protobuf:"bytes,400,opt,name=checkpoint,proto3" json:"checkpoint,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EchoReply) Reset() {
@@ -229,6 +244,13 @@ func (x *EchoReply) GetNodeInfo() *NodeInformation {
 	return nil
 }
 
+func (x *EchoReply) GetCheckpoint() string {
+	if x != nil {
+		return x.Checkpoint
+	}
+	return ""
+}
+
 type NodeInformation struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	ClusterAddr      string                 `protobuf:"bytes,1,opt,name=cluster_addr,json=clusterAddr,proto3" json:"cluster_addr,omitempty"`
@@ -237,8 +259,12 @@ type NodeInformation struct {
 	NodeID           string                 `protobuf:"bytes,4,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 	ReplicationState uint32                 `protobuf:"varint,5,opt,name=replication_state,json=replicationState,proto3" json:"replication_state,omitempty"`
 	Hostname         string                 `protobuf:"bytes,6,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// uuid is the client-assigned identifier of this host, dynamically
+	// assigned on client creation. Past clients should timeout on the
+	// server after a number of missed heartbeats.
+	Uuid          string `protobuf:"bytes,400,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NodeInformation) Reset() {
@@ -309,6 +335,13 @@ func (x *NodeInformation) GetReplicationState() uint32 {
 func (x *NodeInformation) GetHostname() string {
 	if x != nil {
 		return x.Hostname
+	}
+	return ""
+}
+
+func (x *NodeInformation) GetUuid() string {
+	if x != nil {
+		return x.Uuid
 	}
 	return ""
 }
@@ -385,7 +418,7 @@ var File_vault_request_forwarding_service_proto protoreflect.FileDescriptor
 
 const file_vault_request_forwarding_service_proto_rawDesc = "" +
 	"\n" +
-	"&vault/request_forwarding_service.proto\x12\x05vault\x1a\x1dhelper/forwarding/types.proto\"\x98\x03\n" +
+	"&vault/request_forwarding_service.proto\x12\x05vault\x1a\x1dhelper/forwarding/types.proto\"\xb9\x03\n" +
 	"\vEchoRequest\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12!\n" +
 	"\fcluster_addr\x18\x02 \x01(\tR\vclusterAddr\x12#\n" +
@@ -398,7 +431,10 @@ const file_vault_request_forwarding_service_proto_rawDesc = "" +
 	"\x15raft_desired_suffrage\x18\b \x01(\tR\x13raftDesiredSuffrage\x120\n" +
 	"\x14raft_upgrade_version\x18\t \x01(\tR\x12raftUpgradeVersion\x12\x1f\n" +
 	"\vsdk_version\x18\v \x01(\tR\n" +
-	"sdkVersion\"\xfc\x01\n" +
+	"sdkVersion\x12\x1f\n" +
+	"\n" +
+	"checkpoint\x18\x90\x03 \x01(\tR\n" +
+	"checkpoint\"\x9d\x02\n" +
 	"\tEchoReply\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12#\n" +
 	"\rcluster_addrs\x18\x02 \x03(\tR\fclusterAddrs\x12+\n" +
@@ -406,14 +442,18 @@ const file_vault_request_forwarding_service_proto_rawDesc = "" +
 	"\x12raft_applied_index\x18\x04 \x01(\x04R\x10raftAppliedIndex\x12 \n" +
 	"\fraft_node_id\x18\x05 \x01(\tR\n" +
 	"raftNodeID\x123\n" +
-	"\tnode_info\x18\x06 \x01(\v2\x16.vault.NodeInformationR\bnodeInfo\"\xc5\x01\n" +
+	"\tnode_info\x18\x06 \x01(\v2\x16.vault.NodeInformationR\bnodeInfo\x12\x1f\n" +
+	"\n" +
+	"checkpoint\x18\x90\x03 \x01(\tR\n" +
+	"checkpoint\"\xda\x01\n" +
 	"\x0fNodeInformation\x12!\n" +
 	"\fcluster_addr\x18\x01 \x01(\tR\vclusterAddr\x12\x19\n" +
 	"\bapi_addr\x18\x02 \x01(\tR\aapiAddr\x12\x12\n" +
 	"\x04mode\x18\x03 \x01(\tR\x04mode\x12\x17\n" +
 	"\anode_id\x18\x04 \x01(\tR\x06nodeID\x12+\n" +
 	"\x11replication_state\x18\x05 \x01(\rR\x10replicationState\x12\x1a\n" +
-	"\bhostname\x18\x06 \x01(\tR\bhostname\"I\n" +
+	"\bhostname\x18\x06 \x01(\tR\bhostname\x12\x13\n" +
+	"\x04uuid\x18\x90\x03 \x01(\tR\x04uuid\"I\n" +
 	"\tClientKey\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\f\n" +
 	"\x01x\x18\x02 \x01(\fR\x01x\x12\f\n" +

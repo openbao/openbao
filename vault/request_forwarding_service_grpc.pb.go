@@ -23,8 +23,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RequestForwarding_ForwardRequest_FullMethodName = "/vault.RequestForwarding/ForwardRequest"
-	RequestForwarding_Echo_FullMethodName           = "/vault.RequestForwarding/Echo"
+	RequestForwarding_ForwardRequest_FullMethodName     = "/vault.RequestForwarding/ForwardRequest"
+	RequestForwarding_Echo_FullMethodName               = "/vault.RequestForwarding/Echo"
+	RequestForwarding_NotifyInvalidation_FullMethodName = "/vault.RequestForwarding/NotifyInvalidation"
 )
 
 // RequestForwardingClient is the client API for RequestForwarding service.
@@ -33,6 +34,7 @@ const (
 type RequestForwardingClient interface {
 	ForwardRequest(ctx context.Context, in *forwarding.Request, opts ...grpc.CallOption) (*forwarding.Response, error)
 	Echo(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoReply, error)
+	NotifyInvalidation(ctx context.Context, in *InvalidationRequest, opts ...grpc.CallOption) (*InvalidationResponse, error)
 }
 
 type requestForwardingClient struct {
@@ -63,12 +65,23 @@ func (c *requestForwardingClient) Echo(ctx context.Context, in *EchoRequest, opt
 	return out, nil
 }
 
+func (c *requestForwardingClient) NotifyInvalidation(ctx context.Context, in *InvalidationRequest, opts ...grpc.CallOption) (*InvalidationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InvalidationResponse)
+	err := c.cc.Invoke(ctx, RequestForwarding_NotifyInvalidation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RequestForwardingServer is the server API for RequestForwarding service.
 // All implementations must embed UnimplementedRequestForwardingServer
 // for forward compatibility.
 type RequestForwardingServer interface {
 	ForwardRequest(context.Context, *forwarding.Request) (*forwarding.Response, error)
 	Echo(context.Context, *EchoRequest) (*EchoReply, error)
+	NotifyInvalidation(context.Context, *InvalidationRequest) (*InvalidationResponse, error)
 	mustEmbedUnimplementedRequestForwardingServer()
 }
 
@@ -84,6 +97,9 @@ func (UnimplementedRequestForwardingServer) ForwardRequest(context.Context, *for
 }
 func (UnimplementedRequestForwardingServer) Echo(context.Context, *EchoRequest) (*EchoReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Echo not implemented")
+}
+func (UnimplementedRequestForwardingServer) NotifyInvalidation(context.Context, *InvalidationRequest) (*InvalidationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NotifyInvalidation not implemented")
 }
 func (UnimplementedRequestForwardingServer) mustEmbedUnimplementedRequestForwardingServer() {}
 func (UnimplementedRequestForwardingServer) testEmbeddedByValue()                           {}
@@ -142,6 +158,24 @@ func _RequestForwarding_Echo_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RequestForwarding_NotifyInvalidation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InvalidationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RequestForwardingServer).NotifyInvalidation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RequestForwarding_NotifyInvalidation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RequestForwardingServer).NotifyInvalidation(ctx, req.(*InvalidationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RequestForwarding_ServiceDesc is the grpc.ServiceDesc for RequestForwarding service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -156,6 +190,10 @@ var RequestForwarding_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Echo",
 			Handler:    _RequestForwarding_Echo_Handler,
+		},
+		{
+			MethodName: "NotifyInvalidation",
+			Handler:    _RequestForwarding_NotifyInvalidation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -414,6 +414,94 @@ func (x *ClientKey) GetD() []byte {
 	return nil
 }
 
+type InvalidationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Node          string                 `protobuf:"bytes,1,opt,name=node,proto3" json:"node,omitempty"`
+	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InvalidationRequest) Reset() {
+	*x = InvalidationRequest{}
+	mi := &file_vault_request_forwarding_service_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InvalidationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InvalidationRequest) ProtoMessage() {}
+
+func (x *InvalidationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_vault_request_forwarding_service_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InvalidationRequest.ProtoReflect.Descriptor instead.
+func (*InvalidationRequest) Descriptor() ([]byte, []int) {
+	return file_vault_request_forwarding_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *InvalidationRequest) GetNode() string {
+	if x != nil {
+		return x.Node
+	}
+	return ""
+}
+
+func (x *InvalidationRequest) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+type InvalidationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InvalidationResponse) Reset() {
+	*x = InvalidationResponse{}
+	mi := &file_vault_request_forwarding_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InvalidationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InvalidationResponse) ProtoMessage() {}
+
+func (x *InvalidationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_vault_request_forwarding_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InvalidationResponse.ProtoReflect.Descriptor instead.
+func (*InvalidationResponse) Descriptor() ([]byte, []int) {
+	return file_vault_request_forwarding_service_proto_rawDescGZIP(), []int{5}
+}
+
 var File_vault_request_forwarding_service_proto protoreflect.FileDescriptor
 
 const file_vault_request_forwarding_service_proto_rawDesc = "" +
@@ -458,10 +546,15 @@ const file_vault_request_forwarding_service_proto_rawDesc = "" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\f\n" +
 	"\x01x\x18\x02 \x01(\fR\x01x\x12\f\n" +
 	"\x01y\x18\x03 \x01(\fR\x01y\x12\f\n" +
-	"\x01d\x18\x04 \x01(\fR\x01d2\x82\x01\n" +
+	"\x01d\x18\x04 \x01(\fR\x01d\"?\n" +
+	"\x13InvalidationRequest\x12\x12\n" +
+	"\x04node\x18\x01 \x01(\tR\x04node\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\x16\n" +
+	"\x14InvalidationResponse2\xd3\x01\n" +
 	"\x11RequestForwarding\x12=\n" +
 	"\x0eForwardRequest\x12\x13.forwarding.Request\x1a\x14.forwarding.Response\"\x00\x12.\n" +
-	"\x04Echo\x12\x12.vault.EchoRequest\x1a\x10.vault.EchoReply\"\x00B\"Z github.com/openbao/openbao/vaultb\x06proto3"
+	"\x04Echo\x12\x12.vault.EchoRequest\x1a\x10.vault.EchoReply\"\x00\x12O\n" +
+	"\x12NotifyInvalidation\x12\x1a.vault.InvalidationRequest\x1a\x1b.vault.InvalidationResponse\"\x00B\"Z github.com/openbao/openbao/vaultb\x06proto3"
 
 var (
 	file_vault_request_forwarding_service_proto_rawDescOnce sync.Once
@@ -475,24 +568,28 @@ func file_vault_request_forwarding_service_proto_rawDescGZIP() []byte {
 	return file_vault_request_forwarding_service_proto_rawDescData
 }
 
-var file_vault_request_forwarding_service_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_vault_request_forwarding_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_vault_request_forwarding_service_proto_goTypes = []any{
-	(*EchoRequest)(nil),         // 0: vault.EchoRequest
-	(*EchoReply)(nil),           // 1: vault.EchoReply
-	(*NodeInformation)(nil),     // 2: vault.NodeInformation
-	(*ClientKey)(nil),           // 3: vault.ClientKey
-	(*forwarding.Request)(nil),  // 4: forwarding.Request
-	(*forwarding.Response)(nil), // 5: forwarding.Response
+	(*EchoRequest)(nil),          // 0: vault.EchoRequest
+	(*EchoReply)(nil),            // 1: vault.EchoReply
+	(*NodeInformation)(nil),      // 2: vault.NodeInformation
+	(*ClientKey)(nil),            // 3: vault.ClientKey
+	(*InvalidationRequest)(nil),  // 4: vault.InvalidationRequest
+	(*InvalidationResponse)(nil), // 5: vault.InvalidationResponse
+	(*forwarding.Request)(nil),   // 6: forwarding.Request
+	(*forwarding.Response)(nil),  // 7: forwarding.Response
 }
 var file_vault_request_forwarding_service_proto_depIDxs = []int32{
 	2, // 0: vault.EchoRequest.node_info:type_name -> vault.NodeInformation
 	2, // 1: vault.EchoReply.node_info:type_name -> vault.NodeInformation
-	4, // 2: vault.RequestForwarding.ForwardRequest:input_type -> forwarding.Request
+	6, // 2: vault.RequestForwarding.ForwardRequest:input_type -> forwarding.Request
 	0, // 3: vault.RequestForwarding.Echo:input_type -> vault.EchoRequest
-	5, // 4: vault.RequestForwarding.ForwardRequest:output_type -> forwarding.Response
-	1, // 5: vault.RequestForwarding.Echo:output_type -> vault.EchoReply
-	4, // [4:6] is the sub-list for method output_type
-	2, // [2:4] is the sub-list for method input_type
+	4, // 4: vault.RequestForwarding.NotifyInvalidation:input_type -> vault.InvalidationRequest
+	7, // 5: vault.RequestForwarding.ForwardRequest:output_type -> forwarding.Response
+	1, // 6: vault.RequestForwarding.Echo:output_type -> vault.EchoReply
+	5, // 7: vault.RequestForwarding.NotifyInvalidation:output_type -> vault.InvalidationResponse
+	5, // [5:8] is the sub-list for method output_type
+	2, // [2:5] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
 	2, // [2:2] is the sub-list for extension extendee
 	0, // [0:2] is the sub-list for field type_name
@@ -509,7 +606,7 @@ func file_vault_request_forwarding_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vault_request_forwarding_service_proto_rawDesc), len(file_vault_request_forwarding_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

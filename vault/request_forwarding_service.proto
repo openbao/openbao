@@ -73,7 +73,16 @@ message ClientKey {
     bytes d = 4;
 }
 
+message InvalidationRequest {
+    string node = 1;
+    string value = 2;
+}
+
+message InvalidationResponse {
+}
+
 service RequestForwarding {
 	rpc ForwardRequest(forwarding.Request) returns (forwarding.Response) {}
 	rpc Echo(EchoRequest) returns (EchoReply) {}
+    rpc NotifyInvalidation(InvalidationRequest) returns (InvalidationResponse) {}
 }

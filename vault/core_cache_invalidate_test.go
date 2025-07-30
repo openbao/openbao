@@ -22,17 +22,23 @@ import (
 func testCore_Invalidate_sneakValueAroundCache(t *testing.T, c *Core, entry *logical.StorageEntry) {
 	t.Helper()
 
-	// we breifly disable the physical cache, this will put the value into the backing strorage, but not update the cache
+	// we briefly disable the physical cache, this will put the value into the backing strorage, but not update the cache
 	c.physicalCache.SetEnabled(false)
 	defer c.physicalCache.SetEnabled(true)
 
-	err := c.barrier.Put(t.Context(), entry)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, c.barrier.Put(t.Context(), entry))
+}
+
+func testCore_Invalidate_handleRequest(t testing.TB, ctx context.Context, c *Core, req *logical.Request) *logical.Response {
+	resp, err := c.HandleRequest(ctx, req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Error())
+
+	return resp
 }
 
 func TestCore_Invalidate_Namespaces(t *testing.T) {
+	t.Parallel()
 	c, _, root := TestCoreUnsealed(t)
 
 	// 1. Create some namespace to populate cache
@@ -52,9 +58,7 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 
 	storagePath := "core/namespaces/" + ns.UUID
 	newEntry, err := logical.StorageEntryJSON(storagePath, clone)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
 
@@ -64,10 +68,7 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 	// 4. Check cache was properly invalidated
 	req := logical.TestRequest(t, logical.ReadOperation, "sys/namespaces/ns")
 	req.ClientToken = root
-	resp, err := c.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	resp := testCore_Invalidate_handleRequest(t, namespace.RootContext(t.Context()), c, req)
 
 	if diff := deep.Equal(resp.Data["custom_metadata"], map[string]string{
 		"testkey": "updated value",
@@ -77,6 +78,7 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 }
 
 func TestCore_Invalidate_Policy(t *testing.T) {
+	t.Parallel()
 	testCases := map[string]func(t *testing.T, c *Core) (storagePath string, ctx context.Context){
 		"global": func(t *testing.T, c *Core) (storagePath string, ctx context.Context) {
 			return "sys/policy/test-policy", namespace.RootContext(t.Context())
@@ -108,28 +110,17 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 					}
 			`,
 			}
-			resp, err := c.HandleRequest(ctx, req)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
-
-			if resp.IsError() {
-				t.Fatalf("err: %v", resp.Error())
-			}
+			testCore_Invalidate_handleRequest(t, ctx, c, req)
 
 			// 2. Manipulate Storage
 			policy, err := c.policyStore.GetPolicy(ctx, "test-policy", PolicyTypeACL)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 
 			clone := policy.ShallowClone()
 			clone.Expiration = time.Date(2099, 1, 1, 12, 0, 0, 0, time.UTC)
 
 			newEntry, err := logical.StorageEntryJSON(storagePath, clone)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 
 			testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
 
@@ -138,18 +129,15 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 
 			// 4. Check cache was properly invalidated
 			updatedPolicy, err := c.policyStore.GetPolicy(ctx, "test-policy", PolicyTypeACL)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
+			require.NoError(t, err)
 
-			if updatedPolicy.Expiration != clone.Expiration {
-				t.Errorf("invalidation did not work: expected to see updated expiry time, got: %v", updatedPolicy.Expiration)
-			}
+			require.Equal(t, clone.Expiration, updatedPolicy.Expiration)
 		})
 	}
 }
 
 func TestCore_Invalidate_Quota(t *testing.T) {
+	t.Parallel()
 	c, _, root := TestCoreUnsealed(t)
 
 	// 1. Create some qutoa to populate cache
@@ -159,28 +147,17 @@ func TestCore_Invalidate_Quota(t *testing.T) {
 		"rate":     3.141,
 		"interval": "42s",
 	}
-	resp, err := c.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	if resp.IsError() {
-		t.Fatalf("err: %v", resp.Error())
-	}
+	testCore_Invalidate_handleRequest(t, t.Context(), c, req)
 
 	// 2. Manipulate Storage
 	quota, err := c.quotaManager.QuotaByName("rate-limit", "test-quota")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	clone := quota.Clone().(*quotas.RateLimitQuota)
 	clone.Interval = 1 * time.Second
 
 	newEntry, err := logical.StorageEntryJSON("sys/quotas/rate-limit/test-quota", clone)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
 	testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
 
@@ -191,19 +168,13 @@ func TestCore_Invalidate_Quota(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "sys/quotas/rate-limit/test-quota")
 	req.ClientToken = root
 
-	resp, err = c.HandleRequest(t.Context(), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	if resp.IsError() {
-		t.Fatalf("err: %v", resp.Error())
-	}
+	resp := testCore_Invalidate_handleRequest(t, t.Context(), c, req)
 
 	require.Equal(t, 1, resp.Data["interval"])
 }
 
 func TestCore_Invalidate_Plugin(t *testing.T) {
+	t.Parallel()
 	testCases := map[string]func(t *testing.T, c *Core) (nsPrefix string, ctx context.Context){
 		"global": func(t *testing.T, c *Core) (nsPrefix string, ctx context.Context) {
 			return "", namespace.RootContext(t.Context())
@@ -245,17 +216,11 @@ func TestCore_Invalidate_Plugin(t *testing.T) {
 				Operation:   logical.UpdateOperation,
 				ClientToken: root,
 				Path:        "sys/mounts/my-kv-mount",
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"type": "kv",
 				},
 			}
-			resp, err := c.HandleRequest(ctx, registerReq)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if resp.IsError() {
-				t.Fatal(err)
-			}
+			testCore_Invalidate_handleRequest(t, ctx, c, registerReq)
 
 			// 3. Get the UUID
 			readReq := &logical.Request{
@@ -263,16 +228,9 @@ func TestCore_Invalidate_Plugin(t *testing.T) {
 				ClientToken: root,
 				Path:        "sys/mounts/my-kv-mount",
 			}
-			resp, err = c.HandleRequest(ctx, readReq)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if resp.IsError() {
-				t.Fatal(err)
-			}
+			resp := testCore_Invalidate_handleRequest(t, ctx, c, readReq)
 
 			uuid := resp.Data["uuid"].(string)
-			fmt.Printf("%#v\n", resp)
 
 			// 4. Invalidate Paths
 			c.Invalidate(nsPrefix + "logical/" + uuid + "/foo")

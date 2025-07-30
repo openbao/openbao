@@ -50,10 +50,10 @@ func TestRequestSource_ValidateMissingField(t *testing.T) {
 
 	_, _, err := source.Validate(ctx)
 	if err == nil {
-		t.Fatal("expected error for missing 'req_name' field, got nil")
+		t.Fatal("expected error for missing 'request_name' field, got nil")
 	}
 
-	if !strings.HasPrefix(err.Error(), "request source is missing required field \"req_name\"") {
+	if !strings.HasPrefix(err.Error(), "request source is missing required field \"request_name\"") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -61,7 +61,7 @@ func TestRequestSource_ValidateMissingField(t *testing.T) {
 func TestRequestSource_Validate_MissingOuterNameField(t *testing.T) {
 	rs := &RequestSource{
 		outer: "profile",
-		field: map[string]interface{}{"req_name": "r1"},
+		field: map[string]interface{}{"request_name": "r1"},
 	}
 
 	_, _, err := rs.Validate(context.Background())
@@ -77,7 +77,7 @@ func TestRequestSource_Validate_MissingOuterNameField(t *testing.T) {
 func TestRequestSource_Validate_Success(t *testing.T) {
 	source := &RequestSource{
 		field: map[string]interface{}{
-			"req_name":       "mount-userpass",
+			"request_name":   "mount-userpass",
 			"field_selector": "",
 		},
 	}
@@ -98,7 +98,7 @@ func TestRequestSource_Validate_Success(t *testing.T) {
 func TestRequestValidate_OuterNameWrongType(t *testing.T) {
 	rs := &RequestSource{
 		outer: "profile",
-		field: map[string]interface{}{"profile_name": 123, "req_name": "r1"},
+		field: map[string]interface{}{"profile_name": 123, "request_name": "r1"},
 	}
 
 	_, _, err := rs.Validate(context.Background())
@@ -116,7 +116,7 @@ func TestRequestValidate_OuterNameOK(t *testing.T) {
 		outer: "profile",
 		field: map[string]interface{}{
 			"profile_name":   "outer1",
-			"req_name":       "r1",
+			"request_name":   "r1",
 			"field_selector": "",
 		},
 	}
@@ -148,7 +148,7 @@ func TestRequestSource_Evaluate_WithFieldSelector_String(t *testing.T) {
 	ctx := context.Background()
 	history := &EvaluationHistory{}
 	source := &RequestSource{
-		field: map[string]interface{}{"req_name": "mount-userpass", "field_selector": "userPass"},
+		field: map[string]interface{}{"request_name": "mount-userpass", "field_selector": "userPass"},
 	}
 
 	if _, _, err := source.Validate(ctx); err != nil {

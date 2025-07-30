@@ -9,7 +9,7 @@ import (
 func TestSourceBuilder_Success(t *testing.T) {
 	ctx := context.Background()
 	engine := &ProfileEngine{outerBlockName: "outer", sourceBuilders: make(map[string]SourceBuilder)}
-	field := map[string]interface{}{"resp_name": "mount-userpass"}
+	field := map[string]interface{}{"response_name": "mount-userpass"}
 
 	src := ResponseSourceBuilder(ctx, engine, field)
 	respSrc, ok := src.(*ResponseSource)
@@ -32,7 +32,7 @@ func TestWithResponseSource(t *testing.T) {
 		t.Fatal("expected sourceBuilders['response'] to be set")
 	}
 
-	src := builder(context.Background(), engine, map[string]interface{}{"resp_name": "x"})
+	src := builder(context.Background(), engine, map[string]interface{}{"response_name": "x"})
 	if src == nil {
 		t.Fatalf("builder returned nil")
 	}
@@ -45,7 +45,7 @@ func TestValidate_MissingField(t *testing.T) {
 	source := &ResponseSource{field: map[string]interface{}{}}
 	_, _, err := source.Validate(context.Background())
 	if err == nil {
-		t.Fatal("expected error for missing 'resp_name', got nil")
+		t.Fatal("expected error for missing 'response_name', got nil")
 	}
 }
 
@@ -53,7 +53,7 @@ func TestValidate_MissingOuterNameField(t *testing.T) {
 	rs := &ResponseSource{
 		outer: "profile",
 		field: map[string]interface{}{
-			"resp_name": "r1",
+			"response_name": "r1",
 		},
 	}
 	_, _, err := rs.Validate(context.Background())
@@ -64,10 +64,10 @@ func TestValidate_MissingOuterNameField(t *testing.T) {
 }
 
 func TestValidate_WrongType(t *testing.T) {
-	source := &ResponseSource{field: map[string]interface{}{"resp_name": 1}}
+	source := &ResponseSource{field: map[string]interface{}{"response_name": 1}}
 	_, _, err := source.Validate(context.Background())
 	if err == nil {
-		t.Fatal("expected type error for 'resp_name', got nil")
+		t.Fatal("expected type error for 'response_name', got nil")
 	}
 }
 
@@ -75,8 +75,8 @@ func TestValidate_OuterNameWrongType(t *testing.T) {
 	rs := &ResponseSource{
 		outer: "profile",
 		field: map[string]interface{}{
-			"profile_name": 123,
-			"resp_name":    "r1",
+			"profile_name":  123,
+			"response_name": "r1",
 		},
 	}
 	_, _, err := rs.Validate(context.Background())
@@ -89,7 +89,7 @@ func TestValidate_OuterNameWrongType(t *testing.T) {
 func TestEvaluate_WithFieldSelector_String(t *testing.T) {
 	ctx := context.Background()
 	source := &ResponseSource{
-		field: map[string]interface{}{"resp_name": "mount-userpass", "field_selector": "status"},
+		field: map[string]interface{}{"response_name": "mount-userpass", "field_selector": "status"},
 	}
 
 	if _, _, err := source.Validate(ctx); err != nil {

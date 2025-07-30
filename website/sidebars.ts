@@ -81,6 +81,17 @@ const sidebars: SidebarsConfig = {
                 "concepts/duration-format",
                 "concepts/user-lockout",
             ],
+            Guides: [
+                {
+                    Unsealing: [
+                        {
+                            "PKCS#11": [
+                                "guides/unseal/pkcs11/securosys"
+                            ]
+                        }
+                    ]
+                }
+            ],
             Configuration: [
                 "configuration/index",
                 "configuration/self-init",
@@ -517,6 +528,9 @@ const sidebars: SidebarsConfig = {
                 "rfcs/authenticated-rekey",
                 "rfcs/self-init",
                 "rfcs/external-keys",
+                {
+                  "UI/UX": ["rfcs/web-ui-modernization"],
+                },
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

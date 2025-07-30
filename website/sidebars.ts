@@ -60,6 +60,7 @@ const sidebars: SidebarsConfig = {
                 "concepts/tokens",
                 "concepts/identity",
                 "concepts/oidc-provider",
+                "concepts/profiles",
                 "concepts/response-wrapping",
                 "concepts/policies",
                 "concepts/password-policies",

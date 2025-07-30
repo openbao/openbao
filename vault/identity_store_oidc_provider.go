@@ -129,6 +129,7 @@ func (k clientType) String() string {
 }
 
 type provider struct {
+	Name             string
 	Issuer           string   `json:"issuer"`
 	AllowedClientIDs []string `json:"allowed_client_ids"`
 	ScopesSupported  []string `json:"scopes_supported"`
@@ -157,6 +158,7 @@ type providerDiscovery struct {
 	AuthorizationEndpoint string   `json:"authorization_endpoint"`
 	TokenEndpoint         string   `json:"token_endpoint"`
 	UserinfoEndpoint      string   `json:"userinfo_endpoint"`
+	IntrospectEndpoint    string   `json:"introspect_endpoint"`
 	RequestParameter      bool     `json:"request_parameter_supported"`
 	RequestURIParameter   bool     `json:"request_uri_parameter_supported"`
 	IDTokenAlgs           []string `json:"id_token_signing_alg_values_supported"`
@@ -1500,6 +1502,8 @@ func (i *IdentityStore) getOIDCProvider(ctx context.Context, s logical.Storage, 
 		return nil, err
 	}
 
+	provider.Name = name
+
 	provider.effectiveIssuer = provider.Issuer
 	if provider.effectiveIssuer == "" {
 		provider.effectiveIssuer = i.redirectAddr
@@ -1553,6 +1557,7 @@ func (i *IdentityStore) pathOIDCProviderDiscovery(ctx context.Context, req *logi
 		AuthorizationEndpoint: strings.Replace(p.effectiveIssuer, "/v1/", "/ui/vault/", 1) + "/authorize",
 		TokenEndpoint:         p.effectiveIssuer + "/token",
 		UserinfoEndpoint:      p.effectiveIssuer + "/userinfo",
+		IntrospectEndpoint:    "/v1/identity/oidc/introspect-access-token",
 		IDTokenAlgs:           supportedAlgs,
 		Scopes:                scopes,
 		Claims:                []string{},
@@ -1928,46 +1933,15 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}
 
-	// Get the OIDC provider
-	name := d.Get("name").(string)
-	provider, err := i.getOIDCProvider(ctx, req.Storage, name)
-	if err != nil {
-		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	client, provider, authErr := i.authenticateWithClientCredentials(ctx, req, d)
+	if authErr != nil {
+		return tokenResponse(nil, authErr.StatusCode, authErr.Error())
 	}
 	if provider == nil {
 		return tokenResponse(nil, ErrTokenInvalidRequest, "provider not found")
 	}
-
-	// client_secret_basic - Check for client credentials in the Authorization header
-	clientID, clientSecret, okBasicAuth := basicAuth(req)
-	if !okBasicAuth {
-		// client_secret_post - Check for client credentials in the request body
-		clientID = d.Get("client_id").(string)
-		if clientID == "" {
-			return tokenResponse(nil, ErrTokenInvalidRequest, "client_id parameter is required")
-		}
-		clientSecret = d.Get("client_secret").(string)
-	}
-	client, err := i.clientByID(ctx, req.Storage, clientID)
-	if err != nil {
-		return tokenResponse(nil, ErrTokenServerError, err.Error())
-	}
 	if client == nil {
-		i.Logger().Debug("client failed to authenticate with client not found", "client_id", clientID)
 		return tokenResponse(nil, ErrTokenInvalidClient, "client failed to authenticate")
-	}
-
-	// Authenticate the client if it's a confidential client type.
-	// Details at https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication
-	if client.Type == confidential &&
-		subtle.ConstantTimeCompare([]byte(client.ClientSecret), []byte(clientSecret)) == 0 {
-		i.Logger().Debug("client failed to authenticate with invalid client secret", "client_id", clientID)
-		return tokenResponse(nil, ErrTokenInvalidClient, "client failed to authenticate")
-	}
-
-	// Validate that the client is authorized to use the provider
-	if !provider.allowedClientID(clientID) {
-		return tokenResponse(nil, ErrTokenInvalidClient, "client is not authorized to use the provider")
 	}
 
 	// Get the key that the client uses to sign ID tokens
@@ -1981,7 +1955,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 
 	// Validate that the client is authorized to use the key
 	if !strutil.StrListContains(key.AllowedClientIDs, "*") &&
-		!strutil.StrListContains(key.AllowedClientIDs, clientID) {
+		!strutil.StrListContains(key.AllowedClientIDs, client.ClientID) {
 		return tokenResponse(nil, ErrTokenInvalidClient, "client is not authorized to use the key")
 	}
 
@@ -2015,12 +1989,12 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	}
 
 	// Ensure the authorization code was issued to the authenticated client
-	if authCodeEntry.clientID != clientID {
+	if authCodeEntry.clientID != client.ClientID {
 		return tokenResponse(nil, ErrTokenInvalidGrant, "authorization code was not issued to the client")
 	}
 
 	// Ensure the authorization code was issued by the provider
-	if authCodeEntry.provider != name {
+	if authCodeEntry.provider != provider.Name {
 		return tokenResponse(nil, ErrTokenInvalidGrant, "authorization code was not issued by the provider")
 	}
 
@@ -2097,7 +2071,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 			path "identity/oidc/provider/%s/userinfo" {
 				capabilities = ["read", "update"]
 			}
-		`, name),
+		`, provider.Name),
 	}
 	err = i.tokenStorer.CreateToken(ctx, accessToken, true)
 	if err != nil {

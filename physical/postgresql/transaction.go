@@ -18,6 +18,7 @@ type PostgreSQLBackendTransaction struct {
 	tx *sql.Tx
 
 	readOnly       bool
+	haveWritten    bool
 	haveFinishedTx bool
 }
 
@@ -63,10 +64,12 @@ func (t *PostgreSQLBackendTransaction) Put(ctx context.Context, entry *physical.
 
 	parentPath, path, key := t.b.splitKey(entry.Key)
 
-	_, err := t.tx.ExecContext(ctx, t.b.put_query, parentPath, path, key, entry.Value)
+	_, err := t.tx.ExecContext(ctx, t.b.putQuery, parentPath, path, key, entry.Value)
 	if err != nil {
 		return err
 	}
+
+	t.haveWritten = true
 
 	return nil
 }
@@ -84,10 +87,12 @@ func (t *PostgreSQLBackendTransaction) Delete(ctx context.Context, fullPath stri
 
 	_, path, key := t.b.splitKey(fullPath)
 
-	_, err := t.tx.ExecContext(ctx, t.b.delete_query, path, key)
+	_, err := t.tx.ExecContext(ctx, t.b.deleteQuery, path, key)
 	if err != nil {
 		return err
 	}
+
+	t.haveWritten = true
 
 	return nil
 }
@@ -103,7 +108,7 @@ func (t *PostgreSQLBackendTransaction) Get(ctx context.Context, fullPath string)
 	_, path, key := t.b.splitKey(fullPath)
 
 	var result []byte
-	err := t.tx.QueryRowContext(ctx, t.b.get_query, path, key).Scan(&result)
+	err := t.tx.QueryRowContext(ctx, t.b.getQuery, path, key).Scan(&result)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -126,7 +131,7 @@ func (t *PostgreSQLBackendTransaction) List(ctx context.Context, prefix string) 
 		return nil, physical.ErrTransactionAlreadyCommitted
 	}
 
-	rows, err := t.tx.QueryContext(ctx, t.b.list_query, "/"+prefix)
+	rows, err := t.tx.QueryContext(ctx, t.b.listQuery, "/"+prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -157,9 +162,9 @@ func (t *PostgreSQLBackendTransaction) ListPage(ctx context.Context, prefix stri
 	var rows *sql.Rows
 	var err error
 	if limit <= 0 {
-		rows, err = t.tx.QueryContext(ctx, t.b.list_page_query, "/"+prefix, after)
+		rows, err = t.tx.QueryContext(ctx, t.b.listPageQuery, "/"+prefix, after)
 	} else {
-		rows, err = t.tx.QueryContext(ctx, t.b.list_page_limited_query, "/"+prefix, after, limit)
+		rows, err = t.tx.QueryContext(ctx, t.b.listPageLimitedQuery, "/"+prefix, after, limit)
 	}
 	if err != nil {
 		return nil, err
@@ -181,6 +186,10 @@ func (t *PostgreSQLBackendTransaction) ListPage(ctx context.Context, prefix stri
 }
 
 func (t *PostgreSQLBackendTransaction) Commit(ctx context.Context) error {
+	if t.readOnly || !t.haveWritten {
+		return t.Rollback(ctx)
+	}
+
 	t.l.Lock()
 	defer t.l.Unlock()
 
@@ -192,6 +201,10 @@ func (t *PostgreSQLBackendTransaction) Commit(ctx context.Context) error {
 		t.b.txnPermitPool.Release()
 		t.haveFinishedTx = true
 	}()
+
+	if err := t.b.validateFence(ctx); err != nil {
+		return err
+	}
 
 	if err := t.tx.Commit(); err != nil {
 		return fmt.Errorf("%v: %w", err, physical.ErrTransactionCommitFailure)

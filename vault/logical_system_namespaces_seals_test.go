@@ -29,7 +29,7 @@ func TestNamespaceBackend_KeyStatus(t *testing.T) {
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/foo/key-status")
 		resp, err := b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
-		require.ErrorContains(t, resp.Error(), ErrBarrierNotFound.Error())
+		require.ErrorContains(t, resp.Error(), ErrNotSealable.Error())
 	})
 
 	t.Run("returns key info for sealable namespace", func(t *testing.T) {
@@ -271,16 +271,15 @@ func TestNamespaceBackend_Rotate(t *testing.T) {
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bar/rotate")
 		res, err := b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
-		require.ErrorContains(t, err, "namespace \"bar/\" doesn't exist")
-		require.Empty(t, res)
+		require.Contains(t, res.Data["error"], "namespace \"bar/\" doesn't exist")
 	})
 
 	t.Run("returns error for non-sealable namespace", func(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo/rotate")
 		res, err := b.HandleRequest(rootCtx, req)
-		require.ErrorIs(t, err, ErrBarrierNotFound)
-		require.Empty(t, res)
+		require.Error(t, err)
+		require.Contains(t, res.Data["error"], ErrNotSealable.Error())
 	})
 
 	t.Run("rotates the barrier key for a sealable namespace", func(t *testing.T) {
@@ -318,27 +317,25 @@ func TestNamespaceBackend_RotateConfig(t *testing.T) {
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bar/rotate/config")
 		res, err := b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
-		require.ErrorContains(t, err, "namespace \"bar/\" doesn't exist")
-		require.Empty(t, res)
+		require.Contains(t, res.Data["error"], "namespace \"bar/\" doesn't exist")
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/bar/rotate/config")
 		res, err = b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
-		require.ErrorContains(t, err, "namespace \"bar/\" doesn't exist")
-		require.Empty(t, res)
+		require.Contains(t, res.Data["error"], "namespace \"bar/\" doesn't exist")
 	})
 
 	t.Run("returns error for non-sealable namespace", func(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo/rotate/config")
 		res, err := b.HandleRequest(rootCtx, req)
-		require.ErrorIs(t, err, ErrBarrierNotFound)
-		require.Empty(t, res)
+		require.Error(t, err)
+		require.Contains(t, res.Data["error"], ErrNotSealable.Error())
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foo/rotate/config")
 		res, err = b.HandleRequest(rootCtx, req)
-		require.ErrorIs(t, err, ErrBarrierNotFound)
-		require.Empty(t, res)
+		require.Error(t, err)
+		require.Contains(t, res.Data["error"], ErrNotSealable.Error())
 	})
 
 	t.Run("update the key rotation config for a sealable namespace", func(t *testing.T) {

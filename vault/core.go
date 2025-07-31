@@ -320,13 +320,6 @@ type Core struct {
 	namespaceRootGens    map[string]*NamespaceRootGeneration
 	namespaceRootGenLock sync.Mutex
 
-	// These variables holds the config and shares we have until we reach
-	// enough to verify the appropriate root key. Note that the same lock is
-	// used; this isn't time-critical so this shouldn't be a problem.
-	rootRotationConfig     *SealConfig
-	recoveryRotationConfig *SealConfig
-	rotationLock           sync.RWMutex
-
 	// mounts is loaded after unseal since it is a protected
 	// configuration
 	mounts *MountTable
@@ -2513,9 +2506,10 @@ func (c *Core) preSeal() error {
 	c.postUnsealFuncs = nil
 	c.activeTime = time.Time{}
 
-	// Clear any rotation progress
-	c.rootRotationConfig = nil
-	c.recoveryRotationConfig = nil
+	// Clear any rotation progress;
+	// errors are ignored as root namespace has to be sealable
+	_ = c.sealManager.SetRotationConfig(namespace.RootNamespace, true, nil)
+	_ = c.sealManager.SetRotationConfig(namespace.RootNamespace, false, nil)
 
 	if c.metricsCh != nil {
 		close(c.metricsCh)

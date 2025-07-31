@@ -20,8 +20,8 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-func (b *SystemBackend) rotatePaths() []*framework.Path {
-	rotateRequestSchema := map[string]*framework.FieldSchema{
+var (
+	rotateInitRequestSchema = map[string]*framework.FieldSchema{
 		"secret_shares": {
 			Type:        framework.TypeInt,
 			Required:    true,
@@ -46,13 +46,10 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 		},
 	}
 
-	rotateStatusSchema := map[string]*framework.FieldSchema{
-		"nonce": {
+	rotateInitGetResponseSchema = map[string]*framework.FieldSchema{
+		"namespace": {
 			Type:     framework.TypeString,
 			Required: true,
-		},
-		"complete": {
-			Type: framework.TypeBool,
 		},
 		"started": {
 			Type:     framework.TypeBool,
@@ -66,27 +63,21 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 			Type:     framework.TypeInt,
 			Required: true,
 		},
-		"progress": {
+		"seal_threshold": {
 			Type:     framework.TypeInt,
 			Required: true,
 		},
-		"required": {
-			Type:     framework.TypeInt,
-			Required: true,
+		"nonce": {
+			Type: framework.TypeString,
+		},
+		"progress": {
+			Type: framework.TypeInt,
 		},
 		"verification_required": {
-			Type:     framework.TypeBool,
-			Required: true,
+			Type: framework.TypeBool,
 		},
 		"verification_nonce": {
-			Type:     framework.TypeString,
-			Required: true,
-		},
-		"keys": {
-			Type: framework.TypeCommaStringSlice,
-		},
-		"keys_base64": {
-			Type: framework.TypeCommaStringSlice,
+			Type: framework.TypeString,
 		},
 		"pgp_fingerprints": {
 			Type: framework.TypeCommaStringSlice,
@@ -96,7 +87,69 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 		},
 	}
 
-	rotateConfigSchema := map[string]*framework.FieldSchema{
+	rotateInitPutResponseSchema = map[string]*framework.FieldSchema{
+		"namespace": {
+			Type: framework.TypeString,
+		},
+		"complete": {
+			Type: framework.TypeBool,
+		},
+		"pgp_fingerprints": {
+			Type: framework.TypeCommaStringSlice,
+		},
+		"backup": {
+			Type: framework.TypeBool,
+		},
+		"verification_required": {
+			Type: framework.TypeBool,
+		},
+		"verification_nonce": {
+			Type: framework.TypeString,
+		},
+		"keys": {
+			Type: framework.TypeCommaStringSlice,
+		},
+		"keys_base64": {
+			Type: framework.TypeCommaStringSlice,
+		},
+	}
+
+	rotateUpdateResponseSchema = map[string]*framework.FieldSchema{
+		"namespace": {
+			Type: framework.TypeString,
+		},
+		"complete": {
+			Type: framework.TypeBool,
+		},
+		"nonce": {
+			Type:     framework.TypeString,
+			Required: true,
+		},
+		"backup": {
+			Type: framework.TypeBool,
+		},
+		"pgp_fingerprints": {
+			Type: framework.TypeCommaStringSlice,
+		},
+		"verification_required": {
+			Type: framework.TypeBool,
+		},
+		"verification_nonce": {
+			Type: framework.TypeString,
+		},
+		"keys": {
+			Type: framework.TypeCommaStringSlice,
+		},
+		"keys_base64": {
+			Type: framework.TypeCommaStringSlice,
+		},
+	}
+
+	rotateConfigSchema = map[string]*framework.FieldSchema{
+		"namespace": {
+			Type:        framework.TypeString,
+			Description: "Name of the namespace.",
+		},
 		"enabled": {
 			Type:        framework.TypeBool,
 			Description: strings.TrimSpace(sysHelp["rotation-enabled"][0]),
@@ -111,13 +164,59 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 		},
 	}
 
+	rotateVerifyResponseSchema = map[string]*framework.FieldSchema{
+		"namespace": {
+			Type:        framework.TypeString,
+			Description: "Name of the namespace.",
+		},
+		"started": {
+			Type:     framework.TypeBool,
+			Required: true,
+		},
+		"nonce": {
+			Type: framework.TypeString,
+		},
+		"t": {
+			Type:     framework.TypeInt,
+			Required: true,
+		},
+		"n": {
+			Type:     framework.TypeInt,
+			Required: true,
+		},
+		"progress": {
+			Type: framework.TypeInt,
+		},
+		"complete": {
+			Type: framework.TypeBool,
+		},
+	}
+
+	rotateBackupResponseSchema = map[string]*framework.FieldSchema{
+		"namespace": {
+			Type:        framework.TypeString,
+			Description: "Name of the namespace.",
+		},
+		"nonce": {
+			Type: framework.TypeString,
+		},
+		"keys": {
+			Type: framework.TypeCommaStringSlice,
+		},
+		"keys_base64": {
+			Type: framework.TypeCommaStringSlice,
+		},
+	}
+)
+
+func (b *SystemBackend) rotatePaths() []*framework.Path {
 	return []*framework.Path{
 		{
 			// "/rotate" equivalent to "/rotate/keyring"
 			Pattern: "rotate(/keyring)?",
 			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "encryption-key",
 				OperationVerb:   "rotate",
+				OperationSuffix: "encryption-key",
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -138,16 +237,20 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 			// "/rotate/config" equivalent to "/rotate/keyring/config"
 			Pattern: "rotate/(keyring/)?config",
 			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "encryption-key",
+				OperationSuffix: "encryption-key",
 			},
-			Fields: rotateConfigSchema,
+			Fields: map[string]*framework.FieldSchema{
+				"enabled":        rotateConfigSchema["enabled"],
+				"max_operations": rotateConfigSchema["max_operations"],
+				"interval":       rotateConfigSchema["interval"],
+			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleKeyRotationConfigRead(),
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationVerb:   "read",
-						OperationSuffix: "rotation-configuration",
+						OperationSuffix: "rotation-config",
 					},
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
@@ -160,7 +263,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 					Callback: b.handleKeyRotationConfigUpdate(),
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationVerb:   "configure",
-						OperationSuffix: "rotation-configuration",
+						OperationSuffix: "rotation-config",
 					},
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
@@ -201,9 +304,9 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 		{
 			Pattern: "rotate/(root|recovery)/init",
 			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "rotate-attempt",
+				OperationVerb: "rotate-attempt",
 			},
-			Fields: rotateRequestSchema,
+			Fields: rotateInitRequestSchema,
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
@@ -215,10 +318,10 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
-							Fields:      rotateRequestSchema,
+							Fields:      rotateInitGetResponseSchema,
 						}},
 					},
-					Summary: "Reads the configuration and progress of the current root rotate attempt.",
+					Summary: "Reads the configuration and progress of the current root or recovery rotate attempt.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleRotateInitPut(),
@@ -228,11 +331,11 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
-							Fields:      rotateStatusSchema,
+							Fields:      rotateInitPutResponseSchema,
 						}},
 					},
-					Summary:     "Initializes a new root rotate attempt.",
-					Description: "Only a single rotate attempt can take place at a time, and changing the parameters of a rotate requires canceling and starting a new rotation, which will also provide a new nonce.",
+					Summary:     "Initializes a new root or recovery rotate attempt.",
+					Description: "Only a single rotate attempt can take place at a time, and changing the parameters of a rotation requires canceling and starting a new rotation, which will also provide a new nonce.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleRotateInitDelete(),
@@ -244,7 +347,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 							Description: http.StatusText(http.StatusNoContent),
 						}},
 					},
-					Summary:     "Cancels any in-progress rotate root operation.",
+					Summary:     "Cancels any in-progress rotate root or recovery operation.",
 					Description: "This clears the rotate settings as well as any progress made. This must be called to change the parameters of the rotate. Note: verification is still a part of a rotate. If rotating is canceled during the verification flow, the current unseal keys remain valid.",
 				},
 			},
@@ -257,10 +360,12 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"key": {
 					Type:        framework.TypeString,
+					Required:    true,
 					Description: "Specifies a single unseal key share.",
 				},
 				"nonce": {
 					Type:        framework.TypeString,
+					Required:    true,
 					Description: "Specifies the nonce of the rotation attempt.",
 				},
 			},
@@ -275,7 +380,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
-							Fields:      rotateStatusSchema,
+							Fields:      rotateUpdateResponseSchema,
 						}},
 					},
 					Summary: "Enter a single unseal key share to progress the rotation of the root key of OpenBao.",
@@ -312,13 +417,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
-							Fields: map[string]*framework.FieldSchema{
-								"nonce":    rotateStatusSchema["nonce"],
-								"started":  rotateStatusSchema["started"],
-								"t":        rotateStatusSchema["t"],
-								"n":        rotateStatusSchema["n"],
-								"progress": rotateStatusSchema["progress"],
-							},
+							Fields:      rotateVerifyResponseSchema,
 						}},
 					},
 					Summary: "Read the configuration and progress of the current rotate verification attempt.",
@@ -331,10 +430,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
-							Fields: map[string]*framework.FieldSchema{
-								"nonce":    rotateStatusSchema["nonce"],
-								"complete": rotateStatusSchema["complete"],
-							},
+							Fields:      rotateVerifyResponseSchema,
 						}},
 					},
 					Summary: "Enter a single new key share to progress the rotation verification operation.",
@@ -347,13 +443,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
-							Fields: map[string]*framework.FieldSchema{
-								"nonce":    rotateStatusSchema["nonce"],
-								"started":  rotateStatusSchema["started"],
-								"t":        rotateStatusSchema["t"],
-								"n":        rotateStatusSchema["n"],
-								"progress": rotateStatusSchema["progress"],
-							},
+							Fields:      rotateVerifyResponseSchema,
 						}},
 					},
 					Summary:     "Cancel any in-progress rotate verification operation.",
@@ -380,11 +470,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: http.StatusText(http.StatusOK),
-							Fields: map[string]*framework.FieldSchema{
-								"nonce":       rotateStatusSchema["nonce"],
-								"keys":        rotateStatusSchema["keys"],
-								"keys_base64": rotateStatusSchema["keys_base64"],
-							},
+							Fields:      rotateBackupResponseSchema,
 						}},
 					},
 					Summary: "Return the backup copy of PGP-encrypted unseal keys.",
@@ -433,6 +519,7 @@ func (b *SystemBackend) handleKeyRotationConfigRead() framework.OperationFunc {
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
+				"namespace":      "root",
 				"max_operations": rotateConf.MaxOperations,
 				"enabled":        !rotateConf.Disabled,
 			},
@@ -447,8 +534,8 @@ func (b *SystemBackend) handleKeyRotationConfigRead() framework.OperationFunc {
 	}
 }
 
-// handleKeyRotationConfigUpdate handles the POST `/sys/rotate/config` and POST `/sys/rotate/keyring/config`
-// endpoints updating the auto rotation config.
+// handleKeyRotationConfigUpdate handles the POST `/sys/rotate/config` and
+// `/sys/rotate/keyring/config` endpoints updating the auto rotation config.
 func (b *SystemBackend) handleKeyRotationConfigUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		rotateConf, err := b.Core.barrier.RotationConfig()
@@ -514,7 +601,11 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 		}
 
 		// Set the rotation config
-		b.Core.rootRotationConfig = existingConfig.Clone()
+		configClone := existingConfig.Clone()
+		err = b.Core.sealManager.SetRotationConfig(namespace.RootNamespace, false, configClone)
+		if err != nil {
+			return handleError(err)
+		}
 
 		// Generate a new key
 		newKey, err := b.Core.barrier.GenerateKey(b.Core.secureRandomReader)
@@ -524,12 +615,16 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 		}
 
 		// Perform the rotation
-		if err := b.Core.performBarrierRekey(ctx, newKey); err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform barrier rekey: %w", err).Error())
+		if err := b.Core.sealManager.performRootRotation(ctx, namespace.RootNamespace, newKey, configClone, b.Core.seal); err != nil {
+			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform barrier rotation: %w", err).Error())
 		}
 
 		// Remove the rotation config
-		b.Core.rootRotationConfig = nil
+		err = b.Core.sealManager.SetRotationConfig(namespace.RootNamespace, false, nil)
+		if err != nil {
+			return handleError(err)
+		}
+
 		return nil, nil
 	}
 }
@@ -538,24 +633,15 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 // endpoints retrieving the on-going rotation (if there's any) operation status.
 func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		barrierConfig, err := b.Core.SealAccess().Config(ctx)
-		if err != nil {
-			return handleError(err)
-		}
-
-		if barrierConfig == nil {
-			return handleError(errors.New("server is not yet initialized"))
-		}
-
 		recovery := strings.Contains(req.Path, "recovery")
-		rotConf := b.Core.RotationConfig(recovery)
-		sealThreshold, err := b.Core.RotationThreshold(ctx, recovery)
+		sealThreshold, err := b.Core.sealManager.RotationThreshold(ctx, namespace.RootNamespace, recovery)
 		if err != nil {
 			return handleError(err)
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
+				"namespace":      "root",
 				"started":        false,
 				"t":              0,
 				"n":              0,
@@ -563,26 +649,28 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 			},
 		}
 
-		if rotConf != nil {
-			started, progress, err := b.Core.RotationProgress(recovery, false)
+		rotationConfig := b.Core.sealManager.RotationConfig(namespace.RootNamespace, recovery)
+		if rotationConfig != nil {
+			config := rotationConfig.Clone()
+			started, progress, err := b.Core.sealManager.RotationProgress(namespace.RootNamespace, recovery, false)
 			if err != nil {
 				return handleError(err)
 			}
 
-			resp.Data["nonce"] = rotConf.Nonce
+			resp.Data["nonce"] = config.Nonce
 			resp.Data["started"] = started
-			resp.Data["t"] = rotConf.SecretThreshold
-			resp.Data["n"] = rotConf.SecretShares
+			resp.Data["t"] = config.SecretThreshold
+			resp.Data["n"] = config.SecretShares
 			resp.Data["progress"] = progress
-			resp.Data["verification_required"] = rotConf.VerificationRequired
-			resp.Data["verification_nonce"] = rotConf.VerificationNonce
-			if len(rotConf.PGPKeys) != 0 {
-				pgpFingerprints, err := pgpkeys.GetFingerprints(rotConf.PGPKeys, nil)
+			resp.Data["verification_required"] = config.VerificationRequired
+			resp.Data["verification_nonce"] = config.VerificationNonce
+			if len(config.PGPKeys) != 0 {
+				pgpFingerprints, err := pgpkeys.GetFingerprints(config.PGPKeys, nil)
 				if err != nil {
 					return handleError(err)
 				}
 				resp.Data["pgp_fingerprints"] = pgpFingerprints
-				resp.Data["backup"] = rotConf.Backup
+				resp.Data["backup"] = config.Backup
 			}
 		}
 		return resp, nil
@@ -635,7 +723,7 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.InitRotation(ctx, rotateConf, recovery)
+		result, err := b.Core.sealManager.InitRotation(ctx, namespace.RootNamespace, rotateConf, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -652,6 +740,7 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 			}
 			return &logical.Response{
 				Data: map[string]interface{}{
+					"namespace":             "root",
 					"complete":              true,
 					"backup":                result.Backup,
 					"pgp_fingerprints":      result.PGPFingerprints,
@@ -670,9 +759,9 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 // handleRotateInitDelete handles the DELETE `/sys/rotate/root/init` and `/sys/rotate/recovery/init`
 // endpoints cancelling any in-progress rotation.
 func (b *SystemBackend) handleRotateInitDelete() framework.OperationFunc {
-	return func(_ context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+	return func(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.CancelRotation(recovery); err != nil {
+		if err := b.Core.sealManager.CancelRotation(namespace.RootNamespace, recovery); err != nil {
 			return handleError(err)
 		}
 		return nil, nil
@@ -718,7 +807,7 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 
 		// Use the key to make progress on rotation (rekey)
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.UpdateRotation(ctx, key, reqNonce, recovery)
+		result, err := b.Core.sealManager.UpdateRotation(ctx, namespace.RootNamespace, key, reqNonce, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -732,6 +821,7 @@ func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
 			}
 			return &logical.Response{
 				Data: map[string]interface{}{
+					"namespace":             "root",
 					"complete":              true,
 					"nonce":                 reqNonce,
 					"backup":                result.Backup,
@@ -761,23 +851,25 @@ func (b *SystemBackend) handleRotateVerifyGet() framework.OperationFunc {
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		rotateConf := b.Core.RotationConfig(recovery)
-		if rotateConf == nil {
+		rotateConfig := b.Core.sealManager.RotationConfig(namespace.RootNamespace, recovery)
+		if rotateConfig == nil {
 			return handleError(errors.New("no rotation configuration found"))
 		}
 
-		started, progress, err := b.Core.RotationProgress(recovery, true)
+		started, progress, err := b.Core.sealManager.RotationProgress(namespace.RootNamespace, recovery, true)
 		if err != nil {
 			return handleError(err)
 		}
 
+		config := rotateConfig.Clone()
 		return &logical.Response{
 			Data: map[string]interface{}{
-				"started":  started,
-				"nonce":    rotateConf.VerificationNonce,
-				"t":        rotateConf.SecretThreshold,
-				"n":        rotateConf.SecretShares,
-				"progress": progress,
+				"namespace": "root",
+				"started":   started,
+				"nonce":     config.VerificationNonce,
+				"t":         config.SecretThreshold,
+				"n":         config.SecretShares,
+				"progress":  progress,
 			},
 		}, nil
 	}
@@ -822,7 +914,7 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 
 		// Use the key to make progress on rotation (rekey) verification
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.VerifyRotation(ctx, key, reqNonce, recovery)
+		result, err := b.Core.sealManager.VerifyRotation(ctx, namespace.RootNamespace, key, reqNonce, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -830,8 +922,9 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 		if result != nil {
 			return &logical.Response{
 				Data: map[string]interface{}{
-					"complete": result.Complete,
-					"nonce":    result.Nonce,
+					"namespace": "root",
+					"complete":  result.Complete,
+					"nonce":     result.Nonce,
 				},
 			}, nil
 		} else {
@@ -845,7 +938,7 @@ func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
 func (b *SystemBackend) handleRotateVerifyDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.RestartRotationVerification(recovery); err != nil {
+		if err := b.Core.sealManager.RestartRotationVerification(namespace.RootNamespace, recovery); err != nil {
 			return handleError(err)
 		}
 		return b.handleRotateVerifyGet()(ctx, req, data)
@@ -857,7 +950,7 @@ func (b *SystemBackend) handleRotateVerifyDelete() framework.OperationFunc {
 func (b *SystemBackend) handleRotateBackupRetrieve() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		recovery := strings.Contains(req.Path, "recovery")
-		backup, err := b.Core.RetrieveRotationBackup(ctx, recovery)
+		backup, err := b.Core.sealManager.RetrieveRotationBackup(ctx, namespace.RootNamespace, recovery)
 		if err != nil {
 			return handleError(fmt.Errorf("unable to look up backed-up keys: %w", err))
 		}
@@ -883,6 +976,7 @@ func (b *SystemBackend) handleRotateBackupRetrieve() framework.OperationFunc {
 
 		return &logical.Response{
 			Data: map[string]interface{}{
+				"namespace":   "root",
 				"nonce":       backup.Nonce,
 				"keys":        backup.Keys,
 				"keys_base64": keysB64,
@@ -896,7 +990,7 @@ func (b *SystemBackend) handleRotateBackupRetrieve() framework.OperationFunc {
 func (b *SystemBackend) handleRotateBackupDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.DeleteRotationBackup(ctx, recovery); err != nil {
+		if err := b.Core.sealManager.DeleteRotationBackup(ctx, namespace.RootNamespace, recovery); err != nil {
 			return handleError(err)
 		}
 

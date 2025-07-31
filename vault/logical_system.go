@@ -154,6 +154,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Paths = append(b.Paths, b.policyPaths()...)
 	b.Paths = append(b.Paths, b.namespaceGenerateRootPaths()...)
 	b.Paths = append(b.Paths, b.namespaceSealPaths()...)
+	b.Paths = append(b.Paths, b.namespaceRotatePaths()...)
 	b.Paths = append(b.Paths, b.namespacePaths()...)
 	b.Paths = append(b.Paths, b.wrappingPaths()...)
 	b.Paths = append(b.Paths, b.toolsPaths()...)

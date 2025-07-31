@@ -3,6 +3,7 @@ package raft_binary
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -133,4 +134,104 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Nil(t, resp)
+}
+
+func TestPostgreSQL_ParallelInitialization2(t *testing.T) {
+	t.Parallel()
+	binary := api.ReadBaoVariable("BAO_BINARY")
+	if binary == "" {
+		t.Skip("only running docker test when $BAO_BINARY present")
+	}
+
+	psql := docker.NewPostgreSQLStorage(t, "")
+	defer psql.Cleanup()
+
+	const numNodes = 10
+
+	var clusters []*docker.DockerCluster
+	var wg sync.WaitGroup
+	results := make(chan error, numNodes)
+
+	targetTime := time.Now().Add(5 * time.Second)
+
+	os.Setenv("INITIAL_ADMIN_PASSWORD", "Secret123")
+	defer os.Unsetenv("INITIAL_ADMIN_PASSWORD")
+
+	for i := 0; i < numNodes; i++ {
+		wg.Add(1)
+		go func(nodeIndex int) {
+			defer wg.Done()
+
+			time.Sleep(time.Until(targetTime))
+
+			opts := &docker.DockerClusterOptions{
+				ImageRepo:   "quay.io/openbao/openbao",
+				ImageTag:    "latest",
+				NetworkName: "",
+				VaultBinary: binary,
+				ClusterOptions: testcluster.ClusterOptions{
+					VaultNodeConfig: &testcluster.VaultNodeConfig{
+						LogLevel: "DEBUG",
+					},
+				},
+				Storage: psql,
+			}
+
+			cluster := docker.NewTestDockerCluster(t, opts)
+			clusters = append(clusters, cluster)
+
+			client := cluster.Nodes()[0].APIClient()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			resp, err := client.Logical().ListWithContext(ctx, "sys/policies/acl")
+
+			if err != nil {
+				results <- fmt.Errorf("node %d basic operation failed: %v", nodeIndex, err)
+				return
+			}
+
+			if resp == nil {
+				results <- fmt.Errorf("node %d basic operation returned nil response", nodeIndex)
+				return
+			}
+
+			results <- nil
+		}(i)
+	}
+
+	wg.Wait()
+	close(results)
+
+	defer func() {
+		for _, cluster := range clusters {
+			if cluster != nil {
+				cluster.Cleanup()
+			}
+		}
+	}()
+
+	successCount := 0
+	var errors []error
+
+	for result := range results {
+		if result == nil {
+			successCount++
+		} else {
+			errors = append(errors, result)
+		}
+	}
+
+	t.Logf("Parallel initialization test completed: %d/%d nodes successful", successCount, numNodes)
+
+	require.Greater(t, successCount, 0, "At least one node should have initialized successfully")
+
+	for i, err := range errors {
+		t.Logf("Node error %d: %v", i, err)
+	}
+
+	if successCount < numNodes/2 {
+		t.Errorf("Too many nodes failed (%d/%d), indicating a serious issue", len(errors), numNodes)
+	}
 }

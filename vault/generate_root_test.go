@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"encoding/base64"
 	"testing"
 
@@ -27,7 +28,8 @@ func TestCore_NS_GenerateRoot_Lifecycle(t *testing.T) {
 
 func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte, ns *namespace.Namespace) {
 	// Verify update not allowed
-	if _, err := c.GenerateRootUpdate(namespace.RootContext(nil), keys[0], "", GenerateStandardRootTokenStrategy, ns); err == nil {
+	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	if _, err := c.GenerateRootUpdate(ctx, keys[0], "", GenerateStandardRootTokenStrategy); err == nil {
 		t.Fatal("no root generation in progress")
 	}
 
@@ -148,6 +150,7 @@ func TestCore_NS_GenerateRoot_InvalidRootNonce(t *testing.T) {
 }
 
 func testCore_GenerateRoot_InvalidRootNonce_Common(t *testing.T, c *Core, keys [][]byte, ns *namespace.Namespace) {
+	ctx := namespace.ContextWithNamespace(context.Background(), ns)
 	tokenLength := TokenLength
 	if ns.UUID != namespace.RootNamespaceUUID {
 		tokenLength = NSTokenLength
@@ -173,14 +176,14 @@ func testCore_GenerateRoot_InvalidRootNonce_Common(t *testing.T, c *Core, keys [
 	}
 
 	// Provide the nonce (invalid)
-	_, err = c.GenerateRootUpdate(namespace.RootContext(nil), keys[0], "abcd", GenerateStandardRootTokenStrategy, ns)
+	_, err = c.GenerateRootUpdate(ctx, keys[0], "abcd", GenerateStandardRootTokenStrategy)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	// Provide the root (invalid)
 	for _, key := range keys {
-		_, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rgconf.Nonce, GenerateStandardRootTokenStrategy, ns)
+		_, err = c.GenerateRootUpdate(ctx, key, rgconf.Nonce, GenerateStandardRootTokenStrategy)
 	}
 	if err == nil {
 		t.Fatal("expected error")
@@ -200,6 +203,7 @@ func TestCore_NS_GenerateRoot_Update_OTP(t *testing.T) {
 }
 
 func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byte, ns *namespace.Namespace) {
+	ctx := namespace.ContextWithNamespace(context.Background(), ns)
 	tokenLength := TokenLength
 	if ns.UUID != namespace.RootNamespaceUUID {
 		tokenLength = NSTokenLength
@@ -228,7 +232,7 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byt
 	// Provide the keys
 	var result *GenerateRootResult
 	for _, key := range keys {
-		result, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rkconf.Nonce, GenerateStandardRootTokenStrategy, ns)
+		result, err = c.GenerateRootUpdate(ctx, key, rkconf.Nonce, GenerateStandardRootTokenStrategy)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -273,7 +277,7 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byt
 	token := string(tokenBytes)
 
 	// Ensure that the token is a root token
-	te, err := c.tokenStore.Lookup(namespace.RootContext(nil), token)
+	te, err := c.tokenStore.Lookup(ctx, token)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -300,6 +304,7 @@ func TestCore_NS_GenerateRoot_Update_PGP(t *testing.T) {
 
 func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byte, ns *namespace.Namespace) {
 	// Start a root generation
+	ctx := namespace.ContextWithNamespace(context.Background(), ns)
 	err := c.GenerateRootInit("", pgpkeys.TestPubKey1, GenerateStandardRootTokenStrategy, ns)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -317,7 +322,7 @@ func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byt
 	// Provide the keys
 	var result *GenerateRootResult
 	for _, key := range keys {
-		result, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rkconf.Nonce, GenerateStandardRootTokenStrategy, ns)
+		result, err = c.GenerateRootUpdate(ctx, key, rkconf.Nonce, GenerateStandardRootTokenStrategy)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -360,7 +365,7 @@ func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byt
 	token := ptBuf.String()
 
 	// Ensure that the token is a root token
-	te, err := c.tokenStore.Lookup(namespace.RootContext(nil), token)
+	te, err := c.tokenStore.Lookup(ctx, token)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

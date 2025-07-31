@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"go.uber.org/atomic"
 )
@@ -25,7 +24,7 @@ type generateRecoveryToken struct {
 	token *atomic.String
 }
 
-func (g *generateRecoveryToken) authenticate(ctx context.Context, c *Core, combinedKey []byte, ns *namespace.Namespace) error {
+func (g *generateRecoveryToken) authenticate(ctx context.Context, c *Core, combinedKey []byte) error {
 	key, err := c.unsealKeyToRootKeyPostUnseal(ctx, combinedKey)
 	if err != nil {
 		return fmt.Errorf("unable to authenticate: %w", err)
@@ -44,7 +43,7 @@ func (g *generateRecoveryToken) authenticate(ctx context.Context, c *Core, combi
 	return nil
 }
 
-func (g *generateRecoveryToken) generate(ctx context.Context, c *Core, ns *namespace.Namespace) (string, func(), error) {
+func (g *generateRecoveryToken) generate(ctx context.Context, c *Core) (string, func(), error) {
 	var id string
 	var err error
 	id, err = base62.Random(TokenLength)

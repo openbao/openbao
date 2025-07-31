@@ -25,15 +25,19 @@ var GenerateStandardRootTokenStrategy GenerateRootStrategy = generateStandardRoo
 // GenerateRootStrategy allows us to swap out the strategy we want to use to
 // create a token upon completion of the generate root process.
 type GenerateRootStrategy interface {
-	generate(context.Context, *Core, *namespace.Namespace) (string, func(), error)
-	authenticate(context.Context, *Core, []byte, *namespace.Namespace) error
+	generate(context.Context, *Core) (string, func(), error)
+	authenticate(context.Context, *Core, []byte) error
 }
 
 // generateStandardRootToken implements the GenerateRootStrategy and is in
 // charge of creating standard root tokens.
 type generateStandardRootToken struct{}
 
-func (g generateStandardRootToken) authenticate(ctx context.Context, c *Core, combinedKey []byte, ns *namespace.Namespace) error {
+func (g generateStandardRootToken) authenticate(ctx context.Context, c *Core, combinedKey []byte) error {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
 	nsSeal, found := c.sealManager.sealsByNamespace[ns.UUID]["default"]
 	if !found {
 		return fmt.Errorf("no seal found for namespace")
@@ -53,9 +57,8 @@ func (g generateStandardRootToken) authenticate(ctx context.Context, c *Core, co
 	return nil
 }
 
-func (g generateStandardRootToken) generate(ctx context.Context, c *Core, ns *namespace.Namespace) (string, func(), error) {
-	ctx = namespace.ContextWithNamespace(ctx, ns)
-	te, err := c.tokenStore.rootToken(ctx, ns)
+func (g generateStandardRootToken) generate(ctx context.Context, c *Core) (string, func(), error) {
+	te, err := c.tokenStore.rootToken(ctx)
 	if err != nil {
 		c.logger.Error("root token generation failed", "error", err)
 		return "", nil, err
@@ -233,12 +236,18 @@ func (c *Core) GenerateRootInit(otp, pgpKey string, strategy GenerateRootStrateg
 	return nil
 }
 
-// GenerateRootUpdate is used to provide a new key part
-func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string, strategy GenerateRootStrategy, ns *namespace.Namespace) (*GenerateRootResult, error) {
+// GenerateRootUpdate is used to provide a new key part for the root token generation.
+func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string, strategy GenerateRootStrategy) (*GenerateRootResult, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	barrier, found := c.sealManager.barrierByNamespace.Get(ns.Path)
 	if !found {
 		return nil, fmt.Errorf("barrier not found for namespace: %q", ns.Path)
 	}
+
 	// Verify the key length
 	min, max := barrier.(SecurityBarrier).KeyLength()
 	max += shamir.ShareOverhead
@@ -251,7 +260,6 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 
 	// Get the seal configuration
 	var config *SealConfig
-	var err error
 
 	seal, found := c.sealManager.sealsByNamespace[ns.UUID]["default"]
 	if !found {
@@ -345,13 +353,13 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		}
 	}
 
-	if err := strategy.authenticate(ctx, c, combinedKey, ns); err != nil {
+	if err := strategy.authenticate(ctx, c, combinedKey); err != nil {
 		c.logger.Error("root generation aborted", "error", err.Error())
 		return nil, fmt.Errorf("root generation aborted: %w", err)
 	}
 
 	// Run the generate strategy
-	token, cleanupFunc, err := strategy.generate(ctx, c, ns)
+	token, cleanupFunc, err := strategy.generate(ctx, c)
 	if err != nil {
 		return nil, err
 	}

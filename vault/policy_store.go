@@ -778,6 +778,14 @@ func (ps *PolicyStore) cacheKey(ns *namespace.Namespace, name string) string {
 
 // loadDefaultPolicies loads default policies for the namespace in the provided context
 func (ps *PolicyStore) loadDefaultPolicies(ctx context.Context) error {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Store the cache key of "root" for the namespace
+	ps.policyTypeMap.Store(ps.cacheKey(ns, "root"), PolicyTypeACL)
+
 	// Load the default policy into the namespace
 	if err := ps.loadACLPolicy(ctx, defaultPolicyName, defaultPolicy); err != nil {
 		return fmt.Errorf("failed to load default policy: %w", err)
@@ -791,9 +799,10 @@ func (ps *PolicyStore) loadDefaultPolicies(ctx context.Context) error {
 	return nil
 }
 
-// loadNamespaceRootPolicies loads root policies for all namespaces
+// loadNamespaceRootPolicies loads root policies for all namespaces apart from root namespace
+// which loads it in the loadDefaultPolicies during initial setup of the Policy Store.
 func (ps *PolicyStore) loadNamespaceRootPolicies(ctx context.Context) error {
-	allNS, err := ps.core.namespaceStore.ListAllNamespaces(ctx, true, false)
+	allNS, err := ps.core.namespaceStore.ListAllNamespaces(ctx, false, true)
 	if err != nil {
 		return err
 	}

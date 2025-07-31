@@ -343,6 +343,10 @@ func (b *RaftBackend) JoinPlugins() (map[string]pluginutil.PluginRunner, error) 
 	}
 
 	config := b.conf["join_plugin"]
+	if config == "" {
+		return joinPlugins, nil
+	}
+
 	var pluginConfigs []*JoinPlugin
 	err := jsonutil.DecodeJSON([]byte(config), &pluginConfigs)
 	if err != nil {

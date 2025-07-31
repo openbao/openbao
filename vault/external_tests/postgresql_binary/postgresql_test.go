@@ -136,7 +136,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	require.Nil(t, resp)
 }
 
-func TestPostgreSQL_ParallelInitialization2(t *testing.T) {
+func TestPostgreSQL_ParallelInitialization(t *testing.T) {
 	t.Parallel()
 	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {

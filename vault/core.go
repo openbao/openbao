@@ -2330,9 +2330,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupExpiration(expireLeaseStrategyFairsharing); err != nil {
 		return err
 	}
-	if err := c.loadAudits(ctx); err != nil {
-		return err
-	}
 	if err := c.setupAudits(ctx); err != nil {
 		return err
 	}

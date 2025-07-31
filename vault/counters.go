@@ -28,7 +28,7 @@ type TokenCounter struct {
 // countActiveTokens returns the number of active tokens
 func (c *Core) countActiveTokens(ctx context.Context) (*ActiveTokens, error) {
 	// Get all of the namespaces
-	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true, true)
+	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return nil, err
 	}

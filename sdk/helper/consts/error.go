@@ -11,9 +11,9 @@ var (
 	//nolint:staticcheck // Vault is a proper noun
 	ErrSealed = errors.New("Vault is sealed")
 
-	// ErrNamespaceSealed is returned if an operation is performed on a sealed namesapce barrier.
+	// ErrNamespaceSealed is returned if an operation is performed on a sealed namespace barrier.
 	// No operation is expected to succeed before unsealing
-	ErrNamespaceSealed = errors.New("Namespace is sealed")
+	ErrNamespaceSealed = errors.New("namespace is sealed")
 
 	// ErrAPILocked is returned if an operation is performed when the API is
 	// locked for the request namespace.

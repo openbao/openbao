@@ -71,12 +71,9 @@ const (
 	// any namespace information
 	TokenLength = 24
 
-	// NSTokenLength is the size of tokens we are currently generating, for
-	// sealed Namespaces
-	NSTokenLength = 31
-
-	// MaxNsIdLength is the maximum namespace ID length (5 characters prepended by a ".")
-	MaxNsIdLength = 6
+	// NSTokenLength is the size of tokens we are currently generating for namespaces.
+	// (TokenLen + "."[1] + nsID)
+	NSTokenLength = TokenLength + namespaceIdLength + 1
 
 	// TokenPrefixLength is the length of the new token prefixes ("hvs.", "hvb.",
 	// and "hvr.")
@@ -983,21 +980,26 @@ func (ts *TokenStore) SaltID(ctx context.Context, id string) (string, error) {
 }
 
 // rootToken is used to generate a new token with root privileges and no parent
-func (ts *TokenStore) rootToken(ctx context.Context, ns *namespace.Namespace) (*logical.TokenEntry, error) {
-	ctx = namespace.ContextWithNamespace(ctx, ns)
+func (ts *TokenStore) rootToken(ctx context.Context) (*logical.TokenEntry, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	view := ts.core.NamespaceView(ns)
 	te := &logical.TokenEntry{
+		DisplayName:  "root",
 		Policies:     []string{"root"},
 		Path:         view.Prefix() + "auth/token/root",
 		CreationTime: time.Now().Unix(),
 		NamespaceID:  ns.ID,
 		Type:         logical.TokenTypeService,
 	}
-	if ns.UUID == namespace.RootNamespaceUUID {
-		te.DisplayName = "root"
-	} else {
-		te.DisplayName = ns.ID + "_root"
+
+	if ns.UUID != namespace.RootNamespaceUUID {
+		te.DisplayName = fmt.Sprintf("%s_%s", ns.ID, te.DisplayName)
 	}
+
 	if err := ts.create(ctx, te, true /* persist */); err != nil {
 		return nil, err
 	}
@@ -3907,7 +3909,7 @@ func (ts *TokenStore) gaugeCollector(ctx context.Context) ([]metricsutil.GaugeLa
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, false)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -3966,7 +3968,7 @@ func (ts *TokenStore) gaugeCollectorByPolicy(ctx context.Context) ([]metricsutil
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, false)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -4028,7 +4030,7 @@ func (ts *TokenStore) gaugeCollectorByTtl(ctx context.Context) ([]metricsutil.Ga
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, false)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -4100,7 +4102,7 @@ func (ts *TokenStore) gaugeCollectorByMethod(ctx context.Context) ([]metricsutil
 	}
 
 	rootContext := namespace.RootContext(ctx)
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, false)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}

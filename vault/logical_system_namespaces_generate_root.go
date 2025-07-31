@@ -1,3 +1,6 @@
+// Copyright (c) 2025 OpenBao a Series of LF Projects, LLC
+// SPDX-License-Identifier: MPL-2.0
+
 package vault
 
 import (
@@ -242,8 +245,7 @@ func (b *SystemBackend) namespaceGenerateRootUpdate(ctx context.Context, ns *nam
 	}
 
 	ctx = namespace.ContextWithNamespace(ctx, ns)
-
-	result, err := b.Core.GenerateRootUpdate(ctx, decodedKey, nonce, GenerateStandardRootTokenStrategy, ns)
+	result, err := b.Core.GenerateRootUpdate(ctx, decodedKey, nonce, GenerateStandardRootTokenStrategy)
 	if err != nil {
 		return nil, err
 	}

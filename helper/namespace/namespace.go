@@ -30,9 +30,6 @@ var reservedNames = []string{
 	"auth",
 	"cubbyhole",
 	"identity",
-	"seal",
-	"unseal",
-	"seal-status",
 }
 
 type (

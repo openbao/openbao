@@ -138,7 +138,7 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/child")
 		res, err = b.HandleRequest(nsCtx, req)
 		require.Error(t, err)
-		require.Contains(t, res.Data["error"], "Barrier is sealed")
+		require.Contains(t, res.Data["error"], "Vault is sealed")
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/baz/unseal")
 		req.Data["key"] = keyshares[0]

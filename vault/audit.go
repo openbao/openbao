@@ -220,7 +220,7 @@ func (c *Core) disableAudit(ctx context.Context, path string, updateStorage bool
 	return true, nil
 }
 
-// loadAudits is invoked as part of postUnseal to load the audit table
+// loadAudits is invoked as part of reconcileAudits (which holds the lock) to load the audit table
 func (c *Core) loadAudits(ctx context.Context, readonly bool) error {
 	auditTable := &MountTable{}
 	localAuditTable := &MountTable{}

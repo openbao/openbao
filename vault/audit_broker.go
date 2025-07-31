@@ -67,9 +67,10 @@ func (a *AuditBroker) IsRegistered(name string) bool {
 	return ok
 }
 
-// Count returns the number of regiesterd backends
+// Count returns the number of registered backends
 func (a *AuditBroker) Count() int {
 	a.RLock()
+	defer a.RUnlock()
 	return len(a.backends)
 }
 

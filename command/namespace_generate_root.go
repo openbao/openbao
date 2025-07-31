@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2025 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package command
@@ -36,12 +36,15 @@ type NamespaceGenerateRootCommand struct {
 }
 
 func (c *NamespaceGenerateRootCommand) Synopsis() string {
-	return "Generate a new root token for a sealed namespace"
+	return "Generate a new root token for a sealable namespace"
 }
 
 func (c *NamespaceGenerateRootCommand) Help() string {
 	helpText := `
-Usage: bao namespace generate-root [options] <NamespacePath>
+Usage: bao namespace generate-root [options] PATH
+
+  Generates a new root token by combining a quorum of share holders. One of
+  the following must be provided to start the root token generation:
 
     - A base64-encoded one-time-password (OTP) provided via the "-otp" flag.
       Use the "-generate-otp" flag to generate a usable value. The resulting
@@ -61,15 +64,14 @@ Usage: bao namespace generate-root [options] <NamespacePath>
 
   Start a root token generation:
 
-      $ bao namespace generate-root -init -otp="..." <NamespacePath>
-      $ bao namespace generate-root -init -pgp-key="..." <NamespacePath>
+      $ bao namespace generate-root -init -otp="..." PATH
+      $ bao namespace generate-root -init -pgp-key="..." PATH
 
   Enter an unseal key to progress root token generation:
 
-      $ bao namespace generate-root -otp="..." <NamespacePath>
+      $ bao namespace generate-root -otp="..." PATH
 
 ` + c.Flags().Help()
-
 	return strings.TrimSpace(helpText)
 }
 
@@ -83,7 +85,7 @@ func (c *NamespaceGenerateRootCommand) Flags() *FlagSets {
 		Target:  &c.flagInit,
 		Default: false,
 		Usage: "Start a root token generation for a given namespace. This can only be done if " +
-			"there is not currently one in progress for the namespace.",
+			"there is currently not another one in progress for the namespace.",
 	})
 
 	f.BoolVar(&BoolVar{
@@ -223,7 +225,7 @@ func (c *NamespaceGenerateRootCommand) init(client *api.Client, otp, pgpKey stri
 	}
 
 	// Start the root generation
-	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath+"/generate-root/attempt", map[string]interface{}{})
+	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath+"/generate-root/attempt", nil)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error initializing root generation: %s", err))
 		return 2
@@ -263,7 +265,7 @@ func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, n
 	if !status.Started {
 		c.UI.Error(wrapAtLength(
 			"No root generation is in progress for this namespace. Start a root generation by " +
-				"running \"bao namespace generate-root -init <NamespacePath>\"."))
+				"running \"bao namespace generate-root -init PATH\"."))
 		c.UI.Warn(wrapAtLength(fmt.Sprintf(
 			"If starting root generation using the OTP method and generating "+
 				"your own OTP, the length of the OTP string needs to be %d "+
@@ -431,10 +433,7 @@ func (c *NamespaceGenerateRootCommand) status(client *api.Client, namespacePath 
 		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
 		return 2
 	}
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error getting root generation status: %s", err))
-		return 2
-	}
+
 	switch Format(c.UI) {
 	case "table":
 		return c.printStatus(status)
@@ -468,7 +467,7 @@ func (c *NamespaceGenerateRootCommand) generateOTP(client *api.Client, namespace
 }
 
 // printStatus dumps the status to output
-func (c *NamespaceGenerateRootCommand) printStatus(status *NamespaceGenerateRootResponse) int {
+func (c *NamespaceGenerateRootCommand) printStatus(status *api.GenerateRootStatusResponse) int {
 	out := []string{}
 	out = append(out, fmt.Sprintf("Nonce | %s", status.Nonce))
 	out = append(out, fmt.Sprintf("Started | %t", status.Started))
@@ -496,26 +495,13 @@ func (c *NamespaceGenerateRootCommand) printStatus(status *NamespaceGenerateRoot
 	return 0
 }
 
-func (c *NamespaceGenerateRootCommand) extractResponse(data map[string]interface{}) (*NamespaceGenerateRootResponse, error) {
+func (c *NamespaceGenerateRootCommand) extractResponse(data map[string]interface{}) (*api.GenerateRootStatusResponse, error) {
 	jsonStatus, err := json.Marshal(data)
 	if err != nil {
-		return &NamespaceGenerateRootResponse{}, nil
+		return &api.GenerateRootStatusResponse{}, nil
 	}
-	status := NamespaceGenerateRootResponse{}
+	status := api.GenerateRootStatusResponse{}
 	json.Unmarshal(jsonStatus, &status)
 
 	return &status, nil
-}
-
-type NamespaceGenerateRootResponse struct {
-	Nonce            string `json:"nonce"`
-	Started          bool   `json:"started"`
-	Progress         int    `json:"progress"`
-	Required         int    `json:"required"`
-	Complete         bool   `json:"complete"`
-	EncodedToken     string `json:"encoded_token"`
-	EncodedRootToken string `json:"encoded_root_token"`
-	PGPFingerprint   string `json:"pgp_fingerprint"`
-	OTP              string `json:"otp"`
-	OTPLength        int    `json:"otp_length"`
 }

@@ -789,9 +789,9 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 }
 
 // ListAllNamespaces lists all available namespaces, optionally including the
-// root namespace. skipSealed flag dictates whether sealed namespaces are
-// filtered out from the result slice.
-func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot, skipSealed bool) ([]*namespace.Namespace, error) {
+// root namespace. includeSealed flag dictates whether sealed namespaces are
+// included in the result slice
+func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot, includeSealed bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_all_namespaces"}, time.Now())
 
 	unlock, err := ns.lockWithInvalidation(ctx, false)
@@ -805,7 +805,7 @@ func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot, sk
 		if !includeRoot && entry.ID == namespace.RootNamespaceID {
 			continue
 		}
-		if skipSealed && ns.core.IsNSSealed(entry) {
+		if !includeSealed && ns.core.IsNSSealed(entry) {
 			continue
 		}
 		namespaces = append(namespaces, entry.Clone(false))
@@ -1078,60 +1078,60 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key []byte) error {
 	defer metrics.MeasureSince([]string{"namespace", "unseal_namespace"}, time.Now())
 
-	unlock, err := ns.lockWithInvalidation(ctx, true)
+	unsealedNamespace, err := ns.unsealNamespace(ctx, path, key)
 	if err != nil {
 		return err
 	}
-
-	releaseNsLock := true
-	defer func() {
-		if releaseNsLock {
-			unlock()
-		}
-	}()
-
-	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path, false)
-	if err != nil {
-		return err
-	}
-
-	if namespaceToUnseal == nil {
-		return fmt.Errorf("namespace %q not found", path)
-	}
-
-	if namespaceToUnseal.ID == namespace.RootNamespaceID {
-		return errors.New("unable to unseal root namespace")
-	}
-
-	if err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key); err != nil {
-		return err
-	}
-	releaseNsLock = false
-	unlock()
 
 	// If namespace is still sealed meaning we do not have enough shards yet, return early
-	if ns.core.IsNSSealed(namespaceToUnseal) {
+	if ns.core.IsNSSealed(unsealedNamespace) {
 		return nil
 	}
 
-	// Then proceed to load mounts and credentials
-	if err := ns.core.loadMountsForNamespace(ctx, namespaceToUnseal); err != nil {
+	return ns.postNamespaceUnseal(ctx, unsealedNamespace)
+}
+
+func (ns *NamespaceStore) unsealNamespace(ctx context.Context, path string, key []byte) (*namespace.Namespace, error) {
+	unlock, err := ns.lockWithInvalidation(ctx, true)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+
+	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path, false)
+	if err != nil {
+		return nil, err
+	}
+
+	if namespaceToUnseal == nil {
+		return nil, fmt.Errorf("namespace %q not found", path)
+	}
+
+	if namespaceToUnseal.ID == namespace.RootNamespaceID {
+		return nil, errors.New("unable to unseal root namespace")
+	}
+
+	return namespaceToUnseal.Clone(false), ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key)
+}
+
+func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNamespace *namespace.Namespace) error {
+	// Proceed to load mounts and credentials
+	if err := ns.core.loadMountsForNamespace(ctx, unsealedNamespace); err != nil {
 		return err
 	}
 
-	postUnsealFuncs := make([]func(), 0)
-
-	if postUnsealMountFuncs, err := ns.core.setupMountsForNamespace(ctx, namespaceToUnseal); err != nil {
+	var postUnsealFuncs []func()
+	if postUnsealMountFuncs, err := ns.core.setupMountsForNamespace(ctx, unsealedNamespace); err != nil {
 		return err
 	} else {
 		postUnsealFuncs = append(postUnsealFuncs, postUnsealMountFuncs...)
 	}
 
-	if err := ns.core.loadCredentialsForNamespace(ctx, namespaceToUnseal); err != nil {
+	if err := ns.core.loadCredentialsForNamespace(ctx, unsealedNamespace); err != nil {
 		return err
 	}
 
-	if postUnsealCredFuncs, err := ns.core.setupCredentialsForNamespace(ctx, namespaceToUnseal); err != nil {
+	if postUnsealCredFuncs, err := ns.core.setupCredentialsForNamespace(ctx, unsealedNamespace); err != nil {
 		return err
 	} else {
 		postUnsealFuncs = append(postUnsealFuncs, postUnsealCredFuncs...)

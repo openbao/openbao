@@ -35,7 +35,7 @@ type ACL struct {
 
 	segmentWildcardPaths map[string]interface{}
 
-	// root is enabled if the "root" named policy is present.
+	// root property is a non-nil namespace if the "root" named policy (and only "root") is present.
 	root *namespace.Namespace
 
 	// Stores policies that are actually RGPs for later fetching
@@ -102,12 +102,12 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 			return nil, errors.New("unable to parse policy (wrong type)")
 		}
 
-		// Check if this is root
+		// Check if this policy name is 'root'
 		if policy.Name == "root" {
-
 			if len(policies) != 1 {
 				return nil, errors.New("other policies present along with root")
 			}
+			// if it is root, inject the namespace from context to the ACL
 			a.root = ns
 		}
 
@@ -347,7 +347,10 @@ func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheck
 		return ret
 	}
 
-	// Fast-path root
+	// a.root is not nil if the policy attached is a 'root' policy;
+	// if it's present, we are checking whether namespace embedded in the acl
+	// is a parent (ancestor) of the namespace of the current request, if so
+	// then allow the request (fast-pathing as root), otherwise reject
 	if a.root != nil {
 		if !ns.HasParent(a.root) {
 			return ret

@@ -160,7 +160,7 @@ func AdjustErrorStatusCode(status *int, err error) {
 	}
 
 	// Adjust status code when sealed
-	if errwrap.Contains(err, consts.ErrSealed.Error()) {
+	if errwrap.Contains(err, consts.ErrSealed.Error()) || errwrap.Contains(err, consts.ErrNamespaceSealed.Error()) {
 		*status = http.StatusServiceUnavailable
 	}
 

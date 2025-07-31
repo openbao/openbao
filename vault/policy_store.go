@@ -205,7 +205,10 @@ func NewPolicyStore(ctx context.Context, core *Core, baseView BarrierView, syste
 	}
 
 	// Special-case root; doesn't exist on disk but does need to be found
-	ps.policyTypeMap.Store(ps.cacheKey(namespace.RootNamespace, "root"), PolicyTypeACL)
+	if err := ps.loadNamespaceRootPolicies(ctx); err != nil {
+		return nil, err
+	}
+
 	return ps, nil
 }
 
@@ -459,10 +462,10 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	}
 
 	// Special case the root policy
-	if policyType == PolicyTypeACL && name == "root" && ns.ID == namespace.RootNamespaceID {
+	if policyType == PolicyTypeACL && name == "root" {
 		p := &Policy{
 			Name:      "root",
-			namespace: namespace.RootNamespace,
+			namespace: ns,
 		}
 		if cache != nil {
 			cache.Add(index, p)
@@ -775,6 +778,14 @@ func (ps *PolicyStore) cacheKey(ns *namespace.Namespace, name string) string {
 
 // loadDefaultPolicies loads default policies for the namespace in the provided context
 func (ps *PolicyStore) loadDefaultPolicies(ctx context.Context) error {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Store the cache key of "root" for the namespace
+	ps.policyTypeMap.Store(ps.cacheKey(ns, "root"), PolicyTypeACL)
+
 	// Load the default policy into the namespace
 	if err := ps.loadACLPolicy(ctx, defaultPolicyName, defaultPolicy); err != nil {
 		return fmt.Errorf("failed to load default policy: %w", err)
@@ -783,6 +794,21 @@ func (ps *PolicyStore) loadDefaultPolicies(ctx context.Context) error {
 	// Load the response wrapping policy into the namespace
 	if err := ps.loadACLPolicy(ctx, responseWrappingPolicyName, responseWrappingPolicy); err != nil {
 		return fmt.Errorf("failed to load response wrapping policy: %w", err)
+	}
+
+	return nil
+}
+
+// loadNamespaceRootPolicies loads root policies for all namespaces apart from root namespace
+// which loads it in the loadDefaultPolicies during initial setup of the Policy Store.
+func (ps *PolicyStore) loadNamespaceRootPolicies(ctx context.Context) error {
+	allNS, err := ps.core.namespaceStore.ListAllNamespaces(ctx, false, true)
+	if err != nil {
+		return err
+	}
+
+	for _, ns := range allNS {
+		ps.policyTypeMap.Store(ps.cacheKey(ns, "root"), PolicyTypeACL)
 	}
 
 	return nil

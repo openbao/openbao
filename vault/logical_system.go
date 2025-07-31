@@ -151,6 +151,8 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Backend.Paths = append(b.Backend.Paths, b.lockedUserPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.leasePaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.policyPaths()...)
+	b.Backend.Paths = append(b.Backend.Paths, b.namespaceGenerateRootPaths()...)
+	b.Backend.Paths = append(b.Backend.Paths, b.namespaceSealPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.namespacePaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.wrappingPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.toolsPaths()...)
@@ -4245,7 +4247,7 @@ func (b *SystemBackend) pathInternalUIResultantACL(ctx context.Context, req *log
 		},
 	}
 
-	if acl.root {
+	if acl.root != nil {
 		resp.Data["root"] = true
 		return resp, nil
 	}
@@ -5838,14 +5840,27 @@ This path responds to the following HTTP methods.
 
 	DELETE /<name>
 		Delete a namespace.
+		`,
+	},
+	"namespaces-seal": {
+		"Seal, unseal and check seal status of a namespace.",
+		`
+This path responds to the following HTTP methods.
 
 	POST /<name>/seal
 		Seal a namespace.
 
 	POST /<name>/unseal
 		Unseal a namespace.
+
+    GET /<name>/seal-status
+        Returns the seal status of the namespace.
+
+	GET /<name>/key-status
+		Provides the namespace current backend encryption key term and installation time.
 		`,
 	},
+
 	"namespaces-lock": {
 		"Lock a namespace.",
 		`
@@ -5862,6 +5877,22 @@ This path responds to the following HTTP methods.
 
 	PUT /<name>
 		Unlock the API for a namespace.
+		`,
+	},
+
+	"namespaces-rotate": {
+		"Rotates the backend encryption key used to persist data for this namespace.",
+		`
+		Rotate generates a new encryption key which is used to encrypt all data
+		of this namespace going to the storage backend. The old encryption keys
+		are kept so that data encrypted using those keys can still be decrypted.
+		`,
+	},
+
+	"namespaces-rotate-config": {
+		"Configures settings related to the namespace encryption key management.",
+		`
+		Configures settings related to the automatic rotation of the namespace encryption key.
 		`,
 	},
 }

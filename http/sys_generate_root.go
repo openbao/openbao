@@ -177,7 +177,7 @@ func handleSysGenerateRootUpdate(core *vault.Core, generateStrategy vault.Genera
 		defer cancel()
 
 		// Use the key to make progress on root generation
-		result, err := core.GenerateRootUpdate(ctx, key, req.Nonce, generateStrategy, namespace.RootNamespace)
+		result, err := core.GenerateRootUpdate(ctx, key, req.Nonce, generateStrategy)
 		if err != nil {
 			respondError(w, http.StatusBadRequest, err)
 			return

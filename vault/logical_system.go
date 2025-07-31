@@ -4540,7 +4540,7 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 			Sealed:           true,
 			RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
 			RecoverySealType: recoveryType,
-			StorageType:  	  core.StorageType(),
+			StorageType:      core.StorageType(),
 			Version:          version.GetVersion().VersionNumber(),
 			BuildDate:        version.BuildDate,
 		}

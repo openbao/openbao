@@ -235,7 +235,8 @@ func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespac
 	}
 
 	for _, policyName := range nsPolicies {
-		t, err := c.policyStore.GetNonEGPPolicyType(policyNS.ID, policyName)
+		policyNSCtx := namespace.ContextWithNamespace(ctx, policyNS)
+		t, err := c.policyStore.GetNonEGPPolicyType(policyNSCtx, policyName)
 		if err != nil && errors.Is(err, ErrPolicyNotExistInTypeMap) {
 			// When we attempt to get a non-EGP policy type, and receive an
 			// explicit error that it doesn't exist (in the type map) we log the

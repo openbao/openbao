@@ -200,7 +200,6 @@ func TestPostgreSQL_ParallelInitialization(t *testing.T) {
 			defer cancel()
 
 			resp, err := client.Logical().ListWithContext(ctx, "sys/policies/acl")
-
 			if err != nil {
 				results <- fmt.Errorf("node %d basic operation failed: %v", nodeIndex, err)
 				return

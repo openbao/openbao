@@ -251,6 +251,9 @@ func TestConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if cert == nil {
+		t.Fatal("expected cert to be non-nil")
+	}
 
 	expected = &kubeConfig{
 		PublicKeys:           []crypto.PublicKey{},
@@ -382,6 +385,9 @@ func TestConfig(t *testing.T) {
 	cert, err = parsePublicKeyPEM([]byte(testRSACert))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if cert == nil {
+		t.Fatal("expected cert to be non-nil")
 	}
 
 	expected = &kubeConfig{

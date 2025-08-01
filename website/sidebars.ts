@@ -191,6 +191,7 @@ const sidebars: SidebarsConfig = {
                         "commands/operator/seal",
                         "commands/operator/step-down",
                         "commands/operator/unseal",
+                        "commands/operator/validate-config",
                     ],
                 },
                 "commands/patch",

@@ -144,7 +144,12 @@ func TestPostgreSQL_ParallelInitialization(t *testing.T) {
 	}
 
 	psql := docker.NewPostgreSQLStorage(t, "")
-	defer psql.Cleanup()
+	defer func() {
+		err := psql.Cleanup()
+		if err != nil {
+			t.Errorf("Failed to cleanup PostgreSQL storage: %v", err)
+		}
+	}()
 
 	const numNodes = 10
 
@@ -154,8 +159,17 @@ func TestPostgreSQL_ParallelInitialization(t *testing.T) {
 
 	targetTime := time.Now().Add(5 * time.Second)
 
-	os.Setenv("INITIAL_ADMIN_PASSWORD", "Secret123")
-	defer os.Unsetenv("INITIAL_ADMIN_PASSWORD")
+	err := os.Setenv("INITIAL_ADMIN_PASSWORD", "Secret123")
+	if err != nil {
+		t.Fatalf("Failed to set INITIAL_ADMIN_PASSWORD environment variable: %v", err)
+	}
+
+	defer func() {
+		err := os.Unsetenv("INITIAL_ADMIN_PASSWORD")
+		if err != nil {
+			t.Errorf("Warning: Failed to unset INITIAL_ADMIN_PASSWORD environment variable: %v", err)
+		}
+	}()
 
 	for i := 0; i < numNodes; i++ {
 		wg.Add(1)

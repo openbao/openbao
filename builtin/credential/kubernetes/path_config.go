@@ -216,10 +216,14 @@ type kubeConfig struct {
 	DisableLocalCAJwt bool `json:"disable_local_ca_jwt"`
 }
 
-// PasrsePublicKeyPEM is used to parse RSA and ECDSA public keys from PEMs
+// parsePublicKeyPEM is used to parse RSA and ECDSA public keys from PEMs
 func parsePublicKeyPEM(data []byte) (crypto.PublicKey, error) {
 	block, data := pem.Decode(data)
 	if block != nil {
+		if len(data) > 0 {
+			return nil, errors.New("unexpected trailing data")
+		}
+
 		var rawKey interface{}
 		var err error
 		if rawKey, err = x509.ParsePKIXPublicKey(block.Bytes); err != nil {

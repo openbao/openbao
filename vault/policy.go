@@ -53,6 +53,14 @@ const (
 	ScanCapabilityInt
 )
 
+// Currently only ACL policies are supported, with PolicyTypeToken being an
+// alias for ACL policies. Support for RGP policies are Vault Enterprise only
+// and thus aren't supported by OpenBao. In the future, PolicyStore may need
+// to re-introduce support for the policyTypeMap, a cache which identifies
+// what type of policy a PolicyTypeToken actually is, if we introduce a new
+// policy type. However, if we do so, we should build the cache lazily,
+// which both improves memory consumption with large number of policies and
+// better supports namespace sealing.
 type PolicyType uint32
 
 const (

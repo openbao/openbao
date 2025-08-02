@@ -1,0 +1,86 @@
+name: cross-platform-build
+on:
+  workflow_call:
+    inputs:
+      matrix:
+        description: "JSON string for the platform matrix (from generate-platform-matrix.sh)"
+        required: true
+        type: string
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Set up cross compile
+        if: ${{ matrix.buildx != true }}
+        uses: ./.github/actions/set-up-cross-compile
+        with:
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+
+      - name: Build binary (native) - Unix
+        if: ${{ matrix.buildx != true && matrix.goos != 'windows' }}
+        id: native_unix
+        run: ./.github/scripts/build-binary.sh
+        shell: bash
+
+      - name: Build binary (native) - Windows
+        if: ${{ matrix.buildx != true && matrix.goos == 'windows' }}
+        id: native_windows
+        run: ./.github/scripts/build-binary.ps1
+        shell: pwsh
+
+      - name: Upload artifact (native)
+        if: ${{ matrix.buildx != true }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bao-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ steps.native_unix.outputs.out || steps.native_windows.outputs.out }}
+
+      - name: Set up QEMU
+        if: ${{ matrix.buildx == true }}
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: ${{ matrix.buildx == true }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: Get Go version
+        id: go-version
+        run: echo "v=$(cat .go-version)" >> $GITHUB_OUTPUT
+
+      - name: Build binary (buildx)
+        if: ${{ matrix.buildx == true }}
+        id: buildx
+        run: |
+          docker buildx build \
+            --file .github/docker/Dockerfile.cross \
+            --build-arg GOOS=${{ matrix.goos }} \
+            --build-arg GOARCH=${{ matrix.goarch }} \
+            --build-arg VERSION=${{ steps.go-version.outputs.v }} \
+            --output=type=local,dest=out \
+            --progress=plain \
+            .
+
+      - name: Upload artifact (buildx)
+        if: ${{ matrix.buildx == true }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bao-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: out/bao-${{ matrix.goos }}-${{ matrix.goarch }}
+
+      - name: Compile test binary
+        if: always()
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          echo "Compile tests for ${{ matrix.goos }}/${{ matrix.goarch }}"
+          make testcompile

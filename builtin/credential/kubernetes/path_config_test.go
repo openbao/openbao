@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -189,7 +190,7 @@ func TestConfig(t *testing.T) {
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
-	if resp.Error().Error() != "data does not contain any valid RSA or ECDSA public keys" {
+	if resp.Error().Error() != "data does not contain any valid public keys" {
 		t.Fatalf("got unexpected error: %v", resp.Error())
 	}
 
@@ -247,7 +248,7 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	cert, err := parsePublicKeyPEM([]byte(testRSACert))
+	cert, err := certutil.ParsePublicKeyPEM([]byte(testRSACert))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +294,7 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	cert, err = parsePublicKeyPEM([]byte(testRSACert))
+	cert, err = certutil.ParsePublicKeyPEM([]byte(testRSACert))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,12 +336,12 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	cert, err = parsePublicKeyPEM([]byte(testRSACert))
+	cert, err = certutil.ParsePublicKeyPEM([]byte(testRSACert))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cert2, err := parsePublicKeyPEM([]byte(testECCert))
+	cert2, err := certutil.ParsePublicKeyPEM([]byte(testECCert))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -382,7 +383,7 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	cert, err = parsePublicKeyPEM([]byte(testRSACert))
+	cert, err = certutil.ParsePublicKeyPEM([]byte(testRSACert))
 	if err != nil {
 		t.Fatal(err)
 	}

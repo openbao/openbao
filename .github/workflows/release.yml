@@ -11,13 +11,13 @@ on:
         required: true
         default: true
         type: boolean
-      dodistrelease:
-        description: "Release distribution source tarball"
+      dogorelease:
+        description: "Run goreleaser"
         required: true
         default: true
         type: boolean
-      dogorelease:
-        description: "Run goreleaser"
+      dodistrelease:
+        description: "Release distribution source tarball"
         required: true
         default: true
         type: boolean
@@ -50,6 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - setup
+    outputs:
+      version: ${{ steps.make-distribution-tarball.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.1.7
@@ -125,17 +127,16 @@ jobs:
           tar --exclude .git --exclude '*.gz' --exclude '*/ui/.yarn/cache' --exclude node_modules -cJf ../openbao-dist-$version.tar.xz --xform="s,^\.,openbao-dist-$version," .
           mv ../*.xz .
 
-      - name: Upload distribution source tarball
+      - name: Upload distribution source tarball artifact
         if: inputs.dodistrelease
-        env:
-          GITHUB_TOKEN: ${{ github.TOKEN }}
-        run: |
-          tagname=${{ steps.make-distribution-tarball.outputs.version }}
-          gh release create -d -t v$tagname -n 'notes to be replaced' --verify-tag v$tagname *.xz
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-tarball
+          path: '*.xz'
+          retention-days: 1
 
-  release:
+  release-main:
     runs-on: ubuntu-latest
-    if: inputs.dogorelease
     needs:
       - build-ui-dist
     env:
@@ -152,16 +153,18 @@ jobs:
           - windows
     steps:
       - name: "Check free space on runner"
+        if: inputs.dogorelease
         run: |
           df -h .
 
       - name: Checkout
+        if: inputs.dogorelease
         uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 0 # Required by GoRelease
 
       - name: Configure nightly build
-        if: inputs.nightly
+        if: inputs.dogorelease && inputs.nightly
         run: |
           # Locally remove previous nightly tags so they do not interfere
           # with nightly tag computation. Also add the upstream.
@@ -181,12 +184,15 @@ jobs:
           git tag "$nightly_tag"
 
       - name: Golang Setup
+        if: inputs.dogorelease
         uses: ./.github/actions/set-up-go
 
       - name: go-check
+        if: inputs.dogorelease
         run: go version
 
       - name: UI Cache Setup
+        if: inputs.dogorelease
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
@@ -195,18 +201,23 @@ jobs:
 
       # Supports syft/sbom generation
       - uses: anchore/sbom-action/download-syft@v0
+        if: inputs.dogorelease
 
         # Supports Buildx
       - name: Qemu Setup
+        if: inputs.dogorelease
         uses: docker/setup-qemu-action@v3
 
       - name: Buildx Setup
+        if: inputs.dogorelease
         uses: docker/setup-buildx-action@v3
 
       - name: Cosign Install
+        if: inputs.dogorelease
         uses: sigstore/cosign-installer@v3
 
       - name: GPG Import
+        if: inputs.dogorelease
         id: gpg-import
         uses: crazy-max/ghaction-import-gpg@v6
         with:
@@ -214,7 +225,7 @@ jobs:
           passphrase: ${{ secrets.GPG_PASSWORD }}
 
       - name: "Docker Login: ghcr.io"
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -222,14 +233,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Docker Login: docker.io"
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: "Docker Login: quay.io"
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
         uses: docker/login-action@v3
         with:
           registry: quay.io
@@ -238,7 +249,7 @@ jobs:
 
         # Needed for nPFM
       - name: Create GPG Signing Key File
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
         run: |
           GPG_KEY_FILE=/tmp/signing-key.gpg
           echo "${{ secrets.GPG_PRIVATE_KEY_BASE64 }}" | base64 -di > "${GPG_KEY_FILE}"
@@ -247,7 +258,7 @@ jobs:
           GPG_TTY: /dev/ttys000 # Set the GPG_TTY to avoid issues with pinentry
 
       - name: Install GoReleaser
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
         uses: goreleaser/goreleaser-action@v6
         with:
           install-only: true
@@ -255,11 +266,11 @@ jobs:
           version: v2.5.1
 
       - name: Install C compiler for arm64 CGO cross-compilation
-        if: matrix.release_os == 'hsm'
+        if: inputs.dogorelease && matrix.release_os == 'hsm'
         run: sudo apt install -y gcc-aarch64-linux-gnu
 
       - name: "GoReleaser: Release"
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
         run: |
           if [[ ! -f "goreleaser.${{ matrix.release_os }}.yaml" ]]; then
             yq e '.builds[0].goos |= ["${{ matrix.release_os }}"] | .checksum.name_template |= "checksums-${{ matrix.release_os }}.txt"' "goreleaser.other.yaml" | goreleaser release --clean --timeout=60m --verbose --parallelism 2 -f -
@@ -282,3 +293,33 @@ jobs:
           if [ -n "${GPG_KEY_FILE}" ]; then
             rm -rf "${GPG_KEY_FILE}"
           fi
+
+  release-dist:
+    runs-on: ubuntu-latest
+    if: inputs.dodistrelease
+    needs:
+      - build-ui-dist
+      - release-main
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAGNAME: v${{ needs.build-ui-dist.outputs.version }}
+    steps:
+      - name: Checkout
+        if: ${{ !inputs.dogorelease }}
+        uses: actions/checkout@v4.1.7
+        with:
+          fetch-tags: true
+
+      - name: Create release if necessary
+        if: ${{ !inputs.dogorelease }}
+        run: |
+          gh release create -t $TAGNAME --verify-tag $TAGNAME || true
+
+      - name: Download dist-tarball artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-tarball
+
+      - name: Release distribution source tarball
+        run: |
+          gh release upload $TAGNAME *.xz

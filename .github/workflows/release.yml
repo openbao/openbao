@@ -11,6 +11,16 @@ on:
         required: true
         default: true
         type: boolean
+      dodistrelease:
+        description: "Release distribution source tarball"
+        required: true
+        default: true
+        type: boolean
+      dogorelease:
+        description: "Run goreleaser"
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -36,7 +46,7 @@ jobs:
             exit 1
           fi
 
-  build-ui:
+  build-ui-dist:
     runs-on: ubuntu-latest
     needs:
       - setup
@@ -96,11 +106,38 @@ jobs:
         run: |
           make static-dist
 
+      - name: Make LICENSE_DEPENDENCIES.md
+        if: inputs.dodistrelease
+        run: |
+          go run github.com/google/go-licenses@v1.6.0 report ./... --ignore github.com/openbao/openbao --template LICENSE_DEPENDENCIES.tpl > LICENSE_DEPENDENCIES.md
+
+      - name: go mod vendor
+        if: inputs.dodistrelease
+        run: |
+          go mod vendor
+
+      - name: Make distribution source tarball
+        if: inputs.dodistrelease
+        id: make-distribution-tarball
+        run: |
+          version="$(git describe --tags --exclude "api/*" --exclude "sdk/*" --abbrev=0 | sed 's/^v//')"
+          echo "version=$version" | tee -a "$GITHUB_OUTPUT"
+          tar --exclude .git --exclude '*.gz' --exclude '*/ui/.yarn/cache' --exclude node_modules -cJf ../openbao-dist-$version.tar.xz --xform="s,^\.,openbao-dist-$version," .
+          mv ../*.xz .
+
+      - name: Upload distribution source tarball
+        if: inputs.dodistrelease
+        env:
+          GITHUB_TOKEN: ${{ github.TOKEN }}
+        run: |
+          tagname=${{ steps.make-distribution-tarball.outputs.version }}
+          gh release create -d -t v$tagname -n 'notes to be replaced' --verify-tag v$tagname *.xz
+
   release:
     runs-on: ubuntu-latest
+    if: inputs.dogorelease
     needs:
-      - setup
-      - build-ui
+      - build-ui-dist
     env:
       DOCKER_CLI_EXPERIMENTAL: "enabled"
     strategy:

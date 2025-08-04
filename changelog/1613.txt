@@ -1,0 +1,3 @@
+```release-note:bug
+core/policies: fix bug with missing existing policies in namespaces during failover, startup
+```

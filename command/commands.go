@@ -444,6 +444,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"operator rotate-keys": func() (cli.Command, error) {
+			return &OperatorRotateKeysCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"operator seal": func() (cli.Command, error) {
 			return &OperatorSealCommand{
 				BaseCommand: getBaseCommand(),

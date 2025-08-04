@@ -38,7 +38,7 @@ func testCoreRotateLifecycleCommon(t *testing.T, c *Core, recovery bool) {
 		expected = "no recovery rotation in progress"
 	}
 
-	require.ErrorContainsf(t, err, expected, "rotation operation shouldn't be in progress, err: %v", err)
+	require.ErrorContainsf(t, err, expected, "rotate operation shouldn't be in progress, err: %v", err)
 
 	// Should be no progress
 	var progressErr error

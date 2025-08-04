@@ -12,12 +12,12 @@ import (
 )
 
 // Deprecated: use RotateRootStatus instead.
-func (c *Sys) RekeyStatus() (*RekeyStatusResponse, error) {
+func (c *Sys) RekeyStatus() (*RotateStatusResponse, error) {
 	return c.RekeyStatusWithContext(context.Background())
 }
 
 // Deprecated: use RotateRootStatusWithContext instead.
-func (c *Sys) RekeyStatusWithContext(ctx context.Context) (*RekeyStatusResponse, error) {
+func (c *Sys) RekeyStatusWithContext(ctx context.Context) (*RotateStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -29,18 +29,18 @@ func (c *Sys) RekeyStatusWithContext(ctx context.Context) (*RekeyStatusResponse,
 	}
 	defer resp.Body.Close()
 
-	var result RekeyStatusResponse
+	var result RotateStatusResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
 }
 
 // Deprecated: use RotateRecoveryStatus instead.
-func (c *Sys) RekeyRecoveryKeyStatus() (*RekeyStatusResponse, error) {
+func (c *Sys) RekeyRecoveryKeyStatus() (*RotateStatusResponse, error) {
 	return c.RekeyRecoveryKeyStatusWithContext(context.Background())
 }
 
 // Deprecated: use RotateRecoveryStatusWithContext instead.
-func (c *Sys) RekeyRecoveryKeyStatusWithContext(ctx context.Context) (*RekeyStatusResponse, error) {
+func (c *Sys) RekeyRecoveryKeyStatusWithContext(ctx context.Context) (*RotateStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -52,18 +52,18 @@ func (c *Sys) RekeyRecoveryKeyStatusWithContext(ctx context.Context) (*RekeyStat
 	}
 	defer resp.Body.Close()
 
-	var result RekeyStatusResponse
+	var result RotateStatusResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
 }
 
 // Deprecated: use RotateRootVerificationStatus instead.
-func (c *Sys) RekeyVerificationStatus() (*RekeyVerificationStatusResponse, error) {
+func (c *Sys) RekeyVerificationStatus() (*RotateVerificationStatusResponse, error) {
 	return c.RekeyVerificationStatusWithContext(context.Background())
 }
 
 // Deprecated: use RotateRootVerificationStatusWithContext instead.
-func (c *Sys) RekeyVerificationStatusWithContext(ctx context.Context) (*RekeyVerificationStatusResponse, error) {
+func (c *Sys) RekeyVerificationStatusWithContext(ctx context.Context) (*RotateVerificationStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -75,18 +75,18 @@ func (c *Sys) RekeyVerificationStatusWithContext(ctx context.Context) (*RekeyVer
 	}
 	defer resp.Body.Close()
 
-	var result RekeyVerificationStatusResponse
+	var result RotateVerificationStatusResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
 }
 
 // Deprecated: use RotateRecoveryVerificationStatus instead.
-func (c *Sys) RekeyRecoveryKeyVerificationStatus() (*RekeyVerificationStatusResponse, error) {
+func (c *Sys) RekeyRecoveryKeyVerificationStatus() (*RotateVerificationStatusResponse, error) {
 	return c.RekeyRecoveryKeyVerificationStatusWithContext(context.Background())
 }
 
 // Deprecated: use RotateRecoveryVerificationStatusWithContext instead.
-func (c *Sys) RekeyRecoveryKeyVerificationStatusWithContext(ctx context.Context) (*RekeyVerificationStatusResponse, error) {
+func (c *Sys) RekeyRecoveryKeyVerificationStatusWithContext(ctx context.Context) (*RotateVerificationStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -98,18 +98,18 @@ func (c *Sys) RekeyRecoveryKeyVerificationStatusWithContext(ctx context.Context)
 	}
 	defer resp.Body.Close()
 
-	var result RekeyVerificationStatusResponse
+	var result RotateVerificationStatusResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
 }
 
 // Deprecated: use RotateRootInit instead.
-func (c *Sys) RekeyInit(config *RekeyInitRequest) (*RekeyStatusResponse, error) {
+func (c *Sys) RekeyInit(config *RotateInitRequest) (*RotateStatusResponse, error) {
 	return c.RekeyInitWithContext(context.Background(), config)
 }
 
 // Deprecated: use RotateRootInitWithContext instead.
-func (c *Sys) RekeyInitWithContext(ctx context.Context, config *RekeyInitRequest) (*RekeyStatusResponse, error) {
+func (c *Sys) RekeyInitWithContext(ctx context.Context, config *RotateInitRequest) (*RotateStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -124,18 +124,18 @@ func (c *Sys) RekeyInitWithContext(ctx context.Context, config *RekeyInitRequest
 	}
 	defer resp.Body.Close()
 
-	var result RekeyStatusResponse
+	var result RotateStatusResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
 }
 
 // Deprecated: use RotateRecoveryInit instead.
-func (c *Sys) RekeyRecoveryKeyInit(config *RekeyInitRequest) (*RekeyStatusResponse, error) {
+func (c *Sys) RekeyRecoveryKeyInit(config *RotateInitRequest) (*RotateStatusResponse, error) {
 	return c.RekeyRecoveryKeyInitWithContext(context.Background(), config)
 }
 
 // Deprecated: use RotateRecoveryInitWithContext instead.
-func (c *Sys) RekeyRecoveryKeyInitWithContext(ctx context.Context, config *RekeyInitRequest) (*RekeyStatusResponse, error) {
+func (c *Sys) RekeyRecoveryKeyInitWithContext(ctx context.Context, config *RotateInitRequest) (*RotateStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -150,7 +150,7 @@ func (c *Sys) RekeyRecoveryKeyInitWithContext(ctx context.Context, config *Rekey
 	}
 	defer resp.Body.Close()
 
-	var result RekeyStatusResponse
+	var result RotateStatusResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
 }
@@ -232,12 +232,12 @@ func (c *Sys) RekeyRecoveryKeyVerificationCancelWithContext(ctx context.Context)
 }
 
 // Deprecated: use RotateRootUpdate instead.
-func (c *Sys) RekeyUpdate(shard, nonce string) (*RekeyUpdateResponse, error) {
+func (c *Sys) RekeyUpdate(shard, nonce string) (*RotateUpdateResponse, error) {
 	return c.RekeyUpdateWithContext(context.Background(), shard, nonce)
 }
 
 // Deprecated: use RotateRootUpdateWithContext instead.
-func (c *Sys) RekeyUpdateWithContext(ctx context.Context, shard, nonce string) (*RekeyUpdateResponse, error) {
+func (c *Sys) RekeyUpdateWithContext(ctx context.Context, shard, nonce string) (*RotateUpdateResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -257,18 +257,18 @@ func (c *Sys) RekeyUpdateWithContext(ctx context.Context, shard, nonce string) (
 	}
 	defer resp.Body.Close()
 
-	var result RekeyUpdateResponse
+	var result RotateUpdateResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
 }
 
 // Deprecated: use RotateRecoveryUpdate instead.
-func (c *Sys) RekeyRecoveryKeyUpdate(shard, nonce string) (*RekeyUpdateResponse, error) {
+func (c *Sys) RekeyRecoveryKeyUpdate(shard, nonce string) (*RotateUpdateResponse, error) {
 	return c.RekeyRecoveryKeyUpdateWithContext(context.Background(), shard, nonce)
 }
 
 // Deprecated: use RotateRecoveryUpdateWithContext instead.
-func (c *Sys) RekeyRecoveryKeyUpdateWithContext(ctx context.Context, shard, nonce string) (*RekeyUpdateResponse, error) {
+func (c *Sys) RekeyRecoveryKeyUpdateWithContext(ctx context.Context, shard, nonce string) (*RotateUpdateResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -288,18 +288,18 @@ func (c *Sys) RekeyRecoveryKeyUpdateWithContext(ctx context.Context, shard, nonc
 	}
 	defer resp.Body.Close()
 
-	var result RekeyUpdateResponse
+	var result RotateUpdateResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
 }
 
 // Deprecated: use RotateRootRetrieveBackup instead.
-func (c *Sys) RekeyRetrieveBackup() (*RekeyRetrieveResponse, error) {
+func (c *Sys) RekeyRetrieveBackup() (*RotateRetrieveResponse, error) {
 	return c.RekeyRetrieveBackupWithContext(context.Background())
 }
 
 // Deprecated: use RotateRootRetrieveBackupWithContext instead.
-func (c *Sys) RekeyRetrieveBackupWithContext(ctx context.Context) (*RekeyRetrieveResponse, error) {
+func (c *Sys) RekeyRetrieveBackupWithContext(ctx context.Context) (*RotateRetrieveResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -319,7 +319,7 @@ func (c *Sys) RekeyRetrieveBackupWithContext(ctx context.Context) (*RekeyRetriev
 		return nil, errors.New("data from server response is empty")
 	}
 
-	var result RekeyRetrieveResponse
+	var result RotateRetrieveResponse
 	err = mapstructure.Decode(secret.Data, &result)
 	if err != nil {
 		return nil, err
@@ -329,12 +329,12 @@ func (c *Sys) RekeyRetrieveBackupWithContext(ctx context.Context) (*RekeyRetriev
 }
 
 // Deprecated: use RotateRecoveryRetrieveBackup instead.
-func (c *Sys) RekeyRetrieveRecoveryBackup() (*RekeyRetrieveResponse, error) {
+func (c *Sys) RekeyRetrieveRecoveryBackup() (*RotateRetrieveResponse, error) {
 	return c.RekeyRetrieveRecoveryBackupWithContext(context.Background())
 }
 
 // Deprecated: use RotateRecoveryRetrieveBackupWithContext instead.
-func (c *Sys) RekeyRetrieveRecoveryBackupWithContext(ctx context.Context) (*RekeyRetrieveResponse, error) {
+func (c *Sys) RekeyRetrieveRecoveryBackupWithContext(ctx context.Context) (*RotateRetrieveResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -354,7 +354,7 @@ func (c *Sys) RekeyRetrieveRecoveryBackupWithContext(ctx context.Context) (*Reke
 		return nil, errors.New("data from server response is empty")
 	}
 
-	var result RekeyRetrieveResponse
+	var result RotateRetrieveResponse
 	err = mapstructure.Decode(secret.Data, &result)
 	if err != nil {
 		return nil, err
@@ -404,12 +404,12 @@ func (c *Sys) RekeyDeleteRecoveryBackupWithContext(ctx context.Context) error {
 }
 
 // Deprecated: use RotateRootVerificationUpdate instead.
-func (c *Sys) RekeyVerificationUpdate(shard, nonce string) (*RekeyVerificationUpdateResponse, error) {
+func (c *Sys) RekeyVerificationUpdate(shard, nonce string) (*RotateVerificationUpdateResponse, error) {
 	return c.RekeyVerificationUpdateWithContext(context.Background(), shard, nonce)
 }
 
 // Deprecated: use RotateRootVerificationUpdateWithContext instead.
-func (c *Sys) RekeyVerificationUpdateWithContext(ctx context.Context, shard, nonce string) (*RekeyVerificationUpdateResponse, error) {
+func (c *Sys) RekeyVerificationUpdateWithContext(ctx context.Context, shard, nonce string) (*RotateVerificationUpdateResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -429,18 +429,18 @@ func (c *Sys) RekeyVerificationUpdateWithContext(ctx context.Context, shard, non
 	}
 	defer resp.Body.Close()
 
-	var result RekeyVerificationUpdateResponse
+	var result RotateVerificationUpdateResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
 }
 
 // Deprecated: use RotateRecoveryVerificationUpdate instead.
-func (c *Sys) RekeyRecoveryKeyVerificationUpdate(shard, nonce string) (*RekeyVerificationUpdateResponse, error) {
+func (c *Sys) RekeyRecoveryKeyVerificationUpdate(shard, nonce string) (*RotateVerificationUpdateResponse, error) {
 	return c.RekeyRecoveryKeyVerificationUpdateWithContext(context.Background(), shard, nonce)
 }
 
 // Deprecated: use RotateRecoveryVerificationUpdateWithContext instead.
-func (c *Sys) RekeyRecoveryKeyVerificationUpdateWithContext(ctx context.Context, shard, nonce string) (*RekeyVerificationUpdateResponse, error) {
+func (c *Sys) RekeyRecoveryKeyVerificationUpdateWithContext(ctx context.Context, shard, nonce string) (*RotateVerificationUpdateResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -460,59 +460,7 @@ func (c *Sys) RekeyRecoveryKeyVerificationUpdateWithContext(ctx context.Context,
 	}
 	defer resp.Body.Close()
 
-	var result RekeyVerificationUpdateResponse
+	var result RotateVerificationUpdateResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
-}
-
-type RekeyInitRequest struct {
-	SecretShares        int      `json:"secret_shares"`
-	SecretThreshold     int      `json:"secret_threshold"`
-	StoredShares        int      `json:"stored_shares"`
-	PGPKeys             []string `json:"pgp_keys"`
-	Backup              bool
-	RequireVerification bool `json:"require_verification"`
-}
-
-type RekeyStatusResponse struct {
-	Nonce                string   `json:"nonce"`
-	Started              bool     `json:"started"`
-	T                    int      `json:"t"`
-	N                    int      `json:"n"`
-	Progress             int      `json:"progress"`
-	Required             int      `json:"required"`
-	PGPFingerprints      []string `json:"pgp_fingerprints"`
-	Backup               bool     `json:"backup"`
-	VerificationRequired bool     `json:"verification_required"`
-	VerificationNonce    string   `json:"verification_nonce"`
-}
-
-type RekeyUpdateResponse struct {
-	Nonce                string   `json:"nonce"`
-	Complete             bool     `json:"complete"`
-	Keys                 []string `json:"keys"`
-	KeysB64              []string `json:"keys_base64"`
-	PGPFingerprints      []string `json:"pgp_fingerprints"`
-	Backup               bool     `json:"backup"`
-	VerificationRequired bool     `json:"verification_required"`
-	VerificationNonce    string   `json:"verification_nonce,omitempty"`
-}
-
-type RekeyRetrieveResponse struct {
-	Nonce   string              `json:"nonce" mapstructure:"nonce"`
-	Keys    map[string][]string `json:"keys" mapstructure:"keys"`
-	KeysB64 map[string][]string `json:"keys_base64" mapstructure:"keys_base64"`
-}
-
-type RekeyVerificationStatusResponse struct {
-	Nonce    string `json:"nonce"`
-	Started  bool   `json:"started"`
-	T        int    `json:"t"`
-	N        int    `json:"n"`
-	Progress int    `json:"progress"`
-}
-
-type RekeyVerificationUpdateResponse struct {
-	Nonce    string `json:"nonce"`
-	Complete bool   `json:"complete"`
 }

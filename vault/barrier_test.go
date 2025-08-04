@@ -361,7 +361,7 @@ func testBarrier_Rotate(t *testing.T, b SecurityBarrier) {
 	}
 }
 
-func testBarrier_Rekey(t *testing.T, b SecurityBarrier) {
+func testBarrier_RotateRootKey(t *testing.T, b SecurityBarrier) {
 	// Initialize the barrier
 	key, _ := b.GenerateKey(rand.Reader)
 	b.Initialize(context.Background(), key, nil, rand.Reader)
@@ -381,9 +381,9 @@ func testBarrier_Rekey(t *testing.T, b SecurityBarrier) {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Rekey to a new key
+	// Rotate to a new root key
 	newKey, _ := b.GenerateKey(rand.Reader)
-	err = b.Rekey(context.Background(), newKey)
+	err = b.RotateRootKey(context.Background(), newKey)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -512,7 +512,7 @@ func testBarrier_Upgrade(t *testing.T, b1, b2 SecurityBarrier) {
 	}
 }
 
-func testBarrier_Upgrade_Rekey(t *testing.T, b1, b2 SecurityBarrier) {
+func testBarrier_Upgrade_RotateRootKey(t *testing.T, b1, b2 SecurityBarrier) {
 	// Initialize the barrier
 	key, _ := b1.GenerateKey(rand.Reader)
 	b1.Initialize(context.Background(), key, nil, rand.Reader)
@@ -525,9 +525,9 @@ func testBarrier_Upgrade_Rekey(t *testing.T, b1, b2 SecurityBarrier) {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Rekey to a new key
+	// Rotate to a new root key
 	newKey, _ := b1.GenerateKey(rand.Reader)
-	err = b1.Rekey(context.Background(), newKey)
+	err = b1.RotateRootKey(context.Background(), newKey)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

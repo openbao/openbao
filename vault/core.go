@@ -81,8 +81,8 @@ const (
 	coreLeaderPrefix = "core/leader/"
 
 	// coreKeyringCanaryPath is used as a canary to indicate to replicated
-	// clusters that they need to perform a rekey operation synchronously; this
-	// isn't keyring-canary to avoid ignoring it when ignoring core/keyring
+	// clusters that they need to perform a rotate operation synchronously;
+	// this isn't keyring-canary to avoid ignoring it when ignoring core/keyring
 	coreKeyringCanaryPath = "core/canary-keyring"
 
 	// coreGroupPolicyApplicationPath is used to store the behaviour for
@@ -324,9 +324,9 @@ type Core struct {
 	// These variables holds the config and shares we have until we reach
 	// enough to verify the appropriate root key. Note that the same lock is
 	// used; this isn't time-critical so this shouldn't be a problem.
-	barrierRekeyConfig  *SealConfig
-	recoveryRekeyConfig *SealConfig
-	rekeyLock           sync.RWMutex
+	barrierRotationConfig  *SealConfig
+	recoveryRotationConfig *SealConfig
+	rotationLock           sync.RWMutex
 
 	// mounts is loaded after unseal since it is a protected
 	// configuration
@@ -1843,9 +1843,9 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 			return fmt.Errorf("error generating new root key: %w", err)
 		}
 
-		// Rekey the barrier.
-		if err := c.barrier.Rekey(ctx, newRootKey); err != nil {
-			return fmt.Errorf("error rekeying barrier during migration: %w", err)
+		// Rotate the root key
+		if err := c.barrier.RotateRootKey(ctx, newRootKey); err != nil {
+			return fmt.Errorf("error rotating root key during migration: %w", err)
 		}
 
 		// Store the new root key
@@ -2405,7 +2405,7 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 		c.physicalCache.SetEnabled(true)
 	}
 
-	// Purge these for safety in case of a rekey
+	// Purge these for safety in case of a rotation
 	_ = c.seal.SetBarrierConfig(ctx, nil)
 	if c.seal.RecoveryKeySupported() {
 		_ = c.seal.SetRecoveryConfig(ctx, nil)
@@ -2496,9 +2496,9 @@ func (c *Core) preSeal() error {
 	c.postUnsealFuncs = nil
 	c.activeTime = time.Time{}
 
-	// Clear any rekey progress
-	c.barrierRekeyConfig = nil
-	c.recoveryRekeyConfig = nil
+	// Clear any rotation progress
+	c.barrierRotationConfig = nil
+	c.recoveryRotationConfig = nil
 
 	if c.metricsCh != nil {
 		close(c.metricsCh)

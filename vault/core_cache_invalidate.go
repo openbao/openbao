@@ -62,6 +62,8 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 			return err
 		}
 
+		// TODO: invalidate mount table
+
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath):
 		policyType := PolicyTypeACL // for now it is safe to assume type is ACL
 		err := c.policyStore.invalidate(ctx, strings.TrimPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath), policyType)
@@ -86,6 +88,13 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 				c.processInvalidationFailure(key, err)
 			}
 		}()
+
+	case namespacedKey == coreMountConfigPath || namespacedKey == coreLocalMountConfigPath:
+	// TODO: handle non transaction storage
+
+	case strings.HasPrefix(namespacedKey, coreMountConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalMountConfigPath+"/") ||
+		strings.HasPrefix(namespacedKey, coreAuthConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalAuthConfigPath+"/"):
+		c.invalidateMount(namespace.ContextWithNamespace(c.activeContext, ns), namespacedKey)
 
 	default:
 		c.logger.Warn("no idea how to invalidate cache. Maybe it's not cached and this is fine, maybe not", "key", key)

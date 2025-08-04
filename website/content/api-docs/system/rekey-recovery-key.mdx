@@ -6,6 +6,13 @@ description: >-
 
 # `/sys/rekey-recovery-key`
 
+:::warning
+
+Note: As of v2.4.0 usage of these endpoints will be disabled by default [deprecation notice](/docs/deprecation/unauthed-rekey).
+To view new authenticated version of the rekey endpoints, please visit [rotation page](./rotate/index).
+
+:::
+
 The `/sys/rekey-recovery-key` endpoints are used to rekey the recovery keys for
 OpenBao. Rekey endpoints only apply to seals that support recovery keys.
 

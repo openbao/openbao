@@ -152,7 +152,7 @@ BAO_KMIP_TLS12_CIPHERS
 ## Key rotation
 
 This seal supports rotating keys by using different key IDs to track key versions. To rotate
-the key value, create a new key or perform a rekey operation in the KMIP server and update OpenBao's
+the key value, create a new key or perform a rotation in the KMIP server and update OpenBao's
 configuration with the new key ID. 
 The key type and encryption algorithm can also be changed as OpenBao keeps track of the algorithm.
 Restart your OpenBao instance to pick up the new keyID and all new encryption operations will use 

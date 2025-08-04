@@ -38,12 +38,12 @@ func (b *databaseBackend) secretCredsRenew() framework.OperationFunc {
 		// Get the username from the internal data
 		username, ok := req.Secret.InternalData["username"].(string)
 		if !ok {
-			return nil, errors.New(`secret is missing "username" string in internal data`)
+			return nil, errors.New(`secret is missing "username" field in internal data`)
 		}
 
 		roleName, ok := req.Secret.InternalData["role"].(string)
 		if !ok {
-			return nil, errors.New(`secret is missing "role" string in internal data`)
+			return nil, errors.New(`secret is missing "role" field in internal data`)
 		}
 
 		role, err := b.Role(ctx, req.Storage, roleName)

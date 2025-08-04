@@ -81,7 +81,7 @@ const (
 	coreLeaderPrefix = "core/leader/"
 
 	// coreKeyringCanaryPath is used as a canary to indicate to replicated
-	// clusters that they need to perform a rotate operation synchronously;
+	// clusters that they need to perform a rotation synchronously;
 	// this isn't keyring-canary to avoid ignoring it when ignoring core/keyring
 	coreKeyringCanaryPath = "core/canary-keyring"
 

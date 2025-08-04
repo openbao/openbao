@@ -25,7 +25,7 @@ type LogFile struct {
 	// Path to the log file
 	logPath string
 
-	// duration between each file rotate operation
+	// duration between each file rotation
 	duration time.Duration
 
 	// lastCreated represents the creation time of the latest log

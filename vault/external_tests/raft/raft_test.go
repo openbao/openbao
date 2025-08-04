@@ -803,13 +803,14 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			}
 
 			if tCaseLocal.Rotate {
-				// Rotate
+				// Rotate keys
 				cluster.BarrierKeys = testhelpers.RotateClusterKeys(t, cluster, false)
 
 				testhelpers.EnsureStableActiveNode(t, cluster)
 				testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
 			}
-			if tCaseLocal.Rotate {
+
+			if tCaseLocal.RotateKeyring {
 				// Set the key clean up to 0 so it's cleaned immediately. This
 				// will simulate that there are no ways to upgrade to the latest
 				// term.

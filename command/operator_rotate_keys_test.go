@@ -344,8 +344,11 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 		for _, key := range keys[:len(keys)-1] {
 			stdinR, stdinW := io.Pipe()
 			go func() {
-				stdinW.Write([]byte(key))
-				stdinW.Close()
+				_, err := stdinW.Write([]byte(key))
+				require.NoError(t, err)
+
+				err = stdinW.Close()
+				require.NoError(t, err)
 			}()
 
 			ui, cmd := testOperatorRotateKeysCommand(t)
@@ -361,8 +364,11 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 
 		stdinR, stdinW := io.Pipe()
 		go func() {
-			stdinW.Write([]byte(keys[len(keys)-1])) // the last unseal key
-			stdinW.Close()
+			_, err := stdinW.Write([]byte(keys[len(keys)-1])) // the last unseal key
+			require.NoError(t, err)
+
+			err = stdinW.Close()
+			require.NoError(t, err)
 		}()
 
 		ui, cmd := testOperatorRotateKeysCommand(t)

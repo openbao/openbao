@@ -668,7 +668,7 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 }
 
 // handleRotateInitDelete handles the DELETE `/sys/rotate/root/init` and `/sys/rotate/recovery/init`
-// endpoints cancelling any in-progress rotate operations.
+// endpoints cancelling any in-progress rotation.
 func (b *SystemBackend) handleRotateInitDelete() framework.OperationFunc {
 	return func(_ context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 		recovery := strings.Contains(req.Path, "recovery")

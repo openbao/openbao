@@ -112,10 +112,9 @@ func (c *OperatorRotateKeysCommand) Flags() *FlagSets {
 		Name:    "init",
 		Target:  &c.flagInit,
 		Default: false,
-		Usage: "Initialize the rotate operation. This can only be done if no " +
-			"rotate operation is in progress. Customize the new number of key " +
-			"shares and key threshold using the -key-shares and -key-threshold " +
-			"flags.",
+		Usage: "Initialize the rotation. This can only be done if there's not " +
+			"one in progress. Customize the new number of key shares and threshold " +
+			"using the -key-shares and -key-threshold flags respectively.",
 	})
 
 	f.BoolVar(&BoolVar{
@@ -469,10 +468,17 @@ func (c *OperatorRotateKeysCommand) provide(client *api.Client, key string) int 
 		}
 
 		w := getWriterFromUI(c.UI)
-		fmt.Fprintf(w, "rotate operation nonce: %s\n", nonce)
-		fmt.Fprintf(w, "%s Key (will be hidden): ", keyTypeRequired)
+		_, err := fmt.Fprintf(w, "rotation nonce: %s\n", nonce)
+		if err != nil {
+			c.UI.Error("failed to output rotation nonce")
+		}
+
+		_, err = fmt.Fprintf(w, "%s Key (will be hidden): \n", keyTypeRequired)
+		if err != nil {
+			c.UI.Error("failed to output key type")
+		}
+
 		key, err = password.Read(os.Stdin)
-		fmt.Fprintf(w, "\n")
 		if err != nil {
 			if err == password.ErrInterrupted {
 				c.UI.Error("user canceled")
@@ -531,7 +537,7 @@ func (c *OperatorRotateKeysCommand) provide(client *api.Client, key string) int 
 			resp.(*api.RotateUpdateResponse))
 	}
 
-	c.UI.Output(wrapAtLength("Rotation verification successful. The rotate operation is complete and the new keys are now active."))
+	c.UI.Output(wrapAtLength("Rotation verification successful. The rotation is complete and the new keys are now active."))
 	return 0
 }
 

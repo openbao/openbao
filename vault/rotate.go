@@ -86,7 +86,7 @@ func (c *Core) RotationProgress(recovery, verification bool) (bool, int, error) 
 	}
 
 	if conf == nil {
-		return false, 0, errors.New("rotate operation not in progress")
+		return false, 0, errors.New("rotation not in progress")
 	}
 
 	if verification {
@@ -99,7 +99,7 @@ func (c *Core) RotationProgress(recovery, verification bool) (bool, int, error) 
 // InitRotation will either initialize the rotation of barrier or recovery key
 // depending on the value of recovery parameter.
 func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bool) (*RekeyResult, logical.HTTPCodedError) {
-	// Initialize the nonce for rotate operation
+	// Initialize the nonce for rotation
 	nonce, err := uuid.GenerateUUID()
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("error generating nonce for procedure: %w", err).Error())
@@ -241,7 +241,7 @@ func (c *Core) initBarrierRotation(config *SealConfig, nonce string) logical.HTT
 	return nil
 }
 
-// CancelRotation is used to cancel an in-progress rotate operation.
+// CancelRotation is used to cancel an in-progress rotation.
 func (c *Core) CancelRotation(recovery bool) logical.HTTPCodedError {
 	c.rotationLock.Lock()
 	defer c.rotationLock.Unlock()
@@ -415,17 +415,17 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 // enough shares to recover the key.
 func (c *Core) progressRotation(rotationConfig, existingConfig *SealConfig, key []byte, nonce string) ([]byte, logical.HTTPCodedError) {
 	if len(rotationConfig.VerificationKey) > 0 {
-		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("rotate operation already finished; verification must be performed; nonce for the verification operation is %q", rotationConfig.VerificationNonce))
+		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("rotation already finished; verification must be performed; nonce for the verification operation is %q", rotationConfig.VerificationNonce))
 	}
 
 	if nonce != rotationConfig.Nonce {
-		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("incorrect nonce supplied; nonce for rotate operation is %q", rotationConfig.Nonce))
+		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("incorrect nonce supplied; nonce for rotation is %q", rotationConfig.Nonce))
 	}
 
 	// Check if we already have this piece
 	for _, existing := range rotationConfig.RotationProgress {
 		if subtle.ConstantTimeCompare(existing, key) == 1 {
-			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this rotate operation")
+			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this rotation")
 		}
 	}
 
@@ -556,7 +556,7 @@ func (c *Core) requireVerification(rotationConfig *SealConfig, rotationResult *R
 	return rotationResult, nil
 }
 
-// VerifyRotation verifies the progress of the verification of the rotate operation.
+// VerifyRotation verifies the progress of the verification of the rotation.
 func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, recovery bool) (ret *RekeyVerifyResult, retErr logical.HTTPCodedError) {
 	c.rotationLock.Lock()
 	defer c.rotationLock.Unlock()

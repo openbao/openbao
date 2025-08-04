@@ -25,11 +25,15 @@ func (c *Core) ListNamespaces(ctx context.Context) ([]*namespace.Namespace, erro
 }
 
 func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView {
+	return NewBarrierView(barrier, NamespaceBarrierPrefix(ns))
+}
+
+func NamespaceBarrierPrefix(ns *namespace.Namespace) string {
 	if ns.ID == namespace.RootNamespaceID {
-		return NewBarrierView(barrier, "")
+		return ""
 	}
 
-	return NewBarrierView(barrier, path.Join(namespaceBarrierPrefix, ns.UUID)+"/")
+	return path.Join(namespaceBarrierPrefix, ns.UUID) + "/"
 }
 
 // NamespaceByPath returns the namespace and the path prefix for the given path.

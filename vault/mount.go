@@ -2378,3 +2378,114 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 
 	return nil, errors.New("invalid mount entry")
 }
+
+func (c *Core) invalidateMount(ctx context.Context, mountPath string) {
+	go func() {
+		err := c.invalidateMountInternal(ctx, mountPath)
+		if err != nil {
+			c.logger.Error("unable to invalidate audits, restarting core", "error", err.Error())
+			c.restart()
+		}
+	}()
+}
+
+func (c *Core) invalidateMountInternal(ctx context.Context, mountPath string) error {
+	prefix, uuid := path.Split(mountPath)
+	prefix = path.Clean(prefix)
+
+	table := "logical"
+	if prefix != coreLocalMountConfigPath && prefix != coreMountConfigPath {
+		if prefix != coreAuthConfigPath && prefix != coreLocalAuthConfigPath {
+			return fmt.Errorf("invalid path prefix %q", prefix)
+		}
+		table = "auth"
+	}
+
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+	barrier := NamespaceView(c.barrier, ns)
+
+	desiredMountEntry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, prefix, uuid)
+	if err != nil {
+		if err.Error() != "unexpected empty storage entry for mount" {
+			return err
+		}
+		desiredMountEntry = nil
+	}
+
+	actualRouteEntry, ok := c.router.matchingRouteEntryByPath(ctx, path.Join(NamespaceBarrierPrefix(ns), table, uuid)+"/", false)
+	if !ok {
+		actualRouteEntry = nil
+	}
+
+	switch {
+	case desiredMountEntry == nil && actualRouteEntry != nil: // mount was deleted
+		if table == "auth" {
+			err = c.removeCredEntry(ctx, actualRouteEntry.mountEntry.Path, false)
+		} else {
+			err = c.removeMountEntry(ctx, actualRouteEntry.mountEntry.Path, false)
+		}
+		if err != nil {
+			return err
+		}
+
+		routerPath := actualRouteEntry.mountEntry.Path
+		if table == "auth" {
+			routerPath = path.Join("auth", routerPath) + "/"
+		}
+		if err := c.router.Unmount(ctx, routerPath); err != nil {
+			return err
+		}
+
+		if c.quotaManager != nil {
+			if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, mountPath); err != nil {
+				c.logger.Error("failed to update quotas after disabling mount", "error", err, "namespace", ns.Path, "path", mountPath)
+				return err
+			}
+		}
+
+	case desiredMountEntry != nil && actualRouteEntry == nil: // mount was created
+		if table == "auth" {
+			c.enableCredentialInternal(ctx, desiredMountEntry, false)
+		} else {
+			c.mountInternal(ctx, desiredMountEntry, false)
+		}
+
+	case desiredMountEntry != nil && actualRouteEntry != nil: // mount was modified (e.g. tuned or tainted)
+		routerPath := actualRouteEntry.mountEntry.Path
+		if table == "auth" {
+			routerPath = path.Join("auth", routerPath) + "/"
+		}
+
+		if desiredMountEntry.Tainted != actualRouteEntry.tainted {
+			if desiredMountEntry.Tainted {
+				c.logger.Info("tainting", "path", routerPath)
+				err = c.router.Taint(ctx, routerPath)
+				if err != nil {
+					return err
+				}
+			} else {
+				err = c.router.Untaint(ctx, routerPath)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		lock := &c.mountsLock
+		if table == "auth" {
+			lock = &c.authLock
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+
+		actualRouteEntry.mountEntry = desiredMountEntry
+
+		// TODO(phil9909): how to handle tuning?
+	}
+
+	return nil
+}

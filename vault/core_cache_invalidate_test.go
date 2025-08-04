@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"fmt"
+	"path"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -34,10 +35,20 @@ func testCore_Invalidate_sneakValueAroundCache(t *testing.T, c *Core, entry *log
 	require.NoError(t, c.barrier.Put(t.Context(), entry))
 }
 
-func testCore_Invalidate_handleRequest(t testing.TB, ctx context.Context, c *Core, req *logical.Request) *logical.Response {
+func testCore_Invalidate_handleRequest(t require.TestingT, ctx context.Context, c *Core, req *logical.Request, expectedErrors ...string) *logical.Response {
 	resp, err := c.HandleRequest(ctx, req)
-	require.NoError(t, err, "response: %#v", resp)
-	require.NoError(t, resp.Error())
+	if len(expectedErrors) == 0 {
+		require.NoError(t, err, "response: %#v", resp)
+		require.NoError(t, resp.Error())
+	} else {
+		for _, expectedError := range expectedErrors {
+			if err != nil {
+				require.ErrorContains(t, err, expectedError)
+			} else {
+				require.ErrorContains(t, resp.Error(), expectedError)
+			}
+		}
+	}
 
 	return resp
 }
@@ -342,4 +353,281 @@ func TestCore_Invalidate_Audit(t *testing.T) {
 	triggerAuditEvent()
 
 	require.Len(t, currentBackend.Req, 1, "expected 1 audit request event")
+}
+
+func TestCore_Invalidate_SecretMount(t *testing.T) {
+	t.Parallel()
+	testCases := map[string]func(t *testing.T, c *Core) (nsPrefix string, ctx context.Context){
+		"global": func(t *testing.T, c *Core) (nsPrefix string, ctx context.Context) {
+			return "", namespace.RootContext(t.Context())
+		},
+
+		"local": func(t *testing.T, c *Core) (nsPrefix string, ctx context.Context) {
+			ns := &namespace.Namespace{
+				ID:   "ns",
+				Path: "ns",
+			}
+			TestCoreCreateNamespaces(t, c, ns)
+
+			return fmt.Sprintf("namespaces/%s/", ns.UUID), namespace.ContextWithNamespace(t.Context(), ns)
+		},
+	}
+
+	for name, init := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			c, _, root := TestCoreUnsealed(t)
+			nsPrefix, ctx := init(t, c)
+
+			// 1. Inject a dummy factory
+			var factoryCallCount, cleanCallCount, readCallCount atomic.Int32
+			c.logicalBackends["kv"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+				factoryCallCount.Add(1)
+				b := new(framework.Backend)
+				b.Clean = func(_ context.Context) {
+					cleanCallCount.Add(1)
+				}
+				b.Paths = []*framework.Path{{
+					Pattern: ".*",
+					Callbacks: map[logical.Operation]framework.OperationFunc{
+						logical.ReadOperation: func(context.Context, *logical.Request, *framework.FieldData) (*logical.Response, error) {
+							t.Log("got a call")
+							readCallCount.Add(1)
+							return &logical.Response{}, nil
+						},
+					},
+				}}
+				return b, b.Setup(ctx, config)
+			}
+
+			mountTableCount := len(c.mounts.Entries)
+
+			// 2. Enable mount kv store
+			registerReq := &logical.Request{
+				Operation:   logical.UpdateOperation,
+				ClientToken: root,
+				Path:        "sys/mounts/my-kv-mount",
+				Data: map[string]any{
+					"type": "kv",
+				},
+			}
+			testCore_Invalidate_handleRequest(t, ctx, c, registerReq)
+
+			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
+			require.Equal(t, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
+
+			// 3. Get the UUID
+			readReq := &logical.Request{
+				Operation:   logical.ReadOperation,
+				ClientToken: root,
+				Path:        "sys/mounts/my-kv-mount",
+			}
+			resp := testCore_Invalidate_handleRequest(t, ctx, c, readReq)
+
+			uuid := resp.Data["uuid"].(string)
+			storagePath := path.Join(nsPrefix, "core/mounts", uuid)
+
+			triggerReadCall := func(collect require.TestingT, expectedErrors ...string) {
+				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
+					Operation:   logical.ReadOperation,
+					ClientToken: root,
+					Path:        "my-kv-mount",
+				}, expectedErrors...)
+			}
+			triggerReadCall(t)
+			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
+
+			// 4. Manipulate mount table in storage: delete storageEntry
+			storageEntry, err := c.barrier.Get(ctx, storagePath)
+			require.NoError(t, err)
+			require.NotNil(t, storageEntry, "expected mount entry to be written at %s", storagePath)
+
+			require.NoError(t, c.barrier.Delete(ctx, storagePath))
+
+			// 5. call invalidate
+			c.Invalidate(storagePath)
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				require.Equal(collect, mountTableCount, len(c.mounts.Entries), "expected mount table to be back at original size")
+				require.EqualValues(t, 1, cleanCallCount.Load(), "expected one cleanup call")
+			}, 10*time.Second, 10*time.Millisecond)
+
+			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
+
+			// 6. verify 404
+			triggerReadCall(t, "unsupported path")
+
+			// 7. Manipulate mount table in storage: restore mount
+			testCore_Invalidate_sneakValueAroundCache(t, c, storageEntry)
+
+			// 8. call invalidate
+			c.Invalidate(storagePath)
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				require.Equal(collect, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
+				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
+				triggerReadCall(collect)
+			}, 10*time.Second, 10*time.Millisecond)
+			require.EqualValues(t, 2, readCallCount.Load(), "expected two read calls")
+
+			// 9. Manipulate mount table in storage: taint mount
+			mountEntry := new(MountEntry)
+			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountEntry))
+			mountEntry.Tainted = true
+
+			updatedData, err := jsonutil.EncodeJSON(mountEntry)
+			require.NoError(t, err)
+
+			testCore_Invalidate_sneakValueAroundCache(t, c, &logical.StorageEntry{
+				Key:   storagePath,
+				Value: updatedData,
+			})
+
+			// 10. call invalidate
+			c.Invalidate(storagePath)
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				triggerReadCall(collect, "unsupported path")
+			}, 10*time.Second, 10*time.Millisecond)
+		})
+	}
+}
+
+func TestCore_Invalidate_AuthMount(t *testing.T) {
+	t.Parallel()
+	testCases := map[string]func(t *testing.T, c *Core) (nsPrefix string, ctx context.Context){
+		"global": func(t *testing.T, c *Core) (nsPrefix string, ctx context.Context) {
+			return "", namespace.RootContext(t.Context())
+		},
+
+		"local": func(t *testing.T, c *Core) (nsPrefix string, ctx context.Context) {
+			ns := &namespace.Namespace{
+				ID:   "ns",
+				Path: "ns",
+			}
+			TestCoreCreateNamespaces(t, c, ns)
+
+			return fmt.Sprintf("namespaces/%s/", ns.UUID), namespace.ContextWithNamespace(t.Context(), ns)
+		},
+	}
+
+	for name, init := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			c, _, root := TestCoreUnsealed(t)
+			nsPrefix, ctx := init(t, c)
+
+			// 1. Inject a dummy factory
+			var factoryCallCount, cleanCallCount, readCallCount atomic.Int32
+			c.credentialBackends["dummy"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+				factoryCallCount.Add(1)
+				b := new(framework.Backend)
+				b.Clean = func(_ context.Context) {
+					cleanCallCount.Add(1)
+				}
+				b.Paths = []*framework.Path{{
+					Pattern: ".*",
+					Callbacks: map[logical.Operation]framework.OperationFunc{
+						logical.ReadOperation: func(context.Context, *logical.Request, *framework.FieldData) (*logical.Response, error) {
+							t.Log("got a call")
+							readCallCount.Add(1)
+							return &logical.Response{}, nil
+						},
+					},
+				}}
+				b.BackendType = logical.TypeCredential
+				return b, b.Setup(ctx, config)
+			}
+
+			mountTableCount := len(c.auth.Entries)
+
+			// 2. Enable mount dummy auth
+			registerReq := &logical.Request{
+				Operation:   logical.UpdateOperation,
+				ClientToken: root,
+				Path:        "sys/auth/my-auth",
+				Data: map[string]any{
+					"type": "dummy",
+				},
+			}
+			testCore_Invalidate_handleRequest(t, ctx, c, registerReq)
+
+			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
+			require.Equal(t, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
+
+			// 3. Get the UUID
+			readReq := &logical.Request{
+				Operation:   logical.ReadOperation,
+				ClientToken: root,
+				Path:        "sys/auth/my-auth",
+			}
+			resp := testCore_Invalidate_handleRequest(t, ctx, c, readReq)
+
+			uuid := resp.Data["uuid"].(string)
+			storagePath := path.Join(nsPrefix, "core/auth", uuid)
+
+			callLogin := func(collect require.TestingT, expectedErrors ...string) {
+				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
+					Operation:   logical.ReadOperation,
+					ClientToken: root,
+					Path:        "auth/my-auth",
+				}, expectedErrors...)
+			}
+			callLogin(t)
+			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
+
+			// 4. Manipulate mount table in storage: delete storageEntry
+			storageEntry, err := c.barrier.Get(ctx, storagePath)
+			require.NoError(t, err)
+			require.NotNil(t, storageEntry, "expected mount entry to be written at %s", storagePath)
+
+			require.NoError(t, c.barrier.Delete(ctx, storagePath))
+
+			// 5. call invalidate
+			c.Invalidate(storagePath)
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				require.Equal(collect, mountTableCount, len(c.auth.Entries), "expected mount table to be back at original size")
+				require.EqualValues(t, 1, cleanCallCount.Load(), "expected one cleanup call")
+			}, 10*time.Second, 10*time.Millisecond)
+
+			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
+
+			// 6. verify 404
+			callLogin(t, "unsupported path")
+
+			// 7. Manipulate mount table in storage: restore mount
+			testCore_Invalidate_sneakValueAroundCache(t, c, storageEntry)
+
+			// 8. call invalidate
+			c.Invalidate(storagePath)
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				require.Equal(collect, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
+				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
+				callLogin(collect)
+			}, 10*time.Second, 10*time.Millisecond)
+			require.EqualValues(t, 2, readCallCount.Load(), "expected two read calls")
+
+			// 9. Manipulate mount table in storage: taint mount
+			mountEntry := new(MountEntry)
+			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountEntry))
+			mountEntry.Tainted = true
+
+			updatedData, err := jsonutil.EncodeJSON(mountEntry)
+			require.NoError(t, err)
+
+			testCore_Invalidate_sneakValueAroundCache(t, c, &logical.StorageEntry{
+				Key:   storagePath,
+				Value: updatedData,
+			})
+
+			// 10. call invalidate
+			c.Invalidate(storagePath)
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				callLogin(collect, "unsupported path")
+			}, 10*time.Second, 10*time.Millisecond)
+		})
+	}
 }

@@ -188,6 +188,7 @@ const sidebars: SidebarsConfig = {
                         "commands/operator/raft",
                         "commands/operator/rekey",
                         "commands/operator/rotate",
+                        "commands/operator/rotate-keys",
                         "commands/operator/seal",
                         "commands/operator/step-down",
                         "commands/operator/unseal",

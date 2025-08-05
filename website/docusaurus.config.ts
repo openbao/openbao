@@ -101,6 +101,21 @@ const config: Config = {
         ],
       },
     ],
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [
+          {
+            from: '/api-docs/system/rotate.mdx',
+            to: '/api-docs/system/rotate/keyring',
+          },
+          {
+            from: '/api-docs/system/rotate-config.mdx',
+            to: '/api-docs/system/rotate/keyring-config',
+          },
+        ],
+      },
+    ],
     require.resolve("docusaurus-lunr-search"),
   ],
 

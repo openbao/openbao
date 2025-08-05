@@ -1,7 +1,7 @@
 ---
 sidebar_label: Overview
 description: >- 
-  The '/sys/rotate' endpoints are used to rotate unseal, root, backend encryption keys.
+  The `/sys/rotate` endpoints are used to rotate unseal, root, backend encryption keys.
 ---
 
 # `/sys/rotate`
@@ -14,7 +14,8 @@ also possible to configure automatic encryption key rotation using
 
 ### Rotate unseal/recovery keys
 
-The `/sys/rotate/root` endpoints are used to rotate the unseal keys for OpenBao.
+The `/sys/rotate/root` endpoints are used to rotate the root key for OpenBao,
+and the unseal key shares when using Shamir's manual unseal mechanism.
 
 On seals that support stored keys (e.g. HSM PKCS#11), the recovery key share(s)
 can be provided to rotate the root key since no unseal keys are available. The
@@ -34,9 +35,8 @@ key share to progress the rotation of the OpenBao. If the threshold number
 of key shares is reached, OpenBao will complete the rotation.
 
 ### Rotation verification
-`/sys/rotate/(root|recovery)/backup` endpoint reads the configuration and
+`/sys/rotate/(root|recovery)/verify` endpoint reads the configuration and
 progress of the current rotation verification attempt.
-
 
 ### Backup rotated keys
 `/sys/rotate/(root|recovery)/backup` endpoint returns the backup copy of

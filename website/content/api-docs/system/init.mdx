@@ -5,13 +5,16 @@ description: The `/sys/init` endpoint is used to initialize a new OpenBao.
 # `/sys/init`
 
 The `/sys/init` endpoint is used to initialize a new OpenBao instance. When using
-an auto-unseal mechanism, it is possible to initialize OpenBao with 
-`recovery_shares` config parameter set as `0`, resulting in the recovery keys not
-generated at initialization time, and thus will not returned back to the operator.
-The system will function as if it has no recovery keys. To create recovery keys
-the operator is required to to manually call `/sys/rotate/recovery/init` endpoint,
-which will return working keys immediately. This is not be applicable for Shamir's
-based unsealing. Recovery mode is not function until such keys are created.
+an auto-unseal mechanism, it is possible to initialize OpenBao with `recovery_shares`
+config parameter set as `0`, resulting in the recovery keys not being generated at
+initialization time, and thus will not be returned back to the operator. The system
+will function as if it has no recovery keys. To create recovery keys the operator
+is required to to manually call `/sys/rotate/recovery/init` endpoint, which will
+return working keys immediately. This is not applicable for Shamir's based unsealing.
+Recovery mode will not function until such keys are created, and the operator will
+be unable to use the API to unseal a manually sealed auto-unseal instance. Only
+restarting an instance will allow a manually sealed instance to unseal again. The
+root key is rotatable through the `sudo`-protected (`sys/rotate/root`) endpoint. 
 
 ## Read initialization status
 

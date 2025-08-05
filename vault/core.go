@@ -324,7 +324,7 @@ type Core struct {
 	// These variables holds the config and shares we have until we reach
 	// enough to verify the appropriate root key. Note that the same lock is
 	// used; this isn't time-critical so this shouldn't be a problem.
-	barrierRotationConfig  *SealConfig
+	rootRotationConfig     *SealConfig
 	recoveryRotationConfig *SealConfig
 	rotationLock           sync.RWMutex
 
@@ -2497,7 +2497,7 @@ func (c *Core) preSeal() error {
 	c.activeTime = time.Time{}
 
 	// Clear any rotation progress
-	c.barrierRotationConfig = nil
+	c.rootRotationConfig = nil
 	c.recoveryRotationConfig = nil
 
 	if c.metricsCh != nil {

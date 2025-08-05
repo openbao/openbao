@@ -1,0 +1,3 @@
+```release-note:security
+core/identity: Correctly lowercase policy names to prevent root policy assignment. HCSEC-2025-13 / CVE-2025-5999.
+```

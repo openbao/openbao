@@ -72,7 +72,11 @@ can take place at a time. To change the parameters of a rotation, the current
 rotation has to be cancelled, and a new one has to be initialized, which also
 provides a new nonce.
 
-// TODO: if you've initialized the server with 0 secret_shares
+If the server was initialized with no recovery keys, `/sys/rotate/root/init`
+endpoint will not work as no recovery keys are present. To rotate the root
+key, use the `/sys/rotate/root` [endpoint](/api-docs/system/rotate/root) instead.
+When rotating recovery keys, `/sys/rotate/recovery/init` will immediate return
+the specified number of recovery key shares.
 
 | Method | Path                               |
 | :----- | :--------------------------------- |
@@ -80,25 +84,25 @@ provides a new nonce.
 
 ### Parameters
 
-- `secret_shares` `(int: <required>)` – Specifies the number of shares to split
+- `secret_shares` `(int: <required>)` - Specifies the number of shares to split
   the root key into.
 
-- `secret_threshold` `(int: <required>)` – Specifies the number of shares
+- `secret_threshold` `(int: <required>)` - Specifies the number of shares
   required to reconstruct the root key. This must be less than or equal to
   `secret_shares`.
 
-- `pgp_keys` `(array<string>: nil)` – Specifies an array of PGP public keys used
+- `pgp_keys` `(array<string>: nil)` - Specifies an array of PGP public keys used
   to encrypt the output unseal keys. Ordering is preserved. The keys must be
   base64-encoded from their original binary representation. The size of this
   array must be the same as `secret_shares`.
 
-- `backup` `(bool: false)` – Specifies if using PGP-encrypted keys, whether
+- `backup` `(bool: false)` - Specifies if using PGP-encrypted keys, whether
   OpenBao should also store a plaintext backup of the PGP-encrypted keys at
   `core/unseal-keys-backup` (or `core/recovery-keys-backup`) in the physical
   storage backend. These can then be retrieved and removed via the
   `sys/rotate/root/backup` (or `sys/rotate/recovery/backup`) endpoints.
 
-- `require_verification` `(bool: false)` – Specifies usage of verification
+- `require_verification` `(bool: false)` - Specifies usage of verification
   functionality. When verification is turned on, after successful authorization
   with the current unseal keys, the new unseal keys are returned but the root
   key is not actually rotated. The new keys must be provided to authorize the

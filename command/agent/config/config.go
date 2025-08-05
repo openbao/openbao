@@ -28,7 +28,6 @@ import (
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 )
 
@@ -1168,7 +1167,7 @@ func parseTemplates(result *Config, list *ast.ObjectList) error {
 			DecodeHook: mapstructure.ComposeDecodeHookFunc(
 				ctconfig.StringToFileModeFunc(),
 				ctconfig.StringToWaitDurationHookFunc(),
-				framework.LegacyStringToSliceHookFunc(","),
+				mapstructure.StringToWeakSliceHookFunc(","),
 				mapstructure.StringToTimeDurationHookFunc(),
 			),
 			ErrorUnused: true,
@@ -1216,7 +1215,7 @@ func parseExec(result *Config, list *ast.ObjectList) error {
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			ctconfig.StringToFileModeFunc(),
 			ctconfig.StringToWaitDurationHookFunc(),
-			framework.LegacyStringToSliceHookFunc(","),
+			mapstructure.StringToWeakSliceHookFunc(","),
 			mapstructure.StringToTimeDurationHookFunc(),
 			ctsignals.StringToSignalFunc(),
 		),
@@ -1273,7 +1272,7 @@ func parseEnvTemplates(result *Config, list *ast.ObjectList) error {
 			DecodeHook: mapstructure.ComposeDecodeHookFunc(
 				ctconfig.StringToFileModeFunc(),
 				ctconfig.StringToWaitDurationHookFunc(),
-				framework.LegacyStringToSliceHookFunc(","),
+				mapstructure.StringToWeakSliceHookFunc(","),
 				mapstructure.StringToTimeDurationHookFunc(),
 				ctsignals.StringToSignalFunc(),
 			),

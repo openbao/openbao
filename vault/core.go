@@ -2259,9 +2259,14 @@ type UnsealStrategy interface {
 	unseal(context.Context, log.Logger, *Core) error
 }
 
-type standardUnsealStrategy struct{}
+type standardUnsealStrategy struct {
+	// Inherit read-only unseal methods
+	readonlyUnsealStrategy
+}
 
 func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c *Core) error {
+	c.logger.Debug("standard unseal starting")
+
 	// Clear forwarding clients; we're active
 	c.requestForwardingConnectionLock.Lock()
 	c.clearForwardingClients()
@@ -2271,17 +2276,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	// for the active startup.
 	c.activeTime = time.Now().UTC()
 
-	if err := postUnsealPhysical(c); err != nil {
-		return err
-	}
-
-	// Only perf primarys should write feature flags, but we do it by
-	// excluding other states so that we don't have to change it when
-	// a non-replicated cluster becomes a primary.
-	if err := c.persistFeatureFlags(ctx); err != nil {
-		return err
-	}
-
 	if c.autoRotateCancel == nil {
 		var autoRotateCtx context.Context
 		autoRotateCtx, c.autoRotateCancel = context.WithCancel(c.activeContext)
@@ -2289,6 +2283,46 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	}
 
 	if err := c.ensureWrappingKey(ctx); err != nil {
+		return err
+	}
+
+	if err := s.readonlyUnsealStrategy.unseal(ctx, logger, c); err != nil {
+		return err
+	}
+
+	if c.getClusterListener() != nil {
+		if err := c.setupRaftActiveNode(ctx); err != nil {
+			return err
+		}
+		if err := c.startForwarding(ctx); err != nil {
+			return err
+		}
+
+	}
+
+	c.clusterParamsLock.Lock()
+	defer c.clusterParamsLock.Unlock()
+
+	c.metricsCh = make(chan struct{})
+	go c.emitMetricsActiveNode(c.metricsCh)
+
+	// Establish version timestamps at the end of unseal on active nodes only.
+	if err := c.handleVersionTimeStamps(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// readonlyUnsealStrategy
+type readonlyUnsealStrategy struct{}
+
+func (readonlyUnsealStrategy) unseal(
+	ctx context.Context, logger log.Logger, c *Core,
+) error {
+	c.logger.Debug("read-only unseal starting")
+
+	if err := postUnsealPhysical(c); err != nil {
 		return err
 	}
 	if err := c.setupPluginCatalog(ctx); err != nil {
@@ -2345,28 +2379,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	}
 
 	if err := c.setupAuditedHeadersConfig(ctx); err != nil {
-		return err
-	}
-
-	if c.getClusterListener() != nil {
-		if err := c.setupRaftActiveNode(ctx); err != nil {
-			return err
-		}
-
-		if err := c.startForwarding(ctx); err != nil {
-			return err
-		}
-
-	}
-
-	c.clusterParamsLock.Lock()
-	defer c.clusterParamsLock.Unlock()
-
-	c.metricsCh = make(chan struct{})
-	go c.emitMetricsActiveNode(c.metricsCh)
-
-	// Establish version timestamps at the end of unseal on active nodes only.
-	if err := c.handleVersionTimeStamps(ctx); err != nil {
 		return err
 	}
 

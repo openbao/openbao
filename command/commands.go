@@ -367,6 +367,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"operator members": func() (cli.Command, error) {
+			return &OperatorMembersCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"operator migrate": func() (cli.Command, error) {
 			return &OperatorMigrateCommand{
 				BaseCommand:      getBaseCommand(),
@@ -459,8 +464,8 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
-		"operator members": func() (cli.Command, error) {
-			return &OperatorMembersCommand{
+		"operator validate-config": func() (cli.Command, error) {
+			return &OperatorValidateConfigCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},

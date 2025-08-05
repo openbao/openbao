@@ -60,6 +60,7 @@ const sidebars: SidebarsConfig = {
                 "concepts/tokens",
                 "concepts/identity",
                 "concepts/oidc-provider",
+                "concepts/profiles",
                 "concepts/response-wrapping",
                 "concepts/policies",
                 "concepts/password-policies",
@@ -93,6 +94,7 @@ const sidebars: SidebarsConfig = {
             ],
             Configuration: [
                 "configuration/index",
+                "configuration/self-init",
                 {
                     listener: [
                         "configuration/listener/index",

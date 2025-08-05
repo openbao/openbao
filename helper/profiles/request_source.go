@@ -51,14 +51,14 @@ func (s *RequestSource) Validate(_ context.Context) ([]string, []string, error) 
 		s.outerName = outerName
 	}
 
-	rawReqName, present := s.field["req_name"]
+	rawReqName, present := s.field["request_name"]
 	if !present {
-		return nil, nil, fmt.Errorf("request source is missing required field %q", "req_name")
+		return nil, nil, fmt.Errorf("request source is missing required field %q", "request_name")
 	}
 
 	reqName, ok := rawReqName.(string)
 	if !ok {
-		return nil, nil, fmt.Errorf("field 'req_name' is of wrong type: expected 'string' got '%T'", rawReqName)
+		return nil, nil, fmt.Errorf("field 'request_name' is of wrong type: expected 'string' got '%T'", rawReqName)
 	}
 
 	s.requestName = reqName

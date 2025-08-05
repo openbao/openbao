@@ -1,0 +1,121 @@
+---
+sidebar_label: initialize
+description: |-
+  The initialize stanza allows request-based one-time initialization of OpenBao
+  from the configuration file.
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+
+# Self-Initialization
+
+Self-Initialization allows server operators to define initial
+service state through request-driven initialization that occurs
+automatically on first server start. Operators can reference environment
+variables and files to provision initial authentication, audit, and secret
+mounts in addition to having full control over general requests.
+Instead of manually executing multiple API commands after starting the server, 
+all necessary settings can be defined in advance.
+
+# `initialize` stanza
+
+The `initialize` stanza specifies various configurations for OpenBao to
+initialize itself once, on initial startup. To repeat the operation, remove
+all storage and re-initialize from scratch. Debugging can be performed by
+starting OpenBao with the `TRACE` log level, which shows all request/response
+pairs and thus **contains sensitive information**.
+
+When self-initialization fails, it logs an error to the server; this allows
+operators to debug partial failures and remediate as necessary. The intention
+is to give operators enough facility to bootstrap a proper initialization
+process without requiring one-time side-effecting setup like generating the
+initial root token and handling recovery keys.
+
+<Tabs groupId="config">
+<TabItem value="JSON">
+
+```json
+{
+  "initialize": [
+    {
+      "audit": {
+        "request": [
+          {
+            "enable-audit": {
+              "operation": "update",
+              "path": "sys/audit/stdout",
+              "data": {
+                "type": "file",
+                "options": {
+                  "file_path": "/dev/stdout",
+                  "log_raw": true
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+</TabItem>
+<TabItem value="HCL">
+
+```hcl
+initialize "audit" {
+  request "enable-audit" {
+    operation = "update"
+    path = "sys/audit/stdout"
+    data = {
+      type = "file"
+      options = {
+        file_path = "/dev/stdout"
+        log_raw = true
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+:::info
+
+Use of this feature requires using an [auto-unseal](/docs/configuration/seal)
+mechanism. No recovery keys are generated; instead, use the [authenticated
+recovery key rotation](/api-docs/system/rotate) endpoints.
+
+The root token is not returned to the caller and is revoked after use.
+
+:::
+
+Multiple `initialize` stanzas may exist and are executed in the order they
+are specified in the configuration file(s). Multiple `request` blocks may
+exist inside a single `initialize` stanza and are executed in the order they
+appear in the specified `initialize` block. No two blocks of either type may
+share a name. Names must conform to the regex `^[A-Za-z_][A-Za-z0-9_-]*$`.
+
+## `initialize` parameters
+
+The `initialize` stanza can only contain one or more `request` stanzas. Each
+`initialize` and `request` stanza must have a single name.
+
+### `request` parameters
+
+- `operation` `(value[string]: <required>)` - type of operation to perform; see
+  [ACL Capabilities](/docs/concepts/policies#capabilities) for a list.
+- `path` `(value[string]: <required>)` - path to perform the given operation
+  on.
+- `token` `(value[string]: <optional>)` - the OpenBao API token to use for
+  authentication. When not specified, defaults to the root token.
+- `data` `(value[map]: <optional>)` - the request data for this call.
+- `allow_failure` `(value[bool]: false)` - when true, allows this call to fail
+  without erring out the entire self-initialization process.
+  
+## Profiles
+
+For more information on profiles, see the [concepts page](/docs/concepts/profiles).

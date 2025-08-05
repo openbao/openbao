@@ -8,13 +8,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/armon/go-metrics"
+	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPathLogin_TimingLeak(t *testing.T) {
-	storage := &logical.InmemStorage{}
+	logger := logging.NewVaultLogger(log.Trace)
+	inm, err := inmem.NewInmem(nil, logger)
+	require.NoError(t, err)
+
+	latency := physical.NewLatencyInjector(inm, 2*time.Second, 1, logger)
+	cache := physical.NewCache(latency, 0, logger, &metrics.BlackholeSink{})
+	storage := logical.NewLogicalStorage(cache)
 	config := logical.TestBackendConfig()
 	config.StorageView = storage
 
@@ -52,6 +63,9 @@ func TestPathLogin_TimingLeak(t *testing.T) {
 	require.Equal(t, resp.Data["error"], "invalid username or password")
 	require.ErrorIs(t, err, logical.ErrInvalidCredentials)
 
+	// ensuring we actually hit the storage
+	require.Greater(t, existingUserTime.Seconds(), 2.01*time.Second.Seconds())
+
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "login/non-existing",
@@ -67,7 +81,11 @@ func TestPathLogin_TimingLeak(t *testing.T) {
 	require.Equal(t, resp.Data["error"], "invalid username or password")
 	require.Nil(t, err)
 
-	// verify that read of existing user takes the
-	// same amount of time as read of non-existing user
-	require.InDelta(t, existingUserTime.Abs().Milliseconds(), notExistingUserTime.Abs().Milliseconds(), float64(time.Millisecond))
+	// ensuring we actually hit the storage
+	require.Greater(t, existingUserTime.Seconds(), 2.01*time.Second.Seconds())
+
+	// verify that login attempt of existing user takes the
+	// same amount of time as login of non-existing user
+	// are times within 100ms of each other - accounting for randomness.
+	require.InDelta(t, existingUserTime.Seconds(), notExistingUserTime.Seconds(), 0.1*time.Second.Seconds())
 }

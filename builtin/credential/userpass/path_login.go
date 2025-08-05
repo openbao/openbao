@@ -20,7 +20,7 @@ import (
 // bcrypt.GenerateFromPassword is impossible to error, assuming we:
 // - provide password of a appriopriate length (<72)
 // - provide valid cost
-// both critiera we meet
+// both criteria we meet
 var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy"), bcrypt.DefaultCost)
 
 func pathLogin(b *backend) *framework.Path {
@@ -98,7 +98,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 	} else {
 		// This is still acceptable as bcrypt will still make sure
 		// it takes comparable amount of time, assuming the hash
-		// meets the criteria set before hash comparision
+		// meets the criteria set before hash comparison
 		userPassword = dummyHash
 	}
 

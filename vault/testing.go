@@ -928,7 +928,7 @@ func (c *TestCluster) UnsealCoresWithError(useStoredKeys bool) error {
 	}
 
 	// Let them come fully up to standby
-	time.Sleep(2 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	// Ensure cluster connection info is populated.
 	// Other cores should not come up as leaders.

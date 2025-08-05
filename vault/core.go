@@ -2273,9 +2273,14 @@ type UnsealStrategy interface {
 	unseal(context.Context, log.Logger, *Core) error
 }
 
-type standardUnsealStrategy struct{}
+type standardUnsealStrategy struct {
+	// Inherit read-only unseal methods
+	readonlyUnsealStrategy
+}
 
 func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c *Core) error {
+	c.logger.Debug("standard unseal starting")
+
 	// Clear forwarding clients; we're active
 	c.requestForwardingConnectionLock.Lock()
 	c.clearForwardingClients()
@@ -2294,6 +2299,43 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.ensureWrappingKey(ctx); err != nil {
 		return err
 	}
+
+	if err := s.readonlyUnsealStrategy.unseal(ctx, logger, c); err != nil {
+		return err
+	}
+
+	if c.getClusterListener() != nil {
+		if err := c.setupRaftActiveNode(ctx); err != nil {
+			return err
+		}
+		if err := c.startForwarding(ctx); err != nil {
+			return err
+		}
+
+	}
+
+	c.clusterParamsLock.Lock()
+	defer c.clusterParamsLock.Unlock()
+
+	c.metricsCh = make(chan struct{})
+	go c.emitMetricsActiveNode(c.metricsCh)
+
+	// Establish version timestamps at the end of unseal on active nodes only.
+	if err := c.handleVersionTimeStamps(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// readonlyUnsealStrategy
+type readonlyUnsealStrategy struct{}
+
+func (readonlyUnsealStrategy) unseal(
+	ctx context.Context, logger log.Logger, c *Core,
+) error {
+	c.logger.Debug("read-only unseal starting")
+
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
@@ -2351,28 +2393,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	}
 
 	if err := c.setupAuditedHeadersConfig(ctx); err != nil {
-		return err
-	}
-
-	if c.getClusterListener() != nil {
-		if err := c.setupRaftActiveNode(ctx); err != nil {
-			return err
-		}
-
-		if err := c.startForwarding(ctx); err != nil {
-			return err
-		}
-
-	}
-
-	c.clusterParamsLock.Lock()
-	defer c.clusterParamsLock.Unlock()
-
-	c.metricsCh = make(chan struct{})
-	go c.emitMetricsActiveNode(c.metricsCh)
-
-	// Establish version timestamps at the end of unseal on active nodes only.
-	if err := c.handleVersionTimeStamps(ctx); err != nil {
 		return err
 	}
 

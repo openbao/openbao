@@ -13,8 +13,15 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// bcrypt.GenerateFromPassword is impossible to error, assuming we:
+// - provide password of a appriopriate length (<72)
+// - provide valid cost
+// both critiera we meet
+var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy"), bcrypt.DefaultCost)
 
 func pathLogin(b *backend) *framework.Path {
 	return &framework.Path{
@@ -74,14 +81,14 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 		return nil, errors.New("missing password")
 	}
 
+	// bypass cache as we want to hit the storage
+	getUserCtx := physical.CacheRefreshContext(ctx, false)
 	// Get the user and validate auth
-	user, userError := b.user(ctx, req.Storage, username)
+	user, userError := b.user(getUserCtx, req.Storage, username)
 
 	var userPassword []byte
-	// If there was an error or it's nil, we fake a password for the bcrypt
-	// check so as not to have a timing leak. Specifics of the underlying
-	// storage still leaks a bit but generally much more in the noise compared
-	// to bcrypt.
+	// If there was an error or it's nil, we fake a password hash
+	// for the bcrypt check so as not to have a timing leak.
 	if user != nil && userError == nil {
 		if len(user.PasswordHash) == 0 {
 			return nil, errors.New("invalid user entry: refusing to process pre-Vault v0.2 record")
@@ -89,9 +96,10 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 
 		userPassword = user.PasswordHash
 	} else {
-		// This is still acceptable as bcrypt will still make sure it takes
-		// a long time, it's just nicer to be random if possible
-		userPassword = []byte("dummy")
+		// This is still acceptable as bcrypt will still make sure
+		// it takes comparable amount of time, assuming the hash
+		// meets the criteria set before hash comparision
+		userPassword = dummyHash
 	}
 
 	// Check for a password match.

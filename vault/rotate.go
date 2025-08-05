@@ -35,8 +35,8 @@ func (c *Core) RotationConfig(recovery bool) *SealConfig {
 			return c.recoveryRotationConfig.Clone()
 		}
 	} else {
-		if c.barrierRotationConfig != nil {
-			return c.barrierRotationConfig.Clone()
+		if c.rootRotationConfig != nil {
+			return c.rootRotationConfig.Clone()
 		}
 	}
 
@@ -82,7 +82,7 @@ func (c *Core) RotationProgress(recovery, verification bool) (bool, int, error) 
 	if recovery {
 		conf = c.recoveryRotationConfig
 	} else {
-		conf = c.barrierRotationConfig
+		conf = c.rootRotationConfig
 	}
 
 	if conf == nil {
@@ -158,7 +158,7 @@ func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bo
 		return nil, nil
 	}
 
-	if c.barrierRotationConfig != nil {
+	if c.rootRotationConfig != nil {
 		return nil, logical.CodedError(http.StatusBadRequest, "rotation already in progress")
 	}
 
@@ -232,11 +232,11 @@ func (c *Core) initBarrierRotation(config *SealConfig, nonce string) logical.HTT
 	defer c.rotationLock.Unlock()
 
 	// Copy the configuration
-	c.barrierRotationConfig = config.Clone()
-	c.barrierRotationConfig.Nonce = nonce
+	c.rootRotationConfig = config.Clone()
+	c.rootRotationConfig.Nonce = nonce
 
 	if c.logger.IsInfo() {
-		c.logger.Info("rotation initialized", "nonce", c.barrierRotationConfig.Nonce, "shares", c.barrierRotationConfig.SecretShares, "threshold", c.barrierRotationConfig.SecretThreshold, "verification_required", c.barrierRotationConfig.VerificationRequired)
+		c.logger.Info("rotation initialized", "nonce", c.rootRotationConfig.Nonce, "shares", c.rootRotationConfig.SecretShares, "threshold", c.rootRotationConfig.SecretThreshold, "verification_required", c.rootRotationConfig.VerificationRequired)
 	}
 	return nil
 }
@@ -250,7 +250,7 @@ func (c *Core) CancelRotation(recovery bool) logical.HTTPCodedError {
 	if recovery {
 		c.recoveryRotationConfig = nil
 	} else {
-		c.barrierRotationConfig = nil
+		c.rootRotationConfig = nil
 	}
 	return nil
 }
@@ -286,7 +286,7 @@ func (c *Core) UpdateRotation(ctx context.Context, key []byte, nonce string, rec
 		return c.updateRecoveryRotation(ctx, config, key, nonce)
 	}
 
-	if c.barrierRotationConfig == nil {
+	if c.rootRotationConfig == nil {
 		return nil, logical.CodedError(http.StatusBadRequest, "no barrier rotation in progress")
 	}
 	return c.updateBarrierRotation(ctx, config, key, nonce, useRecovery)
@@ -338,7 +338,7 @@ func (c *Core) updateRecoveryRotation(ctx context.Context, config *SealConfig, k
 
 // updateBarrierRotation is used to provide a new key share for barrier key rotation.
 func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, key []byte, nonce string, useRecovery bool) (*RekeyResult, logical.HTTPCodedError) {
-	recoveredKey, err := c.progressRotation(c.barrierRotationConfig, config, key, nonce)
+	recoveredKey, err := c.progressRotation(c.rootRotationConfig, config, key, nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -384,30 +384,30 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 	// Generate a new key: for AutoUnseal, this is a new root key; for Shamir,
 	// this is a new unseal key, and performBarrierRekey will also generate a
 	// new root key.
-	newKey, result, err := c.generateKey(c.barrierRotationConfig, true)
+	newKey, result, err := c.generateKey(c.rootRotationConfig, true)
 	if err != nil {
 		return nil, err
 	}
 
 	// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
-	if len(c.barrierRotationConfig.PGPKeys) > 0 {
+	if len(c.rootRotationConfig.PGPKeys) > 0 {
 		var encryptError error
-		result, encryptError = c.pgpEncryptShares(ctx, c.barrierRotationConfig, result, false)
+		result, encryptError = c.pgpEncryptShares(ctx, c.rootRotationConfig, result, false)
 		if encryptError != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
 		}
 	}
 
 	// If we are requiring validation, return now; otherwise rotate barrier key
-	if c.barrierRotationConfig.VerificationRequired {
-		return c.requireVerification(c.barrierRotationConfig, result, newKey)
+	if c.rootRotationConfig.VerificationRequired {
+		return c.requireVerification(c.rootRotationConfig, result, newKey)
 	}
 
 	if err := c.performBarrierRekey(ctx, newKey); err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to rotate barrier key: %w", err).Error())
 	}
 
-	c.barrierRotationConfig = nil
+	c.rootRotationConfig = nil
 	return result, nil
 }
 
@@ -561,7 +561,7 @@ func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, rec
 	c.rotationLock.Lock()
 	defer c.rotationLock.Unlock()
 
-	config := c.barrierRotationConfig
+	config := c.rootRotationConfig
 	if recovery {
 		config = c.recoveryRotationConfig
 	}
@@ -639,7 +639,7 @@ func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, rec
 		if err := c.performBarrierRekey(ctx, recoveredKey); err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform barrier key rotation: %w", err).Error())
 		}
-		c.barrierRotationConfig = nil
+		c.rootRotationConfig = nil
 	}
 
 	return &RekeyVerifyResult{
@@ -666,10 +666,10 @@ func (c *Core) RestartRotationVerification(recovery bool) logical.HTTPCodedError
 			}
 		}
 	} else {
-		if c.barrierRotationConfig != nil {
-			c.barrierRotationConfig.VerificationProgress = nil
+		if c.rootRotationConfig != nil {
+			c.rootRotationConfig.VerificationProgress = nil
 			if nonceErr == nil {
-				c.barrierRotationConfig.VerificationNonce = nonce
+				c.rootRotationConfig.VerificationNonce = nonce
 			}
 		}
 	}

@@ -724,7 +724,7 @@ func (b *AESGCMBarrier) ActiveKeyInfo() (*KeyInfo, error) {
 	return info, nil
 }
 
-// Rotate is used to change the root key used to protect the keyring
+// RotateRootKey is used to change the root key used to protect the keyring
 func (b *AESGCMBarrier) RotateRootKey(ctx context.Context, key []byte) error {
 	b.l.Lock()
 	defer b.l.Unlock()

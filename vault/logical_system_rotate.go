@@ -514,7 +514,7 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 		}
 
 		// Set the rotation config
-		b.Core.barrierRotationConfig = existingConfig.Clone()
+		b.Core.rootRotationConfig = existingConfig.Clone()
 
 		// Generate a new key
 		newKey, err := b.Core.barrier.GenerateKey(b.Core.secureRandomReader)
@@ -529,7 +529,7 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 		}
 
 		// Remove the rotation config
-		b.Core.barrierRotationConfig = nil
+		b.Core.rootRotationConfig = nil
 		return nil, nil
 	}
 }

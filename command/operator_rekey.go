@@ -53,7 +53,7 @@ func (c *OperatorRekeyCommand) Help() string {
 Usage: bao operator rekey [options] [KEY]
 
   WARNING: this method is being deprecated, please use:
-        $ bao operator rotate-keys 
+    $ bao operator rotate-keys 
   instead.
 
   Generates a new set of unseal keys. This can optionally change the total

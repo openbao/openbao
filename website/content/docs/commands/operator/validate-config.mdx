@@ -1,0 +1,36 @@
+---
+sidebar_label: validate-config
+description: |-
+  "bao operator validate-config" is a new operator-centric command, focused on 
+  validating OpenBao configuration. It is similar to "bao operator diagnose",
+  but it only validates the config and not the system it is running on (e.g. it 
+  will not check that the raft directory is writable). This allows it to be 
+  used on an operators Laptop or in CI validations.
+
+---
+
+# validate-config
+
+The operator diagnose command should be used primarily before the configuration
+is copied to the OpenBao nodes. For example on the operators Laptop and/or in
+CI validations, if you manage your configuration with git.
+You might also want to run it on the OpenBao node after updating the configuration
+and before restarting the node.
+In case your OpenBao nodes does not start, running [`bao operator disgnose`](
+../diagnose) should be preferred.
+
+## Usage
+
+The following flags are available in addition to the [standard set of
+flags](/docs/commands) included on all commands.
+
+### Output options
+
+- `-format` `(string: "table")` - Print the output in the given format. Valid
+  formats are "table" or "json". This can also be specified via the `BAO_FORMAT`
+  environment variable.
+
+### Command options
+
+- `-config` `(string; "")` - The path to the OpenBao configuration file used by
+the OpenBao server on startup.

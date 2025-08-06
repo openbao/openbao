@@ -3294,6 +3294,7 @@ func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {
 
 type MFACachedAuthResponse struct {
 	CachedAuth            *logical.Auth
+	CachedUserLockout     *FailedLoginUser
 	RequestPath           string
 	RequestNSID           string
 	RequestNSPath         string

@@ -113,6 +113,9 @@ type Config struct {
 
 	UnsafeCrossNamespaceIdentity bool `hcl:"unsafe_cross_namespace_identity"`
 
+	UnsafeAllowAPIAuditCreation bool `hcl:"unsafe_allow_api_audit_creation"`
+	AllowAuditLogPrefixing      bool `hcl:"allow_audit_log_prefixing"`
+
 	// Initialization is a configuration object that helps to initialize
 	// OpenBao. It can be specified multiple times and each instance can
 	// contain one or more `request` objects. This is used by the
@@ -417,6 +420,21 @@ func (c *Config) Merge(c2 *Config) *Config {
 	result.EnableResponseHeaderRaftNodeID = c.EnableResponseHeaderRaftNodeID
 	if c2.EnableResponseHeaderRaftNodeID {
 		result.EnableResponseHeaderRaftNodeID = c2.EnableResponseHeaderRaftNodeID
+	}
+
+	result.UnsafeCrossNamespaceIdentity = c.UnsafeCrossNamespaceIdentity
+	if c2.UnsafeCrossNamespaceIdentity {
+		result.UnsafeCrossNamespaceIdentity = c2.UnsafeCrossNamespaceIdentity
+	}
+
+	result.UnsafeAllowAPIAuditCreation = c.UnsafeAllowAPIAuditCreation
+	if c2.UnsafeAllowAPIAuditCreation {
+		result.UnsafeAllowAPIAuditCreation = c2.UnsafeAllowAPIAuditCreation
+	}
+
+	result.AllowAuditLogPrefixing = c.AllowAuditLogPrefixing
+	if c2.AllowAuditLogPrefixing {
+		result.AllowAuditLogPrefixing = c2.AllowAuditLogPrefixing
 	}
 
 	// Use values from top-level configuration for storage if set
@@ -1087,6 +1105,11 @@ func (c *Config) Sanitized() map[string]interface{} {
 		"detect_deadlocks": c.DetectDeadlocks,
 
 		"imprecise_lease_role_tracking": c.ImpreciseLeaseRoleTracking,
+
+		"unsafe_cross_namespace_identity": c.UnsafeCrossNamespaceIdentity,
+
+		"unsafe_allow_api_audit_creation": c.UnsafeAllowAPIAuditCreation,
+		"allow_audit_log_prefixing":       c.AllowAuditLogPrefixing,
 	}
 	for k, v := range sharedResult {
 		result[k] = v

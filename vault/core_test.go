@@ -1447,14 +1447,16 @@ func TestCore_HandleLogin_Token(t *testing.T) {
 
 func TestCore_HandleRequest_AuditTrail(t *testing.T) {
 	// Create a noop audit backend
-	noop := &corehelpers.NoopAudit{}
-	c, _, root := TestCoreUnsealed(t)
-	c.auditBackends["noop"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
-		noop = &corehelpers.NoopAudit{
-			Config: config,
-		}
-		return noop, nil
-	}
+	var noop *corehelpers.NoopAudit
+	c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"noop": func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
+				noop = &corehelpers.NoopAudit{Config: config}
+				return noop, nil
+			},
+		},
+	})
 
 	// Enable the audit backend
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/audit/noop")
@@ -1512,13 +1514,15 @@ func TestCore_HandleRequest_AuditTrail(t *testing.T) {
 func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	// Create a noop audit backend
 	var noop *corehelpers.NoopAudit
-	c, _, root := TestCoreUnsealed(t)
-	c.auditBackends["noop"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
-		noop = &corehelpers.NoopAudit{
-			Config: config,
-		}
-		return noop, nil
-	}
+	c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"noop": func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
+				noop = &corehelpers.NoopAudit{Config: config}
+				return noop, nil
+			},
+		},
+	})
 
 	// Specify some keys to not HMAC
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/secret/tune")
@@ -1631,16 +1635,20 @@ func TestCore_HandleLogin_AuditTrail(t *testing.T) {
 		},
 		BackendType: logical.TypeCredential,
 	}
-	c, _, root := TestCoreUnsealed(t)
-	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
-		return noopBack, nil
-	}
-	c.auditBackends["noop"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
-		noop = &corehelpers.NoopAudit{
-			Config: config,
-		}
-		return noop, nil
-	}
+	c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"noop": func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
+				noop = &corehelpers.NoopAudit{Config: config}
+				return noop, nil
+			},
+		},
+		CredentialBackends: map[string]logical.Factory{
+			"noop": func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
+				return noopBack, nil
+			},
+		},
+	})
 
 	// Enable the credential backend
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/foo")

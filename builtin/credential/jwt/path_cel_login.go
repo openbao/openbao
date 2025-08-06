@@ -159,7 +159,7 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 	}
 
 	// execute celRoleEntry.AuthProgram
-	pbAuth, err := b.runCelProgram(ctx, celRoleEntry, allClaims)
+	pbAuth, err := b.runCelProgram(ctx, req.Operation, celRoleEntry, allClaims)
 	if err != nil {
 		return logical.ErrorResponse("error executing cel program: %s", err.Error()), nil
 	}
@@ -179,8 +179,8 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 }
 
 // runCelProgram executes the CelProgram for the celRoleEntry and returns a pb.Auth or error
-func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRoleEntry, allClaims map[string]any) (*pb.Auth, error) {
-	result, err := b.celEvalProgram(celRoleEntry.CelProgram, allClaims)
+func (b *jwtAuthBackend) runCelProgram(ctx context.Context, operation logical.Operation, celRoleEntry *celRoleEntry, allClaims map[string]any) (*pb.Auth, error) {
+	result, err := b.celEvalProgram(celRoleEntry.CelProgram, operation, allClaims)
 	if err != nil {
 		return nil, fmt.Errorf("Cel role auth program failed: %w", err)
 	}

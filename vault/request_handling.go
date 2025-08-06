@@ -1526,14 +1526,16 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	}
 
 	// if user lockout feature is not disabled, check if the user is locked
+	var userLockoutInfo *FailedLoginUser
 	if !isUserLockoutDisabled {
-		isloginUserLocked, err := c.isUserLocked(ctx, entry, req)
+		lockoutInfo, isloginUserLocked, err := c.isUserLocked(ctx, entry, req)
 		if err != nil {
 			return nil, nil, err
 		}
 		if isloginUserLocked {
 			return nil, nil, logical.ErrPermissionDenied
 		}
+		userLockoutInfo = lockoutInfo
 	}
 
 	// Route the request
@@ -1610,6 +1612,15 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	}
 	// If the response generated an authentication, then generate the token
 	if resp != nil && resp.Auth != nil && req.Path != "sys/mfa/validate" {
+		// Validate alias information before handling authentication:
+		// while this nominally is a plugin contract violation, we should
+		// not let the authentication succeed if we detect this.
+		if userLockoutInfo != nil && resp.Auth.Alias.Name != userLockoutInfo.aliasName {
+			c.logger.Error("Failed to perform login: authentication plugin violated contract with AliasLookaheadOperation returning a different alias name than login. Report this bug to the plugin author; the login request has been denied.", "AliasLookaheadOperation", userLockoutInfo.aliasName, "login", resp.Auth.Alias.Name)
+			retErr = multierror.Append(retErr, ErrInternalError)
+			return
+		}
+
 		// Check for request role in context to role based quotas
 		var role string
 		reqRole := ctx.Value(logical.CtxKeyRequestRole{})
@@ -2011,11 +2022,11 @@ func (c *Core) isUserLockoutDisabled(mountEntry *MountEntry) (bool, error) {
 }
 
 // isUserLocked determines if the login request user is locked
-func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *logical.Request) (locked bool, err error) {
+func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *logical.Request) (loginUser *FailedLoginUser, locked bool, err error) {
 	// get userFailedLoginInfo map key for login user
 	loginUserInfoKey, err := c.getLoginUserInfoKey(ctx, mountEntry, req)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 
 	// get entry from userFailedLoginInfo map for the key
@@ -2028,30 +2039,30 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 		// entry not found in userFailedLoginInfo map, check storage to re-verify
 		ns, err := namespace.FromContext(ctx)
 		if err != nil {
-			return false, fmt.Errorf("could not retrieve namespace from context: %w", err)
+			return nil, false, fmt.Errorf("could not retrieve namespace from context: %w", err)
 		}
 
 		view := NamespaceView(c.barrier, ns).SubView(coreLockedUsersPath).SubView(loginUserInfoKey.mountAccessor + "/")
 		existingEntry, err := view.Get(ctx, loginUserInfoKey.aliasName)
 		if err != nil {
-			return false, err
+			return nil, false, err
 		}
 
 		var lastLoginTime int
 		if existingEntry == nil {
 			// no storage entry found, user is not locked
-			return false, nil
+			return &loginUserInfoKey, false, nil
 		}
 
 		err = jsonutil.DecodeJSON(existingEntry.Value, &lastLoginTime)
 		if err != nil {
-			return false, err
+			return nil, false, err
 		}
 
 		// if time passed from last login time is within lockout duration, the user is locked
 		if time.Now().Unix()-int64(lastLoginTime) < int64(userLockoutConfiguration.LockoutDuration.Seconds()) {
 			// user locked
-			return true, nil
+			return &loginUserInfoKey, true, nil
 		}
 
 		// else user is not locked. Entry is stale, this will be removed from storage during cleanup
@@ -2064,10 +2075,11 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 
 		if isCountOverLockoutThreshold && isWithinLockoutDuration {
 			// user locked
-			return true, nil
+			return &loginUserInfoKey, true, nil
 		}
 	}
-	return false, nil
+
+	return &loginUserInfoKey, false, nil
 }
 
 // getUserLockoutConfiguration gets the user lockout configuration for a mount entry

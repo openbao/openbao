@@ -99,20 +99,20 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 		},
 		"expiration_leeway": {
 			Type: framework.TypeSignedDurationSecond,
-			Description: `Duration in seconds of leeway when validating expiration of a token to account for clock skew. 
-Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
+			Description: `Duration in seconds of leeway when validating expiration of a token to account for clock skew.
+ Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
 			Default: claimDefaultLeeway,
 		},
 		"not_before_leeway": {
 			Type: framework.TypeSignedDurationSecond,
-			Description: `Duration in seconds of leeway when validating not before values of a token to account for clock skew. 
-Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
+			Description: `Duration in seconds of leeway when validating not before values of a token to account for clock skew.
+ Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
 			Default: claimDefaultLeeway,
 		},
 		"clock_skew_leeway": {
 			Type: framework.TypeSignedDurationSecond,
-			Description: `Duration in seconds of leeway when validating all claims to account for clock skew. 
-Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
+			Description: `Duration in seconds of leeway when validating all claims to account for clock skew.
+ Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 			Default: jwt.DefaultLeeway,
 		},
 		"bound_audiences": {
@@ -148,20 +148,20 @@ Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 			},
 			"expiration_leeway": {
 				Type: framework.TypeSignedDurationSecond,
-				Description: `Duration in seconds of leeway when validating expiration of a token to account for clock skew. 
-Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
+				Description: `Duration in seconds of leeway when validating expiration of a token to account for clock skew.
+ Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
 				Default: claimDefaultLeeway,
 			},
 			"not_before_leeway": {
 				Type: framework.TypeSignedDurationSecond,
-				Description: `Duration in seconds of leeway when validating not before values of a token to account for clock skew. 
-Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
+				Description: `Duration in seconds of leeway when validating not before values of a token to account for clock skew.
+ Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
 				Default: claimDefaultLeeway,
 			},
 			"clock_skew_leeway": {
 				Type: framework.TypeSignedDurationSecond,
-				Description: `Duration in seconds of leeway when validating all claims to account for clock skew. 
-Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
+				Description: `Duration in seconds of leeway when validating all claims to account for clock skew.
+ Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 				Default: jwt.DefaultLeeway,
 			},
 			"bound_audiences": {
@@ -413,14 +413,14 @@ func validateCelRoleCreation(b *jwtAuthBackend, entry *celRoleEntry, ctx context
 
 func (b *jwtAuthBackend) validateCelProgram(program celhelper.CelProgram) (bool, error) {
 	// adding a minimal jwtClaims collection here, for validating usages in CEL expression
-	_, err := b.celEvalProgram(program, map[string]any{"sub": "email@example.com", "aud": "audience", "iss": "issuer"})
+	_, err := b.celEvalProgram(program, logical.UpdateOperation, map[string]any{"sub": "email@example.com", "aud": "audience", "iss": "issuer"})
 	if err != nil {
 		return false, fmt.Errorf("failed to validate CEL program: %w", err)
 	}
 	return true, nil
 }
 
-func (b *jwtAuthBackend) celEvalProgram(program celhelper.CelProgram, jwtClaims map[string]any) (any, error) {
+func (b *jwtAuthBackend) celEvalProgram(program celhelper.CelProgram, operation logical.Operation, jwtClaims map[string]any) (any, error) {
 	env, err := b.celEnv(program)
 	if err != nil {
 		return nil, err
@@ -429,8 +429,9 @@ func (b *jwtAuthBackend) celEvalProgram(program celhelper.CelProgram, jwtClaims 
 	// The "request" key allows CEL expressions to access and evaluate against input fields.
 	// Additional variables and evaluated results will be added dynamically during processing.
 	evaluationData := map[string]interface{}{
-		"claims": jwtClaims,
-		"now":    time.Now(),
+		"claims":    jwtClaims,
+		"now":       time.Now(),
+		"operation": string(operation),
 	}
 
 	// Evaluate all variables

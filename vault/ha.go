@@ -388,89 +388,104 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 	return retErr
 }
 
+func (c *Core) restart() {
+	c.restartCh <- struct{}{}
+}
+
 // runStandby is a long running process that manages a number of the HA
 // subsystems.
-func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}) {
+func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}, restartCh chan struct{}) {
 	defer close(doneCh)
 	defer close(manualStepDownCh)
 	c.logger.Info("entering standby mode")
 
-	c.stateLock.Lock()
-	// wipe any existing mount tables
-	if err := c.preSeal(); err != nil {
-		c.logger.Error("pre-seal teardown failed", "error", err)
-	}
+	for restart := true; restart; {
+		restart = false
 
-	perfCtx, perfCancel := context.WithCancel(namespace.RootContext(context.Background()))
-	if err := c.postUnseal(perfCtx, perfCancel, readonlyUnsealStrategy{}); err != nil {
-		c.logger.Error("read-only post-unseal setup failed", "error", err)
-		if err := c.barrier.Seal(); err != nil {
-			c.logger.Error("failed to re-seal barrier after post-unseal setup failed", "error", err)
+		c.stateLock.Lock()
+		// wipe any existing mount tables
+		if err := c.preSeal(); err != nil {
+			c.logger.Error("pre-seal teardown failed", "error", err)
 		}
-		c.logger.Warn("vault is sealed")
-	}
-	c.stateLock.Unlock()
 
-	var g run.Group
-	newLeaderCh := addEnterpriseHaActors(c, &g)
-	{
-		// This will cause all the other actors to close when the stop channel
-		// is closed.
-		g.Add(func() error {
-			<-stopCh
-			return nil
-		}, func(error) {})
-	}
-	{
-		// Monitor for key rotations
-		keyRotateStop := make(chan struct{})
+		perfCtx, perfCancel := context.WithCancel(namespace.RootContext(context.Background()))
+		if err := c.postUnseal(perfCtx, perfCancel, readonlyUnsealStrategy{}); err != nil {
+			c.logger.Error("read-only post-unseal setup failed", "error", err)
+			if err := c.barrier.Seal(); err != nil {
+				c.logger.Error("failed to re-seal barrier after post-unseal setup failed", "error", err)
+			}
+			c.logger.Warn("vault is sealed")
+		}
+		c.stateLock.Unlock()
 
-		g.Add(func() error {
-			c.periodicCheckKeyUpgrades(context.Background(), keyRotateStop)
-			return nil
-		}, func(error) {
-			close(keyRotateStop)
-			c.logger.Debug("shutting down periodic key rotation checker")
-		})
-	}
-	{
-		// Monitor for new leadership
-		checkLeaderStop := make(chan struct{})
+		var g run.Group
+		newLeaderCh := addEnterpriseHaActors(c, &g)
+		{
+			// This will cause all the other actors to close when the stop channel
+			// is closed.
+			g.Add(func() error {
+				select {
+				case <-stopCh:
+				case <-restartCh:
+					restart = true
+				}
+				return nil
+			}, func(error) {})
+		}
+		{
+			// Monitor for key rotations
+			keyRotateStop := make(chan struct{})
 
-		g.Add(func() error {
-			c.periodicLeaderRefresh(newLeaderCh, checkLeaderStop)
-			return nil
-		}, func(error) {
-			close(checkLeaderStop)
-			c.logger.Debug("shutting down periodic leader refresh")
-		})
-	}
-	{
-		metricsStop := make(chan struct{})
+			g.Add(func() error {
+				c.periodicCheckKeyUpgrades(context.Background(), keyRotateStop)
+				return nil
+			}, func(error) {
+				close(keyRotateStop)
+				c.logger.Debug("shutting down periodic key rotation checker")
+			})
+		}
+		{
+			// Monitor for new leadership
+			checkLeaderStop := make(chan struct{})
 
-		g.Add(func() error {
-			c.metricsLoop(metricsStop)
-			return nil
-		}, func(error) {
-			close(metricsStop)
-			c.logger.Debug("shutting down periodic metrics")
-		})
-	}
-	{
-		// Wait for leadership
-		leaderStopCh := make(chan struct{})
+			g.Add(func() error {
+				c.periodicLeaderRefresh(newLeaderCh, checkLeaderStop)
+				return nil
+			}, func(error) {
+				close(checkLeaderStop)
+				c.logger.Debug("shutting down periodic leader refresh")
+			})
+		}
+		{
+			metricsStop := make(chan struct{})
 
-		g.Add(func() error {
-			c.waitForLeadership(newLeaderCh, manualStepDownCh, leaderStopCh)
-			return nil
-		}, func(error) {
-			close(leaderStopCh)
-			c.logger.Debug("shutting down leader elections")
-		})
-	}
+			g.Add(func() error {
+				c.metricsLoop(metricsStop)
+				return nil
+			}, func(error) {
+				close(metricsStop)
+				c.logger.Debug("shutting down periodic metrics")
+			})
+		}
+		{
+			// Wait for leadership
+			leaderStopCh := make(chan struct{})
 
-	// Start all the actors
-	g.Run()
+			g.Add(func() error {
+				c.waitForLeadership(newLeaderCh, manualStepDownCh, leaderStopCh)
+				return nil
+			}, func(error) {
+				close(leaderStopCh)
+				c.logger.Debug("shutting down leader elections")
+			})
+		}
+
+		// Start all the actors
+		err := g.Run()
+		if err != nil {
+			c.logger.Error("unexpected error in runStandby", "error", err.Error())
+		}
+	}
 }
 
 // waitForLeadership is a long running routine that is used when an HA backend

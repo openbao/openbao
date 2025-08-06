@@ -300,8 +300,8 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	if err == nil {
 		t.Fatal("MFA succeeded with an already used passcode")
 	}
-	if !strings.Contains(err.Error(), "code already used") {
-		t.Fatalf("got: %+v, expected: code already used", err.Error())
+	if !strings.Contains(err.Error(), vault.ErrBadMFACredentials.Error()) {
+		t.Fatalf("got: %v, expected: %v", err, vault.ErrBadMFACredentials)
 	}
 
 	// check for reaching max failed validation requests

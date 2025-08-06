@@ -58,6 +58,8 @@ const (
 	mfaLoginEnforcementPrefix = "login-mfa/enforcement/"
 )
 
+var ErrBadMFACredentials = errors.New("MFA credentials not supplied or incorrect")
+
 type totpKey struct {
 	Key string `json:"key"`
 }
@@ -2341,7 +2343,7 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 	// from multiple code paths here.
 
 	if mfaFactors == nil || mfaFactors.passcode == "" {
-		return errors.New("MFA credentials not supplied or incorrect")
+		return ErrBadMFACredentials
 	}
 	passcode := mfaFactors.passcode
 
@@ -2352,14 +2354,14 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 
 	// Validate the passcode has the right format for this totp.
 	if strings.TrimSpace(passcode) != passcode || len(passcode) != int(totpSecret.Digits) {
-		return errors.New("MFA credentials not supplied or incorrect")
+		return ErrBadMFACredentials
 	}
 
 	usedName := fmt.Sprintf("%s_%s", configID, passcode)
 
 	_, ok := usedCodes.Get(usedName)
 	if ok {
-		return errors.New("MFA credentials not supplied or incorrect")
+		return ErrBadMFACredentials
 	}
 
 	// The duration in which a passcode is stored in cache to enforce
@@ -2409,7 +2411,7 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 	}
 
 	if !valid {
-		return errors.New("MFA credentials not supplied or incorrect")
+		return ErrBadMFACredentials
 	}
 
 	// Take the key skew, add two for behind and in front, and multiply that by

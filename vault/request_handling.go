@@ -203,7 +203,7 @@ func (c *Core) filterGroupPoliciesByNS(ctx context.Context, tokenNS *namespace.N
 		if err != nil && err != ErrNoApplicablePolicies {
 			return nil, err
 		}
-		filteredPolicies = strutil.RemoveDuplicates(filteredPolicies, false)
+		filteredPolicies = strutil.RemoveDuplicates(filteredPolicies, true /* lowercase */)
 		if len(filteredPolicies) != 0 {
 			policies[nsID] = append(policies[nsID], filteredPolicies...)
 		}

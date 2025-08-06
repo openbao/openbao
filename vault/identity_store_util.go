@@ -1392,7 +1392,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 
 	// Remove duplicate policies
 	if group.Policies != nil {
-		group.Policies = strutil.RemoveDuplicates(group.Policies, false)
+		group.Policies = strutil.RemoveDuplicates(group.Policies, true /* lowercase */)
 	}
 
 	txn := i.db(ctx).Txn(true)

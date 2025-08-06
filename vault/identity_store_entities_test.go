@@ -938,7 +938,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 
 	if resp.Data["id"] != id ||
 		resp.Data["name"] != registerData["name"] ||
-		!reflect.DeepEqual(resp.Data["policies"], strutil.RemoveDuplicates(registerData["policies"].([]string), false)) {
+		!reflect.DeepEqual(resp.Data["policies"], strutil.RemoveDuplicates(registerData["policies"].([]string), true /* lowercase */)) {
 		t.Fatal("bad: entity response")
 	}
 
@@ -968,6 +968,24 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 		resp.Data["name"] != updateData["name"] ||
 		!reflect.DeepEqual(resp.Data["policies"], updateData["policies"]) {
 		t.Fatalf("bad: entity response after update; resp: %#v\n updateData: %#v\n", resp.Data, updateData)
+	}
+
+	// For HCSEC-2025-13 / CVE-2025-5999, validate that we cannot set root
+	// policies with other casing.
+	for _, name := range []string{"rooT", "Root", "rOoT", "root", "root ", " root"} {
+		updateReq.Data = map[string]interface{}{
+			"policies": []string{name},
+		}
+		resp, err = is.HandleRequest(ctx, updateReq)
+		if err == nil && (resp == nil || !resp.IsError()) {
+			t.Fatalf("[policy: %v] err:%v resp:%#v", name, err, resp)
+		}
+
+		resp, err = is.HandleRequest(ctx, readReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v", err, resp)
+		}
+		require.NotContains(t, resp.Data["policies"].([]string), "root")
 	}
 
 	deleteReq := &logical.Request{

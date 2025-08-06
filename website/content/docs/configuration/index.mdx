@@ -235,7 +235,10 @@ can have a negative effect on performance due to the tracking of each lock attem
   needed. This option can be toggled at runtime by reloading the configuration
   via SIGHUP.
 
-- `allow_audit_log_prefixing` `(bool: false)` - Allow [audit devices](/docs/audit) to use the [`prefix` option](/docs/audit#common-configuration-options).
+- `allow_audit_log_prefixing` `(bool: false)` - Allow creating [audit devices](/docs/audit)
+  that use the [`prefix` option](/docs/audit#common-configuration-options). Just
+  like the above option, this one is best toggled only temporarily to enable the
+  desired audit device.
 
 ### High Availability parameters
 

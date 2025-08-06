@@ -4510,7 +4510,7 @@ type SealStatusResponse struct {
 	ClusterName      string   `json:"cluster_name,omitempty"`
 	ClusterID        string   `json:"cluster_id,omitempty"`
 	RecoverySeal     bool     `json:"recovery_seal"`
-	RecoverySealType string   `json:"recover_seal_type,omitempty"`
+	RecoverySealType string   `json:"recovery_seal_type,omitempty"`
 	StorageType      string   `json:"storage_type,omitempty"`
 	Warnings         []string `json:"warnings,omitempty"`
 }

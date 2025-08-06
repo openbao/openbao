@@ -31,6 +31,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	semver "github.com/hashicorp/go-version"
+	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/hostutil"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/locking"
@@ -3136,6 +3137,16 @@ func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Requ
 	backendType := data.Get("type").(string)
 	description := data.Get("description").(string)
 	options := data.Get("options").(map[string]string)
+
+	conf := b.Core.rawConfig.Load().(*server.Config)
+
+	if !conf.UnsafeAllowAPIAuditCreation {
+		return handleError(fmt.Errorf("cannot enable audit device via API"))
+	}
+
+	if _, hasPrefix := options["prefix"]; hasPrefix && !conf.AllowAuditLogPrefixing {
+		return handleError(fmt.Errorf("audit log prefixing is not allowed"))
+	}
 
 	// Create the mount entry
 	me := &MountEntry{

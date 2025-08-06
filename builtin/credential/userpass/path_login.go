@@ -91,7 +91,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 	// for the bcrypt check so as not to have a timing leak.
 	if user != nil && userError == nil {
 		if len(user.PasswordHash) == 0 {
-			return nil, errors.New("invalid user entry: refusing to process pre-Vault v0.2 record")
+			return logical.ErrorResponse("invalid username or password"), nil
 		}
 
 		userPassword = user.PasswordHash

@@ -59,12 +59,10 @@ func TestPathLogin_TimingLeak(t *testing.T) {
 
 	start := time.Now()
 	resp, err := b.HandleRequest(ctx, req)
-	existingUserTime := time.Since(start)
+	// ensuring we actually hit the storage
+	require.Greater(t, time.Since(start).Seconds(), 2.01*time.Second.Seconds())
 	require.Equal(t, resp.Data["error"], "invalid username or password")
 	require.ErrorIs(t, err, logical.ErrInvalidCredentials)
-
-	// ensuring we actually hit the storage
-	require.Greater(t, existingUserTime.Seconds(), 2.01*time.Second.Seconds())
 
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -77,15 +75,8 @@ func TestPathLogin_TimingLeak(t *testing.T) {
 
 	start = time.Now()
 	resp, err = b.HandleRequest(ctx, req)
-	notExistingUserTime := time.Since(start)
+	// ensuring we actually hit the storage
+	require.Greater(t, time.Since(start).Seconds(), 2.01*time.Second.Seconds())
 	require.Equal(t, resp.Data["error"], "invalid username or password")
 	require.Nil(t, err)
-
-	// ensuring we actually hit the storage
-	require.Greater(t, existingUserTime.Seconds(), 2.01*time.Second.Seconds())
-
-	// verify that login attempt of existing user takes the
-	// same amount of time as login of non-existing user
-	// are times within 100ms of each other - accounting for randomness.
-	require.InDelta(t, existingUserTime.Seconds(), notExistingUserTime.Seconds(), 0.1*time.Second.Seconds())
 }

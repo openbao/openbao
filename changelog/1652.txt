@@ -1,2 +1,3 @@
-CHANGES:
+```release-note:improvement
 UI shows 'OpenBao is sealed' instead 'Vaul is sealed' for HTTP status 503
+```

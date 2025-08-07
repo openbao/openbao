@@ -9,7 +9,7 @@ module github.com/openbao/openbao
 // updated. If we choose not to do so at some point (e.g. because we don't want some new
 // semantic related to Go module handling), this comment should be updated to explain that.
 
-go 1.24.4
+go 1.24.6
 
 replace github.com/openbao/openbao/api/v2 => ./api
 

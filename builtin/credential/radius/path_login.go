@@ -65,7 +65,10 @@ func pathLogin(b *backend) *framework.Path {
 func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	username := d.Get("username").(string)
 	if username == "" {
-		return nil, errors.New("missing username")
+		username = d.Get("urlusername").(string)
+		if username == "" {
+			return nil, errors.New("missing username")
+		}
 	}
 
 	return &logical.Response{

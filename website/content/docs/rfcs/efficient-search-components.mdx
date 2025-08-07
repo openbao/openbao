@@ -1,0 +1,326 @@
+# RFC - Components for efficient search over encrypted data
+
+## Summary
+
+OpenBao’s current search functionality is constrained by its key-value storage layer, which only supports constant-time retrieval when using an item’s identifier. As a result, searching based on other metadata (such as keys in the PKI engine or secrets in the KV engine) requires a linear scan through the dataset, which becomes inefficient at scale. This RFC proposes the introduction of a set of constructs designed to build indexes on this metadata, thereby enabling more efficient search operations. Specifically, the solution leverages a B+ tree index structure, which reduces the number of elements that need to be examined during a query through its balanced, and logarithmic search time.
+
+Specific endpoints will be introduced to supporting querying over the indexed data.
+
+## Problem Statement
+
+OpenBao’s storage layer provides two primary data retrieval operations:
+
+- get – Fetches an item by its identifier.
+- list – Retrieves all items or batches of a given type.
+
+However, neither operation is optimized for searching items based on non-identifier attributes. This limitation is manageable for engine backends that store minimal data but becomes problematic for others, such as KV and PKI, where efficient attribute-based lookups are desired.
+An issue with larger deployments of upstream and now OpenBao has always been performing searches across stored data. Common use cases include:
+Key Management (PKI) – Searching for cryptographic keys based on metadata (e.g., expiration date, issuer, subject components, or usage constraints).
+Static Secrets (KV) - Searching for secrets by content or metadata (e.g., finding stored passwords or secrets matching some metadata criteria)
+The lack of an efficient search mechanism forces users to retrieve large datasets and filter results client-side, leading to performance bottlenecks, increased API load, and degraded user experience. Addressing this limitation would improve scalability and usability across multiple storage backends, albeit by shifting some of the load to the server.
+An alternative is leveraging third party tools to create an external index(es) via the audit logs. This approach does, however, leak sensitive information ([not directly](https://openbao.org/docs/audit/#sensitive-information), unless log_raw=true is enabled).
+
+## User-facing Description
+
+Plugin authors would be responsible for creating new API endpoints to perform search operations and control user experience around search parameters. In conjunction with [LIST filtering](https://github.com/openbao/openbao/issues/769), this would allow searches over only user-accessible paths. Operations on engines which use this search engine would incur incrementally more cost to update the B+ trees, which can be done transactionally inline with the request or subsequently via dedicated indexing. But, retrieval of matches via search would be much more efficient than performing LIST or SCAN operations and fetching all matching results.
+
+This would implement a new custom operation, SEARCH, which could be separately ACL'd on paths which implement search APIs. Searching should respect pagination like paginated list endpoints, to reduce large volumes of queries.
+
+Separate RFCs would discuss how to implement this in given plugins. This RFC only discusses internal design semantics.
+
+## Technical Description
+
+The end goal is to build a library that can be easily integrated into any secret engine’s backend and be dynamic enough so that indexes can be created, incrementally built, and updated based on developer-defined parameters. Since a given secret engine may require multiple indexes, the library should support defining and configuring multiple indexes, updating all simultaneously.
+
+### Index Manager
+
+The `IndexManager` is the construct that manages and allows manipulating the set of indexes bound to a backend. It will be added as an attribute to the backend and initialized in the `Initialize` function. The existing index identifiers are persisted in storage allowing re-initializing of the indexes after restarts/failures.
+
+```go
+type IndexManager struct {
+	indices map[string]Index
+	sync.RWMutex
+	storage logical.Storage
+	…
+}
+
+func NewIndexManager(...) (*IndexManager, error)
+
+// Initialize loads into memory the existing indexes.
+func (im *IndexManager) Initialize(ctx context.Context, storage bptree.Storage) error
+// DeleteIndex marks an index for deletion, purging all data bound to it.
+func (im *IndexManager) DeleteIndex(ctx context.Context, storage bptree.Storage, indexName string) error
+// GetIndex retrieves the index with the provide identifier
+func (im *IndexManager) GetIndex(ctx context.Context, storage bptree.Storage, indexName string) (*BPlusTree, error)
+// RegisterIndex creates an index with the provider name and configuration, if exists returns the existing one
+func (im *IndexManager) RegisterIndex(ctx context.Context, storage bptree.Storage, indexName string, config *BPlusTreeConfig) (*BPlusTree, error)
+…
+```
+
+### Indexing Structure
+
+For the sake of simplicity, the `IndexManager` is going to handle the `BPlusTree` implementation directly instead of an `Index` interface. If needed, an abstraction can be added in the future.
+
+#### BPlusTree Structure
+
+`BPlusTree` is a thread-safe implementation of a B+ Tree algorithm optimized for indexing operations. The structure maintains minimal state with configuration externalized for flexibility.
+
+```go
+type BPlusTree struct {
+	config *BPlusTreeConfig // Tree configuration and metadata
+	lock   sync.RWMutex     // Reader-writer mutex for thread safety
+}
+```
+
+**Attributes:**
+
+- `config`: Contains tree metadata including unique identifier, node capacity, and versioning information.
+- `lock`: Ensures thread-safe concurrent access with optimized read performance through RWMutex. The implementation uses tree-level locking, which is simpler to implement and reason about but can become a bottleneck under high concurrent load.
+
+#### Configuration Structure
+
+The `BPlusTreeConfig` serves as both runtime configuration and persistent metadata stored alongside the tree data:
+
+```go
+type BPlusTreeConfig struct {
+	TreeID  string `json:"tree_id"` // Unique identifier for multi-tree storage
+	Order   int    `json:"order"`   // Maximum number of children per node (default: 32) (Can't be updated...)
+	Version int    `json:"version"` // Configuration version for schema evolution
+}
+```
+
+**Attributes:**
+
+- `TreeID`: Unique identifier enabling multiple named trees within a single storage backend. Used to namespace storage paths as `<TreeID>/nodes/<nodeID>`, `<TreeID>/root`, and `<TreeID>/config`
+- `Order`: Defines the maximum number of children per internal node (minimum 3, default 32). This directly affects tree height and performance characteristics
+- `Version`: Schema version for configuration evolution and backward compatibility during upgrades
+
+#### Core Operations
+
+The B+ tree supports standard indexing operations with atomic transaction support:
+
+```go
+func InitializeBPlusTree(ctx context.Context, storage Storage, config *BPlusTreeConfig) (*BPlusTree, error)
+func NewBPlusTree(ctx context.Context, storage Storage, config *BPlusTreeConfig) (*BPlusTree, error)
+func LoadExistingBPlusTree(ctx context.Context, storage Storage, treeID string) (*BPlusTree, error)
+
+func (t *BPlusTree) Search(ctx context.Context, storage Storage, key string) ([]string, bool, error)
+func (t *BPlusTree) SearchPrefix(ctx context.Context, storage Storage, prefix string) (map[string][]string, error)
+func (t *BPlusTree) Insert(ctx context.Context, storage Storage, key string, value string) error
+func (t *BPlusTree) Delete(ctx context.Context, storage Storage, key string) (bool, error)
+func (t *BPlusTree) DeleteValue(ctx context.Context, storage Storage, key string, value string) (bool, error)
+...
+```
+
+#### Index-to-Value Mapping
+
+Plugin authors map searchable attributes to storage-level identifiers through the indexing system. Each metadata field becomes a separate named index, with the field values serving as keys and storage identifiers as values.
+
+**Example: PKI Certificate Indexing**
+```go
+// Create indexes for different certificate attributes
+cnIndex := indexManager.RegisterIndex(ctx, storage, "common_name", config)
+dnsIndex := indexManager.RegisterIndex(ctx, storage, "dns_names", config)
+serialIndex := indexManager.RegisterIndex(ctx, storage, "serial_number", config)
+
+// Index certificate attributes pointing to the certificate's storage path
+cnIndex.Insert(ctx, storage, cert.Subject.CommonName, certStoragePath)
+for _, dnsName := range cert.DNSNames {
+    dnsIndex.Insert(ctx, storage, dnsName, certStoragePath)
+}
+serialIndex.Insert(ctx, storage, cert.SerialNumber.String(), certStoragePath)
+```
+
+**Example: KV Secret Indexing**
+```go
+// Index metadata fields for efficient searching
+tagIndex := indexManager.RegisterIndex(ctx, storage, "tags", config)
+ownerIndex := indexManager.RegisterIndex(ctx, storage, "owner", config)
+
+// Map secret metadata to storage paths
+for _, tag := range secret.Metadata.Tags {
+    tagIndex.Insert(ctx, storage, tag, secretStoragePath)
+}
+ownerIndex.Insert(ctx, storage, secret.Metadata.Owner, secretStoragePath)
+```
+
+The indexed values can later be efficiently retrieved through search operations, enabling logarithmic-time lookups instead of linear scans across the entire dataset.
+
+### Node Storage
+
+Besides the expected input parameters, all methods require storage. `Storage` is a storage layer, wrapping `logical.Storage`, that implements the necessary methods to read and persist tree nodes and is required for all tree operations. The reason for this is to ease the process of working with a transactional storage and allowing the operator to perform any number of operations on a single transaction. It also has an internal LRU cache to reduce the number of storage accesses.
+
+At the storage level, each tree node is stored as its own key/value pair. The key is a unique identifier for each node, and the value is the node itself. To support tree traversal, each node contains references (identifiers) to its parent and child node identifiers. The `NodeStorage` implementation wraps OpenBao's `logical.Storage` and provides caching through an LRU cache for improved performance.
+
+```go
+type Storage interface {
+	// Root management
+	GetRootID(ctx context.Context) (string, error)
+	SetRootID(ctx context.Context, id string) error
+
+	// Node operations
+	LoadNode(ctx context.Context, id string) (*Node, error)
+	SaveNode(ctx context.Context, node *Node) error
+	DeleteNode(ctx context.Context, id string) error
+
+	// Tree configuration
+	LoadConfig(ctx context.Context) (*BPlusTreeConfig, error)
+	SaveConfig(ctx context.Context, config *BPlusTreeConfig) error
+}
+
+type NodeStorage struct {
+	storage logical.Storage
+	cache   *lru.Cache
+	treeID  string
+	lock    sync.RWMutex
+}
+```
+
+Storage paths are organized as `<treeID>/nodes/<nodeID>`, `<treeID>/root`, and `<treeID>/config` to support multiple named trees within a single logical storage backend. The NodeStorage implementation handles serialization/deserialization of nodes to JSON format for persistence.
+
+### Node Structure and Operations
+
+The B+ tree implementation uses nodes as the fundamental building blocks. Each node maintains keys and values (for leaf nodes) or keys and child references (for internal nodes). The node structure supports efficient splitting and merging operations to maintain tree balance.
+
+```go
+type Node struct {
+	ID     string `json:"id"`
+	IsLeaf bool   `json:"isLeaf"`
+	Keys []string `json:"keys"`
+	Values      [][]string `json:"values"`      // Only for leaf nodes
+	ChildrenIDs []string   `json:"childrenIDs"` // Only for internal nodes
+	ParentID    string     `json:"parentID"`
+	NextID      string     `json:"nextID"`     // ID of the next leaf node
+	PreviousID  string     `json:"previousID"` // ID of the previous leaf node
+}
+
+// Core node operations (Does not match exactly the implementation)
+func (n *Node) InsertKey(key string, value string) error
+func (n *Node) RemoveKey(key string) (RemovalResult, error)
+func (n *Node) RemoveValue(key string, value string) (RemovalResult, error)
+func (n *Node) SearchKey(key string) ([]string, bool)
+func (n *Node) Split(order int) (*Node, string, error)
+func (n *Node) Merge(sibling *Node, separatorKey string) error
+```
+
+The implementation supports multi-value keys, where each key can map to multiple values (stored as string slices). This enables indexing scenarios where multiple items share the same searchable attribute. Node splitting occurs when the number of keys exceeds the configured order, and merging happens during deletion to maintain minimum fill requirements.
+
+### Transactional Support
+
+To ensure data consistency during concurrent operations, the implementation provides transactional storage support through the `TransactionalStorage` interface:
+
+```go
+type Transactional interface {
+	BeginReadOnlyTx(context.Context) (Transaction, error)
+	BeginTx(context.Context) (Transaction, error)
+}
+
+type Transaction interface {
+	Storage
+	Commit(context.Context) error
+	Rollback(context.Context) error
+}
+
+type TransactionalStorage interface {
+	Storage
+	Transactional
+}
+```
+
+This allows multiple B+ tree operations to be grouped into atomic transactions, ensuring that either all changes are persisted or none are applied. Read-only transactions provide consistent snapshots for search operations, while read-write transactions enable safe concurrent modifications.
+
+### Building Indexes
+
+Indexes should be initialized in the backend’s `InitializeFunc` and built immediately if the impact on startup time is acceptable. For larger indexes built over large datasets, a gradual build process is recommended. This can be done using the `PeriodicFunc`.
+Index progress must be recorded so that each `PeriodicFunc` call can continue from the last unseen element until the build is complete. Use of the `ListPage` parameter `after` was considered for this but remains untested.
+In addition to build operations, all endpoints that modify data relevant to an index must also update the corresponding index. This ensures that the index remains accurate over time. Once an index is built, this update mechanism is what keeps it in sync with data changes. Eventually, it should also be possible to purge an index and trigger a rebuild if needed.
+
+### User defined Indexes with CEL
+
+In addition to static indexes, in use cases dealing with unstructured data, such as KVv2, CEL could be used for allowing users to define indexes over any arbitrary data or metadata field(s). Continuing with the KVv2 example, each entry consists of `data` and `metadata`. KVv2 would accept a new API, perhaps `/cel/config/indexing` which controls how indexing occurs and takes a CEL program as input.
+This would require a CEL integration that would parse/execute these CEL programs and output the list of indices…
+This approach doesn’t necessarily replace static indices.
+
+**Not finished...**
+
+### Querying Data Interface
+
+A minimal JSON-based query language for HTTP request bodies that enables filtering over sets using simple search semantics. The format supports two operations: a basic search over a single key-value pair, and the intersection of multiple such searches. A simple query is expressed as:
+
+```json
+{
+  "query": {
+    "key": "...",
+    "value": "...”
+  }
+}
+```
+
+`key` identifies the index and `value` the key being searched in the index.
+
+To perform an intersection of multiple conditions, the following structure is used:
+
+```json
+{
+  "op": "intersect",
+  "queries": [
+    { "key": "...", "value": "..." },
+    { "key": "...", "value": "..." }
+  ]
+}
+```
+
+Each query may optionally include a `match` or `prefix` field to control how values are compared. "exact" is the default and can be omitted.
+
+```json
+{ "key": "tag", "value": "adm", "match": "prefix" }
+```
+
+As for the indexes available, they should be provided through a specific endpoint.
+
+## Rationale and Alternatives
+
+### Concurrency Control
+
+The current implementation uses tree-level locking with a single `RWMutex` per B+ tree instance. This approach was chosen for its simplicity and correctness guarantees, but it can become a performance bottleneck under high concurrent workloads.
+
+**Alternative Considered: Per-Node Locking**
+
+A more sophisticated approach would implement fine-grained locking at the node level, where each node maintains its own mutex. This would allow multiple concurrent operations to proceed simultaneously as long as they operate on different parts of the tree.
+
+```go
+type Node struct {
+    // ... existing fields
+    lock sync.RWMutex
+}
+```
+
+The tree-level locking approach was selected for the initial implementation to ensure correctness and maintainability. Per-node locking could be considered as a future optimization if benchmarking identifies concurrency as a bottleneck.
+
+### Storage
+
+The current storage system has the limitation of a one-to-one mapping between keys and nodes. This means that each key can only have one node associated with it, which can be a bottleneck when dealing with large amounts of data. To overcome this limitation, a new storage system that supports multiple nodes per key should be implemented. A page-based storage system can be used to achieve this.
+
+## Downsides
+Code complexity and additional load on the system and storage when building indexes. It is suggested to make index building opt-in and also tunable so that system administrators can disable index building for mounts if desired.
+
+## Security Implications
+No security implications were identified.
+
+## User/Developer Experience
+With these constructs available, an OpenBao developer will be able to dynamically configure and build indexes on the data persisted in storage.
+No user facing changes are expected with this RFC as it only introduces the constructs to build the indexes.
+
+## Unresolved Questions
+- How to keep track of the current progress of an index that is being incrementally built?
+
+## Related Issues
+
+OpenBao:
+- https://github.com/orgs/openbao/discussions/1400
+
+GitHub:
+- https://github.com/hashicorp/vault/issues/5275
+
+## Proof of Concept
+To be linked.

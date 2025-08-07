@@ -103,9 +103,17 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 			}
 		default:
 			mode = os.FileMode(m)
-
+			// Refuse setting an irregular file mode.
+			if !mode.IsRegular() {
+				return nil, errors.New("file mode does not represent a regular file")
+			}
+			// Refuse setting an executable file mode.
+			// Part of the exploit for HCSEC-2025-14 consists of abusing the
+			// ability to create executable files.
+			if mode&0o111 != 0o000 {
+				return nil, errors.New("file mode must not have any executable bits")
+			}
 		}
-
 	}
 
 	b := &Backend{

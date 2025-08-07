@@ -15,10 +15,11 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAuditFile_fileModeNew(t *testing.T) {
-	modeStr := "0777"
+	modeStr := "0644"
 	mode, err := strconv.ParseUint(modeStr, 8, 32)
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +64,7 @@ func TestAuditFile_fileModeExisting(t *testing.T) {
 	}
 	defer os.Remove(f.Name())
 
-	err = os.Chmod(f.Name(), 0o777)
+	err = os.Chmod(f.Name(), 0o644)
 	if err != nil {
 		t.Fatal("Failure to chmod temp file for testing.")
 	}
@@ -132,6 +133,30 @@ func TestAuditFile_fileMode0000(t *testing.T) {
 	}
 	if info.Mode() != os.FileMode(0o777) {
 		t.Fatal("File mode does not match.")
+	}
+}
+
+func TestAuditFile_fileModeExecutable(t *testing.T) {
+	path, err := os.MkdirTemp("", "test")
+	require.NoError(t, err)
+	defer os.RemoveAll(path)
+
+	file := filepath.Join(path, "audit.txt")
+	tcases := []string{"0755", "0777", "0700"}
+
+	for _, mode := range tcases {
+		t.Run(mode, func(t *testing.T) {
+			_, err = Factory(context.Background(), &audit.BackendConfig{
+				SaltConfig: &salt.Config{},
+				SaltView:   &logical.InmemStorage{},
+				Config: map[string]string{
+					"path": file,
+					"mode": mode,
+				},
+			})
+
+			require.Error(t, err)
+		})
 	}
 }
 

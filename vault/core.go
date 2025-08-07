@@ -2496,8 +2496,8 @@ func (c *Core) preSeal() error {
 	var result error
 
 	c.stopForwarding()
-
 	c.stopRaftActiveNode()
+	c.cancelNamespaceDeletion()
 
 	if err := c.teardownAudits(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down audits: %w", err))
@@ -3367,7 +3367,7 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 
 	totalLockedUsersCount := 0
 	for _, ns := range nsList {
-		nsLockedUsers, err := c.runLockedUserEntryUpdatesForNamespace(ctx, ns)
+		nsLockedUsers, err := c.runLockedUserEntryUpdatesForNamespace(ctx, ns, false)
 		if err != nil {
 			return err
 		}
@@ -3380,16 +3380,11 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 }
 
 // runLockedUserEntryUpdatesForNamespace runs updates for locked users storage entries
-// for a single namespace if the specified namespace was deleted, all login entries are also deleted.
-func (c *Core) runLockedUserEntryUpdatesForNamespace(ctx context.Context, namespace *namespace.Namespace) (int, error) {
+// for a single namespace. If a forceDelete flag is passed all login entries are deleted.
+func (c *Core) runLockedUserEntryUpdatesForNamespace(ctx context.Context, namespace *namespace.Namespace, forceDelete bool) (int, error) {
 	// get the list of mount accessors of locked users of a namespace
 	view := NamespaceView(c.barrier, namespace).SubView(coreLockedUsersPath)
 	mountAccessors, err := view.List(ctx, "")
-	if err != nil {
-		return 0, err
-	}
-
-	ns, err := c.namespaceStore.GetNamespace(ctx, namespace.UUID)
 	if err != nil {
 		return 0, err
 	}
@@ -3402,7 +3397,7 @@ func (c *Core) runLockedUserEntryUpdatesForNamespace(ctx context.Context, namesp
 	// the userFailedLoginInfo map has correct failed login information
 	// if incorrect, update the entry in userFailedLoginInfo map
 	for _, mountAccessorPath := range mountAccessors {
-		lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, view.SubView(mountAccessorPath), mountAccessorPath, ns == nil)
+		lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, view.SubView(mountAccessorPath), mountAccessorPath, forceDelete)
 		if err != nil {
 			return namespaceLockedUsers, err
 		}
@@ -3441,59 +3436,63 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, vi
 			aliasName:     alias,
 			mountAccessor: mountAccessor,
 		}
-
-		existingEntry, err := view.Get(ctx, alias)
-		if err != nil {
-			return 0, err
-		}
-
-		if existingEntry == nil {
-			continue
-		}
-
-		var lastLoginTime int
-		err = jsonutil.DecodeJSON(existingEntry.Value, &lastLoginTime)
-		if err != nil {
-			return 0, err
-		}
-
-		lastFailedLoginTimeFromStorageEntry := time.Unix(int64(lastLoginTime), 0)
-		lockoutDurationFromConfiguration := userLockoutConfiguration.LockoutDuration
-
 		// get the entry for the locked user from userFailedLoginInfo map
 		failedLoginInfoFromMap := c.LocalGetUserFailedLoginInfo(ctx, loginUserInfoKey)
 
-		// check if the storage entry for locked user is stale
+		var staleEntry bool
+		// if not forcing the delete, check if the entry is stale
+		if !forceDelete {
+			existingEntry, err := view.Get(ctx, alias)
+			if err != nil {
+				return 0, err
+			}
+
+			if existingEntry == nil {
+				continue
+			}
+
+			var lastLoginTime int
+			err = jsonutil.DecodeJSON(existingEntry.Value, &lastLoginTime)
+			if err != nil {
+				return 0, err
+			}
+
+			lastFailedLoginTimeFromStorageEntry := time.Unix(int64(lastLoginTime), 0)
+			lockoutDurationFromConfiguration := userLockoutConfiguration.LockoutDuration
+			staleEntry = time.Now().After(lastFailedLoginTimeFromStorageEntry.Add(lockoutDurationFromConfiguration))
+			if !staleEntry {
+				// not a stale entry
+				// update the map with actual failed login information
+				actualFailedLoginInfo := FailedLoginInfo{
+					lastFailedLoginTime: lastLoginTime,
+					count:               uint(userLockoutConfiguration.LockoutThreshold),
+				}
+
+				if failedLoginInfoFromMap != &actualFailedLoginInfo {
+					// outdated entry, updating the entry in userFailedLoginMap with correct information
+					if err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, &actualFailedLoginInfo, false); err != nil {
+						return 0, err
+					}
+				}
+			}
+		}
+
+		// delete if the storage entry for locked user is stale
 		// or force delete if the namespace is being deleted
-		if time.Now().After(lastFailedLoginTimeFromStorageEntry.Add(lockoutDurationFromConfiguration)) || forceDelete {
+		if staleEntry || forceDelete {
 			// stale entry, remove from storage
 			// leaving this as it is as this happens on the active node
-			// also handles case where namespace is deleted
+			// also handles case where entry is force deleted
 			if err := view.Delete(ctx, alias); err != nil {
 				return 0, err
 			}
-			// remove entry for this user from userFailedLoginInfo map if present as the user is not locked
-			if failedLoginInfoFromMap != nil {
-				if err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true); err != nil {
-					return 0, err
-				}
-			}
-			lockedAliasesCount -= 1
-			continue
-		}
-
-		// this is not a stale entry
-		// update the map with actual failed login information
-		actualFailedLoginInfo := FailedLoginInfo{
-			lastFailedLoginTime: lastLoginTime,
-			count:               uint(userLockoutConfiguration.LockoutThreshold),
-		}
-
-		if failedLoginInfoFromMap != &actualFailedLoginInfo {
-			// entry is invalid, updating the entry in userFailedLoginMap with correct information
-			if err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, &actualFailedLoginInfo, false); err != nil {
+			// remove entry for this user from userFailedLoginInfo map
+			// as the user is not locked (if not present, this is no-op)
+			if err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, failedLoginInfoFromMap, true); err != nil {
 				return 0, err
 			}
+
+			lockedAliasesCount -= 1
 		}
 	}
 	return lockedAliasesCount, nil

@@ -60,6 +60,14 @@ type NamespaceStore struct {
 	namespacesByUUID     map[string]*namespace.Namespace
 	namespacesByAccessor map[string]*namespace.Namespace
 
+	// deletionMap tracks actively deleted namespaces, enabling us to
+	// retry the deletion process if the namespace is tainted, but isn't
+	// present in the said map.
+	deletionMap           map[string]bool
+	deletionJobGroup      sync.WaitGroup
+	deletionJobContext    context.Context
+	deletionJobCancelFunc context.CancelFunc
+
 	// logger is the server logger copied over from core
 	logger hclog.Logger
 }
@@ -74,7 +82,10 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 		namespacesByPath:     newNamespaceTree(nil),
 		namespacesByUUID:     make(map[string]*namespace.Namespace),
 		namespacesByAccessor: make(map[string]*namespace.Namespace),
+		deletionMap:          make(map[string]bool),
 	}
+
+	ns.deletionJobContext, ns.deletionJobCancelFunc = context.WithCancel(core.activeContext)
 
 	// Add namespaces from storage to our table. We can do this without
 	// holding a lock as we've not returned ns to anyone yet.
@@ -83,6 +94,14 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	}
 
 	return ns, nil
+}
+
+func (c *Core) cancelNamespaceDeletion() {
+	if c.namespaceStore == nil {
+		return
+	}
+	c.namespaceStore.deletionJobCancelFunc()
+	c.namespaceStore.deletionJobGroup.Wait()
 }
 
 func (ns *NamespaceStore) checkInvalidation(ctx context.Context) error {
@@ -621,11 +640,8 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 	}
 
 	ns.namespacesByUUID[namespaceToTaint.UUID].Tainted = true
-	ns.namespacesByUUID[namespaceToTaint.UUID].IsDeleting = true
 	ns.namespacesByAccessor[namespaceToTaint.ID].Tainted = true
-	ns.namespacesByAccessor[namespaceToTaint.ID].IsDeleting = true
 	namespaceToTaint.Tainted = true
-	namespaceToTaint.IsDeleting = true
 	err := ns.namespacesByPath.Insert(namespaceToTaint)
 	if err != nil {
 		return fmt.Errorf("failed to modify namespace tree: %w", err)
@@ -658,7 +674,8 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 		return "", nil
 	}
 
-	if namespaceToDelete.Tainted && namespaceToDelete.IsDeleting {
+	isNamespaceDeleting := ns.deletionMap[namespaceToDelete.UUID]
+	if namespaceToDelete.Tainted && isNamespaceDeleting {
 		return "in-progress", nil
 	}
 
@@ -686,26 +703,57 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 		return "", fmt.Errorf("error loading parent namespace from context: %w", err)
 	}
 
-	quitCtx := namespace.ContextWithNamespace(ns.core.activeContext, parent)
-	go ns.clearNamespaceResources(quitCtx, namespaceToDelete)
+	ns.deletionJobGroup.Add(1)
+	ns.deletionMap[namespaceToDelete.UUID] = true
+
+	go func() {
+		ctx := namespace.ContextWithNamespace(ns.deletionJobContext, namespaceToDelete)
+		defer ns.deletionJobGroup.Done()
+		ok := ns.clearNamespaceResources(ctx, namespaceToDelete)
+
+		ns.lock.Lock()
+		defer ns.lock.Unlock()
+
+		// Make sure this happens _before_ the unlock.
+		defer delete(ns.deletionMap, namespaceToDelete.UUID)
+
+		// If we failed to clear any resources, stop here and don't delete the namespace.
+		if !ok {
+			return
+		}
+
+		err = ns.namespacesByPath.Delete(namespaceToDelete.Path)
+		if err != nil {
+			ns.logger.Error("failed to delete namespace entry in namespace tree", "namespace", namespaceToDelete.Path, "error", err.Error())
+		}
+		delete(ns.namespacesByUUID, namespaceToDelete.UUID)
+		delete(ns.namespacesByAccessor, namespaceToDelete.ID)
+
+		view := NamespaceView(ns.storage, parent).SubView(namespaceStoreSubPath)
+		err = logical.WithTransaction(ctx, view, func(s logical.Storage) error {
+			return s.Delete(ctx, namespaceToDelete.UUID)
+		})
+		if err != nil {
+			ns.logger.Error("failed to delete namespace storage", "namespace", namespaceToDelete.Path, "error", err.Error())
+		}
+	}()
 
 	return "in-progress", nil
 }
 
-func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespaceToDelete *namespace.Namespace) {
-	nsCtx := namespace.ContextWithNamespace(ctx, namespaceToDelete)
+func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, namespaceToDelete *namespace.Namespace) bool {
 	// clear ACL policies
 	policiesToClear, err := ns.core.policyStore.ListPolicies(nsCtx, PolicyTypeACL, false)
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace policies", "namespace", namespaceToDelete.Path, "error", err.Error())
-		return
+		return false
 	}
 
 	for _, policy := range policiesToClear {
 		err := ns.core.policyStore.deletePolicyForce(nsCtx, policy, PolicyTypeACL)
 		if err != nil {
 			ns.logger.Error(fmt.Sprintf("failed to delete policy %q", policy), "namespace", namespaceToDelete.Path, "error", err.Error())
-			return
+			return false
 		}
 	}
 
@@ -713,14 +761,14 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace credentials", "namespace", namespaceToDelete.Path, "error", err.Error())
-		return
+		return false
 	}
 
 	for _, me := range authMountEntries {
 		err := ns.core.disableCredentialInternal(nsCtx, me.Path, true)
 		if err != nil {
 			ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
-			return
+			return false
 		}
 	}
 
@@ -728,70 +776,38 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace mounts", "namespace", namespaceToDelete.Path, "error", err.Error())
-		return
+		return false
 	}
 
 	for _, me := range mountEntries {
 		err := ns.core.unmountInternal(nsCtx, me.Path, true)
 		if err != nil {
 			ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
-			return
+			return false
 		}
 	}
 
+	// clear identity store
 	if err := ns.core.identityStore.RemoveNamespaceView(namespaceToDelete); err != nil {
 		ns.logger.Error("failed to clean identity store", "namespace", namespaceToDelete.Path, "error", err.Error())
-		return
+		return false
 	}
 
+	// clear quotas
 	err = ns.core.quotaManager.HandleNamespaceDeletion(nsCtx, namespaceToDelete.Path)
 	if err != nil {
 		ns.logger.Error("failed to update quotas after deleting namespace", "namespace", namespaceToDelete.Path, "error", err.Error())
-		return
+		return false
 	}
-
-	// Now grab write lock so that we can write to storage.
-	ns.lock.Lock()
-	unlocked := false
-	defer func() {
-		if !unlocked {
-			ns.lock.Unlock()
-			unlocked = true
-		}
-	}()
-
-	err = ns.namespacesByPath.Delete(namespaceToDelete.Path)
-	if err != nil {
-		ns.logger.Error("failed to delete namespace entry in namespace tree", "namespace", namespaceToDelete.Path, "error", err.Error())
-		return
-	}
-	delete(ns.namespacesByUUID, namespaceToDelete.UUID)
-	delete(ns.namespacesByAccessor, namespaceToDelete.ID)
-
-	parent, err := namespace.FromContext(ctx)
-	if err != nil {
-		ns.logger.Error("error loading parent namespace from context", "namespace", namespaceToDelete.Path, "error", err.Error())
-		return
-	}
-
-	view := NamespaceView(ns.storage, parent).SubView(namespaceStoreSubPath)
-	err = logical.WithTransaction(ctx, view, func(s logical.Storage) error {
-		return s.Delete(ctx, namespaceToDelete.UUID)
-	})
-	if err != nil {
-		ns.logger.Error("failed to delete namespace storage", "namespace", namespaceToDelete.Path, "error", err.Error())
-	}
-
-	ns.lock.Unlock()
-	unlocked = true
 
 	// clear locked users entries
-	_, err = ns.core.runLockedUserEntryUpdatesForNamespace(ctx, namespaceToDelete)
+	_, err = ns.core.runLockedUserEntryUpdatesForNamespace(nsCtx, namespaceToDelete, true)
 	if err != nil {
 		ns.logger.Error("failed to clean up locked user entries", "namespace", namespaceToDelete.Path, "error", err.Error())
+		return false
 	}
 
-	return
+	return true
 }
 
 // ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'

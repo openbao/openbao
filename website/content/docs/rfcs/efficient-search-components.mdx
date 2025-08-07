@@ -184,14 +184,14 @@ The B+ tree implementation uses nodes as the fundamental building blocks. Each n
 
 ```go
 type Node struct {
-	ID     string `json:"id"`
-	IsLeaf bool   `json:"isLeaf"`
-	Keys []string `json:"keys"`
-	Values      [][]string `json:"values"`      // Only for leaf nodes
-	ChildrenIDs []string   `json:"childrenIDs"` // Only for internal nodes
-	ParentID    string     `json:"parentID"`
-	NextID      string     `json:"nextID"`     // ID of the next leaf node
-	PreviousID  string     `json:"previousID"` // ID of the previous leaf node
+	ID     		string 		`json:"id"`
+	IsLeaf 		bool   		`json:"isLeaf"`
+	Keys 		[]string 	`json:"keys"`
+	Values      [][]string	`json:"values"`      // Only for leaf nodes
+	ChildrenIDs []string	`json:"childrenIDs"` // Only for internal nodes
+	ParentID    string		`json:"parentID"`
+	NextID      string		`json:"nextID"`     // ID of the next leaf node
+	PreviousID  string		`json:"previousID"` // ID of the previous leaf node
 }
 
 // Core node operations (Does not match exactly the implementation)
@@ -280,6 +280,9 @@ As for the indexes available, they should be provided through a specific endpoin
 
 ## Rationale and Alternatives
 
+### Node Keys
+The current implementation uses a simple string-based key for each node, which is sufficient for the initial use case. However, this could be extended to support more complex key structures in the future. Strings keys has the limitation of not ordering integer values.
+
 ### Concurrency Control
 
 The current implementation uses tree-level locking with a single `RWMutex` per B+ tree instance. This approach was chosen for its simplicity and correctness guarantees, but it can become a performance bottleneck under high concurrent workloads.
@@ -299,7 +302,10 @@ The tree-level locking approach was selected for the initial implementation to e
 
 ### Storage
 
-The current storage system has the limitation of a one-to-one mapping between keys and nodes. This means that each key can only have one node associated with it, which can be a bottleneck when dealing with large amounts of data. To overcome this limitation, a new storage system that supports multiple nodes per key should be implemented. A page-based storage system can be used to achieve this.
+The current storage system has the limitation of a one-to-one mapping between keys and nodes. This means that each key can only have one node associated with it, which can be a bottleneck when dealing with large amounts of data. To overcome this limitation, a new storage system that supports multiple nodes per key should be implemented.
+
+**Alternative Considered: Page-Based Storage**
+A page-based storage system would allow multiple nodes to be associated with a single key, enabling more efficient storage and retrieval of data. This would require a more complex implementation but would provide better performance for large datasets. The current implementation uses a simple key-value store, which is sufficient for the initial use case but may need to be replaced in the future as the system scales.
 
 ## Downsides
 Code complexity and additional load on the system and storage when building indexes. It is suggested to make index building opt-in and also tunable so that system administrators can disable index building for mounts if desired.

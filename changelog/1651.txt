@@ -1,0 +1,3 @@
+```release-note:security
+audit/file: Refuse creating log files with irregular or executable file mode
+```

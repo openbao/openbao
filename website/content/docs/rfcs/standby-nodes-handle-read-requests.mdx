@@ -63,12 +63,21 @@ Standby nodes (managed by `runStandby()` and `waitForLeadership()` in `vault/ha.
 All write operations are directed to this single leader. If a request arrives at a standby node, `vault/ha.go`'s logic will redirect it to the active leader.
 In `vault/ha.go`: Functions `Core.Standby()` and `Core.StandbyStates()` return if core is in standby mode and what is a state of standby node.
 
+---
+```mermaid
+stateDiagram-v2
+    [*] --> Sealed : Startup (sealed by default)
+    Sealed --> Unsealing : Enter unseal keys
+    Unsealing --> Standby : Unseal threshold met (No postUnseal)
+    Standby --> Standby : Health checks Leader election attempts
+    Standby --> WaitsForLeadership : Acquire lock attempt (Leader election)
+    WaitsForLeadership --> Active : Wins leadership postUnseal called Full init
+    Active --> Standby : Loses leadership/demoted Tears down to minimal state
+    Active --> Sealed : Operator reseals or core failure
+    Standby --> Standby : Remains minimal (no postUnseal)
+    WaitsForLeadership --> Standby : Fails to acquire lock (no postUnseal)
 ```
-Sealed Node → Unseal → Standby Node → [Waits for Leadership] → Active Node
-                       	   ↑                                        ↑
-                      No postUnseal                       postUnseal called
-                      (minimal state)                    (full initialization)
-```
+---
 
 **PostUnseal Implementation**:
 The key difference between standby and active nodes is the `postUnseal` process. Currently:

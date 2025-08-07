@@ -6,6 +6,7 @@ package totp
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -88,11 +89,6 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 	name := data.Get("name").(string)
 	code := data.Get("code").(string)
 
-	// Enforce input value requirements
-	if code == "" {
-		return logical.ErrorResponse("the code value is required"), nil
-	}
-
 	// Get the key's stored values
 	key, err := b.Key(ctx, req.Storage, name)
 	if err != nil {
@@ -100,6 +96,14 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 	}
 	if key == nil {
 		return logical.ErrorResponse(fmt.Sprintf("unknown key: %s", name)), nil
+	}
+
+	// Enforce input value requirements
+	if code == "" {
+		return logical.ErrorResponse("the code value is required"), nil
+	}
+	if strings.TrimSpace(code) != code || len(code) != key.Digits.Length() {
+		return logical.ErrorResponse("invalid number of digits for the code"), nil
 	}
 
 	usedName := fmt.Sprintf("%s_%s", name, code)

@@ -392,6 +392,7 @@ bump-critical:
 	go get github.com/hashicorp/cap@latest
 	go get github.com/hashicorp/raft@latest
 	go get github.com/tink-crypto/tink-go/v2@latest
+	go get github.com/pquerna/otp@latest
 	go get go.etcd.io/bbolt@latest
 	go get google.golang.org/grpc@latest
 	grep -o 'golang.org/x/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'

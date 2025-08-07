@@ -1,0 +1,3 @@
+```release-note:feature
+auth/oidc: Add oidc-introspect endpoint for access-tokens, based on client-credentials authentication.
+```

@@ -137,16 +137,12 @@ func TestAuditFile_fileMode0000(t *testing.T) {
 }
 
 func TestAuditFile_fileModeExecutable(t *testing.T) {
-	path, err := os.MkdirTemp("", "test")
-	require.NoError(t, err)
-	defer os.RemoveAll(path)
-
-	file := filepath.Join(path, "audit.txt")
+	file := filepath.Join(t.TempDir(), "audit.txt")
 	tcases := []string{"0755", "0777", "0700"}
 
 	for _, mode := range tcases {
 		t.Run(mode, func(t *testing.T) {
-			_, err = Factory(context.Background(), &audit.BackendConfig{
+			_, err := Factory(context.Background(), &audit.BackendConfig{
 				SaltConfig: &salt.Config{},
 				SaltView:   &logical.InmemStorage{},
 				Config: map[string]string{
@@ -154,7 +150,6 @@ func TestAuditFile_fileModeExecutable(t *testing.T) {
 					"mode": mode,
 				},
 			})
-
 			require.Error(t, err)
 		})
 	}

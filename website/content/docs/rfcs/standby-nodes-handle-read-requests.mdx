@@ -148,7 +148,7 @@ The methods `fsm.Snapshot()` and `fsm.Restore()` manage state snapshots. Snapsho
 Any request received by a non-active node is forwarded to the active node. This is managed by `handleRequestForwarding` middleware in `http/handler.go`, which checks if the node is the leader and forwards the request if it is not.
 
 **Enhanced Forwarding Logic**: 
-Forwarding should first depend on the request method. If it's write request → forward. If read request → check if standby can serve reads and handle locally. All other logic stays the same.
+Forwarding should depend on the error message returned from invoking the request. On standby nodes, a storage shim will ensure that the underlying storage is not written to, instead returning `logical.ErrReadOnly`. When a storage write occurs, this middleware will not return the error to the caller but instead invoke request forwarding.
 
 in `http/handler.go`:
 

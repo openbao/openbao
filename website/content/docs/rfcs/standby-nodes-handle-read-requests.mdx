@@ -57,7 +57,7 @@ Instead of introducing complexity with separate node types, this RFC proposes **
 4. **`vault/request_handling.go`**: Core request processing logic
 5. **`sdk/framework/backend.go`**: Plugin-level forwarding decisions
 
-**Single Leader Model**: 
+**Single Leader Model**:
 `vault/ha.go` establishes a single-leader architecture. Functions like `Core.Leader` and `Core.LeaderLocked` are responsible for identifying the current leader.
 Standby nodes (managed by `runStandby()` and `waitForLeadership()` in `vault/ha.go`) periodically check for leader changes and attempt to acquire a distributed lock (`acquireLock()`) to become the new leader if the current one fails.
 All write operations are directed to this single leader. If a request arrives at a standby node, `vault/ha.go`'s logic will redirect it to the active leader.
@@ -135,68 +135,20 @@ Inside `fsm.Apply(log *raft.Log)`, the `log.Data` (which contains a `physical.St
 The methods `fsm.Snapshot()` and `fsm.Restore()` manage state snapshots. Snapshots help with log compaction and allow new or lagging nodes to catch up without replaying the entire log history.
   - `logical.ErrStandbyPleaseForward` - For forwarding requests to leader
   - **Remove**: `logical.ErrPerfStandbyPleaseForward` (no longer needed with unified approach)
-- **Forwarding Logic**: 
+- **Forwarding Logic**:
   - Mature RPC-based request forwarding in `http/handler.go`
   - Can be simplified by removing performance standby special cases
-- **State Management**: 
+- **State Management**:
   - `core.Standby()`, `core.StandbyStates()` for node state tracking
   - **Simplify**: Remove `core.PerfStandby()` complexity
-- **Configuration**: 
+- **Configuration**:
   - **Remove**: `disable_performance_standby` (no longer relevant)
 
 
 Any request received by a non-active node is forwarded to the active node. This is managed by `handleRequestForwarding` middleware in `http/handler.go`, which checks if the node is the leader and forwards the request if it is not.
 
-**Enhanced Forwarding Logic**: 
+**Enhanced Forwarding Logic**:
 Forwarding should depend on the error message returned from invoking the request. On standby nodes, a storage shim will ensure that the underlying storage is not written to, instead returning `logical.ErrReadOnly`. When a storage write occurs, this middleware will not return the error to the caller but instead invoke request forwarding.
-
-in `http/handler.go`:
-
-forwarding should first depend on request method, if it's write request and not leader - forward. If read request - try to serve.
-
-```
-func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		isLeader, leaderAddr, _, err := core.Leader()
-		if err != nil {
-			if err == vault.ErrHANotEnabled {
-				// Standalone node, serve request normally
-				handler.ServeHTTP(w, r)
-				return
-			}
-			// Some internal error occurred
-			respondError(w, http.StatusInternalServerError, err)
-			return
-		}
-
-		if isWriteRequest(r) && !isLeader {
-			if leaderAddr == "" {
-				respondError(w, http.StatusInternalServerError, errors.New("local node not active but active cluster node not found"))
-				return
-			}
-
-			forwardRequest(core, w, r)
-			return
-		}
-
-		handler.ServeHTTP(w, r)
-	})
-}
-
-func isWriteRequest(r *http.Request) bool {
-	switch r.Method {
-	case "POST", "PUT", "DELETE":
-		return true
-	default:
-		return false
-	}
-}
-```
-
-Read Request - doesn't mean, that we are not writing to storage! 
-
-If the logical backend attempts to write to storage, the storage layer, being in read-only state, returns `logical.ErrReadOnly`. On standby nodes, this error should be translated to `logical.ErrStandbyPleaseForward`.
 
 `ErrStandbyPleaseForward` should be returned in `request_handling.go` in places like `Core.CheckToken`, `Core.handleCancelableRequest`, `handleLoginRequest`, `PopulateTokenEntry`, and `Core.checkSSCTokenInternal` to forward requests as early as possible.
 
@@ -204,7 +156,7 @@ If the logical backend attempts to write to storage, the storage layer, being in
 
 ### Rationale and alternatives
 
-It's a first step to Horizontal Scalability. 
+It's a first step to Horizontal Scalability.
 Impact:
 - Improvement of read throughput
 - Simplified Architecture - remove artificial node type distinctions.

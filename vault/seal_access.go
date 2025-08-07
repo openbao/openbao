@@ -38,6 +38,10 @@ func (s *SealAccess) RecoveryKeySupported() bool {
 	return s.seal.RecoveryKeySupported()
 }
 
+func (s *SealAccess) RecoveryType() string {
+	return s.seal.RecoveryType()
+}
+
 func (s *SealAccess) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
 	return s.seal.RecoveryConfig(ctx)
 }

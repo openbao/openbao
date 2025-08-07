@@ -108,6 +108,14 @@ jobs:
         run: |
           make static-dist
 
+      - name: Golang Setup
+        if: inputs.dogorelease
+        uses: ./.github/actions/set-up-go
+
+      - name: go-check
+        if: inputs.dogorelease
+        run: go version
+
       - name: Make LICENSE_DEPENDENCIES.md
         if: inputs.dodistrelease
         run: |

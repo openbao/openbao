@@ -110,6 +110,21 @@ set of parameters. See the documentation to the left for more details.
 
 :::warning
 
+Note: Enabling audit devices using the API (and, by proxy, using the CLI) allows
+the operator to create files at arbitrary locations on the host system or send
+network requests to arbitrary addresses, which may have unwanted effects. As a
+result, the `unsafe_allow_api_audit_creation = true` option must be set in the
+[server configuration](/docs/configuration) starting with OpenBao v2.3.2.
+
+In future releases (v2.4+), we will enable a new model where audit devices are
+managed within the server configuration itself. This will become the
+recommended way to configure audits, while support for legacy audit
+configuration will be retained via the unsafe flag described above.
+
+:::
+
+:::warning
+
 Note: Audit device configuration is replicated to all nodes within a cluster
 by default.  Before enabling an audit device, ensure that all nodes within the
 cluster(s) will be able to successfully log to the audit device to avoid OpenBao
@@ -162,6 +177,15 @@ docs](/api-docs/system/audit) for more details.
 
 - `prefix` `(string: "")` - A customizable string prefix to write before the
   actual log line.
+
+:::warning
+
+Note: The `prefix` option lets operators write semi-arbitrary content to the
+audit log. Starting with OpenBao v2.3.2, enabling new audit devices with this
+option is only supported if `allow_audit_log_prefixing = true` is set in the
+[server configuration](/docs/configuration).
+
+:::
 
 ## Eliding list response bodies
 

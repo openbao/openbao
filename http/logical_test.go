@@ -21,6 +21,7 @@ import (
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	kv "github.com/openbao/openbao/builtin/logical/kv"
+	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -611,6 +612,7 @@ func TestLogical_Audit_invalidWrappingToken(t *testing.T) {
 	// Create a noop audit backend
 	noop := corehelpers.TestNoopAudit(t, nil)
 	c, _, root := vault.TestCoreUnsealedWithConfig(t, &vault.CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
 		AuditBackends: map[string]audit.Factory{
 			"noop": func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
 				return noop, nil
@@ -986,6 +988,9 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) {
 // in audit log when it is enabled
 func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
+		RawConfig: &server.Config{
+			UnsafeAllowAPIAuditCreation: true,
+		},
 		LogicalBackends: map[string]logical.Factory{
 			"kv": kv.VersionedKVFactory,
 		},

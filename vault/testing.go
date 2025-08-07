@@ -1616,6 +1616,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 	if coreConfig.RawConfig == nil {
 		c := new(server.Config)
 		c.SharedConfig = &configutil.SharedConfig{LogFormat: logging.UnspecifiedFormat.String()}
+		c.UnsafeAllowAPIAuditCreation = true
 		coreConfig.RawConfig = c
 	}
 

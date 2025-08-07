@@ -58,6 +58,8 @@ const (
 	mfaLoginEnforcementPrefix = "login-mfa/enforcement/"
 )
 
+var ErrBadMFACredentials = errors.New("MFA credentials not supplied or incorrect")
+
 type totpKey struct {
 	Key string `json:"key"`
 }
@@ -2329,8 +2331,19 @@ func (c *Core) validatePingID(ctx context.Context, mConfig *mfa.Config, username
 }
 
 func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMethodSecret *mfa.Secret, configID, entityID string, usedCodes *cache.Cache, maximumValidationAttempts uint32) error {
+	// In HCSEC-2025-19, HashiCorp writes:
+	//
+	// > The TOTP validation will now return a generic error if the passcode
+	// > was already used.
+	//
+	// While such error message is of limited utility, as multiple error paths
+	// yielding the same error will likely still yield timing differences and
+	// thus are distinguishable to a determined attacker, we attempt to follow
+	// the same and yield the error "MFA credentials not supplied or incorrect"
+	// from multiple code paths here.
+
 	if mfaFactors == nil || mfaFactors.passcode == "" {
-		return errors.New("MFA credentials not supplied")
+		return ErrBadMFACredentials
 	}
 	passcode := mfaFactors.passcode
 
@@ -2339,16 +2352,22 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 		return errors.New("entity does not contain the TOTP secret")
 	}
 
+	// Validate the passcode has the right format for this totp.
+	if strings.TrimSpace(passcode) != passcode || len(passcode) != int(totpSecret.Digits) {
+		return ErrBadMFACredentials
+	}
+
 	usedName := fmt.Sprintf("%s_%s", configID, passcode)
 
 	_, ok := usedCodes.Get(usedName)
 	if ok {
-		return fmt.Errorf("code already used; new code is available in %v seconds", totpSecret.Period)
+		return ErrBadMFACredentials
 	}
 
 	// The duration in which a passcode is stored in cache to enforce
-	// rate limit on failed totp passcode validation
-	passcodeTTL := time.Duration(int64(time.Second) * int64(totpSecret.Period))
+	// rate limit on failed totp passcode validation. See note in
+	// totp/path_code.go for duration calculation.
+	passcodeTTL := time.Duration(int64(time.Second)*int64(totpSecret.Period) + int64(2*totpSecret.Skew))
 
 	// Enforcing rate limit per MethodID per EntityID
 	rateLimitID := fmt.Sprintf("%s_%s", configID, entityID)
@@ -2392,7 +2411,7 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 	}
 
 	if !valid {
-		return errors.New("failed to validate TOTP passcode")
+		return ErrBadMFACredentials
 	}
 
 	// Take the key skew, add two for behind and in front, and multiply that by

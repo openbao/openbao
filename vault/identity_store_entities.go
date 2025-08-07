@@ -354,7 +354,7 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 		// Update the policies if supplied
 		entityPoliciesRaw, ok := d.GetOk("policies")
 		if ok {
-			entity.Policies = strutil.RemoveDuplicates(entityPoliciesRaw.([]string), false)
+			entity.Policies = strutil.RemoveDuplicates(entityPoliciesRaw.([]string), true /* lowercase */)
 		}
 
 		if strutil.StrListContains(entity.Policies, "root") {
@@ -469,7 +469,7 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 	respData["name"] = entity.Name
 	respData["metadata"] = entity.Metadata
 	respData["merged_entity_ids"] = entity.MergedEntityIDs
-	respData["policies"] = strutil.RemoveDuplicates(entity.Policies, false)
+	respData["policies"] = strutil.RemoveDuplicates(entity.Policies, true /* lowercase */)
 	respData["disabled"] = entity.Disabled
 	respData["namespace_id"] = entity.NamespaceID
 
@@ -1061,7 +1061,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 		// If told to, merge policies
 		if mergePolicies {
-			toEntity.Policies = strutil.RemoveDuplicates(strutil.MergeSlices(toEntity.Policies, fromEntity.Policies), false)
+			toEntity.Policies = strutil.RemoveDuplicates(strutil.MergeSlices(toEntity.Policies, fromEntity.Policies), true /* lowercase */)
 		}
 
 		// If the entity from which we are merging from was already a merged

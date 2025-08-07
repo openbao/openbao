@@ -1225,13 +1225,13 @@ func TestExpiration_RegisterAuth_NoTTL(t *testing.T) {
 	}
 
 	// First on core
-	_, err = c.RegisterAuth(ctx, 0, "auth/github/login", auth, "", true)
+	_, err = c.RegisterAuth(ctx, 0, "auth/github/login", auth, "", true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	auth.TokenPolicies[0] = "default"
-	_, err = c.RegisterAuth(ctx, 0, "auth/github/login", auth, "", true)
+	_, err = c.RegisterAuth(ctx, 0, "auth/github/login", auth, "", true, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}

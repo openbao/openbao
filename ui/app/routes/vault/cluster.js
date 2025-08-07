@@ -131,6 +131,7 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
   actions: {
     error(e) {
       if (e.httpStatus === 503) {
+        e.errors[0] = 'OpenBao is sealed'
         this.refresh();
       }
       return true;

@@ -301,11 +301,12 @@ func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, n
 			return 1
 		}
 
-		w := getWriterFromUI(c.UI)
-		fmt.Fprintf(w, "Operation nonce: %s\n", nonce)
-		fmt.Fprintf(w, "Unseal Key (will be hidden): ")
+		c.UI.Output(fmt.Sprintf("Operation nonce: %s\n", nonce))
+		c.UI.Output("Unseal Key (will be hidden): ")
+
 		key, err = password.Read(os.Stdin)
-		fmt.Fprintf(w, "\n")
+		c.UI.Output("\n")
+
 		if err != nil {
 			if err == password.ErrInterrupted {
 				c.UI.Error("user canceled")
@@ -343,6 +344,11 @@ func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, n
 		return 2
 	}
 	status, err = c.extractResponse(secret.Data)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error extracting response: %s", err))
+		return 2
+	}
+
 	switch Format(c.UI) {
 	case "table":
 		return c.printStatus(status)
@@ -501,7 +507,10 @@ func (c *NamespaceGenerateRootCommand) extractResponse(data map[string]interface
 		return &api.GenerateRootStatusResponse{}, nil
 	}
 	status := api.GenerateRootStatusResponse{}
-	json.Unmarshal(jsonStatus, &status)
+
+	if err = json.Unmarshal(jsonStatus, &status); err != nil {
+		return nil, err
+	}
 
 	return &status, nil
 }

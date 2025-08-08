@@ -132,7 +132,7 @@ func (c *Core) GenerateRootConfiguration(ns *namespace.Namespace) (*GenerateRoot
 
 	namespaceRootGen, ok := c.namespaceRootGens[ns.UUID]
 	if !ok {
-		return nil, nil
+		return nil, errors.New("namespace is not sealable")
 	}
 
 	config := *namespaceRootGen.Config

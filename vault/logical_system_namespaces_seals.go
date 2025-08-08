@@ -340,10 +340,6 @@ func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 			return handleError(err)
 		}
 
-		if status == nil {
-			return nil, nil
-		}
-
 		return &logical.Response{
 			Data: map[string]interface{}{"seal_status": status},
 		}, nil
@@ -443,12 +439,12 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 
 		status, err := b.Core.sealManager.GetSealStatus(ctx, ns, true)
 		if err != nil {
-			return nil, err
+			return handleError(err)
 		}
 
-		return &logical.Response{Data: map[string]interface{}{
-			"seal_status": status,
-		}}, nil
+		return &logical.Response{
+			Data: map[string]interface{}{"seal_status": status},
+		}, nil
 	}
 }
 

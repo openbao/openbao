@@ -50,19 +50,20 @@ func TestNamespaceBackend_SealStatus(t *testing.T) {
 	b := testSystemBackend(t)
 	rootCtx := namespace.RootContext(context.Background())
 
-	t.Run("returns nil seal status of seal-less namespace", func(t *testing.T) {
+	t.Run("returns error on non-sealable namespace", func(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/foo/seal-status")
 		res, err := b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-		require.Empty(t, res)
+		require.Error(t, err)
+		require.Equal(t, "namespace is not sealable", res.Error().Error())
 	})
 
 	t.Run("can read seal status", func(t *testing.T) {
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bar")
 		req.Data["seals"] = map[string]interface{}{"type": "shamir", "secret_shares": 3, "secret_threshold": 2}
 		res, err := b.HandleRequest(rootCtx, req)
+		require.NotNil(t, res)
 		require.NoError(t, err)
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/bar/seal-status")
@@ -96,6 +97,7 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo/seal")
 		res, err = b.HandleRequest(rootCtx, req)
+		require.Nil(t, res)
 		require.NoError(t, err)
 
 		// any call using the namespace will now fail
@@ -128,6 +130,7 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/baz/seal")
 		res, err = b.HandleRequest(rootCtx, req)
+		require.Nil(t, res)
 		require.NoError(t, err)
 
 		// calls using the namespace will now fail
@@ -155,9 +158,10 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		require.Equal(t, 0, res.Data["seal_status"].(*SealStatusResponse).Progress)
 		require.Equal(t, false, res.Data["seal_status"].(*SealStatusResponse).Sealed)
 
-		// call succedes
+		// call succeeds
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/child")
 		res, err = b.HandleRequest(nsCtx, req)
+		require.NotNil(t, res)
 		require.NoError(t, err)
 	})
 

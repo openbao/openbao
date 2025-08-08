@@ -217,7 +217,7 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 	// Verify that any kind of seal exists for a namespace
 	seals, ok := sm.sealsByNamespace[ns.UUID]
 	if !ok {
-		return nil, nil
+		return nil, errors.New("namespace is not sealable")
 	}
 
 	// Check the barrier first
@@ -229,7 +229,7 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 	}
 	if !init {
 		sm.logger.Info("namespace security barrier not initialized", "namespace", ns.Path)
-		return nil, nil
+		return nil, ErrBarrierNotInit
 	}
 
 	seal := seals["default"]

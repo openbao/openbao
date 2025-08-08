@@ -26,6 +26,8 @@ func PrepareTestContainer(t *testing.T, legacy bool, pw string) (func(), string)
 		return func() {}, os.Getenv("MYSQL_URL")
 	}
 
+	docker.CheckSkipContainerTests(t)
+
 	imageVersion := "9.0"
 	if legacy {
 		imageVersion = "5.6"

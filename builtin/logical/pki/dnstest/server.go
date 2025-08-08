@@ -41,6 +41,8 @@ func SetupResolver(t *testing.T, domain string) *TestServer {
 }
 
 func SetupResolverOnNetwork(t *testing.T, domain string, network string) *TestServer {
+	docker.CheckSkipContainerTests(t)
+
 	var ts TestServer
 	ts.t = t
 	ts.ctx = context.Background()

@@ -30,6 +30,7 @@ import (
 	"github.com/openbao/openbao/builtin/logical/pkiext"
 	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/docker"
 	hDocker "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/stretchr/testify/require"
 )
@@ -47,6 +48,8 @@ var caddyConfigTemplateTLSALPN string
 // a bunch of sub-tests against that cluster. It is up to each sub-test to run/configure
 // a new pki mount within the cluster to not interfere with each other.
 func Test_ACME(t *testing.T) {
+	docker.CheckSkipContainerTests(t)
+
 	cluster := NewVaultPkiClusterWithDNS(t)
 	defer cluster.Cleanup()
 

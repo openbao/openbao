@@ -333,6 +333,7 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 		res, err := b.HandleRequest(rootCtx, req)
 		// fails as foobar contains child namespaces
 		require.Error(t, err)
+		require.Error(t, res.Error())
 
 		req = logical.TestRequest(t, logical.DeleteOperation, "namespaces/baz")
 		res, err = b.HandleRequest(nestedCtx, req)

@@ -161,14 +161,6 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	}
 
 	view := re.storageView
-	viewPath := entry.UUID + "/"
-	switch entry.Table {
-	case mountTableType:
-		viewPath = backendBarrierPrefix + viewPath
-	case credentialTableType:
-		viewPath = credentialBarrierPrefix + viewPath
-	}
-
 	sysView := c.mountEntrySysView(entry)
 
 	var backend logical.Backend

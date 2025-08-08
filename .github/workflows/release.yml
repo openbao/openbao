@@ -313,7 +313,6 @@ jobs:
       TAGNAME: v${{ needs.build-ui-dist.outputs.version }}
     steps:
       - name: Checkout
-        if: ${{ !inputs.dogorelease }}
         uses: actions/checkout@v4
         with:
           fetch-tags: true

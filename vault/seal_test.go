@@ -116,7 +116,8 @@ func TestRegisterNamespace(t *testing.T) {
 	TestCoreCreateSealedNamespaces(t, c, ns)
 	require.False(t, c.IsNSSealed(ns))
 
-	TestCoreSeal(c)
+	err := TestCoreSeal(c)
+	require.NoError(t, err)
 	for i := range keys {
 		_, err := TestCoreUnseal(c, keys[i])
 		require.NoError(t, err)

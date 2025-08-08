@@ -1224,7 +1224,9 @@ ROUTER_MOUNT:
 		// a namespace to pull from the context. This is similar to what we do above in c.router.Mount().
 		path = entry.Namespace().Path + path
 		c.logger.Debug("tainting a mount due to it being marked as tainted in mount table", "entry.path", entry.Path, "entry.namespace.path", entry.Namespace().Path, "full_path", path)
-		c.router.Taint(ctx, path)
+		if err := c.router.Taint(ctx, path); err != nil {
+			return nil, err
+		}
 	}
 
 	// Check if this is the token store
@@ -1317,7 +1319,9 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 
 	if c.auth != nil {
 		authTable := c.auth.shallowClone()
-		c.cleanupMountBackends(ctx, authTable, credentialRoutePrefix, false, func(e *MountEntry) bool { return true })
+		if err := c.cleanupMountBackends(ctx, authTable, credentialRoutePrefix, false, func(e *MountEntry) bool { return true }); err != nil {
+			return err
+		}
 	}
 
 	c.auth = nil

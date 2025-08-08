@@ -626,7 +626,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 
 	b.Run("ListAllNamespaces", func(b *testing.B) {
 		for b.Loop() {
-			s.ListAllNamespaces(ctx, false, true)
+			_, _ = s.ListAllNamespaces(ctx, false, true)
 		}
 	})
 

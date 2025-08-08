@@ -2091,7 +2091,9 @@ ROUTER_MOUNT:
 		// a namespace to pull from the context. This is similar to what we do above in c.router.Mount().
 		path := entry.Namespace().Path + entry.Path
 		c.logger.Debug("tainting a mount due to it being marked as tainted in mount table", "entry.path", entry.Path, "entry.namespace.path", entry.Namespace().Path, "full_path", path)
-		c.router.Taint(ctx, path)
+		if err := c.router.Taint(ctx, path); err != nil {
+			return nil, err
+		}
 	}
 
 	return postUnsealFunc, nil
@@ -2152,7 +2154,9 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 
 	if c.mounts != nil {
 		mountTable := c.mounts.shallowClone()
-		c.cleanupMountBackends(ctx, mountTable, "", false, func(*MountEntry) bool { return true })
+		if err := c.cleanupMountBackends(ctx, mountTable, "", false, func(*MountEntry) bool { return true }); err != nil {
+			return err
+		}
 	}
 
 	c.mounts = nil

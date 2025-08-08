@@ -12,6 +12,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/xor"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCore_GenerateRoot_Lifecycle(t *testing.T) {
@@ -44,12 +45,8 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 
 	// Should be no config
 	conf, err := c.GenerateRootConfiguration(ns)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if conf != nil {
-		t.Fatalf("bad: %v", conf)
-	}
+	require.Error(t, err)
+	require.Nil(t, conf)
 
 	// Cancel should be idempotent
 	err = c.GenerateRootCancel(ns)
@@ -74,6 +71,7 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 
 	// Should get config
 	conf, err = c.GenerateRootConfiguration(ns)
+	require.NotNil(t, conf)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -89,12 +87,8 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 
 	// Should be no config
 	conf, err = c.GenerateRootConfiguration(ns)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if conf != nil {
-		t.Fatalf("bad: %v", conf)
-	}
+	require.Error(t, err)
+	require.Nil(t, conf)
 }
 
 func TestCore_GenerateRoot_Init(t *testing.T) {
@@ -260,12 +254,8 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byt
 
 	// Should be no config
 	conf, err := c.GenerateRootConfiguration(ns)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if conf != nil {
-		t.Fatalf("bad: %v", conf)
-	}
+	require.Error(t, err)
+	require.Nil(t, conf)
 
 	tokenBytes, err := base64.RawStdEncoding.DecodeString(encodedToken)
 	if err != nil {
@@ -350,12 +340,8 @@ func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byt
 
 	// Should be no config
 	conf, err := c.GenerateRootConfiguration(ns)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if conf != nil {
-		t.Fatalf("bad: %v", conf)
-	}
+	require.Error(t, err)
+	require.Nil(t, conf)
 
 	ptBuf, err := pgpkeys.DecryptBytes(encodedToken, pgpkeys.TestPrivKey1)
 	if err != nil {

@@ -138,40 +138,42 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 		},
 	}
 
-	b.Backend.Paths = append(b.Backend.Paths, b.configPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.rekeyPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.rotatePaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.sealPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.statusPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.pluginsCatalogListPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.pluginsCatalogCRUDPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.pluginsReloadPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.auditPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.mountPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.authPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.lockedUserPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.leasePaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.policyPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.namespacePaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.wrappingPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.toolsPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.capabilitiesPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.internalPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.pprofPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.remountPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.metricsPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.monitorPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.inFlightRequestPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.hostInfoPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.quotasPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.loginMFAPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.introspectionPaths()...)
+	b.Paths = append(b.Paths, b.configPaths()...)
+	b.Paths = append(b.Paths, b.rekeyPaths()...)
+	b.Paths = append(b.Paths, b.rotatePaths()...)
+	b.Paths = append(b.Paths, b.sealPaths()...)
+	b.Paths = append(b.Paths, b.statusPaths()...)
+	b.Paths = append(b.Paths, b.pluginsCatalogListPaths()...)
+	b.Paths = append(b.Paths, b.pluginsCatalogCRUDPath())
+	b.Paths = append(b.Paths, b.pluginsReloadPath())
+	b.Paths = append(b.Paths, b.auditPaths()...)
+	b.Paths = append(b.Paths, b.mountPaths()...)
+	b.Paths = append(b.Paths, b.authPaths()...)
+	b.Paths = append(b.Paths, b.lockedUserPaths()...)
+	b.Paths = append(b.Paths, b.leasePaths()...)
+	b.Paths = append(b.Paths, b.policyPaths()...)
+	b.Paths = append(b.Paths, b.namespaceGenerateRootPaths()...)
+	b.Paths = append(b.Paths, b.namespaceSealPaths()...)
+	b.Paths = append(b.Paths, b.namespacePaths()...)
+	b.Paths = append(b.Paths, b.wrappingPaths()...)
+	b.Paths = append(b.Paths, b.toolsPaths()...)
+	b.Paths = append(b.Paths, b.capabilitiesPaths()...)
+	b.Paths = append(b.Paths, b.internalPaths()...)
+	b.Paths = append(b.Paths, b.pprofPaths()...)
+	b.Paths = append(b.Paths, b.remountPaths()...)
+	b.Paths = append(b.Paths, b.metricsPath())
+	b.Paths = append(b.Paths, b.monitorPath())
+	b.Paths = append(b.Paths, b.inFlightRequestPath())
+	b.Paths = append(b.Paths, b.hostInfoPath())
+	b.Paths = append(b.Paths, b.quotasPaths()...)
+	b.Paths = append(b.Paths, b.loginMFAPaths()...)
+	b.Paths = append(b.Paths, b.introspectionPaths()...)
 
 	if core.rawEnabled {
-		b.Backend.Paths = append(b.Backend.Paths, b.rawPaths()...)
+		b.Paths = append(b.Paths, b.rawPaths()...)
 	}
 	if backend := core.getRaftBackend(); backend != nil {
-		b.Backend.Paths = append(b.Backend.Paths, b.raftStoragePaths()...)
+		b.Paths = append(b.Paths, b.raftStoragePaths()...)
 	}
 
 	return b
@@ -4256,7 +4258,7 @@ func (b *SystemBackend) pathInternalUIResultantACL(ctx context.Context, req *log
 		},
 	}
 
-	if acl.root {
+	if acl.root != nil {
 		resp.Data["root"] = true
 		return resp, nil
 	}
@@ -4553,7 +4555,7 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 			Sealed:           true,
 			RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
 			RecoverySealType: recoveryType,
-			StorageType:  	  core.StorageType(),
+			StorageType:      core.StorageType(),
 			Version:          version.GetVersion().VersionNumber(),
 			BuildDate:        version.BuildDate,
 		}
@@ -5854,14 +5856,27 @@ This path responds to the following HTTP methods.
 
 	DELETE /<name>
 		Delete a namespace.
+		`,
+	},
+	"namespaces-seal": {
+		"Seal, unseal and check seal status of a namespace.",
+		`
+This path responds to the following HTTP methods.
 
 	POST /<name>/seal
 		Seal a namespace.
 
 	POST /<name>/unseal
 		Unseal a namespace.
+
+    GET /<name>/seal-status
+        Returns the seal status of the namespace.
+
+	GET /<name>/key-status
+		Provides the namespace current backend encryption key term and installation time.
 		`,
 	},
+
 	"namespaces-lock": {
 		"Lock a namespace.",
 		`
@@ -5878,6 +5893,22 @@ This path responds to the following HTTP methods.
 
 	PUT /<name>
 		Unlock the API for a namespace.
+		`,
+	},
+
+	"namespaces-rotate": {
+		"Rotates the backend encryption key used to persist data for this namespace.",
+		`
+		Rotate generates a new encryption key which is used to encrypt all data
+		of this namespace going to the storage backend. The old encryption keys
+		are kept so that data encrypted using those keys can still be decrypted.
+		`,
+	},
+
+	"namespaces-rotate-config": {
+		"Configures settings related to the namespace encryption key management.",
+		`
+		Configures settings related to the automatic rotation of the namespace encryption key.
 		`,
 	},
 }

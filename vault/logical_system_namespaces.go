@@ -172,57 +172,6 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "namespaces/(?P<name>.+)/seal",
-
-			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "namespaces",
-			},
-			Fields: map[string]*framework.FieldSchema{
-				"name": namespaceNameSchema,
-			},
-
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.UpdateOperation: &framework.PathOperation{
-					Summary:  "Seal a namespace.",
-					Callback: b.handleNamespacesSeal(),
-					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
-					},
-				},
-			},
-
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
-		},
-		{
-			Pattern: "namespaces/(?P<name>.+)/unseal",
-
-			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "namespaces",
-			},
-			Fields: map[string]*framework.FieldSchema{
-				"name": namespaceNameSchema,
-				"key": {
-					Type:        framework.TypeNameString,
-					Description: "Specifies a single namespace unseal key share.",
-				},
-			},
-
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.UpdateOperation: &framework.PathOperation{
-					Summary:  "Unseal a namespace.",
-					Callback: b.handleNamespacesUnseal(),
-					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
-					},
-				},
-			},
-
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
-		},
-
-		{
 			Pattern: "namespaces/(?P<name>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -404,6 +353,13 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			if err != nil {
 				return logical.ErrorResponse("error while extracting seal configs"), err
 			}
+
+			// Check if all the seal configs are valid
+			for _, sealConfig := range sealConfigs {
+				if err := sealConfig.Validate(); err != nil {
+					return logical.ErrorResponse("invalid seal config: %v", err), err
+				}
+			}
 		}
 
 		entry, new, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, name, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
@@ -426,7 +382,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		keySharesMap := make(map[string][]string)
 		// TODO(wslabosz): write all the provided configs
 		if len(sealConfigs) > 0 {
-			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry); err != nil {
+			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry, true); err != nil {
 				return handleError(err)
 			}
 
@@ -578,42 +534,5 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 				"status": status,
 			},
 		}, nil
-	}
-}
-
-// handleNamespacesSeal handles the "/sys/namespaces/<name>/seal" endpoint to seal the namespace.
-func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		name := namespace.Canonicalize(data.Get("name").(string))
-
-		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
-			return nil, errors.New("name must not contain /")
-		}
-
-		err := b.Core.namespaceStore.SealNamespace(ctx, name)
-		if err != nil {
-			return handleError(err)
-		}
-
-		return nil, nil
-	}
-}
-
-// handleNamespacesUnseal handles the "/sys/namespaces/<name>/unseal" endpoint to unseal the namespace.
-func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		name := namespace.Canonicalize(data.Get("name").(string))
-		key := data.Get("key").(string)
-
-		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
-			return nil, errors.New("name must not contain /")
-		}
-
-		err := b.Core.namespaceStore.UnsealNamespace(ctx, name, []byte(key))
-		if err != nil {
-			return handleError(err)
-		}
-
-		return nil, nil
 	}
 }

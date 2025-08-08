@@ -184,14 +184,14 @@ The B+ tree implementation uses nodes as the fundamental building blocks. Each n
 
 ```go
 type Node struct {
-	ID     		string 		`json:"id"`
-	IsLeaf 		bool   		`json:"isLeaf"`
-	Keys 		[]string 	`json:"keys"`
+	ID     			string			`json:"id"`
+	IsLeaf 			bool				`json:"isLeaf"`
+	Keys 				[]string 		`json:"keys"`
 	Values      [][]string	`json:"values"`      // Only for leaf nodes
-	ChildrenIDs []string	`json:"childrenIDs"` // Only for internal nodes
-	ParentID    string		`json:"parentID"`
-	NextID      string		`json:"nextID"`     // ID of the next leaf node
-	PreviousID  string		`json:"previousID"` // ID of the previous leaf node
+	ChildrenIDs []string		`json:"childrenIDs"` // Only for internal nodes
+	ParentID    string			`json:"parentID"`
+	NextID      string			`json:"nextID"`     // ID of the next leaf node
+	PreviousID  string			`json:"previousID"` // ID of the previous leaf node
 }
 
 // Core node operations (Does not match exactly the implementation)
@@ -281,6 +281,7 @@ As for the indexes available, they should be provided through a specific endpoin
 ## Rationale and Alternatives
 
 ### Node Keys
+
 The current implementation uses a simple string-based key for each node, which is sufficient for the initial use case. However, this could be extended to support more complex key structures in the future. Strings keys has the limitation of not ordering integer values.
 
 ### Concurrency Control
@@ -308,17 +309,24 @@ The current storage system has the limitation of a one-to-one mapping between ke
 A page-based storage system would allow multiple nodes to be associated with a single key, enabling more efficient storage and retrieval of data. This would require a more complex implementation but would provide better performance for large datasets. The current implementation uses a simple key-value store, which is sufficient for the initial use case but may need to be replaced in the future as the system scales.
 
 ## Downsides
+
 Code complexity and additional load on the system and storage when building indexes. It is suggested to make index building opt-in and also tunable so that system administrators can disable index building for mounts if desired.
 
 ## Security Implications
+
 No security implications were identified.
 
 ## User/Developer Experience
+
 With these constructs available, an OpenBao developer will be able to dynamically configure and build indexes on the data persisted in storage.
 No user facing changes are expected with this RFC as it only introduces the constructs to build the indexes.
 
 ## Unresolved Questions
-- How to keep track of the current progress of an index that is being incrementally built?
+
+- How to keep track of the current progress of an index that is being incrementally built;
+- Purging or removing all nodes associated with a key from multiple trees;
+- Index rebuilding if any configuration is changed, such as order (currently not supported); Might be easier to simply rebuild the index from scratch.
+- Removal of an index;
 
 ## Related Issues
 

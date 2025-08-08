@@ -130,9 +130,9 @@ func (c *Core) GenerateRootConfiguration(ns *namespace.Namespace) (*GenerateRoot
 	c.namespaceRootGenLock.Lock()
 	defer c.namespaceRootGenLock.Unlock()
 
-	namespaceRootGen, ok := c.namespaceRootGens[ns.UUID]
-	if !ok {
-		return nil, nil
+	namespaceRootGen, exists := c.namespaceRootGens[ns.UUID]
+	if !exists {
+		return nil, fmt.Errorf("no current active root generation for namespace %s", ns.Path)
 	}
 
 	config := *namespaceRootGen.Config

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
@@ -55,6 +56,28 @@ func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Requ
 		return nil, errors.New("missing username")
 	}
 
+	// _Some_ LDAP backends will silently trim spaces, leading to an
+	// authentication lockout bypass if not adjusted in the alias.
+	// We normalize the username to avoid this, as _presumably_ users
+	// do not normally begin/end with leading space.
+	//
+	// See HCSEC-2025-16 / CVE-2025-6004 for more information.
+	username = strings.TrimSpace(username)
+
+	cfg, err := b.Config(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if cfg == nil {
+		return logical.ErrorResponse("auth method not configured"), nil
+	}
+
+	// Likewise, if the configuration uses a lower-case username, set that
+	// as our alias.
+	if cfg.CaseSensitiveNames != nil && !*cfg.CaseSensitiveNames {
+		username = strings.ToLower(username)
+	}
+
 	return &logical.Response{
 		Auth: &logical.Auth{
 			Alias: &logical.Alias{
@@ -86,6 +109,13 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 
 	username := d.Get("username").(string)
 	password := d.Get("password").(string)
+
+	// See notes in pathLoginAliasLookahead(...) for more information. This
+	// is a hack specifically for HCSEC-2025-20 / CVE-2025-6013.
+	username = strings.TrimSpace(username)
+	if cfg.CaseSensitiveNames != nil && !*cfg.CaseSensitiveNames {
+		username = strings.ToLower(username)
+	}
 
 	effectiveUsername, policies, resp, groupNames, err := b.Login(ctx, req, username, password, cfg.UsernameAsAlias)
 	if err != nil || (resp != nil && resp.IsError()) {

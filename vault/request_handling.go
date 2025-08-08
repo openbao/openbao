@@ -1356,14 +1356,16 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	}
 
 	// if user lockout feature is not disabled, check if the user is locked
+	var userLockoutInfo *FailedLoginUser
 	if !isUserLockoutDisabled {
-		isloginUserLocked, err := c.isUserLocked(ctx, entry, req)
+		lockoutInfo, isloginUserLocked, err := c.isUserLocked(ctx, entry, req)
 		if err != nil {
 			return nil, nil, err
 		}
 		if isloginUserLocked {
 			return nil, nil, logical.ErrPermissionDenied
 		}
+		userLockoutInfo = lockoutInfo
 	}
 
 	// Route the request
@@ -1372,7 +1374,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	// if routeErr has invalid credentials error, update the userFailedLoginMap
 	if routeErr != nil && routeErr == logical.ErrInvalidCredentials {
 		if !isUserLockoutDisabled {
-			err := c.failedUserLoginProcess(ctx, entry, req)
+			err := c.failedUserLoginProcess(ctx, entry, req, userLockoutInfo)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1559,6 +1561,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 				// and return MFARequirement only
 				respAuth := &MFACachedAuthResponse{
 					CachedAuth:            resp.Auth,
+					CachedUserLockout:     userLockoutInfo,
 					RequestPath:           req.Path,
 					RequestNSID:           ns.ID,
 					RequestNSPath:         ns.Path,
@@ -1598,7 +1601,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 			role = c.DetermineRoleFromLoginRequest(ctx, req.MountPoint, req.Data)
 		}
 
-		_, respTokenCreate, errCreateToken := c.LoginCreateToken(ctx, ns, req.Path, source, role, resp)
+		_, respTokenCreate, errCreateToken := c.LoginCreateToken(ctx, ns, req.Path, source, role, resp, userLockoutInfo)
 		if errCreateToken != nil {
 			return respTokenCreate, nil, errCreateToken
 		}
@@ -1611,16 +1614,11 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	// For service tokens on ent it is taken care by registerAuth RPC calls.
 	// This update is done as part of registerAuth of RPC calls from standby
 	// to active node. This is added there to reduce RPC calls
-	if !isUserLockoutDisabled && (auth.TokenType == logical.TokenTypeBatch) {
-		loginUserInfoKey := FailedLoginUser{
-			aliasName:     auth.Alias.Name,
-			mountAccessor: auth.Alias.MountAccessor,
-		}
-
+	if !isUserLockoutDisabled && (auth.TokenType == logical.TokenTypeBatch) && userLockoutInfo != nil {
 		// We don't need to try to delete the lockedUsers storage entry, since we're
 		// processing a login request. If a login attempt is allowed, it means the user is
 		// unlocked and we only add storage entry when the user gets locked.
-		err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true)
+		err = c.LocalUpdateUserFailedLoginInfo(ctx, *userLockoutInfo, nil, true)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1644,7 +1642,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 // LoginCreateToken creates a token as a result of a login request.
 // If MFA is enforced, mfa/validate endpoint calls this functions
 // after successful MFA validation to generate the token.
-func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, reqPath, mountPoint, role string, resp *logical.Response) (bool, *logical.Response, error) {
+func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, reqPath, mountPoint, role string, resp *logical.Response, userLockoutInfo *FailedLoginUser) (bool, *logical.Response, error) {
 	auth := resp.Auth
 	source := strings.TrimPrefix(mountPoint, credentialRoutePrefix)
 	source = strings.ReplaceAll(source, "/", "-")
@@ -1693,7 +1691,7 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 	}
 
 	leaseGenerated := false
-	err = c.RegisterAuth(ctx, tokenTTL, reqPath, auth, role)
+	err = c.RegisterAuth(ctx, tokenTTL, reqPath, auth, role, userLockoutInfo)
 	switch {
 	case err == nil:
 		if auth.TokenType != logical.TokenTypeBatch {
@@ -1732,18 +1730,12 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 // failedUserLoginProcess updates the userFailedLoginMap with login count and  last failed
 // login time for users with failed login attempt
 // If the user gets locked for current login attempt, it updates the storage entry too
-func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntry, req *logical.Request) error {
+func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntry, req *logical.Request, userLockoutInfo *FailedLoginUser) error {
 	// get the user lockout configuration for the user
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
 
-	// determine the key for userFailedLoginInfo map
-	loginUserInfoKey, err := c.getLoginUserInfoKey(ctx, mountEntry, req)
-	if err != nil {
-		return err
-	}
-
 	// get entry from userFailedLoginInfo map for the key
-	userFailedLoginInfo := c.LocalGetUserFailedLoginInfo(ctx, loginUserInfoKey)
+	userFailedLoginInfo := c.LocalGetUserFailedLoginInfo(ctx, *userLockoutInfo)
 
 	// update the last failed login time with current time
 	failedLoginInfo := FailedLoginInfo{
@@ -1766,7 +1758,7 @@ func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntr
 	}
 
 	// update the userFailedLoginInfo map (and/or storage) with the updated/new entry
-	err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, &failedLoginInfo, false)
+	err := c.LocalUpdateUserFailedLoginInfo(ctx, *userLockoutInfo, &failedLoginInfo, false)
 	if err != nil {
 		return err
 	}
@@ -1828,11 +1820,11 @@ func (c *Core) isUserLockoutDisabled(mountEntry *MountEntry) (bool, error) {
 }
 
 // isUserLocked determines if the login request user is locked
-func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *logical.Request) (locked bool, err error) {
+func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *logical.Request) (loginUser *FailedLoginUser, locked bool, err error) {
 	// get userFailedLoginInfo map key for login user
 	loginUserInfoKey, err := c.getLoginUserInfoKey(ctx, mountEntry, req)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 
 	// get entry from userFailedLoginInfo map for the key
@@ -1845,30 +1837,30 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 		// entry not found in userFailedLoginInfo map, check storage to re-verify
 		ns, err := namespace.FromContext(ctx)
 		if err != nil {
-			return false, fmt.Errorf("could not retrieve namespace from context: %w", err)
+			return nil, false, fmt.Errorf("could not retrieve namespace from context: %w", err)
 		}
 
 		view := NamespaceView(c.barrier, ns).SubView(coreLockedUsersPath).SubView(loginUserInfoKey.mountAccessor + "/")
 		existingEntry, err := view.Get(ctx, loginUserInfoKey.aliasName)
 		if err != nil {
-			return false, err
+			return nil, false, err
 		}
 
 		var lastLoginTime int
 		if existingEntry == nil {
 			// no storage entry found, user is not locked
-			return false, nil
+			return &loginUserInfoKey, false, nil
 		}
 
 		err = jsonutil.DecodeJSON(existingEntry.Value, &lastLoginTime)
 		if err != nil {
-			return false, err
+			return nil, false, err
 		}
 
 		// if time passed from last login time is within lockout duration, the user is locked
 		if time.Now().Unix()-int64(lastLoginTime) < int64(userLockoutConfiguration.LockoutDuration.Seconds()) {
 			// user locked
-			return true, nil
+			return &loginUserInfoKey, true, nil
 		}
 
 		// else user is not locked. Entry is stale, this will be removed from storage during cleanup
@@ -1881,10 +1873,11 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 
 		if isCountOverLockoutThreshold && isWithinLockoutDuration {
 			// user locked
-			return true, nil
+			return &loginUserInfoKey, true, nil
 		}
 	}
-	return false, nil
+
+	return &loginUserInfoKey, false, nil
 }
 
 // getUserLockoutConfiguration gets the user lockout configuration for a mount entry
@@ -1996,7 +1989,7 @@ func (c *Core) buildMfaEnforcementResponse(eConfig *mfa.MFAEnforcementConfig) (*
 // store, and registers a corresponding token lease to the expiration manager.
 // role is the login role used as part of the creation of the token entry. If not
 // relevant, can be omitted (by being provided as "").
-func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path string, auth *logical.Auth, role string) error {
+func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path string, auth *logical.Auth, role string, userLockoutInfo *FailedLoginUser) error {
 	// We first assign token policies to what was returned from the backend
 	// via auth.Policies. Then, we get the full set of policies into
 	// auth.Policies from the backend + entity information -- this is not
@@ -2059,16 +2052,11 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 		// Successful login, remove any entry from userFailedLoginInfo map
 		// if it exists. This is done for service tokens (for oss) here.
 		// For ent it is taken care by registerAuth RPC calls.
-		if auth.Alias != nil {
-			loginUserInfoKey := FailedLoginUser{
-				aliasName:     auth.Alias.Name,
-				mountAccessor: auth.Alias.MountAccessor,
-			}
-
+		if userLockoutInfo != nil {
 			// We don't need to try to delete the lockedUsers storage entry, since we're
 			// processing a login request. If a login attempt is allowed, it means the user is
 			// unlocked and we only add storage entry when the user gets locked.
-			err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true)
+			err = c.LocalUpdateUserFailedLoginInfo(ctx, *userLockoutInfo, nil, true)
 			if err != nil {
 				return err
 			}

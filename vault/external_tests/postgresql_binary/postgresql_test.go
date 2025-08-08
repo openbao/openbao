@@ -2,6 +2,7 @@ package raft_binary
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -136,115 +137,93 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	require.Nil(t, resp)
 }
 
-func TestPostgreSQL_ParallelInitialization(t *testing.T) {
+type nodeResult struct {
+	cluster *docker.DockerCluster
+	err     error
+}
+
+func TestPSQLParallelInit(t *testing.T) {
 	t.Parallel()
+
 	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
-		t.Skip("only running docker test when $BAO_BINARY present")
+		t.Skip("missing $BAO_BINARY")
+	}
+
+	configPath := "config-postgresql.json"
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Fatalf("config not found: %s", configPath)
 	}
 
 	psql := docker.NewPostgreSQLStorage(t, "")
-	defer func() {
-		err := psql.Cleanup()
-		if err != nil {
-			t.Errorf("Failed to cleanup PostgreSQL storage: %v", err)
-		}
-	}()
+	defer psql.Cleanup()
 
 	const numNodes = 10
+	targetTime := time.Now().Add(2 * time.Second)
 
-	var clusters []*docker.DockerCluster
-	var wg sync.WaitGroup
-	results := make(chan error, numNodes)
-
-	targetTime := time.Now().Add(5 * time.Second)
-
-	err := os.Setenv("INITIAL_ADMIN_PASSWORD", "Secret123")
-	if err != nil {
-		t.Fatalf("Failed to set INITIAL_ADMIN_PASSWORD environment variable: %v", err)
-	}
-
-	defer func() {
-		err := os.Unsetenv("INITIAL_ADMIN_PASSWORD")
-		if err != nil {
-			t.Errorf("Warning: Failed to unset INITIAL_ADMIN_PASSWORD environment variable: %v", err)
-		}
-	}()
-
+	results := make(chan nodeResult, numNodes)
 	for i := 0; i < numNodes; i++ {
-		wg.Add(1)
-		go func(nodeIndex int) {
-			defer wg.Done()
+		go func(idx int) {
+			// sync start
+			if d := time.Until(targetTime); d > 0 {
+				time.Sleep(d)
+			}
+			// prepare config
+			data, err := os.ReadFile(configPath)
+			require.NoError(t, err)
+			var cfg map[string]interface{}
+			require.NoError(t, json.Unmarshal(data, &cfg))
+			if st, ok := cfg["storage"].(map[string]interface{}); ok {
+				if pg, ok := st["postgresql"].(map[string]interface{}); ok {
+					pg["connection_url"] = psql.InternalUrl
+					pg["ha_enabled"] = true
+				}
+			}
+			cfgBytes, _ := json.MarshalIndent(cfg, "", "  ")
+			tmp, _ := os.CreateTemp("", fmt.Sprintf("cfg-%02d-*.json", idx))
+			tmp.Write(cfgBytes)
+			tmp.Close()
+			defer os.Remove(tmp.Name())
 
-			time.Sleep(time.Until(targetTime))
-
+			// start node
 			opts := &docker.DockerClusterOptions{
 				ImageRepo:   "quay.io/openbao/openbao",
 				ImageTag:    "latest",
-				NetworkName: "",
 				VaultBinary: binary,
+				Args:        []string{"server", "-config", tmp.Name()},
+				Storage:     psql,
 				ClusterOptions: testcluster.ClusterOptions{
-					VaultNodeConfig: &testcluster.VaultNodeConfig{
-						LogLevel: "DEBUG",
-					},
+					VaultNodeConfig: &testcluster.VaultNodeConfig{LogLevel: "TRACE"},
+					NumCores:        1,
 				},
-				Storage: psql,
 			}
-
 			cluster := docker.NewTestDockerCluster(t, opts)
-			clusters = append(clusters, cluster)
 
-			client := cluster.Nodes()[0].APIClient()
-
+			// basic operation
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
+			_, err = cluster.Nodes()[0].APIClient().
+				Logical().ListWithContext(ctx, "sys/policies/acl")
 
-			resp, err := client.Logical().ListWithContext(ctx, "sys/policies/acl")
-			if err != nil {
-				results <- fmt.Errorf("node %d basic operation failed: %v", nodeIndex, err)
-				return
-			}
-
-			if resp == nil {
-				results <- fmt.Errorf("node %d basic operation returned nil response", nodeIndex)
-				return
-			}
-
-			results <- nil
+			results <- nodeResult{cluster: cluster, err: err}
 		}(i)
 	}
 
-	wg.Wait()
-	close(results)
-
-	defer func() {
-		for _, cluster := range clusters {
-			if cluster != nil {
-				cluster.Cleanup()
-			}
-		}
-	}()
-
-	successCount := 0
-	var errors []error
-
-	for result := range results {
-		if result == nil {
-			successCount++
+	// collect results
+	var active, sealed int
+	for i := 0; i < numNodes; i++ {
+		res := <-results
+		if res.err == nil {
+			active++
+		} else if strings.Contains(res.err.Error(), "Vault is sealed") {
+			sealed++
 		} else {
-			errors = append(errors, result)
+			t.Errorf("unexpected node error: %v", res.err)
 		}
+		defer res.cluster.Cleanup()
 	}
 
-	t.Logf("Parallel initialization test completed: %d/%d nodes successful", successCount, numNodes)
-
-	require.Greater(t, successCount, 0, "At least one node should have initialized successfully")
-
-	for i, err := range errors {
-		t.Logf("Node error %d: %v", i, err)
-	}
-
-	if successCount < numNodes/2 {
-		t.Errorf("Too many nodes failed (%d/%d), indicating a serious issue", len(errors), numNodes)
-	}
+	t.Logf("active=%d sealed=%d", active, sealed)
+	require.Greater(t, active, 0, "need at least one active leader")
+	require.Equal(t, numNodes-1, sealed, "rest should be sealed standby")
 }

@@ -732,7 +732,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		Cmd:             append([]string{"server"}, opts.Args...),
 		Env:             env,
 		Ports:           ports,
-		ContainerName:   n.Name(),
+		ContainerName:   fmt.Sprintf("%s-%d", n.Name(), time.Now().UnixNano()),
 		NetworkName:     opts.NetworkName,
 		CopyFromTo:      copyFromTo,
 		LogConsumer:     logConsumer,

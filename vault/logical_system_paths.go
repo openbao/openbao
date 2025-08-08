@@ -892,8 +892,8 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rekey_backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rekey_backup"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-backup"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate-backup"][0]),
 		},
 
 		{
@@ -946,8 +946,8 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rekey_backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rekey_backup"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-backup"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate-backup"][0]),
 		},
 		{
 			Pattern: "rekey/update",

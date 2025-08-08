@@ -26,17 +26,17 @@ import (
 
 // RotationConfig is used to read the rotation configuration
 func (c *Core) RotationConfig(recovery bool) *SealConfig {
-	c.rekeyLock.Lock()
-	defer c.rekeyLock.Unlock()
+	c.rotationLock.Lock()
+	defer c.rotationLock.Unlock()
 
 	// Copy the specified seal config
 	if recovery {
-		if c.recoveryRekeyConfig != nil {
-			return c.recoveryRekeyConfig.Clone()
+		if c.recoveryRotationConfig != nil {
+			return c.recoveryRotationConfig.Clone()
 		}
 	} else {
-		if c.barrierRekeyConfig != nil {
-			return c.barrierRekeyConfig.Clone()
+		if c.rootRotationConfig != nil {
+			return c.rootRotationConfig.Clone()
 		}
 	}
 
@@ -48,8 +48,8 @@ func (c *Core) RotationConfig(recovery bool) *SealConfig {
 // threshold, depending on whether rotation is being performed on the recovery
 // key, or whether the seal supports recovery keys.
 func (c *Core) RotationThreshold(ctx context.Context, recovery bool) (int, logical.HTTPCodedError) {
-	c.rekeyLock.RLock()
-	defer c.rekeyLock.RUnlock()
+	c.rotationLock.RLock()
+	defer c.rotationLock.RUnlock()
 
 	var config *SealConfig
 	var err error
@@ -75,38 +75,38 @@ func (c *Core) RotationThreshold(ctx context.Context, recovery bool) (int, logic
 
 // RotationProgress is used to return the rotation progress (num shares).
 func (c *Core) RotationProgress(recovery, verification bool) (bool, int, error) {
-	c.rekeyLock.RLock()
-	defer c.rekeyLock.RUnlock()
+	c.rotationLock.RLock()
+	defer c.rotationLock.RUnlock()
 
 	var conf *SealConfig
 	if recovery {
-		conf = c.recoveryRekeyConfig
+		conf = c.recoveryRotationConfig
 	} else {
-		conf = c.barrierRekeyConfig
+		conf = c.rootRotationConfig
 	}
 
 	if conf == nil {
-		return false, 0, errors.New("rotation operation not in progress")
+		return false, 0, errors.New("rotation not in progress")
 	}
 
 	if verification {
 		return len(conf.VerificationKey) > 0, len(conf.VerificationProgress), nil
 	}
 
-	return true, len(conf.RekeyProgress), nil
+	return true, len(conf.RotationProgress), nil
 }
 
 // InitRotation will either initialize the rotation of barrier or recovery key
 // depending on the value of recovery parameter.
 func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bool) (*RekeyResult, logical.HTTPCodedError) {
-	// Initialize the nonce for rotation operation
+	// Initialize the nonce for rotation
 	nonce, err := uuid.GenerateUUID()
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("error generating nonce for procedure: %w", err).Error())
 	}
 
 	if recovery {
-		if c.recoveryRekeyConfig != nil {
+		if c.recoveryRotationConfig != nil {
 			return nil, logical.CodedError(http.StatusBadRequest, "rotation already in progress")
 		}
 
@@ -128,37 +128,37 @@ func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bo
 		}
 
 		if existingRecoveryConfig.SecretShares == 0 {
-			newRecoveryKey, result, err := c.generateKey(c.recoveryRekeyConfig, true)
+			newRecoveryKey, result, err := c.generateKey(c.recoveryRotationConfig, true)
 			if err != nil {
 				return nil, err
 			}
 
 			// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
-			if len(c.recoveryRekeyConfig.PGPKeys) > 0 {
+			if len(c.recoveryRotationConfig.PGPKeys) > 0 {
 				var encryptError error
-				result, encryptError = c.pgpEncryptShares(ctx, c.recoveryRekeyConfig, result)
+				result, encryptError = c.pgpEncryptShares(ctx, c.recoveryRotationConfig, result, true)
 				if encryptError != nil {
 					return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
 				}
 			}
 
 			// If we are requiring validation, return now; otherwise save the recovery key
-			if c.recoveryRekeyConfig.VerificationRequired {
-				return c.requireVerification(c.recoveryRekeyConfig, result, newRecoveryKey)
+			if c.recoveryRotationConfig.VerificationRequired {
+				return c.requireVerification(c.recoveryRotationConfig, result, newRecoveryKey)
 			}
 
 			if err := c.performRecoveryRekey(ctx, newRecoveryKey); err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform recovery rotation: %w", err).Error())
 			}
 
-			c.recoveryRekeyConfig = nil
+			c.recoveryRotationConfig = nil
 			return result, nil
 		}
 
 		return nil, nil
 	}
 
-	if c.barrierRekeyConfig != nil {
+	if c.rootRotationConfig != nil {
 		return nil, logical.CodedError(http.StatusBadRequest, "rotation already in progress")
 	}
 
@@ -183,15 +183,15 @@ func (c *Core) initRecoveryRotation(config *SealConfig, nonce string) logical.HT
 		return logical.CodedError(http.StatusBadRequest, "recovery keys not supported")
 	}
 
-	c.rekeyLock.Lock()
-	defer c.rekeyLock.Unlock()
+	c.rotationLock.Lock()
+	defer c.rotationLock.Unlock()
 
 	// Copy the configuration
-	c.recoveryRekeyConfig = config.Clone()
-	c.recoveryRekeyConfig.Nonce = nonce
+	c.recoveryRotationConfig = config.Clone()
+	c.recoveryRotationConfig.Nonce = nonce
 
 	if c.logger.IsInfo() {
-		c.logger.Info("rotation initialized", "nonce", c.recoveryRekeyConfig.Nonce, "shares", c.recoveryRekeyConfig.SecretShares, "threshold", c.recoveryRekeyConfig.SecretThreshold, "validation_required", c.recoveryRekeyConfig.VerificationRequired)
+		c.logger.Info("rotation initialized", "nonce", c.recoveryRotationConfig.Nonce, "shares", c.recoveryRotationConfig.SecretShares, "threshold", c.recoveryRotationConfig.SecretThreshold, "validation_required", c.recoveryRotationConfig.VerificationRequired)
 	}
 	return nil
 }
@@ -228,29 +228,29 @@ func (c *Core) initBarrierRotation(config *SealConfig, nonce string) logical.HTT
 		return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("invalid rotate seal configuration: %w", err).Error())
 	}
 
-	c.rekeyLock.Lock()
-	defer c.rekeyLock.Unlock()
+	c.rotationLock.Lock()
+	defer c.rotationLock.Unlock()
 
 	// Copy the configuration
-	c.barrierRekeyConfig = config.Clone()
-	c.barrierRekeyConfig.Nonce = nonce
+	c.rootRotationConfig = config.Clone()
+	c.rootRotationConfig.Nonce = nonce
 
 	if c.logger.IsInfo() {
-		c.logger.Info("rotation initialized", "nonce", c.barrierRekeyConfig.Nonce, "shares", c.barrierRekeyConfig.SecretShares, "threshold", c.barrierRekeyConfig.SecretThreshold, "verification_required", c.barrierRekeyConfig.VerificationRequired)
+		c.logger.Info("rotation initialized", "nonce", c.rootRotationConfig.Nonce, "shares", c.rootRotationConfig.SecretShares, "threshold", c.rootRotationConfig.SecretThreshold, "verification_required", c.rootRotationConfig.VerificationRequired)
 	}
 	return nil
 }
 
-// CancelRotation is used to cancel an in-progress rotation operation.
+// CancelRotation is used to cancel an in-progress rotation.
 func (c *Core) CancelRotation(recovery bool) logical.HTTPCodedError {
-	c.rekeyLock.Lock()
-	defer c.rekeyLock.Unlock()
+	c.rotationLock.Lock()
+	defer c.rotationLock.Unlock()
 
 	// Clear any progress or config
 	if recovery {
-		c.recoveryRekeyConfig = nil
+		c.recoveryRotationConfig = nil
 	} else {
-		c.barrierRekeyConfig = nil
+		c.rootRotationConfig = nil
 	}
 	return nil
 }
@@ -258,8 +258,8 @@ func (c *Core) CancelRotation(recovery bool) logical.HTTPCodedError {
 // UpdateRotation is used to provide a new key share for the rotation
 // of barrier or recovery key.
 func (c *Core) UpdateRotation(ctx context.Context, key []byte, nonce string, recovery bool) (*RekeyResult, logical.HTTPCodedError) {
-	c.rekeyLock.Lock()
-	defer c.rekeyLock.Unlock()
+	c.rotationLock.Lock()
+	defer c.rotationLock.Unlock()
 
 	var config *SealConfig
 	var err error
@@ -280,13 +280,13 @@ func (c *Core) UpdateRotation(ctx context.Context, key []byte, nonce string, rec
 	}
 
 	if recovery {
-		if c.recoveryRekeyConfig == nil {
+		if c.recoveryRotationConfig == nil {
 			return nil, logical.CodedError(http.StatusBadRequest, "no recovery rotation in progress")
 		}
 		return c.updateRecoveryRotation(ctx, config, key, nonce)
 	}
 
-	if c.barrierRekeyConfig == nil {
+	if c.rootRotationConfig == nil {
 		return nil, logical.CodedError(http.StatusBadRequest, "no barrier rotation in progress")
 	}
 	return c.updateBarrierRotation(ctx, config, key, nonce, useRecovery)
@@ -294,7 +294,7 @@ func (c *Core) UpdateRotation(ctx context.Context, key []byte, nonce string, rec
 
 // updateRecoveryRotation is used to provide a new key share for recovery key rotation.
 func (c *Core) updateRecoveryRotation(ctx context.Context, config *SealConfig, key []byte, nonce string) (*RekeyResult, logical.HTTPCodedError) {
-	recoveryKey, err := c.progressRotation(c.recoveryRekeyConfig, config, key, nonce)
+	recoveryKey, err := c.progressRotation(c.recoveryRotationConfig, config, key, nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -309,36 +309,36 @@ func (c *Core) updateRecoveryRotation(ctx context.Context, config *SealConfig, k
 		return nil, logical.CodedError(http.StatusBadRequest, fmt.Errorf("recovery key verification failed: %w", err).Error())
 	}
 
-	newRecoveryKey, result, err := c.generateKey(c.recoveryRekeyConfig, true)
+	newRecoveryKey, result, err := c.generateKey(c.recoveryRotationConfig, true)
 	if err != nil {
 		return nil, err
 	}
 
 	// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
-	if len(c.recoveryRekeyConfig.PGPKeys) > 0 {
+	if len(c.recoveryRotationConfig.PGPKeys) > 0 {
 		var encryptError error
-		result, encryptError = c.pgpEncryptShares(ctx, c.recoveryRekeyConfig, result)
+		result, encryptError = c.pgpEncryptShares(ctx, c.recoveryRotationConfig, result, true)
 		if encryptError != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
 		}
 	}
 
 	// If we are requiring validation, return now; otherwise save the recovery key
-	if c.recoveryRekeyConfig.VerificationRequired {
-		return c.requireVerification(c.recoveryRekeyConfig, result, newRecoveryKey)
+	if c.recoveryRotationConfig.VerificationRequired {
+		return c.requireVerification(c.recoveryRotationConfig, result, newRecoveryKey)
 	}
 
 	if err := c.performRecoveryRekey(ctx, newRecoveryKey); err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform recovery rotation: %w", err).Error())
 	}
 
-	c.recoveryRekeyConfig = nil
+	c.recoveryRotationConfig = nil
 	return result, nil
 }
 
 // updateBarrierRotation is used to provide a new key share for barrier key rotation.
 func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, key []byte, nonce string, useRecovery bool) (*RekeyResult, logical.HTTPCodedError) {
-	recoveredKey, err := c.progressRotation(c.barrierRekeyConfig, config, key, nonce)
+	recoveredKey, err := c.progressRotation(c.rootRotationConfig, config, key, nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -384,30 +384,30 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 	// Generate a new key: for AutoUnseal, this is a new root key; for Shamir,
 	// this is a new unseal key, and performBarrierRekey will also generate a
 	// new root key.
-	newKey, result, err := c.generateKey(c.barrierRekeyConfig, true)
+	newKey, result, err := c.generateKey(c.rootRotationConfig, true)
 	if err != nil {
 		return nil, err
 	}
 
 	// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
-	if len(c.barrierRekeyConfig.PGPKeys) > 0 {
+	if len(c.rootRotationConfig.PGPKeys) > 0 {
 		var encryptError error
-		result, encryptError = c.pgpEncryptShares(ctx, c.barrierRekeyConfig, result)
+		result, encryptError = c.pgpEncryptShares(ctx, c.rootRotationConfig, result, false)
 		if encryptError != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
 		}
 	}
 
 	// If we are requiring validation, return now; otherwise rotate barrier key
-	if c.barrierRekeyConfig.VerificationRequired {
-		return c.requireVerification(c.barrierRekeyConfig, result, newKey)
+	if c.rootRotationConfig.VerificationRequired {
+		return c.requireVerification(c.rootRotationConfig, result, newKey)
 	}
 
 	if err := c.performBarrierRekey(ctx, newKey); err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to rotate barrier key: %w", err).Error())
 	}
 
-	c.barrierRekeyConfig = nil
+	c.rootRotationConfig = nil
 	return result, nil
 }
 
@@ -415,27 +415,27 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 // enough shares to recover the key.
 func (c *Core) progressRotation(rotationConfig, existingConfig *SealConfig, key []byte, nonce string) ([]byte, logical.HTTPCodedError) {
 	if len(rotationConfig.VerificationKey) > 0 {
-		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("rotation operation already finished; verification must be performed; nonce for the verification operation is %q", rotationConfig.VerificationNonce))
+		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("rotation already finished; verification must be performed; nonce for the verification operation is %q", rotationConfig.VerificationNonce))
 	}
 
 	if nonce != rotationConfig.Nonce {
-		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("incorrect nonce supplied; nonce for rotation operation is %q", rotationConfig.Nonce))
+		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("incorrect nonce supplied; nonce for rotation is %q", rotationConfig.Nonce))
 	}
 
 	// Check if we already have this piece
-	for _, existing := range rotationConfig.RekeyProgress {
+	for _, existing := range rotationConfig.RotationProgress {
 		if subtle.ConstantTimeCompare(existing, key) == 1 {
-			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this rotation operation")
+			return nil, logical.CodedError(http.StatusBadRequest, "given key has already been provided during this rotation")
 		}
 	}
 
 	// Store this key
-	rotationConfig.RekeyProgress = append(rotationConfig.RekeyProgress, key)
+	rotationConfig.RotationProgress = append(rotationConfig.RotationProgress, key)
 
 	// Check if we don't have enough keys to unlock
-	if len(rotationConfig.RekeyProgress) < existingConfig.SecretThreshold {
+	if len(rotationConfig.RotationProgress) < existingConfig.SecretThreshold {
 		if c.logger.IsDebug() {
-			c.logger.Debug("cannot rotate yet, not enough keys", "keys", len(rotationConfig.RekeyProgress), "threshold", existingConfig.SecretThreshold)
+			c.logger.Debug("cannot rotate yet, not enough keys", "keys", len(rotationConfig.RotationProgress), "threshold", existingConfig.SecretThreshold)
 		}
 		return nil, nil
 	}
@@ -443,16 +443,16 @@ func (c *Core) progressRotation(rotationConfig, existingConfig *SealConfig, key 
 	// Recover the key
 	var recoveredKey []byte
 	if existingConfig.SecretThreshold == 1 {
-		recoveredKey = rotationConfig.RekeyProgress[0]
+		recoveredKey = rotationConfig.RotationProgress[0]
 	} else {
 		var err error
-		recoveredKey, err = shamir.Combine(rotationConfig.RekeyProgress)
+		recoveredKey, err = shamir.Combine(rotationConfig.RotationProgress)
 		if err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to compute key: %w", err).Error())
 		}
 	}
 
-	rotationConfig.RekeyProgress = nil
+	rotationConfig.RotationProgress = nil
 	return recoveredKey, nil
 }
 
@@ -489,7 +489,7 @@ func (c *Core) generateKey(rotationConfig *SealConfig, recovery bool) ([]byte, *
 
 // pgpEncryptShares encrypts the rotation secret shares using the provided pgp keys.
 // If the rotation config also specifies backup, the backup information in saved to storage.
-func (c *Core) pgpEncryptShares(ctx context.Context, rotationConfig *SealConfig, rotationResult *RekeyResult) (*RekeyResult, error) {
+func (c *Core) pgpEncryptShares(ctx context.Context, rotationConfig *SealConfig, rotationResult *RekeyResult, recovery bool) (*RekeyResult, error) {
 	hexEncodedShares := make([][]byte, len(rotationResult.SecretShares))
 	for i := range rotationResult.SecretShares {
 		hexEncodedShares[i] = []byte(hex.EncodeToString(rotationResult.SecretShares[i]))
@@ -524,9 +524,13 @@ func (c *Core) pgpEncryptShares(ctx context.Context, rotationConfig *SealConfig,
 		}
 
 		pe := &physical.Entry{
-			Key:   coreRecoveryUnsealKeysBackupPath,
+			Key:   coreBarrierUnsealKeysBackupPath,
 			Value: buf,
 		}
+		if recovery {
+			pe.Key = coreRecoveryUnsealKeysBackupPath
+		}
+
 		if err = c.physical.Put(ctx, pe); err != nil {
 			c.logger.Error("failed to save unseal key backup", "error", err)
 			return nil, fmt.Errorf("failed to save unseal key backup: %w", err)
@@ -552,14 +556,14 @@ func (c *Core) requireVerification(rotationConfig *SealConfig, rotationResult *R
 	return rotationResult, nil
 }
 
-// VerifyRotation verifies the progress of the verification of the rotation operation.
+// VerifyRotation verifies the progress of the verification of the rotation.
 func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, recovery bool) (ret *RekeyVerifyResult, retErr logical.HTTPCodedError) {
-	c.rekeyLock.Lock()
-	defer c.rekeyLock.Unlock()
+	c.rotationLock.Lock()
+	defer c.rotationLock.Unlock()
 
-	config := c.barrierRekeyConfig
+	config := c.rootRotationConfig
 	if recovery {
-		config = c.recoveryRekeyConfig
+		config = c.recoveryRotationConfig
 	}
 
 	// Ensure a rotation is in progress
@@ -630,12 +634,12 @@ func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, rec
 		if err := c.performRecoveryRekey(ctx, recoveredKey); err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform recovery key rotation: %w", err).Error())
 		}
-		c.recoveryRekeyConfig = nil
+		c.recoveryRotationConfig = nil
 	} else {
 		if err := c.performBarrierRekey(ctx, recoveredKey); err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform barrier key rotation: %w", err).Error())
 		}
-		c.barrierRekeyConfig = nil
+		c.rootRotationConfig = nil
 	}
 
 	return &RekeyVerifyResult{
@@ -646,8 +650,8 @@ func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, rec
 
 // RestartRotationVerification is used to start the rotation verification process over.
 func (c *Core) RestartRotationVerification(recovery bool) logical.HTTPCodedError {
-	c.rekeyLock.Lock()
-	defer c.rekeyLock.Unlock()
+	c.rotationLock.Lock()
+	defer c.rotationLock.Unlock()
 
 	// Attempt to generate a new nonce, but don't bail if it doesn't succeed
 	// (which is extraordinarily unlikely)
@@ -655,17 +659,17 @@ func (c *Core) RestartRotationVerification(recovery bool) logical.HTTPCodedError
 
 	// Clear any progress or config
 	if recovery {
-		if c.recoveryRekeyConfig != nil {
-			c.recoveryRekeyConfig.VerificationProgress = nil
+		if c.recoveryRotationConfig != nil {
+			c.recoveryRotationConfig.VerificationProgress = nil
 			if nonceErr == nil {
-				c.recoveryRekeyConfig.VerificationNonce = nonce
+				c.recoveryRotationConfig.VerificationNonce = nonce
 			}
 		}
 	} else {
-		if c.barrierRekeyConfig != nil {
-			c.barrierRekeyConfig.VerificationProgress = nil
+		if c.rootRotationConfig != nil {
+			c.rootRotationConfig.VerificationProgress = nil
 			if nonceErr == nil {
-				c.barrierRekeyConfig.VerificationNonce = nonce
+				c.rootRotationConfig.VerificationNonce = nonce
 			}
 		}
 	}
@@ -675,8 +679,8 @@ func (c *Core) RestartRotationVerification(recovery bool) logical.HTTPCodedError
 
 // RetrieveRotationBackup is used to retrieve any backed-up PGP-encrypted unseal keys.
 func (c *Core) RetrieveRotationBackup(ctx context.Context, recovery bool) (*RekeyBackup, logical.HTTPCodedError) {
-	c.rekeyLock.RLock()
-	defer c.rekeyLock.RUnlock()
+	c.rotationLock.RLock()
+	defer c.rotationLock.RUnlock()
 
 	var entry *physical.Entry
 	var err error
@@ -703,8 +707,8 @@ func (c *Core) RetrieveRotationBackup(ctx context.Context, recovery bool) (*Reke
 
 // DeleteRotationBackup is used to delete any backed-up PGP-encrypted unseal keys.
 func (c *Core) DeleteRotationBackup(ctx context.Context, recovery bool) logical.HTTPCodedError {
-	c.rekeyLock.Lock()
-	defer c.rekeyLock.Unlock()
+	c.rotationLock.Lock()
+	defer c.rotationLock.Unlock()
 
 	var err error
 	if recovery {

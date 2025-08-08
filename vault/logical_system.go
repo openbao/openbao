@@ -5498,13 +5498,6 @@ Enable a new audit backend or disable an existing backend.
 		`,
 	},
 
-	"rotate-config": {
-		"Configures settings related to the backend encryption key management.",
-		`
-		Configures settings related to the automatic rotation of the backend encryption key.
-		`,
-	},
-
 	"rotation-enabled": {
 		"Whether automatic rotation is enabled.",
 		"",
@@ -5518,23 +5511,35 @@ Enable a new audit backend or disable an existing backend.
 		"",
 	},
 
-	"rotate": {
+	"rotate-keyring": {
 		"Rotates the backend encryption key used to persist data.",
 		`
 		Rotate generates a new encryption key which is used to encrypt all
-		data going to the storage backend. The old encryption keys are kept so
-		that data encrypted using those keys can still be decrypted.
+		data going to the storage backend. The old encryption keys are kept
+		so that data encrypted using those keys can still be decrypted.
 		`,
 	},
-	"rotate_root": {
+	"rotate-keyring-config": {
+		"Configures settings related to the backend encryption key management.",
+		`
+		Configures settings related to the automatic rotation of the backend
+		encryption key.
+		`,
+	},
+
+	"rotate-root": {
 		"Perform a root key rotation without requiring key shares to be provided.",
 		"",
 	},
-	"rotate_init": {
-		"Initialize, read status or cancel the process of the rotation of the root or recovery key",
+
+	"rotate-init": {
+		`Initialize, read status or cancel the process of the rotation of
+		the root or recovery key.
+		`,
 		"",
 	},
-	"rotate_update": {
+
+	"rotate-update": {
 		"Progress the rotation process by providing a single key share.",
 		`This endpoint is used to enter a single key share to progress the
 		rotation of the recovery or root key. If the threshold number of key
@@ -5544,11 +5549,15 @@ Enable a new audit backend or disable an existing backend.
 		On the final call, any new key shares will be returned immediately.
 		`,
 	},
-	"rotate_verify": {
-		"Read status of, progress or cancel the verification process of the rotation attempt",
+
+	"rotate-verify": {
+		`Read status of, progress or cancel the verification process of the
+		rotation attempt.
+		`,
 		"",
 	},
-	"rekey_backup": {
+
+	"rotate-backup": {
 		"Allows fetching or deleting the backup of the rotated unseal keys.",
 		"",
 	},

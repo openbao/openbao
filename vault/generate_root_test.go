@@ -133,7 +133,7 @@ func testCore_GenerateRoot_InvalidRootNonce_Common(t *testing.T, c *Core, keys [
 		t.Fatalf("err: %v", err)
 	}
 	if rgconf == nil {
-		t.Fatal("bad: no rekey config received")
+		t.Fatal("bad: no rotate config received")
 	}
 
 	// Provide the nonce (invalid)

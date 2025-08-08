@@ -7,29 +7,29 @@ package command
 
 import (
 	"io"
-	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
+	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
 )
 
-func testOperatorRekeyCommand(tb testing.TB) (*cli.MockUi, *OperatorRekeyCommand) {
+func testOperatorRotateKeysCommand(tb testing.TB) (*cli.MockUi, *OperatorRotateKeysCommand) {
 	tb.Helper()
 
 	ui := cli.NewMockUi()
-	return ui, &OperatorRekeyCommand{
+	return ui, &OperatorRotateKeysCommand{
 		BaseCommand: &BaseCommand{
 			UI: ui,
 		},
 	}
 }
 
-func TestOperatorRekeyCommand_Run(t *testing.T) {
+func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -55,7 +55,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 				"-key-shares", "10",
 				"-pgp-keys", "keybase:jefferai,keybase:sethvargo",
 			},
-			"incorrect number",
+			"count mismatch",
 			2,
 		},
 		{
@@ -63,9 +63,10 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			[]string{
 				"-init",
 				"-key-shares", "1",
+				"-key-threshold", "1",
 				"-pgp-keys", "keybase:jefferai,keybase:sethvargo",
 			},
-			"incorrect number",
+			"count mismatch",
 			2,
 		},
 	}
@@ -74,26 +75,19 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		t.Parallel()
 
 		for _, tc := range cases {
-			tc := tc
-
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
 				client, closer := testVaultServer(t)
 				defer closer()
 
-				ui, cmd := testOperatorRekeyCommand(t)
+				ui, cmd := testOperatorRotateKeysCommand(t)
 				cmd.client = client
 
 				code := cmd.Run(tc.args)
-				if code != tc.code {
-					t.Errorf("expected %d to be %d", code, tc.code)
-				}
-
+				require.Equal(t, tc.code, code)
 				combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
-				if !strings.Contains(combined, tc.out) {
-					t.Errorf("expected %q to contain %q", combined, tc.out)
-				}
+				require.Contains(t, combined, tc.out)
 			})
 		}
 	})
@@ -104,47 +98,35 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		ui, cmd := testOperatorRekeyCommand(t)
+		ui, cmd := testOperatorRotateKeysCommand(t)
 		cmd.client = client
 
 		// Verify the non-init response
 		code := cmd.Run([]string{
 			"-status",
 		})
-		if exp := 0; code != exp {
-			t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-		}
+		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
-		expected := "Nonce"
 		combined := ui.OutputWriter.String()
-		if !strings.Contains(combined, expected) {
-			t.Errorf("expected %q to contain %q", combined, expected)
-		}
+		require.Contains(t, combined, "Nonce")
 
 		// Now init to verify the init response
-		//nolint:staticcheck // Testing deprecated (but still supported) functionality
-		if _, err := client.Sys().RekeyInit(&api.RotateInitRequest{
+		_, err := client.Sys().RotateRootInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
 		// Verify the init response
-		ui, cmd = testOperatorRekeyCommand(t)
+		ui, cmd = testOperatorRotateKeysCommand(t)
 		cmd.client = client
 		code = cmd.Run([]string{
 			"-status",
 		})
-		if exp := 0; code != exp {
-			t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-		}
+		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
-		expected = "Progress"
 		combined = ui.OutputWriter.String()
-		if !strings.Contains(combined, expected) {
-			t.Errorf("expected %q to contain %q", combined, expected)
-		}
+		require.Contains(t, combined, "Progress")
 	})
 
 	t.Run("cancel", func(t *testing.T) {
@@ -153,39 +135,27 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		// Initialize a rekey
-		//nolint:staticcheck // Testing deprecated (but still supported) functionality
-		if _, err := client.Sys().RekeyInit(&api.RotateInitRequest{
+		// Initialize rotation
+		_, err := client.Sys().RotateRootInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		})
+		require.NoError(t, err)
 
-		ui, cmd := testOperatorRekeyCommand(t)
+		ui, cmd := testOperatorRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
 			"-cancel",
 		})
-		if exp := 0; code != exp {
-			t.Errorf("expected %d to be %d", code, exp)
-		}
+		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
-		expected := "Success! Canceled rekeying"
 		combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
-		if !strings.Contains(combined, expected) {
-			t.Errorf("expected %q to contain %q", combined, expected)
-		}
+		require.Contains(t, combined, "Success! Canceled rotation")
 
 		status, err := client.Sys().GenerateRootStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if status.Started {
-			t.Errorf("expected status to be canceled: %#v", status)
-		}
+		require.NoError(t, err)
+		require.False(t, status.Started)
 	})
 
 	t.Run("init", func(t *testing.T) {
@@ -194,7 +164,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		ui, cmd := testOperatorRekeyCommand(t)
+		ui, cmd := testOperatorRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
@@ -206,19 +176,12 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
 		}
 
-		expected := "Nonce"
 		combined := ui.OutputWriter.String()
-		if !strings.Contains(combined, expected) {
-			t.Errorf("expected %q to contain %q", combined, expected)
-		}
+		require.Contains(t, combined, "Nonce")
 
-		status, err := client.Sys().RekeyStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !status.Started {
-			t.Errorf("expected status to be started: %#v", status)
-		}
+		status, err := client.Sys().RotateRootStatus()
+		require.NoError(t, err)
+		require.True(t, status.Started)
 	})
 
 	t.Run("init_pgp", func(t *testing.T) {
@@ -230,7 +193,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		client, closer := testVaultServer(t)
 		defer closer()
 
-		ui, cmd := testOperatorRekeyCommand(t)
+		ui, cmd := testOperatorRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
@@ -239,26 +202,15 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			"-key-threshold", "1",
 			"-pgp-keys", pgpKey,
 		})
-		if exp := 0; code != exp {
-			t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-		}
+		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
-		expected := "Nonce"
 		combined := ui.OutputWriter.String()
-		if !strings.Contains(combined, expected) {
-			t.Errorf("expected %q to contain %q", combined, expected)
-		}
+		require.Contains(t, combined, "Nonce")
 
-		status, err := client.Sys().RekeyStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !status.Started {
-			t.Errorf("expected status to be started: %#v", status)
-		}
-		if !reflect.DeepEqual(status.PGPFingerprints, pgpFingerprints) {
-			t.Errorf("expected %#v to be %#v", status.PGPFingerprints, pgpFingerprints)
-		}
+		status, err := client.Sys().RotateRootStatus()
+		require.NoError(t, err)
+		require.True(t, status.Started)
+		require.ElementsMatch(t, status.PGPFingerprints, pgpFingerprints)
 	})
 
 	t.Run("provide_arg_recovery_keys", func(t *testing.T) {
@@ -267,20 +219,17 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		client, keys, closer := testVaultServerAutoUnseal(t)
 		defer closer()
 
-		// Initialize a rekey
-		//nolint:staticcheck // Testing deprecated (but still supported) functionality
-		status, err := client.Sys().RekeyRecoveryKeyInit(&api.RotateInitRequest{
+		// Initialize rotation
+		status, err := client.Sys().RotateRecoveryInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		nonce := status.Nonce
 
 		// Supply the first n-1 recovery keys
 		for _, key := range keys[:len(keys)-1] {
-			ui, cmd := testOperatorRekeyCommand(t)
+			ui, cmd := testOperatorRotateKeysCommand(t)
 			cmd.client = client
 
 			code := cmd.Run([]string{
@@ -288,12 +237,10 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 				"-target", "recovery",
 				key,
 			})
-			if exp := 0; code != exp {
-				t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-			}
+			require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 		}
 
-		ui, cmd := testOperatorRekeyCommand(t)
+		ui, cmd := testOperatorRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
@@ -301,43 +248,32 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			"-target", "recovery",
 			keys[len(keys)-1], // the last recovery key
 		})
-		if exp := 0; code != exp {
-			t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-		}
+		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
 		re := regexp.MustCompile(`Key 1: (.+)`)
 		output := ui.OutputWriter.String()
 		match := re.FindAllStringSubmatch(output, -1)
-		if len(match) < 1 || len(match[0]) < 2 {
-			t.Fatalf("bad match: %#v", match)
-		}
+		require.False(t, len(match) < 1 || len(match[0]) < 2)
+
 		recoveryKey := match[0][1]
 
-		if strings.Contains(strings.ToLower(output), "unseal key") {
-			t.Fatalf(`output %s shouldn't contain "unseal key"`, output)
-		}
+		require.NotContains(t, strings.ToLower(output), "unseal key")
 
 		// verify that we can perform operations with the recovery key
 		// below we generate a root token using the recovery key
 		rootStatus, err := client.Sys().GenerateRootStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+
 		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+
 		genRoot, err := client.Sys().GenerateRootInit(otp, "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+
 		r, err := client.Sys().GenerateRootUpdate(recoveryKey, genRoot.Nonce)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !r.Complete {
-			t.Fatal("expected root update to be complete")
-		}
+		require.NoError(t, err)
+
+		require.True(t, r.Complete)
 	})
 	t.Run("provide_arg", func(t *testing.T) {
 		t.Parallel()
@@ -345,61 +281,49 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		client, keys, closer := testVaultServerUnseal(t)
 		defer closer()
 
-		// Initialize a rekey
-		//nolint:staticcheck // Testing deprecated (but still supported) functionality
-		status, err := client.Sys().RekeyInit(&api.RotateInitRequest{
+		// Initialize rotation
+		status, err := client.Sys().RotateRootInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		nonce := status.Nonce
 
 		// Supply the first n-1 unseal keys
 		for _, key := range keys[:len(keys)-1] {
-			ui, cmd := testOperatorRekeyCommand(t)
+			ui, cmd := testOperatorRotateKeysCommand(t)
 			cmd.client = client
 
 			code := cmd.Run([]string{
 				"-nonce", nonce,
 				key,
 			})
-			if exp := 0; code != exp {
-				t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-			}
+			require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 		}
 
-		ui, cmd := testOperatorRekeyCommand(t)
+		ui, cmd := testOperatorRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
 			"-nonce", nonce,
 			keys[len(keys)-1], // the last unseal key
 		})
-		if exp := 0; code != exp {
-			t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-		}
+		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
 		re := regexp.MustCompile(`Key 1: (.+)`)
 		output := ui.OutputWriter.String()
 		match := re.FindAllStringSubmatch(output, -1)
-		if len(match) < 1 || len(match[0]) < 2 {
-			t.Fatalf("bad match: %#v", match)
-		}
+		require.False(t, len(match) < 1 || len(match[0]) < 2)
 
 		// Grab the unseal key and try to unseal
 		unsealKey := match[0][1]
-		if err := client.Sys().Seal(); err != nil {
-			t.Fatal(err)
-		}
+		err = client.Sys().Seal()
+		require.NoError(t, err)
+
 		sealStatus, err := client.Sys().Unseal(unsealKey)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if sealStatus.Sealed {
-			t.Errorf("expected vault to be unsealed: %#v", sealStatus)
-		}
+		require.NoError(t, err)
+
+		require.False(t, sealStatus.Sealed)
 	})
 
 	t.Run("provide_stdin", func(t *testing.T) {
@@ -408,26 +332,26 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		client, keys, closer := testVaultServerUnseal(t)
 		defer closer()
 
-		// Initialize a rekey
-		//nolint:staticcheck // Testing deprecated (but still supported) functionality
-		status, err := client.Sys().RekeyInit(&api.RotateInitRequest{
+		// Initialize rotation
+		status, err := client.Sys().RotateRootInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		nonce := status.Nonce
 
 		// Supply the first n-1 unseal keys
 		for _, key := range keys[:len(keys)-1] {
 			stdinR, stdinW := io.Pipe()
 			go func() {
-				stdinW.Write([]byte(key))
-				stdinW.Close()
+				_, err := stdinW.Write([]byte(key))
+				require.NoError(t, err)
+
+				err = stdinW.Close()
+				require.NoError(t, err)
 			}()
 
-			ui, cmd := testOperatorRekeyCommand(t)
+			ui, cmd := testOperatorRotateKeysCommand(t)
 			cmd.client = client
 			cmd.testStdin = stdinR
 
@@ -435,18 +359,19 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 				"-nonce", nonce,
 				"-",
 			})
-			if exp := 0; code != exp {
-				t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-			}
+			require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 		}
 
 		stdinR, stdinW := io.Pipe()
 		go func() {
-			stdinW.Write([]byte(keys[len(keys)-1])) // the last unseal key
-			stdinW.Close()
+			_, err := stdinW.Write([]byte(keys[len(keys)-1])) // the last unseal key
+			require.NoError(t, err)
+
+			err = stdinW.Close()
+			require.NoError(t, err)
 		}()
 
-		ui, cmd := testOperatorRekeyCommand(t)
+		ui, cmd := testOperatorRotateKeysCommand(t)
 		cmd.client = client
 		cmd.testStdin = stdinR
 
@@ -454,29 +379,22 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			"-nonce", nonce,
 			"-",
 		})
-		if exp := 0; code != exp {
-			t.Errorf("expected %d to be %d", code, exp)
-		}
+		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
 		re := regexp.MustCompile(`Key 1: (.+)`)
 		output := ui.OutputWriter.String()
 		match := re.FindAllStringSubmatch(output, -1)
-		if len(match) < 1 || len(match[0]) < 2 {
-			t.Fatalf("bad match: %#v", match)
-		}
+		require.False(t, len(match) < 1 || len(match[0]) < 2)
 
 		// Grab the unseal key and try to unseal
 		unsealKey := match[0][1]
-		if err := client.Sys().Seal(); err != nil {
-			t.Fatal(err)
-		}
+		err = client.Sys().Seal()
+		require.NoError(t, err)
+
 		sealStatus, err := client.Sys().Unseal(unsealKey)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if sealStatus.Sealed {
-			t.Errorf("expected vault to be unsealed: %#v", sealStatus)
-		}
+		require.NoError(t, err)
+
+		require.False(t, sealStatus.Sealed)
 	})
 
 	t.Run("provide_stdin_recovery_keys", func(t *testing.T) {
@@ -485,16 +403,14 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		client, keys, closer := testVaultServerAutoUnseal(t)
 		defer closer()
 
-		// Initialize a rekey
-		//nolint:staticcheck // Testing deprecated (but still supported) functionality
-		status, err := client.Sys().RekeyRecoveryKeyInit(&api.RotateInitRequest{
+		// Initialize rotation
+		status, err := client.Sys().RotateRecoveryInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		nonce := status.Nonce
+
 		for _, key := range keys[:len(keys)-1] {
 			stdinR, stdinW := io.Pipe()
 			go func() {
@@ -502,7 +418,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 				_ = stdinW.Close()
 			}()
 
-			ui, cmd := testOperatorRekeyCommand(t)
+			ui, cmd := testOperatorRotateKeysCommand(t)
 			cmd.client = client
 			cmd.testStdin = stdinR
 
@@ -511,9 +427,8 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 				"-nonce", nonce,
 				"-",
 			})
-			if exp := 0; code != exp {
-				t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-			}
+			require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
+
 		}
 
 		stdinR, stdinW := io.Pipe()
@@ -522,7 +437,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			_ = stdinW.Close()
 		}()
 
-		ui, cmd := testOperatorRekeyCommand(t)
+		ui, cmd := testOperatorRotateKeysCommand(t)
 		cmd.client = client
 		cmd.testStdin = stdinR
 
@@ -531,53 +446,40 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			"-target", "recovery",
 			"-",
 		})
-		if exp := 0; code != exp {
-			t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-		}
+		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
 		re := regexp.MustCompile(`Key 1: (.+)`)
 		output := ui.OutputWriter.String()
 		match := re.FindAllStringSubmatch(output, -1)
-		if len(match) < 1 || len(match[0]) < 2 {
-			t.Fatalf("bad match: %#v", match)
-		}
+		require.False(t, len(match) < 1 || len(match[0]) < 2)
+
 		recoveryKey := match[0][1]
 
-		if strings.Contains(strings.ToLower(output), "unseal key") {
-			t.Fatalf(`output %s shouldn't contain "unseal key"`, output)
-		}
+		require.NotContains(t, strings.ToLower(output), "unseal key")
+
 		// verify that we can perform operations with the recovery key
 		// below we generate a root token using the recovery key
 		rootStatus, err := client.Sys().GenerateRootStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+
 		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+
 		genRoot, err := client.Sys().GenerateRootInit(otp, "")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+
 		r, err := client.Sys().GenerateRootUpdate(recoveryKey, genRoot.Nonce)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !r.Complete {
-			t.Fatal("expected root update to be complete")
-		}
+		require.NoError(t, err)
+		require.True(t, r.Complete)
 	})
 	t.Run("backup", func(t *testing.T) {
 		t.Parallel()
 
 		pgpKey := "keybase:hashicorp"
-		// pgpFingerprints := []string{"c874011f0ab405110d02105534365d9472d7468f"}
-
 		client, keys, closer := testVaultServerUnseal(t)
 		defer closer()
 
-		ui, cmd := testOperatorRekeyCommand(t)
+		ui, cmd := testOperatorRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
@@ -587,30 +489,24 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 			"-pgp-keys", pgpKey,
 			"-backup",
 		})
-		if exp := 0; code != exp {
-			t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-		}
+		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
 		// Get the status for the nonce
-		status, err := client.Sys().RekeyStatus()
-		if err != nil {
-			t.Fatal(err)
-		}
+		status, err := client.Sys().RotateRootStatus()
+		require.NoError(t, err)
 		nonce := status.Nonce
 
 		var combined string
 		// Supply the unseal keys
 		for _, key := range keys {
-			ui, cmd := testOperatorRekeyCommand(t)
+			ui, cmd := testOperatorRotateKeysCommand(t)
 			cmd.client = client
 
 			code := cmd.Run([]string{
 				"-nonce", nonce,
 				key,
 			})
-			if exp := 0; code != exp {
-				t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-			}
+			require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
 			// Append to our output string
 			combined += ui.OutputWriter.String()
@@ -618,47 +514,35 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 
 		re := regexp.MustCompile(`Key 1 fingerprint: (.+); value: (.+)`)
 		match := re.FindAllStringSubmatch(combined, -1)
-		if len(match) < 1 || len(match[0]) < 3 {
-			t.Fatalf("bad match: %#v", match)
-		}
+		require.False(t, len(match) < 1 || len(match[0]) < 3)
 
 		// Grab the output fingerprint and encrypted key
 		fingerprint, encryptedKey := match[0][1], match[0][2]
 
 		// Get the backup
-		ui, cmd = testOperatorRekeyCommand(t)
+		ui, cmd = testOperatorRotateKeysCommand(t)
 		cmd.client = client
 
 		code = cmd.Run([]string{
 			"-backup-retrieve",
 		})
-		if exp := 0; code != exp {
-			t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-		}
+		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
 		output := ui.OutputWriter.String()
-		if !strings.Contains(output, fingerprint) {
-			t.Errorf("expected %q to contain %q", output, fingerprint)
-		}
-		if !strings.Contains(output, encryptedKey) {
-			t.Errorf("expected %q to contain %q", output, encryptedKey)
-		}
+		require.Contains(t, output, fingerprint)
+		require.Contains(t, output, encryptedKey)
 
 		// Delete the backup
-		ui, cmd = testOperatorRekeyCommand(t)
+		ui, cmd = testOperatorRotateKeysCommand(t)
 		cmd.client = client
 
 		code = cmd.Run([]string{
 			"-backup-delete",
 		})
-		if exp := 0; code != exp {
-			t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
-		}
+		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
-		secret, err := client.Sys().RekeyRetrieveBackup()
-		if err == nil {
-			t.Errorf("expected error: %#v", secret)
-		}
+		_, err = client.Sys().RotateRootRetrieveBackup()
+		require.Error(t, err)
 	})
 
 	t.Run("communication_failure", func(t *testing.T) {
@@ -667,27 +551,22 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		client, closer := testVaultServerBad(t)
 		defer closer()
 
-		ui, cmd := testOperatorRekeyCommand(t)
+		ui, cmd := testOperatorRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
 			"secret/foo",
 		})
-		if exp := 2; code != exp {
-			t.Errorf("expected %d to be %d", code, exp)
-		}
+		require.Equalf(t, 2, code, "expected %d to be %d: %s", code, 2, ui.ErrorWriter.String())
 
-		expected := "Error getting rekey status: "
 		combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
-		if !strings.Contains(combined, expected) {
-			t.Errorf("expected %q to contain %q", combined, expected)
-		}
+		require.Contains(t, combined, "Error getting rotation status: ")
 	})
 
 	t.Run("no_tabs", func(t *testing.T) {
 		t.Parallel()
 
-		_, cmd := testOperatorRekeyCommand(t)
+		_, cmd := testOperatorRotateKeysCommand(t)
 		assertNoTabs(t, cmd)
 	})
 }

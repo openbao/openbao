@@ -57,7 +57,13 @@ these device-specific options:
   the bit pattern for the file mode, similar to `chmod`. Set to `"0000"` to
   prevent OpenBao from modifying the file mode.
 
+:::warning
 
+Note: Starting with OpenBao v2.4, `mode` values that are either
+[irregular](https://pkg.go.dev/io/fs#FileMode.IsRegular) or contain executable
+bits (such as `"0777"`) will be rejected for security purposes.
+
+:::
 
 ## Log file rotation
 

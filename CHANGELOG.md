@@ -1,3 +1,31 @@
+## 2.3.2
+## August 7, 2025
+
+SECURITY:
+
+* audit: Add server configuration options to disable audit mount creation via the API and to disable audit log prefixing. HCSEC-2025-14 / CVE-2025-6000 / CVE-2025-54997. [[GH-1634](https://github.com/openbao/openbao/pull/1634)]
+  - `unsafe_allow_api_audit_creation (default: false)` controls the ability to create audit mounts via the API
+  - `allow_audit_log_prefixing (default: false)` controls the availability of the prefix audit mount option
+* auth/mfa: correctly limit reuse of TOTP codes during login MFA enforcement. HCSEC-2025-19 / CVE-2025-6015 / CVE-2025-55003. [[GH-1629](https://github.com/openbao/openbao/pull/1629)]
+* auth/userpass: Prevent timing-based leak in userpass auth method. HCSEC-2025-15 / CVE-2025-6011 / CVE-2025-54999.  Assumed to also apply to HCSEC-2025-21 / CVE-2025-6010. [[GH-1628](https://github.com/openbao/openbao/pull/1628)]
+* core/auth: Correctly handle alias lookahead for user lockout consistency. HCSEC-2025-16 / CVE-2025-6004 / CVE-2025-54998.
+  auth/userpass: Consistently handle alias lookahead as case insensitive. HCSEC-2025-16 / CVE-2025-6004 / CVE-2025-54998.
+  auth/ldap: Attempt consistent entity aliasing w.r.t. spacing and casing. HCSEC-2025-16 / CVE-2025-6004 / CVE-2025-54998 and HCSEC-2025-20 / CVE-2025-6013 / CVE-2025-55001. [[GH-1632](https://github.com/openbao/openbao/pull/1632)]
+* core/identity: Correctly lowercase policy names to prevent root policy assignment. HCSEC-2025-13 / CVE-2025-5999 / CVE-2025-54996. [[GH-1627](https://github.com/openbao/openbao/pull/1627)]
+* secrets/totp: Fix TOTP verification reuse bypass when the TOTP code contains spaces. HCSEC-2025-17 / CVE-2025-6014 / CVE-2025-55000. [[GH-1625](https://github.com/openbao/openbao/pull/1625)]
+
+IMPROVEMENTS:
+
+* core: Update to Go 1.24.6. [[GH-1637](https://github.com/openbao/openbao/pull/1637)]
+
+BUG FIXES:
+
+* Ignore missing mounts when deleting a namespace. This can happen when a mount is unmounted in parallel. [[GH-1594](https://github.com/openbao/openbao/pull/1594)]
+* agent/template: add missing backoff mechanism for the templating server [[GH-1448](https://github.com/openbao/openbao/pull/1448)]
+* core/namespaces: fixed race condition in namespace deletion operation during instance sealing [[GH-1525](https://github.com/openbao/openbao/pull/1525)]
+* core/policies: fix bug with missing existing policies in namespaces during failover, startup [[GH-1613](https://github.com/openbao/openbao/pull/1613)]
+* identity/oidc: Fix unintentional lowercasing of namespace accessor in assignments. [[GH-1539](https://github.com/openbao/openbao/pull/1539)]
+
 ## 2.3.1
 ## June 25, 2025
 

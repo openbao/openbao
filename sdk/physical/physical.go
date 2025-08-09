@@ -26,8 +26,9 @@ const (
 )
 
 const (
-	ErrValueTooLarge = "put failed due to value being too large"
-	ErrKeyTooLarge   = "put failed due to key being too large"
+	ErrValueTooLarge     = "put failed due to value being too large"
+	ErrKeyTooLarge       = "put failed due to key being too large"
+	ErrFencedWriteFailed = "lock has changed ownership before attempting write"
 )
 
 // Backend is the interface required for a physical

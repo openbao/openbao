@@ -3765,9 +3765,9 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 	// we can return the same values that were set. We clear out the Token*
 	// values because otherwise when we read the role back we'll read stale
 	// data since if they're not emptied they'll take precedence.
-	periodRaw, ok := data.GetOk("token_period")
+	_, ok := data.GetOk("token_period")
 	if !ok {
-		periodRaw, ok = data.GetOk("period")
+		periodRaw, ok := data.GetOk("period")
 		if ok {
 			entry.Period = time.Second * time.Duration(periodRaw.(int))
 			entry.TokenPeriod = entry.Period
@@ -3781,9 +3781,9 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 		entry.Period = 0
 	}
 
-	boundCIDRsRaw, ok := data.GetOk("token_bound_cidrs")
+	_, ok = data.GetOk("token_bound_cidrs")
 	if !ok {
-		boundCIDRsRaw, ok = data.GetOk("bound_cidrs")
+		boundCIDRsRaw, ok := data.GetOk("bound_cidrs")
 		if ok {
 			boundCIDRs, err := parseutil.ParseAddrs(boundCIDRsRaw.([]string))
 			if err != nil {
@@ -3804,9 +3804,9 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 	}
 
 	finalExplicitMaxTTL := entry.TokenExplicitMaxTTL
-	explicitMaxTTLRaw, ok := data.GetOk("token_explicit_max_ttl")
+	_, ok = data.GetOk("token_explicit_max_ttl")
 	if !ok {
-		explicitMaxTTLRaw, ok = data.GetOk("explicit_max_ttl")
+		explicitMaxTTLRaw, ok := data.GetOk("explicit_max_ttl")
 		if ok {
 			entry.ExplicitMaxTTL = time.Second * time.Duration(explicitMaxTTLRaw.(int))
 			entry.TokenExplicitMaxTTL = entry.ExplicitMaxTTL

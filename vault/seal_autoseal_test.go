@@ -210,7 +210,7 @@ func TestAutoSeal_HealthCheck(t *testing.T) {
 
 	asu := strings.Join(autoSealUnavailableDuration, ".") + ";cluster=" + core.clusterName
 	tries := 10
-	for tries = 10; tries > 0; tries-- {
+	for ; tries > 0; tries-- {
 		intervals := inmemSink.Data()
 		if len(intervals) == 1 {
 			interval := inmemSink.Data()[0]

@@ -138,7 +138,7 @@ func warmMilk(ctx context.Context) error {
 }
 
 func brewCoffee(ctx context.Context) error {
-	ctx, span := StartSpan(ctx, "brew-coffee")
+	_, span := StartSpan(ctx, "brew-coffee")
 	defer span.End()
 
 	// Brewing happens here, successfully

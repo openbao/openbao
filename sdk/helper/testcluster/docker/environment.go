@@ -215,6 +215,9 @@ func (dc *DockerCluster) setupNode0(ctx context.Context) error {
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 
 	status, err := client.Sys().SealStatusWithContext(ctx)
 	if err != nil {

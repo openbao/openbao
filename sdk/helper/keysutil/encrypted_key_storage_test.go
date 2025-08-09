@@ -123,6 +123,10 @@ func TestEncryptedKeysStorage_List(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if len(keys) != 2 || keys[1] != "foo1/" || keys[0] != "foo" {
+		t.Fatalf("bad keys: %#v", keys)
+	}
+
 	// Test prefixed with "/"
 	keys, err = es.Wrap(s).List(ctx, "/test/")
 	if err != nil {
@@ -195,6 +199,10 @@ func TestEncryptedKeysStorage_CRUD(t *testing.T) {
 	keys, err := es.Wrap(s).List(ctx, "test/")
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if len(keys) != 2 || !strutil.StrListContains(keys, "foo1/") || !strutil.StrListContains(keys, "foo") {
+		t.Fatalf("bad keys: %#v", keys)
 	}
 
 	// Test prefixed with "/"

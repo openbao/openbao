@@ -1110,7 +1110,11 @@ func (c *Core) raftLeaderInfo(ctx context.Context, leaderInfo *raft.LeaderJoinIn
 		}
 	case leaderInfo.AutoJoinPlugin != nil:
 		join, err := joinplugin.NewJoin(ctx, leaderInfo.AutoJoinPlugin.Plugin, plugins, c.logger)
-		defer join.Cleanup(ctx)
+		defer func() {
+			if err := join.Cleanup(ctx); err != nil {
+				c.logger.Error("error cleaning up join plugin: %w", err)
+			}
+		}()
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to start join plugin: %w", err)

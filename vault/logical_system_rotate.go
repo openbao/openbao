@@ -131,8 +131,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-keyring"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate-keyring"][1]),
 		},
 		{
 			// "/rotate/config" equivalent to "/rotate/keyring/config"
@@ -195,15 +195,14 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_root"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate_root"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-root"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate-root"][1]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/init",
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "rotate-attempt",
 			},
-
 			Fields: rotateRequestSchema,
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -250,8 +249,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_init"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate_init"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-init"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate-init"][0]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/update",
@@ -283,8 +282,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_update"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate_update"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-update"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate-update"][0]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/verify",
@@ -362,8 +361,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate_verify"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate_verify"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-verify"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate-verify"][0]),
 		},
 		{
 			Pattern: "rotate/(root|recovery)/backup",
@@ -405,10 +404,8 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 				},
 			},
 
-			// the sysHelp is `rekey_backup` as it's shared between this and the old
-			// deprecated endpoints of `rekey/backup` and `rekey/recovery-key-backup`
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rekey_backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rekey_backup"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-backup"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate-backup"][0]),
 		},
 	}
 }
@@ -517,7 +514,7 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 		}
 
 		// Set the rotation config
-		b.Core.barrierRekeyConfig = existingConfig.Clone()
+		b.Core.rootRotationConfig = existingConfig.Clone()
 
 		// Generate a new key
 		newKey, err := b.Core.barrier.GenerateKey(b.Core.secureRandomReader)
@@ -532,7 +529,7 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 		}
 
 		// Remove the rotation config
-		b.Core.barrierRekeyConfig = nil
+		b.Core.rootRotationConfig = nil
 		return nil, nil
 	}
 }
@@ -671,7 +668,7 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 }
 
 // handleRotateInitDelete handles the DELETE `/sys/rotate/root/init` and `/sys/rotate/recovery/init`
-// endpoints cancelling any in-progress rotation operations.
+// endpoints cancelling any in-progress rotation.
 func (b *SystemBackend) handleRotateInitDelete() framework.OperationFunc {
 	return func(_ context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 		recovery := strings.Contains(req.Path, "recovery")

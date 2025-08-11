@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSysRekey_Verification(t *testing.T) {
+func TestSysRotate_Verification(t *testing.T) {
 	testcases := []struct {
 		recovery   bool
 		deprecated bool
@@ -85,7 +85,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 	var verificationNonce string
 	var newKeys []string
 	doRekeyInitialSteps := func() {
-		status, err := initFunc(&api.RekeyInitRequest{
+		status, err := initFunc(&api.RotateInitRequest{
 			SecretShares:        5,
 			SecretThreshold:     3,
 			RequireVerification: true,
@@ -104,7 +104,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		if recovery {
 			keys = cluster.RecoveryKeys
 		}
-		var resp *api.RekeyUpdateResponse
+		var resp *api.RotateUpdateResponse
 		for i := 0; i < 3; i++ {
 			resp, err = updateFunc(base64.StdEncoding.EncodeToString(keys[i]), status.Nonce)
 			if err != nil {
@@ -127,7 +127,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 	doRekeyInitialSteps()
 
 	// We are still going, so should not be able to init again
-	_, err = initFunc(&api.RekeyInitRequest{
+	_, err = initFunc(&api.RotateInitRequest{
 		SecretShares:        5,
 		SecretThreshold:     3,
 		RequireVerification: true,
@@ -185,7 +185,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 		t.Fatal(err)
 	}
 	// Verify cannot init again
-	_, err = initFunc(&api.RekeyInitRequest{
+	_, err = initFunc(&api.RotateInitRequest{
 		SecretShares:        5,
 		SecretThreshold:     3,
 		RequireVerification: true,
@@ -337,8 +337,8 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 
 	var verificationNonce string
 	var newKeys []string
-	doRekeyInitialSteps := func() {
-		status, err := initFunc(&api.RekeyInitRequest{
+	doRotateInitialSteps := func() {
+		status, err := initFunc(&api.RotateInitRequest{
 			SecretShares:        5,
 			SecretThreshold:     3,
 			RequireVerification: true,
@@ -352,7 +352,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 			keys = cluster.RecoveryKeys
 		}
 
-		var resp *api.RekeyUpdateResponse
+		var resp *api.RotateUpdateResponse
 		for i := range 3 {
 			resp, err = updateFunc(base64.StdEncoding.EncodeToString(keys[i]), status.Nonce)
 			require.NoError(t, err)
@@ -367,10 +367,10 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 		t.Logf("verification nonce: %q", verificationNonce)
 	}
 
-	doRekeyInitialSteps()
+	doRotateInitialSteps()
 
 	// We are still going, so should not be able to init again
-	_, err = initFunc(&api.RekeyInitRequest{
+	_, err = initFunc(&api.RotateInitRequest{
 		SecretShares:        5,
 		SecretThreshold:     3,
 		RequireVerification: true,
@@ -383,7 +383,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 	err = cluster.UnsealCoresWithError(recovery)
 	require.NoError(t, err)
 
-	doRekeyInitialSteps()
+	doRotateInitialSteps()
 
 	doStartVerify := func() {
 		// Start the process
@@ -405,13 +405,13 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 
 	doStartVerify()
 
-	// Cancel; this should still keep the rekey process going but just cancel
+	// Cancel; this should still keep the rotation process going but just cancel
 	// the verification operation
 	err = verificationCancelFunc()
 	require.NoError(t, err)
 
 	// Verify cannot init again
-	_, err = initFunc(&api.RekeyInitRequest{
+	_, err = initFunc(&api.RotateInitRequest{
 		SecretShares:        5,
 		SecretThreshold:     3,
 		RequireVerification: true,
@@ -436,7 +436,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 		vault.TestWaitActive(t, cluster.Cores[0].Core)
 
 		// Should be able to init again and get back to where we were
-		doRekeyInitialSteps()
+		doRotateInitialSteps()
 		doStartVerify()
 	} else {
 		// We haven't finished, so generating a root token should still be the
@@ -457,10 +457,10 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 
 		// Simulate restarting Vault rather than just a seal/unseal, because
 		// the standbys may not have had time to learn about the new key before
-		// we sealed them.  We could sleep, but that's unreliable.
+		// we sealed them. We could sleep, but that's unreliable.
 		oldKeys := cluster.BarrierKeys
 		opts.SkipInit = true
-		opts.SealFunc = nil // post rekey we should use the barrier config on disk
+		opts.SealFunc = nil // post rotation we should use the barrier config on disk
 		cluster = vault.NewTestCluster(t, &conf, opts)
 		cluster.BarrierKeys = oldKeys
 		cluster.Start()

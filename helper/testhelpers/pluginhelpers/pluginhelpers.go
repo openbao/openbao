@@ -54,6 +54,11 @@ func GetPlugin(t testing.T, typ consts.PluginType) (string, string, string, stri
 		pluginName = "vault-plugin-database-" + pluginType
 		pluginMain = filepath.Join("plugins", "database", pluginType, fmt.Sprintf("%s-database-plugin", pluginType), "main.go")
 		pluginVersionLocation = fmt.Sprintf("github.com/openbao/openbao/plugins/database/%s.ReportedVersion", pluginType)
+	case consts.PluginTypeJoin:
+		pluginType = "static"
+		pluginName = "bao-plugin-join-" + pluginType
+		pluginMain = filepath.Join("plugins", "join", pluginType, fmt.Sprintf("%s-join-plugin", pluginType), "main.go")
+		pluginVersionLocation = fmt.Sprintf("github.com/openbao/openbao/plugins/join/%s.ReportedVersion", pluginType)
 	default:
 		t.Fatal(typ.String())
 	}
@@ -75,7 +80,7 @@ func CompilePlugin(t testing.T, typ consts.PluginType, pluginVersion string, plu
 	dir := ""
 	var err error
 	pluginRootDir := "builtin"
-	if typ == consts.PluginTypeDatabase {
+	if typ == consts.PluginTypeDatabase || typ == consts.PluginTypeJoin {
 		pluginRootDir = "plugins"
 	}
 	for {

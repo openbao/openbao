@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/rand"
@@ -22,7 +23,9 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/raft"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
@@ -253,6 +256,85 @@ func TestRaft_ParseNonVoter(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+func TestRaft_JoinConfig(t *testing.T) {
+	b := RaftBackend{
+		conf: map[string]string{
+			"retry_join": `[
+				{"auto_join": "aws foo=bar"},
+				{"auto_join_plugin": {
+					"plugin": "discover",
+					"config": {"discover": "aws foo=bar"}
+				}}
+			]`,
+		},
+	}
+	conf, err := b.JoinConfig()
+	if err != nil {
+		t.Fatalf("error parsing config: %s", err.Error())
+	}
+	expected := []*LeaderJoinInfo{
+		{AutoJoin: "aws foo=bar", Retry: true},
+		{
+			AutoJoinPlugin: &AutoJoinPlugin{
+				Plugin: "discover",
+				Config: map[string]string{"discover": "aws foo=bar"},
+			},
+			Retry: true,
+		},
+	}
+	if diff := deep.Equal(conf, expected); diff != nil {
+		t.Errorf("config not as expected: %+v", diff)
+	}
+}
+
+func TestRaft_JoinPlugins(t *testing.T) {
+	b := RaftBackend{
+		conf: map[string]string{
+			"join_plugin": `[{
+				"name": "foo",
+				"command": "/bin/false",
+				"args": [],
+				"env": [],
+				"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+			}]`,
+		},
+	}
+	plugins, err := b.JoinPlugins()
+	if err != nil {
+		t.Fatalf("error parsing join plugin config: %s", err.Error())
+	}
+
+	sha256, err := hex.DecodeString("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+	if err != nil {
+		t.Fatalf("could not parse sha: %s", err.Error())
+	}
+
+	expected := map[string]pluginutil.PluginRunner{
+		"discover": {
+			Name:    "discover",
+			Type:    consts.PluginTypeJoin,
+			Builtin: true,
+		},
+		"static": {
+			Name:    "static",
+			Type:    consts.PluginTypeJoin,
+			Builtin: true,
+		},
+		"foo": {
+			Name:    "foo",
+			Type:    consts.PluginTypeJoin,
+			Command: "/bin/false",
+			Args:    []string{},
+			Env:     []string{},
+			Sha256:  sha256,
+			Builtin: false,
+		},
+	}
+	if diff := deep.Equal(plugins, expected); diff != nil {
+		t.Errorf("plugins not as expected: %+v", diff)
 	}
 }
 

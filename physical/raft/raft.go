@@ -7,6 +7,7 @@ package raft
 import (
 	"context"
 	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -213,7 +214,7 @@ type JoinPlugin struct {
 	Command string   `json:"command"`
 	Args    []string `json:"args"`
 	Env     []string `json:"env"`
-	Sha256  []byte   `json:"sha256"`
+	Sha256  string   `json:"sha256"`
 }
 
 type AutoJoinPlugin struct {
@@ -363,13 +364,17 @@ func (b *RaftBackend) JoinPlugins() (map[string]pluginutil.PluginRunner, error) 
 		return nil, fmt.Errorf("failed to decode join_plugin config: %w", err)
 	}
 	for _, pluginConfig := range pluginConfigs {
+		sha256, err := hex.DecodeString(pluginConfig.Sha256)
+		if err != nil {
+			return nil, fmt.Errorf("invalid sha256 for join plugin %s: %s", pluginConfig.Name, pluginConfig.Sha256)
+		}
 		joinPlugins[pluginConfig.Name] = pluginutil.PluginRunner{
 			Name:    pluginConfig.Name,
 			Type:    consts.PluginTypeJoin,
 			Command: pluginConfig.Command,
 			Args:    pluginConfig.Args,
 			Env:     pluginConfig.Env,
-			Sha256:  pluginConfig.Sha256,
+			Sha256:  sha256,
 		}
 	}
 

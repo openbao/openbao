@@ -352,7 +352,7 @@ func TestIdentityStore_EntityPoliciesInInitialAuth(t *testing.T) {
 	if !ok {
 		t.Fatal("expected an entity ID")
 	}
-	entityID, ok = entityIDRaw.(string)
+	_, ok = entityIDRaw.(string)
 	if !ok {
 		t.Fatal("entity_id not a string")
 	}

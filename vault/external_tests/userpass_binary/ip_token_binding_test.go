@@ -117,6 +117,7 @@ func Test_StrictIPBinding(t *testing.T) {
 	t.Logf("cURL Command: %v\nstdout: %v\nstderr: %v\n", curlCmd, string(stdout), string(stderr))
 	require.NoError(t, err, "got error running cURL command")
 	require.Contains(t, string(stdout), "permission denied", "expected failure retcode cURL command result")
+	require.Zero(t, retcode)
 
 	cloned, err := client.Clone()
 	require.NoError(t, err)

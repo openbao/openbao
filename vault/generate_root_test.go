@@ -64,6 +64,9 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
+	if conf == nil {
+		t.Fatalf("expected conf != nil")
+	}
 
 	// Cancel should be clear
 	err = c.GenerateRootCancel()

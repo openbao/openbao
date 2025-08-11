@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-ldap/ldap/v3"
+	"github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/ory/dockertest/v3"
 )
@@ -90,6 +91,8 @@ func TestLogin(t *testing.T) {
 }
 
 func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
+	docker.CheckSkipContainerTests(t)
+
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		t.Fatalf("Failed to connect to docker: %s", err)

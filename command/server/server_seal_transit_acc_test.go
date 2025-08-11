@@ -120,6 +120,8 @@ func (c *DockerVaultConfig) apiConfig() *api.Config {
 var _ docker.ServiceConfig = &DockerVaultConfig{}
 
 func prepareTestContainer(t *testing.T) (func(), *DockerVaultConfig) {
+	docker.CheckSkipContainerTests(t)
+
 	rootToken, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatalf("err: %s", err)

@@ -41,6 +41,8 @@ func prepareRabbitMQTestContainer(t *testing.T) (func(), string) {
 		return func() {}, os.Getenv(envRabbitMQConnectionURI)
 	}
 
+	docker.CheckSkipContainerTests(t)
+
 	runner, err := docker.NewServiceRunner(docker.RunOptions{
 		ImageRepo:     "docker.mirror.hashicorp.services/library/rabbitmq",
 		ImageTag:      "3-management",

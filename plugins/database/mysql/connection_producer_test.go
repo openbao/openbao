@@ -16,6 +16,7 @@ import (
 
 	"github.com/openbao/openbao/helper/testhelpers/certhelpers"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/v2/helper/docker"
 	dockertest "github.com/ory/dockertest/v3"
 )
 
@@ -187,6 +188,8 @@ func startMySQLWithTLS(t *testing.T, version string, confDir string) (retURL str
 	if os.Getenv("MYSQL_URL") != "" {
 		return os.Getenv("MYSQL_URL"), func() {}
 	}
+
+	docker.CheckSkipContainerTests(t)
 
 	pool, err := dockertest.NewPool("")
 	if err != nil {

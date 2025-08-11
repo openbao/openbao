@@ -165,6 +165,8 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 var ctx = context.Background()
 
 func prepareTestContainer(t *testing.T, tag, caPublicKeyPEM string) (func(), string) {
+	docker.CheckSkipContainerTests(t)
+
 	if tag == "" {
 		tag = dockerImageTagSupportsNoRSA1
 	}

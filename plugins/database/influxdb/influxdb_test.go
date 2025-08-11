@@ -60,6 +60,8 @@ func prepareInfluxdbTestContainer(t *testing.T) (func(), *Config) {
 		return func() {}, c
 	}
 
+	docker.CheckSkipContainerTests(t)
+
 	runner, err := docker.NewServiceRunner(docker.RunOptions{
 		ImageRepo:     "docker.mirror.hashicorp.services/influxdb",
 		ContainerName: "influxdb",

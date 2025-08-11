@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -1864,7 +1865,7 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 		if policy == "root" {
 			return false, logical.ErrorResponse("auth methods cannot create root tokens"), logical.ErrInvalidRequest
 		}
-		if strutil.StrListContains(nonAssignablePolicies, policy) {
+		if slices.Contains(nonAssignablePolicies, policy) {
 			return false, logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", policy)), logical.ErrInvalidRequest
 		}
 	}
@@ -1969,7 +1970,7 @@ func (c *Core) getLoginUserInfoKey(ctx context.Context, mountEntry *MountEntry, 
 // Auth types userpass, ldap and approle support this feature
 // precedence: environment var setting >> auth tune setting >> config file setting >> default (enabled)
 func (c *Core) isUserLockoutDisabled(mountEntry *MountEntry) (bool, error) {
-	if !strutil.StrListContains(configutil.GetSupportedUserLockoutsAuthMethods(), mountEntry.Type) {
+	if !slices.Contains(configutil.GetSupportedUserLockoutsAuthMethods(), mountEntry.Type) {
 		return true, nil
 	}
 

@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/okta/okta-sdk-golang/v2/okta"
 	"github.com/okta/okta-sdk-golang/v2/okta/query"
@@ -34,8 +36,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/helper/parseutil"
-	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/patrickmn/go-cache"
 	otplib "github.com/pquerna/otp"
@@ -1768,7 +1768,7 @@ ECONFIG_LOOP:
 			}
 
 			// Check if entityID is in the MFAEnforcement config
-			if strutil.StrListContains(eConfig.IdentityEntityIDs, entity.ID) {
+			if slices.Contains(eConfig.IdentityEntityIDs, entity.ID) {
 				matchedMfaEnforcementConfig = append(matchedMfaEnforcementConfig, eConfig)
 				continue
 			}
@@ -1779,13 +1779,13 @@ ECONFIG_LOOP:
 				return nil, errors.New("error on retrieving groups by entityID in MFA")
 			}
 			for _, g := range directGroups {
-				if strutil.StrListContains(eConfig.IdentityGroupIds, g.ID) {
+				if slices.Contains(eConfig.IdentityGroupIds, g.ID) {
 					matchedMfaEnforcementConfig = append(matchedMfaEnforcementConfig, eConfig)
 					continue ECONFIG_LOOP
 				}
 			}
 			for _, g := range inheritedGroups {
-				if strutil.StrListContains(eConfig.IdentityGroupIds, g.ID) {
+				if slices.Contains(eConfig.IdentityGroupIds, g.ID) {
 					matchedMfaEnforcementConfig = append(matchedMfaEnforcementConfig, eConfig)
 					continue ECONFIG_LOOP
 				}
@@ -2782,7 +2782,7 @@ func (b *LoginMFABackend) deleteMFAConfigByMethodID(ctx context.Context, configI
 
 	for eConfigRaw := eConfigIter.Next(); eConfigRaw != nil; eConfigRaw = eConfigIter.Next() {
 		eConfig := eConfigRaw.(*mfa.MFAEnforcementConfig)
-		if strutil.StrListContains(eConfig.MFAMethodIDs, configID) {
+		if slices.Contains(eConfig.MFAMethodIDs, configID) {
 			return fmt.Errorf("methodID is still used by an enforcement configuration with ID: %s", eConfig.ID)
 		}
 	}

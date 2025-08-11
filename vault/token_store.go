@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -2667,7 +2668,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 			return logical.ErrorResponse("root or sudo privileges required to directly generate a token in a child namespace"), logical.ErrInvalidRequest
 		}
 
-		if strutil.StrListContains(policies, "root") {
+		if slices.Contains(policies, "root") {
 			return logical.ErrorResponse("root tokens may not be created from a parent namespace"), logical.ErrInvalidRequest
 		}
 	}
@@ -2749,7 +2750,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		entityAlias := strings.ToLower(entityAliasRaw)
 
 		// Check if there is a concrete match
-		if !strutil.StrListContains(role.AllowedEntityAliases, entityAlias) &&
+		if !slices.Contains(role.AllowedEntityAliases, entityAlias) &&
 			!strutil.StrListContainsGlob(role.AllowedEntityAliases, entityAlias) {
 			return logical.ErrorResponse("invalid 'entity_alias' value"), logical.ErrInvalidRequest
 		}
@@ -2889,7 +2890,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		// that roles, when allowed/disallowed ar set, allow a subset of
 		// policies to be set disjoint from the parent token's policies.
 		if !noDefaultPolicy && !role.TokenNoDefaultPolicy &&
-			!strutil.StrListContains(role.DisallowedPolicies, "default") &&
+			!slices.Contains(role.DisallowedPolicies, "default") &&
 			!strutil.StrListContainsGlob(role.DisallowedPoliciesGlob, "default") {
 			localAddDefault = true
 		}
@@ -2916,7 +2917,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 				sanitizedRolePoliciesGlob = policyutil.SanitizePolicies(role.AllowedPoliciesGlob, false)
 
 				for _, finalPolicy := range finalPolicies {
-					if !strutil.StrListContains(sanitizedRolePolicies, finalPolicy) &&
+					if !slices.Contains(sanitizedRolePolicies, finalPolicy) &&
 						!strutil.StrListContainsGlob(sanitizedRolePoliciesGlob, finalPolicy) {
 						return logical.ErrorResponse(fmt.Sprintf("token policies (%q) must be subset of the role's allowed policies (%q) or glob policies (%q)", finalPolicies, sanitizedRolePolicies, sanitizedRolePoliciesGlob)), logical.ErrInvalidRequest
 					}
@@ -2936,7 +2937,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 			sanitizedRolePoliciesGlob = strutil.RemoveDuplicates(role.DisallowedPoliciesGlob, true)
 
 			for _, finalPolicy := range finalPolicies {
-				if strutil.StrListContains(sanitizedRolePolicies, finalPolicy) ||
+				if slices.Contains(sanitizedRolePolicies, finalPolicy) ||
 					strutil.StrListContainsGlob(sanitizedRolePoliciesGlob, finalPolicy) {
 					return logical.ErrorResponse(fmt.Sprintf("token policy %q is disallowed by this role", finalPolicy)), logical.ErrInvalidRequest
 				}
@@ -2972,7 +2973,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		// add it. Note that if they have explicitly put "default" in
 		// data.Policies it will still be added because NoDefaultPolicy
 		// controls *automatic* adding.
-		if !noDefaultPolicy && strutil.StrListContains(parent.Policies, "default") {
+		if !noDefaultPolicy && slices.Contains(parent.Policies, "default") {
 			addDefault = true
 		}
 
@@ -2990,15 +2991,15 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 
 	// Prevent internal policies from being assigned to tokens
 	for _, policy := range te.Policies {
-		if strutil.StrListContains(nonAssignablePolicies, policy) {
+		if slices.Contains(nonAssignablePolicies, policy) {
 			return logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", policy)), nil
 		}
 	}
 
-	if strutil.StrListContains(te.Policies, "root") {
+	if slices.Contains(te.Policies, "root") {
 		// Prevent attempts to create a root token without an actual root token as parent.
 		// This is to thwart privilege escalation by tokens having 'sudo' privileges.
-		if !strutil.StrListContains(parent.Policies, "root") {
+		if !slices.Contains(parent.Policies, "root") {
 			return logical.ErrorResponse("root tokens may not be created without parent token being root"), logical.ErrInvalidRequest
 		}
 
@@ -3146,7 +3147,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	sysView := ts.System().(extendedSystemView)
 
 	// Only calculate a TTL if you are A) periodic, B) have a TTL, C) do not have a TTL and are not a root token
-	if periodToUse > 0 || te.TTL > 0 || (te.TTL == 0 && !strutil.StrListContains(te.Policies, "root")) {
+	if periodToUse > 0 || te.TTL > 0 || (te.TTL == 0 && !slices.Contains(te.Policies, "root")) {
 		ttl, warnings, err := framework.CalculateTTL(sysView, 0, te.TTL, periodToUse, 0, explicitMaxTTLToUse, time.Unix(te.CreationTime, 0))
 		if err != nil {
 			return nil, err

@@ -9,9 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/builtin/plugin"
 	"github.com/openbao/openbao/helper/namespace"
@@ -1058,7 +1058,7 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 		// ensure that it is reset after. This ensures that there will be no
 		// writes during the construction of the backend.
 		view.SetReadOnlyErr(logical.ErrSetupReadOnly)
-		if strutil.StrListContains(singletonMounts, entry.Type) {
+		if slices.Contains(singletonMounts, entry.Type) {
 			defer view.SetReadOnlyErr(origViewReadOnlyErr)
 		}
 
@@ -1157,7 +1157,7 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 				postUnsealLogger.Error("skipping initialization for nil auth backend")
 				return
 			}
-			if !strutil.StrListContains(singletonMounts, localEntry.Type) {
+			if !slices.Contains(singletonMounts, localEntry.Type) {
 				view.SetReadOnlyErr(origViewReadOnlyErr)
 			}
 

@@ -7,11 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/copystructure"
 	"github.com/mitchellh/reflectwalk"
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
@@ -397,7 +397,7 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 
 	// See if the current key is part of the ignored keys
 	currentKey := w.key[len(w.key)-1]
-	if strutil.StrListContains(w.IgnoredKeys, currentKey) {
+	if slices.Contains(w.IgnoredKeys, currentKey) {
 		return nil
 	}
 

@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -256,7 +257,7 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 		group.Policies = strutil.RemoveDuplicatesStable(policiesRaw.([]string), true)
 	}
 
-	if strutil.StrListContains(group.Policies, "root") {
+	if slices.Contains(group.Policies, "root") {
 		return logical.ErrorResponse("policies cannot contain root"), nil
 	}
 

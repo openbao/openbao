@@ -15,7 +15,6 @@ import (
 
 	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
@@ -274,7 +273,7 @@ func (ps *PolicyStore) SetPolicy(ctx context.Context, p *Policy, casVersion *int
 	}
 	// Policies are normalized to lower-case
 	p.Name = ps.sanitizeName(p.Name)
-	if strutil.StrListContains(immutablePolicies, p.Name) {
+	if slices.Contains(immutablePolicies, p.Name) {
 		return fmt.Errorf("cannot update %q policy", p.Name)
 	}
 
@@ -612,7 +611,7 @@ func (ps *PolicyStore) switchedDeletePolicy(ctx context.Context, name string, po
 	switch policyType {
 	case PolicyTypeACL:
 		if !force {
-			if strutil.StrListContains(immutablePolicies, name) {
+			if slices.Contains(immutablePolicies, name) {
 				return fmt.Errorf("cannot delete %q policy", name)
 			}
 			if name == "default" {
@@ -711,7 +710,7 @@ func (ps *PolicyStore) loadACLPolicy(ctx context.Context, policyName, policyText
 		return fmt.Errorf("error fetching %s policy from store: %w", policyName, err)
 	}
 	if policy != nil {
-		if !strutil.StrListContains(immutablePolicies, policyName) || policyText == policy.Raw {
+		if !slices.Contains(immutablePolicies, policyName) || policyText == policy.Raw {
 			return nil
 		}
 	}

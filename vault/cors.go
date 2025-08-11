@@ -7,10 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -103,7 +103,7 @@ func (c *CORSConfig) Enable(ctx context.Context, urls []string, headers []string
 		return errors.New("at least one origin or the wildcard must be provided")
 	}
 
-	if strutil.StrListContains(urls, "*") && len(urls) > 1 {
+	if slices.Contains(urls, "*") && len(urls) > 1 {
 		return errors.New("to allow all origins the '*' must be the only value for allowed_origins")
 	}
 
@@ -162,5 +162,5 @@ func (c *CORSConfig) IsValidOrigin(origin string) bool {
 		return true
 	}
 
-	return strutil.StrListContains(c.AllowedOrigins, origin)
+	return slices.Contains(c.AllowedOrigins, origin)
 }

@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -50,7 +51,6 @@ import (
 	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -1213,7 +1213,7 @@ func (c *ServerCommand) Run(args []string) int {
 			"inmem", "inmem_ha",
 		}
 
-		if strutil.StrListContains(inMemStorageTypes, coreConfig.StorageType) {
+		if slices.Contains(inMemStorageTypes, coreConfig.StorageType) {
 			c.UI.Warn("")
 			c.UI.Warn(wrapAtLength(fmt.Sprintf("WARNING: storage configured to use %q which should NOT be used in production", coreConfig.StorageType)))
 			c.UI.Warn("")

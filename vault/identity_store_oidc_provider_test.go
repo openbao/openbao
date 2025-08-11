@@ -45,7 +45,7 @@ func TestOIDC_Path_OIDC_Cross_Provider_Exchange(t *testing.T) {
 	providerPath := "oidc/provider/test-provider-2"
 	req := testProviderReq(s, clientID)
 	req.Path = providerPath
-	resp, err := c.identityStore.HandleRequest(ctx, req)
+	_, err := c.identityStore.HandleRequest(ctx, req)
 	require.NoError(t, err)
 
 	// Obtain an authorization code from the first provider
@@ -55,7 +55,7 @@ func TestOIDC_Path_OIDC_Cross_Provider_Exchange(t *testing.T) {
 	}
 	req = testAuthorizeReq(s, clientID)
 	req.EntityID = entityID
-	resp, err = c.identityStore.HandleRequest(ctx, req)
+	resp, err := c.identityStore.HandleRequest(ctx, req)
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(resp.Data["http_raw_body"].([]byte), &authRes))
 	require.Regexp(t, authCodeRegex, authRes.Code)

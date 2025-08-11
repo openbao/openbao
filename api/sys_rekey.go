@@ -11,6 +11,17 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 )
 
+// Aliasing the types, as we don't want to introduce breaking changes
+// removing old rekey types.
+type (
+	RekeyInitRequest                = RotateInitRequest
+	RekeyStatusResponse             = RotateStatusResponse
+	RekeyUpdateResponse             = RotateUpdateResponse
+	RekeyRetrieveResponse           = RotateRetrieveResponse
+	RekeyVerificationStatusResponse = RotateVerificationStatusResponse
+	RekeyVerificationUpdateResponse = RotateVerificationUpdateResponse
+)
+
 // Deprecated: use RotateRootStatus instead.
 func (c *Sys) RekeyStatus() (*RekeyStatusResponse, error) {
 	return c.RekeyStatusWithContext(context.Background())
@@ -463,56 +474,4 @@ func (c *Sys) RekeyRecoveryKeyVerificationUpdateWithContext(ctx context.Context,
 	var result RekeyVerificationUpdateResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
-}
-
-type RekeyInitRequest struct {
-	SecretShares        int      `json:"secret_shares"`
-	SecretThreshold     int      `json:"secret_threshold"`
-	StoredShares        int      `json:"stored_shares"`
-	PGPKeys             []string `json:"pgp_keys"`
-	Backup              bool
-	RequireVerification bool `json:"require_verification"`
-}
-
-type RekeyStatusResponse struct {
-	Nonce                string   `json:"nonce"`
-	Started              bool     `json:"started"`
-	T                    int      `json:"t"`
-	N                    int      `json:"n"`
-	Progress             int      `json:"progress"`
-	Required             int      `json:"required"`
-	PGPFingerprints      []string `json:"pgp_fingerprints"`
-	Backup               bool     `json:"backup"`
-	VerificationRequired bool     `json:"verification_required"`
-	VerificationNonce    string   `json:"verification_nonce"`
-}
-
-type RekeyUpdateResponse struct {
-	Nonce                string   `json:"nonce"`
-	Complete             bool     `json:"complete"`
-	Keys                 []string `json:"keys"`
-	KeysB64              []string `json:"keys_base64"`
-	PGPFingerprints      []string `json:"pgp_fingerprints"`
-	Backup               bool     `json:"backup"`
-	VerificationRequired bool     `json:"verification_required"`
-	VerificationNonce    string   `json:"verification_nonce,omitempty"`
-}
-
-type RekeyRetrieveResponse struct {
-	Nonce   string              `json:"nonce" mapstructure:"nonce"`
-	Keys    map[string][]string `json:"keys" mapstructure:"keys"`
-	KeysB64 map[string][]string `json:"keys_base64" mapstructure:"keys_base64"`
-}
-
-type RekeyVerificationStatusResponse struct {
-	Nonce    string `json:"nonce"`
-	Started  bool   `json:"started"`
-	T        int    `json:"t"`
-	N        int    `json:"n"`
-	Progress int    `json:"progress"`
-}
-
-type RekeyVerificationUpdateResponse struct {
-	Nonce    string `json:"nonce"`
-	Complete bool   `json:"complete"`
 }

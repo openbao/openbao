@@ -302,7 +302,7 @@ func (c *OperatorInitCommand) init(client *api.Client, req *api.InitRequest) int
 		c.UI.Output("")
 		c.UI.Output(wrapAtLength(
 			"It is possible to generate new unseal keys, provided you have a quorum " +
-				"of existing unseal keys shares. See \"bao operator rekey\" for " +
+				"of existing unseal keys shares. See \"bao operator rotate-keys\" for " +
 				"more information."))
 	} else {
 		c.UI.Output("")

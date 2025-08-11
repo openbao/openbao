@@ -108,7 +108,7 @@ func TestAESGCMBarrier_Upgrade(t *testing.T) {
 	testBarrier_Upgrade(t, b1.(*TransactionalAESGCMBarrier), b2.(*TransactionalAESGCMBarrier))
 }
 
-func TestAESGCMBarrier_Upgrade_Rekey(t *testing.T) {
+func TestAESGCMBarrier_Upgrade_RotateRootKey(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -121,7 +121,7 @@ func TestAESGCMBarrier_Upgrade_Rekey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	testBarrier_Upgrade_Rekey(t, b1.(*TransactionalAESGCMBarrier), b2.(*TransactionalAESGCMBarrier))
+	testBarrier_Upgrade_RotateRootKey(t, b1.(*TransactionalAESGCMBarrier), b2.(*TransactionalAESGCMBarrier))
 
 	// Test migration from legacy to new root key path. Move the existing
 	// root key over to the legacy path.
@@ -163,7 +163,7 @@ func TestAESGCMBarrier_Upgrade_Rekey(t *testing.T) {
 	require.Equal(t, entry.Value, newEntry.Value)
 }
 
-func TestAESGCMBarrier_Rekey(t *testing.T) {
+func TestAESGCMBarrier_RotateRootKey(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -172,7 +172,7 @@ func TestAESGCMBarrier_Rekey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	testBarrier_Rekey(t, b.(*TransactionalAESGCMBarrier))
+	testBarrier_RotateRootKey(t, b.(*TransactionalAESGCMBarrier))
 }
 
 // Verify data sent through is encrypted

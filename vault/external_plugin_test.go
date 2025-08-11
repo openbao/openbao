@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -19,9 +20,11 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/testhelpers/pluginhelpers"
+	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/joinplugin"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/sdk/v2/plugin/mock"
@@ -335,6 +338,70 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 				t.Fatal("err: should not be unsealed")
 			}
 		}
+	}
+}
+
+func TestRaft_ExternalJoinPlugin(t *testing.T) {
+	pluginDir, cleanup := corehelpers.MakeTestPluginDir(t)
+	t.Cleanup(func() { cleanup(t) })
+	plugin := pluginhelpers.CompilePlugin(t, consts.PluginTypeJoin, "", pluginDir)
+
+	raftDir, err := os.MkdirTemp("", "vault-raft-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.RemoveAll(raftDir); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	joinPluginConf, err := json.Marshal([]raft.JoinPlugin{{
+		Name:    "static",
+		Command: filepath.Join(pluginDir, plugin.FileName),
+		Args:    []string{},
+		Env:     []string{},
+		Sha256:  plugin.Sha256,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	conf := map[string]string{
+		"path":        raftDir,
+		"node_id":     "abc123",
+		"join_plugin": string(joinPluginConf),
+	}
+
+	backend, err := raft.NewRaftBackend(conf, log.NewNullLogger())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	raftBackend := backend.(*raft.RaftBackend)
+
+	plugins, err := raftBackend.JoinPlugins()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !plugins["discover"].Builtin {
+		t.Error("found external plugin, expected builtin")
+	}
+	if plugins["static"].Builtin {
+		t.Error("found builtin plugin, expected external")
+	}
+
+	join, err := joinplugin.NewJoin(context.TODO(), "static", plugins, log.NewNullLogger())
+	if err != nil {
+		t.Fatal(err)
+	}
+	conf = map[string]string{"addresses": "https://127.0.0.1:8200,https://127.0.0.2:8201"}
+	candidates, err := join.Candidates(context.TODO(), conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(candidates) != 2 {
+		t.Errorf("expected two candidates, got %d", len(candidates))
 	}
 }
 

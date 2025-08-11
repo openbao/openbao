@@ -305,7 +305,7 @@ jobs:
           path: test-results/go-test
           key: go-test-reports-${{ github.run_number }}
           restore-keys: go-test-reports-
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@de96f4613b77ec03b5cf633e7c350c32bd3c5660 # v4.3.0
         with:
           path: test-results/go-test
           pattern: test-results-*

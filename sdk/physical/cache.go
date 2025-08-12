@@ -5,6 +5,7 @@ package physical
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -229,7 +230,7 @@ func (c *cache) Get(ctx context.Context, key string) (*Entry, error) {
 	if !cacheRefreshFromContext(ctx) {
 		if raw, ok := c.lru.Get(key); ok {
 			if raw == nil {
-				return nil, nil
+				return nil, fmt.Errorf("physical/cache: cache miss")
 			}
 			c.metricSink.IncrCounter([]string{"cache", "hit"}, 1)
 			return raw, nil

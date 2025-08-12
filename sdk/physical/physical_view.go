@@ -6,6 +6,7 @@ package physical
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -55,7 +56,7 @@ func (v *View) Get(ctx context.Context, key string) (*Entry, error) {
 		return nil, err
 	}
 	if entry == nil {
-		return nil, nil
+		return nil, fmt.Errorf("physical view: key not found")
 	}
 	entry.Key = v.truncateKey(entry.Key)
 

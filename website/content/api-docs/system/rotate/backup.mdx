@@ -5,12 +5,12 @@ description: The `/sys/rotate/(root|recovery)/backup` endpoints are used to read
 # `/sys/rotate/(root|recovery)/backup`
 
 This endpoint returns the backup copy of PGP-encrypted unseal keys. The returned
-value is the nonce of the rotation and a map of PGP key fingerprint to
-hex-encoded PGP-encrypted key.
+value is the nonce of the rotation and a map of PGP key fingerprint to hex-encoded
+PGP-encrypted key.
 
-| Method | Path                                 |
-| :----- | :----------------------------------- |
-| `GET`  | `/sys/rotate/(root|recovery)/backup` |
+| Method | Path                                   |
+| :----- | :------------------------------------- |
+| `GET`  | `/sys/rotate/(root\|recovery)/backup`  |
 
 ### Sample requests
 
@@ -50,9 +50,9 @@ $ curl \
 
 This endpoint deletes the backup copy of PGP-encrypted unseal keys.
 
-| Method   | Path                                 |
-| :------- | :----------------------------------- |
-| `DELETE` | `/sys/rotate/(root|recovery)/backup` |
+| Method   | Path                                  |
+| :------- | :------------------------------------ |
+| `DELETE` | `/sys/rotate/(root\|recovery)/backup` |
 
 
 ### Sample requests

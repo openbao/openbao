@@ -13,9 +13,9 @@ Upon successful rotation, no split unseal key shares are returned.
 
 This endpoint reads the configuration and progress of the current rotation attempt.
 
-| Method | Path                              |
-| :----- | :-------------------------------- |
-| `GET`  | `/sys/rotate/(root|recovery)/init`|
+| Method | Path                               |
+| :----- | :--------------------------------- |
+| `GET`  | `/sys/rotate/(root\|recovery)/init`|
 
 
 ### Sample requests
@@ -67,6 +67,7 @@ operation.
 
 
 ## Start rotation
+
 This endpoint initializes a new rotation attempt. Only a single rotation attempt
 can take place at a time. To change the parameters of a rotation, the current
 rotation has to be cancelled, and a new one has to be initialized, which also
@@ -78,9 +79,9 @@ key, use the `/sys/rotate/root` [endpoint](/api-docs/system/rotate/root) instead
 When rotating recovery keys, `/sys/rotate/recovery/init` will immediate return
 the specified number of recovery key shares.
 
-| Method | Path                               |
-| :----- | :--------------------------------- |
-| `POST` | `/sys/rotate/(root|recovery)/init` |
+| Method | Path                                |
+| :----- | :---------------------------------- |
+| `POST` | `/sys/rotate/(root\|recovery)/init` |
 
 ### Parameters
 
@@ -146,9 +147,9 @@ parameters of the rotation.
 Note: verification is still a part of a rotation. If rotation is canceled
 during the verification flow, the current unseal keys remain valid.
 
-| Method   | Path                               |
-| :------- | :--------------------------------- |
-| `DELETE` | `/sys/rotate/(root|recovery)/init` |
+| Method   | Path                                |
+| :------- | :---------------------------------- |
+| `DELETE` | `/sys/rotate/(root\|recovery)/init` |
 
 
 ### Sample requests

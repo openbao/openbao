@@ -35,10 +35,12 @@ key share to progress the rotation of the OpenBao. If the threshold number
 of key shares is reached, OpenBao will complete the rotation.
 
 ### Rotation verification
+
 `/sys/rotate/(root|recovery)/verify` endpoint reads the configuration and
 progress of the current rotation verification attempt.
 
 ### Backup rotated keys
+
 `/sys/rotate/(root|recovery)/backup` endpoint returns the backup copy of
 PGP-encrypted unseal keys. The returned value is the nonce of the rotate
 operation and a map of PGP key fingerprint to hex-encoded PGP-encrypted key.

@@ -2,16 +2,16 @@
 description: The `/sys/rotate/(root|recovery)/verify` endpoints are used to read, progress or cancel rotation verification operation for OpenBao.
 ---
 
-# `/sys/rotate/(root|recovery)/backup`
+# `/sys/rotate/(root|recovery)/verify`
 
 ## Read rotation verification progress
 
 This endpoint reads the configuration and progress of the current rotation
 verification attempt.
 
-| Method | Path                                 |
-| :----- | :----------------------------------- |
-| `GET`  | `/sys/rotate/(root|recovery)/verify` |
+| Method | Path                                  |
+| :----- | :------------------------------------ |
+| `GET`  | `/sys/rotate/(root\|recovery)/verify` |
 
 ### Sample requests
 
@@ -58,9 +58,9 @@ clears any progress made and resets the nonce. Unlike a `DELETE` against
 operation, not the entire rotation attempt. The return value is the same as
 `GET` along with the new nonce.
 
-| Method   | Path                |
-| :------- | :------------------ |
-| `DELETE` | `/sys/rotation/(root|recovery)/verify` |
+| Method   | Path                                    |
+| :------- | :-------------------------------------- |
+| `DELETE` | `/sys/rotation/(root\|recovery)/verify` |
 
 ### Sample requests
 
@@ -98,9 +98,9 @@ When the operation is complete, response will be returned in the format of the
 example below; otherwise the response will be the same as the `GET` method
 against `sys/rotate/(root|recovery)/verify`, providing current operation status.
 
-| Method | Path                                 |
-| :----- | :----------------------------------- |
-| `POST` | `/sys/rotate/(root|recovery)/verify` |
+| Method | Path                                  |
+| :----- | :------------------------------------ |
+| `POST` | `/sys/rotate/(root\|recovery)/verify` |
 
 ### Parameters
 

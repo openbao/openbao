@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -358,7 +359,7 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 			entity.Policies = strutil.RemoveDuplicates(entityPoliciesRaw.([]string), true /* lowercase */)
 		}
 
-		if strutil.StrListContains(entity.Policies, "root") {
+		if slices.Contains(entity.Policies, "root") {
 			return logical.ErrorResponse("policies cannot contain root"), nil
 		}
 
@@ -1024,7 +1025,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 						if err != nil {
 							return nil, fmt.Errorf("failed to delete orphaned alias during merge: %w", err), nil
 						}
-					} else if strutil.StrListContains(conflictingAliasIDsToKeep, toAliasId) {
+					} else if slices.Contains(conflictingAliasIDsToKeep, toAliasId) {
 						i.logger.Info("Deleting from_entity alias during entity merge", "from_entity", fromEntityID, "deleted_alias", fromAlias.ID)
 						err := i.MemDBDeleteAliasByIDInTxn(txn, fromAlias.ID, false)
 						if err != nil {
@@ -1033,7 +1034,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 						// Continue to next alias, as there's no alias to merge left in the from_entity
 						continue
-					} else if strutil.StrListContains(conflictingAliasIDsToKeep, fromAlias.ID) {
+					} else if slices.Contains(conflictingAliasIDsToKeep, fromAlias.ID) {
 						i.logger.Info("Deleting to_entity alias during entity merge", "to_entity", toEntity.ID, "deleted_alias", toAliasId)
 						err := i.MemDBDeleteAliasByIDInTxn(txn, toAliasId, false)
 						if err != nil {

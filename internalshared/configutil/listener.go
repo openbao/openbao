@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"net/textproto"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-sockaddr/template"
@@ -425,7 +425,7 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 				l.CorsEnabledRaw = nil
 			}
 
-			if strutil.StrListContains(l.CorsAllowedOrigins, "*") && len(l.CorsAllowedOrigins) > 1 {
+			if slices.Contains(l.CorsAllowedOrigins, "*") && len(l.CorsAllowedOrigins) > 1 {
 				return multierror.Prefix(errors.New("cors_allowed_origins must only contain a wildcard or only non-wildcard values"), fmt.Sprintf("listeners.%d", i))
 			}
 

@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,7 +30,6 @@ import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	semver "github.com/hashicorp/go-version"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/hostutil"
@@ -3538,7 +3538,7 @@ func (b *SystemBackend) handleMonitor(ctx context.Context, req *logical.Request,
 	lowerLogFormat := strings.ToLower(lf)
 
 	validFormats := []string{"standard", "json"}
-	if !strutil.StrListContains(validFormats, lowerLogFormat) {
+	if !slices.Contains(validFormats, lowerLogFormat) {
 		return logical.ErrorResponse("unknown log format"), nil
 	}
 
@@ -3935,7 +3935,7 @@ func hasMountAccess(ctx context.Context, acl *ACL, path string) bool {
 	// If a policy is giving us direct access to the mount path then we can do
 	// a fast return.
 	capabilities := acl.Capabilities(ctx, ns.TrimmedPath(path))
-	if !strutil.StrListContains(capabilities, DenyCapability) {
+	if !slices.Contains(capabilities, DenyCapability) {
 		return true
 	}
 

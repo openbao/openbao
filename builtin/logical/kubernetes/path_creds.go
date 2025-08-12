@@ -7,12 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	josejwt "github.com/go-jose/go-jose/v3/jwt"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -153,7 +153,7 @@ func (b *backend) isValidKubernetesNamespace(ctx context.Context, req *logical.R
 		return false, errors.New("'kubernetes_namespace' is required unless the OpenBao role has a single namespace specified")
 	}
 
-	if strutil.StrListContains(role.K8sNamespaces, "*") || strutil.StrListContains(role.K8sNamespaces, request.Namespace) {
+	if slices.Contains(role.K8sNamespaces, "*") || slices.Contains(role.K8sNamespaces, request.Namespace) {
 		return true, nil
 	}
 

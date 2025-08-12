@@ -120,7 +120,6 @@ func (h *AllowAcmeHeaders) Evaluate(e *Executor) ([]*Result, error) {
 	}
 
 	foundAllHeaders := strutil.EquivalentSlices(requiredResponseHeaders, foundResponseHeaders)
-
 	if !foundAllHeaders {
 		ret := Result{
 			Status:   ResultWarning,

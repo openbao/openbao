@@ -6,13 +6,13 @@ package vault
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin"
@@ -127,7 +127,7 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 
 	// We don't want to reload the singleton mounts. They often have specific
 	// inmemory elements and we don't want to touch them here.
-	if strutil.StrListContains(singletonMounts, entry.Type) {
+	if slices.Contains(singletonMounts, entry.Type) {
 		c.logger.Debug("skipping reload of singleton mount", "type", entry.Type)
 		return nil
 	}

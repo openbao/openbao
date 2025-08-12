@@ -201,7 +201,7 @@ func TestEncryptedKeysStorage_CRUD(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(keys) != 2 || !strutil.StrListContains(keys, "foo1/") || !strutil.StrListContains(keys, "foo") {
+	if len(keys) != 2 || !slices.Contains(keys, "foo1/") || !slices.Contains(keys, "foo") {
 		t.Fatalf("bad keys: %#v", keys)
 	}
 

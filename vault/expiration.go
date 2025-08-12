@@ -483,7 +483,7 @@ func (m *ExpirationManager) tokenIndexViewFromToken(token string) BarrierView {
 
 	ns, err := m.core.NamespaceByID(m.quitContext, nsID)
 	if err != nil {
-		m.logger.Error("failed to get namespace from token ID", "error", err, "token_id", token)
+		m.logger.Error("failed to get namespace from token", "error", err)
 		return nil
 	}
 

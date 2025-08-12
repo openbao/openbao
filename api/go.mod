@@ -19,7 +19,6 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0
-	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/hcl v1.0.1-vault-5
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.42.0
@@ -30,6 +29,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.7 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -510,7 +511,7 @@ func (c *DebugCommand) defaultTargets() []string {
 
 func (c *DebugCommand) captureStaticTargets() error {
 	// Capture configuration state
-	if strutil.StrListContains(c.flagTargets, "config") {
+	if slices.Contains(c.flagTargets, "config") {
 		c.logger.Info("capturing configuration state")
 
 		resp, err := c.cachedClient.Logical().Read("sys/config/state/sanitized")
@@ -557,7 +558,7 @@ func (c *DebugCommand) capturePollingTargets() error {
 	}, func(error) {})
 
 	// Collect host-info if target is specified
-	if strutil.StrListContains(c.flagTargets, "host") {
+	if slices.Contains(c.flagTargets, "host") {
 		g.Add(func() error {
 			c.collectHostInfo(ctx)
 			return nil
@@ -567,7 +568,7 @@ func (c *DebugCommand) capturePollingTargets() error {
 	}
 
 	// Collect metrics if target is specified
-	if strutil.StrListContains(c.flagTargets, "metrics") {
+	if slices.Contains(c.flagTargets, "metrics") {
 		g.Add(func() error {
 			c.collectMetrics(ctx)
 			return nil
@@ -577,7 +578,7 @@ func (c *DebugCommand) capturePollingTargets() error {
 	}
 
 	// Collect pprof data if target is specified
-	if strutil.StrListContains(c.flagTargets, "pprof") {
+	if slices.Contains(c.flagTargets, "pprof") {
 		g.Add(func() error {
 			c.collectPprof(ctx)
 			return nil
@@ -587,7 +588,7 @@ func (c *DebugCommand) capturePollingTargets() error {
 	}
 
 	// Collect replication status if target is specified
-	if strutil.StrListContains(c.flagTargets, "replication-status") {
+	if slices.Contains(c.flagTargets, "replication-status") {
 		g.Add(func() error {
 			c.collectReplicationStatus(ctx)
 			return nil
@@ -597,7 +598,7 @@ func (c *DebugCommand) capturePollingTargets() error {
 	}
 
 	// Collect server status if target is specified
-	if strutil.StrListContains(c.flagTargets, "server-status") {
+	if slices.Contains(c.flagTargets, "server-status") {
 		g.Add(func() error {
 			c.collectServerStatus(ctx)
 			return nil
@@ -607,7 +608,7 @@ func (c *DebugCommand) capturePollingTargets() error {
 	}
 
 	// Collect in-flight request status if target is specified
-	if strutil.StrListContains(c.flagTargets, "requests") {
+	if slices.Contains(c.flagTargets, "requests") {
 		g.Add(func() error {
 			c.collectInFlightRequestStatus(ctx)
 			return nil
@@ -616,7 +617,7 @@ func (c *DebugCommand) capturePollingTargets() error {
 		})
 	}
 
-	if strutil.StrListContains(c.flagTargets, "log") {
+	if slices.Contains(c.flagTargets, "log") {
 		g.Add(func() error {
 			c.writeLogs(ctx)
 			// If writeLogs returned earlier due to an error, wait for context

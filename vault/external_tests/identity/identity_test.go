@@ -5,9 +5,9 @@ package identity
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/ldaputil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -546,7 +546,7 @@ func TestIdentityStore_Integ_RemoveFromExternalGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strutil.StrListContains(tokenPolicies, adminPolicy) {
+	if !slices.Contains(tokenPolicies, adminPolicy) {
 		t.Fatalf("expected token policies to contain %s, got: %v", adminPolicy, tokenPolicies)
 	}
 
@@ -576,7 +576,7 @@ func TestIdentityStore_Integ_RemoveFromExternalGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strutil.StrListContains(tokenPolicies, adminPolicy) {
+	if slices.Contains(tokenPolicies, adminPolicy) {
 		t.Fatalf("expected token policies to not contain %s, got: %v", adminPolicy, tokenPolicies)
 	}
 
@@ -597,7 +597,7 @@ func TestIdentityStore_Integ_RemoveFromExternalGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strutil.StrListContains(tokenPolicies, adminPolicy) {
+	if !slices.Contains(tokenPolicies, adminPolicy) {
 		t.Fatalf("expected token policies to contain %s, got: %v", adminPolicy, tokenPolicies)
 	}
 
@@ -616,7 +616,7 @@ func TestIdentityStore_Integ_RemoveFromExternalGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strutil.StrListContains(tokenPolicies, adminPolicy) {
+	if slices.Contains(tokenPolicies, adminPolicy) {
 		t.Fatalf("expected token policies to not contain %s, got: %v", adminPolicy, tokenPolicies)
 	}
 }

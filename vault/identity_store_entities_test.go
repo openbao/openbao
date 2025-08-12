@@ -7,15 +7,16 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 )
@@ -1197,7 +1198,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 	}
 
 	for _, group := range []string{entity1GroupID, entity2GroupID} {
-		if !strutil.StrListContains(entity1Groups, group) {
+		if !slices.Contains(entity1Groups, group) {
 			t.Fatalf("group id %q not found in merged entity direct groups %q", group, entity1Groups)
 		}
 
@@ -1206,7 +1207,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 			t.Fatal(err)
 		}
 		expectedEntityIDs := []string{entity1.ID}
-		if !strutil.EquivalentSlices(groupLookedUp.MemberEntityIDs, expectedEntityIDs) {
+		if !slices.Equal(groupLookedUp.MemberEntityIDs, expectedEntityIDs) {
 			t.Fatalf("group id %q should contain %q but contains %q", group, expectedEntityIDs, groupLookedUp.MemberEntityIDs)
 		}
 	}

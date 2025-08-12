@@ -19,9 +19,9 @@ import (
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
-	"github.com/openbao/openbao/sdk/v2/helper/tlsutil"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"golang.org/x/net/http2"
 )

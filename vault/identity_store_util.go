@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -490,7 +491,7 @@ func (i *IdentityStore) upsertEntityInTxn(ctx context.Context, txn *memdb.Txn, e
 			return nil
 		}
 
-		if strutil.StrListContains(aliasFactors, i.sanitizeName(alias.Name)+alias.MountAccessor) {
+		if slices.Contains(aliasFactors, i.sanitizeName(alias.Name)+alias.MountAccessor) {
 			i.logger.Warn(errDuplicateIdentityName.Error(), "alias_name", alias.Name, "mount_accessor", alias.MountAccessor, "local", alias.Local, "entity_name", entity.Name, "action", "delete one of the duplicate aliases")
 			if !i.disableLowerCasedNames {
 				return errDuplicateIdentityName
@@ -1424,7 +1425,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 
 	// Update parent group IDs in the removed members
 	for _, currentMemberGroupID := range currentMemberGroupIDs {
-		if strutil.StrListContains(memberGroupIDs, currentMemberGroupID) {
+		if slices.Contains(memberGroupIDs, currentMemberGroupID) {
 			continue
 		}
 
@@ -1457,7 +1458,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 		}
 
 		// Skip if memberGroupID is already a member of group.ID
-		if strutil.StrListContains(memberGroup.ParentGroupIDs, group.ID) {
+		if slices.Contains(memberGroup.ParentGroupIDs, group.ID) {
 			continue
 		}
 

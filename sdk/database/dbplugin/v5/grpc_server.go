@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/proto"
-	"github.com/openbao/openbao/sdk/v2/helper/base62"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"google.golang.org/grpc/codes"

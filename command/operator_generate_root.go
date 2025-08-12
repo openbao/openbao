@@ -425,7 +425,7 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 		nonce = status.Nonce
 
 		if c.flagNonInteractive {
-			c.UI.Error(wrapAtLength(fmt.Sprintf("Refusing to read from stdin with -non-interactive specified; specify nonce via the -nonce flag")))
+			c.UI.Error(wrapAtLength("Refusing to read from stdin with -non-interactive specified; specify nonce via the -nonce flag"))
 			return 1
 		}
 

@@ -7,15 +7,16 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 )
@@ -597,7 +598,7 @@ func TestIdentityStore_ContextCancel(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
-	if resp.Warnings == nil || len(resp.Warnings) == 0 {
+	if len(resp.Warnings) == 0 {
 		t.Fatalf("expected warning for cancelled context. resp:%#v", resp)
 	}
 }
@@ -938,7 +939,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 
 	if resp.Data["id"] != id ||
 		resp.Data["name"] != registerData["name"] ||
-		!reflect.DeepEqual(resp.Data["policies"], strutil.RemoveDuplicates(registerData["policies"].([]string), false)) {
+		!reflect.DeepEqual(resp.Data["policies"], strutil.RemoveDuplicates(registerData["policies"].([]string), true /* lowercase */)) {
 		t.Fatal("bad: entity response")
 	}
 
@@ -968,6 +969,24 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 		resp.Data["name"] != updateData["name"] ||
 		!reflect.DeepEqual(resp.Data["policies"], updateData["policies"]) {
 		t.Fatalf("bad: entity response after update; resp: %#v\n updateData: %#v\n", resp.Data, updateData)
+	}
+
+	// For HCSEC-2025-13 / CVE-2025-5999, validate that we cannot set root
+	// policies with other casing.
+	for _, name := range []string{"rooT", "Root", "rOoT", "root", "root ", " root"} {
+		updateReq.Data = map[string]interface{}{
+			"policies": []string{name},
+		}
+		resp, err = is.HandleRequest(ctx, updateReq)
+		if err == nil && (resp == nil || !resp.IsError()) {
+			t.Fatalf("[policy: %v] err:%v resp:%#v", name, err, resp)
+		}
+
+		resp, err = is.HandleRequest(ctx, readReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v", err, resp)
+		}
+		require.NotContains(t, resp.Data["policies"].([]string), "root")
 	}
 
 	deleteReq := &logical.Request{
@@ -1179,7 +1198,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 	}
 
 	for _, group := range []string{entity1GroupID, entity2GroupID} {
-		if !strutil.StrListContains(entity1Groups, group) {
+		if !slices.Contains(entity1Groups, group) {
 			t.Fatalf("group id %q not found in merged entity direct groups %q", group, entity1Groups)
 		}
 
@@ -1188,7 +1207,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 			t.Fatal(err)
 		}
 		expectedEntityIDs := []string{entity1.ID}
-		if !strutil.EquivalentSlices(groupLookedUp.MemberEntityIDs, expectedEntityIDs) {
+		if !slices.Equal(groupLookedUp.MemberEntityIDs, expectedEntityIDs) {
 			t.Fatalf("group id %q should contain %q but contains %q", group, expectedEntityIDs, groupLookedUp.MemberEntityIDs)
 		}
 	}

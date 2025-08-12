@@ -9,13 +9,13 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/cli"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/openbao/openbao/command/server"
@@ -141,7 +141,7 @@ func (c *OperatorMigrateCommand) Run(args []string) int {
 	}
 	c.flagLogLevel = strings.ToLower(c.flagLogLevel)
 	validLevels := []string{"trace", "debug", "info", "warn", "error"}
-	if !strutil.StrListContains(validLevels, c.flagLogLevel) {
+	if !slices.Contains(validLevels, c.flagLogLevel) {
 		c.UI.Error(fmt.Sprintf("%s is an unknown log level. Valid log levels are: %s", c.flagLogLevel, validLevels))
 		return 1
 	}

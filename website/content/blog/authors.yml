@@ -28,3 +28,12 @@ ChristophVoigt:
     github: https://github.com/voigt
     linkedin: https://www.linkedin.com/in/chris-cloud-native/
     mastodon: https://hachyderm.io/@cv
+
+OpenSSF:
+  name: OpenSSF
+  url: https://openssf.org
+  image_url: https://raw.githubusercontent.com/ossf/artwork/refs/heads/main/openssf/stacked/color/openssf-stacked-color.png
+  socials:
+    github: https://github.com/ossf
+    linkedin: https://www.linkedin.com/company/openssf/
+    mastodon: https://social.lfx.dev/@openssf

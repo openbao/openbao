@@ -7,15 +7,15 @@ import (
 	"net/http"
 	"path"
 	"sync"
+	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -331,9 +331,10 @@ func (b *versionedKVBackend) config(ctx context.Context, s logical.Storage) (*Co
 	if b.globalConfig != nil {
 		defer b.globalConfigLock.RUnlock()
 		return &Configuration{
-			CasRequired:        b.globalConfig.CasRequired,
-			MaxVersions:        b.globalConfig.MaxVersions,
-			DeleteVersionAfter: b.globalConfig.DeleteVersionAfter,
+			CasRequired:         b.globalConfig.CasRequired,
+			MetadataCasRequired: b.globalConfig.MetadataCasRequired,
+			MaxVersions:         b.globalConfig.MaxVersions,
+			DeleteVersionAfter:  b.globalConfig.DeleteVersionAfter,
 		}, nil
 	}
 
@@ -344,9 +345,10 @@ func (b *versionedKVBackend) config(ctx context.Context, s logical.Storage) (*Co
 	// Verify this hasn't already changed
 	if b.globalConfig != nil {
 		return &Configuration{
-			CasRequired:        b.globalConfig.CasRequired,
-			MaxVersions:        b.globalConfig.MaxVersions,
-			DeleteVersionAfter: b.globalConfig.DeleteVersionAfter,
+			CasRequired:         b.globalConfig.CasRequired,
+			MetadataCasRequired: b.globalConfig.MetadataCasRequired,
+			MaxVersions:         b.globalConfig.MaxVersions,
+			DeleteVersionAfter:  b.globalConfig.DeleteVersionAfter,
 		}, nil
 	}
 
@@ -432,12 +434,12 @@ func (b *versionedKVBackend) writeKeyMetadata(ctx context.Context, s logical.Sto
 	return nil
 }
 
-func ptypesTimestampToString(t *timestamp.Timestamp) string {
+func ptypesTimestampToString(t *timestamppb.Timestamp) string {
 	if t == nil {
 		return ""
 	}
 
-	return ptypes.TimestampString(t)
+	return t.AsTime().Format(time.RFC3339)
 }
 
 var backendHelp string = `

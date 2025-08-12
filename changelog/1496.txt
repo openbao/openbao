@@ -1,0 +1,3 @@
+```release-note:security
+core/sys: Add listener parameter (`disable_unauthed_rekey_endpoints`, default: `false`) to optionally disable unauthenticated rekey operations (to `sys/rekey/*` and `sys/rekey-recovery-key/*`) for a listener. This will be set to true in a future release; see the [deprecation notice](https://openbao.org/docs/deprecation/unauthed-rekey/) for more information. Auditing is now enabled for these endpoints as well. CVE-2025-52894. Upstream HCSEC-2025-11 / CVE-2025-4656.
+```

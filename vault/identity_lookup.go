@@ -5,7 +5,6 @@ package vault
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/openbao/openbao/helper/identity"
@@ -140,19 +139,19 @@ func (i *IdentityStore) pathLookupEntityUpdate() framework.OperationFunc {
 
 		switch {
 		case inputCount == 0:
-			return logical.ErrorResponse(fmt.Sprintf("query parameter not supplied")), nil
+			return logical.ErrorResponse("query parameter not supplied"), nil
 
 		case inputCount != 1:
 			switch {
 			case inputCount == 2 && aliasName != "" && aliasMountAccessor != "":
 			default:
-				return logical.ErrorResponse(fmt.Sprintf("query parameter conflict; please supply distinct set of query parameters")), nil
+				return logical.ErrorResponse("query parameter conflict; please supply distinct set of query parameters"), nil
 			}
 
 		case inputCount == 1:
 			switch {
 			case aliasName != "" || aliasMountAccessor != "":
-				return logical.ErrorResponse(fmt.Sprintf("both 'alias_name' and 'alias_mount_accessor' needs to be set")), nil
+				return logical.ErrorResponse("both 'alias_name' and 'alias_mount_accessor' needs to be set"), nil
 			}
 		}
 
@@ -252,19 +251,19 @@ func (i *IdentityStore) pathLookupGroupUpdate() framework.OperationFunc {
 
 		switch {
 		case inputCount == 0:
-			return logical.ErrorResponse(fmt.Sprintf("query parameter not supplied")), nil
+			return logical.ErrorResponse("query parameter not supplied"), nil
 
 		case inputCount != 1:
 			switch {
 			case inputCount == 2 && aliasName != "" && aliasMountAccessor != "":
 			default:
-				return logical.ErrorResponse(fmt.Sprintf("query parameter conflict; please supply distinct set of query parameters")), nil
+				return logical.ErrorResponse("query parameter conflict; please supply distinct set of query parameters"), nil
 			}
 
 		case inputCount == 1:
 			switch {
 			case aliasName != "" || aliasMountAccessor != "":
-				return logical.ErrorResponse(fmt.Sprintf("both 'alias_name' and 'alias_mount_accessor' needs to be set")), nil
+				return logical.ErrorResponse("both 'alias_name' and 'alias_mount_accessor' needs to be set"), nil
 			}
 		}
 

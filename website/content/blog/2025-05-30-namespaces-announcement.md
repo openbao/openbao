@@ -4,18 +4,17 @@ description: "Enabling Multi-Tenancy within OpenBao"
 slug: namespaces-announcement
 authors: ChristophVoigt
 tags: [announcement, community, collaboration]
-image: https://www.edgexfoundry.org/cmsfiles/image/company-logo-lg.png
 ---
 
 We are excited to introduce **Namespaces** to the OpenBao Secret Manager – a powerful feature designed to bring robust multi-tenancy and fine-grained isolation to your secrets management workflows.
-
-<!-- truncate -->
 
 ## What Are Namespaces?
 
 Namespaces in OpenBao are logical partitions within a single OpenBao instance, functioning as isolated environments where teams, organizations, or applications can operate independently.
 
 Each namespace acts like a mini-OpenBao, with its own policies, authentication methods, secret engines, tokens, and identity groups. This architecture enables organizations to implement a true _OpenBao-as-a-Service_ model, empowering internal customers to self-manage their environments securely and efficiently.
+
+<!-- truncate -->
 
 ## Why Namespaces?
 

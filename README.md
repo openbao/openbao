@@ -57,7 +57,7 @@ The key features of OpenBao are:
 Documentation, Getting Started, and Certification Exams
 -------------------------------
 
-<!-- Documentation is available on the [OpenBao website](https://www.openbao.org/docs/). -->
+Documentation is available on the [OpenBao website](https://www.openbao.org/docs/).
 
 Developing OpenBao
 --------------------

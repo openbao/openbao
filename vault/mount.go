@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/armon/go-metrics"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/api/v2"
@@ -194,7 +193,7 @@ type MountMigrationInfo struct {
 // Note that the reported storage sizes are pre-encryption
 // sizes. Currently barrier uses aes-gcm for encryption, which
 // preserves plaintext size, adding a constant of 30 bytes of
-// padding, which is negligable and subject to change, and thus
+// padding, which is negligible and subject to change, and thus
 // not accounted for.
 func (c *Core) tableMetrics(entryCount int, isLocal bool, isAuth bool, compressedTableLen int) {
 	if c.metricsHelper == nil {
@@ -855,7 +854,7 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 	// Verify exact match of the route
 	match := c.router.MatchingMount(ctx, path)
 	if match == "" || ns.Path+path != match {
-		return errors.New("no matching mount")
+		return errNoMatchingMount
 	}
 
 	// Get the view for this backend
@@ -1885,7 +1884,7 @@ func (c *Core) setupMounts(ctx context.Context) error {
 		// ensure that it is reset after. This ensures that there will be no
 		// writes during the construction of the backend.
 		view.SetReadOnlyErr(logical.ErrSetupReadOnly)
-		if strutil.StrListContains(singletonMounts, entry.Type) {
+		if slices.Contains(singletonMounts, entry.Type) {
 			defer view.SetReadOnlyErr(origReadOnlyErr)
 		}
 
@@ -1960,7 +1959,7 @@ func (c *Core) setupMounts(ctx context.Context) error {
 				postUnsealLogger.Error("skipping initialization for nil backend", "path", localEntry.Path)
 				return
 			}
-			if !strutil.StrListContains(singletonMounts, localEntry.Type) {
+			if !slices.Contains(singletonMounts, localEntry.Type) {
 				view.SetReadOnlyErr(origReadOnlyErr)
 			}
 
@@ -2248,7 +2247,7 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 
 	c.mountsLock.RLock()
 	for _, entry := range c.mounts.Entries {
-		if strutil.StrListContains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace().ID == namespace.RootNamespaceID {
+		if slices.Contains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace().ID == namespace.RootNamespaceID {
 			mounts.Entries = append(mounts.Entries, entry)
 		}
 	}
@@ -2256,7 +2255,7 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 
 	c.authLock.RLock()
 	for _, entry := range c.auth.Entries {
-		if strutil.StrListContains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace().ID == namespace.RootNamespaceID {
+		if slices.Contains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace().ID == namespace.RootNamespaceID {
 			auth.Entries = append(auth.Entries, entry)
 		}
 	}

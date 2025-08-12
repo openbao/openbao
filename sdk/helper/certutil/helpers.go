@@ -27,8 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/errwrap"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"golang.org/x/crypto/cryptobyte"
@@ -936,7 +935,7 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 	}
 
 	if err := HandleOtherSANs(certTemplate, data.Params.OtherSANs); err != nil {
-		return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling other SANs: {{err}}", err).Error()}
+		return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling other SANs: %w", err).Error()}
 	}
 
 	// Add this before calling addKeyUsages
@@ -1065,25 +1064,21 @@ func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[stri
 	}
 	certTemplate.SerialNumber = serialNumber
 
-	if req, ok := evaluationData["request"].(map[string]any); ok {
-		if v, ok := req["key_type"].(string); ok {
-			keyType = v
-		}
-		if v, ok := req["key_bits"].(int); ok {
-			keyBits = v
-		}
-		if v, ok := req["use_pss"].(bool); ok {
-			usePSS = v
-		}
-		if v, ok := req["signature_bits"].(int); ok {
-			signatureBits = v
-		}
+	if v, ok := evaluationData["key_type"].(string); ok {
+		keyType = v
+	}
+	if v, ok := evaluationData["key_bits"].(int); ok {
+		keyBits = v
+	}
+	if v, ok := evaluationData["use_pss"].(bool); ok {
+		usePSS = v
+	}
+	if v, ok := evaluationData["signature_bits"].(int); ok {
+		signatureBits = v
 	}
 
 	result := &ParsedCertBundle{}
-	if err := privateKeyGenerator(keyType,
-		keyBits,
-		result, randReader); err != nil {
+	if err := privateKeyGenerator(keyType, keyBits, result, randReader); err != nil {
 		return nil, err
 	}
 
@@ -1274,7 +1269,7 @@ func createCSR(data *CreationBundle, addBasicConstraints bool, randReader io.Rea
 	}
 
 	if err := HandleOtherCSRSANs(csrTemplate, data.Params.OtherSANs); err != nil {
-		return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling other SANs: {{err}}", err).Error()}
+		return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling other SANs: %w", err).Error()}
 	}
 
 	if addBasicConstraints {
@@ -1284,7 +1279,7 @@ func createCSR(data *CreationBundle, addBasicConstraints bool, randReader io.Rea
 		}
 		val, err := asn1.Marshal(basicConstraints{IsCA: true, MaxPathLen: -1})
 		if err != nil {
-			return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling basic constraints: {{err}}", err).Error()}
+			return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling basic constraints: %w", err).Error()}
 		}
 		ext := pkix.Extension{
 			Id:       ExtensionBasicConstraintsOID,
@@ -1417,7 +1412,7 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 	}
 
 	if err := HandleOtherSANs(certTemplate, data.Params.OtherSANs); err != nil {
-		return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling other SANs: {{err}}", err).Error()}
+		return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling other SANs: %w", err).Error()}
 	}
 
 	AddPolicyIdentifiers(data, certTemplate)
@@ -1508,16 +1503,14 @@ func signCertificateWithTemplate(caSign *CAInfoBundle, CSR *x509.CertificateRequ
 	}
 	certTemplate.SerialNumber = serialNumber
 
-	if req, ok := evaluationData["request"].(map[string]any); ok {
-		if v, ok := req["use_pss"].(bool); ok {
-			usePSS = v
-		}
-		if v, ok := req["signature_bits"].(int); ok {
-			signatureBits = v
-		}
-		if v, ok := req["subject_key_id"].([]byte); ok {
-			subjKeyID = v
-		}
+	if v, ok := evaluationData["use_pss"].(bool); ok {
+		usePSS = v
+	}
+	if v, ok := evaluationData["signature_bits"].(int); ok {
+		signatureBits = v
+	}
+	if v, ok := evaluationData["subject_key_id"].([]byte); ok {
+		subjKeyID = v
 	}
 
 	if len(subjKeyID) == 0 {

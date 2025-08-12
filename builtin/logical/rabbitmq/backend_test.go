@@ -10,9 +10,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	rabbithole "github.com/michaelklishin/rabbit-hole/v3"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api/v2"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	vaulthttp "github.com/openbao/openbao/http"
@@ -138,7 +138,7 @@ func TestBackend_roleCrud(t *testing.T) {
 
 func TestBackend_roleWithPasswordPolicy(t *testing.T) {
 	if os.Getenv(logicaltest.TestEnvVar) == "" {
-		t.Skip(fmt.Sprintf("Acceptance tests skipped unless env %q set", logicaltest.TestEnvVar))
+		t.Skipf("Acceptance tests skipped unless env %q set", logicaltest.TestEnvVar)
 		return
 	}
 

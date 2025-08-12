@@ -48,6 +48,24 @@ func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, u
 	if secret == nil || secret.Auth == nil || secret.Auth.ClientToken == "" {
 		t.Fatalf("MFA validation failed to return a ClientToken in secret: %v", secret)
 	}
+
+	// Redo the test, ensuring that the TOTP cannot be reused. This validates
+	// against HCSEC-2025-19 / CVE-2025-6015.
+	mfaSecret, err = client.Auth().MFALogin(context.Background(), upMethod)
+	if err != nil {
+		t.Fatalf("failed to initiate second login with userpass auth method: %v", err)
+	}
+
+	secret, err = client.Auth().MFAValidate(
+		context.Background(),
+		mfaSecret,
+		map[string]interface{}{
+			methodID: []string{totpPasscode},
+		},
+	)
+	if err == nil || secret != nil {
+		t.Fatalf("MFA validation succeeded when it should fail: err=%v / secret=%v", err, secret)
+	}
 }
 
 func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
@@ -193,14 +211,14 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	if secret.Auth.MFARequirement.MFARequestID == "" {
 		t.Fatal("MFARequirement contains empty MFARequestID")
 	}
-	if secret.Auth.MFARequirement.MFAConstraints == nil || len(secret.Auth.MFARequirement.MFAConstraints) == 0 {
+	if len(secret.Auth.MFARequirement.MFAConstraints) == 0 {
 		t.Fatal("MFAConstraints is nil or empty")
 	}
 	mfaConstraints, ok := secret.Auth.MFARequirement.MFAConstraints[methodID[0:4]]
 	if !ok {
 		t.Fatal("failed to find the mfaConstrains")
 	}
-	if mfaConstraints.Any == nil || len(mfaConstraints.Any) == 0 {
+	if len(mfaConstraints.Any) == 0 {
 		t.Fatal("expected to see the methodID is enforced in MFAConstaint.Any")
 	}
 	for _, mfaAny := range mfaConstraints.Any {
@@ -282,8 +300,8 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	if err == nil {
 		t.Fatal("MFA succeeded with an already used passcode")
 	}
-	if !strings.Contains(err.Error(), "code already used") {
-		t.Fatalf("got: %+v, expected: code already used", err.Error())
+	if !strings.Contains(err.Error(), vault.ErrBadMFACredentials.Error()) {
+		t.Fatalf("got: %v, expected: %v", err, vault.ErrBadMFACredentials)
 	}
 
 	// check for reaching max failed validation requests
@@ -301,7 +319,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 		_, maxErr = userClient1.Logical().WriteWithContext(context.Background(), "sys/mfa/validate", map[string]interface{}{
 			"mfa_request_id": secret.Auth.MFARequirement.MFARequestID,
 			"mfa_payload": map[string][]string{
-				methodID: {fmt.Sprintf("%d", i)},
+				methodID: {fmt.Sprintf("%d23456", i)},
 			},
 		})
 		if maxErr == nil {
@@ -320,7 +338,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	doTwoPhaseLogin(t, userClient1, enginePath1, methodID, testuser1)
 
 	// Destroy the secret so that the token can self generate
-	_, err = client.Logical().WriteWithContext(context.Background(), fmt.Sprintf("identity/mfa/method/totp/admin-destroy"), map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(context.Background(), "identity/mfa/method/totp/admin-destroy", map[string]interface{}{
 		"entity_id": entityID1,
 		"method_id": methodID,
 	})

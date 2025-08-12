@@ -9,12 +9,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/cap/oidc"
-	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -293,12 +292,12 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 
 	provider, err := b.getProvider(config)
 	if err != nil {
-		return nil, errwrap.Wrapf("error getting provider for login operation: {{err}}", err)
+		return nil, fmt.Errorf("error getting provider for login operation: %w", err)
 	}
 
-	oidcCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM)
+	oidcCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM, config.OverrideAllowedServerNames)
 	if err != nil {
-		return nil, errwrap.Wrapf("error preparing context for login operation: {{err}}", err)
+		return nil, fmt.Errorf("error preparing context for login operation: %w", err)
 	}
 
 	var token *oidc.Tk
@@ -322,7 +321,7 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 
 		token, err = oidc.NewToken(rawToken, nil)
 		if err != nil {
-			return nil, errwrap.Wrapf("error creating oidc token: {{err}}", err)
+			return nil, fmt.Errorf("error creating oidc token: %w", err)
 		}
 	} else {
 		// Exchange the authorization code for an ID token and access token.
@@ -514,13 +513,13 @@ func (b *jwtAuthBackend) pathPoll(ctx context.Context, req *logical.Request, d *
 			return logical.ErrorResponse(errLoginFailed + " Could not load configuration"), nil
 		}
 
-		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM)
+		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM, config.OverrideAllowedServerNames)
 		if err != nil {
 			return nil, err
 		}
 		provider, err := b.getProvider(config)
 		if err != nil {
-			return nil, errwrap.Wrapf("error getting provider for poll operation: {{err}}", err)
+			return nil, fmt.Errorf("error getting provider for poll operation: %w", err)
 		}
 
 		values := url.Values{
@@ -531,7 +530,7 @@ func (b *jwtAuthBackend) pathPoll(ctx context.Context, req *logical.Request, d *
 		}
 		body, err := contactIssuer(caCtx, config.OIDCTokenURL, &values, true)
 		if err != nil {
-			return nil, errwrap.Wrapf("error polling for device authorization: {{err}}", err)
+			return nil, fmt.Errorf("error polling for device authorization: %w", err)
 		}
 
 		var tokenOrError struct {
@@ -568,7 +567,7 @@ func (b *jwtAuthBackend) pathPoll(ctx context.Context, req *logical.Request, d *
 		idToken := oidc.IDToken(rawToken)
 		token, err := oidc.NewToken(idToken, tokenOrError.Token)
 		if err != nil {
-			return nil, errwrap.Wrapf("error creating oidc token: {{err}}", err)
+			return nil, fmt.Errorf("error creating oidc token: %w", err)
 		}
 
 		return b.processToken(ctx, req, config, caCtx, provider, roleName, role, token, oauth2.StaticTokenSource(oauth2Token), "", nil, false)
@@ -643,8 +642,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 	}
 
 	if role.CallbackMode == callbackModeDevice {
-		// start a device flow
-		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM)
+		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM, config.OverrideAllowedServerNames)
 		if err != nil {
 			return nil, err
 		}
@@ -666,7 +664,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 		}
 		body, err := contactIssuer(caCtx, config.OIDCDeviceAuthURL, &values, false)
 		if err != nil {
-			return nil, errwrap.Wrapf("error authorizing device: {{err}}", err)
+			return nil, fmt.Errorf("error authorizing device: %w", err)
 		}
 
 		var deviceCode struct {
@@ -850,8 +848,8 @@ func validRedirect(uri string, allowed []string) bool {
 	}
 
 	// if uri isn't a loopback, just string search the allowed list
-	if !strutil.StrListContains([]string{"localhost", "127.0.0.1", "::1"}, inputURI.Hostname()) {
-		return strutil.StrListContains(allowed, uri)
+	if !slices.Contains([]string{"localhost", "127.0.0.1", "::1"}, inputURI.Hostname()) {
+		return slices.Contains(allowed, uri)
 	}
 
 	// otherwise, search for a match in a port-agnostic manner, per the OAuth RFC.

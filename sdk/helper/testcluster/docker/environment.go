@@ -215,6 +215,9 @@ func (dc *DockerCluster) setupNode0(ctx context.Context) error {
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 
 	status, err := client.Sys().SealStatusWithContext(ctx)
 	if err != nil {
@@ -691,14 +694,14 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	wg.Add(1)
 	var seenLogs uberAtomic.Bool
 	logConsumer := func(s string) {
-		if seenLogs.CAS(false, true) {
+		if seenLogs.CompareAndSwap(false, true) {
 			wg.Done()
 		}
 		n.Logger.Trace(s)
 	}
 	logStdout := &LogConsumerWriter{logConsumer}
 	logStderr := &LogConsumerWriter{func(s string) {
-		if seenLogs.CAS(false, true) {
+		if seenLogs.CompareAndSwap(false, true) {
 			wg.Done()
 		}
 		testcluster.JSONLogNoTimestamp(n.Logger, s)
@@ -861,7 +864,7 @@ func (n *DockerClusterNode) PartitionFromCluster(ctx context.Context) error {
 	stdout, stderr, exitCode, err := n.Runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
 		"/bin/sh",
 		"-xec", strings.Join([]string{
-			fmt.Sprintf("echo partitioning container from network"),
+			"echo partitioning container from network",
 			"apk add iproute2",
 			// Get the gateway address for the bridge so we can allow host to
 			// container traffic still.
@@ -895,7 +898,7 @@ func (n *DockerClusterNode) UnpartitionFromCluster(ctx context.Context) error {
 	stdout, stderr, exitCode, err := n.Runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
 		"/bin/sh",
 		"-xec", strings.Join([]string{
-			fmt.Sprintf("echo un-partitioning container from network"),
+			"echo un-partitioning container from network",
 			// Get the gateway address for the bridge so we can allow host to
 			// container traffic still.
 			"GW=$(ip r | grep default | grep eth0 | cut -f 3 -d' ')",

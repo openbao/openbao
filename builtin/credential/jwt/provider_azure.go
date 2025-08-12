@@ -61,7 +61,7 @@ func (a *AzureProvider) FetchGroups(_ context.Context, b *jwtAuthBackend, allCla
 			return nil, fmt.Errorf("unable to get claim sources: %s", err)
 		}
 
-		a.ctx, err = b.createCAContext(b.providerCtx, b.cachedConfig.OIDCDiscoveryCAPEM)
+		a.ctx, err = b.createCAContext(b.providerCtx, b.cachedConfig.OIDCDiscoveryCAPEM, b.cachedConfig.OverrideAllowedServerNames)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create CA Context: %s", err)
 		}

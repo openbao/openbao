@@ -149,7 +149,7 @@ var _ GroupUpdater = &Core{}
 
 type TokenStorer interface {
 	LookupToken(context.Context, string) (*logical.TokenEntry, error)
-	CreateToken(context.Context, *logical.TokenEntry) error
+	CreateToken(context.Context, *logical.TokenEntry, bool) error
 }
 
 var _ TokenStorer = &Core{}

@@ -1,2 +1,3 @@
 ```release-note:change
-openbao: bump Go version from 1.24.0 to 1.24.2 and toolchain versions from 1.23.7 to 1.23.8 across multiple modules. update modules and checksums to address vulnerabilities
+openbao: bump Go version to 1.24.4; update modules and checksums to address vulnerabilities
+```

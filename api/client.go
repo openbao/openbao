@@ -6,6 +6,8 @@ package api
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -19,7 +21,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -60,6 +61,30 @@ const (
 	// SSRF protection.
 	RequestHeaderName = "X-Vault-Request"
 
+	// Path to perform inline authentication against. Any authentication
+	// performed must be single-request.
+	InlineAuthPathHeaderName = "X-Vault-Inline-Auth-Path"
+
+	// Request operation to perform inline authentication with. Defaults to
+	// update.
+	InlineAuthOperationHeaderName = "X-Vault-Inline-Auth-Operation"
+
+	// Namespace to perform inline authentication with. Defaults to
+	// the value of X-Vault-Namespace; can be combined with any potential
+	// namespace in X-Vault-Inline-Auth-Path.
+	InlineAuthNamespaceHeaderName = "X-Vault-Inline-Auth-Namespace"
+
+	// Prefix of user-specified parameters sent to the endpoint specified
+	// in InlineAuthPathHeaderName. Each parameter is a base64 url-safe
+	// encoded JSON object containing:
+	//
+	// { "key": <name>, "value": <value> }
+	//
+	// so that typing of the value and case sensitivity of the key can be
+	// preserved. The remainder of the header value (after the trailing
+	// dash) is ignored. Any repeated header keys result in request failure.
+	InlineAuthParameterHeaderPrefix = "X-Vault-Inline-Auth-Parameter-"
+
 	TLSErrorString = "This error usually means that the server is running with TLS disabled\n" +
 		"but the client is configured to use TLS. Please either enable TLS\n" +
 		"on the server or run the client with -address set to an address\n" +
@@ -69,6 +94,9 @@ const (
 		"    BAO_ADDR=http://<address> vault <command>\n\n" +
 		"where <address> is replaced by the actual address to the server."
 )
+
+// InlineAuthOpts represents an option for inline authentication
+type InlineAuthOpts func() map[string][]string
 
 // Deprecated values
 const (
@@ -578,7 +606,7 @@ func NewClient(c *Config) (*Client, error) {
 		return nil, errors.New("could not create/read default configuration")
 	}
 	if def.Error != nil {
-		return nil, errwrap.Wrapf("error encountered setting up default configuration: {{err}}", def.Error)
+		return nil, fmt.Errorf("error encountered setting up default configuration: %w", def.Error)
 	}
 
 	if c == nil {
@@ -669,7 +697,7 @@ func (c *Client) SetAddress(addr string) error {
 
 	parsedAddr, err := c.config.ParseAddress(addr)
 	if err != nil {
-		return errwrap.Wrapf("failed to set address: {{err}}", err)
+		return fmt.Errorf("failed to set address: %w", err)
 	}
 
 	c.addr = parsedAddr
@@ -1352,7 +1380,7 @@ START:
 	}
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
-			err = errwrap.Wrapf("{{err}}\n\n"+TLSErrorString, err)
+			err = fmt.Errorf("%w\n\n"+TLSErrorString, err)
 		}
 		return result, err
 	}
@@ -1481,7 +1509,7 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
-			err = errwrap.Wrapf("{{err}}\n\n"+TLSErrorString, err)
+			err = fmt.Errorf("%w\n\n"+TLSErrorString, err)
 		}
 		return result, err
 	}
@@ -1548,6 +1576,77 @@ func (c *Client) WithResponseCallbacks(callbacks ...ResponseCallback) *Client {
 	c2.modifyLock = sync.RWMutex{}
 	c2.responseCallbacks = callbacks
 	return &c2
+}
+
+// InlineWithNamespace is used with WithInlineAuth(...) to set the namespace
+// of the inline authentication call.
+func InlineWithNamespace(ns string) InlineAuthOpts {
+	return func() map[string][]string {
+		return map[string][]string{
+			InlineAuthNamespaceHeaderName: {ns},
+		}
+	}
+}
+
+// InlineWithOperation is used with WithInlineAuth(...) to set the operation
+// of the inline authentication call.
+func InlineWithOperation(op string) InlineAuthOpts {
+	return func() map[string][]string {
+		return map[string][]string{
+			InlineAuthOperationHeaderName: {op},
+		}
+	}
+}
+
+// WithInlineAuth returns a client with no authentication information but
+// which sets headers which perform inline authentication. This
+// re-authenticates on every request and does not persist any token.
+// Operations which result in lease creation will not work.
+//
+// Refer to the OpenBao documentation for more information.
+func (c *Client) WithInlineAuth(path string, data map[string]interface{}, opts ...InlineAuthOpts) (*Client, error) {
+	client, err := c.Clone()
+	if err != nil {
+		return nil, fmt.Errorf("error cloning client: %w", err)
+	}
+
+	headers := client.Headers()
+	for h := range client.Headers() {
+		if strings.HasPrefix(h, InlineAuthParameterHeaderPrefix) {
+			delete(headers, h)
+		}
+	}
+
+	delete(headers, InlineAuthOperationHeaderName)
+	delete(headers, InlineAuthNamespaceHeaderName)
+	delete(headers, AuthHeaderName)
+
+	headers[InlineAuthPathHeaderName] = []string{path}
+
+	for _, opt := range opts {
+		oHeader := opt()
+		for name, value := range oHeader {
+			headers[name] = value
+		}
+	}
+
+	for key, value := range data {
+		jEncoded, err := json.Marshal(map[string]interface{}{
+			"key":   key,
+			"value": value,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode inline auth data key `%v`: %w", key, err)
+		}
+
+		b64Encoded := base64.RawURLEncoding.EncodeToString(jEncoded)
+		headers[fmt.Sprintf("%v%v", InlineAuthParameterHeaderPrefix, key)] = []string{b64Encoded}
+	}
+
+	client.ClearToken()
+	client.SetHeaders(headers)
+
+	return client, nil
 }
 
 // withConfiguredTimeout wraps the context with a timeout from the client configuration.

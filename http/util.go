@@ -164,7 +164,6 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 		}
 
 		handler.ServeHTTP(w, r)
-		return
 	})
 }
 

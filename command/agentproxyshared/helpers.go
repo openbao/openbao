@@ -43,7 +43,7 @@ func GetAutoAuthMethodFromConfig(autoAuthMethodType string, authConfig *auth.Aut
 	case "token_file":
 		return token_file.NewTokenFileAuthMethod(authConfig)
 	default:
-		return nil, errors.New(fmt.Sprintf("unknown auth method %q", autoAuthMethodType))
+		return nil, fmt.Errorf("unknown auth method %q", autoAuthMethodType)
 	}
 }
 

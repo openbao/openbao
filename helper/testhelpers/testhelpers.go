@@ -373,16 +373,16 @@ func WaitForStandbyNode(t testing.T, core *vault.TestClusterCore) {
 	t.Fatal("node did not become standby")
 }
 
-func RekeyCluster(t testing.T, cluster *vault.TestCluster, recovery bool) [][]byte {
+func RotateClusterKeys(t testing.T, cluster *vault.TestCluster, recovery bool) [][]byte {
 	t.Helper()
-	cluster.Logger.Info("rekeying cluster", "recovery", recovery)
+	cluster.Logger.Info("rotating cluster keys", "recovery", recovery)
 	client := cluster.Cores[0].Client
 
-	initFunc := client.Sys().RekeyInit
+	initFunc := client.Sys().RotateRootInit
 	if recovery {
-		initFunc = client.Sys().RekeyRecoveryKeyInit
+		initFunc = client.Sys().RotateRecoveryInit
 	}
-	init, err := initFunc(&api.RekeyInitRequest{
+	init, err := initFunc(&api.RotateInitRequest{
 		SecretShares:    5,
 		SecretThreshold: 3,
 	})
@@ -390,15 +390,15 @@ func RekeyCluster(t testing.T, cluster *vault.TestCluster, recovery bool) [][]by
 		t.Fatal(err)
 	}
 
-	var statusResp *api.RekeyUpdateResponse
+	var statusResp *api.RotateUpdateResponse
 	keys := cluster.BarrierKeys
 	if cluster.Cores[0].Core.SealAccess().RecoveryKeySupported() {
 		keys = cluster.RecoveryKeys
 	}
 
-	updateFunc := client.Sys().RekeyUpdate
+	updateFunc := client.Sys().RotateRootUpdate
 	if recovery {
-		updateFunc = client.Sys().RekeyRecoveryKeyUpdate
+		updateFunc = client.Sys().RotateRecoveryUpdate
 	}
 	for j := 0; j < len(keys); j++ {
 		statusResp, err = updateFunc(base64.StdEncoding.EncodeToString(keys[j]), init.Nonce)
@@ -412,7 +412,7 @@ func RekeyCluster(t testing.T, cluster *vault.TestCluster, recovery bool) [][]by
 			break
 		}
 	}
-	cluster.Logger.Info("cluster rekeyed", "recovery", recovery)
+	cluster.Logger.Info("cluster keys rotated", "recovery", recovery)
 
 	if cluster.Cores[0].Core.SealAccess().RecoveryKeySupported() && !recovery {
 		return nil

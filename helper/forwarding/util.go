@@ -11,10 +11,10 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"google.golang.org/protobuf/proto"
 )
 
 type bufCloser struct {
@@ -152,7 +152,7 @@ func ParseForwardedRequest(fq *Request) (*http.Request, error) {
 		ret.Header[k] = v.Values
 	}
 
-	if fq.PeerCertificates != nil && len(fq.PeerCertificates) > 0 {
+	if len(fq.PeerCertificates) > 0 {
 		ret.TLS = &tls.ConnectionState{
 			PeerCertificates: make([]*x509.Certificate, len(fq.PeerCertificates)),
 		}

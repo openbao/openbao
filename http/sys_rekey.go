@@ -86,7 +86,7 @@ func handleSysRekeyInitGet(ctx context.Context, core *vault.Core, recovery bool,
 		status.Progress = progress
 		status.VerificationRequired = rekeyConf.VerificationRequired
 		status.VerificationNonce = rekeyConf.VerificationNonce
-		if rekeyConf.PGPKeys != nil && len(rekeyConf.PGPKeys) != 0 {
+		if len(rekeyConf.PGPKeys) != 0 {
 			pgpFingerprints, err := pgpkeys.GetFingerprints(rekeyConf.PGPKeys, nil)
 			if err != nil {
 				respondError(w, http.StatusInternalServerError, err)

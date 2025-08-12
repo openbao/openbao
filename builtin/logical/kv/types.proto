@@ -12,6 +12,7 @@ message Configuration {
 	uint32 max_versions = 1;
 	bool cas_required = 2;
 	google.protobuf.Duration delete_version_after = 3;
+	bool metadata_cas_required = 400;
 }
 
 message VersionMetadata {
@@ -63,9 +64,18 @@ message KeyMetadata {
 	// mount.
 	google.protobuf.Duration delete_version_after = 9;
 
-    // CustomMetadata is a map of string key-value pairs used to store
-    // user-provided information about the secret.
+	// CustomMetadata is a map of string key-value pairs used to store
+	// user-provided information about the secret.
 	map<string, string> custom_metadata = 10;
+
+	// MetadataCasRequired specifies if the metadata_cas parameter is
+	// required for metadata updates, independent of data updates
+	bool metadata_cas_required = 400;
+
+	// MetadataVersion is a counter for the metadata itself,
+	// separate from the content versions
+	uint64 current_metadata_version = 401;
+
 }
 
 
@@ -91,5 +101,3 @@ message UpgradeInfo {
 	// upgraded.
 	bool done = 2;
 }
-
-

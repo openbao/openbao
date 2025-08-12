@@ -137,7 +137,7 @@ func (b *backend) populateCRLs(ctx context.Context, storage logical.Storage) err
 	if err != nil {
 		return fmt.Errorf("error listing CRLs: %w", err)
 	}
-	if keys == nil || len(keys) == 0 {
+	if len(keys) == 0 {
 		return nil
 	}
 

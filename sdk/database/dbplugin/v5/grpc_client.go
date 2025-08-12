@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/proto"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -112,8 +112,8 @@ func newUserReqToProto(req NewUserRequest) (*proto.NewUserRequest, error) {
 		return nil, errors.New("unknown credential type")
 	}
 
-	expiration, err := ptypes.TimestampProto(req.Expiration)
-	if err != nil {
+	expiration := timestamppb.New(req.Expiration)
+	if err := expiration.CheckValid(); err != nil {
 		return nil, fmt.Errorf("unable to marshal expiration date: %w", err)
 	}
 
@@ -218,8 +218,8 @@ func expirationToProto(exp *ChangeExpiration) (*proto.ChangeExpiration, error) {
 		return nil, nil
 	}
 
-	expiration, err := ptypes.TimestampProto(exp.NewExpiration)
-	if err != nil {
+	expiration := timestamppb.New(exp.NewExpiration)
+	if err := expiration.CheckValid(); err != nil {
 		return nil, err
 	}
 

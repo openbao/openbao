@@ -57,6 +57,7 @@ const (
 	NoClientToken ClientTokenSource = iota
 	ClientTokenFromVaultHeader
 	ClientTokenFromAuthzHeader
+	ClientTokenFromInlineAuth
 )
 
 // Request is a struct that stores the parameters and context of a request
@@ -212,6 +213,15 @@ type Request struct {
 
 	// When a request has been forwarded, contains information of the host the request was forwarded 'from'
 	ForwardedFrom string `json:"forwarded_from,omitempty"`
+
+	// Whether we are an inline authentication request; in this case, we
+	// should not persist the generated token to storage.
+	IsInlineAuth bool `json:"is_inline_auth,omitempty" sentinel:""`
+
+	// Results from inline authentication to bypass storage-based token
+	// resolution. Only valid when HasInlineAuth=true.
+	HasInlineAuth bool  `json:"has_inline_auth,omitempty" sentinel:""`
+	InlineAuth    *Auth `json:"-" sentinel:""`
 }
 
 // Clone returns a deep copy of the request by using copystructure
@@ -354,21 +364,21 @@ type Operation string
 const (
 	// The operations below are called per path
 	CreateOperation         Operation = "create"
-	ReadOperation                     = "read"
-	UpdateOperation                   = "update"
-	PatchOperation                    = "patch"
-	DeleteOperation                   = "delete"
-	ListOperation                     = "list"
-	ScanOperation                     = "scan"
-	HelpOperation                     = "help"
-	AliasLookaheadOperation           = "alias-lookahead"
-	ResolveRoleOperation              = "resolve-role"
-	HeaderOperation                   = "header"
+	ReadOperation           Operation = "read"
+	UpdateOperation         Operation = "update"
+	PatchOperation          Operation = "patch"
+	DeleteOperation         Operation = "delete"
+	ListOperation           Operation = "list"
+	ScanOperation           Operation = "scan"
+	HelpOperation           Operation = "help"
+	AliasLookaheadOperation Operation = "alias-lookahead"
+	ResolveRoleOperation    Operation = "resolve-role"
+	HeaderOperation         Operation = "header"
 
 	// The operations below are called globally, the path is less relevant.
 	RevokeOperation   Operation = "revoke"
-	RenewOperation              = "renew"
-	RollbackOperation           = "rollback"
+	RenewOperation    Operation = "renew"
+	RollbackOperation Operation = "rollback"
 )
 
 type MFACreds map[string][]string

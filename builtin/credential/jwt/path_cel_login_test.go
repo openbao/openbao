@@ -173,7 +173,7 @@ func Test_runCelProgram(t *testing.T) {
 			if !ok {
 				t.Fatalf("Expected jwtAuthBackend, got %T", logicalBackend)
 			}
-			role, err := b.runCelProgram(context.Background(), &tc.celRole, tc.claims)
+			role, err := b.runCelProgram(context.Background(), logical.UpdateOperation, &tc.celRole, tc.claims)
 			if tc.validateResult != nil {
 				tc.validateResult(t, err, role)
 			}

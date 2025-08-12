@@ -22,7 +22,6 @@ builds:
     goos:
       - darwin
       - freebsd
-      - illumos
       - netbsd
       - openbsd
       - windows
@@ -36,6 +35,8 @@ builds:
       - "7"
     ignore:
       - goos: linux
+      - goos: illumos
+      - goos: solaris
       - goos: darwin
         goarm: "6"
       - goos: darwin
@@ -50,10 +51,6 @@ builds:
         goarch: riscv64
       - goos: freebsd
         goarm: "7"
-      - goos: illumos
-        goarch: arm
-      - goos: illumos
-        goarch: arm64
       - goos: netbsd
         goarch: riscv64
       - goos: netbsd

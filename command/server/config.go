@@ -15,13 +15,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/osutil"
+	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
@@ -109,6 +110,18 @@ type Config struct {
 	EnableResponseHeaderRaftNodeIDRaw interface{} `hcl:"enable_response_header_raft_node_id"`
 
 	DisableSSCTokens *bool `hcl:"-"`
+
+	UnsafeCrossNamespaceIdentity bool `hcl:"unsafe_cross_namespace_identity"`
+
+	UnsafeAllowAPIAuditCreation bool `hcl:"unsafe_allow_api_audit_creation"`
+	AllowAuditLogPrefixing      bool `hcl:"allow_audit_log_prefixing"`
+
+	// Initialization is a configuration object that helps to initialize
+	// OpenBao. It can be specified multiple times and each instance can
+	// contain one or more `request` objects. This is used by the
+	// declarative self-initialization subsystem on non-dev-mode instances
+	// and is part of the profile system.
+	Initialization []*profiles.OuterConfig `hcl:"-"`
 }
 
 const (
@@ -407,6 +420,21 @@ func (c *Config) Merge(c2 *Config) *Config {
 	result.EnableResponseHeaderRaftNodeID = c.EnableResponseHeaderRaftNodeID
 	if c2.EnableResponseHeaderRaftNodeID {
 		result.EnableResponseHeaderRaftNodeID = c2.EnableResponseHeaderRaftNodeID
+	}
+
+	result.UnsafeCrossNamespaceIdentity = c.UnsafeCrossNamespaceIdentity
+	if c2.UnsafeCrossNamespaceIdentity {
+		result.UnsafeCrossNamespaceIdentity = c2.UnsafeCrossNamespaceIdentity
+	}
+
+	result.UnsafeAllowAPIAuditCreation = c.UnsafeAllowAPIAuditCreation
+	if c2.UnsafeAllowAPIAuditCreation {
+		result.UnsafeAllowAPIAuditCreation = c2.UnsafeAllowAPIAuditCreation
+	}
+
+	result.AllowAuditLogPrefixing = c.AllowAuditLogPrefixing
+	if c2.AllowAuditLogPrefixing {
+		result.AllowAuditLogPrefixing = c2.AllowAuditLogPrefixing
 	}
 
 	// Use values from top-level configuration for storage if set
@@ -731,6 +759,17 @@ func ParseConfig(d, source string) (*Config, error) {
 		if err := parseServiceRegistration(result, o, "service_registration"); err != nil {
 			return nil, fmt.Errorf("error parsing 'service_registration': %w", err)
 		}
+	}
+
+	// Parse self-initialization stanzas.
+	if o := list.Filter("initialize"); len(o.Items) > 0 {
+		delete(result.UnusedKeys, "initialize")
+		init, err := profiles.ParseOuterConfig("initialize", result.Initialization, o)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing 'initialize': %w", err)
+		}
+
+		result.Initialization = init
 	}
 
 	// Remove all unused keys from Config that were satisfied by SharedConfig.
@@ -1066,6 +1105,11 @@ func (c *Config) Sanitized() map[string]interface{} {
 		"detect_deadlocks": c.DetectDeadlocks,
 
 		"imprecise_lease_role_tracking": c.ImpreciseLeaseRoleTracking,
+
+		"unsafe_cross_namespace_identity": c.UnsafeCrossNamespaceIdentity,
+
+		"unsafe_allow_api_audit_creation": c.UnsafeAllowAPIAuditCreation,
+		"allow_audit_log_prefixing":       c.AllowAuditLogPrefixing,
 	}
 	for k, v := range sharedResult {
 		result[k] = v

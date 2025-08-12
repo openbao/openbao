@@ -109,8 +109,8 @@ const (
 type ACMEChallenge struct {
 	Type            ACMEChallengeType       `json:"type"`
 	Status          ACMEChallengeStatusType `json:"status"`
-	Validated       string                  `json:"validated,optional"`
-	Error           map[string]interface{}  `json:"error,optional"`
+	Validated       string                  `json:"validated,omitempty"`
+	Error           map[string]interface{}  `json:"error,omitempty"`
 	ChallengeFields map[string]interface{}  `json:"challenge_fields"`
 }
 
@@ -151,7 +151,7 @@ type ACMEAuthorization struct {
 	//
 	// > This field is REQUIRED for objects with "valid" in the "status"
 	// > field.
-	Expires string `json:"expires,optional"`
+	Expires string `json:"expires,omitempty"`
 
 	Challenges []*ACMEChallenge `json:"challenges"`
 	Wildcard   bool             `json:"wildcard"`

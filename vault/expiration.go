@@ -1618,7 +1618,7 @@ func (m *ExpirationManager) Register(ctx context.Context, req *logical.Request, 
 // RegisterAuth is used to take an Auth response with an associated lease.
 // The token does not get a LeaseID, but the lease management is handled by
 // the expiration manager.
-func (m *ExpirationManager) RegisterAuth(ctx context.Context, te *logical.TokenEntry, auth *logical.Auth, loginRole string) error {
+func (m *ExpirationManager) RegisterAuth(ctx context.Context, te *logical.TokenEntry, auth *logical.Auth, loginRole string, persistLease bool) error {
 	defer metrics.MeasureSince([]string{"expire", "register-auth"}, time.Now())
 
 	// Triggers failure of RegisterAuth. This should only be set and triggered
@@ -1682,8 +1682,10 @@ func (m *ExpirationManager) RegisterAuth(ctx context.Context, te *logical.TokenE
 	defer leaseLock.Unlock()
 
 	// Encode the entry
-	if err := m.persistEntry(ctx, &le); err != nil {
-		return err
+	if persistLease {
+		if err := m.persistEntry(ctx, &le); err != nil {
+			return err
+		}
 	}
 
 	// Setup revocation timer
@@ -2621,7 +2623,7 @@ func (m *ExpirationManager) getIrrevocableLeaseCounts(ctx context.Context, inclu
 		leaseID := k.(string)
 		leaseNS, err := m.getNamespaceFromLeaseID(ctx, leaseID)
 		if err != nil {
-			// We should probably note that an error occured, but continue counting
+			// We should probably note that an error occurred, but continue counting
 			m.logger.Warn("could not get lease namespace from ID", "error", err)
 			return true
 		}
@@ -2678,7 +2680,7 @@ func (m *ExpirationManager) listIrrevocableLeases(ctx context.Context, includeCh
 
 		leaseNS, err := m.getNamespaceFromLeaseID(ctx, leaseID)
 		if err != nil {
-			// We probably want to track that an error occured, but continue counting
+			// We probably want to track that an error occurred, but continue counting
 			m.logger.Warn("could not get lease namespace from ID", "error", err)
 			return true
 		}

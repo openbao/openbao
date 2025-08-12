@@ -626,7 +626,7 @@ func TestParseUnauthenticatedPaths_Error(t *testing.T) {
 
 	for _, tc := range tcases {
 		_, err := parseUnauthenticatedPaths(tc.paths)
-		if err == nil || err != nil && !strings.Contains(err.Error(), tc.err) {
+		if err == nil || !strings.Contains(err.Error(), tc.err) {
 			t.Fatalf("bad: path: %s expect: %v got %v", tc.paths, tc.err, err)
 		}
 	}

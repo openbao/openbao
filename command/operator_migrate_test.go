@@ -6,6 +6,7 @@ package command
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"fmt"
 	"math/rand"
 	"os"
@@ -355,7 +356,7 @@ func generateData() map[string][]byte {
 			segments[j] = s
 		}
 		data := make([]byte, 100)
-		rand.Read(data)
+		crand.Read(data)
 		result[strings.Join(segments, "/")] = data
 	}
 

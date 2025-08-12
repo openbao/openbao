@@ -468,7 +468,6 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 
 	// Respond
 	respondOk(w, ret)
-	return
 }
 
 // respondRaw is used when the response is using HTTPContentType and HTTPRawBody
@@ -495,13 +494,13 @@ func respondRaw(w http.ResponseWriter, r *http.Request, resp *logical.Response) 
 	}
 
 	var status int
-	switch statusRaw.(type) {
+	switch st := statusRaw.(type) {
 	case int:
-		status = statusRaw.(int)
+		status = st
 	case float64:
-		status = int(statusRaw.(float64))
+		status = int(st)
 	case json.Number:
-		s64, err := statusRaw.(json.Number).Float64()
+		s64, err := st.Float64()
 		if err != nil {
 			retErr(w, "cannot decode status code")
 			return
@@ -538,18 +537,18 @@ func respondRaw(w http.ResponseWriter, r *http.Request, resp *logical.Response) 
 			goto WRITE_RESPONSE
 		}
 
-		switch bodyRaw.(type) {
+		switch bod := bodyRaw.(type) {
 		case string:
 			// This is best effort. The value may already be base64-decoded so
 			// if it doesn't work we just use as-is
-			bodyDec, err := base64.StdEncoding.DecodeString(bodyRaw.(string))
+			bodyDec, err := base64.StdEncoding.DecodeString(bod)
 			if err == nil {
 				body = bodyDec
 			} else {
-				body = []byte(bodyRaw.(string))
+				body = []byte(bod)
 			}
 		case []byte:
-			body = bodyRaw.([]byte)
+			body = bod
 		default:
 			retErr(w, "cannot decode body")
 			return

@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	log "github.com/hashicorp/go-hclog"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/proto"
+	anypb "google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func BenchmarkStoragePacker(b *testing.B) {
@@ -123,7 +124,7 @@ func TestStoragePacker_SerializeDeserializeComplexItem(t *testing.T) {
 
 	ctx := context.Background()
 
-	timeNow := ptypes.TimestampNow()
+	timeNow := timestamppb.Now()
 
 	alias1 := &identity.Alias{
 		ID:            "alias_id",
@@ -154,7 +155,7 @@ func TestStoragePacker_SerializeDeserializeComplexItem(t *testing.T) {
 		Policies:        []string{"policy1", "policy2"},
 	}
 
-	marshaledEntity, err := ptypes.MarshalAny(entity)
+	marshaledEntity, err := anypb.New(entity)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +173,7 @@ func TestStoragePacker_SerializeDeserializeComplexItem(t *testing.T) {
 	}
 
 	var itemDecoded identity.Entity
-	err = ptypes.UnmarshalAny(itemFetched.Message, &itemDecoded)
+	err = itemFetched.Message.UnmarshalTo(&itemDecoded)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -586,7 +586,7 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
 			}
 
-			time.Sleep(1)
+			time.Sleep(1 * time.Second)
 
 			value = count.Load()
 			if value > 2 {
@@ -604,7 +604,7 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
 			}
 
-			time.Sleep(1)
+			time.Sleep(1 * time.Second)
 
 			value = count.Load()
 			if value > 2 {

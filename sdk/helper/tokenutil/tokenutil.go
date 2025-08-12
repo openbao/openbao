@@ -6,10 +6,10 @@ package tokenutil
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	sockaddr "github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
@@ -64,7 +64,7 @@ func AddTokenFields(m map[string]*framework.FieldSchema) {
 func AddTokenFieldsWithAllowList(m map[string]*framework.FieldSchema, allowed []string) {
 	r := TokenFields()
 	for k, v := range r {
-		if len(allowed) > 0 && !strutil.StrListContains(allowed, k) {
+		if len(allowed) > 0 && !slices.Contains(allowed, k) {
 			continue
 		}
 		if _, has := m[k]; has {

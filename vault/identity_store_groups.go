@@ -6,9 +6,10 @@ package vault
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
+	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
@@ -256,7 +257,7 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 		group.Policies = strutil.RemoveDuplicatesStable(policiesRaw.([]string), true)
 	}
 
-	if strutil.StrListContains(group.Policies, "root") {
+	if slices.Contains(group.Policies, "root") {
 		return logical.ErrorResponse("policies cannot contain root"), nil
 	}
 
@@ -264,7 +265,7 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 	if ok {
 		groupType := groupTypeRaw.(string)
 		if group.Type != "" && groupType != group.Type {
-			return logical.ErrorResponse(fmt.Sprintf("group type cannot be changed")), nil
+			return logical.ErrorResponse("group type cannot be changed"), nil
 		}
 
 		group.Type = groupType
@@ -405,8 +406,8 @@ func (i *IdentityStore) handleGroupReadCommon(ctx context.Context, group *identi
 	respData["member_entity_ids"] = group.MemberEntityIDs
 	respData["parent_group_ids"] = group.ParentGroupIDs
 	respData["metadata"] = group.Metadata
-	respData["creation_time"] = ptypes.TimestampString(group.CreationTime)
-	respData["last_update_time"] = ptypes.TimestampString(group.LastUpdateTime)
+	respData["creation_time"] = group.CreationTime.AsTime().Format(time.RFC3339)
+	respData["last_update_time"] = group.LastUpdateTime.AsTime().Format(time.RFC3339)
 	respData["modify_index"] = group.ModifyIndex
 	respData["type"] = group.Type
 	respData["namespace_id"] = group.NamespaceID
@@ -419,8 +420,8 @@ func (i *IdentityStore) handleGroupReadCommon(ctx context.Context, group *identi
 		aliasMap["metadata"] = group.Alias.Metadata
 		aliasMap["name"] = group.Alias.Name
 		aliasMap["merged_from_canonical_ids"] = group.Alias.MergedFromCanonicalIDs
-		aliasMap["creation_time"] = ptypes.TimestampString(group.Alias.CreationTime)
-		aliasMap["last_update_time"] = ptypes.TimestampString(group.Alias.LastUpdateTime)
+		aliasMap["creation_time"] = group.Alias.CreationTime.AsTime().Format(time.RFC3339)
+		aliasMap["last_update_time"] = group.Alias.LastUpdateTime.AsTime().Format(time.RFC3339)
 
 		if mountValidationResp := i.router.ValidateMountByAccessor(group.Alias.MountAccessor); mountValidationResp != nil {
 			aliasMap["mount_path"] = mountValidationResp.MountPath

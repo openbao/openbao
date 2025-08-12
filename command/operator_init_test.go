@@ -86,16 +86,17 @@ func TestOperatorInitCommand_Run(t *testing.T) {
 				"-key-shares", "10",
 				"-pgp-keys", "keybase:jefferai,keybase:sethvargo",
 			},
-			"incorrect number",
+			"count mismatch between number of provided PGP keys and number of shares",
 			2,
 		},
 		{
 			"key_shares_pgp_more",
 			[]string{
 				"-key-shares", "1",
+				"-key-threshold", "1",
 				"-pgp-keys", "keybase:jefferai,keybase:sethvargo",
 			},
-			"incorrect number",
+			"count mismatch between number of provided PGP keys and number of shares",
 			2,
 		},
 	}

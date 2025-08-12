@@ -7,11 +7,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/golang/protobuf/ptypes"
 	memdb "github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/helper/identity"
@@ -354,10 +356,10 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 		// Update the policies if supplied
 		entityPoliciesRaw, ok := d.GetOk("policies")
 		if ok {
-			entity.Policies = strutil.RemoveDuplicates(entityPoliciesRaw.([]string), false)
+			entity.Policies = strutil.RemoveDuplicates(entityPoliciesRaw.([]string), true /* lowercase */)
 		}
 
-		if strutil.StrListContains(entity.Policies, "root") {
+		if slices.Contains(entity.Policies, "root") {
 			return logical.ErrorResponse("policies cannot contain root"), nil
 		}
 
@@ -469,13 +471,13 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 	respData["name"] = entity.Name
 	respData["metadata"] = entity.Metadata
 	respData["merged_entity_ids"] = entity.MergedEntityIDs
-	respData["policies"] = strutil.RemoveDuplicates(entity.Policies, false)
+	respData["policies"] = strutil.RemoveDuplicates(entity.Policies, true /* lowercase */)
 	respData["disabled"] = entity.Disabled
 	respData["namespace_id"] = entity.NamespaceID
 
 	// Convert protobuf timestamp into RFC3339 format
-	respData["creation_time"] = ptypes.TimestampString(entity.CreationTime)
-	respData["last_update_time"] = ptypes.TimestampString(entity.LastUpdateTime)
+	respData["creation_time"] = entity.CreationTime.AsTime().Format(time.RFC3339)
+	respData["last_update_time"] = entity.LastUpdateTime.AsTime().Format(time.RFC3339)
 
 	// Convert each alias into a map and replace the time format in each
 	aliasesToReturn := make([]interface{}, len(entity.Aliases))
@@ -487,8 +489,8 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 		aliasMap["metadata"] = alias.Metadata
 		aliasMap["name"] = alias.Name
 		aliasMap["merged_from_canonical_ids"] = alias.MergedFromCanonicalIDs
-		aliasMap["creation_time"] = ptypes.TimestampString(alias.CreationTime)
-		aliasMap["last_update_time"] = ptypes.TimestampString(alias.LastUpdateTime)
+		aliasMap["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339)
+		aliasMap["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339)
 		aliasMap["local"] = alias.Local
 		aliasMap["custom_metadata"] = alias.CustomMetadata
 
@@ -783,7 +785,6 @@ func (i *IdentityStore) handlePathEntityListCommon(ctx context.Context, req *log
 			resp.AddWarning("partial response due to timeout")
 			return resp, nil
 		default:
-			break
 		}
 
 		raw := iter.Next()
@@ -1024,7 +1025,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 						if err != nil {
 							return nil, fmt.Errorf("failed to delete orphaned alias during merge: %w", err), nil
 						}
-					} else if strutil.StrListContains(conflictingAliasIDsToKeep, toAliasId) {
+					} else if slices.Contains(conflictingAliasIDsToKeep, toAliasId) {
 						i.logger.Info("Deleting from_entity alias during entity merge", "from_entity", fromEntityID, "deleted_alias", fromAlias.ID)
 						err := i.MemDBDeleteAliasByIDInTxn(txn, fromAlias.ID, false)
 						if err != nil {
@@ -1033,7 +1034,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 						// Continue to next alias, as there's no alias to merge left in the from_entity
 						continue
-					} else if strutil.StrListContains(conflictingAliasIDsToKeep, fromAlias.ID) {
+					} else if slices.Contains(conflictingAliasIDsToKeep, fromAlias.ID) {
 						i.logger.Info("Deleting to_entity alias during entity merge", "to_entity", toEntity.ID, "deleted_alias", toAliasId)
 						err := i.MemDBDeleteAliasByIDInTxn(txn, toAliasId, false)
 						if err != nil {
@@ -1061,7 +1062,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 		// If told to, merge policies
 		if mergePolicies {
-			toEntity.Policies = strutil.RemoveDuplicates(strutil.MergeSlices(toEntity.Policies, fromEntity.Policies), false)
+			toEntity.Policies = strutil.RemoveDuplicates(strutil.MergeSlices(toEntity.Policies, fromEntity.Policies), true /* lowercase */)
 		}
 
 		// If the entity from which we are merging from was already a merged
@@ -1120,7 +1121,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 	if persist {
 		// Persist the entity which we are merging to
-		toEntityAsAny, err := ptypes.MarshalAny(toEntity)
+		toEntityAsAny, err := anypb.New(toEntity)
 		if err != nil {
 			return nil, err, nil
 		}

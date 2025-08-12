@@ -3162,7 +3162,7 @@ auto_auth {
 	go func() {
 		exitCode := cmd.Run([]string{"-config", configFileName, "-log-format", "json", "-log-file", logFilePath, "-log-level", "trace"})
 		if exitCode != 0 {
-			panic(fmt.Sprintf("expected zero exit code from agent invocation"))
+			panic("expected zero exit code from agent invocation")
 		}
 	}()
 

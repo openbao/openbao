@@ -1,2 +1,3 @@
 ```release-note:feature
 auth/jwt: Add support for Common Expression Language (CEL) login roles. CEL allows role authors to create flexible, dynamic policies with complex, custom claim validation support and arbitrary templating of `logical.Auth` data.
+```

@@ -235,7 +235,7 @@ func (cb *crlBuilder) invalidateCRLBuildTime() {
 // Update the config to mark the modified CRL. See note in
 // updateDefaultIssuerId about why this is necessary.
 func (cb *crlBuilder) flushCRLBuildTimeInvalidation(sc *storageContext) error {
-	if cb.invalidate.CAS(true, false) {
+	if cb.invalidate.CompareAndSwap(true, false) {
 		// Flush out our invalidation.
 		cfg, err := sc.getLocalCRLConfig()
 		if err != nil {
@@ -1258,7 +1258,7 @@ func getLocalRevokedCertEntries(sc *storageContext, issuerIDCertMap map[issuerID
 		if revokedEntry == nil {
 			return nil, nil, errutil.InternalError{Err: fmt.Sprintf("revoked certificate entry for serial %s is nil", serial)}
 		}
-		if revokedEntry.Value == nil || len(revokedEntry.Value) == 0 {
+		if len(revokedEntry.Value) == 0 {
 			// TODO: In this case, remove it and continue? How likely is this to
 			// happen? Alternately, could skip it entirely, or could implement a
 			// delete function so that there is a way to remove these

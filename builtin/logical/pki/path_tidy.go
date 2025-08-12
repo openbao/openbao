@@ -978,7 +978,7 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 			return true, nil
 		}
 
-		if certEntry.Value == nil || len(certEntry.Value) == 0 {
+		if len(certEntry.Value) == 0 {
 			logger.Warn("certificate entry has no value; tidying up since it is no longer useful for any server operations", "serial", serial)
 			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
 				return false, fmt.Errorf("error deleting entry with nil value with serial %s: %w", serial, err)
@@ -1134,7 +1134,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 			return true, nil
 		}
 
-		if revokedEntry.Value == nil || len(revokedEntry.Value) == 0 {
+		if len(revokedEntry.Value) == 0 {
 			if !haveWarned {
 				logger.Warn("Revoked entry has nil value. Other invalid entries may exist; tidying up since it is no longer useful for any server operations", "serial", serial)
 			}

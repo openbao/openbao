@@ -86,9 +86,10 @@ func TestTranslation_Request(t *testing.T) {
 			Connection: &logical.Connection{
 				RemoteAddr: "localhost",
 				ConnState: &tls.ConnectionState{
-					Version:           tls.VersionTLS12,
-					HandshakeComplete: true,
-					PeerCertificates:  certs,
+					Version:                    tls.VersionTLS12,
+					HandshakeComplete:          true,
+					PeerCertificates:           certs,
+					NegotiatedProtocolIsMutual: true,
 				},
 			},
 		},

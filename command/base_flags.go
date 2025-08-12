@@ -381,7 +381,7 @@ func (i *uintValue) Set(s string) error {
 	if err != nil {
 		return err
 	}
-	if v >= 0 && v <= math.MaxUint {
+	if v <= math.MaxUint {
 		*i.target = uint(v)
 		return nil
 	}

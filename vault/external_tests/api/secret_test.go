@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseSecret(t *testing.T) {
@@ -2023,4 +2024,109 @@ func TestSecret_TokenTTL(t *testing.T) {
 			t.Errorf("expected %q to non-zero and less than %q", tokenTTL, ttl)
 		}
 	})
+}
+
+// TestInlineAuth ensures that we can perform header-based inline authentication.
+func TestInlineAuth(t *testing.T) {
+	t.Parallel()
+
+	client, closer := testVaultServer(t)
+	defer closer()
+
+	// Set up authentication with permissive policy
+	err := client.Sys().EnableAuth("userpass", "userpass", "")
+	require.NoError(t, err)
+
+	_, err = client.Logical().Write("auth/userpass/users/admin", map[string]interface{}{
+		"password":       "admin",
+		"token_policies": []string{"my-admin"},
+		"token_ttl":      "15s",
+	})
+	require.NoError(t, err)
+
+	err = client.Sys().PutPolicy("my-admin", `
+path "pki/*" {
+	capabilities = ["create", "read", "update", "scan", "list", "delete", "sudo"]
+}
+path "sys/policies/acl/my-admin" {
+	capabilities = ["read"]
+}
+path "sys/mounts/pki" {
+	capabilities = ["create", "update"]
+}
+`)
+
+	require.NoError(t, err)
+
+	// Try inline authentication.
+	inlineClient, err := client.WithInlineAuth("auth/userpass/login/admin", map[string]interface{}{
+		"password": "admin",
+	})
+	require.NoError(t, err)
+
+	logical := inlineClient.Logical()
+
+	resp, err := logical.Read("sys/policies/acl/my-admin")
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "policy")
+
+	// Performing a read on a different policy should fail; our inline token does not have permissions.
+	resp, err = logical.Read("sys/policies/acl/default")
+	t.Logf("resp=%#v / err=%#v", resp, err)
+	require.Error(t, err)
+	require.Nil(t, resp)
+
+	// Make sure auth still works after some time goes by.
+	time.Sleep(5 * time.Second)
+
+	// These operation perform writes, but should still work.
+	_, err = logical.Write("sys/mounts/pki", map[string]interface{}{
+		"type": "pki",
+	})
+	require.NoError(t, err)
+
+	time.Sleep(5 * time.Second)
+
+	_, err = logical.Write("pki/root/generate/internal", map[string]interface{}{
+		"common_name": "Root R1",
+		"key_type":    "ec",
+	})
+	require.NoError(t, err)
+
+	time.Sleep(5 * time.Second)
+
+	_, err = logical.Write("pki/roles/testing", map[string]interface{}{
+		"allow_any_name": true,
+		"generate_lease": true,
+		"ttl":            "1m",
+	})
+	require.NoError(t, err)
+
+	// After this point, we definitely would've outlived any token created by
+	// the first request; this proves that we are not simply reusing an existing
+	// token.
+	time.Sleep(5 * time.Second)
+
+	// This operation should create a lease and thus fail.
+	resp, err = logical.Write("pki/issue/testing", map[string]interface{}{
+		"common_name": "alex",
+	})
+	require.Error(t, err)
+	require.Nil(t, resp)
+
+	// Removing the lease option should succeed.
+	_, err = logical.Write("pki/roles/testing", map[string]interface{}{
+		"allow_any_name": true,
+		"generate_lease": false,
+		"ttl":            "1m",
+	})
+	require.NoError(t, err)
+
+	resp, err = logical.Write("pki/issue/testing", map[string]interface{}{
+		"common_name": "alex",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Contains(t, resp.Data, "certificate")
 }

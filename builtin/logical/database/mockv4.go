@@ -92,7 +92,7 @@ func (m MockDatabaseV4) RotateRootCredentials(ctx context.Context, statements []
 	if err != nil {
 		return config, fmt.Errorf("failed to generate credentials: %w", err)
 	}
-	config["password"] = newPassword
+	m.config["password"] = newPassword
 
 	return m.config, nil
 }

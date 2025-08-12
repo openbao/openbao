@@ -15,11 +15,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/mitchellh/mapstructure"
 	ctconfig "github.com/openbao/openbao-template/config"
 	ctsignals "github.com/openbao/openbao-template/signals"
 	"k8s.io/utils/strings/slices"
@@ -1167,7 +1167,7 @@ func parseTemplates(result *Config, list *ast.ObjectList) error {
 			DecodeHook: mapstructure.ComposeDecodeHookFunc(
 				ctconfig.StringToFileModeFunc(),
 				ctconfig.StringToWaitDurationHookFunc(),
-				mapstructure.StringToSliceHookFunc(","),
+				mapstructure.StringToWeakSliceHookFunc(","),
 				mapstructure.StringToTimeDurationHookFunc(),
 			),
 			ErrorUnused: true,
@@ -1215,7 +1215,7 @@ func parseExec(result *Config, list *ast.ObjectList) error {
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			ctconfig.StringToFileModeFunc(),
 			ctconfig.StringToWaitDurationHookFunc(),
-			mapstructure.StringToSliceHookFunc(","),
+			mapstructure.StringToWeakSliceHookFunc(","),
 			mapstructure.StringToTimeDurationHookFunc(),
 			ctsignals.StringToSignalFunc(),
 		),
@@ -1272,7 +1272,7 @@ func parseEnvTemplates(result *Config, list *ast.ObjectList) error {
 			DecodeHook: mapstructure.ComposeDecodeHookFunc(
 				ctconfig.StringToFileModeFunc(),
 				ctconfig.StringToWaitDurationHookFunc(),
-				mapstructure.StringToSliceHookFunc(","),
+				mapstructure.StringToWeakSliceHookFunc(","),
 				mapstructure.StringToTimeDurationHookFunc(),
 				ctsignals.StringToSignalFunc(),
 			),

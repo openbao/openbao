@@ -59,11 +59,11 @@ func TestPassthroughBackend_Read(t *testing.T) {
 		req := logical.TestRequest(t, logical.UpdateOperation, "foo")
 		req.Data["raw"] = "test"
 		var reqTTL interface{}
-		switch ttl.(type) {
+		switch tt := ttl.(type) {
 		case int64:
-			reqTTL = ttl.(int64)
+			reqTTL = tt
 		case string:
-			reqTTL = ttl.(string)
+			reqTTL = tt
 		default:
 			t.Fatal("unknown ttl type")
 		}

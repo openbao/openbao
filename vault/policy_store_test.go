@@ -15,14 +15,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mockPolicyWithCore(t *testing.T, disableCache bool) (*Core, *PolicyStore) {
+func mockPolicyWithCore(t *testing.T, disableCache bool) (*Core, [][]byte, string, *PolicyStore) {
 	conf := &CoreConfig{
 		DisableCache: disableCache,
 	}
-	core, _, _ := TestCoreUnsealedWithConfig(t, conf)
+	core, shares, token := TestCoreUnsealedWithConfig(t, conf)
 	ps := core.policyStore
 
-	return core, ps
+	return core, shares, token, ps
 }
 
 func TestPolicyStore_Root(t *testing.T) {
@@ -80,18 +80,35 @@ func testPolicyRoot(t *testing.T, ps *PolicyStore, ns *namespace.Namespace, expe
 func TestPolicyStore_CRUD(t *testing.T) {
 	t.Run("root-ns", func(t *testing.T) {
 		t.Run("cached", func(t *testing.T) {
-			_, ps := mockPolicyWithCore(t, false)
-			testPolicyStoreCRUD(t, ps, namespace.RootNamespace)
+			core, shares, token, ps := mockPolicyWithCore(t, false)
+			testPolicyStoreCRUD(t, core, shares, token, ps, namespace.RootNamespace)
 		})
 
 		t.Run("no-cache", func(t *testing.T) {
-			_, ps := mockPolicyWithCore(t, true)
-			testPolicyStoreCRUD(t, ps, namespace.RootNamespace)
+			core, shares, token, ps := mockPolicyWithCore(t, true)
+			testPolicyStoreCRUD(t, core, shares, token, ps, namespace.RootNamespace)
 		})
 	})
 }
 
-func testPolicyStoreCRUD(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
+func testPolicyStoreCRUD(t *testing.T, core *Core, shares [][]byte, token string, ps *PolicyStore, ns *namespace.Namespace) {
+	testPolicyStoreCRUDOneShot(t, ps, ns)
+
+	// Seal, unseal, and try again.
+	require.NoError(t, core.Seal(token), "failed to seal")
+	for _, share := range shares {
+		finished, err := TestCoreUnseal(core, share)
+		if finished {
+			break
+		}
+
+		require.NoError(t, err)
+	}
+
+	testPolicyStoreCRUDOneShot(t, ps, ns)
+}
+
+func testPolicyStoreCRUDOneShot(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
 	// Get should return nothing
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
 	p, err := ps.GetPolicy(ctx, "Dev", PolicyTypeToken)
@@ -182,7 +199,7 @@ func testPolicyStoreCRUD(t *testing.T, ps *PolicyStore, ns *namespace.Namespace)
 
 func TestPolicyStore_Predefined(t *testing.T) {
 	t.Run("root-ns", func(t *testing.T) {
-		_, ps := mockPolicyWithCore(t, false)
+		_, _, _, ps := mockPolicyWithCore(t, false)
 		testPolicyStorePredefined(t, ps, namespace.RootNamespace)
 	})
 }
@@ -255,7 +272,7 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 
 func TestPolicyStore_ACL(t *testing.T) {
 	t.Run("root-ns", func(t *testing.T) {
-		_, ps := mockPolicyWithCore(t, false)
+		_, _, _, ps := mockPolicyWithCore(t, false)
 		testPolicyStoreACL(t, ps, namespace.RootNamespace)
 	})
 }
@@ -323,14 +340,11 @@ func TestDefaultPolicy(t *testing.T) {
 	}
 }
 
-// TestPolicyStore_GetNonEGPPolicyType has five test cases:
+// TestPolicyStore_GetNonEGPPolicyType has two test cases:
 //   - happy-acl: we store a policy in the policy type map and
 //     then look up its type successfully.
 //   - not-in-map-acl: ensure that GetNonEGPPolicyType fails
 //     returning a nil and an error when the policy doesn't exist in the map.
-//   - unknown-policy-type: ensures that GetNonEGPPolicyType fails returning a nil
-//     and an error when the policy type in the type map is a value that
-//     does not map to a PolicyType.
 func TestPolicyStore_GetNonEGPPolicyType(t *testing.T) {
 	t.Parallel()
 	tests := map[string]struct {
@@ -343,27 +357,19 @@ func TestPolicyStore_GetNonEGPPolicyType(t *testing.T) {
 		expectedErrorMessage string
 	}{
 		"happy-acl": {
-			policyStoreKey:   "1AbcD/policy1",
+			policyStoreKey:   "root/default",
 			policyStoreValue: PolicyTypeACL,
-			paramNamespace:   "1AbcD",
-			paramPolicyName:  "policy1",
+			paramNamespace:   "root",
+			paramPolicyName:  "default",
 			paramPolicyType:  PolicyTypeACL,
 		},
 		"not-in-map-acl": {
-			policyStoreKey:       "2WxyZ/policy2",
+			policyStoreKey:       "root/policy2",
 			policyStoreValue:     PolicyTypeACL,
-			paramNamespace:       "1AbcD",
-			paramPolicyName:      "policy1",
+			paramNamespace:       "root",
+			paramPolicyName:      "policy2",
 			isErrorExpected:      true,
-			expectedErrorMessage: "policy does not exist in type map",
-		},
-		"unknown-policy-type": {
-			policyStoreKey:       "1AbcD/policy1",
-			policyStoreValue:     7,
-			paramNamespace:       "1AbcD",
-			paramPolicyName:      "policy1",
-			isErrorExpected:      true,
-			expectedErrorMessage: "unknown policy type for: 1AbcD/policy1",
+			expectedErrorMessage: "policy does not exist",
 		},
 	}
 
@@ -373,9 +379,9 @@ func TestPolicyStore_GetNonEGPPolicyType(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			_, ps := mockPolicyWithCore(t, false)
-			ps.policyTypeMap.Store(tc.policyStoreKey, tc.policyStoreValue)
-			got, err := ps.GetNonEGPPolicyType(tc.paramNamespace, tc.paramPolicyName)
+			_, _, _, ps := mockPolicyWithCore(t, false)
+			ctx := namespace.RootContext(context.Background())
+			got, err := ps.GetNonEGPPolicyType(ctx, tc.paramPolicyName)
 			if tc.isErrorExpected {
 				require.Error(t, err)
 				require.Nil(t, got)
@@ -862,8 +868,11 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	assert.NotEqual(t, rootP.Raw, rootPolicyInChild.Raw, "child namespace should not inherit root policy")
 
 	// Test parent namespace policy access from child namespace
+	// We error here due to the relative path; in the past this
+	// was treated like a not-found policy, which is technically
+	// correct but less informative.
 	parentPolicyInChild, err := ps.GetPolicy(childCtx, "../test-nested-policy", PolicyTypeToken)
-	require.NoError(t, err)
+	require.Error(t, err)
 	assert.Nil(t, parentPolicyInChild, "child namespace should not access parent policy via relative path")
 
 	// Test cross-namespace policy access
@@ -894,7 +903,7 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 // TestPolicyStore_Expiration validates that expiration works as expected.
 func TestPolicyStore_Expiration(t *testing.T) {
 	t.Parallel()
-	_, ps := mockPolicyWithCore(t, false)
+	_, _, _, ps := mockPolicyWithCore(t, false)
 
 	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
 
@@ -923,7 +932,7 @@ func TestPolicyStore_Expiration(t *testing.T) {
 // Validate that check-and-set logic works.
 func TestPolicyStore_CAS(t *testing.T) {
 	t.Parallel()
-	_, ps := mockPolicyWithCore(t, false)
+	_, _, _, ps := mockPolicyWithCore(t, false)
 
 	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
 

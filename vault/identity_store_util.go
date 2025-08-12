@@ -7,12 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	metrics "github.com/armon/go-metrics"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/errwrap"
 	memdb "github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -23,6 +23,8 @@ import (
 	"github.com/openbao/openbao/helper/storagepacker"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -38,14 +40,23 @@ func (c *Core) loadIdentityStoreArtifacts(ctx context.Context) error {
 	}
 
 	loadFunc := func(context.Context) error {
-		if err := c.identityStore.loadEntities(ctx); err != nil {
-			return err
+		allNs, err := c.ListNamespaces(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list namespaces: %w", err)
 		}
-		if err := c.identityStore.loadGroups(ctx); err != nil {
-			return err
-		}
-		if err := c.identityStore.loadOIDCClients(ctx); err != nil {
-			return err
+
+		for _, ns := range allNs {
+			nsCtx := namespace.ContextWithNamespace(ctx, ns)
+
+			if err := c.identityStore.loadEntities(nsCtx); err != nil {
+				return err
+			}
+			if err := c.identityStore.loadGroups(nsCtx); err != nil {
+				return err
+			}
+			if err := c.identityStore.loadOIDCClients(nsCtx); err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -86,7 +97,12 @@ func (i *IdentityStore) sanitizeName(name string) string {
 }
 
 func (i *IdentityStore) loadGroups(ctx context.Context) error {
-	i.logger.Debug("identity loading groups")
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	i.logger.Debug("identity loading groups", "namespace", ns.Path)
 	existing, err := i.groupPacker(ctx).View().List(ctx, groupBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for groups: %w", err)
@@ -104,7 +120,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 		}
 
 		for _, item := range bucket.Items {
-			group, err := i.parseGroupFromBucketItem(item)
+			group, err := i.parseGroupFromBucketItem(ctx, item)
 			if err != nil {
 				return err
 			}
@@ -183,7 +199,12 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 
 func (i *IdentityStore) loadEntities(ctx context.Context) error {
 	// Accumulate existing entities
-	i.logger.Debug("loading entities")
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	i.logger.Debug("loading entities", "namespace", ns.Path)
 	existing, err := i.entityPacker(ctx).View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for entities: %w", err)
@@ -470,7 +491,7 @@ func (i *IdentityStore) upsertEntityInTxn(ctx context.Context, txn *memdb.Txn, e
 			return nil
 		}
 
-		if strutil.StrListContains(aliasFactors, i.sanitizeName(alias.Name)+alias.MountAccessor) {
+		if slices.Contains(aliasFactors, i.sanitizeName(alias.Name)+alias.MountAccessor) {
 			i.logger.Warn(errDuplicateIdentityName.Error(), "alias_name", alias.Name, "mount_accessor", alias.MountAccessor, "local", alias.Local, "entity_name", entity.Name, "action", "delete one of the duplicate aliases")
 			if !i.disableLowerCasedNames {
 				return errDuplicateIdentityName
@@ -579,7 +600,7 @@ func (i *IdentityStore) processLocalAlias(ctx context.Context, lAlias *logical.A
 		localAliases.Aliases = append(localAliases.Aliases, alias)
 	}
 
-	marshaledAliases, err := ptypes.MarshalAny(localAliases)
+	marshaledAliases, err := anypb.New(localAliases)
 	if err != nil {
 		return nil, err
 	}
@@ -630,7 +651,7 @@ func (i *IdentityStore) persistEntity(ctx context.Context, entity *identity.Enti
 
 	// Store the entity with non-local aliases.
 	entity.Aliases = nonLocalAliases
-	marshaledEntity, err := ptypes.MarshalAny(entity)
+	marshaledEntity, err := anypb.New(entity)
 	if err != nil {
 		return err
 	}
@@ -650,7 +671,7 @@ func (i *IdentityStore) persistEntity(ctx context.Context, entity *identity.Enti
 		Aliases: localAliases,
 	}
 
-	marshaledAliases, err := ptypes.MarshalAny(aliases)
+	marshaledAliases, err := anypb.New(aliases)
 	if err != nil {
 		return err
 	}
@@ -1197,9 +1218,14 @@ func (i *IdentityStore) sanitizeAlias(ctx context.Context, alias *identity.Alias
 		return fmt.Errorf("invalid alias metadata: %w", err)
 	}
 
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Create an ID if there isn't one already
 	if alias.ID == "" {
-		alias.ID, err = uuid.GenerateUUID()
+		alias.ID, err = ns.GenerateUUID()
 		if err != nil {
 			return errors.New("failed to generate alias ID")
 		}
@@ -1208,27 +1234,23 @@ func (i *IdentityStore) sanitizeAlias(ctx context.Context, alias *identity.Alias
 	}
 
 	if alias.NamespaceID == "" {
-		ns, err := namespace.FromContext(ctx)
-		if err != nil {
-			return err
-		}
 		alias.NamespaceID = ns.ID
 	}
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
 	if ns.ID != alias.NamespaceID {
 		return errors.New("alias belongs to a different namespace")
 	}
 
+	if err := ns.ValidateUUID(alias.ID); err != nil {
+		return fmt.Errorf("alias's namespace suffix is invalid: %w", err)
+	}
+
 	// Set the creation and last update times
 	if alias.CreationTime == nil {
-		alias.CreationTime = ptypes.TimestampNow()
+		alias.CreationTime = timestamppb.Now()
 		alias.LastUpdateTime = alias.CreationTime
 	} else {
-		alias.LastUpdateTime = ptypes.TimestampNow()
+		alias.LastUpdateTime = timestamppb.Now()
 	}
 
 	return nil
@@ -1241,9 +1263,14 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 		return errors.New("entity is nil")
 	}
 
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Create an ID if there isn't one already
 	if entity.ID == "" {
-		entity.ID, err = uuid.GenerateUUID()
+		entity.ID, err = ns.GenerateUUID()
 		if err != nil {
 			return errors.New("failed to generate entity id")
 		}
@@ -1252,10 +1279,6 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 		entity.BucketKey = i.entityPacker(ctx).BucketKey(entity.ID)
 	}
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
 	if entity.NamespaceID == "" {
 		entity.NamespaceID = ns.ID
 	}
@@ -1263,9 +1286,13 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 		return errors.New("entity does not belong to this namespace")
 	}
 
+	if err := ns.ValidateUUID(entity.ID); err != nil {
+		return fmt.Errorf("entity's namespace suffix is invalid: %w", err)
+	}
+
 	// Create a name if there isn't one already
 	if entity.Name == "" {
-		entity.Name, err = i.generateName(ctx, "entity")
+		entity.Name, err = i.generateName(ctx, "entity", ns.ID)
 		if err != nil {
 			return errors.New("failed to generate entity name")
 		}
@@ -1279,10 +1306,10 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 
 	// Set the creation and last update times
 	if entity.CreationTime == nil {
-		entity.CreationTime = ptypes.TimestampNow()
+		entity.CreationTime = timestamppb.Now()
 		entity.LastUpdateTime = entity.CreationTime
 	} else {
-		entity.LastUpdateTime = ptypes.TimestampNow()
+		entity.LastUpdateTime = timestamppb.Now()
 	}
 
 	// Ensure that MFASecrets is non-nil at any time. This is useful when MFA
@@ -1301,9 +1328,14 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 		return errors.New("group is nil")
 	}
 
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Create an ID if there isn't one already
 	if group.ID == "" {
-		group.ID, err = uuid.GenerateUUID()
+		group.ID, err = ns.GenerateUUID()
 		if err != nil {
 			return errors.New("failed to generate group id")
 		}
@@ -1313,23 +1345,19 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 	}
 
 	if group.NamespaceID == "" {
-		ns, err := namespace.FromContext(ctx)
-		if err != nil {
-			return err
-		}
 		group.NamespaceID = ns.ID
-	}
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
 	}
 	if ns.ID != group.NamespaceID {
 		return errors.New("group does not belong to this namespace")
 	}
 
+	if err := ns.ValidateUUID(group.ID); err != nil {
+		return fmt.Errorf("group's namespace suffix is invalid: %w", err)
+	}
+
 	// Create a name if there isn't one already
 	if group.Name == "" {
-		group.Name, err = i.generateName(ctx, "group")
+		group.Name, err = i.generateName(ctx, "group", ns.ID)
 		if err != nil {
 			return errors.New("failed to generate group name")
 		}
@@ -1343,10 +1371,10 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 
 	// Set the creation and last update times
 	if group.CreationTime == nil {
-		group.CreationTime = ptypes.TimestampNow()
+		group.CreationTime = timestamppb.Now()
 		group.LastUpdateTime = group.CreationTime
 	} else {
-		group.LastUpdateTime = ptypes.TimestampNow()
+		group.LastUpdateTime = timestamppb.Now()
 	}
 
 	// Remove duplicate entity IDs and check if all IDs are valid
@@ -1365,7 +1393,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 
 	// Remove duplicate policies
 	if group.Policies != nil {
-		group.Policies = strutil.RemoveDuplicates(group.Policies, false)
+		group.Policies = strutil.RemoveDuplicates(group.Policies, true /* lowercase */)
 	}
 
 	txn := i.db(ctx).Txn(true)
@@ -1397,7 +1425,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 
 	// Update parent group IDs in the removed members
 	for _, currentMemberGroupID := range currentMemberGroupIDs {
-		if strutil.StrListContains(memberGroupIDs, currentMemberGroupID) {
+		if slices.Contains(memberGroupIDs, currentMemberGroupID) {
 			continue
 		}
 
@@ -1430,7 +1458,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 		}
 
 		// Skip if memberGroupID is already a member of group.ID
-		if strutil.StrListContains(memberGroup.ParentGroupIDs, group.ID) {
+		if slices.Contains(memberGroup.ParentGroupIDs, group.ID) {
 			continue
 		}
 
@@ -1695,7 +1723,7 @@ func (i *IdentityStore) UpsertGroupInTxn(ctx context.Context, txn *memdb.Txn, gr
 	}
 
 	if persist {
-		groupAsAny, err := ptypes.MarshalAny(group)
+		groupAsAny, err := anypb.New(group)
 		if err != nil {
 			return err
 		}
@@ -2078,7 +2106,7 @@ func (i *IdentityStore) memberGroupIDsByID(ctx context.Context, groupID string) 
 	return memberGroupIDs, nil
 }
 
-func (i *IdentityStore) generateName(ctx context.Context, entryType string) (string, error) {
+func (i *IdentityStore) generateName(ctx context.Context, entryType string, nsId string) (string, error) {
 	var name string
 OUTER:
 	for {
@@ -2087,6 +2115,10 @@ OUTER:
 			return "", err
 		}
 		name = fmt.Sprintf("%s_%s", entryType, fmt.Sprintf("%08x", randBytes[0:4]))
+
+		if nsId != "" {
+			name = fmt.Sprintf("%v.%v", name, nsId)
+		}
 
 		switch entryType {
 		case "entity":
@@ -2402,7 +2434,7 @@ func (i *IdentityStore) handleAliasListCommon(ctx context.Context, groupAlias bo
 // countEntities returns the sum of all entities across all namespaces.
 func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 	var count int
-	var err error
+	var outErr error
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
@@ -2411,7 +2443,7 @@ func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 
 		iter, err := txn.Get(entitiesTable, "id")
 		if err != nil {
-			err = fmt.Errorf("failed to get entities table for namespace %v: %w", uuid, err)
+			outErr = fmt.Errorf("failed to get entities table for namespace %v: %w", uuid, err)
 			return false
 		}
 
@@ -2424,8 +2456,8 @@ func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 		return true
 	})
 
-	if err != nil {
-		return -1, err
+	if outErr != nil {
+		return -1, outErr
 	}
 
 	return count, nil
@@ -2456,7 +2488,6 @@ func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[strin
 				err = fmt.Errorf("context cancelled during namespace %v", uuid)
 				return false
 			default:
-				break
 			}
 
 			// Count in the namespace attached to the entity.
@@ -2500,7 +2531,6 @@ func (i *IdentityStore) countEntitiesByMountAccessor(ctx context.Context) (map[s
 				err = fmt.Errorf("context cancelled during namespace %v", uuid)
 				return false
 			default:
-				break
 			}
 
 			// Count each alias separately; will translate to mount point and type

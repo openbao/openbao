@@ -560,28 +560,28 @@ func TestRaft_SnapshotAPI_MidstreamFailure(t *testing.T) {
 	}
 }
 
-func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
+func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 	type testCase struct {
-		Name   string
-		Rekey  bool
-		Rotate bool
+		Name          string
+		Rotate        bool
+		RotateKeyring bool
 	}
 
 	tCases := []testCase{
 		{
-			Name:   "rekey",
-			Rekey:  true,
-			Rotate: false,
+			Name:          "rotate",
+			Rotate:        true,
+			RotateKeyring: false,
 		},
 		{
-			Name:   "rotate",
-			Rekey:  false,
-			Rotate: true,
+			Name:          "rotateKeyring",
+			Rotate:        false,
+			RotateKeyring: true,
 		},
 		{
-			Name:   "both",
-			Rekey:  true,
-			Rotate: true,
+			Name:          "both",
+			Rotate:        true,
+			RotateKeyring: true,
 		},
 	}
 
@@ -638,9 +638,9 @@ func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
 			// cache the original barrier keys
 			barrierKeys := cluster.BarrierKeys
 
-			if tCaseLocal.Rotate {
+			if tCaseLocal.RotateKeyring {
 				// Rotate
-				err = leaderClient.Sys().Rotate()
+				err = leaderClient.Sys().RotateKeyring()
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -649,15 +649,15 @@ func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
 				testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
 			}
 
-			if tCaseLocal.Rekey {
-				// Rekey
-				cluster.BarrierKeys = testhelpers.RekeyCluster(t, cluster, false)
+			if tCaseLocal.Rotate {
+				// Rotate keys
+				cluster.BarrierKeys = testhelpers.RotateClusterKeys(t, cluster, false)
 
 				testhelpers.EnsureStableActiveNode(t, cluster)
 				testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
 			}
 
-			if tCaseLocal.Rekey {
+			if tCaseLocal.Rotate {
 				// Restore snapshot, should fail.
 				req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot")
 				req.Body = bytes.NewBuffer(snap)
@@ -719,34 +719,34 @@ func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
 	}
 }
 
-func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
+func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 	type testCase struct {
-		Name       string
-		Rekey      bool
-		Rotate     bool
-		ShouldSeal bool
+		Name          string
+		Rotate        bool
+		RotateKeyring bool
+		ShouldSeal    bool
 	}
 
 	tCases := []testCase{
 		{
-			Name:       "rekey",
-			Rekey:      true,
-			Rotate:     false,
-			ShouldSeal: false,
+			Name:          "rotate",
+			Rotate:        true,
+			RotateKeyring: false,
+			ShouldSeal:    false,
 		},
 		{
-			Name:   "rotate",
-			Rekey:  false,
-			Rotate: true,
-			// Rotate writes a new root key upgrade using the new term, which
+			Name:          "rotateKeyring",
+			Rotate:        false,
+			RotateKeyring: true,
+			// RotateKeyring writes a new root key upgrade using the new term, which
 			// we can no longer decrypt. We must seal here.
 			ShouldSeal: true,
 		},
 		{
-			Name:   "both",
-			Rekey:  true,
-			Rotate: true,
-			// If we are moving forward and we have rekeyed and rotated there
+			Name:          "both",
+			Rotate:        true,
+			RotateKeyring: true,
+			// If we are moving forward and we have rotated keys and keyring there
 			// isn't any way to restore the latest keys so expect to seal.
 			ShouldSeal: true,
 		},
@@ -802,14 +802,15 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 				t.Fatal("no snapshot returned")
 			}
 
-			if tCaseLocal.Rekey {
-				// Rekey
-				cluster.BarrierKeys = testhelpers.RekeyCluster(t, cluster, false)
+			if tCaseLocal.Rotate {
+				// Rotate keys
+				cluster.BarrierKeys = testhelpers.RotateClusterKeys(t, cluster, false)
 
 				testhelpers.EnsureStableActiveNode(t, cluster)
 				testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
 			}
-			if tCaseLocal.Rotate {
+
+			if tCaseLocal.RotateKeyring {
 				// Set the key clean up to 0 so it's cleaned immediately. This
 				// will simulate that there are no ways to upgrade to the latest
 				// term.
@@ -817,8 +818,8 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 					c.Core.SetKeyRotateGracePeriod(0)
 				}
 
-				// Rotate
-				err = leaderClient.Sys().Rotate()
+				// Rotate keyring
+				err = leaderClient.Sys().RotateKeyring()
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -862,7 +863,7 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 
 			testhelpers.EnsureStableActiveNode(t, cluster)
 			testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
-			if tCaseLocal.Rekey {
+			if tCaseLocal.Rotate {
 				// Restore snapshot, should fail.
 				req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot")
 				req.Body = bytes.NewBuffer(snap2)

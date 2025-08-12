@@ -40,9 +40,9 @@ const (
 
 	// keyringUpgradePrefix is the path used to store keyring update entries.
 	// When running in HA mode, the active instance will install the new key
-	// and re-write the keyring. For standby instances, they need an upgrade
-	// path from key N to N+1. They cannot just use the root key because
-	// in the event of a rekey, that root key can no longer decrypt the keyring.
+	// and re-write the keyring. Standby instances need an upgrade path from
+	// key N to N+1. They cannot just use the root key because in the event
+	// of a rotation, that root key can no longer decrypt the keyring.
 	// When key N+1 is installed, we create an entry at "prefix/N" which uses
 	// encryption key N to provide the N+1 key. The standby instances scan
 	// for this periodically and refresh their keyring. The upgrade keys
@@ -52,7 +52,7 @@ const (
 
 	// rootKeyPath is the location of the root key. This is encrypted
 	// by the latest key in the keyring. This is only used by standby instances
-	// to handle the case of a rekey. If the active instance does a rekey,
+	// to handle the case of a rotation. If the active instance does a rotation,
 	// the standby instances can no longer reload the keyring since they
 	// have the old root key. This key can be decrypted if you have the
 	// keyring to discover the new root key. The new root key is then
@@ -64,9 +64,9 @@ const (
 	legacyRootKeyPath = "core/master"
 
 	// shamirKekPath is used with Shamir in v1.3+ to store a copy of the
-	// unseal key behind the barrier.  As with rootKeyPath this is primarily
-	// used by standbys to handle rekeys.  It also comes into play when restoring
-	// raft snapshots.
+	// unseal key behind the barrier. As with rootKeyPath this is primarily
+	// used by standbys to handle rotations. It also comes into play when
+	// restoring raft snapshots.
 	shamirKekPath = "core/shamir-kek"
 )
 
@@ -139,8 +139,8 @@ type SecurityBarrierCore interface {
 	// SetRotationConfig updates the auto-rotation config for the barrier key
 	SetRotationConfig(ctx context.Context, config KeyRotationConfig) error
 
-	// Rekey is used to change the root key used to protect the keyring
-	Rekey(context.Context, []byte) error
+	// RotateRootKey is used to change the root key used to protect the keyring
+	RotateRootKey(context.Context, []byte) error
 
 	// For replication we must send over the keyring, so this must be available
 	Keyring() (*Keyring, error)

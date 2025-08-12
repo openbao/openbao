@@ -29,6 +29,7 @@ func TestAcmeNonces(t *testing.T) {
 		nonce, _, err = a.GetNonce()
 		require.NoError(t, err)
 		require.NotEmpty(t, nonce)
+		nonces = append(nonces, nonce)
 	}
 
 	for i := len(nonces) - 1; i >= 0; i-- {

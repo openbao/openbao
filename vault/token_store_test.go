@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/errwrap"
@@ -25,11 +26,13 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
-	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/audit"
+	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
@@ -126,6 +129,26 @@ func TestTokenStore_CubbyholeTidy(t *testing.T) {
 
 func TestTokenStore_CubbyholeTidyNamespace(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
+	ns := &namespace.Namespace{ID: "ns1-id", Path: "ns1"}
+	TestCoreCreateNamespaces(t, c, ns)
+
+	testTokenStore_CubbyholeTidy(t, c, root, ns)
+}
+
+func TestTokenStore_CubbyholeTidyCrossNamespaceIdentity(t *testing.T) {
+	c := TestCoreWithConfig(t, &CoreConfig{
+		Seal:            nil,
+		EnableUI:        false,
+		EnableRaw:       false,
+		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
+		AuditBackends: map[string]audit.Factory{
+			"file": auditFile.Factory,
+		},
+		UnsafeCrossNamespaceIdentity: true,
+	})
+
+	c, _, root := testCoreUnsealed(t, c)
+
 	ns := &namespace.Namespace{ID: "ns1-id", Path: "ns1"}
 	TestCoreCreateNamespaces(t, c, ns)
 
@@ -362,7 +385,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NamespaceID:    namespace.RootNamespaceID,
 	}
 
-	if err := ts.expiration.RegisterAuth(ctx, registryEntry, auth, ""); err != nil {
+	if err := ts.expiration.RegisterAuth(ctx, registryEntry, auth, "", true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -393,7 +416,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUses:        10,
 		NamespaceID:    namespace.RootNamespaceID,
 	}
-	if err := ts.create(ctx, ent); err != nil {
+	if err := ts.create(ctx, ent, true); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 	auth = &logical.Auth{
@@ -407,7 +430,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(ctx, ent, auth, ""); err != nil {
+	if err := ts.expiration.RegisterAuth(ctx, ent, auth, "", true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -444,7 +467,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUses:        10,
 		NamespaceID:    ns.ID,
 	}
-	if err := ts.create(nsCtx, ent); err != nil {
+	if err := ts.create(nsCtx, ent, true); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 	auth = &logical.Auth{
@@ -458,7 +481,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(nsCtx, ent, auth, ""); err != nil {
+	if err := ts.expiration.RegisterAuth(nsCtx, ent, auth, "", true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -495,7 +518,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUsesDeprecated:        10,
 		NamespaceID:              namespace.RootNamespaceID,
 	}
-	if err := ts.create(ctx, ent); err != nil {
+	if err := ts.create(ctx, ent, true); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 	auth = &logical.Auth{
@@ -509,7 +532,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(ctx, ent, auth, ""); err != nil {
+	if err := ts.expiration.RegisterAuth(ctx, ent, auth, "", true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -537,7 +560,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUsesDeprecated: 10,
 		NamespaceID:       namespace.RootNamespaceID,
 	}
-	if err := ts.create(ctx, ent); err != nil {
+	if err := ts.create(ctx, ent, true); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 	auth = &logical.Auth{
@@ -551,7 +574,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(ctx, ent, auth, ""); err != nil {
+	if err := ts.expiration.RegisterAuth(ctx, ent, auth, "", true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -571,7 +594,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUsesDeprecated: 5,
 		NamespaceID:       namespace.RootNamespaceID,
 	}
-	if err := ts.create(ctx, ent); err != nil {
+	if err := ts.create(ctx, ent, true); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 	auth = &logical.Auth{
@@ -585,7 +608,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(ctx, ent, auth, ""); err != nil {
+	if err := ts.expiration.RegisterAuth(ctx, ent, auth, "", true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -661,7 +684,7 @@ func testMakeTokenViaRequestContext(t testing.TB, ctx context.Context, ts *Token
 	}
 
 	if resp.Auth.TokenType != logical.TokenTypeBatch {
-		if err := ts.expiration.RegisterAuth(ctx, te, resp.Auth, ""); err != nil {
+		if err := ts.expiration.RegisterAuth(ctx, te, resp.Auth, "", true); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -684,7 +707,7 @@ func testMakeTokenDirectly(t testing.TB, ctx context.Context, ts *TokenStore, te
 	if te.CreationTime == 0 {
 		te.CreationTime = time.Now().Unix()
 	}
-	if err := ts.create(ctx, te); err != nil {
+	if err := ts.create(ctx, te, true); err != nil {
 		t.Fatal(err)
 	}
 	if te.Type == logical.TokenTypeDefault {
@@ -707,7 +730,7 @@ func testMakeTokenDirectly(t testing.TB, ctx context.Context, ts *TokenStore, te
 		CreationPath:   te.Path,
 		TokenType:      te.Type,
 	}
-	err := ts.expiration.RegisterAuth(ctx, te, auth, "")
+	err := ts.expiration.RegisterAuth(ctx, te, auth, "", true)
 	switch err {
 	case nil:
 		if te.Type == logical.TokenTypeBatch {
@@ -954,7 +977,7 @@ func TestTokenStore_HandleRequest_Renew_Revoke_Accessor(t *testing.T) {
 		t.Fatal("token entry was nil")
 	}
 
-	err = exp.RegisterAuth(namespace.RootContext(nil), te, auth, "")
+	err = exp.RegisterAuth(namespace.RootContext(nil), te, auth, "", true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1175,7 +1198,7 @@ func TestTokenStore_CreateLookup_ProvidedID(t *testing.T) {
 	if ent.ID != "foobarbaz" {
 		t.Fatalf("bad: ent.ID: expected:\"foobarbaz\"\n actual:%s", ent.ID)
 	}
-	if err := ts.create(ctx, ent); err == nil {
+	if err := ts.create(ctx, ent, true); err == nil {
 		t.Fatal("expected error creating token with the same ID")
 	}
 
@@ -1209,7 +1232,7 @@ func TestTokenStore_CreateLookup_ExpirationInRestoreMode(t *testing.T) {
 		Path:        "test",
 		Policies:    []string{"dev", "ops"},
 	}
-	if err := ts.create(namespace.RootContext(nil), ent); err != nil {
+	if err := ts.create(namespace.RootContext(nil), ent, true); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	if ent.ID == "" {
@@ -1375,17 +1398,17 @@ func TestTokenStore_Revoke(t *testing.T) {
 
 	// Create a single token on root, ns1 and ns2
 	entRoot := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: namespace.RootNamespaceID}
-	if err := ts.create(ctx, entRoot); err != nil {
+	if err := ts.create(ctx, entRoot, true); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	entNS1 := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: ns1.ID}
-	if err := ts.create(namespace.ContextWithNamespace(ctx, ns1), entNS1); err != nil {
+	if err := ts.create(namespace.ContextWithNamespace(ctx, ns1), entNS1, true); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	entNS2 := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: ns2.ID}
-	if err := ts.create(namespace.ContextWithNamespace(ctx, ns2), entNS2); err != nil {
+	if err := ts.create(namespace.ContextWithNamespace(ctx, ns2), entNS2, true); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -1409,7 +1432,7 @@ func testTokenStore_Revoke(t *testing.T, ts *TokenStore, ns *namespace.Namespace
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
 
 	ent := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: ns.ID}
-	if err := ts.create(ctx, ent); err != nil {
+	if err := ts.create(ctx, ent, true); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	err := ts.revokeOrphan(ctx, "")
@@ -1461,7 +1484,7 @@ func TestTokenStore_Revoke_Leases(t *testing.T) {
 	}
 
 	ent := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: namespace.RootNamespaceID}
-	if err := ts.create(namespace.RootContext(nil), ent); err != nil {
+	if err := ts.create(namespace.RootContext(nil), ent, true); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -2376,7 +2399,7 @@ func TestTokenStore_HandleRequest_Revoke(t *testing.T) {
 			Renewable: true,
 		},
 	}
-	err = exp.RegisterAuth(namespace.RootContext(nil), te, auth, "")
+	err = exp.RegisterAuth(namespace.RootContext(nil), te, auth, "", true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2398,7 +2421,7 @@ func TestTokenStore_HandleRequest_Revoke(t *testing.T) {
 			Renewable: true,
 		},
 	}
-	err = exp.RegisterAuth(namespace.RootContext(nil), te, auth, "")
+	err = exp.RegisterAuth(namespace.RootContext(nil), te, auth, "", true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2796,7 +2819,7 @@ func TestTokenStore_HandleRequest_Renew(t *testing.T) {
 			Renewable: true,
 		},
 	}
-	err = exp.RegisterAuth(namespace.RootContext(nil), root, auth, "")
+	err = exp.RegisterAuth(namespace.RootContext(nil), root, auth, "", true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3286,7 +3309,7 @@ func TestTokenStore_HandleRequest_RenewSelf(t *testing.T) {
 			Renewable: true,
 		},
 	}
-	err = exp.RegisterAuth(namespace.RootContext(nil), root, auth, "")
+	err = exp.RegisterAuth(namespace.RootContext(nil), root, auth, "", true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -5967,7 +5990,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 		NamespaceID: namespace.RootNamespaceID,
 	}
 
-	err = exp.RegisterAuth(ctx, te, auth, "")
+	err = exp.RegisterAuth(ctx, te, auth, "", true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -6268,7 +6291,7 @@ func expectInGaugeCollection(t *testing.T, expectedLabels map[string]string, exp
 		}
 		if labelsMatch(actualLabels, expectedLabels) {
 			if expectedValue != glv.Value {
-				t.Errorf("expeced %v for %v, got %v", expectedValue, expectedLabels, glv.Value)
+				t.Errorf("expected %v for %v, got %v", expectedValue, expectedLabels, glv.Value)
 			}
 			return
 		}

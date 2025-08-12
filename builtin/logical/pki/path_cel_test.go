@@ -85,6 +85,29 @@ func TestCRUDCelRoles(t *testing.T) {
 					"name":       "require_ip_sans",
 					"expression": "size(request.ip_sans) >= 2", // new rule
 				},
+				{
+					"name":       "success",
+					"expression": "request.common_name == 'example.com' && require_ip_sans",
+				},
+				{
+					"name": "cert",
+					"expression": `CertTemplate{
+						Subject: PKIX.Name{
+							CommonName: request.common_name,
+							Country:    ["ZW", "US"],
+						},						
+					}`,
+				},
+				{
+					"name": "output",
+					"expression": `ValidationOutput{
+						template: cert,
+					}`,
+				},
+				{
+					"name":       "err",
+					"expression": "'Request should have atleast 2 IP SANs.'",
+				},
 			},
 		},
 	}

@@ -526,22 +526,22 @@ func compareResult(exp *diagnose.Result, act *diagnose.Result) error {
 	}
 	if exp.Status != act.Status {
 		if act.Status != diagnose.OkStatus {
-			return fmt.Errorf("section %s, status mismatch: %s vs %s, got error %s", exp.Name, exp.Status, act.Status, act.Message)
+			return fmt.Errorf("section %q, status mismatch: %s vs %s, got error %s", exp.Name, exp.Status, act.Status, act.Message)
 		}
-		return fmt.Errorf("section %s, status mismatch: %s vs %s", exp.Name, exp.Status, act.Status)
+		return fmt.Errorf("section %q, status mismatch: %s vs %s", exp.Name, exp.Status, act.Status)
 	}
 	if exp.Message != "" && exp.Message != act.Message && !strings.Contains(act.Message, exp.Message) {
-		return fmt.Errorf("section %s, message not found: %s in %s", exp.Name, exp.Message, act.Message)
+		return fmt.Errorf("section %q, message not found: %q in %q", exp.Name, exp.Message, act.Message)
 	}
 	if exp.Advice != "" && exp.Advice != act.Advice && !strings.Contains(act.Advice, exp.Advice) {
-		return fmt.Errorf("section %s, advice not found: %s in %s", exp.Name, exp.Advice, act.Advice)
+		return fmt.Errorf("section %q, advice not found: %q in %q", exp.Name, exp.Advice, act.Advice)
 	}
 	if len(exp.Warnings) != len(act.Warnings) {
-		return fmt.Errorf("section %s, warning count mismatch: %d vs %d", exp.Name, len(exp.Warnings), len(act.Warnings))
+		return fmt.Errorf("section %q, warning count mismatch: %d vs %d", exp.Name, len(exp.Warnings), len(act.Warnings))
 	}
 	for j := range exp.Warnings {
 		if !strings.Contains(act.Warnings[j], exp.Warnings[j]) {
-			return fmt.Errorf("section %s, warning message not found: %s in %s", exp.Name, exp.Warnings[j], act.Warnings[j])
+			return fmt.Errorf("section %q, warning message not found: %q in %q", exp.Name, exp.Warnings[j], act.Warnings[j])
 		}
 	}
 	if len(exp.Children) > len(act.Children) {

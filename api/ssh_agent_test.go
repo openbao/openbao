@@ -30,7 +30,7 @@ func TestSSH_CreateTLSClient(t *testing.T) {
 		panic(fmt.Sprintf("error creating the client: %s", err))
 	}
 	if client.config.HttpClient.Transport == nil {
-		panic(fmt.Sprintf("error creating client with TLS transport"))
+		panic("error creating client with TLS transport")
 	}
 }
 

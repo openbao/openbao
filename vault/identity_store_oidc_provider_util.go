@@ -11,9 +11,10 @@ import (
 	"hash"
 	"net/http"
 	"net/url"
+	"slices"
+	"strings"
 
 	"github.com/go-jose/go-jose/v3"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -26,8 +27,8 @@ func validRedirect(uri string, allowed []string) bool {
 	}
 
 	// if uri isn't a loopback, just string search the allowed list
-	if !strutil.StrListContains([]string{"localhost", "127.0.0.1", "::1"}, inputURI.Hostname()) {
-		return strutil.StrListContains(allowed, uri)
+	if !slices.Contains([]string{"localhost", "127.0.0.1", "::1"}, inputURI.Hostname()) {
+		return slices.Contains(allowed, uri)
 	}
 
 	// otherwise, search for a match in a port-agnostic manner, per the OAuth RFC.
@@ -107,4 +108,21 @@ func authCodeUsedPKCE(entry *authCodeCacheEntry) bool {
 func basicAuth(req *logical.Request) (string, string, bool) {
 	headerReq := &http.Request{Header: req.Headers}
 	return headerReq.BasicAuth()
+}
+
+// lowercaseIdentityIDs lowercases the UUID segments of given entity IDs
+// without affecting namespace accessor.
+func lowercaseIdentityIDs(identities []string) []string {
+	out := make([]string, len(identities))
+
+	for i, identityID := range identities {
+		id, namespaceID, ok := strings.Cut(identityID, ".")
+		if !ok { // bare ID with no namespace
+			out[i] = strings.ToLower(identityID)
+			continue
+		}
+		out[i] = strings.ToLower(id) + "." + namespaceID
+	}
+
+	return out
 }

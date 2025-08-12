@@ -70,8 +70,6 @@ type PostgreSQLBackend struct {
 	haUpsertLockIdentityExec string
 	haDeleteLockExec         string
 
-	upsert_function string
-
 	haEnabled     bool
 	logger        log.Logger
 	txnPermitPool *physical.PermitPool
@@ -107,12 +105,6 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		unquoted_table = "openbao_kv_store"
 	}
 	quoted_table := dbutil.QuoteIdentifier(unquoted_table)
-
-	unquoted_upsert_function, ok := conf["upsert_function"]
-	if !ok {
-		unquoted_upsert_function = "openbao_kv_put"
-	}
-	quoted_upsert_function := dbutil.QuoteIdentifier(unquoted_upsert_function)
 
 	maxParStr, ok := conf["max_parallel"]
 	var maxParInt int
@@ -181,26 +173,15 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		db.SetMaxIdleConns(maxIdleConns)
 	}
 
-	// Determine if we should use a function to work around lack of upsert (versions < 9.5)
-	var upsertAvailable bool
-	upsertAvailableQuery := "SELECT current_setting('server_version_num')::int >= 90500"
-	if err := db.QueryRow(upsertAvailableQuery).Scan(&upsertAvailable); err != nil {
-		return nil, fmt.Errorf("failed to check for native upsert: %w", err)
+	// Ensure we're running on a supported version of PostgreSQL
+	var supportedVersion bool
+	supportedVersionQuery := "SELECT current_setting('server_version_num')::int >= 90500"
+	if err := db.QueryRow(supportedVersionQuery).Scan(&supportedVersion); err != nil {
+		return nil, fmt.Errorf("failed to check for supported PostgreSQL version: %w", err)
 	}
 
-	if !upsertAvailable && conf["ha_enabled"] == "true" {
-		return nil, errors.New("ha_enabled=true in config but PG version doesn't support HA, must be at least 9.5")
-	}
-
-	// Setup our put strategy based on the presence or absence of a native
-	// upsert.
-	var put_query string
-	if !upsertAvailable {
-		put_query = "SELECT " + quoted_upsert_function + "($1, $2, $3, $4)"
-	} else {
-		put_query = "INSERT INTO " + quoted_table + " VALUES($1, $2, $3, $4)" +
-			" ON CONFLICT (path, key) DO " +
-			" UPDATE SET (parent_path, path, key, value) = ($1, $2, $3, $4)"
+	if !supportedVersion {
+		return nil, errors.New("PostgreSQL version must be at least 9.5")
 	}
 
 	unquoted_ha_table, ok := conf["ha_table"]
@@ -211,9 +192,11 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 
 	// Setup the backend.
 	m := &PostgreSQLBackend{
-		table:        quoted_table,
-		client:       db,
-		put_query:    put_query,
+		table:  quoted_table,
+		client: db,
+		put_query: "INSERT INTO " + quoted_table + " VALUES($1, $2, $3, $4)" +
+			" ON CONFLICT (path, key) DO " +
+			" UPDATE SET (parent_path, path, key, value) = ($1, $2, $3, $4)",
 		get_query:    "SELECT value FROM " + quoted_table + " WHERE path = $1 AND key = $2",
 		delete_query: "DELETE FROM " + quoted_table + " WHERE path = $1 AND key = $2",
 		list_query: "SELECT key FROM " + quoted_table + " WHERE path = $1" +
@@ -243,10 +226,9 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		haDeleteLockExec:
 		// $1=ha_identity $2=ha_key
 		" DELETE FROM " + quoted_ha_table + " WHERE ha_identity=$1 AND ha_key=$2 ",
-		logger:          logger,
-		txnPermitPool:   physical.NewPermitPool(txnMaxParInt),
-		haEnabled:       conf["ha_enabled"] == "true",
-		upsert_function: quoted_upsert_function,
+		logger:        logger,
+		txnPermitPool: physical.NewPermitPool(txnMaxParInt),
+		haEnabled:     conf["ha_enabled"] == "true",
 	}
 
 	// Determine if we should create tables.
@@ -259,43 +241,8 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		return nil, fmt.Errorf("failed to parse value for `skip_create_table`: %w", err)
 	}
 	if !skip_create_table {
-		txn, err := db.BeginTx(context.TODO(), &sql.TxOptions{
-			Isolation: sql.LevelRepeatableRead,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to begin transaction to attempt table creation: %w", err)
-		}
-
-		defer txn.Rollback()
-
-		createTableQuery := "CREATE TABLE IF NOT EXISTS " + quoted_table + " (" +
-			`parent_path TEXT COLLATE "C" NOT NULL,` +
-			`  path        TEXT COLLATE "C",` +
-			`  key         TEXT COLLATE "C",` +
-			`  value       BYTEA,` +
-			`  CONSTRAINT pkey PRIMARY KEY (path, key)` +
-			`);`
-		if _, err := db.Exec(createTableQuery); err != nil {
-			return nil, fmt.Errorf("failed to create table: %w", err)
-		}
-
-		createIndexQuery := `CREATE INDEX IF NOT EXISTS parent_path_idx ON ` + quoted_table + ` (parent_path);`
-		if _, err := db.Exec(createIndexQuery); err != nil {
-			return nil, fmt.Errorf("failed to create index on table: %w", err)
-		}
-
-		if m.haEnabled {
-			// Successfully detected that there is no table; create it.
-			createTableQuery := `CREATE TABLE IF NOT EXISTS ` + quoted_ha_table + ` (` +
-				`  ha_key      TEXT COLLATE "C" NOT NULL,` +
-				`  ha_identity TEXT COLLATE "C" NOT NULL,` +
-				`  ha_value    TEXT COLLATE "C",` +
-				`  valid_until TIMESTAMP WITH TIME ZONE NOT NULL,` +
-				`  CONSTRAINT ha_key PRIMARY KEY (ha_key)` +
-				`);`
-			if _, err := db.Exec(createTableQuery); err != nil {
-				return nil, fmt.Errorf("failed to create ha table: %w", err)
-			}
+		if err := m.createTables(); err != nil {
+			return nil, fmt.Errorf("failed to create tables: %w", err)
 		}
 	}
 
@@ -345,6 +292,74 @@ func doRetryConnect(logger log.Logger, connURL string, retries uint64) (*sql.DB,
 	}
 
 	return db, nil
+}
+
+func (m *PostgreSQLBackend) createTables() error {
+	txn, err := m.client.BeginTx(context.TODO(), &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer txn.Rollback()
+
+	createTableQuery := "CREATE TABLE IF NOT EXISTS " + m.table + " (" +
+		`parent_path TEXT COLLATE "C" NOT NULL,` +
+		`  path        TEXT COLLATE "C",` +
+		`  key         TEXT COLLATE "C",` +
+		`  value       BYTEA,` +
+		`  CONSTRAINT pkey PRIMARY KEY (path, key)` +
+		`);`
+	if _, err := txn.Exec(createTableQuery); err != nil {
+		if strings.Contains(err.Error(), "SQLSTATE 25006") {
+			m.logger.Warn("Skipping table creation as database is marked read-only", "err", err)
+			return nil
+		}
+		if strings.Contains(err.Error(), "SQLSTATE 23505") {
+			m.logger.Warn("Skipping table creation as other processes have already created the table", "err", err)
+			return nil
+		}
+
+		return fmt.Errorf("failed to execute create query: %w", err)
+	}
+
+	createIndexQuery := `CREATE INDEX IF NOT EXISTS parent_path_idx ON ` + m.table + ` (parent_path);`
+	if _, err := txn.Exec(createIndexQuery); err != nil {
+		if strings.Contains(err.Error(), "SQLSTATE 23505") {
+			m.logger.Warn("Skipping table creation as other processes have already created the index", "err", err)
+			return nil
+		}
+		return fmt.Errorf("failed to create index on table: %w", err)
+	}
+
+	if m.haEnabled {
+		// Successfully detected that there is no table; create it.
+		createTableQuery := `CREATE TABLE IF NOT EXISTS ` + m.ha_table + ` (` +
+			`  ha_key      TEXT COLLATE "C" NOT NULL,` +
+			`  ha_identity TEXT COLLATE "C" NOT NULL,` +
+			`  ha_value    TEXT COLLATE "C",` +
+			`  valid_until TIMESTAMP WITH TIME ZONE NOT NULL,` +
+			`  CONSTRAINT ha_key PRIMARY KEY (ha_key)` +
+			`);`
+		if _, err := txn.Exec(createTableQuery); err != nil {
+			if strings.Contains(err.Error(), "SQLSTATE 23505") {
+				m.logger.Warn("Skipping table creation as other processes have already created the table", "err", err)
+				return nil
+			}
+			return fmt.Errorf("failed to create ha table: %w", err)
+		}
+	}
+
+	if err := txn.Commit(); err != nil {
+		if strings.Contains(err.Error(), "SQLSTATE 23505") {
+			m.logger.Warn("Skipping table creation as other processes have already created the table", "err", err)
+			return nil
+		}
+		return fmt.Errorf("failed to apply transaction: %w", err)
+	}
+
+	return nil
 }
 
 // splitKey is a helper to split a full path key into individual

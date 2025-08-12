@@ -777,8 +777,11 @@ func testConfig_Sanitized(t *testing.T) {
 			"num_lease_metrics_buckets":              168,
 			"add_lease_metrics_namespace_labels":     false,
 		},
-		"administrative_namespace_path": "admin/",
-		"imprecise_lease_role_tracking": false,
+		"administrative_namespace_path":   "admin/",
+		"imprecise_lease_role_tracking":   false,
+		"unsafe_cross_namespace_identity": false,
+		"unsafe_allow_api_audit_creation": false,
+		"allow_audit_log_prefixing":       false,
 	}
 
 	addExpectedEntSanitizedConfig(expected, []string{"http"})

@@ -1,0 +1,194 @@
+---
+description: >- 
+    This is a reference for OpenBao’s profile system and declarative self-initialization. It describes the four supported source types and the initialize_name mechanism.
+---
+
+The Profiles processes declarative API requests with dynamic data source evaluation. 
+The system implements the request/response pattern, supporting chained operations and accepting request handlers and parsed profile configurations. 
+These are then transformed into templates for one or more API requests.
+
+## Profiles end to end workflow
+
+1. Profile Selection 
+
+A caller invokes and passes any required parameters.
+
+2. Input Validation 
+Before any OpenBao operation is attempted, the engine:
+- Ensures every declared parameter is present and of the correct type, e.g., string, int, bool.
+- Confirms that each referenced source (environment variable, file path, earlier request, earlier response) is available.
+- Rejects a run immediately if required inputs are missing, preventing half-configured states
+
+3. Source Evaluation 
+
+Profiles support four dynamic input sources (env, file, request, response)
+
+4. Sequential Execution
+
+Requests are executed exactly in the order they are listed. Within a single profile run there is no parallelism, guaranteeing that any request or response references always point to data that already exists.
+If request fails, the engine stops immediately and returns an error to the caller, nothing after that point is attempted
+
+5. Capturing History
+
+## Request/Response history
+
+In profiles every API call template and automatically tracked it so that its inputs and outputs can be reused later in the same run. 
+The mechanism—implemented and integrated request just before it is issued and the corresponding response immediately after it completes, then stores both as JSON in an in-memory map keyed by the outer block and request name. 
+Any subsequent field may reference those stored JSON objects through the request or response source types, using a selector to pull out a specific value. 
+This design makes it possible to chain operations without writing additional code or shell scripts, while also preventing accidental overwrites by rejecting duplicate keys and guaranteeing that every reference resolves to a deterministically stored value.
+
+## `value` Type
+
+Values may be of the following types:
+
+- A literal, such as a `string` or `map`. For example the following are valid
+  literals:
+
+  ```hcl
+  path = "sys/audit/stdout"
+  ```
+
+  or
+
+  ```hcl
+  data = {
+    type = "file"
+  }
+  ```
+
+- A data source evaluation. These take the form:
+
+  ```hcl
+  {
+    eval_source = "<source name>"
+    eval_type = "<resulting type>"
+    ... additional source-specific parameters ...
+  }
+  ```
+
+  where
+
+  - `eval_source` `(string: <required>)` - the name of the given source; valid
+    values are defined below.
+  - `eval_type` `(string: <required>)` - the output type after evaluation;
+    recognized Go types are `string`, `int`, `float64`, `bool`, `[]string`,
+    `map` (alias for `map[string]interface{}`), and `any` (alias for
+    `interface{}`). If the output of the source evaluation is not convertable
+    to the desired type, a runtime error will occur.
+
+Note that fields within a source evaluation statement may not be themselves
+be source evaluations.
+
+#### `env` source
+
+- `env_var` `(string: <required>)` - the name of an environment variable to
+  return the value of.
+- `require_present` `(bool: false)` - when asserted, require that the named
+  environment variable must be present and err otherwise.
+
+For example, to reference an initial admin password from an environment
+variable:
+
+```hcl
+initialize "identity" {
+  request "userpass-add-admin" {
+    operation = "update"
+    path = "auth/userpass/users/admin"
+    data = {
+      "password" = {
+        eval_type = "string"
+        eval_source = "env"
+        env_var = "INITIAL_ADMIN_PASSWORD"
+        require_present = true
+      }
+      "token_policies" = ["superuser"]
+    }
+  }
+}
+```
+
+#### `file` source
+
+- `path` `(string: <required>)` - the path to the file to read. This file is
+  only ever read once and is closed after use; thus a single piece of data
+  could be provided on `/dev/stdin`. Errs if the file is not readable.
+
+For example, to load a X.509 root CA into a PKI engine:
+
+```hcl
+initialize "ca-setup" {
+  request "provision-root-ca" {
+    operation = "update"
+    path = "pki/issuers/import/cert"
+    data = {
+      "pem_bundle" = {
+        eval_type = "string"
+        eval_source = "file"
+        path = "/data/root-ca.pem"
+      }
+    }
+  }
+}
+```
+#### `request` source
+
+- `initialize_name` `(string: <required>)` - name of the initialize block to
+  reference.
+- `request_name` `(string: <required>)` - name of the request block inside the
+  initialize block to reference. Must have already been executed.
+- `field_selector` `(string or []string: <required>)` - field within the request
+  to reference; for nesting, specify multiple values as a list. The request is
+  marshalled directly; for example, to reference the path, use
+  `field_selector = "path"`; to reference a specific field of input data, use
+  `field_selector = ["data", "my_top_level_field"]`.
+
+For example, to reference a previous request's input for a subsequent call:
+
+```hcl
+initialize "namespace-identity" {
+  request "namespace-userpass-add-admin" {
+    operation = "update"
+    path = "ns1/auth/userpass/users/admin"
+    data = {
+      "password" = {
+        eval_type = "string"
+        eval_source = "request"
+        initialize_name = "identity"
+        request_name = "userpass-add-admin"
+        field_selector = ["data", "password"]
+      }
+      "token_policies" = ["superuser"]
+    }
+  }
+}
+```
+
+#### `response` source
+
+- `initialize_name` `(string: <required>)` - name of the initialize block to
+  reference.
+- `request_name` `(string: <required>)` - name of the request block inside the
+  initialize block, to reference the corresponding response of. Must have
+  already been executed.
+- `field_selector` `(string or []string: <required>)` - field within the
+  response to reference; for nesting, specify multiple values as a list. The
+  response is marshalled directly; for example, to reference a specific field
+  of output data, use `field_selector = ["data", "my_top_level_field"]`.
+
+For example, to reference a login token in a subsequent call:
+
+```hcl
+initialize "example" {
+  request "use-auth" {
+    operation = "update"
+    path = "sys/namespaces/ns1"
+    token = {
+      eval_type = "string"
+      eval_source = "response"
+      initialize_name = "authenticate"
+      response_name = "admin-userpass"
+      field_selector = ["auth", "client_token"]
+    }
+    data = {}
+  }
+}

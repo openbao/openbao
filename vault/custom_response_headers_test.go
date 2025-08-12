@@ -5,7 +5,6 @@ package vault
 
 import (
 	"context"
-	"fmt"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -155,7 +154,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 		true,
 	)
 
-	if !strings.Contains(resp.Data["error"].(string), fmt.Sprintf("This header already exists in the server configuration and cannot be set in the UI.")) {
+	if !strings.Contains(resp.Data["error"].(string), "This header already exists in the server configuration and cannot be set in the UI.") {
 		t.Fatal("failed to get the expected error")
 	}
 

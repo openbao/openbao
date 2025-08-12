@@ -115,7 +115,7 @@ message ValidationOutput {
 
     // Warnings about the request or adjustments made by the CEL policy engine.
     // E.g., "common_name was empty so added example.com"
-    string warnings = 7;
+    repeated string warnings = 7;
 
     // For CSR:
     bytes subject_key_id = 8; // This value is auto-computed by certutil for generated keys.
@@ -133,47 +133,45 @@ message CertTemplate {
     google.protobuf.Timestamp NotAfter  = 4;
     KeyUsage KeyUsage = 5;
     
-    repeated PKIX.Extension Extensions = 6;
-    repeated PKIX.Extension ExtraExtensions = 7;
-    repeated ObjectIdentifier UnhandledCriticalExtensions = 8;
+    repeated PKIX.Extension ExtraExtensions = 6;
 
-    repeated ExtKeyUsage ExtKeyUsage = 9;
-    repeated ObjectIdentifier UnknownExtKeyUsage = 10;
+    repeated ExtKeyUsage ExtKeyUsage = 7;
+    repeated ObjectIdentifier UnknownExtKeyUsage = 8;
 
-    bool BasicConstraintsValid =11;
-    bool IsCA = 12;
+    bool BasicConstraintsValid = 9;
+    bool IsCA = 10;
 
-    int64 MaxPathLen = 13;
-    bool MaxPathLenZero = 14;
+    int64 MaxPathLen = 11;
+    bool MaxPathLenZero = 12;
 
-    bytes SubjectKeyId = 15;
+    bytes SubjectKeyId = 13;
 
-    repeated string DNSNames = 16;
-    repeated string EmailAddresses = 17;
-    repeated net.IP IPAddresses = 18;
-    repeated url.URL URIs = 19;
+    repeated string DNSNames = 14;
+    repeated string EmailAddresses = 15;
+    repeated net.IP IPAddresses = 16;
+    repeated url.URL URIs = 17;
 
     // Name constraints
-    bool PermittedDNSDomainsCritical = 20; // if true then the name constraints are marked critical.
-    repeated string PermittedDNSDomains = 21;
-    repeated string ExcludedDNSDomains = 22;
-    repeated net.IPNet PermittedIPRanges = 23;
-    repeated net.IPNet ExcludedIPRanges = 24;
-    repeated string PermittedEmailAddresses = 25;
-    repeated string ExcludedEmailAddresses = 26;
-    repeated string PermittedURIDomains = 27;
-    repeated string ExcludedURIDomains = 28;
+    bool PermittedDNSDomainsCritical = 18; // if true then the name constraints are marked critical.
+    repeated string PermittedDNSDomains = 19;
+    repeated string ExcludedDNSDomains = 20;
+    repeated net.IPNet PermittedIPRanges = 21;
+    repeated net.IPNet ExcludedIPRanges = 22;
+    repeated string PermittedEmailAddresses = 23;
+    repeated string ExcludedEmailAddresses = 24;
+    repeated string PermittedURIDomains = 25;
+    repeated string ExcludedURIDomains = 26;
 
-    repeated ObjectIdentifier PolicyIdentifiers = 29;
-    repeated OID Policies = 30;
+    repeated ObjectIdentifier PolicyIdentifiers = 27;
+    repeated OID Policies = 28;
 
-    int64 InhibitAnyPolicy = 31;
-    bool InhibitAnyPolicyZero = 32;
+    int64 InhibitAnyPolicy = 29;
+    bool InhibitAnyPolicyZero = 30;
 
-    int64 InhibitPolicyMapping = 33;
-    bool InhibitPolicyMappingZero = 34;
+    int64 InhibitPolicyMapping = 31;
+    bool InhibitPolicyMappingZero = 32;
 
-    int64 RequireExplicitPolicy = 35;
-    bool RequireExplicitPolicyZero = 36;
-    repeated PolicyMapping PolicyMappings = 37;
+    int64 RequireExplicitPolicy = 33;
+    bool RequireExplicitPolicyZero = 34;
+    repeated PolicyMapping PolicyMappings = 35;
 }

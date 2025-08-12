@@ -787,7 +787,7 @@ func setupNetwork(cli *docker.Client, netName string) (string, error) {
 }
 
 func createNetwork(cli *docker.Client, netName string) (string, error) {
-	resp, err := cli.NetworkCreate(context.Background(), netName, types.NetworkCreate{
+	resp, err := cli.NetworkCreate(context.Background(), netName, network.CreateOptions{
 		Driver:  "bridge",
 		Options: map[string]string{},
 		IPAM: &network.IPAM{

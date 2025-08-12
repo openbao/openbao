@@ -1,0 +1,163 @@
+---
+sidebar_label: Static Auto-Unseal
+description: |-
+  An RFC for OpenBao detailing a new auto-unseal mechanism supporting static
+  keys loaded from the environment.
+---
+
+# Automatic unseal using environment-provided keys
+
+## Summary
+
+Certain environments lack KMS or HSM systems but otherwise have a backing
+secure secret store. This store would usually be used for KMS or HSM access
+credentials and so relying on it for storing a static, auto-unseal key is of
+equivalent security but much improved operational experience.
+
+## Problem Statement
+
+In certain provisioning processes, secret material must be carefully accounted
+for. Deployment mechanisms may not have direct access to create new secrets;
+instead, they are explicitly created ahead of time and referenced by the
+provisioner. Some environments, such as Kubernetes, lack widely-deployed KMS or
+HSM solutions (though, when available, should be preferred) but have secure
+password or secret storage. Allowing auto-unseal with rotation with statically
+injected secrets is of equivalent security and thus should be natively supported
+as a fully-automated alternative to Shamir's or any roundabout approach with
+PKCS#11 and SoftHSM. Thus, to some extent, this approach already exists in two
+different forms, they are just _complex_ to operate.
+
+In particular, usage of a KMS or HSM in this environment would usually result
+in storing some connection information (such as certificate, token, or
+password) in this platform secret store and thus would be equivalent to a
+static but rotatable key as discussed more clearly in the [security
+implications](#security-implications) section below.
+
+## User-facing Description
+
+This option is meant to be used when other alternatives are not available,
+but a trusted base platform exists and a fully auto-unseal-able solution
+is required.
+
+OpenBao would support a new auto-unseal mechanism, `static`, as follows:
+
+```hcl
+seal "static" {
+    previous_key = "file:///volumes/secrets/last-unseal-key"
+    previous_key_id = "33c9886e-7c93-4252-bf7c-8b15f4fd937c"
+    current_key = "file:///volumes/secrets/current-unseal-key"
+    current_key_id = "0c94ff77-42b6-4de2-b27a-8f7c166fb162"
+}
+```
+
+This will [use](https://github.com/openbao/go-kms-wrapping/blob/1a1c5b0c79b112d9d08dadc53b4d98c7e5166397/options.go#L159-L181)
+`go-kms-wrapping`'s existing [`parseutil.ParsePath`](https://pkg.go.dev/github.com/hashicorp/go-secure-stdlib/parseutil#ParsePath)
+helpers, allowing the use of keys from either the environment (`env://`) or
+the filesystem (`file://`), in addition to literal explicit keys in raw,
+hex, or base64 encodings.
+
+The key identifiers (`previous_key_id` and `current_key_id`) must
+remain the same through the lifecycle of the corresponding key.
+
+Because key identifiers cannot be changed (as they are part of the
+configuration), keys are loaded in memory at startup and are not reloaded
+on SIGHUP currently. When [Parallel Unseal](https://github.com/openbao/openbao/issues/1021)
+lands, this could allow keys to be reloaded without requiring restarting
+the server.
+
+This does not change auto-unseal initialization processes; `/sys/init` will
+still need to be called and will return the same information.
+
+## Technical Description
+
+After loading the last and current keys, these keys will be validated to be
+AES-256 keys. The seal mechanism will only support AES-256 GCM-96, matching
+the barrier encryption algorithm at this time.
+
+In the future, additional encryption algorithms _may_ be supported but the
+default will remain.
+
+This choice of algorithm is both performant and secure for our use case.
+
+This unseal mechanism behaves like existing unseal mechanisms and will be
+implemented in [`go-kms-wrapping`](https://github.com/openbao/go-kms-wrapping).
+It **will not** directly [write `root` keys](https://github.com/openbao/openbao/issues/1021),
+and these will function as the parent auto-unseal device's keys, encrypting
+OpenBao's root key.
+
+## Rationale and Alternatives
+
+Two alternatives exist:
+
+1. Projects which automate manual unseal using Shamir's, like
+   [lrstanley/vault-unseal](https://github.com/lrstanley/vault-unseal) or
+   [quickvm/vault-unseal](https://github.com/quickvm/vault-unseal),
+   demonstrate the need for this type of solution and the propensity to
+   work around it. This type of mechanism is also used in
+   [bank-vaults](https://bank-vaults.dev/docs/concepts/unseal-keys/)
+   to solve the shortcomings there.
+2. For fully pre-configured key usage, one could script this today by
+   loading SoftHSMv2 alongside OpenBao and choose the PKCS#11 auto-unseal
+   mechanism. The executor could take the key material from the environment,
+   place it into a fresh SoftHSMv2 token, and write the dynamic portion of
+   the PKCS#11 HSM configuration prior to starting the OpenBao service.
+
+Combined, this demonstrates both need and viability of workarounds, justifying
+the simplicity.
+
+## Downsides
+
+The biggest downside of this approach is that it becomes more widely
+available: rather than a complex dance with PKCS#11 and SoftHSM, the risk
+is that this becomes a default option for users rather than a more dynamic
+alternative.
+
+However, given the operational simplicity of this over the SoftHSM solution,
+the benefits likely outweigh this downside.
+
+## Security Implications
+
+Precisely, the security delta becomes revocation and rotation of that key:
+while credentials injected into a secret store are theoretically revokable,
+a static encryption key is not. In practice, without seal wrapping, an
+attacker would only need a single successful decryption attempt of the root
+key with these exfiltrated credentials to reach an equivalent state. At that
+point any compromise of storage would result in equivalent loss of data
+confidentiality. All stored secrets would thus be equivalently rotated or
+re-established and operator recovery procedures would be the same between
+both implementations.
+
+If the host itself is not compromised, there may be an additional mitigation
+that KMSes and HSMs may be able to perform IP filtering, use a host-local
+communication method like PCIe, or other defensive mechanisms against
+exfiltration of credentials. If the platform itself is compromised in such a
+way that the secret store is compromised, an attacker _may_ have gotten
+sufficiently privileged credentials to also be able to pivot onto the
+OpenBao machine.
+
+On the whole, in most environments, it is expected that KMSs and HSMs are
+the preferred choice for auto-unseal.
+
+Using this auto-unseal method thus requires careful review of your
+operational environment to detail threat models and to assess the security
+of this mechanism.
+
+## User/Developer Experience
+
+Operators running on platforms with a pre-existing secret store and without
+KMS or HSM solutions will be able to define, ahead of OpenBao initialization,
+a static key with which to encrypt the root key. This key could be rotated
+as desired, assuming the current key is also still available. As long as these
+keys remain secure, storage will remain secure.
+
+## Unresolved Questions
+
+n/a
+
+## Related Issues
+
+- https://gitlab.com/gitlab-org/gitlab/-/issues/540882
+
+## Proof of Concept
+
+https://github.com/openbao/go-kms-wrapping/pull/31

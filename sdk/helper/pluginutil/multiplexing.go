@@ -7,9 +7,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/api/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -37,7 +37,7 @@ func MultiplexingSupported(ctx context.Context, cc grpc.ClientConnInterface, nam
 	}
 
 	out := strings.Split(api.ReadBaoVariable(PluginMultiplexingOptOut), ",")
-	if strutil.StrListContains(out, name) {
+	if slices.Contains(out, name) {
 		return false, nil
 	}
 

@@ -45,7 +45,7 @@ func TestOIDC_Path_OIDC_Cross_Provider_Exchange(t *testing.T) {
 	providerPath := "oidc/provider/test-provider-2"
 	req := testProviderReq(s, clientID)
 	req.Path = providerPath
-	resp, err := c.identityStore.HandleRequest(ctx, req)
+	_, err := c.identityStore.HandleRequest(ctx, req)
 	require.NoError(t, err)
 
 	// Obtain an authorization code from the first provider
@@ -55,7 +55,7 @@ func TestOIDC_Path_OIDC_Cross_Provider_Exchange(t *testing.T) {
 	}
 	req = testAuthorizeReq(s, clientID)
 	req.EntityID = entityID
-	resp, err = c.identityStore.HandleRequest(ctx, req)
+	resp, err := c.identityStore.HandleRequest(ctx, req)
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(resp.Data["http_raw_body"].([]byte), &authRes))
 	require.Regexp(t, authCodeRegex, authRes.Code)
@@ -3720,4 +3720,28 @@ func TestOIDC_Path_OpenIDProviderConfig_ProviderDoesNotExist(t *testing.T) {
 	if resp != expectedResp && err != nil {
 		t.Fatalf("expected empty response but got success; error:\n%v\nresp: %#v", err, resp)
 	}
+}
+
+// TestOIDC_lowercaseIdentityIDs tests the lowercaseIdentityIDs helper function.
+func TestOIDC_lowercaseIdentityIDs(t *testing.T) {
+	mock := []string{
+		"8e226D22-c816-5E00-5b5B-89401D705300.MgXgy3",
+		"818c8a5b-fbc4-6a36-17da-de199b773117.GRwtkZ",
+		"7c4125b3-b3ca-ec6c-1b5f-96e75dd6957e",
+		"9d2a2b65-0D89-62bB-8f19-6A2F0130E056",
+	}
+	expected := []string{
+		"8e226d22-c816-5e00-5b5b-89401d705300.MgXgy3",
+		"818c8a5b-fbc4-6a36-17da-de199b773117.GRwtkZ",
+		"7c4125b3-b3ca-ec6c-1b5f-96e75dd6957e",
+		"9d2a2b65-0d89-62bb-8f19-6a2f0130e056",
+	}
+
+	// test that helper does not mutate the original slice
+	lowercaseIdentityIDs(mock)
+	require.NotEqual(t, expected, mock, "should not mutate the original slice")
+
+	// test the helper
+	mock = lowercaseIdentityIDs(mock)
+	require.Equal(t, expected, mock)
 }

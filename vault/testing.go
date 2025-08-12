@@ -39,6 +39,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
+	"github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -228,6 +229,7 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	conf.DetectDeadlocks = opts.DetectDeadlocks
 	conf.AdministrativeNamespacePath = opts.AdministrativeNamespacePath
 	conf.ImpreciseLeaseRoleTracking = opts.ImpreciseLeaseRoleTracking
+	conf.UnsafeCrossNamespaceIdentity = opts.UnsafeCrossNamespaceIdentity
 
 	if opts.Logger != nil {
 		conf.Logger = opts.Logger
@@ -503,6 +505,31 @@ func TestCoreUnsealedBackend(t testing.T, backend physical.Backend) (*Core, [][]
 	})
 
 	return core, keys, token
+}
+
+func TestCoreUpgradeToKVv2(t testing.T, core *Core, token string) {
+	req := &logical.Request{
+		Path:        "sys/mounts/secret",
+		ClientToken: token,
+		Operation:   logical.DeleteOperation,
+	}
+
+	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	core.logicalBackends["kv"] = kv.VersionedKVFactory
+	core.logicalBackends["kv-v2"] = kv.VersionedKVFactory
+
+	req.Path = "sys/mounts/secret"
+	req.Operation = logical.UpdateOperation
+	req.Data = map[string]interface{}{
+		"type": "kv-v2",
+	}
+
+	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
 }
 
 // TestKeyCopy is a silly little function to just copy the key so that
@@ -1615,6 +1642,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 	if coreConfig.RawConfig == nil {
 		c := new(server.Config)
 		c.SharedConfig = &configutil.SharedConfig{LogFormat: logging.UnspecifiedFormat.String()}
+		c.UnsafeAllowAPIAuditCreation = true
 		coreConfig.RawConfig = c
 	}
 

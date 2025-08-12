@@ -374,7 +374,7 @@ func encodeRSAPublicKey(key *keysutil.KeyEntry, format string) (string, error) {
 		Bytes: derBytes,
 	}
 	pemBytes := pem.EncodeToMemory(pemBlock)
-	if pemBytes == nil || len(pemBytes) == 0 {
+	if len(pemBytes) == 0 {
 		return "", errors.New("failed to PEM-encode RSA public key")
 	}
 

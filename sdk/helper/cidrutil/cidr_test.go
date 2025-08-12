@@ -43,7 +43,7 @@ func TestCIDRUtil_IPBelongsToCIDR(t *testing.T) {
 
 	ip = "192.168.25.30.100"
 	cidr = "192.168.26.30/24"
-	belongs, err = IPBelongsToCIDR(ip, cidr)
+	_, err = IPBelongsToCIDR(ip, cidr)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -64,7 +64,7 @@ func TestCIDRUtil_IPBelongsToCIDRBlocksSlice(t *testing.T) {
 	ip = "192.168.27.29"
 	cidrList = []string{"172.169.100.200/18", "192.168.0.0.0/16", "10.10.20.20/24"}
 
-	belongs, err = IPBelongsToCIDRBlocksSlice(ip, cidrList)
+	_, err = IPBelongsToCIDRBlocksSlice(ip, cidrList)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -97,11 +97,17 @@ func TestCIDRUtil_ValidateCIDRListString(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error")
 	}
+	if valid {
+		t.Fatal("expected valid = false")
+	}
 
 	cidrList = "172.169.100.200/18,192.168.0.0.0/16,10.10.20.20/24"
 	valid, err = ValidateCIDRListString(cidrList, ",")
 	if err == nil {
 		t.Fatal("expected an error")
+	}
+	if valid {
+		t.Fatal("expected valid = false")
 	}
 }
 
@@ -121,11 +127,17 @@ func TestCIDRUtil_ValidateCIDRListSlice(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error")
 	}
+	if valid {
+		t.Fatal("expected valid = false")
+	}
 
 	cidrList = []string{"172.169.100.200/18", "192.168.0.0.0/16", "10.10.20.20/24"}
 	valid, err = ValidateCIDRListSlice(cidrList)
 	if err == nil {
 		t.Fatal("expected an error")
+	}
+	if valid {
+		t.Fatal("expected valid = false")
 	}
 }
 

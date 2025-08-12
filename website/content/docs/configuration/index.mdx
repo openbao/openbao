@@ -125,6 +125,9 @@ to specify where the configuration is.
   the read cache used by the physical storage subsystem. This will very
   significantly impact performance.
 
+- `initialize` `([Initialize][initialize]: <none>)` – Specifies one-time
+  declarative self-initialization.
+
 - `plugin_directory` `(string: "")` – A directory from which plugins are
   allowed to be loaded. OpenBao must have permission to read files in this
   directory to successfully load plugins, and the value cannot be a symbolic link.
@@ -223,9 +226,19 @@ can have a negative effect on performance due to the tracking of each lock attem
 
 - `log_rotate_max_files` - Equivalent to the [`-log-rotate-max-files` command-line flag](/docs/commands/server#_log_rotate_max_files).
 
-- `imprecise_lease_role_tracking` `(bool: "false")` - Skip lease counting by role if there are no role based quotas enabled.
+- `imprecise_lease_role_tracking` `(bool: false)` - Skip lease counting by role if there are no role based quotas enabled.
   When `imprecise_lease_role_tracking` is set to true and a new role-based quota is enabled, subsequent lease counts start from 0.
   `imprecise_lease_role_tracking` affects role-based lease count quotas, but reduces latencies when not using role based quotas.
+
+- `unsafe_allow_api_audit_creation` `(bool: false)` - Allow creating [audit devices](/docs/audit)
+  via the API. It is recommended to enable this option only temporarily when
+  needed. This option can be toggled at runtime by reloading the configuration
+  via SIGHUP.
+
+- `allow_audit_log_prefixing` `(bool: false)` - Allow creating [audit devices](/docs/audit)
+  that use the [`prefix` option](/docs/audit#common-configuration-options). Just
+  like the above option, this one is best toggled only temporarily to enable the
+  desired audit device.
 
 ### High Availability parameters
 
@@ -258,6 +271,7 @@ The following parameters are used on backends that support [High Availability][h
 [listener]: /docs/configuration/listener
 [seal]: /docs/configuration/seal
 [telemetry]: /docs/configuration/telemetry
+[initialize]: /docs/configuration/self-init
 [sentinel]: /docs/configuration/sentinel
 [high-availability]: /docs/concepts/ha
 [plugins]: /docs/plugins

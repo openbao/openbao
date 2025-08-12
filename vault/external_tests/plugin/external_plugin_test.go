@@ -196,7 +196,7 @@ func testExternalPlugin_ContinueOnError(t *testing.T, mismatch bool, pluginType 
 	req := logical.TestRequest(t, logical.ReadOperation, pluginPath)
 	req.ClientToken = core.Client.Token()
 	resp, err := core.HandleRequest(namespace.RootContext(testCtx), req)
-	if err != nil || resp == nil || (resp != nil && resp.IsError()) {
+	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
@@ -904,7 +904,7 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) 
 
 		auditResponse := map[string]interface{}{}
 		if req, ok := auditRecord["response"]; ok {
-			auditRequest = req.(map[string]interface{})
+			auditResponse = req.(map[string]interface{})
 			if auditResponse["path"] != "auth/"+plugin.Name+"/role/role1" {
 				continue
 			}

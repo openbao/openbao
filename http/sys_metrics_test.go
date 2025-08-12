@@ -99,3 +99,40 @@ func TestSysPProfUnauthenticated(t *testing.T) {
 	resp = testHttpGet(t, token, addr+"/v1/sys/pprof/cmdline")
 	testResponseStatus(t, resp, 200)
 }
+
+// TestSysRekeyUnauthenticated ensures that unauthenticated endpoints are
+// protected.
+func TestSysRekeyUnauthenticated(t *testing.T) {
+	conf := &vault.CoreConfig{}
+	core, _, token := vault.TestCoreUnsealedWithConfig(t, conf)
+	ln, addr := TestServer(t, core)
+	TestServerAuth(t, addr, token)
+
+	// Default: Allow unauthenticated access
+	resp := testHttpGet(t, "", addr+"/v1/sys/rekey/init")
+	testResponseStatus(t, resp, 200)
+	resp = testHttpGet(t, token, addr+"/v1/sys/rekey/init")
+	testResponseStatus(t, resp, 200)
+
+	// Close listener
+	ln.Close()
+
+	// Setup new custom listener denying unauthenticated rekey access
+	ln, addr = TestListener(t)
+	props := &vault.HandlerProperties{
+		Core: core,
+		ListenerConfig: &configutil.Listener{
+			DisableUnauthedRekeyEndpoints: true,
+		},
+	}
+	TestServerWithListenerAndProperties(t, ln, addr, core, props)
+	defer ln.Close()
+	TestServerAuth(t, addr, token)
+
+	// Testing with and without token should fail; we have completely removed
+	// the endpoint.
+	resp = testHttpGet(t, "", addr+"/v1/sys/rekey/init")
+	testResponseStatus(t, resp, 405)
+	resp = testHttpGet(t, token, addr+"/v1/sys/rekey/init")
+	testResponseStatus(t, resp, 405)
+}

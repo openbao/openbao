@@ -3,8 +3,7 @@ package kv
 import (
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/duration"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // deletionTime returns the time of creation plus the duration of the
@@ -25,17 +24,17 @@ func deletionTime(creation time.Time, mount, meta time.Duration) (time.Time, boo
 }
 
 type deleteVersionAfterGetter interface {
-	GetDeleteVersionAfter() *duration.Duration
+	GetDeleteVersionAfter() *durationpb.Duration
 }
 
 func deleteVersionAfter(v deleteVersionAfterGetter) time.Duration {
 	if v.GetDeleteVersionAfter() == nil {
 		return time.Duration(0)
 	}
-	dva, err := ptypes.Duration(v.GetDeleteVersionAfter())
-	if err != nil {
+	if err := v.GetDeleteVersionAfter().CheckValid(); err != nil {
 		return time.Duration(0)
 	}
+	dva := v.GetDeleteVersionAfter().AsDuration()
 	return dva
 }
 
@@ -54,7 +53,7 @@ func (c *Configuration) IsDeleteVersionAfterDisabled() bool {
 
 // DisableDeleteVersionAfter disables DeleteVersionAfter.
 func (c *Configuration) DisableDeleteVersionAfter() {
-	c.DeleteVersionAfter = ptypes.DurationProto(disabled)
+	c.DeleteVersionAfter = durationpb.New(disabled)
 }
 
 // ResetDeleteVersionAfter resets the DeleteVersionAfter to the default

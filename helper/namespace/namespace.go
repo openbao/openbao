@@ -14,6 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
@@ -37,15 +38,12 @@ type (
 )
 
 type Namespace struct {
-	ID        string `json:"id" mapstructure:"id"`
-	UUID      string `json:"uuid" mapstructure:"uuid"`
-	Path      string `json:"path" mapstructure:"path"`
-	Tainted   bool   `json:"tainted" mapstructure:"tainted"`
-	Locked    bool   `json:"-"`
-	UnlockKey string `json:"unlock_key" mapstructure:"unlock_key"`
-	// IsDeleting tracks whether there's an ongoing deletion process of the specified namespace
-	// If tainted is true, but IsDeleting not, then namespace deletion operation has to be retried.
-	IsDeleting     bool              `json:"-"`
+	ID             string            `json:"id" mapstructure:"id"`
+	UUID           string            `json:"uuid" mapstructure:"uuid"`
+	Path           string            `json:"path" mapstructure:"path"`
+	Tainted        bool              `json:"tainted" mapstructure:"tainted"`
+	Locked         bool              `json:"-"`
+	UnlockKey      string            `json:"unlock_key" mapstructure:"unlock_key"`
 	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
 }
 
@@ -104,7 +102,6 @@ var (
 		Path:           "",
 		Tainted:        false,
 		Locked:         false,
-		IsDeleting:     false,
 		CustomMetadata: make(map[string]string),
 	}
 )
@@ -156,7 +153,6 @@ func (n *Namespace) Clone(withUnlock bool) *Namespace {
 		Path:           n.Path,
 		Tainted:        n.Tainted,
 		Locked:         n.Locked,
-		IsDeleting:     n.IsDeleting,
 		CustomMetadata: meta,
 	}
 
@@ -165,6 +161,44 @@ func (n *Namespace) Clone(withUnlock bool) *Namespace {
 	}
 
 	return data
+}
+
+// GenerateUUID creates a UUID with a suffix representing the accessor of
+// this namespace, when not the root namespace. This is of the form:
+//
+//	<uuid>.<accessor>
+//
+// Namespaced UUIDs can be useful for cross-namespace lookup operations and
+// easy identification of which namespace a particular UUID belongs to. This
+// can be validated by ValidateUUID(...) against a particular namespace.
+func (n *Namespace) GenerateUUID() (string, error) {
+	u, err := uuid.GenerateUUID()
+	if err != nil {
+		return "", err
+	}
+
+	if n.ID != RootNamespaceID {
+		u = fmt.Sprintf("%v.%v", u, n.ID)
+	}
+
+	return u, nil
+}
+
+// ValidateUUID takes a candidate identifier and ensures that this identifier
+// matches this particular namespace. See ns.GenerateUUID(...) for expected
+// format.
+func (n *Namespace) ValidateUUID(candidate string) error {
+	u, id := SplitIDFromString(candidate)
+	_, err := uuid.ParseUUID(u)
+	if err != nil {
+		return fmt.Errorf("invalid uuid: %w", err)
+	}
+
+	if id != n.ID && (id != "" || n.ID != RootNamespaceID) {
+		return errors.New("identifier has suffix of different namespace than expected")
+	}
+
+	return nil
 }
 
 // ContextWithNamespace adds the given namespace to the given context

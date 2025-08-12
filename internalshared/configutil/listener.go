@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"net/textproto"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-sockaddr/template"
@@ -134,6 +134,15 @@ type Listener struct {
 	// Custom Http response headers
 	CustomResponseHeaders    map[string]map[string]string `hcl:"-"`
 	CustomResponseHeadersRaw interface{}                  `hcl:"custom_response_headers"`
+
+	// Whether to disable responding to unauthenticated rekey endpoints
+	// (via /sys/rekey/* and /sys/rekey-recovery-key/*) on this particular
+	// listener.
+	//
+	// This defaults to false, i.e., respond to requests; in the future when
+	// an authenticated variant with new semantics is available on a new
+	// endpoint, this will be set to true (disabling request handling).
+	DisableUnauthedRekeyEndpoints bool `hcl:"disable_unauthed_rekey_endpoints"`
 }
 
 // AgentAPI allows users to select which parts of the Agent API they want enabled.
@@ -416,7 +425,7 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 				l.CorsEnabledRaw = nil
 			}
 
-			if strutil.StrListContains(l.CorsAllowedOrigins, "*") && len(l.CorsAllowedOrigins) > 1 {
+			if slices.Contains(l.CorsAllowedOrigins, "*") && len(l.CorsAllowedOrigins) > 1 {
 				return multierror.Prefix(errors.New("cors_allowed_origins must only contain a wildcard or only non-wildcard values"), fmt.Sprintf("listeners.%d", i))
 			}
 

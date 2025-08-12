@@ -41,6 +41,4 @@ func (serviceWindows) Execute(args []string, r <-chan wsvc.ChangeRequest, s chan
 			return false, 0
 		}
 	}
-
-	return false, 0
 }

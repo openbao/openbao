@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -783,9 +784,13 @@ func (i *IdentityStore) pathOIDCCreateUpdateAssignment(ctx context.Context, req 
 		assignment.GroupIDs = d.Get("group_ids").([]string)
 	}
 
-	// remove duplicates and lowercase entities and groups
-	assignment.EntityIDs = strutil.RemoveDuplicates(assignment.EntityIDs, true)
-	assignment.GroupIDs = strutil.RemoveDuplicates(assignment.GroupIDs, true)
+	// lowercase UUID segments
+	assignment.EntityIDs = lowercaseIdentityIDs(assignment.EntityIDs)
+	assignment.GroupIDs = lowercaseIdentityIDs(assignment.GroupIDs)
+
+	// remove duplicates
+	assignment.EntityIDs = strutil.RemoveDuplicates(assignment.EntityIDs, false)
+	assignment.GroupIDs = strutil.RemoveDuplicates(assignment.GroupIDs, false)
 
 	// store assignment
 	entry, err := logical.StorageEntryJSON(assignmentPath+name, assignment)
@@ -945,7 +950,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateScope(ctx context.Context, req *logi
 		}
 
 		for key := range tmp {
-			if strutil.StrListContains(reservedClaims, key) {
+			if slices.Contains(reservedClaims, key) {
 				return logical.ErrorResponse(`top level key %q not allowed. Restricted keys: %s`,
 					key, strings.Join(reservedClaims, ", ")), nil
 			}
@@ -1640,7 +1645,7 @@ func (i *IdentityStore) keyIDsReferencedByTargetClientIDs(ctx context.Context, s
 	keyNames := make(map[string]bool)
 
 	// Get all key names referenced by clients if wildcard "*" in target client IDs
-	if strutil.StrListContains(targetIDs, "*") {
+	if slices.Contains(targetIDs, "*") {
 		clients, err := i.listClients(ctx, s)
 		if err != nil {
 			return nil, err
@@ -1739,7 +1744,7 @@ func (i *IdentityStore) pathOIDCAuthorize(ctx context.Context, req *logical.Requ
 
 	// Validate that a scope parameter is present and contains the openid scope value
 	requestedScopes := strutil.ParseDedupAndSortStrings(d.Get("scope").(string), scopesDelimiter)
-	if len(requestedScopes) == 0 || !strutil.StrListContains(requestedScopes, openIDScope) {
+	if len(requestedScopes) == 0 || !slices.Contains(requestedScopes, openIDScope) {
 		return authResponse("", state, ErrAuthInvalidRequest,
 			fmt.Sprintf("scope parameter must contain the %q value", openIDScope))
 	}
@@ -1747,7 +1752,7 @@ func (i *IdentityStore) pathOIDCAuthorize(ctx context.Context, req *logical.Requ
 	// Scope values that are not supported by the provider should be ignored
 	scopes := make([]string, 0)
 	for _, scope := range requestedScopes {
-		if strutil.StrListContains(provider.ScopesSupported, scope) && scope != openIDScope {
+		if slices.Contains(provider.ScopesSupported, scope) && scope != openIDScope {
 			scopes = append(scopes, scope)
 		}
 	}
@@ -1976,8 +1981,8 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	}
 
 	// Validate that the client is authorized to use the key
-	if !strutil.StrListContains(key.AllowedClientIDs, "*") &&
-		!strutil.StrListContains(key.AllowedClientIDs, clientID) {
+	if !slices.Contains(key.AllowedClientIDs, "*") &&
+		!slices.Contains(key.AllowedClientIDs, clientID) {
 		return tokenResponse(nil, ErrTokenInvalidClient, "client is not authorized to use the key")
 	}
 
@@ -2095,7 +2100,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 			}
 		`, name),
 	}
-	err = i.tokenStorer.CreateToken(ctx, accessToken)
+	err = i.tokenStorer.CreateToken(ctx, accessToken, true)
 	if err != nil {
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}
@@ -2301,7 +2306,7 @@ func (i *IdentityStore) pathOIDCUserInfo(ctx context.Context, req *logical.Reque
 	// Scope values that are not supported by the provider should be ignored
 	scopes := make([]string, 0)
 	for _, scope := range parsedScopes {
-		if strutil.StrListContains(provider.ScopesSupported, scope) {
+		if slices.Contains(provider.ScopesSupported, scope) {
 			scopes = append(scopes, scope)
 		}
 	}
@@ -2461,7 +2466,7 @@ func (i *IdentityStore) entityHasAssignment(ctx context.Context, s logical.Stora
 		return false, nil
 	}
 
-	if strutil.StrListContains(assignments, allowAllAssignmentName) {
+	if slices.Contains(assignments, allowAllAssignmentName) {
 		return true, nil
 	}
 
@@ -2492,7 +2497,7 @@ func (i *IdentityStore) entityHasAssignment(ctx context.Context, s logical.Stora
 		}
 
 		// Check if the entity is a member of the assignment's entities
-		if strutil.StrListContains(assignment.EntityIDs, entity.GetID()) {
+		if slices.Contains(assignment.EntityIDs, entity.GetID()) {
 			return true, nil
 		}
 	}
@@ -2632,7 +2637,12 @@ func (i *IdentityStore) lazyGenerateDefaultKey(ctx context.Context, storage logi
 }
 
 func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
-	i.logger.Debug("identity loading OIDC clients")
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	i.logger.Debug("identity loading OIDC clients", "namespace", ns.Path)
 
 	if err := i.validateCtx(ctx); err != nil {
 		return err

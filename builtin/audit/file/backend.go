@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -104,8 +105,23 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 		default:
 			mode = os.FileMode(m)
 
-		}
+			// Refuse setting an irregular file mode.
+			if !mode.IsRegular() {
+				return nil, errors.New("file mode does not represent a regular file")
+			}
 
+			const execBitMask = uint32(1<<32-1) ^ 0o111
+			//                  ---------------   -----
+			//                         ^            ^
+			//                     all ones         |
+			//                                      |
+			//                       set all 3 exec bits to zeroes
+
+			// Strip executable bits. Part of the exploit for HCSEC-2025-14 /
+			// CVE-2025-6000 / CVE-2025-54997 consists of abusing the ability
+			// to create executable files.
+			mode = mode & fs.FileMode(execBitMask)
+		}
 	}
 
 	b := &Backend{

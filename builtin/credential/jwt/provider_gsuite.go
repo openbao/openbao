@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	admin "google.golang.org/api/admin/directory/v1"
@@ -45,7 +45,7 @@ type GSuiteProviderConfig struct {
 	// without using a service account key. The service account vault is
 	// running under must be granted the `iam.serviceAccounts.signJwt`
 	// permission on this service account. If AdminImpersonateEmail is
-	// specifed, that Workspace user will be impersonated.
+	// specified, that Workspace user will be impersonated.
 	ImpersonatePrincipal string `mapstructure:"impersonate_principal"`
 
 	// If set to true, groups will be fetched from the Google Workspace

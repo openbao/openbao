@@ -16,11 +16,11 @@ import (
 	"time"
 
 	"github.com/caddyserver/certmagic"
+	"github.com/hashicorp/cli"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mholt/acmez/v3/acme"
-	"github.com/mitchellh/cli"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 

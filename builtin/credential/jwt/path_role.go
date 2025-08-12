@@ -620,7 +620,7 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 		// sanity check mappings for duplicates and collision with reserved names
 		targets := make(map[string]bool)
 		for _, metadataKey := range claimMappings {
-			if strutil.StrListContains(reservedMetadata, metadataKey) {
+			if slices.Contains(reservedMetadata, metadataKey) {
 				return logical.ErrorResponse("metadata key %q is reserved and may not be a mapping destination", metadataKey), nil
 			}
 

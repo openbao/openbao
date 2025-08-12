@@ -16,8 +16,8 @@ import (
 	"time"
 
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	"google.golang.org/protobuf/proto"
 
-	proto "github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -308,7 +308,7 @@ func (d *autoSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
 	}
 
 	// Check for a valid seal configuration
-	if err := conf.Validate(); err != nil {
+	if err := conf.ValidateRecovery(); err != nil {
 		d.logger.Error("invalid seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("%q seal validation failed: %w", sealType, err)
 	}

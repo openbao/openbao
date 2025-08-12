@@ -259,14 +259,14 @@ func mfaGenerateLoginDUOTest(client *api.Client) error {
 	if secret.Auth.MFARequirement.MFARequestID == "" {
 		return errors.New("MFARequirement contains empty MFARequestID")
 	}
-	if secret.Auth.MFARequirement.MFAConstraints == nil || len(secret.Auth.MFARequirement.MFAConstraints) == 0 {
+	if len(secret.Auth.MFARequirement.MFAConstraints) == 0 {
 		return errors.New("MFAConstraints is nil or empty")
 	}
 	mfaConstraints, ok := secret.Auth.MFARequirement.MFAConstraints["randomName"]
 	if !ok {
 		return errors.New("failed to find the mfaConstrains")
 	}
-	if mfaConstraints.Any == nil || len(mfaConstraints.Any) == 0 {
+	if len(mfaConstraints.Any) == 0 {
 		return errors.New("")
 	}
 	for _, mfaAny := range mfaConstraints.Any {

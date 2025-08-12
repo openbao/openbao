@@ -20,7 +20,4 @@ type ConnectionProducer interface {
 	Connection(context.Context) (interface{}, error)
 
 	sync.Locker
-
-	// DEPRECATED, will be removed in 0.12
-	Initialize(context.Context, map[string]interface{}, bool) error
 }

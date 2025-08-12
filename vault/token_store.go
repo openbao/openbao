@@ -13,13 +13,13 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/armon/go-metrics"
 	"github.com/armon/go-radix"
-	"github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -39,6 +39,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	"github.com/openbao/openbao/vault/tokens"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -727,12 +728,12 @@ func (c *Core) LookupToken(ctx context.Context, token string) (*logical.TokenEnt
 }
 
 // CreateToken creates the given token in the core's token store.
-func (c *Core) CreateToken(ctx context.Context, entry *logical.TokenEntry) error {
+func (c *Core) CreateToken(ctx context.Context, entry *logical.TokenEntry, persistToken bool) error {
 	if c.tokenStore == nil {
 		return errors.New("unable to create token with nil token store")
 	}
 
-	return c.tokenStore.create(ctx, entry)
+	return c.tokenStore.create(ctx, entry, persistToken)
 }
 
 // TokenStore is used to manage client tokens. Tokens are used for
@@ -989,7 +990,7 @@ func (ts *TokenStore) rootToken(ctx context.Context) (*logical.TokenEntry, error
 		NamespaceID:  namespace.RootNamespaceID,
 		Type:         logical.TokenTypeService,
 	}
-	if err := ts.create(ctx, te); err != nil {
+	if err := ts.create(ctx, te, true /* persist */); err != nil {
 		return nil, err
 	}
 	return te, nil
@@ -1038,7 +1039,7 @@ func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.R
 
 // createAccessor is used to create an identifier for the token ID.
 // A storage index, mapping the accessor to the token ID is also created.
-func (ts *TokenStore) createAccessor(ctx context.Context, entry *logical.TokenEntry) error {
+func (ts *TokenStore) createAccessor(ctx context.Context, entry *logical.TokenEntry, persistEntry bool) error {
 	defer metrics.MeasureSince([]string{"token", "createAccessor"}, time.Now())
 
 	var err error
@@ -1078,16 +1079,19 @@ func (ts *TokenStore) createAccessor(ctx context.Context, entry *logical.TokenEn
 		return fmt.Errorf("failed to marshal accessor index entry: %w", err)
 	}
 
-	le := &logical.StorageEntry{Key: saltID, Value: aEntryBytes}
-	if err := ts.accessorView(tokenNS).Put(ctx, le); err != nil {
-		return fmt.Errorf("failed to persist accessor index entry: %w", err)
+	if persistEntry {
+		le := &logical.StorageEntry{Key: saltID, Value: aEntryBytes}
+		if err := ts.accessorView(tokenNS).Put(ctx, le); err != nil {
+			return fmt.Errorf("failed to persist accessor index entry: %w", err)
+		}
 	}
+
 	return nil
 }
 
 // Create is used to create a new token entry. The entry is assigned
 // a newly generated ID if not provided.
-func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) error {
+func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry, persistToken bool) error {
 	defer metrics.MeasureSince([]string{"token", "create"}, time.Now())
 
 	tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
@@ -1176,15 +1180,18 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 			}
 		}
 
-		err = ts.createAccessor(ctx, entry)
+		err = ts.createAccessor(ctx, entry, persistToken)
 		if err != nil {
 			return err
 		}
 
-		err = ts.storeCommon(ctx, entry, true)
-		if err != nil {
-			return err
+		if persistToken {
+			err = ts.storeCommon(ctx, entry, true)
+			if err != nil {
+				return err
+			}
 		}
+
 		entry.ExternalID = entry.ID
 		if !userSelectedID && !ts.core.DisableSSCTokens() {
 			entry.ExternalID = ts.GenerateSSCTokenID(entry.ID, entry)
@@ -1687,6 +1694,11 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 		persistNeeded = true
 	}
 
+	if entry.EntityID != "" && entry.NamespaceID != namespace.RootNamespaceID && !strings.HasSuffix(entry.EntityID, entry.NamespaceID) {
+		entry.EntityID = fmt.Sprintf("%v.%v", entry.EntityID, entry.NamespaceID)
+		persistNeeded = true
+	}
+
 	// It's a root token with unlimited creation TTL (so never had an
 	// expiration); this may or may not have a lease (based on when it was
 	// generated, for later revocation purposes) but it doesn't matter, it's
@@ -1737,6 +1749,9 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 		if err != nil {
 			return nil, err
 		}
+
+		// Never persist if we're revoking.
+		persistNeeded = false
 
 	// Only return if we're not past lease expiration (or if tainted is true),
 	// otherwise assume expmgr is working on revocation
@@ -2653,7 +2668,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 			return logical.ErrorResponse("root or sudo privileges required to directly generate a token in a child namespace"), logical.ErrInvalidRequest
 		}
 
-		if strutil.StrListContains(policies, "root") {
+		if slices.Contains(policies, "root") {
 			return logical.ErrorResponse("root tokens may not be created from a parent namespace"), logical.ErrInvalidRequest
 		}
 	}
@@ -2735,7 +2750,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		entityAlias := strings.ToLower(entityAliasRaw)
 
 		// Check if there is a concrete match
-		if !strutil.StrListContains(role.AllowedEntityAliases, entityAlias) &&
+		if !slices.Contains(role.AllowedEntityAliases, entityAlias) &&
 			!strutil.StrListContainsGlob(role.AllowedEntityAliases, entityAlias) {
 			return logical.ErrorResponse("invalid 'entity_alias' value"), logical.ErrInvalidRequest
 		}
@@ -2875,7 +2890,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		// that roles, when allowed/disallowed ar set, allow a subset of
 		// policies to be set disjoint from the parent token's policies.
 		if !noDefaultPolicy && !role.TokenNoDefaultPolicy &&
-			!strutil.StrListContains(role.DisallowedPolicies, "default") &&
+			!slices.Contains(role.DisallowedPolicies, "default") &&
 			!strutil.StrListContainsGlob(role.DisallowedPoliciesGlob, "default") {
 			localAddDefault = true
 		}
@@ -2902,7 +2917,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 				sanitizedRolePoliciesGlob = policyutil.SanitizePolicies(role.AllowedPoliciesGlob, false)
 
 				for _, finalPolicy := range finalPolicies {
-					if !strutil.StrListContains(sanitizedRolePolicies, finalPolicy) &&
+					if !slices.Contains(sanitizedRolePolicies, finalPolicy) &&
 						!strutil.StrListContainsGlob(sanitizedRolePoliciesGlob, finalPolicy) {
 						return logical.ErrorResponse(fmt.Sprintf("token policies (%q) must be subset of the role's allowed policies (%q) or glob policies (%q)", finalPolicies, sanitizedRolePolicies, sanitizedRolePoliciesGlob)), logical.ErrInvalidRequest
 					}
@@ -2922,7 +2937,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 			sanitizedRolePoliciesGlob = strutil.RemoveDuplicates(role.DisallowedPoliciesGlob, true)
 
 			for _, finalPolicy := range finalPolicies {
-				if strutil.StrListContains(sanitizedRolePolicies, finalPolicy) ||
+				if slices.Contains(sanitizedRolePolicies, finalPolicy) ||
 					strutil.StrListContainsGlob(sanitizedRolePoliciesGlob, finalPolicy) {
 					return logical.ErrorResponse(fmt.Sprintf("token policy %q is disallowed by this role", finalPolicy)), logical.ErrInvalidRequest
 				}
@@ -2958,7 +2973,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		// add it. Note that if they have explicitly put "default" in
 		// data.Policies it will still be added because NoDefaultPolicy
 		// controls *automatic* adding.
-		if !noDefaultPolicy && strutil.StrListContains(parent.Policies, "default") {
+		if !noDefaultPolicy && slices.Contains(parent.Policies, "default") {
 			addDefault = true
 		}
 
@@ -2976,15 +2991,15 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 
 	// Prevent internal policies from being assigned to tokens
 	for _, policy := range te.Policies {
-		if strutil.StrListContains(nonAssignablePolicies, policy) {
+		if slices.Contains(nonAssignablePolicies, policy) {
 			return logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", policy)), nil
 		}
 	}
 
-	if strutil.StrListContains(te.Policies, "root") {
+	if slices.Contains(te.Policies, "root") {
 		// Prevent attempts to create a root token without an actual root token as parent.
 		// This is to thwart privilege escalation by tokens having 'sudo' privileges.
-		if !strutil.StrListContains(parent.Policies, "root") {
+		if !slices.Contains(parent.Policies, "root") {
 			return logical.ErrorResponse("root tokens may not be created without parent token being root"), logical.ErrInvalidRequest
 		}
 
@@ -3132,7 +3147,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	sysView := ts.System().(extendedSystemView)
 
 	// Only calculate a TTL if you are A) periodic, B) have a TTL, C) do not have a TTL and are not a root token
-	if periodToUse > 0 || te.TTL > 0 || (te.TTL == 0 && !strutil.StrListContains(te.Policies, "root")) {
+	if periodToUse > 0 || te.TTL > 0 || (te.TTL == 0 && !slices.Contains(te.Policies, "root")) {
 		ttl, warnings, err := framework.CalculateTTL(sysView, 0, te.TTL, periodToUse, 0, explicitMaxTTLToUse, time.Unix(te.CreationTime, 0))
 		if err != nil {
 			return nil, err
@@ -3162,7 +3177,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		resp.AddWarning("Supplying a custom ID for the token uses the weaker SHA1 hashing instead of the more secure SHA2-256 HMAC for token obfuscation. SHA1 hashed tokens on the wire leads to less secure lookups.")
 	}
 
-	if err := ts.create(ctx, &te); err != nil {
+	if err := ts.create(ctx, &te, true); err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
@@ -3751,9 +3766,9 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 	// we can return the same values that were set. We clear out the Token*
 	// values because otherwise when we read the role back we'll read stale
 	// data since if they're not emptied they'll take precedence.
-	periodRaw, ok := data.GetOk("token_period")
+	_, ok := data.GetOk("token_period")
 	if !ok {
-		periodRaw, ok = data.GetOk("period")
+		periodRaw, ok := data.GetOk("period")
 		if ok {
 			entry.Period = time.Second * time.Duration(periodRaw.(int))
 			entry.TokenPeriod = entry.Period
@@ -3761,17 +3776,15 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 	} else {
 		_, ok = data.GetOk("period")
 		if ok {
-			if resp == nil {
-				resp = &logical.Response{}
-			}
+			resp = &logical.Response{}
 			resp.AddWarning("Both 'token_period' and deprecated 'period' value supplied, ignoring the deprecated value")
 		}
 		entry.Period = 0
 	}
 
-	boundCIDRsRaw, ok := data.GetOk("token_bound_cidrs")
+	_, ok = data.GetOk("token_bound_cidrs")
 	if !ok {
-		boundCIDRsRaw, ok = data.GetOk("bound_cidrs")
+		boundCIDRsRaw, ok := data.GetOk("bound_cidrs")
 		if ok {
 			boundCIDRs, err := parseutil.ParseAddrs(boundCIDRsRaw.([]string))
 			if err != nil {
@@ -3792,9 +3805,9 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 	}
 
 	finalExplicitMaxTTL := entry.TokenExplicitMaxTTL
-	explicitMaxTTLRaw, ok := data.GetOk("token_explicit_max_ttl")
+	_, ok = data.GetOk("token_explicit_max_ttl")
 	if !ok {
-		explicitMaxTTLRaw, ok = data.GetOk("explicit_max_ttl")
+		explicitMaxTTLRaw, ok := data.GetOk("explicit_max_ttl")
 		if ok {
 			entry.ExplicitMaxTTL = time.Second * time.Duration(explicitMaxTTLRaw.(int))
 			entry.TokenExplicitMaxTTL = entry.ExplicitMaxTTL

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/armon/go-metrics"
-	"github.com/golang/protobuf/ptypes"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -23,6 +22,8 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/patrickmn/go-cache"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -143,9 +144,11 @@ func (i *IdentityStore) AddNamespaceView(core *Core, ns *namespace.Namespace, vi
 		return fmt.Errorf("failed to create group packer: %w", err)
 	}
 
-	nsView.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
-	if err != nil {
-		return err
+	if ns.ID == namespace.RootNamespaceID || !core.unsafeCrossNamespaceIdentity {
+		nsView.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
+		if err != nil {
+			return err
+		}
 	}
 
 	i.views.Store(ns.UUID, nsView)
@@ -154,6 +157,35 @@ func (i *IdentityStore) AddNamespaceView(core *Core, ns *namespace.Namespace, vi
 }
 
 func (i *IdentityStore) RemoveNamespaceView(ns *namespace.Namespace) error {
+	if ns.ID == namespace.RootNamespaceID {
+		return fmt.Errorf("refusing to remove root namespace from identity store")
+	}
+
+	view, ok := i.views.Load(ns.UUID)
+	if ok && view.(*identityStoreNamespaceView).db == nil {
+		rootView, ok := i.views.Load(namespace.RootNamespaceUUID)
+		if !ok {
+			return fmt.Errorf("failed to get root namespace db")
+		}
+
+		// Clean up all memdb entries associated with the namespace.
+		if err := func() error {
+			db := rootView.(*identityStoreNamespaceView).db
+			txn := db.Txn(true)
+			defer txn.Commit()
+
+			for _, table := range []string{entityAliasesTable, entitiesTable, groupsTable, groupAliasesTable, oidcClientsTable} {
+				if _, err := txn.DeleteAll(table, "namespace_id", ns.ID); err != nil {
+					return fmt.Errorf("failed to clean up %v: %w", table, err)
+				}
+			}
+
+			return nil
+		}(); err != nil {
+			return fmt.Errorf("failed to cleanup identity store: %w", err)
+		}
+	}
+
 	i.views.Delete(ns.UUID)
 
 	if err := i.oidcCache.Flush(ns); err != nil {
@@ -231,6 +263,16 @@ func (i *IdentityStore) db(ctx context.Context) *memdb.MemDB {
 	if err != nil {
 		i.logger.Error("failed to get db", "err", err)
 		return nil
+	}
+
+	if view.db == nil {
+		rootView, ok := i.views.Load(namespace.RootNamespaceUUID)
+		if !ok || rootView == nil {
+			i.logger.Error("failed to get root namespace db")
+			return nil
+		}
+
+		return rootView.(*identityStoreNamespaceView).db
 	}
 
 	return view.db
@@ -912,7 +954,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 
 		if bucket != nil {
 			for _, item := range bucket.Items {
-				group, err := i.parseGroupFromBucketItem(item)
+				group, err := i.parseGroupFromBucketItem(ctx, item)
 				if err != nil {
 					i.logger.Error("failed to parse group from bucket entry item", "error", err)
 					return
@@ -1024,7 +1066,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 				}
 
 				var localAliases identity.LocalAliases
-				err = ptypes.UnmarshalAny(item.Message, &localAliases)
+				err = item.Message.UnmarshalTo(&localAliases)
 				if err != nil {
 					i.logger.Error("failed to parse local aliases during invalidation", "error", err)
 					return
@@ -1076,21 +1118,56 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 }
 
 func (i *IdentityStore) parseLocalAliases(ctx context.Context, entityID string) (*identity.LocalAliases, error) {
-	item, err := i.localAliasPacker(ctx).GetItem(entityID)
-	if err != nil {
+	var localAliases *identity.LocalAliases
+	view := i.localAliasPacker(ctx).View()
+
+	if err := logical.WithTransaction(ctx, view, func(s logical.Storage) error {
+		item, err := i.localAliasPacker(ctx).GetItemWithStorage(s, entityID)
+		if err != nil {
+			return err
+		}
+		if item == nil {
+			return nil
+		}
+
+		localAliases = new(identity.LocalAliases)
+		err = item.Message.UnmarshalTo(localAliases)
+		if err != nil {
+			return err
+		}
+
+		persistNeeded := false
+		for _, alias := range localAliases.Aliases {
+			if alias.NamespaceID == "" {
+				alias.NamespaceID = namespace.RootNamespaceID
+			}
+
+			if alias.ID != "" && alias.NamespaceID != "" && alias.NamespaceID != namespace.RootNamespaceID && !strings.HasSuffix(alias.ID, alias.NamespaceID) {
+				alias.ID = fmt.Sprintf("%v.%v", alias.ID, alias.NamespaceID)
+				persistNeeded = true
+			}
+		}
+
+		if persistNeeded {
+			aliasesAsAny, err := anypb.New(localAliases)
+			if err != nil {
+				return err
+			}
+
+			item.Message = aliasesAsAny
+
+			err = i.localAliasPacker(ctx).PutItemWithStorage(ctx, s, item)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-	if item == nil {
-		return nil, nil
-	}
 
-	var localAliases identity.LocalAliases
-	err = ptypes.UnmarshalAny(item.Message, &localAliases)
-	if err != nil {
-		return nil, err
-	}
-
-	return &localAliases, nil
+	return localAliases, nil
 }
 
 func (i *IdentityStore) parseEntityFromBucketItem(ctx context.Context, item *storagepacker.Item) (*identity.Entity, error) {
@@ -1101,13 +1178,13 @@ func (i *IdentityStore) parseEntityFromBucketItem(ctx context.Context, item *sto
 	persistNeeded := false
 
 	var entity identity.Entity
-	err := ptypes.UnmarshalAny(item.Message, &entity)
+	err := item.Message.UnmarshalTo(&entity)
 	if err != nil {
 		// If we encounter an error, it would mean that the format of the
 		// entity is an older one. Try decoding using the older format and if
 		// successful, upgrage the storage with the newer format.
 		var oldEntity identity.EntityStorageEntry
-		oldEntityErr := ptypes.UnmarshalAny(item.Message, &oldEntity)
+		oldEntityErr := item.Message.UnmarshalTo(&oldEntity)
 		if oldEntityErr != nil {
 			return nil, fmt.Errorf("failed to decode entity from storage bucket item: %w", err)
 		}
@@ -1153,8 +1230,18 @@ func (i *IdentityStore) parseEntityFromBucketItem(ctx context.Context, item *sto
 		persistNeeded = true
 	}
 
+	if entity.NamespaceID == "" {
+		entity.NamespaceID = namespace.RootNamespaceID
+	}
+
+	oldId := entity.ID
+	if entity.ID != "" && entity.NamespaceID != "" && entity.NamespaceID != namespace.RootNamespaceID && !strings.HasSuffix(entity.ID, entity.NamespaceID) {
+		entity.ID = fmt.Sprintf("%v.%v", entity.ID, entity.NamespaceID)
+		persistNeeded = true
+	}
+
 	if persistNeeded {
-		entityAsAny, err := ptypes.MarshalAny(&entity)
+		entityAsAny, err := anypb.New(&entity)
 		if err != nil {
 			return nil, err
 		}
@@ -1165,14 +1252,33 @@ func (i *IdentityStore) parseEntityFromBucketItem(ctx context.Context, item *sto
 		}
 
 		// Store the entity with new format
-		err = i.entityPacker(ctx).PutItem(ctx, item)
-		if err != nil {
-			return nil, err
-		}
-	}
+		if oldId == entity.ID {
+			err = i.entityPacker(ctx).PutItem(ctx, item)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// We may have modified formats, but we likely just changed
+			// identifier. Make sure we update all aliases as well! We leave
+			// the updating of the actual aliases' identifiers to
+			// parseLocalAliases(...).
+			err = i.entityPacker(ctx).SwapItem(ctx, oldId, item)
+			if err != nil {
+				return nil, err
+			}
 
-	if entity.NamespaceID == "" {
-		entity.NamespaceID = namespace.RootNamespaceID
+			aliasItem, err := i.localAliasPacker(ctx).GetItem(oldId)
+			if err != nil {
+				return nil, err
+			}
+			if aliasItem != nil {
+				aliasItem.ID = item.ID
+				err = i.localAliasPacker(ctx).SwapItem(ctx, oldId, aliasItem)
+				if err != nil {
+					return nil, fmt.Errorf("error moving entity alias: %w", err)
+				}
+			}
+		}
 	}
 
 	return &entity, nil
@@ -1184,7 +1290,7 @@ func (i *IdentityStore) parseCachedEntity(item *storagepacker.Item) (*identity.E
 	}
 
 	var entity identity.Entity
-	err := ptypes.UnmarshalAny(item.Message, &entity)
+	err := item.Message.UnmarshalTo(&entity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode cached entity from storage bucket item: %w", err)
 	}
@@ -1196,19 +1302,47 @@ func (i *IdentityStore) parseCachedEntity(item *storagepacker.Item) (*identity.E
 	return &entity, nil
 }
 
-func (i *IdentityStore) parseGroupFromBucketItem(item *storagepacker.Item) (*identity.Group, error) {
+func (i *IdentityStore) parseGroupFromBucketItem(ctx context.Context, item *storagepacker.Item) (*identity.Group, error) {
 	if item == nil {
 		return nil, errors.New("nil item")
 	}
 
 	var group identity.Group
-	err := ptypes.UnmarshalAny(item.Message, &group)
+	err := item.Message.UnmarshalTo(&group)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode group from storage bucket item: %w", err)
 	}
 
 	if group.NamespaceID == "" {
 		group.NamespaceID = namespace.RootNamespaceID
+	}
+
+	persistNeeded := false
+	oldId := group.ID
+	if group.ID != "" && group.NamespaceID != "" && group.NamespaceID != namespace.RootNamespaceID && !strings.HasSuffix(group.ID, group.NamespaceID) {
+		group.ID = fmt.Sprintf("%v.%v", group.ID, group.NamespaceID)
+		persistNeeded = true
+	}
+
+	if persistNeeded {
+		groupAsAny, err := anypb.New(&group)
+		if err != nil {
+			return nil, err
+		}
+
+		item := &storagepacker.Item{
+			ID:      group.ID,
+			Message: groupAsAny,
+		}
+
+		if oldId == group.ID {
+			err = i.groupPacker(ctx).PutItem(ctx, item)
+		} else {
+			err = i.groupPacker(ctx).SwapItem(ctx, oldId, item)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &group, nil
@@ -1358,7 +1492,7 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 		}
 		a := entity.Aliases[idx]
 		a.Metadata = alias.Metadata
-		a.LastUpdateTime = ptypes.TimestampNow()
+		a.LastUpdateTime = timestamppb.Now()
 
 		update = true
 	}

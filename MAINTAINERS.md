@@ -24,6 +24,7 @@ See the information about community membership roles to learn about the role of 
 | Toni Tauro       | [@eyenx](https://github.com/eyenx) | [helm](https://github.com/openbao/openbao-helm), [csi-provider](https://github.com/openbao/openbao-csi-provider), [k8s](https://github.com/openbao/openbao-k8s), and [secrets-operator](https://github.com/openbao/openbao-secrets-operator) |
 | Wojciech Slabosz | [@wslabosz-reply](https://github.com/wslabosz-reply) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
 | Yannis           | [@Nerkho](https://github.com/Nerkho) | [helm](https://github.com/openbao/openbao-helm), [csi-provider](https://github.com/openbao/openbao-csi-provider), [k8s](https://github.com/openbao/openbao-k8s), and [secrets-operator](https://github.com/openbao/openbao-secrets-operator) |
+| Geoffrey Wilson  | [@suprjinx](https://github.com/suprjinx) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
 
 ## Organization-Level Moderators
 

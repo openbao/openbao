@@ -16,6 +16,7 @@ import (
 	"math"
 	mathrand "math/rand"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -24,7 +25,6 @@ import (
 	"github.com/go-jose/go-jose/v3/jwt"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
@@ -625,7 +625,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateKey(ctx context.Context, req *logica
 		key.Algorithm = d.Get("algorithm").(string)
 	}
 
-	if !strutil.StrListContains(supportedAlgs, key.Algorithm) {
+	if !slices.Contains(supportedAlgs, key.Algorithm) {
 		return logical.ErrorResponse("unknown signing algorithm %q", key.Algorithm), nil
 	}
 
@@ -927,7 +927,7 @@ func (i *IdentityStore) pathOIDCGenerateToken(ctx context.Context, req *logical.
 	}
 
 	// Validate that the role is allowed to sign with its key (the key could have been updated)
-	if !strutil.StrListContains(key.AllowedClientIDs, "*") && !strutil.StrListContains(key.AllowedClientIDs, role.ClientID) {
+	if !slices.Contains(key.AllowedClientIDs, "*") && !slices.Contains(key.AllowedClientIDs, role.ClientID) {
 		return logical.ErrorResponse("the key %q does not list the client ID of the role %q as an allowed client ID", role.Key, roleName), nil
 	}
 
@@ -1092,7 +1092,7 @@ func mergeJSONTemplates(logger hclog.Logger, output map[string]interface{}, temp
 		}
 
 		for k, v := range parsed {
-			if !strutil.StrListContains(reservedClaims, k) {
+			if !slices.Contains(reservedClaims, k) {
 				output[k] = v
 			} else {
 				logger.Warn("invalid top level OIDC template key", "template", template, "key", k)
@@ -1242,7 +1242,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateRole(ctx context.Context, req *logic
 		}
 
 		for key := range tmp {
-			if strutil.StrListContains(reservedClaims, key) {
+			if slices.Contains(reservedClaims, key) {
 				return logical.ErrorResponse(`top level key %q not allowed. Restricted keys: %s`,
 					key, strings.Join(reservedClaims, ", ")), nil
 			}
@@ -1894,7 +1894,7 @@ func (i *IdentityStore) expireOIDCPublicKeys(ctx context.Context, s logical.Stor
 	// Delete all public keys that were not determined to be not expired and in
 	// use by some role.
 	for _, keyID := range publicKeyIDs {
-		if !strutil.StrListContains(usedKeys, keyID) {
+		if !slices.Contains(usedKeys, keyID) {
 			if err := s.Delete(ctx, publicKeysConfigPath+keyID); err != nil {
 				i.Logger().Error("error deleting OIDC public key", "key_id", keyID, "error", err)
 				nextExpiration = now
@@ -2124,5 +2124,5 @@ func (c *oidcCache) Flush(ns *namespace.Namespace) error {
 // where <nsID> matches any targeted nsID
 func isTargetNamespacedKey(nskey string, nsTargets []string) bool {
 	split := strings.Split(nskey, ":")
-	return len(split) >= 3 && strutil.StrListContains(nsTargets, split[1])
+	return len(split) >= 3 && slices.Contains(nsTargets, split[1])
 }

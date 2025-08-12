@@ -677,6 +677,8 @@ func (c *AgentCommand) Run(args []string) int {
 			LogLevel:      c.logger.GetLevel(),
 			LogWriter:     c.logWriter,
 			AgentConfig:   c.config,
+			MinBackoff:    config.AutoAuth.Method.MinBackoff,
+			MaxBackoff:    config.AutoAuth.Method.MaxBackoff,
 			Namespace:     templateNamespace,
 			ExitAfterAuth: config.ExitAfterAuth,
 		})
@@ -759,7 +761,7 @@ func (c *AgentCommand) Run(args []string) int {
 	// Server configuration output
 	padding := 24
 	sort.Strings(infoKeys)
-	caser := cases.Title(language.English)
+	caser := cases.Title(language.English, cases.NoLower)
 	c.UI.Output("==> OpenBao Agent configuration:\n")
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(

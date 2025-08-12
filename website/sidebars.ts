@@ -60,6 +60,7 @@ const sidebars: SidebarsConfig = {
                 "concepts/tokens",
                 "concepts/identity",
                 "concepts/oidc-provider",
+                "concepts/profiles",
                 "concepts/response-wrapping",
                 "concepts/policies",
                 "concepts/password-policies",
@@ -80,8 +81,20 @@ const sidebars: SidebarsConfig = {
                 "concepts/duration-format",
                 "concepts/user-lockout",
             ],
+            Guides: [
+                {
+                    Unsealing: [
+                        {
+                            "PKCS#11": [
+                                "guides/unseal/pkcs11/securosys"
+                            ]
+                        }
+                    ]
+                }
+            ],
             Configuration: [
                 "configuration/index",
+                "configuration/self-init",
                 {
                     listener: [
                         "configuration/listener/index",
@@ -97,6 +110,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/kmip",
                         "configuration/seal/ocikms",
                         "configuration/seal/pkcs11",
+                        "configuration/seal/static",
                         "configuration/seal/transit",
                     ],
                     service_registration: [
@@ -177,6 +191,7 @@ const sidebars: SidebarsConfig = {
                         "commands/operator/seal",
                         "commands/operator/step-down",
                         "commands/operator/unseal",
+                        "commands/operator/validate-config",
                     ],
                 },
                 "commands/patch",
@@ -478,7 +493,7 @@ const sidebars: SidebarsConfig = {
         },
         "known-issues",
         {
-            "Deprecation Notices": ["deprecation/index", "deprecation/faq"],
+            "Deprecation Notices": ["deprecation/index", "deprecation/faq", "deprecation/unauthed-rekey"],
             Policies: [
                 "policies/index",
                 "policies/brand",
@@ -506,6 +521,17 @@ const sidebars: SidebarsConfig = {
                 "rfcs/acl-paginated-lists",
                 "rfcs/ssh-ca-multi-issuer",
                 "rfcs/cel-best-practices",
+                "rfcs/cel-pki",
+                "rfcs/cel-jwt",
+                "rfcs/filtering-list",
+                "rfcs/static-auto-unseal",
+                "rfcs/inline-auth",
+                "rfcs/authenticated-rekey",
+                "rfcs/self-init",
+                "rfcs/external-keys",
+                {
+                  "UI/UX": ["rfcs/web-ui-modernization"],
+                },
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

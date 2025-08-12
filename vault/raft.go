@@ -15,14 +15,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-discover"
 	discoverk8s "github.com/hashicorp/go-discover/provider/k8s"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
-	"github.com/mitchellh/mapstructure"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/physical/raft"
@@ -30,6 +29,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/seal"
 	"golang.org/x/net/http2"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -998,9 +998,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 			}
 			expandedJoinInfos = append(expandedJoinInfos, joinInfos...)
 		}
-		if err != nil {
-			return err
-		}
+
 		var wg sync.WaitGroup
 		for i := range expandedJoinInfos {
 			wg.Add(1)

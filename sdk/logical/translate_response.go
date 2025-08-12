@@ -136,7 +136,7 @@ func (h HTTPSysInjector) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	// Fast path no data or empty data
-	if h.Response.Data == nil || len(h.Response.Data) == 0 {
+	if len(h.Response.Data) == 0 {
 		return j, nil
 	}
 	// Marshaling a response will always be a JSON object, meaning it will

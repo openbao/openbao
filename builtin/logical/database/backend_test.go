@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
 	_ "github.com/jackc/pgx/v5"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/namespace"
@@ -78,58 +78,6 @@ func TestBackend_PluginMain_PostgresMultiplexed(t *testing.T) {
 	}
 
 	v5.ServeMultiplex(postgresql.New)
-}
-
-func TestBackend_RoleUpgrade(t *testing.T) {
-	storage := &logical.InmemStorage{}
-	backend := &databaseBackend{}
-
-	roleExpected := &roleEntry{
-		Statements: v4.Statements{
-			CreationStatements: "test",
-			Creation:           []string{"test"},
-		},
-	}
-
-	entry, err := logical.StorageEntryJSON("role/test", &roleEntry{
-		Statements: v4.Statements{
-			CreationStatements: "test",
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := storage.Put(context.Background(), entry); err != nil {
-		t.Fatal(err)
-	}
-
-	role, err := backend.Role(context.Background(), storage, "test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !reflect.DeepEqual(role, roleExpected) {
-		t.Fatalf("bad role %#v, %#v", role, roleExpected)
-	}
-
-	// Upgrade case
-	badJSON := `{"statments":{"creation_statments":"test","revocation_statements":"","rollback_statements":"","renew_statements":""}}`
-	entry = &logical.StorageEntry{
-		Key:   "role/test",
-		Value: []byte(badJSON),
-	}
-	if err := storage.Put(context.Background(), entry); err != nil {
-		t.Fatal(err)
-	}
-
-	role, err = backend.Role(context.Background(), storage, "test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !reflect.DeepEqual(role, roleExpected) {
-		t.Fatalf("bad role %#v, %#v", role, roleExpected)
-	}
 }
 
 func TestBackend_config_connection(t *testing.T) {

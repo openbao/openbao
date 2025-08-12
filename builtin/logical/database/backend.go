@@ -13,13 +13,11 @@ import (
 
 	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 	v4 "github.com/openbao/openbao/sdk/v2/database/dbplugin"
 	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -243,21 +241,6 @@ func (b *databaseBackend) DatabaseConfig(ctx context.Context, s logical.Storage,
 	return &config, nil
 }
 
-type upgradeStatements struct {
-	// This json tag has a typo in it, the new version does not. This
-	// necessitates this upgrade logic.
-	CreationStatements   string `json:"creation_statments"`
-	RevocationStatements string `json:"revocation_statements"`
-	RollbackStatements   string `json:"rollback_statements"`
-	RenewStatements      string `json:"renew_statements"`
-}
-
-type upgradeCheck struct {
-	// This json tag has a typo in it, the new version does not. This
-	// necessitates this upgrade logic.
-	Statements *upgradeStatements `json:"statments,omitempty"`
-}
-
 func (b *databaseBackend) Role(ctx context.Context, s logical.Storage, roleName string) (*roleEntry, error) {
 	return b.roleAtPath(ctx, s, roleName, databaseRolePath)
 }
@@ -266,17 +249,9 @@ func (b *databaseBackend) StaticRole(ctx context.Context, s logical.Storage, rol
 	return b.roleAtPath(ctx, s, roleName, databaseStaticRolePath)
 }
 
-func (b *databaseBackend) roleAtPath(ctx context.Context, s logical.Storage, roleName string, pathPrefix string) (*roleEntry, error) {
+func (b *databaseBackend) roleAtPath(ctx context.Context, s logical.Storage, roleName, pathPrefix string) (*roleEntry, error) {
 	entry, err := s.Get(ctx, pathPrefix+roleName)
-	if err != nil {
-		return nil, err
-	}
-	if entry == nil {
-		return nil, nil
-	}
-
-	var upgradeCh upgradeCheck
-	if err := entry.DecodeJSON(&upgradeCh); err != nil {
+	if err != nil || entry == nil {
 		return nil, err
 	}
 
@@ -284,30 +259,6 @@ func (b *databaseBackend) roleAtPath(ctx context.Context, s logical.Storage, rol
 	if err := entry.DecodeJSON(&result); err != nil {
 		return nil, err
 	}
-
-	switch {
-	case upgradeCh.Statements != nil:
-		var stmts v4.Statements
-		if upgradeCh.Statements.CreationStatements != "" {
-			stmts.Creation = []string{upgradeCh.Statements.CreationStatements}
-		}
-		if upgradeCh.Statements.RevocationStatements != "" {
-			stmts.Revocation = []string{upgradeCh.Statements.RevocationStatements}
-		}
-		if upgradeCh.Statements.RollbackStatements != "" {
-			stmts.Rollback = []string{upgradeCh.Statements.RollbackStatements}
-		}
-		if upgradeCh.Statements.RenewStatements != "" {
-			stmts.Renewal = []string{upgradeCh.Statements.RenewStatements}
-		}
-		result.Statements = stmts
-	}
-
-	result.Statements.Revocation = strutil.RemoveEmpty(result.Statements.Revocation)
-
-	// For backwards compatibility, copy the values back into the string form
-	// of the fields
-	result.Statements = dbutil.StatementCompatibilityHelper(result.Statements)
 
 	return &result, nil
 }

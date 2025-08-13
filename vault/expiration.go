@@ -449,22 +449,6 @@ func (c *Core) stopExpiration() error {
 	return nil
 }
 
-func (m *ExpirationManager) leaseViewFromLeaseID(ctx context.Context, leaseID string) BarrierView {
-	// Get the namespace from the lease ID
-	_, nsID := namespace.SplitIDFromString(leaseID)
-	if nsID == "" {
-		return m.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
-	}
-
-	ns, err := m.core.NamespaceByID(m.quitContext, nsID)
-	if err != nil {
-		m.logger.Error("failed to get namespace from lease ID", "error", err, "lease_id", leaseID)
-		return nil
-	}
-
-	return m.leaseView(ctx, ns)
-}
-
 func (m *ExpirationManager) leaseView(ctx context.Context, ns *namespace.Namespace) BarrierView {
 	if tx, err := logical.TransactionFromContext(ctx); err == nil && tx != nil {
 		return tx.(BarrierViewTransaction)
@@ -474,22 +458,6 @@ func (m *ExpirationManager) leaseView(ctx context.Context, ns *namespace.Namespa
 		return m.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
 	}
 	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+leaseViewPrefix)
-}
-
-func (m *ExpirationManager) tokenIndexViewFromToken(token string) BarrierView {
-	// Get the namespace from the token ID
-	_, nsID := namespace.SplitIDFromString(token)
-	if nsID == "" {
-		return m.core.systemBarrierView.SubView(expirationSubPath + tokenViewPrefix)
-	}
-
-	ns, err := m.core.NamespaceByID(m.quitContext, nsID)
-	if err != nil {
-		m.logger.Error("failed to get namespace from token", "error", err)
-		return nil
-	}
-
-	return m.tokenIndexView(ns)
 }
 
 func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) BarrierView {
@@ -2054,14 +2022,6 @@ func (m *ExpirationManager) loadEntry(ctx context.Context, leaseID string) (*lea
 		m.deleteLockForLease(leaseID)
 	}
 	return leaseEntry, err
-}
-
-func (m *ExpirationManager) namespaceFromLeaseID(ctx context.Context, leaseID string) (*namespace.Namespace, error) {
-	_, nsID := namespace.SplitIDFromString(leaseID)
-	if nsID != "" {
-		return m.core.NamespaceByID(ctx, nsID)
-	}
-	return nil, errors.New("namespace not found in leaseID")
 }
 
 // loadEntryInternal is used when you need to load an entry but also need to

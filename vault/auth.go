@@ -667,12 +667,8 @@ func (c *Core) loadCredentialsForNamespace(ctx context.Context, ns *namespace.Na
 // loadLegacyCredentialsForNamespace is used to load the auth mounts of a namespace on a legacy single-entry
 // format from a non-transactional storage to the mount table
 func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
-	if ns == nil {
-		return fmt.Errorf("namespace is nil")
-	}
-
-	if c.IsNSSealed(ns) {
-		return fmt.Errorf("namespace is sealed")
+	if c.NamespaceSealed(ns) {
+		return ErrNamespaceSealed
 	}
 
 	view := c.NamespaceView(ns)
@@ -717,12 +713,8 @@ func (c *Core) loadLegacyCredentialsForNamespace(ctx context.Context, ns *namesp
 // loadTransactionalCredentialsForNamespace is used to load the auth mounts of a namespace on a transactional
 // storage to the mount table
 func (c *Core) loadTransactionalCredentialsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
-	if ns == nil {
-		return fmt.Errorf("namespace is nil")
-	}
-
-	if c.IsNSSealed(ns) {
-		return fmt.Errorf("namespace is sealed")
+	if c.NamespaceSealed(ns) {
+		return ErrNamespaceSealed
 	}
 
 	view := c.NamespaceView(ns)
@@ -819,7 +811,7 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 
 		unsealedAuthMounts := make([]*MountEntry, 0)
 		for _, entry := range c.auth.Entries {
-			if c.IsNSSealed(entry.namespace) {
+			if c.NamespaceSealed(entry.namespace) {
 				continue
 			}
 			unsealedAuthMounts = append(unsealedAuthMounts, entry)
@@ -835,7 +827,7 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 		if localAuthTable != nil && len(localAuthTable.Entries) > 0 {
 			c.tableMetrics(len(localAuthTable.Entries), true, true, len(rawLocal.Value))
 			for _, entry := range localAuthTable.Entries {
-				if c.IsNSSealed(entry.namespace) {
+				if c.NamespaceSealed(entry.namespace) {
 					continue
 				}
 				c.auth.Entries = append(c.auth.Entries, entry)

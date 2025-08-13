@@ -134,6 +134,9 @@ func (sm *SealManager) StorageAccessForPath(path string) StorageAccess {
 
 // SealNamespace seals the barriers of the given namespace and all of its children.
 func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespace) error {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
 	var errs error
 	sm.barrierByNamespace.WalkPrefix(ns.Path, func(p string, v any) bool {
 		s := v.(SecurityBarrier)
@@ -181,14 +184,18 @@ func (sm *SealManager) ParentNamespaceBarrier(ns *namespace.Namespace) SecurityB
 // NamespaceBarrierByLongestPrefix returns a barrier of a namespace matching
 // the longest prefix of the provided path, going up to root namespace.
 func (sm *SealManager) NamespaceBarrierByLongestPrefix(nsPath string) SecurityBarrier {
-	// this should acquire a lock
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
 	_, v, _ := sm.barrierByNamespace.LongestPrefix(nsPath)
 	return v.(SecurityBarrier)
 }
 
 // NamespaceBarrier returns a barrier of a namespace with provided path.
 func (sm *SealManager) NamespaceBarrier(nsPath string) SecurityBarrier {
-	// this should acquire a lock
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
 	v, exists := sm.barrierByNamespace.Get(nsPath)
 	if !exists {
 		return nil
@@ -197,14 +204,11 @@ func (sm *SealManager) NamespaceBarrier(nsPath string) SecurityBarrier {
 	return v.(SecurityBarrier)
 }
 
-// SecretProgress returns the number of keys provided so far. Lock
-// should only be false if the caller is already holding the read
-// statelock (such as calls originating from switchedLockHandleRequest).
-func (sm *SealManager) SecretProgress(ns *namespace.Namespace, lock bool) (int, string) {
-	if lock {
-		sm.lock.RLock()
-		defer sm.lock.RUnlock()
-	}
+// SecretProgress returns the number of keys provided so far.
+func (sm *SealManager) SecretProgress(ns *namespace.Namespace) (int, string) {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
 	switch sm.unlockInformationByNamespace[ns.UUID]["default"] {
 	case nil:
 		return 0, ""
@@ -213,9 +217,9 @@ func (sm *SealManager) SecretProgress(ns *namespace.Namespace, lock bool) (int, 
 	}
 }
 
-func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespace, lock bool) (*SealStatusResponse, error) {
+func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespace) (*SealStatusResponse, error) {
 	// Verify that any kind of seal exists for a namespace
-	seals, ok := sm.sealsByNamespace[ns.UUID]
+	seal, ok := sm.sealsByNamespace[ns.UUID]["default"]
 	if !ok {
 		return nil, errors.New("namespace is not sealable")
 	}
@@ -232,7 +236,6 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 		return nil, ErrBarrierNotInit
 	}
 
-	seal := seals["default"]
 	// Verify the seal configuration
 	sealConf, err := seal.Config(ctx)
 	if err != nil {
@@ -242,7 +245,7 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 		return nil, errors.New("namespace barrier reports initialized but no seal configuration found")
 	}
 
-	progress, nonce := sm.SecretProgress(ns, lock)
+	progress, nonce := sm.SecretProgress(ns)
 
 	s := &SealStatusResponse{
 		Type:        sealConf.Type,
@@ -305,8 +308,7 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 		return err
 	}
 
-	// allow missing?
-	rootKey, err := sm.unsealKeyToRootKey(ctx, seal, combinedKey, true)
+	rootKey, err := sm.unsealKeyToRootKey(ctx, seal, combinedKey, false, true)
 	if err != nil {
 		return err
 	}
@@ -390,52 +392,57 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 // if using an autoseal or an unseal key with Shamir. It returns a nil error
 // if the key is valid and an error otherwise. It also returns the root key
 // that can be used to unseal the barrier.
+// If useTestSeal is true, seal will not be modified; this is used when not
+// invoked as part of an unseal process. Otherwise in the non-legacy shamir
+// case the combinedKey will be set in the seal, which means subsequent attempts
+// to use the seal to read the root key will succeed, assuming combinedKey is
+// valid.
 // If allowMissing is true, a failure to find the root key in storage results
 // in a nil error and a nil root key being returned.
-func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, allowMissing bool) ([]byte, error) {
+func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
 	switch seal.StoredKeysSupported() {
 	case vaultseal.StoredKeysSupportedGeneric:
 		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
 			return nil, fmt.Errorf("recovery key verification failed: %w", err)
 		}
-
-		storedKeys, err := seal.GetStoredKeys(ctx)
-		if storedKeys == nil && err == nil && allowMissing {
-			return nil, nil
-		}
-
-		if err == nil && len(storedKeys) != 1 {
-			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
-		}
-		return storedKeys[0], nil
 	case vaultseal.StoredKeysSupportedShamirRoot:
+		if useTestSeal {
+			testseal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
+			testseal.SetCore(sm.core)
+			cfg, err := seal.Config(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to setup test barrier config: %w", err)
+			}
+			testseal.SetCachedConfig(cfg)
+			seal = testseal
+		}
+
 		shamirWrapper, err := seal.GetShamirWrapper()
 		if err != nil {
 			return nil, err
 		}
 
-		err = shamirWrapper.SetAesGcmKeyBytes(combinedKey)
-		if err != nil {
+		if err = shamirWrapper.SetAesGcmKeyBytes(combinedKey); err != nil {
 			return nil, &ErrInvalidKey{fmt.Sprintf("failed to setup unseal key: %v", err)}
 		}
-
-		storedKeys, err := seal.GetStoredKeys(ctx)
-		if storedKeys == nil && err == nil && allowMissing {
-			return nil, nil
-		}
-
-		if err == nil && len(storedKeys) != 1 {
-			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
-		}
-		return storedKeys[0], nil
+	default:
+		return nil, errors.New("invalid seal")
 	}
-	return nil, errors.New("invalid seal")
+
+	storedKeys, err := seal.GetStoredKeys(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
+	}
+
+	if allowMissing && storedKeys == nil {
+		return nil, nil
+	}
+
+	if len(storedKeys) != 1 {
+		return nil, fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
+	}
+
+	return storedKeys[0], nil
 }
 
 // NamespaceView finds the correct barrier to use for the namespace

@@ -8,6 +8,19 @@ import (
 	"net/http"
 )
 
+type GenerateRootStatusResponse struct {
+	Nonce            string `json:"nonce"`
+	Started          bool   `json:"started"`
+	Progress         int    `json:"progress"`
+	Required         int    `json:"required"`
+	Complete         bool   `json:"complete"`
+	EncodedToken     string `json:"encoded_token"`
+	EncodedRootToken string `json:"encoded_root_token"`
+	PGPFingerprint   string `json:"pgp_fingerprint"`
+	OTP              string `json:"otp"`
+	OTPLength        int    `json:"otp_length"`
+}
+
 func (c *Sys) GenerateRootStatus() (*GenerateRootStatusResponse, error) {
 	return c.GenerateRootStatusWithContext(context.Background())
 }
@@ -150,17 +163,4 @@ func (c *Sys) generateRootUpdateCommonWithContext(ctx context.Context, path, sha
 	var result GenerateRootStatusResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
-}
-
-type GenerateRootStatusResponse struct {
-	Nonce            string `json:"nonce"`
-	Started          bool   `json:"started"`
-	Progress         int    `json:"progress"`
-	Required         int    `json:"required"`
-	Complete         bool   `json:"complete"`
-	EncodedToken     string `json:"encoded_token"`
-	EncodedRootToken string `json:"encoded_root_token"`
-	PGPFingerprint   string `json:"pgp_fingerprint"`
-	OTP              string `json:"otp"`
-	OTPLength        int    `json:"otp_length"`
 }

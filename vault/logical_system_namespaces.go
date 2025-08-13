@@ -98,8 +98,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["list-namespaces"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["list-namespaces"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesHelp["list-namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesHelp["list-namespaces"][1]),
 		},
 
 		{
@@ -133,8 +133,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-lock"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces-lock"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesHelp["namespaces-lock"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesHelp["namespaces-lock"][1]),
 		},
 
 		{
@@ -167,8 +167,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-unlock"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces-unlock"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesHelp["namespaces-unlock"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesHelp["namespaces-unlock"][1]),
 		},
 
 		{
@@ -231,8 +231,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesHelp["namespaces"][1]),
 		},
 	}
 }
@@ -535,4 +535,55 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			},
 		}, nil
 	}
+}
+
+var sysNamespacesHelp = map[string][2]string{
+	"list-namespaces": {
+		"List namespaces.",
+		`
+This path responds to the following HTTP methods.
+
+	LIST /
+		List namespaces.
+
+	SCAN /
+		Scan (recursively list) namespaces.
+		`,
+	},
+	"namespaces": {
+		"Create, read, update and delete namespaces.",
+		`
+This path responds to the following HTTP methods.
+
+	GET /<name>
+		Retrieve a namespace.
+
+	PUT /<name>
+		Create or update a namespace.
+
+	PATCH /<name>
+		Update a namespace's custom metadata.
+
+	DELETE /<name>
+		Delete a namespace.
+		`,
+	},
+	"namespaces-lock": {
+		"Lock a namespace.",
+		`
+This path responds to the following HTTP methods.
+
+	PUT /<name>
+		Lock the API for a namespace.
+		`,
+	},
+	"namespaces-unlock": {
+		"Unlock a namespace.",
+		`
+This path responds to the following HTTP methods.
+
+	PUT /<name>
+		Unlock the API for a namespace.
+		`,
+	},
 }

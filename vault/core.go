@@ -823,7 +823,6 @@ type CoreConfig struct {
 type NamespaceRootGeneration struct {
 	Config   *GenerateRootConfig
 	Progress [][]byte
-	Lock     sync.Mutex
 }
 
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
@@ -1458,10 +1457,9 @@ func (c *Core) Sealed() bool {
 	return atomic.LoadUint32(c.sealed) == 1
 }
 
-// IsNSSealed checks if there's a namespace in upwards namespace
-// hierarchy that is currently sealed, which should only happen
-// if the current namespace is not sealable, but its ancestors are.
-func (c *Core) IsNSSealed(ns *namespace.Namespace) bool {
+// NamespaceSealed checks if there's a namespace
+// (in direct ancestry line) that is currently sealed.
+func (c *Core) NamespaceSealed(ns *namespace.Namespace) bool {
 	return c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path).Sealed()
 }
 
@@ -2897,77 +2895,11 @@ func (c *Core) adjustSealConfigDuringMigration(existBarrierSealConfig, existReco
 }
 
 func (c *Core) unsealKeyToRootKeyPostUnseal(ctx context.Context, combinedKey []byte) ([]byte, error) {
-	return c.unsealKeyToRootKey(ctx, c.seal, combinedKey, true, false)
+	return c.sealManager.unsealKeyToRootKey(ctx, c.seal, combinedKey, true, false)
 }
 
 func (c *Core) unsealKeyToRootKeyPreUnseal(ctx context.Context, seal Seal, combinedKey []byte) ([]byte, error) {
-	return c.unsealKeyToRootKey(ctx, seal, combinedKey, false, true)
-}
-
-// unsealKeyToRootKey takes a key provided by the user, either a recovery key
-// if using an autoseal or an unseal key with Shamir.  It returns a nil error
-// if the key is valid and an error otherwise. It also returns the root key
-// that can be used to unseal the barrier.
-// If useTestSeal is true, seal will not be modified; this is used when not
-// invoked as part of an unseal process.  Otherwise in the non-legacy shamir
-// case the combinedKey will be set in the seal, which means subsequent attempts
-// to use the seal to read the root key will succeed, assuming combinedKey is
-// valid.
-// If allowMissing is true, a failure to find the root key in storage results
-// in a nil error and a nil root key being returned.
-func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
-	switch seal.StoredKeysSupported() {
-	case vaultseal.StoredKeysSupportedGeneric:
-		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
-			return nil, fmt.Errorf("recovery key verification failed: %w", err)
-		}
-
-		storedKeys, err := seal.GetStoredKeys(ctx)
-		if storedKeys == nil && err == nil && allowMissing {
-			return nil, nil
-		}
-
-		if err == nil && len(storedKeys) != 1 {
-			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
-		}
-		return storedKeys[0], nil
-
-	case vaultseal.StoredKeysSupportedShamirRoot:
-		if useTestSeal {
-			testseal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
-			testseal.SetCore(c)
-			cfg, err := seal.Config(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to setup test barrier config: %w", err)
-			}
-			testseal.SetCachedConfig(cfg)
-			seal = testseal
-		}
-
-		shamirWrapper, err := seal.GetShamirWrapper()
-		if err != nil {
-			return nil, err
-		}
-		err = shamirWrapper.SetAesGcmKeyBytes(combinedKey)
-		if err != nil {
-			return nil, &ErrInvalidKey{fmt.Sprintf("failed to setup unseal key: %v", err)}
-		}
-		storedKeys, err := seal.GetStoredKeys(ctx)
-		if storedKeys == nil && err == nil && allowMissing {
-			return nil, nil
-		}
-		if err == nil && len(storedKeys) != 1 {
-			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
-		}
-		return storedKeys[0], nil
-	}
-	return nil, errors.New("invalid seal")
+	return c.sealManager.unsealKeyToRootKey(ctx, seal, combinedKey, false, true)
 }
 
 // IsInSealMigrationMode returns true if we're configured to perform a seal migration,

@@ -18,6 +18,11 @@ var (
 	//nolint:staticcheck // Vault is a proper name
 	ErrBarrierSealed = errors.New("Vault is sealed")
 
+	// ErrNamespaceSealed is returned if an operation is performed
+	// on a sealed namespace barrier.
+	// No operation is expected to succeed before unsealing
+	ErrNamespaceSealed = errors.New("namespace is sealed")
+
 	// ErrBarrierAlreadyInit is returned if the barrier is already
 	// initialized. This prevents a re-initialization.
 	//nolint:staticcheck // Vault is a proper name

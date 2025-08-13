@@ -1520,12 +1520,8 @@ func (c *Core) loadMountsForNamespace(ctx context.Context, ns *namespace.Namespa
 // loadLegacyMountsForNamespace is used to load the mounts of a namespace on a legacy single-entry format
 // from a non-transactional storage to the mount table
 func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
-	if ns == nil {
-		return fmt.Errorf("namespace is nil")
-	}
-
-	if c.IsNSSealed(ns) {
-		return fmt.Errorf("namespace is sealed")
+	if c.NamespaceSealed(ns) {
+		return ErrNamespaceSealed
 	}
 
 	view := c.NamespaceView(ns)
@@ -1571,12 +1567,8 @@ func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.N
 // loadTransactionalMountsForNamespace is used to load the mounts of a namespace on a transactional storage
 // to the mount table
 func (c *Core) loadTransactionalMountsForNamespace(ctx context.Context, ns *namespace.Namespace) error {
-	if ns == nil {
-		return fmt.Errorf("namespace is nil")
-	}
-
-	if c.IsNSSealed(ns) {
-		return fmt.Errorf("namespace is sealed")
+	if c.NamespaceSealed(ns) {
+		return ErrNamespaceSealed
 	}
 
 	view := c.NamespaceView(ns)
@@ -1656,7 +1648,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (b
 
 		unsealedMounts := make([]*MountEntry, 0)
 		for _, entry := range c.mounts.Entries {
-			if c.IsNSSealed(entry.namespace) {
+			if c.NamespaceSealed(entry.namespace) {
 				continue
 			}
 			unsealedMounts = append(unsealedMounts, entry)
@@ -1673,7 +1665,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (b
 		if localMountTable != nil && len(localMountTable.Entries) > 0 {
 			c.tableMetrics(len(localMountTable.Entries), true, false, len(rawLocal.Value))
 			for _, entry := range localMountTable.Entries {
-				if c.IsNSSealed(entry.namespace) {
+				if c.NamespaceSealed(entry.namespace) {
 					continue
 				}
 				c.mounts.Entries = append(c.mounts.Entries, entry)

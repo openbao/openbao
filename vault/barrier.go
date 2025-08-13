@@ -17,6 +17,11 @@ var (
 	// a sealed barrier. No operation is expected to succeed before unsealing
 	ErrBarrierSealed = errors.New("Vault is sealed")
 
+	// ErrNamespaceSealed is returned if an operation is performed
+	// on a sealed namespace barrier.
+	// No operation is expected to succeed before unsealing
+	ErrNamespaceSealed = errors.New("namespace is sealed")
+
 	// ErrBarrierAlreadyInit is returned if the barrier is already
 	// initialized. This prevents a re-initialization.
 	ErrBarrierAlreadyInit = errors.New("Vault is already initialized")

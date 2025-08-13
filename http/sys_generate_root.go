@@ -11,8 +11,8 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -57,7 +57,11 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 
 	// Get the generation configuration
 	generationConfig, err := core.GenerateRootConfiguration(namespace.RootNamespace)
-	if err != nil {
+	switch err {
+	// we return the progress as 0 in this case, root generation has not started
+	case nil:
+	case vault.ErrNoRootGeneration:
+	default:
 		respondError(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -76,7 +80,7 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 	}
 
 	// Format the status
-	status := &logical.GenerateRootStatusResponse{
+	status := &api.GenerateRootStatusResponse{
 		Started:   false,
 		Progress:  progress,
 		Required:  sealConfig.SecretThreshold,
@@ -183,7 +187,7 @@ func handleSysGenerateRootUpdate(core *vault.Core, generateStrategy vault.Genera
 			return
 		}
 
-		resp := &logical.GenerateRootStatusResponse{
+		resp := &api.GenerateRootStatusResponse{
 			Complete:       result.Progress == result.Required,
 			Nonce:          req.Nonce,
 			Progress:       result.Progress,

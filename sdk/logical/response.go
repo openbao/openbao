@@ -333,16 +333,3 @@ func ResolveRoleResponse(roleName string) (*Response, error) {
 		},
 	}, nil
 }
-
-type GenerateRootStatusResponse struct {
-	Nonce            string `json:"nonce"`
-	Started          bool   `json:"started"`
-	Progress         int    `json:"progress"`
-	Required         int    `json:"required"`
-	Complete         bool   `json:"complete"`
-	EncodedToken     string `json:"encoded_token"`
-	EncodedRootToken string `json:"encoded_root_token"`
-	PGPFingerprint   string `json:"pgp_fingerprint"`
-	OTP              string `json:"otp"`
-	OTPLength        int    `json:"otp_length"`
-}

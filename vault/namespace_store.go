@@ -805,7 +805,7 @@ func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot, in
 		if !includeRoot && entry.ID == namespace.RootNamespaceID {
 			continue
 		}
-		if !includeSealed && ns.core.IsNSSealed(entry) {
+		if !includeSealed && ns.core.NamespaceSealed(entry) {
 			continue
 		}
 		namespaces = append(namespaces, entry.Clone(false))
@@ -1074,44 +1074,37 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 }
 
 // UnsealNamespace unseals namespace with a given path, using provided key
-// TODO(wslabosz): track the unsealing progress in a SealManager
 func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key []byte) error {
 	defer metrics.MeasureSince([]string{"namespace", "unseal_namespace"}, time.Now())
 
-	unsealedNamespace, err := ns.unsealNamespace(ctx, path, key)
+	namespaceToUnseal, err := ns.GetNamespaceByPath(ctx, path)
 	if err != nil {
 		return err
 	}
 
-	// If namespace is still sealed meaning we do not have enough shards yet, return early
-	if ns.core.IsNSSealed(unsealedNamespace) {
-		return nil
-	}
-
-	return ns.postNamespaceUnseal(ctx, unsealedNamespace)
-}
-
-func (ns *NamespaceStore) unsealNamespace(ctx context.Context, path string, key []byte) (*namespace.Namespace, error) {
-	unlock, err := ns.lockWithInvalidation(ctx, true)
-	if err != nil {
-		return nil, err
-	}
-	defer unlock()
-
-	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path, false)
-	if err != nil {
-		return nil, err
-	}
-
 	if namespaceToUnseal == nil {
-		return nil, fmt.Errorf("namespace %q not found", path)
+		return fmt.Errorf("namespace %q not found", path)
 	}
 
 	if namespaceToUnseal.ID == namespace.RootNamespaceID {
-		return nil, errors.New("unable to unseal root namespace")
+		return errors.New("unable to unseal root namespace")
 	}
 
-	return namespaceToUnseal.Clone(false), ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key)
+	// this means that the namespace wasn't sealed before the call
+	if !ns.core.NamespaceSealed(namespaceToUnseal) {
+		return nil
+	}
+
+	if err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key); err != nil {
+		return err
+	}
+
+	// If namespace is still sealed meaning we do not have enough shards yet, return early
+	if ns.core.NamespaceSealed(namespaceToUnseal) {
+		return nil
+	}
+
+	return ns.postNamespaceUnseal(ctx, namespaceToUnseal)
 }
 
 func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNamespace *namespace.Namespace) error {

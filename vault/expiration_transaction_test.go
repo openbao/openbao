@@ -15,7 +15,7 @@ import (
 // TestExpiration_WithTransaction validates transaction callback success
 func TestExpiration_WithTransaction(t *testing.T) {
 	exp := mockExpiration(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.Background())
 
 	var callbackExecuted bool
 	var transactionContext context.Context
@@ -34,7 +34,6 @@ func TestExpiration_WithTransaction(t *testing.T) {
 
 		return nil
 	})
-
 	if err != nil {
 		t.Fatalf("WithTransaction should not have errored: %v", err)
 	}
@@ -51,7 +50,7 @@ func TestExpiration_WithTransaction(t *testing.T) {
 // TestExpiration_WithTransaction_CallbackError validates transaction callback error
 func TestExpiration_WithTransaction_CallbackError(t *testing.T) {
 	exp := mockExpiration(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.Background())
 
 	expectedError := errors.New("callback error")
 	var callbackExecuted bool
@@ -74,7 +73,7 @@ func TestExpiration_WithTransaction_CallbackError(t *testing.T) {
 // with a more realistic scenario involving lease operations
 func TestExpiration_WithTransaction_Integration(t *testing.T) {
 	exp := mockExpiration(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.Background())
 
 	// Test that the transaction context is properly passed through
 	// and can be used for operations that might need transactions
@@ -92,7 +91,6 @@ func TestExpiration_WithTransaction_Integration(t *testing.T) {
 		// Simulate successful operation
 		return nil
 	})
-
 	if err != nil {
 		t.Fatalf("integration test failed: %v", err)
 	}
@@ -106,7 +104,7 @@ func TestExpiration_WithTransaction_Integration(t *testing.T) {
 // is properly propagated with transaction information
 func TestExpiration_WithTransaction_ContextPropagation(t *testing.T) {
 	exp := mockExpiration(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.Background())
 
 	// Add some custom value to the original context
 	customKey := "custom_test_key"
@@ -128,7 +126,6 @@ func TestExpiration_WithTransaction_ContextPropagation(t *testing.T) {
 
 		return nil
 	})
-
 	if err != nil {
 		t.Fatalf("context propagation test failed: %v", err)
 	}

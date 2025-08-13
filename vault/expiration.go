@@ -447,6 +447,7 @@ func (c *Core) stopExpiration() error {
 	}
 	return nil
 }
+
 func (m *ExpirationManager) leaseViewFromLeaseID(ctx context.Context, leaseID string) BarrierView {
 	// Get the namespace from the lease ID
 	_, nsID := namespace.SplitIDFromString(leaseID)

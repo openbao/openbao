@@ -12,6 +12,9 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
+// contextKey is local ctx key type
+type contextKey string
+
 // TestExpiration_WithTransaction validates transaction callback success
 func TestExpiration_WithTransaction(t *testing.T) {
 	exp := mockExpiration(t)
@@ -107,7 +110,7 @@ func TestExpiration_WithTransaction_ContextPropagation(t *testing.T) {
 	ctx := namespace.RootContext(context.Background())
 
 	// Add some custom value to the original context
-	customKey := "custom_test_key"
+	customKey := contextKey("custom_test_key")
 	customValue := "custom_test_value"
 	ctx = context.WithValue(ctx, customKey, customValue)
 

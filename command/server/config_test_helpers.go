@@ -1095,7 +1095,7 @@ external_keys "pkcs11" {
 				Namespaces: []*NamespaceSpecifier{
 					{Kind: "id", Value: "root"},
 				},
-				Config: map[string]string{
+				Values: map[string]string{
 					"lib": "/usr/lib/softhsm/libsofthsm2.so",
 				},
 			},
@@ -1105,7 +1105,7 @@ external_keys "pkcs11" {
 					{Kind: "id", Value: "root"},
 					{Kind: "path", Value: "my-namespace"},
 				},
-				Config: map[string]string{
+				Values: map[string]string{
 					"lib": "/usr/lib/pkcs11_R2/libcs_pkcs11_R2.so",
 				},
 			},

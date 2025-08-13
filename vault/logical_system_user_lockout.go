@@ -109,7 +109,7 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 
 	for _, ns := range nsList {
 		// skip sealed namespaces
-		if b.Core.IsNSSealed(ns) {
+		if b.Core.NamespaceSealed(ns) {
 			continue
 		}
 		// get mount accessors of locked users for this namespace

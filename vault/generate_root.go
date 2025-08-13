@@ -22,6 +22,10 @@ import (
 // typical root token
 var GenerateStandardRootTokenStrategy GenerateRootStrategy = generateStandardRootToken{}
 
+// ErrNoRootGeneration is a sentinel error that we return where
+// there is no root generation currently in progress
+var ErrNoRootGeneration = errors.New("no root generation in progress")
+
 // GenerateRootStrategy allows us to swap out the strategy we want to use to
 // create a token upon completion of the generate root process.
 type GenerateRootStrategy interface {
@@ -42,7 +46,7 @@ func (g generateStandardRootToken) authenticate(ctx context.Context, c *Core, co
 	if !found {
 		return fmt.Errorf("no seal found for namespace")
 	}
-	rootKey, err := c.sealManager.unsealKeyToRootKey(ctx, nsSeal, combinedKey, false)
+	rootKey, err := c.sealManager.unsealKeyToRootKey(ctx, nsSeal, combinedKey, false, false)
 	if err != nil {
 		return fmt.Errorf("unable to authenticate: %w", err)
 	}
@@ -132,7 +136,7 @@ func (c *Core) GenerateRootConfiguration(ns *namespace.Namespace) (*GenerateRoot
 
 	namespaceRootGen, exists := c.namespaceRootGens[ns.UUID]
 	if !exists {
-		return nil, fmt.Errorf("no current active root generation for namespace %s", ns.Path)
+		return nil, ErrNoRootGeneration
 	}
 
 	config := *namespaceRootGen.Config
@@ -200,9 +204,6 @@ func (c *Core) GenerateRootInit(otp, pgpKey string, strategy GenerateRootStrateg
 		c.namespaceRootGens[ns.UUID] = nsRootGen
 	}
 
-	nsRootGen.Lock.Lock()
-	defer nsRootGen.Lock.Unlock()
-
 	// Prevent multiple concurrent root generations per namespace
 	if nsRootGen.Config != nil {
 		return errors.New("root generation already in progress for this namespace")
@@ -258,23 +259,21 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
 	}
 
-	// Get the seal configuration
-	var config *SealConfig
-
 	seal, found := c.sealManager.sealsByNamespace[ns.UUID]["default"]
 	if !found {
 		return nil, fmt.Errorf("no seal found for namespace")
 	}
+
+	// Get the seal configuration
+	var config *SealConfig
 	if seal.RecoveryKeySupported() {
 		config, err = seal.RecoveryConfig(ctx)
-		if err != nil {
-			return nil, err
-		}
 	} else {
 		config, err = seal.Config(ctx)
-		if err != nil {
-			return nil, err
-		}
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	// Ensure the barrier is initialized
@@ -303,12 +302,12 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 
 	nsRootGen, exists := c.namespaceRootGens[ns.UUID]
 	if !exists {
-		return nil, fmt.Errorf("no current active root generation for namespace %s", ns.Path)
+		return nil, ErrNoRootGeneration
 	}
 
-	// Ensure a generateRoot is in progress
+	// Ensure root generation is in progress
 	if nsRootGen.Config == nil {
-		return nil, fmt.Errorf("no root generation in progress for namespace %s", ns.Path)
+		return nil, ErrNoRootGeneration
 	}
 
 	if nonce != nsRootGen.Config.Nonce {

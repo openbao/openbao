@@ -140,8 +140,8 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-seal"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces-seal"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
 		},
 		{
 			Pattern: "namespaces/(?P<name>.+)/seal-status",
@@ -167,8 +167,8 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-seal"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces-seal"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
 		},
 
 		{
@@ -190,8 +190,8 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-seal"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces-seal"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
 		},
 		{
 			Pattern: "namespaces/(?P<name>.+)/unseal",
@@ -213,8 +213,8 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-seal"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces-seal"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
 		},
 		{
 			Pattern: "namespaces/(?P<name>.+)/rotate/config",
@@ -250,8 +250,8 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-rotate-config"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces-rotate-config"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-rotate-config"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-rotate-config"][1]),
 		},
 
 		{
@@ -275,8 +275,8 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-rotate"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces-rotate"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-rotate"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-rotate"][1]),
 		},
 	}
 }
@@ -335,7 +335,7 @@ func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
-		status, err := b.Core.sealManager.GetSealStatus(ctx, ns, false)
+		status, err := b.Core.sealManager.GetSealStatus(ctx, ns)
 		if err != nil {
 			return handleError(err)
 		}
@@ -432,12 +432,12 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 			case errors.Is(err, ErrBarrierNotInit):
 			case errors.Is(err, ErrBarrierSealed):
 			default:
-				return logical.RespondWithStatusCode(logical.ErrorResponse(err.Error()), req, http.StatusInternalServerError)
+				return handleError(logical.CodedError(http.StatusInternalServerError, err.Error()))
 			}
 			return handleError(err)
 		}
 
-		status, err := b.Core.sealManager.GetSealStatus(ctx, ns, true)
+		status, err := b.Core.sealManager.GetSealStatus(ctx, ns)
 		if err != nil {
 			return handleError(err)
 		}
@@ -559,4 +559,41 @@ func (b *SystemBackend) handleNamespacesUpdateRotateConfig() framework.Operation
 
 		return nil, nil
 	}
+}
+
+var sysNamespacesSealsHelp = map[string][2]string{
+	"namespaces-seal": {
+		"Seal, unseal and check seal status of a namespace.",
+		`
+This path responds to the following HTTP methods.
+
+	POST /<name>/seal
+		Seal a namespace.
+
+	POST /<name>/unseal
+		Unseal a namespace.
+
+    GET /<name>/seal-status
+    	Returns the seal status of the namespace.
+
+	GET /<name>/key-status
+		Provides the namespace current backend encryption key term and installation time.
+		`,
+	},
+
+	"namespaces-rotate": {
+		"Rotates the backend encryption key used to persist data for this namespace.",
+		`
+		Rotate generates a new encryption key which is used to encrypt all data
+		of this namespace going to the storage backend. The old encryption keys
+		are kept so that data encrypted using those keys can still be decrypted.
+		`,
+	},
+
+	"namespaces-rotate-config": {
+		"Configures settings related to the namespace encryption key management.",
+		`
+		Configures settings related to the automatic rotation of the namespace encryption key.
+		`,
+	},
 }

@@ -99,14 +99,14 @@ func TestDefaultSeal_IsNSSealed(t *testing.T) {
 
 	ns := &namespace.Namespace{Path: "test/"}
 	TestCoreCreateNamespaces(t, c, ns)
-	require.False(t, c.IsNSSealed(ns))
+	require.False(t, c.NamespaceSealed(ns))
 
 	err := sm.SetSeal(ctx, sealConfig, ns, true)
 	require.NoError(t, err)
 
 	err = sm.SealNamespace(ctx, ns)
 	require.NoError(t, err)
-	require.True(t, c.IsNSSealed(ns))
+	require.True(t, c.NamespaceSealed(ns))
 }
 
 func TestRegisterNamespace(t *testing.T) {
@@ -114,7 +114,7 @@ func TestRegisterNamespace(t *testing.T) {
 
 	ns := &namespace.Namespace{Path: "test/"}
 	TestCoreCreateSealedNamespaces(t, c, ns)
-	require.False(t, c.IsNSSealed(ns))
+	require.False(t, c.NamespaceSealed(ns))
 
 	err := TestCoreSeal(c)
 	require.NoError(t, err)
@@ -124,5 +124,5 @@ func TestRegisterNamespace(t *testing.T) {
 	}
 
 	require.False(t, c.Sealed())
-	require.True(t, c.IsNSSealed(ns))
+	require.True(t, c.NamespaceSealed(ns))
 }

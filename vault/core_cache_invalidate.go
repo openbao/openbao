@@ -12,14 +12,18 @@ import (
 	"github.com/openbao/openbao/vault/quotas"
 )
 
+func (c *Core) processInvalidationFailure(key string, err error) {
+	c.logger.Error("cache invalidation failed", "key", key, "error", err.Error())
+	// TODO(phil9909): It's not save to continue, restart the core
+}
+
 func (c *Core) Invalidate(key string) {
 	ctx, cancel := context.WithTimeout(c.activeContext, 2*time.Second)
 	defer cancel()
 
 	err := c.invalidateInternal(ctx, key)
 	if err != nil {
-		c.logger.Error("cache invalidation failed", "key", key, "error", err.Error())
-		// TODO(phil9909): It's not save to continue, restart the core
+		c.processInvalidationFailure(key, err)
 	}
 }
 
@@ -69,7 +73,19 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 		c.quotaManager.Invalidate(strings.TrimPrefix(key, systemBarrierPrefix+quotas.StoragePrefix))
 
 	case c.router.Invalidate(ctx, key):
-		// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched
+	// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched
+
+	case key == coreAuditConfigPath || key == coreLocalAuditConfigPath:
+		go func() {
+			err := c.reconcileAudits(reconcileAuditsRequests{
+				ctx:       c.activeContext,
+				readonly:  true,
+				isInitial: false,
+			})
+			if err != nil {
+				c.processInvalidationFailure(key, err)
+			}
+		}()
 
 	default:
 		c.logger.Warn("no idea how to invalidate cache. Maybe it's not cached and this is fine, maybe not", "key", key)

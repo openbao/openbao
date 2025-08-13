@@ -246,6 +246,42 @@ func (t *MountTable) shallowClone() *MountTable {
 	}
 }
 
+func (old *MountTable) delta(new *MountTable) (additions []*MountEntry, deletions []*MountEntry) {
+	if old == nil {
+		additions = new.Entries
+		return
+	}
+
+	additions = slices.Clone(new.Entries)
+	deletions = slices.Clone(old.Entries)
+
+	slices.SortFunc(additions, func(a, b *MountEntry) int {
+		return strings.Compare(a.Accessor, b.Accessor)
+	})
+
+	slices.SortFunc(deletions, func(a, b *MountEntry) int {
+		return strings.Compare(a.Accessor, b.Accessor)
+	})
+
+	idxOld := 0
+	idxNew := 0
+
+	for idxNew < len(additions) && idxOld < len(deletions) {
+		diff := strings.Compare(additions[idxNew].Accessor, deletions[idxOld].Accessor)
+		switch {
+		case diff == 0:
+			additions = slices.Delete(additions, idxNew, idxNew+1)
+			deletions = slices.Delete(deletions, idxOld, idxOld+1)
+		case diff < 0:
+			idxNew += 1
+		case diff > 0:
+			idxOld += 1
+		}
+	}
+
+	return
+}
+
 // setTaint is used to set the taint on given entry Accepts either the mount
 // entry's path or namespace + path, i.e. <ns-path>/secret/ or <ns-path>/token/
 func (t *MountTable) setTaint(nsID, path string, tainted bool, mountState string) (*MountEntry, error) {

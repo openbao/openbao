@@ -10,8 +10,8 @@ import (
 // WithTransaction will add a transaction to the context (if possible)
 func (m *ExpirationManager) WithTransaction(
 	ctx context.Context,
-	callbackFn func(context.Context) error) error {
-
+	callbackFn func(context.Context) error,
+) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err

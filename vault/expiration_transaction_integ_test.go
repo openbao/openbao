@@ -15,7 +15,7 @@ import (
 	"github.com/openbao/openbao/vault"
 )
 
-// TestStorageBackend_TransactionalInmem verifies that the inmem storage backend 
+// TestStorageBackend_TransactionalInmem verifies that the inmem storage backend
 // supports transactions when properly configured
 func TestStorageBackend_TransactionalInmem(t *testing.T) {
 	// Create transactional inmem backend
@@ -72,7 +72,7 @@ func TestStorageBackend_TransactionalInmem(t *testing.T) {
 	t.Logf("Successfully performed storage operations with transactional inmem backend")
 }
 
-// TestStorageBackend_NonTransactionalFile verifies that the file storage backend 
+// TestStorageBackend_NonTransactionalFile verifies that the file storage backend
 // works correctly (file backend is non-transactional)
 func TestStorageBackend_NonTransactionalFile(t *testing.T) {
 	tempDir := t.TempDir()

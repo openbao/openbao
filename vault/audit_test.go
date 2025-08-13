@@ -105,7 +105,7 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 		return nil, errors.New("failing enabling")
 	}
 
-	c.audit = &MountTable{
+	if err := c.persistAudit(context.Background(), &MountTable{
 		Type: auditTableType,
 		Entries: []*MountEntry{
 			{
@@ -121,6 +121,8 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 				UUID:  "bcde",
 			},
 		},
+	}, false); err != nil {
+		t.Fatal(err)
 	}
 
 	// Both should set up successfully
@@ -131,6 +133,12 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 
 	// We expect this to work because the other entry is still valid
 	c.audit.Entries[0].Type = "fail"
+	if err := c.persistAudit(context.Background(), c.audit, false); err != nil {
+		t.Fatal(err)
+	}
+
+	c.audit = nil
+
 	err = c.setupAudits(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -138,6 +146,12 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 
 	// No audit backend set up successfully, so expect error
 	c.audit.Entries[1].Type = "fail"
+	if err := c.persistAudit(context.Background(), c.audit, false); err != nil {
+		t.Fatal(err)
+	}
+
+	c.audit = nil
+
 	err = c.setupAudits(context.Background())
 	if err == nil {
 		t.Fatal("expected error")
@@ -154,7 +168,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 		return nil, errors.New("failing enabling")
 	}
 
-	c.audit = &MountTable{
+	if err := c.persistAudit(context.Background(), &MountTable{
 		Type: auditTableType,
 		Entries: []*MountEntry{
 			{
@@ -176,6 +190,8 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 				namespace:   namespace.RootNamespace,
 			},
 		},
+	}, false); err != nil {
+		t.Fatal(err)
 	}
 
 	// Both should set up successfully
@@ -220,7 +236,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 	}
 
 	oldAudit := c.audit
-	if err := c.loadAudits(context.Background()); err != nil {
+	if err := c.loadAudits(context.Background(), false); err != nil {
 		t.Fatal(err)
 	}
 

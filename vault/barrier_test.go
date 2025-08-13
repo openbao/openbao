@@ -116,7 +116,6 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 	case *TransactionalAESGCMBarrier:
 		prefix = cb.metaPrefix
 	}
-
 	// Should not be initialized
 	init, err := b.Initialized(context.Background())
 	require.NoError(t, err)

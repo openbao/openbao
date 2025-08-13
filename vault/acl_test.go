@@ -187,7 +187,8 @@ func TestACL_Namespace_Root(t *testing.T) {
 		t.Parallel()
 		c, _, _ := TestCoreUnsealed(t)
 		rootCtx := namespace.RootContext(context.Background())
-		ns1, _ := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+		ns1 := &namespace.Namespace{Path: "ns1"}
+		TestCoreCreateNamespaces(t, c, ns1)
 		ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
 		testACLNamespaceRoot(t, ns1Ctx, ns1)
 	})
@@ -220,7 +221,8 @@ func TestACL_Namespace_Root_Fail(t *testing.T) {
 		t.Parallel()
 		c, _, _ := TestCoreUnsealed(t)
 		rootCtx := namespace.RootContext(context.Background())
-		ns1, _ := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+		ns1 := &namespace.Namespace{Path: "ns1"}
+		TestCoreCreateNamespaces(t, c, ns1)
 		ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
 		testACLNamespaceRootFail(t, ns1Ctx)
 	})

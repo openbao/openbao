@@ -18,7 +18,7 @@ import (
 )
 
 // testCreateNamespace returns details of created namespace, and keyshares of the namespace seal
-func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, name string, reqBody map[string]interface{}) (*namespace.Namespace, map[string][]string) {
+func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, name string, reqBody map[string]interface{}) *namespace.Namespace {
 	t.Helper()
 	req := logical.TestRequest(t, logical.UpdateOperation, path.Join("namespaces", name))
 	if reqBody != nil {
@@ -27,12 +27,6 @@ func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, n
 	res, err := b.HandleRequest(ctx, req)
 	require.NoError(t, err)
 
-	var mapOfKeyShares map[string][]string
-	keyShares, ok := res.Data["key_shares"]
-	if ok {
-		mapOfKeyShares = keyShares.(map[string][]string)
-	}
-
 	return &namespace.Namespace{
 		ID:             res.Data["id"].(string),
 		UUID:           res.Data["uuid"].(string),
@@ -40,7 +34,7 @@ func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, n
 		Tainted:        res.Data["tainted"].(bool),
 		Locked:         res.Data["locked"].(bool),
 		CustomMetadata: res.Data["custom_metadata"].(map[string]string),
-	}, mapOfKeyShares
+	}
 }
 
 func TestNamespaceBackend_Set(t *testing.T) {
@@ -65,7 +59,7 @@ func TestNamespaceBackend_Set(t *testing.T) {
 	})
 
 	t.Run("create namespace name validation", func(t *testing.T) {
-		nsTeam1, _ := testCreateNamespace(t, rootCtx, b, "team_1", nil)
+		nsTeam1 := testCreateNamespace(t, rootCtx, b, "team_1", nil)
 		tcases := []struct {
 			path      string
 			wantPath  string
@@ -194,7 +188,7 @@ func TestNamespaceBackend_Read(t *testing.T) {
 
 	t.Run("reads nested namespace via context and path", func(t *testing.T) {
 		customMetadata := map[string]string{"abc": "def"}
-		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
 		testCreateNamespace(t, nestedCtx, b, "bar", map[string]interface{}{"custom_metadata": customMetadata})
 
@@ -291,7 +285,7 @@ func TestNamespaceBackend_Patch(t *testing.T) {
 	})
 
 	t.Run("patch nested namespace", func(t *testing.T) {
-		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
 		customMetadata := map[string]string{"abc": "def"}
 		testCreateNamespace(t, nestedCtx, b, "bar", map[string]interface{}{"custom_metadata": customMetadata})
@@ -350,7 +344,7 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 	})
 
 	t.Run("delete nested namespace", func(t *testing.T) {
-		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foobar", nil)
+		fooNs := testCreateNamespace(t, rootCtx, b, "foobar", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
 		testCreateNamespace(t, nestedCtx, b, "bar", nil)
 		testCreateNamespace(t, nestedCtx, b, "baz", nil)
@@ -443,7 +437,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 	})
 
 	t.Run("list only includes one level of namespaces", func(t *testing.T) {
-		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
 		testCreateNamespace(t, rootCtx, b, "bar", nil)
 		testCreateNamespace(t, nestedCtx, b, "baz", nil)
@@ -479,7 +473,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 
 	t.Run("list nested namespaces", func(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "unrelated", nil)
-		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
 		testCreateNamespace(t, nestedCtx, b, "bar", nil)
 		testCreateNamespace(t, nestedCtx, b, "baz", nil)
@@ -558,7 +552,7 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 	})
 
 	t.Run("scan includes multiple levels of namespaces", func(t *testing.T) {
-		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
 		testCreateNamespace(t, rootCtx, b, "bar", nil)
 		testCreateNamespace(t, nestedCtx, b, "baz", nil)
@@ -594,9 +588,9 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 
 	t.Run("scan nested namespaces", func(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "unrelated", nil)
-		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		fooCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
-		bazNs, _ := testCreateNamespace(t, fooCtx, b, "baz", nil)
+		bazNs := testCreateNamespace(t, fooCtx, b, "baz", nil)
 		bazCtx := namespace.ContextWithNamespace(rootCtx, bazNs)
 		testCreateNamespace(t, bazCtx, b, "bar", nil)
 
@@ -636,7 +630,7 @@ func TestNamespaceBackend_Lock(t *testing.T) {
 	rootCtx := namespace.RootContext(context.Background())
 
 	t.Run("cannot lock nonexistent, root or already locked namespaces", func(t *testing.T) {
-		testNamespace, _ := testCreateNamespace(t, rootCtx, b, "test", nil)
+		testNamespace := testCreateNamespace(t, rootCtx, b, "test", nil)
 
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/idontexist")
 		res, err := b.HandleRequest(rootCtx, req)
@@ -660,7 +654,7 @@ func TestNamespaceBackend_Lock(t *testing.T) {
 	})
 
 	t.Run("cannot lock child namespace when ancestor is locked", func(t *testing.T) {
-		nsCompanyA, _ := testCreateNamespace(t, rootCtx, b, "company_a", nil)
+		nsCompanyA := testCreateNamespace(t, rootCtx, b, "company_a", nil)
 		companyACtx := namespace.ContextWithNamespace(rootCtx, nsCompanyA)
 		testCreateNamespace(t, companyACtx, b, "team_a", nil)
 
@@ -676,7 +670,7 @@ func TestNamespaceBackend_Lock(t *testing.T) {
 	})
 
 	t.Run("can lock parent namespace when child is locked", func(t *testing.T) {
-		nsCompanyB, _ := testCreateNamespace(t, rootCtx, b, "company_b", nil)
+		nsCompanyB := testCreateNamespace(t, rootCtx, b, "company_b", nil)
 		companyBCtx := namespace.ContextWithNamespace(rootCtx, nsCompanyB)
 		testCreateNamespace(t, companyBCtx, b, "team_b", nil)
 
@@ -692,9 +686,9 @@ func TestNamespaceBackend_Lock(t *testing.T) {
 	})
 
 	t.Run("locked namespace, and its children do not accept any requests", func(t *testing.T) {
-		company, _ := testCreateNamespace(t, rootCtx, b, "company", nil)
+		company := testCreateNamespace(t, rootCtx, b, "company", nil)
 		companyCtx := namespace.ContextWithNamespace(rootCtx, company)
-		team, _ := testCreateNamespace(t, companyCtx, b, "team", nil)
+		team := testCreateNamespace(t, companyCtx, b, "team", nil)
 		teamCtx := namespace.ContextWithNamespace(rootCtx, team)
 
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/company")
@@ -731,7 +725,7 @@ func TestNamespaceBackend_Unlock(t *testing.T) {
 	rootCtx := namespace.RootContext(context.Background())
 
 	t.Run("cannot unlock namespace with missing request details", func(t *testing.T) {
-		testNS, _ := testCreateNamespace(t, rootCtx, b, "test", nil)
+		testNS := testCreateNamespace(t, rootCtx, b, "test", nil)
 
 		// invalid token
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/test")
@@ -764,9 +758,9 @@ func TestNamespaceBackend_Unlock(t *testing.T) {
 	})
 
 	t.Run("cannot unlock namespace with locked ancestor", func(t *testing.T) {
-		parentNS, _ := testCreateNamespace(t, rootCtx, b, "parent", nil)
+		parentNS := testCreateNamespace(t, rootCtx, b, "parent", nil)
 		parentNSCtx := namespace.ContextWithNamespace(rootCtx, parentNS)
-		childNS, _ := testCreateNamespace(t, parentNSCtx, b, "child", nil)
+		childNS := testCreateNamespace(t, parentNSCtx, b, "child", nil)
 
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/parent/child")
 		_, err := b.HandleRequest(rootCtx, req)
@@ -785,7 +779,7 @@ func TestNamespaceBackend_Unlock(t *testing.T) {
 	})
 
 	t.Run("namespace can be unlocked with unlock key", func(t *testing.T) {
-		companyA, _ := testCreateNamespace(t, rootCtx, b, "company_a", nil)
+		companyA := testCreateNamespace(t, rootCtx, b, "company_a", nil)
 		companyACtx := namespace.ContextWithNamespace(rootCtx, companyA)
 		testCreateNamespace(t, companyACtx, b, "team_a", nil)
 
@@ -815,7 +809,7 @@ func TestNamespaceBackend_Unlock(t *testing.T) {
 	})
 
 	t.Run("namespace can be unlocked by root", func(t *testing.T) {
-		companyB, _ := testCreateNamespace(t, rootCtx, b, "company_b", nil)
+		companyB := testCreateNamespace(t, rootCtx, b, "company_b", nil)
 		companyBCtx := namespace.ContextWithNamespace(rootCtx, companyB)
 		testCreateNamespace(t, companyBCtx, b, "team_b", nil)
 

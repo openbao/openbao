@@ -102,7 +102,6 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 			return nil, errors.New("unable to parse policy (wrong type)")
 		}
 
-		// Check if this policy name is 'root'
 		if policy.Name == "root" {
 			if len(policies) != 1 {
 				return nil, errors.New("other policies present along with root")

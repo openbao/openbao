@@ -7,12 +7,16 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/go-test/deep"
+	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/quotas"
 	"github.com/stretchr/testify/assert"
@@ -240,4 +244,99 @@ func TestCore_Invalidate_Plugin(t *testing.T) {
 			assert.Equal(t, invalidatedKey, []string{"foo", "bar/bazz"})
 		})
 	}
+}
+
+func TestCore_Invalidate_Audit(t *testing.T) {
+	t.Parallel()
+	c, _, root := TestCoreUnsealed(t)
+
+	// 1. Inject a dummy audit factory
+	var callCount atomic.Int32
+	var currentBackend *corehelpers.NoopAudit
+	factory := corehelpers.NoopAuditFactory(nil)
+	c.auditBackends["noop"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
+		callCount.Add(1)
+		backend, err := factory(ctx, config)
+		currentBackend = backend.(*corehelpers.NoopAudit)
+		return backend, err
+	}
+
+	// 2. Enable dummy audit
+	registerReq := &logical.Request{
+		Operation:   logical.CreateOperation,
+		ClientToken: root,
+		Path:        "sys/audit/my-noop-audit",
+		Data: map[string]any{
+			"type": "noop",
+			"options": map[string]any{
+				"prefix": "my-test-prefix",
+			},
+		},
+	}
+
+	testCore_Invalidate_handleRequest(t, t.Context(), c, registerReq)
+
+	require.EqualValues(t, 1, callCount.Load(), "expected audit factory to be called exactly once")
+
+	// 3. Trigger audit event
+	triggerAuditEvent := func() {
+		testCore_Invalidate_handleRequest(t, t.Context(), c, &logical.Request{
+			Operation:   logical.ReadOperation,
+			ClientToken: root,
+			Path:        "secret/kv/dummy",
+		})
+	}
+	triggerAuditEvent()
+
+	require.Len(t, currentBackend.Req, 1, "expected 1 audit request event")
+
+	// 4. Manipulate audit table in storage: delete audit
+	entry, err := c.barrier.Get(t.Context(), "core/audit")
+	require.NoError(t, err)
+	require.NotNil(t, entry, "expected audit table to be written")
+
+	auditTable := &MountTable{}
+	require.NoError(t, jsonutil.DecodeJSON(entry.Value, auditTable), "failed to decode audit table")
+
+	auditTable.Entries = make([]*MountEntry, 0)
+
+	data, err := jsonutil.EncodeJSON(auditTable)
+	require.NoError(t, err)
+
+	testCore_Invalidate_sneakValueAroundCache(t, c, &logical.StorageEntry{
+		Key:   "core/audit",
+		Value: data,
+	})
+
+	// 5. call invalidate
+	c.Invalidate("core/audit")
+
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		require.Equal(collect, 0, c.auditBroker.Count())
+	}, 10*time.Second, 10*time.Millisecond)
+
+	require.EqualValues(t, 1, callCount.Load(), "expected audit factory to be called exactly once")
+
+	// 6. Trigger audit event (but audit should be disabled)
+	triggerAuditEvent()
+
+	require.Len(t, currentBackend.Req, 1, "expected still 1 audit request event")
+
+	// 7. Manipulate audit table in storage: restore audit
+	testCore_Invalidate_sneakValueAroundCache(t, c, entry)
+
+	// 8. call invalidate
+	c.Invalidate("core/audit")
+
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		require.EqualValues(collect, 2, callCount.Load(), "expected audit factory to be called exactly twice")
+		require.Equal(collect, 1, c.auditBroker.Count())
+	}, 10*time.Second, 10*time.Millisecond)
+
+	require.Len(t, currentBackend.Req, 0, "expected 0 audit request event") // factory is called again, storage will be reset
+
+	// 9. Trigger audit event
+	triggerAuditEvent()
+
+	require.Len(t, currentBackend.Req, 1, "expected 1 audit request event")
 }

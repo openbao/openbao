@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/armon/go-metrics"
@@ -1003,7 +1004,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		persistFunc = c.persistAuth
 		mt = c.auth
 	case "audits":
-		err = c.loadAudits(context.Background())
+		err = c.loadAudits(context.Background(), false)
 		persistFunc = func(ctx context.Context, barrier logical.Storage, mt *MountTable, b *bool, mount string) error {
 			if b == nil {
 				b = new(bool)
@@ -1559,4 +1560,44 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	}
 	err = c.mount(barCtx, me)
 	require.NoError(t, err)
+}
+
+func TestMount_Delta(t *testing.T) {
+	old := MountTable{
+		Entries: []*MountEntry{{
+			Accessor: "f",
+		}, {
+			Accessor: "a",
+		}, {
+			Accessor: "c",
+		}, {
+			Accessor: "b",
+		}, {
+			Accessor: "e",
+		}},
+	}
+
+	new := MountTable{
+		Entries: []*MountEntry{{
+			Accessor: "a",
+		}, {
+			Accessor: "b",
+		}, {
+			Accessor: "d",
+		}, {
+			Accessor: "g",
+		}, {
+			Accessor: "e",
+		}, {
+			Accessor: "f",
+		}},
+	}
+
+	additions, deletions := old.delta(&new)
+	require.Len(t, additions, 2)
+	require.Len(t, deletions, 1)
+
+	assert.Equal(t, additions[0].Accessor, "d")
+	assert.Equal(t, additions[1].Accessor, "g")
+	assert.Equal(t, deletions[0].Accessor, "c")
 }

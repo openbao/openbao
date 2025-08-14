@@ -57,11 +57,10 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 
 	// Get the generation configuration
 	generationConfig, err := core.GenerateRootConfiguration(namespace.RootNamespace)
-	switch err {
+	switch {
 	// we return the progress as 0 in this case, root generation has not started
-	case nil:
-	case vault.ErrNoRootGeneration:
-	default:
+	case errors.Is(err, vault.ErrNoRootGeneration):
+	case err != nil:
 		respondError(w, http.StatusInternalServerError, err)
 		return
 	}

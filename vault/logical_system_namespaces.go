@@ -349,7 +349,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		seals, ok := data.GetOk("seals")
 		if ok {
 			var err error
-			sealConfigs, err = b.Core.sealManager.ExtractSealConfigs(seals)
+			sealConfigs, err = extractSealConfigs(seals)
 			if err != nil {
 				return logical.ErrorResponse("error while extracting seal configs"), err
 			}
@@ -535,6 +535,36 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			},
 		}, nil
 	}
+}
+
+// extractSealConfigs parses and retrieves SealConfigs passed as interface{}
+func extractSealConfigs(seals interface{}) ([]*SealConfig, error) {
+	sealsArray, ok := seals.([]interface{})
+	var sealConfigs []*SealConfig
+	if !ok {
+		return nil, fmt.Errorf("seals is not an array")
+	}
+
+	for _, seal := range sealsArray {
+		sealMap, ok := seal.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("seal is not a map")
+		}
+
+		byteSeal, err := json.Marshal(sealMap)
+		if err != nil {
+			return nil, err
+		}
+
+		var sealConfig SealConfig
+		err = json.Unmarshal(byteSeal, &sealConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		sealConfigs = append(sealConfigs, &sealConfig)
+	}
+	return sealConfigs, nil
 }
 
 var sysNamespacesHelp = map[string][2]string{

@@ -42,23 +42,8 @@ func (g generateStandardRootToken) authenticate(ctx context.Context, c *Core, co
 	if err != nil {
 		return err
 	}
-	nsSeal, found := c.sealManager.sealsByNamespace[ns.UUID]["default"]
-	if !found {
-		return fmt.Errorf("no seal found for namespace")
-	}
-	rootKey, err := c.sealManager.unsealKeyToRootKey(ctx, nsSeal, combinedKey, false, false)
-	if err != nil {
-		return fmt.Errorf("unable to authenticate: %w", err)
-	}
-	nsBarrier, ok := c.sealManager.barrierByNamespace.Get(ns.Path)
-	if !ok {
-		return fmt.Errorf("failed to accquire barrier for namespace %q", ns.Path)
-	}
-	if err := nsBarrier.(SecurityBarrier).VerifyRoot(rootKey); err != nil {
-		return fmt.Errorf("root key verification failed: %w", err)
-	}
 
-	return nil
+	return c.sealManager.AuthenticateRootKey(ctx, ns, combinedKey)
 }
 
 func (g generateStandardRootToken) generate(ctx context.Context, c *Core) (string, func(), error) {
@@ -244,13 +229,13 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, err
 	}
 
-	barrier, found := c.sealManager.barrierByNamespace.Get(ns.Path)
-	if !found {
-		return nil, fmt.Errorf("barrier not found for namespace: %q", ns.Path)
+	barrier := c.sealManager.NamespaceBarrier(ns.Path)
+	if barrier == nil {
+		return nil, ErrBarrierNotFound
 	}
 
 	// Verify the key length
-	min, max := barrier.(SecurityBarrier).KeyLength()
+	min, max := barrier.KeyLength()
 	max += shamir.ShareOverhead
 	if len(key) < min {
 		return nil, &ErrInvalidKey{fmt.Sprintf("key is shorter than minimum %d bytes", min)}
@@ -259,9 +244,9 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
 	}
 
-	seal, found := c.sealManager.sealsByNamespace[ns.UUID]["default"]
-	if !found {
-		return nil, fmt.Errorf("no seal found for namespace")
+	seal := c.sealManager.NamespaceSeal(ns.UUID)
+	if seal == nil {
+		return nil, ErrSealNotFound
 	}
 
 	// Get the seal configuration

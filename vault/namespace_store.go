@@ -1099,12 +1099,13 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 		return nil
 	}
 
-	if err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key); err != nil {
+	unsealed, err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key)
+	if err != nil {
 		return err
 	}
 
 	// If namespace is still sealed meaning we do not have enough shards yet, return early
-	if ns.core.NamespaceSealed(namespaceToUnseal) {
+	if !unsealed {
 		return nil
 	}
 

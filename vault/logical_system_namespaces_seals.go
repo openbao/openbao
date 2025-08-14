@@ -300,7 +300,7 @@ func (b *SystemBackend) handleNamespaceKeyStatus(ctx context.Context, req *logic
 
 	barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
 	if barrier == nil {
-		return nil, fmt.Errorf("namespace %q doesn't have a barrier setup", ns.Path)
+		return nil, ErrBarrierNotFound
 	}
 
 	info, err := barrier.ActiveKeyInfo()
@@ -468,7 +468,7 @@ func (b *SystemBackend) handleNamespacesGetRotateConfig() framework.OperationFun
 
 		barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
 		if barrier == nil {
-			return nil, fmt.Errorf("namespace %q is not a sealable namespace", ns.Path)
+			return nil, ErrBarrierNotFound
 		}
 
 		rotConfig, err := barrier.RotationConfig()
@@ -509,7 +509,7 @@ func (b *SystemBackend) handleNamespacesUpdateRotateConfig() framework.Operation
 
 		barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
 		if barrier == nil {
-			return nil, fmt.Errorf("namespace %q is not a sealable namespace", ns.Path)
+			return nil, ErrBarrierNotFound
 		}
 
 		rotConfig, err := barrier.RotationConfig()
@@ -573,8 +573,8 @@ This path responds to the following HTTP methods.
 	POST /<name>/unseal
 		Unseal a namespace.
 
-    GET /<name>/seal-status
-    	Returns the seal status of the namespace.
+	GET /<name>/seal-status
+		Returns the seal status of the namespace.
 
 	GET /<name>/key-status
 		Provides the namespace current backend encryption key term and installation time.

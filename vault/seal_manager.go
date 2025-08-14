@@ -24,6 +24,12 @@ import (
 	"github.com/openbao/openbao/version"
 )
 
+var (
+	ErrSealNotFound              = errors.New("no seal found for namespace")
+	ErrUnlockInformationNotFound = errors.New("no unlock information found for namespace")
+	ErrBarrierNotFound           = errors.New("no barrier found for namespace")
+)
+
 // SealManager is used to provide storage for the seals.
 // It's a singleton that associates seals (configs) to the namespaces.
 // It is also responsible for managing the seal state on the namespaces.
@@ -82,6 +88,9 @@ func (c *Core) teardownSealManager() error {
 
 // TODO(wslabosz): add logs
 func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
 	sealConfig.StoredShares = 1
 	if err := sealConfig.Validate(); err != nil {
 		return fmt.Errorf("invalid seal configuration: %w", err)
@@ -102,16 +111,20 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 
 	sm.barrierByNamespace.Insert(ns.Path, barrier)
 	sm.barrierByStoragePath.Insert(metaPrefix, barrier)
-	parentBarrier := sm.ParentNamespaceBarrier(ns)
-	if parentBarrier != nil {
-		sm.barrierByStoragePath.Insert(metaPrefix+sealConfigPath, parentBarrier)
+
+	parentPath, ok := ns.ParentPath()
+	if ok {
+		_, parentBarrier, exists := sm.barrierByNamespace.LongestPrefix(parentPath)
+		if exists {
+			sm.barrierByStoragePath.Insert(metaPrefix+sealConfigPath, parentBarrier.(SecurityBarrier))
+		}
 	}
 
 	sm.sealsByNamespace[ns.UUID] = map[string]Seal{"default": defaultSeal}
 	sm.unlockInformationByNamespace[ns.UUID] = map[string]*unlockInformation{}
+
 	if writeToStorage {
-		err := defaultSeal.SetConfig(ctx, sealConfig)
-		if err != nil {
+		if err := defaultSeal.SetConfig(ctx, sealConfig); err != nil {
 			return fmt.Errorf("failed to set barrier config: %w", err)
 		}
 	}
@@ -159,8 +172,7 @@ func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespac
 		if err := sm.core.namespaceStore.UnloadNamespaceMounts(ctx, descendantNamespace); err != nil {
 			errs = errors.Join(errs, err)
 		}
-		err = s.Seal()
-		if err != nil {
+		if err = s.Seal(); err != nil {
 			errs = errors.Join(errs, err)
 		}
 
@@ -170,32 +182,25 @@ func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespac
 	return errs
 }
 
-// ParentNamespaceBarrier returns a barrier of a first parent in hierarchy that
-// has the barrier setup, going up to root namespace.
-func (sm *SealManager) ParentNamespaceBarrier(ns *namespace.Namespace) SecurityBarrier {
-	parentPath, ok := ns.ParentPath()
-	if !ok {
-		return nil
-	}
-
-	return sm.NamespaceBarrierByLongestPrefix(parentPath)
-}
-
-// NamespaceBarrierByLongestPrefix returns a barrier of a namespace matching
-// the longest prefix of the provided path, going up to root namespace.
+// NamespaceBarrierByLongestPrefix acquires a read lock, and returns barrier of a
+// namespace matching the longest prefix of the provided path, going up to root
+// namespace.
 func (sm *SealManager) NamespaceBarrierByLongestPrefix(nsPath string) SecurityBarrier {
-	sm.lock.RLock()
-	defer sm.lock.RUnlock()
-
 	_, v, _ := sm.barrierByNamespace.LongestPrefix(nsPath)
 	return v.(SecurityBarrier)
 }
 
-// NamespaceBarrier returns a barrier of a namespace with provided path.
+// NamespaceBarrier acquires a read lock and returns a barrier
+// of a namespace with provided path.
 func (sm *SealManager) NamespaceBarrier(nsPath string) SecurityBarrier {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
 
+	return sm.namespaceBarrier(nsPath)
+}
+
+// namespaceBarrier returns a barrier of a namespace with provided path.
+func (sm *SealManager) namespaceBarrier(nsPath string) SecurityBarrier {
 	v, exists := sm.barrierByNamespace.Get(nsPath)
 	if !exists {
 		return nil
@@ -204,28 +209,63 @@ func (sm *SealManager) NamespaceBarrier(nsPath string) SecurityBarrier {
 	return v.(SecurityBarrier)
 }
 
-// SecretProgress returns the number of keys provided so far.
-func (sm *SealManager) SecretProgress(ns *namespace.Namespace) (int, string) {
+// NamespaceSeal acquires a read lock and returns a seal of a namespace with
+// provided uuid.
+// TODO(wslabosz): adjust with parallel unsealing
+func (sm *SealManager) NamespaceSeal(nsUUID string) Seal {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
 
-	switch sm.unlockInformationByNamespace[ns.UUID]["default"] {
-	case nil:
-		return 0, ""
-	default:
-		return len(sm.unlockInformationByNamespace[ns.UUID]["default"].Parts), sm.unlockInformationByNamespace[ns.UUID]["default"].Nonce
+	return sm.namespaceSeal(nsUUID)
+}
+
+// NamespaceSeal returns a seal of a namespace with provided uuid.
+func (sm *SealManager) namespaceSeal(nsUUID string) Seal {
+	s, exists := sm.sealsByNamespace[nsUUID]["default"]
+	if !exists {
+		return nil
 	}
+
+	return s
+}
+
+// NamespaceUnlockInformation acquires a read lock and returns an unlock
+// information of a namespace with provided uuid.
+// TODO(wslabosz): adjust with parallel unsealing
+func (sm *SealManager) NamespaceUnlockInformation(nsUUID string) *unlockInformation {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	return sm.namespaceUnlockInformation(nsUUID)
+}
+
+// namespaceUnlockInformation returns an unlock information of a namespace
+// with provided uuid.
+func (sm *SealManager) namespaceUnlockInformation(nsUUID string) *unlockInformation {
+	info, exists := sm.unlockInformationByNamespace[nsUUID]["default"]
+	if !exists {
+		return nil
+	}
+
+	return info
 }
 
 func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespace) (*SealStatusResponse, error) {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
 	// Verify that any kind of seal exists for a namespace
-	seal, ok := sm.sealsByNamespace[ns.UUID]["default"]
-	if !ok {
-		return nil, errors.New("namespace is not sealable")
+	seal := sm.namespaceSeal(ns.UUID)
+	if seal == nil {
+		return nil, ErrSealNotFound
 	}
 
 	// Check the barrier first
-	barrier := sm.NamespaceBarrier(ns.Path)
+	barrier := sm.namespaceBarrier(ns.Path)
+	if barrier == nil {
+		return nil, ErrBarrierNotFound
+	}
+
 	init, err := barrier.Initialized(ctx)
 	if err != nil {
 		sm.logger.Error("namespace barrier init check failed", "namespace", ns.Path, "error", err)
@@ -245,7 +285,14 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 		return nil, errors.New("namespace barrier reports initialized but no seal configuration found")
 	}
 
-	progress, nonce := sm.SecretProgress(ns)
+	var progress int
+	var nonce string
+	info := sm.namespaceUnlockInformation(ns.UUID)
+	if info == nil {
+		progress, nonce = 0, ""
+	} else {
+		progress, nonce = len(info.Parts), info.Nonce
+	}
 
 	s := &SealStatusResponse{
 		Type:        sealConf.Type,
@@ -263,71 +310,76 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 }
 
 // UnsealNamespace unseals the barrier of the given namespace
-func (sm *SealManager) UnsealNamespace(ctx context.Context, ns *namespace.Namespace, key []byte) error {
-	v, exists := sm.barrierByNamespace.Get(ns.Path)
-	if !exists {
-		return errors.New("barrier for the namespace doesn't exist")
-	}
-
-	s := v.(SecurityBarrier)
-	return sm.unsealFragment(ctx, ns, s, key)
-}
-
-func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespace, barrier SecurityBarrier, key []byte) error {
+func (sm *SealManager) UnsealNamespace(ctx context.Context, ns *namespace.Namespace, key []byte) (bool, error) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
+	barrier := sm.namespaceBarrier(ns.Path)
+	if barrier == nil {
+		return false, ErrBarrierNotFound
+	}
+
+	return sm.unsealFragment(ctx, ns, barrier, key)
+}
+
+// unsealFragment verifies and records one part of the unseal shares,
+// and attempts to unseal the namespace
+func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespace, barrier SecurityBarrier, key []byte) (bool, error) {
 	sm.logger.Debug("namespace unseal key supplied")
 
 	// Check if already unsealed
 	if !barrier.Sealed() {
-		return nil
+		return true, nil
 	}
 
 	// Verify the key length
 	min, max := barrier.KeyLength()
 	max += shamir.ShareOverhead
 	if len(key) < min {
-		return &ErrInvalidKey{fmt.Sprintf("key is shorter than minimum %d bytes", min)}
+		return false, &ErrInvalidKey{fmt.Sprintf("key is shorter than minimum %d bytes", min)}
 	}
 	if len(key) > max {
-		return &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
+		return false, &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
 	}
 
 	newKey, err := sm.recordUnsealPart(ns, key)
 	if !newKey || err != nil {
-		return err
+		return false, err
 	}
 
-	seal := sm.sealsByNamespace[ns.UUID]["default"]
+	seal := sm.namespaceSeal(ns.UUID)
+	if seal == nil {
+		return false, ErrSealNotFound
+	}
 
 	// getUnsealKey returns either a recovery key (in the case of an autoseal)
 	// or an unseal key (new-style shamir).
 	combinedKey, err := sm.getUnsealKey(ctx, seal, ns)
 	if err != nil || combinedKey == nil {
-		return err
+		return false, err
 	}
 
 	rootKey, err := sm.unsealKeyToRootKey(ctx, seal, combinedKey, false, true)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	// Attempt to unlock
+	// Attempt to unseal
 	if err := barrier.Unseal(ctx, rootKey); err != nil {
-		return err
+		return false, err
 	}
 
-	sm.logger.Debug("namespace is unsealed")
+	sm.logger.Info("unsealed namespace", "namespace", ns.Path)
 
-	return nil
+	return true, nil
 }
 
 // recordUnsealPart takes in a key fragment, and returns true if it's a new fragment.
 func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bool, error) {
-	// Check if we already have this piece
-	if sm.unlockInformationByNamespace[ns.UUID]["default"] != nil {
-		for _, existing := range sm.unlockInformationByNamespace[ns.UUID]["default"].Parts {
+	info := sm.namespaceUnlockInformation(ns.UUID)
+
+	if info != nil {
+		for _, existing := range info.Parts {
 			if subtle.ConstantTimeCompare(existing, key) == 1 {
 				return false, nil
 			}
@@ -337,13 +389,11 @@ func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bo
 		if err != nil {
 			return false, err
 		}
-		sm.unlockInformationByNamespace[ns.UUID]["default"] = &unlockInformation{
-			Nonce: uuid,
-		}
+		info = &unlockInformation{Nonce: uuid}
 	}
 
 	// Store this key
-	sm.unlockInformationByNamespace[ns.UUID]["default"].Parts = append(sm.unlockInformationByNamespace[ns.UUID]["default"].Parts, key)
+	info.Parts = append(info.Parts, key)
 	return true, nil
 }
 
@@ -360,26 +410,31 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 		return nil, errors.New("failed to obtain seal configuration")
 	}
 
+	info := sm.namespaceUnlockInformation(ns.UUID)
+	if info == nil {
+		return nil, ErrUnlockInformationNotFound
+	}
+
 	// Check if we don't have enough keys to unlock, proceed through the rest of
 	// the call only if we have met the threshold
-	if len(sm.unlockInformationByNamespace[ns.UUID]["default"].Parts) < sealConfig.SecretThreshold {
-		sm.logger.Debug("cannot unseal namespace, not enough keys", "keys", len(sm.unlockInformationByNamespace[ns.UUID]["default"].Parts),
-			"threshold", sealConfig.SecretThreshold, "nonce", sm.unlockInformationByNamespace[ns.UUID]["default"].Nonce)
+	if len(info.Parts) < sealConfig.SecretThreshold {
+		sm.logger.Debug("cannot unseal namespace, not enough keys", "keys", len(info.Parts),
+			"threshold", sealConfig.SecretThreshold, "nonce", info.Nonce)
 		return nil, nil
 	}
 
 	defer func() {
-		sm.unlockInformationByNamespace[ns.UUID]["default"] = nil
+		info = nil
 	}()
 
 	// Recover the split key. recoveredKey is the shamir combined
 	// key, or the single provided key if the threshold is 1.
 	var unsealKey []byte
 	if sealConfig.SecretThreshold == 1 {
-		unsealKey = make([]byte, len(sm.unlockInformationByNamespace[ns.UUID]["default"].Parts[0]))
-		copy(unsealKey, sm.unlockInformationByNamespace[ns.UUID]["default"].Parts[0])
+		unsealKey = make([]byte, len(info.Parts[0]))
+		copy(unsealKey, info.Parts[0])
 	} else {
-		unsealKey, err = shamir.Combine(sm.unlockInformationByNamespace[ns.UUID]["default"].Parts)
+		unsealKey, err = shamir.Combine(info.Parts)
 		if err != nil {
 			return nil, &ErrInvalidKey{fmt.Sprintf("failed to compute combined key: %v", err)}
 		}
@@ -445,6 +500,34 @@ func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combin
 	return storedKeys[0], nil
 }
 
+// AuthenticateRootKey verifies retrieved root key (using unseal key)
+// using the namespace barrier
+func (sm *SealManager) AuthenticateRootKey(ctx context.Context, ns *namespace.Namespace, combinedKey []byte) error {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	nsSeal := sm.namespaceSeal(ns.UUID)
+	if nsSeal == nil {
+		return ErrSealNotFound
+	}
+
+	rootKey, err := sm.unsealKeyToRootKey(ctx, nsSeal, combinedKey, false, false)
+	if err != nil {
+		return fmt.Errorf("unable to authenticate: %w", err)
+	}
+
+	nsBarrier := sm.namespaceBarrier(ns.Path)
+	if nsBarrier == nil {
+		return ErrBarrierNotFound
+	}
+
+	if err := nsBarrier.VerifyRoot(rootKey); err != nil {
+		return fmt.Errorf("root key verification failed: %w", err)
+	}
+
+	return nil
+}
+
 // NamespaceView finds the correct barrier to use for the namespace
 // and returns BarrierView restricted to the data of the given namespace.
 func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
@@ -460,9 +543,12 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) error {
 }
 
 func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Namespace) ([][]byte, error) {
-	nsSeal := sm.sealsByNamespace[ns.UUID]["default"]
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	nsSeal := sm.namespaceSeal(ns.UUID)
 	if nsSeal == nil {
-		return nil, errors.New("namespace is not sealable")
+		return nil, ErrSealNotFound
 	}
 
 	sealConfig, err := nsSeal.Config(ctx)
@@ -485,18 +571,16 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		}
 	}
 
-	var nsSecurityBarrier SecurityBarrier
-
-	if nsBarrier, found := sm.barrierByNamespace.Get(ns.Path); found {
-		nsSecurityBarrier = nsBarrier.(SecurityBarrier)
-		if err := nsSecurityBarrier.Initialize(ctx, nsBarrierKey, nsSealKey, sm.core.secureRandomReader); err != nil {
-			return nil, fmt.Errorf("failed to initialize namespace barrier: %w", err)
-		}
-	} else {
-		return nil, fmt.Errorf("namespace barrier not found: %w", err)
+	nsBarrier := sm.namespaceBarrier(ns.Path)
+	if nsBarrier == nil {
+		return nil, ErrBarrierNotFound
 	}
 
-	if err := nsSecurityBarrier.Unseal(ctx, nsBarrierKey); err != nil {
+	if err := nsBarrier.Initialize(ctx, nsBarrierKey, nsSealKey, sm.core.secureRandomReader); err != nil {
+		return nil, fmt.Errorf("failed to initialize namespace barrier: %w", err)
+	}
+
+	if err := nsBarrier.Unseal(ctx, nsBarrierKey); err != nil {
 		return nil, fmt.Errorf("failed to unseal namespace barrier: %w", err)
 	}
 
@@ -532,35 +616,6 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	return nsSealKeyShares, nil
 }
 
-func (sm *SealManager) ExtractSealConfigs(seals interface{}) ([]*SealConfig, error) {
-	sealsArray, ok := seals.([]interface{})
-	var sealConfigs []*SealConfig
-	if !ok {
-		return nil, fmt.Errorf("seals is not an array")
-	}
-
-	for _, seal := range sealsArray {
-		sealMap, ok := seal.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("seal is not a map")
-		}
-
-		byteSeal, err := json.Marshal(sealMap)
-		if err != nil {
-			return nil, err
-		}
-
-		var sealConfig SealConfig
-		err = json.Unmarshal(byteSeal, &sealConfig)
-		if err != nil {
-			return nil, err
-		}
-
-		sealConfigs = append(sealConfigs, &sealConfig)
-	}
-	return sealConfigs, nil
-}
-
 func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 
@@ -594,13 +649,12 @@ func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Name
 // RotateNamespaceBarrierKey rotates the barrier key of the given namespace.
 // It will return an error if the given namespace is not a sealable namespace.
 func (sm *SealManager) RotateNamespaceBarrierKey(ctx context.Context, namespace *namespace.Namespace) error {
-	nsBarrier, found := sm.barrierByNamespace.Get(namespace.Path)
-	nsSecurityBarrier, ok := nsBarrier.(SecurityBarrier)
-	if !found || !ok {
-		return fmt.Errorf("namespace %q is not a sealable namespace", namespace.Path)
+	nsBarrier := sm.NamespaceBarrier(namespace.Path)
+	if nsBarrier == nil {
+		return ErrBarrierNotFound
 	}
 
-	_, err := nsSecurityBarrier.Rotate(ctx, sm.core.secureRandomReader)
+	_, err := nsBarrier.Rotate(ctx, sm.core.secureRandomReader)
 	return err
 }
 

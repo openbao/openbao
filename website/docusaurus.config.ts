@@ -74,10 +74,10 @@ const config: Config = {
         theme: {
           customCss: "./src/css/custom.css",
         },
-		gtag: {
-		  trackingID: "GTM-MWH2V47T",
-		  anonymizeIP: true,
-		},
+        gtag: {
+          trackingID: "GTM-MWH2V47T",
+          anonymizeIP: true,
+        },
       } satisfies Preset.Options,
     ],
   ],
@@ -98,6 +98,17 @@ const config: Config = {
               resolveFrom: path.join(process.cwd(), "content", "partials"),
             },
           ],
+        ],
+      },
+    ],
+    [
+      "@docusaurus/plugin-client-redirects",
+      {
+        redirects: [
+          {
+            from: "/api-docs/system/rotate-config",
+            to: "/api-docs/system/rotate/keyring-config",
+          },
         ],
       },
     ],
@@ -182,9 +193,9 @@ const config: Config = {
       additionalLanguages: ["hcl"],
     },
     metadata: [
-      {name: 'keywords', content: 'openbao, secrets management, open source, linux foundation, encryption as a service, key management system, pki, transit, ssh, secret vault, database passwords'},
-      {name: 'author', content: 'OpenBao a Series of LF Projects, LLC'},
-      {name: 'twitter:card', content: 'summary_large_image'},
+      { name: 'keywords', content: 'openbao, secrets management, open source, linux foundation, encryption as a service, key management system, pki, transit, ssh, secret vault, database passwords' },
+      { name: 'author', content: 'OpenBao a Series of LF Projects, LLC' },
+      { name: 'twitter:card', content: 'summary_large_image' },
     ],
     headTags: [
       {

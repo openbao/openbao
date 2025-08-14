@@ -1,0 +1,173 @@
+---
+description: The `/sys/rotate/(root|recovery)/init` endpoints are used to initialize, cancel or retrieve status of the unseal keys rotation for OpenBao.
+---
+
+# `/sys/rotate/(root|recovery)/init`
+
+:::info
+
+The `/sys/rotate/(root|recovery)/init` endpoints are available from version `v2.4.0`.
+
+:::
+
+On seals that support stored keys (e.g. HSM PKCS#11), the recovery key share(s)
+can be provided to rotate the root key since no unseal keys are available. The
+secret shares, secret threshold, and stored shares parameters must be set to 1.
+Upon successful rotation, no split unseal key shares are returned.
+
+## Read rotation progress
+
+This endpoint reads the configuration and progress of the current rotation attempt.
+
+| Method | Path                               |
+| :----- | :--------------------------------- |
+| `GET`  | `/sys/rotate/(root\|recovery)/init`|
+
+
+### Sample requests
+
+```shell-session
+$ curl \
+    http://127.0.0.1:8200/v1/sys/rotate/root/init
+```
+or
+```shell-session
+$ curl \
+    http://127.0.0.1:8200/v1/sys/rotate/recovery/init
+```
+
+### Sample response
+
+```json
+{
+  "request_id": "9311c844-6be7-3c00-d2bc-e97fa8345338",
+  "lease_id": "",
+  "renewable": false,
+  "lease_duration": 0,
+  "data": {
+    "started": true,
+    "nonce": "2dbd10f1-8528-6246-09e7-82b25b8aba63",
+    "t": 3,
+    "n": 5,
+    "progress": 1,
+    "required": 3,
+    "pgp_fingerprints": ["abcd1234"],
+    "backup": true,
+    "verification_required": false
+  },
+  "wrap_info": null,
+  "warnings": null,
+  "auth": null
+}
+```
+
+If a rotation is started, then `n` is the number of new shares to generate and
+`t` is the threshold required for the unseal. `progress` is how many unseal keys
+have been provided for this rotation, where `required` must be reached to complete.
+The `nonce` for the current rotation is also displayed. 
+If PGP keys are being used to encrypt the final shares, the key fingerprints and
+property dictating whether the final keys will be backed up to physical storage
+are also be displayed.
+`verification_required` indicates whether verification was enabled for this
+operation.
+
+
+## Start rotation
+
+This endpoint initializes a new rotation attempt. Only a single rotation attempt
+can take place at a time. To change the parameters of a rotation, the current
+rotation has to be cancelled, and a new one has to be initialized, which also
+provides a new nonce.
+
+If the server was initialized with no recovery keys, `/sys/rotate/root/init`
+endpoint will not work as no recovery keys are present. To rotate the root
+key, use the `/sys/rotate/root` [endpoint](/api-docs/system/rotate/root) instead.
+When rotating recovery keys, `/sys/rotate/recovery/init` will immediate return
+the specified number of recovery key shares.
+
+| Method | Path                                |
+| :----- | :---------------------------------- |
+| `POST` | `/sys/rotate/(root\|recovery)/init` |
+
+### Parameters
+
+- `secret_shares` `(int: <required>)` - Specifies the number of shares to split
+  the root key into.
+
+- `secret_threshold` `(int: <required>)` - Specifies the number of shares
+  required to reconstruct the root key. This must be less than or equal to
+  `secret_shares`.
+
+- `pgp_keys` `(array<string>: nil)` - Specifies an array of PGP public keys used
+  to encrypt the output unseal keys. Ordering is preserved. The keys must be
+  base64-encoded from their original binary representation. The size of this
+  array must be the same as `secret_shares`.
+
+- `backup` `(bool: false)` - Specifies if using PGP-encrypted keys, whether
+  OpenBao should also store a plaintext backup of the PGP-encrypted keys at
+  `core/unseal-keys-backup` (or `core/recovery-keys-backup`) in the physical
+  storage backend. These can then be retrieved and removed via the
+  `sys/rotate/root/backup` (or `sys/rotate/recovery/backup`) endpoints.
+
+- `require_verification` `(bool: false)` - Specifies usage of verification
+  functionality. When verification is turned on, after successful authorization
+  with the current unseal keys, the new unseal keys are returned but the root
+  key is not actually rotated. The new keys must be provided to authorize the
+  actual rotation of the root key. This ensures that the new keys have been
+  successfully saved and protects against a risk of the keys being lost after
+  rotation but before their successful persistence. This can be used with or
+  without `pgp_keys` parameter. Using both ensures that the returned keys can
+  be successfully decrypted before committing to the new shares, which the
+  backup functionality does not provide.
+
+### Sample payload
+
+```json
+{
+  "secret_shares": 10,
+  "secret_threshold": 5
+}
+```
+
+### Sample requests
+
+```shell-session
+$ curl \
+    --request POST \
+    --data @payload.json \
+    http://127.0.0.1:8200/v1/sys/rotate/root/init
+```
+or
+```shell-session
+$ curl \
+    --request POST \
+    --data @payload.json \
+    http://127.0.0.1:8200/v1/sys/rotate/recovery/init
+```
+
+## Cancel rotation
+
+This endpoint cancels any in-progress rotation. This clears the rotation
+settings as well as any progress made. This must be called to change the
+parameters of the rotation.
+Note: verification is still a part of a rotation. If rotation is canceled
+during the verification flow, the current unseal keys remain valid.
+
+| Method   | Path                                |
+| :------- | :---------------------------------- |
+| `DELETE` | `/sys/rotate/(root\|recovery)/init` |
+
+
+### Sample requests
+
+```shell-session
+$ curl \
+    --request DELETE \
+    http://127.0.0.1:8200/v1/sys/rotate/root/init
+```
+or
+```shell-session
+$ curl \
+    --request DELETE \
+    http://127.0.0.1:8200/v1/sys/rotate/recovery/init
+```

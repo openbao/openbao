@@ -229,6 +229,7 @@ func (c *cache) Get(ctx context.Context, key string) (*Entry, error) {
 	if !cacheRefreshFromContext(ctx) {
 		if raw, ok := c.lru.Get(key); ok {
 			if raw == nil {
+				//nolint:nilnil
 				return nil, nil
 			}
 			c.metricSink.IncrCounter([]string{"cache", "hit"}, 1)

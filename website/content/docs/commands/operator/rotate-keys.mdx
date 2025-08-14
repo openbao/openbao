@@ -1,26 +1,26 @@
 ---
-sidebar_label: rekey
+sidebar_label: rotate-keys
 description: |-
-  The "operator rekey" command generates a new set of unseal keys. This can
-  optionally change the total number of key shares or the required threshold of
-  those key shares to reconstruct the root key. This operation is zero
-  downtime, but it requires the OpenBao is unsealed and a quorum of existing
-  unseal keys are provided.
+  The "operator rotate-keys" command generates a new set of unseal keys. 
+  This can optionally change the total number of key shares or the required 
+  threshold to reconstruct the root key. The rotation does not introduce
+  downtime, but it requires the OpenBao instance to be unsealed and a quorum
+  of existing unseal keys to be provided.
 ---
 
-# operator rekey
+# operator rotate-keys
 
-:::warning
+:::info
 
-Note: `operator rekey` command is deprecated, please use [rotate-keys](/docs/commands/operator/rotate-keys) instead.
+The `operator rotate-keys` command is available from version `v2.4.0`.
 
 :::
 
-The `operator rekey` command generates a new set of unseal keys. This can
-optionally change the total number of key shares or the required threshold of
-those key shares to reconstruct the root key. This operation is zero downtime,
-but it requires the OpenBao is unsealed and a quorum of existing unseal keys are
-provided.
+The `operator rotate-keys` command generates a new set of unseal keys. 
+This can optionally change the total number of key shares or the required 
+threshold to reconstruct the root key. The rotation does not introduce
+downtime, but it requires the OpenBao instance to be unsealed and a quorum
+of existing unseal keys to be provided.
 
 An unseal key may be provided directly on the command line as an argument to the
 command. If key is specified as "-", the command will read from stdin. If a TTY
@@ -28,49 +28,49 @@ is available, the command will prompt for text.
 
 ## Examples
 
-Initialize a rekey:
+Initialize a rotation:
 
 ```shell-session
-$ bao operator rekey \
+$ bao operator rotate-keys \
     -init \
     -key-shares=15 \
     -key-threshold=9
 ```
 
-Initialize a rekey when Auto Unseal is used for the OpenBao cluster:
+Initialize a rotation when Auto Unseal is used for the OpenBao cluster:
 
 ```shell-session
-$ bao operator rekey \
+$ bao operator rotate-keys \
     -target=recovery \
     -init \
     -key-shares=15 \
     -key-threshold=9
 ```
 
-Initialize a rekey and activate the verification process:
+Initialize a rotation and activate the verification process:
 
 ```shell-session
-$ bao operator rekey \
+$ bao operator rotate-keys \
     -init \
     -key-shares=15 \
     -key-threshold=9 \
     -verify
 ```
 
-Rekey and encrypt the resulting unseal keys with PGP:
+Rotate and encrypt the resulting unseal keys with PGP:
 
 ```shell-session
-$ bao operator rekey \
+$ bao operator rotate-keys \
     -init \
     -key-shares=3 \
     -key-threshold=2 \
     -pgp-keys="keybase:openbao,keybase:jefferai,keybase:sethvargo"
 ```
 
-Rekey an Auto Unseal OpenBao and encrypt the resulting recovery keys with PGP:
+Rotate an Auto Unseal OpenBao and encrypt the resulting recovery keys with PGP:
 
 ```shell-session
-$ bao operator rekey \
+$ bao operator rotate-keys \
     -target=recovery \
     -init \
     -key-shares=1 \
@@ -81,7 +81,7 @@ $ bao operator rekey \
 Store encrypted PGP keys in OpenBao's core:
 
 ```shell-session
-$ bao operator rekey \
+$ bao operator rotate-keys \
     -init \
     -pgp-keys="..." \
     -backup
@@ -90,19 +90,19 @@ $ bao operator rekey \
 Retrieve backed-up unseal keys:
 
 ```shell-session
-$ bao operator rekey -backup-retrieve
+$ bao operator rotate-keys -backup-retrieve
 ```
 
 Delete backed-up unseal keys:
 
 ```shell-session
-$ bao operator rekey -backup-delete
+$ bao operator rotate-keys -backup-delete
 ```
 
-Perform the verification of the rekey using the verification nonce:
+Perform the verification of the rotation using the verification nonce:
 
 ```shell-session
-$ bao operator rekey -verify -nonce="..."
+$ bao operator rotate-keys -verify -nonce="..."
 ```
 
 ## Usage
@@ -118,19 +118,19 @@ flags](/docs/commands) included on all commands.
 
 ### Command options
 
-- `-cancel` `(bool: false)` - Reset the rekeying progress. This will discard any submitted unseal keys
-  or configuration. The default is false.
+- `-cancel` `(bool: false)` - Reset the rotation progress. This will discard
+  any submitted unseal keys or configuration. The default is false.
 
-- `-init` `(bool: false)` - Initialize the rekeying operation. This can only be
-  done if there's not one in progress. Customize the new number of key shares and
+- `-init` `(bool: false)` - Initialize the rotation. This can only be done if
+  there's not one in progress. Customize the new number of key shares and
   threshold using the `-key-shares` and `-key-threshold` flags respectively.
 
-- `-key-shares` `(int: 5)` - Number of key shares to split the generated master
+- `-key-shares` `(int: 5)` - Number of key shares to split the generated root
   key into. This is the number of "unseal keys" to generate. This is aliased as
   `-n`
 
 - `-key-threshold` `(int: 3)` - Number of key shares required to reconstruct the
-  root key. This must be less than or equal to -key-shares. This is aliased as
+  root key. This must be less than or equal to `-key-shares`. This is aliased as
   `-t`.
 
 - `-nonce` `(string: "")` - Nonce value provided at initialization. The same
@@ -144,11 +144,11 @@ flags](/docs/commands) included on all commands.
 - `-status` `(bool: false)` - Print the status of the current attempt without
   providing an unseal key. The default is false.
 
-- `-target` `(string: "barrier")` - Target for rekeying. "recovery" only applies
+- `-target` `(string: "barrier")` - Target for rotation. "recovery" only applies
   when HSM support is enabled or using [Auto Unseal](/docs/concepts/seal#auto-unseal).
 
 - `-verify` `(bool: false)` - Indicate during the phase `-init` that the
-  verification process is activated for the rekey. Along with `-nonce` option
+  verification process is activated for the rotation. Along with `-nonce` option
   it indicates that the nonce given is for the verification process.
 
 ### Backup options

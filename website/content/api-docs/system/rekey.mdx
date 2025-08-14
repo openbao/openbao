@@ -4,9 +4,17 @@ description: The `/sys/rekey` endpoints are used to rekey the unseal keys for Op
 
 # `/sys/rekey`
 
+:::warning
+
+Note: As of v2.4.0 usage of these endpoints is [deprecated](/docs/deprecation/unauthed-rekey)
+and will be disabled by default. For the new authenticated version of the rekey
+endpoints, please see [rotation endpoints](/api-docs/system/rotate).
+
+:::
+
 The `/sys/rekey` endpoints are used to rekey the unseal keys for OpenBao.
 
-On seals that support stored keys (e.g. HSM PKCS11), the recovery key share(s)
+On seals that support stored keys (e.g. HSM PKCS#11), the recovery key share(s)
 can be provided to rekey the root key since no unseal keys are available. The
 secret shares, secret threshold, and stored shares parameters must be set to 1.
 Upon successful rekey, no split unseal key shares are returned.

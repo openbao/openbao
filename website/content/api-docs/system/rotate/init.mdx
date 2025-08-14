@@ -4,6 +4,12 @@ description: The `/sys/rotate/(root|recovery)/init` endpoints are used to initia
 
 # `/sys/rotate/(root|recovery)/init`
 
+:::info
+
+The `/sys/rotate/(root|recovery)/init` endpoints are available from version `v2.4.0`.
+
+:::
+
 On seals that support stored keys (e.g. HSM PKCS#11), the recovery key share(s)
 can be provided to rotate the root key since no unseal keys are available. The
 secret shares, secret threshold, and stored shares parameters must be set to 1.

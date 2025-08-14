@@ -4,6 +4,12 @@ description: The `/sys/rotate/keyring/config` endpoint is used to configure or r
 
 # `/sys/rotate/keyring/config`
 
+:::info
+
+The `/sys/rotate/keyring/config` endpoint is available from version `v2.4.0`.
+
+:::
+
 The `/sys/rotate/keyring/config` endpoint is used to configure automatic key rotation.
 
 Note: Old endpoint format of `/sys/rotate/config` is still supported, although `/sys/rotate/keyring/config` is preferred.
@@ -24,12 +30,12 @@ Operators can configure rotations after fewer encryptions or on a time based sch
 
 ### Parameters
 
-- `max_operations` `(int: 3865470566)` - Specify the limit of encryptions after which
-  the key will be automatically rotated. The number must be between 1,000,000 and the
-  default.
+- `max_operations` `(int: 3865470566)` - Specify the limit of encryptions after
+  which the key will be automatically rotated. The number must be between
+  1,000,000 and the default.
 - `interval` `(string: "")` - If set, the age of the active key at which an
-  automatic rotation is triggered. Specified as a Go duration string (e.g.
-  4320h), the value must be at least 24 hours.
+  automatic rotation is triggered. Specified as a Go duration string (e.g. 4320h),
+  the value must be at least 24 hours.
 - `enabled` `(bool: true)` - If set to false, automatic rotations will not
   be performed. Tracking of encryption counts will continue.
 

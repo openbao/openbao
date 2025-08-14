@@ -4,6 +4,12 @@ description: The `/sys/rotate/(root|recovery)/backup` endpoints are used to read
 
 # `/sys/rotate/(root|recovery)/backup`
 
+:::info
+
+The `/sys/rotate/(root|recovery)/backup` endpoints are available from version `v2.4.0`.
+
+:::
+
 This endpoint returns the backup copy of PGP-encrypted unseal keys. The returned
 value is the nonce of the rotation and a map of PGP key fingerprint to hex-encoded
 PGP-encrypted key.

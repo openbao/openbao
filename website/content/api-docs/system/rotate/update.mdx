@@ -4,6 +4,12 @@ description: The `/sys/rotate/(root|recovery)/update` endpoint is used to progre
 
 # `/sys/rotate/(root|recovery)/update`
 
+:::info
+
+The `/sys/rotate/(root|recovery)/update` endpoints are available from version `v2.4.0`.
+
+:::
+
 This endpoint is used to enter a single key share to progress the rotation
 of the OpenBao. If the threshold number of key shares is reached, OpenBao will
 complete the rotation. Otherwise, this API call must be repeated until 

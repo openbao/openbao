@@ -151,9 +151,9 @@ func (b *SystemBackend) handleNamespaceGenerateRootStatus() framework.OperationF
 }
 
 func (b *SystemBackend) namespaceGenerateRootStatus(ctx context.Context, ns *namespace.Namespace, otp string) (*logical.Response, error) {
-	seal, found := b.Core.sealManager.sealsByNamespace[ns.UUID]["default"]
-	if !found {
-		return handleError(errors.New("no seal found for namespace"))
+	seal := b.Core.sealManager.NamespaceSeal(ns.UUID)
+	if seal == nil {
+		return handleError(ErrSealNotFound)
 	}
 
 	barrierConfig, err := seal.Config(ctx)
@@ -278,11 +278,10 @@ func (b *SystemBackend) handleNamespaceGenerateRootCancel() framework.OperationF
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
-		err = b.Core.GenerateRootCancel(ns)
-		if err != nil {
+		if err = b.Core.GenerateRootCancel(ns); err != nil {
 			return handleError(err)
 		}
 
-		return &logical.Response{}, nil
+		return nil, nil
 	}
 }

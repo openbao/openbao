@@ -279,7 +279,7 @@ func TestNamespaceBackend_Rotate(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo/rotate")
 		res, err := b.HandleRequest(rootCtx, req)
-		require.ErrorContains(t, err, "namespace \"foo/\" is not a sealable namespace")
+		require.ErrorIs(t, err, ErrBarrierNotFound)
 		require.Empty(t, res)
 	})
 
@@ -332,12 +332,12 @@ func TestNamespaceBackend_RotateConfig(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo/rotate/config")
 		res, err := b.HandleRequest(rootCtx, req)
-		require.ErrorContains(t, err, "namespace \"foo/\" is not a sealable namespace")
+		require.ErrorIs(t, err, ErrBarrierNotFound)
 		require.Empty(t, res)
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foo/rotate/config")
 		res, err = b.HandleRequest(rootCtx, req)
-		require.ErrorContains(t, err, "namespace \"foo/\" is not a sealable namespace")
+		require.ErrorIs(t, err, ErrBarrierNotFound)
 		require.Empty(t, res)
 	})
 

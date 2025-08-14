@@ -127,9 +127,23 @@ func TestPSQLParallelInit(t *testing.T) {
 			}
 			cfgBytes, _ := json.MarshalIndent(cfg, "", "  ")
 			tmp, _ := os.CreateTemp("", fmt.Sprintf("cfg-%02d-*.json", idx))
-			tmp.Write(cfgBytes)
-			tmp.Close()
-			defer os.Remove(tmp.Name())
+			_, err = tmp.Write(cfgBytes)
+
+			if err != nil {
+				t.Fatalf("Failed to write: %v", err)
+			}
+
+			err = tmp.Close()
+			if err != nil {
+				t.Fatalf("Failed to close: %v", err)
+			}
+
+			defer func() {
+				err = os.Remove(tmp.Name())
+				if err != nil {
+					t.Fatalf("Failed to close: %v", err)
+				}
+			}()
 
 			// start node
 			opts := &docker.DockerClusterOptions{

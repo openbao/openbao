@@ -28,8 +28,8 @@ func TestNamespaceBackend_KeyStatus(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/foo/key-status")
 		resp, err := b.HandleRequest(rootCtx, req)
-		require.ErrorContains(t, err, "namespace \"foo/\" doesn't have a barrier setup")
-		require.Empty(t, resp)
+		require.Error(t, err)
+		require.ErrorContains(t, resp.Error(), ErrBarrierNotFound.Error())
 	})
 
 	t.Run("returns key info for sealable namespace", func(t *testing.T) {
@@ -54,9 +54,9 @@ func TestNamespaceBackend_SealStatus(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/foo/seal-status")
-		res, err := b.HandleRequest(rootCtx, req)
+		resp, err := b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
-		require.Equal(t, "namespace is not sealable", res.Error().Error())
+		require.ErrorContains(t, resp.Error(), ErrNotSealable.Error())
 	})
 
 	t.Run("can read seal status", func(t *testing.T) {

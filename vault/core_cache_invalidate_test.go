@@ -28,11 +28,21 @@ import (
 func testCore_Invalidate_sneakValueAroundCache(t *testing.T, c *Core, entry *logical.StorageEntry) {
 	t.Helper()
 
-	// we briefly disable the physical cache, this will put the value into the backing strorage, but not update the cache
+	// we briefly disable the physical cache, this will put the value into the backing storage, but not update the cache
 	c.physicalCache.SetEnabled(false)
 	defer c.physicalCache.SetEnabled(true)
 
 	require.NoError(t, c.barrier.Put(t.Context(), entry))
+}
+
+func testCore_Invalidate_sneakValueAroundCacheDelete(t *testing.T, c *Core, key string) {
+	t.Helper()
+
+	// we briefly disable the physical cache, this will put the value into the backing storage, but not update the cache
+	c.physicalCache.SetEnabled(false)
+	defer c.physicalCache.SetEnabled(true)
+
+	require.NoError(t, logical.ClearView(t.Context(), logical.NewStorageView(c.barrier, key)))
 }
 
 func testCore_Invalidate_handleRequest(t require.TestingT, ctx context.Context, c *Core, req *logical.Request, expectedErrors ...string) *logical.Response {
@@ -69,6 +79,7 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 	TestCoreCreateNamespaces(t, c, ns)
 
 	// 2. Manipulate Storage
+	// 2.1 Inject custom metadata into namespace
 	clone := *ns
 	clone.CustomMetadata["testkey"] = "updated value"
 
@@ -78,10 +89,23 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 
 	testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
 
+	// 2.2 add mount to namespace
+	newEntry, err = logical.StorageEntryJSON("namespaces/"+ns.UUID+"/core/mounts/666666666-6666-6666-6666-6666666666666", MountEntry{
+		Table:    "mounts",
+		Type:     "kv",
+		Path:     "my-path",
+		UUID:     "666666666-6666-6666-6666-6666666666666",
+		Accessor: "mount_666",
+	})
+	require.NoError(t, err)
+	testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
+	mountPath := "ns/my-path"
+
 	// 3. Invalidate Path
 	c.Invalidate(storagePath)
 
 	// 4. Check cache was properly invalidated
+	// 4.1 Validate custom metadata
 	req := logical.TestRequest(t, logical.ReadOperation, "sys/namespaces/ns")
 	req.ClientToken = root
 	resp := testCore_Invalidate_handleRequest(t, namespace.RootContext(t.Context()), c, req)
@@ -91,6 +115,36 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 	}); diff != nil {
 		t.Error(diff)
 	}
+
+	// 4.2 validate kv was mounted
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		req = logical.TestRequest(t, logical.ListOperation, mountPath)
+		req.ClientToken = root
+		resp = testCore_Invalidate_handleRequest(collect, namespace.RootContext(t.Context()), c, req)
+		require.NotNil(collect, resp)
+	}, 10*time.Second, 10*time.Millisecond)
+
+	// 5. Manipulate Storage: delete namespace
+	testCore_Invalidate_sneakValueAroundCacheDelete(t, c, storagePath)
+	testCore_Invalidate_sneakValueAroundCacheDelete(t, c, "namespaces/"+ns.UUID)
+
+	// 6. Invalidate Path
+	c.Invalidate(storagePath)
+
+	// 7. Check cache was properly invalidated
+	// 7.1 namespace should be gone
+	req = logical.TestRequest(t, logical.ReadOperation, "sys/namespaces/ns")
+	req.ClientToken = root
+	resp = testCore_Invalidate_handleRequest(t, namespace.RootContext(t.Context()), c, req)
+
+	require.Nil(t, resp)
+
+	// 7.2 mount should be gone
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		req = logical.TestRequest(t, logical.ListOperation, mountPath)
+		req.ClientToken = root
+		resp = testCore_Invalidate_handleRequest(collect, namespace.RootContext(t.Context()), c, req, "unsupported path")
+	}, 10*time.Second, 10*time.Millisecond)
 }
 
 func TestCore_Invalidate_Policy(t *testing.T) {
@@ -391,7 +445,6 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 					Pattern: ".*",
 					Callbacks: map[logical.Operation]framework.OperationFunc{
 						logical.ReadOperation: func(context.Context, *logical.Request, *framework.FieldData) (*logical.Response, error) {
-							t.Log("got a call")
 							readCallCount.Add(1)
 							return &logical.Response{}, nil
 						},
@@ -442,7 +495,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, storageEntry, "expected mount entry to be written at %s", storagePath)
 
-			require.NoError(t, c.barrier.Delete(ctx, storagePath))
+			testCore_Invalidate_sneakValueAroundCacheDelete(t, c, storagePath)
 
 			// 5. call invalidate
 			c.Invalidate(storagePath)
@@ -581,7 +634,7 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, storageEntry, "expected mount entry to be written at %s", storagePath)
 
-			require.NoError(t, c.barrier.Delete(ctx, storagePath))
+			testCore_Invalidate_sneakValueAroundCacheDelete(t, c, storagePath)
 
 			// 5. call invalidate
 			c.Invalidate(storagePath)

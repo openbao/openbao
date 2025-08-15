@@ -36,23 +36,22 @@ func (b *databaseBackend) secretCredsRenew() framework.OperationFunc {
 		defer txRollback()
 
 		// Get the username from the internal data
-		usernameRaw, ok := req.Secret.InternalData["username"]
+		username, ok := req.Secret.InternalData["username"].(string)
 		if !ok {
-			return nil, errors.New("secret is missing username internal data")
-		}
-		username, ok := usernameRaw.(string)
-
-		roleNameRaw, ok := req.Secret.InternalData["role"]
-		if !ok {
-			return nil, fmt.Errorf("could not find role with name: %q", req.Secret.InternalData["role"])
+			return nil, errors.New(`secret is missing "username" field in internal data`)
 		}
 
-		role, err := b.Role(ctx, req.Storage, roleNameRaw.(string))
+		roleName, ok := req.Secret.InternalData["role"].(string)
+		if !ok {
+			return nil, errors.New(`secret is missing "role" field in internal data`)
+		}
+
+		role, err := b.Role(ctx, req.Storage, roleName)
 		if err != nil {
 			return nil, err
 		}
 		if role == nil {
-			return nil, fmt.Errorf("error during renew: could not find role with name %q", req.Secret.InternalData["role"])
+			return nil, fmt.Errorf("error during renew: could not find role with name %q", roleName)
 		}
 
 		// Get the Database object

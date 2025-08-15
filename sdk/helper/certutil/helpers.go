@@ -476,13 +476,13 @@ func ComparePublicKeys(key1Iface, key2Iface crypto.PublicKey) (bool, error) {
 }
 
 // ParsePublicKeyPEM is used to parse RSA and ECDSA public keys from PEMs
-func ParsePublicKeyPEM(data []byte) (interface{}, error) {
+func ParsePublicKeyPEM(data []byte) (crypto.PublicKey, error) {
 	block, data := pem.Decode(data)
 	if block != nil {
 		if len(bytes.TrimSpace(data)) > 0 {
 			return nil, errutil.UserError{Err: "unexpected trailing data after parsed PEM block"}
 		}
-		var rawKey interface{}
+		var rawKey any
 		var err error
 		if rawKey, err = x509.ParsePKIXPublicKey(block.Bytes); err != nil {
 			if cert, err := x509.ParseCertificate(block.Bytes); err == nil {

@@ -2698,18 +2698,6 @@ func TestProperAuthing(t *testing.T) {
 		}
 
 		openapi_data := raw_data.(map[string]interface{})
-		hasList := false
-		rawGetData, hasGet := openapi_data["get"]
-		if hasGet {
-			getData := rawGetData.(map[string]interface{})
-			getParams, paramsPresent := getData["parameters"].(map[string]interface{})
-			if getParams != nil && paramsPresent {
-				if _, hasList = getParams["list"]; hasList {
-					// LIST is exclusive from GET on the same endpoint usually.
-					hasGet = false
-				}
-			}
-		}
 		_, hasPost := openapi_data["post"]
 		_, hasDelete := openapi_data["delete"]
 

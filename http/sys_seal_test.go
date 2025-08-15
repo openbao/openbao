@@ -576,13 +576,13 @@ func TestHA_UnsealLeaderThenStandbys_SharedKeys(t *testing.T) {
 
 	// Unseal leader
 	for _, share := range keys {
-		_, err := initCore.Core.Unseal(share)
+		_, err := initCore.Unseal(share)
 		require.NoError(t, err)
 	}
-	require.False(t, initCore.Core.Sealed(), "initCore should be unsealed")
+	require.False(t, initCore.Sealed(), "initCore should be unsealed")
 
 	testhelpers.WaitForActiveNode(t, cluster)
-	isLeader, _, _, _ := initCore.Core.Leader()
+	isLeader, _, _, _ := initCore.Leader()
 	require.True(t, isLeader, "initCore should be leader")
 
 	// Unseal remaining cores (they should join as standbys)
@@ -590,16 +590,16 @@ func TestHA_UnsealLeaderThenStandbys_SharedKeys(t *testing.T) {
 		c := cluster.Cores[coreIndex]
 		testhelpers.WaitForStandbyNode(t, c)
 
-		isStandby, err := c.Core.Standby()
+		isStandby, err := c.Standby()
 		require.NoError(t, err)
 		if !isStandby {
 			t.Fatalf("core[%d] should not be leader", coreIndex)
 		}
 
 		for _, k := range keys {
-			_, err := c.Core.Unseal(k)
+			_, err := c.Unseal(k)
 			require.NoError(t, err)
 		}
-		require.False(t, c.Core.Sealed(), "standby core should be unsealed")
+		require.False(t, c.Sealed(), "standby core should be unsealed")
 	}
 }

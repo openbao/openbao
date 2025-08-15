@@ -5,6 +5,7 @@ package http
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -398,6 +399,11 @@ func handleLogicalInternal(core *vault.Core, injectDataIntoTopLevel bool, noForw
 		case needsForward && !noForward:
 			if origBody != nil {
 				r.Body = origBody
+			} else {
+				if len(req.Data) > 0 {
+					b, _ := json.Marshal(req.Data)
+					r.Body = io.NopCloser(bytes.NewReader(b))
+				}
 			}
 			forwardRequest(core, w, r)
 			return

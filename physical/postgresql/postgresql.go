@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/armon/go-metrics"
@@ -21,6 +22,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
@@ -76,6 +78,7 @@ type PostgreSQLBackend struct {
 	txnPermitPool *physical.PermitPool
 
 	fenceLock sync.RWMutex
+	active    atomic.Bool
 	fence     *PostgreSQLLock
 }
 
@@ -400,6 +403,7 @@ func (m *PostgreSQLBackend) Put(ctx context.Context, entry *physical.Entry) erro
 
 	parentPath, path, key := m.splitKey(entry.Key)
 
+	// Do this outside of the transaction to avoid reading stale data.
 	if err := m.validateFence(ctx); err != nil {
 		return err
 	}
@@ -439,6 +443,7 @@ func (m *PostgreSQLBackend) Delete(ctx context.Context, fullPath string) error {
 
 	_, path, key := m.splitKey(fullPath)
 
+	// Do this outside of the transaction to avoid reading stale data.
 	if err := m.validateFence(ctx); err != nil {
 		return err
 	}
@@ -541,10 +546,26 @@ func (p *PostgreSQLBackend) RegisterActiveNodeLock(l physical.Lock) error {
 }
 
 func (p *PostgreSQLBackend) validateFence(ctx context.Context) error {
+	// If no HA support is enabled, skip validating the fence. While we don't
+	// guarantee exclusion to the database, we assume we're the only node
+	// operating. Anything else is a fatal misconfiguration.
+	if !p.haEnabled {
+		return nil
+	}
+
 	p.fenceLock.RLock()
 	defer p.fenceLock.RUnlock()
 
-	if p.fence == nil {
+	// Previously, standby nodes could theoretically attempt to write to
+	// storage. Explicitly guard against that with the active standby
+	// notification state.
+	active := p.active.Load()
+	if !active {
+		return logical.ErrReadOnly
+	}
+
+	if p.fence == nil && p.active.Load() {
+		p.logger.Trace("skipping fencing because no lock is held")
 		return nil
 	}
 
@@ -559,6 +580,8 @@ func (p *PostgreSQLBackend) validateFence(ctx context.Context) error {
 	if !held || value != p.fence.value {
 		return fmt.Errorf("%v: lock values differed", physical.ErrFencedWriteFailed)
 	}
+
+	p.logger.Trace("fence was ok", "lock value", value, "local value", p.fence.value)
 
 	return nil
 }

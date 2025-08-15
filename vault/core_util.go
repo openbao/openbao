@@ -11,6 +11,7 @@ import (
 
 func coreInit(c *Core, conf *CoreConfig) error {
 	phys := conf.Physical
+
 	// Wrap the physical backend in a cache layer if enabled
 	cacheLogger := c.baseLogger.Named("storage.cache")
 	c.allLoggers = append(c.allLoggers, cacheLogger)
@@ -33,4 +34,11 @@ func preSealPhysical(c *Core) {
 
 func postUnsealPhysical(c *Core) error {
 	return nil
+}
+
+func (c *Core) notifyPhysicalLeadership(active bool) {
+	if notifiable, ok := c.ha.(physical.LeadershipChangedBackend); ok {
+		c.logger.Trace("setting active node status", "active", active)
+		notifiable.LeadershipChange(active)
+	}
 }

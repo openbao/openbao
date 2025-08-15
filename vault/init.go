@@ -305,10 +305,18 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 
 		c.logger.Info("acquired HA initialization lock")
 
+		// This node is now active.
+		c.notifyPhysicalLeadership(true)
+
 		defer func() {
+			// This node is no longer active.
+			c.notifyPhysicalLeadership(false)
+
 			if err := lock.Unlock(); err != nil {
 				c.logger.Error("failed to unlock initialization lock", "error", err)
 			}
+
+			c.logger.Info("released HA initialization lock")
 		}()
 	}
 

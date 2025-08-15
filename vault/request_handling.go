@@ -622,8 +622,17 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	if ok {
 		ctx = logical.CreateContextOriginalBody(ctx, body)
 	}
-	if resp, err := c.handleInlineAuth(ctx, req, nsHeader); err != nil {
-		return resp, multierror.Append(errors.New("failed to perform inline authentication"), err)
+
+	// Perform inline authentication. This returns nil, nil if the request
+	// succeeds and the passed request is mutated to now have the token. In
+	// the event it fails, it may have either a request, an error, or both,
+	// depending on what the auth method does.
+	if resp, err := c.handleInlineAuth(ctx, req, nsHeader); err != nil || resp != nil {
+		if err != nil {
+			err = multierror.Append(errors.New("failed to perform inline authentication"), err)
+		}
+
+		return resp, err
 	}
 	resp, err = c.handleCancelableRequest(ctx, req)
 	req.SetTokenEntry(nil)
@@ -631,7 +640,7 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	return resp, err
 }
 
-func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHeader string) (resp *logical.Response, err error) {
+func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHeader string) (*logical.Response, error) {
 	// Find the path of the request.
 	authPath, present := req.Headers[consts.InlineAuthPathHeaderName]
 	if !present {
@@ -736,9 +745,26 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 
 	authReq.Data = loginParams
 
-	// Perform authentication but do not persist the underlying token.
-	resp, err = c.handleCancelableRequest(authCtx, authReq)
-	if err != nil {
+	// Perform authentication but do not persist the underlying token. We
+	// want to return the response from inline authentication if it is
+	// relevant.
+	resp, err := c.handleCancelableRequest(authCtx, authReq)
+	if err != nil || resp == nil || resp.Auth == nil {
+		// If we have a non-error response object, ensure it has a header
+		// indicating it is from the auth step.
+		if resp != nil {
+			if resp.Headers == nil {
+				resp.Headers = make(map[string][]string)
+			}
+			resp.Headers[consts.InlineAuthErrorResponseHeader] = []string{"true"}
+		}
+
+		// We could a case where err == resp == nil; set error to 404 not
+		// found explicitly.
+		if err == nil && resp == nil {
+			err = logical.CodedError(http.StatusNotFound, "specified authentication path was not found")
+		}
+
 		return resp, err
 	}
 
@@ -751,6 +777,8 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 	req.InlineAuth = resp.Auth
 	req.SetTokenEntry(resp.InlineAuthTokenEntry)
 
+	// Explicitly do not return the authentication request; the auth request
+	// is only returned when it fails so it can be sent to the client.
 	return nil, nil
 }
 

@@ -19,7 +19,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/token"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/pkg/errors"
 	"github.com/posener/complete"
 )
 
@@ -84,7 +83,7 @@ func (c *BaseCommand) ClientWithoutToken() (*api.Client, error) {
 	config := api.DefaultConfig()
 
 	if err := config.ReadEnvironment(); err != nil {
-		return nil, errors.Wrap(err, "failed to read environment")
+		return nil, fmt.Errorf("failed to read environment: %w", err)
 	}
 
 	if c.flagAddress != "" {
@@ -115,14 +114,14 @@ func (c *BaseCommand) ClientWithoutToken() (*api.Client, error) {
 
 		// Setup TLS config
 		if err := config.ConfigureTLS(t); err != nil {
-			return nil, errors.Wrap(err, "failed to setup TLS config")
+			return nil, fmt.Errorf("failed to setup TLS config: %w", err)
 		}
 	}
 
 	// Build the client
 	client, err := api.NewClient(config)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create client")
+		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
 	// Turn off retries on the CLI
@@ -187,11 +186,11 @@ func (c *BaseCommand) Client() (*api.Client, error) {
 	if token == "" {
 		helper, err := c.TokenHelper(client.Address())
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to get token helper")
+			return nil, fmt.Errorf("failed to get token helper: %w", err)
 		}
 		token, err = helper.Get()
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to get token from token helper")
+			return nil, fmt.Errorf("failed to get token from token helper: %w", err)
 		}
 	}
 

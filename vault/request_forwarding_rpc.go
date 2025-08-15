@@ -126,7 +126,7 @@ func (c *forwardingClient) startHeartbeat() {
 		}
 		tick := func() {
 			labels := make([]metrics.Label, 0, 1)
-			defer metrics.MeasureSinceWithLabels([]string{"ha", "rpc", "client", "echo"}, time.Now(), labels)
+			now := time.Now()
 
 			req := &EchoRequest{
 				Message:     "ping",
@@ -143,6 +143,7 @@ func (c *forwardingClient) startHeartbeat() {
 				req.RaftUpgradeVersion = raftBackend.EffectiveVersion()
 				labels = append(labels, metrics.Label{Name: "peer_id", Value: raftBackend.NodeID()})
 			}
+			defer metrics.MeasureSinceWithLabels([]string{"ha", "rpc", "client", "echo"}, now, labels)
 
 			ctx, cancel := context.WithTimeout(c.echoContext, 2*time.Second)
 			resp, err := c.RequestForwardingClient.Echo(ctx, req)

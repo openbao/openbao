@@ -327,10 +327,9 @@ func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, secret *api.Secret, da
 	out = append(out, fmt.Sprintf("HA Enabled | %t", status.HAEnabled))
 
 	if status.HAEnabled {
-		mode := "sealed"
 		if !status.Sealed {
 			out = append(out, fmt.Sprintf("HA Cluster | %s", status.LeaderClusterAddress))
-			mode = "standby"
+			mode := "standby"
 			showLeaderAddr := false
 			if status.IsSelf {
 				mode = "active"

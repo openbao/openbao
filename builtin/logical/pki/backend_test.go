@@ -940,7 +940,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		// to hit all of the various values below. However, for normal
 		// testing we use a randomized time for maximum fuzziness.
 	*/
-	var seed int64 = 1
+	var seed int64
 	fixedSeed := api.ReadBaoVariable("BAO_PKITESTS_FIXED_SEED")
 	if len(fixedSeed) == 0 {
 		seed = time.Now().UnixNano()
@@ -6615,6 +6615,8 @@ func TestPKI_TemplatedAIAs(t *testing.T) {
 	}
 	resp, err = CBWrite(b, s, "root/generate/internal", rootData)
 	require.NoError(t, err)
+	requireSuccessNonNilResponse(t, resp, err, "failed to generate root certificate")
+
 	_, err = CBDelete(b, s, "root")
 	require.NoError(t, err)
 

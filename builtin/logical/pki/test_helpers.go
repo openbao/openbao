@@ -363,7 +363,6 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 
 	crl := getParsedCrlAtPath(t, client, crlPath)
 	initialCrlRevision := getCRLNumber(t, crl)
-	newCrlRevision := initialCrlRevision
 
 	// Short circuit the fetches if we have a version of the CRL we want
 	if lastSeenCrlNumber > 0 && getCRLNumber(t, crl) > lastSeenCrlNumber {
@@ -382,7 +381,7 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 		}
 
 		crl = getParsedCrlAtPath(t, client, crlPath)
-		newCrlRevision = getCRLNumber(t, crl)
+		newCrlRevision := getCRLNumber(t, crl)
 		if newCrlRevision > initialCrlRevision {
 			t.Logf("Got new revision of CRL %s from %d to %d after iteration %d, delay %v",
 				crlPath, initialCrlRevision, newCrlRevision, iteration, time.Now().Sub(start))

@@ -300,7 +300,7 @@ func (b *SystemBackend) handleNamespaceKeyStatus(ctx context.Context, req *logic
 
 	barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
 	if barrier == nil {
-		return nil, ErrBarrierNotFound
+		return handleError(ErrBarrierNotFound)
 	}
 
 	info, err := barrier.ActiveKeyInfo()

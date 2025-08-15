@@ -246,7 +246,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 
 	seal := c.sealManager.NamespaceSeal(ns.UUID)
 	if seal == nil {
-		return nil, ErrSealNotFound
+		return nil, ErrNotSealable
 	}
 
 	// Get the seal configuration

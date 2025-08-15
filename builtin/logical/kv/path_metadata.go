@@ -345,6 +345,9 @@ func (b *versionedKVBackend) pathMetadataRead() framework.OperationFunc {
 		}
 
 		respData, err := b.metadataResponseData(meta)
+		if err != nil {
+			return nil, err
+		}
 
 		return &logical.Response{
 			Data: respData,

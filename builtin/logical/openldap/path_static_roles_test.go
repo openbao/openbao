@@ -563,6 +563,7 @@ func TestRoles(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
 		if resp == nil || !resp.IsError() {
 			t.Fatal("expected error")
 		}

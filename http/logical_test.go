@@ -975,7 +975,7 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) {
 
 		auditResponse := map[string]interface{}{}
 		if req, ok := auditRecord["response"]; ok {
-			auditRequest = req.(map[string]interface{})
+			auditResponse = req.(map[string]interface{})
 			if auditResponse["path"] != "auth/token/create" {
 				continue
 			}
@@ -1065,7 +1065,7 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T) {
 
 		auditResponse := map[string]interface{}{}
 		if req, ok := auditRecord["response"]; ok {
-			auditRequest = req.(map[string]interface{})
+			auditResponse = req.(map[string]interface{})
 			if auditResponse["path"] != "kv/data/foo" {
 				continue
 			}

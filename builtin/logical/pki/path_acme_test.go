@@ -1320,6 +1320,7 @@ func setupAcmeBackendOnClusterAtPath(t *testing.T, cluster *vault.TestCluster, c
 			"max_ttl":     "920000h",
 		})
 	require.NoError(t, err, "failed creating root CA")
+	require.NotNil(t, resp)
 
 	resp, err = client.Logical().WriteWithContext(context.Background(), mount+"/issuers/generate/intermediate/internal",
 		map[string]interface{}{

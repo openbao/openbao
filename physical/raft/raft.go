@@ -1628,6 +1628,10 @@ func (b *RaftBackend) Delete(ctx context.Context, path string) error {
 	b.l.RLock()
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
+
+	if err == raft.ErrNotLeader && b.raft.State() != raft.Leader {
+		return logical.ErrReadOnly
+	}
 	return err
 }
 
@@ -1690,6 +1694,10 @@ func (b *RaftBackend) Put(ctx context.Context, entry *physical.Entry) error {
 	b.l.RLock()
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
+
+	if err == raft.ErrNotLeader && b.raft.State() != raft.Leader {
+		return logical.ErrReadOnly
+	}
 	return err
 }
 

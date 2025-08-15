@@ -25,9 +25,9 @@ import (
 )
 
 var (
-	ErrSealNotFound              = errors.New("no seal found for namespace")
-	ErrUnlockInformationNotFound = errors.New("no unlock information found for namespace")
+	ErrNotSealable               = errors.New("namespace is not sealable")
 	ErrBarrierNotFound           = errors.New("no barrier found for namespace")
+	ErrUnlockInformationNotFound = errors.New("no unlock information found for namespace")
 )
 
 // SealManager is used to provide storage for the seals.
@@ -257,7 +257,7 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 	// Verify that any kind of seal exists for a namespace
 	seal := sm.namespaceSeal(ns.UUID)
 	if seal == nil {
-		return nil, ErrSealNotFound
+		return nil, ErrNotSealable
 	}
 
 	// Check the barrier first
@@ -288,9 +288,7 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 	var progress int
 	var nonce string
 	info := sm.namespaceUnlockInformation(ns.UUID)
-	if info == nil {
-		progress, nonce = 0, ""
-	} else {
+	if info != nil {
 		progress, nonce = len(info.Parts), info.Nonce
 	}
 
@@ -349,7 +347,7 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 
 	seal := sm.namespaceSeal(ns.UUID)
 	if seal == nil {
-		return false, ErrSealNotFound
+		return false, ErrNotSealable
 	}
 
 	// getUnsealKey returns either a recovery key (in the case of an autoseal)
@@ -376,9 +374,8 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 
 // recordUnsealPart takes in a key fragment, and returns true if it's a new fragment.
 func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bool, error) {
-	info := sm.namespaceUnlockInformation(ns.UUID)
-
-	if info != nil {
+	info, exists := sm.unlockInformationByNamespace[ns.UUID]["default"]
+	if exists {
 		for _, existing := range info.Parts {
 			if subtle.ConstantTimeCompare(existing, key) == 1 {
 				return false, nil
@@ -390,6 +387,7 @@ func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bo
 			return false, err
 		}
 		info = &unlockInformation{Nonce: uuid}
+		sm.unlockInformationByNamespace[ns.UUID]["default"] = info
 	}
 
 	// Store this key
@@ -424,7 +422,7 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 	}
 
 	defer func() {
-		info = nil
+		delete(sm.unlockInformationByNamespace[ns.UUID], "default")
 	}()
 
 	// Recover the split key. recoveredKey is the shamir combined
@@ -508,7 +506,7 @@ func (sm *SealManager) AuthenticateRootKey(ctx context.Context, ns *namespace.Na
 
 	nsSeal := sm.namespaceSeal(ns.UUID)
 	if nsSeal == nil {
-		return ErrSealNotFound
+		return ErrNotSealable
 	}
 
 	rootKey, err := sm.unsealKeyToRootKey(ctx, nsSeal, combinedKey, false, false)
@@ -548,7 +546,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 
 	nsSeal := sm.namespaceSeal(ns.UUID)
 	if nsSeal == nil {
-		return nil, ErrSealNotFound
+		return nil, ErrNotSealable
 	}
 
 	sealConfig, err := nsSeal.Config(ctx)

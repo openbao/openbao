@@ -982,16 +982,6 @@ func TestLoginIssValidation(t *testing.T) {
 		"jwt":  jwtGoodDataToken,
 	}
 
-	req = &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "login",
-		Storage:   storage,
-		Data:      data,
-		Connection: &logical.Connection{
-			RemoteAddr: "127.0.0.1",
-		},
-	}
-
 	// test iss validation enabled with explicitly defined issuer
 	data = map[string]interface{}{
 		"kubernetes_host":        "host",

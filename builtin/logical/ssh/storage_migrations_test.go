@@ -26,6 +26,7 @@ func TestMigrateStorage_EmptyStorage(t *testing.T) {
 
 	// Fetch migration log again
 	log, err = getMigrationLog(ctx, s)
+	require.NoError(t, err)
 	require.NotNil(t, log)
 	require.Equal(t, latestMigrationVersion, log.MigrationVersion)
 	require.True(t, startTime.Before(log.Created),
@@ -149,7 +150,6 @@ func TestMigrateStorage_CAConfigured(t *testing.T) {
 
 func TestMigrateStorage_EmptyMountDowngradeUpgrade(t *testing.T) {
 	t.Parallel()
-	startTime := time.Now()
 	ctx := context.Background()
 	b, s := CreateBackendWithStorage(t)
 	sc := b.makeStorageContext(ctx, s)
@@ -182,7 +182,7 @@ func TestMigrateStorage_EmptyMountDowngradeUpgrade(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run migration again
-	startTime = time.Now()
+	startTime := time.Now()
 	err = migrateStorage(ctx, b, s)
 	require.NoError(t, err)
 

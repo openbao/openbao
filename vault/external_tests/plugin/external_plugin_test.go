@@ -975,7 +975,7 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T
 
 		auditResponse := map[string]interface{}{}
 		if req, ok := auditRecord["response"]; ok {
-			auditRequest = req.(map[string]interface{})
+			auditResponse = req.(map[string]interface{})
 			if auditResponse["path"] != plugin.Name+"/data/creds" {
 				continue
 			}

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func testBarrier(t *testing.T, b SecurityBarrier) {
@@ -483,6 +484,7 @@ func testBarrier_Upgrade(t *testing.T, b1, b2 SecurityBarrier) {
 	if did {
 		t.Fatal("should not have upgrade")
 	}
+	require.EqualValues(t, 0, updated)
 
 	// Rotate the encryption key
 	newTerm, err = b1.Rotate(context.Background(), rand.Reader)
@@ -510,6 +512,7 @@ func testBarrier_Upgrade(t *testing.T, b1, b2 SecurityBarrier) {
 	if did {
 		t.Fatal("should not have upgrade")
 	}
+	require.EqualValues(t, 0, updated)
 }
 
 func testBarrier_Upgrade_RotateRootKey(t *testing.T, b1, b2 SecurityBarrier) {

@@ -118,6 +118,6 @@ func TestTransit_CacheConfig(t *testing.T) {
 	doErrReq(b3, readReq)
 
 	// b4 should spin up with a size less than minimum cache size (10)
-	b4, storage := createBackendWithSysView(t)
+	b4, _ := createBackendWithSysView(t)
 	doErrReq(b4, writeSmallCacheSizeReq)
 }

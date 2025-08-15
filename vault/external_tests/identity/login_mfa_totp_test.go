@@ -27,6 +27,9 @@ func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, u
 	totpPasscode := testhelpers.GetTOTPCodeFromEngine(t, client, totpCodePath)
 
 	upMethod, err := upAuth.NewUserpassAuth(username, &upAuth.Password{FromString: "testpassword"})
+	if err != nil {
+		t.Fatalf("failed to create UserpassAuth: %v", err)
+	}
 
 	mfaSecret, err := client.Auth().MFALogin(context.Background(), upMethod)
 	if err != nil {

@@ -1505,6 +1505,7 @@ func TestRevokedSafetyBufferConfig(t *testing.T) {
 
 	// Verify that the default of revoked_safety_buffer is the default of safety_buffer when neither are set
 	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	requireSuccessNonNilResponse(t, resp, err, "expected to write auto-tidy config")
 	resp, err = CBRead(b, s, "config/auto-tidy")
 	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
 	require.Equal(t, resp.Data["safety_buffer"].(int), resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer")
@@ -1700,6 +1701,7 @@ func TestTidyPaginationConfig(t *testing.T) {
 
 	// Verify that the default of page_size is 1000
 	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	requireSuccessNonNilResponse(t, resp, err, "expected to write auto-tidy config")
 	resp, err = CBRead(b, s, "config/auto-tidy")
 	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
 	require.Equal(t, 1000, resp.Data["page_size"].(int), "expected page_size to be defaulted to 1000")

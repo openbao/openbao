@@ -2387,18 +2387,110 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 	return nil, errors.New("invalid mount entry")
 }
 
-func (c *Core) invalidateMount(ctx context.Context, mountPath string) {
+func (c *Core) invalidateMount(ctx context.Context, key string) {
 	go func() {
-		err := c.invalidateMountInternal(ctx, mountPath)
+		err := c.invalidateMountInternal(ctx, key)
 		if err != nil {
-			c.logger.Error("unable to invalidate audits, restarting core", "error", err.Error())
+			c.logger.Error("unable to invalidate mount, restarting core", "key", key, "error", err.Error())
 			// TODO(phil9909) call c.restart()
+			return
 		}
 	}()
 }
 
-func (c *Core) invalidateMountInternal(ctx context.Context, mountPath string) error {
-	prefix, uuid := path.Split(mountPath)
+func (c *Core) invalidateNamespaceMounts(ctx context.Context, uuid string) {
+	ctx = context.WithoutCancel(ctx)
+	go func() {
+		ns, err := c.namespaceStore.GetNamespace(ctx, uuid)
+		if err != nil {
+			c.logger.Error("unable to invalidate mounts for namespace, restarting core", "error", err.Error())
+			// TODO(phil9909) call c.restart()
+			return
+		}
+
+		keys := []string{}
+
+		if ns == nil {
+			for _, entry := range c.mounts.Entries {
+				if entry.Namespace().UUID == uuid {
+					key := path.Join(coreMountConfigPath, entry.UUID)
+					if entry.Local {
+						key = path.Join(coreLocalMountConfigPath, entry.UUID)
+					}
+					keys = append(keys, key)
+
+					if ns == nil {
+						ns = entry.Namespace()
+					}
+				}
+			}
+			for _, entry := range c.auth.Entries {
+				if entry.Namespace().UUID == uuid {
+					key := path.Join(coreAuthConfigPath, entry.UUID)
+					if entry.Local {
+						key = path.Join(coreLocalAuthConfigPath, entry.UUID)
+					}
+					keys = append(keys, key)
+
+					if ns == nil {
+						ns = entry.Namespace()
+					}
+				}
+			}
+			if len(keys) == 0 {
+				return
+			}
+
+			ctx = namespace.ContextWithNamespace(ctx, ns)
+		} else {
+			ctx = namespace.ContextWithNamespace(ctx, ns)
+
+			barrier := NamespaceView(c.barrier, ns)
+
+			mountGlobal, mountLocal, err := listTransactionalMountsForNamespace(ctx, barrier)
+			if err != nil {
+				c.logger.Error("unable to invalidate mounts for namespace, restarting core", "ns", ns.UUID, "error", err.Error())
+				// TODO(phil9909) call c.restart()
+				return
+			}
+
+			authGlobal, authLocal, err := c.listTransactionalCredentialsForNamespace(ctx, barrier)
+			if err != nil {
+				c.logger.Error("unable to invalidate mounts for namespace, restarting core", "ns", ns.UUID, "error", err.Error())
+				// TODO(phil9909) call c.restart()
+				return
+			}
+
+			for _, mount := range mountGlobal {
+				keys = append(keys, path.Join(coreMountConfigPath, mount))
+			}
+			for _, mount := range mountLocal {
+				keys = append(keys, path.Join(coreLocalMountConfigPath, mount))
+			}
+			for _, mount := range authGlobal {
+				keys = append(keys, path.Join(coreAuthConfigPath, mount))
+			}
+			for _, mount := range authLocal {
+				keys = append(keys, path.Join(coreLocalAuthConfigPath, mount))
+			}
+		}
+
+		fmt.Printf("%#v\n", keys) // TODO(phil9909): delete line
+
+		for _, key := range keys {
+			c.logger.Info("invalidating namespace mount", "ns", uuid, "key", key) // TODO(phil9909): delete line
+			err := c.invalidateMountInternal(ctx, key)
+			if err != nil {
+				c.logger.Error("unable to invalidate mount, restarting core", "key", key, "error", err.Error())
+				// TODO(phil9909) call c.restart()
+				return
+			}
+		}
+	}()
+}
+
+func (c *Core) invalidateMountInternal(ctx context.Context, key string) error {
+	prefix, uuid := path.Split(key)
 	prefix = path.Clean(prefix)
 
 	table := "logical"
@@ -2421,6 +2513,10 @@ func (c *Core) invalidateMountInternal(ctx context.Context, mountPath string) er
 			return err
 		}
 		desiredMountEntry = nil
+	}
+	if desiredMountEntry != nil && desiredMountEntry.Path == "sys/" {
+		c.logger.Info("skipping sys") // TODO(phil9909): why?
+		return nil
 	}
 
 	actualRouteEntry, ok := c.router.matchingRouteEntryByPath(ctx, path.Join(NamespaceBarrierPrefix(ns), table, uuid)+"/", false)
@@ -2448,17 +2544,24 @@ func (c *Core) invalidateMountInternal(ctx context.Context, mountPath string) er
 		}
 
 		if c.quotaManager != nil {
-			if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, mountPath); err != nil {
-				c.logger.Error("failed to update quotas after disabling mount", "error", err, "namespace", ns.Path, "path", mountPath)
+			if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, key); err != nil {
+				c.logger.Error("failed to update quotas after disabling mount", "error", err, "namespace", ns.Path, "path", key)
 				return err
 			}
 		}
 
 	case desiredMountEntry != nil && actualRouteEntry == nil: // mount was created
 		if table == "auth" {
-			c.enableCredentialInternal(ctx, desiredMountEntry, false)
+			err = c.enableCredentialInternal(ctx, desiredMountEntry, false)
+			if err != nil {
+				return err
+			}
 		} else {
-			c.mountInternal(ctx, desiredMountEntry, false)
+			c.logger.Info("calling mount internal", "path", desiredMountEntry.Path)
+			err := c.mountInternal(ctx, desiredMountEntry, false)
+			if err != nil {
+				return err
+			}
 		}
 
 	case desiredMountEntry != nil && actualRouteEntry != nil: // mount was modified (e.g. tuned or tainted)

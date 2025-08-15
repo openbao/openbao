@@ -607,10 +607,16 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 				return logical.ErrorResponse(fmt.Sprintf("API access to this namespace has been locked by an administrator - %q must be unlocked to gain access.", lockedNS.Path)), logical.ErrLockedNamespace
 			}
 		}
+		if c.NamespaceSealed(ns) {
+			return nil, consts.ErrNamespaceSealed
+		}
 
-		if strings.HasPrefix(req.Path, "sys/") &&
-			restrictedSysAPIs.HasPathSegments(req.Path[len("sys/"):]) {
-			return nil, logical.CodedError(http.StatusBadRequest, "operation unavailable in namespaces")
+		isRestrictedSysAPI := ns.ID != namespace.RootNamespaceID &&
+			strings.HasPrefix(req.Path, "sys/") &&
+			restrictedSysAPIs.HasPathSegments(req.Path[len("sys/"):])
+
+		if isRestrictedSysAPI {
+			return nil, logical.CodedError(http.StatusBadRequest, "operation only available in root namespace")
 		}
 	}
 	ctx = namespace.ContextWithNamespace(ctx, ns)

@@ -315,11 +315,10 @@ type Core struct {
 	// unlockInfo has the keys provided to Unseal until the threshold number of parts is available, as well as the operation nonce
 	unlockInfo *unlockInformation
 
-	// generateRootProgress holds the shares until we reach enough
-	// to verify the root key
-	generateRootConfig   *GenerateRootConfig
-	generateRootProgress [][]byte
-	generateRootLock     sync.Mutex
+	// namespaceRootGens holds the shares for each namespace
+	// until we reach enough to verify the root key
+	namespaceRootGens    map[string]*NamespaceRootGeneration
+	namespaceRootGenLock sync.Mutex
 
 	// These variables holds the config and shares we have until we reach
 	// enough to verify the appropriate root key. Note that the same lock is
@@ -811,6 +810,13 @@ type CoreConfig struct {
 	UnsafeCrossNamespaceIdentity bool
 }
 
+// NamespaceRootGeneration manages the configuration and progress of an ongoing
+// root token generation process for a namespace.
+type NamespaceRootGeneration struct {
+	Config   *GenerateRootConfig
+	Progress [][]byte
+}
+
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
 // not exist.
 func (c *CoreConfig) GetServiceRegistration() sr.ServiceRegistration {
@@ -987,6 +993,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		impreciseLeaseRoleTracking:     conf.ImpreciseLeaseRoleTracking,
 		detectDeadlocks:                detectDeadlocks,
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
+		namespaceRootGens:              make(map[string]*NamespaceRootGeneration),
 	}
 
 	c.standbyStopCh.Store(make(chan struct{}))
@@ -1086,9 +1093,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 	// Construct a new AES-GCM barrier
 	c.barrier = NewAESGCMBarrier(c.physical, "")
-	if err := c.setupSealManager(); err != nil {
-		return nil, fmt.Errorf("seal manager setup failed: %w", err)
-	}
+	c.setupSealManager()
 
 	// We create the funcs here, then populate the given config with it so that
 	// the caller can share state
@@ -1413,9 +1418,15 @@ func (c *Core) GetContext() (context.Context, context.CancelFunc) {
 	return context.WithCancel(namespace.RootContext(c.activeContext))
 }
 
-// Sealed checks if the Vault is current sealed
+// Sealed checks if the Vault is currently sealed
 func (c *Core) Sealed() bool {
 	return atomic.LoadUint32(c.sealed) == 1
+}
+
+// NamespaceSealed checks if there's a namespace
+// (in direct ancestry line) that is currently sealed.
+func (c *Core) NamespaceSealed(ns *namespace.Namespace) bool {
+	return c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path).Sealed()
 }
 
 // SecretProgress returns the number of keys provided so far. Lock
@@ -2443,8 +2454,18 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	// This is intentionally the last block in this function. We want to allow
 	// writes just before allowing client requests, to ensure everything has
 	// been set up properly before any writes can have happened.
-	//
-	// Use a small temporary worker pool to run postUnsealFuncs in parallel
+	c.runPostUnsealFuncs(c.postUnsealFuncs)
+
+	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
+		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
+	}
+	c.loginMFABackend.usedCodes = cache.New(0, 30*time.Second)
+	c.logger.Info("post-unseal setup complete")
+	return nil
+}
+
+// runPostUnsealFuncs uses a small temporary worker pool to run postUnsealFuncs in parallel
+func (c *Core) runPostUnsealFuncs(postUnsealFuncs []func()) {
 	postUnsealFuncConcurrency := runtime.NumCPU() * 2
 	if v := api.ReadBaoVariable("BAO_POSTUNSEAL_FUNC_CONCURRENCY"); v != "" {
 		pv, err := strconv.Atoi(v)
@@ -2456,7 +2477,7 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	}
 	if postUnsealFuncConcurrency <= 1 {
 		// Out of paranoia, keep the old logic for parallism=1
-		for _, v := range c.postUnsealFuncs {
+		for _, v := range postUnsealFuncs {
 			v()
 		}
 	} else {
@@ -2470,20 +2491,13 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 				}
 			}()
 		}
-		for _, v := range c.postUnsealFuncs {
+		for _, v := range postUnsealFuncs {
 			wg.Add(1)
 			jobs <- v
 		}
 		wg.Wait()
 		close(jobs)
 	}
-
-	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
-		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
-	}
-	c.loginMFABackend.usedCodes = cache.New(0, 30*time.Second)
-	c.logger.Info("post-unseal setup complete")
-	return nil
 }
 
 // preSeal is invoked before the barrier is sealed, allowing
@@ -2801,77 +2815,11 @@ func (c *Core) adjustSealConfigDuringMigration(existBarrierSealConfig, existReco
 }
 
 func (c *Core) unsealKeyToRootKeyPostUnseal(ctx context.Context, combinedKey []byte) ([]byte, error) {
-	return c.unsealKeyToRootKey(ctx, c.seal, combinedKey, true, false)
+	return c.sealManager.unsealKeyToRootKey(ctx, c.seal, combinedKey, true, false)
 }
 
 func (c *Core) unsealKeyToRootKeyPreUnseal(ctx context.Context, seal Seal, combinedKey []byte) ([]byte, error) {
-	return c.unsealKeyToRootKey(ctx, seal, combinedKey, false, true)
-}
-
-// unsealKeyToRootKey takes a key provided by the user, either a recovery key
-// if using an autoseal or an unseal key with Shamir.  It returns a nil error
-// if the key is valid and an error otherwise. It also returns the root key
-// that can be used to unseal the barrier.
-// If useTestSeal is true, seal will not be modified; this is used when not
-// invoked as part of an unseal process.  Otherwise in the non-legacy shamir
-// case the combinedKey will be set in the seal, which means subsequent attempts
-// to use the seal to read the root key will succeed, assuming combinedKey is
-// valid.
-// If allowMissing is true, a failure to find the root key in storage results
-// in a nil error and a nil root key being returned.
-func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
-	switch seal.StoredKeysSupported() {
-	case vaultseal.StoredKeysSupportedGeneric:
-		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
-			return nil, fmt.Errorf("recovery key verification failed: %w", err)
-		}
-
-		storedKeys, err := seal.GetStoredKeys(ctx)
-		if storedKeys == nil && err == nil && allowMissing {
-			return nil, nil
-		}
-
-		if err == nil && len(storedKeys) != 1 {
-			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
-		}
-		return storedKeys[0], nil
-
-	case vaultseal.StoredKeysSupportedShamirRoot:
-		if useTestSeal {
-			testseal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
-			testseal.SetCore(c)
-			cfg, err := seal.Config(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to setup test barrier config: %w", err)
-			}
-			testseal.SetCachedConfig(cfg)
-			seal = testseal
-		}
-
-		shamirWrapper, err := seal.GetShamirWrapper()
-		if err != nil {
-			return nil, err
-		}
-		err = shamirWrapper.SetAesGcmKeyBytes(combinedKey)
-		if err != nil {
-			return nil, &ErrInvalidKey{fmt.Sprintf("failed to setup unseal key: %v", err)}
-		}
-		storedKeys, err := seal.GetStoredKeys(ctx)
-		if storedKeys == nil && err == nil && allowMissing {
-			return nil, nil
-		}
-		if err == nil && len(storedKeys) != 1 {
-			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
-		}
-		return storedKeys[0], nil
-	}
-	return nil, errors.New("invalid seal")
+	return c.sealManager.unsealKeyToRootKey(ctx, seal, combinedKey, false, true)
 }
 
 // IsInSealMigrationMode returns true if we're configured to perform a seal migration,
@@ -3268,7 +3216,7 @@ func (c *Core) isPrimary() bool {
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {
 	eConfigs := make([]*mfa.MFAEnforcementConfig, 0)
-	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return err
 	}
@@ -3376,7 +3324,7 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 	}
 
 	// get all namespaces
-	nsList, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	nsList, err := c.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return err
 	}

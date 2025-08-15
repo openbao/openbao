@@ -35,8 +35,8 @@ type ACL struct {
 
 	segmentWildcardPaths map[string]interface{}
 
-	// root is enabled if the "root" named policy is present.
-	root bool
+	// root property is a non-nil namespace if the "root" named policy (and only "root") is present.
+	root *namespace.Namespace
 
 	// Stores policies that are actually RGPs for later fetching
 	rgpPolicies []*Policy
@@ -79,7 +79,6 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 		exactRules:           radix.New(),
 		prefixRules:          radix.New(),
 		segmentWildcardPaths: make(map[string]interface{}, len(policies)),
-		root:                 false,
 	}
 
 	ns, err := namespace.FromContext(ctx)
@@ -103,16 +102,12 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 			return nil, errors.New("unable to parse policy (wrong type)")
 		}
 
-		// Check if this is root
 		if policy.Name == "root" {
-			if ns.ID != namespace.RootNamespaceID {
-				return nil, errors.New("root policy is only allowed in root namespace")
-			}
-
 			if len(policies) != 1 {
 				return nil, errors.New("other policies present along with root")
 			}
-			a.root = true
+			// if it is root, inject the namespace from context to the ACL
+			a.root = ns
 		}
 
 		for _, pc := range policy.Paths {
@@ -346,15 +341,26 @@ func (a *ACL) Capabilities(ctx context.Context, path string) (pathCapabilities [
 func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheckOnly bool) (ret *ACLResults) {
 	ret = new(ACLResults)
 
-	// Fast-path root
-	if a.root {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return
+	}
+
+	// a.root is not nil if the policy attached is a 'root' policy;
+	// if it's present, we are checking whether namespace embedded in the acl
+	// is a parent (ancestor) of the namespace of the current request, if so
+	// then allow the request (fast-pathing as root), otherwise reject
+	if a.root != nil {
+		if !ns.HasParent(a.root) {
+			return
+		}
 		ret.Allowed = true
 		ret.RootPrivs = true
 		ret.IsRoot = true
 		ret.GrantingPolicies = []logical.PolicyInfo{{
 			Name:          "root",
-			NamespaceId:   "root",
-			NamespacePath: "",
+			NamespaceId:   a.root.ID,
+			NamespacePath: a.root.Path,
 			Type:          "acl",
 		}}
 		return
@@ -369,10 +375,6 @@ func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheck
 
 	var permissions *ACLPermissions
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return
-	}
 	path := ns.Path + req.Path
 
 	// The request path should take care of this already but this is useful for

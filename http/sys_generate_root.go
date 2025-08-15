@@ -11,6 +11,8 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -54,14 +56,17 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 	}
 
 	// Get the generation configuration
-	generationConfig, err := core.GenerateRootConfiguration()
-	if err != nil {
+	generationConfig, err := core.GenerateRootConfiguration(namespace.RootNamespace)
+	switch {
+	// we return the progress as 0 in this case, root generation has not started
+	case errors.Is(err, vault.ErrNoRootGeneration):
+	case err != nil:
 		respondError(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	// Get the progress
-	progress, err := core.GenerateRootProgress()
+	progress, err := core.GenerateRootProgress(namespace.RootNamespace)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)
 		return
@@ -74,7 +79,7 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 	}
 
 	// Format the status
-	status := &GenerateRootStatusResponse{
+	status := &api.GenerateRootStatusResponse{
 		Started:   false,
 		Progress:  progress,
 		Required:  sealConfig.SecretThreshold,
@@ -118,7 +123,7 @@ func handleSysGenerateRootAttemptPut(core *vault.Core, w http.ResponseWriter, r 
 	}
 
 	// Attemptialize the generation
-	if err := core.GenerateRootInit(req.OTP, req.PGPKey, generateStrategy); err != nil {
+	if err := core.GenerateRootInit(req.OTP, req.PGPKey, generateStrategy, namespace.RootNamespace); err != nil {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -132,7 +137,7 @@ func handleSysGenerateRootAttemptPut(core *vault.Core, w http.ResponseWriter, r 
 }
 
 func handleSysGenerateRootAttemptDelete(core *vault.Core, w http.ResponseWriter, r *http.Request) {
-	err := core.GenerateRootCancel()
+	err := core.GenerateRootCancel(namespace.RootNamespace)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)
 		return
@@ -181,7 +186,7 @@ func handleSysGenerateRootUpdate(core *vault.Core, generateStrategy vault.Genera
 			return
 		}
 
-		resp := &GenerateRootStatusResponse{
+		resp := &api.GenerateRootStatusResponse{
 			Complete:       result.Progress == result.Required,
 			Nonce:          req.Nonce,
 			Progress:       result.Progress,
@@ -202,19 +207,6 @@ func handleSysGenerateRootUpdate(core *vault.Core, generateStrategy vault.Genera
 type GenerateRootInitRequest struct {
 	OTP    string `json:"otp"`
 	PGPKey string `json:"pgp_key"`
-}
-
-type GenerateRootStatusResponse struct {
-	Nonce            string `json:"nonce"`
-	Started          bool   `json:"started"`
-	Progress         int    `json:"progress"`
-	Required         int    `json:"required"`
-	Complete         bool   `json:"complete"`
-	EncodedToken     string `json:"encoded_token"`
-	EncodedRootToken string `json:"encoded_root_token"`
-	PGPFingerprint   string `json:"pgp_fingerprint"`
-	OTP              string `json:"otp"`
-	OTPLength        int    `json:"otp_length"`
 }
 
 type GenerateRootUpdateRequest struct {

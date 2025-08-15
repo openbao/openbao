@@ -174,8 +174,14 @@ func AdjustErrorStatusCode(status *int, err error) {
 	}
 
 	// Allow HTTPCoded error passthrough to specify a code
-	if t, ok := err.(HTTPCodedError); ok {
-		*status = t.Code()
+	var hce HTTPCodedError = &codedError{}
+	if errwrap.ContainsType(err, hce) {
+		t := errwrap.GetType(err, hce)
+		if t != nil {
+			if coded, ok := t.(HTTPCodedError); ok {
+				*status = coded.Code()
+			}
+		}
 	}
 }
 

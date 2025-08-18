@@ -320,7 +320,7 @@ require (
 	github.com/oracle/oci-go-sdk/v60 v60.0.0 // indirect
 	github.com/ovh/kmip-go v0.3.3 // indirect
 	github.com/packethost/packngo v0.1.1-0.20180711074735-b9cb5096f54c // indirect
-	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
+	github.com/petermattis/goid v0.0.0-20250813065127-a731cc31b4fe // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect

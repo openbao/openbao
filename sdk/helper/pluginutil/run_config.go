@@ -50,12 +50,14 @@ func (rc runConfig) makeConfig(ctx context.Context) (*plugin.ClientConfig, error
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", PluginMlockEnabled, "true"))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginMlockEnabled), "true"))
 	}
-	version, err := rc.Wrapper.VaultVersion(ctx)
-	if err != nil {
-		return nil, err
+	if rc.Wrapper != nil {
+		version, err := rc.Wrapper.VaultVersion(ctx)
+		if err != nil {
+			return nil, err
+		}
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", PluginVaultVersionEnv, version))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginVaultVersionEnv), version))
 	}
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", PluginVaultVersionEnv, version))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginVaultVersionEnv), version))
 
 	if rc.IsMetadataMode {
 		rc.Logger = rc.Logger.With("metadata", "true")

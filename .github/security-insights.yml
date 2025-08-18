@@ -1,0 +1,99 @@
+header:
+  schema-version: 2.0.0
+  last-updated: '2025-08-18'
+  last-reviewed: ''
+  url: https://github.com/openbao/openbao
+
+project:
+  name: OpenBao
+  administrators:
+    - name: Nathan Phelps
+      affiliation: IBM
+      email: naphelps@us.ibm.com
+      social: https://github.com/naphelps
+      primary: false
+    - name: James Butcher
+      affiliation: IOTech Systems
+      email: james@iotechsys.com
+      primary: false
+    - name: Julian Cassignol
+      affiliation: Wallix
+      email: jcassignol@wallix.com
+      primary: false
+    - name: Michael Hofer
+      affiliation: Adfinis
+      email: michael.hofer@secretz.io
+      social: https://github.com/karras
+      primary: false
+    - name: Alex Scheel
+      affiliation: GitHub
+      email: ascheel@gitlab.com
+      social: https://github.com/cipherboy
+      primary: true
+    - name: Brad Corrion
+      affiliation: IOTech Systems
+      email: brad@iotechsys.com
+      primary: false
+    - name: Dan Ghita 
+      affiliation: Wallix
+      email: dghita@wallix.com
+      primary: false
+    - name: Andrii Fedorchuk
+      affiliation: Adfinis
+      email: andrii.fedorchuk@adfinis.com
+      primary: false
+    - name: Jocelyn Eillis
+      affiliation: GitLab
+      email: jeillis@gitlab.com
+      primary: false
+
+  repositories:
+    - name: Foo
+      url: https://vcs.example.com/foobar/foo
+      comment: |
+        Foo is the core repo for FooBar.
+  vulnerability-reporting:
+    reports-accepted: true
+    bug-bounty-available: false
+    contact: openbao-security@lists.openssf.org
+    comment: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, please responsibly disclose by contacting us.
+  documentation:
+    detailed-guide: https://openbao.org/docs/
+    quickstart-guide: https://openbao.org/docs/get-started/developer-qs/
+    support-policy: https://openbao.org/docs/policies/support/
+  homepage: https://openbao.org/
+
+repository:
+  url: https://github.com/openbao/openbao
+  status: active
+  accepts-change-request: true
+  accepts-automated-change-request: true
+  core-team:
+    - name: Andrii Fedorchuk 
+      social: https://github.com/driif
+    - name: Christoph Voigt  
+      social: https://github.com/voigt
+    - name: Dave Dykstra     
+      social: https://github.com/DrDaveD
+    - name: Jonas Köhnen     
+      social: https://github.com/satoqz
+    - name: Pascal Reeb      
+      social: https://github.com/pree
+    - name: Tom Gehrke       
+      social: https://github.com/phyrog
+    - name: Toni Tauro       
+      social: https://github.com/eyenx
+    - name: Wojciech Slabosz 
+      social: https://github.com/wslabosz-reply
+    - name: Yannis           
+      social: https://github.com/Nerkho
+    - name: Geoffrey Wilson  
+      social: https://github.com/suprjinx
+  license:
+    url: https://github.com/openbao/openbao/blob/main/LICENSE
+    expression: 'Mozilla Public License 2.0'
+  security:
+    assessments:
+      self:
+        comment: |
+          Self assessment has not yet been completed.

@@ -67,4 +67,10 @@ const (
 	// the value of X-Vault-Namespace; can be combined with any potential
 	// namespace in X-Vault-Inline-Auth-Path.
 	InlineAuthNamespaceHeaderName = "X-Vault-Inline-Auth-Namespace"
+
+	// Whether the response object is from the underlying auth method. This
+	// is sometimes not a sufficient check as a 404s and server errors are
+	// often returned without response bodies. But when a non-empty response
+	// is given, this disambiguates inline auth from subsequent call responses.
+	InlineAuthErrorResponseHeader = "X-Vault-Inline-Auth-Failed"
 )

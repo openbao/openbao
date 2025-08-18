@@ -627,8 +627,17 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	if ok {
 		ctx = logical.CreateContextOriginalBody(ctx, body)
 	}
-	if err = c.handleInlineAuth(ctx, req, nsHeader); err != nil {
-		return nil, fmt.Errorf("failed to perform inline authentication: %w", err)
+
+	// Perform inline authentication. This returns nil, nil if the request
+	// succeeds and the passed request is mutated to now have the token. In
+	// the event it fails, it may have either a request, an error, or both,
+	// depending on what the auth method does.
+	if resp, err := c.handleInlineAuth(ctx, req, nsHeader); err != nil || resp != nil {
+		if err != nil {
+			err = fmt.Errorf("failed to perform inline authentication: %w", err)
+		}
+
+		return resp, err
 	}
 	resp, err = c.handleCancelableRequest(ctx, req)
 	req.SetTokenEntry(nil)
@@ -636,28 +645,24 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	return resp, err
 }
 
-func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHeader string) error {
+func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHeader string) (*logical.Response, error) {
 	// Find the path of the request.
 	authPath, present := req.Headers[consts.InlineAuthPathHeaderName]
 	if !present {
-		return nil
+		return nil, nil
 	}
 	if len(authPath) != 1 {
-		return fmt.Errorf("expected exactly one value for %v", consts.InlineAuthPathHeaderName)
+		return nil, fmt.Errorf("expected exactly one value for %v", consts.InlineAuthPathHeaderName)
 	}
 
-	if _, present := req.Headers[consts.AuthHeaderName]; present {
-		return fmt.Errorf("cannot layer inline authentication with explicit token authentication")
-	}
-
-	if _, present := req.Headers["Authorization"]; present {
-		return fmt.Errorf("cannot layer inline authentication with bearer authentication")
+	if req.ClientToken != "" {
+		return nil, fmt.Errorf("cannot layer inline authentication with token authentication")
 	}
 
 	// Build an entirely new request; this will be executed before req
 	requestId, err := uuid.GenerateUUID()
 	if err != nil {
-		return fmt.Errorf("failed to generate identifier for the inline authentication request: %w", err)
+		return nil, fmt.Errorf("failed to generate identifier for the inline authentication request: %w", err)
 	}
 
 	authReq := &logical.Request{
@@ -675,7 +680,7 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 		authOperation = []string{string(logical.UpdateOperation)}
 	}
 	if len(authOperation) != 1 {
-		return fmt.Errorf("expected exactly one value for %v", consts.InlineAuthOperationHeaderName)
+		return nil, fmt.Errorf("expected exactly one value for %v", consts.InlineAuthOperationHeaderName)
 	}
 	authReq.Operation = logical.Operation(authOperation[0])
 
@@ -688,13 +693,13 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 	case len(authNamespace) == 0:
 		authNamespace = []string{""}
 	case len(authNamespace) > 1:
-		return fmt.Errorf("expected at most one value for %v", consts.InlineAuthNamespaceHeaderName)
+		return nil, fmt.Errorf("expected at most one value for %v", consts.InlineAuthNamespaceHeaderName)
 	}
 
 	var authNs *namespace.Namespace
 	authNs, authReq.Path = c.namespaceStore.ResolveNamespaceFromRequest(authNamespace[0], authReq.Path)
 	if authNs == nil {
-		return fmt.Errorf("inline auth namespace was not found")
+		return nil, fmt.Errorf("inline auth namespace was not found")
 	}
 
 	authCtx := namespace.ContextWithNamespace(ctx, authNs)
@@ -709,35 +714,35 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 		}
 
 		if len(values) != 1 {
-			return fmt.Errorf("expected exactly one value for each auth header parameter")
+			return nil, fmt.Errorf("expected exactly one value for each auth header parameter")
 		}
 
 		encodedHeader, err := base64.RawURLEncoding.DecodeString(values[0])
 		if err != nil {
-			return fmt.Errorf("failed raw url-safe base64 decoding header value")
+			return nil, fmt.Errorf("failed raw url-safe base64 decoding header value")
 		}
 
 		var paramInfo map[string]interface{}
 		if err := json.Unmarshal(encodedHeader, &paramInfo); err != nil {
-			return errors.New("failed json decoding header value")
+			return nil, errors.New("failed json decoding header value")
 		}
 
 		paramKeyRaw, present := paramInfo["key"]
 		if !present {
-			return errors.New("decoded header lacked `key` field")
+			return nil, errors.New("decoded header lacked `key` field")
 		}
 		paramKey, ok := paramKeyRaw.(string)
 		if !ok {
-			return errors.New("decoded header had incorrect type for `key` field")
+			return nil, errors.New("decoded header had incorrect type for `key` field")
 		}
 
 		paramValue, present := paramInfo["value"]
 		if !present {
-			return errors.New("decoded header lacked `value` field")
+			return nil, errors.New("decoded header lacked `value` field")
 		}
 
 		if len(paramInfo) != 2 {
-			return errors.New("unexpected field in decoded request parameter")
+			return nil, errors.New("unexpected field in decoded request parameter")
 		}
 
 		loginParams[paramKey] = paramValue
@@ -745,10 +750,27 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 
 	authReq.Data = loginParams
 
-	// Perform authentication but do not persist the underlying token.
+	// Perform authentication but do not persist the underlying token. We
+	// want to return the response from inline authentication if it is
+	// relevant.
 	resp, err := c.handleCancelableRequest(authCtx, authReq)
-	if err != nil {
-		return err
+	if err != nil || resp == nil || resp.Auth == nil {
+		// If we have a non-error response object, ensure it has a header
+		// indicating it is from the auth step.
+		if resp != nil {
+			if resp.Headers == nil {
+				resp.Headers = make(map[string][]string)
+			}
+			resp.Headers[consts.InlineAuthErrorResponseHeader] = []string{"true"}
+		}
+
+		// We could hit a case where err == resp == nil; set error to 404 not
+		// found explicitly.
+		if err == nil && resp == nil {
+			err = logical.CodedError(http.StatusNotFound, "specified authentication path was not found")
+		}
+
+		return resp, err
 	}
 
 	// Now extract the token from the response and set it on our original
@@ -760,7 +782,9 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 	req.InlineAuth = resp.Auth
 	req.SetTokenEntry(resp.InlineAuthTokenEntry)
 
-	return nil
+	// Explicitly do not return the authentication request; the auth request
+	// is only returned when it fails so it can be sent to the client.
+	return nil, nil
 }
 
 func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request) (resp *logical.Response, err error) {

@@ -759,7 +759,7 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 			resp.Headers[consts.InlineAuthErrorResponseHeader] = []string{"true"}
 		}
 
-		// We could a case where err == resp == nil; set error to 404 not
+		// We could hit a case where err == resp == nil; set error to 404 not
 		// found explicitly.
 		if err == nil && resp == nil {
 			err = logical.CodedError(http.StatusNotFound, "specified authentication path was not found")

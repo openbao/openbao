@@ -58,7 +58,7 @@ func TestCertBundleConversion(t *testing.T) {
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
 		if err != nil {
 			t.Logf("Error occurred with bundle %d in test array (index %d).\n", i+1, i)
-			t.Errorf(err.Error())
+			t.Error(err.Error())
 		}
 
 		cbut, err := pcbut.ToCertBundle()
@@ -68,13 +68,13 @@ func TestCertBundleConversion(t *testing.T) {
 
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
 		if err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}
 }
 
 func BenchmarkCertBundleParsing(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		cbuts := []*CertBundle{
 			refreshRSACertBundle(),
 			refreshRSACertBundleWithChain(),
@@ -132,7 +132,7 @@ func TestCertBundleParsing(t *testing.T) {
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
 		if err != nil {
 			t.Logf("Error occurred with bundle %d in test array (index %d).\n", i+1, i)
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 
 		dataMap := structs.New(cbut).Map()
@@ -144,7 +144,7 @@ func TestCertBundleParsing(t *testing.T) {
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
 		if err != nil {
 			t.Logf("Error occurred with bundle %d in test array (index %d).\n", i+1, i)
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 
 		pcbut, err = ParsePEMBundle(cbut.ToPEMBundle())
@@ -155,7 +155,7 @@ func TestCertBundleParsing(t *testing.T) {
 		err = compareCertBundleToParsedCertBundle(cbut, pcbut)
 		if err != nil {
 			t.Logf("Error occurred with bundle %d in test array (index %d).\n", i+1, i)
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}
 }
@@ -204,7 +204,7 @@ func compareCertBundleToParsedCertBundle(cbut *CertBundle, pcbut *ParsedCertBund
 	if err != nil {
 		return fmt.Errorf("error when getting subject key id: %s", err)
 	}
-	if bytes.Compare(subjKeyID, pcbut.Certificate.SubjectKeyId) != 0 {
+	if !bytes.Equal(subjKeyID, pcbut.Certificate.SubjectKeyId) {
 		return fmt.Errorf("parsed bundle private key does not match subject key id\nGot\n%#v\nExpected\n%#v\nCert\n%#v", subjKeyID, pcbut.Certificate.SubjectKeyId, *pcbut.Certificate)
 	}
 
@@ -281,7 +281,7 @@ func TestCSRBundleConversion(t *testing.T) {
 
 		err = compareCSRBundleToParsedCSRBundle(csrbut, pcsrbut)
 		if err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 
 		csrbut, err = pcsrbut.ToCSRBundle()
@@ -291,7 +291,7 @@ func TestCSRBundleConversion(t *testing.T) {
 
 		err = compareCSRBundleToParsedCSRBundle(csrbut, pcsrbut)
 		if err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 	}
 }

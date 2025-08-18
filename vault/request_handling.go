@@ -629,7 +629,7 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	// depending on what the auth method does.
 	if resp, err := c.handleInlineAuth(ctx, req, nsHeader); err != nil || resp != nil {
 		if err != nil {
-			err = multierror.Append(errors.New("failed to perform inline authentication"), err)
+			err = fmt.Errorf("failed to perform inline authentication: %w", err)
 		}
 
 		return resp, err

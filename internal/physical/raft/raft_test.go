@@ -5,10 +5,10 @@ package raft
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,9 +30,10 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/v2/internal/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/v2/internal/helper/testhelpers/pluginhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
@@ -313,50 +314,41 @@ func TestRaft_JoinConfig(t *testing.T) {
 }
 
 func TestRaft_JoinPlugins(t *testing.T) {
+	pluginDir, cleanup := corehelpers.MakeTestPluginDir(t)
+	t.Cleanup(func() { cleanup(t) })
+	plugin := pluginhelpers.CompilePlugin(t, consts.PluginTypeJoin, "", pluginDir)
+
+	joinPluginConf, err := json.Marshal([]JoinPlugin{{
+		Name:    "foo",
+		Command: filepath.Join(pluginDir, plugin.FileName),
+		Args:    []string{},
+		Env:     []string{},
+		Sha256:  plugin.Sha256,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	b := RaftBackend{
-		conf: map[string]string{
-			"join_plugin": `[{
-				"name": "foo",
-				"command": "/bin/false",
-				"args": [],
-				"env": [],
-				"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-			}]`,
-		},
-	}
-	plugins, err := b.JoinPlugins()
-	if err != nil {
-		t.Fatalf("error parsing join plugin config: %s", err.Error())
+		logger: hclog.NewNullLogger(),
+		conf:   map[string]string{"join_plugin": string(joinPluginConf)},
 	}
 
-	sha256, err := hex.DecodeString("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+	plugins, err := b.JoinPlugins(context.TODO())
 	if err != nil {
-		t.Fatalf("could not parse sha: %s", err.Error())
+		t.Fatalf("error loading join plugins: %s", err.Error())
 	}
+	defer func() {
+		for k, plugin := range plugins {
+			err := plugin.Cleanup(context.TODO())
+			if err != nil {
+				t.Errorf("failed to cleanup plugin %s: %s", k, err.Error())
+			}
+		}
+	}()
 
-	expected := map[string]pluginutil.PluginRunner{
-		"discover": {
-			Name:    "discover",
-			Type:    consts.PluginTypeJoin,
-			Builtin: true,
-		},
-		"static": {
-			Name:    "static",
-			Type:    consts.PluginTypeJoin,
-			Builtin: true,
-		},
-		"foo": {
-			Name:    "foo",
-			Type:    consts.PluginTypeJoin,
-			Command: "/bin/false",
-			Args:    []string{},
-			Env:     []string{},
-			Sha256:  sha256,
-			Builtin: false,
-		},
-	}
-	if diff := deep.Equal(plugins, expected); diff != nil {
-		t.Errorf("plugins not as expected: %+v", diff)
+	if len(plugins) != 3 {
+		t.Errorf("Expected 3 plugins, found %d", len(plugins))
 	}
 }
 

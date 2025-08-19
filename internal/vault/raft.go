@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"maps"
 	"net"
 	"net/http"
 	"net/url"
@@ -20,8 +19,6 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/go-discover"
-	discoverk8s "github.com/hashicorp/go-discover/provider/k8s"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
@@ -914,11 +911,6 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		leaderInfos[0].LeaderAPIAddr = adv.RedirectAddr
 	}
 
-	disco, err := newDiscover()
-	if err != nil {
-		return false, fmt.Errorf("failed to create auto-join discovery: %w", err)
-	}
-
 	retryFailures := leaderInfos[0].Retry
 	// answerChallenge performs the second part of a raft join: after we've issued
 	// the sys/storage/raft/bootstrap/challenge call to initiate the join, this
@@ -992,7 +984,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		challengeCh := make(chan *raftInformation)
 		var expandedJoinInfos []*raft.LeaderJoinInfo
 		for _, leaderInfo := range leaderInfos {
-			joinInfos, err := c.raftLeaderInfo(ctx, leaderInfo, disco, joinPlugins)
+			joinInfos, err := c.raftLeaderInfo(ctx, leaderInfo, joinPlugins)
 			if err != nil {
 				c.logger.Error("error in retry_join stanza, will not use it for raft join", "error", err,
 					"leader_api_addr", leaderInfo.LeaderAPIAddr, "auto_join", leaderInfo.AutoJoin != "")
@@ -1087,7 +1079,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 }
 
 // raftLeaderInfo uses go-discover to expand leaderInfo to include any auto-join results.
-func (c *Core) raftLeaderInfo(ctx context.Context, leaderInfo *raft.LeaderJoinInfo, disco *discover.Discover, plugins map[string]joinplugin.Join) ([]*raft.LeaderJoinInfo, error) {
+func (c *Core) raftLeaderInfo(ctx context.Context, leaderInfo *raft.LeaderJoinInfo, plugins map[string]joinplugin.Join) ([]*raft.LeaderJoinInfo, error) {
 	if err := leaderInfo.ValidateJoinMethods(); err != nil {
 		return nil, err
 	}
@@ -1096,28 +1088,6 @@ func (c *Core) raftLeaderInfo(ctx context.Context, leaderInfo *raft.LeaderJoinIn
 	switch {
 	case leaderInfo.LeaderAPIAddr != "":
 		ret = append(ret, leaderInfo)
-
-	case leaderInfo.AutoJoin != "":
-		scheme := leaderInfo.AutoJoinScheme
-		if scheme == "" {
-			// default to HTTPS when no scheme is provided
-			scheme = "https"
-		}
-		port := leaderInfo.AutoJoinPort
-		if port == 0 {
-			// default to 8200 when no port is provided
-			port = 8200
-		}
-		clusterAddrs, err := disco.Addrs(leaderInfo.AutoJoin, c.logger.StandardLogger(nil))
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch addresses via auto-join: %w", err)
-		}
-		for _, addr := range clusterAddrs {
-			u := fmt.Sprintf("%s://%s", scheme, ensureAddrPort(addr, port))
-			info := *leaderInfo
-			info.LeaderAPIAddr = u
-			ret = append(ret, &info)
-		}
 	case leaderInfo.AutoJoinPlugin != nil:
 		join, found := plugins[leaderInfo.AutoJoinPlugin.Plugin]
 		if !found {
@@ -1139,27 +1109,6 @@ func (c *Core) raftLeaderInfo(ctx context.Context, leaderInfo *raft.LeaderJoinIn
 		return nil, errors.New("must provide leader address or auto-join metadata")
 	}
 	return ret, nil
-}
-
-// ensureAddrPort adds port to addr if it does not already contain one.
-func ensureAddrPort(addr string, port uint) string {
-	// Check if we have a port by attempting to split host/port, in which case
-	// there is nothing to do. Notably, this will not accept implicit IPv6
-	// addresses since they are ambigous.
-	if _, _, err := net.SplitHostPort(addr); err == nil {
-		return addr
-	}
-
-	if strings.Count(addr, ":") >= 2 && !strings.HasPrefix(addr, "[") {
-		// An IPv6 address in implicit form, however we need it in explicit form
-		// to use in a URL.
-		addr = "[" + addr + "]"
-	}
-
-	// If we don't have a port, join the default one. This explicitly avoids
-	// net.JoinHostPort since it unconditionally re-brackets IPv6 addresses,
-	// even if they already are in explicit form.
-	return addr + ":" + strconv.FormatUint(uint64(port), 10)
 }
 
 // NewDelegateForCore creates a raft.Delegate for the specified core using its backend.
@@ -1348,15 +1297,4 @@ type answerRespData struct {
 type answerResp struct {
 	Peers      []raft.Peer      `json:"peers"`
 	TLSKeyring *raft.TLSKeyring `json:"tls_keyring"`
-}
-
-func newDiscover() (*discover.Discover, error) {
-	providers := make(map[string]discover.Provider)
-	maps.Copy(providers, discover.Providers)
-
-	providers["k8s"] = &discoverk8s.Provider{}
-
-	return discover.New(
-		discover.WithProviders(providers),
-	)
 }

@@ -262,7 +262,7 @@ func DefaultConfig() *Config {
 		MinRetryWait: time.Millisecond * 1000,
 		MaxRetryWait: time.Millisecond * 1500,
 		MaxRetries:   2,
-		Backoff:      retryablehttp.LinearJitterBackoff,
+		Backoff:      retryablehttp.RateLimitLinearJitterBackoff,
 	}
 
 	transport := config.HttpClient.Transport.(*http.Transport)
@@ -1355,7 +1355,7 @@ START:
 	req.Request = req.Request.WithContext(ctx)
 
 	if backoff == nil {
-		backoff = retryablehttp.LinearJitterBackoff
+		backoff = retryablehttp.RateLimitLinearJitterBackoff
 	}
 
 	if checkRetry == nil {

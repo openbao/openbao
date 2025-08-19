@@ -262,9 +262,10 @@ func TestRaft_ParseNonVoter(t *testing.T) {
 
 func TestRaft_JoinConfig(t *testing.T) {
 	b := RaftBackend{
+		logger: hclog.NewNullLogger(),
 		conf: map[string]string{
 			"retry_join": `[
-				{"auto_join": "aws foo=bar"},
+				{"auto_join": "aws foo=baz"},
 				{"auto_join_plugin": {
 					"plugin": "discover",
 					"config": {"discover": "aws foo=bar"}
@@ -277,7 +278,13 @@ func TestRaft_JoinConfig(t *testing.T) {
 		t.Fatalf("error parsing config: %s", err.Error())
 	}
 	expected := []*LeaderJoinInfo{
-		{AutoJoin: "aws foo=bar", Retry: true},
+		{
+			AutoJoinPlugin: &AutoJoinPlugin{
+				Plugin: "discover",
+				Config: map[string]string{"discover": "aws foo=baz"},
+			},
+			Retry: true,
+		},
 		{
 			AutoJoinPlugin: &AutoJoinPlugin{
 				Plugin: "discover",

@@ -320,6 +320,12 @@ func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
 			return nil, err
 		}
 
+		if info.AutoJoin != "" {
+			b.logger.Warn("legacy auto-join config found, please use discover plugin instead")
+			info.AutoJoinPlugin = &AutoJoinPlugin{Plugin: "discover", Config: map[string]string{"discover": info.AutoJoin}}
+			info.AutoJoin = ""
+		}
+
 		if info.AutoJoinScheme != "" && (info.AutoJoinScheme != "http" && info.AutoJoinScheme != "https") {
 			return nil, fmt.Errorf("invalid scheme %q; must either be http or https", info.AutoJoinScheme)
 		}
@@ -365,6 +371,9 @@ func (b *RaftBackend) JoinPlugins(ctx context.Context) (map[string]joinplugin.Jo
 		return nil, fmt.Errorf("failed to decode join_plugin config: %w", err)
 	}
 	for _, pluginConfig := range pluginConfigs {
+		if _, found := joinPlugins[pluginConfig.Name]; found {
+			return nil, fmt.Errorf("attempting to override built-in join plugin: %s", pluginConfig.Name)
+		}
 		sha256, err := hex.DecodeString(pluginConfig.Sha256)
 		if err != nil {
 			return nil, fmt.Errorf("invalid sha256 for join plugin %s: %s", pluginConfig.Name, pluginConfig.Sha256)

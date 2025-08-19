@@ -180,14 +180,16 @@ func (c *Logical) ListWithContext(ctx context.Context, path string) (*Secret, er
 		switch parseErr {
 		case nil:
 		case io.EOF:
-			return nil, fmt.Errorf("secret: not found")
+			//nolint:nilnil
+			return nil, nil
 		default:
 			return nil, parseErr
 		}
 		if secret != nil && (len(secret.Warnings) > 0 || len(secret.Data) > 0) {
 			return secret, nil
 		}
-		return nil, fmt.Errorf("secret: not found")
+		//nolint:nilnil
+		return nil, nil
 	}
 	if err != nil {
 		return nil, err

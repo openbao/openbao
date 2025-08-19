@@ -26,7 +26,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/joinplugin"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/seal"
@@ -919,11 +918,6 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		return false, fmt.Errorf("failed to create auto-join discovery: %w", err)
 	}
 
-	joinPlugins, err := raftBackend.JoinPlugins()
-	if err != nil {
-		return false, fmt.Errorf("failed to create join plugins: %w", err)
-	}
-
 	retryFailures := leaderInfos[0].Retry
 	// answerChallenge performs the second part of a raft join: after we've issued
 	// the sys/storage/raft/bootstrap/challenge call to initiate the join, this
@@ -974,7 +968,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 	// challenge.  If we're unable to get a challenge from any leader, or if
 	// we fail to answer the challenge successfully, or if ctx times out,
 	// an error is returned.
-	join := func() error {
+	join := func(joinPlugins map[string]joinplugin.Join) error {
 		init, err := c.InitializedLocally(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to check if core is initialized: %w", err)
@@ -1041,16 +1035,28 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		return err
 	}
 
-	switch retryFailures {
-	case true:
+	joinPlugins, err := raftBackend.JoinPlugins(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to create join plugins: %w", err)
+	}
+
+	if retryFailures {
 		go func() {
+			defer func() {
+				for name, join := range joinPlugins {
+					if err := join.Cleanup(ctx); err != nil {
+						c.logger.Error("error cleaning up join plugin %s: %w", name, err)
+					}
+				}
+			}()
+
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				default:
 				}
-				err := join()
+				err := join(joinPlugins)
 				if err == nil {
 					return
 				}
@@ -1061,8 +1067,16 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 
 		// Backgrounded so return false
 		return false, nil
-	default:
-		if err := join(); err != nil {
+	} else {
+		defer func() {
+			for name, join := range joinPlugins {
+				if err := join.Cleanup(ctx); err != nil {
+					c.logger.Error("error cleaning up join plugin %s: %w", name, err)
+				}
+			}
+		}()
+
+		if err := join(joinPlugins); err != nil {
 			c.logger.Error("failed to join raft cluster", "error", err)
 			return false, fmt.Errorf("failed to join raft cluster: %w", err)
 		}
@@ -1072,7 +1086,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 }
 
 // raftLeaderInfo uses go-discover to expand leaderInfo to include any auto-join results
-func (c *Core) raftLeaderInfo(ctx context.Context, leaderInfo *raft.LeaderJoinInfo, disco *discover.Discover, plugins map[string]pluginutil.PluginRunner) ([]*raft.LeaderJoinInfo, error) {
+func (c *Core) raftLeaderInfo(ctx context.Context, leaderInfo *raft.LeaderJoinInfo, disco *discover.Discover, plugins map[string]joinplugin.Join) ([]*raft.LeaderJoinInfo, error) {
 	if err := leaderInfo.ValidateJoinMethods(); err != nil {
 		return nil, err
 	}
@@ -1109,15 +1123,10 @@ func (c *Core) raftLeaderInfo(ctx context.Context, leaderInfo *raft.LeaderJoinIn
 			ret = append(ret, &info)
 		}
 	case leaderInfo.AutoJoinPlugin != nil:
-		join, err := joinplugin.NewJoin(ctx, leaderInfo.AutoJoinPlugin.Plugin, plugins, c.logger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to start join plugin: %w", err)
+		join, found := plugins[leaderInfo.AutoJoinPlugin.Plugin]
+		if !found {
+			return nil, fmt.Errorf("no join plugin named %s found", leaderInfo.AutoJoinPlugin.Plugin)
 		}
-		defer func() {
-			if err := join.Cleanup(ctx); err != nil {
-				c.logger.Error("error cleaning up join plugin: %w", err)
-			}
-		}()
 
 		addrs, err := join.Candidates(ctx, leaderInfo.AutoJoinPlugin.Config)
 		if err != nil {

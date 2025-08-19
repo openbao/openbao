@@ -39,6 +39,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/joinplugin"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/cluster"
@@ -333,7 +334,7 @@ func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
 	return leaderInfos, nil
 }
 
-func (b *RaftBackend) JoinPlugins() (map[string]pluginutil.PluginRunner, error) {
+func (b *RaftBackend) JoinPlugins(ctx context.Context) (map[string]joinplugin.Join, error) {
 	joinPlugins := map[string]pluginutil.PluginRunner{
 		"discover": {
 			Name:    "discover",
@@ -355,7 +356,7 @@ func (b *RaftBackend) JoinPlugins() (map[string]pluginutil.PluginRunner, error) 
 
 	config := b.conf["join_plugin"]
 	if config == "" {
-		return joinPlugins, nil
+		config = "[]"
 	}
 
 	var pluginConfigs []*JoinPlugin
@@ -378,7 +379,17 @@ func (b *RaftBackend) JoinPlugins() (map[string]pluginutil.PluginRunner, error) 
 		}
 	}
 
-	return joinPlugins, nil
+	joins := make(map[string]joinplugin.Join, len(joinPlugins))
+	for k := range joinPlugins {
+		join, err := joinplugin.NewJoin(ctx, k, joinPlugins, b.logger)
+		if err != nil {
+			b.logger.Error("failed to start join plugin", "plugin", k, "error", err)
+			continue
+		}
+		joins[k] = join
+	}
+
+	return joins, nil
 }
 
 // parseTLSInfo is a helper for parses the TLS information, preferring file

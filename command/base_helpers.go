@@ -5,6 +5,7 @@ package command
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,7 +17,6 @@ import (
 	"github.com/kr/text"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/openbao/openbao/api/v2"
-	"github.com/pkg/errors"
 	"github.com/ryanuber/columnize"
 )
 
@@ -151,7 +151,7 @@ func parseArgsDataString(stdin io.Reader, args []string) (map[string]string, err
 
 	var result map[string]string
 	if err := mapstructure.WeakDecode(raw, &result); err != nil {
-		return nil, errors.Wrap(err, "failed to convert values to strings")
+		return nil, fmt.Errorf("failed to convert values to strings: %w", err)
 	}
 	if result == nil {
 		result = make(map[string]string)
@@ -170,7 +170,7 @@ func parseArgsDataStringLists(stdin io.Reader, args []string) (map[string][]stri
 
 	var result map[string][]string
 	if err := mapstructure.WeakDecode(raw, &result); err != nil {
-		return nil, errors.Wrap(err, "failed to convert values to strings")
+		return nil, fmt.Errorf("failed to convert values to strings: %w", err)
 	}
 	return result, nil
 }

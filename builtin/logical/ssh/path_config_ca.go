@@ -13,7 +13,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,8 +20,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/crypto/ssh"
-
-	"github.com/mikesmitty/edkey"
 )
 
 type keyStorageEntry struct {
@@ -215,15 +212,9 @@ func generateSSHKeyPair(randomSource io.Reader, keyType string, keyBits int) (st
 			return "", "", err
 		}
 
-		marshalled := edkey.MarshalED25519PrivateKey(privateSeed)
-		if marshalled == nil {
-			return "", "", errors.New("unable to marshal ed25519 private key")
-		}
-
-		privateBlock = &pem.Block{
-			Type:    "OPENSSH PRIVATE KEY",
-			Headers: nil,
-			Bytes:   marshalled,
+		privateBlock, err = ssh.MarshalPrivateKey(privateSeed, "")
+		if err != nil {
+			return "", "", fmt.Errorf("failed to marshal ed25519 key: %w", err)
 		}
 
 		publicKey = privateSeed.Public()

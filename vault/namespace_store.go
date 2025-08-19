@@ -215,7 +215,7 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 	ctx context.Context, barrier, view logical.Storage,
 	callback func(*namespace.Namespace) error,
 ) error {
-	return logical.HandleListPage(view, "", 100, func(page int, index int, entry string) (bool, error) {
+	return logical.HandleListPage(ctx, view, "", 100, func(page int, index int, entry string) (bool, error) {
 		item, err := view.Get(ctx, entry)
 		if err != nil {
 			return false, fmt.Errorf("failed to fetch namespace %v (page %v / index %v): %w", entry, page, index, err)

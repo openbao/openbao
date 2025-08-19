@@ -14,9 +14,9 @@ func TestCELHelpers(t *testing.T) {
 	t.Parallel()
 
 	// Initialize CEL environment with our custom functions
-	env, err := celgo.NewEnv(
-		celgo.Lib(customLibrary{}), // Custom library with functions
-	)
+	env, err := celgo.NewEnv()
+	require.NoError(t, err)
+	env, err = RegisterAllCelFunctions(env)
 	require.NoError(t, err)
 
 	t.Run("check_valid_email", func(t *testing.T) {
@@ -47,6 +47,33 @@ func TestCELHelpers(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("cel_go_ext_functions", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			expr string
+			want string
+		}{
+			// split
+			{"'a,b,c'.split(',')[1]", "b"},
+			// regex
+			{"regex.extract('123abc456', r'([a-z]+)').orValue('')", "abc"},
+			// base64
+			{"base64.encode(b'hello')", "aGVsbG8="},
+		}
+
+		for _, tc := range tests {
+			tc := tc
+			t.Run(tc.expr, func(t *testing.T) {
+				t.Parallel()
+				prog := buildTestProgram(t, env, tc.expr)
+				val, _, err := prog.Eval(interpreter.EmptyActivation())
+				require.NoError(t, err)
+				assert.Equal(t, tc.want, val.Value())
+			})
+		}
+	})
 }
 
 // buildTestProgram compiles and runs CEL expressions in the test
@@ -57,23 +84,4 @@ func buildTestProgram(t *testing.T, env *celgo.Env, expr string) celgo.Program {
 	prog, err := env.Program(ast)
 	require.NoError(t, err, "CEL program creation failed")
 	return prog
-}
-
-// customLibrary implements a CEL library with our custom functions
-type customLibrary struct{}
-
-func (customLibrary) CompileOptions() []celgo.EnvOption {
-	return []celgo.EnvOption{
-		celgo.Function("check_valid_email",
-			celgo.Overload("check_valid_email_string",
-				[]*celgo.Type{celgo.StringType},
-				celgo.BoolType,
-				celgo.UnaryBinding(checkValidEmail),
-			),
-		),
-	}
-}
-
-func (customLibrary) ProgramOptions() []celgo.ProgramOption {
-	return nil
 }

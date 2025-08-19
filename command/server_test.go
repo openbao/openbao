@@ -79,6 +79,16 @@ cloud {
     client_secret = "N9JtHZyOnHrIvJZs82pqa54vd4jnkyU3xCcqhFXuQKJZZuxqxxbP1xCfBZVB82vY"
 }
 `
+
+	auditHCL = `
+audit "file" "to-stdout" {
+  description = "This audit device should never fail."
+  options {
+    file_path = "/dev/stdout"
+    log_raw = "true"
+  }
+}
+`
 )
 
 func testServerCommand(tb testing.TB) (*cli.MockUi, *ServerCommand) {
@@ -275,6 +285,13 @@ func TestServer(t *testing.T) {
 			"",
 			0,
 			[]string{"-test-verify-only", "-recovery"},
+		},
+		{
+			"audit_config",
+			testBaseHCL(t, "") + inmemHCL + auditHCL,
+			"",
+			0,
+			[]string{"-test-verify-only"},
 		},
 	}
 

@@ -2339,6 +2339,9 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupAudits(ctx); err != nil {
 		return err
 	}
+	if err := c.handleAuditLogSetup(ctx); err != nil {
+		return err
+	}
 	if err := c.loadIdentityStoreArtifacts(ctx); err != nil {
 		return err
 	}

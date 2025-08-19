@@ -1526,6 +1526,10 @@ func (c *ServerCommand) Run(args []string) int {
 			// Setting log request with the new value in the config after reload
 			core.ReloadLogRequestsLevel()
 
+			// Update audit devices if necessary. This cannot be done as part of
+			// c.Reload as it needs the reloadFuncsLock.
+			core.ReloadAuditLogs()
+
 			// Reload log level for loggers
 			if config.LogLevel != "" {
 				level, err := loghelper.ParseLogLevel(config.LogLevel)

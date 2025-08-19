@@ -3150,6 +3150,7 @@ func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Requ
 
 	// Create the mount entry
 	me := &MountEntry{
+		// API-created
 		Table:       auditTableType,
 		Path:        path,
 		Type:        backendType,
@@ -3188,6 +3189,10 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 	}
 	if entry == nil {
 		return nil, nil
+	}
+
+	if entry.Table == configAuditTableType {
+		return handleError(errors.New("cannot disable configuration-managed audit device"))
 	}
 
 	// Attempt disable

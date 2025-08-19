@@ -150,42 +150,74 @@ func TestPSQLParallelInit(t *testing.T) {
 		t.Skip("missing $BAO_BINARY")
 	}
 
-	configPath := "config-postgresql.json"
+	const configPath = "config-postgresql.json"
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		t.Fatalf("config not found: %s", configPath)
 	}
 
 	psql := docker.NewPostgreSQLStorage(t, "")
-	defer psql.Cleanup()
+	defer func() {
+		if err := psql.Cleanup(); err != nil {
+			t.Errorf("postgres cleanup failed: %v", err)
+		}
+	}()
 
 	const numNodes = 10
 	targetTime := time.Now().Add(2 * time.Second)
-
 	results := make(chan nodeResult, numNodes)
+
 	for i := 0; i < numNodes; i++ {
 		go func(idx int) {
-			// sync start
 			if d := time.Until(targetTime); d > 0 {
 				time.Sleep(d)
 			}
-			// prepare config
-			data, err := os.ReadFile(configPath)
-			require.NoError(t, err)
-			var cfg map[string]interface{}
-			require.NoError(t, json.Unmarshal(data, &cfg))
-			if st, ok := cfg["storage"].(map[string]interface{}); ok {
-				if pg, ok := st["postgresql"].(map[string]interface{}); ok {
-					pg["connection_url"] = psql.InternalUrl
-					pg["ha_enabled"] = true
-				}
-			}
-			cfgBytes, _ := json.MarshalIndent(cfg, "", "  ")
-			tmp, _ := os.CreateTemp("", fmt.Sprintf("cfg-%02d-*.json", idx))
-			tmp.Write(cfgBytes)
-			tmp.Close()
-			defer os.Remove(tmp.Name())
 
-			// start node
+			data, err := os.ReadFile(configPath)
+			if err != nil {
+				results <- nodeResult{err: fmt.Errorf("read config: %w", err)}
+				return
+			}
+			var cfg map[string]interface{}
+			if err := json.Unmarshal(data, &cfg); err != nil {
+				results <- nodeResult{err: fmt.Errorf("unmarshal config: %w", err)}
+				return
+			}
+			st := cfg["storage"].(map[string]interface{})
+			pg := st["postgresql"].(map[string]interface{})
+			pg["connection_url"] = psql.InternalUrl
+			pg["ha_enabled"] = true
+
+			cfgBytes, err := json.MarshalIndent(cfg, "", "  ")
+			if err != nil {
+				results <- nodeResult{err: fmt.Errorf("marshal config: %w", err)}
+				return
+			}
+
+			tmp, err := os.CreateTemp("", "postgres-test-*.cfg")
+			if err != nil {
+				results <- nodeResult{err: fmt.Errorf("create temp file: %w", err)}
+				return
+			}
+			defer func() {
+				if err := os.Remove(tmp.Name()); err != nil {
+					t.Errorf("failed to remove temp file %s: %v", tmp.Name(), err)
+				}
+			}()
+
+			if _, err := tmp.Write(cfgBytes); err != nil {
+				if err := tmp.Close(); err != nil {
+					results <- nodeResult{err: fmt.Errorf("close temp file: %w", err)}
+					return
+				}
+				results <- nodeResult{err: fmt.Errorf("write temp file: %w", err)}
+				return
+			}
+
+			if err := tmp.Close(); err != nil {
+				results <- nodeResult{err: fmt.Errorf("close temp file: %w", err)}
+				return
+			}
+
 			opts := &docker.DockerClusterOptions{
 				ImageRepo:   "quay.io/openbao/openbao",
 				ImageTag:    "latest",
@@ -202,25 +234,28 @@ func TestPSQLParallelInit(t *testing.T) {
 			// basic operation
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			_, err = cluster.Nodes()[0].APIClient().
+			_, opErr := cluster.Nodes()[0].APIClient().
 				Logical().ListWithContext(ctx, "sys/policies/acl")
 
-			results <- nodeResult{cluster: cluster, err: err}
+			results <- nodeResult{cluster: cluster, err: opErr}
 		}(i)
 	}
 
-	// collect results
 	var active, sealed int
 	for i := 0; i < numNodes; i++ {
 		res := <-results
+
+		if res.cluster != nil {
+			defer res.cluster.Cleanup()
+		}
+
 		if res.err == nil {
 			active++
 		} else if strings.Contains(res.err.Error(), "Vault is sealed") {
 			sealed++
 		} else {
-			t.Errorf("unexpected node error: %v", res.err)
+			t.Fatalf("node %d unexpected error: %v", i, res.err)
 		}
-		defer res.cluster.Cleanup()
 	}
 
 	t.Logf("active=%d sealed=%d", active, sealed)

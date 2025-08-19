@@ -24,7 +24,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/v2/joinplugin"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/sdk/v2/plugin/mock"
@@ -357,7 +356,7 @@ func TestRaft_ExternalJoinPlugin(t *testing.T) {
 	}()
 
 	joinPluginConf, err := json.Marshal([]raft.JoinPlugin{{
-		Name:    "static",
+		Name:    "foo",
 		Command: filepath.Join(pluginDir, plugin.FileName),
 		Args:    []string{},
 		Env:     []string{},
@@ -379,21 +378,22 @@ func TestRaft_ExternalJoinPlugin(t *testing.T) {
 
 	raftBackend := backend.(*raft.RaftBackend)
 
-	plugins, err := raftBackend.JoinPlugins()
+	plugins, err := raftBackend.JoinPlugins(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		for k, plugin := range plugins {
+			err := plugin.Cleanup(context.TODO())
+			if err != nil {
+				t.Errorf("failed to cleanup plugin %s: %s", k, err.Error())
+			}
+		}
+	}()
 
-	if !plugins["discover"].Builtin {
-		t.Error("found external plugin, expected builtin")
-	}
-	if plugins["static"].Builtin {
-		t.Error("found builtin plugin, expected external")
-	}
-
-	join, err := joinplugin.NewJoin(context.TODO(), "static", plugins, log.NewNullLogger())
-	if err != nil {
-		t.Fatal(err)
+	join, found := plugins["foo"]
+	if !found {
+		t.Fatal("did not find plugin \"foo\"")
 	}
 	conf = map[string]string{"addresses": "https://127.0.0.1:8200,https://127.0.0.2:8201"}
 	candidates, err := join.Candidates(context.TODO(), conf)

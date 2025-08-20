@@ -475,6 +475,18 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.AdministrativeNamespacePath = c2.AdministrativeNamespacePath
 	}
 
+	if len(c.Initialization) > 0 || len(c2.Initialization) > 0 {
+		result.Initialization = make([]*profiles.OuterConfig, len(c.Initialization)+len(c2.Initialization))
+		copy(result.Initialization[0:len(c.Initialization)], c.Initialization)
+		copy(result.Initialization[len(c.Initialization):], c2.Initialization)
+	}
+
+	if len(c.Audits) > 0 || len(c2.Audits) > 0 {
+		result.Audits = make([]*AuditDevice, len(c.Audits)+len(c2.Audits))
+		copy(result.Audits[0:len(c.Audits)], c.Audits)
+		copy(result.Audits[len(c.Audits):], c2.Audits)
+	}
+
 	return result
 }
 

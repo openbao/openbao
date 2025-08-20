@@ -111,12 +111,12 @@ func registerCheckValidEmailFunction(env *celgo.Env) (*celgo.Env, error) {
 	)
 }
 
-// registerDecodeEncodeJSONFunctions registers decode_JSON and encode_JSON
+// registerDecodeEncodeJSONFunctions registers decode_json and encode_JSON
 func registerDecodeEncodeJSONFunctions(env *celgo.Env) (*celgo.Env, error) {
 	return env.Extend(
-		celgo.Function("decode_JSON",
+		celgo.Function("decode_json",
 			celgo.Overload(
-				"decode_JSON_string",
+				"decode_json_string",
 				[]*celgo.Type{celgo.StringType},
 				celgo.DynType,
 				celgo.UnaryBinding(decodeJSON)),

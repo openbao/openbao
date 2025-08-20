@@ -49,19 +49,19 @@ func TestCELHelpers(t *testing.T) {
 		}
 	})
 
-	t.Run("decode_JSON_roundtrip", func(t *testing.T) {
+	t.Run("decode_json_roundtrip", func(t *testing.T) {
 		t.Parallel()
 
-		expr := `decode_JSON(encode_JSON({'foo':'bar','num':42}))['foo'] == 'bar'`
+		expr := `decode_json(encode_JSON({'foo':'bar','num':42}))['foo'] == 'bar'`
 		prog := buildTestProgram(t, env, expr)
 		val, _, err := prog.Eval(interpreter.EmptyActivation())
 		require.NoError(t, err)
 		assert.Equal(t, true, val.Value())
 	})
 
-	t.Run("decode_JSON", func(t *testing.T) {
+	t.Run("decode_json", func(t *testing.T) {
 		t.Parallel()
-		expr := `decode_JSON("{\"k\":\"v\"}")['k']`
+		expr := `decode_json("{\"k\":\"v\"}")['k']`
 		prog := buildTestProgram(t, env, expr)
 		val, _, err := prog.Eval(interpreter.EmptyActivation())
 		require.NoError(t, err)
@@ -104,9 +104,9 @@ func (customLibrary) CompileOptions() []celgo.EnvOption {
 				celgo.UnaryBinding(checkValidEmail),
 			),
 		),
-		// decode_JSON
-		celgo.Function("decode_JSON",
-			celgo.Overload("decode_JSON_string",
+		// decode_json
+		celgo.Function("decode_json",
+			celgo.Overload("decode_json_string",
 				[]*celgo.Type{celgo.StringType},
 				celgo.DynType,
 				celgo.UnaryBinding(decodeJSON),

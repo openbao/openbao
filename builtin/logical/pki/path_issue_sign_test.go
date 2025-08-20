@@ -774,7 +774,7 @@ func TestCelCustomFunction(t *testing.T) {
 			"variables": []map[string]interface{}{
 				{
 					"name":       "emails",
-					"expression": `decode_JSON(request.extensions["subject_alt_name"]).emails`,
+					"expression": `decode_json(request.extensions["subject_alt_name"]).emails`,
 				},
 				{
 					"name":       "valid_emails",

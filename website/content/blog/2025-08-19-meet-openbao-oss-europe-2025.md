@@ -20,7 +20,7 @@ Location: RAI Amsterdam, Netherlands
 Booth: `G/S7`  
 Hashtag: `#OSSummit` `#OpenBao`  
 
-This isn’t just a swag stop (expect some stickers); it’s a place to trade real-world stories, get practical guidance, and influence the [roadmap](https://github.com/openbao/openbao/issues/569).
+This isn’t just a swag stop (expect some stickers); it’s a place to trade real-world stories, get practical guidance, and influence the [OpenBao roadmap](https://github.com/openbao/openbao/issues/569), now ready for its second iteration!
 
 <!-- truncate -->
 

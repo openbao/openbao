@@ -35,7 +35,7 @@ This isn’t just a swag stop (expect some stickers); it’s a place to trade re
 
 **Guided Walkthroughs** – We’ll walk you through the latest capabilities: Namespaces, advanced policy handling, paginated lists, and more... Ask deep architectural questions (scaling, HSM integrations, and migration strategies) and get answers from the people writing the code.
 
-**Deployment & Design Q&A** – Architecting resilient deployments, tightening policy boundaries, or integrating with existing PKI or signing workflows? Bring real problems—leave with practical next steps.
+**Deployment & Design Q&A** – Are you architecting resilient deployments, tightening policy boundaries, or integrating with existing PKI or signing workflows? Bring real problems, leave with practical next steps.
 
 **Roadmap Preview** – Near‑term energy: safer ops (transactions & policy/audit hygiene), resilience (parallel/alternative unseal), practical scalability (standby reads groundwork). Bigger ecosystem/registry ideas come later—tell us what you need most.
 

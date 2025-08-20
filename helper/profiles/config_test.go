@@ -42,7 +42,7 @@ initialize "auth" {
 	if err != nil {
 		t.Fatalf("parseBlockList error: %v", err)
 	}
-	outers, err := ParseOuterConfig("initialize", nil, list)
+	outers, err := ParseOuterConfig("initialize", list)
 	if err != nil {
 		t.Fatalf("ParseOuterConfig returned error: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestParseOuterConfig_EmptyList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseBlockList error: %v", err)
 	}
-	outers, err := ParseOuterConfig("initialize", nil, list)
+	outers, err := ParseOuterConfig("initialize", list)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -105,7 +105,7 @@ initialize {
 	if err != nil {
 		t.Fatalf("parseBlockList error: %v", err)
 	}
-	_, err = ParseOuterConfig("initialize", nil, list)
+	_, err = ParseOuterConfig("initialize", list)
 	if err == nil || !strings.Contains(err.Error(), "type must be specified") {
 		t.Fatalf("expected type-specification error, got %v", err)
 	}

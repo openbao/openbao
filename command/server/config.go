@@ -784,7 +784,7 @@ func ParseConfig(d, source string) (*Config, error) {
 	// Parse self-initialization stanzas.
 	if o := list.Filter("initialize"); len(o.Items) > 0 {
 		delete(result.UnusedKeys, "initialize")
-		init, err := profiles.ParseOuterConfig("initialize", result.Initialization, o)
+		init, err := profiles.ParseOuterConfig("initialize", o)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing 'initialize': %w", err)
 		}
@@ -795,7 +795,7 @@ func ParseConfig(d, source string) (*Config, error) {
 	// Parse audit device stanzas.
 	if o := list.Filter("audit"); len(o.Items) > 0 {
 		delete(result.UnusedKeys, "audit")
-		audits, err := parseAuditDevices("audit", result.Audits, o)
+		audits, err := parseAuditDevices("audit", o)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing 'audit': %w", err)
 		}
@@ -1286,9 +1286,8 @@ func (a *AuditDevice) GoString() string {
 	return fmt.Sprintf("*%#v", *a)
 }
 
-func parseAuditDevices(name string, result []*AuditDevice, list *ast.ObjectList) ([]*AuditDevice, error) {
-	result = make([]*AuditDevice, 0, len(list.Items))
-
+func parseAuditDevices(name string, list *ast.ObjectList) ([]*AuditDevice, error) {
+	result := make([]*AuditDevice, 0, len(list.Items))
 	for index, item := range list.Items {
 		var i AuditDevice
 		if err := hcl.DecodeObject(&i, item.Val); err != nil {

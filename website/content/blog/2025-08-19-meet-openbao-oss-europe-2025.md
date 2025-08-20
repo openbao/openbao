@@ -49,6 +49,7 @@ OpenBao represents a community‑first, transparently governed evolution in secr
 
 ## Who Should Stop By?
 
+- OSPS leadership looking to understand viable alternatives to their company's vendor lock-in problems
 - Platform & DevSecOps teams standardizing secret workflows
 - Security engineers evaluating trust, provenance, and lifecycle controls
 - Architects designing regulated or multi‑tenant environments

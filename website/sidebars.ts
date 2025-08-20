@@ -531,6 +531,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/authenticated-rekey",
                 "rfcs/self-init",
                 "rfcs/external-keys",
+                "rfcs/config-audit-devices",
                 {
                   "UI/UX": ["rfcs/web-ui-modernization"],
                 },

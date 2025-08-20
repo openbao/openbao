@@ -86,7 +86,10 @@ to specify where the configuration is.
 
 ## Parameters
 
-- `storage` `([StorageBackend][storage-backend]: <required>)` –
+- `audit` <code>([Audit][audit]: &lt;none&gt;)</code> – Specifies [audit device
+  configuration][audit]. Can be specified multiple times.
+
+- `storage` <code>([StorageBackend][storage-backend]: &lt;required&gt;)</code> –
   Configures the storage backend where OpenBao data is stored. Please see the
   [storage backends documentation][storage-backend] for the full list of
   available storage backends. Running OpenBao in HA mode would require
@@ -96,21 +99,21 @@ to specify where the configuration is.
   configured with a backend that supports HA, along with corresponding HA
   options.
 
-- `ha_storage` `([StorageBackend][storage-backend]: nil)` – Configures
+- `ha_storage` <code>([StorageBackend][storage-backend]: nil)</code> – Configures
   the storage backend where OpenBao HA coordination will take place. This must be
   an HA-supporting backend. If not set, HA will be attempted on the backend
   given in the `storage` parameter. This parameter is not required if the
   storage backend supports HA coordination and if HA specific options are
   already specified with `storage` parameter.
 
-- `listener` `([Listener][listener]: <required>)` – Configures how
+- `listener` <code>([Listener][listener]: &lt;required&gt;)</code> – Configures how
   OpenBao is listening for API requests.
 
-- `user_lockout` `([UserLockout][user-lockout]: nil)` –
+- `user_lockout` <code>([UserLockout][userlockout]: nil)</code>. –
   Configures the user-lockout behaviour for failed logins. For more information, please see the
   [user lockout configuration documentation](/docs/configuration/user-lockout). 
 
-- `seal` `([Seal][seal]: nil)` – Configures the seal type to use for
+- `seal` <code>([Seal][seal]: nil)</code> – Configures the seal type to use for
   auto-unsealing, as well as for
   [seal wrapping][sealwrap] as an additional layer of data protection.
 
@@ -125,8 +128,8 @@ to specify where the configuration is.
   the read cache used by the physical storage subsystem. This will very
   significantly impact performance.
 
-- `initialize` `([Initialize][initialize]: <none>)` – Specifies one-time
-  declarative self-initialization.
+- `initialize` <code>([Initialize][initialize]: &lt;none&gt;)</code> – Specifies one-time
+  [declarative self-initialization][initialize]. Can be specified multiple times.
 
 - `plugin_directory` `(string: "")` – A directory from which plugins are
   allowed to be loaded. OpenBao must have permission to read files in this
@@ -143,7 +146,7 @@ to specify where the configuration is.
   This only needs to be set if the file permissions check is enabled via the environment variable
   `VAULT_ENABLE_FILE_PERMISSIONS_CHECK`.
 
-- `telemetry` `([Telemetry][telemetry]: <none>)` – Specifies the telemetry
+- `telemetry` <code>([Telemetry][telemetry]: &lt;none&gt;)</code> – Specifies the telemetry
   reporting system.
 
 - `default_lease_ttl` `(string: "768h")` – Specifies the default lease duration
@@ -267,6 +270,7 @@ The following parameters are used on backends that support [High Availability][h
   will disable these features _only when that node is the active node_. This
   parameter cannot be set to `true` if `raft` is the storage type.
 
+[audit]: /docs/configuration/audit
 [storage-backend]: /docs/configuration/storage
 [listener]: /docs/configuration/listener
 [seal]: /docs/configuration/seal
@@ -275,3 +279,4 @@ The following parameters are used on backends that support [High Availability][h
 [sentinel]: /docs/configuration/sentinel
 [high-availability]: /docs/concepts/ha
 [plugins]: /docs/plugins
+[userlockout]: /docs/configuration/user-lockout

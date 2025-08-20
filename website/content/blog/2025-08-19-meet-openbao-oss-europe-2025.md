@@ -37,7 +37,7 @@ This isn’t just a swag stop (expect some stickers); it’s a place to trade re
 
 **Deployment & Design Q&A** – Are you architecting resilient deployments, tightening policy boundaries, or integrating with existing PKI or signing workflows? Bring real problems, leave with practical next steps.
 
-**Roadmap Preview** – Near‑term energy: safer ops (transactions & policy/audit hygiene), resilience (parallel/alternative unseal), practical scalability (standby reads groundwork). Bigger ecosystem/registry ideas come later—tell us what you need most.
+**Roadmap Preview** – Near‑term energy: safer ops (policy and audit hygiene), resilience (parallel and namespace unseal), practical scalability (standby node read request handling). Bigger ecosystem/registry ideas come later. Tell us what you need most!
 
 **Community Meetups** – Connect with maintainers, contributors, downstream integrators, and fellow operators. Hallway conversations often become features.
 

@@ -9,7 +9,9 @@ image: /img/meet_bao.png
 
 ![Meet OpenBao at OSS Europe 2025](/img/ossummit_meet_bao.png)
 
-Open source builders, security engineers, and platform teams are converging on Amsterdam—and OpenBao will be in the middle of it. We’re excited to announce our first official booth at **Open Source Summit Europe 2025**. If you care about secure automation, multi‑tenant architectures, or transparent stewardship of critical infrastructure tooling, come talk with us.
+Open source builders, security engineers, and platform teams are converging on Amsterdam and OpenBao will be in the middle of it, thanks to the generosity of the Linux Foundation.
+
+We’re excited to announce our first official booth at **[Open Source Summit Europe 2025](https://events.linuxfoundation.org/open-source-summit-europe/)**. If you care about secure automation, multi‑tenant architectures, or meeting the stewards of your critical infrastructure tooling, come talk with us!
 
 Official event site: [Open Source Summit Europe](https://events.linuxfoundation.org/open-source-summit-europe/)
 

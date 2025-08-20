@@ -1,0 +1,3 @@
+```release-note:change
+command/server: Call [`umask(2)`](https://man.archlinux.org/man/umask.2) at startup to avoid setting executable bits on file creation.
+```

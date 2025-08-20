@@ -39,7 +39,7 @@ This isn’t just a swag stop (expect some stickers); it’s a place to trade re
 
 **Roadmap Preview** – Near‑term energy: safer ops (policy and audit hygiene), resilience (parallel and namespace unseal), practical scalability (standby node read request handling). Bigger ecosystem/registry ideas come later. Tell us what you need most!
 
-**Community Meetups** – Connect with maintainers, contributors, downstream integrators, and fellow operators. Hallway conversations often become features.
+**Community Meetups** – Connect with maintainers, contributors, downstream integrators, and fellow operators. Hallway conversations around pain points often become features.
 
 **Contribution Guidance** – Want to help? We’ll highlight good first issues, active design discussions, and how to start.
 

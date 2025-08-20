@@ -74,7 +74,7 @@ OpenBao represents a community‑first, transparently governed evolution in secr
 
 ## Call to Action
 
-Show up. Challenge us. Tell us what you need from the next generation of open‑source secrets management—and help build it. OpenBao moves fastest when the community is loud.
+Show up. Challenge us. Tell us what you need from the next generation of open‑source secrets management, and help build and shape it. OpenBao moves fastest when the community is loud.
 
 See you in Amsterdam!  
 — The OpenBao Team

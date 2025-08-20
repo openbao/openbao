@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
@@ -938,6 +939,8 @@ func (c *ServerCommand) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return 1
 	}
+
+	syscall.Umask(0o111)
 
 	// Don't exit just because we saw a potential deadlock.
 	deadlock.Opts.OnPotentialDeadlock = func() {}

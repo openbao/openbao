@@ -41,7 +41,7 @@ This isn’t just a swag stop (expect some stickers); it’s a place to trade re
 
 **Community Meetups** – Connect with maintainers, contributors, downstream integrators, and fellow operators. Hallway conversations around pain points often become features.
 
-**Contribution Guidance** – Want to help? We’ll highlight good first issues, active design discussions, and how to start.
+**Contribution Guidance** – Want to help? We’ll highlight good first issues, active design discussions, and how to start, whether you're an experienced developer new to Open Source, someone looking to get into technical writing, or anything in between!
 
 ## Why It Matters
 

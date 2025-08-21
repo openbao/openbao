@@ -100,7 +100,7 @@ func GetHexFormatted(buf []byte, sep string) string {
 	var ret bytes.Buffer
 	for _, cur := range buf {
 		if ret.Len() > 0 {
-			fmt.Fprint(&ret, sep)
+			fmt.Fprintf(&ret, "%s", sep)
 		}
 		fmt.Fprintf(&ret, "%02x", cur)
 	}

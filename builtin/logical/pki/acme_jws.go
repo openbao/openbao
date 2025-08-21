@@ -11,7 +11,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-jose/go-jose/v3"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 var AllowedOuterJWSTypes = map[string]interface{}{
@@ -147,7 +148,7 @@ func (c *jwsCtx) VerifyJWS(signature string) (map[string]interface{}, error) {
 	// > The JWS Unencoded Payload Option [RFC7797] MUST NOT be used
 	//
 	// This is validated by go-jose.
-	sig, err := jose.ParseSigned(signature)
+	sig, err := jose.ParseSigned(signature, consts.AllowedJWTSignatureAlgorithmsPKI)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing signature: %s: %w", err, ErrMalformed)
 	}
@@ -234,7 +235,7 @@ func verifyEabPayload(acmeState *acmeState, ac *acmeContext, outer *jwsCtx, expe
 
 	// go-jose only seems to support compact signature encodings.
 	compactSig := fmt.Sprintf("%v.%v.%v", jwkBase64, payloadBase64, signatureBase64)
-	sig, err := jose.ParseSigned(compactSig)
+	sig, err := jose.ParseSignedCompact(compactSig, consts.AllowedJWTSignatureAlgorithmsPKI)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing eab signature: %s: %w", err, ErrMalformed)
 	}

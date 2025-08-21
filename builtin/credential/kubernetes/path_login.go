@@ -10,13 +10,14 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-jose/go-jose/v3"
-	josejwt "github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
 	"github.com/go-viper/mapstructure/v2"
 	capjwt "github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -282,7 +283,7 @@ func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Reque
 type DontVerifySignature struct{}
 
 func (keySet DontVerifySignature) VerifySignature(_ context.Context, token string) (map[string]interface{}, error) {
-	parsed, err := josejwt.ParseSigned(token)
+	parsed, err := josejwt.ParseSigned(token, consts.AllowedJWTSignatureAlgorithmsK8s)
 	if err != nil {
 		return nil, err
 	}

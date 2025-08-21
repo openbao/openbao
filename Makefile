@@ -345,7 +345,7 @@ bump-critical:
 	go get github.com/golang-jwt/jwt/v4@latest
 	go get github.com/golang-jwt/jwt/v5@latest
 	go get github.com/ProtonMail/go-crypto@latest
-	go get github.com/go-jose/go-jose/v3@latest
+	go get github.com/go-jose/go-jose/v4@latest
 	go get github.com/caddyserver/certmagic@latest
 	go get github.com/mholt/acmez/v3@latest
 	go get github.com/google/cel-go@latest

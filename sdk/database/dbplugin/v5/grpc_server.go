@@ -174,7 +174,7 @@ func (g *gRPCServer) UpdateUser(ctx context.Context, req *proto.UpdateUserReques
 
 	dbReq, err := getUpdateUserRequest(req)
 	if err != nil {
-		return &proto.UpdateUserResponse{}, status.Error(codes.InvalidArgument, err.Error())
+		return &proto.UpdateUserResponse{}, status.Errorf(codes.InvalidArgument, "%s", err.Error())
 	}
 
 	impl, err := g.getDatabase(ctx)

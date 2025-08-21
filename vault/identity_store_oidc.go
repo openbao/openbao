@@ -21,14 +21,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-jose/go-jose/v3"
-	"github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/patrickmn/go-cache"
@@ -1539,7 +1540,7 @@ func (i *IdentityStore) pathOIDCIntrospect(ctx context.Context, req *logical.Req
 	clientID := d.Get("client_id").(string)
 
 	// validate basic JWT structure
-	parsedJWT, err := jwt.ParseSigned(rawIDToken)
+	parsedJWT, err := jwt.ParseSigned(rawIDToken, consts.AllowedJWTSignatureAlgorithmsOIDC)
 	if err != nil {
 		return introspectionResp(fmt.Sprintf("error parsing token: %s", err.Error()))
 	}
@@ -1574,7 +1575,7 @@ func (i *IdentityStore) pathOIDCIntrospect(ctx context.Context, req *logical.Req
 	}
 
 	if clientID != "" {
-		expected.Audience = []string{clientID}
+		expected.AnyAudience = []string{clientID}
 	}
 
 	if claimsErr := claims.Validate(expected); claimsErr != nil {

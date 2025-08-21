@@ -12,9 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4/jwt"
 
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -529,14 +530,14 @@ func getClientCertificateSerialNumber(connState *tls.ConnectionState) string {
 	return connState.VerifiedChains[0][0].SerialNumber.String()
 }
 
-// parseVaultTokenFromJWT returns a string iff the token was a JWT and we could
+// parseVaultTokenFromJWT returns a string if the token was a JWT and we could
 // extract the original token ID from inside
 func parseVaultTokenFromJWT(token string) *string {
 	if strings.Count(token, ".") != 2 {
 		return nil
 	}
 
-	parsedJWT, err := jwt.ParseSigned(token)
+	parsedJWT, err := jwt.ParseSigned(token, consts.AllowedJWTSignatureAlgorithmsBao)
 	if err != nil {
 		return nil
 	}

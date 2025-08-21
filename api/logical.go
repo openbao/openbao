@@ -180,16 +180,16 @@ func (c *Logical) ListWithContext(ctx context.Context, path string) (*Secret, er
 		switch parseErr {
 		case nil:
 		case io.EOF:
-			//nolint:nilnil
-			return nil, nil
+			// nil, nil is fine because the caller doesn't expect a particular error in this case. Handling it without significant refactoring of the test and logic can lead to a loss of backward compatibility.
+			return nil, nil //nolint:nilnil
 		default:
 			return nil, parseErr
 		}
 		if secret != nil && (len(secret.Warnings) > 0 || len(secret.Data) > 0) {
 			return secret, nil
 		}
-		//nolint:nilnil
-		return nil, nil
+		// nil, nil is fine because the caller doesn't expect a particular error in this case. Handling it without significant refactoring of the test and logic can lead to a loss of backward compatibility.
+		return nil, nil //nolint:nilnil
 	}
 	if err != nil {
 		return nil, err

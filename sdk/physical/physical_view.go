@@ -55,8 +55,8 @@ func (v *View) Get(ctx context.Context, key string) (*Entry, error) {
 		return nil, err
 	}
 	if entry == nil {
-		//nolint:nilnil
-		return nil, nil
+		// nil, nil is fine because the caller doesn't expect a particular error in this case. Handling it without significant refactoring of the test and logic can lead to a loss of backward compatibility.
+		return nil, nil //nolint:nilnil
 	}
 	entry.Key = v.truncateKey(entry.Key)
 

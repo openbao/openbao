@@ -543,7 +543,7 @@ func extractVersionMetadata(secret *Secret) (*KVVersionMetadata, error) {
 	var metadata *KVVersionMetadata
 
 	if secret.Data == nil {
-		return nil, fmt.Errorf("metadata: fot found")
+		return nil, fmt.Errorf("metadata: not found")
 	}
 
 	// Logical Writes return the metadata directly, Reads return it nested inside the "metadata" key

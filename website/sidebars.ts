@@ -529,6 +529,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/inline-auth",
                 "rfcs/authenticated-rekey",
                 "rfcs/self-init",
+                "rfcs/namespace-sealing",
                 "rfcs/external-keys",
                 {
                   "UI/UX": ["rfcs/web-ui-modernization"],

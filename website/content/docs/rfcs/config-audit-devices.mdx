@@ -19,7 +19,7 @@ the configuration file, throughout the life cycle of the device.
 
 API-driven audit device creation is fundamentally unsafe. Even without control
 over `prefix`, audit devices of type `file` allow writing to arbitrary files
-and `socket` allow writing to arbitrary Unix or network sockets. These
+and type `socket` allows writing to arbitrary Unix or network sockets. These
 operations are usually reserved for system-level operators, not API-level
 administrators, breaching privilege separation expectations. These issues
 were exacerbated in conjunction with the various privilege escalation bypasses

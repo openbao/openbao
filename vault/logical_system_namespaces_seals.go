@@ -298,9 +298,9 @@ func (b *SystemBackend) handleNamespaceKeyStatus(ctx context.Context, req *logic
 		return nil, fmt.Errorf("namespace %q doesn't exist", name)
 	}
 
-	barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
-	if barrier == nil {
-		return handleError(ErrBarrierNotFound)
+	barrier, err := b.Core.sealManager.NamespaceBarrier(ns.Path)
+	if err != nil {
+		return handleError(err)
 	}
 
 	info, err := barrier.ActiveKeyInfo()
@@ -466,9 +466,9 @@ func (b *SystemBackend) handleNamespacesGetRotateConfig() framework.OperationFun
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
-		barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
-		if barrier == nil {
-			return nil, ErrBarrierNotFound
+		barrier, err := b.Core.sealManager.NamespaceBarrier(ns.Path)
+		if err != nil {
+			return handleError(err)
 		}
 
 		rotConfig, err := barrier.RotationConfig()
@@ -507,9 +507,9 @@ func (b *SystemBackend) handleNamespacesUpdateRotateConfig() framework.Operation
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
-		barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
-		if barrier == nil {
-			return nil, ErrBarrierNotFound
+		barrier, err := b.Core.sealManager.NamespaceBarrier(ns.Path)
+		if err != nil {
+			return handleError(err)
 		}
 
 		rotConfig, err := barrier.RotationConfig()

@@ -166,7 +166,11 @@ func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
 	}
 
 	view := d.core.NamespaceView(ns).SubView(sealConfigPath)
-	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
+	barrier, err := d.core.sealManager.StorageAccessForPath(ctx, view.Prefix())
+	if err != nil {
+		d.core.logger.Error("failed to read seal configuration", "error", err)
+		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
+	}
 
 	// Fetch the seal configuration
 	valueBytes, err := barrier.Get(ctx, view.Prefix())
@@ -242,7 +246,12 @@ func (d *defaultSeal) SetConfig(ctx context.Context, config *SealConfig) error {
 	}
 
 	view := d.core.NamespaceView(ns).SubView(sealConfigPath)
-	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
+	barrier, err := d.core.sealManager.StorageAccessForPath(ctx, view.Prefix())
+	if err != nil {
+		d.core.logger.Error("failed to write seal configuration", "error", err)
+		return fmt.Errorf("failed to write seal configuration: %w", err)
+	}
+
 	if err := barrier.Put(ctx, view.Prefix(), buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)

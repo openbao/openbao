@@ -75,7 +75,11 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.core.sealManager.StorageAccessForPath(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
+
 	valueBytes, err := barrier.Get(ctx, path)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
@@ -150,7 +154,10 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.core.sealManager.StorageAccessForPath(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
 
 	if req.Operation == logical.UpdateOperation {
 		// Check if this is an existing value with compression applied, if so, use the same compression (or no compression)
@@ -232,7 +239,11 @@ func (b *RawBackend) handleRawDelete(ctx context.Context, req *logical.Request, 
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.core.sealManager.StorageAccessForPath(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
+
 	if err := barrier.Delete(ctx, path); err != nil {
 		return handleErrorNoReadOnlyForward(err)
 	}
@@ -264,7 +275,11 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.core.sealManager.StorageAccessForPath(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
+
 	keys, err := barrier.ListPage(ctx, path, after, limit)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
@@ -275,7 +290,12 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 // existenceCheck checks if entry exists, used in handleRawWrite for update or create operations
 func (b *RawBackend) existenceCheck(ctx context.Context, request *logical.Request, data *framework.FieldData) (bool, error) {
 	path := data.Get("path").(string)
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+
+	barrier, err := b.core.sealManager.StorageAccessForPath(ctx, path)
+	if err != nil {
+		return false, err
+	}
+
 	entry, err := barrier.Get(ctx, path)
 	if err != nil {
 		return false, err

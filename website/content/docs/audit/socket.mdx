@@ -9,6 +9,17 @@ The `socket` audit device writes to a TCP, UDP, or UNIX socket.
 
 :::warning
 
+The socket audit device is sensitive as it can connect to arbitrary servers.
+Be cautious when granting operators the ability to create this device via
+the API when `unsafe_allow_api_audit_creation=true` is set.
+
+Consider using [declarative audit configuration](/docs/configuration/audit/)
+instead.
+
+:::
+
+:::warning
+
 **Warning:** The loss of audit logs may occur when using the UDP socket audit type. Because UDP socket audit type is connectionless, meaning the UDP endpoint becomes unavailable, it’s possible that any number of audit logs written to it may get lost, even though the request will still succeed. OpenBao does not provide an indication for the loss of audit logs. Therefore, we recommend using your device in conjunction with a secondary “non-socket” audit device to ensure accuracy and to guarantee that audit logs will not be lost.
 
 :::

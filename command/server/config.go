@@ -122,6 +122,11 @@ type Config struct {
 	// declarative self-initialization subsystem on non-dev-mode instances
 	// and is part of the profile system.
 	Initialization []*profiles.OuterConfig `hcl:"-"`
+
+	// Audit specifies declaratively defined audit devices; these are created
+	// on the active node. Updates cannot occur, only additions or deletions,
+	// but can be modified through SIGHUP on a running server.
+	Audits []*AuditDevice `hcl:"-"`
 }
 
 const (
@@ -138,6 +143,9 @@ func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 	}
 	for _, l := range c.Listeners {
 		results = append(results, l.Validate(sourceFilePath)...)
+	}
+	for _, a := range c.Audits {
+		results = append(results, a.Validate(sourceFilePath)...)
 	}
 	results = append(results, c.validateEnt(sourceFilePath)...)
 	return results
@@ -467,6 +475,18 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.AdministrativeNamespacePath = c2.AdministrativeNamespacePath
 	}
 
+	if len(c.Initialization) > 0 || len(c2.Initialization) > 0 {
+		result.Initialization = make([]*profiles.OuterConfig, len(c.Initialization)+len(c2.Initialization))
+		copy(result.Initialization[0:len(c.Initialization)], c.Initialization)
+		copy(result.Initialization[len(c.Initialization):], c2.Initialization)
+	}
+
+	if len(c.Audits) > 0 || len(c2.Audits) > 0 {
+		result.Audits = make([]*AuditDevice, len(c.Audits)+len(c2.Audits))
+		copy(result.Audits[0:len(c.Audits)], c.Audits)
+		copy(result.Audits[len(c.Audits):], c2.Audits)
+	}
+
 	return result
 }
 
@@ -764,12 +784,23 @@ func ParseConfig(d, source string) (*Config, error) {
 	// Parse self-initialization stanzas.
 	if o := list.Filter("initialize"); len(o.Items) > 0 {
 		delete(result.UnusedKeys, "initialize")
-		init, err := profiles.ParseOuterConfig("initialize", result.Initialization, o)
+		init, err := profiles.ParseOuterConfig("initialize", o)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing 'initialize': %w", err)
 		}
 
 		result.Initialization = init
+	}
+
+	// Parse audit device stanzas.
+	if o := list.Filter("audit"); len(o.Items) > 0 {
+		delete(result.UnusedKeys, "audit")
+		audits, err := parseAuditDevices("audit", o)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing 'audit': %w", err)
+		}
+
+		result.Audits = audits
 	}
 
 	// Remove all unused keys from Config that were satisfied by SharedConfig.
@@ -1161,6 +1192,19 @@ func (c *Config) Sanitized() map[string]interface{} {
 		result["service_registration"] = sanitizedServiceRegistration
 	}
 
+	if len(c.Audits) > 0 {
+		var sanitizedAudits []map[string]interface{}
+		for _, a := range c.Audits {
+			cfg := map[string]interface{}{
+				"path":        a.Path,
+				"type":        a.Type,
+				"description": a.Description,
+			}
+			sanitizedAudits = append(sanitizedAudits, cfg)
+		}
+		result["audits"] = sanitizedAudits
+	}
+
 	return result
 }
 
@@ -1220,4 +1264,60 @@ func checkSkipPaths(path string, allPaths []string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// AuditDevice is a config-defined audit device for the server.
+type AuditDevice struct {
+	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
+	RawConfig  map[string]interface{}
+
+	Type        string
+	Path        string
+	Description string            `hcl:"description"`
+	Options     map[string]string `hcl:"options"`
+	Local       bool              `hcl:"local"`
+}
+
+func (a *AuditDevice) Validate(source string) []configutil.ConfigError {
+	return configutil.ValidateUnusedFields(a.UnusedKeys, source)
+}
+
+func (a *AuditDevice) GoString() string {
+	return fmt.Sprintf("*%#v", *a)
+}
+
+func parseAuditDevices(name string, list *ast.ObjectList) ([]*AuditDevice, error) {
+	result := make([]*AuditDevice, 0, len(list.Items))
+	for index, item := range list.Items {
+		var i AuditDevice
+		if err := hcl.DecodeObject(&i, item.Val); err != nil {
+			return result, fmt.Errorf("%v.%d: %w", name, index, err)
+		}
+
+		var m map[string]interface{}
+		if err := hcl.DecodeObject(&m, item.Val); err != nil {
+			return result, fmt.Errorf("%v.%d: %w", name, index, err)
+		}
+		i.RawConfig = m
+
+		switch {
+		case i.Type != "":
+		case len(item.Keys) == 2:
+			i.Type = item.Keys[0].Token.Value().(string)
+		default:
+			return result, fmt.Errorf("%v.%d: %v type must be specified: %#v", name, index, name, item)
+		}
+
+		switch {
+		case i.Path != "":
+		case len(item.Keys) == 2:
+			i.Path = item.Keys[1].Token.Value().(string)
+		default:
+			return result, fmt.Errorf("%v.%d: %v path must be specified: %#v", name, index, name, item)
+		}
+
+		result = append(result, &i)
+	}
+
+	return result, nil
 }

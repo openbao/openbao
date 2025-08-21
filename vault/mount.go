@@ -2343,7 +2343,7 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 			return c.namespaceMountEntryView(me.Namespace(), credentialBarrierPrefix+me.UUID+"/"), nil
 		}
 		return NewBarrierView(c.barrier, credentialBarrierPrefix+me.UUID+"/"), nil
-	case auditTableType:
+	case auditTableType, configAuditTableType:
 		return NewBarrierView(c.barrier, auditBarrierPrefix+me.UUID+"/"), nil
 	}
 

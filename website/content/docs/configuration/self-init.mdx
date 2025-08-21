@@ -18,6 +18,14 @@ mounts in addition to having full control over general requests.
 Instead of manually executing multiple API commands after starting the server, 
 all necessary settings can be defined in advance.
 
+:::info
+
+All requests are subject to the same restrictions as if they were executed
+normally: audit logging, authentication, and API variable restrictions (such as
+unauthenticated rotation and audit device creation) still apply.
+
+:::
+
 # `initialize` stanza
 
 The `initialize` stanza specifies various configurations for OpenBao to

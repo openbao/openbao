@@ -1,4 +1,5 @@
 ---
+sidebar_label: Profile System
 description: >- 
     This is a reference for OpenBao’s profile system and declarative self-initialization. It describes the four supported source types and the initialize_name mechanism.
 ---
@@ -6,6 +7,14 @@ description: >-
 The Profiles processes declarative API requests with dynamic data source evaluation. 
 The system implements the request/response pattern, supporting chained operations and accepting request handlers and parsed profile configurations. 
 These are then transformed into templates for one or more API requests.
+
+:::info
+
+All requests are subject to the same restrictions as if they were executed
+normally: audit logging, authentication, and API variable restrictions (such as
+unauthenticated rotation and audit device creation) still apply.
+
+:::
 
 ## Profiles end to end workflow
 

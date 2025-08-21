@@ -4683,43 +4683,6 @@ func (b *SystemBackend) handleLeaderStatus(ctx context.Context, req *logical.Req
 	return httpResp, nil
 }
 
-func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
-	// Rotate to the new term
-	newTerm, err := b.Core.barrier.Rotate(ctx, b.Core.secureRandomReader)
-	if err != nil {
-		return errwrap.Wrap(errors.New("failed to create new encryption key"), err)
-	}
-	b.Backend.Logger().Info("installed new encryption key")
-
-	// In HA mode, we need to an upgrade path for the standby instances
-	if b.Core.ha != nil && b.Core.KeyRotateGracePeriod() > 0 {
-		// Create the upgrade path to the new term
-		if err := b.Core.barrier.CreateUpgrade(ctx, newTerm); err != nil {
-			b.Backend.Logger().Error("failed to create new upgrade", "term", newTerm, "error", err)
-		}
-
-		// Schedule the destroy of the upgrade path
-		time.AfterFunc(b.Core.KeyRotateGracePeriod(), func() {
-			b.Backend.Logger().Debug("cleaning up upgrade keys", "waited", b.Core.KeyRotateGracePeriod())
-			if err := b.Core.barrier.DestroyUpgrade(b.Core.activeContext, newTerm); err != nil {
-				b.Backend.Logger().Error("failed to destroy upgrade", "term", newTerm, "error", err)
-			}
-		})
-	}
-
-	// Write to the canary path, which will force a synchronous truing during
-	// replication
-	if err := b.Core.barrier.Put(ctx, &logical.StorageEntry{
-		Key:   coreKeyringCanaryPath,
-		Value: []byte(fmt.Sprintf("new-rotation-term-%d", newTerm)),
-	}); err != nil {
-		b.Core.logger.Error("error saving keyring canary", "error", err)
-		return errwrap.Wrap(errors.New("failed to save keyring canary"), err)
-	}
-
-	return nil
-}
-
 func (b *SystemBackend) handleHAStatus(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	// We're always the leader if we're handling this request.
 	nodes, err := b.Core.getHAMembers()
@@ -5499,70 +5462,6 @@ Enable a new audit backend or disable an existing backend.
 		`
 		Provides the current backend encryption key term and installation time.
 		`,
-	},
-
-	"rotation-enabled": {
-		"Whether automatic rotation is enabled.",
-		"",
-	},
-	"rotation-max-operations": {
-		"The number of encryption operations performed before the barrier key is automatically rotated.",
-		"",
-	},
-	"rotation-interval": {
-		"How long after installation of an active key term that the key will be automatically rotated.",
-		"",
-	},
-
-	"rotate-keyring": {
-		"Rotates the backend encryption key used to persist data.",
-		`
-		Rotate generates a new encryption key which is used to encrypt all
-		data going to the storage backend. The old encryption keys are kept
-		so that data encrypted using those keys can still be decrypted.
-		`,
-	},
-	"rotate-keyring-config": {
-		"Configures settings related to the backend encryption key management.",
-		`
-		Configures settings related to the automatic rotation of the backend
-		encryption key.
-		`,
-	},
-
-	"rotate-root": {
-		"Perform a root key rotation without requiring key shares to be provided.",
-		"",
-	},
-
-	"rotate-init": {
-		`Initialize, read status or cancel the process of the rotation of
-		the root or recovery key.
-		`,
-		"",
-	},
-
-	"rotate-update": {
-		"Progress the rotation process by providing a single key share.",
-		`This endpoint is used to enter a single key share to progress the
-		rotation of the recovery or root key. If the threshold number of key
-		shares is reached, rotation will be completed. Otherwise, this API
-		must be called multiple times until that threshold is met.
-		The rotation nonce operation must be provided with each call.
-		On the final call, any new key shares will be returned immediately.
-		`,
-	},
-
-	"rotate-verify": {
-		`Read status of, progress or cancel the verification process of the
-		rotation attempt.
-		`,
-		"",
-	},
-
-	"rotate-backup": {
-		"Allows fetching or deleting the backup of the rotated unseal keys.",
-		"",
 	},
 
 	"capabilities": {

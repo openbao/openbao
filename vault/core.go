@@ -3159,6 +3159,43 @@ func (c *Core) SetKeyRotateGracePeriod(t time.Duration) {
 	atomic.StoreInt64(c.keyRotateGracePeriod, int64(t))
 }
 
+func (c *Core) rotateBarrierKey(ctx context.Context) error {
+	// Rotate to the new term
+	newTerm, err := c.barrier.Rotate(ctx, c.secureRandomReader)
+	if err != nil {
+		return errwrap.Wrap(errors.New("failed to create new encryption key"), err)
+	}
+	c.Logger().Info("installed new encryption key")
+
+	// In HA mode, we need to an upgrade path for the standby instances
+	if c.ha != nil && c.KeyRotateGracePeriod() > 0 {
+		// Create the upgrade path to the new term
+		if err := c.barrier.CreateUpgrade(ctx, newTerm); err != nil {
+			c.Logger().Error("failed to create new upgrade", "term", newTerm, "error", err)
+		}
+
+		// Schedule the destroy of the upgrade path
+		time.AfterFunc(c.KeyRotateGracePeriod(), func() {
+			c.Logger().Debug("cleaning up upgrade keys", "waited", c.KeyRotateGracePeriod())
+			if err := c.barrier.DestroyUpgrade(c.activeContext, newTerm); err != nil {
+				c.Logger().Error("failed to destroy upgrade", "term", newTerm, "error", err)
+			}
+		})
+	}
+
+	// Write to the canary path, which will force a synchronous truing during
+	// replication
+	if err := c.barrier.Put(ctx, &logical.StorageEntry{
+		Key:   coreKeyringCanaryPath,
+		Value: []byte(fmt.Sprintf("new-rotation-term-%d", newTerm)),
+	}); err != nil {
+		c.logger.Error("error saving keyring canary", "error", err)
+		return errwrap.Wrap(errors.New("failed to save keyring canary"), err)
+	}
+
+	return nil
+}
+
 // Periodically test whether to automatically rotate the barrier key
 func (c *Core) autoRotateBarrierLoop(ctx context.Context) {
 	t := time.NewTicker(autoRotateCheckInterval)
@@ -3196,7 +3233,7 @@ func (c *Core) checkBarrierAutoRotate(ctx context.Context) {
 		// the replication canary
 		c.logger.Info("automatic barrier key rotation triggered", "reason", reason)
 
-		if err := c.systemBackend.rotateBarrierKey(ctx); err != nil {
+		if err := c.rotateBarrierKey(ctx); err != nil {
 			c.logger.Error("error automatically rotating barrier key", "error", err)
 		} else {
 			metrics.IncrCounter(barrierRotationsMetric, 1)

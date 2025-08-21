@@ -1,0 +1,112 @@
+---
+sidebar_label: Declarative Audit Devices
+description: |-
+  An OpenBao RFC for defining audit devices in the server configuration
+  file through the complete audit device life cycle.
+---
+
+# Declarative Audit Device Configuration
+
+## Summary
+
+After [Vault HCSEC-2025-14 / CVE-2025-6000](https://discuss.hashicorp.com/t/hcsec-2025-14-privileged-vault-operator-may-execute-code-on-the-underlying-host/76033)
+and [OpenBao CVE-2025-54997](https://github.com/openbao/openbao/security/advisories/GHSA-xp75-r577-cvhp),
+it became apparent that _any_ API-driven audit device creation is unsafe.
+We remediate this fully by allowing full management of audit devices from
+the configuration file, throughout the life cycle of the device.
+
+## Problem Statement
+
+API-driven audit device creation is fundamentally unsafe. Even without control
+over `prefix`, audit devices of type `file` allow writing to arbitrary files
+and type `socket` allows writing to arbitrary Unix or network sockets. These
+operations are usually reserved for system-level operators, not API-level
+administrators, breaching privilege separation expectations. These issues
+were exacerbated in conjunction with the various privilege escalation bypasses
+disclosed alongside this vulnerability.
+
+Like introducing new, authenticated key rotation endpoints, we need a deeper
+fix for the fundamental risks associated with this.
+
+In a design similar to the [declarative self-initialization](/docs/rfcs/self-init),
+we opt to define audit devices in the configuration file. We need to make
+sure we handle the following scenarios:
+
+1. Creating a new audit device
+2. Preventing duplicate audit devices (across API- and config-based creation)
+3. Deleting an existing audit device
+4. Preventing modification to an existing audit device.
+
+## User-facing Description
+
+We introduce a new repeatable configuration stanza, `audit "<type>" "<path>"`
+which configures a new audit device:
+
+```hcl
+audit "file" "to-stdout" {
+  description = "Default audit device"
+  options = {
+    file_path = "/dev/stdout"
+    log_raw = "false"
+  }
+}
+```
+
+This can be added or removed and will be reprocessed on server restarts and
+when `SIGHUP` is sent to the server. It will be ignored on standby nodes.
+
+## Technical Description
+
+This change is largely self-contained to the audit system and server
+configuration parsing, with the exception of two necessary hooks:
+
+1. The standard unseal strategy now updates audit devices based on the
+   configuration.
+2. The reload handlers triggered on `SIGHUP` now will reload the audit devices as
+   well.
+
+We differentiate API-created and configuration-based audit devices to prevent
+confusion and deletion.
+
+Otherwise, this change mostly reuses existing components.
+
+## Rationale and Alternatives
+
+This greatly improves the discoverability of audit devices, the configuration
+and management of audit devices, and restores the usability of audit devices
+after the fix for safety.
+
+## Downsides
+
+This has very limited downsides.
+
+## Security Implications
+
+This fixes the security definition of audit devices, reflecting their
+privileged nature.
+
+One observation remains: a malicious operator _could_ set `log_raw=true` on
+audit devices, scraping all fetches or modifications made via the API. This
+would be detectable by the consumer as the audit device HMAC endpoint would
+be unable to create matching entries for known-logged strings.
+
+However, said operator could also enable the `sys/raw` API and thus remains
+equivalently privileged either way.
+
+## User/Developer Experience
+
+This change does not impact end-consumers of the OpenBao API.
+
+## Unresolved Questions
+
+n/a
+
+## Related Issues
+
+- https://github.com/openbao/openbao/pull/1634
+- https://github.com/openbao/openbao/security/advisories/GHSA-xp75-r577-cvhp
+- https://github.com/orgs/openbao/discussions/1115
+
+## Proof of Concept
+
+n/a; submitted with working code

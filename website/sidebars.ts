@@ -94,6 +94,7 @@ const sidebars: SidebarsConfig = {
             ],
             Configuration: [
                 "configuration/index",
+                "configuration/audit",
                 "configuration/self-init",
                 {
                     listener: [
@@ -531,6 +532,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/self-init",
                 "rfcs/namespace-sealing",
                 "rfcs/external-keys",
+                "rfcs/config-audit-devices",
                 {
                   "UI/UX": ["rfcs/web-ui-modernization"],
                 },

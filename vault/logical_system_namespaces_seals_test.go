@@ -29,7 +29,7 @@ func TestNamespaceBackend_KeyStatus(t *testing.T) {
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/foo/key-status")
 		resp, err := b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
-		require.ErrorContains(t, resp.Error(), ErrBarrierNotFound.Error())
+		require.ErrorContains(t, resp.Error(), ErrNotSealable.Error())
 	})
 
 	t.Run("returns key info for sealable namespace", func(t *testing.T) {
@@ -279,7 +279,7 @@ func TestNamespaceBackend_Rotate(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo/rotate")
 		res, err := b.HandleRequest(rootCtx, req)
-		require.ErrorIs(t, err, ErrBarrierNotFound)
+		require.ErrorIs(t, err, ErrNotSealable)
 		require.Empty(t, res)
 	})
 
@@ -332,12 +332,12 @@ func TestNamespaceBackend_RotateConfig(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo/rotate/config")
 		res, err := b.HandleRequest(rootCtx, req)
-		require.ErrorIs(t, err, ErrBarrierNotFound)
+		require.ErrorIs(t, err, ErrNotSealable)
 		require.Empty(t, res)
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foo/rotate/config")
 		res, err = b.HandleRequest(rootCtx, req)
-		require.ErrorIs(t, err, ErrBarrierNotFound)
+		require.ErrorIs(t, err, ErrNotSealable)
 		require.Empty(t, res)
 	})
 

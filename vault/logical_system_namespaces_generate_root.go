@@ -151,9 +151,9 @@ func (b *SystemBackend) handleNamespaceGenerateRootStatus() framework.OperationF
 }
 
 func (b *SystemBackend) namespaceGenerateRootStatus(ctx context.Context, ns *namespace.Namespace, otp string) (*logical.Response, error) {
-	seal := b.Core.sealManager.NamespaceSeal(ns.UUID)
-	if seal == nil {
-		return handleError(ErrNotSealable)
+	seal, _, err := b.Core.sealManager.NamespaceSeal(ns.UUID)
+	if err != nil {
+		return handleError(err)
 	}
 
 	barrierConfig, err := seal.Config(ctx)

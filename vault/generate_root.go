@@ -229,9 +229,9 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, err
 	}
 
-	barrier := c.sealManager.NamespaceBarrier(ns.Path)
-	if barrier == nil {
-		return nil, ErrBarrierNotFound
+	seal, barrier, err := c.sealManager.NamespaceSeal(ns.Path)
+	if err != nil {
+		return nil, err
 	}
 
 	// Verify the key length
@@ -242,11 +242,6 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	}
 	if len(key) > max {
 		return nil, &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
-	}
-
-	seal := c.sealManager.NamespaceSeal(ns.UUID)
-	if seal == nil {
-		return nil, ErrNotSealable
 	}
 
 	// Get the seal configuration

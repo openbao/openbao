@@ -195,7 +195,7 @@ type activeAdvertisement struct {
 	ClusterKeyParams *certutil.ClusterKeyParams `json:"cluster_key_params,omitempty"`
 }
 
-type unlockInformation struct {
+type unsealProgress struct {
 	Parts [][]byte
 	Nonce string
 }
@@ -312,8 +312,8 @@ type Core struct {
 	// conditions.
 	shutdownDoneCh *atomic.Value
 
-	// unlockInfo has the keys provided to Unseal until the threshold number of parts is available, as well as the operation nonce
-	unlockInfo *unlockInformation
+	// unsealProgress has the keys provided to Unseal until the threshold number of parts is available, as well as the operation nonce
+	unsealProgress *unsealProgress
 
 	// namespaceRootGens holds the shares for each namespace
 	// until we reach enough to verify the root key
@@ -1437,11 +1437,11 @@ func (c *Core) SecretProgress(lock bool) (int, string) {
 		c.stateLock.RLock()
 		defer c.stateLock.RUnlock()
 	}
-	switch c.unlockInfo {
+	switch c.unsealProgress {
 	case nil:
 		return 0, ""
 	default:
-		return len(c.unlockInfo.Parts), c.unlockInfo.Nonce
+		return len(c.unsealProgress.Parts), c.unsealProgress.Nonce
 	}
 }
 
@@ -1450,7 +1450,7 @@ func (c *Core) SecretProgress(lock bool) (int, string) {
 func (c *Core) ResetUnsealProcess() {
 	c.stateLock.Lock()
 	defer c.stateLock.Unlock()
-	c.unlockInfo = nil
+	c.unsealProgress = nil
 }
 
 func (c *Core) UnsealMigrate(key []byte) (bool, error) {
@@ -1645,8 +1645,8 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 // recordUnsealPart takes in a key fragment, and returns true if it's a new fragment.
 func (c *Core) recordUnsealPart(key []byte) (bool, error) {
 	// Check if we already have this piece
-	if c.unlockInfo != nil {
-		for _, existing := range c.unlockInfo.Parts {
+	if c.unsealProgress != nil {
+		for _, existing := range c.unsealProgress.Parts {
 			if subtle.ConstantTimeCompare(existing, key) == 1 {
 				return false, nil
 			}
@@ -1656,13 +1656,13 @@ func (c *Core) recordUnsealPart(key []byte) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		c.unlockInfo = &unlockInformation{
+		c.unsealProgress = &unsealProgress{
 			Nonce: uuid,
 		}
 	}
 
 	// Store this key
-	c.unlockInfo.Parts = append(c.unlockInfo.Parts, key)
+	c.unsealProgress.Parts = append(c.unsealProgress.Parts, key)
 	return true, nil
 }
 
@@ -1695,25 +1695,25 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 
 	// Check if we don't have enough keys to unlock, proceed through the rest of
 	// the call only if we have met the threshold
-	if len(c.unlockInfo.Parts) < config.SecretThreshold {
+	if len(c.unsealProgress.Parts) < config.SecretThreshold {
 		if c.logger.IsDebug() {
-			c.logger.Debug("cannot unseal, not enough keys", "keys", len(c.unlockInfo.Parts), "threshold", config.SecretThreshold, "nonce", c.unlockInfo.Nonce)
+			c.logger.Debug("cannot unseal, not enough keys", "keys", len(c.unsealProgress.Parts), "threshold", config.SecretThreshold, "nonce", c.unsealProgress.Nonce)
 		}
 		return nil, nil
 	}
 
 	defer func() {
-		c.unlockInfo = nil
+		c.unsealProgress = nil
 	}()
 
 	// Recover the split key. recoveredKey is the shamir combined
 	// key, or the single provided key if the threshold is 1.
 	var unsealKey []byte
 	if config.SecretThreshold == 1 {
-		unsealKey = make([]byte, len(c.unlockInfo.Parts[0]))
-		copy(unsealKey, c.unlockInfo.Parts[0])
+		unsealKey = make([]byte, len(c.unsealProgress.Parts[0]))
+		copy(unsealKey, c.unsealProgress.Parts[0])
 	} else {
-		unsealKey, err = shamir.Combine(c.unlockInfo.Parts)
+		unsealKey, err = shamir.Combine(c.unsealProgress.Parts)
 		if err != nil {
 			return nil, &ErrInvalidKey{fmt.Sprintf("failed to compute combined key: %v", err)}
 		}

@@ -15,6 +15,17 @@ existing tools.
 Sending a `SIGHUP` to the OpenBao process will cause `file` audit devices to close
 and re-open their underlying file, which can assist with log rotation needs.
 
+:::warning
+
+The File audit device is sensitive as it can write to arbitrary files on the
+instance. Be cautious when granting operators the ability to create this
+device via the API when `unsafe_allow_api_audit_creation=true` is set.
+
+Consider using [declarative audit configuration](/docs/configuration/audit/)
+instead.
+
+:::
+
 ## Examples
 
 Enable at the default path:

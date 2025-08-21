@@ -12,6 +12,17 @@ synchronous with the request by default.
 Sending a `SIGHUP` to the OpenBao process will cause `http` audit devices to
 close any idle connections and re-open their connection to the HTTP server.
 
+:::warning
+
+The HTTP audit device is sensitive as it can connect to arbitrary servers.
+Be cautious when granting operators the ability to create this device via
+the API when `unsafe_allow_api_audit_creation=true` is set.
+
+Consider using [declarative audit configuration](/docs/configuration/audit/)
+instead.
+
+:::
+
 :::info
 
 As audit logs are sensitive, take care to ensure you use a secure transport

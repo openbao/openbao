@@ -31,7 +31,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/duosecurity/duo_api_golang v0.0.0-20190308151101-6c680f768e74
-	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.18.0
 	github.com/fatih/structs v1.1.0
 	github.com/gammazero/workerpool v1.1.3

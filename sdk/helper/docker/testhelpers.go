@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -33,6 +34,7 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
 	"github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/api/v2"
 )
 
 const DockerAPIVersion = "1.40"
@@ -908,4 +910,11 @@ func (d *Runner) GetNetworkAndAddresses(container string) (map[string]string, er
 	}
 
 	return ret, nil
+}
+
+func CheckSkipContainerTests(t *testing.T) {
+	value := api.ReadBaoVariable("BAO_RUN_CONTAINER_TESTS")
+	if run, err := strconv.ParseBool(value); err != nil || !run {
+		t.Skipf("skipping containerized tests because BAO_RUN_CONTAINER_TESTS was not set to true (err=%v).", err)
+	}
 }

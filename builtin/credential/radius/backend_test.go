@@ -35,6 +35,8 @@ func prepareRadiusTestContainer(t *testing.T) (func(), string, int) {
 		return func() {}, os.Getenv(envRadiusRadiusHost), port
 	}
 
+	docker.CheckSkipContainerTests(t)
+
 	// Now allow any client to connect to this radiusd instance by writing our
 	// own clients.conf file.
 	//

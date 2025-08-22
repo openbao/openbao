@@ -185,10 +185,10 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 	// Enable AppRole auth and initialize
 	ctx := namespace.RootContext(nil)
-	is, ghAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
+	is, approleAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
 	alias := &logical.Alias{
 		MountType:     "approle",
-		MountAccessor: ghAccessor,
+		MountAccessor: approleAccessor,
 		Name:          "approleuser",
 	}
 
@@ -258,11 +258,20 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 
 func TestIdentityStore_CreateOrFetchEntity(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	is, ghAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t)
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
+	testIdentityStoreCreateOrFetchEntity(t, ctx, is, approleAccessor, upAccessor, core)
+}
 
+func TestIdentityStore_CreateOrFetchEntity_UnsafeShared(t *testing.T) {
+	ctx := namespace.RootContext(nil)
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
+	testIdentityStoreCreateOrFetchEntity(t, ctx, is, approleAccessor, upAccessor, core)
+}
+
+func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is *IdentityStore, approleAccessor string, upAccessor string, core *Core) {
 	alias := &logical.Alias{
 		MountType:     "approle",
-		MountAccessor: ghAccessor,
+		MountAccessor: approleAccessor,
 		Name:          "approleuser",
 		Metadata: map[string]string{
 			"foo": "a",
@@ -372,7 +381,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	is, ghAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	registerData := map[string]interface{}{
 		"name":     "testentityname",
@@ -403,7 +412,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	aliasData := map[string]interface{}{
 		"entity_id":      entityID,
 		"name":           "alias_name",
-		"mount_accessor": ghAccessor,
+		"mount_accessor": approleAccessor,
 	}
 	aliasReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -419,7 +428,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 		t.Fatal("expected a non-nil response")
 	}
 
-	entity, err := is.entityByAliasFactors(ctx, ghAccessor, "alias_name", false)
+	entity, err := is.entityByAliasFactors(ctx, approleAccessor, "alias_name", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -648,13 +657,13 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 }
 
 func testCoreWithIdentityTokenAppRole(ctx context.Context, t *testing.T) (*Core, *IdentityStore, *TokenStore, string) {
-	is, ghAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
-	return core, is, core.tokenStore, ghAccessor
+	is, approleAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
+	return core, is, core.tokenStore, approleAccessor
 }
 
 func testCoreWithIdentityTokenAppRoleRoot(ctx context.Context, t *testing.T) (*Core, *IdentityStore, *TokenStore, string, string) {
-	is, ghAccessor, core, root := testIdentityStoreWithAppRoleAuthRoot(ctx, t)
-	return core, is, core.tokenStore, ghAccessor, root
+	is, approleAccessor, core, root := testIdentityStoreWithAppRoleAuthRoot(ctx, t)
+	return core, is, core.tokenStore, approleAccessor, root
 }
 
 func testIdentityStoreWithAppRoleAuth(ctx context.Context, t *testing.T) (*IdentityStore, string, *Core) {
@@ -692,7 +701,7 @@ func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*I
 	return c.identityStore, meGH.Accessor, c, root
 }
 
-func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T) (*IdentityStore, string, string, *Core) {
+func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T, unsafeShared bool) (*IdentityStore, string, string, *Core) {
 	// Setup 2 auth backends, github and userpass
 	err := AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
@@ -706,7 +715,15 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T)
 
 	defer ClearTestCredentialBackends()
 
-	c, _, _ := TestCoreUnsealed(t)
+	conf := &CoreConfig{
+		BuiltinRegistry:              corehelpers.NewMockBuiltinRegistry(),
+		UnsafeCrossNamespaceIdentity: unsafeShared,
+		AuditBackends: map[string]audit.Factory{
+			"file": auditFile.Factory,
+		},
+	}
+	core := TestCoreWithSealAndUI(t, conf)
+	c, _, _ := testCoreUnsealed(t, core)
 
 	githubMe := &MountEntry{
 		Table:       credentialTableType,
@@ -802,11 +819,11 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 	}
 
 	is := c.identityStore
-	ghAccessor := meGH.Accessor
+	approleAccessor := meGH.Accessor
 
 	alias := &logical.Alias{
 		MountType:     "approle",
-		MountAccessor: ghAccessor,
+		MountAccessor: approleAccessor,
 		Name:          "approleuser",
 		Metadata: map[string]string{
 			"foo": "a",

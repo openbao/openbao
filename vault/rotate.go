@@ -500,6 +500,10 @@ func (sm *SealManager) updateRootRotation(ctx context.Context, ns *namespace.Nam
 			shamirWrapper := aeadwrapper.NewShamirWrapper()
 			testseal := NewDefaultSeal(vaultseal.NewAccess(shamirWrapper))
 			testseal.SetCore(sm.core)
+			if ns.ID != namespace.RootNamespaceID {
+				testseal.SetMetaPrefix(namespaceBarrierPrefix + ns.UUID + "/")
+			}
+
 			err := shamirWrapper.SetAesGcmKeyBytes(recoveryKey)
 			if err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to setup unseal key: %w", err).Error())

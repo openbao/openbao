@@ -26,8 +26,9 @@ const (
 )
 
 const (
-	ErrValueTooLarge = "put failed due to value being too large"
-	ErrKeyTooLarge   = "put failed due to key being too large"
+	ErrValueTooLarge     = "put failed due to value being too large"
+	ErrKeyTooLarge       = "put failed due to key being too large"
+	ErrFencedWriteFailed = "lock has changed ownership before attempting write"
 )
 
 // Backend is the interface required for a physical
@@ -149,6 +150,15 @@ type ToggleablePurgemonster interface {
 type RedirectDetect interface {
 	// DetectHostAddr is used to detect the host address
 	DetectHostAddr() (string, error)
+}
+
+// LeadershipChangedBackend is an interface for backends which need to be told
+// of active and standby nodes.
+type LeadershipChangedBackend interface {
+	// LeadershipChangedBackend is an interface for backends which need to be told
+	// whether they're the active leader or not. This is called during
+	// initialization and on lock acquisition on HA-enabled backends.
+	LeadershipChange(active bool)
 }
 
 type Lock interface {

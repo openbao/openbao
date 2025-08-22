@@ -24,11 +24,14 @@ import (
 	"github.com/openbao/openbao/version"
 )
 
-var (
-	ErrNotSealable               = errors.New("namespace is not sealable")
-	ErrBarrierNotFound           = errors.New("no barrier found for namespace")
-	ErrUnlockInformationNotFound = errors.New("no unlock information found for namespace")
-)
+var ErrNotSealable = errors.New("namespace is not sealable")
+
+// These variables hold the config and shares we have until we reach
+// enough to verify the appropriate root key.
+type rotationConfig struct {
+	rootConfig     *SealConfig
+	recoveryConfig *SealConfig
+}
 
 // SealManager is used to provide storage for the seals.
 // It's a singleton that associates seals (configs) to the namespaces.
@@ -43,6 +46,7 @@ type SealManager struct {
 	// unlockInformation is a map of distinct (named) seals
 	sealsByNamespace             map[string]map[string]Seal
 	unlockInformationByNamespace map[string]map[string]*unlockInformation
+	rotationConfigByNamespace    map[string]map[string]*rotationConfig
 	barrierByNamespace           *radix.Tree
 	barrierByStoragePath         *radix.Tree
 
@@ -56,6 +60,7 @@ func NewSealManager(core *Core, logger hclog.Logger) *SealManager {
 		core:                         core,
 		sealsByNamespace:             make(map[string]map[string]Seal),
 		unlockInformationByNamespace: make(map[string]map[string]*unlockInformation),
+		rotationConfigByNamespace:    make(map[string]map[string]*rotationConfig),
 		barrierByNamespace:           radix.New(),
 		barrierByStoragePath:         radix.New(),
 		logger:                       logger,
@@ -74,6 +79,12 @@ func (c *Core) setupSealManager() {
 
 	coreSeal := c.seal
 	c.sealManager.sealsByNamespace[namespace.RootNamespaceUUID] = map[string]Seal{"default": coreSeal}
+	c.sealManager.rotationConfigByNamespace[namespace.RootNamespaceUUID] = map[string]*rotationConfig{
+		"default": {
+			rootConfig:     nil,
+			recoveryConfig: nil,
+		},
+	}
 }
 
 // teardownSealManager is used to remove seal manager
@@ -122,6 +133,12 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 
 	sm.sealsByNamespace[ns.UUID] = map[string]Seal{"default": defaultSeal}
 	sm.unlockInformationByNamespace[ns.UUID] = map[string]*unlockInformation{}
+	sm.rotationConfigByNamespace[ns.UUID] = map[string]*rotationConfig{
+		"default": {
+			rootConfig:     nil,
+			recoveryConfig: nil,
+		},
+	}
 
 	if writeToStorage {
 		if err := defaultSeal.SetConfig(ctx, sealConfig); err != nil {
@@ -263,7 +280,7 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 	// Check the barrier first
 	barrier := sm.namespaceBarrier(ns.Path)
 	if barrier == nil {
-		return nil, ErrBarrierNotFound
+		return nil, ErrNotSealable
 	}
 
 	init, err := barrier.Initialized(ctx)
@@ -314,7 +331,7 @@ func (sm *SealManager) UnsealNamespace(ctx context.Context, ns *namespace.Namesp
 
 	barrier := sm.namespaceBarrier(ns.Path)
 	if barrier == nil {
-		return false, ErrBarrierNotFound
+		return false, ErrNotSealable
 	}
 
 	return sm.unsealFragment(ctx, ns, barrier, key)
@@ -410,7 +427,7 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 
 	info := sm.namespaceUnlockInformation(ns.UUID)
 	if info == nil {
-		return nil, ErrUnlockInformationNotFound
+		return nil, errors.New("no unlock information found for namespace")
 	}
 
 	// Check if we don't have enough keys to unlock, proceed through the rest of
@@ -516,7 +533,7 @@ func (sm *SealManager) AuthenticateRootKey(ctx context.Context, ns *namespace.Na
 
 	nsBarrier := sm.namespaceBarrier(ns.Path)
 	if nsBarrier == nil {
-		return ErrBarrierNotFound
+		return ErrNotSealable
 	}
 
 	if err := nsBarrier.VerifyRoot(rootKey); err != nil {
@@ -571,7 +588,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 
 	nsBarrier := sm.namespaceBarrier(ns.Path)
 	if nsBarrier == nil {
-		return nil, ErrBarrierNotFound
+		return nil, ErrNotSealable
 	}
 
 	if err := nsBarrier.Initialize(ctx, nsBarrierKey, nsSealKey, sm.core.secureRandomReader); err != nil {
@@ -649,7 +666,7 @@ func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Name
 func (sm *SealManager) RotateNamespaceBarrierKey(ctx context.Context, namespace *namespace.Namespace) error {
 	nsBarrier := sm.NamespaceBarrier(namespace.Path)
 	if nsBarrier == nil {
-		return ErrBarrierNotFound
+		return ErrNotSealable
 	}
 
 	_, err := nsBarrier.Rotate(ctx, sm.core.secureRandomReader)

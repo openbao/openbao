@@ -1791,13 +1791,13 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	}
 
 	// Now perform the component requests of self-initialization.
-	return c.doSelfInit(ctx, core, config, init.RootToken)
+	return c.doSelfInit(core, config, init.RootToken)
 }
 
 // doSelfInit is the internal helper that uses the profile system with this
 // freshly initialized core to perform the component requests of the
 // self-initialization process.
-func (c *ServerCommand) doSelfInit(ctx context.Context, core *vault.Core, config *server.Config, rootToken string) error {
+func (c *ServerCommand) doSelfInit(core *vault.Core, config *server.Config, rootToken string) error {
 	c.UI.Warn("Beginning post-unseal configuration")
 	p, err := profiles.NewEngine(
 		// Set up the profile system with relevant parameter sources:
@@ -1832,7 +1832,12 @@ func (c *ServerCommand) doSelfInit(ctx context.Context, core *vault.Core, config
 		return err
 	}
 
-	return p.Evaluate(ctx)
+	// Initialize creates a context with the root namespace; this would
+	// override routing and result in us assuming all requests are in the
+	// root namespace, even if they create (nested) namespaces. Since the
+	// above context was derived from background (we're a server after all),
+	// derive a new one here, too.
+	return p.Evaluate(context.Background())
 }
 
 func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig) (*vault.InitResult, error) {

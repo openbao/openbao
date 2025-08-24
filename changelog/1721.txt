@@ -1,3 +1,0 @@
-```release-note:bug
-website: fix typo in Policy Syntax documentation
-```

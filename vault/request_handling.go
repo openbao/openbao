@@ -403,6 +403,9 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		// unauth, we just have no information to attach to the request, so
 		// ignore errors...this was best-effort anyways
 		if err != nil && !unauth {
+			if c.standby {
+				return nil, acl, te, entity, logical.ErrPerfStandbyPleaseForward
+			}
 			return nil, acl, te, entity, err
 		}
 	}
@@ -412,6 +415,9 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		return nil, acl, te, entity, logical.ErrPermissionDenied
 	}
 	if te != nil && te.EntityID != "" && entity == nil {
+		if c.standby {
+			return nil, acl, te, entity, logical.ErrPerfStandbyPleaseForward
+		}
 		c.logger.Warn("permission denied as the entity on the token is invalid")
 		return nil, acl, te, entity, logical.ErrPermissionDenied
 	}
@@ -781,6 +787,12 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		return nil, err
 	}
 
+	// Always forward requests that are using a limited use count token.
+	if c.standby && req.ClientTokenRemainingUses > 0 {
+		// Prevent forwarding on local-only requests.
+		return nil, logical.ErrPerfStandbyPleaseForward
+	}
+
 	var requestBodyToken string
 	var returnRequestAuthToken bool
 
@@ -851,6 +863,9 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 				// should receive a 403 bad token error like they do for all other invalid tokens, unless the error
 				// specifies that we should forward the request or retry the request.
 				if err != nil {
+					if errors.Is(err, logical.ErrPerfStandbyPleaseForward) {
+						return nil, err
+					}
 					return logical.ErrorResponse("bad token"), logical.ErrPermissionDenied
 				}
 				req.Data["token"] = token
@@ -2208,6 +2223,10 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 		return nil, ErrInternalError
 	}
 
+	if c.standby && persistToken {
+		return nil, logical.ErrPerfStandbyPleaseForward
+	}
+
 	if err := c.tokenStore.create(ctx, &te, persistToken); err != nil {
 		c.logger.Error("failed to create token", "error", err)
 		return nil, ErrInternalError
@@ -2367,6 +2386,9 @@ func (c *Core) PopulateTokenEntry(ctx context.Context, req *logical.Request) err
 	// decodes the SSCT, and it may need the original SSCT to check state.
 	te, err := c.LookupToken(ctx, token)
 	if err != nil {
+		if errors.Is(err, logical.ErrPerfStandbyPleaseForward) {
+			return err
+		}
 		// If we have two dots but the second char is a dot it's a vault
 		// token of the form s.SOMETHING.nsid, not a JWT
 		if !IsJWT(token) {

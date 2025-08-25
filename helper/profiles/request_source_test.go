@@ -171,3 +171,31 @@ func TestRequestSource_Evaluate_WithFieldSelector_String(t *testing.T) {
 		t.Fatalf("Evaluate result = %#v; want %#v", result, expected)
 	}
 }
+
+func TestRequestSource_Evaluate_WithFieldSelector_Interface(t *testing.T) {
+	ctx := context.Background()
+	history := &EvaluationHistory{}
+	source := &RequestSource{
+		field: map[string]interface{}{"request_name": "mount-userpass", "field_selector": []interface{}{"userPass", 0}},
+	}
+
+	if _, _, err := source.Validate(ctx); err != nil {
+		t.Fatalf("Validate error: %v", err)
+	}
+
+	requestData := map[string]interface{}{
+		"userPass": []interface{}{"test"},
+	}
+	if err := history.AddRequestData("", "mount-userpass", requestData); err != nil {
+		t.Fatalf("AddRequestData error: %v", err)
+	}
+
+	result, err := source.Evaluate(ctx, history)
+	if err != nil {
+		t.Fatalf("Evaluate error: %v", err)
+	}
+	expected := "test"
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("Evaluate result = %#v; want %#v", result, expected)
+	}
+}

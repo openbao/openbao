@@ -146,12 +146,16 @@ func (eh *EvaluationHistory) getValue(block map[string]map[string]map[string]int
 	return req, nil
 }
 
+// getField operates on the premise that the outer request object is always a
+// map; this is true even of list responses as they're contained in a regular
+// response map. However, inner items may be lists; in this case, a selector
+// of type []interface{} must be used to index arrays.
 func (eh *EvaluationHistory) getField(obj map[string]interface{}, fieldSelector interface{}) (interface{}, error) {
 	switch typed := fieldSelector.(type) {
 	case string:
 		val, present := obj[typed]
 		if !present {
-			return nil, fmt.Errorf("field '%v' is missing", typed)
+			return nil, fmt.Errorf("field %q is missing", typed)
 		}
 
 		return val, nil
@@ -159,7 +163,7 @@ func (eh *EvaluationHistory) getField(obj map[string]interface{}, fieldSelector 
 		for i, selector := range typed {
 			val, present := obj[selector]
 			if !present {
-				return nil, fmt.Errorf("field '%v' at depth %v is missing", selector, i)
+				return nil, fmt.Errorf("field %q at depth %v is missing:\n\tavailable keys: %v\n\tobj: %#v", selector, i, presentKeys(obj), obj)
 			}
 
 			if i == len(typed)-1 {
@@ -173,7 +177,57 @@ func (eh *EvaluationHistory) getField(obj map[string]interface{}, fieldSelector 
 		}
 
 		return nil, errors.New("selector had zero length")
+	case []interface{}:
+		var base interface{} = obj
+
+		for i, rawSelector := range typed {
+			switch selector := rawSelector.(type) {
+			case string:
+				mapBase, ok := base.(map[string]interface{})
+				if !ok {
+					return nil, fmt.Errorf("object at depth %d (selector %q) was of wrong type: %T (expected map[string]interface{})", i, selector, base)
+				}
+
+				val, present := mapBase[selector]
+				if !present {
+					return nil, fmt.Errorf("field %q at depth %v is missing:\n\tavailable keys: %v\n\tobj: %#v", selector, i, presentKeys(mapBase), mapBase)
+				}
+
+				if i == len(typed)-1 {
+					return val, nil
+				}
+
+				base = val
+			case int:
+				listBase, ok := base.([]interface{})
+				if !ok {
+					return nil, fmt.Errorf("object at depth %d (selector %q) was of wrong type: %T (expected []interface{})", i, selector, base)
+				}
+
+				if selector >= len(listBase) || selector < 0 {
+					return nil, fmt.Errorf("selector (%v) out of bounds at depth %v", selector, i)
+				}
+
+				val := listBase[selector]
+
+				if i == len(typed)-1 {
+					return val, nil
+				}
+
+				base = val
+			}
+		}
+
+		return nil, errors.New("selector had zero length")
 	default:
 		return nil, fmt.Errorf("unknown type for selector: %T", fieldSelector)
 	}
+}
+
+func presentKeys(obj map[string]interface{}) []string {
+	keys := make([]string, 0, len(obj))
+	for key := range obj {
+		keys = append(keys, key)
+	}
+	return keys
 }

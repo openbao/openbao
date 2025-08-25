@@ -70,8 +70,9 @@ func (s *ResponseSource) Validate(_ context.Context) ([]string, []string, error)
 		switch rawFieldSelector.(type) {
 		case string:
 		case []string:
+		case []interface{}:
 		default:
-			return nil, nil, fmt.Errorf("unknown type for response source field 'field_selector': %T; expected either string or []string", rawFieldSelector)
+			return nil, nil, fmt.Errorf("unknown type for response source field 'field_selector': %T; expected either string, []string, []interface{}", rawFieldSelector)
 		}
 
 		s.fieldSelector = rawFieldSelector

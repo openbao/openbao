@@ -65,17 +65,17 @@ func (s *RequestSource) Validate(_ context.Context) ([]string, []string, error) 
 	requestName += reqName
 
 	rawFieldSelector := s.field["field_selector"]
-
 	if present {
 		switch rawFieldSelector.(type) {
 		case string:
 		case []string:
+		case []interface{}:
 		default:
-			return nil, nil, fmt.Errorf("unknown type for request source field 'field_selector': %T; expected either string or []string", rawFieldSelector)
+			return nil, nil, fmt.Errorf("unknown type for request source field 'field_selector': %T; expected either string, []string, or []interface{}", rawFieldSelector)
 		}
-
-		s.fieldSelector = rawFieldSelector
 	}
+
+	s.fieldSelector = rawFieldSelector
 
 	return []string{requestName}, nil, nil
 }

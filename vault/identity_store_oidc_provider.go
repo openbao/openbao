@@ -559,7 +559,7 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 				},
 				"grant_type": {
 					Type:        framework.TypeString,
-					Description: "The authorization grant type. The following grant types are supported: 'authorization_code'.",
+					Description: "The authorization grant type. The following grant types are supported: 'authorization_code','client_credentials'.",
 					Required:    true,
 				},
 				"redirect_uri": {
@@ -570,6 +570,11 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 				"code_verifier": {
 					Type:        framework.TypeString,
 					Description: "The code verifier associated with the authorization code.",
+				},
+				"scope": {
+					Type:        framework.TypeString,
+					Description: "A space-delimited, case-sensitive list of scopes to be requested. The 'openid' scope is required. This is used when using in with 'client_credentials' flow",
+					Required:    true,
 				},
 				// For confidential clients, the client_id and client_secret are provided to
 				// the token endpoint via the 'client_secret_basic' or 'client_secret_post'
@@ -1994,10 +1999,99 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	if grantType == "" {
 		return tokenResponse(nil, ErrTokenInvalidRequest, "grant_type parameter is required")
 	}
-	if grantType != "authorization_code" {
+	switch grantType {
+	case "authorization_code":
+		return i.authorizationCodeFlow(ctx, req, d, ns, clientID, name, client, key, provider)
+	case "client_credentials":
+		return i.clientCredentialsFlow(ctx, req, d, ns, clientID, name, client, key, provider)
+	default:
 		return tokenResponse(nil, ErrTokenUnsupportedGrantType, "unsupported grant_type value")
 	}
 
+}
+
+func (i *IdentityStore) clientCredentialsFlow(ctx context.Context, req *logical.Request, d *framework.FieldData, ns *namespace.Namespace, id string, name string, client *client, key *namedKey, provider *provider) (*logical.Response, error) {
+	// Since Credentials Flow does not use authorize endpoint Scopes come direcly from Token endpoint
+	// Validate that a scope parameter is present and contains the openid scope value
+	requestedScopes := strutil.ParseDedupAndSortStrings(d.Get("scope").(string), scopesDelimiter)
+	if len(requestedScopes) == 0 || !slices.Contains(requestedScopes, openIDScope) {
+		return tokenResponse(nil, ErrAuthInvalidRequest, fmt.Sprintf("scope parameter must contain the %q value", openIDScope))
+	}
+
+	// Scope values that are not supported by the provider should be ignored
+	scopes := make([]string, 0)
+	for _, scope := range requestedScopes {
+		if slices.Contains(provider.ScopesSupported, scope) && scope != openIDScope {
+			scopes = append(scopes, scope)
+		}
+	}
+
+	// The access token is a Vault batch token with a policy that only
+	// provides access to the issuing provider's userinfo endpoint.
+	accessTokenIssuedAt := time.Now()
+	accessTokenExpiry := accessTokenIssuedAt.Add(client.AccessTokenTTL)
+	accessToken := &logical.TokenEntry{
+		Type:               logical.TokenTypeBatch,
+		NamespaceID:        ns.ID,
+		Path:               req.Path,
+		TTL:                client.AccessTokenTTL,
+		CreationTime:       accessTokenIssuedAt.Unix(),
+		NoIdentityPolicies: true,
+		Meta: map[string]string{
+			"oidc_token_type": "access token",
+		},
+		InternalMeta: map[string]string{
+			accessTokenClientIDMeta: client.ClientID,
+			accessTokenScopesMeta:   strings.Join(scopes, scopesDelimiter),
+		},
+	}
+	err := i.tokenStorer.CreateToken(ctx, accessToken, true)
+	if err != nil {
+		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	}
+
+	// Set the ID token claims
+	idTokenIssuedAt := time.Now()
+	idTokenExpiry := idTokenIssuedAt.Add(client.IDTokenTTL)
+	idToken := idToken{
+		Namespace: ns.ID,
+		Issuer:    provider.effectiveIssuer,
+		Subject:   client.ClientID,
+		Audience:  client.ClientID,
+		Expiry:    idTokenExpiry.Unix(),
+		IssuedAt:  idTokenIssuedAt.Unix(),
+	}
+
+	// Populate each of the requested scope templates
+	templates, conflict, err := i.populateScopeTemplatesWithoutEntity(ctx, req.Storage, ns, scopes...)
+	if !conflict && err != nil {
+		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	}
+	if conflict && err != nil {
+		return tokenResponse(nil, ErrTokenInvalidRequest, err.Error())
+	}
+
+	// Generate the ID token payload
+	payload, err := idToken.generatePayload(i.Logger(), templates...)
+	if err != nil {
+		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	}
+
+	// Sign the ID token using the client's key
+	signedIDToken, err := key.signPayload(payload)
+	if err != nil {
+		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	}
+
+	return tokenResponse(map[string]interface{}{
+		"token_type":   "Bearer",
+		"access_token": accessToken.ID,
+		"id_token":     signedIDToken,
+		"expires_in":   int64(accessTokenExpiry.Sub(accessTokenIssuedAt).Seconds()),
+	}, "", "")
+}
+
+func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.Request, d *framework.FieldData, ns *namespace.Namespace, clientID string, name string, client *client, key *namedKey, provider *provider) (*logical.Response, error) {
 	// Validate the authorization code
 	code := d.Get("code").(string)
 	if code == "" {
@@ -2433,6 +2527,53 @@ func (i *IdentityStore) populateScopeTemplates(ctx context.Context, s logical.St
 			String:      template,
 			Entity:      identity.ToSDKEntity(entity),
 			Groups:      identity.ToSDKGroups(groups),
+			NamespaceID: ns.ID,
+		})
+		if err != nil {
+			i.Logger().Warn("error populating OIDC token template", "scope", scope,
+				"template", template, "error", err)
+		}
+
+		if populatedTemplate != "" {
+			claimsMap := make(map[string]interface{})
+			if err := json.Unmarshal([]byte(populatedTemplate), &claimsMap); err != nil {
+				i.Logger().Warn("error parsing OIDC template", "template", template, "err", err)
+			}
+
+			// Check top-level claim keys for conflicts with other scopes
+			for claimKey := range claimsMap {
+				if conflictScope, ok := claimsToScopes[claimKey]; ok {
+					return nil, true, fmt.Errorf("found scopes with conflicting top-level claim: claim %q in scopes %q, %q",
+						claimKey, scope, conflictScope)
+				}
+				claimsToScopes[claimKey] = scope
+			}
+
+			populatedTemplates = append(populatedTemplates, populatedTemplate)
+		}
+	}
+
+	return populatedTemplates, false, nil
+}
+
+// populateScopeTemplates populates the templates for each of the passed scopes.
+// Returns a slice of the populated JSON template strings and a bool to indicate
+// if a conflict in scope template claims occurred.
+func (i *IdentityStore) populateScopeTemplatesWithoutEntity(ctx context.Context, s logical.Storage, ns *namespace.Namespace, scopes ...string) ([]string, bool, error) {
+	// Gather the templates for each scope
+	templates, err := i.getScopeTemplates(ctx, s, scopes...)
+	if err != nil {
+		return nil, false, err
+	}
+
+	claimsToScopes := make(map[string]string)
+	populatedTemplates := make([]string, 0)
+	for scope, template := range templates {
+		// Parse and integrate the populated template. Structural errors with the template
+		// should be caught during configuration. Errors found during runtime will be logged.
+		_, populatedTemplate, err := identitytpl.PopulateString(identitytpl.PopulateStringInput{
+			Mode:        identitytpl.JSONTemplating,
+			String:      template,
 			NamespaceID: ns.ID,
 		})
 		if err != nil {

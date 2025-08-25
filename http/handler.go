@@ -769,13 +769,25 @@ func parseFormRequest(r *http.Request) (map[string]interface{}, error) {
 	return data, nil
 }
 
-// handleRequestForwarding determines whether to forward a request or not,
-// falling back on the older behavior of redirecting the client
+// handleRequestForwarding attempts to serve every request
 func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Note: in an HA setup, this call will also ensure that connections to
 		// the leader are set up, as that happens once the advertised cluster
 		// values are read during this function
+
+		isStandby, err := core.Standby()
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		// Forward HA status to leader so response includes all nodes.
+		if isStandby && r.URL.Path == "/v1/sys/ha-status" {
+			forwardRequest(core, w, r)
+			return
+		}
+
 		handler.ServeHTTP(w, r)
 	})
 }

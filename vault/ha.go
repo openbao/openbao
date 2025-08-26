@@ -389,7 +389,23 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 }
 
 func (c *Core) restart() {
-	c.restartCh <- struct{}{}
+	select {
+	case c.restartCh <- struct{}{}:
+	default:
+		c.logger.Warn("ignoring restart request: restart is already in progress")
+	}
+}
+
+func (c *Core) drainPendingRestarts() {
+	for {
+		select {
+		case <-c.restartCh:
+			c.logger.Warn("ignoring restart request: restart is already in progress")
+
+		default:
+			return
+		}
+	}
 }
 
 // runStandby is a long running process that manages a number of the HA
@@ -407,6 +423,8 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}, restar
 		if err := c.preSeal(); err != nil {
 			c.logger.Error("pre-seal teardown failed", "error", err)
 		}
+
+		c.drainPendingRestarts()
 
 		perfCtx, perfCancel := context.WithCancel(namespace.RootContext(context.Background()))
 		if err := c.postUnseal(perfCtx, perfCancel, readonlyUnsealStrategy{}); err != nil {

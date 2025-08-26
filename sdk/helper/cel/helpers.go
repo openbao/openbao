@@ -8,6 +8,7 @@ import (
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/ext"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -40,6 +41,11 @@ func registerCheckValidEmailFunction(env *celgo.Env) (*celgo.Env, error) {
 	)
 }
 
+// registerCelGoExtFunctions registers the cel-go/ext functions in the provided environment.
+func registerCelGoExtFunctions(env *celgo.Env) (*celgo.Env, error) {
+	return env.Extend(ext.Strings(), ext.Lists(), celgo.OptionalTypes(), ext.Regex(), ext.Math(), ext.Sets(), ext.Encoders())
+}
+
 // RegisterAllCelFunctions registers all custom CEL functions into the provided environment.
 func RegisterAllCelFunctions(env *celgo.Env) (*celgo.Env, error) {
 	var err error
@@ -47,6 +53,11 @@ func RegisterAllCelFunctions(env *celgo.Env) (*celgo.Env, error) {
 	env, err = registerCheckValidEmailFunction(env)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register check_valid_email function: %w", err)
+	}
+
+	env, err = registerCelGoExtFunctions(env)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register cel-go/ext functions: %w", err)
 	}
 
 	return env, nil

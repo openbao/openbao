@@ -460,7 +460,11 @@ func (b *jwtAuthBackend) celEnv(program celhelper.CelProgram) (*cel.Env, error) 
 
 	// Add "pb.Auth" return type to environment
 	envOptions = append(envOptions, cel.Types(&pb.Auth{}))
-	return cel.NewEnv(envOptions...)
+	env, err := cel.NewEnv(envOptions...)
+	if err != nil {
+		return nil, err
+	}
+	return celhelper.RegisterAllCelFunctions(env)
 }
 
 const (

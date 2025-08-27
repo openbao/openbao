@@ -1,6 +1,6 @@
 ---
 title: "It's a wrap! OpenBao at Open Source Summit Europe 2025"
-description: "Join us in Amsterdam 25–27 August for roadmap previews, deep-dive Q&A, and hands-on conversations about open-source secrets management."
+description: "OpenBao joined the Open Source Summit EU 2025 in Amsterdam and gave roadmap previews, Q&A, and hands-on conversations about open-source secrets management."
 slug: wrap-openbao-oss-europe-2025
 authors: ChristophVoigt
 tags: [announcement, conferences, community]

@@ -10,6 +10,7 @@ on:
 jobs:
   mirror:
     runs-on: ubuntu-latest
+    if: github.repository == 'openbao/openbao'
     steps:
       - uses: actions/checkout@v5
         with:

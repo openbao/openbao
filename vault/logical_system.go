@@ -3141,7 +3141,7 @@ func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Requ
 	conf := b.Core.rawConfig.Load().(*server.Config)
 
 	if !conf.UnsafeAllowAPIAuditCreation {
-		return handleError(fmt.Errorf("cannot enable audit device via API"))
+		return handleError(fmt.Errorf("cannot enable audit device via API; use declarative, config-based audit device management instead"))
 	}
 
 	if _, hasPrefix := options["prefix"]; hasPrefix && !conf.AllowAuditLogPrefixing {

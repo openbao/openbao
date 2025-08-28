@@ -176,7 +176,7 @@ func TestOIDC_Path_OIDC_Token_Authorization_Code_Flow(t *testing.T) {
 					return req
 				}(),
 			},
-			wantErr: ErrTokenInvalidRequest,
+			wantErr: ErrTokenUnsupportedGrantType,
 		},
 		{
 			name: "invalid token request with unsupported grant_type",
@@ -681,7 +681,7 @@ func TestOIDC_Path_OIDC_Token_Client_Credentials_Flow(t *testing.T) {
 					return req
 				}(),
 			},
-			wantErr: ErrTokenInvalidRequest,
+			wantErr: ErrTokenUnsupportedGrantType,
 		},
 		{
 			name: "valid token request",

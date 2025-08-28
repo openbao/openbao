@@ -290,7 +290,7 @@ vulncheck:
 
 .PHONY: tidy-all
 tidy-all:
-	bash -c 'find . -name go.mod | while read go_mod; do ( cd "$$(dirname "$$go_mod")" && go mod tidy ) ; done'
+	find . -name 'go.mod' -execdir go mod tidy \;
 
 .PHONY: ci-tidy-all
 ci-tidy-all:

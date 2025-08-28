@@ -722,8 +722,7 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T,
 			"file": auditFile.Factory,
 		},
 	}
-	core := TestCoreWithSealAndUI(t, conf)
-	c, _, _ := testCoreUnsealed(t, core)
+	c, _, _ := TestCoreUnsealedWithConfig(t, conf)
 
 	githubMe := &MountEntry{
 		Table:       credentialTableType,

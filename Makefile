@@ -290,24 +290,12 @@ vulncheck:
 
 .PHONY: tidy-all
 tidy-all:
-	cd api && $(GO_CMD) mod tidy
-	cd api/auth/approle && $(GO_CMD) mod tidy
-	cd api/auth/kubernetes && $(GO_CMD) mod tidy
-	cd api/auth/ldap && $(GO_CMD) mod tidy
-	cd api/auth/userpass && $(GO_CMD) mod tidy
-	cd sdk && $(GO_CMD) mod tidy
-	$(GO_CMD) mod tidy
+	bash -c 'find . -name go.mod | while read go_mod; do ( cd "$$(dirname "$$go_mod")" && go mod tidy ) ; done'
 
 .PHONY: ci-tidy-all
 ci-tidy-all:
 	git diff --quiet
-	cd api && $(GO_CMD) mod tidy
-	cd api/auth/approle && $(GO_CMD) mod tidy
-	cd api/auth/kubernetes && $(GO_CMD) mod tidy
-	cd api/auth/ldap && $(GO_CMD) mod tidy
-	cd api/auth/userpass && $(GO_CMD) mod tidy
-	cd sdk && $(GO_CMD) mod tidy
-	$(GO_CMD) mod tidy
+	bash -c 'find . -name go.mod | while read go_mod; do ( cd "$$(dirname "$$go_mod")" && go mod tidy ) ; done'
 	git diff --quiet || (echo -e "\n\nModified files:" && git status --short && echo -e "\n\nRun 'make tidy-all' locally and commit the changes.\n" && exit 1)
 
 .PHONY: release-changelog
@@ -358,6 +346,7 @@ bump-critical:
 	go get google.golang.org/grpc@latest
 	grep -o 'golang.org/x/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
 	grep -o 'github.com/hashicorp/go-secure-stdlib/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
+	grep -o 'github.com/openbao/go-kms-wrapping/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
 	make sync-deps
 
 .PHONY: tag-api
@@ -366,14 +355,22 @@ tag-api:
 	@:$(if $(ORIGIN),,$(error please set the ORIGIN environment variable for pushing API tags))
 	git tag api/$(THIS_RELEASE)
 	git tag api/auth/approle/$(THIS_RELEASE)
+	git tag api/auth/jwt/$(THIS_RELEASE)
 	git tag api/auth/kubernetes/$(THIS_RELEASE)
 	git tag api/auth/ldap/$(THIS_RELEASE)
 	git tag api/auth/userpass/$(THIS_RELEASE)
 	git push $(ORIGIN) api/$(THIS_RELEASE)
 	git push $(ORIGIN) api/auth/approle/$(THIS_RELEASE)
+	git push $(ORIGIN) api/auth/jwt/$(THIS_RELEASE)
 	git push $(ORIGIN) api/auth/kubernetes/$(THIS_RELEASE)
 	git push $(ORIGIN) api/auth/ldap/$(THIS_RELEASE)
 	git push $(ORIGIN) api/auth/userpass/$(THIS_RELEASE)
+
+.PHONY: sync-deps-gkw
+sync-deps-gkw:
+	@:$(if $(GO_KMS_WRAPPING),,$(error please set the GO_KMS_WRAPPING environment variable to the go-kms-wrapping repository to update))
+	sh -c "'$(CURDIR)/scripts/sync-deps-gkw.sh'"
+
 
 .PHONY: tag-sdk
 tag-sdk:

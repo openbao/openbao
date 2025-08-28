@@ -9,9 +9,9 @@ grep '^	' go.mod | while read line; do
 		find . -name go.mod | while read gkw_mod; do
 			dir="$(dirname "$gkw_mod")"
 			if grep -q "^	$pkg" "$gkw_mod" && grep "$pkg" "$gkw_mod" | grep -qv "$pkg $version"; then
-	  			( cd "$dir" && go get "$pkg"@"$version" )
+	  		( cd "$dir" && go get "$pkg"@"$version" )
 			fi
-	  	done
+	  done
 	)
 done
 

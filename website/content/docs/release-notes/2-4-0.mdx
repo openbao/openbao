@@ -64,6 +64,7 @@ description: Release notes for OpenBao 2.4.x
 * deps: Update go-jose v3 to go-jose v4 [[GH-1477](https://github.com/openbao/openbao/pull/1477)]
 * secrets/kv: Add CAS (Compare-And-Swap) support for metadata operations in KV v2 secrets engine. Metadata updates now support versioning via `metadata_cas` parameter and `metadata_cas_required` configuration option to prevent concurrent modification conflicts. [[GH-1372](https://github.com/openbao/openbao/pull/1372)]
 * ui: change the message 'Vault is sealed to 'OpenBao is Sealed' by changing the title of the unseal template [[GH-1652](https://github.com/openbao/openbao/pull/1652)]
+* seal/pkcs11: Support and default to software encryption for RSA key types. [[GH-1742](https://github.com/openbao/openbao/pull/1742)]
 
 ### DEPRECATIONS
 

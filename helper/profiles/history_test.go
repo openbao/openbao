@@ -159,7 +159,7 @@ func TestGetRequestField_SingleKey(t *testing.T) {
 		t.Fatalf("AddRequestData: %v", err)
 	}
 
-	value, err := history.GetRequestField("tokenInit", "create-token", "token_ttl")
+	value, err := history.GetRequestField("tokenInit", "create-token", []interface{}{"token_ttl"})
 	if err != nil {
 		t.Fatalf("GetRequestField error: %v", err)
 	}
@@ -185,7 +185,7 @@ func TestGetRequestField_NestedKeyPath(t *testing.T) {
 		t.Fatalf("AddRequestData: %v", err)
 	}
 
-	selector := []string{"data", "data", "config_key"}
+	selector := []interface{}{"data", "data", "config_key"}
 	value, err := history.GetRequestField("secretInit", "write-config", selector)
 	if err != nil {
 		t.Fatalf("GetRequestField nested error: %v", err)
@@ -205,7 +205,7 @@ func TestGetRequestField_MissingKey(t *testing.T) {
 		t.Fatalf("AddRequestData: %v", err)
 	}
 
-	_, err := history.GetRequestField("healthInit", "check-health", "status")
+	_, err := history.GetRequestField("healthInit", "check-health", []interface{}{"status"})
 	if err == nil {
 		t.Fatal("expected error for missing field, got nil")
 	}
@@ -254,7 +254,7 @@ func TestGetResponseField_Success(t *testing.T) {
 		t.Fatalf("AddResponseData: %v", err)
 	}
 
-	selector := []string{"auth", "client_token"}
+	selector := []interface{}{"auth", "client_token"}
 	value, err := history.GetResponseField("tokenInit", "create-token", selector)
 	if err != nil {
 		t.Fatalf("GetResponseField error: %v", err)
@@ -273,7 +273,7 @@ func TestGetResponseField_InvalidSelectorType(t *testing.T) {
 		t.Fatalf("AddResponseData: %v", err)
 	}
 
-	_, err := history.GetResponseField("configInit", "read-config", 42)
+	_, err := history.GetResponseField("configInit", "read-config", []interface{}{42.00})
 	if err == nil {
 		t.Fatal("expected selector type error, got nil")
 	}

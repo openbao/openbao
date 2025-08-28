@@ -62,6 +62,9 @@ func TestPostgreSQLBackend(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create new backend: %v", err)
 	}
+
+	b1.(physical.LeadershipChangedBackend).LeadershipChange(true)
+	b2.(physical.LeadershipChangedBackend).LeadershipChange(true)
 	pg := b1.(*PostgreSQLBackend)
 
 	// Read postgres version to test basic connects works
@@ -411,6 +414,8 @@ func TestPostgreSQLBackend_CreateTables(t *testing.T) {
 		t.Fatalf("Failed to create new backend: %v", err)
 	}
 
+	b.(physical.LeadershipChangedBackend).LeadershipChange(true)
+
 	// Do not call SetupDatabaseObjects here; this should be handled automatically.
 
 	logger.Info("Running basic backend tests")
@@ -434,6 +439,8 @@ func TestPostgreSQLBackend_NoCreateTables(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create new backend: %v", err)
 	}
+
+	b.(physical.LeadershipChangedBackend).LeadershipChange(true)
 
 	// Put should fail with an error.
 	entry := &physical.Entry{Key: "foo", Value: []byte("data")}
@@ -539,6 +546,8 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create new backend: %v", err)
 	}
+
+	bRaw.(physical.LeadershipChangedBackend).LeadershipChange(true)
 
 	b := bRaw.(physical.TransactionalBackend)
 

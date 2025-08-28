@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestWithRequestSource_RegistersBuilder(t *testing.T) {
@@ -170,4 +172,25 @@ func TestRequestSource_Evaluate_WithFieldSelector_String(t *testing.T) {
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("Evaluate result = %#v; want %#v", result, expected)
 	}
+}
+
+func TestRequestSource_Evaluate_WithFieldSelector_Interface(t *testing.T) {
+	ctx := context.Background()
+	history := &EvaluationHistory{}
+	source := &RequestSource{
+		field: map[string]interface{}{"request_name": "mount-userpass", "field_selector": []interface{}{"userPass", 0}},
+	}
+
+	_, _, err := source.Validate(ctx)
+	require.NoError(t, err)
+
+	requestData := map[string]interface{}{
+		"userPass": []interface{}{"test"},
+	}
+	err = history.AddRequestData("", "mount-userpass", requestData)
+	require.NoError(t, err)
+
+	result, err := source.Evaluate(ctx, history)
+	require.NoError(t, err)
+	require.Equal(t, result, "test")
 }

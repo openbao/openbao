@@ -295,7 +295,7 @@ tidy-all:
 .PHONY: ci-tidy-all
 ci-tidy-all:
 	git diff --quiet
-	bash -c 'find . -name go.mod | while read go_mod; do ( cd "$$(dirname "$$go_mod")" && go mod tidy ) ; done'
+	sh -c 'find . -name go.mod | while read go_mod; do ( cd "$$(dirname "$$go_mod")" && go mod tidy ) ; done'
 	git diff --quiet || (echo -e "\n\nModified files:" && git status --short && echo -e "\n\nRun 'make tidy-all' locally and commit the changes.\n" && exit 1)
 
 .PHONY: release-changelog

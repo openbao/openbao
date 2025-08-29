@@ -2002,7 +2002,6 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	default:
 		return tokenResponse(nil, ErrTokenUnsupportedGrantType, "unsupported grant_type or parameter is empty value")
 	}
-
 }
 
 func (i *IdentityStore) clientCredentialsFlow(ctx context.Context, req *logical.Request, d *framework.FieldData, ns *namespace.Namespace, client *client, key *namedKey, provider *provider) (*logical.Response, error) {
@@ -2049,16 +2048,17 @@ func (i *IdentityStore) clientCredentialsFlow(ctx context.Context, req *logical.
 
 	// Populate each of the requested scope templates
 	templates, conflict, err := i.populateScopeTemplates(ctx, ClientCredentials, req.Storage, ns, nil, scopes...)
-	if !conflict && err != nil {
-		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	if err != nil {
+		if conflict {
+			return tokenResponse(nil, ErrTokenInvalidRequest, err.Error())
+		} else {
+			return tokenResponse(nil, ErrTokenServerError, err.Error())
+		}
 	}
-	if conflict && err != nil {
-		return tokenResponse(nil, ErrTokenInvalidRequest, err.Error())
-	}
-	return i.generateIDTokenPayload(err, idToken, templates, key, accessToken, accessTokenExpiry, accessTokenIssuedAt)
+	return i.generateIDTokenPayload(idToken, templates, key, accessToken, accessTokenExpiry, accessTokenIssuedAt)
 }
 
-func (i *IdentityStore) generateIDTokenPayload(err error, idToken idToken, templates []string, key *namedKey, accessToken *logical.TokenEntry, accessTokenExpiry time.Time, accessTokenIssuedAt time.Time) (*logical.Response, error) {
+func (i *IdentityStore) generateIDTokenPayload(idToken idToken, templates []string, key *namedKey, accessToken *logical.TokenEntry, accessTokenExpiry time.Time, accessTokenIssuedAt time.Time) (*logical.Response, error) {
 	payload, err := idToken.generatePayload(i.Logger(), templates...)
 	if err != nil {
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
@@ -2223,14 +2223,14 @@ func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.
 
 	// Populate each of the requested scope templates
 	templates, conflict, err := i.populateScopeTemplates(ctx, AuthorizationCode, req.Storage, ns, entity, authCodeEntry.scopes...)
-	if !conflict && err != nil {
-		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	if err != nil {
+		if conflict {
+			return tokenResponse(nil, ErrTokenInvalidRequest, err.Error())
+		} else {
+			return tokenResponse(nil, ErrTokenServerError, err.Error())
+		}
 	}
-	if conflict && err != nil {
-		return tokenResponse(nil, ErrTokenInvalidRequest, err.Error())
-	}
-
-	return i.generateIDTokenPayload(err, idToken, templates, key, accessToken, accessTokenExpiry, accessTokenIssuedAt)
+	return i.generateIDTokenPayload(idToken, templates, key, accessToken, accessTokenExpiry, accessTokenIssuedAt)
 }
 
 // tokenResponse returns the OIDC Token Response. An error response is
@@ -2490,8 +2490,7 @@ func (i *IdentityStore) populateScopeTemplates(ctx context.Context, grantType Gr
 			String:      template,
 			NamespaceID: ns.ID,
 		}
-
-		//Templates only needed in AuthorizationCode
+		// Templates only needed in AuthorizationCode
 		if grantType == AuthorizationCode {
 			input.Entity = identity.ToSDKEntity(entity)
 
@@ -2504,7 +2503,6 @@ func (i *IdentityStore) populateScopeTemplates(ctx context.Context, grantType Gr
 			input.Groups = identity.ToSDKGroups(groups)
 		}
 		_, populatedTemplate, err := identitytpl.PopulateString(input)
-
 		if err != nil {
 			i.Logger().Warn("error populating OIDC token template", "scope", scope,
 				"template", template, "error", err)

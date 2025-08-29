@@ -1,0 +1,3 @@
+```release-note:feature
+**Transit**: Add nonce parameter in the ECDH transit API to be used as salt by the underlying HMAC Key Derivation Function.
+```

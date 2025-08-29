@@ -28,28 +28,43 @@ A second phase might add a request/notification workflow, but this is not essent
 ## Problem Statement
 
 The problem is as follows. An organization wants to review access to
-certain secrets (eg, pki issuance, etc) on a case-by-case basis. A
-directory group-membership will indicate who the reviewers are. They
-should be able grant access by endpoint. They should not be able to
-review their own requests.
+certain secrets (eg, pki issuance, etc) on a case-by-case basis, and
+require "second set of eyes" on everything. A directory
+group-membership will indicate who the reviewers are. They should be
+able grant access by endpoint. They should not be able to grant their
+own access.
 
 ## User-facing Description
 
 ## Technical Description
 
-Several techniques might be possible for implementation
+The control group implementation consists of the following.
+1. A control-group policy rule which:
+   1. Denies data access without authorization
+   2. Allows authorizing action to control group
+2. An authorizing endpoint:
+   1. Self authorization not permitted
+   2. Applies to path
+   3. Applies to user/entity
+3. Authorization storage:
+   1. Metadata on the path?
+   2. Separate storage mount for authorizations?
+
+When the policy is "checking authorization", we'd need to read the authorization storage.
+
+For workflow, we might need a seperate "requests" storage as well.
 
 ## Rationale and Alternatives
 
 This is essentially "assigning a policy to a resource and a user"
 which allows some level of access -- something we can already do in
-OpenBao. The control group, essentially, is an OpenBao administrator
-assigning policies. However, the control-group idea has some
-additional value:
+OpenBao with roles/policies/etc. The control group, essentially, is an
+OpenBao administrator assigning policies. However, the control-group
+idea has some additional value:
 
 1. The administrator can specify a delegate group, any member of which can approve
-2. Inhibiting self-approval can ensure "second set of eyes"
-3. Simplified workflow when added
+2. By inhibiting self-approval, the control group can ensure "second set of eyes"
+3. Simplified workflow (when added)
 
 ## Downsides
 
@@ -61,7 +76,7 @@ additional value:
 
 ## Related Issues
 
-- https://gitlab.com/gitlab-org/gitlab/-/issues/540889
+- https://github.com/openbao/openbao/issues/1669
 
 ## Proof of Concept
 

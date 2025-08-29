@@ -15,6 +15,8 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -47,6 +49,27 @@ func validRedirect(uri string, allowed []string) bool {
 	}
 
 	return false
+}
+
+// validateScopes validates the "scope" parameter according to OIDC requirements.
+//
+// According to the OpenID Connect Core specification (Section 3.1.2.1):
+// - Authorization requests MUST contain the "openid" scope value to indicate an OIDC request.
+// - Requests without "openid" are not considered OIDC authentication requests.
+func validateScopes(d *framework.FieldData, provider *provider) []string {
+	requestedScopes := strutil.ParseDedupAndSortStrings(d.Get("scope").(string), scopesDelimiter)
+	if len(requestedScopes) == 0 || !slices.Contains(requestedScopes, openIDScope) {
+		return nil
+	}
+
+	// Scope values that are not supported by the provider should be ignored
+	scopes := make([]string, 0)
+	for _, scope := range requestedScopes {
+		if slices.Contains(provider.ScopesSupported, scope) && scope != openIDScope {
+			scopes = append(scopes, scope)
+		}
+	}
+	return scopes
 }
 
 // computeHashClaim computes the hash value to be used for the at_hash

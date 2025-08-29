@@ -1,0 +1,68 @@
+---
+sidebar_label: Control Groups
+description: |-
+  An OpenBao RFC for protecting paths by a control group
+---
+
+# Support control groups for authorizing paths
+
+## Summary
+
+This feature would implement second-party authorization for protected
+resources. A control-group restriction placed on a path would require
+a user to obtain prior authorization before the action would succeed.
+
+Using the control group feature would follow this general pattern, via API
+endpoints:
+
+1. A path is assigned a control-group policy
+2. Access to the path is denied without control group authorization
+3. A user belonging to the control group can authorize the resource for a particular entity
+4. Access to the path is now permitted to the authorized entity
+
+A second phase might add a request/notification workflow, but this is not essential:
+1. A user requests access to the protected resource
+2. Members of the control group receive a notification of the request
+3. The original user receives notification of the control group approval when it occurs
+
+## Problem Statement
+
+The problem is as follows. An organization wants to review access to
+certain secrets (eg, pki issuance, etc) on a case-by-case basis. A
+directory group-membership will indicate who the reviewers are. They
+should be able grant access by endpoint. They should not be able to
+review their own requests.
+
+## User-facing Description
+
+## Technical Description
+
+Several techniques might be possible for implementation
+
+## Rationale and Alternatives
+
+This is essentially "assigning a policy to a resource and a user"
+which allows some level of access -- something we can already do in
+OpenBao. The control group, essentially, is an OpenBao administrator
+assigning policies. However, the control-group idea has some
+additional value:
+
+1. The administrator can specify a delegate group, any member of which can approve
+2. Inhibiting self-approval can ensure "second set of eyes"
+3. Simplified workflow when added
+
+## Downsides
+
+## Security Implications
+
+## User/Developer Experience
+
+## Unresolved Questions
+
+## Related Issues
+
+- https://gitlab.com/gitlab-org/gitlab/-/issues/540889
+
+## Proof of Concept
+
+

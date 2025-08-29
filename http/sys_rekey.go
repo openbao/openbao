@@ -118,7 +118,7 @@ func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool,
 	}
 
 	// Initialize the rekey
-	err := core.RekeyInit(&vault.SealConfig{
+	err := core.RekeyInit(ctx, &vault.SealConfig{
 		SecretShares:         req.SecretShares,
 		SecretThreshold:      req.SecretThreshold,
 		StoredShares:         req.StoredShares,

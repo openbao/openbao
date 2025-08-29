@@ -33,7 +33,7 @@ func TestReadBaoVariable_BothSame(t *testing.T) {
 	}
 }
 
-func TestReadBaoVariable_BoaWins(t *testing.T) {
+func TestReadBaoVariable_BaoWins(t *testing.T) {
 	actual := "example_value"
 	os.Setenv("VAULT_TEST", actual+"not_valid")
 	os.Setenv("BAO_TEST", actual)

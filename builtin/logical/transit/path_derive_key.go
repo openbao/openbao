@@ -84,10 +84,7 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 	}
 	defer txRollback()
 
-	derivationAlgorithm := d.Get("key_derivation_algorithm").(string)
-	if derivationAlgorithm == "" {
-		derivationAlgorithm = defaultKeyDerivationAlgorithm
-	} else if derivationAlgorithm != defaultKeyDerivationAlgorithm {
+	if derivationAlgorithm := d.Get("key_derivation_algorithm").(string); derivationAlgorithm != defaultKeyDerivationAlgorithm {
 		return logical.ErrorResponse("key derivation algorithm %s not supported", derivationAlgorithm), logical.ErrInvalidRequest
 	}
 
@@ -113,7 +110,7 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 		IsPrivateKey:             false,
 	}
 
-	derivedKeySizeInBytes := 32
+	var derivedKeySizeInBytes int
 	switch strings.ToLower(derivedkeyType) {
 	case "aes128-gcm96":
 		polReq.KeyType = keysutil.KeyType_AES128_GCM96

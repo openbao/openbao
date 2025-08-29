@@ -36,7 +36,7 @@ func TestResignCrls_ForbidSigningOtherIssuerCRL(t *testing.T) {
 	})
 	requireSuccessNonNilResponse(t, resp, err)
 
-	resp, err = CBWrite(b, s, "issuer/default/resign-crls", map[string]interface{}{
+	_, err = CBWrite(b, s, "issuer/default/resign-crls", map[string]interface{}{
 		"crl_number":  "2",
 		"next_update": "1h",
 		"format":      "pem",
@@ -390,7 +390,7 @@ func TestSignRevocationList_ReservedExtensions(t *testing.T) {
 			})
 			requireSuccessNonNilResponse(t, resp, err)
 
-			resp, err = CBWrite(b, s, "issuer/default/sign-revocation-list", map[string]interface{}{
+			_, err = CBWrite(b, s, "issuer/default/sign-revocation-list", map[string]interface{}{
 				"crl_number":  "1",
 				"next_update": "12h",
 				"format":      "pem",

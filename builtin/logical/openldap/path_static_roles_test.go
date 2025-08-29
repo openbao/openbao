@@ -566,6 +566,7 @@ func TestRoles(t *testing.T) {
 		if resp == nil || !resp.IsError() {
 			t.Fatal("expected error")
 		}
+		require.Error(t, err)
 	})
 
 	t.Run("user doesn't exist (ldap error)", func(t *testing.T) {

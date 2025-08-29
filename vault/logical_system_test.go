@@ -3426,6 +3426,7 @@ func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {
 	)
 
 	exp := map[string]interface{}{
+		"namespace":      "root",
 		"max_operations": absoluteOperationMaximum,
 		"interval":       0,
 		"enabled":        true,
@@ -3461,6 +3462,7 @@ func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {
 	)
 
 	exp = map[string]interface{}{
+		"namespace":      "root",
 		"max_operations": int64(3221225472),
 		"interval":       "5432h0m0s",
 		"enabled":        false,
@@ -3485,6 +3487,7 @@ func TestSystemBackend_rotateConfig(t *testing.T) {
 	)
 
 	exp := map[string]interface{}{
+		"namespace":      "root",
 		"max_operations": absoluteOperationMaximum,
 		"interval":       0,
 		"enabled":        true,
@@ -3514,6 +3517,7 @@ func TestSystemBackend_rotateConfig(t *testing.T) {
 	)
 
 	exp = map[string]interface{}{
+		"namespace":      "root",
 		"max_operations": int64(3221225472),
 		"interval":       "5432h0m0s",
 		"enabled":        false,

@@ -35,13 +35,10 @@ func TestCore_Rekey_Lifecycle(t *testing.T) {
 func testCore_Rekey_Lifecycle_Common(t *testing.T, c *Core, recovery bool) {
 	min, _ := c.barrier.KeyLength()
 	// Verify update not allowed
-	_, err := c.RekeyUpdate(context.Background(), make([]byte, min), "", recovery)
-	expected := "no barrier rekey in progress"
-	if recovery {
-		expected = "no recovery rekey in progress"
-	}
-	if err == nil || !strings.Contains(err.Error(), expected) {
-		t.Fatalf("no rekey should be in progress, err: %v", err)
+	ctx := namespace.RootContext(context.Background())
+	_, err := c.RekeyUpdate(ctx, make([]byte, min), "", recovery)
+	if err == nil || !strings.Contains(err.Error(), "no rotation in progress") {
+		t.Fatalf("no rotation should be in progress, err: %v", err)
 	}
 
 	// Should be no progress
@@ -69,7 +66,7 @@ func testCore_Rekey_Lifecycle_Common(t *testing.T, c *Core, recovery bool) {
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	err = c.RekeyInit(newConf, recovery)
+	err = c.RekeyInit(ctx, newConf, recovery)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -113,7 +110,8 @@ func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 		SecretThreshold: 5,
 		SecretShares:    1,
 	}
-	err := c.RekeyInit(badConf, recovery)
+	ctx := namespace.RootContext(context.Background())
+	err := c.RekeyInit(ctx, badConf, recovery)
 	if err == nil {
 		t.Fatal("should fail")
 	}
@@ -130,13 +128,13 @@ func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 		newConf.Type = c.seal.RecoveryType()
 	}
 
-	err = c.RekeyInit(newConf, recovery)
+	err = c.RekeyInit(ctx, newConf, recovery)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Second should fail
-	err = c.RekeyInit(newConf, recovery)
+	err = c.RekeyInit(ctx, newConf, recovery)
 	if err == nil {
 		t.Fatal("should fail")
 	}
@@ -166,7 +164,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	hErr := c.RekeyInit(newConf, recovery)
+	hErr := c.RekeyInit(namespace.RootContext(context.Background()), newConf, recovery)
 	if hErr != nil {
 		t.Fatalf("err: %v", hErr)
 	}
@@ -260,7 +258,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		SecretThreshold: 1,
 		SecretShares:    1,
 	}
-	err = c.RekeyInit(newConf, recovery)
+	err = c.RekeyInit(ctx, newConf, recovery)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -346,7 +344,7 @@ func testCore_Rekey_Invalid_Common(t *testing.T, c *Core, keys [][]byte, recover
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	err := c.RekeyInit(newConf, recovery)
+	err := c.RekeyInit(namespace.RootContext(context.Background()), newConf, recovery)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -443,7 +441,8 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
-	err = core.RekeyInit(newConf, false)
+	ctx := namespace.RootContext(context.Background())
+	err = core.RekeyInit(ctx, newConf, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -457,7 +456,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	}
 	var rekeyResult *RekeyResult
 	for _, key := range keys {
-		rekeyResult, err = core.RekeyUpdate(context.Background(), key, rkconf.Nonce, false)
+		rekeyResult, err = core.RekeyUpdate(ctx, key, rkconf.Nonce, false)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -476,7 +475,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	TestWaitActive(t, core2)
 
 	// Rekey the root key again
-	err = core2.RekeyInit(newConf, false)
+	err = core2.RekeyInit(ctx, newConf, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -490,7 +489,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	}
 	var rekeyResult2 *RekeyResult
 	for _, key := range rekeyResult.SecretShares {
-		rekeyResult2, err = core2.RekeyUpdate(context.Background(), key, rkconf.Nonce, false)
+		rekeyResult2, err = core2.RekeyUpdate(ctx, key, rkconf.Nonce, false)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -509,10 +508,11 @@ func TestSysRekey_Verification_Invalid(t *testing.T) {
 		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
 		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
 
-	err := core.BarrierRekeyInit(&SealConfig{
-		VerificationRequired: true,
-		StoredShares:         1,
-	})
+	err := core.BarrierRekeyInit(namespace.RootContext(context.Background()),
+		&SealConfig{
+			VerificationRequired: true,
+			StoredShares:         1,
+		})
 
 	if err == nil {
 		t.Fatal("expected error")

@@ -231,7 +231,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 
 	barrier := c.sealManager.NamespaceBarrier(ns.Path)
 	if barrier == nil {
-		return nil, ErrBarrierNotFound
+		return nil, ErrNotSealable
 	}
 
 	// Verify the key length

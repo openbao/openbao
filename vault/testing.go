@@ -861,6 +861,7 @@ func (c *TestCluster) SetRootToken(token string) {
 }
 
 func (c *TestCluster) Start() {
+	time.Sleep(3 * time.Second)
 }
 
 func (c *TestCluster) start(t testing.T) {
@@ -963,7 +964,7 @@ func (c *TestCluster) UnsealCoresWithError(useStoredKeys bool) error {
 	}
 
 	// Let them come fully up to standby
-	time.Sleep(4 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// Ensure cluster connection info is populated.
 	// Other cores should not come up as leaders.
@@ -1131,6 +1132,22 @@ func (c *TestCluster) ensureCoresSealed() error {
 				return errors.New("timeout waiting for core to seal")
 			}
 			if core.Sealed() {
+				break
+			}
+			time.Sleep(250 * time.Millisecond)
+		}
+	}
+	return nil
+}
+
+func (c *TestCluster) ensureCoresUnsealed() error {
+	for i, core := range c.Cores {
+		timeout := time.Now().Add(60 * time.Second)
+		for {
+			if time.Now().After(timeout) {
+				return fmt.Errorf("timeout waiting for core[%d] to unseal", i)
+			}
+			if !core.Sealed() {
 				break
 			}
 			time.Sleep(250 * time.Millisecond)
@@ -2162,7 +2179,11 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		}
 
 		// Let them come fully up to standby
-		time.Sleep(2 * time.Second)
+		// if err := tc.ensureCoresUnsealed(); err != nil {
+		// 	t.Fatal(err)
+		// }
+
+		time.Sleep(5 * time.Second)
 
 		// Ensure cluster connection info is populated.
 		// Other cores should not come up as leaders.

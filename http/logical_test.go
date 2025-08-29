@@ -145,6 +145,9 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		}
 	}
 
+	// Reduce race window between post-unseal namespaceStore setup and request handling.
+	time.Sleep(2 * time.Second)
+
 	TestServerWithListener(t, ln1, addr1, core1)
 	TestServerWithListener(t, ln2, addr2, core2)
 	TestServerAuth(t, addr1, root)

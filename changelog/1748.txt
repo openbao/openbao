@@ -1,0 +1,3 @@
+```release-note:improvement
+Removed dependency on github.com/fatih/structs, with internal package.
+```

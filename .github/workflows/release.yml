@@ -315,7 +315,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          fetch-tags: true
+          # "fetch-tags: true" instead of "fetch-depth: 0" should be enough
+          # but it fails in combination with dogorelease
+          # https://github.com/actions/checkout/issues/1467
+          fetch-depth: 0
 
       - name: Create release if necessary
         if: ${{ !inputs.dogorelease }}

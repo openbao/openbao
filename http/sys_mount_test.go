@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fatih/structs"
 	"github.com/go-test/deep"
+	"github.com/openbao/openbao/helper/structtomap"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -1546,8 +1546,8 @@ func TestSysTuneMount(t *testing.T) {
 		"lease_id":       result.LeaseID,
 	}
 
-	if !reflect.DeepEqual(structs.Map(result), expected) {
-		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, structs.Map(result))
+	if !reflect.DeepEqual(structtomap.Map(result), expected) {
+		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, structtomap.Map(result))
 	}
 
 	// Now with lease TTL unspecified
@@ -1566,8 +1566,8 @@ func TestSysTuneMount(t *testing.T) {
 		"lease_id":       result.LeaseID,
 	}
 
-	if !reflect.DeepEqual(structs.Map(result), expected) {
-		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, structs.Map(result))
+	if !reflect.DeepEqual(structtomap.Map(result), expected) {
+		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, structtomap.Map(result))
 	}
 }
 

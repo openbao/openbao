@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fatih/structs"
+	"github.com/openbao/openbao/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -257,7 +257,7 @@ func (b *backend) pathCRLRead(ctx context.Context, req *logical.Request, d *fram
 		)), nil
 	}
 
-	retData = structs.New(&crl).Map()
+	retData = structtomap.New(&crl).Map()
 
 	return &logical.Response{
 		Data: retData,
@@ -360,7 +360,7 @@ Manage Certificate Revocation Lists checked during authentication.
 
 const pathCRLsHelpDesc = `
 This endpoint allows you to list, create, read, update, and delete the Certificate
-Revocation Lists checked during authentication, and/or CRL Distribution Point 
+Revocation Lists checked during authentication, and/or CRL Distribution Point
 URLs.
 
 When any CRLs are in effect, any login will check the trust chains sent by a

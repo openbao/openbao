@@ -16,7 +16,7 @@ import (
 
 	"golang.org/x/crypto/ed25519"
 
-	"github.com/fatih/structs"
+	"github.com/openbao/openbao/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -498,7 +498,7 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 				key.PublicKey = pubKey
 			}
 
-			retKeys[k] = structs.New(key).Map()
+			retKeys[k] = structtomap.New(key).Map()
 		}
 		resp.Data["keys"] = retKeys
 	}

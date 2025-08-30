@@ -10,10 +10,10 @@ import (
 	"net/url"
 	"sort"
 
-	"github.com/fatih/structs"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/go-version"
 
+	"github.com/openbao/openbao/helper/structtomap"
 	"github.com/openbao/openbao/helper/versions"
 	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -155,8 +155,8 @@ func pathConfigurePluginConnection(b *databaseBackend) *framework.Path {
 			"root_rotation_statements": {
 				Type: framework.TypeStringSlice,
 				Description: `Specifies the database statements to be executed
-				to rotate the root user's credentials. See the plugin's API 
-				page for more information on support and formatting for this 
+				to rotate the root user's credentials. See the plugin's API
+				page for more information on support and formatting for this
 				parameter.`,
 			},
 			"password_policy": {
@@ -288,7 +288,7 @@ func (b *databaseBackend) connectionReadHandler() framework.OperationFunc {
 		delete(config.ConnectionDetails, "private_key")
 
 		return &logical.Response{
-			Data: structs.New(config).Map(),
+			Data: structtomap.New(config).Map(),
 		}, nil
 	}
 }
@@ -542,7 +542,7 @@ const pathConfigConnectionHelpDesc = `
 This path configures the connection details used to connect to a particular
 database. This path runs the provided plugin name and passes the configured
 connection details to the plugin. See the documentation for the plugin specified
-for a full list of accepted connection details. 
+for a full list of accepted connection details.
 
 In addition to the database specific connection details, this endpoint also
 accepts:

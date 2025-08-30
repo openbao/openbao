@@ -9,12 +9,12 @@ type StructToMap[T any] struct {
 	value T
 }
 
-func New[T any](v T) *StructToMap[T] {
-	return &StructToMap[T]{value: v}
+func Map(s any) map[string]any {
+	return new(s).Map()
 }
 
-func Map(s any) map[string]any {
-	return New(s).Map()
+func new[T any](v T) *StructToMap[T] {
+	return &StructToMap[T]{value: v}
 }
 
 // Map converts a reflect.Value representing a struct (or pointer to struct)

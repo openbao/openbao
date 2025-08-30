@@ -18,8 +18,7 @@ type unexportedStruct struct {
 
 func TestMap_WithStructValue(t *testing.T) {
 	s := TestStruct{Name: "Alice", Age: 30, Admin: true}
-	stm := New(s)
-	m := stm.Map()
+	m := Map(s)
 
 	expected := map[string]any{
 		"Name":  "Alice",
@@ -34,7 +33,7 @@ func TestMap_WithStructValue(t *testing.T) {
 
 func TestMap_WithPointerToStruct(t *testing.T) {
 	s := &TestStruct{Name: "Bob", Age: 25, Admin: false}
-	m := New(s).Map()
+	m := Map(s)
 
 	expected := map[string]any{
 		"Name":  "Bob",
@@ -48,8 +47,8 @@ func TestMap_WithPointerToStruct(t *testing.T) {
 }
 
 func TestMap_WithNonStructValue(t *testing.T) {
-	stm := New(123)
-	m := stm.Map()
+	s := (123)
+	m := Map(s)
 	if len(m) != 0 {
 		t.Errorf("Map() with non-struct value should return empty map, got %v", m)
 	}
@@ -57,8 +56,7 @@ func TestMap_WithNonStructValue(t *testing.T) {
 
 func TestMap_WithUnexportedFields(t *testing.T) {
 	s := unexportedStruct{name: "hidden", age: 99}
-	stm := New(s)
-	m := stm.Map()
+	m := Map(s)
 	if len(m) != 0 {
 		t.Errorf("Map() should not include unexported fields, got %v", m)
 	}
@@ -73,8 +71,7 @@ func TestMap_WithEmbeddedStruct(t *testing.T) {
 		Name string
 	}
 	s := Outer{Embedded: Embedded{ID: 42}, Name: "OuterName"}
-	stm := New(s)
-	m := stm.Map()
+	m := Map(s)
 
 	expected := map[string]any{
 		"ID":   42,
@@ -88,8 +85,8 @@ func TestMap_WithEmbeddedStruct(t *testing.T) {
 
 func TestMap_WithNilPointer(t *testing.T) {
 	var s *TestStruct = nil
-	stm := New(s)
-	m := stm.Map()
+	m := Map(s)
+
 	if len(m) != 0 {
 		t.Errorf("Map() with nil pointer should return empty map, got %v", m)
 	}
@@ -101,8 +98,7 @@ func TestMap_WithStructContainingSliceAndMap(t *testing.T) {
 		Dict    map[string]int
 	}
 	s := Complex{Numbers: []int{1, 2, 3}, Dict: map[string]int{"a": 1}}
-	stm := New(s)
-	m := stm.Map()
+	m := Map(s)
 
 	expected := map[string]any{
 		"Numbers": []int{1, 2, 3},
@@ -119,8 +115,7 @@ func TestMap_WithAnonymousStruct(t *testing.T) {
 		X int
 		Y string
 	}{X: 7, Y: "anon"}
-	stm := New(s)
-	m := stm.Map()
+	m := Map(s)
 
 	expected := map[string]any{
 		"X": 7,
@@ -134,8 +129,7 @@ func TestMap_WithAnonymousStruct(t *testing.T) {
 
 func TestMap_WithZeroValueStruct(t *testing.T) {
 	s := TestStruct{}
-	stm := New(s)
-	m := stm.Map()
+	m := Map(s)
 
 	expected := map[string]any{
 		"Name":  "",
@@ -157,8 +151,7 @@ func TestMap_WithStructHavingUnexportedEmbedded(t *testing.T) {
 		Public string
 	}
 	s := Outer{hidden: hidden{secret: "nope"}, Public: "yes"}
-	stm := New(s)
-	m := stm.Map()
+	m := Map(s)
 
 	expected := map[string]any{
 		"Public": "yes",

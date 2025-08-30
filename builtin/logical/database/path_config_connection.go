@@ -288,7 +288,7 @@ func (b *databaseBackend) connectionReadHandler() framework.OperationFunc {
 		delete(config.ConnectionDetails, "private_key")
 
 		return &logical.Response{
-			Data: structtomap.New(config).Map(),
+			Data: structtomap.Map(config),
 		}, nil
 	}
 }

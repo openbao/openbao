@@ -595,7 +595,7 @@ func (c *OperatorRekeyCommand) backupRetrieve(client *api.Client) int {
 	}
 
 	secret := &api.Secret{
-		Data: structtomap.New(storedKeys).Map(),
+		Data: structtomap.Map(storedKeys),
 	}
 
 	return OutputSecret(c.UI, secret)

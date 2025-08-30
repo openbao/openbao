@@ -498,7 +498,7 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 				key.PublicKey = pubKey
 			}
 
-			retKeys[k] = structtomap.New(key).Map()
+			retKeys[k] = structtomap.Map(key)
 		}
 		resp.Data["keys"] = retKeys
 	}

@@ -257,7 +257,7 @@ func (b *backend) pathCRLRead(ctx context.Context, req *logical.Request, d *fram
 		)), nil
 	}
 
-	retData = structtomap.New(&crl).Map()
+	retData = structtomap.Map(&crl)
 
 	return &logical.Response{
 		Data: retData,

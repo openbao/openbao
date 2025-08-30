@@ -973,7 +973,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		roleTestStep.Data = roleVals.ToResponseData()
 		roleTestStep.Data["generate_lease"] = false
 		ret = append(ret, roleTestStep)
-		issueTestStep.Data = structtomap.New(issueVals).Map()
+		issueTestStep.Data = structtomap.Map(issueVals)
 		switch {
 		case issueTestStep.ErrorOk:
 			issueTestStep.Check = genericErrorOkCheck
@@ -1336,7 +1336,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 	// This allows for a variety of common names to be tested in various
 	// combinations with allowed toggles of the role
 	addCnTests := func() {
-		cnMap := structtomap.New(commonNames).Map()
+		cnMap := structtomap.Map(commonNames)
 		for name, allowedInt := range cnMap {
 			roleVals.KeyType = "rsa"
 			roleVals.KeyBits = 2048

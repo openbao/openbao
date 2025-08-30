@@ -85,7 +85,7 @@ func (b *backend) pathLeaseRead(ctx context.Context, req *logical.Request, data 
 	lease.MaxTTL = lease.MaxTTL / time.Second
 
 	return &logical.Response{
-		Data: structtomap.New(lease).Map(),
+		Data: structtomap.Map(lease),
 	}, nil
 }
 

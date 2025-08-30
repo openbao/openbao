@@ -86,13 +86,6 @@ const (
 	ErrAuthMaxAgeReAuthenticate = "max_age_violation"
 )
 
-type GrantType string
-
-const (
-	AuthorizationCode GrantType = "authorization_code"
-	ClientCredentials GrantType = "client_credentials"
-)
-
 type assignment struct {
 	GroupIDs  []string `json:"group_ids"`
 	EntityIDs []string `json:"entity_ids"`
@@ -103,22 +96,58 @@ type scope struct {
 	Description string `json:"description"`
 }
 
+type GrantType string
+
+const (
+	AuthorizationCode GrantType = "authorization_code"
+	ClientCredentials GrantType = "client_credentials"
+)
+
+func parseGrantType(s string) (GrantType, error) {
+	switch s {
+	case "authorization_code":
+		return AuthorizationCode, nil
+	case "client_credentials":
+		return ClientCredentials, nil
+	default:
+		return "", errors.New("unknown color: " + s)
+	}
+}
+
 type client struct {
 	// Used for indexing in memdb
 	Name        string `json:"name"`
 	NamespaceID string `json:"namespace_id"`
 
 	// User-supplied parameters
-	RedirectURIs   []string      `json:"redirect_uris"`
-	Assignments    []string      `json:"assignments"`
-	Key            string        `json:"key"`
-	IDTokenTTL     time.Duration `json:"id_token_ttl"`
-	AccessTokenTTL time.Duration `json:"access_token_ttl"`
-	Type           clientType    `json:"type"`
+	RedirectURIs      []string      `json:"redirect_uris"`
+	Assignments       []string      `json:"assignments"`
+	Key               string        `json:"key"`
+	IDTokenTTL        time.Duration `json:"id_token_ttl"`
+	AccessTokenTTL    time.Duration `json:"access_token_ttl"`
+	Type              clientType    `json:"type"`
+	AuthorizationCode bool          `json:"authorization_code"`
+	ClientCredentials bool          `json:"client_credentials"`
 
 	// Generated values that are used in OIDC endpoints
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
+}
+
+func (c *client) isAuthorizationFlow() bool {
+	return c.AuthorizationCode
+}
+
+// isFlowAllowed returns true if the given client ID is allowed to use the client flow
+func (c *client) isFlowAllowed(credentials GrantType) bool {
+	switch credentials {
+	case AuthorizationCode:
+		return c.AuthorizationCode
+	case ClientCredentials:
+		return c.ClientCredentials
+	default:
+		return false
+	}
 }
 
 type clientType int
@@ -335,6 +364,16 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 					Type:        framework.TypeString,
 					Description: "The client type based on its ability to maintain confidentiality of credentials. The following client types are supported: 'confidential', 'public'. Defaults to 'confidential'.",
 					Default:     "confidential",
+				},
+				"authorization_code": {
+					Type:        framework.TypeBool,
+					Default:     true,
+					Description: "Whether or not to authorization code flow is allowed in this provider",
+				},
+				"client_credentials": {
+					Type:        framework.TypeBool,
+					Default:     false,
+					Description: "Whether or not to client credentials flow is allowed in this provider",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -1162,6 +1201,18 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 		client.AccessTokenTTL = time.Duration(d.Get("access_token_ttl").(int)) * time.Second
 	}
 
+	if authorizationCode, ok := d.GetOk("authorization_code"); ok {
+		client.AuthorizationCode = authorizationCode.(bool)
+	} else if req.Operation == logical.CreateOperation {
+		client.AuthorizationCode = d.Get("authorization_code").(bool)
+	}
+
+	if clientCredentials, ok := d.GetOk("client_credentials"); ok {
+		client.ClientCredentials = clientCredentials.(bool)
+	} else if req.Operation == logical.CreateOperation {
+		client.ClientCredentials = d.Get("client_credentials").(bool)
+	}
+
 	if clientTypeRaw, ok := d.GetOk("client_type"); ok {
 		clientType := clientTypeRaw.(string)
 		if req.Operation == logical.UpdateOperation && client.Type.String() != clientType {
@@ -1186,7 +1237,6 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 		}
 		client.ClientID = clientID
 	}
-
 	// client secrets are only generated for confidential clients
 	if client.Type == confidential && client.ClientSecret == "" {
 		// generate client_secret
@@ -1226,13 +1276,15 @@ func (i *IdentityStore) pathOIDCListClient(ctx context.Context, req *logical.Req
 	for _, client := range clients {
 		keys = append(keys, client.Name)
 		keyInfo[client.Name] = map[string]interface{}{
-			"redirect_uris":    client.RedirectURIs,
-			"assignments":      client.Assignments,
-			"key":              client.Key,
-			"id_token_ttl":     int64(client.IDTokenTTL.Seconds()),
-			"access_token_ttl": int64(client.AccessTokenTTL.Seconds()),
-			"client_type":      client.Type.String(),
-			"client_id":        client.ClientID,
+			"redirect_uris":      client.RedirectURIs,
+			"assignments":        client.Assignments,
+			"key":                client.Key,
+			"id_token_ttl":       int64(client.IDTokenTTL.Seconds()),
+			"access_token_ttl":   int64(client.AccessTokenTTL.Seconds()),
+			"client_type":        client.Type.String(),
+			"client_id":          client.ClientID,
+			"client_credentials": client.ClientCredentials,
+			"authorization_code": client.AuthorizationCode,
 			// client_secret is intentionally omitted
 		}
 	}
@@ -1254,13 +1306,15 @@ func (i *IdentityStore) pathOIDCReadClient(ctx context.Context, req *logical.Req
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"redirect_uris":    client.RedirectURIs,
-			"assignments":      client.Assignments,
-			"key":              client.Key,
-			"id_token_ttl":     int64(client.IDTokenTTL.Seconds()),
-			"access_token_ttl": int64(client.AccessTokenTTL.Seconds()),
-			"client_id":        client.ClientID,
-			"client_type":      client.Type.String(),
+			"redirect_uris":      client.RedirectURIs,
+			"assignments":        client.Assignments,
+			"key":                client.Key,
+			"id_token_ttl":       int64(client.IDTokenTTL.Seconds()),
+			"access_token_ttl":   int64(client.AccessTokenTTL.Seconds()),
+			"client_id":          client.ClientID,
+			"client_type":        client.Type.String(),
+			"client_credentials": client.ClientCredentials,
+			"authorization_code": client.AuthorizationCode,
 		},
 	}
 
@@ -1723,6 +1777,9 @@ func (i *IdentityStore) pathOIDCAuthorize(ctx context.Context, req *logical.Requ
 	if client == nil {
 		return authResponse("", state, ErrAuthInvalidClientID, "client with client_id not found")
 	}
+	if !client.isAuthorizationFlow() {
+		return authResponse("", state, ErrTokenInvalidGrant, "code credential flow is not vor client allowed")
+	}
 
 	// Validate the redirect URI
 	redirectURI := d.Get("redirect_uri").(string)
@@ -1993,11 +2050,18 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	}
 
 	// Validate the grant type
-	grantType := d.Get("grant_type").(string)
+	grantType, err := parseGrantType(d.Get("grant_type").(string))
+	if err != nil {
+		return tokenResponse(nil, ErrTokenUnsupportedGrantType, "unsupported grant_type or parameter is empty value")
+	}
+	// Validate that the client allows auth flow to use the provider
+	if !client.isFlowAllowed(grantType) {
+		return tokenResponse(nil, ErrTokenInvalidGrant, "client is not authorized to use client credentials flow")
+	}
 	switch grantType {
-	case string(AuthorizationCode):
-		return i.authorizationCodeFlow(ctx, req, d, ns, clientID, name, client, key, provider)
-	case string(ClientCredentials):
+	case AuthorizationCode:
+		return i.authorizationCodeFlow(ctx, req, d, ns, name, client, key, provider)
+	case ClientCredentials:
 		return i.clientCredentialsFlow(ctx, req, d, ns, client, key, provider)
 	default:
 		return tokenResponse(nil, ErrTokenUnsupportedGrantType, "unsupported grant_type or parameter is empty value")
@@ -2078,7 +2142,7 @@ func (i *IdentityStore) generateIDTokenPayload(idToken idToken, templates []stri
 	}, "", "")
 }
 
-func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.Request, d *framework.FieldData, ns *namespace.Namespace, clientID string, name string, client *client, key *namedKey, provider *provider) (*logical.Response, error) {
+func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.Request, d *framework.FieldData, ns *namespace.Namespace, name string, client *client, key *namedKey, provider *provider) (*logical.Response, error) {
 	// Validate the authorization code
 	code := d.Get("code").(string)
 	if code == "" {
@@ -2100,6 +2164,7 @@ func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.
 	}
 
 	// Ensure the authorization code was issued to the authenticated client
+	clientID := client.ClientID
 	if authCodeEntry.clientID != clientID {
 		return tokenResponse(nil, ErrTokenInvalidGrant, "authorization code was not issued to the client")
 	}
@@ -2175,7 +2240,7 @@ func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.
 			"oidc_token_type": "access token",
 		},
 		InternalMeta: map[string]string{
-			accessTokenClientIDMeta: client.ClientID,
+			accessTokenClientIDMeta: clientID,
 			accessTokenScopesMeta:   strings.Join(authCodeEntry.scopes, scopesDelimiter),
 		},
 		InlinePolicy: fmt.Sprintf(`

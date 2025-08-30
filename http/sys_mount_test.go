@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"github.com/openbao/openbao/helper/structtomap"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/vault"
 )
 

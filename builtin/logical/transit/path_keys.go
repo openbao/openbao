@@ -16,9 +16,9 @@ import (
 
 	"golang.org/x/crypto/ed25519"
 
-	"github.com/openbao/openbao/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 

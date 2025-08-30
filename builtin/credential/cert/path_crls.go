@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openbao/openbao/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 

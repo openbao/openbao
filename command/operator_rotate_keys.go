@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
-	"github.com/openbao/openbao/helper/structtomap"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/posener/complete"
 )
 

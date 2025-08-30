@@ -33,7 +33,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/helper/structtomap"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
 
 	"github.com/openbao/openbao/helper/testhelpers"
@@ -52,6 +51,7 @@ import (
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"golang.org/x/net/idna"

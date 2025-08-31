@@ -73,7 +73,7 @@ export default class OidcClientModel extends Model {
   idTokenTtl;
 
   @attr('boolean', {
-    defaultValue: false,
+    defaultValue: true,
     label: 'Allow authorization code flow',
   })
   authorizationCode;

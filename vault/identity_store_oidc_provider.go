@@ -120,29 +120,34 @@ type client struct {
 	NamespaceID string `json:"namespace_id"`
 
 	// User-supplied parameters
-	RedirectURIs      []string      `json:"redirect_uris"`
-	Assignments       []string      `json:"assignments"`
-	Key               string        `json:"key"`
-	IDTokenTTL        time.Duration `json:"id_token_ttl"`
-	AccessTokenTTL    time.Duration `json:"access_token_ttl"`
-	Type              clientType    `json:"type"`
-	AuthorizationCode bool          `json:"authorization_code"`
-	ClientCredentials bool          `json:"client_credentials"`
+	RedirectURIs   []string      `json:"redirect_uris"`
+	Assignments    []string      `json:"assignments"`
+	Key            string        `json:"key"`
+	IDTokenTTL     time.Duration `json:"id_token_ttl"`
+	AccessTokenTTL time.Duration `json:"access_token_ttl"`
+	Type           clientType    `json:"type"`
+	// We want AuthorizationCode to be true by default if it is not set already.
+	AuthorizationCode *bool `json:"authorization_code"`
+	ClientCredentials bool  `json:"client_credentials"`
 
 	// Generated values that are used in OIDC endpoints
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
 }
 
-func (c *client) isAuthorizationFlow() bool {
-	return c.AuthorizationCode
+func (c *client) isAuthorizationCodeFlow() bool {
+	if c.AuthorizationCode == nil {
+		return true
+	} else {
+		return *c.AuthorizationCode
+	}
 }
 
 // isFlowAllowed returns true if the given client ID is allowed to use the client flow
 func (c *client) isFlowAllowed(credentials GrantType) bool {
 	switch credentials {
 	case AuthorizationCode:
-		return c.AuthorizationCode
+		return c.isAuthorizationCodeFlow()
 	case ClientCredentials:
 		return c.ClientCredentials
 	default:
@@ -1202,9 +1207,11 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 	}
 
 	if authorizationCode, ok := d.GetOk("authorization_code"); ok {
-		client.AuthorizationCode = authorizationCode.(bool)
+		b := authorizationCode.(bool)
+		client.AuthorizationCode = &b
 	} else if req.Operation == logical.CreateOperation {
-		client.AuthorizationCode = d.Get("authorization_code").(bool)
+		b := d.Get("authorization_code").(bool)
+		client.AuthorizationCode = &b
 	}
 
 	if clientCredentials, ok := d.GetOk("client_credentials"); ok {
@@ -1777,8 +1784,8 @@ func (i *IdentityStore) pathOIDCAuthorize(ctx context.Context, req *logical.Requ
 	if client == nil {
 		return authResponse("", state, ErrAuthInvalidClientID, "client with client_id not found")
 	}
-	if !client.isAuthorizationFlow() {
-		return authResponse("", state, ErrTokenInvalidGrant, "code credential flow is not vor client allowed")
+	if !client.isAuthorizationCodeFlow() {
+		return authResponse("", state, ErrTokenInvalidGrant, "client not allowed to perform authorization code credential flow")
 	}
 
 	// Validate the redirect URI
@@ -2056,7 +2063,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	}
 	// Validate that the client allows auth flow to use the provider
 	if !client.isFlowAllowed(grantType) {
-		return tokenResponse(nil, ErrTokenInvalidGrant, "client is not authorized to use client credentials flow")
+		return tokenResponse(nil, ErrTokenInvalidGrant, "client is not authorized to use given credentials flow")
 	}
 	switch grantType {
 	case AuthorizationCode:

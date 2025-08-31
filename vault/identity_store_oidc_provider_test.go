@@ -2208,6 +2208,10 @@ func TestOIDC_Path_OIDC_ProviderClient(t *testing.T) {
 		"client_credentials": false,
 		"authorization_code": false,
 	}
+	// Get value behind pointer so we can do not work on pointers in deep equal
+	if v, ok := resp.Data["authorization_code"].(*bool); ok && v != nil {
+		resp.Data["authorization_code"] = *v
+	}
 	if diff := deep.Equal(expected, resp.Data); diff != nil {
 		t.Fatal(diff)
 	}

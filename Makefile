@@ -20,6 +20,8 @@ ifneq ($(FDB_ENABLED), )
 	BUILD_TAGS+=foundationdb
 endif
 
+GORELEASER_VERSION=v2.11.2
+
 default: dev
 
 # bin generates the equivalent of releasable binaries for OpenBao
@@ -324,13 +326,13 @@ dev-gorelease:
 	@echo GORELEASER_CURRENT_TAG: $(GORELEASER_CURRENT_TAG)
 	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
 	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
-	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest release --clean --timeout=60m --verbose --parallelism 2 --snapshot --skip docker,sbom,sign
+	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) release --clean --timeout=60m --verbose --parallelism 2 --snapshot --skip docker,sbom,sign
 
 .PHONY: goreleaser-check
 goreleaser-check:
-	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.hsm.yaml
-	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.linux.yaml
-	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.other.yaml
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) check -f goreleaser.hsm.yaml
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) check -f goreleaser.linux.yaml
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) check -f goreleaser.other.yaml
 
 .PHONY: sync-deps
 sync-deps:

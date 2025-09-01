@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -490,7 +491,7 @@ func (i *IdentityStore) upsertEntityInTxn(ctx context.Context, txn *memdb.Txn, e
 			return nil
 		}
 
-		if strutil.StrListContains(aliasFactors, i.sanitizeName(alias.Name)+alias.MountAccessor) {
+		if slices.Contains(aliasFactors, i.sanitizeName(alias.Name)+alias.MountAccessor) {
 			i.logger.Warn(errDuplicateIdentityName.Error(), "alias_name", alias.Name, "mount_accessor", alias.MountAccessor, "local", alias.Local, "entity_name", entity.Name, "action", "delete one of the duplicate aliases")
 			if !i.disableLowerCasedNames {
 				return errDuplicateIdentityName
@@ -1392,7 +1393,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 
 	// Remove duplicate policies
 	if group.Policies != nil {
-		group.Policies = strutil.RemoveDuplicates(group.Policies, false)
+		group.Policies = strutil.RemoveDuplicates(group.Policies, true /* lowercase */)
 	}
 
 	txn := i.db(ctx).Txn(true)
@@ -1424,7 +1425,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 
 	// Update parent group IDs in the removed members
 	for _, currentMemberGroupID := range currentMemberGroupIDs {
-		if strutil.StrListContains(memberGroupIDs, currentMemberGroupID) {
+		if slices.Contains(memberGroupIDs, currentMemberGroupID) {
 			continue
 		}
 
@@ -1457,7 +1458,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 		}
 
 		// Skip if memberGroupID is already a member of group.ID
-		if strutil.StrListContains(memberGroup.ParentGroupIDs, group.ID) {
+		if slices.Contains(memberGroup.ParentGroupIDs, group.ID) {
 			continue
 		}
 
@@ -2434,11 +2435,22 @@ func (i *IdentityStore) handleAliasListCommon(ctx context.Context, groupAlias bo
 func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 	var count int
 	var outErr error
+
+	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
+	if !ok || rootViewRaw == nil {
+		return -1, fmt.Errorf("failed to load root namespace")
+	}
+	rootView := rootViewRaw.(*identityStoreNamespaceView)
+
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
+		db := views.db
+		if db == nil {
+			db = rootView.db
+		}
 
-		txn := views.db.Txn(false)
+		txn := db.Txn(false)
 
 		iter, err := txn.Get(entitiesTable, "id")
 		if err != nil {
@@ -2466,12 +2478,22 @@ func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[string]int, error) {
 	byNamespace := make(map[string]int)
 
+	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
+	if !ok || rootViewRaw == nil {
+		return nil, fmt.Errorf("failed to load root namespace")
+	}
+	rootView := rootViewRaw.(*identityStoreNamespaceView)
+
 	var err error
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
+		db := views.db
+		if db == nil {
+			db = rootView.db
+		}
 
-		txn := views.db.Txn(false)
+		txn := db.Txn(false)
 
 		var iter memdb.ResultIterator
 		iter, err = txn.Get(entitiesTable, "id")
@@ -2509,12 +2531,22 @@ func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[strin
 func (i *IdentityStore) countEntitiesByMountAccessor(ctx context.Context) (map[string]int, error) {
 	byMountAccessor := make(map[string]int)
 
+	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
+	if !ok || rootViewRaw == nil {
+		return nil, fmt.Errorf("failed to load root namespace")
+	}
+	rootView := rootViewRaw.(*identityStoreNamespaceView)
+
 	var err error
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
+		db := views.db
+		if db == nil {
+			db = rootView.db
+		}
 
-		txn := views.db.Txn(false)
+		txn := db.Txn(false)
 
 		var iter memdb.ResultIterator
 		iter, err = txn.Get(entitiesTable, "id")

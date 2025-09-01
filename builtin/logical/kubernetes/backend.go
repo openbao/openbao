@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/fileutil"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/parseutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 

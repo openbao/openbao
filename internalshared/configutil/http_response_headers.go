@@ -7,10 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"net/textproto"
+	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
 var ValidCustomStatusCodeCollection = []string{
@@ -79,7 +78,7 @@ func ParseCustomResponseHeaders(responseHeaders interface{}) (map[string]map[str
 
 // IsValidStatusCode checking for status codes outside the boundary
 func IsValidStatusCode(sc string) bool {
-	if strutil.StrListContains(ValidCustomStatusCodeCollection, sc) {
+	if slices.Contains(ValidCustomStatusCodeCollection, sc) {
 		return true
 	}
 

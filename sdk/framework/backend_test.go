@@ -13,8 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/go-secure-stdlib/strutil"
-
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
@@ -94,8 +92,8 @@ func TestBackendHandleRequestFieldWarnings(t *testing.T) {
 	require.NotNil(t, resp)
 	t.Log(resp.Warnings)
 	require.Len(t, resp.Warnings, 2)
-	require.True(t, strutil.StrListContains(resp.Warnings, "Endpoint ignored these unrecognized parameters: [unrecognized1 unrecognized2]"))
-	require.True(t, strutil.StrListContains(resp.Warnings, "Endpoint replaced the value of these parameters with the values captured from the endpoint's path: [name]"))
+	require.Contains(t, resp.Warnings, "Endpoint ignored these unrecognized parameters: [unrecognized1 unrecognized2]")
+	require.Contains(t, resp.Warnings, "Endpoint replaced the value of these parameters with the values captured from the endpoint's path: [name]")
 }
 
 func TestBackendHandleRequest(t *testing.T) {

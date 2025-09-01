@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,8 +30,8 @@ import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	semver "github.com/hashicorp/go-version"
+	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/hostutil"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/locking"
@@ -86,6 +87,8 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"raw",
 				"raw/*",
 				"rotate",
+				"rotate/keyring",
+				"rotate/root",
 				"config/cors",
 				"config/auditing/*",
 				"config/ui/headers/*",
@@ -117,13 +120,15 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"generate-root/attempt",
 				"generate-root/update",
 				"decode-token",
+				"mfa/validate",
+				// these endpoint are unauthenticated only with
+				// "disable_unauthed_rekey_endpoints" listener property set to true
 				"rekey/init",
 				"rekey/update",
 				"rekey/verify",
 				"rekey-recovery-key/init",
 				"rekey-recovery-key/update",
 				"rekey-recovery-key/verify",
-				"mfa/validate",
 			},
 
 			LocalStorage: []string{
@@ -135,6 +140,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 
 	b.Backend.Paths = append(b.Backend.Paths, b.configPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.rekeyPaths()...)
+	b.Backend.Paths = append(b.Backend.Paths, b.rotatePaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.sealPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.statusPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.pluginsCatalogListPaths()...)
@@ -3132,8 +3138,19 @@ func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Requ
 	description := data.Get("description").(string)
 	options := data.Get("options").(map[string]string)
 
+	conf := b.Core.rawConfig.Load().(*server.Config)
+
+	if !conf.UnsafeAllowAPIAuditCreation {
+		return handleError(fmt.Errorf("cannot enable audit device via API; use declarative, config-based audit device management instead"))
+	}
+
+	if _, hasPrefix := options["prefix"]; hasPrefix && !conf.AllowAuditLogPrefixing {
+		return handleError(fmt.Errorf("audit log prefixing is not allowed"))
+	}
+
 	// Create the mount entry
 	me := &MountEntry{
+		// API-created
 		Table:       auditTableType,
 		Path:        path,
 		Type:        backendType,
@@ -3172,6 +3189,10 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 	}
 	if entry == nil {
 		return nil, nil
+	}
+
+	if entry.Table == configAuditTableType {
+		return handleError(errors.New("cannot disable configuration-managed audit device"))
 	}
 
 	// Attempt disable
@@ -3281,84 +3302,6 @@ func (b *SystemBackend) handleKeyStatus(ctx context.Context, req *logical.Reques
 		},
 	}
 	return resp, nil
-}
-
-// handleKeyRotationConfigRead returns the barrier key rotation config
-func (b *SystemBackend) handleKeyRotationConfigRead(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	// Get the key info
-	rotConfig, err := b.Core.barrier.RotationConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &logical.Response{
-		Data: map[string]interface{}{
-			"max_operations": rotConfig.MaxOperations,
-			"enabled":        !rotConfig.Disabled,
-		},
-	}
-	if rotConfig.Interval > 0 {
-		resp.Data["interval"] = rotConfig.Interval.String()
-	} else {
-		resp.Data["interval"] = 0
-	}
-	return resp, nil
-}
-
-// handleKeyRotationConfigRead returns the barrier key rotation config
-func (b *SystemBackend) handleKeyRotationConfigUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	rotConfig, err := b.Core.barrier.RotationConfig()
-	if err != nil {
-		return nil, err
-	}
-	maxOps, ok, err := data.GetOkErr("max_operations")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.MaxOperations = maxOps.(int64)
-	}
-	interval, ok, err := data.GetOkErr("interval")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.Interval = time.Second * time.Duration(interval.(int))
-	}
-
-	enabled, ok, err := data.GetOkErr("enabled")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.Disabled = !enabled.(bool)
-	}
-
-	// Reject out of range settings
-	if rotConfig.Interval < minimumRotationInterval && rotConfig.Interval != 0 {
-		return logical.ErrorResponse("interval must be greater or equal to %s", minimumRotationInterval.String()), logical.ErrInvalidRequest
-	}
-
-	if rotConfig.MaxOperations < absoluteOperationMinimum || rotConfig.MaxOperations > absoluteOperationMaximum {
-		return logical.ErrorResponse("max_operations must be in the range [%d,%d]", absoluteOperationMinimum, absoluteOperationMaximum), logical.ErrInvalidRequest
-	}
-
-	// Store the rotation config
-	err = b.Core.barrier.SetRotationConfig(ctx, rotConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-// handleRotate is used to trigger a key rotation
-func (b *SystemBackend) handleRotate(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	if err := b.rotateBarrierKey(ctx); err != nil {
-		b.Backend.Logger().Error("error handling key rotation", "error", err)
-		return handleError(err)
-	}
-	return nil, nil
 }
 
 func (b *SystemBackend) handleWrappingPubkey(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -3600,7 +3543,7 @@ func (b *SystemBackend) handleMonitor(ctx context.Context, req *logical.Request,
 	lowerLogFormat := strings.ToLower(lf)
 
 	validFormats := []string{"standard", "json"}
-	if !strutil.StrListContains(validFormats, lowerLogFormat) {
+	if !slices.Contains(validFormats, lowerLogFormat) {
 		return logical.ErrorResponse("unknown log format"), nil
 	}
 
@@ -3997,7 +3940,7 @@ func hasMountAccess(ctx context.Context, acl *ACL, path string) bool {
 	// If a policy is giving us direct access to the mount path then we can do
 	// a fast return.
 	capabilities := acl.Capabilities(ctx, ns.TrimmedPath(path))
-	if !strutil.StrListContains(capabilities, DenyCapability) {
+	if !slices.Contains(capabilities, DenyCapability) {
 		return true
 	}
 
@@ -4570,21 +4513,22 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 }
 
 type SealStatusResponse struct {
-	Type         string   `json:"type"`
-	Initialized  bool     `json:"initialized"`
-	Sealed       bool     `json:"sealed"`
-	T            int      `json:"t"`
-	N            int      `json:"n"`
-	Progress     int      `json:"progress"`
-	Nonce        string   `json:"nonce"`
-	Version      string   `json:"version"`
-	BuildDate    string   `json:"build_date"`
-	Migration    bool     `json:"migration"`
-	ClusterName  string   `json:"cluster_name,omitempty"`
-	ClusterID    string   `json:"cluster_id,omitempty"`
-	RecoverySeal bool     `json:"recovery_seal"`
-	StorageType  string   `json:"storage_type,omitempty"`
-	Warnings     []string `json:"warnings,omitempty"`
+	Type             string   `json:"type"`
+	Initialized      bool     `json:"initialized"`
+	Sealed           bool     `json:"sealed"`
+	T                int      `json:"t"`
+	N                int      `json:"n"`
+	Progress         int      `json:"progress"`
+	Nonce            string   `json:"nonce"`
+	Version          string   `json:"version"`
+	BuildDate        string   `json:"build_date"`
+	Migration        bool     `json:"migration"`
+	ClusterName      string   `json:"cluster_name,omitempty"`
+	ClusterID        string   `json:"cluster_id,omitempty"`
+	RecoverySeal     bool     `json:"recovery_seal"`
+	RecoverySealType string   `json:"recovery_seal_type,omitempty"`
+	StorageType      string   `json:"storage_type,omitempty"`
+	Warnings         []string `json:"warnings,omitempty"`
 }
 
 func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResponse, error) {
@@ -4596,8 +4540,10 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 	}
 
 	var sealConfig *SealConfig
+	var recoveryType string
 	if core.SealAccess().RecoveryKeySupported() {
 		sealConfig, err = core.SealAccess().RecoveryConfig(ctx)
+		recoveryType = core.SealAccess().RecoveryType()
 	} else {
 		sealConfig, err = core.SealAccess().BarrierConfig(ctx)
 	}
@@ -4607,13 +4553,14 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 
 	if sealConfig == nil {
 		s := &SealStatusResponse{
-			Type:         core.SealAccess().BarrierType().String(),
-			Initialized:  initialized,
-			Sealed:       true,
-			RecoverySeal: core.SealAccess().RecoveryKeySupported(),
-			StorageType:  core.StorageType(),
-			Version:      version.GetVersion().VersionNumber(),
-			BuildDate:    version.BuildDate,
+			Type:             core.SealAccess().BarrierType().String(),
+			Initialized:      initialized,
+			Sealed:           true,
+			RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
+			RecoverySealType: recoveryType,
+			StorageType:      core.StorageType(),
+			Version:          version.GetVersion().VersionNumber(),
+			BuildDate:        version.BuildDate,
 		}
 
 		return s, nil
@@ -4636,20 +4583,21 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 	progress, nonce := core.SecretProgress(lock)
 
 	s := &SealStatusResponse{
-		Type:         sealConfig.Type,
-		Initialized:  initialized,
-		Sealed:       sealed,
-		T:            sealConfig.SecretThreshold,
-		N:            sealConfig.SecretShares,
-		Progress:     progress,
-		Nonce:        nonce,
-		Version:      version.GetVersion().VersionNumber(),
-		BuildDate:    version.BuildDate,
-		Migration:    core.IsInSealMigrationMode(lock) && !core.IsSealMigrated(lock),
-		ClusterName:  clusterName,
-		ClusterID:    clusterID,
-		RecoverySeal: core.SealAccess().RecoveryKeySupported(),
-		StorageType:  core.StorageType(),
+		Type:             core.SealAccess().BarrierType().String(),
+		Initialized:      initialized,
+		Sealed:           sealed,
+		T:                sealConfig.SecretThreshold,
+		N:                sealConfig.SecretShares,
+		Progress:         progress,
+		Nonce:            nonce,
+		Version:          version.GetVersion().VersionNumber(),
+		BuildDate:        version.BuildDate,
+		Migration:        core.IsInSealMigrationMode(lock) && !core.IsSealMigrated(lock),
+		ClusterName:      clusterName,
+		ClusterID:        clusterID,
+		RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
+		RecoverySealType: recoveryType,
+		StorageType:      core.StorageType(),
 	}
 
 	return s, nil
@@ -5555,13 +5503,6 @@ Enable a new audit backend or disable an existing backend.
 		`,
 	},
 
-	"rotate-config": {
-		"Configures settings related to the backend encryption key management.",
-		`
-		Configures settings related to the automatic rotation of the backend encryption key.
-		`,
-	},
-
 	"rotation-enabled": {
 		"Whether automatic rotation is enabled.",
 		"",
@@ -5574,16 +5515,54 @@ Enable a new audit backend or disable an existing backend.
 		"How long after installation of an active key term that the key will be automatically rotated.",
 		"",
 	},
-	"rotate": {
+
+	"rotate-keyring": {
 		"Rotates the backend encryption key used to persist data.",
 		`
 		Rotate generates a new encryption key which is used to encrypt all
-		data going to the storage backend. The old encryption keys are kept so
-		that data encrypted using those keys can still be decrypted.
+		data going to the storage backend. The old encryption keys are kept
+		so that data encrypted using those keys can still be decrypted.
+		`,
+	},
+	"rotate-keyring-config": {
+		"Configures settings related to the backend encryption key management.",
+		`
+		Configures settings related to the automatic rotation of the backend
+		encryption key.
 		`,
 	},
 
-	"rekey_backup": {
+	"rotate-root": {
+		"Perform a root key rotation without requiring key shares to be provided.",
+		"",
+	},
+
+	"rotate-init": {
+		`Initialize, read status or cancel the process of the rotation of
+		the root or recovery key.
+		`,
+		"",
+	},
+
+	"rotate-update": {
+		"Progress the rotation process by providing a single key share.",
+		`This endpoint is used to enter a single key share to progress the
+		rotation of the recovery or root key. If the threshold number of key
+		shares is reached, rotation will be completed. Otherwise, this API
+		must be called multiple times until that threshold is met.
+		The rotation nonce operation must be provided with each call.
+		On the final call, any new key shares will be returned immediately.
+		`,
+	},
+
+	"rotate-verify": {
+		`Read status of, progress or cancel the verification process of the
+		rotation attempt.
+		`,
+		"",
+	},
+
+	"rotate-backup": {
 		"Allows fetching or deleting the backup of the rotated unseal keys.",
 		"",
 	},

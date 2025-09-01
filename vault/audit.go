@@ -12,6 +12,7 @@ import (
 
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -34,8 +35,17 @@ const (
 	auditBarrierPrefix = "audit/"
 
 	// auditTableType is the value we expect to find for the audit table and
-	// corresponding entries
+	// corresponding entries. These can only be created by the deprecated
+	// sys/audit API; config-created audit entries are created with a
+	// different type.
 	auditTableType = "audit"
+
+	// configAuditTableType is the value we expect to find for audit table
+	// entries created by configuration and not just in-storage. While the
+	// in-storage takes precedence and is loaded, having a mismatched
+	// configuration entry means that audit devices will be removed and/or
+	// server startup will fail if the audit device configuration changes.
+	configAuditTableType = "audit-config"
 )
 
 // loadAuditFailed if loading audit tables encounters an error
@@ -325,7 +335,7 @@ func (c *Core) persistAudit(ctx context.Context, table *MountTable, localOnly bo
 	}
 
 	for _, entry := range table.Entries {
-		if entry.Table != table.Type {
+		if entry.Table != table.Type && entry.Table != configAuditTableType {
 			c.logger.Error("given entry to persist in audit table has wrong table value", "path", entry.Path, "entry_table_type", entry.Table, "actual_type", table.Type)
 			return errors.New("invalid audit entry found, not persisting")
 		}
@@ -581,4 +591,139 @@ func (g genericAuditor) AuditResponse(ctx context.Context, input *logical.LogInp
 	logInput := *input
 	logInput.Type = g.mountType + "-response"
 	return g.c.auditBroker.LogResponse(ctx, &logInput, g.c.auditedHeaders)
+}
+
+func (c *Core) ReloadAuditLogs() {
+	// Ensure we are already unsealed
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
+
+	if c.Sealed() {
+		return
+	}
+	if c.standby {
+		return
+	}
+
+	if err := c.handleAuditLogSetup(c.activeContext); err != nil {
+		c.logger.Error("failed to set up audit logs on reload", "error", err)
+	}
+}
+
+func (c *Core) handleAuditLogSetup(ctx context.Context) error {
+	conf := c.rawConfig.Load().(*server.Config)
+
+	c.auditLock.RLock()
+	table := c.audit.shallowClone()
+	c.auditLock.RUnlock()
+
+	auditDevicePaths := make(map[string]struct{}, len(conf.Audits))
+	for index, auditConfig := range conf.Audits {
+		if !strings.HasSuffix(auditConfig.Path, "/") {
+			auditConfig.Path += "/"
+		}
+
+		if auditConfig.Path == "/" {
+			return fmt.Errorf("audit config %v is missing a path", index)
+		}
+
+		// Ensure it is unique w.r.t. other configs.
+		if _, present := auditDevicePaths[auditConfig.Path]; present {
+			return fmt.Errorf("two audit devices with same path (%v) exist in config", auditConfig.Path)
+		}
+
+		// Ensure we don't have a prefix.
+		if _, hasPrefix := auditConfig.Options["prefix"]; hasPrefix && !conf.AllowAuditLogPrefixing {
+			return fmt.Errorf("audit log prefixing is not allowed")
+		}
+
+		// If the device exists in our table, validate it.
+		auditDevicePaths[auditConfig.Path] = struct{}{}
+
+		entry, err := table.findByPath(ctx, auditConfig.Path)
+		if err != nil {
+			return fmt.Errorf("while processing audit %v: %w", auditConfig.Path, err)
+		}
+
+		if entry == nil {
+			if err := c.addAuditFromConfig(ctx, auditConfig); err != nil {
+				return fmt.Errorf("failed to create new audit device %v: %w", auditConfig.Path, err)
+			}
+		} else {
+			// We have created a duplicate entry.
+			if entry.Table != configAuditTableType {
+				return fmt.Errorf("audit device in configuration (path: %v) was already created by API; remove the API audit device before attempting to create a duplicate configuration-based version", entry.Path)
+			}
+
+			if err := c.validateAuditFromConfig(ctx, auditConfig, entry); err != nil {
+				return fmt.Errorf("failed to validate audit device config %v: modifications to audit devices are not allowed: %w", auditConfig.Path, err)
+			}
+		}
+	}
+
+	for _, auditMount := range table.Entries {
+		if _, present := auditDevicePaths[auditMount.Path]; present {
+			continue
+		}
+
+		// If we have an API-based audit device, prevent deletion of it.
+		if auditMount.Table != configAuditTableType {
+			continue
+		}
+
+		c.logger.Info("disabling removed audit device", "path", auditMount.Path)
+		if existed, err := c.disableAudit(ctx, auditMount.Path, true); existed && err != nil {
+			return fmt.Errorf("failed to disable removed audit %v: %w", auditMount.Path, err)
+		}
+	}
+
+	return nil
+}
+
+func (c *Core) addAuditFromConfig(ctx context.Context, auditConfig *server.AuditDevice) error {
+	c.logger.Info("adding new audit device", "path", auditConfig.Path)
+
+	me := &MountEntry{
+		// Config created
+		Table:       configAuditTableType,
+		Path:        auditConfig.Path,
+		Type:        auditConfig.Type,
+		Description: auditConfig.Description,
+		Options:     auditConfig.Options,
+		Local:       auditConfig.Local,
+	}
+
+	return c.enableAudit(ctx, me, true)
+}
+
+func (c *Core) validateAuditFromConfig(ctx context.Context, auditConfig *server.AuditDevice, auditEntry *MountEntry) error {
+	if auditEntry.Type != auditConfig.Type {
+		return fmt.Errorf("audit device %v has different types: %v (table) vs %v (config)", auditConfig.Path, auditEntry.Type, auditConfig.Type)
+	}
+
+	if auditEntry.Description != auditConfig.Description {
+		return fmt.Errorf("audit device %v has different descriptions: %v (table) vs %v (config)", auditConfig.Path, auditEntry.Description, auditConfig.Description)
+	}
+
+	if auditEntry.Local != auditConfig.Local {
+		return fmt.Errorf("audit device %v has different values for local: %v (table) vs %v (config)", auditConfig.Path, auditEntry.Local, auditConfig.Local)
+	}
+
+	for key, valueConfig := range auditConfig.Options {
+		valueEntry, present := auditEntry.Options[key]
+		if !present {
+			return fmt.Errorf("audit device %v is missing option %v in the audit table but is present in the config", auditConfig.Path, key)
+		}
+		if valueEntry != valueConfig {
+			return fmt.Errorf("audit device %v is missing option %v differs: %v (table) vs %v (config)", auditConfig.Path, key, valueEntry, valueConfig)
+		}
+	}
+
+	for key := range auditEntry.Options {
+		if _, present := auditConfig.Options[key]; !present {
+			return fmt.Errorf("audit device %v is missing option %v in the audit table but is present in the config", auditConfig.Path, key)
+		}
+	}
+
+	return nil
 }

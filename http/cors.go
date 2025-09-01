@@ -6,9 +6,9 @@ package http
 import (
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -48,7 +48,7 @@ func wrapCORSHandler(h http.Handler, core *vault.Core) http.Handler {
 			return
 		}
 
-		if req.Method == http.MethodOptions && !strutil.StrListContains(allowedMethods, requestMethod) {
+		if req.Method == http.MethodOptions && !slices.Contains(allowedMethods, requestMethod) {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}

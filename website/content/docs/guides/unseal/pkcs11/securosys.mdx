@@ -1,0 +1,249 @@
+---
+sidebar_label: Securosys Primus HSM
+description: |-
+  This guide describes how to configure OpenBao auto-unsealing with a 
+  Securosys Primus HSM by using the PKCS#11 interface.
+---
+# Securosys Primus HSM
+
+This guide explains how to connect OpenBao with a Securosys Primus HSM by using
+PKCS#11.
+
+## Install the PKCS#11 library
+
+This section describes how to install the PKCS#11 library.
+
+### Install on VMs or bare metal
+
+For traditional installations, follow the 
+[Securosys PKCS#11 provider installation guide](https://docs.securosys.com/pkcs/Installation/pkcs11_provider_installation/).
+
+### Kubernetes
+
+The upstream OpenBao container images don't include the Securosys PKCS#11 
+library. To make the library available to the OpenBao pod on Kubernetes, use 
+one of the following methods.
+
+#### Option 1: Create a custom OpenBao container image
+
+Build a custom container image based on the `openbao-hsm-ubi` image. The 
+upstream `openbao` image can't be used, because the Primus PKCS#11 library 
+requires `glibc`.
+
+1.  Download the 
+    [PKCS#11 API Provider](https://docs.securosys.com/pkcs/downloads).
+
+2.  Unpack the provider for your architecture:
+    ```sh
+    # Set the version of the downloaded provider.
+    export VERSION=x.x.x
+    unzip PrimusAPI_PKCS11-v${VERSION}.zip
+
+    # Set your target architecture. 'aarch64' is also available.
+    export ARCH=x86_64 
+    tar xvf PrimusAPI_PKCS11-X-${VERSION}-rhel8-${ARCH}.tar.gz
+    ```
+
+3.  Create a `Dockerfile`:
+    ```Dockerfile
+    ARG BAO_VERSION
+    FROM ghcr.io/openbao/openbao-hsm-ubi:$BAO_VERSION
+
+    COPY primus /usr/local/primus
+    ```
+
+4.  Build and push the container image:
+    ```bash
+    # Replace x.x.x with the correct versions.
+    podman build --build-arg BAO_VERSION="x.x.x" \
+      -t openbao-hsm-ubi-primus:x.x.x .
+
+    podman push openbao-hsm-ubi-primus:x.x.x \
+      docker://registry.example.com/openbao-hsm-ubi-primus:x.x.x
+    ```
+
+5.  Deploy the HSM configuration and secrets to the cluster. For more 
+    information, see the Securosys documentation about the 
+    [`primus.cfg` file](https://docs.securosys.com/pkcs/Installation/pkcs11_provider_configuration#primuscfg-configuration-file-parameters) 
+    and the [`.secrets.cfg` file](https://docs.securosys.com/pkcs/Installation/permanent_secret_management).
+    ```bash
+    # Replace 4321 with your actual user PIN.
+    kubectl create secret generic hsm-secrets \
+      --from-literal=secrets.cfg="$(cat .secrets.cfg)" \
+      --from-literal=pin="4321"
+
+    kubectl create configmap hsm-config --from-file=primus.cfg=primus.cfg
+    ```
+
+6.  Extend the Helm values with the following configuration:
+    ```yaml
+    server:
+      image:
+        registry: "registry.example.com"
+        repository: "openbao-hsm-ubi-primus"
+        tag: "x.x.x"
+      ha:
+        raft:
+          config: |
+            # Your existing Raft storage configuration goes here.
+            
+            seal "pkcs11" {
+              lib       = "/usr/local/primus/lib/libprimusP11.so"
+              slot      = "0"
+              key_label = "bao-root-key-aes"
+              mechanism = "CKM_AES_GCM"
+            }
+      extraSecretEnvironmentVars:
+        - envName: BAO_HSM_PIN
+          secretName: hsm-secrets
+          secretKey: pin
+      volumes:
+        - name: hsm-config
+          configMap:
+            name: hsm-config
+        - name: hsm-secrets
+          secret:
+            secretName: hsm-secrets
+      volumeMounts:
+        - name: hsm-config
+          mountPath: "/etc/primus/primus.cfg"
+          subPath: primus.cfg
+        - name: hsm-secrets
+          mountPath: "/etc/primus/.secrets.cfg"
+          subPath: secrets.cfg
+    ```
+
+7.  Initialize OpenBao:
+    ```bash
+    bao operator init
+    ```
+
+#### Option 2: Inject the library with an init container
+
+This method uses the upstream `openbao-hsm-ubi` container image without 
+modification. You build a custom init container image that copies the library 
+into an `emptyDir` volume during pod initialization.
+
+This example stores the library as a tarball inside the init container image. 
+For production environments, consider fetching the library from a secure 
+artifact registry, such as JFrog Artifactory.
+
+1.  Download the 
+    [PKCS#11 API Provider](https://docs.securosys.com/pkcs/downloads).
+
+2.  Unpack the provider for your architecture:
+    ```sh
+    # Set the version of the downloaded provider.
+    export VERSION=x.x.x
+    unzip PrimusAPI_PKCS11-v${VERSION}.zip
+    ```
+
+3.  Create a `Dockerfile`:
+    ```Dockerfile
+    FROM alpine:latest
+    
+    ARG ARCH
+    ARG VERSION
+
+    COPY PrimusAPI_PKCS11-X-${VERSION}-rhel8-${ARCH}.tar.gz /primus.tar.gz
+
+    CMD tar -x -C /usr/local -f /primus.tar.gz 
+    ```
+
+4.  Build and push the container image:
+    ```bash
+    # Replace x.x.x with the correct version.
+    podman build --build-arg VERSION="x.x.x" --build-arg ARCH="x86_64" \
+      -t primus-library:1.0.0 .
+
+    podman push primus-library:1.0.0 \
+      docker://registry.example.com/primus-library:1.0.0
+    ```
+
+5.  Deploy the HSM configuration and secrets to the cluster. For more 
+    information, see the Securosys documentation about the
+    [`primus.cfg` file](https://docs.securosys.com/pkcs/Installation/pkcs11_provider_configuration#primuscfg-configuration-file-parameters)
+    and the [`.secrets.cfg` file](https://docs.securosys.com/pkcs/Installation/permanent_secret_management).
+    ```bash
+    # Replace 4321 with your actual user PIN.
+    kubectl create secret generic hsm-secrets \
+      --from-literal=secrets.cfg="$(cat .secrets.cfg)" \
+      --from-literal=pin="4321"
+
+    kubectl create configmap hsm-config --from-file=primus.cfg=primus.cfg
+    ```
+
+6.  Extend the Helm values with the following configuration:
+    ```yaml
+    server:
+      image:
+        repository: "openbao/openbao-hsm-ubi"
+      ha:
+        raft:
+          config: |
+            # Your existing Raft storage configuration goes here.
+            
+            seal "pkcs11" {
+              lib       = "/usr/local/primus/lib/libprimusP11.so"
+              slot      = "0"
+              key_label = "bao-root-key-aes"
+              mechanism = "CKM_AES_GCM"
+            }
+      extraSecretEnvironmentVars:
+        - envName: BAO_HSM_PIN
+          secretName: hsm-secrets
+          secretKey: pin
+      volumes:
+        - name: hsm-config
+          configMap:
+            name: hsm-config
+        - name: hsm-secrets
+          secret:
+            secretName: hsm-secrets
+        - name: primus-library
+          emptyDir: {}
+      volumeMounts:
+        - name: hsm-config
+          mountPath: "/etc/primus/primus.cfg"
+          subPath: primus.cfg
+        - name: hsm-secrets
+          mountPath: "/etc/primus/.secrets.cfg"
+          subPath: secrets.cfg
+        - name: primus-library
+          mountPath: "/usr/local/primus"
+          readOnly: true
+      extraInitContainers:
+        - name: init-primus-library
+          image: "registry.example.com/primus-library:1.0.0"
+          volumeMounts:
+            - name: primus-library
+              mountPath: /usr/local/primus
+    ```
+
+7.  Initialize OpenBao:
+    ```bash
+    bao operator init
+    ```
+
+## Create a key in the HSM
+
+OpenBao does not automatically generate the key in the HSM. To create the key, 
+use a utility such as `pkcs11-tool`.
+
+```sh
+$ pkcs11-tool --module "/usr/local/primus/lib/libprimusP11.so" \
+  --slot 0 \
+  --pin 4321 \ # Replace with your actual user PIN.
+  --keygen \
+  --key-type aes:32 \
+  --label "bao-root-key-aes" \
+  --sensitive
+```
+In this command:
+* `--module`: Specifies the path to the PKCS#11 library.
+* `--slot 0`: Specifies HSM slot 0. This value depends on your configuration.
+* `--pin 4321`: Specifies the user PIN for authentication.
+* `--keygen`: Generates a new key.
+* `--key-type aes:32`: Specifies an AES-256 key suitable for `CKM_AES_GCM`. To use RSA with `CKM_RSA_OAEP`, specify `rsa:4096` and swap `--keygen` for `--keypairgen`.
+* `--label "bao-root-key-aes"`: Sets the label of the key in the HSM.
+* `--sensitive`: Sets the `CKA_SENSITIVE` attribute, which prevents the key from being revealed in plaintext.

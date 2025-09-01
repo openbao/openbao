@@ -46,6 +46,10 @@ const SupportList: SupportItem[] = [
         title: "Adfinis",
         description: "Development; open-source community efforts",
     },
+    {
+        title: "Liquid Reply",
+        description: "Development; open-source community efforts",
+    },
 ];
 
 function Supporter({ title, description }: SupportItem) {

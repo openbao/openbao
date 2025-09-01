@@ -7,10 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
@@ -342,7 +342,7 @@ func (b *kubeAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 		return logical.ErrorResponse("%q can not be empty", "bound_service_account_names"), nil
 	}
 	// Verify * was not set with other data
-	if len(role.ServiceAccountNames) > 1 && strutil.StrListContains(role.ServiceAccountNames, "*") {
+	if len(role.ServiceAccountNames) > 1 && slices.Contains(role.ServiceAccountNames, "*") {
 		return logical.ErrorResponse("can not mix %q with values", "*"), nil
 	}
 
@@ -367,7 +367,7 @@ func (b *kubeAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 	}
 
 	// Verify * was not set with other data
-	if saNamespaceLen > 1 && strutil.StrListContains(role.ServiceAccountNamespaces, "*") {
+	if saNamespaceLen > 1 && slices.Contains(role.ServiceAccountNamespaces, "*") {
 		return logical.ErrorResponse("can not mix %q with values", "*"), nil
 	}
 

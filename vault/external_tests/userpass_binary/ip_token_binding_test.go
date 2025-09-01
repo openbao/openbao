@@ -117,6 +117,7 @@ func Test_StrictIPBinding(t *testing.T) {
 	t.Logf("cURL Command: %v\nstdout: %v\nstderr: %v\n", curlCmd, string(stdout), string(stderr))
 	require.NoError(t, err, "got error running cURL command")
 	require.Contains(t, string(stdout), "permission denied", "expected failure retcode cURL command result")
+	require.Zero(t, retcode)
 
 	cloned, err := client.Clone()
 	require.NoError(t, err)
@@ -135,7 +136,10 @@ func Test_StrictIPBinding(t *testing.T) {
 
 		"-H", "Content-Type: application/json",
 		"--data", `{"password": "password"}`,
-		"https://" + vaultAddr + ":8200/v1/auth/userpass/login/testing",
+		// We switch the username to Testing to ensure case validation
+		// does not affect user lockout attribution. This is a test
+		// to validate our fix for HCSEC-2025-16 / CVE-2025-6004.
+		"https://" + vaultAddr + ":8200/v1/auth/userpass/login/Testing",
 	}
 	stdout, stderr, retcode, err = curlRunner.RunCmdWithOutput(ctx, curlResult.Container.ID, curlCmd)
 	t.Logf("cURL Command: %v\nstdout: %v\nstderr: %v\n", curlCmd, string(stdout), string(stderr))
@@ -145,8 +149,11 @@ func Test_StrictIPBinding(t *testing.T) {
 	var data map[string]interface{}
 	err = json.Unmarshal(stdout, &data)
 	require.NoError(t, err)
+	require.NotContains(t, data, "errors")
+	require.Contains(t, data, "auth")
 
 	auth := data["auth"].(map[string]interface{})
+	require.Contains(t, auth, "client_token")
 	remoteToken := auth["client_token"].(string)
 
 	// Using the remote token locally should fail...

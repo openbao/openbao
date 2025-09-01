@@ -15,7 +15,6 @@ import (
 
 	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
@@ -160,9 +159,6 @@ type PolicyStore struct {
 	// long as there aren't concurrent writes.
 	modifyLock *sync.RWMutex
 
-	// Stores whether a token policy is ACL
-	policyTypeMap sync.Map
-
 	// logger is the server logger copied over from core
 	logger log.Logger
 }
@@ -193,19 +189,6 @@ func NewPolicyStore(ctx context.Context, core *Core, baseView BarrierView, syste
 		ps.tokenPoliciesLRU = cache
 	}
 
-	aclView := ps.getACLView(namespace.RootNamespace)
-	keys, err := logical.CollectKeys(namespace.RootContext(ctx), aclView)
-	if err != nil {
-		ps.logger.Error("error collecting acl policy keys", "error", err)
-		return nil, err
-	}
-	for _, key := range keys {
-		index := ps.cacheKey(namespace.RootNamespace, ps.sanitizeName(key))
-		ps.policyTypeMap.Store(index, PolicyTypeACL)
-	}
-
-	// Special-case root; doesn't exist on disk but does need to be found
-	ps.policyTypeMap.Store(ps.cacheKey(namespace.RootNamespace, "root"), PolicyTypeACL)
 	return ps, nil
 }
 
@@ -290,7 +273,7 @@ func (ps *PolicyStore) SetPolicy(ctx context.Context, p *Policy, casVersion *int
 	}
 	// Policies are normalized to lower-case
 	p.Name = ps.sanitizeName(p.Name)
-	if strutil.StrListContains(immutablePolicies, p.Name) {
+	if slices.Contains(immutablePolicies, p.Name) {
 		return fmt.Errorf("cannot update %q policy", p.Name)
 	}
 
@@ -357,8 +340,6 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy, casVers
 			return fmt.Errorf("failed to persist policy: %w", err)
 		}
 
-		ps.policyTypeMap.Store(index, PolicyTypeACL)
-
 		if ps.tokenPoliciesLRU != nil {
 			ps.tokenPoliciesLRU.Add(index, p)
 		}
@@ -372,22 +353,18 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy, casVers
 // GetNonEGPPolicyType returns a policy's type.
 // It will return an error if the policy doesn't exist in the store or isn't
 // an ACL.
-func (ps *PolicyStore) GetNonEGPPolicyType(nsID string, name string) (*PolicyType, error) {
-	sanitizedName := ps.sanitizeName(name)
-	index := path.Join(nsID, sanitizedName)
-
-	pt, ok := ps.policyTypeMap.Load(index)
-	if !ok {
-		// Doesn't exist
-		return nil, ErrPolicyNotExistInTypeMap
+func (ps *PolicyStore) GetNonEGPPolicyType(ctx context.Context, name string) (*PolicyType, error) {
+	// We only support ACL policies at the moment.
+	policy, err := ps.GetPolicy(ctx, name, PolicyTypeACL)
+	if err != nil {
+		return nil, err
 	}
 
-	policyType, ok := pt.(PolicyType)
-	if !ok {
-		return nil, fmt.Errorf("unknown policy type for: %v", index)
+	if policy == nil {
+		return nil, ErrPolicyNotExist
 	}
 
-	return &policyType, nil
+	return &policy.Type, nil
 }
 
 // getACLView returns the ACL view for the given namespace
@@ -417,6 +394,7 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	if err != nil {
 		return nil, err
 	}
+
 	// Policies are normalized to lower-case
 	name = ps.sanitizeName(name)
 	index := ps.cacheKey(ns, name)
@@ -425,23 +403,10 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	var view BarrierView
 
 	switch policyType {
-	case PolicyTypeACL:
+	case PolicyTypeACL, PolicyTypeToken:
 		cache = ps.tokenPoliciesLRU
 		view = ps.getACLView(ns)
-	case PolicyTypeToken:
-		cache = ps.tokenPoliciesLRU
-		val, ok := ps.policyTypeMap.Load(index)
-		if !ok {
-			// Doesn't exist
-			return nil, nil
-		}
-		policyType = val.(PolicyType)
-		switch policyType {
-		case PolicyTypeACL:
-			view = ps.getACLView(ns)
-		default:
-			return nil, fmt.Errorf("invalid type of policy in type map: %q", policyType)
-		}
+		policyType = PolicyTypeACL
 	}
 
 	if cache != nil {
@@ -467,6 +432,7 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 		p := &Policy{
 			Name:      "root",
 			namespace: namespace.RootNamespace,
+			Type:      PolicyTypeACL,
 		}
 		if cache != nil {
 			cache.Add(index, p)
@@ -556,9 +522,6 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 
 		// Reset this in case they set the name in the policy itself
 		policy.Name = name
-
-		ps.policyTypeMap.Store(index, PolicyTypeACL)
-
 	default:
 		return nil, fmt.Errorf("unknown policy type %q", policyEntry.Type.String())
 	}
@@ -648,7 +611,7 @@ func (ps *PolicyStore) switchedDeletePolicy(ctx context.Context, name string, po
 	switch policyType {
 	case PolicyTypeACL:
 		if !force {
-			if strutil.StrListContains(immutablePolicies, name) {
+			if slices.Contains(immutablePolicies, name) {
 				return fmt.Errorf("cannot delete %q policy", name)
 			}
 			if name == "default" {
@@ -667,8 +630,6 @@ func (ps *PolicyStore) switchedDeletePolicy(ctx context.Context, name string, po
 			// Clear the cache
 			ps.tokenPoliciesLRU.Remove(index)
 		}
-
-		ps.policyTypeMap.Delete(index)
 	}
 
 	return nil
@@ -749,7 +710,7 @@ func (ps *PolicyStore) loadACLPolicy(ctx context.Context, policyName, policyText
 		return fmt.Errorf("error fetching %s policy from store: %w", policyName, err)
 	}
 	if policy != nil {
-		if !strutil.StrListContains(immutablePolicies, policyName) || policyText == policy.Raw {
+		if !slices.Contains(immutablePolicies, policyName) || policyText == policy.Raw {
 			return nil
 		}
 	}

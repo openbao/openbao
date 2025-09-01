@@ -6,6 +6,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -96,7 +97,7 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 
 		// If role name isn't in the database's allowed roles, send back a
 		// permission denied.
-		if !strutil.StrListContains(dbConfig.AllowedRoles, "*") && !strutil.StrListContainsGlob(dbConfig.AllowedRoles, name) {
+		if !slices.Contains(dbConfig.AllowedRoles, "*") && !strutil.StrListContainsGlob(dbConfig.AllowedRoles, name) {
 			return nil, fmt.Errorf("%q is not an allowed role", name)
 		}
 
@@ -263,7 +264,7 @@ func (b *databaseBackend) pathStaticCredsRead() framework.OperationFunc {
 
 		// If role name isn't in the database's allowed roles, send back a
 		// permission denied.
-		if !strutil.StrListContains(dbConfig.AllowedRoles, "*") && !strutil.StrListContainsGlob(dbConfig.AllowedRoles, name) {
+		if !slices.Contains(dbConfig.AllowedRoles, "*") && !strutil.StrListContainsGlob(dbConfig.AllowedRoles, name) {
 			return nil, fmt.Errorf("%q is not an allowed role", name)
 		}
 

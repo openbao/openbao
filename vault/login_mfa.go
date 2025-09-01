@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/okta/okta-sdk-golang/v2/okta"
 	"github.com/okta/okta-sdk-golang/v2/okta/query"
@@ -34,8 +36,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/helper/parseutil"
-	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/patrickmn/go-cache"
 	otplib "github.com/pquerna/otp"
@@ -57,6 +57,8 @@ const (
 	loginMFAConfigPrefix      = "login-mfa/method/"
 	mfaLoginEnforcementPrefix = "login-mfa/enforcement/"
 )
+
+var ErrBadMFACredentials = errors.New("MFA credentials not supplied or incorrect")
 
 type totpKey struct {
 	Key string `json:"key"`
@@ -795,7 +797,7 @@ func (b *LoginMFABackend) handleMFALoginValidate(ctx context.Context, req *logic
 	}
 
 	// MFA validation has passed. Let's generate the token
-	resp, err := b.Core.LoginMFACreateToken(ctx, cachedResponseAuth.RequestPath, cachedResponseAuth.CachedAuth, req.Data, !req.IsInlineAuth)
+	resp, err := b.Core.LoginMFACreateToken(ctx, cachedResponseAuth.RequestPath, cachedResponseAuth.CachedAuth, req.Data, !req.IsInlineAuth, cachedResponseAuth.CachedUserLockout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a token. error: %v", err)
 	}
@@ -820,7 +822,7 @@ func (c *Core) teardownLoginMFA() error {
 
 // LoginMFACreateToken creates a token after the login MFA is validated.
 // It also applies the lease quotas on the original login request path.
-func (c *Core) LoginMFACreateToken(ctx context.Context, reqPath string, cachedAuth *logical.Auth, loginRequestData map[string]interface{}, persistToken bool) (*logical.Response, error) {
+func (c *Core) LoginMFACreateToken(ctx context.Context, reqPath string, cachedAuth *logical.Auth, loginRequestData map[string]interface{}, persistToken bool, userLockoutInfo *FailedLoginUser) (*logical.Response, error) {
 	auth := cachedAuth
 	resp := &logical.Response{
 		Auth: auth,
@@ -839,7 +841,7 @@ func (c *Core) LoginMFACreateToken(ctx context.Context, reqPath string, cachedAu
 		role = reqRole.(string)
 	}
 
-	_, resp, err = c.LoginCreateToken(ctx, ns, reqPath, mountPoint, role, resp, persistToken)
+	_, resp, err = c.LoginCreateToken(ctx, ns, reqPath, mountPoint, role, resp, persistToken, userLockoutInfo)
 	return resp, err
 }
 
@@ -1766,7 +1768,7 @@ ECONFIG_LOOP:
 			}
 
 			// Check if entityID is in the MFAEnforcement config
-			if strutil.StrListContains(eConfig.IdentityEntityIDs, entity.ID) {
+			if slices.Contains(eConfig.IdentityEntityIDs, entity.ID) {
 				matchedMfaEnforcementConfig = append(matchedMfaEnforcementConfig, eConfig)
 				continue
 			}
@@ -1777,13 +1779,13 @@ ECONFIG_LOOP:
 				return nil, errors.New("error on retrieving groups by entityID in MFA")
 			}
 			for _, g := range directGroups {
-				if strutil.StrListContains(eConfig.IdentityGroupIds, g.ID) {
+				if slices.Contains(eConfig.IdentityGroupIds, g.ID) {
 					matchedMfaEnforcementConfig = append(matchedMfaEnforcementConfig, eConfig)
 					continue ECONFIG_LOOP
 				}
 			}
 			for _, g := range inheritedGroups {
-				if strutil.StrListContains(eConfig.IdentityGroupIds, g.ID) {
+				if slices.Contains(eConfig.IdentityGroupIds, g.ID) {
 					matchedMfaEnforcementConfig = append(matchedMfaEnforcementConfig, eConfig)
 					continue ECONFIG_LOOP
 				}
@@ -2083,7 +2085,7 @@ func (c *Core) validateOkta(ctx context.Context, mConfig *mfa.Config, username s
 
 	for {
 		// Okta provides an SDK method `GetFactorTransactionStatus` but does not provide the transaction id in
-		// the VerifyFactor respone. This code effectively reimplements that method.
+		// the VerifyFactor response. This code effectively reimplements that method.
 		rq := client.CloneRequestExecutor()
 		req, err := rq.WithAccept("application/json").WithContentType("application/json").NewRequest("GET", url.String(), nil)
 		if err != nil {
@@ -2329,8 +2331,19 @@ func (c *Core) validatePingID(ctx context.Context, mConfig *mfa.Config, username
 }
 
 func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMethodSecret *mfa.Secret, configID, entityID string, usedCodes *cache.Cache, maximumValidationAttempts uint32) error {
+	// In HCSEC-2025-19, HashiCorp writes:
+	//
+	// > The TOTP validation will now return a generic error if the passcode
+	// > was already used.
+	//
+	// While such error message is of limited utility, as multiple error paths
+	// yielding the same error will likely still yield timing differences and
+	// thus are distinguishable to a determined attacker, we attempt to follow
+	// the same and yield the error "MFA credentials not supplied or incorrect"
+	// from multiple code paths here.
+
 	if mfaFactors == nil || mfaFactors.passcode == "" {
-		return errors.New("MFA credentials not supplied")
+		return ErrBadMFACredentials
 	}
 	passcode := mfaFactors.passcode
 
@@ -2339,16 +2352,22 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 		return errors.New("entity does not contain the TOTP secret")
 	}
 
+	// Validate the passcode has the right format for this totp.
+	if strings.TrimSpace(passcode) != passcode || len(passcode) != int(totpSecret.Digits) {
+		return ErrBadMFACredentials
+	}
+
 	usedName := fmt.Sprintf("%s_%s", configID, passcode)
 
 	_, ok := usedCodes.Get(usedName)
 	if ok {
-		return fmt.Errorf("code already used; new code is available in %v seconds", totpSecret.Period)
+		return ErrBadMFACredentials
 	}
 
 	// The duration in which a passcode is stored in cache to enforce
-	// rate limit on failed totp passcode validation
-	passcodeTTL := time.Duration(int64(time.Second) * int64(totpSecret.Period))
+	// rate limit on failed totp passcode validation. See note in
+	// totp/path_code.go for duration calculation.
+	passcodeTTL := time.Duration(int64(time.Second)*int64(totpSecret.Period) + int64(2*totpSecret.Skew))
 
 	// Enforcing rate limit per MethodID per EntityID
 	rateLimitID := fmt.Sprintf("%s_%s", configID, entityID)
@@ -2392,7 +2411,7 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 	}
 
 	if !valid {
-		return errors.New("failed to validate TOTP passcode")
+		return ErrBadMFACredentials
 	}
 
 	// Take the key skew, add two for behind and in front, and multiply that by
@@ -2763,7 +2782,7 @@ func (b *LoginMFABackend) deleteMFAConfigByMethodID(ctx context.Context, configI
 
 	for eConfigRaw := eConfigIter.Next(); eConfigRaw != nil; eConfigRaw = eConfigIter.Next() {
 		eConfig := eConfigRaw.(*mfa.MFAEnforcementConfig)
-		if strutil.StrListContains(eConfig.MFAMethodIDs, configID) {
+		if slices.Contains(eConfig.MFAMethodIDs, configID) {
 			return fmt.Errorf("methodID is still used by an enforcement configuration with ID: %s", eConfig.ID)
 		}
 	}

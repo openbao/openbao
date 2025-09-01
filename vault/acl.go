@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -250,7 +251,7 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 					existingPerms.RequiredParameters = pc.Permissions.RequiredParameters
 				} else {
 					for _, v := range pc.Permissions.RequiredParameters {
-						if !strutil.StrListContains(existingPerms.RequiredParameters, v) {
+						if !slices.Contains(existingPerms.RequiredParameters, v) {
 							existingPerms.RequiredParameters = append(existingPerms.RequiredParameters, v)
 						}
 					}

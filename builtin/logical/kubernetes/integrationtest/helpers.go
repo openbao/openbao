@@ -12,8 +12,9 @@ import (
 	"testing"
 	"time"
 
-	josejwt "github.com/go-jose/go-jose/v3/jwt"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -380,7 +381,7 @@ func testClusterRoleType(t *testing.T, client *api.Client, mountPath string, rol
 }
 
 func testK8sTokenTTL(t *testing.T, expectedSec int, token string) {
-	parsed, err := josejwt.ParseSigned(token)
+	parsed, err := josejwt.ParseSigned(token, consts.AllowedJWTSignatureAlgorithmsK8s)
 	require.NoError(t, err)
 	claims := map[string]interface{}{}
 	err = parsed.UnsafeClaimsWithoutVerification(&claims)
@@ -391,7 +392,7 @@ func testK8sTokenTTL(t *testing.T, expectedSec int, token string) {
 }
 
 func testK8sTokenAudiences(t *testing.T, expectedAudiences []interface{}, token string) {
-	parsed, err := josejwt.ParseSigned(token)
+	parsed, err := josejwt.ParseSigned(token, consts.AllowedJWTSignatureAlgorithmsK8s)
 	require.NoError(t, err)
 	claims := map[string]interface{}{}
 	err = parsed.UnsafeClaimsWithoutVerification(&claims)

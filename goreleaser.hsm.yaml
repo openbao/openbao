@@ -261,54 +261,126 @@ dockers:
       - ./CHANGELOG.md
 
 docker_manifests:
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+    skip_push: auto
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+    skip_push: auto
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:latest
+    skip_push: auto
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
     skip_push: false
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
     skip_push: auto
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
     skip_push: auto
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
     skip_push: auto
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+    skip_push: auto
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+    skip_push: auto
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:latest
+    skip_push: auto
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
     skip_push: false
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
     skip_push: auto
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
     skip_push: auto
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
     skip_push: auto
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+    skip_push: auto
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+    skip_push: auto
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:latest
+    skip_push: auto
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
     skip_push: false
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
     skip_push: auto
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
     skip_push: auto
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
     skip_push: auto
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
 
 archives:
   - format: tar.gz

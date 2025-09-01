@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/cap/oidc"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -848,8 +848,8 @@ func validRedirect(uri string, allowed []string) bool {
 	}
 
 	// if uri isn't a loopback, just string search the allowed list
-	if !strutil.StrListContains([]string{"localhost", "127.0.0.1", "::1"}, inputURI.Hostname()) {
-		return strutil.StrListContains(allowed, uri)
+	if !slices.Contains([]string{"localhost", "127.0.0.1", "::1"}, inputURI.Hostname()) {
+		return slices.Contains(allowed, uri)
 	}
 
 	// otherwise, search for a match in a port-agnostic manner, per the OAuth RFC.

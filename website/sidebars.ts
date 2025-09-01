@@ -60,6 +60,7 @@ const sidebars: SidebarsConfig = {
                 "concepts/tokens",
                 "concepts/identity",
                 "concepts/oidc-provider",
+                "concepts/profiles",
                 "concepts/response-wrapping",
                 "concepts/policies",
                 "concepts/password-policies",
@@ -80,8 +81,21 @@ const sidebars: SidebarsConfig = {
                 "concepts/duration-format",
                 "concepts/user-lockout",
             ],
+            Guides: [
+                {
+                    Unsealing: [
+                        {
+                            "PKCS#11": [
+                                "guides/unseal/pkcs11/securosys"
+                            ]
+                        }
+                    ]
+                }
+            ],
             Configuration: [
                 "configuration/index",
+                "configuration/audit",
+                "configuration/self-init",
                 {
                     listener: [
                         "configuration/listener/index",
@@ -175,9 +189,11 @@ const sidebars: SidebarsConfig = {
                         "commands/operator/raft",
                         "commands/operator/rekey",
                         "commands/operator/rotate",
+                        "commands/operator/rotate-keys",
                         "commands/operator/seal",
                         "commands/operator/step-down",
                         "commands/operator/unseal",
+                        "commands/operator/validate-config",
                     ],
                 },
                 "commands/patch",
@@ -471,6 +487,7 @@ const sidebars: SidebarsConfig = {
             ],
             "Release Notes": [
                 "release-notes/index",
+                "release-notes/2-4-0",
                 "release-notes/2-3-0",
                 "release-notes/2-2-0",
                 "release-notes/2-1-0",
@@ -514,6 +531,12 @@ const sidebars: SidebarsConfig = {
                 "rfcs/inline-auth",
                 "rfcs/authenticated-rekey",
                 "rfcs/self-init",
+                "rfcs/namespace-sealing",
+                "rfcs/external-keys",
+                "rfcs/config-audit-devices",
+                {
+                  "UI/UX": ["rfcs/web-ui-modernization"],
+                },
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

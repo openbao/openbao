@@ -122,7 +122,8 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		}
 
 		// Now init to verify the init response
-		if _, err := client.Sys().RekeyInit(&api.RekeyInitRequest{
+		//nolint:staticcheck // Testing deprecated (but still supported) functionality
+		if _, err := client.Sys().RekeyInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		}); err != nil {
@@ -153,7 +154,8 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		defer closer()
 
 		// Initialize a rekey
-		if _, err := client.Sys().RekeyInit(&api.RekeyInitRequest{
+		//nolint:staticcheck // Testing deprecated (but still supported) functionality
+		if _, err := client.Sys().RekeyInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		}); err != nil {
@@ -266,7 +268,8 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		defer closer()
 
 		// Initialize a rekey
-		status, err := client.Sys().RekeyRecoveryKeyInit(&api.RekeyInitRequest{
+		//nolint:staticcheck // Testing deprecated (but still supported) functionality
+		status, err := client.Sys().RekeyRecoveryKeyInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})
@@ -343,7 +346,8 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		defer closer()
 
 		// Initialize a rekey
-		status, err := client.Sys().RekeyInit(&api.RekeyInitRequest{
+		//nolint:staticcheck // Testing deprecated (but still supported) functionality
+		status, err := client.Sys().RekeyInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})
@@ -405,7 +409,8 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		defer closer()
 
 		// Initialize a rekey
-		status, err := client.Sys().RekeyInit(&api.RekeyInitRequest{
+		//nolint:staticcheck // Testing deprecated (but still supported) functionality
+		status, err := client.Sys().RekeyInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})
@@ -481,7 +486,8 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		defer closer()
 
 		// Initialize a rekey
-		status, err := client.Sys().RekeyRecoveryKeyInit(&api.RekeyInitRequest{
+		//nolint:staticcheck // Testing deprecated (but still supported) functionality
+		status, err := client.Sys().RekeyRecoveryKeyInit(&api.RotateInitRequest{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		})

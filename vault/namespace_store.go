@@ -215,7 +215,7 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 	ctx context.Context, barrier, view logical.Storage,
 	callback func(*namespace.Namespace) error,
 ) error {
-	return logical.HandleListPage(view, "", 100, func(page int, index int, entry string) (bool, error) {
+	return logical.HandleListPage(ctx, view, "", 100, func(page int, index int, entry string) (bool, error) {
 		item, err := view.Get(ctx, entry)
 		if err != nil {
 			return false, fmt.Errorf("failed to fetch namespace %v (page %v / index %v): %w", entry, page, index, err)
@@ -651,7 +651,7 @@ func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot boo
 
 // ListNamespaces is used to list namespaces below a parent namespace.
 // Optionally it can include the parent namespace itself and/or include all
-// decendents of the child namespaces.
+// descendants of the child namespaces.
 func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool, recursive bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_entries"}, time.Now())
 
@@ -818,6 +818,9 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, namespa
 	for _, me := range mountEntries {
 		err := ns.core.unmountInternal(nsCtx, me.Path, true)
 		if err != nil {
+			if errors.Is(err, errNoMatchingMount) {
+				continue
+			}
 			ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
 			return false
 		}

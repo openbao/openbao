@@ -21,9 +21,10 @@ import (
 	"testing"
 	"time"
 
-	josejwt "github.com/go-jose/go-jose/v3/jwt"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -982,16 +983,6 @@ func TestLoginIssValidation(t *testing.T) {
 		"jwt":  jwtGoodDataToken,
 	}
 
-	req = &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "login",
-		Storage:   storage,
-		Data:      data,
-		Connection: &logical.Connection{
-			RemoteAddr: "127.0.0.1",
-		},
-	}
-
 	// test iss validation enabled with explicitly defined issuer
 	data = map[string]interface{}{
 		"kubernetes_host":        "host",
@@ -1429,7 +1420,7 @@ func Test_kubeAuthBackend_getAliasName(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			tok, err := josejwt.ParseSigned(s)
+			tok, err := josejwt.ParseSigned(s, consts.AllowedJWTSignatureAlgorithmsK8s)
 			if err != nil {
 				t.Fatal(err)
 			}

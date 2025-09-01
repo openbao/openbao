@@ -57,7 +57,11 @@ seal "pkcs11" {
 To create the key in the HSM, use a utility like `pkcs11-tool`:
 
 ```bash
+# Example RSA key with 4096 bits
 $ pkcs11-tool --module "/usr/lib64/softhsm/libsofthsm.so" --token-label "OpenBao" --so-pin 1234 --pin 4321 --keypairgen --key-type rsa:4096 --label "bao-root-key-rsa"
+
+# Example AES key with 256 bits (32 bytes)
+$ pkcs11-tool --module "/usr/lib64/softhsm/libsofthsm.so" --token-label "OpenBao" --so-pin 1234 --pin 4321 --keygen --key-type aes:32 --label "bao-root-key-aes"
 ```
 
 ## `pkcs11` parameters
@@ -100,24 +104,24 @@ differently as determined by the HSM in use.
 - `key_label` `(string: <required>)`: The label of the key to use. May also be specified by the `BAO_HSM_KEY_LABEL`
   environment variable.
 
-- `default_key_label` `(string: "")`: This is the default key label for decryption
-  operations. Prior to 0.10.1, key labels were not stored with the ciphertext.
-  Seal entries now track the label used in encryption operations. The default value
-  for this field is the `key_label`. If `key_label` is rotated and this value is not
-  set, decryption may fail. May also be specified by the `BAO_HSM_DEFAULT_KEY_LABEL`
-  environment variable. This value is ignored in new installations.
-
 - `key_id` `(string: "")`: The ID of the key to use. The value should be a hexadecimal
   string (e.g., "0x33333435363434373537"). May also be specified by the
   `BAO_HSM_KEY_ID` environment variable.
 
-- `mechanism` `(string: <best available>)`: The encryption/decryption mechanism to use,
-  specified as a decimal or hexadecimal (prefixed by `0x`) string. May also be
-  specified by the `BAO_HSM_MECHANISM` environment variable.
-  Currently supported mechanisms (in order of precedence):
+- `mechanism` `(string: <best available>)`: The encryption/decryption mechanism
+  to use, specified either by name, or by decimal or hexadecimal (prefixed by
+  `0x`) string. May also be specified by the `BAO_HSM_MECHANISM` environment
+  variable. Currently supported mechanisms (in order of precedence):
 
-  - `0x1087` `CKM_AES_GCM`
-  - `0x0009` `CKM_RSA_PKCS_OAEP`
+  - Names: `AES_GCM`, `CKM_AES_GCM`, Hexadecimal: `0x1087`
+  - Names: `RSA_PKCS_OAEP`, `CKM_RSA_PKCS_OAEP`, Hexadecimal: `0x0009`
+
+- `disable_software_encryption` `(bool: false)`: For RSA-based mechanisms,
+  OpenBao performs the encryption operation locally in memory by exporting the
+  public key from the HSM. Set this option to `true` to force calling out to the
+  HSM for all encryption operations. This option is available starting with
+  OpenBao v2.4.0. All prior versions always call out to the HSM for encryption
+  and never perform encryption in software.
 
 :::warning
 
@@ -130,7 +134,7 @@ explicit HMACing).
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
 Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
-  
+
 ### Mechanism specific flags
 
 - `rsa_oaep_hash` `(string: "sha256")`: Specify the hash algorithm to use for RSA
@@ -150,7 +154,6 @@ BAO_HSM_SLOT
 BAO_HSM_TOKEN_LABEL
 BAO_HSM_PIN
 BAO_HSM_KEY_LABEL
-BAO_HSM_DEFAULT_KEY_LABEL
 BAO_HSM_KEY_ID
 BAO_HSM_MECHANISM
 BAO_HSM_RSA_OAEP_HASH
@@ -163,3 +166,9 @@ the key value, generate a new key in a different key label in the HSM and update
 configuration with the new key label value. Restart your OpenBao instance to pick up the new key
 label and all new encryption operations will use the updated key label. Old keys must not be disabled
 or deleted and are used to decrypt older data.
+
+## Tested HSM Vendors and Models
+
+| Vendor       | Model      | Unsealing | Installation Guide                                         |
+| ------------ | ---------- | --------- | ---------------------------------------------------------- |
+| Securosys SA | Primus HSM | Yes       | [Installation Guide](/docs/guides/unseal/pkcs11/securosys) |

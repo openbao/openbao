@@ -74,6 +74,9 @@ type DockerCluster struct {
 	builtTags map[string]struct{}
 
 	storage testcluster.ClusterStorage
+
+	// Whether HA mode is disabled
+	HADisabled bool
 }
 
 func (dc *DockerCluster) NamedLogger(s string) log.Logger {
@@ -208,13 +211,18 @@ func (dc *DockerCluster) setupNode0(ctx context.Context) error {
 		return err
 	}
 
-	err = ensureLeaderMatches(ctx, client, func(leader *api.LeaderResponse) error {
-		if !leader.IsSelf {
-			return fmt.Errorf("node %d leader=%v, expected=%v", 0, leader.IsSelf, true)
-		}
+	if !dc.HADisabled {
+		err = ensureLeaderMatches(ctx, client, func(leader *api.LeaderResponse) error {
+			if !leader.IsSelf {
+				return fmt.Errorf("node %d leader=%v, expected=%v", 0, leader.IsSelf, true)
+			}
 
-		return nil
-	})
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
 
 	status, err := client.Sys().SealStatusWithContext(ctx)
 	if err != nil {
@@ -440,6 +448,11 @@ func NewDockerCluster(ctx context.Context, opts *DockerClusterOptions) (*DockerC
 		builtTags:   map[string]struct{}{},
 		CA:          opts.CA,
 		storage:     opts.Storage,
+		HADisabled:  opts.HADisabled,
+	}
+
+	if dc.HADisabled && opts.NumCores > 1 {
+		return nil, fmt.Errorf("expected at most one core (%v) when HA mode is disabled", opts.NumCores)
 	}
 
 	if err := dc.setupDockerCluster(ctx, opts); err != nil {
@@ -947,6 +960,7 @@ type DockerClusterOptions struct {
 	Storage     testcluster.ClusterStorage
 	Root        bool
 	Entrypoint  string
+	HADisabled  bool
 }
 
 func DefaultOptions(t *testing.T) *DockerClusterOptions {
@@ -1009,7 +1023,11 @@ func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClu
 
 	var numCores int
 	if opts.NumCores == 0 {
-		numCores = DefaultNumCores
+		if dc.HADisabled {
+			numCores = 1
+		} else {
+			numCores = DefaultNumCores
+		}
 	} else {
 		numCores = opts.NumCores
 	}
@@ -1037,7 +1055,7 @@ func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClu
 		}
 		if i == 0 {
 			if err := dc.setupNode0(ctx); err != nil {
-				return nil
+				return err
 			}
 		} else {
 			if err := dc.joinNode(ctx, i, 0); err != nil {

@@ -23,11 +23,6 @@ var (
 	_ cli.CommandAutocomplete = (*OperatorRekeyCommand)(nil)
 )
 
-const (
-	keyTypeRecovery = "Recovery"
-	keyTypeUnseal   = "Unseal"
-)
-
 type OperatorRekeyCommand struct {
 	*BaseCommand
 
@@ -56,6 +51,10 @@ func (c *OperatorRekeyCommand) Synopsis() string {
 func (c *OperatorRekeyCommand) Help() string {
 	helpText := `
 Usage: bao operator rekey [options] [KEY]
+
+  WARNING: this method is being deprecated, please use:
+    $ bao operator rotate-keys 
+  instead.
 
   Generates a new set of unseal keys. This can optionally change the total
   number of key shares or the required threshold of those key shares to
@@ -279,7 +278,7 @@ func (c *OperatorRekeyCommand) Run(args []string) int {
 // init starts the rekey process.
 func (c *OperatorRekeyCommand) init(client *api.Client) int {
 	// Handle the different API requests
-	var fn func(*api.RekeyInitRequest) (*api.RekeyStatusResponse, error)
+	var fn func(*api.RotateInitRequest) (*api.RotateStatusResponse, error)
 	keyTypeRequired := keyTypeUnseal
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
@@ -293,7 +292,7 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 	}
 
 	// Make the request
-	status, err := fn(&api.RekeyInitRequest{
+	status, err := fn(&api.RotateInitRequest{
 		SecretShares:        c.flagKeyShares,
 		SecretThreshold:     c.flagKeyThreshold,
 		PGPKeys:             c.flagPGPKeys,
@@ -420,11 +419,11 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	var nonce string
 
 	switch status := status.(type) {
-	case *api.RekeyStatusResponse:
+	case *api.RotateStatusResponse:
 		stat := status
 		started = stat.Started
 		nonce = stat.Nonce
-	case *api.RekeyVerificationStatusResponse:
+	case *api.RotateVerificationStatusResponse:
 		stat := status
 		started = stat.Started
 		nonce = stat.Nonce
@@ -513,10 +512,10 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	var mightContainUnsealKeys bool
 
 	switch resp := resp.(type) {
-	case *api.RekeyUpdateResponse:
+	case *api.RotateUpdateResponse:
 		complete = resp.Complete
 		mightContainUnsealKeys = true
-	case *api.RekeyVerificationUpdateResponse:
+	case *api.RotateVerificationUpdateResponse:
 		complete = resp.Complete
 	default:
 		c.UI.Error("Unknown update response type")
@@ -528,8 +527,8 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	}
 
 	if mightContainUnsealKeys {
-		return c.printUnsealKeys(client, status.(*api.RekeyStatusResponse),
-			resp.(*api.RekeyUpdateResponse))
+		return c.printUnsealKeys(client, status.(*api.RotateStatusResponse),
+			resp.(*api.RotateUpdateResponse))
 	}
 
 	c.UI.Output(wrapAtLength("Rekey verification successful. The rekey operation is complete and the new keys are now active."))
@@ -577,7 +576,7 @@ func (c *OperatorRekeyCommand) status(client *api.Client) int {
 // backupRetrieve retrieves the stored backup keys.
 func (c *OperatorRekeyCommand) backupRetrieve(client *api.Client) int {
 	// Handle the different API requests
-	var fn func() (*api.RekeyRetrieveResponse, error)
+	var fn func() (*api.RotateRetrieveResponse, error)
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
 		fn = client.Sys().RekeyRetrieveBackup
@@ -632,7 +631,7 @@ func (c *OperatorRekeyCommand) printStatus(in interface{}) int {
 	out = append(out, "Key | Value")
 
 	switch in := in.(type) {
-	case *api.RekeyStatusResponse:
+	case *api.RotateStatusResponse:
 		status := in
 		out = append(out, fmt.Sprintf("Nonce | %s", status.Nonce))
 		out = append(out, fmt.Sprintf("Started | %t", status.Started))
@@ -653,7 +652,7 @@ func (c *OperatorRekeyCommand) printStatus(in interface{}) int {
 			out = append(out, fmt.Sprintf("PGP Fingerprints | %s", status.PGPFingerprints))
 			out = append(out, fmt.Sprintf("Backup | %t", status.Backup))
 		}
-	case *api.RekeyVerificationStatusResponse:
+	case *api.RotateVerificationStatusResponse:
 		status := in
 		out = append(out, fmt.Sprintf("Started | %t", status.Started))
 		out = append(out, fmt.Sprintf("New Shares | %d", status.N))
@@ -674,7 +673,7 @@ func (c *OperatorRekeyCommand) printStatus(in interface{}) int {
 	}
 }
 
-func (c *OperatorRekeyCommand) printUnsealKeys(client *api.Client, status *api.RekeyStatusResponse, resp *api.RekeyUpdateResponse) int {
+func (c *OperatorRekeyCommand) printUnsealKeys(client *api.Client, status *api.RotateStatusResponse, resp *api.RotateUpdateResponse) int {
 	switch Format(c.UI) {
 	case "table":
 	default:

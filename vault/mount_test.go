@@ -797,7 +797,7 @@ func TestCore_Remount_Namespaces(t *testing.T) {
 			SrcParentCtx: rootCtx,
 			SrcNS: namespace.MountPathDetails{
 				Namespace: namespace.RootNamespace,
-				MountPath: "secretFoo/", // Note that this is depending on pervious test case
+				MountPath: "secretFoo/", // Note that this is depending on previous test case
 			},
 			DstParentCtx: ns1Ctx,
 			DstNs: namespace.MountPathDetails{

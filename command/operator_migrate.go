@@ -5,17 +5,18 @@ package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/cli"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/openbao/openbao/command/server"
@@ -23,7 +24,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault"
-	"github.com/pkg/errors"
 	"github.com/posener/complete"
 	"golang.org/x/sync/errgroup"
 )
@@ -141,7 +141,7 @@ func (c *OperatorMigrateCommand) Run(args []string) int {
 	}
 	c.flagLogLevel = strings.ToLower(c.flagLogLevel)
 	validLevels := []string{"trace", "debug", "info", "warn", "error"}
-	if !strutil.StrListContains(validLevels, c.flagLogLevel) {
+	if !slices.Contains(validLevels, c.flagLogLevel) {
 		c.UI.Error(fmt.Sprintf("%s is an unknown log level. Valid log levels are: %s", c.flagLogLevel, validLevels))
 		return 1
 	}

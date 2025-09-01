@@ -68,6 +68,10 @@ const (
 	// for a highly-available deploy.
 	CoreLockPath = "core/lock"
 
+	// CoreInitLockPath is the path used to acquire a coordinating lock
+	// for a highly-available deployment which is undergoing initialization.
+	CoreInitLockPath = "core/initialize-lock"
+
 	// The poison pill is used as a check during certain scenarios to indicate
 	// to standby nodes that they should seal
 	poisonPillPath = "core/poison-pill"
@@ -77,8 +81,8 @@ const (
 	coreLeaderPrefix = "core/leader/"
 
 	// coreKeyringCanaryPath is used as a canary to indicate to replicated
-	// clusters that they need to perform a rekey operation synchronously; this
-	// isn't keyring-canary to avoid ignoring it when ignoring core/keyring
+	// clusters that they need to perform a rotation synchronously;
+	// this isn't keyring-canary to avoid ignoring it when ignoring core/keyring
 	coreKeyringCanaryPath = "core/canary-keyring"
 
 	// coreGroupPolicyApplicationPath is used to store the behaviour for
@@ -118,6 +122,10 @@ var (
 	// initialized. This prevents a re-initialization.
 	ErrAlreadyInit = errors.New("Vault is already initialized")
 
+	// ErrParallelInit is returned if the core is undergoing
+	// initialization on another node. This prevents a re-initialization.
+	ErrParallelInit = errors.New("Vault is being initialized on another node")
+
 	// ErrNotInit is returned if a non-initialized barrier
 	// is attempted to be unsealed.
 	ErrNotInit = errors.New("Vault is not initialized")
@@ -133,6 +141,9 @@ var (
 	// ErrIntrospectionNotEnabled is returned if "introspection_endpoint" is not
 	// enabled in the configuration file
 	ErrIntrospectionNotEnabled = errors.New("The Vault configuration must set \"introspection_endpoint\" to true to enable this endpoint")
+
+	// errNoMatchingMount is returned if the mount is not found
+	errNoMatchingMount = errors.New("no matching mount")
 
 	// manualStepDownSleepPeriod is how long to sleep after a user-initiated
 	// step down of the active node, to prevent instantly regrabbing the lock.
@@ -313,9 +324,9 @@ type Core struct {
 	// These variables holds the config and shares we have until we reach
 	// enough to verify the appropriate root key. Note that the same lock is
 	// used; this isn't time-critical so this shouldn't be a problem.
-	barrierRekeyConfig  *SealConfig
-	recoveryRekeyConfig *SealConfig
-	rekeyLock           sync.RWMutex
+	rootRotationConfig     *SealConfig
+	recoveryRotationConfig *SealConfig
+	rotationLock           sync.RWMutex
 
 	// mounts is loaded after unseal since it is a protected
 	// configuration
@@ -1832,9 +1843,9 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 			return fmt.Errorf("error generating new root key: %w", err)
 		}
 
-		// Rekey the barrier.
-		if err := c.barrier.Rekey(ctx, newRootKey); err != nil {
-			return fmt.Errorf("error rekeying barrier during migration: %w", err)
+		// Rotate the root key
+		if err := c.barrier.RotateRootKey(ctx, newRootKey); err != nil {
+			return fmt.Errorf("error rotating root key during migration: %w", err)
 		}
 
 		// Store the new root key
@@ -2328,6 +2339,9 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupAudits(ctx); err != nil {
 		return err
 	}
+	if err := c.handleAuditLogSetup(ctx); err != nil {
+		return err
+	}
 	if err := c.loadIdentityStoreArtifacts(ctx); err != nil {
 		return err
 	}
@@ -2394,7 +2408,7 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 		c.physicalCache.SetEnabled(true)
 	}
 
-	// Purge these for safety in case of a rekey
+	// Purge these for safety in case of a rotation
 	_ = c.seal.SetBarrierConfig(ctx, nil)
 	if c.seal.RecoveryKeySupported() {
 		_ = c.seal.SetRecoveryConfig(ctx, nil)
@@ -2485,9 +2499,9 @@ func (c *Core) preSeal() error {
 	c.postUnsealFuncs = nil
 	c.activeTime = time.Time{}
 
-	// Clear any rekey progress
-	c.barrierRekeyConfig = nil
-	c.recoveryRekeyConfig = nil
+	// Clear any rotation progress
+	c.rootRotationConfig = nil
+	c.recoveryRotationConfig = nil
 
 	if c.metricsCh != nil {
 		close(c.metricsCh)
@@ -2609,7 +2623,7 @@ func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfi
 		if err := jsonutil.DecodeJSON(pe.Value, recoveryConf); err != nil {
 			return nil, nil, fmt.Errorf("failed to decode seal configuration at migration check time: %w", err)
 		}
-		err = recoveryConf.Validate()
+		err = recoveryConf.ValidateRecovery()
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to validate seal configuration at migration check time: %w", err)
 		}
@@ -3220,27 +3234,30 @@ func (c *Core) autoRotateBarrierLoop(ctx context.Context) {
 func (c *Core) checkBarrierAutoRotate(ctx context.Context) {
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
-	if c.isPrimary() {
-		reason, err := c.barrier.CheckBarrierAutoRotate(ctx)
-		if err != nil {
-			lf := c.logger.Error
-			if strings.HasSuffix(err.Error(), "context canceled") {
-				lf = c.logger.Debug
-			}
-			lf("error in barrier auto rotation", "error", err)
-			return
-		}
-		if reason != "" {
-			// Time to rotate.  Invoke the rotation handler in order to both rotate and create
-			// the replication canary
-			c.logger.Info("automatic barrier key rotation triggered", "reason", reason)
 
-			_, err := c.systemBackend.handleRotate(ctx, nil, nil)
-			if err != nil {
-				c.logger.Error("error automatically rotating barrier key", "error", err)
-			} else {
-				metrics.IncrCounter(barrierRotationsMetric, 1)
-			}
+	if !c.isPrimary() {
+		return
+	}
+
+	reason, err := c.barrier.CheckBarrierAutoRotate(ctx)
+	if err != nil {
+		lf := c.logger.Error
+		if strings.HasSuffix(err.Error(), "context canceled") {
+			lf = c.logger.Debug
+		}
+		lf("error in barrier auto rotation", "error", err)
+		return
+	}
+
+	if reason != "" {
+		// Time to rotate. Invoke the rotation handler in order to both rotate and create
+		// the replication canary
+		c.logger.Info("automatic barrier key rotation triggered", "reason", reason)
+
+		if err := c.systemBackend.rotateBarrierKey(ctx); err != nil {
+			c.logger.Error("error automatically rotating barrier key", "error", err)
+		} else {
+			metrics.IncrCounter(barrierRotationsMetric, 1)
 		}
 	}
 }
@@ -3280,6 +3297,7 @@ func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {
 
 type MFACachedAuthResponse struct {
 	CachedAuth            *logical.Auth
+	CachedUserLockout     *FailedLoginUser
 	RequestPath           string
 	RequestNSID           string
 	RequestNSPath         string

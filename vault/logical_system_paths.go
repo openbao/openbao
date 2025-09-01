@@ -892,8 +892,8 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rekey_backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rekey_backup"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-backup"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate-backup"][0]),
 		},
 
 		{
@@ -946,8 +946,8 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rekey_backup"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rekey_backup"][0]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-backup"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["rotate-backup"][0]),
 		},
 		{
 			Pattern: "rekey/update",
@@ -1712,98 +1712,6 @@ func (b *SystemBackend) sealPaths() []*framework.Path {
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["key-status"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["key-status"][1]),
-		},
-
-		{
-			Pattern: "rotate/config$",
-
-			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "encryption-key",
-			},
-
-			Fields: map[string]*framework.FieldSchema{
-				"enabled": {
-					Type:        framework.TypeBool,
-					Description: strings.TrimSpace(sysHelp["rotation-enabled"][0]),
-				},
-				"max_operations": {
-					Type:        framework.TypeInt64,
-					Description: strings.TrimSpace(sysHelp["rotation-max-operations"][0]),
-				},
-				"interval": {
-					Type:        framework.TypeDurationSecond,
-					Description: strings.TrimSpace(sysHelp["rotation-interval"][0]),
-				},
-			},
-
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleKeyRotationConfigRead,
-					DisplayAttrs: &framework.DisplayAttributes{
-						OperationVerb:   "read",
-						OperationSuffix: "rotation-configuration",
-					},
-					Responses: map[int][]framework.Response{
-						http.StatusOK: {{
-							Description: "OK",
-							Fields: map[string]*framework.FieldSchema{
-								"max_operations": {
-									Type:     framework.TypeInt64,
-									Required: true,
-								},
-								"enabled": {
-									Type:     framework.TypeBool,
-									Required: true,
-								},
-								"interval": {
-									Type:     framework.TypeDurationSecond,
-									Required: true,
-								},
-							},
-						}},
-					},
-				},
-				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleKeyRotationConfigUpdate,
-					DisplayAttrs: &framework.DisplayAttributes{
-						OperationVerb:   "configure",
-						OperationSuffix: "rotation",
-					},
-					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{
-							Description: "OK",
-						}},
-					},
-					ForwardPerformanceSecondary: true,
-					ForwardPerformanceStandby:   true,
-				},
-			},
-
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate-config"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate-config"][1]),
-		},
-
-		{
-			Pattern: "rotate$",
-
-			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "encryption-key",
-				OperationVerb:   "rotate",
-			},
-
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRotate,
-					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{
-							Description: "OK",
-						}},
-					},
-				},
-			},
-
-			HelpSynopsis:    strings.TrimSpace(sysHelp["rotate"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["rotate"][1]),
 		},
 	}
 }

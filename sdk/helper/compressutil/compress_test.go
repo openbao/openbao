@@ -98,6 +98,11 @@ func TestCompressUtil_CompressDecompress(t *testing.T) {
 		if compressionType != test.compressionConfig.Type {
 			t.Fatalf("bad compressionType value;\nexpected: %q\naction: %q", test.compressionConfig.Type, compressionType)
 		}
+
+		// Compare the value after decompression
+		if !bytes.Equal(inputJSONBytes, decompressedJSONBytes) {
+			t.Fatalf("bad (%s): decompressed value;\nexpected: %q\nactual: %q", test.compressionType, string(inputJSONBytes), string(decompressedJSONBytes))
+		}
 	}
 }
 

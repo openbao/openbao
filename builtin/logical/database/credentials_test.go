@@ -11,7 +11,7 @@ import (
 	"encoding/pem"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/v2/helper/base62"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

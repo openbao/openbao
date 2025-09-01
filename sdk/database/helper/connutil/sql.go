@@ -39,11 +39,6 @@ type SQLConnectionProducer struct {
 	sync.Mutex
 }
 
-func (c *SQLConnectionProducer) Initialize(ctx context.Context, conf map[string]interface{}, verifyConnection bool) error {
-	_, err := c.Init(ctx, conf, verifyConnection)
-	return err
-}
-
 func (c *SQLConnectionProducer) Init(ctx context.Context, conf map[string]interface{}, verifyConnection bool) (map[string]interface{}, error) {
 	c.Lock()
 	defer c.Unlock()

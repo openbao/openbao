@@ -27,7 +27,7 @@ jobs:
       go-tags: ""
       checkout-ref: ${{ steps.checkout-ref-output.outputs.checkout-ref }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Ensure Go modules are cached
         uses: ./.github/actions/set-up-go
         with:
@@ -128,7 +128,7 @@ jobs:
       - setup
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - uses: ./.github/actions/set-up-go
       # Setup node.js without caching to allow running npm install -g yarn (next step)
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0

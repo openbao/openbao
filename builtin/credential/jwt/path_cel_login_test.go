@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	sqjwt "github.com/go-jose/go-jose/v3/jwt"
+	sqjwt "github.com/go-jose/go-jose/v4/jwt"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
@@ -173,7 +173,7 @@ func Test_runCelProgram(t *testing.T) {
 			if !ok {
 				t.Fatalf("Expected jwtAuthBackend, got %T", logicalBackend)
 			}
-			role, err := b.runCelProgram(context.Background(), &tc.celRole, tc.claims)
+			role, err := b.runCelProgram(context.Background(), logical.UpdateOperation, &tc.celRole, tc.claims)
 			if tc.validateResult != nil {
 				tc.validateResult(t, err, role)
 			}

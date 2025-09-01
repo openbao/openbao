@@ -1,0 +1,3 @@
+```release-note:change
+`certutil.ParsePublicKeyPEM` of the package `github.com/openbao/openbao/sdk/v2/helper/certutil` will now return a `crypto.PublicKey` instead of `any`. You might need to remove type assertions from your code.
+```

@@ -834,7 +834,7 @@ func (s *staticAccount) NextRotationTime() time.Time {
 // be invalidated.
 func (s *staticAccount) CredentialTTL() time.Duration {
 	next := s.NextRotationTime()
-	ttl := next.Sub(time.Now()).Round(time.Second)
+	ttl := time.Until(next).Round(time.Second)
 	if ttl < 0 {
 		ttl = time.Duration(0)
 	}

@@ -1,0 +1,139 @@
+---
+sidebar_label: Web UI modernization
+description: |-
+  Proposal to rewrite OpenBao's Web UI from EmberJS to React with TypeScript,
+  introducing a modern, extensible and secure interface.
+---
+
+
+
+# RFC - Web UI Modernization
+
+## Summary
+
+**OpenBao’s** current Web UI — based on **EmberJS** — is outdated and limits community contributions and modern feature development. This RFC proposes a complete rewrite using **React with TypeScript** to build a modern, secure, and extensible interface. The new UI will be developed as a separate application, introducing a secure **plugin architecture**, robust **observability dashboards**, and an **integration hub**. This initiative aims to revitalize community involvement, improve the user and operator experience, and establish a strong foundation for future innovation.
+
+## Problem Statement
+
+- **Obsolete Frontend:** EmberJS lacks community momentum; is hard to attract contributors and maintain.
+
+- **No Plugin Support:** The UI can’t be extended dynamically for operator or user needs.
+
+- **Clunky Permissions UX:** Users see, but can’t use, features; operators can’t easily hide UI elements based on roles/policies.
+
+- **Confusing URL Pathing:** Users often copy/paste UI URLs directly into the CLI, which fails due to mismatched endpoint paths, causing frustration and inconsistent outcomes. It’s also quite difficult to build policies that cover both UI and API usage.
+
+- **Multiple, Disjointed UIs:** Differing interfaces (API, web UI, CLI, web console) create confusion and inconsistent experience.
+
+- **Hard to Maintain:** Coupled release cycles with OpenBao backend slow down development (including security patching).
+
+- **Limited Operator Tools:** No native dashboards for observability; lacking integration templates for external systems.
+
+- **Branding/UX Stagnation:** UI theme deviates from OpenBao identity; lacks clarity and customization.
+
+- **No Clear Developer Entry Point:** Onboarding for contributors is painful; existing architecture deters engagement.
+
+- **Insufficient User Guidance:** The UI lacks contextual help, links to documentation, and visual support — raising user frustration and support load.
+
+- **No Built-in Global Messaging:** Operators cannot announce system incidents, upgrades, or downtime through banners or broadcast notifications in the UI.
+
+- **Lack of i18n Support**.
+
+- **Missing Branding Options:** Limited support for theming/customization.
+
+## User-facing Description
+
+**For End Users**
+- Faster, intuitive UI, focused on core secret/key management workflows.
+- Guided navigation, contextual help, and clear error reporting.
+- Only see actions/features they’re authorized for, improving focus/security.
+
+**For Operators**
+- Dashboards: built-in metrics, health, usage, audit visibility.
+- Configurable message banners for announcements.
+- Fine-grained branding and theme controls.
+
+**For Developers**
+- React/TypeScript codebase with modern tooling — easy to contribute to.
+- Secure plugin SDK/interface for rapid UI or workflow extension.
+- Active, open collaboration and documentation.
+
+## Technical Description
+
+**Architecture**
+- **React (TypeScript)** for massive dev pool, ecosystem, and maintainability.
+- **Material Design** for modern visual language and accessibility.
+- **Build:** Vite or RSPack for rapid iterative development and optimized bundles.
+- **Linter/Formatter:** BiomeJS (or ESLint).
+- **API:** Consumes OpenBao’s OpenAPI definition; codegen for type safety.
+- **Security:** Enforce CSP, SRI, CSRF, always HTTPS. Plugins sandboxed (Web Workers/iframed), NO backend credential exposure.
+- **Repo:** Separate repo, included as submodule or published artifact; decouples releases from backend.
+- **Caching** likely none, except for static content like images.
+
+**Plugin System**
+
+- Plugins (UI features/integrations) are optional.
+  *Example*:
+  - An AI agent plugin with MCP command suggestions, used only if the operator wants it (can be set up with local LLM APIs).
+  - Azure Auth.
+- Sandbox all plugin code and set clear permissions. No plugin can access raw secrets unless authorized.
+- Operator manages the plugin marketplace/registry.
+
+**Observability Dashboards:**
+
+- Built-in dashboards for system health, usage analytics, and audit visualization.
+- Exporters/templates for Prometheus & Grafana.
+
+**Integration Hub:**
+
+- Unified UI for external tool connections (CI/CD, logging, IdP, certificate management, etc.).
+- All integrations modular; supports future expansion via plugins.
+
+## Rationale and Alternatives
+
+- **React dominates the frontend landscape**, making hiring/contributions easier.
+
+- **EmberJS upgrade would not solve talent/maintenance gaps**.
+
+- **Decoupled UI release** = faster fixes, clearer pipelines, improved supply chain security.
+
+- **Plugin system invites new features** without bloating main UI or creating security risk.
+
+## Downsides
+
+- Rewrite is nontrivial—temporary disruption and learning curve for some.
+- Short-term loss of feature parity must be carefully managed.
+- Change management for operator/end-user retraining.
+
+## Security Implications
+
+- Modern React stack greatly reduces traditional web vuln surface (e.g., XSS).
+- Plugins are isolated; never direct access to backend or unencrypted sensitive data.
+- Separation allows UI security patches to ship rapidly without waiting for backend releases.
+- Standard protections (CSP, SRI, CSRF) enforced in all deployments.
+
+## User/Developer Experience
+
+- Easy onboarding: clear contributing guide, modern stack, fast dev loop.
+- Community plugin gallery starts simple; grows with use.
+- Built-in operator tools for observability; extensions for those needing deep integration.
+
+## Unresolved Questions
+We invite the community to provide feedback on these key decisions:
+
+* What are the most critical features or secrets engines to prioritize for the initial release?
+[**Current community input:**](https://github.com/openbao/openbao/pull/1365#discussion_r2141249117)
+  - **Auth:** OIDC/JWT, Userpass, AppRole
+  - **Secrets:** KVv1, KVv2, Database, Transit
+  *(Other engines such as PKI and SSH are acknowledged as more complex, may warrant separate design docs.)*
+* What specific metrics would you want to see in the built-in observability dashboards?
+* Which third-party tools are most important for the Integration Hub?
+* What is the best governance model for reviewing and publishing community-driven plugins?
+* Exact plugin runtime design (Webpack Module Federation? Iframe/WebWorker?)
+
+## Proof of Concept
+
+Initial deliverable:
+- A React app shell with authentication and basic KV v2 CRUD flow,
+- A sandboxed example plugin,
+- A dashboard with mock health data.

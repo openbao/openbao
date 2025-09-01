@@ -1058,7 +1058,7 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 	}
 
 	// Use HandleListPage to process paginated results
-	err := logical.HandleListPage(req.Storage, "certs/", config.PageSize, itemCallback, batchCallback)
+	err := logical.HandleListPage(ctx, req.Storage, "certs/", config.PageSize, itemCallback, batchCallback)
 	if err != nil {
 		return 0, err
 	}
@@ -1238,7 +1238,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 	}
 
 	// Use handleListPage to process paginated results
-	err = logical.HandleListPage(req.Storage, "revoked/", config.PageSize, itemCallback, batchCallback)
+	err = logical.HandleListPage(ctx, req.Storage, "revoked/", config.PageSize, itemCallback, batchCallback)
 	if err != nil {
 		return false, err
 	}
@@ -1493,7 +1493,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 	}
 
 	// Use HandleListPage to process paginated results
-	err := logical.HandleListPage(req.Storage, acmeThumbprintPrefix, config.PageSize, itemCallback, batchCallback)
+	err := logical.HandleListPage(ctx, req.Storage, acmeThumbprintPrefix, config.PageSize, itemCallback, batchCallback)
 	if err != nil {
 		return err
 	}

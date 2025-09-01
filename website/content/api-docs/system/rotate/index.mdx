@@ -1,0 +1,56 @@
+---
+sidebar_label: Overview
+description: >- 
+  The `/sys/rotate` endpoints are used to rotate unseal, root, backend encryption keys.
+---
+
+# `/sys/rotate`
+
+### Encryption key rotation
+
+The `/sys/rotate/keyring` endpoint is used to rotate the encryption key. It is
+also possible to configure automatic encryption key rotation using
+`/sys/rotate/keyring/config` endpoint.
+
+### Rotate unseal/recovery keys
+
+The `/sys/rotate/root` endpoints are used to rotate the root key for OpenBao,
+and the unseal key shares when using Shamir's manual unseal mechanism.
+
+On seals that support stored keys (e.g. HSM PKCS#11), the recovery key share(s)
+can be provided to rotate the root key since no unseal keys are available. The
+secret shares, secret threshold, and stored shares parameters must be set to 1.
+Upon successful rotation, no split unseal key shares are returned.
+
+The `/sys/rotate/recovery` endpoints are used to rotate the recovery keys for
+OpenBao. These endpoints only apply to seals that support recovery keys.
+
+Depending on the variable in the request path (`root` or `recovery`) 
+operation is performed for the root or recovery keys.
+
+### Progress rotation
+
+`/sys/rotate/(root|recovery)/update` endpoint is used to enter a single
+key share to progress the rotation of the OpenBao. If the threshold number
+of key shares is reached, OpenBao will complete the rotation.
+
+### Rotation verification
+
+`/sys/rotate/(root|recovery)/verify` endpoint reads the configuration and
+progress of the current rotation verification attempt.
+
+### Backup rotated keys
+
+`/sys/rotate/(root|recovery)/backup` endpoint returns the backup copy of
+PGP-encrypted unseal keys. The returned value is the nonce of the rotate
+operation and a map of PGP key fingerprint to hex-encoded PGP-encrypted key.
+
+## Supported rotation endpoints
+
+- [Rotate encryption key](/api-docs/system/rotate/keyring)
+- [Configure automatic encryption key rotation config](/api-docs/system/rotate/keyring-config)
+- [Rotate root key without providing existing key shares](/api-docs/system/rotate/root)
+- [Read, initialize or cancel rotation](/api-docs/system/rotate/init)
+- [Progress rotation](/api-docs/system/rotate/update)
+- [Read, progress or cancel rotation verification operation](/api-docs/system/rotate/verify)
+- [Read or delete backed-up rotation keys](/api-docs/system/rotate/backup)

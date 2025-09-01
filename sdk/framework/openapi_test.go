@@ -72,11 +72,11 @@ func TestOpenAPI_ExpandPattern(t *testing.T) {
 		outPathlets []string
 	}{
 		// A simple string without regexp metacharacters passes through as is
-		{"rekey/backup", []string{"rekey/backup"}},
+		{"rotate/root/backup", []string{"rotate/root/backup"}},
 		// A trailing regexp anchor metacharacter is removed
-		{"rekey/backup$", []string{"rekey/backup"}},
+		{"rotate/root/backup$", []string{"rotate/root/backup"}},
 		// As is a leading one
-		{"^rekey/backup", []string{"rekey/backup"}},
+		{"^rotate/root/backup", []string{"rotate/root/backup"}},
 		// Named capture groups become OpenAPI parameters
 		{"auth/(?P<path>.+?)/tune$", []string{"auth/{path}/tune"}},
 		{"auth/(?P<path>.+?)/tune/(?P<more>.*?)$", []string{"auth/{path}/tune/{more}"}},

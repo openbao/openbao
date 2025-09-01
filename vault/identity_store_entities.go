@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -355,10 +356,10 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 		// Update the policies if supplied
 		entityPoliciesRaw, ok := d.GetOk("policies")
 		if ok {
-			entity.Policies = strutil.RemoveDuplicates(entityPoliciesRaw.([]string), false)
+			entity.Policies = strutil.RemoveDuplicates(entityPoliciesRaw.([]string), true /* lowercase */)
 		}
 
-		if strutil.StrListContains(entity.Policies, "root") {
+		if slices.Contains(entity.Policies, "root") {
 			return logical.ErrorResponse("policies cannot contain root"), nil
 		}
 
@@ -470,7 +471,7 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 	respData["name"] = entity.Name
 	respData["metadata"] = entity.Metadata
 	respData["merged_entity_ids"] = entity.MergedEntityIDs
-	respData["policies"] = strutil.RemoveDuplicates(entity.Policies, false)
+	respData["policies"] = strutil.RemoveDuplicates(entity.Policies, true /* lowercase */)
 	respData["disabled"] = entity.Disabled
 	respData["namespace_id"] = entity.NamespaceID
 
@@ -1024,7 +1025,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 						if err != nil {
 							return nil, fmt.Errorf("failed to delete orphaned alias during merge: %w", err), nil
 						}
-					} else if strutil.StrListContains(conflictingAliasIDsToKeep, toAliasId) {
+					} else if slices.Contains(conflictingAliasIDsToKeep, toAliasId) {
 						i.logger.Info("Deleting from_entity alias during entity merge", "from_entity", fromEntityID, "deleted_alias", fromAlias.ID)
 						err := i.MemDBDeleteAliasByIDInTxn(txn, fromAlias.ID, false)
 						if err != nil {
@@ -1033,7 +1034,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 						// Continue to next alias, as there's no alias to merge left in the from_entity
 						continue
-					} else if strutil.StrListContains(conflictingAliasIDsToKeep, fromAlias.ID) {
+					} else if slices.Contains(conflictingAliasIDsToKeep, fromAlias.ID) {
 						i.logger.Info("Deleting to_entity alias during entity merge", "to_entity", toEntity.ID, "deleted_alias", toAliasId)
 						err := i.MemDBDeleteAliasByIDInTxn(txn, toAliasId, false)
 						if err != nil {
@@ -1061,7 +1062,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 		// If told to, merge policies
 		if mergePolicies {
-			toEntity.Policies = strutil.RemoveDuplicates(strutil.MergeSlices(toEntity.Policies, fromEntity.Policies), false)
+			toEntity.Policies = strutil.RemoveDuplicates(strutil.MergeSlices(toEntity.Policies, fromEntity.Policies), true /* lowercase */)
 		}
 
 		// If the entity from which we are merging from was already a merged

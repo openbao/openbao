@@ -1,0 +1,3 @@
+```release-note:security
+auth/mfa: correctly limit reuse of TOTP codes during login MFA enforcement. HCSEC-2025-19 / CVE-2025-6015.
+```

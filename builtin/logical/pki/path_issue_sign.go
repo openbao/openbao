@@ -20,7 +20,6 @@ import (
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/cel"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -817,7 +816,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	}
 
 	// Add custom CEL functions into the env
-	env, err = cel.RegisterAllCelFunctions(env)
+	env, err = celhelper.RegisterAllCelFunctions(env)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}

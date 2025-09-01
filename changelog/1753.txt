@@ -1,0 +1,3 @@
+```release-note:bug
+auth/mfa: Correctly persist tokens created through two-step MFA login enforcement.
+```

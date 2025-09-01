@@ -7,9 +7,9 @@ tags: [announcement, conferences, community]
 image: /img/openbao-osseu-2025.jpg
 ---
 
-The OpenBao community had a great time at **[Open Source Summit Europe 2025](https://events.linuxfoundation.org/open-source-summit-europe/)**! The event once again showed how strong the demand has become for secure and reliable secret management in enterprise environments.
+The OpenBao community had a great time at **[Open Source Summit Europe 2025](https://events.linuxfoundation.org/open-source-summit-europe/)**! The event once again showed how strong the demand for secure and reliable secret management in enterprise environments has become.
 
-One theme was clear: companies and individuals are in demand for tools to manage secrets across their systems, and solutions like OpenBao are foundational for security and compliance.
+One theme was clear: Companies and individuals demand tools to manage secrets across their systems, and solutions like OpenBao are foundational for security and compliance.
 
 ![OpenBao Maintainers](/img/openbao-osseu-2025.jpg)
 
@@ -17,7 +17,7 @@ One theme was clear: companies and individuals are in demand for tools to manage
 
 Together with the Team from RISC-V and DeepComputing we were able to successfully test our riscv64 binaries on a DeepComputing DC-ROMA RISC-V laptop. With our added RISC-V support in [PR #168](https://github.com/openbao/openbao/pull/168) this was super easy and just worked out of the box.
 
-Throughout the conference, we shared how OpenBao is able to help organizations to run production workloads securely. We showcased existing features such as strong encryption, fine-grained access controls and namespace isolation. We also gave a glimpse into what’s next: declarative initialization, improvements around namespaces and extended key management capabilties.
+Throughout the conference, we shared how OpenBao is able to help organizations to run production workloads securely. We showcased existing features such as strong encryption, fine-grained access controls and namespace isolation. We also gave a glimpse into what’s next: declarative initialization, improvements around namespaces and extended key management capabilities.
 
 Furthermore, the conference was also a wonderful opportunity for OpenBao maintainers to meet in person, exchange ideas, and align on next steps. A big thank you goes to [**Adfinis**](https://adfinis.com/), [**Paymenttools**](https://www.paymenttools.com/) and [**Reply**](https://www.reply.com/), who supported the project by sending maintainers to represent OpenBao on-site.
 

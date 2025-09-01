@@ -34,10 +34,8 @@ type OperatorInitCommand struct {
 }
 
 const (
-	defKeyShares         = 5
-	defKeyThreshold      = 3
-	defRecoveryShares    = 5
-	defRecoveryThreshold = 3
+	defKeyShares    = 5
+	defKeyThreshold = 3
 )
 
 func (c *OperatorInitCommand) Synopsis() string {
@@ -143,7 +141,7 @@ func (c *OperatorInitCommand) Flags() *FlagSets {
 		Target:     &c.flagRecoveryShares,
 		Completion: complete.PredictAnything,
 		Usage: "Number of key shares to split the recovery key into. " +
-			"This is only used in auto-unseal mode.",
+			"This is only used in Auto Unseal mode.",
 	})
 
 	f.IntVar(&IntVar{
@@ -212,15 +210,7 @@ func (c *OperatorInitCommand) Run(args []string) int {
 	client.SetOutputCurlString(currentOutputCurlString)
 	client.SetOutputPolicy(outputPolicy)
 
-	switch sealInfo.RecoverySeal {
-	case true:
-		if c.flagRecoveryShares == 0 {
-			c.flagRecoveryShares = defRecoveryShares
-		}
-		if c.flagRecoveryThreshold == 0 {
-			c.flagRecoveryThreshold = defRecoveryThreshold
-		}
-	default:
+	if !sealInfo.RecoverySeal {
 		if c.flagKeyShares == 0 {
 			c.flagKeyShares = defKeyShares
 		}

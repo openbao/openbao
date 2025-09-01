@@ -210,6 +210,8 @@ func (c *OperatorInitCommand) Run(args []string) int {
 	client.SetOutputCurlString(currentOutputCurlString)
 	client.SetOutputPolicy(outputPolicy)
 
+	// for barrier seals use the default value of key shares and key threshold,
+	// as we do not support 0 as a valid value for those
 	if !sealInfo.RecoverySeal {
 		if c.flagKeyShares == 0 {
 			c.flagKeyShares = defKeyShares

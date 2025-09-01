@@ -303,34 +303,7 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 		return 2
 	}
 
-	if !resp.Complete {
-		// Print warnings about recovery, etc.
-		if len(c.flagPGPKeys) == 0 {
-			if Format(c.UI) == "table" {
-				c.UI.Warn(wrapAtLength(
-					fmt.Sprintf("WARNING! If you lose the keys after they are returned, there is no "+
-						"recovery. Consider canceling this operation and re-initializing "+
-						"with the -pgp-keys flag to protect the returned %s keys along "+
-						"with -backup to allow recovery of the encrypted keys in case of "+
-						"emergency. You can delete the stored keys later using the -delete "+
-						"flag.", strings.ToLower(keyTypeRequired))))
-				c.UI.Output("")
-			}
-		}
-		if len(c.flagPGPKeys) > 0 && !c.flagBackup {
-			if Format(c.UI) == "table" {
-				c.UI.Warn(wrapAtLength(
-					fmt.Sprintf("WARNING! You are using PGP keys for encrypted the resulting %s "+
-						"keys, but you did not enable the option to backup the keys to "+
-						"OpenBao's core. If you lose the encrypted keys after they are "+
-						"returned, you will not be able to recover them. Consider canceling "+
-						"this operation and re-running with -backup to allow recovery of the "+
-						"encrypted unseal keys in case of emergency. You can delete the "+
-						"stored keys later using the -delete flag.", strings.ToLower(keyTypeRequired))))
-				c.UI.Output("")
-			}
-		}
-	} else {
+	if resp.Complete {
 		// if the rotation is complete, meaning we've immediately
 		// returned the unseal (recovery) keys, print them out
 		if len(c.flagPGPKeys) == 0 {
@@ -371,7 +344,35 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 		})
 	}
 
-	// otherwise provide the current status
+	// Print warnings about recovery, etc.
+	if len(c.flagPGPKeys) == 0 {
+		if Format(c.UI) == "table" {
+			c.UI.Warn(wrapAtLength(
+				fmt.Sprintf("WARNING! If you lose the keys after they are "+
+					"returned, there is no recovery. Consider canceling this "+
+					"operation and re-initializing with the -pgp-keys flag to protect "+
+					"the returned %s keys along with -backup to allow recovery of the "+
+					"encrypted keys in case of emergency. You can delete the stored "+
+					"keys later using the -delete flag.",
+					strings.ToLower(keyTypeRequired))))
+			c.UI.Output("")
+		}
+	}
+	if len(c.flagPGPKeys) > 0 && !c.flagBackup {
+		if Format(c.UI) == "table" {
+			c.UI.Warn(wrapAtLength(
+				fmt.Sprintf("WARNING! You are using PGP keys for encryption "+
+					"of resulting %s keys, but you did not enable the option to backup "+
+					"the keys to OpenBao's core. If you lose the encrypted keys after "+
+					"they are returned, you will not be able to recover them. Consider "+
+					"canceling this operation and re-running with -backup to allow "+
+					"recovery of the encrypted unseal keys in case of emergency. You "+
+					"can delete the stored keys later using the -delete flag.",
+					strings.ToLower(keyTypeRequired))))
+			c.UI.Output("")
+		}
+	}
+
 	return c.printStatus(resp)
 }
 

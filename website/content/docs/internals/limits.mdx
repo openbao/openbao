@@ -242,6 +242,19 @@ operation on a remote service, the OpenBao client will see a failure.
 The environment variable [`VAULT_CLIENT_TIMEOUT`](/docs/commands#vault_client_timeout) sets a client-side maximum duration as well,
 which is 60 seconds by default.
 
+### Request JSON Complexity
+
+The maximum number of tokens in a request body JSON is limited by the
+`max_request_json_complexity` option in the [listener
+stanza](/docs/configuration/listener/tcp). It defaults to 10000. This limit is
+in place to prevent attackers from sending specially crafted JSON bodies that,
+once unmarshaled, consume much more memory than in JSON form (circumventing the
+`max_request_size` limit). This limit should not affect valid requests, as even
+large requests use a small number of tokens (a large string sill counts as a
+single token).
+
+The definition for "JSON complexity" might change in the future.
+
 ### Lease limits
 
 A systemwide [maximum TTL](/docs/configuration#max_lease_ttl), and a

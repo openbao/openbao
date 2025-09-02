@@ -250,7 +250,7 @@ stanza](/docs/configuration/listener/tcp). It defaults to 10000. This limit is
 in place to prevent attackers from sending specially crafted JSON bodies that,
 once unmarshaled, consume much more memory than in JSON form (circumventing the
 `max_request_size` limit). This limit should not affect valid requests, as even
-large requests use a small number of tokens (a large string sill counts as a
+large requests use a small number of tokens (a large string still counts as a
 single token).
 
 The definition for "JSON complexity" might change in the future.

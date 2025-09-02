@@ -18,53 +18,58 @@ endpoints:
 1. A path is assigned a control-group policy
 2. Access to the path is denied without control group authorization
 3. A user belonging to the control group can authorize the resource for a particular entity
-4. Access to the path is now permitted to the authorized entity
+4. Access to the path is now permitted only to the authorized entity for some duration
 
 A second phase might add a request/notification workflow, but this is not essential:
 1. A user requests access to the protected resource
-2. Members of the control group receive a notification of the request
-3. The original user receives notification of the control group approval when it occurs
+2. Members of the control group receive a notification of the request (on logging in to OpenBao web UI?)
+3. The original requester receives notification of the control-group approval when it occurs
 
 ## Problem Statement
 
-The problem is as follows. An organization wants to review access to
-certain secrets (eg, pki issuance, etc) on a case-by-case basis, and
-require "second set of eyes" on everything. A directory
-group-membership will indicate who the reviewers are. They should be
-able grant access by endpoint. They should not be able to grant their
-own access.
+An organization wants to review access to certain paths (eg, pki
+issuance, etc) on a case-by-case basis, and/or requires a "second set
+of eyes" to approve access to a path. The reviewers are indicated by
+specifying a "control group", whose member can grant access (by using
+an endpoint). However, the control group members should not be able to
+grant their own personal access.
 
 ## User-facing Description
 
 ## Technical Description
 
-The control group implementation consists of the following.
-1. A control-group policy rule which:
-   1. Denies data access without authorization
-   2. Allows authorizing action to control group
+The control group implementation might consist of the following.
+1. A control-group policy:
+   1. Denies data access by default
+   2. Allows authorizing action to control group members
+   3. Allows data access to authorized requester
 2. An authorizing endpoint:
-   1. Self authorization not permitted
-   2. Applies to path
-   3. Applies to user/entity
-3. Authorization storage:
+   1. Applies to path
+   2. Applies to user/entity
+   3. Is time-limited
+   4. Self authorization not permitted
+3. Authorization storage (how do we maintain the "authorization" state over time?):
    1. Metadata on the path?
    2. Separate storage mount for authorizations?
 
-When the policy is "checking authorization", we'd need to read the authorization storage.
+When the policy is "checking authorization", we'd need to read the
+authorization storage. This might be simplest if the metadata of the
+path in question contains authorizations (no need to access a second
+location).
 
-For workflow, we might need a seperate "requests" storage as well.
+For workflow, we might need a "requests" storage as well.
 
 ## Rationale and Alternatives
 
 This is essentially "assigning a policy to a resource and a user"
-which allows some level of access -- something we can already do in
-OpenBao with roles/policies/etc. The control group, essentially, is an
-OpenBao administrator assigning policies. However, the control-group
-idea has some additional value:
+which allows access -- which is something we can already do in OpenBao
+with roles/policies/etc. However, the control-group concept has some
+additional value:
 
-1. The administrator can specify a delegate group, any member of which can approve
-2. By inhibiting self-approval, the control group can ensure "second set of eyes"
-3. Simplified workflow (when added)
+1. The administrator can delegate authorization responsibility to a
+   group, any member of which can grant access
+2. By inhibiting self-approval, the control group policy can ensure "second set of eyes"
+3. A workflow for requesting/granting in the UI might make admistration easier
 
 ## Downsides
 

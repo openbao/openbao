@@ -52,7 +52,7 @@ func TestCELHelpers(t *testing.T) {
 	t.Run("decode_json_roundtrip", func(t *testing.T) {
 		t.Parallel()
 
-		expr := `decode_json(encode_JSON({'foo':'bar','num':42}))['foo'] == 'bar'`
+		expr := `decode_json(encode_json({'foo':'bar','num':42}))['foo'] == 'bar'`
 		prog := buildTestProgram(t, env, expr)
 		val, _, err := prog.Eval(interpreter.EmptyActivation())
 		require.NoError(t, err)
@@ -68,9 +68,9 @@ func TestCELHelpers(t *testing.T) {
 		assert.Equal(t, "v", val.Value())
 	})
 
-	t.Run("encode_JSON", func(t *testing.T) {
+	t.Run("encode_json", func(t *testing.T) {
 		t.Parallel()
-		expr := `encode_JSON({'a':1,'b':2})`
+		expr := `encode_json({'a':1,'b':2})`
 		prog := buildTestProgram(t, env, expr)
 		val, _, err := prog.Eval(interpreter.EmptyActivation())
 		require.NoError(t, err)
@@ -79,7 +79,7 @@ func TestCELHelpers(t *testing.T) {
 		var got map[string]int
 		require.NoError(t, json.Unmarshal([]byte(val.Value().(string)), &got))
 		assert.Equal(t, map[string]int{"a": 1, "b": 2}, got)
-  })
+	})
 
 	t.Run("cel_go_ext_functions", func(t *testing.T) {
 		t.Parallel()

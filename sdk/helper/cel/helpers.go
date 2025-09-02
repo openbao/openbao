@@ -48,6 +48,53 @@ func registerCelGoExtFunctions(env *celgo.Env) (*celgo.Env, error) {
 	return env.Extend(ext.Strings(), ext.Lists(), celgo.OptionalTypes(), ext.Regex(), ext.Math(), ext.Sets(), ext.Encoders())
 }
 
+func decodeJSON(value ref.Val) ref.Val {
+	raw, ok := value.Value().(string)
+	if !ok {
+		return types.Bool(false)
+	}
+	var v any
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
+		return types.Bool(false)
+	}
+	return types.DefaultTypeAdapter.NativeToValue(v)
+}
+
+func encodeJSON(value ref.Val) ref.Val {
+	native, err := value.ConvertToNative(
+		reflect.TypeOf(map[string]any{}),
+	)
+	if err != nil {
+		return types.Bool(false)
+	}
+
+	b, err := json.Marshal(native)
+	if err != nil {
+		return types.Bool(false)
+	}
+	return types.String(string(b))
+}
+
+// registerDecodeEncodeJSONFunctions registers decode_json and encode_json
+func registerDecodeEncodeJSONFunctions(env *celgo.Env) (*celgo.Env, error) {
+	return env.Extend(
+		celgo.Function("decode_json",
+			celgo.Overload(
+				"decode_json_string",
+				[]*celgo.Type{celgo.StringType},
+				celgo.DynType,
+				celgo.UnaryBinding(decodeJSON)),
+		),
+		celgo.Function("encode_json",
+			celgo.Overload(
+				"encode_json_dyn",
+				[]*celgo.Type{celgo.DynType},
+				celgo.StringType,
+				celgo.UnaryBinding(encodeJSON)),
+		),
+	)
+}
+
 // RegisterAllCelFunctions registers all custom CEL functions into the provided environment.
 func RegisterAllCelFunctions(env *celgo.Env) (*celgo.Env, error) {
 	var err error
@@ -66,7 +113,7 @@ func RegisterAllCelFunctions(env *celgo.Env) (*celgo.Env, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to register JSON helpers: %w", err)
 	}
-	
+
 	return env, nil
 }
 
@@ -110,51 +157,4 @@ func AddIdentity(view logical.SystemView, req *logical.Request, data map[string]
 	}
 
 	return nil
-}
-
-func decodeJSON(value ref.Val) ref.Val {
-	raw, ok := value.Value().(string)
-	if !ok {
-		return types.Bool(false)
-	}
-	var v any
-	if err := json.Unmarshal([]byte(raw), &v); err != nil {
-		return types.Bool(false)
-	}
-	return types.DefaultTypeAdapter.NativeToValue(v)
-}
-
-func encodeJSON(value ref.Val) ref.Val {
-	native, err := value.ConvertToNative(
-		reflect.TypeOf(map[string]any{}),
-	)
-	if err != nil {
-		return types.Bool(false)
-	}
-
-	b, err := json.Marshal(native)
-	if err != nil {
-		return types.Bool(false)
-	}
-	return types.String(string(b))
-}
-
-// registerDecodeEncodeJSONFunctions registers decode_json and encode_JSON
-func registerDecodeEncodeJSONFunctions(env *celgo.Env) (*celgo.Env, error) {
-	return env.Extend(
-		celgo.Function("decode_json",
-			celgo.Overload(
-				"decode_json_string",
-				[]*celgo.Type{celgo.StringType},
-				celgo.DynType,
-				celgo.UnaryBinding(decodeJSON)),
-		),
-		celgo.Function("encode_JSON",
-			celgo.Overload(
-				"encode_JSON_dyn",
-				[]*celgo.Type{celgo.DynType},
-				celgo.StringType,
-				celgo.UnaryBinding(encodeJSON)),
-		),
-	)
 }

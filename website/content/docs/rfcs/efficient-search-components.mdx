@@ -270,7 +270,7 @@ To perform an intersection of multiple conditions, the following structure is us
 }
 ```
 
-Each query may optionally include a `match` or `prefix` field to control how values are compared. "exact" is the default and can be omitted.
+Each query may optionally include a `match` field to control how values are compared. "exact" is the default and can be omitted, else `prefix` can be used to signify that the value is a prefix of desired matches.
 
 ```json
 { "key": "tag", "value": "adm", "match": "prefix" }

@@ -248,7 +248,7 @@ The maximum number of tokens in a request body JSON is limited by the
 `max_request_json_complexity` option in the [listener
 stanza](/docs/configuration/listener/tcp). It defaults to 10000. This limit is
 in place to prevent attackers from sending specially crafted JSON bodies that,
-once unmarshaled, consume much more memory than in JSON form (circumventing the
+once unmarshaled, consume significantly more memory than the original request body (circumventing the
 `max_request_size` limit). This limit should not affect valid requests, as even
 large requests use a small number of tokens (a large string still counts as a
 single token).

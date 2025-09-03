@@ -35,8 +35,7 @@ func TestNamespaceBackend_Rotate(t *testing.T) {
 	})
 
 	t.Run("rotates the barrier key for a sealable namespace", func(t *testing.T) {
-		sealConfig := map[string]any{"type": "shamir", "secret_shares": 3, "secret_threshold": 2}
-		testCreateNamespace(t, rootCtx, b, "foobar", map[string]any{"seals": sealConfig})
+		_ = TestCoreCreateUnsealedNamespaces(t, b.Core, &namespace.Namespace{Path: "foobar/"})
 
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/foobar/key-status")
 		res, err := b.HandleRequest(rootCtx, req)
@@ -91,8 +90,7 @@ func TestNamespaceBackend_RotateConfig(t *testing.T) {
 	})
 
 	t.Run("update the key rotation config for a sealable namespace", func(t *testing.T) {
-		sealConfig := map[string]any{"type": "shamir", "secret_shares": 3, "secret_threshold": 2}
-		testCreateNamespace(t, rootCtx, b, "foobar", map[string]any{"seals": sealConfig})
+		_ = TestCoreCreateUnsealedNamespaces(t, b.Core, &namespace.Namespace{Path: "foobar/"})
 
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foobar/rotate/keyring/config")
 		req.Data["max_operations"] = 1_234_567
@@ -136,7 +134,7 @@ func TestNamespaceBackend_RotateInitStatus(t *testing.T) {
 	})
 
 	t.Run("rotate init responds with rotation status", func(t *testing.T) {
-		_ = TestCoreCreateSealedNamespaces(t, c, &namespace.Namespace{Path: "foo/"})
+		_ = TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "foo/"})
 
 		// read root rotation status without initializing beforehand
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/foo/rotate/root/init")
@@ -193,7 +191,7 @@ func TestNamespaceBackend_RotateInitDispatch(t *testing.T) {
 	})
 
 	t.Run("only one rotation can be in progress at a time", func(t *testing.T) {
-		_ = TestCoreCreateSealedNamespaces(t, c, &namespace.Namespace{Path: "foo/"})
+		_ = TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "foo/"})
 
 		// initialize rotation
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo/rotate/root/init")
@@ -212,7 +210,7 @@ func TestNamespaceBackend_RotateInitDispatch(t *testing.T) {
 	})
 
 	t.Run("can cancel the rotation and dispatch again", func(t *testing.T) {
-		_ = TestCoreCreateSealedNamespaces(t, c, &namespace.Namespace{Path: "bar/"})
+		_ = TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "bar/"})
 
 		// initialize rotation
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bar/rotate/root/init")
@@ -247,7 +245,7 @@ func TestNamespaceBackend_RotateUpdate(t *testing.T) {
 	rootCtx := namespace.RootContext(context.Background())
 
 	t.Run("rotate update missing required data", func(t *testing.T) {
-		unsealShares := TestCoreCreateSealedNamespaces(t, c, &namespace.Namespace{Path: "foo/"})
+		unsealShares := TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "foo/"})
 
 		// init root rotation
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo/rotate/root/init")
@@ -282,7 +280,7 @@ func TestNamespaceBackend_RotateUpdate(t *testing.T) {
 	})
 
 	t.Run("rotate update complete", func(t *testing.T) {
-		unsealShares := TestCoreCreateSealedNamespaces(t, c, &namespace.Namespace{Path: "bar/"})
+		unsealShares := TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "bar/"})
 
 		// init root rotation
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bar/rotate/root/init")

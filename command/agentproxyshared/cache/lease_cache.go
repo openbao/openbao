@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -33,7 +34,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	gocache "github.com/patrickmn/go-cache"
-	"go.uber.org/atomic"
 )
 
 const (
@@ -122,7 +122,7 @@ type inflightRequest struct {
 func newInflightRequest() *inflightRequest {
 	return &inflightRequest{
 		ch:        make(chan struct{}),
-		remaining: atomic.NewUint64(0),
+		remaining: &atomic.Uint64{},
 	}
 }
 
@@ -210,7 +210,7 @@ func (c *LeaseCache) checkCacheForRequest(id string) (*SendResponse, error) {
 		c.logger.Error("failed to parse cached response date", "error", err)
 		return nil, err
 	}
-	sendResp.CacheMeta.Age = time.Now().Sub(respTime)
+	sendResp.CacheMeta.Age = time.Since(respTime)
 
 	return sendResp, nil
 }
@@ -250,8 +250,8 @@ func (c *LeaseCache) Send(ctx context.Context, req *SendRequest) (*SendResponse,
 	if found {
 		idLock.Unlock()
 		inflight = inflightRaw.(*inflightRequest)
-		inflight.remaining.Inc()
-		defer inflight.remaining.Dec()
+		newVal := inflight.remaining.Add(1)
+		defer inflight.remaining.Store(newVal - 1)
 
 		// If found it means that there's an inflight request being processed.
 		// We wait until that's finished before proceeding further.
@@ -262,8 +262,8 @@ func (c *LeaseCache) Send(ctx context.Context, req *SendRequest) (*SendResponse,
 		}
 	} else {
 		inflight = newInflightRequest()
-		inflight.remaining.Inc()
-		defer inflight.remaining.Dec()
+		newVal := inflight.remaining.Add(1)
+		defer inflight.remaining.Store(newVal - 1)
 
 		c.inflightCache.Set(id, inflight, gocache.NoExpiration)
 		idLock.Unlock()
@@ -579,7 +579,7 @@ func computeIndexID(req *SendRequest) (string, error) {
 		return "", fmt.Errorf("failed to write token to hash input: %w", err)
 	}
 
-	return hex.EncodeToString(cryptoutil.Blake2b256Hash(string(b.Bytes()))), nil
+	return hex.EncodeToString(cryptoutil.Blake2b256Hash(b.String())), nil
 }
 
 // HandleCacheClear returns a handlerFunc that can perform cache clearing operations.
@@ -1053,7 +1053,7 @@ func (c *LeaseCache) restoreTokens(tokens [][]byte) error {
 			errors = multierror.Append(errors, err)
 			continue
 		}
-		newIndex.RenewCtxInfo = c.createCtxInfo(nil)
+		newIndex.RenewCtxInfo = c.createCtxInfo(context.TODO())
 		if err := c.db.Set(newIndex); err != nil {
 			errors = multierror.Append(errors, err)
 			continue
@@ -1236,7 +1236,7 @@ func (c *LeaseCache) RegisterAutoAuthToken(token string) error {
 	}
 
 	// Derive a context off of the lease cache's base context
-	ctxInfo := c.createCtxInfo(nil)
+	ctxInfo := c.createCtxInfo(context.TODO())
 
 	index.RenewCtxInfo = &cachememdb.ContextInfo{
 		Ctx:        ctxInfo.Ctx,

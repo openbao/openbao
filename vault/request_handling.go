@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/armon/go-metrics"
@@ -22,7 +23,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
-	uberAtomic "go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/openbao/openbao/api/v2"
@@ -124,7 +124,7 @@ type HandlerProperties struct {
 	AllListeners          []listenerutil.Listener
 	DisablePrintableCheck bool
 	RecoveryMode          bool
-	RecoveryToken         *uberAtomic.String
+	RecoveryToken         *atomic.Value
 }
 
 // fetchEntityAndDerivedPolicies returns the entity object for the given entity
@@ -1057,7 +1057,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		return nil, ErrInternalError
 	}
 
-	return
+	return resp, err
 }
 
 func (c *Core) doRouting(ctx context.Context, req *logical.Request) (*logical.Response, error) {
@@ -1092,7 +1092,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	if err != nil {
 		c.logger.Error("failed to get namespace from context", "error", err)
 		retErr = multierror.Append(retErr, ErrInternalError)
-		return
+		return retResp, retAuth, retErr
 	}
 
 	// Validate the token
@@ -1633,7 +1633,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	if err != nil {
 		c.logger.Error("failed to get namespace from context", "error", err)
 		retErr = multierror.Append(retErr, ErrInternalError)
-		return
+		return retResp, retAuth, retErr
 	}
 	// If the response generated an authentication, then generate the token
 	if resp != nil && resp.Auth != nil && req.Path != "sys/mfa/validate" {

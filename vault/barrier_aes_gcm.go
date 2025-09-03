@@ -17,12 +17,12 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/armon/go-metrics"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
-	"go.uber.org/atomic"
 )
 
 const (
@@ -133,9 +133,9 @@ func NewAESGCMBarrier(storage physical.Backend) (SecurityBarrier, error) {
 		sealed:                   true,
 		cache:                    make(map[uint32]cipher.AEAD),
 		currentAESGCMVersionByte: byte(AESGCMVersion2),
-		UnaccountedEncryptions:   atomic.NewInt64(0),
-		RemoteEncryptions:        atomic.NewInt64(0),
-		totalLocalEncryptions:    atomic.NewInt64(0),
+		UnaccountedEncryptions:   &atomic.Int64{},
+		RemoteEncryptions:        &atomic.Int64{},
+		totalLocalEncryptions:    &atomic.Int64{},
 	}
 
 	if _, ok := storage.(physical.TransactionalBackend); ok {
@@ -1151,7 +1151,7 @@ func (b *AESGCMBarrier) ConsumeEncryptionCount(consumer func(int64) error) error
 		err := consumer(c)
 		if err == nil && c > 0 {
 			// Consumer succeeded, remove those from local encryptions
-			b.UnaccountedEncryptions.Sub(c)
+			b.UnaccountedEncryptions.Store(c - 1)
 		}
 		return err
 	}
@@ -1238,10 +1238,11 @@ func (b *AESGCMBarrier) persistEncryptions(ctx context.Context) error {
 		upe := b.UnaccountedEncryptions.Load()
 		if upe > 0 {
 			activeKey := b.keyring.ActiveKey()
-			// Move local (unpersisted) encryptions to the key and persist.  This prevents us from needing to persist if
-			// there has been no activity. Since persistence performs an encryption, perversely we zero out after
-			// persistence and add 1 to the count to avoid this operation guaranteeing we need another
-			// autoRotateCheckInterval later.
+			// Move local (unpersisted) encryptions to the key and persist.
+			// This prevents us from needing to persist if there has been no activity.
+			// Since persistence performs an encryption, perversely we zero out after
+			// persistence and add 1 to the count to avoid this operation guaranteeing
+			// we need another autoRotateCheckInterval later.
 			newEncs := upe + 1
 			activeKey.Encryptions += uint64(newEncs)
 			newKeyring := b.keyring.Clone()
@@ -1249,7 +1250,7 @@ func (b *AESGCMBarrier) persistEncryptions(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			b.UnaccountedEncryptions.Sub(newEncs)
+			b.UnaccountedEncryptions.Store(upe - newEncs)
 		}
 	}
 	return nil

@@ -130,7 +130,7 @@
     "ember-cli-page-object": "1.17.10",
     "ember-cli-sass": "11.0.1",
     "ember-cli-sri": "meirish/ember-cli-sri#rooturl",
-    "ember-cli-string-helpers": "6.1.0",
+    "ember-cli-string-helpers": "8.0.1",
     "ember-cli-terser": "^4.0.2",
     "ember-cli-typescript": "^5.2.1",
     "ember-composable-helpers": "5.0.0",

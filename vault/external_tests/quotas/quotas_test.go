@@ -4,7 +4,6 @@
 package quotas
 
 import (
-	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -18,14 +17,6 @@ import (
 	"github.com/openbao/openbao/builtin/logical/pki"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/vault"
-)
-
-const (
-	testLookupOnlyPolicy = `
-path "/auth/token/lookup" {
-	capabilities = [ "create", "update"]
-}
-`
 )
 
 var coreConfig = &vault.CoreConfig{
@@ -119,29 +110,6 @@ func testRPSWithNS(reqFunc func(numSuccess, numFail *atomic.Int32, ns string), d
 	}
 
 	return numSuccess.Load(), numFail.Load(), time.Since(start)
-}
-
-func waitForRemovalOrTimeout(c *api.Client, path string, tick, to time.Duration) error {
-	ticker := time.Tick(tick)
-	timeout := time.After(to)
-
-	// wait for the resource to be removed
-	for {
-		select {
-		case <-timeout:
-			return fmt.Errorf("timeout exceeding waiting for resource to be deleted: %s", path)
-
-		case <-ticker:
-			resp, err := c.Logical().Read(path)
-			if err != nil {
-				return err
-			}
-
-			if resp == nil {
-				return nil
-			}
-		}
-	}
 }
 
 func TestQuotas_RateLimit_DupName(t *testing.T) {

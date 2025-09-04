@@ -661,11 +661,6 @@ func testCoreWithIdentityTokenAppRole(ctx context.Context, t *testing.T) (*Core,
 	return core, is, core.tokenStore, approleAccessor
 }
 
-func testCoreWithIdentityTokenAppRoleRoot(ctx context.Context, t *testing.T) (*Core, *IdentityStore, *TokenStore, string, string) {
-	is, approleAccessor, core, root := testIdentityStoreWithAppRoleAuthRoot(ctx, t)
-	return core, is, core.tokenStore, approleAccessor, root
-}
-
 func testIdentityStoreWithAppRoleAuth(ctx context.Context, t *testing.T) (*IdentityStore, string, *Core) {
 	is, ghA, c, _ := testIdentityStoreWithAppRoleAuthRoot(ctx, t)
 	return is, ghA, c

@@ -3304,18 +3304,6 @@ func (b *SystemBackend) handleKeyStatus(ctx context.Context, req *logical.Reques
 	return resp, nil
 }
 
-func (b *SystemBackend) handleWrappingPubkey(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	x, _ := b.Core.wrappingJWTKey.X.MarshalText()
-	y, _ := b.Core.wrappingJWTKey.Y.MarshalText()
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"jwt_x":     string(x),
-			"jwt_y":     string(y),
-			"jwt_curve": corePrivateKeyTypeP521,
-		},
-	}, nil
-}
-
 func (b *SystemBackend) handleWrappingWrap(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.WrapInfo == nil || req.WrapInfo.TTL == 0 {
 		return logical.ErrorResponse("endpoint requires response wrapping to be used"), logical.ErrInvalidRequest

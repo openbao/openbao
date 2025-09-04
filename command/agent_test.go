@@ -1417,7 +1417,6 @@ func (h *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 // by Vault
 type userAgentHandler struct {
 	props                *vault.HandlerProperties
-	failCount            int
 	userAgentToCheckFor  string
 	pathToCheck          string
 	requestMethodToCheck string

@@ -113,11 +113,6 @@ type PassthroughBackend struct {
 	revoke         func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error)
 }
 
-func (b *PassthroughBackend) handleRevoke(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	// This is a no-op
-	return nil, nil
-}
-
 func (b *PassthroughBackend) handleExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 	out, err := req.Storage.Get(ctx, req.Path)
 	if err != nil {

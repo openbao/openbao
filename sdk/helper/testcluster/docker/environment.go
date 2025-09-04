@@ -232,24 +232,6 @@ func (dc *DockerCluster) setupNode0(ctx context.Context) error {
 	return err
 }
 
-func (dc *DockerCluster) clusterReady(ctx context.Context) error {
-	for i, node := range dc.ClusterNodes {
-		expectLeader := i == 0
-		err := ensureLeaderMatches(ctx, node.client, func(leader *api.LeaderResponse) error {
-			if expectLeader != leader.IsSelf {
-				return fmt.Errorf("node %d leader=%v, expected=%v", i, leader.IsSelf, expectLeader)
-			}
-
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (dc *DockerCluster) setupCA(opts *DockerClusterOptions) error {
 	var err error
 	var ca testcluster.CA

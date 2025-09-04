@@ -454,7 +454,7 @@ const sidebars: SidebarsConfig = {
                                 "platform/k8s/injector/installation",
                                 "platform/k8s/injector/examples",
                             ],
-                            "Vault CSI Provider": [
+                            "OpenBao CSI Provider": [
                                 "platform/k8s/csi/index",
                                 "platform/k8s/csi/installation",
                                 "platform/k8s/csi/configurations",

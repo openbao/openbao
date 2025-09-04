@@ -4,17 +4,31 @@
 package vault
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"fmt"
+	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 const n = 1024
 
+// randbytes is used to create a buffer of size n filled with random bytes
+func randbytes(n int) []byte {
+	buf := make([]byte, n)
+	if _, err := rand.Read(buf); err != nil {
+		panic(fmt.Sprintf("failed to generate %d random bytes: %v", n, err))
+	}
+	return buf
+}
+
 func TestMemZero(t *testing.T) {
-	r := rand.Intn(n)
-	b := randbytes(r)
+	r, err := rand.Int(rand.Reader, big.NewInt(n))
+	require.NoError(t, err)
+	b := randbytes(int(r.Int64()))
 	memzero(b)
-	if len(b) != r {
+	if len(b) != int(r.Int64()) {
 		t.Fatalf("buffer has wrong length: %d", len(b))
 	}
 	for i := range b {

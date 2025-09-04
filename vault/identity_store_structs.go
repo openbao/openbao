@@ -19,11 +19,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-const (
-	// Storage prefixes
-	entityPrefix = "entity/"
-)
-
 // metaKeyFormatRegEx checks if a metadata key string is valid
 var metaKeyFormatRegEx = regexp.MustCompile(`^[a-zA-Z0-9=/+_-]+$`).MatchString
 
@@ -105,9 +100,7 @@ type IdentityStore struct {
 	namespacer    Namespacer
 	metrics       metricsutil.Metrics
 	totpPersister TOTPPersister
-	groupUpdater  GroupUpdater
 	tokenStorer   TokenStorer
-	entityCreator EntityCreator
 	mfaBackend    *LoginMFABackend
 }
 
@@ -141,21 +134,9 @@ type TOTPPersister interface {
 
 var _ TOTPPersister = &Core{}
 
-type GroupUpdater interface {
-	SendGroupUpdate(ctx context.Context, group *identity.Group) (bool, error)
-}
-
-var _ GroupUpdater = &Core{}
-
 type TokenStorer interface {
 	LookupToken(context.Context, string) (*logical.TokenEntry, error)
 	CreateToken(context.Context, *logical.TokenEntry, bool) error
 }
 
 var _ TokenStorer = &Core{}
-
-type EntityCreator interface {
-	CreateEntity(ctx context.Context) (*identity.Entity, error)
-}
-
-var _ EntityCreator = &Core{}

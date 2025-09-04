@@ -671,8 +671,12 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 		Storage:      req.Storage,
 		Connection:   req.Connection,
 		Headers:      req.Headers,
+		MFACreds:     req.MFACreds,
 		IsInlineAuth: true,
 	}
+
+	// Remove MFA credentials from the main request.
+	req.MFACreds = nil
 
 	// Find the optional operation; this defaults to Update if missing.
 	authOperation, present := req.Headers[consts.InlineAuthOperationHeaderName]
@@ -1057,7 +1061,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		return nil, ErrInternalError
 	}
 
-	return
+	return resp, err
 }
 
 func (c *Core) doRouting(ctx context.Context, req *logical.Request) (*logical.Response, error) {
@@ -1092,7 +1096,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	if err != nil {
 		c.logger.Error("failed to get namespace from context", "error", err)
 		retErr = multierror.Append(retErr, ErrInternalError)
-		return
+		return retResp, retAuth, retErr
 	}
 
 	// Validate the token
@@ -1633,7 +1637,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	if err != nil {
 		c.logger.Error("failed to get namespace from context", "error", err)
 		retErr = multierror.Append(retErr, ErrInternalError)
-		return
+		return retResp, retAuth, retErr
 	}
 	// If the response generated an authentication, then generate the token
 	if resp != nil && resp.Auth != nil && req.Path != "sys/mfa/validate" {

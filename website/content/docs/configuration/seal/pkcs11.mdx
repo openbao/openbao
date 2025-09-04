@@ -4,6 +4,7 @@ description: |-
   The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the
   autounseal mechanism.
 ---
+
 # `pkcs11` seal
 
 The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the autounseal
@@ -169,6 +170,8 @@ or deleted and are used to decrypt older data.
 
 ## Tested HSM Vendors and Models
 
-| Vendor       | Model      | Unsealing | Installation Guide                                         |
-| ------------ | ---------- | --------- | ---------------------------------------------------------- |
-| Securosys SA | Primus HSM | Yes       | [Installation Guide](/docs/guides/unseal/pkcs11/securosys) |
+| Vendor       | Model               | Unsealing   | Installation Guide                                         |
+| ------------ | --------------------| ------------| -----------------------------------------------------------|
+| Securosys SA | Primus HSM          | Yes         | [Installation Guide](/docs/guides/unseal/pkcs11/securosys) |
+| Utimaco      | u.trust GP HSM      | Yes         | [Installation Guide](/docs/guides/unseal/pkcs11/utimaco)   |
+| Utimaco      | CryptoServer CP5    | Yes         | [Installation Guide](/docs/guides/unseal/pkcs11/utimaco)   |

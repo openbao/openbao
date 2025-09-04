@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"encoding/base64"
 	"testing"
 
 	"github.com/openbao/openbao/helper/namespace"
@@ -14,7 +15,8 @@ import (
 
 func TestNamespaceBackend_KeyStatus(t *testing.T) {
 	t.Parallel()
-	b := testSystemBackend(t)
+	c, _, _ := TestCoreUnsealed(t)
+	b := c.systemBackend
 	rootCtx := namespace.RootContext(context.Background())
 
 	t.Run("returns error for non-existent namespace", func(t *testing.T) {
@@ -33,8 +35,7 @@ func TestNamespaceBackend_KeyStatus(t *testing.T) {
 	})
 
 	t.Run("returns key info for sealable namespace", func(t *testing.T) {
-		sealConfig := map[string]interface{}{"type": "shamir", "secret_shares": 3, "secret_threshold": 2}
-		testCreateNamespace(t, rootCtx, b, "bar", map[string]interface{}{"seals": sealConfig})
+		TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "bar/"})
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/bar/key-status")
 		resp, err := b.HandleRequest(rootCtx, req)
 
@@ -47,7 +48,8 @@ func TestNamespaceBackend_KeyStatus(t *testing.T) {
 
 func TestNamespaceBackend_SealStatus(t *testing.T) {
 	t.Parallel()
-	b := testSystemBackend(t)
+	c, _, _ := TestCoreUnsealed(t)
+	b := c.systemBackend
 	rootCtx := namespace.RootContext(context.Background())
 
 	t.Run("returns error on non-sealable namespace", func(t *testing.T) {
@@ -60,18 +62,14 @@ func TestNamespaceBackend_SealStatus(t *testing.T) {
 	})
 
 	t.Run("can read seal status", func(t *testing.T) {
-		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bar")
-		req.Data["seals"] = map[string]interface{}{"type": "shamir", "secret_shares": 3, "secret_threshold": 2}
-		res, err := b.HandleRequest(rootCtx, req)
-		require.NotNil(t, res)
-		require.NoError(t, err)
+		TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "bar/"})
 
-		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/bar/seal-status")
-		res, err = b.HandleRequest(rootCtx, req)
+		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/bar/seal-status")
+		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 		require.Equal(t, "shamir", res.Data["seal_status"].(*SealStatusResponse).Type)
 		require.Equal(t, false, res.Data["seal_status"].(*SealStatusResponse).Sealed)
-		require.Equal(t, 2, res.Data["seal_status"].(*SealStatusResponse).T)
+		require.Equal(t, 3, res.Data["seal_status"].(*SealStatusResponse).T)
 		require.Equal(t, 3, res.Data["seal_status"].(*SealStatusResponse).N)
 		require.Equal(t, 0, res.Data["seal_status"].(*SealStatusResponse).Progress)
 	})
@@ -83,26 +81,11 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 	b := c.systemBackend
 
 	rootCtx := namespace.RootContext(context.Background())
-	t.Run("can seal namespace created with seal config", func(t *testing.T) {
-		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo")
-		req.Data["seals"] = map[string]interface{}{"type": "shamir", "secret_shares": 3, "secret_threshold": 2}
+	t.Run("namespaces created with seal config are sealed by default", func(t *testing.T) {
+		TestCoreCreateSealedNamespaces(t, c, &namespace.Namespace{Path: "foo/"})
+
+		req := logical.TestRequest(t, logical.CreateOperation, "auth/token/create/foo")
 		res, err := b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-
-		require.NotEmpty(t, res.Data["uuid"].(string), "namespace has no UUID")
-		require.NotEmpty(t, res.Data["id"].(string), "namespace has no ID")
-		require.Equal(t, res.Data["path"].(string), "foo/")
-		require.Equal(t, res.Data["tainted"].(bool), false)
-		require.Len(t, res.Data["key_shares"].(map[string][]string)["default"], 3)
-
-		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo/seal")
-		res, err = b.HandleRequest(rootCtx, req)
-		require.Nil(t, res)
-		require.NoError(t, err)
-
-		// any call using the namespace will now fail
-		req = logical.TestRequest(t, logical.CreateOperation, "auth/token/create/foo")
-		res, err = b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
 		require.Empty(t, res)
 
@@ -128,12 +111,7 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 
 		keyshares := res.Data["key_shares"].(map[string][]string)["default"]
 
-		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/baz/seal")
-		res, err = b.HandleRequest(rootCtx, req)
-		require.Nil(t, res)
-		require.NoError(t, err)
-
-		// calls using the namespace will now fail
+		// calls to sealed namespace fail
 		ns, err := c.namespaceStore.GetNamespaceByPath(rootCtx, "baz")
 		require.NoError(t, err)
 
@@ -166,28 +144,20 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 	})
 
 	t.Run("preserve mounts after unsealing namespaces", func(t *testing.T) {
-		namespaceName := "unseal_preserve_mount"
-
-		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/"+namespaceName)
-		req.Data["seals"] = map[string]interface{}{"type": "shamir", "secret_shares": 3, "secret_threshold": 2}
-		res, err := b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-
-		keyshares := res.Data["key_shares"].(map[string][]string)["default"]
-
-		ns, err := c.namespaceStore.GetNamespaceByPath(rootCtx, namespaceName)
+		keyshares := TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "foobar/"})
+		ns, err := c.namespaceStore.GetNamespaceByPath(rootCtx, "foobar")
 		require.NoError(t, err)
 		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
 
 		// mount a kv engine
-		req = logical.TestRequest(t, logical.UpdateOperation, "mounts/my_secrets")
+		req := logical.TestRequest(t, logical.UpdateOperation, "mounts/my_secrets")
 		req.Data["type"] = "kv"
 		_, err = b.HandleRequest(nsCtx, req)
 		require.NoError(t, err)
 
 		// mount should appear
 		req = logical.TestRequest(t, logical.ReadOperation, "mounts")
-		res, err = b.HandleRequest(nsCtx, req)
+		res, err := b.HandleRequest(nsCtx, req)
 		require.NoError(t, err)
 		require.NotNil(t, res.Data["my_secrets/"])
 
@@ -214,22 +184,30 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		require.NoError(t, err)
 
 		// then seal the namespace
-		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/"+namespaceName+"/seal")
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/foobar/seal")
 		_, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 
 		// unseal the namespace
-		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/"+namespaceName+"/unseal")
-		req.Data["key"] = keyshares[0]
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/foobar/unseal")
+		req.Data["key"] = base64.RawStdEncoding.EncodeToString(keyshares["foobar/"][0])
 		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 		require.Equal(t, 1, res.Data["seal_status"].(*SealStatusResponse).Progress)
 		require.Equal(t, true, res.Data["seal_status"].(*SealStatusResponse).Sealed)
 
-		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/"+namespaceName+"/unseal")
-		req.Data["key"] = keyshares[1]
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/foobar/unseal")
+		req.Data["key"] = base64.RawStdEncoding.EncodeToString(keyshares["foobar/"][1])
 		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
+		require.Equal(t, 2, res.Data["seal_status"].(*SealStatusResponse).Progress)
+		require.Equal(t, true, res.Data["seal_status"].(*SealStatusResponse).Sealed)
+
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/foobar/unseal")
+		req.Data["key"] = base64.RawStdEncoding.EncodeToString(keyshares["foobar/"][2])
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+
 		// progress reset
 		require.Equal(t, 0, res.Data["seal_status"].(*SealStatusResponse).Progress)
 		require.Equal(t, false, res.Data["seal_status"].(*SealStatusResponse).Sealed)

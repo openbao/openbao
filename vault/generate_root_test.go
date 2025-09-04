@@ -23,7 +23,7 @@ func TestCore_GenerateRoot_Lifecycle(t *testing.T) {
 func TestCore_NS_GenerateRoot_Lifecycle(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ns := &namespace.Namespace{Path: "test1/"}
-	keysPerNamespace := TestCoreCreateSealedNamespaces(t, c, ns)
+	keysPerNamespace := TestCoreCreateUnsealedNamespaces(t, c, ns)
 	testCore_GenerateRoot_Lifecycle_Common(t, c, keysPerNamespace[ns.Path], ns)
 }
 
@@ -104,7 +104,7 @@ func TestCore_GenerateRoot_Init(t *testing.T) {
 func TestCore_NS_GenerateRoot_Init(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ns := &namespace.Namespace{Path: "test1/"}
-	TestCoreCreateSealedNamespaces(t, c, ns)
+	TestCoreCreateUnsealedNamespaces(t, c, ns)
 	testCore_GenerateRoot_Init_Common(t, c, ns)
 }
 
@@ -140,7 +140,7 @@ func TestCore_GenerateRoot_InvalidRootNonce(t *testing.T) {
 func TestCore_NS_GenerateRoot_InvalidRootNonce(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ns := &namespace.Namespace{Path: "test1/"}
-	keysPerNamespace := TestCoreCreateSealedNamespaces(t, c, ns)
+	keysPerNamespace := TestCoreCreateUnsealedNamespaces(t, c, ns)
 	keys := keysPerNamespace[ns.Path]
 	keys[0][0]++
 	testCore_GenerateRoot_InvalidRootNonce_Common(t, c, keys, ns)
@@ -195,7 +195,7 @@ func TestCore_GenerateRoot_Update_OTP(t *testing.T) {
 func TestCore_NS_GenerateRoot_Update_OTP(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ns := &namespace.Namespace{Path: "test1/"}
-	keysPerNamespace := TestCoreCreateSealedNamespaces(t, c, ns)
+	keysPerNamespace := TestCoreCreateUnsealedNamespaces(t, c, ns)
 	testCore_GenerateRoot_Update_OTP_Common(t, c, keysPerNamespace[ns.Path], ns)
 }
 
@@ -291,7 +291,7 @@ func TestCore_GenerateRoot_Update_PGP(t *testing.T) {
 func TestCore_NS_GenerateRoot_Update_PGP(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ns := &namespace.Namespace{Path: "test1/"}
-	keysPerNamespace := TestCoreCreateSealedNamespaces(t, c, ns)
+	keysPerNamespace := TestCoreCreateUnsealedNamespaces(t, c, ns)
 	testCore_GenerateRoot_Update_PGP_Common(t, c, keysPerNamespace[ns.Path], ns)
 }
 

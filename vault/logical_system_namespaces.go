@@ -398,10 +398,11 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			if len(keyShares) > 0 {
 				keySharesMap["default"] = keyShares
 			}
-		}
-
-		if err := b.Core.namespaceStore.initializeNamespace(ctx, entry); err != nil {
-			return handleError(err)
+		} else {
+			// if there's no seal config provided we need to initialize the namespace
+			if err := b.Core.namespaceStore.initializeNamespace(ctx, entry); err != nil {
+				return handleError(err)
+			}
 		}
 
 		return &logical.Response{Data: createNamespaceDataResponse(entry, keySharesMap)}, nil

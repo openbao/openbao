@@ -20,7 +20,7 @@ make use of their distinctive features. But as we are supporting them through a
 generic API, we don't do this. The downside would be, that this is breaking
 change.
 
-It is probably save to say that OpenTelemetry won the format war on telemetry
+It is probably safe to say that OpenTelemetry won the format war on telemetry
 (at least for the time being, until the next big thing comes). At some point
 most - if not all - metrics consumers/sink will either support it or become
 irrelevant.
@@ -37,9 +37,8 @@ the flexibility to iterate on them for a few releases while gathering feedback.
 
 ## User Migration Path
 
-We should first add the OpenTelemetry based metrics and deprecated the
-[`go-metrics`][] based metrics in one release and in a later release remove the
-old metrics.
+We should first add the OpenTelemetry based metrics and deprecate the
+[`go-metrics`][] in one release and in later releases remove them all together.
 
 ### Circonus
 

@@ -5,11 +5,7 @@ package ssh
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"net"
@@ -32,27 +28,6 @@ var (
 	errIssuerNameInUse   = errutil.UserError{Err: "issuer name already in use"}
 	errIssuerNameIsEmpty = errutil.UserError{Err: "expected non-empty issuer name"}
 )
-
-// Creates a new RSA key pair with the given key length. The private key will be
-// of pem format and the public key will be of OpenSSH format.
-func generateRSAKeys(keyBits int) (publicKeyRsa string, privateKeyRsa string, err error) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, keyBits)
-	if err != nil {
-		return "", "", fmt.Errorf("error generating RSA key-pair: %w", err)
-	}
-
-	privateKeyRsa = string(pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
-	}))
-
-	sshPublicKey, err := ssh.NewPublicKey(privateKey.Public())
-	if err != nil {
-		return "", "", fmt.Errorf("error generating RSA key-pair: %w", err)
-	}
-	publicKeyRsa = "ssh-rsa " + base64.StdEncoding.EncodeToString(sshPublicKey.Marshal())
-	return
-}
 
 // Takes an IP address and role name and checks if the IP is part
 // of CIDR blocks belonging to the role.

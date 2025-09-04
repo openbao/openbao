@@ -892,19 +892,6 @@ func testPath(t *testing.T, path *Path, sp *logical.Paths, expectedJSON string) 
 	}
 }
 
-func getPathOp(pi *OASPathItem, op string) *OASOperation {
-	switch op {
-	case "get":
-		return pi.Get
-	case "post":
-		return pi.Post
-	case "delete":
-		return pi.Delete
-	default:
-		panic("unexpected operation: " + op)
-	}
-}
-
 func expected(name string) string {
 	data, err := os.ReadFile(filepath.Join("testdata", name+".json"))
 	if err != nil {

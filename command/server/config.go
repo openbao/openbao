@@ -129,10 +129,6 @@ type Config struct {
 	Audits []*AuditDevice `hcl:"-"`
 }
 
-const (
-	sectionSeal = "Seal"
-)
-
 func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 	results := configutil.ValidateUnusedFields(c.UnusedKeys, sourceFilePath)
 	if c.Telemetry != nil {

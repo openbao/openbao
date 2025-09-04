@@ -812,11 +812,3 @@ func (b *versionedKVBackend) pathMetadataDelete() framework.OperationFunc {
 		return nil, err
 	}
 }
-
-const (
-	metadataHelpSyn  = `Allows interaction with key metadata and settings in the KV store.`
-	metadataHelpDesc = `
-This endpoint allows for reading, information about a key in the key-value
-store, writing key settings, and permanently deleting a key and all versions.
-`
-)

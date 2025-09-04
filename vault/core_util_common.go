@@ -21,18 +21,6 @@ func (c *Core) GetCoreConfigInternal() *server.Config {
 	return conf.(*server.Config)
 }
 
-func (c *Core) loadHeaderHMACKey(ctx context.Context) error {
-	ent, err := c.barrier.Get(ctx, indexHeaderHMACKeyPath)
-	if err != nil {
-		return err
-	}
-
-	if ent != nil {
-		c.IndexHeaderHMACKey.Store(ent.Value)
-	}
-	return nil
-}
-
 func (c *Core) headerHMACKey() []byte {
 	key := c.IndexHeaderHMACKey.Load()
 	if key == nil {

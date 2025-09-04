@@ -19,12 +19,8 @@ import (
 )
 
 const (
-	shared                   = false
-	exclusive                = true
 	currentConvergentVersion = 3
 )
-
-var errNeedExclusiveLock = errors.New("an exclusive lock is needed for this operation")
 
 // PolicyRequest holds values used when requesting a policy. Most values are
 // only used during an upsert.

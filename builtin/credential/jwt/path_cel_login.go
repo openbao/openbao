@@ -5,13 +5,11 @@ package jwtauth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/hashicorp/cap/jwt"
-	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
@@ -211,26 +209,6 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, operation logical.Op
 	return nil, fmt.Errorf("Cel program '%s' returned unexpected type: %T", celRoleEntry.Name, result)
 }
 
-func (b *jwtAuthBackend) pathCelLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	roleName := req.Auth.InternalData["role"].(string)
-	if roleName == "" {
-		return nil, errors.New("failed to fetch cel role_name during renewal")
-	}
-
-	// Ensure that the Role still exists.
-	role, err := b.getCelRole(ctx, req.Storage, roleName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to validate cel role %s during renewal: %v", roleName, err)
-	}
-	if role == nil {
-		return nil, fmt.Errorf("cel role %s does not exist during renewal", roleName)
-	}
-
-	resp := &logical.Response{Auth: req.Auth}
-	// on renew, keep the previous TTLs -- not available without running against JWT
-	return resp, nil
-}
-
 const (
 	pathCelLoginHelpSyn = `
 	Authenticates to OpenBao using a JWT (or OIDC) token against a CEL role.
@@ -239,13 +217,3 @@ const (
 Authenticates JWTs against a CEL role.
 `
 )
-
-func marshalCIDRs(cidrs []string) []*sockaddr.SockAddrMarshaler {
-	sockaddrs := []*sockaddr.SockAddrMarshaler{}
-	for _, cidr := range cidrs {
-		sockaddr := sockaddr.SockAddrMarshaler{}
-		sockaddr.UnmarshalJSON([]byte(cidr))
-		sockaddrs = append(sockaddrs, &sockaddr)
-	}
-	return sockaddrs
-}

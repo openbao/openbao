@@ -16,9 +16,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 )
 
-// testTesting is used for testing the legacy testing framework
-var testTesting = false
-
 type testRun struct {
 	expectedTestT *mockT
 	environment   *mockEnvironment

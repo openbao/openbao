@@ -250,8 +250,8 @@ func (c *LeaseCache) Send(ctx context.Context, req *SendRequest) (*SendResponse,
 	if found {
 		idLock.Unlock()
 		inflight = inflightRaw.(*inflightRequest)
-		newVal := inflight.remaining.Add(1)
-		defer inflight.remaining.Store(newVal - 1)
+		inflight.remaining.Add(1)
+		defer inflight.remaining.Add(^uint64(0)) // equivalent of decrementing by 1
 
 		// If found it means that there's an inflight request being processed.
 		// We wait until that's finished before proceeding further.
@@ -262,8 +262,8 @@ func (c *LeaseCache) Send(ctx context.Context, req *SendRequest) (*SendResponse,
 		}
 	} else {
 		inflight = newInflightRequest()
-		newVal := inflight.remaining.Add(1)
-		defer inflight.remaining.Store(newVal - 1)
+		inflight.remaining.Add(1)
+		defer inflight.remaining.Add(^uint64(0)) // equivalent of decrementing by 1
 
 		c.inflightCache.Set(id, inflight, gocache.NoExpiration)
 		idLock.Unlock()

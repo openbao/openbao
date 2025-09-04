@@ -1151,7 +1151,7 @@ func (b *AESGCMBarrier) ConsumeEncryptionCount(consumer func(int64) error) error
 		err := consumer(c)
 		if err == nil && c > 0 {
 			// Consumer succeeded, remove those from local encryptions
-			b.UnaccountedEncryptions.Store(c - 1)
+			b.UnaccountedEncryptions.Add(-c)
 		}
 		return err
 	}
@@ -1250,7 +1250,7 @@ func (b *AESGCMBarrier) persistEncryptions(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			b.UnaccountedEncryptions.Store(upe - newEncs)
+			b.UnaccountedEncryptions.Add(-newEncs)
 		}
 	}
 	return nil

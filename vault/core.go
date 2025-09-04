@@ -3557,8 +3557,7 @@ func (c *Core) FinalizeInFlightReqData(reqID string, statusCode int) {
 	}
 
 	c.inFlightReqData.InFlightReqMap.Delete(reqID)
-	inFlightReqCount := c.inFlightReqData.InFlightReqCount.Load()
-	c.inFlightReqData.InFlightReqCount.Store(inFlightReqCount - 1)
+	c.inFlightReqData.InFlightReqCount.Add(^uint64(0)) // equivalent of decrementing by 1
 }
 
 // LoadInFlightReqData creates a snapshot map of the current

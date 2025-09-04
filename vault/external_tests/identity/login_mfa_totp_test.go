@@ -23,8 +23,7 @@ import (
 	"github.com/openbao/openbao/vault"
 )
 
-func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, username string) {
-	t.Helper()
+func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, username string, expectedEntityID string) {
 	totpPasscode := testhelpers.GetTOTPCodeFromEngine(t, client, totpCodePath)
 
 	upMethod, err := upAuth.NewUserpassAuth(username, &upAuth.Password{FromString: "testpassword"})
@@ -49,6 +48,8 @@ func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, u
 		t.Fatalf("MFA validation failed to return a ClientToken in secret: %v", secret)
 	}
 
+	clientToken := secret.Auth.ClientToken
+
 	// Redo the test, ensuring that the TOTP cannot be reused. This validates
 	// against HCSEC-2025-19 / CVE-2025-6015.
 	mfaSecret, err = client.Auth().MFALogin(context.Background(), upMethod)
@@ -65,6 +66,22 @@ func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, u
 	)
 	if err == nil || secret != nil {
 		t.Fatalf("MFA validation succeeded when it should fail: err=%v / secret=%v", err, secret)
+	}
+
+	// Validate the original token actually works and is persisted.
+	userClient2, err := client.Clone()
+	if err != nil {
+		t.Fatalf("Failed to clone client for lookup validation")
+	}
+	userClient2.SetToken(clientToken)
+	secret, err = userClient2.Logical().ReadWithContext(context.Background(), "auth/token/lookup-self")
+	if err != nil {
+		t.Fatalf("failed to lookup userpass authenticated token: %v", err)
+	}
+
+	entityIDCheck := secret.Data["entity_id"].(string)
+	if entityIDCheck != expectedEntityID {
+		t.Fatalf("different entityID assigned (got %v / expected %v)", entityIDCheck, expectedEntityID)
 	}
 }
 
@@ -182,6 +199,27 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 		return nil
 	}
 
+	singlePhaseInlineLoginFunc := func() error {
+		inlineClient, err := userClient1.WithInlineAuth(userpassPath, map[string]interface{}{
+			"password": "testpassword",
+		})
+		if err != nil {
+			return fmt.Errorf("failed cloning new client: %w", err)
+		}
+
+		totpPasscode := testhelpers.GetTOTPCodeFromEngine(t, client, enginePath1)
+		inlineClient.AddHeader("X-Vault-MFA", fmt.Sprintf("%s:%s", methodIdentifier, totpPasscode))
+
+		secret, err = inlineClient.Logical().Read("identity/entity/name/" + entity1)
+		if err != nil {
+			return fmt.Errorf("MFA failed for identifier %s: %v", methodIdentifier, err)
+		}
+		if secret == nil {
+			return fmt.Errorf("entity lookup returned nil: %#v", secret)
+		}
+		return nil
+	}
+
 	// single phase login for both method name and method ID
 	methodIdentifier = totpConfig["method_name"].(string)
 	testhelpers.RetryUntilAtCadence(t, 20*time.Second, 100*time.Millisecond, singlePhaseLoginFunc)
@@ -192,6 +230,9 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	// failed TOTP validation
 	testhelpers.RetryUntilAtCadence(t, 20*time.Second, time.Duration(waitPeriod)*time.Second, singlePhaseLoginFunc)
 	verifyLoginRequest(secret)
+
+	// Retry with inline authentication; this is self-verifying.
+	testhelpers.RetryUntilAtCadence(t, 20*time.Second, time.Duration(waitPeriod)*time.Second, singlePhaseInlineLoginFunc)
 
 	// Two-phase login
 	secret, err = userClient1.Logical().WriteWithContext(context.Background(), userpassPath, map[string]interface{}{
@@ -331,11 +372,11 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	}
 
 	// let's make sure the configID is not blocked for other users
-	doTwoPhaseLogin(t, userClient2, enginePath2, methodID, testuser2)
+	doTwoPhaseLogin(t, userClient2, enginePath2, methodID, testuser2, entityID2)
 
 	// let's see if user1 is able to login after 5 seconds
 	time.Sleep(5 * time.Second)
-	doTwoPhaseLogin(t, userClient1, enginePath1, methodID, testuser1)
+	doTwoPhaseLogin(t, userClient1, enginePath1, methodID, testuser1, entityID1)
 
 	// Destroy the secret so that the token can self generate
 	_, err = client.Logical().WriteWithContext(context.Background(), "identity/mfa/method/totp/admin-destroy", map[string]interface{}{

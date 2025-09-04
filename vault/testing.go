@@ -339,7 +339,7 @@ func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.
 }
 
 // TestCoreCreateSealedNamespaces creates sealed namespaces with 3 key shares and returns the
-// key for each created namespace in a map.
+// key shares for each namespace in a map with namespace path as key.
 func TestCoreCreateSealedNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) map[string][][]byte {
 	t.Helper()
 	sealConfig := &SealConfig{
@@ -353,14 +353,31 @@ func TestCoreCreateSealedNamespaces(t testing.T, core *Core, namespaces ...*name
 		parentPath, _ := ns.ParentPath()
 		parent, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
 		require.NoError(t, err)
-		parentCtx := namespace.ContextWithNamespace(ctx, parent)
-		err = core.namespaceStore.SetNamespace(parentCtx, ns)
-		require.NoError(t, err)
-		err = core.sealManager.SetSeal(namespace.ContextWithNamespace(ctx, ns), sealConfig, ns, true)
-		require.NoError(t, err)
-		nsSealKeyShares, err := core.sealManager.InitializeBarrier(ctx, ns)
+
+		nsSealKeyShares, err := core.namespaceStore.SetNamespaceSealed(namespace.ContextWithNamespace(ctx, parent), ns, sealConfig)
 		require.NoError(t, err)
 		keysPerNamespace[ns.Path] = nsSealKeyShares
+	}
+	return keysPerNamespace
+}
+
+// TestCoreCreateUnsealedNamespaces creates sealed namespaces with 3 key shares, unseals the namespaces
+// and returns back the key shares for each namespace in a map with namespace path as key.
+func TestCoreCreateUnsealedNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) map[string][][]byte {
+	t.Helper()
+	keysPerNamespace := make(map[string][][]byte)
+	for _, ns := range namespaces {
+		keys := TestCoreCreateSealedNamespaces(t, core, ns)
+		for _, key := range keys[ns.Path] {
+			unsealed, err := core.sealManager.UnsealNamespace(namespace.ContextWithNamespace(context.Background(), ns), ns, TestKeyCopy(key))
+			require.NoError(t, err)
+			if unsealed {
+				break
+			}
+		}
+
+		require.False(t, core.NamespaceSealed(ns))
+		keysPerNamespace[ns.Path] = keys[ns.Path]
 	}
 	return keysPerNamespace
 }

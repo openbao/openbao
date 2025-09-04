@@ -95,7 +95,7 @@ func TestDefaultSeal_IsNSSealed(t *testing.T) {
 	}
 	c, _, _ := TestCoreUnsealed(t)
 	sm := c.sealManager
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+	ctx := namespace.RootContext(context.Background())
 
 	ns := &namespace.Namespace{Path: "test/"}
 	TestCoreCreateNamespaces(t, c, ns)
@@ -113,7 +113,7 @@ func TestRegisterNamespace(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
 
 	ns := &namespace.Namespace{Path: "test/"}
-	TestCoreCreateSealedNamespaces(t, c, ns)
+	_ = TestCoreCreateUnsealedNamespaces(t, c, ns)
 	require.False(t, c.NamespaceSealed(ns))
 
 	err := TestCoreSeal(c)

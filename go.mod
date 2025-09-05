@@ -120,7 +120,6 @@ require (
 	github.com/openbao/openbao/api/v2 v2.4.0
 	github.com/openbao/openbao/sdk/v2 v2.4.0
 	github.com/ory/dockertest/v3 v3.12.0
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.8.1
 	github.com/posener/complete v1.2.3
 	github.com/pquerna/otp v1.5.0
@@ -159,6 +158,7 @@ require (
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
 	layeh.com/radius v0.0.0-20230922032716-6579be8edf5d
 	sigs.k8s.io/yaml v1.4.0
+	zgo.at/zcache/v2 v2.4.1
 )
 
 require (
@@ -316,6 +316,7 @@ require (
 	github.com/oracle/oci-go-sdk/v60 v60.0.0 // indirect
 	github.com/ovh/kmip-go v0.3.3 // indirect
 	github.com/packethost/packngo v0.1.1-0.20180711074735-b9cb5096f54c // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/petermattis/goid v0.0.0-20250813065127-a731cc31b4fe // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect

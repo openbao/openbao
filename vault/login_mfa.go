@@ -37,10 +37,10 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/patrickmn/go-cache"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"
 	"google.golang.org/protobuf/proto"
+	"zgo.at/zcache/v2"
 )
 
 const (
@@ -117,7 +117,7 @@ type MFABackend struct {
 	mfaLogger   hclog.Logger
 	namespacer  Namespacer
 	methodTable string
-	usedCodes   *cache.Cache
+	usedCodes   *zcache.Cache[string, any]
 }
 
 type LoginMFABackend struct {
@@ -2330,7 +2330,14 @@ func (c *Core) validatePingID(ctx context.Context, mConfig *mfa.Config, username
 	return nil
 }
 
-func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMethodSecret *mfa.Secret, configID, entityID string, usedCodes *cache.Cache, maximumValidationAttempts uint32) error {
+func (c *Core) validateTOTP(
+	ctx context.Context,
+	mfaFactors *MFAFactor,
+	entityMethodSecret *mfa.Secret,
+	configID, entityID string,
+	usedCodes *zcache.Cache[string, any],
+	maximumValidationAttempts uint32,
+) error {
 	// In HCSEC-2025-19, HashiCorp writes:
 	//
 	// > The TOTP validation will now return a generic error if the passcode
@@ -2374,7 +2381,7 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 
 	numAttempts, _ := usedCodes.Get(rateLimitID)
 	if numAttempts == nil {
-		usedCodes.Set(rateLimitID, uint32(1), passcodeTTL)
+		usedCodes.SetWithExpire(rateLimitID, uint32(1), passcodeTTL)
 	} else {
 		num, ok := numAttempts.(uint32)
 		if !ok {
@@ -2383,8 +2390,8 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 		if num == maximumValidationAttempts {
 			return fmt.Errorf("maximum TOTP validation attempts %d exceeded the allowed attempts %d. Please try again in %v seconds", num+1, maximumValidationAttempts, passcodeTTL)
 		}
-		err := usedCodes.Increment(rateLimitID, 1)
-		if err != nil {
+		_, ok = usedCodes.Modify(rateLimitID, func(a any) any { return a.(uint32) + 1 })
+		if !ok {
 			return errors.New("failed to increment the TOTP code counter")
 		}
 	}
@@ -2419,7 +2426,7 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 	validityPeriod := time.Duration(int64(time.Second) * int64(totpSecret.Period) * int64(2+totpSecret.Skew))
 
 	// Adding the used code to the cache
-	err = usedCodes.Add(usedName, nil, validityPeriod)
+	err = usedCodes.AddWithExpire(usedName, nil, validityPeriod)
 	if err != nil {
 		return fmt.Errorf("error adding code to used cache: %w", err)
 	}

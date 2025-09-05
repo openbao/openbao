@@ -1876,7 +1876,7 @@ func (i *IdentityStore) pathOIDCAuthorize(ctx context.Context, req *logical.Requ
 	}
 
 	// Cache the authorization code for a subsequent token exchange
-	if err := i.oidcAuthCodeCache.SetDefault(ns, code, authCodeEntry); err != nil {
+	if err := i.oidcAuthCodeCache.Set(ns, code, authCodeEntry); err != nil {
 		return authResponse("", state, ErrAuthServerError, err.Error())
 	}
 

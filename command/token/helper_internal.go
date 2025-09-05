@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/natefinch/atomic"
 )
 
@@ -25,7 +24,7 @@ type InternalTokenHelper struct {
 }
 
 func NewInternalTokenHelper() (*InternalTokenHelper, error) {
-	homeDir, err := homedir.Dir()
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(fmt.Sprintf("error getting user's home directory: %v", err))
 	}

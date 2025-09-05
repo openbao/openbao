@@ -26,8 +26,10 @@ var insecureFileMounts = map[string]string{
 
 func TestSelfSignedCA(t *testing.T) {
 	copyFromTo := map[string]string{
-		"test-fixtures/with_tls/stores":  "/bitnami/cassandra/secrets/",
-		"test-fixtures/with_tls/cqlshrc": "/.cassandra/cqlshrc",
+		"test-fixtures/with_tls/cassandra.yaml":    "/etc/cassandra/cassandra.yaml",
+		"test-fixtures/with_tls/cqlshrc":           "/etc/cassandra/cqlshrc",
+		"test-fixtures/with_tls/stores/truststore": "/etc/cassandra/truststore",
+		"test-fixtures/with_tls/stores/keystore":   "/etc/cassandra/keystore",
 	}
 
 	tlsConfig := loadServerCA(t, "test-fixtures/with_tls/ca.pem")
@@ -42,14 +44,8 @@ func TestSelfSignedCA(t *testing.T) {
 	}
 
 	host, cleanup := cassandra.PrepareTestContainer(t,
-		cassandra.ContainerName("cassandra"),
-		cassandra.Image("bitnami/cassandra", "3.11.11"),
 		cassandra.CopyFromTo(copyFromTo),
 		cassandra.SslOpts(sslOpts),
-		cassandra.Env("CASSANDRA_KEYSTORE_PASSWORD=cassandra"),
-		cassandra.Env("CASSANDRA_TRUSTSTORE_PASSWORD=cassandra"),
-		cassandra.Env("CASSANDRA_INTERNODE_ENCRYPTION=none"),
-		cassandra.Env("CASSANDRA_CLIENT_ENCRYPTION=true"),
 	)
 	t.Cleanup(cleanup)
 

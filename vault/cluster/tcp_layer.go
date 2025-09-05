@@ -7,11 +7,11 @@ import (
 	"crypto/tls"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"go.uber.org/atomic"
 )
 
 // TCPLayer implements the NetworkLayer interface and uses TCP as the underlying
@@ -30,7 +30,7 @@ func NewTCPLayer(addrs []*net.TCPAddr, logger log.Logger) *TCPLayer {
 	return &TCPLayer{
 		addrs:   addrs,
 		logger:  logger,
-		stopped: atomic.NewBool(false),
+		stopped: &atomic.Bool{},
 	}
 }
 

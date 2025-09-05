@@ -393,5 +393,5 @@ func (c *Core) SetClusterHandler(handler http.Handler) {
 }
 
 func (c *Core) ClusterID() string {
-	return c.clusterID.Load()
+	return c.clusterID.Load().(string)
 }

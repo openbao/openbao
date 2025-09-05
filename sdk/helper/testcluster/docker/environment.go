@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -40,7 +41,6 @@ import (
 	dockhelper "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
-	uberAtomic "go.uber.org/atomic"
 	"golang.org/x/net/http2"
 )
 
@@ -702,7 +702,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	var seenLogs uberAtomic.Bool
+	var seenLogs atomic.Bool
 	logConsumer := func(s string) {
 		if seenLogs.CompareAndSwap(false, true) {
 			wg.Done()

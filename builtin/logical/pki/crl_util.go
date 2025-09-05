@@ -12,13 +12,13 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	atomic2 "go.uber.org/atomic"
 )
 
 const (
@@ -78,18 +78,18 @@ type (
 // The CRL builder also tracks the revocation configuration.
 type crlBuilder struct {
 	_builder              sync.Mutex
-	forceRebuild          *atomic2.Bool
+	forceRebuild          *atomic.Bool
 	canRebuild            bool
 	lastDeltaRebuildCheck time.Time
 
 	_config               sync.RWMutex
-	dirty                 *atomic2.Bool
+	dirty                 *atomic.Bool
 	config                crlConfig
 	haveInitializedConfig bool
 
 	// Whether to invalidate our LastModifiedTime due to write on the
 	// global issuance config.
-	invalidate *atomic2.Bool
+	invalidate *atomic.Bool
 }
 
 const (
@@ -98,16 +98,18 @@ const (
 )
 
 func newCRLBuilder(canRebuild bool) *crlBuilder {
+	dirty := &atomic.Bool{}
+	dirty.Store(true)
 	return &crlBuilder{
-		forceRebuild: atomic2.NewBool(false),
+		forceRebuild: &atomic.Bool{},
 		canRebuild:   canRebuild,
 		// Set the last delta rebuild window to now, delaying the first delta
 		// rebuild by the first rebuild period to give us some time on startup
 		// to stabilize.
 		lastDeltaRebuildCheck: time.Now(),
-		dirty:                 atomic2.NewBool(true),
+		dirty:                 dirty,
 		config:                defaultCrlConfig,
-		invalidate:            atomic2.NewBool(false),
+		invalidate:            &atomic.Bool{},
 	}
 }
 

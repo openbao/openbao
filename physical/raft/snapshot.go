@@ -14,16 +14,15 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/raft"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	"github.com/rboyer/safeio"
 	bolt "go.etcd.io/bbolt"
-	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/hashicorp/raft"
 )
 
 const (

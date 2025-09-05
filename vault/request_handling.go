@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/armon/go-metrics"
@@ -22,7 +23,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
-	uberAtomic "go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/openbao/openbao/api/v2"
@@ -124,7 +124,7 @@ type HandlerProperties struct {
 	AllListeners          []listenerutil.Listener
 	DisablePrintableCheck bool
 	RecoveryMode          bool
-	RecoveryToken         *uberAtomic.String
+	RecoveryToken         *atomic.Value
 }
 
 // fetchEntityAndDerivedPolicies returns the entity object for the given entity

@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"go.uber.org/atomic"
 )
 
 // InmemLayer is an in-memory implementation of NetworkLayer. This is
@@ -43,7 +43,7 @@ func NewInmemLayer(addr string, logger log.Logger) *InmemLayer {
 	return &InmemLayer{
 		addr:        addr,
 		logger:      logger,
-		stopped:     atomic.NewBool(false),
+		stopped:     &atomic.Bool{},
 		stopCh:      make(chan struct{}),
 		peers:       make(map[string]*InmemLayer),
 		servConns:   make(map[string][]net.Conn),
@@ -109,7 +109,7 @@ func (l *InmemLayer) Listeners() []NetworkListener {
 		addr:         l.addr,
 		pendingConns: make(chan net.Conn),
 
-		stopped: atomic.NewBool(false),
+		stopped: &atomic.Bool{},
 		stopCh:  make(chan struct{}),
 	}
 

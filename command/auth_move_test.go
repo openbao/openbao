@@ -147,9 +147,3 @@ func TestAuthMoveCommand_Run(t *testing.T) {
 		assertNoTabs(t, cmd)
 	})
 }
-
-func TestVaultServerSetup(t *testing.T) {
-	t.Parallel()
-	_, closer := testVaultServer(t)
-	defer closer()
-}

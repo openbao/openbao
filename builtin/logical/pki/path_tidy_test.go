@@ -582,9 +582,6 @@ func TestCertStorageMetrics(t *testing.T) {
 	defer cluster.Cleanup()
 	client := cluster.Cores[0].Client
 
-	// Reduce race window between post-unseal namespaceStore setup and request handling.
-	time.Sleep(2 * time.Second)
-
 	// Mount PKI
 	err = client.Sys().Mount("pki", &api.MountInput{
 		Type: "pki",
@@ -665,8 +662,6 @@ func TestCertStorageMetrics(t *testing.T) {
 	// Sealing cores as plugin reload triggers the race detector - VAULT-13635
 	testhelpers.EnsureCoresSealed(t, cluster)
 	testhelpers.EnsureCoresUnsealed(t, cluster)
-
-	time.Sleep(2 * time.Second)
 
 	// Wait until a tidy run has completed.
 	testhelpers.RetryUntil(t, 5*time.Second, func() error {

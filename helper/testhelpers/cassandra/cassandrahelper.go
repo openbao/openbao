@@ -92,6 +92,8 @@ func PrepareTestContainer(t *testing.T, opts ...ContainerOpt) (Host, func()) {
 		return h, func() {}
 	}
 
+	docker.CheckSkipContainerTests(t)
+
 	containerCfg := &containerConfig{
 		imageName:     "docker.mirror.hashicorp.services/library/cassandra",
 		containerName: "cassandra",

@@ -108,6 +108,8 @@ func RunZLintContainer(t *testing.T, certificate string) []byte {
 }
 
 func RunZLintRootTest(t *testing.T, keyType string, keyBits int, usePSS bool, ignored []string) {
+	docker.CheckSkipContainerTests(t)
+
 	b, s := pki.CreateBackendWithStorage(t)
 
 	resp, err := pki.CBWrite(b, s, "root/generate/internal", map[string]interface{}{

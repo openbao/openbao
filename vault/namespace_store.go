@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -96,12 +97,43 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	return ns, nil
 }
 
+// NamespaceView uses given barrier and namespace to return back a view scoped to that namespace.
+func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView {
+	if ns.ID == namespace.RootNamespaceID {
+		return NewBarrierView(barrier, "")
+	}
+
+	return NewBarrierView(barrier, path.Join(namespaceBarrierPrefix, ns.UUID)+"/")
+}
+
+// cancelNamespaceDeletion cancels goroutine that runs namespace deletion.
 func (c *Core) cancelNamespaceDeletion() {
 	if c.namespaceStore == nil {
 		return
 	}
 	c.namespaceStore.deletionJobCancelFunc()
 	c.namespaceStore.deletionJobGroup.Wait()
+}
+
+// NamespaceByID returns back a namespace using its accessor (nsID)
+func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*namespace.Namespace, error) {
+	ns, err := c.namespaceStore.GetNamespaceByAccessor(ctx, nsID)
+	if err != nil {
+		return nil, err
+	}
+
+	return ns, nil
+}
+
+// ListNamespaces returns back a list of all namespaces including root.
+func (c *Core) ListNamespaces(ctx context.Context) ([]*namespace.Namespace, error) {
+	return c.namespaceStore.ListAllNamespaces(ctx, true)
+}
+
+// NamespaceByPath returns the namespace and the path prefix for the given path.
+// Note, that it is on the caller to ensure that the namespace is resolved, as NamespaceByPath otherwise resolves to root.
+func (c *Core) NamespaceByPath(ctx context.Context, path string) (*namespace.Namespace, string) {
+	return c.namespaceStore.GetNamespaceByLongestPrefix(ctx, path)
 }
 
 // checkInvalidation checks if the store has been marked as invalidated, and if

@@ -1,3 +1,3 @@
 ```release-note:BUG
-COMPONENT: Add missing OIDC flow in JWK validator construction
+auth/jwt: Add missing OIDC flow in JWK validator construction
 ```

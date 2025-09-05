@@ -38,7 +38,7 @@ partLoop:
 					Advice("It is recommended to have more than five percent of the partition free."))
 			} else if usage.Free < 1<<30 {
 				quantity := usage.Free
-				suffix := " bytes"
+				suffix := "bytes"
 				switch {
 				case quantity > 1024*1024*1024:
 					quantity /= 1024 * 1024 * 1024
@@ -51,7 +51,7 @@ partLoop:
 					suffix = "KB"
 				}
 
-				SpotWarn(ctx, testName, fmt.Sprintf(partition.Mountpoint+" has %s%s free.", quantity, suffix),
+				SpotWarn(ctx, testName, fmt.Sprintf(partition.Mountpoint+" has %d %s free.", quantity, suffix),
 					Advice("It is recommended to have at least 1 GB of space free per partition."))
 			} else {
 				SpotOk(ctx, testName, partition.Mountpoint+" usage ok.")

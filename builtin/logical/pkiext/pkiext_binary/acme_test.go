@@ -594,6 +594,7 @@ func SubtestACMEIPAndDNS(t *testing.T, cluster *VaultPkiCluster) {
 	nginxContainerId := result.Container.ID
 	defer runner.Stop(context.Background(), nginxContainerId)
 	networks, err := runner.GetNetworkAndAddresses(nginxContainerId)
+	require.NoError(t, err)
 
 	challengeFolder := "/usr/share/nginx/html/.well-known/acme-challenge/"
 	createChallengeFolderCmd := []string{

@@ -2063,6 +2063,10 @@ func TestBackend_PathFetchCertList(t *testing.T) {
 		Data:       urlsData,
 		MountPoint: "pki/",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("config/urls"), logical.UpdateOperation), resp, true)
 
 	resp, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -2758,6 +2762,10 @@ func TestBackend_SignIntermediate_AllowedPastCAValidity(t *testing.T) {
 	resp, err := CBWrite(b_int, s_int, "intermediate/generate/internal", map[string]interface{}{
 		"common_name": "myint.com",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b_root.Route("intermediate/generate/internal"), logical.UpdateOperation), resp, true)
 	require.Contains(t, resp.Data, "key_id")
 	intKeyId := resp.Data["key_id"].(keyID)
@@ -4080,9 +4088,16 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 		"maintain_stored_certificate_counts":       true,
 		"publish_stored_certificate_count_metrics": true,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, err = client.Logical().Write("/sys/plugins/reload/backend", map[string]interface{}{
 		"mounts": "pki/",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Check the metrics initialized in order to calculate backendUUID for /pki
 	// BackendUUID not consistent during tests with UUID from /sys/mounts/pki
@@ -4120,14 +4135,22 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	// Set up Metric Configuration, then restart to enable it
 	_, err = client.Logical().Write("pki2/config/auto-tidy", map[string]interface{}{
 		"maintain_stored_certificate_counts":       true,
 		"publish_stored_certificate_count_metrics": true,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, err = client.Logical().Write("/sys/plugins/reload/backend", map[string]interface{}{
 		"mounts": "pki2/",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create a CSR for the intermediate CA
 	secret, err := client.Logical().Write("pki2/intermediate/generate/internal", nil)
@@ -4403,6 +4426,9 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 	_, err = client.Logical().Write("/sys/plugins/reload/backend", map[string]interface{}{
 		"mounts": "pki/",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Set the cluster's certificate as the root CA in /pki
 	pemBundleRootCA := string(cluster.CACertPEM) + string(cluster.CAKeyPEM)
@@ -6680,6 +6706,7 @@ func TestPKI_TemplatedAIAs(t *testing.T) {
 		"ocsp_servers":                  "http://localhost/c",
 		"delta_crl_distribution_points": "http://localhost/d",
 	})
+	require.NoError(t, err)
 
 	resp, err = CBWrite(b, s, "issue/testing", map[string]interface{}{
 		"common_name": "example.com",

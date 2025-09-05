@@ -158,6 +158,10 @@ func init() {
 
 	var blockBytes []byte
 	blockBytes, err = x509.MarshalPKIXPublicKey(ecdsaPrivateKey.Public())
+	if err != nil {
+		panic(err)
+	}
+
 	ecdsaPublicKeyText := pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: blockBytes,
@@ -614,7 +618,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, _ := b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -633,7 +637,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -653,7 +657,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -676,7 +680,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -975,12 +979,6 @@ func TestLoginIssValidation(t *testing.T) {
 	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
-
-	// test successful login with default issuer
-	data = map[string]interface{}{
-		"role": "plugin-test",
-		"jwt":  jwtGoodDataToken,
 	}
 
 	// test iss validation enabled with explicitly defined issuer

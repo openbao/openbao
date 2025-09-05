@@ -494,12 +494,10 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	configSeal := config.Seals[0]
-	sealType := wrapping.WrapperTypeShamir.String()
+	sealType := configSeal.Type
 	if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
 		sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 		configSeal.Type = sealType
-	} else {
-		sealType = configSeal.Type
 	}
 
 	infoKeys = append(infoKeys, "Seal Type")
@@ -2480,12 +2478,10 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 	}
 	var createdSeals []vault.Seal = make([]vault.Seal, len(config.Seals))
 	for _, configSeal := range config.Seals {
-		sealType := wrapping.WrapperTypeShamir.String()
+		sealType := configSeal.Type
 		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
 			sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 			configSeal.Type = sealType
-		} else {
-			sealType = configSeal.Type
 		}
 
 		var seal vault.Seal

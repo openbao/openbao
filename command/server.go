@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
@@ -61,7 +62,6 @@ import (
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
 	"github.com/sasha-s/go-deadlock"
-	"go.uber.org/atomic"
 	"golang.org/x/net/http/httpproxy"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -635,7 +635,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 			AllListeners:          lns,
 			DisablePrintableCheck: config.DisablePrintableCheck,
 			RecoveryMode:          c.flagRecovery,
-			RecoveryToken:         atomic.NewString(""),
+			RecoveryToken:         &atomic.Value{},
 		})
 
 		server := &http.Server{

@@ -19,11 +19,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-const (
-	// Storage prefixes
-	entityPrefix = "entity/"
-)
-
 // metaKeyFormatRegEx checks if a metadata key string is valid
 var metaKeyFormatRegEx = regexp.MustCompile(`^[a-zA-Z0-9=/+_-]+$`).MatchString
 

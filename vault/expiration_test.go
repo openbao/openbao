@@ -12,7 +12,6 @@ import (
 	"reflect"
 	"sort"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -31,8 +30,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 )
 
-var testImagePull sync.Once
-
 // mockExpiration returns a mock expiration manager
 func mockExpiration(t testing.TB) *ExpirationManager {
 	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(t))
@@ -48,11 +45,6 @@ func mockExpiration(t testing.TB) *ExpirationManager {
 	}
 
 	return c.expiration
-}
-
-func mockBackendExpiration(t testing.TB, backend physical.Backend) (*Core, *ExpirationManager) {
-	c, _, _ := TestCoreUnsealedBackend(benchhelpers.TBtoT(t), backend)
-	return c, c.expiration
 }
 
 func TestExpiration_Metrics(t *testing.T) {

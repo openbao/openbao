@@ -20,12 +20,6 @@ import (
 	"github.com/openbao/openbao/version"
 )
 
-type ctxKeyForwardedRequestMountAccessor struct{}
-
-func (c ctxKeyForwardedRequestMountAccessor) String() string {
-	return "forwarded-req-mount-accessor"
-}
-
 type dynamicSystemView struct {
 	core       *Core
 	mountEntry *MountEntry

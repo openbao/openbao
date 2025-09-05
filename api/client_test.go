@@ -548,7 +548,6 @@ func TestClientNonTransportRoundTripperUnixAddress(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
-	type fields struct{}
 	tests := []struct {
 		name    string
 		config  *Config

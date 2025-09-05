@@ -37,9 +37,6 @@ type ACL struct {
 
 	// root is enabled if the "root" named policy is present.
 	root bool
-
-	// Stores policies that are actually RGPs for later fetching
-	rgpPolicies []*Policy
 }
 
 type PolicyCheckOpts struct {

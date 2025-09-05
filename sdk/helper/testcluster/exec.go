@@ -23,18 +23,17 @@ import (
 )
 
 type ExecDevCluster struct {
-	ID                 string
-	ClusterName        string
-	ClusterNodes       []*execDevClusterNode
-	CACertPEMFile      string
-	barrierKeys        [][]byte
-	recoveryKeys       [][]byte
-	tmpDir             string
-	clientAuthRequired bool
-	rootToken          string
-	stop               func()
-	stopCh             chan struct{}
-	Logger             log.Logger
+	ID            string
+	ClusterName   string
+	ClusterNodes  []*execDevClusterNode
+	CACertPEMFile string
+	barrierKeys   [][]byte
+	recoveryKeys  [][]byte
+	tmpDir        string
+	rootToken     string
+	stop          func()
+	stopCh        chan struct{}
+	Logger        log.Logger
 }
 
 func (dc *ExecDevCluster) SetRootToken(token string) {

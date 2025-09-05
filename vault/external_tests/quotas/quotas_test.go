@@ -5,6 +5,7 @@ package quotas
 
 import (
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/openbao/openbao/builtin/logical/pki"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/vault"
-	"go.uber.org/atomic"
 )
 
 const (
@@ -96,8 +96,8 @@ func teardownMounts(t *testing.T, client *api.Client) {
 }
 
 func testRPS(reqFunc func(numSuccess, numFail *atomic.Int32), d time.Duration) (int32, int32, time.Duration) {
-	numSuccess := atomic.NewInt32(0)
-	numFail := atomic.NewInt32(0)
+	numSuccess := &atomic.Int32{}
+	numFail := &atomic.Int32{}
 
 	start := time.Now()
 	end := start.Add(d)
@@ -109,8 +109,8 @@ func testRPS(reqFunc func(numSuccess, numFail *atomic.Int32), d time.Duration) (
 }
 
 func testRPSWithNS(reqFunc func(numSuccess, numFail *atomic.Int32, ns string), d time.Duration, ns string) (int32, int32, time.Duration) {
-	numSuccess := atomic.NewInt32(0)
-	numFail := atomic.NewInt32(0)
+	numSuccess := &atomic.Int32{}
+	numFail := &atomic.Int32{}
 
 	start := time.Now()
 	end := start.Add(d)

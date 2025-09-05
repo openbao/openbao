@@ -59,7 +59,6 @@ import (
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
 	"github.com/patrickmn/go-cache"
-	uberAtomic "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
 
@@ -432,7 +431,7 @@ type Core struct {
 	physicalCache physical.ToggleablePurgemonster
 
 	// logRequestsLevel indicates at which level requests should be logged
-	logRequestsLevel *uberAtomic.Int32
+	logRequestsLevel *atomic.Int32
 
 	// reloadFuncs is a map containing reload functions
 	reloadFuncs map[string][]reloadutil.ReloadFunc
@@ -450,7 +449,7 @@ type Core struct {
 	// Name
 	clusterName string
 	// ID
-	clusterID uberAtomic.String
+	clusterID atomic.Value
 	// Specific cipher suites to use for clustering, if any
 	clusterCipherSuites []uint16
 	// Used to modify cluster parameters
@@ -605,7 +604,7 @@ type Core struct {
 	// number of workers to use for lease revocation in the expiration manager
 	numExpirationWorkers int
 
-	IndexHeaderHMACKey uberAtomic.Value
+	IndexHeaderHMACKey atomic.Value
 
 	// disableAutopilot is used to disable the autopilot subsystem in raft storage
 	disableAutopilot bool
@@ -999,7 +998,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	c.inFlightReqData = &InFlightRequests{
 		InFlightReqMap:   &sync.Map{},
-		InFlightReqCount: uberAtomic.NewUint64(0),
+		InFlightReqCount: &atomic.Uint64{},
 	}
 
 	c.SetConfig(conf.RawConfig)
@@ -1203,7 +1202,7 @@ func (c *Core) configureListeners(conf *CoreConfig) error {
 
 // configureLogRequestsLevel configures the Core with the supplied log requests level.
 func (c *Core) configureLogRequestsLevel(level string) {
-	c.logRequestsLevel = uberAtomic.NewInt32(0)
+	c.logRequestsLevel = &atomic.Int32{}
 
 	lvl := log.LevelFromString(level)
 
@@ -1903,7 +1902,7 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 			return err
 		}
 
-		ctx, ctxCancel := context.WithCancel(namespace.RootContext(nil))
+		ctx, ctxCancel := context.WithCancel(namespace.RootContext(context.TODO()))
 		if err := c.postUnseal(ctx, ctxCancel, standardUnsealStrategy{}); err != nil {
 			c.logger.Error("post-unseal setup failed", "error", err)
 			c.barrier.Seal()
@@ -1961,7 +1960,7 @@ func (c *Core) SealWithRequest(httpCtx context.Context, req *logical.Request) er
 
 	// This will unlock the read lock
 	// We use background context since we may not be active
-	ctx, cancel := context.WithCancel(namespace.RootContext(nil))
+	ctx, cancel := context.WithCancel(namespace.RootContext(context.TODO()))
 	defer cancel()
 
 	go func() {
@@ -1995,7 +1994,7 @@ func (c *Core) Seal(token string) error {
 
 	// This will unlock the read lock
 	// We use background context since we may not be active
-	return c.sealInitCommon(namespace.RootContext(nil), req)
+	return c.sealInitCommon(namespace.RootContext(context.TODO()), req)
 }
 
 // sealInitCommon is common logic for Seal and SealWithRequest and is used to
@@ -2121,7 +2120,7 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 		retErr = multierror.Append(retErr, sealErr)
 	}
 
-	return
+	return retErr
 }
 
 // UIEnabled returns if the UI is enabled
@@ -2582,7 +2581,7 @@ func (c *Core) Logger() log.Logger {
 func (c *Core) BarrierKeyLength() (min, max int) {
 	min, max = c.barrier.KeyLength()
 	max += shamir.ShareOverhead
-	return
+	return min, max
 }
 
 func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {
@@ -3532,7 +3531,7 @@ func (c *Core) SaveMFAResponseAuth(respAuth *MFACachedAuthResponse) error {
 
 type InFlightRequests struct {
 	InFlightReqMap   *sync.Map
-	InFlightReqCount *uberAtomic.Uint64
+	InFlightReqCount *atomic.Uint64
 }
 
 type InFlightReqData struct {
@@ -3545,7 +3544,7 @@ type InFlightReqData struct {
 
 func (c *Core) StoreInFlightReqData(reqID string, data InFlightReqData) {
 	c.inFlightReqData.InFlightReqMap.Store(reqID, data)
-	c.inFlightReqData.InFlightReqCount.Inc()
+	c.inFlightReqData.InFlightReqCount.Add(1)
 }
 
 // FinalizeInFlightReqData is going log the completed request if the
@@ -3558,7 +3557,7 @@ func (c *Core) FinalizeInFlightReqData(reqID string, statusCode int) {
 	}
 
 	c.inFlightReqData.InFlightReqMap.Delete(reqID)
-	c.inFlightReqData.InFlightReqCount.Dec()
+	c.inFlightReqData.InFlightReqCount.Add(^uint64(0)) // equivalent of decrementing by 1
 }
 
 // LoadInFlightReqData creates a snapshot map of the current
@@ -3603,7 +3602,7 @@ func (c *Core) LogCompletedRequests(reqID string, statusCode int) {
 	reqData := v.(InFlightReqData)
 	c.logger.Log(logLevel, "completed_request",
 		"start_time", reqData.StartTime.Format(time.RFC3339),
-		"duration", fmt.Sprintf("%dms", time.Now().Sub(reqData.StartTime).Milliseconds()),
+		"duration", fmt.Sprintf("%dms", time.Since(reqData.StartTime).Milliseconds()),
 		"client_id", reqData.ClientID,
 		"client_address", reqData.ClientRemoteAddr, "status_code", statusCode, "request_path", reqData.ReqPath,
 		"request_method", reqData.Method)

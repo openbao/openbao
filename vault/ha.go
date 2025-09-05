@@ -72,7 +72,7 @@ func (c *Core) StandbyStates() (standby bool) {
 	c.stateLock.RLock()
 	standby = c.standby
 	c.stateLock.RUnlock()
-	return
+	return standby
 }
 
 // getHAMembers retrieves cluster membership that doesn't depend on raft. This should only ever be called by the
@@ -395,6 +395,7 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}) {
 	defer close(manualStepDownCh)
 	c.logger.Info("entering standby mode")
 
+	c.stateLock.Lock()
 	// wipe any existing mount tables
 	if err := c.preSeal(); err != nil {
 		c.logger.Error("pre-seal teardown failed", "error", err)
@@ -408,6 +409,7 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}) {
 		}
 		c.logger.Warn("vault is sealed")
 	}
+	c.stateLock.Unlock()
 
 	var g run.Group
 	newLeaderCh := addEnterpriseHaActors(c, &g)

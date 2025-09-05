@@ -22,6 +22,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/internalshared/configutil"
@@ -916,6 +917,9 @@ func TestHandler_MaxRequestSize(t *testing.T) {
 		"bar": strings.Repeat("a", 1025),
 	})
 
+	var respErr *api.ResponseError
+	require.ErrorAs(t, err, &respErr)
+	require.Equal(t, http.StatusRequestEntityTooLarge, respErr.StatusCode)
 	require.ErrorContains(t, err, "error parsing JSON")
 }
 

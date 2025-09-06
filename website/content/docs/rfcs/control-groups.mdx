@@ -59,10 +59,67 @@ location).
 
 For workflow, we might need a "requests" storage as well.
 
+## API Details
+
+### Policy Extension
+
+Control groups could be implemented as a new stanza in the ACL policy for a path, eg:
+
+```
+path "pki/issue/*" {
+  capabilities = ["create", "update"]
+
+  control-group {
+	# Control groups that can authorize access
+	authorizers = ["pki-approvers", "security-team"]
+
+	# Max duration for which authorization is valid
+	ttl = "5d"
+
+	# Allow self-authorization when true
+	self_authorization = false
+
+	# Optional: require multiple approvers
+	required_approvals = 1
+
+	# Optional: limit entities for which authorization can work
+	authorized_entities = ["user-123", "service-account-web"]
+  }
+}
+```
+
+The specific endpoint behaviors could look like this:
+
+```
+# Normal request by jwt sub user-123 (blocked by control group by default)
+POST /pki/issue/web-server
+{
+  "common_name": "web.example.com",
+  "ttl": "24h"
+}
+
+# Authorization request, permitted if requesting jwt has the control group membership
+POST /pki/issue/web-server/authorize
+{
+  "entity": "user-123",
+  "ttl":    "1d",
+  "reason": "Certificate renewal for production web service"
+}
+
+# Check authorization status for requesting entity (always reports status for current subject)
+GET /pki/issue/web-server/authorize
+
+POST /pki/issue/web-server (now permitted for user-123)
+{
+  "common_name": "web.example.com",
+  "ttl": "24h"
+}
+```
+
 ## Rationale and Alternatives
 
 This is essentially "assigning a policy to a resource and a user"
-which allows access -- which is something we can already do in OpenBao
+granting access -- which is something we can already do in OpenBao
 with roles/policies/etc. However, the control-group concept has some
 additional value:
 

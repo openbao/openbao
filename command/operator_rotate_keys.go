@@ -291,7 +291,7 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 	}
 
 	// Make the request
-	status, err := fn(&api.RotateInitRequest{
+	resp, err := fn(&api.RotateInitRequest{
 		SecretShares:        c.flagKeyShares,
 		SecretThreshold:     c.flagKeyThreshold,
 		PGPKeys:             c.flagPGPKeys,
@@ -303,35 +303,77 @@ func (c *OperatorRotateKeysCommand) init(client *api.Client) int {
 		return 2
 	}
 
+	if resp.Complete {
+		// if the rotation is complete, meaning we've immediately
+		// returned the unseal (recovery) keys, print them out
+		if len(c.flagPGPKeys) == 0 {
+			if Format(c.UI) == "table" {
+				c.UI.Warn(wrapAtLength(
+					fmt.Sprintf("WARNING! If you lose the keys, there "+
+						"is no recovery. Consider rerunning this operation and "+
+						"re-initializing with the -pgp-keys flag to protect the "+
+						"returned %s keys along with -backup to allow recovery "+
+						"of the encrypted keys in case of emergency. You can "+
+						"delete the stored keys later using the -delete flag.",
+						strings.ToLower(keyTypeRequired))))
+				c.UI.Output("")
+			}
+		}
+		if len(c.flagPGPKeys) > 0 && !c.flagBackup {
+			if Format(c.UI) == "table" {
+				c.UI.Warn(wrapAtLength(
+					fmt.Sprintf("WARNING! You've used PGP keys for "+
+						"encryption of the resulting %s keys, but you did not "+
+						"enable the option to backup the keys to OpenBao's core. "+
+						"If you lose the encrypted keys you will not be able to "+
+						"recover them. Consider rerunning this operation and "+
+						"re-initializing with -backup to allow recovery of the "+
+						"encrypted unseal keys in case of emergency. You can "+
+						"delete the stored keys later using the -delete flag.",
+						strings.ToLower(keyTypeRequired))))
+				c.UI.Output("")
+			}
+		}
+
+		return c.printUnsealKeys(client, resp, &api.RotateUpdateResponse{
+			Complete:        resp.Complete,
+			Keys:            resp.Keys,
+			KeysB64:         resp.KeysB64,
+			Backup:          resp.Backup,
+			PGPFingerprints: resp.PGPFingerprints,
+		})
+	}
+
 	// Print warnings about recovery, etc.
 	if len(c.flagPGPKeys) == 0 {
 		if Format(c.UI) == "table" {
 			c.UI.Warn(wrapAtLength(
-				fmt.Sprintf("WARNING! If you lose the keys after they are returned, there is no "+
-					"recovery. Consider canceling this operation and re-initializing "+
-					"with the -pgp-keys flag to protect the returned %s keys along "+
-					"with -backup to allow recovery of the encrypted keys in case of "+
-					"emergency. You can delete the stored keys later using the -delete "+
-					"flag.", strings.ToLower(keyTypeRequired))))
+				fmt.Sprintf("WARNING! If you lose the keys after they are "+
+					"returned, there is no recovery. Consider canceling this "+
+					"operation and re-initializing with the -pgp-keys flag to protect "+
+					"the returned %s keys along with -backup to allow recovery of the "+
+					"encrypted keys in case of emergency. You can delete the stored "+
+					"keys later using the -delete flag.",
+					strings.ToLower(keyTypeRequired))))
 			c.UI.Output("")
 		}
 	}
 	if len(c.flagPGPKeys) > 0 && !c.flagBackup {
 		if Format(c.UI) == "table" {
 			c.UI.Warn(wrapAtLength(
-				fmt.Sprintf("WARNING! You are using PGP keys for encrypted the resulting %s "+
-					"keys, but you did not enable the option to backup the keys to "+
-					"OpenBao's core. If you lose the encrypted keys after they are "+
-					"returned, you will not be able to recover them. Consider canceling "+
-					"this operation and re-running with -backup to allow recovery of the "+
-					"encrypted unseal keys in case of emergency. You can delete the "+
-					"stored keys later using the -delete flag.", strings.ToLower(keyTypeRequired))))
+				fmt.Sprintf("WARNING! You are using PGP keys for encryption "+
+					"of resulting %s keys, but you did not enable the option to backup "+
+					"the keys to OpenBao's core. If you lose the encrypted keys after "+
+					"they are returned, you will not be able to recover them. Consider "+
+					"canceling this operation and re-running with -backup to allow "+
+					"recovery of the encrypted unseal keys in case of emergency. You "+
+					"can delete the stored keys later using the -delete flag.",
+					strings.ToLower(keyTypeRequired))))
 			c.UI.Output("")
 		}
 	}
 
-	// Provide the current status
-	return c.printStatus(status)
+	return c.printStatus(resp)
 }
 
 // cancel is used to abort the rotation process.
@@ -710,8 +752,10 @@ func (c *OperatorRotateKeysCommand) printUnsealKeys(client *api.Client, status *
 		}
 	}
 
-	c.UI.Output("")
-	c.UI.Output(fmt.Sprintf("Operation nonce: %s", resp.Nonce))
+	if resp.Nonce != "" {
+		c.UI.Output("")
+		c.UI.Output(fmt.Sprintf("Operation nonce: %s", resp.Nonce))
+	}
 
 	if len(resp.PGPFingerprints) > 0 && resp.Backup {
 		c.UI.Output("")
@@ -739,8 +783,8 @@ func (c *OperatorRotateKeysCommand) printUnsealKeys(client *api.Client, status *
 		switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 		case "barrier":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
-				"Vault unseal keys rotated to %d key shares and a key threshold of %d. Please "+
-					"securely distribute the key shares printed above. When Vault is "+
+				"OpenBao unseal keys rotated to %d key shares and a key threshold of %d. Please "+
+					"securely distribute the key shares printed above. When OpenBao is "+
 					"re-sealed, restarted, or stopped, you must supply at least %d of "+
 					"these keys to unseal it before it can start servicing requests.",
 				status.N,
@@ -748,7 +792,7 @@ func (c *OperatorRotateKeysCommand) printUnsealKeys(client *api.Client, status *
 				status.T)))
 		case "recovery", "hsm":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
-				"Vault recovery keys rotated to %d key shares and a key threshold of %d. Please "+
+				"OpenBao recovery keys rotated to %d key shares and a key threshold of %d. Please "+
 					"securely distribute the key shares printed above.",
 				status.N,
 				status.T)))
@@ -760,9 +804,9 @@ func (c *OperatorRotateKeysCommand) printUnsealKeys(client *api.Client, status *
 		switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 		case "barrier":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
-				"Vault has created a new unseal key, split into %d key shares and a key threshold "+
+				"OpenBao has created a new unseal key, split into %d key shares and a key threshold "+
 					"of %d. These will not be active until after verification is complete. "+
-					"Please securely distribute the key shares printed above. When Vault "+
+					"Please securely distribute the key shares printed above. When OpenBao "+
 					"is re-sealed, restarted, or stopped, you must supply at least %d of "+
 					"these keys to unseal it before it can start servicing requests.",
 				status.N,
@@ -771,7 +815,7 @@ func (c *OperatorRotateKeysCommand) printUnsealKeys(client *api.Client, status *
 			warningText = "unseal"
 		case "recovery", "hsm":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
-				"Vault has created a new recovery key, split into %d key shares and a key threshold "+
+				"OpenBao has created a new recovery key, split into %d key shares and a key threshold "+
 					"of %d. These will not be active until after verification is complete. "+
 					"Please securely distribute the key shares printed above.",
 				status.N,
@@ -783,8 +827,8 @@ func (c *OperatorRotateKeysCommand) printUnsealKeys(client *api.Client, status *
 		c.UI.Warn(wrapAtLength(fmt.Sprintf(
 			"Again, these key shares are _not_ valid until verification is performed. "+
 				"Do not lose or discard your current key shares until after verification "+
-				"is complete or you will be unable to %s Vault. If you cancel the "+
-				"rotation process or seal Vault before verification is complete the new "+
+				"is complete or you will be unable to %s OpenBao. If you cancel the "+
+				"rotation process or seal OpenBao before verification is complete the new "+
 				"shares will be discarded and the current shares will remain valid.", warningText)))
 		c.UI.Output("")
 		c.UI.Warn(wrapAtLength(

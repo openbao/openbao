@@ -604,7 +604,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 
 	// Test a missing context
 	delete(req.Data, "context")
-	sig = signRequest(req, true, "bar")
+	signRequest(req, true, "bar")
 
 	// Rotate and set min decryption version
 	err = fooP.Rotate(context.Background(), storage, b.GetRandomReader())
@@ -700,7 +700,7 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 		"batch_input": batchInput,
 	}
 
-	sig = signRequest(req, false, "bar")
+	signRequest(req, false, "bar")
 
 	outcome[0].requestOk = true
 	outcome[0].valid = true

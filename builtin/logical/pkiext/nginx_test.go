@@ -456,9 +456,10 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 		"pem_bundle": intCert,
 	})
 	requireSuccessNonNilResponse(t, resp, err, "failed to sign intermediate csr")
-	_, err = pki.CBWrite(b, s, "config/issuers", map[string]interface{}{
+	resp, err = pki.CBWrite(b, s, "config/issuers", map[string]interface{}{
 		"default": resp.Data["imported_issuers"].([]string)[0],
 	})
+	requireSuccessNonNilResponse(t, resp, err, "failed to configure issuer")
 
 	// Create a role+certificate valid for localhost only.
 	_, err = pki.CBWrite(b, s, "roles/testing", map[string]interface{}{

@@ -124,7 +124,7 @@ func CompilePlugin(t testing.T, typ consts.PluginType, pluginVersion string, plu
 	}
 
 	// write the cached plugin if necessary
-	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
+	if _, err = os.Stat(pluginPath); os.IsNotExist(err) {
 		err = os.WriteFile(pluginPath, pluginBytes, 0o755)
 	}
 	if err != nil {

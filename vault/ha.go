@@ -413,9 +413,9 @@ func (c *Core) drainPendingRestarts() {
 func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}, restartCh chan struct{}) {
 	defer close(doneCh)
 	defer close(manualStepDownCh)
-	c.logger.Info("entering standby mode")
 
 	for restart := true; restart; {
+		c.logger.Info("entering standby mode")
 		restart = false
 
 		c.stateLock.Lock()
@@ -503,6 +503,8 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}, restar
 		if err != nil {
 			c.logger.Error("unexpected error in runStandby", "error", err.Error())
 		}
+
+		perfCancel()
 	}
 }
 

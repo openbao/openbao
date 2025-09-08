@@ -18,7 +18,7 @@ endpoints:
 1. A path is assigned a control-group policy
 2. Access to the path is denied without control group authorization
 3. A user belonging to the control group can authorize the resource for a particular entity
-4. Access to the path is now permitted only to the authorized entity for some duration
+4. Access to the path is now permitted to the authorized entity for some duration
 
 A second phase might add a request/notification workflow, but this is not essential:
 1. A user requests access to the protected resource
@@ -39,10 +39,11 @@ grant their own personal access.
 ## Technical Description
 
 The control group implementation might consist of the following.
-1. A control-group policy:
+1. A control-group access policy:
    1. Denies data access by default
+   2. Specifies the control group, number of authorizations, ttl
    2. Allows authorizing action to control group members
-   3. Allows data access to authorized requester
+   3. Allows data access to authorized entity
 2. An authorizing endpoint:
    1. Applies to path
    2. Applies to user/entity

@@ -907,7 +907,7 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 		// replication like returning this error would do.
 		if err := c.rollback.Rollback(revokeCtx, path); err != nil {
 			c.logger.Error("ignoring rollback error during unmount", "error", err, "path", path)
-			err = nil
+			err = nil //nolint:ineffassign // this is done to be explicit about the fact that we ignore the error
 		}
 	}
 	if backend != nil && c.expiration != nil && updateStorage {

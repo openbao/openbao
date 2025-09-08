@@ -95,6 +95,9 @@ func TestRecovery_Docker(t *testing.T) {
 		}
 		var result []string
 		err = mapstructure.Decode(secret.Data["keys"], &result)
+		if err != nil {
+			t.Fatal(err)
+		}
 		return result
 	}
 

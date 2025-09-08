@@ -216,6 +216,7 @@ func TestRole(t *testing.T) {
 		"allowed_kubernetes_namespaces":         []string{},
 		"allowed_kubernetes_namespace_selector": sampleSelector,
 	})
+	assert.NoError(t, err)
 
 	result, err = client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)

@@ -2543,6 +2543,7 @@ func TestSystemBackend_PoliciesDetailedAcl(t *testing.T) {
 
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	require.NoError(t, err)
+	require.Nil(t, resp)
 
 	// Now test the detailed ACL list endpoint
 	req = logical.TestRequest(t, logical.ListOperation, "policies/detailed/acl")

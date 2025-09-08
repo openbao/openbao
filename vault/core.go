@@ -58,8 +58,8 @@ import (
 	"github.com/openbao/openbao/vault/quotas"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
-	"github.com/patrickmn/go-cache"
 	"google.golang.org/grpc"
+	"zgo.at/zcache/v2"
 )
 
 const (
@@ -474,7 +474,7 @@ type Core struct {
 	// Current cluster leader values
 	clusterLeaderParams *atomic.Value
 	// Info on cluster members
-	clusterPeerClusterAddrsCache *cache.Cache
+	clusterPeerClusterAddrsCache *zcache.Cache[string, nodeHAConnectionInfo]
 	// The context for the client
 	rpcClientConnContext context.Context
 	// The function for canceling the client connection
@@ -941,7 +941,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		cachingDisabled:                conf.DisableCache,
 		clusterName:                    conf.ClusterName,
 		clusterNetworkLayer:            conf.ClusterNetworkLayer,
-		clusterPeerClusterAddrsCache:   cache.New(3*clusterHeartbeatInterval, time.Second),
+		clusterPeerClusterAddrsCache:   zcache.New[string, nodeHAConnectionInfo](3*clusterHeartbeatInterval, time.Second),
 		rawEnabled:                     conf.EnableRaw,
 		introspectionEnabled:           conf.EnableIntrospection,
 		shutdownDoneCh:                 new(atomic.Value),
@@ -2492,7 +2492,10 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
 		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
 	}
-	c.loginMFABackend.usedCodes = cache.New(0, 30*time.Second)
+
+	c.loginMFABackend.usedCodes = zcache.New[string, struct{}](0, 30*time.Second)
+	c.loginMFABackend.rateLimits = zcache.New[string, uint32](0, 30*time.Second)
+
 	c.logger.Info("post-unseal setup complete")
 	return nil
 }
@@ -3685,7 +3688,7 @@ type PeerNode struct {
 func (c *Core) GetHAPeerNodesCached() []PeerNode {
 	var nodes []PeerNode
 	for itemClusterAddr, item := range c.clusterPeerClusterAddrsCache.Items() {
-		info := item.Object.(nodeHAConnectionInfo)
+		info := item.Object
 		nodes = append(nodes, PeerNode{
 			Hostname:       info.nodeInfo.Hostname,
 			APIAddress:     info.nodeInfo.ApiAddr,

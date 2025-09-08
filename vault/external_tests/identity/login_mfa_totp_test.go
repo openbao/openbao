@@ -132,6 +132,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	userClient1, entityID1, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, entity1, testuser1)
 	userClient2, entityID2, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, entity2, testuser2)
 	waitPeriod := 5
+	maxValidationAttempts := 3
 	totpConfig := map[string]interface{}{
 		"issuer":                  "yCorp",
 		"period":                  waitPeriod,
@@ -140,7 +141,7 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 		"skew":                    1,
 		"key_size":                10,
 		"qr_size":                 100,
-		"max_validation_attempts": 3,
+		"max_validation_attempts": maxValidationAttempts,
 		"method_name":             "foo",
 	}
 
@@ -357,9 +358,9 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 	}
 
 	var maxErr error
-	maxAttempts := 6
-	i := 0
-	for i = 0; i < maxAttempts; i++ {
+	// We should get the max validation attempts error message exactly at
+	// attempt n + 1, not before.
+	for i := range maxValidationAttempts + 1 {
 		_, maxErr = userClient1.Logical().WriteWithContext(context.Background(), "sys/mfa/validate", map[string]interface{}{
 			"mfa_request_id": secret.Auth.MFARequirement.MFARequestID,
 			"mfa_payload": map[string][]string{
@@ -369,9 +370,14 @@ func TestLoginMfaGenerateTOTPTestAuditIncluded(t *testing.T) {
 		if maxErr == nil {
 			t.Fatal("MFA succeeded with an invalid passcode")
 		}
-	}
-	if !strings.Contains(maxErr.Error(), "maximum TOTP validation attempts") {
-		t.Fatalf("unexpected error message when exceeding max failed validation attempts: %s", maxErr.Error())
+
+		rateLimited := strings.Contains(maxErr.Error(), "maximum TOTP validation attempts")
+		switch {
+		case i < maxValidationAttempts && rateLimited:
+			t.Fatalf("got max validation attempts error message too early: %s", maxErr.Error())
+		case i == maxValidationAttempts && !rateLimited:
+			t.Fatalf("unexpected error message when exceeding max failed validation attempts: %s", maxErr.Error())
+		}
 	}
 
 	// let's make sure the configID is not blocked for other users

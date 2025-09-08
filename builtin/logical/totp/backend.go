@@ -10,7 +10,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	cache "github.com/patrickmn/go-cache"
+	"zgo.at/zcache/v2"
 )
 
 const operationPrefixTOTP = "totp"
@@ -44,7 +44,7 @@ func Backend() *backend {
 		BackendType: logical.TypeLogical,
 	}
 
-	b.usedCodes = cache.New(0, 30*time.Second)
+	b.usedCodes = zcache.New[string, struct{}](0, 30*time.Second)
 
 	return &b
 }
@@ -52,7 +52,7 @@ func Backend() *backend {
 type backend struct {
 	*framework.Backend
 
-	usedCodes *cache.Cache
+	usedCodes *zcache.Cache[string, struct{}]
 }
 
 const backendHelp = `

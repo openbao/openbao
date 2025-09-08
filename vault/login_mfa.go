@@ -37,10 +37,10 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/patrickmn/go-cache"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"
 	"google.golang.org/protobuf/proto"
+	"zgo.at/zcache/v2"
 )
 
 const (
@@ -117,7 +117,8 @@ type MFABackend struct {
 	mfaLogger   hclog.Logger
 	namespacer  Namespacer
 	methodTable string
-	usedCodes   *cache.Cache
+	usedCodes   *zcache.Cache[string, struct{}]
+	rateLimits  *zcache.Cache[string, uint32]
 }
 
 type LoginMFABackend struct {
@@ -1711,7 +1712,7 @@ func (c *Core) validateLoginMFAInternal(ctx context.Context, methodID string, en
 			return fmt.Errorf("MFA secret for method name %q not present in entity %q", mConfig.Name, entity.ID)
 		}
 
-		return c.validateTOTP(ctx, mfaFactors, entityMFASecret, mConfig.ID, entity.ID, c.loginMFABackend.usedCodes, mConfig.GetTOTPConfig().MaxValidationAttempts)
+		return c.validateTOTP(ctx, mfaFactors, entityMFASecret, mConfig.ID, entity.ID, mConfig.GetTOTPConfig().MaxValidationAttempts)
 
 	case mfaMethodTypeOkta:
 		return c.validateOkta(ctx, mConfig, finalUsername)
@@ -2330,7 +2331,7 @@ func (c *Core) validatePingID(ctx context.Context, mConfig *mfa.Config, username
 	return nil
 }
 
-func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMethodSecret *mfa.Secret, configID, entityID string, usedCodes *cache.Cache, maximumValidationAttempts uint32) error {
+func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMethodSecret *mfa.Secret, configID, entityID string, maximumValidationAttempts uint32) error {
 	// In HCSEC-2025-19, HashiCorp writes:
 	//
 	// > The TOTP validation will now return a generic error if the passcode
@@ -2359,8 +2360,7 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 
 	usedName := fmt.Sprintf("%s_%s", configID, passcode)
 
-	_, ok := usedCodes.Get(usedName)
-	if ok {
+	if _, ok := c.loginMFABackend.usedCodes.Get(usedName); ok {
 		return ErrBadMFACredentials
 	}
 
@@ -2372,21 +2372,20 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 	// Enforcing rate limit per MethodID per EntityID
 	rateLimitID := fmt.Sprintf("%s_%s", configID, entityID)
 
-	numAttempts, _ := usedCodes.Get(rateLimitID)
-	if numAttempts == nil {
-		usedCodes.Set(rateLimitID, uint32(1), passcodeTTL)
-	} else {
-		num, ok := numAttempts.(uint32)
-		if !ok {
-			return errors.New("invalid counter type returned in TOTP usedCode cache")
-		}
-		if num == maximumValidationAttempts {
-			return fmt.Errorf("maximum TOTP validation attempts %d exceeded the allowed attempts %d. Please try again in %v seconds", num+1, maximumValidationAttempts, passcodeTTL)
-		}
-		err := usedCodes.Increment(rateLimitID, 1)
-		if err != nil {
-			return errors.New("failed to increment the TOTP code counter")
-		}
+	// Ensure the rate limit is initialized; ignore error if it already is.
+	_ = c.loginMFABackend.rateLimits.AddWithExpire(rateLimitID, 0, passcodeTTL)
+	// Now increment the attempt counter.
+	numAttempts, ok := c.loginMFABackend.rateLimits.Modify(rateLimitID, func(n uint32) uint32 { return n + 1 })
+
+	if !ok {
+		// TODO: This (unlikely) edge case could be avoided entirely if we had
+		// a ModifySetWithExpire(key, ttl, func) API, such that the above can be
+		// performed in a single step.
+		return errors.New("failed to increment the TOTP code counter")
+	}
+
+	if numAttempts > maximumValidationAttempts {
+		return fmt.Errorf("maximum TOTP validation attempts %d exceeded the allowed attempts %d. Please try again in %v seconds", numAttempts, maximumValidationAttempts, passcodeTTL)
 	}
 
 	key, err := c.fetchTOTPKey(ctx, configID, entityID)
@@ -2419,13 +2418,12 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 	validityPeriod := time.Duration(int64(time.Second) * int64(totpSecret.Period) * int64(2+totpSecret.Skew))
 
 	// Adding the used code to the cache
-	err = usedCodes.Add(usedName, nil, validityPeriod)
-	if err != nil {
+	if err := c.loginMFABackend.usedCodes.AddWithExpire(usedName, struct{}{}, validityPeriod); err != nil {
 		return fmt.Errorf("error adding code to used cache: %w", err)
 	}
 
 	// deleting the cache entry after a successful MFA validation
-	usedCodes.Delete(rateLimitID)
+	c.loginMFABackend.rateLimits.Delete(rateLimitID)
 
 	return nil
 }

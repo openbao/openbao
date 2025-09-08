@@ -60,6 +60,8 @@ func (im *IndexManager) DeleteIndex(ctx context.Context, storage bptree.Storage,
 func (im *IndexManager) GetIndex(ctx context.Context, storage bptree.Storage, indexName string) (*BPlusTree, error)
 // RegisterIndex creates an index with the provider name and configuration, if exists returns the existing one
 func (im *IndexManager) RegisterIndex(ctx context.Context, storage bptree.Storage, indexName string, config *BPlusTreeConfig) (*BPlusTree, error)
+// ListIndexes returns the list of existing index names
+func (im *IndexManager) ListIndexes(ctx context.Context, storage bptree.Storage) ([]string, error)
 …
 ```
 

@@ -75,9 +75,6 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+quotas.StoragePrefix):
 		c.quotaManager.Invalidate(strings.TrimPrefix(key, systemBarrierPrefix+quotas.StoragePrefix))
 
-	case c.router.Invalidate(ctx, key):
-	// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched
-
 	case key == coreAuditConfigPath || key == coreLocalAuditConfigPath:
 		c.invalidateAudits()
 
@@ -87,6 +84,9 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 	case strings.HasPrefix(namespacedKey, coreMountConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalMountConfigPath+"/") ||
 		strings.HasPrefix(namespacedKey, coreAuthConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalAuthConfigPath+"/"):
 		c.invalidateMount(namespace.ContextWithNamespace(c.activeContext, ns), namespacedKey)
+
+	case c.router.Invalidate(ctx, key):
+	// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched
 
 	default:
 		c.logger.Warn("no idea how to invalidate cache. Maybe it's not cached and this is fine, maybe not", "key", key)

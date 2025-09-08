@@ -239,7 +239,7 @@ func (b *AESGCMBarrier) persistKeyringBestEffort(ctx context.Context, keyring *K
 func (b *AESGCMBarrier) persistKeyringInternal(ctx context.Context, keyring *Keyring, bestEffort bool) error {
 	// Create the keyring entry
 	keyringBuf, err := keyring.Serialize()
-	defer memzero(keyringBuf)
+	defer clear(keyringBuf)
 	if err != nil {
 		return fmt.Errorf("failed to serialize keyring: %w", err)
 	}
@@ -283,7 +283,7 @@ func (b *AESGCMBarrier) persistKeyringInternal(ctx context.Context, keyring *Key
 		Value:   keyring.RootKey(),
 	}
 	keyBuf, err := key.Serialize()
-	defer memzero(keyBuf)
+	defer clear(keyBuf)
 	if err != nil {
 		return fmt.Errorf("failed to serialize root key: %w", err)
 	}
@@ -388,7 +388,7 @@ func (b *AESGCMBarrier) ReloadKeyring(ctx context.Context) error {
 
 	// Decrypt the barrier init key
 	plain, err := b.decrypt(keyringPath, gcm, out.Value)
-	defer memzero(plain)
+	defer clear(plain)
 	if err != nil {
 		if strings.Contains(err.Error(), "message authentication failed") {
 			return ErrBarrierInvalidKey
@@ -463,7 +463,7 @@ func (b *AESGCMBarrier) ReloadRootKey(ctx context.Context) error {
 
 	// Deserialize the root key
 	key, err := DeserializeKey(out.Value)
-	memzero(out.Value)
+	clear(out.Value)
 	if err != nil {
 		return fmt.Errorf("failed to deserialize key: %w", err)
 	}
@@ -514,7 +514,7 @@ func (b *AESGCMBarrier) Unseal(ctx context.Context, key []byte) error {
 
 	// Decrypt the barrier init key
 	plain, err := b.decrypt(keyringPath, gcm, out.Value)
-	defer memzero(plain)
+	defer clear(plain)
 	if err != nil {
 		if strings.Contains(err.Error(), "message authentication failed") {
 			return ErrBarrierInvalidKey
@@ -603,7 +603,7 @@ func (b *AESGCMBarrier) CreateUpgrade(ctx context.Context, term uint32) error {
 	// Get the key for this term
 	termKey := b.keyring.TermKey(term)
 	buf, err := termKey.Serialize()
-	defer memzero(buf)
+	defer clear(buf)
 	if err != nil {
 		b.l.RUnlock()
 		return err
@@ -687,7 +687,7 @@ func (b *AESGCMBarrier) CheckUpgrade(ctx context.Context) (bool, uint32, error) 
 
 	// Deserialize the key
 	key, err := DeserializeKey(entry.Value)
-	memzero(entry.Value)
+	clear(entry.Value)
 	if err != nil {
 		return false, 0, err
 	}

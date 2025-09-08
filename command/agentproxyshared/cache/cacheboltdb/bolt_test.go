@@ -315,12 +315,15 @@ func TestBolt_MigrateFromV1ToV2Schema(t *testing.T) {
 	leases, err := b.GetByType(ctx, authLeaseType)
 	require.NoError(t, err)
 	assert.Len(t, leases, 2)
+
 	leases, err = b.GetByType(ctx, secretLeaseType)
 	require.NoError(t, err)
 	assert.Len(t, leases, 1)
+
 	leases, err = b.GetByType(ctx, LeaseType)
 	require.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "not found"))
+	assert.Len(t, leases, 0)
 
 	// Now migrate to the v2 schema.
 	err = db.Update(migrateFromV1ToV2Schema)
@@ -330,9 +333,13 @@ func TestBolt_MigrateFromV1ToV2Schema(t *testing.T) {
 	leases, err = b.GetByType(ctx, authLeaseType)
 	require.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "not found"))
+	assert.Len(t, leases, 0)
+
 	leases, err = b.GetByType(ctx, secretLeaseType)
 	require.Error(t, err)
+	assert.Len(t, leases, 0)
 	assert.True(t, strings.Contains(err.Error(), "not found"))
+
 	leases, err = b.GetByType(ctx, LeaseType)
 	require.NoError(t, err)
 	assert.Len(t, leases, 3)

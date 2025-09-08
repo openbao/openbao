@@ -221,6 +221,9 @@ func TestLoadConfigDir_AgentCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	config2, err := LoadConfigFile("./test-fixtures/config-dir-cache/config-cache2.hcl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	mergedConfig := config.Merge(config2)
 
@@ -342,6 +345,9 @@ func TestLoadConfigDir_VaultBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	config2, err := LoadConfigFile("./test-fixtures/config-dir-vault-block/config2.hcl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	mergedConfig := config.Merge(config2)
 

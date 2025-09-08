@@ -158,13 +158,11 @@ func TestCreateUser(t *testing.T) {
 				VerifyConnection: true,
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
 			dbtesting.AssertInitialize(t, db, initReq)
 
 			require.True(t, db.Initialized, "Database is not initialized")
 
-			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			newUserResp, err := db.NewUser(ctx, test.newUserReq)
 			if test.expectErr && err == nil {

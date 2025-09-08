@@ -1320,8 +1320,7 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 // this returns the namespace object for ns1/ns2/ns3/, and the string "secret-mount"
 func (c *Core) splitNamespaceAndMountFromPath(currNs, path string) namespace.MountPathDetails {
 	fullPath := currNs + path
-
-	ns, mountPath := c.NamespaceByPath(namespace.RootContext(context.TODO()), fullPath)
+	ns, mountPath := c.namespaceStore.GetNamespaceByLongestPrefix(namespace.RootContext(context.TODO()), fullPath)
 
 	return namespace.MountPathDetails{
 		Namespace: ns,

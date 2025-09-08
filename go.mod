@@ -157,7 +157,7 @@ require (
 	k8s.io/client-go v0.33.0
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
 	layeh.com/radius v0.0.0-20230922032716-6579be8edf5d
-	sigs.k8s.io/yaml v1.4.0
+	sigs.k8s.io/yaml v1.6.0
 	zgo.at/zcache/v2 v2.4.1
 )
 
@@ -355,6 +355,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.36.0 // indirect

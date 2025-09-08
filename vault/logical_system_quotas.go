@@ -310,7 +310,7 @@ func (b *SystemBackend) handleRateLimitQuotasUpdate() framework.OperationFunc {
 		}
 
 		mountPath := sanitizePath(d.Get("path").(string))
-		ns, mountPath := b.Core.NamespaceByPath(ctx, mountPath)
+		ns, mountPath := b.Core.namespaceStore.GetNamespaceByLongestPrefix(ctx, mountPath)
 
 		var pathSuffix string
 		if mountPath != "" {

@@ -781,6 +781,26 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	return nil
 }
 
+// mountEntrySysView creates a logical.SystemView from global and
+// mount-specific entries; because this should be called when setting
+// up a mountEntry, it doesn't check to ensure that me is not nil
+func (c *Core) mountEntrySysView(entry *MountEntry) extendedSystemView {
+	esi := extendedSystemViewImpl{
+		dynamicSystemView{
+			core:       c,
+			mountEntry: entry,
+		},
+	}
+
+	// Due to complexity in the ACME interface, only return it when we
+	// are a PKI plugin that needs it.
+	if entry.Type != "pki" {
+		return esi
+	}
+
+	return esi
+}
+
 // builtinTypeFromMountEntry attempts to find a builtin PluginType associated
 // with the specified MountEntry. Returns consts.PluginTypeUnknown if not found.
 func (c *Core) builtinTypeFromMountEntry(ctx context.Context, entry *MountEntry) consts.PluginType {
@@ -1300,8 +1320,7 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 // this returns the namespace object for ns1/ns2/ns3/, and the string "secret-mount"
 func (c *Core) splitNamespaceAndMountFromPath(currNs, path string) namespace.MountPathDetails {
 	fullPath := currNs + path
-
-	ns, mountPath := c.NamespaceByPath(namespace.RootContext(nil), fullPath)
+	ns, mountPath := c.namespaceStore.GetNamespaceByLongestPrefix(namespace.RootContext(context.TODO()), fullPath)
 
 	return namespace.MountPathDetails{
 		Namespace: ns,
@@ -2261,7 +2280,7 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 	}
 	c.authLock.RUnlock()
 
-	return
+	return mounts, auth
 }
 
 func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view BarrierView) {

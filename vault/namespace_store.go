@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -96,6 +97,16 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	return ns, nil
 }
 
+// NamespaceView uses given barrier and namespace to return back a view scoped to that namespace.
+func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView {
+	if ns.ID == namespace.RootNamespaceID {
+		return NewBarrierView(barrier, "")
+	}
+
+	return NewBarrierView(barrier, path.Join(namespaceBarrierPrefix, ns.UUID)+"/")
+}
+
+// cancelNamespaceDeletion cancels goroutine that runs namespace deletion.
 func (c *Core) cancelNamespaceDeletion() {
 	if c.namespaceStore == nil {
 		return

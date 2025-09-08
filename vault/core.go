@@ -1066,6 +1066,22 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	return c, nil
 }
 
+func coreInit(c *Core, conf *CoreConfig) error {
+	phys := conf.Physical
+	// Wrap the physical backend in a cache layer if enabled
+	cacheLogger := c.baseLogger.Named("storage.cache")
+	c.allLoggers = append(c.allLoggers, cacheLogger)
+	c.physical = physical.NewCache(phys, conf.CacheSize, cacheLogger, c.MetricSink().Sink)
+	c.physicalCache = c.physical.(physical.ToggleablePurgemonster)
+
+	// Wrap in encoding checks
+	if !conf.DisableKeyEncodingChecks {
+		c.physical = physical.NewStorageEncoding(c.physical)
+	}
+
+	return nil
+}
+
 // NewCore creates, initializes and configures a Vault node (core).
 func NewCore(conf *CoreConfig) (*Core, error) {
 	// NOTE: The order of configuration of the core has some importance, as we can
@@ -2273,10 +2289,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	// for the active startup.
 	c.activeTime = time.Now().UTC()
 
-	if err := postUnsealPhysical(c); err != nil {
-		return err
-	}
-
 	// Only perf primarys should write feature flags, but we do it by
 	// excluding other states so that we don't have to change it when
 	// a non-replicated cluster becomes a primary.
@@ -2551,7 +2563,8 @@ func (c *Core) preSeal() error {
 		seal.StopHealthCheck()
 	}
 
-	preSealPhysical(c)
+	c.physicalCache.SetEnabled(false)
+	c.physicalCache.Purge(context.Background())
 
 	c.logger.Info("pre-seal teardown complete")
 	return result
@@ -3021,6 +3034,32 @@ func (c *Core) ReloadCustomResponseHeaders() error {
 	}
 	c.customListenerHeader.Store(NewListenerCustomHeader(lns, c.logger, uiHeaders))
 
+	return nil
+}
+
+func (c *Core) setupHeaderHMACKey(ctx context.Context) error {
+	ent, err := c.barrier.Get(ctx, indexHeaderHMACKeyPath)
+	if err != nil {
+		return err
+	}
+
+	if ent != nil {
+		c.IndexHeaderHMACKey.Store(ent.Value)
+		return nil
+	}
+
+	key, err := uuid.GenerateUUID()
+	if err != nil {
+		return err
+	}
+	err = c.barrier.Put(ctx, &logical.StorageEntry{
+		Key:   indexHeaderHMACKeyPath,
+		Value: []byte(key),
+	})
+	if err != nil {
+		return err
+	}
+	c.IndexHeaderHMACKey.Store([]byte(key))
 	return nil
 }
 

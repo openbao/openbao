@@ -1418,6 +1418,8 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 							},
 						}},
 					},
+					ForwardPerformanceStandby:   true,
+					ForwardPerformanceSecondary: true,
 				},
 			},
 

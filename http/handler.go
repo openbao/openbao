@@ -776,18 +776,6 @@ func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handle
 		// the leader are set up, as that happens once the advertised cluster
 		// values are read during this function
 
-		isStandby, err := core.Standby()
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, err)
-			return
-		}
-
-		// Forward HA status to leader so response includes all nodes.
-		if isStandby && r.URL.Path == "/v1/sys/ha-status" {
-			forwardRequest(core, w, r)
-			return
-		}
-
 		handler.ServeHTTP(w, r)
 	})
 }
@@ -858,7 +846,7 @@ func request(core *vault.Core, w http.ResponseWriter, rawReq *http.Request, r *l
 	}
 
 	if isForwardErr(err) || (resp != nil && isForwardErr(resp.Error())) {
-		core.Logger().Debug("got issues handling request because we're a standby, forwarding", "error", err)
+		core.Logger().Debug("got issues handling request because we're a standby, forwarding")
 		return nil, false, true
 	}
 

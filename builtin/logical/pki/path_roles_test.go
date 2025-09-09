@@ -1046,7 +1046,7 @@ func TestPKI_RolePolicyInformation_Flat(t *testing.T) {
 		},
 		{
 			Input:   "[{\"oid\":\"1.3.6.1.4.1.7.8\",\"notice\":\"I am a user Notice\"},{\"oid\":\"1.3.6.1.32473.1.2.4\",\"cps\":\"https://example.com\"}]",
-			ASN:     "MF8wLQYHKwYBBAEHCDAiMCAGCCsGAQUFBwICMBQMEkkgYW0gYSB1c2VyIE5vdGljZTAuBgkrBgGC3xMBAgQwITAfBggrBgEFBQcCARYTaHR0cHM6Ly9leGFtcGxlLmNvbQ==",
+			ASN:     "MF8wLQYHKwYBBAEHCDAiMCAGCCsGAQUFBwICMBQMEkkgYW0gYSB1c2VyIE5vdGljZTAuBgkrBgGB/VkBAgQwITAfBggrBgEFBQcCARYTaHR0cHM6Ly9leGFtcGxlLmNvbQ==",
 			OidList: append(*new([]string), "1.3.6.1.4.1.7.8", "1.3.6.1.32473.1.2.4"),
 		},
 	}

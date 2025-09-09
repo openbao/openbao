@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/lru"
 )
 
 type Transactional interface {
@@ -104,6 +105,49 @@ func (s *NodeTransaction) Rollback(ctx context.Context) error {
 	return s.storage.(logical.Transaction).Rollback(ctx)
 }
 
+// NewNodeStorageFromTransaction creates a NodeStorage that works within an existing transaction.
+// Caching is disabled to avoid cache coherency issues with external transaction control.
+func NewNodeStorageFromTransaction(
+	tx logical.Transaction,
+	serializer NodeSerializer,
+	cache *lru.LRU[string, *Node], // Shared cache from parent storage (not used due to skipCache)
+) (*NodeStorage, error) {
+	if serializer == nil {
+		serializer = &JSONSerializer{}
+	}
+
+	return &NodeStorage{
+		storage:            tx,
+		serializer:         serializer,
+		cache:              cache, // Not used due to skipCache=true
+		skipCache:          true,  // Disable caching for external transactions
+		lock:               sync.RWMutex{},
+		cachesOpsQueueLock: sync.Mutex{},
+		pendingCacheOps:    nil, // No cache operations when cache is disabled
+	}, nil
+}
+
+// WithExistingTransaction creates a NodeStorage wrapper that participates in an existing transaction.
+// This allows using the wrapper's utility methods within a transaction managed externally.
+// Caching is disabled to avoid cache coherency issues with external transaction control.
+// The returned NodeStorage should NOT have Commit/Rollback called on it - the original transaction
+// should handle that.
+func WithExistingTransaction(
+	ctx context.Context,
+	tx logical.Transaction,
+	parentStorage *NodeStorage, // Parent storage for shared cache and config
+) Storage {
+	return &NodeStorage{
+		storage:            tx,
+		serializer:         parentStorage.serializer,
+		cache:              parentStorage.cache, // Not used due to skipCache=true
+		skipCache:          true,                // Disable caching for external transactions
+		lock:               sync.RWMutex{},      // New mutex for transaction isolation
+		cachesOpsQueueLock: sync.Mutex{},
+		pendingCacheOps:    nil, // No cache operations when cache is disabled
+	}
+}
+
 // WithTransaction will begin and end a transaction around the execution of the `callback` function.
 // If the storage supports transactions, it creates a transaction and passes it to the callback.
 // On success, the transaction is committed; on failure, it's rolled back.
@@ -114,10 +158,13 @@ func WithTransaction(ctx context.Context, originalStorage Storage, callback func
 			return fmt.Errorf("failed to begin transaction: %w", err)
 		}
 
-		// Ensure rollback is called if commit is not reached
+		// Track commit status to avoid double rollback
+		var committed bool
 		defer func() {
-			if rollbackErr := txn.Rollback(ctx); rollbackErr != nil {
-				// Log rollback errors but don't override the main error
+			if !committed {
+				if rollbackErr := txn.Rollback(ctx); rollbackErr != nil {
+					// Log rollback errors but don't override the main error
+				}
 			}
 		}()
 
@@ -131,6 +178,7 @@ func WithTransaction(ctx context.Context, originalStorage Storage, callback func
 			return fmt.Errorf("failed to commit transaction: %w", err)
 		}
 
+		committed = true
 		return nil
 	} else {
 		// If storage doesn't support transactions, execute directly

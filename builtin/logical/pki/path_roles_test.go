@@ -1125,9 +1125,7 @@ func TestPKI_RolePolicyInformation_Flat(t *testing.T) {
 		if err != nil {
 			t.Fatalf("bad [%d], getting extension from %v err: %v resp: %#v", index, testCase.Input, err, issueResp)
 		}
-		certificateB64 := make([]byte, len(certificateAsn)*2)
-		base64.StdEncoding.Encode(certificateB64, certificateAsn)
-		certificateString := string(certificateB64[:])
+		certificateString := base64.StdEncoding.EncodeToString(certificateAsn)
 		assert.Contains(t, certificateString, testCase.ASN)
 	}
 }

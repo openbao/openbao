@@ -49,16 +49,18 @@ type Listener struct {
 	PurposeRaw interface{} `hcl:"purpose"`
 	Role       string      `hcl:"role"`
 
-	Address                     string        `hcl:"address"`
-	ClusterAddress              string        `hcl:"cluster_address"`
-	MaxRequestSize              int64         `hcl:"-"`
-	MaxRequestSizeRaw           interface{}   `hcl:"max_request_size"`
-	MaxRequestJsonComplexity    int64         `hcl:"-"`
-	MaxRequestJsonComplexityRaw interface{}   `hcl:"max_request_json_complexity"`
-	MaxRequestDuration          time.Duration `hcl:"-"`
-	MaxRequestDurationRaw       interface{}   `hcl:"max_request_duration"`
-	RequireRequestHeader        bool          `hcl:"-"`
-	RequireRequestHeaderRaw     interface{}   `hcl:"require_request_header"`
+	Address                  string        `hcl:"address"`
+	ClusterAddress           string        `hcl:"cluster_address"`
+	MaxRequestSize           int64         `hcl:"-"`
+	MaxRequestSizeRaw        interface{}   `hcl:"max_request_size"`
+	MaxRequestJsonMemory     int64         `hcl:"-"`
+	MaxRequestJsonMemoryRaw  interface{}   `hcl:"max_request_json_memory"`
+	MaxRequestJsonStrings    int64         `hcl:"-"`
+	MaxRequestJsonStringsRaw interface{}   `hcl:"max_request_json_strings"`
+	MaxRequestDuration       time.Duration `hcl:"-"`
+	MaxRequestDurationRaw    interface{}   `hcl:"max_request_duration"`
+	RequireRequestHeader     bool          `hcl:"-"`
+	RequireRequestHeaderRaw  interface{}   `hcl:"require_request_header"`
 
 	TLSDisable    bool        `hcl:"-"`
 	TLSDisableRaw interface{} `hcl:"tls_disable"`
@@ -258,12 +260,20 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 				l.RequireRequestHeaderRaw = nil
 			}
 
-			if l.MaxRequestJsonComplexityRaw != nil {
-				if l.MaxRequestJsonComplexity, err = parseutil.ParseInt(l.MaxRequestJsonComplexityRaw); err != nil {
-					return multierror.Prefix(fmt.Errorf("error parsing max_request_json_complexity: %w", err), fmt.Sprintf("listeners.%d", i))
+			if l.MaxRequestJsonMemoryRaw != nil {
+				if l.MaxRequestJsonMemory, err = parseutil.ParseInt(l.MaxRequestJsonMemoryRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("error parsing max_request_json_memory: %w", err), fmt.Sprintf("listeners.%d", i))
 				}
 
-				l.MaxRequestJsonComplexityRaw = nil
+				l.MaxRequestJsonMemoryRaw = nil
+			}
+
+			if l.MaxRequestJsonStringsRaw != nil {
+				if l.MaxRequestJsonStrings, err = parseutil.ParseInt(l.MaxRequestJsonStringsRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("error parsing max_request_json_strings: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.MaxRequestJsonStringsRaw = nil
 			}
 		}
 

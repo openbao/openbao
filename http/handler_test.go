@@ -1075,37 +1075,78 @@ func TestHandler_RestrictedEndpointCalls(t *testing.T) {
 func TestParseJSONRequest(t *testing.T) {
 	t.Parallel()
 
-	const example = `{ "hello" : "world" }` // token count 4
+	const example = `{ "hello" : [ "world", "earth" ] }` // token count 5 ; string count 3
 
 	tests := []struct {
-		name  string
-		limit []int64
+		name        string
+		memoryLimit []int64
+		stringLimit []int64
 
-		expectError bool
+		expectError error
 	}{
 		{
-			name:        "no limit",
-			limit:       nil,
-			expectError: false,
+			name: "no limit",
 		},
 		{
-			name:        "above limit",
-			limit:       []int64{3},
-			expectError: true,
+			name:        "above memory limit",
+			memoryLimit: []int64{206},
+			expectError: ErrJSONExceededMemory,
 		},
 		{
-			name:        "below limit",
-			limit:       []int64{5},
-			expectError: false,
+			name:        "below memory limit",
+			memoryLimit: []int64{208},
+		},
+		{
+			name:        "at memory limit",
+			memoryLimit: []int64{207},
+		},
+		{
+			name:        "above string limit",
+			stringLimit: []int64{2},
+			expectError: ErrJSONExceededStrings,
+		},
+		{
+			name:        "below string limit",
+			stringLimit: []int64{4},
+		},
+		{
+			name:        "at string limit",
+			stringLimit: []int64{3},
+		},
+		{
+			name:        "at both limits",
+			memoryLimit: []int64{207},
+			stringLimit: []int64{3},
+		},
+		{
+			name:        "below both limits",
+			memoryLimit: []int64{208},
+			stringLimit: []int64{4},
+		},
+		{
+			name:        "above both limits",
+			memoryLimit: []int64{206},
+			stringLimit: []int64{2},
+			expectError: ErrJSONExceededStrings,
+		},
+		{
+			name:        "above string limit",
+			memoryLimit: []int64{2060},
+			stringLimit: []int64{2},
+			expectError: ErrJSONExceededStrings,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := t.Context()
-			if len(tt.limit) > 0 {
-				require.Len(t, tt.limit, 1, "invalid test case")
-				ctx = addMaximumJsonTokensToContext(ctx, tt.limit[0])
+			if len(tt.memoryLimit) > 0 {
+				require.Len(t, tt.memoryLimit, 1, "invalid test case")
+				ctx = addMaximumJsonMemoryToContext(ctx, tt.memoryLimit[0])
+			}
+			if len(tt.stringLimit) > 0 {
+				require.Len(t, tt.stringLimit, 1, "invalid test case")
+				ctx = addMaximumJsonStringsToContext(ctx, tt.stringLimit[0])
 			}
 
 			req, err := http.NewRequestWithContext(ctx, "POST", "/v1/test", strings.NewReader(example))
@@ -1114,13 +1155,16 @@ func TestParseJSONRequest(t *testing.T) {
 			var res map[string]any
 			_, err = parseJSONRequest(req, nil, &res)
 
-			if tt.expectError {
-				require.ErrorContains(t, err, "too many tokens")
+			if tt.expectError != nil {
+				require.ErrorContains(t, err, tt.expectError.Error())
 				require.Len(t, res, 0)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, map[string]any{
-					"hello": "world",
+					"hello": []interface{}{
+						"world",
+						"earth",
+					},
 				}, res)
 			}
 		})

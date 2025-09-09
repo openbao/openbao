@@ -410,7 +410,19 @@ func (c *Core) drainPendingRestarts() {
 
 // runStandby is a long running process that manages a number of the HA
 // subsystems.
-func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}, restartCh chan struct{}) {
+// doneCh will be closed once the standby has finished operating in this
+// invocation.
+// manualStepDownCh is a channel passed to the leadership acquisition process,
+// to allow interrupting leadership acquisition by this node. A step-down is
+// triggered for every message in the channel and the channel is closed once
+// this invocation returns.
+// stopCh can be used to stop the standby and shutdown the process.
+// restartCh can be used to gracefully reset standby node state, reloading all
+// cached information.
+//
+// stopCh and restartCh differ in that the former is terminal and the latter is
+// re-entrant. Both can be triggered by writing to the respective channel.
+func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}, stopCh, restartCh <-chan struct{}) {
 	defer close(doneCh)
 	defer close(manualStepDownCh)
 
@@ -511,7 +523,7 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}, restar
 // waitForLeadership is a long running routine that is used when an HA backend
 // is enabled. It waits until we are leader and switches this Vault to
 // active.
-func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stopCh chan struct{}) {
+func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stopCh <-chan struct{}) {
 	var manualStepDown bool
 	firstIteration := true
 	for {
@@ -794,7 +806,7 @@ func grabLockOrStop(lockFunc, unlockFunc func(), stopCh chan struct{}) (stopped 
 
 type lockGrabber struct {
 	// stopCh provides a way to interrupt the grab-or-stop
-	stopCh chan struct{}
+	stopCh <-chan struct{}
 	// doneCh is closed when the child goroutine is done.
 	doneCh     chan struct{}
 	lockFunc   func()
@@ -805,7 +817,7 @@ type lockGrabber struct {
 	locked        bool
 }
 
-func newLockGrabber(lockFunc, unlockFunc func(), stopCh chan struct{}) *lockGrabber {
+func newLockGrabber(lockFunc, unlockFunc func(), stopCh <-chan struct{}) *lockGrabber {
 	return &lockGrabber{
 		doneCh:        make(chan struct{}),
 		lockFunc:      lockFunc,

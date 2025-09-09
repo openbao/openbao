@@ -861,7 +861,7 @@ func (c *TestCluster) SetRootToken(token string) {
 }
 
 func (c *TestCluster) Start() {
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 }
 
 func (c *TestCluster) start(t testing.T) {

@@ -39,7 +39,7 @@ func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleNamespacesRotate(),
+					Callback: b.handleRotate(b.parseNamespaceFromRequest),
 					Summary:  "Rotate the namespace encryption key.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
@@ -341,24 +341,6 @@ func (b *SystemBackend) parseNamespaceFromRequest(ctx context.Context, data *fra
 	}
 
 	return ns, nil
-}
-
-// handleNamespacesRotate handles the `/sys/namespaces/<namespace>/rotate` and
-// `/sys/namespaces/<namespace>/rotate/keyring` endpoints to rotate the namespace
-// encryption key.
-func (b *SystemBackend) handleNamespacesRotate() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		ns, err := b.parseNamespaceFromRequest(ctx, data)
-		if err != nil {
-			return handleError(err)
-		}
-
-		if err := b.Core.sealManager.RotateNamespaceBarrierKey(ctx, ns); err != nil {
-			return handleError(err)
-		}
-
-		return nil, nil
-	}
 }
 
 var sysNamespacesRotateHelp = map[string][2]string{

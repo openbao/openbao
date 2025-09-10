@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/armon/go-radix"
 	"github.com/hashicorp/go-hclog"
@@ -79,7 +80,7 @@ func (c *Core) SetupSealManager() {
 	c.sealManager.setup()
 }
 
-// setup is used to initialize the internal structsof a sealManager.
+// setup is used to initialize the internal structs of a sealManager.
 func (sm *SealManager) setup() {
 	sm.barrierByNamespace = radix.NewFromMap(map[string]interface{}{
 		"": sm.core.barrier,
@@ -104,13 +105,10 @@ func (sm *SealManager) setup() {
 // storage of a sealManger with a default values for root namespace.
 func (sm *SealManager) Reset(ctx context.Context) error {
 	// starting from root, but it will be omitted
-	err := sm.SealNamespace(namespace.RootContext(ctx), namespace.RootNamespace)
+	err := sm.SealNamespace(ctx, namespace.RootNamespace)
 	if err != nil {
 		return err
 	}
-
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
 
 	sm.setup()
 
@@ -216,12 +214,17 @@ func (sm *SealManager) SealNamespace(ctx context.Context, nsToSeal *namespace.Na
 			return false
 		}
 
-		ns, err := sm.core.namespaceStore.getNamespaceByPathLocked(ctx, namespacePath, false)
+		// context has to have root ns, as the getNamespaceByPathLocked() constructs
+		// path by concatenating whatever is in context with the path, which in this
+		// case is always full path to the namespace.
+		ns, err := sm.core.namespaceStore.getNamespaceByPathLocked(namespace.RootContext(ctx), namespacePath, false)
 		if err != nil {
 			errs = errors.Join(errs, err)
+			return false
 		}
 		if ns == nil {
 			errs = errors.Join(errs, fmt.Errorf("namespace not found for path: %s", namespacePath))
+			return false
 		}
 
 		ctx = namespace.ContextWithNamespace(ctx, ns)
@@ -242,6 +245,13 @@ func (sm *SealManager) SealNamespace(ctx context.Context, nsToSeal *namespace.Na
 	})
 
 	return errs
+}
+
+// NamespaceView finds the correct barrier to use for the namespace
+// and returns BarrierView restricted to the data of the given namespace.
+func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
+	barrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
+	return NamespaceView(barrier, ns)
 }
 
 // NamespaceBarrierByLongestPrefix acquires a read lock, and returns barrier of a
@@ -447,7 +457,7 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 // recordUnsealPart takes in a key fragment, and returns true if it's a new fragment.
 func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bool, error) {
 	info, exists := sm.unlockInformationByNamespace[ns.UUID]["default"]
-	if exists {
+	if exists && info != nil {
 		for _, existing := range info.Parts {
 			if subtle.ConstantTimeCompare(existing, key) == 1 {
 				return false, nil
@@ -619,13 +629,6 @@ func (sm *SealManager) AuthenticateRootKey(ctx context.Context, ns *namespace.Na
 	return nil
 }
 
-// NamespaceView finds the correct barrier to use for the namespace
-// and returns BarrierView restricted to the data of the given namespace.
-func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
-	barrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
-	return NamespaceView(barrier, ns)
-}
-
 func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Namespace) ([][]byte, error) {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
@@ -740,6 +743,38 @@ func (sm *SealManager) RotateNamespaceBarrierKey(ctx context.Context, namespace 
 		return ErrNotSealable
 	}
 
-	_, err := nsBarrier.Rotate(ctx, sm.core.secureRandomReader)
-	return err
+	newTerm, err := nsBarrier.Rotate(ctx, sm.core.secureRandomReader)
+	if err != nil {
+		return fmt.Errorf("failed to create new encryption key: %w", err)
+	}
+	sm.logger.Info("installed new encryption key")
+
+	// In HA mode, we need to an upgrade path for the standby instances
+	// we are using the same key rotate grace period for all namespaces for now.
+	if sm.core.ha != nil && sm.core.KeyRotateGracePeriod() > 0 {
+		// Create the upgrade path to the new term
+		if err := nsBarrier.CreateUpgrade(ctx, newTerm); err != nil {
+			sm.logger.Error("failed to create new upgrade", "term", newTerm, "error", err, "namespace", namespace.Path)
+		}
+
+		// Schedule the destroy of the upgrade path
+		time.AfterFunc(sm.core.KeyRotateGracePeriod(), func() {
+			sm.logger.Debug("cleaning up upgrade keys", "waited", sm.core.KeyRotateGracePeriod())
+			if err := nsBarrier.DestroyUpgrade(sm.core.activeContext, newTerm); err != nil {
+				sm.logger.Error("failed to destroy upgrade", "term", newTerm, "error", err, "namespace", namespace.Path)
+			}
+		})
+	}
+
+	// Write to the canary path, which will force a synchronous truing
+	// during replication
+	view := sm.core.NamespaceView(namespace).SubView(coreKeyringCanaryPath)
+	storage := sm.StorageAccessForPath(view.Prefix())
+	newRotationTerm := fmt.Sprintf("new-rotation-term-%d", newTerm)
+	if err := storage.Put(ctx, view.Prefix(), []byte(newRotationTerm)); err != nil {
+		sm.logger.Error("error saving keyring canary", "error", err, "namespace", namespace.Path)
+		return fmt.Errorf("failed to save keyring canary: %w", err)
+	}
+
+	return nil
 }

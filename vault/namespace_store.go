@@ -283,7 +283,8 @@ func (ns *NamespaceStore) invalidate(ctx context.Context, path string) error {
 }
 
 // SetNamespaceSealed is used to create or update a given sealable namespace.
-// Note that you cannot change the seal config of a namespace with this operation.
+// Note that you cannot change the Seal config of a namespace with this;
+// only add a seal config to a net-new namespace.
 func (ns *NamespaceStore) SetNamespaceSealed(ctx context.Context, entry *namespace.Namespace, sealConfig *SealConfig) ([][]byte, error) {
 	unlock, err := ns.lockWithInvalidation(ctx, true)
 	if err != nil {
@@ -913,8 +914,6 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return errors.New("unable to seal tainted namespace")
 	}
 
-	// override the namespace in context to the one we want to seal
-	ctx = namespace.ContextWithNamespace(ctx, namespaceToSeal)
 	return ns.core.sealManager.SealNamespace(ctx, namespaceToSeal)
 }
 

@@ -181,6 +181,9 @@ func (d dynamicSystemView) LocalMount() bool {
 // in read mode.
 func (d dynamicSystemView) ReplicationState() consts.ReplicationState {
 	state := d.core.ReplicationState()
+	if d.core.standby {
+		state |= consts.ReplicationPerformanceStandby
+	}
 	return state
 }
 

@@ -93,7 +93,7 @@
     "@types/ember__utils": "^4.0.2",
     "@types/qunit": "^2.19.12",
     "@types/rsvp": "^4.0.9",
-    "@types/shell-quote": "^1.7.1",
+    "@types/shell-quote": "^1.7.5",
     "asn1js": "^2.2.0",
     "autosize": "^6.0.1",
     "babel-plugin-inline-json-import": "^0.3.2",

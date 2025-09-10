@@ -297,6 +297,7 @@ type Core struct {
 	standby              bool
 	standbyDoneCh        chan struct{}
 	standbyStopCh        *atomic.Value
+	restartCh            chan struct{}
 	manualStepDownCh     chan struct{}
 	keepHALockOnStepDown *uint32
 	heldHALock           physical.Lock
@@ -1933,7 +1934,8 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 		c.standbyDoneCh = make(chan struct{})
 		c.manualStepDownCh = make(chan struct{}, 1)
 		c.standbyStopCh.Store(make(chan struct{}))
-		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}))
+		c.restartCh = make(chan struct{})
+		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}), c.restartCh)
 	}
 
 	// Success!

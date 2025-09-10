@@ -220,27 +220,28 @@ func (c *Core) teardownPolicyStore() error {
 	return nil
 }
 
-func (ps *PolicyStore) invalidateNamespace(ctx context.Context, uuid string) error {
+func (ps *PolicyStore) invalidateNamespace(ctx context.Context, uuid string) {
 	ps.modifyLock.Lock()
 	defer ps.modifyLock.Unlock()
 
 	for _, key := range ps.tokenPoliciesLRU.Keys() {
 		if err := ctx.Err(); err != nil {
-			return err
+			ps.logger.Error("unable to invalidate namespace policies, restarting core", "uuid", uuid, "error", err.Error())
+			ps.core.restart()
+			return
 		}
 		if strings.HasPrefix(key, uuid) {
 			ps.tokenPoliciesLRU.Remove(key)
 		}
 	}
-
-	return nil
 }
 
-func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType PolicyType) error {
+func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType PolicyType) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		ps.logger.Error("unable to invalidate key, no namespace info passed", "key", name)
-		return nil
+		ps.logger.Error("unable to invalidate policy, no namespace info passed, restarting", "name", name)
+		ps.core.restart()
+		return
 	}
 
 	// This may come with a prefixed "/" due to joining the file path
@@ -251,7 +252,8 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 	defer ps.modifyLock.Unlock()
 
 	if err := ctx.Err(); err != nil {
-		return err
+		ps.logger.Error("unable to invalidate policy, restarting core", "name", name, "namespace", ns.UUID, "error", err.Error())
+		return
 	}
 
 	// We don't lock before removing from the LRU here because the worst that
@@ -264,13 +266,15 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 
 	default:
 		// Can't do anything
-		return nil
+		return
 	}
 
 	// Force a reload
 	out, err := ps.switchedGetPolicy(ctx, name, policyType, false)
 	if err != nil {
-		ps.logger.Error("error fetching policy after invalidation", "name", saneName)
+		ps.logger.Error("error fetching policy after invalidation, restarting core", "name", saneName)
+		ps.core.restart()
+		return
 	}
 
 	// If true, the invalidation was actually a delete, so we may need to
@@ -280,8 +284,6 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 	if out == nil {
 		ps.switchedDeletePolicy(ctx, name, policyType, false, true)
 	}
-
-	return nil
 }
 
 // SetPolicy is used to create or update the given policy

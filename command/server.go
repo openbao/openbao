@@ -851,6 +851,11 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 			Config:   lnConfig,
 		})
 
+		if lnConfig.MaxRequestJsonComplexity == 0 {
+			lnConfig.MaxRequestJsonComplexity = vault.DefaultMaxJsonComplexity
+		}
+		props["max_request_json_complexity"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonComplexity)
+
 		// Store the listener props for output later
 		key := fmt.Sprintf("listener %d", i+1)
 		propsList := make([]string, 0, len(props))

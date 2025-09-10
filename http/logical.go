@@ -224,7 +224,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		Path:       path,
 		Data:       data,
 		Connection: getConnection(r),
-		Headers:    r.Header,
+		Headers:    r.Header.Clone(),
 	}
 
 	if passHTTPReq {

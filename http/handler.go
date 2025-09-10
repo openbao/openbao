@@ -841,13 +841,7 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 func request(core *vault.Core, w http.ResponseWriter, rawReq *http.Request, r *logical.Request) (*logical.Response, bool, bool) {
 	resp, err := core.HandleRequest(rawReq.Context(), r)
 
-	isForwardErr := func(e error) bool {
-		return errwrap.Contains(e, logical.ErrPerfStandbyPleaseForward.Error()) ||
-			errwrap.Contains(e, logical.ErrReadOnly.Error()) ||
-			errwrap.Contains(e, consts.ErrStandby.Error())
-	}
-
-	if isForwardErr(err) || (resp != nil && isForwardErr(resp.Error())) {
+	if logical.ShouldForward(err) || (resp != nil && logical.ShouldForward(resp.Error())) {
 		core.Logger().Debug("got issues handling request because we're a standby, forwarding")
 		return nil, false, true
 	}

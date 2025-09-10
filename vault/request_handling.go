@@ -863,7 +863,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 				// should receive a 403 bad token error like they do for all other invalid tokens, unless the error
 				// specifies that we should forward the request or retry the request.
 				if err != nil {
-					if errors.Is(err, logical.ErrPerfStandbyPleaseForward) {
+					if logical.ShouldForward(err) {
 						return nil, err
 					}
 					return logical.ErrorResponse("bad token"), logical.ErrPermissionDenied

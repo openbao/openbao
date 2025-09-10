@@ -213,7 +213,7 @@ func (b *jwtAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Reques
 	case "native":
 		return b.pathNativeLoginRenew(ctx, req, data)
 	case "":
-		// Check if this is a native role.
+		// Check if this is a native role. This is a fallback for earlier versions which didn't write role type.
 		role, err := b.role(ctx, req.Storage, roleName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate role %s during renewal: %w", roleName, err)

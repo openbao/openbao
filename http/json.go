@@ -45,7 +45,7 @@ func addMaximumJsonStringsToContext(ctx context.Context, limit int64) context.Co
 }
 
 const (
-	safeJSONCostBase   int64 = 8 + 8     // pointer to a value + type of pointier
+	safeJSONCostBase   int64 = 8 + 8     // pointer to a value + type of pointer
 	safeJSONCostNull   int64 = 1         // minimal overhead for null
 	safeJSONCostBool   int64 = 1         // minimal overhead for booleans
 	safeJSONCostNumber int64 = 8         // assume all numbers are 8-bytes

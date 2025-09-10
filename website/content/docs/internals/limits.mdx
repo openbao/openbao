@@ -251,7 +251,7 @@ JSON request body is limited by the `max_request_json_memory` option in the
 specifically crafted JSON bodies that, once unmarshaled, consume significantly
 more memory than the original request body (circumventing the
 `max_request_size` limit). This limit should not affect valid requests, as
-even large requests should a restricted total amount of memory due to using
+even large requests should use a bounded total amount of memory due to using
 few complex objects.
 
 Similarly, the `max_request_json_strings` option in the

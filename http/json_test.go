@@ -134,7 +134,7 @@ func makeLongEmptyList(size int) interface{} {
 func makeLongString(size int) interface{} {
 	var x string
 	for i := range size {
-		x += fmt.Sprintf("%d", i)
+		x += fmt.Sprintf("%d", i % 10)
 	}
 	return x
 }
@@ -152,7 +152,7 @@ func makeRandomMap(size int) interface{} {
 	for i := range size / 10 {
 		switch i % 3 {
 		case 0:
-			data[fmt.Sprintf("%d", i)] = makeLongString(size * 10)
+			data[fmt.Sprintf("%d", i)] = makeLongString(size)
 		case 1:
 			data[fmt.Sprintf("%d", i)] = makeLargeMap(size / 10)
 		case 2:

@@ -297,12 +297,10 @@ func (ns *NamespaceStore) SetNamespaceSealed(ctx context.Context, entry *namespa
 	}
 
 	if new && sealConfig != nil {
-		nsCtx := namespace.ContextWithNamespace(ctx, entry)
-		err = ns.core.sealManager.SetSeal(nsCtx, sealConfig, entry, true)
-		if err != nil {
+		if err = ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
 			return nil, err
 		}
-		return ns.core.sealManager.InitializeBarrier(nsCtx, entry)
+		return ns.core.sealManager.InitializeBarrier(ctx, entry)
 	}
 
 	return nil, nil
@@ -838,6 +836,9 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, namespa
 		ns.logger.Error("failed to update quotas after deleting namespace", "namespace", namespaceToDelete.Path, "error", err.Error())
 		return false
 	}
+
+	// clear seal manager entries
+	ns.core.sealManager.RemoveNamespace(namespaceToDelete)
 
 	// clear locked users entries
 	_, err = ns.core.runLockedUserEntryUpdatesForNamespace(nsCtx, namespaceToDelete, true)

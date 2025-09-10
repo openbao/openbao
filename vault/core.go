@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -32,7 +31,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
-	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/awskms/v2"
@@ -195,11 +193,6 @@ type activeAdvertisement struct {
 	ClusterKeyParams *certutil.ClusterKeyParams `json:"cluster_key_params,omitempty"`
 }
 
-type unlockInformation struct {
-	Parts [][]byte
-	Nonce string
-}
-
 type raftInformation struct {
 	challenge           *wrapping.BlobInfo
 	leaderClient        *api.Client
@@ -311,9 +304,6 @@ type Core struct {
 	// release the stateLock. This channel is marked atomic to prevent race
 	// conditions.
 	shutdownDoneCh *atomic.Value
-
-	// unlockInfo has the keys provided to Unseal until the threshold number of parts is available, as well as the operation nonce
-	unlockInfo *unlockInformation
 
 	// namespaceRootGens holds the shares for each namespace
 	// until we reach enough to verify the root key
@@ -1086,7 +1076,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 	// Construct a new AES-GCM barrier
 	c.barrier = NewAESGCMBarrier(c.physical, "")
-	c.setupSealManager()
+	c.SetupSealManager()
 
 	// We create the funcs here, then populate the given config with it so that
 	// the caller can share state
@@ -1430,20 +1420,20 @@ func (c *Core) SecretProgress(lock bool) (int, string) {
 		c.stateLock.RLock()
 		defer c.stateLock.RUnlock()
 	}
-	switch c.unlockInfo {
+
+	info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID)
+	switch info {
 	case nil:
 		return 0, ""
 	default:
-		return len(c.unlockInfo.Parts), c.unlockInfo.Nonce
+		return len(info.Parts), info.Nonce
 	}
 }
 
-// ResetUnsealProcess removes the current unlock parts from memory, to reset
-// the unsealing process
+// ResetUnsealProcess removes the current unlock parts from memory,
+// to reset the unsealing process for the root namespace.
 func (c *Core) ResetUnsealProcess() {
-	c.stateLock.Lock()
-	defer c.stateLock.Unlock()
-	c.unlockInfo = nil
+	c.sealManager.ResetUnsealProcess(namespace.RootNamespaceUUID)
 }
 
 func (c *Core) UnsealMigrate(key []byte) (bool, error) {
@@ -1535,14 +1525,14 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 		sealToUse = c.migrationInfo.seal
 	}
 
-	newKey, err := c.recordUnsealPart(key)
+	newKey, err := c.sealManager.recordUnsealPart(namespace.RootNamespace, key)
 	if !newKey || err != nil {
 		return err
 	}
 
 	// getUnsealKey returns either a recovery key (in the case of an autoseal)
 	// or an unseal key (new-style shamir).
-	combinedKey, err := c.getUnsealKey(ctx, sealToUse)
+	combinedKey, err := c.sealManager.getUnsealKey(ctx, sealToUse, namespace.RootNamespace)
 	if err != nil || combinedKey == nil {
 		return err
 	}
@@ -1633,92 +1623,6 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 	}()
 
 	return nil
-}
-
-// recordUnsealPart takes in a key fragment, and returns true if it's a new fragment.
-func (c *Core) recordUnsealPart(key []byte) (bool, error) {
-	// Check if we already have this piece
-	if c.unlockInfo != nil {
-		for _, existing := range c.unlockInfo.Parts {
-			if subtle.ConstantTimeCompare(existing, key) == 1 {
-				return false, nil
-			}
-		}
-	} else {
-		uuid, err := uuid.GenerateUUID()
-		if err != nil {
-			return false, err
-		}
-		c.unlockInfo = &unlockInformation{
-			Nonce: uuid,
-		}
-	}
-
-	// Store this key
-	c.unlockInfo.Parts = append(c.unlockInfo.Parts, key)
-	return true, nil
-}
-
-// getUnsealKey uses key fragments recorded by recordUnsealPart and
-// returns the combined key if the key share threshold is met.
-// If the key fragments are part of a recovery key, also verify that
-// it matches the stored recovery key on disk.
-func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
-	var config *SealConfig
-	var err error
-
-	raftInfo := c.raftInfo.Load().(*raftInformation)
-
-	switch {
-	case seal.RecoveryKeySupported():
-		config, err = seal.RecoveryConfig(ctx)
-	case c.isRaftUnseal():
-		// Ignore follower's seal config and refer to leader's barrier
-		// configuration.
-		config = raftInfo.leaderBarrierConfig
-	default:
-		config, err = seal.Config(ctx)
-	}
-	if err != nil {
-		return nil, err
-	}
-	if config == nil {
-		return nil, errors.New("failed to obtain seal/recovery configuration")
-	}
-
-	// Check if we don't have enough keys to unlock, proceed through the rest of
-	// the call only if we have met the threshold
-	if len(c.unlockInfo.Parts) < config.SecretThreshold {
-		if c.logger.IsDebug() {
-			c.logger.Debug("cannot unseal, not enough keys", "keys", len(c.unlockInfo.Parts), "threshold", config.SecretThreshold, "nonce", c.unlockInfo.Nonce)
-		}
-		return nil, nil
-	}
-
-	defer func() {
-		c.unlockInfo = nil
-	}()
-
-	// Recover the split key. recoveredKey is the shamir combined
-	// key, or the single provided key if the threshold is 1.
-	var unsealKey []byte
-	if config.SecretThreshold == 1 {
-		unsealKey = make([]byte, len(c.unlockInfo.Parts[0]))
-		copy(unsealKey, c.unlockInfo.Parts[0])
-	} else {
-		unsealKey, err = shamir.Combine(c.unlockInfo.Parts)
-		if err != nil {
-			return nil, &ErrInvalidKey{fmt.Sprintf("failed to compute combined key: %v", err)}
-		}
-	}
-
-	if seal.RecoveryKeySupported() {
-		if err := seal.VerifyRecoveryKey(ctx, unsealKey); err != nil {
-			return nil, &ErrInvalidKey{fmt.Sprintf("failed to verify recovery key: %v", err)}
-		}
-	}
-
-	return unsealKey, nil
 }
 
 // sealMigrated must be called with the stateLock held.  It returns true if
@@ -2128,7 +2032,7 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 		retErr = multierror.Append(retErr, sealErr)
 	}
 
-	return
+	return retErr
 }
 
 // UIEnabled returns if the UI is enabled
@@ -2506,11 +2410,6 @@ func (c *Core) preSeal() error {
 	c.postUnsealFuncs = nil
 	c.activeTime = time.Time{}
 
-	// Clear any rotation progress;
-	// errors are ignored as root namespace has to be sealable
-	_ = c.sealManager.SetRotationConfig(namespace.RootNamespace, true, nil)
-	_ = c.sealManager.SetRotationConfig(namespace.RootNamespace, false, nil)
-
 	if c.metricsCh != nil {
 		close(c.metricsCh)
 		c.metricsCh = nil
@@ -2521,6 +2420,9 @@ func (c *Core) preSeal() error {
 	c.stopRaftActiveNode()
 	c.cancelNamespaceDeletion()
 
+	if err := c.sealManager.Reset(context.Background()); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error reseting seal manager: %w", err))
+	}
 	if err := c.teardownAudits(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down audits: %w", err))
 	}
@@ -2590,7 +2492,7 @@ func (c *Core) Logger() log.Logger {
 func (c *Core) BarrierKeyLength() (min, max int) {
 	min, max = c.barrier.KeyLength()
 	max += shamir.ShareOverhead
-	return
+	return min, max
 }
 
 func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {

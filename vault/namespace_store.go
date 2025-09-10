@@ -278,10 +278,7 @@ func (c *Core) teardownNamespaceStore() error {
 	return nil
 }
 
-// invalidate will be used in the future for implementing read replica nodes
-//
-//nolint:unused
-func (ns *NamespaceStore) invalidate(ctx context.Context, path string) error {
+func (ns *NamespaceStore) invalidate(ctx context.Context, path string) {
 	// We want to keep invalidation proper fast (as it holds up replication),
 	// so defer invalidation to the next load.
 	//
@@ -289,7 +286,6 @@ func (ns *NamespaceStore) invalidate(ctx context.Context, path string) error {
 	// need to handle child namespace invalidation as well. sync.Map could be
 	// used instead in the future alongside the actual boolean.
 	ns.invalidated.Store(true)
-	return nil
 }
 
 // SetNamespace is used to create or update a given namespace

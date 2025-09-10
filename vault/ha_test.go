@@ -10,6 +10,9 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestGrabLockOrStopped is a non-deterministic test to detect deadlocks in the
@@ -45,7 +48,7 @@ func TestGrabLockOrStop(t *testing.T) {
 	workerWg.Add(workers)
 
 	// Start a bunch of worker goroutines.
-	for g := 0; g < workers; g++ {
+	for g := range workers {
 		g := g
 		go func() {
 			defer workerWg.Done()
@@ -84,4 +87,51 @@ func TestGrabLockOrStop(t *testing.T) {
 		}()
 	}
 	workerWg.Wait()
+}
+
+func TestCoreRestart(t *testing.T) {
+	t.Parallel()
+
+	t.Run("active", func(t *testing.T) {
+		t.Skip("there is a data-race in waitForLeadership: https://github.com/openbao/openbao/blob/5a93ec0549a88516a8a15e96ef74dadac8ed506f/vault/ha.go#L676-L687")
+		testCoreRestart(t, 0)
+	})
+	t.Run("standby", func(t *testing.T) {
+		testCoreRestart(t, 1)
+	})
+}
+
+func testCoreRestart(t *testing.T, core int) {
+	t.Parallel()
+
+	c := NewTestCluster(t, &CoreConfig{}, &TestClusterOptions{
+		NumCores: 2,
+	})
+
+	c.Start()
+	defer c.Cleanup()
+
+	TestWaitActive(t, c.Cores[0].Core)
+
+	c.Cores[core].stateLock.RLock()
+	activeContextDone := c.Cores[core].activeContext.Done()
+	c.Cores[core].stateLock.RUnlock()
+
+	// trigger the restart
+	c.Cores[core].restart()
+
+	// wait until the active context is cancelled
+	select {
+	case <-activeContextDone:
+	case <-time.NewTimer(10 * time.Second).C:
+		t.Fatal("timeout while waiting for context to be cancelled")
+	}
+
+	// a new context should be started
+	require.EventuallyWithT(t, func(t *assert.CollectT) {
+		c.Cores[core].stateLock.RLock()
+		defer c.Cores[core].stateLock.RUnlock()
+		require.NotNil(t, c.Cores[core].activeContext)
+		require.Nil(t, c.Cores[core].activeContext.Err())
+	}, 10*time.Second, 10*time.Millisecond)
 }

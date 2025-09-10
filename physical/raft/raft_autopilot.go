@@ -12,6 +12,7 @@ import (
 	"math"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/armon/go-metrics"
@@ -20,7 +21,6 @@ import (
 	"github.com/hashicorp/raft"
 	autopilot "github.com/hashicorp/raft-autopilot"
 	"github.com/openbao/openbao/api/v2"
-	"go.uber.org/atomic"
 )
 
 type CleanupDeadServersValue int
@@ -201,7 +201,7 @@ func (s *FollowerStates) Update(req *EchoRequestUpdate) bool {
 	state, present := s.followers[req.NodeID]
 	if !present {
 		state = &FollowerState{
-			IsDead: atomic.NewBool(false),
+			IsDead: &atomic.Bool{},
 		}
 		s.followers[req.NodeID] = state
 	}
@@ -329,7 +329,7 @@ func (b *RaftBackend) startFollowerHeartbeatTracker() {
 		b.followerStates.l.RLock()
 		myAppliedIndex := b.raft.AppliedIndex()
 		for peerID, state := range b.followerStates.followers {
-			timeSinceLastHeartbeat := time.Now().Sub(state.LastHeartbeat) / time.Millisecond
+			timeSinceLastHeartbeat := time.Since(state.LastHeartbeat) / time.Millisecond
 			followerGauge(peerID, "last_heartbeat_ms", float32(timeSinceLastHeartbeat))
 			followerGauge(peerID, "applied_index_delta", float32(myAppliedIndex-state.AppliedIndex))
 

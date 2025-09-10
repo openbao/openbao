@@ -88,6 +88,10 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
   request duration allowed before OpenBao cancels the request. This overrides
   `default_max_request_duration` for this listener.
 
+- `max_request_json_complexity` `(int: 10000)` – Specifies the hard maximum
+  of JSON tokens allowed in the request body. Defaults to `10000` if not set or `0`.
+  A value lower than 0 disables this option altogether.
+
 - `proxy_protocol_behavior` `(string: "")` – When specified, enables a PROXY
   protocol version 1 behavior for the listener.
   Accepted Values:
@@ -264,7 +268,7 @@ in the root of the TCP listener configuration.
 - `tls_acme_domains` `([]string: nil)` - An optional but strongly recommended
   allow-list of domains to allow acquiring certificates for.
 
-::: warning
+:::warning
 
 Failing to specify `tls_acme_domains` on a publicly listening server issuing
 against a publicly trusted CA will allow anyone (including an attacker) to

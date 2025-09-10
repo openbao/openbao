@@ -14,9 +14,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync/atomic"
 	"time"
-
-	"go.uber.org/atomic"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/hashicorp/go-hclog"
@@ -91,8 +90,8 @@ type Server struct {
 func NewServer(conf *ServerConfig) *Server {
 	ts := Server{
 		DoneCh:        make(chan struct{}),
-		stopped:       atomic.NewBool(false),
-		runnerStarted: atomic.NewBool(false),
+		stopped:       &atomic.Bool{},
+		runnerStarted: &atomic.Bool{},
 
 		maxBackoff: conf.MaxBackoff,
 		minBackoff: conf.MinBackoff,

@@ -86,7 +86,8 @@ const sidebars: SidebarsConfig = {
                     Unsealing: [
                         {
                             "PKCS#11": [
-                                "guides/unseal/pkcs11/securosys"
+                                "guides/unseal/pkcs11/securosys",
+                                "guides/unseal/pkcs11/utimaco",
                             ]
                         }
                     ]
@@ -454,7 +455,7 @@ const sidebars: SidebarsConfig = {
                                 "platform/k8s/injector/installation",
                                 "platform/k8s/injector/examples",
                             ],
-                            "Vault CSI Provider": [
+                            "OpenBao CSI Provider": [
                                 "platform/k8s/csi/index",
                                 "platform/k8s/csi/installation",
                                 "platform/k8s/csi/configurations",

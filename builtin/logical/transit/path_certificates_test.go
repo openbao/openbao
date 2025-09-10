@@ -278,6 +278,7 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	require.NotNil(t, resp)
 
 	resp, err = apiClient.Logical().Read(fmt.Sprintf("transit/keys/%s", keyName))
+	require.NoError(t, err)
 	require.NotNil(t, resp)
 	keys, ok := resp.Data["keys"].(map[string]interface{})
 	if !ok {

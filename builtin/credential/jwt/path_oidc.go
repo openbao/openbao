@@ -819,18 +819,18 @@ func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rol
 		clientNonce: clientNonce,
 		deviceCode:  deviceCode,
 	}
-	b.oidcRequests.SetDefault(request.State(), oidcReq)
+	b.oidcRequests.Set(request.State(), oidcReq)
 
 	return oidcReq, nil
 }
 
 func (b *jwtAuthBackend) setOIDCRequest(stateID string, oidcReq *oidcRequest) {
-	b.oidcRequests.SetDefault(stateID, oidcReq)
+	b.oidcRequests.Set(stateID, oidcReq)
 }
 
 func (b *jwtAuthBackend) getOIDCRequest(stateID string) *oidcRequest {
 	if requestRaw, ok := b.oidcRequests.Get(stateID); ok {
-		return requestRaw.(*oidcRequest)
+		return requestRaw
 	}
 	return nil
 }

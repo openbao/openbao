@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -19,6 +20,9 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/version"
 )
+
+// passwordPolicySubPath is a path to the entry storing the password generation policy
+const passwordPolicySubPath = "sys/password_policy/"
 
 type ctxKeyForwardedRequestMountAccessor struct{}
 
@@ -162,7 +166,7 @@ func (d dynamicSystemView) fetchTTLs() (def, max time.Duration) {
 		}
 	}
 
-	return
+	return def, max
 }
 
 // Tainted indicates that the mount is in the process of being removed
@@ -418,6 +422,33 @@ func (d dynamicSystemView) GeneratePasswordFromPolicy(ctx context.Context, polic
 	}
 
 	return passPolicy.Generate(ctx, nil)
+}
+
+// retrievePasswordPolicy retrieves a password policy from the logical storage
+func (d dynamicSystemView) retrievePasswordPolicy(ctx context.Context, policyName string) (*passwordPolicyConfig, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	storage := d.core.namespaceMountEntryView(ns, passwordPolicySubPath)
+	entry, err := storage.Get(ctx, policyName)
+	if err != nil {
+		return nil, err
+	}
+
+	//nolint:nilnil // it's fine here as the only caller handles both cases of an error and non-existent entry
+	if entry == nil {
+		return nil, nil
+	}
+
+	policyCfg := &passwordPolicyConfig{}
+	err = json.Unmarshal(entry.Value, &policyCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal stored data: %w", err)
+	}
+
+	return policyCfg, nil
 }
 
 func (d dynamicSystemView) ClusterID(ctx context.Context) (string, error) {

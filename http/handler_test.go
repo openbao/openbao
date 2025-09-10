@@ -1071,3 +1071,58 @@ func TestHandler_RestrictedEndpointCalls(t *testing.T) {
 		})
 	}
 }
+
+func TestParseJSONRequest(t *testing.T) {
+	t.Parallel()
+
+	const example = `{ "hello" : "world" }` // token count 4
+
+	tests := []struct {
+		name  string
+		limit []int64
+
+		expectError bool
+	}{
+		{
+			name:        "no limit",
+			limit:       nil,
+			expectError: false,
+		},
+		{
+			name:        "above limit",
+			limit:       []int64{3},
+			expectError: true,
+		},
+		{
+			name:        "below limit",
+			limit:       []int64{5},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			if len(tt.limit) > 0 {
+				require.Len(t, tt.limit, 1, "invalid test case")
+				ctx = addMaximumJsonTokensToContext(ctx, tt.limit[0])
+			}
+
+			req, err := http.NewRequestWithContext(ctx, "POST", "/v1/test", strings.NewReader(example))
+			require.NoError(t, err)
+
+			var res map[string]any
+			_, err = parseJSONRequest(req, nil, &res)
+
+			if tt.expectError {
+				require.ErrorContains(t, err, "too many tokens")
+				require.Len(t, res, 0)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, map[string]any{
+					"hello": "world",
+				}, res)
+			}
+		})
+	}
+}

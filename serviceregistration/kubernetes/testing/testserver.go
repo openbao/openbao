@@ -13,9 +13,8 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
-
-	"go.uber.org/atomic"
 )
 
 const (
@@ -45,7 +44,7 @@ var token string
 var (
 	// ReturnGatewayTimeouts toggles whether the test server should return,
 	// well, gateway timeouts...
-	ReturnGatewayTimeouts = atomic.NewBool(false)
+	ReturnGatewayTimeouts = &atomic.Bool{}
 
 	pathToFiles = func() string {
 		wd, _ := os.Getwd()

@@ -49,14 +49,16 @@ type Listener struct {
 	PurposeRaw interface{} `hcl:"purpose"`
 	Role       string      `hcl:"role"`
 
-	Address                 string        `hcl:"address"`
-	ClusterAddress          string        `hcl:"cluster_address"`
-	MaxRequestSize          int64         `hcl:"-"`
-	MaxRequestSizeRaw       interface{}   `hcl:"max_request_size"`
-	MaxRequestDuration      time.Duration `hcl:"-"`
-	MaxRequestDurationRaw   interface{}   `hcl:"max_request_duration"`
-	RequireRequestHeader    bool          `hcl:"-"`
-	RequireRequestHeaderRaw interface{}   `hcl:"require_request_header"`
+	Address                     string        `hcl:"address"`
+	ClusterAddress              string        `hcl:"cluster_address"`
+	MaxRequestSize              int64         `hcl:"-"`
+	MaxRequestSizeRaw           interface{}   `hcl:"max_request_size"`
+	MaxRequestJsonComplexity    int64         `hcl:"-"`
+	MaxRequestJsonComplexityRaw interface{}   `hcl:"max_request_json_complexity"`
+	MaxRequestDuration          time.Duration `hcl:"-"`
+	MaxRequestDurationRaw       interface{}   `hcl:"max_request_duration"`
+	RequireRequestHeader        bool          `hcl:"-"`
+	RequireRequestHeaderRaw     interface{}   `hcl:"require_request_header"`
 
 	TLSDisable    bool        `hcl:"-"`
 	TLSDisableRaw interface{} `hcl:"tls_disable"`
@@ -254,6 +256,14 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 				}
 
 				l.RequireRequestHeaderRaw = nil
+			}
+
+			if l.MaxRequestJsonComplexityRaw != nil {
+				if l.MaxRequestJsonComplexity, err = parseutil.ParseInt(l.MaxRequestJsonComplexityRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("error parsing max_request_json_complexity: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.MaxRequestJsonComplexityRaw = nil
 			}
 		}
 

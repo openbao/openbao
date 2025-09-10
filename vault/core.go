@@ -58,9 +58,8 @@ import (
 	"github.com/openbao/openbao/vault/quotas"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
-	"github.com/patrickmn/go-cache"
-	uberAtomic "go.uber.org/atomic"
 	"google.golang.org/grpc"
+	"zgo.at/zcache/v2"
 )
 
 const (
@@ -432,7 +431,7 @@ type Core struct {
 	physicalCache physical.ToggleablePurgemonster
 
 	// logRequestsLevel indicates at which level requests should be logged
-	logRequestsLevel *uberAtomic.Int32
+	logRequestsLevel *atomic.Int32
 
 	// reloadFuncs is a map containing reload functions
 	reloadFuncs map[string][]reloadutil.ReloadFunc
@@ -450,7 +449,7 @@ type Core struct {
 	// Name
 	clusterName string
 	// ID
-	clusterID uberAtomic.String
+	clusterID atomic.Value
 	// Specific cipher suites to use for clustering, if any
 	clusterCipherSuites []uint16
 	// Used to modify cluster parameters
@@ -475,7 +474,7 @@ type Core struct {
 	// Current cluster leader values
 	clusterLeaderParams *atomic.Value
 	// Info on cluster members
-	clusterPeerClusterAddrsCache *cache.Cache
+	clusterPeerClusterAddrsCache *zcache.Cache[string, nodeHAConnectionInfo]
 	// The context for the client
 	rpcClientConnContext context.Context
 	// The function for canceling the client connection
@@ -605,7 +604,7 @@ type Core struct {
 	// number of workers to use for lease revocation in the expiration manager
 	numExpirationWorkers int
 
-	IndexHeaderHMACKey uberAtomic.Value
+	IndexHeaderHMACKey atomic.Value
 
 	// disableAutopilot is used to disable the autopilot subsystem in raft storage
 	disableAutopilot bool
@@ -942,7 +941,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		cachingDisabled:                conf.DisableCache,
 		clusterName:                    conf.ClusterName,
 		clusterNetworkLayer:            conf.ClusterNetworkLayer,
-		clusterPeerClusterAddrsCache:   cache.New(3*clusterHeartbeatInterval, time.Second),
+		clusterPeerClusterAddrsCache:   zcache.New[string, nodeHAConnectionInfo](3*clusterHeartbeatInterval, time.Second),
 		rawEnabled:                     conf.EnableRaw,
 		introspectionEnabled:           conf.EnableIntrospection,
 		shutdownDoneCh:                 new(atomic.Value),
@@ -999,7 +998,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	c.inFlightReqData = &InFlightRequests{
 		InFlightReqMap:   &sync.Map{},
-		InFlightReqCount: uberAtomic.NewUint64(0),
+		InFlightReqCount: &atomic.Uint64{},
 	}
 
 	c.SetConfig(conf.RawConfig)
@@ -1065,6 +1064,22 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	}
 	c.seal.SetCore(c)
 	return c, nil
+}
+
+func coreInit(c *Core, conf *CoreConfig) error {
+	phys := conf.Physical
+	// Wrap the physical backend in a cache layer if enabled
+	cacheLogger := c.baseLogger.Named("storage.cache")
+	c.allLoggers = append(c.allLoggers, cacheLogger)
+	c.physical = physical.NewCache(phys, conf.CacheSize, cacheLogger, c.MetricSink().Sink)
+	c.physicalCache = c.physical.(physical.ToggleablePurgemonster)
+
+	// Wrap in encoding checks
+	if !conf.DisableKeyEncodingChecks {
+		c.physical = physical.NewStorageEncoding(c.physical)
+	}
+
+	return nil
 }
 
 // NewCore creates, initializes and configures a Vault node (core).
@@ -1203,7 +1218,7 @@ func (c *Core) configureListeners(conf *CoreConfig) error {
 
 // configureLogRequestsLevel configures the Core with the supplied log requests level.
 func (c *Core) configureLogRequestsLevel(level string) {
-	c.logRequestsLevel = uberAtomic.NewInt32(0)
+	c.logRequestsLevel = &atomic.Int32{}
 
 	lvl := log.LevelFromString(level)
 
@@ -1903,7 +1918,7 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 			return err
 		}
 
-		ctx, ctxCancel := context.WithCancel(namespace.RootContext(nil))
+		ctx, ctxCancel := context.WithCancel(namespace.RootContext(context.TODO()))
 		if err := c.postUnseal(ctx, ctxCancel, standardUnsealStrategy{}); err != nil {
 			c.logger.Error("post-unseal setup failed", "error", err)
 			c.barrier.Seal()
@@ -1961,7 +1976,7 @@ func (c *Core) SealWithRequest(httpCtx context.Context, req *logical.Request) er
 
 	// This will unlock the read lock
 	// We use background context since we may not be active
-	ctx, cancel := context.WithCancel(namespace.RootContext(nil))
+	ctx, cancel := context.WithCancel(namespace.RootContext(context.TODO()))
 	defer cancel()
 
 	go func() {
@@ -1995,7 +2010,7 @@ func (c *Core) Seal(token string) error {
 
 	// This will unlock the read lock
 	// We use background context since we may not be active
-	return c.sealInitCommon(namespace.RootContext(nil), req)
+	return c.sealInitCommon(namespace.RootContext(context.TODO()), req)
 }
 
 // sealInitCommon is common logic for Seal and SealWithRequest and is used to
@@ -2121,7 +2136,7 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 		retErr = multierror.Append(retErr, sealErr)
 	}
 
-	return
+	return retErr
 }
 
 // UIEnabled returns if the UI is enabled
@@ -2273,10 +2288,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	// Mark the active time. We do this first so it can be correlated to the logs
 	// for the active startup.
 	c.activeTime = time.Now().UTC()
-
-	if err := postUnsealPhysical(c); err != nil {
-		return err
-	}
 
 	// Only perf primarys should write feature flags, but we do it by
 	// excluding other states so that we don't have to change it when
@@ -2481,7 +2492,10 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
 		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
 	}
-	c.loginMFABackend.usedCodes = cache.New(0, 30*time.Second)
+
+	c.loginMFABackend.usedCodes = zcache.New[string, struct{}](0, 30*time.Second)
+	c.loginMFABackend.rateLimits = zcache.New[string, uint32](0, 30*time.Second)
+
 	c.logger.Info("post-unseal setup complete")
 	return nil
 }
@@ -2552,7 +2566,8 @@ func (c *Core) preSeal() error {
 		seal.StopHealthCheck()
 	}
 
-	preSealPhysical(c)
+	c.physicalCache.SetEnabled(false)
+	c.physicalCache.Purge(context.Background())
 
 	c.logger.Info("pre-seal teardown complete")
 	return result
@@ -2582,7 +2597,7 @@ func (c *Core) Logger() log.Logger {
 func (c *Core) BarrierKeyLength() (min, max int) {
 	min, max = c.barrier.KeyLength()
 	max += shamir.ShareOverhead
-	return
+	return min, max
 }
 
 func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {
@@ -3022,6 +3037,32 @@ func (c *Core) ReloadCustomResponseHeaders() error {
 	}
 	c.customListenerHeader.Store(NewListenerCustomHeader(lns, c.logger, uiHeaders))
 
+	return nil
+}
+
+func (c *Core) setupHeaderHMACKey(ctx context.Context) error {
+	ent, err := c.barrier.Get(ctx, indexHeaderHMACKeyPath)
+	if err != nil {
+		return err
+	}
+
+	if ent != nil {
+		c.IndexHeaderHMACKey.Store(ent.Value)
+		return nil
+	}
+
+	key, err := uuid.GenerateUUID()
+	if err != nil {
+		return err
+	}
+	err = c.barrier.Put(ctx, &logical.StorageEntry{
+		Key:   indexHeaderHMACKeyPath,
+		Value: []byte(key),
+	})
+	if err != nil {
+		return err
+	}
+	c.IndexHeaderHMACKey.Store([]byte(key))
 	return nil
 }
 
@@ -3532,7 +3573,7 @@ func (c *Core) SaveMFAResponseAuth(respAuth *MFACachedAuthResponse) error {
 
 type InFlightRequests struct {
 	InFlightReqMap   *sync.Map
-	InFlightReqCount *uberAtomic.Uint64
+	InFlightReqCount *atomic.Uint64
 }
 
 type InFlightReqData struct {
@@ -3545,7 +3586,7 @@ type InFlightReqData struct {
 
 func (c *Core) StoreInFlightReqData(reqID string, data InFlightReqData) {
 	c.inFlightReqData.InFlightReqMap.Store(reqID, data)
-	c.inFlightReqData.InFlightReqCount.Inc()
+	c.inFlightReqData.InFlightReqCount.Add(1)
 }
 
 // FinalizeInFlightReqData is going log the completed request if the
@@ -3558,7 +3599,7 @@ func (c *Core) FinalizeInFlightReqData(reqID string, statusCode int) {
 	}
 
 	c.inFlightReqData.InFlightReqMap.Delete(reqID)
-	c.inFlightReqData.InFlightReqCount.Dec()
+	c.inFlightReqData.InFlightReqCount.Add(^uint64(0)) // equivalent of decrementing by 1
 }
 
 // LoadInFlightReqData creates a snapshot map of the current
@@ -3603,7 +3644,7 @@ func (c *Core) LogCompletedRequests(reqID string, statusCode int) {
 	reqData := v.(InFlightReqData)
 	c.logger.Log(logLevel, "completed_request",
 		"start_time", reqData.StartTime.Format(time.RFC3339),
-		"duration", fmt.Sprintf("%dms", time.Now().Sub(reqData.StartTime).Milliseconds()),
+		"duration", fmt.Sprintf("%dms", time.Since(reqData.StartTime).Milliseconds()),
 		"client_id", reqData.ClientID,
 		"client_address", reqData.ClientRemoteAddr, "status_code", statusCode, "request_path", reqData.ReqPath,
 		"request_method", reqData.Method)
@@ -3647,7 +3688,7 @@ type PeerNode struct {
 func (c *Core) GetHAPeerNodesCached() []PeerNode {
 	var nodes []PeerNode
 	for itemClusterAddr, item := range c.clusterPeerClusterAddrsCache.Items() {
-		info := item.Object.(nodeHAConnectionInfo)
+		info := item.Object
 		nodes = append(nodes, PeerNode{
 			Hostname:       info.nodeInfo.Hostname,
 			APIAddress:     info.nodeInfo.ApiAddr,

@@ -89,7 +89,7 @@ information about them.
 When using fenced code blocks, the recommendation is to tag the code block with
 a language so that it can be syntax highlighted. For example:
 
-````
+````markdown
 ```
 // BAD: Code block with no language tag
 ```
@@ -110,7 +110,7 @@ For example:
 🚫**BAD**: Using `shell`, `sh`, `bash`, or `plaintext` to represent a terminal
 command
 
-````
+````markdown
 ```shell
 $ terraform apply
 ```
@@ -118,7 +118,7 @@ $ terraform apply
 
 ✅**GOOD**: Using `shell-session` to represent a terminal command
 
-````
+````markdown
 ```shell-session
 $ terraform apply
 ```
@@ -138,6 +138,6 @@ This website is hosted on GitHub Pages and configured to automatically deploy
 anytime you push code to the `gh-pages` branch. To perform a manual deployment
 run the following command:
 
-```
+```console
 $ GIT_USER=<Your GitHub username> yarn deploy
 ```

@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"runtime"
 	"testing"
@@ -46,9 +47,9 @@ func TestSafeJSONReader(t *testing.T) {
 	}
 
 	for index, test := range tests {
-		ctx := context.Background()
-
 		// First compute actual values.
+		ctx := addMaximumJsonMemoryToContext(context.Background(), math.MaxInt64)
+		ctx = addMaximumJsonStringsToContext(ctx, math.MaxInt64)
 		_, actualMemory, actualStrings, err := NewSafeJSONReader(ctx, bytes.NewBufferString(test))
 		require.NoError(t, err)
 
@@ -134,7 +135,7 @@ func makeLongEmptyList(size int) interface{} {
 func makeLongString(size int) interface{} {
 	var x string
 	for i := range size {
-		x += fmt.Sprintf("%d", i % 10)
+		x += fmt.Sprintf("%d", i%10)
 	}
 	return x
 }
@@ -233,8 +234,8 @@ func TestSafeJSONReaderValidateSizes(t *testing.T) {
 		buf := bytes.NewBuffer(output)
 
 		ctx := context.Background()
-		ctx = addMaximumJsonMemoryToContext(ctx, -1)
-		ctx = addMaximumJsonStringsToContext(ctx, -1)
+		ctx = addMaximumJsonMemoryToContext(ctx, math.MaxInt64)
+		ctx = addMaximumJsonStringsToContext(ctx, math.MaxInt64)
 
 		_, memoryEstimate, _, err := NewSafeJSONReader(ctx, buf)
 		require.NoError(t, err)

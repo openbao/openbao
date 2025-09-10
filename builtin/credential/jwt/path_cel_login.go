@@ -69,6 +69,7 @@ func (b *jwtAuthBackend) pathResolveCelRole(ctx context.Context, req *logical.Re
 	if config == nil {
 		return logical.ErrorResponse("could not load configuration"), nil
 	}
+
 	celRole, resp, err := b.getCelRoleFromLoginRequest(config, ctx, req, d)
 	if resp != nil || err != nil {
 		return resp, err
@@ -168,6 +169,13 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 	if err != nil {
 		return logical.ErrorResponse("error converting proto auth: %s", err.Error()), nil
 	}
+
+	// Set required fields.
+	if len(auth.InternalData) == 0 {
+		auth.InternalData = make(map[string]interface{}, 2)
+	}
+	auth.InternalData["role"] = celRoleEntry.Name
+	auth.InternalData["role_type"] = "cel"
 
 	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err

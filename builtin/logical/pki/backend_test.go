@@ -42,7 +42,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/armon/go-metrics"
-	"github.com/fatih/structs"
 	"github.com/go-test/deep"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -52,6 +51,7 @@ import (
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"golang.org/x/net/idna"
@@ -973,7 +973,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		roleTestStep.Data = roleVals.ToResponseData()
 		roleTestStep.Data["generate_lease"] = false
 		ret = append(ret, roleTestStep)
-		issueTestStep.Data = structs.New(issueVals).Map()
+		issueTestStep.Data = structtomap.Map(issueVals)
 		switch {
 		case issueTestStep.ErrorOk:
 			issueTestStep.Check = genericErrorOkCheck
@@ -1336,7 +1336,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 	// This allows for a variety of common names to be tested in various
 	// combinations with allowed toggles of the role
 	addCnTests := func() {
-		cnMap := structs.New(commonNames).Map()
+		cnMap := structtomap.Map(commonNames)
 		for name, allowedInt := range cnMap {
 			roleVals.KeyType = "rsa"
 			roleVals.KeyBits = 2048

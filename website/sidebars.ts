@@ -538,6 +538,11 @@ const sidebars: SidebarsConfig = {
                 {
                   "UI/UX": ["rfcs/web-ui-modernization"],
                 },
+                {
+                    "Horizontal Scalability": [
+                        "rfcs/standby-nodes-handle-read-requests",
+                    ],
+                },
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

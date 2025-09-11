@@ -88,9 +88,14 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
   request duration allowed before OpenBao cancels the request. This overrides
   `default_max_request_duration` for this listener.
 
-- `max_request_json_complexity` `(int: 10000)` – Specifies the hard maximum
-  of JSON tokens allowed in the request body. Defaults to `10000` if not set or `0`.
-  A value lower than 0 disables this option altogether.
+- `max_request_json_memory` `(int: 34078720)` – Specifies the maximum estimated
+  memory used for the parsed JSON request body. Defaults to 32MB + 512KB if
+  not set or `0`. A value lower than `0` disables this option altogether.
+
+- `max_request_json_strings` `(int: 1000)` – Specifies the maximum number of
+  strings (keys + values) allowed in the JSON request body. Defaults to
+  `1000` if not set or `0`. A value lower than `0` disables this option
+  altogether.
 
 - `proxy_protocol_behavior` `(string: "")` – When specified, enables a PROXY
   protocol version 1 behavior for the listener.

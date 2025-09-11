@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	ErrJSONExceededMemory  = errors.New("input JSON exceeded estimated memory limits")
-	ErrJSONExceededStrings = errors.New("input JSON exceeded number of strings")
+	ErrJSONExceededMemory  = errors.New("input JSON exceeded maximum estimated memory limits")
+	ErrJSONExceededStrings = errors.New("input JSON exceeded maximum number of strings")
 )
 
 type ctxKeyMaxRequestJsonMemory struct{}

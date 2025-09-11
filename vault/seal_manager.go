@@ -110,6 +110,8 @@ func (sm *SealManager) Reset(ctx context.Context) error {
 		return err
 	}
 
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
 	sm.setup()
 
 	return nil
@@ -126,7 +128,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		return fmt.Errorf("invalid seal configuration: %w", err)
 	}
 
-	metaPrefix := namespaceBarrierPrefix + ns.UUID + "/"
+	metaPrefix := namespaceLogicalStoragePath(ns)
 
 	// Seal type would depend on the provided arguments
 	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
@@ -171,7 +173,10 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 
 // RemoveNamespace removes the given namespace from the SealManager's internal state.
 func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
-	nsSeal := sm.NamespaceSeal(ns.UUID)
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	nsSeal := sm.namespaceSeal(ns.UUID)
 	if nsSeal == nil {
 		return
 	}
@@ -184,10 +189,11 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 	sm.barrierByStoragePath.Delete(nsSeal.MetaPrefix() + sealConfigPath)
 }
 
-// StorageAccessForPath takes a path string and returns back a storage access interface
-// which is either a SecurityBarrier existing "on a specified path", or a direct storage
-// physical backend whenever there's no security barrier, and we need to access the storage
-// layer directly (e.g. reading entries that are cannot be encrypted by the barrier).
+// StorageAccessForPath acquires a read lock, takes a path string and returns back a storage
+// access interface which is either a SecurityBarrier existing "on a specified path", or a
+// direct storage physical backend whenever there's no security barrier, and we need to
+// access the storage layer directly (e.g. reading entries that are cannot be encrypted
+// by the barrier).
 func (sm *SealManager) StorageAccessForPath(path string) StorageAccess {
 	_, v, _ := sm.barrierByStoragePath.LongestPrefix(path)
 	if v == nil {
@@ -248,16 +254,20 @@ func (sm *SealManager) SealNamespace(ctx context.Context, nsToSeal *namespace.Na
 }
 
 // NamespaceView finds the correct barrier to use for the namespace
-// and returns BarrierView restricted to the data of the given namespace.
+// and returns BarrierView restricted to the logical.Storage space
+// of the given namespace.
 func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
 	barrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
 	return NamespaceView(barrier, ns)
 }
 
-// NamespaceBarrierByLongestPrefix acquires a read lock, and returns barrier of a
-// namespace matching the longest prefix of the provided path, going up to root
+// NamespaceBarrierByLongestPrefix acquires a read lock, and returns barrier of
+// a namespace matching the longest prefix of the provided path, going up to root
 // namespace.
 func (sm *SealManager) NamespaceBarrierByLongestPrefix(nsPath string) SecurityBarrier {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
 	_, v, _ := sm.barrierByNamespace.LongestPrefix(nsPath)
 	return v.(SecurityBarrier)
 }
@@ -709,36 +719,44 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	return nsSealKeyShares, nil
 }
 
-// RegisterNamespace is used to register the seals (by looking up the seal configs)
+// RetrieveNamespaceSealConfig is used to retrieve the seal config
 // of namespaces after core unseal.
-func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
+func (sm *SealManager) RetrieveNamespaceSealConfig(ctx context.Context, ns *namespace.Namespace) (*SealConfig, error) {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
 	// Get the storage path for this namespace's seal config
-	sealConfigPath := sm.core.NamespaceView(ns).SubView(sealConfigPath).Prefix()
+	path := namespaceLogicalStoragePath(ns) + sealConfigPath
 
 	// Get access via the parent barrier
-	storage := sm.StorageAccessForPath(sealConfigPath)
-	configBytes, err := storage.Get(namespace.ContextWithNamespace(ctx, ns), sealConfigPath)
+	storage := sm.StorageAccessForPath(path)
+	configBytes, err := storage.Get(namespace.ContextWithNamespace(ctx, ns), path)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	// No seal config found - not sealable namespace
 	if configBytes == nil {
-		return false, nil
+		//nolint:nilnil // we do not return seal config as there's none for that namespace,
+		// but that's handled upstream.
+		return nil, nil
 	}
 
 	var sealConfig SealConfig
 	if err := json.Unmarshal(configBytes, &sealConfig); err != nil {
-		return false, fmt.Errorf("failed to decode namespace seal config: %w", err)
+		return nil, fmt.Errorf("failed to decode namespace seal config: %w", err)
 	}
 
-	return true, sm.SetSeal(ctx, &sealConfig, ns, false)
+	return &sealConfig, nil
 }
 
 // RotateNamespaceBarrierKey rotates the barrier key of the given namespace.
 // It will return an error if the given namespace is not a sealable namespace.
-func (sm *SealManager) RotateNamespaceBarrierKey(ctx context.Context, namespace *namespace.Namespace) error {
-	nsBarrier := sm.NamespaceBarrier(namespace.Path)
+func (sm *SealManager) RotateNamespaceBarrierKey(ctx context.Context, ns *namespace.Namespace) error {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	nsBarrier := sm.namespaceBarrier(ns.Path)
 	if nsBarrier == nil {
 		return ErrNotSealable
 	}
@@ -754,25 +772,25 @@ func (sm *SealManager) RotateNamespaceBarrierKey(ctx context.Context, namespace 
 	if sm.core.ha != nil && sm.core.KeyRotateGracePeriod() > 0 {
 		// Create the upgrade path to the new term
 		if err := nsBarrier.CreateUpgrade(ctx, newTerm); err != nil {
-			sm.logger.Error("failed to create new upgrade", "term", newTerm, "error", err, "namespace", namespace.Path)
+			sm.logger.Error("failed to create new upgrade", "term", newTerm, "error", err, "namespace", ns.Path)
 		}
 
 		// Schedule the destroy of the upgrade path
 		time.AfterFunc(sm.core.KeyRotateGracePeriod(), func() {
 			sm.logger.Debug("cleaning up upgrade keys", "waited", sm.core.KeyRotateGracePeriod())
 			if err := nsBarrier.DestroyUpgrade(sm.core.activeContext, newTerm); err != nil {
-				sm.logger.Error("failed to destroy upgrade", "term", newTerm, "error", err, "namespace", namespace.Path)
+				sm.logger.Error("failed to destroy upgrade", "term", newTerm, "error", err, "namespace", ns.Path)
 			}
 		})
 	}
 
 	// Write to the canary path, which will force a synchronous truing
 	// during replication
-	view := sm.core.NamespaceView(namespace).SubView(coreKeyringCanaryPath)
-	storage := sm.StorageAccessForPath(view.Prefix())
+	path := namespaceLogicalStoragePath(ns) + coreKeyringCanaryPath
+	storage := sm.StorageAccessForPath(path)
 	newRotationTerm := fmt.Sprintf("new-rotation-term-%d", newTerm)
-	if err := storage.Put(ctx, view.Prefix(), []byte(newRotationTerm)); err != nil {
-		sm.logger.Error("error saving keyring canary", "error", err, "namespace", namespace.Path)
+	if err := storage.Put(ctx, path, []byte(newRotationTerm)); err != nil {
+		sm.logger.Error("error saving keyring canary", "error", err, "namespace", ns.Path)
 		return fmt.Errorf("failed to save keyring canary: %w", err)
 	}
 

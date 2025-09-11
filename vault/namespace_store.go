@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -94,6 +95,15 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	}
 
 	return ns, nil
+}
+
+// namespaceLogicalStoragePath returns a path to the logical storage of
+// specified namespace.
+func namespaceLogicalStoragePath(ns *namespace.Namespace) string {
+	if ns.ID == namespace.RootNamespaceID {
+		return ""
+	}
+	return path.Join(namespaceBarrierPrefix, ns.UUID) + "/"
 }
 
 func (c *Core) cancelNamespaceDeletion() {
@@ -236,12 +246,12 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			return false, err
 		}
 
-		isSealed, err := ns.core.sealManager.RegisterNamespace(ctx, &namespace)
+		sealConfig, err := ns.core.sealManager.RetrieveNamespaceSealConfig(ctx, &namespace)
 		if err != nil {
 			return false, fmt.Errorf("failed to register namespace %s with seal manager: %w", namespace.ID, err)
 		}
-		if isSealed {
-			return true, nil
+		if sealConfig != nil {
+			return true, ns.core.sealManager.SetSeal(ctx, sealConfig, &namespace, false)
 		}
 
 		childView := ns.core.NamespaceView(&namespace).SubView(namespaceStoreSubPath)

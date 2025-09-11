@@ -20,7 +20,6 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
 )
@@ -194,11 +193,6 @@ func (d *autoSeal) UpgradeKeys(ctx context.Context) error {
 }
 
 func (d *autoSeal) Config(ctx context.Context) (*SealConfig, error) {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	if d.config.Load().(*SealConfig) != nil {
 		return d.config.Load().(*SealConfig).Clone(), nil
 	}
@@ -208,9 +202,7 @@ func (d *autoSeal) Config(ctx context.Context) (*SealConfig, error) {
 	}
 
 	sealType := "barrier"
-	view := d.core.NamespaceView(ns).SubView(sealConfigPath)
-
-	entry, err := d.core.physical.Get(ctx, view.Prefix())
+	entry, err := d.core.physical.Get(ctx, d.metaPrefix+sealConfigPath)
 	if err != nil {
 		d.logger.Error("failed to read seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("failed to read %q seal configuration: %w", sealType, err)
@@ -247,11 +239,6 @@ func (d *autoSeal) Config(ctx context.Context) (*SealConfig, error) {
 }
 
 func (d *autoSeal) SetConfig(ctx context.Context, conf *SealConfig) error {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
 	if err := d.checkCore(); err != nil {
 		return err
 	}
@@ -269,11 +256,9 @@ func (d *autoSeal) SetConfig(ctx context.Context, conf *SealConfig) error {
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	view := d.core.NamespaceView(ns).SubView(sealConfigPath)
-
 	// Store the seal configuration
 	pe := &physical.Entry{
-		Key:   view.Prefix(),
+		Key:   d.metaPrefix + sealConfigPath,
 		Value: buf,
 	}
 

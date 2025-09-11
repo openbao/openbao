@@ -1,3 +1,19 @@
+## 2.4.1
+## September 11, 2025
+
+SECURITY:
+
+* http: Limit the complexity of JSON in HTTP request bodies through max_request_json_memory and max_request_json_strings. HCSEC-2025-24 / CVE-2025-6203 / CVE-2025-59043. [[GH-1756](https://github.com/openbao/openbao/pull/1756)]
+
+BUG FIXES:
+
+* auth/jwt: Add missing OIDC flow in JWK validator construction [[GH-1779](https://github.com/openbao/openbao/pull/1779)]
+* auth/jwt: Support token renewal with CEL roles. [[GH-1776](https://github.com/openbao/openbao/pull/1776)]
+* auth/mfa: Allow single-flow MFA to work with inline authentication. [[GH-1753](https://github.com/openbao/openbao/pull/1753)]
+* auth/mfa: Correctly persist tokens created through two-step MFA login enforcement. [[GH-1753](https://github.com/openbao/openbao/pull/1753)]
+* command: fix `operator init` not allowing for 0 as `recovery_shares` value. [[GH-1754](https://github.com/openbao/openbao/pull/1754)]
+* command: fix `operator rotate-keys` not returning recovery keys when server is initialized with 0 `recovery_shares`. [[GH-1754](https://github.com/openbao/openbao/pull/1754)]
+
 ## 2.4.0
 ## August 28, 2025
 

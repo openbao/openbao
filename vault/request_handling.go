@@ -57,6 +57,10 @@ var (
 	// to complete, unless overridden on a per-handler basis
 	DefaultMaxRequestDuration = 90 * time.Second
 
+	// DefaultMaxJsonComplexity is the number of JSON tokens allowed in a
+	// request body, unless overridden on a per-handler basis
+	DefaultMaxJsonComplexity = int64(10000)
+
 	ErrNoApplicablePolicies = errors.New("no applicable policies")
 	ErrPolicyNotExist       = errors.New("policy does not exist")
 

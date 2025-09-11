@@ -295,9 +295,11 @@ func TestLogical_RequestSizeDisableLimit(t *testing.T) {
 	props := &vault.HandlerProperties{
 		Core: core,
 		ListenerConfig: &configutil.Listener{
-			MaxRequestSize: -1,
-			Address:        "127.0.0.1",
-			TLSDisable:     true,
+			MaxRequestSize:        -1,
+			MaxRequestJsonMemory:  -1,
+			MaxRequestJsonStrings: -1,
+			Address:               "127.0.0.1",
+			TLSDisable:            true,
 		},
 	}
 	TestServerWithListenerAndProperties(t, ln, addr, core, props)

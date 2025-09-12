@@ -890,7 +890,7 @@ func (p *Policy) DeriveKey(context, salt []byte, ver int, numBytes int) ([]byte,
 	}
 }
 
-func (p *Policy) DeriveKeyECDH(baseKeyVer int, peerPublicKeyPem []byte, derivedKeySizeInBytes int) ([]byte, error) {
+func (p *Policy) DeriveKeyECDH(baseKeyVer int, peerPublicKeyPem []byte, nonce []byte, derivedKeySizeInBytes int) ([]byte, error) {
 	var sharedSecret []byte
 
 	if !p.Type.KeyAgreementSupported() {
@@ -972,10 +972,9 @@ func (p *Policy) DeriveKeyECDH(baseKeyVer int, peerPublicKeyPem []byte, derivedK
 		return nil, errutil.InternalError{Err: "unsupported base key type for ECDH key agreement"}
 	}
 
-	// TODO - should use a salt/IV for derivating different keys ?
 	// Derive secret key from shared secret (using HKDF RFC 5869)
 	hash := sha256.New
-	hkdf := hkdf.New(hash, sharedSecret, nil, nil)
+	hkdf := hkdf.New(hash, sharedSecret, nonce, nil)
 	derivedKey := make([]byte, derivedKeySizeInBytes)
 	if _, err := io.ReadFull(hkdf, derivedKey); err != nil {
 		return nil, errutil.InternalError{Err: err.Error()}

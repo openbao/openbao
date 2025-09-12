@@ -19,11 +19,6 @@ import (
 type PKIIssueCACommand struct {
 	*BaseCommand
 
-	flagConfig          string
-	flagReturnIndicator string
-	flagDefaultDisabled bool
-	flagList            bool
-
 	flagKeyStorageSource string
 	flagNewIssuerName    string
 }

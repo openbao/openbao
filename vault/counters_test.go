@@ -13,16 +13,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-// noinspection SpellCheckingInspection
-func testParseTime(t *testing.T, format, timeval string) time.Time {
-	t.Helper()
-	tm, err := time.Parse(format, timeval)
-	if err != nil {
-		t.Fatalf("Error parsing time %q: %v", timeval, err)
-	}
-	return tm
-}
-
 func testCountActiveTokens(t *testing.T, c *Core, root string) int {
 	t.Helper()
 

@@ -38,8 +38,6 @@ const (
 	testCIDRList      = "127.0.0.1/32"
 	testAtRoleName    = "test@RoleName"
 	testOTPRoleName   = "testOTPRoleName"
-	// testKeyName is the name of the entry that will be written to SSHMOUNTPOINT/ssh/keys
-	testKeyName = "testKeyName"
 	// testSharedPrivateKey is the value of the entry that will be written to SSHMOUNTPOINT/ssh/keys
 	testSharedPrivateKey = `
 -----BEGIN RSA PRIVATE KEY-----
@@ -2710,26 +2708,6 @@ func TestProperAuthing(t *testing.T) {
 
 	if !validatedPath {
 		t.Fatal("Expected to have validated at least one path.")
-	}
-}
-
-func submitCAIssuerStep(issuerName string, parameters map[string]interface{}) logicaltest.TestStep {
-	path := "issuers/import"
-	if issuerName != "" {
-		path += "/" + issuerName
-	}
-	return logicaltest.TestStep{
-		Operation: logical.UpdateOperation,
-		Path:      path,
-		Data:      parameters,
-	}
-}
-
-func updateIssuersConfigStep(parameters map[string]interface{}) logicaltest.TestStep {
-	return logicaltest.TestStep{
-		Operation: logical.UpdateOperation,
-		Path:      "config/issuers",
-		Data:      parameters,
 	}
 }
 

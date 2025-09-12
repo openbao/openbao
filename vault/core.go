@@ -92,10 +92,6 @@ const (
 	// policy application modes, which allows only in-namespace-hierarchy policy application
 	groupPolicyApplicationModeWithinNamespaceHierarchy = "within_namespace_hierarchy"
 
-	// groupPolicyApplicationModeAny is a configuration option for group
-	// policy application modes, which allows policy application irrespective of namespaces
-	groupPolicyApplicationModeAny = "any"
-
 	indexHeaderHMACKeyPath = "core/index-header-hmac-key"
 
 	// defaultMFAAuthResponseTTL is the default duration that Vault caches the
@@ -3126,21 +3122,6 @@ func (c *Core) persistFeatureFlags(ctx context.Context) error {
 		Key:   consts.CoreFeatureFlagPath,
 		Value: json,
 	})
-}
-
-func (c *Core) readFeatureFlags(ctx context.Context) (*FeatureFlags, error) {
-	entry, err := c.barrier.Get(ctx, consts.CoreFeatureFlagPath)
-	if err != nil {
-		return nil, err
-	}
-	var flags FeatureFlags
-	if entry != nil {
-		err = jsonutil.DecodeJSON(entry.Value, &flags)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &flags, nil
 }
 
 // isMountable tells us whether or not we can continue mounting a plugin-based

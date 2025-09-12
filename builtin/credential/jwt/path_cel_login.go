@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/hashicorp/cap/jwt"
-	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
@@ -219,6 +218,7 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, operation logical.Op
 	return nil, fmt.Errorf("Cel program '%s' returned unexpected type: %T", celRoleEntry.Name, result)
 }
 
+//nolint:unused
 func (b *jwtAuthBackend) pathCelLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	roleName := req.Auth.InternalData["role"].(string)
 	if roleName == "" {
@@ -247,13 +247,3 @@ const (
 Authenticates JWTs against a CEL role.
 `
 )
-
-func marshalCIDRs(cidrs []string) []*sockaddr.SockAddrMarshaler {
-	sockaddrs := []*sockaddr.SockAddrMarshaler{}
-	for _, cidr := range cidrs {
-		sockaddr := sockaddr.SockAddrMarshaler{}
-		sockaddr.UnmarshalJSON([]byte(cidr))
-		sockaddrs = append(sockaddrs, &sockaddr)
-	}
-	return sockaddrs
-}

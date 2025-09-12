@@ -335,16 +335,3 @@ func testTokenAndAccessor(tb testing.TB, client *api.Client) (string, string) {
 	}
 	return secret.Auth.ClientToken, secret.Auth.Accessor
 }
-
-func testClient(tb testing.TB, addr string, token string) *api.Client {
-	tb.Helper()
-	config := api.DefaultConfig()
-	config.Address = addr
-	client, err := api.NewClient(config)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	client.SetToken(token)
-
-	return client
-}

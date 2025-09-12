@@ -165,7 +165,7 @@ func TestConfig(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -186,7 +186,7 @@ func TestConfig(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}

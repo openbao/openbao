@@ -118,17 +118,15 @@ func TestRenewer_Renew(t *testing.T) {
 				}
 				select {
 				case err := <-v.DoneCh():
+					done = true
 					if renewed {
 						// If we renewed but there's an error, we fail
 						if err != nil {
 							t.Fatalf("renewal failed with an error: %v", err)
 						}
-						// We can break out early here
-						done = true
 					} else {
 						t.Errorf("should have renewed once before returning: %s", err)
 					}
-					done = true
 				case renew := <-v.RenewCh():
 					if renew == nil {
 						t.Fatal("renew is nil")

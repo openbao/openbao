@@ -2475,7 +2475,7 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 	}
 	c.authLock.RUnlock()
 
-	return
+	return mounts, auth
 }
 
 func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view BarrierView) {

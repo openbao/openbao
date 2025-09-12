@@ -310,9 +310,9 @@ func (sm *SealManager) performRecoveryRotation(ctx context.Context, ns *namespac
 
 	// Write to the canary path, which will force a synchronous truing during
 	// replication
-	view := sm.core.NamespaceView(ns).SubView(coreKeyringCanaryPath)
-	barrier := sm.StorageAccessForPath(view.Prefix())
-	if err := barrier.Put(ctx, view.Prefix(), []byte(rotationConfig.Nonce)); err != nil {
+	keyringCanaryPath := namespaceLogicalStoragePath(ns) + coreKeyringCanaryPath
+	barrier := sm.StorageAccessForPath(keyringCanaryPath)
+	if err := barrier.Put(ctx, keyringCanaryPath, []byte(rotationConfig.Nonce)); err != nil {
 		sm.logger.Error("error saving keyring canary", "error", err)
 		return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to save keyring canary: %w", err).Error())
 	}
@@ -357,10 +357,10 @@ func (sm *SealManager) performRootRotation(ctx context.Context, ns *namespace.Na
 		sm.logger.Info("root key rotated", "namespace", ns.Path, "stored", rotationConfig.StoredShares, "shares", rotationConfig.SecretShares, "threshold", rotationConfig.SecretThreshold)
 	}
 
-	view := sm.core.NamespaceView(ns).SubView(shamirKekPath)
-	storage := sm.StorageAccessForPath(view.Prefix())
+	kekPath := namespaceLogicalStoragePath(ns) + shamirKekPath
+	storage := sm.StorageAccessForPath(kekPath)
 	if len(newSealKey) > 0 {
-		err := storage.Put(ctx, view.Prefix(), newSealKey)
+		err := storage.Put(ctx, kekPath, newSealKey)
 		if err != nil {
 			sm.logger.Error("failed to store new seal key", "error", err)
 			return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to store new seal key: %w", err).Error())
@@ -376,9 +376,9 @@ func (sm *SealManager) performRootRotation(ctx context.Context, ns *namespace.Na
 
 	// Write to the canary path, which will force a synchronous truing during
 	// replication
-	view = sm.core.NamespaceView(ns).SubView(coreKeyringCanaryPath)
-	storage = sm.StorageAccessForPath(view.Prefix())
-	if err := storage.Put(ctx, view.Prefix(), []byte(rotationConfig.Nonce)); err != nil {
+	keyringCanaryPath := namespaceLogicalStoragePath(ns) + coreKeyringCanaryPath
+	storage = sm.StorageAccessForPath(keyringCanaryPath)
+	if err := storage.Put(ctx, keyringCanaryPath, []byte(rotationConfig.Nonce)); err != nil {
 		sm.logger.Error("error saving keyring canary", "error", err)
 		return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to save keyring canary: %w", err).Error())
 	}
@@ -501,7 +501,7 @@ func (sm *SealManager) updateRootRotation(ctx context.Context, ns *namespace.Nam
 			testseal := NewDefaultSeal(vaultseal.NewAccess(shamirWrapper))
 			testseal.SetCore(sm.core)
 			if ns.ID != namespace.RootNamespaceID {
-				testseal.SetMetaPrefix(namespaceBarrierPrefix + ns.UUID + "/")
+				testseal.SetMetaPrefix(namespaceLogicalStoragePath(ns))
 			}
 
 			err := shamirWrapper.SetAesGcmKeyBytes(recoveryKey)
@@ -687,9 +687,9 @@ func (sm *SealManager) pgpEncryptShares(ctx context.Context, ns *namespace.Names
 			return nil, fmt.Errorf("failed to marshal key backup: %w", err)
 		}
 
-		view := sm.core.NamespaceView(ns).SubView(coreBarrierUnsealKeysBackupPath)
-		barrier := sm.StorageAccessForPath(view.Prefix())
-		if err = barrier.Put(ctx, view.Prefix(), buf); err != nil {
+		path := namespaceLogicalStoragePath(ns) + coreBarrierUnsealKeysBackupPath
+		barrier := sm.StorageAccessForPath(path)
+		if err = barrier.Put(ctx, path, buf); err != nil {
 			sm.logger.Error("failed to save unseal key backup", "error", err)
 			return nil, fmt.Errorf("failed to save unseal key backup: %w", err)
 		}
@@ -838,15 +838,15 @@ func (sm *SealManager) RetrieveRotationBackup(ctx context.Context, ns *namespace
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	var view BarrierView
+	var path string
 	if recovery {
-		view = sm.core.NamespaceView(ns).SubView(coreRecoveryUnsealKeysBackupPath)
+		path = namespaceLogicalStoragePath(ns) + coreRecoveryUnsealKeysBackupPath
 	} else {
-		view = sm.core.NamespaceView(ns).SubView(coreBarrierUnsealKeysBackupPath)
+		path = namespaceLogicalStoragePath(ns) + coreBarrierUnsealKeysBackupPath
 	}
 
-	barrier := sm.StorageAccessForPath(view.Prefix())
-	entry, err := barrier.Get(ctx, view.Prefix())
+	barrier := sm.StorageAccessForPath(path)
+	entry, err := barrier.Get(ctx, path)
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("error getting keys from backup: %w", err).Error())
 	}
@@ -867,15 +867,15 @@ func (sm *SealManager) DeleteRotationBackup(ctx context.Context, ns *namespace.N
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	var view BarrierView
+	var path string
 	if recovery {
-		view = sm.core.NamespaceView(ns).SubView(coreRecoveryUnsealKeysBackupPath)
+		path = namespaceLogicalStoragePath(ns) + coreRecoveryUnsealKeysBackupPath
 	} else {
-		view = sm.core.NamespaceView(ns).SubView(coreBarrierUnsealKeysBackupPath)
+		path = namespaceLogicalStoragePath(ns) + coreBarrierUnsealKeysBackupPath
 	}
 
-	barrier := sm.StorageAccessForPath(view.Prefix())
-	if err := barrier.Delete(ctx, view.Prefix()); err != nil {
+	barrier := sm.StorageAccessForPath(path)
+	if err := barrier.Delete(ctx, path); err != nil {
 		return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("error deleting backup keys: %w", err).Error())
 	}
 

@@ -377,8 +377,6 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			return &logical.Response{Data: createNamespaceDataResponse(entry, nil)}, nil
 		}
 
-		// overwrite namespace in context with the one just created
-		ctx = namespace.ContextWithNamespace(ctx, entry)
 		keySharesMap := make(map[string][]string)
 		// TODO(wslabosz): write all the provided configs
 		if len(sealConfigs) > 0 {

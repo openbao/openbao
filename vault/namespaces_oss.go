@@ -5,7 +5,6 @@ package vault
 
 import (
 	"context"
-	"path"
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -31,7 +30,7 @@ func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView
 		return NewBarrierView(barrier, "")
 	}
 
-	return NewBarrierView(barrier, path.Join(namespaceBarrierPrefix, ns.UUID)+"/")
+	return NewBarrierView(barrier, namespaceLogicalStoragePath(ns))
 }
 
 // NamespaceByPath returns the namespace and the path prefix for the given path.

@@ -535,6 +535,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/namespace-sealing",
                 "rfcs/external-keys",
                 "rfcs/config-audit-devices",
+                "rfcs/efficient-search-components",
                 {
                   "UI/UX": ["rfcs/web-ui-modernization"],
                 },

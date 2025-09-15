@@ -446,7 +446,9 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 					Callbacks: map[logical.Operation]framework.OperationFunc{
 						logical.ReadOperation: func(context.Context, *logical.Request, *framework.FieldData) (*logical.Response, error) {
 							readCallCount.Add(1)
-							return &logical.Response{}, nil
+							return &logical.Response{Headers: map[string][]string{
+								"Test-Header": {"test-value"},
+							}}, nil
 						},
 					},
 				}}
@@ -541,6 +543,51 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				triggerReadCall(collect, "unsupported path")
+			}, 10*time.Second, 10*time.Millisecond)
+
+			// 11. Manipulate mount table in storage: untaint and allow header
+			mountEntry.Tainted = false
+			mountEntry.Config.AllowedResponseHeaders = []string{"Test-Header"}
+
+			updatedData, err = jsonutil.EncodeJSON(mountEntry)
+			require.NoError(t, err)
+
+			testCore_Invalidate_sneakValueAroundCache(t, c, &logical.StorageEntry{
+				Key:   storagePath,
+				Value: updatedData,
+			})
+
+			// 12. call invalidate
+			c.Invalidate(storagePath)
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				resp := testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
+					Operation:   logical.ReadOperation,
+					ClientToken: root,
+					Path:        "my-kv-mount",
+				})
+				require.Equal(collect, map[string][]string{
+					"Test-Header": {"test-value"},
+				}, resp.Headers)
+			}, 10*time.Second, 10*time.Millisecond)
+
+			// 13. Manipulate mount table in storage: change kv version
+			mountEntry.Options["version"] = "2"
+
+			updatedData, err = jsonutil.EncodeJSON(mountEntry)
+			require.NoError(t, err)
+
+			testCore_Invalidate_sneakValueAroundCache(t, c, &logical.StorageEntry{
+				Key:   storagePath,
+				Value: updatedData,
+			})
+
+			// 14. call invalidate
+			c.Invalidate(storagePath)
+
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				require.EqualValues(collect, 3, factoryCallCount.Load(), "expected factory to be called exactly thrice")
+				triggerReadCall(collect)
 			}, 10*time.Second, 10*time.Millisecond)
 		})
 	}

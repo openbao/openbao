@@ -244,16 +244,26 @@ which is 60 seconds by default.
 
 ### Request JSON Complexity
 
-The maximum number of tokens in a request body JSON is limited by the
-`max_request_json_complexity` option in the [listener
-stanza](/docs/configuration/listener/tcp). It defaults to 10000. This limit is
-in place to prevent attackers from sending specially crafted JSON bodies that,
-once unmarshaled, consume significantly more memory than the original request body (circumventing the
-`max_request_size` limit). This limit should not affect valid requests, as even
-large requests use a small number of tokens (a large string still counts as a
-single token).
+The estimated maximum number of memory in the parsed representation of the
+JSON request body is limited by the `max_request_json_memory` option in the
+[listener stanza](/docs/configuration/listener/tcp). It defaults to
+32MB + 512KB. This limit is in place to prevent attackers from sending
+specifically crafted JSON bodies that, once unmarshaled, consume significantly
+more memory than the original request body (circumventing the
+`max_request_size` limit). This limit should not affect valid requests, as
+even large requests should use a bounded total amount of memory due to using
+few complex objects.
 
-The definition for "JSON complexity" might change in the future.
+Similarly, the `max_request_json_strings` option in the
+[listener stanza](/docs/configuration/listener/tcp) is used to limit the
+total number of unique strings (keys + values) to restrict the number of HMAC
+calls in Audit invocations. This limit is in place to prevent attackers from
+sending unauthenticated requests that, once audited, consume significantly
+more memory and CPU cycles than the original request body would. This limit
+should not affect valid requests as most valid requests have a reasonable
+number of individual strings.
+
+The definitions for "JSON complexity" might change in the future.
 
 ### Lease limits
 

@@ -851,10 +851,15 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 			Config:   lnConfig,
 		})
 
-		if lnConfig.MaxRequestJsonComplexity == 0 {
-			lnConfig.MaxRequestJsonComplexity = vault.DefaultMaxJsonComplexity
+		if lnConfig.MaxRequestJsonMemory == 0 {
+			lnConfig.MaxRequestJsonMemory = vault.DefaultMaxJsonMemory
 		}
-		props["max_request_json_complexity"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonComplexity)
+		props["max_request_json_memory"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonMemory)
+
+		if lnConfig.MaxRequestJsonStrings == 0 {
+			lnConfig.MaxRequestJsonStrings = vault.DefaultMaxJsonStrings
+		}
+		props["max_request_json_strings"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonStrings)
 
 		// Store the listener props for output later
 		key := fmt.Sprintf("listener %d", i+1)

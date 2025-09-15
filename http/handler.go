@@ -339,16 +339,21 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 // are performed.
 func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerProperties) http.Handler {
 	var maxRequestDuration time.Duration
-	var maxRequestJsonComplexity int64
+	var maxRequestJsonMemory int64
+	var maxRequestJsonStrings int64
 	if props.ListenerConfig != nil {
 		maxRequestDuration = props.ListenerConfig.MaxRequestDuration
-		maxRequestJsonComplexity = props.ListenerConfig.MaxRequestJsonComplexity
+		maxRequestJsonMemory = props.ListenerConfig.MaxRequestJsonMemory
+		maxRequestJsonStrings = props.ListenerConfig.MaxRequestJsonStrings
 	}
 	if maxRequestDuration == 0 {
 		maxRequestDuration = vault.DefaultMaxRequestDuration
 	}
-	if maxRequestJsonComplexity == 0 {
-		maxRequestJsonComplexity = vault.DefaultMaxJsonComplexity
+	if maxRequestJsonMemory == 0 {
+		maxRequestJsonMemory = vault.DefaultMaxJsonMemory
+	}
+	if maxRequestJsonStrings == 0 {
+		maxRequestJsonStrings = vault.DefaultMaxJsonStrings
 	}
 
 	// Swallow this error since we don't want to pollute the logs and we also don't want to
@@ -392,7 +397,9 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			nw.Header().Set(consts.NamespaceHeaderName, nsHeader)
 		}
 
-		ctx = addMaximumJsonTokensToContext(ctx, maxRequestJsonComplexity)
+		// Safely limit our input JSON
+		ctx = addMaximumJsonMemoryToContext(ctx, maxRequestJsonMemory)
+		ctx = addMaximumJsonStringsToContext(ctx, maxRequestJsonStrings)
 
 		ctx = namespace.ContextWithNamespaceHeader(ctx, nsHeader)
 		r = r.WithContext(ctx)
@@ -738,77 +745,19 @@ func parseQuery(values url.Values) map[string]interface{} {
 	return nil
 }
 
-type ctxKeyMaxRequestJsonComplexity struct{}
-
-func maximumJsonTokensFromContext(ctx context.Context) int64 {
-	maxJsonTokens := ctx.Value(ctxKeyMaxRequestJsonComplexity{})
-	if maxJsonTokens == nil {
-		return 0
-	}
-	return maxJsonTokens.(int64)
-}
-
-func addMaximumJsonTokensToContext(ctx context.Context, limit int64) context.Context {
-	return context.WithValue(ctx, ctxKeyMaxRequestJsonComplexity{}, limit)
-}
-
 func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) (io.ReadCloser, error) {
 	ctx := r.Context()
-	maxJsonTokens := maximumJsonTokensFromContext(ctx)
 
-	if maxJsonTokens <= 0 {
-		err := jsonutil.DecodeJSONFromReader(r.Body, out)
-		if err != nil && err != io.EOF {
-			return nil, fmt.Errorf("failed to parse JSON input: %w", err)
-		}
-		return nil, err
-	}
-
-	reader, ok := r.Body.(io.ReadSeeker)
-	if !ok {
-		body, err := io.ReadAll(r.Body)
-		reader = bytes.NewReader(body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read JSON input: %w", err)
-		}
-	}
-
-	pos, err := reader.Seek(0, io.SeekCurrent)
+	reader, _, _, err := NewSafeJSONReader(ctx, r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read JSON input: %w", err)
-	}
-
-	dec := json.NewDecoder(reader)
-
-	var tokenCount int64
-	for {
-		_, err := dec.Token()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return nil, err
-		}
-		tokenCount++
-		if tokenCount > maxJsonTokens {
-			return nil, errors.New("failed to parse JSON input: too many tokens")
-		}
-	}
-
-	_, err = reader.Seek(pos, io.SeekStart)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read JSON input: %w", err)
-	}
-
-	err = ctx.Err()
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to limit JSON input: %w", err)
 	}
 
 	err = jsonutil.DecodeJSONFromReader(reader, out)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to parse JSON input: %w", err)
 	}
+
 	return nil, err
 }
 

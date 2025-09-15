@@ -173,7 +173,7 @@
     "eslint-plugin-qunit": "^8.1.2",
     "filesize": "^4.2.1",
     "flat": "^6.0.1",
-    "globals": "^16.0.0",
+    "globals": "^16.4.0",
     "jsondiffpatch": "^0.4.1",
     "jsonlint": "^1.6.3",
     "lint-staged": "^15.4.1",

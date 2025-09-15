@@ -5341,6 +5341,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@embroider/addon-shim@npm:^1.6.0":
+  version: 1.10.0
+  resolution: "@embroider/addon-shim@npm:1.10.0"
+  dependencies:
+    "@embroider/shared-internals": ^3.0.0
+    broccoli-funnel: ^3.0.8
+    common-ancestor-path: ^1.0.1
+    semver: ^7.3.8
+  checksum: 285a89eeccda75f70216318ad7635158252bb87a4b927351faa243e5a0a7f7ba648de095376d532bf48650609b0077d915f10b0e9b7bcacfa2dc423387690ca9
+  languageName: node
+  linkType: hard
+
 "@embroider/addon-shim@npm:^1.8.7, @embroider/addon-shim@npm:^1.9.0":
   version: 1.9.0
   resolution: "@embroider/addon-shim@npm:1.9.0"
@@ -5573,6 +5585,27 @@ __metadata:
     semver: ^7.3.5
     typescript-memoize: ^1.0.1
   checksum: 19d2754182b9e1373177843a354852c82b35d71af66edcdf0662597442062e5f5f51adbdf7a63a263ee0052064c222ff33ddb983ec3f17b68b7275de8de3680e
+  languageName: node
+  linkType: hard
+
+"@embroider/shared-internals@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@embroider/shared-internals@npm:3.0.0"
+  dependencies:
+    babel-import-util: ^3.0.1
+    debug: ^4.3.2
+    ember-rfc176-data: ^0.3.17
+    fs-extra: ^9.1.0
+    is-subdir: ^1.2.0
+    js-string-escape: ^1.0.1
+    lodash: ^4.17.21
+    minimatch: ^3.0.4
+    pkg-entry-points: ^1.1.0
+    resolve-package-path: ^4.0.1
+    resolve.exports: ^2.0.2
+    semver: ^7.3.5
+    typescript-memoize: ^1.0.1
+  checksum: 508b9729656f6a5ebd2dba65c7ff0ee204b9e092717eb701bfcc9bc91495b83f8cdb3e7ac38d38b48f1cf602e487f2b24308cf1702645d5621da82552cbcaba4
   languageName: node
   linkType: hard
 
@@ -9038,6 +9071,13 @@ __metadata:
   version: 3.0.0
   resolution: "babel-import-util@npm:3.0.0"
   checksum: b63bf4da11092048ca6fc147f480b20a86f1a25d224d8b0d9e63e43441d9c290bea9f0424cfaf20b61c836ab495812baa5a88c0beebb0235b4a2c179285da059
+  languageName: node
+  linkType: hard
+
+"babel-import-util@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "babel-import-util@npm:3.0.1"
+  checksum: 42c2480edb1dd469fafb743df0b7277f39d48ec125cc8f9a73eea7723431ee7c9c862c0983a1a4c8241034803fe44a3725cbe0653b2a45fa40621b318c9c4a14
   languageName: node
   linkType: hard
 
@@ -14203,7 +14243,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-cli-babel@npm:^7.0.0, ember-cli-babel@npm:^7.1.2, ember-cli-babel@npm:^7.1.3, ember-cli-babel@npm:^7.10.0, ember-cli-babel@npm:^7.13.0, ember-cli-babel@npm:^7.13.2, ember-cli-babel@npm:^7.18.0, ember-cli-babel@npm:^7.19.0, ember-cli-babel@npm:^7.20.0, ember-cli-babel@npm:^7.21.0, ember-cli-babel@npm:^7.22.1, ember-cli-babel@npm:^7.23.0, ember-cli-babel@npm:^7.23.1, ember-cli-babel@npm:^7.26.0, ember-cli-babel@npm:^7.26.1, ember-cli-babel@npm:^7.26.11, ember-cli-babel@npm:^7.26.3, ember-cli-babel@npm:^7.26.4, ember-cli-babel@npm:^7.26.5, ember-cli-babel@npm:^7.26.6, ember-cli-babel@npm:^7.5.0, ember-cli-babel@npm:^7.7.3":
+"ember-cli-babel@npm:^7.0.0, ember-cli-babel@npm:^7.1.2, ember-cli-babel@npm:^7.1.3, ember-cli-babel@npm:^7.10.0, ember-cli-babel@npm:^7.13.0, ember-cli-babel@npm:^7.13.2, ember-cli-babel@npm:^7.18.0, ember-cli-babel@npm:^7.19.0, ember-cli-babel@npm:^7.21.0, ember-cli-babel@npm:^7.22.1, ember-cli-babel@npm:^7.23.0, ember-cli-babel@npm:^7.23.1, ember-cli-babel@npm:^7.26.0, ember-cli-babel@npm:^7.26.1, ember-cli-babel@npm:^7.26.11, ember-cli-babel@npm:^7.26.3, ember-cli-babel@npm:^7.26.4, ember-cli-babel@npm:^7.26.5, ember-cli-babel@npm:^7.26.6, ember-cli-babel@npm:^7.5.0, ember-cli-babel@npm:^7.7.3":
   version: 7.26.11
   resolution: "ember-cli-babel@npm:7.26.11"
   dependencies:
@@ -15562,12 +15602,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-router-helpers@npm:^0.4.0":
-  version: 0.4.0
-  resolution: "ember-router-helpers@npm:0.4.0"
+"ember-router-helpers@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "ember-router-helpers@npm:1.0.0"
   dependencies:
-    ember-cli-babel: ^7.20.0
-  checksum: e847ceb1061f87416d6bb5d72ef539fda738a24086051bc94d740117c6353b3406c65247ac8190b8572df008a70d9f801e224d38489170129c5ca6c4ec7f206e
+    "@embroider/addon-shim": ^1.6.0
+  checksum: e2fb6dd3f105312a3b4bf60215d0711e2dfffc39014d15c6286783cabf6b87d2ade1d90aeaf8e5ec30c13551bbb20f0abe84048776089e360acd7828de91fb7e
   languageName: node
   linkType: hard
 
@@ -24929,6 +24969,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"resolve.exports@npm:^2.0.2":
+  version: 2.0.3
+  resolution: "resolve.exports@npm:2.0.3"
+  checksum: abfb9f98278dcd0c19b8a49bb486abfafa23df4636d49128ea270dc982053c3ef230a530aecda1fae1322873fdfa6c97674fc539651ddfdb375ac58e0b8ef6df
+  languageName: node
+  linkType: hard
+
 "resolve@npm:^1.1.7, resolve@npm:^1.10.0, resolve@npm:^1.11.1, resolve@npm:^1.13.1, resolve@npm:^1.14.2, resolve@npm:^1.17.0, resolve@npm:^1.20.0, resolve@npm:^1.3.3, resolve@npm:^1.4.0, resolve@npm:^1.5.0, resolve@npm:^1.8.1":
   version: 1.20.0
   resolution: "resolve@npm:1.20.0"
@@ -28148,7 +28195,7 @@ __metadata:
     ember-qunit: 6.0.0
     ember-resolver: ^13.1.0
     ember-responsive: 5.0.0
-    ember-router-helpers: ^0.4.0
+    ember-router-helpers: ^1.0.0
     ember-service-worker: "meirish/ember-service-worker#configurable-scope"
     ember-sinon: ^4.0.0
     ember-source: 4.4.4

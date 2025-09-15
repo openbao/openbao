@@ -7117,12 +7117,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/ember__test@npm:*, @types/ember__test@npm:^4.0.1":
+"@types/ember__test@npm:*":
   version: 4.0.1
   resolution: "@types/ember__test@npm:4.0.1"
   dependencies:
     "@types/ember__application": "*"
   checksum: e303ed97b0d63e9b2c91c8b7bd2445b8c013e485f458f0122c8a961593dafdc9428ffc055f51527032c970c2591094600f00233cda894e1775bc671bde67c570
+  languageName: node
+  linkType: hard
+
+"@types/ember__test@npm:^4.0.6":
+  version: 4.0.6
+  resolution: "@types/ember__test@npm:4.0.6"
+  dependencies:
+    "@types/ember__application": "*"
+  checksum: aeea4a6b9f716e6205f2c7334f1047c2ed88573279d3b6fa6bf23780031ceaaa5f97bb9bf9f589b50dc77807d78d5fb868b727be34a8bb15bc673b5c5f6318a5
   languageName: node
   linkType: hard
 
@@ -28084,7 +28093,7 @@ __metadata:
     "@types/ember__service": ^4.0.1
     "@types/ember__string": ^3.0.10
     "@types/ember__template": ^4.0.1
-    "@types/ember__test": ^4.0.1
+    "@types/ember__test": ^4.0.6
     "@types/ember__test-helpers": ^2.8.2
     "@types/ember__utils": ^4.0.2
     "@types/qunit": ^2.19.12

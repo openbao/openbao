@@ -60,7 +60,7 @@ func NewBPlusTree(
 	ctx = config.contextWithTreeID(ctx)
 
 	// Check if tree already exists
-	existingConfig, err := storage.GetTreeConfig(ctx)
+	existingConfig, err := storage.GetConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for existing tree: %w", err)
 	}
@@ -74,7 +74,7 @@ func NewBPlusTree(
 
 	// Create new leaf root
 	root := NewLeafNode(generateUUID())
-	if err := storage.SaveNode(ctx, root); err != nil {
+	if err := storage.PutNode(ctx, root); err != nil {
 		return nil, fmt.Errorf("failed to save root node: %w", err)
 	}
 
@@ -84,7 +84,7 @@ func NewBPlusTree(
 	}
 
 	// Store configuration
-	if err := storage.SetTreeConfig(ctx, config); err != nil {
+	if err := storage.PutConfig(ctx, config); err != nil {
 		return nil, fmt.Errorf("failed to store tree configuration: %w", err)
 	}
 
@@ -105,7 +105,7 @@ func LoadExistingBPlusTree(
 	ctx = withTreeID(ctx, treeID)
 
 	// Get stored configuration - this is the source of truth
-	storedConfig, err := storage.GetTreeConfig(ctx)
+	storedConfig, err := storage.GetConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tree configuration: %w", err)
 	}
@@ -130,7 +130,7 @@ func LoadExistingBPlusTree(
 	}
 
 	// Validate root node exists
-	root, err := storage.LoadNode(ctx, rootID)
+	root, err := storage.GetNode(ctx, rootID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load root node: %w", err)
 	}
@@ -151,7 +151,7 @@ func (t *BPlusTree) getRoot(ctx context.Context, storage Storage) (*Node, error)
 		return nil, errors.New("root node not found")
 	}
 
-	return storage.LoadNode(ctx, rootID)
+	return storage.GetNode(ctx, rootID)
 }
 
 // TODO: Can be removed...
@@ -170,7 +170,7 @@ func (t *BPlusTree) getRootID(ctx context.Context, storage Storage) (string, err
 // setRootID updates both storage and cache
 func (t *BPlusTree) setRootID(ctx context.Context, storage Storage, newRootID string) error {
 	// Update storage first
-	if err := storage.SetRootID(ctx, newRootID); err != nil {
+	if err := storage.PutRootID(ctx, newRootID); err != nil {
 		return err
 	}
 
@@ -333,7 +333,7 @@ func (t *BPlusTree) SearchPrefix(ctx context.Context, storage Storage, prefix st
 		if current.NextID == "" {
 			break
 		}
-		current, err = storage.LoadNode(ctx, current.NextID)
+		current, err = storage.GetNode(ctx, current.NextID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load next leaf node: %w", err)
 		}
@@ -367,17 +367,17 @@ func (t *BPlusTree) Insert(ctx context.Context, storage Storage, key string, val
 	if t.nodeOverflows(leaf) {
 		newLeaf, splitKey := t.splitLeafNode(leaf)
 		// Save both leaf nodes after splitting
-		if err := storage.SaveNode(ctx, leaf); err != nil { // NOTE (gabrielopesantos):  We do not necessarily need to save them, just cache them somewhere
+		if err := storage.PutNode(ctx, leaf); err != nil {
 			return fmt.Errorf("failed to save original leaf node: %w", err)
 		}
-		if err := storage.SaveNode(ctx, newLeaf); err != nil {
+		if err := storage.PutNode(ctx, newLeaf); err != nil {
 			return fmt.Errorf("failed to save new leaf node: %w", err)
 		}
 
 		return t.insertIntoParent(ctx, storage, leaf, newLeaf, splitKey)
 	} else {
 		// Save the leaf node after insertion
-		if err := storage.SaveNode(ctx, leaf); err != nil {
+		if err := storage.PutNode(ctx, leaf); err != nil {
 			return fmt.Errorf("failed to save leaf node: %w", err)
 		}
 	}
@@ -413,7 +413,7 @@ func (t *BPlusTree) Delete(ctx context.Context, storage Storage, key string) (bo
 	}
 
 	// Save the modified leaf node
-	if err := storage.SaveNode(ctx, leaf); err != nil {
+	if err := storage.PutNode(ctx, leaf); err != nil {
 		return false, fmt.Errorf("failed to save leaf node: %w", err)
 	}
 
@@ -459,7 +459,7 @@ func (t *BPlusTree) DeleteValue(ctx context.Context, storage Storage, key string
 	}
 
 	// Save the modified leaf node
-	if err := storage.SaveNode(ctx, leaf); err != nil {
+	if err := storage.PutNode(ctx, leaf); err != nil {
 		return false, fmt.Errorf("failed to save leaf node: %w", err)
 	}
 
@@ -497,7 +497,7 @@ func (t *BPlusTree) findLeafNode(ctx context.Context, storage Storage, key strin
 			return nil, fmt.Errorf("failed to get child for key traversal: %w", err)
 		}
 
-		node, err = storage.LoadNode(ctx, childID)
+		node, err = storage.GetNode(ctx, childID)
 		if err != nil {
 			return nil, err
 		}
@@ -545,13 +545,13 @@ func (t *BPlusTree) insertIntoParent(ctx context.Context, storage Storage, leftN
 		rightNode.SetParentID(newRoot.GetID())
 
 		// Save all nodes with updated parent references
-		if err := storage.SaveNode(ctx, leftNode); err != nil {
+		if err := storage.PutNode(ctx, leftNode); err != nil {
 			return fmt.Errorf("failed to save left node: %w", err)
 		}
-		if err := storage.SaveNode(ctx, rightNode); err != nil {
+		if err := storage.PutNode(ctx, rightNode); err != nil {
 			return fmt.Errorf("failed to save right node: %w", err)
 		}
-		if err := storage.SaveNode(ctx, newRoot); err != nil {
+		if err := storage.PutNode(ctx, newRoot); err != nil {
 			return fmt.Errorf("failed to save new root node: %w", err)
 		}
 
@@ -561,7 +561,7 @@ func (t *BPlusTree) insertIntoParent(ctx context.Context, storage Storage, leftN
 
 	// Otherwise, we need to insert into the existing parent node
 	// Load parent node
-	parent, err := storage.LoadNode(ctx, leftNode.GetParentID())
+	parent, err := storage.GetNode(ctx, leftNode.GetParentID())
 	if err != nil {
 		return err
 	}
@@ -575,13 +575,13 @@ func (t *BPlusTree) insertIntoParent(ctx context.Context, storage Storage, leftN
 	rightNode.SetParentID(parent.GetID())
 
 	// Save the updated nodes
-	if err := storage.SaveNode(ctx, leftNode); err != nil {
+	if err := storage.PutNode(ctx, leftNode); err != nil {
 		return fmt.Errorf("failed to save left node: %w", err)
 	}
-	if err := storage.SaveNode(ctx, rightNode); err != nil {
+	if err := storage.PutNode(ctx, rightNode); err != nil {
 		return fmt.Errorf("failed to save right node: %w", err)
 	}
-	if err := storage.SaveNode(ctx, parent); err != nil {
+	if err := storage.PutNode(ctx, parent); err != nil {
 		return fmt.Errorf("failed to save parent: %w", err)
 	}
 
@@ -589,10 +589,10 @@ func (t *BPlusTree) insertIntoParent(ctx context.Context, storage Storage, leftN
 	if t.nodeOverflows(parent) {
 		newInternal, splitKey := t.splitInternalNode(ctx, storage, parent)
 		// Save both internal nodes after splitting
-		if err := storage.SaveNode(ctx, parent); err != nil {
+		if err := storage.PutNode(ctx, parent); err != nil {
 			return fmt.Errorf("failed to save original internal node: %w", err)
 		}
-		if err := storage.SaveNode(ctx, newInternal); err != nil {
+		if err := storage.PutNode(ctx, newInternal); err != nil {
 			return fmt.Errorf("failed to save new internal node: %w", err)
 		}
 		return t.insertIntoParent(ctx, storage, parent, newInternal, splitKey)
@@ -614,14 +614,14 @@ func (t *BPlusTree) splitInternalNode(ctx context.Context, storage Storage, node
 
 	// Update parent references of newInternal's children
 	for _, childID := range newInternal.ChildrenIDs {
-		child, err := storage.LoadNode(ctx, childID)
+		child, err := storage.GetNode(ctx, childID)
 		if err != nil {
 			// TODO: Review...
 			// Log error but continue since we can't fail here
 			continue
 		}
 		child.SetParentID(newInternal.GetID())
-		if err := storage.SaveNode(ctx, child); err != nil {
+		if err := storage.PutNode(ctx, child); err != nil {
 			// Log error but continue since we can't fail here
 			continue
 		}
@@ -666,14 +666,14 @@ func (t *BPlusTree) handleRootAfterDeletion(ctx context.Context, storage Storage
 		}
 
 		// Load the new root and clear its parent reference
-		newRoot, err := storage.LoadNode(ctx, newRootID)
+		newRoot, err := storage.GetNode(ctx, newRootID)
 		if err != nil {
 			return fmt.Errorf("failed to load new root: %w", err)
 		}
 		newRoot.SetParentID("")
 
 		// Save the new root and update the tree's root ID
-		if err := storage.SaveNode(ctx, newRoot); err != nil {
+		if err := storage.PutNode(ctx, newRoot); err != nil {
 			return fmt.Errorf("failed to save new root: %w", err)
 		}
 		if err := t.setRootID(ctx, storage, newRootID); err != nil {
@@ -692,7 +692,7 @@ func (t *BPlusTree) handleRootAfterDeletion(ctx context.Context, storage Storage
 // rebalanceAfterDeletion rebalances a node that underflows after deletion
 func (t *BPlusTree) rebalanceAfterDeletion(ctx context.Context, storage Storage, node *Node) error {
 	// Load the parent
-	parent, err := storage.LoadNode(ctx, node.GetParentID())
+	parent, err := storage.GetNode(ctx, node.GetParentID())
 	if err != nil {
 		return fmt.Errorf("failed to load parent: %w", err)
 	}
@@ -705,7 +705,7 @@ func (t *BPlusTree) rebalanceAfterDeletion(ctx context.Context, storage Storage,
 
 	// Try to borrow from left sibling
 	if leftSiblingID, hasLeft := parent.GetLeftSiblingID(node.GetID()); hasLeft {
-		leftSibling, err := storage.LoadNode(ctx, leftSiblingID)
+		leftSibling, err := storage.GetNode(ctx, leftSiblingID)
 		if err != nil {
 			return fmt.Errorf("failed to load left sibling: %w", err)
 		}
@@ -721,7 +721,7 @@ func (t *BPlusTree) rebalanceAfterDeletion(ctx context.Context, storage Storage,
 
 	// Try to borrow from right sibling
 	if rightSiblingID, hasRight := parent.GetRightSiblingID(node.GetID()); hasRight {
-		rightSibling, err := storage.LoadNode(ctx, rightSiblingID)
+		rightSibling, err := storage.GetNode(ctx, rightSiblingID)
 		if err != nil {
 			return fmt.Errorf("failed to load right sibling: %w", err)
 		}
@@ -738,7 +738,7 @@ func (t *BPlusTree) rebalanceAfterDeletion(ctx context.Context, storage Storage,
 	// Can't borrow, must merge
 	// Prefer merging with left sibling if available
 	if leftSiblingID, hasLeft := parent.GetLeftSiblingID(node.GetID()); hasLeft {
-		leftSibling, err := storage.LoadNode(ctx, leftSiblingID)
+		leftSibling, err := storage.GetNode(ctx, leftSiblingID)
 		if err != nil {
 			return fmt.Errorf("failed to load left sibling for merge: %w", err)
 		}
@@ -752,7 +752,7 @@ func (t *BPlusTree) rebalanceAfterDeletion(ctx context.Context, storage Storage,
 		if !hasRight {
 			return errors.New("node has no siblings to merge with")
 		}
-		rightSibling, err := storage.LoadNode(ctx, rightSiblingID)
+		rightSibling, err := storage.GetNode(ctx, rightSiblingID)
 		if err != nil {
 			return fmt.Errorf("failed to load right sibling for merge: %w", err)
 		}
@@ -793,12 +793,12 @@ func (t *BPlusTree) borrowFromLeftSibling(ctx context.Context, storage Storage, 
 		}
 
 		// Update parent reference of the borrowed child
-		child, err := storage.LoadNode(ctx, borrowedChild)
+		child, err := storage.GetNode(ctx, borrowedChild)
 		if err != nil {
 			return fmt.Errorf("failed to load borrowed child: %w", err)
 		}
 		child.SetParentID(node.GetID())
-		if err := storage.SaveNode(ctx, child); err != nil {
+		if err := storage.PutNode(ctx, child); err != nil {
 			return fmt.Errorf("failed to save borrowed child: %w", err)
 		}
 
@@ -809,13 +809,13 @@ func (t *BPlusTree) borrowFromLeftSibling(ctx context.Context, storage Storage, 
 	}
 
 	// Save all modified nodes
-	if err := storage.SaveNode(ctx, node); err != nil {
+	if err := storage.PutNode(ctx, node); err != nil {
 		return fmt.Errorf("failed to save node: %w", err)
 	}
-	if err := storage.SaveNode(ctx, leftSibling); err != nil {
+	if err := storage.PutNode(ctx, leftSibling); err != nil {
 		return fmt.Errorf("failed to save left sibling: %w", err)
 	}
-	if err := storage.SaveNode(ctx, parent); err != nil {
+	if err := storage.PutNode(ctx, parent); err != nil {
 		return fmt.Errorf("failed to save parent: %w", err)
 	}
 
@@ -852,12 +852,12 @@ func (t *BPlusTree) borrowFromRightSibling(ctx context.Context, storage Storage,
 		}
 
 		// Update parent reference of the borrowed child
-		child, err := storage.LoadNode(ctx, borrowedChild)
+		child, err := storage.GetNode(ctx, borrowedChild)
 		if err != nil {
 			return fmt.Errorf("failed to load borrowed child: %w", err)
 		}
 		child.SetParentID(node.GetID())
-		if err := storage.SaveNode(ctx, child); err != nil {
+		if err := storage.PutNode(ctx, child); err != nil {
 			return fmt.Errorf("failed to save borrowed child: %w", err)
 		}
 
@@ -868,13 +868,13 @@ func (t *BPlusTree) borrowFromRightSibling(ctx context.Context, storage Storage,
 	}
 
 	// Save all modified nodes
-	if err := storage.SaveNode(ctx, node); err != nil {
+	if err := storage.PutNode(ctx, node); err != nil {
 		return fmt.Errorf("failed to save node: %w", err)
 	}
-	if err := storage.SaveNode(ctx, rightSibling); err != nil {
+	if err := storage.PutNode(ctx, rightSibling); err != nil {
 		return fmt.Errorf("failed to save right sibling: %w", err)
 	}
-	if err := storage.SaveNode(ctx, parent); err != nil {
+	if err := storage.PutNode(ctx, parent); err != nil {
 		return fmt.Errorf("failed to save parent: %w", err)
 	}
 
@@ -902,12 +902,12 @@ func (t *BPlusTree) mergeWithLeftSibling(ctx context.Context, storage Storage, n
 	// Update parent references for all children from the merged node (internal nodes only)
 	if !node.IsLeaf {
 		for _, childID := range node.ChildrenIDs {
-			child, err := storage.LoadNode(ctx, childID)
+			child, err := storage.GetNode(ctx, childID)
 			if err != nil {
 				continue // Log error but continue
 			}
 			child.SetParentID(leftSibling.GetID())
-			if err := storage.SaveNode(ctx, child); err != nil {
+			if err := storage.PutNode(ctx, child); err != nil {
 				continue // Log error but continue
 			}
 		}
@@ -919,10 +919,10 @@ func (t *BPlusTree) mergeWithLeftSibling(ctx context.Context, storage Storage, n
 	parent.ChildrenIDs = slices.Delete(parent.ChildrenIDs, nodeIndex, nodeIndex+1)
 
 	// Save the merged node and parent
-	if err := storage.SaveNode(ctx, leftSibling); err != nil {
+	if err := storage.PutNode(ctx, leftSibling); err != nil {
 		return fmt.Errorf("failed to save merged node: %w", err)
 	}
-	if err := storage.SaveNode(ctx, parent); err != nil {
+	if err := storage.PutNode(ctx, parent); err != nil {
 		return fmt.Errorf("failed to save parent: %w", err)
 	}
 
@@ -956,12 +956,12 @@ func (t *BPlusTree) mergeWithRightSibling(ctx context.Context, storage Storage, 
 	// Update parent references for all children from the right sibling (internal nodes only)
 	if !node.IsLeaf {
 		for _, childID := range rightSibling.ChildrenIDs {
-			child, err := storage.LoadNode(ctx, childID)
+			child, err := storage.GetNode(ctx, childID)
 			if err != nil {
 				continue // Log error but continue
 			}
 			child.SetParentID(node.GetID())
-			if err := storage.SaveNode(ctx, child); err != nil {
+			if err := storage.PutNode(ctx, child); err != nil {
 				continue // Log error but continue
 			}
 		}
@@ -975,10 +975,10 @@ func (t *BPlusTree) mergeWithRightSibling(ctx context.Context, storage Storage, 
 	}
 
 	// Save the merged node and parent
-	if err := storage.SaveNode(ctx, node); err != nil {
+	if err := storage.PutNode(ctx, node); err != nil {
 		return fmt.Errorf("failed to save merged node: %w", err)
 	}
-	if err := storage.SaveNode(ctx, parent); err != nil {
+	if err := storage.PutNode(ctx, parent); err != nil {
 		return fmt.Errorf("failed to save parent: %w", err)
 	}
 
@@ -999,8 +999,8 @@ func (t *BPlusTree) cleanupOrphanedSplitKey(ctx context.Context, storage Storage
 
 	for currentNode != nil && currentNode.GetParentID() != "" {
 		// Load the parent node
-		parent, err := storage.LoadNode(ctx, currentNode.GetParentID())
-		if err != nil {
+		parent, err := storage.GetNode(ctx, currentNode.GetParentID())
+		if err != nil && err != ErrNodeNotFound { // TODO (gabrielopesantos): Review this
 			return fmt.Errorf("failed to load parent node: %w", err)
 		}
 
@@ -1043,7 +1043,7 @@ func (t *BPlusTree) removeOrphanedSplitKeyInNode(ctx context.Context, storage St
 		}
 
 		// Save the node after removing the separator
-		if err := storage.SaveNode(ctx, node); err != nil {
+		if err := storage.PutNode(ctx, node); err != nil {
 			return false, fmt.Errorf("failed to save node after removing separator: %w", err)
 		}
 
@@ -1076,7 +1076,7 @@ func (t *BPlusTree) removeOrphanedSplitKeyInNode(ctx context.Context, storage St
 	node.Keys[separatorIndex] = successor
 
 	// Save the updated node
-	if err := storage.SaveNode(ctx, node); err != nil {
+	if err := storage.PutNode(ctx, node); err != nil {
 		return false, fmt.Errorf("failed to save updated node: %w", err)
 	}
 
@@ -1121,7 +1121,7 @@ func (t *BPlusTree) findRightmostLeaf(ctx context.Context, storage Storage) (*No
 
 // findRightmostLeaf finds the rightmost leaf node in the tree
 func (t *BPlusTree) findRightmostLeafInSubtree(ctx context.Context, storage Storage, nodeID string) (*Node, error) {
-	node, err := storage.LoadNode(ctx, nodeID)
+	node, err := storage.GetNode(ctx, nodeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load node: %w", err)
 	}
@@ -1132,7 +1132,7 @@ func (t *BPlusTree) findRightmostLeafInSubtree(ctx context.Context, storage Stor
 			return nil, errors.New("internal node has no children")
 		}
 		rightmostIndex := len(node.ChildrenIDs) - 1
-		node, err = storage.LoadNode(ctx, node.ChildrenIDs[rightmostIndex])
+		node, err = storage.GetNode(ctx, node.ChildrenIDs[rightmostIndex])
 		if err != nil {
 			return nil, fmt.Errorf("failed to load child node: %w", err)
 		}
@@ -1154,7 +1154,7 @@ func (t *BPlusTree) findLeftmostLeaf(ctx context.Context, storage Storage) (*Nod
 
 // findLeftmostLeafInSubtree finds the leftmost leaf node in a subtree rooted at the given node ID
 func (t *BPlusTree) findLeftmostLeafInSubtree(ctx context.Context, storage Storage, nodeID string) (*Node, error) {
-	node, err := storage.LoadNode(ctx, nodeID)
+	node, err := storage.GetNode(ctx, nodeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load node: %w", err)
 	}
@@ -1165,7 +1165,7 @@ func (t *BPlusTree) findLeftmostLeafInSubtree(ctx context.Context, storage Stora
 			return nil, fmt.Errorf("internal node has no children")
 		}
 		// Go to the leftmost child
-		node, err = storage.LoadNode(ctx, node.ChildrenIDs[0])
+		node, err = storage.GetNode(ctx, node.ChildrenIDs[0])
 		if err != nil {
 			return nil, fmt.Errorf("failed to load child node: %w", err)
 		}

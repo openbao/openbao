@@ -39,3 +39,13 @@ func (c *LRU[K, V]) Purge() {
 func (c *LRU[K, V]) Size() int {
 	return c.size
 }
+
+// Cap returns the configured capacity of the cache
+func (c *LRU[K, V]) Cap() int {
+	return c.size
+}
+
+// Keys returns all keys in the cache (note: this is expensive and should be used sparingly)
+func (c *LRU[K, V]) Keys() []K {
+	return c.lru.Keys()
+}

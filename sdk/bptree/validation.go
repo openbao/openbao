@@ -108,7 +108,7 @@ func (t *BPlusTree) collectAllNodes(ctx context.Context, storage Storage, node *
 
 		// Recursively process children
 		for _, childID := range node.ChildrenIDs {
-			child, err := storage.LoadNode(ctx, childID)
+			child, err := storage.GetNode(ctx, childID)
 			if err != nil {
 				return fmt.Errorf("failed to load child node %s: %w", childID, err)
 			}
@@ -129,7 +129,7 @@ func (t *BPlusTree) getTreeHeight(ctx context.Context, storage Storage, node *No
 
 	height := 1
 	for !node.IsLeaf {
-		child, err := storage.LoadNode(ctx, node.ChildrenIDs[0])
+		child, err := storage.GetNode(ctx, node.ChildrenIDs[0])
 		if err != nil {
 			return 0, fmt.Errorf("failed to load child node %s: %w", node.ChildrenIDs[0], err)
 		}

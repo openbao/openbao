@@ -306,7 +306,7 @@ func TestSearchPrefixWithNextIDTraversal(t *testing.T) {
 		if current.NextID == "" {
 			break
 		}
-		current, err = storage.LoadNode(ctx, current.NextID)
+		current, err = storage.GetNode(ctx, current.NextID)
 		require.NoError(t, err)
 	}
 
@@ -915,24 +915,24 @@ type MockStoragestorage struct {
 	shouldFail bool
 }
 
-func (m *MockStoragestorage) SaveNode(ctx context.Context, node *Node) error {
+func (m *MockStoragestorage) PutNode(ctx context.Context, node *Node) error {
 	if m.shouldFail {
 		return fmt.Errorf("simulated storage error")
 	}
-	return m.NodeStorage.SaveNode(ctx, node)
+	return m.NodeStorage.PutNode(ctx, node)
 }
 
-func (m *MockStoragestorage) LoadNode(ctx context.Context, id string) (*Node, error) {
+func (m *MockStoragestorage) GetNode(ctx context.Context, id string) (*Node, error) {
 	if m.shouldFail {
 		return nil, fmt.Errorf("simulated storage error")
 	}
-	return m.NodeStorage.LoadNode(ctx, id)
+	return m.NodeStorage.GetNode(ctx, id)
 }
 
 func TestBPlusTreeStorageErrors(t *testing.T) {
 	ctx := context.Background()
 	s := &logical.InmemStorage{}
-	basestorage, err := NewNodeStorage(s, nil, 100)
+	basestorage, err := NewNodeStorage(s, NewStorageConfig())
 	require.NoError(t, err, "Failed to create storage storage")
 	mockstorage := &MockStoragestorage{
 		NodeStorage: basestorage,
@@ -1069,7 +1069,7 @@ func TestLeafNodeLinking(t *testing.T) {
 		require.Empty(t, leftmost.PreviousID, "Leftmost leaf should have empty PreviousID")
 
 		// Load the next leaf
-		rightLeaf, err := storage.LoadNode(ctx, leftmost.NextID)
+		rightLeaf, err := storage.GetNode(ctx, leftmost.NextID)
 		require.NoError(t, err, "Failed to load right leaf")
 		require.True(t, rightLeaf.IsLeaf, "Next node should be a leaf")
 
@@ -1102,7 +1102,7 @@ func TestLeafNodeLinking(t *testing.T) {
 			if current.NextID == "" {
 				break
 			}
-			current, err = storage.LoadNode(ctx, current.NextID)
+			current, err = storage.GetNode(ctx, current.NextID)
 			require.NoError(t, err, "Failed to load next leaf")
 		}
 
@@ -1124,7 +1124,7 @@ func TestLeafNodeLinking(t *testing.T) {
 				break
 			}
 
-			current, err = storage.LoadNode(ctx, current.PreviousID)
+			current, err = storage.GetNode(ctx, current.PreviousID)
 			require.NoError(t, err, "Failed to load previous leaf")
 		}
 

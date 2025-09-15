@@ -58,7 +58,7 @@
     "@ember/render-modifiers": "^1.0.2",
     "@ember/test-helpers": "2.8.1",
     "@ember/test-waiters": "^4.0.0",
-    "@eslint/js": "^9.24.0",
+    "@eslint/js": "^9.35.0",
     "@glimmer/component": "^1.1.2",
     "@glimmer/tracking": "^1.1.2",
     "@hashicorp/ember-flight-icons": "^5.1.3",

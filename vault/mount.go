@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -2574,17 +2575,26 @@ func (c *Core) invalidateMountInternal(ctx context.Context, key string) error {
 			}
 		}
 
-		lock := &c.mountsLock
-		if table == "auth" {
-			lock = &c.authLock
+		if !reflect.DeepEqual(desiredMountEntry.Config, actualRouteEntry.mountEntry.Config) {
+			lock := &c.mountsLock
+			if table == "auth" {
+				lock = &c.authLock
+			}
+
+			lock.Lock()
+
+			actualRouteEntry.mountEntry.Config = desiredMountEntry.Config
+			actualRouteEntry.mountEntry.SyncCache()
+
+			lock.Unlock()
 		}
 
-		lock.Lock()
-		defer lock.Unlock()
-
-		actualRouteEntry.mountEntry = desiredMountEntry
-
-		// TODO(phil9909): how to handle tuning?
+		if desiredMountEntry.Options["version"] != actualRouteEntry.mountEntry.Options["version"] {
+			err = c.reloadBackendCommon(ctx, desiredMountEntry, table == "auth")
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

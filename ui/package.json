@@ -168,7 +168,7 @@
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-compat": "6.0.2",
     "eslint-plugin-ember": "^12.5.0",
-    "eslint-plugin-n": "^17.17.0",
+    "eslint-plugin-n": "^17.22.0",
     "eslint-plugin-prettier": "^5.2.6",
     "eslint-plugin-qunit": "^8.1.2",
     "filesize": "^4.2.1",

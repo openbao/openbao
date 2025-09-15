@@ -18458,10 +18458,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"globals@npm:^16.0.0":
-  version: 16.0.0
-  resolution: "globals@npm:16.0.0"
-  checksum: 41df1cb6f86c36dfdf8fb6c270247105c85cc3aec8d8238c5e691b0d2aad9eed8ff390d1035f4b5a27ee24bf75b095c7b84717e9d2050d2122e61f37d9c6131a
+"globals@npm:^16.4.0":
+  version: 16.4.0
+  resolution: "globals@npm:16.4.0"
+  checksum: 934180f5c6cbb26f8b2832caa255050fface970eee45bde8757fabba384807c85640a12716aa5bcc47d781807839fee470c8c1f6159c6b8dc877668c56103880
   languageName: node
   linkType: hard
 
@@ -28169,7 +28169,7 @@ __metadata:
     eslint-plugin-qunit: ^8.1.2
     filesize: ^4.2.1
     flat: ^6.0.1
-    globals: ^16.0.0
+    globals: ^16.4.0
     handlebars: 4.7.8
     highlight.js: ^11.11.1
     jsondiffpatch: ^0.4.1

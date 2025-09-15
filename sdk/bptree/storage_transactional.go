@@ -6,6 +6,7 @@ package bptree
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -19,7 +20,7 @@ type Transactional interface {
 
 type Transaction interface {
 	Storage
-	// Commit ...
+	// Commit a transaction, persisting any changes made during the transaction.
 	Commit(context.Context) error
 	// Rollback a transaction, preventing any changes from being persisted.
 	// Either Commit or Rollback must be called to release resources.
@@ -41,6 +42,8 @@ var _ TransactionalStorage = &TransactionalNodeStorage{}
 
 type NodeTransaction struct {
 	*NodeStorage
+	// Reference to parent for cache merging
+	parentStorage *TransactionalNodeStorage
 }
 
 var _ Transaction = &NodeTransaction{}
@@ -51,17 +54,26 @@ func (s *TransactionalNodeStorage) BeginReadOnlyTx(ctx context.Context) (Transac
 		return nil, err
 	}
 
+	// Create transaction-local cache for isolation (use reasonable default size)
+	txCache, err := lru.NewLRU[string, *Node](100) // Transaction cache size - can be configurable later
+	if err != nil {
+		return nil, fmt.Errorf("failed to create transaction cache: %w", err)
+	}
+
 	return &NodeTransaction{
 		NodeStorage: &NodeStorage{
-			storage:    tx,
-			serializer: s.serializer,
-			cache:      s.cache, // Share cache for read-only transactions
-			skipCache:  false,   // Enable cache for read-only transactions
-			// New mutex instance for the transaction (read-only still needs its own locks)
-			lock:               sync.RWMutex{},
-			cachesOpsQueueLock: sync.Mutex{},
-			pendingCacheOps:    nil, // No cache operations for read-only
+			storage:        tx,
+			serializer:     s.serializer,
+			cache:          txCache, // Transaction-local cache
+			cachingEnabled: true,    // Enable caching within transaction
+			isTransaction:  true,    // Explicit transaction flag
+			// New mutex instance for the transaction
+			lock: sync.RWMutex{},
+			// Enable built-in buffering for transaction
+			dirtyTracker:     NewDirtyTracker(), // Each transaction gets its own buffer
+			bufferingEnabled: true,              // Buffering enabled for transaction
 		},
+		parentStorage: s, // Keep reference to parent for cache merging
 	}, nil
 }
 
@@ -71,38 +83,78 @@ func (s *TransactionalNodeStorage) BeginTx(ctx context.Context) (Transaction, er
 		return nil, err
 	}
 
+	// Create transaction-local cache for isolation (use reasonable default size)
+	txCache, err := lru.NewLRU[string, *Node](100) // Transaction cache size - can be configurable later
+	if err != nil {
+		return nil, fmt.Errorf("failed to create transaction cache: %w", err)
+	}
+
 	return &NodeTransaction{
 		NodeStorage: &NodeStorage{
-			storage:    tx,
-			serializer: s.serializer,
-			cache:      s.cache, // Share cache within transactions
-			skipCache:  false,   // Enable cache within transactions
-			// New mutex instances for the transaction
-			lock:               sync.RWMutex{},
-			cachesOpsQueueLock: sync.Mutex{},
-			pendingCacheOps:    make([]cacheOperation, 0),
+			storage:        tx,
+			serializer:     s.serializer,
+			cache:          txCache, // Transaction-local cache
+			cachingEnabled: true,    // Enable caching within transaction
+			isTransaction:  true,    // Explicit transaction flag
+			// New mutex instance for the transaction
+			lock: sync.RWMutex{},
+			// Enable built-in buffering for transaction
+			dirtyTracker:     NewDirtyTracker(), // Each transaction gets its own buffer
+			bufferingEnabled: true,              // Buffering enabled for transaction
 		},
+		parentStorage: s, // Keep reference to parent for cache merging
 	}, nil
 }
 
 func (s *NodeTransaction) Commit(ctx context.Context) error {
-	var err error
-	defer s.flushCacheOps(err == nil) // Ensure cache operations are flushed on commit
+	// First flush any buffered operations to the transaction
+	if err := s.FlushBuffer(ctx); err != nil {
+		return fmt.Errorf("failed to flush buffer before commit: %w", err)
+	}
 
-	// Commit the underlying transaction
-	if err = s.storage.(logical.Transaction).Commit(ctx); err != nil {
+	// Then commit the underlying transaction
+	if err := s.storage.(logical.Transaction).Commit(ctx); err != nil {
 		return err
 	}
+
+	// After successful commit, merge transaction cache into parent cache
+	s.mergeCacheIntoParent()
 
 	return nil
 }
 
 func (s *NodeTransaction) Rollback(ctx context.Context) error {
-	// Clear any pending cache operations (don't apply them)
-	s.flushCacheOps(false)
+	// Clear buffered operations (don't flush them)
+	s.ClearBuffer()
 
 	// Rollback the underlying transaction
+	// Transaction-local cache is automatically discarded (no merging)
 	return s.storage.(logical.Transaction).Rollback(ctx)
+}
+
+// mergeCacheIntoParent merges the transaction's cache into the parent storage's cache
+func (s *NodeTransaction) mergeCacheIntoParent() {
+	if s.parentStorage == nil || s.parentStorage.cache == nil || s.cache == nil {
+		return
+	}
+
+	// Lock both caches to ensure thread safety
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.parentStorage.lock.Lock()
+	defer s.parentStorage.lock.Unlock()
+
+	// Get all keys from transaction cache
+	keys := s.cache.Keys()
+
+	// Copy each entry from transaction cache to parent cache
+	for _, key := range keys {
+		if value, ok := s.cache.Get(key); ok {
+			// Add to parent cache (this will handle LRU eviction automatically)
+			s.parentStorage.cache.Add(key, value)
+		}
+	}
 }
 
 // NewNodeStorageFromTransaction creates a NodeStorage that works within an existing transaction.
@@ -117,13 +169,12 @@ func NewNodeStorageFromTransaction(
 	}
 
 	return &NodeStorage{
-		storage:            tx,
-		serializer:         serializer,
-		cache:              cache, // Not used due to skipCache=true
-		skipCache:          true,  // Disable caching for external transactions
-		lock:               sync.RWMutex{},
-		cachesOpsQueueLock: sync.Mutex{},
-		pendingCacheOps:    nil, // No cache operations when cache is disabled
+		storage:        tx,
+		serializer:     serializer,
+		cache:          cache, // Not used due to skipCache=true
+		cachingEnabled: true,  // Enable caching within transaction (would be merged to parent)
+		isTransaction:  true,  // Explicit transaction flag
+		lock:           sync.RWMutex{},
 	}, nil
 }
 
@@ -138,13 +189,12 @@ func WithExistingTransaction(
 	parentStorage *NodeStorage, // Parent storage for shared cache and config
 ) Storage {
 	return &NodeStorage{
-		storage:            tx,
-		serializer:         parentStorage.serializer,
-		cache:              parentStorage.cache, // Not used due to skipCache=true
-		skipCache:          true,                // Disable caching for external transactions
-		lock:               sync.RWMutex{},      // New mutex for transaction isolation
-		cachesOpsQueueLock: sync.Mutex{},
-		pendingCacheOps:    nil, // No cache operations when cache is disabled
+		storage:        tx,
+		serializer:     parentStorage.serializer,
+		cache:          parentStorage.cache, // Not used due to skipCache=true
+		cachingEnabled: true,                // Enable caching within transaction (wont be merged to parent)
+		isTransaction:  true,                // Explicit transaction flag
+		lock:           sync.RWMutex{},      // New mutex for transaction isolation
 	}
 }
 
@@ -164,6 +214,7 @@ func WithTransaction(ctx context.Context, originalStorage Storage, callback func
 			if !committed {
 				if rollbackErr := txn.Rollback(ctx); rollbackErr != nil {
 					// Log rollback errors but don't override the main error
+					log.Printf("failed to rollback transaction: %v", err)
 				}
 			}
 		}()

@@ -17,7 +17,7 @@ func TestStorage(t *testing.T) {
 	t.Run("Storage Operations", func(t *testing.T) {
 		// Test SetRootID and GetRootID
 		rootID := "root-1"
-		err := nodeStorage.SetRootID(ctx, rootID)
+		err := nodeStorage.PutRootID(ctx, rootID)
 		require.NoError(t, err, "Failed to set root ID")
 
 		retrievedRootID, err := nodeStorage.GetRootID(ctx)
@@ -25,7 +25,7 @@ func TestStorage(t *testing.T) {
 
 		require.Equal(t, rootID, retrievedRootID, "Expected root ID %s, got %s", rootID, retrievedRootID)
 
-		// Test SaveNode and LoadNode
+		// Test PutNode and GetNode
 		nodeID := "node-1"
 		node := NewLeafNode(nodeID)
 		err = node.InsertKeyValue("key1", "value1")
@@ -34,7 +34,7 @@ func TestStorage(t *testing.T) {
 		require.NoError(t, err, "Failed to insert key-value pair into node")
 
 		// Save the node
-		err = nodeStorage.SaveNode(ctx, node)
+		err = nodeStorage.PutNode(ctx, node)
 		require.NoError(t, err, "Failed to save node")
 
 		// Try to load the node from cache using the proper cache key
@@ -44,7 +44,7 @@ func TestStorage(t *testing.T) {
 		require.Equal(t, node, cachedNode, "Cached node should match saved node")
 
 		// Load the node
-		loadedNode, err := nodeStorage.LoadNode(ctx, nodeID)
+		loadedNode, err := nodeStorage.GetNode(ctx, nodeID)
 		require.NoError(t, err, "Failed to load node")
 		require.NotNil(t, loadedNode, "Loaded node is nil")
 		require.Equal(t, node, loadedNode, "Loaded node should match saved node")
@@ -53,7 +53,7 @@ func TestStorage(t *testing.T) {
 		err = node.InsertKeyValue("key3", "value3")
 		require.NoError(t, err, "Failed to insert key-value pair into node")
 
-		err = nodeStorage.SaveNode(ctx, node)
+		err = nodeStorage.PutNode(ctx, node)
 		require.NoError(t, err, "Failed to update node")
 
 		// Verify if the cache has been updated
@@ -63,7 +63,7 @@ func TestStorage(t *testing.T) {
 		require.Equal(t, node, cachedNode, "Cached node should match updated node")
 
 		// Load the updated node
-		updatedNode, err := nodeStorage.LoadNode(ctx, nodeID)
+		updatedNode, err := nodeStorage.GetNode(ctx, nodeID)
 		require.NoError(t, err, "Failed to load updated node")
 		require.NotNil(t, updatedNode, "Updated node is nil")
 		require.Equal(t, node, updatedNode, "Updated node should match saved node after update")
@@ -72,8 +72,8 @@ func TestStorage(t *testing.T) {
 		err = nodeStorage.DeleteNode(ctx, nodeID)
 		require.NoError(t, err, "Failed to delete node")
 
-		deletedNode, err := nodeStorage.LoadNode(ctx, nodeID)
-		require.NoError(t, err, "Error when loading deleted node")
+		deletedNode, err := nodeStorage.GetNode(ctx, nodeID)
+		require.Equal(t, ErrNodeNotFound, err, "Expected ErrNodeNotFound when loading deleted node")
 		require.Nil(t, deletedNode, "Node should have been deleted")
 
 		// Verify if the cache has been cleared
@@ -86,7 +86,7 @@ func TestStorage(t *testing.T) {
 		node := NewLeafNode("node-1")
 		node.InsertKeyValue("key1", "value1")
 
-		err := nodeStorage.SaveNode(ctx, node)
+		err := nodeStorage.PutNode(ctx, node)
 		require.NoError(t, err, "Failed to save node")
 
 		var wg sync.WaitGroup
@@ -98,7 +98,7 @@ func TestStorage(t *testing.T) {
 				defer wg.Done()
 
 				// Load the existing node
-				loadedNode, err := nodeStorage.LoadNode(ctx, node.ID)
+				loadedNode, err := nodeStorage.GetNode(ctx, node.ID)
 				if err != nil {
 					errChan <- fmt.Errorf("error loading node: %w", err)
 					return
@@ -113,7 +113,7 @@ func TestStorage(t *testing.T) {
 				err = newNode.InsertKeyValue(fmt.Sprintf("key%d", i), fmt.Sprintf("value%d", i))
 				require.NoError(t, err, "Failed to insert key-value pair into new node")
 
-				err = nodeStorage.SaveNode(ctx, newNode)
+				err = nodeStorage.PutNode(ctx, newNode)
 				if err != nil {
 					errChan <- fmt.Errorf("error saving new node: %w", err)
 					return
@@ -155,7 +155,7 @@ func TestTreeConfigPersistence(t *testing.T) {
 
 		// Verify config was stored
 		treeCtx := tree.contextWithTreeID(ctx)
-		storedConfig, err := storage.GetTreeConfig(treeCtx)
+		storedConfig, err := storage.GetConfig(treeCtx)
 		require.NoError(t, err, "Should retrieve stored metadata")
 		require.NotNil(t, storedConfig, "Config should exist")
 		require.Equal(t, "metadata_test", storedConfig.TreeID)

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,12 +16,19 @@ func keyValue(key string) string {
 	return "value_" + key
 }
 
+// TODO: Accept a storage config
 func initTest(t *testing.T, treeConfig *BPlusTreeConfig) (context.Context, *NodeStorage, *BPlusTree) {
 	// Initialize context
 	ctx := context.Background()
 	// Initialize in-memory storage for testing
 	s := &logical.InmemStorage{}
-	storage, err := NewNodeStorage(s, nil, 1_000)
+
+	// if storageConfig == nil {
+	storageConfig := NewStorageConfig()
+	// }
+
+	// Create node storage
+	storage, err := NewNodeStorage(s, storageConfig)
 	require.NoError(t, err, "failed to create storage")
 
 	if treeConfig == nil {
@@ -28,8 +36,37 @@ func initTest(t *testing.T, treeConfig *BPlusTreeConfig) (context.Context, *Node
 	}
 
 	// Initialize B+ tree with a small order to force splits and create internal nodes
-	tree, err := InitializeBPlusTree(context.Background(), storage, treeConfig)
+	tree, err := InitializeBPlusTree(ctx, storage, treeConfig)
 	require.NoError(t, err, "failed to create B+ tree")
 
 	return ctx, storage, tree
+}
+
+// createTransactionalStorage creates a transactional storage for testing
+func createTransactionalStorage(t *testing.T) logical.TransactionalStorage {
+	// Create transactional inmem backend
+	inmemBackend, err := inmem.NewInmem(nil, nil)
+	require.NoError(t, err, "failed to create in-memory backend")
+
+	// Wrap it in logical storage
+	logicalStorage := logical.NewLogicalStorage(inmemBackend)
+
+	// Verify it's transactional
+	txnStorage, ok := logicalStorage.(logical.TransactionalStorage)
+	require.True(t, ok, "logical storage should implement TransactionalStorage")
+
+	return txnStorage
+}
+
+// initTransactionalNodeStorageTest initializes a transactional node storage for testing
+func initTransactionalNodeStorageTest(t *testing.T) (context.Context, TransactionalStorage) {
+	ctx := context.Background()
+	// Create transactional storage
+	s := createTransactionalStorage(t)
+
+	// Create transactional node storage
+	storage, err := NewTransactionalNodeStorage(s, NewTransactionalStorageConfig())
+	require.NoError(t, err, "failed to create transactional node storage")
+
+	return ctx, storage
 }

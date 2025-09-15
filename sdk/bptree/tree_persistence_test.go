@@ -232,12 +232,13 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 		treeCtx := tree.contextWithTreeID(ctx)
 
 		// Manually corrupt the root ID by setting it to a non-existent node
-		err = storage.SetRootID(treeCtx, "non-existent-node-id")
+		err = storage.PutRootID(treeCtx, "non-existent-node-id")
 		require.NoError(t, err)
 
 		// Trying to load this corrupted tree should fail gracefully
 		_, err = LoadExistingBPlusTree(ctx, storage, "corruption_test")
 		require.Error(t, err, "Should fail to load tree with corrupted root")
-		require.Contains(t, err.Error(), "root node validation failed")
+		// TODO (gabrielopesantos): Review this error, it changed because we no longer return a nil error when a node is not found...
+		require.Contains(t, err.Error(), "failed to load root node")
 	})
 }

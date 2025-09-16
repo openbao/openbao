@@ -2504,28 +2504,21 @@ func (c *Core) invalidateMountInternal(ctx context.Context, key string) error {
 		}
 		desiredMountEntry = nil
 	}
-	if desiredMountEntry != nil && desiredMountEntry.Path == "sys/" {
-		c.logger.Info("skipping sys") // TODO(phil9909): why?
-		return nil
-	}
 
-	actualRouteEntry, ok := c.router.matchingRouteEntryByPath(ctx, path.Join(NamespaceBarrierPrefix(ns), table, uuid)+"/", false)
-	if !ok {
-		actualRouteEntry = nil
-	}
+	actualMountEntry := c.router.MatchingMountByUUID(uuid)
 
 	switch {
-	case desiredMountEntry == nil && actualRouteEntry != nil: // mount was deleted
+	case desiredMountEntry == nil && actualMountEntry != nil: // mount was deleted
 		if table == "auth" {
-			err = c.removeCredEntry(ctx, actualRouteEntry.mountEntry.Path, false)
+			err = c.removeCredEntry(ctx, actualMountEntry.Path, false)
 		} else {
-			err = c.removeMountEntry(ctx, actualRouteEntry.mountEntry.Path, false)
+			err = c.removeMountEntry(ctx, actualMountEntry.Path, false)
 		}
 		if err != nil {
 			return err
 		}
 
-		routerPath := actualRouteEntry.mountEntry.Path
+		routerPath := actualMountEntry.Path
 		if table == "auth" {
 			routerPath = path.Join("auth", routerPath) + "/"
 		}
@@ -2540,7 +2533,7 @@ func (c *Core) invalidateMountInternal(ctx context.Context, key string) error {
 			}
 		}
 
-	case desiredMountEntry != nil && actualRouteEntry == nil: // mount was created
+	case desiredMountEntry != nil && actualMountEntry == nil: // mount was created
 		if table == "auth" {
 			err = c.enableCredentialInternal(ctx, desiredMountEntry, false)
 			if err != nil {
@@ -2554,28 +2547,30 @@ func (c *Core) invalidateMountInternal(ctx context.Context, key string) error {
 			}
 		}
 
-	case desiredMountEntry != nil && actualRouteEntry != nil: // mount was modified (e.g. tuned or tainted)
-		routerPath := actualRouteEntry.mountEntry.Path
+	case desiredMountEntry != nil && actualMountEntry != nil: // mount was modified (e.g. tuned or tainted)
+		routerPath := actualMountEntry.Path
 		if table == "auth" {
 			routerPath = path.Join("auth", routerPath) + "/"
 		}
 
-		if desiredMountEntry.Tainted != actualRouteEntry.tainted {
+		if desiredMountEntry.Tainted != actualMountEntry.Tainted {
 			if desiredMountEntry.Tainted {
 				c.logger.Info("tainting", "path", routerPath)
 				err = c.router.Taint(ctx, routerPath)
 				if err != nil {
 					return err
 				}
+				actualMountEntry.Tainted = true
 			} else {
 				err = c.router.Untaint(ctx, routerPath)
 				if err != nil {
 					return err
 				}
+				actualMountEntry.Tainted = false
 			}
 		}
 
-		if !reflect.DeepEqual(desiredMountEntry.Config, actualRouteEntry.mountEntry.Config) {
+		if !reflect.DeepEqual(desiredMountEntry.Config, actualMountEntry.Config) {
 			lock := &c.mountsLock
 			if table == "auth" {
 				lock = &c.authLock
@@ -2583,13 +2578,13 @@ func (c *Core) invalidateMountInternal(ctx context.Context, key string) error {
 
 			lock.Lock()
 
-			actualRouteEntry.mountEntry.Config = desiredMountEntry.Config
-			actualRouteEntry.mountEntry.SyncCache()
+			actualMountEntry.Config = desiredMountEntry.Config
+			actualMountEntry.SyncCache()
 
 			lock.Unlock()
 		}
 
-		if desiredMountEntry.Options["version"] != actualRouteEntry.mountEntry.Options["version"] {
+		if desiredMountEntry.Options["version"] != actualMountEntry.Options["version"] {
 			err = c.reloadBackendCommon(ctx, desiredMountEntry, table == "auth")
 			if err != nil {
 				return err

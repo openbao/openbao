@@ -32,9 +32,6 @@ type StorageConfig struct {
 	// NodeSerializer defines how nodes are serialized/deserialized
 	NodeSerializer NodeSerializer
 
-	// IsTransaction denotes if this storage is used within a transaction context
-	IsTransaction bool
-
 	// Enable or disable caching at the storage layer
 	CachingEnabled bool
 	// Cache size for node caching (if caching is enabled)
@@ -42,8 +39,6 @@ type StorageConfig struct {
 
 	// Enable or disable built-in write buffering at the storage layer
 	BufferingEnabled bool
-	// Max dirty nodes to buffer before automatic flush (Not used for now...)
-	MaxBufferedNodes int
 }
 
 func NewStorageConfig(opts ...StorageOption) *StorageConfig {
@@ -53,7 +48,6 @@ func NewStorageConfig(opts ...StorageOption) *StorageConfig {
 		CachingEnabled:   true,              // Enable caching by default
 		CacheSize:        1000,              // Default cache size
 		BufferingEnabled: false,             // Enable buffering by default
-		MaxBufferedNodes: 0,                 // Default max buffered nodes
 	}
 
 	// Apply options
@@ -69,7 +63,6 @@ func NewTransactionalStorageConfig(opts ...StorageOption) *StorageConfig {
 		CachingEnabled:   true,              // Enable caching by default
 		CacheSize:        100,               // Smaller cache for transactional storage
 		BufferingEnabled: true,              // Enable buffering by default
-		MaxBufferedNodes: 0,                 // Default max buffered nodes
 	}
 
 	// Apply options
@@ -121,13 +114,6 @@ func WithCacheSize(size int) StorageOption {
 func WithBufferingEnabled(enabled bool) StorageOption {
 	return func(cfg *StorageConfig) {
 		cfg.BufferingEnabled = enabled
-	}
-}
-
-// WithMaxBufferedNodes sets the max number of buffered nodes before flush
-func WithMaxBufferedNodes(max int) StorageOption {
-	return func(cfg *StorageConfig) {
-		cfg.MaxBufferedNodes = max
 	}
 }
 

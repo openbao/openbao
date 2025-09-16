@@ -443,9 +443,9 @@ func (s *NodeStorage) SetBufferingEnabled(enabled bool) {
 // Usage:
 //
 //	err := WithBufferedWrites(ctx, storage, func(storage Storage) error {
-//	    // Multiple SaveNode/DeleteNode calls are automatically buffered
-//	    storage.SaveNode(ctx, node1)  // buffered
-//	    storage.SaveNode(ctx, node2)  // buffered
+//	    // Multiple PutNode/DeleteNode calls are automatically buffered
+//	    storage.PutNode(ctx, node1)  // buffered
+//	    storage.PutNode(ctx, node2)  // buffered
 //	    storage.DeleteNode(ctx, "old-node")  // buffered
 //	    // All operations are flushed together at the end
 //	    return nil
@@ -481,7 +481,7 @@ func WithBufferedWrites(ctx context.Context, storage Storage, fn func(Storage) e
 //
 //	err := WithAutoFlush(ctx, storage, func(storage Storage) error {
 //	    // Operations use the storage's default buffering behavior
-//	    storage.SaveNode(ctx, node)  // buffered if storage supports it
+//	    storage.PutNode(ctx, node)  // buffered if storage supports it
 //	    return nil  // any buffered operations automatically flushed at the end
 //	})
 func WithAutoFlush(ctx context.Context, storage Storage, fn func(Storage) error) error {
@@ -520,11 +520,11 @@ func WithAutoFlush(ctx context.Context, storage Storage, fn func(Storage) error)
 //     return WithBufferedWrites(ctx, t.storage, func(storage Storage) error {
 //         for key, value := range items {
 //             node := createNodeForValue(key, value)
-//             if err := storage.SaveNode(ctx, node); err != nil {
+//             if err := storage.PutNode(ctx, node); err != nil {
 //                 return err
 //             }
 //         }
-//         // All SaveNode calls are buffered and flushed together here
+//         // All PutNode calls are buffered and flushed together here
 //         return nil
 //     })
 // }
@@ -532,7 +532,7 @@ func WithAutoFlush(ctx context.Context, storage Storage, fn func(Storage) error)
 // Pattern 2: Ensure immediate persistence
 // func (t *BPlusTree) CriticalUpdate(ctx context.Context, node *Node) error {
 //     return WithAutoFlush(ctx, t.storage, func(storage Storage) error {
-//         if err := storage.SaveNode(ctx, node); err != nil {
+//         if err := storage.PutNode(ctx, node); err != nil {
 //             return err
 //         }
 //         // Node is guaranteed to be persisted when this function returns

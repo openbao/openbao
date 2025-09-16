@@ -48,30 +48,42 @@ type NodeTransaction struct {
 
 var _ Transaction = &NodeTransaction{}
 
+// NOTE (gsantos): Should it be possible for cache size, buffering, etc to be overridden per transaction?
+// BeginReadOnlyTx starts a read-only transaction and inherits all configuration from the parent storage.
+// It creates a transaction-local cache, that is then merged with the parent's, and buffer that are completely
+// isolated
 func (s *TransactionalNodeStorage) BeginReadOnlyTx(ctx context.Context) (Transaction, error) {
 	tx, err := s.storage.(logical.TransactionalStorage).BeginReadOnlyTx(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create transaction-local cache for isolation (use reasonable default size)
-	txCache, err := lru.NewLRU[string, *Node](100) // Transaction cache size - can be configurable later
-	if err != nil {
-		return nil, fmt.Errorf("failed to create transaction cache: %w", err)
+	var txCache *lru.LRU[string, *Node]
+	if s.cachingEnabled {
+		// Create transaction-local cache for isolation (inherit parent's cache size)
+		txCache, err = lru.NewLRU[string, *Node](s.cache.Size())
+		if err != nil {
+			return nil, fmt.Errorf("failed to create transaction cache: %w", err)
+		}
+	}
+
+	var dirtyTracker *DirtyTracker
+	if s.bufferingEnabled {
+		// Create transaction-local dirty tracker
+		dirtyTracker = NewDirtyTracker()
 	}
 
 	return &NodeTransaction{
 		NodeStorage: &NodeStorage{
 			storage:        tx,
 			serializer:     s.serializer,
-			cache:          txCache, // Transaction-local cache
-			cachingEnabled: true,    // Enable caching within transaction
-			isTransaction:  true,    // Explicit transaction flag
+			cachingEnabled: s.cachingEnabled, // Inherit caching setting from parent
+			cache:          txCache,          // Transaction-local cache
+			isTransaction:  true,             // Explicit transaction flag
 			// New mutex instance for the transaction
-			lock: sync.RWMutex{},
-			// Enable built-in buffering for transaction
-			dirtyTracker:     NewDirtyTracker(), // Each transaction gets its own buffer
-			bufferingEnabled: true,              // Buffering enabled for transaction
+			lock:             sync.RWMutex{},
+			bufferingEnabled: s.bufferingEnabled, // Inherit buffering setting from parent
+			dirtyTracker:     dirtyTracker,       // Each transaction gets its own buffer
 		},
 		parentStorage: s, // Keep reference to parent for cache merging
 	}, nil
@@ -83,24 +95,32 @@ func (s *TransactionalNodeStorage) BeginTx(ctx context.Context) (Transaction, er
 		return nil, err
 	}
 
-	// Create transaction-local cache for isolation (use reasonable default size)
-	txCache, err := lru.NewLRU[string, *Node](100) // Transaction cache size - can be configurable later
-	if err != nil {
-		return nil, fmt.Errorf("failed to create transaction cache: %w", err)
+	var txCache *lru.LRU[string, *Node]
+	if s.cachingEnabled {
+		// Create transaction-local cache for isolation (inherit parent's cache size)
+		txCache, err = lru.NewLRU[string, *Node](s.cache.Size())
+		if err != nil {
+			return nil, fmt.Errorf("failed to create transaction cache: %w", err)
+		}
+	}
+
+	var dirtyTracker *DirtyTracker
+	if s.bufferingEnabled {
+		// Create transaction-local dirty tracker
+		dirtyTracker = NewDirtyTracker()
 	}
 
 	return &NodeTransaction{
 		NodeStorage: &NodeStorage{
 			storage:        tx,
 			serializer:     s.serializer,
-			cache:          txCache, // Transaction-local cache
-			cachingEnabled: true,    // Enable caching within transaction
-			isTransaction:  true,    // Explicit transaction flag
+			cachingEnabled: s.cachingEnabled, // Inherit caching setting from parent
+			cache:          txCache,          // Transaction-local cache
+			isTransaction:  true,             // Explicit transaction flag
 			// New mutex instance for the transaction
-			lock: sync.RWMutex{},
-			// Enable built-in buffering for transaction
-			dirtyTracker:     NewDirtyTracker(), // Each transaction gets its own buffer
-			bufferingEnabled: true,              // Buffering enabled for transaction
+			lock:             sync.RWMutex{},
+			bufferingEnabled: s.bufferingEnabled, // Inherit buffering setting from parent
+			dirtyTracker:     dirtyTracker,       // Each transaction gets its own buffer
 		},
 		parentStorage: s, // Keep reference to parent for cache merging
 	}, nil
@@ -145,7 +165,7 @@ func (s *NodeTransaction) mergeCacheIntoParent() {
 	s.parentStorage.lock.Lock()
 	defer s.parentStorage.lock.Unlock()
 
-	// Get all keys from transaction cache
+	// Get all keys from transaction cache (NOTE: This is expensive...What if the cache was shared between transactions?)
 	keys := s.cache.Keys()
 
 	// Copy each entry from transaction cache to parent cache
@@ -154,47 +174,6 @@ func (s *NodeTransaction) mergeCacheIntoParent() {
 			// Add to parent cache (this will handle LRU eviction automatically)
 			s.parentStorage.cache.Add(key, value)
 		}
-	}
-}
-
-// NewNodeStorageFromTransaction creates a NodeStorage that works within an existing transaction.
-// Caching is disabled to avoid cache coherency issues with external transaction control.
-func NewNodeStorageFromTransaction(
-	tx logical.Transaction,
-	serializer NodeSerializer,
-	cache *lru.LRU[string, *Node], // Shared cache from parent storage (not used due to skipCache)
-) (*NodeStorage, error) {
-	if serializer == nil {
-		serializer = &JSONSerializer{}
-	}
-
-	return &NodeStorage{
-		storage:        tx,
-		serializer:     serializer,
-		cache:          cache, // Not used due to skipCache=true
-		cachingEnabled: true,  // Enable caching within transaction (would be merged to parent)
-		isTransaction:  true,  // Explicit transaction flag
-		lock:           sync.RWMutex{},
-	}, nil
-}
-
-// WithExistingTransaction creates a NodeStorage wrapper that participates in an existing transaction.
-// This allows using the wrapper's utility methods within a transaction managed externally.
-// Caching is disabled to avoid cache coherency issues with external transaction control.
-// The returned NodeStorage should NOT have Commit/Rollback called on it - the original transaction
-// should handle that.
-func WithExistingTransaction(
-	ctx context.Context,
-	tx logical.Transaction,
-	parentStorage *NodeStorage, // Parent storage for shared cache and config
-) Storage {
-	return &NodeStorage{
-		storage:        tx,
-		serializer:     parentStorage.serializer,
-		cache:          parentStorage.cache, // Not used due to skipCache=true
-		cachingEnabled: true,                // Enable caching within transaction (wont be merged to parent)
-		isTransaction:  true,                // Explicit transaction flag
-		lock:           sync.RWMutex{},      // New mutex for transaction isolation
 	}
 }
 
@@ -235,4 +214,90 @@ func WithTransaction(ctx context.Context, originalStorage Storage, callback func
 		// If storage doesn't support transactions, execute directly
 		return callback(originalStorage)
 	}
+}
+
+// NewNodeStorageFromTransaction creates a NodeStorage that works within an existing external transaction.
+// This creates a completely isolated transaction-local cache that will NOT be merged back to the parent.
+// Buffering is enabled with its own DirtyTracker.
+//
+// Use this when you have an external transaction that you manage yourself and want to use
+// NodeStorage functionality within it, but don't want cache pollution in the parent storage.
+func NewNodeStorageFromTransaction(
+	tx logical.Transaction,
+	config *StorageConfig,
+) (*NodeStorage, error) {
+	if config == nil {
+		config = NewTransactionalStorageConfig() // Use defaults if nil
+	} else {
+		if err := ValidateStorageConfig(config); err != nil {
+			return nil, err
+		}
+	}
+
+	// Create transaction-local cache (isolated, won't be merged)
+	var cache *lru.LRU[string, *Node]
+	if config.CachingEnabled {
+		var err error
+		cache, err = lru.NewLRU[string, *Node](config.CacheSize)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create transaction-local cache: %w", err)
+		}
+	}
+
+	// Create transaction-local dirty tracker
+	var dirtyTracker *DirtyTracker
+	if config.BufferingEnabled {
+		dirtyTracker = NewDirtyTracker()
+	}
+
+	return &NodeStorage{
+		storage:          tx,
+		isTransaction:    true, // Mark as transaction
+		serializer:       config.NodeSerializer,
+		cachingEnabled:   config.CachingEnabled,
+		cache:            cache, // Transaction-local cache (isolated)
+		bufferingEnabled: config.BufferingEnabled,
+		dirtyTracker:     dirtyTracker, // Transaction-local buffer
+		lock:             sync.RWMutex{},
+	}, nil
+}
+
+// WithExistingTransaction creates a NodeStorage wrapper that participates in an existing external transaction.
+// This creates a transaction-local cache and buffer that are completely isolated and will NOT be merged
+// back to the parent storage. This is the recommended approach for external transaction management.
+//
+// The returned NodeStorage should NOT have Commit/Rollback called on it - the original transaction
+// should handle that. When the external transaction commits/rolls back, the transaction-local cache
+// and buffer are automatically discarded.
+//
+// Usage:
+//
+//	tx, _ := logicalStorage.BeginTx(ctx)
+//	txStorage := WithExistingTransaction(ctx, tx, parentStorage)
+//	// Use txStorage for operations...
+//	tx.Commit(ctx) // Handle commit/rollback of tx yourself
+func WithExistingTransaction(
+	ctx context.Context,
+	tx logical.Transaction,
+	parentStorage *NodeStorage, // Parent storage for config inheritance only
+	opts ...StorageOption, // Optional overrides for transaction-specific config
+) (Storage, error) {
+	// Create transaction config by inheriting from parent and applying overrides
+	parentConfig := &StorageConfig{
+		NodeSerializer:   parentStorage.serializer,
+		CachingEnabled:   parentStorage.cachingEnabled,
+		CacheSize:        parentStorage.cache.Size(),
+		BufferingEnabled: parentStorage.bufferingEnabled,
+	}
+
+	// Apply overrides
+	ApplyStorageOptions(parentConfig, opts...)
+
+	// Create NodeStorage with transaction-local resources
+	nodeStorage, err := NewNodeStorageFromTransaction(tx, parentConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create NodeStorage for existing transaction: %w", err)
+	}
+
+	return nodeStorage, nil
 }

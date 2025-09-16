@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+# READ THIS BEFORE MAKING CHANGES:
+#
+# If you want to add a new commit-msg check, here are the rules:
+#
+#   1. Create a bash function for your check (see e.g. check_signoff below).
+#      The proposed commit message is available in the $COMMIT_MESSAGE_FILE file.
+#   2. Add the name of the function to the CHECKS variable.
+#   3. If no changes relevant to your new check are staged, then
+#      do not output anything at all - this would be annoying noise.
+#      In this case, call 'return 0' from your check function to return
+#      early without blocking the commit.
+#   4. If any non-trivial check-specific thing has to be invoked,
+#      then output '==> [check description]' as the first line of
+#      output. Each sub-check should output '--> [subcheck description]'
+#      after it has run, indicating success or failure.
+#   5. Call 'block [reason]' to block the commit. This ensures the last
+#      line of output calls out that the commit was blocked - which may not
+#      be obvious from random error messages generated in 4.
+#
+# At the moment, there are no automated tests for this hook, so please run it
+# locally to check you have not broken anything - breaking this will interfere
+# with other peoples' workflows significantly, so be sure, check everything twice.
+
+set -euo pipefail
+
+# Call block to block the commit with a message.
+block() {
+  echo "$@"
+  echo "Commit blocked - see errors above."
+  exit 1
+}
+
+# Add all check functions to this space separated list.
+# They are executed in this order (see end of file).
+CHECKS="check_signoff"
+
+# ensure the commit message contains a Signed-off-by trailer
+check_signoff() {
+    if ! grep --silent '^Signed-off-by: ' "$COMMIT_MESSAGE_FILE" > /dev/null ; then
+        block "Commit is not signed-off. Hint use: git commit --signoff"
+    fi
+}
+
+COMMIT_MESSAGE_FILE="$1"
+
+for CHECK in $CHECKS; do
+  # Force each check into a subshell to avoid crosstalk.
+  ( $CHECK ) || exit $?
+done

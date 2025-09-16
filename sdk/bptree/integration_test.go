@@ -5,6 +5,7 @@ package bptree
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -31,7 +32,8 @@ func TestBufferedStorageWithTransactions(t *testing.T) {
 	baseStorage, err := NewNodeStorage(baseLogicalStorage, NewStorageConfig())
 	require.NoError(t, err, "Failed to create base node storage")
 
-	transactionalStorage := &TransactionalNodeStorage{NodeStorage: baseStorage}
+	transactionalStorage, err := NewTransactionalNodeStorage(baseLogicalStorage, NewTransactionalStorageConfig())
+	require.NoError(t, err, "Failed to create transactional node storage")
 
 	t.Run("BufferedWrites_WithinTransaction", func(t *testing.T) {
 		// Begin a transaction
@@ -123,6 +125,144 @@ func TestBufferedStorageWithTransactions(t *testing.T) {
 		}
 		if _, err := baseStorage.GetNode(ctx, "node5"); err != nil {
 			t.Errorf("node5 should be in base storage: %v", err)
+		}
+	})
+
+	t.Run("ExternalTransaction_IsolatedCache", func(t *testing.T) {
+		// Test that external transactions get their own isolated cache
+		// that doesn't merge back to parent
+
+		// First, put a node in the base storage to establish baseline
+		WithAutoFlush(ctx, baseStorage, func(storage Storage) error {
+			baseNode := NewLeafNode("base-node")
+			err := baseStorage.PutNode(ctx, baseNode)
+			require.NoError(t, err, "failed to put base node")
+			return err
+		})
+
+		// Begin external transaction
+		tx, err := baseLogicalStorage.BeginTx(ctx)
+		require.NoError(t, err, "failed to begin external transaction")
+
+		// Create NodeStorage from external transaction
+		// Transactions are supposed to have buffering enabled, not sure about externals ...
+		// User can't forget to flush buffer...
+		txStorage, err := WithExistingTransaction(ctx, tx, baseStorage, WithBufferingEnabled(true))
+		require.NoError(t, err, "failed to create external transaction storage")
+
+		// Read the base node through transaction storage (should cache it locally)
+		txNode, err := txStorage.GetNode(ctx, "base-node")
+		require.NoError(t, err, "failed to get base node through tx storage")
+		require.Equal(t, "base-node", txNode.ID)
+
+		// Put a new node through transaction storage (should buffer and cache locally)
+		txOnlyNode := NewLeafNode("tx-only-node")
+		WithAutoFlush(ctx, txStorage, func(storage Storage) error {
+			err = txStorage.PutNode(ctx, txOnlyNode)
+			require.NoError(t, err, "failed to put tx-only node")
+			return err
+		})
+
+		// Commit external transaction
+		err = tx.Commit(ctx)
+		require.NoError(t, err, "failed to commit external transaction")
+
+		// Now the tx-only node should be visible in base storage
+		// (because the transaction committed to the underlying storage)
+		finalNode, err := baseStorage.GetNode(ctx, "tx-only-node")
+		require.NoError(t, err, "tx-only node should be in base storage after commit")
+		require.Equal(t, "tx-only-node", finalNode.ID)
+
+		// Verify base storage cache wasn't polluted with transaction cache entries
+		_, exists := baseStorage.cache.Get("tx-only-node")
+		require.False(t, exists, "base storage cache should not have tx-only-node")
+	})
+
+	t.Run("ExternalTransaction_Rollback", func(t *testing.T) {
+		// Test that external transaction rollback properly discards changes
+
+		// Begin external transaction
+		tx, err := baseLogicalStorage.BeginTx(ctx)
+		require.NoError(t, err, "failed to begin external transaction")
+
+		// Create NodeStorage from external transaction
+		txStorage, err := WithExistingTransaction(ctx, tx, baseStorage)
+		require.NoError(t, err, "failed to create external transaction storage")
+
+		// Put a node that we'll rollback
+		rollbackNode := &Node{ID: "rollback-node", IsLeaf: true}
+		err = txStorage.PutNode(ctx, rollbackNode)
+		require.NoError(t, err, "failed to put rollback node")
+
+		// Flush to transaction (but not yet committed)
+		if ns, ok := txStorage.(*NodeStorage); ok {
+			err = ns.FlushBuffer(ctx)
+			require.NoError(t, err, "failed to flush transaction buffer")
+		}
+
+		// Rollback external transaction
+		err = tx.Rollback(ctx)
+		require.NoError(t, err, "failed to rollback external transaction")
+
+		// Verify the node is not in base storage
+		_, err = baseStorage.GetNode(ctx, "rollback-node")
+		require.Equal(t, ErrNodeNotFound, err, "rollback-node should not exist after rollback")
+	})
+
+	t.Run("ExternalTransactionConfigInheritance", func(t *testing.T) {
+		// Test that external transactions also inherit and can override configuration
+
+		// Create base storage with specific configuration
+		baseStorage, err := NewNodeStorage(baseLogicalStorage, NewStorageConfig(
+			WithCacheSize(150),
+			WithCachingEnabled(true),
+			WithBufferingEnabled(true),
+		))
+		require.NoError(t, err, "Failed to create base storage")
+
+		// Test external transaction with default inheritance
+		tx1, err := baseLogicalStorage.BeginTx(ctx)
+		require.NoError(t, err, "failed to begin external transaction")
+
+		txStorage1, err := WithExistingTransaction(ctx, tx1, baseStorage)
+		require.NoError(t, err, "failed to create external transaction storage")
+
+		node1 := &Node{ID: "external-inheritance-1", IsLeaf: true}
+		err = txStorage1.PutNode(ctx, node1)
+		require.NoError(t, err, "failed to put node in external transaction")
+
+		if ns, ok := txStorage1.(*NodeStorage); ok {
+			err = ns.FlushBuffer(ctx)
+			require.NoError(t, err, "failed to flush external transaction buffer")
+		}
+
+		err = tx1.Commit(ctx)
+		require.NoError(t, err, "failed to commit external transaction")
+
+		// Test external transaction with overridden configuration
+		tx2, err := baseLogicalStorage.BeginTx(ctx)
+		require.NoError(t, err, "failed to begin external transaction with overrides")
+
+		txStorage2, err := WithExistingTransaction(ctx, tx2, baseStorage,
+			WithCacheSize(25),
+			WithBufferingEnabled(false),
+		)
+		require.NoError(t, err, "failed to create override external transaction storage")
+
+		node2 := &Node{ID: "external-inheritance-2", IsLeaf: true}
+		err = txStorage2.PutNode(ctx, node2)
+		require.NoError(t, err, "failed to put node in override external transaction")
+
+		// No need to flush buffer since buffering is disabled
+		err = tx2.Commit(ctx)
+		require.NoError(t, err, "failed to commit override external transaction")
+
+		// Verify both nodes are accessible
+		for i := 1; i <= 2; i++ {
+			nodeID := fmt.Sprintf("external-inheritance-%d", i)
+			node, err := baseStorage.GetNode(ctx, nodeID)
+			require.NoError(t, err, "failed to get external node %s from base storage", nodeID)
+			require.Equal(t, nodeID, node.ID, "external node ID mismatch for %s", nodeID)
 		}
 	})
 }

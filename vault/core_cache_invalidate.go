@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/quotas"
 )
 
@@ -52,7 +53,13 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 	switch {
 	case strings.HasPrefix(namespacedKey, namespaceStoreSubPath):
 		c.namespaceStore.invalidate(ctx, "")
-		c.policyStore.invalidateNamespace(ctx, strings.TrimPrefix(namespacedKey, namespaceStoreSubPath))
+
+		ctx := physical.CacheRefreshContext(ctx, true)
+		uuid := strings.TrimPrefix(namespacedKey, namespaceStoreSubPath)
+
+		c.policyStore.invalidateNamespace(ctx, uuid)
+
+		c.invalidateNamespaceMounts(ctx, uuid)
 
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath):
 		policyType := PolicyTypeACL // for now it is safe to assume type is ACL
@@ -61,11 +68,18 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+quotas.StoragePrefix):
 		c.quotaManager.Invalidate(strings.TrimPrefix(key, systemBarrierPrefix+quotas.StoragePrefix))
 
-	case c.router.Invalidate(ctx, key):
-	// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched
-
 	case key == coreAuditConfigPath || key == coreLocalAuditConfigPath:
 		c.invalidateAudits()
+
+	case namespacedKey == coreMountConfigPath || namespacedKey == coreLocalMountConfigPath:
+	// TODO: handle non transaction storage
+
+	case strings.HasPrefix(namespacedKey, coreMountConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalMountConfigPath+"/") ||
+		strings.HasPrefix(namespacedKey, coreAuthConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalAuthConfigPath+"/"):
+		c.invalidateMount(namespace.ContextWithNamespace(c.activeContext, ns), namespacedKey)
+
+	case c.router.Invalidate(ctx, key):
+	// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched
 
 	default:
 		c.logger.Warn("no idea how to invalidate cache. Maybe it's not cached and this is fine, maybe not", "key", key)

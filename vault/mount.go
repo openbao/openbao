@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -2385,4 +2386,219 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 	}
 
 	return nil, errors.New("invalid mount entry")
+}
+
+func (c *Core) invalidateMount(ctx context.Context, key string) {
+	go func() {
+		err := c.invalidateMountInternal(ctx, key)
+		if err != nil {
+			c.logger.Error("unable to invalidate mount, restarting core", "key", key, "error", err.Error())
+			c.restart()
+		}
+	}()
+}
+
+func (c *Core) invalidateNamespaceMounts(ctx context.Context, uuid string) {
+	ctx = context.WithoutCancel(ctx)
+	go func() {
+		ns, err := c.namespaceStore.GetNamespace(ctx, uuid)
+		if err != nil {
+			c.logger.Error("unable to invalidate mounts for namespace, restarting core", "error", err.Error())
+			c.restart()
+			return
+		}
+
+		keys := []string{}
+
+		if ns == nil {
+			for _, entry := range c.mounts.Entries {
+				if entry.Namespace().UUID == uuid {
+					key := path.Join(coreMountConfigPath, entry.UUID)
+					if entry.Local {
+						key = path.Join(coreLocalMountConfigPath, entry.UUID)
+					}
+					keys = append(keys, key)
+
+					if ns == nil {
+						ns = entry.Namespace()
+					}
+				}
+			}
+			for _, entry := range c.auth.Entries {
+				if entry.Namespace().UUID == uuid {
+					key := path.Join(coreAuthConfigPath, entry.UUID)
+					if entry.Local {
+						key = path.Join(coreLocalAuthConfigPath, entry.UUID)
+					}
+					keys = append(keys, key)
+
+					if ns == nil {
+						ns = entry.Namespace()
+					}
+				}
+			}
+			if len(keys) == 0 {
+				return
+			}
+
+			ctx = namespace.ContextWithNamespace(ctx, ns)
+		} else {
+			ctx = namespace.ContextWithNamespace(ctx, ns)
+
+			barrier := NamespaceView(c.barrier, ns)
+
+			mountGlobal, mountLocal, err := listTransactionalMountsForNamespace(ctx, barrier)
+			if err != nil {
+				c.logger.Error("unable to invalidate mounts for namespace, restarting core", "ns", ns.UUID, "error", err.Error())
+				c.restart()
+				return
+			}
+
+			authGlobal, authLocal, err := c.listTransactionalCredentialsForNamespace(ctx, barrier)
+			if err != nil {
+				c.logger.Error("unable to invalidate mounts for namespace, restarting core", "ns", ns.UUID, "error", err.Error())
+				c.restart()
+				return
+			}
+
+			for _, mount := range mountGlobal {
+				keys = append(keys, path.Join(coreMountConfigPath, mount))
+			}
+			for _, mount := range mountLocal {
+				keys = append(keys, path.Join(coreLocalMountConfigPath, mount))
+			}
+			for _, mount := range authGlobal {
+				keys = append(keys, path.Join(coreAuthConfigPath, mount))
+			}
+			for _, mount := range authLocal {
+				keys = append(keys, path.Join(coreLocalAuthConfigPath, mount))
+			}
+		}
+
+		c.logger.Debug("invalidating namespace mount", "ns", uuid, "keys", keys)
+		for _, key := range keys {
+			err := c.invalidateMountInternal(ctx, key)
+			if err != nil {
+				c.logger.Error("unable to invalidate mount, restarting core", "key", key, "error", err.Error())
+				c.restart()
+				return
+			}
+		}
+	}()
+}
+
+func (c *Core) invalidateMountInternal(ctx context.Context, key string) error {
+	prefix, uuid := path.Split(key)
+	prefix = path.Clean(prefix)
+
+	table := "logical"
+	if prefix != coreLocalMountConfigPath && prefix != coreMountConfigPath {
+		if prefix != coreAuthConfigPath && prefix != coreLocalAuthConfigPath {
+			return fmt.Errorf("invalid path prefix %q", prefix)
+		}
+		table = "auth"
+	}
+
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+	barrier := NamespaceView(c.barrier, ns)
+
+	desiredMountEntry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, prefix, uuid)
+	if err != nil {
+		if err.Error() != "unexpected empty storage entry for mount" {
+			return err
+		}
+		desiredMountEntry = nil
+	}
+
+	actualMountEntry := c.router.MatchingMountByUUID(uuid)
+
+	switch {
+	case desiredMountEntry == nil && actualMountEntry != nil: // mount was deleted
+		if table == "auth" {
+			err = c.removeCredEntry(ctx, actualMountEntry.Path, false)
+		} else {
+			err = c.removeMountEntry(ctx, actualMountEntry.Path, false)
+		}
+		if err != nil {
+			return err
+		}
+
+		routerPath := actualMountEntry.Path
+		if table == "auth" {
+			routerPath = path.Join("auth", routerPath) + "/"
+		}
+		if err := c.router.Unmount(ctx, routerPath); err != nil {
+			return err
+		}
+
+		if c.quotaManager != nil {
+			if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, key); err != nil {
+				c.logger.Error("failed to update quotas after disabling mount", "error", err, "namespace", ns.Path, "path", key)
+				return err
+			}
+		}
+
+	case desiredMountEntry != nil && actualMountEntry == nil: // mount was created
+		if table == "auth" {
+			err = c.enableCredentialInternal(ctx, desiredMountEntry, false)
+			if err != nil {
+				return err
+			}
+		} else {
+			c.logger.Info("calling mount internal", "path", desiredMountEntry.Path)
+			err := c.mountInternal(ctx, desiredMountEntry, false)
+			if err != nil {
+				return err
+			}
+		}
+
+	case desiredMountEntry != nil && actualMountEntry != nil: // mount was modified (e.g. tuned or tainted)
+		routerPath := actualMountEntry.Path
+		if table == "auth" {
+			routerPath = path.Join("auth", routerPath) + "/"
+		}
+
+		if desiredMountEntry.Tainted != actualMountEntry.Tainted {
+			if desiredMountEntry.Tainted {
+				c.logger.Info("tainting", "path", routerPath)
+				err = c.router.Taint(ctx, routerPath)
+				if err != nil {
+					return err
+				}
+				actualMountEntry.Tainted = true
+			} else {
+				err = c.router.Untaint(ctx, routerPath)
+				if err != nil {
+					return err
+				}
+				actualMountEntry.Tainted = false
+			}
+		}
+
+		if !reflect.DeepEqual(desiredMountEntry.Config, actualMountEntry.Config) {
+			lock := &c.mountsLock
+			if table == "auth" {
+				lock = &c.authLock
+			}
+
+			lock.Lock()
+
+			actualMountEntry.Config = desiredMountEntry.Config
+			actualMountEntry.SyncCache()
+
+			lock.Unlock()
+		}
+
+		if desiredMountEntry.Options["version"] != actualMountEntry.Options["version"] {
+			err = c.reloadBackendCommon(ctx, desiredMountEntry, table == "auth")
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

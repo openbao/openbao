@@ -22,7 +22,7 @@ project:
       primary: false
     - name: Michael Hofer
       affiliation: Adfinis
-      email: michael.hofer@secretz.io
+      email: michael.hofer@adfinis.com
       social: https://github.com/karras
       primary: false
     - name: Alex Scheel
@@ -48,10 +48,61 @@ project:
       primary: false
 
   repositories:
-    - name: Foo
-      url: https://vcs.example.com/foobar/foo
+    - name: openbao
+      url: https://github.com/openbao/openbao/
       comment: |
-        Foo is the core repo for FooBar.
+        This is the core repo for OpenBao.
+    - name: openbao-plugins
+      comment : |
+        This repository contains plugins for OpenBao, an open-source fork of HashiCorp Vault. These plugins are maintained by the OpenBao project but are not included in the core OpenBao binary.
+    - name: openbao-fedora
+      comment : |
+        EPEL/Fedora packaging for OpenBao.
+    - name: openbao-csi-provider
+      comment : |
+        OpenBao Provider for Secret Store CSI Driver.
+    - name: openbao-helm
+      comment : |
+        Helm chart to install OpenBao and other associated components.
+    - name: openbao-plugin-secrets-oauthapp
+      comment : |
+        OAuth 2.0 secrets plugin for OpenBao supporting a variety of grant types.
+    - name: openbao-nightly
+      comment : |
+        Mirror of openbao for nightly build process.
+    - name: go-kms-wrapping
+      comment : |
+        KMS wrapping libraries split out from OpenBao.
+    - name: openbao-k8
+      comment : |
+        First-class support for OpenBao and Kubernetes.
+    - name: dough
+      comment : |
+        Greenfield UI rewrite.
+    - name: dev-wg
+      comment : |
+        Meta project for the Development Working Group.
+    - name: benchmark-openbao
+      comment : |
+        A tool for benchmarking usage of OpenBao.
+    - name: devbao
+      comment : |
+        Development environment for starting OpenBao (Vault) instances
+    - name: artwork
+      comment : |
+        In this repository we provide artwork for the OpenBao project in standardized formats.
+    - name: openbao-template
+      comment : |
+        Template rendering, notifier, and supervisor for OpenBao data.
+    - name: go-secure-stdlib
+      comment : |
+        Stdlib for OpenBao Secure products.
+    - name: openbao-secrets-operator
+      comment : |
+        The OpenBao Secrets Operator (bso) allows Pods to consume openbao secrets natively from Kubernetes Secrets.
+    - name: .github
+      comment : |
+        Meta project to provide information about the OpenBao Github organisation.
   vulnerability-reporting:
     reports-accepted: true
     bug-bounty-available: false
@@ -97,3 +148,9 @@ repository:
       self:
         comment: |
           Self assessment has not yet been completed.
+  release:
+    automated-pipeline: true
+    distribution-points:
+      - uri: https://github.com/openbao/openbao/releases/
+        comment:  GitHub Release Page
+    changelog: https://github.com/openbao/openbao/blob/main/CHANGELOG.md

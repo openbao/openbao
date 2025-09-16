@@ -29,7 +29,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
-	"github.com/stretchr/testify/require"
 )
 
 var testImagePull sync.Once
@@ -63,10 +62,7 @@ func TestExpiration_Metrics(t *testing.T) {
 	testCoreUnsealed(t, testCore)
 
 	exp := testCore.expiration
-
-	leases, leaseCount, err := exp.collectLeases()
-	require.NoError(t, err)
-	exp.Restore(leases, leaseCount, nil)
+	exp.Restore(nil)
 
 	// Set up a count function to calculate number of leases
 	count := 0
@@ -447,10 +443,7 @@ func TestExpiration_Tidy(t *testing.T) {
 	testCoreUnsealed(t, testCore)
 
 	exp := testCore.expiration
-
-	leases, leaseCount, err := exp.collectLeases()
-	require.NoError(t, err)
-	exp.Restore(leases, leaseCount, nil)
+	exp.Restore(nil)
 
 	// Set up a count function to calculate number of leases
 	count := 0
@@ -494,7 +487,7 @@ func TestExpiration_Tidy(t *testing.T) {
 	}
 
 	// Run the tidy operation
-	err = exp.Tidy(ctx)
+	err := exp.Tidy(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -762,9 +755,7 @@ func benchmarkExpirationBackend(b *testing.B, physicalBackend physical.Backend, 
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		leases, leaseCount, err := exp.collectLeases()
-		require.NoError(b, err)
-		exp.Restore(leases, leaseCount, nil)
+		exp.Restore(nil)
 	}
 	b.StopTimer()
 }
@@ -874,9 +865,7 @@ func TestExpiration_Restore(t *testing.T) {
 	}
 
 	// Restore
-	leases, leaseCount, err := exp.collectLeases()
-	require.NoError(t, err)
-	exp.Restore(leases, leaseCount, nil)
+	exp.Restore(nil)
 
 	// Would like to test here, but this is a race with the expiration of the leases.
 
@@ -3089,9 +3078,7 @@ func TestExpiration_MarkIrrevocable(t *testing.T) {
 		t.Fatalf("error stopping expiration manager: %v", err)
 	}
 
-	leases, leaseCount, err := exp.collectLeases()
-	require.NoError(t, err)
-	exp.Restore(leases, leaseCount, nil)
+	exp.Restore(nil)
 
 	loadedLE, err = exp.loadEntry(ctx, leaseID)
 	if err != nil {

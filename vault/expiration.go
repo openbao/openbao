@@ -415,16 +415,7 @@ func (c *Core) setupExpiration(e ExpireLeaseStrategy) error {
 			c.logger.Error("error shutting down core", "error", err)
 		}
 	}
-
-	// Accumulate existing leases
-	c.logger.Debug("collecting leases")
-	leases, leaseCount, err := expMgr.collectLeases()
-	if err != nil {
-		return err
-	}
-	c.logger.Debug("leases collected", "num_existing", leaseCount)
-
-	go c.expiration.Restore(leases, leaseCount, errorFunc)
+	go c.expiration.Restore(errorFunc)
 
 	quit := c.expiration.quitCh
 	go func() {
@@ -685,7 +676,7 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 
 // Restore is used to recover the lease states when starting.
 // This is used after starting the vault.
-func (m *ExpirationManager) Restore(leases map[*namespace.Namespace][]string, leaseCount int, errorFunc func()) {
+func (m *ExpirationManager) Restore(errorFunc func()) {
 	var retErr error
 	defer func() {
 		// Turn off restore mode. We can do this safely without the lock because
@@ -711,6 +702,16 @@ func (m *ExpirationManager) Restore(leases map[*namespace.Namespace][]string, le
 			}
 		}
 	}()
+
+	// Accumulate existing leases
+	m.logger.Debug("collecting leases")
+	var leases map[*namespace.Namespace][]string
+	var leaseCount int
+	leases, leaseCount, retErr = m.collectLeases()
+	if retErr != nil {
+		return
+	}
+	m.logger.Debug("leases collected", "num_existing", leaseCount)
 
 	// Make the channels used for the worker pool
 	type lease struct {

@@ -2422,14 +2422,14 @@ func (c *Core) preSeal() error {
 	c.stopRaftActiveNode()
 	c.cancelNamespaceDeletion()
 
-	if err := c.sealManager.Reset(context.Background()); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error reseting seal manager: %w", err))
-	}
 	if err := c.teardownAudits(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down audits: %w", err))
 	}
 	if err := c.stopExpiration(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error stopping expiration: %w", err))
+	}
+	if err := c.sealManager.Reset(context.Background()); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error reseting seal manager: %w", err))
 	}
 	if err := c.teardownCredentials(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down credentials: %w", err))

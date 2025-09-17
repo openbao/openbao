@@ -16,9 +16,14 @@ Download OCI-based plugins configured in server configuration:
 
 ```shell-session
 $ bao plugin init -config=/etc/openbao/openbao.hcl
-Plugin directory: /opt/openbao/plugins
-Found 2 OCI plugin(s) configured
-[INFO] plugins downloaded successfully
+2025-09-17T21:41:35.311+0200 [INFO]  Plugin directory: /opt/openbao/plugins
+2025-09-17T21:41:35.311+0200 [INFO]  Found 2 OCI plugin(s) in configuration
+2025-09-17T21:41:35.311+0200 [INFO]  downloading plugin from OCI registry: plugin=secrets-aws url=ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1
+2025-09-17T21:41:36.537+0200 [INFO]  found plugin binary in OCI image: plugin=secrets-aws entry=openbao-plugin-secrets-aws size=23265572
+2025-09-17T21:41:37.448+0200 [INFO]  successfully downloaded and validated plugin: plugin=secrets-aws cached_path=/opt/openbao/plugins/.oci-cache/secrets-aws/c8d23e6d/openbao-plugin-secrets-aws symlink_path=/opt/openbao/plugins/secrets-aws hash=c8d23e6d31be2a59d0c269bb7243158c4c61c5073f7ba50ce6f1a0050e023e2d
+2025-09-17T21:41:37.449+0200 [INFO]  downloading plugin from OCI registry: plugin=secrets-nomad url=ghcr.io/openbao/openbao-plugin-secrets-nomad:v0.1.3-dev2
+2025-09-17T21:41:38.838+0200 [INFO]  found plugin binary in OCI image: plugin=secrets-nomad entry=openbao-plugin-secrets-nomad size=16289976
+2025-09-17T21:41:39.657+0200 [INFO]  successfully downloaded and validated plugin: plugin=secrets-nomad cached_path=/opt/openbao/plugins/.oci-cache/secrets-nomad/b7f2db3c/openbao-plugin-secrets-nomad symlink_path=/opt/openbao/plugins/secrets-nomad hash=b7f2db3cbba3df7b4c2868c7c18e43956862b7cd69f90a96bdbba6a3013e400b
 ```
 
 List all available secret plugins in the catalog:

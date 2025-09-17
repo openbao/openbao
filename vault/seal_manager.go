@@ -100,7 +100,7 @@ func (sm *SealManager) setup() {
 	}
 }
 
-// Reset seals all namespaces (beside root) and calls the
+// Reset seals all namespaces (except root) and calls the
 // `(*SealManager) setupSealManager` to overwrite the internal
 // storage of a sealManger with a default values for root namespace.
 func (sm *SealManager) Reset(ctx context.Context) error {
@@ -181,9 +181,9 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 		return
 	}
 
-	sm.sealsByNamespace[ns.UUID] = nil
-	sm.unlockInformationByNamespace[ns.UUID] = nil
-	sm.rotationConfigByNamespace[ns.UUID] = nil
+	delete(sm.sealsByNamespace, ns.UUID)
+	delete(sm.unlockInformationByNamespace, ns.UUID)
+	delete(sm.rotationConfigByNamespace, ns.UUID)
 	sm.barrierByNamespace.Delete(ns.Path)
 	sm.barrierByStoragePath.Delete(nsSeal.MetaPrefix())
 	sm.barrierByStoragePath.Delete(nsSeal.MetaPrefix() + sealConfigPath)
@@ -317,7 +317,7 @@ func (sm *SealManager) ResetUnsealProcess(nsUUID string) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	sm.unlockInformationByNamespace[nsUUID]["default"] = nil
+	delete(sm.unlockInformationByNamespace[nsUUID], "default")
 }
 
 // NamespaceUnlockInformation acquires a read lock and returns the
@@ -467,7 +467,7 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 // recordUnsealPart takes in a key fragment, and returns true if it's a new fragment.
 func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bool, error) {
 	info, exists := sm.unlockInformationByNamespace[ns.UUID]["default"]
-	if exists && info != nil {
+	if exists {
 		for _, existing := range info.Parts {
 			if subtle.ConstantTimeCompare(existing, key) == 1 {
 				return false, nil

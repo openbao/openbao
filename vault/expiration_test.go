@@ -12,7 +12,6 @@ import (
 	"reflect"
 	"sort"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -31,8 +30,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 )
 
-var testImagePull sync.Once
-
 // mockExpiration returns a mock expiration manager
 func mockExpiration(t testing.TB) *ExpirationManager {
 	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(t))
@@ -50,11 +47,6 @@ func mockExpiration(t testing.TB) *ExpirationManager {
 	return c.expiration
 }
 
-func mockBackendExpiration(t testing.TB, backend physical.Backend) (*Core, *ExpirationManager) {
-	c, _, _ := TestCoreUnsealedBackend(benchhelpers.TBtoT(t), backend)
-	return c, c.expiration
-}
-
 func TestExpiration_Metrics(t *testing.T) {
 	testCore := TestCore(t)
 	testCore.baseLogger = logger
@@ -62,7 +54,10 @@ func TestExpiration_Metrics(t *testing.T) {
 	testCoreUnsealed(t, testCore)
 
 	exp := testCore.expiration
-	exp.Restore(nil)
+	exp.Restore(func() {
+		// we do not expect an error here, so fail immediately if it happens
+		t.FailNow()
+	})
 
 	// Set up a count function to calculate number of leases
 	count := 0
@@ -71,7 +66,6 @@ func TestExpiration_Metrics(t *testing.T) {
 	}
 
 	ctx := namespace.RootContext(context.Background())
-
 	idView := exp.tokenIndexView(namespace.RootNamespace)
 
 	// Scan the storage with the count func set
@@ -443,7 +437,10 @@ func TestExpiration_Tidy(t *testing.T) {
 	testCoreUnsealed(t, testCore)
 
 	exp := testCore.expiration
-	exp.Restore(nil)
+	exp.Restore(func() {
+		// we do not expect an error here, so fail immediately if it happens
+		t.FailNow()
+	})
 
 	// Set up a count function to calculate number of leases
 	count := 0
@@ -755,7 +752,10 @@ func benchmarkExpirationBackend(b *testing.B, physicalBackend physical.Backend, 
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		exp.Restore(nil)
+		exp.Restore(func() {
+			// we do not expect an error here, so fail immediately if it happens
+			b.FailNow()
+		})
 	}
 	b.StopTimer()
 }
@@ -865,13 +865,16 @@ func TestExpiration_Restore(t *testing.T) {
 	}
 
 	// Restore
-	exp.Restore(nil)
+	exp.Restore(func() {
+		// we do not expect an error here, so fail immediately if it happens
+		t.FailNow()
+	})
 
 	// Would like to test here, but this is a race with the expiration of the leases.
 
 	// Ensure all are reaped
 	start := time.Now()
-	for time.Now().Sub(start) < time.Second {
+	for time.Since(start) < time.Second {
 		noop.Lock()
 		less := len(noop.Requests) < 3
 		noop.Unlock()
@@ -3078,7 +3081,10 @@ func TestExpiration_MarkIrrevocable(t *testing.T) {
 		t.Fatalf("error stopping expiration manager: %v", err)
 	}
 
-	exp.Restore(nil)
+	exp.Restore(func() {
+		// we do not expect an error here, so fail immediately if it happens
+		t.FailNow()
+	})
 
 	loadedLE, err = exp.loadEntry(ctx, leaseID)
 	if err != nil {

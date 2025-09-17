@@ -120,12 +120,8 @@ plugins {
 
 plugin_oci_auth {
   "ghcr.io" {
-    username = "${GITHUB_USERNAME}"
-    password = "${GITHUB_TOKEN}"
+    username = "github-username"
+    password = "ghp_personal_access_token"
   }
 }
 ```
-
-## Environment variables
-
-Configuration supports environment variable interpolation using `${VARIABLE_NAME}` syntax.

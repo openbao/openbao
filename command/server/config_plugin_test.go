@@ -225,7 +225,7 @@ listener "tcp" {
 }
 plugin_download_behavior = "invalid_value"`,
 			expectError: true,
-			errorMsg:    "must be either 'fail' or 'continue'",
+			errorMsg:    "must be either \"fail\" or \"continue\"",
 		},
 	}
 

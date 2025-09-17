@@ -25,9 +25,9 @@ import (
 
 // Plugin download error behavior constants
 const (
-	PluginDownloadFailStartup = "fail"
-	PluginDownloadContinue    = "continue"
-	PluginCacheDir            = ".oci-cache"
+	PluginDownloadFail     = "fail"
+	PluginDownloadContinue = "continue"
+	PluginCacheDir         = ".oci-cache"
 )
 
 // PluginConfig represents the configuration for a single plugin
@@ -107,10 +107,10 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 func (d *PluginDownloader) shouldFailOnPluginError() bool {
 	behavior := d.config.GetPluginDownloadBehavior()
 	if behavior == "" {
-		behavior = PluginDownloadFailStartup
+		behavior = PluginDownloadFail
 	}
 
-	return behavior == PluginDownloadFailStartup
+	return behavior == PluginDownloadFail
 }
 
 // IsPluginCacheValid checks if the plugin already exists in the plugin directory

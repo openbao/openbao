@@ -94,10 +94,6 @@ func (d *autoSeal) Init(ctx context.Context) error {
 	return d.Access.Init(ctx)
 }
 
-func (d *autoSeal) MetaPrefix() string {
-	return d.metaPrefix
-}
-
 func (d *autoSeal) SetMetaPrefix(metaPrefix string) {
 	d.metaPrefix = metaPrefix
 }

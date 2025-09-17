@@ -16,6 +16,7 @@ import (
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 
@@ -54,7 +55,6 @@ const (
 type Seal interface {
 	SetCore(*Core)
 	Init(context.Context) error
-	MetaPrefix() string
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
 	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
@@ -121,10 +121,6 @@ func (d *defaultSeal) Init(ctx context.Context) error {
 	return nil
 }
 
-func (d *defaultSeal) MetaPrefix() string {
-	return d.metaPrefix
-}
-
 func (d *defaultSeal) SetMetaPrefix(metaPrefix string) {
 	d.metaPrefix = metaPrefix
 }
@@ -164,7 +160,19 @@ func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
 		return nil, err
 	}
 
-	barrier := d.core.sealManager.StorageAccessForPath(d.metaPrefix + sealConfigPath)
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var barrier StorageAccess
+	parentPath, exists := ns.ParentPath()
+	if exists {
+		barrier = &secureStorageAccess{barrier: d.core.sealManager.namespaceBarrierByLongestPrefix(parentPath)}
+	} else {
+		barrier = &directStorageAccess{physical: d.core.physical}
+	}
+
 	// Fetch the seal configuration
 	valueBytes, err := barrier.Get(ctx, d.metaPrefix+sealConfigPath)
 	if err != nil {
@@ -233,7 +241,19 @@ func (d *defaultSeal) SetConfig(ctx context.Context, config *SealConfig) error {
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	barrier := d.core.sealManager.StorageAccessForPath(d.metaPrefix + sealConfigPath)
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	var barrier StorageAccess
+	parentPath, exists := ns.ParentPath()
+	if exists {
+		barrier = &secureStorageAccess{barrier: d.core.sealManager.namespaceBarrierByLongestPrefix(parentPath)}
+	} else {
+		barrier = &directStorageAccess{physical: d.core.physical}
+	}
+
 	if err := barrier.Put(ctx, d.metaPrefix+sealConfigPath, buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)

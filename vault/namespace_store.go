@@ -200,8 +200,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	}
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		rootStoreView := NewBarrierView(s, namespaceStoreSubPath)
-		return ns.loadNamespacesRecursive(ctx, s, rootStoreView, loadingCallback)
+		return ns.loadNamespacesRecursive(ctx, s, s, loadingCallback)
 	}); err != nil {
 		return err
 	}
@@ -225,8 +224,8 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 	ctx context.Context, barrier, view logical.Storage,
 	callback func(*namespace.Namespace) error,
 ) error {
-	return logical.HandleListPage(view, "", 100, func(page int, index int, entry string) (bool, error) {
-		item, err := view.Get(ctx, entry)
+	return logical.HandleListPage(view, namespaceStoreSubPath, 100, func(page int, index int, entry string) (bool, error) {
+		item, err := view.Get(ctx, namespaceStoreSubPath+entry)
 		if err != nil {
 			return false, fmt.Errorf("failed to fetch namespace %v (page %v / index %v): %w", entry, page, index, err)
 		}
@@ -246,15 +245,22 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			return false, err
 		}
 
-		sealConfig, err := ns.core.sealManager.RetrieveNamespaceSealConfig(ctx, &namespace)
-		if err != nil {
-			return false, fmt.Errorf("failed to register namespace %s with seal manager: %w", namespace.ID, err)
-		}
-		if sealConfig != nil {
-			return true, ns.core.sealManager.SetSeal(ctx, sealConfig, &namespace, false)
+		childView := NamespaceView(barrier, &namespace)
+
+		// Check if this namespace has a seal config, i.e., it is a sealable
+		// namespace. In that case, we can stop recursing this branch as the
+		// namespace isn't unsealed yet, as we would not be able to read any
+		// children.
+		if sealConfigEntry, err := childView.Get(ctx, sealConfigPath); err != nil {
+			return false, fmt.Errorf("failed to read seal config entry for namespace %s: %w", namespace.ID, err)
+		} else if sealConfigEntry != nil {
+			var sealConfig SealConfig
+			if err := sealConfigEntry.DecodeJSON(&sealConfig); err != nil {
+				return false, fmt.Errorf("failed to decode seal config entry for namespace %s: %w", namespace.ID, err)
+			}
+			return true, ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, false)
 		}
 
-		childView := ns.core.NamespaceView(&namespace).SubView(namespaceStoreSubPath)
 		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
 			return false, err
 		}
@@ -1142,4 +1148,25 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 	}
 
 	return lockKey, nil
+}
+
+// NamespaceByStoragePath parses an absolute storage path and returns the
+// matching namespace that the path belongs to.
+func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namespace.Namespace, string, error) {
+	rest, ok := strings.CutPrefix(path, namespaceBarrierPrefix)
+	if !ok || rest == "" {
+		return namespace.RootNamespace, path, nil
+	}
+
+	uuid, rest, ok := strings.Cut(rest, "/")
+	if !ok {
+		return namespace.RootNamespace, path, nil
+	}
+
+	ns, err := c.namespaceStore.GetNamespace(ctx, uuid)
+	if err != nil {
+		return nil, path, err
+	}
+
+	return ns, rest, nil
 }

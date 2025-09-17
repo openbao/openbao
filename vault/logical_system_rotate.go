@@ -648,13 +648,12 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 		}
 
 		// Perform the rotation
-		if err := b.Core.sealManager.performRootRotation(ctx, namespace.RootNamespace, newKey, configClone, b.Core.seal); err != nil {
+		if err := b.Core.sealManager.RotateRoot(ctx, namespace.RootNamespace, newKey, configClone, b.Core.seal); err != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform barrier rotation: %w", err).Error())
 		}
 
 		// Remove the rotation config
-		err = b.Core.sealManager.SetRotationConfig(namespace.RootNamespace, false, nil)
-		if err != nil {
+		if err = b.Core.sealManager.SetRotationConfig(namespace.RootNamespace, false, nil); err != nil {
 			return handleError(err)
 		}
 

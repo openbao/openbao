@@ -170,9 +170,9 @@ func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 
 	// Validate plugin_download_behavior
 	if c.PluginDownloadBehavior != "" {
-		if c.PluginDownloadBehavior != oci.PluginDownloadFailStartup && c.PluginDownloadBehavior != oci.PluginDownloadContinue {
+		if c.PluginDownloadBehavior != oci.PluginDownloadFail && c.PluginDownloadBehavior != oci.PluginDownloadContinue {
 			results = append(results, configutil.ConfigError{
-				Problem: fmt.Sprintf("plugin_download_behavior must be either %q or %q, got %q", oci.PluginDownloadFailStartup, oci.PluginDownloadContinue, c.PluginDownloadBehavior),
+				Problem: fmt.Sprintf("plugin_download_behavior must be either %q or %q, got %q", oci.PluginDownloadFail, oci.PluginDownloadContinue, c.PluginDownloadBehavior),
 			})
 		}
 	}

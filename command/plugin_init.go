@@ -155,8 +155,8 @@ func (c *PluginInitCommand) runPluginInit() int {
 
 	// Check if plugins are configured
 	if len(config.Plugins) == 0 {
-		c.UI.Warn("No OCI plugins configured in the configuration files.")
-		return 0
+		c.UI.Error("No OCI plugins configured in the configuration files.")
+		return 1
 	}
 
 	hclog.Default().Info(fmt.Sprintf("Plugin directory: %s", pluginDir))

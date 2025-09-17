@@ -256,12 +256,7 @@ func (d *PluginDownloader) calculateSHA256(filePath string) (result string, err 
 		return "", err
 	}
 	defer func() {
-		closeErr := file.Close()
-		// in case closing the file returns an error
-		// make calculateSHA256 exit with that error
-		if err == nil && closeErr != nil {
-			err = closeErr
-		}
+		err = errors.Join(err, file.Close())
 	}()
 
 	hasher := sha256.New()

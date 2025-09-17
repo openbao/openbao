@@ -350,15 +350,19 @@ func (d *PluginDownloader) ExtractPluginFromImage(img v1.Image, targetPath strin
 				return fmt.Errorf("failed to create output file: %w", err)
 			}
 
-			// Copy the binary data
-			_, err = io.Copy(outFile, tarReader)
-			outFile.Close() //nolint:errcheck
+			if _, copyErr := io.Copy(outFile, tarReader); copyErr != nil {
+				err = fmt.Errorf("failed to extract binary data: %w", copyErr)
+			}
+
+			if closeErr := outFile.Close(); closeErr != nil {
+				err = errors.Join(err, fmt.Errorf("failed to close %s: %w", targetPath, closeErr))
+			}
+
 			if err != nil {
-				removeErr := os.Remove(targetPath)
-				if removeErr != nil {
-					return errors.Join(fmt.Errorf("failed to extract binary data: %w", err), fmt.Errorf("failed to remove %s: %w", targetPath, err))
+				if removeErr := os.Remove(targetPath); removeErr != nil {
+					err = errors.Join(err, fmt.Errorf("failed to remove %s: %w", targetPath, removeErr))
 				}
-				return fmt.Errorf("failed to extract binary data: %w", err)
+				return err
 			}
 
 			// Set executable permissions

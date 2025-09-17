@@ -160,7 +160,7 @@ func (c *PluginInitCommand) runPluginInit() int {
 	}
 
 	hclog.Default().Info(fmt.Sprintf("Plugin directory: %s", pluginDir))
-	hclog.Default().Info(fmt.Sprintf("Found %d OCI plugin(s) configured", len(config.Plugins)))
+	hclog.Default().Info(fmt.Sprintf("Found %d OCI plugin(s) in configuration", len(config.Plugins)))
 
 	// Ensure plugin directory exists
 	if err = os.MkdirAll(pluginDir, 0o755); err != nil {

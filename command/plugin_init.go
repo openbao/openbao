@@ -168,7 +168,7 @@ func (c *PluginInitCommand) runPluginInit() int {
 		return 1
 	}
 
-	// Initialize plugins using the existing vault reconciliation logic
+	// Initialize plugins using the existing reconciliation logic
 	return c.reconcilePlugins(config, pluginDir)
 }
 

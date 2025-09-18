@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/sdk/v2/helper/pluginutil/oci"
+	"github.com/openbao/openbao/helper/pluginutil/oci"
 	"github.com/posener/complete"
 )
 

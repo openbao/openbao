@@ -11,6 +11,8 @@ import (
 // TODO (gabrielopesantos): Instead of having a dirty tracer we could probably use the
 // cache itself to track dirty nodes by having a special marker for dirty vs clean nodes.
 
+// TODO (gabrielopesantos): Are we ok with not caching the root node id?
+
 // DirtyTracker tracks nodes that have been modified but not yet persisted
 type DirtyTracker struct {
 	dirtyNodes   map[string]*Node // Key -> Modified Node (nil means deleted)

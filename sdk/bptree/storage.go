@@ -21,7 +21,10 @@ const (
 	configPath = "config"
 )
 
-var ErrNodeNotFound = errors.New("node not found")
+var (
+	ErrNodeNotFound = errors.New("node not found")
+	ErrRootIDNotSet = errors.New("root ID not set")
+)
 
 type Storage interface {
 	// GetRootID gets the ID of the root node
@@ -154,9 +157,8 @@ func (s *NodeStorage) GetRootID(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("failed to get root ID: %w", err)
 	}
 
-	// TODO (gabrielopesantos): Review this... No error?
 	if entry == nil {
-		return "", nil
+		return "", ErrRootIDNotSet
 	}
 
 	return string(entry.Value), nil

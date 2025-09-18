@@ -113,8 +113,9 @@ func TestTransactionalStorageReadOnly(t *testing.T) {
 		require.Error(t, err, "Should not be able to set root ID in read-only transaction")
 
 		// Reading root ID should work
-		_, err = txn.GetRootID(ctx)
-		require.NoError(t, err, "Should be able to get root ID in read-only transaction")
+		rootID, err := txn.GetRootID(ctx)
+		require.ErrorIs(t, err, ErrRootIDNotSet, "Getting root ID should return ErrRootIDNotSet as it was not set")
+		require.Equal(t, "", rootID, "Root ID should be empty as it was not set")
 
 		err = txn.Commit(ctx)
 		require.NoError(t, err, "Failed to commit read-only transaction")
@@ -231,7 +232,7 @@ func TestTransactionalStorageRollback(t *testing.T) {
 		require.Nil(t, loadedNode, "Node should not exist after rollback")
 
 		rootID, err := storage.GetRootID(ctx)
-		require.NoError(t, err, "Getting root ID should not error")
+		require.ErrorIs(t, err, ErrRootIDNotSet, "Getting root ID should return ErrRootIDNotSet")
 		require.Equal(t, "", rootID, "Root ID should not be set after rollback")
 	})
 }

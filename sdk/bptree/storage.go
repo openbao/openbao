@@ -22,8 +22,9 @@ const (
 )
 
 var (
-	ErrNodeNotFound = errors.New("node not found")
-	ErrRootIDNotSet = errors.New("root ID not set")
+	ErrNodeNotFound   = errors.New("node not found")
+	ErrRootIDNotSet   = errors.New("root ID not set")
+	ErrConfigNotFound = errors.New("tree config not found")
 )
 
 type Storage interface {
@@ -215,7 +216,6 @@ func (s *NodeStorage) GetNode(ctx context.Context, id string) (*Node, error) {
 		return nil, fmt.Errorf("failed to deserialize node %s: %w", id, err)
 	}
 
-	// NOTE (gabrielopesantos): Do we want to cache immediately here?
 	// Cache the loaded node
 	if s.cachingEnabled {
 		s.cache.Add(cacheKey(ctx, id), node)
@@ -265,8 +265,7 @@ func (s *NodeStorage) putNodeImmediate(ctx context.Context, node *Node) error {
 		return fmt.Errorf("failed to save node %s: %w", node.ID, err)
 	}
 
-	// NOTE (gabrielopesantos): Aren't we caching the same things twice?
-	// Cache the saved node (immediate for non-transactional, queued for transactional)
+	// Cache the saved node
 	if s.cachingEnabled {
 		s.cache.Add(cacheKey(ctx, node.ID), node)
 	}
@@ -300,7 +299,7 @@ func (s *NodeStorage) deleteNodeImmediate(ctx context.Context, id string) error 
 		return fmt.Errorf("failed to delete node %s: %w", id, err)
 	}
 
-	// Remove from cache (immediate for non-transactional, queued for transactional)
+	// Remove from cache
 	if s.cachingEnabled {
 		s.cache.Delete(cacheKey(ctx, id))
 	}
@@ -320,7 +319,7 @@ func (s *NodeStorage) GetConfig(ctx context.Context) (*BPlusTreeConfig, error) {
 	}
 
 	if entry == nil {
-		return nil, nil // No metadata stored
+		return nil, ErrConfigNotFound
 	}
 
 	var config BPlusTreeConfig

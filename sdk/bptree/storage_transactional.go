@@ -6,7 +6,6 @@ package bptree
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -48,7 +47,7 @@ type NodeTransaction struct {
 
 var _ Transaction = &NodeTransaction{}
 
-// NOTE (gsantos): Should it be possible for cache size, buffering, etc to be overridden per transaction?
+// NOTE (gabrielopesantos): Should it be possible for cache size, buffering, etc to be overridden per transaction?
 // BeginReadOnlyTx starts a read-only transaction and inherits all configuration from the parent storage.
 // It creates a transaction-local cache, that is then merged with the parent's, and buffer that are completely
 // isolated
@@ -61,7 +60,11 @@ func (s *TransactionalNodeStorage) BeginReadOnlyTx(ctx context.Context) (Transac
 	var txCache *lru.LRU[string, *Node]
 	if s.cachingEnabled {
 		// Create transaction-local cache for isolation (inherit parent's cache size)
-		txCache, err = lru.NewLRU[string, *Node](s.cache.Size())
+		cacheSize := 100 // default size
+		if s.cache != nil {
+			cacheSize = s.cache.Size()
+		}
+		txCache, err = lru.NewLRU[string, *Node](cacheSize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create transaction cache: %w", err)
 		}
@@ -98,7 +101,11 @@ func (s *TransactionalNodeStorage) BeginTx(ctx context.Context) (Transaction, er
 	var txCache *lru.LRU[string, *Node]
 	if s.cachingEnabled {
 		// Create transaction-local cache for isolation (inherit parent's cache size)
-		txCache, err = lru.NewLRU[string, *Node](s.cache.Size())
+		cacheSize := 100 // default size
+		if s.cache != nil {
+			cacheSize = s.cache.Size()
+		}
+		txCache, err = lru.NewLRU[string, *Node](cacheSize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create transaction cache: %w", err)
 		}
@@ -192,8 +199,10 @@ func WithTransaction(ctx context.Context, originalStorage Storage, callback func
 		defer func() {
 			if !committed {
 				if rollbackErr := txn.Rollback(ctx); rollbackErr != nil {
-					// Log rollback errors but don't override the main error
-					log.Printf("failed to rollback transaction: %v", err)
+					// Rollback errors in defer are typically unrecoverable
+					// The original error takes precedence over rollback failures
+					// Logging would be inappropriate in a library - let caller handle errors
+					_ = rollbackErr // Explicitly ignore rollback error
 				}
 			}
 		}()
@@ -269,13 +278,6 @@ func NewNodeStorageFromTransaction(
 // The returned NodeStorage should NOT have Commit/Rollback called on it - the original transaction
 // should handle that. When the external transaction commits/rolls back, the transaction-local cache
 // and buffer are automatically discarded.
-//
-// Usage:
-//
-//	tx, _ := logicalStorage.BeginTx(ctx)
-//	txStorage := WithExistingTransaction(ctx, tx, parentStorage)
-//	// Use txStorage for operations...
-//	tx.Commit(ctx) // Handle commit/rollback of tx yourself
 func WithExistingTransaction(
 	ctx context.Context,
 	tx logical.Transaction,

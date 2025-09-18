@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -99,7 +98,7 @@ func NewNodeStorage(
 
 	return &NodeStorage{
 		storage:          storage,
-		isTransaction:    false, // Not a transaction
+		isTransaction:    false,
 		serializer:       config.NodeSerializer,
 		cachingEnabled:   config.CachingEnabled,
 		cache:            cache,
@@ -366,12 +365,13 @@ func (s *NodeStorage) IsCacheEnabled() bool {
 
 // PurgeCache clears all entries from the cache
 func (s *NodeStorage) PurgeCache() {
-	s.cache.Purge()
+	if s.cache != nil {
+		s.cache.Purge()
+	}
 }
 
 // FlushBuffer persists all dirty (buffered) operations to storage
 func (s *NodeStorage) FlushBuffer(ctx context.Context) error {
-	log.Printf("Flushing write buffer...")
 	if !s.bufferingEnabled || s.dirtyTracker == nil {
 		return nil // Nothing to flush
 	}
@@ -391,7 +391,6 @@ func (s *NodeStorage) FlushBuffer(ctx context.Context) error {
 	// Then process saves/updates
 	for _, key := range s.dirtyTracker.Keys() {
 		if node, isDirty := s.dirtyTracker.GetDirty(key); isDirty {
-			log.Printf("Flushing buffered save for node %s", key)
 			if err := s.putNodeImmediate(ctx, node); err != nil {
 				return fmt.Errorf("failed to flush save for node %s: %w", key, err)
 			}
@@ -432,111 +431,93 @@ func (s *NodeStorage) SetBufferingEnabled(enabled bool) {
 }
 
 // Helper Functions for Write Buffering
+//
+// These helper functions are designed for use with regular NodeStorage instances only.
+// Do NOT use these with transactional storage (Transaction interface) as transactions handle
+// their own buffering and flushing lifecycle automatically:
+//
+// - Transactions buffer writes in their own DirtyTracker during execution
+// - Transactions automatically flush buffers during Commit()
+// - Transactions automatically clear buffers during Rollback()
+//
+// For transactional operations, use WithTransaction() which provides proper
+// transaction lifecycle management including automatic buffer handling.
+//
 // These functions provide convenient ways to use the built-in buffering functionality
 
-// WithBufferedWrites executes a function with write buffering, then flushes all writes.
-// Since NodeStorage has built-in buffering enabled by default, this function simply
-// executes the function and ensures the buffer is flushed on success or cleared on error.
-//
-// This function provides explicit buffering semantics - operations are guaranteed to be
-// buffered and flushed together as a batch.
-//
-// Usage:
-//
-//	err := WithBufferedWrites(ctx, storage, func(storage Storage) error {
-//	    // Multiple PutNode/DeleteNode calls are automatically buffered
-//	    storage.PutNode(ctx, node1)  // buffered
-//	    storage.PutNode(ctx, node2)  // buffered
-//	    storage.DeleteNode(ctx, "old-node")  // buffered
-//	    // All operations are flushed together at the end
-//	    return nil
-//	})
+// WithBufferedWrites executes a function with write buffering ENABLED, then flushes all writes.
+// This function forces buffering ON during execution, regardless of the storage's default setting.
+// Operations are guaranteed to be buffered and flushed together as a batch.
 func WithBufferedWrites(ctx context.Context, storage Storage, fn func(Storage) error) error {
-	// Execute the function with the storage
-	if err := fn(storage); err != nil {
-		// Clear buffer on error if it's a NodeStorage with buffering
-		if ns, ok := storage.(*NodeStorage); ok {
-			ns.ClearBuffer()
+	// Force buffering ON for NodeStorage types
+	var originalBuffering bool
+	var needsRestore bool
+
+	if ns, ok := storage.(*NodeStorage); ok {
+		originalBuffering = ns.bufferingEnabled
+		if !originalBuffering {
+			ns.SetBufferingEnabled(true) // Force buffering ON
+			needsRestore = true
 		}
+	}
+
+	// Ensure buffering is restored on exit
+	if needsRestore {
+		defer func() {
+			if ns, ok := storage.(*NodeStorage); ok {
+				ns.SetBufferingEnabled(originalBuffering)
+			}
+		}()
+	}
+
+	// Execute the function with forced buffering
+	if err := fn(storage); err != nil {
+		// Clear buffer on error
+		clearBufferIfSupported(storage)
 		return err
 	}
 
-	// Flush buffer on success if it's a NodeStorage with buffering
-	if ns, ok := storage.(*NodeStorage); ok {
-		return ns.FlushBuffer(ctx)
-	}
-
-	// For storage types without buffering, operations are already persisted
-	return nil
+	// Flush buffer on success
+	return flushBufferIfSupported(ctx, storage)
 }
 
-// WithAutoFlush executes a function with the current storage and automatically
-// flushes any buffered writes at the end. This is useful for operations that
-// need to ensure writes are persisted immediately.
+// WithAutoFlush executes a function with the storage's CURRENT buffering behavior and automatically
+// flushes any buffered writes at the end. This respects the storage's existing configuration.
 //
 // Unlike WithBufferedWrites, this doesn't change the storage behavior - it just
-// ensures any existing buffered operations are flushed. The storage continues
-// to use its default buffering behavior.
-//
-// Usage:
-//
-//	err := WithAutoFlush(ctx, storage, func(storage Storage) error {
-//	    // Operations use the storage's default buffering behavior
-//	    storage.PutNode(ctx, node)  // buffered if storage supports it
-//	    return nil  // any buffered operations automatically flushed at the end
-//	})
+// ensures any existing buffered operations are flushed.
 func WithAutoFlush(ctx context.Context, storage Storage, fn func(Storage) error) error {
-	// Execute the function with the storage as-is
+	// Execute the function with the storage as-is (no behavior changes)
 	if err := fn(storage); err != nil {
-		// Clear buffer on error if it's a NodeStorage with buffering
-		if ns, ok := storage.(*NodeStorage); ok {
-			ns.ClearBuffer()
-		}
+		// Clear buffer on error
+		clearBufferIfSupported(storage)
 		return err
 	}
 
-	// Flush buffer on success if it's a NodeStorage with buffering
-	// if ns, ok := storage.(*NodeStorage); ok {
-	// 	return ns.FlushBuffer(ctx)
-	// }
+	// Flush buffer on success
+	return flushBufferIfSupported(ctx, storage)
+}
 
+// Helper functions for buffer operations
+// Note: These work with transactional storage types but should generally not be used
+// with them as transactions handle their own buffering and flushing lifecycle.
+func clearBufferIfSupported(storage Storage) {
+	switch ns := storage.(type) {
+	case *NodeStorage:
+		ns.ClearBuffer()
+	case *TransactionalNodeStorage:
+		ns.ClearBuffer()
+	}
+}
+
+func flushBufferIfSupported(ctx context.Context, storage Storage) error {
 	switch ns := storage.(type) {
 	case *NodeStorage:
 		return ns.FlushBuffer(ctx)
 	case *TransactionalNodeStorage:
 		return ns.FlushBuffer(ctx)
-	// Add other storage types with buffering support here if needed
 	default:
 		// Storage does not support buffering, no flush needed
-		// This is correct behavior - operations are already persisted
+		return nil
 	}
-
-	return nil
 }
-
-// Example usage patterns:
-//
-// Pattern 1: Automatic buffering with explicit flush control
-// func (t *BPlusTree) BulkInsert(ctx context.Context, items map[string]interface{}) error {
-//     return WithBufferedWrites(ctx, t.storage, func(storage Storage) error {
-//         for key, value := range items {
-//             node := createNodeForValue(key, value)
-//             if err := storage.PutNode(ctx, node); err != nil {
-//                 return err
-//             }
-//         }
-//         // All PutNode calls are buffered and flushed together here
-//         return nil
-//     })
-// }
-//
-// Pattern 2: Ensure immediate persistence
-// func (t *BPlusTree) CriticalUpdate(ctx context.Context, node *Node) error {
-//     return WithAutoFlush(ctx, t.storage, func(storage Storage) error {
-//         if err := storage.PutNode(ctx, node); err != nil {
-//             return err
-//         }
-//         // Node is guaranteed to be persisted when this function returns
-//         return nil
-//     })
-// }

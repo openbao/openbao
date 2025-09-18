@@ -21,7 +21,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/static"
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/sdk/v2/helper/pluginutil/oci"
+	"github.com/openbao/openbao/helper/pluginutil/oci"
 )
 
 // createTestOCIImage creates a test OCI image with a plugin binary
@@ -292,15 +292,7 @@ func TestPluginCacheStructure(t *testing.T) {
 	// Test that cache validation works with symlinks using the OCI downloader
 	config := &server.Config{}
 	downloader := oci.NewPluginDownloader(tempDir, config, hclog.NewNullLogger())
-
-	// Convert server.PluginConfig to oci.PluginConfig
-	ociPluginConfig := &oci.PluginConfig{
-		URL:        pluginConfig.URL,
-		BinaryName: pluginConfig.BinaryName,
-		SHA256Sum:  pluginConfig.SHA256Sum,
-	}
-
-	isValid := downloader.IsPluginCacheValid("test-plugin", ociPluginConfig)
+	isValid := downloader.IsPluginCacheValid("test-plugin", pluginConfig)
 	if !isValid {
 		t.Error("Expected plugin cache to be valid with symlink")
 	}

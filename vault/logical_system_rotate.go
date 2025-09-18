@@ -205,7 +205,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRotate(),
+					Callback: b.handleRotate(b.rootNamespaceExtractor),
 					Summary:  "Rotate the encryption key.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
@@ -501,9 +501,14 @@ func (*SystemBackend) rootNamespaceExtractor(_ context.Context, _ *framework.Fie
 
 // handleRotate handles the GET `/sys/rotate` and `/sys/rotate/keyring`
 // endpoints used to trigger an encryption key rotation.
-func (b *SystemBackend) handleRotate() framework.OperationFunc {
-	return func(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-		if err := b.Core.rotateBarrierKey(ctx); err != nil {
+func (b *SystemBackend) handleRotate(nsExtr namespaceExtractor) framework.OperationFunc {
+	return func(ctx context.Context, _ *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		ns, err := nsExtr(ctx, data)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if err := b.Core.sealManager.RotateNamespaceBarrierKey(ctx, ns); err != nil {
 			b.Backend.Logger().Error("error handling key rotation", "error", err)
 			return handleError(err)
 		}

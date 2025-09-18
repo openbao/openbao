@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -94,6 +95,15 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	}
 
 	return ns, nil
+}
+
+// namespaceLogicalStoragePath returns a path to the logical storage of
+// specified namespace.
+func namespaceLogicalStoragePath(ns *namespace.Namespace) string {
+	if ns.ID == namespace.RootNamespaceID {
+		return ""
+	}
+	return path.Join(namespaceBarrierPrefix, ns.UUID) + "/"
 }
 
 func (c *Core) cancelNamespaceDeletion() {
@@ -236,12 +246,12 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			return false, err
 		}
 
-		isSealed, err := ns.core.sealManager.RegisterNamespace(ctx, &namespace)
+		sealConfig, err := ns.core.sealManager.RetrieveNamespaceSealConfig(ctx, &namespace)
 		if err != nil {
 			return false, fmt.Errorf("failed to register namespace %s with seal manager: %w", namespace.ID, err)
 		}
-		if isSealed {
-			return true, nil
+		if sealConfig != nil {
+			return true, ns.core.sealManager.SetSeal(ctx, sealConfig, &namespace, false)
 		}
 
 		childView := ns.core.NamespaceView(&namespace).SubView(namespaceStoreSubPath)
@@ -283,7 +293,8 @@ func (ns *NamespaceStore) invalidate(ctx context.Context, path string) error {
 }
 
 // SetNamespaceSealed is used to create or update a given sealable namespace.
-// Note that you cannot change the seal config of a namespace with this operation.
+// Note that you cannot change the Seal config of a namespace with this;
+// only add a seal config to a net-new namespace.
 func (ns *NamespaceStore) SetNamespaceSealed(ctx context.Context, entry *namespace.Namespace, sealConfig *SealConfig) ([][]byte, error) {
 	unlock, err := ns.lockWithInvalidation(ctx, true)
 	if err != nil {
@@ -297,12 +308,10 @@ func (ns *NamespaceStore) SetNamespaceSealed(ctx context.Context, entry *namespa
 	}
 
 	if new && sealConfig != nil {
-		nsCtx := namespace.ContextWithNamespace(ctx, entry)
-		err = ns.core.sealManager.SetSeal(nsCtx, sealConfig, entry, true)
-		if err != nil {
+		if err = ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
 			return nil, err
 		}
-		return ns.core.sealManager.InitializeBarrier(nsCtx, entry)
+		return ns.core.sealManager.InitializeBarrier(ctx, entry)
 	}
 
 	return nil, nil
@@ -839,6 +848,9 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, namespa
 		return false
 	}
 
+	// clear seal manager entries
+	ns.core.sealManager.RemoveNamespace(namespaceToDelete)
+
 	// clear locked users entries
 	_, err = ns.core.runLockedUserEntryUpdatesForNamespace(nsCtx, namespaceToDelete, true)
 	if err != nil {
@@ -912,8 +924,6 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return errors.New("unable to seal tainted namespace")
 	}
 
-	// override the namespace in context to the one we want to seal
-	ctx = namespace.ContextWithNamespace(ctx, namespaceToSeal)
 	return ns.core.sealManager.SealNamespace(ctx, namespaceToSeal)
 }
 

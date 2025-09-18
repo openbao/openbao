@@ -16,7 +16,6 @@ import (
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 
@@ -52,6 +51,7 @@ const (
 type Seal interface {
 	SetCore(*Core)
 	Init(context.Context) error
+	MetaPrefix() string
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
 	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
@@ -118,6 +118,10 @@ func (d *defaultSeal) Init(ctx context.Context) error {
 	return nil
 }
 
+func (d *defaultSeal) MetaPrefix() string {
+	return d.metaPrefix
+}
+
 func (d *defaultSeal) SetMetaPrefix(metaPrefix string) {
 	d.metaPrefix = metaPrefix
 }
@@ -148,11 +152,6 @@ func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
 }
 
 func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	cfg := d.config.Load().(*SealConfig)
 	if cfg != nil {
 		return cfg.Clone(), nil
@@ -162,11 +161,9 @@ func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
 		return nil, err
 	}
 
-	view := d.core.NamespaceView(ns).SubView(sealConfigPath)
-	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
-
+	barrier := d.core.sealManager.StorageAccessForPath(d.metaPrefix + sealConfigPath)
 	// Fetch the seal configuration
-	valueBytes, err := barrier.Get(ctx, view.Prefix())
+	valueBytes, err := barrier.Get(ctx, d.metaPrefix+sealConfigPath)
 	if err != nil {
 		d.core.logger.Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
@@ -207,11 +204,6 @@ func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
 }
 
 func (d *defaultSeal) SetConfig(ctx context.Context, config *SealConfig) error {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
 	if err := d.checkCore(); err != nil {
 		return err
 	}
@@ -238,9 +230,8 @@ func (d *defaultSeal) SetConfig(ctx context.Context, config *SealConfig) error {
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	view := d.core.NamespaceView(ns).SubView(sealConfigPath)
-	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
-	if err := barrier.Put(ctx, view.Prefix(), buf); err != nil {
+	barrier := d.core.sealManager.StorageAccessForPath(d.metaPrefix + sealConfigPath)
+	if err := barrier.Put(ctx, d.metaPrefix+sealConfigPath, buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}

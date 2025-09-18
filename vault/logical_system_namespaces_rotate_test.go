@@ -53,7 +53,7 @@ func TestNamespaceBackend_Rotate(t *testing.T) {
 		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 		require.Equal(t, 2, res.Data["term"])
-		require.Empty(t, res.Data["encryptions"])
+		require.Equal(t, int64(1), res.Data["encryptions"])
 		require.NotEmpty(t, res.Data["install_time"])
 	})
 }

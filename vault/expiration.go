@@ -685,7 +685,8 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 
 // Restore is used to recover the lease states when starting.
 // This is used after starting the vault.
-func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
+func (m *ExpirationManager) Restore(errorFunc func()) {
+	var retErr error
 	defer func() {
 		// Turn off restore mode. We can do this safely without the lock because
 		// if restore mode finished successfully, restore mode was already
@@ -713,9 +714,11 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 
 	// Accumulate existing leases
 	m.logger.Debug("collecting leases")
-	existing, leaseCount, err := m.collectLeases()
-	if err != nil {
-		return err
+	var leases map[*namespace.Namespace][]string
+	var leaseCount int
+	leases, leaseCount, retErr = m.collectLeases()
+	if retErr != nil {
+		return
 	}
 	m.logger.Debug("leases collected", "num_existing", leaseCount)
 
@@ -773,8 +776,8 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 	go func() {
 		defer wg.Done()
 		i := 0
-		for ns := range existing {
-			for _, leaseID := range existing[ns] {
+		for ns := range leases {
+			for _, leaseID := range leases[ns] {
 				i++
 				if i%500 == 0 {
 					m.logger.Debug("leases loading", "progress", i)
@@ -804,7 +807,7 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 LOOP:
 	for i := 0; i < leaseCount; i++ {
 		select {
-		case err = <-errs:
+		case retErr = <-errs:
 			// Close all go routines
 			close(quit)
 			break LOOP
@@ -819,8 +822,8 @@ LOOP:
 
 	// Let all go routines finish
 	wg.Wait()
-	if err != nil {
-		return err
+	if retErr != nil {
+		return
 	}
 
 	m.restoreModeLock.Lock()
@@ -833,7 +836,6 @@ LOOP:
 	m.restoreModeLock.Unlock()
 
 	m.logger.Info("lease restore complete")
-	return nil
 }
 
 // processRestore takes a lease and restores it in the expiration manager if it has

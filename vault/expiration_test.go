@@ -54,10 +54,10 @@ func TestExpiration_Metrics(t *testing.T) {
 	testCoreUnsealed(t, testCore)
 
 	exp := testCore.expiration
-
-	if err := exp.Restore(nil); err != nil {
-		t.Fatal(err)
-	}
+	exp.Restore(func() {
+		// we do not expect an error here, so fail immediately if it happens
+		t.FailNow()
+	})
 
 	// Set up a count function to calculate number of leases
 	count := 0
@@ -66,7 +66,6 @@ func TestExpiration_Metrics(t *testing.T) {
 	}
 
 	ctx := namespace.RootContext(context.Background())
-
 	idView := exp.tokenIndexView(namespace.RootNamespace)
 
 	// Scan the storage with the count func set
@@ -438,10 +437,10 @@ func TestExpiration_Tidy(t *testing.T) {
 	testCoreUnsealed(t, testCore)
 
 	exp := testCore.expiration
-
-	if err := exp.Restore(nil); err != nil {
-		t.Fatal(err)
-	}
+	exp.Restore(func() {
+		// we do not expect an error here, so fail immediately if it happens
+		t.FailNow()
+	})
 
 	// Set up a count function to calculate number of leases
 	count := 0
@@ -753,11 +752,10 @@ func benchmarkExpirationBackend(b *testing.B, physicalBackend physical.Backend, 
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err = exp.Restore(nil)
-		// Restore
-		if err != nil {
-			b.Fatalf("err: %v", err)
-		}
+		exp.Restore(func() {
+			// we do not expect an error here, so fail immediately if it happens
+			b.FailNow()
+		})
 	}
 	b.StopTimer()
 }
@@ -867,10 +865,10 @@ func TestExpiration_Restore(t *testing.T) {
 	}
 
 	// Restore
-	err = exp.Restore(nil)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	exp.Restore(func() {
+		// we do not expect an error here, so fail immediately if it happens
+		t.FailNow()
+	})
 
 	// Would like to test here, but this is a race with the expiration of the leases.
 
@@ -3080,10 +3078,10 @@ func TestExpiration_MarkIrrevocable(t *testing.T) {
 		t.Fatalf("error stopping expiration manager: %v", err)
 	}
 
-	err = exp.Restore(nil)
-	if err != nil {
-		t.Fatalf("error restoring expiration manager: %v", err)
-	}
+	exp.Restore(func() {
+		// we do not expect an error here, so fail immediately if it happens
+		t.FailNow()
+	})
 
 	loadedLE, err = exp.loadEntry(ctx, leaseID)
 	if err != nil {

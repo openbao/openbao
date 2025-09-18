@@ -37,7 +37,8 @@ func initTest(t *testing.T, treeConfig *BPlusTreeConfig) (context.Context, *Node
 
 	// Initialize B+ tree with a small order to force splits and create internal nodes
 	tree, err := InitializeBPlusTree(ctx, storage, treeConfig)
-	require.NoError(t, err, "failed to create B+ tree")
+	require.NoError(t, err, "failed to initialize B+ tree")
+	require.NotNil(t, tree, "tree should not be nil")
 
 	return ctx, storage, tree
 }

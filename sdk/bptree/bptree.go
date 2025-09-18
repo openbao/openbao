@@ -61,7 +61,7 @@ func NewBPlusTree(
 
 	// Check if tree already exists
 	existingConfig, err := storage.GetConfig(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrConfigNotFound) {
 		return nil, fmt.Errorf("failed to check for existing tree: %w", err)
 	}
 	if existingConfig != nil {
@@ -106,11 +106,11 @@ func LoadExistingBPlusTree(
 
 	// Get stored configuration - this is the source of truth
 	storedConfig, err := storage.GetConfig(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrConfigNotFound) {
 		return nil, fmt.Errorf("failed to load tree configuration: %w", err)
 	}
 	if storedConfig == nil {
-		return nil, fmt.Errorf("tree '%s' does not exist", treeID)
+		return nil, fmt.Errorf("tree (%s) does not exist", treeID)
 	}
 
 	// Create tree with stored configuration

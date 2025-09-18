@@ -65,7 +65,7 @@ of each integration.
 <!-- - Reduced load on OpenBao. Secrets are synced per CRD instead of per consuming pod. -->
 <!-- - Better OpenBao secret availability. Kubernetes secrets act as a durable cluster-local cache of OpenBao secrets. -->
 
-#### OpenBao CSI provider
+#### [OpenBao CSI provider](https://github.com/openbao/openbao-csi-provider)
 
 - The CSI driver that the provider is based on is vendor neutral.
 - No durable secret storage outside OpenBao if the secret sync feature isn't used. All secrets written to disk are in ephemeral in-memory volumes.

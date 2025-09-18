@@ -26,7 +26,6 @@ import (
 	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
-	"github.com/openbao/openbao/sdk/v2/helper/pluginutil/oci"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 )
 
@@ -34,6 +33,9 @@ const (
 	VaultDevCAFilename   = "vault-ca.pem"
 	VaultDevCertFilename = "vault-cert.pem"
 	VaultDevKeyFilename  = "vault-key.pem"
+
+	PluginDownloadFail     = "fail"
+	PluginDownloadContinue = "continue"
 )
 
 var entConfigValidate = func(_ *Config, _ string) []configutil.ConfigError {
@@ -166,9 +168,9 @@ func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 
 	// Validate plugin_download_behavior
 	if c.PluginDownloadBehavior != "" {
-		if c.PluginDownloadBehavior != oci.PluginDownloadFail && c.PluginDownloadBehavior != oci.PluginDownloadContinue {
+		if c.PluginDownloadBehavior != PluginDownloadFail && c.PluginDownloadBehavior != PluginDownloadContinue {
 			results = append(results, configutil.ConfigError{
-				Problem: fmt.Sprintf("plugin_download_behavior must be either %q or %q, got %q", oci.PluginDownloadFail, oci.PluginDownloadContinue, c.PluginDownloadBehavior),
+				Problem: fmt.Sprintf("plugin_download_behavior must be either %q or %q, got %q", PluginDownloadFail, PluginDownloadContinue, c.PluginDownloadBehavior),
 			})
 		}
 	}
@@ -1456,39 +1458,4 @@ func parseAuditDevices(name string, list *ast.ObjectList) ([]*AuditDevice, error
 	}
 
 	return result, nil
-}
-
-// GetPlugins implements PluginConfigProvider for OCI plugin downloader
-func (c *Config) GetPlugins() map[string]*oci.PluginConfig {
-	result := make(map[string]*oci.PluginConfig)
-	for name, pluginConfig := range c.Plugins {
-		if pluginConfig != nil {
-			result[name] = &oci.PluginConfig{
-				URL:        pluginConfig.URL,
-				BinaryName: pluginConfig.BinaryName,
-				SHA256Sum:  pluginConfig.SHA256Sum,
-			}
-		}
-	}
-	return result
-}
-
-// GetPluginDownloadBehavior implements PluginConfigProvider for OCI plugin downloader
-func (c *Config) GetPluginDownloadBehavior() string {
-	return c.PluginDownloadBehavior
-}
-
-// GetPluginOCIAuth implements PluginConfigProvider for OCI plugin downloader
-func (c *Config) GetPluginOCIAuth() map[string]*oci.PluginOCIAuthConfig {
-	result := make(map[string]*oci.PluginOCIAuthConfig)
-	for registry, authConfig := range c.PluginOCIAuth {
-		if authConfig != nil {
-			result[registry] = &oci.PluginOCIAuthConfig{
-				Username: authConfig.Username,
-				Password: authConfig.Password,
-				Token:    authConfig.Token,
-			}
-		}
-	}
-	return result
 }

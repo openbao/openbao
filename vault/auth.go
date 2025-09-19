@@ -466,33 +466,6 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 	return nil
 }
 
-// remountCredEntryForceInternal takes a copy of the mount entry for the path and fully
-// unmounts and remounts the backend to pick up any changes, such as filtered
-// paths. This should be only used internal.
-func (c *Core) remountCredEntryForceInternal(ctx context.Context, path string, updateStorage bool) error {
-	fullPath := credentialRoutePrefix + path
-	me := c.router.MatchingMountEntry(ctx, fullPath)
-	if me == nil {
-		return fmt.Errorf("cannot find mount for path %q", path)
-	}
-
-	me, err := me.Clone()
-	if err != nil {
-		return err
-	}
-
-	if err := c.disableCredentialInternal(ctx, path, updateStorage); err != nil {
-		return err
-	}
-
-	// Enable credential internally
-	if err := c.enableCredentialInternal(ctx, me, updateStorage); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // taintCredEntry is used to mark an entry in the auth table as tainted
 func (c *Core) taintCredEntry(ctx context.Context, nsID, path string, updateStorage bool) error {
 	c.authLock.Lock()

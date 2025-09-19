@@ -1069,32 +1069,6 @@ func (c *Core) handleDeprecatedMountEntry(ctx context.Context, entry *MountEntry
 	return nil, nil
 }
 
-// remountForceInternal takes a copy of the mount entry for the path and fully unmounts
-// and remounts the backend to pick up any changes, such as filtered paths.
-// Should be only used for internal usage.
-func (c *Core) remountForceInternal(ctx context.Context, path string, updateStorage bool) error {
-	me := c.router.MatchingMountEntry(ctx, path)
-	if me == nil {
-		return fmt.Errorf("cannot find mount for path %q", path)
-	}
-
-	me, err := me.Clone()
-	if err != nil {
-		return err
-	}
-
-	if err := c.unmountInternal(ctx, path, updateStorage); err != nil {
-		return err
-	}
-
-	// Mount internally
-	if err := c.mountInternal(ctx, me, updateStorage); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (c *Core) remountSecretsEngineCurrentNamespace(ctx context.Context, src, dst string, updateStorage bool) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {

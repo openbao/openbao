@@ -52,12 +52,8 @@ type OperatorDiagnoseCommand struct {
 	flagConfigs  []string
 	cleanupGuard sync.Once
 
-	reloadFuncsLock      *sync.RWMutex
-	reloadFuncs          *map[string][]reloadutil.ReloadFunc
 	ServiceRegistrations map[string]sr.Factory
-	startedCh            chan struct{} // for tests
-	reloadedCh           chan struct{} // for tests
-	skipEndEnd           bool          // for tests
+	skipEndEnd           bool // for tests
 }
 
 func (c *OperatorDiagnoseCommand) Synopsis() string {
@@ -131,14 +127,6 @@ func (c *OperatorDiagnoseCommand) AutocompleteArgs() complete.Predictor {
 func (c *OperatorDiagnoseCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
-
-const (
-	status_unknown = "[      ] "
-	status_ok      = "\u001b[32m[  ok  ]\u001b[0m "
-	status_failed  = "\u001b[31m[failed]\u001b[0m "
-	status_warn    = "\u001b[33m[ warn ]\u001b[0m "
-	same_line      = "\u001b[F"
-)
 
 func (c *OperatorDiagnoseCommand) Run(args []string) int {
 	f := c.Flags()

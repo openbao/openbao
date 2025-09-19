@@ -42,9 +42,9 @@ project:
       affiliation: Adfinis
       email: andrii.fedorchuk@adfinis.com
       primary: false
-    - name: Jocelyn Eillis
+    - name: Ken McDonald
       affiliation: GitLab
-      email: jeillis@gitlab.com
+      email: kmcdonald@gitlab.com
       primary: false
 
   repositories:

@@ -519,8 +519,17 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 					}
 
 					if len(resp.Fields) != 0 {
-						responseName := hyphenatedToTitleCase(operationID) + "Response"
-						doc.Components.Schemas[responseName] = responseSchema
+						// Use custom schema name if provided, otherwise generate from operationID
+						responseName := resp.SchemaName
+						if responseName == "" {
+							responseName = hyphenatedToTitleCase(operationID) + "Response"
+						}
+
+						// Only add to schemas if not already present (allows schema reuse)
+						if _, exists := doc.Components.Schemas[responseName]; !exists {
+							doc.Components.Schemas[responseName] = responseSchema
+						}
+
 						content = OASContent{
 							"application/json": &OASMediaTypeObject{
 								Schema: &OASSchema{Ref: fmt.Sprintf("#/components/schemas/%s", responseName)},

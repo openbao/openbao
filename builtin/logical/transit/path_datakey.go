@@ -56,6 +56,17 @@ encryption of the data key. Must be 0 (for latest)
 or a value greater than or equal to the
 min_encryption_version configured on the key.`,
 			},
+
+			"associated_data": {
+				Type: framework.TypeString,
+				Description: `
+When using an AEAD cipher mode, such as AES-GCM, this parameter allows
+passing associated data (AD/AAD) into the encryption function; this data
+must be passed on subsequent decryption requests but can be transited in
+plaintext. On successful decryption, both the ciphertext and the associated
+data are attested not to have been tampered with.
+				`,
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -127,7 +138,17 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 		return nil, err
 	}
 
-	ciphertext, err := p.EncryptWithFactory(ver, context, nil, base64.StdEncoding.EncodeToString(newKey), nil)
+	var factory interface{}
+	associatedData := d.Get("associated_data").(string)
+	if len(associatedData) != 0 {
+		if !p.Type.AssociatedDataSupported() {
+			return logical.ErrorResponse("'associated_data' provided for non-AEAD cipher suite %v", p.Type.String()), logical.ErrInvalidRequest
+		}
+
+		factory = AssocDataFactory{associatedData}
+	}
+
+	ciphertext, err := p.EncryptWithFactory(ver, context, nil, base64.StdEncoding.EncodeToString(newKey), factory)
 	if err != nil {
 		switch err.(type) {
 		case errutil.UserError:

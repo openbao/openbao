@@ -1,7 +1,7 @@
 header:
   schema-version: 2.0.0
-  last-updated: '2025-08-18'
-  last-reviewed: ''
+  last-updated: '2025-09-19'
+  last-reviewed: '2025-09-19'
   url: https://github.com/openbao/openbao
 
 project:
@@ -53,60 +53,80 @@ project:
       comment: |
         This is the core repo for OpenBao.
     - name: openbao-plugins
+      url: https://github.com/openbao/openbao-plugins
       comment : |
         This repository contains plugins for OpenBao, an open-source fork of HashiCorp Vault. These plugins are maintained by the OpenBao project but are not included in the core OpenBao binary.
     - name: openbao-fedora
+      url: https://github.com/openbao/openbao-fedora
       comment : |
         EPEL/Fedora packaging for OpenBao.
     - name: openbao-csi-provider
+      url: https://github.com/openbao/openbao-csi-provider
       comment : |
         OpenBao Provider for Secret Store CSI Driver.
     - name: openbao-helm
+      url: https://github.com/openbao/openbao-helm
       comment : |
         Helm chart to install OpenBao and other associated components.
     - name: openbao-plugin-secrets-oauthapp
+      url: https://github.com/openbao/openbao-plugin-secrets-oauthapp
       comment : |
         OAuth 2.0 secrets plugin for OpenBao supporting a variety of grant types.
     - name: openbao-nightly
+      url: https://github.com/openbao/openbao-nightly
       comment : |
         Mirror of openbao for nightly build process.
     - name: go-kms-wrapping
+      url: https://github.com/openbao/go-kms-wrapping
       comment : |
         KMS wrapping libraries split out from OpenBao.
     - name: openbao-k8
+      url: https://github.com/openbao/openbao-k8s
       comment : |
         First-class support for OpenBao and Kubernetes.
     - name: dough
+      url: https://github.com/openbao/dough
       comment : |
         Greenfield UI rewrite.
     - name: dev-wg
+      url: https://github.com/openbao/dev-wg
       comment : |
         Meta project for the Development Working Group.
     - name: benchmark-openbao
+      url: https://github.com/openbao/benchmark-openbao
       comment : |
         A tool for benchmarking usage of OpenBao.
     - name: devbao
+      url: https://github.com/openbao/devbao
       comment : |
         Development environment for starting OpenBao (Vault) instances
     - name: artwork
+      url: https://github.com/openbao/artwork
       comment : |
         In this repository we provide artwork for the OpenBao project in standardized formats.
     - name: openbao-template
+      url: https://github.com/openbao/openbao-template
       comment : |
         Template rendering, notifier, and supervisor for OpenBao data.
     - name: go-secure-stdlib
+      url: https://github.com/openbao/go-secure-stdlib
       comment : |
         Stdlib for OpenBao Secure products.
     - name: openbao-secrets-operator
+      url: https://github.com/openbao/openbao-secrets-operator
       comment : |
         The OpenBao Secrets Operator (bso) allows Pods to consume openbao secrets natively from Kubernetes Secrets.
     - name: .github
+      url: https://github.com/openbao/.github
       comment : |
         Meta project to provide information about the OpenBao Github organisation.
   vulnerability-reporting:
     reports-accepted: true
     bug-bounty-available: false
-    contact: openbao-security@lists.openssf.org
+    contact: 
+      name: Security mailing list
+      email: openbao-security@lists.openssf.org
+      primary: true
     comment: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, please responsibly disclose by contacting us.
   documentation:
     detailed-guide: https://openbao.org/docs/
@@ -123,15 +143,19 @@ repository:
     - name: Dan Ghita
       email: dghita@wallix.com
       social: https://github.com/DanGhita
+      primary: false
     - name: Jan Martens
       email: jan@martens.eu.org
       social: https://github.com/JanMa
+      primary: false
     - name: Nathan Phelps
       email: naphelps@us.ibm.com
       social: https://github.com/naphelps
+      primary: false
     - name: Alex Scheel
       email: ascheel@gitlab.com
       social: https://github.com/cipherboy
+      primary: true
   license:
     url: https://github.com/openbao/openbao/blob/main/LICENSE
     expression: 'Mozilla Public License 2.0'

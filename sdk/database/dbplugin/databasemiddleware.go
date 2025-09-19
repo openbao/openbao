@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	metrics "github.com/armon/go-metrics"
@@ -261,7 +260,6 @@ func (mw *databaseMetricsMiddleware) SetCredentials(ctx context.Context, stateme
 // DatabaseErrorSanitizerMiddleware wraps an implementation of Databases and
 // sanitizes returned error messages
 type DatabaseErrorSanitizerMiddleware struct {
-	l         sync.RWMutex
 	next      Database
 	secretsFn func() map[string]interface{}
 }

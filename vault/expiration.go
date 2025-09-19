@@ -497,6 +497,9 @@ func (m *ExpirationManager) inRestoreMode() bool {
 	return atomic.LoadInt32(m.restoreMode) == 1
 }
 
+// invalidate will be used in the future for implementing read replica nodes
+//
+//nolint:unused
 func (m *ExpirationManager) invalidate(key string) {
 	switch {
 	case strings.HasPrefix(key, leaseViewPrefix):

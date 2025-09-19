@@ -20,6 +20,17 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
+const (
+	metadataHelpSyn  = `Allows interaction with key metadata and settings in the KV store.`
+	metadataHelpDesc = `
+This endpoint allows for reading key metadata in the key-value store, writing
+key settings, or permanently deleting a key and all its versions.
+`
+	detailedMetadataHelpSyn  = `Allows listing detailed information about key metadata in the KV store.`
+	detailedMetadataHelpDesc = `
+This endpoint allows for listing keys and their metadata in the key-value store. `
+)
+
 // pathMetadata returns the path configuration for CRUD operations on the
 // metadata endpoint
 func pathMetadata(b *versionedKVBackend) *framework.Path {
@@ -104,8 +115,8 @@ version-agnostic information about a secret.
 
 		ExistenceCheck: b.metadataExistenceCheck(),
 
-		HelpSynopsis:    confHelpSyn,
-		HelpDescription: confHelpDesc,
+		HelpSynopsis:    metadataHelpSyn,
+		HelpDescription: metadataHelpDesc,
 	}
 }
 
@@ -140,8 +151,8 @@ func pathDetailedMetadata(b *versionedKVBackend) *framework.Path {
 
 		ExistenceCheck: b.metadataExistenceCheck(),
 
-		HelpSynopsis:    confHelpSyn,
-		HelpDescription: confHelpDesc,
+		HelpSynopsis:    detailedMetadataHelpSyn,
+		HelpDescription: detailedMetadataHelpDesc,
 	}
 }
 
@@ -815,11 +826,3 @@ func (b *versionedKVBackend) pathMetadataDelete() framework.OperationFunc {
 		return nil, err
 	}
 }
-
-const (
-	metadataHelpSyn  = `Allows interaction with key metadata and settings in the KV store.`
-	metadataHelpDesc = `
-This endpoint allows for reading, information about a key in the key-value
-store, writing key settings, and permanently deleting a key and all versions.
-`
-)

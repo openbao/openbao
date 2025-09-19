@@ -535,8 +535,6 @@ type fakeClient struct {
 
 	typeResp *proto.TypeResponse
 	typeErr  error
-
-	closeErr error
 }
 
 func (f fakeClient) Initialize(context.Context, *proto.InitializeRequest, ...grpc.CallOption) (*proto.InitializeResponse, error) {

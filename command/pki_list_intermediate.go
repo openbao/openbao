@@ -18,11 +18,6 @@ import (
 type PKIListIntermediateCommand struct {
 	*BaseCommand
 
-	flagConfig          string
-	flagReturnIndicator string
-	flagDefaultDisabled bool
-	flagList            bool
-
 	flagUseNames bool
 
 	flagSignatureMatch    bool

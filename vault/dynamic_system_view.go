@@ -24,12 +24,6 @@ import (
 // passwordPolicySubPath is a path to the entry storing the password generation policy
 const passwordPolicySubPath = "sys/password_policy/"
 
-type ctxKeyForwardedRequestMountAccessor struct{}
-
-func (c ctxKeyForwardedRequestMountAccessor) String() string {
-	return "forwarded-req-mount-accessor"
-}
-
 type dynamicSystemView struct {
 	core       *Core
 	mountEntry *MountEntry

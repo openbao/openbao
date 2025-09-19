@@ -88,10 +88,10 @@ const sidebars: SidebarsConfig = {
                             "PKCS#11": [
                                 "guides/unseal/pkcs11/securosys",
                                 "guides/unseal/pkcs11/utimaco",
-                            ]
-                        }
-                    ]
-                }
+                            ],
+                        },
+                    ],
+                },
             ],
             Configuration: [
                 "configuration/index",
@@ -127,6 +127,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/storage/postgresql",
                     ],
                 },
+                "configuration/oci-plugins",
                 "configuration/telemetry",
                 "configuration/ui",
                 "configuration/user-lockout",
@@ -212,6 +213,7 @@ const sidebars: SidebarsConfig = {
                         "commands/plugin/index",
                         "commands/plugin/deregister",
                         "commands/plugin/info",
+                        "commands/plugin/init",
                         "commands/plugin/list",
                         "commands/plugin/register",
                         "commands/plugin/reload",
@@ -497,7 +499,11 @@ const sidebars: SidebarsConfig = {
         },
         "known-issues",
         {
-            "Deprecation Notices": ["deprecation/index", "deprecation/faq", "deprecation/unauthed-rekey"],
+            "Deprecation Notices": [
+                "deprecation/index",
+                "deprecation/faq",
+                "deprecation/unauthed-rekey",
+            ],
             Policies: [
                 "policies/index",
                 "policies/brand",
@@ -536,7 +542,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/external-keys",
                 "rfcs/config-audit-devices",
                 {
-                  "UI/UX": ["rfcs/web-ui-modernization"],
+                    "UI/UX": ["rfcs/web-ui-modernization"],
                 },
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],

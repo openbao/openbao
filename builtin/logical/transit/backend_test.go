@@ -1871,6 +1871,84 @@ func testTransit_AEAD(t *testing.T, keyType string) {
 	if err == nil || (resp != nil && !resp.IsError()) {
 		t.Fatalf("bad expected error: err: %v\nresp: %#v", err, resp)
 	}
+
+	// Basic generate data key/decrypt should work.
+	generateDataKeyReq := &logical.Request{
+		Path:      "datakey/plaintext/aead",
+		Operation: logical.UpdateOperation,
+		Storage:   storage,
+		Data:      map[string]interface{}{},
+	}
+
+	resp, err = b.HandleRequest(context.Background(), generateDataKeyReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err: %v\nresp: %#v", err, resp)
+	}
+
+	plaintext1 := resp.Data["plaintext"].(string)
+	ciphertext1 = resp.Data["ciphertext"].(string)
+
+	decryptReq.Data = map[string]interface{}{
+		"ciphertext": ciphertext1,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err: %v\nresp: %#v", err, resp)
+	}
+
+	decryptedPlaintext = resp.Data["plaintext"]
+
+	if plaintext1 != decryptedPlaintext {
+		t.Fatalf("bad: plaintext; expected: %q\nactual: %q", plaintext1, decryptedPlaintext)
+	}
+
+	// Using associated as ciphertext should fail.
+	decryptReq.Data["ciphertext"] = associated
+	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	if err == nil || (resp != nil && !resp.IsError()) {
+		t.Fatalf("bad expected error: err: %v\nresp: %#v", err, resp)
+	}
+
+	// Redoing the above with additional data should work.
+	generateDataKeyReq.Data["associated_data"] = associated
+	resp, err = b.HandleRequest(context.Background(), generateDataKeyReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err: %v\nresp: %#v", err, resp)
+	}
+
+	plaintext2 := resp.Data["plaintext"].(string)
+	ciphertext2 = resp.Data["ciphertext"].(string)
+	decryptReq.Data["ciphertext"] = ciphertext2
+	decryptReq.Data["associated_data"] = associated
+
+	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err: %v\nresp: %#v", err, resp)
+	}
+
+	decryptedPlaintext = resp.Data["plaintext"]
+	if plaintext2 != decryptedPlaintext {
+		t.Fatalf("bad: plaintext; expected: %q\nactual: %q", plaintext2, decryptedPlaintext)
+	}
+
+	// Removing the associated_data should break the decryption.
+	decryptReq.Data = map[string]interface{}{
+		"ciphertext": ciphertext2,
+	}
+	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	if err == nil || (resp != nil && !resp.IsError()) {
+		t.Fatalf("bad expected error: err: %v\nresp: %#v", err, resp)
+	}
+
+	// Using a valid ciphertext with associated_data should also break the
+	// decryption.
+	decryptReq.Data["ciphertext"] = ciphertext1
+	decryptReq.Data["associated_data"] = associated
+	resp, err = b.HandleRequest(context.Background(), decryptReq)
+	if err == nil || (resp != nil && !resp.IsError()) {
+		t.Fatalf("bad expected error: err: %v\nresp: %#v", err, resp)
+	}
 }
 
 // Hack: use Transit as a signer.

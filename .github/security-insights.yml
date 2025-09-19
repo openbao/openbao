@@ -120,26 +120,18 @@ repository:
   accepts-change-request: true
   accepts-automated-change-request: true
   core-team:
-    - name: Andrii Fedorchuk 
-      social: https://github.com/driif
-    - name: Christoph Voigt  
-      social: https://github.com/voigt
-    - name: Dave Dykstra     
-      social: https://github.com/DrDaveD
-    - name: Jonas Köhnen     
-      social: https://github.com/satoqz
-    - name: Pascal Reeb      
-      social: https://github.com/pree
-    - name: Tom Gehrke       
-      social: https://github.com/phyrog
-    - name: Toni Tauro       
-      social: https://github.com/eyenx
-    - name: Wojciech Slabosz 
-      social: https://github.com/wslabosz-reply
-    - name: Yannis           
-      social: https://github.com/Nerkho
-    - name: Geoffrey Wilson  
-      social: https://github.com/suprjinx
+    - name: Dan Ghita
+      email: dghita@wallix.com
+      social: https://github.com/DanGhita
+    - name: Jan Martens
+      email: jan@martens.eu.org
+      social: https://github.com/JanMa
+    - name: Nathan Phelps
+      email: naphelps@us.ibm.com
+      social: https://github.com/naphelps
+    - name: Alex Scheel
+      email: ascheel@gitlab.com
+      social: https://github.com/cipherboy
   license:
     url: https://github.com/openbao/openbao/blob/main/LICENSE
     expression: 'Mozilla Public License 2.0'

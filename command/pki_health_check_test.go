@@ -15,7 +15,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/healthcheck"
 
-	"github.com/hashicorp/cli"
 	"github.com/stretchr/testify/require"
 )
 
@@ -304,17 +303,6 @@ func TestPKIHC_InvalidMounts(t *testing.T) {
 
 	if !strings.Contains(message, "Refusing to run") {
 		t.Fatalf("Expected failure to talk about no issuers, got exit code %v\nOutput: %v", code, message)
-	}
-}
-
-func testPKIHealthCheckCommand(tb testing.TB) (*cli.MockUi, *PKIHealthCheckCommand) {
-	tb.Helper()
-
-	ui := cli.NewMockUi()
-	return ui, &PKIHealthCheckCommand{
-		BaseCommand: &BaseCommand{
-			UI: ui,
-		},
 	}
 }
 

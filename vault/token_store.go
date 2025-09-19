@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
-	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -773,8 +772,6 @@ type TokenStore struct {
 	salts    map[string]*salt.Salt
 
 	tidyLock sync.Mutex
-
-	identityPoliciesDeriverFunc func(string) (*identity.Entity, []string, error)
 
 	quitContext context.Context
 

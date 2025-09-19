@@ -17,7 +17,6 @@ import (
 
 type CLIHandler struct {
 	// for tests
-	testStdin  io.Reader
 	testStdout io.Writer
 }
 

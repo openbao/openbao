@@ -1811,23 +1811,6 @@ ECONFIG_LOOP:
 	return matchedMfaEnforcementConfig, nil
 }
 
-func formatUsername(format string, alias *identity.Alias, entity *identity.Entity) string {
-	if format == "" {
-		return alias.Name
-	}
-
-	username := format
-	username = strings.ReplaceAll(username, "{{alias.name}}", alias.Name)
-	username = strings.ReplaceAll(username, "{{entity.name}}", entity.Name)
-	for k, v := range alias.Metadata {
-		username = strings.ReplaceAll(username, fmt.Sprintf("{{alias.metadata.%s}}", k), v)
-	}
-	for k, v := range entity.Metadata {
-		username = strings.ReplaceAll(username, fmt.Sprintf("{{entity.metadata.%s}}", k), v)
-	}
-	return username
-}
-
 type MFAFactor struct {
 	passcode string
 }
@@ -2962,46 +2945,4 @@ func (b *LoginMFABackend) putMFALoginEnforcementConfig(ctx context.Context, eCon
 		Key:   eConfig.ID,
 		Value: marshaledEntry,
 	})
-}
-
-var mfaHelp = map[string][2]string{
-	"methods-list": {
-		"Lists all the available MFA methods by their name.",
-		"",
-	},
-	"totp-generate": {
-		`Generates a TOTP secret for the given method name on the entity of the
-		calling token.`,
-		`This endpoint generates an MFA secret based on the
-		configuration tied to the method name and stores it in the entity of
-		the token making this request.`,
-	},
-	"totp-admin-generate": {
-		`Generates a TOTP secret for the given method name on the given entity.`,
-		`This endpoint generates an MFA secret based on the configuration tied
-		to the method name and stores it in the entity corresponding to the
-		given entity identifier. This endpoint is used to administratively
-		generate TOTP secrets on entities.`,
-	},
-	"totp-admin-destroy": {
-		`Deletes the TOTP secret for the given method name on the given entity.`,
-		`This endpoint removes the secret belonging to method name from the
-		entity regardless of the secret type.`,
-	},
-	"totp-method": {
-		"Defines or updates a TOTP MFA method.",
-		"",
-	},
-	"okta-method": {
-		"Defines or updates an Okta MFA method.",
-		"",
-	},
-	"duo-method": {
-		"Defines or updates a Duo MFA method.",
-		"",
-	},
-	"pingid-method": {
-		"Defines or updates a PingID MFA method.",
-		"",
-	},
 }

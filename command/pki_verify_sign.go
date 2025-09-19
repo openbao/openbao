@@ -20,11 +20,6 @@ import (
 
 type PKIVerifySignCommand struct {
 	*BaseCommand
-
-	flagConfig          string
-	flagReturnIndicator string
-	flagDefaultDisabled bool
-	flagList            bool
 }
 
 func (c *PKIVerifySignCommand) Synopsis() string {

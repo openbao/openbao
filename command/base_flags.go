@@ -647,15 +647,6 @@ func (d *durationValue) String() string   { return (*d.target).String() }
 func (d *durationValue) Example() string  { return "duration" }
 func (d *durationValue) Hidden() bool     { return d.hidden }
 
-// appendDurationSuffix is used as a backwards-compat tool for assuming users
-// meant "seconds" when they do not provide a suffixed duration value.
-func appendDurationSuffix(s string) string {
-	if strings.HasSuffix(s, "s") || strings.HasSuffix(s, "m") || strings.HasSuffix(s, "h") {
-		return s
-	}
-	return s + "s"
-}
-
 // -- StringSliceVar and stringSliceValue
 type StringSliceVar struct {
 	Name       string

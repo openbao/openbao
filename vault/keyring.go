@@ -21,14 +21,9 @@ const (
 	minimumRotationInterval  = 24 * time.Hour
 )
 
-var (
-	defaultRotationConfig = KeyRotationConfig{
-		MaxOperations: absoluteOperationMaximum,
-	}
-	disabledRotationConfig = KeyRotationConfig{
-		Disabled: true,
-	}
-)
+var defaultRotationConfig = KeyRotationConfig{
+	MaxOperations: absoluteOperationMaximum,
+}
 
 // Keyring is used to manage multiple encryption keys used by
 // the barrier. New keys can be installed and each has a sequential term.

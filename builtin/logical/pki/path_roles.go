@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -163,10 +164,19 @@ CN and DNS SANs, and the host part of email addresses. Defaults to true.`,
 		},
 
 		"allow_ip_sans": {
-			Type:     framework.TypeBool,
+			Type:        framework.TypeBool,
+			Required:    true,
+			Description: `If set, IP Subject Alternative Names are allowed.`,
+		},
+
+		"allowed_ip_sans_cidr": {
+			Type:     framework.TypeCommaStringSlice,
 			Required: true,
-			Description: `If set, IP Subject Alternative Names are allowed.
-Any valid IP is accepted and No authorization checking is performed.`,
+			Description: `Specifies the IP CIDRs this role is allowed
+to issue certificates for. This is used with the allow_ip_sans to 
+determine matches for the common name, and IP-typed SAN entries of
+certificates. See the documentation for more information. This parameter
+accepts a comma-separated string or list of CIDR notated IPs.`,
 		},
 
 		"allowed_uri_sans": {
@@ -543,14 +553,22 @@ CN and DNS SANs, and the host part of email addresses. Defaults to true.`,
 			},
 
 			"allow_ip_sans": {
-				Type:    framework.TypeBool,
-				Default: true,
-				Description: `If set, IP Subject Alternative Names are allowed.
-Any valid IP is accepted and No authorization checking is performed.`,
+				Type:        framework.TypeBool,
+				Default:     true,
+				Description: `If set, IP Subject Alternative Names are allowed.`,
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name:  "Allow IP Subject Alternative Names",
 					Value: true,
 				},
+			},
+
+			"allowed_ip_sans_cidr": {
+				Type: framework.TypeCommaStringSlice,
+				Description: `Specifies the IP CIDRs this role is allowed
+to issue certificates for. This is used with the allow_ip_sans to 
+determine matches for the common name, and IP-typed SAN entries of
+certificates. See the documentation for more information. This parameter
+accepts a comma-separated string or list of CIDR notated IPs.`,
 			},
 
 			"allowed_uri_sans": {
@@ -1124,6 +1142,7 @@ func (b *backend) pathRoleCreate(ctx context.Context, req *logical.Request, data
 		AllowedURISANsTemplate:        data.Get("allowed_uri_sans_template").(bool),
 		EnforceHostnames:              data.Get("enforce_hostnames").(bool),
 		AllowIPSANs:                   data.Get("allow_ip_sans").(bool),
+		AllowedIPSANsCIDR:             nil, // Handled specially below
 		AllowedURISANs:                data.Get("allowed_uri_sans").([]string),
 		ServerFlag:                    data.Get("server_flag").(bool),
 		ClientFlag:                    data.Get("client_flag").(bool),
@@ -1182,6 +1201,17 @@ func (b *backend) pathRoleCreate(ctx context.Context, req *logical.Request, data
 		allowWildcardCertificates = true
 	}
 	*entry.AllowWildcardCertificates = allowWildcardCertificates.(bool)
+
+	// Parse and store CIDRs
+	AllowedIPSANsCIDR := []net.IPNet{}
+	for _, s := range data.Get("allowed_ip_sans_cidr").([]string) {
+		_, ipnet, err := net.ParseCIDR(s)
+		if err != nil {
+			return logical.ErrorResponse(fmt.Errorf("error parsing allowed_ip_sans_cidr: %w", err).Error()), nil
+		}
+		AllowedIPSANsCIDR = append(AllowedIPSANsCIDR, *ipnet)
+	}
+	entry.AllowedIPSANsCIDR = AllowedIPSANsCIDR
 
 	warning := ""
 	// no_store implies generate_lease := false
@@ -1365,6 +1395,7 @@ func (b *backend) pathRolePatch(ctx context.Context, req *logical.Request, data 
 		AllowedURISANsTemplate:        data.GetWithExplicitDefault("allowed_uri_sans_template", oldEntry.AllowedURISANsTemplate).(bool),
 		EnforceHostnames:              data.GetWithExplicitDefault("enforce_hostnames", oldEntry.EnforceHostnames).(bool),
 		AllowIPSANs:                   data.GetWithExplicitDefault("allow_ip_sans", oldEntry.AllowIPSANs).(bool),
+		AllowedIPSANsCIDR:             nil, // Handled specially below
 		AllowedURISANs:                data.GetWithExplicitDefault("allowed_uri_sans", oldEntry.AllowedURISANs).([]string),
 		ServerFlag:                    data.GetWithExplicitDefault("server_flag", oldEntry.ServerFlag).(bool),
 		ClientFlag:                    data.GetWithExplicitDefault("client_flag", oldEntry.ClientFlag).(bool),
@@ -1424,6 +1455,23 @@ func (b *backend) pathRolePatch(ctx context.Context, req *logical.Request, data 
 		allowWildcardCertificates = *oldEntry.AllowWildcardCertificates
 	}
 	*entry.AllowWildcardCertificates = allowWildcardCertificates.(bool)
+
+	// Parse and store CIDRs
+	newAllowedIPSANsCIDR := []net.IPNet{}
+	oldAllowedIPSANsCIDR := []string{}
+	if oldEntry.AllowedIPSANsCIDR != nil {
+		for _, cidr := range oldEntry.AllowedIPSANsCIDR {
+			oldAllowedIPSANsCIDR = append(oldAllowedIPSANsCIDR, cidr.String())
+		}
+	}
+	for _, allowedCIDR := range data.GetWithExplicitDefault("allowed_ip_sans_cidr", oldAllowedIPSANsCIDR).([]string) {
+		_, allowedIPNet, err := net.ParseCIDR(allowedCIDR)
+		if err != nil {
+			return logical.ErrorResponse(fmt.Errorf("error parsing allowed_ip_sans_cidr: %w", err).Error()), nil
+		}
+		newAllowedIPSANsCIDR = append(newAllowedIPSANsCIDR, *allowedIPNet)
+	}
+	entry.AllowedIPSANsCIDR = newAllowedIPSANsCIDR
 
 	warning := ""
 	generateLease, ok := data.GetOk("generate_lease")
@@ -1588,6 +1636,7 @@ type roleEntry struct {
 	AllowAnyName                  bool          `json:"allow_any_name"`
 	EnforceHostnames              bool          `json:"enforce_hostnames"`
 	AllowIPSANs                   bool          `json:"allow_ip_sans"`
+	AllowedIPSANsCIDR             []net.IPNet   `json:"allowed_ip_sans_cidr,omitempty"`
 	ServerFlag                    bool          `json:"server_flag"`
 	ClientFlag                    bool          `json:"client_flag"`
 	CodeSigningFlag               bool          `json:"code_signing_flag"`
@@ -1634,6 +1683,12 @@ type roleEntry struct {
 }
 
 func (r *roleEntry) ToResponseData() map[string]interface{} {
+	AllowedIPSANsCIDR := []string{}
+	if r.AllowedIPSANsCIDR != nil {
+		for _, ipnet := range r.AllowedIPSANsCIDR {
+			AllowedIPSANsCIDR = append(AllowedIPSANsCIDR, ipnet.String())
+		}
+	}
 	responseData := map[string]interface{}{
 		"ttl":                                int64(r.TTL.Seconds()),
 		"max_ttl":                            int64(r.MaxTTL.Seconds()),
@@ -1649,6 +1704,7 @@ func (r *roleEntry) ToResponseData() map[string]interface{} {
 		"allowed_uri_sans_template":          r.AllowedURISANsTemplate,
 		"enforce_hostnames":                  r.EnforceHostnames,
 		"allow_ip_sans":                      r.AllowIPSANs,
+		"allowed_ip_sans_cidr":               AllowedIPSANsCIDR,
 		"server_flag":                        r.ServerFlag,
 		"client_flag":                        r.ClientFlag,
 		"code_signing_flag":                  r.CodeSigningFlag,

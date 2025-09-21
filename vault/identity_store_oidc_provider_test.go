@@ -706,6 +706,27 @@ func TestOIDC_Path_OIDC_Token_Client_Credentials_Flow(t *testing.T) {
 			wantErr: ErrTokenInvalidGrant,
 		},
 		{
+			name: "token request with client credentials disabled (by default)",
+			args: args{
+				clientReq: &logical.Request{
+					Storage:   s,
+					Path:      "oidc/client/test-client",
+					Operation: logical.CreateOperation,
+					Data: map[string]interface{}{
+						"key":                "test-key",
+						"redirect_uris":      []string{"https://localhost:8251/callback"},
+						"assignments":        []string{"test-assignment"},
+						"id_token_ttl":       "24h",
+						"access_token_ttl":   "24h",
+						"authorization_code": true,
+					},
+				},
+				providerReq: testProviderReq(s, clientID),
+				tokenReq:    testClientCredentialsTokenReq(s, "openid", clientID, clientSecret),
+			},
+			wantErr: ErrTokenInvalidGrant,
+		},
+		{
 			name: "valid token request",
 			args: args{
 				clientReq:   testClientClientcredentialFlowReq(s),
@@ -792,13 +813,12 @@ func TestOIDC_Path_OIDC_Token_Client_Credentials_Flow(t *testing.T) {
 			require.Equal(t, http.StatusOK, resp.Data[logical.HTTPStatusCode].(int))
 			require.Equal(t, "Bearer", tokenRes.TokenType)
 			require.NotEmpty(t, tokenRes.AccessToken)
-			require.NotEmpty(t, tokenRes.IDToken)
 			require.Equal(t, int64(86400), tokenRes.ExpiresIn)
 			require.Empty(t, tokenRes.Error)
 			require.Empty(t, tokenRes.ErrorDescription)
 
-			// Parse the claims from the ID token payload
-			parts := strings.Split(tokenRes.IDToken, ".")
+			// Parse the claims from the access token payload
+			parts := strings.Split(tokenRes.AccessToken, ".")
 			require.Equal(t, 3, len(parts))
 			payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 			require.NoError(t, err)
@@ -809,7 +829,7 @@ func TestOIDC_Path_OIDC_Token_Client_Credentials_Flow(t *testing.T) {
 			// Optional reserved claims are asserted on conditionally.
 			clientCredentialClaims := []string{
 				"iat", "aud", "exp", "iss",
-				"sub", "namespace",
+				"sub", "namespace", "jti",
 			}
 			for _, c := range clientCredentialClaims {
 				// other reserved claims must be present in all cases

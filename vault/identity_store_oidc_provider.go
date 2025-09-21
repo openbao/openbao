@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -2080,41 +2081,22 @@ func (i *IdentityStore) clientCredentialsFlow(ctx context.Context, req *logical.
 	if scopes == nil {
 		return tokenResponse(nil, ErrAuthInvalidRequest, fmt.Sprintf("scope parameter must contain the %q value", openIDScope))
 	}
-
-	// The access token is a Vault batch token with a policy that only
-	// provides access to the issuing provider's userinfo endpoint.
+	// Set the ID token claims
 	accessTokenIssuedAt := time.Now()
-	accessTokenExpiry := accessTokenIssuedAt.Add(client.AccessTokenTTL)
-	accessToken := &logical.TokenEntry{
-		Type:               logical.TokenTypeBatch,
-		NamespaceID:        ns.ID,
-		Path:               req.Path,
-		TTL:                client.AccessTokenTTL,
-		CreationTime:       accessTokenIssuedAt.Unix(),
-		NoIdentityPolicies: true,
-		Meta: map[string]string{
-			"oidc_token_type": "access token",
-		},
-		InternalMeta: map[string]string{
-			accessTokenClientIDMeta: client.ClientID,
-			accessTokenScopesMeta:   strings.Join(scopes, scopesDelimiter),
-		},
-	}
-	err := i.tokenStorer.CreateToken(ctx, accessToken, true)
+	accessTokenExpiry := accessTokenIssuedAt.Add(client.IDTokenTTL)
+	jti, err := uuid.GenerateUUID()
 	if err != nil {
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}
 
-	// Set the ID token claims
-	idTokenIssuedAt := time.Now()
-	idTokenExpiry := idTokenIssuedAt.Add(client.IDTokenTTL)
-	idToken := idToken{
+	accessToken := accessToken{
 		Namespace: ns.ID,
 		Issuer:    provider.effectiveIssuer,
 		Subject:   client.ClientID,
 		Audience:  client.ClientID,
-		Expiry:    idTokenExpiry.Unix(),
-		IssuedAt:  idTokenIssuedAt.Unix(),
+		Expiry:    accessTokenExpiry.Unix(),
+		IssuedAt:  accessTokenIssuedAt.Unix(),
+		JTI:       jti,
 	}
 
 	// Populate each of the requested scope templates
@@ -2126,25 +2108,19 @@ func (i *IdentityStore) clientCredentialsFlow(ctx context.Context, req *logical.
 			return tokenResponse(nil, ErrTokenServerError, err.Error())
 		}
 	}
-	return i.generateIDTokenPayload(idToken, templates, key, accessToken, accessTokenExpiry, accessTokenIssuedAt)
-}
-
-func (i *IdentityStore) generateIDTokenPayload(idToken idToken, templates []string, key *namedKey, accessToken *logical.TokenEntry, accessTokenExpiry time.Time, accessTokenIssuedAt time.Time) (*logical.Response, error) {
-	payload, err := idToken.generatePayload(i.Logger(), templates...)
+	payload, err := accessToken.generatePayload(i.Logger(), templates...)
 	if err != nil {
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}
-
 	// Sign the ID token using the client's key
-	signedIDToken, err := key.signPayload(payload)
+	signedAccessToken, err := key.signPayload(payload)
 	if err != nil {
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}
 
 	return tokenResponse(map[string]interface{}{
 		"token_type":   "Bearer",
-		"access_token": accessToken.ID,
-		"id_token":     signedIDToken,
+		"access_token": signedAccessToken,
 		"expires_in":   int64(accessTokenExpiry.Sub(accessTokenIssuedAt).Seconds()),
 	}, "", "")
 }
@@ -2302,7 +2278,23 @@ func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.
 			return tokenResponse(nil, ErrTokenServerError, err.Error())
 		}
 	}
-	return i.generateIDTokenPayload(idToken, templates, key, accessToken, accessTokenExpiry, accessTokenIssuedAt)
+	payload, err := idToken.generatePayload(i.Logger(), templates...)
+	if err != nil {
+		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	}
+
+	// Sign the ID token using the client's key
+	signedIDToken, err := key.signPayload(payload)
+	if err != nil {
+		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	}
+
+	return tokenResponse(map[string]interface{}{
+		"token_type":   "Bearer",
+		"access_token": accessToken.ID,
+		"id_token":     signedIDToken,
+		"expires_in":   int64(accessTokenExpiry.Sub(accessTokenIssuedAt).Seconds()),
+	}, "", "")
 }
 
 // tokenResponse returns the OIDC Token Response. An error response is
@@ -3219,4 +3211,25 @@ func lowercaseIdentityIDs(identities []string) []string {
 	}
 
 	return out
+}
+
+// validateScopes validates the "scope" parameter according to OIDC requirements.
+//
+// According to the OpenID Connect Core specification (Section 3.1.2.1):
+// - Authorization requests MUST contain the "openid" scope value to indicate an OIDC request.
+// - Requests without "openid" are not considered OIDC authentication requests.
+func validateScopes(d *framework.FieldData, provider *provider) []string {
+	requestedScopes := strutil.ParseDedupAndSortStrings(d.Get("scope").(string), scopesDelimiter)
+	if len(requestedScopes) == 0 || !slices.Contains(requestedScopes, openIDScope) {
+		return nil
+	}
+
+	// Scope values that are not supported by the provider should be ignored
+	scopes := make([]string, 0)
+	for _, scope := range requestedScopes {
+		if slices.Contains(provider.ScopesSupported, scope) && scope != openIDScope {
+			scopes = append(scopes, scope)
+		}
+	}
+	return scopes
 }

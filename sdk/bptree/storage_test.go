@@ -73,7 +73,7 @@ func TestStorage(t *testing.T) {
 		require.NoError(t, err, "Failed to delete node")
 
 		deletedNode, err := nodeStorage.GetNode(ctx, nodeID)
-		require.Equal(t, ErrNodeNotFound, err, "Expected ErrNodeNotFound when loading deleted node")
+		require.ErrorIs(t, err, ErrNodeNotFound, "Expected ErrNodeNotFound when loading deleted node")
 		require.Nil(t, deletedNode, "Node should have been deleted")
 
 		// Verify if the cache has been cleared

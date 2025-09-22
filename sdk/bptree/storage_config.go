@@ -5,6 +5,7 @@ import (
 	"errors"
 )
 
+// NOTE (gabrielopesantos): This is probably not needed (standard JSON serialization is fine for now)
 // NodeSerializer defines how to serialize and deserialize nodes
 type NodeSerializer interface {
 	Serialize(node *Node) ([]byte, error)
@@ -41,8 +42,9 @@ type StorageConfig struct {
 	BufferingEnabled bool
 }
 
+// NewStorageConfig creates a default storage config with optional overrides
+// for non transactional storage.
 func NewStorageConfig(opts ...StorageOption) *StorageConfig {
-	// Default config
 	cfg := &StorageConfig{
 		NodeSerializer:   &JSONSerializer{}, // Default to JSON serializer
 		CachingEnabled:   true,              // Enable caching by default
@@ -56,8 +58,9 @@ func NewStorageConfig(opts ...StorageOption) *StorageConfig {
 	return cfg
 }
 
+// NewTransactionalStorageConfig creates a default storage config with optional
+// overrides for transactional storage.
 func NewTransactionalStorageConfig(opts ...StorageOption) *StorageConfig {
-	// Default config
 	cfg := &StorageConfig{
 		NodeSerializer:   &JSONSerializer{}, // Default to JSON serializer
 		CachingEnabled:   true,              // Enable caching by default
@@ -78,10 +81,6 @@ func ValidateStorageConfig(cfg *StorageConfig) error {
 	if cfg.CachingEnabled && cfg.CacheSize <= 0 {
 		return errors.New("CacheSize must be positive when caching is enabled")
 	}
-	// TODO: Re-enable this check if we start using MaxBufferedNodes
-	// if cfg.BufferingEnabled && cfg.MaxBufferedNodes <= 0 {
-	// 	return errors.New("MaxBufferedNodes must be positive when buffering is enabled")
-	// }
 
 	return nil
 }

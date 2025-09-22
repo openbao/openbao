@@ -14,12 +14,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/lru"
 )
 
-const (
-	nodesPath  = "nodes"
-	rootPath   = "root"
-	configPath = "config"
-)
-
 var (
 	ErrNodeNotFound   = errors.New("node not found")
 	ErrRootIDNotSet   = errors.New("root ID not set")
@@ -38,6 +32,7 @@ type Storage interface {
 	PutNode(ctx context.Context, node *Node) error
 	// DeleteNode deletes a node from storage
 	DeleteNode(ctx context.Context, id string) error
+	// TODO (gabrielopesantos): Reconsider this method...
 	// PurgeNodes clears all nodes from storage starting with the prefix
 	// PurgeNodes(ctx context.Context) error
 
@@ -123,30 +118,6 @@ func NewTransactionalNodeStorage(
 	}, nil
 }
 
-// configKey constructs the storage key for tree metadata, using tree ID from context if available
-func configKey(ctx context.Context) string {
-	treeID := getTreeIDOrDefault(ctx, DefaultTreeID)
-	return treeID + "/" + configPath
-}
-
-// rootKey constructs the storage key for the root ID, using tree ID from context if available
-func rootKey(ctx context.Context) string {
-	treeID := getTreeIDOrDefault(ctx, DefaultTreeID)
-	return treeID + "/" + rootPath
-}
-
-// nodeKey constructs the storage key for a node, using tree ID from context if available
-func nodeKey(ctx context.Context, nodeID string) string {
-	treeID := getTreeIDOrDefault(ctx, DefaultTreeID)
-	return treeID + "/" + nodesPath + "/" + nodeID
-}
-
-// cacheKey constructs the cache key for a node, using tree ID from context if available
-func cacheKey(ctx context.Context, nodeID string) string {
-	treeID := getTreeIDOrDefault(ctx, DefaultTreeID)
-	return treeID + ":" + nodeID
-}
-
 // GetRootID gets the root node identifier
 func (s *NodeStorage) GetRootID(ctx context.Context) (string, error) {
 	s.lock.RLock()
@@ -194,10 +165,8 @@ func (s *NodeStorage) GetNode(ctx context.Context, id string) (*Node, error) {
 	}
 
 	// Try to get from cache second (unless cache is disabled)
-	if s.cachingEnabled {
-		if node, ok := s.cache.Get(cacheKey(ctx, id)); ok {
-			return node, nil
-		}
+	if node := s.getFromCache(ctx, id); node != nil {
+		return node, nil
 	}
 
 	// Load from storage as last resort
@@ -216,9 +185,7 @@ func (s *NodeStorage) GetNode(ctx context.Context, id string) (*Node, error) {
 	}
 
 	// Cache the loaded node
-	if s.cachingEnabled {
-		s.cache.Add(cacheKey(ctx, id), node)
-	}
+	s.addToCache(ctx, node)
 
 	return node, nil
 }
@@ -238,9 +205,7 @@ func (s *NodeStorage) PutNode(ctx context.Context, node *Node) error {
 	if s.bufferingEnabled {
 		s.dirtyTracker.MarkDirty(node.ID, node)
 		// Also update cache immediately for read consistency within the operation
-		if s.cachingEnabled {
-			s.cache.Add(cacheKey(ctx, node.ID), node)
-		}
+		s.addToCache(ctx, node)
 		return nil
 	}
 
@@ -265,9 +230,7 @@ func (s *NodeStorage) putNodeImmediate(ctx context.Context, node *Node) error {
 	}
 
 	// Cache the saved node
-	if s.cachingEnabled {
-		s.cache.Add(cacheKey(ctx, node.ID), node)
-	}
+	s.addToCache(ctx, node)
 
 	return nil
 }
@@ -282,9 +245,7 @@ func (s *NodeStorage) DeleteNode(ctx context.Context, id string) error {
 	if s.bufferingEnabled {
 		s.dirtyTracker.MarkDeleted(id)
 		// Also remove from cache immediately for consistency within the operation
-		if s.cachingEnabled {
-			s.cache.Delete(cacheKey(ctx, id))
-		}
+		s.removeFromCache(ctx, id)
 		return nil
 	}
 
@@ -299,9 +260,7 @@ func (s *NodeStorage) deleteNodeImmediate(ctx context.Context, id string) error 
 	}
 
 	// Remove from cache
-	if s.cachingEnabled {
-		s.cache.Delete(cacheKey(ctx, id))
-	}
+	s.removeFromCache(ctx, id)
 
 	return nil
 }
@@ -349,175 +308,4 @@ func (s *NodeStorage) PutConfig(ctx context.Context, config *BPlusTreeConfig) er
 	}
 
 	return nil
-}
-
-// EnableCache enables or disables cache operations
-func (s *NodeStorage) EnableCache(enabled bool) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	s.cachingEnabled = enabled
-}
-
-// IsCacheEnabled returns whether cache operations are enabled
-func (s *NodeStorage) IsCacheEnabled() bool {
-	return s.cachingEnabled
-}
-
-// PurgeCache clears all entries from the cache
-func (s *NodeStorage) PurgeCache() {
-	if s.cache != nil {
-		s.cache.Purge()
-	}
-}
-
-// FlushBuffer persists all dirty (buffered) operations to storage
-func (s *NodeStorage) FlushBuffer(ctx context.Context) error {
-	if !s.bufferingEnabled || s.dirtyTracker == nil {
-		return nil // Nothing to flush
-	}
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	// Process deletions first
-	for _, key := range s.dirtyTracker.Keys() {
-		if s.dirtyTracker.IsDeleted(key) {
-			if err := s.deleteNodeImmediate(ctx, key); err != nil {
-				return fmt.Errorf("failed to flush delete for node %s: %w", key, err)
-			}
-		}
-	}
-
-	// Then process saves/updates
-	for _, key := range s.dirtyTracker.Keys() {
-		if node, isDirty := s.dirtyTracker.GetDirty(key); isDirty {
-			if err := s.putNodeImmediate(ctx, node); err != nil {
-				return fmt.Errorf("failed to flush save for node %s: %w", key, err)
-			}
-		}
-	}
-
-	// Clear the dirty tracker after successful flush
-	s.dirtyTracker.Clear()
-	return nil
-}
-
-// ClearBuffer discards all buffered changes without persisting
-func (s *NodeStorage) ClearBuffer() {
-	if s.bufferingEnabled && s.dirtyTracker != nil {
-		s.lock.Lock()
-		defer s.lock.Unlock()
-		s.dirtyTracker.Clear()
-	}
-}
-
-// BufferStats returns information about the current buffer state
-func (s *NodeStorage) BufferStats() (dirtyCount int, bufferingEnabled bool) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	if s.dirtyTracker != nil {
-		dirtyCount = s.dirtyTracker.Count()
-	}
-	return dirtyCount, s.bufferingEnabled
-}
-
-// SetBufferingEnabled controls whether write buffering is enabled
-// When disabled, writes go directly to storage
-func (s *NodeStorage) SetBufferingEnabled(enabled bool) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	s.bufferingEnabled = enabled
-}
-
-// Helper Functions for Write Buffering
-//
-// These helper functions are designed for use with regular NodeStorage instances only.
-// Do NOT use these with transactional storage (Transaction interface) as transactions handle
-// their own buffering and flushing lifecycle automatically:
-//
-// - Transactions buffer writes in their own DirtyTracker during execution
-// - Transactions automatically flush buffers during Commit()
-// - Transactions automatically clear buffers during Rollback()
-//
-// For transactional operations, use WithTransaction() which provides proper
-// transaction lifecycle management including automatic buffer handling.
-//
-// These functions provide convenient ways to use the built-in buffering functionality
-
-// WithBufferedWrites executes a function with write buffering ENABLED, then flushes all writes.
-// This function forces buffering ON during execution, regardless of the storage's default setting.
-// Operations are guaranteed to be buffered and flushed together as a batch.
-func WithBufferedWrites(ctx context.Context, storage Storage, fn func(Storage) error) error {
-	// Force buffering ON for NodeStorage types
-	var originalBuffering bool
-	var needsRestore bool
-
-	if ns, ok := storage.(*NodeStorage); ok {
-		originalBuffering = ns.bufferingEnabled
-		if !originalBuffering {
-			ns.SetBufferingEnabled(true) // Force buffering ON
-			needsRestore = true
-		}
-	}
-
-	// Ensure buffering is restored on exit
-	if needsRestore {
-		defer func() {
-			if ns, ok := storage.(*NodeStorage); ok {
-				ns.SetBufferingEnabled(originalBuffering)
-			}
-		}()
-	}
-
-	// Execute the function with forced buffering
-	if err := fn(storage); err != nil {
-		// Clear buffer on error
-		clearBufferIfSupported(storage)
-		return err
-	}
-
-	// Flush buffer on success
-	return flushBufferIfSupported(ctx, storage)
-}
-
-// WithAutoFlush executes a function with the storage's CURRENT buffering behavior and automatically
-// flushes any buffered writes at the end. This respects the storage's existing configuration.
-//
-// Unlike WithBufferedWrites, this doesn't change the storage behavior - it just
-// ensures any existing buffered operations are flushed.
-func WithAutoFlush(ctx context.Context, storage Storage, fn func(Storage) error) error {
-	// Execute the function with the storage as-is (no behavior changes)
-	if err := fn(storage); err != nil {
-		// Clear buffer on error
-		clearBufferIfSupported(storage)
-		return err
-	}
-
-	// Flush buffer on success
-	return flushBufferIfSupported(ctx, storage)
-}
-
-// Helper functions for buffer operations
-// Note: These work with transactional storage types but should generally not be used
-// with them as transactions handle their own buffering and flushing lifecycle.
-func clearBufferIfSupported(storage Storage) {
-	switch ns := storage.(type) {
-	case *NodeStorage:
-		ns.ClearBuffer()
-	case *TransactionalNodeStorage:
-		ns.ClearBuffer()
-	}
-}
-
-func flushBufferIfSupported(ctx context.Context, storage Storage) error {
-	switch ns := storage.(type) {
-	case *NodeStorage:
-		return ns.FlushBuffer(ctx)
-	case *TransactionalNodeStorage:
-		return ns.FlushBuffer(ctx)
-	default:
-		// Storage does not support buffering, no flush needed
-		return nil
-	}
 }

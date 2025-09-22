@@ -6373,7 +6373,7 @@ func TestTokenStore_Collectors(t *testing.T) {
 func TestTokenStore_LookupSchemaMatchesHandler(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
 	ts := c.tokenStore
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create a test token with specific properties
 	createResp, err := c.HandleRequest(ctx, &logical.Request{

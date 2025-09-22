@@ -6940,7 +6940,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/ember__application@npm:*, @types/ember__application@npm:^4.0.4":
+"@types/ember__application@npm:*":
   version: 4.0.4
   resolution: "@types/ember__application@npm:4.0.4"
   dependencies:
@@ -6952,6 +6952,20 @@ __metadata:
     "@types/ember__owner": "*"
     "@types/ember__routing": "*"
   checksum: 4d5bd9793409d2814d1a068a1a9ee0db8036efb6975266703f5fcd5da21e4194602585e2343567f9f5dff47649a28e4174c7e6eb446f6285e80a2237344c391a
+  languageName: node
+  linkType: hard
+
+"@types/ember__application@npm:^4.0.11":
+  version: 4.0.11
+  resolution: "@types/ember__application@npm:4.0.11"
+  dependencies:
+    "@glimmer/component": ^1.1.0
+    "@types/ember": "*"
+    "@types/ember__engine": "*"
+    "@types/ember__object": "*"
+    "@types/ember__owner": "*"
+    "@types/ember__routing": "*"
+  checksum: ba9e913fd2d965f205923817cbdef1353cf05c496c76d6179f75af041b9a4fd0368f5dd96adfeb8df97bc398bfb34073cfd1c1a33bb10e63f065a2150b98c9ef
   languageName: node
   linkType: hard
 
@@ -28088,7 +28102,7 @@ __metadata:
     "@types/ember-data__store": ^4.0.2
     "@types/ember-qunit": ^5.0.2
     "@types/ember-resolver": ^9.0.2
-    "@types/ember__application": ^4.0.4
+    "@types/ember__application": ^4.0.11
     "@types/ember__array": ^4.0.3
     "@types/ember__component": ^4.0.22
     "@types/ember__controller": ^4.0.3

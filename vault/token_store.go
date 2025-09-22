@@ -331,11 +331,28 @@ func (ts *TokenStore) paths() []*framework.Path {
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: ts.handleLookup,
 					DisplayAttrs: &framework.DisplayAttributes{
-						OperationSuffix: "2",
+						OperationSuffix: "get",
+					},
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields:      tokenLookupResponseSchema,
+							SchemaName:  "TokenLookupResponse",
+						}},
 					},
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: ts.handleLookup,
+					DisplayAttrs: &framework.DisplayAttributes{
+						OperationSuffix: "post",
+					},
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields:      tokenLookupResponseSchema,
+							SchemaName:  "TokenLookupResponse",
+						}},
+					},
 				},
 			},
 
@@ -362,6 +379,13 @@ func (ts *TokenStore) paths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: ts.handleUpdateLookupAccessor,
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields:      tokenLookupResponseSchema,
+							SchemaName:  "TokenLookupResponse",
+						}},
+					},
 				},
 			},
 
@@ -374,7 +398,7 @@ func (ts *TokenStore) paths() []*framework.Path {
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: operationPrefixToken,
-				OperationVerb:   "look-up",
+				OperationVerb:   "look-up-self",
 			},
 
 			Fields: map[string]*framework.FieldSchema{
@@ -388,13 +412,27 @@ func (ts *TokenStore) paths() []*framework.Path {
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: ts.handleLookupSelf,
 					DisplayAttrs: &framework.DisplayAttributes{
-						OperationSuffix: "self",
+						OperationSuffix: "get",
+					},
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields:      tokenLookupResponseSchema,
+							SchemaName:  "TokenLookupResponse",
+						}},
 					},
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: ts.handleLookupSelf,
 					DisplayAttrs: &framework.DisplayAttributes{
-						OperationSuffix: "self2",
+						OperationSuffix: "post",
+					},
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields:      tokenLookupResponseSchema,
+							SchemaName:  "TokenLookupResponse",
+						}},
 					},
 				},
 			},
@@ -952,6 +990,115 @@ type accessorEntry struct {
 
 type sscTokenGenerationCounter struct {
 	Counter int
+}
+
+// tokenLookupResponseSchema defines the response schema for token lookup operations
+// This schema is used both for OpenAPI generation and ensures handler consistency
+var tokenLookupResponseSchema = map[string]*framework.FieldSchema{
+	"id": {
+		Type:        framework.TypeString,
+		Description: "Token ID (may be empty for self-lookup operations)",
+	},
+	"accessor": {
+		Type:        framework.TypeString,
+		Description: "Token accessor",
+		Required:    true,
+	},
+	"policies": {
+		Type:        framework.TypeStringSlice,
+		Description: "List of policies associated with the token",
+		Required:    true,
+	},
+	"path": {
+		Type:        framework.TypeString,
+		Description: "Path where the token was created",
+	},
+	"meta": {
+		Type:        framework.TypeMap,
+		Description: "Token metadata",
+	},
+	"display_name": {
+		Type:        framework.TypeString,
+		Description: "Display name of the token",
+	},
+	"num_uses": {
+		Type:        framework.TypeInt,
+		Description: "Number of uses remaining",
+	},
+	"orphan": {
+		Type:        framework.TypeBool,
+		Description: "Whether the token is an orphan",
+	},
+	"creation_time": {
+		Type:        framework.TypeInt64,
+		Description: "Token creation time (Unix timestamp)",
+		Required:    true,
+	},
+	"creation_ttl": {
+		Type:        framework.TypeInt64,
+		Description: "Token creation TTL in seconds",
+	},
+	"expire_time": {
+		Type:        framework.TypeTime,
+		Description: "Token expiration time",
+	},
+	"ttl": {
+		Type:        framework.TypeInt64,
+		Description: "Token TTL in seconds",
+	},
+	"explicit_max_ttl": {
+		Type:        framework.TypeInt64,
+		Description: "Token explicit maximum TTL in seconds",
+	},
+	"entity_id": {
+		Type:        framework.TypeString,
+		Description: "Entity ID associated with the token",
+	},
+	"type": {
+		Type:        framework.TypeString,
+		Description: "Token type",
+		Required:    true,
+	},
+	"role": {
+		Type:        framework.TypeString,
+		Description: "Role name used to create the token",
+	},
+	"period": {
+		Type:        framework.TypeInt64,
+		Description: "Token period in seconds",
+	},
+	"bound_cidrs": {
+		Type:        framework.TypeStringSlice,
+		Description: "List of CIDR blocks bound to the token",
+	},
+	"namespace_path": {
+		Type:        framework.TypeString,
+		Description: "Namespace path",
+	},
+	"last_renewal_time": {
+		Type:        framework.TypeInt64,
+		Description: "Last renewal time (Unix timestamp)",
+	},
+	"last_renewal": {
+		Type:        framework.TypeTime,
+		Description: "Last renewal time",
+	},
+	"renewable": {
+		Type:        framework.TypeBool,
+		Description: "Whether the token is renewable",
+	},
+	"issue_time": {
+		Type:        framework.TypeTime,
+		Description: "Token issue time",
+	},
+	"identity_policies": {
+		Type:        framework.TypeStringSlice,
+		Description: "Identity policies associated with the token (present only when token has an entity and derived policies)",
+	},
+	"external_namespace_policies": {
+		Type:        framework.TypeMap,
+		Description: "Derived identity policies for external namespaces (present only when applicable)",
+	},
 }
 
 // SetExpirationManager is used to provide the token store with

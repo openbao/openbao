@@ -488,7 +488,7 @@ func TestWithTransactionHelper(t *testing.T) {
 
 		// Verify data was not committed (rolled back)
 		loadedNode, err := storage.GetNode(ctx, "failure-node")
-		require.Equal(t, ErrNodeNotFound, err, "Node should not exist after rollback")
+		require.ErrorIs(t, err, ErrNodeNotFound, "Loading should return ErrNodeNotFound")
 		require.Nil(t, loadedNode, "Node should not exist after rollback")
 	})
 }

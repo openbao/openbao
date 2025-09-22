@@ -23,9 +23,9 @@ func TestNodeStorageBuiltInBuffering(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("BufferingEnabledByDefault", func(t *testing.T) {
+	t.Run("BufferingEnabledByConfig", func(t *testing.T) {
 		dirtyCount, bufferingEnabled := nodeStorage.BufferStats()
-		require.True(t, bufferingEnabled, "Buffering should be enabled by default")
+		require.True(t, bufferingEnabled, "Buffering should be enabled by config")
 		require.Equal(t, 0, dirtyCount, "Should start with no dirty nodes")
 	})
 
@@ -101,15 +101,18 @@ func TestNodeStorageBuiltInBuffering(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, entry, "Node should not be in underlying storage after clear")
 
-		// Node might still be in cache, but not in dirty buffer or underlying storage
-		// This is correct behavior - cache and buffer are separate systems
+		// Cache is also purged when clearing the buffer so getting the node from the
+		// node storage should not return it.
+		nodeEntry, err := nodeStorage.GetNode(ctx, "test3")
+		require.ErrorIs(t, err, ErrNodeNotFound, "Node should not be found after buffer clear")
+		require.Nil(t, nodeEntry, "Node should still be retrievable from cache")
 	})
 
 	t.Run("WithAutoFlushHelper", func(t *testing.T) {
 		// Test the WithAutoFlush helper
 		err := WithAutoFlush(ctx, nodeStorage, func(storage Storage) error {
-			node4 := &Node{ID: "test4", IsLeaf: true}
-			node5 := &Node{ID: "test5", IsLeaf: true}
+			node4 := NewLeafNode("test4")
+			node5 := NewLeafNode("test5")
 
 			// Multiple saves - should be buffered
 			if err := storage.PutNode(ctx, node4); err != nil {
@@ -131,5 +134,93 @@ func TestNodeStorageBuiltInBuffering(t *testing.T) {
 		// Buffer should be empty after auto-flush
 		dirtyCount, _ := nodeStorage.BufferStats()
 		require.Equal(t, 0, dirtyCount, "Buffer should be empty after auto-flush")
+	})
+
+	t.Run("WithBufferedWritesHelper", func(t *testing.T) {
+		// Test the WithBufferedWrites helper which forces buffering ON
+		err := WithBufferedWrites(ctx, nodeStorage, func(storage Storage) error {
+			node6 := NewLeafNode("test6")
+			node7 := NewLeafNode("test7")
+
+			// Multiple saves - should be buffered regardless of original config
+			if err := storage.PutNode(ctx, node6); err != nil {
+				return err
+			}
+			return storage.PutNode(ctx, node7)
+		})
+		require.NoError(t, err)
+
+		// Both nodes should be in underlying storage (force-flushed)
+		entry6, err := logicalStorage.Get(ctx, nodeKey(ctx, "test6"))
+		require.NoError(t, err)
+		require.NotNil(t, entry6, "Node6 should be in underlying storage")
+
+		entry7, err := logicalStorage.Get(ctx, nodeKey(ctx, "test7"))
+		require.NoError(t, err)
+		require.NotNil(t, entry7, "Node7 should be in underlying storage")
+
+		// Buffer should be empty after forced flush
+		dirtyCount, _ := nodeStorage.BufferStats()
+		require.Equal(t, 0, dirtyCount, "Buffer should be empty after forced flush")
+	})
+
+	t.Run("DeleteNodeIsBuffered", func(t *testing.T) {
+		// First, create and flush a node so it exists in storage
+		nodeToDelete := NewLeafNode("to-delete")
+		err := nodeStorage.PutNode(ctx, nodeToDelete)
+		require.NoError(t, err)
+		err = nodeStorage.FlushBuffer(ctx)
+		require.NoError(t, err)
+
+		// Verify node exists in storage
+		entry, err := logicalStorage.Get(ctx, nodeKey(ctx, "to-delete"))
+		require.NoError(t, err)
+		require.NotNil(t, entry, "Node should exist in storage before delete")
+
+		// Delete node - should be buffered
+		err = nodeStorage.DeleteNode(ctx, "to-delete")
+		require.NoError(t, err)
+
+		// Check that deletion is in the buffer
+		dirtyCount, _ := nodeStorage.BufferStats()
+		require.Equal(t, 1, dirtyCount, "Delete should be in dirty buffer")
+
+		// Node should still be in underlying storage (delete not flushed yet)
+		entry, err = logicalStorage.Get(ctx, nodeKey(ctx, "to-delete"))
+		require.NoError(t, err)
+		require.NotNil(t, entry, "Node should still be in underlying storage before flush")
+
+		// Flush should execute the delete
+		err = nodeStorage.FlushBuffer(ctx)
+		require.NoError(t, err)
+
+		// Node should now be gone from underlying storage
+		entry, err = logicalStorage.Get(ctx, nodeKey(ctx, "to-delete"))
+		require.NoError(t, err)
+		require.Nil(t, entry, "Node should be deleted from underlying storage after flush")
+	})
+
+	t.Run("BufferingCanBeDisabled", func(t *testing.T) {
+		// Test with buffering disabled
+		nonBufferedStorage, err := NewNodeStorage(logicalStorage, NewStorageConfig(WithBufferingEnabled(false)))
+		require.NoError(t, err)
+
+		dirtyCount, bufferingEnabled := nonBufferedStorage.BufferStats()
+		require.False(t, bufferingEnabled, "Buffering should be disabled")
+		require.Equal(t, 0, dirtyCount, "Should have no dirty nodes")
+
+		// Save node - should go directly to storage (not buffered)
+		node8 := NewLeafNode("test8")
+		err = nonBufferedStorage.PutNode(ctx, node8)
+		require.NoError(t, err)
+
+		// Should still have no dirty nodes (went directly to storage)
+		dirtyCount, _ = nonBufferedStorage.BufferStats()
+		require.Equal(t, 0, dirtyCount, "Should have no dirty nodes when buffering disabled")
+
+		// Node should be in underlying storage immediately
+		entry8, err := logicalStorage.Get(ctx, nodeKey(ctx, "test8"))
+		require.NoError(t, err)
+		require.NotNil(t, entry8, "Node8 should be in underlying storage immediately")
 	})
 }

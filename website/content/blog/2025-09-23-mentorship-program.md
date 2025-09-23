@@ -43,9 +43,9 @@ The result? A foundational improvement that makes OpenBao clusters more efficien
 This program was a win on every level.
 *   **For OpenBao:** We gained a critical feature from our roadmap and a valuable contributor.
 *   **For Fatima:** She tackled a complex project with direct, high-impact outcomes and the support of a collaborative team.
-*   **For Adfinis:** The investment in funding and our time directly contributed to the health of an open-source project we believe in.
+*   **For [Adfinis](https://www.adfinis.com/):** The investment in funding and our time directly contributed to the health of an open-source project we believe in.
 
-The real success wasn't just the code. It was proving that with the right combination of **funding, flexibility, and a team spirit**, you can structure a mentorship to achieve incredible things. It’s about combining the energy of a new contributor with the experience of maintainers to solve real problems.
+The real success wasn't just the code. It was proving that with the right combination of **funding, flexibility, and a team spirit**, you can structure a mentorship to achieve incredible things. It’s about creating a focused environment where a talented developer, like [**Fatima Patel**](https://github.com/fatima2003), can deeply integrate with a maintainer's workflow to accelerate complex, high-impact projects that benefit the entire community.
 
 This is how we build a sustainable open-source future: not by waiting for perfect plans, but by creating opportunities, adapting as we go, and investing in people.
 

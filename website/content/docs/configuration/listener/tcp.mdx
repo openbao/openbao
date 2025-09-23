@@ -119,6 +119,12 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
   `/sys/rekey-recovery-key/*`). These are a security risk to leave exposed on
   public listeners.
 
+- `disallow_metrics` `(bool: false)` - Specifies if the `/v1/sys/metrics` endpoint is disabled on this listener. 
+  This is useful for hardening a listener that handles general client traffic, preventing API clients from scraping metrics.
+
+- `metrics_only` `(bool: false)` - Specifies if the listener should *only* serve the `/v1/sys/metrics` endpoint, blocking all other API requests. 
+  This is useful for creating a dedicated, secure listener for monitoring systems.
+
 :::warning
 
 **In OpenBao v2.4.0, this parameter will default to true, forbidding any calls
@@ -386,6 +392,29 @@ listener "tcp" {
     unauthenticated_pprof_access = true
     unauthenticated_in_flight_request_access = true
   }
+}
+```
+
+### Configuring Metrics Security and Access
+
+This example configures two listeners to separate API traffic from metrics monitoring. 
+The first listener handles API requests on port 8200 with metrics disabled, 
+while a second listener on 9101 is dedicated only to serving metrics.
+
+```hcl
+# Primary listener for general API traffic
+# Metrics are disabled for security.
+listener "tcp" {
+  address            = "127.0.0.1:8200"
+  disallow_metrics   = true
+}
+
+# Dedicated listener for monitoring systems (e.g., Prometheus)
+# Only serves metrics and blocks all other requests.
+listener "tcp" {
+  address                        = "127.0.0.1:9101"
+  metrics_only                   = true
+  unauthenticated_metrics_access = true
 }
 ```
 

@@ -147,8 +147,8 @@ type Listener struct {
 	// an authenticated variant with new semantics is available on a new
 	// endpoint, this will be set to true (disabling request handling).
 	DisableUnauthedRekeyEndpoints bool `hcl:"disable_unauthed_rekey_endpoints"`
-	DisallowMetrics bool `hcl:"disallow_metrics"`
-	MetricsOnly bool `hcl:"metrics_only"`
+	DisallowMetrics               bool `hcl:"disallow_metrics"`
+	MetricsOnly                   bool `hcl:"metrics_only"`
 }
 
 // AgentAPI allows users to select which parts of the Agent API they want enabled.

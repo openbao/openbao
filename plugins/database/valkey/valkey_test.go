@@ -16,6 +16,7 @@ import (
 	"github.com/mediocregopher/radix/v4"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/ory/dockertest/v3"
 	dc "github.com/ory/dockertest/v3/docker"
 )
@@ -47,6 +48,8 @@ func prepareValkeyTestContainer(t *testing.T) (func(), string, int) {
 	if redver == "" {
 		redver = "latest"
 	}
+
+	docker.CheckSkipContainerTests(t)
 
 	pool, err := dockertest.NewPool("")
 	if err != nil {

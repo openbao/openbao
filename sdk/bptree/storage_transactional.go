@@ -165,22 +165,27 @@ func (s *NodeTransaction) mergeCacheIntoParent() {
 		return
 	}
 
-	// Lock both caches to ensure thread safety
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
+	// always lock parent before transaction to prevent deadlocks with other
+	// operations that might lock in the same order
 	s.parentStorage.lock.Lock()
 	defer s.parentStorage.lock.Unlock()
 
-	// Get all keys from transaction cache (NOTE: This is expensive...What if the cache was shared between transactions?)
-	keys := s.cache.Keys()
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
-	// Copy each entry from transaction cache to parent cache
+	keys := s.cache.Keys()
+	allEntries := make(map[string]*Node, len(keys))
+
 	for _, key := range keys {
 		if value, ok := s.cache.Get(key); ok {
-			// Add to parent cache (this will handle LRU eviction automatically)
-			s.parentStorage.cache.Add(key, value)
+			allEntries[key] = value
 		}
+	}
+
+	// Copy entries to parent cache
+	for key, value := range allEntries {
+		// Add to parent cache
+		s.parentStorage.cache.Add(key, value)
 	}
 }
 

@@ -10,15 +10,20 @@ description: |-
 
 This feature would implement second-party authorization for protected
 resources. A control-group restriction placed on a path would require
-a user to obtain prior authorization before the action would succeed.
+a user to obtain prior authorization before the action would
+succeed. 
 
-Using the control group feature would follow this general pattern, via API
-endpoints:
+Control groups utilize the existing response-wrapping workflow
+(https://openbao.org/docs/concepts/response-wrapping/) because of the
+asynchronous character, and usage would follow this general pattern (via API
+endpoints):
 
 1. A path is assigned a control-group policy
-2. Access to the path is denied without control group authorization
-3. A user belonging to the control group can authorize the resource for a particular entity
-4. Access to the path is now permitted to the authorized entity for some duration
+2. A user requesting the protected path receives a wrapped response with a `wrapping_accessor` and `wrapping_token`.
+   1. The `wrapping_token` will not yet succeed to unwrap the response.
+   2. The `wrapping_accessor` is used by control group members to approve the request.
+3. Using the accessor, a control group member can review and authorize the request.
+4. Access to the wrapped response via `wrapping_token` will now succeed.
 
 A second phase might add a request/notification workflow, but this is not essential:
 1. A user requests access to the protected resource
@@ -45,51 +50,42 @@ The control group implementation might consist of the following.
    2. Allows authorizing action to control group members
    3. Allows data access to authorized entity
 2. An authorizing endpoint:
-   1. Applies to path
-   2. Applies to user/entity
-   3. Is time-limited
-   4. Self authorization not permitted
-3. Authorization storage (how do we maintain the "authorization" state over time?):
-   1. Metadata on the path?
-   2. Separate storage mount for authorizations?
-
-When the policy is "checking authorization", we'd need to read the
-authorization storage. This might be simplest if the metadata of the
-path in question contains authorizations (no need to access a second
-location).
-
-For workflow, we might need a "requests" storage as well.
+   1. Using wrapping accessor
+   2. Self authorization not permitted
+3. Authorization storage
+   1. A mount for control-group
+   2. Stores request and authorizations
 
 ## API Details
 
 ### Policy Extension
 
-Control groups could be implemented as a new stanza in the ACL policy for a path, eg:
+Control groups could be implemented as a new object in the ACL policy
+for a path. Multiple named "factors" can be specified, eg:
 
 ```
 path "pki/issue/*" {
   capabilities = ["create", "update"]
 
-  control-group {
-	# Control groups that can authorize access
-	authorizers = ["pki-approvers", "security-team"]
+  control-group = {
+    factor "pki-approvers" {
+      identity {
+		# Control groups that can authorize access
+		group_names = ["pki-approvers", "security-team"]
+		approvals = 1
 
-	# Max duration for which authorization is valid
-	ttl = "5d"
+		# Max duration for which authorization is valid
+		ttl = "5d"
 
-	# Allow self-authorization when true
-	self_authorization = false
-
-	# Optional: require multiple approvers
-	required_approvals = 1
-
-	# Optional: limit entities for which authorization can work
-	authorized_entities = ["user-123", "service-account-web"]
+		# Allow self-authorization when true
+		self_authorization = false
+	  }
+	}
   }
 }
 ```
 
-The specific endpoint behaviors could look like this:
+The resulting behaviors would look like the following:
 
 ```
 # Normal request by jwt sub user-123 (blocked by control group by default)
@@ -98,6 +94,16 @@ POST /pki/issue/web-server
   "common_name": "web.example.com",
   "ttl": "24h"
 }
+```
+
+Returns a wrapped response:
+```
+{
+	"wrapping_token": "123-456-789",
+	
+}
+```
+
 
 # Authorization request, permitted if requesting jwt has the control group membership
 POST /pki/issue/web-server/authorize

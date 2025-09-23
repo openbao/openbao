@@ -17,18 +17,16 @@ func (s *NodeStorage) FlushBuffer(ctx context.Context) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// Process deletions first
+	// Process all operations in a single pass with proper precedence
+	// Deletion takes precedence over updates for the same key
 	for _, key := range s.dirtyTracker.Keys() {
 		if s.dirtyTracker.IsDeleted(key) {
+			// Process deletion
 			if err := s.deleteNodeImmediate(ctx, key); err != nil {
 				return fmt.Errorf("failed to flush delete for node %s: %w", key, err)
 			}
-		}
-	}
-
-	// Then process saves/updates
-	for _, key := range s.dirtyTracker.Keys() {
-		if node, isDirty := s.dirtyTracker.GetDirty(key); isDirty {
+		} else if node, isDirty := s.dirtyTracker.GetDirty(key); isDirty {
+			// Process save/update only if not deleted
 			if err := s.putNodeImmediate(ctx, node); err != nil {
 				return fmt.Errorf("failed to flush save for node %s: %w", key, err)
 			}
@@ -42,15 +40,13 @@ func (s *NodeStorage) FlushBuffer(ctx context.Context) error {
 
 // ClearBuffer discards all buffered changes without persisting
 func (s *NodeStorage) ClearBuffer() {
-	s.PurgeCache()
 	if s.bufferingEnabled && s.dirtyTracker != nil {
 		s.lock.Lock()
 		defer s.lock.Unlock()
 		s.dirtyTracker.Clear()
 	}
 
-	// NOTE (gabrielopesantos): Does this make sense?
-	// Also clear the cache to avoid stale reads
+	// Clear the cache to avoid stale reads since buffered changes are discarded
 	s.PurgeCache()
 }
 
@@ -70,5 +66,13 @@ func (s *NodeStorage) BufferStats() (dirtyCount int, bufferingEnabled bool) {
 func (s *NodeStorage) SetBufferingEnabled(enabled bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
 	s.bufferingEnabled = enabled
+
+	// Create dirty tracker if enabling buffering and it doesn't exist
+	if enabled && s.dirtyTracker == nil {
+		s.dirtyTracker = NewDirtyTracker()
+	}
+	// Note: We don't set dirtyTracker to nil when disabling to avoid losing
+	// any buffered changes. Call FlushBuffer() or ClearBuffer() first if needed.
 }

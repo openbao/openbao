@@ -21,8 +21,7 @@ func (c *Core) Invalidate(key string) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(c.activeContext, 2*time.Second)
-	defer cancel()
+	ctx, _ = context.WithTimeout(ctx, 2*time.Second) //nolint:govet // we can't cancel this context, because invalidation is asynchronous
 
 	err := c.invalidateInternal(ctx, key)
 	if err != nil {
@@ -62,11 +61,11 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 		c.namespaceStore.invalidate(ctx, "")
 
 		ctx := physical.CacheRefreshContext(ctx, true)
-		uuid := strings.TrimPrefix(namespacedKey, namespaceStoreSubPath)
+		namespaceUUID = strings.TrimPrefix(namespacedKey, namespaceStoreSubPath)
 
-		c.policyStore.invalidateNamespace(ctx, uuid)
+		c.policyStore.invalidateNamespace(ctx, namespaceUUID)
 
-		c.invalidateNamespaceMounts(ctx, uuid)
+		c.invalidateNamespaceMounts(ctx, namespaceUUID)
 
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath):
 		policyType := PolicyTypeACL // for now it is safe to assume type is ACL
@@ -78,8 +77,9 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 	case key == coreAuditConfigPath || key == coreLocalAuditConfigPath:
 		c.invalidateAudits()
 
-	case namespacedKey == coreMountConfigPath || namespacedKey == coreLocalMountConfigPath:
-	// TODO: handle non transaction storage
+	case namespacedKey == coreMountConfigPath || namespacedKey == coreLocalMountConfigPath ||
+		namespacedKey == coreAuthConfigPath || namespacedKey == coreLocalAuthConfigPath:
+		c.invalidateLegacyMounts(physical.CacheRefreshContext(ctx, true), key)
 
 	case strings.HasPrefix(namespacedKey, coreMountConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalMountConfigPath+"/") ||
 		strings.HasPrefix(namespacedKey, coreAuthConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalAuthConfigPath+"/"):

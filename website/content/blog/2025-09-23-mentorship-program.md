@@ -6,15 +6,15 @@ authors: AndriiFedorchuk
 tags: [mentorship, community, opensource, collaboration]
 ---
 
-Imagine starting a mentorship program with a big goal and... not a perfect plan. Sound familiar? That was us, three months ago. We had a brilliant mentee, [**Fatima Patel**](https://github.com/fatima2003), a crucial project for OpenBao’s roadmap, and a healthy dose of "let's figure this out as we go."
+Imagine starting a mentorship program with a big goal and... not a perfect plan. Sound familiar? That was us, three months ago. We had a brilliant mentee, [**Fatima Patel**](https://github.com/fatima2003), a crucial feature for OpenBao’s roadmap, and a healthy dose of "let's figure this out as we go."
 
 Spoiler alert: it worked. Spectacularly. But not because we had all the answers on day one. It worked because we treated the mentorship itself like an open-source project: we iterated, adapted, and optimized for success in real-time.
 
-This is the story of how we structured—and restructured—a 12-week program that ended up giving OpenBao a scalability upgrade and fantastic contributions.
+This is the story of how we structured—and restructured—a 12-week program that ended up giving OpenBao a scalability boost and fantastic contributions.
 
 #### **The Setup: An Experiment with High Stakes**
 
-The goal was ambitious: transform OpenBao’s passive standby nodes into active "performance standbys" that can handle read requests, a key step towards horizontal scalability. [**Adfinis**](https://www.adfinis.com/) provided the crucial fuel by funding the program, and the initiative was kicked off by [**Alexander Scheel**](https://github.com/cipherboy), who created [the project on the LFX Mentorship Platform](https://mentorship.lfx.linuxfoundation.org/project/d419da30-b718-435d-8673-6c1260307339).
+The goal was ambitious: transform OpenBao’s **passive standby nodes** into **active cluster participants** that can handle read requests, a key step towards horizontal scalability. [**Adfinis**](https://www.adfinis.com/) provided the crucial fuel by funding the program, and the initiative was kicked off by [**Alexander Scheel**](https://github.com/cipherboy), who created [the project on the LFX Mentorship Platform](https://mentorship.lfx.linuxfoundation.org/project/d419da30-b718-435d-8673-6c1260307339).
 
 My role was to be the primary mentor. This was a shared investment: Adfinis invested funds and my time, while Fatima invested her talent and immense effort.
 
@@ -36,7 +36,7 @@ And what a feature it was. Under this adapted structure, Fatima’s contribution
 *   She enabled **standby nodes to handle read requests**, a fundamental shift from idle replicas to active participants.
 *   She implemented the **post-unsealing logic**, ensuring standbys are fully initialized and ready to work.
 
-The result? A foundational improvement that makes OpenBao clusters more efficient and performant. Standby nodes are no longer resource-consuming insurance policies; they are now part of the active workforce.
+The result? A foundational improvement that makes OpenBao clusters more efficient and performant. Standby nodes are no longer resource-consuming fallback insurance; they are now part of the active workforce.
 
 #### **The Real Win: A Model for Community-Led Growth**
 

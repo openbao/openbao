@@ -153,14 +153,8 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, pluginName string
 		return fmt.Errorf("invalid OCI reference %q: %w", config.URL, err)
 	}
 
-	// Set up authentication
-	authenticator, err := d.getOCIAuthenticator(ref.Context().RegistryStr(), logger)
-	if err != nil {
-		return fmt.Errorf("failed to set up OCI authentication: %w", err)
-	}
-
 	// Download the image
-	img, err := remote.Image(ref, remote.WithContext(ctx), remote.WithAuth(authenticator))
+	img, err := remote.Image(ref, remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain))
 	if err != nil {
 		return fmt.Errorf("failed to download OCI image: %w", err)
 	}
@@ -244,35 +238,6 @@ func (d *PluginDownloader) calculateSHA256(filePath string) (result string, err 
 
 	result = hex.EncodeToString(hasher.Sum(nil))
 	return result, err
-}
-
-// getOCIAuthenticator returns the appropriate authenticator for the given registry
-func (d *PluginDownloader) getOCIAuthenticator(registry string, logger hclog.Logger) (authn.Authenticator, error) {
-	// Check if we have authentication configured for this registry
-	authConfigs := d.config.PluginOCIAuth
-	authConfig, exists := authConfigs[registry]
-	if !exists {
-		logger.Debug("no authentication configured for registry, using anonymous", "registry", registry)
-		return authn.Anonymous, nil
-	}
-
-	// Use token-based auth if available
-	if authConfig.Token != "" {
-		logger.Debug("using token authentication for registry", "registry", registry)
-		return &authn.Bearer{Token: authConfig.Token}, nil
-	}
-
-	// Use username/password auth if available
-	if authConfig.Username != "" && authConfig.Password != "" {
-		logger.Debug("using basic authentication for registry", "registry", registry)
-		return &authn.Basic{
-			Username: authConfig.Username,
-			Password: authConfig.Password,
-		}, nil
-	}
-
-	logger.Debug("no valid authentication method found, using anonymous", "registry", registry)
-	return authn.Anonymous, nil
 }
 
 // ExtractPluginFromImage extracts the plugin binary from the OCI image (public for testing)

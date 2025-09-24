@@ -54,48 +54,6 @@ plugin_download_behavior = "fail"
 - `"fail"` `(default)` - Server startup fails if any plugin download fails
 - `"warn"` - Log warnings for failed downloads but continue startup
 
-## `plugin_oci_auth`
-
-Configures authentication for private OCI registries.
-
-```hcl
-plugin_oci_auth {
-  "registry.example.com" {
-    username = "user"
-    password = "pass"
-  }
-}
-```
-
-### Registry parameters
-
-- `username` `(string: optional)` - Username for basic authentication
-- `password` `(string: optional)` - Password for basic authentication  
-- `token` `(string: optional)` - Bearer token for token-based authentication
-
-Use either a pair of `username`/`password` OR just `token`, not both.
-
-### Examples
-
-**GitHub Container Registry:**
-```hcl
-plugin_oci_auth {
-  "ghcr.io" {
-    username = "github-username"
-    password = "ghp_personal_access_token"
-  }
-}
-```
-
-**Bearer token:**
-```hcl
-plugin_oci_auth {
-  "registry.company.com" {
-    token = "bearer-token-here"
-  }
-}
-```
-
 ## Complete example
 
 ```hcl
@@ -115,13 +73,6 @@ plugins {
     url         = "ghcr.io/openbao/openbao-plugin-secrets-aws:v1.0.0"
     binary_name = "openbao-plugin-secrets-aws"
     sha256sum   = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
-  }
-}
-
-plugin_oci_auth {
-  "ghcr.io" {
-    username = "github-username"
-    password = "ghp_personal_access_token"
   }
 }
 ```

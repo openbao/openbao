@@ -78,9 +78,8 @@ type Config struct {
 	PluginFilePermissions    int         `hcl:"-"`
 	PluginFilePermissionsRaw interface{} `hcl:"plugin_file_permissions,alias:PluginFilePermissions"`
 
-	Plugins                map[string]*PluginConfig        `hcl:"plugins"`
-	PluginDownloadBehavior string                          `hcl:"plugin_download_behavior"`
-	PluginOCIAuth          map[string]*PluginOCIAuthConfig `hcl:"plugin_oci_auth"`
+	Plugins                map[string]*PluginConfig `hcl:"plugins"`
+	PluginDownloadBehavior string                   `hcl:"plugin_download_behavior"`
 
 	EnableIntrospectionEndpoint    bool        `hcl:"-"`
 	EnableIntrospectionEndpointRaw interface{} `hcl:"introspection_endpoint,alias:EnableIntrospectionEndpoint"`
@@ -160,13 +159,6 @@ func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 	for pluginName, pluginConfig := range c.Plugins {
 		if pluginConfig != nil {
 			results = append(results, pluginConfig.Validate(pluginName, sourceFilePath)...)
-		}
-	}
-
-	// Validate OCI auth configurations
-	for _, authConfig := range c.PluginOCIAuth {
-		if authConfig != nil {
-			results = append(results, authConfig.Validate(sourceFilePath)...)
 		}
 	}
 
@@ -310,14 +302,6 @@ type PluginConfig struct {
 	SHA256Sum  string                  `hcl:"sha256sum"`
 }
 
-// PluginOCIAuthConfig represents OCI registry authentication configuration
-type PluginOCIAuthConfig struct {
-	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
-	Username   string                  `hcl:"username"`
-	Password   string                  `hcl:"password"`
-	Token      string                  `hcl:"token"`
-}
-
 // Validate validates a PluginConfig
 func (p *PluginConfig) Validate(pluginName, sourceFilePath string) []configutil.ConfigError {
 	var results []configutil.ConfigError
@@ -362,27 +346,6 @@ func (p *PluginConfig) Validate(pluginName, sourceFilePath string) []configutil.
 				break
 			}
 		}
-	}
-
-	return results
-}
-
-// Validate validates a PluginOCIAuthConfig
-func (p *PluginOCIAuthConfig) Validate(sourceFilePath string) []configutil.ConfigError {
-	results := configutil.ValidateUnusedFields(p.UnusedKeys, sourceFilePath)
-
-	// At least one authentication method should be provided
-	if p.Username == "" && p.Password == "" && p.Token == "" {
-		results = append(results, configutil.ConfigError{
-			Problem: "plugin_oci_auth: at least one of username, password, or token must be provided",
-		})
-	}
-
-	// If username is provided, password should also be provided
-	if p.Username != "" && p.Password == "" {
-		results = append(results, configutil.ConfigError{
-			Problem: "plugin_oci_auth: password must be provided when username is specified",
-		})
 	}
 
 	return results
@@ -612,15 +575,6 @@ func (c *Config) Merge(c2 *Config) *Config {
 	}
 	for name, plugin := range c2.Plugins {
 		result.Plugins[name] = plugin // c2 takes precedence
-	}
-
-	// Merge OCI auth configurations
-	result.PluginOCIAuth = make(map[string]*PluginOCIAuthConfig)
-	for name, auth := range c.PluginOCIAuth {
-		result.PluginOCIAuth[name] = auth
-	}
-	for name, auth := range c2.PluginOCIAuth {
-		result.PluginOCIAuth[name] = auth // c2 takes precedence
 	}
 
 	// Merge plugin download behavior

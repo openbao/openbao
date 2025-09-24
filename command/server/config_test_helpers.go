@@ -681,8 +681,7 @@ func testLoadConfigDir(t *testing.T) {
 		MaxLeaseTTL:     10 * time.Hour,
 		DefaultLeaseTTL: 10 * time.Hour,
 
-		Plugins:       make(map[string]*PluginConfig),
-		PluginOCIAuth: make(map[string]*PluginOCIAuthConfig),
+		Plugins: make(map[string]*PluginConfig),
 	}
 
 	addExpectedEntConfig(expected, []string{"http"})

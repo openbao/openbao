@@ -171,7 +171,7 @@ POST /sys/wrapping/unwrap
 	"token": "bd3dbfbb-f80f-488c-9981-08ebb3f51020"
 }
 
-# Which now returns the wrapped response data:
+# Which returns the original response data:
 {
   "request_id": "12345678-abcd-efgh-ijkl-123456789abc",
   "lease_id": "",
@@ -195,28 +195,38 @@ POST /sys/wrapping/unwrap
 ```
 
 ## Rationale and Alternatives
-
-This is essentially "assigning a policy to a resource and a user"
-granting access -- which is something we can already do in OpenBao
-with roles/policies/etc. However, the control-group concept has some
-additional value:
+The control group concept has a number of benefits:
 
 1. The administrator can delegate authorization responsibility to a
    group, any member of which can grant access
 2. By inhibiting self-approval, the control group policy can ensure "second set of eyes"
 3. The wrapped_response workflow provides some additional security
-3. A workflow for requesting/granting in the UI might make admistration easier
+
+A workflow for requesting/granting in the UI could make admistra2tion easier. 
+
+As an alternative: the same second-person security arrangement can be
+achieved with a basic policy granting access to a path. However, this
+requires policy-granting permission for the "control group" member,
+and extra work to subsequently remove the policy.
 
 ## Downsides
 
+Involving a second actor in securing a path creates some complexity and impedence for users.
+
 ## Security Implications
+
+Using response wrapping and requiring authorization should increase
+security. Only the original token holder (the requester) will be able
+to obtain the original response.
 
 ## User/Developer Experience
 
+Reusing the response wrapping framework should be familiar, but the developer will need
+
 ## Unresolved Questions
 
-What is stored about an authorization? Where?
-Do we need some kind of signing for authorizations?g
+Using `sys/control-group` and the `cubbyhole` mounts might lead us to
+break the namespace partitioning. Should these be per namespace?
 
 ## Related Issues
 
@@ -224,4 +234,4 @@ Do we need some kind of signing for authorizations?g
 
 ## Proof of Concept
 
-
+TBD

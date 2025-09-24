@@ -12,13 +12,6 @@ Steering Committee.
 
 ## Accepted
 
- - [Authenticated rekey](/docs/rfcs/authenticated-rekey), to make the rekey
-   root and rekey recovery keys endpoints authenticated and additionally
-   authorized by a token and its policy.
- - [Declarative Self-Initialization](/docs/rfcs/self-init), to allow operators
-   to define initial mounts, auth, policies, and audit logs from a static
-   configuration applied once on early startup, preventing the need to call
-   manual `sys/init` except with manual unseal mechanisms.
  - [Per-Namespace Sealing](/docs/rfcs/namespace-sealing), to add per-tenant 
    encryption key separation.
  - [External Key Configuration for KMS and HSM Access](/docs/rfcs/external-keys),
@@ -29,9 +22,18 @@ Steering Committee.
  - [Standby nodes handle read requests](/docs/rfcs/standby-nodes-handle-read-requests),
    to allow standby nodes in a high-availability setup to handle read
    requests directly, improving horizontal scalability.
+ - [Switch to OpenTelemetry](/docs/rfcs/opentelemetry), to replace the current
+   metrics based on `go-metrics` with OpenTelemetry based metrics.
 
 ## Landed
 
+ - [Authenticated rekey](/docs/rfcs/authenticated-rekey), to make the rekey
+   root and rekey recovery keys endpoints authenticated and additionally
+   authorized by a token and its policy.
+ - [Declarative Self-Initialization](/docs/rfcs/self-init), to allow operators
+   to define initial mounts, auth, policies, and audit logs from a static
+   configuration applied once on early startup, preventing the need to call
+   manual `sys/init` except with manual unseal mechanisms.
  - [Paginated lists](/docs/rfcs/paginated-lists), for adding pagination
    to the user-facing API and storage backends. This landed in
    [PR #170](https://github.com/openbao/openbao/pull/170).

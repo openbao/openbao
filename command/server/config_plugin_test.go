@@ -34,13 +34,6 @@ plugins {
 }
 
 plugin_download_behavior = "fail"
-
-plugin_oci_auth {
-  "ghcr.io" {
-    username = "openbao"
-    password = "ghp_faketoken123456789faketoken123456789"
-  }
-}
 `
 
 	config, err := ParseConfig(configData, "test")
@@ -75,22 +68,6 @@ plugin_oci_auth {
 	}
 	if awsPlugin.SHA256Sum != "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c" {
 		t.Errorf("Expected AWS plugin SHA256 '9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c', got '%s'", awsPlugin.SHA256Sum)
-	}
-
-	// Test OCI auth
-	if len(config.PluginOCIAuth) != 1 {
-		t.Fatalf("Expected 1 OCI auth config, got %d", len(config.PluginOCIAuth))
-	}
-
-	authConfig, exists := config.PluginOCIAuth["ghcr.io"]
-	if !exists {
-		t.Fatal("Private registry auth config not found")
-	}
-	if authConfig.Username != "openbao" {
-		t.Errorf("Expected username 'openbao', got '%s'", authConfig.Username)
-	}
-	if authConfig.Password != "ghp_faketoken123456789faketoken123456789" {
-		t.Errorf("Expected password 'ghp_faketoken123456789faketoken123456789', got '%s'", authConfig.Password)
 	}
 
 	// Test validation

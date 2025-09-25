@@ -243,6 +243,10 @@ can have a negative effect on performance due to the tracking of each lock attem
   like the above option, this one is best toggled only temporarily to enable the
   desired audit device.
 
+- `feature_flags` <code>([FeatureFlags][feature-flags]: &lt;none&gt;)</code> –
+  Enable or disable experimental features. Notice: feature flags might change
+  from opt-in to opt-out or will be removed entirely in future versions.
+
 ### High Availability parameters
 
 The following parameters are used on backends that support [High Availability][high-availability].
@@ -277,6 +281,7 @@ The following parameters are used on backends that support [High Availability][h
 [telemetry]: /docs/configuration/telemetry
 [initialize]: /docs/configuration/self-init
 [sentinel]: /docs/configuration/sentinel
+[feature-flags]: /docs/configuration/feature-flags
 [high-availability]: /docs/concepts/ha
 [plugins]: /docs/plugins
 [userlockout]: /docs/configuration/user-lockout

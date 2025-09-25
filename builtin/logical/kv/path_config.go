@@ -39,11 +39,13 @@ clears the current setting. Accepts a Go duration format string.`,
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathConfigWrite()),
-				Summary:  "Configure backend level settings that are applied to every key in the key-value store.",
+				Callback:                  b.upgradeCheck(b.pathConfigWrite()),
+				Summary:                   "Configure backend level settings that are applied to every key in the key-value store.",
+				ForwardPerformanceStandby: true,
 			},
 			logical.CreateOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathConfigWrite()),
+				Callback:                  b.upgradeCheck(b.pathConfigWrite()),
+				ForwardPerformanceStandby: true,
 			},
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.upgradeCheck(b.pathConfigRead()),

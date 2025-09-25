@@ -143,6 +143,7 @@ func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 	for _, a := range c.Audits {
 		results = append(results, a.Validate(sourceFilePath)...)
 	}
+	results = append(results, c.FeatureFlags.Validate(sourceFilePath)...)
 	results = append(results, c.validateEnt(sourceFilePath)...)
 	return results
 }

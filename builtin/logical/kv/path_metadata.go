@@ -91,16 +91,19 @@ version-agnostic information about a secret.
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathMetadataWrite()),
+				Callback:                  b.upgradeCheck(b.pathMetadataWrite()),
+				ForwardPerformanceStandby: true,
 			},
 			logical.CreateOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathMetadataWrite()),
+				Callback:                  b.upgradeCheck(b.pathMetadataWrite()),
+				ForwardPerformanceStandby: true,
 			},
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.upgradeCheck(b.pathMetadataRead()),
 			},
 			logical.DeleteOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathMetadataDelete()),
+				Callback:                  b.upgradeCheck(b.pathMetadataDelete()),
+				ForwardPerformanceStandby: true,
 			},
 			logical.ListOperation: &framework.PathOperation{
 				Callback: b.upgradeCheck(b.pathMetadataList()),
@@ -109,7 +112,8 @@ version-agnostic information about a secret.
 				Callback: b.upgradeCheck(b.pathMetadataScan()),
 			},
 			logical.PatchOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathMetadataPatch()),
+				Callback:                  b.upgradeCheck(b.pathMetadataPatch()),
+				ForwardPerformanceStandby: true,
 			},
 		},
 

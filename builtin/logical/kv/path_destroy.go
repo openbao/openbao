@@ -24,10 +24,12 @@ func pathDestroy(b *versionedKVBackend) *framework.Path {
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathDestroyWrite()),
+				Callback:                  b.upgradeCheck(b.pathDestroyWrite()),
+				ForwardPerformanceStandby: true,
 			},
 			logical.CreateOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathDestroyWrite()),
+				Callback:                  b.upgradeCheck(b.pathDestroyWrite()),
+				ForwardPerformanceStandby: true,
 			},
 		},
 

@@ -130,6 +130,10 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	defaultSeal.SetCore(sm.core)
 	defaultSeal.SetMetaPrefix(metaPrefix)
 
+	// At this point, the namespace's barrier is still the parent's barrier,
+	// hence we can just query that without computing the actual parent.
+	defaultSeal.SetConfigAccess(sm.namespaceBarrierByLongestPrefix(ns.Path))
+
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 	if err := defaultSeal.Init(ctx); err != nil {
 		return fmt.Errorf("error initializing seal: %w", err)

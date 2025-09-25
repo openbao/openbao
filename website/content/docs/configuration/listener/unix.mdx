@@ -32,6 +32,11 @@ multiple sockets.
   `/sys/rekey-recovery-key/*`). These are a security risk to leave exposed on
   public listeners.
 
+### `telemetry` parameters
+
+- `unauthenticated_metrics_access` `(bool: false)` - If set to true, allows
+  unauthenticated access to the `/v1/sys/metrics` endpoint.
+
 - `disallow_metrics` `(bool: false)` - Specifies if the `/v1/sys/metrics` endpoint is disabled on this listener. 
   This is useful for hardening a listener that handles general client traffic, preventing API clients from scraping metrics.
 
@@ -95,17 +100,20 @@ while a second socket is dedicated only to serving metrics for monitoring tools.
 # Primary listener for general API traffic via a UNIX socket
 # Metrics are disabled for security.
 listener "unix" {
-  path               = "/var/run/openbao.sock"
-  socket_mode        = "0660" 
-  disallow_metrics   = true
+  path                 = "/var/run/openbao.sock"
+  socket_mode          = "0660" 
+  telemetry {
+    disallow_metrics   = true
+  }
 }
 
 # Dedicated listener for monitoring systems (e.g., Prometheus)
 # Only serves metrics and blocks all other requests.
 listener "unix" {
-  path                           = "/var/run/openbao-metrics.sock"
-  socket_mode                    = "0660" 
-  metrics_only                   = true
-  unauthenticated_metrics_access = true
+  path                             = "/var/run/openbao-metrics.sock"
+  socket_mode                      = "0660" 
+  telemetry{
+    metrics_only                   = true
+  }
 }
 ```

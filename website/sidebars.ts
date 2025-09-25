@@ -410,6 +410,7 @@ const sidebars: SidebarsConfig = {
             "Audit Devices": [
                 "audit/index",
                 "audit/file",
+                "audit/http",
                 "audit/syslog",
                 "audit/socket",
             ],

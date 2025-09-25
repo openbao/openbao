@@ -176,7 +176,9 @@ CN and DNS SANs, and the host part of email addresses. Defaults to true.`,
 to issue certificates for. This is used with the allow_ip_sans to 
 determine matches for the common name, and IP-typed SAN entries of
 certificates. See the documentation for more information. This parameter
-accepts a comma-separated string or list of CIDR notated IPs.`,
+accepts a comma-separated string or list of CIDR notated IPs.
+Roles with no value allow all IP ranges; to disable IP sans entirely
+set allow_ip_sans=false instead.`,
 		},
 
 		"allowed_uri_sans": {

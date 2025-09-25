@@ -405,17 +405,17 @@ while a second listener on 9101 is dedicated only to serving metrics.
 # Primary listener for general API traffic
 # Metrics are disabled for security.
 listener "tcp" {
-  address              = "127.0.0.1:8200"
-  telemetry{
-    disallow_metrics   = true
+  address = "127.0.0.1:8200"
+  telemetry {
+    disallow_metrics = true
   }
 }
 
 # Dedicated listener for monitoring systems (e.g., Prometheus)
 # Only serves metrics and blocks all other requests.
 listener "tcp" {
-  address                          = "127.0.0.1:9101"
-  telemetry{
+  address = "127.0.0.1:9101"
+  telemetry {
     metrics_only                   = true
     unauthenticated_metrics_access = true
   }

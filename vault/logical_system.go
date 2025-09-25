@@ -3141,7 +3141,7 @@ func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Requ
 	conf := b.Core.rawConfig.Load().(*server.Config)
 
 	if !conf.UnsafeAllowAPIAuditCreation {
-		return handleError(fmt.Errorf("cannot enable audit device via API"))
+		return handleError(fmt.Errorf("cannot enable audit device via API; use declarative, config-based audit device management instead"))
 	}
 
 	if _, hasPrefix := options["prefix"]; hasPrefix && !conf.AllowAuditLogPrefixing {
@@ -3302,18 +3302,6 @@ func (b *SystemBackend) handleKeyStatus(ctx context.Context, req *logical.Reques
 		},
 	}
 	return resp, nil
-}
-
-func (b *SystemBackend) handleWrappingPubkey(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	x, _ := b.Core.wrappingJWTKey.X.MarshalText()
-	y, _ := b.Core.wrappingJWTKey.Y.MarshalText()
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"jwt_x":     string(x),
-			"jwt_y":     string(y),
-			"jwt_curve": corePrivateKeyTypeP521,
-		},
-	}, nil
 }
 
 func (b *SystemBackend) handleWrappingWrap(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {

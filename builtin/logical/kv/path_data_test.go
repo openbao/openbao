@@ -1148,8 +1148,6 @@ func TestVersionedKV_Patch_CurrentVersionDestroyed(t *testing.T) {
 
 	respData = respDataRaw.(map[string]interface{})
 
-	respMetadata = respMetadataRaw.(map[string]interface{})
-
 	// Unlike the ReadOperation handler, the PatchOperation handler
 	// does not ever return secret data. Thus, the secret metadata is
 	// returned as top-level keys in the response.

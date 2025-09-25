@@ -27,7 +27,7 @@ type RequestSource struct {
 
 	outerName     string
 	requestName   string
-	fieldSelector interface{}
+	fieldSelector []interface{}
 }
 
 var _ Source = &RequestSource{}
@@ -65,16 +65,23 @@ func (s *RequestSource) Validate(_ context.Context) ([]string, []string, error) 
 	requestName += reqName
 
 	rawFieldSelector := s.field["field_selector"]
-
 	if present {
-		switch rawFieldSelector.(type) {
-		case string:
+		switch fieldSelector := rawFieldSelector.(type) {
+		case int, string:
+			s.fieldSelector = []interface{}{fieldSelector}
+		case []int:
+			for _, item := range fieldSelector {
+				s.fieldSelector = append(s.fieldSelector, item)
+			}
 		case []string:
+			for _, item := range fieldSelector {
+				s.fieldSelector = append(s.fieldSelector, item)
+			}
+		case []interface{}:
+			s.fieldSelector = fieldSelector
 		default:
-			return nil, nil, fmt.Errorf("unknown type for request source field 'field_selector': %T; expected either string or []string", rawFieldSelector)
+			return nil, nil, fmt.Errorf("unknown type for request source field 'field_selector': %T; expected either string, []string, or []interface{}", rawFieldSelector)
 		}
-
-		s.fieldSelector = rawFieldSelector
 	}
 
 	return []string{requestName}, nil, nil

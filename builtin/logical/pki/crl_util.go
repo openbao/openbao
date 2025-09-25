@@ -12,13 +12,13 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	atomic2 "go.uber.org/atomic"
 )
 
 const (
@@ -35,15 +35,6 @@ type revocationInfo struct {
 	RevocationTime    int64     `json:"revocation_time"`
 	RevocationTimeUTC time.Time `json:"revocation_time_utc"`
 	CertificateIssuer issuerID  `json:"issuer_id"`
-}
-
-type revocationRequest struct {
-	RequestedAt time.Time `json:"requested_at"`
-}
-
-type revocationConfirmed struct {
-	RevokedAt string `json:"revoked_at"`
-	Source    string `json:"source"`
 }
 
 type (
@@ -78,18 +69,18 @@ type (
 // The CRL builder also tracks the revocation configuration.
 type crlBuilder struct {
 	_builder              sync.Mutex
-	forceRebuild          *atomic2.Bool
+	forceRebuild          *atomic.Bool
 	canRebuild            bool
 	lastDeltaRebuildCheck time.Time
 
 	_config               sync.RWMutex
-	dirty                 *atomic2.Bool
+	dirty                 *atomic.Bool
 	config                crlConfig
 	haveInitializedConfig bool
 
 	// Whether to invalidate our LastModifiedTime due to write on the
 	// global issuance config.
-	invalidate *atomic2.Bool
+	invalidate *atomic.Bool
 }
 
 const (
@@ -98,16 +89,18 @@ const (
 )
 
 func newCRLBuilder(canRebuild bool) *crlBuilder {
+	dirty := &atomic.Bool{}
+	dirty.Store(true)
 	return &crlBuilder{
-		forceRebuild: atomic2.NewBool(false),
+		forceRebuild: &atomic.Bool{},
 		canRebuild:   canRebuild,
 		// Set the last delta rebuild window to now, delaying the first delta
 		// rebuild by the first rebuild period to give us some time on startup
 		// to stabilize.
 		lastDeltaRebuildCheck: time.Now(),
-		dirty:                 atomic2.NewBool(true),
+		dirty:                 dirty,
 		config:                defaultCrlConfig,
-		invalidate:            atomic2.NewBool(false),
+		invalidate:            &atomic.Bool{},
 	}
 }
 
@@ -449,13 +442,6 @@ func (cb *crlBuilder) _shouldRebuildLocalCRLs(sc *storageContext, override bool)
 	return true, nil
 }
 
-func (cb *crlBuilder) rebuildDeltaCRLs(sc *storageContext, forceNew bool) ([]string, error) {
-	cb._builder.Lock()
-	defer cb._builder.Unlock()
-
-	return cb.rebuildDeltaCRLsHoldingLock(sc, forceNew)
-}
-
 func (cb *crlBuilder) rebuildDeltaCRLsHoldingLock(sc *storageContext, forceNew bool) ([]string, error) {
 	return buildAnyCRLs(sc, forceNew, true /* building delta */)
 }
@@ -502,35 +488,6 @@ func fetchIssuerMapForRevocationChecking(sc *storageContext) (map[issuerID]*x509
 	}
 
 	return issuerIDCertMap, nil
-}
-
-// Revoke a certificate from a given serial number if it is present in local
-// storage.
-func tryRevokeCertBySerial(sc *storageContext, config *crlConfig, serial string) (*logical.Response, error) {
-	// revokeCert requires us to hold these locks before calling it.
-	sc.Backend.revokeStorageLock.Lock()
-	defer sc.Backend.revokeStorageLock.Unlock()
-
-	certEntry, err := fetchCertBySerial(sc, "certs/", serial)
-	if err != nil {
-		switch err.(type) {
-		case errutil.UserError:
-			return logical.ErrorResponse(err.Error()), nil
-		default:
-			return nil, err
-		}
-	}
-
-	if certEntry == nil {
-		return nil, nil
-	}
-
-	cert, err := x509.ParseCertificate(certEntry.Value)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing certificate: %w", err)
-	}
-
-	return revokeCert(sc, config, cert)
 }
 
 // Revokes a cert, and tries to be smart about error recovery

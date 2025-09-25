@@ -23,17 +23,6 @@ func testPluginReloadCommand(tb testing.TB) (*cli.MockUi, *PluginReloadCommand) 
 	}
 }
 
-func testPluginReloadStatusCommand(tb testing.TB) (*cli.MockUi, *PluginReloadStatusCommand) {
-	tb.Helper()
-
-	ui := cli.NewMockUi()
-	return ui, &PluginReloadStatusCommand{
-		BaseCommand: &BaseCommand{
-			UI: ui,
-		},
-	}
-}
-
 func TestPluginReloadCommand_Run(t *testing.T) {
 	t.Parallel()
 

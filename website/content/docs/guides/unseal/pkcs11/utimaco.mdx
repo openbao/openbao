@@ -1,0 +1,394 @@
+---
+sidebar_label: Utimaco HSMs
+description: |-
+  This guide describes the steps to configure Auto-Unsealing for OpenBao using
+  Utimaco General Purpose HSMs via PKCS#11.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Utimaco HSMs
+
+This guide describes the steps to configure Auto-Unsealing for OpenBao using
+[Utimaco General Purpose HSMs](https://utimaco.com/data-protection/gp-hsm) via
+PKCS#11. Specifically, this guide covers both the u.trust GP HSM (PKCS#11 v3)
+and CryptoServer CP5 (PKCS#11 v2) series.
+
+:::warning
+
+Securely operating Utimaco's HSMs in production requires significantly more
+knowledge than what is described here. This guide exists to provide a focused
+summary and quickstart configuration specifically for integration with OpenBao.
+It is not a replacement for official Utimaco documentation, which provides much
+higher detail around general HSM operation.
+
+:::
+
+## Initial Setup
+
+This guide assumes that:
+
+- The HSM has already been deployed and is accessible from your machine (either
+  over the network or via PCIe)
+- An admin account key is available to manage a PKCS#11 slot, or a PKCS#11
+  slot and user have already been initialized
+
+Utimaco HSMs come with several command line tools that will be used throughout
+this guide. Ensure the following are available:
+
+- `csadm` - HSM administration
+- `cxitool` - Manage and interact with cryptographic functionality
+- `p11tool2` - PKCS#11 specific functions, not to be confused with GNU `p11tool`
+
+To begin, set the `CRYPTOSERVER` environment variable to point `csadm` and `cxitool` at the HSM:
+
+```shell-session
+$ export CRYPTOSERVER=288@194.168.4.107
+```
+
+Depending on your device, use:
+
+- `CRYPTOSERVER=<PORT>:<ADDRESS>` to connect over the network
+- `CRYPTOSERVER=/dev/cs2.<INDEX>` to connect to an attached PCIe card
+
+Verify that the HSM is reachable:
+
+```shell-session
+$ csadm GetState
+
+mode      = Operational Mode
+state     = INITIALIZED (0x00100004)
+
+-- more output --
+```
+
+Then set `CS_AUTH_KEYS` and download the HSM's public key:
+
+```shell-session
+$ export CS_AUTH_KEYS=/etc/utimaco/HSM_AUTH.kak
+$ csadm GetHSMAuthKey > "$CS_AUTH_KEYS"
+```
+
+This key is required to authenticate against the HSM in combination with your
+user's private key.
+
+Finally, create a configuration file for `p11tool2`. This file can be placed
+at an arbitrary location, but you must point at it by setting an environment
+variable.
+
+<Tabs>
+
+<TabItem value="u.trust GP HSM" heading="utrust-p11tool">
+
+```shell-session
+$ export CS_PKCS11_R3_CFG=/etc/utimaco/cs_pkcs11_R3.cfg
+```
+
+Then place _at least_ the following at /etc/utimaco/cs_pkcs11_R3.cfg:
+
+</TabItem>
+
+<TabItem value="CryptoServer CP5" heading="cryptoserver-p11tool">
+
+```shell-session
+$ export CS_PKCS11_R2_CFG=/etc/utimaco/cs_pkcs11_R2.cfg
+```
+
+Then place _at least_ the following at /etc/utimaco/cs_pkcs11_R2.cfg:
+
+</TabItem>
+
+</Tabs>
+
+```ini
+[Global]
+
+# No required options here, but the section must exist.
+
+[CryptoServer]
+
+# This is equal to $CRYPTOSERVER
+Device = 288@194.168.4.107
+```
+
+There are many more options available, and the above is only the minimum
+required configuration. Refer to Utimaco's official PKCS#11 guide (delivered
+together with your HSM) for an exhaustive list.
+
+This will make PKCS#11 slots 0-9 available by default.
+
+## Initializing a PKCS#11 Slot
+
+:::info
+
+If you have already initialized a PKCS#11 slot, you may skip to the [next
+section](#creating-the-key-material)
+
+:::
+
+Next, initialize a PKCS#11 slot and assign a Security Officer PIN + User PIN to
+it. For the purpose of this guide, we use slot number 1 and dummy PIN values of
+`4321` for the Security Officer, and `1234` for the User.
+
+<Tabs>
+
+<TabItem value="u.trust GP HSM" heading="utrust-slot">
+
+Initialize the slot using an administrator account and set the SO PIN:
+
+```shell-session
+$ p11tool2 Slot=1 Login=ADMIN,/etc/utimaco/ADMIN.key InitToken=temp
+```
+
+Change the initial SO PIN to fully activate the account:
+
+```shell-session
+$ p11tool2 Slot=1 LoginSO=temp SetPin=temp,4321
+```
+
+Then set the User PIN using the SO PIN:
+
+```shell-session
+$ p11tool2 Slot=1 LoginSO=4321 InitPIN=temp
+```
+
+...and also change the initial User PIN at least once to enable the account:
+
+```shell-session
+$ p11tool2 Slot=1 LoginUser=temp SetPIN=temp,1234
+```
+
+</TabItem>
+
+<TabItem value="CryptoServer CP5" heading="cryptoserver-slot">
+
+Initialize the slot using an administrator account and set the SO PIN:
+
+```shell-session
+$ p11tool2 Slot=1 Login=ADMIN,/etc/utimaco/ADMIN.key InitToken=4321
+```
+
+Then set the User PIN using the SO PIN:
+
+```shell-session
+$ p11tool2 Slot=1 LoginSO=4321 InitPIN=1234
+```
+
+</TabItem>
+
+</Tabs>
+
+PIN complexity requirements may (and should) be more complex in reality. Ensure
+that the PIN assignment process makes sense for your organization, especially
+when reassigning initial PINs.
+
+## Creating the Key Material
+
+The PKCS#11 seal supports both AES (via AES-GCM) and RSA (via RSA-OAEP) keys,
+which are both sufficiently supported by Utimaco HSMs. Below commands generate
+the corresponding key or key pair.
+
+<Tabs>
+
+<TabItem value="AES key for AES-GCM" heading="AES">
+
+```shell-session
+$ p11tool2 Slot=1 LoginUser=1234 KeyAttr=CKA_LABEL=bao-root-key-aes GenerateKey=AES
+```
+
+You can adjust `CKA_LABEL` as you see fit, or use `CKA_ID` instead. This value
+will be used to reference the key later on.
+
+</TabItem>
+
+<TabItem value="RSA key pair for RSA-OAEP" heading="RSA">
+
+RSA key pairs are created with sign/verify usage by default. This must be
+explicitly overridden into encrypt/decrypt instead. Generally, the HSM will not
+allow RSA key pairs with both sign/verify and encrypt/decrypt usage enabled.
+
+```shell-session
+$ p11tool2 Slot=1 LoginUser=1234 \
+    PrvKeyAttr=CKA_LABEL=bao-root-key-rsa,CKA_DECRYPT=CK_TRUE \
+    PubKeyAttr=CKA_LABEL=bao-root-key-rsa,CKA_ENCRYPT=CK_TRUE,CKA_MODULUS_BITS=4096 \
+    GenerateKeyPair=RSA
+```
+
+You can adjust `CKA_LABEL` as you see fit, or use `CKA_ID` instead. This
+value will be used to reference the key later on. Ensure that both the public
+and private key share the exact same ID or label! OpenBao will have trouble
+identifying the key pair otherwise.
+
+</TabItem>
+
+</Tabs>
+
+## Key Authorization
+
+The CryptoServer CP5 series requires keys to be initialized and authorized
+before use.
+
+:::info
+
+This section is not relevant for u.trust GP HSMs. You may skip to the [next
+section](#installing-the-library).
+
+:::
+
+Begin by generating a key authorization key (KAK) if not yet present. This is
+always an RSA key.
+
+```sh
+$ csadm GenKey=/etc/utimaco/KAK.key,4096,"CryptoServer User"
+generating RSA key: /etc/utimaco/KAK.key, 4096 bits, owner: CryptoServer User
+```
+
+:::warning
+
+The KAK is written to your local file system and **not** stored in the HSM. Be
+sure to keep it safe and not to lose it.
+
+:::
+
+Key authorization is performed via `cxitool`, not `p11tool2`. Since `cxitool` is
+not specific to PKCS#11, terminology is slightly different, but still maps back
+to the corresponding PKCS#11 primitives.
+
+Start by listing the available keys. You will need to provide a `LogonPass`
+parameter of format `USR_<SLOT_NUMBER>,<USER_PIN>` where `<SLOT_NUMBER>` is
+padded to 4 digits. See an example below:
+
+```shell-session
+$ cxitool LogonPass=USR_0001,1234 ListKeys
+
+idx algo  size type     group                    name                             spec
+--------------------------------------------------------------------------------------
+1   AES   256  sec      SLOT_0001                                                 1
+2   RSA   4096 pub      SLOT_0001                                                 2
+3   RSA   4096 prv      SLOT_0001                                                 3
+```
+
+If there are several keys and you are unsure which is the one you created via
+`p11tool2`, use the `KeyInfo` command to inspect the key's label:
+
+```shell-session
+$ cxitool LogonPass=USR_0000,1234 Group=SLOT_0001 Spec=1 KeyInfo
+
+-- more output --
+
+Group         : SLOT_0001
+Label         : bao-root-key-aes
+
+-- more output --
+```
+
+Next, initialize and authorize the key. You will need the "group" and "spec"
+values of the key for this. Note that for RSA key pairs, these steps are only
+required for the private key half.
+
+Initialize the key:
+
+```shell-session
+$ cxitool LogonPass=USR_0001,1234 Group=SLOT_0001 \
+    Spec=1 KeyFile=/etc/utimaco/KAK.key InitializeKey
+```
+
+Authorize the key:
+
+```shell-session
+$ cxitool LogonPass=USR_0001,1234 Group=SLOT_0001 \
+    Spec=1 KeyFile=/etc/utimaco/KAK.key AuthorizeKey
+```
+
+:::warning
+
+The above authorization step must be repeated each time the HSM is restarted.
+The initialization step is only required once.
+
+:::
+
+The key is now ready to use for Auto-Unsealing.
+
+## Installing the Library
+
+OpenBao will interact with the HSM using the PKCS#11 dynamic library. You will
+need to make this library available on the system that OpenBao will run on, e.g.
+a container, VM, or even a bare metal machine.
+
+Depending on the HSM (and thus, PKCS#11 version), the dynamic library file is:
+
+| HSM              | PKCS#11 Library      | PKCS#11 Version |
+| -----------------|----------------------|-----------------|
+| CryptoServer CP5 | `libcs_pkcs11_R2.so` | v2              |
+| u.trust GP HSM   | `libcs_pkcs11_R3.so` | v3              |
+
+You can place this file at any location on the system accessible to the
+OpenBao server.
+
+If you are looking to conveniently inject the library into a
+container, have a look at the sibling [guide on the SecuroSys Primus
+HSM](/docs/guides/unseal/pkcs11/securosys), which contains plenty of
+Kubernetes-specific strategies that apply to any PKCS#11 library.
+
+The PKCS#11 library is configured the same way the `p11tool2` tool is. This
+configuration must also be available for OpenBao at runtime. To recap, the
+following environment variables must be set and must point to valid paths and
+resources:
+
+- `CRYPTOSERVER`
+- `CS_AUTH_KEYS`
+- `CS_PKCS11_R2_CFG` or `CS_PKCS11_R3_CFG`, depending on the HSM
+
+:::note
+
+OpenBao must be compiled with HSM support to load the library. HSM-enabled
+binaries, packages and container images are generally available as part of
+OpenBao's releases.
+
+:::
+
+:::note
+
+Utimaco's PKCS#11 libraries require Glibc and do not work on systems based on
+the Musl C library, such as Alpine Linux. For container users, this means you
+must use the `openbao-hsm-ubi` instead of the Alpine-based `openbao-hsm` image.
+
+:::
+
+## Configuring the PKCS#11 Seal
+
+Below is an exemplary PKCS#11 seal configuration stanza to be placed in the
+OpenBao server configuration. Replace the `lib` value with the path that you
+placed the PKCS#11 library at in the previous step, and set `slot`, `pin` and
+`key_label` based on the values you chose during slot initialization and key
+material generation.
+
+```hcl
+seal "pkcs11" {
+  lib       = "/usr/local/lib/libcs_pkcs11_R3.so"
+  slot      = 1
+  pin       = "1234"
+  key_label = "bao-root-key-aes"
+}
+```
+
+See [PKCS#11 Seal](/docs/configuration/seal/pkcs11) for complete documentation
+on all available options, or how to set the above values via environment
+variables instead.
+
+## Initializing OpenBao
+
+With the key material, environment variables, dynamic library and
+server configuration all in place, start the OpenBao server. Unless
+[Self-initialization](/docs/configuration/self-init) is used or a [Seal
+Migration](/docs/concepts/seal#seal-migration) is performed, the final step is
+to manually initialize OpenBao:
+
+```shell-session
+$ bao operator init
+```
+
+If all is configured correctly, the server should unseal automatically following
+the initialization. If this is not the case, check the server logs for error
+messages.

@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -27,7 +28,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 )
 
 func testNewLeaseCache(t *testing.T, responses []*SendResponse) *LeaseCache {
@@ -619,7 +619,7 @@ func TestLeaseCache_Concurrent_Cacheable(t *testing.T) {
 				}
 
 				if resp.CacheMeta != nil && resp.CacheMeta.Hit {
-					cacheCount.Inc()
+					cacheCount.Add(1)
 				}
 			}()
 		}

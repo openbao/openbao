@@ -1733,14 +1733,8 @@ func (i *IdentityStore) UpsertGroupInTxn(ctx context.Context, txn *memdb.Txn, gr
 			Message: groupAsAny,
 		}
 
-		sent, err := i.groupUpdater.SendGroupUpdate(ctx, group)
-		if err != nil {
+		if err := i.groupPacker(ctx).PutItem(ctx, item); err != nil {
 			return err
-		}
-		if !sent {
-			if err := i.groupPacker(ctx).PutItem(ctx, item); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -2435,11 +2429,22 @@ func (i *IdentityStore) handleAliasListCommon(ctx context.Context, groupAlias bo
 func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 	var count int
 	var outErr error
+
+	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
+	if !ok || rootViewRaw == nil {
+		return -1, fmt.Errorf("failed to load root namespace")
+	}
+	rootView := rootViewRaw.(*identityStoreNamespaceView)
+
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
+		db := views.db
+		if db == nil {
+			db = rootView.db
+		}
 
-		txn := views.db.Txn(false)
+		txn := db.Txn(false)
 
 		iter, err := txn.Get(entitiesTable, "id")
 		if err != nil {
@@ -2467,12 +2472,22 @@ func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[string]int, error) {
 	byNamespace := make(map[string]int)
 
+	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
+	if !ok || rootViewRaw == nil {
+		return nil, fmt.Errorf("failed to load root namespace")
+	}
+	rootView := rootViewRaw.(*identityStoreNamespaceView)
+
 	var err error
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
+		db := views.db
+		if db == nil {
+			db = rootView.db
+		}
 
-		txn := views.db.Txn(false)
+		txn := db.Txn(false)
 
 		var iter memdb.ResultIterator
 		iter, err = txn.Get(entitiesTable, "id")
@@ -2510,12 +2525,22 @@ func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[strin
 func (i *IdentityStore) countEntitiesByMountAccessor(ctx context.Context) (map[string]int, error) {
 	byMountAccessor := make(map[string]int)
 
+	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
+	if !ok || rootViewRaw == nil {
+		return nil, fmt.Errorf("failed to load root namespace")
+	}
+	rootView := rootViewRaw.(*identityStoreNamespaceView)
+
 	var err error
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
+		db := views.db
+		if db == nil {
+			db = rootView.db
+		}
 
-		txn := views.db.Txn(false)
+		txn := db.Txn(false)
 
 		var iter memdb.ResultIterator
 		iter, err = txn.Get(entitiesTable, "id")

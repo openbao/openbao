@@ -1,3 +1,95 @@
+## 2.4.1
+## September 11, 2025
+
+SECURITY:
+
+* http: Limit the complexity of JSON in HTTP request bodies through max_request_json_memory and max_request_json_strings. HCSEC-2025-24 / CVE-2025-6203 / CVE-2025-59043. [[GH-1756](https://github.com/openbao/openbao/pull/1756)]
+
+BUG FIXES:
+
+* auth/jwt: Add missing OIDC flow in JWK validator construction [[GH-1779](https://github.com/openbao/openbao/pull/1779)]
+* auth/jwt: Support token renewal with CEL roles. [[GH-1776](https://github.com/openbao/openbao/pull/1776)]
+* auth/mfa: Allow single-flow MFA to work with inline authentication. [[GH-1753](https://github.com/openbao/openbao/pull/1753)]
+* auth/mfa: Correctly persist tokens created through two-step MFA login enforcement. [[GH-1753](https://github.com/openbao/openbao/pull/1753)]
+* command: fix `operator init` not allowing for 0 as `recovery_shares` value. [[GH-1754](https://github.com/openbao/openbao/pull/1754)]
+* command: fix `operator rotate-keys` not returning recovery keys when server is initialized with 0 `recovery_shares`. [[GH-1754](https://github.com/openbao/openbao/pull/1754)]
+
+## 2.4.0
+## August 28, 2025
+
+SECURITY:
+
+* audit/file: Restrict `mode` parameter
+  - Refuse setting an [irregular](https://pkg.go.dev/io/fs#FileMode.IsRegular) file mode
+  - Silently strip any executable bits [[GH-1651](https://github.com/openbao/openbao/pull/1651)]
+
+CHANGES:
+
+* `certutil.ParsePublicKeyPEM` of the package `github.com/openbao/openbao/sdk/v2/helper/certutil` will now return a `crypto.PublicKey` instead of `any`. You might need to remove type assertions from your code. [[GH-1611](https://github.com/openbao/openbao/pull/1611)]
+* database: Drop obsolete upgrade check in `roleAtPath()` function introduced in `v0.10` of Vault. [[GH-1675](https://github.com/openbao/openbao/pull/1675)]
+* sdk/framework: Remove `LegacyStringToSliceHookFunc`, use `mapstructure.StringToWeakSliceHookFunc` instead. [[GH-1626](https://github.com/openbao/openbao/pull/1626)]
+* sdk/helper: Removed `sdk/helper/base62`, `sdk/helper/mlock`, `sdk/helper/parseutil`, `sdk/helper/password`, `sdk/helper/strutil`, and `sdk/helper/tlsutil` packages.
+   -  Please use `github.com/openbao/go-secure-stdlib/xxx` or `github.com/hashicorp/go-secure-stdlib/xxx` instead.
+* sdk/database/helper/connutil: Removed `Initialize` from `ConnectionProducer` interface, and `SQLConnectionProducer` struct. [[GH-1676](https://github.com/openbao/openbao/pull/1676)]
+* sdk/logical: Introduce context to logical.HandleListPage(...). [[GH-1696](https://github.com/openbao/openbao/pull/1696)]
+* sdk: Bump Go version to 1.24.0 [[GH-1690](https://github.com/openbao/openbao/pull/1690)]
+* vault/seal: removal of deprecated migration path of an old pre-Vault v1.0 (encrypted) recovery config location [[GH-1424](https://github.com/openbao/openbao/pull/1424)]
+
+FEATURES:
+
+* **Allow filtering LIST, SCAN responses** via the `list_scan_response_keys_filter_path` parameter to restrict information to only readable or listable values. [[GH-1389](https://github.com/openbao/openbao/pull/1389)]
+* **Configuration-Based Audit Devices**: Create and remove audit devices through server configuration updates. Changes are applied on restart and SIGHUP with issues appearing in the logs. [[GH-1700](https://github.com/openbao/openbao/pull/1700)]
+* **Declarative Self-Initialization**: allow server operators to define initial
+  service state through request-driven initialization that occurs
+  automatically on first server start. Operators can reference environment
+  variables and files to provision initial authentication, audit, and secret
+  mounts in addition to having full control over general requests to OpenBao
+  It is suggested to put the minimal necessary configuration in this and use
+  a proper IaC platform like OpenTofu to perform further configuration of the
+  instance. [[GH-1506](https://github.com/openbao/openbao/pull/1506)]
+* **Delay recovery key generation for auto-unseal mechanisms and make rotation authenticated**:
+  Add authenticated root and recovery key rotation endpoints, allow
+  delayed recovery key generation (setting initial shares to 0).
+  Solve the issue with the unauthenticated recovery key rotation APIs. [[GH-1518](https://github.com/openbao/openbao/pull/1518)]
+* **Inline, Write-less Authentication**: support passing authentication
+  information inline with the desired main operation to avoid the need
+  for separate authentication calls, storing and maintaining tokens. This
+  authentication form will not work with operations that create leases.
+  In this form of authentication, no storage writes occur as a result of
+  authentication allowing its use on future read-enabled standby nodes. [[GH-1433](https://github.com/openbao/openbao/pull/1433)]
+* Add **static key unseal mechanism** to allow auto-unseal in environments with explicit trust chaining. [[GH-1425](https://github.com/openbao/openbao/pull/1425)]
+
+IMPROVEMENTS:
+
+* api/auth/jwt: initial implementation of JWT Auth Method [[GH-1526](https://github.com/openbao/openbao/pull/1526)]
+* auth/oidc: Add new `show_qr=true` cli option to display a QR code of the login URL. [[GH-1561](https://github.com/openbao/openbao/pull/1561)]
+* auto-unsealing: Improved the clarity of the warning message logged when the server is uninitialized and auto-unsealing is configured. [[GH-1411](https://github.com/openbao/openbao/pull/1411)]
+* builtin/credential/jwt: Support TLS authentication against explicit alt name/subject. [[GH-1533](https://github.com/openbao/openbao/pull/1533)]
+* cel: Add cel-go ext helpers for string, list, optional, regex, math, set, and encoder operations [[GH-1697](https://github.com/openbao/openbao/pull/1697)]
+* cel: Unify CEL helper functions between JWT and PKI modules, making email validation and other utilities available across both authentication and certificate management [[GH-1697](https://github.com/openbao/openbao/pull/1697)]
+* cli: add new subcommand "bao operator validate-config" to validate a configuration file syntax [[GH-1609](https://github.com/openbao/openbao/pull/1609)]
+* core: sys/seal-status: endpoint now always returns the barrier seal type, explicitly adds recovery seal type [[GH-1638](https://github.com/openbao/openbao/pull/1638)]
+* deps: Update go-jose v3 to go-jose v4 [[GH-1477](https://github.com/openbao/openbao/pull/1477)]
+* secrets/kv: Add CAS (Compare-And-Swap) support for metadata operations in KV v2 secrets engine. Metadata updates now support versioning via `metadata_cas` parameter and `metadata_cas_required` configuration option to prevent concurrent modification conflicts. [[GH-1372](https://github.com/openbao/openbao/pull/1372)]
+* ui: change the message 'Vault is sealed to 'OpenBao is Sealed' by changing the title of the unseal template [[GH-1652](https://github.com/openbao/openbao/pull/1652)]
+* seal/pkcs11: Support and default to software encryption for RSA key types. [[GH-1742](https://github.com/openbao/openbao/pull/1742)]
+
+DEPRECATIONS:
+
+* storage/postgresql: remove support for legacy PostgreSQL versions before 9.5 which require a special upsert function. [[GH-1570](https://github.com/openbao/openbao/pull/1570)]
+
+BUG FIXES:
+
+* api: Fix compatibility with sys/health from Vault Enterprise [[GH-1730](https://github.com/openbao/openbao/pull/1730)]
+* command: fixes typo in Windows command for setting BAO_ADDR in development mode [[GH-1527](https://github.com/openbao/openbao/pull/1527)]
+* core/namespaces: Prevent infinite loop in namespace loading due to incorrect list pagination when more than 100 sibling namespaces exist under a given parent [[GH-1696](https://github.com/openbao/openbao/pull/1696)]
+* identity: fix nil panic when collecting metrics with unsafe_cross_namespace_identity=true. [[GH-1715](https://github.com/openbao/openbao/pull/1715)]
+* pki: Truncate should error on expired certificates [[GH-1369](https://github.com/openbao/openbao/pull/1369)]
+* releases: add missing container image manifests for `*-hsm` variants [[GH-1597](https://github.com/openbao/openbao/pull/1597)]
+* sdk: Various constants in the `sdk` package mistakenly had no explicit type. They now now typed correctly. [[GH-1523](https://github.com/openbao/openbao/pull/1523)]
+* secrets/pki: Prevent infinite loop in tidy stemming from incorrect list pagination [[GH-1696](https://github.com/openbao/openbao/pull/1696)]
+* storage/postgresql: more graceful handling of parallel table creation [[GH-1506](https://github.com/openbao/openbao/pull/1506)]
+
 ## 2.3.2
 ## August 7, 2025
 

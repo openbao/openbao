@@ -142,14 +142,16 @@ func (c *OperatorInitCommand) Flags() *FlagSets {
 		Name:       "recovery-shares",
 		Target:     &c.flagRecoveryShares,
 		Completion: complete.PredictAnything,
+		Default:    defRecoveryShares,
 		Usage: "Number of key shares to split the recovery key into. " +
-			"This is only used in auto-unseal mode.",
+			"This is only used in Auto Unseal mode.",
 	})
 
 	f.IntVar(&IntVar{
 		Name:       "recovery-threshold",
 		Target:     &c.flagRecoveryThreshold,
 		Completion: complete.PredictAnything,
+		Default:    defRecoveryThreshold,
 		Usage: "Number of key shares required to reconstruct the recovery key. " +
 			"This is only used in Auto Unseal mode.",
 	})
@@ -212,21 +214,18 @@ func (c *OperatorInitCommand) Run(args []string) int {
 	client.SetOutputCurlString(currentOutputCurlString)
 	client.SetOutputPolicy(outputPolicy)
 
-	switch sealInfo.RecoverySeal {
-	case true:
-		if c.flagRecoveryShares == 0 {
-			c.flagRecoveryShares = defRecoveryShares
-		}
-		if c.flagRecoveryThreshold == 0 {
-			c.flagRecoveryThreshold = defRecoveryThreshold
-		}
-	default:
+	// for barrier seals use the default value of key shares and key threshold,
+	// as we do not support 0 as a valid value for those
+	if !sealInfo.RecoverySeal {
 		if c.flagKeyShares == 0 {
 			c.flagKeyShares = defKeyShares
 		}
 		if c.flagKeyThreshold == 0 {
 			c.flagKeyThreshold = defKeyThreshold
 		}
+		// override default values for recovery shares as it's not supported
+		c.flagRecoveryShares = 0
+		c.flagRecoveryThreshold = 0
 	}
 
 	// Build the initial init request

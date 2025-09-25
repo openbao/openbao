@@ -125,7 +125,7 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 
 	// Take the key skew, add two for behind and in front, and multiple that by
 	// the period to cover the full possibility of the validity of the key
-	err = b.usedCodes.Add(usedName, nil, time.Duration(
+	err = b.usedCodes.AddWithExpire(usedName, struct{}{}, time.Duration(
 		int64(time.Second)*
 			int64(key.Period)*
 			int64((2+key.Skew))))

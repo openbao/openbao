@@ -287,14 +287,6 @@ func (i *IdentityStore) handleAliasCreate(ctx context.Context, canonicalID, name
 		}
 	}
 
-	if entity == nil && local {
-		// Check to see if the entity creation should be forwarded.
-		entity, err = i.entityCreator.CreateEntity(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	persist := false
 	// If the request was not forwarded, then this is the active node of the
 	// primary. Create the entity here itself.

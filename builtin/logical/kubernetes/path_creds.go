@@ -261,7 +261,7 @@ func (b *backend) createCreds(ctx context.Context, req *logical.Request, role *r
 		// Create service account for existing role
 		// then token
 		// RoleBinding/ClusterRoleBinding will be the owning object
-		ownerRef := metav1.OwnerReference{}
+		var ownerRef metav1.OwnerReference
 		walID, ownerRef, err = createRoleBindingWithWAL(ctx, client, req.Storage, reqPayload.Namespace, genName, role.K8sRoleName, reqPayload.ClusterRoleBinding, role)
 		if err != nil {
 			return nil, err
@@ -283,7 +283,7 @@ func (b *backend) createCreds(ctx context.Context, req *logical.Request, role *r
 	case role.RoleRules != "":
 		// Create role, rolebinding, service account, token
 		// Role/ClusterRole will be the owning object
-		ownerRef := metav1.OwnerReference{}
+		var ownerRef metav1.OwnerReference
 		walID, ownerRef, err = createRoleWithWAL(ctx, client, req.Storage, reqPayload.Namespace, genName, role)
 		if err != nil {
 			return nil, err

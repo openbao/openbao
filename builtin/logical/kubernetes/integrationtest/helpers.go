@@ -426,7 +426,7 @@ func makeRules(t *testing.T, rules string) []rbacv1.PolicyRule {
 func makeExpectedLabels(t *testing.T, extraLabels map[string]interface{}) map[string]string {
 	t.Helper()
 
-	expectedLabels := map[string]string{}
+	var expectedLabels map[string]string
 	if extraLabels != nil {
 		expectedLabels = combineMaps(asMapString(extraLabels), standardLabels)
 	} else {

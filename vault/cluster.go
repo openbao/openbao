@@ -285,17 +285,6 @@ func (c *Core) setupCluster(ctx context.Context) error {
 	return nil
 }
 
-func (c *Core) loadCluster(ctx context.Context) error {
-	cluster, err := c.Cluster(ctx)
-	if err != nil {
-		c.logger.Error("failed to get cluster details", "error", err)
-		return err
-	}
-
-	c.clusterID.Store(cluster.ID)
-	return nil
-}
-
 // startClusterListener starts cluster request listeners during unseal. It
 // is assumed that the state lock is held while this is run. Right now this
 // only starts cluster listeners. Once the listener is started handlers/clients
@@ -393,5 +382,5 @@ func (c *Core) SetClusterHandler(handler http.Handler) {
 }
 
 func (c *Core) ClusterID() string {
-	return c.clusterID.Load()
+	return c.clusterID.Load().(string)
 }

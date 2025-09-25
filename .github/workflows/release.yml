@@ -79,7 +79,7 @@ jobs:
           git tag "$nightly_tag"
 
       - name: Node setup
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: "./ui/package.json"
 
@@ -108,12 +108,33 @@ jobs:
         run: |
           make static-dist
 
+      - name: Make LICENSE_NODE_MODULES.txt
+        if: inputs.dodistrelease
+        run: |
+          set -e
+          sudo npm install --global generate-license-file
+          cd ui
+          generate-license-file --input package.json --output ../LICENSE_NODE_MODULES.txt
+
+      - name: Make SPDX_NODE_MODULES.txt
+        if: inputs.dodistrelease
+        run: |
+          sudo apt install -y jq
+          jq -r .license ui/node_modules/*/package.json | \
+            grep -v url | \
+            sed 's/.*"type": "//;s/",//' | \
+            grep -v { | grep -v } | grep -v ^null$ | \
+            awk '{if ((($2 == "OR") || ($2 == "AND")) && (substr($1, 0, 1) != "(")) { print "(" $0 ")"} else {print $0}}' | \
+            sort -u >SPDX_NODE_MODULES.txt
+
+      - name: Make VERSION_NODE_MODULES.txt
+        if: inputs.dodistrelease
+        run: jq -r '"\(.name) \(.version)"'  ui/node_modules/*/package.json >VERSION_NODE_MODULES.txt
+
       - name: Golang Setup
-        if: inputs.dogorelease
         uses: ./.github/actions/set-up-go
 
       - name: go-check
-        if: inputs.dogorelease
         run: go version
 
       - name: Make LICENSE_DEPENDENCIES.md
@@ -315,7 +336,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          fetch-tags: true
+          # "fetch-tags: true" instead of "fetch-depth: 0" should be enough
+          # but it fails in combination with dogorelease
+          # https://github.com/actions/checkout/issues/1467
+          fetch-depth: 0
 
       - name: Create release if necessary
         if: ${{ !inputs.dogorelease }}

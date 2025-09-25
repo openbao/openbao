@@ -5,7 +5,7 @@ module github.com/openbao/openbao/sdk/v2
 // automatically track the Go version used to build Vault itself.  Many projects import
 // the sdk module and we don't want to impose a newer version on them any more than we
 // have to.
-go 1.24
+go 1.24.0
 
 replace github.com/openbao/openbao/api/v2 => ../api
 
@@ -17,12 +17,12 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/fatih/structs v1.1.0
-	github.com/go-jose/go-jose/v4 v4.1.0
+	github.com/go-jose/go-jose/v4 v4.1.2
 	github.com/go-ldap/ldap/v3 v3.4.9
 	github.com/go-test/deep v1.1.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/golang/snappy v0.0.4
-	github.com/google/cel-go v0.26.0
+	github.com/google/cel-go v0.26.1
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.6.3
@@ -40,21 +40,20 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/hcl v1.0.1-vault-5
-	github.com/jackc/pgx/v5 v5.7.5
+	github.com/jackc/pgx/v5 v5.7.6
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-testing-interface v1.14.1
 	github.com/openbao/go-kms-wrapping/entropy/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/v2 v2.4.1-0.20250606024053-86fbd91248d1
-	github.com/openbao/openbao/api/v2 v2.3.0
+	github.com/openbao/go-kms-wrapping/v2 v2.5.0
+	github.com/openbao/openbao/api/v2 v2.4.0
 	github.com/pierrec/lz4 v2.6.1+incompatible
 	github.com/ryanuber/go-glob v1.0.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/tink-crypto/tink-go/v2 v2.4.0
-	go.uber.org/atomic v1.11.0
-	golang.org/x/crypto v0.40.0
-	golang.org/x/net v0.42.0
-	golang.org/x/text v0.27.0
-	google.golang.org/grpc v1.74.2
+	golang.org/x/crypto v0.42.0
+	golang.org/x/net v0.44.0
+	golang.org/x/text v0.29.0
+	google.golang.org/grpc v1.75.1
 	google.golang.org/protobuf v1.36.6
 )
 
@@ -62,8 +61,8 @@ require (
 	cel.dev/expr v0.24.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
-	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
+	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
 )
 
 require (
@@ -112,14 +111,14 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
-	go.opentelemetry.io/otel v1.37.0 // indirect
+	go.opentelemetry.io/otel v1.38.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.33.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.19.0 // indirect
-	go.opentelemetry.io/otel/metric v1.37.0 // indirect
-	go.opentelemetry.io/otel/trace v1.37.0 // indirect
+	go.opentelemetry.io/otel/metric v1.38.0 // indirect
+	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.4.0 // indirect
-	golang.org/x/sys v0.34.0 // indirect
-	golang.org/x/time v0.12.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
+	golang.org/x/time v0.13.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250728155136-f173205681a0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

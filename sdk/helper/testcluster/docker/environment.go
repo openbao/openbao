@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -40,7 +41,6 @@ import (
 	dockhelper "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
-	uberAtomic "go.uber.org/atomic"
 	"golang.org/x/net/http2"
 )
 
@@ -74,6 +74,9 @@ type DockerCluster struct {
 	builtTags map[string]struct{}
 
 	storage testcluster.ClusterStorage
+
+	// Whether HA mode is disabled
+	HADisabled bool
 }
 
 func (dc *DockerCluster) NamedLogger(s string) log.Logger {
@@ -208,31 +211,10 @@ func (dc *DockerCluster) setupNode0(ctx context.Context) error {
 		return err
 	}
 
-	err = ensureLeaderMatches(ctx, client, func(leader *api.LeaderResponse) error {
-		if !leader.IsSelf {
-			return fmt.Errorf("node %d leader=%v, expected=%v", 0, leader.IsSelf, true)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	status, err := client.Sys().SealStatusWithContext(ctx)
-	if err != nil {
-		return err
-	}
-	dc.ID = status.ClusterID
-	return err
-}
-
-func (dc *DockerCluster) clusterReady(ctx context.Context) error {
-	for i, node := range dc.ClusterNodes {
-		expectLeader := i == 0
-		err := ensureLeaderMatches(ctx, node.client, func(leader *api.LeaderResponse) error {
-			if expectLeader != leader.IsSelf {
-				return fmt.Errorf("node %d leader=%v, expected=%v", i, leader.IsSelf, expectLeader)
+	if !dc.HADisabled {
+		err = ensureLeaderMatches(ctx, client, func(leader *api.LeaderResponse) error {
+			if !leader.IsSelf {
+				return fmt.Errorf("node %d leader=%v, expected=%v", 0, leader.IsSelf, true)
 			}
 
 			return nil
@@ -242,7 +224,12 @@ func (dc *DockerCluster) clusterReady(ctx context.Context) error {
 		}
 	}
 
-	return nil
+	status, err := client.Sys().SealStatusWithContext(ctx)
+	if err != nil {
+		return err
+	}
+	dc.ID = status.ClusterID
+	return err
 }
 
 func (dc *DockerCluster) setupCA(opts *DockerClusterOptions) error {
@@ -443,6 +430,11 @@ func NewDockerCluster(ctx context.Context, opts *DockerClusterOptions) (*DockerC
 		builtTags:   map[string]struct{}{},
 		CA:          opts.CA,
 		storage:     opts.Storage,
+		HADisabled:  opts.HADisabled,
+	}
+
+	if dc.HADisabled && opts.NumCores > 1 {
+		return nil, fmt.Errorf("expected at most one core (%v) when HA mode is disabled", opts.NumCores)
 	}
 
 	if err := dc.setupDockerCluster(ctx, opts); err != nil {
@@ -692,7 +684,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	var seenLogs uberAtomic.Bool
+	var seenLogs atomic.Bool
 	logConsumer := func(s string) {
 		if seenLogs.CompareAndSwap(false, true) {
 			wg.Done()
@@ -950,6 +942,7 @@ type DockerClusterOptions struct {
 	Storage     testcluster.ClusterStorage
 	Root        bool
 	Entrypoint  string
+	HADisabled  bool
 }
 
 func DefaultOptions(t *testing.T) *DockerClusterOptions {
@@ -1012,7 +1005,11 @@ func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClu
 
 	var numCores int
 	if opts.NumCores == 0 {
-		numCores = DefaultNumCores
+		if dc.HADisabled {
+			numCores = 1
+		} else {
+			numCores = DefaultNumCores
+		}
 	} else {
 		numCores = opts.NumCores
 	}
@@ -1040,7 +1037,7 @@ func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClu
 		}
 		if i == 0 {
 			if err := dc.setupNode0(ctx); err != nil {
-				return nil
+				return err
 			}
 		} else {
 			if err := dc.joinNode(ctx, i, 0); err != nil {

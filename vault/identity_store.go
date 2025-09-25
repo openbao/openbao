@@ -21,9 +21,9 @@ import (
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/patrickmn/go-cache"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"zgo.at/zcache/v2"
 )
 
 const (
@@ -69,9 +69,7 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 		namespacer:    core,
 		metrics:       core.MetricSink(),
 		totpPersister: core,
-		groupUpdater:  core,
 		tokenStorer:   core,
-		entityCreator: core,
 		mfaBackend:    core.loginMFABackend,
 	}
 
@@ -102,7 +100,7 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 		RunningVersion: versions.DefaultBuiltinVersion,
 	}
 
-	iStore.oidcCache = newOIDCCache(cache.NoExpiration, cache.NoExpiration)
+	iStore.oidcCache = newOIDCCache(zcache.NoExpiration, zcache.NoExpiration)
 	iStore.oidcAuthCodeCache = newOIDCCache(5*time.Minute, 5*time.Minute)
 
 	if err := iStore.Setup(ctx, config); err != nil {
@@ -1395,37 +1393,6 @@ func (i *IdentityStore) entityByAliasFactorsInTxn(ctx context.Context, txn *memd
 	}
 
 	return i.MemDBEntityByAliasIDInTxn(txn, alias.ID, clone)
-}
-
-// CreateEntity creates a new entity.
-func (i *IdentityStore) CreateEntity(ctx context.Context) (*identity.Entity, error) {
-	defer metrics.MeasureSince([]string{"identity", "create_entity"}, time.Now())
-
-	entity := new(identity.Entity)
-
-	// Set the namespace from the context
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	entity.NamespaceID = ns.ID
-
-	err = i.sanitizeEntity(ctx, entity)
-	if err != nil {
-		return nil, err
-	}
-	if err := i.upsertEntity(ctx, entity, nil, true); err != nil {
-		return nil, err
-	}
-
-	i.metrics.IncrCounterWithLabels(
-		[]string{"identity", "entity", "creation"},
-		1,
-		[]metrics.Label{
-			metricsutil.NamespaceLabel(ns),
-		})
-
-	return entity.Clone()
 }
 
 // CreateOrFetchEntity creates a new entity or returns an existing entity based on the alias,

@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -654,11 +655,24 @@ func TestIdentityStore_AliasMove_DuplicateAccessor(t *testing.T) {
 // Test that the alias cannot be changed to a mount for which
 // the entity already has an alias
 func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
+	ctx := namespace.RootContext(context.Background())
+
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
+
+	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor, core)
+}
+
+func TestIdentityStore_AliasUpdate_DuplicateAccessor_UnsafeShared(t *testing.T) {
+	ctx := namespace.RootContext(context.Background())
+
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
+
+	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor, core)
+}
+
+func testIdentityStoreAliasUpdateDuplicateAccessor(t *testing.T, ctx context.Context, is *IdentityStore, approleAccessor string, upAccessor string, core *Core) {
 	var err error
 	var resp *logical.Response
-	ctx := namespace.RootContext(nil)
-
-	is, ghAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t)
 
 	// Create 1 entity and 2 aliases on it, one for each mount
 	resp, err = is.HandleRequest(ctx, &logical.Request{
@@ -675,7 +689,7 @@ func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
 
 	alias1Data := map[string]interface{}{
 		"name":           "testaliasname1",
-		"mount_accessor": ghAccessor,
+		"mount_accessor": approleAccessor,
 		"canonical_id":   entityID,
 	}
 
@@ -708,7 +722,7 @@ func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
 
 	// Attempt to update the userpass mount to point to the github mount
 	updateData := map[string]interface{}{
-		"mount_accessor": ghAccessor,
+		"mount_accessor": approleAccessor,
 	}
 
 	aliasReq.Data = updateData

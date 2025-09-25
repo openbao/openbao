@@ -54,17 +54,16 @@ const (
 type Seal interface {
 	SetCore(*Core)
 	Init(context.Context) error
-	MetaPrefix() string
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
 	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
-	Wrapable() bool
 	SetStoredKeys(context.Context, [][]byte) error
 	GetStoredKeys(context.Context) ([][]byte, error)
 	WrapperType() wrapping.WrapperType           // SealAccess
 	Config(context.Context) (*SealConfig, error) // SealAccess
 	SetConfig(context.Context, *SealConfig) error
 	SetCachedConfig(*SealConfig)
+	SetConfigAccess(SecurityBarrier)
 	RecoveryKeySupported() bool // SealAccess
 	RecoveryType() string
 	RecoveryConfig(context.Context) (*SealConfig, error) // SealAccess
@@ -78,9 +77,12 @@ type Seal interface {
 }
 
 type defaultSeal struct {
-	access     seal.Access
-	config     atomic.Value
-	core       *Core
+	core   *Core
+	access seal.Access
+
+	config       atomic.Value
+	configAccess StorageAccess
+
 	metaPrefix string
 }
 
@@ -92,10 +94,6 @@ func NewDefaultSeal(lowLevel seal.Access) Seal {
 	}
 	ret.config.Store((*SealConfig)(nil))
 	return ret
-}
-
-func (d *defaultSeal) Wrapable() bool {
-	return false
 }
 
 func (d *defaultSeal) checkCore() error {
@@ -115,14 +113,15 @@ func (d *defaultSeal) SetAccess(access seal.Access) {
 
 func (d *defaultSeal) SetCore(core *Core) {
 	d.core = core
+	// By default, we assume that seal config information is stored in
+	// plain text right on the physical storage, as is the case for the
+	// root namespace. For per-namespace seals, this can be overridden by
+	// [Seal.SetConfigAccess].
+	d.configAccess = &directStorageAccess{physical: core.physical}
 }
 
 func (d *defaultSeal) Init(ctx context.Context) error {
 	return nil
-}
-
-func (d *defaultSeal) MetaPrefix() string {
-	return d.metaPrefix
 }
 
 func (d *defaultSeal) SetMetaPrefix(metaPrefix string) {
@@ -164,9 +163,8 @@ func (d *defaultSeal) Config(ctx context.Context) (*SealConfig, error) {
 		return nil, err
 	}
 
-	barrier := d.core.sealManager.StorageAccessForPath(d.metaPrefix + sealConfigPath)
 	// Fetch the seal configuration
-	valueBytes, err := barrier.Get(ctx, d.metaPrefix+sealConfigPath)
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+sealConfigPath)
 	if err != nil {
 		d.core.logger.Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
@@ -233,8 +231,7 @@ func (d *defaultSeal) SetConfig(ctx context.Context, config *SealConfig) error {
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	barrier := d.core.sealManager.StorageAccessForPath(d.metaPrefix + sealConfigPath)
-	if err := barrier.Put(ctx, d.metaPrefix+sealConfigPath, buf); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+sealConfigPath, buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
@@ -246,6 +243,10 @@ func (d *defaultSeal) SetConfig(ctx context.Context, config *SealConfig) error {
 
 func (d *defaultSeal) SetCachedConfig(config *SealConfig) {
 	d.config.Store(config)
+}
+
+func (d *defaultSeal) SetConfigAccess(barrier SecurityBarrier) {
+	d.configAccess = &secureStorageAccess{barrier: barrier}
 }
 
 func (d *defaultSeal) RecoveryType() string {

@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"strings"
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -37,4 +38,23 @@ func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView
 // Note, that it is on the caller to ensure that the namespace is resolved, as NamespaceByPath otherwise resolves to root.
 func (c *Core) NamespaceByPath(ctx context.Context, path string) (*namespace.Namespace, string) {
 	return c.namespaceStore.GetNamespaceByLongestPrefix(ctx, path)
+}
+
+func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namespace.Namespace, string, error) {
+	rest, ok := strings.CutPrefix(path, namespaceBarrierPrefix)
+	if !ok || rest == "" {
+		return namespace.RootNamespace, path, nil
+	}
+
+	uuid, rest, ok := strings.Cut(rest, "/")
+	if !ok {
+		return namespace.RootNamespace, path, nil
+	}
+
+	ns, err := c.namespaceStore.GetNamespace(ctx, uuid)
+	if err != nil {
+		return nil, path, err
+	}
+
+	return ns, rest, nil
 }

@@ -388,6 +388,14 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 	return retErr
 }
 
+func (c *Core) stopStandby() {
+	select {
+	case c.standbyStopCh.Load().(chan struct{}) <- struct{}{}:
+	default:
+		c.logger.Warn("ignoring standby stop request: stop is already in progress")
+	}
+}
+
 func (c *Core) restart() {
 	select {
 	case c.restartCh <- struct{}{}:
@@ -406,6 +414,36 @@ func (c *Core) drainPendingRestarts() {
 			return
 		}
 	}
+}
+
+func (c *Core) runStandbyGrabStateLock(stopCh <-chan struct{}) error {
+	timeoutCh := time.After(DefaultMaxRequestDuration)
+
+	acquiredCh := make(chan struct{})
+	go func() {
+		c.stateLock.Lock()
+		close(acquiredCh)
+
+		// Unlock the lock if we later acquired it after it timed out.
+		select {
+		case <-timeoutCh:
+			c.stateLock.Unlock()
+		case <-stopCh:
+			c.stateLock.Unlock()
+		default:
+		}
+	}()
+
+	select {
+	case <-stopCh:
+		return fmt.Errorf("cancelling standby mode before startup")
+	case <-acquiredCh:
+		return nil
+	case <-timeoutCh:
+		return fmt.Errorf("unable to acquire lock in time")
+	}
+
+	return nil
 }
 
 // runStandby is a long running process that manages a number of the HA
@@ -430,7 +468,11 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 		c.logger.Info("entering standby mode")
 		restart = false
 
-		c.stateLock.Lock()
+		if err := c.runStandbyGrabStateLock(stopCh); err != nil {
+			c.logger.Error("runStandby: unable to grab state lock", "err", err)
+			return
+		}
+
 		// wipe any existing mount tables
 		if err := c.preSeal(); err != nil {
 			c.logger.Error("pre-seal teardown failed", "error", err)

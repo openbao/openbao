@@ -2181,8 +2181,15 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 			}
 		}()
 
+		// Stop the standby before attempting to acquire the standby lock.
+		// This will prevent a race condition between runStandby and this
+		// method.
+		c.stopStandby()
+
+		// Acquire the state lock.
 		c.stateLock.Lock()
 		close(doneCh)
+
 		// Stop requests from processing
 		if activeCtxCancel != nil {
 			activeCtxCancel()
@@ -2202,21 +2209,12 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 		if activeCtxCancel != nil {
 			activeCtxCancel()
 		}
-
-		if err := c.preSeal(); err != nil {
-			c.logger.Error("pre-seal teardown failed", "error", err)
-			return errors.New("internal error")
-		}
 	} else {
 		// If we are keeping the lock we already have the state write lock
 		// held. Otherwise grab it here so that when stopCh is triggered we are
 		// locked.
 		if keepHALock {
 			atomic.StoreUint32(c.keepHALockOnStepDown, 1)
-		}
-		if grabStateLock {
-			cancelCtxAndLock()
-			defer c.stateLock.Unlock()
 		}
 
 		// If we are trying to acquire the lock, force it to return with nil so
@@ -2231,6 +2229,12 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 		<-c.standbyDoneCh
 		atomic.StoreUint32(c.keepHALockOnStepDown, 0)
 		c.logger.Debug("runStandby done")
+	}
+
+	// Stop all running subsystems.
+	if err := c.preSeal(); err != nil {
+		c.logger.Error("pre-seal teardown failed", "error", err)
+		return errors.New("internal error")
 	}
 
 	// Perform additional cleanup upon sealing.

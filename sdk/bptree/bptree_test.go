@@ -1139,12 +1139,12 @@ func TestMultiTreeOperations(t *testing.T) {
 	ctx, storage, _ := initTest(t, &BPlusTreeConfig{Order: 4})
 
 	// Create two trees with different names
-	config1, err := NewBPlusTreeConfig("tree1", 4)
+	config1, err := NewBPlusTreeConfig(WithTreeID("tree1"))
 	require.NoError(t, err)
 	tree1, err := InitializeBPlusTree(ctx, storage, config1)
 	require.NoError(t, err, "Failed to create tree1")
 
-	config2, err := NewBPlusTreeConfig("tree2", 4)
+	config2, err := NewBPlusTreeConfig(WithTreeID("tree2"))
 	require.NoError(t, err)
 	tree2, err := InitializeBPlusTree(ctx, storage, config2)
 	require.NoError(t, err, "Failed to create tree2")

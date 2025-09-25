@@ -15,7 +15,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 
 	t.Run("AutomaticTreeCreation", func(t *testing.T) {
 		// InitializeBPlusTree should automatically create a new tree when none exists
-		config, err := NewBPlusTreeConfig("auto_tree", 4)
+		config, err := NewBPlusTreeConfig(WithTreeID("auto_tree"))
 		require.NoError(t, err)
 
 		tree, err := InitializeBPlusTree(ctx, storage, config)
@@ -34,7 +34,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 
 	t.Run("AutomaticTreeLoading", func(t *testing.T) {
 		// Create a tree and add some data
-		config, err := NewBPlusTreeConfig("persistent_tree", 4)
+		config, err := NewBPlusTreeConfig(WithTreeID("persistent_tree"))
 		require.NoError(t, err)
 
 		tree1, err := InitializeBPlusTree(ctx, storage, config)
@@ -91,7 +91,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 
 	t.Run("ExplicitTreeCreation", func(t *testing.T) {
 		// CreateNewTree should create a new tree
-		config, err := NewBPlusTreeConfig("explicit_new", 4)
+		config, err := NewBPlusTreeConfig(WithTreeID("explicit_new"))
 		require.NoError(t, err)
 
 		tree, err := NewBPlusTree(ctx, storage, config)
@@ -110,7 +110,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 
 	t.Run("ExplicitTreeLoading", func(t *testing.T) {
 		// First create a tree to load
-		config, err := NewBPlusTreeConfig("explicit_load", 4)
+		config, err := NewBPlusTreeConfig(WithTreeID("explicit_load"))
 		require.NoError(t, err)
 
 		tree1, err := NewBPlusTree(ctx, storage, config)
@@ -131,7 +131,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 		require.Equal(t, []string{"data"}, values)
 
 		// Trying to load non-existent tree should fail
-		nonExistentConfig, err := NewBPlusTreeConfig("does_not_exist", 4)
+		nonExistentConfig, err := NewBPlusTreeConfig(WithTreeID("nonexistent_tree"))
 		require.NoError(t, err)
 
 		_, err = LoadExistingBPlusTree(ctx, storage, nonExistentConfig.TreeID)
@@ -141,9 +141,9 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 
 	t.Run("MultipleTreesPersistenceIsolation", func(t *testing.T) {
 		// Create multiple trees and verify they maintain isolation after "restart"
-		config1, err := NewBPlusTreeConfig("tree_alpha", 4)
+		config1, err := NewBPlusTreeConfig(WithTreeID("tree_alpha"))
 		require.NoError(t, err)
-		config2, err := NewBPlusTreeConfig("tree_beta", 4)
+		config2, err := NewBPlusTreeConfig(WithTreeID("tree_beta"))
 		require.NoError(t, err)
 
 		// Create and populate first tree
@@ -221,7 +221,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 
 	t.Run("RootNodeCorruption", func(t *testing.T) {
 		// Test handling of corrupted/invalid root nodes
-		config, err := NewBPlusTreeConfig("corruption_test", 4)
+		config, err := NewBPlusTreeConfig(WithTreeID("corruption_test"))
 		require.NoError(t, err)
 
 		// Create a tree

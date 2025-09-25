@@ -85,11 +85,20 @@ jobs:
         run: semgrep ci --include '*.go' --config 'tools/semgrep/ci'
 
   gomod:
+    # Run in an almalinux:8 container to make sure it works with the
+    # native golang version there. That is needed for EPEL packaging.
     name: Go mod checks
     runs-on: ubuntu-latest
+    container: ghcr.io/almalinux/8-base
     steps:
+      - name: Install required packages
+        run: dnf -y install golang git make
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - uses: ./.github/actions/set-up-go
+      - name: Set safe.directory
+        # This is supposed to be done by default in the checkout action
+        # but it doesn't work within a container.
+        # See https://github.com/actions/checkout/issues/2031
+        run: git config --global --add safe.directory $(pwd)
       - name: Run go mod tidy to check for differences
         run: make ci-tidy-all
       - name: Run go.mod synchronization to check for differences

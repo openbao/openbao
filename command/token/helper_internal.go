@@ -10,8 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/openbao/openbao/helper/osutil"
 )
 
 var _ TokenHelper = (*InternalTokenHelper)(nil)
@@ -86,11 +84,8 @@ func (i *InternalTokenHelper) Store(input string) error {
 	// We don't have a portable way of verifying that the target file is owned
 	// by the correct user. The simplest way of ensuring that is to simply
 	// re-write it, and the simplest way to ensure that we don't damage an
-	// existing working file due to error is the write-rename pattern. We can't
-	// use os.Rename on Windows because it will return an error if the target
-	// already exists, hence use the ReplaceFile helper which special-cases
-	// Windows to achieve good enough parity with the Unix behavior.
-	return osutil.ReplaceFile(tmpFile, i.tokenPath)
+	// existing working file due to error is the write-rename pattern.
+	return os.Rename(tmpFile, i.tokenPath)
 }
 
 // Erase erases the value of the token

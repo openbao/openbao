@@ -497,7 +497,7 @@ func TestWithTransactionHelper(t *testing.T) {
 func TestTransactionalStorageUtilityMethods(t *testing.T) {
 	ctx := context.Background()
 	s := createTransactionalStorage(t)
-	storage, err := NewTransactionalNodeStorage(s, NewStorageConfig())
+	storage, err := NewTransactionalNodeStorage(s)
 	require.NoError(t, err, "Failed to create storage")
 	nodeStorage := storage.(*TransactionalNodeStorage)
 	require.NoError(t, err, "Failed to create storage")

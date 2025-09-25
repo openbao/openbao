@@ -18,7 +18,7 @@ func TestNodeStorageBuiltInBuffering(t *testing.T) {
 	require.NoError(t, err)
 
 	logicalStorage := logical.NewLogicalStorage(inmemBackend)
-	nodeStorage, err := NewNodeStorage(logicalStorage, NewStorageConfig(WithBufferingEnabled(true)))
+	nodeStorage, err := NewNodeStorage(logicalStorage, WithBufferingEnabled(true))
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -202,7 +202,7 @@ func TestNodeStorageBuiltInBuffering(t *testing.T) {
 
 	t.Run("BufferingCanBeDisabled", func(t *testing.T) {
 		// Test with buffering disabled
-		nonBufferedStorage, err := NewNodeStorage(logicalStorage, NewStorageConfig(WithBufferingEnabled(false)))
+		nonBufferedStorage, err := NewNodeStorage(logicalStorage, WithBufferingEnabled(false))
 		require.NoError(t, err)
 
 		dirtyCount, bufferingEnabled := nonBufferedStorage.BufferStats()

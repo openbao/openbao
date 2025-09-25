@@ -32,7 +32,6 @@ type Storage interface {
 	PutNode(ctx context.Context, node *Node) error
 	// DeleteNode deletes a node from storage
 	DeleteNode(ctx context.Context, id string) error
-	// TODO (gabrielopesantos): Reconsider this method...
 	// PurgeNodes clears all nodes from storage starting with the prefix
 	// PurgeNodes(ctx context.Context) error
 
@@ -63,18 +62,24 @@ type NodeStorage struct {
 	dirtyTracker     *DirtyTracker // Tracks dirty nodes for batching writes
 }
 
+// TODO: Review ...
 // NewNodeStorage creates a new adapter for the logical.Storage interface
 // with built-in write buffering enabled by default
 func NewNodeStorage(
 	storage logical.Storage,
+	configOpts ...StorageOption,
+) (*NodeStorage, error) {
+	return NewNodeStorageFromConfig(storage, NewStorageConfig(configOpts...))
+}
+
+// NewNodeStorageFromConfig ...
+func NewNodeStorageFromConfig(
+	storage logical.Storage,
 	config *StorageConfig,
 ) (*NodeStorage, error) {
-	if config == nil {
-		config = NewStorageConfig() // Use defaults if nil
-	} else {
-		if err := ValidateStorageConfig(config); err != nil {
-			return nil, err
-		}
+	err := ValidateStorageConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("invalid storage config: %w", err)
 	}
 
 	var cache *lru.LRU[string, *Node]
@@ -105,9 +110,9 @@ func NewNodeStorage(
 // NewTransactionalNodeStorage creates a new adapter for transactional logical.Storage
 func NewTransactionalNodeStorage(
 	storage logical.TransactionalStorage,
-	config *StorageConfig,
+	configOpts ...StorageOption,
 ) (TransactionalStorage, error) {
-	nodeStorage, err := NewNodeStorage(storage, config)
+	nodeStorage, err := NewNodeStorageFromConfig(storage, NewTransactionalStorageConfig(configOpts...))
 	if err != nil {
 		return nil, err
 	}

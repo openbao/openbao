@@ -48,17 +48,23 @@ the response can be unwrapped.
 
 ## Technical Description
 
-The control group implementation might consist of the following.
+The control group implementation will consist of the following.
 1. A control-group access policy:
    1. Denies data access by default
    2. Specifies the control group, number of authorizations, ttl
    2. Allows authorizing action to control group members
    3. Allows data access to authorized entity
-2. An authorizing endpoint:
+2. An authorizing endpoint (in `sys/control-group`):
    1. Using wrapping accessor
    2. Self authorization not permitted
 3. Authorization storage
-   1. Request, authorization details, and response will be stored in `cubbyhole`.
+   1. Request, authorization details, and response will be stored in
+      wrapped response/`cubbyhole`.
+
+Reusing the response wrapping framework should be familiar, but the
+developer will need to add new `control-group` paths to the system
+backend. Additional logic will be needed in the `wrapping/unwrap`
+handlers, as well as policy application.
 
 ## API Details
 
@@ -202,7 +208,7 @@ The control group concept has a number of benefits:
 2. By inhibiting self-approval, the control group policy can ensure "second set of eyes"
 3. The wrapped_response workflow provides some additional security
 
-A workflow for requesting/granting in the UI could make admistra2tion easier. 
+A workflow for requesting/granting in the UI could make admistration easier.
 
 As an alternative: the same second-person security arrangement can be
 achieved with a basic policy granting access to a path. However, this
@@ -221,10 +227,12 @@ to obtain the original response.
 
 ## User/Developer Experience
 
-Reusing the response wrapping framework should be familiar, but the developer will need
+The api is following Vault Enterprise, so it should be familiar for
+users who are already using the equivalent feature there. For new
+users, we will need some documentation describing usage and value. For
+users who do not need, it can be ignored.
 
 ## Unresolved Questions
-
 Using `sys/control-group` and the `cubbyhole` mounts might lead us to
 break the namespace partitioning. Should these be per namespace?
 

@@ -100,10 +100,10 @@ while a second socket is dedicated only to serving metrics for monitoring tools.
 # Primary listener for general API traffic via a UNIX socket
 # Metrics are disabled for security.
 listener "unix" {
-  path                 = "/var/run/openbao.sock"
-  socket_mode          = "0660" 
+  path        = "/var/run/openbao.sock"
+  socket_mode = "0660"
   telemetry {
-    disallow_metrics   = true
+    disallow_metrics = true
   }
 }
 

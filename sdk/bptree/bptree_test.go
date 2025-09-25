@@ -932,7 +932,7 @@ func (m *MockStoragestorage) GetNode(ctx context.Context, id string) (*Node, err
 func TestBPlusTreeStorageErrors(t *testing.T) {
 	ctx := context.Background()
 	s := &logical.InmemStorage{}
-	basestorage, err := NewNodeStorage(s, NewStorageConfig())
+	basestorage, err := NewNodeStorage(s)
 	require.NoError(t, err, "Failed to create storage storage")
 	mockstorage := &MockStoragestorage{
 		NodeStorage: basestorage,

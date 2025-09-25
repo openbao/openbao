@@ -23,12 +23,8 @@ func initTest(t *testing.T, treeConfig *BPlusTreeConfig) (context.Context, *Node
 	// Initialize in-memory storage for testing
 	s := &logical.InmemStorage{}
 
-	// if storageConfig == nil {
-	storageConfig := NewStorageConfig()
-	// }
-
 	// Create node storage
-	storage, err := NewNodeStorage(s, storageConfig)
+	storage, err := NewNodeStorage(s)
 	require.NoError(t, err, "failed to create storage")
 
 	if treeConfig == nil {
@@ -66,7 +62,7 @@ func initTransactionalNodeStorageTest(t *testing.T) (context.Context, Transactio
 	s := createTransactionalStorage(t)
 
 	// Create transactional node storage
-	storage, err := NewTransactionalNodeStorage(s, NewTransactionalStorageConfig())
+	storage, err := NewTransactionalNodeStorage(s)
 	require.NoError(t, err, "failed to create transactional node storage")
 
 	return ctx, storage

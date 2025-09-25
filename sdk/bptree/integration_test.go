@@ -29,10 +29,10 @@ func TestTransactionBufferingIntegration(t *testing.T) {
 	require.True(t, ok, "Logical storage should implement TransactionalStorage")
 
 	// Create transactional node storage
-	baseStorage, err := NewNodeStorage(baseLogicalStorage, NewStorageConfig())
+	baseStorage, err := NewNodeStorage(baseLogicalStorage)
 	require.NoError(t, err, "Failed to create base node storage")
 
-	transactionalStorage, err := NewTransactionalNodeStorage(baseLogicalStorage, NewTransactionalStorageConfig())
+	transactionalStorage, err := NewTransactionalNodeStorage(baseLogicalStorage)
 	require.NoError(t, err, "Failed to create transactional node storage")
 
 	t.Run("WithBufferedWrites_InternalTransaction", func(t *testing.T) {
@@ -142,7 +142,7 @@ func TestExternalTransactionIntegration(t *testing.T) {
 	require.True(t, ok, "Logical storage should implement TransactionalStorage")
 
 	// Create base storage
-	baseStorage, err := NewNodeStorage(baseLogicalStorage, NewStorageConfig())
+	baseStorage, err := NewNodeStorage(baseLogicalStorage)
 	require.NoError(t, err, "Failed to create base node storage")
 
 	t.Run("ExternalTransaction_IsolatedCache", func(t *testing.T) {
@@ -231,11 +231,11 @@ func TestExternalTransactionIntegration(t *testing.T) {
 		// Test that external transactions inherit and can override configuration
 
 		// Create base storage with specific configuration
-		baseStorage, err := NewNodeStorage(baseLogicalStorage, NewStorageConfig(
+		baseStorage, err := NewNodeStorage(baseLogicalStorage,
 			WithCacheSize(150),
 			WithCachingEnabled(true),
 			WithBufferingEnabled(true),
-		))
+		)
 		require.NoError(t, err, "Failed to create base storage")
 
 		// Test 1: External transaction with default inheritance
@@ -462,11 +462,11 @@ func TestExternalTransactionAdvancedScenarios(t *testing.T) {
 	require.True(t, ok, "Logical storage should implement TransactionalStorage")
 
 	// Create base storage
-	baseStorage, err := NewNodeStorage(baseLogicalStorage, NewStorageConfig(
+	baseStorage, err := NewNodeStorage(baseLogicalStorage,
 		WithCachingEnabled(true),
 		WithBufferingEnabled(true),
 		WithCacheSize(50),
-	))
+	)
 	require.NoError(t, err, "Failed to create base storage")
 
 	t.Run("ExternalTransaction_MultipleStorageInstances", func(t *testing.T) {
@@ -550,7 +550,7 @@ func TestInternalTransactionAPI(t *testing.T) {
 	require.True(t, ok, "Logical storage should implement TransactionalStorage")
 
 	// Create transactional node storage
-	transactionalStorage, err := NewTransactionalNodeStorage(baseLogicalStorage, NewTransactionalStorageConfig())
+	transactionalStorage, err := NewTransactionalNodeStorage(baseLogicalStorage)
 	require.NoError(t, err, "Failed to create transactional node storage")
 
 	t.Run("ReadOnlyTransaction_Isolation", func(t *testing.T) {

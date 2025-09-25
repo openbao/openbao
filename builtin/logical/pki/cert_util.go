@@ -1397,13 +1397,13 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 								break
 							}
 						}
-						if valid {
-							ipAddresses = append(ipAddresses, parsedIP)
-							continue
-						} else {
+
+						if !valid {
 							return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 								"the IP address %q is not allowed in this role", v)}
 						}
+						
+						ipAddresses = append(ipAddresses, parsedIP)
 					} else {
 						ipAddresses = append(ipAddresses, parsedIP)
 					}

@@ -25,13 +25,13 @@ func wrapMetricsListenerHandler(handler http.Handler, props *vault.HandlerProper
 
 		// Block requests to the metrics endpoint if the listener is configured to disallow it.
 		// This rule has the highest precedence.
-		if listenerConfig.DisallowMetrics && isMetricsPath {
+		if listenerConfig.Telemetry.DisallowMetrics && isMetricsPath {
 			http.Error(w, "metrics endpoint is disabled for this listener", http.StatusForbidden)
 			return
 		}
 
 		// If the listener is configured for metrics only, block all other paths.
-		if listenerConfig.MetricsOnly && !isMetricsPath {
+		if listenerConfig.Telemetry.MetricsOnly && !isMetricsPath {
 			http.Error(w, "this listener only serves the metrics endpoint", http.StatusNotFound)
 			return
 		}

@@ -25,6 +25,10 @@ type ListenerTelemetry struct {
 	UnusedKeys                      UnusedKeyMap `hcl:",unusedKeyPositions"`
 	UnauthenticatedMetricsAccess    bool         `hcl:"-"`
 	UnauthenticatedMetricsAccessRaw interface{}  `hcl:"unauthenticated_metrics_access,alias:UnauthenticatedMetricsAccess"`
+	DisallowMetrics                 bool         `hcl:"-"`
+	DisallowMetricsRaw              interface{}  `hcl:"disallow_metrics,alias:DisallowMetrics"`
+	MetricsOnly                     bool         `hcl:"-"`
+	MetricsOnlyRaw                  interface{}  `hcl:"metrics_only,alias:MetricsOnly"`
 }
 
 type ListenerProfiling struct {
@@ -147,8 +151,6 @@ type Listener struct {
 	// an authenticated variant with new semantics is available on a new
 	// endpoint, this will be set to true (disabling request handling).
 	DisableUnauthedRekeyEndpoints bool `hcl:"disable_unauthed_rekey_endpoints"`
-	DisallowMetrics               bool `hcl:"disallow_metrics"`
-	MetricsOnly                   bool `hcl:"metrics_only"`
 }
 
 // AgentAPI allows users to select which parts of the Agent API they want enabled.
@@ -412,6 +414,22 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 				}
 
 				l.Telemetry.UnauthenticatedMetricsAccessRaw = nil
+			}
+
+			if l.Telemetry.DisallowMetricsRaw != nil {
+				if l.Telemetry.DisallowMetrics, err = parseutil.ParseBool(l.Telemetry.DisallowMetricsRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for telemetry.disallow_metrics: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.Telemetry.DisallowMetricsRaw = nil
+			}
+
+			if l.Telemetry.MetricsOnlyRaw != nil {
+				if l.Telemetry.MetricsOnly, err = parseutil.ParseBool(l.Telemetry.MetricsOnlyRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for telemetry.metrics_only: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.Telemetry.MetricsOnlyRaw = nil
 			}
 		}
 

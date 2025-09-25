@@ -256,8 +256,8 @@ func handler(props *vault.HandlerProperties) http.Handler {
 	corsWrappedHandler := wrapCORSHandler(helpWrappedHandler, core)
 	quotaWrappedHandler := rateLimitQuotaWrapping(corsWrappedHandler, core)
 	genericWrappedHandler := genericWrapping(core, quotaWrappedHandler, props)
-	wrappedHandler := wrapMaxRequestSizeHandler(genericWrappedHandler, props)
-
+	metricsWrappedHandler := wrapMetricsListenerHandler(genericWrappedHandler, props)
+	wrappedHandler := wrapMaxRequestSizeHandler(metricsWrappedHandler, props)
 	// Wrap the handler with PrintablePathCheckHandler to check for non-printable
 	// characters in the request path.
 	printablePathCheckHandler := wrappedHandler

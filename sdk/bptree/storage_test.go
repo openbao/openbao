@@ -147,7 +147,7 @@ func TestTreeConfigPersistence(t *testing.T) {
 
 	t.Run("ConfigStorageAndRetrieval", func(t *testing.T) {
 		// Create a tree with specific configuration
-		config, err := NewBPlusTreeConfig("metadata_test", 6)
+		config, err := NewBPlusTreeConfig(WithTreeID("metadata_test"), WithOrder(6))
 		require.NoError(t, err, "Should create config")
 
 		tree, err := InitializeBPlusTree(ctx, storage, config)
@@ -165,7 +165,7 @@ func TestTreeConfigPersistence(t *testing.T) {
 
 	t.Run("LoadingWithCorrectConfig", func(t *testing.T) {
 		// Create a tree
-		config, err := NewBPlusTreeConfig("load_test", 8)
+		config, err := NewBPlusTreeConfig(WithTreeID("load_test"))
 		require.NoError(t, err)
 
 		tree1, err := InitializeBPlusTree(ctx, storage, config)
@@ -189,7 +189,7 @@ func TestTreeConfigPersistence(t *testing.T) {
 	t.Run("LoadExistingTreeFunction", func(t *testing.T) {
 		// Create a tree with specific order
 		treeID := "explicit_load"
-		config, err := NewBPlusTreeConfig(treeID, 12)
+		config, err := NewBPlusTreeConfig(WithTreeID(treeID), WithOrder(12))
 		require.NoError(t, err)
 
 		tree1, err := NewBPlusTree(ctx, storage, config)
@@ -222,7 +222,7 @@ func TestTreeConfigPersistence(t *testing.T) {
 
 	t.Run("LoadExistingTreeIDMismatch", func(t *testing.T) {
 		// Create a tree
-		config1, err := NewBPlusTreeConfig("mismatch_test", 4)
+		config1, err := NewBPlusTreeConfig(WithTreeID("test_tree"))
 		require.NoError(t, err)
 
 		_, err = NewBPlusTree(ctx, storage, config1)

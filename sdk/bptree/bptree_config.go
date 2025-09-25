@@ -31,18 +31,6 @@ func NewDefaultBPlusTreeConfig() *BPlusTreeConfig {
 	}
 }
 
-func NewBPlusTreeConfig(treeID string, order int) (*BPlusTreeConfig, error) {
-	if order < 3 {
-		return nil, fmt.Errorf("order must be at least 3, got %d", order)
-	}
-
-	return &BPlusTreeConfig{
-		TreeID:  treeID,
-		Order:   order,
-		Version: 1, // Current metadata version
-	}, nil
-}
-
 func (c *BPlusTreeConfig) Validate() error {
 	if c == nil {
 		return fmt.Errorf("BPlusTreeConfig cannot be nil")
@@ -58,4 +46,59 @@ func (c *BPlusTreeConfig) contextWithTreeID(ctx context.Context) context.Context
 		return ctx // No tree ID to add
 	}
 	return withTreeID(ctx, c.TreeID)
+}
+
+// TreeOption is a functional option for configuring BPlusTreeConfig
+type TreeOption func(*BPlusTreeConfig)
+
+// WithTreeID sets the tree identifier
+func WithTreeID(treeID string) TreeOption {
+	return func(c *BPlusTreeConfig) {
+		c.TreeID = treeID
+	}
+}
+
+// WithOrder sets the maximum number of children per node
+func WithOrder(order int) TreeOption {
+	return func(c *BPlusTreeConfig) {
+		c.Order = order
+	}
+}
+
+// WithVersion sets the configuration version
+func WithVersion(version int) TreeOption {
+	return func(c *BPlusTreeConfig) {
+		c.Version = version
+	}
+}
+
+// NewBPlusTreeConfig creates a new BPlusTreeConfig with functional options
+func NewBPlusTreeConfig(opts ...TreeOption) (*BPlusTreeConfig, error) {
+	// Start with defaults
+	config := NewDefaultBPlusTreeConfig()
+
+	// Apply options
+	ApplyTreeOptions(config, opts...)
+
+	// Validate the final configuration
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid tree configuration: %w", err)
+	}
+
+	return config, nil
+}
+
+// ApplyTreeOptions applies multiple TreeOptions to a BPlusTreeConfig
+func ApplyTreeOptions(config *BPlusTreeConfig, opts ...TreeOption) {
+	for _, opt := range opts {
+		if opt != nil {
+			opt(config)
+		}
+	}
+}
+
+// ValidateTreeOptions validates a set of tree options without creating a config
+func ValidateTreeOptions(opts ...TreeOption) error {
+	_, err := NewBPlusTreeConfig(opts...)
+	return err
 }

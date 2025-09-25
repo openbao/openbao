@@ -42,6 +42,20 @@ func InitializeBPlusTree(
 	return NewBPlusTree(ctx, storage, config)
 }
 
+// InitializeBPlusTreeWithOptions initializes a tree using functional options.
+// Creates the tree if it doesn't exist, or loads it if it does.
+func InitializeBPlusTreeWithOptions(
+	ctx context.Context,
+	storage Storage,
+	opts ...TreeOption,
+) (*BPlusTree, error) {
+	config, err := NewBPlusTreeConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tree config: %w", err)
+	}
+	return InitializeBPlusTree(ctx, storage, config)
+}
+
 // NewBPlusTree creates a new B+ tree with the given configuration.
 // Fails if a tree with the same ID already exists.
 func NewBPlusTree(
@@ -89,6 +103,20 @@ func NewBPlusTree(
 	}
 
 	return tree, nil
+}
+
+// NewBPlusTreeWithOptions creates a new B+ tree using functional options.
+// Fails if a tree with the same ID already exists.
+func NewBPlusTreeWithOptions(
+	ctx context.Context,
+	storage Storage,
+	opts ...TreeOption,
+) (*BPlusTree, error) {
+	config, err := NewBPlusTreeConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tree config: %w", err)
+	}
+	return NewBPlusTree(ctx, storage, config)
 }
 
 // LoadExistingBPlusTree loads an existing B+ tree from storage using the stored configuration

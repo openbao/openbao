@@ -1,0 +1,3 @@
+```release-note:improvement
+pki: add `allowed_ip_sans_cidr` parameter to PKI role system, to provide additional checks for IP SANs
+```

@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/oklog/run"
+	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -484,27 +485,31 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 		c.logger.Info("entering standby mode")
 		restart = false
 
-		if err := c.runStandbyGrabStateLock(stopCh); err != nil {
-			c.logger.Error("runStandby: unable to grab state lock", "err", err)
-			return
-		}
-
-		// wipe any existing mount tables
-		if err := c.preSeal(); err != nil {
-			c.logger.Error("pre-seal teardown failed", "error", err)
-		}
-
-		c.drainPendingRestarts()
-
-		perfCtx, perfCancel := context.WithCancel(namespace.RootContext(context.Background()))
-		if err := c.postUnseal(perfCtx, perfCancel, readonlyUnsealStrategy{}); err != nil {
-			c.logger.Error("read-only post-unseal setup failed", "error", err)
-			if err := c.barrier.Seal(); err != nil {
-				c.logger.Error("failed to re-seal barrier after post-unseal setup failed", "error", err)
+		var perfCancel context.CancelFunc
+		if _, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); ok && !c.rawConfig.Load().(*server.Config).DisableStandbyReads {
+			if err := c.runStandbyGrabStateLock(stopCh); err != nil {
+				c.logger.Error("runStandby: unable to grab state lock", "err", err)
+				return
 			}
-			c.logger.Warn("vault is sealed")
+
+			// wipe any existing mount tables
+			if err := c.preSeal(); err != nil {
+				c.logger.Error("pre-seal teardown failed", "error", err)
+			}
+
+			c.drainPendingRestarts()
+
+			var perfCtx context.Context
+			perfCtx, perfCancel = context.WithCancel(namespace.RootContext(context.Background()))
+			if err := c.postUnseal(perfCtx, perfCancel, readonlyUnsealStrategy{}); err != nil {
+				c.logger.Error("read-only post-unseal setup failed", "error", err)
+				if err := c.barrier.Seal(); err != nil {
+					c.logger.Error("failed to re-seal barrier after post-unseal setup failed", "error", err)
+				}
+				c.logger.Warn("vault is sealed")
+			}
+			c.stateLock.Unlock()
 		}
-		c.stateLock.Unlock()
 
 		var g run.Group
 		newLeaderCh := addEnterpriseHaActors(c, &g)
@@ -574,7 +579,9 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 			c.logger.Error("unexpected error in runStandby", "error", err.Error())
 		}
 
-		perfCancel()
+		if perfCancel != nil {
+			perfCancel()
+		}
 	}
 }
 

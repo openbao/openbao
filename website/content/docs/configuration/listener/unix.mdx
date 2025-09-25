@@ -110,10 +110,10 @@ listener "unix" {
 # Dedicated listener for monitoring systems (e.g., Prometheus)
 # Only serves metrics and blocks all other requests.
 listener "unix" {
-  path                             = "/var/run/openbao-metrics.sock"
-  socket_mode                      = "0660" 
-  telemetry{
-    metrics_only                   = true
+  path        = "/var/run/openbao-metrics.sock"
+  socket_mode = "0660"
+  telemetry {
+    metrics_only = true
   }
 }
 ```

@@ -86,6 +86,16 @@ type idToken struct {
 	CodeHash        string `json:"c_hash"`    // Authorization code hash value
 }
 
+type accessToken struct {
+	Namespace string `json:"namespace"`     // Namespace of issuer
+	Issuer    string `json:"iss"`           // api_addr or custom Issuer
+	Subject   string `json:"sub"`           // Entity ID
+	Audience  string `json:"aud"`           // Role or client ID will be used here.
+	Expiry    int64  `json:"exp"`           // Expiration, as determined by the role or client.
+	IssuedAt  int64  `json:"iat"`           // Time of token creation
+	JTI       string `json:"jti,omitempty"` // Token-ID für Replay Protection
+}
+
 // discovery contains a subset of the required elements of OIDC discovery needed
 // for JWT verification libraries to use the .well-known endpoint.
 //
@@ -1065,6 +1075,32 @@ func (tok *idToken) generatePayload(logger hclog.Logger, templates ...string) ([
 	}
 	if len(tok.CodeHash) > 0 {
 		output["c_hash"] = tok.CodeHash
+	}
+
+	// Merge each of the populated JSON templates into output
+	err := mergeJSONTemplates(logger, output, templates...)
+	if err != nil {
+		logger.Error("failed to populate templates for ID token generation", "error", err)
+		return nil, err
+	}
+
+	payload, err := json.Marshal(output)
+	if err != nil {
+		return nil, err
+	}
+
+	return payload, nil
+}
+
+func (tok *accessToken) generatePayload(logger hclog.Logger, templates ...string) ([]byte, error) {
+	output := map[string]interface{}{
+		"iss":       tok.Issuer,
+		"namespace": tok.Namespace,
+		"sub":       tok.Subject,
+		"aud":       tok.Audience,
+		"exp":       tok.Expiry,
+		"iat":       tok.IssuedAt,
+		"jti":       tok.JTI,
 	}
 
 	// Merge each of the populated JSON templates into output

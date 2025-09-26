@@ -6,7 +6,6 @@ package vault
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"strconv"

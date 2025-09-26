@@ -5,7 +5,6 @@ package ssh
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"

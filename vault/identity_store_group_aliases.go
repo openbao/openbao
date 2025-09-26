@@ -6,7 +6,6 @@ package vault
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/openbao/openbao/helper/identity"

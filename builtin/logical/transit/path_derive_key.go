@@ -5,7 +5,6 @@ package transit
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"

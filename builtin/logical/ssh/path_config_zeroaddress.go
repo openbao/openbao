@@ -5,7 +5,6 @@ package ssh
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 

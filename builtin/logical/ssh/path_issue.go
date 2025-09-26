@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"

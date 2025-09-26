@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"strconv"
 

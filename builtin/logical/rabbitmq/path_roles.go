@@ -5,7 +5,6 @@ package rabbitmq
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"

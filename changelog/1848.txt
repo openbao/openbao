@@ -1,0 +1,3 @@
+```release-note:change
+core: Replace all instances of logical.ErrorResponse(fmt.Sprintf(...)) to logical.ErrorResponse(...)
+```

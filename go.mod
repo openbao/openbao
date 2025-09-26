@@ -21,6 +21,8 @@ replace github.com/openbao/openbao/api/auth/userpass/v2 => ./api/auth/userpass
 
 replace github.com/openbao/openbao/sdk/v2 => ./sdk
 
+replace github.com/boltdb/bolt => ./helper/stubbolt
+
 require (
 	cloud.google.com/go/monitoring v1.24.2
 	github.com/ProtonMail/go-crypto v1.3.0
@@ -54,7 +56,6 @@ require (
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-memdb v1.3.5
 	github.com/hashicorp/go-metrics v0.5.4
-	github.com/hashicorp/go-msgpack v1.1.5
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-plugin v1.7.0
 	github.com/hashicorp/go-raftchunking v0.7.1
@@ -78,7 +79,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.23.0
 	github.com/hashicorp/raft v1.7.3
 	github.com/hashicorp/raft-autopilot v0.3.0
-	github.com/hashicorp/raft-boltdb/v2 v2.0.0-20210421194847-a7e34179d62c
+	github.com/hashicorp/raft-boltdb/v2 v2.3.1
 	github.com/hashicorp/raft-snapshot v1.0.4
 	github.com/hashicorp/vault-plugin-mock v0.19.13
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
@@ -207,6 +208,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
+	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/boombuler/barcode v1.0.1 // indirect
 	github.com/caddyserver/zerossl v0.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

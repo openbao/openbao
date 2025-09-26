@@ -21,19 +21,37 @@ func wrapMetricsListenerHandler(handler http.Handler, props *vault.HandlerProper
 		}
 
 		listenerConfig := props.ListenerConfig
-		isMetricsPath := r.URL.Path == "/v1/sys/metrics"
+
+		isMetricsOnly := listenerConfig.Telemetry.MetricsOnly
+		disallowsMetrics := listenerConfig.Telemetry.DisallowMetrics
+
+		realMetricsPath := "/v1/sys/metrics"
+		metricsPath := "/v1/sys/metrics"
+
+		if isMetricsOnly && props.ListenerConfig.Telemetry.MetricsPath != "" {
+			metricsPath = props.ListenerConfig.Telemetry.MetricsPath
+		}
+
+		isMetricsPath := r.URL.Path == metricsPath
 
 		// Block requests to the metrics endpoint if the listener is configured to disallow it.
 		// This rule has the highest precedence.
-		if listenerConfig.Telemetry.DisallowMetrics && isMetricsPath {
+		if disallowsMetrics && isMetricsPath {
 			http.Error(w, "metrics endpoint is disabled for this listener", http.StatusForbidden)
 			return
 		}
 
 		// If the listener is configured for metrics only, block all other paths.
-		if listenerConfig.Telemetry.MetricsOnly && !isMetricsPath {
+		if isMetricsOnly && !isMetricsPath {
 			http.Error(w, "this listener only serves the metrics endpoint", http.StatusNotFound)
 			return
+		}
+
+		// Lastly, if it is a metrics request and we've chosen a custom path
+		// to respond to metrics on, revert to the standard path.
+		if isMetricsPath && metricsPath != realMetricsPath {
+			r.URL.Path = realMetricsPath
+			r.URL.RawPath = realMetricsPath
 		}
 
 		// The request is permitted; pass it to the next handler in the chain.

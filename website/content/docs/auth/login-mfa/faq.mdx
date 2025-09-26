@@ -23,12 +23,16 @@ This FAQ section contains frequently asked questions about the Login MFA feature
 
 - **Single-Phase MFA:** This is a single request mechanism where the required MFA information, such as MFA method ID, is provided via the X-Vault-MFA header in a single MFA request that is used to authenticate into OpenBao.
 
-:::warning
+  :::warning
 
-**Note**: If the configured MFA methods need a passcode, it needs to be provided in the request, such as in the case of TOTP or Duo.
-If the configured MFA methods, such as PingID, Okta, or Duo, do not require a passcode and have out of band mechanisms for verifying the extra factor, OpenBao will send an inquiry to the other service's APIs to determine whether the MFA request has yet been verified.
+  **Note**: If the configured MFA methods need a passcode, it needs to be
+  provided in the request, such as in the case of TOTP or Duo. If the configured
+  MFA methods, such as PingID, Okta, or Duo, do not require a passcode and have
+  out of band mechanisms for verifying the extra factor, OpenBao will send an
+  inquiry to the other service's APIs to determine whether the MFA request has
+  yet been verified.
 
-:::
+  :::
 
 - **Two-Phase MFA:** This is a two-request MFA method that is more conventionally used.
   - The MFA passcode required for the configured MFA method is not provided in a header of the login request that is MFA-restricted. Instead, the user first authenticates to the auth method, and on successful authentication to the auth method, an MFA requirement is returned to the user. The MFA requirement contains the MFA RequestID and constraints applicable to the MFA as configured by the operator.

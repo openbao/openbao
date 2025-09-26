@@ -64,13 +64,13 @@ Configuration steps:
 
   1. Alternatively, if OpenBao is _not_ running in Kubernetes:
 
-:::info
+     :::info
 
-**Note:** When OpenBao is outside the cluster, the `$ISSUER` endpoint below may
-     or may not be reachable. If not, you can configure JWT auth using
+     **Note:** When OpenBao is outside the cluster, the `$ISSUER` endpoint below
+     may or may not be reachable. If not, you can configure JWT auth using
      [`jwt_validation_pubkeys`](#using-jwt-validation-public-keys) instead.
 
-:::
+     :::
 
      ```bash
      bao auth enable jwt

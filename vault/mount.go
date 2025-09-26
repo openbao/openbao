@@ -1134,7 +1134,7 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	if c.rollback != nil && c.router.MatchingBackend(ctx, srcRelativePath) != nil {
 		if err := c.rollback.Rollback(rCtx, srcRelativePath); err != nil {
 			c.logger.Error("ignoring rollback error during remount", "error", err, "path", src.Namespace.Path+src.MountPath)
-			err = nil
+			err = nil //nolint:ineffassign // we explicitly ignore the error
 		}
 	}
 

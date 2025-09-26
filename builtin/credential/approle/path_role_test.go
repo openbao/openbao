@@ -61,7 +61,7 @@ func TestAppRole_LocalNonLocalSecretIDs(t *testing.T) {
 	b, storage := createBackendWithStorage(t)
 
 	// Create a role with local_secret_ids set
-	resp := b.requestNoErr(t, &logical.Request{
+	b.requestNoErr(t, &logical.Request{
 		Path:      "role/testrole1",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
@@ -73,7 +73,7 @@ func TestAppRole_LocalNonLocalSecretIDs(t *testing.T) {
 	})
 
 	// Create another role without setting local_secret_ids
-	resp = b.requestNoErr(t, &logical.Request{
+	b.requestNoErr(t, &logical.Request{
 		Path:      "role/testrole2",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
@@ -86,7 +86,7 @@ func TestAppRole_LocalNonLocalSecretIDs(t *testing.T) {
 	count := 10
 	// Create secret IDs on testrole1
 	for i := 0; i < count; i++ {
-		resp = b.requestNoErr(t, &logical.Request{
+		b.requestNoErr(t, &logical.Request{
 			Path:      "role/testrole1/secret-id",
 			Operation: logical.UpdateOperation,
 			Storage:   storage,
@@ -94,7 +94,7 @@ func TestAppRole_LocalNonLocalSecretIDs(t *testing.T) {
 	}
 
 	// Check the number of secret IDs generated
-	resp = b.requestNoErr(t, &logical.Request{
+	resp := b.requestNoErr(t, &logical.Request{
 		Path:      "role/testrole1/secret-id",
 		Operation: logical.ListOperation,
 		Storage:   storage,
@@ -178,7 +178,7 @@ func TestAppRole_LocalSecretIDImmutability(t *testing.T) {
 	}
 
 	// Create a role with local_secret_ids set
-	resp = b.requestNoErr(t, &logical.Request{
+	b.requestNoErr(t, &logical.Request{
 		Path:      "role/testrole",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
@@ -213,7 +213,7 @@ func TestAppRole_UpgradeBoundCIDRList(t *testing.T) {
 	}
 
 	// Create a role with bound_cidr_list set
-	resp = b.requestNoErr(t, &logical.Request{
+	b.requestNoErr(t, &logical.Request{
 		Path:      "role/testrole",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
@@ -441,7 +441,7 @@ func TestAppRole_RoleReadSetIndex(t *testing.T) {
 	}
 
 	// Create a role
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleIDReq := &logical.Request{
 		Path:      "role/testrole/role-id",
@@ -512,7 +512,7 @@ func TestAppRole_CIDRSubset(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	secretIDData := map[string]interface{}{
 		"cidr_list": "127.0.0.1/16",
@@ -534,10 +534,10 @@ func TestAppRole_CIDRSubset(t *testing.T) {
 
 	roleData["bound_cidr_list"] = "192.168.27.29/16,172.245.30.40/24,10.20.30.40/30"
 	roleReq.Operation = logical.UpdateOperation
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	secretIDData["cidr_list"] = "192.168.27.29/20,172.245.30.40/25,10.20.30.40/32"
-	resp = b.requestNoErr(t, secretIDReq)
+	b.requestNoErr(t, secretIDReq)
 }
 
 func TestAppRole_TokenBoundCIDRSubset32Mask(t *testing.T) {
@@ -559,7 +559,7 @@ func TestAppRole_TokenBoundCIDRSubset32Mask(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	secretIDData := map[string]interface{}{
 		"token_bound_cidrs": "127.0.0.1/32",
@@ -571,7 +571,7 @@ func TestAppRole_TokenBoundCIDRSubset32Mask(t *testing.T) {
 		Data:      secretIDData,
 	}
 
-	resp = b.requestNoErr(t, secretIDReq)
+	b.requestNoErr(t, secretIDReq)
 
 	secretIDData = map[string]interface{}{
 		"token_bound_cidrs": "127.0.0.1/24",
@@ -611,13 +611,13 @@ func TestAppRole_RoleConstraints(t *testing.T) {
 	}
 
 	// Set bind_secret_id, which is enabled by default
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	// Set bound_cidr_list alone by explicitly disabling bind_secret_id
 	roleReq.Operation = logical.UpdateOperation
 	roleData["bind_secret_id"] = false
 	roleData["bound_cidr_list"] = "0.0.0.0/0"
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	// Remove both constraints
 	roleReq.Operation = logical.UpdateOperation
@@ -650,7 +650,7 @@ func TestAppRole_RoleIDUpdate(t *testing.T) {
 		Storage:   storage,
 		Data:      roleData,
 	}
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleIDUpdateReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -660,7 +660,7 @@ func TestAppRole_RoleIDUpdate(t *testing.T) {
 			"role_id": "customroleid",
 		},
 	}
-	resp = b.requestNoErr(t, roleIDUpdateReq)
+	b.requestNoErr(t, roleIDUpdateReq)
 
 	secretIDReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -711,7 +711,7 @@ func TestAppRole_RoleIDUniqueness(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Path = "role/testrole2"
 	resp, err = b.HandleRequest(context.Background(), roleReq)
@@ -776,9 +776,9 @@ func TestAppRole_RoleDeleteSecretID(t *testing.T) {
 		Path:      "role/role1/secret-id",
 	}
 	// Create 3 secrets on the role
-	resp = b.requestNoErr(t, secretIDReq)
-	resp = b.requestNoErr(t, secretIDReq)
-	resp = b.requestNoErr(t, secretIDReq)
+	b.requestNoErr(t, secretIDReq)
+	b.requestNoErr(t, secretIDReq)
+	b.requestNoErr(t, secretIDReq)
 
 	listReq := &logical.Request{
 		Operation: logical.ListOperation,
@@ -866,7 +866,7 @@ func TestAppRole_RoleSecretIDAccessorReadDelete(t *testing.T) {
 		Storage:   storage,
 		Path:      "role/role1/secret-id",
 	}
-	resp = b.requestNoErr(t, secretIDReq)
+	b.requestNoErr(t, secretIDReq)
 
 	listReq := &logical.Request{
 		Operation: logical.ListOperation,
@@ -944,11 +944,11 @@ func TestAppRoleRoleListSecretID(t *testing.T) {
 		Path:      "role/role1/secret-id",
 	}
 	// Create 5 'secret_id's
-	resp = b.requestNoErr(t, secretIDReq)
-	resp = b.requestNoErr(t, secretIDReq)
-	resp = b.requestNoErr(t, secretIDReq)
-	resp = b.requestNoErr(t, secretIDReq)
-	resp = b.requestNoErr(t, secretIDReq)
+	b.requestNoErr(t, secretIDReq)
+	b.requestNoErr(t, secretIDReq)
+	b.requestNoErr(t, secretIDReq)
+	b.requestNoErr(t, secretIDReq)
+	b.requestNoErr(t, secretIDReq)
 
 	listReq := &logical.Request{
 		Operation: logical.ListOperation,
@@ -1005,7 +1005,7 @@ func TestAppRole_RoleSecretIDWithoutFields(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleSecretIDReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -1278,7 +1278,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -1618,7 +1618,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 		Data:      roleData,
 	}
 
-	resp = b.requestNoErr(t, roleReq)
+	b.requestNoErr(t, roleReq)
 
 	roleReq.Operation = logical.ReadOperation
 	resp = b.requestNoErr(t, roleReq)
@@ -2037,7 +2037,7 @@ func TestAppRole_SecretID_WithTTL(t *testing.T) {
 				Storage:   storage,
 				Data:      roleData,
 			}
-			resp := b.requestNoErr(t, roleReq)
+			b.requestNoErr(t, roleReq)
 
 			// Generate secret ID
 			secretIDReq := &logical.Request{
@@ -2045,7 +2045,7 @@ func TestAppRole_SecretID_WithTTL(t *testing.T) {
 				Path:      "role/" + tt.roleName + "/secret-id",
 				Storage:   storage,
 			}
-			resp = b.requestNoErr(t, secretIDReq)
+			resp := b.requestNoErr(t, secretIDReq)
 
 			// Extract the "ttl" value from the response data if it exists
 			ttlRaw, okTTL := resp.Data["secret_id_ttl"]

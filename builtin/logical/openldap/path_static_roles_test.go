@@ -480,6 +480,9 @@ func TestRoles(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatalf("unexpected error %v", err)
+		}
 		if resp == nil || !resp.IsError() {
 			t.Fatal("expected error")
 		}
@@ -521,6 +524,9 @@ func TestRoles(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatalf("unexpected error %v", err)
+		}
 		if resp == nil || !resp.IsError() {
 			t.Fatal("expected error")
 		}

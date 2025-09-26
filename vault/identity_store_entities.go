@@ -371,7 +371,7 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 		// Get entity metadata
 		metadata, ok, err := d.GetOkErr("metadata")
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to parse metadata: %v", err)), nil
+			return logical.ErrorResponse("failed to parse metadata: %v", err), nil
 		}
 		if ok {
 			entity.Metadata = metadata.(map[string]string)

@@ -245,7 +245,7 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 		expiry := expiryRaw.(string)
 		_, err := parseutil.ParseDurationSecond(expiry)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("given expiry could not be decoded: %s", err)), nil
+			return logical.ErrorResponse("given expiry could not be decoded: %s", err), nil
 		}
 		config.Expiry = expiry
 	}
@@ -263,10 +263,10 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 		expiry := expiryRaw.(string)
 		duration, err := parseutil.ParseDurationSecond(expiry)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("given ocsp_expiry could not be decoded: %s", err)), nil
+			return logical.ErrorResponse("given ocsp_expiry could not be decoded: %s", err), nil
 		}
 		if duration < 0 {
-			return logical.ErrorResponse(fmt.Sprintf("ocsp_expiry must be greater than or equal to 0 got: %s", duration)), nil
+			return logical.ErrorResponse("ocsp_expiry must be greater than or equal to 0 got: %s", duration), nil
 		}
 		config.OcspExpiry = expiry
 	}
@@ -279,7 +279,7 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 	if autoRebuildGracePeriodRaw, ok := d.GetOk("auto_rebuild_grace_period"); ok {
 		autoRebuildGracePeriod := autoRebuildGracePeriodRaw.(string)
 		if _, err := parseutil.ParseDurationSecond(autoRebuildGracePeriod); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("given auto_rebuild_grace_period could not be decoded: %s", err)), nil
+			return logical.ErrorResponse("given auto_rebuild_grace_period could not be decoded: %s", err), nil
 		}
 		config.AutoRebuildGracePeriod = autoRebuildGracePeriod
 	}
@@ -292,7 +292,7 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 	if deltaRebuildIntervalRaw, ok := d.GetOk("delta_rebuild_interval"); ok {
 		deltaRebuildInterval := deltaRebuildIntervalRaw.(string)
 		if _, err := parseutil.ParseDurationSecond(deltaRebuildInterval); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("given delta_rebuild_interval could not be decoded: %s", err)), nil
+			return logical.ErrorResponse("given delta_rebuild_interval could not be decoded: %s", err), nil
 		}
 		config.DeltaRebuildInterval = deltaRebuildInterval
 	}
@@ -305,14 +305,14 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 	if config.AutoRebuild {
 		gracePeriod, _ := parseutil.ParseDurationSecond(config.AutoRebuildGracePeriod)
 		if gracePeriod >= expiry {
-			return logical.ErrorResponse(fmt.Sprintf("CRL auto-rebuilding grace period (%v) must be strictly shorter than CRL expiry (%v) value when auto-rebuilding of CRLs is enabled", config.AutoRebuildGracePeriod, config.Expiry)), nil
+			return logical.ErrorResponse("CRL auto-rebuilding grace period (%v) must be strictly shorter than CRL expiry (%v) value when auto-rebuilding of CRLs is enabled", config.AutoRebuildGracePeriod, config.Expiry), nil
 		}
 	}
 
 	if config.EnableDelta {
 		deltaRebuildInterval, _ := parseutil.ParseDurationSecond(config.DeltaRebuildInterval)
 		if deltaRebuildInterval >= expiry {
-			return logical.ErrorResponse(fmt.Sprintf("CRL delta rebuild window (%v) must be strictly shorter than CRL expiry (%v) value when delta CRLs are enabled", config.DeltaRebuildInterval, config.Expiry)), nil
+			return logical.ErrorResponse("CRL delta rebuild window (%v) must be strictly shorter than CRL expiry (%v) value when delta CRLs are enabled", config.DeltaRebuildInterval, config.Expiry), nil
 		}
 	}
 
@@ -347,7 +347,7 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 		if crlErr != nil {
 			switch crlErr.(type) {
 			case errutil.UserError:
-				return logical.ErrorResponse(fmt.Sprintf("Error during CRL building: %s", crlErr)), nil
+				return logical.ErrorResponse("Error during CRL building: %s", crlErr), nil
 			default:
 				return nil, fmt.Errorf("error encountered during CRL building: %w", crlErr)
 			}

@@ -609,11 +609,11 @@ func (b *SystemBackend) handleStorageRaftAutopilotConfigUpdate() framework.Opera
 		effectiveConf.Merge(config)
 
 		if effectiveConf.CleanupDeadServers && effectiveConf.MinQuorum < 3 {
-			return logical.ErrorResponse(fmt.Sprintf("min_quorum must be set when cleanup_dead_servers is set and it should at least be 3; cleanup_dead_servers: %#v, min_quorum: %#v", effectiveConf.CleanupDeadServers, effectiveConf.MinQuorum)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("min_quorum must be set when cleanup_dead_servers is set and it should at least be 3; cleanup_dead_servers: %#v, min_quorum: %#v", effectiveConf.CleanupDeadServers, effectiveConf.MinQuorum), logical.ErrInvalidRequest
 		}
 
 		if effectiveConf.CleanupDeadServers && effectiveConf.DeadServerLastContactThreshold.Seconds() < 60 {
-			return logical.ErrorResponse(fmt.Sprintf("dead_server_last_contact_threshold should not be set to less than 1m; received: %v", deadServerLastContactThreshold)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("dead_server_last_contact_threshold should not be set to less than 1m; received: %v", deadServerLastContactThreshold), logical.ErrInvalidRequest
 		}
 
 		// Persist only the user supplied fields

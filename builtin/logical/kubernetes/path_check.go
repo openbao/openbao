@@ -58,5 +58,5 @@ func (b *backend) pathCheckRead(_ context.Context, _ *logical.Request, _ *framew
 	}
 
 	missingText := strings.Join(missing, ", ")
-	return logical.ErrorResponse(fmt.Sprintf("Missing environment variables: %s", missingText)), nil
+	return logical.ErrorResponse("Missing environment variables: %s", missingText), nil
 }

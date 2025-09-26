@@ -125,7 +125,7 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 		polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
 		derivedKeySizeInBytes = 32
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unknown key type %v", derivedkeyType)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("unknown key type %v", derivedkeyType), logical.ErrInvalidRequest
 	}
 
 	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{

@@ -34,23 +34,23 @@ func HandleRandomAPI(d *framework.FieldData, additionalSource io.Reader) (*logic
 	} else if maybeUrlBytes == "" {
 		bytes, err = strconv.Atoi(maybeSource.(string))
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("error parsing url-set byte count: %s", err)), nil
+			return logical.ErrorResponse("error parsing url-set byte count: %s", err), nil
 		}
 	} else {
 		source = maybeSource.(string)
 		bytes, err = strconv.Atoi(maybeUrlBytes.(string))
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("error parsing url-set byte count: %s", err)), nil
+			return logical.ErrorResponse("error parsing url-set byte count: %s", err), nil
 		}
 	}
 	format := d.Get("format").(string)
 
 	if bytes < 1 {
-		return logical.ErrorResponse(`"bytes" cannot be less than 1`), nil
+		return logical.ErrorResponse("'bytes' cannot be less than 1"), nil
 	}
 
 	if bytes > APIMaxBytes {
-		return logical.ErrorResponse(`"bytes" should be less than %d`, APIMaxBytes), nil
+		return logical.ErrorResponse("'bytes' should be less than %d", APIMaxBytes), nil
 	}
 
 	switch format {

@@ -517,7 +517,7 @@ func revokeCert(sc *storageContext, config *crlConfig, cert *x509.Certificate) (
 	// instead.
 	for issuer, certificate := range issuerIDCertMap {
 		if colonSerial == serialFromCert(certificate) {
-			return logical.ErrorResponse(fmt.Sprintf("adding issuer (id: %v) to its own CRL is not allowed", issuer)), nil
+			return logical.ErrorResponse("adding issuer (id: %v) to its own CRL is not allowed", issuer), nil
 		}
 	}
 
@@ -590,7 +590,7 @@ func revokeCert(sc *storageContext, config *crlConfig, cert *x509.Certificate) (
 		if crlErr != nil {
 			switch crlErr.(type) {
 			case errutil.UserError:
-				return logical.ErrorResponse(fmt.Sprintf("Error during CRL building: %s", crlErr)), nil
+				return logical.ErrorResponse("Error during CRL building: %s", crlErr), nil
 			default:
 				return nil, fmt.Errorf("error encountered during CRL building: %w", crlErr)
 			}

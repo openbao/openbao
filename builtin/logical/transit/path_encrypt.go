@@ -400,9 +400,9 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 		case "xchacha20-poly1305":
 			polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
 		case "ecdsa-p256", "ecdsa-p384", "ecdsa-p521":
-			return logical.ErrorResponse(fmt.Sprintf("key type %v not supported for this operation", keyType)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("key type %v not supported for this operation", keyType), logical.ErrInvalidRequest
 		default:
-			return logical.ErrorResponse(fmt.Sprintf("unknown key type %v", keyType)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("unknown key type %v", keyType), logical.ErrInvalidRequest
 		}
 	} else {
 		polReq = keysutil.PolicyRequest{

@@ -954,7 +954,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateScope(ctx context.Context, req *logi
 
 		for key := range tmp {
 			if slices.Contains(reservedClaims, key) {
-				return logical.ErrorResponse(`top level key %q not allowed. Restricted keys: %s`,
+				return logical.ErrorResponse("top level key %q not allowed. Restricted keys: %s",
 					key, strings.Join(reservedClaims, ", ")), nil
 			}
 		}

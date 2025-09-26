@@ -64,7 +64,7 @@ func (b *backend) pathReadCode(ctx context.Context, req *logical.Request, data *
 		return nil, err
 	}
 	if key == nil {
-		return logical.ErrorResponse(fmt.Sprintf("unknown key: %s", name)), nil
+		return logical.ErrorResponse("unknown key: %s", name), nil
 	}
 
 	// Generate password using totp library
@@ -95,7 +95,7 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 		return nil, err
 	}
 	if key == nil {
-		return logical.ErrorResponse(fmt.Sprintf("unknown key: %s", name)), nil
+		return logical.ErrorResponse("unknown key: %s", name), nil
 	}
 
 	// Enforce input value requirements

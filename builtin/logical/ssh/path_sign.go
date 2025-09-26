@@ -87,7 +87,7 @@ func (b *backend) pathSign(ctx context.Context, req *logical.Request, data *fram
 		return nil, err
 	}
 	if role == nil {
-		return logical.ErrorResponse(fmt.Sprintf("Unknown role: %s", roleName)), nil
+		return logical.ErrorResponse("Unknown role: %s", roleName), nil
 	}
 
 	resp, err := b.pathSignCertificate(ctx, req, data, role)
@@ -110,12 +110,12 @@ func (b *backend) pathSignCertificate(ctx context.Context, req *logical.Request,
 
 	userPublicKey, err := parsePublicSSHKey(publicKey)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("failed to parse public_key as SSH key: %s", err)), nil
+		return logical.ErrorResponse("failed to parse public_key as SSH key: %s", err), nil
 	}
 
 	err = b.validateSignedKeyRequirements(userPublicKey, role)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("public_key failed to meet the key requirements: %s", err)), nil
+		return logical.ErrorResponse("public_key failed to meet the key requirements: %s", err), nil
 	}
 
 	sc := b.makeStorageContext(ctx, req.Storage)

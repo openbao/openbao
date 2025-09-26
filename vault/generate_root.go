@@ -88,7 +88,7 @@ func (c *Core) GenerateRootProgress() (int, error) {
 	if c.Sealed() && !c.recoveryMode {
 		return 0, consts.ErrSealed
 	}
-	if c.standby && !c.recoveryMode {
+	if c.standby.Load() && !c.recoveryMode {
 		return 0, consts.ErrStandby
 	}
 
@@ -106,7 +106,7 @@ func (c *Core) GenerateRootConfiguration() (*GenerateRootConfig, error) {
 	if c.Sealed() && !c.recoveryMode {
 		return nil, consts.ErrSealed
 	}
-	if c.standby && !c.recoveryMode {
+	if c.standby.Load() && !c.recoveryMode {
 		return nil, consts.ErrStandby
 	}
 
@@ -160,7 +160,7 @@ func (c *Core) GenerateRootInit(otp, pgpKey string, strategy GenerateRootStrateg
 	if !barrierSealed && c.recoveryMode {
 		return errors.New("attempt to generate recovery operation token when already unsealed")
 	}
-	if c.standby && !c.recoveryMode {
+	if c.standby.Load() && !c.recoveryMode {
 		return consts.ErrStandby
 	}
 
@@ -247,7 +247,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, errors.New("attempt to generate recovery operation token when already unsealed")
 	}
 
-	if c.standby && !c.recoveryMode {
+	if c.standby.Load() && !c.recoveryMode {
 		return nil, consts.ErrStandby
 	}
 
@@ -360,7 +360,7 @@ func (c *Core) GenerateRootCancel() error {
 	if c.Sealed() && !c.recoveryMode {
 		return consts.ErrSealed
 	}
-	if c.standby && !c.recoveryMode {
+	if c.standby.Load() && !c.recoveryMode {
 		return consts.ErrStandby
 	}
 

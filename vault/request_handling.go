@@ -414,7 +414,7 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		// unauth, we just have no information to attach to the request, so
 		// ignore errors...this was best-effort anyways
 		if err != nil && !unauth {
-			if c.standby {
+			if c.standby.Load() {
 				return nil, acl, te, entity, logical.ErrPerfStandbyPleaseForward
 			}
 			return nil, acl, te, entity, err
@@ -426,7 +426,7 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		return nil, acl, te, entity, logical.ErrPermissionDenied
 	}
 	if te != nil && te.EntityID != "" && entity == nil {
-		if c.standby {
+		if c.standby.Load() {
 			return nil, acl, te, entity, logical.ErrPerfStandbyPleaseForward
 		}
 		c.logger.Warn("permission denied as the entity on the token is invalid")
@@ -827,7 +827,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	}
 
 	// Always forward requests that are using a limited use count token.
-	if c.standby && req.ClientTokenRemainingUses > 0 {
+	if c.standby.Load() && req.ClientTokenRemainingUses > 0 {
 		// Prevent forwarding on local-only requests.
 		return nil, logical.ErrPerfStandbyPleaseForward
 	}
@@ -952,7 +952,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	// Instead, we return an error since we cannot be sure if we have an
 	// active token store to validate the provided token.
 	case strings.HasPrefix(req.Path, "sys/metrics"):
-		if c.standby {
+		if c.standby.Load() {
 			return nil, ErrCannotForwardLocalOnly
 		}
 	}
@@ -2255,7 +2255,7 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 		return nil, ErrInternalError
 	}
 
-	if c.standby && persistToken {
+	if c.standby.Load() && persistToken {
 		return nil, logical.ErrPerfStandbyPleaseForward
 	}
 

@@ -734,7 +734,7 @@ func (c *Core) handleAuditLogSetup(ctx context.Context) error {
 			continue
 		}
 
-		if c.standby {
+		if c.standby.Load() {
 			c.logger.Warn("audit device present in storage but not standby node configuration", "path", auditMount.Path)
 			continue
 		}
@@ -749,7 +749,7 @@ func (c *Core) handleAuditLogSetup(ctx context.Context) error {
 }
 
 func (c *Core) addAuditFromConfig(ctx context.Context, auditConfig *server.AuditDevice) error {
-	if c.standby {
+	if c.standby.Load() {
 		c.logger.Warn("audit device present in standby but not active node", "path", auditConfig.Path)
 		return nil
 	}

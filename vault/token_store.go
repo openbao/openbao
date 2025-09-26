@@ -366,7 +366,7 @@ func (ts *TokenStore) paths() []*framework.Path {
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: operationPrefixToken,
 				OperationVerb:   "look-up",
-				OperationSuffix: "accessor",
+				OperationSuffix: "by-accessor",
 			},
 
 			Fields: map[string]*framework.FieldSchema{
@@ -398,7 +398,7 @@ func (ts *TokenStore) paths() []*framework.Path {
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: operationPrefixToken,
-				OperationVerb:   "look-up-self",
+				OperationVerb:   "look-up",
 			},
 
 			Fields: map[string]*framework.FieldSchema{
@@ -412,7 +412,7 @@ func (ts *TokenStore) paths() []*framework.Path {
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: ts.handleLookupSelf,
 					DisplayAttrs: &framework.DisplayAttributes{
-						OperationSuffix: "get",
+						OperationSuffix: "self-get",
 					},
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
@@ -425,7 +425,7 @@ func (ts *TokenStore) paths() []*framework.Path {
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: ts.handleLookupSelf,
 					DisplayAttrs: &framework.DisplayAttributes{
-						OperationSuffix: "post",
+						OperationSuffix: "self-post",
 					},
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{

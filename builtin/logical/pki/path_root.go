@@ -545,10 +545,10 @@ func (b *backend) pathIssuerSignSelfIssued(ctx context.Context, req *logical.Req
 	}
 	certs, err := x509.ParseCertificates(block.Bytes)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("error parsing certificate: %s", err)), nil
+		return logical.ErrorResponse("error parsing certificate: %s", err), nil
 	}
 	if len(certs) != 1 {
-		return logical.ErrorResponse(fmt.Sprintf("%d certificates found in PEM file, expected 1", len(certs))), nil
+		return logical.ErrorResponse("%d certificates found in PEM file, expected 1", len(certs)), nil
 	}
 
 	cert := certs[0]

@@ -6,7 +6,6 @@ package vault
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/pprof"
 	"strconv"
@@ -354,7 +353,7 @@ func (b *SystemBackend) handlePprofProfile(ctx context.Context, req *logical.Req
 		maxDur := int64(DefaultMaxRequestDuration.Seconds())
 		sec, _ := strconv.ParseInt(secQueryVal, 10, 64)
 		if sec > maxDur {
-			return logical.ErrorResponse(fmt.Sprintf("seconds %d exceeds max request duration of %d", sec, maxDur)), nil
+			return logical.ErrorResponse("seconds %d exceeds max request duration of %d", sec, maxDur), nil
 		}
 	}
 
@@ -384,7 +383,7 @@ func (b *SystemBackend) handlePprofTrace(ctx context.Context, req *logical.Reque
 		maxDur := int64(DefaultMaxRequestDuration.Seconds())
 		sec, _ := strconv.ParseInt(secQueryVal, 10, 64)
 		if sec > maxDur {
-			return logical.ErrorResponse(fmt.Sprintf("seconds %d exceeds max request duration of %d", sec, maxDur)), nil
+			return logical.ErrorResponse("seconds %d exceeds max request duration of %d", sec, maxDur), nil
 		}
 	}
 

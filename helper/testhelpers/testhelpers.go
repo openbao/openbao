@@ -653,6 +653,7 @@ func VerifyRaftPeers(t testing.T, client *api.Client, expected map[string]bool) 
 
 	if resp == nil || resp.Data == nil {
 		t.Fatal("missing response data")
+		return nil
 	}
 
 	config, ok := resp.Data["config"].(map[string]interface{})
@@ -868,6 +869,7 @@ func SetupTOTPMethod(t testing.T, client *api.Client, config map[string]interfac
 
 	if err != nil || (resp1 == nil) {
 		t.Fatalf("bad: resp: %#v\n err: %v", resp1, err)
+		return ""
 	}
 
 	methodID := resp1.Data["method_id"].(string)
@@ -897,6 +899,11 @@ func SetupMFALoginEnforcement(t testing.T, client *api.Client, config map[string
 // available.
 func SetupUserpassMountAccessor(t testing.T, client *api.Client) string {
 	t.Helper()
+	if client == nil {
+		t.Fatalf("client is nil so far")
+		return ""
+	}
+
 	// Enable Userpass authentication
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
@@ -955,6 +962,12 @@ func RegisterEntityInTOTPEngine(t testing.T, client *api.Client, entityID, metho
 func GetTOTPCodeFromEngine(t testing.T, client *api.Client, enginePath string) string {
 	t.Helper()
 	totpPath := fmt.Sprintf("totp/code/%s", enginePath)
+
+	if client == nil {
+		t.Fatalf("client is nil so far")
+		return ""
+	}
+
 	secret, err := client.Logical().ReadWithContext(context.Background(), totpPath)
 	if err != nil {
 		t.Fatalf("failed to create totp passcode: %v", err)

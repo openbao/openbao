@@ -258,7 +258,7 @@ func (c *Config) Merge(c2 *Config) *Config {
 	}
 
 	result.PidFile = c.PidFile
-	if c2.PidFile != "" {
+	if c2.SharedConfig != nil && c2.PidFile != "" {
 		result.PidFile = c2.PidFile
 	}
 

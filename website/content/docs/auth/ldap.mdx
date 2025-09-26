@@ -127,14 +127,15 @@ There are two alternate methods of resolving the user object used to authenticat
 - `userattr` (string, optional) - Attribute on user attribute object matching the username passed when authenticating. Examples: `sAMAccountName`, `cn`, `uid`
 - `userfilter` (string, optional) - Go template used to construct a ldap user search filter. The template can access the following context variables: \[`UserAttr`, `Username`\]. The default userfilter is `({{.UserAttr}}={{.Username}})` or `(userPrincipalName={{.Username}}@UPNDomain)` if the `upndomain` parameter is set. The user search filter can be used to restrict what user can attempt to log in. For example, to limit login to users that are not contractors, you could write `(&(objectClass=user)({{.UserAttr}}={{.Username}})(!(employeeType=Contractor)))`.
 
-:::warning
+  :::warning
 
-When specifying a `userfilter`, either the templated value `{{.UserAttr}}` or
-the literal value that matches `userattr` should be present in the filter to
-ensure that the search returns a unique result that takes `userattr` into
-consideration for entity alias mapping purposes and avoid possible collisions on login.
+  When specifying a `userfilter`, either the templated value `{{.UserAttr}}` or
+  the literal value that matches `userattr` should be present in the filter to
+  ensure that the search returns a unique result that takes `userattr` into
+  consideration for entity alias mapping purposes and avoid possible collisions
+  on login.
 
-:::
+  :::
 
 #### Binding - anonymous search
 
@@ -142,17 +143,19 @@ consideration for entity alias mapping purposes and avoid possible collisions on
 - `userdn` (string, optional) - Base DN under which to perform user search. Example: `ou=Users,dc=example,dc=com`
 - `userattr` (string, optional) - Attribute on user attribute object matching the username passed when authenticating. Examples: `sAMAccountName`, `cn`, `uid`
 - `userfilter` (string, optional) - Go template used to construct a ldap user search filter. The template can access the following context variables: \[`UserAttr`, `Username`\]. The default userfilter is `({{.UserAttr}}={{.Username}})` or `(userPrincipalName={{.Username}}@UPNDomain)` if the `upndomain` parameter is set. The user search filter can be used to restrict what user can attempt to log in. For example, to limit login to users that are not contractors, you could write `(&(objectClass=user)({{.UserAttr}}={{.Username}})(!(employeeType=Contractor)))`.
+
+  :::warning
+  
+  When specifying a `userfilter`, either the templated value `{{.UserAttr}}` or
+  the literal value that matches `userattr` should be present in the filter to
+  ensure that the search returns a unique result that takes `userattr` into
+  consideration for entity alias mapping purposes and avoid possible collisions
+  on login.
+  
+  :::
+
 - `deny_null_bind` (bool, optional) - This option prevents users from bypassing authentication when providing an empty password. The default is `true`.
 - `anonymous_group_search` (bool, optional) - Use anonymous binds when performing LDAP group searches. Defaults to `false`.
-
-:::warning
-
-When specifying a `userfilter`, either the templated value `{{.UserAttr}}` or
-the literal value that matches `userattr` should be present in the filter to
-ensure that the search returns a unique result that takes `userattr` into
-consideration for entity alias mapping purposes and avoid possible collisions on login.
-
-:::
 
 #### Alias dereferencing
 

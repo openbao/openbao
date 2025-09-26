@@ -24,14 +24,14 @@ Usage: `bao pki reissue [flags] <parent> <template> <child_mount> [options]`
 - `<template>` is the fully qualified path of an intermediate certificate in OpenBao
   which will be used to populate certificate fields not overridden by `[options]`.
 
-:::warning
+  :::warning
 
-**Note**: not all possible certificate fields are supported by OpenBao, and
-  this template reader covers only those OpenBao generates as a best effort.  If
+  **Note**: not all possible certificate fields are supported by OpenBao, and
+  this template reader covers only those OpenBao generates as a best effort. If
   unknown fields are set, such as when an external CA was imported into OpenBao,
   there may not be a warning that those are missing from the new issuer.
 
-:::
+  :::
 
 - `<child_mount>` is the path of the mount in OpenBao where the new issuer is saved.
 
@@ -49,15 +49,15 @@ issuer entry.
    generate a new key for this certificate - or `"kms"` - to link to an external
    key.  Exported keys are not available through this API.
 
-:::warning
+  :::warning
 
-**Note**: It is only possible to generate a new certificate with an existing
-   key that exists in the same mount where that key-material exists.  This
-   command is expected to fail should the template exist on a different mount,
-   `existing` is the selected type, and no `key_ref` for a key in the new issuer
-   mount is provided.
+  **Note**: It is only possible to generate a new certificate with an existing
+  key that exists in the same mount where that key-material exists. This command
+  is expected to fail should the template exist on a different mount, `existing`
+  is the selected type, and no `key_ref` for a key in the new issuer mount is
+  provided.
 
-:::
+  :::
 
 - `-issuer_name` `(string: "")` - If present, the newly created issuer will be
    given this name.

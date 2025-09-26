@@ -1542,8 +1542,10 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 		}
 	}
 
-	if err := result.Error(); err != nil {
-		return nil, err
+	if result != nil {
+		if err := result.Error(); err != nil {
+			return nil, err
+		}
 	}
 
 	return result, nil

@@ -27,10 +27,12 @@ func pathsDelete(b *versionedKVBackend) []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.upgradeCheck(b.pathDeleteWrite()),
+					Callback:                  b.upgradeCheck(b.pathDeleteWrite()),
+					ForwardPerformanceStandby: true,
 				},
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.upgradeCheck(b.pathDeleteWrite()),
+					Callback:                  b.upgradeCheck(b.pathDeleteWrite()),
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -51,10 +53,12 @@ func pathsDelete(b *versionedKVBackend) []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.upgradeCheck(b.pathUndeleteWrite()),
+					Callback:                  b.upgradeCheck(b.pathUndeleteWrite()),
+					ForwardPerformanceStandby: true,
 				},
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.upgradeCheck(b.pathUndeleteWrite()),
+					Callback:                  b.upgradeCheck(b.pathUndeleteWrite()),
+					ForwardPerformanceStandby: true,
 				},
 			},
 

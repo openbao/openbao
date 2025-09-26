@@ -47,19 +47,23 @@ version matches the version specified in the cas parameter.`,
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathDataWrite()),
+				Callback:                  b.upgradeCheck(b.pathDataWrite()),
+				ForwardPerformanceStandby: true,
 			},
 			logical.CreateOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathDataWrite()),
+				Callback:                  b.upgradeCheck(b.pathDataWrite()),
+				ForwardPerformanceStandby: true,
 			},
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.upgradeCheck(b.pathDataRead()),
 			},
 			logical.DeleteOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathDataDelete()),
+				Callback:                  b.upgradeCheck(b.pathDataDelete()),
+				ForwardPerformanceStandby: true,
 			},
 			logical.PatchOperation: &framework.PathOperation{
-				Callback: b.upgradeCheck(b.pathDataPatch()),
+				Callback:                  b.upgradeCheck(b.pathDataPatch()),
+				ForwardPerformanceStandby: true,
 			},
 		},
 

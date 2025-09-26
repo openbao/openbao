@@ -13,6 +13,13 @@ import (
 )
 
 func (c *Core) Invalidate(key string) {
+	c.stateLock.RLock()
+	ctx := c.activeContext
+	c.stateLock.RUnlock()
+	if ctx == nil {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(c.activeContext, 2*time.Second)
 	defer cancel()
 

@@ -96,6 +96,7 @@ const sidebars: SidebarsConfig = {
             Configuration: [
                 "configuration/index",
                 "configuration/audit",
+                "configuration/feature-flags",
                 "configuration/self-init",
                 {
                     listener: [

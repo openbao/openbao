@@ -57,6 +57,8 @@ type SharedConfig struct {
 	ClusterName string `hcl:"cluster_name"`
 
 	AdministrativeNamespacePath string `hcl:"administrative_namespace_path"`
+
+	FeatureFlags FeatureFlags `hcl:"feature_flags"`
 }
 
 func ParseConfig(d string) (*SharedConfig, error) {
@@ -135,6 +137,13 @@ func ParseConfig(d string) (*SharedConfig, error) {
 		result.found("telemetry", "Telemetry")
 		if err := parseTelemetry(&result, o); err != nil {
 			return nil, fmt.Errorf("error parsing 'telemetry': %w", err)
+		}
+	}
+
+	if o := list.Filter("feature_flags"); len(o.Items) > 0 {
+		result.found("feature_flags", "FeatureFlags")
+		if err := parseFeatureFlags(&result, o); err != nil {
+			return nil, fmt.Errorf("error parsing 'feature_flags': %w", err)
 		}
 	}
 

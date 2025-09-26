@@ -1,0 +1,51 @@
+---
+sidebar_label: feature_flags
+description: |-
+  The feature_flags stanza allows to enable or disable experimental features.
+---
+
+# `feature_flags` stanza
+
+The `feature_flags` stanza allows to enable or disable experimental features of
+OpenBao.
+
+Some features are opt-in, meaning disabled by default and you can enabled them
+with a feature flag. We encourage you to try these opt-in features in your
+non-productive environments, so we can incorporate your feedback early in the
+development process.
+
+Other features might be opt-out, meaning they are enabled by default and you can
+disable them with a feature flag. They should only be disabled, if they cause
+problems. In that case, we ask you to [file a bug report][bug-report] or add
+additional detail to an existing issue, if possible.
+
+:::warning
+
+Notice: feature flags might change from opt-in to opt-out or will be removed
+entirely in future versions.
+
+:::
+
+
+```hcl
+feature_flags {
+  disable_standby_reads = true
+}
+```
+
+## `feature_flags` parameters
+
+This page is grouped into [opt-in](#opt-in) and [opt-out](#opt-out) features.
+
+### Opt-In
+
+Currently, there are no opt-in features.
+
+### Opt-Out
+
+The following out-out features are currently available:
+
+- `disable_standby_reads` `(bool: false)` - Disable the handling of read-only
+  requests on standby nodes.
+
+[bug-report]: https://github.com/openbao/openbao/issues/new?template=bug_report.md

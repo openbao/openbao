@@ -64,7 +64,7 @@ func newTree(
 	tree := &Tree{config: config}
 
 	// Create new leaf root
-	root := NewLeafNode(generateUUID())
+	root := NewLeafNode()
 	if err := storage.PutNode(ctx, root); err != nil {
 		return nil, fmt.Errorf("failed to save root node: %w", err)
 	}
@@ -490,9 +490,10 @@ func (t *Tree) insertIntoParent(ctx context.Context, storage Storage, leftNode *
 		return fmt.Errorf("failed to get root ID: %w", err)
 	}
 	if leftNode.GetID() == rootID {
-		newRoot := NewInternalNode(generateUUID())
-		newRoot.Keys = []string{splitKey}
-		newRoot.SetChildrenIDs([]string{leftNode.GetID(), rightNode.GetID()})
+		newRoot := NewInternalNode(
+			WithInitialKeys(splitKey),
+			WithInitialChildren(leftNode.GetID(), rightNode.GetID()),
+		)
 
 		// Update parent references
 		leftNode.SetParentID(newRoot.GetID())

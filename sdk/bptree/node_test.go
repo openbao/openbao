@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewLeafNode(t *testing.T) {
-	node := NewLeafNode("leaf1")
+	node := NewLeafNode(WithNodeID("leaf1"))
 	require.NotNil(t, node)
 	require.Equal(t, "leaf1", node.ID)
 	require.True(t, node.IsLeaf)
@@ -19,7 +19,7 @@ func TestNewLeafNode(t *testing.T) {
 }
 
 func TestNewInternalNode(t *testing.T) {
-	node := NewInternalNode("internal1")
+	node := NewInternalNode(WithNodeID("internal1"))
 	require.NotNil(t, node)
 	require.Equal(t, "internal1", node.ID)
 	require.False(t, node.IsLeaf)
@@ -29,7 +29,7 @@ func TestNewInternalNode(t *testing.T) {
 }
 
 func TestGetKeyValues(t *testing.T) {
-	node := NewLeafNode("leaf")
+	node := NewLeafNode()
 
 	// Test non-existing key
 	values, keyFound := node.GetKeyValues("key1")
@@ -58,7 +58,7 @@ func TestGetKeyValues(t *testing.T) {
 }
 
 func TestKeyCount(t *testing.T) {
-	node := NewLeafNode("leaf")
+	node := NewLeafNode(WithNodeID("leaf"))
 
 	// Empty node
 	require.Equal(t, 0, node.KeyCount())
@@ -76,7 +76,7 @@ func TestKeyCount(t *testing.T) {
 }
 
 func TestIsEmpty(t *testing.T) {
-	node := NewLeafNode("leaf")
+	node := NewLeafNode()
 
 	// Empty node
 	require.True(t, node.IsEmpty())
@@ -95,7 +95,7 @@ func TestIsEmpty(t *testing.T) {
 }
 
 func TestInsertKeyValue(t *testing.T) {
-	node := NewLeafNode("leaf")
+	node := NewLeafNode()
 
 	// Test basic insertion
 	err := node.InsertKeyValue("key2", "value2")
@@ -123,7 +123,7 @@ func TestInsertKeyValue(t *testing.T) {
 }
 
 func TestInsertKeyValueOnInternalNode(t *testing.T) {
-	node := NewInternalNode("internal")
+	node := NewInternalNode()
 
 	// Should fail on internal node
 	err := node.InsertKeyValue("key1", "value1")
@@ -132,7 +132,7 @@ func TestInsertKeyValueOnInternalNode(t *testing.T) {
 }
 
 func TestRemoveValueFromKey(t *testing.T) {
-	node := NewLeafNode("leaf")
+	node := NewLeafNode()
 
 	// Setup test data
 	node.InsertKeyValue("key1", "value1")
@@ -165,7 +165,7 @@ func TestRemoveValueFromKey(t *testing.T) {
 }
 
 func TestInsertKeyChild(t *testing.T) {
-	node := NewInternalNode("internal")
+	node := NewInternalNode()
 
 	node.ChildrenIDs = []string{"child0"} // Pre-populate with left-most child
 
@@ -189,7 +189,7 @@ func TestInsertKeyChild(t *testing.T) {
 }
 
 func TestInsertKeyChildOnLeafNode(t *testing.T) {
-	node := NewLeafNode("leaf")
+	node := NewLeafNode()
 
 	// Should fail on leaf node
 	err := node.InsertKeyChild("key1", "child1")
@@ -198,7 +198,7 @@ func TestInsertKeyChildOnLeafNode(t *testing.T) {
 }
 
 func TestRemoveKeyChildAt(t *testing.T) {
-	node := NewInternalNode("internal")
+	node := NewInternalNode()
 
 	// Pre-populate with left-most child
 	node.ChildrenIDs = []string{"child0"}
@@ -233,7 +233,7 @@ func TestRemoveKeyChildAt(t *testing.T) {
 }
 
 func TestGetChildAtIndex(t *testing.T) {
-	node := NewInternalNode("internal")
+	node := NewInternalNode()
 
 	// Pre-populate with left-most child
 	node.ChildrenIDs = []string{"child0"}
@@ -262,7 +262,7 @@ func TestGetChildAtIndex(t *testing.T) {
 }
 
 func TestGetKeyAt(t *testing.T) {
-	node := NewInternalNode("internal")
+	node := NewInternalNode()
 
 	// Pre-populate with left-most child
 	node.ChildrenIDs = []string{"child0"}
@@ -287,7 +287,7 @@ func TestGetKeyAt(t *testing.T) {
 }
 
 func TestGetChildForKeyTraversal(t *testing.T) {
-	node := NewInternalNode("internal")
+	node := NewInternalNode()
 
 	// Pre-populate with left-most child
 	node.ChildrenIDs = []string{"child0"}
@@ -326,7 +326,7 @@ func TestGetChildForKeyTraversal(t *testing.T) {
 }
 
 func TestFindKeyIndex(t *testing.T) {
-	node := NewLeafNode("leaf")
+	node := NewLeafNode()
 
 	// Setup test data
 	node.InsertKeyValue("key1", "value1")
@@ -362,4 +362,218 @@ func TestFindKeyIndex(t *testing.T) {
 	idx, found = node.FindKeyIndex("key6") // After all keys
 	require.False(t, found)
 	require.Equal(t, 3, idx)
+}
+
+func TestNodeOptions(t *testing.T) {
+	t.Run("LeafNodeDefaults", func(t *testing.T) {
+		node := NewLeafNode()
+
+		require.True(t, node.IsLeaf)
+		require.NotEmpty(t, node.ID, "Should have auto-generated ID")
+		require.Empty(t, node.Keys)
+		require.Empty(t, node.Values)
+		require.Empty(t, node.ParentID)
+		require.Empty(t, node.NextID)
+		require.Empty(t, node.PreviousID)
+	})
+
+	t.Run("InternalNodeDefaults", func(t *testing.T) {
+		node := NewInternalNode()
+
+		require.False(t, node.IsLeaf)
+		require.NotEmpty(t, node.ID, "Should have auto-generated ID")
+		require.Empty(t, node.Keys)
+		require.Empty(t, node.ChildrenIDs)
+		require.Empty(t, node.ParentID)
+	})
+
+	t.Run("WithNodeID", func(t *testing.T) {
+		customID := "custom-node-id"
+
+		leaf := NewLeafNode(WithNodeID(customID))
+		require.Equal(t, customID, leaf.ID)
+
+		internal := NewInternalNode(WithNodeID(customID))
+		require.Equal(t, customID, internal.ID)
+	})
+
+	t.Run("WithParentID", func(t *testing.T) {
+		parentID := "parent-123"
+
+		leaf := NewLeafNode(WithParentID(parentID))
+		require.Equal(t, parentID, leaf.ParentID)
+
+		internal := NewInternalNode(WithParentID(parentID))
+		require.Equal(t, parentID, internal.ParentID)
+	})
+
+	t.Run("LeafNodeLinkingOptions", func(t *testing.T) {
+		nextID := "next-node"
+		prevID := "prev-node"
+
+		leaf := NewLeafNode(
+			WithNextID(nextID),
+			WithPreviousID(prevID),
+		)
+
+		require.Equal(t, nextID, leaf.NextID)
+		require.Equal(t, prevID, leaf.PreviousID)
+	})
+
+	t.Run("LeafNodeLinkingOptionsIgnoredForInternal", func(t *testing.T) {
+		// Linking options should be ignored for internal nodes
+		internal := NewInternalNode(
+			WithNextID("should-be-ignored"),
+			WithPreviousID("should-be-ignored"),
+		)
+
+		require.Empty(t, internal.NextID, "NextID should be ignored for internal nodes")
+		require.Empty(t, internal.PreviousID, "PreviousID should be ignored for internal nodes")
+	})
+
+	t.Run("WithInitialKeys", func(t *testing.T) {
+		keys := []string{"key1", "key2", "key3"}
+
+		leaf := NewLeafNode(WithInitialKeys(keys...))
+		require.Equal(t, keys, leaf.Keys)
+
+		internal := NewInternalNode(WithInitialKeys(keys...))
+		require.Equal(t, keys, internal.Keys)
+	})
+
+	t.Run("WithInitialValues", func(t *testing.T) {
+		values := [][]string{
+			{"val1a", "val1b"},
+			{"val2"},
+			{"val3a", "val3b", "val3c"},
+		}
+
+		leaf := NewLeafNode(WithInitialValues(values...))
+		require.Equal(t, values, leaf.Values)
+
+		// Should be ignored for internal nodes
+		internal := NewInternalNode(WithInitialValues(values...))
+		require.Empty(t, internal.Values, "Values should be ignored for internal nodes")
+	})
+
+	t.Run("WithInitialChildren", func(t *testing.T) {
+		children := []string{"child1", "child2", "child3"}
+
+		internal := NewInternalNode(WithInitialChildren(children...))
+		require.Equal(t, children, internal.ChildrenIDs)
+
+		// Should be ignored for leaf nodes
+		leaf := NewLeafNode(WithInitialChildren(children...))
+		require.Empty(t, leaf.ChildrenIDs, "Children should be ignored for leaf nodes")
+	})
+
+	t.Run("CombinedLeafOptions", func(t *testing.T) {
+		keys := []string{"apple", "banana"}
+		values := [][]string{{"red", "green"}, {"yellow"}}
+
+		leaf := NewLeafNode(
+			WithNodeID("fruit-leaf"),
+			WithParentID("fruit-parent"),
+			WithNextID("next-fruit"),
+			WithPreviousID("prev-fruit"),
+			WithInitialKeys(keys...),
+			WithInitialValues(values...),
+		)
+
+		require.Equal(t, "fruit-leaf", leaf.ID)
+		require.Equal(t, "fruit-parent", leaf.ParentID)
+		require.Equal(t, "next-fruit", leaf.NextID)
+		require.Equal(t, "prev-fruit", leaf.PreviousID)
+		require.Equal(t, keys, leaf.Keys)
+		require.Equal(t, values, leaf.Values)
+		require.True(t, leaf.IsLeaf)
+	})
+
+	t.Run("CombinedInternalOptions", func(t *testing.T) {
+		keys := []string{"m", "s"}
+		children := []string{"child1", "child2", "child3"}
+
+		internal := NewInternalNode(
+			WithNodeID("internal-123"),
+			WithParentID("root"),
+			WithInitialKeys(keys...),
+			WithInitialChildren(children...),
+		)
+
+		require.Equal(t, "internal-123", internal.ID)
+		require.Equal(t, "root", internal.ParentID)
+		require.Equal(t, keys, internal.Keys)
+		require.Equal(t, children, internal.ChildrenIDs)
+		require.False(t, internal.IsLeaf)
+	})
+
+	t.Run("NilOptionsHandling", func(t *testing.T) {
+		// Should handle nil options gracefully
+		leaf := NewLeafNode(nil, WithNodeID("test"), nil)
+		require.Equal(t, "test", leaf.ID)
+		require.True(t, leaf.IsLeaf)
+
+		internal := NewInternalNode(nil, WithNodeID("test"), nil)
+		require.Equal(t, "test", internal.ID)
+		require.False(t, internal.IsLeaf)
+	})
+
+	t.Run("DataSafety", func(t *testing.T) {
+		// Test that options create independent copies of slices
+		originalKeys := []string{"key1", "key2"}
+		originalValues := [][]string{{"val1"}, {"val2"}}
+		originalChildren := []string{"child1", "child2"}
+
+		leaf := NewLeafNode(
+			WithInitialKeys(originalKeys...),
+			WithInitialValues(originalValues...),
+		)
+		internal := NewInternalNode(WithInitialChildren(originalChildren...))
+
+		// Modify original slices
+		originalKeys[0] = "modified"
+		originalValues[0][0] = "modified"
+		originalChildren[0] = "modified"
+
+		// Node data should be unchanged
+		require.Equal(t, "key1", leaf.Keys[0])
+		require.Equal(t, "val1", leaf.Values[0][0])
+		require.Equal(t, "child1", internal.ChildrenIDs[0])
+	})
+
+	t.Run("OptionsWorkWithExistingMethods", func(t *testing.T) {
+		// Test that nodes created with options work with existing methods
+		leaf := NewLeafNode(
+			WithInitialKeys("existing"),
+			WithInitialValues([]string{"value"}),
+		)
+
+		// Should be able to use existing methods
+		err := leaf.InsertKeyValue("new", "newvalue")
+		require.NoError(t, err)
+
+		values, found := leaf.GetKeyValues("existing")
+		require.True(t, found)
+		require.Equal(t, []string{"value"}, values)
+
+		values, found = leaf.GetKeyValues("new")
+		require.True(t, found)
+		require.Equal(t, []string{"newvalue"}, values)
+	})
+
+	t.Run("InternalNodeWithOptionsSupportsTraversal", func(t *testing.T) {
+		internal := NewInternalNode(
+			WithInitialKeys("m"),
+			WithInitialChildren("left", "right"),
+		)
+
+		// Should work with existing traversal methods
+		childID, err := internal.GetChildForKeyTraversal("a") // Should go left
+		require.NoError(t, err)
+		require.Equal(t, "left", childID)
+
+		childID, err = internal.GetChildForKeyTraversal("z") // Should go right
+		require.NoError(t, err)
+		require.Equal(t, "right", childID)
+	})
 }

@@ -10,16 +10,17 @@ import "context"
 // Context keys for tree identification
 type contextKey string
 
-const TreeIDContextKey contextKey = "bptree-tree-id"
+const treeIDContextKey contextKey = "bptree-tree-id"
 
 // withTreeID adds a tree ID to the context
 func withTreeID(ctx context.Context, treeID string) context.Context {
-	return context.WithValue(ctx, TreeIDContextKey, treeID)
+	return context.WithValue(ctx, treeIDContextKey, treeID)
 }
 
 // getTreeID extracts the tree ID from context, returns default if not found
 func getTreeID(ctx context.Context) (string, bool) {
-	treeID, ok := ctx.Value(TreeIDContextKey).(string)
+	treeID, ok := ctx.Value(treeIDContextKey).(string)
+
 	return treeID, ok
 }
 
@@ -28,5 +29,6 @@ func getTreeIDOrDefault(ctx context.Context, defaultTreeID string) string {
 	if treeID, ok := getTreeID(ctx); ok && treeID != "" {
 		return treeID
 	}
+
 	return defaultTreeID
 }

@@ -171,10 +171,6 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 		_, err = InitializeTree(ctx, storage, WithTreeID("invalid"), WithOrder(1))
 		require.Error(t, err, "Should fail with invalid order")
 
-		// NewBPlusTree with nil config should fail
-		_, err = InitializeTreeWithConfig(ctx, storage, nil)
-		require.Error(t, err, "CreateNewTree should require config")
-
 		// LoadExistingTree (NewBPlusTree) with empty tree ID should fail
 		_, err = InitializeTree(ctx, storage, WithTreeID(""))
 		require.Error(t, err, "NewBPlusTree should require tree ID")

@@ -60,7 +60,7 @@ func (s *TransactionalNodeStorage) BeginReadOnlyTx(ctx context.Context) (Transac
 	var txCache *lru.LRU[string, *Node]
 	if s.cachingEnabled {
 		// Create transaction-local cache for isolation (inherit parent's cache size)
-		cacheSize := DefaultCacheSize
+		cacheSize := defaultCacheSize
 		if s.cache != nil {
 			cacheSize = s.cache.Size()
 		}
@@ -101,7 +101,7 @@ func (s *TransactionalNodeStorage) BeginTx(ctx context.Context) (Transaction, er
 	var txCache *lru.LRU[string, *Node]
 	if s.cachingEnabled {
 		// Create transaction-local cache for isolation (inherit parent's cache size)
-		cacheSize := DefaultCacheSize
+		cacheSize := defaultCacheSize
 		if s.cache != nil {
 			cacheSize = s.cache.Size()
 		}

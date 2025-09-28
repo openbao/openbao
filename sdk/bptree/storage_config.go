@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	// DefaultCacheSize is the default cache size for node caching
-	DefaultCacheSize = 1000
+	// defaultCacheSize is the default cache size for node caching
+	defaultCacheSize = 1000
 )
 
 // NOTE (gabrielopesantos): This is probably not needed (standard JSON serialization is fine for now)
@@ -49,14 +49,12 @@ type StorageConfig struct {
 
 // NewDefaultStorageConfig creates a default storage config for non transactional storage.
 func NewDefaultStorageConfig() *StorageConfig {
-	cfg := &StorageConfig{
+	return &StorageConfig{
 		NodeSerializer:   &JSONSerializer{}, // Default to JSON serializer
 		CachingEnabled:   true,              // Enable caching by default
-		CacheSize:        DefaultCacheSize,  // Default cache size
+		CacheSize:        defaultCacheSize,  // Default cache size
 		BufferingEnabled: false,             // Enable buffering by default
 	}
-
-	return cfg
 }
 
 // NewStorageConfig creates a default storage config with optional overrides
@@ -71,14 +69,12 @@ func NewStorageConfig(opts ...StorageOption) *StorageConfig {
 
 // NewDefaultTransactionalStorageConfig creates a default storage config for transactional storage.
 func NewDefaultTransactionalStorageConfig() *StorageConfig {
-	cfg := &StorageConfig{
+	return &StorageConfig{
 		NodeSerializer:   &JSONSerializer{}, // Default to JSON serializer
 		CachingEnabled:   true,              // Enable caching by default
-		CacheSize:        DefaultCacheSize,  // Default cache size
+		CacheSize:        defaultCacheSize,  // Default cache size
 		BufferingEnabled: true,              // Enable buffering by default
 	}
-
-	return cfg
 }
 
 // NewTransactionalStorageConfig creates a default storage config with optional
@@ -141,6 +137,8 @@ func ValidateStorageConfig(cfg *StorageConfig) error {
 // ApplyStorageOptions applies given options to the storage config
 func ApplyStorageOptions(cfg *StorageConfig, opts ...StorageOption) {
 	for _, opt := range opts {
-		opt(cfg)
+		if opt != nil {
+			opt(cfg)
+		}
 	}
 }

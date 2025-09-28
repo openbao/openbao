@@ -9,10 +9,15 @@ import (
 )
 
 const (
-	// DefaultOrder is the default maximum number of children per B+ tree node
-	DefaultOrder = 32
-	// DefaultTreeID is the default identifier for a B+ tree when no specific ID is provided
-	DefaultTreeID string = "default"
+	// defaultOrder is the default maximum number of children per B+ tree node
+	defaultOrder = 32
+	// defaultTreeID is the default identifier for a B+ tree when no specific ID is provided
+	defaultTreeID string = "default"
+
+	// bptreeConfigVersion is the current version of the BPlusTreeConfig schema
+	bptreeConfigVersion1 = 1
+	// latestBPlusTreeConfigVersion is the latest supported version of the BPlusTreeConfig schema
+	latestBPlusTreeConfigVersion = bptreeConfigVersion1
 )
 
 // BPlusTreeConfig holds configuration options for the B+ tree.
@@ -25,26 +30,33 @@ type BPlusTreeConfig struct {
 
 func NewDefaultBPlusTreeConfig() *BPlusTreeConfig {
 	return &BPlusTreeConfig{
-		TreeID:  DefaultTreeID,
-		Order:   DefaultOrder,
-		Version: 1,
+		TreeID:  defaultTreeID,
+		Order:   defaultOrder,
+		Version: latestBPlusTreeConfigVersion,
 	}
 }
 
-func (c *BPlusTreeConfig) Validate() error {
-	if c == nil {
-		return fmt.Errorf("BPlusTreeConfig cannot be nil")
+// NewBPlusTreeConfig creates a new BPlusTreeConfig with functional options
+func NewBPlusTreeConfig(opts ...TreeOption) (*BPlusTreeConfig, error) {
+	// Start with defaults
+	config := NewDefaultBPlusTreeConfig()
+
+	// Apply options
+	ApplyTreeOptions(config, opts...)
+
+	// Validate the final configuration
+	if err := ValidateTreeConfig(config); err != nil {
+		return nil, fmt.Errorf("invalid tree configuration: %w", err)
 	}
-	if c.Order < 3 {
-		return fmt.Errorf("order must be at least 3, got %d", c.Order)
-	}
-	return nil
+
+	return config, nil
 }
 
 func (c *BPlusTreeConfig) contextWithTreeID(ctx context.Context) context.Context {
 	if c == nil || c.TreeID == "" {
 		return ctx // No tree ID to add
 	}
+
 	return withTreeID(ctx, c.TreeID)
 }
 
@@ -72,20 +84,17 @@ func WithVersion(version int) TreeOption {
 	}
 }
 
-// NewBPlusTreeConfig creates a new BPlusTreeConfig with functional options
-func NewBPlusTreeConfig(opts ...TreeOption) (*BPlusTreeConfig, error) {
-	// Start with defaults
-	config := NewDefaultBPlusTreeConfig()
-
-	// Apply options
-	ApplyTreeOptions(config, opts...)
-
-	// Validate the final configuration
-	if err := config.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid tree configuration: %w", err)
+// ValidateTreeConfig validates the BPlusTreeConfig
+func ValidateTreeConfig(cfg *BPlusTreeConfig) error {
+	if cfg == nil {
+		return fmt.Errorf("BPlusTreeConfig cannot be nil")
 	}
 
-	return config, nil
+	if cfg.Order < 3 {
+		return fmt.Errorf("order must be at least 3, got %d", cfg.Order)
+	}
+
+	return nil
 }
 
 // ApplyTreeOptions applies multiple TreeOptions to a BPlusTreeConfig
@@ -95,10 +104,4 @@ func ApplyTreeOptions(config *BPlusTreeConfig, opts ...TreeOption) {
 			opt(config)
 		}
 	}
-}
-
-// ValidateTreeOptions validates a set of tree options without creating a config
-func ValidateTreeOptions(opts ...TreeOption) error {
-	_, err := NewBPlusTreeConfig(opts...)
-	return err
 }

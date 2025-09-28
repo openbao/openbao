@@ -28,7 +28,7 @@ func InitializeBPlusTree(
 ) (*BPlusTree, error) {
 	if config == nil {
 		config = NewDefaultBPlusTreeConfig()
-	} else if err := config.Validate(); err != nil {
+	} else if err := ValidateTreeConfig(config); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
@@ -66,7 +66,7 @@ func NewBPlusTree(
 	if config == nil {
 		return nil, fmt.Errorf("config is required for tree creation")
 	}
-	if err := config.Validate(); err != nil {
+	if err := ValidateTreeConfig(config); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 

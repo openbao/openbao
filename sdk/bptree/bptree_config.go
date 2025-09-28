@@ -4,7 +4,6 @@
 package bptree
 
 import (
-	"context"
 	"fmt"
 )
 
@@ -50,14 +49,6 @@ func NewTreeConfig(opts ...TreeOption) (*TreeConfig, error) {
 	}
 
 	return config, nil
-}
-
-func (c *TreeConfig) contextWithTreeID(ctx context.Context) context.Context {
-	if c == nil || c.TreeID == "" {
-		return ctx // No tree ID to add
-	}
-
-	return withTreeID(ctx, c.TreeID)
 }
 
 // TreeOption is a functional option for configuring BPlusTreeConfig

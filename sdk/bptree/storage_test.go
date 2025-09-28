@@ -203,17 +203,4 @@ func TestTreeConfigPersistence(t *testing.T) {
 		require.True(t, found)
 		require.Equal(t, []string{"value1"}, values)
 	})
-
-	// TODO (gabrielopesantos): Review
-	t.Run("LoadExistingTreeIDMismatch", func(t *testing.T) {
-		// Create a tree
-		_, err := InitializeTree(ctx, storage, WithTreeID("test_tree"))
-		require.NoError(t, err)
-
-		// Try to load with different TreeID in config
-		// Override the context to use the correct tree (simulating internal mismatch)
-		mismatchCtx := withTreeID(ctx, "mismatch_test")
-		_, err = loadExistingTree(mismatchCtx, storage, "wrong_id")
-		require.Error(t, err, "Should fail to load tree with mismatched TreeID")
-	})
 }

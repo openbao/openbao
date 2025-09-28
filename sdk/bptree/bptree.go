@@ -33,12 +33,15 @@ func InitializeTree(ctx context.Context, storage Storage, treeOpts ...TreeOption
 // InitializeTreeWithConfig initializes a B+ tree with the given configuration.
 func InitializeTreeWithConfig(ctx context.Context, storage Storage, config *TreeConfig) (*Tree, error) {
 	if config == nil {
-		return nil, errors.New("configuration cannot be nil")
+		config = NewDefaultTreeConfig()
 	}
 
 	// Try to load existing tree first
 	existingTree, err := loadExistingTree(ctx, storage, config.TreeID)
-	if err == nil {
+	if err != nil {
+		return nil, fmt.Errorf("failed while verifying whether a tree with the provided id (%s) exists", config.TreeID)
+	}
+	if existingTree != nil {
 		return existingTree, nil
 	}
 
@@ -54,13 +57,15 @@ func loadExistingTree(ctx context.Context, storage Storage, treeID string) (*Tre
 
 	// Get stored configuration - this is the source of truth
 	storedConfig, err := storage.GetConfig(ctx)
-	if err != nil && !errors.Is(err, ErrConfigNotFound) {
-		return nil, fmt.Errorf("failed to load tree configuration: %w", err)
-	}
-	if storedConfig == nil {
-		return nil, fmt.Errorf("tree (%s) does not exist", treeID)
+	if err != nil {
+		if !errors.Is(err, ErrConfigNotFound) {
+			return nil, fmt.Errorf("failed to load tree configuration: %w", err)
+		}
+
+		return nil, nil
 	}
 
+	// TODO: Init?
 	// Create tree with stored configuration
 	tree := &Tree{
 		config: storedConfig,
@@ -68,7 +73,6 @@ func loadExistingTree(ctx context.Context, storage Storage, treeID string) (*Tre
 
 	// TODO (gabrielopesantos): Validate tree structure
 	// We need to be careful here because a full validation might be too expensive...
-	ctx = tree.contextWithTreeID(ctx)
 	rootID, err := tree.getRootID(ctx, storage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get root ID: %w", err)
@@ -98,17 +102,6 @@ func newTree(
 ) (*Tree, error) {
 	// Add the treeID to the context
 	ctx = config.contextWithTreeID(ctx)
-
-	// TODO (gsantos): This is not needed
-	// Check if tree already exists
-	existingConfig, err := storage.GetConfig(ctx)
-	if err != nil && !errors.Is(err, ErrConfigNotFound) {
-		return nil, fmt.Errorf("failed to check for existing tree: %w", err)
-	}
-	if existingConfig != nil {
-		return nil, fmt.Errorf("tree (%s) already exists", config.TreeID)
-	}
-	// TODO (gsantos): This is not needed
 
 	tree := &Tree{config: config}
 

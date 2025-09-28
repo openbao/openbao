@@ -5,6 +5,11 @@ import (
 	"errors"
 )
 
+const (
+	// DefaultCacheSize is the default cache size for node caching
+	DefaultCacheSize = 1000
+)
+
 // NOTE (gabrielopesantos): This is probably not needed (standard JSON serialization is fine for now)
 // NodeSerializer defines how to serialize and deserialize nodes
 type NodeSerializer interface {
@@ -42,18 +47,36 @@ type StorageConfig struct {
 	BufferingEnabled bool
 }
 
-// NewStorageConfig creates a default storage config with optional overrides
-// for non transactional storage.
-func NewStorageConfig(opts ...StorageOption) *StorageConfig {
+// NewDefaultStorageConfig creates a default storage config for non transactional storage.
+func NewDefaultStorageConfig() *StorageConfig {
 	cfg := &StorageConfig{
 		NodeSerializer:   &JSONSerializer{}, // Default to JSON serializer
 		CachingEnabled:   true,              // Enable caching by default
-		CacheSize:        1000,              // Default cache size
+		CacheSize:        DefaultCacheSize,  // Default cache size
 		BufferingEnabled: false,             // Enable buffering by default
 	}
 
+	return cfg
+}
+
+// NewStorageConfig creates a default storage config with optional overrides
+// for non transactional storage.
+func NewStorageConfig(opts ...StorageOption) *StorageConfig {
+	cfg := NewDefaultStorageConfig()
 	// Apply options
 	ApplyStorageOptions(cfg, opts...)
+
+	return cfg
+}
+
+// NewDefaultTransactionalStorageConfig creates a default storage config for transactional storage.
+func NewDefaultTransactionalStorageConfig() *StorageConfig {
+	cfg := &StorageConfig{
+		NodeSerializer:   &JSONSerializer{}, // Default to JSON serializer
+		CachingEnabled:   true,              // Enable caching by default
+		CacheSize:        DefaultCacheSize,  // Default cache size
+		BufferingEnabled: true,              // Enable buffering by default
+	}
 
 	return cfg
 }
@@ -61,28 +84,11 @@ func NewStorageConfig(opts ...StorageOption) *StorageConfig {
 // NewTransactionalStorageConfig creates a default storage config with optional
 // overrides for transactional storage.
 func NewTransactionalStorageConfig(opts ...StorageOption) *StorageConfig {
-	cfg := &StorageConfig{
-		NodeSerializer:   &JSONSerializer{}, // Default to JSON serializer
-		CachingEnabled:   true,              // Enable caching by default
-		CacheSize:        100,               // Smaller cache for transactional storage
-		BufferingEnabled: true,              // Enable buffering by default
-	}
-
+	cfg := NewDefaultTransactionalStorageConfig()
 	// Apply options
 	ApplyStorageOptions(cfg, opts...)
 
 	return cfg
-}
-
-func ValidateStorageConfig(cfg *StorageConfig) error {
-	if cfg.NodeSerializer == nil {
-		return errors.New("NodeSerializer cannot be nil")
-	}
-	if cfg.CachingEnabled && cfg.CacheSize <= 0 {
-		return errors.New("CacheSize must be positive when caching is enabled")
-	}
-
-	return nil
 }
 
 // Write an options pattern for configuring storage
@@ -114,6 +120,22 @@ func WithBufferingEnabled(enabled bool) StorageOption {
 	return func(cfg *StorageConfig) {
 		cfg.BufferingEnabled = enabled
 	}
+}
+
+// ValidateStorageConfig validates the storage config
+func ValidateStorageConfig(cfg *StorageConfig) error {
+	if cfg == nil {
+		return errors.New("storage config cannot be nil")
+	}
+
+	if cfg.NodeSerializer == nil {
+		return errors.New("NodeSerializer cannot be nil")
+	}
+	if cfg.CachingEnabled && cfg.CacheSize <= 0 {
+		return errors.New("CacheSize must be positive when caching is enabled")
+	}
+
+	return nil
 }
 
 // ApplyStorageOptions applies given options to the storage config

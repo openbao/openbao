@@ -160,7 +160,11 @@ func (t *Tree) setRootID(ctx context.Context, storage Storage, newRootID string)
 
 // contextWithTreeID returns a context with the tree's ID added, enabling multi-tree storage
 func (t *Tree) contextWithTreeID(ctx context.Context) context.Context {
-	return t.config.contextWithTreeID(ctx)
+	if t.config == nil {
+		return ctx
+	}
+
+	return withTreeID(ctx, t.config.TreeID)
 }
 
 // maxChildrenNodes returns the maximum number of children an internal node can have

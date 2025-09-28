@@ -18,7 +18,7 @@ import (
 )
 
 func TestBPlusTreeBasicOperations(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 3})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 3})
 
 	t.Run("EmptyTree", func(t *testing.T) {
 		val, found, err := tree.Search(ctx, storage, "key1")
@@ -96,7 +96,7 @@ func TestBPlusTreeBasicOperations(t *testing.T) {
 }
 
 func TestBPlusTreeSearch(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 3})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 3})
 
 	// Test search on empty tree
 	val, found, err := tree.Search(ctx, storage, "nonexistent")
@@ -134,7 +134,7 @@ func TestBPlusTreeSearch(t *testing.T) {
 // TestSearchPrefix tests the SearchPrefix functionality
 func TestSearchPrefix(t *testing.T) {
 	t.Run("BasicPrefixSearch", func(t *testing.T) {
-		ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 4})
+		ctx, storage, tree := initTest(t, &TreeConfig{Order: 4})
 
 		// Search in empty tree
 		results, err := tree.SearchPrefix(ctx, storage, "any/prefix")
@@ -204,7 +204,7 @@ func TestSearchPrefix(t *testing.T) {
 	})
 
 	t.Run("SpecialCharactersInPrefix", func(t *testing.T) {
-		ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 4})
+		ctx, storage, tree := initTest(t, &TreeConfig{Order: 4})
 
 		// Insert keys with special characters
 		specialKeys := []string{
@@ -242,7 +242,7 @@ func TestSearchPrefix(t *testing.T) {
 	})
 
 	t.Run("PrefixLongerThanAnyKey", func(t *testing.T) {
-		ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 3})
+		ctx, storage, tree := initTest(t, &TreeConfig{Order: 3})
 
 		// Insert short keys
 		err := tree.Insert(ctx, storage, "a", "value1")
@@ -259,7 +259,7 @@ func TestSearchPrefix(t *testing.T) {
 	})
 
 	t.Run("CaseSensitivity", func(t *testing.T) {
-		ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 4})
+		ctx, storage, tree := initTest(t, &TreeConfig{Order: 4})
 
 		// Insert keys with different cases
 		err := tree.Insert(ctx, storage, "App/Config", "mixed_case")
@@ -285,7 +285,7 @@ func TestSearchPrefix(t *testing.T) {
 // TestSearchPrefixWithNextIDTraversal tests that SearchPrefix properly uses NextID for traversal
 func TestSearchPrefixWithNextIDTraversal(t *testing.T) {
 	// Use very small order to force many splits and multiple leaf nodes
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 3})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 3})
 
 	// Insert many keys to create multiple leaf nodes
 	numKeys := 20
@@ -330,7 +330,7 @@ func TestSearchPrefixWithNextIDTraversal(t *testing.T) {
 
 // TestSearchPrefixComprehensive is a comprehensive test that demonstrates all functionality
 func TestSearchPrefixComprehensive(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 4})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 4})
 
 	// Insert comprehensive test data
 	testData := map[string]string{
@@ -411,7 +411,7 @@ func TestSearchPrefixComprehensive(t *testing.T) {
 }
 
 func TestBPlusTreeInsert(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 3})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 3})
 
 	// Test basic insert
 	err := tree.Insert(ctx, storage, "key1", "value1")
@@ -458,7 +458,7 @@ func TestBPlusTreeInsert(t *testing.T) {
 }
 
 func TestBPlusTreeInsertionWithSplitting(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 3})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 3})
 
 	// Insert keys that will cause leaf splitting
 	err := tree.Insert(ctx, storage, "10", "value10")
@@ -529,7 +529,7 @@ func TestBPlusTreeInsertionWithSplitting(t *testing.T) {
 }
 
 func TestBPlusTreeDelete(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 4})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 4})
 
 	// Insert keys
 	keys := []string{"a", "b", "c", "d", "e"}
@@ -595,7 +595,7 @@ func TestBPlusTreeDelete(t *testing.T) {
 }
 
 func TestBPlusTreeDeleteValue(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 4})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 4})
 
 	// Insert a key with multiple values
 	err := tree.Insert(ctx, storage, "key1", "value1")
@@ -655,7 +655,7 @@ func TestBPlusTreeDeleteValue(t *testing.T) {
 }
 
 func TestBPlusTreeLargeDataSet(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 32})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 32})
 
 	const numKeys = 10_000
 
@@ -706,7 +706,7 @@ func TestBPlusTreeLargeDataSet(t *testing.T) {
 }
 
 func TestBPlusTreeConcurrency(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 4})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 4})
 
 	// Test concurrent reads
 	t.Run("ConcurrentReads", func(t *testing.T) {
@@ -870,7 +870,7 @@ func TestBPlusTreeConcurrency(t *testing.T) {
 }
 
 func TestBPlusTreeEdgeCases(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 3})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 3})
 
 	t.Run("SplitAtRoot", func(t *testing.T) {
 		// Insert keys that will cause root split
@@ -939,7 +939,7 @@ func TestBPlusTreeStorageErrors(t *testing.T) {
 		shouldFail:  false,
 	}
 
-	tree, err := InitializeBPlusTree(ctx, mockstorage, &BPlusTreeConfig{TreeID: "storage_errors_test", Order: 4})
+	tree, err := InitializeTree(ctx, mockstorage, WithTreeID("storage_errors_test"), WithOrder(4))
 	require.NoError(t, err, "Failed to create B+ tree")
 
 	// Insert some test data
@@ -997,7 +997,7 @@ func TestBPlusTreeStorageErrors(t *testing.T) {
 
 // TODO: This isn't complete enough...
 func TestBPlusTreeDuplicateValues(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 4})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 4})
 
 	// Insert initial values
 	err := tree.Insert(ctx, storage, "key1", "value1")
@@ -1035,7 +1035,7 @@ func TestBPlusTreeDuplicateValues(t *testing.T) {
 
 // TestLeafNodeLinking tests that the NextID and PreviousID fields are properly set during leaf operations
 func TestLeafNodeLinking(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 3})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 3})
 
 	t.Run("SingleLeafNode", func(t *testing.T) {
 		// Insert into root leaf - should have empty NextID initially
@@ -1136,17 +1136,13 @@ func TestLeafNodeLinking(t *testing.T) {
 
 // TestMultiTreeOperations tests that multiple trees can operate independently
 func TestMultiTreeOperations(t *testing.T) {
-	ctx, storage, _ := initTest(t, &BPlusTreeConfig{Order: 4})
+	ctx, storage, _ := initTest(t, &TreeConfig{Order: 4})
 
 	// Create two trees with different names
-	config1, err := NewBPlusTreeConfig(WithTreeID("tree1"))
-	require.NoError(t, err)
-	tree1, err := InitializeBPlusTree(ctx, storage, config1)
+	tree1, err := InitializeTree(ctx, storage, WithTreeID("tree1"))
 	require.NoError(t, err, "Failed to create tree1")
 
-	config2, err := NewBPlusTreeConfig(WithTreeID("tree2"))
-	require.NoError(t, err)
-	tree2, err := InitializeBPlusTree(ctx, storage, config2)
+	tree2, err := InitializeTree(ctx, storage, WithTreeID("tree2"))
 	require.NoError(t, err, "Failed to create tree2")
 
 	// Insert data into tree1

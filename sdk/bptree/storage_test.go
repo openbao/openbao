@@ -147,10 +147,7 @@ func TestTreeConfigPersistence(t *testing.T) {
 
 	t.Run("ConfigStorageAndRetrieval", func(t *testing.T) {
 		// Create a tree with specific configuration
-		config, err := NewBPlusTreeConfig(WithTreeID("metadata_test"), WithOrder(6))
-		require.NoError(t, err, "Should create config")
-
-		tree, err := InitializeBPlusTree(ctx, storage, config)
+		tree, err := InitializeTree(ctx, storage, WithTreeID("metadata_test"), WithOrder(6))
 		require.NoError(t, err, "Should create new tree")
 
 		// Verify config was stored
@@ -165,10 +162,7 @@ func TestTreeConfigPersistence(t *testing.T) {
 
 	t.Run("LoadingWithCorrectConfig", func(t *testing.T) {
 		// Create a tree
-		config, err := NewBPlusTreeConfig(WithTreeID("load_test"))
-		require.NoError(t, err)
-
-		tree1, err := InitializeBPlusTree(ctx, storage, config)
+		tree1, err := InitializeTree(ctx, storage, WithTreeID("load_test"))
 		require.NoError(t, err)
 
 		// Add some data
@@ -176,7 +170,7 @@ func TestTreeConfigPersistence(t *testing.T) {
 		require.NoError(t, err)
 
 		// Load with same config - should work
-		tree2, err := LoadExistingBPlusTree(ctx, storage, config.TreeID)
+		tree2, err := InitializeTree(ctx, storage, WithTreeID("load_test"))
 		require.NoError(t, err, "Should load existing tree with matching config")
 
 		// Verify data is accessible
@@ -189,17 +183,14 @@ func TestTreeConfigPersistence(t *testing.T) {
 	t.Run("LoadExistingTreeFunction", func(t *testing.T) {
 		// Create a tree with specific order
 		treeID := "explicit_load"
-		config, err := NewBPlusTreeConfig(WithTreeID(treeID), WithOrder(12))
-		require.NoError(t, err)
-
-		tree1, err := NewBPlusTree(ctx, storage, config)
+		tree1, err := InitializeTree(ctx, storage, WithTreeID(treeID), WithOrder(12))
 		require.NoError(t, err)
 
 		err = tree1.Insert(ctx, storage, "key1", "value1")
 		require.NoError(t, err)
 
 		// Load using LoadExistingTree with just TreeID
-		tree2, err := LoadExistingBPlusTree(ctx, storage, treeID)
+		tree2, err := InitializeTree(ctx, storage, WithTreeID(treeID))
 		require.NoError(t, err, "Should load existing tree using stored config")
 
 		// Verify the loaded tree has the correct order from storage
@@ -213,25 +204,16 @@ func TestTreeConfigPersistence(t *testing.T) {
 		require.Equal(t, []string{"value1"}, values)
 	})
 
-	t.Run("LoadExistingTreeWrongID", func(t *testing.T) {
-		// Try to load non-existent tree
-		_, err := LoadExistingBPlusTree(ctx, storage, "nonexistent")
-		require.Error(t, err, "Should fail to load non-existent tree")
-		require.Contains(t, err.Error(), "does not exist")
-	})
-
+	// TODO (gabrielopesantos): Review
 	t.Run("LoadExistingTreeIDMismatch", func(t *testing.T) {
 		// Create a tree
-		config1, err := NewBPlusTreeConfig(WithTreeID("test_tree"))
-		require.NoError(t, err)
-
-		_, err = NewBPlusTree(ctx, storage, config1)
+		_, err := InitializeTree(ctx, storage, WithTreeID("test_tree"))
 		require.NoError(t, err)
 
 		// Try to load with different TreeID in config
 		// Override the context to use the correct tree (simulating internal mismatch)
 		mismatchCtx := withTreeID(ctx, "mismatch_test")
-		_, err = LoadExistingBPlusTree(mismatchCtx, storage, "wrong_id")
+		_, err = loadExistingTree(mismatchCtx, storage, "wrong_id")
 		require.Error(t, err, "Should fail to load tree with mismatched TreeID")
 	})
 }

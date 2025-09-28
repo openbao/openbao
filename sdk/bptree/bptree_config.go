@@ -20,26 +20,26 @@ const (
 	latestBPlusTreeConfigVersion = bptreeConfigVersion1
 )
 
-// BPlusTreeConfig holds configuration options for the B+ tree.
+// TreeConfig holds configuration options for the B+ tree.
 // This struct serves both as runtime configuration and persistent metadata.
-type BPlusTreeConfig struct {
+type TreeConfig struct {
 	TreeID  string `json:"tree_id"` // Tree name/identifier for multi-tree storage
 	Order   int    `json:"order"`   // Maximum number of children per node
 	Version int    `json:"version"` // Configuration version for future schema evolution
 }
 
-func NewDefaultBPlusTreeConfig() *BPlusTreeConfig {
-	return &BPlusTreeConfig{
+func NewDefaultTreeConfig() *TreeConfig {
+	return &TreeConfig{
 		TreeID:  defaultTreeID,
 		Order:   defaultOrder,
 		Version: latestBPlusTreeConfigVersion,
 	}
 }
 
-// NewBPlusTreeConfig creates a new BPlusTreeConfig with functional options
-func NewBPlusTreeConfig(opts ...TreeOption) (*BPlusTreeConfig, error) {
+// NewTreeConfig creates a new BPlusTreeConfig with functional options
+func NewTreeConfig(opts ...TreeOption) (*TreeConfig, error) {
 	// Start with defaults
-	config := NewDefaultBPlusTreeConfig()
+	config := NewDefaultTreeConfig()
 
 	// Apply options
 	ApplyTreeOptions(config, opts...)
@@ -52,7 +52,7 @@ func NewBPlusTreeConfig(opts ...TreeOption) (*BPlusTreeConfig, error) {
 	return config, nil
 }
 
-func (c *BPlusTreeConfig) contextWithTreeID(ctx context.Context) context.Context {
+func (c *TreeConfig) contextWithTreeID(ctx context.Context) context.Context {
 	if c == nil || c.TreeID == "" {
 		return ctx // No tree ID to add
 	}
@@ -61,33 +61,37 @@ func (c *BPlusTreeConfig) contextWithTreeID(ctx context.Context) context.Context
 }
 
 // TreeOption is a functional option for configuring BPlusTreeConfig
-type TreeOption func(*BPlusTreeConfig)
+type TreeOption func(*TreeConfig)
 
 // WithTreeID sets the tree identifier
 func WithTreeID(treeID string) TreeOption {
-	return func(c *BPlusTreeConfig) {
+	return func(c *TreeConfig) {
 		c.TreeID = treeID
 	}
 }
 
 // WithOrder sets the maximum number of children per node
 func WithOrder(order int) TreeOption {
-	return func(c *BPlusTreeConfig) {
+	return func(c *TreeConfig) {
 		c.Order = order
 	}
 }
 
 // WithVersion sets the configuration version
 func WithVersion(version int) TreeOption {
-	return func(c *BPlusTreeConfig) {
+	return func(c *TreeConfig) {
 		c.Version = version
 	}
 }
 
 // ValidateTreeConfig validates the BPlusTreeConfig
-func ValidateTreeConfig(cfg *BPlusTreeConfig) error {
+func ValidateTreeConfig(cfg *TreeConfig) error {
 	if cfg == nil {
 		return fmt.Errorf("BPlusTreeConfig cannot be nil")
+	}
+
+	if cfg.TreeID == "" {
+		return fmt.Errorf("TreeID cannot be empty")
 	}
 
 	if cfg.Order < 3 {
@@ -98,7 +102,7 @@ func ValidateTreeConfig(cfg *BPlusTreeConfig) error {
 }
 
 // ApplyTreeOptions applies multiple TreeOptions to a BPlusTreeConfig
-func ApplyTreeOptions(config *BPlusTreeConfig, opts ...TreeOption) {
+func ApplyTreeOptions(config *TreeConfig, opts ...TreeOption) {
 	for _, opt := range opts {
 		if opt != nil {
 			opt(config)

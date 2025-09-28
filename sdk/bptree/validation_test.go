@@ -10,7 +10,7 @@ import (
 )
 
 func TestDebugValidateTreeStructure_BasicValidation(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 3})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 3})
 
 	// Insert enough keys to create internal nodes with separators
 	keys := []string{"a", "b", "c", "d", "e", "f", "g", "h"}
@@ -35,7 +35,7 @@ func TestDebugValidateTreeStructure_BasicValidation(t *testing.T) {
 }
 
 func TestDebugValidateTreeStructure_SeparatorKeyDeletion(t *testing.T) {
-	ctx, storage, tree := initTest(t, &BPlusTreeConfig{Order: 3})
+	ctx, storage, tree := initTest(t, &TreeConfig{Order: 3})
 
 	// Insert keys to create a specific tree structure
 	// This should create internal nodes with separator keys

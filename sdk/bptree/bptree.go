@@ -13,122 +13,42 @@ import (
 	"sync"
 )
 
-// BPlusTree represents a B+ tree data structure
-type BPlusTree struct {
-	config *BPlusTreeConfig // B+Tree configuration
-	lock   sync.RWMutex     // Mutex to protect concurrent access
+// Tree represents a B+ tree data structure
+type Tree struct {
+	config *TreeConfig  // Configuration for the tree
+	lock   sync.RWMutex // Mutex to protect concurrent access
 }
 
-// InitializeBPlusTree initializes a tree, creating it if it doesn't exist or loading it if it does.
+// InitializeTree initializes a tree, creating it if it doesn't exist or loading it if it does.
 // For new trees, the provided config is used. For existing trees, stored config is used and only the TreeID is used.
-func InitializeBPlusTree(
-	ctx context.Context,
-	storage Storage,
-	config *BPlusTreeConfig,
-) (*BPlusTree, error) {
-	if config == nil {
-		config = NewDefaultBPlusTreeConfig()
-	} else if err := ValidateTreeConfig(config); err != nil {
+func InitializeTree(ctx context.Context, storage Storage, treeOpts ...TreeOption) (*Tree, error) {
+	config, err := NewTreeConfig(treeOpts...)
+	if err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
+	return InitializeTreeWithConfig(ctx, storage, config)
+}
+
+// InitializeTreeWithConfig initializes a B+ tree with the given configuration.
+func InitializeTreeWithConfig(ctx context.Context, storage Storage, config *TreeConfig) (*Tree, error) {
+	if config == nil {
+		return nil, errors.New("configuration cannot be nil")
+	}
+
 	// Try to load existing tree first
-	existingTree, err := LoadExistingBPlusTree(ctx, storage, config.TreeID)
+	existingTree, err := loadExistingTree(ctx, storage, config.TreeID)
 	if err == nil {
 		return existingTree, nil
 	}
 
 	// If tree doesn't exist, create it
-	return NewBPlusTree(ctx, storage, config)
+	return newTree(ctx, storage, config)
 }
 
-// InitializeBPlusTreeWithOptions initializes a tree using functional options.
-// Creates the tree if it doesn't exist, or loads it if it does.
-func InitializeBPlusTreeWithOptions(
-	ctx context.Context,
-	storage Storage,
-	opts ...TreeOption,
-) (*BPlusTree, error) {
-	config, err := NewBPlusTreeConfig(opts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create tree config: %w", err)
-	}
-	return InitializeBPlusTree(ctx, storage, config)
-}
-
-// NewBPlusTree creates a new B+ tree with the given configuration.
-// Fails if a tree with the same ID already exists.
-func NewBPlusTree(
-	ctx context.Context,
-	storage Storage,
-	config *BPlusTreeConfig,
-) (*BPlusTree, error) {
-	if config == nil {
-		return nil, fmt.Errorf("config is required for tree creation")
-	}
-	if err := ValidateTreeConfig(config); err != nil {
-		return nil, fmt.Errorf("invalid configuration: %w", err)
-	}
-
-	// Add the treeID to the context
-	ctx = config.contextWithTreeID(ctx)
-
-	// Check if tree already exists
-	existingConfig, err := storage.GetConfig(ctx)
-	if err != nil && !errors.Is(err, ErrConfigNotFound) {
-		return nil, fmt.Errorf("failed to check for existing tree: %w", err)
-	}
-	if existingConfig != nil {
-		return nil, fmt.Errorf("tree (%s) already exists", config.TreeID)
-	}
-
-	tree := &BPlusTree{
-		config: config,
-	}
-
-	// Create new leaf root
-	root := NewLeafNode(generateUUID())
-	if err := storage.PutNode(ctx, root); err != nil {
-		return nil, fmt.Errorf("failed to save root node: %w", err)
-	}
-
-	// Set root ID
-	if err := tree.setRootID(ctx, storage, root.GetID()); err != nil {
-		return nil, fmt.Errorf("failed to set root ID: %w", err)
-	}
-
-	// Store configuration
-	if err := storage.PutConfig(ctx, config); err != nil {
-		return nil, fmt.Errorf("failed to store tree configuration: %w", err)
-	}
-
-	return tree, nil
-}
-
-// NewBPlusTreeWithOptions creates a new B+ tree using functional options.
-// Fails if a tree with the same ID already exists.
-func NewBPlusTreeWithOptions(
-	ctx context.Context,
-	storage Storage,
-	opts ...TreeOption,
-) (*BPlusTree, error) {
-	config, err := NewBPlusTreeConfig(opts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create tree config: %w", err)
-	}
-	return NewBPlusTree(ctx, storage, config)
-}
-
-// LoadExistingBPlusTree loads an existing B+ tree from storage using the stored configuration
-// as the source of truth. If the tree doesn't exist, returns an error.
-func LoadExistingBPlusTree(
-	ctx context.Context,
-	storage Storage,
-	treeID string,
-) (*BPlusTree, error) {
-	if treeID == "" {
-		return nil, fmt.Errorf("treeID cannot be empty")
-	}
+// loadExistingTree loads an existing B+ tree from storage using the stored
+// configuration as the source of truth. If the tree doesn't exist, returns an error.
+func loadExistingTree(ctx context.Context, storage Storage, treeID string) (*Tree, error) {
 	// Add the TreeID to the context
 	ctx = withTreeID(ctx, treeID)
 
@@ -142,7 +62,7 @@ func LoadExistingBPlusTree(
 	}
 
 	// Create tree with stored configuration
-	tree := &BPlusTree{
+	tree := &Tree{
 		config: storedConfig,
 	}
 
@@ -169,8 +89,50 @@ func LoadExistingBPlusTree(
 	return tree, nil
 }
 
+// newTree creates a new B+ tree with the given configuration.
+// Fails if a tree with the same ID already exists.
+func newTree(
+	ctx context.Context,
+	storage Storage,
+	config *TreeConfig,
+) (*Tree, error) {
+	// Add the treeID to the context
+	ctx = config.contextWithTreeID(ctx)
+
+	// TODO (gsantos): This is not needed
+	// Check if tree already exists
+	existingConfig, err := storage.GetConfig(ctx)
+	if err != nil && !errors.Is(err, ErrConfigNotFound) {
+		return nil, fmt.Errorf("failed to check for existing tree: %w", err)
+	}
+	if existingConfig != nil {
+		return nil, fmt.Errorf("tree (%s) already exists", config.TreeID)
+	}
+	// TODO (gsantos): This is not needed
+
+	tree := &Tree{config: config}
+
+	// Create new leaf root
+	root := NewLeafNode(generateUUID())
+	if err := storage.PutNode(ctx, root); err != nil {
+		return nil, fmt.Errorf("failed to save root node: %w", err)
+	}
+
+	// Set root ID
+	if err := tree.setRootID(ctx, storage, root.GetID()); err != nil {
+		return nil, fmt.Errorf("failed to set root ID: %w", err)
+	}
+
+	// Store configuration
+	if err := storage.PutConfig(ctx, config); err != nil {
+		return nil, fmt.Errorf("failed to store tree configuration: %w", err)
+	}
+
+	return tree, nil
+}
+
 // getRoot loads the root node from storage
-func (t *BPlusTree) getRoot(ctx context.Context, storage Storage) (*Node, error) {
+func (t *Tree) getRoot(ctx context.Context, storage Storage) (*Node, error) {
 	rootID, err := t.getRootID(ctx, storage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get root ID: %w", err)
@@ -184,7 +146,7 @@ func (t *BPlusTree) getRoot(ctx context.Context, storage Storage) (*Node, error)
 
 // TODO: Can be removed...
 // getRootID returns the root ID
-func (t *BPlusTree) getRootID(ctx context.Context, storage Storage) (string, error) {
+func (t *Tree) getRootID(ctx context.Context, storage Storage) (string, error) {
 	// Load from storage and cache
 	rootID, err := storage.GetRootID(ctx)
 	if err != nil {
@@ -196,7 +158,7 @@ func (t *BPlusTree) getRootID(ctx context.Context, storage Storage) (string, err
 
 // TODO: Can be removed...
 // setRootID updates both storage and cache
-func (t *BPlusTree) setRootID(ctx context.Context, storage Storage, newRootID string) error {
+func (t *Tree) setRootID(ctx context.Context, storage Storage, newRootID string) error {
 	// Update storage first
 	if err := storage.PutRootID(ctx, newRootID); err != nil {
 		return err
@@ -206,43 +168,43 @@ func (t *BPlusTree) setRootID(ctx context.Context, storage Storage, newRootID st
 }
 
 // contextWithTreeID returns a context with the tree's ID added, enabling multi-tree storage
-func (t *BPlusTree) contextWithTreeID(ctx context.Context) context.Context {
+func (t *Tree) contextWithTreeID(ctx context.Context) context.Context {
 	return t.config.contextWithTreeID(ctx)
 }
 
 // maxChildrenNodes returns the maximum number of children an internal node can have
-func (t *BPlusTree) maxChildrenNodes() int {
+func (t *Tree) maxChildrenNodes() int {
 	return t.config.Order
 }
 
 // maxKeys returns the maxium number of keys an internal node can have
-func (t *BPlusTree) maxKeys() int {
+func (t *Tree) maxKeys() int {
 	return t.maxChildrenNodes() - 1
 }
 
 // minChildrenNodes returns the minimum number of children an internal node can have
-func (t *BPlusTree) minChildrenNodes() int {
+func (t *Tree) minChildrenNodes() int {
 	return int(math.Ceil(float64(t.config.Order) / float64(2)))
 }
 
 // minKeys returns the minimum number of keys a node must have
-func (t *BPlusTree) minKeys() int {
+func (t *Tree) minKeys() int {
 	return t.minChildrenNodes() - 1
 }
 
 // nodeOverflows checks if a node has exceeded its maximum capacity
-func (t *BPlusTree) nodeOverflows(node *Node) bool {
+func (t *Tree) nodeOverflows(node *Node) bool {
 	return node.KeyCount() > t.maxKeys()
 }
 
 // nodeUnderflows checks if a node has fallen below its minimum capacity
-func (t *BPlusTree) nodeUnderflows(node *Node) bool {
+func (t *Tree) nodeUnderflows(node *Node) bool {
 	return node.KeyCount() < t.minKeys()
 }
 
 // Search retrieves all values for a key
 // If the key is not found, it returns an empty slice and false
-func (t *BPlusTree) Search(ctx context.Context, storage Storage, key string) ([]string, bool, error) {
+func (t *Tree) Search(ctx context.Context, storage Storage, key string) ([]string, bool, error) {
 	t.lock.RLock()
 	defer t.lock.RUnlock()
 
@@ -251,7 +213,7 @@ func (t *BPlusTree) Search(ctx context.Context, storage Storage, key string) ([]
 	return t.search(ctx, storage, key)
 }
 
-func (t *BPlusTree) search(ctx context.Context, storage Storage, key string) ([]string, bool, error) {
+func (t *Tree) search(ctx context.Context, storage Storage, key string) ([]string, bool, error) {
 	leaf, err := t.findLeafNode(ctx, storage, key)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to find leaf node: %w", err)
@@ -268,7 +230,7 @@ func (t *BPlusTree) search(ctx context.Context, storage Storage, key string) ([]
 // No wildcards searches are supported - only exact prefix matches
 // TODO (gabrielopesantos): Having some sort of limit on the number of results.
 // TODO (gabrielopesantos): If the keys aren't strings, this function will not work as expected.
-func (t *BPlusTree) SearchPrefix(ctx context.Context, storage Storage, prefix string) (map[string][]string, error) {
+func (t *Tree) SearchPrefix(ctx context.Context, storage Storage, prefix string) (map[string][]string, error) {
 	t.lock.RLock()
 	defer t.lock.RUnlock()
 
@@ -377,7 +339,7 @@ func (t *BPlusTree) SearchPrefix(ctx context.Context, storage Storage, prefix st
 // }
 
 // Insert inserts a key-value pair
-func (t *BPlusTree) Insert(ctx context.Context, storage Storage, key string, value string) error {
+func (t *Tree) Insert(ctx context.Context, storage Storage, key string, value string) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -414,7 +376,7 @@ func (t *BPlusTree) Insert(ctx context.Context, storage Storage, key string, val
 }
 
 // Delete removes all values for a key, if the key exists.
-func (t *BPlusTree) Delete(ctx context.Context, storage Storage, key string) (bool, error) {
+func (t *Tree) Delete(ctx context.Context, storage Storage, key string) (bool, error) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -462,7 +424,7 @@ func (t *BPlusTree) Delete(ctx context.Context, storage Storage, key string) (bo
 }
 
 // DeleteValue removes a specific value for a key
-func (t *BPlusTree) DeleteValue(ctx context.Context, storage Storage, key string, value string) (bool, error) {
+func (t *Tree) DeleteValue(ctx context.Context, storage Storage, key string, value string) (bool, error) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -512,7 +474,7 @@ func (t *BPlusTree) DeleteValue(ctx context.Context, storage Storage, key string
 // }
 
 // findLeafNode finds the leaf node where the key should be located.
-func (t *BPlusTree) findLeafNode(ctx context.Context, storage Storage, key string) (*Node, error) {
+func (t *Tree) findLeafNode(ctx context.Context, storage Storage, key string) (*Node, error) {
 	// Load the root node
 	node, err := t.getRoot(ctx, storage)
 	if err != nil {
@@ -534,7 +496,7 @@ func (t *BPlusTree) findLeafNode(ctx context.Context, storage Storage, key strin
 	return node, nil
 }
 
-func (t *BPlusTree) splitLeafNode(leaf *Node) (*Node, string) {
+func (t *Tree) splitLeafNode(leaf *Node) (*Node, string) {
 	// Split at the median index
 	splitIndex := int(math.Floor(float64(leaf.KeyCount()) / float64(2)))
 
@@ -556,7 +518,7 @@ func (t *BPlusTree) splitLeafNode(leaf *Node) (*Node, string) {
 }
 
 // insertIntoParent inserts a key and right node into the parent of left node
-func (t *BPlusTree) insertIntoParent(ctx context.Context, storage Storage, leftNode *Node, rightNode *Node, splitKey string) error {
+func (t *Tree) insertIntoParent(ctx context.Context, storage Storage, leftNode *Node, rightNode *Node, splitKey string) error {
 	// If leftNode was the root, we need to create a new root
 	// and make the leftNode and rightNode its children
 	rootID, err := t.getRootID(ctx, storage)
@@ -629,7 +591,7 @@ func (t *BPlusTree) insertIntoParent(ctx context.Context, storage Storage, leftN
 	return nil
 }
 
-func (t *BPlusTree) splitInternalNode(ctx context.Context, storage Storage, node *Node) (*Node, string) {
+func (t *Tree) splitInternalNode(ctx context.Context, storage Storage, node *Node) (*Node, string) {
 	// Split at the median index
 	splitIndex := int(math.Floor(float64(node.KeyCount()) / float64(2)))
 
@@ -659,7 +621,7 @@ func (t *BPlusTree) splitInternalNode(ctx context.Context, storage Storage, node
 }
 
 // rebalanceTreeIfNeeded handles rebalancing after a deletion
-func (t *BPlusTree) rebalanceTreeIfNeeded(ctx context.Context, storage Storage, node *Node) error {
+func (t *Tree) rebalanceTreeIfNeeded(ctx context.Context, storage Storage, node *Node) error {
 	// Get the root ID to check if this node is the root
 	rootID, err := t.getRootID(ctx, storage)
 	if err != nil {
@@ -679,7 +641,7 @@ func (t *BPlusTree) rebalanceTreeIfNeeded(ctx context.Context, storage Storage, 
 }
 
 // handleRootAfterDeletion handles the root node after deletion
-func (t *BPlusTree) handleRootAfterDeletion(ctx context.Context, storage Storage, root *Node) error {
+func (t *Tree) handleRootAfterDeletion(ctx context.Context, storage Storage, root *Node) error {
 	// If root is a leaf and becomes empty, tree becomes empty (allowed)
 	if root.IsLeaf {
 		return nil
@@ -718,7 +680,7 @@ func (t *BPlusTree) handleRootAfterDeletion(ctx context.Context, storage Storage
 }
 
 // rebalanceAfterDeletion rebalances a node that underflows after deletion
-func (t *BPlusTree) rebalanceAfterDeletion(ctx context.Context, storage Storage, node *Node) error {
+func (t *Tree) rebalanceAfterDeletion(ctx context.Context, storage Storage, node *Node) error {
 	// Load the parent
 	parent, err := storage.GetNode(ctx, node.GetParentID())
 	if err != nil {
@@ -792,7 +754,7 @@ func (t *BPlusTree) rebalanceAfterDeletion(ctx context.Context, storage Storage,
 }
 
 // borrowFromLeftSibling borrows a key from the left sibling
-func (t *BPlusTree) borrowFromLeftSibling(ctx context.Context, storage Storage, node *Node, leftSibling *Node, parent *Node, nodeIndex int) error {
+func (t *Tree) borrowFromLeftSibling(ctx context.Context, storage Storage, node *Node, leftSibling *Node, parent *Node, nodeIndex int) error {
 	if node.IsLeaf {
 		// Borrow the rightmost key-value from left sibling
 		_, _, err := node.BorrowLastKeyValueFromLeft(leftSibling)
@@ -851,7 +813,7 @@ func (t *BPlusTree) borrowFromLeftSibling(ctx context.Context, storage Storage, 
 }
 
 // borrowFromRightSibling borrows a key from the right sibling
-func (t *BPlusTree) borrowFromRightSibling(ctx context.Context, storage Storage, node *Node, rightSibling *Node, parent *Node, nodeIndex int) error {
+func (t *Tree) borrowFromRightSibling(ctx context.Context, storage Storage, node *Node, rightSibling *Node, parent *Node, nodeIndex int) error {
 	if node.IsLeaf {
 		// Borrow the leftmost key-value from right sibling
 		_, _, err := node.BorrowFirstKeyValueFromRight(rightSibling)
@@ -910,7 +872,7 @@ func (t *BPlusTree) borrowFromRightSibling(ctx context.Context, storage Storage,
 }
 
 // mergeWithLeftSibling merges the node with its left sibling
-func (t *BPlusTree) mergeWithLeftSibling(ctx context.Context, storage Storage, node *Node, leftSibling *Node, parent *Node, nodeIndex int) error {
+func (t *Tree) mergeWithLeftSibling(ctx context.Context, storage Storage, node *Node, leftSibling *Node, parent *Node, nodeIndex int) error {
 	var separatorKey string
 
 	if !node.IsLeaf {
@@ -964,7 +926,7 @@ func (t *BPlusTree) mergeWithLeftSibling(ctx context.Context, storage Storage, n
 }
 
 // mergeWithRightSibling merges the node with its right sibling
-func (t *BPlusTree) mergeWithRightSibling(ctx context.Context, storage Storage, node *Node, rightSibling *Node, parent *Node, nodeIndex int) error {
+func (t *Tree) mergeWithRightSibling(ctx context.Context, storage Storage, node *Node, rightSibling *Node, parent *Node, nodeIndex int) error {
 	var separatorKey string
 
 	if !node.IsLeaf {
@@ -1020,7 +982,7 @@ func (t *BPlusTree) mergeWithRightSibling(ctx context.Context, storage Storage, 
 }
 
 // cleanupOrphanedSplitKey efficiently cleans up orphaned separator keys by starting from the deletion point
-func (t *BPlusTree) cleanupOrphanedSplitKey(ctx context.Context, storage Storage, startNode *Node, deletedKey string) error {
+func (t *Tree) cleanupOrphanedSplitKey(ctx context.Context, storage Storage, startNode *Node, deletedKey string) error {
 	// Start from the leaf node where deletion occurred and walk up through ancestors
 	// Orphaned separators can only exist in the ancestor path of the deleted key
 	currentNode := startNode
@@ -1050,7 +1012,7 @@ func (t *BPlusTree) cleanupOrphanedSplitKey(ctx context.Context, storage Storage
 }
 
 // removeOrphanedSplitKeyInNode checks and fixes orphaned separator in a single node
-func (t *BPlusTree) removeOrphanedSplitKeyInNode(ctx context.Context, storage Storage, node *Node, deletedKey string) (bool, error) {
+func (t *Tree) removeOrphanedSplitKeyInNode(ctx context.Context, storage Storage, node *Node, deletedKey string) (bool, error) {
 	if node == nil || node.IsLeaf {
 		return false, nil // No separators in leaf nodes
 	}
@@ -1112,7 +1074,7 @@ func (t *BPlusTree) removeOrphanedSplitKeyInNode(ctx context.Context, storage St
 }
 
 // findSuccessorKey finds the smallest key in the right subtree of a separator at the given index
-func (t *BPlusTree) findSuccessorKey(ctx context.Context, storage Storage, parentNode *Node, separatorIndex int) (string, error) {
+func (t *Tree) findSuccessorKey(ctx context.Context, storage Storage, parentNode *Node, separatorIndex int) (string, error) {
 	// The right subtree starts at separatorIndex + 1
 	if separatorIndex+1 >= len(parentNode.ChildrenIDs) {
 		return "", fmt.Errorf("invalid separator index: no right subtree")
@@ -1137,7 +1099,7 @@ func (t *BPlusTree) findSuccessorKey(ctx context.Context, storage Storage, paren
 }
 
 // findRightmostLeaf finds the rightmost leaf node in the tree
-func (t *BPlusTree) findRightmostLeaf(ctx context.Context, storage Storage) (*Node, error) {
+func (t *Tree) findRightmostLeaf(ctx context.Context, storage Storage) (*Node, error) {
 	// Load the root node
 	rootID, err := t.getRootID(ctx, storage)
 	if err != nil {
@@ -1148,7 +1110,7 @@ func (t *BPlusTree) findRightmostLeaf(ctx context.Context, storage Storage) (*No
 }
 
 // findRightmostLeaf finds the rightmost leaf node in the tree
-func (t *BPlusTree) findRightmostLeafInSubtree(ctx context.Context, storage Storage, nodeID string) (*Node, error) {
+func (t *Tree) findRightmostLeafInSubtree(ctx context.Context, storage Storage, nodeID string) (*Node, error) {
 	node, err := storage.GetNode(ctx, nodeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load node: %w", err)
@@ -1170,7 +1132,7 @@ func (t *BPlusTree) findRightmostLeafInSubtree(ctx context.Context, storage Stor
 }
 
 // findLeftmostLeaf finds the leftmost leaf node in the tree
-func (t *BPlusTree) findLeftmostLeaf(ctx context.Context, storage Storage) (*Node, error) {
+func (t *Tree) findLeftmostLeaf(ctx context.Context, storage Storage) (*Node, error) {
 	// Load the root node
 	rootID, err := t.getRootID(ctx, storage)
 	if err != nil {
@@ -1181,7 +1143,7 @@ func (t *BPlusTree) findLeftmostLeaf(ctx context.Context, storage Storage) (*Nod
 }
 
 // findLeftmostLeafInSubtree finds the leftmost leaf node in a subtree rooted at the given node ID
-func (t *BPlusTree) findLeftmostLeafInSubtree(ctx context.Context, storage Storage, nodeID string) (*Node, error) {
+func (t *Tree) findLeftmostLeafInSubtree(ctx context.Context, storage Storage, nodeID string) (*Node, error) {
 	node, err := storage.GetNode(ctx, nodeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load node: %w", err)

@@ -3,6 +3,7 @@ package bptree
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 )
 
 const (
@@ -59,12 +60,18 @@ func NewDefaultStorageConfig() *StorageConfig {
 
 // NewStorageConfig creates a default storage config with optional overrides
 // for non transactional storage.
-func NewStorageConfig(opts ...StorageOption) *StorageConfig {
+func NewStorageConfig(opts ...StorageOption) (*StorageConfig, error) {
 	cfg := NewDefaultStorageConfig()
+
 	// Apply options
 	ApplyStorageOptions(cfg, opts...)
 
-	return cfg
+	// Validate config
+	if err := ValidateStorageConfig(cfg); err != nil {
+		return nil, fmt.Errorf("invalid storage config: %w", err)
+	}
+
+	return cfg, nil
 }
 
 // NewDefaultTransactionalStorageConfig creates a default storage config for transactional storage.
@@ -79,12 +86,18 @@ func NewDefaultTransactionalStorageConfig() *StorageConfig {
 
 // NewTransactionalStorageConfig creates a default storage config with optional
 // overrides for transactional storage.
-func NewTransactionalStorageConfig(opts ...StorageOption) *StorageConfig {
+func NewTransactionalStorageConfig(opts ...StorageOption) (*StorageConfig, error) {
 	cfg := NewDefaultTransactionalStorageConfig()
+
 	// Apply options
 	ApplyStorageOptions(cfg, opts...)
 
-	return cfg
+	// Validate config
+	if err := ValidateStorageConfig(cfg); err != nil {
+		return nil, fmt.Errorf("invalid storage config: %w", err)
+	}
+
+	return cfg, nil
 }
 
 // Write an options pattern for configuring storage

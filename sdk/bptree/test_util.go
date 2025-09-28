@@ -17,22 +17,22 @@ func keyValue(key string) string {
 }
 
 // TODO: Accept a storage config
-func initTest(t *testing.T, treeConfig *BPlusTreeConfig) (context.Context, *NodeStorage, *BPlusTree) {
+func initTest(t *testing.T, treeConfig *TreeConfig) (context.Context, *NodeStorage, *Tree) {
 	// Initialize context
 	ctx := context.Background()
 	// Initialize in-memory storage for testing
 	s := &logical.InmemStorage{}
 
+	if treeConfig == nil {
+		treeConfig = NewDefaultTreeConfig()
+	}
+
 	// Create node storage
 	storage, err := NewNodeStorage(s)
 	require.NoError(t, err, "failed to create storage")
 
-	if treeConfig == nil {
-		treeConfig = NewDefaultBPlusTreeConfig()
-	}
-
 	// Initialize B+ tree with a small order to force splits and create internal nodes
-	tree, err := InitializeBPlusTree(ctx, storage, treeConfig)
+	tree, err := InitializeTreeWithConfig(ctx, storage, treeConfig)
 	require.NoError(t, err, "failed to initialize B+ tree")
 	require.NotNil(t, tree, "tree should not be nil")
 

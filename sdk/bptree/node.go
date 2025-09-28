@@ -57,6 +57,7 @@ type Node struct {
 	PreviousID  string     `json:"previousID"` // ID of the previous leaf node
 }
 
+// NOTE (gabrielopesantos) Options pattern for Node too?
 // NewLeafNode creates a new leaf node
 func NewLeafNode(id string) *Node {
 	return &Node{

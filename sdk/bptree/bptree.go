@@ -36,40 +36,26 @@ func InitializeTreeWithConfig(ctx context.Context, storage Storage, config *Tree
 		config = NewDefaultTreeConfig()
 	}
 
-	// Try to load existing tree first
-	existingTree, err := loadExistingTree(ctx, storage, config.TreeID)
+	// Set TreeID in the context
+	ctx = withTreeID(ctx, config.TreeID)
+
+	existingConfig, err := getTreeConfig(ctx, storage)
 	if err != nil {
-		return nil, fmt.Errorf("failed while verifying whether a tree with the provided id (%s) exists", config.TreeID)
-	}
-	if existingTree != nil {
-		return existingTree, nil
+		return nil, fmt.Errorf("failed getting the tree configuration: %w", err)
 	}
 
-	// If tree doesn't exist, create it
-	return newTree(ctx, storage, config)
+	if existingConfig == nil {
+		return newTree(ctx, storage, config)
+	} else {
+		return loadExistingTree(ctx, storage, existingConfig)
+	}
 }
 
 // loadExistingTree loads an existing B+ tree from storage using the stored
 // configuration as the source of truth. If the tree doesn't exist, returns an error.
-func loadExistingTree(ctx context.Context, storage Storage, treeID string) (*Tree, error) {
-	// Add the TreeID to the context
-	ctx = withTreeID(ctx, treeID)
-
-	// Get stored configuration - this is the source of truth
-	storedConfig, err := storage.GetConfig(ctx)
-	if err != nil {
-		if !errors.Is(err, ErrConfigNotFound) {
-			return nil, fmt.Errorf("failed to load tree configuration: %w", err)
-		}
-
-		return nil, nil
-	}
-
-	// TODO: Init?
+func loadExistingTree(ctx context.Context, storage Storage, config *TreeConfig) (*Tree, error) {
 	// Create tree with stored configuration
-	tree := &Tree{
-		config: storedConfig,
-	}
+	tree := &Tree{config: config}
 
 	// TODO (gabrielopesantos): Validate tree structure
 	// We need to be careful here because a full validation might be too expensive...
@@ -93,6 +79,21 @@ func loadExistingTree(ctx context.Context, storage Storage, treeID string) (*Tre
 	return tree, nil
 }
 
+// getTreeConfig ...
+func getTreeConfig(ctx context.Context, storage Storage) (*TreeConfig, error) {
+	// Get stored configuration - this is the source of truth
+	config, err := storage.GetConfig(ctx)
+	if err != nil {
+		if !errors.Is(err, ErrConfigNotFound) {
+			return nil, fmt.Errorf("failed to load tree configuration: %w", err)
+		}
+
+		return nil, nil
+	}
+
+	return config, nil
+}
+
 // newTree creates a new B+ tree with the given configuration.
 // Fails if a tree with the same ID already exists.
 func newTree(
@@ -100,9 +101,6 @@ func newTree(
 	storage Storage,
 	config *TreeConfig,
 ) (*Tree, error) {
-	// Add the treeID to the context
-	ctx = config.contextWithTreeID(ctx)
-
 	tree := &Tree{config: config}
 
 	// Create new leaf root

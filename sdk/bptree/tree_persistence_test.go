@@ -176,6 +176,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 		require.Error(t, err, "NewBPlusTree should require tree ID")
 	})
 
+	// TODO (gabrielopesantos): Review.
 	t.Run("RootNodeCorruption", func(t *testing.T) {
 		// Test handling of corrupted/invalid root nodes
 		// Create a tree
@@ -190,7 +191,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 		require.NoError(t, err)
 
 		// Trying to load this corrupted tree should fail gracefully
-		_, err = loadExistingTree(ctx, storage, "corruption_test")
+		_, err = InitializeTree(ctx, storage, WithTreeID("corruption_test"))
 		require.Error(t, err, "Should fail to load tree with corrupted root")
 		// TODO (gabrielopesantos): Review this error, it changed because we no longer return a nil error when a node is not found...
 		require.Contains(t, err.Error(), "failed to load root node")

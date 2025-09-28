@@ -241,11 +241,11 @@ func NewNodeStorageFromTransaction(
 	config *StorageConfig,
 ) (*NodeStorage, error) {
 	if config == nil {
-		config = NewTransactionalStorageConfig() // Use defaults if nil
-	} else {
-		if err := ValidateStorageConfig(config); err != nil {
-			return nil, err
-		}
+		config, _ = NewTransactionalStorageConfig() // Use defaults if nil
+	}
+
+	if err := ValidateStorageConfig(config); err != nil {
+		return nil, err
 	}
 
 	// Create transaction-local cache (isolated, won't be merged)

@@ -36,9 +36,9 @@ type Storage interface {
 	// PurgeNodes(ctx context.Context) error
 
 	// GetConfig gets the config/metadata for a tree
-	GetConfig(ctx context.Context) (*BPlusTreeConfig, error)
+	GetConfig(ctx context.Context) (*TreeConfig, error)
 	// PutConfig sets the config/metadata for a tree
-	PutConfig(ctx context.Context, config *BPlusTreeConfig) error
+	PutConfig(ctx context.Context, config *TreeConfig) error
 }
 
 var _ Storage = &NodeStorage{}
@@ -68,7 +68,12 @@ func NewNodeStorage(
 	storage logical.Storage,
 	configOpts ...StorageOption,
 ) (*NodeStorage, error) {
-	return newNodeStorageFromConfig(storage, NewStorageConfig(configOpts...))
+	config, err := NewStorageConfig(configOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return newNodeStorageFromConfig(storage, config)
 }
 
 // NewTransactionalNodeStorage creates a new adapter for transactional logical.Storage
@@ -77,7 +82,12 @@ func NewTransactionalNodeStorage(
 	storage logical.TransactionalStorage,
 	configOpts ...StorageOption,
 ) (TransactionalStorage, error) {
-	nodeStorage, err := newNodeStorageFromConfig(storage, NewTransactionalStorageConfig(configOpts...))
+	config, err := NewTransactionalStorageConfig(configOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	nodeStorage, err := newNodeStorageFromConfig(storage, config)
 	if err != nil {
 		return nil, err
 	}
@@ -95,11 +105,6 @@ func newNodeStorageFromConfig(
 ) (*NodeStorage, error) {
 	if config == nil {
 		return nil, fmt.Errorf("storage config cannot be nil")
-	}
-
-	err := ValidateStorageConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("invalid storage config: %w", err)
 	}
 
 	var cache *lru.LRU[string, *Node]
@@ -275,7 +280,7 @@ func (s *NodeStorage) deleteNodeImmediate(ctx context.Context, id string) error 
 }
 
 // GetConfig gets the metadata for a tree
-func (s *NodeStorage) GetConfig(ctx context.Context) (*BPlusTreeConfig, error) {
+func (s *NodeStorage) GetConfig(ctx context.Context) (*TreeConfig, error) {
 	// Lock for reading the tree configuration
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -289,7 +294,7 @@ func (s *NodeStorage) GetConfig(ctx context.Context) (*BPlusTreeConfig, error) {
 		return nil, ErrConfigNotFound
 	}
 
-	var config BPlusTreeConfig
+	var config TreeConfig
 	if err := json.Unmarshal(entry.Value, &config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal tree metadata: %w", err)
 	}
@@ -298,7 +303,7 @@ func (s *NodeStorage) GetConfig(ctx context.Context) (*BPlusTreeConfig, error) {
 }
 
 // PutConfig sets the metadata for a tree
-func (s *NodeStorage) PutConfig(ctx context.Context, config *BPlusTreeConfig) error {
+func (s *NodeStorage) PutConfig(ctx context.Context, config *TreeConfig) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

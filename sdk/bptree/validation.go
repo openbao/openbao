@@ -31,7 +31,7 @@ type TreeStats struct {
 // DebugValidateTreeStructure performs comprehensive validation of the B+ tree structure
 // This method checks all B+ tree invariants and detects issues like orphaned separator keys
 // It is intended for debugging and testing purposes, not for production use as it loads all nodes into memory.
-func (t *BPlusTree) DebugValidateTreeStructure(ctx context.Context, storage Storage) (*ValidationResult, error) {
+func (t *Tree) DebugValidateTreeStructure(ctx context.Context, storage Storage) (*ValidationResult, error) {
 	t.lock.RLock()
 	defer t.lock.RUnlock()
 
@@ -80,7 +80,7 @@ func (t *BPlusTree) DebugValidateTreeStructure(ctx context.Context, storage Stor
 }
 
 // collectAllNodes recursively collects all nodes and builds key maps
-func (t *BPlusTree) collectAllNodes(ctx context.Context, storage Storage, node *Node, allNodes map[string]*Node, leafKeys map[string]bool, internalKeys map[string][]string, stats *TreeStats) error {
+func (t *Tree) collectAllNodes(ctx context.Context, storage Storage, node *Node, allNodes map[string]*Node, leafKeys map[string]bool, internalKeys map[string][]string, stats *TreeStats) error {
 	if node == nil {
 		return errors.New("encountered nil node")
 	}
@@ -122,7 +122,7 @@ func (t *BPlusTree) collectAllNodes(ctx context.Context, storage Storage, node *
 }
 
 // getTreeHeight calculates the height of the tree
-func (t *BPlusTree) getTreeHeight(ctx context.Context, storage Storage, node *Node) (int, error) {
+func (t *Tree) getTreeHeight(ctx context.Context, storage Storage, node *Node) (int, error) {
 	if node == nil {
 		return 0, errors.New("nil node provided for height calculation")
 	}
@@ -142,7 +142,7 @@ func (t *BPlusTree) getTreeHeight(ctx context.Context, storage Storage, node *No
 }
 
 // validateStructuralIntegrity checks parent-child relationships and basic structure
-func (t *BPlusTree) validateStructuralIntegrity(allNodes map[string]*Node, rootID string, result *ValidationResult) {
+func (t *Tree) validateStructuralIntegrity(allNodes map[string]*Node, rootID string, result *ValidationResult) {
 	for nodeID, node := range allNodes {
 		// Check root node
 		if nodeID == rootID {
@@ -190,7 +190,7 @@ func (t *BPlusTree) validateStructuralIntegrity(allNodes map[string]*Node, rootI
 }
 
 // validateBTreeInvariants checks B+ tree specific rules
-func (t *BPlusTree) validateBTreeInvariants(allNodes map[string]*Node, result *ValidationResult) {
+func (t *Tree) validateBTreeInvariants(allNodes map[string]*Node, result *ValidationResult) {
 	for nodeID, node := range allNodes {
 		// Check key count limits (root can have fewer)
 		isRoot := node.ParentID == ""
@@ -228,7 +228,7 @@ func (t *BPlusTree) validateBTreeInvariants(allNodes map[string]*Node, result *V
 }
 
 // validateSeparatorKeys checks that separator keys correctly separate subtrees and exist in leaves
-func (t *BPlusTree) validateSeparatorKeys(allNodes map[string]*Node, leafKeys map[string]bool, internalKeys map[string][]string, result *ValidationResult) {
+func (t *Tree) validateSeparatorKeys(allNodes map[string]*Node, leafKeys map[string]bool, internalKeys map[string][]string, result *ValidationResult) {
 	// Find orphaned keys (in internal nodes but not in any leaf)
 	for key := range internalKeys {
 		if !leafKeys[key] {
@@ -273,7 +273,7 @@ func (t *BPlusTree) validateSeparatorKeys(allNodes map[string]*Node, leafKeys ma
 }
 
 // getMaxKeyInSubtree finds the maximum key in a subtree
-func (t *BPlusTree) getMaxKeyInSubtree(node *Node, allNodes map[string]*Node) string {
+func (t *Tree) getMaxKeyInSubtree(node *Node, allNodes map[string]*Node) string {
 	if node.IsLeaf {
 		if len(node.Keys) == 0 {
 			return ""
@@ -293,7 +293,7 @@ func (t *BPlusTree) getMaxKeyInSubtree(node *Node, allNodes map[string]*Node) st
 }
 
 // getMinKeyInSubtree finds the minimum key in a subtree
-func (t *BPlusTree) getMinKeyInSubtree(node *Node, allNodes map[string]*Node) string {
+func (t *Tree) getMinKeyInSubtree(node *Node, allNodes map[string]*Node) string {
 	if node.IsLeaf {
 		if len(node.Keys) == 0 {
 			return ""
@@ -313,7 +313,7 @@ func (t *BPlusTree) getMinKeyInSubtree(node *Node, allNodes map[string]*Node) st
 }
 
 // validateLeafChain checks NextID linking in leaf nodes
-func (t *BPlusTree) validateLeafChain(ctx context.Context, storage Storage, allNodes map[string]*Node, result *ValidationResult) {
+func (t *Tree) validateLeafChain(ctx context.Context, storage Storage, allNodes map[string]*Node, result *ValidationResult) {
 	// Find leftmost leaf
 	leftmost, err := t.findLeftmostLeaf(ctx, storage)
 	if err != nil {
@@ -366,7 +366,7 @@ func (t *BPlusTree) validateLeafChain(ctx context.Context, storage Storage, allN
 }
 
 // validateSearchPaths checks that all keys can be found via tree traversal
-func (t *BPlusTree) validateSearchPaths(ctx context.Context, storage Storage, leafKeys map[string]bool, result *ValidationResult) {
+func (t *Tree) validateSearchPaths(ctx context.Context, storage Storage, leafKeys map[string]bool, result *ValidationResult) {
 	for key := range leafKeys {
 		leaf, err := t.findLeafNode(ctx, storage, key)
 		if err != nil {

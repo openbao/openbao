@@ -14,11 +14,8 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 	ctx, storage, _ := initTest(t, nil)
 
 	t.Run("AutomaticTreeCreation", func(t *testing.T) {
-		// InitializeBPlusTree should automatically create a new tree when none exists
-		config, err := NewBPlusTreeConfig(WithTreeID("auto_tree"))
-		require.NoError(t, err)
-
-		tree, err := InitializeBPlusTree(ctx, storage, config)
+		// InitializeTree should automatically create a new tree when none exists
+		tree, err := InitializeTree(ctx, storage, WithTreeID("auto_tree"))
 		require.NoError(t, err, "Should create new tree automatically")
 		require.NotNil(t, tree)
 
@@ -34,10 +31,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 
 	t.Run("AutomaticTreeLoading", func(t *testing.T) {
 		// Create a tree and add some data
-		config, err := NewBPlusTreeConfig(WithTreeID("persistent_tree"))
-		require.NoError(t, err)
-
-		tree1, err := InitializeBPlusTree(ctx, storage, config)
+		tree1, err := InitializeTree(ctx, storage, WithTreeID("persistent_tree"))
 		require.NoError(t, err)
 
 		// Add data to the tree
@@ -61,7 +55,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 		}
 
 		// Now "restart" by loading the existing tree
-		tree2, err := LoadExistingBPlusTree(ctx, storage, "persistent_tree")
+		tree2, err := InitializeTree(ctx, storage, WithTreeID("persistent_tree"))
 		require.NoError(t, err, "Should load existing tree automatically")
 		require.NotNil(t, tree2)
 
@@ -89,65 +83,33 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 		require.Equal(t, []string{"value4"}, values, "Key4 should be available on both trees after insert")
 	})
 
-	t.Run("ExplicitTreeCreation", func(t *testing.T) {
-		// CreateNewTree should create a new tree
-		config, err := NewBPlusTreeConfig(WithTreeID("explicit_new"))
-		require.NoError(t, err)
-
-		tree, err := NewBPlusTree(ctx, storage, config)
-		require.NoError(t, err, "Should create new tree explicitly")
-		require.NotNil(t, tree)
-
-		// Verify tree is functional
-		err = tree.Insert(ctx, storage, "test", "data")
-		require.NoError(t, err)
-
-		// Trying to create again should fail
-		_, err = NewBPlusTree(ctx, storage, config)
-		require.Error(t, err, "Should fail to create tree that already exists")
-		require.Contains(t, err.Error(), "already exists")
-	})
-
 	t.Run("ExplicitTreeLoading", func(t *testing.T) {
 		// First create a tree to load
-		config, err := NewBPlusTreeConfig(WithTreeID("explicit_load"))
+		treeID := "explicit_load"
+		tree1, err := InitializeTree(ctx, storage, WithTreeID(treeID))
 		require.NoError(t, err)
 
-		tree1, err := NewBPlusTree(ctx, storage, config)
-		require.NoError(t, err)
-
-		err = tree1.Insert(ctx, storage, "persistent", "data")
+		insertKey := "persistent"
+		insertValue := "data"
+		err = tree1.Insert(ctx, storage, insertKey, insertValue)
 		require.NoError(t, err)
 
 		// Now explicitly load it
-		tree2, err := LoadExistingBPlusTree(ctx, storage, config.TreeID)
+		tree2, err := InitializeTree(ctx, storage, WithTreeID(treeID))
 		require.NoError(t, err, "Should load existing tree explicitly")
 		require.NotNil(t, tree2)
 
 		// Verify data is accessible
-		values, found, err := tree2.Search(ctx, storage, "persistent")
+		values, found, err := tree2.Search(ctx, storage, insertKey)
 		require.NoError(t, err)
 		require.True(t, found)
-		require.Equal(t, []string{"data"}, values)
-
-		// Trying to load non-existent tree should fail
-		nonExistentConfig, err := NewBPlusTreeConfig(WithTreeID("nonexistent_tree"))
-		require.NoError(t, err)
-
-		_, err = LoadExistingBPlusTree(ctx, storage, nonExistentConfig.TreeID)
-		require.Error(t, err, "Should fail to load non-existent tree")
-		require.Contains(t, err.Error(), "does not exist")
+		require.Equal(t, []string{insertValue}, values)
 	})
 
 	t.Run("MultipleTreesPersistenceIsolation", func(t *testing.T) {
 		// Create multiple trees and verify they maintain isolation after "restart"
-		config1, err := NewBPlusTreeConfig(WithTreeID("tree_alpha"))
-		require.NoError(t, err)
-		config2, err := NewBPlusTreeConfig(WithTreeID("tree_beta"))
-		require.NoError(t, err)
-
 		// Create and populate first tree
-		tree1, err := InitializeBPlusTree(ctx, storage, config1)
+		tree1, err := InitializeTree(ctx, storage, WithTreeID("tree_alpha"))
 		require.NoError(t, err)
 		err = tree1.Insert(ctx, storage, "shared_key", "alpha_value")
 		require.NoError(t, err)
@@ -155,7 +117,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create and populate second tree
-		tree2, err := InitializeBPlusTree(ctx, storage, config2)
+		tree2, err := InitializeTree(ctx, storage, WithTreeID("tree_beta"))
 		require.NoError(t, err)
 		err = tree2.Insert(ctx, storage, "shared_key", "beta_value")
 		require.NoError(t, err)
@@ -163,9 +125,9 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 		require.NoError(t, err)
 
 		// "Restart" both trees by loading them
-		reloadedTree1, err := LoadExistingBPlusTree(ctx, storage, "tree_alpha")
+		reloadedTree1, err := InitializeTree(ctx, storage, WithTreeID("tree_alpha"))
 		require.NoError(t, err)
-		reloadedTree2, err := LoadExistingBPlusTree(ctx, storage, "tree_beta")
+		reloadedTree2, err := InitializeTree(ctx, storage, WithTreeID("tree_beta"))
 		require.NoError(t, err)
 
 		// Verify isolation is maintained
@@ -201,31 +163,27 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 		// Test various config validation scenarios
 
 		// Nil config should use defaults with InitializeBPlusTree
-		tree, err := InitializeBPlusTree(ctx, storage, nil)
+		tree, err := InitializeTree(ctx, storage)
 		require.NoError(t, err, "Should accept nil config and use defaults")
 		require.NotNil(t, tree)
 
 		// Invalid order should fail
-		invalidConfig := &BPlusTreeConfig{TreeID: "invalid", Order: 1}
-		_, err = InitializeBPlusTree(ctx, storage, invalidConfig)
+		_, err = InitializeTree(ctx, storage, WithTreeID("invalid"), WithOrder(1))
 		require.Error(t, err, "Should fail with invalid order")
 
 		// NewBPlusTree with nil config should fail
-		_, err = NewBPlusTree(ctx, storage, nil)
+		_, err = InitializeTreeWithConfig(ctx, storage, nil)
 		require.Error(t, err, "CreateNewTree should require config")
 
 		// LoadExistingTree (NewBPlusTree) with empty tree ID should fail
-		_, err = LoadExistingBPlusTree(ctx, storage, "")
+		_, err = InitializeTree(ctx, storage, WithTreeID(""))
 		require.Error(t, err, "NewBPlusTree should require tree ID")
 	})
 
 	t.Run("RootNodeCorruption", func(t *testing.T) {
 		// Test handling of corrupted/invalid root nodes
-		config, err := NewBPlusTreeConfig(WithTreeID("corruption_test"))
-		require.NoError(t, err)
-
 		// Create a tree
-		tree, err := InitializeBPlusTree(ctx, storage, config)
+		tree, err := InitializeTree(ctx, storage, WithTreeID("corruption_test"))
 		require.NoError(t, err)
 
 		// Get the tree-aware context to access internals
@@ -236,7 +194,7 @@ func TestTreePersistenceAndLoading(t *testing.T) {
 		require.NoError(t, err)
 
 		// Trying to load this corrupted tree should fail gracefully
-		_, err = LoadExistingBPlusTree(ctx, storage, "corruption_test")
+		_, err = loadExistingTree(ctx, storage, "corruption_test")
 		require.Error(t, err, "Should fail to load tree with corrupted root")
 		// TODO (gabrielopesantos): Review this error, it changed because we no longer return a nil error when a node is not found...
 		require.Contains(t, err.Error(), "failed to load root node")

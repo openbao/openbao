@@ -14,9 +14,11 @@ func TestCELHelpers(t *testing.T) {
 	t.Parallel()
 
 	// Initialize CEL environment with our custom functions
-	env, err := celgo.NewEnv()
+	env, err := celgo.NewEnv(
+		CheckValidEmailFunction(),
+	)
 	require.NoError(t, err)
-	env, err = RegisterAllCelFunctions(env)
+	env, err = env.Extend(CelGoExtFunctions()...)
 	require.NoError(t, err)
 
 	t.Run("check_valid_email", func(t *testing.T) {

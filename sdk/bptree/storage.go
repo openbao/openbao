@@ -62,21 +62,41 @@ type NodeStorage struct {
 	dirtyTracker     *DirtyTracker // Tracks dirty nodes for batching writes
 }
 
-// TODO: Review ...
-// NewNodeStorage creates a new adapter for the logical.Storage interface
-// with built-in write buffering enabled by default
+// NewNodeStorage creates a new adapter for logical.Storage with default configuration
+// and optional configuration overrides
 func NewNodeStorage(
 	storage logical.Storage,
 	configOpts ...StorageOption,
 ) (*NodeStorage, error) {
-	return NewNodeStorageFromConfig(storage, NewStorageConfig(configOpts...))
+	return newNodeStorageFromConfig(storage, NewStorageConfig(configOpts...))
 }
 
-// NewNodeStorageFromConfig ...
-func NewNodeStorageFromConfig(
+// NewTransactionalNodeStorage creates a new adapter for transactional logical.Storage
+// with default configuration and optional configuration overrides
+func NewTransactionalNodeStorage(
+	storage logical.TransactionalStorage,
+	configOpts ...StorageOption,
+) (TransactionalStorage, error) {
+	nodeStorage, err := newNodeStorageFromConfig(storage, NewTransactionalStorageConfig(configOpts...))
+	if err != nil {
+		return nil, err
+	}
+
+	// Return a new TransactionalNodeStorage instance
+	return &TransactionalNodeStorage{
+		NodeStorage: nodeStorage,
+	}, nil
+}
+
+// newNodeStorageFromConfig creates a new adapter for logical.Storage with the given configuration
+func newNodeStorageFromConfig(
 	storage logical.Storage,
 	config *StorageConfig,
 ) (*NodeStorage, error) {
+	if config == nil {
+		return nil, fmt.Errorf("storage config cannot be nil")
+	}
+
 	err := ValidateStorageConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("invalid storage config: %w", err)
@@ -104,22 +124,6 @@ func NewNodeStorageFromConfig(
 		cache:            cache,
 		bufferingEnabled: config.BufferingEnabled,
 		dirtyTracker:     dirtyTracker,
-	}, nil
-}
-
-// NewTransactionalNodeStorage creates a new adapter for transactional logical.Storage
-func NewTransactionalNodeStorage(
-	storage logical.TransactionalStorage,
-	configOpts ...StorageOption,
-) (TransactionalStorage, error) {
-	nodeStorage, err := NewNodeStorageFromConfig(storage, NewTransactionalStorageConfig(configOpts...))
-	if err != nil {
-		return nil, err
-	}
-
-	// Return a new TransactionalNodeStorage instance
-	return &TransactionalNodeStorage{
-		NodeStorage: nodeStorage,
 	}, nil
 }
 

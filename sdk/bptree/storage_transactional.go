@@ -60,7 +60,7 @@ func (s *TransactionalNodeStorage) BeginReadOnlyTx(ctx context.Context) (Transac
 	var txCache *lru.LRU[string, *Node]
 	if s.cachingEnabled {
 		// Create transaction-local cache for isolation (inherit parent's cache size)
-		cacheSize := 100 // default size
+		cacheSize := DefaultCacheSize
 		if s.cache != nil {
 			cacheSize = s.cache.Size()
 		}
@@ -79,10 +79,10 @@ func (s *TransactionalNodeStorage) BeginReadOnlyTx(ctx context.Context) (Transac
 	return &NodeTransaction{
 		NodeStorage: &NodeStorage{
 			storage:        tx,
+			isTransaction:  true, // Explicit transaction flag
 			serializer:     s.serializer,
 			cachingEnabled: s.cachingEnabled, // Inherit caching setting from parent
 			cache:          txCache,          // Transaction-local cache
-			isTransaction:  true,             // Explicit transaction flag
 			// New mutex instance for the transaction
 			lock:             sync.RWMutex{},
 			bufferingEnabled: s.bufferingEnabled, // Inherit buffering setting from parent
@@ -101,7 +101,7 @@ func (s *TransactionalNodeStorage) BeginTx(ctx context.Context) (Transaction, er
 	var txCache *lru.LRU[string, *Node]
 	if s.cachingEnabled {
 		// Create transaction-local cache for isolation (inherit parent's cache size)
-		cacheSize := 100 // default size
+		cacheSize := DefaultCacheSize
 		if s.cache != nil {
 			cacheSize = s.cache.Size()
 		}
@@ -120,10 +120,10 @@ func (s *TransactionalNodeStorage) BeginTx(ctx context.Context) (Transaction, er
 	return &NodeTransaction{
 		NodeStorage: &NodeStorage{
 			storage:        tx,
+			isTransaction:  true, // Explicit transaction flag
 			serializer:     s.serializer,
 			cachingEnabled: s.cachingEnabled, // Inherit caching setting from parent
 			cache:          txCache,          // Transaction-local cache
-			isTransaction:  true,             // Explicit transaction flag
 			// New mutex instance for the transaction
 			lock:             sync.RWMutex{},
 			bufferingEnabled: s.bufferingEnabled, // Inherit buffering setting from parent

@@ -27,7 +27,7 @@ func TestStorage(t *testing.T) {
 
 		// Test PutNode and GetNode
 		nodeID := "node-1"
-		node := NewLeafNode(nodeID)
+		node := NewLeafNode(WithNodeID(nodeID))
 		err = node.InsertKeyValue("key1", "value1")
 		require.NoError(t, err, "Failed to insert key-value pair into node")
 		err = node.InsertKeyValue("key2", "value2")
@@ -83,7 +83,7 @@ func TestStorage(t *testing.T) {
 
 	t.Run("Concurrent Access", func(t *testing.T) {
 		// Create and save a node
-		node := NewLeafNode("node-1")
+		node := NewLeafNode(WithNodeID("node-1"))
 		node.InsertKeyValue("key1", "value1")
 
 		err := nodeStorage.PutNode(ctx, node)
@@ -109,7 +109,7 @@ func TestStorage(t *testing.T) {
 				}
 
 				// Create and save a new node
-				newNode := NewLeafNode(fmt.Sprintf("node-%d", i))
+				newNode := NewLeafNode(WithNodeID(fmt.Sprintf("node-%d", i)))
 				err = newNode.InsertKeyValue(fmt.Sprintf("key%d", i), fmt.Sprintf("value%d", i))
 				require.NoError(t, err, "Failed to insert key-value pair into new node")
 

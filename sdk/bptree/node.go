@@ -57,25 +57,108 @@ type Node struct {
 	PreviousID  string     `json:"previousID"` // ID of the previous leaf node
 }
 
-// NOTE (gabrielopesantos) Options pattern for Node too?
-// NewLeafNode creates a new leaf node
-func NewLeafNode(id string) *Node {
-	return &Node{
-		ID:     id,
+// NodeOption is a functional option for configuring Node creation
+type NodeOption func(*Node)
+
+// WithNodeID sets the node ID
+func WithNodeID(id string) NodeOption {
+	return func(n *Node) {
+		n.ID = id
+	}
+}
+
+// WithParentID sets the parent ID
+func WithParentID(parentID string) NodeOption {
+	return func(n *Node) {
+		n.ParentID = parentID
+	}
+}
+
+// WithNextID sets the next node ID (leaf nodes only)
+func WithNextID(nextID string) NodeOption {
+	return func(n *Node) {
+		if n.IsLeaf {
+			n.NextID = nextID
+		}
+	}
+}
+
+// WithPreviousID sets the previous node ID (leaf nodes only)
+func WithPreviousID(previousID string) NodeOption {
+	return func(n *Node) {
+		if n.IsLeaf {
+			n.PreviousID = previousID
+		}
+	}
+}
+
+// WithInitialKeys sets initial keys for the node
+func WithInitialKeys(keys ...string) NodeOption {
+	return func(n *Node) {
+		n.Keys = make([]string, len(keys))
+		copy(n.Keys, keys)
+	}
+}
+
+// WithInitialValues sets initial values for a leaf node (must match keys)
+func WithInitialValues(values ...[]string) NodeOption {
+	return func(n *Node) {
+		if n.IsLeaf {
+			n.Values = make([][]string, len(values))
+			for i, vals := range values {
+				n.Values[i] = make([]string, len(vals))
+				copy(n.Values[i], vals)
+			}
+		}
+	}
+}
+
+// WithInitialChildren sets initial children IDs for an internal node
+func WithInitialChildren(childrenIDs ...string) NodeOption {
+	return func(n *Node) {
+		if !n.IsLeaf {
+			n.ChildrenIDs = make([]string, len(childrenIDs))
+			copy(n.ChildrenIDs, childrenIDs)
+		}
+	}
+}
+
+// NewLeafNode creates a new leaf node with options
+func NewLeafNode(opts ...NodeOption) *Node {
+	node := &Node{
+		ID:     generateUUID(), // Default ID
 		IsLeaf: true,
 		Keys:   make([]string, 0),
 		Values: make([][]string, 0),
 	}
+
+	// Apply options
+	for _, opt := range opts {
+		if opt != nil {
+			opt(node)
+		}
+	}
+
+	return node
 }
 
-// NewInternalNode creates a new internal node
-func NewInternalNode(id string) *Node {
-	return &Node{
-		ID:          id,
+// NewInternalNode creates a new internal node with options
+func NewInternalNode(opts ...NodeOption) *Node {
+	node := &Node{
+		ID:          generateUUID(), // Default ID
 		IsLeaf:      false,
 		Keys:        make([]string, 0),
 		ChildrenIDs: make([]string, 0),
 	}
+
+	// Apply options
+	for _, opt := range opts {
+		if opt != nil {
+			opt(node)
+		}
+	}
+
+	return node
 }
 
 // FindKeyIndex finds the index where a key should be inserted or is located
@@ -400,26 +483,24 @@ func (n *Node) SplitLeafAtIndex(splitIndex int) (*Node, error) {
 	}
 
 	// Create a new leaf node
-	newLeaf := NewLeafNode(generateUUID())
-
-	// Move second half keys/values to new leaf
-	newLeaf.Keys = append(newLeaf.Keys, n.Keys[splitIndex:]...)
-	newLeaf.Values = append(newLeaf.Values, n.Values[splitIndex:]...)
+	newLeaf := NewLeafNode(
+		// copy second half keys/values to new leaf
+		WithInitialKeys(n.Keys[splitIndex:]...),
+		WithInitialValues(n.Values[splitIndex:]...),
+		// Set up NextID linking: newLeaf should point to what the original leaf was pointing to
+		WithNextID(n.NextID),
+		// Set up PreviousID linking: newLeaf should point to the original leaf
+		WithPreviousID(n.ID),
+		// Set parent reference for the new leaf
+		WithParentID(n.ParentID),
+	)
 
 	// Update original leaf with first half
 	n.Keys = n.Keys[:splitIndex]
 	n.Values = n.Values[:splitIndex]
 
-	// Set up NextID linking: newLeaf should point to what the original leaf was pointing to
-	newLeaf.NextID = n.NextID
 	// The original leaf should now point to the new leaf
 	n.NextID = newLeaf.ID
-
-	// Set up PreviousID linking: newLeaf should point to the original leaf
-	newLeaf.PreviousID = n.ID
-
-	// Set parent reference for the new leaf
-	newLeaf.ParentID = n.ParentID
 
 	return newLeaf, nil
 }
@@ -435,22 +516,21 @@ func (n *Node) SplitInternalAtIndex(splitIndex int) (*Node, string, error) {
 		return nil, "", ErrKeyIndexOutOfBounds
 	}
 
-	// Create a new internal node
-	newInternal := NewInternalNode(generateUUID())
-
 	// The key at splitIndex is promoted, so do not copy it to any node
 	promotedKey := n.Keys[splitIndex]
 
-	// Copy keys and children after splitIndex to newInternal
-	newInternal.Keys = append(newInternal.Keys, n.Keys[splitIndex+1:]...)
-	newInternal.ChildrenIDs = append(newInternal.ChildrenIDs, n.ChildrenIDs[splitIndex+1:]...)
+	// Create a new internal node
+	newInternal := NewInternalNode(
+		// Copy keys and children after splitIndex to newInternal
+		WithInitialKeys(n.Keys[splitIndex+1:]...),
+		WithInitialChildren(n.ChildrenIDs[splitIndex+1:]...),
+		// Set parent reference for the new internal node
+		WithParentID(n.ParentID),
+	)
 
 	// Update original node with first half
 	n.Keys = n.Keys[:splitIndex]                 // Keep only keys before the split key
 	n.ChildrenIDs = n.ChildrenIDs[:splitIndex+1] // Keep one extra child for the split key
-
-	// Set parent reference for the new internal node
-	newInternal.ParentID = n.ParentID
 
 	return newInternal, promotedKey, nil
 }

@@ -85,7 +85,7 @@ func TestTransactionalStorageReadOnly(t *testing.T) {
 	ctx, storage := initTransactionalNodeStorageTest(t)
 
 	// First, set up some data outside of transaction
-	node := NewLeafNode("test-node")
+	node := NewLeafNode(WithNodeID("test-node"))
 	err := node.InsertKeyValue("key1", "value1")
 	require.NoError(t, err, "failed to insert key-value pair into node")
 
@@ -126,7 +126,7 @@ func TestTransactionalStorageReadOnly(t *testing.T) {
 		require.NoError(t, err, "Failed to begin read-only transaction")
 		defer txn.Rollback(ctx)
 
-		newNode := NewLeafNode("new-node")
+		newNode := NewLeafNode(WithNodeID("new-node"))
 		newNode.Keys = []string{"key2"}
 		newNode.Values = [][]string{{"value2"}}
 
@@ -159,7 +159,7 @@ func TestTransactionalStorageIsolation(t *testing.T) {
 		txn1, err := storage.BeginTx(ctx)
 		require.NoError(t, err, "Failed to begin first transaction")
 
-		node1 := NewLeafNode("isolation-node")
+		node1 := NewLeafNode(WithNodeID("isolation-node"))
 		err = node1.InsertKeyValue("key1", "value1")
 		require.NoError(t, err, "Failed to insert key-value pair into node")
 
@@ -212,7 +212,7 @@ func TestTransactionalStorageRollback(t *testing.T) {
 		txn, err := storage.BeginTx(ctx)
 		require.NoError(t, err, "Failed to begin transaction")
 
-		node := NewLeafNode("rollback-node")
+		node := NewLeafNode(WithNodeID("rollback-node"))
 		node.InsertKeyValue("key1", "value1")
 		require.NoError(t, err, "Failed to insert key-value pair into node")
 
@@ -246,7 +246,7 @@ func TestTransactionalStorageCommit(t *testing.T) {
 		txn, err := storage.BeginTx(ctx)
 		require.NoError(t, err, "Failed to begin transaction")
 
-		node := NewLeafNode("commit-node")
+		node := NewLeafNode(WithNodeID("commit-node"))
 		node.Keys = []string{"key1", "key2"}
 		node.Values = [][]string{{"value1"}, {"value2"}}
 
@@ -282,7 +282,7 @@ func TestTransactionalStorageCache(t *testing.T) {
 
 	t.Run("TransactionCacheIsolation", func(t *testing.T) {
 		// Create initial data outside transaction
-		node1 := NewLeafNode("cache-node-1")
+		node1 := NewLeafNode(WithNodeID("cache-node-1"))
 		err := node1.InsertKeyValue("key1", "value1")
 		require.NoError(t, err, "Failed to insert key-value pair into node")
 
@@ -294,7 +294,7 @@ func TestTransactionalStorageCache(t *testing.T) {
 		require.NoError(t, err, "Failed to begin transaction")
 
 		// Create new node in transaction
-		node2 := NewLeafNode("cache-node-2")
+		node2 := NewLeafNode(WithNodeID("cache-node-2"))
 		err = node2.InsertKeyValue("key2", "value2")
 		require.NoError(t, err, "Failed to insert key-value pair into node")
 
@@ -339,7 +339,7 @@ func TestTransactionalStorageCache(t *testing.T) {
 		require.NoError(t, err, "Failed to begin transaction")
 
 		// Create node in transaction
-		node := NewLeafNode("queue-node")
+		node := NewLeafNode(WithNodeID("queue-node"))
 		node.InsertKeyValue("key1", "value1")
 
 		err = txn.PutNode(ctx, node)
@@ -380,7 +380,7 @@ func TestTransactionalStorageConcurrency(t *testing.T) {
 				}
 
 				// Create a unique node for this transaction
-				node := NewLeafNode(fmt.Sprintf("concurrent-node-%d", id))
+				node := NewLeafNode(WithNodeID(fmt.Sprintf("concurrent-node-%d", id)))
 				node.Keys = []string{fmt.Sprintf("key%d", id)}
 				node.Values = [][]string{{fmt.Sprintf("value%d", id)}}
 
@@ -438,7 +438,7 @@ func TestWithTransactionHelper(t *testing.T) {
 
 	t.Run("WithTransactionSuccess", func(t *testing.T) {
 		err := WithTransaction(ctx, storage, func(txnStorage Storage) error {
-			node := NewLeafNode("helper-node")
+			node := NewLeafNode(WithNodeID("helper-node"))
 			node.Keys = []string{"key1"}
 			node.Values = [][]string{{"value1"}}
 
@@ -470,7 +470,7 @@ func TestWithTransactionHelper(t *testing.T) {
 	t.Run("WithTransactionFailure", func(t *testing.T) {
 		expectedError := fmt.Errorf("intentional error")
 		err := WithTransaction(ctx, storage, func(txnStorage Storage) error {
-			node := NewLeafNode("failure-node")
+			node := NewLeafNode(WithNodeID("failure-node"))
 			node.Keys = []string{"key1"}
 			node.Values = [][]string{{"value1"}}
 
@@ -507,7 +507,7 @@ func TestTransactionalStorageUtilityMethods(t *testing.T) {
 		require.True(t, nodeStorage.IsCacheEnabled(), "Cache should be enabled by default")
 
 		// Add some data to get cache stats
-		node := NewLeafNode("utils-node")
+		node := NewLeafNode(WithNodeID("utils-node"))
 		node.InsertKeyValue("key1", "value1")
 
 		err := nodeStorage.PutNode(ctx, node)

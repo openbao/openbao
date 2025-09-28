@@ -42,8 +42,8 @@ func TestTransactionBufferingIntegration(t *testing.T) {
 
 		// Use buffered writes within the transaction
 		err = WithBufferedWrites(ctx, tx, func(storage Storage) error {
-			node1 := NewLeafNode("node1")
-			node2 := NewLeafNode("node2")
+			node1 := NewLeafNode(WithNodeID("node1"))
+			node2 := NewLeafNode(WithNodeID("node2"))
 
 			// These should be buffered and then flushed to the transaction
 			if err := storage.PutNode(ctx, node1); err != nil {
@@ -87,7 +87,7 @@ func TestTransactionBufferingIntegration(t *testing.T) {
 
 		// Use buffered writes within the transaction
 		err = WithBufferedWrites(ctx, tx, func(storage Storage) error {
-			node3 := NewLeafNode("node3")
+			node3 := NewLeafNode(WithNodeID("node3"))
 			return storage.PutNode(ctx, node3)
 		})
 		require.NoError(t, err, "BufferedWrites failed")
@@ -105,8 +105,8 @@ func TestTransactionBufferingIntegration(t *testing.T) {
 		// This tests the opposite: transaction around buffered writes
 		err := WithTransaction(ctx, transactionalStorage, func(txStorage Storage) error {
 			return WithBufferedWrites(ctx, txStorage, func(bufferedStorage Storage) error {
-				node4 := NewLeafNode("node4")
-				node5 := NewLeafNode("node5")
+				node4 := NewLeafNode(WithNodeID("node4"))
+				node5 := NewLeafNode(WithNodeID("node5"))
 
 				if err := bufferedStorage.PutNode(ctx, node4); err != nil {
 					return err
@@ -151,7 +151,7 @@ func TestExternalTransactionIntegration(t *testing.T) {
 
 		// First, put a node in the base storage to establish baseline
 		err = WithAutoFlush(ctx, baseStorage, func(storage Storage) error {
-			baseNode := NewLeafNode("base-node")
+			baseNode := NewLeafNode(WithNodeID("base-node"))
 			return storage.PutNode(ctx, baseNode)
 		})
 		require.NoError(t, err, "failed to put base node")
@@ -171,7 +171,7 @@ func TestExternalTransactionIntegration(t *testing.T) {
 		require.Equal(t, "base-node", txNode.ID)
 
 		// Put a new node through transaction storage (should buffer and cache locally)
-		txOnlyNode := NewLeafNode("tx-only-node")
+		txOnlyNode := NewLeafNode(WithNodeID("tx-only-node"))
 		err = WithAutoFlush(ctx, txStorage, func(storage Storage) error {
 			return storage.PutNode(ctx, txOnlyNode)
 		})
@@ -208,7 +208,7 @@ func TestExternalTransactionIntegration(t *testing.T) {
 		require.NoError(t, err, "failed to create external transaction storage")
 
 		// Put a node that we'll rollback
-		rollbackNode := NewLeafNode("rollback-node")
+		rollbackNode := NewLeafNode(WithNodeID("rollback-node"))
 		err = txStorage.PutNode(ctx, rollbackNode)
 		require.NoError(t, err, "failed to put rollback node")
 
@@ -245,7 +245,7 @@ func TestExternalTransactionIntegration(t *testing.T) {
 		txStorage1, err := WithExistingTransaction(ctx, tx1, baseStorage)
 		require.NoError(t, err, "failed to create external transaction storage")
 
-		node1 := NewLeafNode("config-test-inheritance")
+		node1 := NewLeafNode(WithNodeID("config-test-inheritance"))
 		err = txStorage1.PutNode(ctx, node1)
 		require.NoError(t, err, "failed to put node in external transaction")
 
@@ -268,7 +268,7 @@ func TestExternalTransactionIntegration(t *testing.T) {
 		require.NoError(t, err, "failed to create override external transaction storage")
 
 		// Put a node (should go directly to transaction since buffering is disabled)
-		node2 := NewLeafNode("config-test-override")
+		node2 := NewLeafNode(WithNodeID("config-test-override"))
 		err = txStorage2.PutNode(ctx, node2)
 		require.NoError(t, err, "failed to put node with overrides")
 
@@ -304,7 +304,7 @@ func TestExternalTransactionIntegration(t *testing.T) {
 		err = WithBufferedWrites(ctx, txStorage, func(bufferedStorage Storage) error {
 			// Put multiple nodes that should be buffered
 			for i := 1; i <= 3; i++ {
-				node := NewLeafNode(fmt.Sprintf("nested-helper-node-%d", i))
+				node := NewLeafNode(WithNodeID(fmt.Sprintf("nested-helper-node-%d", i)))
 				if err := bufferedStorage.PutNode(ctx, node); err != nil {
 					return fmt.Errorf("failed to put node %d: %w", i, err)
 				}
@@ -354,7 +354,7 @@ func TestExternalTransactionIntegration(t *testing.T) {
 		err = WithAutoFlush(ctx, txStorage, func(storage Storage) error {
 			// Put nodes that should be auto-flushed
 			for i := 1; i <= 2; i++ {
-				node := NewLeafNode(fmt.Sprintf("auto-flush-node-%d", i))
+				node := NewLeafNode(WithNodeID(fmt.Sprintf("auto-flush-node-%d", i)))
 				if err := storage.PutNode(ctx, node); err != nil {
 					return fmt.Errorf("failed to put auto-flush node %d: %w", i, err)
 				}
@@ -413,7 +413,7 @@ func TestExternalTransactionIntegration(t *testing.T) {
 		require.NoError(t, err, "failed to create external transaction storage")
 
 		// Put a node successfully first
-		successNode := NewLeafNode("error-handling-success")
+		successNode := NewLeafNode(WithNodeID("error-handling-success"))
 		err = WithAutoFlush(ctx, txStorage, func(storage Storage) error {
 			return storage.PutNode(ctx, successNode)
 		})
@@ -490,11 +490,11 @@ func TestExternalTransactionAdvancedScenarios(t *testing.T) {
 		require.NoError(t, err, "failed to create second external transaction storage")
 
 		// Put different nodes through each storage instance
-		node1 := NewLeafNode("multi-storage-node1")
+		node1 := NewLeafNode(WithNodeID("multi-storage-node1"))
 		err = txStorage1.PutNode(ctx, node1)
 		require.NoError(t, err, "failed to put node through first storage")
 
-		node2 := NewLeafNode("multi-storage-node2")
+		node2 := NewLeafNode(WithNodeID("multi-storage-node2"))
 		err = txStorage2.PutNode(ctx, node2)
 		require.NoError(t, err, "failed to put node through second storage")
 
@@ -555,7 +555,7 @@ func TestInternalTransactionAPI(t *testing.T) {
 
 	t.Run("ReadOnlyTransaction_Isolation", func(t *testing.T) {
 		// First, put some data in the base storage and commit it to underlying storage
-		baseNode := NewLeafNode("base-readonly-node")
+		baseNode := NewLeafNode(WithNodeID("base-readonly-node"))
 		err = WithAutoFlush(ctx, transactionalStorage, func(storage Storage) error {
 			return storage.PutNode(ctx, baseNode)
 		})
@@ -572,7 +572,7 @@ func TestInternalTransactionAPI(t *testing.T) {
 
 		// Try to put a node through read-only transaction (should work in memory)
 		// but won't be committed to underlying storage due to read-only nature
-		roOnlyNode := NewLeafNode("ro-only-node")
+		roOnlyNode := NewLeafNode(WithNodeID("ro-only-node"))
 		err = roTx.PutNode(ctx, roOnlyNode)
 		require.NoError(t, err, "put through read-only tx should work in memory")
 
@@ -598,7 +598,7 @@ func TestInternalTransactionAPI(t *testing.T) {
 		// Test that read-write transactions have proper cache isolation
 
 		// Put a base node and commit it to underlying storage
-		baseNode := NewLeafNode("cache-isolation-base")
+		baseNode := NewLeafNode(WithNodeID("cache-isolation-base"))
 		err = WithAutoFlush(ctx, transactionalStorage, func(storage Storage) error {
 			return storage.PutNode(ctx, baseNode)
 		})
@@ -614,7 +614,7 @@ func TestInternalTransactionAPI(t *testing.T) {
 		require.Equal(t, "cache-isolation-base", txNode.ID)
 
 		// Put a transaction-only node
-		txOnlyNode := NewLeafNode("tx-cache-only")
+		txOnlyNode := NewLeafNode(WithNodeID("tx-cache-only"))
 		err = rwTx.PutNode(ctx, txOnlyNode)
 		require.NoError(t, err, "failed to put tx-only node")
 
@@ -653,7 +653,7 @@ func TestInternalTransactionAPI(t *testing.T) {
 
 		// Put multiple nodes (should be buffered)
 		for i := 1; i <= 3; i++ {
-			node := NewLeafNode(fmt.Sprintf("buffered-node-%d", i))
+			node := NewLeafNode(WithNodeID(fmt.Sprintf("buffered-node-%d", i)))
 			err = tx.PutNode(ctx, node)
 			require.NoError(t, err, "failed to put buffered node %d", i)
 		}
@@ -719,7 +719,7 @@ func TestInternalTransactionAPI(t *testing.T) {
 
 		// Put nodes that will be rolled back
 		for i := 1; i <= 2; i++ {
-			node := NewLeafNode(fmt.Sprintf("rollback-node-%d", i))
+			node := NewLeafNode(WithNodeID(fmt.Sprintf("rollback-node-%d", i)))
 			err = tx.PutNode(ctx, node)
 			require.NoError(t, err, "failed to put rollback node %d", i)
 		}
@@ -758,11 +758,11 @@ func TestInternalTransactionAPI(t *testing.T) {
 		require.NoError(t, err, "failed to begin transaction 2")
 
 		// Put different nodes in each transaction
-		node1 := NewLeafNode("concurrent-tx1-node")
+		node1 := NewLeafNode(WithNodeID("concurrent-tx1-node"))
 		err = tx1.PutNode(ctx, node1)
 		require.NoError(t, err, "failed to put node in tx1")
 
-		node2 := NewLeafNode("concurrent-tx2-node")
+		node2 := NewLeafNode(WithNodeID("concurrent-tx2-node"))
 		err = tx2.PutNode(ctx, node2)
 		require.NoError(t, err, "failed to put node in tx2")
 

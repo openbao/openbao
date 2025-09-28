@@ -111,8 +111,8 @@ func TestNodeStorageBuiltInBuffering(t *testing.T) {
 	t.Run("WithAutoFlushHelper", func(t *testing.T) {
 		// Test the WithAutoFlush helper
 		err := WithAutoFlush(ctx, nodeStorage, func(storage Storage) error {
-			node4 := NewLeafNode("test4")
-			node5 := NewLeafNode("test5")
+			node4 := NewLeafNode(WithNodeID("test4"))
+			node5 := NewLeafNode(WithNodeID("test5"))
 
 			// Multiple saves - should be buffered
 			if err := storage.PutNode(ctx, node4); err != nil {
@@ -139,8 +139,8 @@ func TestNodeStorageBuiltInBuffering(t *testing.T) {
 	t.Run("WithBufferedWritesHelper", func(t *testing.T) {
 		// Test the WithBufferedWrites helper which forces buffering ON
 		err := WithBufferedWrites(ctx, nodeStorage, func(storage Storage) error {
-			node6 := NewLeafNode("test6")
-			node7 := NewLeafNode("test7")
+			node6 := NewLeafNode(WithNodeID("test6"))
+			node7 := NewLeafNode(WithNodeID("test7"))
 
 			// Multiple saves - should be buffered regardless of original config
 			if err := storage.PutNode(ctx, node6); err != nil {
@@ -166,7 +166,7 @@ func TestNodeStorageBuiltInBuffering(t *testing.T) {
 
 	t.Run("DeleteNodeIsBuffered", func(t *testing.T) {
 		// First, create and flush a node so it exists in storage
-		nodeToDelete := NewLeafNode("to-delete")
+		nodeToDelete := NewLeafNode(WithNodeID("to-delete"))
 		err := nodeStorage.PutNode(ctx, nodeToDelete)
 		require.NoError(t, err)
 		err = nodeStorage.FlushBuffer(ctx)
@@ -210,7 +210,7 @@ func TestNodeStorageBuiltInBuffering(t *testing.T) {
 		require.Equal(t, 0, dirtyCount, "Should have no dirty nodes")
 
 		// Save node - should go directly to storage (not buffered)
-		node8 := NewLeafNode("test8")
+		node8 := NewLeafNode(WithNodeID("test8"))
 		err = nonBufferedStorage.PutNode(ctx, node8)
 		require.NoError(t, err)
 

@@ -32,6 +32,7 @@ func InitializeTree(ctx context.Context, storage Storage, treeOpts ...TreeOption
 
 // InitializeTreeWithConfig initializes a B+ tree with the given configuration.
 func InitializeTreeWithConfig(ctx context.Context, storage Storage, config *TreeConfig) (*Tree, error) {
+	// Init a new config if none is provided
 	if config == nil {
 		config = NewDefaultTreeConfig()
 	}
@@ -39,6 +40,8 @@ func InitializeTreeWithConfig(ctx context.Context, storage Storage, config *Tree
 	// Set TreeID in the context
 	ctx = withTreeID(ctx, config.TreeID)
 
+	// Try to get the tree config to decide what to do next, create a new tree
+	// or load an existing one
 	existingConfig, err := getTreeConfig(ctx, storage)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting the tree configuration: %w", err)
@@ -51,6 +54,34 @@ func InitializeTreeWithConfig(ctx context.Context, storage Storage, config *Tree
 	}
 }
 
+// newTree creates a new B+ tree with the given configuration.
+// Fails if a tree with the same ID already exists.
+func newTree(
+	ctx context.Context,
+	storage Storage,
+	config *TreeConfig,
+) (*Tree, error) {
+	tree := &Tree{config: config}
+
+	// Create new leaf root
+	root := NewLeafNode(generateUUID())
+	if err := storage.PutNode(ctx, root); err != nil {
+		return nil, fmt.Errorf("failed to save root node: %w", err)
+	}
+
+	// Set root ID
+	if err := storage.PutRootID(ctx, root.GetID()); err != nil {
+		return nil, fmt.Errorf("failed to set root ID: %w", err)
+	}
+
+	// Store configuration
+	if err := storage.PutConfig(ctx, config); err != nil {
+		return nil, fmt.Errorf("failed to store tree configuration: %w", err)
+	}
+
+	return tree, nil
+}
+
 // loadExistingTree loads an existing B+ tree from storage using the stored
 // configuration as the source of truth. If the tree doesn't exist, returns an error.
 func loadExistingTree(ctx context.Context, storage Storage, config *TreeConfig) (*Tree, error) {
@@ -59,21 +90,9 @@ func loadExistingTree(ctx context.Context, storage Storage, config *TreeConfig) 
 
 	// TODO (gabrielopesantos): Validate tree structure
 	// We need to be careful here because a full validation might be too expensive...
-	rootID, err := tree.getRootID(ctx, storage)
+	_, err := tree.getRoot(ctx, storage)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get root ID: %w", err)
-	}
-	if rootID == "" {
-		return nil, fmt.Errorf("tree metadata exists but no root node found - tree may be corrupted")
-	}
-
-	// Validate root node exists
-	root, err := storage.GetNode(ctx, rootID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load root node: %w", err)
-	}
-	if root == nil || root.GetID() != rootID {
-		return nil, fmt.Errorf("root node validation failed")
+		return nil, fmt.Errorf("error loading existing tree, couldn't read root node")
 	}
 
 	return tree, nil
@@ -94,68 +113,18 @@ func getTreeConfig(ctx context.Context, storage Storage) (*TreeConfig, error) {
 	return config, nil
 }
 
-// newTree creates a new B+ tree with the given configuration.
-// Fails if a tree with the same ID already exists.
-func newTree(
-	ctx context.Context,
-	storage Storage,
-	config *TreeConfig,
-) (*Tree, error) {
-	tree := &Tree{config: config}
-
-	// Create new leaf root
-	root := NewLeafNode(generateUUID())
-	if err := storage.PutNode(ctx, root); err != nil {
-		return nil, fmt.Errorf("failed to save root node: %w", err)
-	}
-
-	// Set root ID
-	if err := tree.setRootID(ctx, storage, root.GetID()); err != nil {
-		return nil, fmt.Errorf("failed to set root ID: %w", err)
-	}
-
-	// Store configuration
-	if err := storage.PutConfig(ctx, config); err != nil {
-		return nil, fmt.Errorf("failed to store tree configuration: %w", err)
-	}
-
-	return tree, nil
-}
-
 // getRoot loads the root node from storage
 func (t *Tree) getRoot(ctx context.Context, storage Storage) (*Node, error) {
-	rootID, err := t.getRootID(ctx, storage)
+	rootID, err := storage.GetRootID(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get root ID: %w", err)
-	}
-	if rootID == "" {
-		return nil, errors.New("root node not found")
+		if !errors.Is(err, ErrRootIDNotSet) {
+			return nil, fmt.Errorf("failed to get root ID: %w", err)
+		}
+
+		return nil, nil
 	}
 
 	return storage.GetNode(ctx, rootID)
-}
-
-// TODO: Can be removed...
-// getRootID returns the root ID
-func (t *Tree) getRootID(ctx context.Context, storage Storage) (string, error) {
-	// Load from storage and cache
-	rootID, err := storage.GetRootID(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	return rootID, nil
-}
-
-// TODO: Can be removed...
-// setRootID updates both storage and cache
-func (t *Tree) setRootID(ctx context.Context, storage Storage, newRootID string) error {
-	// Update storage first
-	if err := storage.PutRootID(ctx, newRootID); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // contextWithTreeID returns a context with the tree's ID added, enabling multi-tree storage
@@ -231,7 +200,7 @@ func (t *Tree) SearchPrefix(ctx context.Context, storage Storage, prefix string)
 
 	ctx = t.contextWithTreeID(ctx)
 
-	rootID, err := t.getRootID(ctx, storage)
+	rootID, err := storage.GetRootID(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get root ID: %w", err)
 	}
@@ -516,7 +485,7 @@ func (t *Tree) splitLeafNode(leaf *Node) (*Node, string) {
 func (t *Tree) insertIntoParent(ctx context.Context, storage Storage, leftNode *Node, rightNode *Node, splitKey string) error {
 	// If leftNode was the root, we need to create a new root
 	// and make the leftNode and rightNode its children
-	rootID, err := t.getRootID(ctx, storage)
+	rootID, err := storage.GetRootID(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get root ID: %w", err)
 	}
@@ -541,7 +510,7 @@ func (t *Tree) insertIntoParent(ctx context.Context, storage Storage, leftNode *
 		}
 
 		// Update root ID in storage
-		return t.setRootID(ctx, storage, newRoot.GetID())
+		return storage.PutRootID(ctx, newRoot.GetID())
 	}
 
 	// Otherwise, we need to insert into the existing parent node
@@ -618,7 +587,7 @@ func (t *Tree) splitInternalNode(ctx context.Context, storage Storage, node *Nod
 // rebalanceTreeIfNeeded handles rebalancing after a deletion
 func (t *Tree) rebalanceTreeIfNeeded(ctx context.Context, storage Storage, node *Node) error {
 	// Get the root ID to check if this node is the root
-	rootID, err := t.getRootID(ctx, storage)
+	rootID, err := storage.GetRootID(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get root ID: %w", err)
 	}
@@ -661,7 +630,7 @@ func (t *Tree) handleRootAfterDeletion(ctx context.Context, storage Storage, roo
 		if err := storage.PutNode(ctx, newRoot); err != nil {
 			return fmt.Errorf("failed to save new root: %w", err)
 		}
-		if err := t.setRootID(ctx, storage, newRootID); err != nil {
+		if err := storage.PutRootID(ctx, newRootID); err != nil {
 			return fmt.Errorf("failed to set new root ID: %w", err)
 		}
 
@@ -1033,7 +1002,7 @@ func (t *Tree) removeOrphanedSplitKeyInNode(ctx context.Context, storage Storage
 		}
 
 		// Get the root ID to check if this node is the root
-		rootID, err := t.getRootID(ctx, storage)
+		rootID, err := storage.GetRootID(ctx)
 		if err != nil {
 			return false, fmt.Errorf("failed to get root ID: %w", err)
 		}
@@ -1096,7 +1065,7 @@ func (t *Tree) findSuccessorKey(ctx context.Context, storage Storage, parentNode
 // findRightmostLeaf finds the rightmost leaf node in the tree
 func (t *Tree) findRightmostLeaf(ctx context.Context, storage Storage) (*Node, error) {
 	// Load the root node
-	rootID, err := t.getRootID(ctx, storage)
+	rootID, err := storage.GetRootID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1129,7 +1098,7 @@ func (t *Tree) findRightmostLeafInSubtree(ctx context.Context, storage Storage, 
 // findLeftmostLeaf finds the leftmost leaf node in the tree
 func (t *Tree) findLeftmostLeaf(ctx context.Context, storage Storage) (*Node, error) {
 	// Load the root node
-	rootID, err := t.getRootID(ctx, storage)
+	rootID, err := storage.GetRootID(ctx)
 	if err != nil {
 		return nil, err
 	}

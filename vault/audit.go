@@ -750,7 +750,7 @@ func (c *Core) handleAuditLogSetup(ctx context.Context) error {
 
 func (c *Core) addAuditFromConfig(ctx context.Context, auditConfig *server.AuditDevice) error {
 	if c.standby {
-		c.logger.Warn("audit device present in standby but not active node", "path", auditConfig.Path)
+		c.logger.Warn("audit device present in local configuration but not in the configuration of the active node", "path", auditConfig.Path)
 		return nil
 	}
 

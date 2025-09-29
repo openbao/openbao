@@ -43,12 +43,12 @@ multiple sockets.
 - `metrics_only` `(bool: false)` - Specifies if the listener should *only* serve the `/v1/sys/metrics` endpoint, blocking all other API requests. 
   This is useful for creating a dedicated, secure listener for monitoring systems.
 
-:::warning
+  :::warning
 
-**In OpenBao v2.4.0, this parameter will default to true, forbidding any calls
-to the unauthenticated rekey endpoints. This will be a breaking change.
+  In OpenBao v2.4.0, this parameter will default to true, forbidding any calls
+  to the unauthenticated rekey endpoints. This will be a breaking change.
 
-:::
+  :::
 
 ## `unix` listener examples
 

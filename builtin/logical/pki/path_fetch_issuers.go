@@ -566,7 +566,7 @@ func (b *backend) pathUpdateIssuer(ctx context.Context, req *logical.Request, da
 	rawUsage := data.Get("usage").([]string)
 	newUsage, err := NewIssuerUsageFromNames(rawUsage)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("Unable to parse specified usages: %v - valid values are %v", rawUsage, AllIssuerUsages.Names())), nil
+		return logical.ErrorResponse("Unable to parse specified usages: %v - valid values are %v", rawUsage, AllIssuerUsages.Names()), nil
 	}
 
 	// Revocation signature algorithm changes
@@ -578,7 +578,7 @@ func (b *backend) pathUpdateIssuer(ctx context.Context, req *logical.Request, da
 			knownAlgos = append(knownAlgos, algoName)
 		}
 
-		return logical.ErrorResponse(fmt.Sprintf("Unknown signature algorithm value: %v - valid values are %v", revSigAlg, strings.Join(knownAlgos, ", "))), nil
+		return logical.ErrorResponse("Unknown signature algorithm value: %v - valid values are %v", revSigAlg, strings.Join(knownAlgos, ", ")), nil
 	} else if revSigAlgStr == "" {
 		revSigAlg = x509.UnknownSignatureAlgorithm
 	}
@@ -590,19 +590,19 @@ func (b *backend) pathUpdateIssuer(ctx context.Context, req *logical.Request, da
 	enableTemplating := data.Get("enable_aia_url_templating").(bool)
 	issuerCertificates := data.Get("issuing_certificates").([]string)
 	if badURL := validateURLs(issuerCertificates); !enableTemplating && badURL != "" {
-		return logical.ErrorResponse(fmt.Sprintf("invalid URL found in Authority Information Access (AIA) parameter issuing_certificates: %s", badURL)), nil
+		return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter issuing_certificates: %s", badURL), nil
 	}
 	crlDistributionPoints := data.Get("crl_distribution_points").([]string)
 	if badURL := validateURLs(crlDistributionPoints); !enableTemplating && badURL != "" {
-		return logical.ErrorResponse(fmt.Sprintf("invalid URL found in Authority Information Access (AIA) parameter crl_distribution_points: %s", badURL)), nil
+		return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter crl_distribution_points: %s", badURL), nil
 	}
 	deltaCRLDistributionPoints := data.Get("delta_crl_distribution_points").([]string)
 	if badURL := validateURLs(deltaCRLDistributionPoints); !enableTemplating && badURL != "" {
-		return logical.ErrorResponse(fmt.Sprintf("invalid URL found in Authority Information Access (AIA) parameter delta_crl_distribution_points: %s", badURL)), nil
+		return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter delta_crl_distribution_points: %s", badURL), nil
 	}
 	ocspServers := data.Get("ocsp_servers").([]string)
 	if badURL := validateURLs(ocspServers); !enableTemplating && badURL != "" {
-		return logical.ErrorResponse(fmt.Sprintf("invalid URL found in Authority Information Access (AIA) parameter ocsp_servers: %s", badURL)), nil
+		return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter ocsp_servers: %s", badURL), nil
 	}
 
 	modified := false
@@ -709,7 +709,7 @@ func (b *backend) pathUpdateIssuer(ctx context.Context, req *logical.Request, da
 		}
 
 		if index == 0 && resolvedId != ref {
-			return logical.ErrorResponse(fmt.Sprintf("expected first cert in chain to be a self-reference, but was: %v/%v", newPathRef, resolvedId)), nil
+			return logical.ErrorResponse("expected first cert in chain to be a self-reference, but was: %v/%v", newPathRef, resolvedId), nil
 		}
 
 		constructedChain = append(constructedChain, resolvedId)
@@ -846,7 +846,7 @@ func (b *backend) pathPatchIssuer(ctx context.Context, req *logical.Request, dat
 		rawUsage := rawUsageData.([]string)
 		newUsage, err := NewIssuerUsageFromNames(rawUsage)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("Unable to parse specified usages: %v - valid values are %v", rawUsage, AllIssuerUsages.Names())), nil
+			return logical.ErrorResponse("Unable to parse specified usages: %v - valid values are %v", rawUsage, AllIssuerUsages.Names()), nil
 		}
 		if newUsage != issuer.Usage {
 			if issuer.Revoked && newUsage.HasUsage(IssuanceUsage) {
@@ -878,7 +878,7 @@ func (b *backend) pathPatchIssuer(ctx context.Context, req *logical.Request, dat
 				knownAlgos = append(knownAlgos, algoName)
 			}
 
-			return logical.ErrorResponse(fmt.Sprintf("Unknown signature algorithm value: %v - valid values are %v", revSigAlg, strings.Join(knownAlgos, ", "))), nil
+			return logical.ErrorResponse("Unknown signature algorithm value: %v - valid values are %v", revSigAlg, strings.Join(knownAlgos, ", ")), nil
 		} else if revSigAlgStr == "" {
 			revSigAlg = x509.UnknownSignatureAlgorithm
 		}
@@ -939,7 +939,7 @@ func (b *backend) pathPatchIssuer(ctx context.Context, req *logical.Request, dat
 		if ok {
 			urlsValue := rawURLsValue.([]string)
 			if badURL := validateURLs(urlsValue); !issuer.AIAURIs.EnableTemplating && badURL != "" {
-				return logical.ErrorResponse(fmt.Sprintf("invalid URL found in Authority Information Access (AIA) parameter %v: %s", pair.Source, badURL)), nil
+				return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter %v: %s", pair.Source, badURL), nil
 			}
 
 			if isStringArrayDifferent(urlsValue, *pair.Dest) {
@@ -973,7 +973,7 @@ func (b *backend) pathPatchIssuer(ctx context.Context, req *logical.Request, dat
 			}
 
 			if index == 0 && resolvedId != ref {
-				return logical.ErrorResponse(fmt.Sprintf("expected first cert in chain to be a self-reference, but was: %v/%v", newPathRef, resolvedId)), nil
+				return logical.ErrorResponse("expected first cert in chain to be a self-reference, but was: %v/%v", newPathRef, resolvedId), nil
 			}
 
 			constructedChain = append(constructedChain, resolvedId)

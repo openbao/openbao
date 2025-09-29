@@ -179,7 +179,7 @@ func (b *backend) findSerialInCRLs(serial *big.Int) map[string]RevokedSerialInfo
 func (b *backend) pathCRLDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := strings.ToLower(d.Get("name").(string))
 	if name == "" {
-		return logical.ErrorResponse(`"name" parameter cannot be empty`), nil
+		return logical.ErrorResponse("'name' parameter cannot be empty"), nil
 	}
 
 	if err := b.lockThenpopulateCRLs(ctx, req.Storage); err != nil {
@@ -191,15 +191,11 @@ func (b *backend) pathCRLDelete(ctx context.Context, req *logical.Request, d *fr
 
 	_, ok := b.crls[name]
 	if !ok {
-		return logical.ErrorResponse(fmt.Sprintf(
-			"no such CRL %s", name,
-		)), nil
+		return logical.ErrorResponse("no such CRL %s", name), nil
 	}
 
 	if err := req.Storage.Delete(ctx, "crls/"+name); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf(
-			"error deleting crl %s: %v", name, err),
-		), nil
+		return logical.ErrorResponse("error deleting crl %s: %v", name, err), nil
 	}
 
 	delete(b.crls, name)
@@ -210,7 +206,7 @@ func (b *backend) pathCRLDelete(ctx context.Context, req *logical.Request, d *fr
 func (b *backend) pathCRLRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := strings.ToLower(d.Get("name").(string))
 	if name == "" {
-		return logical.ErrorResponse(`"name" parameter must be set`), nil
+		return logical.ErrorResponse("'name' parameter must be set"), nil
 	}
 
 	if err := b.lockThenpopulateCRLs(ctx, req.Storage); err != nil {
@@ -224,9 +220,7 @@ func (b *backend) pathCRLRead(ctx context.Context, req *logical.Request, d *fram
 
 	crl, ok := b.crls[name]
 	if !ok {
-		return logical.ErrorResponse(fmt.Sprintf(
-			"no such CRL %s", name,
-		)), nil
+		return logical.ErrorResponse("no such CRL %s", name), nil
 	}
 
 	retData = structs.New(&crl).Map()
@@ -239,13 +233,13 @@ func (b *backend) pathCRLRead(ctx context.Context, req *logical.Request, d *fram
 func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := strings.ToLower(d.Get("name").(string))
 	if name == "" {
-		return logical.ErrorResponse(`"name" parameter cannot be empty`), nil
+		return logical.ErrorResponse("'name' parameter cannot be empty"), nil
 	}
 	if crlRaw, ok := d.GetOk("crl"); ok {
 		crl := crlRaw.(string)
 		certList, err := x509.ParseCRL([]byte(crl))
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to parse CRL: %v", err)), nil
+			return logical.ErrorResponse("failed to parse CRL: %v", err), nil
 		}
 		if certList == nil {
 			return logical.ErrorResponse("parsed CRL is nil"), nil

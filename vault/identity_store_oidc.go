@@ -1244,7 +1244,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateRole(ctx context.Context, req *logic
 
 		for key := range tmp {
 			if slices.Contains(reservedClaims, key) {
-				return logical.ErrorResponse(`top level key %q not allowed. Restricted keys: %s`,
+				return logical.ErrorResponse("top level key %q not allowed. Restricted keys: %s",
 					key, strings.Join(reservedClaims, ", ")), nil
 			}
 		}

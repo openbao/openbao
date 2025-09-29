@@ -106,7 +106,7 @@ func (b *backend) pathCredentialsRead(ctx context.Context, req *logical.Request,
 	}
 
 	if roleEntry == nil {
-		return logical.ErrorResponse(fmt.Sprintf("role '%s' does not exist", roleName)), nil
+		return logical.ErrorResponse("role '%s' does not exist", roleName), nil
 	}
 
 	request := &credsRequest{
@@ -135,7 +135,7 @@ func (b *backend) pathCredentialsRead(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("error verifying namespace: %w", err)
 	}
 	if !isValidNs {
-		return logical.ErrorResponse(fmt.Sprintf("kubernetes_namespace '%s' is not present in role's allowed_kubernetes_namespaces or does not match role's label selector allowed_kubernetes_namespace_selector", request.Namespace)), nil
+		return logical.ErrorResponse("kubernetes_namespace '%s' is not present in role's allowed_kubernetes_namespaces or does not match role's label selector allowed_kubernetes_namespace_selector", request.Namespace), nil
 	}
 	if request.ClusterRoleBinding && roleEntry.K8sRoleType == "Role" {
 		return logical.ErrorResponse("a ClusterRoleBinding cannot ref a Role"), nil

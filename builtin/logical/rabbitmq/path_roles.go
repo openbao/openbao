@@ -5,7 +5,6 @@ package rabbitmq
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -192,14 +191,14 @@ func (b *backend) pathRoleUpdate(ctx context.Context, req *logical.Request, d *f
 	var vhosts map[string]vhostPermission
 	if len(rawVHosts) > 0 {
 		if err := jsonutil.DecodeJSON([]byte(rawVHosts), &vhosts); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to unmarshal vhosts: %s", err)), nil
+			return logical.ErrorResponse("failed to unmarshal vhosts: %s", err), nil
 		}
 	}
 
 	var vhostTopics map[string]map[string]vhostTopicPermission
 	if len(rawVHostTopics) > 0 {
 		if err := jsonutil.DecodeJSON([]byte(rawVHostTopics), &vhostTopics); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to unmarshal vhost_topics: %s", err)), nil
+			return logical.ErrorResponse("failed to unmarshal vhost_topics: %s", err), nil
 		}
 	}
 

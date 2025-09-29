@@ -734,8 +734,8 @@ func (c *Core) handleAuditLogSetup(ctx context.Context) error {
 			continue
 		}
 
-		if c.standby {
-			c.logger.Warn("audit device present in storage but not standby node configuration", "path", auditMount.Path)
+		if c.standby.Load() {
+			c.logger.Warn("audit device present in storage but not standby node configuration; this may be a false-positive depending on data replication state", "path", auditMount.Path)
 			continue
 		}
 
@@ -749,8 +749,8 @@ func (c *Core) handleAuditLogSetup(ctx context.Context) error {
 }
 
 func (c *Core) addAuditFromConfig(ctx context.Context, auditConfig *server.AuditDevice) error {
-	if c.standby {
-		c.logger.Warn("audit device present in local configuration but not in the configuration of the active node", "path", auditConfig.Path)
+	if c.standby.Load() {
+		c.logger.Warn("audit device present in local configuration but not in the configuration of the active node; this may be a false-positive depending on data replication state", "path", auditConfig.Path)
 		return nil
 	}
 

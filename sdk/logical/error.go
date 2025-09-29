@@ -3,7 +3,10 @@
 
 package logical
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 var (
 	// ErrUnsupportedOperation is returned if the operation is not supported
@@ -65,7 +68,10 @@ type HTTPCodedError interface {
 	Code() int
 }
 
-func CodedError(status int, msg string) HTTPCodedError {
+func CodedError(status int, msg string, vargs ...interface{}) HTTPCodedError {
+	if len(vargs) > 0 {
+		msg = fmt.Sprintf(msg, vargs...)
+	}
 	return &codedError{
 		Status:  status,
 		Message: msg,

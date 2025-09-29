@@ -28,7 +28,7 @@ func Test_runCelProgram(t *testing.T) {
 		{
 			name: "Boolean false will return error",
 			celRole: celRoleEntry{
-				CelProgram: celhelper.CelProgram{
+				Program: &celhelper.Program{
 					Expression: "1 == 2",
 				},
 			},
@@ -45,7 +45,7 @@ func Test_runCelProgram(t *testing.T) {
 		{
 			name: "String will be returned as error",
 			celRole: celRoleEntry{
-				CelProgram: celhelper.CelProgram{
+				Program: &celhelper.Program{
 					Expression: "'something is amiss'",
 				},
 			},
@@ -63,7 +63,7 @@ func Test_runCelProgram(t *testing.T) {
 		{
 			name: "pb.Auth type can be returned",
 			celRole: celRoleEntry{
-				CelProgram: celhelper.CelProgram{
+				Program: &celhelper.Program{
 					Expression: `pb.Auth{display_name: 'newAuth'}`,
 				},
 			},
@@ -81,7 +81,7 @@ func Test_runCelProgram(t *testing.T) {
 		{
 			name: "pb.Auth can have policies to the resulting role",
 			celRole: celRoleEntry{
-				CelProgram: celhelper.CelProgram{
+				Program: &celhelper.Program{
 					Expression: `pb.Auth{policies: ['policy1', 'policy2']}`,
 				},
 			},
@@ -99,7 +99,7 @@ func Test_runCelProgram(t *testing.T) {
 		{
 			name: "pb.Auth BoundCIDRs will add some CIDRs to the resulting role",
 			celRole: celRoleEntry{
-				CelProgram: celhelper.CelProgram{
+				Program: &celhelper.Program{
 					Expression: `claims.sub == 'test@example.com'
 					? pb.Auth{bound_cidrs: ['192.168.1.0/24', '10.0.1.1/31']}
 					: false`,
@@ -120,8 +120,8 @@ func Test_runCelProgram(t *testing.T) {
 		{
 			name: "Cel variables can be used in the expression",
 			celRole: celRoleEntry{
-				CelProgram: celhelper.CelProgram{
-					Variables: []celhelper.CelVariable{
+				Program: &celhelper.Program{
+					Variables: []celhelper.Variable{
 						{Name: "is_admin", Expression: "claims.sub == 'test@example.com'"},
 					},
 					Expression: `is_admin
@@ -145,8 +145,8 @@ func Test_runCelProgram(t *testing.T) {
 			name: "pb.Auth proto message is validated",
 			celRole: celRoleEntry{
 				Name: "celRole",
-				CelProgram: celhelper.CelProgram{
-					Variables: []celhelper.CelVariable{
+				Program: &celhelper.Program{
+					Variables: []celhelper.Variable{
 						{Name: "is_admin", Expression: "claims.sub == 'test@example.com'"},
 					},
 					Expression: `is_admin

@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openbao/openbao/helper/buffer"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,50 +51,53 @@ func TestSafeJSONReader(t *testing.T) {
 		// First compute actual values.
 		ctx := addMaximumJsonMemoryToContext(context.Background(), math.MaxInt64)
 		ctx = addMaximumJsonStringsToContext(ctx, math.MaxInt64)
-		_, actualMemory, actualStrings, err := NewSafeJSONReader(ctx, bytes.NewBufferString(test))
+		actualMemory, actualStrings, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 		require.NoError(t, err)
 
 		// Setting these actual values should allow parsing to succeed and
 		// be consistent.
 		ctx = addMaximumJsonMemoryToContext(context.Background(), actualMemory)
-		_, newMemory, newStrings, err := NewSafeJSONReader(ctx, bytes.NewBufferString(test))
+		newMemory, newStrings, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 		require.NoError(t, err)
 		require.Equal(t, actualMemory, newMemory)
 		require.Equal(t, actualStrings, newStrings)
 
 		ctx = addMaximumJsonStringsToContext(context.Background(), actualStrings)
-		_, newMemory, newStrings, err = NewSafeJSONReader(ctx, bytes.NewBufferString(test))
+		newMemory, newStrings, err = EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 		require.NoError(t, err)
 		require.Equal(t, actualMemory, newMemory)
 		require.Equal(t, actualStrings, newStrings)
 
 		ctx = addMaximumJsonMemoryToContext(context.Background(), actualMemory)
 		ctx = addMaximumJsonStringsToContext(ctx, actualStrings)
-		_, newMemory, newStrings, err = NewSafeJSONReader(ctx, bytes.NewBufferString(test))
+		newMemory, newStrings, err = EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 		require.NoError(t, err)
 		require.Equal(t, actualMemory, newMemory)
 		require.Equal(t, actualStrings, newStrings)
 
 		// Parsing it to JSON should also work.
 		var out interface{}
-		req, err := http.NewRequestWithContext(ctx, "POST", "/v1/sys/testing", bytes.NewBufferString(test))
+		body, err := buffer.NewSeekableReader(bytes.NewReader([]byte(test)))
 		require.NoError(t, err)
 
-		_, err = parseJSONRequest(req, nil, &out)
+		req, err := http.NewRequestWithContext(ctx, "POST", "/v1/sys/testing", body)
+		require.NoError(t, err)
+
+		err = parseJSONRequest(req, nil, &out)
 		require.NoError(t, err)
 
 		// Decreasing memory by one, if allowed, should cause a failure. This
 		// shows the bound is tight.
 		if actualMemory > 0 {
 			ctx = addMaximumJsonMemoryToContext(context.Background(), actualMemory-1)
-			_, _, _, err := NewSafeJSONReader(ctx, bytes.NewBufferString(test))
+			_, _, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 			require.Error(t, err, "test case %d: %q", index, test)
 			require.ErrorContains(t, err, ErrJSONExceededMemory.Error())
 
 			req, err := http.NewRequestWithContext(ctx, "POST", "/v1/sys/testing", bytes.NewBufferString(test))
 			require.NoError(t, err)
 
-			_, err = parseJSONRequest(req, nil, &out)
+			err = parseJSONRequest(req, nil, &out)
 			require.Error(t, err)
 			require.ErrorContains(t, err, ErrJSONExceededMemory.Error())
 		}
@@ -102,14 +106,14 @@ func TestSafeJSONReader(t *testing.T) {
 		// shows the bound is tight.
 		if actualStrings > 0 {
 			ctx = addMaximumJsonStringsToContext(context.Background(), actualStrings-1)
-			_, _, _, err := NewSafeJSONReader(ctx, bytes.NewBufferString(test))
+			_, _, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 			require.Error(t, err, "test case %d: %q", index, test)
 			require.ErrorContains(t, err, ErrJSONExceededStrings.Error())
 
 			req, err := http.NewRequestWithContext(ctx, "POST", "/v1/sys/testing", bytes.NewBufferString(test))
 			require.NoError(t, err)
 
-			_, err = parseJSONRequest(req, nil, &out)
+			err = parseJSONRequest(req, nil, &out)
 			require.Error(t, err)
 			require.ErrorContains(t, err, ErrJSONExceededStrings.Error())
 		}
@@ -118,7 +122,7 @@ func TestSafeJSONReader(t *testing.T) {
 		if actualStrings > 0 && actualMemory > 0 {
 			ctx = addMaximumJsonMemoryToContext(context.Background(), actualMemory-1)
 			ctx = addMaximumJsonStringsToContext(ctx, actualStrings-1)
-			_, _, _, err := NewSafeJSONReader(ctx, bytes.NewBufferString(test))
+			_, _, err := EnforceJSONComplexityLimits(ctx, bytes.NewBufferString(test))
 			require.Error(t, err, "test case %d: %q", index, test)
 		}
 	}
@@ -237,7 +241,7 @@ func TestSafeJSONReaderValidateSizes(t *testing.T) {
 		ctx = addMaximumJsonMemoryToContext(ctx, math.MaxInt64)
 		ctx = addMaximumJsonStringsToContext(ctx, math.MaxInt64)
 
-		_, memoryEstimate, _, err := NewSafeJSONReader(ctx, buf)
+		memoryEstimate, _, err := EnforceJSONComplexityLimits(ctx, buf)
 		require.NoError(t, err)
 
 		memoryActual := fakeSizeOf(t, output)

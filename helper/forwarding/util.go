@@ -12,6 +12,7 @@ import (
 	"net/url"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/buffer"
 	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"google.golang.org/protobuf/proto"
@@ -126,14 +127,15 @@ func ParseForwardedHTTPRequest(req *http.Request) (*http.Request, error) {
 }
 
 func ParseForwardedRequest(fq *Request) (*http.Request, error) {
-	buf := bufCloser{
-		Buffer: bytes.NewBuffer(fq.Body),
+	body, err := buffer.NewSeekableReader(bytes.NewReader(fq.Body))
+	if err != nil {
+		return nil, err
 	}
 
 	ret := &http.Request{
 		Method:     fq.Method,
 		Header:     make(map[string][]string, len(fq.HeaderEntries)),
-		Body:       buf,
+		Body:       body,
 		Host:       fq.Host,
 		RemoteAddr: fq.RemoteAddr,
 	}

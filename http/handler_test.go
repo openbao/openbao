@@ -920,7 +920,7 @@ func TestHandler_MaxRequestSize(t *testing.T) {
 	var respErr *api.ResponseError
 	require.ErrorAs(t, err, &respErr)
 	require.Equal(t, http.StatusRequestEntityTooLarge, respErr.StatusCode)
-	require.ErrorContains(t, err, "error parsing JSON")
+	require.ErrorContains(t, err, "request body too large")
 }
 
 // TestHandler_MaxRequestSize_Memory sets the max request size to 1024 bytes,

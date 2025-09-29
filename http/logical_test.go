@@ -324,7 +324,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err := buildLogicalRequest(core, nil, req)
+	lreq, status, err := buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,7 +339,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,12 +354,12 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
+	_, status, err = buildLogicalRequestNoAuth(nil, req)
 	if err != nil || status != 0 {
 		t.Fatal(err)
 	}
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -430,7 +430,7 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 			req = req.WithContext(namespace.RootContext(nil))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
-			lreq, _, status, err := buildLogicalRequest(core, nil, req)
+			lreq, status, err := buildLogicalRequest(core, nil, req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -456,7 +456,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err := buildLogicalRequest(core, nil, req)
+	lreq, status, err := buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -471,7 +471,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -486,12 +486,12 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
+	_, status, err = buildLogicalRequestNoAuth(nil, req)
 	if err != nil || status != 0 {
 		t.Fatal(err)
 	}
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -562,7 +562,7 @@ func TestLogical_ScanWithQueryParameters(t *testing.T) {
 			req = req.WithContext(namespace.RootContext(nil))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
-			lreq, _, status, err := buildLogicalRequest(core, nil, req)
+			lreq, status, err := buildLogicalRequest(core, nil, req)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -188,12 +188,12 @@ them, optional commands to run, etc.
   spec. Also available as a command-line option (`-run-as-same-user`) or
   environment variable (`AGENT_INJECT_RUN_AS_SAME_USER`). Defaults to `false`.
 
-:::warning
+  :::warning
 
- **Note**: If the first application container in the pod is running as root
+  **Note**: If the first application container in the pod is running as root
   (uid 0), the `run-as-same-user` annotation will fail injection with an error.
 
-:::
+  :::
 
 - `openbao.openbao.org/agent-share-process-namespace` - sets
   [shareProcessNamespace] in the Pod spec where OpenBao Agent is injected.

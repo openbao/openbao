@@ -2163,7 +2163,7 @@ func (ts *TokenStore) handleCreateAgainstRole(ctx context.Context, req *logical.
 		return nil, err
 	}
 	if roleEntry == nil {
-		return logical.ErrorResponse(fmt.Sprintf("unknown role %s", name)), nil
+		return logical.ErrorResponse("unknown role %s", name), nil
 	}
 
 	return ts.handleCreateCommon(ctx, req, d, false, roleEntry)
@@ -2746,7 +2746,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		case logical.TokenTypeBatch:
 			tokenTypeStr = logical.TokenTypeBatch.String()
 		default:
-			return logical.ErrorResponse(fmt.Sprintf("role being used for token creation contains invalid token type %q", role.TokenType.String())), nil
+			return logical.ErrorResponse("role being used for token creation contains invalid token type %q", role.TokenType.String()), nil
 		}
 	}
 
@@ -2762,7 +2762,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		case explicitMaxTTL != "":
 			dur, err := parseutil.ParseDurationSecond(explicitMaxTTL)
 			if err != nil {
-				return logical.ErrorResponse(`"explicit_max_ttl" value could not be parsed`), nil
+				return logical.ErrorResponse("'explicit_max_ttl' value could not be parsed"), nil
 			}
 			if dur != 0 {
 				badReason = "explicit_max_ttl"
@@ -2772,14 +2772,14 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		case period != "":
 			dur, err := parseutil.ParseDurationSecond(period)
 			if err != nil {
-				return logical.ErrorResponse(`"period" value could not be parsed`), nil
+				return logical.ErrorResponse("'period' value could not be parsed"), nil
 			}
 			if dur != 0 {
 				badReason = "period"
 			}
 		}
 		if badReason != "" {
-			return logical.ErrorResponse(fmt.Sprintf("batch tokens cannot have %q set", badReason)), nil
+			return logical.ErrorResponse("batch tokens cannot have %q set", badReason), nil
 		}
 		tokenType = logical.TokenTypeBatch
 		renewable = false
@@ -2976,7 +2976,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 				for _, finalPolicy := range finalPolicies {
 					if !slices.Contains(sanitizedRolePolicies, finalPolicy) &&
 						!strutil.StrListContainsGlob(sanitizedRolePoliciesGlob, finalPolicy) {
-						return logical.ErrorResponse(fmt.Sprintf("token policies (%q) must be subset of the role's allowed policies (%q) or glob policies (%q)", finalPolicies, sanitizedRolePolicies, sanitizedRolePoliciesGlob)), logical.ErrInvalidRequest
+						return logical.ErrorResponse("token policies (%q) must be subset of the role's allowed policies (%q) or glob policies (%q)", finalPolicies, sanitizedRolePolicies, sanitizedRolePoliciesGlob), logical.ErrInvalidRequest
 					}
 				}
 			}
@@ -2996,7 +2996,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 			for _, finalPolicy := range finalPolicies {
 				if slices.Contains(sanitizedRolePolicies, finalPolicy) ||
 					strutil.StrListContainsGlob(sanitizedRolePoliciesGlob, finalPolicy) {
-					return logical.ErrorResponse(fmt.Sprintf("token policy %q is disallowed by this role", finalPolicy)), logical.ErrInvalidRequest
+					return logical.ErrorResponse("token policy %q is disallowed by this role", finalPolicy), logical.ErrInvalidRequest
 				}
 			}
 		}
@@ -3049,7 +3049,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	// Prevent internal policies from being assigned to tokens
 	for _, policy := range te.Policies {
 		if slices.Contains(nonAssignablePolicies, policy) {
-			return logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", policy)), nil
+			return logical.ErrorResponse("cannot assign policy %q", policy), nil
 		}
 	}
 
@@ -3276,7 +3276,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	for _, p := range te.Policies {
 		policy, err := ts.core.policyStore.GetPolicy(ctx, p, PolicyTypeToken)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("could not look up policy %s", p)), nil
+			return logical.ErrorResponse("could not look up policy %s", p), nil
 		}
 		if policy == nil {
 			resp.AddWarning(fmt.Sprintf("Policy %q does not exist", p))
@@ -3735,9 +3735,9 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 			case pathSuffix != "":
 				matched := pathSuffixSanitize.MatchString(pathSuffix)
 				if !matched {
-					return logical.ErrorResponse(fmt.Sprintf(
+					return logical.ErrorResponse(
 						"given role path suffix contains invalid characters; must match %s",
-						pathSuffixSanitize.String())), nil
+						pathSuffixSanitize.String()), nil
 				}
 			}
 			entry.PathSuffix = pathSuffix
@@ -3746,7 +3746,7 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 		}
 
 		if strings.Contains(entry.PathSuffix, "..") {
-			return logical.ErrorResponse(fmt.Sprintf("error registering path suffix: %s", consts.ErrPathContainsParentReferences)), nil
+			return logical.ErrorResponse("error registering path suffix: %s", consts.ErrPathContainsParentReferences), nil
 		}
 
 		allowedPoliciesRaw, ok := data.GetOk("allowed_policies")
@@ -3812,7 +3812,7 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 		case "default-batch":
 			entry.TokenType = logical.TokenTypeDefaultBatch
 		default:
-			return logical.ErrorResponse(fmt.Sprintf("invalid 'token_type' value %q", *tokenTypeStr)), nil
+			return logical.ErrorResponse("invalid 'token_type' value %q", *tokenTypeStr), nil
 		}
 	}
 

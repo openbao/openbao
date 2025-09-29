@@ -277,7 +277,7 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 	}
 
 	if group.Type != groupTypeInternal && group.Type != groupTypeExternal {
-		return logical.ErrorResponse(fmt.Sprintf("invalid group type %q", group.Type)), nil
+		return logical.ErrorResponse("invalid group type %q", group.Type), nil
 	}
 
 	// Get the name
@@ -303,7 +303,7 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 
 	metadata, ok, err := d.GetOkErr("metadata")
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("failed to parse metadata: %v", err)), nil
+		return logical.ErrorResponse("failed to parse metadata: %v", err), nil
 	}
 	if ok {
 		group.Metadata = metadata.(map[string]string)

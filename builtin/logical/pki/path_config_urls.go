@@ -284,23 +284,19 @@ func (b *backend) pathWriteURL(ctx context.Context, req *logical.Request, data *
 		}
 	} else if !entries.EnableTemplating {
 		if badURL := validateURLs(entries.IssuingCertificates); badURL != "" {
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid URL found in Authority Information Access (AIA) parameter issuing_certificates: %s", badURL)), nil
+			return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter issuing_certificates: %s", badURL), nil
 		}
 
 		if badURL := validateURLs(entries.CRLDistributionPoints); badURL != "" {
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid URL found in Authority Information Access (AIA) parameter crl_distribution_points: %s", badURL)), nil
+			return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter crl_distribution_points: %s", badURL), nil
 		}
 
 		if badURL := validateURLs(entries.DeltaCRLDistributionPoints); badURL != "" {
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid URL found in Authority Information Access (AIA) parameter delta_crl_distribution_points: %s", badURL)), nil
+			return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter delta_crl_distribution_points: %s", badURL), nil
 		}
 
 		if badURL := validateURLs(entries.OCSPServers); badURL != "" {
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid URL found in Authority Information Access (AIA) parameter ocsp_servers: %s", badURL)), nil
+			return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter ocsp_servers: %s", badURL), nil
 		}
 	}
 

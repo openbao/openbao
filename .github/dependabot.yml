@@ -5,16 +5,37 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+    cooldown:
+      default-days: 3
+      semver-patch-days: 7
+
   - package-ecosystem: "github-actions"
     directories:
       - "/"
       - "/.github/actions/*"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+    cooldown:
+      default-days: 3
+      semver-patch-days: 7
+
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+    cooldown:
+      default-days: 3
+      semver-patch-days: 7
+
   - package-ecosystem: "npm"
     directory: "/ui"
     schedule:
@@ -23,6 +44,13 @@ updates:
       - dependencies
       - javascript
       - ui
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+    cooldown:
+      default-days: 3
+      semver-patch-days: 7
+
   - package-ecosystem: "npm"
     directory: "/website"
     schedule:
@@ -35,3 +63,8 @@ updates:
       docusaurus:
         patterns:
           - "@docusaurus/*"
+    cooldown:
+      default-days: 5
+      semver-patch-days: 7
+      semver-minor-days: 14
+      semver-major-days: 30

@@ -2338,9 +2338,6 @@ func (readonlyUnsealStrategy) unseal(
 ) error {
 	c.logger.Debug("read-only unseal starting")
 
-	if err := postUnsealPhysical(c); err != nil {
-		return err
-	}
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
@@ -2383,6 +2380,9 @@ func (readonlyUnsealStrategy) unseal(
 	if err := c.setupAudits(ctx); err != nil {
 		return err
 	}
+	// Adding new audit devices only occurs on the active node. Standby nodes
+	// will consume audit devices from storage only, but we want to run this
+	// from startup anyways to report any discrepancies.
 	if err := c.handleAuditLogSetup(ctx); err != nil {
 		return err
 	}

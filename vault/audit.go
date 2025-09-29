@@ -667,9 +667,6 @@ func (c *Core) ReloadAuditLogs() {
 	if c.Sealed() {
 		return
 	}
-	if c.standby {
-		return
-	}
 
 	if err := c.handleAuditLogSetup(c.activeContext); err != nil {
 		c.logger.Error("failed to set up audit logs on reload", "error", err)
@@ -737,6 +734,11 @@ func (c *Core) handleAuditLogSetup(ctx context.Context) error {
 			continue
 		}
 
+		if c.standby {
+			c.logger.Warn("audit device present in storage but not standby node configuration", "path", auditMount.Path)
+			continue
+		}
+
 		c.logger.Info("disabling removed audit device", "path", auditMount.Path)
 		if existed, err := c.disableAudit(ctx, auditMount.Path, true); existed && err != nil {
 			return fmt.Errorf("failed to disable removed audit %v: %w", auditMount.Path, err)
@@ -747,6 +749,11 @@ func (c *Core) handleAuditLogSetup(ctx context.Context) error {
 }
 
 func (c *Core) addAuditFromConfig(ctx context.Context, auditConfig *server.AuditDevice) error {
+	if c.standby {
+		c.logger.Warn("audit device present in local configuration but not in the configuration of the active node", "path", auditConfig.Path)
+		return nil
+	}
+
 	c.logger.Info("adding new audit device", "path", auditConfig.Path)
 
 	me := &MountEntry{

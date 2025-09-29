@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -35,7 +36,7 @@ func testCore_Invalidate_sneakValueAroundCache(t *testing.T, c *Core, entry *log
 
 func testCore_Invalidate_handleRequest(t testing.TB, ctx context.Context, c *Core, req *logical.Request) *logical.Response {
 	resp, err := c.HandleRequest(ctx, req)
-	require.NoError(t, err)
+	require.NoError(t, err, "response: %#v", resp)
 	require.NoError(t, resp.Error())
 
 	return resp
@@ -248,7 +249,9 @@ func TestCore_Invalidate_Plugin(t *testing.T) {
 
 func TestCore_Invalidate_Audit(t *testing.T) {
 	t.Parallel()
-	c, _, root := TestCoreUnsealed(t)
+	c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true, AllowAuditLogPrefixing: true},
+	})
 
 	// 1. Inject a dummy audit factory
 	var callCount atomic.Int32

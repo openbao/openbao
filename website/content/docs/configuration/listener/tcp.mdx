@@ -119,12 +119,12 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
   `/sys/rekey-recovery-key/*`). These are a security risk to leave exposed on
   public listeners.
 
-:::warning
+  :::warning
 
-**In OpenBao v2.4.0, this parameter will default to true, forbidding any calls
-to the unauthenticated rekey endpoints. This will be a breaking change.
+  In OpenBao v2.4.0, this parameter will default to true, forbidding any calls
+  to the unauthenticated rekey endpoints. This will be a breaking change.
 
-:::
+  :::
 
 - `tls_disable` `(string: "false")` – Specifies if TLS will be disabled. OpenBao
   assumes TLS by default, so you must explicitly disable TLS to opt-in to
@@ -149,50 +149,49 @@ to the unauthenticated rekey endpoints. This will be a breaking change.
 - `tls_min_version` `(string: "tls12")` – Specifies the minimum supported
   version of TLS. Accepted values are "tls10", "tls11", "tls12" or "tls13".
 
-:::warning
+  :::warning
 
- **Warning**: TLS 1.1 and lower (`tls10` and `tls11` values for the
+  **Warning**: TLS 1.1 and lower (`tls10` and `tls11` values for the
   `tls_min_version` and `tls_max_version` parameters) are widely considered
   insecure.
 
-:::
+  :::
 
 - `tls_max_version` `(string: "tls13")` – Specifies the maximum supported
   version of TLS. Accepted values are "tls10", "tls11", "tls12" or "tls13".
 
-:::warning
+  :::warning
 
-**Warning**: TLS 1.1 and lower (`tls10` and `tls11` values for the
+  **Warning**: TLS 1.1 and lower (`tls10` and `tls11` values for the
   `tls_min_version` and `tls_max_version` parameters) are widely considered
   insecure.
 
-:::
+  :::
 
 - `tls_cipher_suites` `(string: "")` – Specifies the list of supported
   ciphersuites as a comma-separated-list. The list of all available ciphersuites
   is available in the [Golang TLS documentation][golang-tls].
 
-:::warning
+  :::warning
 
- **Note**: Go only consults the `tls_cipher_suites` list for TLSv1.2 and
+  **Note**: Go only consults the `tls_cipher_suites` list for TLSv1.2 and
   earlier; the order of ciphers is not important. For this parameter to be
   effective, the `tls_max_version` property must be set to `tls12` to prevent
   negotiation of TLSv1.3, which is not recommended. For more information about
   this and other TLS related changes, see the [Go TLS blog post][go-tls-blog].
 
-:::
+  :::
 
 - `tls_prefer_server_cipher_suites` `(string: "false")` – Specifies to prefer the
   server's ciphersuite over the client ciphersuites.
 
-:::warning
+  :::warning
 
- **Warning**: The `tls_prefer_server_cipher_suites` parameter is
-  deprecated. Setting it has no effect. See the above
-  [Go blog post][go-tls-blog] for more information about
-  this change.
+  **Warning**: The `tls_prefer_server_cipher_suites` parameter is deprecated.
+  Setting it has no effect. See the above [Go blog post][go-tls-blog] for more
+  information about this change.
 
-:::
+  :::
 
 - `tls_require_and_verify_client_cert` `(string: "false")` – Turns on client
   authentication for this listener; the listener will require a presented
@@ -205,11 +204,15 @@ to the unauthenticated rekey endpoints. This will be a breaking change.
   authentication for this listener. The default behavior (when this is false)
   is for OpenBao to request client certificates when available.
 
-:::warning
+  :::warning
 
- **Warning**: The `tls_disable_client_certs` and `tls_require_and_verify_client_cert` fields in the listener stanza of the OpenBao server configuration are mutually exclusive fields. Please ensure they are not both set to true. TLS client verification remains optional with default settings and is not enforced.
+  **Warning**: The `tls_disable_client_certs` and
+  `tls_require_and_verify_client_cert` fields in the listener stanza of the
+  OpenBao server configuration are mutually exclusive fields. Please ensure they
+  are not both set to true. TLS client verification remains optional with
+  default settings and is not enforced.
 
-:::
+  :::
 
 - `x_forwarded_for_authorized_addrs` `(string: <required-to-enable>)` –
   Specifies the list of source IP CIDRs for which an X-Forwarded-For header
@@ -273,18 +276,18 @@ in the root of the TCP listener configuration.
 - `tls_acme_domains` `([]string: nil)` - An optional but strongly recommended
   allow-list of domains to allow acquiring certificates for.
 
-:::warning
+  :::warning
 
-Failing to specify `tls_acme_domains` on a publicly listening server issuing
-against a publicly trusted CA will allow anyone (including an attacker) to
-point arbitrary DNS names at your server. This will allow them to force you
-to request additional certificates from your CA, thereby counting against
-your quotas and potentially incurring cost on a paid CA offering.
+  Failing to specify `tls_acme_domains` on a publicly listening server issuing
+  against a publicly trusted CA will allow anyone (including an attacker) to
+  point arbitrary DNS names at your server. This will allow them to force you to
+  request additional certificates from your CA, thereby counting against your
+  quotas and potentially incurring cost on a paid CA offering.
 
-It is thus strongly recommended you specify `tls_acme_domains` if ACME is
-enabled.
+  It is thus strongly recommended you specify `tls_acme_domains` if ACME is
+  enabled.
 
-:::
+  :::
 
 - `tls_acme_disable_http_challenge` `(bool: false)` - An optional but strongly
   recommended option to allow disabling HTTP challenges. Use of this method

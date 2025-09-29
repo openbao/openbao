@@ -545,7 +545,6 @@ const sidebars: SidebarsConfig = {
                     ],
                 },
             ],
-            FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },
         "glossary",
     ],

@@ -299,15 +299,11 @@ func (w *copyResponseWriter) WriteHeader(code int) {
 
 func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origBody := new(bytes.Buffer)
-		reader := io.NopCloser(io.TeeReader(r.Body, origBody))
-		r.Body = reader
-		req, _, status, err := buildLogicalRequestNoAuth(w, r)
+		req, status, err := buildLogicalRequestNoAuth(w, r)
 		if err != nil || status != 0 {
 			respondError(w, status, err)
 			return
 		}
-		r.Body = io.NopCloser(origBody)
 		input := &logical.LogInput{
 			Request: req,
 		}
@@ -727,27 +723,31 @@ func parseQuery(values url.Values) map[string]interface{} {
 	return nil
 }
 
-func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) (io.ReadCloser, error) {
+func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) error {
 	ctx := r.Context()
 
-	origBody := new(bytes.Buffer)
-	reader := io.NopCloser(io.TeeReader(r.Body, origBody))
-	newReader, _, _, err := NewSafeJSONReader(ctx, reader)
+	// Enforce limits on JSON complexity.
+	_, _, err := EnforceJSONComplexityLimits(ctx, r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to limit JSON input: %w", err)
+		return fmt.Errorf("failed to limit JSON input: %w", err)
 	}
-	reader = io.NopCloser(newReader)
 
-	err = jsonutil.DecodeJSONFromReader(reader, out)
+	// Reset to the beginning.
+	if err := resetBody(r); err != nil {
+		return fmt.Errorf("failed to reset body: %w", err)
+	}
+
+	err = jsonutil.DecodeJSONFromReader(r.Body, out)
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("failed to parse JSON input: %w", err)
+		return fmt.Errorf("failed to parse JSON input: %w", err)
 	}
 
-	if err == nil {
-		r.Body = io.NopCloser(origBody)
+	// Reset to the beginning again.
+	if err := resetBody(r); err != nil {
+		return fmt.Errorf("failed to reset body: %w", err)
 	}
 
-	return io.NopCloser(origBody), err
+	return err
 }
 
 // parseFormRequest parses values from a form POST.
@@ -790,6 +790,12 @@ func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handle
 }
 
 func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
+	// Reset our body before forwarding to ensure an accurate location.
+	if err := resetBody(r); err != nil {
+		respondStandby(core, w, r.URL)
+		return
+	}
+
 	if r.Header.Get(vault.IntNoForwardingHeaderName) != "" {
 		respondStandby(core, w, r.URL)
 		return

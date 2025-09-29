@@ -6,7 +6,6 @@ package vault
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/openbao/openbao/helper/identity"
@@ -234,10 +233,10 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 	{
 		mountEntry := i.router.MatchingMountByAccessor(mountAccessor)
 		if mountEntry == nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid mount accessor %q", mountAccessor)), nil
+			return logical.ErrorResponse("invalid mount accessor %q", mountAccessor), nil
 		}
 		if mountEntry.Local {
-			return logical.ErrorResponse(fmt.Sprintf("mount accessor %q is a local mount", mountAccessor)), nil
+			return logical.ErrorResponse("mount accessor %q is a local mount", mountAccessor), nil
 		}
 		if mountEntry.NamespaceID != groupAlias.NamespaceID {
 			return logical.ErrorResponse("mount referenced via 'mount_accessor' not in the same namespace as alias"), logical.ErrPermissionDenied

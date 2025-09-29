@@ -91,7 +91,7 @@ func (b *backend) pathCreateCSRWrite(ctx context.Context, req *logical.Request, 
 		return nil, err
 	}
 	if policy == nil {
-		return logical.ErrorResponse(fmt.Sprintf("key with provided name '%s' not found", name)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("key with provided name '%s' not found", name), logical.ErrInvalidRequest
 	}
 
 	if !b.System().CachingDisabled() {
@@ -171,7 +171,7 @@ func (b *backend) pathImportCertChainWrite(ctx context.Context, req *logical.Req
 		return nil, err
 	}
 	if policy == nil {
-		return logical.ErrorResponse(fmt.Sprintf("key with provided name '%s' not found", name)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("key with provided name '%s' not found", name), logical.ErrInvalidRequest
 	}
 
 	if !b.System().CachingDisabled() {
@@ -181,7 +181,7 @@ func (b *backend) pathImportCertChainWrite(ctx context.Context, req *logical.Req
 
 	// check if transit key supports signing
 	if !policy.Type.SigningSupported() {
-		return logical.ErrorResponse(fmt.Sprintf("key type '%s' does not support signing", policy.Type)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("key type '%s' does not support signing", policy.Type), logical.ErrInvalidRequest
 	}
 
 	// check if key can be derived

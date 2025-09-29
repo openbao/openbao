@@ -53,10 +53,7 @@ func addEnterpriseHaActorsNoop(*Core, *run.Group) chan func() { return nil }
 
 // Standby checks if the Vault is in standby mode
 func (c *Core) Standby() (bool, error) {
-	c.stateLock.RLock()
-	standby := c.standby
-	c.stateLock.RUnlock()
-	return standby, nil
+	return c.standby.Load(), nil
 }
 
 func (c *Core) ActiveTime() time.Time {
@@ -69,10 +66,7 @@ func (c *Core) ActiveTime() time.Time {
 // StandbyStates is meant as a way to avoid some extra locking on the very
 // common sys/health check.
 func (c *Core) StandbyStates() (standby bool) {
-	c.stateLock.RLock()
-	standby = c.standby
-	c.stateLock.RUnlock()
-	return standby
+	return c.standby.Load()
 }
 
 // getHAMembers retrieves cluster membership that doesn't depend on raft. This should only ever be called by the
@@ -150,7 +144,7 @@ func (c *Core) LeaderLocked() (isLeader bool, leaderAddr, clusterAddr string, er
 	}
 
 	// Check if we are the leader
-	if !c.standby {
+	if !c.standby.Load() {
 		return true, c.redirectAddr, c.ClusterAddr(), nil
 	}
 
@@ -278,7 +272,7 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 	if c.Sealed() {
 		return nil
 	}
-	if c.ha == nil || c.standby {
+	if c.ha == nil || c.standby.Load() {
 		return nil
 	}
 
@@ -388,6 +382,14 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 	return retErr
 }
 
+func (c *Core) stopStandby() {
+	select {
+	case c.standbyStopCh.Load().(chan struct{}) <- struct{}{}:
+	default:
+		c.logger.Warn("ignoring standby stop request: stop is already in progress")
+	}
+}
+
 func (c *Core) restart() {
 	select {
 	case c.restartCh <- struct{}{}:
@@ -406,6 +408,58 @@ func (c *Core) drainPendingRestarts() {
 			return
 		}
 	}
+}
+
+func (c *Core) runStandbyGrabStateLock(stopCh <-chan struct{}) error {
+	acquiredCh := make(chan struct{})
+	quitCh := make(chan struct{})
+
+	// We want to quit lock acquisition on two conditions:
+	//
+	// 1. Timeout.
+	// 2. If we're told to stop.
+	//
+	// While technically unnecessary, we only quit lock acquisition
+	// if we've not been canceled.
+	go func() {
+		timeout := time.NewTimer(DefaultMaxRequestDuration)
+
+		canceled := false
+		select {
+		case <-timeout.C:
+			canceled = true
+		case <-stopCh:
+			canceled = true
+		case <-acquiredCh:
+		}
+
+		if !timeout.Stop() {
+			<-timeout.C
+		}
+
+		if canceled {
+			select {
+			case quitCh <- struct{}{}:
+			default:
+			}
+		}
+
+		close(quitCh)
+	}()
+
+	// Grab lock.
+	l := newLockGrabber(c.stateLock.Lock, c.stateLock.Unlock, quitCh)
+	go l.grab()
+
+	// Check if we got the lock successfully.
+	stopped := l.lockOrStop()
+	if stopped {
+		return fmt.Errorf("failed to acquire state lock")
+	}
+
+	close(acquiredCh)
+
+	return nil
 }
 
 // runStandby is a long running process that manages a number of the HA
@@ -430,7 +484,11 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 		c.logger.Info("entering standby mode")
 		restart = false
 
-		c.stateLock.Lock()
+		if err := c.runStandbyGrabStateLock(stopCh); err != nil {
+			c.logger.Error("runStandby: unable to grab state lock", "err", err)
+			return
+		}
+
 		// wipe any existing mount tables
 		if err := c.preSeal(); err != nil {
 			c.logger.Error("pre-seal teardown failed", "error", err)
@@ -701,7 +759,7 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		// Attempt the post-unseal process
 		err = c.postUnseal(activeCtx, activeCtxCancel, standardUnsealStrategy{})
 		if err == nil {
-			c.standby = false
+			c.standby.Store(false)
 			c.leaderUUID = uuid
 			c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 1, nil)
 		}
@@ -752,7 +810,7 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			metrics.MeasureSince([]string{"core", "leadership_lost"}, activeTime)
 
 			// Mark as standby
-			c.standby = true
+			c.standby.Store(true)
 			c.leaderUUID = ""
 			c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 0, nil)
 
@@ -946,9 +1004,7 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 				lopCount := opCount
 
 				// Only check if we are a standby
-				c.stateLock.RLock()
-				standby := c.standby
-				c.stateLock.RUnlock()
+				standby := c.standby.Load()
 				if !standby {
 					atomic.AddInt32(lopCount, -1)
 					return

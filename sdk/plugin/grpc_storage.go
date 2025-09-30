@@ -235,7 +235,10 @@ type GRPCStorageServer struct {
 
 func (s *GRPCStorageServer) List(ctx context.Context, args *pb.StorageListArgs) (*pb.StorageListReply, error) {
 	impl := s.impl
-	if args != nil && args.Txn != "" {
+	if args == nil {
+		return nil, errors.New("args is nil so far")
+	}
+	if args.Txn != "" {
 		implRaw, ok := s.txns.Load(args.Txn)
 		if ok {
 			impl = implRaw.(logical.Storage)
@@ -255,7 +258,10 @@ func (s *GRPCStorageServer) List(ctx context.Context, args *pb.StorageListArgs) 
 
 func (s *GRPCStorageServer) ListPage(ctx context.Context, args *pb.StorageListPageArgs) (*pb.StorageListReply, error) {
 	impl := s.impl
-	if args != nil && args.Txn != "" {
+	if args == nil {
+		return nil, errors.New("args is nil so far")
+	}
+	if args.Txn != "" {
 		implRaw, ok := s.txns.Load(args.Txn)
 		if ok {
 			impl = implRaw.(logical.Storage)
@@ -275,7 +281,10 @@ func (s *GRPCStorageServer) ListPage(ctx context.Context, args *pb.StorageListPa
 
 func (s *GRPCStorageServer) Get(ctx context.Context, args *pb.StorageGetArgs) (*pb.StorageGetReply, error) {
 	impl := s.impl
-	if args != nil && args.Txn != "" {
+	if args == nil {
+		return nil, errors.New("args is nil so far")
+	}
+	if args.Txn != "" {
 		implRaw, ok := s.txns.Load(args.Txn)
 		if ok {
 			impl = implRaw.(logical.Storage)
@@ -301,7 +310,10 @@ func (s *GRPCStorageServer) Get(ctx context.Context, args *pb.StorageGetArgs) (*
 
 func (s *GRPCStorageServer) Put(ctx context.Context, args *pb.StoragePutArgs) (*pb.StoragePutReply, error) {
 	impl := s.impl
-	if args != nil && args.Txn != "" {
+	if args == nil {
+		return nil, errors.New("args is nil so far")
+	}
+	if args.Txn != "" {
 		implRaw, ok := s.txns.Load(args.Txn)
 		if ok {
 			impl = implRaw.(logical.Storage)
@@ -320,7 +332,10 @@ func (s *GRPCStorageServer) Put(ctx context.Context, args *pb.StoragePutArgs) (*
 
 func (s *GRPCStorageServer) Delete(ctx context.Context, args *pb.StorageDeleteArgs) (*pb.StorageDeleteReply, error) {
 	impl := s.impl
-	if args != nil && args.Txn != "" {
+	if args == nil {
+		return nil, errors.New("args is nil so far")
+	}
+	if args.Txn != "" {
 		implRaw, ok := s.txns.Load(args.Txn)
 		if ok {
 			impl = implRaw.(logical.Storage)

@@ -217,6 +217,10 @@ func (ah *AuthHandler) Run(ctx context.Context, am AuthMethod) error {
 			clientToUse = ah.client
 		}
 
+		if clientToUse == nil {
+			return errors.New("clientToUse is nil so far")
+		}
+
 		// Disable retry on the client to ensure our backoffOrQuit function is
 		// the only source of retry/backoff.
 		clientToUse.SetMaxRetries(0)

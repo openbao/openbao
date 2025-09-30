@@ -2133,9 +2133,13 @@ func (m *ExpirationManager) createIndexByToken(ctx context.Context, le *leaseEnt
 		Value: []byte(le.LeaseID),
 	}
 
+	if tokenNS == nil {
+		return namespace.ErrNoNamespace
+	}
 	if err := m.tokenIndexView(tokenNS).Put(ctx, &ent); err != nil {
 		return fmt.Errorf("failed to persist lease index entry: %w", err)
 	}
+
 	return nil
 }
 
@@ -2165,6 +2169,9 @@ func (m *ExpirationManager) indexByToken(ctx context.Context, le *leaseEntry) (*
 		return nil, err
 	}
 
+	if tokenNS == nil {
+		return nil, namespace.ErrNoNamespace
+	}
 	key := saltedID + "/" + leaseSaltedID
 	entry, err := m.tokenIndexView(tokenNS).Get(ctx, key)
 	if err != nil {
@@ -2199,6 +2206,9 @@ func (m *ExpirationManager) removeIndexByToken(ctx context.Context, le *leaseEnt
 		return err
 	}
 
+	if tokenNS == nil {
+		return namespace.ErrNoNamespace
+	}
 	key := saltedID + "/" + leaseSaltedID
 	if err := m.tokenIndexView(tokenNS).Delete(ctx, key); err != nil {
 		return fmt.Errorf("failed to delete lease index entry: %w", err)

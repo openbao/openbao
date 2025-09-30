@@ -461,7 +461,9 @@ func (b *jwtAuthBackend) processToken(ctx context.Context, req *logical.Request,
 
 	resp := &logical.Response{}
 	if useHttp {
-		oidcReq.auth = auth
+		if oidcReq != nil {
+			oidcReq.auth = auth
+		}
 		b.setOIDCRequest(stateID, oidcReq)
 		resp.Data = map[string]interface{}{
 			logical.HTTPContentType: "text/html",

@@ -99,6 +99,7 @@ func migrateStorage(ctx context.Context, b *backend, s logical.Storage) error {
 		// 3. When we have a log and the version is at least 1 (where this
 		//    migration was introduced), we want to run the migration again
 		//    only if the legacy bundle hash has changed.
+		// nolint:DEREF_AFTER_NULL.EX
 		isCurrentOrBetterVersion := !haveNoLog && migrationInfo.migrationLog.MigrationVersion >= 1
 		haveChange := !haveNoLog && migrationInfo.migrationLog.Hash != migrationInfo.legacyBundleHash
 		haveVersionWithChange := isCurrentOrBetterVersion && haveChange

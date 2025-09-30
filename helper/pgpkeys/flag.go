@@ -21,7 +21,10 @@ type PubKeyFileFlag string
 func (p *PubKeyFileFlag) String() string { return string(*p) }
 
 func (p *PubKeyFileFlag) Set(val string) error {
-	if p != nil && *p != "" {
+	if p == nil {
+		return errors.New("PubKeyFileFlag pointer is nil so far")
+	}
+	if *p != "" {
 		return errors.New("can only be specified once")
 	}
 

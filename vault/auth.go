@@ -728,6 +728,10 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 			c.logger.Info("migrating legacy mount table to transactional layout")
 			needPersist = true
 		}
+
+		if raw == nil {
+			return false, errors.New("raw is nil so far")
+		}
 		c.tableMetrics(len(c.auth.Entries), false, true, len(raw.Value))
 	}
 	if rawLocal != nil {

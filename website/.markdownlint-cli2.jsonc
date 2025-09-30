@@ -28,7 +28,7 @@
     "commands-show-output": false,
     "no-trailing-punctuation": false,
 
-    // "Parmanent" config
+    // "Permanent" config
     "first-line-h1": false, // to support partials
     "no-inline-html": false, // this is fine with mdx/Docusaurus
     "no-bare-urls": false, // some markdown parsers don't support this, our does so ignore it

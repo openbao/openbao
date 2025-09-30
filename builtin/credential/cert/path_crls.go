@@ -15,7 +15,6 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
-	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -248,20 +247,25 @@ func (b *backend) pathCRLRead(ctx context.Context, req *logical.Request, d *fram
 	b.crlUpdateMutex.RLock()
 	defer b.crlUpdateMutex.RUnlock()
 
-	var retData map[string]interface{}
-
 	crl, ok := b.crls[name]
 	if !ok {
-		return logical.ErrorResponse(fmt.Sprintf(
-			"no such CRL %s", name,
-		)), nil
+		return logical.ErrorResponse("no such CRL %s", name), nil
 	}
 
-	retData = structtomap.Map(&crl)
+	data := make(map[string]any)
 
-	return &logical.Response{
-		Data: retData,
-	}, nil
+	if len(crl.Serials) > 0 {
+		data["serials"] = crl.Serials
+	}
+
+	if cdp := crl.CDP; cdp != nil {
+		data["cdp"] = map[string]any{
+			"url":         cdp.Url,
+			"valid_until": cdp.ValidUntil,
+		}
+	}
+
+	return &logical.Response{Data: data}, nil
 }
 
 func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

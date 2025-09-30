@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -85,7 +84,10 @@ func (b *backend) pathLeaseRead(ctx context.Context, req *logical.Request, data 
 	lease.MaxTTL = lease.MaxTTL / time.Second
 
 	return &logical.Response{
-		Data: structtomap.Map(lease),
+		Data: map[string]any{
+			"ttl":     lease.TTL,
+			"max_ttl": lease.MaxTTL,
+		},
 	}, nil
 }
 

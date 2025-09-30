@@ -127,11 +127,3 @@ func (c *Sys) DeletePolicyWithContext(ctx context.Context, name string) error {
 	}
 	return err
 }
-
-type getPoliciesResp struct {
-	Rules string `json:"rules"`
-}
-
-type listPoliciesResp struct {
-	Policies []string `json:"policies"`
-}

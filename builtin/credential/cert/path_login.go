@@ -311,7 +311,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 	// This check happens after checking for a matching configured non-CA certs
 	if len(trustedChains) == 0 {
 		if retErr == nil {
-			return nil, logical.ErrorResponse(fmt.Sprintf("invalid certificate or no client certificate supplied; additionally got errors during verification: %v", retErr)), nil
+			return nil, logical.ErrorResponse("invalid certificate or no client certificate supplied; additionally got errors during verification: %v", retErr), nil
 		}
 		return nil, logical.ErrorResponse("invalid certificate or no client certificate supplied"), nil
 	}
@@ -348,7 +348,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 	}
 
 	if retErr != nil {
-		return nil, logical.ErrorResponse(fmt.Sprintf("no chain matching all constraints could be found for this login certificate; additionally got errors during verification: %v", retErr)), nil
+		return nil, logical.ErrorResponse("no chain matching all constraints could be found for this login certificate; additionally got errors during verification: %v", retErr), nil
 	}
 
 	return nil, logical.ErrorResponse("no chain matching all constraints could be found for this login certificate"), nil
@@ -660,15 +660,6 @@ func (b *backend) checkForChainInCRLs(chain []*x509.Certificate) bool {
 
 	}
 	return badChain
-}
-
-func (b *backend) checkForValidChain(chains [][]*x509.Certificate) bool {
-	for _, chain := range chains {
-		if !b.checkForChainInCRLs(chain) {
-			return true
-		}
-	}
-	return false
 }
 
 // parsePEM parses a PEM encoded x509 certificate

@@ -1,0 +1,3 @@
+```release-note:improvement
+transit: Add associated_data parameter to generate data key
+```

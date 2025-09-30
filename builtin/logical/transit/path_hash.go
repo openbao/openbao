@@ -9,7 +9,6 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"hash"
 
 	"golang.org/x/crypto/sha3"
@@ -92,14 +91,14 @@ func (b *backend) pathHashWrite(ctx context.Context, req *logical.Request, d *fr
 
 	input, err := base64.StdEncoding.DecodeString(inputB64)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("unable to decode input as base64: %s", err)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("unable to decode input as base64: %s", err), logical.ErrInvalidRequest
 	}
 
 	switch format {
 	case "hex":
 	case "base64":
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unsupported encoding format %s; must be \"hex\" or \"base64\"", format)), nil
+		return logical.ErrorResponse("unsupported encoding format %s; must be \"hex\" or \"base64\"", format), nil
 	}
 
 	var hf hash.Hash
@@ -121,7 +120,7 @@ func (b *backend) pathHashWrite(ctx context.Context, req *logical.Request, d *fr
 	case "sha3-512":
 		hf = sha3.New512()
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unsupported algorithm %s", algorithm)), nil
+		return logical.ErrorResponse("unsupported algorithm %s", algorithm), nil
 	}
 	hf.Write(input)
 	retBytes := hf.Sum(nil)

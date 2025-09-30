@@ -63,7 +63,7 @@ func (c *Core) RotationThreshold(ctx context.Context, recovery bool) (int, logic
 	}
 
 	if err != nil {
-		return 0, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("unable to look up config: %w", err).Error())
+		return 0, logical.CodedError(http.StatusInternalServerError, "unable to look up config: %v", err)
 	}
 
 	if config == nil {
@@ -102,7 +102,7 @@ func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bo
 	// Initialize the nonce for rotation
 	nonce, err := uuid.GenerateUUID()
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("error generating nonce for procedure: %w", err).Error())
+		return nil, logical.CodedError(http.StatusInternalServerError, "error generating nonce for procedure: %v", err)
 	}
 
 	if recovery {
@@ -120,7 +120,7 @@ func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bo
 		// without creating them at time, then return the keys immediately
 		existingRecoveryConfig, err := c.seal.RecoveryConfig(ctx)
 		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to fetch existing recovery config: %w", err).Error())
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to fetch existing recovery config: %v", err)
 		}
 
 		if existingRecoveryConfig == nil {
@@ -148,7 +148,7 @@ func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bo
 			}
 
 			if err := c.performRecoveryRekey(ctx, newRecoveryKey); err != nil {
-				return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform recovery rotation: %w", err).Error())
+				return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform recovery rotation: %v", err)
 			}
 
 			c.recoveryRotationConfig = nil
@@ -176,7 +176,7 @@ func (c *Core) initRecoveryRotation(config *SealConfig, nonce string) logical.HT
 	// deny the request if it does not pass the validation check
 	if err := config.Validate(); err != nil {
 		c.logger.Error("invalid recovery configuration", "error", err)
-		return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("invalid recovery configuration: %w", err).Error())
+		return logical.CodedError(http.StatusInternalServerError, "invalid recovery configuration: %v", err)
 	}
 
 	if !c.seal.RecoveryKeySupported() {
@@ -225,7 +225,7 @@ func (c *Core) initBarrierRotation(config *SealConfig, nonce string) logical.HTT
 	// Check if the seal configuration is valid
 	if err := config.Validate(); err != nil {
 		c.logger.Error("invalid rotate seal configuration", "error", err)
-		return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("invalid rotate seal configuration: %w", err).Error())
+		return logical.CodedError(http.StatusInternalServerError, "invalid rotate seal configuration: %v", err)
 	}
 
 	c.rotationLock.Lock()
@@ -272,7 +272,7 @@ func (c *Core) UpdateRotation(ctx context.Context, key []byte, nonce string, rec
 	}
 
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to fetch existing config: %w", err).Error())
+		return nil, logical.CodedError(http.StatusInternalServerError, "failed to fetch existing config: %v", err)
 	}
 
 	if config == nil {
@@ -306,7 +306,7 @@ func (c *Core) updateRecoveryRotation(ctx context.Context, config *SealConfig, k
 	// Verify the recovery key
 	if err := c.seal.VerifyRecoveryKey(ctx, recoveryKey); err != nil {
 		c.logger.Error("recovery key verification failed", "error", err)
-		return nil, logical.CodedError(http.StatusBadRequest, fmt.Errorf("recovery key verification failed: %w", err).Error())
+		return nil, logical.CodedError(http.StatusBadRequest, "recovery key verification failed: %v", err)
 	}
 
 	newRecoveryKey, result, err := c.generateKey(c.recoveryRotationConfig, true)
@@ -329,7 +329,7 @@ func (c *Core) updateRecoveryRotation(ctx context.Context, config *SealConfig, k
 	}
 
 	if err := c.performRecoveryRekey(ctx, newRecoveryKey); err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform recovery rotation: %w", err).Error())
+		return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform recovery rotation: %v", err)
 	}
 
 	c.recoveryRotationConfig = nil
@@ -351,7 +351,7 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 	case useRecovery:
 		if err := c.seal.VerifyRecoveryKey(ctx, recoveredKey); err != nil {
 			c.logger.Error("recovery key verification failed", "error", err)
-			return nil, logical.CodedError(http.StatusBadRequest, fmt.Errorf("recovery key verification failed: %w", err).Error())
+			return nil, logical.CodedError(http.StatusBadRequest, "recovery key verification failed: %v", err)
 		}
 	case c.seal.BarrierType() == wrapping.WrapperTypeShamir:
 		if c.seal.StoredKeysSupported() == seal.StoredKeysSupportedShamirRoot {
@@ -360,24 +360,24 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 			testseal.SetCore(c)
 			err := shamirWrapper.SetAesGcmKeyBytes(recoveredKey)
 			if err != nil {
-				return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to setup unseal key: %w", err).Error())
+				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup unseal key: %v", err)
 			}
 
 			cfg, err := c.seal.BarrierConfig(ctx)
 			if err != nil {
-				return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to setup test barrier config: %w", err).Error())
+				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup test barrier config: %v", err)
 			}
 			testseal.SetCachedBarrierConfig(cfg)
 
 			stored, err := testseal.GetStoredKeys(ctx)
 			if err != nil {
-				return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to read root key: %w", err).Error())
+				return nil, logical.CodedError(http.StatusInternalServerError, "failed to read root key: %v", err)
 			}
 			recoveredKey = stored[0]
 		}
 		if err := c.barrier.VerifyRoot(recoveredKey); err != nil {
 			c.logger.Error("root key verification failed", "error", err)
-			return nil, logical.CodedError(http.StatusBadRequest, fmt.Errorf("root key verification failed: %w", err).Error())
+			return nil, logical.CodedError(http.StatusBadRequest, "root key verification failed: %v", err)
 		}
 	}
 
@@ -404,7 +404,7 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 	}
 
 	if err := c.performBarrierRekey(ctx, newKey); err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to rotate barrier key: %w", err).Error())
+		return nil, logical.CodedError(http.StatusInternalServerError, "failed to rotate barrier key: %v", err)
 	}
 
 	c.rootRotationConfig = nil
@@ -415,11 +415,11 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 // enough shares to recover the key.
 func (c *Core) progressRotation(rotationConfig, existingConfig *SealConfig, key []byte, nonce string) ([]byte, logical.HTTPCodedError) {
 	if len(rotationConfig.VerificationKey) > 0 {
-		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("rotation already finished; verification must be performed; nonce for the verification operation is %q", rotationConfig.VerificationNonce))
+		return nil, logical.CodedError(http.StatusBadRequest, "rotation already finished; verification must be performed; nonce for the verification operation is %q", rotationConfig.VerificationNonce)
 	}
 
 	if nonce != rotationConfig.Nonce {
-		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("incorrect nonce supplied; nonce for rotation is %q", rotationConfig.Nonce))
+		return nil, logical.CodedError(http.StatusBadRequest, "incorrect nonce supplied; nonce for rotation is %q", rotationConfig.Nonce)
 	}
 
 	// Check if we already have this piece
@@ -448,7 +448,7 @@ func (c *Core) progressRotation(rotationConfig, existingConfig *SealConfig, key 
 		var err error
 		recoveredKey, err = shamir.Combine(rotationConfig.RotationProgress)
 		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to compute key: %w", err).Error())
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to compute key: %v", err)
 		}
 	}
 
@@ -462,7 +462,7 @@ func (c *Core) generateKey(rotationConfig *SealConfig, recovery bool) ([]byte, *
 	newKey, err := c.barrier.GenerateKey(c.secureRandomReader)
 	if err != nil {
 		c.logger.Error("failed to generate key", "error", err)
-		return nil, nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("key generation failed: %w", err).Error())
+		return nil, nil, logical.CodedError(http.StatusInternalServerError, "key generation failed: %v", err)
 	}
 
 	result := &RekeyResult{
@@ -479,7 +479,7 @@ func (c *Core) generateKey(rotationConfig *SealConfig, recovery bool) ([]byte, *
 			shares, err := shamir.Split(newKey, rotationConfig.SecretShares, rotationConfig.SecretThreshold)
 			if err != nil {
 				c.logger.Error("failed to generate shares", "error", err)
-				return nil, nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to generate shares: %w", err).Error())
+				return nil, nil, logical.CodedError(http.StatusInternalServerError, "failed to generate shares: %v", err)
 			}
 			result.SecretShares = shares
 		}
@@ -546,7 +546,7 @@ func (c *Core) requireVerification(rotationConfig *SealConfig, rotationResult *R
 	nonce, err := uuid.GenerateUUID()
 	if err != nil {
 		rotationConfig = nil
-		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to generate verification nonce: %w", err).Error())
+		return nil, logical.CodedError(http.StatusInternalServerError, "failed to generate verification nonce: %v", err)
 	}
 	rotationConfig.VerificationNonce = nonce
 	rotationConfig.VerificationKey = newKey
@@ -576,7 +576,7 @@ func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, rec
 	}
 
 	if nonce != config.VerificationNonce {
-		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("incorrect nonce supplied; nonce for this verify operation is %q", config.VerificationNonce))
+		return nil, logical.CodedError(http.StatusBadRequest, "incorrect nonce supplied; nonce for this verify operation is %q", config.VerificationNonce)
 	}
 
 	// Check if we already have this piece
@@ -621,7 +621,7 @@ func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, rec
 		var err error
 		recoveredKey, err = shamir.Combine(config.VerificationProgress)
 		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to compute key for verification: %w", err).Error())
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to compute key for verification: %v", err)
 		}
 	}
 
@@ -632,12 +632,12 @@ func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, rec
 
 	if recovery {
 		if err := c.performRecoveryRekey(ctx, recoveredKey); err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform recovery key rotation: %w", err).Error())
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform recovery key rotation: %v", err)
 		}
 		c.recoveryRotationConfig = nil
 	} else {
 		if err := c.performBarrierRekey(ctx, recoveredKey); err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform barrier key rotation: %w", err).Error())
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform barrier key rotation: %v", err)
 		}
 		c.rootRotationConfig = nil
 	}
@@ -690,7 +690,7 @@ func (c *Core) RetrieveRotationBackup(ctx context.Context, recovery bool) (*Reke
 		entry, err = c.physical.Get(ctx, coreBarrierUnsealKeysBackupPath)
 	}
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("error getting keys from backup: %w", err).Error())
+		return nil, logical.CodedError(http.StatusInternalServerError, "error getting keys from backup: %v", err)
 	}
 	if entry == nil {
 		return nil, nil
@@ -699,7 +699,7 @@ func (c *Core) RetrieveRotationBackup(ctx context.Context, recovery bool) (*Reke
 	ret := &RekeyBackup{}
 	err = jsonutil.DecodeJSON(entry.Value, ret)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("error decoding backup keys: %w", err).Error())
+		return nil, logical.CodedError(http.StatusInternalServerError, "error decoding backup keys: %v", err)
 	}
 
 	return ret, nil
@@ -718,7 +718,7 @@ func (c *Core) DeleteRotationBackup(ctx context.Context, recovery bool) logical.
 	}
 
 	if err != nil {
-		return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("error deleting backup keys: %w", err).Error())
+		return logical.CodedError(http.StatusInternalServerError, "error deleting backup keys: %v", err)
 	}
 	return nil
 }

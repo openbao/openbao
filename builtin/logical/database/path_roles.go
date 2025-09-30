@@ -621,7 +621,7 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 			// If rotation frequency is specified, and this is an update, the value
 			// must be at least that of the queue tick interval (5 seconds at
 			// time of writing), otherwise we wont be able to rotate in time
-			return logical.ErrorResponse(fmt.Sprintf("rotation_period must be %d seconds or more", defaultQueueTickSeconds)), nil
+			return logical.ErrorResponse("rotation_period must be %d seconds or more", defaultQueueTickSeconds), nil
 		}
 		role.StaticAccount.RotationPeriod = time.Duration(rotationPeriodSeconds) * time.Second
 	}

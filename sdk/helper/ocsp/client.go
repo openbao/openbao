@@ -5,16 +5,12 @@ package ocsp
 import (
 	"bytes"
 	"context"
-	"crypto"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/asn1"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
 	"net"
 	"net/http"
 	"net/url"
@@ -51,20 +47,11 @@ const (
 )
 
 const (
-	ocspFailOpenNotSet FailOpenMode = iota
 	// FailOpenTrue represents OCSP fail open mode.
-	FailOpenTrue
+	FailOpenTrue FailOpenMode = iota + 1
 	// FailOpenFalse represents OCSP fail closed mode.
 	FailOpenFalse
 )
-
-const (
-	ocspModeFailOpen   = "FAIL_OPEN"
-	ocspModeFailClosed = "FAIL_CLOSED"
-	ocspModeInsecure   = "INSECURE"
-)
-
-const ocspCacheKey = "ocsp_cache"
 
 const (
 	// defaultOCSPResponderTimeout is the total timeout for OCSP responder.
@@ -115,14 +102,6 @@ const (
 	ocspCacheExpired           ocspStatusCode = -8
 )
 
-// copied from crypto/ocsp.go
-type certID struct {
-	HashAlgorithm pkix.AlgorithmIdentifier
-	NameHash      []byte
-	IssuerKeyHash []byte
-	SerialNumber  *big.Int
-}
-
 // cache key
 type certIDKey struct {
 	NameHash      string
@@ -130,36 +109,8 @@ type certIDKey struct {
 	SerialNumber  string
 }
 
-// copied from crypto/ocsp
-var hashOIDs = map[crypto.Hash]asn1.ObjectIdentifier{
-	crypto.SHA1:   asn1.ObjectIdentifier([]int{1, 3, 14, 3, 2, 26}),
-	crypto.SHA256: asn1.ObjectIdentifier([]int{2, 16, 840, 1, 101, 3, 4, 2, 1}),
-	crypto.SHA384: asn1.ObjectIdentifier([]int{2, 16, 840, 1, 101, 3, 4, 2, 2}),
-	crypto.SHA512: asn1.ObjectIdentifier([]int{2, 16, 840, 1, 101, 3, 4, 2, 3}),
-}
-
-// copied from crypto/ocsp
-func getOIDFromHashAlgorithm(target crypto.Hash) (asn1.ObjectIdentifier, error) {
-	for hash, oid := range hashOIDs {
-		if hash == target {
-			return oid, nil
-		}
-	}
-	return nil, fmt.Errorf("no valid OID is found for the hash algorithm: %v", target)
-}
-
 func (c *Client) ClearCache() {
 	c.ocspResponseCache.Purge()
-}
-
-func (c *Client) getHashAlgorithmFromOID(target pkix.AlgorithmIdentifier) crypto.Hash {
-	for hash, oid := range hashOIDs {
-		if oid.Equal(target.Algorithm) {
-			return hash
-		}
-	}
-	// no valid hash algorithm is found for the oid. Falling back to SHA1
-	return crypto.SHA1
 }
 
 // isInValidityRange checks the validity
@@ -185,28 +136,6 @@ func extractCertIDKeyFromRequest(ocspReq []byte) (*certIDKey, *ocspStatus) {
 	return encodedCertID, &ocspStatus{
 		code: ocspSuccess,
 	}
-}
-
-func (c *Client) encodeCertIDKey(certIDKeyBase64 string) (*certIDKey, error) {
-	r, err := base64.StdEncoding.DecodeString(certIDKeyBase64)
-	if err != nil {
-		return nil, err
-	}
-	var cid certID
-	rest, err := asn1.Unmarshal(r, &cid)
-	if err != nil {
-		// error in parsing
-		return nil, err
-	}
-	if len(rest) > 0 {
-		// extra bytes to the end
-		return nil, err
-	}
-	return &certIDKey{
-		base64.StdEncoding.EncodeToString(cid.NameHash),
-		base64.StdEncoding.EncodeToString(cid.IssuerKeyHash),
-		cid.SerialNumber.String(),
-	}, nil
 }
 
 func (c *Client) checkOCSPResponseCache(encodedCertID *certIDKey, subject, issuer *x509.Certificate) (*ocspStatus, error) {
@@ -748,10 +677,6 @@ func (c *Client) verifyPeerCertificateSerial(conf *VerifyConfig) func(_ [][]byte
 	}
 }
 
-func (c *Client) extractOCSPCacheResponseValueWithoutSubject(cacheValue ocspCachedResponse) (*ocspStatus, error) {
-	return c.extractOCSPCacheResponseValue(&cacheValue, nil, nil)
-}
-
 func (c *Client) extractOCSPCacheResponseValue(cacheValue *ocspCachedResponse, subject, issuer *x509.Certificate) (*ocspStatus, error) {
 	subjectName := "Unknown"
 	if subject != nil {
@@ -781,101 +706,6 @@ func (c *Client) extractOCSPCacheResponseValue(cacheValue *ocspCachedResponse, s
 		Status:     int(cacheValue.status),
 	})
 }
-
-/*
-// writeOCSPCache writes a OCSP Response cache
-func (c *Client) writeOCSPCache(ctx context.Context, storage logical.Storage) error {
-	c.Logger().Debug("writing OCSP Response cache")
-	t := time.Now()
-	m := make(map[string][]interface{})
-	keys := c.ocspResponseCache.Keys()
-	if len(keys) > persistedCacheSize {
-		keys = keys[:persistedCacheSize]
-	}
-	for _, k := range keys {
-		e, ok := c.ocspResponseCache.Get(k)
-		if ok {
-			entry := e.(*ocspCachedResponse)
-			// Don't store if expired
-			if isInValidityRange(t, time.Unix(int64(entry.thisUpdate), 0), time.Unix(int64(entry.nextUpdate), 0)) {
-				key := k.(certIDKey)
-				cacheKeyInBase64, err := decodeCertIDKey(&key)
-				if err != nil {
-					return err
-				}
-				m[cacheKeyInBase64] = []interface{}{entry.status, entry.time, entry.producedAt, entry.thisUpdate, entry.nextUpdate}
-			}
-		}
-	}
-
-	v, err := jsonutil.EncodeJSONAndCompress(m, nil)
-	if err != nil {
-		return err
-	}
-	entry := logical.StorageEntry{
-		Key:   ocspCacheKey,
-		Value: v,
-	}
-	return storage.Put(ctx, &entry)
-}
-
-// readOCSPCache reads a OCSP Response cache from storage
-func (c *Client) readOCSPCache(ctx context.Context, storage logical.Storage) error {
-	c.Logger().Debug("reading OCSP Response cache")
-
-	entry, err := storage.Get(ctx, ocspCacheKey)
-	if err != nil {
-		return err
-	}
-	if entry == nil {
-		return nil
-	}
-	var untypedCache map[string][]interface{}
-
-	err = jsonutil.DecodeJSON(entry.Value, &untypedCache)
-	if err != nil {
-		return errors.New("failed to unmarshal OCSP cache")
-	}
-
-	for k, v := range untypedCache {
-		key, err := c.encodeCertIDKey(k)
-		if err != nil {
-			return err
-		}
-		var times [4]float64
-		for i, t := range v[1:] {
-			if jn, ok := t.(json.Number); ok {
-				times[i], err = jn.Float64()
-				if err != nil {
-					return err
-				}
-			} else {
-				times[i] = t.(float64)
-			}
-		}
-		var status int
-		if jn, ok := v[0].(json.Number); ok {
-			s, err := jn.Int64()
-			if err != nil {
-				return err
-			}
-			status = int(s)
-		} else {
-			status = v[0].(int)
-		}
-
-		c.ocspResponseCache.Add(*key, &ocspCachedResponse{
-			status:     ocspStatusCode(status),
-			time:       times[0],
-			producedAt: times[1],
-			thisUpdate: times[2],
-			nextUpdate: times[3],
-		})
-	}
-
-	return nil
-}
-*/
 
 func New(logFactory func() hclog.Logger, cacheSize int) *Client {
 	if cacheSize < 100 {

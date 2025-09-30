@@ -89,10 +89,6 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 			Type:        framework.TypeMap,
 			Description: "CEL variables and expression defining the program for the role",
 		},
-		"failure_policy": {
-			Type:        framework.TypeString,
-			Description: "Failure policy if CEL expressions are not validated",
-		},
 		"message": {
 			Type:        framework.TypeString,
 			Description: "Static error message if validation fails",
@@ -137,10 +133,6 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 			"cel_program": {
 				Type:        framework.TypeMap,
 				Description: "CEL variables and expression defining the program for the role",
-			},
-			"failure_policy": {
-				Type:        framework.TypeString,
-				Description: "Failure policy if CEL expressions are not validated",
 			},
 			"message": {
 				Type:        framework.TypeString,
@@ -240,14 +232,6 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 		}
 		if err := json.Unmarshal(jsonString, &celProgram); err != nil {
 			return logical.ErrorResponse("failed to parse cel_program: %s", err), nil
-		}
-	}
-
-	failurePolicy := "Deny" // Default value
-	if failurePolicyRaw, ok := data.GetOk("failure_policy"); ok {
-		failurePolicy = failurePolicyRaw.(string)
-		if failurePolicy != "Deny" && failurePolicy != "Modify" {
-			return logical.ErrorResponse("failure_policy must be 'Deny' or 'Modify'"), nil
 		}
 	}
 

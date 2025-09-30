@@ -286,7 +286,7 @@ func (b *Backend) HandleRequest(ctx context.Context, req *logical.Request) (*log
 	if req.Operation != logical.HelpOperation {
 		err := fd.Validate()
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("Field validation failed: %s", err.Error())), nil
+			return logical.ErrorResponse("Field validation failed: %s", err.Error()), nil
 		}
 	}
 

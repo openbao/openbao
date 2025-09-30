@@ -256,8 +256,8 @@ func handler(props *vault.HandlerProperties) http.Handler {
 	corsWrappedHandler := wrapCORSHandler(helpWrappedHandler, core)
 	quotaWrappedHandler := rateLimitQuotaWrapping(corsWrappedHandler, core)
 	genericWrappedHandler := genericWrapping(core, quotaWrappedHandler, props)
-	wrappedHandler := wrapMaxRequestSizeHandler(genericWrappedHandler, props)
-
+	metricsWrappedHandler := wrapMetricsListenerHandler(genericWrappedHandler, props)
+	wrappedHandler := wrapMaxRequestSizeHandler(metricsWrappedHandler, props)
 	// Wrap the handler with PrintablePathCheckHandler to check for non-printable
 	// characters in the request path.
 	printablePathCheckHandler := wrappedHandler
@@ -584,21 +584,6 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 		r.RemoteAddr = net.JoinHostPort(acc[indexToUse], port)
 		h.ServeHTTP(w, r)
 	})
-}
-
-// stripPrefix is a helper to strip a prefix from the path. It will
-// return false from the second return value if it the prefix doesn't exist.
-func stripPrefix(prefix, path string) (string, bool) {
-	if !strings.HasPrefix(path, prefix) {
-		return "", false
-	}
-
-	path = path[len(prefix):]
-	if path == "" {
-		return "", false
-	}
-
-	return path, true
 }
 
 func handleUIHeaders(core *vault.Core, h http.Handler) http.Handler {

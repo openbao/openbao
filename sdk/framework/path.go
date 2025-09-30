@@ -289,6 +289,7 @@ type Response struct {
 	MediaType   string                  // media type of the response, defaulting to "application/json" if empty
 	Fields      map[string]*FieldSchema // the fields present in this response, used to generate openapi response
 	Example     *logical.Response       // example response data
+	SchemaName  string                  // optional name of the schema for this response in OpenAPI spec
 }
 
 // PathOperation is a concrete implementation of OperationHandler.

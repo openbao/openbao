@@ -37,15 +37,6 @@ type revocationInfo struct {
 	CertificateIssuer issuerID  `json:"issuer_id"`
 }
 
-type revocationRequest struct {
-	RequestedAt time.Time `json:"requested_at"`
-}
-
-type revocationConfirmed struct {
-	RevokedAt string `json:"revoked_at"`
-	Source    string `json:"source"`
-}
-
 type (
 	// Placeholder in case of migrations needing more data. Currently
 	// we use the path name to store the serial number that was revoked.
@@ -451,13 +442,6 @@ func (cb *crlBuilder) _shouldRebuildLocalCRLs(sc *storageContext, override bool)
 	return true, nil
 }
 
-func (cb *crlBuilder) rebuildDeltaCRLs(sc *storageContext, forceNew bool) ([]string, error) {
-	cb._builder.Lock()
-	defer cb._builder.Unlock()
-
-	return cb.rebuildDeltaCRLsHoldingLock(sc, forceNew)
-}
-
 func (cb *crlBuilder) rebuildDeltaCRLsHoldingLock(sc *storageContext, forceNew bool) ([]string, error) {
 	return buildAnyCRLs(sc, forceNew, true /* building delta */)
 }
@@ -506,35 +490,6 @@ func fetchIssuerMapForRevocationChecking(sc *storageContext) (map[issuerID]*x509
 	return issuerIDCertMap, nil
 }
 
-// Revoke a certificate from a given serial number if it is present in local
-// storage.
-func tryRevokeCertBySerial(sc *storageContext, config *crlConfig, serial string) (*logical.Response, error) {
-	// revokeCert requires us to hold these locks before calling it.
-	sc.Backend.revokeStorageLock.Lock()
-	defer sc.Backend.revokeStorageLock.Unlock()
-
-	certEntry, err := fetchCertBySerial(sc, "certs/", serial)
-	if err != nil {
-		switch err.(type) {
-		case errutil.UserError:
-			return logical.ErrorResponse(err.Error()), nil
-		default:
-			return nil, err
-		}
-	}
-
-	if certEntry == nil {
-		return nil, nil
-	}
-
-	cert, err := x509.ParseCertificate(certEntry.Value)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing certificate: %w", err)
-	}
-
-	return revokeCert(sc, config, cert)
-}
-
 // Revokes a cert, and tries to be smart about error recovery
 func revokeCert(sc *storageContext, config *crlConfig, cert *x509.Certificate) (*logical.Response, error) {
 	// As this backend is self-contained and this function does not hook into
@@ -562,7 +517,7 @@ func revokeCert(sc *storageContext, config *crlConfig, cert *x509.Certificate) (
 	// instead.
 	for issuer, certificate := range issuerIDCertMap {
 		if colonSerial == serialFromCert(certificate) {
-			return logical.ErrorResponse(fmt.Sprintf("adding issuer (id: %v) to its own CRL is not allowed", issuer)), nil
+			return logical.ErrorResponse("adding issuer (id: %v) to its own CRL is not allowed", issuer), nil
 		}
 	}
 
@@ -635,7 +590,7 @@ func revokeCert(sc *storageContext, config *crlConfig, cert *x509.Certificate) (
 		if crlErr != nil {
 			switch crlErr.(type) {
 			case errutil.UserError:
-				return logical.ErrorResponse(fmt.Sprintf("Error during CRL building: %s", crlErr)), nil
+				return logical.ErrorResponse("Error during CRL building: %s", crlErr), nil
 			default:
 				return nil, fmt.Errorf("error encountered during CRL building: %w", crlErr)
 			}

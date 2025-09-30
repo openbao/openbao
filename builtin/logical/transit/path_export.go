@@ -90,7 +90,7 @@ func (b *backend) pathPolicyExportRead(ctx context.Context, req *logical.Request
 	case exportTypePublicKey:
 	case exportTypeCertificateChain:
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("invalid export type: %s", exportType)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("invalid export type: %s", exportType), logical.ErrInvalidRequest
 	}
 
 	switch format {
@@ -99,7 +99,7 @@ func (b *backend) pathPolicyExportRead(ctx context.Context, req *logical.Request
 	case formatTypeDer:
 	case formatTypePem:
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("invalid format: %s", format)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("invalid format: %s", format), logical.ErrInvalidRequest
 	}
 
 	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{

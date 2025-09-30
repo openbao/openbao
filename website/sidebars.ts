@@ -535,11 +535,16 @@ const sidebars: SidebarsConfig = {
                 "rfcs/namespace-sealing",
                 "rfcs/external-keys",
                 "rfcs/config-audit-devices",
+                "rfcs/opentelemetry",
                 {
                   "UI/UX": ["rfcs/web-ui-modernization"],
                 },
+                {
+                    "Horizontal Scalability": [
+                        "rfcs/standby-nodes-handle-read-requests",
+                    ],
+                },
             ],
-            FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },
         "glossary",
     ],

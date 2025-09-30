@@ -769,7 +769,7 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 		var err error
 		pauseDuration, err = parseutil.ParseDurationSecond(pauseDurationStr)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("Error parsing pause_duration: %v", err)), nil
+			return logical.ErrorResponse("Error parsing pause_duration: %v", err), nil
 		}
 
 		if pauseDuration < (0 * time.Second) {
@@ -1708,7 +1708,7 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 	if intervalRaw, ok := d.GetOk("interval_duration"); ok {
 		config.Interval = time.Duration(intervalRaw.(int)) * time.Second
 		if config.Interval < 0 {
-			return logical.ErrorResponse(fmt.Sprintf("given interval_duration must be greater than or equal to zero seconds; got: %v", intervalRaw)), nil
+			return logical.ErrorResponse("given interval_duration must be greater than or equal to zero seconds; got: %v", intervalRaw), nil
 		}
 	}
 
@@ -1731,7 +1731,7 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 	if safetyBufferRaw, ok := d.GetOk("safety_buffer"); ok {
 		config.SafetyBuffer = time.Duration(safetyBufferRaw.(int)) * time.Second
 		if config.SafetyBuffer < 1*time.Second {
-			return logical.ErrorResponse(fmt.Sprintf("given safety_buffer must be at least one second; got: %v", safetyBufferRaw)), nil
+			return logical.ErrorResponse("given safety_buffer must be at least one second; got: %v", safetyBufferRaw), nil
 		}
 	}
 
@@ -1739,14 +1739,14 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 		revokedSafetyBuffer := time.Duration(revokedSafetyBufferRaw.(int)) * time.Second
 		config.RevokedSafetyBuffer = &revokedSafetyBuffer
 		if *config.RevokedSafetyBuffer < 1*time.Second {
-			return logical.ErrorResponse(fmt.Sprintf("revoked_safety_buffer must be at least one second; got: %v", revokedSafetyBufferRaw)), nil
+			return logical.ErrorResponse("revoked_safety_buffer must be at least one second; got: %v", revokedSafetyBufferRaw), nil
 		}
 	}
 
 	if pauseDurationRaw, ok := d.GetOk("pause_duration"); ok {
 		config.PauseDuration, err = parseutil.ParseDurationSecond(pauseDurationRaw.(string))
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("unable to parse given pause_duration: %v", err)), nil
+			return logical.ErrorResponse("unable to parse given pause_duration: %v", err), nil
 		}
 
 		if config.PauseDuration < (0 * time.Second) {
@@ -1768,7 +1768,7 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 	if issuerSafetyBufferRaw, ok := d.GetOk("issuer_safety_buffer"); ok {
 		config.IssuerSafetyBuffer = time.Duration(issuerSafetyBufferRaw.(int)) * time.Second
 		if config.IssuerSafetyBuffer < 1*time.Second {
-			return logical.ErrorResponse(fmt.Sprintf("given safety_buffer must be at least one second; got: %v", issuerSafetyBufferRaw)), nil
+			return logical.ErrorResponse("given safety_buffer must be at least one second; got: %v", issuerSafetyBufferRaw), nil
 		}
 	}
 
@@ -1783,7 +1783,7 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 	if acmeAccountSafetyBufferRaw, ok := d.GetOk("acme_account_safety_buffer"); ok {
 		config.AcmeAccountSafetyBuffer = time.Duration(acmeAccountSafetyBufferRaw.(int)) * time.Second
 		if config.AcmeAccountSafetyBuffer < 1*time.Second {
-			return logical.ErrorResponse(fmt.Sprintf("given acme_account_safety_buffer must be at least one second; got: %v", acmeAccountSafetyBufferRaw)), nil
+			return logical.ErrorResponse("given acme_account_safety_buffer must be at least one second; got: %v", acmeAccountSafetyBufferRaw), nil
 		}
 	}
 

@@ -19,7 +19,7 @@ func TestAppRole_BoundCIDRLogin(t *testing.T) {
 
 	// Create a role with secret ID binding disabled and only bound cidr list
 	// enabled
-	resp = b.requestNoErr(t, &logical.Request{
+	b.requestNoErr(t, &logical.Request{
 		Path:      "role/testrole",
 		Operation: logical.CreateOperation,
 		Data: map[string]interface{}{

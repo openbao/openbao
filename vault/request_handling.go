@@ -613,7 +613,7 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 			switch req.Path {
 			case "sys/namespaces/api-lock/unlock":
 			default:
-				return logical.ErrorResponse(fmt.Sprintf("API access to this namespace has been locked by an administrator - %q must be unlocked to gain access.", lockedNS.Path)), logical.ErrLockedNamespace
+				return logical.ErrorResponse("API access to this namespace has been locked by an administrator - %q must be unlocked to gain access.", lockedNS.Path), logical.ErrLockedNamespace
 			}
 		}
 
@@ -853,7 +853,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			// be revoked after the call. So we have to do the validation here.
 			valid, err := c.validateWrappingToken(ctx, req)
 			if err != nil {
-				return logical.ErrorResponse(fmt.Sprintf("error validating wrapping token: %s", err.Error())), logical.ErrPermissionDenied
+				return logical.ErrorResponse("error validating wrapping token: %s", err.Error()), logical.ErrPermissionDenied
 			}
 			if !valid {
 				return nil, consts.ErrInvalidWrappingToken
@@ -1903,7 +1903,7 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 			return false, logical.ErrorResponse("auth methods cannot create root tokens"), logical.ErrInvalidRequest
 		}
 		if slices.Contains(nonAssignablePolicies, policy) {
-			return false, logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", policy)), logical.ErrInvalidRequest
+			return false, logical.ErrorResponse("cannot assign policy %q", policy), logical.ErrInvalidRequest
 		}
 	}
 

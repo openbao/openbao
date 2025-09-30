@@ -348,7 +348,7 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 			return nil, err
 		}
 		if entry == nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to retrieve entry for %s", entries[i])), nil
+			return logical.ErrorResponse("failed to retrieve entry for %s", entries[i]), nil
 		}
 
 		entries[i] = denormalizeSerial(entries[i])
@@ -357,7 +357,7 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 		// Parse the certificate details
 		certData, err := x509.ParseCertificate(entry.Value)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to parse certificate for %s: %s", entries[i], err)), nil
+			return logical.ErrorResponse("failed to parse certificate for %s: %s", entries[i], err), nil
 		}
 
 		// limit DNS names to 5
@@ -580,7 +580,7 @@ func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data 
 		var revInfo revocationInfo
 		err := revokedEntry.DecodeJSON(&revInfo)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("Error decoding revocation entry for serial %s: %s", serial, err)), nil
+			return logical.ErrorResponse("Error decoding revocation entry for serial %s: %s", serial, err), nil
 		}
 		revocationTime = revInfo.RevocationTime
 		revocationIssuerId = revInfo.CertificateIssuer.String()

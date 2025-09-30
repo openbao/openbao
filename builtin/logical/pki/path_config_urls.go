@@ -8,9 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
-	"github.com/asaskevich/govalidator"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -163,7 +163,8 @@ set on all PR Secondary clusters.`,
 
 func validateURLs(urls []string) string {
 	for _, curr := range urls {
-		if !govalidator.IsURL(curr) || strings.Contains(curr, "{{issuer_id}}") || strings.Contains(curr, "{{cluster_path}}") || strings.Contains(curr, "{{cluster_aia_path}}") {
+		u, err := url.Parse(curr)
+		if err != nil || u.Scheme == "" || u.Host == "" || strings.Contains(curr, "{{issuer_id}}") || strings.Contains(curr, "{{cluster_path}}") || strings.Contains(curr, "{{cluster_aia_path}}") {
 			return curr
 		}
 	}

@@ -282,6 +282,9 @@ func TestLoadConfigDir_AutoAuthAndListener(t *testing.T) {
 		t.Fatal(err)
 	}
 	config2, err := LoadConfigFile("./test-fixtures/config-dir-auto-auth-and-listener/config2.hcl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	mergedConfig := config.Merge(config2)
 

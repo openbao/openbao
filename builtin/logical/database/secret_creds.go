@@ -114,6 +114,9 @@ func (b *databaseBackend) secretCredsRevoke() framework.OperationFunc {
 			return nil, errors.New("secret is missing username internal data")
 		}
 		username, ok := usernameRaw.(string)
+		if !ok {
+			return nil, fmt.Errorf("expected username to be a string, but is %T", username)
+		}
 
 		var resp *logical.Response
 

@@ -623,14 +623,14 @@ func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 	// Prevent protected paths from being mounted
 	for _, p := range protectedMounts {
 		if strings.HasPrefix(entry.Path, p) && entry.namespace == nil {
-			return logical.CodedError(403, fmt.Sprintf("cannot mount %q", entry.Path))
+			return logical.CodedError(403, "cannot mount %q", entry.Path)
 		}
 	}
 
 	// Do not allow more than one instance of a singleton mount
 	for _, p := range singletonMounts {
 		if entry.Type == p {
-			return logical.CodedError(403, fmt.Sprintf("mount type of %q is not mountable", entry.Type))
+			return logical.CodedError(403, "mount type of %q is not mountable", entry.Type)
 		}
 	}
 
@@ -672,14 +672,14 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 			case strings.HasPrefix(ent.Path, entry.Path):
 				fallthrough
 			case strings.HasPrefix(entry.Path, ent.Path):
-				return logical.CodedError(409, fmt.Sprintf("path is already in use at %s", ent.Path))
+				return logical.CodedError(409, "path is already in use at %s", ent.Path)
 			}
 		}
 	}
 
 	// Verify there are no conflicting mounts in the router
 	if match := c.router.MountConflict(ctx, entry.Path); match != "" {
-		return logical.CodedError(409, fmt.Sprintf("existing mount at %s", match))
+		return logical.CodedError(409, "existing mount at %s", match)
 	}
 
 	// Generate a new UUID and view

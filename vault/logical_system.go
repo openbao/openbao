@@ -2878,12 +2878,12 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 	// Parse the policy to ensure that it's valid
 	policy, err := random.ParsePolicy(rawPolicy)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("invalid password policy: %s", err))
+		return nil, logical.CodedError(http.StatusBadRequest, "invalid password policy: %s", err)
 	}
 
 	if policy.Length > maxPasswordLength || policy.Length < minPasswordLength {
 		return nil, logical.CodedError(http.StatusBadRequest,
-			fmt.Sprintf("passwords must be between %d and %d characters", minPasswordLength, maxPasswordLength))
+			"passwords must be between %d and %d characters", minPasswordLength, maxPasswordLength)
 	}
 
 	// Attempt to construct a test password from the rules to ensure that the policy isn't impossible
@@ -2892,7 +2892,7 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 	for _, rule := range policy.Rules {
 		charsetRule, ok := rule.(random.CharsetRule)
 		if !ok {
-			return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("unexpected rule type %T", charsetRule))
+			return nil, logical.CodedError(http.StatusBadRequest, "unexpected rule type %T", charsetRule)
 		}
 
 		for j := 0; j < charsetRule.MinLength(); j++ {
@@ -2908,7 +2908,7 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 			}
 			charsetRule, ok := rule.(random.CharsetRule)
 			if !ok {
-				return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("unexpected rule type %T", charsetRule))
+				return nil, logical.CodedError(http.StatusBadRequest, "unexpected rule type %T", charsetRule)
 			}
 
 			charIndex := rand.Intn(len(charsetRule.Chars()))
@@ -2931,13 +2931,13 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 	}
 	entry, err := logical.StorageEntryJSON(getPasswordPolicyKey(policyName), cfg)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Sprintf("unable to save password policy: %s", err))
+		return nil, logical.CodedError(http.StatusInternalServerError, "unable to save password policy: %s", err)
 	}
 
 	err = req.Storage.Put(ctx, entry)
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError,
-			fmt.Sprintf("failed to save policy to storage backend: %s", err))
+			"failed to save policy to storage backend: %s", err)
 	}
 
 	return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
@@ -2996,7 +2996,7 @@ func (*SystemBackend) handlePoliciesPasswordDelete(ctx context.Context, req *log
 	err := req.Storage.Delete(ctx, getPasswordPolicyKey(policyName))
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError,
-			fmt.Sprintf("failed to delete password policy: %s", err))
+			"failed to delete password policy: %s", err)
 	}
 
 	return nil, nil

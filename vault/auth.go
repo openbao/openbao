@@ -112,14 +112,14 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 			case strings.HasPrefix(ent.Path, entry.Path):
 				fallthrough
 			case strings.HasPrefix(entry.Path, ent.Path):
-				return logical.CodedError(409, fmt.Sprintf("path is already in use at %s", ent.Path))
+				return logical.CodedError(409, "path is already in use at %s", ent.Path)
 			}
 		}
 	}
 
 	// Check for conflicts according to the router
 	if conflict := c.router.MountConflict(ctx, credentialRoutePrefix+entry.Path); conflict != "" {
-		return logical.CodedError(409, fmt.Sprintf("existing mount at %s", conflict))
+		return logical.CodedError(409, "existing mount at %s", conflict)
 	}
 
 	// Generate a new UUID and view

@@ -59,7 +59,7 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
    $ bao secrets list -detailed
    ```
 
-1. Finally, trigger a [plugin reload](/docs/commands/plugin/reload) to reload all
+1. Finally, trigger a [plugin reload][plugin_reload_command] to reload all
    mounted backends using that plugin or a subset of the mounts using that plugin
    with either the `plugin` or `mounts` flag respectively.
 
@@ -170,6 +170,6 @@ transit             v1.12.0+builtin.bao
   of leases and tokens is handled by core systems within OpenBao. The plugin itself only
   handles renewal and revocation of them when it’s requested by those core systems.
 
-[plugin_reload_api]: /api-docs/system/plugins-reload-backend
+[plugin_reload_command]: /docs/commands/plugin/reload
 [plugin_registration]: /docs/plugins/plugin-architecture#plugin-registration
 [plugin_management]: /docs/plugins/plugin-management#enabling-disabling-external-plugins

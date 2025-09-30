@@ -28,7 +28,6 @@ require (
 	github.com/ProtonMail/go-crypto v1.3.0
 	github.com/armon/go-metrics v0.4.1
 	github.com/armon/go-radix v1.0.0
-	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/caddyserver/certmagic v0.25.0
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/coreos/go-systemd/v22 v22.6.0

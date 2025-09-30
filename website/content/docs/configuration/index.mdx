@@ -114,8 +114,7 @@ to specify where the configuration is.
   [user lockout configuration documentation](/docs/configuration/user-lockout). 
 
 - `seal` <code>([Seal][seal]: nil)</code> – Configures the seal type to use for
-  auto-unsealing, as well as for
-  [seal wrapping][sealwrap] as an additional layer of data protection.
+  auto-unsealing.
 
 - `cluster_name` `(string: <generated>)` – Specifies the identifier for the
   OpenBao cluster. If omitted, OpenBao will generate a value.
@@ -253,7 +252,7 @@ The following parameters are used on backends that support [High Availability][h
   other OpenBao servers in the cluster for client redirection. This value is also
   used for [plugin backends][plugins]. This can also be provided via the
   environment variable `VAULT_API_ADDR`. In general this should be set as a full
-  URL that points to the value of the [`listener`](#listener) address.
+  URL that points to the value of the [`listener`][listener] address.
   This can be dynamically defined with a
   [go-sockaddr template](https://pkg.go.dev/github.com/hashicorp/go-sockaddr/template)
   that is resolved at runtime.
@@ -278,7 +277,6 @@ The following parameters are used on backends that support [High Availability][h
 [seal]: /docs/configuration/seal
 [telemetry]: /docs/configuration/telemetry
 [initialize]: /docs/configuration/self-init
-[sentinel]: /docs/configuration/sentinel
 [high-availability]: /docs/concepts/ha
 [plugins]: /docs/plugins
 [userlockout]: /docs/configuration/user-lockout

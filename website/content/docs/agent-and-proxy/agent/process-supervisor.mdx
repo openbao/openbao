@@ -102,7 +102,7 @@ The top level `exec` block has the following configuration entries.
 - `restart_on_secret_changes` `(string: "always")` - Controls whether agent
   will restart the child process on secret changes. There are two types of
   secret changes relevant to this configuration: a static secret update (on
-  [static_secret_render_interval`](/docs/agent-and-proxy/agent/template#static_secret_render_interval))
+  [`static_secret_render_interval`](/docs/agent-and-proxy/agent/template#static_secret_render_interval))
   and dynamic secret being close to its expiration. The configuration supports
   two options: `always` and `never`.
 
@@ -158,4 +158,3 @@ exec {
 ```
 
 [consul-templating-language]: https://github.com/hashicorp/consul-template/blob/v0.28.1/docs/templating-language.md
-[template-config]: /docs/agent-and-proxy/agent/template#template-configurations

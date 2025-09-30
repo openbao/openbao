@@ -1,3 +1,0 @@
-```release-note:improvement
-refactor: Remove dependency on github.com/asaskevich/govalidator
-```

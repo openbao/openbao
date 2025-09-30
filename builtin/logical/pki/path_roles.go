@@ -164,9 +164,10 @@ CN and DNS SANs, and the host part of email addresses. Defaults to true.`,
 		},
 
 		"allow_ip_sans": {
-			Type:        framework.TypeBool,
-			Required:    true,
-			Description: `If set, IP Subject Alternative Names are allowed.`,
+			Type:     framework.TypeBool,
+			Required: true,
+			Description: `If set, IP Subject Alternative Names are allowed.
+Allowed IP ranges can be further restricted using allowed_ip_sans_cidr.`,
 		},
 
 		"allowed_ip_sans_cidr": {
@@ -555,9 +556,10 @@ CN and DNS SANs, and the host part of email addresses. Defaults to true.`,
 			},
 
 			"allow_ip_sans": {
-				Type:        framework.TypeBool,
-				Default:     true,
-				Description: `If set, IP Subject Alternative Names are allowed.`,
+				Type:    framework.TypeBool,
+				Default: true,
+				Description: `If set, IP Subject Alternative Names are allowed.
+Allowed IP ranges can be further restricted using allowed_ip_sans_cidr.`,
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name:  "Allow IP Subject Alternative Names",
 					Value: true,

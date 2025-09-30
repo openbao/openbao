@@ -187,7 +187,7 @@ func handler(props *vault.HandlerProperties) http.Handler {
 			handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy)))
 
 		// Register without unauthenticated rekey, if necessary.
-		if props.ListenerConfig == nil || !props.ListenerConfig.DisableUnauthedRekeyEndpoints {
+		if props.ListenerConfig == nil || (props.ListenerConfig.DisableUnauthedRekeyEndpoints != nil && !*props.ListenerConfig.DisableUnauthedRekeyEndpoints) {
 			mux.Handle("/v1/sys/rekey/init",
 				handleAuditNonLogical(core, handleSysRekeyInit(core, false)))
 			mux.Handle("/v1/sys/rekey/update",

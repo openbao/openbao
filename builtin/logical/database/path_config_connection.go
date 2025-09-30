@@ -30,16 +30,16 @@ var (
 // DatabaseConfig is used by the Factory function to configure a Database
 // object.
 type DatabaseConfig struct {
-	PluginName    string `json:"plugin_name" structs:"plugin_name" mapstructure:"plugin_name"`
-	PluginVersion string `json:"plugin_version" structs:"plugin_version" mapstructure:"plugin_version"`
+	PluginName    string `json:"plugin_name" mapstructure:"plugin_name"`
+	PluginVersion string `json:"plugin_version" mapstructure:"plugin_version"`
 	// ConnectionDetails stores the database specific connection settings needed
 	// by each database type.
-	ConnectionDetails map[string]interface{} `json:"connection_details" structs:"connection_details" mapstructure:"connection_details"`
-	AllowedRoles      []string               `json:"allowed_roles" structs:"allowed_roles" mapstructure:"allowed_roles"`
+	ConnectionDetails map[string]interface{} `json:"connection_details" mapstructure:"connection_details"`
+	AllowedRoles      []string               `json:"allowed_roles" mapstructure:"allowed_roles"`
 
-	RootCredentialsRotateStatements []string `json:"root_credentials_rotate_statements" structs:"root_credentials_rotate_statements" mapstructure:"root_credentials_rotate_statements"`
+	RootCredentialsRotateStatements []string `json:"root_credentials_rotate_statements" mapstructure:"root_credentials_rotate_statements"`
 
-	PasswordPolicy string `json:"password_policy" structs:"password_policy" mapstructure:"password_policy"`
+	PasswordPolicy string `json:"password_policy" mapstructure:"password_policy"`
 }
 
 func (c *DatabaseConfig) SupportsCredentialType(credentialType v5.CredentialType) bool {

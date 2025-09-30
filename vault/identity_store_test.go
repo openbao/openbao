@@ -1703,7 +1703,7 @@ func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *
 
 	t.Logf("setupIdentityTestEnv:\n\tns1: accessor=%v / uuid=%v\n\tns2: accessor=%v / uuid=%v\n\tuserpass accessors root=%v / ns1=%v / ns2=%v\n\tentity alias: name=%v / root=%v / ns1=%v / ns2=%v\n\tentity: root=%v / ns1=%v / ns2=%v\n\tgroup: name=%v / root=%v / ns1=%v / ns2=%v", ns1.ID, ns1.UUID, ns2.ID, ns2.UUID, rootAccessor, ns1Accessor, ns2Accessor, commonUser, rootAlias.ID, ns1Alias.ID, ns2Alias.ID, rootEntity.ID, ns1Entity.ID, ns2Entity.ID, groupName, rootGroup.ID, ns1Group.ID, ns2Group.ID)
 
-	return
+	return rootCtx, ns1, ns1Ctx, ns2, ns2Ctx, rootAccessor, ns1Accessor, ns2Accessor, commonUser, rootAlias, ns1Alias, ns2Alias, rootEntity, ns1Entity, ns2Entity, groupName, rootGroup, ns1Group, ns2Group
 }
 
 // Test cross-namespace isolation with comprehensive matrix of lookup attempts

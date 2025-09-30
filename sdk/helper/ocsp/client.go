@@ -442,7 +442,7 @@ func (c *Client) retryOCSP(
 		}
 	}
 
-	return
+	return ocspRes, ocspResBytes, ocspS, retErr
 }
 
 // GetRevocationStatus checks the certificate revocation status for subject using issuer certificate.

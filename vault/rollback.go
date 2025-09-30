@@ -319,7 +319,7 @@ func (m *RollbackManager) attemptRollback(ctx context.Context, fullPath string, 
 	if err != nil {
 		m.logger.Error("error rolling back", "path", fullPath, "error", err)
 	}
-	return
+	return err
 }
 
 // Rollback is used to trigger an immediate rollback of the path,

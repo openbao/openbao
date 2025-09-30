@@ -598,5 +598,5 @@ func getConnection(r *http.Request) (connection *logical.Connection) {
 		RemotePort: remotePort,
 		ConnState:  r.TLS,
 	}
-	return
+	return connection
 }

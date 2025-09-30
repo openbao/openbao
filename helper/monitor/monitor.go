@@ -153,7 +153,7 @@ func (d *monitor) Write(p []byte) (n int, err error) {
 	// ensure logCh is still open
 	select {
 	case <-d.doneCh:
-		return
+		return n, err
 	default:
 	}
 

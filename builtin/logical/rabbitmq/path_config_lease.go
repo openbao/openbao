@@ -91,8 +91,8 @@ func (b *backend) pathLeaseRead(ctx context.Context, req *logical.Request, data 
 
 // Lease configuration information for the secrets issued by this backend
 type configLease struct {
-	TTL    time.Duration `json:"ttl" structs:"ttl" mapstructure:"ttl"`
-	MaxTTL time.Duration `json:"max_ttl" structs:"max_ttl" mapstructure:"max_ttl"`
+	TTL    time.Duration `json:"ttl" mapstructure:"ttl"`
+	MaxTTL time.Duration `json:"max_ttl" mapstructure:"max_ttl"`
 }
 
 var pathConfigLeaseHelpSyn = "Configure the lease parameters for generated credentials"

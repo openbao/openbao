@@ -1318,16 +1318,16 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 
 	// Common names to test with the various role flags toggled
 	var commonNames struct {
-		Localhost            bool `structs:"localhost"`
-		BareDomain           bool `structs:"example.com"`
-		SecondDomain         bool `structs:"foobar.com"`
-		SubDomain            bool `structs:"foo.example.com"`
-		Wildcard             bool `structs:"*.example.com"`
-		SubSubdomain         bool `structs:"foo.bar.example.com"`
-		SubSubdomainWildcard bool `structs:"*.bar.example.com"`
-		GlobDomain           bool `structs:"fooexample.com"`
-		IDN                  bool `structs:"daɪˈɛrɨsɨs"`
-		AnyHost              bool `structs:"porkslap.beer"`
+		Localhost            bool `json:"localhost"`
+		BareDomain           bool `json:"example.com"`
+		SecondDomain         bool `json:"foobar.com"`
+		SubDomain            bool `json:"foo.example.com"`
+		Wildcard             bool `json:"*.example.com"`
+		SubSubdomain         bool `json:"foo.bar.example.com"`
+		SubSubdomainWildcard bool `json:"*.bar.example.com"`
+		GlobDomain           bool `json:"fooexample.com"`
+		IDN                  bool `json:"daɪˈɛrɨsɨs"`
+		AnyHost              bool `json:"porkslap.beer"`
 	}
 
 	// Adds a series of tests based on the current selection of
@@ -1711,7 +1711,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 				}
 			}
 			t.Fatalf("error parsing otherName: %q", s)
-			return
+			return ret
 		}
 		oid1 := "1.3.6.1.4.1.311.20.2.3"
 		oth1str := oid1 + ";utf8:devops@nope.com"

@@ -612,9 +612,9 @@ reply:
 		}
 	case retErr != nil:
 		response = nil
-		return
+		return response, retErr
 	case response == nil:
-		return
+		return response, retErr
 	case response.IsError():
 		return response, nil
 	default:
@@ -632,7 +632,7 @@ reply:
 		}
 	}
 
-	return
+	return response, retErr
 }
 
 const pathFetchHelpSyn = `

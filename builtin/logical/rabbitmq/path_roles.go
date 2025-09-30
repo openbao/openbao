@@ -225,22 +225,22 @@ func (b *backend) pathRoleUpdate(ctx context.Context, req *logical.Request, d *f
 // VHostTopics is a nested map with vhost name and exchange name as keys and
 // the topic permissions as value.
 type roleEntry struct {
-	Tags        string                                     `json:"tags" structs:"tags" mapstructure:"tags"`
-	VHosts      map[string]vhostPermission                 `json:"vhosts" structs:"vhosts" mapstructure:"vhosts"`
-	VHostTopics map[string]map[string]vhostTopicPermission `json:"vhost_topics" structs:"vhost_topics" mapstructure:"vhost_topics"`
+	Tags        string                                     `json:"tags" mapstructure:"tags"`
+	VHosts      map[string]vhostPermission                 `json:"vhosts" mapstructure:"vhosts"`
+	VHostTopics map[string]map[string]vhostTopicPermission `json:"vhost_topics" mapstructure:"vhost_topics"`
 }
 
 // Structure representing the permissions of a vhost
 type vhostPermission struct {
-	Configure string `json:"configure" structs:"configure" mapstructure:"configure"`
-	Write     string `json:"write" structs:"write" mapstructure:"write"`
-	Read      string `json:"read" structs:"read" mapstructure:"read"`
+	Configure string `json:"configure" mapstructure:"configure"`
+	Write     string `json:"write" mapstructure:"write"`
+	Read      string `json:"read" mapstructure:"read"`
 }
 
 // Structure representing the topic permissions of an exchange
 type vhostTopicPermission struct {
-	Write string `json:"write" structs:"write" mapstructure:"write"`
-	Read  string `json:"read" structs:"read" mapstructure:"read"`
+	Write string `json:"write" mapstructure:"write"`
+	Read  string `json:"read" mapstructure:"read"`
 }
 
 const pathRoleHelpSyn = `

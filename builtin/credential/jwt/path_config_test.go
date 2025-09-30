@@ -881,12 +881,12 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 
 	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return
+		return serverTLSConf, err, caPEM
 	}
 
 	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
 	if err != nil {
-		return
+		return serverTLSConf, err, caPEM
 	}
 
 	caPEM = new(bytes.Buffer)
@@ -895,7 +895,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: caBytes,
 	})
 	if err != nil {
-		return
+		return serverTLSConf, err, caPEM
 	}
 
 	caPrivKeyPEM := new(bytes.Buffer)
@@ -904,7 +904,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
 	})
 	if err != nil {
-		return
+		return serverTLSConf, err, caPEM
 	}
 
 	cert := &x509.Certificate{
@@ -927,12 +927,12 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 
 	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return
+		return serverTLSConf, err, caPEM
 	}
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, ca, &certPrivKey.PublicKey, caPrivKey)
 	if err != nil {
-		return
+		return serverTLSConf, err, caPEM
 	}
 
 	certPEM := new(bytes.Buffer)
@@ -941,7 +941,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: certBytes,
 	})
 	if err != nil {
-		return
+		return serverTLSConf, err, caPEM
 	}
 
 	certPrivKeyPEM := new(bytes.Buffer)
@@ -950,12 +950,12 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
 	})
 	if err != nil {
-		return
+		return serverTLSConf, err, caPEM
 	}
 
 	serverCert, err := tls.X509KeyPair(certPEM.Bytes(), certPrivKeyPEM.Bytes())
 	if err != nil {
-		return
+		return serverTLSConf, err, caPEM
 	}
 
 	serverTLSConf = &tls.Config{
@@ -963,7 +963,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		ServerName:   hostname,
 	}
 
-	return
+	return serverTLSConf, err, caPEM
 }
 
 const (

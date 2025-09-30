@@ -576,7 +576,7 @@ func (b *backend) loadTrustedCerts(ctx context.Context, storage logical.Storage,
 		names, err = storage.List(ctx, "cert/")
 		if err != nil {
 			b.Logger().Error("failed to list trusted certs", "error", err)
-			return
+			return pool, trusted, trustedNonCAs, conf
 		}
 	}
 
@@ -627,7 +627,7 @@ func (b *backend) loadTrustedCerts(ctx context.Context, storage logical.Storage,
 			conf.QueryAllServers = conf.QueryAllServers || entry.OcspQueryAllServers
 		}
 	}
-	return
+	return pool, trusted, trustedNonCAs, conf
 }
 
 func (b *backend) checkForCertInOCSP(ctx context.Context, clientCert *x509.Certificate, chain []*x509.Certificate, conf *ocsp.VerifyConfig) (bool, error) {
@@ -689,7 +689,7 @@ func parsePEM(raw []byte) (certs []*x509.Certificate) {
 		}
 		certs = append(certs, cert)
 	}
-	return
+	return certs
 }
 
 // validateConnState is used to validate that the TLS client is authorized

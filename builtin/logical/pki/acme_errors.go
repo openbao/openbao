@@ -160,7 +160,7 @@ func FindType(given error) (err error, id string, code int, found bool) {
 
 	code = errCodeMappings[err]
 
-	return
+	return err, id, code, found
 }
 
 func TranslateError(given error) (*logical.Response, error) {

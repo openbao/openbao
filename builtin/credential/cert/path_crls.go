@@ -343,13 +343,13 @@ func (b *backend) setCRL(ctx context.Context, storage logical.Storage, certList 
 }
 
 type CDPInfo struct {
-	Url        string    `json:"url" structs:"url" mapstructure:"url"`
-	ValidUntil time.Time `json:"valid_until" structs:"valid_until" mapstructure:"valid_until"`
+	Url        string    `json:"url" mapstructure:"url"`
+	ValidUntil time.Time `json:"valid_until" mapstructure:"valid_until"`
 }
 
 type CRLInfo struct {
-	CDP     *CDPInfo                     `json:"cdp" structs:"cdp" mapstructure:"cdp"`
-	Serials map[string]RevokedSerialInfo `json:"serials" structs:"serials" mapstructure:"serials"`
+	CDP     *CDPInfo                     `json:"cdp" mapstructure:"cdp"`
+	Serials map[string]RevokedSerialInfo `json:"serials" mapstructure:"serials"`
 }
 
 type RevokedSerialInfo struct{}

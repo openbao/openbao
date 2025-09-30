@@ -330,10 +330,10 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 
 // Built-in helper type for returning asymmetric keys
 type asymKey struct {
-	Name             string    `json:"name" structs:"name" mapstructure:"name"`
-	PublicKey        string    `json:"public_key" structs:"public_key" mapstructure:"public_key"`
-	CertificateChain string    `json:"certificate_chain" structs:"certificate_chain" mapstructure:"certificate_chain"`
-	CreationTime     time.Time `json:"creation_time" structs:"creation_time" mapstructure:"creation_time"`
+	Name             string    `json:"name" mapstructure:"name"`
+	PublicKey        string    `json:"public_key" mapstructure:"public_key"`
+	CertificateChain string    `json:"certificate_chain" mapstructure:"certificate_chain"`
+	CreationTime     time.Time `json:"creation_time" mapstructure:"creation_time"`
 }
 
 func (b *backend) pathPolicyRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

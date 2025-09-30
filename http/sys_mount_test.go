@@ -1535,8 +1535,8 @@ func TestSysTuneMount(t *testing.T) {
 	// read secret
 	resp = testHttpGet(t, token, addr+"/v1/secret/foo")
 	var result struct {
-		LeaseID       string `json:"lease_id" structs:"lease_id"`
-		LeaseDuration int    `json:"lease_duration" structs:"lease_duration"`
+		LeaseID       string `json:"lease_id"`
+		LeaseDuration int    `json:"lease_duration"`
 	}
 
 	testResponseBody(t, resp, &result)

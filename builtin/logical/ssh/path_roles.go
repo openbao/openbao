@@ -665,7 +665,7 @@ func (b *backend) checkUpgrade(ctx context.Context, s logical.Storage, n string,
 		}
 
 	SKIPVERSION2:
-		err = nil
+		err = nil //nolint:ineffassign // we explicitly ignore the error
 	}
 
 	if result.Version < 3 {

@@ -166,7 +166,7 @@ func (b *backend) pathWriteCluster(ctx context.Context, req *logical.Request, da
 
 	if value, ok := data.GetOk("aia_path"); ok {
 		cfg.AIAPath = value.(string)
-		u,err := url.Parse(cfg.AIAPath)
+		u, err := url.Parse(cfg.AIAPath)
 		if err != nil || u.Scheme == "" || u.Host == "" {
 			return nil, fmt.Errorf("invalid, non-URL aia_path given to cluster: %v", cfg.AIAPath)
 		}

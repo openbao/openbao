@@ -290,8 +290,8 @@ remove the failed server if it's still a member of the cluster.
 
 If the [`remove-peer`](/docs/commands/operator/raft#remove-peer) command isn't
 possible or you'd rather manually re-write the cluster membership a
-[`raft/peers.json`](#manual-recovery-using-peers-json) file can be written to
-the configured data directory.
+[`raft/peers.json`](#manual-recovery-using-peersjson) file can be written to the
+configured data directory.
 
 ### Quorum lost
 
@@ -310,19 +310,19 @@ outstanding Raft log entries, so it's also possible to commit data that was
 uncommitted before the failure.
 
 See the section below on manual recovery using
-[`peers.json`](#manual-recovery-using-peers-json) for details of the recovery
+[`peers.json`](#manual-recovery-using-peersjson) for details of the recovery
 procedure. You include only the remaining servers in the
-[`peers.json`](#manual-recovery-using-peers-json) recovery file. The
-cluster should be able to elect a leader once the remaining servers are all
-restarted with an identical
-[`peers.json`](#manual-recovery-using-peers-json) configuration.
+[`peers.json`](#manual-recovery-using-peersjson) recovery file. The cluster
+should be able to elect a leader once the remaining servers are all restarted
+with an identical [`peers.json`](#manual-recovery-using-peersjson)
+configuration.
 
 Any servers you introduce later can be fresh with totally clean data
 directories and joined using OpenBao's join command.
 
 In extreme cases, it should be possible to recover with just a single remaining
 server by starting that single server with itself as the only peer in the
-[`peers.json`](#manual-recovery-using-peers-json) recovery file.
+[`peers.json`](#manual-recovery-using-peersjson) recovery file.
 
 ### Manual recovery using peers.json
 

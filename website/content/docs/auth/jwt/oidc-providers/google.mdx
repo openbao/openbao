@@ -64,10 +64,10 @@ that enable the feature.
   the host that OpenBao is running on. If given directly as JSON contents, the JSON must be properly escaped.
 - `gsuite_admin_impersonate` `(string: <required>)` - Email address of a Google Workspace admin to impersonate.
 - `fetch_groups` `(bool: false)` - If set to true, groups will be fetched from Google Workspace.
-- `fetch_user_info` `(bool: false)` - If set to true, user info will be fetched from Google Workspace using the configured [user_custom_schemas](#user_custom_schemas).
+- `fetch_user_info` `(bool: false)` - If set to true, user info will be fetched from Google Workspace using the configured `user_custom_schemas`.
 - `groups_recurse_max_depth` `(int: <optional>)` - Group membership recursion max depth. Defaults to 0, which means don't recurse.
 - `user_custom_schemas` `(string: <optional>)` - Comma-separated list of Google Workspace [custom schemas](https://developers.google.com/admin-sdk/directory/v1/guides/manage-schemas).
-  Values set for Google Workspace users using custom schema fields will be fetched and made available as claims that can be used with [claim_mappings](/api-docs/auth/jwt#claim_mappings). Required if [fetch_user_info](#fetch_user_info) is set to true.
+  Values set for Google Workspace users using custom schema fields will be fetched and made available as claims that can be used with [claim_mappings](/api-docs/auth/jwt#claim_mappings). Required if `fetch_user_info` is set to true.
 
 Example configuration:
 

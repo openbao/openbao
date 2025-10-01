@@ -26,7 +26,7 @@ func wrapMetricsListenerHandler(handler http.Handler, props *vault.HandlerProper
 		disallowsMetrics := listenerConfig.Telemetry.DisallowMetrics
 
 		realMetricsPath := "/v1/sys/metrics"
-		metricsPath := "/v1/sys/metrics"
+		metricsPath := realMetricsPath
 
 		if isMetricsOnly && props.ListenerConfig.Telemetry.MetricsPath != "" {
 			metricsPath = props.ListenerConfig.Telemetry.MetricsPath

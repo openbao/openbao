@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -48,6 +49,33 @@ func NewRawBackend(core *Core) *RawBackend {
 	return r
 }
 
+func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAccess, error) {
+	ns, rest, err := b.core.NamespaceByStoragePath(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	// These paths use the "upper" barrier, which is the direct physical layer
+	// for the root namespace.
+	specialPath := rest == sealConfigPath || rest == recoverySealConfigPath
+
+	// Fast-path root, we do not need a lookup into the seal manager.
+	if ns.ID == namespace.RootNamespaceID {
+		if specialPath {
+			return &directStorageAccess{physical: b.core.physical}, nil
+		} else {
+			return &secureStorageAccess{barrier: b.core.barrier}, nil
+		}
+	}
+
+	if specialPath {
+		parent, _ := ns.ParentPath()
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(parent)}, nil
+	} else {
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)}, nil
+	}
+}
+
 // handleRawRead is used to read directly from the barrier
 func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	path := data.Get("path").(string)
@@ -75,7 +103,11 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.storageByPath(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
+
 	valueBytes, err := barrier.Get(ctx, path)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
@@ -150,7 +182,10 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.storageByPath(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
 
 	if req.Operation == logical.UpdateOperation {
 		// Check if this is an existing value with compression applied, if so, use the same compression (or no compression)
@@ -169,7 +204,7 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		// Ensure compression_type matches existing entries' compression
 		// except allow writing non-compressed data over compressed data
 		if existingCompressionType != compressionType && compressionType != "" {
-			err := "the entry uses a different compression scheme then compression_type"
+			err := "the entry uses a different compression scheme than compression_type"
 			return logical.ErrorResponse(err), logical.ErrInvalidRequest
 		}
 
@@ -224,7 +259,11 @@ func (b *RawBackend) handleRawDelete(ctx context.Context, req *logical.Request, 
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.storageByPath(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
+
 	if err := barrier.Delete(ctx, path); err != nil {
 		return handleErrorNoReadOnlyForward(err)
 	}
@@ -256,7 +295,11 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.storageByPath(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
+
 	keys, err := barrier.ListPage(ctx, path, after, limit)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
@@ -267,7 +310,12 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 // existenceCheck checks if entry exists, used in handleRawWrite for update or create operations
 func (b *RawBackend) existenceCheck(ctx context.Context, request *logical.Request, data *framework.FieldData) (bool, error) {
 	path := data.Get("path").(string)
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+
+	barrier, err := b.storageByPath(ctx, path)
+	if err != nil {
+		return false, err
+	}
+
 	entry, err := barrier.Get(ctx, path)
 	if err != nil {
 		return false, err

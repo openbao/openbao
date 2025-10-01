@@ -229,7 +229,7 @@ func (b *PassthroughBackend) handleWrite() framework.OperationFunc {
 			Value: buf,
 		}
 		if err := req.Storage.Put(ctx, entry); err != nil {
-			return nil, fmt.Errorf("failed to write: %v", err)
+			return nil, fmt.Errorf("failed to write: %w", err)
 		}
 
 		return nil, nil

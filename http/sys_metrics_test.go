@@ -136,3 +136,62 @@ func TestSysRekeyUnauthenticated(t *testing.T) {
 	resp = testHttpGet(t, token, addr+"/v1/sys/rekey/init")
 	testResponseStatus(t, resp, 405)
 }
+
+func TestSysMetricsCustomPath(t *testing.T) {
+	inm := metrics.NewInmemSink(10*time.Second, time.Minute)
+	metrics.DefaultInmemSignal(inm)
+	conf := &vault.CoreConfig{
+		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
+		MetricsHelper:   metricsutil.NewMetricsHelper(inm, true),
+	}
+	core, _, token := vault.TestCoreUnsealedWithConfig(t, conf)
+	ln, addr := TestServer(t, core)
+	TestServerAuth(t, addr, token)
+
+	// Default: Only authenticated access on standard path.
+	resp := testHttpGet(t, "", addr+"/v1/sys/metrics")
+	testResponseStatus(t, resp, 403)
+	resp = testHttpGet(t, token, addr+"/v1/sys/metrics")
+	testResponseStatus(t, resp, 200)
+
+	resp = testHttpGet(t, "", addr+"/metrics")
+	testResponseStatus(t, resp, 404)
+	resp = testHttpGet(t, token, addr+"/metrics")
+	testResponseStatus(t, resp, 404)
+
+	// Close listener
+	ln.Close() //nolint:errcheck
+
+	// Setup new custom listener with unauthenticated metrics access
+	ln, addr = TestListener(t)
+	props := &vault.HandlerProperties{
+		Core: core,
+		ListenerConfig: &configutil.Listener{
+			Telemetry: configutil.ListenerTelemetry{
+				MetricsOnly: true,
+				MetricsPath: "/metrics",
+			},
+		},
+	}
+	TestServerWithListenerAndProperties(t, ln, addr, core, props)
+	defer ln.Close() //nolint:errcheck
+	TestServerAuth(t, addr, token)
+
+	// Test with and without token, on default endpoint.
+	resp = testHttpGet(t, "", addr+"/v1/sys/metrics")
+	testResponseStatus(t, resp, 404)
+	resp = testHttpGet(t, token, addr+"/v1/sys/metrics")
+	testResponseStatus(t, resp, 404)
+
+	// Should work with token, on custom endpoint
+	resp = testHttpGet(t, token, addr+"/metrics")
+	testResponseStatus(t, resp, 200)
+
+	// Should fail without token, on custom endpoint
+	resp = testHttpGet(t, "", addr+"/metrics")
+	testResponseStatus(t, resp, 403)
+
+	// Test if prometheus response is correct
+	resp = testHttpGet(t, token, addr+"/metrics?format=prometheus")
+	testResponseStatus(t, resp, 200)
+}

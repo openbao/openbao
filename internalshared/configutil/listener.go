@@ -29,6 +29,7 @@ type ListenerTelemetry struct {
 	DisallowMetricsRaw              interface{}  `hcl:"disallow_metrics,alias:DisallowMetrics"`
 	MetricsOnly                     bool         `hcl:"-"`
 	MetricsOnlyRaw                  interface{}  `hcl:"metrics_only,alias:MetricsOnly"`
+	MetricsPath                     string       `hcl:"metrics_path,alias:MetricsPath"`
 }
 
 type ListenerProfiling struct {

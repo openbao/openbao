@@ -314,6 +314,9 @@ in the root of the TCP listener configuration.
 - `metrics_only` `(bool: false)` - Specifies if the listener should *only* serve the `/v1/sys/metrics` endpoint, blocking all other API requests. 
   This is useful for creating a dedicated, secure listener for monitoring systems.
 
+- `metrics_path` `(string: "")` - If present, specifies an alternative path the metrics
+  should be reported on. Only allowed in conjunction with `metrics_only=true`.
+
 ### `profiling` parameters
 
 - `unauthenticated_pprof_access` `(bool: false)` - If set to true, allows

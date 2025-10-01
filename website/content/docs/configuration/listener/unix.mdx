@@ -32,6 +32,13 @@ multiple sockets.
   `/sys/rekey-recovery-key/*`). These are a security risk to leave exposed on
   public listeners.
 
+   :::warning
+
+   **In OpenBao v2.4.0, this parameter will default to true, forbidding any calls
+   to the unauthenticated rekey endpoints. This will be a breaking change.**
+
+   :::
+
 ### `telemetry` parameters
 
 - `unauthenticated_metrics_access` `(bool: false)` - If set to true, allows
@@ -43,12 +50,8 @@ multiple sockets.
 - `metrics_only` `(bool: false)` - Specifies if the listener should *only* serve the `/v1/sys/metrics` endpoint, blocking all other API requests. 
   This is useful for creating a dedicated, secure listener for monitoring systems.
 
-  :::warning
-
-  In OpenBao v2.4.0, this parameter will default to true, forbidding any calls
-  to the unauthenticated rekey endpoints. This will be a breaking change.
-
-  :::
+- `metrics_path` `(string: "")` - If present, specifies an alternative path the metrics
+  should be reported on. Only allowed in conjunction with `metrics_only=true`.
 
 ## `unix` listener examples
 

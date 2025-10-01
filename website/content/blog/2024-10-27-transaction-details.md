@@ -33,11 +33,12 @@ unique election result in the case of disagreements.
 
 In OpenBao, the [`raft` storage backend][raft-backend] is the combination of
 an implementation of the [HashiCorp Raft library][hcp-raft] and the
-[bbolt](https://github.com/etcd/bbolt) K/V store. When Raft applies a WAL entry, the underlying
-[FSM][raft-fsm] applies the corresponding operations. Prior to transactions,
-these consisted of bare [Put and Delete ops][storage-write]. Further, read
-requests were [handled individually][storage-read], meaning there was no
-consistency between two separate requests.
+[bbolt](https://github.com/etcd/bbolt) K/V store. When Raft applies a [WAL][]
+entry, the underlying [FSM][raft-fsm] applies the corresponding operations.
+Prior to transactions, these consisted of bare [Put and Delete
+ops][storage-write]. Further, read requests were [handled
+individually][storage-read], meaning there was no consistency between two
+separate requests.
 
 ## Implementing transactions
 

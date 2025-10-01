@@ -159,16 +159,19 @@ backend cannot be declared.
 
 ### `retry_join` stanza
 
-- `leader_api_addr` `(string: "")` - Address of a possible leader node.
+- `leader_api_addr` `(string: "")` <a name="leader_api_addr"></a> - Address of a
+  possible leader node.
 
-- `auto_join` `(string: "")` - Cloud auto-join configuration, using
-  [go-discover](https://github.com/hashicorp/go-discover) syntax.
+- `auto_join` `(string: "")` <a name="auto_join"></a> - Cloud auto-join
+  configuration, using [go-discover](https://github.com/hashicorp/go-discover)
+  syntax.
 
-- `auto_join_scheme` `(string: "")` - The optional URI protocol scheme for addresses
-  discovered via auto-join. Available values are `http` or `https`.
+- `auto_join_scheme` `(string: "")` <a name="auto_join_scheme"></a> - The
+  optional URI protocol scheme for addresses discovered via auto-join. Available
+  values are `http` or `https`.
 
-- `auto_join_port` `(uint: "")` - The optional port used for addressed discovered
-  via auto-join.
+- `auto_join_port` `(uint: "")` <a name="auto_join_port"></a> - The optional
+  port used for addressed discovered via auto-join.
 
 - `leader_tls_servername` `(string: "")` - The TLS server name to use when
   connecting with HTTPS.

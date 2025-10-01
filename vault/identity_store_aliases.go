@@ -546,13 +546,11 @@ func (i *IdentityStore) handleAliasReadCommon(ctx context.Context, alias *identi
 		respData["mount_type"] = mountValidationResp.MountType
 	}
 
-	// Convert protobuf timestamp into RFC3339 format
-	respData["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339)
-	respData["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339)
+	// Convert protobuf timestamp into RFC3339Nano format
+	respData["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339Nano)
+	respData["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 
-	return &logical.Response{
-		Data: respData,
-	}, nil
+	return &logical.Response{Data: respData}, nil
 }
 
 // pathAliasIDDelete deletes the alias for a given alias ID

@@ -486,7 +486,7 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 		restart = false
 
 		var perfCancel context.CancelFunc
-		if _, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); ok && !c.rawConfig.Load().(*server.Config).DisableStandbyReads {
+		if c.StandbyReadsEnabled() {
 			if err := c.runStandbyGrabStateLock(stopCh); err != nil {
 				c.logger.Error("runStandby: unable to grab state lock", "err", err)
 				return
@@ -1280,4 +1280,18 @@ func (c *Core) SetNeverBecomeActive(on bool) {
 	} else {
 		atomic.StoreUint32(c.neverBecomeActive, 0)
 	}
+}
+
+// StandbyReadsEnabled returns true iff standby read are enabled and supported
+// by the physical backend
+func (c *Core) StandbyReadsEnabled() bool {
+	if _, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); !ok {
+		return false
+	}
+
+	conf := c.rawConfig.Load()
+	if conf == nil {
+		return false
+	}
+	return !conf.(*server.Config).DisableStandbyReads
 }

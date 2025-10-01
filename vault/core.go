@@ -1076,8 +1076,8 @@ func coreInit(c *Core, conf *CoreConfig) error {
 		c.physical = physical.NewStorageEncoding(c.physical)
 	}
 
-	if cib, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); ok && !c.rawConfig.Load().(*server.Config).DisableStandbyReads {
-		cib.HookInvalidate(c.Invalidate)
+	if c.StandbyReadsEnabled() {
+		c.underlyingPhysical.(physical.CacheInvalidationBackend).HookInvalidate(c.Invalidate)
 	}
 
 	return nil

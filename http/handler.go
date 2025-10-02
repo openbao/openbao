@@ -27,7 +27,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
-	gziphandler "github.com/klauspost/compress/gzhttp"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
@@ -213,8 +212,18 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/", handleRequestForwarding(core, handleLogical(core)))
 		if core.UIEnabled() {
 			if uiBuiltIn {
-				mux.Handle("/ui/", http.StripPrefix("/ui/", gziphandler.GzipHandler(handleUIHeaders(core, handleUI(http.FileServer(&UIAssetWrapper{FileSystem: assetFS()}))))))
-				mux.Handle("/robots.txt", gziphandler.GzipHandler(handleUIHeaders(core, handleUI(http.FileServer(&UIAssetWrapper{FileSystem: assetFS()})))))
+				fs := &UIAssetWrapper{FileSystem: assetFS()}
+
+				if err := ensureUIAssets(core, fs); err != nil {
+					core.Logger().Error("failed to load embedded UI assets", "error", err)
+				}
+
+				mux.Handle("/ui/", http.StripPrefix("/ui/", handleUIHeaders(core, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					serveUIAsset(core, w, r, r.URL.Path)
+				}))))
+
+				mux.Handle("/robots.txt", handleUIHeaders(core, handleUI(http.FileServer(fs))))
+
 			} else {
 				mux.Handle("/ui/", handleUIHeaders(core, handleUIStub()))
 			}

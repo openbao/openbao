@@ -184,7 +184,7 @@ func (b *Backend) HandleExistenceCheck(ctx context.Context, req *logical.Request
 
 	// Call the callback with the request and the data
 	exists, err = path.ExistenceCheck(ctx, req, &fd)
-	return
+	return checkFound, exists, err
 }
 
 // HandleRequest is the logical.Backend implementation.

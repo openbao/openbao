@@ -201,5 +201,5 @@ func (h *RootIssuedLeaves) Evaluate(e *Executor) (results []*Result, err error) 
 		results = append(results, &ret)
 	}
 
-	return
+	return results, err
 }

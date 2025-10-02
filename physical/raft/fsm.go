@@ -821,6 +821,8 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 		f.applyCallback()
 	}
 
+	transactionsStartIndices := []uint64{}
+
 	// One would think that this f.db.Update(...) and the following loop over
 	// commands should be in the opposite order, as we want transactions to be
 	// applied atomically. Indeed, 2c154ad516162dcb8b15ad270cd6a15516f2ce59 had
@@ -852,6 +854,9 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 					err = f.applyBatchNonTxOps(b, txnState, command)
 				} else {
 					err = f.applyBatchTxOps(tx, b, txnState, command)
+					if err == nil {
+						transactionsStartIndices = append(transactionsStartIndices, txnState.txnStartIndex)
+					}
 				}
 
 				if err != nil {
@@ -867,6 +872,8 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 							Key:   fsmEntryTxErrorKey,
 							Value: []byte(err.Error()),
 						})
+
+						transactionsStartIndices = append(transactionsStartIndices, txnState.txnStartIndex)
 
 						// Process other events; this transaction failure was handled
 						// appropriately already in applyBatchTxOps.
@@ -892,6 +899,14 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 
 		return err
 	})
+
+	if len(transactionsStartIndices) > 0 {
+		go func() {
+			for _, startIndex := range transactionsStartIndices {
+				f.fastTxnTracker.completeTransaction(startIndex)
+			}
+		}()
+	}
 
 	// If we had no error, update our last applied log.
 	if err == nil {

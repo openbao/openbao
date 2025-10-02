@@ -14,6 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"golang.org/x/crypto/ed25519"
 
 	"github.com/fatih/structs"
@@ -136,6 +139,12 @@ key.`,
 				Default:     0,
 				Description: fmt.Sprintf("The key size in bytes for the algorithm.  Only applies to HMAC and must be no fewer than %d bytes and no more than %d", keysutil.HmacMinKeySize, keysutil.HmacMaxKeySize),
 			},
+			"custom_metadata": {
+				Type: framework.TypeMap,
+				Description: `
+User-provided key-value pairs that are used to describe arbitrary and
+version-agnostic information about a key.`,
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -239,6 +248,95 @@ func (b *backend) pathKeysList(ctx context.Context, req *logical.Request, data *
 	return logical.ListResponse(entries), nil
 }
 
+const (
+	maxCustomMetadataKeys               = 64
+	maxCustomMetadataKeyLength          = 128
+	maxCustomMetadataValueLength        = 512
+	customMetadataValidationErrorPrefix = "custom_metadata validation failed"
+)
+
+// Perform input validation on custom_metadata field. If the key count
+// exceeds maxCustomMetadataKeys, the validation will be short-circuited
+// to prevent unnecessary (and potentially costly) validation to be run.
+// If the key count falls at or below maxCustomMetadataKeys, multiple
+// checks will be made per key and value. These checks include:
+//   - 0 < length of key <= maxCustomMetadataKeyLength
+//   - 0 < length of value <= maxCustomMetadataValueLength
+//   - keys and values cannot include unprintable characters
+func validateCustomMetadata(customMetadata map[string]string) error {
+	var errs *multierror.Error
+
+	if keyCount := len(customMetadata); keyCount > maxCustomMetadataKeys {
+		errs = multierror.Append(errs, fmt.Errorf("%s: payload must contain at most %d keys, provided %d",
+			customMetadataValidationErrorPrefix,
+			maxCustomMetadataKeys,
+			keyCount))
+
+		return errs.ErrorOrNil()
+	}
+
+	// Perform validation on each key and value and return ALL errors
+	for key, value := range customMetadata {
+		if keyLen := len(key); 0 == keyLen || keyLen > maxCustomMetadataKeyLength {
+			errs = multierror.Append(errs, fmt.Errorf("%s: length of key %q is %d but must be 0 < len(key) <= %d",
+				customMetadataValidationErrorPrefix,
+				key,
+				keyLen,
+				maxCustomMetadataKeyLength))
+		}
+
+		if valueLen := len(value); 0 == valueLen || valueLen > maxCustomMetadataValueLength {
+			errs = multierror.Append(errs, fmt.Errorf("%s: length of value for key %q is %d but must be 0 < len(value) <= %d",
+				customMetadataValidationErrorPrefix,
+				key,
+				valueLen,
+				maxCustomMetadataValueLength))
+		}
+
+		if !strutil.Printable(key) {
+			// Include unquoted format (%s) to also include the string without the unprintable
+			//  characters visible to allow for easier debug and key identification
+			errs = multierror.Append(errs, fmt.Errorf("%s: key %q (%s) contains unprintable characters",
+				customMetadataValidationErrorPrefix,
+				key,
+				key))
+		}
+
+		if !strutil.Printable(value) {
+			errs = multierror.Append(errs, fmt.Errorf("%s: value for key %q contains unprintable characters",
+				customMetadataValidationErrorPrefix,
+				key))
+		}
+	}
+
+	return errs.ErrorOrNil()
+}
+
+// parseCustomMetadata is used to effectively convert the TypeMap
+// (map[string]interface{}) into a TypeKVPairs (map[string]string)
+// which is how custom_metadata is stored. Defining custom_metadata
+// as a TypeKVPairs will convert nulls into empty strings. A null,
+// however, is essential for a PATCH operation in that it signals
+// the handler to remove the field. The filterNils flag should
+// only be used during a patch operation.
+func parseCustomMetadata(raw map[string]interface{}, filterNils bool) (map[string]string, error) {
+	customMetadata := map[string]string{}
+	for k, v := range raw {
+		if filterNils && v == nil {
+			continue
+		}
+
+		var s string
+		if err := mapstructure.WeakDecode(v, &s); err != nil {
+			return nil, err
+		}
+
+		customMetadata[k] = s
+	}
+
+	return customMetadata, nil
+}
+
 func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := d.Get("name").(string)
 	derived := d.Get("derived").(bool)
@@ -248,6 +346,7 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 	exportable := d.Get("exportable").(bool)
 	allowPlaintextBackup := d.Get("allow_plaintext_backup").(bool)
 	autoRotatePeriod := time.Second * time.Duration(d.Get("auto_rotate_period").(int))
+	customMetadataRaw, cmOk := d.GetOk("custom_metadata")
 
 	if autoRotatePeriod != 0 && autoRotatePeriod < time.Hour {
 		return logical.ErrorResponse("auto rotate period must be 0 to disable or at least an hour"), nil
@@ -255,6 +354,21 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 
 	if !derived && convergent {
 		return logical.ErrorResponse("convergent encryption requires derivation to be enabled"), nil
+	}
+
+	customMetadataMap := map[string]string{}
+	if cmOk {
+		var err error
+		customMetadataMap, err = parseCustomMetadata(customMetadataRaw.(map[string]interface{}), false)
+		if err != nil {
+			return logical.ErrorResponse(fmt.Sprintf("%s: %s", customMetadataValidationErrorPrefix, err.Error())), nil
+		}
+
+		customMetadataErrs := validateCustomMetadata(customMetadataMap)
+
+		if customMetadataErrs != nil {
+			return logical.ErrorResponse(customMetadataErrs.Error()), nil
+		}
 	}
 
 	polReq := keysutil.PolicyRequest{
@@ -266,6 +380,7 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		Exportable:           exportable,
 		AllowPlaintextBackup: allowPlaintextBackup,
 		AutoRotatePeriod:     autoRotatePeriod,
+		CustomMetadata:       customMetadataMap,
 	}
 
 	switch keyType {
@@ -387,6 +502,7 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 			"auto_rotate_period":     int64(p.AutoRotatePeriod.Seconds()),
 			"imported_key":           p.Imported,
 			"soft_deleted":           p.SoftDeleted,
+			"custom_metadata":        p.CustomMetadata,
 		},
 	}
 	if p.KeySize != 0 {

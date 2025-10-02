@@ -622,10 +622,6 @@ func (t *RaftTransaction) Commit(ctx context.Context) error {
 	//
 	// Also unlock the read lock on the underlying fsm.
 	defer func() {
-		if t.writable {
-			t.b.fsm.fastTxnTracker.completeTransaction(t.index)
-		}
-
 		t.b.fsm.l.RUnlock()
 		t.b.txnPermitPool.Release()
 		t.haveFinishedTx = true
@@ -645,12 +641,18 @@ func (t *RaftTransaction) Commit(ctx context.Context) error {
 		return err
 	}
 
+	if !t.writable {
+		return nil
+	}
+
 	// If no writes have occurred, we don't need to send a log to Raft. We
 	// might have conflicted on a verification, but we won't negatively impact
 	// an other writer (due to not causing a conflict ourselves). Our state of
 	// reads were guaranteed to be consistent, so it would be no different than
 	// having executed in a read-only transaction.
-	if !t.writable || !t.haveWritten {
+	if !t.haveWritten {
+		t.b.fsm.fastTxnTracker.completeTransaction(t.index)
+
 		return nil
 	}
 

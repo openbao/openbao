@@ -36,15 +36,13 @@ An example configuration is shown below:
     }
   },
 
-  "listener": [
-    {
-      "tcp": {
-        "address":       "127.0.0.1:8200",
-        "tls_cert_file": "full-chain.pem",
-        "tls_key_file":  "private-key.pem"
-      }
+  "listener": {
+    "tcp": {
+      "address":       "127.0.0.1:8200",
+      "tls_cert_file": "full-chain.pem",
+      "tls_key_file":  "private-key.pem"
     }
-  ],
+  },
 
   "telemetry": {
     "statsite_address": "127.0.0.1:8125",

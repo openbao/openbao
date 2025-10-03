@@ -385,7 +385,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
       AWS_REGION: 'fra'
-      AWS_ENDPOINT_URL: ${{ secrets.PKG_S3_SERVER_NAME }}
+      AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
       BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
     steps:
       - name: Download APT db and dists

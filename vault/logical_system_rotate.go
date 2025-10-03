@@ -47,7 +47,10 @@ var (
 	}
 
 	rotateInitGetResponseSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
+		"namespace": {
+			Type:        framework.TypeString,
+			Description: "Name of the namespace.",
+		},
 		"started": {
 			Type:     framework.TypeBool,
 			Required: true,
@@ -85,7 +88,10 @@ var (
 	}
 
 	rotateInitPutResponseSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
+		"namespace": {
+			Type:        framework.TypeString,
+			Description: "Name of the namespace.",
+		},
 		"complete": {
 			Type: framework.TypeBool,
 		},
@@ -110,7 +116,10 @@ var (
 	}
 
 	rotateUpdateResponseSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
+		"namespace": {
+			Type:        framework.TypeString,
+			Description: "Name of the namespace.",
+		},
 		"complete": {
 			Type: framework.TypeBool,
 		},
@@ -139,7 +148,10 @@ var (
 	}
 
 	rotateConfigSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
+		"namespace": {
+			Type:        framework.TypeString,
+			Description: "Name of the namespace.",
+		},
 		"enabled": {
 			Type:        framework.TypeBool,
 			Description: strings.TrimSpace(sysRotateHelp["rotation-enabled"][0]),
@@ -155,7 +167,10 @@ var (
 	}
 
 	rotateVerifyResponseSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
+		"namespace": {
+			Type:        framework.TypeString,
+			Description: "Name of the namespace.",
+		},
 		"started": {
 			Type:     framework.TypeBool,
 			Required: true,
@@ -180,7 +195,10 @@ var (
 	}
 
 	rotateBackupResponseSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
+		"namespace": {
+			Type:        framework.TypeString,
+			Description: "Name of the namespace.",
+		},
 		"nonce": {
 			Type: framework.TypeString,
 		},

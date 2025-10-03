@@ -166,23 +166,25 @@ HA Enabled                    false`
 // initialized with all the omitempty fields as empty or not.
 func getMockStatusData(emptyFields bool) SealStatusOutput {
 	var status SealStatusOutput
-	var sealStatusResponseMock api.SealStatusResponse
+	var sealStatusResponseMock api.CoreSealStatusResponse
 	if !emptyFields {
-		sealStatusResponseMock = api.SealStatusResponse{
-			Type:             "type",
-			RecoverySealType: "type",
-			Initialized:      true,
-			Sealed:           true,
-			T:                1,
-			N:                2,
-			Progress:         3,
-			Nonce:            "nonce",
+		sealStatusResponseMock = api.CoreSealStatusResponse{
+			SealStatusResponse: &api.SealStatusResponse{
+				Type:        "type",
+				Initialized: true,
+				Sealed:      true,
+				T:           1,
+				N:           2,
+				Progress:    3,
+				Nonce:       "nonce",
+			},
 			Version:          "version",
 			BuildDate:        "build date",
 			Migration:        true,
 			ClusterName:      "cluster name",
 			ClusterID:        "cluster id",
 			RecoverySeal:     true,
+			RecoverySealType: "type",
 			StorageType:      "storage type",
 			Warnings:         []string{"warning"},
 		}
@@ -202,21 +204,23 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			4,                        // RaftAppliedIndex
 		}
 	} else {
-		sealStatusResponseMock = api.SealStatusResponse{
-			Type:             "type",
-			RecoverySealType: "type",
-			Initialized:      true,
-			Sealed:           true,
-			T:                1,
-			N:                2,
-			Progress:         3,
-			Nonce:            "nonce",
+		sealStatusResponseMock = api.CoreSealStatusResponse{
+			SealStatusResponse: &api.SealStatusResponse{
+				Type:        "type",
+				Initialized: true,
+				Sealed:      true,
+				T:           1,
+				N:           2,
+				Progress:    3,
+				Nonce:       "nonce",
+			},
 			Version:          "version",
 			BuildDate:        "build date",
 			Migration:        true,
 			ClusterName:      "",
 			ClusterID:        "",
 			RecoverySeal:     true,
+			RecoverySealType: "type",
 			StorageType:      "",
 		}
 

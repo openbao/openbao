@@ -196,10 +196,6 @@ func handleSysGenerateRootUpdate(core *vault.Core, generateStrategy vault.Genera
 			PGPFingerprint: result.PGPFingerprint,
 		}
 
-		if generateStrategy == vault.GenerateStandardRootTokenStrategy {
-			resp.EncodedRootToken = result.EncodedToken
-		}
-
 		respondOk(w, resp)
 	})
 }

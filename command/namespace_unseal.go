@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2025 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package command
@@ -16,49 +16,52 @@ import (
 )
 
 var (
-	_ cli.Command             = (*OperatorUnsealCommand)(nil)
-	_ cli.CommandAutocomplete = (*OperatorUnsealCommand)(nil)
+	_ cli.Command             = (*NamespaceUnsealCommand)(nil)
+	_ cli.CommandAutocomplete = (*NamespaceUnsealCommand)(nil)
 )
 
-type OperatorUnsealCommand struct {
+type NamespaceUnsealCommand struct {
 	*BaseCommand
 
-	flagReset   bool
-	flagMigrate bool
+	flagReset bool
 
 	testOutput io.Writer // for tests
 }
 
-func (c *OperatorUnsealCommand) Synopsis() string {
-	return "Unseals the OpenBao server"
+func (c *NamespaceUnsealCommand) Synopsis() string {
+	return "Unseals the namespace"
 }
 
-func (c *OperatorUnsealCommand) Help() string {
+func (c *NamespaceUnsealCommand) Help() string {
 	helpText := `
-Usage: bao operator unseal [options] [KEY]
+Usage: bao namespace unseal [options] PATH [KEY]
 
-  Provide a portion of the root key to unseal a Vault server. Vault starts
-  in a sealed state. It cannot perform operations until it is unsealed. This
-  command accepts a portion of the root key (an "unseal key").
+  Unseals the OpenBao namespace. Provide a portion of the root key to unseal
+  an OpenBao namespace. Namespaces cannot perform operations until they are
+  unsealed. This command accepts a portion of the root key (an "unseal key").
 
   The unseal key can be supplied as an argument to the command, but this is
   not recommended as the unseal key will be available in your history:
 
-      $ bao operator unseal IXyR0OJnSFobekZMMCKCoVEpT7wI6l+USMzE3IcyDyo=
+      $ bao namespace unseal ns1 IXyR0OJnSFobekZMMCKCoVEpT7wI6l+USMzE3IcyDyo=
 
   Instead, run the command with no arguments and it will prompt for the key:
 
-      $ bao operator unseal
+      $ bao namespace unseal ns1
       Key (will be hidden): IXyR0OJnSFobekZMMCKCoVEpT7wI6l+USMzE3IcyDyo=
+
+  Optionally, you can reset the unseal progress, discarding any already
+  provided unseal keyshares with a reset flag:
+
+      $ bao namespace unseal --reset ns1
 
 ` + c.Flags().Help()
 
 	return strings.TrimSpace(helpText)
 }
 
-func (c *OperatorUnsealCommand) Flags() *FlagSets {
+func (c *NamespaceUnsealCommand) Flags() *FlagSets {
 	set := c.flagSet(FlagSetHTTP | FlagSetOutputFormat)
-
 	f := set.NewFlagSet("Command Options")
 
 	f.BoolVar(&BoolVar{
@@ -71,28 +74,18 @@ func (c *OperatorUnsealCommand) Flags() *FlagSets {
 		Usage:      "Discard any previously entered keys to the unseal process.",
 	})
 
-	f.BoolVar(&BoolVar{
-		Name:       "migrate",
-		Aliases:    []string{},
-		Target:     &c.flagMigrate,
-		Default:    false,
-		EnvVar:     "",
-		Completion: complete.PredictNothing,
-		Usage:      "Indicate that this share is provided with the intent that it is part of a seal migration process.",
-	})
-
 	return set
 }
 
-func (c *OperatorUnsealCommand) AutocompleteArgs() complete.Predictor {
-	return complete.PredictAnything
+func (c *NamespaceUnsealCommand) AutocompleteArgs() complete.Predictor {
+	return c.PredictVaultNamespaces()
 }
 
-func (c *OperatorUnsealCommand) AutocompleteFlags() complete.Flags {
+func (c *NamespaceUnsealCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *OperatorUnsealCommand) Run(args []string) int {
+func (c *NamespaceUnsealCommand) Run(args []string) int {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
@@ -100,16 +93,22 @@ func (c *OperatorUnsealCommand) Run(args []string) int {
 		return 1
 	}
 
-	unsealKey := ""
+	var unsealKey string
+	var namespacePath string
 
 	args = f.Args()
 	switch len(args) {
 	case 0:
-		// We will prompt for the unseal key later
+		c.UI.Error("Not enough arguments (expected 1-2, got 0)")
+		return 1
 	case 1:
-		unsealKey = strings.TrimSpace(args[0])
+		// We will prompt for the unseal key later
+		namespacePath = strings.TrimSpace(args[0])
+	case 2:
+		namespacePath = strings.TrimSpace(args[0])
+		unsealKey = strings.TrimSpace(args[1])
 	default:
-		c.UI.Error(fmt.Sprintf("Too many arguments (expected 1, got %d)", len(args)))
+		c.UI.Error(fmt.Sprintf("Too many arguments (expected 1-2, got %d)", len(args)))
 		return 1
 	}
 
@@ -120,12 +119,17 @@ func (c *OperatorUnsealCommand) Run(args []string) int {
 	}
 
 	if c.flagReset {
-		status, err := client.Sys().ResetUnsealProcess()
+		status, err := client.Sys().NamespaceUnseal(
+			api.NamespaceUnsealRequest{
+				Name:  namespacePath,
+				Reset: true,
+			},
+		)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error resetting unseal process: %s", err))
 			return 2
 		}
-		return OutputCoreSealStatus(c.UI, client, status)
+		return OutputData(c.UI, SealStatusOutput{CoreSealStatusResponse: api.CoreSealStatusResponse{SealStatusResponse: status}})
 	}
 
 	if unsealKey == "" {
@@ -140,9 +144,9 @@ func (c *OperatorUnsealCommand) Run(args []string) int {
 			writer = c.testOutput
 		}
 
-		fmt.Fprintf(writer, "Unseal Key (will be hidden): ")
+		_, _ = fmt.Fprintf(writer, "Unseal Key (will be hidden): ")
 		value, err := password.Read(os.Stdin)
-		fmt.Fprintf(writer, "\n")
+		_, _ = fmt.Fprintf(writer, "\n")
 		if err != nil {
 			c.UI.Error(wrapAtLength(fmt.Sprintf("An error occurred attempting to "+
 				"ask for an unseal key. The raw error message is shown below, but "+
@@ -157,14 +161,16 @@ func (c *OperatorUnsealCommand) Run(args []string) int {
 		unsealKey = strings.TrimSpace(value)
 	}
 
-	status, err := client.Sys().UnsealWithOptions(&api.UnsealOpts{
-		Key:     unsealKey,
-		Migrate: c.flagMigrate,
-	})
+	status, err := client.Sys().NamespaceUnseal(
+		api.NamespaceUnsealRequest{
+			Name: namespacePath,
+			Key:  unsealKey,
+		},
+	)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error unsealing: %s", err))
 		return 2
 	}
 
-	return OutputCoreSealStatus(c.UI, client, status)
+	return OutputData(c.UI, SealStatusOutput{CoreSealStatusResponse: api.CoreSealStatusResponse{SealStatusResponse: status}})
 }

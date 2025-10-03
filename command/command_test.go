@@ -27,6 +27,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/seal"
+	"github.com/stretchr/testify/require"
 
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
@@ -69,6 +70,42 @@ func testVaultServer(tb testing.TB) (*api.Client, func()) {
 
 	client, _, closer := testVaultServerUnseal(tb)
 	return client, closer
+}
+
+// testVaultServerWithNamespace creates a test vault cluster (with an existing namespace
+// sealed or unsealed depending on the [sealed] flag provided to the function) and returns
+// a configured API client (with namespace header set), unseal keyshares and closer function.
+func testVaultServerWithNamespace(tb testing.TB, name string, sealed bool) (*api.Client, []string, func()) {
+	tb.Helper()
+
+	client, _, closer := testVaultServerUnseal(tb)
+	resp, err := client.Sys().CreateNamespace(
+		&api.CreateNamespaceRequest{
+			Name:           name,
+			CustomMetadata: nil,
+			Seals: []map[string]interface{}{{
+				"type":             "shamir",
+				"secret_shares":    3,
+				"secret_threshold": 2,
+			}},
+		})
+	require.NoError(tb, err)
+	if sealed {
+		return client, resp.KeyShares["default"], closer
+	}
+
+	for _, keyShare := range resp.KeyShares["default"] {
+		status, err := client.Sys().NamespaceUnseal(api.NamespaceUnsealRequest{
+			Name: name,
+			Key:  keyShare,
+		})
+		require.NoError(tb, err)
+		if !status.Sealed {
+			break
+		}
+	}
+
+	return client, resp.KeyShares["default"], closer
 }
 
 func testVaultServerWithSecrets(ctx context.Context, tb testing.TB) (*api.Client, func()) {

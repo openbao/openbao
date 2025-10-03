@@ -54,6 +54,24 @@ plugin_download_behavior = "fail"
 - `"fail"` `(default)` - Server startup fails if any plugin download fails
 - `"warn"` - Log warnings for failed downloads but continue startup
 
+## Authentication
+
+When downloading plugin images from a private registry, OpenBao will use
+credentials as described in the Docker or Podman configuration files present on
+the system in the following order:
+
+1. `~/.docker/config.json` or `%USERPROFILE%\.docker\config.json` on Windows.
+2. A `config.json` file in the directory specified in the `DOCKER_CONFIG` environment variable.
+3. The path specified by the `REGISTRY_AUTH_FILE` environment variable.
+4. `$XDG_RUNTIME_DIR/containers/auth.json`
+
+:::tip
+
+When deploying OpenBao to Kubernetes you can mount an Image Pull Secret into the
+Pods to use for authentication.
+
+:::
+
 ## Complete example
 
 ```hcl

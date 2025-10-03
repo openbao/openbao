@@ -264,7 +264,7 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 		rootStatus, err := client.Sys().GenerateRootStatus()
 		require.NoError(t, err)
 
-		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength)
+		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength, false)
 		require.NoError(t, err)
 
 		genRoot, err := client.Sys().GenerateRootInit(otp, "")
@@ -462,7 +462,7 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 		rootStatus, err := client.Sys().GenerateRootStatus()
 		require.NoError(t, err)
 
-		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength)
+		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength, false)
 		require.NoError(t, err)
 
 		genRoot, err := client.Sys().GenerateRootInit(otp, "")

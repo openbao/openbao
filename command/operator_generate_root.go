@@ -268,7 +268,7 @@ func (c *OperatorGenerateRootCommand) generateOTP(client *api.Client, kind gener
 		return "", 2
 	}
 
-	otp, err := roottoken.GenerateOTP(status.OTPLength)
+	otp, err := roottoken.GenerateOTP(status.OTPLength, false)
 	var retCode int
 	if err != nil {
 		retCode = 2
@@ -452,7 +452,7 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 		nonce = c.flagNonce
 	}
 
-	// Trim any whitespace from they key, especially since we might have prompted
+	// Trim any whitespace from the key, especially since we might have prompted
 	// the user for it.
 	key = strings.TrimSpace(key)
 
@@ -527,11 +527,8 @@ func (c *OperatorGenerateRootCommand) printStatus(status *api.GenerateRootStatus
 	if status.PGPFingerprint != "" {
 		out = append(out, fmt.Sprintf("PGP Fingerprint | %s", status.PGPFingerprint))
 	}
-	switch {
-	case status.EncodedToken != "":
+	if status.EncodedToken != "" {
 		out = append(out, fmt.Sprintf("Encoded Token | %s", status.EncodedToken))
-	case status.EncodedRootToken != "":
-		out = append(out, fmt.Sprintf("Encoded Root Token | %s", status.EncodedRootToken))
 	}
 	if status.OTP != "" {
 		c.UI.Warn(wrapAtLength("A One-Time-Password has been generated for you and is shown in the OTP field. You will need this value to decode the resulting root token, so keep it safe."))

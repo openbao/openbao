@@ -8,11 +8,11 @@ import (
 	"net/http"
 )
 
-func (c *Sys) SealStatus() (*SealStatusResponse, error) {
+func (c *Sys) SealStatus() (*CoreSealStatusResponse, error) {
 	return c.SealStatusWithContext(context.Background())
 }
 
-func (c *Sys) SealStatusWithContext(ctx context.Context) (*SealStatusResponse, error) {
+func (c *Sys) SealStatusWithContext(ctx context.Context) (*CoreSealStatusResponse, error) {
 	r := c.c.NewRequest(http.MethodGet, "/v1/sys/seal-status")
 	return sealStatusRequestWithContext(ctx, c, r)
 }
@@ -36,11 +36,11 @@ func (c *Sys) SealWithContext(ctx context.Context) error {
 	return nil
 }
 
-func (c *Sys) ResetUnsealProcess() (*SealStatusResponse, error) {
+func (c *Sys) ResetUnsealProcess() (*CoreSealStatusResponse, error) {
 	return c.ResetUnsealProcessWithContext(context.Background())
 }
 
-func (c *Sys) ResetUnsealProcessWithContext(ctx context.Context) (*SealStatusResponse, error) {
+func (c *Sys) ResetUnsealProcessWithContext(ctx context.Context) (*CoreSealStatusResponse, error) {
 	body := map[string]interface{}{"reset": true}
 
 	r := c.c.NewRequest(http.MethodPut, "/v1/sys/unseal")
@@ -51,11 +51,11 @@ func (c *Sys) ResetUnsealProcessWithContext(ctx context.Context) (*SealStatusRes
 	return sealStatusRequestWithContext(ctx, c, r)
 }
 
-func (c *Sys) Unseal(shard string) (*SealStatusResponse, error) {
+func (c *Sys) Unseal(shard string) (*CoreSealStatusResponse, error) {
 	return c.UnsealWithContext(context.Background(), shard)
 }
 
-func (c *Sys) UnsealWithContext(ctx context.Context, shard string) (*SealStatusResponse, error) {
+func (c *Sys) UnsealWithContext(ctx context.Context, shard string) (*CoreSealStatusResponse, error) {
 	body := map[string]interface{}{"key": shard}
 
 	r := c.c.NewRequest(http.MethodPut, "/v1/sys/unseal")
@@ -66,11 +66,11 @@ func (c *Sys) UnsealWithContext(ctx context.Context, shard string) (*SealStatusR
 	return sealStatusRequestWithContext(ctx, c, r)
 }
 
-func (c *Sys) UnsealWithOptions(opts *UnsealOpts) (*SealStatusResponse, error) {
+func (c *Sys) UnsealWithOptions(opts *UnsealOpts) (*CoreSealStatusResponse, error) {
 	return c.UnsealWithOptionsWithContext(context.Background(), opts)
 }
 
-func (c *Sys) UnsealWithOptionsWithContext(ctx context.Context, opts *UnsealOpts) (*SealStatusResponse, error) {
+func (c *Sys) UnsealWithOptionsWithContext(ctx context.Context, opts *UnsealOpts) (*CoreSealStatusResponse, error) {
 	r := c.c.NewRequest(http.MethodPut, "/v1/sys/unseal")
 
 	if err := r.SetJSONBody(opts); err != nil {
@@ -80,7 +80,7 @@ func (c *Sys) UnsealWithOptionsWithContext(ctx context.Context, opts *UnsealOpts
 	return sealStatusRequestWithContext(ctx, c, r)
 }
 
-func sealStatusRequestWithContext(ctx context.Context, c *Sys, r *Request) (*SealStatusResponse, error) {
+func sealStatusRequestWithContext(ctx context.Context, c *Sys, r *Request) (*CoreSealStatusResponse, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
@@ -90,19 +90,13 @@ func sealStatusRequestWithContext(ctx context.Context, c *Sys, r *Request) (*Sea
 	}
 	defer resp.Body.Close()
 
-	var result SealStatusResponse
+	var result CoreSealStatusResponse
 	err = resp.DecodeJSON(&result)
 	return &result, err
 }
 
-type SealStatusResponse struct {
-	Type             string   `json:"type"`
-	Initialized      bool     `json:"initialized"`
-	Sealed           bool     `json:"sealed"`
-	T                int      `json:"t"`
-	N                int      `json:"n"`
-	Progress         int      `json:"progress"`
-	Nonce            string   `json:"nonce"`
+type CoreSealStatusResponse struct {
+	*SealStatusResponse
 	Version          string   `json:"version"`
 	BuildDate        string   `json:"build_date"`
 	Migration        bool     `json:"migration"`

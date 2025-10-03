@@ -323,7 +323,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength)
+		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -552,7 +552,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength)
+		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength, false)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -3,6 +3,10 @@ linters:
   enable:
     - nilnil
     - misspell
+  settings:
+    errcheck:
+      exclude-functions:
+        - (io.ReadCloser).Close
 formatters:
   enable:
     - gofumpt

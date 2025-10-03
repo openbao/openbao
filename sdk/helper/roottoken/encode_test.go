@@ -48,7 +48,7 @@ func TestTokenEncodingDecodingWithOTP(t *testing.T) {
 	}
 	for _, otpTestCase := range otpTestCases {
 		t.Run(otpTestCase.name, func(t *testing.T) {
-			otp, err := GenerateOTP(otpTestCase.otpLength)
+			otp, err := GenerateOTP(otpTestCase.otpLength, false)
 			if err != nil {
 				t.Fatal(err.Error())
 			}

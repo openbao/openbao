@@ -726,7 +726,7 @@ docker_signs:
 
 release:
   github:
-    owner: openbao
+    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
     name: openbao{{ .Env.NIGHTLY_RELEASE }}
 
   prerelease: auto

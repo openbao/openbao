@@ -16,6 +16,7 @@ import (
 	"github.com/gammazero/workerpool"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/fairshare"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -60,6 +61,7 @@ type RollbackManager struct {
 	tickerIsStopped bool
 	quitContext     context.Context
 	runner          *workerpool.WorkerPool
+	jobManager      *fairshare.JobManager
 	core            *Core
 	// This channel is used for testing
 	rollbacksDoneCh chan struct{}
@@ -92,7 +94,8 @@ func NewRollbackManager(ctx context.Context, logger log.Logger, backendsFunc fun
 	}
 	numWorkers := r.numRollbackWorkers()
 	r.logger.Info(fmt.Sprintf("Starting the rollback manager with %d workers", numWorkers))
-	r.runner = workerpool.New(numWorkers)
+	r.jobManager = fairshare.NewJobManager("rollback", numWorkers, r.logger, r.core.metricSink)
+	r.jobManager.Start()
 	return r
 }
 
@@ -125,7 +128,7 @@ func (m *RollbackManager) Stop() {
 		close(m.shutdownCh)
 		<-m.doneCh
 	}
-	m.runner.StopWait()
+	m.jobManager.Stop()
 }
 
 // StopTicker stops the automatic Rollback manager's ticker, causing us
@@ -195,7 +198,7 @@ func (m *RollbackManager) triggerRollbacks() {
 func (m *RollbackManager) startOrLookupRollback(ctx context.Context, fullPath string, grabStatelock bool) *rollbackState {
 	m.inflightLock.Lock()
 	defer m.inflightLock.Unlock()
-	defer metrics.SetGauge([]string{"rollback", "queued"}, float32(m.runner.WaitingQueueSize()))
+	defer metrics.SetGauge([]string{"rollback", "queued"}, float32(len(m.jobManager.GetWorkQueueLengths())))
 	defer metrics.SetGauge([]string{"rollback", "inflight"}, float32(len(m.inflight)))
 	rsInflight, ok := m.inflight[fullPath]
 	if ok {

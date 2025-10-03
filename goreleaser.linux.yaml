@@ -44,6 +44,7 @@ report_sizes: true
 
 nfpms:
   - vendor: OpenBao
+    package_name: openbao
     homepage: https://openbao.org
     maintainer: OpenBao <openbao@lists.openssf.org>
     description: |
@@ -57,6 +58,11 @@ nfpms:
     dependencies:
       - openssl
     provides:
+      - openbao
+      - bao
+    conflicts:
+      - bao
+    replaces:
       - bao
     bindir: /usr/bin
     section: default

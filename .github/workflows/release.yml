@@ -21,6 +21,11 @@ on:
         required: true
         default: true
         type: boolean
+      dodebrelease:
+        description: "Release DEB packages in APT repository"
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -323,6 +328,14 @@ jobs:
           NFPM_DEFAULT_PASSPHRASE: ${{ secrets.GPG_PASSWORD }}
           NIGHTLY_RELEASE: ${{ inputs.nightly }}
 
+      - name: Upload deb packages artifact
+        if: inputs.dodebrelease
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-packages
+          path: '*.deb'
+          retention-days: 1
+
       - name: Remove GPG Signing Key File
         if: always()
         run: |
@@ -361,3 +374,56 @@ jobs:
       - name: Release distribution source tarball
         run: |
           gh release upload $TAGNAME *.xz
+
+  release-deb:
+    runs-on: ubuntu-latest
+    if: inputs.dodebrelease && inputs.dogorelease
+    needs:
+      - build-ui-dist
+      - release-main
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
+      AWS_REGION: 'fra'
+      AWS_ENDPOINT_URL: ${{ secrets.PKG_S3_SERVER_NAME }}
+      BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
+    steps:
+      - name: Download APT db and dists
+        run: |
+          aws s3 sync s3://${BUCKET}/deb/db build/deb/db
+          aws s3 sync s3://${BUCKET}/deb/dists build/deb/dists
+
+      - name: Download deb-packages artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: deb-packages
+
+      - name: GPG Import
+        id: gpg-import
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSWORD }}
+      
+      - name: Update APT repository
+        run: |
+          sudo apt install -y reprepro
+          mkdir -p build/deb/conf
+          cat > build/deb/conf/distributions <<EOF
+          Origin: OpenBao - Official
+          Label: OpenBao
+          Suite: stable
+          Codename: stable
+          Architectures: amd64 arm64 armhf ppc64el riscv64 s390x
+          Components: main
+          Description: Official APT repository for OpenBao
+          SignWith: ${GPG_FINGERPRINT}
+          Limit: 0
+          EOF
+          reprepro -b build/deb includedeb stable *.deb
+        env:
+          GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
+
+      - name: Upload APT repository
+        run: |
+          aws s3 sync build/deb s3://${BUCKET}/deb

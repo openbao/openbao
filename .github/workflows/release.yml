@@ -170,7 +170,7 @@ jobs:
           retention-days: 1
 
   release-main:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs:
       - build-ui-dist
     env:
@@ -182,11 +182,11 @@ jobs:
         release_os:
           - linux
           - hsm
-          - darwin
-          - freebsd
-          - netbsd
-          - openbsd
-          - windows
+          # - darwin
+          # - freebsd
+          # - netbsd
+          # - openbsd
+          # - windows
     steps:
       - name: Free additional storage on runner
         if: inputs.dogorelease

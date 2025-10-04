@@ -406,9 +406,18 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}
       
+      - name: Install reprepro from debian experimental
+        env:
+          REPREPRO_VERSION: 5.4.7-1
+        run: |
+          echo "deb http://ftp.debian.org/debian experimental main" | sudo tee /etc/apt/sources.list.d/debian-experimental.list > /dev/null # required for reprepro with "Limit" support
+          echo "deb http://ftp.debian.org/debian trixie main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null # required for libpgpme11t64 >= 1.23.2
+          wget -qO- https://ftp-master.debian.org/keys/archive-key-13.asc | sudo tee /etc/apt/trusted.gpg.d/archive-key-13.asc > /dev/null
+          sudo apt update
+          sudo apt install -y reprepro=$REPREPRO_VERSION
+
       - name: Update APT repository
         run: |
-          sudo apt install -y reprepro
           mkdir -p build/deb/conf
           cat > build/deb/conf/distributions <<EOF
           Origin: OpenBao - Official

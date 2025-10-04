@@ -332,7 +332,7 @@ jobs:
         if: inputs.dodebrelease
         uses: actions/upload-artifact@v4
         with:
-          name: deb-packages
+          name: deb-packages-${{ matrix.release_os }}
           path: 'dist/*.deb'
           retention-days: 1
 
@@ -393,10 +393,11 @@ jobs:
           aws s3 sync s3://${BUCKET}/deb/db build/deb/db
           aws s3 sync s3://${BUCKET}/deb/dists build/deb/dists
 
-      - name: Download deb-packages artifact
+      - name: Download deb-packages artifacts
         uses: actions/download-artifact@v5
         with:
-          name: deb-packages
+          pattern: deb-packages-*
+          merge-multiple: true
 
       - name: GPG Import
         id: gpg-import

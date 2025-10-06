@@ -87,7 +87,7 @@ func TestNamespaceUnsealCommand_Run(t *testing.T) {
 		defer closer()
 
 		// Enter an unseal key
-		status, err := client.Sys().NamespaceUnseal(api.NamespaceUnsealRequest{Name: nsName, Key: unsealShares[0]})
+		status, err := client.Sys().UnsealNamespace(&api.UnsealNamespaceRequest{Name: nsName, Key: unsealShares[0]})
 		require.NoError(t, err)
 		require.Equal(t, 1, status.Progress)
 

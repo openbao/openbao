@@ -757,9 +757,7 @@ func TestLDAPNamespaceMultipleCreates(t *testing.T) {
 	client.SetToken(token)
 
 	for _, ns := range []string{"ns1", "ns2", "ns3"} {
-		resp, err := client.Sys().CreateNamespace(&api.CreateNamespaceRequest{
-			Name: ns,
-		})
+		resp, err := client.Sys().CreateNamespace(ns)
 		require.NoErrorf(t, err, "failed to create namespace %s", ns)
 		require.NotNil(t, resp, "response for namespace %s is nil", ns)
 	}

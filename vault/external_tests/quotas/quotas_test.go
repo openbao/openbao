@@ -489,18 +489,14 @@ func TestQuotas_RateLimitQuotaNS(t *testing.T) {
 
 	// Create Parent Namespace ns1
 	// ns1 intentionaly does not have a quota, so it should be able to do more requests than root
-	_, err = client.Sys().CreateNamespace(&api.CreateNamespaceRequest{
-		Name: "ns1",
-	})
+	_, err = client.Sys().CreateNamespace("ns1")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create Childnamespace, so we get a hierarchy of ns1/ns1.1
 	client.SetNamespace("ns1")
-	_, err = client.Sys().CreateNamespace(&api.CreateNamespaceRequest{
-		Name: "ns1.1",
-	})
+	_, err = client.Sys().CreateNamespace("ns1.1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -582,9 +578,7 @@ func TestQuotas_RateLimitQuotaInheritableNS(t *testing.T) {
 	vault.TestWaitActive(t, core)
 
 	// Create Parent Namespace
-	_, err := client.Sys().CreateNamespace(&api.CreateNamespaceRequest{
-		Name: "ns1",
-	})
+	_, err := client.Sys().CreateNamespace("ns1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -604,9 +598,7 @@ func TestQuotas_RateLimitQuotaInheritableNS(t *testing.T) {
 
 	// Create Childnamespace, so we get a hierarchy of ns1/ns1.1
 	client.SetNamespace("ns1")
-	_, err = client.Sys().CreateNamespace(&api.CreateNamespaceRequest{
-		Name: "ns1.1",
-	})
+	_, err = client.Sys().CreateNamespace("ns1.1")
 	if err != nil {
 		t.Fatal(err)
 	}

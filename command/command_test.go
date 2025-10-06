@@ -73,15 +73,15 @@ func testVaultServer(tb testing.TB) (*api.Client, func()) {
 }
 
 // testVaultServerWithNamespace creates a test vault cluster (with an existing namespace
-// sealed or unsealed depending on the [sealed] flag provided to the function) and returns
+// sealed or unsealed depending on the sealed flag provided to the function) and returns
 // a configured API client (with namespace header set), unseal keyshares and closer function.
 func testVaultServerWithNamespace(tb testing.TB, name string, sealed bool) (*api.Client, []string, func()) {
 	tb.Helper()
 
 	client, _, closer := testVaultServerUnseal(tb)
-	resp, err := client.Sys().CreateNamespace(
+	resp, err := client.Sys().CreateNamespaceWithOptions(
+		name,
 		&api.CreateNamespaceRequest{
-			Name:           name,
 			CustomMetadata: nil,
 			Seals: []map[string]interface{}{{
 				"type":             "shamir",
@@ -95,7 +95,7 @@ func testVaultServerWithNamespace(tb testing.TB, name string, sealed bool) (*api
 	}
 
 	for _, keyShare := range resp.KeyShares["default"] {
-		status, err := client.Sys().NamespaceUnseal(api.NamespaceUnsealRequest{
+		status, err := client.Sys().UnsealNamespace(&api.UnsealNamespaceRequest{
 			Name: name,
 			Key:  keyShare,
 		})

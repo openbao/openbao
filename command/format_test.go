@@ -166,18 +166,16 @@ HA Enabled                    false`
 // initialized with all the omitempty fields as empty or not.
 func getMockStatusData(emptyFields bool) SealStatusOutput {
 	var status SealStatusOutput
-	var sealStatusResponseMock api.CoreSealStatusResponse
+	var sealStatusResponseMock api.SealStatusResponse
 	if !emptyFields {
-		sealStatusResponseMock = api.CoreSealStatusResponse{
-			SealStatusResponse: &api.SealStatusResponse{
-				Type:        "type",
-				Initialized: true,
-				Sealed:      true,
-				T:           1,
-				N:           2,
-				Progress:    3,
-				Nonce:       "nonce",
-			},
+		sealStatusResponseMock = api.SealStatusResponse{
+			Type:             "type",
+			Initialized:      true,
+			Sealed:           true,
+			T:                1,
+			N:                2,
+			Progress:         3,
+			Nonce:            "nonce",
 			Version:          "version",
 			BuildDate:        "build date",
 			Migration:        true,
@@ -204,16 +202,14 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			4,                        // RaftAppliedIndex
 		}
 	} else {
-		sealStatusResponseMock = api.CoreSealStatusResponse{
-			SealStatusResponse: &api.SealStatusResponse{
-				Type:        "type",
-				Initialized: true,
-				Sealed:      true,
-				T:           1,
-				N:           2,
-				Progress:    3,
-				Nonce:       "nonce",
-			},
+		sealStatusResponseMock = api.SealStatusResponse{
+			Type:             "type",
+			Initialized:      true,
+			Sealed:           true,
+			T:                1,
+			N:                2,
+			Progress:         3,
+			Nonce:            "nonce",
 			Version:          "version",
 			BuildDate:        "build date",
 			Migration:        true,

@@ -85,7 +85,7 @@ func (c *NamespaceSealCommand) Run(args []string) int {
 	}
 
 	namespacePath := strings.TrimSpace(args[0])
-	if err = client.Sys().NamespaceSeal(namespacePath); err != nil {
+	if err = client.Sys().SealNamespace(namespacePath); err != nil {
 		c.UI.Error(fmt.Sprintf("Error sealing: %s", err))
 		return 2
 	}

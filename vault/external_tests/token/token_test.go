@@ -616,7 +616,7 @@ func TestTokenStore_RevocationOnStartup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var status *api.CoreSealStatusResponse
+	var status *api.SealStatusResponse
 	for i := 0; i < len(cluster.BarrierKeys); i++ {
 		status, err = client.Sys().Unseal(string(base64.StdEncoding.EncodeToString(cluster.BarrierKeys[i])))
 		if err != nil {

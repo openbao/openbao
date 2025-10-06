@@ -119,8 +119,8 @@ func (c *NamespaceUnsealCommand) Run(args []string) int {
 	}
 
 	if c.flagReset {
-		status, err := client.Sys().NamespaceUnseal(
-			api.NamespaceUnsealRequest{
+		status, err := client.Sys().UnsealNamespace(
+			&api.UnsealNamespaceRequest{
 				Name:  namespacePath,
 				Reset: true,
 			},
@@ -129,7 +129,15 @@ func (c *NamespaceUnsealCommand) Run(args []string) int {
 			c.UI.Error(fmt.Sprintf("Error resetting unseal process: %s", err))
 			return 2
 		}
-		return OutputData(c.UI, SealStatusOutput{CoreSealStatusResponse: api.CoreSealStatusResponse{SealStatusResponse: status}})
+		return OutputData(c.UI, SealStatusOutput{SealStatusResponse: api.SealStatusResponse{
+			Type:        status.Type,
+			Initialized: status.Initialized,
+			Sealed:      status.Sealed,
+			T:           status.T,
+			N:           status.N,
+			Progress:    status.Progress,
+			Nonce:       status.Nonce,
+		}})
 	}
 
 	if unsealKey == "" {
@@ -161,8 +169,8 @@ func (c *NamespaceUnsealCommand) Run(args []string) int {
 		unsealKey = strings.TrimSpace(value)
 	}
 
-	status, err := client.Sys().NamespaceUnseal(
-		api.NamespaceUnsealRequest{
+	status, err := client.Sys().UnsealNamespace(
+		&api.UnsealNamespaceRequest{
 			Name: namespacePath,
 			Key:  unsealKey,
 		},
@@ -172,5 +180,13 @@ func (c *NamespaceUnsealCommand) Run(args []string) int {
 		return 2
 	}
 
-	return OutputData(c.UI, SealStatusOutput{CoreSealStatusResponse: api.CoreSealStatusResponse{SealStatusResponse: status}})
+	return OutputData(c.UI, SealStatusOutput{SealStatusResponse: api.SealStatusResponse{
+		Type:        status.Type,
+		Initialized: status.Initialized,
+		Sealed:      status.Sealed,
+		T:           status.T,
+		N:           status.N,
+		Progress:    status.Progress,
+		Nonce:       status.Nonce,
+	}})
 }

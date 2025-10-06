@@ -638,9 +638,9 @@ func (t TableFormatter) OutputMap(ui cli.Ui, data map[string]interface{}) error 
 	return nil
 }
 
-// OutputCoreSealStatus will print *api.SealStatusResponse in the CLI according to the format provided
-func OutputCoreSealStatus(ui cli.Ui, client *api.Client, status *api.CoreSealStatusResponse) int {
-	sealStatusOutput := SealStatusOutput{CoreSealStatusResponse: *status}
+// OutputSealStatus will print *api.SealStatusResponse in the CLI according to the format provided
+func OutputSealStatus(ui cli.Ui, client *api.Client, status *api.SealStatusResponse) int {
+	sealStatusOutput := SealStatusOutput{SealStatusResponse: *status}
 
 	// Mask the 'Vault is sealed' error, since this means HA is enabled, but that
 	// we cannot query for the leader since we are sealed.
@@ -680,7 +680,7 @@ func looksLikeDuration(k string) bool {
 // vault status command, including fields that do not come from the status API.
 // Currently we are adding the fields from api.LeaderResponse
 type SealStatusOutput struct {
-	api.CoreSealStatusResponse
+	api.SealStatusResponse
 	HAEnabled                bool      `json:"ha_enabled"`
 	IsSelf                   bool      `json:"is_self,omitempty"`
 	ActiveTime               time.Time `json:"active_time,omitzero"`

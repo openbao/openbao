@@ -180,6 +180,15 @@ func (sm *SealManager) SealNamespace(ctx context.Context, nsToSeal *namespace.Na
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
 
+	barrier := sm.namespaceBarrier(nsToSeal.Path)
+	if barrier == nil {
+		return ErrNotSealable
+	}
+
+	if barrier.Sealed() {
+		return nil
+	}
+
 	var errs error
 	sm.barrierByNamespace.WalkPrefix(nsToSeal.Path, func(namespacePath string, barrier any) bool {
 		// always omit the root namespace

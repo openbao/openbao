@@ -23,13 +23,13 @@ import (
 	_ "github.com/openbao/openbao/helper/builtinplugins"
 
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
-	auditHttp "github.com/openbao/openbao/builtin/audit/http"
 	auditSocket "github.com/openbao/openbao/builtin/audit/socket"
 	auditSyslog "github.com/openbao/openbao/builtin/audit/syslog"
 
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	credOIDC "github.com/openbao/openbao/builtin/credential/jwt"
 	credKerb "github.com/openbao/openbao/builtin/credential/kerberos"
+	credKube "github.com/openbao/openbao/builtin/credential/kubernetes"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
@@ -130,7 +130,6 @@ const (
 var (
 	auditBackends = map[string]audit.Factory{
 		"file":   auditFile.Factory,
-		"http":   auditHttp.Factory,
 		"socket": auditSocket.Factory,
 		"syslog": auditSyslog.Factory,
 	}
@@ -166,6 +165,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 	loginHandlers := map[string]LoginHandler{
 		"cert":     &credCert.CLIHandler{},
 		"kerberos": &credKerb.CLIHandler{},
+		"kubernetes": &credKube.CLIHandler{},
 		"ldap":     &credLdap.CLIHandler{},
 		"oidc":     &credOIDC.CLIHandler{},
 		"radius": &credUserpass.CLIHandler{

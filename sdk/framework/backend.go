@@ -31,7 +31,10 @@ import (
 )
 
 // regexSingletonCache is used to reduce memory of mounting of multiple
-// builtin plugins.
+// builtin plugins of the same type. Frequently these will use similar
+// patterns and thus a singleton cache of regex is useful for limiting
+// redundant memory usage. This is safe as .Longest() is never called
+// on the resulting regex.
 var regexSingletonCache sync.Map
 
 // Backend is an implementation of logical.Backend that allows

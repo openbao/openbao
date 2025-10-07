@@ -118,6 +118,25 @@ const config: Config = {
       },
     ],
     [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "ecosystem",
+        path: "content/ecosystem",
+        routeBasePath: "ecosystem",
+        //sidebarPath: "./sidebarsEcosystem.ts",
+        editUrl: "https://github.com/openbao/openbao/tree/main/website/",
+        beforeDefaultRemarkPlugins: [
+          [
+            includeMarkdown,
+            {
+              resolveMdx: true,
+              resolveFrom: path.join(process.cwd(), "content", "partials"),
+            },
+          ],
+        ],
+      },
+    ],
+    [
       "@docusaurus/plugin-client-redirects",
       {
         redirects: [
@@ -144,6 +163,11 @@ const config: Config = {
         {
           to: "/blog/",
           label: "Blog",
+          position: "left",
+        },
+        {
+          to: "/ecosystem/",
+          label: "Ecosystem",
           position: "left",
         },
         {

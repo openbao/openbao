@@ -1,0 +1,42 @@
+---
+title: Supporters
+sidebar_position: 2
+---
+
+# Supporters
+
+import clsx from "clsx";
+import shuffle from "lodash/shuffle";
+
+export function Supporter({title, description, children}) {
+    return <div className={clsx("col col--4 padding-bottom--lg")}>
+      <div className="card card--full-height">
+        <div className="card__header" style={{display: "flex", justifyContent: "space-between"}}>
+          <h2>{title}</h2><img src={`https://avatars.githubusercontent.com/${title}?s=48`}/>
+        </div>
+        <div className="card__body">
+          {children}
+        </div>
+      </div>
+    </div>;
+}
+
+export function Randomize({children}) {
+  return shuffle(children);
+}
+
+<div className="container">
+  <div className="row">
+    <Randomize>
+    <Supporter title="Adfinis">
+        Several Developers employed by Adfinis AG work full time on OpenBao.
+    </Supporter>
+    <Supporter title="GitLab">
+        One Developer employed by GitLab Inc works full time on OpenBao.
+    </Supporter>
+    <Supporter title="SAP">
+        Several Developers are sponsored by SAP SE to work full time on OpenBao (via Reply).
+    </Supporter>
+    </Randomize>
+  </div>
+</div>

@@ -581,6 +581,9 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	}
 
 	if c.activeContext == nil || c.activeContext.Err() != nil {
+		if c.standby.Load() {
+			return nil, logical.ErrPerfStandbyPleaseForward
+		}
 		return nil, errors.New("active context canceled after getting state lock")
 	}
 

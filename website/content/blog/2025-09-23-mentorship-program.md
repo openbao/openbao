@@ -27,6 +27,7 @@ For the first few weeks, we met **every single day for an hour**. This intensive
 So, we adapted. Around the halfway mark, we shifted our rhythm to **three meetings per week**. This wasn't a step back; it was a strategic pivot. The focus moved away from daily "what do we do next?" check-ins to structured sessions where we could define clear tasks for the upcoming week. This gave Fatima the autonomy for deep, focused work and essential self-teaching, while ensuring she always had support to overcome obstacles.
 
 And the support team grew! In the second part of the program, Fatima had the fantastic opportunity to work closely with [**Philipp Stehle**](https://github.com/phil9909) from Adfinis, who was tackling cache invalidation challenges between nodes. This turned the mentorship into a true team collaboration. Instead of one mentor, she effectively had two, which was an incredible advantage and made the experience much more dynamic.
+
 #### **The Mentee’s Lens: Lessons Beyond the Code**
 
 From my side of the screen, this mentorship was more than a 12-week coding sprint — it taught me the importance of confidence, perseverance and how collaboration and adapting strategies as new problems arise are essential parts of working effectively in a team.

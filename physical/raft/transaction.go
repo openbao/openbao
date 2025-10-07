@@ -627,6 +627,10 @@ func (t *RaftTransaction) Commit(ctx context.Context) error {
 	defer func() {
 		if t.writable {
 			t.b.fsm.fastTxnTracker.completeTransaction(t.index)
+
+			// in "Rollback" we call fastTxnTracker.clearOldEntries(...) at this
+			// We don't do this in "Commit" because it will be called from the fsm.
+			// This ensures the cleanup also happens on standby nodes
 		}
 
 		t.b.fsm.l.RUnlock()

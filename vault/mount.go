@@ -2411,6 +2411,7 @@ func (c *Core) invalidateNamespaceMounts(ctx context.Context, uuid string) {
 		keys := []string{}
 
 		if ns == nil {
+			c.mountsLock.RLock()
 			for _, entry := range c.mounts.Entries {
 				if entry.Namespace().UUID == uuid {
 					key := path.Join(coreMountConfigPath, entry.UUID)
@@ -2424,6 +2425,9 @@ func (c *Core) invalidateNamespaceMounts(ctx context.Context, uuid string) {
 					}
 				}
 			}
+			c.mountsLock.RUnlock()
+
+			c.authLock.RLock()
 			for _, entry := range c.auth.Entries {
 				if entry.Namespace().UUID == uuid {
 					key := path.Join(coreAuthConfigPath, entry.UUID)
@@ -2437,6 +2441,8 @@ func (c *Core) invalidateNamespaceMounts(ctx context.Context, uuid string) {
 					}
 				}
 			}
+			c.authLock.RUnlock()
+
 			if len(keys) == 0 {
 				return
 			}

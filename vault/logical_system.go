@@ -864,18 +864,16 @@ func (b *SystemBackend) handleGenerateRootDecodeTokenUpdate(ctx context.Context,
 	encodedToken := data.Get("encoded_token").(string)
 	otp := data.Get("otp").(string)
 
-	token, err := roottoken.DecodeToken(encodedToken, otp, len(otp))
-	if err != nil {
-		return nil, err
+	if encodedToken == "" || otp == "" {
+		return handleError(errors.New("provided encodedToken or otp is empty"))
 	}
 
-	// Generate the response
-	resp := &logical.Response{
-		Data: map[string]interface{}{
-			"token": token,
-		},
+	token, err := roottoken.DecodeToken(encodedToken, otp, len(otp))
+	if err != nil {
+		return handleError(err)
 	}
-	return resp, nil
+
+	return &logical.Response{Data: map[string]interface{}{"token": token}}, nil
 }
 
 func (b *SystemBackend) mountInfo(ctx context.Context, entry *MountEntry) map[string]interface{} {

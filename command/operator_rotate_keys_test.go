@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/cli"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/api/v2"
 )
 
@@ -264,7 +264,7 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 		rootStatus, err := client.Sys().GenerateRootStatus()
 		require.NoError(t, err)
 
-		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength, false)
+		otp, err := base62.Random(rootStatus.OTPLength)
 		require.NoError(t, err)
 
 		genRoot, err := client.Sys().GenerateRootInit(otp, "")
@@ -462,7 +462,7 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 		rootStatus, err := client.Sys().GenerateRootStatus()
 		require.NoError(t, err)
 
-		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength, false)
+		otp, err := base62.Random(rootStatus.OTPLength)
 		require.NoError(t, err)
 
 		genRoot, err := client.Sys().GenerateRootInit(otp, "")

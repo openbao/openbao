@@ -1076,6 +1076,10 @@ func coreInit(c *Core, conf *CoreConfig) error {
 		c.physical = physical.NewStorageEncoding(c.physical)
 	}
 
+	if c.StandbyReadsEnabled() {
+		c.underlyingPhysical.(physical.CacheInvalidationBackend).HookInvalidate(c.Invalidate)
+	}
+
 	return nil
 }
 

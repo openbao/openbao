@@ -11,10 +11,12 @@ import (
 	"strings"
 
 	"github.com/hashicorp/cli"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
+	"github.com/openbao/openbao/vault"
 	"github.com/posener/complete"
 )
 
@@ -238,7 +240,11 @@ func (c *NamespaceGenerateRootCommand) generateOTP(client *api.Client, namespace
 		return "", 2
 	}
 
-	otp, err := roottoken.GenerateOTP(status.OTPLength, true)
+	otpLength := status.OTPLength
+	if otpLength == 0 {
+		otpLength = vault.NSTokenLength + vault.TokenPrefixLength
+	}
+	otp, err := base62.Random(otpLength)
 	var retCode int
 	if err != nil {
 		retCode = 2

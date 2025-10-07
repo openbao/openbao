@@ -30,6 +30,10 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
+// regexSingletonCache is used to reduce memory of mounting of multiple
+// builtin plugins.
+var regexSingletonCache sync.Map
+
 // Backend is an implementation of logical.Backend that allows
 // the implementer to code a backend using a much more programmer-friendly
 // framework that handles a lot of the routing and validation for you.
@@ -184,7 +188,7 @@ func (b *Backend) HandleExistenceCheck(ctx context.Context, req *logical.Request
 
 	// Call the callback with the request and the data
 	exists, err = path.ExistenceCheck(ctx, req, &fd)
-	return
+	return checkFound, exists, err
 }
 
 // HandleRequest is the logical.Backend implementation.
@@ -471,7 +475,12 @@ func (b *Backend) init() {
 		if p.Pattern[len(p.Pattern)-1] != '$' {
 			p.Pattern = p.Pattern + "$"
 		}
-		b.pathsRe[i] = regexp.MustCompile(p.Pattern)
+		regexRaw, ok := regexSingletonCache.Load(p.Pattern)
+		if !ok {
+			regexRaw = regexp.MustCompile(p.Pattern)
+			regexSingletonCache.Store(p.Pattern, regexRaw)
+		}
+		b.pathsRe[i] = regexRaw.(*regexp.Regexp)
 	}
 }
 

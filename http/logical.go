@@ -364,6 +364,18 @@ func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.Value) http.Hand
 // toggles. Refer to usage on functions for possible behaviors.
 func handleLogicalInternal(core *vault.Core, injectDataIntoTopLevel bool, noForward bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !core.StandbyReadsEnabled() {
+			standby, err := core.Standby()
+			if err != nil {
+				respondError(w, 503, err)
+				return
+			}
+			if standby {
+				forwardRequest(core, w, r)
+				return
+			}
+		}
+
 		req, statusCode, err := buildLogicalRequest(core, w, r)
 		if err != nil || statusCode != 0 {
 			respondError(w, statusCode, err)

@@ -23,6 +23,7 @@ import (
 	_ "github.com/openbao/openbao/helper/builtinplugins"
 
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
+	auditHttp "github.com/openbao/openbao/builtin/audit/http"
 	auditSocket "github.com/openbao/openbao/builtin/audit/socket"
 	auditSyslog "github.com/openbao/openbao/builtin/audit/syslog"
 
@@ -130,6 +131,7 @@ const (
 var (
 	auditBackends = map[string]audit.Factory{
 		"file":   auditFile.Factory,
+		"http":   auditHttp.Factory,
 		"socket": auditSocket.Factory,
 		"syslog": auditSyslog.Factory,
 	}

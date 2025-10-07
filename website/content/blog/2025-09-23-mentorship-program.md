@@ -30,13 +30,13 @@ And the support team grew! In the second part of the program, Fatima had the fan
 
 #### **The Mentee’s Lens: Lessons Beyond the Code**
 
-From my side of the screen, this mentorship was more than a 12-week coding sprint — it taught me the importance of confidence, perseverance and how collaboration and adapting strategies as new problems arise are essential parts of working effectively in a team.
-
-When we initially discussed horizontal scalability as the topic for the mentorship, I remember feeling underprepared, having never worked in that space before. My mentor, [Andrii](https://github.com/driif)’s uplifting encouragement and guidance helped me dive in, understand the problem space, and start experimenting with solutions. Once [Philipp](https://github.com/phil9909) joined the project, the pace picked up and the discussions became even more engaging.
-
-The community also held bi-monthly meetings led by [Alex](https://github.com/cipherboy) to review progress on high availability and discuss next steps. These sessions ensured the work stayed aligned with the community’s goals and that our progress moved in the right direction.
-
-Looking back, the experience shaped not just how I write code, but how I approach challenges — with curiosity, collaboration, and confidence!
+>From my side of the screen, this mentorship was more than a 12-week coding sprint — it taught me the importance of confidence, perseverance and how collaboration and adapting strategies as new problems arise are essential parts of working effectively in a team.
+>
+>When we initially discussed horizontal scalability as the topic for the mentorship, I remember feeling underprepared, having never worked in that space before. My mentor, [Andrii](https://github.com/driif)’s uplifting encouragement and guidance helped me dive in, understand the problem space, and start experimenting with solutions. Once [Philipp](https://github.com/phil9909) joined the project, the pace picked up and the discussions became even more engaging.
+>
+>The community also held bi-monthly meetings led by [Alex](https://github.com/cipherboy) to review progress on high availability and discuss next steps. These sessions ensured the work stayed aligned with the community’s goals and that our progress moved in the right direction.
+>
+>Looking back, the experience shaped not just how I write code, but how I approach challenges — with curiosity, collaboration, and confidence!
 
 #### **The 12-Week Sprint: A Choice We'd Make Again**
 

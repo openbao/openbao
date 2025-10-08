@@ -301,6 +301,10 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 									Type:     framework.TypeString,
 									Required: true,
 								},
+								"encoded_root_token": {
+									Type:     framework.TypeString,
+									Required: true,
+								},
 								"pgp_fingerprint": {
 									Type:     framework.TypeString,
 									Required: true,
@@ -349,6 +353,10 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 									Required: true,
 								},
 								"encoded_token": {
+									Type:     framework.TypeString,
+									Required: true,
+								},
+								"encoded_root_token": {
 									Type:     framework.TypeString,
 									Required: true,
 								},
@@ -430,6 +438,10 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 									Required: true,
 								},
 								"encoded_token": {
+									Type:     framework.TypeString,
+									Required: true,
+								},
+								"encoded_root_token": {
 									Type:     framework.TypeString,
 									Required: true,
 								},

@@ -533,8 +533,11 @@ func (c *OperatorGenerateRootCommand) printStatus(status *api.GenerateRootStatus
 	if status.PGPFingerprint != "" {
 		out = append(out, fmt.Sprintf("PGP Fingerprint | %s", status.PGPFingerprint))
 	}
-	if status.EncodedToken != "" {
+	switch {
+	case status.EncodedToken != "":
 		out = append(out, fmt.Sprintf("Encoded Token | %s", status.EncodedToken))
+	case status.EncodedRootToken != "":
+		out = append(out, fmt.Sprintf("Encoded Root Token | %s", status.EncodedRootToken))
 	}
 	if status.OTP != "" {
 		c.UI.Warn(wrapAtLength("A One-Time-Password has been generated for you and is shown in the OTP field. You will need this value to decode the resulting root token, so keep it safe."))

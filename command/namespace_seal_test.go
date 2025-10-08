@@ -23,6 +23,7 @@ func testNamespaceSealCommand(tb testing.TB) (*cli.MockUi, *NamespaceSealCommand
 
 func TestNamespaceSealCommand_Run(t *testing.T) {
 	t.Parallel()
+	nsName := "ns"
 
 	cases := []struct {
 		name   string
@@ -47,33 +48,38 @@ func TestNamespaceSealCommand_Run(t *testing.T) {
 		},
 		{
 			name:   "happy path",
-			args:   []string{"ns1"},
-			out:    `Success! Namespace "ns1" is sealed.`,
+			args:   []string{nsName},
+			out:    `Success! Namespace "ns" is sealed.`,
 			code:   0,
 			sealed: true,
 		},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			nsName := "ns1"
-			client, _, closer := testVaultServerWithNamespace(t, nsName, false)
-			defer closer()
+	t.Run("validations", func(t *testing.T) {
+		t.Parallel()
 
-			ui, cmd := testNamespaceSealCommand(t)
-			cmd.client = client
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 
-			code := cmd.Run(tc.args)
-			require.Equalf(t, tc.code, code, "expected %d to be %d", code, tc.code)
+				client, _, closer := testVaultServerWithNamespace(t, nsName, false)
+				defer closer()
 
-			combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
-			require.Containsf(t, combined, tc.out, "expected %q to contain %q", combined, tc.out)
+				ui, cmd := testNamespaceSealCommand(t)
+				cmd.client = client
 
-			sealStatus, err := client.Sys().NamespaceSealStatus(nsName)
-			require.NoError(t, err)
-			require.Equal(t, tc.sealed, sealStatus.Sealed)
-		})
-	}
+				code := cmd.Run(tc.args)
+				require.Equalf(t, tc.code, code, "expected %d to be %d", code, tc.code)
+
+				combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
+				require.Containsf(t, combined, tc.out, "expected %q to contain %q", combined, tc.out)
+
+				sealStatus, err := client.Sys().NamespaceSealStatus(nsName)
+				require.NoError(t, err)
+				require.Equal(t, tc.sealed, sealStatus.Sealed)
+			})
+		}
+	})
 
 	t.Run("no_tabs", func(t *testing.T) {
 		t.Parallel()

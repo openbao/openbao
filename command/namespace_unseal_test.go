@@ -28,6 +28,7 @@ func testNamespaceUnsealCommand(tb testing.TB) (*cli.MockUi, *NamespaceUnsealCom
 
 func TestNamespaceUnsealCommand_Run(t *testing.T) {
 	t.Parallel()
+	nsName := "ns"
 
 	cases := []struct {
 		name   string
@@ -58,31 +59,36 @@ func TestNamespaceUnsealCommand_Run(t *testing.T) {
 			sealed: true,
 		},
 	}
+	t.Run("validations", func(t *testing.T) {
+		t.Parallel()
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			nsName := "ns1"
-			client, _, closer := testVaultServerWithNamespace(t, nsName, true)
-			defer closer()
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 
-			ui, cmd := testNamespaceUnsealCommand(t)
-			cmd.client = client
-			cmd.testOutput = io.Discard
+				client, _, closer := testVaultServerWithNamespace(t, nsName, true)
+				defer closer()
 
-			code := cmd.Run(tc.args)
-			require.Equalf(t, tc.code, code, "expected %d to be %d", code, tc.code)
+				ui, cmd := testNamespaceUnsealCommand(t)
+				cmd.client = client
+				cmd.testOutput = io.Discard
 
-			combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
-			require.Containsf(t, combined, tc.out, "expected %q to contain %q", combined, tc.out)
+				code := cmd.Run(tc.args)
+				require.Equalf(t, tc.code, code, "expected %d to be %d", code, tc.code)
 
-			sealStatus, err := client.Sys().NamespaceSealStatus(nsName)
-			require.NoError(t, err)
-			require.Equal(t, tc.sealed, sealStatus.Sealed)
-		})
-	}
+				combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
+				require.Containsf(t, combined, tc.out, "expected %q to contain %q", combined, tc.out)
+
+				sealStatus, err := client.Sys().NamespaceSealStatus(nsName)
+				require.NoError(t, err)
+				require.Equal(t, tc.sealed, sealStatus.Sealed)
+			})
+		}
+	})
 
 	t.Run("reset flag", func(t *testing.T) {
-		nsName := "ns2"
+		t.Parallel()
+
 		client, unsealShares, closer := testVaultServerWithNamespace(t, nsName, true)
 		defer closer()
 
@@ -96,7 +102,7 @@ func TestNamespaceUnsealCommand_Run(t *testing.T) {
 		cmd.testOutput = io.Discard
 
 		// Reset and check output
-		code := cmd.Run([]string{"-reset", "ns2"})
+		code := cmd.Run([]string{"-reset", nsName})
 		require.Equalf(t, 0, code, "expected %d to be 0", code)
 
 		expected := "0/2"
@@ -109,7 +115,8 @@ func TestNamespaceUnsealCommand_Run(t *testing.T) {
 	})
 
 	t.Run("happy path", func(t *testing.T) {
-		nsName := "ns3"
+		t.Parallel()
+
 		client, unsealShares, closer := testVaultServerWithNamespace(t, nsName, true)
 		defer closer()
 
@@ -119,7 +126,7 @@ func TestNamespaceUnsealCommand_Run(t *testing.T) {
 			cmd.testOutput = io.Discard
 
 			// Reset and check output
-			code := cmd.Run([]string{"ns3", key})
+			code := cmd.Run([]string{nsName, key})
 			require.Equalf(t, 0, code, "expected %d to be 0: %s", code, ui.ErrorWriter.String())
 		}
 

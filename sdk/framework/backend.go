@@ -37,6 +37,58 @@ import (
 // on the resulting regex.
 var regexSingletonCache sync.Map
 
+// fieldSingletonCache is a shared cache of Fields maps across all backend instances.
+// Fields maps contain FieldSchema definitions which are immutable metadata (Type, Description, etc.).
+// By deduplicating identical Fields maps, we avoid storing the same schema definitions
+// thousands of times when mounting many instances of the same backend type.
+// This is safe because FieldSchemas are read-only and contain no backend-specific state.
+var fieldSingletonCache sync.Map // map[string]map[string]*FieldSchema
+
+// fieldsCacheKey generates a stable cache key for a Fields map.
+// We build a key from sorted field names combined with their type and description prefix.
+// Since field definitions are immutable, identical field sets will produce identical keys.
+func fieldsCacheKey(fields map[string]*FieldSchema) string {
+	if len(fields) == 0 {
+		return ""
+	}
+
+	// Collect and sort field names for stable key generation
+	names := make([]string, 0, len(fields))
+	for name := range fields {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	// Build key from sorted names and type signatures
+	// Use first 50 chars of description to keep key length reasonable while maintaining uniqueness
+	var keyBuilder strings.Builder
+	for _, name := range names {
+		schema := fields[name]
+		descLen := min(len(schema.Description), 50)
+		desc := schema.Description[:descLen]
+		fmt.Fprintf(&keyBuilder, "%s:%d:%s;", name, schema.Type, desc)
+	}
+	return keyBuilder.String()
+}
+
+// deduplicateFields returns a canonical version of the fields map if one exists in the global cache,
+// or stores and returns the provided map if it's new. This allows multiple backend instances
+// to share the same underlying Fields map, significantly reducing memory usage.
+func deduplicateFields(fields map[string]*FieldSchema) map[string]*FieldSchema {
+	if len(fields) == 0 {
+		return fields
+	}
+
+	key := fieldsCacheKey(fields)
+	if cached, ok := fieldSingletonCache.Load(key); ok {
+		return cached.(map[string]*FieldSchema)
+	}
+
+	// Store and return the new fields map
+	fieldSingletonCache.Store(key, fields)
+	return fields
+}
+
 // Backend is an implementation of logical.Backend that allows
 // the implementer to code a backend using a much more programmer-friendly
 // framework that handles a lot of the routing and validation for you.
@@ -468,6 +520,9 @@ func (b *Backend) Secret(k string) *Secret {
 func (b *Backend) init() {
 	b.pathsRe = make([]*regexp.Regexp, len(b.Paths))
 	for i, p := range b.Paths {
+		// Deduplicate Fields map to share identical field definitions across backend instances.
+		// This is safe because FieldSchemas are immutable metadata with no backend-specific state.
+		p.Fields = deduplicateFields(p.Fields)
 		if len(p.Pattern) == 0 {
 			panic("Routing pattern cannot be blank")
 		}

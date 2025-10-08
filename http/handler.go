@@ -175,31 +175,31 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/init", handleSysInit(core))
 		mux.Handle("/v1/sys/seal-status", handleSysSealStatus(core))
 		mux.Handle("/v1/sys/seal", handleSysSeal(core))
-		mux.Handle("/v1/sys/step-down", handleRequestForwarding(core, handleSysStepDown(core)))
+		mux.Handle("/v1/sys/step-down", handleSysStepDown(core))
 		mux.Handle("/v1/sys/unseal", handleSysUnseal(core))
 		mux.Handle("/v1/sys/leader", handleSysLeader(core))
 		mux.Handle("/v1/sys/health", handleSysHealth(core))
 		mux.Handle("/v1/sys/monitor", handleLogicalNoForward(core))
 
-		mux.Handle("/v1/sys/generate-root/attempt", handleRequestForwarding(core,
-			handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy))))
-		mux.Handle("/v1/sys/generate-root/update", handleRequestForwarding(core,
-			handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy))))
+		mux.Handle("/v1/sys/generate-root/attempt",
+			handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy)))
+		mux.Handle("/v1/sys/generate-root/update",
+			handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy)))
 
 		// Register without unauthenticated rekey, if necessary.
 		if props.ListenerConfig == nil || !props.ListenerConfig.DisableUnauthedRekeyEndpoints {
-			mux.Handle("/v1/sys/rekey/init", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyInit(core, false))))
-			mux.Handle("/v1/sys/rekey/update", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyUpdate(core, false))))
-			mux.Handle("/v1/sys/rekey/verify", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyVerify(core, false))))
-			mux.Handle("/v1/sys/rekey-recovery-key/init", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyInit(core, true))))
-			mux.Handle("/v1/sys/rekey-recovery-key/update", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyUpdate(core, true))))
-			mux.Handle("/v1/sys/rekey-recovery-key/verify", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyVerify(core, true))))
+			mux.Handle("/v1/sys/rekey/init",
+				handleAuditNonLogical(core, handleSysRekeyInit(core, false)))
+			mux.Handle("/v1/sys/rekey/update",
+				handleAuditNonLogical(core, handleSysRekeyUpdate(core, false)))
+			mux.Handle("/v1/sys/rekey/verify",
+				handleAuditNonLogical(core, handleSysRekeyVerify(core, false)))
+			mux.Handle("/v1/sys/rekey-recovery-key/init",
+				handleAuditNonLogical(core, handleSysRekeyInit(core, true)))
+			mux.Handle("/v1/sys/rekey-recovery-key/update",
+				handleAuditNonLogical(core, handleSysRekeyUpdate(core, true)))
+			mux.Handle("/v1/sys/rekey-recovery-key/verify",
+				handleAuditNonLogical(core, handleSysRekeyVerify(core, true)))
 		}
 
 		mux.Handle("/v1/sys/storage/raft/bootstrap", handleSysRaftBootstrap(core))
@@ -207,10 +207,10 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/internal/ui/feature-flags", handleSysInternalFeatureFlags(core))
 
 		for _, path := range injectDataIntoTopRoutes {
-			mux.Handle(path, handleRequestForwarding(core, handleLogicalWithInjector(core)))
+			mux.Handle(path, handleLogicalWithInjector(core))
 		}
-		mux.Handle("/v1/sys/", handleRequestForwarding(core, handleLogical(core)))
-		mux.Handle("/v1/", handleRequestForwarding(core, handleLogical(core)))
+		mux.Handle("/v1/sys/", handleLogical(core))
+		mux.Handle("/v1/", handleLogical(core))
 		if core.UIEnabled() {
 			if uiBuiltIn {
 				mux.Handle("/ui/", http.StripPrefix("/ui/", gziphandler.GzipHandler(handleUIHeaders(core, handleUI(http.FileServer(&UIAssetWrapper{FileSystem: assetFS()}))))))
@@ -781,17 +781,6 @@ func parseFormRequest(r *http.Request) (map[string]interface{}, error) {
 	return data, nil
 }
 
-// handleRequestForwarding attempts to serve every request
-func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Note: in an HA setup, this call will also ensure that connections to
-		// the leader are set up, as that happens once the advertised cluster
-		// values are read during this function
-
-		handler.ServeHTTP(w, r)
-	})
-}
-
 func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 	// Reset our body before forwarding to ensure an accurate location.
 	if err := resetBody(r); err != nil {
@@ -817,7 +806,7 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 
 	if r.Header.Get(NoRequestForwardingHeaderName) != "" {
 		// Forwarding explicitly disabled, fall back to previous behavior
-		core.Logger().Debug("handleRequestForwarding: forwarding disabled by client request")
+		core.Logger().Debug("forwardRequest: forwarding disabled by client request")
 		respondStandby(core, w, r.URL)
 		return
 	}

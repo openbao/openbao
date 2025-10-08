@@ -75,10 +75,11 @@ for a path. Multiple named "factors" can be specified, eg:
 
 ```
 path "pki/issue/*" {
-  capabilities = ["create", "update"]
+  capabilities = ["read", "update"]
 
   control-group = {
     factor "pki-approvers" {
+      controlled_capabilities = ["update"]
       identity {
 		# Control groups that can authorize access
 		group_names = ["pki-approvers", "security-team"]

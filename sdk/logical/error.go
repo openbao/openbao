@@ -5,8 +5,8 @@ package logical
 
 import (
 	"errors"
+	"strings"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
@@ -135,9 +135,10 @@ func ShouldForward(err error) bool {
 		return false
 	}
 
-	if errwrap.Contains(err, ErrPerfStandbyPleaseForward.Error()) ||
-		errwrap.Contains(err, ErrReadOnly.Error()) ||
-		errwrap.Contains(err, consts.ErrStandby.Error()) {
+	errMsg := err.Error()
+	if strings.Contains(errMsg, ErrPerfStandbyPleaseForward.Error()) ||
+		strings.Contains(errMsg, ErrReadOnly.Error()) ||
+		strings.Contains(errMsg, consts.ErrStandby.Error()) {
 		return true
 	}
 

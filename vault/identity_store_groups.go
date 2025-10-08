@@ -277,7 +277,7 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 	}
 
 	if group.Type != groupTypeInternal && group.Type != groupTypeExternal {
-		return logical.ErrorResponse(fmt.Sprintf("invalid group type %q", group.Type)), nil
+		return logical.ErrorResponse("invalid group type %q", group.Type), nil
 	}
 
 	// Get the name
@@ -303,7 +303,7 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 
 	metadata, ok, err := d.GetOkErr("metadata")
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("failed to parse metadata: %v", err)), nil
+		return logical.ErrorResponse("failed to parse metadata: %v", err), nil
 	}
 	if ok {
 		group.Metadata = metadata.(map[string]string)
@@ -406,8 +406,8 @@ func (i *IdentityStore) handleGroupReadCommon(ctx context.Context, group *identi
 	respData["member_entity_ids"] = group.MemberEntityIDs
 	respData["parent_group_ids"] = group.ParentGroupIDs
 	respData["metadata"] = group.Metadata
-	respData["creation_time"] = group.CreationTime.AsTime().Format(time.RFC3339)
-	respData["last_update_time"] = group.LastUpdateTime.AsTime().Format(time.RFC3339)
+	respData["creation_time"] = group.CreationTime.AsTime().Format(time.RFC3339Nano)
+	respData["last_update_time"] = group.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 	respData["modify_index"] = group.ModifyIndex
 	respData["type"] = group.Type
 	respData["namespace_id"] = group.NamespaceID
@@ -420,8 +420,8 @@ func (i *IdentityStore) handleGroupReadCommon(ctx context.Context, group *identi
 		aliasMap["metadata"] = group.Alias.Metadata
 		aliasMap["name"] = group.Alias.Name
 		aliasMap["merged_from_canonical_ids"] = group.Alias.MergedFromCanonicalIDs
-		aliasMap["creation_time"] = group.Alias.CreationTime.AsTime().Format(time.RFC3339)
-		aliasMap["last_update_time"] = group.Alias.LastUpdateTime.AsTime().Format(time.RFC3339)
+		aliasMap["creation_time"] = group.Alias.CreationTime.AsTime().Format(time.RFC3339Nano)
+		aliasMap["last_update_time"] = group.Alias.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 
 		if mountValidationResp := i.router.ValidateMountByAccessor(group.Alias.MountAccessor); mountValidationResp != nil {
 			aliasMap["mount_path"] = mountValidationResp.MountPath
@@ -442,9 +442,7 @@ func (i *IdentityStore) handleGroupReadCommon(ctx context.Context, group *identi
 
 	respData["member_group_ids"] = memberGroupIDs
 
-	return &logical.Response{
-		Data: respData,
-	}, nil
+	return &logical.Response{Data: respData}, nil
 }
 
 func (i *IdentityStore) pathGroupIDDelete() framework.OperationFunc {

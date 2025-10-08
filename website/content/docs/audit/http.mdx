@@ -1,0 +1,65 @@
+---
+sidebar_label: HTTP
+description: The "http" audit device writes audit logs to a remote http server.
+---
+
+# HTTP audit device
+
+The `http` audit device writes audit logs to a remote server over HTTP(S).
+This is a very simple audit device: it does not attempt retry and is fully
+synchronous with the request by default.
+
+Sending a `SIGHUP` to the OpenBao process will cause `http` audit devices to
+close any idle connections and re-open their connection to the HTTP server.
+
+:::warning
+
+The HTTP audit device is sensitive as it can connect to arbitrary servers.
+Be cautious when granting operators the ability to create this device via
+the API when `unsafe_allow_api_audit_creation=true` is set.
+
+Consider using [declarative audit configuration](/docs/configuration/audit/)
+instead.
+
+:::
+
+:::info
+
+As audit logs are sensitive, take care to ensure you use a secure transport
+(HTTPS) for all production use cases.
+
+:::
+
+## Examples
+
+Enable at the default path:
+
+```shell-session
+$ bao audit enable http uri=https://my-log-server.local/ingress
+```
+
+Enable at a different path. It is possible to enable multiple copies of an audit
+device:
+
+```shell-session
+$ bao audit enable -path="openbao_audit_1" http uri=https://my-second-log-server.local/ingress
+```
+
+## Configuration
+
+Note the difference between `audit enable` command options and the `http` backend
+configuration options. Use `bao audit enable -help` to see the command options.
+
+The `http` audit device supports the common configuration options documented on
+the [main Audit Devices page](/docs/audit#common-configuration-options), and
+these device-specific options:
+
+- `uri` `(string: <required>)` - The URI of the remote server where the audit
+  logs will be written.
+
+- `headers` `(string: "")` - A JSON object describing headers. Must take the
+  shape `map[string][]string`, i.e., an object of headers, with each having
+  one or more values. Headers without values will be ignored.
+
+Both `uri` and any header values are passed through [`parseutil.ParsePath(...)`](https://pkg.go.dev/github.com/hashicorp/go-secure-stdlib/parseutil),
+allowing environment variables or files to be referenced.

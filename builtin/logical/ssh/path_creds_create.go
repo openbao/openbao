@@ -79,7 +79,7 @@ func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request
 		return nil, fmt.Errorf("error retrieving role: %w", err)
 	}
 	if role == nil {
-		return logical.ErrorResponse(fmt.Sprintf("Role %q not found", roleName)), nil
+		return logical.ErrorResponse("Role %q not found", roleName), nil
 	}
 
 	// username is an optional parameter.
@@ -110,7 +110,7 @@ func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request
 	// Validate the IP address
 	ipAddr := net.ParseIP(ipRaw)
 	if ipAddr == nil {
-		return logical.ErrorResponse(fmt.Sprintf("Invalid IP %q", ipRaw)), nil
+		return logical.ErrorResponse("Invalid IP %q", ipRaw), nil
 	}
 
 	// Check if the IP belongs to the registered list of CIDR blocks under the role
@@ -127,7 +127,7 @@ func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request
 
 	err = validateIP(ip, roleName, role.CIDRList, role.ExcludeCIDRList, zeroAddressRoles)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("Error validating IP: %v", err)), nil
+		return logical.ErrorResponse("Error validating IP: %v", err), nil
 	}
 
 	var result *logical.Response

@@ -80,6 +80,7 @@ const sidebars: SidebarsConfig = {
                 "concepts/mount-migration",
                 "concepts/duration-format",
                 "concepts/user-lockout",
+                "concepts/cel",
             ],
             Guides: [
                 {
@@ -410,6 +411,7 @@ const sidebars: SidebarsConfig = {
             "Audit Devices": [
                 "audit/index",
                 "audit/file",
+                "audit/http",
                 "audit/syslog",
                 "audit/socket",
             ],
@@ -545,7 +547,6 @@ const sidebars: SidebarsConfig = {
                     ],
                 },
             ],
-            FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },
         "glossary",
     ],

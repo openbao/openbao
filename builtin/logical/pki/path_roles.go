@@ -1292,7 +1292,7 @@ func validateRole(b *backend, entry *roleEntry, ctx context.Context, s logical.S
 		for _, oidstr := range entry.ExtKeyUsageOIDs {
 			_, err := certutil.StringToOid(oidstr)
 			if err != nil {
-				return logical.ErrorResponse(fmt.Sprintf("%q could not be parsed as a valid oid for an extended key usage", oidstr)), nil
+				return logical.ErrorResponse("%q could not be parsed as a valid oid for an extended key usage", oidstr), nil
 			}
 		}
 	}

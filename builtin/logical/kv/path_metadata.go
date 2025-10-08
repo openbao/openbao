@@ -484,7 +484,7 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 		if cmOk {
 			customMetadataMap, err = parseCustomMetadata(customMetadataRaw.(map[string]interface{}), false)
 			if err != nil {
-				return logical.ErrorResponse(fmt.Sprintf("%s: %s", customMetadataValidationErrorPrefix, err.Error())), nil
+				return logical.ErrorResponse("%s: %s", customMetadataValidationErrorPrefix, err.Error()), nil
 			}
 
 			customMetadataErrs := validateCustomMetadata(customMetadataMap)
@@ -648,7 +648,7 @@ func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 		if cmRaw, cmOk := data.GetOk("custom_metadata"); cmOk {
 			customMetadataMap, err := parseCustomMetadata(cmRaw.(map[string]interface{}), true)
 			if err != nil {
-				return logical.ErrorResponse(fmt.Sprintf("%s: %s", customMetadataValidationErrorPrefix, err.Error())), nil
+				return logical.ErrorResponse("%s: %s", customMetadataValidationErrorPrefix, err.Error()), nil
 			}
 
 			customMetadataErrs := validateCustomMetadata(customMetadataMap)

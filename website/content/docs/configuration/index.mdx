@@ -114,8 +114,7 @@ to specify where the configuration is.
   [user lockout configuration documentation](/docs/configuration/user-lockout). 
 
 - `seal` <code>([Seal][seal]: nil)</code> – Configures the seal type to use for
-  auto-unsealing, as well as for
-  [seal wrapping][sealwrap] as an additional layer of data protection.
+  auto-unsealing.
 
 - `cluster_name` `(string: <generated>)` – Specifies the identifier for the
   OpenBao cluster. If omitted, OpenBao will generate a value.
@@ -205,19 +204,21 @@ can have a negative effect on performance due to the tracking of each lock attem
   Supported values (in order of descending detail) are `trace`, `debug`, `info`, `warn`, and `error`.
   This can also be specified via the `BAO_LOG_LEVEL` environment variable.
 
-:::warning
+  :::warning
 
- Note: On SIGHUP (`sudo kill -s HUP` _pid of bao_), if a valid value is specified, OpenBao will update the existing log level,
-  overriding (even if specified) both the CLI flag and environment variable.
+  Note: On SIGHUP (`sudo kill -s HUP` _pid of bao_), if a valid value is
+  specified, OpenBao will update the existing log level, overriding (even if
+  specified) both the CLI flag and environment variable.
 
-:::
+  :::
 
-:::warning
+  :::warning
 
- Note: Not all parts of OpenBao's logging can have its log level be changed dynamically this way; in particular,
-  secrets/auth plugins are currently not updated dynamically.
+  Note: Not all parts of OpenBao's logging can have its log level be changed
+  dynamically this way; in particular, secrets/auth plugins are currently not
+  updated dynamically.
 
-:::
+  :::
 
 - `log_format` - Equivalent to the [`-log-format` command-line flag](/docs/commands/server#_log_format).
 
@@ -251,7 +252,7 @@ The following parameters are used on backends that support [High Availability][h
   other OpenBao servers in the cluster for client redirection. This value is also
   used for [plugin backends][plugins]. This can also be provided via the
   environment variable `VAULT_API_ADDR`. In general this should be set as a full
-  URL that points to the value of the [`listener`](#listener) address.
+  URL that points to the value of the [`listener`][listener] address.
   This can be dynamically defined with a
   [go-sockaddr template](https://pkg.go.dev/github.com/hashicorp/go-sockaddr/template)
   that is resolved at runtime.
@@ -276,7 +277,6 @@ The following parameters are used on backends that support [High Availability][h
 [seal]: /docs/configuration/seal
 [telemetry]: /docs/configuration/telemetry
 [initialize]: /docs/configuration/self-init
-[sentinel]: /docs/configuration/sentinel
 [high-availability]: /docs/concepts/ha
 [plugins]: /docs/plugins
 [userlockout]: /docs/configuration/user-lockout

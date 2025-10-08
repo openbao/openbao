@@ -420,8 +420,9 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		dbPath := filepath.Join(path, "raft.db")
 		opts := boltOptions(dbPath)
 		raftOptions := raftboltdb.Options{
-			Path:        dbPath,
-			BoltOptions: opts,
+			Path:                    dbPath,
+			BoltOptions:             opts,
+			MsgpackUseNewTimeFormat: true,
 		}
 		store, err := raftboltdb.New(raftOptions)
 		if err != nil {

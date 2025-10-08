@@ -380,7 +380,7 @@ func (i *IdentityStore) handleMFAMethodUpdateCommon(ctx context.Context, req *lo
 		}
 
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unrecognized type %q", methodType)), nil
+		return logical.ErrorResponse("unrecognized type %q", methodType), nil
 	}
 
 	// Store the config
@@ -468,7 +468,7 @@ func (i *IdentityStore) handleLoginMFAGenerateCommon(ctx context.Context, req *l
 		return nil, err
 	}
 	if mConfig == nil {
-		return logical.ErrorResponse(fmt.Sprintf("configuration for method ID %q does not exist", methodID)), nil
+		return logical.ErrorResponse("configuration for method ID %q does not exist", methodID), nil
 	}
 	if mConfig.ID == "" {
 		return nil, fmt.Errorf("configuration for method ID %q does not contain an identifier", methodID)
@@ -502,14 +502,14 @@ func (i *IdentityStore) handleLoginMFAGenerateCommon(ctx context.Context, req *l
 	}
 
 	if configNS.ID != entityNS.ID && !entityNS.HasParent(configNS) {
-		return logical.ErrorResponse(fmt.Sprintf("entity namespace %s outside of the config namespace %s", entityNS.Path, configNS.Path)), nil
+		return logical.ErrorResponse("entity namespace %s outside of the config namespace %s", entityNS.Path, configNS.Path), nil
 	}
 
 	switch mConfig.Type {
 	case mfaMethodTypeTOTP:
 		return i.mfaBackend.handleMFAGenerateTOTP(ctx, mConfig, entityID)
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("generate not available for MFA type %q", mConfig.Type)), nil
+		return logical.ErrorResponse("generate not available for MFA type %q", mConfig.Type), nil
 	}
 }
 
@@ -543,7 +543,7 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 	}
 
 	if mConfig == nil {
-		return logical.ErrorResponse(fmt.Sprintf("configuration for method ID %q does not exist", methodID)), nil
+		return logical.ErrorResponse("configuration for method ID %q does not exist", methodID), nil
 	}
 
 	if mConfig.ID == "" {
@@ -573,7 +573,7 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 	}
 
 	if configNS.ID != entityNS.ID && !entityNS.HasParent(configNS) {
-		return logical.ErrorResponse(fmt.Sprintf("entity namespace %s outside of the current namespace %s", entityNS.Path, ns.Path)), nil
+		return logical.ErrorResponse("entity namespace %s outside of the current namespace %s", entityNS.Path, ns.Path), nil
 	}
 
 	// destroying the secret on the entity
@@ -793,7 +793,7 @@ func (b *LoginMFABackend) handleMFALoginValidate(ctx context.Context, req *logic
 	for _, eConfig := range matchedMfaEnforcementList {
 		err = b.Core.validateLoginMFA(ctx, eConfig, entity, req.Connection.RemoteAddr, mfaCreds)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to satisfy enforcement %s. error: %s", eConfig.Name, err.Error())), logical.ErrPermissionDenied
+			return logical.ErrorResponse("failed to satisfy enforcement %s. error: %s", eConfig.Name, err.Error()), logical.ErrPermissionDenied
 		}
 	}
 
@@ -1105,7 +1105,7 @@ func (b *MFABackend) handleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 	case *mfa.Config_TOTPConfig:
 		totpConfig = mConfig.Config.(*mfa.Config_TOTPConfig).TOTPConfig
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unknown MFA config type %q", mConfig.Type)), nil
+		return logical.ErrorResponse("unknown MFA config type %q", mConfig.Type), nil
 	}
 
 	b.Core.identityStore.lock.Lock()

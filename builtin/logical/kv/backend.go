@@ -439,7 +439,7 @@ func ptypesTimestampToString(t *timestamppb.Timestamp) string {
 		return ""
 	}
 
-	return t.AsTime().Format(time.RFC3339)
+	return t.AsTime().Format(time.RFC3339Nano)
 }
 
 var backendHelp string = `

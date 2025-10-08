@@ -1,0 +1,3 @@
+```release-note:improvement
+core/metrics: Support custom path for metrics on metrics-only listeners.
+```

@@ -145,6 +145,10 @@ This endpoint removes a node from the raft cluster.
 | :----- | :------------------------------ |
 | `POST` | `/sys/storage/raft/remove-peer` |
 
+### Parameters
+
+- `server_id` `(string: <required>)`: id of the server to promote or demote
+
 ### Sample payload
 
 ```json
@@ -172,6 +176,10 @@ may be provided if the node is in a DR secondary cluster.
 |:-------|:----------------------------|
 | `POST` | `/sys/storage/raft/promote` |
 
+### Parameters
+
+- `server_id` `(string: <required>)`: id of the server to promote or demote
+
 ### Sample payload
 
 ```json
@@ -198,6 +206,10 @@ may be provided if the node is in a DR secondary cluster.
 | Method | Path                       |
 |:-------|:---------------------------|
 | `POST` | `/sys/storage/raft/demote` |
+
+### Parameters
+
+- `server_id` `(string: <required>)`: id of the server to promote or demote
 
 ### Sample payload
 

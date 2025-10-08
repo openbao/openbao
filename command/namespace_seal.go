@@ -24,7 +24,6 @@ func (c *NamespaceSealCommand) Synopsis() string {
 	return "Seals the namespace"
 }
 
-// TODO: see if this does nothing when already sealed
 func (c *NamespaceSealCommand) Help() string {
 	helpText := `
 Usage: bao namespace seal [options] PATH

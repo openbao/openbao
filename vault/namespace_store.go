@@ -942,9 +942,6 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return errors.New("unable to seal tainted namespace")
 	}
 
-	// TODO(wslabosz): should use the namespace tree storage from the namespace store
-	// to also cleanup resources of non-sealable namespaces
-
 	return ns.core.sealManager.SealNamespace(ctx, namespaceToSeal)
 }
 

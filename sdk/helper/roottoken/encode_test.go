@@ -6,7 +6,6 @@ package roottoken
 import (
 	"testing"
 
-	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,6 +17,13 @@ func TestTokenEncodingDecodingWithOTP(t *testing.T) {
 		expectedEncodingErr string
 		expectedDecodingErr string
 	}{
+		{
+			token:               "someToken",
+			name:                "test token encoding with base64",
+			otpLength:           0,
+			expectedEncodingErr: "xor of root token failed: length of byte slices is not equivalent: 24 != 9",
+			expectedDecodingErr: "",
+		},
 		{
 			token:               "someToken",
 			name:                "test token encoding with base62",
@@ -42,8 +48,10 @@ func TestTokenEncodingDecodingWithOTP(t *testing.T) {
 	}
 	for _, otpTestCase := range otpTestCases {
 		t.Run(otpTestCase.name, func(t *testing.T) {
-			otp, err := base62.Random(otpTestCase.otpLength)
-			assert.NoError(t, err)
+			otp, err := GenerateOTP(otpTestCase.otpLength)
+			if err != nil {
+				t.Fatal(err.Error())
+			}
 			encodedToken, err := EncodeToken(otpTestCase.token, otp)
 			if err != nil || otpTestCase.expectedDecodingErr != "" {
 				assert.EqualError(t, err, otpTestCase.expectedEncodingErr)

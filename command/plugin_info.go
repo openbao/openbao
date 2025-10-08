@@ -39,6 +39,10 @@ Usage: bao plugin info [options] TYPE NAME
 
       $ bao plugin info database mysql-database-plugin
 
+  Get info about a specific version of a plugin:
+
+      $ bao plugin info -version=v1.0.0 database mysql-database-plugin
+
 ` + c.Flags().Help()
 
 	return strings.TrimSpace(helpText)

@@ -40,7 +40,7 @@ And the support team grew! In the second part of the program, Fatima had the fan
 
 #### **The 12-Week Sprint: A Choice We'd Make Again**
 
-The LFX platform offers 12 or 24-week programs. We’re incredibly glad Fatima chose the **12-week option**. It forced a healthy intensity—a focused sprint that kept everyone laser-focused on the goal: delivering a tangible, impactful feature for the community.
+The LFX platform offers 12-week full-time or 24-week part-time programs. We’re incredibly glad Fatima chose the **12-week option**. It forced a healthy intensity—a focused sprint that kept everyone laser-focused on the goal: delivering a tangible, impactful feature for the community.
 
 And what a feature it was. Under this adapted structure, Fatima’s contributions were profound:
 *   She enabled **standby nodes to handle read requests**, a fundamental shift from idle replicas to active participants.

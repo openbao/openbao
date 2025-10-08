@@ -914,9 +914,8 @@ func namespaceMatchPredicate(targetNS *namespace.Namespace) func(*MountEntry) bo
 	}
 }
 
-// SealNamespace seals namespace with provided path, failing to do so if the namespace
-// doesn't exist, is a root namespace or is tainted.
-func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error {
+// SealNamespace seals provided namespace, cleaning up namespace resources.
+func (ns *NamespaceStore) SealNamespace(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
 	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 
 	unlock, err := ns.lockWithInvalidation(ctx, true)
@@ -925,24 +924,31 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 	}
 	defer unlock()
 
-	namespaceToSeal, err := ns.getNamespaceByPathLocked(ctx, path, false)
-	if err != nil {
-		return err
-	}
+	var errs error
+	ns.namespacesByPath.WalkPath(namespaceToSeal.Path, func(namespaceEntry *namespace.Namespace) bool {
+		barrier := ns.core.sealManager.NamespaceBarrier(namespaceEntry.Path)
+		if barrier != nil && barrier.Sealed() {
+			return false
+		}
 
-	if namespaceToSeal == nil {
-		return errors.New("namespace doesn't exist")
-	}
+		ctx = namespace.ContextWithNamespace(ctx, namespaceEntry)
+		if err := ns.clearNamespacePolicies(ctx, namespaceEntry, false); err != nil {
+			errs = errors.Join(errs, err)
+		}
+		if err := ns.UnloadNamespaceCredentials(ctx, namespaceEntry); err != nil {
+			errs = errors.Join(errs, err)
+		}
+		if err := ns.UnloadNamespaceMounts(ctx, namespaceEntry); err != nil {
+			errs = errors.Join(errs, err)
+		}
+		if err := ns.core.sealManager.SealNamespaceBarrier(ctx, barrier); err != nil {
+			errs = errors.Join(errs, err)
+		}
 
-	if namespaceToSeal.ID == namespace.RootNamespaceID {
-		return errors.New("unable to seal root namespace")
-	}
+		return false
+	})
 
-	if namespaceToSeal.Tainted {
-		return errors.New("unable to seal tainted namespace")
-	}
-
-	return ns.core.sealManager.SealNamespace(ctx, namespaceToSeal)
+	return errs
 }
 
 // UnsealNamespace unseals namespace with a given path, using provided key

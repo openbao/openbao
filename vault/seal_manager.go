@@ -99,9 +99,8 @@ func (sm *SealManager) setup() {
 // `(*SealManager) setupSealManager` to overwrite the internal
 // storage of a sealManger with a default values for root namespace.
 func (sm *SealManager) Reset(ctx context.Context) error {
-	// starting from root, but it will be omitted
-	err := sm.SealNamespace(ctx, namespace.RootNamespace)
-	if err != nil {
+	// providing root namespace to the function, but it will be omitted from actual sealing
+	if err := sm.core.namespaceStore.SealNamespace(ctx, namespace.RootNamespace); err != nil {
 		return err
 	}
 
@@ -176,54 +175,12 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 	sm.barrierByNamespace.Delete(ns.Path)
 }
 
-// SealNamespace seals the barrier of the given namespace and all of its children.
-func (sm *SealManager) SealNamespace(ctx context.Context, nsToSeal *namespace.Namespace) error {
+// SealNamespace seals the barrier of a namespace.
+func (sm *SealManager) SealNamespaceBarrier(ctx context.Context, barrier SecurityBarrier) error {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
 
-	var errs error
-	sm.barrierByNamespace.WalkPrefix(nsToSeal.Path, func(namespacePath string, barrier any) bool {
-		// always omit the root namespace
-		if namespacePath == "" {
-			return false
-		}
-
-		s := barrier.(SecurityBarrier)
-		if s.Sealed() {
-			return false
-		}
-
-		// context has to have root ns, as the getNamespaceByPathLocked() constructs
-		// path by concatenating whatever is in context with the path, which in this
-		// case is always full path to the namespace.
-		ns, err := sm.core.namespaceStore.getNamespaceByPathLocked(namespace.RootContext(ctx), namespacePath, false)
-		if err != nil {
-			errs = errors.Join(errs, err)
-			return false
-		}
-		if ns == nil {
-			errs = errors.Join(errs, fmt.Errorf("namespace not found for path: %s", namespacePath))
-			return false
-		}
-
-		ctx = namespace.ContextWithNamespace(ctx, ns)
-		if err := sm.core.namespaceStore.clearNamespacePolicies(ctx, ns, false); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if err := sm.core.namespaceStore.UnloadNamespaceCredentials(ctx, ns); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if err := sm.core.namespaceStore.UnloadNamespaceMounts(ctx, ns); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if err = s.Seal(); err != nil {
-			errs = errors.Join(errs, err)
-		}
-
-		return false
-	})
-
-	return errs
+	return barrier.Seal()
 }
 
 // NamespaceView finds the correct barrier to use for the namespace
@@ -623,7 +580,6 @@ func (sm *SealManager) AuthenticateRootKey(ctx context.Context, ns *namespace.Na
 
 func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Namespace) ([][]byte, error) {
 	sm.lock.RLock()
-	defer sm.lock.RUnlock()
 
 	nsSeal := sm.namespaceSeal(ns.UUID)
 	if nsSeal == nil {
@@ -667,17 +623,15 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		return nil, fmt.Errorf("failed to initialize namespace: %w", err)
 	}
 
-	if err := sm.SealNamespace(ctx, ns); err != nil {
-		return nil, fmt.Errorf("failed to seal namespace barrier: %w", err)
-	}
+	// unlock as namespaceStore.SealNamespace will acquire a lock on itself
+	sm.lock.RUnlock()
 
-	results := &InitResult{
-		SecretShares: [][]byte{},
+	if err := sm.core.namespaceStore.SealNamespace(ctx, ns); err != nil {
+		return nil, fmt.Errorf("failed to seal namespace: %w", err)
 	}
 
 	switch nsSeal.StoredKeysSupported() {
 	case vaultseal.StoredKeysSupportedShamirRoot:
-		keysToStore := [][]byte{nsBarrierKey}
 		shamirWrapper, err := nsSeal.GetShamirWrapper()
 		if err != nil {
 			return nil, fmt.Errorf("unable to get shamir wrapper: %w", err)
@@ -685,17 +639,14 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		if err := shamirWrapper.SetAesGcmKeyBytes(nsSealKey); err != nil {
 			return nil, fmt.Errorf("failed to set seal key: %w", err)
 		}
-		if err := nsSeal.SetStoredKeys(ctx, keysToStore); err != nil {
-			return nil, fmt.Errorf("failed to store keys: %w", err)
-		}
-		results.SecretShares = nsSealKeyShares
 	case vaultseal.StoredKeysSupportedGeneric:
-		keysToStore := [][]byte{nsBarrierKey}
-		if err := nsSeal.SetStoredKeys(ctx, keysToStore); err != nil {
-			return nil, fmt.Errorf("failed to store keys: %w", err)
-		}
 	default:
 		return nil, fmt.Errorf("unsupported stored keys type encountered: %w", err)
+	}
+
+	keysToStore := [][]byte{nsBarrierKey}
+	if err := nsSeal.SetStoredKeys(ctx, keysToStore); err != nil {
+		return nil, fmt.Errorf("failed to store keys: %w", err)
 	}
 
 	return nsSealKeyShares, nil

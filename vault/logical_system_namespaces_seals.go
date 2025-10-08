@@ -275,7 +275,24 @@ func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
 			return nil, errors.New("name must not contain /")
 		}
 
-		err := b.Core.namespaceStore.SealNamespace(ctx, name)
+		namespaceToSeal, err := b.Core.namespaceStore.getNamespaceByPathLocked(ctx, name, false)
+		if err != nil {
+			return nil, err
+		}
+
+		if namespaceToSeal == nil {
+			return nil, errors.New("namespace doesn't exist")
+		}
+
+		if namespaceToSeal.ID == namespace.RootNamespaceID {
+			return nil, errors.New("unable to seal root namespace")
+		}
+
+		if namespaceToSeal.Tainted {
+			return nil, errors.New("unable to seal tainted namespace")
+		}
+
+		err = b.Core.namespaceStore.SealNamespace(ctx, namespaceToSeal)
 		if err != nil {
 			return handleError(err)
 		}

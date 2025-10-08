@@ -46,6 +46,8 @@ func (c *Sys) CreateNamespaceWithContext(ctx context.Context, name string, req *
 	if err != nil {
 		return nil, err
 	}
+
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
 	defer resp.Body.Close()
 	var result struct {
 		Data *CreateNamespaceResponse
@@ -85,6 +87,8 @@ func (c *Sys) NamespaceSealStatusWithContext(ctx context.Context, name string) (
 	if err != nil {
 		return nil, err
 	}
+
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
 	defer resp.Body.Close()
 
 	var result struct {
@@ -130,6 +134,8 @@ func (c *Sys) UnsealNamespaceWithContext(ctx context.Context, req *UnsealNamespa
 	if err != nil {
 		return nil, err
 	}
+
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
 	defer resp.Body.Close()
 
 	var result struct {
@@ -155,6 +161,8 @@ func (c *Sys) NamespaceGenerateRootStatusWithContext(ctx context.Context, name s
 	if err != nil {
 		return nil, err
 	}
+
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
 	defer resp.Body.Close()
 
 	var result struct {
@@ -186,6 +194,8 @@ func (c *Sys) NamespaceGenerateRootInitWithContext(ctx context.Context, otp, pgp
 	if err != nil {
 		return nil, err
 	}
+
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
 	defer resp.Body.Close()
 
 	var result struct {
@@ -207,6 +217,7 @@ func (c *Sys) NamespaceGenerateRootCancelWithContext(ctx context.Context, name s
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err == nil {
+		//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
 		defer resp.Body.Close()
 	}
 	return err
@@ -234,6 +245,7 @@ func (c *Sys) NamespaceGenerateRootUpdateWithContext(ctx context.Context, shard,
 	if err != nil {
 		return nil, err
 	}
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
 	defer resp.Body.Close()
 
 	var result struct {

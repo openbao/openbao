@@ -29,6 +29,7 @@ func testNamespaceGenerateRootCommand(tb testing.TB) (*cli.MockUi, *NamespaceGen
 
 func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 	t.Parallel()
+	nsName := "ns"
 
 	cases := []struct {
 		name string
@@ -37,10 +38,29 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 		code int
 	}{
 		{
+			"too_many_args",
+			[]string{"foo", "bar", "baz"},
+			"Too many arguments",
+			1,
+		},
+		{
+			"not_enough_args",
+			[]string{},
+			"Not enough arguments",
+			1,
+		},
+		{
+			"no_namespace_existing",
+			[]string{"unknown"},
+			"doesn't exist",
+			2,
+		},
+		{
 			"init_invalid_otp",
 			[]string{
 				"-init",
 				"-otp", "not-a-valid-otp",
+				nsName,
 			},
 			"OTP string is wrong length",
 			2,
@@ -51,6 +71,7 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 				"-init",
 				"-pgp-key", "keybase:hashicorp",
 				"-pgp-key", "keybase:jefferai",
+				nsName,
 			},
 			"can only be specified once",
 			1,
@@ -60,6 +81,7 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 			[]string{
 				"-init",
 				"-pgp-key", "keybase:hashicorp,keybase:jefferai",
+				nsName,
 			},
 			"can only specify one pgp key",
 			1,
@@ -70,31 +92,37 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 				"-init",
 				"-pgp-key", "keybase:hashicorp",
 				"-otp", "abcd1234",
+				nsName,
 			},
 			"cannot specify both -otp and -pgp-key",
 			1,
 		},
 	}
+	t.Run("validations", func(t *testing.T) {
+		t.Parallel()
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			nsName := "ns1"
-			client, _, closer := testVaultServerWithNamespace(t, nsName, false)
-			defer closer()
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 
-			ui, cmd := testNamespaceGenerateRootCommand(t)
-			cmd.client = client
+				client, _, closer := testVaultServerWithNamespace(t, nsName, false)
+				defer closer()
 
-			code := cmd.Run(append(tc.args, "ns1"))
-			require.Equalf(t, tc.code, code, "expected %d to be %d", code, tc.code)
+				ui, cmd := testNamespaceGenerateRootCommand(t)
+				cmd.client = client
 
-			combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
-			require.Containsf(t, combined, tc.out, "expected %q to contain %q", combined, tc.out)
-		})
-	}
+				code := cmd.Run(tc.args)
+				require.Equalf(t, tc.code, code, "expected %d to be %d", code, tc.code)
+
+				combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
+				require.Containsf(t, combined, tc.out, "expected %q to contain %q", combined, tc.out)
+			})
+		}
+	})
 
 	t.Run("generate_otp", func(t *testing.T) {
-		nsName := "ns2"
+		t.Parallel()
+
 		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
@@ -102,16 +130,17 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 		cmd.client = client
 		code := cmd.Run([]string{
 			"-generate-otp",
-			"ns2",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be 0", code)
 	})
 
 	t.Run("decode", func(t *testing.T) {
+		t.Parallel()
+
 		encoded := "R3kcBAYdDgc0Y2p0AiUSAlUkN1wlIxczGSBWIlgjMwMg"
 		otp := "4WuTpwCSNW01rGYWghYoGDeaqpxWodpJq"
 
-		nsName := "ns3"
 		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
@@ -127,7 +156,7 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 		code := cmd.Run([]string{
 			"-decode", encoded,
 			"-otp", otp,
-			"ns3",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be 0", code)
 
@@ -140,10 +169,11 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 	})
 
 	t.Run("decode_from_stdin", func(t *testing.T) {
+		t.Parallel()
+
 		encoded := "R3kcBAYdDgc0Y2p0AiUSAlUkN1wlIxczGSBWIlgjMwMg"
 		otp := "4WuTpwCSNW01rGYWghYoGDeaqpxWodpJq"
 
-		nsName := "ns4"
 		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
@@ -168,7 +198,7 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 		code := cmd.Run([]string{
 			"-decode", "-", // read from stdin
 			"-otp", otp,
-			"ns4",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be 0", code)
 
@@ -181,10 +211,11 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 	})
 
 	t.Run("decode_from_stdin_empty", func(t *testing.T) {
+		t.Parallel()
+
 		encoded := ""
 		otp := "4WuTpwCSNW01rGYWghYoGDeaqpxWodpJq"
 
-		nsName := "ns5"
 		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
@@ -209,7 +240,7 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 		code := cmd.Run([]string{
 			"-decode", "-", // read from stdin
 			"-otp", otp,
-			"ns5",
+			nsName,
 		})
 		require.Equalf(t, 1, code, "expected %d to be 1", code)
 
@@ -222,7 +253,8 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 	})
 
 	t.Run("cancel", func(t *testing.T) {
-		nsName := "ns6"
+		t.Parallel()
+
 		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
@@ -235,7 +267,7 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 
 		code := cmd.Run([]string{
 			"-cancel",
-			"ns6",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be 0", code)
 
@@ -249,7 +281,8 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 	})
 
 	t.Run("init_otp", func(t *testing.T) {
-		nsName := "ns7"
+		t.Parallel()
+
 		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
@@ -258,7 +291,7 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 
 		code := cmd.Run([]string{
 			"-init",
-			"ns7",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be 0", code)
 
@@ -272,10 +305,11 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 	})
 
 	t.Run("init_pgp", func(t *testing.T) {
+		t.Parallel()
+
 		pgpKey := "keybase:hashicorp"
 		pgpFingerprint := "c874011f0ab405110d02105534365d9472d7468f"
 
-		nsName := "ns8"
 		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
@@ -285,7 +319,7 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 		code := cmd.Run([]string{
 			"-init",
 			"-pgp-key", pgpKey,
-			"ns8",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be 0", code)
 
@@ -300,7 +334,8 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 	})
 
 	t.Run("status", func(t *testing.T) {
-		nsName := "ns9"
+		t.Parallel()
+
 		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
@@ -309,7 +344,7 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 
 		code := cmd.Run([]string{
 			"-status",
-			"ns9",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be 0", code)
 
@@ -319,7 +354,8 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 	})
 
 	t.Run("provide_arg", func(t *testing.T) {
-		nsName := "ns10"
+		t.Parallel()
+
 		client, unsealShares, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
@@ -364,7 +400,8 @@ func TestNamespaceGenerateRootCommand_Run(t *testing.T) {
 	})
 
 	t.Run("provide_stdin", func(t *testing.T) {
-		nsName := "ns11"
+		t.Parallel()
+
 		client, unsealShares, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 

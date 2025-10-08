@@ -821,6 +821,8 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 		f.applyCallback()
 	}
 
+	var lowestActiveIndex *uint64
+
 	// One would think that this f.db.Update(...) and the following loop over
 	// commands should be in the opposite order, as we want transactions to be
 	// applied atomically. Indeed, 2c154ad516162dcb8b15ad270cd6a15516f2ce59 had
@@ -852,6 +854,10 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 					err = f.applyBatchNonTxOps(b, txnState, command)
 				} else {
 					err = f.applyBatchTxOps(tx, b, txnState, command)
+				}
+
+				if command.LowestActiveIndex != nil {
+					lowestActiveIndex = command.LowestActiveIndex
 				}
 
 				if err != nil {
@@ -911,6 +917,10 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 	if err != nil {
 		f.logger.Error("failed to store data", "error", err)
 		panic("failed to store data")
+	}
+
+	if lowestActiveIndex != nil {
+		f.fastTxnTracker.clearOldEntries(*lowestActiveIndex)
 	}
 
 	// If we advanced the latest value, update the in-memory representation too.

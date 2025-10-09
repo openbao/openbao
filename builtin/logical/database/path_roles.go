@@ -506,12 +506,6 @@ func (b *databaseBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 		} else if createOperation {
 			role.Statements.Renewal = data.Get("renew_statements").([]string)
 		}
-
-		// Do not persist deprecated statements that are populated on role read
-		role.Statements.CreationStatements = ""
-		role.Statements.RevocationStatements = ""
-		role.Statements.RenewStatements = ""
-		role.Statements.RollbackStatements = ""
 	}
 
 	role.Statements.Revocation = strutil.RemoveEmpty(role.Statements.Revocation)

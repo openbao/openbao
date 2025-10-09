@@ -352,7 +352,7 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 
 		if time.Since(start) > maxWait {
 			t.Logf("Timed out waiting for new CRL on path %s after iteration %d, delay: %v",
-				crlPath, iteration, time.Now().Sub(start))
+				crlPath, iteration, time.Since(start))
 			return crl, true
 		}
 
@@ -360,7 +360,7 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 		newCrlRevision := getCRLNumber(t, crl)
 		if newCrlRevision > initialCrlRevision {
 			t.Logf("Got new revision of CRL %s from %d to %d after iteration %d, delay %v",
-				crlPath, initialCrlRevision, newCrlRevision, iteration, time.Now().Sub(start))
+				crlPath, initialCrlRevision, newCrlRevision, iteration, time.Since(start))
 			return crl, false
 		}
 

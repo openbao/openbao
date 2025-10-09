@@ -138,7 +138,7 @@ func SkipAtEndOfMonth(t *testing.T) {
 
 	thisMonth := StartOfMonth(time.Now().UTC())
 	endOfMonth := EndOfMonth(thisMonth)
-	if endOfMonth.Sub(time.Now()) < 10*time.Minute {
+	if time.Until(endOfMonth) < 10*time.Minute {
 		t.Skip("too close to end of month")
 	}
 }

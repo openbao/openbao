@@ -1565,7 +1565,7 @@ func (m *ExpirationManager) Register(ctx context.Context, req *logical.Request, 
 	// ticking, so we'll end up always returning 299 instead of 300 or
 	// 26399 instead of 26400, say, even if it's just a few
 	// microseconds. This provides a nicer UX.
-	resp.Secret.TTL = le.ExpireTime.Sub(time.Now()).Round(time.Second)
+	resp.Secret.TTL = time.Until(le.ExpireTime).Round(time.Second)
 
 	// Done
 	return le.LeaseID, nil
@@ -1853,7 +1853,7 @@ func (m *ExpirationManager) updatePendingInternal(le *leaseEntry) {
 		return
 	}
 
-	leaseTotal := le.ExpireTime.Sub(time.Now())
+	leaseTotal := time.Until(le.ExpireTime)
 	leaseCreated := false
 
 	if le.isIrrevocable() {

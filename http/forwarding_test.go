@@ -191,17 +191,17 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 	}
 	// core.Logger().Printf("[TRACE] done mounting transit")
 
-	var totalOps *uint32 = new(uint32)
-	var successfulOps *uint32 = new(uint32)
-	var key1ver *int32 = new(int32)
+	totalOps := new(uint32)
+	successfulOps := new(uint32)
+	key1ver := new(int32)
 	*key1ver = 1
-	var key2ver *int32 = new(int32)
+	key2ver := new(int32)
 	*key2ver = 1
-	var key3ver *int32 = new(int32)
+	key3ver := new(int32)
 	*key3ver = 1
-	var numWorkers *uint32 = new(uint32)
+	numWorkers := new(uint32)
 	*numWorkers = 50
-	var numWorkersStarted *uint32 = new(uint32)
+	numWorkersStarted := new(uint32)
 	var waitLock sync.Mutex
 	waitCond := sync.NewCond(&waitLock)
 
@@ -398,7 +398,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 
 			// Change the min version, which also tests the archive functionality
 			case "change_min_version":
-				var latestVersion int32 = keyVer
+				latestVersion := keyVer
 				if parallel {
 					switch chosenKey {
 					case "test1":

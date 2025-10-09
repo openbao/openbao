@@ -6274,7 +6274,7 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 	}
 
 	// Put certificates A, B, C, D, E in backend
-	var certificates []string = []string{"a", "b", "c", "d", "e"}
+	certificates := []string{"a", "b", "c", "d", "e"}
 	serials := make([]string, 5)
 	for i, cn := range certificates {
 		resp, err = CBWrite(b, s, "issue/example", map[string]interface{}{

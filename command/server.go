@@ -2486,7 +2486,7 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 			config.Seals = append(config.Seals, &configutil.KMS{Type: wrapping.WrapperTypeShamir.String()})
 		}
 	}
-	var createdSeals []vault.Seal = make([]vault.Seal, len(config.Seals))
+	createdSeals := make([]vault.Seal, len(config.Seals))
 	for _, configSeal := range config.Seals {
 		sealType := configSeal.Type
 		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {

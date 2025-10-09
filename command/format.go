@@ -288,7 +288,7 @@ func (t TableFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) 
 }
 
 func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, secret *api.Secret, data interface{}) error {
-	var status SealStatusOutput = data.(SealStatusOutput)
+	status := data.(SealStatusOutput)
 	var sealPrefix string
 
 	out := []string{}

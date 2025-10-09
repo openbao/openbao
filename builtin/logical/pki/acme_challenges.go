@@ -392,7 +392,7 @@ func ValidateTLSALPN01Challenge(domain string, token string, thumbprint string, 
 
 			// Remove the handled critical extension and validate that we
 			// have no additional critical extensions left unhandled.
-			var index int = -1
+			index := -1
 			for oidIndex, oid := range cert.UnhandledCriticalExtensions {
 				if oid.Equal(OIDACMEIdentifier) {
 					index = oidIndex

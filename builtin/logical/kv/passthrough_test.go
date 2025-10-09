@@ -101,7 +101,7 @@ func TestPassthroughBackend_Read(t *testing.T) {
 		// What comes back if an int is passed in is a json.Number which is
 		// actually aliased as a string so to make the deep equal happy if it's
 		// actually a number we set it to an int64
-		var respTTL interface{} = resp.Data[ttlType]
+		respTTL := resp.Data[ttlType]
 		_, ok := respTTL.(json.Number)
 		if ok {
 			respTTL, err = respTTL.(json.Number).Int64()

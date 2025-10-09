@@ -254,7 +254,7 @@ func TestAcmeValidateTLSALPN01Challenge(t *testing.T) {
 
 	tlsCfg := &tls.Config{}
 	tlsCfg.GetConfigForClient = func(*tls.ClientHelloInfo) (*tls.Config, error) {
-		var retCfg tls.Config = *tlsCfg
+		retCfg := *tlsCfg
 		retCfg.NextProtos = returnedProtocols
 		log.Info(fmt.Sprintf("[alpn-server] returned protocol: %v", returnedProtocols))
 		return &retCfg, nil

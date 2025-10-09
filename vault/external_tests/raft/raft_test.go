@@ -1042,7 +1042,7 @@ func BenchmarkRaft_SingleNode(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			key := fmt.Sprintf("secret/%x", md5.Sum([]byte(fmt.Sprintf("%s-%d", testName, i))))
+			key := fmt.Sprintf("secret/%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 			_, err := leaderClient.Logical().Write(key, map[string]interface{}{
 				"test": data,
 			})

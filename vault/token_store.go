@@ -104,7 +104,7 @@ var (
 	displayNameSanitize = regexp.MustCompile("[^a-zA-Z0-9-]")
 
 	// pathSuffixSanitize is used to ensure a path suffix in a role is valid.
-	pathSuffixSanitize = regexp.MustCompile("\\w[\\w-.]+\\w")
+	pathSuffixSanitize = regexp.MustCompile(`\w[\w-.]+\w`)
 
 	destroyCubbyhole = func(ctx context.Context, ts *TokenStore, te *logical.TokenEntry) error {
 		if ts.cubbyholeBackend == nil {

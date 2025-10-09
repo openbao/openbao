@@ -71,7 +71,7 @@ func TestFSM_Batching(t *testing.T) {
 			command.Operations[j] = &LogOperation{
 				OpType: putOp,
 				Key:    fmt.Sprintf("key-%d-%d", i, j),
-				Value:  []byte(fmt.Sprintf("value-%d-%d", i, j)),
+				Value:  fmt.Appendf(nil, "value-%d-%d", i, j),
 			}
 		}
 		commandBytes, err := proto.Marshal(command)

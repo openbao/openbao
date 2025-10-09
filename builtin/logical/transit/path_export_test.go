@@ -608,7 +608,7 @@ func TestTransit_Export_CertificateChain(t *testing.T) {
 }
 
 func testTransit_Export_CertificateChain(t *testing.T, apiClient *api.Client, keyType string) {
-	keyName := fmt.Sprintf("%s", keyType)
+	keyName := keyType
 	issuerName := fmt.Sprintf("%s-issuer", keyType)
 
 	// get key to be imported

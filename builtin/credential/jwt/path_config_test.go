@@ -835,7 +835,7 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 
 			rootCAString := ""
 			if test.addRootCA {
-				rootCAString = string(caPEM.Bytes())
+				rootCAString = caPEM.String()
 			}
 
 			caCtx, err := b.createCAContext(ctx, rootCAString, test.allowedServerNames)

@@ -437,7 +437,7 @@ func (d *ReadableDuration) Duration() time.Duration {
 }
 
 func (d *ReadableDuration) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`"%s"`, d.Duration().String())), nil
+	return fmt.Appendf(nil, `"%s"`, d.Duration().String()), nil
 }
 
 func (d *ReadableDuration) UnmarshalJSON(raw []byte) (err error) {

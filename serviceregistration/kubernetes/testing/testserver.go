@@ -124,7 +124,7 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 		namespace, podName, err := parsePath(r.URL.Path)
 		if err != nil {
 			w.WriteHeader(400)
-			w.Write([]byte(fmt.Sprintf("unable to parse %s: %s", r.URL.Path, err.Error())))
+			fmt.Fprintf(w, "unable to parse %s: %s", r.URL.Path, err.Error())
 			return
 		}
 
@@ -141,7 +141,7 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 			var patches []interface{}
 			if err := json.NewDecoder(r.Body).Decode(&patches); err != nil {
 				w.WriteHeader(400)
-				w.Write([]byte(fmt.Sprintf("unable to decode patches %s: %s", r.URL.Path, err.Error())))
+				fmt.Fprintf(w, "unable to decode patches %s: %s", r.URL.Path, err.Error())
 				return
 			}
 			for _, patch := range patches {
@@ -154,7 +154,7 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 			return
 		default:
 			w.WriteHeader(400)
-			w.Write([]byte(fmt.Sprintf("unexpected request method: %s", r.Method)))
+			fmt.Fprintf(w, "unexpected request method: %s", r.Method)
 		}
 	}))
 	closers = append(closers, ts.Close)

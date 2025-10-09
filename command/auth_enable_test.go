@@ -196,8 +196,8 @@ func TestAuthEnableCommand_Run(t *testing.T) {
 				continue
 			}
 			potPlug := strings.TrimPrefix(splitLine[0], "github.com/openbao/")
-			if strings.HasPrefix(potPlug, "vault-plugin-auth-") {
-				backends = append(backends, strings.TrimPrefix(potPlug, "vault-plugin-auth-"))
+			if after, ok := strings.CutPrefix(potPlug, "vault-plugin-auth-"); ok {
+				backends = append(backends, after)
 			}
 		}
 		// Add 1 to account for the "token" backend, which is visible when you walk the filesystem but

@@ -321,7 +321,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 			// Encrypt our plaintext and store the result
 			case "encrypt":
 				// core.Logger().Printf("[TRACE] %s, %s, %d", chosenFunc, chosenKey, id)
-				resp, err := doReq("POST", chosenHost+"encrypt/"+chosenKey, bytes.NewBuffer([]byte(fmt.Sprintf("{\"plaintext\": \"%s\"}", testPlaintextB64))))
+				resp, err := doReq("POST", chosenHost+"encrypt/"+chosenKey, bytes.NewBuffer(fmt.Appendf(nil, "{\"plaintext\": \"%s\"}", testPlaintextB64)))
 				if err != nil {
 					panic(err)
 				}
@@ -348,7 +348,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 				}
 
 				// core.Logger().Printf("[TRACE] %s, %s, %d", chosenFunc, chosenKey, id)
-				resp, err := doReq("POST", chosenHost+"decrypt/"+chosenKey, bytes.NewBuffer([]byte(fmt.Sprintf("{\"ciphertext\": \"%s\"}", ct))))
+				resp, err := doReq("POST", chosenHost+"decrypt/"+chosenKey, bytes.NewBuffer(fmt.Appendf(nil, "{\"ciphertext\": \"%s\"}", ct)))
 				if err != nil {
 					panic(err)
 				}
@@ -414,7 +414,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 
 				// core.Logger().Printf("[TRACE] %s, %s, %d, new min version %d", chosenFunc, chosenKey, id, setVersion)
 
-				_, err := doReq("POST", chosenHost+"keys/"+chosenKey+"/config", bytes.NewBuffer([]byte(fmt.Sprintf("{\"min_decryption_version\": %d}", setVersion))))
+				_, err := doReq("POST", chosenHost+"keys/"+chosenKey+"/config", bytes.NewBuffer(fmt.Appendf(nil, "{\"min_decryption_version\": %d}", setVersion)))
 				if err != nil {
 					panic(err)
 				}

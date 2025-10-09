@@ -1,0 +1,3 @@
+```release-note:improvement
+lease lookup will now include `path`, `namespace_path` and `revoke_error`
+```

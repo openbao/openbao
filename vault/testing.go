@@ -168,9 +168,14 @@ func TestCoreWithSealAndUI(t testing.T, opts *CoreConfig) *Core {
 
 func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	logger := corehelpers.NewTestLogger(t)
-	physicalBackend, err := physInmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
+
+	physicalBackend := opts.Physical
+	if physicalBackend == nil {
+		var err error
+		physicalBackend, err = physInmem.NewInmem(nil, logger)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	errInjector := physical.NewErrorInjector(physicalBackend, 0, logger)

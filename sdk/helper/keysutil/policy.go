@@ -678,7 +678,7 @@ func (p *Policy) NeedsUpgrade() bool {
 		return true
 	}
 
-	if p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey == nil || len(p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey) == 0 {
+	if len(p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey) == 0 {
 		return true
 	}
 
@@ -740,7 +740,7 @@ func (p *Policy) Upgrade(ctx context.Context, storage logical.Storage, randReade
 		persistNeeded = true
 	}
 
-	if p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey == nil || len(p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey) == 0 {
+	if len(p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey) == 0 {
 		entry := p.Keys[strconv.Itoa(p.LatestVersion)]
 		hmacKey, err := uuid.GenerateRandomBytesWithReader(32, randReader)
 		if err != nil {

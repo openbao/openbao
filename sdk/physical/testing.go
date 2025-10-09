@@ -694,7 +694,7 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 
 			for {
 				switch {
-				case done.Load() == true:
+				case done.Load():
 					t.Log("shutting down reader")
 					return
 				default:
@@ -786,7 +786,7 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 
 			for {
 				switch {
-				case done.Load() == true:
+				case done.Load():
 					t.Log("shutting down lister")
 					return
 				default:
@@ -942,7 +942,7 @@ func testTransactionalMixedWriters(t testing.TB, b TransactionalBackend) {
 
 			for {
 				switch {
-				case done.Load() == true:
+				case done.Load():
 					t.Log("shutting down reader")
 					return
 				default:

@@ -2524,10 +2524,7 @@ func (b *backend) pathRoleLocalSecretIDsRead(ctx context.Context, req *logical.R
 		return nil, nil
 	}
 
-	localSecretIDs := false
-	if role.SecretIDPrefix == secretIDLocalPrefix {
-		localSecretIDs = true
-	}
+	localSecretIDs := role.SecretIDPrefix == secretIDLocalPrefix
 
 	return &logical.Response{
 		Data: map[string]interface{}{

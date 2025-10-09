@@ -159,10 +159,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	args, format, detailed, outputCurlString, outputPolicy = setupEnv(args)
 
 	// Don't use color if disabled
-	useColor := true
-	if api.ReadBaoVariable(EnvVaultCLINoColor) != "" || color.NoColor {
-		useColor = false
-	}
+	useColor := !color.NoColor && api.ReadBaoVariable(EnvVaultCLINoColor) == ""
 
 	if runOpts.Stdout == nil {
 		runOpts.Stdout = os.Stdout

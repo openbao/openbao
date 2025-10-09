@@ -667,7 +667,7 @@ func (b *backend) initializeStoredCertificateCounts(ctx context.Context) error {
 	b.certCountEnabled.Store(config.MaintainCount)
 	b.publishCertCountMetrics.Store(config.PublishMetrics)
 
-	if config.MaintainCount == false {
+	if !config.MaintainCount {
 		b.possibleDoubleCountedRevokedSerials = nil
 		b.possibleDoubleCountedSerials = nil
 		b.certsCounted.Store(true)
@@ -765,7 +765,7 @@ func (b *backend) initializeStoredCertificateCounts(ctx context.Context) error {
 }
 
 func (b *backend) emitCertStoreMetrics(config *tidyConfig) {
-	if config.PublishMetrics == true {
+	if config.PublishMetrics {
 		certCount := b.certCount.Load()
 		b.emitTotalCertCountMetric(certCount)
 		revokedCertCount := b.revokedCertCount.Load()

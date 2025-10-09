@@ -1387,8 +1387,8 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 
 			var extUsage x509.ExtKeyUsage
 			i := mathRand.Int() % 4
-			switch {
-			case i == 0:
+			switch i {
+			case 0:
 				// Punt on this for now since I'm not clear the actual proper
 				// way to format these
 				if name != "daɪˈɛrɨsɨs" {
@@ -1397,10 +1397,10 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 					break
 				}
 				fallthrough
-			case i == 1:
+			case 1:
 				extUsage = x509.ExtKeyUsageServerAuth
 				roleVals.ServerFlag = true
-			case i == 2:
+			case 2:
 				extUsage = x509.ExtKeyUsageClientAuth
 				roleVals.ClientFlag = true
 			default:
@@ -7555,11 +7555,12 @@ func TestProperAuthing(t *testing.T) {
 		_, hasPost := openapi_data["post"]
 		_, hasDelete := openapi_data["delete"]
 
-		if handler == shouldBeUnauthedReadList {
+		switch handler {
+		case shouldBeUnauthedReadList:
 			if hasPost || hasDelete {
 				t.Fatalf("Unauthed read-only endpoints should not have POST/DELETE capabilities: %v->%v", openapi_path, raw_path)
 			}
-		} else if handler == shouldBeUnauthedWriteOnly {
+		case shouldBeUnauthedWriteOnly:
 			if hasGet || hasList {
 				t.Fatalf("Unauthed write-only endpoints should not have GET/LIST capabilities: %v->%v", openapi_path, raw_path)
 			}

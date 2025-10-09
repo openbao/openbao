@@ -1785,9 +1785,9 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 
 	var ret *logical.TokenEntry
 
-	switch {
+	switch le {
 	// It's any kind of expiring token with no lease, immediately delete it
-	case le == nil:
+	case nil:
 		tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return nil, err
@@ -1928,8 +1928,8 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 		parentNS := tokenNS
 
 		if parentNSID != tokenNS.ID {
-			switch {
-			case parentNSID == "":
+			switch parentNSID {
+			case "":
 				parentNS = namespace.RootNamespace
 			default:
 				parentNS, err = ts.core.NamespaceByID(ctx, parentNSID)
@@ -2421,8 +2421,8 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 
 				lock.RUnlock()
 
-				switch {
-				case te == nil:
+				switch te {
+				case nil:
 					// If token entry is not found assume that the token is not valid any
 					// more and conclude that accessor, leases, and secondary index entries
 					// for this token should not exist as well.
@@ -3178,8 +3178,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	// need to explicitly check
 	if role != nil && te.Type != logical.TokenTypeBatch {
 		if role.TokenExplicitMaxTTL != 0 {
-			switch {
-			case explicitMaxTTLToUse == 0:
+			switch explicitMaxTTLToUse {
+			case 0:
 				explicitMaxTTLToUse = role.TokenExplicitMaxTTL
 			default:
 				if role.TokenExplicitMaxTTL < explicitMaxTTLToUse {
@@ -3189,8 +3189,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 			}
 		}
 		if role.TokenPeriod != 0 {
-			switch {
-			case periodToUse == 0:
+			switch periodToUse {
+			case 0:
 				periodToUse = role.TokenPeriod
 			default:
 				if role.TokenPeriod < periodToUse {

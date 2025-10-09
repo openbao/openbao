@@ -913,8 +913,8 @@ func (b *RaftBackend) SetupCluster(ctx context.Context, opts SetupOpts) error {
 	}
 
 	listenerIsNil := func(cl cluster.ClusterHook) bool {
-		switch {
-		case opts.ClusterListener == nil:
+		switch opts.ClusterListener {
+		case nil:
 			return true
 		default:
 			// Concrete type checks

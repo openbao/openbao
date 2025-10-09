@@ -1660,8 +1660,8 @@ func (b *backend) pathRoleCreateUpdate(ctx context.Context, req *logical.Request
 
 	localSecretIDsRaw, ok := data.GetOk("local_secret_ids")
 	if ok {
-		switch {
-		case req.Operation == logical.CreateOperation:
+		switch req.Operation {
+		case logical.CreateOperation:
 			localSecretIDs := localSecretIDsRaw.(bool)
 			if localSecretIDs {
 				role.SecretIDPrefix = secretIDLocalPrefix

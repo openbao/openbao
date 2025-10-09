@@ -1024,10 +1024,11 @@ func TestIssuerRoleDirectoryAssociations(t *testing.T) {
 		// Path should override role.
 		directory := "/v1/pki/issuer/" + issuer + "/acme/"
 		issuerPath := "/pki/issuer/" + issuer
-		if issuer == "" {
+		switch issuer {
+		case "":
 			directory = "/v1/pki/acme/"
 			issuerPath = "/pki/issuer/int-ca"
-		} else if issuer == "default" {
+		case "default":
 			issuerPath = "/pki/issuer/int-ca"
 		}
 

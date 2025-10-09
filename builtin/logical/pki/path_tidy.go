@@ -1848,11 +1848,12 @@ func (b *backend) tidyStatusStop(err error) {
 
 	b.tidyStatus.timeFinished = time.Now()
 	b.tidyStatus.err = err
-	if err == nil {
+	switch err {
+	case nil:
 		b.tidyStatus.state = tidyStatusFinished
-	} else if err == tidyCancelledError {
+	case tidyCancelledError:
 		b.tidyStatus.state = tidyStatusCancelled
-	} else {
+	default:
 		b.tidyStatus.state = tidyStatusError
 	}
 

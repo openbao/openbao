@@ -727,11 +727,12 @@ func TestOIDC_Callback(t *testing.T) {
 			var useBoundCIDRs bool
 			callbackMode := "client"
 
-			if i == 2 {
+			switch i {
+			case 2:
 				useBoundCIDRs = true
-			} else if i == 3 {
+			case 3:
 				callbackMode = "direct"
-			} else if i == 4 {
+			case 4:
 				callbackMode = "device"
 			}
 

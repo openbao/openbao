@@ -91,12 +91,13 @@ func gaugeSearchHelper(data *testhelpers.SysMetricsJSON, expectedValue int) (int
 		labels := gauge.Labels
 		if loc, ok := labels["local"]; ok && loc.(string) == "false" {
 			if tp, ok := labels["type"]; ok && tp.(string) == "logical" {
-				if gauge.Name == "core.mount_table.num_entries" {
+				switch gauge.Name {
+				case "core.mount_table.num_entries":
 					foundFlag = true
 					if err := gaugeConditionCheck("eq", expectedValue, gauge.Value); err != nil {
 						return int(^uint(0) >> 1), err
 					}
-				} else if gauge.Name == "core.mount_table.size" {
+				case "core.mount_table.size":
 					tablesize = gauge.Value
 				}
 			}

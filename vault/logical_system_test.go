@@ -6276,7 +6276,7 @@ func TestPolicyStore_Store(t *testing.T) {
 		require.Contains(t, resp.Data, "modified")
 		exp := resp.Data["expiration"].(time.Time)
 		modified := resp.Data["modified"].(time.Time)
-		require.LessOrEqual(t, time.Now().Sub(modified), 2*time.Second)
+		require.LessOrEqual(t, time.Since(modified), 2*time.Second)
 
 		time.Sleep(2 * time.Second)
 

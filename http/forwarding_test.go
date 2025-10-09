@@ -304,7 +304,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 		startTime := time.Now()
 		for {
 			// Stop after 10 seconds
-			if time.Now().Sub(startTime) > 10*time.Second {
+			if time.Since(startTime) > 10*time.Second {
 				return
 			}
 

@@ -877,7 +877,7 @@ func TestExpiration_Restore(t *testing.T) {
 
 	// Ensure all are reaped
 	start := time.Now()
-	for time.Now().Sub(start) < time.Second {
+	for time.Since(start) < time.Second {
 		noop.Lock()
 		less := len(noop.Requests) < 3
 		noop.Unlock()
@@ -1044,7 +1044,7 @@ func TestExpiration_Register_BatchToken(t *testing.T) {
 	start := time.Now()
 	reqID := 0
 	for {
-		if time.Now().Sub(start) > 10*time.Second {
+		if time.Since(start) > 10*time.Second {
 			t.Fatal("didn't revoke lease")
 		}
 		req = nil
@@ -1334,7 +1334,7 @@ func TestExpiration_RevokeOnExpire(t *testing.T) {
 	}
 
 	start := time.Now()
-	for time.Now().Sub(start) < time.Second {
+	for time.Since(start) < time.Second {
 		req = nil
 
 		noop.Lock()
@@ -2014,7 +2014,7 @@ func TestExpiration_Renew_RevokeOnExpire(t *testing.T) {
 	}
 
 	start := time.Now()
-	for time.Now().Sub(start) < time.Second {
+	for time.Since(start) < time.Second {
 		req = nil
 
 		noop.Lock()

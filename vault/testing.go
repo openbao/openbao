@@ -779,7 +779,7 @@ func TestWaitActiveWithError(core *Core) error {
 	start := time.Now()
 	var standby bool
 	var err error
-	for time.Now().Sub(start) < 30*time.Second {
+	for time.Since(start) < 30*time.Second {
 		standby, err = core.Standby()
 		if err != nil {
 			return err

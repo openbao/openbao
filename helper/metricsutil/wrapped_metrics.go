@@ -64,7 +64,7 @@ func (s SinkWrapper) AddDurationWithLabels(key []string, d time.Duration, labels
 }
 
 func (s SinkWrapper) MeasureSinceWithLabels(key []string, start time.Time, labels []Label) {
-	elapsed := time.Now().Sub(start)
+	elapsed := time.Since(start)
 	val := float32(elapsed) / float32(time.Millisecond)
 	s.AddSampleWithLabels(key, val, labels)
 }
@@ -103,7 +103,7 @@ func (m *ClusterMetricSink) AddDurationWithLabels(key []string, d time.Duration,
 }
 
 func (m *ClusterMetricSink) MeasureSinceWithLabels(key []string, start time.Time, labels []Label) {
-	elapsed := time.Now().Sub(start)
+	elapsed := time.Since(start)
 	val := float32(elapsed) / float32(time.Millisecond)
 	m.AddSampleWithLabels(key, val, labels)
 }

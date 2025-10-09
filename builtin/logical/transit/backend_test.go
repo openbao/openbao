@@ -1448,7 +1448,7 @@ func testPolicyFuzzingCommon(t *testing.T, be *backend) {
 		// t.Errorf("Starting %d", id)
 		for {
 			// Stop after 10 seconds
-			if time.Now().Sub(startTime) > 10*time.Second {
+			if time.Since(startTime) > 10*time.Second {
 				return
 			}
 

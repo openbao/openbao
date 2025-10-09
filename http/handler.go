@@ -321,10 +321,8 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		cw := newCopyResponseWriter(w)
 		h.ServeHTTP(cw, r)
 		data := make(map[string]interface{})
-		err = jsonutil.DecodeJSON(cw.body.Bytes(), &data)
-		if err != nil {
-			// best effort, ignore
-		}
+		// best effort, ignore error
+		_ = jsonutil.DecodeJSON(cw.body.Bytes(), &data)
 		httpResp := &logical.HTTPResponse{Data: data, Headers: cw.Header()}
 		input.Response = logical.HTTPResponseToLogicalResponse(httpResp)
 		err = core.AuditLogger().AuditResponse(ctx, input)

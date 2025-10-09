@@ -527,8 +527,8 @@ func (m *ExpirationManager) invalidate(key string) {
 		info, ok := m.pending.Load(leaseID)
 		switch {
 		case ok:
-			switch {
-			case le == nil:
+			switch le {
+			case nil:
 				// Handle lease deletion
 				pending := info.(pendingInfo)
 				pending.timer.Stop()

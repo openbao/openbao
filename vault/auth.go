@@ -1207,8 +1207,8 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *MountEntry, sysV
 		conf[k] = v
 	}
 
-	switch {
-	case entry.Type == "plugin":
+	switch entry.Type {
+	case "plugin":
 		conf["plugin_name"] = entry.Config.PluginName
 	default:
 		conf["plugin_name"] = t

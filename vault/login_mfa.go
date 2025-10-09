@@ -1301,8 +1301,8 @@ func (b *LoginMFABackend) mfaMethodList(ctx context.Context, methodType string) 
 	txn := b.db.Txn(false)
 
 	var iter memdb.ResultIterator
-	switch {
-	case methodType == "":
+	switch methodType {
+	case "":
 		// get all the configs
 		iter, err = txn.Get(b.methodTable, "id")
 		if err != nil {

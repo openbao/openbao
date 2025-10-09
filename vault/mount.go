@@ -2037,8 +2037,8 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *MountEntry, sysView
 		conf[k] = v
 	}
 
-	switch {
-	case entry.Type == mountTypePlugin:
+	switch entry.Type {
+	case mountTypePlugin:
 		conf["plugin_name"] = entry.Config.PluginName
 	default:
 		conf["plugin_name"] = t

@@ -979,8 +979,8 @@ func (m *Manager) Invalidate(key string) {
 			return
 		}
 
-		switch {
-		case quota == nil:
+		switch quota {
+		case nil:
 			// Handle quota deletion
 			if err := m.DeleteQuota(m.ctx, qType, name); err != nil {
 				m.logger.Error("failed to delete invalidated quota rule", "error", err)

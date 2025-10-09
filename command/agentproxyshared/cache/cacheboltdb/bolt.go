@@ -104,12 +104,12 @@ func NewBoltStorage(config *BoltStorageConfig) (*BoltStorage, error) {
 }
 
 func createBoltSchema(tx *bolt.Tx, createVersion string) error {
-	switch {
-	case createVersion == "1":
+	switch createVersion {
+	case "1":
 		if err := createV1BoltSchema(tx); err != nil {
 			return err
 		}
-	case createVersion == "2":
+	case "2":
 		if err := createV2BoltSchema(tx); err != nil {
 			return err
 		}

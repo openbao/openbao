@@ -131,7 +131,8 @@ func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request
 	}
 
 	var result *logical.Response
-	if role.KeyType == KeyTypeOTP {
+	switch role.KeyType {
+	case KeyTypeOTP:
 		// Generate an OTP
 		otp, err := b.GenerateOTPCredential(ctx, req, &sshOTP{
 			Username: username,
@@ -155,9 +156,9 @@ func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request
 		}, map[string]interface{}{
 			"otp": otp,
 		})
-	} else if role.KeyType == KeyTypeDynamic {
+	case KeyTypeDynamic:
 		return nil, errors.New("dynamic key types have been removed")
-	} else {
+	default:
 		return nil, errors.New("key type unknown")
 	}
 

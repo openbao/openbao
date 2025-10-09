@@ -994,7 +994,7 @@ func (c *DebugCommand) compress(dst string) error {
 		ofs := os.DirFS(parent)
 		if err := fs.WalkDir(ofs, child, func(path string, d fs.DirEntry, err error) error {
 			var fileType byte = tar.TypeReg
-			var tarPath string = path
+			tarPath := path
 			if d.IsDir() {
 				fileType = tar.TypeDir
 				if !strings.HasSuffix(path, "/") {

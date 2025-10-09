@@ -1091,9 +1091,9 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 	// Number of certificates on current page. This value is <= PageSize.
 	var lenSerials int
 	// Total number of revoked certificates in storage
-	var totalRevokedSerialCount int = 0
+	totalRevokedSerialCount := 0
 	// Total number of deleted revoked certificates in this tidy call
-	var revokedDeletedCount int = 0
+	revokedDeletedCount := 0
 
 	var revInfo revocationInfo
 	haveWarned := false
@@ -1183,7 +1183,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 		// Tidy operations over revoked certs should execute prior to
 		// tidyRevokedCerts as that may remove the entry. If that happens,
 		// we won't persist the revInfo changes (as it was deleted instead).
-		var storeCert bool = false
+		storeCert := false
 		if config.IssuerAssocs {
 			if !isRevInfoIssuerValid(&revInfo, issuerIDCertMap) {
 				b.tidyStatusIncMissingIssuerCertCount()

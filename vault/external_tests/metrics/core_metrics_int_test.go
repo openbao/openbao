@@ -155,8 +155,8 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 		defer respo.Body.Close()
 	}
 	var data testhelpers.SysMetricsJSON
-	var coreLeaderMetric bool = false
-	var coreUnsealMetric bool = false
+	coreLeaderMetric := false
+	coreUnsealMetric := false
 	if err := json.Unmarshal(bodyBytes, &data); err != nil {
 		t.Fatal("failed to unmarshal:", err)
 	}

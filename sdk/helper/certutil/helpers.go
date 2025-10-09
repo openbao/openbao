@@ -326,7 +326,7 @@ func generatePrivateKey(keyType string, keyBits int, container ParsedPrivateKeyC
 	var privateKeyBytes []byte
 	var privateKey crypto.Signer
 
-	var randReader io.Reader = rand.Reader
+	randReader := rand.Reader
 	if entropyReader != nil {
 		randReader = entropyReader
 	}

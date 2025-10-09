@@ -209,7 +209,7 @@ func TestAuthEnableCommand_Run(t *testing.T) {
 		}
 
 		for _, b := range backends {
-			var expectedResult int = 0
+			expectedResult := 0
 
 			// Not a builtin
 			if b == "token" {

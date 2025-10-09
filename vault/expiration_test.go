@@ -140,7 +140,7 @@ func TestExpiration_Metrics(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var conf metricsutil.TelemetryConstConfig = metricsutil.TelemetryConstConfig{
+	conf := metricsutil.TelemetryConstConfig{
 		LeaseMetricsEpsilon:         time.Hour,
 		NumLeaseMetricsTimeBuckets:  2,
 		LeaseMetricsNameSpaceLabels: true,

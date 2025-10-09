@@ -221,7 +221,7 @@ func (ah *AuthHandler) Run(ctx context.Context, am AuthMethod) error {
 		// the only source of retry/backoff.
 		clientToUse.SetMaxRetries(0)
 
-		var secret *api.Secret = new(api.Secret)
+		secret := new(api.Secret)
 		if first && ah.token != "" {
 			ah.logger.Debug("using preloaded token")
 

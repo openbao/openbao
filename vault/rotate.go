@@ -110,8 +110,7 @@ func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bo
 			return nil, logical.CodedError(http.StatusBadRequest, "rotation already in progress")
 		}
 
-		var initErr logical.HTTPCodedError
-		initErr = c.initRecoveryRotation(config, nonce)
+		initErr := c.initRecoveryRotation(config, nonce)
 		if initErr != nil {
 			return nil, initErr
 		}

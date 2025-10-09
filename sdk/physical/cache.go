@@ -296,7 +296,7 @@ func (c *transactionalCache) BeginReadOnlyTx(ctx context.Context) (Transaction, 
 
 	// txn does not implement TransactionalBackend because we don't support
 	// nested transactions so this will always cast to *cache.
-	ctxn := c.cache.cloneWithStorage(txn)
+	ctxn := c.cloneWithStorage(txn)
 	return &cacheTransaction{
 		*ctxn,
 		c,
@@ -306,13 +306,13 @@ func (c *transactionalCache) BeginReadOnlyTx(ctx context.Context) (Transaction, 
 }
 
 func (c *transactionalCache) BeginTx(ctx context.Context) (Transaction, error) {
-	txn, err := c.cache.backend.(TransactionalBackend).BeginTx(ctx)
+	txn, err := c.backend.(TransactionalBackend).BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// See note above in BeginReadOnlyTx(...).
-	ctxn := c.cache.cloneWithStorage(txn)
+	ctxn := c.cloneWithStorage(txn)
 	return &cacheTransaction{
 		*ctxn,
 		c,

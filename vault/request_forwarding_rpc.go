@@ -146,7 +146,7 @@ func (c *forwardingClient) startHeartbeat() {
 			defer metrics.MeasureSinceWithLabels([]string{"ha", "rpc", "client", "echo"}, now, labels)
 
 			ctx, cancel := context.WithTimeout(c.echoContext, 2*time.Second)
-			resp, err := c.RequestForwardingClient.Echo(ctx, req)
+			resp, err := c.Echo(ctx, req)
 			cancel()
 			if err != nil {
 				metrics.IncrCounter([]string{"ha", "rpc", "client", "echo", "errors"}, 1)

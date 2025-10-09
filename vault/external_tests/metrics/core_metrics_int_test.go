@@ -147,7 +147,7 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bodyBytes, err := io.ReadAll(respo.Response.Body)
+	bodyBytes, err := io.ReadAll(respo.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bodyBytes, err = io.ReadAll(respo.Response.Body)
+	bodyBytes, err = io.ReadAll(respo.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

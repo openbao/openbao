@@ -77,13 +77,13 @@ func (r *Request) ToHTTP() (*http.Request, error) {
 		// No body
 
 	case r.BodyBytes != nil:
-		req.Request.Body = io.NopCloser(bytes.NewReader(r.BodyBytes))
+		req.Body = io.NopCloser(bytes.NewReader(r.BodyBytes))
 
 	default:
 		if c, ok := r.Body.(io.ReadCloser); ok {
-			req.Request.Body = c
+			req.Body = c
 		} else {
-			req.Request.Body = io.NopCloser(r.Body)
+			req.Body = io.NopCloser(r.Body)
 		}
 	}
 

@@ -264,7 +264,7 @@ func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage
 	}
 
 	// Make sure the seal configs were updated correctly.
-	b, r, err := cluster.Cores[0].Core.PhysicalSealConfigs(context.Background())
+	b, r, err := cluster.Cores[0].PhysicalSealConfigs(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

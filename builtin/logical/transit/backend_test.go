@@ -1638,7 +1638,7 @@ func TestTransit_AutoRotateKeys(t *testing.T) {
 					t.Fatal("failed to create backend")
 				}
 
-				err := b.Backend.Setup(context.Background(), conf)
+				err := b.Setup(context.Background(), conf)
 				if err != nil {
 					t.Fatal(err)
 				}

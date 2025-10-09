@@ -5653,7 +5653,7 @@ func TestIssuanceTTLs(t *testing.T) {
 func TestSealWrappedStorageConfigured(t *testing.T) {
 	t.Parallel()
 	b, _ := CreateBackendWithStorage(t)
-	wrappedEntries := b.Backend.PathsSpecial.SealWrapStorage
+	wrappedEntries := b.PathsSpecial.SealWrapStorage
 
 	// Make sure our legacy bundle is within the list
 	// NOTE: do not convert these test values to constants, we should always have these paths within seal wrap config

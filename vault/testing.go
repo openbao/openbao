@@ -852,7 +852,7 @@ func (c *TestCluster) start(t testing.T) {
 WAITACTIVE:
 	for i := 0; i < 60; i++ {
 		for i, core := range c.Cores {
-			if standby, _ := core.Core.Standby(); !standby {
+			if standby, _ := core.Standby(); !standby {
 				activeCore = i
 				break WAITACTIVE
 			}
@@ -960,7 +960,7 @@ func (c *TestCluster) AttemptUnsealCore(core *TestClusterCore) error {
 		keys = c.BarrierKeys
 	}
 	for _, key := range keys {
-		if _, err := core.Core.Unseal(TestKeyCopy(key)); err != nil {
+		if _, err := core.Unseal(TestKeyCopy(key)); err != nil {
 			return fmt.Errorf("unseal err: %w", err)
 		}
 	}
@@ -983,7 +983,7 @@ func (c *TestCluster) EnsureCoresSealed(t testing.T) {
 
 func (c *TestClusterCore) Seal(t testing.T) {
 	t.Helper()
-	if err := c.Core.sealInternal(); err != nil {
+	if err := c.sealInternal(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -1105,7 +1105,7 @@ func (c *TestCluster) ensureCoresSealed() error {
 }
 
 func SetReplicationFailureMode(core *TestClusterCore, mode uint32) {
-	atomic.StoreUint32(core.Core.replicationFailure, mode)
+	atomic.StoreUint32(core.replicationFailure, mode)
 }
 
 type TestListener struct {
@@ -2056,7 +2056,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 
 	// Unseal first core
 	for _, key := range bKeys {
-		if _, err := leader.Core.Unseal(TestKeyCopy(key)); err != nil {
+		if _, err := leader.Unseal(TestKeyCopy(key)); err != nil {
 			t.Fatalf("unseal err: %s", err)
 		}
 	}
@@ -2065,12 +2065,12 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 
 	// If stored keys is supported, the above will no no-op, so trigger auto-unseal
 	// using stored keys to try to unseal
-	if err := leader.Core.UnsealWithStoredKeys(ctx); err != nil {
+	if err := leader.UnsealWithStoredKeys(ctx); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify unsealed
-	if leader.Core.Sealed() {
+	if leader.Sealed() {
 		t.Fatal("should not be sealed")
 	}
 
@@ -2096,7 +2096,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 			},
 		},
 	}
-	resp, err := leader.Core.HandleRequest(namespace.RootContext(ctx), kvReq)
+	resp, err := leader.HandleRequest(namespace.RootContext(ctx), kvReq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2104,7 +2104,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		t.Fatal(err)
 	}
 
-	cfg, err := leader.Core.seal.BarrierConfig(ctx)
+	cfg, err := leader.seal.BarrierConfig(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2113,16 +2113,16 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 	numCores := len(tc.Cores)
 	if (opts == nil || !opts.KeepStandbysSealed) && numCores > 1 {
 		for i := 1; i < numCores; i++ {
-			tc.Cores[i].Core.seal.SetCachedBarrierConfig(cfg)
+			tc.Cores[i].seal.SetCachedBarrierConfig(cfg)
 			for _, key := range bKeys {
-				if _, err := tc.Cores[i].Core.Unseal(TestKeyCopy(key)); err != nil {
+				if _, err := tc.Cores[i].Unseal(TestKeyCopy(key)); err != nil {
 					t.Fatalf("unseal err: %s", err)
 				}
 			}
 
 			// If stored keys is supported, the above will no no-op, so trigger auto-unseal
 			// using stored keys
-			if err := tc.Cores[i].Core.UnsealWithStoredKeys(ctx); err != nil {
+			if err := tc.Cores[i].UnsealWithStoredKeys(ctx); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -2133,7 +2133,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		// Ensure cluster connection info is populated.
 		// Other cores should not come up as leaders.
 		for i := 1; i < numCores; i++ {
-			isLeader, _, _, err := tc.Cores[i].Core.Leader()
+			isLeader, _, _, err := tc.Cores[i].Leader()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2146,7 +2146,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 	//
 	// Set test cluster core(s) and test cluster
 	//
-	cluster, err := leader.Core.Cluster(context.Background())
+	cluster, err := leader.Cluster(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2162,7 +2162,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 				"type": "noop",
 			},
 		}
-		resp, err = leader.Core.HandleRequest(namespace.RootContext(ctx), auditReq)
+		resp, err = leader.HandleRequest(namespace.RootContext(ctx), auditReq)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -12,7 +12,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin"
-	bplugin "github.com/openbao/openbao/sdk/v2/plugin"
 )
 
 // Backend returns an instance of the backend, either as a plugin if external
@@ -96,7 +95,7 @@ func (b *backend) HandleRequest(ctx context.Context, req *logical.Request) (*log
 	// Need to compare string value for case were err comes from plugin RPC
 	// and is returned as plugin.BasicError type.
 	if err != nil &&
-		(err.Error() == rpc.ErrShutdown.Error() || err == bplugin.ErrPluginShutdown) {
+		(err.Error() == rpc.ErrShutdown.Error() || err == plugin.ErrPluginShutdown) {
 		// Reload plugin if it's an rpc.ErrShutdown
 		b.mu.Lock()
 		if b.canary == canary {
@@ -128,7 +127,7 @@ func (b *backend) HandleExistenceCheck(ctx context.Context, req *logical.Request
 	checkFound, exists, err := b.Backend.HandleExistenceCheck(ctx, req)
 	b.mu.RUnlock()
 	if err != nil &&
-		(err.Error() == rpc.ErrShutdown.Error() || err == bplugin.ErrPluginShutdown) {
+		(err.Error() == rpc.ErrShutdown.Error() || err == plugin.ErrPluginShutdown) {
 		// Reload plugin if it's an rpc.ErrShutdown
 		b.mu.Lock()
 		if b.canary == canary {

@@ -914,21 +914,34 @@ func namespaceMatchPredicate(targetNS *namespace.Namespace) func(*MountEntry) bo
 	}
 }
 
-// SealNamespace seals provided namespace, cleaning up namespace resources.
+// SealNamespace acquires a read lock, and seals provided namespace,
+// cleaning up namespace resources.
 func (ns *NamespaceStore) SealNamespace(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
 	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 
-	unlock, err := ns.lockWithInvalidation(ctx, true)
+	unlock, err := ns.lockWithInvalidation(ctx, false)
 	if err != nil {
 		return err
 	}
 	defer unlock()
 
+	return ns.sealNamespaceLocked(ctx, namespaceToSeal)
+}
+
+// sealNamespaceLocked assumes the read lock is hold, and seals provided namespace,
+// cleaning up namespace resources.
+func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
+	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
+
 	var errs error
-	ns.namespacesByPath.WalkPath(namespaceToSeal.Path, func(namespaceEntry *namespace.Namespace) bool {
+	ns.namespacesByPath.PostOrderTraversal(namespaceToSeal.Path, func(namespaceEntry *namespace.Namespace) {
+		if namespaceEntry.UUID == namespace.RootNamespaceUUID || ns.core.NamespaceSealed(namespaceEntry) {
+			return
+		}
+
 		barrier := ns.core.sealManager.NamespaceBarrier(namespaceEntry.Path)
 		if barrier != nil && barrier.Sealed() {
-			return false
+			return
 		}
 
 		ctx = namespace.ContextWithNamespace(ctx, namespaceEntry)
@@ -944,8 +957,6 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, namespaceToSeal *na
 		if err := ns.core.sealManager.SealNamespaceBarrier(ctx, barrier); err != nil {
 			errs = errors.Join(errs, err)
 		}
-
-		return false
 	})
 
 	return errs

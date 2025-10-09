@@ -99,6 +99,10 @@ func (sm *SealManager) setup() {
 // `(*SealManager) setupSealManager` to overwrite the internal
 // storage of a sealManger with a default values for root namespace.
 func (sm *SealManager) Reset(ctx context.Context) error {
+	if sm.core.namespaceStore == nil {
+		return nil
+	}
+
 	// providing root namespace to the function, but it will be omitted from actual sealing
 	if err := sm.core.namespaceStore.SealNamespace(ctx, namespace.RootNamespace); err != nil {
 		return err
@@ -107,7 +111,6 @@ func (sm *SealManager) Reset(ctx context.Context) error {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 	sm.setup()
-
 	return nil
 }
 
@@ -177,6 +180,10 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 
 // SealNamespace seals the barrier of a namespace.
 func (sm *SealManager) SealNamespaceBarrier(ctx context.Context, barrier SecurityBarrier) error {
+	if barrier == nil {
+		return nil
+	}
+
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
 
@@ -623,10 +630,10 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		return nil, fmt.Errorf("failed to initialize namespace: %w", err)
 	}
 
-	// unlock as namespaceStore.SealNamespace will acquire a lock on itself
+	// unlock as namespaceStore.sealNamespace will acquire a lock on itself
 	sm.lock.RUnlock()
 
-	if err := sm.core.namespaceStore.SealNamespace(ctx, ns); err != nil {
+	if err := sm.core.namespaceStore.sealNamespaceLocked(ctx, ns); err != nil {
 		return nil, fmt.Errorf("failed to seal namespace: %w", err)
 	}
 

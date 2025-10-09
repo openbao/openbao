@@ -275,7 +275,7 @@ func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
 			return nil, errors.New("name must not contain /")
 		}
 
-		namespaceToSeal, err := b.Core.namespaceStore.getNamespaceByPathLocked(ctx, name, false)
+		namespaceToSeal, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
 		if err != nil {
 			return nil, err
 		}

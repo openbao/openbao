@@ -1862,7 +1862,7 @@ func (m *ExpirationManager) updatePendingInternal(le *leaseEntry) {
 		// If this is the case, we need to know if the lease was previously counted
 		// so that we can maintain correct metric and quota lease counts.
 		_, leaseInIrrevocable := m.irrevocable.Load(le.LeaseID)
-		if !(leaseInPending || leaseInIrrevocable) {
+		if !leaseInPending && !leaseInIrrevocable {
 			leaseCreated = true
 		}
 

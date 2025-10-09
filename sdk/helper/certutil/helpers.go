@@ -1399,7 +1399,7 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 		certTemplate.URIs = data.CSR.URIs
 
 		for _, name := range data.CSR.Extensions {
-			if !name.Id.Equal(ExtensionBasicConstraintsOID) && !(len(data.Params.OtherSANs) > 0 && name.Id.Equal(ExtensionSubjectAltNameOID)) {
+			if !name.Id.Equal(ExtensionBasicConstraintsOID) && (len(data.Params.OtherSANs) == 0 || !name.Id.Equal(ExtensionSubjectAltNameOID)) {
 				certTemplate.ExtraExtensions = append(certTemplate.ExtraExtensions, name)
 			}
 		}

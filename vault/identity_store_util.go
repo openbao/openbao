@@ -478,17 +478,7 @@ func (i *IdentityStore) upsertEntityInTxn(ctx context.Context, txn *memdb.Txn, e
 		default:
 			i.logger.Warn("alias is already tied to a different entity; these entities are being merged", "alias_id", alias.ID, "other_entity_id", aliasByFactors.CanonicalID, "entity_aliases", entity.Aliases, "alias_by_factors", aliasByFactors)
 
-			respErr, intErr := i.mergeEntityAsPartOfUpsert(ctx, txn, entity, aliasByFactors.CanonicalID, persist)
-			switch {
-			case respErr != nil:
-				return respErr
-			case intErr != nil:
-				return intErr
-			}
-
-			// The entity and aliases will be loaded into memdb and persisted
-			// as a result of the merge, so we are done here
-			return nil
+			return i.mergeEntityAsPartOfUpsert(ctx, txn, entity, aliasByFactors.CanonicalID, persist)
 		}
 
 		if slices.Contains(aliasFactors, i.sanitizeName(alias.Name)+alias.MountAccessor) {

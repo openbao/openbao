@@ -20,7 +20,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-var tidyCancelledError = errors.New("tidy operation cancelled")
+var errTidyCancelled = errors.New("tidy operation cancelled")
 
 type tidyStatusState int
 
@@ -863,7 +863,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.RevokedCerts || config.IssuerAssocs || config.InvalidCerts {
@@ -876,7 +876,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if rebuildCRL {
@@ -887,7 +887,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.ExpiredIssuers {
@@ -898,7 +898,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.BackupBundle {
@@ -909,7 +909,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.TidyAcme {
@@ -956,7 +956,7 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 
 		// Check for cancel before continuing
 		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption
@@ -1107,7 +1107,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 
 		// Check for cancel before continuing.
 		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption.
@@ -1474,7 +1474,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 
 		// Check for cancel before continuing.
 		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption.
@@ -1541,7 +1541,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			// Check for pause duration to reduce resource consumption.
@@ -1851,7 +1851,7 @@ func (b *backend) tidyStatusStop(err error) {
 	switch err {
 	case nil:
 		b.tidyStatus.state = tidyStatusFinished
-	case tidyCancelledError:
+	case errTidyCancelled:
 		b.tidyStatus.state = tidyStatusCancelled
 	default:
 		b.tidyStatus.state = tidyStatusError

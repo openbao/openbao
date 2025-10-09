@@ -630,11 +630,11 @@ func (b *backend) periodicFunc(ctx context.Context, request *logical.Request) er
 
 	var errors error
 	if crlErr != nil {
-		errors = multierror.Append(errors, fmt.Errorf("Error building CRLs:\n - %w\n", crlErr))
+		errors = multierror.Append(errors, fmt.Errorf("error building CRLs: %w", crlErr))
 	}
 
 	if tidyErr != nil {
-		errors = multierror.Append(errors, fmt.Errorf("Error running auto-tidy:\n - %w\n", tidyErr))
+		errors = multierror.Append(errors, fmt.Errorf("error running auto-tidy: %w", tidyErr))
 	}
 
 	if errors != nil {

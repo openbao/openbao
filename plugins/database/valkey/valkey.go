@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/errwrap"
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/mediocregopher/radix/v4"
 	"github.com/mediocregopher/radix/v4/resp/resp3"
@@ -141,7 +140,7 @@ func newUser(ctx context.Context, db radix.Client, username string, req dbplugin
 	var args []string
 	err := json.Unmarshal([]byte(statements[0]), &args)
 	if err != nil {
-		return errwrap.Wrapf("error unmarshalling VALKEY rules in the creation statement JSON: {{err}}", err)
+		return fmt.Errorf("error unmarshalling VALKEY rules in the creation statement JSON: %w", err)
 	}
 
 	aclargs = append(aclargs, args...)

@@ -484,11 +484,7 @@ func attemptUnsealMigrate(client *api.Client, keys [][]byte, transitServerAvaila
 // awaitMigration waits for migration to finish.
 func awaitMigration(t *testing.T, client *api.Client) {
 	timeout := time.Now().Add(60 * time.Second)
-	for {
-		if time.Now().After(timeout) {
-			break
-		}
-
+	for time.Now().Before(timeout) {
 		resp, err := client.Sys().SealStatus()
 		if err != nil {
 			t.Fatal(err)

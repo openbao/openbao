@@ -582,11 +582,7 @@ func WaitForRaftApply(t testing.T, core *vault.TestClusterCore, index uint64) {
 // AwaitLeader waits for one of the cluster's nodes to become leader.
 func AwaitLeader(t testing.T, cluster *vault.TestCluster) (int, error) {
 	timeout := time.Now().Add(60 * time.Second)
-	for {
-		if time.Now().After(timeout) {
-			break
-		}
-
+	for time.Now().Before(timeout) {
 		for i, core := range cluster.Cores {
 			if core.Sealed() {
 				continue

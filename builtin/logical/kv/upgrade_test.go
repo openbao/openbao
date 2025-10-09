@@ -64,11 +64,7 @@ func TestVersionedKV_Upgrade(t *testing.T) {
 	}
 
 	// wait for upgrade to finish
-	for {
-		if atomic.LoadUint32(b.(*versionedKVBackend).upgrading) == 0 {
-			break
-		}
-
+	for atomic.LoadUint32(b.(*versionedKVBackend).upgrading) != 0 {
 		time.Sleep(time.Second)
 	}
 

@@ -112,10 +112,7 @@ func TestRenewer_Renew(t *testing.T) {
 
 			renewed, done := false, false
 			timeout := time.After(10 * time.Second)
-			for {
-				if done {
-					break
-				}
+			for !done {
 				select {
 				case err := <-v.DoneCh():
 					done = true

@@ -238,9 +238,7 @@ func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespac
 
 	if tokenNS.Path == policyNS.Path {
 		// Same namespace - add all and continue
-		for _, policyName := range nsPolicies {
-			filteredPolicies = append(filteredPolicies, policyName)
-		}
+		filteredPolicies = append(filteredPolicies, nsPolicies...)
 		return filteredPolicies, nil
 	}
 

@@ -1095,11 +1095,7 @@ func TestAutoRebuild(t *testing.T) {
 
 	haveUpdatedDeltaCRL := false
 	interruptChan := time.After(4*newPeriod + delta)
-	for {
-		if haveUpdatedDeltaCRL {
-			break
-		}
-
+	for !haveUpdatedDeltaCRL {
 		select {
 		case <-interruptChan:
 			t.Fatalf("expected to regenerate delta CRL within a couple of periodicFunc invocations (plus %v grace period)", delta)

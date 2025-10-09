@@ -897,13 +897,8 @@ func (m *ExpirationManager) Stop() error {
 		return true
 	})
 
-	if m.inRestoreMode() {
-		for {
-			if !m.inRestoreMode() {
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
+	for m.inRestoreMode() {
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	m.emptyUniquePolicies.Stop()

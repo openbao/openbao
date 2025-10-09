@@ -133,11 +133,7 @@ func TestResignCrls_ConflictingExpiry(t *testing.T) {
 
 	// Wait until at least we have rolled over to the next second to match sure the generated CRL time
 	// on backend 2 for the serial 1 will be different
-	for {
-		if time.Now().After(timeAfterMountSetup.Add(1 * time.Second)) {
-			break
-		}
-	}
+	time.Sleep(time.Until(timeAfterMountSetup.Add(1 * time.Second)))
 
 	// Use BYOC to revoke the same certificate on backend 2 now
 	resp, err = CBWrite(b2, s2, "revoke", map[string]interface{}{

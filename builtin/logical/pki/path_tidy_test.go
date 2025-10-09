@@ -1277,11 +1277,7 @@ func waitForAutoTidyToFinish(t *testing.T, client *api.Client) {
 	var foundTidyFinished bool
 	timeoutChan := time.After(120 * time.Second)
 
-	for {
-		if foundTidyRunning != "" && foundTidyFinished {
-			break
-		}
-
+	for foundTidyRunning == "" || !foundTidyFinished {
 		select {
 		case <-timeoutChan:
 			t.Fatalf("expected auto-tidy to run (%v) and finish (%v) before timeout", foundTidyRunning, foundTidyFinished)

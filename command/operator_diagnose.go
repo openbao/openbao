@@ -425,7 +425,7 @@ SEALFAIL:
 			if seal.Type == "transit" {
 				checkSealTransit = true
 
-				tlsSkipVerify, _ := seal.Config["tls_skip_verify"]
+				tlsSkipVerify := seal.Config["tls_skip_verify"]
 				if tlsSkipVerify == "true" {
 					diagnose.Warn(ctx, "TLS verification is skipped. This is highly discouraged and decreases the security of data transmissions to and from the Vault server.")
 					return nil

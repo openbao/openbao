@@ -344,7 +344,7 @@ func TestTransit_Export_KeysDoesNotExist_ReturnsNotFound(t *testing.T) {
 	rsp, err := b.HandleRequest(context.Background(), req)
 
 	if rsp != nil || err != nil {
-		t.Fatal("Key does not exist but does not return not found")
+		t.Fatal("Key does not exist: should return no response and no error.")
 	}
 }
 

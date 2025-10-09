@@ -1038,11 +1038,7 @@ func (b *RaftBackend) SetupCluster(ctx context.Context, opts SetupOpts) error {
 		// for - select pattern.
 		ticker := time.NewTicker(10 * time.Millisecond)
 		defer ticker.Stop()
-		for {
-			if raftObj.State() == raft.Leader {
-				break
-			}
-
+		for raftObj.State() != raft.Leader {
 			ticker.Reset(10 * time.Millisecond)
 			select {
 			case <-ctx.Done():

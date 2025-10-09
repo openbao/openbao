@@ -240,15 +240,10 @@ func (c *Core) tableMetrics(entryCount int, isLocal bool, isAuth bool, compresse
 // other locations holding pointers. Care needs to be taken
 // if modifying entries rather than modifying the table itself
 func (t *MountTable) shallowClone() *MountTable {
-	mt := &MountTable{
+	return &MountTable{
 		Type:    t.Type,
-		Entries: make([]*MountEntry, len(t.Entries)),
+		Entries: slices.Clone(t.Entries),
 	}
-
-	for i, e := range t.Entries {
-		mt.Entries[i] = e
-	}
-	return mt
 }
 
 // setTaint is used to set the taint on given entry Accepts either the mount

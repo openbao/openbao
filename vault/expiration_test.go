@@ -2437,10 +2437,7 @@ func TestExpiration_revokeEntry_rejected_fairsharing(t *testing.T) {
 	}
 	exp = core.expiration
 
-	for {
-		if !exp.inRestoreMode() {
-			break
-		}
+	for exp.inRestoreMode() {
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -2869,7 +2866,7 @@ func TestExpiration_WalkTokens(t *testing.T) {
 
 	waitForRestore(t, exp)
 
-	for true {
+	for {
 		// Count before and after each revocation
 		t.Logf("Counting %d tokens.", len(tokenEntries))
 		count := 0

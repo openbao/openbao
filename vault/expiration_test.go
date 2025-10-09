@@ -2447,7 +2447,7 @@ func TestExpiration_revokeEntry_rejected_fairsharing(t *testing.T) {
 	// Now let the revocation actually process
 	time.Sleep(1 * time.Second)
 
-	le, err = exp.FetchLeaseInfo(namespace.RootContext(nil), le.LeaseID)
+	le, err = exp.FetchLeaseInfo(namespace.RootContext(t.Context()), le.LeaseID)
 	if err != nil {
 		t.Fatal(err)
 	}

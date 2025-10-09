@@ -36,7 +36,8 @@ import (
 	"golang.org/x/term"
 )
 
-const CoreConfigUninitializedErr = "Diagnose cannot attempt this step because core config could not be set."
+//nolint:staticcheck // user-facing error
+var ErrCoreConfigUninitialized = errors.New("Diagnose cannot attempt this step because core config could not be set.")
 
 var (
 	_ cli.Command             = (*OperatorDiagnoseCommand)(nil)
@@ -533,7 +534,7 @@ SEALFAIL:
 	diagnose.Test(ctx, "Check Core Creation", func(ctx context.Context) error {
 		var newCoreError error
 		if coreConfig.RawConfig == nil {
-			return fmt.Errorf(CoreConfigUninitializedErr)
+			return ErrCoreConfigUninitialized
 		}
 		core, newCoreError := vault.CreateCore(&coreConfig)
 		if newCoreError != nil {

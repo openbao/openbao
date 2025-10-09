@@ -86,7 +86,7 @@ func ParseConfig(d string) (*SharedConfig, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error parsing 'disable_mlock': %w", err)
 		} else if !isDisabled {
-			return nil, fmt.Errorf(mlockMsg)
+			return nil, errors.New(mlockMsg)
 		}
 		result.DisableMlockRaw = nil
 	}

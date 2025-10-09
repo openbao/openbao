@@ -4716,7 +4716,7 @@ func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
 	// Rotate to the new term
 	newTerm, err := b.Core.barrier.Rotate(ctx, b.Core.secureRandomReader)
 	if err != nil {
-		return errwrap.Wrap(errors.New("failed to create new encryption key"), err)
+		return fmt.Errorf("failed to create new encryption key: %w", err)
 	}
 	b.Backend.Logger().Info("installed new encryption key")
 
@@ -4743,7 +4743,7 @@ func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
 		Value: fmt.Appendf(nil, "new-rotation-term-%d", newTerm),
 	}); err != nil {
 		b.Core.logger.Error("error saving keyring canary", "error", err)
-		return errwrap.Wrap(errors.New("failed to save keyring canary"), err)
+		return fmt.Errorf("failed to save keyring canary: %w", err)
 	}
 
 	return nil

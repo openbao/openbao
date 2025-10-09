@@ -360,7 +360,7 @@ func WaitForActiveNode(t testing.T, cluster *vault.TestCluster) *vault.TestClust
 func WaitForStandbyNode(t testing.T, core *vault.TestClusterCore) {
 	t.Helper()
 	for i := 0; i < 30; i++ {
-		if isLeader, _, clusterAddr, _ := core.Leader(); isLeader != true && clusterAddr != "" {
+		if isLeader, _, clusterAddr, _ := core.Leader(); !isLeader && clusterAddr != "" {
 			return
 		}
 		if core.ActiveNodeReplicationState() == 0 {

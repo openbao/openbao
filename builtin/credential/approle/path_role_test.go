@@ -1794,7 +1794,7 @@ func TestAppRole_RoleWithTokenTypeCRUD(t *testing.T) {
 
 	resp = b.requestNoErr(t, roleReq)
 
-	if 0 == len(resp.Warnings) {
+	if len(resp.Warnings) == 0 {
 		t.Fatalf("bad:\nexpected warning in resp:%#v\n", resp.Warnings)
 	}
 
@@ -1843,7 +1843,7 @@ func TestAppRole_RoleWithTokenTypeCRUD(t *testing.T) {
 
 	resp = b.requestNoErr(t, roleReq)
 
-	if 0 == len(resp.Warnings) {
+	if len(resp.Warnings) == 0 {
 		t.Fatalf("bad:\nexpected a warning in resp:%#v\n", resp.Warnings)
 	}
 

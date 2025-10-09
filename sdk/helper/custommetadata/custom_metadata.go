@@ -70,7 +70,7 @@ func Validate(cm map[string]string) error {
 
 	// Perform validation on each key and value and return ALL errors
 	for key, value := range cm {
-		if keyLen := len(key); 0 == keyLen || keyLen > maxKeyLength {
+		if keyLen := len(key); keyLen == 0 || keyLen > maxKeyLength {
 			errs = multierror.Append(errs, fmt.Errorf("%s: length of key %q is %d but must be 0 < len(key) <= %d",
 				validationErrorPrefix,
 				key,
@@ -78,7 +78,7 @@ func Validate(cm map[string]string) error {
 				maxKeyLength))
 		}
 
-		if valueLen := len(value); 0 == valueLen || valueLen > maxValueLength {
+		if valueLen := len(value); valueLen == 0 || valueLen > maxValueLength {
 			errs = multierror.Append(errs, fmt.Errorf("%s: length of value for key %q is %d but must be 0 < len(value) <= %d",
 				validationErrorPrefix,
 				key,

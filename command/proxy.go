@@ -505,7 +505,7 @@ func (c *ProxyCommand) Run(args []string) int {
 
 		// Parse 'require_request_header' listener config option, and wrap
 		// the request handler if necessary
-		if lnConfig.RequireRequestHeader && ("metrics_only" != lnConfig.Role) {
+		if lnConfig.RequireRequestHeader && (lnConfig.Role != "metrics_only") {
 			muxHandler = verifyRequestHeader(muxHandler)
 		}
 
@@ -514,7 +514,7 @@ func (c *ProxyCommand) Run(args []string) int {
 		quitEnabled := lnConfig.ProxyAPI != nil && lnConfig.ProxyAPI.EnableQuit
 
 		mux.Handle(consts.ProxyPathMetrics, c.handleMetrics())
-		if "metrics_only" != lnConfig.Role {
+		if lnConfig.Role != "metrics_only" {
 			mux.Handle(consts.ProxyPathCacheClear, leaseCache.HandleCacheClear(ctx))
 			mux.Handle(consts.ProxyPathQuit, c.handleQuit(quitEnabled))
 			mux.Handle("/", muxHandler)

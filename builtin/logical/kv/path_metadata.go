@@ -395,7 +395,7 @@ func validateCustomMetadata(customMetadata map[string]string) error {
 
 	// Perform validation on each key and value and return ALL errors
 	for key, value := range customMetadata {
-		if keyLen := len(key); 0 == keyLen || keyLen > maxCustomMetadataKeyLength {
+		if keyLen := len(key); keyLen == 0 || keyLen > maxCustomMetadataKeyLength {
 			errs = multierror.Append(errs, fmt.Errorf("%s: length of key %q is %d but must be 0 < len(key) <= %d",
 				customMetadataValidationErrorPrefix,
 				key,
@@ -403,7 +403,7 @@ func validateCustomMetadata(customMetadata map[string]string) error {
 				maxCustomMetadataKeyLength))
 		}
 
-		if valueLen := len(value); 0 == valueLen || valueLen > maxCustomMetadataValueLength {
+		if valueLen := len(value); valueLen == 0 || valueLen > maxCustomMetadataValueLength {
 			errs = multierror.Append(errs, fmt.Errorf("%s: length of value for key %q is %d but must be 0 < len(value) <= %d",
 				customMetadataValidationErrorPrefix,
 				key,

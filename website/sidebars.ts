@@ -39,6 +39,7 @@ const sidebars: SidebarsConfig = {
                                 "internals/telemetry/metrics/availability",
                                 "internals/telemetry/metrics/database",
                                 "internals/telemetry/metrics/policy",
+                                "internals/telemetry/metrics/postgresql",
                                 "internals/telemetry/metrics/raft",
                                 "internals/telemetry/metrics/secrets",
                                 "internals/telemetry/metrics/storage",

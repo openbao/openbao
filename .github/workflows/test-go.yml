@@ -310,6 +310,10 @@ jobs:
           path: test-results/go-test
           pattern: test-results-*
           merge-multiple: true
+      - name: Test Summary
+        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # v2.4
+        with:
+          paths: "test-results/go-test/results-*.xml"
       - env:
           EXPECTED_IDS: ${{ needs.test-matrix.outputs.matrix_ids }}
         run: |

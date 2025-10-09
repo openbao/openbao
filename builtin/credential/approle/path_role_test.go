@@ -715,7 +715,7 @@ func TestAppRole_RoleIDUniqueness(t *testing.T) {
 
 	roleReq.Path = "role/testrole2"
 	resp, err = b.HandleRequest(context.Background(), roleReq)
-	if err == nil && !(resp != nil && resp.IsError()) {
+	if err == nil && (resp == nil || !resp.IsError()) {
 		t.Fatalf("expected an error: got resp:%#v", resp)
 	}
 
@@ -725,14 +725,14 @@ func TestAppRole_RoleIDUniqueness(t *testing.T) {
 	roleReq.Operation = logical.UpdateOperation
 	roleData["role_id"] = "role-id-123"
 	resp, err = b.HandleRequest(context.Background(), roleReq)
-	if err == nil && !(resp != nil && resp.IsError()) {
+	if err == nil && (resp == nil || !resp.IsError()) {
 		t.Fatalf("expected an error: got resp:%#v", resp)
 	}
 
 	roleReq.Path = "role/testrole1"
 	roleData["role_id"] = "role-id-456"
 	resp, err = b.HandleRequest(context.Background(), roleReq)
-	if err == nil && !(resp != nil && resp.IsError()) {
+	if err == nil && (resp == nil || !resp.IsError()) {
 		t.Fatalf("expected an error: got resp:%#v", resp)
 	}
 
@@ -746,14 +746,14 @@ func TestAppRole_RoleIDUniqueness(t *testing.T) {
 		Data:      roleIDData,
 	}
 	resp, err = b.HandleRequest(context.Background(), roleIDReq)
-	if err == nil && !(resp != nil && resp.IsError()) {
+	if err == nil && (resp == nil || !resp.IsError()) {
 		t.Fatalf("expected an error: got resp:%#v", resp)
 	}
 
 	roleIDData["role_id"] = "role-id-123"
 	roleIDReq.Path = "role/testrole2/role-id"
 	resp, err = b.HandleRequest(context.Background(), roleIDReq)
-	if err == nil && !(resp != nil && resp.IsError()) {
+	if err == nil && (resp == nil || !resp.IsError()) {
 		t.Fatalf("expected an error: got resp:%#v", resp)
 	}
 

@@ -63,7 +63,7 @@ func (b *backend) reloadBackend(ctx context.Context, storage logical.Storage) er
 	// Pass a context value so that the plugin client will call the appropriate
 	// cleanup method for reloading
 	reloadCtx := context.WithValue(ctx, plugin.ContextKeyPluginReload, "reload")
-	b.Backend.Cleanup(reloadCtx)
+	b.Cleanup(reloadCtx)
 
 	nb, err := plugin.NewBackendV5(ctx, pluginName, pluginType, pluginVersion, b.config.System, b.config)
 	if err != nil {
@@ -77,7 +77,7 @@ func (b *backend) reloadBackend(ctx context.Context, storage logical.Storage) er
 
 	// Re-initialize the backend in case plugin was reloaded
 	// after it crashed
-	err = b.Backend.Initialize(ctx, &logical.InitializationRequest{
+	err = b.Initialize(ctx, &logical.InitializationRequest{
 		Storage: storage,
 	})
 	if err != nil {

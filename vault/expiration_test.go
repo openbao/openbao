@@ -2618,7 +2618,7 @@ func TestLeaseEntry(t *testing.T) {
 	if r, err := le.renewable(); !r {
 		t.Fatalf("lease with future expire time is renewable, err: %v", err)
 	}
-	le.Secret.LeaseOptions.Renewable = false
+	le.Secret.Renewable = false
 	if r, _ := le.renewable(); r {
 		t.Fatal("secret is set to not be renewable but returns as renewable")
 	}
@@ -2631,7 +2631,7 @@ func TestLeaseEntry(t *testing.T) {
 	if r, err := le.renewable(); !r {
 		t.Fatalf("auth is renewable but is set to not be, err: %v", err)
 	}
-	le.Auth.LeaseOptions.Renewable = false
+	le.Auth.Renewable = false
 	if r, _ := le.renewable(); r {
 		t.Fatal("auth is set to not be renewable but returns as renewable")
 	}

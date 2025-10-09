@@ -25,12 +25,12 @@ func CubbyholeBackendFactory(ctx context.Context, conf *logical.BackendConfig) (
 		RunningVersion: versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
 	}
 
-	b.Backend.Paths = append(b.Backend.Paths, b.paths()...)
+	b.Paths = append(b.Paths, b.paths()...)
 
 	if conf == nil {
 		return nil, errors.New("configuration passed into backend is nil")
 	}
-	b.Backend.Setup(ctx, conf)
+	b.Setup(ctx, conf)
 
 	return b, nil
 }

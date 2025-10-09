@@ -821,9 +821,9 @@ func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *l
 		BackendType: logical.TypeCredential,
 	}
 
-	t.Backend.Paths = append(t.Backend.Paths, t.paths()...)
+	t.Paths = append(t.Paths, t.paths()...)
 
-	t.Backend.Setup(ctx, config)
+	t.Setup(ctx, config)
 
 	if err := t.loadSSCTokensGenerationCounter(ctx); err != nil {
 		return t, err

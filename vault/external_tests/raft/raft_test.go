@@ -324,7 +324,7 @@ func TestRaft_RemovePeer(t *testing.T) {
 	defer cluster.Cleanup()
 
 	for i, c := range cluster.Cores {
-		if c.Core.Sealed() {
+		if c.Sealed() {
 			t.Fatalf("failed to unseal core %d", i)
 		}
 	}
@@ -397,7 +397,7 @@ func TestRaft_NodeIDHeader(t *testing.T) {
 			defer cluster.Cleanup()
 
 			for i, c := range cluster.Cores {
-				if c.Core.Sealed() {
+				if c.Sealed() {
 					t.Fatalf("failed to unseal core %d", i)
 				}
 
@@ -412,7 +412,7 @@ func TestRaft_NodeIDHeader(t *testing.T) {
 				}
 
 				rniHeader := resp.Header.Get("X-Vault-Raft-Node-ID")
-				nodeID := c.Core.GetRaftNodeID()
+				nodeID := c.GetRaftNodeID()
 
 				if tc.headerPresent && rniHeader == "" {
 					t.Fatal("missing 'X-Vault-Raft-Node-ID' header entry in response")
@@ -441,7 +441,7 @@ func TestRaft_ShamirUnseal(t *testing.T) {
 	defer cluster.Cleanup()
 
 	for i, c := range cluster.Cores {
-		if c.Core.Sealed() {
+		if c.Sealed() {
 			t.Fatalf("failed to unseal core %d", i)
 		}
 	}
@@ -815,7 +815,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 				// will simulate that there are no ways to upgrade to the latest
 				// term.
 				for _, c := range cluster.Cores {
-					c.Core.SetKeyRotateGracePeriod(0)
+					c.SetKeyRotateGracePeriod(0)
 				}
 
 				// Rotate keyring

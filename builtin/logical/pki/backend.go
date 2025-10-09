@@ -228,7 +228,7 @@ func Backend(conf *logical.BackendConfig) *backend {
 	acmePaths = append(acmePaths, pathAcmeNewEab(&b)...) // auth'd API that lives underneath the various /acme paths
 
 	for _, acmePath := range acmePaths {
-		b.Backend.Paths = append(b.Backend.Paths, acmePath)
+		b.Paths = append(b.Paths, acmePath)
 	}
 
 	// Add specific un-auth'd paths for ACME APIs

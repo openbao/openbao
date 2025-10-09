@@ -60,13 +60,13 @@ type SinkWrapper struct {
 
 func (s SinkWrapper) AddDurationWithLabels(key []string, d time.Duration, labels []Label) {
 	val := float32(d) / float32(time.Millisecond)
-	s.MetricSink.AddSampleWithLabels(key, val, labels)
+	s.AddSampleWithLabels(key, val, labels)
 }
 
 func (s SinkWrapper) MeasureSinceWithLabels(key []string, start time.Time, labels []Label) {
 	elapsed := time.Now().Sub(start)
 	val := float32(elapsed) / float32(time.Millisecond)
-	s.MetricSink.AddSampleWithLabels(key, val, labels)
+	s.AddSampleWithLabels(key, val, labels)
 }
 
 var _ Metrics = SinkWrapper{}

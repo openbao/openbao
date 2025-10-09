@@ -2102,12 +2102,12 @@ func validateSSHCertificate(cert *ssh.Certificate, keyID string, certType int, v
 		return fmt.Errorf("incorrect Signature: %v", cert.Signature)
 	}
 
-	if !reflect.DeepEqual(cert.Permissions.Extensions, extensionPermissions) {
-		return fmt.Errorf("incorrect Permissions.Extensions: Expected: %v, Actual: %v", extensionPermissions, cert.Permissions.Extensions)
+	if !reflect.DeepEqual(cert.Extensions, extensionPermissions) {
+		return fmt.Errorf("incorrect Permissions.Extensions: Expected: %v, Actual: %v", extensionPermissions, cert.Extensions)
 	}
 
-	if !reflect.DeepEqual(cert.Permissions.CriticalOptions, criticalOptionPermissions) {
-		return fmt.Errorf("incorrect Permissions.CriticalOptions: %v", cert.Permissions.CriticalOptions)
+	if !reflect.DeepEqual(cert.CriticalOptions, criticalOptionPermissions) {
+		return fmt.Errorf("incorrect Permissions.CriticalOptions: %v", cert.CriticalOptions)
 	}
 
 	return nil

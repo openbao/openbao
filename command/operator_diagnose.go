@@ -70,7 +70,7 @@ Usage: bao operator diagnose
   reproduced.
 
   Start diagnose with a configuration file:
-    
+
      $ bao operator diagnose -config=/etc/openbao/config.hcl
 
   Perform a diagnostic check while OpenBao is still running:
@@ -575,7 +575,7 @@ SEALFAIL:
 		// Make sure we close all listeners from this point on
 		listenerCloseFunc := func() {
 			for _, ln := range lns {
-				ln.Listener.Close()
+				ln.Close()
 			}
 		}
 

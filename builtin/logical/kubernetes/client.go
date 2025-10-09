@@ -40,7 +40,7 @@ func newClient(config *kubeConfig) (*client, error) {
 		BearerToken: config.ServiceAccountJwt,
 	}
 	if config.CACert != "" {
-		clientConfig.TLSClientConfig.CAData = []byte(config.CACert)
+		clientConfig.CAData = []byte(config.CACert)
 	}
 	k8sClient, err := kubernetes.NewForConfig(&clientConfig)
 	if err != nil {

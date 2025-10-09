@@ -581,7 +581,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 
 	listenerCloseFunc := func() {
 		for _, ln := range lns {
-			ln.Listener.Close()
+			ln.Close()
 		}
 	}
 
@@ -1284,7 +1284,7 @@ func (c *ServerCommand) Run(args []string) int {
 	// Make sure we close all listeners from this point on
 	listenerCloseFunc := func() {
 		for _, ln := range lns {
-			ln.Listener.Close()
+			ln.Close()
 		}
 	}
 

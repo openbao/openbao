@@ -200,9 +200,9 @@ func (ah *AuthHandler) Run(ctx context.Context, am AuthMethod) error {
 		var header http.Header
 		var isTokenFileMethod bool
 
-		switch am.(type) {
+		switch am := am.(type) {
 		case AuthMethodWithClient:
-			clientToUse, err = am.(AuthMethodWithClient).AuthClient(ah.client)
+			clientToUse, err = am.AuthClient(ah.client)
 			if err != nil {
 				ah.logger.Error("error creating client for authentication call", "error", err, "backoff", backoff)
 				metrics.IncrCounter([]string{ah.metricsSignifier, "auth", "failure"}, 1)

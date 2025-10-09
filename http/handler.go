@@ -684,7 +684,7 @@ func handleUIStub() http.Handler {
 
 func handleUIRedirect() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		http.Redirect(w, req, "/ui/", 307)
+		http.Redirect(w, req, "/ui/", http.StatusTemporaryRedirect)
 	})
 }
 
@@ -946,7 +946,7 @@ func respondStandby(core *vault.Core, w http.ResponseWriter, reqURL *url.URL) {
 	// because we don't actually know if its permanent and
 	// the request method should be preserved.
 	w.Header().Set("Location", finalURL.String())
-	w.WriteHeader(307)
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 // getTokenFromReq parse headers of the incoming request to extract token if

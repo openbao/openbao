@@ -318,12 +318,13 @@ func (ns *NamespaceStore) SetNamespaceSealed(ctx context.Context, entry *namespa
 	if err != nil {
 		return nil, err
 	}
-	defer unlock()
 
 	new, err := ns.setNamespaceLocked(ctx, entry)
 	if err != nil {
 		return nil, err
 	}
+
+	unlock()
 
 	if new && sealConfig != nil {
 		if err = ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {

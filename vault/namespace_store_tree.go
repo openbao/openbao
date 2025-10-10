@@ -3,8 +3,6 @@ package vault
 import (
 	"errors"
 	"fmt"
-	"maps"
-	"slices"
 	"strings"
 
 	"github.com/openbao/openbao/helper/namespace"
@@ -104,9 +102,8 @@ func (nt *namespaceTree) PostOrderTraversal(path string, op func(namespace *name
 		nodes = nodes[:len(nodes)-1]
 		ordNodes = append(ordNodes, node)
 
-		keys := slices.Collect(maps.Keys(node.children))
-		for _, key := range keys {
-			nodes = append(nodes, node.children[key])
+		for _, childNode := range node.children {
+			nodes = append(nodes, childNode)
 		}
 	}
 

@@ -220,7 +220,7 @@ func TestCache_ConcurrentRequests(t *testing.T) {
 	}
 
 	wg := &sync.WaitGroup{}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -229,14 +229,17 @@ func TestCache_ConcurrentRequests(t *testing.T) {
 				"key": key,
 			})
 			if err != nil {
-				t.Fatal(err)
+				t.Log(err)
+				t.Fail()
 			}
 			secret, err := testClient.Logical().Read(key)
 			if err != nil {
-				t.Fatal(err)
+				t.Log(err)
+				t.Fail()
 			}
 			if secret == nil || secret.Data["key"].(string) != key {
-				t.Fatalf("failed to read value for key: %q", key)
+				t.Logf("failed to read value for key: %q", key)
+				t.Fail()
 			}
 		}(i)
 

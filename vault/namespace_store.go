@@ -318,12 +318,13 @@ func (ns *NamespaceStore) SetNamespaceSealed(ctx context.Context, entry *namespa
 	if err != nil {
 		return nil, err
 	}
-	defer unlock()
 
 	new, err := ns.setNamespaceLocked(ctx, entry)
 	if err != nil {
 		return nil, err
 	}
+
+	unlock()
 
 	if new && sealConfig != nil {
 		if err = ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
@@ -914,35 +915,52 @@ func namespaceMatchPredicate(targetNS *namespace.Namespace) func(*MountEntry) bo
 	}
 }
 
-// SealNamespace seals namespace with provided path, failing to do so if the namespace
-// doesn't exist, is a root namespace or is tainted.
-func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error {
+// SealNamespace acquires a read lock, and seals provided namespace,
+// cleaning up namespace resources.
+func (ns *NamespaceStore) SealNamespace(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
 	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 
-	unlock, err := ns.lockWithInvalidation(ctx, true)
+	unlock, err := ns.lockWithInvalidation(ctx, false)
 	if err != nil {
 		return err
 	}
 	defer unlock()
 
-	namespaceToSeal, err := ns.getNamespaceByPathLocked(ctx, path, false)
-	if err != nil {
-		return err
-	}
+	return ns.sealNamespaceLocked(ctx, namespaceToSeal)
+}
 
-	if namespaceToSeal == nil {
-		return errors.New("namespace doesn't exist")
-	}
+// sealNamespaceLocked assumes the read lock is hold, and seals provided namespace,
+// cleaning up namespace resources.
+func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
+	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 
-	if namespaceToSeal.ID == namespace.RootNamespaceID {
-		return errors.New("unable to seal root namespace")
-	}
+	var errs error
+	ns.namespacesByPath.PostOrderTraversal(namespaceToSeal.Path, func(namespaceEntry *namespace.Namespace) {
+		if namespaceEntry.UUID == namespace.RootNamespaceUUID || ns.core.NamespaceSealed(namespaceEntry) {
+			return
+		}
 
-	if namespaceToSeal.Tainted {
-		return errors.New("unable to seal tainted namespace")
-	}
+		barrier := ns.core.sealManager.NamespaceBarrier(namespaceEntry.Path)
+		if barrier != nil && barrier.Sealed() {
+			return
+		}
 
-	return ns.core.sealManager.SealNamespace(ctx, namespaceToSeal)
+		ctx = namespace.ContextWithNamespace(ctx, namespaceEntry)
+		if err := ns.clearNamespacePolicies(ctx, namespaceEntry, false); err != nil {
+			errs = errors.Join(errs, err)
+		}
+		if err := ns.UnloadNamespaceCredentials(ctx, namespaceEntry); err != nil {
+			errs = errors.Join(errs, err)
+		}
+		if err := ns.UnloadNamespaceMounts(ctx, namespaceEntry); err != nil {
+			errs = errors.Join(errs, err)
+		}
+		if err := ns.core.sealManager.SealNamespaceBarrier(ctx, barrier); err != nil {
+			errs = errors.Join(errs, err)
+		}
+	})
+
+	return errs
 }
 
 // UnsealNamespace unseals namespace with a given path, using provided key

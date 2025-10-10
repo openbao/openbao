@@ -826,7 +826,6 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 
 			defer server.Close()
 
-			ctx, _ := context.WithCancel(context.Background())
 			uri := server.URL
 
 			b := new(jwtAuthBackend)
@@ -838,7 +837,7 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 				rootCAString = string(caPEM.Bytes())
 			}
 
-			caCtx, err := b.createCAContext(ctx, rootCAString, test.allowedServerNames)
+			caCtx, err := b.createCAContext(t.Context(), rootCAString, test.allowedServerNames)
 			client, ok := caCtx.Value(oauth2.HTTPClient).(*http.Client)
 			if !ok {
 				t.Fatalf("unexpected error; can't retrieve client")

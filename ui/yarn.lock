@@ -16364,9 +16364,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-n@npm:^17.22.0":
-  version: 17.22.0
-  resolution: "eslint-plugin-n@npm:17.22.0"
+"eslint-plugin-n@npm:^17.23.1":
+  version: 17.23.1
+  resolution: "eslint-plugin-n@npm:17.23.1"
   dependencies:
     "@eslint-community/eslint-utils": ^4.5.0
     enhanced-resolve: ^5.17.1
@@ -16379,7 +16379,7 @@ __metadata:
     ts-declaration-location: ^1.0.6
   peerDependencies:
     eslint: ">=8.23.0"
-  checksum: 0474188a3b8e369d7a27f135e437d2ae818a6b079ef46295d5f10626653977be49222da96235a6c0b6e5ce505205f01d3f431d9a46061815968bea0c68f10c2f
+  checksum: fb3fe778f999ea22fd4a41b8eb9ac8487add4e79ea99d722b41c7777588baae76f691d9909b1b141de639e8a08f22648aa83a4c88ec2c7269ea049993f6ed8cf
   languageName: node
   linkType: hard
 
@@ -28183,7 +28183,7 @@ __metadata:
     eslint-config-prettier: ^10.1.1
     eslint-plugin-compat: 6.0.2
     eslint-plugin-ember: ^12.5.0
-    eslint-plugin-n: ^17.22.0
+    eslint-plugin-n: ^17.23.1
     eslint-plugin-prettier: ^5.2.6
     eslint-plugin-qunit: ^8.1.2
     filesize: ^4.2.1

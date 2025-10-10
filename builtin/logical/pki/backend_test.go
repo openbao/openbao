@@ -3557,6 +3557,85 @@ func TestBackend_URI_SANs(t *testing.T) {
 	}
 }
 
+func TestBackend_IP_SANs(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	var err error
+
+	_, err = CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+		"ttl":         "40h",
+		"common_name": "example.com",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = CBWrite(b, s, "roles/test", map[string]interface{}{
+		"allowed_domains":      []string{"foobar.com", "zipzap.com"},
+		"allow_bare_domains":   true,
+		"allow_subdomains":     true,
+		"allow_ip_sans":        true,
+		"allowed_ip_sans_cidr": []string{"4.3.2.1/32", "1.2.3.4/31"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// First test some bad stuff that shouldn't work
+	_, err = CBWrite(b, s, "issue/test", map[string]interface{}{
+		"common_name": "foobar.com",
+		"ip_sans":     "5.6.7.8",
+		"alt_names":   "foo.foobar.com,bar.foobar.com",
+		"ttl":         "1h",
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	// Test valid single entry
+	_, err = CBWrite(b, s, "issue/test", map[string]interface{}{
+		"common_name": "foobar.com",
+		"ip_sans":     "1.2.3.4",
+		"alt_names":   "foo.foobar.com,bar.foobar.com",
+		"ttl":         "1h",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test multiple entries
+	resp, err := CBWrite(b, s, "issue/test", map[string]interface{}{
+		"common_name": "foobar.com",
+		"ip_sans":     "1.2.3.4,1.2.3.5",
+		"alt_names":   "foo.foobar.com,bar.foobar.com",
+		"ttl":         "1h",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	certStr := resp.Data["certificate"].(string)
+	block, _ := pem.Decode([]byte(certStr))
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	IP0 := net.ParseIP("1.2.3.4")
+	IP1 := net.ParseIP("1.2.3.5")
+
+	if len(cert.IPAddresses) != 2 {
+		t.Fatalf("expected 2 valid IPs SANs %v", cert.IPAddresses)
+	}
+
+	if cert.IPAddresses[0].String() != IP0.String() || cert.IPAddresses[1].String() != IP1.String() {
+		t.Fatalf(
+			"expected IPs SANs %v to equal provided values 1.2.3.4, 1.2.3.5",
+			cert.IPAddresses)
+	}
+}
+
 func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 	t.Parallel()
 	coreConfig := &vault.CoreConfig{
@@ -3908,6 +3987,7 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 		"server_flag":                        true,
 		"allow_bare_domains":                 false,
 		"allow_ip_sans":                      true,
+		"allowed_ip_sans_cidr":               []interface{}{},
 		"ext_key_usage_oids":                 []interface{}{},
 		"allow_any_name":                     false,
 		"ext_key_usage":                      []interface{}{},

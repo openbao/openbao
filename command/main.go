@@ -325,17 +325,17 @@ func generateCurlString(exitCode int, runOpts *RunOptions, preParsingErrBuf *byt
 
 	cs, err := api.LastOutputStringError.CurlString()
 	if err != nil {
-		fmt.Fprintf(runOpts.Stderr, "Error creating request string: %s\n", err)
+		_, _ = fmt.Fprintf(runOpts.Stderr, "Error creating request string: %s\n", err)
 		return 1
 	}
 
-	fmt.Fprintf(runOpts.Stdout, "%s\n", cs)
+	_, _ = fmt.Fprintf(runOpts.Stdout, "%s\n", cs)
 	return 0
 }
 
 func generatePolicy(exitCode int, runOpts *RunOptions, preParsingErrBuf *bytes.Buffer) int {
 	if exitCode == 0 {
-		fmt.Fprint(runOpts.Stderr, "Could not generate policy")
+		_, _ = fmt.Fprint(runOpts.Stderr, "Could not generate policy")
 		return 1
 	}
 
@@ -351,10 +351,10 @@ func generatePolicy(exitCode int, runOpts *RunOptions, preParsingErrBuf *bytes.B
 
 	hcl, err := api.LastOutputPolicyError.HCLString()
 	if err != nil {
-		fmt.Fprintf(runOpts.Stderr, "Error assembling policy HCL: %s\n", err)
+		_, _ = fmt.Fprintf(runOpts.Stderr, "Error assembling policy HCL: %s\n", err)
 		return 1
 	}
 
-	fmt.Fprintf(runOpts.Stdout, "%s\n", hcl)
+	_, _ = fmt.Fprintf(runOpts.Stdout, "%s\n", hcl)
 	return 0
 }

@@ -98,7 +98,10 @@ func LeaseSwitchedPassthroughBackend(ctx context.Context, conf *logical.BackendC
 	if conf == nil {
 		return nil, errors.New("configuration passed into backend is nil")
 	}
-	b.Setup(ctx, conf)
+	err := b.Setup(ctx, conf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set up passthrough backend: %w", err)
+	}
 
 	return &b, nil
 }

@@ -38,7 +38,7 @@ func (a *azureServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
 	case "/.well-known/openid-configuration":
-		w.Write([]byte(strings.ReplaceAll(`
+		_, err := w.Write([]byte(strings.ReplaceAll(`
 			{
 				"issuer": "%s",
 				"authorization_endpoint": "%s/auth",
@@ -46,12 +46,18 @@ func (a *azureServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"jwks_uri": "%s/certs",
 				"userinfo_endpoint": "%s/userinfo"
 			}`, "%s", a.server.URL)))
+		if err != nil {
+			a.t.Fatal(err)
+		}
 	case "/getMemberObjects":
 		groups := azureGroups{
 			Value: []interface{}{"group1", "group2"},
 		}
 		gBytes, _ := json.Marshal(groups)
-		w.Write(gBytes)
+		_, err := w.Write(gBytes)
+		if err != nil {
+			a.t.Fatal(err)
+		}
 	default:
 		a.t.Fatalf("unexpected path: %q", r.URL.Path)
 	}

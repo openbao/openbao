@@ -823,7 +823,10 @@ func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *l
 
 	t.Paths = append(t.Paths, t.paths()...)
 
-	t.Setup(ctx, config)
+	err := t.Setup(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set up token store: %w", err)
+	}
 
 	if err := t.loadSSCTokensGenerationCounter(ctx); err != nil {
 		return t, err

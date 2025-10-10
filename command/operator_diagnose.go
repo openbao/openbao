@@ -575,8 +575,12 @@ SEALFAIL:
 
 		// Make sure we close all listeners from this point on
 		listenerCloseFunc := func() {
+			var errs error
 			for _, ln := range lns {
-				ln.Close()
+				errs = errors.Join(errs, ln.Close())
+			}
+			if errs != nil {
+				diagnose.SpotWarn(ctx, "Close Listeners", errs.Error())
 			}
 		}
 

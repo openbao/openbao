@@ -573,16 +573,17 @@ SEALFAIL:
 
 		lns = listeners
 
+		var errs error
 		// Make sure we close all listeners from this point on
 		listenerCloseFunc := func() {
 			for _, ln := range lns {
-				ln.Close()
+				errs = errors.Join(errs, ln.Close())
 			}
 		}
 
 		c.cleanupGuard.Do(listenerCloseFunc)
 
-		return nil
+		return errs
 	})
 
 	// TODO: Diagnose logging configuration

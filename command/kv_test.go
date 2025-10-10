@@ -962,7 +962,7 @@ func TestKVPatchCommand_StdinFull(t *testing.T) {
 	for i, args := range cases {
 		stdinR, stdinW := io.Pipe()
 		go func() {
-			fmt.Fprintf(stdinW, `{"foo%d":"bar%d"}`, i, i)
+			_, _ = fmt.Fprintf(stdinW, `{"foo%d":"bar%d"}`, i, i)
 			stdinW.Close()
 		}()
 		code, combined := kvPatchWithRetry(t, client, args, stdinR)
@@ -1030,7 +1030,7 @@ func TestKVPatchCommand_StdinValue(t *testing.T) {
 	for i, args := range cases {
 		stdinR, stdinW := io.Pipe()
 		go func() {
-			fmt.Fprintf(stdinW, "bar%d", i)
+			_, _ = fmt.Fprintf(stdinW, "bar%d", i)
 			stdinW.Close()
 		}()
 

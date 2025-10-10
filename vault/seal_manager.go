@@ -20,7 +20,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	vaultseal "github.com/openbao/openbao/vault/seal"
-	"github.com/openbao/openbao/version"
 )
 
 var ErrNotSealable = errors.New("namespace is not sealable")
@@ -180,6 +179,15 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 func (sm *SealManager) SealNamespace(ctx context.Context, nsToSeal *namespace.Namespace) error {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
+
+	barrier := sm.namespaceBarrier(nsToSeal.Path)
+	if barrier == nil {
+		return ErrNotSealable
+	}
+
+	if barrier.Sealed() {
+		return nil
+	}
 
 	var errs error
 	sm.barrierByNamespace.WalkPrefix(nsToSeal.Path, func(namespacePath string, barrier any) bool {
@@ -366,7 +374,7 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 		progress, nonce = len(info.Parts), info.Nonce
 	}
 
-	s := &SealStatusResponse{
+	return &SealStatusResponse{
 		Type:        sealConf.Type,
 		Initialized: init,
 		Sealed:      barrier.Sealed(),
@@ -374,11 +382,7 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 		N:           sealConf.SecretShares,
 		Progress:    progress,
 		Nonce:       nonce,
-		Version:     version.GetVersion().VersionNumber(),
-		BuildDate:   version.BuildDate,
-	}
-
-	return s, nil
+	}, nil
 }
 
 // UnsealNamespace unseals the barrier of the given namespace

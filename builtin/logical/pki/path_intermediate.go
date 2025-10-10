@@ -113,6 +113,20 @@ func (b *backend) pathGenerateIntermediate(ctx context.Context, req *logical.Req
 		data.Raw["exported"] = "existing"
 	}
 
+	// Create a copy of the Schema map to avoid modifying the shared (deduplicated) map.
+	// This fixes a data race when multiple concurrent requests execute this function.
+	// The Schema map may be shared across backend instances due to field deduplication
+	// for memory optimization, so we must copy before modifying.
+	if data.Schema != nil {
+		schemaCopy := make(map[string]*framework.FieldSchema, len(data.Schema)+1)
+		for k, v := range data.Schema {
+			schemaCopy[k] = v
+		}
+		data.Schema = schemaCopy
+	} else {
+		data.Schema = make(map[string]*framework.FieldSchema, 1)
+	}
+
 	// Remove this once https://github.com/golang/go/issues/45990 is fixed
 	data.Schema["use_pss"] = &framework.FieldSchema{
 		Type:    framework.TypeBool,

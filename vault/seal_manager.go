@@ -178,18 +178,6 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 	sm.barrierByNamespace.Delete(ns.Path)
 }
 
-// SealNamespace seals the barrier of a namespace.
-func (sm *SealManager) SealNamespaceBarrier(ctx context.Context, barrier SecurityBarrier) error {
-	if barrier == nil {
-		return nil
-	}
-
-	sm.lock.RLock()
-	defer sm.lock.RUnlock()
-
-	return barrier.Seal()
-}
-
 // NamespaceView finds the correct barrier to use for the namespace
 // and returns BarrierView restricted to the logical.Storage space
 // of the given namespace.
@@ -587,6 +575,7 @@ func (sm *SealManager) AuthenticateRootKey(ctx context.Context, ns *namespace.Na
 
 func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Namespace) ([][]byte, error) {
 	sm.lock.RLock()
+	defer sm.lock.RUnlock()
 
 	nsSeal := sm.namespaceSeal(ns.UUID)
 	if nsSeal == nil {
@@ -630,10 +619,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		return nil, fmt.Errorf("failed to initialize namespace: %w", err)
 	}
 
-	// unlock as namespaceStore.sealNamespace will acquire a lock on itself
-	sm.lock.RUnlock()
-
-	if err := sm.core.namespaceStore.sealNamespaceLocked(ctx, ns); err != nil {
+	if err := sm.core.namespaceStore.SealNamespace(ctx, ns); err != nil {
 		return nil, fmt.Errorf("failed to seal namespace: %w", err)
 	}
 

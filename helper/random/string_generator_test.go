@@ -514,7 +514,7 @@ func BenchmarkStringGenerator_Generate(b *testing.B) {
 
 // Ensure the StringGenerator can be properly JSON-ified
 func TestStringGenerator_JSON(t *testing.T) {
-	expected := StringGenerator{
+	expected := &StringGenerator{
 		Length:  20,
 		charset: deduplicateRunes([]rune("teststring" + ShortSymbolCharset)),
 		Rules: []Rule{

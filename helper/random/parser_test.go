@@ -12,7 +12,7 @@ import (
 func TestParsePolicy(t *testing.T) {
 	type testCase struct {
 		rawConfig string
-		expected  StringGenerator
+		expected  *StringGenerator
 		expectErr bool
 	}
 
@@ -24,7 +24,7 @@ func TestParsePolicy(t *testing.T) {
 					string = "teststring"
 					int = 123
 				}`,
-			expected:  StringGenerator{},
+			expected:  nil,
 			expectErr: true,
 		},
 
@@ -35,7 +35,7 @@ func TestParsePolicy(t *testing.T) {
 					charset = "abcde"
 					min-chars = 2
 				}`,
-			expected: StringGenerator{
+			expected: &StringGenerator{
 				Length:  20,
 				charset: []rune("abcde"),
 				Rules: []Rule{
@@ -71,7 +71,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 		registry map[string]ruleConstructor
 
 		rawConfig string
-		expected  StringGenerator
+		expected  *StringGenerator
 		expectErr bool
 	}
 
@@ -79,20 +79,20 @@ func TestParser_ParsePolicy(t *testing.T) {
 		"empty config": {
 			registry:  defaultRuleNameMapping,
 			rawConfig: "",
-			expected:  StringGenerator{},
+			expected:  nil,
 			expectErr: true,
 		},
 		"bogus config": {
 			registry:  defaultRuleNameMapping,
 			rawConfig: "asdf",
-			expected:  StringGenerator{},
+			expected:  nil,
 			expectErr: true,
 		},
 		"config with only length": {
 			registry: defaultRuleNameMapping,
 			rawConfig: `
 				length = 20`,
-			expected:  StringGenerator{},
+			expected:  nil,
 			expectErr: true,
 		},
 		"config with zero length": {
@@ -102,7 +102,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 				rule "charset" {
 					charset = "abcde"
 				}`,
-			expected:  StringGenerator{},
+			expected:  nil,
 			expectErr: true,
 		},
 		"config with negative length": {
@@ -112,7 +112,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 				rule "charset" {
 					charset = "abcde"
 				}`,
-			expected:  StringGenerator{},
+			expected:  nil,
 			expectErr: true,
 		},
 		"charset restrictions": {
@@ -123,7 +123,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 					charset = "abcde"
 					min-chars = 2
 				}`,
-			expected: StringGenerator{
+			expected: &StringGenerator{
 				Length:  20,
 				charset: []rune("abcde"),
 				Rules: []Rule{
@@ -145,7 +145,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 					string = "teststring"
 					int = 123
 				}`,
-			expected: StringGenerator{
+			expected: &StringGenerator{
 				Length:  20,
 				charset: deduplicateRunes([]rune("teststring")),
 				Rules: []Rule{
@@ -172,7 +172,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 					charset = "abcde"
 					min-chars = 2
 				}`,
-			expected: StringGenerator{
+			expected: &StringGenerator{
 				Length:  20,
 				charset: deduplicateRunes([]rune("abcdeteststring")),
 				Rules: []Rule{
@@ -196,7 +196,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 					string = "teststring"
 					int = 123
 				}`,
-			expected:  StringGenerator{},
+			expected:  nil,
 			expectErr: true,
 		},
 
@@ -230,7 +230,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 						}
 					]
 				}`,
-			expected: StringGenerator{
+			expected: &StringGenerator{
 				Length:  20,
 				charset: deduplicateRunes([]rune("abcdeteststring")),
 				Rules: []Rule{
@@ -251,7 +251,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 				"testrule": newTestRule,
 				"charset":  ParseCharset,
 			},
-			rawConfig: toJSON(t, StringGenerator{
+			rawConfig: toJSON(t, &StringGenerator{
 				Length: 20,
 				Rules: []Rule{
 					testCharsetRule{
@@ -264,7 +264,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 					},
 				},
 			}),
-			expected: StringGenerator{
+			expected: &StringGenerator{
 				Length:  20,
 				charset: deduplicateRunes([]rune("abcdeteststring")),
 				Rules: []Rule{
@@ -297,7 +297,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 						}
 					]
 				}`,
-			expected:  StringGenerator{},
+			expected:  nil,
 			expectErr: true,
 		},
 		"config value with empty slice": {
@@ -306,7 +306,7 @@ func TestParser_ParsePolicy(t *testing.T) {
                 rule {
                     n = []
                 }`,
-			expected:  StringGenerator{},
+			expected:  nil,
 			expectErr: true,
 		},
 	}
@@ -328,7 +328,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(actual, test.expected) {
-				t.Fatalf("Actual: %#v\nExpected:%#v", actual, test.expected)
+				t.Fatalf("Actual: %#v\nExpected: %#v", actual, test.expected)
 			}
 		})
 	}

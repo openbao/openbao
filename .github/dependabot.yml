@@ -7,9 +7,6 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 5
-      semver-patch-days: 7
-      semver-minor-days: 14
-      semver-major-days: 30
 
   - package-ecosystem: "github-actions"
     directories:
@@ -19,9 +16,6 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 5
-      semver-patch-days: 7
-      semver-minor-days: 14
-      semver-major-days: 30
 
   - package-ecosystem: "gomod"
     directory: "/"

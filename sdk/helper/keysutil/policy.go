@@ -32,10 +32,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa87"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/hkdf"
 
+	"github.com/cloudflare/circl/sign"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
@@ -70,6 +74,13 @@ const (
 	KeyType_RSA3072
 	KeyType_HMAC
 	KeyType_XChaCha20_Poly1305
+	KeyType_ML_DSA
+)
+
+const (
+	ParameterSet_ML_DSA_44 = "44"
+	ParameterSet_ML_DSA_65 = "65"
+	ParameterSet_ML_DSA_87 = "87"
 )
 
 const (
@@ -139,7 +150,7 @@ func (kt KeyType) DecryptionSupported() bool {
 
 func (kt KeyType) SigningSupported() bool {
 	switch kt {
-	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_ED25519, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521, KeyType_ED25519, KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096, KeyType_ML_DSA:
 		return true
 	}
 	return false
@@ -211,6 +222,8 @@ func (kt KeyType) String() string {
 		return "rsa-4096"
 	case KeyType_HMAC:
 		return "hmac"
+	case KeyType_ML_DSA:
+		return "ml-dsa"
 	}
 
 	return "[unknown]"
@@ -252,10 +265,13 @@ type KeyEntry struct {
 
 	// Key entry certificate chain. If set, leaf certificate key matches the keyEntry 'key'. The leaf certificate is the first element in the chain.
 	CertificateChain [][]byte `json:"certificate_chain"`
+
+	MLDSAPrivateKey sign.PrivateKey `json:"ml_dsa_key"`
+	MLDSAPublicKey  sign.PublicKey  `json:"ml_dsa_public_key"`
 }
 
 func (ke *KeyEntry) IsPrivateKeyMissing() bool {
-	if ke.RSAKey != nil || ke.EC_D != nil || len(ke.Key) != 0 {
+	if ke.RSAKey != nil || ke.EC_D != nil || len(ke.Key) != 0 || ke.MLDSAPrivateKey != nil {
 		return false
 	}
 
@@ -296,6 +312,9 @@ type PolicyConfig struct {
 	// StoragePrefix is used to add a prefix when storing and retrieving the
 	// policy object.
 	StoragePrefix string
+
+	// ParameterSet indicates the parameter set to use with ML-DSA and SLH-DSA keys
+	ParameterSet string
 }
 
 // NewPolicy takes a policy config and returns a Policy with those settings.
@@ -313,6 +332,7 @@ func NewPolicy(config PolicyConfig) *Policy {
 		AllowPlaintextBackup: config.AllowPlaintextBackup,
 		VersionTemplate:      config.VersionTemplate,
 		StoragePrefix:        config.StoragePrefix,
+		ParameterSet:         config.ParameterSet,
 	}
 }
 
@@ -446,6 +466,9 @@ type Policy struct {
 
 	// Whether the key has been soft deleted.
 	SoftDeleted bool `json:"soft_deleted"`
+
+	// ParameterSet indicates the parameter set to use with ML-DSA and SLH-DSA keys
+	ParameterSet string
 }
 
 func (p *Policy) Lock(exclusive bool) {
@@ -1311,6 +1334,21 @@ func (p *Policy) SignWithOptions(ver int, context, input []byte, options *Signin
 			return nil, errutil.InternalError{Err: fmt.Sprintf("unsupported rsa signature algorithm %s", sigAlgorithm)}
 		}
 
+	case KeyType_ML_DSA:
+		keyEntry, err := p.safeGetKeyEntry(ver)
+		if err != nil {
+			return nil, err
+		}
+
+		if keyEntry.MLDSAPrivateKey == nil {
+			return nil, errors.New("no MLDSA private key found in key entry")
+		}
+
+		sig, err = keyEntry.MLDSAPrivateKey.Sign(rand.Reader, input, crypto.Hash(0))
+		if err != nil {
+			return nil, err
+		}
+
 	default:
 		return nil, fmt.Errorf("unsupported key type %v", p.Type)
 	}
@@ -1504,6 +1542,16 @@ func (p *Policy) VerifySignatureWithOptions(context, input []byte, sig string, o
 
 		return err == nil, nil
 
+	case KeyType_ML_DSA:
+		keyEntry, err := p.safeGetKeyEntry(ver)
+		if err != nil {
+			return false, err
+		}
+		publicKey := keyEntry.MLDSAPublicKey
+		scheme := publicKey.Scheme()
+		verif := scheme.Verify(publicKey, input, sigBytes, nil)
+		return verif, nil
+
 	default:
 		return false, errutil.InternalError{Err: fmt.Sprintf("unsupported key type %v", p.Type)}
 	}
@@ -1560,6 +1608,68 @@ func (p *Policy) ImportPublicOrPrivate(ctx context.Context, storage logical.Stor
 		if p.Type == KeyType_HMAC {
 			p.KeySize = len(key)
 			entry.HMACKey = key
+		}
+	} else if p.Type == KeyType_ML_DSA {
+		// ML-DSA keys use raw binary format, not PKCS8
+		var parsedKey any
+		var err error
+		if isPrivateKey {
+			switch p.ParameterSet {
+			case ParameterSet_ML_DSA_44:
+				var privKey mldsa44.PrivateKey
+				err = privKey.UnmarshalBinary(key)
+				if err != nil {
+					return fmt.Errorf("error parsing ML-DSA-44 private key: %w", err)
+				}
+				parsedKey = &privKey
+			case ParameterSet_ML_DSA_65:
+				var privKey mldsa65.PrivateKey
+				err = privKey.UnmarshalBinary(key)
+				if err != nil {
+					return fmt.Errorf("error parsing ML-DSA-65 private key: %w", err)
+				}
+				parsedKey = &privKey
+			case ParameterSet_ML_DSA_87:
+				var privKey mldsa87.PrivateKey
+				err = privKey.UnmarshalBinary(key)
+				if err != nil {
+					return fmt.Errorf("error parsing ML-DSA-87 private key: %w", err)
+				}
+				parsedKey = &privKey
+			default:
+				return fmt.Errorf("unsupported ML-DSA parameter set: %s", p.ParameterSet)
+			}
+		} else {
+			switch p.ParameterSet {
+			case ParameterSet_ML_DSA_44:
+				var pubKey mldsa44.PublicKey
+				err = pubKey.UnmarshalBinary(key)
+				if err != nil {
+					return fmt.Errorf("error parsing ML-DSA-44 public key: %w", err)
+				}
+				parsedKey = &pubKey
+			case ParameterSet_ML_DSA_65:
+				var pubKey mldsa65.PublicKey
+				err = pubKey.UnmarshalBinary(key)
+				if err != nil {
+					return fmt.Errorf("error parsing ML-DSA-65 public key: %w", err)
+				}
+				parsedKey = &pubKey
+			case ParameterSet_ML_DSA_87:
+				var pubKey mldsa87.PublicKey
+				err = pubKey.UnmarshalBinary(key)
+				if err != nil {
+					return fmt.Errorf("error parsing ML-DSA-87 public key: %w", err)
+				}
+				parsedKey = &pubKey
+			default:
+				return fmt.Errorf("unsupported ML-DSA parameter set: %s", p.ParameterSet)
+			}
+		}
+
+		err = entry.parseFromKey(p.Type, parsedKey)
+		if err != nil {
+			return err
 		}
 	} else {
 		var parsedKey any
@@ -1762,6 +1872,31 @@ func (p *Policy) RotateInMemory(randReader io.Reader) (retErr error) {
 		entry.RSAKey, err = rsa.GenerateKey(randReader, bitSize)
 		if err != nil {
 			return err
+		}
+
+	case KeyType_ML_DSA:
+		switch p.ParameterSet {
+		case ParameterSet_ML_DSA_44:
+			pub, pri, err := mldsa44.GenerateKey(randReader)
+			if err != nil {
+				return err
+			}
+			entry.MLDSAPrivateKey = pri
+			entry.MLDSAPublicKey = pub
+		case ParameterSet_ML_DSA_65:
+			pub, pri, err := mldsa65.GenerateKey(randReader)
+			if err != nil {
+				return err
+			}
+			entry.MLDSAPrivateKey = pri
+			entry.MLDSAPublicKey = pub
+		case ParameterSet_ML_DSA_87:
+			pub, pri, err := mldsa87.GenerateKey(randReader)
+			if err != nil {
+				return err
+			}
+			entry.MLDSAPrivateKey = pri
+			entry.MLDSAPublicKey = pub
 		}
 	}
 
@@ -2366,6 +2501,48 @@ func (ke *KeyEntry) parseFromKey(PolKeyType KeyType, parsedKey any) error {
 				return fmt.Errorf("invalid key size: expected %d bytes, got %d bytes", keyBytes, rsaKey.Size())
 			}
 			ke.RSAPublicKey = rsaKey
+		}
+	case *mldsa44.PrivateKey, *mldsa44.PublicKey:
+		if PolKeyType != KeyType_ML_DSA {
+			return fmt.Errorf("invalid key type: expected %s, got %T", PolKeyType, parsedKey)
+		}
+
+		privKey, ok := parsedKey.(*mldsa44.PrivateKey)
+		if ok {
+			ke.MLDSAPrivateKey = privKey
+			pubKey := privKey.Public().(*mldsa44.PublicKey)
+			ke.MLDSAPublicKey = pubKey
+		} else {
+			pubKey := parsedKey.(*mldsa44.PublicKey)
+			ke.MLDSAPublicKey = pubKey
+		}
+	case *mldsa65.PrivateKey, *mldsa65.PublicKey:
+		if PolKeyType != KeyType_ML_DSA {
+			return fmt.Errorf("invalid key type: expected %s, got %T", PolKeyType, parsedKey)
+		}
+
+		privKey, ok := parsedKey.(*mldsa65.PrivateKey)
+		if ok {
+			ke.MLDSAPrivateKey = privKey
+			pubKey := privKey.Public().(*mldsa65.PublicKey)
+			ke.MLDSAPublicKey = pubKey
+		} else {
+			pubKey := parsedKey.(*mldsa65.PublicKey)
+			ke.MLDSAPublicKey = pubKey
+		}
+	case *mldsa87.PrivateKey, *mldsa87.PublicKey:
+		if PolKeyType != KeyType_ML_DSA {
+			return fmt.Errorf("invalid key type: expected %s, got %T", PolKeyType, parsedKey)
+		}
+
+		privKey, ok := parsedKey.(*mldsa87.PrivateKey)
+		if ok {
+			ke.MLDSAPrivateKey = privKey
+			pubKey := privKey.Public().(*mldsa87.PublicKey)
+			ke.MLDSAPublicKey = pubKey
+		} else {
+			pubKey := parsedKey.(*mldsa87.PublicKey)
+			ke.MLDSAPublicKey = pubKey
 		}
 	default:
 		return fmt.Errorf("invalid key type: expected %s, got %T", PolKeyType, parsedKey)

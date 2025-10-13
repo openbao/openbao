@@ -47,6 +47,8 @@ var caddyConfigTemplateTLSALPN string
 // a bunch of sub-tests against that cluster. It is up to each sub-test to run/configure
 // a new pki mount within the cluster to not interfere with each other.
 func Test_ACME(t *testing.T) {
+	hDocker.CheckSkipContainerTests(t)
+
 	cluster := NewVaultPkiClusterWithDNS(t)
 	defer cluster.Cleanup()
 

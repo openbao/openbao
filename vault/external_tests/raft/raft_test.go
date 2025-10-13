@@ -192,6 +192,78 @@ func TestRaft_RetryAutoJoin(t *testing.T) {
 	}
 }
 
+func TestRaft_RetryAutoJoin_Plugin(t *testing.T) {
+	t.Parallel()
+
+	var (
+		conf vault.CoreConfig
+		opts = vault.TestClusterOptions{HandlerFunc: vaulthttp.Handler}
+	)
+
+	teststorage.RaftBackendSetup(&conf, &opts)
+
+	opts.SetupFunc = nil
+	cluster := vault.NewTestCluster(t, &conf, &opts)
+
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	addressProvider := &testhelpers.TestRaftServerAddressProvider{Cluster: cluster}
+	leaderCore := cluster.Cores[0]
+	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+
+	{
+		testhelpers.EnsureCoreSealed(t, leaderCore)
+		leaderCore.UnderlyingRawStorage.(*raft.RaftBackend).SetServerAddressProvider(addressProvider)
+		cluster.UnsealCore(t, leaderCore)
+		vault.TestWaitActive(t, leaderCore.Core)
+	}
+
+	leaderInfos := []*raft.LeaderJoinInfo{
+		{
+			AutoJoinPlugin: &raft.AutoJoinPlugin{
+				Plugin: "static",
+				Config: map[string]string{"addresses": leaderCore.Client.Address()},
+			},
+			TLSConfig: leaderCore.TLSConfig(),
+			Retry:     true,
+		},
+	}
+
+	var wg sync.WaitGroup
+	for _, clusterCore := range cluster.Cores[1:] {
+		wg.Add(1)
+		go func(t *testing.T, core *vault.TestClusterCore) {
+			t.Helper()
+			defer wg.Done()
+			core.UnderlyingRawStorage.(*raft.RaftBackend).SetServerAddressProvider(addressProvider)
+			_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), leaderInfos, false)
+			if err != nil {
+				t.Error(err)
+			}
+
+			// Handle potential racy behavior with unseals. Retry the unseal until it succeeds.
+			corehelpers.RetryUntil(t, 10*time.Second, func() error {
+				return cluster.AttemptUnsealCore(core)
+			})
+		}(t, clusterCore)
+	}
+
+	// Unseal the leader and wait for the other cores to unseal
+	cluster.UnsealCore(t, leaderCore)
+	wg.Wait()
+
+	vault.TestWaitActive(t, leaderCore.Core)
+
+	corehelpers.RetryUntil(t, 10*time.Second, func() error {
+		return testhelpers.VerifyRaftPeers(t, cluster.Cores[0].Client, map[string]bool{
+			"core-0": true,
+			"core-1": true,
+			"core-2": true,
+		})
+	})
+}
+
 func TestRaft_Retry_Join(t *testing.T) {
 	t.Parallel()
 	var conf vault.CoreConfig

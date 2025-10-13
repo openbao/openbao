@@ -209,13 +209,13 @@ func ParseDERKey(privateKeyBytes []byte) (signer crypto.Signer, format BlockType
 	var firstError error
 	if signer, firstError = x509.ParseECPrivateKey(privateKeyBytes); firstError == nil {
 		format = ECBlock
-		return
+		return signer, format, err
 	}
 
 	var secondError error
 	if signer, secondError = x509.ParsePKCS1PrivateKey(privateKeyBytes); secondError == nil {
 		format = PKCS1Block
-		return
+		return signer, format, err
 	}
 
 	var thirdError error
@@ -233,7 +233,7 @@ func ParseDERKey(privateKeyBytes []byte) (signer crypto.Signer, format BlockType
 		}
 
 		format = PKCS8Block
-		return
+		return signer, format, err
 	}
 
 	return nil, UnknownBlock, fmt.Errorf("got errors attempting to parse DER private key:\n1. %v\n2. %v\n3. %v", firstError, secondError, thirdError)

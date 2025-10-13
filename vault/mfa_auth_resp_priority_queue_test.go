@@ -38,7 +38,7 @@ func testCases() (tc []*MFACachedAuthResponse) {
 			RequestID:     uid,
 		})
 	}
-	return
+	return tc
 }
 
 func TestLoginMFAPriorityQueue_PushPopByKey(t *testing.T) {

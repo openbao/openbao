@@ -100,7 +100,7 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/bar/seal")
 		_, err := b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
-		require.Equal(t, err.Error(), "namespace doesn't exist")
+		require.Equal(t, "invalid request", err.Error())
 	})
 
 	t.Run("can unseal namespace with required number of keyshares", func(t *testing.T) {

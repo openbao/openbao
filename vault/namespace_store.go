@@ -899,7 +899,7 @@ func namespaceMatchPredicate(targetNS *namespace.Namespace) func(*MountEntry) bo
 
 // SealNamespace acquires a read lock, and seals provided namespace,
 // cleaning up namespace resources.
-func (ns *NamespaceStore) SealNamespace(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
+func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error {
 	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 
 	unlock, err := ns.lockWithInvalidation(ctx, false)
@@ -907,6 +907,23 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, namespaceToSeal *na
 		return err
 	}
 	defer unlock()
+
+	namespaceToSeal, err := ns.getNamespaceByPathLocked(ctx, path, false)
+	if err != nil {
+		return err
+	}
+
+	if namespaceToSeal == nil {
+		return errors.New("namespace doesn't exist")
+	}
+
+	if namespaceToSeal.ID == namespace.RootNamespaceID {
+		return errors.New("unable to seal root namespace")
+	}
+
+	if namespaceToSeal.Tainted {
+		return errors.New("unable to seal tainted namespace")
+	}
 
 	return ns.sealNamespaceLocked(ctx, namespaceToSeal)
 }
@@ -918,7 +935,7 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 
 	var errs error
 	ns.namespacesByPath.PostOrderTraversal(namespaceToSeal.Path, func(namespaceEntry *namespace.Namespace) {
-		if namespaceEntry.UUID == namespace.RootNamespaceUUID || ns.core.NamespaceSealed(namespaceEntry) {
+		if namespaceEntry.ID == namespace.RootNamespaceID || ns.core.NamespaceSealed(namespaceEntry) {
 			return
 		}
 
@@ -929,6 +946,9 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 
 		ctx = namespace.ContextWithNamespace(ctx, namespaceEntry)
 		if err := ns.clearNamespacePolicies(ctx, namespaceEntry, false); err != nil {
+			errs = errors.Join(errs, err)
+		}
+		if err := ns.core.identityStore.RemoveNamespaceView(namespaceEntry); err != nil {
 			errs = errors.Join(errs, err)
 		}
 		if err := ns.UnloadNamespaceCredentials(ctx, namespaceEntry); err != nil {

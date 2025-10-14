@@ -103,8 +103,14 @@ func (sm *SealManager) Reset(ctx context.Context) error {
 		return nil
 	}
 
+	unlock, err := sm.core.namespaceStore.lockWithInvalidation(ctx, false)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	// providing root namespace to the function, but it will be omitted from actual sealing
-	if err := sm.core.namespaceStore.SealNamespace(ctx, namespace.RootNamespace); err != nil {
+	if err := sm.core.namespaceStore.sealNamespaceLocked(ctx, namespace.RootNamespace); err != nil {
 		return err
 	}
 
@@ -619,7 +625,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		return nil, fmt.Errorf("failed to initialize namespace: %w", err)
 	}
 
-	if err := sm.core.namespaceStore.SealNamespace(ctx, ns); err != nil {
+	if err := sm.core.namespaceStore.SealNamespace(ctx, ns.Path); err != nil {
 		return nil, fmt.Errorf("failed to seal namespace: %w", err)
 	}
 

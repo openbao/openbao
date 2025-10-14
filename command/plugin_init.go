@@ -38,9 +38,8 @@ func (c *PluginInitCommand) Help() string {
 	helpText := `
 Usage: bao plugin init [options]
 
-  Downloads and initializes OCI-based plugins configured in the OpenBao server
-  configuration. This command reads the plugin configuration from the server
-  config files and downloads the specified OCI images containing plugin binaries.
+  This command reads the plugin configuration from the server config files,
+  downloads the specified OCI images and extracts the contained plugin binaries.
 
   Initialize plugins using configuration files:
 

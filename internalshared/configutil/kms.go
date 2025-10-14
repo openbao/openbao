@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/awskms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2"
@@ -175,9 +174,6 @@ func configureWrapper(configKMS *KMS, infoKeys *[]string, info *map[string]strin
 	case wrapping.WrapperTypeShamir:
 		return nil, nil
 
-	case wrapping.WrapperTypeAead:
-		wrapper, kmsInfo, err = GetAEADKMSFunc(configKMS, opts...)
-
 	case wrapping.WrapperTypeAliCloudKms:
 		wrapper, kmsInfo, err = GetAliCloudKMSFunc(configKMS, opts...)
 
@@ -224,23 +220,6 @@ func configureWrapper(configKMS *KMS, infoKeys *[]string, info *map[string]strin
 	}
 
 	return wrapper, nil
-}
-
-func GetAEADKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
-	wrapper := aeadwrapper.NewWrapper()
-	wrapperInfo, err := wrapper.SetConfig(context.Background(), append(opts, wrapping.WithConfigMap(kms.Config))...)
-	if err != nil {
-		return nil, nil, err
-	}
-	info := make(map[string]string)
-	if wrapperInfo != nil {
-		str := "AEAD Type"
-		if len(kms.Purpose) > 0 {
-			str = fmt.Sprintf("%v %s", kms.Purpose, str)
-		}
-		info[str] = wrapperInfo.Metadata["aead_type"]
-	}
-	return wrapper, info, nil
 }
 
 func GetAliCloudKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {

@@ -1,0 +1,73 @@
+---
+sidebar_label: CVE Process
+description: |-
+  OpenBao's policy around security vulnerabilities reported by third-party
+  disclosures.
+---
+
+# CVE Process
+
+## Overview
+
+The process has the following main phases:
+
+1. Notification via security mailing list (preferred) or issue (not
+   preferential unless existing disclosure exists).
+2. Confirmation of issue: 7 days
+3. Patch development and release: 90 days
+
+Total time: 97 days.
+
+### Notification Mechanisms
+
+OpenBao tracks the following sources as valid vulnerability notification
+channels:
+
+1. The security mailing list, `openbao-security@lists.openssf.org`. See
+   [SECURITY.md](https://github.com/openbao/.github/blob/main/SECURITY.md).
+   This should be preferred, especially for embargoed issues.
+2. The private repository issues, e.g., [`openbao/openbao`](https://github.com/openbao/dev-wg/security/advisories/new).
+3. The HashiCorp Vault security bulletin, https://discuss.hashicorp.com/tag/security-vault/.
+
+Reports by other mechanisms will be referred to the security mailing list and
+not considered valid reports.
+
+The security mailing list includes all active voting Dev WG members who have
+opted in to participating in the security patching process, plus
+representatives from the Linux Foundation for oversight. In-progress reports
+will be kept confidential through the disclosure period, with need-to-know,
+limited disclosure within participating organizations.
+
+### Confirmation Process
+
+A 7-day process from submission will determine the validity of the report. An
+acknowledgement should be sent quickly by a triaging individual; all
+subsequent communication with the reporter should include the mailing list. If
+confirmed, a new security advisory should be acquired on GitHub with CVE
+assignment. This will allow creation of a private, restricted repository with
+limited visibility.
+
+The security list members should coordinate triage and assign a patch
+developer.
+
+### Patch Development and Release
+
+From the confirmation of the vulnerability, we seek to have a maximum 90-day
+window or less to patch all vulnerabilities in a released version of OpenBao.
+In instances where we can get a patch out sooner, we should endeavor to do
+so.
+
+For High or Critical severity issues, we should issue an announcement on all
+relevant channels one week before release, indicating that a security release
+is eminent. These security issues would be sufficient to trigger a dedicated
+release of the last patch series or a new minor release if applicable.
+
+Patch development should remain confidential and limited to active mailing
+list members. Additional members may be added on a one-off basis, as needed
+for expertise and development capacity, given reasonable consensus among the
+security list members.
+
+Embargoed patches will not be disclosed outside of member organizations.
+Member organizations may run patches on their own infrastructure, e.g., for
+internal or publicly accessible instances, but may not ship patch sources or
+patched binaries to third-party organizations.

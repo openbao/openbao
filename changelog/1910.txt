@@ -1,0 +1,3 @@
+```release-note:deprecation
+core/seal: Remove the undocumented "aead" seal mechanism. Consider switching to the static seal instead as a replacement.
+```

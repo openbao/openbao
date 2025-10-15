@@ -95,6 +95,31 @@ jobs:
       - name: Run go.mod synchronization to check for differences
         run: make ci-sync-deps
 
+  el8gobuild:
+    # make sure that bao can still be built with the golang version on el8
+    name: EL8 Go build checks
+    runs-on: ubuntu-latest
+    container: ghcr.io/almalinux/8-base
+    steps:
+      - name: Install required packages
+        run: dnf -y install golang git
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Set safe.directory
+        # This is supposed to be done by default in the checkout action
+        # but it doesn't work within a container.
+        # See https://github.com/actions/checkout/issues/2031
+        run: git config --global --add safe.directory $(pwd)
+      - name: Set the go version in go.mod
+        run: |
+          GO_VERSION="$(go version | awk '{print $3}' | sed 's/go//')"
+          set -ex
+          go mod edit -go=$GO_VERSION
+          go mod tidy
+      - name: go build bao
+        run: go build -o bin/bao
+      - name: Check that the binary runs
+        run: ./bin/bao version
+
   protobuf:
     name: Protobuf checks
     runs-on: ubuntu-latest

@@ -47,7 +47,6 @@ var (
 	}
 
 	rotateInitGetResponseSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
 		"started": {
 			Type:     framework.TypeBool,
 			Required: true,
@@ -84,7 +83,6 @@ var (
 	}
 
 	rotateInitPutResponseSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
 		"complete": {
 			Type: framework.TypeBool,
 		},
@@ -109,7 +107,6 @@ var (
 	}
 
 	rotateUpdateResponseSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
 		"complete": {
 			Type: framework.TypeBool,
 		},
@@ -138,7 +135,6 @@ var (
 	}
 
 	rotateConfigSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
 		"enabled": {
 			Type:        framework.TypeBool,
 			Description: strings.TrimSpace(sysRotateHelp["rotation-enabled"][0]),
@@ -154,7 +150,6 @@ var (
 	}
 
 	rotateVerifyResponseSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
 		"started": {
 			Type:     framework.TypeBool,
 			Required: true,
@@ -179,7 +174,6 @@ var (
 	}
 
 	rotateBackupResponseSchema = map[string]*framework.FieldSchema{
-		"namespace": &namespaceFieldSchema,
 		"nonce": {
 			Type: framework.TypeString,
 		},
@@ -223,11 +217,7 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationSuffix: "encryption-key",
 			},
-			Fields: map[string]*framework.FieldSchema{
-				"enabled":        rotateConfigSchema["enabled"],
-				"max_operations": rotateConfigSchema["max_operations"],
-				"interval":       rotateConfigSchema["interval"],
-			},
+			Fields: rotateConfigSchema,
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
@@ -534,14 +524,8 @@ func (b *SystemBackend) handleRotationConfigRead(nsExtr namespaceExtractor) fram
 			return handleError(err)
 		}
 
-		nsPath := ns.Path
-		if ns.ID == namespace.RootNamespaceID {
-			nsPath = "root"
-		}
-
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"namespace":      nsPath,
 				"max_operations": rotateConf.MaxOperations,
 				"enabled":        !rotateConf.Disabled,
 			},
@@ -675,14 +659,8 @@ func (b *SystemBackend) handleRotateInitGet(nsExtr namespaceExtractor) framework
 			return handleError(err)
 		}
 
-		nsPath := ns.Path
-		if ns.ID == namespace.RootNamespaceID {
-			nsPath = "root"
-		}
-
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"namespace":      nsPath,
 				"started":        false,
 				"t":              0,
 				"n":              0,
@@ -785,14 +763,8 @@ func (b *SystemBackend) handleRotateInitPut(nsExtr namespaceExtractor) framework
 				keysB64 = append(keysB64, base64.StdEncoding.EncodeToString(k))
 			}
 
-			nsPath := ns.Path
-			if ns.ID == namespace.RootNamespaceID {
-				nsPath = "root"
-			}
-
 			return &logical.Response{
 				Data: map[string]interface{}{
-					"namespace":             nsPath,
 					"complete":              true,
 					"t":                     secretThreshold,
 					"n":                     secretShares,
@@ -890,14 +862,8 @@ func (b *SystemBackend) handleRotateUpdate(nsExtr namespaceExtractor) framework.
 				keysB64 = append(keysB64, base64.StdEncoding.EncodeToString(k))
 			}
 
-			nsPath := ns.Path
-			if ns.ID == namespace.RootNamespaceID {
-				nsPath = "root"
-			}
-
 			return &logical.Response{
 				Data: map[string]interface{}{
-					"namespace":             nsPath,
 					"complete":              true,
 					"nonce":                 reqNonce,
 					"backup":                result.Backup,
@@ -939,20 +905,14 @@ func (b *SystemBackend) handleRotateVerifyGet(nsExtr namespaceExtractor) framewo
 			return handleError(err)
 		}
 
-		nsPath := ns.Path
-		if ns.ID == namespace.RootNamespaceID {
-			nsPath = "root"
-		}
-
 		config := rotateConfig.Clone()
 		return &logical.Response{
 			Data: map[string]interface{}{
-				"namespace": nsPath,
-				"started":   started,
-				"nonce":     config.VerificationNonce,
-				"t":         config.SecretThreshold,
-				"n":         config.SecretShares,
-				"progress":  progress,
+				"started":  started,
+				"nonce":    config.VerificationNonce,
+				"t":        config.SecretThreshold,
+				"n":        config.SecretShares,
+				"progress": progress,
 			},
 		}, nil
 	}
@@ -1012,17 +972,11 @@ func (b *SystemBackend) handleRotateVerifyPut(nsExtr namespaceExtractor) framewo
 			return handleError(err)
 		}
 
-		nsPath := ns.Path
-		if ns.ID == namespace.RootNamespaceID {
-			nsPath = "root"
-		}
-
 		if result != nil {
 			return &logical.Response{
 				Data: map[string]interface{}{
-					"namespace": nsPath,
-					"complete":  result.Complete,
-					"nonce":     result.Nonce,
+					"complete": result.Complete,
+					"nonce":    result.Nonce,
 				},
 			}, nil
 		} else {
@@ -1082,14 +1036,8 @@ func (b *SystemBackend) handleRotateBackupRetrieve(nsExtr namespaceExtractor) fr
 			}
 		}
 
-		nsPath := ns.Path
-		if ns.ID == namespace.RootNamespaceID {
-			nsPath = "root"
-		}
-
 		return &logical.Response{
 			Data: map[string]interface{}{
-				"namespace":   nsPath,
 				"nonce":       backup.Nonce,
 				"keys":        backup.Keys,
 				"keys_base64": keysB64,

@@ -23,7 +23,6 @@ type RotateInitRequest struct {
 }
 
 type RotateStatusResponse struct {
-	Namespace            string   `json:"namespace"`
 	Complete             bool     `json:"complete,omitempty"`
 	Keys                 []string `json:"keys,omitempty"`
 	KeysB64              []string `json:"keys_base64,omitempty"`
@@ -40,7 +39,6 @@ type RotateStatusResponse struct {
 }
 
 type RotateUpdateResponse struct {
-	Namespace            string   `json:"namespace"`
 	Nonce                string   `json:"nonce"`
 	Complete             bool     `json:"complete"`
 	Keys                 []string `json:"keys"`
@@ -52,25 +50,22 @@ type RotateUpdateResponse struct {
 }
 
 type RotateRetrieveResponse struct {
-	Namespace string              `json:"namespace" mapstructure:"namespace"`
-	Nonce     string              `json:"nonce" mapstructure:"nonce"`
-	Keys      map[string][]string `json:"keys" mapstructure:"keys"`
-	KeysB64   map[string][]string `json:"keys_base64" mapstructure:"keys_base64"`
+	Nonce   string              `json:"nonce" mapstructure:"nonce"`
+	Keys    map[string][]string `json:"keys" mapstructure:"keys"`
+	KeysB64 map[string][]string `json:"keys_base64" mapstructure:"keys_base64"`
 }
 
 type RotateVerificationStatusResponse struct {
-	Namespace string `json:"namespace"`
-	Nonce     string `json:"nonce"`
-	Started   bool   `json:"started"`
-	T         int    `json:"t"`
-	N         int    `json:"n"`
-	Progress  int    `json:"progress"`
+	Nonce    string `json:"nonce"`
+	Started  bool   `json:"started"`
+	T        int    `json:"t"`
+	N        int    `json:"n"`
+	Progress int    `json:"progress"`
 }
 
 type RotateVerificationUpdateResponse struct {
-	Namespace string `json:"namespace"`
-	Nonce     string `json:"nonce"`
-	Complete  bool   `json:"complete"`
+	Nonce    string `json:"nonce"`
+	Complete bool   `json:"complete"`
 }
 
 type KeyStatus struct {

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
+	"github.com/hashicorp/go-metrics"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/builtin/credential/approle"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"

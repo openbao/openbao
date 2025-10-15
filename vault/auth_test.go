@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
+	"github.com/hashicorp/go-metrics"
 	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/helper/metricsutil"

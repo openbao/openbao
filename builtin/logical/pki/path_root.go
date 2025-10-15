@@ -652,7 +652,7 @@ func publicKeyType(pub crypto.PublicKey) (pubType x509.PublicKeyAlgorithm, sigAl
 	default:
 		err = errors.New("x509: only RSA, ECDSA and Ed25519 keys supported")
 	}
-	return
+	return pubType, sigAlgo, err
 }
 
 const pathGenerateRootHelpSyn = `

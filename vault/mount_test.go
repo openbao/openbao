@@ -14,8 +14,8 @@ import (
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/stretchr/testify/require"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
+	"github.com/hashicorp/go-metrics"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"

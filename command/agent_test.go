@@ -2672,6 +2672,7 @@ listener "tcp" {
 		"Samples",
 		"Timestamp",
 		"Gauges",
+		"PrecisionGauges",
 		"Points",
 	})
 }

@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	metrics "github.com/armon/go-metrics"
 	"github.com/gammazero/workerpool"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -319,7 +319,7 @@ func (m *RollbackManager) attemptRollback(ctx context.Context, fullPath string, 
 	if err != nil {
 		m.logger.Error("error rolling back", "path", fullPath, "error", err)
 	}
-	return
+	return err
 }
 
 // Rollback is used to trigger an immediate rollback of the path,

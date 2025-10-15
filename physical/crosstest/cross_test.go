@@ -38,9 +38,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-metrics"
 	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/physical/postgresql"

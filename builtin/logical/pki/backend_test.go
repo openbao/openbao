@@ -41,10 +41,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/armon/go-metrics"
 	"github.com/fatih/structs"
 	"github.com/go-test/deep"
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/hashicorp/go-metrics"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	auth "github.com/openbao/openbao/api/auth/userpass/v2"
 	"github.com/openbao/openbao/api/v2"
@@ -1711,7 +1711,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 				}
 			}
 			t.Fatalf("error parsing otherName: %q", s)
-			return
+			return ret
 		}
 		oid1 := "1.3.6.1.4.1.311.20.2.3"
 		oth1str := oid1 + ";utf8:devops@nope.com"

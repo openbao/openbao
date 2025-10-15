@@ -574,18 +574,18 @@ func TestHTTP_Forwarding_HelpOperation(t *testing.T) {
 
 	vault.TestWaitActive(t, cores[0].Core)
 
-	testHelp := func(client *api.Client) {
+	testHelp := func(node string, client *api.Client) {
 		help, err := client.Help("auth/token")
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("[on %v]: %v", node, err)
 		}
 		if help == nil {
-			t.Fatal("help was nil")
+			t.Fatalf("[on %v]: help was nil", node)
 		}
 	}
 
-	testHelp(cores[0].Client)
-	testHelp(cores[1].Client)
+	testHelp("active", cores[0].Client)
+	testHelp("standby", cores[1].Client)
 }
 
 func TestHTTP_Forwarding_LocalOnly(t *testing.T) {

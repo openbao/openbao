@@ -168,9 +168,14 @@ func TestCoreWithSealAndUI(t testing.T, opts *CoreConfig) *Core {
 
 func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	logger := corehelpers.NewTestLogger(t)
-	physicalBackend, err := physInmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
+
+	physicalBackend := opts.Physical
+	if physicalBackend == nil {
+		var err error
+		physicalBackend, err = physInmem.NewInmem(nil, logger)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	errInjector := physical.NewErrorInjector(physicalBackend, 0, logger)
@@ -1231,6 +1236,8 @@ type TestClusterOptions struct {
 
 	// ABCDLoggerNames names the loggers according to our ABCD convention when generating 4 clusters
 	ABCDLoggerNames bool
+
+	DisableStandbyReads bool
 }
 
 type TestPluginConfig struct {
@@ -1609,6 +1616,9 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		c := new(server.Config)
 		c.SharedConfig = &configutil.SharedConfig{LogFormat: logging.UnspecifiedFormat.String()}
 		c.UnsafeAllowAPIAuditCreation = true
+		if opts != nil && opts.DisableStandbyReads {
+			c.DisableStandbyReads = true
+		}
 		coreConfig.RawConfig = c
 	}
 
@@ -1618,7 +1628,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 	}
 
 	if coreConfig.Physical == nil && (opts == nil || opts.PhysicalFactory == nil) {
-		coreConfig.Physical, err = physInmem.NewInmem(nil, testCluster.Logger)
+		coreConfig.Physical, err = physInmem.NewInmemHA(nil, testCluster.Logger)
 		if err != nil {
 			t.Fatal(err)
 		}

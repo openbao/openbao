@@ -1082,9 +1082,14 @@ func (b *SystemBackend) handleRotateBackupRetrieve(nsExtr namespaceExtractor) fr
 			}
 		}
 
+		nsPath := ns.Path
+		if ns.ID == namespace.RootNamespaceID {
+			nsPath = "root"
+		}
+
 		return &logical.Response{
 			Data: map[string]interface{}{
-				"namespace":   "root",
+				"namespace":   nsPath,
 				"nonce":       backup.Nonce,
 				"keys":        backup.Keys,
 				"keys_base64": keysB64,

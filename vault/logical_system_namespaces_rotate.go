@@ -284,6 +284,9 @@ func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 				OperationVerb:   "backup",
 				OperationSuffix: "unseal-keys",
 			},
+			Fields: map[string]*framework.FieldSchema{
+				"namespace": &namespaceFieldSchema,
+			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{

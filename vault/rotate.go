@@ -266,7 +266,7 @@ func (sm *SealManager) rotateRecoveryNoKeyShares(ctx context.Context, ns *namesp
 		// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
 		if len(config.PGPKeys) > 0 {
 			var encryptError error
-			result, encryptError = sm.pgpEncryptShares(ctx, ns, config, result)
+			result, encryptError = sm.pgpEncryptShares(ctx, ns, config, result, true)
 			if encryptError != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
 			}
@@ -486,7 +486,7 @@ func (sm *SealManager) updateRecoveryRotation(ctx context.Context, ns *namespace
 	// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
 	if len(rotationConfig.PGPKeys) > 0 {
 		var encryptError error
-		result, encryptError = sm.pgpEncryptShares(ctx, ns, rotationConfig, result)
+		result, encryptError = sm.pgpEncryptShares(ctx, ns, rotationConfig, result, true)
 		if encryptError != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
 		}
@@ -560,7 +560,7 @@ func (sm *SealManager) updateRootRotation(ctx context.Context, ns *namespace.Nam
 	// If PGP keys are passed in, encrypt shares with corresponding PGP keys.
 	if len(rotationConfig.PGPKeys) > 0 {
 		var encryptError error
-		result, encryptError = sm.pgpEncryptShares(ctx, ns, rotationConfig, result)
+		result, encryptError = sm.pgpEncryptShares(ctx, ns, rotationConfig, result, false)
 		if encryptError != nil {
 			return nil, logical.CodedError(http.StatusInternalServerError, encryptError.Error())
 		}
@@ -667,9 +667,9 @@ func (sm *SealManager) generateKey(ns *namespace.Namespace, rotationConfig *Seal
 }
 
 // pgpEncryptShares encrypts the rotation secret shares using the provided pgp keys.
-// If the rotation config also specifies backup, the backup information in saved to
+// If the rotation config also specifies backup, the backup information is saved to
 // the storage.
-func (sm *SealManager) pgpEncryptShares(ctx context.Context, ns *namespace.Namespace, rotationConfig *SealConfig, rotationResult *RekeyResult) (*RekeyResult, error) {
+func (sm *SealManager) pgpEncryptShares(ctx context.Context, ns *namespace.Namespace, rotationConfig *SealConfig, rotationResult *RekeyResult, recovery bool) (*RekeyResult, error) {
 	hexEncodedShares := make([][]byte, len(rotationResult.SecretShares))
 	for i := range rotationResult.SecretShares {
 		hexEncodedShares[i] = []byte(hex.EncodeToString(rotationResult.SecretShares[i]))
@@ -681,7 +681,8 @@ func (sm *SealManager) pgpEncryptShares(ctx context.Context, ns *namespace.Names
 		return nil, fmt.Errorf("failed to encrypt shares: %w", err)
 	}
 
-	// If backup is enabled, store backup info in vault.coreBarrierUnsealKeysBackupPath
+	// If backup is enabled, store backup info in
+	// coreBarrierUnsealKeysBackupPath or coreRecoveryUnsealKeysBackupPath
 	if rotationConfig.Backup {
 		backupInfo := map[string][]string{}
 		for i := 0; i < len(rotationResult.PGPFingerprints); i++ {
@@ -704,8 +705,14 @@ func (sm *SealManager) pgpEncryptShares(ctx context.Context, ns *namespace.Names
 		}
 
 		entry := &logical.StorageEntry{
-			Key:   namespaceLogicalStoragePath(ns) + coreBarrierUnsealKeysBackupPath,
+			Key:   namespaceLogicalStoragePath(ns),
 			Value: buf,
+		}
+
+		if recovery {
+			entry.Key += coreRecoveryUnsealKeysBackupPath
+		} else {
+			entry.Key += coreBarrierUnsealKeysBackupPath
 		}
 
 		barrier := sm.namespaceBarrier(ns.Path)
@@ -858,11 +865,11 @@ func (sm *SealManager) RetrieveRotationBackup(ctx context.Context, ns *namespace
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	var path string
+	path := namespaceLogicalStoragePath(ns)
 	if recovery {
-		path = namespaceLogicalStoragePath(ns) + coreRecoveryUnsealKeysBackupPath
+		path += coreRecoveryUnsealKeysBackupPath
 	} else {
-		path = namespaceLogicalStoragePath(ns) + coreBarrierUnsealKeysBackupPath
+		path += coreBarrierUnsealKeysBackupPath
 	}
 
 	barrier := sm.namespaceBarrier(ns.Path)

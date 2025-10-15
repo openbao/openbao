@@ -85,7 +85,7 @@ func testVaultServerWithNamespace(tb testing.TB, name string, sealed bool) (*api
 			CustomMetadata: nil,
 			Seals: []map[string]interface{}{{
 				"type":             "shamir",
-				"secret_shares":    3,
+				"secret_shares":    2,
 				"secret_threshold": 2,
 			}},
 		})

@@ -145,7 +145,8 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 	}
 
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
-		HandlerFunc: Handler,
+		HandlerFunc:         Handler,
+		DisableStandbyReads: true,
 	})
 	cluster.Start()
 	defer cluster.Cleanup()

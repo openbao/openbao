@@ -132,6 +132,7 @@ func TestDriver(t *testing.T) {
 
 	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_NoTLS(t, host, port) })
 	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_TLS(t, host, port) })
+	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_ConnectionURL(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_DefaultRule(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_plusRole(t, host, port) })
@@ -210,6 +211,23 @@ func testValkeyDBInitialize_TLS(t *testing.T, host string, port int) {
 	err = setupValkeyDBInitialize(t, connectionDetails)
 	if err != nil {
 		t.Fatalf("Testing TLS Init() failed: error: %s", err)
+	}
+}
+
+func testValkeyDBInitialize_ConnectionURL(t *testing.T, host string, port int) {
+	if valkeyTls {
+		t.Skip("skipping plain text Init() test in TLS mode")
+	}
+
+	t.Log("Testing Connection URL Init()")
+
+	connectionURL := fmt.Sprintf("valkey://%s:%s@%s:%d", adminUsername, adminPassword, host, port)
+	connectionDetails := map[string]interface{}{
+		"connection_url": connectionURL,
+	}
+	err := setupValkeyDBInitialize(t, connectionDetails)
+	if err != nil {
+		t.Fatalf("Testing Init() with connection_url failed: error: %s", err)
 	}
 }
 

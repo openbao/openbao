@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2025 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 //go:build !race
@@ -8,29 +8,28 @@ package command
 import (
 	"io"
 	"regexp"
-	"strings"
 	"testing"
 
+	"github.com/openbao/openbao/api/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/cli"
-	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/openbao/openbao/api/v2"
 )
 
-func testOperatorRotateKeysCommand(tb testing.TB) (*cli.MockUi, *OperatorRotateKeysCommand) {
+func testNamespaceRotateKeysCommand(tb testing.TB) (*cli.MockUi, *NamespaceRotateKeysCommand) {
 	tb.Helper()
 
 	ui := cli.NewMockUi()
-	return ui, &OperatorRotateKeysCommand{
+	return ui, &NamespaceRotateKeysCommand{
 		BaseCommand: &BaseCommand{
 			UI: ui,
 		},
 	}
 }
 
-func TestOperatorRotateKeysCommand_Run(t *testing.T) {
+func TestNamespaceRotateKeysCommand_Run(t *testing.T) {
 	t.Parallel()
+	nsName := "ns"
 
 	cases := []struct {
 		name string
@@ -39,11 +38,30 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 		code int
 	}{
 		{
+			"too_many_args",
+			[]string{"foo", "bar", "baz"},
+			"Too many arguments",
+			1,
+		},
+		{
+			"not_enough_args",
+			[]string{},
+			"Not enough arguments",
+			1,
+		},
+		{
+			"no_namespace_existing",
+			[]string{"unknown"},
+			"doesn't exist",
+			2,
+		},
+		{
 			"pgp_keys_multi",
 			[]string{
 				"-init",
 				"-pgp-keys", "keybase:hashicorp",
 				"-pgp-keys", "keybase:jefferai",
+				nsName,
 			},
 			"can only be specified once",
 			1,
@@ -54,6 +72,7 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 				"-init",
 				"-key-shares", "10",
 				"-pgp-keys", "keybase:jefferai,keybase:sethvargo",
+				nsName,
 			},
 			"count mismatch",
 			2,
@@ -65,6 +84,7 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 				"-key-shares", "1",
 				"-key-threshold", "1",
 				"-pgp-keys", "keybase:jefferai,keybase:sethvargo",
+				nsName,
 			},
 			"count mismatch",
 			2,
@@ -78,16 +98,17 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				client, closer := testVaultServer(t)
+				client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 				defer closer()
 
-				ui, cmd := testOperatorRotateKeysCommand(t)
+				ui, cmd := testNamespaceRotateKeysCommand(t)
 				cmd.client = client
 
 				code := cmd.Run(tc.args)
-				require.Equal(t, tc.code, code)
+				require.Equalf(t, tc.code, code, "expected %d to be %d", code, tc.code)
+
 				combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
-				require.Contains(t, combined, tc.out)
+				require.Containsf(t, combined, tc.out, "expected %q to contain %q", combined, tc.out)
 			})
 		}
 	})
@@ -95,15 +116,16 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 	t.Run("status", func(t *testing.T) {
 		t.Parallel()
 
-		client, closer := testVaultServer(t)
+		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
-		ui, cmd := testOperatorRotateKeysCommand(t)
+		ui, cmd := testNamespaceRotateKeysCommand(t)
 		cmd.client = client
 
 		// Verify the non-init response
 		code := cmd.Run([]string{
 			"-status",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
@@ -111,17 +133,19 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 		require.Contains(t, combined, "Nonce")
 
 		// Now init to verify the init response
-		_, err := client.Sys().RotateRootInit(&api.RotateInitRequest{
-			SecretShares:    1,
-			SecretThreshold: 1,
-		})
+		_, err := client.Sys().NamespaceRotateRootInit(nsName,
+			&api.RotateInitRequest{
+				SecretShares:    1,
+				SecretThreshold: 1,
+			})
 		require.NoError(t, err)
 
 		// Verify the init response
-		ui, cmd = testOperatorRotateKeysCommand(t)
+		ui, cmd = testNamespaceRotateKeysCommand(t)
 		cmd.client = client
 		code = cmd.Run([]string{
 			"-status",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
@@ -132,28 +156,30 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 	t.Run("cancel", func(t *testing.T) {
 		t.Parallel()
 
-		client, closer := testVaultServer(t)
+		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
 		// Initialize rotation
-		_, err := client.Sys().RotateRootInit(&api.RotateInitRequest{
-			SecretShares:    1,
-			SecretThreshold: 1,
-		})
+		_, err := client.Sys().NamespaceRotateRootInit(nsName,
+			&api.RotateInitRequest{
+				SecretShares:    1,
+				SecretThreshold: 1,
+			})
 		require.NoError(t, err)
 
-		ui, cmd := testOperatorRotateKeysCommand(t)
+		ui, cmd := testNamespaceRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
 			"-cancel",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
 		combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
 		require.Contains(t, combined, "Success! Canceled rotation")
 
-		status, err := client.Sys().GenerateRootStatus()
+		status, err := client.Sys().NamespaceGenerateRootStatus(nsName)
 		require.NoError(t, err)
 		require.False(t, status.Started)
 	})
@@ -161,16 +187,17 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 	t.Run("init", func(t *testing.T) {
 		t.Parallel()
 
-		client, closer := testVaultServer(t)
+		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
-		ui, cmd := testOperatorRotateKeysCommand(t)
+		ui, cmd := testNamespaceRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
 			"-init",
 			"-key-shares", "1",
 			"-key-threshold", "1",
+			nsName,
 		})
 		if exp := 0; code != exp {
 			t.Errorf("expected %d to be %d: %s", code, exp, ui.ErrorWriter.String())
@@ -179,7 +206,7 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 		combined := ui.OutputWriter.String()
 		require.Contains(t, combined, "Nonce")
 
-		status, err := client.Sys().RotateRootStatus()
+		status, err := client.Sys().NamespaceRotateRootStatus(nsName)
 		require.NoError(t, err)
 		require.True(t, status.Started)
 	})
@@ -190,10 +217,10 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 		pgpKey := "keybase:hashicorp"
 		pgpFingerprints := []string{"c874011f0ab405110d02105534365d9472d7468f"}
 
-		client, closer := testVaultServer(t)
+		client, _, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
-		ui, cmd := testOperatorRotateKeysCommand(t)
+		ui, cmd := testNamespaceRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
@@ -201,111 +228,52 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 			"-key-shares", "1",
 			"-key-threshold", "1",
 			"-pgp-keys", pgpKey,
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
 		combined := ui.OutputWriter.String()
 		require.Contains(t, combined, "Nonce")
 
-		status, err := client.Sys().RotateRootStatus()
+		status, err := client.Sys().NamespaceRotateRootStatus(nsName)
 		require.NoError(t, err)
 		require.True(t, status.Started)
 		require.ElementsMatch(t, status.PGPFingerprints, pgpFingerprints)
 	})
 
-	t.Run("provide_arg_recovery_keys", func(t *testing.T) {
-		t.Parallel()
-
-		client, keys, closer := testVaultServerAutoUnseal(t)
-		defer closer()
-
-		// Initialize rotation
-		status, err := client.Sys().RotateRecoveryInit(&api.RotateInitRequest{
-			SecretShares:    1,
-			SecretThreshold: 1,
-		})
-		require.NoError(t, err)
-		nonce := status.Nonce
-
-		// Supply the first n-1 recovery keys
-		for _, key := range keys[:len(keys)-1] {
-			ui, cmd := testOperatorRotateKeysCommand(t)
-			cmd.client = client
-
-			code := cmd.Run([]string{
-				"-nonce", nonce,
-				"-target", "recovery",
-				key,
-			})
-			require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
-		}
-
-		ui, cmd := testOperatorRotateKeysCommand(t)
-		cmd.client = client
-
-		code := cmd.Run([]string{
-			"-nonce", nonce,
-			"-target", "recovery",
-			keys[len(keys)-1], // the last recovery key
-		})
-		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
-
-		re := regexp.MustCompile(`Key 1: (.+)`)
-		output := ui.OutputWriter.String()
-		match := re.FindAllStringSubmatch(output, -1)
-		require.False(t, len(match) < 1 || len(match[0]) < 2)
-
-		recoveryKey := match[0][1]
-
-		require.NotContains(t, strings.ToLower(output), "unseal key")
-
-		// verify that we can perform operations with the recovery key
-		// below we generate a root token using the recovery key
-		rootStatus, err := client.Sys().GenerateRootStatus()
-		require.NoError(t, err)
-
-		otp, err := base62.Random(rootStatus.OTPLength)
-		require.NoError(t, err)
-
-		genRoot, err := client.Sys().GenerateRootInit(otp, "")
-		require.NoError(t, err)
-
-		r, err := client.Sys().GenerateRootUpdate(recoveryKey, genRoot.Nonce)
-		require.NoError(t, err)
-
-		require.True(t, r.Complete)
-	})
 	t.Run("provide_arg", func(t *testing.T) {
 		t.Parallel()
 
-		client, keys, closer := testVaultServerUnseal(t)
+		client, keys, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
 		// Initialize rotation
-		status, err := client.Sys().RotateRootInit(&api.RotateInitRequest{
-			SecretShares:    1,
-			SecretThreshold: 1,
-		})
+		status, err := client.Sys().NamespaceRotateRootInit(nsName,
+			&api.RotateInitRequest{
+				SecretShares:    1,
+				SecretThreshold: 1,
+			})
 		require.NoError(t, err)
 		nonce := status.Nonce
 
 		// Supply the first n-1 unseal keys
 		for _, key := range keys[:len(keys)-1] {
-			ui, cmd := testOperatorRotateKeysCommand(t)
+			ui, cmd := testNamespaceRotateKeysCommand(t)
 			cmd.client = client
-
 			code := cmd.Run([]string{
 				"-nonce", nonce,
+				nsName,
 				key,
 			})
 			require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 		}
 
-		ui, cmd := testOperatorRotateKeysCommand(t)
+		ui, cmd := testNamespaceRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
 			"-nonce", nonce,
+			nsName,
 			keys[len(keys)-1], // the last unseal key
 		})
 		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
@@ -317,26 +285,30 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 
 		// Grab the unseal key and try to unseal
 		unsealKey := match[0][1]
-		err = client.Sys().Seal()
+		err = client.Sys().SealNamespace(nsName)
 		require.NoError(t, err)
 
-		sealStatus, err := client.Sys().Unseal(unsealKey)
+		sealStatus, err := client.Sys().UnsealNamespace(
+			&api.UnsealNamespaceRequest{
+				Name: nsName,
+				Key:  unsealKey,
+			})
 		require.NoError(t, err)
-
 		require.False(t, sealStatus.Sealed)
 	})
 
 	t.Run("provide_stdin", func(t *testing.T) {
 		t.Parallel()
 
-		client, keys, closer := testVaultServerUnseal(t)
+		client, keys, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
 		// Initialize rotation
-		status, err := client.Sys().RotateRootInit(&api.RotateInitRequest{
-			SecretShares:    1,
-			SecretThreshold: 1,
-		})
+		status, err := client.Sys().NamespaceRotateRootInit(nsName,
+			&api.RotateInitRequest{
+				SecretShares:    1,
+				SecretThreshold: 1,
+			})
 		require.NoError(t, err)
 		nonce := status.Nonce
 
@@ -351,12 +323,13 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			ui, cmd := testOperatorRotateKeysCommand(t)
+			ui, cmd := testNamespaceRotateKeysCommand(t)
 			cmd.client = client
 			cmd.testStdin = stdinR
 
 			code := cmd.Run([]string{
 				"-nonce", nonce,
+				nsName,
 				"-",
 			})
 			require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
@@ -371,12 +344,13 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
-		ui, cmd := testOperatorRotateKeysCommand(t)
+		ui, cmd := testNamespaceRotateKeysCommand(t)
 		cmd.client = client
 		cmd.testStdin = stdinR
 
 		code := cmd.Run([]string{
 			"-nonce", nonce,
+			nsName,
 			"-",
 		})
 		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
@@ -388,98 +362,26 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 
 		// Grab the unseal key and try to unseal
 		unsealKey := match[0][1]
-		err = client.Sys().Seal()
+		err = client.Sys().SealNamespace(nsName)
 		require.NoError(t, err)
 
-		sealStatus, err := client.Sys().Unseal(unsealKey)
+		sealStatus, err := client.Sys().UnsealNamespace(
+			&api.UnsealNamespaceRequest{
+				Name: nsName,
+				Key:  unsealKey,
+			})
 		require.NoError(t, err)
-
 		require.False(t, sealStatus.Sealed)
 	})
 
-	t.Run("provide_stdin_recovery_keys", func(t *testing.T) {
-		t.Parallel()
-
-		client, keys, closer := testVaultServerAutoUnseal(t)
-		defer closer()
-
-		// Initialize rotation
-		status, err := client.Sys().RotateRecoveryInit(&api.RotateInitRequest{
-			SecretShares:    1,
-			SecretThreshold: 1,
-		})
-		require.NoError(t, err)
-		nonce := status.Nonce
-
-		for _, key := range keys[:len(keys)-1] {
-			stdinR, stdinW := io.Pipe()
-			go func() {
-				_, _ = stdinW.Write([]byte(key))
-				_ = stdinW.Close()
-			}()
-
-			ui, cmd := testOperatorRotateKeysCommand(t)
-			cmd.client = client
-			cmd.testStdin = stdinR
-
-			code := cmd.Run([]string{
-				"-target", "recovery",
-				"-nonce", nonce,
-				"-",
-			})
-			require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
-
-		}
-
-		stdinR, stdinW := io.Pipe()
-		go func() {
-			_, _ = stdinW.Write([]byte(keys[len(keys)-1])) // the last recovery key
-			_ = stdinW.Close()
-		}()
-
-		ui, cmd := testOperatorRotateKeysCommand(t)
-		cmd.client = client
-		cmd.testStdin = stdinR
-
-		code := cmd.Run([]string{
-			"-nonce", nonce,
-			"-target", "recovery",
-			"-",
-		})
-		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
-
-		re := regexp.MustCompile(`Key 1: (.+)`)
-		output := ui.OutputWriter.String()
-		match := re.FindAllStringSubmatch(output, -1)
-		require.False(t, len(match) < 1 || len(match[0]) < 2)
-
-		recoveryKey := match[0][1]
-
-		require.NotContains(t, strings.ToLower(output), "unseal key")
-
-		// verify that we can perform operations with the recovery key
-		// below we generate a root token using the recovery key
-		rootStatus, err := client.Sys().GenerateRootStatus()
-		require.NoError(t, err)
-
-		otp, err := base62.Random(rootStatus.OTPLength)
-		require.NoError(t, err)
-
-		genRoot, err := client.Sys().GenerateRootInit(otp, "")
-		require.NoError(t, err)
-
-		r, err := client.Sys().GenerateRootUpdate(recoveryKey, genRoot.Nonce)
-		require.NoError(t, err)
-		require.True(t, r.Complete)
-	})
 	t.Run("backup", func(t *testing.T) {
 		t.Parallel()
 
 		pgpKey := "keybase:hashicorp"
-		client, keys, closer := testVaultServerUnseal(t)
+		client, keys, closer := testVaultServerWithNamespace(t, nsName, false)
 		defer closer()
 
-		ui, cmd := testOperatorRotateKeysCommand(t)
+		ui, cmd := testNamespaceRotateKeysCommand(t)
 		cmd.client = client
 
 		code := cmd.Run([]string{
@@ -488,22 +390,24 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 			"-key-threshold", "1",
 			"-pgp-keys", pgpKey,
 			"-backup",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
 		// Get the status for the nonce
-		status, err := client.Sys().RotateRootStatus()
+		status, err := client.Sys().NamespaceRotateRootStatus(nsName)
 		require.NoError(t, err)
 		nonce := status.Nonce
 
 		var combined string
 		// Supply the unseal keys
 		for _, key := range keys {
-			ui, cmd := testOperatorRotateKeysCommand(t)
+			ui, cmd := testNamespaceRotateKeysCommand(t)
 			cmd.client = client
 
 			code := cmd.Run([]string{
 				"-nonce", nonce,
+				nsName,
 				key,
 			})
 			require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
@@ -520,11 +424,12 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 		fingerprint, encryptedKey := match[0][1], match[0][2]
 
 		// Get the backup
-		ui, cmd = testOperatorRotateKeysCommand(t)
+		ui, cmd = testNamespaceRotateKeysCommand(t)
 		cmd.client = client
 
 		code = cmd.Run([]string{
 			"-backup-retrieve",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
@@ -533,40 +438,23 @@ func TestOperatorRotateKeysCommand_Run(t *testing.T) {
 		require.Contains(t, output, encryptedKey)
 
 		// Delete the backup
-		ui, cmd = testOperatorRotateKeysCommand(t)
+		ui, cmd = testNamespaceRotateKeysCommand(t)
 		cmd.client = client
 
 		code = cmd.Run([]string{
 			"-backup-delete",
+			nsName,
 		})
 		require.Equalf(t, 0, code, "expected %d to be %d: %s", code, 0, ui.ErrorWriter.String())
 
-		_, err = client.Sys().RotateRootRetrieveBackup()
+		_, err = client.Sys().NamespaceRotateRootRetrieveBackup(nsName)
 		require.Error(t, err)
-	})
-
-	t.Run("communication_failure", func(t *testing.T) {
-		t.Parallel()
-
-		client, closer := testVaultServerBad(t)
-		defer closer()
-
-		ui, cmd := testOperatorRotateKeysCommand(t)
-		cmd.client = client
-
-		code := cmd.Run([]string{
-			"secret/foo",
-		})
-		require.Equalf(t, 2, code, "expected %d to be %d: %s", code, 2, ui.ErrorWriter.String())
-
-		combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
-		require.Contains(t, combined, "Error getting rotation status: ")
 	})
 
 	t.Run("no_tabs", func(t *testing.T) {
 		t.Parallel()
 
-		_, cmd := testOperatorRotateKeysCommand(t)
+		_, cmd := testNamespaceRotateKeysCommand(t)
 		assertNoTabs(t, cmd)
 	})
 }

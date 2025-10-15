@@ -1389,7 +1389,24 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 						return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 							"the value %q is not a valid IP address", v)}
 					}
-					ipAddresses = append(ipAddresses, parsedIP)
+					if len(data.role.AllowedIPSANsCIDR) > 0 {
+						valid := false
+						for _, allowedNetwork := range data.role.AllowedIPSANsCIDR {
+							if allowedNetwork.Contains(parsedIP) {
+								valid = true
+								break
+							}
+						}
+
+						if !valid {
+							return nil, nil, errutil.UserError{Err: fmt.Sprintf(
+								"the IP address %q is not allowed in this role", v)}
+						}
+
+						ipAddresses = append(ipAddresses, parsedIP)
+					} else {
+						ipAddresses = append(ipAddresses, parsedIP)
+					}
 				}
 			}
 		}

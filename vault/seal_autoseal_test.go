@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/armon/go-metrics"
+	"github.com/hashicorp/go-metrics"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"google.golang.org/protobuf/proto"
 

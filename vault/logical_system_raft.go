@@ -680,7 +680,7 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 			go l.grab()
 			if stopped := l.lockOrStop(); stopped {
 				b.Core.logger.Error("not applying snapshot; shutting down")
-				return
+				return retErr
 			}
 			defer b.Core.stateLock.Unlock()
 

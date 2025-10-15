@@ -26,7 +26,6 @@ replace github.com/boltdb/bolt => ./helper/stubbolt
 require (
 	cloud.google.com/go/monitoring v1.24.2
 	github.com/ProtonMail/go-crypto v1.3.0
-	github.com/armon/go-metrics v0.4.1
 	github.com/armon/go-radix v1.0.0
 	github.com/caddyserver/certmagic v0.25.0
 	github.com/cenkalti/backoff/v4 v4.3.0
@@ -46,7 +45,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/cel-go v0.26.1
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-metrics-stackdriver v0.2.0
+	github.com/google/go-metrics-stackdriver v0.6.0
 	github.com/hashicorp/cap v0.10.0
 	github.com/hashicorp/cli v1.1.7
 	github.com/hashicorp/errwrap v1.1.0
@@ -203,6 +202,7 @@ require (
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
+	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-sdk-go v1.55.6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect

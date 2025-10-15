@@ -16,8 +16,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/go-metrics"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/oklog/run"
@@ -72,7 +72,7 @@ func (c *Core) StandbyStates() (standby bool) {
 	c.stateLock.RLock()
 	standby = c.standby
 	c.stateLock.RUnlock()
-	return
+	return standby
 }
 
 // getHAMembers retrieves cluster membership that doesn't depend on raft. This should only ever be called by the

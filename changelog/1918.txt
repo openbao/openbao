@@ -1,0 +1,3 @@
+```release-note:improvement
+core/namespaces: Setting the `X-Vault-Namespace` Header (or the `BAO_NAMESPACE` environment variable when using the cli) to "root" now maps to the root namespace.
+```

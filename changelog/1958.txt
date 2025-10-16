@@ -1,0 +1,3 @@
+```release-note:bug
+vault/router: Fix namespace-aware mount conflict detection to ignore namespace's own sys mount
+```

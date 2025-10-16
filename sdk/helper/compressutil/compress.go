@@ -12,7 +12,7 @@ import (
 	"io"
 
 	"github.com/golang/snappy"
-	"github.com/pierrec/lz4"
+	"github.com/pierrec/lz4/v4"
 )
 
 const (

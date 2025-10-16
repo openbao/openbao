@@ -23,7 +23,7 @@ updates:
     labels:
       - dependencies
       - pr/no-changelog
-      - github_actions
+      - github-actions
 
   - package-ecosystem: "gomod"
     directory: "/"

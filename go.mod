@@ -93,7 +93,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mediocregopher/radix/v4 v4.1.4
 	github.com/mholt/acmez/v3 v3.1.3
-	github.com/michaelklishin/rabbit-hole/v3 v3.1.0
+	github.com/michaelklishin/rabbit-hole/v3 v3.2.0
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-testing-interface v1.14.1
@@ -305,7 +305,6 @@ require (
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/nicolai86/scaleway-sdk v1.10.2-0.20180628010248-798f60e20bb2 // indirect
 	github.com/onsi/ginkgo/v2 v2.23.4 // indirect
-	github.com/onsi/gomega v1.37.0 // indirect
 	github.com/openbao/go-kms-wrapping/entropy/v2 v2.1.0 // indirect
 	github.com/openbao/openbao/api/auth/kubernetes/v2 v2.0.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect

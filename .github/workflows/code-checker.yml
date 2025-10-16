@@ -97,6 +97,8 @@ jobs:
 
   el8gobuild:
     # make sure that bao can still be built with the golang version on el8
+    # unless there is a `no-el8gobuild` label
+    if: "!contains(github.event.pull_request.labels.*.name, 'no-el8gobuild')"
     name: EL8 Go build checks
     runs-on: ubuntu-latest
     container: ghcr.io/almalinux/8-base

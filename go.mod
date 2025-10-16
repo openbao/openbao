@@ -92,7 +92,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mediocregopher/radix/v4 v4.1.4
-	github.com/mholt/acmez/v3 v3.1.3
+	github.com/mholt/acmez/v3 v3.1.4
 	github.com/michaelklishin/rabbit-hole/v3 v3.2.0
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-homedir v1.1.0

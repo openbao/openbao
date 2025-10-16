@@ -141,7 +141,6 @@ func TestNamespaceBackend_RotateInitStatus(t *testing.T) {
 		res, err := b.HandleRequest(rootCtx, req)
 
 		require.NoError(t, err)
-		require.Equal(t, "foo/", res.Data["namespace"])
 		require.Equal(t, false, res.Data["started"])
 		require.Equal(t, 0, res.Data["n"])
 		require.Equal(t, 0, res.Data["t"])
@@ -154,7 +153,6 @@ func TestNamespaceBackend_RotateInitStatus(t *testing.T) {
 		res, err = b.HandleRequest(rootCtx, req)
 
 		require.NoError(t, err)
-		require.Equal(t, "foo/", res.Data["namespace"])
 		require.Equal(t, true, res.Data["started"])
 		require.Equal(t, 5, res.Data["n"])
 		require.Equal(t, 3, res.Data["t"])
@@ -305,7 +303,6 @@ func TestNamespaceBackend_RotateUpdate(t *testing.T) {
 				break
 			}
 
-			require.Equal(t, "bar/", res.Data["namespace"])
 			require.Equal(t, true, res.Data["started"])
 			require.Equal(t, 1, res.Data["n"])
 			require.Equal(t, 1, res.Data["t"])

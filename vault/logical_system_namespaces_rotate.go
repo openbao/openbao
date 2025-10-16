@@ -59,7 +59,12 @@ func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 				OperationPrefix: "namespaces",
 				OperationSuffix: "encryption-key",
 			},
-			Fields: rotateConfigSchema,
+			Fields: map[string]*framework.FieldSchema{
+				"namespace":      &namespaceFieldSchema,
+				"enabled":        rotateConfigSchema["enabled"],
+				"max_operations": rotateConfigSchema["max_operations"],
+				"interval":       rotateConfigSchema["interval"],
+			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
@@ -283,6 +288,9 @@ func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 				OperationPrefix: "namespaces",
 				OperationVerb:   "backup",
 				OperationSuffix: "unseal-keys",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"namespace": &namespaceFieldSchema,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{

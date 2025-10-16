@@ -399,10 +399,16 @@ func (r *Router) matchingPrefixInternal(ctx context.Context, path string) string
 
 // matchingNamespaceInternal returns a namespace prefix that a path may be a part of
 func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) string {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return ""
-	}
+    ns, err := namespace.FromContext(ctx)
+    if err != nil {
+        return ""
+    }
+    // Ensure comparisons are done against absolute paths within the
+    // current namespace context, consistent with other matching helpers.
+    // Without this, a mount path that matches the current namespace name
+    // (e.g., mounting "team14/" inside namespace "team14/") would be
+    // incorrectly detected as conflicting with the namespace itself.
+    path = ns.Path + path
 
 	// Every namespace has a sys/ mount. We can use that as a sentinel that
 	// our given path conflicts. Walk the parent namespace of path and check
@@ -412,22 +418,28 @@ func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) str
 	// This allows us to avoid calling into the namespace store, which may be
 	// locked as we're trying to mount required mounts for a new namespace.
 	var existing string
-	fn := func(existingPath string, v interface{}) bool {
-		if !strings.HasSuffix(existingPath, "sys/") {
-			return false
-		}
+    fn := func(existingPath string, v interface{}) bool {
+        if !strings.HasSuffix(existingPath, "sys/") {
+            return false
+        }
 
-		nsPath := strings.TrimSuffix(existingPath, "sys/")
-		if strings.HasPrefix(path, nsPath) {
-			existing = nsPath
-			return true
-		}
+        // Ignore the current namespace's own sys mount; we only want to
+        // detect conflicts with child namespace prefixes.
+        if existingPath == ns.Path+"sys/" {
+            return false
+        }
 
-		return false
-	}
+        nsPath := strings.TrimSuffix(existingPath, "sys/")
+        if strings.HasPrefix(path, nsPath) {
+            existing = nsPath
+            return true
+        }
 
-	r.root.WalkPrefix(ns.Path, fn)
-	return existing
+        return false
+    }
+
+    r.root.WalkPrefix(ns.Path, fn)
+    return existing
 }
 
 // MountConflict determines if there are potential path conflicts

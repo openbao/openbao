@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
 	"golang.org/x/crypto/ed25519"
 
 	"github.com/mitchellh/copystructure"
@@ -605,6 +606,15 @@ func Test_Import(t *testing.T) {
 			key:         testKeys[KeyType_AES256_GCM96],
 			shouldError: true,
 		},
+		"import ML-DSA key": {
+			policy: Policy{
+				Name:         "test-ml-dsa-44-key",
+				Type:         KeyType_ML_DSA,
+				ParameterSet: ParameterSet_ML_DSA_44,
+			},
+			key:         testKeys[KeyType_ML_DSA],
+			shouldError: false,
+		},
 	}
 
 	for name, test := range tests {
@@ -675,6 +685,16 @@ func generateTestKeys() (map[KeyType][]byte, error) {
 		return nil, err
 	}
 	keyMap[KeyType_AES256_GCM96] = aesKey
+
+	_, mldsa44PrivKey, err := mldsa44.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+	mldsa44PrivKeyBytes, errMarshalBinary := mldsa44PrivKey.MarshalBinary()
+	if errMarshalBinary != nil {
+		return nil, err
+	}
+	keyMap[KeyType_ML_DSA] = mldsa44PrivKeyBytes
 
 	return keyMap, nil
 }

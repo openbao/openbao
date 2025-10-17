@@ -912,8 +912,8 @@ func (b *RaftBackend) SetupCluster(ctx context.Context, opts SetupOpts) error {
 	}
 
 	listenerIsNil := func(cl cluster.ClusterHook) bool {
-		switch {
-		case opts.ClusterListener == nil:
+		switch opts.ClusterListener {
+		case nil:
 			return true
 		default:
 			// Concrete type checks
@@ -1037,11 +1037,7 @@ func (b *RaftBackend) SetupCluster(ctx context.Context, opts SetupOpts) error {
 		// for - select pattern.
 		ticker := time.NewTicker(10 * time.Millisecond)
 		defer ticker.Stop()
-		for {
-			if raftObj.State() == raft.Leader {
-				break
-			}
-
+		for raftObj.State() != raft.Leader {
 			ticker.Reset(10 * time.Millisecond)
 			select {
 			case <-ctx.Done():

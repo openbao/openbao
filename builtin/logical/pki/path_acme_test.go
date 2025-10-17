@@ -667,7 +667,7 @@ func TestAcmeDisabledWithEnvVar(t *testing.T) {
 
 	// Make sure that ACME is disabled now.
 	for _, method := range []string{http.MethodHead, http.MethodGet} {
-		t.Run(fmt.Sprintf("%s", method), func(t *testing.T) {
+		t.Run(method, func(t *testing.T) {
 			req := client.NewRequest(method, "/v1/pki/acme/new-nonce")
 			_, err := client.RawRequestWithContext(ctx, req)
 			require.Error(t, err, "should have received an error as ACME should have been disabled")
@@ -1024,10 +1024,11 @@ func TestIssuerRoleDirectoryAssociations(t *testing.T) {
 		// Path should override role.
 		directory := "/v1/pki/issuer/" + issuer + "/acme/"
 		issuerPath := "/pki/issuer/" + issuer
-		if issuer == "" {
+		switch issuer {
+		case "":
 			directory = "/v1/pki/acme/"
 			issuerPath = "/pki/issuer/int-ca"
-		} else if issuer == "default" {
+		case "default":
 			issuerPath = "/pki/issuer/int-ca"
 		}
 

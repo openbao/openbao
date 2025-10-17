@@ -182,7 +182,7 @@ func (p PrettyFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{})
 
 func outputStringSlice(buffer *bytes.Buffer, indent string, values []string) {
 	for _, val := range values {
-		buffer.WriteString(fmt.Sprintf("%s%s\n", indent, val))
+		fmt.Fprintf(buffer, "%s%s\n", indent, val)
 	}
 }
 
@@ -288,7 +288,7 @@ func (t TableFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) 
 }
 
 func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, secret *api.Secret, data interface{}) error {
-	var status SealStatusOutput = data.(SealStatusOutput)
+	status := data.(SealStatusOutput)
 	var sealPrefix string
 
 	out := []string{}

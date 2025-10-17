@@ -85,7 +85,7 @@ type PostgreSQL struct {
 }
 
 func (p *PostgreSQL) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
-	newConf, err := p.SQLConnectionProducer.Init(ctx, req.Config, req.VerifyConnection)
+	newConf, err := p.Init(ctx, req.Config, req.VerifyConnection)
 	if err != nil {
 		return dbplugin.InitializeResponse{}, err
 	}

@@ -372,13 +372,14 @@ func (m *PostgreSQLBackend) splitKey(fullPath string) (string, string, string) {
 	depth := len(pieces)
 	key := pieces[depth-1]
 
-	if depth == 1 {
+	switch depth {
+	case 1:
 		parentPath = ""
 		path = "/"
-	} else if depth == 2 {
+	case 2:
 		parentPath = "/"
 		path = "/" + pieces[0] + "/"
-	} else {
+	default:
 		parentPath = "/" + strings.Join(pieces[:depth-2], "/") + "/"
 		path = "/" + strings.Join(pieces[:depth-1], "/") + "/"
 	}

@@ -522,7 +522,7 @@ func parseExtAsn1ObjectId(entry map[string]interface{}) (asn1.ObjectIdentifier, 
 
 	// Parse out dot notation
 	oidParts := strings.Split(oidStr, ".")
-	oid := make(asn1.ObjectIdentifier, len(oidParts), len(oidParts))
+	oid := make(asn1.ObjectIdentifier, len(oidParts))
 	for i := range oidParts {
 		oidIntVal, err := strconv.Atoi(oidParts[i])
 		if err != nil {

@@ -80,9 +80,6 @@ func handleSysInitPut(core *vault.Core, w http.ResponseWriter, r *http.Request) 
 		if vault.IsFatalError(initErr) {
 			respondError(w, http.StatusBadRequest, initErr)
 			return
-		} else {
-			// Add a warnings field? The error will be logged in the vault log
-			// already.
 		}
 	}
 

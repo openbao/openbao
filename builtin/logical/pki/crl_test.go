@@ -1020,7 +1020,7 @@ func TestAutoRebuild(t *testing.T) {
 
 	// Wait for the CRL to update based on the configuration change we just did
 	// so that it doesn't grab the revocation we are going to do afterwards.
-	crl = waitForUpdatedCrl(t, client, defaultCrlPath, lastCRLNumber, lastCRLExpiry.Sub(time.Now()))
+	crl = waitForUpdatedCrl(t, client, defaultCrlPath, lastCRLNumber, time.Until(lastCRLExpiry))
 	lastCRLNumber = getCRLNumber(t, crl)
 	lastCRLExpiry = crl.NextUpdate
 
@@ -1095,11 +1095,7 @@ func TestAutoRebuild(t *testing.T) {
 
 	haveUpdatedDeltaCRL := false
 	interruptChan := time.After(4*newPeriod + delta)
-	for {
-		if haveUpdatedDeltaCRL {
-			break
-		}
-
+	for !haveUpdatedDeltaCRL {
 		select {
 		case <-interruptChan:
 			t.Fatalf("expected to regenerate delta CRL within a couple of periodicFunc invocations (plus %v grace period)", delta)

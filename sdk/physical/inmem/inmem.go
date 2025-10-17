@@ -398,15 +398,15 @@ func (i *TransactionalInmemBackend) BeginReadOnlyTx(ctx context.Context) (physic
 }
 
 func (i *TransactionalInmemBackend) BeginTx(ctx context.Context) (physical.Transaction, error) {
-	i.InmemBackend.Lock()
-	defer i.InmemBackend.Unlock()
+	i.Lock()
+	defer i.Unlock()
 
 	// Grab a transaction pool instance.
 	i.txnPermitPool.Acquire()
 
 	tx := &InmemBackendTransaction{
 		InmemBackend: InmemBackend{
-			root:         radix.NewFromMap(i.InmemBackend.root.ToMap()),
+			root:         radix.NewFromMap(i.root.ToMap()),
 			permitPool:   physical.NewPermitPool(physical.DefaultParallelOperations),
 			logger:       i.logger,
 			failGet:      new(uint32),
@@ -421,10 +421,10 @@ func (i *TransactionalInmemBackend) BeginTx(ctx context.Context) (physical.Trans
 		parent:   i,
 	}
 
-	*tx.failGet = *i.InmemBackend.failGet
-	*tx.failPut = *i.InmemBackend.failPut
-	*tx.failDelete = *i.InmemBackend.failDelete
-	*tx.failList = *i.InmemBackend.failList
+	*tx.failGet = *i.failGet
+	*tx.failPut = *i.failPut
+	*tx.failDelete = *i.failDelete
+	*tx.failList = *i.failList
 
 	return tx, nil
 }
@@ -441,7 +441,7 @@ func (i *InmemBackendTransaction) Put(ctx context.Context, entry *physical.Entry
 		return physical.ErrTransactionAlreadyCommitted
 	}
 
-	currEntry, err := i.InmemBackend.getInternal(ctx, entry.Key)
+	currEntry, err := i.getInternal(ctx, entry.Key)
 	if err != nil {
 		return err
 	}
@@ -481,7 +481,7 @@ func (i *InmemBackendTransaction) Delete(ctx context.Context, key string) error 
 		return physical.ErrTransactionAlreadyCommitted
 	}
 
-	entry, err := i.InmemBackend.getInternal(ctx, key)
+	entry, err := i.getInternal(ctx, key)
 	if err != nil {
 		return err
 	}

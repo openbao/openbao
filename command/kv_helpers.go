@@ -134,11 +134,7 @@ func addPrefixToKVPath(path, mountPath, apiPrefix string, skipIfExists bool) str
 	}
 
 	pathSuffix := strings.TrimPrefix(path, mountPath)
-	for {
-		// If the entire mountPath is included in the path, we are done
-		if pathSuffix != path {
-			break
-		}
+	for pathSuffix == path {
 		// Trim the parts of the mountPath that are not included in the
 		// path, for example, in cases where the mountPath contains
 		// namespaces which are not included in the path.

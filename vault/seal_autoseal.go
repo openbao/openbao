@@ -143,7 +143,7 @@ func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {
 		return fmt.Errorf("failed to proto decode stored keys: %w", err)
 	}
 
-	keyId, err := d.Access.KeyId(ctx)
+	keyId, err := d.KeyId(ctx)
 	if err != nil {
 		return err
 	}
@@ -454,7 +454,7 @@ func (d *autoSeal) upgradeRecoveryKey(ctx context.Context) error {
 		return fmt.Errorf("failed to proto decode recovery key: %w", err)
 	}
 
-	keyId, err := d.Access.KeyId(ctx)
+	keyId, err := d.KeyId(ctx)
 	if err != nil {
 		return err
 	}
@@ -511,7 +511,7 @@ func (d *autoSeal) StartHealthCheck() {
 					defer cancel()
 
 					testVal := fmt.Sprintf("Heartbeat %d", mathrand.Intn(1000))
-					ciphertext, err := d.Access.Encrypt(ctx, []byte(testVal), nil)
+					ciphertext, err := d.Encrypt(ctx, []byte(testVal), nil)
 
 					if err != nil {
 						fail("failed to encrypt seal health test value, seal backend may be unreachable", "error", err)
@@ -519,7 +519,7 @@ func (d *autoSeal) StartHealthCheck() {
 						func() {
 							ctx, cancel := context.WithTimeout(ctx, sealHealthTestTimeout)
 							defer cancel()
-							plaintext, err := d.Access.Decrypt(ctx, ciphertext, nil)
+							plaintext, err := d.Decrypt(ctx, ciphertext, nil)
 							if err != nil {
 								fail("failed to decrypt seal health test value, seal backend may be unreachable", "error", err)
 							}

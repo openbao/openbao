@@ -91,10 +91,8 @@ func Compress(data []byte, config *CompressionConfig) ([]byte, error) {
 	case CompressionTypeGzip:
 		buf.Write([]byte{CompressionCanaryGzip})
 
-		switch {
-		case config.GzipCompressionLevel == gzip.BestCompression,
-			config.GzipCompressionLevel == gzip.BestSpeed,
-			config.GzipCompressionLevel == gzip.DefaultCompression:
+		switch config.GzipCompressionLevel {
+		case gzip.BestCompression, gzip.BestSpeed, gzip.DefaultCompression:
 			// These are valid compression levels
 		default:
 			// If compression level is set to NoCompression or to

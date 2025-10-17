@@ -692,7 +692,7 @@ func BuildContextFromTarball(reader io.Reader) (BuildContext, error) {
 	archive := tar.NewReader(reader)
 	bCtx := NewBuildContext()
 
-	for true {
+	for {
 		header, err := archive.Next()
 		if err != nil {
 			if err == io.EOF {

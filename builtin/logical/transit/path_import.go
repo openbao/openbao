@@ -432,11 +432,8 @@ func checkKeyFieldsSet(d *framework.FieldData) (bool, error) {
 
 func isFieldSet(fieldName string, d *framework.FieldData) bool {
 	_, fieldSet := d.Raw[fieldName]
-	if !fieldSet {
-		return false
-	}
 
-	return true
+	return fieldSet
 }
 
 const (

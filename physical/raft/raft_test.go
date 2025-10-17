@@ -7,10 +7,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -540,7 +540,7 @@ func BenchmarkDB_Puts(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pe.Key = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s-%d", testName, i))))
+			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 			err := s.Put(ctx, pe)
 			if err != nil {
 				b.Fatal(err)
@@ -568,7 +568,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 	testName := b.Name()
 
 	for i := 0; i < 100; i++ {
-		pe.Key = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s-%d", testName, i))))
+		pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 		err = raft.Put(ctx, pe)
 		if err != nil {
 			b.Fatal(err)
@@ -578,7 +578,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 	bench := func(b *testing.B, s *FSM) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pe.Key = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s-%d", testName, i))))
+			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 			s.writeTo(ctx, discardCloser{Writer: io.Discard}, discardCloser{Writer: io.Discard})
 		}
 	}

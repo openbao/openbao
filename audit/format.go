@@ -168,7 +168,7 @@ func (f *AuditFormatter) FormatRequest(ctx context.Context, w io.Writer, config 
 		reqEntry.Time = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 
-	return f.AuditFormatWriter.WriteRequest(w, reqEntry)
+	return f.WriteRequest(w, reqEntry)
 }
 
 func (f *AuditFormatter) FormatResponse(ctx context.Context, w io.Writer, config FormatterConfig, in *logical.LogInput) error {
@@ -390,7 +390,7 @@ func (f *AuditFormatter) FormatResponse(ctx context.Context, w io.Writer, config
 		respEntry.Time = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 
-	return f.AuditFormatWriter.WriteResponse(w, respEntry)
+	return f.WriteResponse(w, respEntry)
 }
 
 // AuditRequestEntry is the structure of a request audit log entry in Audit.
@@ -583,11 +583,12 @@ func doElideListResponseData(data map[string]interface{}) {
 
 func doElideListResponseDataWithCopy(inputData map[string]interface{}, outputData map[string]interface{}) {
 	for k, v := range inputData {
-		if k == "keys" {
+		switch k {
+		case "keys":
 			if vSlice, ok := v.([]string); ok {
 				outputData[k] = len(vSlice)
 			}
-		} else if k == "key_info" {
+		case "key_info":
 			if vMap, ok := v.(map[string]interface{}); ok {
 				outputData[k] = len(vMap)
 			}

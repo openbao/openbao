@@ -130,8 +130,8 @@ func GenerateTLSKey(reader io.Reader) (*TLSKey, error) {
 		CertBytes: certBytes,
 		KeyParams: &certutil.ClusterKeyParams{
 			Type: certutil.PrivateKeyTypeP521,
-			X:    key.PublicKey.X,
-			Y:    key.PublicKey.Y,
+			X:    key.X,
+			Y:    key.Y,
 			D:    key.D,
 		},
 		CreatedTime: time.Now(),

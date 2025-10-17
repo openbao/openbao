@@ -815,7 +815,7 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			config, err, caPEM := getCertificate(test.nameInCertificate)
+			config, caPEM, err := getCertificate(test.nameInCertificate)
 			require.NoError(t, err)
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				io.WriteString(w, "Hello")
@@ -835,7 +835,7 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 
 			rootCAString := ""
 			if test.addRootCA {
-				rootCAString = string(caPEM.Bytes())
+				rootCAString = caPEM.String()
 			}
 
 			caCtx, err := b.createCAContext(ctx, rootCAString, test.allowedServerNames)
@@ -859,7 +859,7 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 	}
 }
 
-func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPEM *bytes.Buffer) {
+func getCertificate(hostname string) (serverTLSConf *tls.Config, caPEM *bytes.Buffer, err error) {
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
 		Subject: pkix.Name{

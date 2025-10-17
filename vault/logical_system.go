@@ -2706,33 +2706,37 @@ func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.Oper
 			return nil, nil
 		}
 
+		respData := readPolicyResponse(policy)
+
 		// If the request is from sys/policy/ we handle backwards compatibility
-		var respDataPolicyName string
 		if policyType == PolicyTypeACL && strings.HasPrefix(req.Path, "policy") {
-			respDataPolicyName = "rules"
-		} else {
-			respDataPolicyName = "policy"
+			respData["rules"] = respData["policy"]
+			delete(respData, "policy")
 		}
 
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"name":             policy.Name,
-				"version":          policy.DataVersion,
-				"cas_required":     policy.CASRequired,
-				respDataPolicyName: policy.Raw,
-			},
-		}
-
-		if !policy.Expiration.IsZero() {
-			resp.Data["expiration"] = policy.Expiration
-		}
-
-		if !policy.Modified.IsZero() {
-			resp.Data["modified"] = policy.Modified
-		}
-
-		return resp, nil
+		return &logical.Response{
+			Data: respData,
+		}, nil
 	}
+}
+
+func readPolicyResponse(policy *Policy) map[string]interface{} {
+	data := map[string]interface{}{
+		"name":         policy.Name,
+		"version":      policy.DataVersion,
+		"cas_required": policy.CASRequired,
+		"policy":       policy.Raw,
+	}
+
+	if !policy.Expiration.IsZero() {
+		data["expiration"] = policy.Expiration
+	}
+
+	if !policy.Modified.IsZero() {
+		data["modified"] = policy.Modified
+	}
+
+	return data
 }
 
 // handlePoliciesSet handles the "/sys/policy/<name>" and "/sys/policies/<type>/<name>" endpoints to set a policy
@@ -3040,8 +3044,13 @@ func (*SystemBackend) handlePoliciesPasswordGenerate(ctx context.Context, req *l
 // handlePoliciesDetailedAclList handles the listing of ACL policies with detailed information
 func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		prefix := ""
+		if _, present := data.Schema["name"]; present {
+			prefix = data.Get("name").(string)
+		}
+
 		// Get policies list
-		policies, err := b.Core.policyStore.ListPolicies(ctx, PolicyTypeACL, true)
+		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, PolicyTypeACL, prefix, true)
 		if err != nil {
 			return nil, err
 		}
@@ -3066,10 +3075,7 @@ func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc 
 				continue
 			}
 
-			policyInfos[policyName] = map[string]interface{}{
-				"name":   policy.Name,
-				"policy": policy.Raw,
-			}
+			policyInfos[policyName] = readPolicyResponse(policy)
 		}
 
 		return logical.ListResponseWithInfo(policies, policyInfos), nil

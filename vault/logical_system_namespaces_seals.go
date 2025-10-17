@@ -275,8 +275,7 @@ func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
 			return nil, errors.New("name must not contain /")
 		}
 
-		err := b.Core.namespaceStore.SealNamespace(ctx, name)
-		if err != nil {
+		if err := b.Core.namespaceStore.SealNamespace(ctx, name); err != nil {
 			return handleError(err)
 		}
 

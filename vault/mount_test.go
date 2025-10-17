@@ -1267,9 +1267,9 @@ func TestCore_MountEntryView(t *testing.T) {
 	testNamespace1 := &namespace.Namespace{Path: "ns1/"}
 	testNamespace2 := &namespace.Namespace{Path: "ns1/ns2/"}
 
-	err := s.SetNamespace(ctx, testNamespace1)
+	_, err := s.SetNamespace(ctx, testNamespace1, nil)
 	require.NoError(t, err)
-	err = s.SetNamespace(ctx, testNamespace2)
+	_, err = s.SetNamespace(ctx, testNamespace2, nil)
 	require.NoError(t, err)
 
 	tests := []struct {

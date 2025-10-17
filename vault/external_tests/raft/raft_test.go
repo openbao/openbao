@@ -655,9 +655,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 
 				testhelpers.EnsureStableActiveNode(t, cluster)
 				testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
-			}
 
-			if tCaseLocal.Rotate {
 				// Restore snapshot, should fail.
 				req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot")
 				req.Body = bytes.NewBuffer(snap)

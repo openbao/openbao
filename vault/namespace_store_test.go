@@ -31,7 +31,7 @@ func TestNamespaceStore(t *testing.T) {
 		Path: "ns1",
 	}
 
-	err = s.SetNamespace(ctx, item)
+	_, err = s.SetNamespace(ctx, item, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, item.UUID)
 	require.NotEmpty(t, item.ID)
@@ -139,7 +139,7 @@ func TestNamespaceStore(t *testing.T) {
 		Path: "ns1/",
 	}
 
-	err = s.SetNamespace(ctx, item)
+	_, err = s.SetNamespace(ctx, item, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, item.UUID)
 	require.NotEqual(t, item.UUID, itemUUID)
@@ -159,7 +159,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 
 	// create namespace
 	testNamespace := &namespace.Namespace{Path: "test"}
-	err := s.SetNamespace(ctx, testNamespace)
+	_, err := s.SetNamespace(ctx, testNamespace, nil)
 	require.NoError(t, err)
 
 	// delete namespace
@@ -199,11 +199,11 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	// try to delete namespace with child namespaces
 	parentNamespace := &namespace.Namespace{Path: "parent/"}
 	childNamespace := &namespace.Namespace{Path: "parent/child/"}
-	err = s.SetNamespace(ctx, parentNamespace)
+	_, err = s.SetNamespace(ctx, parentNamespace, nil)
 	require.NoError(t, err)
 
 	parentCtx := namespace.ContextWithNamespace(ctx, parentNamespace)
-	err = s.SetNamespace(ctx, childNamespace)
+	_, err = s.SetNamespace(ctx, childNamespace, nil)
 	require.NoError(t, err)
 
 	// failed to delete as it contains a child namespace
@@ -239,12 +239,12 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 	ctx := namespace.RootContext(context.Background())
 
 	testNamespace := &namespace.Namespace{Path: "test"}
-	err := s.SetNamespace(ctx, testNamespace)
+	_, err := s.SetNamespace(ctx, testNamespace, nil)
 	require.NoError(t, err)
-	testNamespaceCtx := namespace.ContextWithNamespace(ctx, testNamespace)
 
 	childNamespace := &namespace.Namespace{Path: "test/child"}
-	err = s.SetNamespace(testNamespaceCtx, childNamespace)
+	testNamespaceCtx := namespace.ContextWithNamespace(ctx, testNamespace)
+	_, err = s.SetNamespace(testNamespaceCtx, childNamespace, nil)
 	require.NoError(t, err)
 
 	// nonexistent path will return err and empty unlock key
@@ -331,16 +331,16 @@ func TestNamespaceStore_UnlockNamespace(t *testing.T) {
 	ctx := namespace.RootContext(context.Background())
 
 	testNamespace := &namespace.Namespace{Path: "test"}
-	err := s.SetNamespace(ctx, testNamespace)
+	_, err := s.SetNamespace(ctx, testNamespace, nil)
 	require.NoError(t, err)
 	testNamespaceCtx := namespace.ContextWithNamespace(ctx, testNamespace)
 
 	childNamespace := &namespace.Namespace{Path: "test/child"}
-	err = s.SetNamespace(testNamespaceCtx, childNamespace)
+	_, err = s.SetNamespace(testNamespaceCtx, childNamespace, nil)
 	require.NoError(t, err)
 
 	anotherNamespace := &namespace.Namespace{Path: "another"}
-	err = s.SetNamespace(ctx, anotherNamespace)
+	_, err = s.SetNamespace(ctx, anotherNamespace, nil)
 	require.NoError(t, err)
 
 	// lock namespace
@@ -429,7 +429,7 @@ func TestNamespaceHierarchy(t *testing.T) {
 	}
 
 	for idx, ns := range namespaces {
-		err := s.SetNamespace(ns.Context, ns.Namespace)
+		_, err := s.SetNamespace(ns.Context, ns.Namespace, nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, ns.Namespace.UUID)
 		require.NotEmpty(t, ns.Namespace.ID)
@@ -590,7 +590,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 		item := &namespace.Namespace{
 			Path: parent.Path + "ns" + strconv.Itoa(i) + "/",
 		}
-		err := s.SetNamespace(ctx, item)
+		_, err := s.SetNamespace(ctx, item, nil)
 		require.NoError(b, err)
 	}
 
@@ -667,7 +667,7 @@ func BenchmarkClearNamespaceResources(b *testing.B) {
 		item := &namespace.Namespace{
 			Path: "ns" + strconv.Itoa(i) + "/",
 		}
-		err := s.SetNamespace(ctx, item)
+		_, err := s.SetNamespace(ctx, item, nil)
 		require.NoError(b, err)
 	}
 
@@ -690,7 +690,7 @@ func BenchmarkNamespace_Set(b *testing.B) {
 		var i int
 		for b.Loop() {
 			item.Path = "ns" + strconv.Itoa(i)
-			s.SetNamespace(ctx, item)
+			_, _ = s.SetNamespace(ctx, item, nil)
 			i += 1
 		}
 	})
@@ -720,15 +720,18 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 	rootCtx := namespace.RootContext(nil)
 
 	// Set child into root
-	require.NoError(t, nsStore.SetNamespace(rootCtx, ns1Entry))
+	_, err := nsStore.SetNamespace(rootCtx, ns1Entry, nil)
+	require.NoError(t, err)
 
 	// Set child into ns1
 	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1Entry)
-	require.NoError(t, nsStore.SetNamespace(ns1Ctx, ns2Entry))
+	_, err = nsStore.SetNamespace(ns1Ctx, ns2Entry, nil)
+	require.NoError(t, err)
 
 	// Set child into ns1/ns2
 	ns2Ctx := namespace.ContextWithNamespace(ns1Ctx, ns2Entry)
-	require.NoError(t, nsStore.SetNamespace(ns2Ctx, ns3Entry))
+	_, err = nsStore.SetNamespace(ns2Ctx, ns3Entry, nil)
+	require.NoError(t, err)
 
 	// Define test cases
 	testCases := []struct {

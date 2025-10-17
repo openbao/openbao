@@ -1222,7 +1222,8 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 	t.Run("namespace_hierarchy_isolation", func(t *testing.T) {
 		// Create a child namespace under ns1
 		childNs := &namespace.Namespace{ID: "childns", Path: "testns1/childns/"}
-		require.NoError(t, c.namespaceStore.SetNamespace(rootCtx, childNs))
+		_, err := c.namespaceStore.SetNamespace(rootCtx, childNs, nil)
+		require.NoError(t, err)
 
 		childCtx := namespace.ContextWithNamespace(context.Background(), childNs)
 
@@ -1573,8 +1574,10 @@ func setupNamespaces(t *testing.T, c *Core, ctx context.Context) (*namespace.Nam
 	ns1 := &namespace.Namespace{ID: "testns1", Path: "testns1/"}
 	ns2 := &namespace.Namespace{ID: "testns2", Path: "testns2/"}
 
-	require.NoError(t, c.namespaceStore.SetNamespace(ctx, ns1))
-	require.NoError(t, c.namespaceStore.SetNamespace(ctx, ns2))
+	_, err := c.namespaceStore.SetNamespace(ctx, ns1, nil)
+	require.NoError(t, err)
+	_, err = c.namespaceStore.SetNamespace(ctx, ns2, nil)
+	require.NoError(t, err)
 
 	return ns1, ns2
 }

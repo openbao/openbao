@@ -204,6 +204,8 @@ func handler(props *vault.HandlerProperties) http.Handler {
 
 		mux.Handle("/v1/sys/storage/raft/bootstrap", handleSysRaftBootstrap(core))
 		mux.Handle("/v1/sys/storage/raft/join", handleSysRaftJoin(core))
+		mux.Handle("/v1/sys/storage/raft/promote", handleLogicalNoForward(core))
+		mux.Handle("/v1/sys/storage/raft/demote", handleLogicalNoForward(core))
 		mux.Handle("/v1/sys/internal/ui/feature-flags", handleSysInternalFeatureFlags(core))
 
 		for _, path := range injectDataIntoTopRoutes {

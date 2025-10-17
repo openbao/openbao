@@ -47,18 +47,17 @@ func (fw *testingFormatWriter) Salt(ctx context.Context) (*salt.Salt, error) {
 // so that we can use assert.Equal to compare the expected and output values.
 func (fw *testingFormatWriter) hashExpectedValueForComparison(input map[string]interface{}) map[string]interface{} {
 	// Copy input before modifying, since we may re-use the same data in another test
-	copied, err := getUnmarshaledCopy(input)
+	copiedAsMap, err := getUnmarshaledCopy(input)
 	if err != nil {
 		panic(err)
 	}
-	copiedAsMap := copied.(map[string]interface{})
 
 	salter, err := fw.Salt(context.Background())
 	if err != nil {
 		panic(err)
 	}
 
-	err = hashMap(salter.GetIdentifiedHMAC, input, copiedAsMap, nil, false)
+	err = hashMap(salter.GetIdentifiedHMAC, copiedAsMap, nil, false)
 	if err != nil {
 		panic(err)
 	}

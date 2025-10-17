@@ -354,6 +354,30 @@ func TestHashResponse(t *testing.T) {
 			[]string{"baz"},
 			true,
 		},
+		{
+			&logical.Response{
+				Data: map[string]interface{}{
+					"key_info": map[string]interface{}{
+						"b71e74f2-4aec-8588-5e8e-f1f698875396": map[string]interface{}{
+							"name":                "test",
+							"num_member_entities": 0,
+							"num_parent_groups":   0,
+						},
+					},
+					"keys": "b71e74f2-4aec-8588-5e8e-f1f698875396",
+				},
+				WrapInfo: &wrapping.ResponseWrapInfo{
+					TTL:             60,
+					Token:           "bar",
+					Accessor:        "flimflam",
+					CreationTime:    now,
+					WrappedAccessor: "bar",
+				},
+			},
+			&logical.Response{},
+			[]string{},
+			true,
+		},
 	}
 
 	inmemStorage := &logical.InmemStorage{}
@@ -407,15 +431,15 @@ func TestHashWalker(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		copy, _ := getUnmarshaledCopy(tc.Input)
-		err := HashStructure(tc.Input, copy, func(string) string {
+		data, _ := getUnmarshaledCopy(tc.Input)
+		err := HashStructure(data, func(string) string {
 			return replaceText
 		}, nil, false)
 		if err != nil {
 			t.Fatalf("err: %s\n\n%#v", err, tc.Input)
 		}
-		if !reflect.DeepEqual(copy, tc.Output) {
-			t.Fatalf("bad:\n\n%#v\n\n%#v", copy, tc.Output)
+		if !reflect.DeepEqual(data, tc.Output) {
+			t.Fatalf("bad:\n\n%#v\n\n%#v", data, tc.Output)
 		}
 	}
 }
@@ -449,15 +473,15 @@ func TestHashWalker_TimeStructs(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		copy, _ := getUnmarshaledCopy(tc.Input)
-		err := HashStructure(tc.Input, copy, func(s string) string {
+		data, _ := getUnmarshaledCopy(tc.Input)
+		err := HashStructure(data, func(s string) string {
 			return s + replaceText
 		}, nil, false)
 		if err != nil {
 			t.Fatalf("err: %v\n\n%#v", err, tc.Input)
 		}
-		if !reflect.DeepEqual(copy, tc.Output) {
-			t.Fatalf("bad:\n\n%#v\n\n%#v", copy, tc.Output)
+		if !reflect.DeepEqual(data, tc.Output) {
+			t.Fatalf("bad:\n\n%#v\n\n%#v", data, tc.Output)
 		}
 	}
 }

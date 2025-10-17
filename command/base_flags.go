@@ -925,7 +925,7 @@ func parseTimeAlternatives(input string, allowedFormats TimeFormat) (time.Time, 
 		}
 	}
 
-	return time.Time{}, errors.New("Could not parse as absolute time.")
+	return time.Time{}, errors.New("Could not parse as absolute time.") //nolint:staticcheck // user-facing error
 }
 
 func (f *FlagSet) TimeVar(i *TimeVar) {

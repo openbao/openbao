@@ -1379,7 +1379,7 @@ START:
 	}
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
-			err = fmt.Errorf("%w\n\n"+TLSErrorString, err)
+			err = fmt.Errorf("%w\n\n"+TLSErrorString, err) //nolint:staticcheck // user-facing error
 		}
 		return result, err
 	}
@@ -1508,7 +1508,7 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
-			err = fmt.Errorf("%w\n\n"+TLSErrorString, err)
+			err = fmt.Errorf("%w\n\n"+TLSErrorString, err) //nolint:staticcheck // user-facing error
 		}
 		return result, err
 	}

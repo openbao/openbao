@@ -317,6 +317,7 @@ func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string,
 	}
 
 	db := new()
+
 	_, err := db.Initialize(context.Background(), initReq)
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %s", err)
@@ -333,13 +334,19 @@ func testValkeyDBCreateUser_WithCreationStatements(t *testing.T, address string,
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{"+@read"},
+			Commands: []string{"+@read", "~*"},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),
 	}
 
 	userResp, err := db.NewUser(context.Background(), createReq)
+
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Fatalf("failed to close DB connection during cleanup: %v", err)
+		}
+	}()
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

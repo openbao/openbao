@@ -22,11 +22,7 @@ func (b *SystemBackend) namespaceGenerateRootPaths() []*framework.Path {
 		{
 			Pattern: "namespaces/(?P<name>.+)/generate-root/attempt",
 			Fields: map[string]*framework.FieldSchema{
-				"name": {
-					Type:        framework.TypeString,
-					Required:    true,
-					Description: "Name of the namespace.",
-				},
+				"name": namespaceNameSchema,
 				"otp": {
 					Type:        framework.TypeString,
 					Required:    false,
@@ -56,11 +52,7 @@ func (b *SystemBackend) namespaceGenerateRootPaths() []*framework.Path {
 		{
 			Pattern: "namespaces/(?P<name>.+)/generate-root/update",
 			Fields: map[string]*framework.FieldSchema{
-				"name": {
-					Type:        framework.TypeString,
-					Required:    true,
-					Description: "Name of the namespace.",
-				},
+				"name": namespaceNameSchema,
 				"key": {
 					Type:        framework.TypeString,
 					Required:    true,
@@ -165,7 +157,10 @@ func (b *SystemBackend) namespaceGenerateRootStatus(ctx context.Context, ns *nam
 	}
 
 	generationConfig, err := b.Core.GenerateRootConfiguration(ns)
-	if err != nil {
+	switch {
+	// we return the progress as 0 in this case, root generation has not started
+	case errors.Is(err, ErrNoRootGeneration):
+	case err != nil:
 		return handleError(err)
 	}
 

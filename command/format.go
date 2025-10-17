@@ -281,13 +281,13 @@ func (t TableFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) 
 	case map[string]interface{}:
 		return t.OutputMap(ui, data)
 	case SealStatusOutput:
-		return t.OutputSealStatusStruct(ui, nil, data)
+		return t.OutputSealStatusStruct(ui, data)
 	default:
 		return errors.New("cannot use the table formatter for this type")
 	}
 }
 
-func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, secret *api.Secret, data interface{}) error {
+func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, data interface{}) error {
 	var status SealStatusOutput = data.(SealStatusOutput)
 	var sealPrefix string
 
@@ -314,17 +314,29 @@ func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, secret *api.Secret, da
 		out = append(out, fmt.Sprintf("Seal Migration in Progress | %t", status.Migration))
 	}
 
-	out = append(out, fmt.Sprintf("Version | %s", status.Version))
-	out = append(out, fmt.Sprintf("Build Date | %s", status.BuildDate))
-	out = append(out, fmt.Sprintf("Storage Type | %s", status.StorageType))
+	if status.Version != "" {
+		out = append(out, fmt.Sprintf("Version | %s", status.Version))
+	}
+
+	if status.BuildDate != "" {
+		out = append(out, fmt.Sprintf("Build Date | %s", status.BuildDate))
+	}
+
+	if status.StorageType != "" {
+		out = append(out, fmt.Sprintf("Storage Type | %s", status.StorageType))
+	}
 
 	if status.ClusterName != "" && status.ClusterID != "" {
 		out = append(out, fmt.Sprintf("Cluster Name | %s", status.ClusterName))
 		out = append(out, fmt.Sprintf("Cluster ID | %s", status.ClusterID))
 	}
 
-	// Output if HA is enabled
-	out = append(out, fmt.Sprintf("HA Enabled | %t", status.HAEnabled))
+	// let's assume that if version is present, that means we print out the core seal status
+	// otherwise its a namespace seal status, so we don't care about 'HA Enabled' property
+	if status.Version != "" {
+		// Output if HA is enabled
+		out = append(out, fmt.Sprintf("HA Enabled | %t", status.HAEnabled))
+	}
 
 	if status.HAEnabled {
 		if !status.Sealed {
@@ -671,7 +683,7 @@ type SealStatusOutput struct {
 	api.SealStatusResponse
 	HAEnabled                bool      `json:"ha_enabled"`
 	IsSelf                   bool      `json:"is_self,omitempty"`
-	ActiveTime               time.Time `json:"active_time,omitempty"`
+	ActiveTime               time.Time `json:"active_time,omitzero"`
 	LeaderAddress            string    `json:"leader_address,omitempty"`
 	LeaderClusterAddress     string    `json:"leader_cluster_address,omitempty"`
 	PerfStandby              bool      `json:"performance_standby,omitempty"`

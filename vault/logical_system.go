@@ -864,18 +864,16 @@ func (b *SystemBackend) handleGenerateRootDecodeTokenUpdate(ctx context.Context,
 	encodedToken := data.Get("encoded_token").(string)
 	otp := data.Get("otp").(string)
 
-	token, err := roottoken.DecodeToken(encodedToken, otp, len(otp))
-	if err != nil {
-		return nil, err
+	if encodedToken == "" || otp == "" {
+		return handleError(errors.New("provided encodedToken or otp is empty"))
 	}
 
-	// Generate the response
-	resp := &logical.Response{
-		Data: map[string]interface{}{
-			"token": token,
-		},
+	token, err := roottoken.DecodeToken(encodedToken, otp, len(otp))
+	if err != nil {
+		return handleError(err)
 	}
-	return resp, nil
+
+	return &logical.Response{Data: map[string]interface{}{"token": token}}, nil
 }
 
 func (b *SystemBackend) mountInfo(ctx context.Context, entry *MountEntry) map[string]interface{} {
@@ -4495,14 +4493,10 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 	return resp, nil
 }
 
-type SealStatusResponse struct {
-	Type             string   `json:"type"`
-	Initialized      bool     `json:"initialized"`
-	Sealed           bool     `json:"sealed"`
-	T                int      `json:"t"`
-	N                int      `json:"n"`
-	Progress         int      `json:"progress"`
-	Nonce            string   `json:"nonce"`
+// CoreSealStatusResponse encapsulates both SealStatusResponse of a Seal
+// and Server/Cluster information
+type CoreSealStatusResponse struct {
+	*SealStatusResponse
 	Version          string   `json:"version"`
 	BuildDate        string   `json:"build_date"`
 	Migration        bool     `json:"migration"`
@@ -4514,7 +4508,18 @@ type SealStatusResponse struct {
 	Warnings         []string `json:"warnings,omitempty"`
 }
 
-func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResponse, error) {
+// SealStatusResponse is a struct encapsulating any possible seal information.
+type SealStatusResponse struct {
+	Type        string `json:"type"`
+	Initialized bool   `json:"initialized"`
+	Sealed      bool   `json:"sealed"`
+	T           int    `json:"t"`
+	N           int    `json:"n"`
+	Progress    int    `json:"progress"`
+	Nonce       string `json:"nonce"`
+}
+
+func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusResponse, error) {
 	sealed := core.Sealed()
 
 	initialized, err := core.Initialized(ctx)
@@ -4535,18 +4540,18 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 	}
 
 	if sealConfig == nil {
-		s := &SealStatusResponse{
-			Type:             core.SealAccess().WrapperType().String(),
-			Initialized:      initialized,
-			Sealed:           true,
+		return &CoreSealStatusResponse{
+			SealStatusResponse: &SealStatusResponse{
+				Type:        core.SealAccess().WrapperType().String(),
+				Initialized: initialized,
+				Sealed:      true,
+			},
 			RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
 			RecoverySealType: recoveryType,
 			StorageType:      core.StorageType(),
 			Version:          version.GetVersion().VersionNumber(),
 			BuildDate:        version.BuildDate,
-		}
-
-		return s, nil
+		}, nil
 	}
 
 	// Fetch the local cluster name and identifier
@@ -4565,14 +4570,16 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 
 	progress, nonce := core.SecretProgress(lock)
 
-	s := &SealStatusResponse{
-		Type:             core.SealAccess().WrapperType().String(),
-		Initialized:      initialized,
-		Sealed:           sealed,
-		T:                sealConfig.SecretThreshold,
-		N:                sealConfig.SecretShares,
-		Progress:         progress,
-		Nonce:            nonce,
+	return &CoreSealStatusResponse{
+		SealStatusResponse: &SealStatusResponse{
+			Type:        core.SealAccess().WrapperType().String(),
+			Initialized: initialized,
+			Sealed:      sealed,
+			T:           sealConfig.SecretThreshold,
+			N:           sealConfig.SecretShares,
+			Progress:    progress,
+			Nonce:       nonce,
+		},
 		Version:          version.GetVersion().VersionNumber(),
 		BuildDate:        version.BuildDate,
 		Migration:        core.IsInSealMigrationMode(lock) && !core.IsSealMigrated(lock),
@@ -4581,9 +4588,7 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 		RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
 		RecoverySealType: recoveryType,
 		StorageType:      core.StorageType(),
-	}
-
-	return s, nil
+	}, nil
 }
 
 type LeaderResponse struct {

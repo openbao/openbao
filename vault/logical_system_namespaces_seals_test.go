@@ -67,11 +67,11 @@ func TestNamespaceBackend_SealStatus(t *testing.T) {
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/bar/seal-status")
 		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Equal(t, "shamir", res.Data["seal_status"].(*SealStatusResponse).Type)
-		require.Equal(t, false, res.Data["seal_status"].(*SealStatusResponse).Sealed)
-		require.Equal(t, 3, res.Data["seal_status"].(*SealStatusResponse).T)
-		require.Equal(t, 3, res.Data["seal_status"].(*SealStatusResponse).N)
-		require.Equal(t, 0, res.Data["seal_status"].(*SealStatusResponse).Progress)
+		require.Equal(t, "shamir", res.Data["type"])
+		require.Equal(t, false, res.Data["sealed"])
+		require.Equal(t, 3, res.Data["t"])
+		require.Equal(t, 3, res.Data["n"])
+		require.Equal(t, 0, res.Data["progress"])
 	})
 }
 
@@ -125,16 +125,16 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		req.Data["key"] = keyshares[0]
 		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Equal(t, 1, res.Data["seal_status"].(*SealStatusResponse).Progress)
-		require.Equal(t, true, res.Data["seal_status"].(*SealStatusResponse).Sealed)
+		require.Equal(t, 1, res.Data["progress"])
+		require.Equal(t, true, res.Data["sealed"])
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/baz/unseal")
 		req.Data["key"] = keyshares[1]
 		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 		// progress reset
-		require.Equal(t, 0, res.Data["seal_status"].(*SealStatusResponse).Progress)
-		require.Equal(t, false, res.Data["seal_status"].(*SealStatusResponse).Sealed)
+		require.Equal(t, 0, res.Data["progress"])
+		require.Equal(t, false, res.Data["sealed"])
 
 		// call succeeds
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/child")
@@ -193,15 +193,15 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		req.Data["key"] = base64.RawStdEncoding.EncodeToString(keyshares["foobar/"][0])
 		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Equal(t, 1, res.Data["seal_status"].(*SealStatusResponse).Progress)
-		require.Equal(t, true, res.Data["seal_status"].(*SealStatusResponse).Sealed)
+		require.Equal(t, 1, res.Data["progress"])
+		require.Equal(t, true, res.Data["sealed"])
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/foobar/unseal")
 		req.Data["key"] = base64.RawStdEncoding.EncodeToString(keyshares["foobar/"][1])
 		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Equal(t, 2, res.Data["seal_status"].(*SealStatusResponse).Progress)
-		require.Equal(t, true, res.Data["seal_status"].(*SealStatusResponse).Sealed)
+		require.Equal(t, 2, res.Data["progress"])
+		require.Equal(t, true, res.Data["sealed"])
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/foobar/unseal")
 		req.Data["key"] = base64.RawStdEncoding.EncodeToString(keyshares["foobar/"][2])
@@ -209,8 +209,8 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		require.NoError(t, err)
 
 		// progress reset
-		require.Equal(t, 0, res.Data["seal_status"].(*SealStatusResponse).Progress)
-		require.Equal(t, false, res.Data["seal_status"].(*SealStatusResponse).Sealed)
+		require.Equal(t, 0, res.Data["progress"])
+		require.Equal(t, false, res.Data["sealed"])
 
 		// mount should appear
 		req = logical.TestRequest(t, logical.ReadOperation, "mounts")

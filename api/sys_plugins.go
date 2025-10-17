@@ -345,28 +345,29 @@ func (c *Sys) ReloadPluginStatusWithContext(ctx context.Context, reloadStatusInp
 	if err != nil {
 		return nil, err
 	}
-	if resp != nil {
-		defer resp.Body.Close() //nolint:errcheck
-		secret, parseErr := ParseSecret(resp.Body)
-		if parseErr != nil {
-			return nil, err
-		}
-
-		var r ReloadStatusResponse
-		d, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-			DecodeHook: mapstructure.StringToTimeHookFunc(time.RFC3339),
-			Result:     &r,
-		})
-		if err != nil {
-			return nil, err
-		}
-		err = d.Decode(secret.Data)
-		if err != nil {
-			return nil, err
-		}
-		return &r, nil
+	if resp == nil {
+		return nil, nil
 	}
-	return nil, nil
+
+	defer resp.Body.Close() //nolint:errcheck
+	secret, parseErr := ParseSecret(resp.Body)
+	if parseErr != nil {
+		return nil, err
+	}
+
+	var r ReloadStatusResponse
+	d, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		DecodeHook: mapstructure.StringToTimeHookFunc(time.RFC3339),
+		Result:     &r,
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = d.Decode(secret.Data)
+	if err != nil {
+		return nil, err
+	}
+	return &r, nil
 }
 
 // catalogPathByType is a helper to construct the proper API path by plugin type

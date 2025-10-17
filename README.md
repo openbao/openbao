@@ -12,12 +12,16 @@
 - [Website](https://www.openbao.org)
 - [Mailing List](https://lists.openssf.org/g/openbao)
 - [GitHub Discussions](https://github.com/openbao/openbao/discussions)
-- [Chat Server](https://chat.lfx.linuxfoundation.org/)
-  - `#openbao-announcements` ([matrix client](https://matrix.to/#/#openbao-announcements:chat.lfx.linuxfoundation.org), [home server](https://chat.lfx.linuxfoundation.org/#/room/#openbao-announcements:chat.lfx.linuxfoundation.org))
-  - `#openbao-development` ([matrix client](https://matrix.to/#/#openbao-development:chat.lfx.linuxfoundation.org), [home server](https://chat.lfx.linuxfoundation.org/#/room/#openbao-development:chat.lfx.linuxfoundation.org))
-  - `#openbao-general` ([matrix client](https://matrix.to/#/#openbao-general:chat.lfx.linuxfoundation.org), [home server](https://chat.lfx.linuxfoundation.org/#/room/#openbao-general:chat.lfx.linuxfoundation.org))
-  - `#openbao-questions` ([matrix client](https://matrix.to/#/#openbao-questions:chat.lfx.linuxfoundation.org), [home server](https://chat.lfx.linuxfoundation.org/#/room/#openbao-questions:chat.lfx.linuxfoundation.org))
-  - `#openbao-random` ([matrix client](https://matrix.to/#/#openbao-random:chat.lfx.linuxfoundation.org), [home server](https://chat.lfx.linuxfoundation.org/#/room/#openbao-random:chat.lfx.linuxfoundation.org))
+- [Chat Server](https://linuxfoundation.zulipchat.com/)
+  - [`#openssf-openbao-discussion`](https://linuxfoundation.zulipchat.com/#narrow/channel/529890-openssf-openbao-discussion)
+  - [`#openssf-openbao-support`](https://linuxfoundation.zulipchat.com/#narrow/channel/530381-openssf-openbao-support)
+  - [`#openssf-openbao-tsc`](https://linuxfoundation.zulipchat.com/#narrow/channel/530382-openssf-openbao-tsc)
+  - Working Groups:
+    - [`#openssf-openbao-wg-namespaces`](https://linuxfoundation.zulipchat.com/#narrow/channel/532995-openssf-openbao-wg-namespaces)
+    - [`#openssf-openbao-wg-pkcs11`](https://linuxfoundation.zulipchat.com/#narrow/channel/532994-openssf-openbao-wg-pkcs11)
+    - [`#openssf-openbao-wg-scalability`](https://linuxfoundation.zulipchat.com/#narrow/channel/532998-openssf-openbao-wg-scalability)
+    - [`#openssf-openbao-wg-supply`](https://linuxfoundation.zulipchat.com/#narrow/channel/532999-openssf-openbao-wg-supply)
+    - [`#openssf-openbao-wg-ui`](https://linuxfoundation.zulipchat.com/#narrow/channel/532997-openssf-openbao-wg-ui)
 
 <p align="center">
   <img width="300" alt="OpenBao Mascot" src="https://raw.githubusercontent.com/openbao/artwork/main/color/openbao-color.svg">

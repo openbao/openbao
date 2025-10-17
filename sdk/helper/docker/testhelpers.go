@@ -580,12 +580,12 @@ func RunCmdWithOutput(api *client.Client, ctx context.Context, c string, cmd []s
 
 	ret, err := api.ContainerExecCreate(ctx, c, runCfg)
 	if err != nil {
-		return nil, nil, -1, fmt.Errorf("error creating execution environment: %v\ncfg: %v\n", err, runCfg)
+		return nil, nil, -1, fmt.Errorf("error creating execution environment: %v\ncfg: %v", err, runCfg)
 	}
 
 	resp, err := api.ContainerExecAttach(ctx, ret.ID, container.ExecStartOptions{})
 	if err != nil {
-		return nil, nil, -1, fmt.Errorf("error attaching to command execution: %v\ncfg: %v\nret: %v\n", err, runCfg, ret)
+		return nil, nil, -1, fmt.Errorf("error attaching to command execution: %v\ncfg: %v\nret: %v", err, runCfg, ret)
 	}
 	defer resp.Close()
 
@@ -626,12 +626,12 @@ func RunCmdInBackground(api *client.Client, ctx context.Context, c string, cmd [
 
 	ret, err := api.ContainerExecCreate(ctx, c, runCfg)
 	if err != nil {
-		return "", fmt.Errorf("error creating execution environment: %w\ncfg: %v\n", err, runCfg)
+		return "", fmt.Errorf("error creating execution environment: %w\ncfg: %v", err, runCfg)
 	}
 
 	err = api.ContainerExecStart(ctx, ret.ID, container.ExecStartOptions{})
 	if err != nil {
-		return "", fmt.Errorf("error starting command execution: %w\ncfg: %v\nret: %v\n", err, runCfg, ret)
+		return "", fmt.Errorf("error starting command execution: %w\ncfg: %v\nret: %v", err, runCfg, ret)
 	}
 
 	return ret.ID, nil

@@ -77,6 +77,7 @@ func kvPreflightVersionRequest(client *api.Client, path string) (string, int, er
 			if (currentOutputCurlString || currentOutputPolicy) && resp.StatusCode == 403 {
 				// we provide a more helpful error for the user,
 				// who may not understand why the flag isn't working.
+				//nolint:staticcheck // user-facing error
 				err = fmt.Errorf(
 					`This output flag requires the success of a preflight request 
 to determine the version of a KV secrets engine. Please 

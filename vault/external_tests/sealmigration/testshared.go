@@ -470,7 +470,7 @@ func attemptUnsealMigrate(client *api.Client, keys [][]byte, transitServerAvaila
 			} else {
 				// The transit server is stopped.
 				if err == nil {
-					return errors.New("expected error due to transit server being stopped.")
+					return errors.New("expected error due to transit server being stopped")
 				}
 			}
 			break

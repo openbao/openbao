@@ -134,7 +134,7 @@ type RawFormatter struct{}
 func (r RawFormatter) Format(data interface{}) ([]byte, error) {
 	byte_data, ok := data.([]byte)
 	if !ok {
-		return nil, errors.New("This command does not support the -format=raw option; only `vault read` does.")
+		return nil, errors.New("This command does not support the -format=raw option; only `vault read` does.") //nolint:staticcheck // user-facing error
 	}
 
 	return byte_data, nil

@@ -419,17 +419,17 @@ func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) str
 	// locked as we're trying to mount required mounts for a new namespace.
 	var existing string
 	fn := func(existingPath string, v interface{}) bool {
-		if !strings.HasSuffix(existingPath, "sys/") {
+		nsPath, ok := strings.CutSuffix(existingPath, "sys/")
+		if !ok {
 			return false
 		}
 
 		// Ignore the current namespace's own sys mount; we only want to
 		// detect conflicts with child namespace prefixes.
-		if existingPath == ns.Path+"sys/" {
+		if nsPath == ns.Path {
 			return false
 		}
 
-		nsPath := strings.TrimSuffix(existingPath, "sys/")
 		if strings.HasPrefix(path, nsPath) {
 			existing = nsPath
 			return true

@@ -1268,9 +1268,9 @@ func TestCore_MountEntryView(t *testing.T) {
 	testNamespace1 := &namespace.Namespace{Path: "ns1/"}
 	testNamespace2 := &namespace.Namespace{Path: "ns1/ns2/"}
 
-	err := s.SetNamespace(ctx, testNamespace1)
+	_, err := s.SetNamespace(ctx, testNamespace1, nil)
 	require.NoError(t, err)
-	err = s.SetNamespace(ctx, testNamespace2)
+	_, err = s.SetNamespace(ctx, testNamespace2, nil)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -1499,7 +1499,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, new)
 	require.NotNil(t, nsBar)
-	err = c.namespaceStore.initializeNamespace(namespace.RootContext(nil), nsBar)
+	err = c.namespaceStore.initializeNamespace(namespace.RootContext(nil), c.namespaceStore.storage, nsBar)
 	require.NoError(t, err)
 
 	barCtx := namespace.ContextWithNamespace(context.Background(), nsBar)

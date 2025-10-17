@@ -338,7 +338,7 @@ func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.
 		parent, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
 		require.NoError(t, err)
 		parentCtx := namespace.ContextWithNamespace(ctx, parent)
-		err = core.namespaceStore.SetNamespace(parentCtx, ns)
+		_, err = core.namespaceStore.SetNamespace(parentCtx, ns, nil)
 		require.NoError(t, err)
 	}
 }
@@ -359,7 +359,7 @@ func TestCoreCreateSealedNamespaces(t testing.T, core *Core, namespaces ...*name
 		parent, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
 		require.NoError(t, err)
 
-		nsSealKeyShares, err := core.namespaceStore.SetNamespaceSealed(namespace.ContextWithNamespace(ctx, parent), ns, sealConfig)
+		nsSealKeyShares, err := core.namespaceStore.SetNamespace(namespace.ContextWithNamespace(ctx, parent), ns, sealConfig)
 		require.NoError(t, err)
 		keysPerNamespace[ns.Path] = nsSealKeyShares
 	}

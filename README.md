@@ -1,10 +1,13 @@
 # OpenBao
 
+
 ----
 
 **Please note**: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, _please responsibly disclose_ by contacting us at [openbao-security@lists.openssf.org](mailto:openbao-security@lists.openssf.org).
 
 ----
+
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/openbao/openbao/badge)](https://scorecard.dev/viewer/?uri=github.com/openbao/openbao)
 
 - [Website](https://www.openbao.org)
 - [Mailing List](https://lists.openssf.org/g/openbao)

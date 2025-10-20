@@ -13,10 +13,12 @@ The `/sys/policies` endpoints are used to manage ACL, RGP, and EGP policies in O
 This endpoint lists all configured ACL policies. This endpoint optionally
 takes a prefix to list policies under.
 
-| Method | Path                        |
-| :----- | :-------------------------- |
-| `LIST` | `/sys/policies/acl`         |
-| `LIST` | `/sys/policies/acl/:prefix` |
+| Method | Path                                 | With Policy Data |
+| :----- | :----------------------------------- | :--------------- |
+| `LIST` | `/sys/policies/acl`                  | No               |
+| `LIST` | `/sys/policies/acl/:prefix`          | No               |
+| `LIST` | `/sys/policies/detailed/acl`         | Yes              |
+| `LIST` | `/sys/policies/detailed/acl/:prefix` | Yes              |
 
 ### Sample request
 

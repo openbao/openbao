@@ -130,8 +130,10 @@ func HashResponse(
 			respData[logical.HTTPRawBody] = string(b)
 		}
 
-		// Processing list response data elision takes place at this point in the code for performance reasons:
-		// - take advantage of the deep copy of resp.Data that was going to be done anyway for hashing
+		// Processing list response data elision takes place at this point
+		// in the code for performance reasons:
+		// - take advantage of the deep copy of resp.Data that was going to
+		//   be done anyway for hashing
 		// - but elide data before potentially spending time hashing it
 		if elideListResponseData {
 			doElideListResponseData(respData)
@@ -195,19 +197,11 @@ func HashWrapInfo(salter *salt.Salt, in *wrapping.ResponseWrapInfo, HMACAccessor
 
 // HashStructure takes an interface and hashes all the values within
 // the structure. Only _values_ are hashed: keys of objects are not.
-// Note that the function takes both the original data structure and
-// an unmarshaled json copy.  The hashed values are written to the copy
-// but because the json transform has changed the type info the original
-// must also be walked to get that type info.
 //
-// The original is walked with the reflectwalk.Walk() method below.
-// That method leaves a trail in w.loc[]/w.csKey[] which is then used
-// by getValueFromCopy() to walk the copy.
+// The interface is walked with the reflectwalk.Walk() method below.
 //
 // For the HashCallback, see the built-in HashCallbacks below.
-func HashStructure(data interface{}, cb HashCallback,
-	ignoredKeys []string, elideListResponseData bool,
-) error {
+func HashStructure(data interface{}, cb HashCallback, ignoredKeys []string, elideListResponseData bool) error {
 	walker := &hashWalker{
 		Callback:    cb,
 		IgnoredKeys: ignoredKeys,

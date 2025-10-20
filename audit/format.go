@@ -572,20 +572,23 @@ func NewTemporaryFormatter(format, prefix string) *AuditFormatter {
 	return ret
 }
 
-// doElideListResponseData performs the actual elision of list operation response data, once surrounding code has
-// determined it should apply to a particular request. The data map that is passed in must be a copy that is safe to
-// modify in place, but need not be a full recursive deep copy, as only top-level keys are changed.
+// doElideListResponseData performs the actual elision of list operation
+// response data, once surrounding code has determined it should apply to
+// a particular request. The data map that is passed in must be a copy that
+// is safe to modify in place, but need not be a full recursive deep copy,
+// as only top-level keys are changed.
 //
 // See the documentation of the controlling option in FormatterConfig for more information on the purpose.
 func doElideListResponseData(data map[string]interface{}) {
 	for k, v := range data {
-		if k == "keys" {
+		switch k {
+		case "keys":
 			if vSlice, ok := v.([]interface{}); ok {
 				data[k] = len(vSlice)
 			} else if vSlice, ok := v.([]string); ok {
 				data[k] = len(vSlice)
 			}
-		} else if k == "key_info" {
+		case "key_info":
 			if vMap, ok := v.(map[string]interface{}); ok {
 				data[k] = len(vMap)
 			}

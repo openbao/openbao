@@ -15,16 +15,21 @@ import (
 
 func (c *Core) Invalidate(key string) {
 	c.stateLock.RLock()
-	ctx := c.activeContext
+	activeContext := c.activeContext
 	c.stateLock.RUnlock()
-	if ctx == nil {
+	if activeContext == nil {
 		return
 	}
 
-	ctx, _ = context.WithTimeout(ctx, 2*time.Second) //nolint:govet // we can't cancel this context, because invalidation is asynchronous
+	ctx, cancel := context.WithTimeout(activeContext, 2*time.Second)
+	defer cancel()
 
 	err := c.invalidateInternal(ctx, key)
 	if err != nil {
+		if activeContext.Err() != nil {
+			// active context is cancelled, so we can ignore this error
+			return
+		}
 		c.logger.Error("cache invalidation failed, restarting core", "key", key, "error", err.Error())
 		c.restart()
 	}
@@ -65,7 +70,7 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 
 		c.policyStore.invalidateNamespace(ctx, namespaceUUID)
 
-		c.invalidateNamespaceMounts(ctx, namespaceUUID)
+		c.mountInvalidationWorker.invalidateNamespaceMounts(namespaceUUID)
 
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath):
 		policyType := PolicyTypeACL // for now it is safe to assume type is ACL
@@ -79,11 +84,11 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 
 	case namespacedKey == coreMountConfigPath || namespacedKey == coreLocalMountConfigPath ||
 		namespacedKey == coreAuthConfigPath || namespacedKey == coreLocalAuthConfigPath:
-		c.invalidateLegacyMounts(physical.CacheRefreshContext(ctx, true), key)
+		c.mountInvalidationWorker.invalidateLegacyMounts(key)
 
 	case strings.HasPrefix(namespacedKey, coreMountConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalMountConfigPath+"/") ||
 		strings.HasPrefix(namespacedKey, coreAuthConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalAuthConfigPath+"/"):
-		c.invalidateMount(namespace.ContextWithNamespace(c.activeContext, ns), namespacedKey)
+		c.mountInvalidationWorker.invalidateMount(namespaceUUID, namespacedKey)
 
 	case c.router.Invalidate(ctx, key):
 	// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched

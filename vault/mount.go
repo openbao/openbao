@@ -27,6 +27,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
 const (
@@ -2384,218 +2385,191 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 	return nil, errors.New("invalid mount entry")
 }
 
-func (c *Core) invalidateMount(ctx context.Context, key string) {
-	go func() {
-		err := c.invalidateMountInternalByKey(ctx, key)
-		if err != nil {
-			c.logger.Error("unable to invalidate mount, restarting core", "key", key, "error", err.Error())
-			c.restart()
-		}
-	}()
-}
-
-func (c *Core) invalidateNamespaceMounts(ctx context.Context, uuid string) {
-	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
-		c.invalidateLegacyMounts(ctx)
-		return
+func (c *Core) reloadNamespaceMounts(ctx context.Context, uuid string) error {
+	ns, err := c.namespaceStore.GetNamespace(ctx, uuid)
+	if err != nil {
+		return fmt.Errorf("unable to invalidate mounts for namespace: %w", err)
 	}
 
-	go func() {
-		ns, err := c.namespaceStore.GetNamespace(ctx, uuid)
+	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
+		if ns != nil {
+			ctx = namespace.ContextWithNamespace(ctx, ns)
+		}
+		return c.reloadLegacyMounts(ctx)
+	}
+
+	keys := []string{}
+
+	if ns == nil {
+		c.mountsLock.RLock()
+		for _, entry := range c.mounts.Entries {
+			if entry.Namespace().UUID == uuid {
+				key := path.Join(coreMountConfigPath, entry.UUID)
+				if entry.Local {
+					key = path.Join(coreLocalMountConfigPath, entry.UUID)
+				}
+				keys = append(keys, key)
+
+				if ns == nil {
+					ns = entry.Namespace()
+				}
+			}
+		}
+		c.mountsLock.RUnlock()
+
+		c.authLock.RLock()
+		for _, entry := range c.auth.Entries {
+			if entry.Namespace().UUID == uuid {
+				key := path.Join(coreAuthConfigPath, entry.UUID)
+				if entry.Local {
+					key = path.Join(coreLocalAuthConfigPath, entry.UUID)
+				}
+				keys = append(keys, key)
+
+				if ns == nil {
+					ns = entry.Namespace()
+				}
+			}
+		}
+		c.authLock.RUnlock()
+
+		if len(keys) == 0 {
+			return nil
+		}
+
+		ctx = namespace.ContextWithNamespace(ctx, ns)
+	} else {
+		ctx = namespace.ContextWithNamespace(ctx, ns)
+
+		barrier := NamespaceView(c.barrier, ns)
+
+		mountGlobal, mountLocal, err := listTransactionalMountsForNamespace(ctx, barrier)
 		if err != nil {
-			c.logger.Error("unable to invalidate mounts for namespace, restarting core", "error", err.Error())
-			c.restart()
-			return
+			return fmt.Errorf("unable to invalidate mounts for namespace %q: %w", ns.UUID, err)
 		}
 
-		keys := []string{}
-
-		if ns == nil {
-			c.mountsLock.RLock()
-			for _, entry := range c.mounts.Entries {
-				if entry.Namespace().UUID == uuid {
-					key := path.Join(coreMountConfigPath, entry.UUID)
-					if entry.Local {
-						key = path.Join(coreLocalMountConfigPath, entry.UUID)
-					}
-					keys = append(keys, key)
-
-					if ns == nil {
-						ns = entry.Namespace()
-					}
-				}
-			}
-			c.mountsLock.RUnlock()
-
-			c.authLock.RLock()
-			for _, entry := range c.auth.Entries {
-				if entry.Namespace().UUID == uuid {
-					key := path.Join(coreAuthConfigPath, entry.UUID)
-					if entry.Local {
-						key = path.Join(coreLocalAuthConfigPath, entry.UUID)
-					}
-					keys = append(keys, key)
-
-					if ns == nil {
-						ns = entry.Namespace()
-					}
-				}
-			}
-			c.authLock.RUnlock()
-
-			if len(keys) == 0 {
-				return
-			}
-
-			ctx = namespace.ContextWithNamespace(ctx, ns)
-		} else {
-			ctx = namespace.ContextWithNamespace(ctx, ns)
-
-			barrier := NamespaceView(c.barrier, ns)
-
-			mountGlobal, mountLocal, err := listTransactionalMountsForNamespace(ctx, barrier)
-			if err != nil {
-				c.logger.Error("unable to invalidate mounts for namespace, restarting core", "ns", ns.UUID, "error", err.Error())
-				c.restart()
-				return
-			}
-
-			authGlobal, authLocal, err := c.listTransactionalCredentialsForNamespace(ctx, barrier)
-			if err != nil {
-				c.logger.Error("unable to invalidate auths for namespace, restarting core", "ns", ns.UUID, "error", err.Error())
-				c.restart()
-				return
-			}
-
-			for _, mount := range mountGlobal {
-				keys = append(keys, path.Join(coreMountConfigPath, mount))
-			}
-			for _, mount := range mountLocal {
-				keys = append(keys, path.Join(coreLocalMountConfigPath, mount))
-			}
-			for _, mount := range authGlobal {
-				keys = append(keys, path.Join(coreAuthConfigPath, mount))
-			}
-			for _, mount := range authLocal {
-				keys = append(keys, path.Join(coreLocalAuthConfigPath, mount))
-			}
+		authGlobal, authLocal, err := c.listTransactionalCredentialsForNamespace(ctx, barrier)
+		if err != nil {
+			return fmt.Errorf("unable to invalidate auths for namespace %q: %w", ns.UUID, err)
 		}
 
-		c.logger.Debug("invalidating namespace mount", "ns", uuid, "keys", keys)
-		for _, key := range keys {
-			err := c.invalidateMountInternalByKey(ctx, key)
-			if err != nil {
-				c.logger.Error("unable to invalidate mount, restarting core", "key", key, "error", err.Error())
-				c.restart()
-				return
-			}
+		for _, mount := range mountGlobal {
+			keys = append(keys, path.Join(coreMountConfigPath, mount))
 		}
-	}()
+		for _, mount := range mountLocal {
+			keys = append(keys, path.Join(coreLocalMountConfigPath, mount))
+		}
+		for _, mount := range authGlobal {
+			keys = append(keys, path.Join(coreAuthConfigPath, mount))
+		}
+		for _, mount := range authLocal {
+			keys = append(keys, path.Join(coreLocalAuthConfigPath, mount))
+		}
+	}
+
+	c.logger.Debug("invalidating namespace mount", "ns", uuid, "keys", keys)
+	for _, key := range keys {
+		err := c.reloadMount(ctx, key)
+		if err != nil {
+			return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", key, ns.UUID, err)
+		}
+	}
+
+	return nil
 }
 
-func (c *Core) invalidateLegacyMounts(ctx context.Context, keys ...string) {
+func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 	if len(keys) == 0 {
 		keys = []string{coreMountConfigPath, coreLocalMountConfigPath, coreAuthConfigPath, coreLocalAuthConfigPath}
 	}
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		c.logger.Error("failed to extract namespace from context, restarting core", "error", err)
-		c.restart()
-		return
+		if err != namespace.ErrNoNamespace {
+			return fmt.Errorf("failed to extract namespace from context: %w", err)
+		}
+		ns = namespace.RootNamespace
 	}
 
-	go func() {
-		type invalidation struct {
-			Table             string
-			DesiredMountEntry *MountEntry
-			Namespace         *namespace.Namespace
+	type invalidation struct {
+		Table             string
+		DesiredMountEntry *MountEntry
+		Namespace         *namespace.Namespace
+	}
+	invalidations := map[string]invalidation{}
+
+	for _, path := range keys {
+		table := "mounts"
+		if path == coreAuthConfigPath && path != coreLocalAuthConfigPath {
+			table = "auth"
 		}
-		invalidations := map[string]invalidation{}
 
-		for _, path := range keys {
-			table := "mounts"
-			if path == coreAuthConfigPath && path != coreLocalAuthConfigPath {
-				table = "auth"
-			}
+		raw, err := c.barrier.Get(ctx, path)
+		if err != nil {
+			return fmt.Errorf("failed to read legacy mount table: %w", err)
+		}
 
-			raw, err := c.barrier.Get(ctx, path)
+		if raw != nil {
+			mountTable, err := c.decodeMountTable(ctx, raw.Value)
 			if err != nil {
-				c.logger.Error("failed to read legacy mount table, restarting core", "error", err)
-				c.restart()
-				return
+				return fmt.Errorf("failed to decompress and/or decode the legacy mount table: %w", err)
 			}
 
-			if raw != nil {
-				mountTable, err := c.decodeMountTable(ctx, raw.Value)
-				if err != nil {
-					c.logger.Error("failed to decompress and/or decode the legacy mount table, restarting core", "error", err)
-					c.restart()
-					return
-				}
-
-				for _, mount := range mountTable.Entries {
-					if ns.ID != namespace.RootNamespaceID && ns.ID != mount.NamespaceID {
-						continue
-					}
-
-					invalidations[mount.UUID] = invalidation{
-						Table:             table,
-						DesiredMountEntry: mount,
-						Namespace:         mount.Namespace(),
-					}
-				}
-			}
-		}
-
-		// Loop over all mounts in memory, this is required to find mount deletions
-		c.mountsLock.RLock()
-		c.authLock.RLock()
-		for _, table := range []*MountTable{c.mounts, c.auth} {
-			for _, entry := range table.Entries {
-				if ns.ID != namespace.RootNamespaceID && ns.ID != entry.NamespaceID {
+			for _, mount := range mountTable.Entries {
+				if ns.ID != namespace.RootNamespaceID && ns.ID != mount.NamespaceID {
 					continue
 				}
 
-				storagePath := entry.Table
-				if entry.Local {
-					storagePath = "local-" + storagePath
-				}
-				storagePath = path.Join("core", storagePath)
-				if !slices.Contains(keys, storagePath) {
-					continue
-				}
-
-				if _, ok := invalidations[entry.UUID]; !ok {
-					invalidations[entry.UUID] = invalidation{
-						Table:             entry.Table,
-						DesiredMountEntry: nil,
-						Namespace:         entry.Namespace(),
-					}
+				invalidations[mount.UUID] = invalidation{
+					Table:             table,
+					DesiredMountEntry: mount,
+					Namespace:         mount.Namespace(),
 				}
 			}
 		}
-		c.authLock.RUnlock()
-		c.mountsLock.RUnlock()
+	}
 
-		if len(invalidations) == 0 {
-			return
-		}
+	// Loop over all mounts in memory, this is required to find mount deletions
+	c.mountsLock.RLock()
+	c.authLock.RLock()
+	for _, table := range []*MountTable{c.mounts, c.auth} {
+		for _, entry := range table.Entries {
+			if ns.ID != namespace.RootNamespaceID && ns.ID != entry.NamespaceID {
+				continue
+			}
 
-		c.logger.Debug("invalidating all legacy mounts", "keys", keys)
-		for uuid, value := range invalidations {
+			storagePath := entry.Table
+			if entry.Local {
+				storagePath = "local-" + storagePath
+			}
+			storagePath = path.Join("core", storagePath)
+			if !slices.Contains(keys, storagePath) {
+				continue
+			}
 
-			err := c.invalidateMountInternal(namespace.ContextWithNamespace(ctx, value.Namespace), value.Table, uuid, value.DesiredMountEntry)
-			if err != nil {
-				c.logger.Error("unable to invalidate mount, restarting core", "key", uuid, "error", err.Error())
-				c.restart()
-				return
+			if _, ok := invalidations[entry.UUID]; !ok {
+				invalidations[entry.UUID] = invalidation{
+					Table:             entry.Table,
+					DesiredMountEntry: nil,
+					Namespace:         entry.Namespace(),
+				}
 			}
 		}
-	}()
+	}
+	c.authLock.RUnlock()
+	c.mountsLock.RUnlock()
+
+	for uuid, value := range invalidations {
+		err := c.reloadMountInternal(namespace.ContextWithNamespace(ctx, value.Namespace), value.Table, uuid, value.DesiredMountEntry)
+		if err != nil {
+			return fmt.Errorf("unable to invalidate mount: %w", err)
+		}
+	}
+
+	return nil
 }
 
-func (c *Core) invalidateMountInternalByKey(ctx context.Context, key string) error {
+func (c *Core) reloadMount(ctx context.Context, key string) error {
 	prefix, uuid := path.Split(key)
 	prefix = path.Clean(prefix)
 
@@ -2621,10 +2595,10 @@ func (c *Core) invalidateMountInternalByKey(ctx context.Context, key string) err
 		desiredMountEntry = nil
 	}
 
-	return c.invalidateMountInternal(ctx, table, uuid, desiredMountEntry)
+	return c.reloadMountInternal(ctx, table, uuid, desiredMountEntry)
 }
 
-func (c *Core) invalidateMountInternal(ctx context.Context, table, uuid string, desiredMountEntry *MountEntry) error {
+func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desiredMountEntry *MountEntry) error {
 	switch table {
 	case "auth", "mounts":
 	default:
@@ -2728,4 +2702,115 @@ func (c *Core) invalidateMountInternal(ctx context.Context, table, uuid string, 
 	}
 
 	return nil
+}
+
+type mountInvalidationWorker struct {
+	l                      sync.Mutex
+	invalidations          map[mountInvalidation]string
+	namespaceInvalidations map[string]string
+	legacyInvalidations    map[string]string
+	notify                 chan struct{}
+
+	core *Core
+}
+
+func newMountInvalidationWorker(c *Core) *mountInvalidationWorker {
+	return &mountInvalidationWorker{
+		invalidations:          map[mountInvalidation]string{},
+		namespaceInvalidations: map[string]string{},
+		legacyInvalidations:    map[string]string{},
+		core:                   c,
+		notify:                 make(chan struct{}, 1),
+	}
+}
+
+func (w *mountInvalidationWorker) loop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-w.notify:
+		}
+
+		err := w.dispatchReloads(ctx)
+		if err != nil {
+			w.core.logger.Error("failed to dispatch mount reloads, restarting core", "err", err)
+			w.core.restart()
+			return
+		}
+	}
+}
+
+func (w *mountInvalidationWorker) dispatchReloads(ctx context.Context) error {
+	w.l.Lock()
+	invalidations := w.invalidations
+	namespaceInvalidations := w.namespaceInvalidations
+	legacyInvalidations := w.legacyInvalidations
+	w.invalidations = map[mountInvalidation]string{}
+	w.namespaceInvalidations = map[string]string{}
+	w.legacyInvalidations = map[string]string{}
+	w.l.Unlock()
+
+	for invalidation := range invalidations {
+		ns, err := w.core.namespaceStore.GetNamespace(ctx, invalidation.namespaceUUID)
+		if err != nil {
+			return err
+		}
+		err = w.core.reloadMount(namespace.ContextWithNamespace(ctx, ns), invalidation.key)
+		if err != nil {
+			return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", invalidation.key, invalidation.namespaceUUID, err)
+		}
+	}
+	for uuid := range namespaceInvalidations {
+		err := w.core.reloadNamespaceMounts(physical.CacheRefreshContext(ctx, true), uuid)
+		if err != nil {
+			return fmt.Errorf("unable to invalidate mounts in namespace %q: %w", uuid, err)
+		}
+	}
+	for key := range legacyInvalidations {
+		err := w.core.reloadLegacyMounts(ctx, key)
+		if err != nil {
+			return fmt.Errorf("unable to invalidate non-transactional mounts %q: %w", key, err)
+		}
+	}
+
+	return nil
+}
+
+func (w *mountInvalidationWorker) trigger() {
+	select {
+	case w.notify <- struct{}{}:
+	default:
+	}
+}
+
+type mountInvalidation struct {
+	namespaceUUID, key string
+}
+
+func (w *mountInvalidationWorker) invalidateMount(namespaceUUID, key string) {
+	w.l.Lock()
+	defer w.l.Unlock()
+
+	w.invalidations[mountInvalidation{
+		namespaceUUID: namespaceUUID,
+		key:           key,
+	}] = ""
+	w.trigger()
+}
+
+func (w *mountInvalidationWorker) invalidateNamespaceMounts(namespaceUUID string) {
+	w.l.Lock()
+	defer w.l.Unlock()
+
+	w.namespaceInvalidations[namespaceUUID] = ""
+	w.trigger()
+}
+
+func (w *mountInvalidationWorker) invalidateLegacyMounts(key string) {
+	w.l.Lock()
+	defer w.l.Unlock()
+
+	w.legacyInvalidations[key] = ""
+	w.trigger()
 }

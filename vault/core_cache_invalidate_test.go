@@ -26,6 +26,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func testCore_Invalidate_TestCore(t *testing.T, config *CoreConfig) (*Core, string) {
+	var c *Core
+	var root string
+
+	if config != nil {
+		c, _, root = TestCoreUnsealedWithConfig(t, config)
+	} else {
+		c, _, root = TestCoreUnsealed(t)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		c.mountInvalidationWorker.loop(t.Context())
+		wg.Done()
+	}()
+
+	return c, root
+}
+
 func testCore_Invalidate_sneakValueAroundCache(t *testing.T, c *Core, entry *logical.StorageEntry) {
 	t.Helper()
 
@@ -66,7 +86,7 @@ func testCore_Invalidate_handleRequest(t require.TestingT, ctx context.Context, 
 
 func TestCore_Invalidate_Namespaces(t *testing.T) {
 	t.Parallel()
-	c, _, root := TestCoreUnsealed(t)
+	c, root := testCore_Invalidate_TestCore(t, nil)
 
 	// 1. Create some namespace to populate cache
 	ns := &namespace.Namespace{
@@ -156,7 +176,7 @@ func TestCore_Invalidate_Namespaces_NonTransactional(t *testing.T) {
 		"disable_transactions": "true",
 	}, logger)
 	require.NoError(t, err)
-	c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+	c, root := testCore_Invalidate_TestCore(t, &CoreConfig{
 		Physical: physical,
 	})
 
@@ -252,7 +272,7 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 
 	for name, init := range testCases {
 		t.Run(name, func(t *testing.T) {
-			c, _, root := TestCoreUnsealed(t)
+			c, root := testCore_Invalidate_TestCore(t, nil)
 			storagePath, ctx := init(t, c)
 
 			// 1. Create some policy to populate cache
@@ -293,7 +313,7 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 
 func TestCore_Invalidate_Quota(t *testing.T) {
 	t.Parallel()
-	c, _, root := TestCoreUnsealed(t)
+	c, root := testCore_Invalidate_TestCore(t, nil)
 
 	// 1. Create some qutoa to populate cache
 	req := logical.TestRequest(t, logical.CreateOperation, "sys/quotas/rate-limit/test-quota")
@@ -348,7 +368,7 @@ func TestCore_Invalidate_Plugin(t *testing.T) {
 
 	for name, init := range testCases {
 		t.Run(name, func(t *testing.T) {
-			c, _, root := TestCoreUnsealed(t)
+			c, root := testCore_Invalidate_TestCore(t, nil)
 			nsPrefix, ctx := init(t, c)
 
 			// 1. Inject a dummy plugin
@@ -399,7 +419,7 @@ func TestCore_Invalidate_Plugin(t *testing.T) {
 
 func TestCore_Invalidate_Audit(t *testing.T) {
 	t.Parallel()
-	c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+	c, root := testCore_Invalidate_TestCore(t, &CoreConfig{
 		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true, AllowAuditLogPrefixing: true},
 	})
 
@@ -515,7 +535,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 	for name, init := range testCases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			c, _, root := TestCoreUnsealed(t)
+			c, root := testCore_Invalidate_TestCore(t, nil)
 			nsPrefix, ctx := init(t, c)
 
 			// 1. Inject a dummy factory
@@ -708,7 +728,7 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 				"disable_transactions": "true",
 			}, logger)
 			require.NoError(t, err)
-			c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+			c, root := testCore_Invalidate_TestCore(t, &CoreConfig{
 				Physical: physical,
 			})
 
@@ -837,7 +857,7 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 	for name, init := range testCases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			c, _, root := TestCoreUnsealed(t)
+			c, root := testCore_Invalidate_TestCore(t, nil)
 			nsPrefix, ctx := init(t, c)
 
 			// 1. Inject a dummy factory
@@ -985,7 +1005,7 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 				"disable_transactions": "true",
 			}, logger)
 			require.NoError(t, err)
-			c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+			c, root := testCore_Invalidate_TestCore(t, &CoreConfig{
 				Physical: physical,
 			})
 			ctx := init(t, c)

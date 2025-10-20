@@ -2567,6 +2567,9 @@ func TestSystemBackend_PoliciesDetailedAcl(t *testing.T) {
 	entry := entryRaw.(map[string]interface{})
 	require.Contains(t, entry, "policy")
 	require.Equal(t, entry["policy"].(string), policy)
+	require.Contains(t, entry, "version")
+	require.Contains(t, entry, "cas_required")
+	require.Contains(t, entry, "name")
 }
 
 func TestSystemBackend_enableAudit(t *testing.T) {

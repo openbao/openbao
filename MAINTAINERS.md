@@ -33,6 +33,7 @@ See the information about community membership roles to learn about the role of 
 | Fatima Patel    | [@fatima2003](https://github.com/fatima2003)             |
 | Gabriel Santos  | [@Gabrielopesantos](https://github.com/Gabrielopesantos) |
 | Michael Hofer   | [@karras](https://github.com/karras)                     |
+| Philipp Stehle  | [@phil9909](https://github.com/phil9909)                 |
 
 # OpenBao Community Roles
 

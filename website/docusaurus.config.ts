@@ -149,8 +149,8 @@ const config: Config = {
               href: "https://github.com/openbao/openbao/discussions",
             },
             {
-              label: "Matrix Chat Server",
-              href: "https://chat.lfx.linuxfoundation.org/",
+              label: "Zulip Chat Server",
+              href: "https://linuxfoundation.zulipchat.com/",
             },
             {
               label: "LF Edge Wiki",

@@ -54,7 +54,7 @@ jobs:
       version: ${{ steps.make-distribution-tarball.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v5.0.0
         with:
           fetch-depth: 0 # Required by GoRelease
 
@@ -188,7 +188,7 @@ jobs:
 
       - name: Checkout
         if: inputs.dogorelease
-        uses: actions/checkout@v5
+        uses: actions/checkout@v5.0.0
         with:
           fetch-depth: 0 # Required by GoRelease
 
@@ -334,7 +334,7 @@ jobs:
       TAGNAME: v${{ needs.build-ui-dist.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v5.0.0
         with:
           # "fetch-tags: true" instead of "fetch-depth: 0" should be enough
           # but it fails in combination with dogorelease

@@ -12,6 +12,8 @@ Spoiler alert: it worked. Spectacularly. But not because we had all the answers 
 
 This is the story of how we structured—and restructured—a 12-week program that ended up giving OpenBao a scalability boost and fantastic contributions.
 
+<!-- truncate -->
+
 #### **The Setup: An Experiment with High Stakes**
 
 The goal was ambitious: transform OpenBao’s **passive standby nodes** into **active cluster participants** that can handle read requests, a key step towards horizontal scalability. [**Adfinis**](https://www.adfinis.com/) provided the crucial fuel by funding the program, and the initiative was kicked off by [**Alexander Scheel**](https://github.com/cipherboy), who created [the project on the LFX Mentorship Platform](https://mentorship.lfx.linuxfoundation.org/project/d419da30-b718-435d-8673-6c1260307339).

@@ -99,11 +99,17 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 
 // NamespaceView uses given barrier and namespace to return back a view scoped to that namespace.
 func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView {
+	return NewBarrierView(barrier, NamespaceBarrierPrefix(ns))
+}
+
+// NamespaceBarrierPrefix uses given namespace to return back the common prefix
+// used for all keys that belong to that namespace.
+func NamespaceBarrierPrefix(ns *namespace.Namespace) string {
 	if ns.ID == namespace.RootNamespaceID {
-		return NewBarrierView(barrier, "")
+		return ""
 	}
 
-	return NewBarrierView(barrier, path.Join(namespaceBarrierPrefix, ns.UUID)+"/")
+	return path.Join(namespaceBarrierPrefix, ns.UUID) + "/"
 }
 
 // cancelNamespaceDeletion cancels goroutine that runs namespace deletion.

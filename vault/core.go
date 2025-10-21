@@ -328,6 +328,8 @@ type Core struct {
 	// configuration
 	mounts *MountTable
 
+	mountInvalidationWorker *mountInvalidationWorker
+
 	// mountsLock is used to ensure that the mounts table does not
 	// change underneath a calling function
 	mountsLock locking.DeadlockRWMutex
@@ -1194,6 +1196,8 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 		c.logger.Info("Initializing version history cache for core")
 		c.versionHistory = make(map[string]VaultVersion)
 	}
+
+	c.mountInvalidationWorker = newMountInvalidationWorker(c)
 
 	return c, nil
 }

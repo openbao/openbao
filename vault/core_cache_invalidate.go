@@ -9,22 +9,27 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/quotas"
 )
 
 func (c *Core) Invalidate(key string) {
 	c.stateLock.RLock()
-	ctx := c.activeContext
+	activeContext := c.activeContext
 	c.stateLock.RUnlock()
-	if ctx == nil {
+	if activeContext == nil {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(c.activeContext, 2*time.Second)
+	ctx, cancel := context.WithTimeout(activeContext, 2*time.Second)
 	defer cancel()
 
 	err := c.invalidateInternal(ctx, key)
 	if err != nil {
+		if activeContext.Err() != nil {
+			// active context is cancelled, so we can ignore this error
+			return
+		}
 		c.logger.Error("cache invalidation failed, restarting core", "key", key, "error", err.Error())
 		c.restart()
 	}
@@ -59,7 +64,13 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 	switch {
 	case strings.HasPrefix(namespacedKey, namespaceStoreSubPath):
 		c.namespaceStore.invalidate(ctx, "")
-		c.policyStore.invalidateNamespace(ctx, strings.TrimPrefix(namespacedKey, namespaceStoreSubPath))
+
+		ctx := physical.CacheRefreshContext(ctx, true)
+		namespaceUUID = strings.TrimPrefix(namespacedKey, namespaceStoreSubPath)
+
+		c.policyStore.invalidateNamespace(ctx, namespaceUUID)
+
+		c.mountInvalidationWorker.invalidateNamespaceMounts(namespaceUUID)
 
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath):
 		policyType := PolicyTypeACL // for now it is safe to assume type is ACL
@@ -68,11 +79,19 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+quotas.StoragePrefix):
 		c.quotaManager.Invalidate(strings.TrimPrefix(key, systemBarrierPrefix+quotas.StoragePrefix))
 
-	case c.router.Invalidate(ctx, key):
-	// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched
-
 	case key == coreAuditConfigPath || key == coreLocalAuditConfigPath:
 		c.invalidateAudits()
+
+	case namespacedKey == coreMountConfigPath || namespacedKey == coreLocalMountConfigPath ||
+		namespacedKey == coreAuthConfigPath || namespacedKey == coreLocalAuthConfigPath:
+		c.mountInvalidationWorker.invalidateLegacyMounts(key)
+
+	case strings.HasPrefix(namespacedKey, coreMountConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalMountConfigPath+"/") ||
+		strings.HasPrefix(namespacedKey, coreAuthConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalAuthConfigPath+"/"):
+		c.mountInvalidationWorker.invalidateMount(namespaceUUID, namespacedKey)
+
+	case c.router.Invalidate(ctx, key):
+	// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched
 
 	default:
 		c.logger.Warn("no idea how to invalidate cache. Maybe it's not cached and this is fine, maybe not", "key", key)

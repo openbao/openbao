@@ -4124,6 +4124,47 @@ func (b *SystemBackend) pathInternalUIMountRead(ctx context.Context, req *logica
 	return resp, nil
 }
 
+func (b *SystemBackend) pathInternalUINamespacesRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	// Short-circuit here if there's no client token provided
+	if req.ClientToken == "" {
+		return nil, errors.New("client token empty")
+	}
+
+	// Load the ACL policies so we can check for access and filter namespaces
+	acl, te, entity, _, err := b.Core.fetchACLTokenEntryAndEntity(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if entity != nil && entity.Disabled {
+		b.logger.Warn("permission denied as the entity on the token is disabled")
+		return nil, logical.ErrPermissionDenied
+	}
+	if te != nil && te.EntityID != "" && entity == nil {
+		b.logger.Warn("permission denied as the entity on the token is invalid")
+		return nil, logical.ErrPermissionDenied
+	}
+
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := b.Core.namespaceStore.ListNamespaces(ctx, false, false)
+	if err != nil {
+		return nil, errors.New("failed to list namespaces")
+	}
+
+	var nsList []string
+	for _, entry := range list {
+		if acl != nil && hasMountAccess(ctx, acl, entry.Path) {
+			relativePath := parent.TrimmedPath(entry.Path)
+			nsList = append(nsList, relativePath)
+		}
+	}
+
+	return logical.ListResponse(nsList), nil
+}
+
 func (b *SystemBackend) pathInternalCountersRequests(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	resp := logical.ErrorResponse("The functionality has been removed on this path")
 

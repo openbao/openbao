@@ -61,7 +61,7 @@ func TestAppRole_BoundCIDRLogin(t *testing.T) {
 	}
 
 	// Override with a secret-id value, verify it doesn't pass
-	resp = b.requestNoErr(t, &logical.Request{
+	_ = b.requestNoErr(t, &logical.Request{
 		Path:      "role/testrole",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -78,7 +78,7 @@ func TestAppRole_BoundCIDRLogin(t *testing.T) {
 			"token_bound_cidrs": []string{"11.0.0.0/24"},
 		},
 	}
-	resp, err = b.HandleRequest(context.Background(), roleSecretIDReq)
+	_, err = b.HandleRequest(context.Background(), roleSecretIDReq)
 	if err == nil {
 		t.Fatal("expected error due to mismatching subnet relationship")
 	}
@@ -200,7 +200,7 @@ func TestAppRole_RoleLogin(t *testing.T) {
 		Storage:   storage,
 		Data:      roleData,
 	}
-	resp = b.requestNoErr(t, roleReq)
+	_ = b.requestNoErr(t, roleReq)
 
 	roleRoleIDReq = &logical.Request{
 		Operation: logical.ReadOperation,

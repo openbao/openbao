@@ -579,13 +579,11 @@ func TestIdentityStore_ContextCancel(t *testing.T) {
 		Path:      "entity",
 	}
 
-	expected := []string{}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		resp, err = is.HandleRequest(ctx, entityReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v", err, resp)
 		}
-		expected = append(expected, resp.Data["id"].(string))
 	}
 
 	listReq := &logical.Request{

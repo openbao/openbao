@@ -1228,7 +1228,7 @@ func TestSystemBackend_leases(t *testing.T) {
 	// Invalid lease
 	req = logical.TestRequest(t, logical.UpdateOperation, "leases/lookup")
 	req.Data["lease_id"] = "invalid"
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("expected invalid request, got err: %v", err)
 	}
@@ -3168,7 +3168,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 		req.Data = map[string]interface{}{
 			"value": mounts,
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -3208,7 +3208,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 			"value":            mounts,
 			"compression_type": "",
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -3767,7 +3767,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	// Delete versioned plugin
 	req = logical.TestRequest(t, logical.DeleteOperation, "plugins/catalog/database/test-plugin")
 	req.Data["version"] = "0.1.0"
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -4289,7 +4289,7 @@ func TestSystemBackend_InternalUIMount(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "internal/ui/mounts/kv")
 	req.ClientToken = "tokenid"
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != logical.ErrPermissionDenied {
 		t.Fatal("expected permission denied error")
 	}
@@ -4328,7 +4328,7 @@ func TestSystemBackend_InternalUIMount(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "internal/ui/mounts/non-existent")
 	req.ClientToken = "tokenid"
-	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != logical.ErrPermissionDenied {
 		t.Fatal("expected permission denied error")
 	}
@@ -4522,7 +4522,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 	// Check the mount access func
 	req = logical.TestRequest(t, logical.ReadOperation, "internal/ui/mounts/kv-v1/baz")
 	req.ClientToken = te.ID
-	resp, err = b.HandleRequest(ctx, req)
+	_, err = b.HandleRequest(ctx, req)
 	if err == nil || !strings.Contains(err.Error(), "permission denied") {
 		t.Fatalf("expected 403, got err: %v", err)
 	}
@@ -4542,7 +4542,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 	// Check the mount access func again
 	req = logical.TestRequest(t, logical.ReadOperation, "internal/ui/mounts/kv-v1/baz")
 	req.ClientToken = te.ID
-	resp, err = b.HandleRequest(ctx, req)
+	_, err = b.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

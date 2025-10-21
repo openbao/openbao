@@ -558,7 +558,7 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 			checkValues(t, tt.createData, resp.Data)
 
 			// check update
-			resp = handleRequest(t, &logical.Request{
+			handleRequest(t, &logical.Request{
 				Operation: logical.UpdateOperation,
 				Path:      readReq.Path,
 				Data:      tt.updateData,

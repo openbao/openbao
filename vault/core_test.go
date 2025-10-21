@@ -2779,7 +2779,7 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 	req.Data = map[string]interface{}{
 		"token": newClient,
 	}
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2787,7 +2787,7 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 	// Revoke using the renew prefix
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/revoke-prefix/auth/token/renew/")
 	req.ClientToken = root
-	resp, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = c.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -3235,7 +3235,7 @@ func TestCore_HandleRequest_TokenCreate_RegisterAuthFailure(t *testing.T) {
 	// valid, should succeed.
 	req = logical.TestRequest(t, logical.CreateOperation, "auth/token/create")
 	req.ClientToken = tokenWithRootPolicy
-	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal(err)
 	}

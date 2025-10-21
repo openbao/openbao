@@ -1040,7 +1040,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("expected error because role is denied")
 	}
@@ -1070,7 +1070,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	credsResp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (credsResp != nil && credsResp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, credsResp)
 	}
@@ -1138,7 +1138,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("expected error because role is denied")
 	}
@@ -1236,8 +1236,8 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 		Data:      data,
 	}
 	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
-	if err != nil || (credsResp != nil && credsResp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, credsResp)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
 	dbConfig, err := b.(*databaseBackend).DatabaseConfig(context.Background(), config.StorageView, "plugin-test")

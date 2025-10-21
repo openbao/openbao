@@ -4156,8 +4156,8 @@ func (b *SystemBackend) pathInternalUINamespacesRead(ctx context.Context, req *l
 
 	var nsList []string
 	for _, entry := range list {
-		relativePath := parent.TrimmedPath(entry.Path)
-		if acl != nil && hasMountAccess(ctx, acl, relativePath) {
+		if acl != nil && hasMountAccess(ctx, acl, entry.Path) {
+			relativePath := parent.TrimmedPath(entry.Path)
 			nsList = append(nsList, relativePath)
 		}
 	}

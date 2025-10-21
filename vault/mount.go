@@ -256,7 +256,7 @@ func (t *MountTable) shallowClone() *MountTable {
 func (old *MountTable) delta(new *MountTable) (additions []*MountEntry, deletions []*MountEntry) {
 	if old == nil {
 		additions = new.Entries
-		return
+		return additions, deletions
 	}
 
 	additions = slices.Clone(new.Entries)
@@ -286,7 +286,7 @@ func (old *MountTable) delta(new *MountTable) (additions []*MountEntry, deletion
 		}
 	}
 
-	return
+	return additions, deletions
 }
 
 // setTaint is used to set the taint on given entry Accepts either the mount
@@ -2481,6 +2481,12 @@ func (c *Core) reloadNamespaceMounts(ctx context.Context, uuid string) error {
 func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 	if len(keys) == 0 {
 		keys = []string{coreMountConfigPath, coreLocalMountConfigPath, coreAuthConfigPath, coreLocalAuthConfigPath}
+	}
+
+	// If we have a transactional storage backend, assume the primary will
+	// migrate us to a new storage layout and return early.
+	if _, ok := c.barrier.(logical.TransactionalStorage); ok {
+		return nil
 	}
 
 	ns, err := namespace.FromContext(ctx)

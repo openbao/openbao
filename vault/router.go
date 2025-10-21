@@ -298,7 +298,10 @@ func (r *Router) Taint(ctx context.Context, path string) error {
 	defer r.l.Unlock()
 	_, raw, ok := r.root.LongestPrefix(path)
 	if ok {
-		raw.(*routeEntry).tainted = true
+		re := raw.(*routeEntry)
+		re.l.Lock()
+		re.tainted = true
+		re.l.Unlock()
 	}
 	return nil
 }
@@ -315,7 +318,10 @@ func (r *Router) Untaint(ctx context.Context, path string) error {
 	defer r.l.Unlock()
 	_, raw, ok := r.root.LongestPrefix(path)
 	if ok {
-		raw.(*routeEntry).tainted = false
+		re := raw.(*routeEntry)
+		re.l.Lock()
+		re.tainted = false
+		re.l.Unlock()
 	}
 	return nil
 }

@@ -2887,7 +2887,7 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAlias(t *testing.T) 
 	tokenMountAccessor := resp.Data["token/"].(map[string]interface{})["accessor"].(string)
 
 	// Create manually an entity alias
-	resp, err = i.HandleRequest(ctx, &logical.Request{
+	_, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity-alias",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -2980,7 +2980,7 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAliasMixedCase(t *te
 	tokenMountAccessor := resp.Data["token/"].(map[string]interface{})["accessor"].(string)
 
 	// Create manually an entity alias
-	resp, err = i.HandleRequest(ctx, &logical.Request{
+	_, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity-alias",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -3827,7 +3827,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 
 	req.Path = "create/test"
 	req.Data["policies"] = []string{"foo"}
-	resp, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -3855,13 +3855,13 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 
 	req.Path = "create/testnoglob"
 	req.Data["policies"] = []string{"test"}
-	resp, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	req.Data["policies"] = []string{"testfoo"}
-	resp, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -3906,7 +3906,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 
 	req.Path = "create/test"
 	req.Data["policies"] = []string{"foo"}
-	resp, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -4082,7 +4082,7 @@ func TestTokenStore_RoleAllowedPoliciesGlob(t *testing.T) {
 
 	req.Path = "create/test"
 	req.Data["policies"] = []string{"foo"}
-	resp, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -4110,7 +4110,7 @@ func TestTokenStore_RoleAllowedPoliciesGlob(t *testing.T) {
 
 	req.Path = "create/test"
 	req.Data["policies"] = []string{"footest"}
-	resp, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err = ts.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -4548,7 +4548,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 		req.Data = map[string]interface{}{
 			"increment": 300,
 		}
-		resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
+		_, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -5480,7 +5480,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 	tokenReq.Data = map[string]interface{}{
 		"policies": []string{"disallowed1"},
 	}
-	resp, err = ts.HandleRequest(namespace.RootContext(context.TODO()), tokenReq)
+	_, err = ts.HandleRequest(namespace.RootContext(context.TODO()), tokenReq)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -5498,7 +5498,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 	tokenReq.Data = map[string]interface{}{
 		"policies": []string{"allowed1", "common"},
 	}
-	resp, err = ts.HandleRequest(namespace.RootContext(context.TODO()), tokenReq)
+	_, err = ts.HandleRequest(namespace.RootContext(context.TODO()), tokenReq)
 	if err == nil {
 		t.Fatal("expected an error")
 	}

@@ -123,7 +123,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 	}
 
 	// Reading credentials should no longer work
-	credResp, err = lb.HandleRequest(namespace.RootContext(context.TODO()), credReq)
+	_, err = lb.HandleRequest(namespace.RootContext(context.TODO()), credReq)
 	if err == nil {
 		t.Fatal("expected authentication to fail when reading credentials")
 	}

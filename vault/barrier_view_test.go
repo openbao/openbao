@@ -251,7 +251,6 @@ func TestBarrierView_ClearView(t *testing.T) {
 	_, barrier, _ := mockBarrier(t)
 	view := NewBarrierView(barrier, "view/")
 
-	expect := []string{}
 	ent := []*logical.StorageEntry{
 		{Key: "foo", Value: []byte("test")},
 		{Key: "zip", Value: []byte("test")},
@@ -262,7 +261,6 @@ func TestBarrierView_ClearView(t *testing.T) {
 	}
 
 	for _, e := range ent {
-		expect = append(expect, e.Key)
 		if err := view.Put(context.Background(), e); err != nil {
 			t.Fatalf("err: %v", err)
 		}

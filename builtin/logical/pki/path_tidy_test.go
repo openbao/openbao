@@ -1662,7 +1662,7 @@ func TestTidyPaginationConfig(t *testing.T) {
 
 	// Expect an error when setting page_size to less than 5
 	pageSizeInvalid := 4
-	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+	_, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
 		"page_size": pageSizeInvalid,
 	})
 	require.Error(t, err, "expected error when setting page_size less than 5")

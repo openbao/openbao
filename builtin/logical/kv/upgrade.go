@@ -205,7 +205,6 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 			if err := txn.Commit(ctx); err != nil {
 				return err
 			}
-			storage = originalStorage
 		}
 
 		return nil

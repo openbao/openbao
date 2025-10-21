@@ -218,7 +218,7 @@ func TestKV_Subkeys_Destroyed(t *testing.T) {
 		t.Fatalf("destroy failed, err :%v, resp: %#v", err, secretRaw)
 	}
 
-	secret, ok := secretRaw.(*api.Secret)
+	_, ok := secretRaw.(*api.Secret)
 	if !ok {
 		t.Fatalf("response not an api.Secret, actual: %#v", secretRaw)
 	}
@@ -244,7 +244,7 @@ func TestKV_Subkeys_Destroyed(t *testing.T) {
 		t.Fatalf("expected subkeys request to fail with %d status code, resp: %#v", http.StatusNotFound, apiResp)
 	}
 
-	secret, err = api.ParseSecret(apiResp.Body)
+	secret, err := api.ParseSecret(apiResp.Body)
 	if err != nil {
 		t.Fatalf("failed to parse resp body, err: %v", err)
 	}

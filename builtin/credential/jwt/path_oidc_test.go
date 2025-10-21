@@ -1250,7 +1250,7 @@ func TestOIDC_Callback(t *testing.T) {
 				RemoteAddr: "127.0.0.99",
 			},
 		}
-		resp, err = b.HandleRequest(context.Background(), req)
+		_, err = b.HandleRequest(context.Background(), req)
 		if err != logical.ErrPermissionDenied {
 			t.Fatal(err)
 		}

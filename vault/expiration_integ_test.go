@@ -50,7 +50,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 	}
 
 	// Create role
-	resp, err := client.Logical().Write("auth/approle/role/role-period", map[string]interface{}{
+	_, err = client.Logical().Write("auth/approle/role/role-period", map[string]interface{}{
 		"period": "5s",
 	})
 	if err != nil {
@@ -58,7 +58,7 @@ func TestExpiration_RenewToken_TestCluster(t *testing.T) {
 	}
 
 	// Get role_id
-	resp, err = client.Logical().Read("auth/approle/role/role-period/role-id")
+	resp, err := client.Logical().Read("auth/approle/role/role-period/role-id")
 	if err != nil {
 		t.Fatal(err)
 	}

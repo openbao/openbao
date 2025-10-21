@@ -22,11 +22,15 @@ const (
 	// TransactionCacheFactor is a multiple of cache size to reduce
 	// transactions by, to avoid high memory usage.
 	TransactionCacheFactor = DefaultParallelTransactions
-
-	// refreshCacheCtxKey is a ctx value that denotes the cache should be
-	// refreshed during a Get call.
-	refreshCacheCtxKey = "refresh_cache"
 )
+
+type (
+	contextKeyRefreshCache struct{}
+)
+
+// contextRefreshCache is a ctx value that denotes the cache should be
+// refreshed during a Get call.
+var contextRefreshCache contextKeyRefreshCache = struct{}{}
 
 // These paths don't need to be cached by the LRU cache. This should
 // particularly help memory pressure when unsealing.
@@ -47,13 +51,13 @@ var cacheExceptionsPaths = []string{
 // CacheRefreshContext returns a context with an added value denoting if the
 // cache should attempt a refresh.
 func CacheRefreshContext(ctx context.Context, r bool) context.Context {
-	return context.WithValue(ctx, refreshCacheCtxKey, r)
+	return context.WithValue(ctx, contextRefreshCache, r)
 }
 
 // cacheRefreshFromContext is a helper to look up if the provided context is
 // requesting a cache refresh.
 func cacheRefreshFromContext(ctx context.Context) bool {
-	r, ok := ctx.Value(refreshCacheCtxKey).(bool)
+	r, ok := ctx.Value(contextRefreshCache).(bool)
 	if !ok {
 		return false
 	}

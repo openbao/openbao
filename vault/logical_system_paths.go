@@ -2293,7 +2293,7 @@ func (b *SystemBackend) internalPaths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: pathInternalUINamespacesRead(b),
+					Callback: b.pathInternalUINamespacesRead,
 					Summary:  "Backwards compatibility is not guaranteed for this API",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{

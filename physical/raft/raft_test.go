@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
@@ -518,6 +519,15 @@ func TestRaft_Backend_PutTxnMargin(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestRaft_LeaderConstant(t *testing.T) {
+	// To avoid a full dependency on the hashicorp/raft module,
+	// logical.ShouldForward(...) depends on the exact string of
+	// raft.ErrNotLeader. This test ensures that Put(...) and
+	// Delete(...) operations on the standby result in forwarding
+	// to the active.
+	require.True(t, logical.ShouldForward(raft.ErrNotLeader))
 }
 
 func BenchmarkDB_Puts(b *testing.B) {

@@ -90,6 +90,16 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 		strings.HasPrefix(namespacedKey, coreAuthConfigPath+"/") || strings.HasPrefix(namespacedKey, coreLocalAuthConfigPath+"/"):
 		c.mountInvalidationWorker.invalidateMount(namespaceUUID, namespacedKey)
 
+	case namespacedKey == rootKeyPath ||
+		namespacedKey == legacyRootKeyPath ||
+		namespacedKey == keyringPath ||
+		namespacedKey == shamirKekPath ||
+		namespacedKey == StoredBarrierKeysPath ||
+		strings.HasPrefix(namespacedKey, keyringUpgradePrefix):
+
+		// Invalidating keyring uses the same logic as the HA startup code,
+		// just started in a background goroutine.
+		c.invalidateKeyrings(namespacedKey)
 	case c.router.Invalidate(ctx, key):
 	// if router.Invalidate returns true, a matching plugin was found and the invalidation is therefore dispatched
 

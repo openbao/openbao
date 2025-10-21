@@ -657,6 +657,10 @@ type Core struct {
 func (c *Core) HAState() consts.HAState {
 	switch {
 	case c.standby.Load():
+		if c.StandbyReadsEnabled() {
+			return consts.PerfStandby
+		}
+
 		return consts.Standby
 	default:
 		return consts.Active

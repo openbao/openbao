@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -122,6 +123,39 @@ func TestRouter_Mount(t *testing.T) {
 	}
 	if r.MountConflict(namespace.RootContext(nil), "prod/test") == "" {
 		t.Fatal("bad: prod/test/")
+	}
+
+	nsUUID, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testns1 := &namespace.Namespace{
+		ID:   "testns1",
+		UUID: nsUUID,
+		Path: "testns1/",
+	}
+
+	meUUID, err = uuid.GenerateUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mountEntry = &MountEntry{
+		Path:        "sys/",
+		UUID:        meUUID,
+		Accessor:    "testns1sysaccessor",
+		NamespaceID: testns1.ID,
+		namespace:   testns1,
+	}
+
+	err = r.Mount(n, mountEntry.Path, mountEntry, view)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if conflict := r.MountConflict(namespace.ContextWithNamespace(context.TODO(), testns1), "testns1/"); conflict != "" {
+		t.Fatalf("bad: %s", conflict)
 	}
 }
 

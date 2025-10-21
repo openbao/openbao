@@ -418,7 +418,8 @@ func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) str
 		}
 
 		nsPath := strings.TrimSuffix(existingPath, "sys/")
-		if strings.HasPrefix(path, nsPath) {
+		// ignore the namespace we are operating in
+		if strings.HasPrefix(path, nsPath) && nsPath != ns.Path {
 			existing = nsPath
 			return true
 		}

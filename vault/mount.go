@@ -2706,9 +2706,9 @@ func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desi
 
 type mountInvalidationWorker struct {
 	l                      sync.Mutex
-	invalidations          map[mountInvalidation]string
-	namespaceInvalidations map[string]string
-	legacyInvalidations    map[string]string
+	invalidations          map[mountInvalidation]struct{}
+	namespaceInvalidations map[string]struct{}
+	legacyInvalidations    map[string]struct{}
 	notify                 chan struct{}
 
 	core *Core
@@ -2716,9 +2716,9 @@ type mountInvalidationWorker struct {
 
 func newMountInvalidationWorker(c *Core) *mountInvalidationWorker {
 	return &mountInvalidationWorker{
-		invalidations:          map[mountInvalidation]string{},
-		namespaceInvalidations: map[string]string{},
-		legacyInvalidations:    map[string]string{},
+		invalidations:          map[mountInvalidation]struct{}{},
+		namespaceInvalidations: map[string]struct{}{},
+		legacyInvalidations:    map[string]struct{}{},
 		core:                   c,
 		notify:                 make(chan struct{}, 1),
 	}
@@ -2746,9 +2746,9 @@ func (w *mountInvalidationWorker) dispatchReloads(ctx context.Context) error {
 	invalidations := w.invalidations
 	namespaceInvalidations := w.namespaceInvalidations
 	legacyInvalidations := w.legacyInvalidations
-	w.invalidations = map[mountInvalidation]string{}
-	w.namespaceInvalidations = map[string]string{}
-	w.legacyInvalidations = map[string]string{}
+	w.invalidations = map[mountInvalidation]struct{}{}
+	w.namespaceInvalidations = map[string]struct{}{}
+	w.legacyInvalidations = map[string]struct{}{}
 	w.l.Unlock()
 
 	for invalidation := range invalidations {
@@ -2795,7 +2795,7 @@ func (w *mountInvalidationWorker) invalidateMount(namespaceUUID, key string) {
 	w.invalidations[mountInvalidation{
 		namespaceUUID: namespaceUUID,
 		key:           key,
-	}] = ""
+	}] = struct{}{}
 	w.trigger()
 }
 
@@ -2803,7 +2803,7 @@ func (w *mountInvalidationWorker) invalidateNamespaceMounts(namespaceUUID string
 	w.l.Lock()
 	defer w.l.Unlock()
 
-	w.namespaceInvalidations[namespaceUUID] = ""
+	w.namespaceInvalidations[namespaceUUID] = struct{}{}
 	w.trigger()
 }
 
@@ -2811,6 +2811,6 @@ func (w *mountInvalidationWorker) invalidateLegacyMounts(key string) {
 	w.l.Lock()
 	defer w.l.Unlock()
 
-	w.legacyInvalidations[key] = ""
+	w.legacyInvalidations[key] = struct{}{}
 	w.trigger()
 }

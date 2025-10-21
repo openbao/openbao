@@ -23,7 +23,7 @@ var pathInternalUINamespacesRead = func(b *SystemBackend) framework.OperationFun
 		}
 
 		// Load the ACL policies so we can check for access and filter namespaces
-		_, te, entity, _, err := b.Core.fetchACLTokenEntryAndEntity(ctx, req)
+		acl, te, entity, _, err := b.Core.fetchACLTokenEntryAndEntity(ctx, req)
 		if err != nil {
 			return nil, err
 		}
@@ -49,7 +49,9 @@ var pathInternalUINamespacesRead = func(b *SystemBackend) framework.OperationFun
 		var nsList []string
 		for _, entry := range list {
 			relativePath := parent.TrimmedPath(entry.Path)
-			nsList = append(nsList, relativePath)
+			if acl != nil && hasMountAccess(ctx, acl, relativePath) {
+				nsList = append(nsList, relativePath)
+			}
 		}
 
 		return logical.ListResponse(nsList), nil

@@ -1,0 +1,3 @@
+```release-note:bug
+core/namespaces: only return namespaces where the token has access
+```

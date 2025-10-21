@@ -798,6 +798,10 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
 		if err := c.persistMounts(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
+			if logical.ShouldForward(err) {
+				return err
+			}
+
 			c.logger.Error("failed to update mount table", "error", err)
 			return logical.CodedError(500, "failed to update mount table")
 		}

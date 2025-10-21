@@ -51,6 +51,9 @@ dev-ui-mem: assetcheck dev-ui
 dev-dynamic-mem: BUILD_TAGS+=memprofiler
 dev-dynamic-mem: dev-dynamic
 
+dev-tlsdebug: BUILD_TAGS+=tlsdebug
+dev-tlsdebug: dev
+
 # Creates a Docker image by adding the compiled linux/amd64 binary found in ./bin.
 # The resulting image is tagged "openbao:dev".
 docker-dev: BUILD_TAGS+=testonly

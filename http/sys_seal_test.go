@@ -455,7 +455,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -470,7 +470,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		"policies": []string{"test"},
 	}
 
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v %v", err, resp)
 	}
@@ -493,7 +493,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -514,7 +514,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -535,7 +535,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

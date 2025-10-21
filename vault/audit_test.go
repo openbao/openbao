@@ -45,7 +45,7 @@ func TestAudit_ReadOnlyViewDuringMount(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableAudit(namespace.RootContext(nil), me, true)
+	err := c.enableAudit(namespace.RootContext(context.TODO()), me, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestCore_EnableAudit(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableAudit(namespace.RootContext(nil), me, true)
+	err := c.enableAudit(namespace.RootContext(context.TODO()), me, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestCore_DisableAudit(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
 	c.auditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
 
-	existed, err := c.disableAudit(namespace.RootContext(nil), "foo", true)
+	existed, err := c.disableAudit(namespace.RootContext(context.TODO()), "foo", true)
 	if existed && err != nil {
 		t.Fatalf("existed: %v; err: %v", existed, err)
 	}
@@ -265,12 +265,12 @@ func TestCore_DisableAudit(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err = c.enableAudit(namespace.RootContext(nil), me, true)
+	err = c.enableAudit(namespace.RootContext(context.TODO()), me, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	existed, err = c.disableAudit(namespace.RootContext(nil), "foo", true)
+	existed, err = c.disableAudit(namespace.RootContext(context.TODO()), "foo", true)
 	if !existed || err != nil {
 		t.Fatalf("existed: %v; err: %v", existed, err)
 	}

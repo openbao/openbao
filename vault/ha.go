@@ -487,6 +487,8 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 
 		var perfCancel context.CancelFunc
 		if c.StandbyReadsEnabled() {
+			c.logger.Info("enabling horizontal scalability (reads)")
+
 			if err := c.runStandbyGrabStateLock(stopCh); err != nil {
 				c.logger.Error("runStandby: unable to grab state lock", "err", err)
 				return

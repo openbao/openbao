@@ -807,7 +807,10 @@ func TestInitializeBackend(t *testing.T) {
 		return nil
 	}}
 
-	backend.Initialize(nil, &logical.InitializationRequest{Storage: nil})
+	err := backend.Initialize(context.TODO(), &logical.InitializationRequest{Storage: nil})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if !inited {
 		t.Fatal("backend should be open")

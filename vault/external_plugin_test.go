@@ -92,7 +92,7 @@ func TestCore_EnableExternalPlugin(t *testing.T) {
 
 			mountPlugin(t, c.systemBackend, plugins[0].Name, tc.pluginType, "v1.0.0", "")
 
-			match := c.router.MatchingMount(namespace.RootContext(nil), tc.routerPath)
+			match := c.router.MatchingMount(namespace.RootContext(context.TODO()), tc.routerPath)
 			if match != tc.expectedMatch {
 				t.Fatalf("missing mount, match: %q", match)
 			}
@@ -166,7 +166,7 @@ func TestCore_EnableExternalPlugin_MultipleVersions(t *testing.T) {
 
 			mountPlugin(t, c.systemBackend, plugins[0].Name, tc.pluginType, tc.mountVersion, "")
 
-			match := c.router.MatchingMount(namespace.RootContext(nil), tc.routerPath)
+			match := c.router.MatchingMount(namespace.RootContext(context.TODO()), tc.routerPath)
 			if match != tc.expectedMatch {
 				t.Fatalf("missing mount, match: %q", match)
 			}
@@ -396,7 +396,7 @@ func TestCore_EnableExternalPlugin_ShadowBuiltin(t *testing.T) {
 		req.Data = map[string]interface{}{
 			"type": authName,
 		}
-		resp, err := c.systemBackend.HandleRequest(namespace.RootContext(nil), req)
+		resp, err := c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
 		if err != nil {
 			return err
 		}
@@ -472,7 +472,7 @@ func TestCore_EnableExternalKv_MultipleVersions(t *testing.T) {
 
 	registerPlugin(t, c.systemBackend, pluginName, consts.PluginTypeSecrets.String(), "v1.2.3", plugin.Sha256, plugin.FileName)
 	req := logical.TestRequest(t, logical.ReadOperation, "plugins/catalog")
-	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -496,7 +496,7 @@ func TestCore_EnableExternalKv_MultipleVersions(t *testing.T) {
 	req.Data["config"] = map[string]interface{}{
 		"plugin_version": "v1.2.3",
 	}
-	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -525,7 +525,7 @@ func TestCore_EnableExternalNoop_MultipleVersions(t *testing.T) {
 
 	registerPlugin(t, c.systemBackend, pluginName, consts.PluginTypeCredential.String(), "v1.2.3", plugin.Sha256, plugin.FileName)
 	req := logical.TestRequest(t, logical.ReadOperation, "plugins/catalog")
-	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -549,7 +549,7 @@ func TestCore_EnableExternalNoop_MultipleVersions(t *testing.T) {
 	req.Data["config"] = map[string]interface{}{
 		"plugin_version": "v1.2.3",
 	}
-	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -586,7 +586,7 @@ func TestCore_EnableExternalPlugin_NoVersionsOkay(t *testing.T) {
 
 			mountPlugin(t, c.systemBackend, plugins[0].Name, tc.pluginType, "", "")
 
-			match := c.router.MatchingMount(namespace.RootContext(nil), tc.routerPath)
+			match := c.router.MatchingMount(namespace.RootContext(context.TODO()), tc.routerPath)
 			if match != tc.expectedMatch {
 				t.Fatalf("missing mount, match: %q", match)
 			}
@@ -627,7 +627,7 @@ func TestCore_EnableExternalCredentialPlugin_NoVersionOnRegister(t *testing.T) {
 					"plugin_version": "v1.0.0",
 				},
 			}
-			resp, _ := c.systemBackend.HandleRequest(namespace.RootContext(nil), req)
+			resp, _ := c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
 			if resp == nil || !resp.IsError() || !strings.Contains(resp.Error().Error(), ErrPluginNotFound.Error()) {
 				t.Fatalf("Expected to get plugin not found but got: %v", resp.Error())
 			}
@@ -759,7 +759,7 @@ func TestExternalPlugin_CheckFilePermissions(t *testing.T) {
 				"sha256":  plugins[0].Sha256,
 				"version": tc.pluginVersion,
 			}
-			resp, err := c.systemBackend.HandleRequest(namespace.RootContext(nil), req)
+			resp, err := c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -777,7 +777,7 @@ func TestExternalPlugin_CheckFilePermissions(t *testing.T) {
 					"plugin_version": tc.pluginVersion,
 				}
 			}
-			resp, err = c.systemBackend.HandleRequest(namespace.RootContext(nil), req)
+			resp, err = c.systemBackend.HandleRequest(namespace.RootContext(context.TODO()), req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -905,7 +905,7 @@ func registerPlugin(t *testing.T, sys *SystemBackend, pluginName, pluginType, ve
 		"sha256":  sha,
 		"version": version,
 	}
-	resp, err := sys.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := sys.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -928,7 +928,7 @@ func mountPluginWithResponse(t *testing.T, sys *SystemBackend, pluginName string
 			"plugin_version": version,
 		}
 	}
-	return sys.HandleRequest(namespace.RootContext(nil), req)
+	return sys.HandleRequest(namespace.RootContext(context.TODO()), req)
 }
 
 func mountPlugin(t *testing.T, sys *SystemBackend, pluginName string, pluginType consts.PluginType, version, path string) {
@@ -956,7 +956,7 @@ func unmountPlugin(t *testing.T, sys *SystemBackend, pluginName string, pluginTy
 			"plugin_version": version,
 		}
 	}
-	resp, err := sys.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := sys.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
@@ -970,7 +970,7 @@ func deregisterPlugin(t *testing.T, sys *SystemBackend, pluginName, pluginType, 
 		"sha256":  sha,
 		"version": version,
 	}
-	resp, err := sys.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := sys.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}

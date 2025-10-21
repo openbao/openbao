@@ -27,7 +27,7 @@ import (
 // without a key parameter
 func TestOIDC_Path_OIDC_RoleNoKeyParameter(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test role "test-role1" without a key param -- should fail
@@ -48,7 +48,7 @@ func TestOIDC_Path_OIDC_RoleNoKeyParameter(t *testing.T) {
 // a key parameter is provided but the key does not exist
 func TestOIDC_Path_OIDC_RoleNilKeyEntry(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test role "test-role1" with a non-existent key -- should fail
@@ -72,7 +72,7 @@ func TestOIDC_Path_OIDC_RoleNilKeyEntry(t *testing.T) {
 // prividing a key param
 func TestOIDC_Path_OIDCRole_UpdateNoKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -131,7 +131,7 @@ func TestOIDC_Path_OIDCRole_UpdateNoKey(t *testing.T) {
 // empty key
 func TestOIDC_Path_OIDCRole_UpdateEmptyKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -184,7 +184,7 @@ func TestOIDC_Path_OIDCRole_UpdateEmptyKey(t *testing.T) {
 // TestOIDC_Path_OIDCRoleRole tests CRUD operations for roles
 func TestOIDC_Path_OIDCRoleRole(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -279,7 +279,7 @@ func TestOIDC_Path_OIDCRoleRole(t *testing.T) {
 // TestOIDC_Path_OIDCRole_InvalidTokenTTL tests the TokenTTL validation
 func TestOIDC_Path_OIDCRole_InvalidTokenTTL(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -321,7 +321,7 @@ func TestOIDC_Path_OIDCRole_InvalidTokenTTL(t *testing.T) {
 // TestOIDC_Path_OIDCRole tests the List operation for roles
 func TestOIDC_Path_OIDCRole(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Prepare two roles, test-role1 and test-role2
@@ -390,7 +390,7 @@ func TestOIDC_Path_OIDCRole(t *testing.T) {
 // TestOIDC_Path_OIDCKeyKey tests CRUD operations for keys
 func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key" -- should succeed
@@ -492,7 +492,7 @@ func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 // TestOIDC_Path_OIDCKey_InvalidTokenTTL tests the TokenTTL validation
 func TestOIDC_Path_OIDCKey_InvalidTokenTTL(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key" -- should succeed
@@ -558,7 +558,7 @@ func TestOIDC_Path_OIDCKey_InvalidTokenTTL(t *testing.T) {
 // TestOIDC_Path_OIDCKey tests the List operation for keys
 func TestOIDC_Path_OIDCKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Prepare two keys, test-key1 and test-key2
@@ -610,7 +610,7 @@ func TestOIDC_Path_OIDCKey(t *testing.T) {
 // deleted if it is referenced by an existing client
 func TestOIDC_Path_OIDCKey_DeleteWithExistingClient(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Prepare test key test-key
@@ -644,7 +644,7 @@ func TestOIDC_Path_OIDCKey_DeleteWithExistingClient(t *testing.T) {
 // oidc/.well-known/keys endpoint when they are not associated with a role
 func TestOIDC_PublicKeys_NoRole(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	s := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -688,7 +688,7 @@ func assertRespPublicKeyCount(t *testing.T, resp *logical.Response, keyCount int
 // key creation, rotation, and deletion
 func TestOIDC_PublicKeys(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -774,7 +774,7 @@ func TestOIDC_PublicKeys(t *testing.T) {
 // key creation, rotation, and deletion
 func TestOIDC_SharedPublicKeysByRoles(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -822,7 +822,7 @@ func TestOIDC_SharedPublicKeysByRoles(t *testing.T) {
 // of the signing key
 func TestOIDC_SignIDToken(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create and load an entity, an entity is required to generate an ID token
@@ -955,7 +955,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 // attempting to sign an ID token with a nil signing key
 func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create and load an entity, an entity is required to generate an ID token
 	testEntity := &identity.Entity{
@@ -1090,7 +1090,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 
 			// Prepare a storage to run through periodicFunc
 			c, _, _ := TestCoreUnsealed(t)
-			ctx := namespace.RootContext(nil)
+			ctx := namespace.RootContext(context.TODO())
 			storage := c.router.MatchingStorageByAPIPath(ctx, "identity/oidc")
 
 			if testSet.setSigningKey {
@@ -1157,7 +1157,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 // TestOIDC_Config tests CRUD operations for configuring the OIDC backend
 func TestOIDC_Config(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	testIssuer := "https://example.com:1234"
@@ -1220,7 +1220,7 @@ func TestOIDC_Config(t *testing.T) {
 // TestOIDC_pathOIDCKeyExistenceCheck tests pathOIDCKeyExistenceCheck
 func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	keyName := "test"
@@ -1280,7 +1280,7 @@ func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 // TestOIDC_pathOIDCRoleExistenceCheck tests pathOIDCRoleExistenceCheck
 func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	roleName := "test"
@@ -1340,7 +1340,7 @@ func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 // TestOIDC_Path_OpenIDConfig tests read operations for the openid-configuration path
 func TestOIDC_Path_OpenIDConfig(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Expect defaults from .well-known/openid-configuration
@@ -1387,7 +1387,7 @@ func TestOIDC_Path_OpenIDConfig(t *testing.T) {
 // TestOIDC_Path_Introspect tests update operations on the introspect path
 func TestOIDC_Path_Introspect(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Expect active false and an error from a malformed token

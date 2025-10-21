@@ -242,7 +242,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -304,7 +304,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 				Data:      data,
 			}
 
-			resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				if tc.err == nil {
 					t.Fatalf("err:%s resp:%#v\n", err, resp)
@@ -334,7 +334,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 				Storage:   config.StorageView,
 				Data:      data,
 			}
-			resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -380,7 +380,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 				Path:      "static-roles/plugin-role-test",
 				Storage:   config.StorageView,
 			}
-			resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+			resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 			if err != nil || (resp != nil && resp.IsError()) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
@@ -427,7 +427,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -447,7 +447,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -460,7 +460,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -473,7 +473,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Path:      "static-creds/plugin-role-test-updates",
 		Storage:   config.StorageView,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -498,7 +498,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Data:      updateData,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -511,7 +511,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -527,7 +527,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Path:      "static-creds/plugin-role-test-updates",
 		Storage:   config.StorageView,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -553,7 +553,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Data:      updateData,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -571,7 +571,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		Data:      updateData,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || !resp.IsError() {
 		t.Fatal("expected error on updating name")
 	}
@@ -620,7 +620,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -643,7 +643,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -665,7 +665,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -689,7 +689,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -711,7 +711,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal(err)
 	}

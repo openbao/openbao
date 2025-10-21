@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -19,7 +20,7 @@ import (
 
 func TestIdentityStore_Groups_AddByNameEntityUpdate(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create an entity and get its ID
 	entityRegisterReq := &logical.Request{
@@ -78,7 +79,7 @@ func TestIdentityStore_Groups_AddByNameEntityUpdate(t *testing.T) {
 
 func TestIdentityStore_FixOverwrittenMemberGroupIDs(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create a group
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -138,7 +139,7 @@ func TestIdentityStore_FixOverwrittenMemberGroupIDs(t *testing.T) {
 
 func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
 	c, keys, rootToken := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create a group
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -200,7 +201,7 @@ func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
 }
 
 func TestIdentityStore_MemberGroupIDDelete(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a child group
@@ -269,7 +270,7 @@ func TestIdentityStore_MemberGroupIDDelete(t *testing.T) {
 }
 
 func TestIdentityStore_CaseInsensitiveGroupName(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	testGroupName := "testGroupName"
@@ -340,7 +341,7 @@ func TestIdentityStore_CaseInsensitiveGroupName(t *testing.T) {
 }
 
 func TestIdentityStore_GroupByName(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity using the "name" endpoint
@@ -459,7 +460,7 @@ func TestIdentityStore_Groups_TypeMembershipAdditions(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupReq := &logical.Request{
 		Path:      "group",
@@ -496,7 +497,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupReq := &logical.Request{
 		Path:      "group",
@@ -547,7 +548,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 
 func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 	var err error
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a dummy group
@@ -658,7 +659,7 @@ func TestIdentityStore_GroupsCreateUpdate(t *testing.T) {
 	var resp *logical.Response
 	var err error
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity and get its ID
@@ -782,7 +783,7 @@ func TestIdentityStore_GroupsCreateUpdateDuplicatePolicy(t *testing.T) {
 	var resp *logical.Response
 	var err error
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a group with the above created 2 entities as its members
@@ -869,7 +870,7 @@ func TestIdentityStore_GroupsCreateUpdateDuplicatePolicy(t *testing.T) {
 func TestIdentityStore_GroupsCRUD_ByID(t *testing.T) {
 	var resp *logical.Response
 	var err error
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity and get its ID
@@ -1025,7 +1026,7 @@ func TestIdentityStore_GroupsCRUD_ByID(t *testing.T) {
 func TestIdentityStore_GroupMultiCase(t *testing.T) {
 	var resp *logical.Response
 	var err error
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupRegisterReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -1116,7 +1117,7 @@ Test groups hierarchy:
 func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	var resp *logical.Response
 	var err error
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupRegisterReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -1419,7 +1420,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 
 func TestIdentityStore_GroupCycleDetection(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	group1Name := "group1"
 	group2Name := "group2"

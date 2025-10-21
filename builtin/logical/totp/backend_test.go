@@ -84,7 +84,7 @@ func TestBackend_KeyName(t *testing.T) {
 	}
 	var resp *logical.Response
 	for _, tc := range tests {
-		resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 			Path:      "keys/" + tc.KeyName,
 			Operation: logical.UpdateOperation,
 			Storage:   config.StorageView,
@@ -102,7 +102,7 @@ func TestBackend_KeyName(t *testing.T) {
 		} else if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("bad: test name: %q\nresp: %#v\nerr: %v", tc.Name, resp, err)
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 			Path:      "code/" + tc.KeyName,
 			Operation: logical.ReadOperation,
 			Storage:   config.StorageView,

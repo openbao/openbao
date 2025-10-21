@@ -166,7 +166,7 @@ func (i *InmemHABackend) invalidateAll(key string) {
 func (i *InmemHABackend) Put(ctx context.Context, entry *physical.Entry) error {
 	err := i.Backend.Put(ctx, entry)
 	if err != nil {
-		i.invalidateAll(entry.Key)
+		go i.invalidateAll(entry.Key)
 	}
 
 	return err
@@ -175,7 +175,7 @@ func (i *InmemHABackend) Put(ctx context.Context, entry *physical.Entry) error {
 func (i *InmemHABackend) Delete(ctx context.Context, key string) error {
 	err := i.Backend.Delete(ctx, key)
 	if err != nil {
-		i.invalidateAll(key)
+		go i.invalidateAll(key)
 	}
 
 	return err

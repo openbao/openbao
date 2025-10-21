@@ -91,10 +91,11 @@ The following flags **SHOULD NOT** be used in a release version:
 
 | Tag | Effect |
 | :-- | :----- |
-| `memprofiler` | Includes a memory profiler in the release binary for debugging purposes only. |
-| `testonly`    | Includes insecure custom hooks only for testing purposes.                     |
 | `deadlock`    | Includes deadlock detection during testing.                                   |
+| `memprofiler` | Includes a memory profiler in the release binary for debugging purposes only. |
 | `race`        | Enabled for race testing.                                                     |
+| `testonly`    | Includes insecure custom hooks only for testing purposes.                     |
+| `tlsdebug`    | Enables TLS session key dumping, e.g. for debugging with Wireshark.           |
 
 :::
 

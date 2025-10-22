@@ -4,7 +4,7 @@
 SECURITY:
 
 * audit: redact `HTTPRawBody` response parameter in audit logs; CVE-2025-62513 / GHSA-ghfh-fmx4-26h8. [[GH-2002](https://github.com/openbao/openbao/pull/2002)]
-* audit: redact `[]byte` type response parameters in audit logs; GHSA-rc54-2g2c-g36g. [[GH-2002](https://github.com/openbao/openbao/pull/2002)]
+* audit: redact `[]byte` type response parameters in audit logs; CVE-2025-62705 / GHSA-rc54-2g2c-g36g. [[GH-2002](https://github.com/openbao/openbao/pull/2002)]
 
 IMPROVEMENTS:
 

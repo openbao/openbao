@@ -1,7 +1,7 @@
 ## Dockerfile adapted from https://docusaurus.community/knowledge/deployment/docker/.
 
 ## Start with a base image containing NodeJS so we can build Docusaurus.
-FROM node:lts
+FROM node:lts@sha256:915acd9e9b885ead0c620e27e37c81b74c226e0e1c8177f37a60217b6eabb0d7
 
 ## Enable corepack.
 RUN corepack enable

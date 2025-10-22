@@ -175,6 +175,7 @@ jobs:
           INPUTS_GO_ARCH: ${{ inputs.go-arch }}
           INPUTS_EXTRA_FLAGS: ${{ inputs.extra-flags }}
           INPUTS_GO_TAGS: ${{ inputs.go-tags }}
+          BAO_RUN_CONTAINER_TESTS: true
         run: |
           set -exo pipefail
 

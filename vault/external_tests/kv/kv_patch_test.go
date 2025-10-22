@@ -79,7 +79,7 @@ func TestKV_Patch_BadContentTypeHeader(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		return c.RawRequestWithContext(context.Background(), req)
+		return c.RawRequestWithContext(t.Context(), req)
 	})
 
 	apiResp, ok := apiRespRaw.(*api.Response)

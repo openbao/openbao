@@ -1700,7 +1700,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 
 	// Handle writing the legacy mount table by default.
 	writeTable := func(mt *MountTable, path string) (int, error) {
-		// Encode the mount table into JSON and compress it (lzw).
+		// Encode the mount table into JSON and compress it (Gzip).
 		compressedBytes, err := jsonutil.EncodeJSONAndCompress(mt, nil)
 		if err != nil {
 			c.logger.Error("failed to encode or compress mount table", "error", err)

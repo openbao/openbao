@@ -47,11 +47,11 @@ require (
 	github.com/openbao/openbao/api/v2 v2.4.0
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tink-crypto/tink-go/v2 v2.4.0
-	golang.org/x/crypto v0.42.0
-	golang.org/x/net v0.44.0
-	golang.org/x/text v0.29.0
-	google.golang.org/grpc v1.75.1
+	github.com/tink-crypto/tink-go/v2 v2.5.0
+	golang.org/x/crypto v0.43.0
+	golang.org/x/net v0.46.0
+	golang.org/x/text v0.30.0
+	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 )
 
@@ -59,7 +59,7 @@ require (
 	cel.dev/expr v0.24.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
-	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
+	golang.org/x/exp v0.0.0-20251017212417-90e834f514db // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250818200422-3122310a409c // indirect
 )
 
@@ -114,8 +114,8 @@ require (
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.4.0 // indirect
-	golang.org/x/sys v0.36.0 // indirect
-	golang.org/x/time v0.13.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250818200422-3122310a409c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

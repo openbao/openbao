@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/strslice"
 	docker "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
+	"github.com/moby/go-archive"
 )
 
 // Runner manages the lifecycle of the Docker container
@@ -28,7 +27,7 @@ type Runner struct {
 // pulling the specified Vault image, creating the container, and copies the
 // plugin binary into the container file system before starting the container
 // itself.
-func (d *Runner) Start(ctx context.Context) (*types.ContainerJSON, error) {
+func (d *Runner) Start(ctx context.Context) (*container.InspectResponse, error) {
 	hostConfig := &container.HostConfig{
 		PublishAllPorts: true,
 		AutoRemove:      true,

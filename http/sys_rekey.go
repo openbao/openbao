@@ -290,7 +290,7 @@ func handleSysRekeyVerifyDelete(ctx context.Context, core *vault.Core, recovery 
 	handleSysRekeyVerifyGet(ctx, core, recovery, w, r)
 }
 
-func handleSysRekeyVerifyPut(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
+func handleSysRekeyVerifyPut(_ context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
 	// Parse the request
 	var req RekeyVerificationUpdateRequest
 	if err := parseJSONRequest(r, w, &req); err != nil {

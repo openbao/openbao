@@ -37,10 +37,14 @@ func structToMap(val reflect.Value) map[string]any {
 		if field.Anonymous {
 			maps.Copy(result, structToMap(fieldVal))
 		} else {
-			// Use json tag if present, else field name
 			tag := field.Tag.Get("json")
-			if tag == "" || tag == "-" {
+			switch tag {
+			case "":
+				// Use json tag if present, else field name
 				tag = field.Name
+			case "-":
+				// Skip fields omitted by tag
+				continue
 			}
 			result[tag] = fieldVal.Interface()
 		}

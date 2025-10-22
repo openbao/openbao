@@ -111,10 +111,12 @@ func TestMap(t *testing.T) {
 			name: "WithJSONTags",
 			have: struct {
 				Tagged
-				Admin bool `json:"admin"`
+				Admin bool   `json:"admin"`
+				Group string `json:"-"`
 			}{
 				Tagged: Tagged{Name: "Bob", Age: 25},
 				Admin:  true,
+				Group:  "employees",
 			},
 			want: map[string]any{"name": "Bob", "age": 25, "admin": true},
 		},

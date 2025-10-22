@@ -8,7 +8,8 @@ import (
 	"fmt"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/decls"
+	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/openbao/openbao/sdk/v2/framework"
 )
@@ -102,7 +103,7 @@ func ValidateProgram(celProgram CelProgram) (bool, error) {
 	var envOptions []cel.EnvOption
 	// Add variables to the CEL environment
 	for _, variable := range celProgram.Variables {
-		envOptions = append(envOptions, cel.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
+		envOptions = append(envOptions, cel.VariableDecls(decls.NewVariable(variable.Name, types.DynType)))
 	}
 
 	env, err := cel.NewEnv(envOptions...)

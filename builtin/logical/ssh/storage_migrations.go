@@ -130,7 +130,7 @@ func setMigrationLog(ctx context.Context, s logical.Storage, log *migrationLog) 
 func fetchCAKeyMaterial(ctx context.Context, s logical.Storage) (publicKey string, privateKey string, err error) {
 	publicKeyCaEntry, err := caKey(ctx, s, caPublicKey)
 	if err != nil {
-		return
+		return publicKey, privateKey, err
 	}
 
 	if publicKeyCaEntry != nil {
@@ -139,14 +139,14 @@ func fetchCAKeyMaterial(ctx context.Context, s logical.Storage) (publicKey strin
 
 	privateKeyCaEntry, err := caKey(ctx, s, caPrivateKey)
 	if err != nil {
-		return
+		return publicKey, privateKey, err
 	}
 
 	if privateKeyCaEntry != nil {
 		privateKey = privateKeyCaEntry.Key
 	}
 
-	return
+	return publicKey, privateKey, err
 }
 
 func computeKeyMaterialHash(publicKey string, privateKey string) (string, error) {

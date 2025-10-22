@@ -185,5 +185,5 @@ func generateKeys(t *testing.T) (rsa1 []byte, rsa2 []byte, aes128 []byte, aes256
 	_, err = rand.Read(aes256)
 	require.NoError(t, err, "failed generating AES 256 key")
 
-	return
+	return rsa1, rsa2, aes128, aes256
 }

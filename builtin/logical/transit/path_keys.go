@@ -16,9 +16,9 @@ import (
 
 	"golang.org/x/crypto/ed25519"
 
-	"github.com/fatih/structs"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -330,10 +330,10 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 
 // Built-in helper type for returning asymmetric keys
 type asymKey struct {
-	Name             string    `json:"name" structs:"name" mapstructure:"name"`
-	PublicKey        string    `json:"public_key" structs:"public_key" mapstructure:"public_key"`
-	CertificateChain string    `json:"certificate_chain" structs:"certificate_chain" mapstructure:"certificate_chain"`
-	CreationTime     time.Time `json:"creation_time" structs:"creation_time" mapstructure:"creation_time"`
+	Name             string    `json:"name" mapstructure:"name"`
+	PublicKey        string    `json:"public_key" mapstructure:"public_key"`
+	CertificateChain string    `json:"certificate_chain" mapstructure:"certificate_chain"`
+	CreationTime     time.Time `json:"creation_time" mapstructure:"creation_time"`
 }
 
 func (b *backend) pathPolicyRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -498,7 +498,7 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 				key.PublicKey = pubKey
 			}
 
-			retKeys[k] = structs.New(key).Map()
+			retKeys[k] = structtomap.Map(key)
 		}
 		resp.Data["keys"] = retKeys
 	}

@@ -330,7 +330,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 			return nil, false, nil
 		}
 		retP = p
-		return
+		return retP, retUpserted, retErr
 	}
 
 	// Load it from storage
@@ -423,7 +423,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 		// We don't need to worry about upgrading since it will be a new policy
 		retP = p
 		retUpserted = true
-		return
+		return retP, retUpserted, retErr
 	}
 
 	if p.NeedsUpgrade() {
@@ -440,7 +440,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 	}
 
 	retP = p
-	return
+	return retP, retUpserted, retErr
 }
 
 func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key []byte, rand io.Reader) error {

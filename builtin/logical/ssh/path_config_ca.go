@@ -23,7 +23,7 @@ import (
 )
 
 type keyStorageEntry struct {
-	Key string `json:"key" structs:"key" mapstructure:"key"`
+	Key string `json:"key" mapstructure:"key"`
 }
 
 func pathConfigCA(b *backend) *framework.Path {

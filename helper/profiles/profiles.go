@@ -314,12 +314,12 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 
 	if err = p.evaluateField(ctx, history, requestBlock.Operation, &req.Operation); err != nil {
 		err = fmt.Errorf("failed to evaluate operation: %w", err)
-		return
+		return req, allowFailure, err
 	}
 
 	if err = p.evaluateField(ctx, history, requestBlock.Path, &req.Path); err != nil {
 		err = fmt.Errorf("failed to evaluate path: %w", err)
-		return
+		return req, allowFailure, err
 	}
 
 	// For the token, if our request block did not specify a token, we use the
@@ -330,21 +330,21 @@ func (p *ProfileEngine) buildRequest(ctx context.Context, history *EvaluationHis
 	} else {
 		if err = p.evaluateField(ctx, history, requestBlock.Token, &req.ClientToken); err != nil {
 			err = fmt.Errorf("failed to evaluate token: %w", err)
-			return
+			return req, allowFailure, err
 		}
 	}
 
 	if err = p.evaluateField(ctx, history, requestBlock.Data, &req.Data); err != nil {
 		err = fmt.Errorf("failed to evaluate data: %w", err)
-		return
+		return req, allowFailure, err
 	}
 
 	if err = p.evaluateField(ctx, history, requestBlock.AllowFailure, &allowFailure); err != nil {
 		err = fmt.Errorf("failed to evaluate allow failure: %w", err)
-		return
+		return req, allowFailure, err
 	}
 
-	return
+	return req, allowFailure, err
 }
 
 // evaluateField takes a single configuration field and evaluates it to the

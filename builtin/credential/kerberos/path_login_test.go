@@ -147,5 +147,5 @@ func prepareLDAPTestContainer(t *testing.T) (cleanup func(), retURL string) {
 		t.Fatalf("Could not connect to ldap auth docker container: %s", err)
 	}
 
-	return
+	return cleanup, retURL
 }

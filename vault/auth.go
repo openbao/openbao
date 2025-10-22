@@ -858,7 +858,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 
 	// Handle writing the legacy auth mount table by default.
 	writeTable := func(mt *MountTable, path string) (int, error) {
-		// Encode the auth mount table into JSON and compress it (lzw).
+		// Encode the auth mount table into JSON and compress it (Gzip).
 		compressedBytes, err := jsonutil.EncodeJSONAndCompress(mt, nil)
 		if err != nil {
 			c.logger.Error("failed to encode or compress auth mount table", "error", err)

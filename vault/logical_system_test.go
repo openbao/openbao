@@ -2919,7 +2919,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		b := testSystemBackendRaw(t)
 		req := logical.TestRequest(t, logical.CreateOperation, "raw/test_raw")
 		req.Data = map[string]interface{}{
-			"value": "414c1e7f-0a9a-49e0-9fc4-61af329d0724",
+			"value": "G14c1e7f-0a9a-49e0-9fc4-61af329d0724",
 		}
 
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
@@ -2957,7 +2957,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		if resp.IsError() {
 			t.Fatalf("bad: %v", resp)
 		}
-		if resp.Data["value"].(string) != "414c1e7f-0a9a-49e0-9fc4-61af329d0724" {
+		if resp.Data["value"].(string) != "G14c1e7f-0a9a-49e0-9fc4-61af329d0724" {
 			t.Fatalf("bad: %v", resp)
 		}
 	})

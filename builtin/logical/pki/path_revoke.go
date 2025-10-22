@@ -527,7 +527,7 @@ func (b *backend) pathRevokeWrite(ctx context.Context, req *logical.Request, dat
 	}
 
 	if cert == nil {
-		return logical.ErrorResponse(fmt.Sprintf("certificate with serial %s not found.", serial)), nil
+		return logical.ErrorResponse("certificate with serial %s not found.", serial), nil
 	}
 
 	// Before we write the certificate, we've gotta verify the request in
@@ -572,7 +572,7 @@ func (b *backend) pathRotateCRLRead(ctx context.Context, req *logical.Request, _
 	if crlErr != nil {
 		switch crlErr.(type) {
 		case errutil.UserError:
-			return logical.ErrorResponse(fmt.Sprintf("Error during CRL building: %s", crlErr)), nil
+			return logical.ErrorResponse("Error during CRL building: %s", crlErr), nil
 		default:
 			return nil, fmt.Errorf("error encountered during CRL building: %w", crlErr)
 		}
@@ -605,7 +605,7 @@ func (b *backend) pathRotateDeltaCRLRead(ctx context.Context, req *logical.Reque
 	if crlErr != nil {
 		switch crlErr.(type) {
 		case errutil.UserError:
-			return logical.ErrorResponse(fmt.Sprintf("Error during delta CRL building: %s", crlErr)), nil
+			return logical.ErrorResponse("Error during delta CRL building: %s", crlErr), nil
 		default:
 			return nil, fmt.Errorf("error encountered during delta CRL building: %w", crlErr)
 		}

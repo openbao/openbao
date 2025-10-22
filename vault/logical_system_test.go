@@ -2543,6 +2543,7 @@ func TestSystemBackend_PoliciesDetailedAcl(t *testing.T) {
 
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	require.NoError(t, err)
+	require.Nil(t, resp)
 
 	// Now test the detailed ACL list endpoint
 	req = logical.TestRequest(t, logical.ListOperation, "policies/detailed/acl")
@@ -2566,6 +2567,9 @@ func TestSystemBackend_PoliciesDetailedAcl(t *testing.T) {
 	entry := entryRaw.(map[string]interface{})
 	require.Contains(t, entry, "policy")
 	require.Equal(t, entry["policy"].(string), policy)
+	require.Contains(t, entry, "version")
+	require.Contains(t, entry, "cas_required")
+	require.Contains(t, entry, "name")
 }
 
 func TestSystemBackend_enableAudit(t *testing.T) {

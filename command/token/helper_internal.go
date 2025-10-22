@@ -10,9 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	homedir "github.com/mitchellh/go-homedir"
-	"github.com/natefinch/atomic"
 )
 
 var _ TokenHelper = (*InternalTokenHelper)(nil)
@@ -25,7 +22,7 @@ type InternalTokenHelper struct {
 }
 
 func NewInternalTokenHelper() (*InternalTokenHelper, error) {
-	homeDir, err := homedir.Dir()
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(fmt.Sprintf("error getting user's home directory: %v", err))
 	}
@@ -84,13 +81,11 @@ func (i *InternalTokenHelper) Store(input string) error {
 		return err
 	}
 
-	// We don't care so much about atomic writes here.  We're using this package
-	// because we don't have a portable way of verifying that the target file
-	// is owned by the correct user.  The simplest way of ensuring that is
-	// to simply re-write it, and the simplest way to ensure that we don't
-	// damage an existing working file due to error is the write-rename pattern.
-	// os.Rename on Windows will return an error if the target already exists.
-	return atomic.ReplaceFile(tmpFile, i.tokenPath)
+	// We don't have a portable way of verifying that the target file is owned
+	// by the correct user. The simplest way of ensuring that is to simply
+	// re-write it, and the simplest way to ensure that we don't damage an
+	// existing working file due to error is the write-rename pattern.
+	return os.Rename(tmpFile, i.tokenPath)
 }
 
 // Erase erases the value of the token

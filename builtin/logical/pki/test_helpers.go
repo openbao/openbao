@@ -15,7 +15,6 @@ import (
 	"io"
 	"math"
 	"math/big"
-	http2 "net/http"
 	"strings"
 	"testing"
 	"time"
@@ -92,15 +91,6 @@ func parseCert(t *testing.T, pemCert string) *x509.Certificate {
 	cert, err := x509.ParseCertificate(block.Bytes)
 	require.NoError(t, err)
 	return cert
-}
-
-func requireMatchingPublicKeys(t *testing.T, cert *x509.Certificate, key crypto.PublicKey) {
-	t.Helper()
-
-	certPubKey := cert.PublicKey
-	areEqual, err := certutil.ComparePublicKeysAndType(certPubKey, key)
-	require.NoError(t, err, "failed comparing public keys: %#v", err)
-	require.True(t, areEqual, "public keys mismatched: got: %v, expected: %v", certPubKey, key)
 }
 
 func getSelfSigned(t *testing.T, subject, issuer *x509.Certificate, key *rsa.PrivateKey) (string, *x509.Certificate) {
@@ -288,20 +278,6 @@ func requireSuccessNonNilResponse(t *testing.T, resp *logical.Response, err erro
 	require.NotNil(t, resp, msgAndArgs...)
 }
 
-func requireSuccessNilResponse(t *testing.T, resp *logical.Response, err error, msgAndArgs ...interface{}) {
-	t.Helper()
-
-	require.NoError(t, err, msgAndArgs...)
-	if resp.IsError() {
-		errContext := fmt.Sprintf("Expected successful response but got error: %v", resp.Error())
-		require.Falsef(t, resp.IsError(), errContext, msgAndArgs...)
-	}
-	if resp != nil {
-		msg := fmt.Sprintf("expected nil response but got: %v", resp)
-		require.Nilf(t, resp, msg, msgAndArgs...)
-	}
-}
-
 func getCRLNumber(t *testing.T, crl *x509.RevocationList) int {
 	t.Helper()
 
@@ -363,7 +339,6 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 
 	crl := getParsedCrlAtPath(t, client, crlPath)
 	initialCrlRevision := getCRLNumber(t, crl)
-	newCrlRevision := initialCrlRevision
 
 	// Short circuit the fetches if we have a version of the CRL we want
 	if lastSeenCrlNumber > 0 && getCRLNumber(t, crl) > lastSeenCrlNumber {
@@ -382,7 +357,7 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 		}
 
 		crl = getParsedCrlAtPath(t, client, crlPath)
-		newCrlRevision = getCRLNumber(t, crl)
+		newCrlRevision := getCRLNumber(t, crl)
 		if newCrlRevision > initialCrlRevision {
 			t.Logf("Got new revision of CRL %s from %d to %d after iteration %d, delay %v",
 				crlPath, initialCrlRevision, newCrlRevision, iteration, time.Now().Sub(start))
@@ -391,20 +366,6 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 
 		time.Sleep(100 * time.Millisecond)
 	}
-}
-
-// A quick CRL to string to provide better test error messages
-func summarizeCrl(t *testing.T, crl *x509.RevocationList) string {
-	version := getCRLNumber(t, crl)
-	serials := []string{}
-	for _, cert := range crl.RevokedCertificateEntries {
-		serials = append(serials, normalizeSerialFromBigInt(cert.SerialNumber))
-	}
-	return fmt.Sprintf("CRL Version: %d\n"+
-		"This Update: %s\n"+
-		"Next Update: %s\n"+
-		"Revoked Serial Count: %d\n"+
-		"Revoked Serials: %v", version, crl.ThisUpdate, crl.NextUpdate, len(serials), serials)
 }
 
 // OCSP helpers
@@ -422,28 +383,4 @@ func requireOcspResponseSignedBy(t *testing.T, ocspResp *ocsp.Response, issuer *
 
 	err := ocspResp.CheckSignatureFrom(issuer)
 	require.NoError(t, err, "Failed signature verification of ocsp response: %w", err)
-}
-
-func performOcspPost(t *testing.T, cert *x509.Certificate, issuerCert *x509.Certificate, client *api.Client, ocspPath string) *ocsp.Response {
-	t.Helper()
-
-	baseClient := client.WithNamespace("")
-
-	ocspReq := generateRequest(t, crypto.SHA256, cert, issuerCert)
-	ocspPostReq := baseClient.NewRequest(http2.MethodPost, ocspPath)
-	ocspPostReq.Headers.Set("Content-Type", "application/ocsp-request")
-	ocspPostReq.BodyBytes = ocspReq
-	rawResp, err := baseClient.RawRequest(ocspPostReq)
-	require.NoError(t, err, "failed sending ocsp post request")
-
-	require.Equal(t, 200, rawResp.StatusCode)
-	require.Equal(t, ocspResponseContentType, rawResp.Header.Get("Content-Type"))
-	bodyReader := rawResp.Body
-	respDer, err := io.ReadAll(bodyReader)
-	bodyReader.Close()
-	require.NoError(t, err, "failed reading response body")
-
-	ocspResp, err := ocsp.ParseResponse(respDer, issuerCert)
-	require.NoError(t, err, "parsing ocsp get response")
-	return ocspResp
 }

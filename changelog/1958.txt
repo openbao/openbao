@@ -1,0 +1,3 @@
+```release-note:bug
+core/namespaces: Fix mount creation failing if mount name is equal to the name of the containing namespace
+```

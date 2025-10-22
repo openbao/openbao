@@ -13,7 +13,7 @@ GO_MODS?=$$(find . -name 'go.mod' | xargs -L 1 dirname)
 SED?=$(shell command -v gsed || command -v sed)
 
 GO_VERSION_MIN=$$(cat $(CURDIR)/.go-version)
-PROTOC_VERSION_MIN=31.1
+PROTOC_VERSION=32.1
 CGO_ENABLED?=0
 ifneq ($(FDB_ENABLED), )
 	CGO_ENABLED=1
@@ -50,6 +50,9 @@ dev-ui-mem: BUILD_TAGS+=memprofiler
 dev-ui-mem: assetcheck dev-ui
 dev-dynamic-mem: BUILD_TAGS+=memprofiler
 dev-dynamic-mem: dev-dynamic
+
+dev-tlsdebug: BUILD_TAGS+=tlsdebug
+dev-tlsdebug: dev
 
 # Creates a Docker image by adding the compiled linux/amd64 binary found in ./bin.
 # The resulting image is tagged "openbao:dev".
@@ -193,7 +196,7 @@ static-dist: ember-dist
 static-dist-dev: ember-dist-dev
 
 proto: bootstrap
-	@sh -c "'$(CURDIR)/scripts/protocversioncheck.sh' '$(PROTOC_VERSION_MIN)'"
+	@sh -c "'$(CURDIR)/scripts/protocversioncheck.sh' '$(PROTOC_VERSION)'"
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative builtin/logical/kv/*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative builtin/logical/pki/*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative vault/*.proto
@@ -290,24 +293,12 @@ vulncheck:
 
 .PHONY: tidy-all
 tidy-all:
-	cd api && $(GO_CMD) mod tidy
-	cd api/auth/approle && $(GO_CMD) mod tidy
-	cd api/auth/kubernetes && $(GO_CMD) mod tidy
-	cd api/auth/ldap && $(GO_CMD) mod tidy
-	cd api/auth/userpass && $(GO_CMD) mod tidy
-	cd sdk && $(GO_CMD) mod tidy
-	$(GO_CMD) mod tidy
+	find . -name 'go.mod' -execdir go mod tidy \;
 
 .PHONY: ci-tidy-all
 ci-tidy-all:
 	git diff --quiet
-	cd api && $(GO_CMD) mod tidy
-	cd api/auth/approle && $(GO_CMD) mod tidy
-	cd api/auth/kubernetes && $(GO_CMD) mod tidy
-	cd api/auth/ldap && $(GO_CMD) mod tidy
-	cd api/auth/userpass && $(GO_CMD) mod tidy
-	cd sdk && $(GO_CMD) mod tidy
-	$(GO_CMD) mod tidy
+	find . -name 'go.mod' -execdir go mod tidy \;
 	git diff --quiet || (echo -e "\n\nModified files:" && git status --short && echo -e "\n\nRun 'make tidy-all' locally and commit the changes.\n" && exit 1)
 
 .PHONY: release-changelog
@@ -358,6 +349,7 @@ bump-critical:
 	go get google.golang.org/grpc@latest
 	grep -o 'golang.org/x/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
 	grep -o 'github.com/hashicorp/go-secure-stdlib/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
+	grep -o 'github.com/openbao/go-kms-wrapping/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
 	make sync-deps
 
 .PHONY: tag-api
@@ -366,14 +358,22 @@ tag-api:
 	@:$(if $(ORIGIN),,$(error please set the ORIGIN environment variable for pushing API tags))
 	git tag api/$(THIS_RELEASE)
 	git tag api/auth/approle/$(THIS_RELEASE)
+	git tag api/auth/jwt/$(THIS_RELEASE)
 	git tag api/auth/kubernetes/$(THIS_RELEASE)
 	git tag api/auth/ldap/$(THIS_RELEASE)
 	git tag api/auth/userpass/$(THIS_RELEASE)
 	git push $(ORIGIN) api/$(THIS_RELEASE)
 	git push $(ORIGIN) api/auth/approle/$(THIS_RELEASE)
+	git push $(ORIGIN) api/auth/jwt/$(THIS_RELEASE)
 	git push $(ORIGIN) api/auth/kubernetes/$(THIS_RELEASE)
 	git push $(ORIGIN) api/auth/ldap/$(THIS_RELEASE)
 	git push $(ORIGIN) api/auth/userpass/$(THIS_RELEASE)
+
+.PHONY: sync-deps-gkw
+sync-deps-gkw:
+	@:$(if $(GO_KMS_WRAPPING),,$(error please set the GO_KMS_WRAPPING environment variable to the go-kms-wrapping repository to update))
+	sh -c "'$(CURDIR)/scripts/sync-deps-gkw.sh'"
+
 
 .PHONY: tag-sdk
 tag-sdk:

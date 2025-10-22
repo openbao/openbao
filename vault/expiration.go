@@ -32,7 +32,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	uberAtomic "go.uber.org/atomic"
 )
 
 const (
@@ -149,7 +148,7 @@ type ExpirationManager struct {
 	// testRegisterAuthFailure, if set to true, triggers an explicit failure on
 	// RegisterAuth to simulate a partial failure during a token creation
 	// request. This value should only be set by tests.
-	testRegisterAuthFailure uberAtomic.Bool
+	testRegisterAuthFailure atomic.Bool
 
 	jobManager      *fairshare.JobManager
 	revokeRetryBase time.Duration
@@ -498,6 +497,9 @@ func (m *ExpirationManager) inRestoreMode() bool {
 	return atomic.LoadInt32(m.restoreMode) == 1
 }
 
+// invalidate will be used in the future for implementing read replica nodes
+//
+//nolint:unused
 func (m *ExpirationManager) invalidate(key string) {
 	switch {
 	case strings.HasPrefix(key, leaseViewPrefix):

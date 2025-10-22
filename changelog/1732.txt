@@ -1,0 +1,3 @@
+```release-note:feature
+**OIDC Provider**: Add Client Credentials flow to OIDC Provider
+```

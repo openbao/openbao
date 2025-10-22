@@ -257,15 +257,15 @@ func HeaderFromContext(ctx context.Context) string {
 // Canonicalize trims any prefix '/' and adds a trailing '/' to the
 // provided string. The canonical root namespace path is the empty string.
 func Canonicalize(nsPath string) string {
-	if nsPath == "" || nsPath == "/" {
-		return ""
-	}
-
 	// Canonicalize the path to not have a '/' prefix
 	nsPath = strings.TrimPrefix(nsPath, "/")
 
 	// Remove duplicate slashes and any ../ values if present.
 	nsPath = path.Clean(nsPath)
+
+	if nsPath == "." || nsPath == "root" {
+		return ""
+	}
 
 	// Canonicalize the path to always having a '/' suffix
 	if !strings.HasSuffix(nsPath, "/") {

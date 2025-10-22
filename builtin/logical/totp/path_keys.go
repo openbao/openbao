@@ -429,8 +429,7 @@ func (b *backend) pathKeyCreate(ctx context.Context, req *logical.Request, data 
 
 		_, err := base32.StdEncoding.DecodeString(strings.ToUpper(keyString))
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid key value: %s", err)), nil
+			return logical.ErrorResponse("invalid key value: %s", err), nil
 		}
 	}
 

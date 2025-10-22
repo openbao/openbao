@@ -370,13 +370,3 @@ func (sc *storageContext) updateDefaultIssuerId(id string) error {
 
 	return nil
 }
-
-// isIssuersEmpty checks if there are any issuers in storage
-func (sc *storageContext) isIssuersEmpty() (bool, error) {
-	issuerIds, err := sc.listIssuersPage("", 1)
-	if err != nil {
-		return false, err
-	}
-
-	return len(issuerIds) == 0, nil
-}

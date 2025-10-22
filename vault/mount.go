@@ -623,14 +623,14 @@ func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 	// Prevent protected paths from being mounted
 	for _, p := range protectedMounts {
 		if strings.HasPrefix(entry.Path, p) && entry.namespace == nil {
-			return logical.CodedError(403, fmt.Sprintf("cannot mount %q", entry.Path))
+			return logical.CodedError(403, "cannot mount %q", entry.Path)
 		}
 	}
 
 	// Do not allow more than one instance of a singleton mount
 	for _, p := range singletonMounts {
 		if entry.Type == p {
-			return logical.CodedError(403, fmt.Sprintf("mount type of %q is not mountable", entry.Type))
+			return logical.CodedError(403, "mount type of %q is not mountable", entry.Type)
 		}
 	}
 
@@ -672,14 +672,14 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 			case strings.HasPrefix(ent.Path, entry.Path):
 				fallthrough
 			case strings.HasPrefix(entry.Path, ent.Path):
-				return logical.CodedError(409, fmt.Sprintf("path is already in use at %s", ent.Path))
+				return logical.CodedError(409, "path is already in use at %s", ent.Path)
 			}
 		}
 	}
 
 	// Verify there are no conflicting mounts in the router
 	if match := c.router.MountConflict(ctx, entry.Path); match != "" {
-		return logical.CodedError(409, fmt.Sprintf("existing mount at %s", match))
+		return logical.CodedError(409, "existing mount at %s", match)
 	}
 
 	// Generate a new UUID and view
@@ -779,6 +779,26 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 		c.logger.Info("successful mount", "namespace", entry.Namespace().Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
 	}
 	return nil
+}
+
+// mountEntrySysView creates a logical.SystemView from global and
+// mount-specific entries; because this should be called when setting
+// up a mountEntry, it doesn't check to ensure that me is not nil
+func (c *Core) mountEntrySysView(entry *MountEntry) extendedSystemView {
+	esi := extendedSystemViewImpl{
+		dynamicSystemView{
+			core:       c,
+			mountEntry: entry,
+		},
+	}
+
+	// Due to complexity in the ACME interface, only return it when we
+	// are a PKI plugin that needs it.
+	if entry.Type != "pki" {
+		return esi
+	}
+
+	return esi
 }
 
 // builtinTypeFromMountEntry attempts to find a builtin PluginType associated
@@ -887,7 +907,7 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 		// replication like returning this error would do.
 		if err := c.rollback.Rollback(revokeCtx, path); err != nil {
 			c.logger.Error("ignoring rollback error during unmount", "error", err, "path", path)
-			err = nil
+			err = nil //nolint:ineffassign // this is done to be explicit about the fact that we ignore the error
 		}
 	}
 	if backend != nil && c.expiration != nil && updateStorage {
@@ -1049,32 +1069,6 @@ func (c *Core) handleDeprecatedMountEntry(ctx context.Context, entry *MountEntry
 	return nil, nil
 }
 
-// remountForceInternal takes a copy of the mount entry for the path and fully unmounts
-// and remounts the backend to pick up any changes, such as filtered paths.
-// Should be only used for internal usage.
-func (c *Core) remountForceInternal(ctx context.Context, path string, updateStorage bool) error {
-	me := c.router.MatchingMountEntry(ctx, path)
-	if me == nil {
-		return fmt.Errorf("cannot find mount for path %q", path)
-	}
-
-	me, err := me.Clone()
-	if err != nil {
-		return err
-	}
-
-	if err := c.unmountInternal(ctx, path, updateStorage); err != nil {
-		return err
-	}
-
-	// Mount internally
-	if err := c.mountInternal(ctx, me, updateStorage); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (c *Core) remountSecretsEngineCurrentNamespace(ctx context.Context, src, dst string, updateStorage bool) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -1140,7 +1134,7 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	if c.rollback != nil && c.router.MatchingBackend(ctx, srcRelativePath) != nil {
 		if err := c.rollback.Rollback(rCtx, srcRelativePath); err != nil {
 			c.logger.Error("ignoring rollback error during remount", "error", err, "path", src.Namespace.Path+src.MountPath)
-			err = nil
+			err = nil //nolint:ineffassign // we explicitly ignore the error
 		}
 	}
 
@@ -1300,8 +1294,7 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 // this returns the namespace object for ns1/ns2/ns3/, and the string "secret-mount"
 func (c *Core) splitNamespaceAndMountFromPath(currNs, path string) namespace.MountPathDetails {
 	fullPath := currNs + path
-
-	ns, mountPath := c.NamespaceByPath(namespace.RootContext(nil), fullPath)
+	ns, mountPath := c.namespaceStore.GetNamespaceByLongestPrefix(namespace.RootContext(context.TODO()), fullPath)
 
 	return namespace.MountPathDetails{
 		Namespace: ns,

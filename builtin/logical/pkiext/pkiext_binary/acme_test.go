@@ -443,6 +443,7 @@ func SubtestACMECertbotEab(t *testing.T, cluster *VaultPkiCluster) {
 	require.NoError(t, err)
 
 	eabId, base64EabKey, err := pki.GetEabKey("acme/")
+	require.NoError(t, err)
 
 	directory := "https://" + pki.GetActiveContainerIP() + ":8200/v1/" + mountName + "/acme/directory"
 	vaultNetwork := pki.GetContainerNetworkName()
@@ -593,6 +594,7 @@ func SubtestACMEIPAndDNS(t *testing.T, cluster *VaultPkiCluster) {
 	nginxContainerId := result.Container.ID
 	defer runner.Stop(context.Background(), nginxContainerId)
 	networks, err := runner.GetNetworkAndAddresses(nginxContainerId)
+	require.NoError(t, err)
 
 	challengeFolder := "/usr/share/nginx/html/.well-known/acme-challenge/"
 	createChallengeFolderCmd := []string{
@@ -752,6 +754,7 @@ func doAcmeValidationWithGoLibrary(t *testing.T, directoryUrl string, acmeOrderI
 
 	// Create/sign the CSR and ask ACME server to sign it returning us the final certificate
 	csrKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err, "failed generating csr key")
 	csr, err := x509.CreateCertificateRequest(rand.Reader, cr, csrKey)
 	require.NoError(t, err, "failed generating csr")
 
@@ -945,6 +948,7 @@ func SubtestACMEStepDownNode(t *testing.T, cluster *VaultPkiCluster) {
 	err = pki.UpdateClusterConfig(map[string]interface{}{
 		"path": basePath,
 	})
+	require.NoError(t, err)
 
 	hostname := "go-lang-stepdown-client.dadgarcorp.com"
 
@@ -1094,6 +1098,7 @@ func SubtestACMEStepDownNode(t *testing.T, cluster *VaultPkiCluster) {
 
 	// Create/sign the CSR and ask ACME server to sign it returning us the final certificate
 	csrKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err, "failed generating csr key")
 	csr, err := x509.CreateCertificateRequest(rand.Reader, cr, csrKey)
 	require.NoError(t, err, "failed generating csr")
 

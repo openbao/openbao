@@ -1,0 +1,3 @@
+```release-note:improvement
+core/policies: Add endpoint to allow detailed listing of a subset of policies
+```

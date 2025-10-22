@@ -63,6 +63,7 @@ func TestCRLFetch(t *testing.T) {
 	caKeyPEM, err := os.ReadFile("test-fixtures/keys/key.pem")
 	require.NoError(t, err)
 	certPEM, err := os.ReadFile("test-fixtures/keys/cert.pem")
+	require.NoError(t, err)
 
 	caBundle, err := certutil.ParsePEMBundle(string(caPEM))
 	require.NoError(t, err)

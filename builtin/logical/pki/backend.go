@@ -12,8 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	atomic2 "go.uber.org/atomic"
-
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-multierror"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -270,9 +268,9 @@ func Backend(conf *logical.BackendConfig) *backend {
 	b.lastTidy = time.Now()
 
 	// Metrics initialization for count of certificates in storage
-	b.certCountEnabled = atomic2.NewBool(false)
-	b.publishCertCountMetrics = atomic2.NewBool(false)
-	b.certsCounted = atomic2.NewBool(false)
+	b.certCountEnabled = &atomic.Bool{}
+	b.publishCertCountMetrics = &atomic.Bool{}
+	b.certsCounted = &atomic.Bool{}
 	b.certCountError = "Initialize Not Yet Run, Cert Counts Unavailable"
 	b.certCount = &atomic.Uint32{}
 	b.revokedCertCount = &atomic.Uint32{}
@@ -296,11 +294,11 @@ type backend struct {
 	tidyStatus     *tidyStatus
 	lastTidy       time.Time
 
-	certCountEnabled                    *atomic2.Bool
-	publishCertCountMetrics             *atomic2.Bool
+	certCountEnabled                    *atomic.Bool
+	publishCertCountMetrics             *atomic.Bool
 	certCount                           *atomic.Uint32
 	revokedCertCount                    *atomic.Uint32
-	certsCounted                        *atomic2.Bool
+	certsCounted                        *atomic.Bool
 	certCountError                      string
 	possibleDoubleCountedSerials        []string
 	possibleDoubleCountedRevokedSerials []string
@@ -360,7 +358,7 @@ func (b *backend) metricsWrap(callType string, roleMode int, ofunc roleOperation
 				return nil, err
 			}
 			if role == nil && (roleMode == roleRequired || len(roleName) > 0) {
-				return logical.ErrorResponse(fmt.Sprintf("unknown role: %s", roleName)), nil
+				return logical.ErrorResponse("unknown role: %s", roleName), nil
 			}
 			labels = []metrics.Label{{Name: "role", Value: roleName}}
 		}

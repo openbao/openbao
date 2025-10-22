@@ -371,7 +371,7 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 		// Get entity metadata
 		metadata, ok, err := d.GetOkErr("metadata")
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to parse metadata: %v", err)), nil
+			return logical.ErrorResponse("failed to parse metadata: %v", err), nil
 		}
 		if ok {
 			entity.Metadata = metadata.(map[string]string)
@@ -475,9 +475,9 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 	respData["disabled"] = entity.Disabled
 	respData["namespace_id"] = entity.NamespaceID
 
-	// Convert protobuf timestamp into RFC3339 format
-	respData["creation_time"] = entity.CreationTime.AsTime().Format(time.RFC3339)
-	respData["last_update_time"] = entity.LastUpdateTime.AsTime().Format(time.RFC3339)
+	// Convert protobuf timestamp into RFC3339Nano format
+	respData["creation_time"] = entity.CreationTime.AsTime().Format(time.RFC3339Nano)
+	respData["last_update_time"] = entity.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 
 	// Convert each alias into a map and replace the time format in each
 	aliasesToReturn := make([]interface{}, len(entity.Aliases))
@@ -489,8 +489,8 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 		aliasMap["metadata"] = alias.Metadata
 		aliasMap["name"] = alias.Name
 		aliasMap["merged_from_canonical_ids"] = alias.MergedFromCanonicalIDs
-		aliasMap["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339)
-		aliasMap["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339)
+		aliasMap["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339Nano)
+		aliasMap["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 		aliasMap["local"] = alias.Local
 		aliasMap["custom_metadata"] = alias.CustomMetadata
 
@@ -528,9 +528,7 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 
 	respData["group_ids"] = append(groupIDs, inheritedGroupIDs...)
 
-	return &logical.Response{
-		Data: respData,
-	}, nil
+	return &logical.Response{Data: respData}, nil
 }
 
 // pathEntityIDDelete deletes the entity for a given entity ID

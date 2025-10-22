@@ -54,7 +54,7 @@ jobs:
       version: ${{ steps.make-distribution-tarball.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v5.0.0
         with:
           fetch-depth: 0 # Required by GoRelease
 
@@ -79,7 +79,7 @@ jobs:
           git tag "$nightly_tag"
 
       - name: Node setup
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version-file: "./ui/package.json"
 
@@ -89,7 +89,7 @@ jobs:
           npm install -g yarn
 
       - name: UI Cache Setup
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             http/web_ui/
@@ -108,12 +108,33 @@ jobs:
         run: |
           make static-dist
 
+      - name: Make LICENSE_NODE_MODULES.txt
+        if: inputs.dodistrelease
+        run: |
+          set -e
+          sudo npm install --global generate-license-file
+          cd ui
+          generate-license-file --input package.json --output ../LICENSE_NODE_MODULES.txt
+
+      - name: Make SPDX_NODE_MODULES.txt
+        if: inputs.dodistrelease
+        run: |
+          sudo apt install -y jq
+          jq -r .license ui/node_modules/*/package.json | \
+            grep -v url | \
+            sed 's/.*"type": "//;s/",//' | \
+            grep -v { | grep -v } | grep -v ^null$ | \
+            awk '{if ((($2 == "OR") || ($2 == "AND")) && (substr($1, 0, 1) != "(")) { print "(" $0 ")"} else {print $0}}' | \
+            sort -u >SPDX_NODE_MODULES.txt
+
+      - name: Make VERSION_NODE_MODULES.txt
+        if: inputs.dodistrelease
+        run: jq -r '"\(.name) \(.version)"'  ui/node_modules/*/package.json >VERSION_NODE_MODULES.txt
+
       - name: Golang Setup
-        if: inputs.dogorelease
         uses: ./.github/actions/set-up-go
 
       - name: go-check
-        if: inputs.dogorelease
         run: go version
 
       - name: Make LICENSE_DEPENDENCIES.md
@@ -167,7 +188,7 @@ jobs:
 
       - name: Checkout
         if: inputs.dogorelease
-        uses: actions/checkout@v5
+        uses: actions/checkout@v5.0.0
         with:
           fetch-depth: 0 # Required by GoRelease
 
@@ -201,7 +222,7 @@ jobs:
 
       - name: UI Cache Setup
         if: inputs.dogorelease
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             http/web_ui/
@@ -313,9 +334,12 @@ jobs:
       TAGNAME: v${{ needs.build-ui-dist.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v5.0.0
         with:
-          fetch-tags: true
+          # "fetch-tags: true" instead of "fetch-depth: 0" should be enough
+          # but it fails in combination with dogorelease
+          # https://github.com/actions/checkout/issues/1467
+          fetch-depth: 0
 
       - name: Create release if necessary
         if: ${{ !inputs.dogorelease }}

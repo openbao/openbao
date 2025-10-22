@@ -661,11 +661,6 @@ func testCoreWithIdentityTokenAppRole(ctx context.Context, t *testing.T) (*Core,
 	return core, is, core.tokenStore, approleAccessor
 }
 
-func testCoreWithIdentityTokenAppRoleRoot(ctx context.Context, t *testing.T) (*Core, *IdentityStore, *TokenStore, string, string) {
-	is, approleAccessor, core, root := testIdentityStoreWithAppRoleAuthRoot(ctx, t)
-	return core, is, core.tokenStore, approleAccessor, root
-}
-
 func testIdentityStoreWithAppRoleAuth(ctx context.Context, t *testing.T) (*IdentityStore, string, *Core) {
 	is, ghA, c, _ := testIdentityStoreWithAppRoleAuthRoot(ctx, t)
 	return is, ghA, c
@@ -1327,19 +1322,6 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 	require.NoError(t, err)
 	ns2Accessor := ns2Mount.Accessor
 
-	t.Run("invalid_context", func(t *testing.T) {
-		// Create a context with a nil namespace value (this is not the same as root namespace)
-		invalidCtx := context.WithValue(context.Background(), "nil", nil)
-
-		// Test entity creation with invalid context
-		_, err := is.CreateEntity(invalidCtx)
-		require.Error(t, err, "Expected error with invalid namespace context")
-
-		// Test entity lookup with invalid context
-		_, err = is.MemDBEntityByName(invalidCtx, "test-entity", false)
-		require.Error(t, err, "Expected error with invalid namespace context")
-	})
-
 	t.Run("namespace_mismatch_with_real_mounts", func(t *testing.T) {
 		// Create entity in ns1
 		mismatchUser := "mismatch-user"
@@ -1774,52 +1756,6 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 		entity, err = is.MemDBEntityByID(rootCtx, ns1Entity.ID, false)
 		require.NoError(t, err)
 		require.Nil(t, entity)
-	})
-
-	// Test lookup by name (should respect namespace boundaries)
-	t.Run("entity_lookup_by_name", func(t *testing.T) {
-		// Create entities with the same name in different namespaces
-		nameForTest := "same-name-entity"
-
-		// Create in root
-		rootEntity, err := is.CreateEntity(rootCtx)
-		require.NoError(t, err)
-		upsertedEntity := rootEntity
-		upsertedEntity.Name = nameForTest
-		err = is.upsertEntity(rootCtx, upsertedEntity, rootEntity, true)
-		require.NoError(t, err)
-
-		// Create in ns1
-		ns1Entity, err := is.CreateEntity(ns1Ctx)
-		require.NoError(t, err)
-		upsertedEntity = ns1Entity
-		upsertedEntity.Name = nameForTest
-		err = is.upsertEntity(ns1Ctx, upsertedEntity, ns1Entity, true)
-		require.NoError(t, err)
-
-		// Lookup by name should respect namespace boundaries
-		foundRoot, err := is.MemDBEntityByName(rootCtx, nameForTest, false)
-		require.NoError(t, err)
-		require.NotNil(t, foundRoot)
-		require.Equal(t, rootEntity.ID, foundRoot.ID)
-
-		foundNS1, err := is.MemDBEntityByName(ns1Ctx, nameForTest, false)
-		require.NoError(t, err)
-		require.NotNil(t, foundNS1)
-		require.Equal(t, ns1Entity.ID, foundNS1.ID)
-
-		// Cross-namespace lookups should return nil
-		crossEntity, err := is.MemDBEntityByName(rootCtx, ns1Entity.Name, false)
-		require.NoError(t, err)
-		if crossEntity != nil && crossEntity.ID == ns1Entity.ID {
-			t.Fatal("Should not find NS1 entity from root context by name")
-		}
-
-		crossEntity, err = is.MemDBEntityByName(ns1Ctx, rootEntity.Name, false)
-		require.NoError(t, err)
-		if crossEntity != nil && crossEntity.ID == rootEntity.ID {
-			t.Fatal("Should not find root entity from NS1 context by name")
-		}
 	})
 
 	// === GROUP ALIASES ===

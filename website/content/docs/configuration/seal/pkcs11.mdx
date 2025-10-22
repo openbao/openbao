@@ -4,6 +4,7 @@ description: |-
   The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the
   autounseal mechanism.
 ---
+
 # `pkcs11` seal
 
 The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the autounseal
@@ -71,28 +72,28 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 - `lib` `(string: <required>)`: The path to the PKCS#11 library shared object
   file. May also be specified by the `BAO_HSM_LIB` environment variable.
 
-:::info
+  :::info
 
-Depending on your HSM, the value of the `lib` parameter may be
-either a binary or a dynamic library, and its use may require other libraries
-depending on which system the OpenBao binary is currently running on (e.g.: a
-Linux system may require other libraries to interpret Windows .dll files).
+  Depending on your HSM, the value of the `lib` parameter may be either a binary
+  or a dynamic library, and its use may require other libraries depending on
+  which system the OpenBao binary is currently running on (e.g.: a Linux system
+  may require other libraries to interpret Windows .dll files).
 
-:::
+  :::
 
 - `slot` `(string: <slot or token label required>)`: The slot number to use,
   specified as a string (e.g. `"2305843009213693953"`). May also be specified by
   the `BAO_HSM_SLOT` environment variable.
 
-:::info
+  :::info
 
-Slots are typically listed as hex-decimal values in the OS setup
-utility but this configuration uses their decimal equivalent. For example, using the
-HSM command-line `pkcs11-tool`, a slot listed as `0x2000000000000001`in hex is equal
-to `2305843009213693953` in decimal; these values may be listed shorter or
-differently as determined by the HSM in use.
+  Slots are typically listed as hex-decimal values in the OS setup utility but
+  this configuration uses their decimal equivalent. For example, using the HSM
+  command-line `pkcs11-tool`, a slot listed as `0x2000000000000001`in hex is
+  equal to `2305843009213693953` in decimal; these values may be listed shorter
+  or differently as determined by the HSM in use.
 
-:::
+  :::
 
 - `token_label` `(string: <slot or token label required>)`: The slot token label to
   use. May also be specified by the `BAO_HSM_TOKEN_LABEL` environment variable.
@@ -116,20 +117,20 @@ differently as determined by the HSM in use.
   - Names: `AES_GCM`, `CKM_AES_GCM`, Hexadecimal: `0x1087`
   - Names: `RSA_PKCS_OAEP`, `CKM_RSA_PKCS_OAEP`, Hexadecimal: `0x0009`
 
+  :::warning
+
+  Unlike Vault Enterprise, OpenBao only supports AEAD-enabled algorithms and
+  will not support Encrypt-Then-MAC constructs (like `CKM_AES_CBC_PAD` with
+  explicit HMACing).
+
+  :::
+
 - `disable_software_encryption` `(bool: false)`: For RSA-based mechanisms,
   OpenBao performs the encryption operation locally in memory by exporting the
   public key from the HSM. Set this option to `true` to force calling out to the
   HSM for all encryption operations. This option is available starting with
   OpenBao v2.4.0. All prior versions always call out to the HSM for encryption
   and never perform encryption in software.
-
-:::warning
-
-Unlike Vault Enterprise, OpenBao only supports AEAD-enabled algorithms and
-will not support Encrypt-Then-MAC constructs (like `CKM_AES_CBC_PAD` with
-explicit HMACing).
-
-:::
 
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
@@ -169,6 +170,8 @@ or deleted and are used to decrypt older data.
 
 ## Tested HSM Vendors and Models
 
-| Vendor       | Model      | Unsealing | Installation Guide                                         |
-| ------------ | ---------- | --------- | ---------------------------------------------------------- |
-| Securosys SA | Primus HSM | Yes       | [Installation Guide](/docs/guides/unseal/pkcs11/securosys) |
+| Vendor       | Model               | Unsealing   | Installation Guide                                         |
+| ------------ | --------------------| ------------| -----------------------------------------------------------|
+| Securosys SA | Primus HSM          | Yes         | [Installation Guide](/docs/guides/unseal/pkcs11/securosys) |
+| Utimaco      | u.trust GP HSM      | Yes         | [Installation Guide](/docs/guides/unseal/pkcs11/utimaco)   |
+| Utimaco      | CryptoServer CP5    | Yes         | [Installation Guide](/docs/guides/unseal/pkcs11/utimaco)   |

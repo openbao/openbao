@@ -5,24 +5,50 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 5
+    labels:
+      - dependencies
+      - pr/no-changelog
+      - docker
+
   - package-ecosystem: "github-actions"
     directories:
       - "/"
       - "/.github/actions/*"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 5
+    labels:
+      - dependencies
+      - pr/no-changelog
+      - github-actions
+
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
-  - package-ecosystem: "npm"
-    directory: "/ui"
-    schedule:
-      interval: "weekly"
+    cooldown:
+      default-days: 5
+      semver-patch-days: 7
+      semver-minor-days: 14
+      semver-major-days: 30
+    ignore:
+      # armon/go-metrics was moved to hashicorp/go-metrics, but we cannot
+      # migrate to the new location without introducing other workarounds just
+      # yet: https://github.com/openbao/openbao/pull/1929
+      # This causes errors in dependabot's update job, making other issues
+      # related to dependabot harder to debug. These ignores can be removed once
+      # armon/go-metrics has been replaced entirely by hashicorp/go-metrics.
+      - dependency-name: github.com/armon/go-metrics
+      - dependency-name: github.com/hashicorp/go-metrics
+    open-pull-requests-limit: 10
     labels:
       - dependencies
-      - javascript
-      - ui
+      - pr/no-changelog
+      - go
+
   - package-ecosystem: "npm"
     directory: "/website"
     schedule:
@@ -35,3 +61,12 @@ updates:
       docusaurus:
         patterns:
           - "@docusaurus/*"
+    cooldown:
+      default-days: 5
+      semver-patch-days: 7
+      semver-minor-days: 14
+      semver-major-days: 30
+    labels:
+      - dependencies
+      - pr/no-changelog
+      - javascript

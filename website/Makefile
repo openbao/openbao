@@ -18,6 +18,9 @@ serve: build
 deploy: node_modules
 	@$(NPM) run deploy
 
+lint: node_modules $(wildcard content/**/*.mdx)
+	@$(NPM) run lint
+
 clean: node_modules
 	@$(NPM) run clear
 

@@ -1007,8 +1007,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	default:
 		tmpDef, err := parseutil.ParseDurationSecond(apiConfig.DefaultLeaseTTL)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf(
-					"unable to parse default TTL of %s: %s", apiConfig.DefaultLeaseTTL, err)),
+			return logical.ErrorResponse("unable to parse default TTL of %s: %s", apiConfig.DefaultLeaseTTL, err),
 				logical.ErrInvalidRequest
 		}
 		config.DefaultLeaseTTL = tmpDef
@@ -1020,22 +1019,20 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	default:
 		tmpMax, err := parseutil.ParseDurationSecond(apiConfig.MaxLeaseTTL)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf(
-					"unable to parse max TTL of %s: %s", apiConfig.MaxLeaseTTL, err)),
+			return logical.ErrorResponse("unable to parse max TTL of %s: %s", apiConfig.MaxLeaseTTL, err),
 				logical.ErrInvalidRequest
 		}
 		config.MaxLeaseTTL = tmpMax
 	}
 
 	if config.MaxLeaseTTL != 0 && config.DefaultLeaseTTL > config.MaxLeaseTTL {
-		return logical.ErrorResponse(
-				"given default lease TTL greater than given max lease TTL"),
+		return logical.ErrorResponse("given default lease TTL greater than given max lease TTL"),
 			logical.ErrInvalidRequest
 	}
 
 	if config.DefaultLeaseTTL > b.Core.maxLeaseTTL && config.MaxLeaseTTL == 0 {
-		return logical.ErrorResponse(fmt.Sprintf(
-				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds()))),
+		return logical.ErrorResponse(
+				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds())),
 			logical.ErrInvalidRequest
 	}
 
@@ -1079,8 +1076,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 
 	default:
 		if options != nil && options["version"] != "" {
-			return logical.ErrorResponse(fmt.Sprintf(
-					"secrets engine %q does not allow setting a version", logicalType)),
+			return logical.ErrorResponse("secrets engine %q does not allow setting a version", logicalType),
 				logical.ErrInvalidRequest
 		}
 	}
@@ -1096,7 +1092,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	}
 
 	if err := checkListingVisibility(apiConfig.ListingVisibility); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid listing_visibility %s", apiConfig.ListingVisibility)), nil
+		return logical.ErrorResponse("invalid listing_visibility %s", apiConfig.ListingVisibility), nil
 	}
 	config.ListingVisibility = apiConfig.ListingVisibility
 
@@ -1892,7 +1888,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		listingVisibility := ListingVisibilityType(lvString)
 
 		if err := checkListingVisibility(listingVisibility); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid listing_visibility %s", listingVisibility)), nil
+			return logical.ErrorResponse("invalid listing_visibility %s", listingVisibility), nil
 		}
 
 		oldVal := mountEntry.Config.ListingVisibility
@@ -2060,12 +2056,12 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 			case 1:
 			case 2:
 			default:
-				return logical.ErrorResponse(fmt.Sprintf("invalid version provided: %d", optVersion)), logical.ErrInvalidRequest
+				return logical.ErrorResponse("invalid version provided: %d", optVersion), logical.ErrInvalidRequest
 			}
 
 			if meVersion > optVersion {
 				// Return early if version option asks for a downgrade
-				return logical.ErrorResponse(fmt.Sprintf("cannot downgrade mount from version %d", meVersion)), logical.ErrInvalidRequest
+				return logical.ErrorResponse("cannot downgrade mount from version %d", meVersion), logical.ErrInvalidRequest
 			}
 			if meVersion < optVersion {
 				kvUpgraded = true
@@ -2440,8 +2436,7 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	default:
 		tmpDef, err := parseutil.ParseDurationSecond(apiConfig.DefaultLeaseTTL)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf(
-					"unable to parse default TTL of %s: %s", apiConfig.DefaultLeaseTTL, err)),
+			return logical.ErrorResponse("unable to parse default TTL of %s: %s", apiConfig.DefaultLeaseTTL, err),
 				logical.ErrInvalidRequest
 		}
 		config.DefaultLeaseTTL = tmpDef
@@ -2453,22 +2448,20 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	default:
 		tmpMax, err := parseutil.ParseDurationSecond(apiConfig.MaxLeaseTTL)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf(
-					"unable to parse max TTL of %s: %s", apiConfig.MaxLeaseTTL, err)),
+			return logical.ErrorResponse("unable to parse max TTL of %s: %s", apiConfig.MaxLeaseTTL, err),
 				logical.ErrInvalidRequest
 		}
 		config.MaxLeaseTTL = tmpMax
 	}
 
 	if config.MaxLeaseTTL != 0 && config.DefaultLeaseTTL > config.MaxLeaseTTL {
-		return logical.ErrorResponse(
-				"given default lease TTL greater than given max lease TTL"),
+		return logical.ErrorResponse("given default lease TTL greater than given max lease TTL"),
 			logical.ErrInvalidRequest
 	}
 
 	if config.DefaultLeaseTTL > b.Core.maxLeaseTTL && config.MaxLeaseTTL == 0 {
-		return logical.ErrorResponse(fmt.Sprintf(
-				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds()))),
+		return logical.ErrorResponse(
+				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds())),
 			logical.ErrInvalidRequest
 	}
 
@@ -2511,13 +2504,12 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	}
 
 	if options != nil && options["version"] != "" {
-		return logical.ErrorResponse(fmt.Sprintf(
-				"auth method %q does not allow setting a version", logicalType)),
+		return logical.ErrorResponse("auth method %q does not allow setting a version", logicalType),
 			logical.ErrInvalidRequest
 	}
 
 	if err := checkListingVisibility(apiConfig.ListingVisibility); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid listing_visibility %s", apiConfig.ListingVisibility)), nil
+		return logical.ErrorResponse("invalid listing_visibility %s", apiConfig.ListingVisibility), nil
 	}
 	config.ListingVisibility = apiConfig.ListingVisibility
 
@@ -2714,33 +2706,37 @@ func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.Oper
 			return nil, nil
 		}
 
+		respData := readPolicyResponse(policy)
+
 		// If the request is from sys/policy/ we handle backwards compatibility
-		var respDataPolicyName string
 		if policyType == PolicyTypeACL && strings.HasPrefix(req.Path, "policy") {
-			respDataPolicyName = "rules"
-		} else {
-			respDataPolicyName = "policy"
+			respData["rules"] = respData["policy"]
+			delete(respData, "policy")
 		}
 
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"name":             policy.Name,
-				"version":          policy.DataVersion,
-				"cas_required":     policy.CASRequired,
-				respDataPolicyName: policy.Raw,
-			},
-		}
-
-		if !policy.Expiration.IsZero() {
-			resp.Data["expiration"] = policy.Expiration
-		}
-
-		if !policy.Modified.IsZero() {
-			resp.Data["modified"] = policy.Modified
-		}
-
-		return resp, nil
+		return &logical.Response{
+			Data: respData,
+		}, nil
 	}
+}
+
+func readPolicyResponse(policy *Policy) map[string]interface{} {
+	data := map[string]interface{}{
+		"name":         policy.Name,
+		"version":      policy.DataVersion,
+		"cas_required": policy.CASRequired,
+		"policy":       policy.Raw,
+	}
+
+	if !policy.Expiration.IsZero() {
+		data["expiration"] = policy.Expiration
+	}
+
+	if !policy.Modified.IsZero() {
+		data["modified"] = policy.Modified
+	}
+
+	return data
 }
 
 // handlePoliciesSet handles the "/sys/policy/<name>" and "/sys/policies/<type>/<name>" endpoints to set a policy
@@ -2886,12 +2882,12 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 	// Parse the policy to ensure that it's valid
 	policy, err := random.ParsePolicy(rawPolicy)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("invalid password policy: %s", err))
+		return nil, logical.CodedError(http.StatusBadRequest, "invalid password policy: %s", err)
 	}
 
 	if policy.Length > maxPasswordLength || policy.Length < minPasswordLength {
 		return nil, logical.CodedError(http.StatusBadRequest,
-			fmt.Sprintf("passwords must be between %d and %d characters", minPasswordLength, maxPasswordLength))
+			"passwords must be between %d and %d characters", minPasswordLength, maxPasswordLength)
 	}
 
 	// Attempt to construct a test password from the rules to ensure that the policy isn't impossible
@@ -2900,7 +2896,7 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 	for _, rule := range policy.Rules {
 		charsetRule, ok := rule.(random.CharsetRule)
 		if !ok {
-			return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("unexpected rule type %T", charsetRule))
+			return nil, logical.CodedError(http.StatusBadRequest, "unexpected rule type %T", charsetRule)
 		}
 
 		for j := 0; j < charsetRule.MinLength(); j++ {
@@ -2916,7 +2912,7 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 			}
 			charsetRule, ok := rule.(random.CharsetRule)
 			if !ok {
-				return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("unexpected rule type %T", charsetRule))
+				return nil, logical.CodedError(http.StatusBadRequest, "unexpected rule type %T", charsetRule)
 			}
 
 			charIndex := rand.Intn(len(charsetRule.Chars()))
@@ -2939,13 +2935,13 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 	}
 	entry, err := logical.StorageEntryJSON(getPasswordPolicyKey(policyName), cfg)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Sprintf("unable to save password policy: %s", err))
+		return nil, logical.CodedError(http.StatusInternalServerError, "unable to save password policy: %s", err)
 	}
 
 	err = req.Storage.Put(ctx, entry)
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError,
-			fmt.Sprintf("failed to save policy to storage backend: %s", err))
+			"failed to save policy to storage backend: %s", err)
 	}
 
 	return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
@@ -3004,7 +3000,7 @@ func (*SystemBackend) handlePoliciesPasswordDelete(ctx context.Context, req *log
 	err := req.Storage.Delete(ctx, getPasswordPolicyKey(policyName))
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError,
-			fmt.Sprintf("failed to delete password policy: %s", err))
+			"failed to delete password policy: %s", err)
 	}
 
 	return nil, nil
@@ -3048,8 +3044,13 @@ func (*SystemBackend) handlePoliciesPasswordGenerate(ctx context.Context, req *l
 // handlePoliciesDetailedAclList handles the listing of ACL policies with detailed information
 func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		prefix := ""
+		if _, present := data.Schema["name"]; present {
+			prefix = data.Get("name").(string)
+		}
+
 		// Get policies list
-		policies, err := b.Core.policyStore.ListPolicies(ctx, PolicyTypeACL, true)
+		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, PolicyTypeACL, prefix, true)
 		if err != nil {
 			return nil, err
 		}
@@ -3074,10 +3075,7 @@ func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc 
 				continue
 			}
 
-			policyInfos[policyName] = map[string]interface{}{
-				"name":   policy.Name,
-				"policy": policy.Raw,
-			}
+			policyInfos[policyName] = readPolicyResponse(policy)
 		}
 
 		return logical.ListResponseWithInfo(policies, policyInfos), nil
@@ -3302,18 +3300,6 @@ func (b *SystemBackend) handleKeyStatus(ctx context.Context, req *logical.Reques
 		},
 	}
 	return resp, nil
-}
-
-func (b *SystemBackend) handleWrappingPubkey(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	x, _ := b.Core.wrappingJWTKey.X.MarshalText()
-	y, _ := b.Core.wrappingJWTKey.Y.MarshalText()
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"jwt_x":     string(x),
-			"jwt_y":     string(y),
-			"jwt_curve": corePrivateKeyTypeP521,
-		},
-	}, nil
 }
 
 func (b *SystemBackend) handleWrappingWrap(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -3876,14 +3862,14 @@ func (b *SystemBackend) pathHashWrite(ctx context.Context, req *logical.Request,
 
 	input, err := base64.StdEncoding.DecodeString(inputB64)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("unable to decode input as base64: %s", err)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("unable to decode input as base64: %s", err), logical.ErrInvalidRequest
 	}
 
 	switch format {
 	case "hex":
 	case "base64":
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unsupported encoding format %s; must be \"hex\" or \"base64\"", format)), nil
+		return logical.ErrorResponse("unsupported encoding format %s; must be \"hex\" or \"base64\"", format), nil
 	}
 
 	var hf hash.Hash
@@ -3905,7 +3891,7 @@ func (b *SystemBackend) pathHashWrite(ctx context.Context, req *logical.Request,
 	case "sha3-512":
 		hf = sha3.New512()
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unsupported algorithm %s", algorithm)), nil
+		return logical.ErrorResponse("unsupported algorithm %s", algorithm), nil
 	}
 	hf.Write(input)
 	retBytes := hf.Sum(nil)
@@ -4098,7 +4084,7 @@ func (b *SystemBackend) pathInternalUIMountRead(ctx context.Context, req *logica
 		return nil, logical.ErrPermissionDenied
 	}
 
-	errResp := logical.ErrorResponse(fmt.Sprintf("preflight capability check returned 403, please ensure client's policies grant access to path %q", path))
+	errResp := logical.ErrorResponse("preflight capability check returned 403, please ensure client's policies grant access to path %q", path)
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -4136,6 +4122,47 @@ func (b *SystemBackend) pathInternalUIMountRead(ctx context.Context, req *logica
 	}
 
 	return resp, nil
+}
+
+func (b *SystemBackend) pathInternalUINamespacesRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	// Short-circuit here if there's no client token provided
+	if req.ClientToken == "" {
+		return nil, errors.New("client token empty")
+	}
+
+	// Load the ACL policies so we can check for access and filter namespaces
+	acl, te, entity, _, err := b.Core.fetchACLTokenEntryAndEntity(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if entity != nil && entity.Disabled {
+		b.logger.Warn("permission denied as the entity on the token is disabled")
+		return nil, logical.ErrPermissionDenied
+	}
+	if te != nil && te.EntityID != "" && entity == nil {
+		b.logger.Warn("permission denied as the entity on the token is invalid")
+		return nil, logical.ErrPermissionDenied
+	}
+
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := b.Core.namespaceStore.ListNamespaces(ctx, false, false)
+	if err != nil {
+		return nil, errors.New("failed to list namespaces")
+	}
+
+	var nsList []string
+	for _, entry := range list {
+		if acl != nil && hasMountAccess(ctx, acl, entry.Path) {
+			relativePath := parent.TrimmedPath(entry.Path)
+			nsList = append(nsList, relativePath)
+		}
+	}
+
+	return logical.ListResponse(nsList), nil
 }
 
 func (b *SystemBackend) pathInternalCountersRequests(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -4824,7 +4851,7 @@ func (b *SystemBackend) handleLoggersWrite(ctx context.Context, req *logical.Req
 
 	level, err := logging.ParseLogLevel(logLevel)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid level provided: %s", err.Error())), nil
+		return logical.ErrorResponse("invalid level provided: %s", err.Error()), nil
 	}
 
 	b.Core.SetLogLevel(level)
@@ -4835,7 +4862,7 @@ func (b *SystemBackend) handleLoggersWrite(ctx context.Context, req *logical.Req
 func (b *SystemBackend) handleLoggersDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	level, err := logging.ParseLogLevel(b.Core.logLevel)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("log level from config is invalid: %s", err.Error())), nil
+		return logical.ErrorResponse("log level from config is invalid: %s", err.Error()), nil
 	}
 
 	b.Core.SetLogLevel(level)
@@ -4913,12 +4940,12 @@ func (b *SystemBackend) handleLoggersByNameWrite(ctx context.Context, req *logic
 
 	level, err := logging.ParseLogLevel(logLevel)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid level provided: %s", err.Error())), nil
+		return logical.ErrorResponse("invalid level provided: %s", err.Error()), nil
 	}
 
 	success := b.Core.SetLogLevelByName(name, level)
 	if !success {
-		return logical.ErrorResponse(fmt.Sprintf("logger %q not found", name)), nil
+		return logical.ErrorResponse("logger %q not found", name), nil
 	}
 
 	return nil, nil
@@ -4932,7 +4959,7 @@ func (b *SystemBackend) handleLoggersByNameDelete(ctx context.Context, req *logi
 
 	level, err := logging.ParseLogLevel(b.Core.logLevel)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("log level from config is invalid: %s", err.Error())), nil
+		return logical.ErrorResponse("log level from config is invalid: %s", err.Error()), nil
 	}
 
 	name := nameRaw.(string)
@@ -4942,7 +4969,7 @@ func (b *SystemBackend) handleLoggersByNameDelete(ctx context.Context, req *logi
 
 	success := b.Core.SetLogLevelByName(name, level)
 	if !success {
-		return logical.ErrorResponse(fmt.Sprintf("logger %q not found", name)), nil
+		return logical.ErrorResponse("logger %q not found", name), nil
 	}
 
 	return nil, nil

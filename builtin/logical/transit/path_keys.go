@@ -294,14 +294,14 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 	case "hmac":
 		polReq.KeyType = keysutil.KeyType_HMAC
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unknown key type %v", keyType)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("unknown key type %v", keyType), logical.ErrInvalidRequest
 	}
 	if keySize != 0 {
 		if polReq.KeyType != keysutil.KeyType_HMAC {
-			return logical.ErrorResponse(fmt.Sprintf("key_size is not valid for algorithm %v", polReq.KeyType)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("key_size is not valid for algorithm %v", polReq.KeyType), logical.ErrInvalidRequest
 		}
 		if keySize < keysutil.HmacMinKeySize || keySize > keysutil.HmacMaxKeySize {
-			return logical.ErrorResponse(fmt.Sprintf("invalid key_size %d", keySize)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("invalid key_size %d", keySize), logical.ErrInvalidRequest
 		}
 		polReq.KeySize = keySize
 	}
@@ -512,7 +512,7 @@ func (b *backend) pathPolicyDelete(ctx context.Context, req *logical.Request, d 
 	// Delete does its own locking
 	err := b.lm.DeletePolicy(ctx, req.Storage, name)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("error deleting policy %s: %s", name, err)), err
+		return logical.ErrorResponse("error deleting policy %s: %s", name, err), err
 	}
 
 	return nil, nil

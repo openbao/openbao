@@ -5,7 +5,6 @@ package transit
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -84,10 +83,7 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 	}
 	defer txRollback()
 
-	derivationAlgorithm := d.Get("key_derivation_algorithm").(string)
-	if derivationAlgorithm == "" {
-		derivationAlgorithm = defaultKeyDerivationAlgorithm
-	} else if derivationAlgorithm != defaultKeyDerivationAlgorithm {
+	if derivationAlgorithm := d.Get("key_derivation_algorithm").(string); derivationAlgorithm != defaultKeyDerivationAlgorithm {
 		return logical.ErrorResponse("key derivation algorithm %s not supported", derivationAlgorithm), logical.ErrInvalidRequest
 	}
 
@@ -113,7 +109,7 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 		IsPrivateKey:             false,
 	}
 
-	derivedKeySizeInBytes := 32
+	var derivedKeySizeInBytes int
 	switch strings.ToLower(derivedkeyType) {
 	case "aes128-gcm96":
 		polReq.KeyType = keysutil.KeyType_AES128_GCM96
@@ -128,7 +124,7 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 		polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
 		derivedKeySizeInBytes = 32
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unknown key type %v", derivedkeyType)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("unknown key type %v", derivedkeyType), logical.ErrInvalidRequest
 	}
 
 	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{

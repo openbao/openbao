@@ -1,5 +1,4 @@
 ---
-draft: true
 sidebar_label: Overview
 description: >-
   The OpenBao CSI Provider allows pods to consume OpenBao secrets using CSI volumes.
@@ -56,6 +55,12 @@ ensure applications cannot access more secrets than they require.
 
 The following is an example of a Secret Provider Class using the `openbao` provider:
 
+:::warning
+
+`provider: openbao` only works starting with the OpenBao Helm Chart version 0.18.0, which uses the OpenBao CSI Provider version 2.0.0 or later.
+
+:::
+
 ```yaml
 ---
 apiVersion: secrets-store.csi.x-k8s.io/v1alpha1
@@ -71,9 +76,9 @@ spec:
     # OpenBao address and TLS connection config is normally best configured by the
     # helm chart, but can be overridden per SecretProviderClass:
     # OpenBao's hostname
-    #openbaoAddress: 'https://openbao:8200'
+    baoAddress: 'https://openbao:8200'
     # TLS CA certification for validation
-    #openbaoCACertPath: '/openbao/tls/ca.crt'
+    baoCACertPath: '/openbao/tls/ca.crt'
     objects: |
       - objectName: "dbUsername"
         secretPath: "database/creds/db-app"

@@ -295,9 +295,11 @@ func TestLogical_RequestSizeDisableLimit(t *testing.T) {
 	props := &vault.HandlerProperties{
 		Core: core,
 		ListenerConfig: &configutil.Listener{
-			MaxRequestSize: -1,
-			Address:        "127.0.0.1",
-			TLSDisable:     true,
+			MaxRequestSize:        -1,
+			MaxRequestJsonMemory:  -1,
+			MaxRequestJsonStrings: -1,
+			Address:               "127.0.0.1",
+			TLSDisable:            true,
 		},
 	}
 	TestServerWithListenerAndProperties(t, ln, addr, core, props)
@@ -974,8 +976,8 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) {
 		testBuiltinPluginMetadataAuditLog(t, auditRequest, consts.PluginTypeCredential.String())
 
 		auditResponse := map[string]interface{}{}
-		if req, ok := auditRecord["response"]; ok {
-			auditRequest = req.(map[string]interface{})
+		if res, ok := auditRecord["response"]; ok {
+			auditResponse = res.(map[string]interface{})
 			if auditResponse["path"] != "auth/token/create" {
 				continue
 			}
@@ -1064,8 +1066,8 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T) {
 		testBuiltinPluginMetadataAuditLog(t, auditRequest, consts.PluginTypeSecrets.String())
 
 		auditResponse := map[string]interface{}{}
-		if req, ok := auditRecord["response"]; ok {
-			auditRequest = req.(map[string]interface{})
+		if res, ok := auditRecord["response"]; ok {
+			auditResponse = res.(map[string]interface{})
 			if auditResponse["path"] != "kv/data/foo" {
 				continue
 			}

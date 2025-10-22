@@ -120,12 +120,14 @@ These are the currently-available general configuration options:
 
 - `listener` <code>([listener][listener]: \<optional>)</code> - Specifies the addresses and ports on which the Agent will respond to requests.
 
-:::warning
+  :::warning
 
- **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Agent will attempt to reload listener TLS configuration.
-  This method can be used to refresh certificates used by OpenBao Agent without having to restart its process.
+  **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Agent will
+  attempt to reload listener TLS configuration. This method can be used to
+  refresh certificates used by OpenBao Agent without having to restart its
+  process.
 
-:::
+  :::
 
 - `pid_file` `(string: "")` - Path to the file in which the agent's Process ID
   (PID) should be stored
@@ -159,24 +161,26 @@ These are the currently-available general configuration options:
   reporting system. See the [telemetry Stanza](/docs/agent-and-proxy/agent#telemetry-stanza) section below
   for a list of metrics specific to Agent.
 
-- `log_level` - Equivalent to the [`-log-level` command-line flag](#_log_level).
+- `log_level` - Equivalent to the `-log-level` command-line flag.
 
-:::warning
+  :::warning
 
- **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Agent will update the log level to the value
-  specified by configuration file (including overriding values set using CLI or environment variable parameters).
+  **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Agent will update
+  the log level to the value specified by configuration file (including
+  overriding values set using CLI or environment variable parameters).
 
-:::
+  :::
 
-- `log_format` - Equivalent to the [`-log-format` command-line flag](#_log_format).
+- `log_format` - Equivalent to the `-log-format` command-line flag.
 
-- `log_file` - Equivalent to the [`-log-file` command-line flag](#_log_file).
+- `log_file` - Equivalent to the `-log-file` command-line flag.
 
-- `log_rotate_duration` - Equivalent to the [`-log-rotate-duration` command-line flag](#_log_rotate_duration).
+- `log_rotate_duration` - Equivalent to the `-log-rotate-duration` command-line flag.
 
-- `log_rotate_bytes` - Equivalent to the [`-log-rotate-bytes` command-line flag](#_log_rotate_bytes).
+- `log_rotate_bytes` - Equivalent to the `-log-rotate-bytes` command-line flag.
 
-- `log_rotate_max_files` - Equivalent to the [`-log-rotate-max-files` command-line flag](#_log_rotate_max_files).
+- `log_rotate_max_files` - Equivalent to the `-log-rotate-max-files`
+  command-line flag.
 
 ### vault stanza
 

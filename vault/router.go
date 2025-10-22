@@ -403,6 +403,12 @@ func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) str
 	if err != nil {
 		return ""
 	}
+	// Ensure comparisons are done against absolute paths within the
+	// current namespace context, consistent with other matching helpers.
+	// Without this, a mount path that matches the current namespace name
+	// (e.g., mounting "team14/" inside namespace "team14/") would be
+	// incorrectly detected as conflicting with the namespace itself.
+	path = ns.Path + path
 
 	// Every namespace has a sys/ mount. We can use that as a sentinel that
 	// our given path conflicts. Walk the parent namespace of path and check
@@ -413,11 +419,17 @@ func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) str
 	// locked as we're trying to mount required mounts for a new namespace.
 	var existing string
 	fn := func(existingPath string, v interface{}) bool {
-		if !strings.HasSuffix(existingPath, "sys/") {
+		nsPath, ok := strings.CutSuffix(existingPath, "sys/")
+		if !ok {
 			return false
 		}
 
-		nsPath := strings.TrimSuffix(existingPath, "sys/")
+		// Ignore the current namespace's own sys mount; we only want to
+		// detect conflicts with child namespace prefixes.
+		if nsPath == ns.Path {
+			return false
+		}
+
 		if strings.HasPrefix(path, nsPath) {
 			existing = nsPath
 			return true
@@ -621,7 +633,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 	}
 	r.l.RUnlock()
 	if !ok {
-		return logical.ErrorResponse(fmt.Sprintf("no handler for route %q. route entry not found.", req.Path)), false, false, logical.ErrUnsupportedPath
+		return logical.ErrorResponse("no handler for route %q. route entry not found.", req.Path), false, false, logical.ErrUnsupportedPath
 	}
 	req.Path = adjustedPath
 	if !existenceCheck {
@@ -644,7 +656,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 
 	// Filtered mounts will have a nil backend
 	if re.backend == nil {
-		return logical.ErrorResponse(fmt.Sprintf("no handler for route %q. route entry found, but backend is nil.", req.Path)), false, false, logical.ErrUnsupportedPath
+		return logical.ErrorResponse("no handler for route %q. route entry found, but backend is nil.", req.Path), false, false, logical.ErrUnsupportedPath
 	}
 
 	// If the path or namespace is tainted, we reject any operation
@@ -653,7 +665,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 		switch req.Operation {
 		case logical.RevokeOperation, logical.RollbackOperation:
 		default:
-			return logical.ErrorResponse(fmt.Sprintf("no handler for route %q on namespace %q. route entry or namespace is tainted.", req.Path, ns.Path)), false, false, logical.ErrUnsupportedPath
+			return logical.ErrorResponse("no handler for route %q on namespace %q. route entry or namespace is tainted.", req.Path, ns.Path), false, false, logical.ErrUnsupportedPath
 		}
 	}
 
@@ -697,7 +709,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 		}
 
 		if te.Type != logical.TokenTypeService {
-			return logical.ErrorResponse(`cubbyhole operations are only supported by "service" type tokens`), false, false, nil
+			return logical.ErrorResponse("cubbyhole operations are only supported by 'service' type tokens"), false, false, nil
 		}
 
 		switch {

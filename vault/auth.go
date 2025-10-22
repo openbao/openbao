@@ -112,14 +112,14 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 			case strings.HasPrefix(ent.Path, entry.Path):
 				fallthrough
 			case strings.HasPrefix(entry.Path, ent.Path):
-				return logical.CodedError(409, fmt.Sprintf("path is already in use at %s", ent.Path))
+				return logical.CodedError(409, "path is already in use at %s", ent.Path)
 			}
 		}
 	}
 
 	// Check for conflicts according to the router
 	if conflict := c.router.MountConflict(ctx, credentialRoutePrefix+entry.Path); conflict != "" {
-		return logical.CodedError(409, fmt.Sprintf("existing mount at %s", conflict))
+		return logical.CodedError(409, "existing mount at %s", conflict)
 	}
 
 	// Generate a new UUID and view
@@ -460,33 +460,6 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 
 	// Un-taint the new path in the router
 	if err := c.router.Untaint(ctx, dstRelativePath); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// remountCredEntryForceInternal takes a copy of the mount entry for the path and fully
-// unmounts and remounts the backend to pick up any changes, such as filtered
-// paths. This should be only used internal.
-func (c *Core) remountCredEntryForceInternal(ctx context.Context, path string, updateStorage bool) error {
-	fullPath := credentialRoutePrefix + path
-	me := c.router.MatchingMountEntry(ctx, fullPath)
-	if me == nil {
-		return fmt.Errorf("cannot find mount for path %q", path)
-	}
-
-	me, err := me.Clone()
-	if err != nil {
-		return err
-	}
-
-	if err := c.disableCredentialInternal(ctx, path, updateStorage); err != nil {
-		return err
-	}
-
-	// Enable credential internally
-	if err := c.enableCredentialInternal(ctx, me, updateStorage); err != nil {
 		return err
 	}
 

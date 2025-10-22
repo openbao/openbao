@@ -65,7 +65,7 @@ func (b *backend) operationSetCheckOut(ctx context.Context, req *logical.Request
 		return nil, err
 	}
 	if set == nil {
-		return logical.ErrorResponse(fmt.Sprintf(`%q doesn't exist`, setName)), nil
+		return logical.ErrorResponse(`%q doesn't exist`, setName), nil
 	}
 
 	// Prepare the check-out we'd like to execute.
@@ -149,7 +149,7 @@ func (b *backend) renewCheckOut(ctx context.Context, req *logical.Request, _ *fr
 		return nil, err
 	}
 	if set == nil {
-		return logical.ErrorResponse(fmt.Sprintf(`%q doesn't exist`, setName)), nil
+		return logical.ErrorResponse(`%q doesn't exist`, setName), nil
 	}
 
 	serviceAccountName := req.Secret.InternalData["service_account_name"].(string)
@@ -160,7 +160,7 @@ func (b *backend) renewCheckOut(ctx context.Context, req *logical.Request, _ *fr
 	if checkOut.IsAvailable {
 		// It's possible that this renewal could be attempted after a check-in occurred either by this entity or by
 		// another user with access to the "manage check-ins" endpoint that forcibly checked it back in.
-		return logical.ErrorResponse(fmt.Sprintf("%s is already checked in, please call check-out to regain it", serviceAccountName)), nil
+		return logical.ErrorResponse("%s is already checked in, please call check-out to regain it", serviceAccountName), nil
 	}
 	resp := &logical.Response{Secret: req.Secret}
 	resp.Secret.TTL = set.TTL
@@ -267,7 +267,7 @@ func (b *backend) operationCheckIn(overrideCheckInEnforcement bool) framework.Op
 			return nil, err
 		}
 		if set == nil {
-			return logical.ErrorResponse(fmt.Sprintf(`%q doesn't exist`, setName)), nil
+			return logical.ErrorResponse(`%q doesn't exist`, setName), nil
 		}
 
 		// If check-in enforcement is overridden or disabled at the set level, we should consider it disabled.
@@ -295,7 +295,7 @@ func (b *backend) operationCheckIn(overrideCheckInEnforcement bool) framework.Op
 				toCheckIn = append(toCheckIn, setServiceAccount)
 			}
 			if len(toCheckIn) > 1 {
-				return logical.ErrorResponse(`when multiple service accounts are checked out, the "service_account_names" to check in must be provided`), nil
+				return logical.ErrorResponse("when multiple service accounts are checked out, the 'service_account_names' to check in must be provided"), nil
 			}
 		} else {
 			for _, serviceAccountName := range serviceAccountNames {
@@ -363,7 +363,7 @@ func (b *backend) operationSetStatus(ctx context.Context, req *logical.Request, 
 		return nil, err
 	}
 	if set == nil {
-		return logical.ErrorResponse(fmt.Sprintf(`%q doesn't exist`, setName)), nil
+		return logical.ErrorResponse(`%q doesn't exist`, setName), nil
 	}
 	respData := make(map[string]interface{})
 

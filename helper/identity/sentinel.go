@@ -19,9 +19,9 @@ func (e *Entity) SentinelGet(key string) (interface{}, error) {
 	case "name":
 		return e.Name, nil
 	case "creation_time":
-		return e.CreationTime.AsTime().Format(time.RFC3339), nil
+		return e.CreationTime.AsTime().Format(time.RFC3339Nano), nil
 	case "last_update_time":
-		return e.LastUpdateTime.AsTime().Format(time.RFC3339), nil
+		return e.LastUpdateTime.AsTime().Format(time.RFC3339Nano), nil
 	case "merged_entity_ids":
 		return e.MergedEntityIDs, nil
 	case "policies":
@@ -63,9 +63,9 @@ func (p *Alias) SentinelGet(key string) (interface{}, error) {
 	case "name":
 		return p.Name, nil
 	case "creation_time":
-		return p.CreationTime.AsTime().Format(time.RFC3339), nil
+		return p.CreationTime.AsTime().Format(time.RFC3339Nano), nil
 	case "last_update_time":
-		return p.LastUpdateTime.AsTime().Format(time.RFC3339), nil
+		return p.LastUpdateTime.AsTime().Format(time.RFC3339Nano), nil
 	case "merged_from_entity_ids":
 		return p.MergedFromCanonicalIDs, nil
 	}
@@ -106,9 +106,9 @@ func (g *Group) SentinelGet(key string) (interface{}, error) {
 	case "meta", "metadata":
 		return g.Metadata, nil
 	case "creation_time":
-		return g.CreationTime.AsTime().Format(time.RFC3339), nil
+		return g.CreationTime.AsTime().Format(time.RFC3339Nano), nil
 	case "last_update_time":
-		return g.LastUpdateTime.AsTime().Format(time.RFC3339), nil
+		return g.LastUpdateTime.AsTime().Format(time.RFC3339Nano), nil
 	}
 
 	return nil, nil

@@ -268,6 +268,7 @@ func TestAutoTidy(t *testing.T) {
 	require.NotNil(t, resp.Data)
 	require.NotEmpty(t, resp.Data["certificate"])
 	revocationTime, err := (resp.Data["revocation_time"].(json.Number)).Int64()
+	require.NoError(t, err)
 	require.Equal(t, int64(0), revocationTime, "revocation time was not zero")
 	require.Empty(t, resp.Data["revocation_time_rfc3339"], "revocation_time_rfc3339 was not empty")
 	require.Empty(t, resp.Data["issuer_id"], "issuer_id was not empty")
@@ -348,6 +349,10 @@ func TestTidyCancellation(t *testing.T) {
 		"safety_buffer":   "1s",
 		"pause_duration":  "1s",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("tidy"), logical.UpdateOperation), resp, true)
 
 	// If we wait six seconds, the operation should still be running. That's
@@ -1126,6 +1131,10 @@ func backDateAcmeAccountSys(t *testing.T, testContext context.Context, client *a
 	t.Logf("got account after update: %v", account)
 
 	encodeJSON, err := jsonutil.EncodeJSON(account)
+	if err != nil {
+		t.Fatalf("json encoding failed: %v", err)
+	}
+
 	_, err = client.Logical().WriteWithContext(context.Background(), accountPath, map[string]interface{}{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
@@ -1172,6 +1181,10 @@ func backDateAcmeOrderSys(t *testing.T, testContext context.Context, client *api
 	order.CertificateExpiry = backDate(order.CertificateExpiry, backdateAmount)
 
 	encodeJSON, err := jsonutil.EncodeJSON(order)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, err = client.Logical().WriteWithContext(context.Background(), rawOrderPath, map[string]interface{}{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
@@ -1207,6 +1220,10 @@ func backDateAcmeAuthorizationSys(t *testing.T, testContext context.Context, cli
 	auth.Expires = time.Time.Format(newExpiry, time.RFC3339)
 
 	encodeJSON, err := jsonutil.EncodeJSON(auth)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, err = client.Logical().WriteWithContext(context.Background(), rawAuthPath, map[string]interface{}{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
@@ -1505,6 +1522,7 @@ func TestRevokedSafetyBufferConfig(t *testing.T) {
 
 	// Verify that the default of revoked_safety_buffer is the default of safety_buffer when neither are set
 	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	requireSuccessNonNilResponse(t, resp, err, "expected to write auto-tidy config")
 	resp, err = CBRead(b, s, "config/auto-tidy")
 	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
 	require.Equal(t, resp.Data["safety_buffer"].(int), resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer")
@@ -1700,6 +1718,7 @@ func TestTidyPaginationConfig(t *testing.T) {
 
 	// Verify that the default of page_size is 1000
 	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	requireSuccessNonNilResponse(t, resp, err, "expected to write auto-tidy config")
 	resp, err = CBRead(b, s, "config/auto-tidy")
 	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
 	require.Equal(t, 1000, resp.Data["page_size"].(int), "expected page_size to be defaulted to 1000")

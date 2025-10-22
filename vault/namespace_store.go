@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -96,6 +97,16 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	return ns, nil
 }
 
+// NamespaceView uses given barrier and namespace to return back a view scoped to that namespace.
+func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView {
+	if ns.ID == namespace.RootNamespaceID {
+		return NewBarrierView(barrier, "")
+	}
+
+	return NewBarrierView(barrier, path.Join(namespaceBarrierPrefix, ns.UUID)+"/")
+}
+
+// cancelNamespaceDeletion cancels goroutine that runs namespace deletion.
 func (c *Core) cancelNamespaceDeletion() {
 	if c.namespaceStore == nil {
 		return
@@ -263,6 +274,9 @@ func (c *Core) teardownNamespaceStore() error {
 	return nil
 }
 
+// invalidate will be used in the future for implementing read replica nodes
+//
+//nolint:unused
 func (ns *NamespaceStore) invalidate(ctx context.Context, path string) error {
 	// We want to keep invalidation proper fast (as it holds up replication),
 	// so defer invalidation to the next load.

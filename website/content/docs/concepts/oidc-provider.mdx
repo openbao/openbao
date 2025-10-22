@@ -8,7 +8,7 @@ description: >-
 This document provides conceptual information about the OpenBao **OpenID Connect (OIDC) identity
 provider** feature. This feature enables client applications that speak the OIDC protocol to
 leverage OpenBao's source of [identity](/docs/concepts/identity) and wide range of [authentication methods](/docs/auth)
-when authenticating end-users. For more information about the usage of OpenBao's OIDC provider,
+when authenticating end-users or performing service-to-service authentication. For more information about the usage of OpenBao's OIDC provider,
 refer to the [OIDC identity provider](/docs/secrets/identity/oidc-provider) documentation.
 
 ## Configuration options
@@ -120,6 +120,7 @@ characters from the base62 character set.
 :::warning
 
 **Note**: At least one of the redirect URIs of a client must exactly match the `redirect_uri` parameter used in an authentication request initiated by the client.
+          When Using credentials flow Redirect URIs are not required.
 
 :::
 
@@ -181,19 +182,23 @@ The `default` key will have the following configuration:
 
 ## OIDC flow
 
-:::warning
+OpenBao OIDC providers enable registered clients to authenticate and obtain identity information (or "claims") for their end-users or services.
+They do this by providing the APIs and behavior required to satisfy the OIDC specification for the [authorization code flow](https://datatracker.ietf.org/doc/html/rfc6749#section-4.1) and the [client credentials flow](https://datatracker.ietf.org/doc/html/rfc6749#section-4.4).
 
-**Note**: The OpenBao OIDC Provider feature currently only supports the [authorization code flow](https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth).
+### Authorization code flow
 
-:::
-
-The following sections provide implementation details for the OIDC compliant APIs provided by OpenBao OIDC providers.
-
-OpenBao OIDC providers enable registered clients to authenticate and obtain identity information (or "claims") for their end-users. They do this by providing the APIs and behavior required to satisfy the OIDC specification for the [authorization code flow](https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth). All clients are treated as first-party. This means that end-users will not be required to provide consent to the provider as detailed in section [3.1.2.4](https://openid.net/specs/openid-connect-core-1_0.html#Consent) of the OIDC specification. The provider will release information to clients as long as the end-user has ACL access to the provider and their identity has been authorized via an assignment.
+All clients are treated as first-party. This means that end-users will not be required to provide consent to the provider as detailed in section [3.1.2.4](https://openid.net/specs/openid-connect-core-1_0.html#Consent) of the OIDC specification.
+The provider will release information to clients as long as the end-user has ACL access to the provider and their identity has been authorized via an assignment.
 
 OpenBao OIDC providers implement Proof Key for Code Exchange ([PKCE](https://datatracker.ietf.org/doc/html/rfc7636))
 to mitigate authorization code interception attacks. PKCE is required for `public` client types
 and optional for `confidential` client types.
+
+### Client credentials flow
+
+OpenBao OIDC providers also support the [client credentials flow](https://datatracker.ietf.org/doc/html/rfc6749#section-4.4), which allows confidential clients to directly obtain tokens without end-user interaction. This flow is intended for service-to-service communication.
+
+In this flow, the client authenticates against the token endpoint using its `client_id` and `client_secret`. Upon successful validation, OpenBao issues an access token and, if configured, an ID token. The claims in these tokens are determined by the scopes assigned to the client. No user assignments are required, since the client itself is the subject (`sub`) of the issued tokens.
 
 ### OpenID configuration
 
@@ -205,7 +210,7 @@ Each provider offers an unauthenticated endpoint that provides the public portio
 
 ### Authorization endpoint
 
-Each provider offers an authenticated [authorization endpoint](https://openid.net/specs/openid-connect-core-1_0.html#AuthorizationEndpoint). The authorization endpoint for each provider is added to OpenBao's [default policy](/docs/concepts/policies#default-policy) using the `identity/oidc/provider/+/authorize` path. The endpoint incorporates all required [authentication request](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest) parameters as input.
+Each provider offers an authenticated [authorization endpoint](https://openid.net/specs/openid-connect-core-1_0.html#AuthorizationEndpoint) for the authorization code flow. The authorization endpoint for each provider is added to OpenBao's [default policy](/docs/concepts/policies#default-policy) using the `identity/oidc/provider/+/authorize` path. The endpoint incorporates all required [authentication request](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest) parameters as input.
 
 The endpoint [validates](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequestValidation) client requests and ensures that all required parameters are present and valid. The `redirect_uri` of the request is validated against the client's `redirect_uris`. The requesting OpenBao entity will be validated against the client's `assignments`. An appropriate [error code](https://openid.net/specs/openid-connect-core-1_0.html#AuthError) is returned for invalid requests.
 
@@ -213,9 +218,15 @@ An authorization code is generated with a successful validation of the request. 
 
 ### Token endpoint
 
-Each provider will offer a [token endpoint](/api-docs/secret/identity/oidc-provider#token-endpoint). The endpoint may be unauthenticated in OpenBao but is authenticated by requiring a `client_secret` as described in [client authentication](https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication). The endpoint ingests all required [token request](/api-docs/secret/identity/oidc-provider#parameters-15) parameters as input. The endpoint [validates](https://openid.net/specs/openid-connect-core-1_0.html#TokenRequestValidation) the client requests and exchanges an authorization code for the ID token and access token. The cache of authorization codes will be verified against the code presented in the exchange. The appropriate [error codes](https://openid.net/specs/openid-connect-core-1_0.html#TokenErrorResponse) are returned for all invalid requests.
+Each provider will offer a [token endpoint](/api-docs/secret/identity/oidc-provider#token-endpoint). The endpoint may be unauthenticated in OpenBao but is authenticated by requiring a `client_secret` as described in [client authentication](https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication). The endpoint ingests all required [token request](/api-docs/secret/identity/oidc-provider#parameters-15) parameters as input.
 
-The ID token is generated and returned upon successful client authentication and request validation. The ID token will contain a combination of required and configurable claims. The required claims are enumerated in the scopes section above for the `openid` scope. The configurable claims are populated by templates associated with the scopes provided in the authentication request that generated the authorization code.
+The endpoint supports both:
+- **Authorization code flow**: exchanges an authorization code for the ID token and access token. The cache of authorization codes will be verified against the code presented in the exchange.
+- **Client credentials flow**: exchanges a valid client ID and client secret for an access token (and optionally an ID token, depending on requested scopes). Redirect URIs and assignments are not required in this flow.
+
+The appropriate [error codes](https://openid.net/specs/openid-connect-core-1_0.html#TokenErrorResponse) are returned for all invalid requests.
+
+The ID token is generated and returned upon successful client authentication and request validation. The ID token will contain a combination of required and configurable claims. The required claims are enumerated in the scopes section above for the `openid` scope. The configurable claims are populated by templates associated with the scopes provided in the authentication request.
 
 An access token is also generated and returned upon successful client authentication and request validation. The access token is an OpenBao [batch token](/docs/concepts/tokens#batch-tokens) with a policy that only provides read access to the issuing provider's [userinfo endpoint](/api-docs/secret/identity/oidc-provider#userinfo-endpoint). The access token is also a TTL as defined by the `access_token_ttl` of the requesting client.
 

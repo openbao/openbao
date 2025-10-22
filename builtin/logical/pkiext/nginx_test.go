@@ -414,13 +414,14 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 
 	// Configure our mount to use auto-rotate, even though we don't have
 	// a periodic func.
-	_, err := pki.CBWrite(b, s, "config/crl", map[string]interface{}{
+	resp, err := pki.CBWrite(b, s, "config/crl", map[string]interface{}{
 		"auto_rebuild": true,
 		"enable_delta": true,
 	})
+	requireSuccessNonNilResponse(t, resp, err, "failed to configure certificate revocation list")
 
 	// Create a root and intermediate, setting the intermediate as default.
-	resp, err := pki.CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	resp, err = pki.CBWrite(b, s, "root/generate/internal", map[string]interface{}{
 		"common_name":  "Root X1" + testSuffix,
 		"country":      "US",
 		"organization": "Dadgarcorp",
@@ -456,9 +457,10 @@ func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bo
 		"pem_bundle": intCert,
 	})
 	requireSuccessNonNilResponse(t, resp, err, "failed to sign intermediate csr")
-	_, err = pki.CBWrite(b, s, "config/issuers", map[string]interface{}{
+	resp, err = pki.CBWrite(b, s, "config/issuers", map[string]interface{}{
 		"default": resp.Data["imported_issuers"].([]string)[0],
 	})
+	requireSuccessNonNilResponse(t, resp, err, "failed to configure issuer")
 
 	// Create a role+certificate valid for localhost only.
 	_, err = pki.CBWrite(b, s, "roles/testing", map[string]interface{}{

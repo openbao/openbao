@@ -831,6 +831,7 @@ func TestAcmeRoleExtKeyUsage(t *testing.T) {
 	}
 
 	_, err := client.Logical().Write("pki/roles/"+roleName, roleOpt)
+	require.NoError(t, err, "failed creating role")
 
 	baseAcmeURL := "/v1/pki/roles/" + roleName + "/acme/"
 	accountKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -1320,6 +1321,7 @@ func setupAcmeBackendOnClusterAtPath(t *testing.T, cluster *vault.TestCluster, c
 			"max_ttl":     "920000h",
 		})
 	require.NoError(t, err, "failed creating root CA")
+	require.NotNil(t, resp)
 
 	resp, err = client.Logical().WriteWithContext(context.Background(), mount+"/issuers/generate/intermediate/internal",
 		map[string]interface{}{

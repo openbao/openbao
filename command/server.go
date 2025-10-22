@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
@@ -61,7 +62,6 @@ import (
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
 	"github.com/sasha-s/go-deadlock"
-	"go.uber.org/atomic"
 	"golang.org/x/net/http/httpproxy"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -494,12 +494,10 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	configSeal := config.Seals[0]
-	sealType := wrapping.WrapperTypeShamir.String()
+	sealType := configSeal.Type
 	if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
 		sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 		configSeal.Type = sealType
-	} else {
-		sealType = configSeal.Type
 	}
 
 	infoKeys = append(infoKeys, "Seal Type")
@@ -635,7 +633,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 			AllListeners:          lns,
 			DisablePrintableCheck: config.DisablePrintableCheck,
 			RecoveryMode:          c.flagRecovery,
-			RecoveryToken:         atomic.NewString(""),
+			RecoveryToken:         &atomic.Value{},
 		})
 
 		server := &http.Server{
@@ -852,6 +850,16 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 			Listener: ln,
 			Config:   lnConfig,
 		})
+
+		if lnConfig.MaxRequestJsonMemory == 0 {
+			lnConfig.MaxRequestJsonMemory = vault.DefaultMaxJsonMemory
+		}
+		props["max_request_json_memory"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonMemory)
+
+		if lnConfig.MaxRequestJsonStrings == 0 {
+			lnConfig.MaxRequestJsonStrings = vault.DefaultMaxJsonStrings
+		}
+		props["max_request_json_strings"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonStrings)
 
 		// Store the listener props for output later
 		key := fmt.Sprintf("listener %d", i+1)
@@ -2480,12 +2488,10 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 	}
 	var createdSeals []vault.Seal = make([]vault.Seal, len(config.Seals))
 	for _, configSeal := range config.Seals {
-		sealType := wrapping.WrapperTypeShamir.String()
+		sealType := configSeal.Type
 		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
 			sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 			configSeal.Type = sealType
-		} else {
-			sealType = configSeal.Type
 		}
 
 		var seal vault.Seal

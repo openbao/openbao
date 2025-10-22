@@ -259,7 +259,7 @@ func (b *Backend) log(ctx context.Context, buf *bytes.Buffer, writer io.Writer) 
 	// If writing to stdout there's no real reason to think anything would have
 	// changed so return above. Otherwise, opportunistically try to re-open the
 	// FD, once per call.
-	b.f.Close()
+	b.f.Close() //nolint:errcheck // try to close, ignore error
 	b.f = nil
 
 	if err := b.open(); err != nil {
@@ -267,7 +267,10 @@ func (b *Backend) log(ctx context.Context, buf *bytes.Buffer, writer io.Writer) 
 		return err
 	}
 
-	reader.Seek(0, io.SeekStart)
+	if _, err := reader.Seek(0, io.SeekStart); err != nil {
+		b.fileLock.Unlock()
+		return err
+	}
 	_, err := reader.WriteTo(writer)
 	b.fileLock.Unlock()
 	return err

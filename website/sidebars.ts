@@ -39,6 +39,7 @@ const sidebars: SidebarsConfig = {
                                 "internals/telemetry/metrics/availability",
                                 "internals/telemetry/metrics/database",
                                 "internals/telemetry/metrics/policy",
+                                "internals/telemetry/metrics/postgresql",
                                 "internals/telemetry/metrics/raft",
                                 "internals/telemetry/metrics/secrets",
                                 "internals/telemetry/metrics/storage",
@@ -80,13 +81,15 @@ const sidebars: SidebarsConfig = {
                 "concepts/mount-migration",
                 "concepts/duration-format",
                 "concepts/user-lockout",
+                "concepts/cel",
             ],
             Guides: [
                 {
                     Unsealing: [
                         {
                             "PKCS#11": [
-                                "guides/unseal/pkcs11/securosys"
+                                "guides/unseal/pkcs11/securosys",
+                                "guides/unseal/pkcs11/utimaco",
                             ]
                         }
                     ]
@@ -409,6 +412,7 @@ const sidebars: SidebarsConfig = {
             "Audit Devices": [
                 "audit/index",
                 "audit/file",
+                "audit/http",
                 "audit/syslog",
                 "audit/socket",
             ],
@@ -454,7 +458,7 @@ const sidebars: SidebarsConfig = {
                                 "platform/k8s/injector/installation",
                                 "platform/k8s/injector/examples",
                             ],
-                            "Vault CSI Provider": [
+                            "OpenBao CSI Provider": [
                                 "platform/k8s/csi/index",
                                 "platform/k8s/csi/installation",
                                 "platform/k8s/csi/configurations",
@@ -506,6 +510,7 @@ const sidebars: SidebarsConfig = {
                 "policies/release",
                 "policies/support",
                 "policies/osps-baseline",
+                "policies/cve",
             ],
             Contributing: [
                 "contributing/index",
@@ -534,11 +539,16 @@ const sidebars: SidebarsConfig = {
                 "rfcs/namespace-sealing",
                 "rfcs/external-keys",
                 "rfcs/config-audit-devices",
+                "rfcs/opentelemetry",
                 {
                   "UI/UX": ["rfcs/web-ui-modernization"],
                 },
+                {
+                    "Horizontal Scalability": [
+                        "rfcs/standby-nodes-handle-read-requests",
+                    ],
+                },
             ],
-            FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },
         "glossary",
     ],

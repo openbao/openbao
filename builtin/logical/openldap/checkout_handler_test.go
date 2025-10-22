@@ -141,7 +141,7 @@ func TestPasswordHandlerInterfaceFulfillment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	currPassword, err = retrievePassword(ctx, s, serviceAccountName)
+	_, err = retrievePassword(ctx, s, serviceAccountName)
 	if err != errNotFound {
 		t.Fatal("expected errNotFound")
 	}

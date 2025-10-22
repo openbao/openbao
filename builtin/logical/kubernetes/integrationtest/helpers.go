@@ -106,6 +106,7 @@ func testClusterRoleBindingToken(t *testing.T, credsResponse *api.Secret) {
 
 	canListPods, err = tryListPods(t, "default", token, 0)
 	assert.NoError(t, err)
+	assert.True(t, canListPods)
 
 	canListDeployments, err := tryListDeployments(t, "default", token)
 	assert.Errorf(t, err, `pods is forbidden: User "system:serviceaccount:test:%s" cannot list resource "pods" in API group "" in the namespace "default"`, serviceAccountName)
@@ -125,9 +126,9 @@ func verifyRole(t *testing.T, roleConfig map[string]interface{}, credsResponse *
 	expectedAnnotations := asMapString(roleConfig["extra_annotations"].(map[string]interface{}))
 	expectedRules := makeRules(t, roleConfig["generated_role_rules"].(string))
 
-	returnedLabels := map[string]string{}
-	returnedAnnotations := map[string]string{}
-	returnedRules := []rbacv1.PolicyRule{}
+	var returnedLabels map[string]string
+	var returnedAnnotations map[string]string
+	var returnedRules []rbacv1.PolicyRule
 
 	k8sClient := newK8sClient(t, os.Getenv("SUPER_JWT"))
 	if roleType == "role" {
@@ -167,9 +168,9 @@ func verifyBinding(t *testing.T, roleConfig map[string]interface{}, credsRespons
 		},
 	}
 
-	returnedLabels := map[string]string{}
-	returnedAnnotations := map[string]string{}
-	returnedSubjects := []rbacv1.Subject{}
+	var returnedLabels map[string]string
+	var returnedAnnotations map[string]string
+	var returnedSubjects []rbacv1.Subject
 
 	k8sClient := newK8sClient(t, os.Getenv("SUPER_JWT"))
 	if isClusterBinding {
@@ -426,7 +427,7 @@ func makeRules(t *testing.T, rules string) []rbacv1.PolicyRule {
 func makeExpectedLabels(t *testing.T, extraLabels map[string]interface{}) map[string]string {
 	t.Helper()
 
-	expectedLabels := map[string]string{}
+	var expectedLabels map[string]string
 	if extraLabels != nil {
 		expectedLabels = combineMaps(asMapString(extraLabels), standardLabels)
 	} else {

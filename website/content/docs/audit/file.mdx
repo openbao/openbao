@@ -15,6 +15,17 @@ existing tools.
 Sending a `SIGHUP` to the OpenBao process will cause `file` audit devices to close
 and re-open their underlying file, which can assist with log rotation needs.
 
+:::warning
+
+The File audit device is sensitive as it can write to arbitrary files on the
+instance. Be cautious when granting operators the ability to create this
+device via the API when `unsafe_allow_api_audit_creation=true` is set.
+
+Consider using [declarative audit configuration](/docs/configuration/audit/)
+instead.
+
+:::
+
 ## Examples
 
 Enable at the default path:
@@ -57,15 +68,15 @@ these device-specific options:
   the bit pattern for the file mode, similar to `chmod`. Set to `"0000"` to
   prevent OpenBao from modifying the file mode.
 
-:::warning
+  :::warning
 
-Note: Starting with OpenBao v2.4.0, any executable bits set in `mode` are zeroed
-automatically, for security purposes. For example, `mode = 777` will convert to
-`mode = 666`. Furthermore, `mode` values that are
-[irregular](https://pkg.go.dev/io/fs#FileMode.IsRegular) are rejected with an
-error.
+  Note: Starting with OpenBao v2.4.0, any executable bits set in `mode` are
+  zeroed automatically, for security purposes. For example, `mode = 777` will
+  convert to `mode = 666`. Furthermore, `mode` values that are
+  [irregular](https://pkg.go.dev/io/fs#FileMode.IsRegular) are rejected with an
+  error.
 
-:::
+  :::
 
 ## Log file rotation
 

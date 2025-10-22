@@ -32,12 +32,26 @@ multiple sockets.
   `/sys/rekey-recovery-key/*`). These are a security risk to leave exposed on
   public listeners.
 
-:::warning
+   :::warning
 
-**In OpenBao v2.4.0, this parameter will default to true, forbidding any calls
-to the unauthenticated rekey endpoints. This will be a breaking change.
+   **In OpenBao v2.4.0, this parameter will default to true, forbidding any calls
+   to the unauthenticated rekey endpoints. This will be a breaking change.**
 
-:::
+   :::
+
+### `telemetry` parameters
+
+- `unauthenticated_metrics_access` `(bool: false)` - If set to true, allows
+  unauthenticated access to the `/v1/sys/metrics` endpoint.
+
+- `disallow_metrics` `(bool: false)` - Specifies if the `/v1/sys/metrics` endpoint is disabled on this listener. 
+  This is useful for hardening a listener that handles general client traffic, preventing API clients from scraping metrics.
+
+- `metrics_only` `(bool: false)` - Specifies if the listener should *only* serve the `/v1/sys/metrics` endpoint, blocking all other API requests. 
+  This is useful for creating a dedicated, secure listener for monitoring systems.
+
+- `metrics_path` `(string: "")` - If present, specifies an alternative path the metrics
+  should be reported on. Only allowed in conjunction with `metrics_only=true`.
 
 ## `unix` listener examples
 
@@ -75,5 +89,34 @@ listener "unix" {
   socket_mode = "644"
   socket_user = "1000"
   socket_group = "1000"
+}
+```
+
+### Configuring Metrics Security and Access
+
+This example configures two UNIX socket listeners to separate API traffic from metrics monitoring. 
+Access to these sockets is controlled by file system permissions. 
+The first socket handles API requests with metrics disabled, 
+while a second socket is dedicated only to serving metrics for monitoring tools.
+
+```hcl
+# Primary listener for general API traffic via a UNIX socket
+# Metrics are disabled for security.
+listener "unix" {
+  path        = "/var/run/openbao.sock"
+  socket_mode = "0660"
+  telemetry {
+    disallow_metrics = true
+  }
+}
+
+# Dedicated listener for monitoring systems (e.g., Prometheus)
+# Only serves metrics and blocks all other requests.
+listener "unix" {
+  path        = "/var/run/openbao-metrics.sock"
+  socket_mode = "0660"
+  telemetry {
+    metrics_only = true
+  }
 }
 ```

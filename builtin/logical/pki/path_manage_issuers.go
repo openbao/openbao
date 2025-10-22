@@ -390,7 +390,7 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 		// Handle import of private key.
 		key, existing, err := importKeyFromBytes(sc, keyPem, "")
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("Error parsing key %v: %v", keyIndex, err)), nil
+			return logical.ErrorResponse("Error parsing key %v: %v", keyIndex, err), nil
 		}
 
 		if !existing {
@@ -403,7 +403,7 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 	for certIndex, certPem := range issuers {
 		cert, existing, err := sc.importIssuer(certPem, "")
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("Error parsing issuer %v: %v\n%v", certIndex, err, certPem)), nil
+			return logical.ErrorResponse("Error parsing issuer %v: %v\n%v", certIndex, err, certPem), nil
 		}
 
 		issuerKeyMap[cert.ID.String()] = cert.KeyID.String()
@@ -774,7 +774,7 @@ func (b *backend) pathRevokeIssuer(ctx context.Context, req *logical.Request, da
 	if crlErr != nil {
 		switch crlErr.(type) {
 		case errutil.UserError:
-			return logical.ErrorResponse(fmt.Sprintf("Error during CRL building: %s", crlErr)), nil
+			return logical.ErrorResponse("Error during CRL building: %s", crlErr), nil
 		default:
 			return nil, fmt.Errorf("error encountered during CRL building: %w", crlErr)
 		}

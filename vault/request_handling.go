@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/armon/go-metrics"
@@ -22,7 +23,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
-	uberAtomic "go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/openbao/openbao/api/v2"
@@ -56,6 +56,15 @@ var (
 	// DefaultMaxRequestDuration is the amount of time we'll wait for a request
 	// to complete, unless overridden on a per-handler basis
 	DefaultMaxRequestDuration = 90 * time.Second
+
+	// DefaultMaxJsonMemory is the estimated amount of memory consumed by
+	// the output representation of the JSON request body, unless overridden on
+	// a per-listener basis.
+	DefaultMaxJsonMemory = int64(32*1024*1024 + 512*1024)
+
+	// DefaultMaxJsonStrings is the number of separate JSON strings
+	// allowed in a request body, unless overridden on a per-listener basis.
+	DefaultMaxJsonStrings = int64(1000)
 
 	ErrNoApplicablePolicies = errors.New("no applicable policies")
 	ErrPolicyNotExist       = errors.New("policy does not exist")
@@ -124,7 +133,7 @@ type HandlerProperties struct {
 	AllListeners          []listenerutil.Listener
 	DisablePrintableCheck bool
 	RecoveryMode          bool
-	RecoveryToken         *uberAtomic.String
+	RecoveryToken         *atomic.Value
 }
 
 // fetchEntityAndDerivedPolicies returns the entity object for the given entity
@@ -604,7 +613,7 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 			switch req.Path {
 			case "sys/namespaces/api-lock/unlock":
 			default:
-				return logical.ErrorResponse(fmt.Sprintf("API access to this namespace has been locked by an administrator - %q must be unlocked to gain access.", lockedNS.Path)), logical.ErrLockedNamespace
+				return logical.ErrorResponse("API access to this namespace has been locked by an administrator - %q must be unlocked to gain access.", lockedNS.Path), logical.ErrLockedNamespace
 			}
 		}
 
@@ -671,8 +680,12 @@ func (c *Core) handleInlineAuth(ctx context.Context, req *logical.Request, nsHea
 		Storage:      req.Storage,
 		Connection:   req.Connection,
 		Headers:      req.Headers,
+		MFACreds:     req.MFACreds,
 		IsInlineAuth: true,
 	}
+
+	// Remove MFA credentials from the main request.
+	req.MFACreds = nil
 
 	// Find the optional operation; this defaults to Update if missing.
 	authOperation, present := req.Headers[consts.InlineAuthOperationHeaderName]
@@ -840,7 +853,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			// be revoked after the call. So we have to do the validation here.
 			valid, err := c.validateWrappingToken(ctx, req)
 			if err != nil {
-				return logical.ErrorResponse(fmt.Sprintf("error validating wrapping token: %s", err.Error())), logical.ErrPermissionDenied
+				return logical.ErrorResponse("error validating wrapping token: %s", err.Error()), logical.ErrPermissionDenied
 			}
 			if !valid {
 				return nil, consts.ErrInvalidWrappingToken
@@ -1890,7 +1903,7 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 			return false, logical.ErrorResponse("auth methods cannot create root tokens"), logical.ErrInvalidRequest
 		}
 		if slices.Contains(nonAssignablePolicies, policy) {
-			return false, logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", policy)), logical.ErrInvalidRequest
+			return false, logical.ErrorResponse("cannot assign policy %q", policy), logical.ErrInvalidRequest
 		}
 	}
 

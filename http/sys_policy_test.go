@@ -135,8 +135,8 @@ func TestSysDeletePolicy(t *testing.T) {
 
 	// Also attempt to delete these since they should not be allowed (ignore
 	// responses, if they exist later that's sufficient)
-	resp = testHttpDelete(t, token, addr+"/v1/sys/policy/default")
-	resp = testHttpDelete(t, token, addr+"/v1/sys/policy/response-wrapping")
+	testHttpDelete(t, token, addr+"/v1/sys/policy/default")
+	testHttpDelete(t, token, addr+"/v1/sys/policy/response-wrapping")
 
 	resp = testHttpGet(t, token, addr+"/v1/sys/policy")
 

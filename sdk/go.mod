@@ -46,7 +46,6 @@ require (
 	github.com/openbao/go-kms-wrapping/entropy/v2 v2.1.0
 	github.com/openbao/go-kms-wrapping/v2 v2.5.0
 	github.com/openbao/openbao/api/v2 v2.4.0
-	github.com/pierrec/lz4/v4 v4.1.22
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tink-crypto/tink-go/v2 v2.4.0

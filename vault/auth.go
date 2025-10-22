@@ -247,7 +247,7 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 	// Verify exact match of the route
 	match := c.router.MatchingMount(ctx, path)
 	if match == "" || ns.Path+path != match {
-		return errors.New("no matching mount")
+		return errNoMatchingMount
 	}
 
 	// Get the view for this backend

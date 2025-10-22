@@ -1,3 +1,25 @@
+## 2.4.2
+## October 22, 2025
+
+SECURITY:
+
+* audit: redact `HTTPRawBody` response parameter in audit logs; CVE-2025-62513 / GHSA-ghfh-fmx4-26h8. [[GH-2002](https://github.com/openbao/openbao/pull/2002)]
+* audit: redact `[]byte` type response parameters in audit logs; GHSA-rc54-2g2c-g36g. [[GH-2002](https://github.com/openbao/openbao/pull/2002)]
+
+IMPROVEMENTS:
+
+* core/namespaces: Setting the `X-Vault-Namespace` Header (or the `BAO_NAMESPACE` environment variable when using the cli) to "root" now maps to the root namespace. [[GH-1918](https://github.com/openbao/openbao/pull/1918)]
+
+BUG FIXES:
+
+* core/identity: Entities timestamps are now correctly formatted in `RFC3339Nano`, as previously done so. [[GH-1873](https://github.com/openbao/openbao/pull/1873)]
+* core/namespaces: Fix mount creation failing if mount name is equal to the name of the containing namespace [[GH-1958](https://github.com/openbao/openbao/pull/1958)]
+* core/namespaces: ensure interrupted namespace creation fails gracefully; prevents identity store panic and partial memory-only namespaces [[GH-1990](https://github.com/openbao/openbao/pull/1990)]
+* core/namespaces: only report namespaces which the provided token has access to from `sys/internal/ui/namespaces` [[GH-1982](https://github.com/openbao/openbao/pull/1982)]
+* raft: fix memory leak on standby nodes [[GH-1889](https://github.com/openbao/openbao/pull/1889)]
+* sdk/framework: Reduce memory usage of repeated mounts through singleton pattern regex cache [[GH-1893](https://github.com/openbao/openbao/pull/1893)]
+* secrets/kv: KV entries timestamps are now correctly formatted in `RFC3339Nano`, as previously done so. [[GH-1872](https://github.com/openbao/openbao/pull/1872)]
+
 ## 2.4.1
 ## September 11, 2025
 

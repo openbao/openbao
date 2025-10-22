@@ -220,13 +220,27 @@ func (c *Core) teardownPolicyStore() error {
 	return nil
 }
 
-// invalidate will be used in the future for implementing read replica nodes
-//
-//nolint:unused
+func (ps *PolicyStore) invalidateNamespace(ctx context.Context, uuid string) {
+	ps.modifyLock.Lock()
+	defer ps.modifyLock.Unlock()
+
+	for _, key := range ps.tokenPoliciesLRU.Keys() {
+		if err := ctx.Err(); err != nil {
+			ps.logger.Error("unable to invalidate namespace policies, restarting core", "uuid", uuid, "error", err.Error())
+			ps.core.restart()
+			return
+		}
+		if strings.HasPrefix(key, uuid) {
+			ps.tokenPoliciesLRU.Remove(key)
+		}
+	}
+}
+
 func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType PolicyType) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		ps.logger.Error("unable to invalidate key, no namespace info passed", "key", name)
+		ps.logger.Error("unable to invalidate policy, no namespace info passed, restarting", "name", name)
+		ps.core.restart()
 		return
 	}
 
@@ -236,6 +250,11 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 
 	ps.modifyLock.Lock()
 	defer ps.modifyLock.Unlock()
+
+	if err := ctx.Err(); err != nil {
+		ps.logger.Error("unable to invalidate policy, restarting core", "name", name, "namespace", ns.UUID, "error", err.Error())
+		return
+	}
 
 	// We don't lock before removing from the LRU here because the worst that
 	// can happen is we load again if something since added it
@@ -253,7 +272,9 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 	// Force a reload
 	out, err := ps.switchedGetPolicy(ctx, name, policyType, false)
 	if err != nil {
-		ps.logger.Error("error fetching policy after invalidation", "name", saneName)
+		ps.logger.Error("error fetching policy after invalidation, restarting core", "name", saneName)
+		ps.core.restart()
+		return
 	}
 
 	// If true, the invalidation was actually a delete, so we may need to
@@ -738,7 +759,7 @@ func (ps *PolicyStore) sanitizeName(name string) string {
 }
 
 func (ps *PolicyStore) cacheKey(ns *namespace.Namespace, name string) string {
-	return path.Join(ns.ID, name)
+	return path.Join(ns.UUID, name)
 }
 
 // loadDefaultPolicies loads default policies for the namespace in the provided context

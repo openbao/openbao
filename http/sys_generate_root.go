@@ -94,7 +94,7 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 func handleSysGenerateRootAttemptPut(core *vault.Core, w http.ResponseWriter, r *http.Request, generateStrategy vault.GenerateRootStrategy) {
 	// Parse the request
 	var req GenerateRootInitRequest
-	if _, err := parseJSONRequest(r, w, &req); err != nil && err != io.EOF {
+	if err := parseJSONRequest(r, w, &req); err != nil && err != io.EOF {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -144,7 +144,7 @@ func handleSysGenerateRootUpdate(core *vault.Core, generateStrategy vault.Genera
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Parse the request
 		var req GenerateRootUpdateRequest
-		if _, err := parseJSONRequest(r, w, &req); err != nil {
+		if err := parseJSONRequest(r, w, &req); err != nil {
 			respondError(w, http.StatusBadRequest, err)
 			return
 		}

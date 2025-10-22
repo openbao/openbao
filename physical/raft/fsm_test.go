@@ -9,12 +9,15 @@ import (
 	"math/rand"
 	"os"
 	"sort"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -44,6 +47,11 @@ func TestFSM_Batching(t *testing.T) {
 
 	var index uint64
 	var term uint64 = 1
+
+	var hookCallCount atomic.Int64
+	fsm.hookInvalidate(func(key string) {
+		hookCallCount.Add(1)
+	})
 
 	getLog := func(i uint64) (int, *raft.Log) {
 		if rand.Intn(10) >= 8 {
@@ -108,6 +116,10 @@ func TestFSM_Batching(t *testing.T) {
 			}
 		}
 	}
+
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		assert.EqualValues(collect, totalKeys, hookCallCount.Load())
+	}, time.Second, time.Millisecond)
 
 	keys, err := fsm.List(context.Background(), "")
 	if err != nil {

@@ -146,19 +146,22 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		}
 	}
 
+	// Reduce race window between post-unseal namespaceStore setup and request handling.
+	time.Sleep(2 * time.Second)
+
 	TestServerWithListener(t, ln1, addr1, core1)
 	TestServerWithListener(t, ln2, addr2, core2)
 	TestServerAuth(t, addr1, root)
 
 	// WRITE to STANDBY
-	resp := testHttpPutDisableRedirect(t, root, addr2+"/v1/secret/foo", map[string]interface{}{
+	resp := testHttpPutDisableRedirect(t, root, addr2+"/v1/cubbyhole/foo", map[string]interface{}{
 		"data": "bar",
 	})
-	logger.Debug("307 test one starting")
-	testResponseStatus(t, resp, 307)
-	logger.Debug("307 test one stopping")
+	logger.Debug("204 test one starting")
+	testResponseStatus(t, resp, 204)
+	logger.Debug("204 test one stopping")
 
-	//// READ to standby
+	// READ to standby
 	resp = testHttpGet(t, root, addr2+"/v1/auth/token/lookup-self")
 	var actual map[string]interface{}
 	var nilWarnings interface{}
@@ -197,11 +200,11 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		t.Fatal(diff)
 	}
 
-	//// DELETE to standby
-	resp = testHttpDeleteDisableRedirect(t, root, addr2+"/v1/secret/foo")
-	logger.Debug("307 test two starting")
-	testResponseStatus(t, resp, 307)
-	logger.Debug("307 test two stopping")
+	// DELETE to standby
+	resp = testHttpDeleteDisableRedirect(t, root, addr2+"/v1/cubbyhole/foo")
+	logger.Debug("204 test two starting")
+	testResponseStatus(t, resp, 204)
+	logger.Debug("204 test two stopping")
 }
 
 func TestLogical_CreateToken(t *testing.T) {
@@ -321,7 +324,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err := buildLogicalRequest(core, nil, req)
+	lreq, status, err := buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -336,7 +339,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,12 +354,12 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
+	_, status, err = buildLogicalRequestNoAuth(nil, req)
 	if err != nil || status != 0 {
 		t.Fatal(err)
 	}
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,7 +430,7 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 			req = req.WithContext(namespace.RootContext(nil))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
-			lreq, _, status, err := buildLogicalRequest(core, nil, req)
+			lreq, status, err := buildLogicalRequest(core, nil, req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -453,7 +456,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err := buildLogicalRequest(core, nil, req)
+	lreq, status, err := buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -468,7 +471,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -483,12 +486,12 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
+	_, status, err = buildLogicalRequestNoAuth(nil, req)
 	if err != nil || status != 0 {
 		t.Fatal(err)
 	}
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -559,7 +562,7 @@ func TestLogical_ScanWithQueryParameters(t *testing.T) {
 			req = req.WithContext(namespace.RootContext(nil))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
-			lreq, _, status, err := buildLogicalRequest(core, nil, req)
+			lreq, status, err := buildLogicalRequest(core, nil, req)
 			if err != nil {
 				t.Fatal(err)
 			}

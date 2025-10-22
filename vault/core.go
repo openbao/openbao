@@ -294,9 +294,10 @@ type Core struct {
 	stateLock locking.RWMutex
 	sealed    *uint32
 
-	standby              bool
+	standby              atomic.Bool
 	standbyDoneCh        chan struct{}
 	standbyStopCh        *atomic.Value
+	restartCh            chan struct{}
 	manualStepDownCh     chan struct{}
 	keepHALockOnStepDown *uint32
 	heldHALock           physical.Lock
@@ -326,6 +327,8 @@ type Core struct {
 	// mounts is loaded after unseal since it is a protected
 	// configuration
 	mounts *MountTable
+
+	mountInvalidationWorker *mountInvalidationWorker
 
 	// mountsLock is used to ensure that the mounts table does not
 	// change underneath a calling function
@@ -653,7 +656,7 @@ type Core struct {
 // c.stateLock needs to be held in read mode before calling this function.
 func (c *Core) HAState() consts.HAState {
 	switch {
-	case c.standby:
+	case c.standby.Load():
 		return consts.Standby
 	default:
 		return consts.Active
@@ -925,7 +928,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		router:               NewRouter(),
 		sealed:               new(uint32),
 		sealMigrationDone:    new(uint32),
-		standby:              true,
 		standbyStopCh:        new(atomic.Value),
 		baseLogger:           conf.Logger,
 		logger:               conf.Logger.Named("core"),
@@ -981,6 +983,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
 	}
 
+	c.standby.Store(true)
 	c.standbyStopCh.Store(make(chan struct{}))
 	atomic.StoreUint32(c.sealed, 1)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
@@ -1073,6 +1076,10 @@ func coreInit(c *Core, conf *CoreConfig) error {
 	// Wrap in encoding checks
 	if !conf.DisableKeyEncodingChecks {
 		c.physical = physical.NewStorageEncoding(c.physical)
+	}
+
+	if c.StandbyReadsEnabled() {
+		c.underlyingPhysical.(physical.CacheInvalidationBackend).HookInvalidate(c.Invalidate)
 	}
 
 	return nil
@@ -1189,6 +1196,8 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 		c.logger.Info("Initializing version history cache for core")
 		c.versionHistory = make(map[string]VaultVersion)
 	}
+
+	c.mountInvalidationWorker = newMountInvalidationWorker(c)
 
 	return c, nil
 }
@@ -1927,13 +1936,14 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 			c.seal.SetRecoveryConfig(ctx, nil)
 		}
 
-		c.standby = false
+		c.standby.Store(false)
 	} else {
 		// Go to standby mode, wait until we are active to unseal
 		c.standbyDoneCh = make(chan struct{})
 		c.manualStepDownCh = make(chan struct{}, 1)
 		c.standbyStopCh.Store(make(chan struct{}))
-		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}))
+		c.restartCh = make(chan struct{})
+		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}), c.restartCh)
 	}
 
 	// Success!
@@ -2031,7 +2041,7 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 	// and the operation should be performed. But for now, just returning with
 	// an error and recommending a vault restart, which essentially does the
 	// same thing.
-	if c.standby {
+	if c.standby.Load() {
 		c.logger.Error("vault cannot seal when in standby mode; please restart instead")
 		return errors.New("vault cannot seal when in standby mode; please restart instead")
 	}
@@ -2179,8 +2189,15 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 			}
 		}()
 
+		// Stop the standby before attempting to acquire the standby lock.
+		// This will prevent a race condition between runStandby and this
+		// method.
+		c.stopStandby()
+
+		// Acquire the state lock.
 		c.stateLock.Lock()
 		close(doneCh)
+
 		// Stop requests from processing
 		if activeCtxCancel != nil {
 			activeCtxCancel()
@@ -2194,16 +2211,11 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 			defer c.stateLock.Unlock()
 		}
 		// Even in a non-HA context we key off of this for some things
-		c.standby = true
+		c.standby.Store(true)
 
 		// Stop requests from processing
 		if activeCtxCancel != nil {
 			activeCtxCancel()
-		}
-
-		if err := c.preSeal(); err != nil {
-			c.logger.Error("pre-seal teardown failed", "error", err)
-			return errors.New("internal error")
 		}
 	} else {
 		// If we are keeping the lock we already have the state write lock
@@ -2211,10 +2223,6 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 		// locked.
 		if keepHALock {
 			atomic.StoreUint32(c.keepHALockOnStepDown, 1)
-		}
-		if grabStateLock {
-			cancelCtxAndLock()
-			defer c.stateLock.Unlock()
 		}
 
 		// If we are trying to acquire the lock, force it to return with nil so
@@ -2229,6 +2237,12 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 		<-c.standbyDoneCh
 		atomic.StoreUint32(c.keepHALockOnStepDown, 0)
 		c.logger.Debug("runStandby done")
+	}
+
+	// Stop all running subsystems.
+	if err := c.preSeal(); err != nil {
+		c.logger.Error("pre-seal teardown failed", "error", err)
+		return errors.New("internal error")
 	}
 
 	// Perform additional cleanup upon sealing.
@@ -2273,9 +2287,14 @@ type UnsealStrategy interface {
 	unseal(context.Context, log.Logger, *Core) error
 }
 
-type standardUnsealStrategy struct{}
+type standardUnsealStrategy struct {
+	// Inherit read-only unseal methods
+	readonlyUnsealStrategy
+}
 
 func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c *Core) error {
+	c.logger.Debug("standard unseal starting")
+
 	// Clear forwarding clients; we're active
 	c.requestForwardingConnectionLock.Lock()
 	c.clearForwardingClients()
@@ -2284,13 +2303,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	// Mark the active time. We do this first so it can be correlated to the logs
 	// for the active startup.
 	c.activeTime = time.Now().UTC()
-
-	// Only perf primarys should write feature flags, but we do it by
-	// excluding other states so that we don't have to change it when
-	// a non-replicated cluster becomes a primary.
-	if err := c.persistFeatureFlags(ctx); err != nil {
-		return err
-	}
 
 	if c.autoRotateCancel == nil {
 		var autoRotateCtx context.Context
@@ -2301,6 +2313,43 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.ensureWrappingKey(ctx); err != nil {
 		return err
 	}
+
+	if err := s.readonlyUnsealStrategy.unseal(ctx, logger, c); err != nil {
+		return err
+	}
+
+	if c.getClusterListener() != nil {
+		if err := c.setupRaftActiveNode(ctx); err != nil {
+			return err
+		}
+		if err := c.startForwarding(ctx); err != nil {
+			return err
+		}
+
+	}
+
+	c.clusterParamsLock.Lock()
+	defer c.clusterParamsLock.Unlock()
+
+	c.metricsCh = make(chan struct{})
+	go c.emitMetricsActiveNode(c.metricsCh)
+
+	// Establish version timestamps at the end of unseal on active nodes only.
+	if err := c.handleVersionTimeStamps(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// readonlyUnsealStrategy
+type readonlyUnsealStrategy struct{}
+
+func (readonlyUnsealStrategy) unseal(
+	ctx context.Context, logger log.Logger, c *Core,
+) error {
+	c.logger.Debug("read-only unseal starting")
+
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
@@ -2340,12 +2389,12 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupExpiration(expireLeaseStrategyFairsharing); err != nil {
 		return err
 	}
-	if err := c.loadAudits(ctx); err != nil {
-		return err
-	}
 	if err := c.setupAudits(ctx); err != nil {
 		return err
 	}
+	// Adding new audit devices only occurs on the active node. Standby nodes
+	// will consume audit devices from storage only, but we want to run this
+	// from startup anyways to report any discrepancies.
 	if err := c.handleAuditLogSetup(ctx); err != nil {
 		return err
 	}
@@ -2358,28 +2407,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	}
 
 	if err := c.setupAuditedHeadersConfig(ctx); err != nil {
-		return err
-	}
-
-	if c.getClusterListener() != nil {
-		if err := c.setupRaftActiveNode(ctx); err != nil {
-			return err
-		}
-
-		if err := c.startForwarding(ctx); err != nil {
-			return err
-		}
-
-	}
-
-	c.clusterParamsLock.Lock()
-	defer c.clusterParamsLock.Unlock()
-
-	c.metricsCh = make(chan struct{})
-	go c.emitMetricsActiveNode(c.metricsCh)
-
-	// Establish version timestamps at the end of unseal on active nodes only.
-	if err := c.handleVersionTimeStamps(ctx); err != nil {
 		return err
 	}
 
@@ -3174,7 +3201,7 @@ func (c *Core) ResolveNamespaceFromRequest(nsHeader, reqPath string) (*namespace
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
 
-	if c.Sealed() || c.standby || c.namespaceStore == nil {
+	if c.Sealed() || c.namespaceStore == nil {
 		return nil, ""
 	}
 

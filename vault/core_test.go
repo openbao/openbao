@@ -2426,9 +2426,18 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		t.Fatal("should be standby")
 	}
 
-	// Request should fail in standby mode
+	// Wait for postUnseal to conclude
+	require.Eventually(t, func() bool {
+		core2.stateLock.RLock()
+		c2ctx := core2.activeContext
+		core2.stateLock.RUnlock()
+
+		return c2ctx != nil
+	}, 1*time.Minute, 50*time.Millisecond, "did not acquire active context")
+
+	// Request should not fail in standby mode since request is forwarded to active
 	_, err = core2.HandleRequest(namespace.RootContext(nil), req)
-	if err != consts.ErrStandby {
+	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 

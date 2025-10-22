@@ -8,16 +8,28 @@ description: |-
 
 # auth move
 
-The `auth move` command moves an existing auth method to a new path. Any
-leases from the old auth method are revoked, but all configuration associated
-with the engine is preserved. The command can be issued for a move within or across
+The `auth move` command moves an existing auth method to a new path. Any leases
+from the old auth method are revoked, but all configuration associated with the
+engine is preserved. The command can be issued for a move within or across
 namespaces, using namespace prefixes in the arguments.
 
-The command will trigger a remount operation and uses the returned migration ID to poll the 
-status of the operation until a terminal state of `success` or `failure` is reached.
+The command will trigger a remount operation and uses the returned migration ID
+to poll the status of the operation until a terminal state of `success` or
+`failure` is reached.
 
-**Moving an existing auth method will revoke any leases from the old
-method.**
+:::warning
+
+Moving an existing auth method will revoke any leases from the old method.
+
+:::
+
+:::warning
+
+Before moving an auth method to a new path, one should ensure it is currently
+not actively used. Using an auth method while it's being moved will lead to
+inconsistent reads on standby nodes.
+
+:::
 
 ## Examples
 

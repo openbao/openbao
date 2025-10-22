@@ -244,6 +244,9 @@ can have a negative effect on performance due to the tracking of each lock attem
   like the above option, this one is best toggled only temporarily to enable the
   desired audit device.
 
+- `disable_standby_reads` `(bool: false)` - Disable the handling of read-only
+  requests on standby nodes.
+
 ### High Availability parameters
 
 The following parameters are used on backends that support [High Availability][high-availability].

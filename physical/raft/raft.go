@@ -64,10 +64,11 @@ var getMmapFlags = func(string) int { return 0 }
 
 // Verify RaftBackend satisfies the correct interfaces
 var (
-	_ physical.Backend       = (*RaftBackend)(nil)
-	_ physical.Transactional = (*RaftBackend)(nil)
-	_ physical.HABackend     = (*RaftBackend)(nil)
-	_ physical.Lock          = (*RaftLock)(nil)
+	_ physical.Backend                  = (*RaftBackend)(nil)
+	_ physical.Transactional            = (*RaftBackend)(nil)
+	_ physical.HABackend                = (*RaftBackend)(nil)
+	_ physical.CacheInvalidationBackend = (*RaftBackend)(nil)
+	_ physical.Lock                     = (*RaftLock)(nil)
 )
 
 var (
@@ -204,6 +205,24 @@ type RaftBackend struct {
 
 	effectiveSDKVersion string
 	failGetInTxn        *uint32
+}
+
+// HookInvalidate implements physical.CacheInvalidationBackend.
+func (r *RaftBackend) HookInvalidate(hook physical.InvalidateFunc) {
+	r.fsm.hookInvalidate(func(key string) {
+		r.l.RLock()
+		raft := r.raft
+		r.l.RUnlock()
+
+		if raft == nil {
+			return
+		}
+		_, leaderId := raft.LeaderWithID()
+
+		if r.localID != string(leaderId) {
+			hook(key)
+		}
+	})
 }
 
 // LeaderJoinInfo contains information required by a node to join itself as a
@@ -1599,6 +1618,11 @@ func (b *RaftBackend) RestoreSnapshot(ctx context.Context, metadata raft.Snapsho
 
 // Delete inserts an entry in the log to delete the given path
 func (b *RaftBackend) Delete(ctx context.Context, path string) error {
+	// Return early if follower node is attempting to write to storage
+	if b.raft.State() != raft.Leader {
+		return logical.ErrReadOnly
+	}
+
 	defer metrics.MeasureSince([]string{"raft-storage", "delete"}, time.Now())
 
 	if err := ctx.Err(); err != nil {
@@ -1619,6 +1643,7 @@ func (b *RaftBackend) Delete(ctx context.Context, path string) error {
 	b.l.RLock()
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
+
 	return err
 }
 
@@ -1656,6 +1681,11 @@ func (b *RaftBackend) Get(ctx context.Context, path string) (*physical.Entry, er
 // error if the resulting entry encoding exceeds the configured max_entry_size
 // or if the call to applyLog fails.
 func (b *RaftBackend) Put(ctx context.Context, entry *physical.Entry) error {
+	// Return early if follower node is attempting to write to storage
+	if b.raft.State() != raft.Leader {
+		return logical.ErrReadOnly
+	}
+
 	defer metrics.MeasureSince([]string{"raft-storage", "put"}, time.Now())
 	if len(entry.Key) > bolt.MaxKeySize {
 		return fmt.Errorf("%s, max key size for integrated storage is %d", physical.ErrKeyTooLarge, bolt.MaxKeySize)
@@ -1681,6 +1711,7 @@ func (b *RaftBackend) Put(ctx context.Context, entry *physical.Entry) error {
 	b.l.RLock()
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
+
 	return err
 }
 

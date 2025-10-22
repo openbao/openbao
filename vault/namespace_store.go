@@ -627,6 +627,10 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 		for _, me := range authMountEntries {
 			err := ns.core.disableCredentialInternal(nsCtx, me.Path, false)
 			if err != nil {
+				if errors.Is(err, errNoMatchingMount) {
+					continue
+				}
+
 				ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
 				continue
 			}
@@ -964,6 +968,9 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, namespa
 	for _, me := range authMountEntries {
 		err := ns.core.disableCredentialInternal(nsCtx, me.Path, true)
 		if err != nil {
+			if errors.Is(err, errNoMatchingMount) {
+				continue
+			}
 			ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
 			return false
 		}

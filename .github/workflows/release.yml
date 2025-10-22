@@ -170,6 +170,8 @@ jobs:
       - build-ui-dist
     env:
       DOCKER_CLI_EXPERIMENTAL: "enabled"
+      SYFT_GOLANG_SEARCH_LOCAL_MOD_CACHE_LICENSES: "true"
+      SYFT_GOLANG_SEARCH_REMOTE_LICENSES: "true"
     strategy:
       matrix:
         release_os:

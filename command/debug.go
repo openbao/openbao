@@ -670,8 +670,7 @@ func (c *DebugCommand) collectHostInfo(ctx context.Context) {
 		c.logger.Info("capturing host information", "count", idxCount)
 		idxCount++
 
-		r := c.cachedClient.NewRequest("GET", "/v1/sys/host-info")
-		resp, err := c.cachedClient.RawRequestWithContext(ctx, r)
+		resp, err := c.cachedClient.Logical().ReadRawWithContext(ctx, "sys/host-info")
 		if err != nil {
 			c.captureError("host", err)
 			return
@@ -709,8 +708,7 @@ func (c *DebugCommand) collectMetrics(ctx context.Context) {
 		idxCount++
 
 		// Perform metrics request
-		r := c.cachedClient.NewRequest("GET", "/v1/sys/metrics")
-		resp, err := c.cachedClient.RawRequestWithContext(ctx, r)
+		resp, err := c.cachedClient.Logical().ReadRawWithContext(ctx, "sys/metrics")
 		if err != nil {
 			c.captureError("metrics", err)
 			continue
@@ -851,8 +849,7 @@ func (c *DebugCommand) collectReplicationStatus(ctx context.Context) {
 		c.logger.Info("capturing replication status", "count", idxCount)
 		idxCount++
 
-		r := c.cachedClient.NewRequest("GET", "/v1/sys/replication/status")
-		resp, err := c.cachedClient.RawRequestWithContext(ctx, r)
+		resp, err := c.cachedClient.Logical().ReadRawWithContext(ctx, "sys/replication/status")
 		if err != nil {
 			c.captureError("replication-status", err)
 			return
@@ -924,8 +921,7 @@ func (c *DebugCommand) collectInFlightRequestStatus(ctx context.Context) {
 		c.logger.Info("capturing in-flight request status", "count", idxCount)
 		idxCount++
 
-		req := c.cachedClient.NewRequest("GET", "/v1/sys/in-flight-req")
-		resp, err := c.cachedClient.RawRequestWithContext(ctx, req)
+		resp, err := c.cachedClient.Logical().ReadRawWithContext(ctx, "sys/in-flight-req")
 		if err != nil {
 			c.captureError("requests", err)
 			return
@@ -1054,11 +1050,7 @@ func (c *DebugCommand) compress(dst string) error {
 }
 
 func pprofTarget(ctx context.Context, client *api.Client, target string, params url.Values) ([]byte, error) {
-	req := client.NewRequest("GET", "/v1/sys/pprof/"+target)
-	if params != nil {
-		req.Params = params
-	}
-	resp, err := client.RawRequestWithContext(ctx, req)
+	resp, err := client.Logical().ReadRawWithDataWithContext(ctx, "sys/pprof/"+target, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1076,9 +1068,8 @@ func pprofProfile(ctx context.Context, client *api.Client, duration time.Duratio
 	seconds := int(duration.Seconds())
 	secStr := strconv.Itoa(seconds)
 
-	req := client.NewRequest("GET", "/v1/sys/pprof/profile")
-	req.Params.Add("seconds", secStr)
-	resp, err := client.RawRequestWithContext(ctx, req)
+	params := url.Values{"seconds": []string{secStr}}
+	resp, err := client.Logical().ReadRawWithDataWithContext(ctx, "sys/pprof/profile", params)
 	if err != nil {
 		return nil, err
 	}
@@ -1096,9 +1087,8 @@ func pprofTrace(ctx context.Context, client *api.Client, duration time.Duration)
 	seconds := int(duration.Seconds())
 	secStr := strconv.Itoa(seconds)
 
-	req := client.NewRequest("GET", "/v1/sys/pprof/trace")
-	req.Params.Add("seconds", secStr)
-	resp, err := client.RawRequestWithContext(ctx, req)
+	params := url.Values{"seconds": []string{secStr}}
+	resp, err := client.Logical().ReadRawWithDataWithContext(ctx, "sys/pprof/trace", params)
 	if err != nil {
 		return nil, err
 	}

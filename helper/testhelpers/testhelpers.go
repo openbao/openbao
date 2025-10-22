@@ -516,7 +516,7 @@ func (p *HardcodedServerAddressProvider) ServerAddr(id raftlib.ServerID) (raftli
 func NewHardcodedServerAddressProvider(numCores, baseClusterPort int) raftlib.ServerAddressProvider {
 	entries := make(map[raftlib.ServerID]raftlib.ServerAddress)
 
-	for i := 0; i < numCores; i++ {
+	for i := range numCores {
 		id := fmt.Sprintf("core-%d", i)
 		addr := fmt.Sprintf("127.0.0.1:%d", baseClusterPort+i)
 		entries[raftlib.ServerID(id)] = raftlib.ServerAddress(addr)
@@ -568,7 +568,7 @@ func WaitForRaftApply(t testing.T, core *vault.TestClusterCore, index uint64) {
 	t.Helper()
 
 	backend := core.UnderlyingRawStorage.(*raft.RaftBackend)
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		if backend.AppliedIndex() >= index {
 			return
 		}
@@ -692,7 +692,7 @@ func SysMetricsReq(client *api.Client, cluster *vault.TestCluster, unauth bool) 
 		r.Headers.Set("X-Vault-Token", cluster.RootToken)
 	}
 	var data SysMetricsJSON
-	resp, err := client.RawRequestWithContext(context.Background(), r)
+	resp, err := client.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}

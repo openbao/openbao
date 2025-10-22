@@ -336,7 +336,7 @@ func (a *ACL) Capabilities(ctx context.Context, path string) (pathCapabilities [
 	if capabilities&DenyCapabilityInt > 0 || len(pathCapabilities) == 0 {
 		pathCapabilities = []string{DenyCapability}
 	}
-	return
+	return pathCapabilities
 }
 
 // AllowOperation is used to check if the given operation is permitted.
@@ -354,21 +354,21 @@ func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheck
 			NamespacePath: "",
 			Type:          "acl",
 		}}
-		return
+		return ret
 	}
 	op := req.Operation
 
 	// Help is always allowed
 	if op == logical.HelpOperation {
 		ret.Allowed = true
-		return
+		return ret
 	}
 
 	var permissions *ACLPermissions
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		return
+		return ret
 	}
 	path := ns.Path + req.Path
 
@@ -417,7 +417,7 @@ func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheck
 
 	// No exact, prefix, or segment wildcard paths found, return without
 	// setting allowed
-	return
+	return ret
 
 CHECK:
 	// Check if the minimum permissions are met
@@ -466,23 +466,23 @@ CHECK:
 		grantingPolicies = permissions.GrantingPoliciesMap[UpdateCapabilityInt]
 
 	default:
-		return
+		return ret
 	}
 
 	if !operationAllowed {
-		return
+		return ret
 	}
 
 	ret.GrantingPolicies = grantingPolicies
 
 	if permissions.MaxWrappingTTL > 0 {
 		if req.WrapInfo == nil || req.WrapInfo.TTL > permissions.MaxWrappingTTL {
-			return
+			return ret
 		}
 	}
 	if permissions.MinWrappingTTL > 0 {
 		if req.WrapInfo == nil || req.WrapInfo.TTL < permissions.MinWrappingTTL {
-			return
+			return ret
 		}
 	}
 	// This situation can happen because of merging, even though in a single
@@ -490,7 +490,7 @@ CHECK:
 	if permissions.MinWrappingTTL != 0 &&
 		permissions.MaxWrappingTTL != 0 &&
 		permissions.MaxWrappingTTL < permissions.MinWrappingTTL {
-		return
+		return ret
 	}
 
 	// Only check parameter permissions for operations that can modify
@@ -498,14 +498,14 @@ CHECK:
 	if op == logical.ReadOperation || op == logical.UpdateOperation || op == logical.CreateOperation || op == logical.PatchOperation {
 		for _, parameter := range permissions.RequiredParameters {
 			if _, ok := req.Data[strings.ToLower(parameter)]; !ok {
-				return
+				return ret
 			}
 		}
 
 		// If there are no data fields, allow
 		if len(req.Data) == 0 {
 			ret.Allowed = true
-			return
+			return ret
 		}
 
 		if len(permissions.DeniedParameters) == 0 {
@@ -514,7 +514,7 @@ CHECK:
 
 		// Check if all parameters have been denied
 		if _, ok := permissions.DeniedParameters["*"]; ok {
-			return
+			return ret
 		}
 
 		for parameter, value := range req.Data {
@@ -522,7 +522,7 @@ CHECK:
 			if valueSlice, ok := permissions.DeniedParameters[strings.ToLower(parameter)]; ok {
 				// If the value exists in denied values slice, deny
 				if valueInParameterList(value, valueSlice) {
-					return
+					return ret
 				}
 			}
 		}
@@ -531,26 +531,26 @@ CHECK:
 		// If we don't have any allowed parameters set, allow
 		if len(permissions.AllowedParameters) == 0 {
 			ret.Allowed = true
-			return
+			return ret
 		}
 
 		_, allowedAll := permissions.AllowedParameters["*"]
 		if len(permissions.AllowedParameters) == 1 && allowedAll {
 			ret.Allowed = true
-			return
+			return ret
 		}
 
 		for parameter, value := range req.Data {
 			valueSlice, ok := permissions.AllowedParameters[strings.ToLower(parameter)]
 			// Requested parameter is not in allowed list
 			if !ok && !allowedAll {
-				return
+				return ret
 			}
 
 			// If the value doesn't exists in the allowed values slice,
 			// deny
 			if ok && !valueInParameterList(value, valueSlice) {
-				return
+				return ret
 			}
 		}
 	} else if op == logical.ListOperation || op == logical.ScanOperation {
@@ -573,7 +573,7 @@ CHECK:
 				}
 
 				if limitRequiredParameter {
-					return
+					return ret
 				}
 
 				// Otherwise, update our field value to the maximum allowed.
@@ -600,7 +600,7 @@ CHECK:
 					valStr, ok := valRaw.(string)
 					if !ok || valStr != "max" {
 						// Request denied.
-						return
+						return ret
 					}
 
 					// Otherwise, update our field value to the maximum allowed.
@@ -608,7 +608,7 @@ CHECK:
 				} else {
 					// Deny if we exceed our allotted page size.
 					if val > permissions.PaginationLimit {
-						return
+						return ret
 					}
 				}
 			}
@@ -645,7 +645,7 @@ CHECK:
 	}
 
 	ret.Allowed = true
-	return
+	return ret
 }
 
 type wcPathDescr struct {

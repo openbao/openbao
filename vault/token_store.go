@@ -904,44 +904,44 @@ type tsRoleEntry struct {
 	tokenutil.TokenParams
 
 	// The name of the role. Embedded so it can be used for pathing
-	Name string `json:"name" mapstructure:"name" structs:"name"`
+	Name string `json:"name" mapstructure:"name"`
 
 	// The policies that creation functions using this role can assign to a token,
 	// escaping or further locking down normal subset checking
-	AllowedPolicies []string `json:"allowed_policies" mapstructure:"allowed_policies" structs:"allowed_policies"`
+	AllowedPolicies []string `json:"allowed_policies" mapstructure:"allowed_policies"`
 
 	// List of policies to be not allowed during token creation using this role
-	DisallowedPolicies []string `json:"disallowed_policies" mapstructure:"disallowed_policies" structs:"disallowed_policies"`
+	DisallowedPolicies []string `json:"disallowed_policies" mapstructure:"disallowed_policies"`
 
 	// An extension to AllowedPolicies that instead uses glob matching on policy names
-	AllowedPoliciesGlob []string `json:"allowed_policies_glob" mapstructure:"allowed_policies_glob" structs:"allowed_policies_glob"`
+	AllowedPoliciesGlob []string `json:"allowed_policies_glob" mapstructure:"allowed_policies_glob"`
 
 	// An extension to DisallowedPolicies that instead uses glob matching on policy names
-	DisallowedPoliciesGlob []string `json:"disallowed_policies_glob" mapstructure:"disallowed_policies_glob" structs:"disallowed_policies_glob"`
+	DisallowedPoliciesGlob []string `json:"disallowed_policies_glob" mapstructure:"disallowed_policies_glob"`
 
 	// If true, tokens created using this role will be orphans
-	Orphan bool `json:"orphan" mapstructure:"orphan" structs:"orphan"`
+	Orphan bool `json:"orphan" mapstructure:"orphan"`
 
 	// If non-zero, tokens created using this role will be able to be renewed
 	// forever, but will have a fixed renewal period of this value
-	Period time.Duration `json:"period" mapstructure:"period" structs:"period"`
+	Period time.Duration `json:"period" mapstructure:"period"`
 
 	// If set, a suffix will be set on the token path, making it easier to
 	// revoke using 'revoke-prefix'
-	PathSuffix string `json:"path_suffix" mapstructure:"path_suffix" structs:"path_suffix"`
+	PathSuffix string `json:"path_suffix" mapstructure:"path_suffix"`
 
 	// If set, controls whether created tokens are marked as being renewable
-	Renewable bool `json:"renewable" mapstructure:"renewable" structs:"renewable"`
+	Renewable bool `json:"renewable" mapstructure:"renewable"`
 
 	// If set, the token entry will have an explicit maximum TTL set, rather
 	// than deferring to role/mount values
-	ExplicitMaxTTL time.Duration `json:"explicit_max_ttl" mapstructure:"explicit_max_ttl" structs:"explicit_max_ttl"`
+	ExplicitMaxTTL time.Duration `json:"explicit_max_ttl" mapstructure:"explicit_max_ttl"`
 
 	// The set of CIDRs that tokens generated using this role will be bound to
 	BoundCIDRs []*sockaddr.SockAddrMarshaler `json:"bound_cidrs"`
 
 	// The set of allowed entity aliases used during token creation
-	AllowedEntityAliases []string `json:"allowed_entity_aliases" mapstructure:"allowed_entity_aliases" structs:"allowed_entity_aliases"`
+	AllowedEntityAliases []string `json:"allowed_entity_aliases" mapstructure:"allowed_entity_aliases"`
 }
 
 type accessorEntry struct {

@@ -16,9 +16,9 @@ import (
 )
 
 type sshOTP struct {
-	Username string `json:"username" structs:"username" mapstructure:"username"`
-	IP       string `json:"ip" structs:"ip" mapstructure:"ip"`
-	RoleName string `json:"role_name" structs:"role_name" mapstructure:"role_name"`
+	Username string `json:"username" mapstructure:"username"`
+	IP       string `json:"ip" mapstructure:"ip"`
+	RoleName string `json:"role_name" mapstructure:"role_name"`
 }
 
 func pathCredsCreate(b *backend) *framework.Path {

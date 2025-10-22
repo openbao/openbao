@@ -24,6 +24,13 @@ const (
 
 	CompressionTypeSnappy        = "snappy"
 	CompressionCanarySnappy byte = 'S'
+
+	// These compression types were in use in previous versions of the project,
+	// but are not supported anymore. We keep the canaries around to provide
+	// clearer error messages in the unlikely event that residual, unsupported
+	// data is attempted to be read.
+	CompressionCanaryLZ4 byte = '4'
+	CompressionCanaryLZW byte = 'L'
 )
 
 // SnappyReadCloser embeds the snappy reader which implements the io.Reader
@@ -77,10 +84,8 @@ func Compress(data []byte, config *CompressionConfig) ([]byte, error) {
 	case CompressionTypeGzip:
 		buf.Write([]byte{CompressionCanaryGzip})
 
-		switch {
-		case config.GzipCompressionLevel == gzip.BestCompression,
-			config.GzipCompressionLevel == gzip.BestSpeed,
-			config.GzipCompressionLevel == gzip.DefaultCompression:
+		switch config.GzipCompressionLevel {
+		case gzip.BestCompression, gzip.BestSpeed, gzip.DefaultCompression:
 			// These are valid compression levels
 		default:
 			// If compression level is set to NoCompression or to
@@ -94,7 +99,7 @@ func Compress(data []byte, config *CompressionConfig) ([]byte, error) {
 		writer = snappy.NewBufferedWriter(&buf)
 
 	default:
-		return nil, errors.New("unsupported compression type")
+		return nil, fmt.Errorf("unsupported compression type: %s", config.Type)
 	}
 
 	if err != nil {
@@ -164,6 +169,11 @@ func DecompressWithCanary(data []byte) ([]byte, string, bool, error) {
 			Reader: snappy.NewReader(bytes.NewReader(cData)),
 		}
 		compressionType = CompressionTypeSnappy
+
+	case CompressionCanaryLZ4:
+		return nil, "", false, errors.New("support for lz4 compression has been removed")
+	case CompressionCanaryLZW:
+		return nil, "", false, errors.New("support for lzw compression has been removed")
 
 	default:
 		// If the first byte doesn't match the canary byte, it means

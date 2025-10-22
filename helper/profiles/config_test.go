@@ -140,7 +140,7 @@ request "op1" {
 	}
 	rootList := file.Node.(*ast.ObjectList)
 	items := rootList.Filter("request")
-	reqs, err := ParseRequestConfig(nil, items)
+	reqs, err := ParseRequestConfig(items)
 	if err != nil {
 		t.Fatalf("ParseRequestConfig error: %v", err)
 	}
@@ -170,7 +170,7 @@ request {
 		t.Fatalf("failed to parse HCL: %v", err)
 	}
 	items := file.Node.(*ast.ObjectList).Filter("request")
-	_, err = ParseRequestConfig(nil, items)
+	_, err = ParseRequestConfig(items)
 	if err == nil || !strings.Contains(err.Error(), "type must be specified") {
 		t.Fatalf("expected missing-type error, got %v", err)
 	}

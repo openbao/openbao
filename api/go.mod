@@ -5,13 +5,13 @@ module github.com/openbao/openbao/api/v2
 // automatically track the Go version used to build Vault itself.  Many projects import
 // the api module and we don't want to impose a newer version on them any more than we
 // have to.
-go 1.24
+go 1.24.0
 
 toolchain go1.24.3
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
-	github.com/go-jose/go-jose/v4 v4.1.2
+	github.com/go-jose/go-jose/v4 v4.1.3
 	github.com/go-test/deep v1.1.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
@@ -21,8 +21,8 @@ require (
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0
 	github.com/hashicorp/hcl v1.0.1-vault-5
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/net v0.43.0
-	golang.org/x/time v0.12.0
+	golang.org/x/net v0.46.0
+	golang.org/x/time v0.14.0
 )
 
 require (
@@ -36,9 +36,8 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
-	golang.org/x/crypto v0.41.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 

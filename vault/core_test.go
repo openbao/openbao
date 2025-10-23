@@ -2499,18 +2499,18 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal2)
 	}
 
-	if inm.(*inmem.InmemHABackend) == inmha.(*inmem.InmemHABackend) {
-		lockSize := inm.(*inmem.InmemHABackend).LockMapSize()
+	if inm.(inmem.InmemHABackend) == inmha.(inmem.InmemHABackend) {
+		lockSize := inm.(inmem.InmemHABackend).LockMapSize()
 		if lockSize == 0 {
 			t.Fatal("locks not used with only one HA backend")
 		}
 	} else {
-		lockSize := inmha.(*inmem.InmemHABackend).LockMapSize()
+		lockSize := inmha.(inmem.InmemHABackend).LockMapSize()
 		if lockSize == 0 {
 			t.Fatal("locks not used with expected HA backend")
 		}
 
-		lockSize = inm.(*inmem.InmemHABackend).LockMapSize()
+		lockSize = inm.(inmem.InmemHABackend).LockMapSize()
 		if lockSize != 0 {
 			t.Fatal("locks used with unexpected HA backend")
 		}

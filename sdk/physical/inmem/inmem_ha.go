@@ -9,38 +9,60 @@ import (
 	"sync"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
-type InmemHABackend struct {
+type InmemHABackendSharedState struct {
 	physical.Backend
 	locks  map[string]string
 	l      *sync.Mutex
 	cond   *sync.Cond
 	logger log.Logger
+	leader int
 
 	invalidators []physical.InvalidateFunc
 }
 
-// NewInmemHA constructs a new in-memory HA backend. This is only for testing.
-func NewInmemHA(_ map[string]string, logger log.Logger) (physical.Backend, error) {
+type InmemHABackend struct {
+	*InmemHABackendSharedState
+	id int
+}
+
+// NewInmemHAFactory returns a factory which constructs a new in-memory HA backends. This is only for testing.
+// The backends have shared storage, but only one of them can write (the one that holds the lock)
+func NewInmemHAFactory(_ map[string]string, logger log.Logger) (func(id int) physical.Backend, error) {
 	be, err := NewInmem(nil, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	in := &InmemHABackend{
+	in := &InmemHABackendSharedState{
 		Backend: be,
 		locks:   make(map[string]string),
 		logger:  logger,
 		l:       new(sync.Mutex),
 	}
 	in.cond = sync.NewCond(in.l)
-	return in, nil
+	return func(id int) physical.Backend {
+		return InmemHABackend{
+			InmemHABackendSharedState: in,
+			id:                        id,
+		}
+	}, nil
+}
+
+// NewInmemHA constructs a new in-memory HA backend. This is only for testing.
+func NewInmemHA(config map[string]string, logger log.Logger) (physical.Backend, error) {
+	f, err := NewInmemHAFactory(config, logger)
+	if err != nil {
+		return nil, err
+	}
+	return f(0), nil
 }
 
 // LockWith is used for mutual exclusion based on the given key.
-func (i *InmemHABackend) LockWith(key, value string) (physical.Lock, error) {
+func (i InmemHABackend) LockWith(key, value string) (physical.Lock, error) {
 	l := &InmemLock{
 		in:    i,
 		key:   key,
@@ -49,7 +71,7 @@ func (i *InmemHABackend) LockWith(key, value string) (physical.Lock, error) {
 	return l, nil
 }
 
-func (i *InmemHABackend) HookInvalidate(hook physical.InvalidateFunc) {
+func (i InmemHABackend) HookInvalidate(hook physical.InvalidateFunc) {
 	i.l.Lock()
 	defer i.l.Unlock()
 
@@ -58,19 +80,19 @@ func (i *InmemHABackend) HookInvalidate(hook physical.InvalidateFunc) {
 
 // LockMapSize is used in some tests to determine whether this backend has ever
 // been used for HA purposes rather than simply for storage
-func (i *InmemHABackend) LockMapSize() int {
+func (i InmemHABackend) LockMapSize() int {
 	return len(i.locks)
 }
 
 // HAEnabled indicates whether the HA functionality should be exposed.
 // Currently always returns true.
-func (i *InmemHABackend) HAEnabled() bool {
+func (i InmemHABackend) HAEnabled() bool {
 	return true
 }
 
 // InmemLock is an in-memory Lock implementation for the HABackend
 type InmemLock struct {
-	in    *InmemHABackend
+	in    InmemHABackend
 	key   string
 	value string
 
@@ -98,6 +120,7 @@ func (i *InmemLock) Lock(stopCh <-chan struct{}) (<-chan struct{}, error) {
 			_, ok = i.in.locks[i.key]
 		}
 		i.in.locks[i.key] = i.value
+		i.in.leader = i.in.id
 		i.in.l.Unlock()
 
 		// Signal that lock is held
@@ -108,6 +131,7 @@ func (i *InmemLock) Lock(stopCh <-chan struct{}) (<-chan struct{}, error) {
 		if release {
 			i.in.l.Lock()
 			delete(i.in.locks, i.key)
+			i.in.leader = -1
 			i.in.l.Unlock()
 			i.in.cond.Broadcast()
 		}
@@ -142,6 +166,7 @@ func (i *InmemLock) Unlock() error {
 
 	i.in.l.Lock()
 	delete(i.in.locks, i.key)
+	i.in.leader = -1
 	i.in.l.Unlock()
 	i.in.cond.Broadcast()
 	return nil
@@ -154,28 +179,43 @@ func (i *InmemLock) Value() (bool, string, error) {
 	return ok, val, nil
 }
 
-func (i *InmemHABackend) invalidateAll(key string) {
+func (i InmemHABackendSharedState) invalidateAll(key string) {
 	i.l.Lock()
 	defer i.l.Unlock()
 
 	for _, handler := range i.invalidators {
-		handler(key)
+		go handler(key)
 	}
 }
 
-func (i *InmemHABackend) Put(ctx context.Context, entry *physical.Entry) error {
+func (i InmemHABackend) isLeader() bool {
+	i.l.Lock()
+	defer i.l.Unlock()
+
+	return i.leader == i.id
+}
+
+func (i InmemHABackend) Put(ctx context.Context, entry *physical.Entry) error {
+	if !i.isLeader() {
+		return consts.ErrStandby
+	}
+
 	err := i.Backend.Put(ctx, entry)
-	if err != nil {
-		go i.invalidateAll(entry.Key)
+	if err == nil {
+		i.invalidateAll(entry.Key)
 	}
 
 	return err
 }
 
-func (i *InmemHABackend) Delete(ctx context.Context, key string) error {
+func (i InmemHABackend) Delete(ctx context.Context, key string) error {
+	if !i.isLeader() {
+		return consts.ErrStandby
+	}
+
 	err := i.Backend.Delete(ctx, key)
-	if err != nil {
-		go i.invalidateAll(key)
+	if err == nil {
+		i.invalidateAll(key)
 	}
 
 	return err

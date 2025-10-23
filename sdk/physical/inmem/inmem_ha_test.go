@@ -14,11 +14,11 @@ import (
 func TestInmemHA(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Debug)
 
-	inm, err := NewInmemHA(nil, logger)
+	f, err := NewInmemHAFactory(nil, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Use the same inmem backend to acquire the same set of locks
-	physical.ExerciseHABackend(t, inm.(physical.HABackend), inm.(physical.HABackend))
+	physical.ExerciseHABackend(t, f(0).(physical.HABackend), f(1).(physical.HABackend))
 }

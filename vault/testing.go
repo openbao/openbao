@@ -1627,18 +1627,21 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.AuditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
 	}
 
-	if coreConfig.Physical == nil && (opts == nil || opts.PhysicalFactory == nil) {
-		coreConfig.Physical, err = physInmem.NewInmemHA(nil, testCluster.Logger)
-		if err != nil {
-			t.Fatal(err)
-		}
+	if opts == nil {
+		opts = &TestClusterOptions{}
 	}
-	if coreConfig.HAPhysical == nil && (opts == nil || opts.PhysicalFactory == nil) {
-		haPhys, err := physInmem.NewInmemHA(nil, testCluster.Logger)
+	if (coreConfig.Physical == nil || coreConfig.HAPhysical == nil) && opts.PhysicalFactory == nil {
+		factory, err := physInmem.NewInmemHAFactory(nil, testCluster.Logger)
 		if err != nil {
 			t.Fatal(err)
 		}
-		coreConfig.HAPhysical = haPhys.(physical.HABackend)
+		opts.PhysicalFactory = func(t testing.T, coreIdx int, logger log.Logger, conf map[string]interface{}) *PhysicalBackendBundle {
+			p := factory(coreIdx)
+			return &PhysicalBackendBundle{
+				Backend:   p,
+				HABackend: p.(physical.HABackend),
+			}
+		}
 	}
 
 	if testCluster.LicensePublicKey == nil {

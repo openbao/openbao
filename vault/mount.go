@@ -2543,6 +2543,9 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 	c.mountsLock.RLock()
 	c.authLock.RLock()
 	for _, table := range []*MountTable{c.mounts, c.auth} {
+		if table == nil {
+			continue
+		}
 		for _, entry := range table.Entries {
 			if ns.ID != namespace.RootNamespaceID && ns.ID != entry.NamespaceID {
 				continue

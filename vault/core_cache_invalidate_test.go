@@ -43,6 +43,11 @@ func testCore_Invalidate_TestCore(t *testing.T, config *CoreConfig) (*Core, stri
 		wg.Done()
 	}()
 
+	// Fake being a standby for the purpose of testing invalidation; we ignore
+	// events on the active node and directly modify storage, which is already
+	// hooked.
+	c.standby.Store(true)
+
 	return c, root
 }
 

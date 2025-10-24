@@ -2435,9 +2435,11 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		return c2ctx != nil
 	}, 1*time.Minute, 50*time.Millisecond, "did not acquire active context")
 
-	// Request should not fail in standby mode since request is forwarded to active
+	// Forwarding happens at the listener level current, not at the
+	// HandleRequest level; this means that we should get a forwarding
+	// error from sending the request to the standby at this place.
 	_, err = core2.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil {
+	if err == nil || !logical.ShouldForward(err) {
 		t.Fatalf("err: %v", err)
 	}
 

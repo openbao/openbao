@@ -349,7 +349,12 @@ func (b *AESGCMBarrier) VerifyRoot(key []byte) error {
 	b.l.RLock()
 	defer b.l.RUnlock()
 	if b.sealed {
-		return ErrBarrierSealed
+		switch b.metaPrefix {
+		case "":
+			return ErrBarrierSealed
+		default:
+			return ErrNamespaceSealed
+		}
 	}
 	if subtle.ConstantTimeCompare(key, b.keyring.RootKey()) != 1 {
 		return ErrBarrierInvalidKey

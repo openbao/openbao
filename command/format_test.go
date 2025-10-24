@@ -152,7 +152,7 @@ Unseal Nonce                  nonce
 Seal Migration in Progress    true
 Version                       version
 Build Date                    build date
-Storage Type                  n/a
+Storage Type                  type
 HA Enabled                    false`
 
 	if expectedOutputString != output {
@@ -170,7 +170,6 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 	if !emptyFields {
 		sealStatusResponseMock = api.SealStatusResponse{
 			Type:             "type",
-			RecoverySealType: "type",
 			Initialized:      true,
 			Sealed:           true,
 			T:                1,
@@ -183,6 +182,7 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			ClusterName:      "cluster name",
 			ClusterID:        "cluster id",
 			RecoverySeal:     true,
+			RecoverySealType: "type",
 			StorageType:      "storage type",
 			Warnings:         []string{"warning"},
 		}
@@ -204,7 +204,6 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 	} else {
 		sealStatusResponseMock = api.SealStatusResponse{
 			Type:             "type",
-			RecoverySealType: "type",
 			Initialized:      true,
 			Sealed:           true,
 			T:                1,
@@ -217,7 +216,8 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			ClusterName:      "",
 			ClusterID:        "",
 			RecoverySeal:     true,
-			StorageType:      "",
+			RecoverySealType: "type",
+			StorageType:      "type",
 		}
 
 		// must initialize this struct without explicit field names due to embedding

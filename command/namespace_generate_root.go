@@ -5,16 +5,18 @@ package command
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
 	"github.com/hashicorp/cli"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
+	"github.com/openbao/openbao/vault"
 	"github.com/posener/complete"
 )
 
@@ -28,11 +30,14 @@ type NamespaceGenerateRootCommand struct {
 
 	flagInit        bool
 	flagCancel      bool
-	flagNonce       string
 	flagStatus      bool
 	flagDecode      string
 	flagOTP         string
+	flagPGPKey      string
+	flagNonce       string
 	flagGenerateOTP bool
+
+	testStdin io.Reader // for tests
 }
 
 func (c *NamespaceGenerateRootCommand) Synopsis() string {
@@ -41,7 +46,7 @@ func (c *NamespaceGenerateRootCommand) Synopsis() string {
 
 func (c *NamespaceGenerateRootCommand) Help() string {
 	helpText := `
-Usage: bao namespace generate-root [options] PATH
+Usage: bao namespace generate-root [options] PATH [KEY]
 
   Generates a new root token by combining a quorum of share holders. One of
   the following must be provided to start the root token generation:
@@ -107,16 +112,6 @@ func (c *NamespaceGenerateRootCommand) Flags() *FlagSets {
 	})
 
 	f.StringVar(&StringVar{
-		Name:       "nonce",
-		Target:     &c.flagNonce,
-		Default:    "",
-		EnvVar:     "",
-		Completion: complete.PredictAnything,
-		Usage: "Nonce value provided at initialization. The same nonce value " +
-			"must be provided with each unseal key.",
-	})
-
-	f.StringVar(&StringVar{
 		Name:       "decode",
 		Target:     &c.flagDecode,
 		Default:    "",
@@ -124,6 +119,16 @@ func (c *NamespaceGenerateRootCommand) Flags() *FlagSets {
 		Completion: complete.PredictAnything,
 		Usage: "The value to decode; setting this triggers a decode operation. " +
 			" If the value is \"-\" then read the encoded token from stdin.",
+	})
+
+	f.BoolVar(&BoolVar{
+		Name:       "generate-otp",
+		Target:     &c.flagGenerateOTP,
+		Default:    false,
+		EnvVar:     "",
+		Completion: complete.PredictNothing,
+		Usage: "Generate and print a high-entropy one-time-password (OTP) " +
+			"suitable for use with the \"-init\" flag.",
 	})
 
 	f.StringVar(&StringVar{
@@ -135,14 +140,27 @@ func (c *NamespaceGenerateRootCommand) Flags() *FlagSets {
 		Usage:      "OTP code to use with \"-decode\" or \"-init\".",
 	})
 
-	f.BoolVar(&BoolVar{
-		Name:       "generate-otp",
-		Target:     &c.flagGenerateOTP,
-		Default:    false,
+	f.VarFlag(&VarFlag{
+		Name:       "pgp-key",
+		Value:      (*pgpkeys.PubKeyFileFlag)(&c.flagPGPKey),
+		Default:    "",
 		EnvVar:     "",
-		Completion: complete.PredictNothing,
-		Usage: "Generate and print a high-entropy one-time-password (OTP) " +
-			"suitable for use with the \"-init\" flag.",
+		Completion: complete.PredictAnything,
+		Usage: "Path to a file on disk containing a binary or base64-encoded " +
+			"public PGP key. This can also be specified as a Keybase username " +
+			"using the format \"keybase:<username>\". When supplied, the generated " +
+			"root token will be encrypted and base64-encoded with the given public " +
+			"key.",
+	})
+
+	f.StringVar(&StringVar{
+		Name:       "nonce",
+		Target:     &c.flagNonce,
+		Default:    "",
+		EnvVar:     "",
+		Completion: complete.PredictAnything,
+		Usage: "Nonce value provided at initialization. The same nonce value " +
+			"must be provided with each unseal key.",
 	})
 
 	return set
@@ -165,16 +183,14 @@ func (c *NamespaceGenerateRootCommand) Run(args []string) int {
 	}
 
 	args = f.Args()
-	if len(args) == 0 && !c.flagGenerateOTP {
-		c.UI.Error("Missing mandatory parameter: namespace")
+	if len(args) < 1 {
+		c.UI.Error("Not enough arguments (expected 1-2, got 0)")
 		return 1
 	}
 	if len(args) > 2 {
-		c.UI.Error(fmt.Sprintf("Too many arguments (expected 0-2, got %d)", len(args)))
+		c.UI.Error(fmt.Sprintf("Too many arguments (expected 1-2, got %d)", len(args)))
 		return 1
 	}
-
-	namespacePath := strings.TrimSpace(args[0])
 
 	client, err := c.Client()
 	if err != nil {
@@ -182,6 +198,7 @@ func (c *NamespaceGenerateRootCommand) Run(args []string) int {
 		return 2
 	}
 
+	namespacePath := strings.TrimSpace(args[0])
 	switch {
 	case c.flagGenerateOTP:
 		otp, code := c.generateOTP(client, namespacePath)
@@ -198,12 +215,12 @@ func (c *NamespaceGenerateRootCommand) Run(args []string) int {
 			}
 		}
 		return code
-	case c.flagInit:
-		return c.init(client, "", "", namespacePath)
 	case c.flagDecode != "":
 		return c.decode(client, c.flagDecode, c.flagOTP, namespacePath)
 	case c.flagCancel:
 		return c.cancel(client, namespacePath)
+	case c.flagInit:
+		return c.init(client, c.flagOTP, c.flagPGPKey, namespacePath)
 	case c.flagStatus:
 		return c.status(client, namespacePath)
 	default:
@@ -216,8 +233,87 @@ func (c *NamespaceGenerateRootCommand) Run(args []string) int {
 	}
 }
 
+func (c *NamespaceGenerateRootCommand) generateOTP(client *api.Client, namespacePath string) (string, int) {
+	status, err := client.Sys().NamespaceGenerateRootStatus(namespacePath)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error getting root generation status: %s", err))
+		return "", 2
+	}
+
+	otpLength := status.OTPLength
+	if otpLength == 0 {
+		otpLength = vault.NSTokenLength + vault.TokenPrefixLength
+	}
+	otp, err := base62.Random(otpLength)
+	var retCode int
+	if err != nil {
+		retCode = 2
+		c.UI.Error(err.Error())
+	} else {
+		retCode = 0
+	}
+	return otp, retCode
+}
+
+func (c *NamespaceGenerateRootCommand) decode(client *api.Client, encoded, otp, namespacePath string) int {
+	if encoded == "" {
+		c.UI.Error("Missing encoded value: use -decode=<string> to supply it")
+		return 1
+	}
+	if otp == "" {
+		c.UI.Error("Missing otp: use -otp to supply it")
+		return 1
+	}
+
+	if encoded == "-" {
+		// Pull our fake stdin if needed
+		stdin := (io.Reader)(os.Stdin)
+		if c.testStdin != nil {
+			stdin = c.testStdin
+		}
+		if c.flagNonInteractive {
+			stdin = bytes.NewReader(nil)
+		}
+
+		var buf bytes.Buffer
+		if _, err := io.Copy(&buf, stdin); err != nil {
+			c.UI.Error(fmt.Sprintf("Failed to read from stdin: %s", err))
+			return 1
+		}
+
+		encoded = buf.String()
+
+		if encoded == "" {
+			c.UI.Error("Missing encoded value. When using -decode=\"-\" value must be passed via stdin.")
+			return 1
+		}
+	}
+
+	status, err := client.Sys().NamespaceGenerateRootStatus(namespacePath)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error getting root generation status: %s", err))
+		return 2
+	}
+
+	token, err := roottoken.DecodeToken(encoded, otp, status.OTPLength)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error decoding root token: %s", err))
+		return 1
+	}
+
+	switch Format(c.UI) {
+	case "", "table":
+		return PrintRaw(c.UI, token)
+	default:
+		tokenJSON := map[string]interface{}{
+			"token": token,
+		}
+		return OutputData(c.UI, tokenJSON)
+	}
+}
+
 // init is used to start the generation process
-func (c *NamespaceGenerateRootCommand) init(client *api.Client, otp, pgpKey string, namespacePath string) int {
+func (c *NamespaceGenerateRootCommand) init(client *api.Client, otp, pgpKey, namespacePath string) int {
 	// Validate incoming fields. Either OTP OR PGP keys must be supplied.
 	if otp != "" && pgpKey != "" {
 		c.UI.Error("Error initializing: cannot specify both -otp and -pgp-key")
@@ -225,15 +321,9 @@ func (c *NamespaceGenerateRootCommand) init(client *api.Client, otp, pgpKey stri
 	}
 
 	// Start the root generation
-	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath+"/generate-root/attempt", nil)
+	status, err := client.Sys().NamespaceGenerateRootInit(otp, pgpKey, namespacePath)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error initializing root generation: %s", err))
-		return 2
-	}
-
-	status, err := c.extractResponse(secret.Data)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
 		return 2
 	}
 
@@ -247,16 +337,10 @@ func (c *NamespaceGenerateRootCommand) init(client *api.Client, otp, pgpKey stri
 
 // provide prompts the user for the seal key and posts it to the update root
 // endpoint. If this is the last unseal, this function outputs it.
-func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, namespacePath string) int {
-	secret, err := client.Logical().Read("sys/namespaces/" + namespacePath + "/generate-root/attempt")
+func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key, namespacePath string) int {
+	status, err := client.Sys().NamespaceGenerateRootStatus(namespacePath)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error while getting root generation status: %s", err))
-		return 2
-	}
-
-	status, err := c.extractResponse(secret.Data)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
+		c.UI.Error(fmt.Sprintf("Error getting root generation status: %s", err))
 		return 2
 	}
 
@@ -281,6 +365,9 @@ func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, n
 
 		// Pull our fake stdin if needed
 		stdin := (io.Reader)(os.Stdin)
+		if c.testStdin != nil {
+			stdin = c.testStdin
+		}
 		if c.flagNonInteractive {
 			stdin = bytes.NewReader(nil)
 		}
@@ -325,7 +412,7 @@ func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, n
 		nonce = status.Nonce
 	}
 
-	// Trim any whitespace from they key, especially since we might have prompted
+	// Trim any whitespace from the key, especially since we might have prompted
 	// the user for it.
 	key = strings.TrimSpace(key)
 
@@ -336,16 +423,9 @@ func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, n
 	}
 
 	// Provide the key, this may potentially complete the update
-	data := map[string]interface{}{"key": key, "nonce": nonce}
-
-	secret, err = client.Logical().Write("sys/namespaces/"+namespacePath+"/generate-root/update", data)
+	status, err = client.Sys().NamespaceGenerateRootUpdate(key, nonce, namespacePath)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error posting unseal key: %s", err))
-		return 2
-	}
-	status, err = c.extractResponse(secret.Data)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error extracting response: %s", err))
 		return 2
 	}
 
@@ -358,7 +438,7 @@ func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, n
 }
 
 func (c *NamespaceGenerateRootCommand) cancel(client *api.Client, namespacePath string) int {
-	_, err := client.Logical().Delete("sys/namespaces/" + namespacePath + "/generate-root/attempt")
+	err := client.Sys().NamespaceGenerateRootCancel(namespacePath)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error canceling root token generation: %s", err))
 		return 2
@@ -367,109 +447,18 @@ func (c *NamespaceGenerateRootCommand) cancel(client *api.Client, namespacePath 
 	return 0
 }
 
-func (c *NamespaceGenerateRootCommand) decode(client *api.Client, encoded, otp string, namespacePath string) int {
-	if encoded == "" {
-		c.UI.Error("Missing encoded value: use -decode=<string> to supply it")
-		return 1
-	}
-	if otp == "" {
-		c.UI.Error("Missing otp: use -otp to supply it")
-		return 1
-	}
-
-	if encoded == "-" {
-		// Pull our fake stdin if needed
-		stdin := (io.Reader)(os.Stdin)
-		if c.flagNonInteractive {
-			stdin = bytes.NewReader(nil)
-		}
-
-		var buf bytes.Buffer
-		if _, err := io.Copy(&buf, stdin); err != nil {
-			c.UI.Error(fmt.Sprintf("Failed to read from stdin: %s", err))
-			return 1
-		}
-
-		encoded = buf.String()
-
-		if encoded == "" {
-			c.UI.Error("Missing encoded value. When using -decode=\"-\" value must be passed via stdin.")
-			return 1
-		}
-	}
-
-	secret, err := client.Logical().Read("sys/namespaces/" + namespacePath + "/generate-root/attempt")
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error while getting root generation status: %s", err))
-		return 2
-	}
-
-	status, err := c.extractResponse(secret.Data)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
-		return 2
-	}
-
-	token, err := roottoken.DecodeToken(encoded, otp, status.OTPLength)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error decoding root token: %s", err))
-		return 1
-	}
-
-	switch Format(c.UI) {
-	case "", "table":
-		return PrintRaw(c.UI, token)
-	default:
-		tokenJSON := map[string]interface{}{
-			"token": token,
-		}
-		return OutputData(c.UI, tokenJSON)
-	}
-}
-
 func (c *NamespaceGenerateRootCommand) status(client *api.Client, namespacePath string) int {
-	secret, err := client.Logical().Read("sys/namespaces/" + namespacePath + "/generate-root/attempt")
+	status, err := client.Sys().NamespaceGenerateRootStatus(namespacePath)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error initializing root generation: %s", err))
+		c.UI.Error(fmt.Sprintf("Error getting root generation status: %s", err))
 		return 2
 	}
-
-	status, err := c.extractResponse(secret.Data)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
-		return 2
-	}
-
 	switch Format(c.UI) {
 	case "table":
 		return c.printStatus(status)
 	default:
 		return OutputData(c.UI, status)
 	}
-}
-
-func (c *NamespaceGenerateRootCommand) generateOTP(client *api.Client, namespacePath string) (string, int) {
-	secret, err := client.Logical().Read("sys/namespaces/" + namespacePath + "/generate-root/attempt")
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error initializing root generation: %s", err))
-		return "", 2
-	}
-
-	status, err := c.extractResponse(secret.Data)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
-		return "", 2
-	}
-
-	otp, err := roottoken.GenerateOTP(status.OTPLength)
-	var retCode int
-	if err != nil {
-		retCode = 2
-		c.UI.Error(err.Error())
-	} else {
-		retCode = 0
-	}
-	return otp, retCode
 }
 
 // printStatus dumps the status to output
@@ -482,11 +471,8 @@ func (c *NamespaceGenerateRootCommand) printStatus(status *api.GenerateRootStatu
 	if status.PGPFingerprint != "" {
 		out = append(out, fmt.Sprintf("PGP Fingerprint | %s", status.PGPFingerprint))
 	}
-	switch {
-	case status.EncodedToken != "":
+	if status.EncodedToken != "" {
 		out = append(out, fmt.Sprintf("Encoded Token | %s", status.EncodedToken))
-	case status.EncodedRootToken != "":
-		out = append(out, fmt.Sprintf("Encoded Root Token | %s", status.EncodedRootToken))
 	}
 	if status.OTP != "" {
 		c.UI.Warn(wrapAtLength("A One-Time-Password has been generated for you and is shown in the OTP field. You will need this value to decode the resulting root token, so keep it safe."))
@@ -499,18 +485,4 @@ func (c *NamespaceGenerateRootCommand) printStatus(status *api.GenerateRootStatu
 	output := columnOutput(out, nil)
 	c.UI.Output(output)
 	return 0
-}
-
-func (c *NamespaceGenerateRootCommand) extractResponse(data map[string]interface{}) (*api.GenerateRootStatusResponse, error) {
-	jsonStatus, err := json.Marshal(data)
-	if err != nil {
-		return &api.GenerateRootStatusResponse{}, nil
-	}
-	status := api.GenerateRootStatusResponse{}
-
-	if err = json.Unmarshal(jsonStatus, &status); err != nil {
-		return nil, err
-	}
-
-	return &status, nil
 }

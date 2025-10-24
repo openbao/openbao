@@ -460,12 +460,5 @@ func isAcmeDisabled(sc *storageContext, config *acmeConfigEntry, policy EabPolic
 	}
 
 	// The OS environment if true will override any configuration option.
-	if disableAcme {
-		if policy.OverrideEnvDisablingPublicAcme() {
-			return false
-		}
-		return true
-	}
-
-	return false
+	return disableAcme && !policy.OverrideEnvDisablingPublicAcme()
 }

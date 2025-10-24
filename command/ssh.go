@@ -411,7 +411,7 @@ func (c *SSHCommand) handleTypeCA(username, ip, port string, sshArgs []string) i
 		// Write the known_hosts file
 		name := fmt.Sprintf("vault_ssh_ca_known_hosts_%s_%s", username, ip)
 		data := fmt.Sprintf("@cert-authority %s %s", c.flagHostKeyHostnames, publicKey)
-		knownHosts, err, closer := c.writeTemporaryFile(name, []byte(data), 0o644)
+		knownHosts, closer, err := c.writeTemporaryFile(name, []byte(data), 0o644)
 		defer closer()
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("failed to write host public key: %s", err))
@@ -425,7 +425,7 @@ func (c *SSHCommand) handleTypeCA(username, ip, port string, sshArgs []string) i
 
 	// Write the signed public key to disk
 	name := fmt.Sprintf("vault_ssh_ca_%s_%s", username, ip)
-	signedPublicKeyPath, err, closer := c.writeTemporaryKey(name, []byte(key))
+	signedPublicKeyPath, closer, err := c.writeTemporaryKey(name, []byte(key))
 	defer closer()
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("failed to write signed public key: %s", err))
@@ -592,7 +592,7 @@ func (c *SSHCommand) handleTypeDynamic(username, ip, port string, sshArgs []stri
 
 	// Write the dynamic key to disk
 	name := fmt.Sprintf("vault_ssh_dynamic_%s_%s", username, ip)
-	keyPath, err, closer := c.writeTemporaryKey(name, []byte(cred.Key))
+	keyPath, closer, err := c.writeTemporaryKey(name, []byte(cred.Key))
 	defer closer()
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("failed to write dynamic key: %s", err))
@@ -686,31 +686,31 @@ func (c *SSHCommand) generateCredential(username, ip string) (*api.Secret, *SSHC
 
 // writeTemporaryFile writes a file to a temp location with the given data and
 // file permissions.
-func (c *SSHCommand) writeTemporaryFile(name string, data []byte, perms os.FileMode) (string, error, func() error) {
+func (c *SSHCommand) writeTemporaryFile(name string, data []byte, perms os.FileMode) (string, func() error, error) {
 	// default closer to prevent panic
 	closer := func() error { return nil }
 
 	f, err := os.CreateTemp("", name)
 	if err != nil {
-		return "", fmt.Errorf("creating temporary file: %w", err), closer
+		return "", closer, fmt.Errorf("creating temporary file: %w", err)
 	}
 
 	closer = func() error { return os.Remove(f.Name()) }
 
 	if err := os.WriteFile(f.Name(), data, perms); err != nil {
-		return "", fmt.Errorf("writing temporary key: %w", err), closer
+		return "", closer, fmt.Errorf("writing temporary key: %w", err)
 	}
 
 	if err := f.Close(); err != nil {
-		return "", fmt.Errorf("closing temporary key: %w", err), closer
+		return "", closer, fmt.Errorf("closing temporary key: %w", err)
 	}
 
-	return f.Name(), nil, closer
+	return f.Name(), closer, nil
 }
 
 // writeTemporaryKey writes the key to a temporary file and returns the path.
 // The caller should defer the closer to cleanup the key.
-func (c *SSHCommand) writeTemporaryKey(name string, data []byte) (string, error, func() error) {
+func (c *SSHCommand) writeTemporaryKey(name string, data []byte) (string, func() error, error) {
 	return c.writeTemporaryFile(name, data, 0o600)
 }
 

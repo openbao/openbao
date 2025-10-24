@@ -68,8 +68,8 @@ func (c *Config) Prune() {
 	}
 	c.FoundKeys = nil
 	c.UnusedKeys = nil
-	c.SharedConfig.FoundKeys = nil
-	c.SharedConfig.UnusedKeys = nil
+	c.FoundKeys = nil
+	c.UnusedKeys = nil
 	if c.Telemetry != nil {
 		c.Telemetry.FoundKeys = nil
 		c.Telemetry.UnusedKeys = nil
@@ -240,12 +240,8 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.TemplateConfig = c2.TemplateConfig
 	}
 
-	for _, l := range c.Templates {
-		result.Templates = append(result.Templates, l)
-	}
-	for _, l := range c2.Templates {
-		result.Templates = append(result.Templates, l)
-	}
+	result.Templates = append(result.Templates, c.Templates...)
+	result.Templates = append(result.Templates, c2.Templates...)
 
 	result.ExitAfterAuth = c.ExitAfterAuth
 	if c2.ExitAfterAuth {
@@ -267,13 +263,8 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.Exec = c2.Exec
 	}
 
-	for _, envTmpl := range c.EnvTemplates {
-		result.EnvTemplates = append(result.EnvTemplates, envTmpl)
-	}
-
-	for _, envTmpl := range c2.EnvTemplates {
-		result.EnvTemplates = append(result.EnvTemplates, envTmpl)
-	}
+	result.EnvTemplates = append(result.EnvTemplates, c.EnvTemplates...)
+	result.EnvTemplates = append(result.EnvTemplates, c2.EnvTemplates...)
 
 	return result
 }

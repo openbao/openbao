@@ -237,8 +237,8 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 			return logical.ErrorResponse("invalid role or secret ID"), nil
 		}
 
-		switch {
-		case entry.SecretIDNumUses == 0:
+		switch entry.SecretIDNumUses {
+		case 0:
 			//
 			// SecretIDNumUses will be zero only if the usage limit was not set at all,
 			// in which case, the SecretID will remain to be valid as long as it is not

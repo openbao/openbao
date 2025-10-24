@@ -130,7 +130,7 @@ func EnsureCoreSealed(t testing.T, core *vault.TestClusterCore) {
 		if time.Now().After(timeout) {
 			t.Fatal("timeout waiting for core to seal")
 		}
-		if core.Core.Sealed() {
+		if core.Sealed() {
 			break
 		}
 		time.Sleep(250 * time.Millisecond)
@@ -289,7 +289,7 @@ func WaitForNCoresUnsealed(t testing.T, cluster *vault.TestCluster, n int) {
 	for i := 0; i < 30; i++ {
 		unsealed := 0
 		for _, core := range cluster.Cores {
-			if !core.Core.Sealed() {
+			if !core.Sealed() {
 				unsealed++
 			}
 		}
@@ -327,7 +327,7 @@ func WaitForNCoresSealed(t testing.T, cluster *vault.TestCluster, n int) {
 	for i := 0; i < 60; i++ {
 		sealed := 0
 		for _, core := range cluster.Cores {
-			if core.Core.Sealed() {
+			if core.Sealed() {
 				sealed++
 			}
 		}
@@ -345,7 +345,7 @@ func WaitForActiveNode(t testing.T, cluster *vault.TestCluster) *vault.TestClust
 	t.Helper()
 	for i := 0; i < 60; i++ {
 		for _, core := range cluster.Cores {
-			if standby, _ := core.Core.Standby(); !standby {
+			if standby, _ := core.Standby(); !standby {
 				return core
 			}
 		}
@@ -360,10 +360,10 @@ func WaitForActiveNode(t testing.T, cluster *vault.TestCluster) *vault.TestClust
 func WaitForStandbyNode(t testing.T, core *vault.TestClusterCore) {
 	t.Helper()
 	for i := 0; i < 30; i++ {
-		if isLeader, _, clusterAddr, _ := core.Core.Leader(); isLeader != true && clusterAddr != "" {
+		if isLeader, _, clusterAddr, _ := core.Leader(); !isLeader && clusterAddr != "" {
 			return
 		}
-		if core.Core.ActiveNodeReplicationState() == 0 {
+		if core.ActiveNodeReplicationState() == 0 {
 			return
 		}
 
@@ -582,13 +582,9 @@ func WaitForRaftApply(t testing.T, core *vault.TestClusterCore, index uint64) {
 // AwaitLeader waits for one of the cluster's nodes to become leader.
 func AwaitLeader(t testing.T, cluster *vault.TestCluster) (int, error) {
 	timeout := time.Now().Add(60 * time.Second)
-	for {
-		if time.Now().After(timeout) {
-			break
-		}
-
+	for time.Now().Before(timeout) {
 		for i, core := range cluster.Cores {
-			if core.Core.Sealed() {
+			if core.Sealed() {
 				continue
 			}
 
@@ -700,7 +696,7 @@ func SysMetricsReq(client *api.Client, cluster *vault.TestCluster, unauth bool) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := io.ReadAll(resp.Response.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1038,7 +1034,7 @@ func WaitForNodesExcludingSelectedStandbys(t testing.T, cluster *vault.TestClust
 			continue
 		}
 
-		if standby, _ := core.Core.Standby(); standby {
+		if standby, _ := core.Standby(); standby {
 			WaitForStandbyNode(t, core)
 		}
 	}

@@ -288,7 +288,7 @@ func TestAutoTidy(t *testing.T) {
 	require.NoError(t, err, "failed converting %s to int", resp.Data["revocation_time"])
 	revTime := time.Unix(revocationTime, 0)
 	now := time.Now()
-	if !(now.After(revTime) && now.Add(-10*time.Minute).Before(revTime)) {
+	if !now.After(revTime) || !now.Add(-10*time.Minute).Before(revTime) {
 		t.Fatalf("parsed revocation time not within the last 10 minutes current time: %s, revocation time: %s", now, revTime)
 	}
 	utcLoc, err := time.LoadLocation("UTC")
@@ -1261,7 +1261,7 @@ func waitForTidyToFinish(t *testing.T, client *api.Client, mount string) *api.Se
 			return errors.New("tidy status state is still running")
 		}
 
-		if errorOccurred, ok := statusResp.Data["error"]; !ok || !(errorOccurred == nil || errorOccurred == "") {
+		if errorOccurred, ok := statusResp.Data["error"]; !ok || (errorOccurred != nil && errorOccurred != "") {
 			return fmt.Errorf("tidy status returned an error: %s", errorOccurred)
 		}
 
@@ -1277,11 +1277,7 @@ func waitForAutoTidyToFinish(t *testing.T, client *api.Client) {
 	var foundTidyFinished bool
 	timeoutChan := time.After(120 * time.Second)
 
-	for {
-		if foundTidyRunning != "" && foundTidyFinished {
-			break
-		}
-
+	for foundTidyRunning == "" || !foundTidyFinished {
 		select {
 		case <-timeoutChan:
 			t.Fatalf("expected auto-tidy to run (%v) and finish (%v) before timeout", foundTidyRunning, foundTidyFinished)

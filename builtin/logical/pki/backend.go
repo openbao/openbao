@@ -6,7 +6,7 @@ package pki
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -227,9 +227,7 @@ func Backend(conf *logical.BackendConfig) *backend {
 	acmePaths = append(acmePaths, pathAcmeRevoke(&b)...)
 	acmePaths = append(acmePaths, pathAcmeNewEab(&b)...) // auth'd API that lives underneath the various /acme paths
 
-	for _, acmePath := range acmePaths {
-		b.Backend.Paths = append(b.Backend.Paths, acmePath)
-	}
+	b.Paths = append(b.Paths, acmePaths...)
 
 	// Add specific un-auth'd paths for ACME APIs
 	for _, acmePrefix := range []string{"", "issuer/+/", "roles/+/", "issuer/+/roles/+/"} {
@@ -632,11 +630,11 @@ func (b *backend) periodicFunc(ctx context.Context, request *logical.Request) er
 
 	var errors error
 	if crlErr != nil {
-		errors = multierror.Append(errors, fmt.Errorf("Error building CRLs:\n - %w\n", crlErr))
+		errors = multierror.Append(errors, fmt.Errorf("error building CRLs: %w", crlErr))
 	}
 
 	if tidyErr != nil {
-		errors = multierror.Append(errors, fmt.Errorf("Error running auto-tidy:\n - %w\n", tidyErr))
+		errors = multierror.Append(errors, fmt.Errorf("error running auto-tidy: %w", tidyErr))
 	}
 
 	if errors != nil {
@@ -669,7 +667,7 @@ func (b *backend) initializeStoredCertificateCounts(ctx context.Context) error {
 	b.certCountEnabled.Store(config.MaintainCount)
 	b.publishCertCountMetrics.Store(config.PublishMetrics)
 
-	if config.MaintainCount == false {
+	if !config.MaintainCount {
 		b.possibleDoubleCountedRevokedSerials = nil
 		b.possibleDoubleCountedSerials = nil
 		b.certsCounted.Store(true)
@@ -707,28 +705,16 @@ func (b *backend) initializeStoredCertificateCounts(ctx context.Context) error {
 	// there may be some delay here.
 
 	// Sort the listed-entries first, to accommodate that delay.
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i] < entries[j]
-	})
+	slices.Sort(entries)
 
-	sort.Slice(revokedEntries, func(i, j int) bool {
-		return revokedEntries[i] < revokedEntries[j]
-	})
+	slices.Sort(revokedEntries)
 
 	// We assume here that these lists are now complete.
-	sort.Slice(b.possibleDoubleCountedSerials, func(i, j int) bool {
-		return b.possibleDoubleCountedSerials[i] < b.possibleDoubleCountedSerials[j]
-	})
+	slices.Sort(b.possibleDoubleCountedSerials)
 
 	listEntriesIndex := 0
 	possibleDoubleCountIndex := 0
-	for {
-		if listEntriesIndex >= len(entries) {
-			break
-		}
-		if possibleDoubleCountIndex >= len(b.possibleDoubleCountedSerials) {
-			break
-		}
+	for listEntriesIndex < len(entries) && possibleDoubleCountIndex < len(b.possibleDoubleCountedSerials) {
 		if entries[listEntriesIndex] == b.possibleDoubleCountedSerials[possibleDoubleCountIndex] {
 			// This represents a double-counted entry
 			b.decrementTotalCertificatesCountNoReport()
@@ -746,19 +732,11 @@ func (b *backend) initializeStoredCertificateCounts(ctx context.Context) error {
 		}
 	}
 
-	sort.Slice(b.possibleDoubleCountedRevokedSerials, func(i, j int) bool {
-		return b.possibleDoubleCountedRevokedSerials[i] < b.possibleDoubleCountedRevokedSerials[j]
-	})
+	slices.Sort(b.possibleDoubleCountedRevokedSerials)
 
 	listRevokedEntriesIndex := 0
 	possibleRevokedDoubleCountIndex := 0
-	for {
-		if listRevokedEntriesIndex >= len(revokedEntries) {
-			break
-		}
-		if possibleRevokedDoubleCountIndex >= len(b.possibleDoubleCountedRevokedSerials) {
-			break
-		}
+	for listRevokedEntriesIndex < len(revokedEntries) && possibleRevokedDoubleCountIndex < len(b.possibleDoubleCountedRevokedSerials) {
 		if revokedEntries[listRevokedEntriesIndex] == b.possibleDoubleCountedRevokedSerials[possibleRevokedDoubleCountIndex] {
 			// This represents a double-counted revoked entry
 			b.decrementTotalRevokedCertificatesCountNoReport()
@@ -787,7 +765,7 @@ func (b *backend) initializeStoredCertificateCounts(ctx context.Context) error {
 }
 
 func (b *backend) emitCertStoreMetrics(config *tidyConfig) {
-	if config.PublishMetrics == true {
+	if config.PublishMetrics {
 		certCount := b.certCount.Load()
 		b.emitTotalCertCountMetric(certCount)
 		revokedCertCount := b.revokedCertCount.Load()

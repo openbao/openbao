@@ -428,7 +428,7 @@ func (b *backend) validateSignedKeyRequirements(publickey ssh.PublicKey, role *s
 				keyBits = k.N.BitLen()
 			case *dsa.PublicKey:
 				keyType = "dsa"
-				keyBits = k.Parameters.P.BitLen()
+				keyBits = k.P.BitLen()
 			case *ecdsa.PublicKey:
 				keyType = "ecdsa"
 				keyBits = k.Curve.Params().BitSize

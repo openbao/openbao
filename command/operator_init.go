@@ -5,6 +5,7 @@ package command
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/cli"
@@ -366,15 +367,8 @@ type machineInit struct {
 func newMachineInit(req *api.InitRequest, resp *api.InitResponse) *machineInit {
 	init := &machineInit{}
 
-	init.UnsealKeysHex = make([]string, len(resp.Keys))
-	for i, v := range resp.Keys {
-		init.UnsealKeysHex[i] = v
-	}
-
-	init.UnsealKeysB64 = make([]string, len(resp.KeysB64))
-	for i, v := range resp.KeysB64 {
-		init.UnsealKeysB64[i] = v
-	}
+	init.UnsealKeysHex = slices.Clone(resp.Keys)
+	init.UnsealKeysB64 = slices.Clone(resp.KeysB64)
 
 	// If we don't get a set of keys back, it means that we are storing the keys,
 	// so the key shares and threshold has been set to 1.
@@ -386,15 +380,8 @@ func newMachineInit(req *api.InitRequest, resp *api.InitResponse) *machineInit {
 		init.UnsealThreshold = req.SecretThreshold
 	}
 
-	init.RecoveryKeysHex = make([]string, len(resp.RecoveryKeys))
-	for i, v := range resp.RecoveryKeys {
-		init.RecoveryKeysHex[i] = v
-	}
-
-	init.RecoveryKeysB64 = make([]string, len(resp.RecoveryKeysB64))
-	for i, v := range resp.RecoveryKeysB64 {
-		init.RecoveryKeysB64[i] = v
-	}
+	init.RecoveryKeysHex = slices.Clone(resp.RecoveryKeys)
+	init.RecoveryKeysB64 = slices.Clone(resp.RecoveryKeysB64)
 
 	init.RecoveryShares = req.RecoveryShares
 	init.RecoveryThreshold = req.RecoveryThreshold

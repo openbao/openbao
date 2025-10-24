@@ -527,8 +527,8 @@ func (m *ExpirationManager) invalidate(key string) {
 		info, ok := m.pending.Load(leaseID)
 		switch {
 		case ok:
-			switch {
-			case le == nil:
+			switch le {
+			case nil:
 				// Handle lease deletion
 				pending := info.(pendingInfo)
 				pending.timer.Stop()
@@ -897,13 +897,8 @@ func (m *ExpirationManager) Stop() error {
 		return true
 	})
 
-	if m.inRestoreMode() {
-		for {
-			if !m.inRestoreMode() {
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
+	for m.inRestoreMode() {
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	m.emptyUniquePolicies.Stop()
@@ -1570,7 +1565,7 @@ func (m *ExpirationManager) Register(ctx context.Context, req *logical.Request, 
 	// ticking, so we'll end up always returning 299 instead of 300 or
 	// 26399 instead of 26400, say, even if it's just a few
 	// microseconds. This provides a nicer UX.
-	resp.Secret.TTL = le.ExpireTime.Sub(time.Now()).Round(time.Second)
+	resp.Secret.TTL = time.Until(le.ExpireTime).Round(time.Second)
 
 	// Done
 	return le.LeaseID, nil
@@ -1858,7 +1853,7 @@ func (m *ExpirationManager) updatePendingInternal(le *leaseEntry) {
 		return
 	}
 
-	leaseTotal := le.ExpireTime.Sub(time.Now())
+	leaseTotal := time.Until(le.ExpireTime)
 	leaseCreated := false
 
 	if le.isIrrevocable() {
@@ -1867,7 +1862,7 @@ func (m *ExpirationManager) updatePendingInternal(le *leaseEntry) {
 		// If this is the case, we need to know if the lease was previously counted
 		// so that we can maintain correct metric and quota lease counts.
 		_, leaseInIrrevocable := m.irrevocable.Load(le.LeaseID)
-		if !(leaseInPending || leaseInIrrevocable) {
+		if !leaseInPending && !leaseInIrrevocable {
 			leaseCreated = true
 		}
 

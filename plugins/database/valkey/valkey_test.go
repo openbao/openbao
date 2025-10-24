@@ -735,7 +735,7 @@ func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{fmt.Sprintf(testValkeyGroup)},
+			Commands: []string{testValkeyGroup},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),

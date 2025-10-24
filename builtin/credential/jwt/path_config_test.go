@@ -815,7 +815,7 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			config, err, caPEM := getCertificate(test.nameInCertificate)
+			config, caPEM, err := getCertificate(test.nameInCertificate)
 			require.NoError(t, err)
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				io.WriteString(w, "Hello")
@@ -835,7 +835,7 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 
 			rootCAString := ""
 			if test.addRootCA {
-				rootCAString = string(caPEM.Bytes())
+				rootCAString = caPEM.String()
 			}
 
 			caCtx, err := b.createCAContext(ctx, rootCAString, test.allowedServerNames)
@@ -859,7 +859,7 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 	}
 }
 
-func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPEM *bytes.Buffer) {
+func getCertificate(hostname string) (serverTLSConf *tls.Config, caPEM *bytes.Buffer, err error) {
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
 		Subject: pkix.Name{
@@ -881,12 +881,12 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 
 	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return serverTLSConf, err, caPEM
+		return serverTLSConf, caPEM, err
 	}
 
 	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
 	if err != nil {
-		return serverTLSConf, err, caPEM
+		return serverTLSConf, caPEM, err
 	}
 
 	caPEM = new(bytes.Buffer)
@@ -895,7 +895,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: caBytes,
 	})
 	if err != nil {
-		return serverTLSConf, err, caPEM
+		return serverTLSConf, caPEM, err
 	}
 
 	caPrivKeyPEM := new(bytes.Buffer)
@@ -904,7 +904,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
 	})
 	if err != nil {
-		return serverTLSConf, err, caPEM
+		return serverTLSConf, caPEM, err
 	}
 
 	cert := &x509.Certificate{
@@ -927,12 +927,12 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 
 	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		return serverTLSConf, err, caPEM
+		return serverTLSConf, caPEM, err
 	}
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, ca, &certPrivKey.PublicKey, caPrivKey)
 	if err != nil {
-		return serverTLSConf, err, caPEM
+		return serverTLSConf, caPEM, err
 	}
 
 	certPEM := new(bytes.Buffer)
@@ -941,7 +941,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: certBytes,
 	})
 	if err != nil {
-		return serverTLSConf, err, caPEM
+		return serverTLSConf, caPEM, err
 	}
 
 	certPrivKeyPEM := new(bytes.Buffer)
@@ -950,12 +950,12 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
 	})
 	if err != nil {
-		return serverTLSConf, err, caPEM
+		return serverTLSConf, caPEM, err
 	}
 
 	serverCert, err := tls.X509KeyPair(certPEM.Bytes(), certPrivKeyPEM.Bytes())
 	if err != nil {
-		return serverTLSConf, err, caPEM
+		return serverTLSConf, caPEM, err
 	}
 
 	serverTLSConf = &tls.Config{
@@ -963,7 +963,7 @@ func getCertificate(hostname string) (serverTLSConf *tls.Config, err error, caPE
 		ServerName:   hostname,
 	}
 
-	return serverTLSConf, err, caPEM
+	return serverTLSConf, caPEM, err
 }
 
 const (

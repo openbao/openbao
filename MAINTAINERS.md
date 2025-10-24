@@ -6,10 +6,10 @@ See the information about community membership roles to learn about the role of 
 
 | Name          | Email                        | GitHub                                     |
 |---------------|------------------------------|--------------------------------------------|
+| Alex Scheel   | alexander.m.scheel@gmail.com | [@cipherboy](https://github.com/cipherboy) |
 | Dan Ghita     | dghita@wallix.com            | [@DanGhita](https://github.com/DanGhita)   |
 | Jan Martens   | jan@martens.eu.org           | [@JanMa](https://github.com/JanMa)         |
 | Nathan Phelps | naphelps@us.ibm.com          | [@naphelps](https://github.com/naphelps)   |
-| Alex Scheel   | alexander.m.scheel@gmail.com | [@cipherboy](https://github.com/cipherboy) |
 
 ## Repository-Level Committers
 
@@ -18,6 +18,7 @@ See the information about community membership roles to learn about the role of 
 | Andrii Fedorchuk | [@driif](https://github.com/driif) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault), and [openbao-plugins `secrets/consul/`](https://github.com/openbao/openbao-plugins/tree/main/secrets/consul) |
 | Christoph Voigt  | [@voigt](https://github.com/voigt) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
 | Dave Dykstra     | [@DrDaveD](https://github.com/DrDaveD) | [`auth/jwt` and `auth/oidc`](https://github.com/openbao/openbao/tree/main/builtin/credential/jwt) |
+| Geoffrey Wilson  | [@suprjinx](https://github.com/suprjinx) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
 | Jonas Köhnen     | [@satoqz](https://github.com/satoqz) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
 | Pascal Reeb      | [@pree](https://github.com/pree) | [helm](https://github.com/openbao/openbao-helm), [csi-provider](https://github.com/openbao/openbao-csi-provider), [k8s](https://github.com/openbao/openbao-k8s), [secrets-operator](https://github.com/openbao/openbao-secrets-operator), and [openbao-plugins `secrets/consul/`](https://github.com/openbao/openbao-plugins/tree/main/secrets/consul)|
 | Philipp Stehle  | [@phil9909](https://github.com/phil9909) | [openbao-plugins `secrets/consul/`](https://github.com/openbao/openbao-plugins/tree/main/secrets/consul) |
@@ -25,7 +26,6 @@ See the information about community membership roles to learn about the role of 
 | Toni Tauro       | [@eyenx](https://github.com/eyenx) | [helm](https://github.com/openbao/openbao-helm), [csi-provider](https://github.com/openbao/openbao-csi-provider), [k8s](https://github.com/openbao/openbao-k8s), [secrets-operator](https://github.com/openbao/openbao-secrets-operator), and [openbao-plugins `secrets/consul/`](https://github.com/openbao/openbao-plugins/tree/main/secrets/consul) |
 | Wojciech Slabosz | [@wslabosz-reply](https://github.com/wslabosz-reply) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
 | Yannis           | [@Nerkho](https://github.com/Nerkho) | [helm](https://github.com/openbao/openbao-helm), [csi-provider](https://github.com/openbao/openbao-csi-provider), [k8s](https://github.com/openbao/openbao-k8s), [secrets-operator](https://github.com/openbao/openbao-secrets-operator), and [openbao-plugins `secrets/consul/`](https://github.com/openbao/openbao-plugins/tree/main/secrets/consul) |
-| Geoffrey Wilson  | [@suprjinx](https://github.com/suprjinx) | [`vault/`](https://github.com/openbao/openbao/tree/main/vault) |
 
 ## Organization-Level Moderators
 

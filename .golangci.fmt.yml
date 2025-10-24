@@ -10,3 +10,4 @@ formatters:
       module-path: github.com/openbao/openbao
 issues:
   max-issues-per-linter: 0
+  max-same-issues: 0

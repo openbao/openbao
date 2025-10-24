@@ -741,7 +741,7 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 			map[string]interface{}{
 				"serial_number": cb.SerialNumber,
 			})
-		resp.Secret.TTL = parsedBundle.Certificate.NotAfter.Sub(time.Now())
+		resp.Secret.TTL = time.Until(parsedBundle.Certificate.NotAfter)
 	}
 
 	if data.Get("private_key_format").(string) == "pkcs8" {
@@ -1035,7 +1035,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 			map[string]interface{}{
 				"serial_number": cb.SerialNumber,
 			})
-		resp.Secret.TTL = parsedBundle.Certificate.NotAfter.Sub(time.Now())
+		resp.Secret.TTL = time.Until(parsedBundle.Certificate.NotAfter)
 	} else {
 		// Non-Leased Certificate
 		resp = &logical.Response{

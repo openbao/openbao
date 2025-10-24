@@ -93,7 +93,7 @@ func BenchmarkHTTP_Forwarding_Stress(b *testing.B) {
 
 	doReq(b, "POST", host+"keys/test1", bytes.NewBuffer([]byte("{}")))
 	keyUrl := host + "encrypt/test1"
-	reqBuf := []byte(fmt.Sprintf("{\"plaintext\": \"%s\"}", testPlaintextB64))
+	reqBuf := fmt.Appendf(nil, "{\"plaintext\": \"%s\"}", testPlaintextB64)
 
 	b.Run("doreq", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {

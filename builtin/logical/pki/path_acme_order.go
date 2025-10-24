@@ -1054,7 +1054,7 @@ func (b *backend) acmeTidyOrder(sc *storageContext, accountId string, orderPath 
 		}
 		orderExpiry = order.Expires
 	}
-	if shouldTidy == false {
+	if !shouldTidy {
 		return shouldTidy, orderExpiry, nil
 	}
 

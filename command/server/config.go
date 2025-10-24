@@ -228,7 +228,7 @@ storage "%s" {
 
 ui = true
 `
-	certDirEscaped := strings.Replace(certDir, "\\", "\\\\", -1)
+	certDirEscaped := strings.ReplaceAll(certDir, "\\", "\\\\")
 	hclStr = fmt.Sprintf(hclStr, certDirEscaped, certDirEscaped, storageType)
 	parsed, err := ParseConfig(hclStr, "")
 	if err != nil {

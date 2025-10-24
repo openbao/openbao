@@ -169,7 +169,7 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (publicKey stri
 		keyType := data.Get("key_type").(string)
 		keyBits := data.Get("key_bits").(int)
 
-		publicKey, privateKey, err = generateSSHKeyPair(b.Backend.GetRandomReader(), keyType, keyBits)
+		publicKey, privateKey, err = generateSSHKeyPair(b.GetRandomReader(), keyType, keyBits)
 		if err != nil {
 			err = errutil.InternalError{Err: err.Error()}
 			return publicKey, privateKey, generateSigningKey, err

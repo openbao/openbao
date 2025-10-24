@@ -531,7 +531,7 @@ func (c *AgentCommand) Run(args []string) int {
 
 		// Parse 'require_request_header' listener config option, and wrap
 		// the request handler if necessary
-		if lnConfig.RequireRequestHeader && ("metrics_only" != lnConfig.Role) {
+		if lnConfig.RequireRequestHeader && (lnConfig.Role != "metrics_only") {
 			muxHandler = verifyRequestHeader(muxHandler)
 		}
 
@@ -540,7 +540,7 @@ func (c *AgentCommand) Run(args []string) int {
 		quitEnabled := lnConfig.AgentAPI != nil && lnConfig.AgentAPI.EnableQuit
 
 		mux.Handle(consts.AgentPathMetrics, c.handleMetrics())
-		if "metrics_only" != lnConfig.Role {
+		if lnConfig.Role != "metrics_only" {
 			mux.Handle(consts.AgentPathCacheClear, leaseCache.HandleCacheClear(ctx))
 			mux.Handle(consts.AgentPathQuit, c.handleQuit(quitEnabled))
 			mux.Handle("/", muxHandler)
@@ -970,7 +970,7 @@ func (c *AgentCommand) storePidFile(pidPath string) error {
 
 	// Write out the PID
 	pid := os.Getpid()
-	_, err = pidFile.WriteString(fmt.Sprintf("%d", pid))
+	_, err = fmt.Fprintf(pidFile, "%d", pid)
 	if err != nil {
 		return fmt.Errorf("could not write to pid file: %w", err)
 	}

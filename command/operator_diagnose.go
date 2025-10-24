@@ -36,7 +36,8 @@ import (
 	"golang.org/x/term"
 )
 
-const CoreConfigUninitializedErr = "Diagnose cannot attempt this step because core config could not be set."
+//nolint:staticcheck // user-facing error
+var ErrCoreConfigUninitialized = errors.New("Diagnose cannot attempt this step because core config could not be set.")
 
 var (
 	_ cli.Command             = (*OperatorDiagnoseCommand)(nil)
@@ -70,7 +71,7 @@ Usage: bao operator diagnose
   reproduced.
 
   Start diagnose with a configuration file:
-    
+
      $ bao operator diagnose -config=/etc/openbao/config.hcl
 
   Perform a diagnostic check while OpenBao is still running:
@@ -424,7 +425,7 @@ SEALFAIL:
 			if seal.Type == "transit" {
 				checkSealTransit = true
 
-				tlsSkipVerify, _ := seal.Config["tls_skip_verify"]
+				tlsSkipVerify := seal.Config["tls_skip_verify"]
 				if tlsSkipVerify == "true" {
 					diagnose.Warn(ctx, "TLS verification is skipped. This is highly discouraged and decreases the security of data transmissions to and from the Vault server.")
 					return nil
@@ -533,7 +534,7 @@ SEALFAIL:
 	diagnose.Test(ctx, "Check Core Creation", func(ctx context.Context) error {
 		var newCoreError error
 		if coreConfig.RawConfig == nil {
-			return fmt.Errorf(CoreConfigUninitializedErr)
+			return ErrCoreConfigUninitialized
 		}
 		core, newCoreError := vault.CreateCore(&coreConfig)
 		if newCoreError != nil {
@@ -574,8 +575,12 @@ SEALFAIL:
 
 		// Make sure we close all listeners from this point on
 		listenerCloseFunc := func() {
+			var errs error
 			for _, ln := range lns {
-				ln.Listener.Close()
+				errs = errors.Join(errs, ln.Close())
+			}
+			if errs != nil {
+				diagnose.SpotWarn(ctx, "Close Listeners", errs.Error())
 			}
 		}
 

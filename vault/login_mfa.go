@@ -262,7 +262,7 @@ func (i *IdentityStore) handleMFAMethodReadCommon(ctx context.Context, req *logi
 	}
 
 	// reading the method config either from the same namespace or from the parent or from the child should all work
-	if !(ns.ID == mfaNs.ID || mfaNs.HasParent(ns) || ns.HasParent(mfaNs)) {
+	if ns.ID != mfaNs.ID && !mfaNs.HasParent(ns) && !ns.HasParent(mfaNs) {
 		return logical.ErrorResponse("request namespace does not match method namespace"), logical.ErrPermissionDenied
 	}
 
@@ -1301,8 +1301,8 @@ func (b *LoginMFABackend) mfaMethodList(ctx context.Context, methodType string) 
 	txn := b.db.Txn(false)
 
 	var iter memdb.ResultIterator
-	switch {
-	case methodType == "":
+	switch methodType {
+	case "":
 		// get all the configs
 		iter, err = txn.Get(b.methodTable, "id")
 		if err != nil {
@@ -1342,7 +1342,7 @@ func (b *LoginMFABackend) mfaMethodList(ctx context.Context, methodType string) 
 		}
 
 		// the namespaces have to match, or the config namespace needs to be a parent of the request namespace
-		if !(ns.ID == mfaNs.ID || ns.HasParent(mfaNs)) {
+		if ns.ID != mfaNs.ID && !ns.HasParent(mfaNs) {
 			continue
 		}
 
@@ -1880,13 +1880,13 @@ func (c *Core) validateDuo(ctx context.Context, mfaFactors *MFAFactor, mConfig *
 	}
 	var message string
 	var messageDetail string
-	if check.StatResult.Message != nil {
-		message = *check.StatResult.Message
+	if check.Message != nil {
+		message = *check.Message
 	}
-	if check.StatResult.Message_Detail != nil {
-		messageDetail = *check.StatResult.Message_Detail
+	if check.Message_Detail != nil {
+		messageDetail = *check.Message_Detail
 	}
-	if check.StatResult.Stat != "OK" {
+	if check.Stat != "OK" {
 		return fmt.Errorf("check against Duo failed; message (if given): %q; message detail (if given): %q", message, messageDetail)
 	}
 
@@ -1897,8 +1897,8 @@ func (c *Core) validateDuo(ctx context.Context, mfaFactors *MFAFactor, mConfig *
 	if preauth == nil {
 		return errors.New("failed to perform Duo preauth")
 	}
-	if preauth.StatResult.Stat != "OK" {
-		return fmt.Errorf("failed to perform Duo preauth: %q - %q", *preauth.StatResult.Message, *preauth.StatResult.Message_Detail)
+	if preauth.Stat != "OK" {
+		return fmt.Errorf("failed to perform Duo preauth: %q - %q", *preauth.Message, *preauth.Message_Detail)
 	}
 
 	switch preauth.Response.Result {
@@ -1934,8 +1934,8 @@ func (c *Core) validateDuo(ctx context.Context, mfaFactors *MFAFactor, mConfig *
 	if err != nil {
 		return fmt.Errorf("failed to authenticate with Duo: %w", err)
 	}
-	if result.StatResult.Stat != "OK" {
-		return fmt.Errorf("failed to authenticate with Duo: %q - %q", *result.StatResult.Message, *result.StatResult.Message_Detail)
+	if result.Stat != "OK" {
+		return fmt.Errorf("failed to authenticate with Duo: %q - %q", *result.Message, *result.Message_Detail)
 	}
 	if result.Response.Txid == "" {
 		return errors.New("failed to get transaction ID for Duo authentication")
@@ -1951,8 +1951,8 @@ func (c *Core) validateDuo(ctx context.Context, mfaFactors *MFAFactor, mConfig *
 		if statusResult == nil {
 			return fmt.Errorf("failed to get authentication status from Duo: %w", err)
 		}
-		if statusResult.StatResult.Stat != "OK" {
-			return fmt.Errorf("failed to get authentication status from Duo: %q - %q", *statusResult.StatResult.Message, *statusResult.StatResult.Message_Detail)
+		if statusResult.Stat != "OK" {
+			return fmt.Errorf("failed to get authentication status from Duo: %q - %q", *statusResult.Message, *statusResult.Message_Detail)
 		}
 
 		switch statusResult.Response.Result {

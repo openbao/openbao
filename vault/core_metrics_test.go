@@ -119,13 +119,14 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 	for _, glv := range values {
 		mountPoint := ""
 		for _, l := range glv.Labels {
-			if l.Name == "mount_point" {
+			switch l.Name {
+			case "mount_point":
 				mountPoint = l.Value
-			} else if l.Name == "namespace" {
+			case "namespace":
 				if l.Value != "root" {
 					t.Errorf("Namespace is %v, not root", l.Value)
 				}
-			} else {
+			default:
 				t.Errorf("Unexpected label %v", l.Name)
 			}
 		}

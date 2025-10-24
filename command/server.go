@@ -580,8 +580,12 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	listenerCloseFunc := func() {
+		var errs error
 		for _, ln := range lns {
-			ln.Listener.Close()
+			errs = errors.Join(errs, ln.Close())
+		}
+		if errs != nil {
+			c.UI.Error(fmt.Sprintf("Error closing listeners: %v", errs))
 		}
 	}
 
@@ -1283,8 +1287,12 @@ func (c *ServerCommand) Run(args []string) int {
 
 	// Make sure we close all listeners from this point on
 	listenerCloseFunc := func() {
+		var errs error
 		for _, ln := range lns {
-			ln.Listener.Close()
+			errs = errors.Join(errs, ln.Close())
+		}
+		if errs != nil {
+			c.UI.Error(fmt.Sprintf("Error closing listeners: %v", errs))
 		}
 	}
 
@@ -2383,7 +2391,7 @@ func (c *ServerCommand) storePidFile(pidPath string) error {
 
 	// Write out the PID
 	pid := os.Getpid()
-	_, err = pidFile.WriteString(fmt.Sprintf("%d", pid))
+	_, err = fmt.Fprintf(pidFile, "%d", pid)
 	if err != nil {
 		return fmt.Errorf("could not write to pid file: %w", err)
 	}
@@ -2486,7 +2494,7 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 			config.Seals = append(config.Seals, &configutil.KMS{Type: wrapping.WrapperTypeShamir.String()})
 		}
 	}
-	var createdSeals []vault.Seal = make([]vault.Seal, len(config.Seals))
+	createdSeals := make([]vault.Seal, len(config.Seals))
 	for _, configSeal := range config.Seals {
 		sealType := configSeal.Type
 		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {

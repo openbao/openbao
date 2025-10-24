@@ -104,7 +104,7 @@ var (
 	displayNameSanitize = regexp.MustCompile("[^a-zA-Z0-9-]")
 
 	// pathSuffixSanitize is used to ensure a path suffix in a role is valid.
-	pathSuffixSanitize = regexp.MustCompile("\\w[\\w-.]+\\w")
+	pathSuffixSanitize = regexp.MustCompile(`\w[\w-.]+\w`)
 
 	destroyCubbyhole = func(ctx context.Context, ts *TokenStore, te *logical.TokenEntry) error {
 		if ts.cubbyholeBackend == nil {
@@ -821,9 +821,12 @@ func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *l
 		BackendType: logical.TypeCredential,
 	}
 
-	t.Backend.Paths = append(t.Backend.Paths, t.paths()...)
+	t.Paths = append(t.Paths, t.paths()...)
 
-	t.Backend.Setup(ctx, config)
+	err := t.Setup(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set up token store: %w", err)
+	}
 
 	if err := t.loadSSCTokensGenerationCounter(ctx); err != nil {
 		return t, err
@@ -1785,9 +1788,9 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 
 	var ret *logical.TokenEntry
 
-	switch {
+	switch le {
 	// It's any kind of expiring token with no lease, immediately delete it
-	case le == nil:
+	case nil:
 		tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return nil, err
@@ -1928,8 +1931,8 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 		parentNS := tokenNS
 
 		if parentNSID != tokenNS.ID {
-			switch {
-			case parentNSID == "":
+			switch parentNSID {
+			case "":
 				parentNS = namespace.RootNamespace
 			default:
 				parentNS, err = ts.core.NamespaceByID(ctx, parentNSID)
@@ -2421,8 +2424,8 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 
 				lock.RUnlock()
 
-				switch {
-				case te == nil:
+				switch te {
+				case nil:
 					// If token entry is not found assume that the token is not valid any
 					// more and conclude that accessor, leases, and secondary index entries
 					// for this token should not exist as well.
@@ -3178,8 +3181,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	// need to explicitly check
 	if role != nil && te.Type != logical.TokenTypeBatch {
 		if role.TokenExplicitMaxTTL != 0 {
-			switch {
-			case explicitMaxTTLToUse == 0:
+			switch explicitMaxTTLToUse {
+			case 0:
 				explicitMaxTTLToUse = role.TokenExplicitMaxTTL
 			default:
 				if role.TokenExplicitMaxTTL < explicitMaxTTLToUse {
@@ -3189,8 +3192,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 			}
 		}
 		if role.TokenPeriod != 0 {
-			switch {
-			case periodToUse == 0:
+			switch periodToUse {
+			case 0:
 				periodToUse = role.TokenPeriod
 			default:
 				if role.TokenPeriod < periodToUse {

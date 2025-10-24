@@ -221,7 +221,7 @@ func (f *FSM) openDBFile(dbPath string) error {
 	if err != nil {
 		return err
 	}
-	elapsed := time.Now().Sub(start)
+	elapsed := time.Since(start)
 	f.logger.Debug("time to open database", "elapsed", elapsed, "path", dbPath)
 	metrics.MeasureSince([]string{"raft_storage", "fsm", "open_db_file"}, start)
 

@@ -17,10 +17,7 @@ const (
 )
 
 func IsDir(info fs.FileInfo) bool {
-	if info.Mode().IsDir() {
-		return true
-	}
-	return false
+	return info.Mode().IsDir()
 }
 
 func HasDB(path string) bool {

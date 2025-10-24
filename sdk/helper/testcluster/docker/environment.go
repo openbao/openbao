@@ -582,8 +582,8 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 			},
 		},
 	}
-	if opts.ClusterOptions.VaultNodeConfig != nil && opts.ClusterOptions.VaultNodeConfig.AdditionalListeners != nil {
-		lsCfg := opts.ClusterOptions.VaultNodeConfig.AdditionalListeners
+	if opts.VaultNodeConfig != nil && opts.VaultNodeConfig.AdditionalListeners != nil {
+		lsCfg := opts.VaultNodeConfig.AdditionalListeners
 		listeners = append(listeners, lsCfg...)
 		for _, lCfgRaw := range lsCfg {
 			lCfg := lCfgRaw.(map[string]interface{})
@@ -1020,7 +1020,7 @@ func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClu
 		}
 	}
 	dc.RootCAs = x509.NewCertPool()
-	dc.RootCAs.AddCert(dc.CA.CACert)
+	dc.RootCAs.AddCert(dc.CACert)
 
 	if dc.storage != nil {
 		if err := dc.storage.Start(ctx, &opts.ClusterOptions); err != nil {

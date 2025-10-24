@@ -1448,7 +1448,7 @@ func testPolicyFuzzingCommon(t *testing.T, be *backend) {
 		// t.Errorf("Starting %d", id)
 		for {
 			// Stop after 10 seconds
-			if time.Now().Sub(startTime) > 10*time.Second {
+			if time.Since(startTime) > 10*time.Second {
 				return
 			}
 
@@ -1638,7 +1638,7 @@ func TestTransit_AutoRotateKeys(t *testing.T) {
 					t.Fatal("failed to create backend")
 				}
 
-				err := b.Backend.Setup(context.Background(), conf)
+				err := b.Setup(context.Background(), conf)
 				if err != nil {
 					t.Fatal(err)
 				}

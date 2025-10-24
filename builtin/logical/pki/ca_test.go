@@ -557,13 +557,14 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 			}
 
 			var crlBytes []byte
-			if derPemOrJSON == 2 {
+			switch derPemOrJSON {
+			case 2:
 				// Old endpoint
 				crlBytes = []byte(resp.Data["certificate"].(string))
-			} else if derPemOrJSON == 3 {
+			case 3:
 				// New endpoint
 				crlBytes = []byte(resp.Data["crl"].(string))
-			} else {
+			default:
 				// DER or PEM
 				crlBytes = resp.Data["http_raw_body"].([]byte)
 			}

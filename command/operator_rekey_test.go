@@ -12,9 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
-
 	"github.com/hashicorp/cli"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/api/v2"
 )
 
@@ -325,7 +324,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength)
+		otp, err := base62.Random(rootStatus.OTPLength)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -554,7 +553,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		otp, err := roottoken.GenerateOTP(rootStatus.OTPLength)
+		otp, err := base62.Random(rootStatus.OTPLength)
 		if err != nil {
 			t.Fatal(err)
 		}

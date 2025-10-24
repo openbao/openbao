@@ -17,6 +17,12 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
+var namespaceNameSchema = &framework.FieldSchema{
+	Type:        framework.TypeString,
+	Required:    true,
+	Description: "Name of the namespace.",
+}
+
 func (b *SystemBackend) namespacePaths() []*framework.Path {
 	namespaceListSchema := map[string]*framework.FieldSchema{
 		"keys": {
@@ -65,12 +71,6 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			Required:    false,
 			Description: "Generated key shares per seal for the namespace.",
 		},
-	}
-
-	namespaceNameSchema := &framework.FieldSchema{
-		Type:        framework.TypeString,
-		Required:    true,
-		Description: "Name of the namespace.",
 	}
 
 	return []*framework.Path{
@@ -398,7 +398,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		} else {
 			// if there's no seal config provided we need to initialize the namespace
-			if err := b.Core.namespaceStore.initializeNamespace(ctx, entry); err != nil {
+			if err := b.Core.namespaceStore.initializeNamespace(ctx, b.Core.namespaceStore.storage, entry); err != nil {
 				return handleError(err)
 			}
 		}

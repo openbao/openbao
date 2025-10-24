@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	uuid "github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/xor"
 )
 
@@ -33,7 +33,6 @@ func DecodeToken(encoded, otp string, otpLength int) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("error decoding base64'd token: %v", err)
 		}
-
 		tokenBytes, err = xor.XORBytes(tokenBytes, []byte(otp))
 		if err != nil {
 			return "", fmt.Errorf("error xoring token: %v", err)

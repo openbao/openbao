@@ -17,12 +17,6 @@ import (
 
 type namespaceExtractor func(ctx context.Context, data *framework.FieldData) (*namespace.Namespace, error)
 
-var namespaceFieldSchema = framework.FieldSchema{
-	Type:        framework.TypeString,
-	Required:    true,
-	Description: "Name of the namespace.",
-}
-
 func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 	return []*framework.Path{
 		{
@@ -34,7 +28,7 @@ func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 				OperationSuffix: "encryption-key",
 			},
 			Fields: map[string]*framework.FieldSchema{
-				"namespace": &namespaceFieldSchema,
+				"namespace": namespaceNameSchema,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -60,7 +54,7 @@ func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 				OperationSuffix: "encryption-key",
 			},
 			Fields: map[string]*framework.FieldSchema{
-				"namespace":      &namespaceFieldSchema,
+				"namespace":      namespaceNameSchema,
 				"enabled":        rotateConfigSchema["enabled"],
 				"max_operations": rotateConfigSchema["max_operations"],
 				"interval":       rotateConfigSchema["interval"],
@@ -109,7 +103,7 @@ func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 				OperationSuffix: "rotate-attempt",
 			},
 			Fields: map[string]*framework.FieldSchema{
-				"namespace":            &namespaceFieldSchema,
+				"namespace":            namespaceNameSchema,
 				"secret_shares":        rotateInitRequestSchema["secret_shares"],
 				"secret_threshold":     rotateInitRequestSchema["secret_threshold"],
 				"pgp_keys":             rotateInitRequestSchema["pgp_keys"],
@@ -176,7 +170,7 @@ func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 				OperationSuffix: "rotate-attempt",
 			},
 			Fields: map[string]*framework.FieldSchema{
-				"namespace": &namespaceFieldSchema,
+				"namespace": namespaceNameSchema,
 				"key": {
 					Type:        framework.TypeString,
 					Required:    true,
@@ -219,7 +213,7 @@ func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 			},
 
 			Fields: map[string]*framework.FieldSchema{
-				"namespace": &namespaceFieldSchema,
+				"namespace": namespaceNameSchema,
 				"key": {
 					Type:        framework.TypeString,
 					Description: "Specifies a single unseal share key from the new set of shares.",
@@ -290,7 +284,7 @@ func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 				OperationSuffix: "unseal-keys",
 			},
 			Fields: map[string]*framework.FieldSchema{
-				"namespace": &namespaceFieldSchema,
+				"namespace": namespaceNameSchema,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{

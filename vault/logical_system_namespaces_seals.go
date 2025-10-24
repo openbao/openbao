@@ -19,18 +19,6 @@ import (
 )
 
 func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
-	namespaceFieldsSchema := map[string]*framework.FieldSchema{
-		"name": {
-			Type:        framework.TypeString,
-			Required:    true,
-			Description: "Name of the namespace.",
-		},
-		"key": {
-			Type:        framework.TypeString,
-			Description: "Specifies a single namespace unseal key share.",
-		},
-	}
-
 	sealStatusSchema := map[string]*framework.FieldSchema{
 		"type": {
 			Type:     framework.TypeString,
@@ -60,29 +48,6 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			Type:     framework.TypeString,
 			Required: true,
 		},
-		"version": {
-			Type:     framework.TypeString,
-			Required: true,
-		},
-		"build_date": {
-			Type:     framework.TypeString,
-			Required: true,
-		},
-		"migration": {
-			Type: framework.TypeBool,
-		},
-		"cluster_name": {
-			Type: framework.TypeString,
-		},
-		"cluster_id": {
-			Type: framework.TypeString,
-		},
-		"recovery_seal": {
-			Type: framework.TypeBool,
-		},
-		"storage_type": {
-			Type: framework.TypeString,
-		},
 	}
 
 	return []*framework.Path{
@@ -94,7 +59,7 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 				OperationSuffix: "encryption-key",
 			},
 			Fields: map[string]*framework.FieldSchema{
-				"name": namespaceFieldsSchema["name"],
+				"name": namespaceNameSchema,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -133,7 +98,7 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 				OperationSuffix: "seal",
 			},
 			Fields: map[string]*framework.FieldSchema{
-				"name": namespaceFieldsSchema["name"],
+				"name": namespaceNameSchema,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -159,7 +124,7 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 				OperationPrefix: "namespaces",
 			},
 			Fields: map[string]*framework.FieldSchema{
-				"name": namespaceFieldsSchema["name"],
+				"name": namespaceNameSchema,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -180,7 +145,17 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
 			},
-			Fields: namespaceFieldsSchema,
+			Fields: map[string]*framework.FieldSchema{
+				"name": namespaceNameSchema,
+				"key": {
+					Type:        framework.TypeString,
+					Description: "Specifies a single namespace unseal key share.",
+				},
+				"reset": {
+					Type:        framework.TypeBool,
+					Description: "Specifies whether to reset an unseal process progress.",
+				},
+			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
@@ -261,7 +236,15 @@ func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{"seal_status": status},
+			Data: map[string]interface{}{
+				"type":        status.Type,
+				"initialized": status.Initialized,
+				"sealed":      status.Sealed,
+				"t":           status.T,
+				"n":           status.N,
+				"progress":    status.Progress,
+				"nonce":       status.Nonce,
+			},
 		}, nil
 	}
 }
@@ -287,23 +270,8 @@ func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
 func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		name := namespace.Canonicalize(data.Get("name").(string))
-		key := data.Get("key").(string)
-
 		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
 			return nil, errors.New("name must not contain /")
-		}
-
-		if key == "" {
-			return nil, errors.New("provided key is empty")
-		}
-
-		var decodedKey []byte
-		decodedKey, err := hex.DecodeString(key)
-		if err != nil {
-			decodedKey, err = base64.StdEncoding.DecodeString(key)
-			if err != nil {
-				return handleError(err)
-			}
 		}
 
 		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
@@ -315,18 +283,37 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
-		err = b.Core.namespaceStore.UnsealNamespace(ctx, name, decodedKey)
-		if err != nil {
-			invalidKeyErr := &ErrInvalidKey{}
-			switch {
-			case errors.As(err, &invalidKeyErr):
-			case errors.Is(err, ErrBarrierInvalidKey):
-			case errors.Is(err, ErrBarrierNotInit):
-			case errors.Is(err, ErrBarrierSealed):
-			default:
-				return handleError(logical.CodedError(http.StatusInternalServerError, err.Error()))
+		resetFlag := data.Get("reset").(bool)
+		if resetFlag {
+			b.Core.sealManager.ResetUnsealProcess(ns.UUID)
+		} else {
+			key := data.Get("key").(string)
+			if key == "" {
+				return nil, errors.New("provided key is empty")
 			}
-			return handleError(err)
+
+			var decodedKey []byte
+			decodedKey, err = hex.DecodeString(key)
+			if err != nil {
+				decodedKey, err = base64.StdEncoding.DecodeString(key)
+				if err != nil {
+					return handleError(err)
+				}
+			}
+
+			err = b.Core.namespaceStore.UnsealNamespace(ctx, name, decodedKey)
+			if err != nil {
+				invalidKeyErr := &ErrInvalidKey{}
+				switch {
+				case errors.As(err, &invalidKeyErr):
+				case errors.Is(err, ErrBarrierInvalidKey):
+				case errors.Is(err, ErrBarrierNotInit):
+				case errors.Is(err, ErrBarrierSealed):
+				default:
+					return handleError(logical.CodedError(http.StatusInternalServerError, err.Error()))
+				}
+				return handleError(err)
+			}
 		}
 
 		status, err := b.Core.sealManager.GetSealStatus(ctx, ns)
@@ -335,7 +322,15 @@ func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{"seal_status": status},
+			Data: map[string]interface{}{
+				"type":        status.Type,
+				"initialized": status.Initialized,
+				"sealed":      status.Sealed,
+				"t":           status.T,
+				"n":           status.N,
+				"progress":    status.Progress,
+				"nonce":       status.Nonce,
+			},
 		}, nil
 	}
 }

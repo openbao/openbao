@@ -952,14 +952,22 @@ func (m *ExpirationManager) lazyRevokeInternal(ctx context.Context, leaseID stri
 
 // should be run on a schedule. something like once a day, maybe once a week
 func (m *ExpirationManager) attemptIrrevocableLeasesRevoke() {
+	m.core.stateLock.RLock()
+	activeContext := m.core.activeContext
+	m.core.stateLock.RUnlock()
+
 	m.irrevocable.Range(func(k, v interface{}) bool {
+		if activeContext.Err() != nil {
+			return false
+		}
+
 		leaseID := k.(string)
 		le := v.(*leaseEntry)
 
 		if le.ExpireTime.Add(time.Hour).Before(time.Now()) {
 			// if we get an error (or no namespace) note it, but continue attempting
 			// to revoke other leases
-			leaseNS, err := m.getNamespaceFromLeaseID(m.core.activeContext, leaseID)
+			leaseNS, err := m.getNamespaceFromLeaseID(activeContext, leaseID)
 			if err != nil {
 				m.logger.Debug("could not get lease namespace from ID", "error", err)
 				return true
@@ -969,7 +977,7 @@ func (m *ExpirationManager) attemptIrrevocableLeasesRevoke() {
 				return true
 			}
 
-			ctxWithNS := namespace.ContextWithNamespace(m.core.activeContext, leaseNS)
+			ctxWithNS := namespace.ContextWithNamespace(activeContext, leaseNS)
 			ctxWithNSAndTimeout, cancel := context.WithTimeout(ctxWithNS, time.Minute)
 			defer cancel()
 			if err := m.revokeCommon(ctxWithNSAndTimeout, leaseID, false, false); err != nil {

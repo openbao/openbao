@@ -27,7 +27,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
 const (
@@ -256,7 +255,7 @@ func (t *MountTable) shallowClone() *MountTable {
 func (old *MountTable) delta(new *MountTable) (additions []*MountEntry, deletions []*MountEntry) {
 	if old == nil {
 		additions = new.Entries
-		return
+		return additions, deletions
 	}
 
 	additions = slices.Clone(new.Entries)
@@ -286,7 +285,7 @@ func (old *MountTable) delta(new *MountTable) (additions []*MountEntry, deletion
 		}
 	}
 
-	return
+	return additions, deletions
 }
 
 // setTaint is used to set the taint on given entry Accepts either the mount
@@ -798,6 +797,10 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
 		if err := c.persistMounts(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
+			if logical.ShouldForward(err) {
+				return err
+			}
+
 			c.logger.Error("failed to update mount table", "error", err)
 			return logical.CodedError(500, "failed to update mount table")
 		}
@@ -2483,6 +2486,12 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 		keys = []string{coreMountConfigPath, coreLocalMountConfigPath, coreAuthConfigPath, coreLocalAuthConfigPath}
 	}
 
+	// If we have a transactional storage backend, assume the primary will
+	// migrate us to a new storage layout and return early.
+	if _, ok := c.barrier.(logical.TransactionalStorage); ok {
+		return nil
+	}
+
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		if err != namespace.ErrNoNamespace {
@@ -2533,6 +2542,9 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 	c.mountsLock.RLock()
 	c.authLock.RLock()
 	for _, table := range []*MountTable{c.mounts, c.auth} {
+		if table == nil {
+			continue
+		}
 		for _, entry := range table.Entries {
 			if ns.ID != namespace.RootNamespaceID && ns.ID != entry.NamespaceID {
 				continue
@@ -2702,115 +2714,4 @@ func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desi
 	}
 
 	return nil
-}
-
-type mountInvalidationWorker struct {
-	l                      sync.Mutex
-	invalidations          map[mountInvalidation]struct{}
-	namespaceInvalidations map[string]struct{}
-	legacyInvalidations    map[string]struct{}
-	notify                 chan struct{}
-
-	core *Core
-}
-
-func newMountInvalidationWorker(c *Core) *mountInvalidationWorker {
-	return &mountInvalidationWorker{
-		invalidations:          map[mountInvalidation]struct{}{},
-		namespaceInvalidations: map[string]struct{}{},
-		legacyInvalidations:    map[string]struct{}{},
-		core:                   c,
-		notify:                 make(chan struct{}, 1),
-	}
-}
-
-func (w *mountInvalidationWorker) loop(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-w.notify:
-		}
-
-		err := w.dispatchReloads(ctx)
-		if err != nil {
-			w.core.logger.Error("failed to dispatch mount reloads, restarting core", "err", err)
-			w.core.restart()
-			return
-		}
-	}
-}
-
-func (w *mountInvalidationWorker) dispatchReloads(ctx context.Context) error {
-	w.l.Lock()
-	invalidations := w.invalidations
-	namespaceInvalidations := w.namespaceInvalidations
-	legacyInvalidations := w.legacyInvalidations
-	w.invalidations = map[mountInvalidation]struct{}{}
-	w.namespaceInvalidations = map[string]struct{}{}
-	w.legacyInvalidations = map[string]struct{}{}
-	w.l.Unlock()
-
-	for invalidation := range invalidations {
-		ns, err := w.core.namespaceStore.GetNamespace(ctx, invalidation.namespaceUUID)
-		if err != nil {
-			return err
-		}
-		err = w.core.reloadMount(namespace.ContextWithNamespace(ctx, ns), invalidation.key)
-		if err != nil {
-			return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", invalidation.key, invalidation.namespaceUUID, err)
-		}
-	}
-	for uuid := range namespaceInvalidations {
-		err := w.core.reloadNamespaceMounts(physical.CacheRefreshContext(ctx, true), uuid)
-		if err != nil {
-			return fmt.Errorf("unable to invalidate mounts in namespace %q: %w", uuid, err)
-		}
-	}
-	for key := range legacyInvalidations {
-		err := w.core.reloadLegacyMounts(ctx, key)
-		if err != nil {
-			return fmt.Errorf("unable to invalidate non-transactional mounts %q: %w", key, err)
-		}
-	}
-
-	return nil
-}
-
-func (w *mountInvalidationWorker) trigger() {
-	select {
-	case w.notify <- struct{}{}:
-	default:
-	}
-}
-
-type mountInvalidation struct {
-	namespaceUUID, key string
-}
-
-func (w *mountInvalidationWorker) invalidateMount(namespaceUUID, key string) {
-	w.l.Lock()
-	defer w.l.Unlock()
-
-	w.invalidations[mountInvalidation{
-		namespaceUUID: namespaceUUID,
-		key:           key,
-	}] = struct{}{}
-	w.trigger()
-}
-
-func (w *mountInvalidationWorker) invalidateNamespaceMounts(namespaceUUID string) {
-	w.l.Lock()
-	defer w.l.Unlock()
-
-	w.namespaceInvalidations[namespaceUUID] = struct{}{}
-	w.trigger()
-}
-
-func (w *mountInvalidationWorker) invalidateLegacyMounts(key string) {
-	w.l.Lock()
-	defer w.l.Unlock()
-
-	w.legacyInvalidations[key] = struct{}{}
-	w.trigger()
 }

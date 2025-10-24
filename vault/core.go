@@ -297,7 +297,7 @@ type Core struct {
 	standby              atomic.Bool
 	standbyDoneCh        chan struct{}
 	standbyStopCh        *atomic.Value
-	restartCh            chan struct{}
+	restartCh            *atomic.Value
 	manualStepDownCh     chan struct{}
 	keepHALockOnStepDown *uint32
 	heldHALock           physical.Lock
@@ -327,8 +327,6 @@ type Core struct {
 	// mounts is loaded after unseal since it is a protected
 	// configuration
 	mounts *MountTable
-
-	mountInvalidationWorker *mountInvalidationWorker
 
 	// mountsLock is used to ensure that the mounts table does not
 	// change underneath a calling function
@@ -651,12 +649,20 @@ type Core struct {
 	// Whether we use a single global memdb instance for identity; see
 	// commentary below.
 	unsafeCrossNamespaceIdentity bool
+
+	// Core invalidation tracker handles dispatching invalidations and
+	// refreshing the Core-adjacent caches afterwards.
+	invalidations *invalidationManager
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
 func (c *Core) HAState() consts.HAState {
 	switch {
 	case c.standby.Load():
+		if c.StandbyReadsEnabled() {
+			return consts.PerfStandby
+		}
+
 		return consts.Standby
 	default:
 		return consts.Active
@@ -804,6 +810,10 @@ type CoreConfig struct {
 	//
 	// See also: https://github.com/openbao/openbao/issues/1110
 	UnsafeCrossNamespaceIdentity bool
+
+	// invalidationManager is used in HA setups on standbys to process
+	// invalidations asynchronously.
+	invalidationManager *invalidationManager
 }
 
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
@@ -929,6 +939,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		sealed:               new(uint32),
 		sealMigrationDone:    new(uint32),
 		standbyStopCh:        new(atomic.Value),
+		restartCh:            new(atomic.Value),
 		baseLogger:           conf.Logger,
 		logger:               conf.Logger.Named("core"),
 		logLevel:             conf.LogLevel,
@@ -985,6 +996,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	c.standby.Store(true)
 	c.standbyStopCh.Store(make(chan struct{}))
+	c.restartCh.Store(make(chan struct{}))
 	atomic.StoreUint32(c.sealed, 1)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
 
@@ -1062,6 +1074,10 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		c.seal = NewDefaultSeal(vaultseal.NewAccess(wrapper))
 	}
 	c.seal.SetCore(c)
+
+	// Create the invalidation manager.
+	c.NewInvalidationManager()
+
 	return c, nil
 }
 
@@ -1196,8 +1212,6 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 		c.logger.Info("Initializing version history cache for core")
 		c.versionHistory = make(map[string]VaultVersion)
 	}
-
-	c.mountInvalidationWorker = newMountInvalidationWorker(c)
 
 	return c, nil
 }
@@ -1942,8 +1956,8 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 		c.standbyDoneCh = make(chan struct{})
 		c.manualStepDownCh = make(chan struct{}, 1)
 		c.standbyStopCh.Store(make(chan struct{}))
-		c.restartCh = make(chan struct{})
-		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}), c.restartCh)
+		c.restartCh.Store(make(chan struct{}))
+		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}), c.restartCh.Load().(chan struct{}))
 	}
 
 	// Success!
@@ -2224,6 +2238,10 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 		if keepHALock {
 			atomic.StoreUint32(c.keepHALockOnStepDown, 1)
 		}
+		if grabStateLock {
+			cancelCtxAndLock()
+			defer c.stateLock.Unlock()
+		}
 
 		// If we are trying to acquire the lock, force it to return with nil so
 		// runStandby will exit
@@ -2350,6 +2368,11 @@ func (readonlyUnsealStrategy) unseal(
 ) error {
 	c.logger.Debug("read-only unseal starting")
 
+	if c.standby.Load() {
+		// Start tracking invalidations.
+		c.invalidations.Track()
+	}
+
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
@@ -2408,6 +2431,12 @@ func (readonlyUnsealStrategy) unseal(
 
 	if err := c.setupAuditedHeadersConfig(ctx); err != nil {
 		return err
+	}
+
+	// Finally, start processing invalidations. We'll have cleared the queue
+	// when we started this, but any
+	if c.standby.Load() {
+		c.invalidations.Start(ctx)
 	}
 
 	return nil
@@ -2550,6 +2579,9 @@ func (c *Core) preSeal() error {
 	c.stopRaftActiveNode()
 	c.cancelNamespaceDeletion()
 
+	if err := c.invalidations.Stop(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down invalidations: %w", err))
+	}
 	if err := c.teardownAudits(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down audits: %w", err))
 	}

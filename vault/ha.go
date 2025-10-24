@@ -384,6 +384,9 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 }
 
 func (c *Core) stopStandby() {
+	c.stateLock.Lock()
+	defer c.stateLock.Unlock()
+
 	select {
 	case c.standbyStopCh.Load().(chan struct{}) <- struct{}{}:
 	default:
@@ -393,7 +396,7 @@ func (c *Core) stopStandby() {
 
 func (c *Core) restart() {
 	select {
-	case c.restartCh <- struct{}{}:
+	case c.restartCh.Load().(chan struct{}) <- struct{}{}:
 	default:
 		c.logger.Warn("ignoring restart request: restart is already in progress")
 	}
@@ -402,7 +405,7 @@ func (c *Core) restart() {
 func (c *Core) drainPendingRestarts() {
 	for {
 		select {
-		case <-c.restartCh:
+		case <-c.restartCh.Load().(chan struct{}):
 			c.logger.Warn("ignoring restart request: restart is already in progress")
 
 		default:
@@ -484,9 +487,12 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 	for restart := true; restart; {
 		c.logger.Info("entering standby mode")
 		restart = false
+		c.barrier.SetReadOnly(true)
 
 		var perfCancel context.CancelFunc
 		if c.StandbyReadsEnabled() {
+			c.logger.Info("enabling horizontal scalability (reads)")
+
 			if err := c.runStandbyGrabStateLock(stopCh); err != nil {
 				c.logger.Error("runStandby: unable to grab state lock", "err", err)
 				return
@@ -558,17 +564,6 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 			}, func(error) {
 				close(metricsStop)
 				c.logger.Debug("shutting down periodic metrics")
-			})
-		}
-		{
-			ctx, mountInvalidationWorkerStop := context.WithCancel(context.Background())
-
-			g.Add(func() error {
-				c.mountInvalidationWorker.loop(ctx)
-				return nil
-			}, func(error) {
-				mountInvalidationWorkerStop()
-				c.logger.Debug("shutting mount invalidation worker")
 			})
 		}
 		{
@@ -693,6 +688,9 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(nil))
 		c.activeContext = activeCtx
 		c.activeContextCancelFunc.Store(activeCtxCancel)
+
+		// Mark storage as readable again.
+		c.barrier.SetReadOnly(false)
 
 		// Perform seal migration
 		if err := c.migrateSeal(c.activeContext); err != nil {

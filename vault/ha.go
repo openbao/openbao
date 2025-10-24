@@ -487,6 +487,7 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 	for restart := true; restart; {
 		c.logger.Info("entering standby mode")
 		restart = false
+		c.barrier.SetReadOnly(true)
 
 		var perfCancel context.CancelFunc
 		if c.StandbyReadsEnabled() {
@@ -698,6 +699,9 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(nil))
 		c.activeContext = activeCtx
 		c.activeContextCancelFunc.Store(activeCtxCancel)
+
+		// Mark storage as readable again.
+		c.barrier.SetReadOnly(false)
 
 		// Perform seal migration
 		if err := c.migrateSeal(c.activeContext); err != nil {

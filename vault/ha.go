@@ -491,6 +491,7 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 		var perfCancel context.CancelFunc
 		if c.StandbyReadsEnabled() {
 			c.logger.Info("enabling horizontal scalability (reads)")
+			c.barrier.SetReadOnly(true)
 
 			if err := c.runStandbyGrabStateLock(stopCh); err != nil {
 				c.logger.Error("runStandby: unable to grab state lock", "err", err)
@@ -698,6 +699,9 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(nil))
 		c.activeContext = activeCtx
 		c.activeContextCancelFunc.Store(activeCtxCancel)
+
+		// Mark storage as readable again.
+		c.barrier.SetReadOnly(false)
 
 		// Perform seal migration
 		if err := c.migrateSeal(c.activeContext); err != nil {

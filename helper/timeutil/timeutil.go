@@ -138,7 +138,7 @@ func SkipAtEndOfMonth(t *testing.T) {
 
 	thisMonth := StartOfMonth(time.Now().UTC())
 	endOfMonth := EndOfMonth(thisMonth)
-	if endOfMonth.Sub(time.Now()) < 10*time.Minute {
+	if time.Until(endOfMonth) < 10*time.Minute {
 		t.Skip("too close to end of month")
 	}
 }
@@ -154,14 +154,14 @@ type DefaultClock struct{}
 
 var _ Clock = (*DefaultClock)(nil)
 
-func (_ DefaultClock) Now() time.Time {
+func (DefaultClock) Now() time.Time {
 	return time.Now()
 }
 
-func (_ DefaultClock) NewTicker(d time.Duration) *time.Ticker {
+func (DefaultClock) NewTicker(d time.Duration) *time.Ticker {
 	return time.NewTicker(d)
 }
 
-func (_ DefaultClock) NewTimer(d time.Duration) *time.Timer {
+func (DefaultClock) NewTimer(d time.Duration) *time.Timer {
 	return time.NewTimer(d)
 }

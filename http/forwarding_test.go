@@ -191,17 +191,17 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 	}
 	// core.Logger().Printf("[TRACE] done mounting transit")
 
-	var totalOps *uint32 = new(uint32)
-	var successfulOps *uint32 = new(uint32)
-	var key1ver *int32 = new(int32)
+	totalOps := new(uint32)
+	successfulOps := new(uint32)
+	key1ver := new(int32)
 	*key1ver = 1
-	var key2ver *int32 = new(int32)
+	key2ver := new(int32)
 	*key2ver = 1
-	var key3ver *int32 = new(int32)
+	key3ver := new(int32)
 	*key3ver = 1
-	var numWorkers *uint32 = new(uint32)
+	numWorkers := new(uint32)
 	*numWorkers = 50
-	var numWorkersStarted *uint32 = new(uint32)
+	numWorkersStarted := new(uint32)
 	var waitLock sync.Mutex
 	waitCond := sync.NewCond(&waitLock)
 
@@ -304,7 +304,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 		startTime := time.Now()
 		for {
 			// Stop after 10 seconds
-			if time.Now().Sub(startTime) > 10*time.Second {
+			if time.Since(startTime) > 10*time.Second {
 				return
 			}
 
@@ -321,7 +321,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 			// Encrypt our plaintext and store the result
 			case "encrypt":
 				// core.Logger().Printf("[TRACE] %s, %s, %d", chosenFunc, chosenKey, id)
-				resp, err := doReq("POST", chosenHost+"encrypt/"+chosenKey, bytes.NewBuffer([]byte(fmt.Sprintf("{\"plaintext\": \"%s\"}", testPlaintextB64))))
+				resp, err := doReq("POST", chosenHost+"encrypt/"+chosenKey, bytes.NewBuffer(fmt.Appendf(nil, "{\"plaintext\": \"%s\"}", testPlaintextB64)))
 				if err != nil {
 					panic(err)
 				}
@@ -348,7 +348,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 				}
 
 				// core.Logger().Printf("[TRACE] %s, %s, %d", chosenFunc, chosenKey, id)
-				resp, err := doReq("POST", chosenHost+"decrypt/"+chosenKey, bytes.NewBuffer([]byte(fmt.Sprintf("{\"ciphertext\": \"%s\"}", ct))))
+				resp, err := doReq("POST", chosenHost+"decrypt/"+chosenKey, bytes.NewBuffer(fmt.Appendf(nil, "{\"ciphertext\": \"%s\"}", ct)))
 				if err != nil {
 					panic(err)
 				}
@@ -398,7 +398,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 
 			// Change the min version, which also tests the archive functionality
 			case "change_min_version":
-				var latestVersion int32 = keyVer
+				latestVersion := keyVer
 				if parallel {
 					switch chosenKey {
 					case "test1":
@@ -414,7 +414,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 
 				// core.Logger().Printf("[TRACE] %s, %s, %d, new min version %d", chosenFunc, chosenKey, id, setVersion)
 
-				_, err := doReq("POST", chosenHost+"keys/"+chosenKey+"/config", bytes.NewBuffer([]byte(fmt.Sprintf("{\"min_decryption_version\": %d}", setVersion))))
+				_, err := doReq("POST", chosenHost+"keys/"+chosenKey+"/config", bytes.NewBuffer(fmt.Appendf(nil, "{\"min_decryption_version\": %d}", setVersion)))
 				if err != nil {
 					panic(err)
 				}

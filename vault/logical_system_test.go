@@ -1864,7 +1864,7 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 
 	ctx := namespace.RootContext(nil)
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
-	err := b.Backend.Setup(ctx, bc)
+	err := b.Setup(ctx, bc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1930,7 +1930,7 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 
 	ctx := namespace.RootContext(nil)
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
-	err := b.Backend.Setup(ctx, bc)
+	err := b.Setup(ctx, bc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -6276,7 +6276,7 @@ func TestPolicyStore_Store(t *testing.T) {
 		require.Contains(t, resp.Data, "modified")
 		exp := resp.Data["expiration"].(time.Time)
 		modified := resp.Data["modified"].(time.Time)
-		require.LessOrEqual(t, time.Now().Sub(modified), 2*time.Second)
+		require.LessOrEqual(t, time.Since(modified), 2*time.Second)
 
 		time.Sleep(2 * time.Second)
 

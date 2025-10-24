@@ -893,8 +893,8 @@ func testParseUserLockouts(t *testing.T) {
 	objList := list.Filter("user_lockout")
 	configutil.ParseUserLockouts(config.SharedConfig, objList)
 
-	sort.Slice(config.SharedConfig.UserLockouts[:], func(i, j int) bool {
-		return config.SharedConfig.UserLockouts[i].Type < config.SharedConfig.UserLockouts[j].Type
+	sort.Slice(config.UserLockouts[:], func(i, j int) bool {
+		return config.UserLockouts[i].Type < config.UserLockouts[j].Type
 	})
 
 	expected := &Config{
@@ -925,8 +925,8 @@ func testParseUserLockouts(t *testing.T) {
 		},
 	}
 
-	sort.Slice(expected.SharedConfig.UserLockouts[:], func(i, j int) bool {
-		return expected.SharedConfig.UserLockouts[i].Type < expected.SharedConfig.UserLockouts[j].Type
+	sort.Slice(expected.UserLockouts[:], func(i, j int) bool {
+		return expected.UserLockouts[i].Type < expected.UserLockouts[j].Type
 	})
 	config.Prune()
 	require.Equal(t, config, *expected)

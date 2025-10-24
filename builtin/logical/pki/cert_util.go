@@ -1026,7 +1026,8 @@ func signCert(b *backend,
 	//
 	// This validation needs to occur regardless of the role's key type, so
 	// that we always validate both RSA and ECDSA key sizes.
-	if actualKeyType == "rsa" {
+	switch actualKeyType {
+	case "rsa":
 		if actualKeyBits < data.role.KeyBits {
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 				"role requires a minimum of a %d-bit key, but CSR's key is %d bits",
@@ -1038,7 +1039,7 @@ func signCert(b *backend,
 				"OpenBao requires a minimum of a 2048-bit key, but CSR's key is %d bits",
 				actualKeyBits)}
 		}
-	} else if actualKeyType == "ec" {
+	case "ec":
 		if actualKeyBits < data.role.KeyBits {
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 				"role requires a minimum of a %d-bit key, but CSR's key is %d bits",

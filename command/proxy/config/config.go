@@ -56,8 +56,8 @@ func (c *Config) Prune() {
 	}
 	c.FoundKeys = nil
 	c.UnusedKeys = nil
-	c.SharedConfig.FoundKeys = nil
-	c.SharedConfig.UnusedKeys = nil
+	c.FoundKeys = nil
+	c.UnusedKeys = nil
 	if c.Telemetry != nil {
 		c.Telemetry.FoundKeys = nil
 		c.Telemetry.UnusedKeys = nil

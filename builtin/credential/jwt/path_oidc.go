@@ -557,7 +557,7 @@ func (b *jwtAuthBackend) pathPoll(ctx context.Context, req *logical.Request, d *
 			// already been unmarshalled once, unlikely
 			return nil, err
 		}
-		oauth2Token := tokenOrError.Token.WithExtra(extra)
+		oauth2Token := tokenOrError.WithExtra(extra)
 
 		// idToken, ok := oauth2Token.Extra("id_token").(oidc.IDToken)
 		rawToken, ok := oauth2Token.Extra("id_token").(string)

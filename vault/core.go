@@ -2420,6 +2420,8 @@ func (readonlyUnsealStrategy) unseal(
 		return err
 	}
 
+	c.mountInvalidationWorker.loop(ctx)
+
 	return nil
 }
 

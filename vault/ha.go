@@ -567,17 +567,6 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 			})
 		}
 		{
-			ctx, mountInvalidationWorkerStop := context.WithCancel(context.Background())
-
-			g.Add(func() error {
-				c.mountInvalidationWorker.loop(ctx)
-				return nil
-			}, func(error) {
-				mountInvalidationWorkerStop()
-				c.logger.Debug("shutting mount invalidation worker")
-			})
-		}
-		{
 			// Wait for leadership
 			leaderStopCh := make(chan struct{})
 

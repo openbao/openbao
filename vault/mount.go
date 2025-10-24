@@ -2738,20 +2738,36 @@ func newMountInvalidationWorker(c *Core) *mountInvalidationWorker {
 }
 
 func (w *mountInvalidationWorker) loop(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-w.notify:
-		}
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				w.core.logger.Info("stopping mount invalidation worker")
+				return
+			case <-w.notify:
+			}
 
-		err := w.dispatchReloads(ctx)
-		if err != nil {
-			w.core.logger.Error("failed to dispatch mount reloads, restarting core", "err", err)
-			w.core.restart()
-			return
+			err := w.dispatchReloads(ctx)
+			if err != nil {
+				// There's a few errors which we just ignore:
+				//
+				// 1. When the context is cancelled, just bail.
+				if ctx.Err() != nil {
+					return
+				}
+
+				// 2. If Vault is sealed, exit.
+				if errors.Is(err, ErrBarrierSealed) || strings.Contains(err.Error(), "vault is sealed") {
+					w.core.logger.Error("expected active context to be canceled if instance is sealed")
+					return
+				}
+
+				w.core.logger.Error("failed to dispatch mount reloads, restarting core", "err", err)
+				w.core.restart()
+				return
+			}
 		}
-	}
+	}()
 }
 
 func (w *mountInvalidationWorker) dispatchReloads(ctx context.Context) error {
@@ -2764,7 +2780,16 @@ func (w *mountInvalidationWorker) dispatchReloads(ctx context.Context) error {
 	w.legacyInvalidations = map[string]struct{}{}
 	w.l.Unlock()
 
+	// Grab the state lock to ensure we can finish processing all entries
+	// before shutdown occurs.
+	w.core.stateLock.RLock()
+	defer w.core.stateLock.RUnlock()
+
 	for invalidation := range invalidations {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		ns, err := w.core.namespaceStore.GetNamespace(ctx, invalidation.namespaceUUID)
 		if err != nil {
 			return err
@@ -2775,12 +2800,20 @@ func (w *mountInvalidationWorker) dispatchReloads(ctx context.Context) error {
 		}
 	}
 	for uuid := range namespaceInvalidations {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		err := w.core.reloadNamespaceMounts(physical.CacheRefreshContext(ctx, true), uuid)
 		if err != nil {
 			return fmt.Errorf("unable to invalidate mounts in namespace %q: %w", uuid, err)
 		}
 	}
 	for key := range legacyInvalidations {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		err := w.core.reloadLegacyMounts(ctx, key)
 		if err != nil {
 			return fmt.Errorf("unable to invalidate non-transactional mounts %q: %w", key, err)

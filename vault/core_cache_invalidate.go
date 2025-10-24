@@ -14,6 +14,17 @@ import (
 )
 
 func (c *Core) Invalidate(key string) {
+	// Skip invalidations if we're not the standby. The InmemHA backend in
+	// particular dispatches invalidations on every node which isn't
+	// necessary as the active can invalidate itself.
+	if !c.standby.Load() {
+		return
+	}
+
+	if c.Sealed() {
+		return
+	}
+
 	c.stateLock.RLock()
 	activeContext := c.activeContext
 	c.stateLock.RUnlock()

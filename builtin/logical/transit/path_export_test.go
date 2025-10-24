@@ -25,29 +25,32 @@ import (
 )
 
 func TestTransit_Export_KeyVersion_ExportsCorrectVersion(t *testing.T) {
-	verifyExportsCorrectVersion(t, "encryption-key", "aes128-gcm96")
-	verifyExportsCorrectVersion(t, "encryption-key", "aes256-gcm96")
-	verifyExportsCorrectVersion(t, "encryption-key", "chacha20-poly1305")
-	verifyExportsCorrectVersion(t, "encryption-key", "xchacha20-poly1305")
-	verifyExportsCorrectVersion(t, "encryption-key", "rsa-2048")
-	verifyExportsCorrectVersion(t, "encryption-key", "rsa-3072")
-	verifyExportsCorrectVersion(t, "encryption-key", "rsa-4096")
-	verifyExportsCorrectVersion(t, "signing-key", "ecdsa-p256")
-	verifyExportsCorrectVersion(t, "signing-key", "ecdsa-p384")
-	verifyExportsCorrectVersion(t, "signing-key", "ecdsa-p521")
-	verifyExportsCorrectVersion(t, "signing-key", "ed25519")
-	verifyExportsCorrectVersion(t, "hmac-key", "aes128-gcm96")
-	verifyExportsCorrectVersion(t, "hmac-key", "aes256-gcm96")
-	verifyExportsCorrectVersion(t, "hmac-key", "chacha20-poly1305")
-	verifyExportsCorrectVersion(t, "hmac-key", "xchacha20-poly1305")
-	verifyExportsCorrectVersion(t, "hmac-key", "ecdsa-p256")
-	verifyExportsCorrectVersion(t, "hmac-key", "ecdsa-p384")
-	verifyExportsCorrectVersion(t, "hmac-key", "ecdsa-p521")
-	verifyExportsCorrectVersion(t, "hmac-key", "ed25519")
-	verifyExportsCorrectVersion(t, "hmac-key", "hmac")
+	verifyExportsCorrectVersion(t, "encryption-key", "aes128-gcm96", "")
+	verifyExportsCorrectVersion(t, "encryption-key", "aes256-gcm96", "")
+	verifyExportsCorrectVersion(t, "encryption-key", "chacha20-poly1305", "")
+	verifyExportsCorrectVersion(t, "encryption-key", "xchacha20-poly1305", "")
+	verifyExportsCorrectVersion(t, "encryption-key", "rsa-2048", "")
+	verifyExportsCorrectVersion(t, "encryption-key", "rsa-3072", "")
+	verifyExportsCorrectVersion(t, "encryption-key", "rsa-4096", "")
+	verifyExportsCorrectVersion(t, "signing-key", "ecdsa-p256", "")
+	verifyExportsCorrectVersion(t, "signing-key", "ecdsa-p384", "")
+	verifyExportsCorrectVersion(t, "signing-key", "ecdsa-p521", "")
+	verifyExportsCorrectVersion(t, "signing-key", "ed25519", "")
+	verifyExportsCorrectVersion(t, "signing-key", "ml-dsa", "44")
+	verifyExportsCorrectVersion(t, "signing-key", "ml-dsa", "65")
+	verifyExportsCorrectVersion(t, "signing-key", "ml-dsa", "87")
+	verifyExportsCorrectVersion(t, "hmac-key", "aes128-gcm96", "")
+	verifyExportsCorrectVersion(t, "hmac-key", "aes256-gcm96", "")
+	verifyExportsCorrectVersion(t, "hmac-key", "chacha20-poly1305", "")
+	verifyExportsCorrectVersion(t, "hmac-key", "xchacha20-poly1305", "")
+	verifyExportsCorrectVersion(t, "hmac-key", "ecdsa-p256", "")
+	verifyExportsCorrectVersion(t, "hmac-key", "ecdsa-p384", "")
+	verifyExportsCorrectVersion(t, "hmac-key", "ecdsa-p521", "")
+	verifyExportsCorrectVersion(t, "hmac-key", "ed25519", "")
+	verifyExportsCorrectVersion(t, "hmac-key", "hmac", "")
 }
 
-func verifyExportsCorrectVersion(t *testing.T, exportType, keyType string) {
+func verifyExportsCorrectVersion(t *testing.T, exportType, keyType, parameterSet string) {
 	b, storage := createBackendWithSysView(t)
 
 	// First create a key, v1
@@ -59,6 +62,9 @@ func verifyExportsCorrectVersion(t *testing.T, exportType, keyType string) {
 	req.Data = map[string]interface{}{
 		"exportable": true,
 		"type":       keyType,
+	}
+	if parameterSet != "" {
+		req.Data["parameter_set"] = parameterSet
 	}
 	if keyType == "hmac" {
 		req.Data["key_size"] = 32

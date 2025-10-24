@@ -51,6 +51,135 @@ func TestTransit_SignVerify_ECDSA(t *testing.T) {
 	})
 }
 
+func TestTransit_SignVerify_ML_DSA(t *testing.T) {
+	t.Parallel()
+	t.Run("44", func(t *testing.T) {
+		t.Parallel()
+		testTransit_SignVerify_ML_DSA(t, "44")
+	})
+	t.Run("65", func(t *testing.T) {
+		t.Parallel()
+		testTransit_SignVerify_ML_DSA(t, "65")
+	})
+	t.Run("87", func(t *testing.T) {
+		t.Parallel()
+		testTransit_SignVerify_ML_DSA(t, "87")
+	})
+}
+
+func testTransit_SignVerify_ML_DSA(t *testing.T, parameterSet string) {
+	b, storage := createBackendWithSysView(t)
+
+	// First create a key
+	req := &logical.Request{
+		Storage:   storage,
+		Operation: logical.UpdateOperation,
+		Path:      "keys/foo",
+		Data: map[string]interface{}{
+			"type":          "ml-dsa",
+			"parameter_set": parameterSet,
+		},
+	}
+	_, err := b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.Data = map[string]interface{}{
+		"input": "dGhlIHF1aWNrIGJyb3duIGZveA==",
+	}
+
+	signRequest := func(req *logical.Request, errExpected bool, postpath string) string {
+		t.Helper()
+		req.Path = "sign/foo" + postpath
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil && !errExpected {
+			t.Fatalf("request: %v\nerror: %v", req, err)
+		}
+		if resp == nil {
+			t.Fatal("expected non-nil response")
+		}
+		if errExpected {
+			if !resp.IsError() {
+				t.Fatalf("bad: should have gotten error response: %#v", *resp)
+			}
+			return ""
+		}
+		if resp.IsError() {
+			t.Fatalf("bad: got error response: %#v", *resp)
+		}
+		value, ok := resp.Data["signature"]
+		if !ok {
+			t.Fatalf("no signature key found in returned data, got resp data %#v", resp.Data)
+		}
+		return value.(string)
+	}
+
+	verifyRequest := func(req *logical.Request, errExpected bool, postpath, sig string) {
+		t.Helper()
+		req.Path = "verify/foo" + postpath
+		req.Data["signature"] = sig
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			if errExpected {
+				return
+			}
+			t.Fatalf("got error: %v, sig was %v", err, sig)
+		}
+		if resp == nil {
+			t.Fatal("expected non-nil response")
+		}
+		if resp.IsError() {
+			if errExpected {
+				return
+			}
+			t.Fatalf("bad: got error response: %#v", *resp)
+		}
+		value, ok := resp.Data["valid"]
+		if !ok {
+			t.Fatalf("no valid key found in returned data, got resp data %#v", resp.Data)
+		}
+		if !value.(bool) && !errExpected {
+			t.Fatalf("verification failed; req was %#v, resp is %#v", *req, *resp)
+		} else if value.(bool) && errExpected {
+			t.Fatalf("expected error and didn't get one; req was %#v, resp is %#v", *req, *resp)
+		}
+	}
+
+	// Test defaults
+	sig := signRequest(req, false, "")
+	verifyRequest(req, false, "", sig)
+
+	// Test a bad signature
+	verifyRequest(req, true, "", sig[0:len(sig)-2])
+
+	// Test hash algorithm selection in the data
+	req.Data["hash_algorithm"] = "sha2-256"
+	sig = signRequest(req, false, "")
+	verifyRequest(req, false, "", sig)
+
+	req.Data["hash_algorithm"] = "sha2-512"
+	sig = signRequest(req, false, "")
+	verifyRequest(req, false, "", sig)
+
+	req.Data["hash_algorithm"] = "sha3-256"
+	sig = signRequest(req, false, "")
+	verifyRequest(req, false, "", sig)
+
+	req.Data["hash_algorithm"] = "sha3-512"
+	sig = signRequest(req, false, "")
+	verifyRequest(req, false, "", sig)
+
+	// Test bad algorithm
+	req.Data["hash_algorithm"] = "foobar"
+	signRequest(req, true, "")
+
+	// Test bad input
+	req.Data["hash_algorithm"] = "sha2-256"
+	req.Data["input"] = "foobar"
+	signRequest(req, true, "")
+}
+
 func testTransit_SignVerify_ECDSA(t *testing.T, bits int) {
 	b, storage := createBackendWithSysView(t)
 

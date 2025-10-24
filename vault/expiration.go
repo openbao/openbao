@@ -425,8 +425,10 @@ func (c *Core) setupExpiration(e ExpireLeaseStrategy) error {
 			case <-quit:
 				return
 			case <-t.C:
-				c.expiration.attemptIrrevocableLeasesRevoke()
-				t.Reset(24 * time.Hour)
+				c.expiration.jobManager.AddJob(fairshare.SimpleJob(func() {
+					c.expiration.attemptIrrevocableLeasesRevoke()
+					t.Reset(24 * time.Hour)
+				}), "attemptIrrevocableLeasesRevoke")
 			}
 		}
 	}()

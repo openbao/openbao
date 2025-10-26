@@ -22,6 +22,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/random"
 	"github.com/openbao/openbao/internalshared/configutil"
 )
 
@@ -359,7 +360,7 @@ func LoadConfigFile(path string) (*Config, error) {
 	}
 
 	// Parse!
-	obj, err := hcl.Parse(string(d))
+	obj, err := random.ParseConfig(d)
 	if err != nil {
 		return nil, err
 	}

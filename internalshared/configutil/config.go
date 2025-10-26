@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/hashicorp/hcl/hcl/token"
+	"github.com/openbao/openbao/helper/random"
 )
 
 const mlockMsg = "OpenBao has dropped support for mlock. Please remove\n" +
@@ -35,7 +36,7 @@ type SharedConfig struct {
 	// compatibility's sake and to give a warning for those expecting it.
 	DisableMlockRaw interface{} `hcl:"disable_mlock"`
 
-	Telemetry *Telemetry `hcl:"telemetry"`
+	Telemetry *Telemetry `hcl:"-"`
 
 	DefaultMaxRequestDuration    time.Duration `hcl:"-"`
 	DefaultMaxRequestDurationRaw interface{}   `hcl:"default_max_request_duration"`
@@ -60,8 +61,8 @@ type SharedConfig struct {
 }
 
 func ParseConfig(d string) (*SharedConfig, error) {
-	// Parse!
-	obj, err := hcl.Parse(d)
+	// Parse using the helper function that handles both HCL and JSON
+	obj, err := random.ParseConfig([]byte(d))
 	if err != nil {
 		return nil, err
 	}

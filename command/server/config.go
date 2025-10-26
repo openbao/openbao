@@ -23,6 +23,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/osutil"
 	"github.com/openbao/openbao/helper/profiles"
+	"github.com/openbao/openbao/helper/random"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
@@ -595,8 +596,8 @@ func LoadConfigFile(path string, allPaths []string) (*Config, error) {
 }
 
 func ParseConfig(d, source string) (*Config, error) {
-	// Parse!
-	obj, err := hcl.Parse(d)
+	// Parse using the helper function that handles both HCL and JSON
+	obj, err := random.ParseConfig([]byte(d))
 	if err != nil {
 		return nil, err
 	}

@@ -26,6 +26,7 @@ import (
 	"github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2"
 	statickms "github.com/openbao/go-kms-wrapping/wrappers/static/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
+	"github.com/openbao/openbao/helper/random"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -131,7 +132,7 @@ func parseKMS(result *[]*KMS, list *ast.ObjectList, blockName string, maxKMS int
 
 func ParseKMSes(d string) ([]*KMS, error) {
 	// Parse!
-	obj, err := hcl.Parse(d)
+	obj, err := random.ParseConfig([]byte(d))
 	if err != nil {
 		return nil, err
 	}

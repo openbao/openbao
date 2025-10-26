@@ -7,10 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/hcl"
+	"github.com/hashicorp/hcl/hcl/ast"
+	hclParser "github.com/hashicorp/hcl/hcl/parser"
+	jsonParser "github.com/hashicorp/hcl/json/parser"
 )
 
 // ParsePolicy is a convenience function for parsing HCL into a StringGenerator.
@@ -156,4 +160,25 @@ func stringToRunesFunc(from reflect.Kind, to reflect.Kind, data interface{}) (in
 		return nil, errors.New("invalid UTF8 string")
 	}
 	return []rune(raw), nil
+}
+
+// detectConfigFormat determines if the input is JSON or HCL format
+func detectConfigFormat(data []byte) bool {
+	// Trim whitespace and check if it starts with '{'
+	trimmed := strings.TrimSpace(string(data))
+	return strings.HasPrefix(trimmed, "{")
+}
+
+// ParseConfig parses HCL or JSON configuration data into an AST.
+// It automatically detects the format and uses the appropriate parser.
+// For HCL format, it uses ParseDontErrorOnDuplicateKeys to maintain
+// backward compatibility with duplicate keys.
+func ParseConfig(data []byte) (*ast.File, error) {
+	if detectConfigFormat(data) {
+		// JSON format
+		return jsonParser.Parse(data)
+	} else {
+		// HCL format
+		return hclParser.ParseDontErrorOnDuplicateKeys(data)
+	}
 }

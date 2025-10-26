@@ -19,6 +19,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	hclParser "github.com/hashicorp/hcl/hcl/parser"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
@@ -330,7 +331,7 @@ func (c *OperatorMigrateCommand) loadMigratorConfig(path string) (*migratorConfi
 		return nil, err
 	}
 
-	obj, err := hcl.ParseBytes(d)
+	obj, err := hclParser.ParseDontErrorOnDuplicateKeys(d)
 	if err != nil {
 		return nil, err
 	}

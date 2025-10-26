@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	hclParser "github.com/hashicorp/hcl/hcl/parser"
 )
 
 func parseBlockList(hclStr, blockName string) (*ast.ObjectList, error) {
-	file, err := hcl.Parse(hclStr)
+	file, err := hclParser.ParseDontErrorOnDuplicateKeys([]byte(hclStr))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse HCL: %w", err)
 	}
@@ -134,7 +134,7 @@ request "op1" {
   data      = { key = "value" }
 }
 `
-	file, err := hcl.Parse(hclStr)
+	file, err := hclParser.ParseDontErrorOnDuplicateKeys([]byte(hclStr))
 	if err != nil {
 		t.Fatalf("failed to parse HCL: %v", err)
 	}
@@ -165,7 +165,7 @@ request {
   operation = "read"
 }
 `
-	file, err := hcl.Parse(hclStr)
+	file, err := hclParser.ParseDontErrorOnDuplicateKeys([]byte(hclStr))
 	if err != nil {
 		t.Fatalf("failed to parse HCL: %v", err)
 	}

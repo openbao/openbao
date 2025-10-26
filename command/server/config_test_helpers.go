@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	hclParser "github.com/hashicorp/hcl/hcl/parser"
 	"github.com/hashicorp/hcl/hcl/token"
 	"github.com/openbao/openbao/internalshared/configutil"
 )
@@ -793,7 +793,7 @@ func testConfig_Sanitized(t *testing.T) {
 }
 
 func testParseListeners(t *testing.T) {
-	obj, _ := hcl.Parse(strings.TrimSpace(`
+	obj, _ := hclParser.ParseDontErrorOnDuplicateKeys([]byte(strings.TrimSpace(`
 listener "tcp" {
   address = "127.0.0.1:443"
   cluster_address = "127.0.0.1:8201"
@@ -817,7 +817,7 @@ listener "tcp" {
   proxy_api {
     enable_quit = true
   }
-}`))
+}`)))
 
 	config := Config{
 		SharedConfig: &configutil.SharedConfig{},
@@ -872,7 +872,7 @@ listener "tcp" {
 }
 
 func testParseUserLockouts(t *testing.T) {
-	obj, _ := hcl.Parse(strings.TrimSpace(`
+	obj, _ := hclParser.ParseDontErrorOnDuplicateKeys([]byte(strings.TrimSpace(`
 	user_lockout "all" {
 		lockout_duration = "40m"
 		lockout_counter_reset = "45m"
@@ -884,7 +884,7 @@ func testParseUserLockouts(t *testing.T) {
 	  }
 	  user_lockout "ldap" {
 		disable_lockout = "true"
-	 }`))
+	 }`)))
 
 	config := Config{
 		SharedConfig: &configutil.SharedConfig{},

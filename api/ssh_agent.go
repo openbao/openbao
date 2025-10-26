@@ -17,6 +17,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	hclParser "github.com/hashicorp/hcl/hcl/parser"
 )
 
 const (
@@ -148,7 +149,7 @@ func LoadSSHHelperConfig(path string) (*SSHHelperConfig, error) {
 // ParseSSHHelperConfig parses the given contents as a string for the SSHHelper
 // configuration.
 func ParseSSHHelperConfig(contents string) (*SSHHelperConfig, error) {
-	root, err := hcl.Parse(string(contents))
+	root, err := hclParser.ParseDontErrorOnDuplicateKeys([]byte(contents))
 	if err != nil {
 		return nil, fmt.Errorf("error parsing config: %w", err)
 	}

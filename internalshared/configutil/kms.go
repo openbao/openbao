@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	hclParser "github.com/hashicorp/hcl/hcl/parser"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/awskms/v2"
@@ -131,7 +132,7 @@ func parseKMS(result *[]*KMS, list *ast.ObjectList, blockName string, maxKMS int
 
 func ParseKMSes(d string) ([]*KMS, error) {
 	// Parse!
-	obj, err := hcl.Parse(d)
+	obj, err := hclParser.ParseDontErrorOnDuplicateKeys([]byte(d))
 	if err != nil {
 		return nil, err
 	}

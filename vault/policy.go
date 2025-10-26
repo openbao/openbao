@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	hclParser "github.com/hashicorp/hcl/hcl/parser"
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
@@ -260,7 +261,7 @@ func ParseACLPolicy(ns *namespace.Namespace, rules string) (*Policy, error) {
 // templated policy.
 func parseACLPolicyWithTemplating(ns *namespace.Namespace, rules string, performTemplating bool, entity *identity.Entity, groups []*identity.Group) (*Policy, error) {
 	// Parse the rules
-	root, err := hcl.Parse(rules)
+	root, err := hclParser.ParseDontErrorOnDuplicateKeys([]byte(rules))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse policy: %w", err)
 	}

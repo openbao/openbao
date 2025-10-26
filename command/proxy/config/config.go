@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	hclParser "github.com/hashicorp/hcl/hcl/parser"
 	ctconfig "github.com/openbao/openbao-template/config"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared"
@@ -359,7 +360,7 @@ func LoadConfigFile(path string) (*Config, error) {
 	}
 
 	// Parse!
-	obj, err := hcl.Parse(string(d))
+	obj, err := hclParser.ParseDontErrorOnDuplicateKeys(d)
 	if err != nil {
 		return nil, err
 	}

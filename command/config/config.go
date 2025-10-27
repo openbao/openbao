@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/hcl/hcl/ast"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/openbao/openbao/api/v2"
-	"github.com/openbao/openbao/helper/random"
 	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 )
 
@@ -79,7 +78,7 @@ func LoadConfig(path string) (*DefaultConfig, error) {
 
 // ParseConfig parses the given configuration as a string.
 func ParseConfig(contents string) (*DefaultConfig, error) {
-	root, err := random.ParseConfig([]byte(contents))
+	root, err := hclutil.ParseConfig([]byte(contents))
 	if err != nil {
 		return nil, err
 	}

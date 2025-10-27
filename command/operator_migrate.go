@@ -20,8 +20,8 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/random"
 	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault"
@@ -331,7 +331,7 @@ func (c *OperatorMigrateCommand) loadMigratorConfig(path string) (*migratorConfi
 		return nil, err
 	}
 
-	obj, err := random.ParseConfig(d)
+	obj, err := hclutil.ParseConfig(d)
 	if err != nil {
 		return nil, err
 	}

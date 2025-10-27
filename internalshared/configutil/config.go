@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/hashicorp/hcl/hcl/token"
-	"github.com/openbao/openbao/helper/random"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 )
 
 const mlockMsg = "OpenBao has dropped support for mlock. Please remove\n" +
@@ -62,7 +62,7 @@ type SharedConfig struct {
 
 func ParseConfig(d string) (*SharedConfig, error) {
 	// Parse using the helper function that handles both HCL and JSON
-	obj, err := random.ParseConfig([]byte(d))
+	obj, err := hclutil.ParseConfig([]byte(d))
 	if err != nil {
 		return nil, err
 	}

@@ -15,8 +15,8 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/hashicorp/hcl/hcl/token"
-	"github.com/openbao/openbao/helper/random"
 	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 )
 
 var DefaultCustomHeaders = map[string]map[string]string{
@@ -793,7 +793,7 @@ func testConfig_Sanitized(t *testing.T) {
 }
 
 func testParseListeners(t *testing.T) {
-	obj, _ := random.ParseConfig([]byte(strings.TrimSpace(`
+	obj, _ := hclutil.ParseConfig([]byte(strings.TrimSpace(`
 listener "tcp" {
   address = "127.0.0.1:443"
   cluster_address = "127.0.0.1:8201"
@@ -872,7 +872,7 @@ listener "tcp" {
 }
 
 func testParseUserLockouts(t *testing.T) {
-	obj, _ := random.ParseConfig([]byte(strings.TrimSpace(`
+	obj, _ := hclutil.ParseConfig([]byte(strings.TrimSpace(`
 	user_lockout "all" {
 		lockout_duration = "40m"
 		lockout_counter_reset = "45m"

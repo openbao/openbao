@@ -2224,6 +2224,10 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 		if keepHALock {
 			atomic.StoreUint32(c.keepHALockOnStepDown, 1)
 		}
+		if grabStateLock {
+			cancelCtxAndLock()
+			defer c.stateLock.Unlock()
+		}
 
 		// If we are trying to acquire the lock, force it to return with nil so
 		// runStandby will exit

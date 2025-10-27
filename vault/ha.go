@@ -791,8 +791,8 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 			c.logger.Error("pre-seal teardown failed", "error", err)
 		}
 
-		// Attempt the post-unseal process.
-		atomic.StoreUint32(c.replicationState, uint32(consts.ReplicationDRDisabled|consts.ReplicationPerformanceSecondary))
+		// Attempt the post-unseal process
+		atomic.StoreUint32(c.replicationState, uint32(consts.ReplicationDRDisabled|consts.ReplicationPerformancePrimary))
 		err = c.postUnseal(activeCtx, activeCtxCancel, standardUnsealStrategy{})
 		if err == nil {
 			c.standby.Store(false)

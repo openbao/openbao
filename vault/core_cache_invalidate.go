@@ -22,6 +22,7 @@ import (
 const (
 	dispatcherName          = "invalidate-dispatch"
 	refresherName           = "invalidate-cache-refresh"
+	maxLockTime             = 2 * time.Second
 	maxInvalidateTime       = 30 * time.Second
 	maxPluginInvalidateTime = 2 * time.Second
 	maxDispatchers          = 128
@@ -284,33 +285,38 @@ func (ij *invalidationJob) Execute() error {
 	default:
 	}
 
-	// Any storage operations we dispatch here should be time-bounded and
-	// context refreshed.
-	ctx, cancel := context.WithTimeout(ij.quitContext, maxInvalidateTime)
-	defer cancel()
+	if ij.im.core.Sealed() {
+		ij.im.dispacherLogger.Trace("refusing to process event when core is sealed", "key", ij.key)
+		return nil
+	}
+
+	// State lock acquisition is usually very fast: we have many potential
+	// readers of it and it only gets exclusively locked when HA status
+	// changes, in which case, we're likely to restart our own state anyways.
+	lockCtx, lockCancel := context.WithTimeout(ij.quitContext, maxLockTime)
+	defer lockCancel()
 
 	// Acquire state lock. We're running in a goroutine; while active context
 	// should be sufficient to prevent races here, we want to ensure no core
 	// state changes during processing of the request. We bind this to our
 	// time-limited channel to ensure it processes in a reasonable amount of
 	// time.
-	l := newLockGrabber(ij.im.core.stateLock.RLock, ij.im.core.stateLock.RUnlock, ctx.Done())
+	l := newLockGrabber(ij.im.core.stateLock.RLock, ij.im.core.stateLock.RUnlock, lockCtx.Done())
 	go l.grab()
 
 	if stopped := l.lockOrStop(); stopped {
-		// Failure to grab a lock is fatal if we're not sealed. Otherwise, if
-		// we are, we'll reload state once we're unsealed.
-		ij.im.dispacherLogger.Trace("unable to acquire read statelock", "key", ij.key)
-		ij.fatal = !ij.im.core.Sealed()
+		// Failure to grab a lock is never fatal: HA state change will mean
+		// that we'll restart the invalidation manager anyways.
+		ij.im.dispacherLogger.Trace("unable to acquire read statelock", "key", ij.key, "context", ij.quitContext.Err())
 		return nil
 	}
 
 	defer ij.im.core.stateLock.RUnlock()
 
-	if ij.im.core.Sealed() {
-		ij.im.dispacherLogger.Trace("refusing to process event after core is sealed", "key", ij.key)
-		return nil
-	}
+	// Any storage operations we dispatch here should be time-bounded and
+	// context refreshed.
+	ctx, cancel := context.WithTimeout(ij.quitContext, maxInvalidateTime)
+	defer cancel()
 
 	// Always refresh physical cache for operations performed during
 	// invalidation.

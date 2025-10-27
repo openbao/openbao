@@ -383,10 +383,8 @@ func (ij *invalidationJob) Execute() error {
 		ij.fatal = true
 		return ij.transactionalMountInvalidation(ctx)
 	case isKeyringPath(key):
-		// Invalidating keyring uses the same logic as the HA startup code,
-		// just started in a background goroutine. It isn't fatal since the
-		// goroutine handles fatal errors.
-		return ij.keyringInvalidation(ctx)
+		// The HA subsystem handles keyring rotations via the
+		// periodicCheckKeyUpgrades(...) actor.
 	case strings.HasPrefix(ij.key, coreLeaderPrefix):
 		// The HA subsystem handles leadership changes.
 	case strings.HasPrefix(ij.key, pluginCatalogPath):
@@ -462,29 +460,6 @@ func (ij *invalidationJob) transactionalMountInvalidation(ctx context.Context) e
 	if err := ij.im.core.reloadMount(ctx, ij.nsKey); err != nil {
 		return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", ij.nsKey, ij.nsUUID, err)
 	}
-
-	return nil
-}
-
-func (ij *invalidationJob) keyringInvalidation(ctx context.Context) error {
-	// We hold a read lock but keyring invalidation requires a write lock;
-	// this is the only one we'll run in a separate goroutine as a result.
-	go func(c *Core, path string) {
-		c.stateLock.Lock()
-		defer c.stateLock.Unlock()
-
-		if c.activeContext == nil || c.activeContext.Err() != nil || c.Sealed() || !c.standby.Load() {
-			return
-		}
-
-		c.logger.Trace("invalidating encryption keyring", "key", path)
-
-		if err := c.performKeyUpgrades(c.activeContext); err != nil {
-			c.logger.Error("failed to invalidate keyrings", "err", err)
-			c.restart()
-			return
-		}
-	}(ij.im.core, ij.key)
 
 	return nil
 }

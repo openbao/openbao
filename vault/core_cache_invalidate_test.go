@@ -36,17 +36,15 @@ func testCore_Invalidate_TestCore(t *testing.T, config *CoreConfig) (*Core, stri
 		c, _, root = TestCoreUnsealed(t)
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		c.mountInvalidationWorker.loop(t.Context())
-		wg.Done()
-	}()
-
 	// Fake being a standby for the purpose of testing invalidation; we ignore
 	// events on the active node and directly modify storage, which is already
 	// hooked.
 	c.standby.Store(true)
+	c.invalidations.Track()
+
+	c.stateLock.RLock()
+	c.invalidations.Start(context.Background())
+	c.stateLock.RUnlock()
 
 	return c, root
 }
@@ -129,7 +127,7 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 	mountPath := "ns/my-path"
 
 	// 3. Invalidate Path
-	c.Invalidate(storagePath)
+	c.invalidateSynchronous(storagePath)
 
 	// 4. Check cache was properly invalidated
 	// 4.1 Validate custom metadata
@@ -156,7 +154,7 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 	testCore_Invalidate_sneakValueAroundCacheDelete(t, c, "namespaces/"+ns.UUID)
 
 	// 6. Invalidate Path
-	c.Invalidate(storagePath)
+	c.invalidateSynchronous(storagePath)
 
 	// 7. Check cache was properly invalidated
 	// 7.1 namespace should be gone
@@ -234,7 +232,7 @@ func TestCore_Invalidate_Namespaces_NonTransactional(t *testing.T) {
 	})
 
 	// 3. Invalidate Path
-	c.Invalidate(storagePath)
+	c.invalidateSynchronous(storagePath)
 
 	// 4. Check cache was properly invalidated
 	// 4.1 Validate custom metadata
@@ -305,7 +303,7 @@ func TestCore_Invalidate_Policy(t *testing.T) {
 			testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
 
 			// 3. Invalidate Path
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			// 4. Check cache was properly invalidated
 			updatedPolicy, err := c.policyStore.GetPolicy(ctx, "test-policy", PolicyTypeACL)
@@ -342,7 +340,7 @@ func TestCore_Invalidate_Quota(t *testing.T) {
 	testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
 
 	// 3. Invalidate Path
-	c.Invalidate("sys/quotas/rate-limit/test-quota")
+	c.invalidateSynchronous("sys/quotas/rate-limit/test-quota")
 
 	// 4. Check cache was properly invalidated
 	req = logical.TestRequest(t, logical.ReadOperation, "sys/quotas/rate-limit/test-quota")
@@ -413,11 +411,11 @@ func TestCore_Invalidate_Plugin(t *testing.T) {
 			uuid := resp.Data["uuid"].(string)
 
 			// 4. Invalidate Paths
-			c.Invalidate(nsPrefix + "logical/" + uuid + "/foo")
-			c.Invalidate(nsPrefix + "logical/" + uuid + "/bar/bazz")
+			c.invalidateSynchronous(nsPrefix + "logical/" + uuid + "/foo")
+			c.invalidateSynchronous(nsPrefix + "logical/" + uuid + "/bar/bazz")
 
 			// 5. Check callback was called
-			assert.Equal(t, invalidatedKey, []string{"foo", "bar/bazz"})
+			assert.Equal(t, []string{"foo", "bar/bazz"}, invalidatedKey)
 		})
 	}
 }
@@ -487,7 +485,7 @@ func TestCore_Invalidate_Audit(t *testing.T) {
 	})
 
 	// 5. call invalidate
-	c.Invalidate("core/audit")
+	c.invalidateSynchronous("core/audit")
 
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		require.Equal(collect, 0, c.auditBroker.Count())
@@ -504,7 +502,7 @@ func TestCore_Invalidate_Audit(t *testing.T) {
 	testCore_Invalidate_sneakValueAroundCache(t, c, entry)
 
 	// 8. call invalidate
-	c.Invalidate("core/audit")
+	c.invalidateSynchronous("core/audit")
 
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		require.EqualValues(collect, 2, callCount.Load(), "expected audit factory to be called exactly twice")
@@ -610,7 +608,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			testCore_Invalidate_sneakValueAroundCacheDelete(t, c, storagePath)
 
 			// 5. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.mountsLock.RLock()
@@ -628,7 +626,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			testCore_Invalidate_sneakValueAroundCache(t, c, storageEntry)
 
 			// 8. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.mountsLock.RLock()
@@ -653,7 +651,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			})
 
 			// 10. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				triggerReadCall(collect, "unsupported path")
@@ -672,7 +670,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			})
 
 			// 12. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				resp := testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
@@ -697,7 +695,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			})
 
 			// 14. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				require.EqualValues(collect, 3, factoryCallCount.Load(), "expected factory to be called exactly thrice")
@@ -809,7 +807,7 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			})
 
 			// 4. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.mountsLock.RLock()
@@ -827,7 +825,7 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			testCore_Invalidate_sneakValueAroundCache(t, c, storageEntry)
 
 			// 7. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.mountsLock.RLock()
@@ -932,7 +930,7 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 			testCore_Invalidate_sneakValueAroundCacheDelete(t, c, storagePath)
 
 			// 5. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.authLock.RLock()
@@ -950,7 +948,7 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 			testCore_Invalidate_sneakValueAroundCache(t, c, storageEntry)
 
 			// 8. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.authLock.RLock()
@@ -975,7 +973,7 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 			})
 
 			// 10. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				callLogin(collect, "unsupported path")
@@ -1085,7 +1083,7 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			})
 
 			// 4. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.authLock.RLock()
@@ -1103,7 +1101,7 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			testCore_Invalidate_sneakValueAroundCache(t, c, storageEntry)
 
 			// 7. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.authLock.RLock()
@@ -1127,7 +1125,7 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			})
 
 			// 9. call invalidate
-			c.Invalidate(storagePath)
+			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				callLogin(collect, "unsupported path")

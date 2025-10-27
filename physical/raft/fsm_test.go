@@ -49,8 +49,8 @@ func TestFSM_Batching(t *testing.T) {
 	var term uint64 = 1
 
 	var hookCallCount atomic.Int64
-	fsm.hookInvalidate(func(key string) {
-		hookCallCount.Add(1)
+	fsm.hookInvalidate(func(key ...string) {
+		hookCallCount.Add(int64(len(key)))
 	})
 
 	getLog := func(i uint64) (int, *raft.Log) {

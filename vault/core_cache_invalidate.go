@@ -26,7 +26,7 @@ const (
 	maxDispatchers    = 128
 )
 
-func (c *Core) Invalidate(key string) {
+func (c *Core) Invalidate(key ...string) {
 	// Skip invalidations if we're not the standby. The InmemHA backend in
 	// particular dispatches invalidations on every node which isn't
 	// necessary as the active can invalidate itself.
@@ -45,7 +45,7 @@ func (c *Core) Invalidate(key string) {
 		return
 	}
 
-	c.invalidations.Add(key)
+	c.invalidations.Add(key...)
 }
 
 func (c *Core) invalidateSynchronous(key string) {
@@ -460,7 +460,7 @@ func (ij *invalidationJob) OnFailure(err error) {
 	ij.im.core.restart()
 }
 
-func (im *invalidationManager) Add(key string) {
+func (im *invalidationManager) Add(key ...string) {
 	if !im.enabled.Load() {
 		return
 	}
@@ -468,7 +468,7 @@ func (im *invalidationManager) Add(key string) {
 	im.pendingLock.Lock()
 	defer im.pendingLock.Unlock()
 
-	im.pending = append(im.pending, key)
+	im.pending = append(im.pending, key...)
 
 	select {
 	case im.pendingNotify <- struct{}{}:

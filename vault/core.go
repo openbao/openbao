@@ -657,6 +657,10 @@ type Core struct {
 func (c *Core) HAState() consts.HAState {
 	switch {
 	case c.standby.Load():
+		if c.StandbyReadsEnabled() {
+			return consts.PerfStandby
+		}
+
 		return consts.Standby
 	default:
 		return consts.Active
@@ -3998,4 +4002,23 @@ func (c *Core) DetectStateLockDeadlocks() bool {
 		return true
 	}
 	return false
+}
+
+func (c *Core) invalidateKeyrings(path string) {
+	go func() {
+		c.stateLock.Lock()
+		defer c.stateLock.Unlock()
+
+		if c.activeContext == nil || c.activeContext.Err() != nil {
+			return
+		}
+
+		c.logger.Trace("invalidating encryption keyring", "key", path)
+
+		if err := c.performKeyUpgrades(c.activeContext); err != nil {
+			c.logger.Error("failed to invalidate keyrings", "err", err)
+			c.restart()
+			return
+		}
+	}()
 }

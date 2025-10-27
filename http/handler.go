@@ -825,7 +825,6 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Fall back to redirection
-		core.Logger().Debug("falling back to request redirection", "req.path", r.URL.Path)
 		respondStandby(core, w, r.URL)
 		return
 	}
@@ -844,7 +843,6 @@ func request(core *vault.Core, w http.ResponseWriter, rawReq *http.Request, r *l
 	resp, err := core.HandleRequest(rawReq.Context(), r)
 
 	if logical.ShouldForward(err) || (resp != nil && logical.ShouldForward(resp.Error())) {
-		core.Logger().Debug("got issues handling request because we're a standby, forwarding")
 		return nil, false, true
 	}
 

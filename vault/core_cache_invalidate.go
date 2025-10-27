@@ -267,6 +267,9 @@ func isKeyringPath(key string) bool {
 }
 
 func (ij *invalidationJob) Execute() error {
+	ij.im.dispacherLogger.Trace("processing invalidation", "key", ij.key)
+	defer ij.im.dispacherLogger.Trace("concluding processing of invalidation", "key", ij.key)
+
 	defer metrics.MeasureSince([]string{dispatcherName, "execute-invalidate"}, time.Now())
 	ij.im.core.metricSink.IncrCounterWithLabels([]string{dispatcherName, "pending-dequeue-size"}, 1.0, nil)
 
@@ -285,6 +288,29 @@ func (ij *invalidationJob) Execute() error {
 	// context refreshed.
 	ctx, cancel := context.WithTimeout(ij.quitContext, maxInvalidateTime)
 	defer cancel()
+
+	// Acquire state lock. We're running in a goroutine; while active context
+	// should be sufficient to prevent races here, we want to ensure no core
+	// state changes during processing of the request. We bind this to our
+	// time-limited channel to ensure it processes in a reasonable amount of
+	// time.
+	l := newLockGrabber(ij.im.core.stateLock.RLock, ij.im.core.stateLock.RUnlock, ctx.Done())
+	go l.grab()
+
+	if stopped := l.lockOrStop(); stopped {
+		// Failure to grab a lock is fatal if we're not sealed. Otherwise, if
+		// we are, we'll reload state once we're unsealed.
+		ij.im.dispacherLogger.Trace("unable to acquire read statelock", "key", ij.key)
+		ij.fatal = !ij.im.core.Sealed()
+		return nil
+	}
+
+	defer ij.im.core.stateLock.RUnlock()
+
+	if ij.im.core.Sealed() {
+		ij.im.dispacherLogger.Trace("refusing to process event after core is sealed", "key", ij.key)
+		return nil
+	}
 
 	// Always refresh physical cache for operations performed during
 	// invalidation.

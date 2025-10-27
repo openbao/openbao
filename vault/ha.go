@@ -384,6 +384,9 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 }
 
 func (c *Core) stopStandby() {
+	c.stateLock.Lock()
+	defer c.stateLock.Unlock()
+
 	select {
 	case c.standbyStopCh.Load().(chan struct{}) <- struct{}{}:
 	default:

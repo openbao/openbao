@@ -67,6 +67,18 @@ Usage: bao namespace <subcommand> [options] [args]
 
       $ bao namespace unseal
 
+  Check the active encryption key status of the namespace:
+
+      $ bao namespace key-status
+
+  Rotate the underlying namespace encryption key:
+
+      $ bao namespace rotate
+
+  Rotate unseal keys for a namespace:
+
+      $ bao namespace rotate-keys
+
   Generate the root token for a sealable namespace:
 
       $ bao namespace generate-root

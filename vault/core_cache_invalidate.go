@@ -238,7 +238,7 @@ func isTransactionalMountPath(key string) bool {
 }
 
 func isKeyringPath(key string) bool {
-	return key == barrierSealConfigPath ||
+	return key == sealConfigPath ||
 		key == coreKeyringCanaryPath ||
 		key == keyringPath ||
 		key == legacyRootKeyPath ||

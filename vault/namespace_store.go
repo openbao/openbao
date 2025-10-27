@@ -122,6 +122,10 @@ func (c *Core) cancelNamespaceDeletion() {
 // If checkInvalidation returns an error, it never keeps a write lock for the
 // caller, so there is no need to check the bool before propagating an error.
 func (ns *NamespaceStore) checkInvalidation(ctx context.Context) (bool, error) {
+	if ctx.Err() != nil {
+		return false, ctx.Err()
+	}
+
 	if !ns.invalidated.Load() {
 		return false, nil
 	}

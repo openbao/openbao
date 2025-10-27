@@ -48,10 +48,6 @@ const (
 	leaderPrefixCleanDelay = 200 * time.Millisecond
 )
 
-var addEnterpriseHaActors func(*Core, *run.Group) chan func() = addEnterpriseHaActorsNoop
-
-func addEnterpriseHaActorsNoop(*Core, *run.Group) chan func() { return nil }
-
 // Standby checks if the Vault is in standby mode
 func (c *Core) Standby() (bool, error) {
 	return c.standby.Load(), nil
@@ -518,7 +514,6 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 		}
 
 		var g run.Group
-		newLeaderCh := addEnterpriseHaActors(c, &g)
 		{
 			// This will cause all the other actors to close when the stop channel
 			// is closed.
@@ -548,7 +543,7 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 			checkLeaderStop := make(chan struct{})
 
 			g.Add(func() error {
-				c.periodicLeaderRefresh(newLeaderCh, checkLeaderStop)
+				c.periodicLeaderRefresh(checkLeaderStop)
 				return nil
 			}, func(error) {
 				close(checkLeaderStop)
@@ -571,7 +566,7 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 			leaderStopCh := make(chan struct{})
 
 			g.Add(func() error {
-				c.waitForLeadership(newLeaderCh, manualStepDownCh, leaderStopCh)
+				c.waitForLeadership(manualStepDownCh, leaderStopCh)
 				return nil
 			}, func(error) {
 				close(leaderStopCh)
@@ -594,7 +589,7 @@ func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}
 // waitForLeadership is a long running routine that is used when an HA backend
 // is enabled. It waits until we are leader and switches this Vault to
 // active.
-func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stopCh <-chan struct{}) {
+func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 	var manualStepDown bool
 	firstIteration := true
 	for {
@@ -942,7 +937,7 @@ func (l *lockGrabber) grab() {
 // leader pretty quickly. There is logic in Leader() already to not make this
 // onerous and avoid more traffic than needed, so we just call that and ignore
 // the result.
-func (c *Core) periodicLeaderRefresh(newLeaderCh chan func(), stopCh chan struct{}) {
+func (c *Core) periodicLeaderRefresh(stopCh chan struct{}) {
 	opCount := new(int32)
 
 	clusterAddr := ""
@@ -981,15 +976,11 @@ func (c *Core) periodicLeaderRefresh(newLeaderCh chan func(), stopCh chan struct
 					clusterAddr = ""
 				}
 
-				if !isLeader && newClusterAddr != clusterAddr && newLeaderCh != nil {
-					select {
-					case newLeaderCh <- nil:
-						c.logger.Debug("new leader found, triggering new leader channel")
-						clusterAddr = newClusterAddr
-					default:
-						c.logger.Debug("new leader found, but still processing previous leader change")
-					}
+				if !isLeader && newClusterAddr != clusterAddr {
+					c.logger.Debug("new leader found", "new", newClusterAddr, "past", clusterAddr)
+					clusterAddr = newClusterAddr
 				}
+
 				atomic.AddInt32(lopCount, -1)
 			}()
 		case <-stopCh:

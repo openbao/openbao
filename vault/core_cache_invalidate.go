@@ -20,10 +20,11 @@ import (
 )
 
 const (
-	dispatcherName    = "invalidate-dispatch"
-	refresherName     = "invalidate-cache-refresh"
-	maxInvalidateTime = 30 * time.Second
-	maxDispatchers    = 128
+	dispatcherName          = "invalidate-dispatch"
+	refresherName           = "invalidate-cache-refresh"
+	maxInvalidateTime       = 30 * time.Second
+	maxPluginInvalidateTime = 2 * time.Second
+	maxDispatchers          = 128
 )
 
 func (c *Core) Invalidate(key ...string) {
@@ -253,14 +254,15 @@ func isTransactionalMountPath(key string) bool {
 }
 
 func isKeyringPath(key string) bool {
-	return key == rootKeyPath ||
-		key == legacyRootKeyPath ||
+	return key == barrierSealConfigPath ||
+		key == coreKeyringCanaryPath ||
 		key == keyringPath ||
-		key == shamirKekPath ||
-		key == StoredBarrierKeysPath ||
-		key == barrierSealConfigPath ||
+		key == legacyRootKeyPath ||
 		key == recoverySealConfigPath ||
 		key == recoveryKeyPath ||
+		key == rootKeyPath ||
+		key == shamirKekPath ||
+		key == StoredBarrierKeysPath ||
 		strings.HasPrefix(key, keyringUpgradePrefix)
 }
 
@@ -327,6 +329,10 @@ func (ij *invalidationJob) Execute() error {
 
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 
+	// Lastly, create a short version of the context for plugin invalidations.
+	shortCtx, shortCancel := context.WithTimeout(ctx, maxPluginInvalidateTime)
+	defer shortCancel()
+
 	// Now handle the actual event.
 	key := ij.nsKey
 	switch {
@@ -355,7 +361,19 @@ func (ij *invalidationJob) Execute() error {
 		// just started in a background goroutine. It isn't fatal since the
 		// goroutine handles fatal errors.
 		return ij.keyringInvalidation(ctx)
-	case ij.im.core.router.Invalidate(ctx, ij.key):
+	case strings.HasPrefix(ij.key, coreLeaderPrefix):
+		// The HA subsystem handles leadership changes.
+	case strings.HasPrefix(ij.key, pluginCatalogPath):
+		// There is nothing to do to invalidate a plugin catalog write.
+	case ij.key == CoreLockPath:
+		// The lock path isn't really a key that we invalidate; it is a lock
+		// file written by some backends which lack an out-of-storage locking
+		// mechanism. It is also handled by the HA mechanism and so is safe
+		// to ignore.
+	case strings.HasPrefix(ij.key, "autopilot/") || ij.key == raftAutopilotConfigurationStoragePath:
+		// Raft context is reloaded when a standby becomes active, so it is
+		// safe to ignore changes to autopilot state.
+	case ij.im.core.router.Invalidate(shortCtx, ij.key):
 		// if router.Invalidate returns true, a matching plugin was found and
 		// the invalidation is therefore dispatched.
 	default:

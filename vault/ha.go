@@ -396,7 +396,7 @@ func (c *Core) stopStandby() {
 
 func (c *Core) restart() {
 	select {
-	case c.restartCh <- struct{}{}:
+	case c.restartCh.Load().(chan struct{}) <- struct{}{}:
 	default:
 		c.logger.Warn("ignoring restart request: restart is already in progress")
 	}
@@ -405,7 +405,7 @@ func (c *Core) restart() {
 func (c *Core) drainPendingRestarts() {
 	for {
 		select {
-		case <-c.restartCh:
+		case <-c.restartCh.Load().(chan struct{}):
 			c.logger.Warn("ignoring restart request: restart is already in progress")
 
 		default:

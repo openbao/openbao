@@ -68,13 +68,26 @@ func (c *Core) invalidateInternal(ctx context.Context, key string) error {
 		ctx := physical.CacheRefreshContext(ctx, true)
 		namespaceUUID = strings.TrimPrefix(namespacedKey, namespaceStoreSubPath)
 
-		c.policyStore.invalidateNamespace(ctx, namespaceUUID)
+		c.stateLock.RLock()
+		policyStore := c.policyStore
+		c.stateLock.RUnlock()
+
+		if policyStore != nil {
+			policyStore.invalidateNamespace(ctx, namespaceUUID)
+		}
 
 		c.mountInvalidationWorker.invalidateNamespaceMounts(namespaceUUID)
 
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath):
 		policyType := PolicyTypeACL // for now it is safe to assume type is ACL
-		c.policyStore.invalidate(ctx, strings.TrimPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath), policyType)
+
+		c.stateLock.RLock()
+		policyStore := c.policyStore
+		c.stateLock.RUnlock()
+
+		if policyStore != nil {
+			policyStore.invalidate(ctx, strings.TrimPrefix(namespacedKey, systemBarrierPrefix+policyACLSubPath), policyType)
+		}
 
 	case strings.HasPrefix(namespacedKey, systemBarrierPrefix+quotas.StoragePrefix):
 		c.quotaManager.Invalidate(strings.TrimPrefix(key, systemBarrierPrefix+quotas.StoragePrefix))

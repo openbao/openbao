@@ -5,8 +5,11 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/go-viper/mapstructure/v2"
 )
 
 type CreateNamespaceRequest struct {
@@ -253,4 +256,269 @@ func (c *Sys) NamespaceGenerateRootUpdateWithContext(ctx context.Context, shard,
 	}
 	err = resp.DecodeJSON(&result)
 	return &result.Data, err
+}
+
+// ----- Key status retrieval -----
+
+func (c *Sys) NamespaceKeyStatus(name string) (*KeyStatus, error) {
+	return c.NamespaceKeyStatusWithContext(context.Background(), name)
+}
+
+func (c *Sys) NamespaceKeyStatusWithContext(ctx context.Context, name string) (*KeyStatus, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodGet, fmt.Sprintf("/v1/sys/namespaces/%s/key-status", name))
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
+	defer resp.Body.Close()
+
+	var result struct {
+		Data KeyStatus
+	}
+	err = resp.DecodeJSON(&result)
+	return &result.Data, err
+}
+
+// ----- Keyring rotation -----
+
+func (c *Sys) NamespaceRotateKeyring(name string) error {
+	return c.NamespaceRotateKeyringWithContext(context.Background(), name)
+}
+
+func (c *Sys) NamespaceRotateKeyringWithContext(ctx context.Context, name string) error {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodPost, fmt.Sprintf("/v1/sys/namespaces/%s/rotate/keyring", name))
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return err
+	}
+	return resp.Body.Close()
+}
+
+// ----- Unseal keys rotation -----
+
+func (c *Sys) NamespaceRotateRootStatus(name string) (*RotateStatusResponse, error) {
+	return c.NamespaceRotateRootStatusWithContext(context.Background(), name)
+}
+
+func (c *Sys) NamespaceRotateRootStatusWithContext(ctx context.Context, name string) (*RotateStatusResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+	r := c.c.NewRequest(http.MethodGet, fmt.Sprintf("/v1/sys/namespaces/%s/rotate/root/init", name))
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
+	defer resp.Body.Close()
+
+	var result struct {
+		Data *RotateStatusResponse
+	}
+	err = resp.DecodeJSON(&result)
+	return result.Data, err
+}
+
+func (c *Sys) NamespaceRotateRootInit(name string, config *RotateInitRequest) (*RotateStatusResponse, error) {
+	return c.NamespaceRotateRootInitWithContext(context.Background(), name, config)
+}
+
+func (c *Sys) NamespaceRotateRootInitWithContext(ctx context.Context, name string, config *RotateInitRequest) (*RotateStatusResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodPost, fmt.Sprintf("/v1/sys/namespaces/%s/rotate/root/init", name))
+	if err := r.SetJSONBody(config); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
+	defer resp.Body.Close()
+
+	var result struct {
+		Data *RotateStatusResponse
+	}
+	err = resp.DecodeJSON(&result)
+	return result.Data, err
+}
+
+func (c *Sys) NamespaceRotateRootCancel(name string) error {
+	return c.NamespaceRotateRootCancelWithContext(context.Background(), name)
+}
+
+func (c *Sys) NamespaceRotateRootCancelWithContext(ctx context.Context, name string) error {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+	r := c.c.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/sys/namespaces/%s/rotate/root/init", name))
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return err
+	}
+	return resp.Body.Close()
+}
+
+func (c *Sys) NamespaceRotateRootUpdate(name, shard, nonce string) (*RotateUpdateResponse, error) {
+	return c.NamespaceRotateRootUpdateWithContext(context.Background(), name, shard, nonce)
+}
+
+func (c *Sys) NamespaceRotateRootUpdateWithContext(ctx context.Context, name, shard, nonce string) (*RotateUpdateResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	body := map[string]interface{}{
+		"key":   shard,
+		"nonce": nonce,
+	}
+
+	r := c.c.NewRequest(http.MethodPut, fmt.Sprintf("/v1/sys/namespaces/%s/rotate/root/update", name))
+	if err := r.SetJSONBody(body); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
+	defer resp.Body.Close()
+
+	var result struct {
+		Data *RotateUpdateResponse
+	}
+	err = resp.DecodeJSON(&result)
+	return result.Data, err
+}
+
+func (c *Sys) NamespaceRotateRootRetrieveBackup(name string) (*RotateRetrieveResponse, error) {
+	return c.NamespaceRotateRootRetrieveBackupWithContext(context.Background(), name)
+}
+
+func (c *Sys) NamespaceRotateRootRetrieveBackupWithContext(ctx context.Context, name string) (*RotateRetrieveResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodGet, fmt.Sprintf("/v1/sys/namespaces/%s/rotate/root/backup", name))
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
+	defer resp.Body.Close()
+
+	secret, err := ParseSecret(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if secret == nil || secret.Data == nil {
+		return nil, errors.New("data from server response is empty")
+	}
+
+	var result RotateRetrieveResponse
+	if err = mapstructure.Decode(secret.Data, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, err
+}
+
+func (c *Sys) NamespaceRotateRootDeleteBackup(name string) error {
+	return c.NamespaceRotateRootDeleteBackupWithContext(context.Background(), name)
+}
+
+func (c *Sys) NamespaceRotateRootDeleteBackupWithContext(ctx context.Context, name string) error {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/sys/namespaces/%s/rotate/root/backup", name))
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return err
+	}
+	return resp.Body.Close()
+}
+
+func (c *Sys) NamespaceRotateRootVerificationStatus(name string) (*RotateVerificationStatusResponse, error) {
+	return c.NamespaceRotateRootVerificationStatusWithContext(context.Background(), name)
+}
+
+func (c *Sys) NamespaceRotateRootVerificationStatusWithContext(ctx context.Context, name string) (*RotateVerificationStatusResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodGet, fmt.Sprintf("/v1/sys/namespaces/%s/rotate/root/verify", name))
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
+	defer resp.Body.Close()
+
+	var result struct {
+		Data *RotateVerificationStatusResponse
+	}
+	err = resp.DecodeJSON(&result)
+	return result.Data, err
+}
+
+func (c *Sys) NamespaceRotateRootVerificationUpdate(name, shard, nonce string) (*RotateVerificationUpdateResponse, error) {
+	return c.NamespaceRotateRootVerificationUpdateWithContext(context.Background(), name, shard, nonce)
+}
+
+func (c *Sys) NamespaceRotateRootVerificationUpdateWithContext(ctx context.Context, name, shard, nonce string) (*RotateVerificationUpdateResponse, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	body := map[string]interface{}{
+		"key":   shard,
+		"nonce": nonce,
+	}
+
+	r := c.c.NewRequest(http.MethodPut, fmt.Sprintf("/v1/sys/namespaces/%s/rotate/root/verify", name))
+	if err := r.SetJSONBody(body); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
+	defer resp.Body.Close()
+
+	var result struct {
+		Data *RotateVerificationUpdateResponse
+	}
+	err = resp.DecodeJSON(&result)
+	return result.Data, err
+}
+
+func (c *Sys) NamespaceRotateRootVerificationCancel(name string) error {
+	return c.NamespaceRotateRootVerificationCancelWithContext(context.Background(), name)
+}
+
+func (c *Sys) NamespaceRotateRootVerificationCancelWithContext(ctx context.Context, name string) error {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/sys/namespaces/%s/rotate/root/verify", name))
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return err
+	}
+	return resp.Body.Close()
 }

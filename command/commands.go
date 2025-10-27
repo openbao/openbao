@@ -354,6 +354,21 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"namespace key-status": func() (cli.Command, error) {
+			return &NamespaceKeyStatusCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"namespace rotate": func() (cli.Command, error) {
+			return &NamespaceRotateCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"namespace rotate-keys": func() (cli.Command, error) {
+			return &NamespaceRotateKeysCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"namespace generate-root": func() (cli.Command, error) {
 			return &NamespaceGenerateRootCommand{
 				BaseCommand: getBaseCommand(),

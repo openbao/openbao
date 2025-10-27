@@ -162,8 +162,8 @@ func stringToRunesFunc(from reflect.Kind, to reflect.Kind, data interface{}) (in
 	return []rune(raw), nil
 }
 
-// detectConfigFormat determines if the input is JSON or HCL format
-func detectConfigFormat(data []byte) bool {
+// isJson determines if the input is JSON, i.e if it starts with '{'
+func isJson(data []byte) bool {
 	// Trim whitespace and check if it starts with '{'
 	trimmed := strings.TrimSpace(string(data))
 	return strings.HasPrefix(trimmed, "{")
@@ -174,7 +174,7 @@ func detectConfigFormat(data []byte) bool {
 // For HCL format, it uses ParseDontErrorOnDuplicateKeys to maintain
 // backward compatibility with duplicate keys.
 func ParseConfig(data []byte) (*ast.File, error) {
-	if detectConfigFormat(data) {
+	if isJson(data) {
 		// JSON format
 		return jsonParser.Parse(data)
 	} else {

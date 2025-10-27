@@ -148,8 +148,8 @@ func LoadSSHHelperConfig(path string) (*SSHHelperConfig, error) {
 	return ParseSSHHelperConfig(string(contents))
 }
 
-// detectConfigFormat determines if the input is JSON or HCL format
-func detectConfigFormat(data []byte) bool {
+// isJson determines if the input is JSON, i.e if it starts with '{'
+func isJson(data []byte) bool {
 	// Trim whitespace and check if it starts with '{'
 	trimmed := strings.TrimSpace(string(data))
 	return strings.HasPrefix(trimmed, "{")
@@ -163,7 +163,7 @@ func ParseSSHHelperConfig(contents string) (*SSHHelperConfig, error) {
 	var root *ast.File
 	var err error
 
-	if detectConfigFormat(data) {
+	if isJson(data) {
 		// JSON format
 		root, err = jsonParser.Parse(data)
 	} else {

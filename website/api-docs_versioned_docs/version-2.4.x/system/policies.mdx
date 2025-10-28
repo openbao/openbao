@@ -1,0 +1,150 @@
+---
+description: >-
+  The `/sys/policies/` endpoints are used to manage ACL policies
+  in OpenBao.
+---
+
+# `/sys/policies/`
+
+The `/sys/policies` endpoints are used to manage ACL, RGP, and EGP policies in OpenBao.
+
+## List ACL policies
+
+This endpoint lists all configured ACL policies. This endpoint optionally
+takes a prefix to list policies under.
+
+| Method | Path                        |
+| :----- | :-------------------------- |
+| `LIST` | `/sys/policies/acl`         |
+| `LIST` | `/sys/policies/acl/:prefix` |
+
+### Sample request
+
+```shell-session
+$ curl \
+    -X LIST --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/policies/acl
+```
+
+### Sample response
+
+```json
+{
+  "keys": ["root", "my-policy"]
+}
+```
+
+## Read ACL policy
+
+This endpoint retrieves information about the named ACL policy.
+
+| Method | Path                      |
+| :----- | :------------------------ |
+| `GET`  | `/sys/policies/acl/:name` |
+
+### Parameters
+
+- `name` `(string: <required>)` – Specifies the name of the policy to retrieve.
+  This is specified as part of the request URL.
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/policies/acl/my-policy
+```
+
+### Sample response
+
+```json
+{
+  "name": "deploy",
+  "policy": "path \"secret/foo\" {...",
+  "modified": "2025-03-25T16:50:49.348095648-05:00",
+  "version": 3,
+  "cas_required": true
+}
+```
+
+## Create/Update ACL policy
+
+This endpoint adds a new or updates an existing ACL policy. Once a policy is
+updated, it takes effect immediately to all associated users.
+
+| Method | Path                      |
+| :----- | :------------------------ |
+| `POST`  | `/sys/policies/acl/:name` |
+
+### Parameters
+
+- `name` `(string: <required>)` – Specifies the name of the policy to create.
+  This is specified as part of the request URL.
+
+- `policy` `(string: <required>)` - Specifies the policy document. This can be
+  base64-encoded to avoid string escaping.
+
+- `expiration` `(time: <optional>)` - Specifies an expiration time after which
+  the policy will no longer be valid and will be removed on next load. Cannot
+  be set in conjunction with `ttl` and cannot be in the past.
+
+- `ttl` `(duration: <optional>)` - Specifies a time for which the policy will
+  be valid and will be removed on next load. Cannot be set in conjunction with
+  `expiration`.
+
+- `cas` `(int: <optional>)` - Optional version of the policy to compare
+  against before performing any modifications (check-and-set). If the existing
+  version of the policy has `cas_required=true` or the `cas_required=true`
+  parameter is provided on the request, the `cas` parameter is required. When
+  no policy exists and this should strictly be a create operation, set the
+  value to `-1`; existing policies created before this field start at version
+  `0`.
+
+- `cas_required` `(bool: <optional>)` - Whether or not check-and-set semantics
+  should be required on this and the next request. Note that because this is
+  a create/update operation, this parameter needs to reset to true on every
+  subsequent operation for continued usage. When set to true, `cas` becomes
+  a required parameter. Defaults to false.
+
+### Sample payload
+
+```json
+{
+  "policy": "path \"secret/foo\" {..."
+}
+```
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request POST \
+    --data @payload.json \
+    http://127.0.0.1:8200/v1/sys/policies/acl/my-policy
+```
+
+## Delete ACL policy
+
+This endpoint deletes the ACL policy with the given name. This will immediately
+affect all users associated with this policy. (A deleted policy set on a token
+acts as an empty policy.)
+
+| Method   | Path                      |
+| :------- | :------------------------ |
+| `DELETE` | `/sys/policies/acl/:name` |
+
+### Parameters
+
+- `name` `(string: <required>)` – Specifies the name of the policy to delete.
+  This is specified as part of the request URL.
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request DELETE \
+    http://127.0.0.1:8200/v1/sys/policies/acl/my-policy
+```
+

@@ -1,0 +1,25 @@
+---
+sidebar_label: Overview
+description: >-
+  This endpoint is intended to inspect a specific internal subsystem for debugging purposes, and turned off by default.
+  Once turned on, it can be accessed with a root token or sudo privileges
+---
+
+# `/sys/internal/inspect`
+
+The `/sys/internal/inspect` family of endpoints is intended to inspect a specific internal subsystem for debugging purposes.
+This endpoint is off by default. See the
+[OpenBao configuration documentation](/docs/configuration) to
+enable. Once the endpoint is turned on, it can be accessed with a root token or sudo privileges.
+
+:::warning
+
+**NOTE**: These endpoints are subject to change or may disappear without notice.
+
+:::
+
+
+## Supported inspection paths
+
+- [Request](/api-docs/system/inspect/request)
+- [Router](/api-docs/system/inspect/router)

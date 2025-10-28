@@ -1,0 +1,103 @@
+---
+description: >-
+  The '/sys/internal/inspect/request' endpoint focuses on viewing the contents of specific structures in the request.
+---
+
+# `/sys/internal/inspect/request`
+
+The `/sys/internal/inspect/request` endpoint is intended for an OpenBao admin
+or developer to inspect the internal components of OpenBao's request
+structures, including entity and group information.
+
+This endpoint can be accessed with a root token or sudo privileges.
+
+| Method | Path          |
+| :----- | :------------ |
+| `GET`  | `/sys/internal/inspect/request/root` |
+
+## Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/internal/inspect/request
+```
+
+## Sample response
+
+```json
+{
+  "request_id": "abbaaa32-a234-e010-3041-fc5e35f88f8b",
+  "lease_id": "",
+  "lease_duration": 0,
+  "renewable": false,
+  "data": {
+    "cluster_id": "e39cb9bf-faf3-5bc0-3857-375f032b2487",
+    "cluster_id_error": null,
+    "data": {},
+    "entity": {
+      "ID": "c207eba9-ea92-c474-965d-54dfe357eeac",
+      "aliases": [
+        {
+          "ID": "f5a14b19-6bfb-3cf5-91fb-1421fbceeab0",
+          "metadata": {
+            "my-keyword": "value",
+            "role_name": "testing"
+          },
+          "mount_accessor": "auth_approle_bf30e678",
+          "mount_type": "approle",
+          "name": "032f0687-3553-4fc4-60f1-97a2f6748fd6",
+          "namespace_id": "root"
+        }
+      ],
+      "name": "entity_6afb48a7"
+    },
+    "entity_error": null,
+    "groups": [],
+    "groups_error": null,
+    "plugin_env": {
+      "vault_version": "2.0.0",
+      "vault_version_prerelease": "HEAD"
+    },
+    "plugin_env_error": null,
+    "req": {
+      "ClientTokenSource": 1,
+      "InboundSSCToken": "",
+      "auth": null,
+      "client_id": "c207eba9-ea92-c474-965d-54dfe357eeac",
+      "client_token": "s.cCrFGPcc4HVdrXovkkOzhZkK",
+      "client_token_accessor": "h5tDsSFp8SZL0wHCDSI9cE4k",
+      "client_token_remaining_uses": 0,
+      "connection": {
+        "ConnState": null,
+        "remote_addr": "127.0.0.1",
+        "remote_port": 41032
+      },
+      "display_name": "approle",
+      "entity_id": "c207eba9-ea92-c474-965d-54dfe357eeac",
+      "headers": {},
+      "id": "abbaaa32-a234-e010-3041-fc5e35f88f8b",
+      "map": null,
+      "mfa_creds": null,
+      "mount_accessor": "",
+      "mount_point": "sys/",
+      "mount_type": "system",
+      "operation": "read",
+      "path": "internal/inspect/request",
+      "policy_override": false,
+      "replication_cluster": "",
+      "secret": null,
+      "unauthenticated": false,
+      "wrap_info": null
+    },
+    "vault_version": "2.0.0",
+    "vault_version_error": null
+  },
+  "warnings": null
+}
+```
+
+Note that the value of some fields, such as `client_token`, may differ because
+this handler is in the privileged System backend which does not have HMAC
+protections applied to sensitive fields. For a list of such fields, see
+[`sdk/logical/request.go`](https://github.com/openbao/openbao/blob/main/sdk/logical/request.go).

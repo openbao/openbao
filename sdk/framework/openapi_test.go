@@ -869,7 +869,6 @@ func testPath(t *testing.T, path *Path, sp *logical.Paths, expectedJSON string) 
 	if err := documentPath(path, sp, "kv", logical.TypeLogical, doc); err != nil {
 		t.Fatal(err)
 	}
-	doc.CreateOperationIDs("")
 
 	docJSON, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {

@@ -78,7 +78,7 @@ func LoadConfig(path string) (*DefaultConfig, error) {
 
 // ParseConfig parses the given configuration as a string.
 func ParseConfig(contents string) (*DefaultConfig, error) {
-	root, err := hcl.Parse(contents)
+	root, err := hclutil.ParseConfig([]byte(contents))
 	if err != nil {
 		return nil, err
 	}

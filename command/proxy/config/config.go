@@ -23,6 +23,7 @@ import (
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 )
 
 // Config is the configuration for Vault Proxy.
@@ -359,7 +360,7 @@ func LoadConfigFile(path string) (*Config, error) {
 	}
 
 	// Parse!
-	obj, err := hcl.Parse(string(d))
+	obj, err := hclutil.ParseConfig(d)
 	if err != nil {
 		return nil, err
 	}

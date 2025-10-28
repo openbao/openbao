@@ -852,9 +852,13 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 			c.leaderUUID = ""
 			c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 0, nil)
 
-			// Seal
-			if err := c.preSeal(); err != nil {
-				c.logger.Error("pre-seal teardown failed", "error", err)
+			// Seal if this was a regular leadership change or stepdown. We
+			// do not seal when the stop channel is acquired, as
+			// sealInternal(...) handles that for us.
+			if !stopped {
+				if err := c.preSeal(); err != nil {
+					c.logger.Error("pre-seal teardown failed", "error", err)
+				}
 			}
 
 			// If we are not meant to keep the HA lock, clear it

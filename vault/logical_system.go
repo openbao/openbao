@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"maps"
 	"math/rand"
 	"net/http"
 	"path"
@@ -4507,9 +4508,7 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 			}
 
 			// Merge backend schema components
-			for e, schema := range backendDoc.Components.Schemas {
-				doc.Components.Schemas[e] = schema
-			}
+			maps.Copy(doc.Components.Schemas, backendDoc.Components.Schemas)
 		}
 		return nil
 	}

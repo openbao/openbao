@@ -267,6 +267,12 @@ func isKeyringPath(key string) bool {
 		strings.HasPrefix(key, keyringUpgradePrefix)
 }
 
+func isMissedMountKey(key string) bool {
+	return strings.HasPrefix(key, credentialBarrierPrefix) ||
+		strings.HasPrefix(key, backendBarrierPrefix) ||
+		strings.HasPrefix(key, auditBarrierPrefix)
+}
+
 func (ij *invalidationJob) Execute() error {
 	ij.im.dispacherLogger.Trace("processing invalidation", "key", ij.key)
 	defer ij.im.dispacherLogger.Trace("concluding processing of invalidation", "key", ij.key)
@@ -406,6 +412,15 @@ func (ij *invalidationJob) Execute() error {
 	case ij.im.core.router.Invalidate(shortCtx, ij.key):
 		// if router.Invalidate returns true, a matching plugin was found and
 		// the invalidation is therefore dispatched.
+	case isMissedMountKey(ij.key):
+		// router.Invalidate(...) may return false when a matching plugin was
+		// not yet loaded, even though this was under a path we'd expect to
+		// be a mount key (auth/, audit/, or logical/) prefix. Ignoring it is
+		// fine: a later change to a subsequent entry will actually load the
+		// mount, loading any data this entry would've contained for the first
+		// time.
+		//
+		// This is true in reverse for deletions.
 	default:
 		ij.im.dispacherLogger.Warn("no mechanism to invalidate cache for specified key", "key", key)
 	}

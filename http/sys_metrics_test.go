@@ -9,7 +9,7 @@ import (
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 
-	"github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/vault"

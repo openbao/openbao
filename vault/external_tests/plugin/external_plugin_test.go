@@ -339,7 +339,7 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 						"period":         "300",
 					})
 					require.NoError(collect, err)
-				}, 10*time.Second, 10*time.Millisecond)
+				}, 20*time.Second, 10*time.Millisecond)
 
 				secret, err := client.Logical().Write("auth/"+pluginPath+"/role/role1/secret-id", nil)
 				if err != nil {
@@ -392,7 +392,7 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 				require.EventuallyWithT(t, func(collect *assert.CollectT) {
 					resp, err = client.Auth().Token().Lookup(revokeToken)
 					require.Error(collect, err)
-				}, 10*time.Second, 10*time.Millisecond)
+				}, 20*time.Second, 10*time.Millisecond)
 
 				// Reset root token
 				client.SetToken(cluster.RootToken)

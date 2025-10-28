@@ -1,0 +1,19 @@
+---
+description: Short list of third-party tools that work with or are related to OpenBao.
+---
+
+# Related tools
+
+:::warning
+
+**Note**: OpenBao intends to remain API compatible with HashiCorp Vault. This
+means that most of the existing [tooling for
+Vault](https://developer.hashicorp.com/vault/api-docs/relatedtools) should also
+work with OpenBao.
+
+:::
+
+- [OpenBao Agent](/docs/agent-and-proxy/agent) can render OpenBao secrets either to files or directly into a child process as environment variables using `consul-template` templating syntax
+- [OpenBao Proxy](/docs/agent-and-proxy/proxy) acts as an API Proxy for OpenBao, and can optionally allow or force interacting clients to use its automatically authenticated token
+
+Want to add your own project, or one that you use? Additions are welcome via [pull requests](https://github.com/openbao/openbao/blob/main/website/content/api-docs/relatedtools.mdx).

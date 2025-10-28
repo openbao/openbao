@@ -1,0 +1,139 @@
+---
+description: Learn about OpenBao plugin development.
+---
+
+# Plugin development
+
+:::warning
+
+Advanced topic! Plugin development is a highly advanced topic in OpenBao, and
+is not required knowledge for day-to-day usage. If you don't plan on writing any
+plugins, we recommend not reading this section of the documentation.
+
+:::
+
+Because OpenBao communicates to plugins over a RPC interface, you can build and
+distribute a plugin for OpenBao without having to rebuild OpenBao itself. This makes
+it easy for you to build an OpenBao plugin for your organization's internal use,
+for a proprietary API that you don't want to open source, or to prototype
+something before contributing it back to the main project.
+
+In theory, because the plugin interface is HTTP, you could even develop a plugin
+using a completely different programming language! (Disclaimer, you would also
+have to re-implement the plugin API which is not a trivial amount of work.)
+
+Developing a plugin is simple. The only knowledge necessary to write
+a plugin is basic command-line skills and basic knowledge of the
+[Go programming language](http://golang.org).
+
+Your plugin implementation needs to satisfy the interface for the plugin
+type you want to build. You can find these definitions in the docs for the
+backend running the plugin.
+
+:::warning
+
+Note: Plugins should be prepared to handle multiple concurrent requests
+from OpenBao.
+
+:::
+
+## Serving a plugin
+
+### Serving a plugin with multiplexing
+
+:::warning
+
+Plugin multiplexing requires `github.com/openbao/openbao/sdk v0.5.4` or above.
+
+:::
+
+The following code exhibits an example main package for an OpenBao plugin using
+the OpenBao SDK for a secrets engine or auth method:
+
+```go
+package main
+
+import (
+	"os"
+
+	myPlugin "your/plugin/import/path"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/plugin"
+)
+
+func main() {
+	apiClientMeta := &api.PluginAPIClientMeta{}
+	flags := apiClientMeta.FlagSet()
+	flags.Parse(os.Args[1:])
+
+	tlsConfig := apiClientMeta.GetTLSConfig()
+	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
+
+	err := plugin.ServeMultiplex(&plugin.ServeOpts{
+		BackendFactoryFunc: myPlugin.Factory,
+		TLSProviderFunc:    tlsProviderFunc,
+	})
+	if err != nil {
+		logger := hclog.New(&hclog.LoggerOptions{})
+
+		logger.Error("plugin shutting down", "error", err)
+		os.Exit(1)
+	}
+}
+```
+
+And that's basically it! You would just need to change `myPlugin` to your actual
+plugin.
+
+## Plugin backwards compatibility with OpenBao
+
+Let's take a closer look at a snippet from the above main package.
+
+```go
+	err := plugin.ServeMultiplex(&plugin.ServeOpts{
+		BackendFactoryFunc: myPlugin.Factory,
+		TLSProviderFunc:    tlsProviderFunc,
+	})
+```
+
+The call to `plugin.ServeMultiplex` ensures that the plugin will use
+OpenBao's [plugin
+multiplexing](/docs/plugins/plugin-architecture#plugin-multiplexing) feature.
+However, this plugin will not be multiplexed if it is run by a version of OpenBao
+that does not support multiplexing. OpenBao will simply fall back to a plugin
+version that it can run. Additionally, we set the `TLSProviderFunc` to ensure
+that our plugin is backwards compatible with versions of OpenBao that do not
+support automatic mutual TLS for secure [plugin
+communication](/docs/plugins/plugin-architecture#plugin-communication). If you
+are certain your plugin does not need backwards compatibility, this field can
+be omitted.
+
+[api_addr]: /docs/configuration#api_addr
+
+## Leveraging plugin versioning
+
+@include 'plugin-versioning.mdx'
+
+Auth and secrets plugins based on `framework.Backend` from the SDK should set the
+[`RunningVersion`](https://github.com/openbao/openbao/blob/sdk/v0.6.0/sdk/framework/backend.go#L95-L96)
+variable, and the framework will implement the version interface.
+
+Database plugins have a smaller API than `framework.Backend` exposes, and should
+instead implement the
+[`PluginVersioner`](https://github.com/openbao/openbao/blob/sdk/v0.6.0/sdk/logical/logical.go#L150-L154)
+interface directly.
+
+## Building a plugin from source
+
+To build a plugin from source, first navigate to the location holding the
+desired plugin version. Next, run `go build` to obtain a new binary for the
+plugin. Finally,
+[register](/docs/plugins/plugin-architecture#plugin-registration) the
+plugin and enable it.
+
+## Plugin development - resources
+
+Other HashiCorp plugin development resources:
+
+* [vault-auth-plugin-example](https://github.com/hashicorp/vault-auth-plugin-example)
+

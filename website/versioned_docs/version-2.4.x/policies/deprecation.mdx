@@ -1,0 +1,61 @@
+---
+sidebar_label: Deprecation Policy
+description: |-
+  The OpenBao policy around deprecating and removing features.
+---
+
+# Deprecation policy
+
+This policy was original [discussed on
+GitHub](https://github.com/orgs/openbao/discussions/53) and ratified on
+the [February 1st, 2024 meeting](https://wiki.lfedge.org/display/OH/OpenBao+Meetings).
+
+For lack of a more formal description of upstream's policy, let's describe it
+as follows, adopted for OpenBao's community workflow:
+
+ 1. Vote and document a deprecations at any time. These denote the release in
+    which a feature/... is marked deprecated going forward (inclusive; if this
+    occurs after version x.y.z was released but before x.y+1.z, we'll denote
+    this deprecation as happening in x.y+1.0 and forward).
+
+ 2. Vote and document a deprecation period for this feature in releases. E.g.,
+    4 minor releases or one major release -- this depends on cadence of the
+    project and importance of this feature. After this date, the feature will
+    be entirely unsupported in this community. Downstreams users are encouraged
+    to remove any dependence on this feature.
+
+ 3. Vote and document a removal window. Sometimes this is right after the
+    deprecation, sometimes this could be several releases later. In the
+    specified release (and blocking said release), this functionality will
+    be removed. If removal cannot occur in time, a vote can be made to extend
+    removal window.
+
+Documentation would be on the website, in similar format as existing upstream
+deprecations, and announced on the mailing list.
+
+Usually removals do not happen in patch releases, only major/minor releases.
+
+In the event of security or third-party dependency related deprecations, this
+timeline can be accelerated so that e.g., deprecation and removal happen
+within the next (major, minor, or patch) release. For example, if a cloud
+plugin relies on APIs no longer supported by the cloud vendor, portions or
+all of that plugin may be removed sooner. Or, if a critical vulnerability
+is found in a plugin that prevents operations with the same API architecture,
+a removal could be done in the next point release to prevent unsafe usage.
+
+Vote in this context, prior to forming a TSC, would be a simple majority
+minus abstentions on a community call. After forming a TSC, they can
+decide to either continue having community calls be deprecation vote process
+or decide upon a different voting mechanism.
+
+## Prior to initial release
+
+1. No policy prior to first release candidate; free to vote to remove plugins,
+   features without following the deprecation policy. Any alpha, betas prior
+   to release candidate would not need to follow the below process. A simple
+   majority vote minus abstentions on a community call would be sufficient to
+   enact deprecation and removal.
+2. Follow approach similar to upstream after first release candidate
+   (described above).
+
+

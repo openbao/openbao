@@ -1,0 +1,328 @@
+---
+draft: true
+description: This section documents the configurable annotations for the OpenBao Agent Injector.
+---
+
+# Annotations
+
+The following are the available annotations for the injector. These annotations
+are organized into two sections: agent and openbao. All of the annotations below
+change the configurations of the OpenBao Agent containers injected into the pod.
+
+## Agent annotations
+
+Agent annotations change the OpenBao Agent containers templating configuration. For
+example, agent annotations allow users to define what secrets they want, how to render
+them, optional commands to run, etc.
+
+- `openbao.openbao.org/agent-inject` - configures whether injection is explicitly
+  enabled or disabled for a pod. This should be set to a `true` or `false` value.
+  Defaults to `false`.
+
+- `openbao.openbao.org/agent-inject-status` - blocks further mutations
+  by adding the value `injected` to the pod after a successful mutation.
+
+- `openbao.openbao.org/agent-configmap` - name of the configuration map where OpenBao
+  Agent configuration file and templates can be found.
+
+- `openbao.openbao.org/agent-image` - name of the OpenBao docker image to use. This
+  value overrides the default image configured in the injector and is usually
+  not needed. Defaults to `openbao/openbao:1.12.3`.
+
+- `openbao.openbao.org/agent-init-first` - configures the pod to run the OpenBao Agent
+  init container first if `true` (last if `false`). This is useful when other init
+  containers need pre-populated secrets. This should be set to a `true` or `false`
+  value. Defaults to `false`.
+
+- `openbao.openbao.org/agent-inject-command` - configures OpenBao Agent
+  to run a command after the template has been rendered. To map a command to a specific
+  secret, use the same unique secret name: `openbao.openbao.org/agent-inject-command-SECRET-NAME`.
+  For example, if a secret annotation `openbao.openbao.org/agent-inject-secret-foobar`
+  is configured, `openbao.openbao.org/agent-inject-command-foobar` would map a command
+  to that secret.
+
+- `openbao.openbao.org/agent-inject-secret` - configures OpenBao Agent
+  to retrieve the secrets from OpenBao required by the container. The name of the
+  secret is any unique string after `openbao.openbao.org/agent-inject-secret-`,
+  such as `openbao.openbao.org/agent-inject-secret-foobar`. The value is the path
+  in OpenBao where the secret is located.
+
+- `openbao.openbao.org/agent-inject-template` - configures the template OpenBao Agent
+  should use for rendering a secret. The name of the template is any
+  unique string after `openbao.openbao.org/agent-inject-template-`, such as
+  `openbao.openbao.org/agent-inject-template-foobar`. This should map to the same
+  unique value provided in `openbao.openbao.org/agent-inject-secret-`. If not provided,
+  a default generic template is used.
+
+- `openbao.openbao.org/agent-inject-containers` - comma-separated list that specifies in
+  which containers the secrets volume should be mounted. If not provided, the secrets
+  volume will be mounted in all containers in the pod.
+
+- `openbao.openbao.org/secret-volume-path` - configures where on the filesystem a secret
+  will be rendered. To map a path to a specific secret, use the same unique secret name:
+  `openbao.openbao.org/secret-volume-path-SECRET-NAME`. For example, if a secret annotation
+  `openbao.openbao.org/agent-inject-secret-foobar` is configured,
+  `openbao.openbao.org/secret-volume-path-foobar` would configure where that secret
+  is rendered. If no secret name is provided, this sets the default for all rendered
+  secrets in the pod.
+
+- `openbao.openbao.org/agent-inject-file` - configures the filename and path
+  in the secrets volume where a OpenBao secret will be written. This should be used
+  with `openbao.openbao.org/secret-volume-path`, which mounts a memory volume to
+  the specified path. If `secret-volume-path` is used, the path can be omitted from
+  this value. To map a filename to a specific secret, use the same unique secret name:
+  `openbao.openbao.org/agent-inject-file-SECRET-NAME`. For example, if a secret annotation
+  `openbao.openbao.org/agent-inject-secret-foobar` is configured,
+  `openbao.openbao.org/agent-inject-file-foobar` would configure the filename.
+
+- `openbao.openbao.org/agent-inject-perms` - configures the permissions of the
+  file to create in the secrets volume. The name of the secret is the string
+  after "openbao.openbao.org/agent-inject-perms-", and should map to the same
+  unique value provided in "openbao.openbao.org/agent-inject-secret-". The value
+  is the octal permission, for example: `0644`.
+
+- `openbao.openbao.org/agent-inject-template-file` - configures the path and filename of the
+  custom template to use. This should be used with `openbao.openbao.org/extra-secret`,
+  which mounts a Kubernetes secret to `/openbao/custom`. To map a template file to a specific secret,
+  use the same unique secret name: `openbao.openbao.org/agent-inject-template-file-SECRET-NAME`.
+  For example, if a secret annotation `openbao.openbao.org/agent-inject-secret-foobar` is configured,
+  `openbao.openbao.org/agent-inject-template-file-foobar` would configure the template file.
+
+- `openbao.openbao.org/agent-inject-default-template` - configures the default template type for rendering
+  secrets if no custom template is defined. Possible values include `map` and `json`. Defaults to `map`.
+
+- `openbao.openbao.org/template-config-exit-on-retry-failure` - controls whether
+  OpenBao Agent exits after it has exhausted its number of template retry attempts
+  due to failures. Defaults to `true`. See [OpenBao Agent Template
+  Config](/docs/agent-and-proxy/agent/template#template-configurations) for more details.
+
+- `openbao.openbao.org/template-static-secret-render-interval` - If specified,
+  configures how often OpenBao Agent Template should render non-leased secrets such as KV v2.
+  See [OpenBao Agent Template Config](/docs/agent-and-proxy/agent/template#template-configurations) for more details.
+
+- `openbao.openbao.org/agent-extra-secret` - mounts Kubernetes secret as a volume at
+  `/openbao/custom` in the sidecar/init containers. Useful for custom Agent configs with
+  auto-auth methods such as approle that require paths to secrets be present.
+
+- `openbao.openbao.org/agent-inject-token` - configures OpenBao Agent to share the OpenBao
+  token with other containers in the pod, in a file named `token` in the root of the
+  secrets volume (i.e. `/openbao/secrets/token`). This is helpful when other containers
+  communicate directly with OpenBao but require auto-authentication provided by OpenBao
+  Agent. This should be set to a `true` or `false` value. Defaults to `false`.
+
+- `openbao.openbao.org/agent-limits-cpu` - configures the CPU limits on the OpenBao
+  Agent containers. Defaults to `500m`. Setting this to an empty string disables
+  CPU limits.
+
+- `openbao.openbao.org/agent-limits-mem` - configures the memory limits on the OpenBao
+  Agent containers. Defaults to `128Mi`. Setting this to an empty string disables
+  memory limits.
+
+- `openbao.openbao.org/agent-limits-ephemeral` - configures the ephemeral
+  storage limit on the OpenBao Agent containers. Defaults to unset, which
+  disables ephemeral storage limits. Also available as a command-line option
+  (`-ephemeral-storage-limit`) or environment variable (`AGENT_INJECT_EPHEMERAL_LIMIT`)
+  to set the default for all injected Agent containers. **Note:** Pod limits are
+  equal to the sum of all container limits. Setting this limit without setting it
+  for other containers will also affect the limits of other containers in the pod.
+  See [Kubernetes resources documentation][k8s-resources] for more details.
+
+- `openbao.openbao.org/agent-requests-cpu` - configures the CPU requests on the
+  OpenBao Agent containers. Defaults to `250m`. Setting this to an empty string disables
+  CPU requests.
+
+- `openbao.openbao.org/agent-requests-mem` - configures the memory requests on the
+  OpenBao Agent containers. Defaults to `64Mi`. Setting this to an empty string disables
+  memory requests.
+
+- `openbao.openbao.org/agent-requests-ephemeral` - configures the ephemeral
+  storage requests on the OpenBao Agent Containers. Defaults to unset, which
+  disables ephemeral storage requests (and will default to the ephemeral limit
+  if set). Also available as a command-line option (`-ephemeral-storage-request`)
+  or environment variable (`AGENT_INJECT_EPHEMERAL_REQUEST`) to set the default
+  for all injected Agent containers. **Note:** Pod requests are equal to the sum
+  of all container requests. Setting this limit without setting it for other
+  containers will also affect the requests of other containers in the pod. See
+  [Kubernetes resources documentation][k8s-resources] for more details.
+
+- `openbao.openbao.org/agent-revoke-on-shutdown` - configures whether the sidecar
+  will revoke it's own token before shutting down. This setting will only be applied
+  to the OpenBao Agent sidecar container. This should be set to a `true` or `false`
+  value. Defaults to `false`.
+
+- `openbao.openbao.org/agent-revoke-grace` - configures the grace period, in seconds,
+  for revoking it's own token before shutting down. This setting will only be applied
+  to the OpenBao Agent sidecar container. Defaults to `5s`.
+
+- `openbao.openbao.org/agent-pre-populate` - configures whether an init container
+  is included to pre-populate the shared memory volume with secrets prior to the
+  containers starting.
+
+- `openbao.openbao.org/agent-pre-populate-only` - configures whether an init container
+  is the only injected container. If true, no sidecar container will be injected
+  at runtime of the pod. Enabling this option is recommended for workloads of
+  type `CronJob` or `Job` to ensure a clean pod termination.
+
+- `openbao.openbao.org/preserve-secret-case` - configures OpenBao Agent to preserve
+  the secret name case when creating the secret files. This should be set to a `true`
+  or `false` value. Defaults to `false`.
+
+- `openbao.openbao.org/agent-run-as-user` - sets the user (uid) to run OpenBao
+  agent as. Also available as a command-line option (`-run-as-user`) or
+  environment variable (`AGENT_INJECT_RUN_AS_USER`) for the injector. Defaults
+  to 100.
+
+- `openbao.openbao.org/agent-run-as-group` - sets the group (gid) to run OpenBao
+  agent as. Also available as a command-line option (`-run-as-group`) or
+  environment variable (`AGENT_INJECT_RUN_AS_GROUP`) for the injector. Defaults
+  to 1000.
+
+- `openbao.openbao.org/agent-set-security-context` - controls whether
+  `SecurityContext` is set in injected containers. Also available as a
+  command-line option (`-set-security-context`) or environment variable
+  (`AGENT_INJECT_SET_SECURITY_CONTEXT`). Defaults to `true`.
+
+- `openbao.openbao.org/agent-run-as-same-user` - run the injected OpenBao agent
+  containers as the User (uid) of the first application container in the pod.
+  Requires `Spec.Containers[0].SecurityContext.RunAsUser` to be set in the pod
+  spec. Also available as a command-line option (`-run-as-same-user`) or
+  environment variable (`AGENT_INJECT_RUN_AS_SAME_USER`). Defaults to `false`.
+
+:::warning
+
+ **Note**: If the first application container in the pod is running as root
+  (uid 0), the `run-as-same-user` annotation will fail injection with an error.
+
+:::
+
+- `openbao.openbao.org/agent-share-process-namespace` - sets
+  [shareProcessNamespace] in the Pod spec where OpenBao Agent is injected.
+  Defaults to `false`.
+
+- `openbao.openbao.org/agent-cache-enable` - configures OpenBao Agent to enable
+  [caching](/docs/agent-and-proxy/agent/caching). In OpenBao 1.7+ this annotation will also enable
+  a OpenBao Agent persistent cache. This persistent cache will be shared between the init
+  and sidecar container to reuse tokens and leases retrieved by the init container.
+  Defaults to `false`.
+
+- `openbao.openbao.org/agent-cache-use-auto-auth-token` - configures OpenBao Agent cache
+  to authenticate on behalf of the requester. Set to `force` to enable. Disabled
+  by default.
+
+- `openbao.openbao.org/agent-cache-listener-port` - configures OpenBao Agent cache
+  listening port. Defaults to `8200`.
+
+- `openbao.openbao.org/agent-copy-volume-mounts` - copies the mounts from the specified
+  container and mounts them to the OpenBao Agent containers. The service account volume is
+  ignored.
+
+- `openbao.openbao.org/agent-service-account-token-volume-name` - the optional name of a projected volume containing a service account token for use with auto-auth against OpenBao's Kubernetes auth method. If the volume is mounted to another container in the deployment, the token volume will be mounted to the same location in the openbao-agent containers. Otherwise it will be mounted at the default location of `/var/run/secrets/openbao.hashicorp.com/serviceaccount/`.
+
+- `openbao.openbao.org/agent-enable-quit` - enable the [`/agent/v1/quit` endpoint](/docs/agent-and-proxy/agent#quit) on an injected agent. This option defaults to false, and if true will be set on the existing cache listener, or a new localhost listener with a basic cache stanza configured. The [agent-cache-listener-port annotation](/docs/platform/k8s/injector/annotations#openbao-hashicorp-com-agent-cache-listener-port) can be used to change the port.
+
+- `openbao.openbao.org/agent-telemetry` - specifies the [telemetry](/docs/configuration/telemetry) configuration for the
+  OpenBao Agent sidecar. The name of the config is any unique string after
+  `openbao.openbao.org/agent-telemetry-`, such as `openbao.hashicorp.com/agent-telemetry-prometheus_retention_time`.
+  This annotation can be reused multiple times to configure multiple settings for the agent telemetry.
+
+- `openbao.openbao.org/go-max-procs` - set the `GOMAXPROCS` environment variable for injected agents
+
+- `openbao.openbao.org/agent-json-patch` - change the injected agent sidecar container using a [JSON patch](https://jsonpatch.com/) before it is created.
+  This can be used to add, remove, or modify any attribute of the container.
+  For example, setting this to `[{"op": "replace", "path": "/name", "value": "different-name"}]` will update the agent container's name to be `different-name`
+  instead of the default `openbao-agent`.
+
+- `openbao.openbao.org/agent-init-json-patch` - same as `openbao.hashicorp.com/agent-json-patch`, except that the JSON patch will be applied to the
+  injected init container instead.
+
+## OpenBao annotations
+
+OpenBao annotations change how the OpenBao Agent containers communicate with OpenBao. For
+example, OpenBao's address, TLS certificates to use, client parameters such as timeouts,
+etc.
+
+- `openbao.openbao.org/auth-config` - configures additional parameters for the configured
+  authentication method. The name of the config is any unique string after
+  `openbao.openbao.org/auth-config-`, such as `openbao.hashicorp.com/auth-config-role-id-file-path`.
+  This annotation can be reused multiple times to configure multiple settings for the authentication
+  method. Some authentication methods may require additional secrets and should be mounted via the
+  `openbao.openbao.org/agent-extra-secret` annotation. For a list of valid authentication configurations,
+  see the OpenBao Agent [auto-auth documentation](/docs/agent-and-proxy/autoauth/methods).
+
+- `openbao.openbao.org/auth-path` - configures the authentication path for the Kubernetes
+  auth method. Defaults to `auth/kubernetes`.
+
+- `openbao.openbao.org/auth-type` - configures the authentication type for OpenBao Agent.
+  Defaults to `kubernetes`. For a list of valid authentication methods, see the OpenBao Agent
+  [auto-auth documentation](/docs/agent-and-proxy/autoauth/methods).
+
+- `openbao.openbao.org/auth-min-backoff` - set the [min_backoff](/docs/agent-and-proxy/autoauth#min_backoff) option in the auto-auth config. Requires OpenBao 1.11+.
+
+- `openbao.openbao.org/auth-max-backoff` - set the [max_backoff](/docs/agent-and-proxy/autoauth#max_backoff) option in the auto-auth config
+
+- `openbao.openbao.org/agent-auto-auth-exit-on-err` - set the [exit_on_err](/docs/agent-and-proxy/autoauth#exit_on_err) option in the auto-auth config
+
+- `openbao.openbao.org/ca-cert` - path of the CA certificate used to verify OpenBao's
+  TLS.
+
+- `openbao.openbao.org/ca-key` - path of the CA public key used to verify OpenBao's
+  TLS.
+
+- `openbao.openbao.org/client-cert` - path of the client certificate used when
+  communicating with OpenBao via mTLS.
+
+- `openbao.openbao.org/client-key` - path of the client public key used when communicating
+  with OpenBao via mTLS.
+
+- `openbao.openbao.org/client-max-retries` - configures number of OpenBao Agent retry
+  attempts when certain errors are encountered. Defaults to 2, for 3 total attempts.
+  Set this to `0` or less to disable retrying. Error codes that are retried are 412
+  (client consistency requirement not satisfied) and all 5xx except for 501 (not implemented).
+
+- `openbao.openbao.org/client-timeout` - configures the request timeout threshold,
+  in seconds, of the OpenBao Agent when communicating with OpenBao. Defaults to `60s`
+  and accepts value types of `60`, `60s` or `1m`.
+
+- `openbao.openbao.org/log-level` - configures the verbosity of the OpenBao Agent
+  log level. Default is `info`.
+
+- `openbao.openbao.org/log-format` - configures the log type for OpenBao Agent. Possible
+  values are `standard` and `json`. Default is `standard`.
+
+- `openbao.openbao.org/proxy-address` - configures the HTTP proxy to use when connecting
+  to a OpenBao server.
+
+- `openbao.openbao.org/role` - configures the OpenBao role used by the OpenBao Agent
+  auto-auth method. Required when `openbao.openbao.org/agent-configmap` is not set.
+
+- `openbao.openbao.org/service` - configures the OpenBao address for the injected
+  OpenBao Agent to use. This value overrides the default OpenBao address configured
+  in the injector, and may either be the address of a OpenBao service within the
+  same Kubernetes cluster as the injector, or an external OpenBao URL.
+
+- `openbao.openbao.org/tls-secret` - name of the Kubernetes secret containing TLS
+  Client and CA certificates and keys. This is mounted to `/openbao/tls`.
+
+- `openbao.openbao.org/tls-server-name` - name of the OpenBao server to verify the
+  authenticity of the server when communicating with OpenBao over TLS.
+
+- `openbao.openbao.org/tls-skip-verify` - if true, configures the OpenBao Agent to
+  skip verification of OpenBao's TLS certificate. It's not recommended to set this
+  value to true in a production environment.
+
+- `openbao.openbao.org/agent-disable-idle-connections` - Comma-separated [list
+  of OpenBao Agent features](/docs/agent-and-proxy/agent#disable_idle_connections) where idle
+  connections should be disabled. Also available as a command-line option
+  (`-disable-idle-connections`) or environment variable
+  (`AGENT_INJECT_DISABLE_IDLE_CONNECTIONS`) to set the default for all injected
+  Agents.
+
+- `openbao.openbao.org/agent-disable-keep-alives` - Comma-separated [list of
+  OpenBao Agent features](/docs/agent-and-proxy/agent#disable_keep_alives) where keep-alives
+  should be disabled. Also available as a command-line option
+  (`-disable-keep-alives`) or environment variable
+  (`AGENT_INJECT_DISABLE_KEEP_ALIVES`) to set the default for all injected
+  Agents.
+
+[k8s-resources]: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+[shareProcessNamespace]: https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/

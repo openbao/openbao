@@ -1,0 +1,61 @@
+---
+sidebar_label: Plugin Author Guide
+description: OpenBao's plugin authors guide.
+---
+
+# Plugin Author Guide
+
+This page is a guide for developers interested in creating, managing, and enhancing 
+plugins for OpenBao.
+
+## Table of contents
+
+- [List pagination](#list-pagination)
+- [Listing Detailed Endpoints](#listing-detailed-endpoints)
+
+## List pagination
+
+When implementing listing, it is recommended to use pagination so that items are 
+processed in increments rather than loading the entire set into memory at once. 
+Learn more in [rfcs/paginated-lists](https://openbao.org/docs/rfcs/paginated-lists/). 
+`HandleListPage(...)` is a helper introduced in [PR #781](https://github.com/openbao/openbao/pull/781) 
+to streamline list pagination across implementations. It supports both item-level 
+and batch-level callbacks for flexibility:
+
+- **`itemCallback(...)`**: Processes individual entries within a page.
+   - **Parameters**:
+     - `page` (int): The index of the current page.
+     - `index` (int): The index of the entry within the current page.
+     - `entry` (*logical.StorageEntry): The current storage entry being processed.
+   - **Returns**:
+     - `cont` (bool): Whether to continue processing further entries.
+     - `err` (error): An error, if encountered.
+
+- **`batchCallback(...)`**: Executes after processing all entries in a page.
+   - **Parameters**:
+     - `page` (int): The index of the current page.
+     - `entries` ([]*logical.StorageEntry): All entries in the current batch.
+   - **Returns**:
+     - `cont` (bool): Whether to continue processing further pages.
+     - `err` (error): An error, if encountered.
+
+The callbacks are executed sequentially, with `itemCallback` processing each entry individually,
+followed by `batchCallback` handling the entire batch.
+
+## Listing Detailed Endpoints
+
+Detailed listing of items is implemented using one of the following two methods:
+- Supplying the `-detailed` CLI flag.
+- Querying a `/detailed` API endpoint.
+
+While both approaches are valid, it is recommended to implement a dedicated `/detailed` endpoint, as 
+done in the `pki/certs/detailed` implementation ([PR #680](https://github.com/openbao/openbao/pull/680)).
+
+This has the following benefits:
+* Avoids adding performance overhead on the default list endpoint. For example, in `pki/issuers`, 
+the list API always returns both the list of `keys` and a `key_info` map containing metadata for each 
+issuer. The `-detailed` flag simply controls whether this metadata is displayed in the CLI output.
+* Restricts access to detailed listing by default unless an administrator has set up wildcards. For
+instance, when using `- detailed`, an admin who doesn't want users listing detailed information 
+(because it is too resource intensive) would need to explicitly update their ACL policies to include 
+`denied_parameters=detailed`.

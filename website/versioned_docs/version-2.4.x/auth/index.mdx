@@ -1,0 +1,111 @@
+---
+sidebar_label: Overview
+description: Auth methods are mountable methods that perform authentication for OpenBao.
+---
+
+# Auth methods
+
+Auth methods are the components in OpenBao that perform authentication and are
+responsible for assigning identity and a set of policies to a user. In all cases,
+OpenBao will enforce authentication as part of the request processing. In most cases,
+OpenBao will delegate the authentication administration and decision to the relevant configured
+external auth method (e.g., Kubernetes).
+
+Having multiple auth methods enables you to use an auth method that makes the
+most sense for your use case of OpenBao and your organization.
+
+For example, on developer machines, the [Userpass](/docs/auth/userpass)
+is easiest to use. But for servers the [AppRole](/docs/auth/approle)
+method is the recommended choice.
+
+To learn more about authentication, see the
+[authentication concepts page](/docs/concepts/auth).
+
+## Enabling/Disabling auth methods
+
+Auth methods can be enabled/disabled using the CLI or the API.
+
+```shell-session
+$ bao auth enable userpass
+```
+
+When enabled, auth methods are similar to [secrets engines](/docs/secrets):
+they are mounted within the OpenBao mount table and can be accessed
+and configured using the standard read/write API. All auth methods are mounted underneath the `auth/` prefix.
+
+By default, auth methods are mounted to `auth/<type>`. For example, if you
+enable "ldap", then you can interact with it at `auth/ldap`. However, this
+path is customizable, allowing users with advanced use cases to mount a single
+auth method multiple times.
+
+```shell-session
+$ bao auth enable -path=my-login userpass
+```
+
+When an auth method is disabled, all users authenticated via that method are
+automatically logged out.
+
+## External auth method considerations
+
+When using an external auth method (e.g., Kubernetes), OpenBao will call the external service
+at the time of authentication and for subsequent token renewals. If the status
+of an entity changes in the external system (e.g., an account expires or is
+disabled), OpenBao denies requests to **renew** tokens associated with the entity.
+However, any existing token remain valid for the original grant period unless
+they are explicitly revoked within OpenBao. Operators should set appropriate
+[token TTLs](/docs/concepts/tokens#the-general-case) when using external
+authN methods.
+
+## Authentication Flows
+
+There are two primary flows client applications use to talk to OpenBao.
+
+### Standard Authentication
+
+In this flow, client applications first make calls to specific login
+endpoints, specific to the desired auth engine. These operations return an
+auth token which are subsequently passed in the `X-Vault-Token` header on
+following authenticated requests. This token has an expiration and may be
+renewable. Any leases created by the subsequent authenticated requests are
+associated with this token and are usually revoked when the token expires or
+is revoked.
+
+### Inline Authentication
+
+In contrast to [standard authentication](#standard-authentication), inline
+authentication is sent with the main, authenticated request. No ahead-of-time
+token acquisition occurs; an ephemeral token is created but not persisted to
+storage so authenticated operations which incur leases will not work and will
+result in an error (with any lease created being immediately revoked). This
+token will not be returned to the client application.
+
+To use, specify the following headers:
+
+ - `X-Vault-Inline-Auth-Path`, the path to authenticate against; required.
+ - `X-Vault-Inline-Auth-Operation`, the operation to use; optional,
+   defaults to `update`.
+ - `X-Vault-Inline-Auth-Namespace`, the namespace to authenticate against;
+   optional, defaults to the `X-Vault-Namespace` value if specified.
+ - `X-Vault-Inline-Auth-Parameter-*`, user-specified parameters taking a
+   URL-Safe Base64 encoded JSON object having a `key` and `value`
+   parameter to inject into the request data.
+
+
+:::warning
+
+Login calls made with this authentication mechanism must be one-shot: MFA
+(without the use of `X-Vault-MFA`) and other multi-step auth schemes such as
+certain OIDC flows will not work.
+
+:::
+
+If an auth method imposes a number of uses on source identity information,
+such as AppRole's `secret_id_num_uses`, each request with inline
+authentication will count against those limits separately.
+
+This improves scalability: standard authentication incurs several storage
+writes as a result of successful authentication and thus must happen on the
+active node. Additionally, these persisted entries are refreshed on leadership
+changes, which may cause churn and excessive disk and CPU usage. Depending on
+the workload patterns, a client application using inline authentication may
+result in a more performant OpenBao instance than standard authentication.

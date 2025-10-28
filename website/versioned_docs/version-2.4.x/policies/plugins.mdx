@@ -1,0 +1,198 @@
+---
+sidebar_label: Plugin Support Policy
+description: |-
+  The OpenBao policy decision around supported plugins.
+---
+
+# Plugin support policy
+
+This policy was original [discussed on
+GitHub](https://github.com/orgs/openbao/discussions/64) and ratified on
+the [February 1st, 2024 meeting](https://wiki.lfedge.org/display/OH/OpenBao+Meetings).
+
+This proposal outlines plugins to support, based on the four major types of
+plugins (auth, secrets, database -- a specialization of secrets, and storage).
+
+The philosophy of this plugin reduction is as follows:
+
+ 1. Minimize maintenance burden on the open source community.
+ 2. Prioritize community supportable & debuggable OSI licensed integrations
+    over proprietary integrations.
+ 3. Become opinionated on an approach to plugins in general.
+ 4. Allow a broader community to maintain external plugins.
+
+In particular, this means that plugins previously built-in like
+`database/mongodb` no longer are first-class supported as they are not under
+an OSI license. Similarly, all cloud vendors' plugins have been moved external
+as well, for the community to support independent of the main core release
+cycle.
+
+This proposal suggests aligning [with Lars's proposal](https://github.com/openbao/openbao/pull/30)
+to move builtin, supported plugins into the main repository: these builtin
+plugins will be released with the binary and thus versioned similarly.
+External, community-supported plugins can be in separate repositories released
+as separate binaries & container images, allowing additional maintainers to be
+added. This has the added benefit of not tying these external plugins to the
+main repository's release cycle, allowing contributors to release as they see
+fit and not holding up the main release on third-party dependencies.
+
+(To be clear -- For non-OSI integration plugins for which the broader
+ community is interest in maintaining them, the suggested mechanism is via
+ a separate repository, building external plugins (rather than built-in to
+ the release binary). This will allow additional maintainers to be nominated
+ (without commit access to the main repository) and allows for a separate
+ release schedule more suitable for this plugin. This is to say, the broader
+ OpenBao community can support additional proprietary plugins, but the core
+ release artifacts and release cycle will not include these by default.)
+
+This should greatly reduce the binary size as well, as many dependencies can
+be removed (as, for instance, the Azure SDK and other cloud provider SDKs
+can be removed as a dependency, which greatly contributed to binary size --
+see `https://github.com/hashicorp/vault/issues/22893#issuecomment-1712569767`).
+
+Lastly, storage plugins were removed. Only two types of plugins were
+officially supported in an Enterprise context upstream: Consul and Raft.
+Consul is no longer OSI-licensed, and no fork has been made apparent at this
+time. Other plugins lack features that Raft has (in the Vault Enterprise
+variant), and support for multiple backend storage plugins has caused other
+issues. Thus, the decision to simplify to Raft aligns more closely with what
+upstream has done in practice and greatly reduces our maintenance burden.
+In-mem and file backends are left for historical testing reasons and will
+not be supported in production (non-dev-mode) usage.
+
+See [repos.md](https://gist.github.com/cipherboy/26f5c44d4ffcfef60accfe1bfa976aee)
+for context on the different types of plugins.
+
+## Auth plugins
+
+| name | repo |
+| :--- | :--- |
+| approle | [github.com/openbao/openbao/builtin/credential/approle](https://github.com/openbao/openbao/tree/development/builtin/credential/approle) |
+| cert | [github.com/openbao/openbao/builtin/credential/cert](https://github.com/openbao/openbao/tree/development/builtin/credential/cert) |
+| jwt | [github.com/hashicorp/vault-plugin-auth-jwt](https://github.com/hashicorp/vault-plugin-auth-jwt) |
+| kerberos | [github.com/hashicorp/vault-plugin-auth-kerberos](https://github.com/hashicorp/vault-plugin-auth-kerberos) |
+| kubernetes | [github.com/hashicorp/vault-plugin-auth-kubernetes](https://github.com/hashicorp/vault-plugin-auth-kubernetes) |
+| ldap | [github.com/openbao/openbao/builtin/credential/ldap](https://github.com/openbao/openbao/tree/development/builtin/credential/ldap) |
+| radius | [github.com/openbao/openbao/builtin/credential/radius](https://github.com/openbao/openbao/tree/development/builtin/credential/radius) |
+| token | [github.com/openbao/openbao/builtin/credential/token](https://github.com/openbao/openbao/tree/development/builtin/credential/token) |
+| userpass | [github.com/openbao/openbao/builtin/credential/userpass](https://github.com/openbao/openbao/tree/development/builtin/credential/userpass) |
+
+## Database plugins
+
+| name | repo |
+| :--- | :--- |
+| cassandra | [github.com/openbao/openbao/plugins/database/cassandra](https://github.com/openbao/openbao/tree/development/plugins/database/cassandra) |
+| influxdb | [github.com/openbao/openbao/plugins/database/influxdb](https://github.com/openbao/openbao/tree/development/plugins/database/influxdb) |
+| mysql | [github.com/openbao/openbao/plugins/database/mysql](https://github.com/openbao/openbao/tree/development/plugins/database/mysql) |
+| postgresql | [github.com/openbao/openbao/plugins/database/postgresql](https://github.com/openbao/openbao/tree/development/plugins/database/postgresql) |
+| redis | [github.com/hashicorp/vault-plugin-database-redis](https://github.com/hashicorp/vault-plugin-database-redis) |
+
+:::info
+
+Since this document was adopted, `redis` changed to a non-OSI license and was
+subsequently removed. However, the plugin has been reintroduced under the name
+of its fork, Valkey.
+
+:::
+
+## Secrets plugins
+
+| name | repo |
+| :--- | :--- |
+| database | [github.com/openbao/openbao/builtin/logical/database](https://github.com/openbao/openbao/tree/development/builtin/logical/database) |
+| kv | [github.com/hashicorp/vault-plugin-secrets-kv](https://github.com/hashicorp/vault-plugin-secrets-kv) |
+| kubernetes | [github.com/hashicorp/vault-plugin-secrets-kubernetes](https://github.com/hashicorp/vault-plugin-secrets-kubernetes) |
+| openldap | [github.com/hashicorp/vault-plugin-secrets-openldap](https://github.com/hashicorp/vault-plugin-secrets-openldap) |
+| pki | [github.com/openbao/openbao/builtin/logical/pki](https://github.com/openbao/openbao/tree/development/builtin/logical/pki) |
+| rabbitmq | [github.com/openbao/openbao/builtin/logical/rabbitmq](https://github.com/openbao/openbao/tree/development/builtin/logical/rabbitmq) |
+| ssh | [github.com/openbao/openbao/builtin/logical/ssh](https://github.com/openbao/openbao/tree/development/builtin/logical/ssh) |
+| totp | [github.com/openbao/openbao/builtin/logical/totp](https://github.com/openbao/openbao/tree/development/builtin/logical/totp) |
+| transit | [github.com/openbao/openbao/builtin/logical/transit](https://github.com/openbao/openbao/tree/development/builtin/logical/transit) |
+
+## Storage backends
+
+| name | repo |
+| :--- | :--- |
+| raft | [github.com/openbao/openbao/physical/raft](https://github.com/openbao/openbao/tree/development/physical/raft) |
+| file | [github.com/openbao/openbao/sdk/physical/file](https://github.com/openbao/openbao/tree/development/sdk/physical/file) |
+| inmem | [github.com/openbao/openbao/sdk/physical/inmem](https://github.com/openbao/openbao/tree/development/sdk/physical/inmem) |
+
+## `go-kms-wrapping`
+
+Initially no plugins will be removed from this, but the package will remain
+as a separate repository. However, if PKCS#11 bindings are contributed, this
+could warrant a migration from native seals to PKCS#11 libraries to reduce
+binary size and avoid the need to maintain each cloud provider's integration
+separately. This has the added benefit of easing cross-cloud migrations and
+being testable locally with SoftHSM.
+
+# Net additions and removals
+
+## Additions to main repo
+
+ - auth-jwt
+ - auth-kerberos
+ - auth-kubernetes
+ - database-redis
+ - secrets-kv
+ - secrets-kubernetes
+ - secrets-openldap
+
+:::info
+
+Since this document was adopted, `redis` changed to a non-OSI license and was
+subsequently removed. However, the plugin has been reintroduced under the name
+of its fork, Valkey.
+
+:::
+
+## Removals of builtin plugins to external, community supported
+
+ - auth-alicloud
+ - auth-aws
+ - auth-azure
+ - auth-centiry
+ - auth-cf
+ - auth-gcp
+ - auth-github
+ - auth-oci
+ - auth-okta
+ - database-couchbase
+ - database-elasticsearch
+ - database-hana
+ - database-mongodb
+ - database-mongodbatlas
+ - database-mssql
+ - database-redis-elasticache
+ - database-redshift
+ - database-snowflake
+ - secrets-ad
+ - secrets-alicloud
+ - secrets-aws
+ - secrets-azure
+ - secrets-consul
+ - secrets-gcp
+ - secrets-gcpkms
+ - secrets-monogodbatlas
+ - secrets-nomad
+ - secrets-terraform
+ - storage-aerospike
+ - storage-alicloudoss
+ - storage-azure
+ - storage-cassandra
+ - storage-cockroachdb
+ - storage-consul
+ - storage-couchdb
+ - storage-dynamodb
+ - storage-etcd
+ - storage-foundationdb
+ - storage-gcs
+ - storage-manta
+ - storage-mssql
+ - storage-mysql
+ - storage-oci
+ - storage-postgresql
+ - storage-s3
+ - sotrage-spanner
+ - storage-switf
+ - storage-zookeeper

@@ -1,0 +1,158 @@
+---
+sidebar_label: Kubernetes
+description: >-
+  Kubernetes Service Registration labels OpenBao pods with their current status
+  for use with selectors.
+---
+
+# Kubernetes service registration
+
+Kubernetes Service Registration tags OpenBao pods with their current status for
+use with selectors. Service registration is only available when OpenBao is running in
+[High Availability mode](/docs/concepts/ha).
+
+- **HashiCorp Supported** – Kubernetes Service Registration is officially supported
+  by HashiCorp.
+
+## Configuration
+
+```hcl
+service_registration "kubernetes" {
+  namespace      = "my-namespace"
+  pod_name       = "my-pod-name"
+}
+```
+
+Alternatively, the namespace and pod name can be set through the following
+environment variables:
+
+- `BAO_K8S_NAMESPACE`
+- `BAO_K8S_POD_NAME`
+
+This allows you to set these parameters using
+[the Downward API](https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/).
+
+If using only environment variables, the service registration stanza declaring
+you're using Kubernetes must still exist to indicate your intentions:
+
+```
+service_registration "kubernetes" {}
+```
+
+For service registration to succeed, OpenBao must be able to apply labels to pods
+in Kubernetes. The following RBAC rules are required to allow the service account
+associated with the OpenBao pods to update its own pod specification:
+
+```
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: mynamespace
+  name: openbao-service-account
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "update", "patch"]
+```
+
+## Examples
+
+Once properly configured, enabling service registration will cause Kubernetes pods
+to come up with the following labels:
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: openbao
+  labels:
+    openbao-active: "false"
+    openbao-initialized: "true"
+    openbao-perf-standby: "false"
+    openbao-sealed: "false"
+    openbao-version: 2.0.1
+```
+
+After shutdowns, OpenBao pods will bear the following labels:
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: openbao
+  labels:
+    openbao-active: "false"
+    openbao-initialized: "false"
+    openbao-perf-standby: "false"
+    openbao-sealed: "true"
+    openbao-version: 2.0.1
+```
+
+## Label definitions
+
+- `openbao-active` `(string: "true"/"false")` – openbao-active is updated dynamically each time OpenBao's active status changes.
+  True indicates that this OpenBao pod is currently the leader. False indicates that this OpenBao pod is currently a standby.
+- `openbao-initialized` `(string: "true"/"false")` – openbao-initialized is updated dynamically each time OpenBao's initialization
+  status changes. True indicates that OpenBao is currently initialized. False indicates the OpenBao is currently uninitialized.
+- `openbao-sealed` `(string: "true"/"false")` – openbao-sealed is updated dynamically each
+  time OpenBao's sealed/unsealed status changes. True indicates that OpenBao is currently sealed. False indicates that OpenBao
+  is currently unsealed.
+- `openbao-version` `(string: "2.0.1")` – OpenBao version is a string that will not change during a pod's lifecycle.
+
+## Working with OpenBao's service discovery labels
+
+### Example service
+
+With labels applied to the pod, services can be created using selectors to filter pods with specific OpenBao HA roles,
+effectively allowing direct communication with subsets of OpenBao pods. Note the `openbao-active: "true"` line below.
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: openbao
+    app.kubernetes.io/name: openbao
+    helm.sh/chart: openbao-0.1.2
+  name: openbao-active-us-east
+  namespace: default
+spec:
+  clusterIP: 10.7.254.51
+  ports:
+  - name: http
+    port: 8200
+    protocol: TCP
+    targetPort: 8200
+  - name: internal
+    port: 8201
+    protocol: TCP
+    targetPort: 8201
+  publishNotReadyAddresses: false
+  selector:
+    app.kubernetes.io/instance: openbao
+    app.kubernetes.io/name: openbao
+    component: server
+    openbao-active: "true"
+  type: ClusterIP
+```
+
+Also, by setting `publishNotReadyAddresses: false` above, pods that have failed will be removed from the service pool.
+
+With this active service in place, we now have a dedicated endpoint that will always reach the active node. 
+
+### Example upgrades
+
+In conjunction with the pod labels and the `OnDelete` upgrade strategy, upgrades are much easier to orchestrate:
+
+```shell-session
+$ helm upgrade openbao --set='server.image.tag=1.14.0'
+
+$ kubectl delete pod --selector=openbao-active=false \
+    --selector=openbao-version=2.0.1
+
+$ kubectl delete pod --selector=openbao-active=true \
+    --selector=openbao-version=2.0.1
+```
+
+When deleting an instance of a pod, the `Statefulset` defining the desired state of the cluster will reschedule the
+deleted pods with the newest image.

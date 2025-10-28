@@ -1,0 +1,87 @@
+---
+sidebar_label: Overview
+description: Learn about OpenBao's plugin system.
+---
+
+
+# Plugin system
+
+OpenBao supports 3 types of plugins; auth methods, secret engines, and database
+plugins. This concept allows both built-in and external plugins to be treated
+like building blocks. Any plugin can exist at multiple different mount paths.
+Different versions of a plugin may be at each location, with each version differing
+from OpenBao's version.
+
+A plugin is uniquely identified by its type (one of `secret`, `auth`, or
+`database`), name (e.g. `kv`), and version (e.g `v1.0.0`). An empty version
+implies either the built-in plugin or the single unversioned plugin that can
+be registered.
+
+See [Plugin Upgrade Procedure](/docs/upgrading/plugins#plugin-upgrade-procedure)
+for details on how to upgrade a built-in plugin in-place.
+
+## Built-In plugins
+
+Built-in plugins are shipped with OpenBao, often for commonly used integrations,
+and can be used without any prerequisite steps.
+
+## External plugins
+
+External plugins are not shipped with OpenBao and require additional operator
+intervention to run.
+
+To run an external plugin, a binary of the plugin is required. Plugin
+binaries can be obtained from [releases.hashicorp.com](https://releases.hashicorp.com/)
+or they can be [built from source](/docs/plugins/plugin-development#building-a-plugin-from-source).
+
+OpenBao's external plugins are completely separate, standalone applications that
+OpenBao executes and communicates with over RPC. Each time an OpenBao secret engine,
+auth method, or database plugin is mounted, a new process is spawned. However,
+plugins can be made to implement [plugin multiplexing](/docs/plugins/plugin-architecture#plugin-multiplexing)
+to improve performance. Plugin multiplexing allows plugin processes to be
+reused across all mounts of a given type.
+
+## Plugin versioning
+
+OpenBao supports managing, running and upgrading plugins using semantic version
+information.
+
+The plugin catalog optionally supports specifying a semantic version when
+registering an external plugin. Multiple versions of a plugin can be registered
+in the catalog simultaneously, and a version can be selected when mounting a
+plugin or tuning an existing mount in-place.
+
+If no version is specified when creating a new mount, the following precedence is used
+for any available plugins whose type and name match:
+
+* The plugin registered with no version
+* The plugin with the most recent semantic version among any registered versions
+* The plugin built into OpenBao
+
+### Built-In versions
+
+OpenBao will report a version for built-in plugins to indicate what version of the
+plugin code got built into OpenBao as a dependency. For example:
+
+```shell-session
+$ bao plugin list secret
+Name                Version
+----                -------
+kubernetes      v0.5.0+builtin
+kv              v0.15.0+builtin
+ldap            v1.14.8+builtin.openbao
+openldap        v0.11.1+builtin
+pki             v1.14.8+builtin.openbao
+rabbitmq        v1.14.8+builtin.openbao
+ssh             v1.14.8+builtin.openbao
+totp            v1.14.8+builtin.openbao
+transit         v1.14.8+builtin.openbao
+```
+
+Here, OpenBao has a dependency on `v0.15.0` of the [openbao-plugin-secrets-kv](https://github.com/openbao/openbao-plugin-secrets-kv)
+repo, and the `openbao` metadata identifier for `pki` indicates that plugin's code was
+within the OpenBao repo. For plugins within the OpenBao repo, OpenBao's own major, minor,
+and patch versions are used to form the plugin version.
+
+The `builtin` metadata identifier is reserved and cannot be used when registering
+external plugins.

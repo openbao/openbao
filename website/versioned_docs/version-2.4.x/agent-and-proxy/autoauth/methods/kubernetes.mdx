@@ -1,0 +1,17 @@
+---
+sidebar_label: Kubernetes
+description: Kubernetes Method for OpenBao Auto-Auth
+---
+
+# OpenBao Auto-Auth kubernetes method
+
+The `kubernetes` method reads in a Kubernetes service account token from the
+running pod (via `/var/run/secrets/kubernetes.io/serviceaccount/token`) and
+sends it to the [Kubernetes Auth
+method](/docs/auth/kubernetes/).
+
+## Configuration
+
+- `role` `(string: required)` - The role to authenticate against on OpenBao
+- `token_path` `(string: optional)` - The file path to a custom JWT token to use
+  for authentication. If omitted, the default service account token path is used.

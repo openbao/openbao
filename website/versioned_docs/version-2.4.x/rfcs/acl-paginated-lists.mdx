@@ -1,0 +1,79 @@
+---
+sidebar_label: ACL paginated lists
+description: |-
+  An OpenBao RFC for ACLing paginating lists, restricting the maximum returned values.
+---
+
+# Safely limit pagination via ACL policies
+
+## Summary
+
+Extend our [paginated list RFC](https://openbao.org/docs/rfcs/paginated-lists/) by adding the ability to limit pagination via an ACL policy parameter, `pagination_limit` supplemented by `required_parameters = ["limit"]`.
+
+## Problem Statement
+
+When adding paginated listing, there was no way to enforce that clients should use pagination or restrict them from making non-paginated list calls. Augmented with [list filtering](https://github.com/openbao/openbao/issues/769), it becomes important to allow operators to safely limit the number of returned results.
+
+This should also apply to [SCAN](https://github.com/openbao/openbao/issues/549) if that new operation is accepted.
+
+## User-facing Description
+
+From an operator perspective, we introduce a new parameter, `pagination_limit`, which can be added to an ACL policy for a `list` endpoint which affects whether or not pagination is required. When set to a positive value (1 or more), we enforce limits on the value of the `limit` pagination parameter for both LIST and [future SCAN](https://github.com/openbao/openbao/issues/549#issuecomment-2511881534) operations.
+
+If `required_parameters` contains `limit`, we enforce that all requests contain the limit parameter and are denied otherwise. For requests without `limit` and for which `limit` is not required, we silently update the request to include the maximum allowed limit value. This allows the operator to select the desired behavior: break applications via an explicit request failure or via implicitly setting a limit and not .
+
+An example policy to restrict to 100 items would look like:
+
+```hcl
+path "secret/metadata" {
+  capabilities = ["list"]
+  pagination_limit = 100
+}
+```
+
+For users who do not wish to set an explicit limit but use the maximum allowed value set by an operator, we introduce the transparent value `max`: if the operator has set a maximum value, we update the request to use this value. Otherwise, we translate `max` to 0 to avoid breaking applications.
+
+Operators should only set this option on paths which understand pagination.
+
+## Technical Description
+
+This introduces a new parameter, `pagination_limit`, which needs to be added to the permissions type. This is enforced within `ACL.AllowOperation(...)`, which can update the request value if necessary with the updated value of `limit` and enforce the required parameter for `limit`.
+
+No changes to the typing (from a plugin perspective) are required as the handling of `max` is done transparently to the caller.
+
+However, this will need to be updated in the CLI as well, as it does not permit the value `max` as it is not a valid integer.
+
+## Rationale and Alternatives
+
+This allows operators to safely enforce resource consumption resources on list endpoints with lots of expensive results (e.g., a `ListResponseWithInfo` endpoint).
+
+We could enforce without `max`, however, without substantial modifications to the ACL system to add a reason for rejection, it becomes hard for callers to understand the correct value if they didn't have a particular one in mind.
+
+## Downsides
+
+This has a small potential that, if anyone has a list endpoint which accepts the literal value `max`, we will overwrite this with the value `0`, potentially breaking them. This seems unlikely.
+
+This also has the downside that our [existing SDK pagination API](https://pkg.go.dev/github.com/openbao/openbao/api/v2#Logical.ListPage) does not support string `limit` values and thus doesn't support the `max` helper. This likely requires a new `ListAll` interface, that is aware of pagination and will fetch additional results as required. This would be similar to our [`HandleListPage(...)`](https://github.com/openbao/openbao/blob/acb48ee56577ca8146a05940dad6f76c0b265b57/sdk/logical/storage.go#L169-L182) helper.
+
+Lastly, if a new non-HCL ACL system is introduced in the future, it will need to support translating the `max` value appropriately in requests.
+
+## Security Implications
+
+This improves the security posture of listing, allowing operators to restrict resource consumption via applying strict pagination limits.
+
+## User/Developer Experience
+
+The generic `permission denied` response is slightly unfortunate. However, most applications using pagination will be able to use the value `max` instead, avoiding this problem when the API supports it.
+
+## Unresolved Questions
+
+n/a
+
+## Related Issues
+
+ - Pagination introduction: https://github.com/openbao/openbao/pull/170
+ - LIST to accesisble-only: https://github.com/openbao/openbao/issues/769
+
+## Proof of Concept
+
+https://github.com/cipherboy/openbao/pull/new/acls-limit-pagination

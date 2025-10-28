@@ -1,0 +1,123 @@
+---
+layout: docs
+page_title: OpenBao Migration Policy
+sidebar_label: Migration Policy
+description: |-
+  The OpenBao policy around migration from upstream to OpenBao.
+---
+
+# Migration policy
+
+This policy was original [discussed on
+GitHub](https://github.com/orgs/openbao/discussions/55) and ratified on
+the [February 8th, 2024 meeting](https://wiki.lfedge.org/display/OH/OpenBao+Meetings).
+
+## Definitions
+
+From a consumption perspective, there are three personas we can define:
+
+ 1. **Bao Operators**. These are the people tasked with deploying updates to
+    the `bao` binary, handling outages, &c. They might typically access `/sys`,
+    setup new mounts, get high-privileged root tokens temporarily to setup
+    additional clusters or change quotas, &c, but aren't (for this discussion)
+    direct consumers of many secrets methods. They likely also interface with
+    OpenBao's configuration, logging, and auditing interfaces, and may interact
+    briefly (during outages &c) with storage directly. They'd be in charge
+    of handling any migration which needs to occur during an upgrade or change
+    event from upstream to OpenBao. While a breaking change, these are most
+    likely to have a flexible enough deployment & workflow to accept change.
+
+ 2. **Connection Operators**. These are individuals who deploy applications
+    which talk to OpenBao. They might directly interact with `bao`'s API
+    namespace, to set up new accounts, services, potentially (if delegated by
+    Bao operators) creating new secrets engines, and configuration any existing
+    secrets engines in their purview. They may do this directly (via CLI or
+    UI) or indirectly (via a centralized management service like OpenTofu).
+    These types of users can accept a moderate amount of change, but changes
+    to APIs (especially unexpectedly) can cause issues.
+
+ 3. **Applications & end-users**. These are individuals (broadly speaking)
+    which only interface with the API of authentication and secrets engines to
+    get secrets (again, broadly speaking -- a PKI certificate is not a
+    traditional secret nor does Transit expose a similar interface that grants
+    leases). These typically have the least flexible workflow and are hesitant
+    to change.
+
+We can also talk about compatibility on several layers:
+
+ 1. **Seal compatibility**. Is encrypted data drop-in compatible with
+    upstream, for a given combination of `(seal mechanism, storage provider,
+    plugin)`. Can this storage layout be read (i.e., is the disk tree similar)
+    by core and can the resulting plugin be loaded and function equivalently
+    to API consumers? This implies no to minimal migration necessary.
+
+ 2. **Storage compatibility**. For unencrypted data (i.e., using an unencrypted
+    backup/one-time migration bundle or using the unsupported-but-useful
+    `sys/raw` interface), can this be migrated from an upstream instance
+    directly into downstream at an equivalent path without rewriting the
+    data itself. This means all the rest of the core (minus the initial
+    encryption layer and potentially meaning a different physical storage
+    backend) are compatible with  upstream.
+
+ 3. **API compatibility**. For consumers of upstream's secret's or auth
+    plugin's API only, would they be able to point interchangeably at an
+    upstream or OpenBao instance without caring about which, assuming suitable
+    data & plugins are available in both locations. This usage does not extend
+    to non-plugin APIs (e.g., under `/sys`), but should include the GRPC
+    external plugin communication mechanism.
+
+(In this hierarchy it is implied that 1 implies 2 implies 3, i.e., a seal
+ or storage compatible fork would imply API compatibility, and likewise
+ seal compatibility implies storage compatibility).
+
+## Observations
+
+Notably, API compatibility is most aligned with the connection operators' and
+application & end-users' goals: minimize API change. While seal and storage
+compatibility are cool from a Bao operator's perspective, breaking either
+(w.r.t. upstream -- likely ahead of initial GA) results in a one-time
+migration, but difficult from a Bao development community perspective. This
+type of compatibility helps cross-adoption but becomes hard to support,
+especially as several key portions are impossible to do without reverse
+engineering Vault Enterprise (e.g., auto-unseal, seal wrapping, replication,
+certain secret engine features, ...).
+
+## Proposal
+
+Aim for API compatibility only, with limited seal compatibility when using remaining
+seal, storage, and plugins [as discussed in that proposal](https://github.com/orgs/openbao/discussions/64).
+
+This allows us to prune unnecessary features, create alternative,
+non-compatible implementations of various upstream, Enterprise features, and
+decreases maintenance burdens. This allows us to create a more healthy,
+separate but welcoming community from upstream.
+
+It also recognizes that OpenBao (by discussing removing support for already
+deprecated changes or removing plugins that no maintainer has stepped up to
+support) will inevitably, intentionally or otherwise, deviate from upstream.
+It provides support commitment to portions of the organization most resistant
+to change, and allows Bao operators to decide whether or not to make the
+migration. It also recognizes that upstream may or may not make other decisions
+and potentially backwards-incompatible changes of their own, allowing us to
+take a different approach if necessary.
+
+This still allows us to take advantage of the broader secrets & auth engine
+ecosystem, as GRPC compatibility is still encouraged. And third-party client
+tooling should continue to function between the two, unless they were using
+unsupported, internal implementation details and crossing the API boundary.
+
+However, it walks a fine line that, when a user's existing usage of upstream aligns
+with OpenBao's goals, the two should be drop-in compatible at the initial release.
+This then allows a smoother migration between the two projects.
+
+### Migration path
+
+This means that some operators will need to make a conscious, one-time migration
+from a compatible upstream version to an OpenBao version. This likely warrants
+the creation of documentation and tools to help aid this migration, on a
+per-plugin basis. It means that OpenBao's server will not be drop-in binary
+equivalent from upstream's, and that we should likely place some marker to
+detect and prevent incompatible, unsupported usage.
+
+The remaining operators (who use a supported subset) will be able to
+drop-in replace like a regular upgrade.

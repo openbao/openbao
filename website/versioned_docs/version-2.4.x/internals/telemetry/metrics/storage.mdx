@@ -1,0 +1,32 @@
+---
+sidebar_label: Storage plugin metrics
+description: >-
+  Technical reference for individual storage plugin telemetry values.
+---
+
+# Storage plugin telemetry
+
+Storage telemetry provides information on the health of OpenBao storage and your
+configured storage backends. For Integrated Storage metrics, refer to the
+[Raft telemetry](/docs/internals/telemetry/metrics/raft) metric list.
+
+## Barrier metrics
+
+@include 'telemetry-metrics/vault/barrier/delete.mdx'
+
+@include 'telemetry-metrics/vault/barrier/get.mdx'
+
+@include 'telemetry-metrics/vault/barrier/list.mdx'
+
+@include 'telemetry-metrics/vault/barrier/put.mdx'
+
+## Caching metrics
+
+@include 'telemetry-metrics/vault/cache/delete.mdx'
+
+@include 'telemetry-metrics/vault/cache/hit.mdx'
+
+@include 'telemetry-metrics/vault/cache/miss.mdx'
+
+@include 'telemetry-metrics/vault/cache/write.mdx'
+

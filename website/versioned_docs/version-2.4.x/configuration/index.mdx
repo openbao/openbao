@@ -1,0 +1,282 @@
+---
+sidebar_label: Overview
+description: OpenBao server configuration reference.
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# OpenBao configuration
+
+Outside of development mode, OpenBao servers are configured using a file.
+The format of this file is [HCL](https://github.com/hashicorp/hcl) or JSON;
+it may also be a directory of configuration files; all files which end in
+`.hcl` or `.json` are loaded in alphabetical order; if duplicate content is
+present across multiple configuration files and the type of the top-level entry
+is not a list, the last present option wins. Otherwise, list types like
+listeners, of which multiple may be present, are appended to the config.
+
+@include 'plugin-file-permissions-check.mdx'
+
+An example configuration is shown below:
+
+<Tabs groupId="config">
+<TabItem value="JSON">
+
+```json
+{
+  "ui": true,
+
+  "cluster_addr": "https://127.0.0.1:8201",
+  "api_addr":     "https://127.0.0.1:8200",
+
+  "storage": {
+    "raft": {
+      "path": "data",
+      "node_id": "raft_node_1"
+    }
+  },
+
+  "listener": [
+    {
+      "tcp": {
+        "address":       "127.0.0.1:8200",
+        "tls_cert_file": "full-chain.pem",
+        "tls_key_file":  "private-key.pem"
+      }
+    }
+  ],
+
+  "telemetry": {
+    "statsite_address": "127.0.0.1:8125",
+    "disable_hostname": true
+  }
+}
+```
+
+</TabItem>
+<TabItem value="HCL">
+
+```hcl
+ui            = true
+cluster_addr  = "https://127.0.0.1:8201"
+api_addr      = "https://127.0.0.1:8200"
+
+storage "raft" {
+  path = "/path/to/raft/data"
+  node_id = "raft_node_1"
+}
+
+listener "tcp" {
+  address       = "127.0.0.1:8200"
+  tls_cert_file = "/path/to/full-chain.pem"
+  tls_key_file  = "/path/to/private-key.pem"
+}
+
+telemetry {
+  statsite_address = "127.0.0.1:8125"
+  disable_hostname = true
+}
+```
+
+</TabItem>
+</Tabs>
+
+After the configuration is written, use the `-config` flag with `bao server`
+to specify where the configuration is.
+
+## Parameters
+
+- `audit` <code>([Audit][audit]: &lt;none&gt;)</code> – Specifies [audit device
+  configuration][audit]. Can be specified multiple times.
+
+- `storage` <code>([StorageBackend][storage-backend]: &lt;required&gt;)</code> –
+  Configures the storage backend where OpenBao data is stored. Please see the
+  [storage backends documentation][storage-backend] for the full list of
+  available storage backends. Running OpenBao in HA mode would require
+  coordination semantics to be supported by the backend. If the storage backend
+  supports HA coordination, HA backend options can also be specified in this
+  parameter block. If not, a separate `ha_storage` parameter should be
+  configured with a backend that supports HA, along with corresponding HA
+  options.
+
+- `ha_storage` <code>([StorageBackend][storage-backend]: nil)</code> – Configures
+  the storage backend where OpenBao HA coordination will take place. This must be
+  an HA-supporting backend. If not set, HA will be attempted on the backend
+  given in the `storage` parameter. This parameter is not required if the
+  storage backend supports HA coordination and if HA specific options are
+  already specified with `storage` parameter.
+
+- `listener` <code>([Listener][listener]: &lt;required&gt;)</code> – Configures how
+  OpenBao is listening for API requests.
+
+- `user_lockout` <code>([UserLockout][userlockout]: nil)</code>. –
+  Configures the user-lockout behaviour for failed logins. For more information, please see the
+  [user lockout configuration documentation](/docs/configuration/user-lockout). 
+
+- `seal` <code>([Seal][seal]: nil)</code> – Configures the seal type to use for
+  auto-unsealing, as well as for
+  [seal wrapping][sealwrap] as an additional layer of data protection.
+
+- `cluster_name` `(string: <generated>)` – Specifies the identifier for the
+  OpenBao cluster. If omitted, OpenBao will generate a value.
+
+- `cache_size` `(string: "131072")` – Specifies the size of the read cache used
+  by the physical storage subsystem. The value is in number of entries, so the
+  total cache size depends on the size of stored entries.
+
+- `disable_cache` `(bool: false)` – Disables all caches within OpenBao, including
+  the read cache used by the physical storage subsystem. This will very
+  significantly impact performance.
+
+- `initialize` <code>([Initialize][initialize]: &lt;none&gt;)</code> – Specifies one-time
+  [declarative self-initialization][initialize]. Can be specified multiple times.
+
+- `plugin_directory` `(string: "")` – A directory from which plugins are
+  allowed to be loaded. OpenBao must have permission to read files in this
+  directory to successfully load plugins, and the value cannot be a symbolic link.
+
+  @include 'plugin-file-permissions-check.mdx'
+
+- `plugin_file_uid` `(integer: 0)` – Uid of the plugin directories and plugin binaries if they
+  are owned by an user other than the user running OpenBao. This only needs to be set if the
+  file permissions check is enabled via the environment variable `VAULT_ENABLE_FILE_PERMISSIONS_CHECK`.
+
+- `plugin_file_permissions` `(string: "")` – Octal permission string of the plugin
+  directories and plugin binaries if they have write or execute permissions for group or others.
+  This only needs to be set if the file permissions check is enabled via the environment variable
+  `VAULT_ENABLE_FILE_PERMISSIONS_CHECK`.
+
+- `telemetry` <code>([Telemetry][telemetry]: &lt;none&gt;)</code> – Specifies the telemetry
+  reporting system.
+
+- `default_lease_ttl` `(string: "768h")` – Specifies the default lease duration
+  for tokens and secrets. This is specified using a label suffix like `"30s"` or
+  `"1h"`. This value cannot be larger than `max_lease_ttl`.
+
+- `max_lease_ttl` `(string: "768h")` – Specifies the maximum possible lease
+  duration for tokens and secrets. This is specified using a label
+  suffix like `"30s"` or `"1h"`. Individual mounts can override this value
+  by tuning the mount with the `max-lease-ttl` flag of the
+  [auth](/docs/commands/auth/tune#max-lease-ttl) or
+  [secret](/docs/commands/secrets/tune#max-lease-ttl) commands.
+
+- `default_max_request_duration` `(string: "90s")` – Specifies the default
+  maximum request duration allowed before OpenBao cancels the request. This can
+  be overridden per listener via the `max_request_duration` value.
+
+- `detect_deadlocks` `(string: "")` - A comma separated string that specifies the internal 
+mutex locks that should be monitored for potential deadlocks. Currently supported values 
+include `statelock`, `quotas` and `expiration` which will cause "POTENTIAL DEADLOCK:"
+to be logged when an attempt at a core state lock appears to be deadlocked. Enabling this 
+can have a negative effect on performance due to the tracking of each lock attempt.
+
+- `raw_storage_endpoint` `(bool: false)` – Enables the `sys/raw` endpoint which
+  allows the decryption/encryption of raw data into and out of the security
+  barrier. This is a highly privileged endpoint.
+
+- `introspection_endpoint` `(bool: false)` - Enables the `sys/internal/inspect` endpoint
+  which allows users with a root token or sudo privileges to inspect certain subsystems inside OpenBao.
+
+- `ui` `(bool: false)` – Enables the built-in web UI, which is available on all
+  listeners (address + port) at the `/ui` path. Browsers accessing the standard
+  OpenBao API address will automatically redirect there. This can also be provided
+  via the environment variable `VAULT_UI`. For more information, please see the
+  [ui configuration documentation](/docs/configuration/ui).
+
+- `pid_file` `(string: "")` - Path to the file in which the OpenBao server's
+  Process ID (PID) should be stored.
+
+- `enable_response_header_hostname` `(bool: false)` - Enables the addition of an HTTP header
+  in all of OpenBao's HTTP responses: `X-Vault-Hostname`. This will contain the
+  host name of the OpenBao node that serviced the HTTP request. This information
+  is best effort and is not guaranteed to be present. If this configuration
+  option is enabled and the `X-Vault-Hostname` header is not present in a response,
+  it means there was some kind of error retrieving the host name from the
+  operating system.
+
+- `enable_response_header_raft_node_id` `(bool: false)` - Enables the addition of an HTTP header
+  in all of OpenBao's HTTP responses: `X-Vault-Raft-Node-ID`. If OpenBao is participating
+  in a Raft cluster (i.e. using integrated Storage), this header will contain the
+  Raft node ID of the OpenBao node that serviced the HTTP request. If OpenBao is not
+  participating in a Raft cluster, this header will be omitted, whether this configuration
+  option is enabled or not.
+
+- `log_level` `(string: "info")` - Log verbosity level.
+  Supported values (in order of descending detail) are `trace`, `debug`, `info`, `warn`, and `error`.
+  This can also be specified via the `BAO_LOG_LEVEL` environment variable.
+
+:::warning
+
+ Note: On SIGHUP (`sudo kill -s HUP` _pid of bao_), if a valid value is specified, OpenBao will update the existing log level,
+  overriding (even if specified) both the CLI flag and environment variable.
+
+:::
+
+:::warning
+
+ Note: Not all parts of OpenBao's logging can have its log level be changed dynamically this way; in particular,
+  secrets/auth plugins are currently not updated dynamically.
+
+:::
+
+- `log_format` - Equivalent to the [`-log-format` command-line flag](/docs/commands/server#_log_format).
+
+- `log_file` - Equivalent to the [`-log-file` command-line flag](/docs/commands/server#_log_file).
+
+- `log_rotate_duration` - Equivalent to the [`-log-rotate-duration` command-line flag](/docs/commands/server#_log_rotate_duration).
+
+- `log_rotate_bytes` - Equivalent to the [`-log-rotate-bytes` command-line flag](/docs/commands/server#_log_rotate_bytes).
+
+- `log_rotate_max_files` - Equivalent to the [`-log-rotate-max-files` command-line flag](/docs/commands/server#_log_rotate_max_files).
+
+- `imprecise_lease_role_tracking` `(bool: false)` - Skip lease counting by role if there are no role based quotas enabled.
+  When `imprecise_lease_role_tracking` is set to true and a new role-based quota is enabled, subsequent lease counts start from 0.
+  `imprecise_lease_role_tracking` affects role-based lease count quotas, but reduces latencies when not using role based quotas.
+
+- `unsafe_allow_api_audit_creation` `(bool: false)` - Allow creating [audit devices](/docs/audit)
+  via the API. It is recommended to enable this option only temporarily when
+  needed. This option can be toggled at runtime by reloading the configuration
+  via SIGHUP.
+
+- `allow_audit_log_prefixing` `(bool: false)` - Allow creating [audit devices](/docs/audit)
+  that use the [`prefix` option](/docs/audit#common-configuration-options). Just
+  like the above option, this one is best toggled only temporarily to enable the
+  desired audit device.
+
+### High Availability parameters
+
+The following parameters are used on backends that support [High Availability][high-availability].
+
+- `api_addr` `(string: "")` – Specifies the address (full URL) to advertise to
+  other OpenBao servers in the cluster for client redirection. This value is also
+  used for [plugin backends][plugins]. This can also be provided via the
+  environment variable `VAULT_API_ADDR`. In general this should be set as a full
+  URL that points to the value of the [`listener`](#listener) address.
+  This can be dynamically defined with a
+  [go-sockaddr template](https://pkg.go.dev/github.com/hashicorp/go-sockaddr/template)
+  that is resolved at runtime.
+
+- `cluster_addr` `(string: "")` – Specifies the address to advertise to other
+  OpenBao servers in the cluster for request forwarding. This can also be provided
+  via the environment variable `VAULT_CLUSTER_ADDR`. This is a full URL, like
+  `api_addr`, but OpenBao will ignore the scheme (all cluster members always
+  use TLS with a private key/certificate).
+  This can be dynamically defined with a
+  [go-sockaddr template](https://pkg.go.dev/github.com/hashicorp/go-sockaddr/template)
+  that is resolved at runtime.
+
+- `disable_clustering` `(bool: false)` – Specifies whether clustering features
+  such as request forwarding are enabled. Setting this to true on one OpenBao node
+  will disable these features _only when that node is the active node_. This
+  parameter cannot be set to `true` if `raft` is the storage type.
+
+[audit]: /docs/configuration/audit
+[storage-backend]: /docs/configuration/storage
+[listener]: /docs/configuration/listener
+[seal]: /docs/configuration/seal
+[telemetry]: /docs/configuration/telemetry
+[initialize]: /docs/configuration/self-init
+[sentinel]: /docs/configuration/sentinel
+[high-availability]: /docs/concepts/ha
+[plugins]: /docs/plugins
+[userlockout]: /docs/configuration/user-lockout

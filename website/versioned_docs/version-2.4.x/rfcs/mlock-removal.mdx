@@ -1,0 +1,73 @@
+---
+sidebar_label: mlock removal
+description: |-
+  An OpenBao RFC to remove mlock from the codebase.
+---
+
+# `mlock` removal
+
+## Status
+
+Option 1 in the proposals below was approved and merged into main in [PR #363](https://github.com/openbao/openbao/pull/363). Furthermore, there was agreement for the following longer-term plans, without a definite schedule:
+
+* Mid-to-long term: Move storage operations to external process, as per option 2 in the RFC.
+
+* Very long term: Research secure memory enclave, as per the "long term option" in the RFC.
+
+## Summary
+
+To prevent writing sensitive information to disk through swap, Vault used the mlock syscall to prevent any process memory from being swapped out to disk. This never worked perfectly, and while OpenBao has so far retained Vault's usage of mlock, other design decisions made since the fork call the entire mlock design into question.
+
+## Problem Statement
+
+[`mlock` is a Posix syscall that will lock some or all of a process's virtual memory in physical memory and prevent it from being paged out to disk](https://www.man7.org/linux/man-pages/man2/mlock.2.html). This provides a security advantage for applications like OpenBao, which deal with sensitive information. By using `mlock`, OpenBao can ensure that sensitive information stays in memory, instead requiring the deploying sysadmin to securely overwrite, encrypt, or disable swap. For this reason, Vault used `mlock` where possible, and OpenBao has inherited this code so far.
+
+However, for various reasons, discussed in more detail later, `mlock` can not be used in all situations. [It can only be used on Linux and the BSDs](https://github.com/openbao/go-secure-stdlib/blob/main/mlock/mlock_unix.go), [not Windows, macOS, or other platforms](https://github.com/openbao/go-secure-stdlib/blob/main/mlock/mlock_unavail.go). It will also [lead to a bug if it is used with Integrated Storage](https://developer.hashicorp.com/vault/tutorials/operations/performance-tuning#mlock), so while enabling `mlock` usage on Linux with Integrated Storage is _possible_, [it is discouraged by Vault](https://developer.hashicorp.com/vault/docs/configuration#disable_mlock), and so far [this has been retained by OpenBao](https://openbao.org/docs/configuration/#parameters).
+
+As part of the fork, [all external storage options were removed from OpenBao](https://github.com/orgs/openbao/discussions/64), leaving the Integrated Storage as the sole production-quality storage backend. As a result, in the current state of the codebase, there are **zero** production-level configurations where it is advisable to have `mlock` enabled. Nevertheless, `mlock` is _enabled_ by default on those platforms which support it. This seems less than ideal, and the purpose of this RFC is to discuss how OpenBao's usage of `mlock` might evolve in a more elegant direction.
+
+## User-facing description
+
+Configuring `mlock` is only relevant to sysadmins maintaining the OpenBao server process. Since it is enabled on Linux by default, they must read the docs (currently rather unclear on this point) to learn that they should disable it. Disabling it requires a single line in the server config.
+
+Incidentally, if `mlock` is left _enabled_, it still may not work out of the box. The Linux kernel limits by default a process's ability to call `mlock`, and if this capacity is not granted (typically though a line in the systemd service file), then OpenBao will exit with an error on startup. But if `mlock` is successfully enabled, then since OpenBao only supports Integrated Storage at present, it will attempt to load its entire database into physical memory. If the size of the database exceeds the amount of physical memory, the OOM killer will be forced to kill the OpenBao process, possibly also taking other processes down along the way.
+
+## Technical Description
+
+The root cause of many of the complications brought up in this RFC has to do with the interaction between `mlock` and Go memory allocation. Classically, in C, `mlock` is only called on a specific region of memory where sensitive information is being stored; all other memory is left free to be paged back to disk. However, this is not possible with Go because:
+> [go's garbage collector can and will move and copy memory as it sees fit. `mlock` on a go-managed buffer just prevents the original memory location from being swapped out to disk, but does nothing to the copies that the go runtime will periodically create.](https://news.ycombinator.com/item?id=14174500)
+
+To work around this, `mlock` was originally implemented in Vault through the specific call [`mlockall(MCL_CURRENT|MCL_FUTURE)`](https://github.com/openbao/go-secure-stdlib/blob/e238ea0d4570f814e033ba4fec10636735ba0bc0/mlock/mlock_unix.go#L20), which told the kernel to lock **all** memory in the process's **entire** address space. This worked fine for most backends, but doesn't work for the Integrated Storage backend, because bbolt, the library it uses for its database, [`mmap`s the entire database file](https://github.com/etcd-io/bbolt/blob/f663d4e6043e37fa77c3b554f2692d4d02cc8c95/bolt_unix.go#L57). Since this happens in the same process, the database `mmap` interacts with the prior `mlockall` setting in a diabolical way: the _entire_ database is loaded into physical memory immediately upon creation of the `mmap`. If the size of the database exceeds the amount of physical memory available to the OS, bad things happen.
+
+Notice, however, that all of this is just a means to an end. The original goal of all of this was to prevent a secret that was resident in memory from being written to disk on a swap partition, and then being sniffed from swap. But there are other ways to prevent this data leak. Swap can be disabled across the entire OS; swap can be encrypted; swap can be disabled for one process in particular through the [cgroupv2 setting `memory.swap.max`](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html). These methods are at least as equally good as `mlock`, if not better, because without `mlock`, the kernel can return to disk little-used pages in process memory, such as portions of the (rather chunky) OpenBao binary.
+
+## Rationale and alternatives
+
+I will provide five options here: four for the short term and one for the long term. The four short term options are somewhat mutually exclusive; none of the short term options are exclusive of the long term option.
+
+### Option 1: Rip `mlock` out entirely
+
+Since there is currently **no** circumstance where it is advisable to run OpenBao in production with `mlock` enabled, just rip `mlock` out of OpenBao. There's already been a lot of ripping code out as part of the fork, so this would be one removal among many. The `mlock` feature was never well-designed -- it didn't work on all platforms or for all storage backends. Calling `mlockall` in a complex application like this is simply a code smell. Right now, it's causing trouble with bbolt, but it may pose other problems in the future, where it might threaten other negative interactions with other proposed features. Save everyone the trouble and rip it out now while it's the season to be ripping stuff out.
+
+Instead, add a "Hardening OpenBao" section to the docs which discusses alternatives such as disabling swap. This has the added benefit of also indicating this vulnerability to Windows and macOS users, who right now are simply told "no mlock for you!" in the docs but are not given any indications what the consequences of this might be. I don't know what the equivalent to disabling swap is for Windows, but if the docs addressed it more specifically, someone with Windows knowledge might come along and add that info, which will make OpenBao on Windows more secure than it's been before.
+
+### Option 2: Fork bbolt and add `munlock`
+There are two steps to this. The first step is to add the flag `MCL_ONFAULT` (only on Linux > 4.4) to the `mlockall` call. This flag changes the locking behavior so that instead of loading and locking a `mmap` page into physical memory upon creation, a memory page is only loaded upon first access, like normal, and then locked.
+
+The second step is to fork the upstream bbolt library and add a one-line patch to it, so that immediately after creating the db `mmap`, that specific region of memory is then `munlock`ed. This will prevent (on Linux > 4.4) the specific error that shows up with `mlock` and bbolt. It involves forking an upstream library, but only to add a one-line patch. [They're not interested in mainlining such a patch upstream](https://github.com/etcd-io/bbolt/issues/760).
+
+### Option 3: Move the storage backend into a separate process
+
+This would involve moving the storage backend code into a separate process which would not have to deal with the effects of `mlockall` called by the main OpenBao process. That solves the problem well enough. Coming up with the right IPC design for storage IO all happening in another process is likely to be tricky, but if this is solved, it will also have the beneficial consequence of making it easier for the community to create third party storage backends.
+
+### Option 4: Do nothing
+
+Insofar as OpenBao is just a drop-in replacement for Vault, not doing anything is feature-for-feature and bug-for-bug compatible with Vault 1.14. We can edit the docs to clarify things a bit more and call it a day.
+
+### Long term option: design secure memory enclave
+
+Recall that the reason you must call `mlockall` instead of locking a specific region of memory is because Go's automatic memory management will normally move objects around; they don't have fixed addresses. But if there were a way to get memory allocations in a specific region, then instead of calling `mlock` on the entire process address space, there would be a specific memory rage that would get `mlock`ed, and there would be a "secure allocator" which would only allocate from that space and all sensitive data could then use that allocator to make sure their memory location was in the secure enclave.
+
+I'm not a Go wizard, so I'm not sure there's a way to drop down to this level of manual memory management in Go, or if you'd have to do it in C, Rust, or Zig. In case of the latter, I realize that creates the burden of a polyglot project. But the reward is that OpenBao would have a much smaller, focused enclave of secret material, which could be protected on more platforms (like [Windows](https://github.com/openbao/go-secure-stdlib/blob/e238ea0d4570f814e033ba4fec10636735ba0bc0/mlock/mlock_unavail.go#L15)), and also, possibly, through more methods, like in-memory encryption via TPM2, Linux Kernel keyring, or AMD SME.
+
+I don't think this is urgent, which is why I'm not suggesting to do this now; I'm just raising the possibility for the long-term evolution of OpenBao.

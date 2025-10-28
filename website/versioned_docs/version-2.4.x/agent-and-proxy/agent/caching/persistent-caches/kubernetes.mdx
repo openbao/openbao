@@ -1,0 +1,25 @@
+---
+sidebar_label: Kubernetes
+description: Kubernetes Persistent Cache for OpenBao Agent Caching
+---
+
+# OpenBao agent kubernetes persistent cache
+
+When `kubernetes` is configured for the persistent cache type, OpenBao Agent will optimize the
+persistent cache specifically for Kubernetes. This type of persistent cache requires a Kubernetes
+service account token. The service account token is used during encryption and decryption of the
+persistent cache as an additional integrity check.
+
+The OpenBao Agent persistent cache file in Kubernetes should only be used for handing off OpenBao tokens
+and leases between initialization and sidecar OpenBao Agent containers. This cache file should be shared
+using a memory volume between the OpenBao Agent containers.
+
+If the OpenBao Agent Injector for Kubernetes is being used, the persistent cache is automatically configured
+and used if the annotation [`vault.hashicorp.com/agent-cache-enable: true`](https://github.com/hashicorp/vault-k8s/blob/v1.4.2/agent-inject/agent/annotations.go#L249)
+is set.
+
+## Configuration
+
+- `service_account_token_file` `(string: optional)` - When type is set to `kubernetes`,
+  this configures the path on disk where the Kubernetes service account token can be found.
+  Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`.

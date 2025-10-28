@@ -1,0 +1,81 @@
+---
+sidebar_label: API proxy
+description: >-
+  OpenBao Agent's API Proxy functionality allows you to use OpenBao Agent's API as a proxy
+  for OpenBao's API.
+---
+
+# OpenBao agent API proxy
+
+OpenBao Agent's API Proxy functionality allows you to use OpenBao Agent's API as a proxy
+for OpenBao's API.
+
+:::warning
+
+Note: This functionality will be deprecated in a future release. Please
+switch to using [OpenBao Proxy](/docs/agent-and-proxy/proxy) for API proxying purposes, instead.
+
+:::
+
+## Functionality
+
+The [`listener` stanza](/docs/agent-and-proxy/agent#listener-stanza) for OpenBao Agent configures a listener for OpenBao Agent. If
+its `role` is not set to `metrics_only`, it will act as a proxy for the OpenBao server that
+has been configured in the [`vault` stanza](/docs/agent-and-proxy/agent#vault-stanza) of OpenBao Agent. This enables access to the OpenBao
+API from the Agent API, and can be configured to optionally allow or force the automatic use of
+the Auto-Auth token for these requests, as described below.
+
+If a `listener` has been configured alongside a `cache` stanza, the API Proxy will
+first attempt to utilize the cache subsystem for qualifying requests, before forwarding the
+request to OpenBao. See the [caching docs](/docs/agent-and-proxy/agent/caching) for more information on caching.
+
+## Using Auto-Auth token
+
+OpenBao Agent allows for easy authentication to OpenBao in a wide variety of
+environments using [Auto-Auth](/docs/agent-and-proxy/autoauth). By setting the
+`use_auto_auth_token` (see below) configuration, clients will not be required
+to provide an OpenBao token to the requests made to the Agent. When this
+configuration is set, if the request doesn't already bear a token, then the
+auto-auth token will be used to forward the request to the OpenBao server. This
+configuration will be overridden if the request already has a token attached,
+in which case, the token present in the request will be used to forward the
+request to the OpenBao server.
+
+## Forcing Auto-Auth token
+
+OpenBao Agent can be configured to force the use of the auto-auth token by using
+the value `force` for the `use_auto_auth_token` option. This configuration
+overrides the default behavior described above in [Using Auto-Auth
+Token](/docs/agent-and-proxy/agent/apiproxy#using-auto-auth-token), and instead ignores any
+existing OpenBao token in the request and instead uses the auto-auth token.
+
+
+## Configuration (`api_proxy`)
+
+The top level `api_proxy` block has the following configuration entries:
+
+- `use_auto_auth_token` `(bool/string: false)` - If set, the requests made to Agent
+without an OpenBao token will be forwarded to the OpenBao server with the
+auto-auth token attached. If the requests already bear a token, this
+configuration will be overridden and the token in the request will be used to
+forward the request to the OpenBao server. If set to `"force"` Agent will use the
+auto-auth token, overwriting the attached OpenBao token if set.
+
+### Example configuration
+
+Here is an example of a `listener` configuration alongside `api_proxy` configuration to force the use of the auto_auth token
+and enforce consistency.
+
+```hcl
+# Other OpenBao agent configuration blocks
+# ...
+
+api_proxy {
+  use_auto_auth_token = "force"
+}
+
+listener "tcp" {
+    address = "127.0.0.1:8100"
+    tls_disable = true
+}
+```

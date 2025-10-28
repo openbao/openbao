@@ -1,0 +1,80 @@
+---
+sidebar_label: SCAN operation
+description: |-
+  An OpenBao RFC to add a recursive list (SCAN) operation and ACL capability.
+---
+
+# SCAN operation
+
+## Summary
+
+Introduce a new ACL capability, `scan`, and operation type, under the `SCAN` HTTP verb or `GET` with `?scan=true`, to safely support recursive listing of entries under a given path.
+
+## Problem Statement
+
+Many users operate a K/V mount with a nested, hierarchical entry layout. While the total number of [visible entries](https://github.com/openbao/openbao/issues/769) may not be that many, it may be difficult to navigate even a shallow hierarchy to find the correct entries. This makes supporting a recursive list operation, especially in conjunction with [pruning of non-accessible results](https://github.com/openbao/openbao/issues/769) attractive for a flatter layout.
+
+Similarly, applications operating over larger datasets (say, for compliance) may want a point-in-time snapshot of all entries within a mount, say, to enqueue auditing of `custom_metadata` with company policies for structure.
+
+OpenBao has lacked recursive listing of entries from an API perspective, but has had an underlying implementation of this in certain areas via the `logical.ScanView(...)` helper. With the combination of pagination and transactional storage, this becomes consistent and resource constrainable that makes implementing worthwhile.
+
+## User-facing Description
+
+For users, OpenBao is introducing a new operation type, under the `SCAN` HTTP verb or `GET` with `?scan=true`, that plugins can implement to indicate that their lists are recursive, if they support hierarchical storage (e.g., of K/V entries versus the flat role list of PKI). Like LIST, this returns all entries within the mount, recursively. The exact implementation details are left up to plugins; please see their documentation for more information. Like LIST, in places where `ListResponseWithInfo(...)` is used, `SCAN` can use the same response format to attach detailed metadata to list entries.
+
+For operators, OpenBao will allow safely constraining these values by adding a new ACL capability, `scan`, to support limiting users' ability to call these types of endpoints. Like all capabilities, we default to deny behavior and thus users will not get access to these endpoints automatically.
+
+## Technical Description
+
+`SCAN` behaves like `LIST` in that it returns all entries within the mount. Presumably `SCAN` would only be used in plugins which support a `LIST` parameterized with a `:prefix` parameter usually in the URL for ACLing. SCAN would, like LIST, return all entries (albeit, recursively) even if they were not necessarily visible to the caller. The operator would grant explicit access to SCAN results, giving intent to recursively list all entries below the given path.
+
+However, access to a given prefix's SCAN does not necessarily mean READ access was granted nor that SCAN was granted on sub-paths. E.g., if an operator had an ACL like:
+
+```hcl
+path "secrets/metadata" {
+   capabilities = ["scan"]
+}
+```
+
+the user would be able to see all entries in the K/V mount. However, they would not be able to call `SCAN secrets/metadata/subpath/` (even though these would show up in the results for `SCAN secrets/metadata/`) or `READ secrets/metadata/some-key`.
+
+SCAN thus behaves exactly like LIST in that regard.
+
+Because SCAN is recursive, it will presumably not include directories in its output as there is no need to explicitly call out directories, unlike with LIST. For example, given `a/b` and `c/d`, the output would be `keys: ["a/b", "c/d"]` and not `keys: ["a/", "a/b", "c/", "c/d"]`.
+
+## Rationale and Alternatives
+
+One alternative was supporting a `recurse=true` parameter. However, many endpoints which would support a recurse operation already support `LIST` and would require different implementations `storage.List(...)` versus a `logical.ScanView(...)`. This means a separate operation would be more ideal than reusing the existing `LIST` operation. Using a new verb and capability also allows for easier, clearer ACL policies: allowing `list` (without a `denied_parameters=["recurse"]`) would allow recursion, which is not ideal.
+
+A similar argument goes for pushing this onto plugin developers via separate endpoints. An operator could accidentally grant LIST with recursion on an alternative endpoint without fully understanding the resource implications of it.
+
+## Downsides
+
+SCAN is a more expensive operation. However, with `required_parameters=limit` (and potential future improvements to allow policy authors to numerically constrain this value), operators should be able to achieve comparable performance to limited LISTs.
+
+## Security Implications
+
+The security implications are mostly the same as LIST, with the extra overhead of recursion. However, this is mitigated by adding a new ACL capability and placing them on unique operation handlers and by potential future work to enforce numericial `limit` constraints.
+
+## User/Developer Experience
+
+This helps certain use cases as enumeated above, especially when humans or automated systems are directly interacting with OpenBao.
+
+For consumers of OpenAPI generation, this will [have some impact](https://github.com/orgs/openbao/discussions/656) where `LIST`, `GET`, and `SCAN` are used at the same time, but a similar workaround to the existing LIST workaround would suffice here. However, due to the `GET` fallback, this should otherwise be accessible everywhere `LIST` is.
+
+## Unresolved Questions
+
+n/a
+
+## Related Issues
+
+ - https://github.com/openbao/openbao/issues/769 implements response filtering for this.
+ - https://github.com/openbao/openbao/issues/549 is a feature request asking for this for K/V.
+
+Upstream:
+
+ - https://github.com/hashicorp/vault/issues/5275
+
+## Proof of Concept
+
+https://github.com/openbao/openbao/pull/763 is the open pull request for this change.

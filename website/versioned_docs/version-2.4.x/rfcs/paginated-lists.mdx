@@ -1,0 +1,168 @@
+---
+sidebar_label: Paginated lists
+description: |-
+  An OpenBao RFC for paginating lists in the API, CLI, and storage backends.
+---
+
+# Paginated lists
+
+**Status**: this landed in [PR #170](https://github.com/openbao/openbao/pull/170).
+
+:::info
+
+This RFC was updated by [safely limiting pagination via ACL policies](/docs/rfcs/acl-paginated-lists).
+
+:::
+
+## Summary
+
+OpenBao's `LIST` Plugin APIs presently only supports returning all keys within a tree, resulting in many performance issues (memory and compute). By implementing pagination, the caller can limit the number of responses and thus reduce both the client's and server's instantaneous resource consumption.
+
+## Problem statement
+
+`LIST` APIs in plugins historically have been forced to be authenticated, to mitigate DoS likelihood. This is because many secrets engines (and other areas of OpenBao) have unbounded creation, and thus, unbounded lists. For example, [K/V allows](https://developer.hashicorp.com/vault/api-docs/secret/kv/kv-v2#create-update-secret) an arbitrary number of keys within a path, PKI places all [(valid or revoked) certificates](https://developer.hashicorp.com/vault/api-docs/secret/pki#list-certificates) in a single path by serial number, and Transit allows [arbitrary key creation](https://developer.hashicorp.com/vault/api-docs/secret/transit#create-key) (again, placed within a single path in storage). Browsing these potentially large collections (either via UI or an API client) is unwieldy and causes resource consumption on both the client and server. This often makes it hard for users to find what they're looking for.
+
+Furthermore, certain operations (like PKI's tidy operation) requires `List(...)`ing the entire collection in order to prune them; this requires the collection of items fits in memory of the server. However, this operation can be interrupted, whether through explicit pauses and releasing and re-acquiring locks. Keeping this entire collection in memory thus reduces the amount of resources for regular operations to continue. In extreme cases, thousands of mounts with 100k-1m leaf certificates per mount have been observed; this leads to around 100MB+ of memory just for the list, per mount, potentially requiring 100GB+ of memory for all mounts to be able to tidy in parallel.
+
+These limitations are discussed in various upstream issues, e.g., https://github.com/hashicorp/vault/issues/21164 or https://github.com/hashicorp/vault/issues/21041.
+
+## User-facing description
+
+Efficient pagination allows incremental discovery over large data sets. For instance, the web UI will load the first subset of data much more quickly and subsequent navigation to later pages will happen much more quickly. Similarly, periodic scripts that need to iterate over a large quantity of data can do so more efficiently than requesting an entire list up front.
+
+However, note that this pagination is not intended to be bound to a transaction: entries may not be present if they were created after a given page range was iterated over.
+
+#### Examples
+
+Given a storage prefix with keys like:
+
+ - `abcd`
+ - `efgh`
+ - `ijkl`
+ - `mnop`
+ - `qrst`
+ - `uwxy`
+
+Then:
+
+ - `List(...)`, `ListPage(..., "", -1)`, `ListPage(..., "", 0)`, `ListPage(..., "", 6)`, and `ListPage(..., "", 1000)` would return all of them.
+ - `ListPage(..., "a", -1)` would also return all of them, as `"a" < "abcd"`.
+ - `ListPage(..., "b", -1)` would return `efgh` through `uwxy`
+ - `ListPage(..., "b", 2)` would return `efgh` and `ijkl`
+ - `ListPage(..., "ijkl", 1)` would return `mnop`.
+ - `ListPage(..., "z", -1)` would return nothing.
+
+## Technical description
+
+This RFC proposes a unified storage & plugin pagination API, `ListPage(...)`, taking three parameters:
+
+ - `prefix`, a tree in storage to list the keys under. This is the existing parameter to `List(...)`.
+ - `after`, a string key which may or may not be present within the directory to list keys appearing after alphabetically. This defaults to the empty string, meaning the first entry will be included. This value is exclusive so if `after` is a key within the tree, it will not be included in this page of results.
+ - `limit`, a number of items to return. When non-positive (zero or negative), it will return all items. Defaults to zero.
+
+The return value is the same as `List(...)`, namely the (now filtered via pagination) list of results or an err if one occurred. Notably, no new error cases are required here: the behavior of `after` (if not present) is similar to that of a binary search (in that the next value is returned) and the behavior of `limit` should gracefully handle negative values.
+
+This API will need to be exposed throughout the internal physical and storage APIs, but also through to many plugin & system `LIST` API endpoints. Concretely:
+
+ - Raft, in-memory, and file physical storage backends will need to implement these APIs. Of these, Raft is the suggested production backend and thus requires the most care. However, boltdb (the underlying K/V storage mechanism) already has a `c.Seek(...)` method that provides efficient implementation of the functionality we want.
+ - Many interfaces (such as `logical.Storage` and `physical.Backend` and the plugin GRPC interface) will need to be updated to include the new storage function.
+ - `api.Client` will need to implement a new `ListPage` Plugin API interface, and the `bao list` CLI will need `-after` and `-limit` flags.
+ - Many plugins will need to be incrementally updated, so that any of their `LIST` Plugin APIs will add `after` and `limit` parameters.
+ - And, eventually, the UI will need to be incrementally updated, so that expensive lists (such as PKI's leaf and issuer lists) use the new pagination functionality.
+
+## Rationale and alternatives
+
+The resource consumption and DoS prevention benefits justify this change.
+
+An alternative proposal, not necessarily exclusive, is to implement filtering as suggested in https://github.com/hashicorp/vault/issues/24046. The core of this request articulates concerns about performance, which this addresses, though note that _searching_ for a particular key would still require many requests to the server (to exhaust the list -- rather than the search being performed on the server itself). If this is still desired after implementing this proposal, IMO, this can be implemented then. Note that the combination of the two (filter + paginate) still makes sense in general, if the number of matching entries is large.
+
+## Downsides
+
+Notably, this pagination API does not contain a cursor reference: subsequent calls may obscure or contain data created after the initial calls. For many use cases, this is sufficient; when this is not and a single consistent view is required, it is suggested to continue to use the unrestricted `LIST` API.
+
+Furthermore, while transactions are not yet expose to storage plugins, it is not clear how this would interact with that capability, if and when implemented.
+
+Lastly, this places an increased burden on maintainers of other storage backends: this is the first breaking change from upstream w.r.t. the physical storage backend; if anyone wished to re-add support for a non-Raft backend, they would now need to implement this functionality. This solidifies API-compatibility only for non-Raft storage backends, preventing seal compatibility without changes on the maintainers' parts. However, a quick, non-performant implementat (used in the File and encryptedKeyStorage implementations) is to do a binary search (for `after`) and then apply the `limit`, after doing a regular `List(...)` call. This is less performant than ideal, but contains the performance loss to the storage backend in question.
+
+### Ecosystem compatibility
+
+Not immediately clear is how ecosystem compatibility works with GRPC; this is worth investigating more.
+
+Consider two scenarios:
+
+ 1. A plugin built against Vault's SDK, running on OpenBao. Presumably, no compatibility issues would occur as this would strictly use a common subset of calls.
+ 2. A plugin built against OpenBao's SDK, running on Vault. Here, ~assuming the missing server GRPC implementation doesn't cause the plugin to panic~, OpenBao's SDK could implement the `log(n)` re-implementation of `ListPage(...)` (used by the file storage backend) that assumes `List(...)` returns in sorted order. This can provide a compatibility shim so plugins could be buitl and progressively take advantage of the new call, and trap the error from propagating.
+
+The second of these cases is more worrying, though, from the PoC below, looks to be OK.
+
+## Security implications
+
+This improves the security posture of `LIST` operations. Policies and engines can, if desired, now enforce a positive value on the `limit` parameter, thereby preventing expensive, unbounded `LIST` operations that could cause a soft DoS on the server. With the right storage backend (Raft), this is efficient.
+
+## User/developer experience
+
+User experience will greatly improve as a result of this. No pagination will occur by default, so existing workloads will be unchanged, but as developers change integrations, both behind the scenes in the official UI but also elsewhere within apps calling `LIST` endpoints with the new pagination parameters, performance will improve everywhere.
+
+The experience is also forgiving: if `after` is not provided, or a weird value for `limit` is applied, the result is handled gracefully.
+
+## Unresolved questions
+
+Interaction with transactional storage remains untested and unknown. This can likely not to be much of an issue (as it is implemented the same was as a `LIST` operation is), but when transactions are added to the Storage,
+
+## Related issues
+
+Upstream issues (subset of known ones):
+
+ - https://github.com/hashicorp/vault/issues/21164
+ - https://github.com/hashicorp/vault/issues/21041
+
+## Proof of concept
+
+See: https://github.com/cipherboy/openbao/pull/new/paginated-lists
+
+To try it out: check out the branch locally and build according to instructions in the README.
+
+Then start a bao server in one terminal:
+
+```bash
+$ bao server -dev -dev-listen-address="0.0.0.0:$port" -dev-root-token-id=devroot
+```
+
+And initialize state in another:
+
+```bash
+$ bao secrets enable pki
+$ bao write pki/root/generate/internal key_type=ed25519 issuer_name="root-x1" common_name="Root X1"
+$ bao write pki/root/generate/internal key_type=ed25519 issuer_name="root-x2" common_name="Root X2"
+$ bao write pki/roles/testing-ed25519 allow_any_name=true key_type=ed25519
+$ bao write pki/roles/testing-rsa allow_any_name=true key_type=rsa
+$ for i in `seq 1 10`; do bao write pki/issue/testing-ed25519 common_name=example.com ttl=5s ; done
+```
+
+Now listing should work via the CLI:
+
+```bash
+$ bao list -detailed pki/issuers
+Keys                                    is_default    issuer_name    key_id                                  serial_number
+----                                    ----------    -----------    ------                                  -------------
+54d97997-55d1-0b76-a2cf-ba8a6cdec2cb    false         root-x2        19836fbb-1f02-1e65-26a4-1c678c585ae6    74:77:fb:8e:95:ef:bd:69:0f:66:0d:04:dd:ad:01:2b:60:51:e6:3c
+79859a88-482c-40e4-c889-2da7f5327b29    true          root-x1        517ff4db-f26c-9aa5-0bf6-f145dda9396f    26:8c:34:74:59:78:88:72:b7:9e:b7:1b:a9:33:a1:a5:c2:2b:1b:02
+$ bao list -detailed -limit=1 pki/issuers
+Keys                                    is_default    issuer_name    key_id                                  serial_number
+----                                    ----------    -----------    ------                                  -------------
+54d97997-55d1-0b76-a2cf-ba8a6cdec2cb    false         root-x2        19836fbb-1f02-1e65-26a4-1c678c585ae6    74:77:fb:8e:95:ef:bd:69:0f:66:0d:04:dd:ad:01:2b:60:51:e6:3c
+$ bao list pki/roles
+Keys
+----
+testing-ed25519
+testing-rsa
+$ bao list -after=testing-ed25519 pki/roles
+Keys
+----
+testing-rsa
+$ bao list -after=7 -limit=2 pki/certs
+Keys
+----
+74:77:fb:8e:95:ef:bd:69:0f:66:0d:04:dd:ad:01:2b:60:51:e6:3c
+77:bd:a5:75:91:29:06:48:10:dd:eb:1b:59:4b:90:91:08:ed:ef:af
+```

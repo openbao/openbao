@@ -1,0 +1,54 @@
+---
+description: |-
+  Describes how to set up a standalone OpenBao with audit storage
+---
+
+# Standalone server with audit storage
+
+:::warning
+
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+
+:::
+
+
+The below `values.yaml` can be used to set up a single server OpenBao cluster with
+auditing enabled.
+
+```yaml
+server:
+  standalone:
+    enabled: true
+    config: |
+      listener "tcp" {
+        tls_disable = true
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+
+      storage "file" {
+        path = "/openbao/data"
+      }
+
+  service:
+    enabled: true
+
+  dataStorage:
+    enabled: true
+    size: 10Gi
+    storageClass: null
+    accessMode: ReadWriteOnce
+
+  auditStorage:
+    enabled: true
+    size: 10Gi
+    storageClass: null
+    accessMode: ReadWriteOnce
+```
+
+After OpenBao has been deployed, initialized and unsealed, auditing can be enabled
+by running the following command against the OpenBao pod:
+
+```shell-session
+$ kubectl exec -ti <POD NAME> --  bao audit enable file file_path=/openbao/audit/openbao_audit.log
+```

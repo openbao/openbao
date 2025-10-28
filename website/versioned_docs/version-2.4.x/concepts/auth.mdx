@@ -1,0 +1,224 @@
+---
+description: >-
+  Before performing any operation with OpenBao, the connecting client must be
+  authenticated.
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Authentication
+
+Authentication in OpenBao is the process by which user or machine supplied
+information is verified against an internal or external system. OpenBao supports
+multiple [auth methods](/docs/auth) including GitHub,
+LDAP, AppRole, and more. Each auth method has a specific use case.
+
+Before a client can interact with OpenBao, it must _authenticate_ against an
+auth method. Upon authentication, a token is generated. This token is
+conceptually similar to a session ID on a website. The token may have attached
+policy, which is mapped at authentication time. This process is described in
+detail in the [policies concepts](/docs/concepts/policies) documentation.
+
+## Auth methods
+
+OpenBao supports a number of auth methods. Some backends are targeted
+toward users while others are targeted toward machines. Most authentication
+backends must be enabled before use. To enable an auth method:
+
+```shell-session
+$ bao write sys/auth/my-auth type=userpass
+```
+
+This enables the "userpass" auth method at the path "my-auth". This
+authentication will be accessible at the path "my-auth". Often you will see
+authentications at the same path as their name, but this is not a requirement.
+
+To learn more about this authentication, use the built-in `path-help` command:
+
+```shell-session
+$ bao path-help auth/my-auth
+# ...
+```
+
+OpenBao supports multiple auth methods simultaneously, and you can even
+mount the same type of auth method at different paths. Only one
+authentication is required to gain access to OpenBao, and it is not currently
+possible to force a user through multiple auth methods to gain
+access, although some backends do support MFA.
+
+## Tokens
+
+There is an [entire page dedicated to tokens](/docs/concepts/tokens),
+but it is important to understand that authentication works by verifying
+your identity and then generating a token to associate with that identity.
+
+For example, even though you may authenticate using something like GitHub,
+OpenBao generates a unique access token for you to use for future requests.
+The CLI automatically attaches this token to requests, but if you're using
+the API you'll have to do this manually.
+
+This token given for authentication with any backend can also be used
+with the full set of token commands, such as creating new sub-tokens,
+revoking tokens, and renewing tokens. This is all covered on the
+[token concepts page](/docs/concepts/tokens).
+
+## Authenticating
+
+For more information on authenticating and the various forms of
+authentication, see the [authentication landing page](/docs/auth).
+
+### Via the CLI
+
+To authenticate with the CLI, `bao login` is used. This supports many
+of the built-in auth methods. For example, with GitHub:
+
+```shell-session
+$ bao login -method=github token=<token>
+...
+```
+
+After authenticating, you will be logged in. The CLI command will also
+output your raw token. This token is used for revocation and renewal.
+As the user logging in, the primary use case of the token is renewal,
+covered below in the "Auth Leases" section.
+
+To determine what variables are needed for an auth method,
+supply the `-method` flag without any additional arguments and help
+will be shown.
+
+If you're using a method that isn't supported via the CLI, then the API
+must be used.
+
+### Via the API
+
+API authentication is generally used for machine authentication. Each
+auth method implements its own login endpoint. Use the `bao path-help`
+mechanism to find the proper endpoint.
+
+For example, the GitHub login endpoint is located at `auth/github/login`.
+And to determine the arguments needed, `bao path-help auth/github/login` can
+be used.
+
+## Auth leases
+
+Just like secrets, identities have
+[leases](/docs/concepts/lease) associated with them. This means that
+you must reauthenticate after the given lease period to continue accessing
+OpenBao.
+
+To set the lease associated with an identity, reference the help for
+the specific auth method in use. It is specific to each backend
+how leasing is implemented.
+
+And just like secrets, identities can be renewed without having to
+completely reauthenticate. Just use `bao token renew <token>` with the
+leased token associated with your identity to renew it.
+
+## Code example
+
+The following code snippet demonstrates how to renew auth tokens.
+
+<Tabs>
+<TabItem value="Go" heading="Go">
+
+```go showLineNumbers
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	openbao "github.com/openbao/openbao/api"
+	auth "github.com/openbao/openbao/api/auth/userpass"
+)
+
+// Once you've set the token for your OpenBao client, you will need to
+// periodically renew its lease.
+//
+// A function like this should be run as a goroutine to avoid blocking.
+//
+// Production applications may also wish to be more tolerant of failures and
+// retry rather than exiting.
+func renewToken(client *openbao.Client) {
+	for {
+		openbaoLoginResp, err := login(client)
+		if err != nil {
+			log.Fatalf("unable to authenticate to OpenBao: %v", err)
+		}
+		tokenErr := manageTokenLifecycle(client, openbaoLoginResp)
+		if tokenErr != nil {
+			log.Fatalf("unable to start managing token lifecycle: %v", tokenErr)
+		}
+	}
+}
+
+// Starts token lifecycle management. Returns only fatal errors as errors,
+// otherwise returns nil so we can attempt login again.
+func manageTokenLifecycle(client *openbao.Client, token *openbao.Secret) error {
+	renew := token.Auth.Renewable // You may notice a different top-level field called Renewable. That one is used for dynamic secrets renewal, not token renewal.
+	if !renew {
+		log.Printf("Token is not configured to be renewable. Re-attempting login.")
+		return nil
+	}
+
+	watcher, err := client.NewLifetimeWatcher(&openbao.LifetimeWatcherInput{
+		Secret:    token,
+		Increment: 3600, // Learn more about this optional value in https://www.vaultproject.io/docs/concepts/lease#lease-durations-and-renewal
+	})
+	if err != nil {
+		return fmt.Errorf("unable to initialize new lifetime watcher for renewing auth token: %w", err)
+	}
+
+	go watcher.Start()
+	defer watcher.Stop()
+
+	for {
+		select {
+		// `DoneCh` will return if renewal fails, or if the remaining lease
+		// duration is under a built-in threshold and either renewing is not
+		// extending it or renewing is disabled. In any case, the caller
+		// needs to attempt to log in again.
+		case err := <-watcher.DoneCh():
+			if err != nil {
+				log.Printf("Failed to renew token: %v. Re-attempting login.", err)
+				return nil
+			}
+			// This occurs once the token has reached max TTL.
+			log.Printf("Token can no longer be renewed. Re-attempting login.")
+			return nil
+
+		// Successfully completed renewal
+		case renewal := <-watcher.RenewCh():
+			log.Printf("Successfully renewed: %#v", renewal)
+		}
+	}
+}
+
+func login(client *openbao.Client) (*openbao.Secret, error) {
+	// WARNING: A plaintext password like this is obviously insecure.
+	// See the hashicorp/vault-examples repo for full examples of how to securely
+	// log in to OpenBao using various auth methods. This function is just
+	// demonstrating the basic idea that a *openbao.Secret is returned by
+	// the login call.
+	
+	userpassAuth, err := auth.NewUserpassAuth("my-user", &auth.Password{FromString: "my-password"})
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize userpass auth method: %w", err)
+	}
+
+	authInfo, err := client.Auth().Login(context.TODO(), userpassAuth)
+	if err != nil {
+		return nil, fmt.Errorf("unable to login to userpass auth method: %w", err)
+	}
+	if authInfo == nil {
+		return nil, fmt.Errorf("no auth info was returned after login")
+	}
+
+	return authInfo, nil
+}
+```
+
+
+</TabItem>
+</Tabs>

@@ -1,0 +1,23 @@
+---
+description: |-
+  The "list" command lists data from OpenBao at the given path. This can be used
+  to list keys in a, given secrets engine.
+---
+
+# list
+
+The `list` command lists data from OpenBao at the given path (wrapper command for
+HTTP LIST). This can be used to list keys in a given secrets engine.
+
+## Examples
+
+List available entities by their identifiers:
+
+```shell-session
+$ bao list identity/entity/id
+```
+
+## Usage
+
+There are no flags beyond the [standard set of flags](/docs/commands)
+included on all commands.

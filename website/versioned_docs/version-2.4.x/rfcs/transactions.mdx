@@ -1,0 +1,404 @@
+---
+sidebar_label: Transactional storage
+description: |-
+  Transactional Storage for Plugins & Core
+---
+
+# Transactional Storage for Plugins & Core
+
+## Summary
+
+OpenBao and its upstream lacks transactional storage semantics. This means all storage operations are logically separate: between two put operations, the contents of storage may differ or the system may crash. Adding support for transactions gives resilience and better fault tolerance to OpenBao.
+
+## Problem Statement
+
+Transactions are a well-utilized concept in databases. OpenBao's [storage interface](https://github.com/openbao/openbao/blob/main/sdk/logical/storage.go#L31-L38) remains primitive and does not support transactions. The underlying [physical layer](https://github.com/openbao/openbao/blob/main/sdk/physical/physical.go) supports a [one-shot transaction interface](https://github.com/openbao/openbao/blob/main/sdk/physical/transactions.go) but is used only [in a few places](https://github.com/openbao/openbao/blob/124a5f10bc234a68c1c954a2ff47f519b22d1d33/vault/sealunwrapper.go#L158-L175) due to its inflexibility.
+
+As [mentioned recently](https://github.com/openbao/openbao/issues/270), fixing this is important for hitting organization's internal SLA's and offering requirements. OpenBao fundamentally pairs a K/V storage engine with a plugin architecture; managing secrets requires strict storage safety guarantees.
+
+Extending OpenBao's storage model to include [more standard](https://pkg.go.dev/database/sql#DB.BeginTx) transaction support (with the ability to interleave storage operations with other code) would give the plugin programmer more standard but expressive safety mechanisms. This would resolve broad categories of faults and bring OpenBao in line with industry at large relying directly on transactional storage semantics.
+
+## User-facing description
+
+To the end-consumer of OpenBao, few changes are expected to occur: at most, some write operations may fail due to transactions failing. This will necessitate additional client side retries for a new category of errors: transaction commit failures. This is discussed more [below](#survey-of-requirements).
+
+This will not be client-driven transactions (i.e., long-lived transactions that the client can use to ensure consistency across multiple API calls and which could potentially starve other clients); these will be similar to database transactions that the plugins themselves can implement.
+
+To the programmer of plugins, this will conditionally open up new transaction APIs (if the backend supports it), allowing them to opt into safer storage semantics. This will be detectable at runtime through type assertions on the `logical.Storage` interface passed in to the plugin.
+
+## Technical Description
+
+This section is broken up as follows:
+
+ 1. [Survey of Requirements](#survey-of-requirements)
+ 2. [Prior Art](#prior-art)
+ 3. [Implementation in Raft](#implementation-in-raft)
+    1. [Implementing Read-Only Transactions](#implementing-read-only-transactions)
+    2. [Implementing Writable Transactions](#implementing-writable-transactions)
+    3. [Verification Hashes](#verification-hashes)
+ 4. [Implementation in Postgres](#implementation-in-postgres)
+ 5. [Implementation in File, InMem](#implementation-in-file-inmem)
+ 6. [Updates to Physical, Logical](#updates-to-physical-logical)
+ 7. [Global Updates](#global-updates)
+ 8. [Usage in Plugins](#usage-in-plugins)
+ 9. [Cleanup and Future Work](#cleanup-and-future-work)
+
+~This feature could be gated behind a flag that defaults to true if the underlying storage mechanism supports it: `transactional`. This will let operators disable this functionality if the performance tradeoff with a paritcular backend is too much, but otherwise opts them into it.~ This doesn't make much sense as there's no existing code expecting to use these types of transactions and so this is the default behavior: transactions do not impact existing code and if there's a bug in transactional support, it would hopefully be limited to the new transactions and we should probably just push a bug fix.
+
+The below description often refers to an "update" or "write" operation to agnostically mean both `storage.Put(...)` and `storage.Delete(...)` calls.
+
+### Survey of Requirements
+
+Some databases make a distinction between two types of transactions: read-only and writable. One example is [`bbolt`](https://pkg.go.dev/go.etcd.io/bbolt#readme-transactions), the backing data store for the Raft storage backend. `bbolt` allows multiple read transactions, but only a single write transaction at a given time. It additionally does not allow transaction upgrade (from read-only to writable). This necessitates that we defer to the plugin author as to which type of transaction we use, and to only have one transaction at a time per thread (as we may not be able to guarantee a read and write transaction can both make progress together).
+
+Further, `bbolt` does not allow nested transactions so we will not implement or require support for that.
+
+Within the transaction, we'd like to have all regular storage operations available (list, delete, read, put, ...) at a consistent point in time.
+
+We'd also like both transaction finalization mechanisms, commit and rollback, to be present.
+
+Similarly, OpenBao presently only allows a single node to perform write operations. This means we do not need any distributed locking mechanism and can thus rely on the active node using the underlying storage's transaction support. To my knowledge, this is true even of performance secondary nodes: updates from the primary cluster are sent out-of-band of the Raft protocol to secondaries, which the active node of the performance secondary cluster will then apply as if they were local writes (whereas true local writes return an `ErrReadOnly` for the active node of the performance primary cluster to handle). Writes to cluster-local storage in either case would behave as if the node was the active node of a primary cluster. Allowing multi-node writes is out of scope of this project.
+
+**Note**: we do not wish to impose a local-node exclusive write-lock requirement here with this statement. We wish to note various backends _may_ have different semantics, but that cross-node we will have already ensured only one writer.
+
+OpenBao and its upstream _already_ have a soft, client-driven retry requirement in some scenarios: operations can fail (e.g., due to quotas, expiring tokens, or broken cross-node replication) that require applications be aware of these scenarios and allow for retry. Transactions will likely be included as another reason operations fail, regardless of implementation (as transactions themselves can fail independent of any given operation outside of a transaction being able to succeed).
+
+Lastly, we want consistency of errors: read-only transactions should return a consistent error when attempting to write, commit failures should wrap a commit failure error, and attempting to use an already committed transaction should also fail.
+
+### Prior Art
+
+`etcd` is another popular pairing of `bbolt` with the Raft protocol. It [implements](https://pkg.go.dev/go.etcd.io/etcd/client/v3#Txn) a [transactional interface](https://etcd.io/docs/v3.4/learning/api/#transaction) similar to our existing one-shot transaction, with a few different capabilities. It supports a list of comparison predecates, evaluating the state of the storage. All success or any failure can then implement separate sets of storage requests, using the `RangeRequest`, `PutRequest` or `DeleteRangeRequest` semantics. However, note that modified keys within the transaction are enforced to be unique (e.g., no `DeleteRangeRequest` can operate over keys handled by another `PutRequest`). This makes it an improvement over our existing one-shot semantics, but not as expressive as the database-style interactive transactions.
+
+[`rqlite` pairs](https://github.com/rqlite/rqlite) the HashiCorp [Raft engine](https://github.com/hashicorp/raft) with [sqlite](https://www.sqlite.org/), the popular file-based relational database. It too supports a [limited form of transactions](https://rqlite.io/docs/api/api/#transactions): several queries can be sent together to the server, along with the `transaction` field, such that if any query errs, the transaction will be rolled back. This is again similar to our one-shot transactional model.
+
+A design constraint present with both `etcd` and `rqlite` is that the server (and data) is distinct from the client entity. They must communicate via one-shot API calls. OpenBao is co-located with the source of the data, which means local database transactions (even if read-only) can be used to our advantage, when backed by a Raft instance.
+
+### Implementation in Raft
+
+Raft is the only backend supported in OpenBao at this point in time. The Raft storage backend uses the Raft protocol for consensus on write operations (`Put(...)` and `Delete(...)`), with direct `bbolt` operations for reads (`Read(...)` and `List(...)`).
+
+Because of the [aforementioned limitations](#survey-of-requirements) of `bbolt`, we have two separate transactional mechanisms to implement: read-only and writable.
+
+#### Implementing Read-Only Transactions
+
+Implementing a read operation is simple: because we already pass through to the underlying local `bbolt` database, we can continue to do so. We can create a new `bbolt` read-only transaction and persist it through the lifetime of this transaction, using it for all read operations. This will not block writes [assuming an adequate mmap setup](https://pkg.go.dev/go.etcd.io/bbolt#Options). On commit, we can instead [rollback](https://pkg.go.dev/go.etcd.io/bbolt#Tx.Rollback) to gracefully handle this error scenario (as the database client requires rollback of read-only transactions).
+
+This will ensure a consistent view, similar to existing operations. Going through Raft will not be possible , as it would not guarantee a consistent view: unlike the existing one-shot transaction API, we do not have a list of all read operations up-front and thus would need to persist several open transactions (which may potentially be at different Raft states!) for subsequent Raft log queries. Parallel raft FSM update operations will not impact our view of this transaction, per `bbolt` guarantees (nor do we want to see them). Going through Raft is also not desirable for read operations as it incurs substantial performance cost.
+
+Thus for a read-only transaction, using a local `bbolt` transaction is the way to go.
+
+#### Implementing Writable Transactions
+
+Implementing writable transactions is more complex. To begin, let's look at how a write operation works today:
+
+ 1. [Call from higher levels](https://github.com/openbao/openbao/blob/main/physical/raft/raft.go#L1505) into the Raft physical storage backend.
+ 2. A [log entry is created](https://github.com/openbao/openbao/blob/main/physical/raft/raft.go#L1515-L1529) and [sent to raft](https://github.com/openbao/openbao/blob/main/physical/raft/raft.go#L1641-L1730).
+ 3. Upon consensus, each node's [FSM is updated](https://github.com/openbao/openbao/blob/main/physical/raft/fsm.go#L623-L779) to do this write to their local `bbolt` instance.
+ 4. A result (if necessary) and error (if any) is finally returned to the caller.
+
+Because we've completed the Raft consensus protocol, we know we've applied the write locally and subsequent reads will see this state. `bbolt` only allows a single write transaction at a time. All present updates are performed in a single transaction and thus will block on a plugin-initiated writable transaction being performed.
+
+(That is to say, a `Put(...)` operation at the plugin layer eventually causes a Raft log message with a single `Put(...)` and thus causes a transaction with a single write operation to occur. With the one-shot physical transactional interface, all operations are batched into a single Raft call and thus occur within a single `bbolt` transaction.)
+
+We have three approaches to implement writable transactional:
+
+ 1. Use our own global lock, ensuring no other write operation can succeed. This would block any other Raft operations from occurring, and since we're the only node with write permissions, we know we'll commit consistently through Raft, even though we'll have to rollback the transaction itself to ensure Raft applies the results successfully and consistently.
+ 2.  We could alternatively persist access to the transaction, such that when it comes time to apply the Raft log entry, we can simply attempt to commit the transaction (if we're on the node that started the transaction) and otherwise redo all write operations explicitly. But under this proposal, we'd not otherwise prevent parallel writers (beyond what `bbolt` would do for us by keeping the transaction open).
+ 3.  We could always rollback the local write transaction, converting all read steps to verifications and all updates to verify+update pairs. Here, there would be a small window in which (after rolling back the exclusive write transaction), we could race against other writes (if they beat us into the the FSM) and thus (if they modified the same data) the transaction could fail (even if a direct commit would've succeeded).
+
+Both 1 & 2 have the same fragility problem: problems with Raft could result in the `bbolt` transaction being held indefinitely, even when the application thinks they have attempted a commit. However with 3, we avoid this fragility via a trade off for the increased possibility of a failing transaction (due to parallel writes) and increased log entry size (as it now needs to contain all verified read/list operations). Notably, this retry needs to be done anyways (with 1 & 2) if the underlying native transaction were to fail, but the increase of size is likely too much in some scenarios (if a transaction is created greedily, as many authors do today). This size could be shrunk by using hashes (e.g., SHA-256 would likely involve an additional 32-64 bytes depending on encoding format), you still incur increasing cost per read entry; for read iteration over thousands of entries, this grows the commit log to 100s of KB, even if only a single write operation occurs. Because of the window between the initial rollback and the `bbolt` transaction being re-constructed, it'd likely be unsafe to verify state before just the write operations.
+
+Between 1 & 2, note that 2 doesn't fully guarantee exclusivity: if a write transaction is created and a parallel (un-transactional) write occurs, this will get sent to the Raft layer for committal out of order from the write transaction being completed, blocking it on the active node (but being allowed to continue on other nodes!). When the write commits, this would result in out-of-sync data between the nodes. However, 1 fixes this by ensuring strict write ordering _into_ Raft as well, from the PoV of the active node.
+
+Thus 2 is excluded.
+
+This means it is between 1 & 3. 1's strict exclusion is sufficiently restrictive (one global writer, which may cause locking problems due to lock/transaction acquisition order) that we'll want to isolate it to only the lower layer. Allowing transactions to be disabled will allow users (who want to trade off performance/raft log size with unsafeness) to make a decision best suited for their environment.
+
+This means, we'll implment 3.
+
+We have a few tricks for improving 3:
+
+ 1. Use a read transaction rather than a write transaction, implementing the write visibility side ourselves. Because we know we're going to rollback this transaction (in order to apply it through the Raft process), we don't benefit from grabbing the exclusive lock. This is more work to implement, but gives us better parallelism.
+ 2. Reads only need to be verified if they did not occur prior to a write (put/delete); otherwise, we know (through write verification and being in a transaction) that the state is the same. This delays the verification, but saves on operations in the Raft log.
+ 3. Rather than a per-operation hash, we could implement a single, running operation hash. Each Verify operation (written to the raft log) would only contain a path, but write the contents to a globally running has hoperation. At the end of a transaction, a `CommitIfHash` or `VerifyFinish` message would contain the hash itself, and the transaction would only be committed if the overall state matched. This is more work to implement, but would reduce the size of the Raft log in the future.
+ 4. We want each top-level Raft transaction to execute in its own lower-level bbolt transaction for simplicity. However, raft application today currently uses a single large transaction for all batched Commands. This means we'll want to intelligently drop+recreate the transaction (reusing transactions for batched operations, but using a dedicated transaction for any Raft-level transactions).
+
+To achieve 3 now:
+
+ 1. When a higher layer initiates a write transaction, we'll being a new read-only transaction.
+ 3. Write storage operations will be locally cached to be replayed later. A read will be initiated first in order to issue a verify-read operation in the Raft log.
+ 2. Read storage operations will be transparently passed through to this transaction context, *if they were not modified locally*, and added as a verify-read operation in the Raft log.
+ 4. On rollback, we'll rollback the transaction.
+ 5. On commit, we'll initiate a raft commit operation of the combined verify+update operations. These new ops will be added to the FSM (allowing it to verify operations within the transaction) and handle commit/rollback on the transaction locally. We'll block (like `Put` does today) for Raft to finish, and return any errors.
+
+In particular, we introduce the following Raft log operation types:
+
+ 1. `verifyReadOp`, which verifies a given entry has the specified contents within a transaction. The key is the expected key and the value is a formatted hash.
+ 2. `verifyListOp`, which verifies the results of a list operation matches expectations within a transaction. The key is a JSON encoded structure describing the `ListPage` parameters (`prefix`, `after`, and `limit`). The result is a formatted hash.
+ 3. `beginTxOp` and `commitTxOp`, two sentinels of a transaction (beginning and ending, respectively). The former can be empty for now but later indicate the hash type, whereas `commitTxOp` can eventually include the hash value at the end of a running log.
+
+Lastly, we hijack the existing `FSMEntry` response to include a variant in which a sentinel key is used to send back a specific error message (commit failure).
+
+#### Verification Hashes
+
+Verification hash formatting takes the following, variable-length format:
+
+```
+ < 1-byte identifier > | < n-byte raw hash >
+```
+
+The following identifiers are defined by this RFC:
+
+ 1. `0x01` - `sha384VerifyHash`, creating a 48-byte hash.
+
+Hashing is done as follows:
+
+1. A single `{` is written to the hash function input stream.
+2. The value of the operation's key is written to the hash function input tsream.
+3. A single `}` is written to the hash function input stream.
+4. The value of the data to be hashed (either the direct storage entry in the case of a `Get` operation or a new-line joined output from `List`).
+
+The hash is returned and the one-byte type sentinel is returned. Hashes should be compared in a constant-time manner to avoid leaking information about the data.
+
+### Implementation in Postgres
+
+Postgres can implement these semantics much easier.
+
+The Postgres backend stores [all data in a single table](https://github.com/openbao/openbao/blob/before-plugin-removal/physical/postgresql/postgresql.go#L98-L101). We have a [`*sql.DB`](https://github.com/openbao/openbao/blob/before-plugin-removal/physical/postgresql/postgresql.go#L173) instance, and thus can expose a [`sql.TX`](https://pkg.go.dev/database/sql#Tx) to implement the above semantics using the `pgx` connector. Note that no differentation between read and write transactions will be done, other than the required erring out.
+
+This will be much easier than the Raft+`bbolt` implementation above, should we wish to resurrect the Postgres backend in the future.
+
+The above Raft semantics likely roughly [correspond to `repeatable read` isolation](https://www.postgresql.org/docs/current/transaction-iso.html).
+
+:::info
+Raft and PostgreSQL will have different semantics: PostgreSQL prevents a single thread from interacting with two separate transactions, so developers will need to take care to avoid this.
+:::
+
+### Implementation in File, InMem
+
+These backends will not be transactional. This means plugins will need to test against the Raft backend if they wish to test and take advantage of a transactional backend. Likely this will need to be opt-in for the plugin.
+
+### Updates to Physical, Logical
+
+The interface for Physical storage will need to be updated to include new transactional interfaces; the following are proposed as optional interfaces that backends can implement:
+
+```go
+// InteractiveTransactional is an optional interface for backends that
+// support interactive (mixed code & statement) transactions in a similar
+// style as Go's Database paradigm. This differs from Transactional above:
+// that one is a one-shot (list of transactions to execute) transaction
+// interface.
+type InteractiveTransactional interface {
+
+    // This function allows the creation of a new interactive transaction
+    // handle, only supporting read operations. Attempts to perform write
+    // operations (PUT or DELETE) will result in immediate errors.
+    BeginReadOnlyTx(context.Context) (Transaction, error)
+
+    // This function allows the creation of a new interactive transaction
+    // handle, supporting read/write transactions. In some cases, the
+    // underlying physical storage backend cannot handle parallel read/write
+    // transactions.
+    BeginTx(context.Context) (Transaction, error)
+}
+
+// Transaction is an interactive transactional interface: backend storage
+// operations can be performed, and when finished, Commit or Rollback can
+// be called. When a read-only transaction is created, write calls (Put(...)
+// and Delete(...)) will err out.
+type Transaction interface {
+    Backend
+
+    // Commit a transaction; this is equivalent to Rollback on a read-only
+    // transaction.
+    Commit(context.Context) error
+
+    // Rollback a transaction, preventing any changes from being persisted.
+    Rollback(context.Context) error
+}
+
+// InteractiveTransactionalBackend is implemented if a storage backend
+// implements interactive transactions as well.
+type InteractiveTransactionalBackend interface {
+    Backend
+    InteractiveTransactional
+}
+```
+
+When a `physical.Backend` supports transactions (being a `physical.InteractiveTransactionalBackend`), it is expected that the `logical.Storage` backend exposed to plugins will also support transactions via the following interface:
+
+```go
+// Transactional is an optional interface for backends that support
+// interactive (mixed code & statement) transactions in a similar
+// style as Go's Database paradigm. This is equivalent to
+// physical.InteractiveTransactional, not the earlier, one-shot
+// physical.Transactional interface.
+type Transactional interface {
+
+    // This function allows the creation of a new interactive transaction
+    // handle, only supporting read operations. Attempts to perform write
+    // operations
+    BeginReadOnlyTx(context.Context) (Transaction, error)
+
+    // This function allows the creation of a new interactive transaction
+    // handle, supporting read/write transactions. In some cases, the
+    // underlying physical storage backend cannot handle parallel read/write
+    // transactions.
+    BeginTx(context.Context) (Transaction, error)
+}
+
+// Transaction is an interactive transactional interface: backend storage
+// operations can be performed, and when finished, Commit or Rollback can
+// be called. When a read-only transaction is created, write calls (Put(...)
+// and Delete(...)) will err out.
+type Transaction interface {
+    Storage
+
+    // Commit a transaction; this is equivalent to Rollback on a read-only
+    // transaction.
+    Commit(context.Context) error
+
+    // Rollback a transaction, preventing any changes from being persisted.
+    Rollback(context.Context) error
+}
+
+// TransactionalStorage is implemented if a storage backend implements
+// Transactional as well.
+type TransactionalStorage interface {
+    Storage
+    Transactional
+}
+```
+
+Once `InteractiveTransactional` is implemented on a physical backend, various layers will need to enable plugin support, just like with [paginated lists](https://github.com/openbao/openbao/issues/140):
+
+1. `physical/*`, as mentioned above for Raft.
+2. `helper/keysutil/encrypted_key_storage.go`, becoming transparently transactional if the underlying storage is transactional.
+3. `sdk/logical/logical_storage.go`, becoming transparently transactional if the underlying `physical.Backend` is transactional.
+4. `sdk/logical/storage_view.go`, becoming transparently transactional if the underlying storage is transactional.
+5. `sdk/physical/cache.go`, becoming transactional if the underlying storage is transactional. Likely this will mean creating a copy at transaction creation time (to continue accelerating reads) and replaying writes on commit. Longer term, this may necessitate a different cache design that supports an `if-older-than` lookup semantic.
+6. `sdk/physical/error.go` may or may not need to be updated, depending on if we want to support random error rates in transaction during testing.
+7. `sdk/physical/encoding.go` will need to be updated.
+8. `sdk/plugin` will need to be updated to conditionally support transactional storage when Core supports it. This will enable testing clusters (on file or inmem backends), non-transactional storage backends, and enable compatibility with upstream.
+9. `vault/barrier_view.go` will need to become conditionally transactional.
+10. `vault/barrier.go` and `vault/barrier_aes_gcm.go` will need to become conditionally transactional.
+11. `vault/sealunwrapper.go` will need to become conditionally transactional.
+
+We'll also want to provide adequate constants (similar to `ErrReadOnly`) that can be used to detect transactional failure scenarios (such as a write-in-read-only programmer errors or a failure to commit/rollback a transaction).
+
+### Global Updates
+
+One key concern is accidental *transaction leakage*. Given most storage operations are request-bound (outside of tidy operations), we'd like to ensure a poorly-written plugin is easily detectable. To that end, adding a transaction interposer to the API request layer seems ideal. It can:
+
+ - Track all new transactions created within the context of a request.
+ - Ensure they are properly closed.
+ - Abort them if not, logging the offending plugin's information and request path.
+
+This may need to be placed at an adequate layer such that panics are caught and handled as errors to avoid leaking connections due to panics, though these should be relatively rare.
+
+Additionally, storage backends which implement the incremental transactional can trivially be made to implement the existing one-shot transaction backend through a common helper. This is outside the scope of this effort though, and may not be worthwhile overall as more things switch to better transaction semantics.
+
+### Usage in Plugins
+
+Plugins may or may not be running under a transaction-aware OpenBao instance. This will be detectable by the caller by running:
+
+```go
+if txnable, ok := req.Storage.(logical.TransactionalStorage); ok {
+    ... do a transaction ...
+}
+```
+
+For sensitive operations that need consistency (e.g., CRL rebuilding, CA updates, &c), we suggest a transparently created transaction early in the req handling:
+
+```go
+txnable, haveTransaction = req.Storage.(logical.TransactionalStorage)
+if haveTransaction {
+    txn, err := txnable.BeginTx(ctx)
+    if err != nil {
+        return nil, err
+    }
+
+    defer txn.Rollback()
+    req.Storage = txn
+}
+
+// ... rest of handler ...
+
+// If all is ok, commit the transaction
+if haveTransaction {
+    txn = req.Storage.(logical.Transaction)
+    if err := txn.Commit(ctx); err != nil {
+        return nil, err
+    }
+}
+```
+
+This should allow minimal code to be transaction aware. However, if the wrong type of transaction is created (e.g., a read-only transaction is created when write capabilities are desired, independently of the transaction), this may require keeping a second (original) `req.Storage` instance around and passing it into more places.
+
+When implementing support in external (GRPC) plugins, we'll use a UUID to identify and correlate transactions between the plugin (which only has the identifier and a GRPC client) and the core server (which has the underlying "real" transaction). Since we presume the GRPC server serves multiple distinct plugins, and we don't want plugins to guess transactions from other plugins (thus letting it escape its sandboxed view of storage but only into a parallel sandbox), we do not want to use sequential integer identifiers here. All GRPC storage requests will take an optional transaction identifier, which when empty (the default) will operate outside of a transaction and will otherwise use the specified transaction. This avoids needing to add parallel versions of existing calls which only operate inside transactions.
+
+### Cleanup and Future Work
+
+As part of this, we'll transition existing callers to the new interactive transactional APIs from the one-shot interface. This is not a breaking change as this was only exposed internal to Core and thus doesn't affect any existing plugins.
+
+This enables additional future work:
+
+ 1. Many places in Core and various plugins can be audited for the use of scoped transactions. Some examples include token cleanup, revocation of leases, PKI issuer creation, and more.
+ 2. Safe backup APIs can be created, which take a read-transaction over the datastore. This ensures a consistent, recoverable view (assuming plugins are updated to use transactions where appropriate).
+ 3. Add support for transactions to the in-memory transaction. This will allow easier testing of transaction support (without needing to spin up), at the cost of a more complex in-memory backend storage.
+ 4. Creating a wrapping layer for requests, to identify the use of transactions and any failure to release them. This could automatically roll them back to avoid consuming resources.
+
+Further, we'll want to expand to build a cross-storage engine test suite to differentially compare various engines to ensure consistency between them. This could also incorporate differential fuzzing of operations in the future.
+
+## Rationale and alternatives
+
+The above should sufficiently motivate the rationale for this change.
+
+Two alternatives for Raft are presented above. Outside of segmenting the raft database into separate sections (which is outside the scope of this work), no other alternative for parallel writes is immediately obvious without some trade off. Open to discussing some though!
+
+Another alternative would be exposing the one-shot transaction currently present in the physical layer, everywhere. This is less than ideal as there is no flexibility here: transactions are one-shot and so at best are a check-and-set-with-manual-rollback. We could potentially introduce a check-and-write operation (wherein a read is issued manually, and at the one-shot transaction layer, subsequently re-done prior to applying the operation). However, this still places unfamiliarity and burden on the plugin author, unlike with this proposal (which largely aligns to common semantics).
+
+Another alternative rejected was leaving support for the one-shot transactions. As we can see from etcd and rqlite above, not every K/V storage system will implement for the full interactive transactions that OpenBao expects. While one-shot transactions can be implemented with full interactive transactions. However, it vastly extends the compatibility testing we'd need to do: each plugin would need to be tested in two scenarios (no transactions, one-shot transactions, and with interactive transactions). The compatibility between interactive transactions and no transactions, in the best case, is easy for a plugin (as mentioned above) -- but, with one-shot transactions, the underlying storage calls will need to differ and thus can't easily be done in parallel. This makes plugin authoring harder as well, if safe support for storage backends with only one-shot transactions is desired. Thus, we'll decline to do this and further, remove support from Core for one-shot transactions as well.
+
+## Downsides
+
+Widespread usage of transactions with Raft will result in more long-held global write locks. This means that presently, write transactions are best reserved for limited, high-assurance cases (rotating or creating CAs, consistency in certain operations, &c). In most scenarios, read transactions will not impact performance. Switching to separate `bbolt` instances per-plugin or re-introducing the Postgres backend could be alternatives which improve this.
+
+As noted above, not every storage backend will implement this type of transactions. This makes adding new storage backends (that don't implement these semantics) harder or unsafe.
+
+## Security Implications
+
+As before, malicious or poorly written plugins retain immense DoS capabilities: excessive transactions could starve resources elsewhere in the system (so use of Quotas remains important) and global write locks mean that long-lived write transactions could prevent progress elsewhere in the system.
+
+Long-term, this security trade off can be adjusted with alternative design decisions (such as separate `bbolt` instances or using Postgres which has better transaction error handling). None of the requirements above _should_ mandate locking us into a particular implementation.
+
+## User/Developer Experience
+
+No end-user or end-application developer experience should change outside of adding a new retry scenario (transaction failure) to their clients. If anything, this should result in a more consistent experience, wherein cleanup of certain failed operation should not need to occur.
+
+For plugin developers, this gives additional tools for safely handling failures within the plugin ecosystem.
+
+## Unresolved Questions
+
+1. While immediately out of scope, it is not clear how this would interact with performance secondaries (in which requests could need conditional forwarding): would acquiring a write-transaction (but not calling write) on a standby node trigger a forward to the active node? Or would that be delayed until write time?
+   - A similar way of handling plugin GRPC calls could be applied to performance secondaries' write forwarding: a transaction with an identifier could be created (with the underlying transaction on the PerfPrimary but a transparent version on the PerfSecondary). This could leave some spare unclosed transactions lying around if a perf secondary disappears but a stale transaction timeout could be applied in the future.
+2. In general, what error handling should be applied to commit/rollback failures? Are these able to be retried? Should they destroy state and mark themselves as committed (even though they have failed to commit)?
+   - Errors should probably be handed up to the client to deal with. The entire operation should probably be retried, if it is safe to do so, after finding the current state. No transaction/commit indication is given.
+3. If a writable transaction saw no writes, should we attempt to commit it still, verifying all reads, allowing it to potentially fail? Or should we treat it as the same as the (much less likely to fail) rollback operation?
+   - We should probably leave the existing transaction commit logic and not attempt to short-circuit writes in case the state differs due to other pending writes. This will give the caller an indication of other parallel writes, even if no local writes were attempted.
+
+## Related Issues
+
+ - This is motivated in part by https://github.com/openbao/openbao/issues/270, which brought this up to the OpenBao community.
+
+ - @nsimons has opened several related to the PKI engine upstream: https://github.com/hashicorp/vault/issues/19210, https://github.com/hashicorp/vault/issues/18667, and https://github.com/hashicorp/vault/issues/18583. Solving them on an ad-hoc basis, while possible, would be a lot more work than utilizing transactional storage more globally.
+
+ - https://github.com/hashicorp/vault/issues/16294#issuecomment-1197262112 is another shortcoming caused by lack of transactional storage for critical operations.
+
+ - https://github.com/hashicorp/vault/issues/5683#issuecomment-524454951 is an old issue that mentions the lack of transactional storage.
+
+## Proof of Concept
+
+Proof of concept branch is available here: https://github.com/openbao/openbao/pull/292
+
+This includes basic tests of transaction correctness under `physical/crosstest`. Additionally, one operation, PKI root generation (which is locked anyways) is updated to use transactions. In the future, more operations could be updated to support transactions.

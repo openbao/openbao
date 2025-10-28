@@ -1,0 +1,167 @@
+---
+sidebar_label: KMIP Unseal
+description: |-
+  The KMIP seal configures OpenBao to use the KMIP protocol as the
+  autounseal mechanism.
+---
+# `kmip` seal
+
+The KMIP seal configures OpenBao to use a KMS or an HSM through the KMIP protocol as the autounseal
+mechanism. OpenBao's KMIP support is activated by one of the following:
+
+- The presence of a `seal "kmip"` block in OpenBao's configuration file
+- The presence of the environment variable `BAO_SEAL_TYPE` set to `kmip`. If enabling via environment
+  variable, all other required values (i.e. `BAO_KMIP_ENDPOINT`) must be also
+  supplied.
+
+:::info
+
+OpenBao requires key material to be created externally
+before initializing the instance. OpenBao will not attempt to create its own
+key material.
+
+:::
+
+:::warning
+
+Because KMIP auto-unseal was not present in Vault v1.14 OSS, it is not
+expected that it is [seal-compatible](/docs/policies/migration/); manual
+migration of data between nodes may be required.
+
+:::
+
+## KMIP Server Requirements
+
+- Must support one of the following KMIP protocol version: v1.2, v1.3 or v1.4.
+- Must support Encrypt & Decrypt operations
+- Must support AES symmetric keys or RSA key pairs
+- Must support one of the following encryption algorithms
+  - AES_GCM
+  - RSA_OAEP_SHA256
+  - RSA_OAEP_SHA384
+  - RSA_OAEP_SHA512
+
+## `kmip` example
+
+This example shows configuring KMIP seal through the OpenBao configuration
+file by providing all the required values:
+
+```hcl
+seal "kmip" {
+  endpoint = "eu-west-rbx.okms.ovh.net:5696"
+  kms_key_id = "c1afd090-e8ae-4d03-a81f-3938b7e2be02"
+  client_cert = "client-cert.pem"
+  client_key = "client-key.pem"
+
+  // Optional parameters:
+  //
+  // ca_cert = ""
+  // server_name = ""
+  // timeout = 10
+  // encrypt_alg = ""
+  // tls12_ciphers = ""
+}
+```
+
+To create the key in the KMIP Server, it is recommended to use your KMIP server vendor tooling.
+The created key, or key-pair must be set into the `active` state.
+
+Example for creating a KMIP key on OVHcloud's KMS offer using the [okms command line tool](https://github.com/ovh/okms-cli):
+
+```bash
+$ okms kmip create symmetric --alg AES --size 256 --usage encrypt,decrypt --name bao_seal_key
+$ okms kmip activate "<KEY-ID>"
+```
+or
+```bash
+$ okms kmip create key-pair --alg RSA --size 4096 --private-usage decrypt --public-usage encrypt --private-name bao_seal_key_private --public-name bao_seal_key_public
+$ okms kmip activate "<PRIVATE-KEY-ID>"
+$ okms kmip activate "<PUBLIC-KEY-ID>"
+```
+
+:::info
+
+[okms command line tool](https://github.com/ovh/okms-cli) kmip subcommands directly uses the KMIP protocol and should work with any KMIP server.
+
+:::
+
+Alternatively you can use libraries like [PyKMIP](https://github.com/OpenKMIP/PyKMIP) or [kmip-go](https://github.com/ovh/kmip-go).
+
+## `kmip` parameters
+
+These parameters apply to the `seal` stanza in the OpenBao configuration file:
+
+- `kms_key_id` `(string: <required>)`: The wrapping key ID. Must be a symmetric AES key or a private RSA key).
+  May also be specified by the `BAO_KMIP_WRAPPER_KEY_ID` environment variable.
+
+- `endpoint` `(string: <required>)`: The KMIP endpoitn address and port. For example `my-kms.example.org:5696`.
+  May also be specified by the `BAO_KMIP_ENDPOINT` environment variable.
+
+- `client_cert` `(string: <required>)`: The client authentication TLS certificate.
+  May also be specified by the `BAO_KMIP_CLIENT_CERT` environment variable.
+
+- `client_key` `(string: <required>)`: The client TLS private key.
+  May also be specified by the `BAO_KMIP_CLIENT_KEY` environment variable.
+
+- `ca_cert` `(string: "")`: The server CA certificate.
+  May also be specified by the `BAO_KMIP_CA_CERT` environment variable.
+
+- `server_name` `(string: "")`: Optional server name,
+  used to verify the hostname on the returned certificates.
+  May also be specified by the `BAO_KMIP_SERVER_NAME`
+  environment variable.
+
+- `timeout` `(integer: 10)`: KMIP operation timeout in seconds.
+  May also be specified by the `BAO_KMIP_TIMEOUT` environment variable.
+
+- `encrypt_alg` `(string: "AES_GCM")`: The encryption/decryption algorithm to use.
+  May also be specified by the `BAO_KMIP_ENCRYPT_ALG` environment variable.
+
+  Currently supported algorithms:
+  - `AES_GCM`
+  - `RSA_OAEP_SHA256`
+  - `RSA_OAEP_SHA384`
+  - `RSA_OAEP_SHA512`
+
+- `tls12_ciphers` `(string: "")`: Comma separated list of TLS 1.2 ciphers to allow.
+  Use golang's default list as default allowed ciphers.
+  May also be specified by the `BAO_KMIP_TLS12_CIPHERS` environment variable.
+
+- `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
+
+Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
+  
+## `kmip` environment variables
+
+Alternatively, the KMIP seal can be activated and configured by providing the following
+environment variables:
+
+```text
+BAO_SEAL_TYPE
+BAO_KMIP_WRAPPER_KEY_ID
+BAO_KMIP_ENDPOINT
+BAO_KMIP_CA_CERT
+BAO_KMIP_CLIENT_CERT
+BAO_KMIP_CLIENT_KEY
+BAO_KMIP_SERVER_NAME
+BAO_KMIP_TIMEOUT
+BAO_KMIP_ENCRYPT_ALG
+BAO_KMIP_TLS12_CIPHERS
+```
+
+## Key rotation
+
+This seal supports rotating keys by using different key IDs to track key versions. To rotate
+the key value, create a new key or perform a rotation in the KMIP server and update OpenBao's
+configuration with the new key ID. 
+The key type and encryption algorithm can also be changed as OpenBao keeps track of the algorithm.
+Restart your OpenBao instance to pick up the new keyID and all new encryption operations will use 
+the updated key and algorithm. Old keys must not be disabled or deleted and are used to decrypt older data.
+
+## Interoperability
+While it's expected to work on most KMIP servers complying to the requirements stated above,
+the KMIP seal has only been tested and validated against following implementations:
+- [PyKMIP](https://github.com/OpenKMIP/PyKMIP) with following restrictions:
+    - Only `AES_GCM` is supported as PyKMIP does not implement asymmetric encryption.
+    - TLS 1.2 cipher `TLS_RSA_WITH_AES_128_CBC_SHA256` had to be allowed in wrapper config.
+- [OVHcloud's KMS](https://www.ovhcloud.com/en-ie/identity-security-operations/key-management-service/)

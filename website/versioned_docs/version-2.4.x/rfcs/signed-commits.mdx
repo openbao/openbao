@@ -1,0 +1,100 @@
+---
+sidebar_label: Signed commits
+description: |-
+  An OpenBao RFC for allowing users to contribute without GPG/SSH signing their commits.
+---
+
+# Discontinue enforcing signed commits
+
+**Status**: this was agreed upon in [Issue #399](https://github.com/openbao/openbao/issues/399)
+
+## Summary
+This RFC proposes discontinuing the enforcement of signed commits via branch
+protection rules in our GitHub repositories. The current practice requires every
+commit to be signed, with the intention of ensuring authenticity and authorship
+verification. However, this enforcement introduces complexities and barriers
+that may outweigh its perceived security benefits. The primary goal of this
+proposal is to streamline the contribution process, making it more accessible to
+casual contributors while maintaining adequate security practices through other
+means. This document outlines the rationale, potential impacts, and alternative
+solutions to ensure the integrity and security of our codebase.
+
+## Problem Statement
+The requirement for signed commits is intended to enhance the security of our
+codebase by verifying the identity of contributors. However, this policy has
+introduced several challenges:
+
+* **Onboarding Difficulty**: New contributors often face a steep learning curve
+  to configure commit signing correctly.
+* **Increased Overhead**: Regular contributors spend additional time ensuring
+  that their commits are signed, which can slow down the development process.
+* **Exclusion of Contributors**: Contributors without the technical know-how or
+  access to necessary tools are discouraged from contributing, which reduces
+  community engagement and diversity.
+* **Temporal Validity of Verification**: The validity of commit signatures is
+  temporal. If a contributor deletes their SSH key from GitHub's UI, previously
+  "verified" commits may become "unverified," compromising the long-term
+  reliability of signature verification.
+* **Rebase Merge Issues**: Ideally, we would like to rebase pull requests when
+  merging to maintain the original commit history of the PR. However, due to a
+  long-standing bug in GitHub, all signatures in individual commits become
+  invalidated during a rebase, causing them to appear as unverified.
+* **Lack of Proper Trust Verification**: We currently have no means to verify
+  the Web of Trust of signed commits, which means we cannot reliably detect if a
+  contributor's GitHub account has been compromised.
+
+## User-facing description
+We are proposing to stop requiring signed commits for contributions to our
+GitHub repositories from casual contributors. This change aims to simplify the
+contribution process, making it easier for both new and existing contributors to
+participate. We will continue to require core Maintainers to sign their commits.
+
+## Technical Description
+To implement this change, we will:
+
+1. Update the branch protection rules in GitHub to remove the requirement for
+   signed commits.
+2. Add a GitHub Actions Workflow to ensure Maintainer commits are always
+   verified.
+2. Communicate the change to all contributors through appropriate channels
+   (e.g., mailing lists, GitHub discussions).
+3. Update our contribution guidelines to reflect the new policy.
+
+## Rationale and alternatives
+### Rationale
+The primary rationale for this change is to reduce the barriers to contribution
+and improve the overall developer experience. Additionally, the current method
+of "Squash and merge" creates a new commit signed by GitHub itself, making
+individual commit signing redundant. The temporal nature of commit signature
+verification, where previously verified commits can become unverified if SSH
+keys are deleted, further diminishes the long-term benefits of this requirement.
+
+Last but not least, the inability to maintain verified signatures during rebase
+merges due to a long-standing GitHub bug, along with our lack of means to verify
+the Web of Trust of the signed commits, reduces the practical benefits of
+enforcing signed commits.
+
+### Alternatives
+1. **Status Quo**: Continue requiring signed commits for all users.
+
+## Downsides
+* **Perception of Reduced Security**: The community or stakeholders might
+  perceive the project as less secure due to the removal of commit signing
+  requirements for all users.
+
+## Security Implications
+The primary security implication is the potential for an increase in
+unauthorized or malicious commits. As outlined in the previous sections, the
+current process does not really help us in protecting us from those so the
+security implications of removing the requirement of signed commits is very
+minimal. We can nevertheless encourage but not require commit signing, so
+contributors who prefer to sign their commits can continue to do so.
+
+## User/Developer Experience
+Removing the requirement for signed commits will simplify the contribution
+process. Casual contributors will no longer need to configure GPG keys or manage commit
+signing, which can be particularly beneficial for new or less technical
+contributors. This change is expected to lower the entry barrier for
+contributions, increase community engagement, and improve overall productivity.
+Existing contributors will benefit from a streamlined workflow, allowing them to
+focus more on development and less on administrative tasks.

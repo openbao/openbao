@@ -1,0 +1,78 @@
+---
+sidebar_label: Overview
+description: |-
+  The "auth" command groups subcommands for interacting with OpenBao's auth
+  methods. Users can list, enable, disable, and get help for different auth
+  methods.
+---
+
+# auth
+
+The `auth` command groups subcommands for interacting with OpenBao's auth methods.
+Users can list, enable, disable, and get help for different auth methods.
+
+For more information, please see the [auth method
+documentation](/docs/auth) or the [authentication
+concepts](/docs/concepts/auth) page.
+
+To authenticate to OpenBao as a user or machine, use the [`bao login`](/docs/commands/login) command instead. This command is for
+interacting with the auth methods themselves, not authenticating to OpenBao.
+
+## Examples
+
+Enable an auth method:
+
+```shell-session
+$ bao auth enable userpass
+Success! Enabled userpass auth method at: userpass/
+```
+
+List all auth methods:
+
+```shell-session
+$ bao auth list
+Path         Type        Description
+----         ----        -----------
+token/       token       token based credentials
+userpass/    userpass    n/a
+```
+
+Get help about how to authenticate to a particular auth method:
+
+```shell-session
+$ bao auth help userpass/
+Usage: bao login -method=userpass [CONFIG K=V...]
+# ...
+```
+
+Disable an auth method:
+
+```shell-session
+$ bao auth disable userpass/
+Success! Disabled the auth method (if it existed) at: userpass/
+```
+
+Tune an auth method:
+
+```shell-session
+$ bao auth tune -max-lease-ttl=30m userpass/
+Success! Tuned the auth method at: userpass/
+```
+
+## Usage
+
+```text
+Usage: bao auth <subcommand> [options] [args]
+
+  # ...
+
+Subcommands:
+    disable    Disables an auth method
+    enable     Enables a new auth method
+    help       Prints usage for an auth method
+    list       Lists enabled auth methods
+    tune       Tunes an auth method configuration
+```
+
+For more information, examples, and usage about a subcommand, click on the name
+of the subcommand in the sidebar.

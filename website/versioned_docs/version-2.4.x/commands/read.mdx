@@ -1,0 +1,73 @@
+---
+description: |-
+  The "read" command reads data from OpenBao at the given path. This can be used
+  to read secrets, generate dynamic credentials, get configuration details, and
+  more.
+---
+
+# read
+
+The `read` command reads data from OpenBao at the given path (wrapper command for
+HTTP GET). You can use the command to read secrets, generate dynamic
+credentials, get configuration details, and more.
+
+## Examples
+
+Read entity details of a given ID:
+
+```shell-session
+$ bao read identity/entity/id/2f09126d-d161-abb8-2241-555886491d97
+```
+
+### API versus CLI
+
+Assuming that you have K/V version 2 (`kv-v2`) secrets engine enabled at
+`secret/`, the following command reads secrets at the `secret/data/customers`
+API path:
+
+```shell-session
+$ bao read secret/data/customers
+```
+
+This is equivalent to:
+
+```shell-session
+$ curl --request GET --header "X-Vault-Token: $OPENBAO_TOKEN" \
+    $OPENBAO_ADDR/v1/secret/data/customers
+```
+
+Since K/V secrets engine is a commonly used feature, OpenBao CLI provides the
+[`kv`](/docs/commands/kv) command. Read secrets from the `secret/data/customers`
+path using the `kv` CLI command:
+
+```shell-session
+$ bao kv get -mount=secret customers
+```
+
+:::info
+
+**Comparison:** All three commands retrieve the same data, but display the
+output in a different format. By default, `bao read` prints output in
+key-value format. The `curl` command prints the response in JSON. Since the
+`kv` command is designed to handle operations associated with K/V secrets
+engine, it prints the output in more structured format that is easy to read.
+
+:::
+
+## Usage
+
+The following flags are available in addition to the [standard set of
+flags](/docs/commands) included on all commands.
+
+### Output options
+
+- `-field` `(string: "")` - Print only the field with the given name. Specifying
+  this option will take precedence over other formatting directives. The result
+  will not have a trailing newline making it ideal for piping to other processes.
+
+- `-format` `(string: "table")` - Print the output in the given format. Valid
+  formats are "table", "json", "yaml", or "raw". This can also be specified
+  via the `BAO_FORMAT` environment variable.
+
+For a full list of examples and paths, please see the documentation that
+corresponds to the secrets engine in use.

@@ -1,0 +1,208 @@
+---
+description: Learn how to store and retrieve your first secret.
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Developer quick start
+
+This quick start will explore how to use OpenBao client libraries inside your application code to store and retrieve your first secret value. OpenBao takes the security burden away from developers by providing a secure, centralized secret store for an application’s sensitive data: credentials, certificates, encryption keys, and more.
+
+## Prerequisites
+
+- A development environment applicable to one of the languages in this quick start (currently **Go** and **Bash (curl)**)
+
+## Step 1: start OpenBao
+
+:::danger
+
+**Warning**: This in-memory “dev” server is useful for practicing with OpenBao locally for the first time, but is insecure and **should never be used in production**.
+
+:::
+
+Run the OpenBao server in a non-production "dev" mode:
+
+```shell-session
+$ bao server -dev -dev-root-token-id="dev-only-token"
+```
+
+The `-dev-root-token-id` flag for dev servers tells the OpenBao server to allow full root access to anyone who presents a token with the specified value (in this case "dev-only-token").
+
+:::danger
+
+**Warning**: The [root token](/docs/concepts/tokens#root-tokens) is useful for development, but allows full access to all data and functionality of OpenBao, so it must be carefully guarded in production. Ideally, even an administrator of OpenBao would use their own token with limited privileges instead of the root token.
+
+:::
+
+OpenBao is now listening over HTTP on port **8200**. With all the setup out of the way, it's time to get coding!
+
+## Step 2: install a client library
+
+To read and write secrets in your application, you need to first configure a client to connect to OpenBao.
+Let's install the OpenBao client library for your language of choice.
+
+<Tabs>
+<TabItem value="Go" group="go" heading="Go" group="go">
+
+[Go](https://pkg.go.dev/github.com/openbao/openbao/api) (official) client library:
+
+```shell-session
+$ go get github.com/openbao/openbao/api/v2
+```
+
+Now, let's add the import statements for the client library to the top of the file.
+
+```go title="import statements for client library" showLineNumbers
+import openbao "github.com/openbao/openbao/api/v2"
+```
+
+</TabItem>
+</Tabs>
+
+
+## Step 3: authenticate to OpenBao
+
+A variety of [authentication methods](/docs/auth) can be used to prove
+your application's identity to the OpenBao server.  To keep things simple for
+our example, we'll just use the root token created in **Step 1**.  Paste the
+following code to initialize a new OpenBao client that will use token-based
+authentication for all its requests:
+
+<Tabs>
+<TabItem value="Go" heading="Go">
+
+```go
+config := openbao.DefaultConfig()
+
+config.Address = "http://127.0.0.1:8200"
+
+client, err := openbao.NewClient(config)
+if err != nil {
+    log.Fatalf("unable to initialize OpenBao client: %v", err)
+}
+
+client.SetToken("dev-only-token")
+```
+
+</TabItem>
+<TabItem value="Bash" group="bash" heading="Bash" group="bash">
+
+```shell-session
+$ export VAULT_TOKEN="dev-only-token"
+```
+
+</TabItem>
+</Tabs>
+
+## Step 4: store a secret
+
+Secrets are sensitive data like API keys and passwords that we shouldn’t be storing in our code or configuration files. Instead, we want to store values like this in OpenBao.
+
+We'll use the OpenBao client we just initialized to write a secret to OpenBao, like so:
+
+<Tabs>
+<TabItem value="Go" heading="Go">
+
+```go
+secretData := map[string]interface{}{
+    "password": "OpenBao123",
+}
+
+
+_, err = client.KVv2("secret").Put(context.Background(), "my-secret-password", secretData)
+if err != nil {
+    log.Fatalf("unable to write secret: %v", err)
+}
+
+fmt.Println("Secret written successfully.")
+```
+
+</TabItem>
+<TabItem value="Bash" group="bash" heading="Bash" group="bash">
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: $VAULT_TOKEN" \
+    --header "Content-Type: application/json" \
+    --request POST \
+    --data '{"data": {"password": "OpenBao123"}}' \
+    http://127.0.0.1:8200/v1/secret/data/my-secret-password &&
+    echo "Secret written successfully."
+```
+
+</TabItem>
+</Tabs>
+
+A common way of storing secrets is as key-value pairs using the [KV secrets engine (v2)](/docs/secrets/kv/kv-v2). In the code we've just added, `password` is the key in the key-value pair, and `OpenBao123` is the value.
+
+We also provided the path to our secret in OpenBao. We will reference this path in a moment when we learn how to retrieve our secret.
+
+Run the code now, and you should see `Secret written successfully`. If not, check that you've used the correct value for the root token and OpenBao server address.
+
+## Step 5: retrieve a secret
+
+Now that we know how to write a secret, let's practice reading one.
+
+Underneath the line where you wrote a secret to OpenBao, let's add a few more lines, where we will be retrieving the secret and unpacking the value:
+
+<Tabs>
+<TabItem value="Go" heading="Go">
+
+```go
+secret, err := client.KVv2("secret").Get(context.Background(), "my-secret-password")
+if err != nil {
+    log.Fatalf("unable to read secret: %v", err)
+}
+
+value, ok := secret.Data["password"].(string)
+if !ok {
+    log.Fatalf("value type assertion failed: %T %#v", secret.Data["password"], secret.Data["password"])
+}
+```
+
+</TabItem>
+<TabItem value="Bash" group="bash" heading="Bash" group="bash">
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: $VAULT_TOKEN" \
+    http://127.0.0.1:8200/v1/secret/data/my-secret-password > secrets.json
+```
+
+</TabItem>
+</Tabs>
+
+Last, confirm that the value we unpacked from the read response is correct:
+
+<Tabs>
+<TabItem value="Go" heading="Go">
+
+```go
+if value != "OpenBao123" {
+    log.Fatalf("unexpected password value %q retrieved from openbao", value)
+}
+
+fmt.Println("Access granted!")
+```
+
+If the secret was fetched successfully, you should see the `Access granted!` message after you run the code.
+
+</TabItem>
+<TabItem value="Bash" group="bash" heading="Bash" group="bash">
+
+```shell-session
+$ cat secrets.json | jq '.data.data'
+```
+
+If the secret was fetched successfully, it should return the string `OpenBao123`.
+
+</TabItem>
+</Tabs>
+
+If not, check to see if you provided the correct path to your secret.
+
+**That's it! You've just written and retrieved your first OpenBao secret!**
+
+# Additional examples
+
+To learn how to integrate applications with OpenBao without needing to always change your application code, see the [OpenBao Agent](/docs/agent-and-proxy/agent) documentation.

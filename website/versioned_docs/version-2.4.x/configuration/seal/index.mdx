@@ -1,0 +1,36 @@
+---
+sidebar_label: Overview
+description: >-
+  The seal stanza configures the seal type to use for additional data
+  protection.
+---
+
+# `seal` stanza
+
+The `seal` stanza configures the seal type to use for additional data
+protection, such as using HSM or Cloud KMS solutions to encrypt and decrypt the
+root key. This stanza is optional, and in the case of the root key, OpenBao
+will use the Shamir algorithm to cryptographically split the root key if this
+is not configured.
+
+## Configuration
+
+Seal configuration can be done through the OpenBao configuration file using the
+`seal` stanza:
+
+```hcl
+seal [NAME] {
+  # ...
+}
+```
+
+For example:
+
+```hcl
+seal "pkcs11" {
+  # ...
+}
+```
+
+For configuration options which also read an environment variable, the
+environment variable will take precedence over values in the configuration file.

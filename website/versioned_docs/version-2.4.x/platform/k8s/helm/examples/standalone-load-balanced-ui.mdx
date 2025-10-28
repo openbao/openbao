@@ -1,0 +1,44 @@
+---
+description: |-
+  Describes how to set up a standalone OpenBao with a load balanced UI
+---
+
+# Standalone server with load balanced UI
+
+:::warning
+
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+
+:::
+
+The below `values.yaml` can be used to set up a single server OpenBao cluster with a LoadBalancer to allow external access to the UI and API.
+
+```yaml
+server:
+  standalone:
+    enabled: true
+    config: |
+      ui = true
+
+      listener "tcp" {
+        tls_disable = 1
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+      storage "file" {
+        path = "/openbao/data"
+      }
+
+  service:
+    enabled: true
+
+  dataStorage:
+    enabled: true
+    size: 10Gi
+    storageClass: null
+    accessMode: ReadWriteOnce
+
+ui:
+  enabled: true
+  serviceType: LoadBalancer
+```

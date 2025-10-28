@@ -1,0 +1,59 @@
+---
+sidebar_label: Overview
+description: |-
+  The optional `service_registration` stanza configures OpenBao's mechanism for
+  service registration.
+---
+
+# `service_registration` stanza
+
+The optional `service_registration` stanza configures OpenBao's mechanism for
+service registration. The `service_registration` stanza is designed for use cases
+where you would like to use a system like Kubernetes for service discovery, but use
+a different system for the [storage backend][storage-backend].
+
+For times when you would like to use a different storage backend, like
+[Raft][raft-backend], but still have service registration available, the
+`service_registration` stanza can be used:
+
+```hcl
+service_registration "kubernetes" {
+  namespace      = "my-namespace"
+  pod_name       = "my-pod-name"
+}
+storage "raft" {
+  path = "/path/to/raft/data"
+  node_id = "raft_node_1"
+}
+```
+
+For information about a specific service registration provider, visit the [Kubernetes Service Registration
+][kubernetes-service-registration] page.
+
+## Configuration
+
+Service registration configuration is done through the OpenBao configuration file
+using the `service_registration` stanza:
+
+```hcl
+service_registration [NAME] {
+  [PARAMETERS...]
+}
+```
+
+For example:
+
+```hcl
+service_registration "kubernetes" {
+  namespace      = "my-namespace"
+  pod_name       = "my-pod-name"
+}
+```
+
+For configuration options which also read an environment variable, the
+environment variable will take precedence over values in the configuration
+file.
+
+[storage-backend]: /docs/configuration/storage
+[raft-backend]: /docs/configuration/storage/raft
+[kubernetes-service-registration]: /docs/configuration/service-registration/kubernetes

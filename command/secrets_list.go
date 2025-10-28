@@ -161,9 +161,6 @@ func (c *SecretsListCommand) detailedMounts(mounts map[string]*api.MountOutput) 
 		}
 
 		pluginName := mount.Type
-		if pluginName == "plugin" {
-			pluginName = mount.Config.PluginName
-		}
 
 		out = append(out, fmt.Sprintf("%s | %s | %s | %s | %s | %t | %s | %t | %v | %s | %s | %s | %s | %s | %s | %s",
 			path,

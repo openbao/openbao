@@ -71,6 +71,12 @@ a better release process going forward.
       - [ ] If doing a patch release off an existing major or minor release
             branch, update the `main` repository's `CHANGELOG.md` file as
             well, ordering it according to version number.
+ - [ ] Open PR to version documentation when doing a minor release. Run the following
+       commands in the `website` folder and update the versions in the `docusaurus.config.ts` file:
+       ```shell
+       npm run docusaurus docs:version:api-docs 2.<minor-version>.x 
+       npm run docusaurus docs:version 2.<minor-version>.x 
+       ```
  - [ ] Tag release commit (`CHANGELOG.md` change).
  - [ ] Start [release workflow](https://github.com/openbao/openbao/actions/workflows/release.yml):
        select target tag, and set applicable pre-release/latest set

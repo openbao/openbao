@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"google.golang.org/grpc/status"

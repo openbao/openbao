@@ -29,24 +29,6 @@ const (
 )
 
 func (c *Core) Invalidate(key ...string) {
-	// Skip invalidations if we're not the standby. The InmemHA backend in
-	// particular dispatches invalidations on every node which isn't
-	// necessary as the active can invalidate itself.
-	if !c.standby.Load() {
-		return
-	}
-
-	c.stateLock.RLock()
-	activeContext := c.activeContext
-	c.stateLock.RUnlock()
-	if activeContext == nil {
-		return
-	}
-
-	if c.Sealed() {
-		return
-	}
-
 	c.invalidations.Add(key...)
 }
 
@@ -501,15 +483,30 @@ func (ij *invalidationJob) OnFailure(err error) {
 }
 
 func (im *invalidationManager) Add(key ...string) {
+	// Skip invalidations if we're not enabled yet.
 	if !im.enabled.Load() {
 		return
 	}
 
+	// Skip invalidations if we're not the standby. The InmemHA backend in
+	// particular dispatches invalidations on every node which isn't
+	// necessary as the active is expected to invalidate itself in the course
+	// of writing the data.
+	if !im.core.standby.Load() {
+		return
+	}
+
+	// Likewise if we're sealed, ignore the invalidation.
+	if im.core.Sealed() {
+		return
+	}
+
+	// Add the keys.
 	im.pendingLock.Lock()
-	defer im.pendingLock.Unlock()
-
 	im.pending = append(im.pending, key...)
+	im.pendingLock.Unlock()
 
+	// Notify the processor.
 	select {
 	case im.pendingNotify <- struct{}{}:
 	default:

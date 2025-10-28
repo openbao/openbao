@@ -1,0 +1,395 @@
+---
+draft: true
+sidebar_label: Examples
+description: This section documents examples of using the OpenBao Agent Injector.
+---
+
+# OpenBao agent injector examples
+
+The following are different configuration examples to support a variety of
+deployment models.
+
+:::warning
+
+A common mistake is to set the annotation on the Deployment or other resource.
+Ensure that the injector annotations are specified on the pod specification when
+using higher level constructs such as deployments, jobs or statefulsets.
+
+:::
+
+## Before using the OpenBao agent injector
+
+Before applying OpenBao Agent injection annotations to pods, the following requirements
+should be satisfied.
+
+### Connectivity
+
+- the Kubernetes API can connect to the OpenBao Agent injector service on port `443`, and
+  the injector can connect to the Kubernetes API,
+- OpenBao can connect to the Kubernetes API,
+- Pods in the Kubernetes cluster can connect to OpenBao.
+
+:::warning
+
+Note: The Kubernetes API typically runs on the master nodes, and the OpenBao Agent injector
+on a worker node in a Kubernetes cluster. <br/><br/>
+On Kubernetes clusters that have aggregator routing enabled (ex. [GKE private
+clusters](https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules)),
+the Kubernetes API will connect directly to the injector service endpoint,
+which is on port `8080`.
+
+:::
+
+### Kubernetes and OpenBao configuration
+
+- Kubernetes auth method should be configured and enabled in OpenBao,
+- Pod should have a service account,
+- desired secrets exist within OpenBao,
+- the service account should be bound to a OpenBao role with a policy enabling access to desired secrets.
+
+For more information on configuring the OpenBao Kubernetes auth method,
+[see the official documentation](/docs/auth/kubernetes#configuration).
+
+## Debugging
+
+If an error occurs with a mutation request, Kubernetes will attach the error to the
+owner of the pod. Check the following for errors:
+
+- If the pod was created by a deployment or statefulset, check for errors in the `replicaset`
+  that owns the pod.
+- If the pod was created by a job, check the `job` for errors.
+
+## Patching existing pods
+
+To patch existing pods, a Kubernetes patch can be applied to add the required annotations
+to pods. When applying a patch, the pods will be rescheduled.
+
+First, create the patch:
+
+```bash
+cat <<EOF >> ./patch.yaml
+spec:
+  template:
+    metadata:
+      annotations:
+        openbao.openbao.com/agent-inject: "true"
+        openbao.openbao.com/agent-inject-status: "update"
+        openbao.openbao.com/agent-inject-secret-db-creds: "database/creds/db-app"
+        openbao.openbao.com/agent-inject-template-db-creds: |
+          {{- with secret "database/creds/db-app" -}}
+          postgres://{{ .Data.username }}:{{ .Data.password }}@postgres:5432/appdb?sslmode=disable
+          {{- end }}
+        openbao.openbao.com/role: "db-app"
+        openbao.openbao.com/ca-cert: "/openbao/tls/ca.crt"
+        openbao.openbao.com/client-cert: "/openbao/tls/client.crt"
+        openbao.openbao.com/client-key: "/openbao/tls/client.key"
+        openbao.openbao.com/tls-secret: "openbao-tls-client"
+EOF
+```
+
+Next, apply the patch:
+
+```bash
+kubectl patch deployment <MY DEPLOYMENT> --patch "$(cat patch.yaml)"
+```
+
+The pod should now be rescheduled with additional containers. The pod can be inspected
+using the `kubectl describe` command:
+
+```bash
+kubectl describe pod <name of pod>
+```
+
+## Deployments, StatefulSets, etc.
+
+The annotations for configuring OpenBao Agent injection must be on the pod
+specification. Since higher level resources such as Deployments wrap pod
+specification templates, OpenBao Agent Injector can be used with all of these
+higher level constructs, too.
+
+An example Deployment below shows how to enable OpenBao Agent injection:
+
+```yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-example
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-example-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-example
+  template:
+    metadata:
+      labels:
+        app: app-example
+      annotations:
+        openbao.openbao.com/agent-inject: 'true'
+        openbao.openbao.com/agent-inject-secret-db-creds: 'database/creds/db-app'
+        openbao.openbao.com/agent-inject-template-db-creds: |
+          {{- with secret "database/creds/db-app" -}}
+          postgres://{{ .Data.username }}:{{ .Data.password }}@postgres:5432/appdb?sslmode=disable
+          {{- end }}
+        openbao.openbao.com/role: 'db-app'
+        openbao.openbao.com/ca-cert: '/openbao/tls/ca.crt'
+        openbao.openbao.com/client-cert: '/openbao/tls/client.crt'
+        openbao.openbao.com/client-key: '/openbao/tls/client.key'
+        openbao.openbao.com/tls-secret: 'openbao-tls-client'
+    spec:
+      containers:
+        - name: app
+          image: 'app:1.0.0'
+      serviceAccountName: app-example
+```
+
+## ConfigMap example
+
+The following example creates a deployment that mounts a Kubernetes ConfigMap
+containing OpenBao Agent configuration files. For a complete list of the OpenBao
+Agent configuration settings, [see the Agent documentation](/docs/agent-and-proxy/agent/template#openbao-agent-templates).
+
+```yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-example
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-example-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-example
+  template:
+    metadata:
+      labels:
+        app: app-example
+      annotations:
+        openbao.openbao.com/agent-inject: 'true'
+        openbao.openbao.com/agent-configmap: 'my-configmap'
+        openbao.openbao.com/tls-secret: 'openbao-tls-client'
+    spec:
+      containers:
+        - name: app
+          image: 'app:1.0.0'
+      serviceAccountName: app-example
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-configmap
+data:
+  config.hcl: |
+    "auto_auth" = {
+      "method" = {
+        "config" = {
+          "role" = "db-app"
+        }
+        "type" = "kubernetes"
+      }
+
+      "sink" = {
+        "config" = {
+          "path" = "/home/openbao/.token"
+        }
+
+        "type" = "file"
+      }
+    }
+
+    "exit_after_auth" = false
+    "pid_file" = "/home/openbao/.pid"
+
+    "template" = {
+      "contents" = "{{- with secret \"database/creds/db-app\" -}}postgres://{{ .Data.username }}:{{ .Data.password }}@postgres:5432/mydb?sslmode=disable{{- end }}"
+      "destination" = "/openbao/secrets/db-creds"
+    }
+
+    "openbao" = {
+      "address" = "https://openbao.demo.svc.cluster.local:8200"
+      "ca_cert" = "/openbao/tls/ca.crt"
+      "client_cert" = "/openbao/tls/client.crt"
+      "client_key" = "/openbao/tls/client.key"
+    }
+  config-init.hcl: |
+    "auto_auth" = {
+      "method" = {
+        "config" = {
+          "role" = "db-app"
+        }
+        "type" = "kubernetes"
+      }
+
+      "sink" = {
+        "config" = {
+          "path" = "/home/openbao/.token"
+        }
+
+        "type" = "file"
+      }
+    }
+
+    "exit_after_auth" = true
+    "pid_file" = "/home/openbao/.pid"
+
+    "template" = {
+      "contents" = "{{- with secret \"database/creds/db-app\" -}}postgres://{{ .Data.username }}:{{ .Data.password }}@postgres:5432/mydb?sslmode=disable{{- end }}"
+      "destination" = "/openbao/secrets/db-creds"
+    }
+
+    "openbao" = {
+      "address" = "https://openbao.demo.svc.cluster.local:8200"
+      "ca_cert" = "/openbao/tls/ca.crt"
+      "client_cert" = "/openbao/tls/client.crt"
+      "client_key" = "/openbao/tls/client.key"
+    }
+```
+
+## Environment variable example
+
+The following example demonstrates how templates can be used to create environment
+variables. A template should be created that exports a OpenBao secret as an environment
+variable and the application container should source those files during startup.
+
+```yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  labels:
+    app: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+      annotations:
+        openbao.openbao.com/agent-inject: 'true'
+        openbao.openbao.com/role: 'web'
+        openbao.openbao.com/agent-inject-secret-config: 'secret/data/web'
+        # Environment variable export template
+        openbao.openbao.com/agent-inject-template-config: |
+          {{- with secret "secret/data/web" -}}
+            export api_key="{{ .Data.data.payments_api_key }}"
+          {{- end }}
+    spec:
+      serviceAccountName: web
+      containers:
+        - name: web
+          image: alpine:latest
+          command:
+            ['sh', '-c']
+          args:
+            ['source /openbao/secrets/config && <entrypoint script>']
+          ports:
+            - containerPort: 9090
+```
+
+## AppRole authentication
+
+The following example demonstrates how the AppRole authentication method can be used by
+OpenBao Agent for retrieving secrets. A Kubernetes secret containing the AppRole secret ID
+and role ID should be created first.
+
+```yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  labels:
+    app: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+      annotations:
+        openbao.openbao.com/agent-inject: 'true'
+        openbao.openbao.com/agent-extra-secret: 'approle-example'
+        openbao.openbao.com/auth-type: 'approle'
+        openbao.openbao.com/auth-path: 'auth/approle'
+        openbao.openbao.com/auth-config-role-id-file-path: '/openbao/custom/role-id'
+        openbao.openbao.com/auth-config-secret-id-file-path: '/openbao/custom/secret-id'
+        openbao.openbao.com/agent-inject-secret-db-creds: 'database/creds/db-app'
+        openbao.openbao.com/agent-inject-template-db-creds: |
+          {{- with secret "database/creds/db-app" -}}
+          postgres://{{ .Data.username }}:{{ .Data.password }}@postgres.postgres.svc:5432/wizard?sslmode=disable
+          {{- end }}
+        openbao.openbao.com/role: 'my-role'
+        openbao.openbao.com/tls-secret: 'openbao-tls'
+        openbao.openbao.com/ca-cert: '/openbao/tls/ca.crt'
+    spec:
+      serviceAccountName: web
+      containers:
+        - name: web
+          image: alpine:latest
+          args:
+            ['sh', '-c', 'source /openbao/secrets/config && <entrypoint script>']
+          ports:
+            - containerPort: 9090
+```
+
+## PKI cert example
+
+The following example demonstrates how to use the [`pkiCert` function][pkiCert] and
+[`writeToFile` function][writeToFile] from consul-template to create two files
+from a template: one for the certificate and CA (`cert.pem`) and one for the key
+(`cert.key`) generated by [OpenBao's PKI Secrets Engine](/docs/secrets/pki).
+
+```yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  labels:
+    app: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+      annotations:
+        openbao.openbao.com/agent-inject: 'true'
+        openbao.openbao.com/role: 'web'
+        openbao.openbao.com/agent-inject-secret-certs: 'pki/issue/cert'
+        openbao.openbao.com/agent-inject-template-certs: |
+          {{- with pkiCert "pki/issue/cert" "common_name=test.example.com" "ttl=2h" -}}
+          {{ .Cert }}{{ .CA }}{{ .Key }}
+          {{ .Key | writeToFile "/openbao/secrets/cert.key" "openbao" "openbao" "0644" }}
+          {{ .CA | writeToFile "/openbao/secrets/cert.pem" "openbao" "openbao" "0644" }}
+          {{ .Cert | writeToFile "/openbao/secrets/cert.pem" "openbao" "openbao" "0644" "append" }}
+          {{- end -}}
+    spec:
+      serviceAccountName: web
+      containers:
+        - name: web
+          image: nginx
+```
+
+[pkiCert]: https://github.com/openbao/consul-template/blob/main/docs/templating-language.md#pkicert
+[writeToFile]: https://github.com/openbao/consul-template/blob/main/docs/templating-language.md#writeToFile

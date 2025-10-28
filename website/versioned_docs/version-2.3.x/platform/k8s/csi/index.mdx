@@ -1,0 +1,133 @@
+---
+draft: true
+sidebar_label: Overview
+description: >-
+  The OpenBao CSI Provider allows pods to consume OpenBao secrets using CSI volumes.
+---
+
+# OpenBao CSI provider
+
+The OpenBao CSI Provider allows pods to consume OpenBao secrets using
+[CSI Secrets Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver) volumes.
+
+:::warning
+
+The OpenBao CSI Provider requires the [CSI Secret Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver)
+Driver to be installed.
+
+:::
+
+## Overview
+
+At a high level, the CSI Secrets Store driver allows users to create `SecretProviderClass` objects.
+This object defines which secret provider to use and what secrets to retrieve. When pods requesting CSI volumes
+are created, the CSI Secrets Store driver will send the request to the OpenBao CSI Provider if the provider
+is `openbao`. The OpenBao CSI Provider will then use Secret Provider Class specified and the pod's service account to retrieve
+the secrets from OpenBao, and mount them into the pod's CSI volume.
+
+The secret is retrieved from OpenBao and populated to the CSI secrets store volume during the `ContainerCreation` phase.
+This means that pods will be blocked from starting until the secrets have been read from OpenBao and written to the volume.
+
+### Features
+
+The following features are supported by the OpenBao CSI Provider:
+
+- All OpenBao secret engines supported.
+- Authentication using the requesting pod's service account.
+- TLS/mTLS communications with OpenBao.
+- Rendering OpenBao secrets to files.
+- Dynamic lease caching and renewal performed by Agent.
+- Syncing secrets to Kubernetes secrets to be used as environment variables.
+- Installation via [OpenBao Helm](/docs/platform/k8s/helm)
+
+@include 'kubernetes-supported-versions.mdx'
+
+## Authenticating with OpenBao
+
+The OpenBao CSI Provider will authenticate with OpenBao as the service account of the
+pod that mounts the CSI volume. [Kubernetes](/docs/auth/kubernetes) and
+[JWT](/docs/auth/jwt) auth methods are supported. The pod's service account
+must be bound to a OpenBao role and a policy granting access to the secrets desired.
+
+It is highly recommended to run pods with dedicated Kubernetes service accounts to
+ensure applications cannot access more secrets than they require.
+
+## Secret provider class example
+
+The following is an example of a Secret Provider Class using the `openbao` provider:
+
+```yaml
+---
+apiVersion: secrets-store.csi.x-k8s.io/v1alpha1
+kind: SecretProviderClass
+metadata:
+  name: openbao-db-creds
+spec:
+  # OpenBao CSI Provider
+  provider: openbao
+  parameters:
+    # OpenBao role name to use during login
+    roleName: 'app'
+    # OpenBao address and TLS connection config is normally best configured by the
+    # helm chart, but can be overridden per SecretProviderClass:
+    # OpenBao's hostname
+    #openbaoAddress: 'https://openbao:8200'
+    # TLS CA certification for validation
+    #openbaoCACertPath: '/openbao/tls/ca.crt'
+    objects: |
+      - objectName: "dbUsername"
+        secretPath: "database/creds/db-app"
+        secretKey: "username"
+      - objectName: "dbPassword"
+        secretPath: "database/creds/db-app"
+        secretKey: "password"
+    # "objectName" is an alias used within the SecretProviderClass to reference
+    # that specific secret. This will also be the filename containing the secret.
+    # "secretPath" is the path in OpenBao where the secret should be retrieved.
+    # "secretKey" is the key within the OpenBao secret response to extract a value from.
+```
+
+:::warning
+
+Secret Provider Class is a namespaced object in Kubernetes.
+
+:::
+
+## Using secret provider classes
+
+An application pod uses the example Secret Provider Class above by mounting it as a CSI volume:
+
+```yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  labels:
+    app: demo
+spec:
+  selector:
+    matchLabels:
+      app: demo
+  replicas: 1
+  template:
+    spec:
+      serviceAccountName: app
+      containers:
+        - name: app
+          image: my-app:1.0.0
+          volumeMounts:
+            - name: 'openbao-db-creds'
+              mountPath: '/mnt/secrets-store'
+              readOnly: true
+      volumes:
+        - name: openbao-db-creds
+          csi:
+            driver: 'secrets-store.csi.k8s.io'
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: 'openbao-db-creds'
+```
+
+In this example `volumes.csi` is created on the application deployment and references
+the Secret Provider Class named `openbao-db-creds`.

@@ -1,0 +1,41 @@
+---
+sidebar_label: seal
+description: >-
+  The "operator seal" command seals the OpenBao server. Sealing tells the OpenBao
+  server to
+
+  stop responding to any operations until it is unsealed. When sealed, the OpenBao
+
+  server discards its in-memory root key to unlock the data, so it is
+
+  physically blocked from responding to operations unsealed.
+---
+
+# operator seal
+
+The `operator seal` seals the OpenBao server. Sealing tells the OpenBao server to
+stop responding to any operations until it is unsealed. When sealed, the OpenBao
+server discards its in-memory root key to unlock the data, so it is physically
+blocked from responding to operations unsealed.
+
+If an unseal is in progress, sealing the OpenBao will reset the unsealing process.
+Users will have to re-enter their portions of the root key again.
+
+This command does nothing if the OpenBao server is already sealed.
+
+For more information on sealing and unsealing, please the [seal concepts
+page](/docs/concepts/seal).
+
+## Examples
+
+Seal an OpenBao server:
+
+```shell-session
+$ bao operator seal
+Success! OpenBao is sealed.
+```
+
+## Usage
+
+There are no flags beyond the [standard set of flags](/docs/commands)
+included on all commands.

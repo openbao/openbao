@@ -1,0 +1,42 @@
+---
+sidebar_label: help
+description: The "auth help" command prints usage and help for an auth method.
+---
+
+# auth help
+
+The `auth help` command prints usage and help for an auth method.
+
+- If given a TYPE, this command prints the default help for the auth method of
+  that type.
+
+- If given a PATH, this command prints the help output for the auth method
+  enabled at that path. This path must already exist.
+
+Each auth method produces its own help output.
+
+## Examples
+
+Get usage instructions for the userpass auth method:
+
+```shell-session
+$ bao auth help userpass
+Usage: bao login -method=userpass [CONFIG K=V...]
+
+  The userpass auth method allows users to authenticate using OpenBao's
+  internal user database.
+
+# ...
+```
+
+Print usage for the auth method enabled at my-method/
+
+```shell-session
+$ bao auth help my-method/
+# ...
+```
+
+## Usage
+
+There are no flags beyond the [standard set of flags](/docs/commands)
+included on all commands.

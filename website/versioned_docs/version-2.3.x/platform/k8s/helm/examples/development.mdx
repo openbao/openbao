@@ -1,0 +1,20 @@
+---
+description: |-
+  Describes how to set up a development OpenBao
+---
+
+# Development
+
+:::warning
+
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+
+:::
+
+The below `values.yaml` can be used to set up a single development OpenBao server.
+
+```yaml
+server:
+  dev:
+    enabled: true
+```

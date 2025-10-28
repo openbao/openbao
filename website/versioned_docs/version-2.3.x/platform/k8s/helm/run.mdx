@@ -1,0 +1,581 @@
+---
+description: >-
+  OpenBao can run directly on Kubernetes in various configurations.  For
+  pure-Kubernetes workloads, this enables OpenBao to also exist purely within
+  Kubernetes.
+---
+
+# Run OpenBao on Kubernetes
+
+OpenBao works with Kubernetes in various modes: `dev`, `standalone`, `ha`,
+and `external`.
+
+:::warning
+
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+
+:::
+
+## Helm chart
+
+The [OpenBao Helm chart](https://github.com/openbao/openbao-helm)
+is the recommended way to install and configure OpenBao on Kubernetes.
+In addition to running OpenBao itself, the Helm chart is the primary
+method for installing and configuring OpenBao to integrate with other
+services such as the [Vault Agent Injector](https://github.com/hashicorp/vault-k8s/tree/v1.4.2).
+
+While the Helm chart automatically sets up complex resources and exposes the
+configuration to meet your requirements, it **does not automatically operate
+OpenBao.** You are still responsible for learning how to monitor, backup, upgrade,
+etc. the OpenBao cluster.
+
+:::warning
+
+**Security Warning:** By default, the chart runs in standalone mode. This
+mode uses a single OpenBao server with a file storage backend. This is a less
+secure and less resilient installation that is **NOT** appropriate for a
+production setup. It is highly recommended to use a [properly secured Kubernetes
+cluster](https://kubernetes.io/docs/tasks/administer-cluster/securing-a-cluster/),
+[learn the available configuration
+options](/docs/platform/k8s/helm/configuration), and read the [production deployment
+checklist](/docs/platform/k8s/helm/run#architecture).
+
+:::
+
+## How-To
+
+### Install OpenBao
+
+Helm must be installed and configured on your machine. Please refer to the [Helm
+documentation](https://helm.sh/) for more information.
+
+To use the Helm chart, add the OpenBao helm repository and check that you have
+access to the chart:
+
+@include 'helm/repo.mdx'
+
+:::info
+
+**Important:** The Helm chart is new and under significant development.
+Please always run Helm with `--dry-run` before any install or upgrade to verify
+changes.
+
+:::
+
+Use `helm install` to install the latest release of the OpenBao Helm chart.
+
+```shell-session
+$ helm install openbao openbao/openbao
+```
+
+Or install a specific version of the chart.
+
+@include 'helm/install.mdx'
+
+The `helm install` command accepts parameters to override default configuration
+values inline or defined in a file.
+
+Override the `server.dev.enabled` configuration value:
+
+```shell-session
+$ helm install openbao openbao/openbao \
+    --set "server.dev.enabled=true"
+```
+
+Override all the configuration found in a file:
+
+```shell-session
+$ cat override-values.yml
+server:
+  ha:
+    enabled: true
+    replicas: 5
+##
+$ helm install openbao openbao/openbao \
+    --values override-values.yml
+```
+
+#### Dev mode
+
+The Helm chart may run a OpenBao server in development. This installs a single
+OpenBao server with a memory storage backend.
+
+:::info
+
+**Dev mode:** This is ideal for learning and demonstration environments but
+NOT recommended for a production environment.
+
+:::
+
+Install the latest OpenBao Helm chart in development mode.
+
+```shell-session
+$ helm install openbao openbao/openbao \
+    --set "server.dev.enabled=true"
+```
+
+#### Standalone mode
+
+The Helm chart defaults to run in `standalone` mode. This installs a single
+OpenBao server with a file storage backend.
+
+Install the latest OpenBao Helm chart in standalone mode.
+
+```shell-session
+$ helm install openbao openbao/openbao
+```
+
+#### HA mode
+
+The Helm chart may be run in High Availability (HA) mode. This installs three
+OpenBao servers with an existing Integrated Storage backend.
+Install the latest OpenBao Helm chart in HA mode.
+
+```shell-session
+$ helm install openbao openbao/openbao \
+    --set "server.ha.enabled=true"
+```
+
+#### External mode
+
+The Helm chart may be run in external mode. This installs no OpenBao server and
+relies on a network addressable OpenBao server to exist.
+
+Install the latest OpenBao Helm chart in external mode.
+
+```shell-session
+$ helm install openbao openbao/openbao \
+    --set "injector.externalVaultAddr=http://external-openbao:8200"
+```
+
+### View the OpenBao UI
+
+The OpenBao UI is enabled but NOT exposed as service for security reasons. The
+OpenBao UI can also be exposed via port-forwarding or through a [`ui`
+configuration value](/docs/platform/k8s/helm/configuration/#ui).
+
+:::warning
+
+The UI for OpenBao needs to be built from the source (https://github.com/openbao/openbao) 
+The Helm chart does not come with the UI ready at the moment.
+
+:::
+
+Expose the OpenBao UI with port-forwarding:
+
+```shell-session
+$ kubectl port-forward openbao-0 8200:8200
+Forwarding from 127.0.0.1:8200 -> 8200
+Forwarding from [::1]:8200 -> 8200
+##...
+```
+
+### Initialize and unseal OpenBao
+
+After the OpenBao Helm chart is installed in `standalone` or `ha` mode one of the
+OpenBao servers need to be
+[initialized](/docs/commands/operator/init). The
+initialization generates the credentials necessary to
+[unseal](/docs/concepts/seal#why) all the OpenBao
+servers.
+
+#### CLI initialize and unseal
+
+View all the OpenBao pods in the current namespace:
+
+```shell-session
+$ kubectl get pods -l app.kubernetes.io/name=openbao
+NAME                                    READY   STATUS    RESTARTS   AGE
+openbao-0                                 0/1     Running   0          1m49s
+openbao-1                                 0/1     Running   0          1m49s
+openbao-2                                 0/1     Running   0          1m49s
+```
+
+Initialize one OpenBao server with the default number of key shares and default
+key threshold:
+
+```shell-session
+$ kubectl exec -ti openbao-0 -- bao operator init
+Unseal Key 1: MBFSDepD9E6whREc6Dj+k3pMaKJ6cCnCUWcySJQymObb
+Unseal Key 2: zQj4v22k9ixegS+94HJwmIaWLBL3nZHe1i+b/wHz25fr
+Unseal Key 3: 7dbPPeeGGW3SmeBFFo04peCKkXFuuyKc8b2DuntA4VU5
+Unseal Key 4: tLt+ME7Z7hYUATfWnuQdfCEgnKA2L173dptAwfmenCdf
+Unseal Key 5: vYt9bxLr0+OzJ8m7c7cNMFj7nvdLljj0xWRbpLezFAI9
+
+Initial Root Token: s.zJNwZlRrqISjyBHFMiEca6GF
+##...
+```
+
+The output displays the key shares and initial root key generated.
+
+Unseal the OpenBao server with the key shares until the key threshold is met:
+
+```sh
+## Unseal the first openbao server until it reaches the key threshold
+$ kubectl exec -ti openbao-0 -- bao operator unseal # ... Unseal Key 1
+$ kubectl exec -ti openbao-0 -- bao operator unseal # ... Unseal Key 2
+$ kubectl exec -ti openbao-0 -- bao operator unseal # ... Unseal Key 3
+```
+
+Repeat the unseal process for all OpenBao server pods. When all OpenBao server pods
+are unsealed they report READY `1/1`.
+
+```shell-session
+$ kubectl get pods -l app.kubernetes.io/name=openbao
+NAME                                    READY   STATUS    RESTARTS   AGE
+openbao-0                                 1/1     Running   0          1m49s
+openbao-1                                 1/1     Running   0          1m49s
+openbao-2                                 1/1     Running   0          1m49s
+```
+
+#### Google KMS auto unseal
+
+The Helm chart may be run with [Google KMS for Auto
+Unseal](/docs/configuration/seal/gcpckms). This enables OpenBao server pods to
+auto unseal if they are rescheduled.
+
+OpenBao Helm requires the Google Cloud KMS credentials stored in
+`credentials.json` and mounted as a secret in each OpenBao server pod.
+
+##### Create the secret
+
+First, create the secret in Kubernetes:
+
+```bash
+kubectl create secret generic kms-creds --from-file=credentials.json
+```
+
+OpenBao Helm mounts this to `/openbao/userconfig/kms-creds/credentials.json`.
+
+##### Config example
+
+This is a OpenBao Helm configuration that uses Google KMS:
+
+```yaml
+global:
+  enabled: true
+
+server:
+  extraEnvironmentVars:
+    GOOGLE_REGION: global
+    GOOGLE_PROJECT: <PROJECT NAME>
+    GOOGLE_APPLICATION_CREDENTIALS: /openbao/userconfig/kms-creds/credentials.json
+
+  volumes:
+    - name: userconfig-kms-creds
+      secret:
+        defaultMode: 420
+        secretName: kms-creds
+
+  volumeMounts:
+    - mountPath: /openbao/userconfig/kms-creds
+      name: userconfig-kms-creds
+      readOnly: true
+
+  ha:
+    enabled: true
+    replicas: 3
+
+    config: |
+      ui = true
+
+      listener "tcp" {
+        tls_disable = 1
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+
+      seal "gcpckms" {
+        project     = "<NAME OF PROJECT>"
+        region      = "global"
+        key_ring    = "<NAME OF KEYRING>"
+        crypto_key  = "<NAME OF KEY>"
+      }
+```
+
+#### Amazon KMS auto unseal
+
+The Helm chart may be run with [AWS KMS for Auto
+Unseal](/docs/configuration/seal/awskms). This enables OpenBao server pods to auto
+unseal if they are rescheduled.
+
+OpenBao Helm requires the AWS credentials stored as environment variables that
+are defined in each OpenBao server pod.
+
+##### Create the secret
+
+First, create a secret with your KMS access key/secret:
+
+```shell-session
+$ kubectl create secret generic kms-creds \
+    --from-literal=AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID?}" \
+    --from-literal=AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY?}"
+```
+
+##### Config example
+
+This is a OpenBao Helm configuration that uses AWS KMS:
+
+```yaml
+global:
+  enabled: true
+
+server:
+  extraSecretEnvironmentVars:
+    - envName: AWS_ACCESS_KEY_ID
+      secretName: kms-creds
+      secretKey: AWS_ACCESS_KEY_ID
+    - envName: AWS_SECRET_ACCESS_KEY
+      secretName: kms-creds
+      secretKey: AWS_SECRET_ACCESS_KEY
+
+  ha:
+    enabled: true
+    config: |
+      ui = true
+
+      listener "tcp" {
+        tls_disable = 1
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+
+      seal "awskms" {
+        region     = "KMS_REGION_HERE"
+        kms_key_id = "KMS_KEY_ID_HERE"
+      }
+```
+
+### Probes
+
+Probes are essential for detecting failures, rescheduling and using pods in
+Kubernetes. The helm chart offers configurable readiness and liveliness probes
+which can be customized for a variety of use cases.
+
+OpenBao's [/sys/health`](/api-docs/system/health) endpoint can be customized to
+change the behavior of the health check. For example, we can change the OpenBao
+readiness probe to show the OpenBao pods are ready even if they're still uninitialized
+and sealed using the following probe:
+
+```yaml
+server:
+  readinessProbe:
+    enabled: true
+    path: '/v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204'
+```
+
+Using this customized probe, a `postStart` script could automatically run once the
+pod is ready for additional setup.
+
+### Upgrading OpenBao on kubernetes
+
+To upgrade OpenBao on Kubernetes, we follow the same pattern as
+[generally upgrading OpenBao](/docs/upgrading), except we can use
+the Helm chart to update the OpenBao server StatefulSet. It is important to understand
+how to [generally upgrade OpenBao](/docs/upgrading) before reading this
+section.
+
+The OpenBao StatefulSet uses `OnDelete` update strategy. It is critical to use `OnDelete` instead
+of `RollingUpdate` because standbys must be updated before the active primary. A
+failover to an older version of OpenBao must always be avoided.
+
+:::danger
+
+**IMPORTANT NOTE:** Always back up your data before upgrading! OpenBao does not
+make backward-compatibility guarantees for its data store. Simply replacing the
+newly-installed OpenBao binary with the previous version may not cleanly
+downgrade OpenBao, as upgrades may perform changes to the underlying data
+structure that make the data incompatible with a downgrade. If you need to roll
+back to a previous version of OpenBao, you should roll back your data store as
+well.
+
+:::
+
+#### Upgrading OpenBao servers
+
+:::danger
+
+**IMPORTANT NOTE:** Helm will install the latest chart found in a repo by default.
+It's recommended to specify the chart version when upgrading.
+
+:::
+
+To initiate the upgrade, set the `server.image` values to the desired OpenBao
+version, either in a values yaml file or on the command line. For illustrative
+purposes, the example below uses `openbao:123.456`.
+
+```yaml
+server:
+  image:
+    repository: 'openbao'
+    tag: '123.456'
+```
+
+Next, list the Helm versions and choose the desired version to install.
+
+```bash
+$ helm search repo openbao/openbao                            
+NAME            CHART VERSION   APP VERSION             DESCRIPTION           
+openbao/openbao 0.4.0           v2.0.0-alpha20240329    Official OpenBao Chart
+```
+
+Next, test the upgrade with `--dry-run` first to verify the changes sent to the
+Kubernetes cluster.
+
+```shell-session
+$ helm upgrade openbao openbao/openbao --version=0.4.0 \
+    --set='server.image.repository=openbao' \
+    --set='server.image.tag=123.456' \
+    --dry-run
+```
+
+This should cause no changes (although the resources are updated). If
+everything is stable, `helm upgrade` can be run.
+
+The `helm upgrade` command should have updated the StatefulSet template for
+the OpenBao servers, however, no pods have been deleted. The pods must be manually
+deleted to upgrade. Deleting the pods does not delete any persisted data.
+
+If OpenBao is not deployed using `ha` mode, the single OpenBao server may be deleted by
+running:
+
+```shell-session
+$ kubectl delete pod <name of OpenBao pod>
+```
+
+If OpenBao is deployed using `ha` mode, the standby pods must be upgraded first.
+OpenBao has K8s service discovery built in (when enabled in the server configuration) and
+will automatically change the labels of the pod with its current leader status. These labels
+can be used to filter the pods.
+
+For example, select all pods that are OpenBao standbys:
+
+```shell-session
+$ kubectl get pods -l openbao-active=false
+```
+
+Select the active OpenBao pod:
+
+```shell-session
+$ kubectl get pods -l openbao-active=true
+```
+
+Next, sequentially delete every pod that is not the active primary, ensuring the quorum is maintained at all times:
+
+```shell-session
+$ kubectl delete pod <name of OpenBao pod>
+```
+
+If auto-unseal is not being used, the newly scheduled OpenBao standby pods needs
+to be unsealed:
+
+```shell-session
+$ kubectl exec -ti <name of pod> -- bao operator unseal
+```
+
+Finally, once the standby nodes have been updated and unsealed, delete the active
+primary:
+
+```shell-session
+$ kubectl delete pod <name of OpenBao primary>
+```
+
+Similar to the standby nodes, the former primary also needs to be unsealed:
+
+```shell-session
+$ kubectl exec -ti <name of pod> -- bao operator unseal
+```
+
+After a few moments the OpenBao cluster should elect a new active primary. The OpenBao
+cluster is now upgraded!
+
+### Protecting sensitive OpenBao configurations
+
+OpenBao Helm renders a OpenBao configuration file during installation and stores the
+file in a Kubernetes configmap. Some configurations require sensitive data to be
+included in the configuration file and would not be encrypted at rest once created
+in Kubernetes.
+
+The following example shows how to add extra configuration files to OpenBao Helm
+to protect sensitive configurations from being in plaintext at rest using Kubernetes
+secrets.
+
+First, create a partial OpenBao configuration with the sensitive settings OpenBao
+loads during startup:
+
+```shell-session
+$ cat <<EOF >>config.hcl
+storage "mysql" {
+username = "user1234"
+password = "secret123!"
+database = "openbao"
+}
+EOF
+```
+
+Next, create a Kubernetes secret containing this partial configuration:
+
+```shell-session
+$ kubectl create secret generic openbao-storage-config \
+    --from-file=config.hcl
+```
+
+Finally, mount this secret as an extra volume and add an additional `-config` flag
+to the OpenBao startup command:
+
+```shell-session
+$ helm install openbao openbao/openbao \
+  --set='server.volumes[0].name=userconfig-openbao-storage-config' \
+  --set='server.volumes[0].secret.defaultMode=420' \
+  --set='server.volumes[0].secret.secretName=openbao-storage-config' \
+  --set='server.volumeMounts[0].mountPath=/openbao/userconfig/openbao-storage-config' \
+  --set='server.volumeMounts[0].name=userconfig-openbao-storage-config' \
+  --set='server.volumeMounts[0].readOnly=true' \
+  --set='server.extraArgs=-config=/openbao/userconfig/openbao-storage-config/config.hcl'
+```
+
+## Architecture
+
+We recommend running OpenBao on Kubernetes with the same
+[general architecture](/docs/internals/architecture)
+as running it anywhere else. There are some benefits Kubernetes can provide
+that eases operating a OpenBao cluster and we document those below.
+
+### Production deployment checklist
+
+_End-to-End TLS._ OpenBao should always be used with TLS in production. If
+intermediate load balancers or reverse proxies are used to front OpenBao,
+they should not terminate TLS. This way traffic is always encrypted in transit
+to OpenBao and minimizes risks introduced by intermediate layers.
+
+_Single Tenancy._ OpenBao should be the only main process running on a machine.
+This reduces the risk that another process running on the same machine is
+compromised and can interact with OpenBao. This can be accomplished by using OpenBao
+Helm's `affinity` configurable.
+
+_Enable Auditing._ OpenBao supports several auditing backends. Enabling auditing
+provides a history of all operations performed by OpenBao and provides a forensics
+trail in the case of misuse or compromise. Audit logs securely hash any sensitive
+data, but access should still be restricted to prevent any unintended disclosures.
+OpenBao Helm includes a configurable `auditStorage` option that provisions a persistent
+volume to store audit logs.
+
+_Immutable Upgrades._ OpenBao relies on an external storage backend for persistence,
+and this decoupling allows the servers running OpenBao to be managed immutably.
+When upgrading to new versions, new servers with the upgraded version of OpenBao
+are brought online. They are attached to the same shared storage backend and
+unsealed. Then the old servers are destroyed. This reduces the need for remote
+access and upgrade orchestration which may introduce security gaps. See the
+[upgrade section](#how-to) for instructions
+on upgrading OpenBao on Kubernetes.
+
+_Upgrade Frequently._ OpenBao is actively developed, and updating frequently is
+important to incorporate security fixes and any changes in default settings such
+as key lengths or cipher suites. Subscribe to the OpenBao mailing list and
+GitHub CHANGELOG for updates.
+
+_Restrict Storage Access._ OpenBao encrypts all data at rest, regardless of which
+storage backend is used. Although the data is encrypted, an attacker with arbitrary
+control can cause data corruption or loss by modifying or deleting keys. Access
+to the storage backend should be restricted to only OpenBao to avoid unauthorized
+access or operations.

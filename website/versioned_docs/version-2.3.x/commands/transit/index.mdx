@@ -1,0 +1,31 @@
+---
+sidebar_label: Overview
+description: |-
+  The "transit" command groups subcommands for interacting with OpenBao's Transit
+  secrets engine.
+---
+
+# transit
+
+The `transit` command groups subcommands for interacting with OpenBao's
+[Transit Secrets Engine](/docs/secrets/transit).
+
+## Syntax
+
+Option flags for a given subcommand are provided after the subcommand, but before the arguments.
+
+## Examples
+
+To [import](/docs/commands/transit/import) keys into a mount via the
+[Transit BYOK](/docs/secrets/transit#bring-your-own-key-byok)
+mechanism, use the `bao transit import <path> <key>` or
+`bao transit import-version <path> <key>` commands:
+
+```
+$ bao transit import transit/keys/test-key @test-key type=rsa-2048
+Retrieving transit wrapping key.
+Wrapping source key with ephemeral key.
+Encrypting ephemeral key with transit wrapping key.
+Submitting wrapped key to OpenBao transit.
+Success!
+```

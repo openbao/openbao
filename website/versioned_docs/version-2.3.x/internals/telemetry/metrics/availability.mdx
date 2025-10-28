@@ -1,0 +1,64 @@
+---
+sidebar_label: Availability metics
+description: >-
+  Technical reference for availability related telemetry values.
+---
+
+# Availability telemetry
+
+Availability telemetry provides information about standby and active nodes in
+your OpenBao instance.
+
+## Default metrics
+
+@include 'telemetry-metrics/vault/ha/rpc/client/echo.mdx'
+
+@include 'telemetry-metrics/vault/ha/rpc/client/echo/errors.mdx'
+
+@include 'telemetry-metrics/vault/ha/rpc/client/forward.mdx'
+
+@include 'telemetry-metrics/vault/ha/rpc/client/forward/errors.mdx'
+
+## Merkle tree metrics
+
+@include 'telemetry-metrics/vault/merkle/flushdirty.mdx'
+
+@include 'telemetry-metrics/vault/merkle/flushdirty/num_pages.mdx'
+
+@include 'telemetry-metrics/vault/merkle/flushdirty/outstanding_pages.mdx'
+
+@include 'telemetry-metrics/vault/merkle/savecheckpoint.mdx'
+
+@include 'telemetry-metrics/vault/merkle/savecheckpoint/num_dirty.mdx'
+
+## Write-ahead log (WAL) telemetry
+
+@include 'telemetry-metrics/vault/wal/deletewals.mdx'
+
+@include 'telemetry-metrics/vault/wal/flushready.mdx'
+
+@include 'telemetry-metrics/vault/wal/flushready/queue_len.mdx'
+
+@include 'telemetry-metrics/vault/wal/gc/deleted.mdx'
+
+@include 'telemetry-metrics/vault/wal/gc/total.mdx'
+
+@include 'telemetry-metrics/vault/wal/loadwal.mdx'
+
+@include 'telemetry-metrics/vault/wal/persistwals.mdx'
+
+## Log shipping metrics
+
+@include 'telemetry-metrics/vault/logshipper/buffer/length.mdx'
+
+@include 'telemetry-metrics/vault/logshipper/buffer/max_length.mdx'
+
+@include 'telemetry-metrics/vault/logshipper/buffer/max_size.mdx'
+
+@include 'telemetry-metrics/vault/logshipper/buffer/size.mdx'
+
+@include 'telemetry-metrics/vault/logshipper/streamwals/guard_found.mdx'
+
+@include 'telemetry-metrics/vault/logshipper/streamwals/missing_guard.mdx'
+
+@include 'telemetry-metrics/vault/logshipper/streamwals/scanned_entries.mdx'

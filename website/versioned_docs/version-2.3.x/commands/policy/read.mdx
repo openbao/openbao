@@ -1,0 +1,30 @@
+---
+sidebar_label: read
+description: |-
+  The "policy read" command prints the contents and metadata of the OpenBao policy
+  named NAME. If the policy does not exist, an error is returned.
+---
+
+# policy read
+
+The `policy read` command prints the contents and metadata of the OpenBao policy
+named NAME. If the policy does not exist, an error is returned.
+
+## Examples
+
+Read the policy named "my-policy":
+
+```shell-session
+$ bao policy read my-policy
+```
+
+## Usage
+
+The following flags are available in addition to the [standard set of
+flags](/docs/commands) included on all commands.
+
+### Output options
+
+- `-format` `(string: "table")` - Print the output in the given format. Valid
+  formats are "table", "json", or "yaml". This can also be specified via the
+  `BAO_FORMAT` environment variable.

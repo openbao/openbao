@@ -1,0 +1,68 @@
+---
+description: Providing measures against misbehaving applications and users overdrawing resources in OpenBao.
+---
+
+# Resource quotas
+
+Every single interaction with OpenBao, whether to put secrets into the key/value
+store or to generate new pairs of database credentials for the MySQL database,
+needs to go through OpenBao’s API.
+
+One side effect of the API driven model is that applications and users can
+misbehave by overwhelming system resources through consistent and high volume API
+requests resulting in denial-of-service issues in some OpenBao nodes or even the
+entire OpenBao cluster. This risk is significantly increased when OpenBao API endpoints
+are exposed to thousands or millions of services deployed across a global infrastructure,
+especially in use cases of OpenBao where OpenBao is deployed as a service for internal
+developers.
+
+OpenBao provides a feature, resource quotas, that allows OpenBao operators to specify
+limits on resources used in OpenBao. Specifically, OpenBao allows operators to create
+and configure API rate limits. 
+
+## Rate limit quotas
+
+OpenBao allows operators to create rate limit quotas which enforce API rate
+limiting using a [token bucket](https://en.wikipedia.org/wiki/Token_bucket) algorithm.
+A rate limit quota can be created at the root level or defined on a namespace,
+mount, or full API path by specifying a `path` when creating the quota. The rate
+limiter is applied to each unique client IP address on a per-node basis (i.e. rate limit
+quotas are not replicated). A client may invoke `rate` requests at any given second,
+after which they may invoke additional requests at `rate` per-second.
+
+A rate limit quota defined at the root level (i.e. empty `path`) is inherited by
+all namespaces and mounts. It acts as a single rate limiter for the entire OpenBao
+API. A rate limit quota defined on a namespace takes precedence over the global
+rate limit quota, a rate limit quota defined for a mount takes precedence over
+the global and namespace rate limit quotas, and a rate limit quota defined for
+a specific path will take precedence over global, namespace, and mount quotas.
+Additionally, quotas defined with a `role` to limit login requests made using
+that role on the specified auth mount will take precedence over all other quotas.
+In other words, the most specific quota rule will be applied.
+
+A rate limit can be created with an optional `block_interval`, such that when set
+to a non-zero value, any client that hits a rate limit threshold will be blocked
+from all subsequent requests for a duration of `block_interval` seconds.
+
+OpenBao also allows the inspection of the state of rate limiting in an OpenBao node
+through various [metrics](/docs/internals/telemetry#Resource-Quota-Metrics) exposed
+and through enabling optional audit logging.
+
+## Exempt routes
+
+By default, the following paths are exempt from rate limiting. However, OpenBao
+operators can override the set of paths that are exempt from all rate limit
+resource quotas by updating the `rate_limit_exempt_paths` configuration field.
+
+- `sys/generate-recovery-token/attempt`
+- `sys/generate-recovery-token/update`
+- `sys/generate-root/attempt`
+- `sys/generate-root/update`
+- `sys/health`
+- `sys/seal-status`
+- `sys/unseal`
+
+## API
+
+Rate limit quotas can be managed over the HTTP API. Please see
+[Rate Limit Quotas API](/api-docs/system/rate-limit-quotas) for more details.

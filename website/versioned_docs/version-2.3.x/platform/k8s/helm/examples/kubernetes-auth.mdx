@@ -1,0 +1,33 @@
+---
+description: |-
+  Describes how to set up Kubernetes Auth method
+---
+
+# Bootstrapping kubernetes auth method
+
+:::warning
+
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+
+:::
+
+In this example, we will walk through how to set up the [Kubernetes Auth Method](/docs/auth/kubernetes).
+
+This assumes the following commands will be run inside a OpenBao pod running in Kubernetes.
+
+Exec into the OpenBao pod:
+
+```bash
+kubectl exec -it openbao-0 -- /bin/sh
+```
+
+If you didn't set `server.dev.enabled=true`, you'll need to log in to OpenBao first using `openbao login`.
+Then run the following commands to configure the Kubernetes Auth Method:
+
+```bash
+openbao auth enable kubernetes
+openbao write auth/kubernetes/config \
+    kubernetes_host=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT
+```
+
+From here you can continue to configure OpenBao from the [Kubernetes Auth Method](/docs/auth/kubernetes) documentation.

@@ -1,0 +1,71 @@
+---
+sidebar_label: Overview
+description: This section documents the official integration between OpenBao and Kubernetes.
+---
+# Kubernetes
+
+OpenBao can be deployed into Kubernetes using the official OpenBao Helm chart.
+The Helm chart allows users to deploy OpenBao in various configurations:
+
+- Dev: a single in-memory OpenBao server for testing OpenBao
+- Standalone (default): a single OpenBao server persisting to a volume using the file storage backend
+- High-Availability (HA): a cluster of OpenBao servers that use an HA storage backend
+- External: a OpenBao Agent Injector server that depends on an external OpenBao server
+
+## Use cases
+
+**Running a OpenBao Service:** The OpenBao server cluster can run directly on Kubernetes.
+This can be used by applications running within Kubernetes as well as external to
+Kubernetes, as long as they can communicate to the server via the network.
+
+**Accessing and Storing Secrets:** Applications using the OpenBao service running in
+Kubernetes can access and store secrets from OpenBao using a number of different
+[secret engines](/docs/secrets) and [authentication methods](/docs/auth).
+
+**Running a Highly Available OpenBao Service:** By using pod affinities, highly available
+backend storage and [auto-unseal](/docs/concepts/seal#auto-unseal),
+OpenBao can become a highly available service in Kubernetes.
+
+**Encryption as a Service:** Applications using the OpenBao service running in Kubernetes
+can leverage the [Transit secret engine](/docs/secrets/transit)
+as "encryption as a service". This allows applications to offload encryption needs
+to OpenBao before storing data at rest.
+
+**Audit Logs for OpenBao:** Operators can choose to attach a persistent volume
+to the OpenBao cluster which can be used to [store audit logs](/docs/audit).
+
+**And more!** OpenBao can run directly on Kubernetes, so in addition to the
+native integrations provided by OpenBao itself, any other tool built for
+Kubernetes can choose to leverage OpenBao.
+
+## Getting started with OpenBao and kubernetes
+
+There are several ways to try OpenBao with Kubernetes in different environments.
+
+### High level comparison of integrations
+
+There are currently 3 different integrations to help Kubernetes workloads
+seamlessly consume secrets from OpenBao, without the need to modify the
+application to interact directly with OpenBao. Each integration addresses
+slightly different use-cases. The following is a brief overview of the strengths
+of each integration.
+
+#### Agent injector
+
+- No durable secret storage outside OpenBao. All secrets written to disk are in ephemeral in-memory volumes.
+- No highly privileged service accounts required. All secrets are fetched with the pod's own service account without the need for any other service accounts to impersonate it.
+- More mature solution, with proven production record and advanced features like templating,
+  wider array of auth methods, etc.
+
+<!-- The secrets operator is not yet working. -->
+<!-- TODO: uncomment once it is -->
+<!-- #### OpenBao Secrets Operator -->
+
+<!-- - More native UX for app developers. Workloads can mount Kubernetes secrets without adding any OpenBao-specific configuration. -->
+<!-- - Reduced load on OpenBao. Secrets are synced per CRD instead of per consuming pod. -->
+<!-- - Better OpenBao secret availability. Kubernetes secrets act as a durable cluster-local cache of OpenBao secrets. -->
+
+#### OpenBao CSI provider
+
+- The CSI driver that the provider is based on is vendor neutral.
+- No durable secret storage outside OpenBao if the secret sync feature isn't used. All secrets written to disk are in ephemeral in-memory volumes.

@@ -157,6 +157,10 @@ type SecurityBarrierCore interface {
 
 	// SecurityBarrier must provide the encryption APIs
 	BarrierEncryptor
+
+	// SetReadOnly allows marking storage as read-only; this is useful for
+	// HA mode but could be more broadly useful.
+	SetReadOnly(readOnly bool)
 }
 
 // SecurityBarrier is a critical component of Vault. It is used to wrap

@@ -1867,6 +1867,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
+		Logger:       logging.NewVaultLogger(log.Trace).Named("core0"),
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1905,6 +1906,10 @@ func TestCore_Standby_Seal(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
+		RawConfig: &server.Config{
+			DisableStandbyReads: true,
+		},
+		Logger: logging.NewVaultLogger(log.Trace).Named("core2"),
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1945,7 +1950,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 	// Seal the standby core with the correct token. Shouldn't go down
 	err = core2.Seal(root)
 	if err == nil {
-		t.Fatal("should not be sealed")
+		t.Fatalf("should not be sealed: %v", err)
 	}
 
 	keyUUID, err := uuid.GenerateUUID()
@@ -1956,6 +1961,70 @@ func TestCore_Standby_Seal(t *testing.T) {
 	err = core2.Seal(keyUUID)
 	if err == nil {
 		t.Fatal("should not be sealed")
+	}
+
+	// Create the third (read-enabled) core and initialize it.
+	redirectOriginal3 := "http://127.0.0.1:8700"
+	core3, err := NewCore(&CoreConfig{
+		Physical:     inm,
+		HAPhysical:   inmha.(physical.HABackend),
+		RedirectAddr: redirectOriginal3,
+		Logger:       logging.NewVaultLogger(log.Trace).Named("core3"),
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	defer core3.Shutdown() //nolint:errcheck
+	for _, key := range keys {
+		if _, err := TestCoreUnseal(core3, TestKeyCopy(key)); err != nil {
+			t.Fatalf("unseal err: %s", err)
+		}
+	}
+
+	// Verify unsealed
+	if core3.Sealed() {
+		t.Fatal("should not be sealed")
+	}
+
+	// Core3 should be in standby
+	standby, err = core3.Standby()
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if !standby {
+		t.Fatal("should be standby")
+	}
+
+	// Check the leader is not local
+	isLeader, advertise, _, err = core3.Leader()
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if isLeader {
+		t.Fatal("should not be leader")
+	}
+	if advertise != redirectOriginal {
+		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
+	}
+
+	// Seal the standby core with the correct token. This should go
+	// down as we can verify the root token.
+	require.Eventually(t, func() bool {
+		err = core3.Seal(root)
+		return err == nil
+	}, 10*time.Second, 50*time.Millisecond, "should be sealed: sealed=%v/ err=%v", core3.Sealed(), err)
+
+	// Now unseal the node.
+	for _, key := range keys {
+		if _, err := TestCoreUnseal(core3, TestKeyCopy(key)); err != nil {
+			t.Fatalf("unseal err: %s", err)
+		}
+	}
+
+	// Seal the standby core with an invalid token. Shouldn't go down.
+	err = core3.Seal(keyUUID)
+	if err == nil {
+		t.Fatalf("should not be sealed: sealed=%v / err=%v", core3.Sealed(), err)
 	}
 }
 
@@ -2435,9 +2504,11 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		return c2ctx != nil
 	}, 1*time.Minute, 50*time.Millisecond, "did not acquire active context")
 
-	// Request should not fail in standby mode since request is forwarded to active
+	// Forwarding happens at the listener level current, not at the
+	// HandleRequest level; this means that we should get a forwarding
+	// error from sending the request to the standby at this place.
 	_, err = core2.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil {
+	if err == nil || !logical.ShouldForward(err) {
 		t.Fatalf("err: %v", err)
 	}
 

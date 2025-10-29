@@ -953,7 +953,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	// Instead, we return an error since we cannot be sure if we have an
 	// active token store to validate the provided token.
 	case strings.HasPrefix(req.Path, "sys/metrics"):
-		if c.standby.Load() {
+		if c.standby.Load() && !c.StandbyReadsEnabled() {
 			return nil, ErrCannotForwardLocalOnly
 		}
 	}

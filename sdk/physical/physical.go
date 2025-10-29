@@ -68,7 +68,7 @@ type CacheInvalidationBackend interface {
 	HookInvalidate(hook InvalidateFunc)
 }
 
-type InvalidateFunc func(key string)
+type InvalidateFunc func(key ...string)
 
 // HABackend is an extensions to the standard physical
 // backend to support high-availability. Vault only expects to

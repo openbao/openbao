@@ -179,11 +179,7 @@ func (d dynamicSystemView) LocalMount() bool {
 // Checks if this is a primary Vault instance. Caller should hold the stateLock
 // in read mode.
 func (d dynamicSystemView) ReplicationState() consts.ReplicationState {
-	state := d.core.ReplicationState()
-	if d.core.standby.Load() {
-		state |= consts.ReplicationPerformanceStandby
-	}
-	return state
+	return d.core.ReplicationState()
 }
 
 // ResponseWrapData wraps the given data in a cubbyhole and returns the

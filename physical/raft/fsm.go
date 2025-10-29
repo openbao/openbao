@@ -933,19 +933,20 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 	}
 
 	if f.invalidateHook != nil {
-		go func() { // Call the callback asynchronously, to keep time we hold the db lock low
-			for _, commandRaw := range commands {
-				switch command := commandRaw.(type) {
-				case *LogData:
-					for _, op := range command.Operations {
-						switch op.OpType {
-						case putOp, deleteOp:
-							f.invalidateHook(op.Key)
-						}
+		var keys []string
+		for _, commandRaw := range commands {
+			switch command := commandRaw.(type) {
+			case *LogData:
+				for _, op := range command.Operations {
+					switch op.OpType {
+					case putOp, deleteOp:
+						keys = append(keys, op.Key)
 					}
 				}
 			}
-		}()
+		}
+
+		go f.invalidateHook(keys...)
 	}
 
 	// If we advanced the latest value, update the in-memory representation too.

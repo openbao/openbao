@@ -1,5 +1,6 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
+// t
 
 package vault
 
@@ -43,7 +44,12 @@ func (g generateStandardRootToken) authenticate(ctx context.Context, c *Core, co
 		return err
 	}
 
-	return c.sealManager.AuthenticateRootKey(ctx, ns, combinedKey)
+	wrappedNS, err := c.namespaceStore.GetNamespace(ctx, ns.UUID)
+	if err != nil || wrappedNS == nil {
+		return fmt.Errorf("failed to get namespace wrapper: %w", err)
+	}
+
+	return c.sealManager.AuthenticateRootKey(ctx, wrappedNS, combinedKey)
 }
 
 func (g generateStandardRootToken) generate(ctx context.Context, c *Core) (string, func(), error) {
@@ -229,8 +235,21 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, err
 	}
 
-	barrier := c.sealManager.NamespaceBarrier(ns.Path)
+	wrappedNS, err := c.namespaceStore.GetNamespace(ctx, ns.UUID)
+	if err != nil || wrappedNS == nil {
+		return nil, fmt.Errorf("failed to get namespace wrapper: %w", err)
+	}
+
+	wrappedNS.sealLock.RLock()
+	barrier := wrappedNS.barrier
+	seal := wrappedNS.seal
+	wrappedNS.sealLock.RUnlock()
+
 	if barrier == nil {
+		return nil, ErrNotSealable
+	}
+
+	if seal == nil {
 		return nil, ErrNotSealable
 	}
 
@@ -242,11 +261,6 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	}
 	if len(key) > max {
 		return nil, &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
-	}
-
-	seal := c.sealManager.NamespaceSeal(ns.UUID)
-	if seal == nil {
-		return nil, ErrNotSealable
 	}
 
 	// Get the seal configuration

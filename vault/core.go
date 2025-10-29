@@ -1433,7 +1433,13 @@ func (c *Core) SecretProgress(lock bool) (int, string) {
 		defer c.stateLock.RUnlock()
 	}
 
-	info := c.sealManager.NamespaceUnlockInformation(namespace.RootNamespaceUUID)
+	// Get root namespace wrapper from store (has seal state)
+	rootNS, err := c.namespaceStore.GetNamespace(context.Background(), namespace.RootNamespaceUUID)
+	if err != nil || rootNS == nil {
+		return 0, ""
+	}
+
+	info := c.sealManager.NamespaceUnlockInformation(rootNS)
 	switch info {
 	case nil:
 		return 0, ""
@@ -1447,7 +1453,14 @@ func (c *Core) SecretProgress(lock bool) (int, string) {
 func (c *Core) ResetUnsealProcess() {
 	c.stateLock.Lock()
 	defer c.stateLock.Unlock()
-	c.sealManager.ResetUnsealProcess(namespace.RootNamespaceUUID)
+
+	rootNS, err := c.namespaceStore.GetNamespace(context.Background(), namespace.RootNamespaceUUID)
+	if err != nil || rootNS == nil {
+		c.logger.Error("failed to get root namespace for unseal reset")
+		return
+	}
+
+	c.sealManager.ResetUnsealProcess(rootNS)
 }
 
 func (c *Core) UnsealMigrate(key []byte) (bool, error) {
@@ -1539,14 +1552,19 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 		sealToUse = c.migrationInfo.seal
 	}
 
-	newKey, err := c.sealManager.recordUnsealPart(namespace.RootNamespace, key)
+	rootNS, err := c.namespaceStore.GetNamespace(ctx, namespace.RootNamespaceUUID)
+	if err != nil || rootNS == nil {
+		return fmt.Errorf("failed to get root namespace: %w", err)
+	}
+
+	newKey, err := c.sealManager.recordUnsealPart(rootNS, key)
 	if !newKey || err != nil {
 		return err
 	}
 
 	// getUnsealKey returns either a recovery key (in the case of an autoseal)
 	// or an unseal key (new-style shamir).
-	combinedKey, err := c.sealManager.getUnsealKey(ctx, sealToUse, namespace.RootNamespace)
+	combinedKey, err := c.sealManager.getUnsealKey(ctx, sealToUse, rootNS)
 	if err != nil || combinedKey == nil {
 		return err
 	}
@@ -3124,8 +3142,13 @@ func (c *Core) checkBarrierAutoRotate(ctx context.Context) {
 		// Time to rotate. Invoke the rotation handler in order to both rotate and create
 		// the replication canary
 		c.logger.Info("automatic barrier key rotation triggered", "reason", reason)
+		rootNS, err := c.namespaceStore.GetNamespace(ctx, namespace.RootNamespaceUUID)
+		if err != nil || rootNS == nil {
+			c.logger.Error("failed to get root namespace for rotation")
+			return
+		}
 
-		if err := c.sealManager.RotateNamespaceBarrierKey(ctx, namespace.RootNamespace); err != nil {
+		if err := c.sealManager.RotateNamespaceBarrierKey(ctx, rootNS); err != nil {
 			c.logger.Error("error automatically rotating barrier key", "error", err)
 		} else {
 			metrics.IncrCounter(barrierRotationsMetric, 1)

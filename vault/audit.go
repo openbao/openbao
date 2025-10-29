@@ -420,18 +420,12 @@ func (c *Core) setupAudits(ctx context.Context) error {
 	return nil
 }
 
-func (c *Core) invalidateAudits() {
-	go func() {
-		err := c.reconcileAudits(reconcileAuditsRequests{
-			ctx:       c.activeContext,
-			readonly:  true,
-			isInitial: false,
-		})
-		if err != nil {
-			c.logger.Error("unable to invalidate audits, restarting core", "error", err.Error())
-			c.restart()
-		}
-	}()
+func (c *Core) invalidateAudits(ctx context.Context) error {
+	return c.reconcileAudits(reconcileAuditsRequests{
+		ctx:       ctx,
+		readonly:  true,
+		isInitial: false,
+	})
 }
 
 type reconcileAuditsRequests struct {

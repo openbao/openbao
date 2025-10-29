@@ -1112,6 +1112,8 @@ func filteredHeaders(origHeaders map[string][]string, candidateHeaders, deniedHe
 func (r *Router) Invalidate(ctx context.Context, key string) bool {
 	re, ok := r.matchingRouteEntryByPath(ctx, key, false)
 	if ok && strings.HasPrefix(key, re.storagePrefix) {
+		re.l.RLock()
+		defer re.l.RUnlock()
 		re.backend.InvalidateKey(ctx, strings.TrimPrefix(key, re.storagePrefix))
 		return true
 	}

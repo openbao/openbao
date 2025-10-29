@@ -38,7 +38,7 @@ func testCases() (tc []*MFACachedAuthResponse) {
 			RequestID:     uid,
 		})
 	}
-	return
+	return tc
 }
 
 func TestLoginMFAPriorityQueue_PushPopByKey(t *testing.T) {
@@ -99,10 +99,7 @@ func TestLoginMFARemoveStaleEntries(t *testing.T) {
 
 	cutoffTime := time.Now().Add(371 * time.Second)
 	timeout := time.Now().Add(5 * time.Second)
-	for {
-		if time.Now().After(timeout) {
-			break
-		}
+	for time.Now().Before(timeout) {
 		pq.RemoveExpiredMfaAuthResponse(defaultMFAAuthResponseTTL, cutoffTime)
 	}
 

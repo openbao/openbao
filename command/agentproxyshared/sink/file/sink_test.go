@@ -49,11 +49,9 @@ func TestSinkServer(t *testing.T) {
 	})
 	defer timer.Stop()
 
-	select {
-	case err := <-errCh:
-		if err != nil {
-			t.Fatal(err)
-		}
+	err := <-errCh
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	for _, path := range []string{path1, path2} {
@@ -131,10 +129,8 @@ func TestSinkServerRetry(t *testing.T) {
 
 	// Tell it to shut down and give it time to do so
 	cancelFunc()
-	select {
-	case err := <-errCh:
-		if err != nil {
-			t.Fatal(err)
-		}
+	err := <-errCh
+	if err != nil {
+		t.Fatal(err)
 	}
 }

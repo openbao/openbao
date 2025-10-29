@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
+	"net/url"
 	"strconv"
 	"sync"
 
@@ -18,13 +19,14 @@ import (
 )
 
 type valkeyDBConnectionProducer struct {
-	Host        string `json:"host"`
-	Port        int    `json:"port"`
-	Username    string `json:"username"`
-	Password    string `json:"password"`
-	TLS         bool   `json:"tls"`
-	InsecureTLS bool   `json:"insecure_tls"`
-	CACert      string `json:"ca_cert"`
+	Host          string `json:"host"`
+	Port          int    `json:"port"`
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	TLS           bool   `json:"tls"`
+	InsecureTLS   bool   `json:"insecure_tls"`
+	CACert        string `json:"ca_cert"`
+	ConnectionURL string `json:"connection_url"`
 
 	Initialized bool
 	rawConfig   map[string]interface{}
@@ -63,25 +65,38 @@ func (c *valkeyDBConnectionProducer) Init(ctx context.Context, initConfig map[st
 		return nil, err
 	}
 
-	switch {
-	case len(c.Host) == 0:
-		return nil, fmt.Errorf("host cannot be empty")
-	case c.Port == 0:
-		return nil, fmt.Errorf("port cannot be empty")
-	case len(c.Username) == 0:
-		return nil, fmt.Errorf("username cannot be empty")
-	case len(c.Password) == 0:
-		return nil, fmt.Errorf("password cannot be empty")
+	if c.ConnectionURL != "" {
+		if c.Host != "" || c.Port != 0 || c.Username != "" || c.Password != "" || c.TLS {
+			return nil, fmt.Errorf("cannot specify both connection_url and individual connection parameters")
+		}
+		parsedURL, err := url.Parse(c.ConnectionURL)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing connection_url: %w", err)
+		}
+		if parsedURL.Scheme == "valkeys" {
+			c.TLS = true
+		}
+		c.Addr = net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
+		c.Username = parsedURL.User.Username()
+		c.Password, _ = parsedURL.User.Password()
+	} else {
+		switch {
+		case len(c.Host) == 0:
+			return nil, fmt.Errorf("host cannot be empty")
+		case c.Port == 0:
+			return nil, fmt.Errorf("port cannot be empty")
+		case len(c.Username) == 0:
+			return nil, fmt.Errorf("username cannot be empty")
+		case len(c.Password) == 0:
+			return nil, fmt.Errorf("password cannot be empty")
+		}
+		c.Addr = net.JoinHostPort(c.Host, strconv.Itoa(c.Port))
 	}
-
-	c.Addr = net.JoinHostPort(c.Host, strconv.Itoa(c.Port))
-
 	if c.TLS {
 		if len(c.CACert) == 0 {
 			return nil, fmt.Errorf("ca_cert cannot be empty")
 		}
 	}
-
 	c.Initialized = true
 
 	if verifyConnection {

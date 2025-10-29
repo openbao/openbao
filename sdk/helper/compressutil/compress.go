@@ -6,13 +6,11 @@ package compressutil
 import (
 	"bytes"
 	"compress/gzip"
-	"compress/lzw"
 	"errors"
 	"fmt"
 	"io"
 
 	"github.com/golang/snappy"
-	"github.com/pierrec/lz4"
 )
 
 const (
@@ -24,14 +22,15 @@ const (
 	CompressionTypeGzip        = "gzip"
 	CompressionCanaryGzip byte = 'G'
 
-	CompressionTypeLZW        = "lzw"
-	CompressionCanaryLZW byte = 'L'
-
 	CompressionTypeSnappy        = "snappy"
 	CompressionCanarySnappy byte = 'S'
 
-	CompressionTypeLZ4        = "lz4"
+	// These compression types were in use in previous versions of the project,
+	// but are not supported anymore. We keep the canaries around to provide
+	// clearer error messages in the unlikely event that residual, unsupported
+	// data is attempted to be read.
 	CompressionCanaryLZ4 byte = '4'
+	CompressionCanaryLZW byte = 'L'
 )
 
 // SnappyReadCloser embeds the snappy reader which implements the io.Reader
@@ -50,10 +49,8 @@ func (c *CompressUtilReadCloser) Close() error {
 // CompressionConfig is used to select a compression type to be performed by
 // Compress and Decompress utilities.
 // Supported types are:
-// * CompressionTypeLZW
 // * CompressionTypeGzip
 // * CompressionTypeSnappy
-// * CompressionTypeLZ4
 //
 // When using CompressionTypeGzip, the compression levels can also be chosen:
 // * gzip.DefaultCompression
@@ -69,7 +66,7 @@ type CompressionConfig struct {
 
 // Compress places the canary byte in a buffer and uses the same buffer to fill
 // in the compressed information of the given input. The configuration supports
-// two type of compression: LZW and Gzip. When using Gzip compression format,
+// two type of compression: Gzip and Snappy. When using Gzip compression format,
 // if GzipCompressionLevel is not specified, the 'gzip.DefaultCompression' will
 // be assumed.
 func Compress(data []byte, config *CompressionConfig) ([]byte, error) {
@@ -84,17 +81,11 @@ func Compress(data []byte, config *CompressionConfig) ([]byte, error) {
 	// Write the canary into the buffer and create writer to compress the
 	// input data based on the configured type
 	switch config.Type {
-	case CompressionTypeLZW:
-		buf.Write([]byte{CompressionCanaryLZW})
-		writer = lzw.NewWriter(&buf, lzw.LSB, 8)
-
 	case CompressionTypeGzip:
 		buf.Write([]byte{CompressionCanaryGzip})
 
-		switch {
-		case config.GzipCompressionLevel == gzip.BestCompression,
-			config.GzipCompressionLevel == gzip.BestSpeed,
-			config.GzipCompressionLevel == gzip.DefaultCompression:
+		switch config.GzipCompressionLevel {
+		case gzip.BestCompression, gzip.BestSpeed, gzip.DefaultCompression:
 			// These are valid compression levels
 		default:
 			// If compression level is set to NoCompression or to
@@ -107,12 +98,8 @@ func Compress(data []byte, config *CompressionConfig) ([]byte, error) {
 		buf.Write([]byte{CompressionCanarySnappy})
 		writer = snappy.NewBufferedWriter(&buf)
 
-	case CompressionTypeLZ4:
-		buf.Write([]byte{CompressionCanaryLZ4})
-		writer = lz4.NewWriter(&buf)
-
 	default:
-		return nil, errors.New("unsupported compression type")
+		return nil, fmt.Errorf("unsupported compression type: %s", config.Type)
 	}
 
 	if err != nil {
@@ -174,13 +161,6 @@ func DecompressWithCanary(data []byte) ([]byte, string, bool, error) {
 		reader, err = gzip.NewReader(bytes.NewReader(cData))
 		compressionType = CompressionTypeGzip
 
-	case CompressionCanaryLZW:
-		if len(data) < 2 {
-			return nil, "", false, errors.New("invalid 'data' after the canary")
-		}
-		reader = lzw.NewReader(bytes.NewReader(cData), lzw.LSB, 8)
-		compressionType = CompressionTypeLZW
-
 	case CompressionCanarySnappy:
 		if len(data) < 2 {
 			return nil, "", false, errors.New("invalid 'data' after the canary")
@@ -191,13 +171,9 @@ func DecompressWithCanary(data []byte) ([]byte, string, bool, error) {
 		compressionType = CompressionTypeSnappy
 
 	case CompressionCanaryLZ4:
-		if len(data) < 2 {
-			return nil, "", false, errors.New("invalid 'data' after the canary")
-		}
-		reader = &CompressUtilReadCloser{
-			Reader: lz4.NewReader(bytes.NewReader(cData)),
-		}
-		compressionType = CompressionTypeLZ4
+		return nil, "", false, errors.New("support for lz4 compression has been removed")
+	case CompressionCanaryLZW:
+		return nil, "", false, errors.New("support for lzw compression has been removed")
 
 	default:
 		// If the first byte doesn't match the canary byte, it means

@@ -2293,7 +2293,7 @@ func (b *SystemBackend) internalPaths() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: pathInternalUINamespacesRead(b),
+					Callback: b.pathInternalUINamespacesRead,
 					Summary:  "Backwards compatibility is not guaranteed for this API",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
@@ -4010,6 +4010,29 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Type:        framework.TypeBool,
 					Description: "List ACL policies",
 					Query:       true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesDetailedAclList(),
+					Summary:  "List ACL policies with detailed information.",
+				},
+			},
+			HelpSynopsis:    strings.TrimSpace(sysHelp["policies"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["policies"][1]),
+		},
+
+		{
+			Pattern: "policies/detailed/acl/(?P<name>.+)",
+			Fields: map[string]*framework.FieldSchema{
+				"list": {
+					Type:        framework.TypeBool,
+					Description: "List ACL policies",
+					Query:       true,
+				},
+				"name": {
+					Type:        framework.TypeString,
+					Description: strings.TrimSpace(sysHelp["policy-name"][0]),
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{

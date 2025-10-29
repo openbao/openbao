@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/tlsdebug"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 
 	log "github.com/hashicorp/go-hclog"
@@ -259,14 +260,14 @@ func (cl *Listener) TLSConfig(ctx context.Context) (*tls.Config, error) {
 		return nil, errors.New("unsupported protocol")
 	}
 
-	return &tls.Config{
+	return tlsdebug.Inject(cl.logger, &tls.Config{
 		ClientAuth:           tls.RequireAndVerifyClientCert,
 		GetCertificate:       serverLookup,
 		GetClientCertificate: clientLookup,
 		GetConfigForClient:   serverConfigLookup,
 		MinVersion:           tls.VersionTLS12,
 		CipherSuites:         cl.cipherSuites,
-	}, nil
+	}), nil
 }
 
 // Run starts the tcp listeners and will accept connections until stop is

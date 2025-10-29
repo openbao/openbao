@@ -247,7 +247,7 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 	// Verify exact match of the route
 	match := c.router.MatchingMount(ctx, path)
 	if match == "" || ns.Path+path != match {
-		return errors.New("no matching mount")
+		return errNoMatchingMount
 	}
 
 	// Get the view for this backend
@@ -858,7 +858,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 
 	// Handle writing the legacy auth mount table by default.
 	writeTable := func(mt *MountTable, path string) (int, error) {
-		// Encode the auth mount table into JSON and compress it (lzw).
+		// Encode the auth mount table into JSON and compress it (Gzip).
 		compressedBytes, err := jsonutil.EncodeJSONAndCompress(mt, nil)
 		if err != nil {
 			c.logger.Error("failed to encode or compress auth mount table", "error", err)
@@ -1207,8 +1207,8 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *MountEntry, sysV
 		conf[k] = v
 	}
 
-	switch {
-	case entry.Type == "plugin":
+	switch entry.Type {
+	case "plugin":
 		conf["plugin_name"] = entry.Config.PluginName
 	default:
 		conf["plugin_name"] = t

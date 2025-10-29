@@ -319,7 +319,7 @@ func (m *RollbackManager) attemptRollback(ctx context.Context, fullPath string, 
 	if err != nil {
 		m.logger.Error("error rolling back", "path", fullPath, "error", err)
 	}
-	return
+	return err
 }
 
 // Rollback is used to trigger an immediate rollback of the path,
@@ -362,18 +362,14 @@ func (c *Core) startRollback() error {
 		// During teardown/setup after a leader change or unseal there could be
 		// something racy here so make sure the table isn't nil
 		if c.mounts != nil {
-			for _, entry := range c.mounts.Entries {
-				ret = append(ret, entry)
-			}
+			ret = append(ret, c.mounts.Entries...)
 		}
 		c.authLock.RLock()
 		defer c.authLock.RUnlock()
 		// During teardown/setup after a leader change or unseal there could be
 		// something racy here so make sure the table isn't nil
 		if c.auth != nil {
-			for _, entry := range c.auth.Entries {
-				ret = append(ret, entry)
-			}
+			ret = append(ret, c.auth.Entries...)
 		}
 		return ret
 	}

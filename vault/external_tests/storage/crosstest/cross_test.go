@@ -947,7 +947,7 @@ func getRandomOps(t *testing.T, count int, transactional bool, txLimit int) []*i
 		opI := rand.Intn(len(opTypes))
 		op := opTypes[opI]
 
-		var tx int = rand.Intn(txLimit+1) - 1
+		tx := rand.Intn(txLimit+1) - 1
 		var path string
 		var contents string
 		var after string

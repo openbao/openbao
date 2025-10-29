@@ -83,7 +83,7 @@ func (h *AllowIfModifiedSince) Evaluate(e *Executor) (results []*Result, err err
 		}
 
 		results = append(results, &ret)
-		return
+		return results, err
 	}
 
 	req, err := StringList(h.TuneData["passthrough_request_headers"])
@@ -128,5 +128,5 @@ func (h *AllowIfModifiedSince) Evaluate(e *Executor) (results []*Result, err err
 		results = append(results, &ret)
 	}
 
-	return
+	return results, err
 }

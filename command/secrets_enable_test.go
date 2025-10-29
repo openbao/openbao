@@ -18,7 +18,7 @@ import (
 // logicalBackendAdjustmentFactor is set to plus 1 for the database backend
 // which is a plugin but not found in go.mod files, and minus 1 for the ldap
 // and openldap secret backends which have the same underlying plugin.
-var logicalBackendAdjustmentFactor = 1 - 1
+var logicalBackendAdjustmentFactor = 1 - 1 //nolint:staticcheck // explanation above
 
 func testSecretsEnableCommand(tb testing.TB) (*cli.MockUi, *SecretsEnableCommand) {
 	tb.Helper()

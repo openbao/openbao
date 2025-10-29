@@ -264,7 +264,7 @@ func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage
 	}
 
 	// Make sure the seal configs were updated correctly.
-	b, r, err := cluster.Cores[0].Core.PhysicalSealConfigs(context.Background())
+	b, r, err := cluster.Cores[0].PhysicalSealConfigs(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -484,11 +484,7 @@ func attemptUnsealMigrate(client *api.Client, keys [][]byte, transitServerAvaila
 // awaitMigration waits for migration to finish.
 func awaitMigration(t *testing.T, client *api.Client) {
 	timeout := time.Now().Add(60 * time.Second)
-	for {
-		if time.Now().After(timeout) {
-			break
-		}
-
+	for time.Now().Before(timeout) {
 		resp, err := client.Sys().SealStatus()
 		if err != nil {
 			t.Fatal(err)

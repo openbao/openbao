@@ -29,24 +29,6 @@ const (
 )
 
 func (c *Core) Invalidate(key ...string) {
-	// Skip invalidations if we're not the standby. The InmemHA backend in
-	// particular dispatches invalidations on every node which isn't
-	// necessary as the active can invalidate itself.
-	if !c.standby.Load() {
-		return
-	}
-
-	c.stateLock.RLock()
-	activeContext := c.activeContext
-	c.stateLock.RUnlock()
-	if activeContext == nil {
-		return
-	}
-
-	if c.Sealed() {
-		return
-	}
-
 	c.invalidations.Add(key...)
 }
 
@@ -267,6 +249,12 @@ func isKeyringPath(key string) bool {
 		strings.HasPrefix(key, keyringUpgradePrefix)
 }
 
+func isMissedMountKey(key string) bool {
+	return strings.HasPrefix(key, credentialBarrierPrefix) ||
+		strings.HasPrefix(key, backendBarrierPrefix) ||
+		strings.HasPrefix(key, auditBarrierPrefix)
+}
+
 func (ij *invalidationJob) Execute() error {
 	ij.im.dispacherLogger.Trace("processing invalidation", "key", ij.key)
 	defer ij.im.dispacherLogger.Trace("concluding processing of invalidation", "key", ij.key)
@@ -406,6 +394,15 @@ func (ij *invalidationJob) Execute() error {
 	case ij.im.core.router.Invalidate(shortCtx, ij.key):
 		// if router.Invalidate returns true, a matching plugin was found and
 		// the invalidation is therefore dispatched.
+	case isMissedMountKey(ij.key):
+		// router.Invalidate(...) may return false when a matching plugin was
+		// not yet loaded, even though this was under a path we'd expect to
+		// be a mount key (auth/, audit/, or logical/) prefix. Ignoring it is
+		// fine: a later change to a subsequent entry will actually load the
+		// mount, loading any data this entry would've contained for the first
+		// time.
+		//
+		// This is true in reverse for deletions.
 	default:
 		ij.im.dispacherLogger.Warn("no mechanism to invalidate cache for specified key", "key", key)
 	}
@@ -486,15 +483,30 @@ func (ij *invalidationJob) OnFailure(err error) {
 }
 
 func (im *invalidationManager) Add(key ...string) {
+	// Skip invalidations if we're not enabled yet.
 	if !im.enabled.Load() {
 		return
 	}
 
+	// Skip invalidations if we're not the standby. The InmemHA backend in
+	// particular dispatches invalidations on every node which isn't
+	// necessary as the active is expected to invalidate itself in the course
+	// of writing the data.
+	if !im.core.standby.Load() {
+		return
+	}
+
+	// Likewise if we're sealed, ignore the invalidation.
+	if im.core.Sealed() {
+		return
+	}
+
+	// Add the keys.
 	im.pendingLock.Lock()
-	defer im.pendingLock.Unlock()
-
 	im.pending = append(im.pending, key...)
+	im.pendingLock.Unlock()
 
+	// Notify the processor.
 	select {
 	case im.pendingNotify <- struct{}{}:
 	default:

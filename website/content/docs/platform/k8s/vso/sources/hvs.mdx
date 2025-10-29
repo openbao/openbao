@@ -34,16 +34,16 @@ changes to the secret source are properly reflected in the Kubernetes secret.
 
 The following Kubernetes configuration can be used to sync the HCP Vault Secrets app, `vso-example`,
 to the Kubernetes Secret, `vso-app-secret`, in the `vso-example-ns` Kubernetes Namespace. It assumes that
-you have already setup [service principal Kubernetes secret](/docs/platform/k8s/vso/api-reference#hcpauthserviceprincipal),
+you have already setup [service principal Kubernetes secret](../api-reference.mdx#hcpauthserviceprincipal),
 and have created the HCP Vault Secrets app.
 
 Use the following Kubernetes configuration to sync your HCP Vault Secrets app, `vso-example`,
 to the Kubernetes secret, `vso-app-secret`, in the `vso-example-ns` Kubernetes namespace.
 The example configuration assumes you already a HCP Vault Secrets app created and have your
-[service principal Kubernetes secret](/docs/platform/k8s/vso/api-reference#hcpauthserviceprincipal)
+[service principal Kubernetes secret](../api-reference.mdx#hcpauthserviceprincipal)
 configured.
 
-Refer to the [Kubernetes VSO installation guide](/docs/platform/k8s/vso/installation)
+Refer to the [Kubernetes VSO installation guide](../installation.mdx)
 before applying any of the example configurations below.
 
 ```yaml

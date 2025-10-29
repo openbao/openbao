@@ -297,7 +297,7 @@ type Core struct {
 	standby              atomic.Bool
 	standbyDoneCh        chan struct{}
 	standbyStopCh        *atomic.Value
-	restartCh            *atomic.Value
+	standbyRestartCh     *atomic.Value
 	manualStepDownCh     chan struct{}
 	keepHALockOnStepDown *uint32
 	heldHALock           physical.Lock
@@ -935,7 +935,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		sealed:               new(uint32),
 		sealMigrationDone:    new(uint32),
 		standbyStopCh:        new(atomic.Value),
-		restartCh:            new(atomic.Value),
+		standbyRestartCh:     new(atomic.Value),
 		baseLogger:           conf.Logger,
 		logger:               conf.Logger.Named("core"),
 		logLevel:             conf.LogLevel,
@@ -992,7 +992,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	c.standby.Store(true)
 	c.standbyStopCh.Store(make(chan struct{}))
-	c.restartCh.Store(make(chan struct{}))
+	c.standbyRestartCh.Store(make(chan struct{}))
 	atomic.StoreUint32(c.sealed, 1)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
 
@@ -1952,8 +1952,8 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 		c.standbyDoneCh = make(chan struct{})
 		c.manualStepDownCh = make(chan struct{}, 1)
 		c.standbyStopCh.Store(make(chan struct{}))
-		c.restartCh.Store(make(chan struct{}))
-		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}), c.restartCh.Load().(chan struct{}))
+		c.standbyRestartCh.Store(make(chan struct{}))
+		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}), c.standbyRestartCh.Load().(chan struct{}))
 	}
 
 	// Success!

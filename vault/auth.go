@@ -96,10 +96,6 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	}
 	defer unlock()
 
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err

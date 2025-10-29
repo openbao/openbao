@@ -6,6 +6,9 @@ package logical
 import (
 	"errors"
 	"fmt"
+
+	"github.com/hashicorp/errwrap"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 var (
@@ -127,4 +130,20 @@ func (e *KeyNotFoundError) WrappedErrors() []error {
 
 func (e *KeyNotFoundError) Error() string {
 	return e.Err.Error()
+}
+
+// ShouldForward returns true if the error indicates the request should be forwarded
+// to the active node instead of handled locally.
+func ShouldForward(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if errwrap.Contains(err, ErrPerfStandbyPleaseForward.Error()) ||
+		errwrap.Contains(err, ErrReadOnly.Error()) ||
+		errwrap.Contains(err, consts.ErrStandby.Error()) {
+		return true
+	}
+
+	return false
 }

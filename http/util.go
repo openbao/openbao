@@ -34,8 +34,13 @@ var (
 	adjustResponse = func(core *vault.Core, w http.ResponseWriter, req *logical.Request) {}
 )
 
+func isSnapshotRequest(req *http.Request) bool {
+	return req.URL.Path == "/v1/sys/storage/raft/snapshot" ||
+		req.URL.Path == "/v1/sys/storage/raft/snapshot-force"
+}
+
 func resetBody(req *http.Request) error {
-	if req.Body == nil || req.Body == http.NoBody {
+	if req.Body == nil || req.Body == http.NoBody || isSnapshotRequest(req) {
 		return nil
 	}
 
@@ -96,11 +101,17 @@ func wrapMaxRequestSizeHandler(handler http.Handler, props *vault.HandlerPropert
 		// memory access patterns might be different. We trust r.Body to
 		// throw an IO error on context cancellation and we've already
 		// enforced maximum limits.
-		var err error
-		clonedReq.Body, err = buffer.NewSeekableReader(clonedReq.Body)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, err)
-			return
+		//
+		// In the event this is a request to Raft snapshotting, we skip this;
+		// snapshots are expected to exceed the maximum request size and we
+		// cannot interpose the request.
+		if !isSnapshotRequest(clonedReq) {
+			var err error
+			clonedReq.Body, err = buffer.NewSeekableReader(clonedReq.Body)
+			if err != nil {
+				respondError(w, http.StatusInternalServerError, err)
+				return
+			}
 		}
 
 		// Subsequent handlers can now type assert to *seekableReader and

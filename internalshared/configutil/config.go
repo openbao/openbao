@@ -58,8 +58,6 @@ type SharedConfig struct {
 	ClusterName string `hcl:"cluster_name"`
 
 	AdministrativeNamespacePath string `hcl:"administrative_namespace_path"`
-
-	DisableStandbyReads bool `hcl:"disable_standby_reads"`
 }
 
 func ParseConfig(d string) (*SharedConfig, error) {

@@ -14,6 +14,8 @@ import (
 
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/api/auth/approle/v2"
 	"github.com/openbao/openbao/api/v2"
@@ -328,14 +330,16 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				// Configure
-				_, err := client.Logical().Write("auth/"+pluginPath+"/role/role1", map[string]interface{}{
-					"bind_secret_id": "true",
-					"period":         "300",
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				// Configure the new mount; this takes some time as the
+				// secondary has not yet invalidated the mount from the call
+				// above.
+				require.EventuallyWithT(t, func(collect *assert.CollectT) {
+					_, err := client.Logical().Write("auth/"+pluginPath+"/role/role1", map[string]interface{}{
+						"bind_secret_id": "true",
+						"period":         "300",
+					})
+					require.NoError(collect, err)
+				}, 20*time.Second, 10*time.Millisecond)
 
 				secret, err := client.Logical().Write("auth/"+pluginPath+"/role/role1/secret-id", nil)
 				if err != nil {
@@ -385,10 +389,10 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 				client.SetToken(cluster.RootToken)
 
 				// Lookup - expect FAILURE
-				resp, err = client.Auth().Token().Lookup(revokeToken)
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
+				require.EventuallyWithT(t, func(collect *assert.CollectT) {
+					resp, err = client.Auth().Token().Lookup(revokeToken)
+					require.Error(collect, err)
+				}, 20*time.Second, 10*time.Millisecond)
 
 				// Reset root token
 				client.SetToken(cluster.RootToken)

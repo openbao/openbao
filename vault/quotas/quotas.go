@@ -942,13 +942,12 @@ func dbSchema() *memdb.DBSchema {
 // Invalidate receives notifications from the replication sub-system when a key
 // is updated in the storage. This function will read the key from storage and
 // updates the caches and data structures to reflect those updates.
-func (m *Manager) Invalidate(key string) {
+func (m *Manager) Invalidate(key string) error {
 	switch key {
 	case "config":
 		config, err := LoadConfig(m.ctx, m.storage)
 		if err != nil {
-			m.logger.Error("failed to invalidate quota config", "error", err)
-			return
+			return fmt.Errorf("failed to invalidate quota config: %w", err)
 		}
 
 		m.SetEnableRateLimitAuditLogging(config.EnableRateLimitAuditLogging)
@@ -958,8 +957,7 @@ func (m *Manager) Invalidate(key string) {
 	default:
 		splitKeys := strings.Split(key, "/")
 		if len(splitKeys) != 2 {
-			m.logger.Error("incorrect key while invalidating quota rule", "key", key)
-			return
+			return fmt.Errorf("incorrect key while invalidating quota rule: got %v parts, expected 2", len(splitKeys))
 		}
 		qType := splitKeys[0]
 		name := splitKeys[1]
@@ -967,25 +965,24 @@ func (m *Manager) Invalidate(key string) {
 		// Read quota rule from storage
 		quota, err := Load(m.ctx, m.storage, qType, name)
 		if err != nil {
-			m.logger.Error("failed to read invalidated quota rule", "error", err)
-			return
+			return fmt.Errorf("failed to read invalidated quota rule: %w", err)
 		}
 
 		switch quota {
 		case nil:
 			// Handle quota deletion
 			if err := m.DeleteQuota(m.ctx, qType, name); err != nil {
-				m.logger.Error("failed to delete invalidated quota rule", "error", err)
-				return
+				return fmt.Errorf("failed to delete invalidated quota rule: %w", err)
 			}
 		default:
 			// Handle quota update
 			if err := m.SetQuota(m.ctx, qType, quota, false); err != nil {
-				m.logger.Error("failed to update invalidated quota rule", "error", err)
-				return
+				return fmt.Errorf("failed to update invalidated quota rule: %w", err)
 			}
 		}
 	}
+
+	return nil
 }
 
 // LoadConfig reads the quota configuration from the underlying storage

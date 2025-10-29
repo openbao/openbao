@@ -159,14 +159,14 @@ func (i *InmemHABackend) invalidateAll(key string) {
 	defer i.l.Unlock()
 
 	for _, handler := range i.invalidators {
-		handler(key)
+		go handler(key)
 	}
 }
 
 func (i *InmemHABackend) Put(ctx context.Context, entry *physical.Entry) error {
 	err := i.Backend.Put(ctx, entry)
-	if err != nil {
-		go i.invalidateAll(entry.Key)
+	if err == nil {
+		i.invalidateAll(entry.Key)
 	}
 
 	return err
@@ -174,8 +174,8 @@ func (i *InmemHABackend) Put(ctx context.Context, entry *physical.Entry) error {
 
 func (i *InmemHABackend) Delete(ctx context.Context, key string) error {
 	err := i.Backend.Delete(ctx, key)
-	if err != nil {
-		go i.invalidateAll(key)
+	if err == nil {
+		i.invalidateAll(key)
 	}
 
 	return err

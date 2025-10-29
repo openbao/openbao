@@ -101,6 +101,8 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		// add the HTTP request to the logical request object for later consumption.
 		contentType := r.Header.Get("Content-Type")
 		if path == "sys/storage/raft/snapshot" || path == "sys/storage/raft/snapshot-force" || isOcspRequest(contentType) {
+			// While snapshots are handled specially to size-limit the request,
+			// OCSP requests are still bound by the maximum content size.
 			passHTTPReq = true
 		} else {
 			// Sample the first bytes to determine whether this should be parsed as

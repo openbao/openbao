@@ -7,10 +7,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,53 +28,6 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
-
-func connectPeers(nodes ...*RaftBackend) {
-	for _, node := range nodes {
-		for _, peer := range nodes {
-			if node == peer {
-				continue
-			}
-
-			node.raftTransport.(*raft.InmemTransport).Connect(raft.ServerAddress(peer.NodeID()), peer.raftTransport)
-			peer.raftTransport.(*raft.InmemTransport).Connect(raft.ServerAddress(node.NodeID()), node.raftTransport)
-		}
-	}
-}
-
-func stepDownLeader(t *testing.T, node *RaftBackend) {
-	t.Helper()
-
-	if err := node.raft.LeadershipTransfer().Error(); err != nil {
-		t.Fatal(err)
-	}
-
-	timeout := time.Now().Add(time.Second * 10)
-	for !time.Now().After(timeout) {
-		if err := node.raft.VerifyLeader().Error(); err != nil {
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	t.Fatal("still leader")
-}
-
-func waitForLeader(t *testing.T, nodes ...*RaftBackend) *RaftBackend {
-	t.Helper()
-	timeout := time.Now().Add(time.Second * 10)
-	for !time.Now().After(timeout) {
-		for _, node := range nodes {
-			if node.raft.Leader() == raft.ServerAddress(node.NodeID()) {
-				return node
-			}
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	t.Fatal("no leader")
-	return nil
-}
 
 func compareFSMs(t *testing.T, fsm1, fsm2 *FSM) {
 	t.Helper()
@@ -587,7 +540,7 @@ func BenchmarkDB_Puts(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pe.Key = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s-%d", testName, i))))
+			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 			err := s.Put(ctx, pe)
 			if err != nil {
 				b.Fatal(err)
@@ -615,7 +568,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 	testName := b.Name()
 
 	for i := 0; i < 100; i++ {
-		pe.Key = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s-%d", testName, i))))
+		pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 		err = raft.Put(ctx, pe)
 		if err != nil {
 			b.Fatal(err)
@@ -625,7 +578,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 	bench := func(b *testing.B, s *FSM) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pe.Key = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s-%d", testName, i))))
+			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 			s.writeTo(ctx, discardCloser{Writer: io.Discard}, discardCloser{Writer: io.Discard})
 		}
 	}

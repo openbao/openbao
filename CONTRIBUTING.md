@@ -71,7 +71,8 @@ that lacks a sign-off to this agreement will not be accepted by the OpenBao proj
 | James Butcher    | james@iotechsys.com       |                                            | Brad Corrion (brad@iotechsys.com)               | IOTech Systems       | Member       |
 | Julian Cassignol | jcassignol@wallix.com     |                                            | Dan Ghita (dghita@wallix.com)                   | Wallix               | Member       |
 | Michael Hofer    | michael.hofer@adfinis.com | [@karras](https://github.com/karras)       | Andrii Fedorchuk (andrii.fedorchuk@adfinis.com) | Adfinis              | Member       |
-| Alexander Scheel | ascheel@gitlab.com        | [@cipherboy](https://github.com/cipherboy) | Jocelyn Eillis (jeillis@gitlab.com)             | GitLab               | Chair        |
+| Alexander Scheel | ascheel@gitlab.com        | [@cipherboy](https://github.com/cipherboy) | Ken McDonald (kmcdonald@gitlab.com)             | GitLab               | Chair        |
+| Klaus Kiefer     | klaus.kiefer@sap.com      | [@klaus-sap](https://github.com/klaus-sap) | Jonas Köhnen (j.koehnen@reply.de)               | SAP                  | Member       |
 
 To view the process for joining the TSC, see [GOVERNANCE.md](GOVERNANCE.md) in
 the root of this repository. That document is considered part of this document.

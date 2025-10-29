@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 )
 
 func parseBlockList(hclStr, blockName string) (*ast.ObjectList, error) {
-	file, err := hcl.Parse(hclStr)
+	file, err := hclutil.ParseConfig([]byte(hclStr))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse HCL: %w", err)
 	}
@@ -42,7 +42,7 @@ initialize "auth" {
 	if err != nil {
 		t.Fatalf("parseBlockList error: %v", err)
 	}
-	outers, err := ParseOuterConfig("initialize", nil, list)
+	outers, err := ParseOuterConfig("initialize", list)
 	if err != nil {
 		t.Fatalf("ParseOuterConfig returned error: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestParseOuterConfig_EmptyList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseBlockList error: %v", err)
 	}
-	outers, err := ParseOuterConfig("initialize", nil, list)
+	outers, err := ParseOuterConfig("initialize", list)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -105,7 +105,7 @@ initialize {
 	if err != nil {
 		t.Fatalf("parseBlockList error: %v", err)
 	}
-	_, err = ParseOuterConfig("initialize", nil, list)
+	_, err = ParseOuterConfig("initialize", list)
 	if err == nil || !strings.Contains(err.Error(), "type must be specified") {
 		t.Fatalf("expected type-specification error, got %v", err)
 	}
@@ -134,7 +134,7 @@ request "op1" {
   data      = { key = "value" }
 }
 `
-	file, err := hcl.Parse(hclStr)
+	file, err := hclutil.ParseConfig([]byte(hclStr))
 	if err != nil {
 		t.Fatalf("failed to parse HCL: %v", err)
 	}
@@ -165,7 +165,7 @@ request {
   operation = "read"
 }
 `
-	file, err := hcl.Parse(hclStr)
+	file, err := hclutil.ParseConfig([]byte(hclStr))
 	if err != nil {
 		t.Fatalf("failed to parse HCL: %v", err)
 	}

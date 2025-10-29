@@ -21,10 +21,7 @@ func main() {
 
 // Run instantiates a MySQL object, and runs the RPC server for the plugin
 func Run() error {
-	var f func() (interface{}, error)
-	f = mysql.New(mysql.DefaultUserNameTemplate)
-
-	dbplugin.ServeMultiplex(f)
+	dbplugin.ServeMultiplex(mysql.New(mysql.DefaultUserNameTemplate))
 
 	return nil
 }

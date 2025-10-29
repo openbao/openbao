@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	sqjwt "github.com/go-jose/go-jose/v3/jwt"
+	sqjwt "github.com/go-jose/go-jose/v4/jwt"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"

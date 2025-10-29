@@ -220,6 +220,7 @@ func (p *PathFetch) FetchSurfaceError() error {
 	}
 
 	if strings.Contains(p.FetchError.Error(), "route entry not found") {
+		//nolint:staticcheck // user-facing error
 		return fmt.Errorf("Error making API request: was a bad mount given?\n\nOperation: %v\nPath: %v\nOriginal Error:\n%w", p.Operation, p.Path, p.FetchError)
 	}
 
@@ -298,6 +299,7 @@ func ValidateMountType(client *api.Client, mount string, expectedType string) er
 	case "pki":
 		// Provide clear error message for auth mounts.
 		if strings.HasPrefix(mount, "auth/") || strings.HasPrefix(mount, "/auth/") {
+			//nolint:staticcheck // user-facing error
 			return errors.New("Refusing to run PKI health-check on auth mount; this command is only relevant to PKI secrets engines.")
 		}
 	}

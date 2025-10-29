@@ -100,7 +100,7 @@ func GetHexFormatted(buf []byte, sep string) string {
 	var ret bytes.Buffer
 	for _, cur := range buf {
 		if ret.Len() > 0 {
-			fmt.Fprintf(&ret, sep)
+			fmt.Fprintf(&ret, "%s", sep)
 		}
 		fmt.Fprintf(&ret, "%02x", cur)
 	}
@@ -209,13 +209,13 @@ func ParseDERKey(privateKeyBytes []byte) (signer crypto.Signer, format BlockType
 	var firstError error
 	if signer, firstError = x509.ParseECPrivateKey(privateKeyBytes); firstError == nil {
 		format = ECBlock
-		return
+		return signer, format, err
 	}
 
 	var secondError error
 	if signer, secondError = x509.ParsePKCS1PrivateKey(privateKeyBytes); secondError == nil {
 		format = PKCS1Block
-		return
+		return signer, format, err
 	}
 
 	var thirdError error
@@ -233,7 +233,7 @@ func ParseDERKey(privateKeyBytes []byte) (signer crypto.Signer, format BlockType
 		}
 
 		format = PKCS8Block
-		return
+		return signer, format, err
 	}
 
 	return nil, UnknownBlock, fmt.Errorf("got errors attempting to parse DER private key:\n1. %v\n2. %v\n3. %v", firstError, secondError, thirdError)
@@ -326,7 +326,7 @@ func generatePrivateKey(keyType string, keyBits int, container ParsedPrivateKeyC
 	var privateKeyBytes []byte
 	var privateKey crypto.Signer
 
-	var randReader io.Reader = rand.Reader
+	randReader := rand.Reader
 	if entropyReader != nil {
 		randReader = entropyReader
 	}
@@ -476,13 +476,13 @@ func ComparePublicKeys(key1Iface, key2Iface crypto.PublicKey) (bool, error) {
 }
 
 // ParsePublicKeyPEM is used to parse RSA and ECDSA public keys from PEMs
-func ParsePublicKeyPEM(data []byte) (interface{}, error) {
+func ParsePublicKeyPEM(data []byte) (crypto.PublicKey, error) {
 	block, data := pem.Decode(data)
 	if block != nil {
 		if len(bytes.TrimSpace(data)) > 0 {
 			return nil, errutil.UserError{Err: "unexpected trailing data after parsed PEM block"}
 		}
-		var rawKey interface{}
+		var rawKey any
 		var err error
 		if rawKey, err = x509.ParsePKIXPublicKey(block.Bytes); err != nil {
 			if cert, err := x509.ParseCertificate(block.Bytes); err == nil {
@@ -1399,7 +1399,7 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 		certTemplate.URIs = data.CSR.URIs
 
 		for _, name := range data.CSR.Extensions {
-			if !name.Id.Equal(ExtensionBasicConstraintsOID) && !(len(data.Params.OtherSANs) > 0 && name.Id.Equal(ExtensionSubjectAltNameOID)) {
+			if !name.Id.Equal(ExtensionBasicConstraintsOID) && (len(data.Params.OtherSANs) == 0 || !name.Id.Equal(ExtensionSubjectAltNameOID)) {
 				certTemplate.ExtraExtensions = append(certTemplate.ExtraExtensions, name)
 			}
 		}

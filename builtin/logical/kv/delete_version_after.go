@@ -45,10 +45,7 @@ const (
 // IsDeleteVersionAfterDisabled returns true if DeleteVersionAfter is
 // disabled.
 func (c *Configuration) IsDeleteVersionAfterDisabled() bool {
-	if deleteVersionAfter(c) == disabled {
-		return true
-	}
-	return false
+	return deleteVersionAfter(c) == disabled
 }
 
 // DisableDeleteVersionAfter disables DeleteVersionAfter.

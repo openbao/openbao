@@ -23,6 +23,9 @@ type RotateInitRequest struct {
 }
 
 type RotateStatusResponse struct {
+	Complete             bool     `json:"complete,omitempty"`
+	Keys                 []string `json:"keys,omitempty"`
+	KeysB64              []string `json:"keys_base64,omitempty"`
 	Nonce                string   `json:"nonce"`
 	Started              bool     `json:"started"`
 	T                    int      `json:"t"`

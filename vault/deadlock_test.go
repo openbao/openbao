@@ -40,7 +40,7 @@ func InduceDeadlock(t *testing.T, vaultcore *Core, expected uint32) {
 		defer wg.Done()
 		vaultcore.expiration.coreStateLock.Lock()
 		mtx.Lock()
-		mtx.Unlock()
+		mtx.Unlock() //nolint:staticcheck
 		vaultcore.expiration.coreStateLock.Unlock()
 	}()
 	wg.Wait()
@@ -49,7 +49,7 @@ func InduceDeadlock(t *testing.T, vaultcore *Core, expected uint32) {
 		defer wg.Done()
 		mtx.Lock()
 		vaultcore.expiration.coreStateLock.RLock()
-		vaultcore.expiration.coreStateLock.RUnlock()
+		vaultcore.expiration.coreStateLock.RUnlock() //nolint:staticcheck
 		mtx.Unlock()
 	}()
 	wg.Wait()

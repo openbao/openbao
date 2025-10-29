@@ -4,7 +4,18 @@ description: The `/sys/init` endpoint is used to initialize a new OpenBao.
 
 # `/sys/init`
 
-The `/sys/init` endpoint is used to initialize a new OpenBao.
+The `/sys/init` endpoint is used to initialize a new OpenBao instance. When using
+an auto-unseal mechanism, it is possible to initialize OpenBao (since `v2.4.0`)
+with `recovery_shares` config parameter set as `0`, resulting in the recovery keys
+not being generated at initialization time, and thus will not be returned back to
+the operator. The system will function as if it has no recovery keys. To create
+recovery keys the operator is required to to manually call [init](/api-docs/system/rotate/init)
+endpoint, which will return working keys immediately. This is not applicable for
+Shamir's based unsealing. Recovery mode will not function until such keys are
+created, and the operator will be unable to use the API to unseal a manually sealed
+auto-unseal instance. Only restarting an instance will allow a manually sealed
+instance to unseal again. The root key is rotatable through the `sudo`-protected
+(`sys/rotate/root`) endpoint.
 
 ## Read initialization status
 
@@ -54,7 +65,7 @@ available when using [Auto Unseal](/docs/concepts/seal#auto-unseal).
   split the root key into.
 
 - `secret_threshold` `(int: <required>)` – Specifies the number of shares
-  required to reconstruct the root key. This must be less than or equal
+  required to reconstruct the root key. This must be less than or equal to
   `secret_shares`.
 
 Additionally, the following options are only supported using Auto Unseal:
@@ -106,8 +117,11 @@ provided) root keys, base 64 encoded root keys and initial root token:
 }
 ```
 
-**Warning:** Please be reminded that recovery keys are used as an 
-authentication flow for rekeying and regeneration of root credentials and cannot 
-be used to unseal OpenBao in the case of the unavailability of the seal mechanism.
-Refer to the full warning in the documentation for 
-[Auto Unseal](/docs/concepts/seal#auto-unseal).
+:::warning
+
+Please be reminded that recovery keys are used as an authentication flow for
+rotation and regeneration of root credentials and cannot be used to unseal
+OpenBao in the case of the unavailability of the seal mechanism. Refer to
+the full warning in the documentation for [Auto Unseal](/docs/concepts/seal#auto-unseal).
+
+:::

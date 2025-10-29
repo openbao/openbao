@@ -86,7 +86,10 @@ to specify where the configuration is.
 
 ## Parameters
 
-- `storage` `([StorageBackend][storage-backend]: <required>)` –
+- `audit` <code>([Audit][audit]: &lt;none&gt;)</code> – Specifies [audit device
+  configuration][audit]. Can be specified multiple times.
+
+- `storage` <code>([StorageBackend][storage-backend]: &lt;required&gt;)</code> –
   Configures the storage backend where OpenBao data is stored. Please see the
   [storage backends documentation][storage-backend] for the full list of
   available storage backends. Running OpenBao in HA mode would require
@@ -96,23 +99,22 @@ to specify where the configuration is.
   configured with a backend that supports HA, along with corresponding HA
   options.
 
-- `ha_storage` `([StorageBackend][storage-backend]: nil)` – Configures
+- `ha_storage` <code>([StorageBackend][storage-backend]: nil)</code> – Configures
   the storage backend where OpenBao HA coordination will take place. This must be
   an HA-supporting backend. If not set, HA will be attempted on the backend
   given in the `storage` parameter. This parameter is not required if the
   storage backend supports HA coordination and if HA specific options are
   already specified with `storage` parameter.
 
-- `listener` `([Listener][listener]: <required>)` – Configures how
+- `listener` <code>([Listener][listener]: &lt;required&gt;)</code> – Configures how
   OpenBao is listening for API requests.
 
-- `user_lockout` `([UserLockout][user-lockout]: nil)` –
+- `user_lockout` <code>([UserLockout][userlockout]: nil)</code>. –
   Configures the user-lockout behaviour for failed logins. For more information, please see the
   [user lockout configuration documentation](/docs/configuration/user-lockout). 
 
-- `seal` `([Seal][seal]: nil)` – Configures the seal type to use for
-  auto-unsealing, as well as for
-  [seal wrapping][sealwrap] as an additional layer of data protection.
+- `seal` <code>([Seal][seal]: nil)</code> – Configures the seal type to use for
+  auto-unsealing.
 
 - `cluster_name` `(string: <generated>)` – Specifies the identifier for the
   OpenBao cluster. If omitted, OpenBao will generate a value.
@@ -125,8 +127,8 @@ to specify where the configuration is.
   the read cache used by the physical storage subsystem. This will very
   significantly impact performance.
 
-- `initialize` `([Initialize][initialize]: <none>)` – Specifies one-time
-  declarative self-initialization.
+- `initialize` <code>([Initialize][initialize]: &lt;none&gt;)</code> – Specifies one-time
+  [declarative self-initialization][initialize]. Can be specified multiple times.
 
 - `plugin_directory` `(string: "")` – A directory from which plugins are
   allowed to be loaded. OpenBao must have permission to read files in this
@@ -143,7 +145,7 @@ to specify where the configuration is.
   This only needs to be set if the file permissions check is enabled via the environment variable
   `VAULT_ENABLE_FILE_PERMISSIONS_CHECK`.
 
-- `telemetry` `([Telemetry][telemetry]: <none>)` – Specifies the telemetry
+- `telemetry` <code>([Telemetry][telemetry]: &lt;none&gt;)</code> – Specifies the telemetry
   reporting system.
 
 - `default_lease_ttl` `(string: "768h")` – Specifies the default lease duration
@@ -202,19 +204,21 @@ can have a negative effect on performance due to the tracking of each lock attem
   Supported values (in order of descending detail) are `trace`, `debug`, `info`, `warn`, and `error`.
   This can also be specified via the `BAO_LOG_LEVEL` environment variable.
 
-:::warning
+  :::warning
 
- Note: On SIGHUP (`sudo kill -s HUP` _pid of bao_), if a valid value is specified, OpenBao will update the existing log level,
-  overriding (even if specified) both the CLI flag and environment variable.
+  Note: On SIGHUP (`sudo kill -s HUP` _pid of bao_), if a valid value is
+  specified, OpenBao will update the existing log level, overriding (even if
+  specified) both the CLI flag and environment variable.
 
-:::
+  :::
 
-:::warning
+  :::warning
 
- Note: Not all parts of OpenBao's logging can have its log level be changed dynamically this way; in particular,
-  secrets/auth plugins are currently not updated dynamically.
+  Note: Not all parts of OpenBao's logging can have its log level be changed
+  dynamically this way; in particular, secrets/auth plugins are currently not
+  updated dynamically.
 
-:::
+  :::
 
 - `log_format` - Equivalent to the [`-log-format` command-line flag](/docs/commands/server#_log_format).
 
@@ -248,7 +252,7 @@ The following parameters are used on backends that support [High Availability][h
   other OpenBao servers in the cluster for client redirection. This value is also
   used for [plugin backends][plugins]. This can also be provided via the
   environment variable `VAULT_API_ADDR`. In general this should be set as a full
-  URL that points to the value of the [`listener`](#listener) address.
+  URL that points to the value of the [`listener`][listener] address.
   This can be dynamically defined with a
   [go-sockaddr template](https://pkg.go.dev/github.com/hashicorp/go-sockaddr/template)
   that is resolved at runtime.
@@ -267,11 +271,12 @@ The following parameters are used on backends that support [High Availability][h
   will disable these features _only when that node is the active node_. This
   parameter cannot be set to `true` if `raft` is the storage type.
 
+[audit]: /docs/configuration/audit
 [storage-backend]: /docs/configuration/storage
 [listener]: /docs/configuration/listener
 [seal]: /docs/configuration/seal
 [telemetry]: /docs/configuration/telemetry
 [initialize]: /docs/configuration/self-init
-[sentinel]: /docs/configuration/sentinel
 [high-availability]: /docs/concepts/ha
 [plugins]: /docs/plugins
+[userlockout]: /docs/configuration/user-lockout

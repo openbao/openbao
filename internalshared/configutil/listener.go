@@ -25,6 +25,11 @@ type ListenerTelemetry struct {
 	UnusedKeys                      UnusedKeyMap `hcl:",unusedKeyPositions"`
 	UnauthenticatedMetricsAccess    bool         `hcl:"-"`
 	UnauthenticatedMetricsAccessRaw interface{}  `hcl:"unauthenticated_metrics_access,alias:UnauthenticatedMetricsAccess"`
+	DisallowMetrics                 bool         `hcl:"-"`
+	DisallowMetricsRaw              interface{}  `hcl:"disallow_metrics,alias:DisallowMetrics"`
+	MetricsOnly                     bool         `hcl:"-"`
+	MetricsOnlyRaw                  interface{}  `hcl:"metrics_only,alias:MetricsOnly"`
+	MetricsPath                     string       `hcl:"metrics_path,alias:MetricsPath"`
 }
 
 type ListenerProfiling struct {
@@ -49,14 +54,18 @@ type Listener struct {
 	PurposeRaw interface{} `hcl:"purpose"`
 	Role       string      `hcl:"role"`
 
-	Address                 string        `hcl:"address"`
-	ClusterAddress          string        `hcl:"cluster_address"`
-	MaxRequestSize          int64         `hcl:"-"`
-	MaxRequestSizeRaw       interface{}   `hcl:"max_request_size"`
-	MaxRequestDuration      time.Duration `hcl:"-"`
-	MaxRequestDurationRaw   interface{}   `hcl:"max_request_duration"`
-	RequireRequestHeader    bool          `hcl:"-"`
-	RequireRequestHeaderRaw interface{}   `hcl:"require_request_header"`
+	Address                  string        `hcl:"address"`
+	ClusterAddress           string        `hcl:"cluster_address"`
+	MaxRequestSize           int64         `hcl:"-"`
+	MaxRequestSizeRaw        interface{}   `hcl:"max_request_size"`
+	MaxRequestJsonMemory     int64         `hcl:"-"`
+	MaxRequestJsonMemoryRaw  interface{}   `hcl:"max_request_json_memory"`
+	MaxRequestJsonStrings    int64         `hcl:"-"`
+	MaxRequestJsonStringsRaw interface{}   `hcl:"max_request_json_strings"`
+	MaxRequestDuration       time.Duration `hcl:"-"`
+	MaxRequestDurationRaw    interface{}   `hcl:"max_request_duration"`
+	RequireRequestHeader     bool          `hcl:"-"`
+	RequireRequestHeaderRaw  interface{}   `hcl:"require_request_header"`
 
 	TLSDisable    bool        `hcl:"-"`
 	TLSDisableRaw interface{} `hcl:"tls_disable"`
@@ -255,6 +264,22 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 
 				l.RequireRequestHeaderRaw = nil
 			}
+
+			if l.MaxRequestJsonMemoryRaw != nil {
+				if l.MaxRequestJsonMemory, err = parseutil.ParseInt(l.MaxRequestJsonMemoryRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("error parsing max_request_json_memory: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.MaxRequestJsonMemoryRaw = nil
+			}
+
+			if l.MaxRequestJsonStringsRaw != nil {
+				if l.MaxRequestJsonStrings, err = parseutil.ParseInt(l.MaxRequestJsonStringsRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("error parsing max_request_json_strings: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.MaxRequestJsonStringsRaw = nil
+			}
 		}
 
 		// TLS Parameters
@@ -390,6 +415,22 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 				}
 
 				l.Telemetry.UnauthenticatedMetricsAccessRaw = nil
+			}
+
+			if l.Telemetry.DisallowMetricsRaw != nil {
+				if l.Telemetry.DisallowMetrics, err = parseutil.ParseBool(l.Telemetry.DisallowMetricsRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for telemetry.disallow_metrics: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.Telemetry.DisallowMetricsRaw = nil
+			}
+
+			if l.Telemetry.MetricsOnlyRaw != nil {
+				if l.Telemetry.MetricsOnly, err = parseutil.ParseBool(l.Telemetry.MetricsOnlyRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for telemetry.metrics_only: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.Telemetry.MetricsOnlyRaw = nil
 			}
 		}
 

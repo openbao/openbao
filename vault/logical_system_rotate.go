@@ -48,39 +48,31 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 
 	rotateStatusSchema := map[string]*framework.FieldSchema{
 		"nonce": {
-			Type:     framework.TypeString,
-			Required: true,
+			Type: framework.TypeString,
 		},
 		"complete": {
 			Type: framework.TypeBool,
 		},
 		"started": {
-			Type:     framework.TypeBool,
-			Required: true,
+			Type: framework.TypeBool,
 		},
 		"t": {
-			Type:     framework.TypeInt,
-			Required: true,
+			Type: framework.TypeInt,
 		},
 		"n": {
-			Type:     framework.TypeInt,
-			Required: true,
+			Type: framework.TypeInt,
 		},
 		"progress": {
-			Type:     framework.TypeInt,
-			Required: true,
+			Type: framework.TypeInt,
 		},
 		"required": {
-			Type:     framework.TypeInt,
-			Required: true,
+			Type: framework.TypeInt,
 		},
 		"verification_required": {
-			Type:     framework.TypeBool,
-			Required: true,
+			Type: framework.TypeBool,
 		},
 		"verification_nonce": {
-			Type:     framework.TypeString,
-			Required: true,
+			Type: framework.TypeString,
 		},
 		"keys": {
 			Type: framework.TypeCommaStringSlice,
@@ -505,7 +497,7 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 		// Get the seal configuration
 		existingConfig, err := b.Core.SealAccess().BarrierConfig(ctx)
 		if err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to fetch existing config: %w", err).Error())
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to fetch existing config: %v", err)
 		}
 
 		// Ensure the barrier is initialized
@@ -520,12 +512,12 @@ func (b *SystemBackend) handleRotateRoot() framework.OperationFunc {
 		newKey, err := b.Core.barrier.GenerateKey(b.Core.secureRandomReader)
 		if err != nil {
 			b.Core.logger.Error("failed to generate root key", "error", err)
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("root key generation failed: %w", err).Error())
+			return nil, logical.CodedError(http.StatusInternalServerError, "root key generation failed: %v", err)
 		}
 
 		// Perform the rotation
 		if err := b.Core.performBarrierRekey(ctx, newKey); err != nil {
-			return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to perform barrier rekey: %w", err).Error())
+			return nil, logical.CodedError(http.StatusInternalServerError, "failed to perform barrier rekey: %v", err)
 		}
 
 		// Remove the rotation config
@@ -556,10 +548,10 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"started":        false,
-				"t":              0,
-				"n":              0,
-				"seal_threshold": sealThreshold,
+				"started":  false,
+				"t":        0,
+				"n":        0,
+				"required": sealThreshold,
 			},
 		}
 
@@ -653,6 +645,8 @@ func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 			return &logical.Response{
 				Data: map[string]interface{}{
 					"complete":              true,
+					"t":                     secretThreshold,
+					"n":                     secretShares,
 					"backup":                result.Backup,
 					"pgp_fingerprints":      result.PGPFingerprints,
 					"verification_required": result.VerificationRequired,

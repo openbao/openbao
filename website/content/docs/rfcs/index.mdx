@@ -12,6 +12,21 @@ Steering Committee.
 
 ## Accepted
 
+ - [Per-Namespace Sealing](/docs/rfcs/namespace-sealing), to add per-tenant 
+   encryption key separation.
+ - [External Key Configuration for KMS and HSM Access](/docs/rfcs/external-keys),
+   to add support for secure key material storage and interaction from
+   secrets engines like PKI, Transit, and SSH.
+ - [Web UI Modernization](/docs/rfcs/web-ui-modernization), for rewriting OpenBao’s web UI from EmberJS to React
+   to create a modern, secure, and extensible interface.
+ - [Standby nodes handle read requests](/docs/rfcs/standby-nodes-handle-read-requests),
+   to allow standby nodes in a high-availability setup to handle read
+   requests directly, improving horizontal scalability.
+ - [Switch to OpenTelemetry](/docs/rfcs/opentelemetry), to replace the current
+   metrics based on `go-metrics` with OpenTelemetry based metrics.
+
+## Landed
+
  - [Authenticated rekey](/docs/rfcs/authenticated-rekey), to make the rekey
    root and rekey recovery keys endpoints authenticated and additionally
    authorized by a token and its policy.
@@ -19,14 +34,6 @@ Steering Committee.
    to define initial mounts, auth, policies, and audit logs from a static
    configuration applied once on early startup, preventing the need to call
    manual `sys/init` except with manual unseal mechanisms.
- - [External Key Configuration for KMS and HSM Access](/docs/rfcs/external-keys),
-   to add support for secure key material storage and interaction from
-   secrets engines like PKI, Transit, and SSH.
- - [Web UI Modernization](/docs/rfcs/web-ui-modernization), for rewriting OpenBao’s web UI from EmberJS to React
-   to create a modern, secure, and extensible interface.
-
-## Landed
-
  - [Paginated lists](/docs/rfcs/paginated-lists), for adding pagination
    to the user-facing API and storage backends. This landed in
    [PR #170](https://github.com/openbao/openbao/pull/170).
@@ -70,6 +77,9 @@ Steering Committee.
    to discuss how to incorporate authentication sent via the main operation,
    without returning or storing the resulting token, for operations that do
    not create leases. Landed in [PR #1433](https://github.com/openbao/openbao/pull/1433).
+ - [Define audit devices in the configuration file](/docs/rfcs/config-audit-devices),
+   solving the security and usability gaps after HCSEC-2025-14.
+   Landed in [PR #1700](https://github.com/openbao/openbao/pull/1700).
 
 ## Strategic
 

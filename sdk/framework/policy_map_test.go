@@ -13,7 +13,7 @@ import (
 
 func TestPolicyMap(t *testing.T) {
 	p := &PolicyMap{}
-	p.PathMap.Name = "foo"
+	p.Name = "foo"
 	s := new(logical.InmemStorage)
 
 	ctx := context.Background()

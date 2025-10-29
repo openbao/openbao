@@ -32,7 +32,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	uberAtomic "go.uber.org/atomic"
 )
 
 const (
@@ -149,7 +148,7 @@ type ExpirationManager struct {
 	// testRegisterAuthFailure, if set to true, triggers an explicit failure on
 	// RegisterAuth to simulate a partial failure during a token creation
 	// request. This value should only be set by tests.
-	testRegisterAuthFailure uberAtomic.Bool
+	testRegisterAuthFailure atomic.Bool
 
 	jobManager      *fairshare.JobManager
 	revokeRetryBase time.Duration
@@ -425,8 +424,10 @@ func (c *Core) setupExpiration(e ExpireLeaseStrategy) error {
 			case <-quit:
 				return
 			case <-t.C:
-				c.expiration.attemptIrrevocableLeasesRevoke()
-				t.Reset(24 * time.Hour)
+				c.expiration.jobManager.AddJob(fairshare.SimpleJob(func() {
+					c.expiration.attemptIrrevocableLeasesRevoke()
+					t.Reset(24 * time.Hour)
+				}), "attemptIrrevocableLeasesRevoke")
 			}
 		}
 	}()
@@ -502,6 +503,9 @@ func (m *ExpirationManager) inRestoreMode() bool {
 	return atomic.LoadInt32(m.restoreMode) == 1
 }
 
+// invalidate will be used in the future for implementing read replica nodes
+//
+//nolint:unused
 func (m *ExpirationManager) invalidate(key string) {
 	switch {
 	case strings.HasPrefix(key, leaseViewPrefix):
@@ -529,8 +533,8 @@ func (m *ExpirationManager) invalidate(key string) {
 		info, ok := m.pending.Load(leaseID)
 		switch {
 		case ok:
-			switch {
-			case le == nil:
+			switch le {
+			case nil:
 				// Handle lease deletion
 				pending := info.(pendingInfo)
 				pending.timer.Stop()
@@ -899,13 +903,8 @@ func (m *ExpirationManager) Stop() error {
 		return true
 	})
 
-	if m.inRestoreMode() {
-		for {
-			if !m.inRestoreMode() {
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
+	for m.inRestoreMode() {
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	m.emptyUniquePolicies.Stop()
@@ -959,13 +958,17 @@ func (m *ExpirationManager) lazyRevokeInternal(ctx context.Context, leaseID stri
 // should be run on a schedule. something like once a day, maybe once a week
 func (m *ExpirationManager) attemptIrrevocableLeasesRevoke() {
 	m.irrevocable.Range(func(k, v interface{}) bool {
+		if m.quitContext.Err() != nil {
+			return false
+		}
+
 		leaseID := k.(string)
 		le := v.(*leaseEntry)
 
 		if le.ExpireTime.Add(time.Hour).Before(time.Now()) {
 			// if we get an error (or no namespace) note it, but continue attempting
 			// to revoke other leases
-			leaseNS, err := m.getNamespaceFromLeaseID(m.core.activeContext, leaseID)
+			leaseNS, err := m.getNamespaceFromLeaseID(m.quitContext, leaseID)
 			if err != nil {
 				m.logger.Debug("could not get lease namespace from ID", "error", err)
 				return true
@@ -975,7 +978,7 @@ func (m *ExpirationManager) attemptIrrevocableLeasesRevoke() {
 				return true
 			}
 
-			ctxWithNS := namespace.ContextWithNamespace(m.core.activeContext, leaseNS)
+			ctxWithNS := namespace.ContextWithNamespace(m.quitContext, leaseNS)
 			ctxWithNSAndTimeout, cancel := context.WithTimeout(ctxWithNS, time.Minute)
 			defer cancel()
 			if err := m.revokeCommon(ctxWithNSAndTimeout, leaseID, false, false); err != nil {
@@ -1578,7 +1581,7 @@ func (m *ExpirationManager) Register(ctx context.Context, req *logical.Request, 
 	// ticking, so we'll end up always returning 299 instead of 300 or
 	// 26399 instead of 26400, say, even if it's just a few
 	// microseconds. This provides a nicer UX.
-	resp.Secret.TTL = le.ExpireTime.Sub(time.Now()).Round(time.Second)
+	resp.Secret.TTL = time.Until(le.ExpireTime).Round(time.Second)
 
 	// Done
 	return le.LeaseID, nil
@@ -1866,7 +1869,7 @@ func (m *ExpirationManager) updatePendingInternal(le *leaseEntry) {
 		return
 	}
 
-	leaseTotal := le.ExpireTime.Sub(time.Now())
+	leaseTotal := time.Until(le.ExpireTime)
 	leaseCreated := false
 
 	if le.isIrrevocable() {
@@ -1875,7 +1878,7 @@ func (m *ExpirationManager) updatePendingInternal(le *leaseEntry) {
 		// If this is the case, we need to know if the lease was previously counted
 		// so that we can maintain correct metric and quota lease counts.
 		_, leaseInIrrevocable := m.irrevocable.Load(le.LeaseID)
-		if !(leaseInPending || leaseInIrrevocable) {
+		if !leaseInPending && !leaseInIrrevocable {
 			leaseCreated = true
 		}
 

@@ -86,7 +86,7 @@ func EncryptDecrypt(rawStr string, decrypt, strip bool, wrapper wrapping.Wrapper
 		}
 
 		// Append new value
-		out = append(out, []byte(fmt.Sprintf("%s%s%s", replaceVal, finalVal, suffixVal))...)
+		out = fmt.Appendf(out, "%s%s%s", replaceVal, finalVal, suffixVal)
 		prevMaxLoc = match[1]
 	}
 	// At the end, append the rest

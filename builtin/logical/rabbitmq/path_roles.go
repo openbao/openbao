@@ -5,7 +5,6 @@ package rabbitmq
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -192,14 +191,14 @@ func (b *backend) pathRoleUpdate(ctx context.Context, req *logical.Request, d *f
 	var vhosts map[string]vhostPermission
 	if len(rawVHosts) > 0 {
 		if err := jsonutil.DecodeJSON([]byte(rawVHosts), &vhosts); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to unmarshal vhosts: %s", err)), nil
+			return logical.ErrorResponse("failed to unmarshal vhosts: %s", err), nil
 		}
 	}
 
 	var vhostTopics map[string]map[string]vhostTopicPermission
 	if len(rawVHostTopics) > 0 {
 		if err := jsonutil.DecodeJSON([]byte(rawVHostTopics), &vhostTopics); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to unmarshal vhost_topics: %s", err)), nil
+			return logical.ErrorResponse("failed to unmarshal vhost_topics: %s", err), nil
 		}
 	}
 
@@ -225,22 +224,22 @@ func (b *backend) pathRoleUpdate(ctx context.Context, req *logical.Request, d *f
 // VHostTopics is a nested map with vhost name and exchange name as keys and
 // the topic permissions as value.
 type roleEntry struct {
-	Tags        string                                     `json:"tags" structs:"tags" mapstructure:"tags"`
-	VHosts      map[string]vhostPermission                 `json:"vhosts" structs:"vhosts" mapstructure:"vhosts"`
-	VHostTopics map[string]map[string]vhostTopicPermission `json:"vhost_topics" structs:"vhost_topics" mapstructure:"vhost_topics"`
+	Tags        string                                     `json:"tags" mapstructure:"tags"`
+	VHosts      map[string]vhostPermission                 `json:"vhosts" mapstructure:"vhosts"`
+	VHostTopics map[string]map[string]vhostTopicPermission `json:"vhost_topics" mapstructure:"vhost_topics"`
 }
 
 // Structure representing the permissions of a vhost
 type vhostPermission struct {
-	Configure string `json:"configure" structs:"configure" mapstructure:"configure"`
-	Write     string `json:"write" structs:"write" mapstructure:"write"`
-	Read      string `json:"read" structs:"read" mapstructure:"read"`
+	Configure string `json:"configure" mapstructure:"configure"`
+	Write     string `json:"write" mapstructure:"write"`
+	Read      string `json:"read" mapstructure:"read"`
 }
 
 // Structure representing the topic permissions of an exchange
 type vhostTopicPermission struct {
-	Write string `json:"write" structs:"write" mapstructure:"write"`
-	Read  string `json:"read" structs:"read" mapstructure:"read"`
+	Write string `json:"write" mapstructure:"write"`
+	Read  string `json:"read" mapstructure:"read"`
 }
 
 const pathRoleHelpSyn = `

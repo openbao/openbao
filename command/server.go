@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -22,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
@@ -58,10 +60,8 @@ import (
 	"github.com/openbao/openbao/vault"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
-	"github.com/pkg/errors"
 	"github.com/posener/complete"
 	"github.com/sasha-s/go-deadlock"
-	"go.uber.org/atomic"
 	"golang.org/x/net/http/httpproxy"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -494,12 +494,10 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	configSeal := config.Seals[0]
-	sealType := wrapping.WrapperTypeShamir.String()
+	sealType := configSeal.Type
 	if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
 		sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 		configSeal.Type = sealType
-	} else {
-		sealType = configSeal.Type
 	}
 
 	infoKeys = append(infoKeys, "Seal Type")
@@ -582,8 +580,12 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	listenerCloseFunc := func() {
+		var errs error
 		for _, ln := range lns {
-			ln.Listener.Close()
+			errs = errors.Join(errs, ln.Close())
+		}
+		if errs != nil {
+			c.UI.Error(fmt.Sprintf("Error closing listeners: %v", errs))
 		}
 	}
 
@@ -635,7 +637,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 			AllListeners:          lns,
 			DisablePrintableCheck: config.DisablePrintableCheck,
 			RecoveryMode:          c.flagRecovery,
-			RecoveryToken:         atomic.NewString(""),
+			RecoveryToken:         &atomic.Value{},
 		})
 
 		server := &http.Server{
@@ -852,6 +854,16 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 			Listener: ln,
 			Config:   lnConfig,
 		})
+
+		if lnConfig.MaxRequestJsonMemory == 0 {
+			lnConfig.MaxRequestJsonMemory = vault.DefaultMaxJsonMemory
+		}
+		props["max_request_json_memory"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonMemory)
+
+		if lnConfig.MaxRequestJsonStrings == 0 {
+			lnConfig.MaxRequestJsonStrings = vault.DefaultMaxJsonStrings
+		}
+		props["max_request_json_strings"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonStrings)
 
 		// Store the listener props for output later
 		key := fmt.Sprintf("listener %d", i+1)
@@ -1275,8 +1287,12 @@ func (c *ServerCommand) Run(args []string) int {
 
 	// Make sure we close all listeners from this point on
 	listenerCloseFunc := func() {
+		var errs error
 		for _, ln := range lns {
-			ln.Listener.Close()
+			errs = errors.Join(errs, ln.Close())
+		}
+		if errs != nil {
+			c.UI.Error(fmt.Sprintf("Error closing listeners: %v", errs))
 		}
 	}
 
@@ -1525,6 +1541,10 @@ func (c *ServerCommand) Run(args []string) int {
 
 			// Setting log request with the new value in the config after reload
 			core.ReloadLogRequestsLevel()
+
+			// Update audit devices if necessary. This cannot be done as part of
+			// c.Reload as it needs the reloadFuncsLock.
+			core.ReloadAuditLogs()
 
 			// Reload log level for loggers
 			if config.LogLevel != "" {
@@ -1787,13 +1807,13 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	}
 
 	// Now perform the component requests of self-initialization.
-	return c.doSelfInit(ctx, core, config, init.RootToken)
+	return c.doSelfInit(core, config, init.RootToken)
 }
 
 // doSelfInit is the internal helper that uses the profile system with this
 // freshly initialized core to perform the component requests of the
 // self-initialization process.
-func (c *ServerCommand) doSelfInit(ctx context.Context, core *vault.Core, config *server.Config, rootToken string) error {
+func (c *ServerCommand) doSelfInit(core *vault.Core, config *server.Config, rootToken string) error {
 	c.UI.Warn("Beginning post-unseal configuration")
 	p, err := profiles.NewEngine(
 		// Set up the profile system with relevant parameter sources:
@@ -1828,7 +1848,12 @@ func (c *ServerCommand) doSelfInit(ctx context.Context, core *vault.Core, config
 		return err
 	}
 
-	return p.Evaluate(ctx)
+	// Initialize creates a context with the root namespace; this would
+	// override routing and result in us assuming all requests are in the
+	// root namespace, even if they create (nested) namespaces. Since the
+	// above context was derived from background (we're a server after all),
+	// derive a new one here, too.
+	return p.Evaluate(context.Background())
 }
 
 func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig) (*vault.InitResult, error) {
@@ -2366,7 +2391,7 @@ func (c *ServerCommand) storePidFile(pidPath string) error {
 
 	// Write out the PID
 	pid := os.Getpid()
-	_, err = pidFile.WriteString(fmt.Sprintf("%d", pid))
+	_, err = fmt.Fprintf(pidFile, "%d", pid)
 	if err != nil {
 		return fmt.Errorf("could not write to pid file: %w", err)
 	}
@@ -2469,14 +2494,12 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 			config.Seals = append(config.Seals, &configutil.KMS{Type: wrapping.WrapperTypeShamir.String()})
 		}
 	}
-	var createdSeals []vault.Seal = make([]vault.Seal, len(config.Seals))
+	createdSeals := make([]vault.Seal, len(config.Seals))
 	for _, configSeal := range config.Seals {
-		sealType := wrapping.WrapperTypeShamir.String()
+		sealType := configSeal.Type
 		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
 			sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 			configSeal.Type = sealType
-		} else {
-			sealType = configSeal.Type
 		}
 
 		var seal vault.Seal

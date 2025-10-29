@@ -25,7 +25,7 @@ func createBackendWithStorage(t *testing.T) (*backend, logical.Storage) {
 	if b == nil {
 		t.Fatal("failed to create backend")
 	}
-	err = b.Backend.Setup(context.Background(), config)
+	err = b.Setup(context.Background(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,6 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 		}
 		secretID = resp.Data["secret_id"]
-		secretIDAccessor = resp.Data["secret_id_accessor"]
 
 		// Ensure login works
 		resp, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -253,7 +252,6 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 		}
 		secretID = resp.Data["secret_id"]
-		secretIDAccessor = resp.Data["secret_id_accessor"]
 
 		// Ensure login works
 		resp, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -312,7 +310,6 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 		}
 		secretID = resp.Data["secret_id"]
-		secretIDAccessor = resp.Data["secret_id_accessor"]
 
 		// Ensure login works
 		resp, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -371,7 +368,6 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 		}
 		secretID = resp.Data["secret_id"]
-		secretIDAccessor = resp.Data["secret_id_accessor"]
 
 		// Ensure login works
 		resp, err = b.HandleRequest(context.Background(), &logical.Request{

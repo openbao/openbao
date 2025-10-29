@@ -256,8 +256,8 @@ func handler(props *vault.HandlerProperties) http.Handler {
 	corsWrappedHandler := wrapCORSHandler(helpWrappedHandler, core)
 	quotaWrappedHandler := rateLimitQuotaWrapping(corsWrappedHandler, core)
 	genericWrappedHandler := genericWrapping(core, quotaWrappedHandler, props)
-	wrappedHandler := wrapMaxRequestSizeHandler(genericWrappedHandler, props)
-
+	metricsWrappedHandler := wrapMetricsListenerHandler(genericWrappedHandler, props)
+	wrappedHandler := wrapMaxRequestSizeHandler(metricsWrappedHandler, props)
 	// Wrap the handler with PrintablePathCheckHandler to check for non-printable
 	// characters in the request path.
 	printablePathCheckHandler := wrappedHandler
@@ -321,10 +321,8 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		cw := newCopyResponseWriter(w)
 		h.ServeHTTP(cw, r)
 		data := make(map[string]interface{})
-		err = jsonutil.DecodeJSON(cw.body.Bytes(), &data)
-		if err != nil {
-			// best effort, ignore
-		}
+		// best effort, ignore error
+		_ = jsonutil.DecodeJSON(cw.body.Bytes(), &data)
 		httpResp := &logical.HTTPResponse{Data: data, Headers: cw.Header()}
 		input.Response = logical.HTTPResponseToLogicalResponse(httpResp)
 		err = core.AuditLogger().AuditResponse(ctx, input)
@@ -339,12 +337,23 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 // are performed.
 func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerProperties) http.Handler {
 	var maxRequestDuration time.Duration
+	var maxRequestJsonMemory int64
+	var maxRequestJsonStrings int64
 	if props.ListenerConfig != nil {
 		maxRequestDuration = props.ListenerConfig.MaxRequestDuration
+		maxRequestJsonMemory = props.ListenerConfig.MaxRequestJsonMemory
+		maxRequestJsonStrings = props.ListenerConfig.MaxRequestJsonStrings
 	}
 	if maxRequestDuration == 0 {
 		maxRequestDuration = vault.DefaultMaxRequestDuration
 	}
+	if maxRequestJsonMemory == 0 {
+		maxRequestJsonMemory = vault.DefaultMaxJsonMemory
+	}
+	if maxRequestJsonStrings == 0 {
+		maxRequestJsonStrings = vault.DefaultMaxJsonStrings
+	}
+
 	// Swallow this error since we don't want to pollute the logs and we also don't want to
 	// return an HTTP error here. This information is best effort.
 	hostname, _ := os.Hostname()
@@ -385,6 +394,10 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			// Setting the namespace in the header to be included in the response
 			nw.Header().Set(consts.NamespaceHeaderName, nsHeader)
 		}
+
+		// Safely limit our input JSON
+		ctx = addMaximumJsonMemoryToContext(ctx, maxRequestJsonMemory)
+		ctx = addMaximumJsonStringsToContext(ctx, maxRequestJsonStrings)
 
 		ctx = namespace.ContextWithNamespaceHeader(ctx, nsHeader)
 		r = r.WithContext(ctx)
@@ -571,21 +584,6 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 	})
 }
 
-// stripPrefix is a helper to strip a prefix from the path. It will
-// return false from the second return value if it the prefix doesn't exist.
-func stripPrefix(prefix, path string) (string, bool) {
-	if !strings.HasPrefix(path, prefix) {
-		return "", false
-	}
-
-	path = path[len(prefix):]
-	if path == "" {
-		return "", false
-	}
-
-	return path, true
-}
-
 func handleUIHeaders(core *vault.Core, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		header := w.Header()
@@ -686,7 +684,7 @@ func handleUIStub() http.Handler {
 
 func handleUIRedirect() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		http.Redirect(w, req, "/ui/", 307)
+		http.Redirect(w, req, "/ui/", http.StatusTemporaryRedirect)
 	})
 }
 
@@ -731,13 +729,18 @@ func parseQuery(values url.Values) map[string]interface{} {
 }
 
 func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) (io.ReadCloser, error) {
-	// Limit the maximum number of bytes to MaxRequestSize to protect
-	// against an indefinite amount of data being read.
-	reader := r.Body
-	err := jsonutil.DecodeJSONFromReader(reader, out)
+	ctx := r.Context()
+
+	reader, _, _, err := NewSafeJSONReader(ctx, r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to limit JSON input: %w", err)
+	}
+
+	err = jsonutil.DecodeJSONFromReader(reader, out)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to parse JSON input: %w", err)
 	}
+
 	return nil, err
 }
 
@@ -943,7 +946,7 @@ func respondStandby(core *vault.Core, w http.ResponseWriter, reqURL *url.URL) {
 	// because we don't actually know if its permanent and
 	// the request method should be preserved.
 	w.Header().Set("Location", finalURL.String())
-	w.WriteHeader(307)
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 // getTokenFromReq parse headers of the incoming request to extract token if

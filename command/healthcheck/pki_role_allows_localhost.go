@@ -157,5 +157,5 @@ func (h *RoleAllowsLocalhost) Evaluate(e *Executor) (results []*Result, err erro
 		results = append(results, &ret)
 	}
 
-	return
+	return results, err
 }

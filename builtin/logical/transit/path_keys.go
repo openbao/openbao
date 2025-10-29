@@ -16,9 +16,9 @@ import (
 
 	"golang.org/x/crypto/ed25519"
 
-	"github.com/fatih/structs"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -294,14 +294,14 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 	case "hmac":
 		polReq.KeyType = keysutil.KeyType_HMAC
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unknown key type %v", keyType)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("unknown key type %v", keyType), logical.ErrInvalidRequest
 	}
 	if keySize != 0 {
 		if polReq.KeyType != keysutil.KeyType_HMAC {
-			return logical.ErrorResponse(fmt.Sprintf("key_size is not valid for algorithm %v", polReq.KeyType)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("key_size is not valid for algorithm %v", polReq.KeyType), logical.ErrInvalidRequest
 		}
 		if keySize < keysutil.HmacMinKeySize || keySize > keysutil.HmacMaxKeySize {
-			return logical.ErrorResponse(fmt.Sprintf("invalid key_size %d", keySize)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("invalid key_size %d", keySize), logical.ErrInvalidRequest
 		}
 		polReq.KeySize = keySize
 	}
@@ -330,10 +330,10 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 
 // Built-in helper type for returning asymmetric keys
 type asymKey struct {
-	Name             string    `json:"name" structs:"name" mapstructure:"name"`
-	PublicKey        string    `json:"public_key" structs:"public_key" mapstructure:"public_key"`
-	CertificateChain string    `json:"certificate_chain" structs:"certificate_chain" mapstructure:"certificate_chain"`
-	CreationTime     time.Time `json:"creation_time" structs:"creation_time" mapstructure:"creation_time"`
+	Name             string    `json:"name" mapstructure:"name"`
+	PublicKey        string    `json:"public_key" mapstructure:"public_key"`
+	CertificateChain string    `json:"certificate_chain" mapstructure:"certificate_chain"`
+	CreationTime     time.Time `json:"creation_time" mapstructure:"creation_time"`
 }
 
 func (b *backend) pathPolicyRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -498,7 +498,7 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 				key.PublicKey = pubKey
 			}
 
-			retKeys[k] = structs.New(key).Map()
+			retKeys[k] = structtomap.Map(key)
 		}
 		resp.Data["keys"] = retKeys
 	}
@@ -512,7 +512,7 @@ func (b *backend) pathPolicyDelete(ctx context.Context, req *logical.Request, d 
 	// Delete does its own locking
 	err := b.lm.DeletePolicy(ctx, req.Storage, name)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("error deleting policy %s: %s", name, err)), err
+		return logical.ErrorResponse("error deleting policy %s: %s", name, err), err
 	}
 
 	return nil, nil

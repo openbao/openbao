@@ -5,11 +5,11 @@ package cluster
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"go.uber.org/atomic"
 )
 
 func TestInmemCluster_Connect(t *testing.T) {

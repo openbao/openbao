@@ -24,11 +24,6 @@ import (
 type PKIReIssueCACommand struct {
 	*BaseCommand
 
-	flagConfig          string
-	flagReturnIndicator string
-	flagDefaultDisabled bool
-	flagList            bool
-
 	flagKeyStorageSource string
 	flagNewIssuerName    string
 }
@@ -123,6 +118,11 @@ func (c *PKIReIssueCACommand) Run(args []string) int {
 	}
 
 	templateData, err := parseTemplateCertificate(*certificate, useExistingKey, keyRef)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error parsing template certificate: %v", err))
+		return 1
+	}
+
 	data := updateTemplateWithData(templateData, userData)
 
 	return pkiIssue(c.BaseCommand, parentIssuer, intermediateMount, c.flagNewIssuerName, c.flagKeyStorageSource, data)

@@ -81,11 +81,12 @@ func (h *CAValidityPeriod) LoadConfig(config map[string]interface{}) error {
 			return fmt.Errorf("failed to parse parameter (%v=%v): %w", parameter, value_raw, err)
 		}
 
-		if name_split[0] == "root" {
+		switch name_split[0] {
+		case "root":
 			h.RootExpiries[status] = value
-		} else if name_split[0] == "intermediate" {
+		case "intermediate":
 			h.IntermediateExpieries[status] = value
-		} else {
+		default:
 			return fmt.Errorf("bad parameter: %v's CA type isn't root/intermediate: %v", parameters, name_split[0])
 		}
 	}
@@ -165,5 +166,5 @@ func (h *CAValidityPeriod) Evaluate(e *Executor) (results []*Result, err error) 
 		results = append(results, &ret)
 	}
 
-	return
+	return results, err
 }

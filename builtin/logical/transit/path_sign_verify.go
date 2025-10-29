@@ -341,13 +341,13 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 
 	hashAlgorithm, ok := keysutil.HashTypeMap[hashAlgorithmStr]
 	if !ok {
-		return logical.ErrorResponse(fmt.Sprintf("invalid hash algorithm %q", hashAlgorithmStr)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("invalid hash algorithm %q", hashAlgorithmStr), logical.ErrInvalidRequest
 	}
 
 	marshalingStr := d.Get("marshaling_algorithm").(string)
 	marshaling, ok := keysutil.MarshalingTypeMap[marshalingStr]
 	if !ok {
-		return logical.ErrorResponse(fmt.Sprintf("invalid marshaling type %q", marshalingStr)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("invalid marshaling type %q", marshalingStr), logical.ErrInvalidRequest
 	}
 
 	prehashed := d.Get("prehashed").(bool)
@@ -374,7 +374,7 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 	defer p.Unlock()
 
 	if !p.Type.SigningSupported() {
-		return logical.ErrorResponse(fmt.Sprintf("key type %v does not support signing", p.Type)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("key type %v does not support signing", p.Type), logical.ErrInvalidRequest
 	}
 
 	if hashAlgorithm == keysutil.HashTypeNone && (!prehashed || sigAlgorithm != "pkcs1v15") {
@@ -577,13 +577,13 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 
 	hashAlgorithm, ok := keysutil.HashTypeMap[hashAlgorithmStr]
 	if !ok {
-		return logical.ErrorResponse(fmt.Sprintf("invalid hash algorithm %q", hashAlgorithmStr)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("invalid hash algorithm %q", hashAlgorithmStr), logical.ErrInvalidRequest
 	}
 
 	marshalingStr := d.Get("marshaling_algorithm").(string)
 	marshaling, ok := keysutil.MarshalingTypeMap[marshalingStr]
 	if !ok {
-		return logical.ErrorResponse(fmt.Sprintf("invalid marshaling type %q", marshalingStr)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("invalid marshaling type %q", marshalingStr), logical.ErrInvalidRequest
 	}
 
 	prehashed := d.Get("prehashed").(bool)
@@ -610,7 +610,7 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 	defer p.Unlock()
 
 	if !p.Type.SigningSupported() {
-		return logical.ErrorResponse(fmt.Sprintf("key type %v does not support verification", p.Type)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("key type %v does not support verification", p.Type), logical.ErrInvalidRequest
 	}
 
 	if hashAlgorithm == keysutil.HashTypeNone && (!prehashed || sigAlgorithm != "pkcs1v15") {

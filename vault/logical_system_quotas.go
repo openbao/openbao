@@ -310,7 +310,7 @@ func (b *SystemBackend) handleRateLimitQuotasUpdate() framework.OperationFunc {
 		}
 
 		mountPath := sanitizePath(d.Get("path").(string))
-		ns, mountPath := b.Core.NamespaceByPath(ctx, mountPath)
+		ns, mountPath := b.Core.namespaceStore.GetNamespaceByLongestPrefix(ctx, mountPath)
 
 		var pathSuffix string
 		if mountPath != "" {
@@ -368,8 +368,8 @@ func (b *SystemBackend) handleRateLimitQuotasUpdate() framework.OperationFunc {
 			inheritable = true
 		}
 
-		switch {
-		case quota == nil:
+		switch quota {
+		case nil:
 			quota = quotas.NewRateLimitQuota(name, ns.Path, mountPath, pathSuffix, role, rate, interval, blockInterval, inheritable)
 		default:
 			// Re-inserting the already indexed object in memdb might cause problems.

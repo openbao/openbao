@@ -220,6 +220,9 @@ func (c *Core) teardownPolicyStore() error {
 	return nil
 }
 
+// invalidate will be used in the future for implementing read replica nodes
+//
+//nolint:unused
 func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType PolicyType) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {

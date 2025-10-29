@@ -99,17 +99,6 @@ func Test_RandomOpsTransactionalBackends(t *testing.T) {
 	executeRandomTransactionalOps(t, backends, ops, txLimit)
 }
 
-func replayOps(t *testing.T, file string) []*inmem.InmemOp {
-	data, err := os.ReadFile(file)
-	require.NoError(t, err, "error reading operations file")
-
-	var results []*inmem.InmemOp
-	err = json.Unmarshal(data, &results)
-	require.NoError(t, err, "error unmarshaling operations json")
-
-	return results
-}
-
 func Test_ExerciseTransactionalBackends(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -1068,7 +1057,7 @@ func getRandomOps(t *testing.T, count int, transactional bool, txLimit int) []*i
 		opI := rand.Intn(len(opTypes))
 		op := opTypes[opI]
 
-		var tx int = rand.Intn(txLimit+1) - 1
+		tx := rand.Intn(txLimit+1) - 1
 		var path string
 		var contents string
 		var after string

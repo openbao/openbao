@@ -436,5 +436,5 @@ func NewTestLogger(t testing.T) *TestLogger {
 }
 
 func (tl *TestLogger) StopLogging() {
-	tl.InterceptLogger.DeregisterSink(tl.sink)
+	tl.DeregisterSink(tl.sink)
 }

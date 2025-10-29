@@ -1,0 +1,88 @@
+---
+description: The `/sys/rotate/(root|recovery)/update` endpoint is used to progress rotation of the unseal keys for OpenBao.
+---
+
+# `/sys/rotate/(root|recovery)/update`
+
+:::info
+
+The `/sys/rotate/(root|recovery)/update` endpoints are available from version `v2.4.0`.
+
+:::
+
+This endpoint is used to enter a single key share to progress the rotation
+of the OpenBao. If the threshold number of key shares is reached, OpenBao will
+complete the rotation. Otherwise, this API call must be repeated until 
+threshold is met. The nonce must be provided with each call.
+
+When the operation is complete, response will be returned in the format of the 
+example below; otherwise the response will be the same as the `GET` method
+against `sys/rotate/(root|recovery)/init`, providing current operation status.
+
+If verification was requested, successfully completing this flow will
+immediately put the operation into a verification state, and return the nonce
+used for the verification operation.
+
+| Method | Path                                  |
+| :----- | :------------------------------------ |
+| `POST` | `/sys/rotate/(root\|recovery)/update` |
+
+### Parameters
+
+- `key` `(string: <required>)` - Specifies a single root share key.
+
+- `nonce` `(string: <required>)` - Specifies the nonce of the rotation.
+
+### Sample payload
+
+```json
+{
+  "key": "AB32...",
+  "nonce": "abcd1234..."
+}
+```
+
+### Sample requests
+
+```shell-session
+$ curl \
+    --request POST \
+    --data @payload.json \
+    http://127.0.0.1:8200/v1/sys/rotate/root/update
+```
+or
+```shell-session
+$ curl \
+    --request POST \
+    --data @payload.json \
+    http://127.0.0.1:8200/v1/sys/rotate/recovery/update
+```
+
+### Sample response
+
+```json
+{
+  "request_id": "9311c844-6be7-3c00-d2bc-e97fa8345338",
+  "lease_id": "",
+  "renewable": false,
+  "lease_duration": 0,
+  "data": {
+    "complete": true,
+    "keys": ["one", "two", "three"],
+    "nonce": "2dbd10f1-8528-6246-09e7-82b25b8aba63",
+    "pgp_fingerprints": ["abcd1234"],
+    "keys_base64": ["base64keyvalue"],
+    "backup": true,
+    "verification_required": true,
+    "verification_nonce": "8b112c9e-2738-929d-bcc2-19aff249ff10"
+  },
+  "wrap_info": null,
+  "warnings": null,
+  "auth": null
+}
+```
+
+If the keys are PGP-encrypted, an array of key fingerprints will also be
+provided (with preserved initial order in which the keys were used for
+encryption) along with information whether or not the keys were backed
+up to physical storage.

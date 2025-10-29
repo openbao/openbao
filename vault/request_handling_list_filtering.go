@@ -88,7 +88,7 @@ func (c *Core) filterListResponse(ctx context.Context, req *logical.Request, una
 
 		c.logger.Debug("got templated path", "path", req.Path, "key", key, "checkPath", checkPath)
 
-		var op logical.Operation = logical.ReadOperation
+		op := logical.ReadOperation
 		if strings.HasSuffix(key, "/") {
 			op = logical.ListOperation
 		}

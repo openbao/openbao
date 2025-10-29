@@ -5,8 +5,8 @@ package configutil
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/asaskevich/govalidator"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl/hcl/token"
 )
@@ -54,9 +54,20 @@ func UnusedFieldDifference(a, b UnusedKeyMap, foundKeys []string) UnusedKeyMap {
 	}
 	res := make(UnusedKeyMap)
 	for k, v := range a {
-		if _, ok := b[k]; !ok && !strutil.StrListContainsCaseInsensitive(foundKeys, govalidator.UnderscoreToCamelCase(k)) {
+		if _, ok := b[k]; !ok && !strutil.StrListContainsCaseInsensitive(foundKeys, UnderscoreToCamelCase(k)) {
 			res[k] = v
 		}
 	}
 	return res
+}
+
+func UnderscoreToCamelCase(s string) string {
+	parts := strings.Split(s, "_")
+
+	for i, part := range parts {
+		if len(part) > 0 {
+			parts[i] = strings.ToUpper(part[:1]) + strings.ToLower(part[1:])
+		}
+	}
+	return strings.Join(parts, "")
 }

@@ -691,7 +691,7 @@ func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 
 	mfaEnforcementConfigKeys, err := mfaEnforcementConfigBarrierView.List(ctx, "")
 	require.NoError(t, err)
-	require.Empty(t, mfaConfigKeys)
+	require.Empty(t, mfaEnforcementConfigKeys)
 
 	// store configs
 	mConfig := &mfa.Config{Name: "mConfig", NamespaceID: ns1.ID, ID: "mConfigID", Type: mfaMethodTypeTOTP}
@@ -1532,6 +1532,9 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
+	if resp != nil {
+		t.Fatalf("resp != nil: %v", resp)
+	}
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/secret/tune")
 	req.Data["audit_non_hmac_response_keys"] = "baz"
@@ -1539,6 +1542,9 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	resp, err = c.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("resp != nil: %v", resp)
 	}
 
 	// Enable the audit backend

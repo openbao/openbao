@@ -828,18 +828,18 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 		if len(v) < 3 {
 			t.Fatalf("expected to find 3 passwords for (%s), only found (%d)", k, len(v))
 		}
-		switch {
-		case k == "plugin-static-role-10":
+		switch k {
+		case "plugin-static-role-10":
 			// expect all passwords to be different
 			if v[0] == v[1] || v[1] == v[2] || v[0] == v[2] {
 				pass = false
 			}
-		case k == "plugin-static-role-20":
+		case "plugin-static-role-20":
 			// expect the first two to be equal, but different from the third
 			if v[0] != v[1] || v[0] == v[2] {
 				pass = false
 			}
-		case k == "plugin-static-role-100":
+		case "plugin-static-role-100":
 			// expect all passwords to be equal
 			if v[0] != v[1] || v[1] != v[2] {
 				pass = false
@@ -851,12 +851,6 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 	if !pass {
 		t.Fatalf("password rotations did not match expected: %#v", pws)
 	}
-}
-
-type createUserCommand struct {
-	Username string        `bson:"createUser"`
-	Password string        `bson:"pwd"`
-	Roles    []interface{} `bson:"roles"`
 }
 
 // Demonstrates a bug fix for the credential rotation not releasing locks

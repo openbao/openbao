@@ -137,7 +137,7 @@ being returned to the operator, recovery keys are returned. These are generated
 from an internal recovery key that is split via Shamir's Secret Sharing, similar
 to OpenBao's treatment of unseal keys when running without an HSM or KMS.
 
-Details about initialization and rekeying follow. When performing an operation
+Details about initialization and rotation follow. When performing an operation
 that uses recovery keys, such as `generate-root`, selection of the recovery
 keys for this purpose, rather than the barrier unseal keys, is automatic.
 
@@ -160,27 +160,24 @@ and their API equivalents in the [/sys/init](/api-docs/system/init) endpoint:
 Additionally, OpenBao will refuse to initialize if the option has not been set to
 generate a key, and no key is found. 
 
-### Rekeying
+### Rotation
 
 #### Unseal key
 
-OpenBao's unseal key can be rekeyed using a normal `bao operator rekey`
-operation from the CLI or the matching API calls. The rekey operation is
-authorized by meeting the threshold of recovery keys. After rekeying, the new
-barrier key is wrapped by the HSM or KMS and stored like the previous key; it is not
+OpenBao's unseal key can be rotated using a normal `bao operator rotate-keys`
+operation from the CLI or the matching API calls. The rotation is authorized
+by meeting the threshold of recovery keys. After rotation, the new barrier
+key is wrapped by the HSM or KMS and stored like the previous key; it is not
 returned to the users that submitted their recovery keys.
 
 #### Recovery key
 
-The recovery key can be rekeyed to change the number of shares/threshold or to
+The recovery key can be rotated to change the number of shares/threshold or to
 target different key holders via different PGP keys. When using the OpenBao CLI,
-this is performed by using the `-target=recovery` flag to `bao operator rekey`.
+this is performed by using the `-target=recovery` flag to `bao operator rotate-keys`.
 
-Via the API, the rekey operation is performed with the same parameters as the
-[normal `/sys/rekey`
-endpoint](/api-docs/system/rekey); however, the
-API prefix for this operation is at `/sys/rekey-recovery-key` rather than
-`/sys/rekey`.
+Via the API, the rotation is performed using 
+[`/sys/rotate/recovery` endpoint](/api-docs/system/rotate).
 
 ## Seal migration
 

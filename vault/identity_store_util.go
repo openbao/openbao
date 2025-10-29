@@ -478,17 +478,7 @@ func (i *IdentityStore) upsertEntityInTxn(ctx context.Context, txn *memdb.Txn, e
 		default:
 			i.logger.Warn("alias is already tied to a different entity; these entities are being merged", "alias_id", alias.ID, "other_entity_id", aliasByFactors.CanonicalID, "entity_aliases", entity.Aliases, "alias_by_factors", aliasByFactors)
 
-			respErr, intErr := i.mergeEntityAsPartOfUpsert(ctx, txn, entity, aliasByFactors.CanonicalID, persist)
-			switch {
-			case respErr != nil:
-				return respErr
-			case intErr != nil:
-				return intErr
-			}
-
-			// The entity and aliases will be loaded into memdb and persisted
-			// as a result of the merge, so we are done here
-			return nil
+			return i.mergeEntityAsPartOfUpsert(ctx, txn, entity, aliasByFactors.CanonicalID, persist)
 		}
 
 		if slices.Contains(aliasFactors, i.sanitizeName(alias.Name)+alias.MountAccessor) {
@@ -1733,14 +1723,8 @@ func (i *IdentityStore) UpsertGroupInTxn(ctx context.Context, txn *memdb.Txn, gr
 			Message: groupAsAny,
 		}
 
-		sent, err := i.groupUpdater.SendGroupUpdate(ctx, group)
-		if err != nil {
+		if err := i.groupPacker(ctx).PutItem(ctx, item); err != nil {
 			return err
-		}
-		if !sent {
-			if err := i.groupPacker(ctx).PutItem(ctx, item); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -2435,11 +2419,22 @@ func (i *IdentityStore) handleAliasListCommon(ctx context.Context, groupAlias bo
 func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 	var count int
 	var outErr error
+
+	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
+	if !ok || rootViewRaw == nil {
+		return -1, fmt.Errorf("failed to load root namespace")
+	}
+	rootView := rootViewRaw.(*identityStoreNamespaceView)
+
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
+		db := views.db
+		if db == nil {
+			db = rootView.db
+		}
 
-		txn := views.db.Txn(false)
+		txn := db.Txn(false)
 
 		iter, err := txn.Get(entitiesTable, "id")
 		if err != nil {
@@ -2467,12 +2462,22 @@ func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[string]int, error) {
 	byNamespace := make(map[string]int)
 
+	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
+	if !ok || rootViewRaw == nil {
+		return nil, fmt.Errorf("failed to load root namespace")
+	}
+	rootView := rootViewRaw.(*identityStoreNamespaceView)
+
 	var err error
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
+		db := views.db
+		if db == nil {
+			db = rootView.db
+		}
 
-		txn := views.db.Txn(false)
+		txn := db.Txn(false)
 
 		var iter memdb.ResultIterator
 		iter, err = txn.Get(entitiesTable, "id")
@@ -2510,12 +2515,22 @@ func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[strin
 func (i *IdentityStore) countEntitiesByMountAccessor(ctx context.Context) (map[string]int, error) {
 	byMountAccessor := make(map[string]int)
 
+	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
+	if !ok || rootViewRaw == nil {
+		return nil, fmt.Errorf("failed to load root namespace")
+	}
+	rootView := rootViewRaw.(*identityStoreNamespaceView)
+
 	var err error
 	i.views.Range(func(uuidRaw, viewsRaw any) bool {
 		uuid := uuidRaw.(string)
 		views := viewsRaw.(*identityStoreNamespaceView)
+		db := views.db
+		if db == nil {
+			db = rootView.db
+		}
 
-		txn := views.db.Txn(false)
+		txn := db.Txn(false)
 
 		var iter memdb.ResultIterator
 		iter, err = txn.Get(entitiesTable, "id")

@@ -20,7 +20,6 @@ import (
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/cel"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -742,7 +741,7 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 			map[string]interface{}{
 				"serial_number": cb.SerialNumber,
 			})
-		resp.Secret.TTL = parsedBundle.Certificate.NotAfter.Sub(time.Now())
+		resp.Secret.TTL = time.Until(parsedBundle.Certificate.NotAfter)
 	}
 
 	if data.Get("private_key_format").(string) == "pkcs8" {
@@ -817,7 +816,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	}
 
 	// Add custom CEL functions into the env
-	env, err = cel.RegisterAllCelFunctions(env)
+	env, err = celhelper.RegisterAllCelFunctions(env)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
@@ -1036,7 +1035,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 			map[string]interface{}{
 				"serial_number": cb.SerialNumber,
 			})
-		resp.Secret.TTL = parsedBundle.Certificate.NotAfter.Sub(time.Now())
+		resp.Secret.TTL = time.Until(parsedBundle.Certificate.NotAfter)
 	} else {
 		// Non-Leased Certificate
 		resp = &logical.Response{

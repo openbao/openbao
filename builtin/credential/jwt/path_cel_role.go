@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -89,10 +89,6 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 			Type:        framework.TypeMap,
 			Description: "CEL variables and expression defining the program for the role",
 		},
-		"failure_policy": {
-			Type:        framework.TypeString,
-			Description: "Failure policy if CEL expressions are not validated",
-		},
 		"message": {
 			Type:        framework.TypeString,
 			Description: "Static error message if validation fails",
@@ -137,10 +133,6 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 			"cel_program": {
 				Type:        framework.TypeMap,
 				Description: "CEL variables and expression defining the program for the role",
-			},
-			"failure_policy": {
-				Type:        framework.TypeString,
-				Description: "Failure policy if CEL expressions are not validated",
 			},
 			"message": {
 				Type:        framework.TypeString,
@@ -240,14 +232,6 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 		}
 		if err := json.Unmarshal(jsonString, &celProgram); err != nil {
 			return logical.ErrorResponse("failed to parse cel_program: %s", err), nil
-		}
-	}
-
-	failurePolicy := "Deny" // Default value
-	if failurePolicyRaw, ok := data.GetOk("failure_policy"); ok {
-		failurePolicy = failurePolicyRaw.(string)
-		if failurePolicy != "Deny" && failurePolicy != "Modify" {
-			return logical.ErrorResponse("failure_policy must be 'Deny' or 'Modify'"), nil
 		}
 	}
 
@@ -460,7 +444,11 @@ func (b *jwtAuthBackend) celEnv(program celhelper.CelProgram) (*cel.Env, error) 
 
 	// Add "pb.Auth" return type to environment
 	envOptions = append(envOptions, cel.Types(&pb.Auth{}))
-	return cel.NewEnv(envOptions...)
+	env, err := cel.NewEnv(envOptions...)
+	if err != nil {
+		return nil, err
+	}
+	return celhelper.RegisterAllCelFunctions(env)
 }
 
 const (

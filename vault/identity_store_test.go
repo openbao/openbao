@@ -185,10 +185,10 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 	// Enable AppRole auth and initialize
 	ctx := namespace.RootContext(nil)
-	is, ghAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
+	is, approleAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
 	alias := &logical.Alias{
 		MountType:     "approle",
-		MountAccessor: ghAccessor,
+		MountAccessor: approleAccessor,
 		Name:          "approleuser",
 	}
 
@@ -257,12 +257,21 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 }
 
 func TestIdentityStore_CreateOrFetchEntity(t *testing.T) {
-	ctx := namespace.RootContext(nil)
-	is, ghAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t)
+	ctx := namespace.RootContext(t.Context())
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
+	testIdentityStoreCreateOrFetchEntity(t, ctx, is, approleAccessor, upAccessor, core)
+}
 
+func TestIdentityStore_CreateOrFetchEntity_UnsafeShared(t *testing.T) {
+	ctx := namespace.RootContext(t.Context())
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
+	testIdentityStoreCreateOrFetchEntity(t, ctx, is, approleAccessor, upAccessor, core)
+}
+
+func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is *IdentityStore, approleAccessor string, upAccessor string, core *Core) {
 	alias := &logical.Alias{
 		MountType:     "approle",
-		MountAccessor: ghAccessor,
+		MountAccessor: approleAccessor,
 		Name:          "approleuser",
 		Metadata: map[string]string{
 			"foo": "a",
@@ -372,7 +381,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	is, ghAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	registerData := map[string]interface{}{
 		"name":     "testentityname",
@@ -403,7 +412,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	aliasData := map[string]interface{}{
 		"entity_id":      entityID,
 		"name":           "alias_name",
-		"mount_accessor": ghAccessor,
+		"mount_accessor": approleAccessor,
 	}
 	aliasReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -419,7 +428,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 		t.Fatal("expected a non-nil response")
 	}
 
-	entity, err := is.entityByAliasFactors(ctx, ghAccessor, "alias_name", false)
+	entity, err := is.entityByAliasFactors(ctx, approleAccessor, "alias_name", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -648,13 +657,8 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 }
 
 func testCoreWithIdentityTokenAppRole(ctx context.Context, t *testing.T) (*Core, *IdentityStore, *TokenStore, string) {
-	is, ghAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
-	return core, is, core.tokenStore, ghAccessor
-}
-
-func testCoreWithIdentityTokenAppRoleRoot(ctx context.Context, t *testing.T) (*Core, *IdentityStore, *TokenStore, string, string) {
-	is, ghAccessor, core, root := testIdentityStoreWithAppRoleAuthRoot(ctx, t)
-	return core, is, core.tokenStore, ghAccessor, root
+	is, approleAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
+	return core, is, core.tokenStore, approleAccessor
 }
 
 func testIdentityStoreWithAppRoleAuth(ctx context.Context, t *testing.T) (*IdentityStore, string, *Core) {
@@ -692,7 +696,7 @@ func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*I
 	return c.identityStore, meGH.Accessor, c, root
 }
 
-func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T) (*IdentityStore, string, string, *Core) {
+func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T, unsafeShared bool) (*IdentityStore, string, string, *Core) {
 	// Setup 2 auth backends, github and userpass
 	err := AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
@@ -706,7 +710,14 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T)
 
 	defer ClearTestCredentialBackends()
 
-	c, _, _ := TestCoreUnsealed(t)
+	conf := &CoreConfig{
+		BuiltinRegistry:              corehelpers.NewMockBuiltinRegistry(),
+		UnsafeCrossNamespaceIdentity: unsafeShared,
+		AuditBackends: map[string]audit.Factory{
+			"file": auditFile.Factory,
+		},
+	}
+	c, _, _ := TestCoreUnsealedWithConfig(t, conf)
 
 	githubMe := &MountEntry{
 		Table:       credentialTableType,
@@ -802,11 +813,11 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 	}
 
 	is := c.identityStore
-	ghAccessor := meGH.Accessor
+	approleAccessor := meGH.Accessor
 
 	alias := &logical.Alias{
 		MountType:     "approle",
-		MountAccessor: ghAccessor,
+		MountAccessor: approleAccessor,
 		Name:          "approleuser",
 		Metadata: map[string]string{
 			"foo": "a",
@@ -1311,19 +1322,6 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 	require.NoError(t, err)
 	ns2Accessor := ns2Mount.Accessor
 
-	t.Run("invalid_context", func(t *testing.T) {
-		// Create a context with a nil namespace value (this is not the same as root namespace)
-		invalidCtx := context.WithValue(context.Background(), "nil", nil)
-
-		// Test entity creation with invalid context
-		_, err := is.CreateEntity(invalidCtx)
-		require.Error(t, err, "Expected error with invalid namespace context")
-
-		// Test entity lookup with invalid context
-		_, err = is.MemDBEntityByName(invalidCtx, "test-entity", false)
-		require.Error(t, err, "Expected error with invalid namespace context")
-	})
-
 	t.Run("namespace_mismatch_with_real_mounts", func(t *testing.T) {
 		// Create entity in ns1
 		mismatchUser := "mismatch-user"
@@ -1687,7 +1685,7 @@ func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *
 
 	t.Logf("setupIdentityTestEnv:\n\tns1: accessor=%v / uuid=%v\n\tns2: accessor=%v / uuid=%v\n\tuserpass accessors root=%v / ns1=%v / ns2=%v\n\tentity alias: name=%v / root=%v / ns1=%v / ns2=%v\n\tentity: root=%v / ns1=%v / ns2=%v\n\tgroup: name=%v / root=%v / ns1=%v / ns2=%v", ns1.ID, ns1.UUID, ns2.ID, ns2.UUID, rootAccessor, ns1Accessor, ns2Accessor, commonUser, rootAlias.ID, ns1Alias.ID, ns2Alias.ID, rootEntity.ID, ns1Entity.ID, ns2Entity.ID, groupName, rootGroup.ID, ns1Group.ID, ns2Group.ID)
 
-	return
+	return rootCtx, ns1, ns1Ctx, ns2, ns2Ctx, rootAccessor, ns1Accessor, ns2Accessor, commonUser, rootAlias, ns1Alias, ns2Alias, rootEntity, ns1Entity, ns2Entity, groupName, rootGroup, ns1Group, ns2Group
 }
 
 // Test cross-namespace isolation with comprehensive matrix of lookup attempts
@@ -1758,52 +1756,6 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 		entity, err = is.MemDBEntityByID(rootCtx, ns1Entity.ID, false)
 		require.NoError(t, err)
 		require.Nil(t, entity)
-	})
-
-	// Test lookup by name (should respect namespace boundaries)
-	t.Run("entity_lookup_by_name", func(t *testing.T) {
-		// Create entities with the same name in different namespaces
-		nameForTest := "same-name-entity"
-
-		// Create in root
-		rootEntity, err := is.CreateEntity(rootCtx)
-		require.NoError(t, err)
-		upsertedEntity := rootEntity
-		upsertedEntity.Name = nameForTest
-		err = is.upsertEntity(rootCtx, upsertedEntity, rootEntity, true)
-		require.NoError(t, err)
-
-		// Create in ns1
-		ns1Entity, err := is.CreateEntity(ns1Ctx)
-		require.NoError(t, err)
-		upsertedEntity = ns1Entity
-		upsertedEntity.Name = nameForTest
-		err = is.upsertEntity(ns1Ctx, upsertedEntity, ns1Entity, true)
-		require.NoError(t, err)
-
-		// Lookup by name should respect namespace boundaries
-		foundRoot, err := is.MemDBEntityByName(rootCtx, nameForTest, false)
-		require.NoError(t, err)
-		require.NotNil(t, foundRoot)
-		require.Equal(t, rootEntity.ID, foundRoot.ID)
-
-		foundNS1, err := is.MemDBEntityByName(ns1Ctx, nameForTest, false)
-		require.NoError(t, err)
-		require.NotNil(t, foundNS1)
-		require.Equal(t, ns1Entity.ID, foundNS1.ID)
-
-		// Cross-namespace lookups should return nil
-		crossEntity, err := is.MemDBEntityByName(rootCtx, ns1Entity.Name, false)
-		require.NoError(t, err)
-		if crossEntity != nil && crossEntity.ID == ns1Entity.ID {
-			t.Fatal("Should not find NS1 entity from root context by name")
-		}
-
-		crossEntity, err = is.MemDBEntityByName(ns1Ctx, rootEntity.Name, false)
-		require.NoError(t, err)
-		if crossEntity != nil && crossEntity.ID == rootEntity.ID {
-			t.Fatal("Should not find root entity from NS1 context by name")
-		}
 	})
 
 	// === GROUP ALIASES ===

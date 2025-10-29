@@ -17,7 +17,6 @@ import (
 
 type CLIHandler struct {
 	// for tests
-	testStdin  io.Reader
 	testStdout io.Writer
 }
 
@@ -30,7 +29,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 	if x, ok := m["lookup"]; ok {
 		parsed, err := strconv.ParseBool(x)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse \"lookup\" as boolean: %w", err)
+			return nil, fmt.Errorf("Failed to parse \"lookup\" as boolean: %w", err) //nolint:staticcheck // user-facing error
 		}
 		lookup = parsed
 	}
@@ -59,6 +58,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 				return nil, errors.New("user interrupted")
 			}
 
+			//nolint:staticcheck // user-facing error
 			return nil, fmt.Errorf("An error occurred attempting to "+
 				"ask for a token. The raw error message is shown below, but usually "+
 				"this is because you attempted to pipe a value into the command or "+

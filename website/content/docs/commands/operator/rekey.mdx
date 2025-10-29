@@ -10,6 +10,12 @@ description: |-
 
 # operator rekey
 
+:::warning
+
+Note: `operator rekey` command is deprecated, please use [rotate-keys](/docs/commands/operator/rotate-keys) instead.
+
+:::
+
 The `operator rekey` command generates a new set of unseal keys. This can
 optionally change the total number of key shares or the required threshold of
 those key shares to reconstruct the root key. This operation is zero downtime,
@@ -116,8 +122,8 @@ flags](/docs/commands) included on all commands.
   or configuration. The default is false.
 
 - `-init` `(bool: false)` - Initialize the rekeying operation. This can only be
-  done if no rekeying operation is in progress. Customize the new number of key
-  shares and key threshold using the `-key-shares` and `-key-threshold flags`.
+  done if there's not one in progress. Customize the new number of key shares and
+  threshold using the `-key-shares` and `-key-threshold` flags respectively.
 
 - `-key-shares` `(int: 5)` - Number of key shares to split the generated master
   key into. This is the number of "unseal keys" to generate. This is aliased as

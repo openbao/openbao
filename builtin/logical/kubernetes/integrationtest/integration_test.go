@@ -185,13 +185,15 @@ func TestRole(t *testing.T) {
 	}, result.Data)
 
 	// update
-	_, err = client.Logical().Write(path+"/roles/testrole", map[string]interface{}{
+	result, err = client.Logical().Write(path+"/roles/testrole", map[string]interface{}{
 		"allowed_kubernetes_namespaces": []string{"app1", "app2"},
 		"extra_annotations":             sampleExtraAnnotations,
 		"extra_labels":                  sampleExtraLabels,
 		"token_default_ttl":             "30m",
 		"token_default_audiences":       []string{"bar"},
 	})
+	assert.NoError(t, err)
+	assert.Nil(t, result)
 
 	result, err = client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)
@@ -216,6 +218,7 @@ func TestRole(t *testing.T) {
 		"allowed_kubernetes_namespaces":         []string{},
 		"allowed_kubernetes_namespace_selector": sampleSelector,
 	})
+	assert.NoError(t, err)
 
 	result, err = client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/refs/heads/main/schema/markdownlint-cli2-config-schema.json",
+  "globs": ["**/*.md", "**/*.mdx"],
+  "ignores": ["node_modules", "content/docs/platform/k8s/vso/"],
+  "config": {
+    // Linters that are disabled "for now", i.e. until we have the time to fix or decided we don't need it.
+    "line-length": false,
+    "no-trailing-spaces": false,
+    "no-duplicate-heading": false,
+    "ul-indent": false,
+    "no-hard-tabs": false,
+    "no-multiple-blanks": false,
+    "ul-style": false,
+    "blanks-around-lists": false,
+    "blanks-around-fences": false,
+    "blanks-around-headings": false,
+    "fenced-code-language": false,
+    "ol-prefix": false,
+    "heading-increment": false,
+    "table-pipe-style": false,
+    "list-marker-space": false,
+    "list-indent": false,
+    "single-trailing-newline": false,
+    "single-h1": false,
+    "no-emphasis-as-heading": false,
+    "descriptive-link-text": false,
+    "emphasis-style": false,
+    "commands-show-output": false,
+    "no-trailing-punctuation": false,
+
+    // "Permanent" config
+    "first-line-h1": false, // to support partials
+    "no-inline-html": false, // this is fine with mdx/Docusaurus
+    "no-bare-urls": false, // some markdown parsers don't support this, our does so ignore it
+    "link-fragments": {
+      "ignore_case": true, // Heading like "# My Heading" are turned into "my-heading", therefore ignore case
+    },
+  },
+}

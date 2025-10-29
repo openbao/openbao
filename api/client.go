@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -262,7 +263,7 @@ func DefaultConfig() *Config {
 		MinRetryWait: time.Millisecond * 1000,
 		MaxRetryWait: time.Millisecond * 1500,
 		MaxRetries:   2,
-		Backoff:      retryablehttp.LinearJitterBackoff,
+		Backoff:      retryablehttp.RateLimitLinearJitterBackoff,
 	}
 
 	transport := config.HttpClient.Transport.(*http.Transport)
@@ -1038,9 +1039,7 @@ func (c *Client) Headers() http.Header {
 
 	ret := make(http.Header)
 	for k, v := range c.headers {
-		for _, val := range v {
-			ret[k] = append(ret[k], val)
-		}
+		ret[k] = slices.Clone(v)
 	}
 
 	return ret
@@ -1355,7 +1354,7 @@ START:
 	req.Request = req.Request.WithContext(ctx)
 
 	if backoff == nil {
-		backoff = retryablehttp.LinearJitterBackoff
+		backoff = retryablehttp.RateLimitLinearJitterBackoff
 	}
 
 	if checkRetry == nil {

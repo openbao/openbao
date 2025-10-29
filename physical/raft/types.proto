@@ -23,6 +23,9 @@ message LogOperation {
 
 message LogData {
 	repeated LogOperation operations = 1;
+
+	// LowestActiveIndex is optional, the start index of the oldest (therefore lowest) active transaction
+	optional uint64 lowest_active_index = 2;
 }
 
 message IndexValue {

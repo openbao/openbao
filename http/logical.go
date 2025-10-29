@@ -15,13 +15,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
-	"go.uber.org/atomic"
 )
 
 // bufferedReader can be used to replace a request body with a buffered
@@ -347,7 +347,7 @@ func handleLogicalNoForward(core *vault.Core) http.Handler {
 	return handleLogicalInternal(core, false, true)
 }
 
-func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.String) http.Handler {
+func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.Value) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		req, _, statusCode, err := buildLogicalRequestNoAuth(w, r)
 		if err != nil || statusCode != 0 {
@@ -428,7 +428,7 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 		if resp.Redirect != "" {
 			// If we have a redirect, redirect! We use a 307 code
 			// because we don't actually know if its permanent.
-			http.Redirect(w, r, resp.Redirect, 307)
+			http.Redirect(w, r, resp.Redirect, http.StatusTemporaryRedirect)
 			return
 		}
 
@@ -598,5 +598,5 @@ func getConnection(r *http.Request) (connection *logical.Connection) {
 		RemotePort: remotePort,
 		ConnState:  r.TLS,
 	}
-	return
+	return connection
 }

@@ -7390,10 +7390,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/shell-quote@npm:^1.7.1":
-  version: 1.7.1
-  resolution: "@types/shell-quote@npm:1.7.1"
-  checksum: 51e58326b8c6dcb72846b94cebe3dc4c84f3514469a8e52bd29c52c601e784b427b851d7477acbeef47bfcccf25d2a5768684d27e7fc95fdd003393c1bbb7bc3
+"@types/shell-quote@npm:^1.7.5":
+  version: 1.7.5
+  resolution: "@types/shell-quote@npm:1.7.5"
+  checksum: 32b4d697c7d23dbadf40713692c47f1595f083a3b3deea76cb18e30a05d197aa9205d2b87f6d92edb60cda120b51e35d32bda96ed9b0a7e32921eed2deb4559e
   languageName: node
   linkType: hard
 
@@ -16364,21 +16364,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-n@npm:^17.17.0":
-  version: 17.17.0
-  resolution: "eslint-plugin-n@npm:17.17.0"
+"eslint-plugin-n@npm:^17.22.0":
+  version: 17.22.0
+  resolution: "eslint-plugin-n@npm:17.22.0"
   dependencies:
     "@eslint-community/eslint-utils": ^4.5.0
     enhanced-resolve: ^5.17.1
     eslint-plugin-es-x: ^7.8.0
     get-tsconfig: ^4.8.1
     globals: ^15.11.0
+    globrex: ^0.1.2
     ignore: ^5.3.2
-    minimatch: ^9.0.5
     semver: ^7.6.3
+    ts-declaration-location: ^1.0.6
   peerDependencies:
     eslint: ">=8.23.0"
-  checksum: ddea284e206ae2de6661419e232936d74d2fa896d43413877c31f5eae03f1908bfe0f16c8ed3d1136f1498783886b3b39847b87900e57503d337adf5ceec98b1
+  checksum: 0474188a3b8e369d7a27f135e437d2ae818a6b079ef46295d5f10626653977be49222da96235a6c0b6e5ce505205f01d3f431d9a46061815968bea0c68f10c2f
   languageName: node
   linkType: hard
 
@@ -18458,10 +18459,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"globals@npm:^16.0.0":
-  version: 16.0.0
-  resolution: "globals@npm:16.0.0"
-  checksum: 41df1cb6f86c36dfdf8fb6c270247105c85cc3aec8d8238c5e691b0d2aad9eed8ff390d1035f4b5a27ee24bf75b095c7b84717e9d2050d2122e61f37d9c6131a
+"globals@npm:^16.4.0":
+  version: 16.4.0
+  resolution: "globals@npm:16.4.0"
+  checksum: 934180f5c6cbb26f8b2832caa255050fface970eee45bde8757fabba384807c85640a12716aa5bcc47d781807839fee470c8c1f6159c6b8dc877668c56103880
   languageName: node
   linkType: hard
 
@@ -23596,6 +23597,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"picomatch@npm:^4.0.2":
+  version: 4.0.3
+  resolution: "picomatch@npm:4.0.3"
+  checksum: 6817fb74eb745a71445debe1029768de55fd59a42b75606f478ee1d0dc1aa6e78b711d041a7c9d5550e042642029b7f373dc1a43b224c4b7f12d23436735dba0
+  languageName: node
+  linkType: hard
+
 "pidtree@npm:^0.3.0":
   version: 0.3.1
   resolution: "pidtree@npm:0.3.1"
@@ -27363,6 +27371,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ts-declaration-location@npm:^1.0.6":
+  version: 1.0.7
+  resolution: "ts-declaration-location@npm:1.0.7"
+  dependencies:
+    picomatch: ^4.0.2
+  peerDependencies:
+    typescript: ">=4.0.0"
+  checksum: d1bfa610fae8175389af580f25e8aab5dd5c7fb8daf83560fa8d555da8ef03542dde8552a9c3d1fb4beaed8670db863083c61413846d91cb3e5caea6636e45f7
+  languageName: node
+  linkType: hard
+
 "tslib@npm:^1.9.0":
   version: 1.14.1
   resolution: "tslib@npm:1.14.1"
@@ -28089,7 +28108,7 @@ __metadata:
     "@types/ember__utils": ^4.0.2
     "@types/qunit": ^2.19.12
     "@types/rsvp": ^4.0.9
-    "@types/shell-quote": ^1.7.1
+    "@types/shell-quote": ^1.7.5
     asn1js: ^2.2.0
     autosize: ^6.0.1
     babel-plugin-inline-json-import: ^0.3.2
@@ -28164,12 +28183,12 @@ __metadata:
     eslint-config-prettier: ^10.1.1
     eslint-plugin-compat: 6.0.2
     eslint-plugin-ember: ^12.5.0
-    eslint-plugin-n: ^17.17.0
+    eslint-plugin-n: ^17.22.0
     eslint-plugin-prettier: ^5.2.6
     eslint-plugin-qunit: ^8.1.2
     filesize: ^4.2.1
     flat: ^6.0.1
-    globals: ^16.0.0
+    globals: ^16.4.0
     handlebars: 4.7.8
     highlight.js: ^11.11.1
     jsondiffpatch: ^0.4.1

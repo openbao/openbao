@@ -16,16 +16,9 @@ The non-audited paths are:
 sys/init
 sys/seal-status
 sys/seal
-sys/step-down
 sys/unseal
 sys/leader
 sys/health
-sys/rekey/init
-sys/rekey/update
-sys/rekey/verify
-sys/rekey-recovery-key/init
-sys/rekey-recovery-key/update
-sys/rekey-recovery-key/verify
 sys/storage/raft/bootstrap
 sys/storage/raft/join
 sys/internal/ui/feature-flags
@@ -178,14 +171,14 @@ docs](/api-docs/system/audit) for more details.
 - `prefix` `(string: "")` - A customizable string prefix to write before the
   actual log line.
 
-:::warning
+  :::warning
 
-Note: The `prefix` option lets operators write semi-arbitrary content to the
-audit log. Starting with OpenBao v2.3.2, enabling new audit devices with this
-option is only supported if `allow_audit_log_prefixing = true` is set in the
-[server configuration](/docs/configuration).
+  Note: The `prefix` option lets operators write semi-arbitrary content to the
+  audit log. Starting with OpenBao v2.3.2, enabling new audit devices with this
+  option is only supported if `allow_audit_log_prefixing = true` is set in the
+  [server configuration](/docs/configuration).
 
-:::
+  :::
 
 ## Eliding list response bodies
 

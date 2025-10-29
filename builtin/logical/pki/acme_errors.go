@@ -142,7 +142,7 @@ func (e *ErrorResponse) Marshal() (*logical.Response, error) {
 	return &resp, nil
 }
 
-func FindType(given error) (err error, id string, code int, found bool) {
+func FindType(given error) (id string, code int, found bool, err error) {
 	matchedError := false
 	for err, id = range errIdMappings {
 		if errors.Is(given, err) {
@@ -160,7 +160,7 @@ func FindType(given error) (err error, id string, code int, found bool) {
 
 	code = errCodeMappings[err]
 
-	return
+	return id, code, found, err
 }
 
 func TranslateError(given error) (*logical.Response, error) {
@@ -187,7 +187,7 @@ func TranslateErrorToErrorResponse(given error) ErrorResponse {
 		given = unwrapped.Errors[0]
 	}
 
-	_, id, code, found := FindType(given)
+	id, code, found, _ := FindType(given)
 	if !found && len(remaining) > 0 {
 		// Translate multierrors into a generic error code.
 		id = errIdMappings[ErrCompound]
@@ -200,7 +200,7 @@ func TranslateErrorToErrorResponse(given error) ErrorResponse {
 	body.StatusCode = code
 
 	for _, subgiven := range remaining {
-		_, subid, _, _ := FindType(subgiven)
+		subid, _, _, _ := FindType(subgiven)
 
 		var sub ErrorResponse
 		sub.Type = ErrorPrefix + subid

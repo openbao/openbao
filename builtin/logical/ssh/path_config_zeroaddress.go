@@ -5,7 +5,6 @@ package ssh
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 
@@ -104,7 +103,7 @@ func (b *backend) pathConfigZeroAddressWrite(ctx context.Context, req *logical.R
 			return nil, err
 		}
 		if role == nil {
-			return logical.ErrorResponse(fmt.Sprintf("Role %q does not exist", item)), nil
+			return logical.ErrorResponse("Role %q does not exist", item), nil
 		}
 	}
 

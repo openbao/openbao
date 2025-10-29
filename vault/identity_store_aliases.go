@@ -247,7 +247,7 @@ func (i *IdentityStore) handleAliasCreateUpdate() framework.OperationFunc {
 		// Look up the alias by factors; if it's found it's an update
 		mountEntry := i.router.MatchingMountByAccessor(mountAccessor)
 		if mountEntry == nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid mount accessor %q", mountAccessor)), nil
+			return logical.ErrorResponse("invalid mount accessor %q", mountAccessor), nil
 		}
 		if mountEntry.NamespaceID != ns.ID {
 			return logical.ErrorResponse("matching mount is in a different namespace than request"), logical.ErrPermissionDenied
@@ -284,14 +284,6 @@ func (i *IdentityStore) handleAliasCreate(ctx context.Context, canonicalID, name
 		}
 		if entity.NamespaceID != ns.ID {
 			return logical.ErrorResponse("entity found with 'canonical_id' not in request namespace"), logical.ErrPermissionDenied
-		}
-	}
-
-	if entity == nil && local {
-		// Check to see if the entity creation should be forwarded.
-		entity, err = i.entityCreator.CreateEntity(ctx)
-		if err != nil {
-			return nil, err
 		}
 	}
 
@@ -395,7 +387,7 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
 		// Check here to see if such an alias already exists, if so bail
 		mountEntry := i.router.MatchingMountByAccessor(mountAccessor)
 		if mountEntry == nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid mount accessor %q", mountAccessor)), nil
+			return logical.ErrorResponse("invalid mount accessor %q", mountAccessor), nil
 		}
 		if mountEntry.NamespaceID != alias.NamespaceID {
 			return logical.ErrorResponse("given mount accessor is not in the same namespace as the existing alias"), logical.ErrPermissionDenied
@@ -554,13 +546,11 @@ func (i *IdentityStore) handleAliasReadCommon(ctx context.Context, alias *identi
 		respData["mount_type"] = mountValidationResp.MountType
 	}
 
-	// Convert protobuf timestamp into RFC3339 format
-	respData["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339)
-	respData["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339)
+	// Convert protobuf timestamp into RFC3339Nano format
+	respData["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339Nano)
+	respData["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 
-	return &logical.Response{
-		Data: respData,
-	}, nil
+	return &logical.Response{Data: respData}, nil
 }
 
 // pathAliasIDDelete deletes the alias for a given alias ID

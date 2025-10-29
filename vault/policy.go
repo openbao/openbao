@@ -260,7 +260,7 @@ func ParseACLPolicy(ns *namespace.Namespace, rules string) (*Policy, error) {
 // templated policy.
 func parseACLPolicyWithTemplating(ns *namespace.Namespace, rules string, performTemplating bool, entity *identity.Entity, groups []*identity.Group) (*Policy, error) {
 	// Parse the rules
-	root, err := hcl.Parse(rules)
+	root, err := hclutil.ParseConfig([]byte(rules))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse policy: %w", err)
 	}

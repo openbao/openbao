@@ -311,7 +311,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 	// This check happens after checking for a matching configured non-CA certs
 	if len(trustedChains) == 0 {
 		if retErr == nil {
-			return nil, logical.ErrorResponse(fmt.Sprintf("invalid certificate or no client certificate supplied; additionally got errors during verification: %v", retErr)), nil
+			return nil, logical.ErrorResponse("invalid certificate or no client certificate supplied; additionally got errors during verification: %v", retErr), nil
 		}
 		return nil, logical.ErrorResponse("invalid certificate or no client certificate supplied"), nil
 	}
@@ -348,7 +348,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 	}
 
 	if retErr != nil {
-		return nil, logical.ErrorResponse(fmt.Sprintf("no chain matching all constraints could be found for this login certificate; additionally got errors during verification: %v", retErr)), nil
+		return nil, logical.ErrorResponse("no chain matching all constraints could be found for this login certificate; additionally got errors during verification: %v", retErr), nil
 	}
 
 	return nil, logical.ErrorResponse("no chain matching all constraints could be found for this login certificate"), nil
@@ -576,7 +576,7 @@ func (b *backend) loadTrustedCerts(ctx context.Context, storage logical.Storage,
 		names, err = storage.List(ctx, "cert/")
 		if err != nil {
 			b.Logger().Error("failed to list trusted certs", "error", err)
-			return
+			return pool, trusted, trustedNonCAs, conf
 		}
 	}
 
@@ -627,7 +627,7 @@ func (b *backend) loadTrustedCerts(ctx context.Context, storage logical.Storage,
 			conf.QueryAllServers = conf.QueryAllServers || entry.OcspQueryAllServers
 		}
 	}
-	return
+	return pool, trusted, trustedNonCAs, conf
 }
 
 func (b *backend) checkForCertInOCSP(ctx context.Context, clientCert *x509.Certificate, chain []*x509.Certificate, conf *ocsp.VerifyConfig) (bool, error) {
@@ -662,15 +662,6 @@ func (b *backend) checkForChainInCRLs(chain []*x509.Certificate) bool {
 	return badChain
 }
 
-func (b *backend) checkForValidChain(chains [][]*x509.Certificate) bool {
-	for _, chain := range chains {
-		if !b.checkForChainInCRLs(chain) {
-			return true
-		}
-	}
-	return false
-}
-
 // parsePEM parses a PEM encoded x509 certificate
 func parsePEM(raw []byte) (certs []*x509.Certificate) {
 	for len(raw) > 0 {
@@ -689,7 +680,7 @@ func parsePEM(raw []byte) (certs []*x509.Certificate) {
 		}
 		certs = append(certs, cert)
 	}
-	return
+	return certs
 }
 
 // validateConnState is used to validate that the TLS client is authorized

@@ -345,8 +345,8 @@ func (cg *ClientCertificateGenerator) generate(r io.Reader, expiration time.Time
 		Params: &certutil.CreationParameters{
 			Subject:                       subject,
 			KeyType:                       cg.KeyType,
-			KeyBits:                       cg.KeyBits,
-			SignatureBits:                 cg.SignatureBits,
+			KeyBits:                       keyBits,
+			SignatureBits:                 signatureBits,
 			NotAfter:                      expiration,
 			KeyUsage:                      x509.KeyUsageDigitalSignature,
 			ExtKeyUsage:                   certutil.ClientAuthExtKeyUsage,

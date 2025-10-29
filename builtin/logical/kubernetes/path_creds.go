@@ -10,11 +10,13 @@ import (
 	"slices"
 	"time"
 
-	josejwt "github.com/go-jose/go-jose/v3/jwt"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/logical"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -104,7 +106,7 @@ func (b *backend) pathCredentialsRead(ctx context.Context, req *logical.Request,
 	}
 
 	if roleEntry == nil {
-		return logical.ErrorResponse(fmt.Sprintf("role '%s' does not exist", roleName)), nil
+		return logical.ErrorResponse("role '%s' does not exist", roleName), nil
 	}
 
 	request := &credsRequest{
@@ -133,7 +135,7 @@ func (b *backend) pathCredentialsRead(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("error verifying namespace: %w", err)
 	}
 	if !isValidNs {
-		return logical.ErrorResponse(fmt.Sprintf("kubernetes_namespace '%s' is not present in role's allowed_kubernetes_namespaces or does not match role's label selector allowed_kubernetes_namespace_selector", request.Namespace)), nil
+		return logical.ErrorResponse("kubernetes_namespace '%s' is not present in role's allowed_kubernetes_namespaces or does not match role's label selector allowed_kubernetes_namespace_selector", request.Namespace), nil
 	}
 	if request.ClusterRoleBinding && roleEntry.K8sRoleType == "Role" {
 		return logical.ErrorResponse("a ClusterRoleBinding cannot ref a Role"), nil
@@ -259,7 +261,7 @@ func (b *backend) createCreds(ctx context.Context, req *logical.Request, role *r
 		// Create service account for existing role
 		// then token
 		// RoleBinding/ClusterRoleBinding will be the owning object
-		ownerRef := metav1.OwnerReference{}
+		var ownerRef metav1.OwnerReference
 		walID, ownerRef, err = createRoleBindingWithWAL(ctx, client, req.Storage, reqPayload.Namespace, genName, role.K8sRoleName, reqPayload.ClusterRoleBinding, role)
 		if err != nil {
 			return nil, err
@@ -281,7 +283,7 @@ func (b *backend) createCreds(ctx context.Context, req *logical.Request, role *r
 	case role.RoleRules != "":
 		// Create role, rolebinding, service account, token
 		// Role/ClusterRole will be the owning object
-		ownerRef := metav1.OwnerReference{}
+		var ownerRef metav1.OwnerReference
 		walID, ownerRef, err = createRoleWithWAL(ctx, client, req.Storage, reqPayload.Namespace, genName, role)
 		if err != nil {
 			return nil, err
@@ -445,7 +447,7 @@ func createRoleWithWAL(ctx context.Context, client *client, s logical.Storage, n
 }
 
 func getTokenTTL(token string) (time.Duration, error) {
-	parsed, err := josejwt.ParseSigned(token)
+	parsed, err := josejwt.ParseSigned(token, consts.AllowedJWTSignatureAlgorithmsK8s)
 	if err != nil {
 		return 0, err
 	}

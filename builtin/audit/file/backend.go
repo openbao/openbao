@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -110,17 +109,10 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 				return nil, errors.New("file mode does not represent a regular file")
 			}
 
-			const execBitMask = uint32(1<<32-1) ^ 0o111
-			//                  ---------------   -----
-			//                         ^            ^
-			//                     all ones         |
-			//                                      |
-			//                       set all 3 exec bits to zeroes
-
 			// Strip executable bits. Part of the exploit for HCSEC-2025-14 /
 			// CVE-2025-6000 / CVE-2025-54997 consists of abusing the ability
 			// to create executable files.
-			mode = mode & fs.FileMode(execBitMask)
+			mode &^= 0o111 // &^ means "bit clear", a combination of "bitwise complement" (^) and "bitwise and" (&)
 		}
 	}
 
@@ -267,7 +259,7 @@ func (b *Backend) log(ctx context.Context, buf *bytes.Buffer, writer io.Writer) 
 	// If writing to stdout there's no real reason to think anything would have
 	// changed so return above. Otherwise, opportunistically try to re-open the
 	// FD, once per call.
-	b.f.Close()
+	b.f.Close() //nolint:errcheck // try to close, ignore error
 	b.f = nil
 
 	if err := b.open(); err != nil {
@@ -275,7 +267,10 @@ func (b *Backend) log(ctx context.Context, buf *bytes.Buffer, writer io.Writer) 
 		return err
 	}
 
-	reader.Seek(0, io.SeekStart)
+	if _, err := reader.Seek(0, io.SeekStart); err != nil {
+		b.fileLock.Unlock()
+		return err
+	}
 	_, err := reader.WriteTo(writer)
 	b.fileLock.Unlock()
 	return err

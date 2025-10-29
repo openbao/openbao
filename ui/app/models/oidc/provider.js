@@ -46,7 +46,13 @@ export default class OidcProviderModel extends Model {
   _attributeMeta = null; // cache initial result of expandAttributeMeta in getter and return
   get formFields() {
     if (!this._attributeMeta) {
-      this._attributeMeta = expandAttributeMeta(this, ['name', 'issuer', 'scopesSupported']);
+      this._attributeMeta = expandAttributeMeta(this, [
+        'name',
+        'issuer',
+        'scopesSupported',
+        'authorizationCode',
+        'clientCredentials',
+      ]);
     }
     return this._attributeMeta;
   }

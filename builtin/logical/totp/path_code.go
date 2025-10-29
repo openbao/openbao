@@ -64,7 +64,7 @@ func (b *backend) pathReadCode(ctx context.Context, req *logical.Request, data *
 		return nil, err
 	}
 	if key == nil {
-		return logical.ErrorResponse(fmt.Sprintf("unknown key: %s", name)), nil
+		return logical.ErrorResponse("unknown key: %s", name), nil
 	}
 
 	// Generate password using totp library
@@ -95,7 +95,7 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 		return nil, err
 	}
 	if key == nil {
-		return logical.ErrorResponse(fmt.Sprintf("unknown key: %s", name)), nil
+		return logical.ErrorResponse("unknown key: %s", name), nil
 	}
 
 	// Enforce input value requirements
@@ -125,7 +125,7 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 
 	// Take the key skew, add two for behind and in front, and multiple that by
 	// the period to cover the full possibility of the validity of the key
-	err = b.usedCodes.Add(usedName, nil, time.Duration(
+	err = b.usedCodes.AddWithExpire(usedName, struct{}{}, time.Duration(
 		int64(time.Second)*
 			int64(key.Period)*
 			int64((2+key.Skew))))

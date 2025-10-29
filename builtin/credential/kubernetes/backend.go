@@ -18,6 +18,7 @@ import (
 
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -305,7 +306,7 @@ func (b *kubeAuthBackend) config(ctx context.Context, s logical.Storage) (*kubeC
 	// Parse the public keys from the CertificatesBytes
 	conf.PublicKeys = make([]crypto.PublicKey, len(conf.PEMKeys))
 	for i, cert := range conf.PEMKeys {
-		conf.PublicKeys[i], err = parsePublicKeyPEM([]byte(cert))
+		conf.PublicKeys[i], err = certutil.ParsePublicKeyPEM([]byte(cert))
 		if err != nil {
 			return nil, err
 		}

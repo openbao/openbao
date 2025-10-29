@@ -1,0 +1,3 @@
+```release-note:bug
+database/valkey: The creation_statements parameter now correctly accepts a standard array of strings for ACL rules (e.g., ["+@read", "~*"]). Previously, it incorrectly required a stringified JSON array. The old format is still supported for backward compatibility.
+```

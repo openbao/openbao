@@ -1009,12 +1009,20 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 }
 
 func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
+	ctx := namespace.RootContext(context.Background())
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
+	testIdentityStoreMergeEntitiesById(t, ctx, is, approleAccessor, upAccessor, core)
+}
+
+func TestIdentityStore_MergeEntitiesByID_UnsafeShared(t *testing.T) {
+	ctx := namespace.RootContext(context.Background())
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
+	testIdentityStoreMergeEntitiesById(t, ctx, is, approleAccessor, upAccessor, core)
+}
+
+func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *IdentityStore, approleAccessor string, upAccessor string, core *Core) {
 	var err error
 	var resp *logical.Response
-
-	ctx := namespace.RootContext(nil)
-	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t)
-
 	registerData := map[string]interface{}{
 		"name":     "testentityname2",
 		"metadata": []string{"someusefulkey=someusefulvalue"},

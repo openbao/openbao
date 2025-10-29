@@ -13,9 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fatih/structs"
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -177,37 +175,10 @@ func (b *backend) findSerialInCRLs(serial *big.Int) map[string]RevokedSerialInfo
 	return ret
 }
 
-func parseSerialString(input string) (*big.Int, error) {
-	ret := &big.Int{}
-
-	switch {
-	case strings.Count(input, ":") > 0:
-		serialBytes := certutil.ParseHexFormatted(input, ":")
-		if serialBytes == nil {
-			return nil, fmt.Errorf("error parsing serial %q", input)
-		}
-		ret.SetBytes(serialBytes)
-	case strings.Count(input, "-") > 0:
-		serialBytes := certutil.ParseHexFormatted(input, "-")
-		if serialBytes == nil {
-			return nil, fmt.Errorf("error parsing serial %q", input)
-		}
-		ret.SetBytes(serialBytes)
-	default:
-		var success bool
-		ret, success = ret.SetString(input, 0)
-		if !success {
-			return nil, fmt.Errorf("error parsing serial %q", input)
-		}
-	}
-
-	return ret, nil
-}
-
 func (b *backend) pathCRLDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := strings.ToLower(d.Get("name").(string))
 	if name == "" {
-		return logical.ErrorResponse(`"name" parameter cannot be empty`), nil
+		return logical.ErrorResponse("'name' parameter cannot be empty"), nil
 	}
 
 	if err := b.lockThenpopulateCRLs(ctx, req.Storage); err != nil {
@@ -219,15 +190,11 @@ func (b *backend) pathCRLDelete(ctx context.Context, req *logical.Request, d *fr
 
 	_, ok := b.crls[name]
 	if !ok {
-		return logical.ErrorResponse(fmt.Sprintf(
-			"no such CRL %s", name,
-		)), nil
+		return logical.ErrorResponse("no such CRL %s", name), nil
 	}
 
 	if err := req.Storage.Delete(ctx, "crls/"+name); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf(
-			"error deleting crl %s: %v", name, err),
-		), nil
+		return logical.ErrorResponse("error deleting crl %s: %v", name, err), nil
 	}
 
 	delete(b.crls, name)
@@ -238,7 +205,7 @@ func (b *backend) pathCRLDelete(ctx context.Context, req *logical.Request, d *fr
 func (b *backend) pathCRLRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := strings.ToLower(d.Get("name").(string))
 	if name == "" {
-		return logical.ErrorResponse(`"name" parameter must be set`), nil
+		return logical.ErrorResponse("'name' parameter must be set"), nil
 	}
 
 	if err := b.lockThenpopulateCRLs(ctx, req.Storage); err != nil {
@@ -248,32 +215,37 @@ func (b *backend) pathCRLRead(ctx context.Context, req *logical.Request, d *fram
 	b.crlUpdateMutex.RLock()
 	defer b.crlUpdateMutex.RUnlock()
 
-	var retData map[string]interface{}
-
 	crl, ok := b.crls[name]
 	if !ok {
-		return logical.ErrorResponse(fmt.Sprintf(
-			"no such CRL %s", name,
-		)), nil
+		return logical.ErrorResponse("no such CRL %s", name), nil
 	}
 
-	retData = structs.New(&crl).Map()
+	data := make(map[string]any)
 
-	return &logical.Response{
-		Data: retData,
-	}, nil
+	if len(crl.Serials) > 0 {
+		data["serials"] = crl.Serials
+	}
+
+	if cdp := crl.CDP; cdp != nil {
+		data["cdp"] = map[string]any{
+			"url":         cdp.Url,
+			"valid_until": cdp.ValidUntil,
+		}
+	}
+
+	return &logical.Response{Data: data}, nil
 }
 
 func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := strings.ToLower(d.Get("name").(string))
 	if name == "" {
-		return logical.ErrorResponse(`"name" parameter cannot be empty`), nil
+		return logical.ErrorResponse("'name' parameter cannot be empty"), nil
 	}
 	if crlRaw, ok := d.GetOk("crl"); ok {
 		crl := crlRaw.(string)
 		certList, err := x509.ParseCRL([]byte(crl))
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to parse CRL: %v", err)), nil
+			return logical.ErrorResponse("failed to parse CRL: %v", err), nil
 		}
 		if certList == nil {
 			return logical.ErrorResponse("parsed CRL is nil"), nil
@@ -343,13 +315,13 @@ func (b *backend) setCRL(ctx context.Context, storage logical.Storage, certList 
 }
 
 type CDPInfo struct {
-	Url        string    `json:"url" structs:"url" mapstructure:"url"`
-	ValidUntil time.Time `json:"valid_until" structs:"valid_until" mapstructure:"valid_until"`
+	Url        string    `json:"url" mapstructure:"url"`
+	ValidUntil time.Time `json:"valid_until" mapstructure:"valid_until"`
 }
 
 type CRLInfo struct {
-	CDP     *CDPInfo                     `json:"cdp" structs:"cdp" mapstructure:"cdp"`
-	Serials map[string]RevokedSerialInfo `json:"serials" structs:"serials" mapstructure:"serials"`
+	CDP     *CDPInfo                     `json:"cdp" mapstructure:"cdp"`
+	Serials map[string]RevokedSerialInfo `json:"serials" mapstructure:"serials"`
 }
 
 type RevokedSerialInfo struct{}
@@ -360,7 +332,7 @@ Manage Certificate Revocation Lists checked during authentication.
 
 const pathCRLsHelpDesc = `
 This endpoint allows you to list, create, read, update, and delete the Certificate
-Revocation Lists checked during authentication, and/or CRL Distribution Point 
+Revocation Lists checked during authentication, and/or CRL Distribution Point
 URLs.
 
 When any CRLs are in effect, any login will check the trust chains sent by a

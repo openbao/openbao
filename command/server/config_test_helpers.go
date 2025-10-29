@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/hashicorp/hcl/hcl/token"
 	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 )
 
 var DefaultCustomHeaders = map[string]map[string]string{
@@ -793,7 +793,7 @@ func testConfig_Sanitized(t *testing.T) {
 }
 
 func testParseListeners(t *testing.T) {
-	obj, _ := hcl.Parse(strings.TrimSpace(`
+	obj, _ := hclutil.ParseConfig([]byte(strings.TrimSpace(`
 listener "tcp" {
   address = "127.0.0.1:443"
   cluster_address = "127.0.0.1:8201"
@@ -817,7 +817,7 @@ listener "tcp" {
   proxy_api {
     enable_quit = true
   }
-}`))
+}`)))
 
 	config := Config{
 		SharedConfig: &configutil.SharedConfig{},
@@ -872,7 +872,7 @@ listener "tcp" {
 }
 
 func testParseUserLockouts(t *testing.T) {
-	obj, _ := hcl.Parse(strings.TrimSpace(`
+	obj, _ := hclutil.ParseConfig([]byte(strings.TrimSpace(`
 	user_lockout "all" {
 		lockout_duration = "40m"
 		lockout_counter_reset = "45m"
@@ -884,7 +884,7 @@ func testParseUserLockouts(t *testing.T) {
 	  }
 	  user_lockout "ldap" {
 		disable_lockout = "true"
-	 }`))
+	 }`)))
 
 	config := Config{
 		SharedConfig: &configutil.SharedConfig{},
@@ -893,8 +893,8 @@ func testParseUserLockouts(t *testing.T) {
 	objList := list.Filter("user_lockout")
 	configutil.ParseUserLockouts(config.SharedConfig, objList)
 
-	sort.Slice(config.SharedConfig.UserLockouts[:], func(i, j int) bool {
-		return config.SharedConfig.UserLockouts[i].Type < config.SharedConfig.UserLockouts[j].Type
+	sort.Slice(config.UserLockouts[:], func(i, j int) bool {
+		return config.UserLockouts[i].Type < config.UserLockouts[j].Type
 	})
 
 	expected := &Config{
@@ -925,8 +925,8 @@ func testParseUserLockouts(t *testing.T) {
 		},
 	}
 
-	sort.Slice(expected.SharedConfig.UserLockouts[:], func(i, j int) bool {
-		return expected.SharedConfig.UserLockouts[i].Type < expected.SharedConfig.UserLockouts[j].Type
+	sort.Slice(expected.UserLockouts[:], func(i, j int) bool {
+		return expected.UserLockouts[i].Type < expected.UserLockouts[j].Type
 	})
 	config.Prune()
 	require.Equal(t, config, *expected)
@@ -1168,40 +1168,6 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 
 	addExpectedEntConfig(expected, []string{})
 
-	config.Prune()
-	if diff := deep.Equal(config, expected); diff != nil {
-		t.Fatal(diff)
-	}
-}
-
-func testConfigRaftAutopilot(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/raft_autopilot.hcl", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	disableSSCTs := true
-	autopilotConfig := `[{"cleanup_dead_servers":true,"last_contact_threshold":"500ms","max_trailing_logs":250,"min_quorum":3,"server_stabilization_time":"10s"}]`
-	expected := &Config{
-		SharedConfig: &configutil.SharedConfig{
-			Listeners: []*configutil.Listener{
-				{
-					Type:    "tcp",
-					Address: "127.0.0.1:8200",
-				},
-			},
-		},
-
-		Storage: &Storage{
-			Type: "raft",
-			Config: map[string]string{
-				"path":      "/storage/path/raft",
-				"node_id":   "raft1",
-				"autopilot": autopilotConfig,
-			},
-		},
-		DisableSSCTokens: &disableSSCTs,
-	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
 		t.Fatal(diff)

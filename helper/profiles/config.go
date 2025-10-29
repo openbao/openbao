@@ -39,8 +39,8 @@ type RequestConfig struct {
 // self-initialization subsystem). Callers wishing to only have a single
 // outer block but which may support multiple requests may directly call
 // ParseRequestConfig(...) and assign the result via CreateOuterConfig(...).
-func ParseOuterConfig(outerBlockType string, result []*OuterConfig, list *ast.ObjectList) ([]*OuterConfig, error) {
-	result = make([]*OuterConfig, 0, len(list.Items))
+func ParseOuterConfig(outerBlockType string, list *ast.ObjectList) ([]*OuterConfig, error) {
+	result := make([]*OuterConfig, 0, len(list.Items))
 	for index, item := range list.Items {
 		var i OuterConfig
 		if err := hcl.DecodeObject(&i, item.Val); err != nil {

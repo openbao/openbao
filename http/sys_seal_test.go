@@ -16,10 +16,12 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSysSealStatus(t *testing.T) {
@@ -555,4 +557,49 @@ func TestSysStepDown(t *testing.T) {
 
 	resp := testHttpPut(t, token, addr+"/v1/sys/step-down", nil)
 	testResponseStatus(t, resp, 204)
+}
+
+func TestHA_UnsealLeaderThenStandbys_SharedKeys(t *testing.T) {
+	t.Parallel()
+
+	conf := &vault.CoreConfig{}
+	opts := &vault.TestClusterOptions{
+		NumCores: 3,
+		SkipInit: true,
+	}
+	cluster := vault.NewTestCluster(t, conf, opts)
+	defer cluster.Cleanup()
+
+	// Initialize on core[0]
+	initCore := cluster.Cores[0]
+	keys, _ := vault.TestCoreInit(t, initCore.Core)
+
+	// Unseal leader
+	for _, share := range keys {
+		_, err := initCore.Unseal(share)
+		require.NoError(t, err)
+	}
+	require.False(t, initCore.Sealed(), "initCore should be unsealed")
+
+	testhelpers.WaitForActiveNode(t, cluster)
+	isLeader, _, _, _ := initCore.Leader()
+	require.True(t, isLeader, "initCore should be leader")
+
+	// Unseal remaining cores (they should join as standbys)
+	for _, coreIndex := range []int{1, 2} {
+		c := cluster.Cores[coreIndex]
+		testhelpers.WaitForStandbyNode(t, c)
+
+		isStandby, err := c.Standby()
+		require.NoError(t, err)
+		if !isStandby {
+			t.Fatalf("core[%d] should not be leader", coreIndex)
+		}
+
+		for _, k := range keys {
+			_, err := c.Unseal(k)
+			require.NoError(t, err)
+		}
+		require.False(t, c.Sealed(), "standby core should be unsealed")
+	}
 }

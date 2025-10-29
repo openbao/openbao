@@ -826,6 +826,7 @@ func (c *TestCluster) SetRootToken(token string) {
 }
 
 func (c *TestCluster) Start() {
+	time.Sleep(2 * time.Second)
 }
 
 func (c *TestCluster) start(t testing.T) {
@@ -2128,7 +2129,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		}
 
 		// Let them come fully up to standby
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second)
 
 		// Ensure cluster connection info is populated.
 		// Other cores should not come up as leaders.

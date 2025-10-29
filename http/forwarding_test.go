@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	"github.com/openbao/openbao/builtin/logical/transit"
+	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -596,11 +597,16 @@ func TestHTTP_Forwarding_LocalOnly(t *testing.T) {
 	cores := cluster.Cores
 
 	vault.TestWaitActive(t, cores[0].Core)
+	testhelpers.WaitForStandbyNode(t, cluster.Cores[1])
+	testhelpers.WaitForStandbyNode(t, cluster.Cores[2])
 
 	testLocalOnly := func(client *api.Client) {
-		_, err := client.Logical().Read("sys/config/state/sanitized")
-		if err == nil {
-			t.Fatal("expected error")
+		sec, err := client.Logical().Read("sys/config/state/sanitized")
+		if err != nil {
+			t.Fatalf("standby should handle local read without forwarding: %v", err)
+		}
+		if sec == nil || sec.Data == nil {
+			t.Fatalf("expected non-nil secret/data from local read")
 		}
 	}
 

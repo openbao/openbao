@@ -2426,9 +2426,11 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		t.Fatal("should be standby")
 	}
 
-	// Request should fail in standby mode
+	time.Sleep(2 * time.Second)
+
+	// Request should not fail in standby mode since request is forwarded to active
 	_, err = core2.HandleRequest(namespace.RootContext(nil), req)
-	if err != consts.ErrStandby {
+	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 

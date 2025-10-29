@@ -886,7 +886,9 @@ func (m *ExpirationManager) Stop() error {
 	newStrategy := ExpireLeaseStrategy(expireNoop)
 	m.expireFunc.Store(&newStrategy)
 	oldPending := &m.pending
-	m.pending, m.nonexpiring, m.irrevocable = sync.Map{}, sync.Map{}, sync.Map{}
+	m.pending.Clear()
+	m.nonexpiring.Clear()
+	m.irrevocable.Clear()
 	m.leaseCount = 0
 	m.uniquePolicies = make(map[string][]string)
 	m.irrevocableLeaseCount = 0

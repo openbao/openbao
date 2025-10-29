@@ -225,23 +225,16 @@ func (ps *PolicyStore) invalidateNamespace(ctx context.Context, uuid string) {
 	defer ps.modifyLock.Unlock()
 
 	for _, key := range ps.tokenPoliciesLRU.Keys() {
-		if err := ctx.Err(); err != nil {
-			ps.logger.Error("unable to invalidate namespace policies, restarting core", "uuid", uuid, "error", err.Error())
-			ps.core.restart()
-			return
-		}
 		if strings.HasPrefix(key, uuid) {
 			ps.tokenPoliciesLRU.Remove(key)
 		}
 	}
 }
 
-func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType PolicyType) {
+func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType PolicyType) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		ps.logger.Error("unable to invalidate policy, no namespace info passed, restarting", "name", name)
-		ps.core.restart()
-		return
+		return err
 	}
 
 	// This may come with a prefixed "/" due to joining the file path
@@ -250,11 +243,6 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 
 	ps.modifyLock.Lock()
 	defer ps.modifyLock.Unlock()
-
-	if err := ctx.Err(); err != nil {
-		ps.logger.Error("unable to invalidate policy, restarting core", "name", name, "namespace", ns.UUID, "error", err.Error())
-		return
-	}
 
 	// We don't lock before removing from the LRU here because the worst that
 	// can happen is we load again if something since added it
@@ -265,25 +253,10 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 		}
 
 	default:
-		// Can't do anything
-		return
+		return fmt.Errorf("unknown policy type: %w", err)
 	}
 
-	// Force a reload
-	out, err := ps.switchedGetPolicy(ctx, name, policyType, false)
-	if err != nil {
-		ps.logger.Error("error fetching policy after invalidation, restarting core", "name", saneName)
-		ps.core.restart()
-		return
-	}
-
-	// If true, the invalidation was actually a delete, so we may need to
-	// perform further deletion tasks. We skip the physical deletion just in
-	// case another process has re-written the policy; instead next time Get is
-	// called the values will be loaded back in.
-	if out == nil {
-		ps.switchedDeletePolicy(ctx, name, policyType, false, true)
-	}
+	return nil
 }
 
 // SetPolicy is used to create or update the given policy

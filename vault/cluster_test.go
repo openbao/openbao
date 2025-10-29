@@ -109,7 +109,7 @@ func TestCluster_ListenForRequests(t *testing.T) {
 	addrs := cores[0].getClusterListener().Addrs()
 
 	// Use this to have a valid config after sealing since ClusterTLSConfig returns nil
-	checkListenersFunc := func(expectFail bool) {
+	checkListenersFunc := func(expectFail bool, name string) {
 		dialer := clusterListener.GetDialerFunc(context.Background(), consts.RequestForwardingALPN)
 		for i := range cores[0].Listeners {
 
@@ -117,13 +117,13 @@ func TestCluster_ListenForRequests(t *testing.T) {
 			netConn, err := dialer(clnAddr.String(), 0)
 			if err != nil {
 				if expectFail {
-					t.Logf("testing %s unsuccessful as expected", clnAddr)
+					t.Logf("[%s] testing %s unsuccessful as expected", name, clnAddr)
 					continue
 				}
-				t.Fatalf("error: %v\ncluster listener is %s", err, clnAddr)
+				t.Fatalf("[%s] error: %v\ncluster listener is %s", name, err, clnAddr)
 			}
 			if expectFail {
-				t.Fatalf("testing %s not unsuccessful as expected", clnAddr)
+				t.Fatalf("[%s] testing %s not unsuccessful as expected", name, clnAddr)
 			}
 			conn := netConn.(*tls.Conn)
 			err = conn.Handshake()
@@ -133,16 +133,16 @@ func TestCluster_ListenForRequests(t *testing.T) {
 			connState := conn.ConnectionState()
 			switch {
 			case connState.Version != tls.VersionTLS12 && connState.Version != tls.VersionTLS13:
-				t.Fatal("version mismatch")
+				t.Fatalf("[%s] version mismatch", name)
 			case connState.NegotiatedProtocol != consts.RequestForwardingALPN:
-				t.Fatal("bad protocol negotiation")
+				t.Fatalf("[%s] bad protocol negotiation", name)
 			}
-			t.Logf("testing %s successful", clnAddr)
+			t.Logf("[%s] testing %s successful", name, clnAddr)
 		}
 	}
 
 	time.Sleep(clusterTestPausePeriod)
-	checkListenersFunc(false)
+	checkListenersFunc(false, "initial")
 
 	err := cores[0].StepDown(context.Background(), &logical.Request{
 		Operation:   logical.UpdateOperation,
@@ -156,12 +156,12 @@ func TestCluster_ListenForRequests(t *testing.T) {
 	// StepDown doesn't wait during actual preSeal so give time for listeners
 	// to close
 	time.Sleep(clusterTestPausePeriod)
-	checkListenersFunc(true)
+	checkListenersFunc(true, "after step-down")
 
 	// After this period it should be active again
 	TestWaitActive(t, cores[0].Core)
 	cores[0].getClusterListener().AddClient(consts.RequestForwardingALPN, &requestForwardingClusterClient{cores[0].Core})
-	checkListenersFunc(false)
+	checkListenersFunc(false, "back on active")
 
 	err = cores[0].Core.Seal(cluster.RootToken)
 	if err != nil {
@@ -169,7 +169,7 @@ func TestCluster_ListenForRequests(t *testing.T) {
 	}
 	time.Sleep(clusterTestPausePeriod)
 	// After sealing it should be inactive again
-	checkListenersFunc(true)
+	checkListenersFunc(true, "after seal")
 }
 
 func TestCluster_ForwardRequests(t *testing.T) {

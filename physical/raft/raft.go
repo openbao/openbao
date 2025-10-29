@@ -208,20 +208,7 @@ type RaftBackend struct {
 
 // HookInvalidate implements physical.CacheInvalidationBackend.
 func (r *RaftBackend) HookInvalidate(hook physical.InvalidateFunc) {
-	r.fsm.hookInvalidate(func(key string) {
-		r.l.RLock()
-		raft := r.raft
-		r.l.RUnlock()
-
-		if raft == nil {
-			return
-		}
-		_, leaderId := raft.LeaderWithID()
-
-		if r.localID != string(leaderId) {
-			hook(key)
-		}
-	})
+	r.fsm.hookInvalidate(hook)
 }
 
 // LeaderJoinInfo contains information required by a node to join itself as a

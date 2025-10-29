@@ -328,8 +328,6 @@ type Core struct {
 	// configuration
 	mounts *MountTable
 
-	mountInvalidationWorker *mountInvalidationWorker
-
 	// mountsLock is used to ensure that the mounts table does not
 	// change underneath a calling function
 	mountsLock locking.DeadlockRWMutex
@@ -651,6 +649,10 @@ type Core struct {
 	// Whether we use a single global memdb instance for identity; see
 	// commentary below.
 	unsafeCrossNamespaceIdentity bool
+
+	// Core invalidation tracker handles dispatching invalidations and
+	// refreshing the Core-adjacent caches afterwards.
+	invalidations *invalidationManager
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
@@ -1068,6 +1070,10 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		c.seal = NewDefaultSeal(vaultseal.NewAccess(wrapper))
 	}
 	c.seal.SetCore(c)
+
+	// Create the invalidation manager.
+	c.NewInvalidationManager()
+
 	return c, nil
 }
 
@@ -1202,8 +1208,6 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 		c.logger.Info("Initializing version history cache for core")
 		c.versionHistory = make(map[string]VaultVersion)
 	}
-
-	c.mountInvalidationWorker = newMountInvalidationWorker(c)
 
 	return c, nil
 }
@@ -2042,12 +2046,12 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 		return errors.New("nil request to seal")
 	}
 
-	// Since there is no token store in standby nodes, sealing cannot be done.
-	// Ideally, the request has to be forwarded to leader node for validation
-	// and the operation should be performed. But for now, just returning with
-	// an error and recommending a vault restart, which essentially does the
-	// same thing.
-	if c.standby.Load() {
+	// Since there is no token store in true standby nodes, sealing cannot
+	// be done. Ideally, the request has to be forwarded to leader node for
+	// validation and the operation should be performed. But for now, just
+	// returning with an error and recommending a vault restart, which
+	// essentially does the same thing.
+	if c.standby.Load() && !c.StandbyReadsEnabled() {
 		c.logger.Error("vault cannot seal when in standby mode; please restart instead")
 		return errors.New("vault cannot seal when in standby mode; please restart instead")
 	}
@@ -2360,6 +2364,11 @@ func (readonlyUnsealStrategy) unseal(
 ) error {
 	c.logger.Debug("read-only unseal starting")
 
+	if c.standby.Load() {
+		// Start tracking invalidations.
+		c.invalidations.Track()
+	}
+
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
@@ -2418,6 +2427,12 @@ func (readonlyUnsealStrategy) unseal(
 
 	if err := c.setupAuditedHeadersConfig(ctx); err != nil {
 		return err
+	}
+
+	// Finally, start processing invalidations. We'll have cleared the queue
+	// when we started this, but any
+	if c.standby.Load() {
+		c.invalidations.Start(ctx)
 	}
 
 	return nil
@@ -2560,6 +2575,9 @@ func (c *Core) preSeal() error {
 	c.stopRaftActiveNode()
 	c.cancelNamespaceDeletion()
 
+	if err := c.invalidations.Stop(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down invalidations: %w", err))
+	}
 	if err := c.teardownAudits(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down audits: %w", err))
 	}
@@ -4004,23 +4022,4 @@ func (c *Core) DetectStateLockDeadlocks() bool {
 		return true
 	}
 	return false
-}
-
-func (c *Core) invalidateKeyrings(path string) {
-	go func() {
-		c.stateLock.Lock()
-		defer c.stateLock.Unlock()
-
-		if c.activeContext == nil || c.activeContext.Err() != nil {
-			return
-		}
-
-		c.logger.Trace("invalidating encryption keyring", "key", path)
-
-		if err := c.performKeyUpgrades(c.activeContext); err != nil {
-			c.logger.Error("failed to invalidate keyrings", "err", err)
-			c.restart()
-			return
-		}
-	}()
 }

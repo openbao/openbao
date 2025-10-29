@@ -127,6 +127,9 @@ type Config struct {
 	// on the active node. Updates cannot occur, only additions or deletions,
 	// but can be modified through SIGHUP on a running server.
 	Audits []*AuditDevice `hcl:"-"`
+
+	// Whether read requests are disabled on standby nodes.
+	DisableStandbyReads bool `hcl:"disable_standby_reads"`
 }
 
 func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {

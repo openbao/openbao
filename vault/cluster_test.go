@@ -110,11 +110,11 @@ func TestCluster_ListenForRequests(t *testing.T) {
 
 	// Use this to have a valid config after sealing since ClusterTLSConfig returns nil
 	checkListenersFunc := func(expectFail bool) {
-		dialer := clusterListener.GetDialerFunc(context.Background(), consts.RequestForwardingALPN)
+		dialer := clusterListener.GetContextDialerFunc(context.Background(), consts.RequestForwardingALPN)
 		for i := range cores[0].Listeners {
 
 			clnAddr := addrs[i]
-			netConn, err := dialer(clnAddr.String(), 0)
+			netConn, err := dialer(context.Background(), clnAddr.String())
 			if err != nil {
 				if expectFail {
 					t.Logf("testing %s unsuccessful as expected", clnAddr)
@@ -262,7 +262,7 @@ func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx
 	}
 	time.Sleep(clusterTestPausePeriod)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if i != oldLeaderCoreIdx && i != newLeaderCoreIdx {
 			_ = cluster.Cores[i].StepDown(context.Background(), &logical.Request{
 				Operation:   logical.UpdateOperation,
@@ -278,7 +278,7 @@ func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx
 	deadline := time.Now().Add(5 * time.Second)
 	var ready int
 	for time.Now().Before(deadline) {
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			if i != newLeaderCoreIdx {
 				leaderParams := cluster.Cores[i].clusterLeaderParams.Load().(*ClusterLeaderParams)
 				if leaderParams != nil && leaderParams.LeaderClusterAddr == cluster.Cores[newLeaderCoreIdx].ClusterAddr() {
@@ -297,7 +297,7 @@ func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx
 		t.Fatal("standbys have not discovered the new active node in time")
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if i != newLeaderCoreIdx {
 			testCluster_ForwardRequests(t, cluster.Cores[i], rootToken, remoteCoreID)
 		}

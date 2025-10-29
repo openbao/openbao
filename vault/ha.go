@@ -393,7 +393,7 @@ func (c *Core) stopStandby() {
 }
 
 func (c *Core) restart() {
-	restartCh := c.restartCh.Load()
+	restartCh := c.standbyRestartCh.Load()
 	if restartCh == nil {
 		return
 	}
@@ -407,7 +407,7 @@ func (c *Core) restart() {
 
 func (c *Core) drainPendingRestarts() {
 	for {
-		restartCh := c.restartCh.Load()
+		restartCh := c.standbyRestartCh.Load()
 		if restartCh == nil {
 			return
 		}

@@ -241,6 +241,9 @@ func (r *Router) Unmount(ctx context.Context, prefix string) error {
 
 	// Call backend's Cleanup routine
 	re := raw.(*routeEntry)
+	re.l.Lock()
+	defer re.l.Unlock()
+
 	if re.backend != nil {
 		re.backend.Cleanup(ctx)
 	}
@@ -557,6 +560,10 @@ func (r *Router) MatchingMountByAPIPath(ctx context.Context, path string) string
 	if re == nil {
 		return ""
 	}
+
+	re.l.RLock()
+	defer re.l.RUnlock()
+
 	return re.mountEntry.Path
 }
 
@@ -572,6 +579,10 @@ func (r *Router) MatchingStoragePrefixByAPIPath(ctx context.Context, path string
 	if !found {
 		return "", false
 	}
+
+	re.l.RLock()
+	defer re.l.RUnlock()
+
 	return re.storagePrefix, true
 }
 
@@ -581,6 +592,9 @@ func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string
 	if !found {
 		return nil, "", "", found
 	}
+
+	re.l.RLock()
+	defer re.l.RUnlock()
 
 	mountPath := re.mountEntry.Path
 	// Add back the prefix for credential backends
@@ -607,7 +621,6 @@ func (r *Router) matchingRouteEntryByPath(ctx context.Context, path string, apiP
 
 	// Extract the mount path and storage prefix
 	re := raw.(*routeEntry)
-
 	return re, true
 }
 
@@ -913,6 +926,9 @@ func (r *Router) RootPath(ctx context.Context, path string) bool {
 	}
 	re := raw.(*routeEntry)
 
+	re.l.RLock()
+	defer re.l.RUnlock()
+
 	// Trim to get remaining path
 	remain := strings.TrimPrefix(adjustedPath, mount)
 
@@ -952,7 +968,11 @@ func (r *Router) LoginPath(ctx context.Context, path string) bool {
 	if !ok {
 		return false
 	}
+
 	re := raw.(*routeEntry)
+
+	re.l.RLock()
+	defer re.l.RUnlock()
 
 	// Trim to get remaining path
 	remain := strings.TrimPrefix(adjustedPath, mount)

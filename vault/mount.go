@@ -687,10 +687,6 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	}
 	defer unlock()
 
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err

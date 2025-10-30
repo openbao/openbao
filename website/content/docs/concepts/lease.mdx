@@ -24,7 +24,7 @@ to check in routinely.
 
 In addition to renewals, a lease can be _revoked_. When a lease is revoked, it
 invalidates that secret immediately and prevents any further renewals. For
-example, with the [Kubernetes secrets engine](/docs/secrets/kubernetes), the
+example, with the [Kubernetes secrets engine](../secrets/kubernetes.mdx), the
 service accounts will be deleted from Kubernetes the moment a lease is revoked. This
 renders the access keys invalid from that point forward.
 
@@ -33,7 +33,7 @@ the user interface (UI) under the Access tab, or automatically by OpenBao. When 
 is expired, OpenBao will automatically revoke that lease. When a token is revoked,
 OpenBao will revoke all leases that were created using that token.
 
-**Note**: The [Key/Value Backend](/docs/secrets/kv) which stores
+**Note**: The [Key/Value Backend](../secrets/kv/index.mdx) which stores
 arbitrary secrets does not issue leases although it will sometimes return a
 lease duration; see the documentation for more information.
 
@@ -69,7 +69,7 @@ determine what the new lease is.
 
 :::info
 
-To implement token renewal logic in your application code, refer to the [code example in the Authentication doc](/docs/concepts/auth#code-example).
+To implement token renewal logic in your application code, refer to the [code example in the Authentication doc](auth.mdx#code-example).
 
 :::
 
@@ -82,7 +82,7 @@ Lease IDs are structured in a way that their prefix is always the path where
 the secret was requested from. This lets you revoke trees of secrets. For
 example, to revoke all Userpass logins, you can do `bao lease revoke -prefix auth/userpass/`.
 For more information about revoke command please check
-[cli's lease revoke](/docs/commands/lease/revoke#lease-revoke)
+[cli's lease revoke](../commands/lease/revoke.mdx#lease-revoke)
 command docs.
 
 This is very useful if there is an intrusion within a specific system: all

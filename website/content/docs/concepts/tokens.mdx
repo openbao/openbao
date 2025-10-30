@@ -12,7 +12,7 @@ description: Tokens are a core auth method in OpenBao. Concepts and important fe
 :::
 
 Tokens are the core method for _authentication_ within OpenBao. Tokens
-can be used directly or [auth methods](/docs/concepts/auth)
+can be used directly or [auth methods](auth.mdx)
 can be used to dynamically generate tokens based on external identities.
 
 If you've gone through the getting started guide, you probably noticed that
@@ -20,14 +20,14 @@ If you've gone through the getting started guide, you probably noticed that
 initial "root token." This is the first method of authentication for OpenBao.
 It is also the only auth method that cannot be disabled.
 
-As stated in the [authentication concepts](/docs/concepts/auth),
+As stated in the [authentication concepts](auth.mdx),
 all external authentication mechanisms, such as GitHub, map down to dynamically
 created tokens. These tokens have all the same properties as a normal manually
 created token.
 
 Within OpenBao, tokens map to information. The most important information mapped
 to a token is a set of one or more attached
-[policies](/docs/concepts/policies). These policies control what the token
+[policies](policies.mdx). These policies control what the token
 holder is allowed to do within OpenBao. Other mapped information includes
 metadata that can be viewed and is added to the audit log, such as creation
 time, last renewal time, and more.
@@ -69,7 +69,7 @@ applicability to batch tokens is discussed later.
 
 Often in documentation or in help channels, the "token store" is referenced.
 This is the same as the [`token` authentication
-backend](/docs/auth/token). This is a special
+backend](../auth/token.mdx). This is a special
 backend in that it is responsible for creating and storing tokens, and cannot
 be disabled. It is also the only auth method that has no login
 capability -- all actions require existing authenticated tokens.

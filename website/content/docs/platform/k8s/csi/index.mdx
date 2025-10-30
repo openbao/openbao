@@ -37,15 +37,15 @@ The following features are supported by the OpenBao CSI Provider:
 - Rendering OpenBao secrets to files.
 - Dynamic lease caching and renewal performed by Agent.
 - Syncing secrets to Kubernetes secrets to be used as environment variables.
-- Installation via [OpenBao Helm](/docs/platform/k8s/helm)
+- Installation via [OpenBao Helm](../helm/index.mdx)
 
 @include 'kubernetes-supported-versions.mdx'
 
 ## Authenticating with OpenBao
 
 The OpenBao CSI Provider will authenticate with OpenBao as the service account of the
-pod that mounts the CSI volume. [Kubernetes](/docs/auth/kubernetes) and
-[JWT](/docs/auth/jwt) auth methods are supported. The pod's service account
+pod that mounts the CSI volume. [Kubernetes](../../../auth/kubernetes.mdx) and
+[JWT](../../../auth/jwt/index.mdx) auth methods are supported. The pod's service account
 must be bound to a OpenBao role and a policy granting access to the secrets desired.
 
 It is highly recommended to run pods with dedicated Kubernetes service accounts to

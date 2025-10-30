@@ -27,7 +27,7 @@ and arguments if any:
 bao <command> [options] [path] [args]
 ```
 
-- `options` - [Flags](/docs/commands#flags) to specify additional settings
+- `options` - [Flags](index.mdx#flags) to specify additional settings
 - `args` - API arguments specific to the operation
 
 :::info
@@ -61,9 +61,9 @@ $ bao write -address="http://127.0.0.1:8200" -namespace="my-organization" \
 The options (flags) come after the command (or subcommand) preceding the path,
 and the args always follow the path to set API parameter values.
 
-The four most common operations in OpenBao are [read](/docs/commands/read),
-[write](/docs/commands/write), [delete](/docs/commands/delete), and
-[list](/docs/commands/list). These operations work on most paths in OpenBao. Some
+The four most common operations in OpenBao are [read](read.mdx),
+[write](write.mdx), [delete](delete.mdx), and
+[list](list.mdx). These operations work on most paths in OpenBao. Some
 paths will contain secrets while other paths may contain configuration. Whatever it
 is, the primary interface for reading and writing data to OpenBao is similar.
 
@@ -116,10 +116,10 @@ The help output displays available subcommands, parameters, and command flags.
 
 ### API help
 
-To invoke the OpenBao API paths, you can use the [read](/docs/commands/read) (for
-HTTP GET), [write](/docs/commands/write) (for HTTP PUT or POST),
-[delete](/docs/commands/delete) (for HTTP DELETE), and
-[list](/docs/commands/list) (for HTTP LIST) commands.
+To invoke the OpenBao API paths, you can use the [read](read.mdx) (for
+HTTP GET), [write](write.mdx) (for HTTP PUT or POST),
+[delete](delete.mdx) (for HTTP DELETE), and
+[list](list.mdx) (for HTTP LIST) commands.
 
 Use `path-help` to get OpenBao API help:
 
@@ -278,7 +278,7 @@ available to the OpenBao process will be logged during startup.
 OpenBao authentication token. Conceptually similar to a session token on a
 website, the `VAULT_TOKEN` environment variable holds the contents of the token.
 For more information, please see the [token
-concepts](/docs/concepts/tokens) page.
+concepts](../concepts/tokens.mdx) page.
 
 ### `VAULT_ADDR`
 
@@ -341,7 +341,7 @@ High Availability mode.
 
 Do not verify OpenBao's presented certificate before communicating with it.
 Setting this variable is not recommended and voids OpenBao's [security
-model](/docs/internals/security).
+model](../internals/security.mdx).
 
 ### `VAULT_TLS_SERVER_NAME`
 

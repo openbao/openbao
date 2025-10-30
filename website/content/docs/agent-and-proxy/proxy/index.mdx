@@ -38,7 +38,7 @@ the Auto-Auth token for these requests. Please see the [API Proxy docs][apiproxy
 for more information.
 
 API Proxy functionality takes place within a defined `listener`, and its behaviour can be configured with an
-[`api_proxy` stanza](/docs/agent-and-proxy/proxy/apiproxy#configuration-api_proxy).
+[`api_proxy` stanza](apiproxy.mdx#configuration-api_proxy).
 
 ## Caching
 
@@ -60,7 +60,7 @@ to only enable this on trusted interfaces, as it does not require any authorizat
 
 ### Cache
 
-See the [caching](/docs/agent-and-proxy/proxy/caching#api) page for details on the cache API.
+See the [caching](caching/index.mdx#api) page for details on the cache API.
 
 ## Configuration
 
@@ -141,7 +141,7 @@ environment variable as a comma separated string. This environment variable will
 - `template_config` <code>(template_config: \<optional>)</code> - Specifies templating engine behavior.
 
 - `telemetry` <code>([telemetry][telemetry]: \<optional>)</code> – Specifies the telemetry
-reporting system. See the [telemetry Stanza](/docs/agent-and-proxy/proxy#telemetry-stanza) section below
+reporting system. See the [telemetry Stanza](index.mdx#telemetry-stanza) section below
 for a list of metrics specific to Proxy.
 
 - `log_level` - Equivalent to the `-log-level` command-line flag.
@@ -243,7 +243,7 @@ to `metrics_only` listeners.
 
 #### proxy_api stanza
 
-- `enable_quit` `(bool: false)` - If set to `true`, the Proxy will enable the [quit](/docs/agent-and-proxy/proxy#quit) API.
+- `enable_quit` `(bool: false)` - If set to `true`, the Proxy will enable the [quit](index.mdx#quit) API.
 
 ### telemetry stanza
 

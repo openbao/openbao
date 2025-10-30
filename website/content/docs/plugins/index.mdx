@@ -17,7 +17,7 @@ A plugin is uniquely identified by its type (one of `secret`, `auth`, or
 implies either the built-in plugin or the single unversioned plugin that can
 be registered.
 
-See [Plugin Upgrade Procedure](/docs/upgrading/plugins#plugin-upgrade-procedure)
+See [Plugin Upgrade Procedure](../upgrading/plugins.mdx#plugin-upgrade-procedure)
 for details on how to upgrade a built-in plugin in-place.
 
 ## Plugin distribution methods
@@ -35,16 +35,17 @@ used.
 
 To run an external plugin, a binary of the plugin is required. Plugin
 binaries can be obtained from the [openbao-plugins](https://github.com/openbao/openbao-plugins) repository
-or they can be [built from source](/docs/plugins/plugin-development#building-a-plugin-from-source). 
+or they can be [built from source](plugin-development.mdx#building-a-plugin-from-source). 
 OpenBao also supports downloading and managing plugins distributed as OCI (Open
 Container Initiative) images from container registries.  See the [OCI
-Plugin](/docs/configuration/oci-plugins) configuration reference for complete
+Plugin](../configuration/oci-plugins.mdx) configuration reference for complete
 documentation.
+
 
 OpenBao's external plugins are completely separate, standalone applications that
 OpenBao executes and communicates with over RPC. Each time an OpenBao secret engine,
 auth method, or database plugin is mounted, a new process is spawned. However,
-plugins can be made to implement [plugin multiplexing](/docs/plugins/plugin-architecture#plugin-multiplexing)
+plugins can be made to implement [plugin multiplexing](plugin-architecture.mdx#plugin-multiplexing)
 to improve performance. Plugin multiplexing allows plugin processes to be
 reused across all mounts of a given type.
 

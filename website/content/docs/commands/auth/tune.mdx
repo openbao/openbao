@@ -84,8 +84,8 @@ Success! Tuned the auth method at: github/
 ### Enable user lockout
 
 User lockout feature is only supported for
-[userpass](/docs/auth/userpass), [ldap](/docs/auth/ldap), and
-[approle](/docs/auth/approle) auth methods.
+[userpass](../../auth/userpass.mdx), [ldap](../../auth/ldap.mdx), and
+[approle](../../auth/approle.mdx) auth methods.
 
 Tune the `userpass/` auth method to lock out the user after 10 failed login
 attempts within 10 minutes.
@@ -116,7 +116,7 @@ user_lockout_threshold                 10
 ## Usage
 
 The following flags are available in addition to the [standard set of
-flags](/docs/commands) included on all commands.
+flags](../index.mdx) included on all commands.
 
 - `-allowed-response-headers` `(string: "")` - response header values that the auth
   method will be allowed to set.
@@ -143,7 +143,7 @@ flags](/docs/commands) included on all commands.
 
 - `-max-lease-ttl` `(duration: "")` - The maximum lease TTL for this auth
   method. If unspecified, this defaults to the OpenBao server's globally
-  configured [maximum lease TTL](/docs/configuration#max_lease_ttl), or a
+  configured [maximum lease TTL](../../configuration/index.mdx#max_lease_ttl), or a
   previously configured value for the auth method. This value is allowed to
   override the server's global max TTL; it can be longer or shorter.
 
@@ -156,7 +156,7 @@ flags](/docs/commands) included on all commands.
 
 - `-plugin-version` `(string: "")` - Configures the semantic version of the plugin
   to use. The new version will not start running until the mount is
-  [reloaded](/docs/commands/plugin/reload).
+  [reloaded](../plugin/reload.mdx).
 
 - `-user-lockout-threshold` `(string: "")` - Specifies the number of failed login attempts 
   after which the user is locked out.

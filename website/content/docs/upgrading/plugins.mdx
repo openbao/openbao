@@ -165,7 +165,7 @@ transit             v1.12.0+builtin.bao
   to manage schema upgrades and downgrades. Check the plugin release notes for
   any unsupported upgrade or downgrade transitions, especially before moving to
   a new major version or downgrading.
-* Existing OpenBao [leases](/docs/concepts/lease) and [tokens](/docs/concepts/tokens)
+* Existing OpenBao [leases](../concepts/lease.mdx) and [tokens](../concepts/tokens.mdx)
   are generally unaffected by plugin upgrades and reloads. This is because the lifecycle
   of leases and tokens is handled by core systems within OpenBao. The plugin itself only
   handles renewal and revocation of them when it’s requested by those core systems.

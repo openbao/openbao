@@ -50,3 +50,10 @@ message Response {
 	map<string, HeaderEntry> header_entries = 4;
 	uint64 last_remote_wal = 5;
 }
+
+message LoginAttempt {
+    string namespace_uuid = 1;
+    string mount_uuid = 2;
+    string user_alias_name = 3;
+    bool successful = 4;
+}

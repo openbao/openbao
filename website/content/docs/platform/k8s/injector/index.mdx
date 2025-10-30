@@ -10,7 +10,7 @@ description: >-
 
 The OpenBao Agent Injector alters pod specifications to include OpenBao Agent
 containers that render OpenBao secrets to a shared memory volume using
-[OpenBao Agent Templates](/docs/agent-and-proxy/agent/template).
+[OpenBao Agent Templates](../../../agent-and-proxy/agent/template.mdx).
 By rendering secrets to a shared volume, containers within the pod can consume
 OpenBao secrets without being OpenBao aware.
 
@@ -186,7 +186,7 @@ Some secrets such as KV are stored in maps. Their data can be accessed using `.D
 ### Renewals and updating secrets
 
 For more information on when OpenBao Agent fetches and renews secrets, see the
-[Agent documentation](/docs/agent-and-proxy/agent/template#renewals-and-updating-secrets).
+[Agent documentation](../../../agent-and-proxy/agent/template.mdx#renewals-and-updating-secrets).
 
 ### OpenBao agent configuration map
 
@@ -200,4 +200,4 @@ The configuration map must contain either one or both of the following files:
 - **config-init.hcl** used by the init container. This must have `exit_after_auth` set to `true`.
 - **config.hcl** used by the sidecar container. This must have `exit_after_auth` set to `false`.
 
-An example of mounting a OpenBao Agent configmap [can be found here](/docs/platform/k8s/injector/examples#configmap-example).
+An example of mounting a OpenBao Agent configmap [can be found here](examples.mdx#configmap-example).

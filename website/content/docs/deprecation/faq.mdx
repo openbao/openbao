@@ -5,7 +5,7 @@ description: |-
 ---
 # Feature deprecation FAQ
 
-This page provides frequently asked questions concerning decisions made about OpenBao feature deprecations. Please refer to the [Feature Deprecation Notice and Plans](/docs/deprecation) document for up-to-date information on OpenBao feature deprecations and notice.
+This page provides frequently asked questions concerning decisions made about OpenBao feature deprecations. Please refer to the [Feature Deprecation Notice and Plans](index.mdx) document for up-to-date information on OpenBao feature deprecations and notice.
 
 - [Q: What is the impact of removing support for X.509 certificates with signatures that use SHA-1?](#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
 - [Q: What are the phases of deprecation?](#q-what-are-the-phases-of-deprecation)
@@ -34,23 +34,23 @@ Here are the use cases that may still use certificates with SHA-1:
 
 #### Auth methods
 
-- [Kerberos Auth Method](/docs/auth/kerberos)
-- [Kubernetes Auth Method](/docs/auth/kubernetes)
-- [LDAP Auth Method](/docs/auth/ldap)
-- [JWT/OIDC Auth Method](/docs/auth/jwt/)
-- [TLS Certificates Auth Method](/docs/auth/cert)
+- [Kerberos Auth Method](../auth/kerberos.mdx)
+- [Kubernetes Auth Method](../auth/kubernetes.mdx)
+- [LDAP Auth Method](../auth/ldap.mdx)
+- [JWT/OIDC Auth Method](../auth/jwt/index.mdx)
+- [TLS Certificates Auth Method](../auth/cert.mdx)
 
 #### Database secrets engines
 
-- [Cassandra Database Secrets Engine](/docs/secrets/databases/cassandra)
-- [InfluxDB Database Secrets Engine](/docs/secrets/databases/influxdb)
-- [MySQL/MariaDB Database Secrets Engine](/docs/secrets/databases/mysql-maria)
+- [Cassandra Database Secrets Engine](../secrets/databases/cassandra.mdx)
+- [InfluxDB Database Secrets Engine](../secrets/databases/influxdb.mdx)
+- [MySQL/MariaDB Database Secrets Engine](../secrets/databases/mysql-maria.mdx)
 
 #### Secrets engines
 
-- [Kubernetes Secrets Engine](/docs/secrets/kubernetes)
-- [LDAP Secrets Engine](/docs/secrets/ldap)
-- [PKI Secrets Engine](/docs/secrets/pki/)
+- [Kubernetes Secrets Engine](../secrets/kubernetes.mdx)
+- [LDAP Secrets Engine](../secrets/ldap.mdx)
+- [PKI Secrets Engine](../secrets/pki/index.mdx)
 
 ### Q: what are the phases of deprecation?
 
@@ -86,7 +86,7 @@ This status reflects a feature which has been officially deprecated in this rele
 
 ##### VAULT_ALLOW_PENDING_REMOVAL_MOUNTS
 
-The `Pending Removal` behavior may be overridden using a new environment variable: [`VAULT_ALLOW_PENDING_REMOVAL_MOUNTS`](/docs/commands/server#vault_allow_pending_removal_mounts). This environment variable effectively allows all `Pending Removal` features to be treated as `Deprecated`.
+The `Pending Removal` behavior may be overridden using a new environment variable: [`VAULT_ALLOW_PENDING_REMOVAL_MOUNTS`](../commands/server.mdx#vault_allow_pending_removal_mounts). This environment variable effectively allows all `Pending Removal` features to be treated as `Deprecated`.
 
 #### Removed
 

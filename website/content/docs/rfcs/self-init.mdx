@@ -189,7 +189,7 @@ and a source (`env`, `file`, `request.data`, `response.data`, &c) to serve
 as the source value for the field.
 
 Initialization will occur in the order provided by the configuration file
-[ordering](/docs/configuration): each initialization block is executed in
+[ordering](../configuration/index.mdx): each initialization block is executed in
 the order they appear in the configuration file and blocks in different
 files are executed in alphabetically sorted order.
 
@@ -260,7 +260,7 @@ users will ultimately have great control over the desired requests.
 
 One-time initialization limits scope versus continual re-initialization
 (config-based management). The decisions around delaying initial recovery
-[key creation](/docs/rfcs/authenticated-rekey/) are part of a separate RFC
+[key creation](authenticated-rekey.mdx) are part of a separate RFC
 with security implications discussed there.
 
 Otherwise, this is functionally equivalent to an operator manually wrapping

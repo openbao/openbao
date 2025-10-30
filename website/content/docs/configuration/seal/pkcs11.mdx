@@ -26,7 +26,7 @@ key material.
 :::warning
 
 Because PKCS#11 auto-unseal was not present in Vault v1.14 OSS, it is not
-expected that it is [seal-compatible](/docs/policies/migration/); manual
+expected that it is [seal-compatible](../../policies/migration.mdx); manual
 migration of data between nodes may be required.
 
 :::
@@ -133,7 +133,7 @@ explicit HMACing).
 
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
-Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
+Refer to the [Seal Migration](../../concepts/seal.mdx#seal-migration) documentation for more information about the seal migration process.
 
 ### Mechanism specific flags
 
@@ -169,6 +169,6 @@ or deleted and are used to decrypt older data.
 
 ## Tested HSM Vendors and Models
 
-| Vendor       | Model      | Unsealing | Installation Guide                                         |
-| ------------ | ---------- | --------- | ---------------------------------------------------------- |
-| Securosys SA | Primus HSM | Yes       | [Installation Guide](/docs/guides/unseal/pkcs11/securosys) |
+| Vendor       | Model      | Unsealing | Installation Guide                                             |
+|--------------|------------|-----------|----------------------------------------------------------------|
+| Securosys SA | Primus HSM | Yes       | [Installation Guide](../../guides/unseal/pkcs11/securosys.mdx) |

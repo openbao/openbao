@@ -46,7 +46,7 @@ the Auto-Auth token for these requests. Please see the [API Proxy docs][apiproxy
 for more information.
 
 API Proxy functionality takes place within a defined `listener`, and its behaviour can be configured with an
-[`api_proxy` stanza](/docs/agent-and-proxy/agent/apiproxy#configuration-api_proxy).
+[`api_proxy` stanza](apiproxy.mdx#configuration-api_proxy).
 
 ## Caching
 
@@ -68,7 +68,7 @@ to only enable this on trusted interfaces, as it does not require any authorizat
 
 ### Cache
 
-See the [caching](/docs/agent-and-proxy/agent/caching#api) page for details on the cache API.
+See the [caching](caching/index.mdx#api) page for details on the cache API.
 
 ## Configuration
 
@@ -153,10 +153,10 @@ These are the currently-available general configuration options:
 
 - `env_template` <code>([env_template][template]: \<optional>)</code> - Multiple blocks accepted. Each block contains
   the options used for templating OpenBao secrets as environment variables via the
-  [process supervisor mode](/docs/agent-and-proxy/agent/process-supervisor).
+  [process supervisor mode](process-supervisor.mdx).
 
 - `telemetry` <code>([telemetry][telemetry]: \<optional>)</code> – Specifies the telemetry
-  reporting system. See the [telemetry Stanza](/docs/agent-and-proxy/agent#telemetry-stanza) section below
+  reporting system. See the [telemetry Stanza](index.mdx#telemetry-stanza) section below
   for a list of metrics specific to Agent.
 
 - `log_level` - Equivalent to the [`-log-level` command-line flag](#_log_level).
@@ -273,7 +273,7 @@ listener configuration, an Agent's listener configuration also supports the foll
 
 #### agent_api stanza
 
-- `enable_quit` `(bool: false)` - If set to `true`, the agent will enable the [quit](/docs/agent-and-proxy/agent#quit) API.
+- `enable_quit` `(bool: false)` - If set to `true`, the agent will enable the [quit](index.mdx#quit) API.
 
 ### telemetry stanza
 

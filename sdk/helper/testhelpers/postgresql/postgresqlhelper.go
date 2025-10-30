@@ -87,6 +87,8 @@ func prepareTestContainer(t *testing.T, name, repo, version, password string,
 		return nil, func() {}, "", os.Getenv("PG_URL")
 	}
 
+	docker.CheckSkipContainerTests(t)
+
 	if version == "" {
 		version = "17"
 	}

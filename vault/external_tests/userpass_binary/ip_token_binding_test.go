@@ -31,6 +31,8 @@ func Test_StrictIPBinding(t *testing.T) {
 		t.Skip("only running docker test when $BAO_BINARY present")
 	}
 
+	hDocker.CheckSkipContainerTests(t)
+
 	opts := &docker.DockerClusterOptions{
 		ImageRepo: "quay.io/openbao/openbao",
 		// We're replacing the binary anyway, so we're not too particular about

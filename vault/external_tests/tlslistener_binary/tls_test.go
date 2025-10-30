@@ -35,6 +35,8 @@ func TestTLSListener_SelfHostedNonStandard(t *testing.T) {
 		t.Skip("only running docker test when $BAO_BINARY present")
 	}
 
+	hDocker.CheckSkipContainerTests(t)
+
 	opts := &docker.DockerClusterOptions{
 		ImageRepo: "quay.io/openbao/openbao",
 		// We're replacing the binary anyway, so we're not too particular about
@@ -102,6 +104,8 @@ func TestTLSListener_SelfHostedPrivileged(t *testing.T) {
 		t.Skip("only running docker test when $BAO_BINARY present")
 	}
 
+	hDocker.CheckSkipContainerTests(t)
+
 	opts := &docker.DockerClusterOptions{
 		ImageRepo: "quay.io/openbao/openbao",
 		// We're replacing the binary anyway, so we're not too particular about
@@ -164,6 +168,8 @@ func TestTLSListener_ALPN(t *testing.T) {
 	if binary == "" {
 		t.Skip("only running docker test when $BAO_BINARY present")
 	}
+
+	hDocker.CheckSkipContainerTests(t)
 
 	opts := &docker.DockerClusterOptions{
 		ImageRepo: "quay.io/openbao/openbao",

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/api/v2"
+	hDocker "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
 	rafttest "github.com/openbao/openbao/vault/external_tests/raft"
@@ -18,6 +19,9 @@ func TestRaft_Configuration_Docker(t *testing.T) {
 	if binary == "" {
 		t.Skip("only running docker test when $VAULT_BINARY present")
 	}
+
+	hDocker.CheckSkipContainerTests(t)
+
 	opts := &docker.DockerClusterOptions{
 		ImageRepo: "quay.io/openbao/openbao",
 		// We're replacing the binary anyway, so we're not too particular about

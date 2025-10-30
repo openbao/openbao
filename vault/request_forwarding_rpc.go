@@ -13,8 +13,12 @@ import (
 
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/forwarding"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 type forwardedRequestRPCServer struct {
@@ -23,6 +27,51 @@ type forwardedRequestRPCServer struct {
 	core               *Core
 	handler            http.Handler
 	raftFollowerStates *raft.FollowerStates
+}
+
+func (s *forwardedRequestRPCServer) ForwardLoginAttempt(ctx context.Context, attempt *forwarding.LoginAttempt) (*emptypb.Empty, error) {
+	if attempt.Successful {
+		return nil, status.Errorf(codes.Unimplemented, "method ForwardLoginAttempt for successful attempts not yet implemented")
+	}
+
+	//  Find the namespace
+
+	ns, err := s.core.namespaceStore.GetNamespace(ctx, attempt.NamespaceUuid)
+	if err != nil {
+		return nil, err
+	}
+	if ns == nil {
+		return &emptypb.Empty{}, nil // namespace was deleted, ignore
+	}
+
+	ctx = namespace.ContextWithNamespace(ctx, ns)
+
+	// Find the mount
+
+	s.core.authLock.RLock()
+	me, err := s.core.auth.find(ctx, func(me *MountEntry) bool {
+		return me.UUID == attempt.MountUuid
+	})
+	s.core.authLock.RUnlock()
+
+	if err != nil {
+		return nil, err
+	}
+	if me == nil {
+		return &emptypb.Empty{}, nil // mount was deleted, ignore
+	}
+
+	// Process failure
+
+	err = s.core.failedUserLoginProcess(ctx, me, &FailedLoginUser{
+		aliasName:     attempt.UserAliasName,
+		mountAccessor: me.Accessor,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (s *forwardedRequestRPCServer) ForwardRequest(ctx context.Context, freq *forwarding.Request) (*forwarding.Response, error) {

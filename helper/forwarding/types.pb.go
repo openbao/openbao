@@ -333,6 +333,74 @@ func (x *Response) GetLastRemoteWal() uint64 {
 	return 0
 }
 
+type LoginAttempt struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NamespaceUuid string                 `protobuf:"bytes,1,opt,name=namespace_uuid,json=namespaceUuid,proto3" json:"namespace_uuid,omitempty"`
+	MountUuid     string                 `protobuf:"bytes,2,opt,name=mount_uuid,json=mountUuid,proto3" json:"mount_uuid,omitempty"`
+	UserAliasName string                 `protobuf:"bytes,3,opt,name=user_alias_name,json=userAliasName,proto3" json:"user_alias_name,omitempty"`
+	Successful    bool                   `protobuf:"varint,4,opt,name=successful,proto3" json:"successful,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LoginAttempt) Reset() {
+	*x = LoginAttempt{}
+	mi := &file_helper_forwarding_types_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LoginAttempt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LoginAttempt) ProtoMessage() {}
+
+func (x *LoginAttempt) ProtoReflect() protoreflect.Message {
+	mi := &file_helper_forwarding_types_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LoginAttempt.ProtoReflect.Descriptor instead.
+func (*LoginAttempt) Descriptor() ([]byte, []int) {
+	return file_helper_forwarding_types_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *LoginAttempt) GetNamespaceUuid() string {
+	if x != nil {
+		return x.NamespaceUuid
+	}
+	return ""
+}
+
+func (x *LoginAttempt) GetMountUuid() string {
+	if x != nil {
+		return x.MountUuid
+	}
+	return ""
+}
+
+func (x *LoginAttempt) GetUserAliasName() string {
+	if x != nil {
+		return x.UserAliasName
+	}
+	return ""
+}
+
+func (x *LoginAttempt) GetSuccessful() bool {
+	if x != nil {
+		return x.Successful
+	}
+	return false
+}
+
 var File_helper_forwarding_types_proto protoreflect.FileDescriptor
 
 const file_helper_forwarding_types_proto_rawDesc = "" +
@@ -369,7 +437,15 @@ const file_helper_forwarding_types_proto_rawDesc = "" +
 	"\x0flast_remote_wal\x18\x05 \x01(\x04R\rlastRemoteWal\x1aY\n" +
 	"\x12HeaderEntriesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.forwarding.HeaderEntryR\x05value:\x028\x01B.Z,github.com/openbao/openbao/helper/forwardingb\x06proto3"
+	"\x05value\x18\x02 \x01(\v2\x17.forwarding.HeaderEntryR\x05value:\x028\x01\"\x9c\x01\n" +
+	"\fLoginAttempt\x12%\n" +
+	"\x0enamespace_uuid\x18\x01 \x01(\tR\rnamespaceUuid\x12\x1d\n" +
+	"\n" +
+	"mount_uuid\x18\x02 \x01(\tR\tmountUuid\x12&\n" +
+	"\x0fuser_alias_name\x18\x03 \x01(\tR\ruserAliasName\x12\x1e\n" +
+	"\n" +
+	"successful\x18\x04 \x01(\bR\n" +
+	"successfulB.Z,github.com/openbao/openbao/helper/forwardingb\x06proto3"
 
 var (
 	file_helper_forwarding_types_proto_rawDescOnce sync.Once
@@ -383,19 +459,20 @@ func file_helper_forwarding_types_proto_rawDescGZIP() []byte {
 	return file_helper_forwarding_types_proto_rawDescData
 }
 
-var file_helper_forwarding_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_helper_forwarding_types_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_helper_forwarding_types_proto_goTypes = []any{
-	(*Request)(nil),     // 0: forwarding.Request
-	(*URL)(nil),         // 1: forwarding.URL
-	(*HeaderEntry)(nil), // 2: forwarding.HeaderEntry
-	(*Response)(nil),    // 3: forwarding.Response
-	nil,                 // 4: forwarding.Request.HeaderEntriesEntry
-	nil,                 // 5: forwarding.Response.HeaderEntriesEntry
+	(*Request)(nil),      // 0: forwarding.Request
+	(*URL)(nil),          // 1: forwarding.URL
+	(*HeaderEntry)(nil),  // 2: forwarding.HeaderEntry
+	(*Response)(nil),     // 3: forwarding.Response
+	(*LoginAttempt)(nil), // 4: forwarding.LoginAttempt
+	nil,                  // 5: forwarding.Request.HeaderEntriesEntry
+	nil,                  // 6: forwarding.Response.HeaderEntriesEntry
 }
 var file_helper_forwarding_types_proto_depIdxs = []int32{
 	1, // 0: forwarding.Request.url:type_name -> forwarding.URL
-	4, // 1: forwarding.Request.header_entries:type_name -> forwarding.Request.HeaderEntriesEntry
-	5, // 2: forwarding.Response.header_entries:type_name -> forwarding.Response.HeaderEntriesEntry
+	5, // 1: forwarding.Request.header_entries:type_name -> forwarding.Request.HeaderEntriesEntry
+	6, // 2: forwarding.Response.header_entries:type_name -> forwarding.Response.HeaderEntriesEntry
 	2, // 3: forwarding.Request.HeaderEntriesEntry.value:type_name -> forwarding.HeaderEntry
 	2, // 4: forwarding.Response.HeaderEntriesEntry.value:type_name -> forwarding.HeaderEntry
 	5, // [5:5] is the sub-list for method output_type
@@ -416,7 +493,7 @@ func file_helper_forwarding_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_helper_forwarding_types_proto_rawDesc), len(file_helper_forwarding_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

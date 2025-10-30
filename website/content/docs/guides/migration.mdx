@@ -1,9 +1,10 @@
 ---
+sidebar_label: Migration Guide
 description: >-
   This page contains a guide to migrate from HashiCorp Vault to OpenBao
 ---
 
-# Migration guide
+# Migration Guide
 
 This page contains a guide to migrate a HashiCorp Vault cluster to OpenBao.
 
@@ -36,7 +37,11 @@ Only the community edition (v1.14.x) Vault was tested, not Vault Enterprise.
 
 If your Vault version is lower than 1.14.1, upgrade to v1.14.1.
 
+:::warning
+
 This guide will not work on Vault versions 1.15.0 and newer; use at your own risk.
+
+:::
 
 If your Vault has been bootstrapped with Vault version < 1.3,
 you may need to rekey. Vault pre 1.3 used a different Shamir seal

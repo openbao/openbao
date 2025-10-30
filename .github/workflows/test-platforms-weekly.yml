@@ -1,0 +1,57 @@
+name: Weekly Platform Tests
+on:
+  schedule:
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+    inputs:
+      platform_scope:
+        description: "Platform scope to test"
+        required: false
+        default: "mandatory"
+        type: choice
+        options: [mandatory, all]
+
+jobs:
+  gen-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.mk.outputs.matrix }}
+      test-matrix: ${{ steps.mk.outputs.test-matrix }}
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - name: Generate platform matrix
+        id: mk
+        run: |
+          SCOPE="${{ github.event.inputs.platform_scope }}"
+          if [ -z "$SCOPE" ]; then
+            SCOPE="mandatory"
+          fi
+          echo "Generating matrix for scope: $SCOPE"
+          FULL_MATRIX=$(./.github/scripts/generate-platform-matrix.sh $SCOPE | jq -c .)
+          echo "FULL_MATRIX=$FULL_MATRIX"
+          echo "matrix=$FULL_MATRIX" >> "$GITHUB_OUTPUT"
+
+          # Generate test matrix - only linux/amd64 
+          TEST_MATRIX=$(echo "$FULL_MATRIX" | jq -c 'map(select(.goos == "linux" and .goarch == "amd64"))')
+          echo "TEST_MATRIX=$TEST_MATRIX"
+          echo "test-matrix=$TEST_MATRIX" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: gen-matrix
+    uses: ./.github/workflows/cross-platform-build.yml
+    with:
+      matrix: ${{ needs.gen-matrix.outputs.matrix }}
+
+  tests:
+    needs: gen-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.gen-matrix.outputs.test-matrix) }}
+    uses: ./.github/workflows/test-go.yml
+    with:
+      runs-on: ${{ matrix.os }}
+      go-arch: ${{ matrix.goarch }}
+      total-runners: 16
+      binary-tests: true
+      name: weekly-${{ matrix.goos }}-${{ matrix.goarch }}

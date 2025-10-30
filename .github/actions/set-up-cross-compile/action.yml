@@ -1,0 +1,25 @@
+name: Set Up Cross Compile
+description: Set up the cross-compile environment
+inputs:
+  goos: { required: true, description: "Operating system" }
+  goarch: { required: true, description: "Architecture" }
+  goarm: { required: false, description: "ARM version (e.g. 6, 7)" }
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/set-up-go
+
+    - name: Export cross-compile vars
+      shell: bash
+      run: |
+        echo "GOOS=${{ inputs.goos }}" >> $GITHUB_ENV
+        echo "GOARCH=${{ inputs.goarch }}" >> $GITHUB_ENV
+        if [ -n "${{ inputs.goarm }}" ]; then echo "GOARM=${{ inputs.goarm }}" >> $GITHUB_ENV; fi
+
+    - name: Go build cache
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684
+      with:
+        key: go-build-${{ runner.os }}-${{ inputs.goos }}-${{ inputs.goarch }}-${{ hashFiles('**/go.sum') }}
+        path: |
+          ~/.cache/go-build

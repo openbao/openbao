@@ -1,0 +1,3 @@
+```release-note:change
+ci: Add weekly build and test for the different release platforms
+```

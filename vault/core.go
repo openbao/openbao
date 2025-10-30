@@ -3968,3 +3968,10 @@ func (c *Core) DetectStateLockDeadlocks() bool {
 	}
 	return false
 }
+
+func (c *Core) notifyPhysicalLeadership(active bool) {
+	if notifiable, ok := c.ha.(physical.LeadershipChangedBackend); ok {
+		c.logger.Trace("setting active node status", "active", active)
+		notifiable.LeadershipChange(active)
+	}
+}

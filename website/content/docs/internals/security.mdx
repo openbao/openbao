@@ -75,7 +75,7 @@ The following are not considered part of the OpenBao threat model:
 
 - **Protecting against OpenBao administrators supplying vulnerable or malicious configuration
   data.** Any data provided as configuration values to OpenBao's administrative endpoints
-  (e.g. [secret engines](/docs/secrets) configurations), or OpenBao's
+  (e.g. [secret engines](../secrets/index.mdx) configurations), or OpenBao's
   configuration files should be validated. If an attacker can write to OpenBao's
   configuration, then the confidentiality or integrity of data can be compromised.
 
@@ -98,7 +98,7 @@ permitted to make login requests.
 All server-to-server traffic between OpenBao instances within a cluster uses
 mutually-authenticated TLS to ensure the confidentiality and integrity of data
 in transit. Nodes are authenticated prior to joining the cluster by an
-[unseal challenge](/docs/concepts/integrated-storage#vault-networking-recap).
+[unseal challenge](../concepts/integrated-storage/index.mdx#vault-networking-recap).
 
 The storage backends used by OpenBao are also untrusted by design. OpenBao uses a
 security barrier for all requests made to the backend. The security barrier
@@ -143,7 +143,7 @@ client), the highest access level permitted is used. For example, if the
 "ops" policy permits read access to the "ops/" path, then the user gets the
 union of those. Policy is matched using the most specific defined policy, which
 may be an exact match or the longest-prefix match glob pattern. See
-[Policy Syntax](/docs/concepts/policies#policy-syntax) for more details.
+[Policy Syntax](../concepts/policies.mdx#policy-syntax) for more details.
 
 Certain operations are only permitted by "root" users, which is a distinguished
 policy built into OpenBao. This is similar to the concept of a root user on a

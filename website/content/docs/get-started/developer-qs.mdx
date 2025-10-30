@@ -30,7 +30,7 @@ The `-dev-root-token-id` flag for dev servers tells the OpenBao server to allow 
 
 :::danger
 
-**Warning**: The [root token](/docs/concepts/tokens#root-tokens) is useful for development, but allows full access to all data and functionality of OpenBao, so it must be carefully guarded in production. Ideally, even an administrator of OpenBao would use their own token with limited privileges instead of the root token.
+**Warning**: The [root token](../concepts/tokens.mdx#root-tokens) is useful for development, but allows full access to all data and functionality of OpenBao, so it must be carefully guarded in production. Ideally, even an administrator of OpenBao would use their own token with limited privileges instead of the root token.
 
 :::
 
@@ -62,7 +62,7 @@ import openbao "github.com/openbao/openbao/api/v2"
 
 ## Step 3: authenticate to OpenBao
 
-A variety of [authentication methods](/docs/auth) can be used to prove
+A variety of [authentication methods](../auth/index.mdx) can be used to prove
 your application's identity to the OpenBao server.  To keep things simple for
 our example, we'll just use the root token created in **Step 1**.  Paste the
 following code to initialize a new OpenBao client that will use token-based
@@ -133,7 +133,7 @@ $ curl \
 </TabItem>
 </Tabs>
 
-A common way of storing secrets is as key-value pairs using the [KV secrets engine (v2)](/docs/secrets/kv/kv-v2). In the code we've just added, `password` is the key in the key-value pair, and `OpenBao123` is the value.
+A common way of storing secrets is as key-value pairs using the [KV secrets engine (v2)](../secrets/kv/kv-v2.mdx). In the code we've just added, `password` is the key in the key-value pair, and `OpenBao123` is the value.
 
 We also provided the path to our secret in OpenBao. We will reference this path in a moment when we learn how to retrieve our secret.
 
@@ -205,4 +205,4 @@ If not, check to see if you provided the correct path to your secret.
 
 # Additional examples
 
-To learn how to integrate applications with OpenBao without needing to always change your application code, see the [OpenBao Agent](/docs/agent-and-proxy/agent) documentation.
+To learn how to integrate applications with OpenBao without needing to always change your application code, see the [OpenBao Agent](../agent-and-proxy/agent/index.mdx) documentation.

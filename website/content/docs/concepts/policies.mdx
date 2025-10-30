@@ -16,7 +16,7 @@ system.
 ## Policy-authorization workflow
 
 Before a human or machine can gain access, an administrator must configure OpenBao
-with an [auth method](/docs/concepts/auth). Authentication is
+with an [auth method](auth.mdx). Authentication is
 the process by which human or machine-supplied information is verified against
 an internal or external system.
 
@@ -231,7 +231,7 @@ control over permitted (or denied) operations. As shown in the examples above,
 capabilities are always specified as a list of strings, even if there is only
 one capability.
 
-To determine the capabilities needed to perform a specific operation, the `-output-policy` flag can be added to the CLI subcommand. For an example, refer to the [Print Policy Requirements](/docs/commands#print-policy-requirements) document section.
+To determine the capabilities needed to perform a specific operation, the `-output-policy` flag can be added to the CLI subcommand. For an example, refer to the [Print Policy Requirements](../commands/index.mdx#print-policy-requirements) document section.
 
 
 The list of capabilities include the following:
@@ -416,13 +416,13 @@ path "secret/data/in-case-of-emergency" {
 
 :::danger
 
-**Note:** The use of [globs](/docs/concepts/policies#policy-syntax) (`*`) may result in [surprising or unexpected behavior](#parameter-constraints-limitations).
+**Note:** The use of [globs](policies.mdx#policy-syntax) (`*`) may result in [surprising or unexpected behavior](#parameter-constraints-limitations).
 
 :::
 
 :::warning
 
-**Note:** The `allowed_parameters`, `denied_parameters`, and `required_parameters` fields are not supported for policies used with the [version 2 kv secrets engine](/docs/secrets/kv/kv-v2).
+**Note:** The `allowed_parameters`, `denied_parameters`, and `required_parameters` fields are not supported for policies used with the [version 2 kv secrets engine](../secrets/kv/kv-v2.mdx).
 
 :::
 
@@ -666,7 +666,7 @@ pagination is optional but, when `limit` is specified, the maximum number of
 results is limited to the value of `pagination_limit`.
 
 It is assumed that the policy author only sets `pagination_limit` on endpoints
-conforming to the [Paginated Lists RFC](/docs/rfcs/paginated-lists/). This
+conforming to the [Paginated Lists RFC](../rfcs/paginated-lists.mdx). This
 allows the API to safely translate the value `limit=max` to a numerical value,
 either `limit=0` if no value was set or to the actual limit set by the policy
 author.
@@ -675,8 +675,8 @@ author.
 
 These parameters can be used to set minimums/maximums on TTLs set by clients
 when requesting that a response be
-[wrapped](/docs/concepts/response-wrapping), with a granularity of a
-second. These use [duration format strings](/docs/concepts/duration-format).
+[wrapped](response-wrapping.mdx), with a granularity of a
+second. These use [duration format strings](duration-format.mdx).
 
 In practice, setting a minimum TTL of one second effectively makes response
 wrapping mandatory for a particular path.
@@ -918,8 +918,8 @@ The following paths requires a root token or `sudo` capability in the policy:
 | -------------------------------------------------------------------------------------------------------------------------------------------------------| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [auth/token/accessors](/api-docs/auth/token#list-accessors)                                                                                      | LIST              | List token accessors for all current OpenBao service tokens                                                                                           |
 | [auth/token/create](/api-docs/auth/token#create-token)                                                                                           | POST              | Create a periodic or an orphan token (`period` or `no_parent`) option                                                                               |
-| [pki/root](/api-docs/secret/pki#delete-all-issuers-and-keys)                                                                                     | DELETE            | Delete the current CA key ([pki secrets engine](/docs/secrets/pki))                                                                           |
-| [pki/root/sign-self-issued](/api-docs/secret/pki#sign-self-issued)                                                                               | POST              | Use the configured CA certificate to sign a self-issued certificate ([pki secrets engine](/docs/secrets/pki))                                 |
+| [pki/root](/api-docs/secret/pki#delete-all-issuers-and-keys)                                                                                     | DELETE            | Delete the current CA key ([pki secrets engine](../secrets/pki/index.mdx))                                                                           |
+| [pki/root/sign-self-issued](/api-docs/secret/pki#sign-self-issued)                                                                               | POST              | Use the configured CA certificate to sign a self-issued certificate ([pki secrets engine](../secrets/pki/index.mdx))                                 |
 | [sys/audit](/api-docs/system/audit)                                                                                                              | GET               | List enabled audit devices                                                                                                                          |
 | [sys/audit/:path](/api-docs/system/audit)                                                                                                        | POST, DELETE      | Enable or remove an audit device                                                                                                                    |
 | [sys/auth/:path](/api-docs/system/auth)                                                                                                          | GET, POST, DELETE | Manage the auth methods (enable, read, and delete)                                                                                                  |

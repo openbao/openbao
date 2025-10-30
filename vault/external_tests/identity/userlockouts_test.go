@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/credential/userpass"
@@ -36,8 +37,7 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 		},
 	}
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
-		HandlerFunc:         vaulthttp.Handler,
-		DisableStandbyReads: true,
+		HandlerFunc: vaulthttp.Handler,
 	})
 	cluster.Start()
 	defer cluster.Cleanup()
@@ -158,6 +158,8 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected login to fail due to wrong credentials")
 			}
+
+			time.Sleep(5 * time.Second) // TODO: fix this
 
 			switch tt.expectedUserLocked {
 			case true:

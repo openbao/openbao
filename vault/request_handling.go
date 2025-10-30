@@ -23,10 +23,13 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -1595,7 +1598,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	// if routeErr has invalid credentials error, update the userFailedLoginMap
 	if routeErr != nil && routeErr == logical.ErrInvalidCredentials {
 		if !isUserLockoutDisabled {
-			err := c.failedUserLoginProcess(ctx, entry, req, userLockoutInfo)
+			err := c.failedUserLoginProcess(ctx, entry, userLockoutInfo)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1964,7 +1967,20 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 // failedUserLoginProcess updates the userFailedLoginMap with login count and  last failed
 // login time for users with failed login attempt
 // If the user gets locked for current login attempt, it updates the storage entry too
-func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntry, req *logical.Request, userLockoutInfo *FailedLoginUser) error {
+func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntry, userLockoutInfo *FailedLoginUser) error {
+	if c.standby.Load() {
+		_, err := c.rpcForwardingClient.ForwardLoginAttempt(ctx, &forwarding.LoginAttempt{
+			NamespaceUuid: mountEntry.Namespace().UUID,
+			MountUuid:     mountEntry.UUID,
+			UserAliasName: userLockoutInfo.aliasName,
+		}) // TODO: should we make this async?
+		if s, ok := status.FromError(err); ok && s.Code() == codes.Unimplemented {
+			c.logger.Warn("can not forward failed login attempt to primary, please update your primary")
+			err = nil
+		}
+		return err
+	}
+
 	// get the user lockout configuration for the user
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
 

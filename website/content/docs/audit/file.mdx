@@ -21,7 +21,7 @@ The File audit device is sensitive as it can write to arbitrary files on the
 instance. Be cautious when granting operators the ability to create this
 device via the API when `unsafe_allow_api_audit_creation=true` is set.
 
-Consider using [declarative audit configuration](/docs/configuration/audit/)
+Consider using [declarative audit configuration](../configuration/audit.mdx)
 instead.
 
 :::
@@ -53,7 +53,7 @@ Note the difference between `audit enable` command options and the `file` backen
 configuration options. Use `bao audit enable -help` to see the command options.
 
 The `file` audit device supports the common configuration options documented on
-the [main Audit Devices page](/docs/audit#common-configuration-options), and
+the [main Audit Devices page](index.mdx#common-configuration-options), and
 these device-specific options:
 
 - `file_path` `(string: <required>)` - The path to where the audit log will be

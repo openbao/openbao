@@ -383,7 +383,7 @@ which should be shown to the user to enter at the `auth_url`.
   provider. See [Redirect URIs](/docs/auth/jwt#redirect-uris) for more information.
 - `client_nonce` `(string: <optional>)` - Optional client-provided nonce that
   must match the `client_nonce` value provided during a subsequent request to the
-  [callback](/api-docs/auth/jwt#oidc-callback) API.
+  [callback](jwt.mdx#oidc-callback) API.
 
 ### Sample payloads
 
@@ -465,7 +465,7 @@ or direct callback modes, and is not used in device callback mode.
   instead of exchanging the code to get it.  Required if no `code` given.
 - `client_nonce` `(string: <optional>)` - Optional client-provided nonce that must
   match the `client_nonce` value provided during the prior request to the
-  [auth_url](/api-docs/auth/jwt#oidc-authorization-url-request) API.
+  [auth_url](jwt.mdx#oidc-authorization-url-request) API.
 - `error_description` `(string: <optional>)` - Detailed description of an error if there was an error.
   If present, will be included in the error message passed back to the requester.
 
@@ -498,7 +498,7 @@ $ curl \
 ## OIDC poll
 
 Poll for a response when using the direct or device callback modes in order to complete a login.
-The response from the [auth_url](/api-docs/auth/jwt#oidc-authorization-url-request) API
+The response from the [auth_url](jwt.mdx#oidc-authorization-url-request) API
 returns a `poll_interval` data item containing the number of seconds that the client
 should wait between invoking the poll API.
 
@@ -521,7 +521,7 @@ message or successfully return an authorization token.
   and must match the state returned from the OIDC provider.
 - `client_nonce` `(string: <optional>)` - Optional client-provided nonce that must
   match the `client_nonce` value provided during the prior request to the
-  [auth_url](/api-docs/auth/jwt#oidc-authorization-url-request) API.
+  [auth_url](jwt.mdx#oidc-authorization-url-request) API.
 
 ### Sample payload
 

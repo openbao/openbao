@@ -328,7 +328,7 @@ OpenBao server.
 
 If you are looking to conveniently inject the library into a
 container, have a look at the sibling [guide on the SecuroSys Primus
-HSM](/docs/guides/unseal/pkcs11/securosys), which contains plenty of
+HSM](securosys.mdx), which contains plenty of
 Kubernetes-specific strategies that apply to any PKCS#11 library.
 
 The PKCS#11 library is configured the same way the `p11tool2` tool is. This
@@ -373,7 +373,7 @@ seal "pkcs11" {
 }
 ```
 
-See [PKCS#11 Seal](/docs/configuration/seal/pkcs11) for complete documentation
+See [PKCS#11 Seal](../../../configuration/seal/pkcs11.mdx) for complete documentation
 on all available options, or how to set the above values via environment
 variables instead.
 
@@ -381,8 +381,8 @@ variables instead.
 
 With the key material, environment variables, dynamic library and
 server configuration all in place, start the OpenBao server. Unless
-[Self-initialization](/docs/configuration/self-init) is used or a [Seal
-Migration](/docs/concepts/seal#seal-migration) is performed, the final step is
+[Self-initialization](../../../configuration/self-init.mdx) is used or a [Seal
+Migration](../../../concepts/seal.mdx#seal-migration) is performed, the final step is
 to manually initialize OpenBao:
 
 ```shell-session

@@ -6,19 +6,19 @@ description: >-
 
 # Storage
 
-As described on our [Architecture](/docs/internals/architecture) page, OpenBao's
+As described on our [Architecture](../internals/architecture.mdx) page, OpenBao's
 storage backend is untrusted storage used purely to keep encrypted information.
 
 ## Supported storage backends
 
 Many other options for storage are available for OpenBao - see our
-[Storage Configuration](/docs/configuration/storage) section for more
+[Storage Configuration](../configuration/storage/index.mdx) section for more
 information.
 
 :::info
 
 **Choosing a storage backend:** Refer to the [integrated Storage vs. external
-storage](/docs/configuration/storage#integrated-storage-vs-external-storage)
+storage](../configuration/storage/index.mdx#integrated-storage-vs-external-storage)
 section of the storage configuration page to help make a decision about which
 storage backend to use.
 
@@ -62,10 +62,10 @@ study](https://www.hashicorp.com/resources/oh-no-i-deleted-my-vault-secret).
 We do not recommend backups as protection against the failure of an individual
 machine. OpenBao servers can run in clusters, so to protect against server
 failure, we recommend running OpenBao in [HA
-mode](/docs/internals/high-availability). An  OpenBao cluster can extend
+mode](../internals/high-availability.mdx). An  OpenBao cluster can extend
 across multiple availability zones within a region.
 
-When using OpenBao in [HA Mode](/docs/internals/high-availability), a
+When using OpenBao in [HA Mode](../internals/high-availability.mdx), a
 backup can help guard against the failure of a data center.
 
 Ultimately, backups are not a replacement for running in HA. As you develop a
@@ -77,7 +77,7 @@ backups and HA as critical components of that plan.
 Backups and restores are ideally performed while OpenBao is offline. If offline
 backups are not feasible, we recommend using a storage backend that supports
 atomic snapshots (such as [Integrated
-Storage](/docs/commands/operator/raft#snapshot)).
+Storage](../commands/operator/raft.mdx#snapshot)).
 
 :::warning
 
@@ -91,7 +91,7 @@ officially supported storage backend, see the instructions linked below. For
 other storage backends, follow the documentation of that backend for taking and
 restoring backups.
 
-- Integrated Storage [snapshots](/docs/commands/operator/raft#snapshot)
+- Integrated Storage [snapshots](../commands/operator/raft.mdx#snapshot)
 
 ### Configuration
 

@@ -5,7 +5,6 @@ package pki
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -18,7 +17,7 @@ type CELRoleEntry struct {
 	// Required, the name of the role
 	Name string `json:"name"`
 	// Required, defines validation logic
-	CelProgram celhelper.CelProgram `json:"validation_program"`
+	Program celhelper.Program `json:"validation_program"`
 }
 
 func pathListCelRoles(b *backend) *framework.Path {
@@ -70,10 +69,7 @@ func pathCelRoles(b *backend) *framework.Path {
 			Type:        framework.TypeString,
 			Description: "Name of the cel role",
 		},
-		"cel_program": {
-			Type:        framework.TypeMap,
-			Description: "CEL variables and expression defining the program for the role",
-		},
+		"cel_program": celhelper.FrameworkFieldSchema(),
 	}
 
 	return &framework.Path{
@@ -89,10 +85,7 @@ func pathCelRoles(b *backend) *framework.Path {
 				Type:        framework.TypeString,
 				Description: "Name of the cel role",
 			},
-			"cel_program": {
-				Type:        framework.TypeMap,
-				Description: "CEL variables and expression defining the program for the role",
-			},
+			"cel_program": celhelper.FrameworkFieldSchema(),
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -155,23 +148,19 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 	}
 	name := nameRaw.(string)
 
-	celProgram, err := celhelper.GetCELProgram(data)
+	program, err := celhelper.JSONProgramFromRequest(data)
 	if err != nil {
 		return nil, err
 	}
 
 	entry := &CELRoleEntry{
-		Name:       name,
-		CelProgram: *celProgram,
+		Name:    name,
+		Program: *program,
 	}
 
-	resp, err := validateCelRoleCreation(entry)
-	if err != nil {
+	// Validate with and without CSR.
+	if err := entry.Program.Validate(b.getCelEvalConfig(true)); err != nil {
 		return nil, err
-	}
-
-	if resp.IsError() {
-		return resp, nil
 	}
 
 	// Store it
@@ -183,7 +172,9 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 		return nil, err
 	}
 
-	return resp, nil
+	return &logical.Response{
+		Data: entry.ToResponseData(),
+	}, nil
 }
 
 func (b *backend) pathCelList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -209,10 +200,9 @@ func (b *backend) pathCelRoleRead(ctx context.Context, req *logical.Request, dat
 		return nil, err
 	}
 
-	resp := &logical.Response{
+	return &logical.Response{
 		Data: role.ToResponseData(),
-	}
-	return resp, nil
+	}, nil
 }
 
 func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -235,28 +225,24 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 
 	// Initialize the new entry with existing values
 	entry := &CELRoleEntry{
-		Name:       roleName,
-		CelProgram: oldEntry.CelProgram,
+		Name:    roleName,
+		Program: oldEntry.Program,
 	}
 
 	// Update the fields only if provided
-	if celProgramRaw, ok := data.GetOk("cel_program"); ok {
-		celProgramMap, ok := celProgramRaw.(map[string]interface{})
+	if programRaw, ok := data.GetOk("cel_program"); ok {
+		programMap, ok := programRaw.(map[string]interface{})
 		if !ok {
 			return logical.ErrorResponse("'cel_program' must be a valid map"), nil
 		}
-		if err := mapstructure.Decode(celProgramMap, &entry.CelProgram); err != nil {
+		if err := mapstructure.Decode(programMap, &entry.Program); err != nil {
 			return logical.ErrorResponse("failed to decode 'cel_program': %v", err), nil
 		}
 	}
 
 	// Validate the patched entry
-	resp, err := validateCelRoleCreation(entry)
-	if err != nil {
+	if err := entry.Program.Validate(b.getCelEvalConfig(true)); err != nil {
 		return nil, err
-	}
-	if resp.IsError() {
-		return resp, nil
 	}
 
 	// Store the updated entry
@@ -272,7 +258,9 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 		return nil, err
 	}
 
-	return resp, nil
+	return &logical.Response{
+		Data: entry.ToResponseData(),
+	}, nil
 }
 
 func (b *backend) pathCelRoleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -300,18 +288,6 @@ func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName st
 	return &result, nil
 }
 
-func validateCelRoleCreation(entry *CELRoleEntry) (*logical.Response, error) {
-	resp := &logical.Response{}
-
-	_, err := celhelper.ValidateProgram(entry.CelProgram)
-	if err != nil {
-		return nil, fmt.Errorf("%w", err)
-	}
-
-	resp.Data = entry.ToResponseData()
-	return resp, nil
-}
-
 const (
 	pathListCelHelpSyn  = `List the existing CEL roles in this backend`
 	pathListCelHelpDesc = `CEL policies will be listed by the role name.`
@@ -322,6 +298,6 @@ const (
 func (r *CELRoleEntry) ToResponseData() map[string]interface{} {
 	return map[string]interface{}{
 		"name":        r.Name,
-		"cel_program": r.CelProgram,
+		"cel_program": r.Program,
 	}
 }

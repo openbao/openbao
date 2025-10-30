@@ -3497,7 +3497,8 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, vi
 				}
 
 				if failedLoginInfoFromMap != &actualFailedLoginInfo {
-					// outdated entry, updating the entry in userFailedLoginMap with correct information
+					// outdated entry, updating the entry in userFailedLoginMap
+					// with correct information
 					if err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, &actualFailedLoginInfo, false); err != nil {
 						return 0, err
 					}

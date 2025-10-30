@@ -474,10 +474,7 @@ func (c *Core) taintCredEntry(ctx context.Context, nsID, path string, updateStor
 	// Taint the entry from the auth table
 	// We do this on the original since setting the taint operates
 	// on the entries which a shallow clone shares anyways
-	entry, err := c.auth.setTaint(nsID, strings.TrimPrefix(path, credentialRoutePrefix), true, mountStateUnmounting)
-	if err != nil {
-		return err
-	}
+	entry := c.auth.setTaint(nsID, strings.TrimPrefix(path, credentialRoutePrefix))
 
 	// Ensure there was a match
 	if entry == nil {
@@ -706,7 +703,7 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 			c.logger.Info("migrating legacy mount table to transactional layout")
 			needPersist = true
 		}
-		c.tableMetrics(len(c.auth.Entries), false, true, len(raw.Value))
+		c.tableMetrics(credentialTableType, false, len(c.auth.Entries), len(raw.Value))
 	}
 	if rawLocal != nil {
 		localAuthTable, err := c.decodeMountTable(ctx, rawLocal.Value)
@@ -716,7 +713,7 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 		}
 		if localAuthTable != nil && len(localAuthTable.Entries) > 0 {
 			c.auth.Entries = append(c.auth.Entries, localAuthTable.Entries...)
-			c.tableMetrics(len(localAuthTable.Entries), true, true, len(rawLocal.Value))
+			c.tableMetrics(credentialTableType, true, len(localAuthTable.Entries), len(rawLocal.Value))
 		}
 	}
 
@@ -987,26 +984,26 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(nonLocalAuth.Entries), false, true, compressedBytesLen)
+		c.tableMetrics(credentialTableType, false, len(nonLocalAuth.Entries), compressedBytesLen)
 
 		// Write local mounts
 		compressedBytesLen, err = writeTable(localAuth, coreLocalAuthConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(localAuth.Entries), true, true, compressedBytesLen)
+		c.tableMetrics(credentialTableType, true, len(localAuth.Entries), compressedBytesLen)
 	case *local:
 		compressedBytesLen, err = writeTable(localAuth, coreLocalAuthConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(localAuth.Entries), true, true, compressedBytesLen)
+		c.tableMetrics(credentialTableType, true, len(localAuth.Entries), compressedBytesLen)
 	default:
 		compressedBytesLen, err = writeTable(nonLocalAuth, coreAuthConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(nonLocalAuth.Entries), false, true, compressedBytesLen)
+		c.tableMetrics(credentialTableType, false, len(nonLocalAuth.Entries), compressedBytesLen)
 	}
 
 	if needTxnCommit {

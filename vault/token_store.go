@@ -877,7 +877,7 @@ func (ts *TokenStore) teardown() {
 }
 
 func (ts *TokenStore) baseView(ns *namespace.Namespace) BarrierView {
-	return ts.core.namespaceMountEntryView(ns, systemBarrierPrefix+tokenSubPath)
+	return NamespaceView(ts.core.barrier, ns).SubView(systemBarrierPrefix + tokenSubPath)
 }
 
 func (ts *TokenStore) idView(ns *namespace.Namespace) BarrierView {

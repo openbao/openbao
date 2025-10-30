@@ -13,13 +13,13 @@ It is strongly advised to provide TLS settings in the configuration stanza
 within the auth method to avoid agent cache, if also enabled, from using the
 same TLS settings when proxying requests. If TLS settings are not present in the
 config stanza, Agent and Proxy will fall back to using TLS settings from their respective
-[`vault` Stanzas](/docs/agent-and-proxy/agent#vault-stanza).
+[`vault` Stanzas](../../agent/index.mdx#vault-stanza).
 
 ## Configuration
 
 - `name` `(string: optional)` - The trusted certificate role which should be used
   when authenticating with TLS. If a `name` is not specified, the auth method will
-  try to authenticate against [all trusted certificates](/docs/auth/cert#authentication).
+  try to authenticate against [all trusted certificates](../../../auth/cert.mdx#authentication).
 
 - `ca_cert` `(string: optional)` - Path on the local disk to a single
   PEM-encoded CA certificate to verify the OpenBao server's SSL certificate.

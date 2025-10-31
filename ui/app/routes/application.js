@@ -11,7 +11,6 @@ export default Route.extend({
   controlGroup: service(),
   routing: service('router'),
   namespaceService: service('namespace'),
-  featureFlagService: service('featureFlag'),
 
   actions: {
     willTransition() {
@@ -63,16 +62,5 @@ export default Route.extend({
 
       return true;
     },
-  },
-
-  async beforeModel() {
-    const result = await fetch('/v1/sys/internal/ui/feature-flags', {
-      method: 'GET',
-    });
-    if (result.status === 200) {
-      const body = await result.json();
-      const flags = body.feature_flags || [];
-      this.featureFlagService.setFeatureFlags(flags);
-    }
   },
 });

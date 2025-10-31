@@ -130,19 +130,6 @@ function generateActivityResponse(namespaces, startDate, endDate) {
 }
 
 export default function (server) {
-  server.get('sys/license/status', function () {
-    return {
-      request_id: 'my-license-request-id',
-      data: {
-        autoloaded: {
-          license_id: 'my-license-id',
-          start_time: formatRFC3339(LICENSE_START),
-          expiration_time: formatRFC3339(endOfMonth(addMonths(CURRENT_DATE, 6))),
-        },
-      },
-    };
-  });
-
   server.get('sys/internal/counters/config', function () {
     return {
       request_id: 'some-config-id',

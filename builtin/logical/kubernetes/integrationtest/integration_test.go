@@ -250,15 +250,6 @@ func TestRole(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-func isEnterprise(client *api.Client) bool {
-	req := client.NewRequest("GET", "/v1/sys/license/status")
-	resp, err := client.RawRequest(req)
-	if err != nil {
-		return false
-	}
-	return resp.StatusCode == 200
-}
-
 func createNamespace(client *api.Client, namespace string) error {
 	req := client.NewRequest("PUT", "/v1/sys/namespaces/"+namespace)
 	resp, err := client.RawRequest(req)
@@ -314,21 +305,19 @@ func namespaceHelper(t *testing.T, client *api.Client) (*api.Client, func()) {
 	namespace := ""
 	newClient := client
 
-	if isEnterprise(client) {
-		namespace := randomWithPrefix("somenamespace")
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = createNamespace(client, namespace)
-		if err != nil {
-			t.Fatal(err)
-		}
-		newClient, err := client.Clone()
-		if err != nil {
-			t.Fatal(err)
-		}
-		newClient.SetNamespace(namespace)
+	namespace = randomWithPrefix("somenamespace")
+	if err != nil {
+		t.Fatal(err)
 	}
+	err = createNamespace(client, namespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newClient, err = client.Clone()
+	if err != nil {
+		t.Fatal(err)
+	}
+	newClient.SetNamespace(namespace)
 
 	return newClient, func() {
 		if namespace != "" {

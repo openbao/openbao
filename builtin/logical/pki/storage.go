@@ -1411,7 +1411,7 @@ func (sc *storageContext) writeAutoTidyConfig(config *tidyConfig) error {
 	sc.Backend.publishCertCountMetrics.Store(config.PublishMetrics)
 
 	// To Potentially Disable Certificate Counting
-	if config.MaintainCount == false {
+	if !config.MaintainCount {
 		certCountWasEnabled := sc.Backend.certCountEnabled.Swap(config.MaintainCount)
 		if certCountWasEnabled {
 			sc.Backend.certsCounted.Store(true)
@@ -1422,7 +1422,7 @@ func (sc *storageContext) writeAutoTidyConfig(config *tidyConfig) error {
 			sc.Backend.revokedCertCount.Store(0)
 		}
 	} else { // To Potentially Enable Certificate Counting
-		if sc.Backend.certCountEnabled.Load() == false {
+		if !sc.Backend.certCountEnabled.Load() {
 			// We haven't written "re-enable certificate counts" outside the initialize function
 			// Any call derived call to do so is likely to time out on ~2 million certs
 			sc.Backend.certCountError = "Certificate Counting Has Not Been Initialized, re-initialize this mount"

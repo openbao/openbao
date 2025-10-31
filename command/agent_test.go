@@ -1426,7 +1426,7 @@ type userAgentHandler struct {
 func (h *userAgentHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method == h.requestMethodToCheck && strings.Contains(req.RequestURI, h.pathToCheck) {
 		userAgent := req.UserAgent()
-		if !(userAgent == h.userAgentToCheckFor) {
+		if userAgent != h.userAgentToCheckFor {
 			h.t.Fatalf("User-Agent string not as expected. Expected to find %s, got %s", h.userAgentToCheckFor, userAgent)
 		}
 	}

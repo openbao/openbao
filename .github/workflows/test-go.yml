@@ -217,7 +217,7 @@ jobs:
       - name: Archive test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: test-results-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}${{ inputs.name }}
+          name: test-results-${{ matrix.id }}-${{ inputs.name == '' && 'default' || inputs.name }}
           path: test-results/go-test
         if: success() || failure()
       # GitHub Actions doesn't expose the job ID or the URL to the job execution,
@@ -308,7 +308,7 @@ jobs:
       - uses: actions/download-artifact@de96f4613b77ec03b5cf633e7c350c32bd3c5660 # v4.3.0
         with:
           path: test-results/go-test
-          pattern: test-results-*
+          pattern: test-results-*-${{ inputs.name == '' && 'default' || inputs.name }}
           merge-multiple: true
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # v2.4

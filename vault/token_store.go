@@ -104,7 +104,7 @@ var (
 	displayNameSanitize = regexp.MustCompile("[^a-zA-Z0-9-]")
 
 	// pathSuffixSanitize is used to ensure a path suffix in a role is valid.
-	pathSuffixSanitize = regexp.MustCompile("\\w[\\w-.]+\\w")
+	pathSuffixSanitize = regexp.MustCompile(`\w[\w-.]+\w`)
 
 	destroyCubbyhole = func(ctx context.Context, ts *TokenStore, te *logical.TokenEntry) error {
 		if ts.cubbyholeBackend == nil {
@@ -821,9 +821,12 @@ func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *l
 		BackendType: logical.TypeCredential,
 	}
 
-	t.Backend.Paths = append(t.Backend.Paths, t.paths()...)
+	t.Paths = append(t.Paths, t.paths()...)
 
-	t.Backend.Setup(ctx, config)
+	err := t.Setup(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set up token store: %w", err)
+	}
 
 	if err := t.loadSSCTokensGenerationCounter(ctx); err != nil {
 		return t, err
@@ -904,44 +907,44 @@ type tsRoleEntry struct {
 	tokenutil.TokenParams
 
 	// The name of the role. Embedded so it can be used for pathing
-	Name string `json:"name" mapstructure:"name" structs:"name"`
+	Name string `json:"name" mapstructure:"name"`
 
 	// The policies that creation functions using this role can assign to a token,
 	// escaping or further locking down normal subset checking
-	AllowedPolicies []string `json:"allowed_policies" mapstructure:"allowed_policies" structs:"allowed_policies"`
+	AllowedPolicies []string `json:"allowed_policies" mapstructure:"allowed_policies"`
 
 	// List of policies to be not allowed during token creation using this role
-	DisallowedPolicies []string `json:"disallowed_policies" mapstructure:"disallowed_policies" structs:"disallowed_policies"`
+	DisallowedPolicies []string `json:"disallowed_policies" mapstructure:"disallowed_policies"`
 
 	// An extension to AllowedPolicies that instead uses glob matching on policy names
-	AllowedPoliciesGlob []string `json:"allowed_policies_glob" mapstructure:"allowed_policies_glob" structs:"allowed_policies_glob"`
+	AllowedPoliciesGlob []string `json:"allowed_policies_glob" mapstructure:"allowed_policies_glob"`
 
 	// An extension to DisallowedPolicies that instead uses glob matching on policy names
-	DisallowedPoliciesGlob []string `json:"disallowed_policies_glob" mapstructure:"disallowed_policies_glob" structs:"disallowed_policies_glob"`
+	DisallowedPoliciesGlob []string `json:"disallowed_policies_glob" mapstructure:"disallowed_policies_glob"`
 
 	// If true, tokens created using this role will be orphans
-	Orphan bool `json:"orphan" mapstructure:"orphan" structs:"orphan"`
+	Orphan bool `json:"orphan" mapstructure:"orphan"`
 
 	// If non-zero, tokens created using this role will be able to be renewed
 	// forever, but will have a fixed renewal period of this value
-	Period time.Duration `json:"period" mapstructure:"period" structs:"period"`
+	Period time.Duration `json:"period" mapstructure:"period"`
 
 	// If set, a suffix will be set on the token path, making it easier to
 	// revoke using 'revoke-prefix'
-	PathSuffix string `json:"path_suffix" mapstructure:"path_suffix" structs:"path_suffix"`
+	PathSuffix string `json:"path_suffix" mapstructure:"path_suffix"`
 
 	// If set, controls whether created tokens are marked as being renewable
-	Renewable bool `json:"renewable" mapstructure:"renewable" structs:"renewable"`
+	Renewable bool `json:"renewable" mapstructure:"renewable"`
 
 	// If set, the token entry will have an explicit maximum TTL set, rather
 	// than deferring to role/mount values
-	ExplicitMaxTTL time.Duration `json:"explicit_max_ttl" mapstructure:"explicit_max_ttl" structs:"explicit_max_ttl"`
+	ExplicitMaxTTL time.Duration `json:"explicit_max_ttl" mapstructure:"explicit_max_ttl"`
 
 	// The set of CIDRs that tokens generated using this role will be bound to
 	BoundCIDRs []*sockaddr.SockAddrMarshaler `json:"bound_cidrs"`
 
 	// The set of allowed entity aliases used during token creation
-	AllowedEntityAliases []string `json:"allowed_entity_aliases" mapstructure:"allowed_entity_aliases" structs:"allowed_entity_aliases"`
+	AllowedEntityAliases []string `json:"allowed_entity_aliases" mapstructure:"allowed_entity_aliases"`
 }
 
 type accessorEntry struct {
@@ -1785,9 +1788,9 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 
 	var ret *logical.TokenEntry
 
-	switch {
+	switch le {
 	// It's any kind of expiring token with no lease, immediately delete it
-	case le == nil:
+	case nil:
 		tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return nil, err
@@ -1928,8 +1931,8 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 		parentNS := tokenNS
 
 		if parentNSID != tokenNS.ID {
-			switch {
-			case parentNSID == "":
+			switch parentNSID {
+			case "":
 				parentNS = namespace.RootNamespace
 			default:
 				parentNS, err = ts.core.NamespaceByID(ctx, parentNSID)
@@ -2421,8 +2424,8 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 
 				lock.RUnlock()
 
-				switch {
-				case te == nil:
+				switch te {
+				case nil:
 					// If token entry is not found assume that the token is not valid any
 					// more and conclude that accessor, leases, and secondary index entries
 					// for this token should not exist as well.
@@ -3178,8 +3181,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	// need to explicitly check
 	if role != nil && te.Type != logical.TokenTypeBatch {
 		if role.TokenExplicitMaxTTL != 0 {
-			switch {
-			case explicitMaxTTLToUse == 0:
+			switch explicitMaxTTLToUse {
+			case 0:
 				explicitMaxTTLToUse = role.TokenExplicitMaxTTL
 			default:
 				if role.TokenExplicitMaxTTL < explicitMaxTTLToUse {
@@ -3189,8 +3192,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 			}
 		}
 		if role.TokenPeriod != 0 {
-			switch {
-			case periodToUse == 0:
+			switch periodToUse {
+			case 0:
 				periodToUse = role.TokenPeriod
 			default:
 				if role.TokenPeriod < periodToUse {

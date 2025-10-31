@@ -140,7 +140,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 		identity, ok = raw.(goidentity.Identity)
 		if !ok {
 			w.WriteHeader(400)
-			_, _ = w.Write([]byte(fmt.Sprintf("identity credentials are malformed: %+v", raw)))
+			_, _ = fmt.Fprintf(w, "identity credentials are malformed: %+v", raw)
 			return
 		}
 		b.Logger().Debug(fmt.Sprintf("identity: %+v", identity))
@@ -160,9 +160,9 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 		// config's realm and the Kerberos realm. In such a case, it prevents a user from
 		// passing Kerberos authentication, and then extracting group membership, and
 		// therefore policies, from a separate directory.
-		if ldapCfg.ConfigEntry.UPNDomain != "" && identity.Domain() != ldapCfg.ConfigEntry.UPNDomain {
+		if ldapCfg.UPNDomain != "" && identity.Domain() != ldapCfg.UPNDomain {
 			w.WriteHeader(400)
-			_, _ = w.Write([]byte(fmt.Sprintf("identity domain of %q doesn't match LDAP upndomain of %q", identity.Domain(), ldapCfg.ConfigEntry.UPNDomain)))
+			_, _ = fmt.Fprintf(w, "identity domain of %q doesn't match LDAP upndomain of %q", identity.Domain(), ldapCfg.UPNDomain)
 			return
 		}
 		authenticated = true

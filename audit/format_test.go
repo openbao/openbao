@@ -47,18 +47,17 @@ func (fw *testingFormatWriter) Salt(ctx context.Context) (*salt.Salt, error) {
 // so that we can use assert.Equal to compare the expected and output values.
 func (fw *testingFormatWriter) hashExpectedValueForComparison(input map[string]interface{}) map[string]interface{} {
 	// Copy input before modifying, since we may re-use the same data in another test
-	copied, err := getUnmarshaledCopy(input)
+	copiedAsMap, err := getUnmarshaledCopy(input)
 	if err != nil {
 		panic(err)
 	}
-	copiedAsMap := copied.(map[string]interface{})
 
 	salter, err := fw.Salt(context.Background())
 	if err != nil {
 		panic(err)
 	}
 
-	err = hashMap(salter.GetIdentifiedHMAC, input, copiedAsMap, nil, false)
+	err = hashMap(salter.GetIdentifiedHMAC, copiedAsMap, nil, false)
 	if err != nil {
 		panic(err)
 	}
@@ -226,8 +225,8 @@ func TestElideListResponses(t *testing.T) {
 
 func fixupInputData(inputData map[string]interface{}) map[string]interface{} {
 	// json marshalling/unmarshalling converts []string's into []interface{}
-	//  this method returns a copy of the input data with that transformation
-	//  so it can be checked against the results
+	// this method returns a copy of the input data with that transformation
+	// so it can be checked against the results
 	newSlice := make([]interface{}, len(inputData["keys"].([]string)))
 	for i, v := range inputData["keys"].([]string) {
 		newSlice[i] = v
@@ -239,13 +238,12 @@ func fixupInputData(inputData map[string]interface{}) map[string]interface{} {
 }
 
 // Because the elided real data doesn't get unmarshaled, it doesn't
-// get converted to floats.  But when the elided test-data is hashed
+// get converted to floats. But when the elided test-data is hashed
 // by the tfw.hashExpectedValueForComparison() method, that method
 // doesn't handle elision and the elided ints get converted to floats.
 //
-// This func corrects the issue with
-// tfw.hashExpectedValueForComparison(), by converting the floats back
-// to ints.
+// This func corrects the issue with tfw.hashExpectedValueForComparison(),
+// by converting the floats back to ints.
 func fixupElidedTestData(inputData map[string]interface{}) map[string]interface{} {
 	for k, v := range inputData {
 		if k == "keys" || k == "key_info" {

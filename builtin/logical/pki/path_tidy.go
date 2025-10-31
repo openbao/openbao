@@ -20,7 +20,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-var tidyCancelledError = errors.New("tidy operation cancelled")
+var errTidyCancelled = errors.New("tidy operation cancelled")
 
 type tidyStatusState int
 
@@ -863,7 +863,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.RevokedCerts || config.IssuerAssocs || config.InvalidCerts {
@@ -876,7 +876,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if rebuildCRL {
@@ -887,7 +887,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.ExpiredIssuers {
@@ -898,7 +898,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.BackupBundle {
@@ -909,7 +909,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.TidyAcme {
@@ -956,7 +956,7 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 
 		// Check for cancel before continuing
 		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption
@@ -1091,9 +1091,9 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 	// Number of certificates on current page. This value is <= PageSize.
 	var lenSerials int
 	// Total number of revoked certificates in storage
-	var totalRevokedSerialCount int = 0
+	totalRevokedSerialCount := 0
 	// Total number of deleted revoked certificates in this tidy call
-	var revokedDeletedCount int = 0
+	revokedDeletedCount := 0
 
 	var revInfo revocationInfo
 	haveWarned := false
@@ -1107,7 +1107,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 
 		// Check for cancel before continuing.
 		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption.
@@ -1183,7 +1183,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 		// Tidy operations over revoked certs should execute prior to
 		// tidyRevokedCerts as that may remove the entry. If that happens,
 		// we won't persist the revInfo changes (as it was deleted instead).
-		var storeCert bool = false
+		storeCert := false
 		if config.IssuerAssocs {
 			if !isRevInfoIssuerValid(&revInfo, issuerIDCertMap) {
 				b.tidyStatusIncMissingIssuerCertCount()
@@ -1474,7 +1474,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 
 		// Check for cancel before continuing.
 		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption.
@@ -1541,7 +1541,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			// Check for pause duration to reduce resource consumption.
@@ -1848,11 +1848,12 @@ func (b *backend) tidyStatusStop(err error) {
 
 	b.tidyStatus.timeFinished = time.Now()
 	b.tidyStatus.err = err
-	if err == nil {
+	switch err {
+	case nil:
 		b.tidyStatus.state = tidyStatusFinished
-	} else if err == tidyCancelledError {
+	case errTidyCancelled:
 		b.tidyStatus.state = tidyStatusCancelled
-	} else {
+	default:
 		b.tidyStatus.state = tidyStatusError
 	}
 

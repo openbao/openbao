@@ -67,10 +67,7 @@ func getRaftWithDir(t testing.TB, bootstrap bool, noStoreState bool, raftDir str
 			t.Fatal(err)
 		}
 
-		for {
-			if backend.raft.AppliedIndex() >= 2 {
-				break
-			}
+		for backend.raft.AppliedIndex() < 2 {
 		}
 
 	}

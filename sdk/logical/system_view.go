@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
-	"github.com/openbao/openbao/sdk/v2/helper/license"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 )
@@ -46,9 +45,6 @@ type SystemView interface {
 
 	// ReplicationState indicates the state of cluster replication
 	ReplicationState() consts.ReplicationState
-
-	// HasFeature returns true if the feature is currently enabled
-	HasFeature(feature license.Features) bool
 
 	// ResponseWrapData wraps the given data in a cubbyhole and returns the
 	// token used to unwrap.
@@ -126,7 +122,6 @@ type StaticSystemView struct {
 	ReplicationStateVal          consts.ReplicationState
 	EntityVal                    *Entity
 	GroupsVal                    []*Group
-	Features                     license.Features
 	PluginEnvironment            *PluginEnvironment
 	PasswordPolicies             map[string]PasswordGenerator
 	VersionString                string
@@ -210,10 +205,6 @@ func (d StaticSystemView) EntityInfo(entityID string) (*Entity, error) {
 
 func (d StaticSystemView) GroupsForEntity(entityID string) ([]*Group, error) {
 	return d.GroupsVal, nil
-}
-
-func (d StaticSystemView) HasFeature(feature license.Features) bool {
-	return d.Features.HasFeature(feature)
 }
 
 func (d StaticSystemView) PluginEnv(_ context.Context) (*PluginEnvironment, error) {

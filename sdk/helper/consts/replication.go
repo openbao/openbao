@@ -19,7 +19,9 @@ const (
 	// manager.  It should contain a character that is not allowed in secondary
 	// ids to ensure it doesn't collide.
 	CurrentReplicatedSecondaryIdentifier = ".current"
-	CoreFeatureFlagPath                  = "core/cluster/feature-flags"
+
+	// For replication compability we are leaving it here, but this location won't be used.
+	CoreFeatureFlagPath = "core/cluster/feature-flags"
 )
 
 type ReplicationState uint32

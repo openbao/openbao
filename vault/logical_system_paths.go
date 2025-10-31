@@ -2131,35 +2131,6 @@ func (b *SystemBackend) internalPaths() []*framework.Path {
 			HelpSynopsis: "Generate an OpenAPI 3 document of all mounted paths.",
 		},
 		{
-			Pattern: "internal/ui/feature-flags",
-
-			DisplayAttrs: &framework.DisplayAttributes{
-				OperationPrefix: "internal-ui",
-				OperationVerb:   "list",
-				OperationSuffix: "enabled-feature-flags",
-			},
-
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
-					// callback is absent because this is an unauthenticated method
-					Summary: "Lists enabled feature flags.",
-					Responses: map[int][]framework.Response{
-						http.StatusOK: {{
-							Description: "OK",
-							Fields: map[string]*framework.FieldSchema{
-								"feature_flags": {
-									Type:     framework.TypeCommaStringSlice,
-									Required: true,
-								},
-							},
-						}},
-					},
-				},
-			},
-			HelpSynopsis:    strings.TrimSpace(sysHelp["internal-ui-feature-flags"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["internal-ui-feature-flags"][1]),
-		},
-		{
 			Pattern: "internal/ui/mounts",
 
 			DisplayAttrs: &framework.DisplayAttributes{

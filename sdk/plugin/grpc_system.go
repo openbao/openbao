@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
-	"github.com/openbao/openbao/sdk/v2/helper/license"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -128,11 +127,6 @@ func (s *gRPCSystemViewClient) MlockEnabled() bool {
 	}
 
 	return reply.Enabled
-}
-
-func (s *gRPCSystemViewClient) HasFeature(feature license.Features) bool {
-	// Not implemented
-	return false
 }
 
 func (s *gRPCSystemViewClient) LocalMount() bool {

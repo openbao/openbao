@@ -435,10 +435,11 @@ func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data 
 
 		serial = "ca"
 		contentType = "application/pkix-cert"
-		if req.Path == "ca/pem" || req.Path == "cert/ca/raw/pem" {
+		switch req.Path {
+		case "ca/pem", "cert/ca/raw/pem":
 			pemType = "CERTIFICATE"
 			contentType = "application/pem-certificate-chain"
-		} else if req.Path == "cert/ca" {
+		case "cert/ca":
 			pemType = "CERTIFICATE"
 			contentType = ""
 		}
@@ -507,7 +508,8 @@ func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data 
 			}
 		}
 
-		if serial == "ca_chain" {
+		switch serial {
+		case "ca_chain":
 			rawChain := caInfo.GetFullChain()
 			var chainStr string
 			for _, ca := range rawChain {
@@ -519,7 +521,7 @@ func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data 
 			}
 			fullChain = []byte(strings.TrimSpace(chainStr))
 			certificate = fullChain
-		} else if serial == "ca" {
+		case "ca":
 			certificate = caInfo.Certificate.Raw
 
 			if len(pemType) != 0 {
@@ -612,9 +614,9 @@ reply:
 		}
 	case retErr != nil:
 		response = nil
-		return
+		return response, retErr
 	case response == nil:
-		return
+		return response, retErr
 	case response.IsError():
 		return response, nil
 	default:
@@ -632,7 +634,7 @@ reply:
 		}
 	}
 
-	return
+	return response, retErr
 }
 
 const pathFetchHelpSyn = `

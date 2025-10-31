@@ -83,10 +83,10 @@ type loginPathsEntry struct {
 }
 
 type ValidateMountResponse struct {
-	MountType     string `json:"mount_type" structs:"mount_type" mapstructure:"mount_type"`
-	MountAccessor string `json:"mount_accessor" structs:"mount_accessor" mapstructure:"mount_accessor"`
-	MountPath     string `json:"mount_path" structs:"mount_path" mapstructure:"mount_path"`
-	MountLocal    bool   `json:"mount_local" structs:"mount_local" mapstructure:"mount_local"`
+	MountType     string `json:"mount_type" mapstructure:"mount_type"`
+	MountAccessor string `json:"mount_accessor" mapstructure:"mount_accessor"`
+	MountPath     string `json:"mount_path" mapstructure:"mount_path"`
+	MountLocal    bool   `json:"mount_local" mapstructure:"mount_local"`
 }
 
 func (r *Router) reset() {
@@ -403,6 +403,12 @@ func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) str
 	if err != nil {
 		return ""
 	}
+	// Ensure comparisons are done against absolute paths within the
+	// current namespace context, consistent with other matching helpers.
+	// Without this, a mount path that matches the current namespace name
+	// (e.g., mounting "team14/" inside namespace "team14/") would be
+	// incorrectly detected as conflicting with the namespace itself.
+	path = ns.Path + path
 
 	// Every namespace has a sys/ mount. We can use that as a sentinel that
 	// our given path conflicts. Walk the parent namespace of path and check
@@ -413,11 +419,17 @@ func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) str
 	// locked as we're trying to mount required mounts for a new namespace.
 	var existing string
 	fn := func(existingPath string, v interface{}) bool {
-		if !strings.HasSuffix(existingPath, "sys/") {
+		nsPath, ok := strings.CutSuffix(existingPath, "sys/")
+		if !ok {
 			return false
 		}
 
-		nsPath := strings.TrimSuffix(existingPath, "sys/")
+		// Ignore the current namespace's own sys mount; we only want to
+		// detect conflicts with child namespace prefixes.
+		if nsPath == ns.Path {
+			return false
+		}
+
 		if strings.HasPrefix(path, nsPath) {
 			existing = nsPath
 			return true
@@ -637,7 +649,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 	// token store; such a request will have already been routed through the
 	// token store -> exp manager -> here so we need to not grab the lock again
 	// or we'll be recursively grabbing it.
-	if !(req.Operation == logical.RenewOperation && strings.HasPrefix(req.Path, "auth/token/")) {
+	if req.Operation != logical.RenewOperation || !strings.HasPrefix(req.Path, "auth/token/") {
 		re.l.RLock()
 		defer re.l.RUnlock()
 	}

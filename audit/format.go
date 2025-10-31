@@ -168,7 +168,7 @@ func (f *AuditFormatter) FormatRequest(ctx context.Context, w io.Writer, config 
 		reqEntry.Time = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 
-	return f.AuditFormatWriter.WriteRequest(w, reqEntry)
+	return f.WriteRequest(w, reqEntry)
 }
 
 func (f *AuditFormatter) FormatResponse(ctx context.Context, w io.Writer, config FormatterConfig, in *logical.LogInput) error {
@@ -390,7 +390,7 @@ func (f *AuditFormatter) FormatResponse(ctx context.Context, w io.Writer, config
 		respEntry.Time = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 
-	return f.AuditFormatWriter.WriteResponse(w, respEntry)
+	return f.WriteResponse(w, respEntry)
 }
 
 // AuditRequestEntry is the structure of a request audit log entry in Audit.
@@ -572,24 +572,25 @@ func NewTemporaryFormatter(format, prefix string) *AuditFormatter {
 	return ret
 }
 
-// doElideListResponseData performs the actual elision of list operation response data, once surrounding code has
-// determined it should apply to a particular request. The data map that is passed in must be a copy that is safe to
-// modify in place, but need not be a full recursive deep copy, as only top-level keys are changed.
+// doElideListResponseData performs the actual elision of list operation
+// response data, once surrounding code has determined it should apply to
+// a particular request. The data map that is passed in must be a copy that
+// is safe to modify in place, but need not be a full recursive deep copy,
+// as only top-level keys are changed.
 //
 // See the documentation of the controlling option in FormatterConfig for more information on the purpose.
 func doElideListResponseData(data map[string]interface{}) {
-	doElideListResponseDataWithCopy(data, data)
-}
-
-func doElideListResponseDataWithCopy(inputData map[string]interface{}, outputData map[string]interface{}) {
-	for k, v := range inputData {
-		if k == "keys" {
-			if vSlice, ok := v.([]string); ok {
-				outputData[k] = len(vSlice)
+	for k, v := range data {
+		switch k {
+		case "keys":
+			if vSlice, ok := v.([]interface{}); ok {
+				data[k] = len(vSlice)
+			} else if vSlice, ok := v.([]string); ok {
+				data[k] = len(vSlice)
 			}
-		} else if k == "key_info" {
+		case "key_info":
 			if vMap, ok := v.(map[string]interface{}); ok {
-				outputData[k] = len(vMap)
+				data[k] = len(vMap)
 			}
 		}
 	}

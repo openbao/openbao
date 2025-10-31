@@ -7,42 +7,20 @@ import (
 	"bufio"
 	"bytes"
 	"net/http"
-	"os"
 	"reflect"
 	"testing"
+
+	"google.golang.org/protobuf/proto"
 )
 
 func Test_ForwardedRequest_GenerateParse(t *testing.T) {
 	testForwardedRequestGenerateParse(t)
 }
 
-func Benchmark_ForwardedRequest_GenerateParse_JSON(b *testing.B) {
-	os.Setenv("BAO_MESSAGE_TYPE", "json")
+func Benchmark_ForwardedRequest_GenerateParse(b *testing.B) {
 	var totalSize int64
 	var numRuns int64
-	for i := 0; i < b.N; i++ {
-		totalSize += testForwardedRequestGenerateParse(b)
-		numRuns++
-	}
-	b.Logf("message size per op: %d", totalSize/numRuns)
-}
-
-func Benchmark_ForwardedRequest_GenerateParse_JSON_Compressed(b *testing.B) {
-	os.Setenv("BAO_MESSAGE_TYPE", "json_compress")
-	var totalSize int64
-	var numRuns int64
-	for i := 0; i < b.N; i++ {
-		totalSize += testForwardedRequestGenerateParse(b)
-		numRuns++
-	}
-	b.Logf("message size per op: %d", totalSize/numRuns)
-}
-
-func Benchmark_ForwardedRequest_GenerateParse_Proto3(b *testing.B) {
-	os.Setenv("BAO_MESSAGE_TYPE", "proto3")
-	var totalSize int64
-	var numRuns int64
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		totalSize += testForwardedRequestGenerateParse(b)
 		numRuns++
 	}
@@ -72,26 +50,15 @@ func testForwardedRequestGenerateParse(t testing.TB) int64 {
 	}
 
 	// Generate the request with the forwarded request in the body
-	req, err = GenerateForwardedHTTPRequest(initialReq, "https://bloopety.bloop:8201")
+	forwardedRequest, err := GenerateForwardedRequest(initialReq)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Perform another "round trip"
-	buf2 := bytes.NewBuffer(nil)
-	err = req.Write(buf2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	size := int64(buf2.Len())
-	bufr2 := bufio.NewReader(buf2)
-	intreq, err := http.ReadRequest(bufr2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	size := int64(proto.Size(forwardedRequest))
 
 	// Now extract the forwarded request to generate a final request for processing
-	finalReq, err := ParseForwardedHTTPRequest(intreq)
+	finalReq, err := ParseForwardedRequest(forwardedRequest)
 	if err != nil {
 		t.Fatal(err)
 	}

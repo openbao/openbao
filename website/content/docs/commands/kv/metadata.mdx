@@ -9,7 +9,7 @@ description: |-
 
 :::warning
 
-**NOTE:** This is a [K/V Version 2](/docs/secrets/kv/kv-v2) secrets
+**NOTE:** This is a [K/V Version 2](../../secrets/kv/kv-v2.mdx) secrets
 engine command, and not available for Version 1.
 
 :::
@@ -153,7 +153,7 @@ be applied to new versions.
   to a duration to specify the `deletion_time` for all new versions written to
   this key. If not set, the backend's `delete_version_after` will be used. If
   the value is greater than the backend's `delete_version_after`, the backend's
-  `delete_version_after` will be used. Accepts [duration format strings](/docs/concepts/duration-format).
+  `delete_version_after` will be used. Accepts [duration format strings](../../concepts/duration-format.mdx).
 
 - `-custom-metadata` `(string: "")` - Specifies a key-value pair for the
   `custom_metadata` field. This can be specified multiple times to add multiple

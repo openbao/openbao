@@ -188,7 +188,7 @@ func (b *backend) pathCAGenerateRoot(ctx context.Context, req *logical.Request, 
 		apiData: data,
 		role:    role,
 	}
-	parsedBundle, warnings, err := generateCert(sc, input, nil, true, b.Backend.GetRandomReader())
+	parsedBundle, warnings, err := generateCert(sc, input, nil, true, b.GetRandomReader())
 	if err != nil {
 		switch err.(type) {
 		case errutil.UserError:
@@ -652,7 +652,7 @@ func publicKeyType(pub crypto.PublicKey) (pubType x509.PublicKeyAlgorithm, sigAl
 	default:
 		err = errors.New("x509: only RSA, ECDSA and Ed25519 keys supported")
 	}
-	return
+	return pubType, sigAlgo, err
 }
 
 const pathGenerateRootHelpSyn = `

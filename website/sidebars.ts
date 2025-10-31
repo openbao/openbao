@@ -39,6 +39,7 @@ const sidebars: SidebarsConfig = {
                                 "internals/telemetry/metrics/availability",
                                 "internals/telemetry/metrics/database",
                                 "internals/telemetry/metrics/policy",
+                                "internals/telemetry/metrics/postgresql",
                                 "internals/telemetry/metrics/raft",
                                 "internals/telemetry/metrics/secrets",
                                 "internals/telemetry/metrics/storage",
@@ -411,6 +412,7 @@ const sidebars: SidebarsConfig = {
             "Audit Devices": [
                 "audit/index",
                 "audit/file",
+                "audit/http",
                 "audit/syslog",
                 "audit/socket",
             ],
@@ -508,6 +510,7 @@ const sidebars: SidebarsConfig = {
                 "policies/release",
                 "policies/support",
                 "policies/osps-baseline",
+                "policies/cve",
             ],
             Contributing: [
                 "contributing/index",

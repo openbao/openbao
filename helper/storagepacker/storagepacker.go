@@ -14,7 +14,6 @@ import (
 
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-hclog"
-	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -32,7 +31,7 @@ const (
 // hence relies on the first byte of the hash value for indexing.
 type StoragePacker struct {
 	view         logical.Storage
-	logger       log.Logger
+	logger       hclog.Logger
 	storageLocks []*locksutil.LockEntry
 	viewPrefix   string
 }
@@ -398,7 +397,7 @@ func (s *StoragePacker) SwapItem(ctx context.Context, oldId string, item *Item) 
 }
 
 // NewStoragePacker creates a new storage packer for a given view
-func NewStoragePacker(view logical.Storage, logger log.Logger, viewPrefix string) (*StoragePacker, error) {
+func NewStoragePacker(view logical.Storage, logger hclog.Logger, viewPrefix string) (*StoragePacker, error) {
 	if view == nil {
 		return nil, errors.New("nil view")
 	}

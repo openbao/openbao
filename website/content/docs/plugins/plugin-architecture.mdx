@@ -49,7 +49,7 @@ plugin's RPC server. Plugins make use of the AutoMTLS feature of
 [go-plugin](https://www.github.com/hashicorp/go-plugin) which will
 automatically negotiate mutual TLS for transport authentication.
 
-The [`api_addr`](/docs/configuration#api_addr) must be set in order for the
+The [`api_addr`](../configuration/index.mdx#api_addr) must be set in order for the
 plugin process to establish communication with the OpenBao server during mount
 time. If the storage backend has HA enabled and supports automatic host address
 detection, OpenBao will automatically attempt to determine the `api_addr` as
@@ -65,7 +65,7 @@ plugin directory and the plugin catalog entry.
 ### Plugin directory
 
 The plugin directory is a configuration option of OpenBao and can be specified in
-the [configuration file](/docs/configuration).
+the [configuration file](../configuration/index.mdx).
 This setting specifies a directory in which all plugin binaries must live;
 _this value cannot be a symbolic link_. A plugin
 cannot be added to OpenBao unless it exists in the plugin directory. There is no
@@ -107,7 +107,7 @@ the catalog, sending along the JWT formatted response wrapping token.
 
 External plugins may be updated by registering and reloading them. More details
 on the upgrade procedure can be found in
-[Upgrading OpenBao Plugins](/docs/upgrading/plugins).
+[Upgrading OpenBao Plugins](../upgrading/plugins.mdx).
 
 ## Plugin multiplexing
 
@@ -125,5 +125,5 @@ multiplexing. To use a non-multiplexed plugin, run an older version of the
 plugin, i.e., the plugin calls the `Serve` function.
 
 More resources on implementing plugin multiplexing:
-* [Database secrets engines](/docs/secrets/databases/custom#serving-a-plugin-with-multiplexing)
-* [Secrets engines and auth methods](/docs/plugins/plugin-development)
+* [Database secrets engines](../secrets/databases/custom.mdx#serving-a-plugin-with-multiplexing)
+* [Secrets engines and auth methods](plugin-development.mdx)

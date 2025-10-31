@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -161,7 +160,7 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 
 	const name = "mysql-database-plugin"
 	const version = "1.0.0"
-	command := fmt.Sprintf("%s", filepath.Base(file.Name()))
+	command := filepath.Base(file.Name())
 	err = core.pluginCatalog.Set(context.Background(), name, consts.PluginTypeDatabase, version, command, []string{"--test"}, []string{"FOO=BAR"}, []byte{'1'})
 	if err != nil {
 		t.Fatal(err)

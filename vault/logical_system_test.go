@@ -17,7 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fatih/structs"
 	"github.com/go-test/deep"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
@@ -38,6 +37,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/version"
@@ -833,7 +833,7 @@ func TestSystemBackend_remount_auth(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/userpass1"
 	req.Data["to"] = "auth/userpass2"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	// validate the response structure for remount named read
@@ -873,7 +873,7 @@ func TestSystemBackend_remount_auth_invalid(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/unknown"
 	req.Data["to"] = "auth/foo"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -900,7 +900,7 @@ func TestSystemBackend_remount_auth_protected(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/token"
 	req.Data["to"] = "auth/foo"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -955,7 +955,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/userpass1"
 	req.Data["to"] = "auth/userpass2"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -1003,7 +1003,7 @@ func TestSystemBackend_remount(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "secret"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	corehelpers.RetryUntil(t, 5*time.Second, func() error {
 		req = logical.TestRequest(t, logical.ReadOperation, fmt.Sprintf("remount/status/%s", resp.Data["migration_id"]))
@@ -1035,7 +1035,7 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "secret"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -1082,7 +1082,7 @@ func TestSystemBackend_remount_invalid(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "unknown"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1113,7 +1113,7 @@ func TestSystemBackend_remount_clean(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = "foo//bar"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1129,7 +1129,7 @@ func TestSystemBackend_remount_nonPrintable(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = "foo\nbar"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1147,7 +1147,7 @@ func TestSystemBackend_remount_trailingSpacesInFromPath(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = " foo/ "
 	req.Data["to"] = "bar"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1165,7 +1165,7 @@ func TestSystemBackend_remount_trailingSpacesInToPath(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = " bar/ "
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1864,7 +1864,7 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 
 	ctx := namespace.RootContext(nil)
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
-	err := b.Backend.Setup(ctx, bc)
+	err := b.Setup(ctx, bc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1930,7 +1930,7 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 
 	ctx := namespace.RootContext(nil)
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
-	err := b.Backend.Setup(ctx, bc)
+	err := b.Setup(ctx, bc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2567,6 +2567,9 @@ func TestSystemBackend_PoliciesDetailedAcl(t *testing.T) {
 	entry := entryRaw.(map[string]interface{})
 	require.Contains(t, entry, "policy")
 	require.Equal(t, entry["policy"].(string), policy)
+	require.Contains(t, entry, "version")
+	require.Contains(t, entry, "cas_required")
+	require.Contains(t, entry, "name")
 }
 
 func TestSystemBackend_enableAudit(t *testing.T) {
@@ -2916,7 +2919,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		b := testSystemBackendRaw(t)
 		req := logical.TestRequest(t, logical.CreateOperation, "raw/test_raw")
 		req.Data = map[string]interface{}{
-			"value": "414c1e7f-0a9a-49e0-9fc4-61af329d0724",
+			"value": "G14c1e7f-0a9a-49e0-9fc4-61af329d0724",
 		}
 
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
@@ -2954,7 +2957,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		if resp.IsError() {
 			t.Fatalf("bad: %v", resp)
 		}
-		if resp.Data["value"].(string) != "414c1e7f-0a9a-49e0-9fc4-61af329d0724" {
+		if resp.Data["value"].(string) != "G14c1e7f-0a9a-49e0-9fc4-61af329d0724" {
 			t.Fatalf("bad: %v", resp)
 		}
 	})
@@ -6273,7 +6276,7 @@ func TestPolicyStore_Store(t *testing.T) {
 		require.Contains(t, resp.Data, "modified")
 		exp := resp.Data["expiration"].(time.Time)
 		modified := resp.Data["modified"].(time.Time)
-		require.LessOrEqual(t, time.Now().Sub(modified), 2*time.Second)
+		require.LessOrEqual(t, time.Since(modified), 2*time.Second)
 
 		time.Sleep(2 * time.Second)
 

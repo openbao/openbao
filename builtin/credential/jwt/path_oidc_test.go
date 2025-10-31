@@ -727,11 +727,12 @@ func TestOIDC_Callback(t *testing.T) {
 			var useBoundCIDRs bool
 			callbackMode := "client"
 
-			if i == 2 {
+			switch i {
+			case 2:
 				useBoundCIDRs = true
-			} else if i == 3 {
+			case 3:
 				callbackMode = "direct"
-			} else if i == 4 {
+			case 4:
 				callbackMode = "device"
 			}
 
@@ -1427,7 +1428,7 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
 	case "/.well-known/openid-configuration":
-		w.Write([]byte(strings.Replace(`
+		_, err := w.Write([]byte(strings.ReplaceAll(`
 			{
 				"issuer": "%s",
 				"authorization_endpoint": "%s/auth",
@@ -1435,14 +1436,23 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"token_endpoint": "%s/token",
 				"jwks_uri": "%s/certs",
 				"userinfo_endpoint": "%s/userinfo"
-			}`, "%s", o.server.URL, -1)))
+			}`, "%s", o.server.URL)))
+		if err != nil {
+			o.t.Fatal(err)
+		}
 	case "/certs":
 		a := getTestJWKS(o.t, ecdsaPubKey)
-		w.Write(a)
+		_, err := w.Write(a)
+		if err != nil {
+			o.t.Fatal(err)
+		}
 	case "/certs_missing":
 		w.WriteHeader(404)
 	case "/certs_invalid":
-		w.Write([]byte("It's not a keyset!"))
+		_, err := w.Write([]byte("It's not a keyset!"))
+		if err != nil {
+			o.t.Fatal(err)
+		}
 	case "/device":
 		values := map[string]interface{}{
 			"device_code": o.code,
@@ -1451,7 +1461,10 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			o.t.Fatal(err)
 		}
-		w.Write(data)
+		_, err = w.Write(data)
+		if err != nil {
+			o.t.Fatal(err)
+		}
 	case "/token":
 		var code string
 		grant_type := r.FormValue("grant_type")
@@ -1485,21 +1498,26 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Audience:  jwt.Audience{o.clientID},
 		}
 		jwtData, _ := getTestJWT(o.t, ecdsaPrivKey, stdClaims, o.customClaims)
-		w.Write([]byte(fmt.Sprintf(`
+		_, err := fmt.Fprintf(w, `
 			{
 				"access_token":"%s",
 				"id_token":"%s"
 			}`,
 			jwtData,
-			jwtData,
-		)))
+			jwtData)
+		if err != nil {
+			o.t.Fatal(err)
+		}
 	case "/userinfo":
-		w.Write([]byte(`
+		_, err := w.Write([]byte(`
 			{
 				"sub": "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 				"color":"red",
 				"temperature":"76"
 			}`))
+		if err != nil {
+			o.t.Fatal(err)
+		}
 
 	default:
 		o.t.Fatalf("unexpected path: %q", r.URL.Path)

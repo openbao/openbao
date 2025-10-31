@@ -22,7 +22,6 @@ const config: Config = {
   projectName: "openbao", // Usually your repo name.
 
   onBrokenLinks: "throw",
-  onBrokenMarkdownLinks: "warn",
   // ignore broken anchors as most of them are false positives
   onBrokenAnchors: "ignore",
 
@@ -149,8 +148,8 @@ const config: Config = {
               href: "https://github.com/openbao/openbao/discussions",
             },
             {
-              label: "Matrix Chat Server",
-              href: "https://chat.lfx.linuxfoundation.org/",
+              label: "Zulip Chat Server",
+              href: "https://linuxfoundation.zulipchat.com/",
             },
             {
               label: "LF Edge Wiki",

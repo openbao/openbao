@@ -11,12 +11,15 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	hclParser "github.com/hashicorp/hcl/hcl/parser"
+	jsonParser "github.com/hashicorp/hcl/json/parser"
 )
 
 const (
@@ -145,10 +148,29 @@ func LoadSSHHelperConfig(path string) (*SSHHelperConfig, error) {
 	return ParseSSHHelperConfig(string(contents))
 }
 
+// isJson determines if the input is JSON, i.e if it starts with '{'
+func isJson(data []byte) bool {
+	// Trim whitespace and check if it starts with '{'
+	trimmed := strings.TrimSpace(string(data))
+	return strings.HasPrefix(trimmed, "{")
+}
+
 // ParseSSHHelperConfig parses the given contents as a string for the SSHHelper
 // configuration.
 func ParseSSHHelperConfig(contents string) (*SSHHelperConfig, error) {
-	root, err := hcl.Parse(string(contents))
+	// Parse based on format detection
+	data := []byte(contents)
+	var root *ast.File
+	var err error
+
+	if isJson(data) {
+		// JSON format
+		root, err = jsonParser.Parse(data)
+	} else {
+		// HCL format
+		root, err = hclParser.ParseDontErrorOnDuplicateKeys(data)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("error parsing config: %w", err)
 	}

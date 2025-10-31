@@ -41,7 +41,7 @@ breaking to consumers of the library. Some key files are:
    [`api/ssh.go`](https://github.com/openbao/openbao/blob/main/api/ssh.go) have
    backend-specific calls for various portions of the API space (such as
    [`sys/`](/api-docs/system), authenticating to OpenBao, or the
-   [`ssh` plugin](/docs/secrets/ssh)).
+   [`ssh` plugin](../secrets/ssh/index.mdx)).
 
 Upstream also includes [OpenAPI-based client libraries](https://github.com/openbao/openbao/issues/41)
 that haven't yet been forked; if maintainers are interested in helping to
@@ -102,9 +102,9 @@ two main sections:
  - [`api-docs`](/api-docs) a hand-maintained API reference to all endpoints
    in OpenBao.
  - [`docs`](/docs), for everything else, including information about
-   [various](/docs/secrets/) [plugins](/docs/auth/), this
-   [contributing guide](/docs/contributing/), and [various](/docs/policies/)
-   [decisions](/docs/rfcs/) made by the TSC and the OpenBao community.
+   [various](../secrets/index.mdx) [plugins](../auth/index.mdx), this
+   [contributing guide](index.mdx), and [various](../policies/index.mdx)
+   [decisions](../rfcs/index.mdx) made by the TSC and the OpenBao community.
 
 To add a new page, create the `.mdx` file in the appropriate subfolder within
 [`website/content`](https://github.com/openbao/openbao/tree/main/website/content/)
@@ -124,14 +124,14 @@ At a high level, these directories are:
  - [`builtin/`](https://github.com/openbao/openbao/tree/main/builtin/) contains
    the builtin plugins:
    - [`builtin/audit/`](https://github.com/openbao/openbao/tree/main/builtin/audit)
-     contains the built-in audit backends such as [file](/docs/audit/file/) or
-     [syslog](/docs/audit/syslog/).
+     contains the built-in audit backends such as [file](../audit/file.mdx) or
+     [syslog](../audit/syslog.mdx).
    - [`builtin/credential/`](https://github.com/openbao/openbao/tree/main/builtin/credential)
      contains the built-in authentication plugins such as
-     [AppRole](/docs/auth/approle/) or [cert](/docs/auth/cert/).
+     [AppRole](../auth/approle.mdx) or [cert](../auth/cert.mdx).
    - [`builtin/logical/`](https://github.com/openbao/openbao/tree/main/builtin/logical)
      contains the built-in secret engines such as
-     [PKI](/docs/secrets/pki/) or [kv](/docs/secrets/kv/).
+     [PKI](../secrets/pki/index.mdx) or [kv](../secrets/kv/index.mdx).
    - [`builtin/plugin/`](https://github.com/openbao/openbao/tree/main/builtin/plugin)
      contains a source-agnostic plugin wrapper (either using the builtin
      plugin or handling the GRPC connection to an external plugin).

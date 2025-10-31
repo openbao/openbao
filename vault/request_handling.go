@@ -238,9 +238,7 @@ func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespac
 
 	if tokenNS.Path == policyNS.Path {
 		// Same namespace - add all and continue
-		for _, policyName := range nsPolicies {
-			filteredPolicies = append(filteredPolicies, policyName)
-		}
+		filteredPolicies = append(filteredPolicies, nsPolicies...)
 		return filteredPolicies, nil
 	}
 
@@ -1909,12 +1907,12 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 
 	leaseGenerated := false
 	te, err := c.RegisterAuth(ctx, tokenTTL, reqPath, auth, role, !isInlineAuth, userLockoutInfo)
-	switch {
-	case err == nil:
+	switch err {
+	case nil:
 		if auth.TokenType != logical.TokenTypeBatch {
 			leaseGenerated = true
 		}
-	case err == ErrInternalError:
+	case ErrInternalError:
 		return false, nil, err
 	default:
 		return false, logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest

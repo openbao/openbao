@@ -364,7 +364,7 @@ func (c *PKIHealthCheckCommand) outputResultsYAML(results map[string][]*healthch
 }
 
 func (c *PKIHealthCheckCommand) selectRetCode(results map[string][]*healthcheck.Result) int {
-	var highestResult healthcheck.ResultStatus = healthcheck.ResultNotApplicable
+	highestResult := healthcheck.ResultNotApplicable
 	for _, findings := range results {
 		for _, finding := range findings {
 			if finding.Status > highestResult {

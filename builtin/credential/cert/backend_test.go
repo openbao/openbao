@@ -194,7 +194,7 @@ func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
-	defer list.Close()
+	defer list.Close() //nolint:errcheck // try to close, ignore error
 
 	// Accept connections.
 	serverErrors := make(chan error, 1)
@@ -207,7 +207,7 @@ func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath
 			close(serverErrors)
 			return
 		}
-		defer serverConn.Close()
+		defer serverConn.Close() //nolint:errcheck // try to close, ignore error
 
 		// Read the ping
 		buf := make([]byte, 4)
@@ -439,11 +439,14 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 		config.HttpClient = client
 
 		// Set the above issued certificates as the client certificates
-		config.ConfigureTLS(&api.TLSConfig{
+		err := config.ConfigureTLS(&api.TLSConfig{
 			CACert:     caCertFile.Name(),
 			ClientCert: leafCertFile.Name(),
 			ClientKey:  leafCertKeyFile.Name(),
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		apiClient, err := api.NewClient(config)
 		if err != nil {
@@ -588,11 +591,14 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 		config.HttpClient = client
 
 		// Set the client certificates
-		config.ConfigureTLS(&api.TLSConfig{
+		err := config.ConfigureTLS(&api.TLSConfig{
 			CACertBytes: cluster.CACertPEM,
 			ClientCert:  "test-fixtures/root/rootcawextcert.pem",
 			ClientKey:   "test-fixtures/root/rootcawextkey.pem",
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		apiClient, err := api.NewClient(config)
 		if err != nil {
@@ -2083,13 +2089,13 @@ func testConnState(certPath, keyPath, rootCertPath string) (tls.ConnectionState,
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
-	defer list.Close()
+	defer list.Close() //nolint:errcheck // try to close, ignore error
 
 	// Accept connections.
 	serverErrors := make(chan error, 1)
 	connState := make(chan tls.ConnectionState)
 	go func() {
-		defer close(connState)
+		defer close(connState) //nolint:errcheck // try to close, ignore error
 		serverConn, err := list.Accept()
 		serverErrors <- err
 		if err != nil {
@@ -2716,11 +2722,14 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 		config.HttpClient = client
 
 		// Set the above issued certificates as the client certificates
-		config.ConfigureTLS(&api.TLSConfig{
+		err := config.ConfigureTLS(&api.TLSConfig{
 			CACert:     caCertFile.Name(),
 			ClientCert: leafCert,
 			ClientKey:  leafKey,
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		apiClient, err := api.NewClient(config)
 		if err != nil {

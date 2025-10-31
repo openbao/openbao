@@ -610,14 +610,14 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 	var wgReaders sync.WaitGroup
 	var wgListers sync.WaitGroup
 	var done atomic.Bool
-	var numFiles int = 25
-	var numWriters int = 100
-	var numWrites int = 25
-	var writeBreak int = 50
-	var numReaders int = 25
-	var readBreak int = 5
-	var numListers int = 5
-	var listBreak int = 10
+	numFiles := 25
+	numWriters := 100
+	numWrites := 25
+	writeBreak := 50
+	numReaders := 25
+	readBreak := 5
+	numListers := 5
+	listBreak := 10
 	var numErrors atomic.Int32
 	for i := 1; i <= numWriters; i++ {
 		wgWriters.Add(1)
@@ -689,12 +689,12 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 		wgReaders.Add(1)
 		go func(worker int) {
 			defer wgReaders.Done()
-			var read int = 1
+			read := 1
 			time.Sleep(time.Duration(worker) * time.Millisecond)
 
 			for {
 				switch {
-				case done.Load() == true:
+				case done.Load():
 					t.Log("shutting down reader")
 					return
 				default:
@@ -781,12 +781,12 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 		wgListers.Add(1)
 		go func(worker int) {
 			defer wgListers.Done()
-			var list int = 1
+			list := 1
 			time.Sleep(time.Duration(worker) * time.Millisecond)
 
 			for {
 				switch {
-				case done.Load() == true:
+				case done.Load():
 					t.Log("shutting down lister")
 					return
 				default:
@@ -855,11 +855,11 @@ func testTransactionalMixedWriters(t testing.TB, b TransactionalBackend) {
 	var wgWriters sync.WaitGroup
 	var wgReaders sync.WaitGroup
 	var done atomic.Bool
-	var numFiles int = 25
-	var numWriters int = 100
-	var numWrites int = 25
-	var numReaders int = 25
-	var readBreak int = 5
+	numFiles := 25
+	numWriters := 100
+	numWrites := 25
+	numReaders := 25
+	readBreak := 5
 	var numErrors atomic.Int32
 	for i := 1; i <= numWriters; i++ {
 		wgWriters.Add(1)
@@ -937,12 +937,12 @@ func testTransactionalMixedWriters(t testing.TB, b TransactionalBackend) {
 		wgReaders.Add(1)
 		go func(worker int) {
 			defer wgReaders.Done()
-			var read int = 1
+			read := 1
 			time.Sleep(time.Duration(worker) * time.Millisecond)
 
 			for {
 				switch {
-				case done.Load() == true:
+				case done.Load():
 					t.Log("shutting down reader")
 					return
 				default:

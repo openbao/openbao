@@ -138,40 +138,40 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 		},
 	}
 
-	b.Backend.Paths = append(b.Backend.Paths, b.configPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.rekeyPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.rotatePaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.sealPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.statusPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.pluginsCatalogListPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.pluginsCatalogCRUDPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.pluginsReloadPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.auditPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.mountPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.authPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.lockedUserPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.leasePaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.policyPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.namespacePaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.wrappingPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.toolsPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.capabilitiesPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.internalPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.pprofPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.remountPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.metricsPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.monitorPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.inFlightRequestPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.hostInfoPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.quotasPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.loginMFAPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.introspectionPaths()...)
+	b.Paths = append(b.Paths, b.configPaths()...)
+	b.Paths = append(b.Paths, b.rekeyPaths()...)
+	b.Paths = append(b.Paths, b.rotatePaths()...)
+	b.Paths = append(b.Paths, b.sealPaths()...)
+	b.Paths = append(b.Paths, b.statusPaths()...)
+	b.Paths = append(b.Paths, b.pluginsCatalogListPaths()...)
+	b.Paths = append(b.Paths, b.pluginsCatalogCRUDPath())
+	b.Paths = append(b.Paths, b.pluginsReloadPath())
+	b.Paths = append(b.Paths, b.auditPaths()...)
+	b.Paths = append(b.Paths, b.mountPaths()...)
+	b.Paths = append(b.Paths, b.authPaths()...)
+	b.Paths = append(b.Paths, b.lockedUserPaths()...)
+	b.Paths = append(b.Paths, b.leasePaths()...)
+	b.Paths = append(b.Paths, b.policyPaths()...)
+	b.Paths = append(b.Paths, b.namespacePaths()...)
+	b.Paths = append(b.Paths, b.wrappingPaths()...)
+	b.Paths = append(b.Paths, b.toolsPaths()...)
+	b.Paths = append(b.Paths, b.capabilitiesPaths()...)
+	b.Paths = append(b.Paths, b.internalPaths()...)
+	b.Paths = append(b.Paths, b.pprofPaths()...)
+	b.Paths = append(b.Paths, b.remountPaths()...)
+	b.Paths = append(b.Paths, b.metricsPath())
+	b.Paths = append(b.Paths, b.monitorPath())
+	b.Paths = append(b.Paths, b.inFlightRequestPath())
+	b.Paths = append(b.Paths, b.hostInfoPath())
+	b.Paths = append(b.Paths, b.quotasPaths()...)
+	b.Paths = append(b.Paths, b.loginMFAPaths()...)
+	b.Paths = append(b.Paths, b.introspectionPaths()...)
 
 	if core.rawEnabled {
-		b.Backend.Paths = append(b.Backend.Paths, b.rawPaths()...)
+		b.Paths = append(b.Paths, b.rawPaths()...)
 	}
 	if backend := core.getRaftBackend(); backend != nil {
-		b.Backend.Paths = append(b.Backend.Paths, b.raftStoragePaths()...)
+		b.Paths = append(b.Paths, b.raftStoragePaths()...)
 	}
 
 	return b
@@ -2706,33 +2706,37 @@ func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.Oper
 			return nil, nil
 		}
 
+		respData := readPolicyResponse(policy)
+
 		// If the request is from sys/policy/ we handle backwards compatibility
-		var respDataPolicyName string
 		if policyType == PolicyTypeACL && strings.HasPrefix(req.Path, "policy") {
-			respDataPolicyName = "rules"
-		} else {
-			respDataPolicyName = "policy"
+			respData["rules"] = respData["policy"]
+			delete(respData, "policy")
 		}
 
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"name":             policy.Name,
-				"version":          policy.DataVersion,
-				"cas_required":     policy.CASRequired,
-				respDataPolicyName: policy.Raw,
-			},
-		}
-
-		if !policy.Expiration.IsZero() {
-			resp.Data["expiration"] = policy.Expiration
-		}
-
-		if !policy.Modified.IsZero() {
-			resp.Data["modified"] = policy.Modified
-		}
-
-		return resp, nil
+		return &logical.Response{
+			Data: respData,
+		}, nil
 	}
+}
+
+func readPolicyResponse(policy *Policy) map[string]interface{} {
+	data := map[string]interface{}{
+		"name":         policy.Name,
+		"version":      policy.DataVersion,
+		"cas_required": policy.CASRequired,
+		"policy":       policy.Raw,
+	}
+
+	if !policy.Expiration.IsZero() {
+		data["expiration"] = policy.Expiration
+	}
+
+	if !policy.Modified.IsZero() {
+		data["modified"] = policy.Modified
+	}
+
+	return data
 }
 
 // handlePoliciesSet handles the "/sys/policy/<name>" and "/sys/policies/<type>/<name>" endpoints to set a policy
@@ -3040,8 +3044,13 @@ func (*SystemBackend) handlePoliciesPasswordGenerate(ctx context.Context, req *l
 // handlePoliciesDetailedAclList handles the listing of ACL policies with detailed information
 func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		prefix := ""
+		if _, present := data.Schema["name"]; present {
+			prefix = data.Get("name").(string)
+		}
+
 		// Get policies list
-		policies, err := b.Core.policyStore.ListPolicies(ctx, PolicyTypeACL, true)
+		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, PolicyTypeACL, prefix, true)
 		if err != nil {
 			return nil, err
 		}
@@ -3066,10 +3075,7 @@ func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc 
 				continue
 			}
 
-			policyInfos[policyName] = map[string]interface{}{
-				"name":   policy.Name,
-				"policy": policy.Raw,
-			}
+			policyInfos[policyName] = readPolicyResponse(policy)
 		}
 
 		return logical.ListResponseWithInfo(policies, policyInfos), nil
@@ -4118,6 +4124,47 @@ func (b *SystemBackend) pathInternalUIMountRead(ctx context.Context, req *logica
 	return resp, nil
 }
 
+func (b *SystemBackend) pathInternalUINamespacesRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	// Short-circuit here if there's no client token provided
+	if req.ClientToken == "" {
+		return nil, errors.New("client token empty")
+	}
+
+	// Load the ACL policies so we can check for access and filter namespaces
+	acl, te, entity, _, err := b.Core.fetchACLTokenEntryAndEntity(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if entity != nil && entity.Disabled {
+		b.logger.Warn("permission denied as the entity on the token is disabled")
+		return nil, logical.ErrPermissionDenied
+	}
+	if te != nil && te.EntityID != "" && entity == nil {
+		b.logger.Warn("permission denied as the entity on the token is invalid")
+		return nil, logical.ErrPermissionDenied
+	}
+
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := b.Core.namespaceStore.ListNamespaces(ctx, false, false)
+	if err != nil {
+		return nil, errors.New("failed to list namespaces")
+	}
+
+	var nsList []string
+	for _, entry := range list {
+		if acl != nil && hasMountAccess(ctx, acl, entry.Path) {
+			relativePath := parent.TrimmedPath(entry.Path)
+			nsList = append(nsList, relativePath)
+		}
+	}
+
+	return logical.ListResponse(nsList), nil
+}
+
 func (b *SystemBackend) pathInternalCountersRequests(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	resp := logical.ErrorResponse("The functionality has been removed on this path")
 
@@ -4669,7 +4716,7 @@ func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
 	// Rotate to the new term
 	newTerm, err := b.Core.barrier.Rotate(ctx, b.Core.secureRandomReader)
 	if err != nil {
-		return errwrap.Wrap(errors.New("failed to create new encryption key"), err)
+		return fmt.Errorf("failed to create new encryption key: %w", err)
 	}
 	b.Backend.Logger().Info("installed new encryption key")
 
@@ -4693,10 +4740,10 @@ func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
 	// replication
 	if err := b.Core.barrier.Put(ctx, &logical.StorageEntry{
 		Key:   coreKeyringCanaryPath,
-		Value: []byte(fmt.Sprintf("new-rotation-term-%d", newTerm)),
+		Value: fmt.Appendf(nil, "new-rotation-term-%d", newTerm),
 	}); err != nil {
 		b.Core.logger.Error("error saving keyring canary", "error", err)
-		return errwrap.Wrap(errors.New("failed to save keyring canary"), err)
+		return fmt.Errorf("failed to save keyring canary: %w", err)
 	}
 
 	return nil

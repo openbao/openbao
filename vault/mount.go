@@ -240,15 +240,10 @@ func (c *Core) tableMetrics(entryCount int, isLocal bool, isAuth bool, compresse
 // other locations holding pointers. Care needs to be taken
 // if modifying entries rather than modifying the table itself
 func (t *MountTable) shallowClone() *MountTable {
-	mt := &MountTable{
+	return &MountTable{
 		Type:    t.Type,
-		Entries: make([]*MountEntry, len(t.Entries)),
+		Entries: slices.Clone(t.Entries),
 	}
-
-	for i, e := range t.Entries {
-		mt.Entries[i] = e
-	}
-	return mt
 }
 
 // setTaint is used to set the taint on given entry Accepts either the mount
@@ -379,49 +374,49 @@ type MountEntry struct {
 
 // MountConfig is used to hold settable options
 type MountConfig struct {
-	DefaultLeaseTTL           time.Duration         `json:"default_lease_ttl,omitempty" structs:"default_lease_ttl" mapstructure:"default_lease_ttl"` // Override for global default
-	MaxLeaseTTL               time.Duration         `json:"max_lease_ttl,omitempty" structs:"max_lease_ttl" mapstructure:"max_lease_ttl"`             // Override for global default
-	ForceNoCache              bool                  `json:"force_no_cache,omitempty" structs:"force_no_cache" mapstructure:"force_no_cache"`          // Override for global default
-	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" structs:"audit_non_hmac_request_keys" mapstructure:"audit_non_hmac_request_keys"`
-	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" structs:"audit_non_hmac_response_keys" mapstructure:"audit_non_hmac_response_keys"`
-	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" structs:"listing_visibility" mapstructure:"listing_visibility"`
-	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" structs:"passthrough_request_headers" mapstructure:"passthrough_request_headers"`
-	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
-	TokenType                 logical.TokenType     `json:"token_type,omitempty" structs:"token_type" mapstructure:"token_type"`
+	DefaultLeaseTTL           time.Duration         `json:"default_lease_ttl,omitempty" mapstructure:"default_lease_ttl"` // Override for global default
+	MaxLeaseTTL               time.Duration         `json:"max_lease_ttl,omitempty" mapstructure:"max_lease_ttl"`         // Override for global default
+	ForceNoCache              bool                  `json:"force_no_cache,omitempty" mapstructure:"force_no_cache"`       // Override for global default
+	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" mapstructure:"audit_non_hmac_request_keys"`
+	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" mapstructure:"audit_non_hmac_response_keys"`
+	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" mapstructure:"listing_visibility"`
+	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" mapstructure:"passthrough_request_headers"`
+	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" mapstructure:"allowed_response_headers"`
+	TokenType                 logical.TokenType     `json:"token_type,omitempty" mapstructure:"token_type"`
 	AllowedManagedKeys        []string              `json:"allowed_managed_keys,omitempty" mapstructure:"allowed_managed_keys"`
 	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
 
 	// PluginName is the name of the plugin registered in the catalog.
 	//
 	// Deprecated: MountEntry.Type should be used instead for Vault 1.0.0 and beyond.
-	PluginName string `json:"plugin_name,omitempty" structs:"plugin_name,omitempty" mapstructure:"plugin_name"`
+	PluginName string `json:"plugin_name,omitempty" mapstructure:"plugin_name"`
 }
 
 type UserLockoutConfig struct {
-	LockoutThreshold    uint64        `json:"lockout_threshold,omitempty" structs:"lockout_threshold" mapstructure:"lockout_threshold"`
-	LockoutDuration     time.Duration `json:"lockout_duration,omitempty" structs:"lockout_duration" mapstructure:"lockout_duration"`
-	LockoutCounterReset time.Duration `json:"lockout_counter_reset,omitempty" structs:"lockout_counter_reset" mapstructure:"lockout_counter_reset"`
-	DisableLockout      bool          `json:"disable_lockout,omitempty" structs:"disable_lockout" mapstructure:"disable_lockout"`
+	LockoutThreshold    uint64        `json:"lockout_threshold,omitempty" mapstructure:"lockout_threshold"`
+	LockoutDuration     time.Duration `json:"lockout_duration,omitempty" mapstructure:"lockout_duration"`
+	LockoutCounterReset time.Duration `json:"lockout_counter_reset,omitempty" mapstructure:"lockout_counter_reset"`
+	DisableLockout      bool          `json:"disable_lockout,omitempty" mapstructure:"disable_lockout"`
 }
 
 type APIUserLockoutConfig struct {
-	LockoutThreshold            string `json:"lockout_threshold,omitempty" structs:"lockout_threshold" mapstructure:"lockout_threshold"`
-	LockoutDuration             string `json:"lockout_duration,omitempty" structs:"lockout_duration" mapstructure:"lockout_duration"`
-	LockoutCounterResetDuration string `json:"lockout_counter_reset_duration,omitempty" structs:"lockout_counter_reset_duration" mapstructure:"lockout_counter_reset_duration"`
-	DisableLockout              *bool  `json:"lockout_disable,omitempty" structs:"lockout_disable" mapstructure:"lockout_disable"`
+	LockoutThreshold            string `json:"lockout_threshold,omitempty" mapstructure:"lockout_threshold"`
+	LockoutDuration             string `json:"lockout_duration,omitempty" mapstructure:"lockout_duration"`
+	LockoutCounterResetDuration string `json:"lockout_counter_reset_duration,omitempty" mapstructure:"lockout_counter_reset_duration"`
+	DisableLockout              *bool  `json:"lockout_disable,omitempty" mapstructure:"lockout_disable"`
 }
 
 // APIMountConfig is an embedded struct of api.MountConfigInput
 type APIMountConfig struct {
-	DefaultLeaseTTL           string                `json:"default_lease_ttl" structs:"default_lease_ttl" mapstructure:"default_lease_ttl"`
-	MaxLeaseTTL               string                `json:"max_lease_ttl" structs:"max_lease_ttl" mapstructure:"max_lease_ttl"`
-	ForceNoCache              bool                  `json:"force_no_cache" structs:"force_no_cache" mapstructure:"force_no_cache"`
-	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" structs:"audit_non_hmac_request_keys" mapstructure:"audit_non_hmac_request_keys"`
-	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" structs:"audit_non_hmac_response_keys" mapstructure:"audit_non_hmac_response_keys"`
-	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" structs:"listing_visibility" mapstructure:"listing_visibility"`
-	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" structs:"passthrough_request_headers" mapstructure:"passthrough_request_headers"`
-	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
-	TokenType                 string                `json:"token_type" structs:"token_type" mapstructure:"token_type"`
+	DefaultLeaseTTL           string                `json:"default_lease_ttl" mapstructure:"default_lease_ttl"`
+	MaxLeaseTTL               string                `json:"max_lease_ttl" mapstructure:"max_lease_ttl"`
+	ForceNoCache              bool                  `json:"force_no_cache" mapstructure:"force_no_cache"`
+	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" mapstructure:"audit_non_hmac_request_keys"`
+	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" mapstructure:"audit_non_hmac_response_keys"`
+	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" mapstructure:"listing_visibility"`
+	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" mapstructure:"passthrough_request_headers"`
+	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" mapstructure:"allowed_response_headers"`
+	TokenType                 string                `json:"token_type" mapstructure:"token_type"`
 	AllowedManagedKeys        []string              `json:"allowed_managed_keys,omitempty" mapstructure:"allowed_managed_keys"`
 	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
 	PluginVersion             string                `json:"plugin_version,omitempty" mapstructure:"plugin_version"`
@@ -429,7 +424,7 @@ type APIMountConfig struct {
 	// PluginName is the name of the plugin registered in the catalog.
 	//
 	// Deprecated: MountEntry.Type should be used instead for Vault 1.0.0 and beyond.
-	PluginName string `json:"plugin_name,omitempty" structs:"plugin_name,omitempty" mapstructure:"plugin_name"`
+	PluginName string `json:"plugin_name,omitempty" mapstructure:"plugin_name"`
 }
 
 type FailedLoginUser struct {
@@ -1700,7 +1695,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 
 	// Handle writing the legacy mount table by default.
 	writeTable := func(mt *MountTable, path string) (int, error) {
-		// Encode the mount table into JSON and compress it (lzw).
+		// Encode the mount table into JSON and compress it (Gzip).
 		compressedBytes, err := jsonutil.EncodeJSONAndCompress(mt, nil)
 		if err != nil {
 			c.logger.Error("failed to encode or compress mount table", "error", err)
@@ -2037,8 +2032,8 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *MountEntry, sysView
 		conf[k] = v
 	}
 
-	switch {
-	case entry.Type == mountTypePlugin:
+	switch entry.Type {
+	case mountTypePlugin:
 		conf["plugin_name"] = entry.Config.PluginName
 	default:
 		conf["plugin_name"] = t

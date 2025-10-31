@@ -25,6 +25,7 @@ import (
 	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 )
 
@@ -228,7 +229,7 @@ storage "%s" {
 
 ui = true
 `
-	certDirEscaped := strings.Replace(certDir, "\\", "\\\\", -1)
+	certDirEscaped := strings.ReplaceAll(certDir, "\\", "\\\\")
 	hclStr = fmt.Sprintf(hclStr, certDirEscaped, certDirEscaped, storageType)
 	parsed, err := ParseConfig(hclStr, "")
 	if err != nil {
@@ -595,8 +596,8 @@ func LoadConfigFile(path string, allPaths []string) (*Config, error) {
 }
 
 func ParseConfig(d, source string) (*Config, error) {
-	// Parse!
-	obj, err := hcl.Parse(d)
+	// Parse using the helper function that handles both HCL and JSON
+	obj, err := hclutil.ParseConfig([]byte(d))
 	if err != nil {
 		return nil, err
 	}

@@ -30,7 +30,7 @@ configured Sinks, subject to their configuration.
 
 Sinks support some advanced features, including the ability for the written
 values to be encrypted or
-[response-wrapped](/docs/concepts/response-wrapping).
+[response-wrapped](../../concepts/response-wrapping.mdx).
 
 Both mechanisms can be used concurrently; in this case, the value will be
 response-wrapped, then encrypted.
@@ -146,14 +146,14 @@ These are common configuration values that live within the `method` block:
   automatically reauthenticate when it expires. Rather than a simple string,
   the written value will be a JSON-encoded
   [SecretWrapInfo](https://godoc.org/github.com/openbao/openbao/api#SecretWrapInfo)
-  structure. Uses [duration format strings](/docs/concepts/duration-format).
+  structure. Uses [duration format strings](../../concepts/duration-format.mdx).
 
 - `min_backoff` `(string or integer: "1s")` - The minimum backoff time auto-auth
   will delay before retrying after a failed auth attempt. The backoff will start
   at the configured value and double (with some randomness) after successive
   failures, capped by `max_backoff.` If Agent templating is being used, this
   value is also used as the min backoff time for the templating server.
-  Uses [duration format strings](/docs/concepts/duration-format).
+  Uses [duration format strings](../../concepts/duration-format.mdx).
 
 - `max_backoff` `(string or integer: "5m")` - The maximum time Agent will delay
   before retrying after a failed auth attempt. The backoff will start at
@@ -161,7 +161,7 @@ These are common configuration values that live within the `method` block:
   capped by `max_backoff.` If Agent templating is being used, this value is also
   used as the max backoff time for the templating server. `max_backoff` is the
   duration between retries, and **not** the duration that retries will be
-  performed before giving up. Uses [duration format strings](/docs/concepts/duration-format).
+  performed before giving up. Uses [duration format strings](../../concepts/duration-format.mdx).
 
 - `exit_on_err` `(bool: false)` - When set to true, OpenBao Agent and OpenBao Proxy
   will exit if any errors occur during authentication. This configurable only affects login
@@ -184,7 +184,7 @@ These configuration values are common to all Sinks:
   reauthenticate when it expires. Rather than a simple string, the written
   value will be a JSON-encoded
   [SecretWrapInfo](https://godoc.org/github.com/openbao/openbao/api#SecretWrapInfo)
-  structure. Uses [duration format strings](/docs/concepts/duration-format).
+  structure. Uses [duration format strings](../../concepts/duration-format.mdx).
 
 - `dh_type` `(string: optional)` - If specified, the type of Diffie-Hellman exchange to
   perform, meaning, which ciphers and/or curves. Currently only `curve25519` is

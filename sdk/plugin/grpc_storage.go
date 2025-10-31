@@ -166,36 +166,36 @@ func (s *GRPCStorageClient) Delete(ctx context.Context, key string) error {
 }
 
 func (s *GRPCTransactionalStorageClient) BeginReadOnlyTx(ctx context.Context) (logical.Transaction, error) {
-	reply, err := s.GRPCStorageClient.client.BeginReadOnlyTx(ctx, &pb.Empty{})
+	reply, err := s.client.BeginReadOnlyTx(ctx, &pb.Empty{})
 	if err != nil {
 		return nil, err
 	}
 
 	return &GRPCStorageClientTransaction{
 		GRPCStorageClient{
-			client: s.GRPCStorageClient.client,
+			client: s.client,
 			txn:    reply.Txn,
 		},
 	}, nil
 }
 
 func (s *GRPCTransactionalStorageClient) BeginTx(ctx context.Context) (logical.Transaction, error) {
-	reply, err := s.GRPCStorageClient.client.BeginTx(ctx, &pb.Empty{})
+	reply, err := s.client.BeginTx(ctx, &pb.Empty{})
 	if err != nil {
 		return nil, err
 	}
 
 	return &GRPCStorageClientTransaction{
 		GRPCStorageClient{
-			client: s.GRPCStorageClient.client,
+			client: s.client,
 			txn:    reply.Txn,
 		},
 	}, nil
 }
 
 func (s *GRPCStorageClientTransaction) Commit(ctx context.Context) error {
-	reply, err := s.GRPCStorageClient.client.Commit(ctx, &pb.StorageCommitTxArgs{
-		Txn: s.GRPCStorageClient.txn,
+	reply, err := s.client.Commit(ctx, &pb.StorageCommitTxArgs{
+		Txn: s.txn,
 	})
 	if err != nil {
 		return err
@@ -209,8 +209,8 @@ func (s *GRPCStorageClientTransaction) Commit(ctx context.Context) error {
 }
 
 func (s *GRPCStorageClientTransaction) Rollback(ctx context.Context) error {
-	reply, err := s.GRPCStorageClient.client.Rollback(ctx, &pb.StorageRollbackTxArgs{
-		Txn: s.GRPCStorageClient.txn,
+	reply, err := s.client.Rollback(ctx, &pb.StorageRollbackTxArgs{
+		Txn: s.txn,
 	})
 	if err != nil {
 		return err

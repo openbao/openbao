@@ -428,7 +428,7 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 		if resp.Redirect != "" {
 			// If we have a redirect, redirect! We use a 307 code
 			// because we don't actually know if its permanent.
-			http.Redirect(w, r, resp.Redirect, 307)
+			http.Redirect(w, r, resp.Redirect, http.StatusTemporaryRedirect)
 			return
 		}
 

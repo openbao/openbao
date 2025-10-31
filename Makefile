@@ -13,7 +13,7 @@ GO_MODS?=$$(find . -name 'go.mod' | xargs -L 1 dirname)
 SED?=$(shell command -v gsed || command -v sed)
 
 GO_VERSION_MIN=$$(cat $(CURDIR)/.go-version)
-PROTOC_VERSION_MIN=31.1
+PROTOC_VERSION=32.1
 CGO_ENABLED?=0
 ifneq ($(FDB_ENABLED), )
 	CGO_ENABLED=1
@@ -50,6 +50,9 @@ dev-ui-mem: BUILD_TAGS+=memprofiler
 dev-ui-mem: assetcheck dev-ui
 dev-dynamic-mem: BUILD_TAGS+=memprofiler
 dev-dynamic-mem: dev-dynamic
+
+dev-tlsdebug: BUILD_TAGS+=tlsdebug
+dev-tlsdebug: dev
 
 # Creates a Docker image by adding the compiled linux/amd64 binary found in ./bin.
 # The resulting image is tagged "openbao:dev".
@@ -193,7 +196,7 @@ static-dist: ember-dist
 static-dist-dev: ember-dist-dev
 
 proto: bootstrap
-	@sh -c "'$(CURDIR)/scripts/protocversioncheck.sh' '$(PROTOC_VERSION_MIN)'"
+	@sh -c "'$(CURDIR)/scripts/protocversioncheck.sh' '$(PROTOC_VERSION)'"
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative builtin/logical/kv/*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative builtin/logical/pki/*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative vault/*.proto

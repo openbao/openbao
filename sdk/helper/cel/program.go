@@ -48,7 +48,7 @@ func CelVarsToEvalData(env *cel.Env, program CelProgram) (map[string]any, error)
 func ParseCompileAndEvaluateVariable(env *cel.Env, variable CelVariable, evaluationData map[string]interface{}) (ref.Val, error) {
 	val, err := ParseCompileAndEvaluateExpression(env, variable.Expression, evaluationData)
 	if err != nil {
-		return nil, fmt.Errorf("Error processing variable '%s': %w", variable.Name, err)
+		return nil, fmt.Errorf("error processing variable '%s': %w", variable.Name, err)
 	}
 	return val, nil
 }

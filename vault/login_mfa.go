@@ -1876,6 +1876,7 @@ func (c *Core) validateDuo(ctx context.Context, mfaFactors *MFAFactor, mConfig *
 		return err
 	}
 	if check == nil {
+		//nolint:staticcheck // Duo is a proper name
 		return errors.New("Duo api check returned nil, possibly bad integration key")
 	}
 	var message string

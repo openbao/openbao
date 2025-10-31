@@ -1,0 +1,3 @@
+```release-note:deprecation
+core/audit: deprecated `jsonx` as a output format option for audit mounts
+```

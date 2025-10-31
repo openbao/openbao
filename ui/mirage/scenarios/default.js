@@ -9,7 +9,6 @@ import kubernetesScenario from './kubernetes';
 
 export default function (server) {
   server.create('clients/config');
-  
   if (handler === 'kubernetes') {
     kubernetesScenario(server);
   }

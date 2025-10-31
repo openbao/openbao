@@ -8,7 +8,7 @@ backend:
 
 .PHONY: test
 test:
-	yarn run test:oss
+	yarn run test
 
 .PHONY: check
 check: test

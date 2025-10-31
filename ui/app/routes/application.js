@@ -11,6 +11,7 @@ export default Route.extend({
   controlGroup: service(),
   routing: service('router'),
   namespaceService: service('namespace'),
+  featureFlagService: service('featureFlag'),
 
   actions: {
     willTransition() {
@@ -62,5 +63,9 @@ export default Route.extend({
 
       return true;
     },
+  },
+
+  beforeModel() {
+    this.featureFlagService.setFeatureFlags([]);
   },
 });

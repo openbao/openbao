@@ -170,7 +170,7 @@ install-ui-dependencies:
 
 test-ember: install-ui-dependencies
 	@echo "--> Running ember tests"
-	@cd ui && yarn run test:oss
+	@cd ui && yarn run test
 
 test-ember-enos: install-ui-dependencies
 	@echo "--> Running ember tests with a real backend"

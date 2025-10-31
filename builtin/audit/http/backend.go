@@ -98,7 +98,9 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 		format = "json"
 	}
 	switch format {
-	case "json", "jsonx":
+	case "json":
+	case "jsonx":
+		return nil, errors.New(`jsonx format was discontinued, remove "format" config option, or provide "json" value`)
 	default:
 		return nil, fmt.Errorf("unknown format type %q", format)
 	}
@@ -150,18 +152,9 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 	// Ensure we are working with the right type by explicitly storing a nil of
 	// the right type
 	b.salt.Store((*salt.Salt)(nil))
-
-	switch format {
-	case "json":
-		b.formatter.AuditFormatWriter = &audit.JSONFormatWriter{
-			Prefix:   conf.Config["prefix"],
-			SaltFunc: b.Salt,
-		}
-	case "jsonx":
-		b.formatter.AuditFormatWriter = &audit.JSONxFormatWriter{
-			Prefix:   conf.Config["prefix"],
-			SaltFunc: b.Salt,
-		}
+	b.formatter.AuditFormatWriter = &audit.JSONFormatWriter{
+		Prefix:   conf.Config["prefix"],
+		SaltFunc: b.Salt,
 	}
 
 	if _, err := b.getClient(); err != nil {

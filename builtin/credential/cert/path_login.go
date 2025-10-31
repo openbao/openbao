@@ -518,7 +518,7 @@ func (b *backend) matchesCertificateExtensions(clientCert *x509.Certificate, con
 		var parsedValue string
 		_, err := asn1.Unmarshal(ext.Value, &parsedValue)
 		if err != nil {
-			b.Logger().Error("failed to unmarshal client certificate extension", "error", err)
+			b.Logger().Trace("failed to unmarshal client certificate extension", "error", err)
 			continue
 		}
 		clientExtMap[ext.Id.String()] = parsedValue

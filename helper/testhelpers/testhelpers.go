@@ -620,12 +620,22 @@ func GenerateDebugLogs(t testing.T, client *api.Client) chan struct{} {
 					},
 				})
 				if err != nil {
-					t.Fatal(err)
+					select {
+					case <-stopCh:
+						return
+					default:
+						t.Fatal(err)
+					}
 				}
 
 				err = client.Sys().Unmount("foo")
 				if err != nil {
-					t.Fatal(err)
+					select {
+					case <-stopCh:
+						return
+					default:
+						t.Fatal(err)
+					}
 				}
 			}
 		}

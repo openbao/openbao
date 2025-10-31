@@ -64,10 +64,11 @@ var getMmapFlags = func(string) int { return 0 }
 
 // Verify RaftBackend satisfies the correct interfaces
 var (
-	_ physical.Backend       = (*RaftBackend)(nil)
-	_ physical.Transactional = (*RaftBackend)(nil)
-	_ physical.HABackend     = (*RaftBackend)(nil)
-	_ physical.Lock          = (*RaftLock)(nil)
+	_ physical.Backend                  = (*RaftBackend)(nil)
+	_ physical.Transactional            = (*RaftBackend)(nil)
+	_ physical.HABackend                = (*RaftBackend)(nil)
+	_ physical.CacheInvalidationBackend = (*RaftBackend)(nil)
+	_ physical.Lock                     = (*RaftLock)(nil)
 )
 
 var (
@@ -204,6 +205,11 @@ type RaftBackend struct {
 
 	effectiveSDKVersion string
 	failGetInTxn        *uint32
+}
+
+// HookInvalidate implements physical.CacheInvalidationBackend.
+func (r *RaftBackend) HookInvalidate(hook physical.InvalidateFunc) {
+	r.fsm.hookInvalidate(hook)
 }
 
 // LeaderJoinInfo contains information required by a node to join itself as a
@@ -1615,6 +1621,7 @@ func (b *RaftBackend) Delete(ctx context.Context, path string) error {
 	b.l.RLock()
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
+
 	return err
 }
 
@@ -1677,6 +1684,7 @@ func (b *RaftBackend) Put(ctx context.Context, entry *physical.Entry) error {
 	b.l.RLock()
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
+
 	return err
 }
 

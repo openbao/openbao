@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -483,10 +484,18 @@ func attemptUnsealMigrate(client *api.Client, keys [][]byte, transitServerAvaila
 
 // awaitMigration waits for migration to finish.
 func awaitMigration(t *testing.T, client *api.Client) {
-	timeout := time.Now().Add(60 * time.Second)
+	timeout := time.Now().Add(120 * time.Second)
 	for time.Now().Before(timeout) {
 		resp, err := client.Sys().SealStatus()
 		if err != nil {
+			// When a node is started and unsealed, it is still in standby
+			// mode before it steps up and completes seal migration.
+			// During that time, SealStatus() returns "barrier seal type of ..."
+			// error until the node adopts the new seal config.
+			// Ignore that error and keep trying until seal is migrated.
+			if strings.Contains(err.Error(), "barrier seal type of") {
+				continue
+			}
 			t.Fatal(err)
 		}
 		if !resp.Migration {

@@ -719,10 +719,6 @@ func (c *Core) LookupToken(ctx context.Context, token string) (*logical.TokenEnt
 		return nil, consts.ErrSealed
 	}
 
-	if c.standby {
-		return nil, consts.ErrStandby
-	}
-
 	// Many tests don't have a token store running
 	if c.tokenStore == nil || c.tokenStore.expiration == nil {
 		return nil, nil

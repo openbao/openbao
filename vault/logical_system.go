@@ -1195,7 +1195,7 @@ func (b *SystemBackend) handleReadMount(ctx context.Context, req *logical.Reques
 func handleError(
 	err error,
 ) (*logical.Response, error) {
-	if strings.Contains(err.Error(), logical.ErrReadOnly.Error()) {
+	if logical.ShouldForward(err) {
 		return logical.ErrorResponse(err.Error()), err
 	}
 	switch err.(type) {
@@ -1211,7 +1211,7 @@ func handleError(
 func handleErrorNoReadOnlyForward(
 	err error,
 ) (*logical.Response, error) {
-	if strings.Contains(err.Error(), logical.ErrReadOnly.Error()) {
+	if logical.ShouldForward(err) {
 		return nil, errors.New("operation could not be completed as storage is read-only")
 	}
 	switch err.(type) {

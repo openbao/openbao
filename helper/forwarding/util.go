@@ -10,6 +10,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/openbao/openbao/helper/buffer"
 )
 
 type bufCloser struct {
@@ -64,14 +66,15 @@ func GenerateForwardedRequest(req *http.Request) (*Request, error) {
 }
 
 func ParseForwardedRequest(fq *Request) (*http.Request, error) {
-	buf := bufCloser{
-		Buffer: bytes.NewBuffer(fq.Body),
+	body, err := buffer.NewSeekableReader(bytes.NewReader(fq.Body))
+	if err != nil {
+		return nil, err
 	}
 
 	ret := &http.Request{
 		Method:     fq.Method,
 		Header:     make(map[string][]string, len(fq.HeaderEntries)),
-		Body:       buf,
+		Body:       body,
 		Host:       fq.Host,
 		RemoteAddr: fq.RemoteAddr,
 	}

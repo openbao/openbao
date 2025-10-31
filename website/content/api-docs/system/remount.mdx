@@ -6,12 +6,13 @@ description: >-
 
 # Remount ( API )
 
-The Remount documentation details the endpoints required to trigger and monitor the status of a remount operation.
+The Remount documentation details the endpoints required to trigger and monitor
+the status of a remount operation.
 
 ## Move backend
 
-The `/sys/remount` endpoint moves an already-mounted backend to a new mount point. Remounting works for both secret
-engines and auth methods.
+The `/sys/remount` endpoint moves an already-mounted backend to a new mount
+point. Remounting works for both secret engines and auth methods.
 
 OpenBao returns a migration ID when the remount operation completes. You
 can use the migration ID to look up the status of the mount migration.
@@ -20,17 +21,26 @@ More details about the remount operation are described in
 
 :::warning
 
-Note: This endpoint requires a policy with both `sudo` and `update` capabilities to `sys/remount`
+Note: This endpoint requires a policy with both `sudo` and `update` capabilities
+to `sys/remount`
 
 :::
 
 :::warning
 
-Note: A mount migration will revoke all leases for the secrets of a secrets backend or tokens of an auth backend,
-depending on which type of backend is being moved.
+Note: A mount migration will revoke all leases for the secrets of a secrets
+backend or tokens of an auth backend, depending on which type of backend is
+being moved.
 
 :::
 
+:::warning
+
+Before migrating a mount to a new path, one should ensure it is currently not
+actively used. Using a mount while it's being moved will lead to inconsistent
+reads on standby nodes.
+
+:::
 
 | Method | Path           |
 | :----- | :------------- |
@@ -90,9 +100,10 @@ $ curl \
 ## Monitor migration status
 
 
-This endpoint is used to monitor the status of a mount migration operation, using the ID returned in the response
-of the `sys/remount` call. The response contains the passed-in ID, the source and target mounts, and a status field
-that displays `in-progress`, `success` or `failure`.
+This endpoint is used to monitor the status of a mount migration operation,
+using the ID returned in the response of the `sys/remount` call. The response
+contains the passed-in ID, the source and target mounts, and a status field that
+displays `in-progress`, `success` or `failure`.
 
 | Method | Path           |
 | :----- | :------------- |

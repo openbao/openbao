@@ -54,7 +54,7 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 	switch format {
 	case "json":
 	case "jsonx":
-		return nil, errors.New(`jsonx format was discontinued, remove "format" config option, or provide "json" value`)
+		return nil, errors.New(`jsonx formatting has been removed, consider switching to json by omitting "format" or setting it to "json"`)
 	default:
 		return nil, fmt.Errorf("unknown format type %q", format)
 	}

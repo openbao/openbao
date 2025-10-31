@@ -555,21 +555,12 @@ func NewTemporaryFormatter(format, prefix string) *AuditFormatter {
 	temporarySalt := func(ctx context.Context) (*salt.Salt, error) {
 		return salt.NewNonpersistentSalt(), nil
 	}
-	ret := &AuditFormatter{}
-
-	switch format {
-	case "jsonx":
-		ret.AuditFormatWriter = &JSONxFormatWriter{
+	return &AuditFormatter{
+		AuditFormatWriter: &JSONFormatWriter{
 			Prefix:   prefix,
 			SaltFunc: temporarySalt,
-		}
-	default:
-		ret.AuditFormatWriter = &JSONFormatWriter{
-			Prefix:   prefix,
-			SaltFunc: temporarySalt,
-		}
+		},
 	}
-	return ret
 }
 
 // doElideListResponseData performs the actual elision of list operation

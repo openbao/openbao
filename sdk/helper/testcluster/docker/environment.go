@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/volume"
 	docker "github.com/docker/docker/client"
 	"github.com/hashicorp/go-cleanhttp"
@@ -460,7 +460,7 @@ type DockerClusterNode struct {
 	tlsConfig            *tls.Config
 	WorkDir              string
 	Cluster              *DockerCluster
-	Container            *types.ContainerJSON
+	Container            *container.InspectResponse
 	DockerAPI            *docker.Client
 	Service              *dockhelper.Service
 	Runner               *dockhelper.Runner

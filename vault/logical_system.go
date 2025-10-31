@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"maps"
 	"math/rand"
 	"net/http"
 	"path"
@@ -4384,8 +4385,6 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 		return nil, err
 	}
 
-	context := d.Get("context").(string)
-
 	// Set up target document
 	doc := framework.NewOASDocument(version.Version)
 
@@ -4507,9 +4506,7 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 			}
 
 			// Merge backend schema components
-			for e, schema := range backendDoc.Components.Schemas {
-				doc.Components.Schemas[e] = schema
-			}
+			maps.Copy(doc.Components.Schemas, backendDoc.Components.Schemas)
 		}
 		return nil
 	}
@@ -4520,8 +4517,6 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 	if err := procMountGroup("auth", "auth/"); err != nil {
 		return nil, err
 	}
-
-	doc.CreateOperationIDs(context)
 
 	buf, err := json.Marshal(doc)
 	if err != nil {

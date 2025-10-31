@@ -9,7 +9,6 @@ import (
 	"crypto/tls"
 	"net"
 	"testing"
-	"time"
 
 	"github.com/openbao/openbao/vault/cluster"
 )
@@ -24,8 +23,8 @@ func (*mockClusterHook) AddHandler(alpn string, handler cluster.Handler)    {}
 func (*mockClusterHook) StopHandler(alpn string)                            {}
 func (*mockClusterHook) TLSConfig(ctx context.Context) (*tls.Config, error) { return nil, nil }
 func (m *mockClusterHook) Addr() net.Addr                                   { return m.address }
-func (*mockClusterHook) GetDialerFunc(ctx context.Context, alpnProto string) func(string, time.Duration) (net.Conn, error) {
-	return func(string, time.Duration) (net.Conn, error) {
+func (*mockClusterHook) GetContextDialerFunc(ctx context.Context, alpnProto string) func(context.Context, string) (net.Conn, error) {
+	return func(context.Context, string) (net.Conn, error) {
 		return nil, nil
 	}
 }

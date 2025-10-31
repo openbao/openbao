@@ -1002,7 +1002,7 @@ func TestAutoRebuild(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	defaultCrlPath := "/v1/pki/crl"
+	defaultCrlPath := "pki/crl"
 	crl := getParsedCrlAtPath(t, client, defaultCrlPath)
 	lastCRLNumber := getCRLNumber(t, crl)
 	lastCRLExpiry := crl.NextUpdate
@@ -1143,7 +1143,7 @@ func TestAutoRebuild(t *testing.T) {
 			haveUpdatedDeltaCRL = true
 
 			// Ensure it has what we want.
-			deltaCrl := getParsedCrlAtPath(t, client, "/v1/pki/crl/delta")
+			deltaCrl := getParsedCrlAtPath(t, client, "pki/crl/delta")
 			if !requireSerialNumberInCRL(nil, deltaCrl, newLeafSerial) {
 				// Check if it is on the main CRL because its already regenerated.
 				mainCRL := getParsedCrlAtPath(t, client, defaultCrlPath)

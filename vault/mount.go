@@ -2324,7 +2324,7 @@ func (c *Core) createMigrationStatus(from, to namespace.MountPathDetails) (strin
 func (c *Core) setMigrationStatus(migrationID string, migrationStatus MountMigrationStatus) error {
 	migrationInfoRaw, ok := c.mountMigrationTracker.Load(migrationID)
 	if !ok {
-		return fmt.Errorf("Migration Tracker entry missing for ID %s", migrationID)
+		return fmt.Errorf("migration Tracker entry missing for ID %s", migrationID)
 	}
 	migrationInfo := migrationInfoRaw.(MountMigrationInfo)
 	migrationInfo.MigrationStatus = migrationStatus.String()

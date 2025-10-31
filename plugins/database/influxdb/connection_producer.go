@@ -87,7 +87,7 @@ func (i *influxdbConnectionProducer) Initialize(ctx context.Context, req dbplugi
 		}
 		certBundle, err = parsedCertBundle.ToCertBundle()
 		if err != nil {
-			return dbplugin.InitializeResponse{}, fmt.Errorf("Error marshaling PEM information: %w", err)
+			return dbplugin.InitializeResponse{}, fmt.Errorf("error marshaling PEM information: %w", err)
 		}
 		i.certificate = certBundle.Certificate
 		i.privateKey = certBundle.PrivateKey
@@ -97,11 +97,11 @@ func (i *influxdbConnectionProducer) Initialize(ctx context.Context, req dbplugi
 	case len(i.PemBundle) != 0:
 		parsedCertBundle, err = certutil.ParsePEMBundle(i.PemBundle)
 		if err != nil {
-			return dbplugin.InitializeResponse{}, fmt.Errorf("Error parsing the given PEM information: %w", err)
+			return dbplugin.InitializeResponse{}, fmt.Errorf("error parsing the given PEM information: %w", err)
 		}
 		certBundle, err = parsedCertBundle.ToCertBundle()
 		if err != nil {
-			return dbplugin.InitializeResponse{}, fmt.Errorf("Error marshaling PEM information: %w", err)
+			return dbplugin.InitializeResponse{}, fmt.Errorf("error marshaling PEM information: %w", err)
 		}
 		i.certificate = certBundle.Certificate
 		i.privateKey = certBundle.PrivateKey

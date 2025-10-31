@@ -207,11 +207,11 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, operation logical.Op
 	// if boolean false return auth failed
 	case bool:
 		if !v {
-			return nil, fmt.Errorf("Cel role '%s' blocked authorization with boolean false return", celRoleEntry.Name)
+			return nil, fmt.Errorf("CEL role '%s' blocked authorization with boolean false return", celRoleEntry.Name)
 		}
 	// if string, return this as auth failed message
 	case string:
-		return nil, fmt.Errorf("Cel role '%s' blocked authorization with message: %s", celRoleEntry.Name, v)
+		return nil, fmt.Errorf("CEL role '%s' blocked authorization with message: %s", celRoleEntry.Name, v)
 
 	}
 
@@ -223,7 +223,7 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, operation logical.Op
 		}
 	}
 
-	return nil, fmt.Errorf("Cel program '%s' returned unexpected type: %T", celRoleEntry.Name, result)
+	return nil, fmt.Errorf("CEL program '%s' returned unexpected type: %T", celRoleEntry.Name, result)
 }
 
 //nolint:unused
@@ -239,7 +239,7 @@ func (b *jwtAuthBackend) pathCelLoginRenew(ctx context.Context, req *logical.Req
 		return nil, fmt.Errorf("failed to validate cel role %s during renewal: %v", roleName, err)
 	}
 	if role == nil {
-		return nil, fmt.Errorf("cel role %s does not exist during renewal", roleName)
+		return nil, fmt.Errorf("CEL role %s does not exist during renewal", roleName)
 	}
 
 	resp := &logical.Response{Auth: req.Auth}

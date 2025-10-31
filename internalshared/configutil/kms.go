@@ -206,7 +206,7 @@ func configureWrapper(configKMS *KMS, infoKeys *[]string, info *map[string]strin
 		wrapper, kmsInfo, err = GetStaticKMSFunc(configKMS, opts...)
 
 	default:
-		return nil, fmt.Errorf("Unknown KMS type %q", configKMS.Type)
+		return nil, fmt.Errorf("unknown KMS type %q", configKMS.Type)
 	}
 
 	if err != nil {

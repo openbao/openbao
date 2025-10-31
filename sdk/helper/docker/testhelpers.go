@@ -462,7 +462,7 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 	var realIP string
 	if d.RunOptions.NetworkID == "" {
 		if len(inspect.NetworkSettings.Networks) > 1 {
-			return nil, fmt.Errorf("Set d.RunOptions.NetworkName instead for container with multiple networks: %v", inspect.NetworkSettings.Networks)
+			return nil, fmt.Errorf("set d.RunOptions.NetworkName instead for container with multiple networks: %v", inspect.NetworkSettings.Networks)
 		}
 		for _, network := range inspect.NetworkSettings.Networks {
 			realIP = network.IPAddress

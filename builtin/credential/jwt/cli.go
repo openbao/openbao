@@ -253,9 +253,9 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 	case s := <-doneCh:
 		return s.secret, s.err
 	case <-sigintCh:
-		return nil, errors.New("Interrupted")
+		return nil, errors.New("interrupted")
 	case <-time.After(2 * time.Minute):
-		return nil, errors.New("Timed out waiting for response from provider")
+		return nil, errors.New("timed out waiting for response from provider")
 	}
 }
 

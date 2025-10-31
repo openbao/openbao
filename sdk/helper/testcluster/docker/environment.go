@@ -782,7 +782,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	netName := opts.NetworkName
 	if netName == "" {
 		if len(svc.Container.NetworkSettings.Networks) > 1 {
-			return fmt.Errorf("Set d.RunOptions.NetworkName instead for container with multiple networks: %v", svc.Container.NetworkSettings.Networks)
+			return fmt.Errorf("set d.RunOptions.NetworkName instead for container with multiple networks: %v", svc.Container.NetworkSettings.Networks)
 		}
 		for netName = range svc.Container.NetworkSettings.Networks {
 			// Networks above is a map; we just need to find the first and

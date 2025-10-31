@@ -540,13 +540,13 @@ func VerifyRaftConfiguration(core *vault.TestClusterCore, numCores int) error {
 
 	servers := config.Servers
 	if len(servers) != numCores {
-		return fmt.Errorf("Found %d servers, not %d", len(servers), numCores)
+		return fmt.Errorf("found %d servers, not %d", len(servers), numCores)
 	}
 
 	leaders := 0
 	for i, s := range servers {
 		if s.NodeID != fmt.Sprintf("core-%d", i) {
-			return fmt.Errorf("Found unexpected node ID %q", s.NodeID)
+			return fmt.Errorf("found unexpected node ID %q", s.NodeID)
 		}
 		if s.Leader {
 			leaders++
@@ -554,7 +554,7 @@ func VerifyRaftConfiguration(core *vault.TestClusterCore, numCores int) error {
 	}
 
 	if leaders != 1 {
-		return fmt.Errorf("Found %d leaders", leaders)
+		return fmt.Errorf("found %d leaders", leaders)
 	}
 
 	return nil

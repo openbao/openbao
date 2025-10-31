@@ -114,7 +114,7 @@ func ParseTimeFromPath(path string) (time.Time, error) {
 	elems := strings.Split(path, "/")
 	if len(elems) == 1 {
 		// :path: is a directory that must have children
-		return time.Time{}, errors.New("Invalid path provided")
+		return time.Time{}, errors.New("invalid path provided")
 	}
 
 	unixSeconds, err := strconv.ParseInt(elems[0], 10, 64)

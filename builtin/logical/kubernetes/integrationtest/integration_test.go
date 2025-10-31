@@ -297,7 +297,7 @@ func mountHelper(t *testing.T, client *api.Client) (string, func()) {
 	}
 }
 
-// namespaceHelper creates a Vault Enterprise namespace and returns a client with the namespace changed to it.
+// namespaceHelper creates a namespace and returns a client with the namespace changed to it.
 func namespaceHelper(t *testing.T, client *api.Client) (*api.Client, func()) {
 	t.Helper()
 

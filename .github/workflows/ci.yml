@@ -166,7 +166,7 @@ jobs:
           # Run Ember tests
           cd ui
           mkdir -p test-results/qunit
-          yarn test:oss
+          yarn test
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: test-results-ui

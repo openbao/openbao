@@ -2,7 +2,7 @@ import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
 import { render } from '@ember/test-helpers';
 import hbs from 'htmlbars-inline-precompile';
-import { stubFeaturesAndPermissions } from 'vault/tests/helpers/components/sidebar-nav';
+import { stubPermissions } from 'vault/tests/helpers/components/sidebar-nav';
 
 const renderComponent = () => {
   return render(hbs`
@@ -24,7 +24,7 @@ module('Integration | Component | sidebar-nav-policies', function (hooks) {
 
   test('it should render nav headings and links', async function (assert) {
     const links = ['Back to main navigation', 'ACL Policies'];
-    stubFeaturesAndPermissions(this.owner);
+    stubPermissions(this.owner);
     await renderComponent();
 
     assert.dom('[data-test-sidebar-nav-heading]').exists({ count: 1 }, 'Correct number of headings render');

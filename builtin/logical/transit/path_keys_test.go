@@ -86,6 +86,30 @@ func TestTransit_Issue_2958(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	_, err = client.Logical().Write("transit/keys/mldsa44", map[string]interface{}{
+		"type":          "ml-dsa",
+		"parameter_set": "44",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.Logical().Write("transit/keys/mldsa65", map[string]interface{}{
+		"type":          "ml-dsa",
+		"parameter_set": "65",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.Logical().Write("transit/keys/mldsa87", map[string]interface{}{
+		"type":          "ml-dsa",
+		"parameter_set": "87",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, err = client.Logical().Read("transit/keys/foo")
 	if err != nil {
 		t.Fatal(err)
@@ -97,6 +121,21 @@ func TestTransit_Issue_2958(t *testing.T) {
 	}
 
 	_, err = client.Logical().Read("transit/keys/bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.Logical().Read("transit/keys/mldsa44")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.Logical().Read("transit/keys/mldsa65")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.Logical().Read("transit/keys/mldsa87")
 	if err != nil {
 		t.Fatal(err)
 	}

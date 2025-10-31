@@ -560,7 +560,7 @@ func (b *backend) certificateExtensionsMetadata(clientCert *x509.Certificate, co
 			var parsedValue string
 			_, err := asn1.Unmarshal(ext.Value, &parsedValue)
 			if err != nil {
-				b.Logger().Error("failed to unmarshal metadata certificate extension", "error", err)
+				b.Logger().Trace("failed to unmarshal metadata certificate extension", "error", err)
 				continue
 			}
 			metadata[metadataKey] = parsedValue

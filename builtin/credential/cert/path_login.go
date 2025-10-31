@@ -516,7 +516,11 @@ func (b *backend) matchesCertificateExtensions(clientCert *x509.Certificate, con
 	clientExtMap := make(map[string]string, len(clientCert.Extensions))
 	for _, ext := range clientCert.Extensions {
 		var parsedValue string
-		asn1.Unmarshal(ext.Value, &parsedValue)
+		_, err := asn1.Unmarshal(ext.Value, &parsedValue)
+		if err != nil {
+			b.Logger().Error("failed to unmarshal client certificate extension", "error", err)
+			continue
+		}
 		clientExtMap[ext.Id.String()] = parsedValue
 	}
 	// If any of the required extensions don'log match the constraint fails
@@ -554,7 +558,11 @@ func (b *backend) certificateExtensionsMetadata(clientCert *x509.Certificate, co
 			// including its ASN.1 type tag bytes. For the sake of simplicity, assume string type
 			// and drop the tag bytes. And get the number of bytes from the tag.
 			var parsedValue string
-			asn1.Unmarshal(ext.Value, &parsedValue)
+			_, err := asn1.Unmarshal(ext.Value, &parsedValue)
+			if err != nil {
+				b.Logger().Error("failed to unmarshal metadata certificate extension", "error", err)
+				continue
+			}
 			metadata[metadataKey] = parsedValue
 		}
 	}

@@ -431,9 +431,9 @@ func TestNamespaceHierarchy(t *testing.T) {
 	for idx, ns := range namespaces {
 		err := s.SetNamespace(ns.Context, ns.Namespace)
 		require.NoError(t, err)
-		require.NotEmpty(t, ns.Namespace.UUID)
-		require.NotEmpty(t, ns.Namespace.ID)
-		require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[idx].Namespace.Path))
+		require.NotEmpty(t, ns.UUID)
+		require.NotEmpty(t, ns.ID)
+		require.Equal(t, ns.Path, namespace.Canonicalize(namespaces[idx].Path))
 	}
 
 	t.Run("ListNamespaces", func(t *testing.T) {

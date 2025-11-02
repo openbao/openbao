@@ -502,11 +502,11 @@ func TestCanEarlyExitForOCSP(t *testing.T) {
 			expectedLen = tt.resultLen
 		}
 		r := c.canEarlyExitForOCSP(tt.results, expectedLen, &VerifyConfig{OcspFailureMode: FailOpenTrue})
-		if !(tt.retFailOpen == nil && r == nil) && !(tt.retFailOpen != nil && r != nil && tt.retFailOpen.code == r.code) {
+		if (tt.retFailOpen != nil || r != nil) && (tt.retFailOpen == nil || r == nil || tt.retFailOpen.code != r.code) {
 			t.Fatalf("%d: failed to match return. expected: %v, got: %v", idx, tt.retFailOpen, r)
 		}
 		r = c.canEarlyExitForOCSP(tt.results, expectedLen, &VerifyConfig{OcspFailureMode: FailOpenFalse})
-		if !(tt.retFailClosed == nil && r == nil) && !(tt.retFailClosed != nil && r != nil && tt.retFailClosed.code == r.code) {
+		if (tt.retFailClosed != nil || r != nil) && (tt.retFailClosed == nil || r == nil || tt.retFailClosed.code != r.code) {
 			t.Fatalf("%d: failed to match return. expected: %v, got: %v", idx, tt.retFailClosed, r)
 		}
 	}

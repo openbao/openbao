@@ -42,16 +42,6 @@ func TestCompressUtil_CompressDecompress(t *testing.T) {
 			CompressionConfig{Type: CompressionTypeSnappy},
 			CompressionCanarySnappy,
 		},
-		{
-			"LZ4",
-			CompressionConfig{Type: CompressionTypeLZ4},
-			CompressionCanaryLZ4,
-		},
-		{
-			"LZW",
-			CompressionConfig{Type: CompressionTypeLZW},
-			CompressionCanaryLZW,
-		},
 	}
 
 	inputJSONBytes := []byte(`{"sample":"data","verification":"process"}`)

@@ -119,10 +119,11 @@ func (a *AzureProvider) getClaimSource(logger log.Logger, allClaims map[string]i
 	// - https://developer.microsoft.com/en-us/office/blogs/microsoft-graph-or-azure-ad-graph/
 	// - https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0
 	// - https://docs.microsoft.com/en-us/graph/migrate-azure-ad-graph-request-differences
-	if urlParsed.Host == azureADGraphHost {
+	switch urlParsed.Host {
+	case azureADGraphHost:
 		urlParsed.Host = microsoftGraphHost
 		urlParsed.Path = microsoftGraphAPIVersion + urlParsed.Path
-	} else if urlParsed.Host == azureADGraphUShost {
+	case azureADGraphUShost:
 		urlParsed.Host = microsoftGraphUSHost
 		urlParsed.Path = microsoftGraphAPIVersion + urlParsed.Path
 	}

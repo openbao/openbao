@@ -25,7 +25,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cacheboltdb"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cachememdb"
-	"github.com/openbao/openbao/helper/namespace"
 	nshelper "github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/useragent"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -899,9 +898,9 @@ func (c *LeaseCache) handleRevocationRequest(ctx context.Context, req *SendReque
 			return false, err
 		}
 
-		_, tokenNSID := namespace.SplitIDFromString(req.Token)
+		_, tokenNSID := nshelper.SplitIDFromString(req.Token)
 		for _, index := range indexes {
-			_, leaseNSID := namespace.SplitIDFromString(index.Lease)
+			_, leaseNSID := nshelper.SplitIDFromString(index.Lease)
 			// Only evict leases that match the token's namespace
 			if tokenNSID == leaseNSID {
 				index.RenewCtxInfo.CancelFunc()
@@ -918,9 +917,9 @@ func (c *LeaseCache) handleRevocationRequest(ctx context.Context, req *SendReque
 			return false, err
 		}
 
-		_, tokenNSID := namespace.SplitIDFromString(req.Token)
+		_, tokenNSID := nshelper.SplitIDFromString(req.Token)
 		for _, index := range indexes {
-			_, leaseNSID := namespace.SplitIDFromString(index.Lease)
+			_, leaseNSID := nshelper.SplitIDFromString(index.Lease)
 			// Only evict leases that match the token's namespace
 			if tokenNSID == leaseNSID {
 				index.RenewCtxInfo.CancelFunc()

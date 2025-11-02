@@ -464,7 +464,8 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 	keyType = strings.ToLower(keyType)
 
 	var roleEntry sshRole
-	if keyType == KeyTypeOTP {
+	switch keyType {
+	case KeyTypeOTP:
 		defaultUser := d.Get("default_user").(string)
 		if defaultUser == "" {
 			return logical.ErrorResponse("missing default user"), nil
@@ -480,9 +481,9 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 			AllowedUsers:    allowedUsers,
 			Version:         roleEntryVersion,
 		}
-	} else if keyType == KeyTypeDynamic {
+	case KeyTypeDynamic:
 		return logical.ErrorResponse("dynamic key type roles are no longer supported"), nil
-	} else if keyType == KeyTypeCA {
+	case KeyTypeCA:
 		algorithmSigner := DefaultAlgorithmSigner
 		algorithmSignerRaw, ok := d.GetOk("algorithm_signer")
 		if ok {
@@ -504,7 +505,7 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 			return errorResponse, nil
 		}
 		roleEntry = *role
-	} else {
+	default:
 		return logical.ErrorResponse("invalid key type"), nil
 	}
 

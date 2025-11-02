@@ -115,8 +115,8 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	start := time.Now()
-	for time.Now().Sub(start) < 10*time.Second {
-		if time.Now().Sub(start) > 100*time.Millisecond && atomic.LoadUint32(b.tidySecretIDCASGuard) == 0 {
+	for time.Since(start) < 10*time.Second {
+		if time.Since(start) > 100*time.Millisecond && atomic.LoadUint32(b.tidySecretIDCASGuard) == 0 {
 			secret, err := b.tidySecretID(context.Background(), &logical.Request{
 				Storage: storage,
 			})

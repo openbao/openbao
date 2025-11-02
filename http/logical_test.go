@@ -269,7 +269,7 @@ func TestLogical_RawHTTP(t *testing.T) {
 	// Get the body
 	body := new(bytes.Buffer)
 	io.Copy(body, resp.Body)
-	if string(body.Bytes()) != "hello world" {
+	if body.String() != "hello world" {
 		t.Fatalf("Bad: %s", body.Bytes())
 	}
 }

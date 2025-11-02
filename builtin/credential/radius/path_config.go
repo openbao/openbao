@@ -283,14 +283,14 @@ func (b *backend) pathConfigCreateUpdate(ctx context.Context, req *logical.Reque
 type ConfigEntry struct {
 	tokenutil.TokenParams
 
-	Host                     string   `json:"host" structs:"host" mapstructure:"host"`
-	Port                     int      `json:"port" structs:"port" mapstructure:"port"`
-	Secret                   string   `json:"secret" structs:"secret" mapstructure:"secret"`
-	UnregisteredUserPolicies []string `json:"unregistered_user_policies" structs:"unregistered_user_policies" mapstructure:"unregistered_user_policies"`
-	DialTimeout              int      `json:"dial_timeout" structs:"dial_timeout" mapstructure:"dial_timeout"`
-	ReadTimeout              int      `json:"read_timeout" structs:"read_timeout" mapstructure:"read_timeout"`
-	NasPort                  int      `json:"nas_port" structs:"nas_port" mapstructure:"nas_port"`
-	NasIdentifier            string   `json:"nas_identifier" structs:"nas_identifier" mapstructure:"nas_identifier"`
+	Host                     string   `json:"host" mapstructure:"host"`
+	Port                     int      `json:"port" mapstructure:"port"`
+	Secret                   string   `json:"secret" mapstructure:"secret"`
+	UnregisteredUserPolicies []string `json:"unregistered_user_policies" mapstructure:"unregistered_user_policies"`
+	DialTimeout              int      `json:"dial_timeout" mapstructure:"dial_timeout"`
+	ReadTimeout              int      `json:"read_timeout" mapstructure:"read_timeout"`
+	NasPort                  int      `json:"nas_port" mapstructure:"nas_port"`
+	NasIdentifier            string   `json:"nas_identifier" mapstructure:"nas_identifier"`
 }
 
 const pathConfigHelpSyn = `

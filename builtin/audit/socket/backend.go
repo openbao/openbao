@@ -237,7 +237,7 @@ func (b *Backend) write(ctx context.Context, buf []byte) error {
 
 func (b *Backend) reconnect(ctx context.Context) error {
 	if b.connection != nil {
-		b.connection.Close()
+		b.connection.Close() //nolint:errcheck // try to close connection, ignore error
 		b.connection = nil
 	}
 

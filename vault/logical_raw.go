@@ -179,14 +179,6 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 	if compressionType != "" {
 		var config *compressutil.CompressionConfig
 		switch compressionType {
-		case compressutil.CompressionTypeLZ4:
-			config = &compressutil.CompressionConfig{
-				Type: compressutil.CompressionTypeLZ4,
-			}
-		case compressutil.CompressionTypeLZW:
-			config = &compressutil.CompressionConfig{
-				Type: compressutil.CompressionTypeLZW,
-			}
 		case compressutil.CompressionTypeGzip:
 			config = &compressutil.CompressionConfig{
 				Type:                 compressutil.CompressionTypeGzip,

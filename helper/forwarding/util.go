@@ -10,11 +10,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/openbao/openbao/api/v2"
-	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
-	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"google.golang.org/protobuf/proto"
 )
 
 type bufCloser struct {
@@ -24,39 +19,6 @@ type bufCloser struct {
 func (b bufCloser) Close() error {
 	b.Reset()
 	return nil
-}
-
-// GenerateForwardedRequest generates a new http.Request that contains the
-// original requests's information in the new request's body.
-func GenerateForwardedHTTPRequest(req *http.Request, addr string) (*http.Request, error) {
-	fq, err := GenerateForwardedRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	var newBody []byte
-	switch api.ReadBaoVariable("BAO_MESSAGE_TYPE") {
-	case "json":
-		newBody, err = jsonutil.EncodeJSON(fq)
-	case "json_compress":
-		newBody, err = jsonutil.EncodeJSONAndCompress(fq, &compressutil.CompressionConfig{
-			Type: compressutil.CompressionTypeLZW,
-		})
-	case "proto3":
-		fallthrough
-	default:
-		newBody, err = proto.Marshal(fq)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	ret, err := http.NewRequest("POST", addr, bytes.NewBuffer(newBody))
-	if err != nil {
-		return nil, err
-	}
-
-	return ret, nil
 }
 
 func GenerateForwardedRequest(req *http.Request) (*Request, error) {
@@ -99,30 +61,6 @@ func GenerateForwardedRequest(req *http.Request) (*Request, error) {
 	}
 
 	return &fq, nil
-}
-
-// ParseForwardedRequest generates a new http.Request that is comprised of the
-// values in the given request's body, assuming it correctly parses into a
-// ForwardedRequest.
-func ParseForwardedHTTPRequest(req *http.Request) (*http.Request, error) {
-	buf := bytes.NewBuffer(nil)
-	_, err := buf.ReadFrom(req.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	fq := new(Request)
-	switch api.ReadBaoVariable("BAO_MESSAGE_TYPE") {
-	case "json", "json_compress":
-		err = jsonutil.DecodeJSON(buf.Bytes(), fq)
-	default:
-		err = proto.Unmarshal(buf.Bytes(), fq)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return ParseForwardedRequest(fq)
 }
 
 func ParseForwardedRequest(fq *Request) (*http.Request, error) {

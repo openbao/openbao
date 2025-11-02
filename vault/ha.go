@@ -72,7 +72,7 @@ func (c *Core) StandbyStates() (standby bool) {
 	c.stateLock.RLock()
 	standby = c.standby
 	c.stateLock.RUnlock()
-	return
+	return standby
 }
 
 // getHAMembers retrieves cluster membership that doesn't depend on raft. This should only ever be called by the

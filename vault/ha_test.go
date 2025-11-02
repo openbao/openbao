@@ -49,7 +49,7 @@ func TestGrabLockOrStop(t *testing.T) {
 		g := g
 		go func() {
 			defer workerWg.Done()
-			for time.Now().Sub(start) < testDuration {
+			for time.Since(start) < testDuration {
 				stop := make(chan struct{})
 
 				// closerWg waits until the closer goroutine exits before we do

@@ -218,7 +218,7 @@ func (m *RollbackManager) triggerRollbacks() {
 func (m *RollbackManager) startOrLookupRollback(ctx context.Context, fullPath string, grabStatelock bool) *rollbackState {
 	m.inflightLock.Lock()
 	defer m.inflightLock.Unlock()
-	defer metrics.SetGauge([]string{"rollback", "queued"}, float32(len(m.jobManager.GetWorkQueueLengths())))
+	defer metrics.SetGauge([]string{"rollback", "queued"}, float32(m.jobManager.GetPendingJobCount()))
 	defer metrics.SetGauge([]string{"rollback", "inflight"}, float32(len(m.inflight)))
 	rsInflight, ok := m.inflight[fullPath]
 	if ok {

@@ -68,7 +68,7 @@ One alternative is globally enforcing this today. However, as this is technicall
 
 Additionally, one could consider pushing filter path identification to the plugin author for each list response. However this isn't ideal as shown above: KV has multiple potentially valid paths which could independently or dependently determine whether an entry should be visible in a list response. Thus, having `list_scan_response_keys_filter_path` take a string (and not simply be a boolean) seems to make the most sense to allow plugin authors to determine paths appropriately.
 
-An enhancement for later would be to allow small CEL programs to filter results, which could interact with the ACL or broader policy system for determining whether to allow or deny entries in a list response. This would be a much broader change under the [CEL strategy](https://openbao.org/docs/rfcs/cel-best-practices/) and should be under a follow-up RFC if desired.
+An enhancement for later would be to allow small CEL programs to filter results, which could interact with the ACL or broader policy system for determining whether to allow or deny entries in a list response. This would be a much broader change under the [CEL strategy](cel-best-practices.mdx) and should be under a follow-up RFC if desired.
 
 ## Downsides
 

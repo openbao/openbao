@@ -55,14 +55,14 @@ This guide assumes no external plugins (external to Bao) are used.
 
 ## Known issues
 
-Check [known-issues](https://openbao.org/docs/known-issues/) documentation
+Check [known-issues](known-issues.mdx) documentation
 to get familiar with currently known problems and issues of the latest
 release.
 
 ## Breaking changes
 
 - OpenBao uses a different type of
-  [tokens](https://openbao.org/docs/concepts/tokens/#token-formats)
+  [tokens](concepts/tokens.mdx#token-formats)
   in the form of `[sbr].<random>` while Vault uses much
   [longer](https://developer.hashicorp.com/vault/docs/concepts/tokens#token-types)
   tokens (`{hvs,hvb,hvr}.<long_random>`). Old tokens will still be accepted
@@ -75,14 +75,14 @@ release.
 
 ### Backup
 
-Make a backup of your data! A [raft snapshot](https://openbao.org/docs/commands/operator/raft/#snapshot)
+Make a backup of your data! A [raft snapshot](commands/operator/raft.mdx#snapshot)
 will do. So will a filesystem snapshot so long as your filesystem supports
 atomic snapshots (like ZFS or BTRFS).
 
 ### Install and configure OpenBao
 
-Make sure to have OpenBao [installed](https://openbao.org/docs/install/) and
-[configured](https://openbao.org/docs/configuration/), _but not started_
+Make sure to have OpenBao [installed](install.mdx) and
+[configured](configuration/index.mdx), _but not started_
 on your nodes. The configuration is largely compatible.
 
 It is recommended to use different storage path for the OpenBao instance.
@@ -100,14 +100,14 @@ _after_ you stop the Vault instance a node.
 :::
 
 If you have `disable_mlock` in your Vault config, remove it. OpenBao does
-not use `mlock` [since 2.0.0](https://openbao.org/docs/rfcs/mlock-removal/).
+not use `mlock` [since 2.0.0](rfcs/mlock-removal.mdx).
 
 
 ### Upgrade the cluster
 
 :::info
 
-In this guide we do not rely on [Autopilot](https://openbao.org/docs/commands/operator/raft/#autopilot)
+In this guide we do not rely on [Autopilot](commands/operator/raft.mdx#autopilot)
 
 :::
 

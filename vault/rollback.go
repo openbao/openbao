@@ -87,7 +87,6 @@ type rollbackJob struct {
 
 func (r *rollbackJob) Execute() error {
 	if err := r.manager.attemptRollback(r.ctx, r.fullPath, r.rs, r.grabStatelock); err != nil {
-		r.manager.logger.Error("rollback job failed", "path", r.fullPath, "error", err)
 		return err
 	}
 	select {

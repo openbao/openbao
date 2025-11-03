@@ -48,7 +48,7 @@ This feature would provide the following benefits:
 
 A sealed namespace is created by providing a special option to the namespace create
 API call. The default sealing mechanism is [Shamir's Secret Sharing Algorithm](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing).
-However, other [seal configurations](https://openbao.org/docs/configuration/seal/) 
+However, other [seal configurations](../configuration/seal/index.mdx) 
 already supported for global (root) sealing should also be supported for
 per-namespace sealing.
 
@@ -347,7 +347,7 @@ $ curl \
 
 </details>
 
-Sealing stanzas for KMS and PKCS#11 follow [the existing ones](https://openbao.org/docs/configuration/seal/).
+Sealing stanzas for KMS and PKCS#11 follow [the existing ones](../configuration/seal/index.mdx).
 
 For PKCS#11 there are some more restrictions: first, OpenBao requires a physical
 connection to an existing HSM. Second, it can only support the PKCS#11 library
@@ -518,9 +518,9 @@ ecosystem.
 
 ## Unresolved Questions
 
-* In OpenBao, Shamir's technique can be disabled, so the root key can be used
+* In OpenBao, [Shamir's technique can be disabled](../internals/architecture.mdx), so the root key can be used
   directly for unsealing. Should there be a similar option for namespace 
-  (un)sealing? (https://openbao.org/docs/internals/architecture/)
+  (un)sealing?
 * How does namespace sealing interact with [#1528](https://github.com/openbao/openbao/issues/1528)?
 * How should we handle the case when the active node goes offline?
 

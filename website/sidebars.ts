@@ -84,6 +84,7 @@ const sidebars: SidebarsConfig = {
                 "concepts/cel",
             ],
             Guides: [
+                "guides/migration",
                 {
                     Unsealing: [
                         {

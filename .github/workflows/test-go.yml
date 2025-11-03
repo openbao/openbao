@@ -71,7 +71,6 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/set-up-go
         name: Setup Git configuration (public)
-      - uses: ./.github/actions/set-up-gotestsum
       - run: mkdir -p test-results/go-test
       - name: Build matrix excluding binary, integration, and testonly tests
         id: build-non-binary
@@ -81,9 +80,11 @@ jobs:
         run: |
           # testonly tests need additional build tag though let's exclude them anyway for clarity
           (
-            go list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... | grep -v "_binary" | grep -v "vault/integ" | grep -v "testonly" | gotestsum tool ci-matrix --debug \
-              --partitions "$INPUTS_TOTAL_RUNNERS" \
-              --timing-files 'test-results/go-test/*.json' > matrix.json
+            go list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... \
+              | grep -v "_binary" | grep -v "vault/integ" | grep -v "testonly" \
+              | go run gotest.tools/gotestsum@latest tool ci-matrix --debug \
+                --partitions "$INPUTS_TOTAL_RUNNERS" \
+                --timing-files 'test-results/go-test/*.json' > matrix.json
           )
       - name: Build matrix for tests tagged with testonly
         env:
@@ -96,9 +97,10 @@ jobs:
           # testonly tagged tests need an additional tag to be included
           # also running some extra tests for sanity checking with the testonly build tag
           (
-            go list -tags=testonly ./vault/external_tests/{kv,token,*replication-perf*,*testonly*} ./vault/ | gotestsum tool ci-matrix --debug \
-              --partitions "$INPUTS_TOTAL_RUNNERS" \
-              --timing-files 'test-results/go-test/*.json' > matrix.json
+            go list -tags=testonly ./vault/external_tests/{kv,token,*replication-perf*,*testonly*} ./vault/ \
+              | go run gotest.tools/gotestsum@latest tool ci-matrix --debug \
+                --partitions "$INPUTS_TOTAL_RUNNERS" \
+                --timing-files 'test-results/go-test/*.json' > matrix.json
           )
           # disable glob expansion
           shopt -u nullglob
@@ -165,7 +167,6 @@ jobs:
       - id: build
         if: inputs.binary-tests && matrix.id == inputs.total-runners
         run: time make ci-bootstrap dev
-      - uses: ./.github/actions/set-up-gotestsum
       - id: run-go-tests
         name: Run Go tests
         timeout-minutes: ${{ fromJSON(env.TIMEOUT_IN_MINUTES) }}
@@ -203,7 +204,7 @@ jobs:
 
           # shellcheck disable=SC2086 # can't quote RERUN_FAILS
           GOARCH="$INPUTS_GO_ARCH" \
-            gotestsum --format=short-verbose \
+            go run gotest.tools/gotestsum@latest --format=short-verbose \
               --junitfile test-results/go-test/results-${{ matrix.id }}.xml \
               --jsonfile test-results/go-test/results-${{ matrix.id }}.json \
               --jsonfile-timing-events "failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}$INPUTS_NAME.json" \

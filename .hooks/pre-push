@@ -1,23 +1,35 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
-remote="$1"
-remote_url=$(git remote get-url $remote)
+zero=$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')
 
-if [[ $remote_url == *"vault-enterprise"* ]]; then
-    exit 0
-fi
+while read local_ref local_oid remote_ref remote_oid
+do
+	if test "$local_oid" = "$zero"
+	then
+		# Handle delete
+		:
+	else
+		if test "$remote_oid" = "$zero"
+		then
+			# New branch, examine all commits
+			range="$local_oid"
+		else
+			# Update to existing branch, examine new commits
+			range="$remote_oid..$local_oid"
+		fi
 
-if [ "$remote" = "enterprise" ]; then
-    exit 0
-fi
+		commit=$(git rev-list --reverse --extended-regexp --invert-grep --grep '^Signed-off-by: ' --grep '\(#[0-9]+\)$' "$range" | head -n 1)
+		# find commits which                                ^ are not            ^ signed off              ^ or merge commits (happens on rebases)
 
-if [ "$remote" = "ent" ]; then
-    exit 0
-fi
-
-if [ -f command/version_ent.go ]; then
-    echo "Found enterprise version file while pushing to oss remote"
-    exit 1
-fi
+		if test -n "$commit"
+		then
+			rebase_commit=$(git rev-parse --short "$commit"^)
+			echo >&2 "Found commit(s) which are not signed-off."
+			echo >&2 "You can sign-off the commits using: git rebase --signoff --autostash $rebase_commit"
+			echo >&2 "or rerun the push with --no-verify"
+			exit 1
+		fi
+	fi
+done
 
 exit 0

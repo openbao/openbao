@@ -921,13 +921,6 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 
 	if lowestActiveIndex != nil {
 		f.fastTxnTracker.clearOldEntries(*lowestActiveIndex)
-	} else {
-		// For non-transactional operations, we need to prune the indexModifiedMap
-		// to prevent unbounded memory growth. Use the last applied index as the
-		// cleanup threshold since there are no active transactions to consider.
-		// This fixes a memory leak where non-transactional writes accumulate in
-		// indexModifiedMap without ever being cleaned up.
-		f.fastTxnTracker.clearOldEntries(lastLog.Index)
 	}
 
 	// If we advanced the latest value, update the in-memory representation too.

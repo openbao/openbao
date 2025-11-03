@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -36,6 +37,7 @@ import (
 	"github.com/openbao/openbao/helper/tlsdebug"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/cluster"
@@ -1613,6 +1615,15 @@ func (b *RaftBackend) Delete(ctx context.Context, path string) error {
 	defer b.permitPool.Release()
 
 	b.l.RLock()
+	lowestActiveIndex := b.fsm.fastTxnTracker.lowestActiveIndex()
+	appliedIndex := b.raft.AppliedIndex()
+	if lowestActiveIndex != math.MaxUint64 {
+		// There are active transactions: cap the lowest active index to prevent missing transactions started later
+		command.LowestActiveIndex = pointerutil.Ptr(min(lowestActiveIndex, appliedIndex-1))
+	} else if appliedIndex > 0 {
+		// No active transactions: we can safely clean up to the current applied index
+		command.LowestActiveIndex = pointerutil.Ptr(appliedIndex - 1)
+	}
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
 	return err
@@ -1675,6 +1686,15 @@ func (b *RaftBackend) Put(ctx context.Context, entry *physical.Entry) error {
 	defer b.permitPool.Release()
 
 	b.l.RLock()
+	lowestActiveIndex := b.fsm.fastTxnTracker.lowestActiveIndex()
+	appliedIndex := b.raft.AppliedIndex()
+	if lowestActiveIndex != math.MaxUint64 {
+		// There are active transactions: cap the lowest active index to prevent missing transactions started later
+		command.LowestActiveIndex = pointerutil.Ptr(min(lowestActiveIndex, appliedIndex-1))
+	} else if appliedIndex > 0 {
+		// No active transactions: we can safely clean up to the current applied index
+		command.LowestActiveIndex = pointerutil.Ptr(appliedIndex - 1)
+	}
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
 	return err

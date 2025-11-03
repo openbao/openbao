@@ -806,6 +806,19 @@ func FsmTxnCommitIndexTracker() *fsmTxnCommitIndexTracker {
 	}
 }
 
+// lowestActiveIndex returns the lowest starting index of among all active transactions.
+// This is used for non-transactional operations to determine which entries can be safely cleared.
+func (t *fsmTxnCommitIndexTracker) lowestActiveIndex() uint64 {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	lowestActiveIndex := uint64(math.MaxUint64)
+	for index := range t.sourceIndexMap {
+		lowestActiveIndex = min(lowestActiveIndex, index)
+	}
+	return lowestActiveIndex
+}
+
 // lowestActiveIndexAfterCommit returns what will be the lowest starting index
 // of among active transactions after the given transaction has been committed
 // (or rolled-back).

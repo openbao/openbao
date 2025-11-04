@@ -29,7 +29,6 @@ const API_PATHS = {
     hash: 'sys/tools/hash',
   },
   status: {
-    license: 'sys/license',
     seal: 'sys/seal',
     raft: 'sys/storage/raft/configuration',
   },

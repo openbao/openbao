@@ -400,7 +400,7 @@ type AuditRequestEntry struct {
 	Auth          *AuditAuth    `json:"auth,omitempty"`
 	Request       *AuditRequest `json:"request,omitempty"`
 	Error         string        `json:"error,omitempty"`
-	ForwardedFrom string        `json:"forwarded_from,omitempty"` // Populated in Enterprise when a request is forwarded
+	ForwardedFrom string        `json:"forwarded_from,omitempty"`
 }
 
 // AuditResponseEntry is the structure of a response audit log entry in Audit.

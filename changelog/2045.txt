@@ -1,0 +1,11 @@
+```release-note:deprecation
+ui: Removed `internal/ui/feature-flags` endpoint and all its usage.
+```
+
+```release-note:deprecation
+core: Removed `FeatureFlags` parsing and related code.
+```
+
+```release-note:deprecation
+sdk: Removed `sdk/v2/helper/license` package.
+```

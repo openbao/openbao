@@ -140,9 +140,9 @@ func (h *AllowAcmeHeaders) Evaluate(e *Executor) ([]*Result, error) {
 func craftInsufficientPermissionResult(e *Executor, path, errorMsg string) []*Result {
 	var retMsg string
 	if e.Client.Token() == "" {
-		retMsg = fmt.Sprintf("No token available so unable to call the tune endpoint for this mount. %s", errorMsg)
+		retMsg = fmt.Sprintf("No token available, unable to read the tune endpoint for this mount. %s", errorMsg)
 	} else {
-		retMsg = fmt.Sprintf("This token lacks permission to call the tune endpoint for this mount. %s", errorMsg)
+		retMsg = fmt.Sprintf("Token lacks permission to read the tune endpoint for this mount. %s", errorMsg)
 	}
 
 	return []*Result{

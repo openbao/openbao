@@ -20,7 +20,7 @@ and solves the issue with the unauthenticated recovery key rotation APIs.
 OpenBao's initialization with an auto-unseal mechanism is side-effecting in
 a way that requires long-term storage of recovery keys, used to create root
 tokens for use during initialization (to create any initial audit, auth, and
-secret engines) and [recovery mode](https://openbao.org/docs/concepts/recovery-mode/).
+secret engines) and [recovery mode](../concepts/recovery-mode.mdx).
 
 When running in certain environments, like Kubernetes or provisioning via
 OpenTofu, having such a side-effecting change makes writing automation

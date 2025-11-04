@@ -11,12 +11,6 @@ export default Route.extend(UnloadModel, {
   store: service(),
   version: service(),
 
-  beforeModel() {
-    return this.version.fetchFeatures().then(() => {
-      return this._super(...arguments);
-    });
-  },
-
   model(params) {
     return this.version.hasControlGroups ? this.store.findRecord('control-group', params.accessor) : null;
   },

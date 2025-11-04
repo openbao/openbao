@@ -13,7 +13,7 @@ OpenBao inherits a problem from upstream Vault: because the mount table is store
 
 ## Problem Statement
 
-OpenBao's [default `max_entry_size`](https://openbao.org/docs/configuration/storage/raft/) is 1MB, which [with compression](https://github.com/openbao/openbao/blob/7d3a5f4b45cd0718eb2f3c97bcd9b90a563f2ce9/sdk/helper/jsonutil/json.go#L30-L53), usually works out to about [14k mounts due](https://openbao.org/docs/internals/limits/#mount-point-limits) to storing all mounts in a [single entry](https://github.com/openbao/openbao/blob/7d3a5f4b45cd0718eb2f3c97bcd9b90a563f2ce9/vault/mount.go#L1324-L1344). Upstream has opted to [create a second tunable](https://developer.hashicorp.com/vault/docs/release-notes/1.17.0#enterprise-updates), [`max_mount_and_namespace_table_entry_size`](https://developer.hashicorp.com/vault/docs/configuration/storage/raft#max_mount_and_namespace_table_entry_size), letting this entry grow larger than other entries. With [transactional storage](https://github.com/openbao/openbao/issues/296), we can make a better tradeoff: split the mount table into a pieces, one per mount entry, and use transactions to do atomic updates to it. This ensures we do not hit this limit and thus do not need to re-implement the new tunable.
+OpenBao's [default `max_entry_size`](../configuration/storage/raft.mdx) is 1MB, which [with compression](https://github.com/openbao/openbao/blob/7d3a5f4b45cd0718eb2f3c97bcd9b90a563f2ce9/sdk/helper/jsonutil/json.go#L30-L53), usually works out to about [14k mounts due](../internals/limits.mdx#mount-point-limits) to storing all mounts in a [single entry](https://github.com/openbao/openbao/blob/7d3a5f4b45cd0718eb2f3c97bcd9b90a563f2ce9/vault/mount.go#L1324-L1344). Upstream has opted to [create a second tunable](https://developer.hashicorp.com/vault/docs/release-notes/1.17.0#enterprise-updates), [`max_mount_and_namespace_table_entry_size`](https://developer.hashicorp.com/vault/docs/configuration/storage/raft#max_mount_and_namespace_table_entry_size), letting this entry grow larger than other entries. With [transactional storage](https://github.com/openbao/openbao/issues/296), we can make a better tradeoff: split the mount table into a pieces, one per mount entry, and use transactions to do atomic updates to it. This ensures we do not hit this limit and thus do not need to re-implement the new tunable.
 
 As currently proposed, transactions will still have a size limit (about [8 times larger than `max_entry_size` currently](https://github.com/openbao/openbao/pull/292/files#diff-e7a3b01e6748f4e31a9293348fb545117ed1138c2e6e274d5f30bb07cf9a114cR76)), which means we might still err out. Because we can now atomically update just a portion of the mount table however, the types of operations that cause this will be rarer: this would mostly be the initial migration to the new format (if `max_entry_size` was raised but `max_transaction_size` was not) and any operations which involve scans across the entire mount table (due to adding reads to the transaction to verify they don't conflict).
 
@@ -34,8 +34,8 @@ More precisely, we have the following places where the mount table is potentiall
 
  - When starting up and loading the mount table. This will handle the migration from legacy to standard if necessary.
  - When an invalidation occurs and we trigger a reload of the core (e.g., leadership changed).
- - When [mounting](https://openbao.org/api-docs/system/mounts/#enable-secrets-engine) a new secrets engine.
- - When [tuning](https://openbao.org/api-docs/system/mounts/#tune-mount-configuration) a secrets engine.
+ - When [mounting](/api-docs/system/mounts/#enable-secrets-engine) a new secrets engine.
+ - When [tuning](/api-docs/system/mounts/#tune-mount-configuration) a secrets engine.
 
 Of these, the first two use the common `loadMounts`; only the latter require special care. However, all four of these paths call the common `c.persistMounts` helper, so modifying that will be sufficient for our needs. Further, an extra pair of parameters (`barrier`, to optionally work within an existing transaction) and `uuid` (to persist only a specific mount) will increase performance in these cases.
 
@@ -47,7 +47,7 @@ This helps OpenBao's scalability and is a great use for the new transactional st
 
 ## Downsides
 
-This would be a breaking change w.r.t. storage and divergence from upstream Vault. Users would be unable to downgrade to non-transactional storage (including to Vault) without having to manually reconstruct their mount table. This new mount table may exceed the size of a storage entry. Note however that [our policy](https://openbao.org/docs/policies/migration/#proposal) is aiming for API compatibility and drop-in binary _upgrades_ from Vault to OpenBao, not supporting the reverse. Thus, this only impacts customers which need to revert this upgrade. In that case, using a backup (such as a snapshot) and restoring afterwards should address this.
+This would be a breaking change w.r.t. storage and divergence from upstream Vault. Users would be unable to downgrade to non-transactional storage (including to Vault) without having to manually reconstruct their mount table. This new mount table may exceed the size of a storage entry. Note however that [our policy](../policies/migration.mdx#proposal) is aiming for API compatibility and drop-in binary _upgrades_ from Vault to OpenBao, not supporting the reverse. Thus, this only impacts customers which need to revert this upgrade. In that case, using a backup (such as a snapshot) and restoring afterwards should address this.
 
 ## Security Implications
 

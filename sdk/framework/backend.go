@@ -25,7 +25,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
-	"github.com/openbao/openbao/sdk/v2/helper/license"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -218,14 +217,6 @@ func (b *Backend) HandleRequest(ctx context.Context, req *logical.Request) (*log
 	path, captures := b.route(req.Path)
 	if path == nil {
 		return nil, logical.ErrUnsupportedPath
-	}
-
-	// Check if a feature is required and if the license has that feature
-	if path.FeatureRequired != license.FeatureNone {
-		hasFeature := b.system.HasFeature(path.FeatureRequired)
-		if !hasFeature {
-			return nil, logical.CodedError(401, "Feature Not Enabled")
-		}
 	}
 
 	// Build up the data for the route, with the URL taking priority

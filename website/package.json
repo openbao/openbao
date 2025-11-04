@@ -33,7 +33,7 @@
     "@docusaurus/module-type-aliases": "^3.6.3",
     "@docusaurus/tsconfig": "^3.9.2",
     "@docusaurus/types": "^3.8.0",
-    "markdownlint": "^0.38.0",
+    "markdownlint": "^0.39.0",
     "markdownlint-cli2": "^0.18.1",
     "typescript": "^5.9.3"
   },

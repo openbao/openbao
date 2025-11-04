@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/hex"
@@ -16,6 +15,8 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // For speed, all keys are ECDSA.
@@ -24,14 +25,12 @@ type CBGenerateKey struct {
 }
 
 func (c CBGenerateKey) Run(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string) {
-	resp, err := CBWrite(b, s, "keys/generate/exported", map[string]interface{}{
+	resp, err := CBWrite(b, s, "keys/generate/exported", map[string]any{
 		"name": c.Name,
 		"algo": "ec",
 		"bits": 256,
 	})
-	if err != nil {
-		t.Fatalf("failed to provision key (%v): %v", c.Name, err)
-	}
+	require.NoError(t, err, "failed to provision key (%v)", c.Name)
 	knownKeys[c.Name] = resp.Data["private"].(string)
 }
 
@@ -46,7 +45,7 @@ type CBGenerateRoot struct {
 
 func (c CBGenerateRoot) Run(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string) {
 	url := "issuers/generate/root/"
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 
 	if c.Existing {
 		url += "existing"
@@ -65,16 +64,14 @@ func (c CBGenerateRoot) Run(t testing.TB, b *backend, s logical.Storage, knownKe
 	}
 
 	resp, err := CBWrite(b, s, url, data)
-	if err != nil {
-		if len(c.ErrorMessage) > 0 {
-			if !strings.Contains(err.Error(), c.ErrorMessage) {
-				t.Fatalf("failed to generate root cert for issuer (%v): expected (%v) in error message but got %v", c.Name, c.ErrorMessage, err)
-			}
+	if len(c.ErrorMessage) > 0 {
+		require.Errorf(t, err, "expected to fail generation of issuer (%v) with error message containing (%v)", c.Name, c.ErrorMessage)
+		if assert.Containsf(t, err.Error(), c.ErrorMessage, "failed to generate root cert for issuer (%v): expected (%v) in error message", c.Name, c.ErrorMessage) {
 			return
 		}
-		t.Fatalf("failed to provision issuer (%v): %v / body: %v", c.Name, err, data)
-	} else if len(c.ErrorMessage) > 0 {
-		t.Fatalf("expected to fail generation of issuer (%v) with error message containing (%v)", c.Name, c.ErrorMessage)
+	} else {
+		require.NotNil(t, resp)
+		require.NoErrorf(t, err, "failed to provision issuer (%v) with body: %v", c.Name, data)
 	}
 
 	if !c.Existing {
@@ -86,28 +83,18 @@ func (c CBGenerateRoot) Run(t testing.TB, b *backend, s logical.Storage, knownKe
 	// Validate key_id matches.
 	url = "key/" + c.Key
 	resp, err = CBRead(b, s, url)
-	if err != nil {
-		t.Fatalf("failed to fetch key for name %v: %v", c.Key, err)
-	}
-	if resp == nil {
-		t.Fatalf("failed to fetch key for name %v: nil response", c.Key)
-	}
+	require.NoErrorf(t, err, "failed to fetch key for name %v", c.Key)
+	require.NotNilf(t, resp, "failed to fetch key for name %v", c.Key)
 
 	expectedKeyId := resp.Data["key_id"]
 
 	url = "issuer/" + c.Name
 	resp, err = CBRead(b, s, url)
-	if err != nil {
-		t.Fatalf("failed to fetch issuer for name %v: %v", c.Name, err)
-	}
-	if resp == nil {
-		t.Fatalf("failed to fetch issuer for name %v: nil response", c.Name)
-	}
+	require.NoErrorf(t, err, "failed to fetch issuer for name %v", c.Name)
+	require.NotNilf(t, resp, "failed to fetch issuer for name %v", c.Name)
 
 	actualKeyId := resp.Data["key_id"]
-	if expectedKeyId != actualKeyId {
-		t.Fatalf("expected issuer %v to have key matching %v but got mismatch: %v vs %v", c.Name, c.Key, actualKeyId, expectedKeyId)
-	}
+	require.Equalf(t, expectedKeyId, actualKeyId, "expected issuer %v to have key matching %v", c.Name, c.Key)
 }
 
 // Generate an intermediate. Might not really be an intermediate; might be
@@ -125,7 +112,7 @@ type CBGenerateIntermediate struct {
 func (c CBGenerateIntermediate) Run(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string) {
 	// Build CSR
 	url := "issuers/generate/intermediate/"
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 
 	if c.Existing {
 		url += "existing"
@@ -138,9 +125,7 @@ func (c CBGenerateIntermediate) Run(t testing.TB, b *backend, s logical.Storage,
 	}
 
 	resp, err := CBWrite(b, s, url, data)
-	if err != nil {
-		t.Fatalf("failed to generate CSR for issuer (%v): %v / body: %v", c.Name, err, data)
-	}
+	require.NoErrorf(t, err, "failed to generate CSR for issuer (%v) with body: %v", c.Name, data)
 
 	if !c.Existing {
 		knownKeys[c.Key] = resp.Data["private_key"].(string)
@@ -150,7 +135,7 @@ func (c CBGenerateIntermediate) Run(t testing.TB, b *backend, s logical.Storage,
 
 	// Sign CSR
 	url = fmt.Sprintf("issuer/%s/sign-intermediate", c.Parent)
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	data["csr"] = csr
 	data["common_name"] = c.Name
 	if len(c.CommonName) > 0 {
@@ -165,9 +150,7 @@ func (c CBGenerateIntermediate) Run(t testing.TB, b *backend, s logical.Storage,
 	}
 
 	resp, err = CBWrite(b, s, url, data)
-	if err != nil {
-		t.Fatalf("failed to sign CSR for issuer (%v): %v / body: %v", c.Name, err, data)
-	}
+	require.NoErrorf(t, err, "failed to sign CSR for issuer (%v) with body: %v", c.Name, data)
 
 	knownCerts[c.Name] = strings.TrimSpace(resp.Data["certificate"].(string))
 
@@ -177,71 +160,52 @@ func (c CBGenerateIntermediate) Run(t testing.TB, b *backend, s logical.Storage,
 		otherCert := ToCertificate(t, otherPEM)
 		ourCert := ToCertificate(t, knownCerts[c.Name])
 
-		if !bytes.Equal(otherCert.SubjectKeyId, ourCert.SubjectKeyId) {
-			t.Fatalf("Expected two certs to have equal SKIDs but differed: them: %v vs us: %v", otherCert.SubjectKeyId, ourCert.SubjectKeyId)
-		}
+		require.Equalf(t, otherCert.SubjectKeyId, ourCert.SubjectKeyId, "Expected two certs to have equal SKIDs")
 	}
 
 	// Set the signed intermediate
 	url = "intermediate/set-signed"
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	data["certificate"] = knownCerts[c.Name]
 	data["issuer_name"] = c.Name
 
 	resp, err = CBWrite(b, s, url, data)
-	if err != nil {
-		if len(c.ImportErrorMessage) > 0 {
-			if !strings.Contains(err.Error(), c.ImportErrorMessage) {
-				t.Fatalf("failed to import signed cert for issuer (%v): expected (%v) in error message but got %v", c.Name, c.ImportErrorMessage, err)
-			}
+	if len(c.ImportErrorMessage) > 0 {
+		require.Errorf(t, err, "expected to fail import (with error %v) of cert for issuer (%v) but was success with response: %v", c.ImportErrorMessage, c.Name, resp)
+		if assert.Containsf(t, err.Error(), c.ImportErrorMessage, "failed to import signed cert for issuer (%v): expected (%v) in error message", c.Name, c.ImportErrorMessage) {
 			return
 		}
-
-		t.Fatalf("failed to import signed cert for issuer (%v): %v / body: %v", c.Name, err, data)
-	} else if len(c.ImportErrorMessage) > 0 {
-		t.Fatalf("expected to fail import (with error %v) of cert for issuer (%v) but was success: response: %v", c.ImportErrorMessage, c.Name, resp)
+	} else {
+		require.NotNil(t, resp)
+		require.NoErrorf(t, err, "failed to import signed cert for issuer (%v) with body: %v", c.Name, data)
 	}
 
 	// Update the name since set-signed doesn't actually take an issuer name
 	// parameter.
 	rawNewCerts := resp.Data["imported_issuers"].([]string)
-	if len(rawNewCerts) != 1 {
-		t.Fatalf("Expected a single new certificate during import of signed cert for %v: got %v\nresp: %v", c.Name, len(rawNewCerts), resp)
-	}
+	require.Lenf(t, rawNewCerts, 1, "Expected a single new certificate during import of signed cert for %v. Resp: %v", c.Name, resp)
 
 	newCertId := rawNewCerts[0]
-	_, err = CBWrite(b, s, "issuer/"+newCertId, map[string]interface{}{
+	_, err = CBWrite(b, s, "issuer/"+newCertId, map[string]any{
 		"issuer_name": c.Name,
 	})
-	if err != nil {
-		t.Fatalf("failed to update name for issuer (%v/%v): %v", c.Name, newCertId, err)
-	}
+	require.NoErrorf(t, err, "failed to update name for issuer (%v/%v)", c.Name, newCertId)
 
 	// Validate key_id matches.
 	url = "key/" + c.Key
 	resp, err = CBRead(b, s, url)
-	if err != nil {
-		t.Fatalf("failed to fetch key for name %v: %v", c.Key, err)
-	}
-	if resp == nil {
-		t.Fatalf("failed to fetch key for name %v: nil response", c.Key)
-	}
+	require.NoErrorf(t, err, "failed to fetch key for name %v", c.Key)
+	require.NotNilf(t, resp, "failed to fetch key for name %v", c.Key)
 
 	expectedKeyId := resp.Data["key_id"]
 
 	url = "issuer/" + c.Name
 	resp, err = CBRead(b, s, url)
-	if err != nil {
-		t.Fatalf("failed to fetch issuer for name %v: %v", c.Name, err)
-	}
-	if resp == nil {
-		t.Fatalf("failed to fetch issuer for name %v: nil response", c.Name)
-	}
+	require.NoErrorf(t, err, "failed to fetch issuer for name %v", c.Name)
+	require.NotNilf(t, resp, "failed to fetch issuer for name %v", c.Name)
 
 	actualKeyId := resp.Data["key_id"]
-	if expectedKeyId != actualKeyId {
-		t.Fatalf("expected issuer %v to have key matching %v but got mismatch: %v vs %v", c.Name, c.Key, actualKeyId, expectedKeyId)
-	}
+	require.Equalf(t, expectedKeyId, actualKeyId, "expected issuer %v to have key matching %v but got mismatch", c.Name, c.Key)
 }
 
 // Delete an issuer; breaks chains.
@@ -252,9 +216,7 @@ type CBDeleteIssuer struct {
 func (c CBDeleteIssuer) Run(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string) {
 	url := fmt.Sprintf("issuer/%v", c.Issuer)
 	_, err := CBDelete(b, s, url)
-	if err != nil {
-		t.Fatalf("failed to delete issuer (%v): %v", c.Issuer, err)
-	}
+	require.NoErrorf(t, err, "failed to delete issuer (%v)", c.Issuer)
 
 	delete(knownCerts, c.Issuer)
 }
@@ -276,11 +238,9 @@ func (c CBValidateChain) ChainToPEMs(t testing.TB, parent string, chain []string
 		for pattern, replacement := range c.Aliases {
 			modifiedEntry = strings.ReplaceAll(modifiedEntry, pattern, replacement)
 		}
-		for _, issuer := range strings.Split(modifiedEntry, ",") {
+		for issuer := range strings.SplitSeq(modifiedEntry, ",") {
 			cert, ok := knownCerts[issuer]
-			if !ok {
-				t.Fatalf("Unknown issuer %v in chain for %v: %v", issuer, parent, chain)
-			}
+			require.Truef(t, ok, "Unknown issuer %v in chain for %v: %v", issuer, parent, chain)
 
 			chainEntry += cert
 		}
@@ -297,7 +257,7 @@ func (c CBValidateChain) FindNameForCert(t testing.TB, cert string, knownCerts m
 		}
 	}
 
-	t.Fatalf("Unable to find cert:\n[%v]\nin known map:\n%v\n", cert, knownCerts)
+	require.FailNow(t, "Unable to find cert:\n[%v]\nin known map:\n%v\n", cert, knownCerts)
 	return ""
 }
 
@@ -314,14 +274,10 @@ func ToCertificate(t testing.TB, cert string) *x509.Certificate {
 	t.Helper()
 
 	block, _ := pem.Decode([]byte(cert))
-	if block == nil {
-		t.Fatalf("Unable to parse certificate: nil PEM block\n[%v]\n", cert)
-	}
+	require.NotNilf(t, block, "Unable to parse certificate: PEM block\n[%v]\n", cert)
 
 	ret, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatalf("Unable to parse certificate: %v\n[%v]\n", err, cert)
-	}
+	require.NoErrorf(t, err, "Unable to parse certificate: \n[%v]\n", cert)
 
 	return ret
 }
@@ -330,19 +286,14 @@ func ToCRL(t testing.TB, crl string, issuer *x509.Certificate) *x509.RevocationL
 	t.Helper()
 
 	block, _ := pem.Decode([]byte(crl))
-	if block == nil {
-		t.Fatalf("Unable to parse CRL: nil PEM block\n[%v]\n", crl)
-	}
+	require.NotNilf(t, block, "Unable to parse CRL: PEM block\n[%v]\n", crl)
 
 	ret, err := x509.ParseRevocationList(block.Bytes)
-	if err != nil {
-		t.Fatalf("Unable to parse CRL: %v\n[%v]\n", err, crl)
-	}
+	require.NoErrorf(t, err, "Unable to parse CRL: \n[%v]\n", crl)
 
 	if issuer != nil {
-		if err := ret.CheckSignatureFrom(issuer); err != nil {
-			t.Fatalf("Unable to check CRL signature: %v\n[%v]\n[%v]\n", err, crl, issuer)
-		}
+		err := ret.CheckSignatureFrom(issuer)
+		require.NoErrorf(t, err, "Unable to check CRL signature: \n[%v]\n[%v]\n", crl, issuer)
 	}
 
 	return ret
@@ -351,9 +302,7 @@ func ToCRL(t testing.TB, crl string, issuer *x509.Certificate) *x509.RevocationL
 func (c CBValidateChain) Run(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string) {
 	for issuer, chain := range c.Chains {
 		resp, err := CBRead(b, s, "issuer/"+issuer)
-		if err != nil {
-			t.Fatalf("failed to get chain for issuer (%v): %v", issuer, err)
-		}
+		require.NoErrorf(t, err, "failed to get chain for issuer (%v)", issuer)
 
 		rawCurrentChain := resp.Data["ca_chain"].([]string)
 		var currentChain []string
@@ -362,39 +311,31 @@ func (c CBValidateChain) Run(t testing.TB, b *backend, s logical.Storage, knownK
 		}
 
 		// Ensure the issuer cert is always first.
-		if currentChain[0] != knownCerts[issuer] {
-			pretty := c.FindNameForCert(t, currentChain[0], knownCerts)
-			t.Fatalf("expected certificate at index 0 to be self:\n[%v]\n[pretty: %v]\nis not the issuer's cert:\n[%v]\n[pretty: %v]", currentChain[0], pretty, knownCerts[issuer], issuer)
-		}
+		require.Equalf(t, knownCerts[issuer], currentChain[0], "expected certificate at index 0 to be self")
 
 		// Validate it against the expected chain.
 		expectedChain := c.ChainToPEMs(t, issuer, chain, knownCerts)
-		if len(currentChain) != len(expectedChain) {
-			prettyCurrentChain := c.PrettyChain(t, currentChain, knownCerts)
-			t.Fatalf("Lengths of chains for issuer %v mismatched: got %v vs expected %v:\n[%v]\n[pretty: %v]\n[%v]\n[pretty: %v]", issuer, len(currentChain), len(expectedChain), currentChain, prettyCurrentChain, expectedChain, chain)
-		}
+		require.Lenf(t, currentChain, len(expectedChain), "Lengths of chains for issuer %v mismatched", issuer)
 
 		for currentIndex, currentCert := range currentChain {
 			// Chains might be forked so we may not be able to strictly validate
 			// the chain against a single value. Instead, use strings.Contains
 			// to validate the current cert is in the list of allowed
 			// possibilities.
-			if !strings.Contains(expectedChain[currentIndex], currentCert) {
-				pretty := c.FindNameForCert(t, currentCert, knownCerts)
-				t.Fatalf("chain mismatch at index %v for issuer %v: got cert:\n[%v]\n[pretty: %v]\nbut expected one of\n[%v]\n[pretty: %v]\n", currentIndex, issuer, currentCert, pretty, expectedChain[currentIndex], chain[currentIndex])
-			}
+			require.Containsf(t, expectedChain[currentIndex], currentCert,
+				"chain mismatch at index %v for issuer %v: got cert:\n[%v]\n[pretty: %v]\nbut expected one of\n[%v]\n[pretty: %v]\n",
+				currentIndex, issuer, currentCert, c.FindNameForCert(t, currentCert, knownCerts), expectedChain[currentIndex], chain[currentIndex],
+			)
 		}
 
-		// Due to alternate paths, the above doesn't ensure ensure each cert
+		// Due to alternate paths, the above doesn't ensure each cert
 		// in the chain is only used once. Validate that now.
 		for thisIndex, thisCert := range currentChain {
 			for otherIndex, otherCert := range currentChain[thisIndex+1:] {
-				if thisCert == otherCert {
-					thisPretty := c.FindNameForCert(t, thisCert, knownCerts)
-					otherPretty := c.FindNameForCert(t, otherCert, knownCerts)
-					otherIndex += thisIndex + 1
-					t.Fatalf("cert reused in chain for %v:\n[%v]\n[pretty: %v / index: %v]\n[%v]\n[pretty: %v / index: %v]\n", issuer, thisCert, thisPretty, thisIndex, otherCert, otherPretty, otherIndex)
-				}
+				require.NotEqualf(t, thisCert, otherCert,
+					"cert reused in chain for %v:\n[%v]\n[pretty: %v / index: %v]\n[%v]\n[pretty: %v / index: %v]\n",
+					issuer, thisCert, c.FindNameForCert(t, thisCert, knownCerts), thisIndex, otherCert, c.FindNameForCert(t, otherCert, knownCerts), otherIndex+thisIndex+1,
+				)
 			}
 		}
 
@@ -417,10 +358,10 @@ func (c CBValidateChain) Run(t testing.TB, b *backend, s logical.Storage, knownK
 				}
 			}
 
-			if !foundCert {
-				pretty := c.FindNameForCert(t, thisCertPem, knownCerts)
-				t.Fatalf("malformed test scenario: certificate at chain index %v when validating %v does not validate any previous certificates:\n[%v]\n[pretty: %v]\n", thisIndex, issuer, thisCertPem, pretty)
-			}
+			require.Truef(t, foundCert,
+				"malformed test scenario: certificate at chain index %v when validating %v does not validate any previous certificates:\n[%v]\n[pretty: %v]\n",
+				thisIndex, issuer, thisCertPem, c.FindNameForCert(t, thisCertPem, knownCerts),
+			)
 		}
 	}
 }
@@ -434,13 +375,11 @@ type CBUpdateIssuer struct {
 
 func (c CBUpdateIssuer) Run(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string) {
 	url := "issuer/" + c.Name
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	data["issuer_name"] = c.Name
 
 	resp, err := CBRead(b, s, url)
-	if err != nil {
-		t.Fatalf("failed to read issuer (%v): %v", c.Name, err)
-	}
+	require.NoErrorf(t, err, "failed to read issuer (%v)", c.Name)
 
 	if len(c.CAChain) == 1 && c.CAChain[0] == "existing" {
 		data["manual_chain"] = resp.Data["manual_chain"]
@@ -457,9 +396,7 @@ func (c CBUpdateIssuer) Run(t testing.TB, b *backend, s logical.Storage, knownKe
 	}
 
 	_, err = CBWrite(b, s, url, data)
-	if err != nil {
-		t.Fatalf("failed to update issuer (%v): %v / body: %v", c.Name, err, data)
-	}
+	require.NoErrorf(t, err, "failed to update issuer (%v) with body: %v", c.Name, data)
 }
 
 // Issue a leaf, revoke it, and then validate it appears on the CRL.
@@ -471,35 +408,28 @@ type CBIssueLeaf struct {
 func (c CBIssueLeaf) IssueLeaf(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string, errorMessage string) *logical.Response {
 	// Write a role
 	url := "roles/" + c.Role
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	data["allow_localhost"] = true
 	data["ttl"] = "200s"
 	data["key_type"] = "ec"
 
 	_, err := CBWrite(b, s, url, data)
-	if err != nil {
-		t.Fatalf("failed to update role (%v): %v / body: %v", c.Role, err, data)
-	}
+	require.NoErrorf(t, err, "failed to update role (%v) with body: %v", c.Role, data)
 
 	// Issue the certificate.
 	url = "issuer/" + c.Issuer + "/issue/" + c.Role
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	data["common_name"] = "localhost"
 
 	resp, err := CBWrite(b, s, url, data)
-	if err != nil {
-		if len(errorMessage) >= 0 {
-			if !strings.Contains(err.Error(), errorMessage) {
-				t.Fatalf("failed to issue cert (%v via %v): %v / body: %v\nExpected error message: %v", c.Issuer, c.Role, err, data, errorMessage)
-			}
-
+	if len(errorMessage) > 0 {
+		require.Error(t, err)
+		if assert.Containsf(t, err.Error(), errorMessage, "failed to issue cert (%v via %v) with body: %v", c.Issuer, c.Role, data) {
 			return nil
 		}
-
-		t.Fatalf("failed to issue cert (%v via %v): %v / body: %v", c.Issuer, c.Role, err, data)
-	}
-	if resp == nil {
-		t.Fatalf("failed to issue cert (%v via %v): nil response / body: %v", c.Issuer, c.Role, data)
+	} else {
+		require.NotNilf(t, resp, "failed to issue cert (%v via %v) with body: %v", c.Issuer, c.Role, data)
+		require.NoErrorf(t, err, "failed to issue cert (%v via %v) with body: %v", c.Issuer, c.Role, data)
 	}
 
 	raw_cert := resp.Data["certificate"].(string)
@@ -508,13 +438,16 @@ func (c CBIssueLeaf) IssueLeaf(t testing.TB, b *backend, s logical.Storage, know
 	issuer := ToCertificate(t, raw_issuer)
 
 	// Validate issuer and signatures are good.
-	if strings.TrimSpace(raw_issuer) != strings.TrimSpace(knownCerts[c.Issuer]) {
-		t.Fatalf("signing certificate ended with wrong certificate for issuer %v:\n[%v]\n\nvs\n\n[%v]\n", c.Issuer, raw_issuer, knownCerts[c.Issuer])
-	}
+	require.Equalf(t, strings.TrimSpace(raw_issuer), strings.TrimSpace(knownCerts[c.Issuer]),
+		"signing certificate ended with wrong certificate for issuer %v:\n[%v]\n\nvs\n\n[%v]\n",
+		c.Issuer, raw_issuer, knownCerts[c.Issuer],
+	)
 
-	if err := cert.CheckSignatureFrom(issuer); err != nil {
-		t.Fatalf("failed to verify signature on issued certificate from %v: %v\n[%v]\n[%v]\n", c.Issuer, err, raw_cert, raw_issuer)
-	}
+	err = cert.CheckSignatureFrom(issuer)
+	require.NoErrorf(t, err,
+		"failed to verify signature on issued certificate from %v: %v\n[%v]\n[%v]\n",
+		c.Issuer, err, raw_cert, raw_issuer,
+	)
 
 	return resp
 }
@@ -528,18 +461,16 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 
 	// Revoke the certificate.
 	url := "revoke"
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	data["serial_number"] = api_serial
 	resp, err := CBWrite(b, s, url, data)
-	if err != nil {
-		t.Fatalf("failed to revoke issued certificate (%v) under role %v / issuer %v: %v", api_serial, c.Role, c.Issuer, err)
-	}
-	if resp == nil {
-		t.Fatalf("failed to revoke issued certificate (%v) under role %v / issuer %v: nil response", api_serial, c.Role, c.Issuer)
-	}
-	if _, ok := resp.Data["revocation_time"]; !ok {
-		t.Fatalf("failed to revoke issued certificate (%v) under role %v / issuer %v: expected response parameter revocation_time was missing from response:\n%v", api_serial, c.Role, c.Issuer, resp.Data)
-	}
+	require.NoErrorf(t, err, "failed to revoke issued certificate (%v) under role %v / issuer %v: %v", api_serial, c.Role, c.Issuer, err)
+	require.NotNilf(t, resp, "failed to revoke issued certificate (%v) under role %v / issuer %v: nil response", api_serial, c.Role, c.Issuer)
+	_, ok := resp.Data["revocation_time"]
+	require.Truef(t, ok,
+		"failed to revoke issued certificate (%v) under role %v / issuer %v: expected response parameter revocation_time was missing from response:\n%v",
+		api_serial, c.Role, c.Issuer, resp.Data,
+	)
 
 	if !hasCRL {
 		// Nothing further we can test here. We could re-enable CRL building
@@ -553,12 +484,8 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 	// Verify it is on this issuer's CRL.
 	url = "issuer/" + c.Issuer + "/crl"
 	resp, err = CBRead(b, s, url)
-	if err != nil {
-		t.Fatalf("failed to fetch CRL for issuer %v: %v", c.Issuer, err)
-	}
-	if resp == nil {
-		t.Fatalf("failed to fetch CRL for issuer %v: nil response", c.Issuer)
-	}
+	require.NoErrorf(t, err, "failed to fetch CRL for issuer %v", c.Issuer)
+	require.NotNilf(t, resp, "failed to fetch CRL for issuer %v", c.Issuer)
 
 	raw_crl := resp.Data["crl"].(string)
 	crl := ToCRL(t, raw_crl, issuer)
@@ -568,12 +495,9 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 		if !hasCRL && !isDefault {
 			// Update the issuer we expect to find this on.
 			resp, err := CBRead(b, s, "config/issuers")
-			if err != nil {
-				t.Fatalf("failed to read default issuer config: %v", err)
-			}
-			if resp == nil {
-				t.Fatal("failed to read default issuer config: nil response")
-			}
+			require.NoError(t, err, "failed to read default issuer config")
+			require.NotNil(t, resp, "failed to read default issuer config")
+
 			defaultID := resp.Data["default"].(issuerID).String()
 			c.Issuer = defaultID
 			issuer = nil
@@ -582,12 +506,8 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 		// Verify it is on the default issuer's CRL.
 		url = "issuer/" + c.Issuer + "/crl"
 		resp, err = CBRead(b, s, url)
-		if err != nil {
-			t.Fatalf("failed to fetch CRL for issuer %v: %v", c.Issuer, err)
-		}
-		if resp == nil {
-			t.Fatalf("failed to fetch CRL for issuer %v: nil response", c.Issuer)
-		}
+		require.NoErrorf(t, err, "failed to fetch CRL for issuer %v", c.Issuer)
+		require.NotNilf(t, resp, "failed to fetch CRL for issuer %v", c.Issuer)
 
 		raw_crl = resp.Data["crl"].(string)
 		crl = ToCRL(t, raw_crl, issuer)
@@ -601,12 +521,8 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 		for issuerName := range knownCerts {
 			url = "issuer/" + issuerName + "/crl"
 			resp, err = CBRead(b, s, url)
-			if err != nil {
-				t.Fatalf("failed to fetch CRL for issuer %v: %v", issuerName, err)
-			}
-			if resp == nil {
-				t.Fatalf("failed to fetch CRL for issuer %v: nil response", issuerName)
-			}
+			require.NoErrorf(t, err, "failed to fetch CRL for issuer %v", issuerName)
+			require.NotNilf(t, resp, "failed to fetch CRL for issuer %v", issuerName)
 
 			raw_crl := resp.Data["crl"].(string)
 			crl := ToCRL(t, raw_crl, nil)
@@ -620,7 +536,10 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 			}
 		}
 
-		t.Fatalf("expected to find certificate with serial [%v] on issuer %v's CRL but was missing: %v revoked certs\n\nCRL:\n[%v]\n\nLeaf:\n[%v]\n\nIssuer (hasCRL: %v):\n[%v]\n", api_serial, c.Issuer, len(crl.RevokedCertificateEntries), raw_crl, raw_cert, hasCRL, raw_issuer)
+		require.FailNow(t,
+			"expected to find certificate with serial [%v] on issuer %v's CRL but was missing: %v revoked certs\n\nCRL:\n[%v]\n\nLeaf:\n[%v]\n\nIssuer (hasCRL: %v):\n[%v]\n",
+			api_serial, c.Issuer, len(crl.RevokedCertificateEntries), raw_crl, raw_cert, hasCRL, raw_issuer,
+		)
 	}
 }
 
@@ -630,21 +549,14 @@ func (c CBIssueLeaf) Run(t testing.TB, b *backend, s logical.Storage, knownKeys 
 	}
 
 	resp, err := CBRead(b, s, "config/issuers")
-	if err != nil {
-		t.Fatalf("failed to read default issuer config: %v", err)
-	}
-	if resp == nil {
-		t.Fatal("failed to read default issuer config: nil response")
-	}
+	require.NoError(t, err, "failed to read default issuer config")
+	require.NotNil(t, resp, "failed to read default issuer config")
 	defaultID := resp.Data["default"].(issuerID).String()
 
 	resp, err = CBRead(b, s, "issuer/"+c.Issuer)
-	if err != nil {
-		t.Fatalf("failed to read issuer %v: %v", c.Issuer, err)
-	}
-	if resp == nil {
-		t.Fatalf("failed to read issuer %v: nil response", c.Issuer)
-	}
+	require.NoErrorf(t, err, "failed to read issuer %v", c.Issuer)
+	require.NotNilf(t, resp, "failed to read issuer %v", c.Issuer)
+
 	ourID := resp.Data["issuer_id"].(issuerID).String()
 	areDefault := ourID == defaultID
 
@@ -674,14 +586,12 @@ func (c CBIssueLeaf) Run(t testing.TB, b *backend, s logical.Storage, knownKeys 
 }
 
 // Stable ordering
-func ensureStableOrderingOfChains(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string) {
+func ensureStableOrderingOfChains(t testing.TB, b *backend, s logical.Storage, knownCerts map[string]string) {
 	// Start by fetching all chains
 	certChains := make(map[string][]string)
 	for issuer := range knownCerts {
 		resp, err := CBRead(b, s, "issuer/"+issuer)
-		if err != nil {
-			t.Fatalf("failed to get chain for issuer (%v): %v", issuer, err)
-		}
+		require.NoErrorf(t, err, "failed to get chain for issuer (%v)", issuer)
 
 		rawCurrentChain := resp.Data["ca_chain"].([]string)
 		var currentChain []string
@@ -695,7 +605,7 @@ func ensureStableOrderingOfChains(t testing.TB, b *backend, s logical.Storage, k
 	// Now, generate a bunch of arbitrary roots and validate the chain is
 	// consistent.
 	var runs []time.Duration
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		name := "stable-order-root-" + strconv.Itoa(i)
 		step := CBGenerateRoot{
 			Key:  name,
@@ -705,24 +615,22 @@ func ensureStableOrderingOfChains(t testing.TB, b *backend, s logical.Storage, k
 
 		before := time.Now()
 		_, err := CBDelete(b, s, "issuer/"+name)
-		if err != nil {
-			t.Fatalf("failed to delete temporary testing issuer %v: %v", name, err)
-		}
+		require.NoErrorf(t, err, "failed to delete temporary testing issuer %v", name)
+
 		after := time.Now()
 		elapsed := after.Sub(before)
 		runs = append(runs, elapsed)
 
 		for issuer := range knownCerts {
 			resp, err := CBRead(b, s, "issuer/"+issuer)
-			if err != nil {
-				t.Fatalf("failed to get chain for issuer (%v): %v", issuer, err)
-			}
+			require.NoErrorf(t, err, "failed to get chain for issuer (%v)", issuer)
 
 			rawCurrentChain := resp.Data["ca_chain"].([]string)
 			for index, entry := range rawCurrentChain {
-				if strings.TrimSpace(entry) != certChains[issuer][index] {
-					t.Fatalf("iteration %d - chain for issuer %v differed at index %d\n%v\nvs\n%v", i, issuer, index, entry, certChains[issuer][index])
-				}
+				require.Equalf(t, certChains[issuer][index], strings.TrimSpace(entry),
+					"iteration %d - chain for issuer %v differed at index %d\n%v\nvs\n%v",
+					i, issuer, index, entry, certChains[issuer][index],
+				)
 			}
 		}
 	}
@@ -1614,7 +1522,7 @@ func Test_CAChainBuilding(t *testing.T) {
 		}
 
 		t.Log("Checking stable ordering of chains...")
-		ensureStableOrderingOfChains(t, b, s, knownKeys, knownCerts)
+		ensureStableOrderingOfChains(t, b, s, knownCerts)
 	}
 }
 
@@ -1622,10 +1530,6 @@ func BenchmarkChainBuilding(benchies *testing.B) {
 	for testIndex, testCase := range chainBuildingTestCases {
 		name := "test-case-" + strconv.Itoa(testIndex)
 		benchies.Run(name, func(bench *testing.B) {
-			// Stop the timer as we setup the infra and certs.
-			bench.StopTimer()
-			bench.ResetTimer()
-
 			b, s := CreateBackendWithStorage(bench)
 
 			knownKeys := make(map[string]string)
@@ -1637,9 +1541,8 @@ func BenchmarkChainBuilding(benchies *testing.B) {
 			// Run the benchmark.
 			ctx := context.Background()
 			sc := b.makeStorageContext(ctx, s)
-			bench.StartTimer()
-			for n := 0; n < bench.N; n++ {
-				sc.rebuildIssuersChains(nil)
+			for bench.Loop() {
+				_ = sc.rebuildIssuersChains(nil)
 			}
 		})
 	}

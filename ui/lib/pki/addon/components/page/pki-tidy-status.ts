@@ -70,10 +70,6 @@ export default class PkiTidyStatusComponent extends Component<Args> {
     'issuer_safety_buffer',
   ];
 
-  get isEnterprise() {
-    return this.version.isEnterprise;
-  }
-
   get tidyState() {
     return this.args.tidyStatus?.state;
   }

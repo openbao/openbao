@@ -106,11 +106,6 @@ teardown_file(){
     log "END TEARDOWN"
 }
 
-@test "Read license" {
-    run vault read -format=json sys/license/status
-    assert_status 0
-}
-
 @test "Enable oidc auth" {
     run vault auth enable --namespace=ns1 oidc
     assert_status 0

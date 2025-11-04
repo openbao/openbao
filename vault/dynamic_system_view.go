@@ -14,7 +14,6 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/random"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
-	"github.com/openbao/openbao/sdk/v2/helper/license"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -182,10 +181,6 @@ func (d dynamicSystemView) LocalMount() bool {
 func (d dynamicSystemView) ReplicationState() consts.ReplicationState {
 	state := d.core.ReplicationState()
 	return state
-}
-
-func (d dynamicSystemView) HasFeature(feature license.Features) bool {
-	return false
 }
 
 // ResponseWrapData wraps the given data in a cubbyhole and returns the

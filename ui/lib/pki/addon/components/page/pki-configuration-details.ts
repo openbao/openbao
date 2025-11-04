@@ -24,10 +24,6 @@ export default class PkiConfigurationDetails extends Component<Args> {
   @service declare readonly version: VersionService;
   @tracked showDeleteAllIssuers = false;
 
-  get isEnterprise() {
-    return this.version.isEnterprise;
-  }
-
   @action
   async deleteAllIssuers() {
     try {

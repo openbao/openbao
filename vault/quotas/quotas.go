@@ -22,16 +22,8 @@ import (
 // Type represents the quota kind
 type Type string
 
-const (
-	// TypeRateLimit represents the rate limiting quota type
-	TypeRateLimit Type = "rate-limit"
-
-	// TypeLeaseCount represents the lease count limiting quota type
-	//
-	// This was a Vault Enterprise feature; the constant was left for
-	// historical reasons.
-	TypeLeaseCount Type = "lease-count"
-)
+// TypeRateLimit represents the rate limiting quota type
+const TypeRateLimit Type = "rate-limit"
 
 // LeaseAction is the action taken by the expiration manager on the lease. The
 // quota manager will use this information to update the lease path cache and

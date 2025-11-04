@@ -16,10 +16,9 @@ const (
 	CoreReplicatedClusterSecondariesPrefixDR = CoreReplicatedClusterPrefixDR + "secondaries/"
 
 	// This is an identifier for the current secondary in the replicated paths
-	// manager.  It should contain a character that is not allowed in secondary
+	// manager. It should contain a character that is not allowed in secondary
 	// ids to ensure it doesn't collide.
 	CurrentReplicatedSecondaryIdentifier = ".current"
-	CoreFeatureFlagPath                  = "core/cluster/feature-flags"
 )
 
 type ReplicationState uint32

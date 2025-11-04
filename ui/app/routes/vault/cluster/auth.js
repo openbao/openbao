@@ -15,11 +15,6 @@ export default ClusterRouteBase.extend({
   },
   flashMessages: service(),
   version: service(),
-  beforeModel() {
-    return this._super().then(() => {
-      return this.version.fetchFeatures();
-    });
-  },
   model() {
     return this._super(...arguments);
   },

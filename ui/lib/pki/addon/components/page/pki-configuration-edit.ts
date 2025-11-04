@@ -50,10 +50,6 @@ export default class PkiConfigurationEditComponent extends Component<Args> {
   @tracked invalidFormAlert = '';
   @tracked errors: Array<ErrorObject> = [];
 
-  get isEnterprise() {
-    return this.version.isEnterprise;
-  }
-
   @task
   @waitFor
   *save(event: Event) {

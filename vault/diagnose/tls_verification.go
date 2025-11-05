@@ -147,14 +147,14 @@ func ParseTLSInformation(certFilePath string) ([]*x509.Certificate, []*x509.Cert
 	}
 
 	certBlocks := []*pem.Block{}
-	rst := []byte(data)
-	for len(rst) != 0 {
-		block, rest := pem.Decode(rst)
+	rest := data
+	for {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
 		if block == nil {
-			return leafCerts, interCerts, rootCerts, errors.New("Could not decode certificate in certificate file.")
+			break
 		}
 		certBlocks = append(certBlocks, block)
-		rst = rest
 	}
 
 	if len(certBlocks) == 0 {

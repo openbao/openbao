@@ -344,7 +344,7 @@ func (ts *TokenStore) paths() []*framework.Path {
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: ts.handleLookup,
 					DisplayAttrs: &framework.DisplayAttributes{
-						OperationSuffix: "post",
+						OperationSuffix: "update",
 					},
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
@@ -425,7 +425,7 @@ func (ts *TokenStore) paths() []*framework.Path {
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: ts.handleLookupSelf,
 					DisplayAttrs: &framework.DisplayAttributes{
-						OperationSuffix: "self-post",
+						OperationSuffix: "self-update",
 					},
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{

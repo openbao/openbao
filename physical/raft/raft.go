@@ -36,6 +36,7 @@ import (
 	"github.com/openbao/openbao/helper/tlsdebug"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/cluster"
@@ -1608,6 +1609,7 @@ func (b *RaftBackend) Delete(ctx context.Context, path string) error {
 				Key:    path,
 			},
 		},
+		LowestActiveIndex: pointerutil.Ptr(b.fsm.fastTxnTracker.lowestActiveIndex()),
 	}
 	b.permitPool.Acquire()
 	defer b.permitPool.Release()
@@ -1669,6 +1671,7 @@ func (b *RaftBackend) Put(ctx context.Context, entry *physical.Entry) error {
 				Value:  entry.Value,
 			},
 		},
+		LowestActiveIndex: pointerutil.Ptr(b.fsm.fastTxnTracker.lowestActiveIndex()),
 	}
 
 	b.permitPool.Acquire()
@@ -1732,6 +1735,13 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 	}
 	if err := ctx.Err(); err != nil {
 		return err
+	}
+
+	if command.LowestActiveIndex != nil { // we need to cap the lowest active index - 1, otherwise we might miss transaction started concurrently
+		appliedIndex := b.raft.AppliedIndex()
+		if *command.LowestActiveIndex >= appliedIndex {
+			command.LowestActiveIndex = pointerutil.Ptr(appliedIndex - 1)
+		}
 	}
 
 	isTx := len(command.Operations) > 0 && command.Operations[0].OpType == beginTxOp

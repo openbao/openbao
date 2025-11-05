@@ -338,8 +338,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 	// First we provide an invalid CA cert to verify that it is in fact paying
 	// attention to the value we specify
 	data := map[string]interface{}{
-		// since https://github.com/openbao/openbao/pull/2066 .well-known component gets stripped
-		"oidc_discovery_url":    "https://team-vault.auth0.com/.well-known/openid-configuration",
+		"oidc_discovery_url":    "https://team-vault.auth0.com/",
 		"oidc_discovery_ca_pem": oidcBadCACerts,
 		"oidc_client_id":        "abc",
 		"oidc_client_secret":    "def",
@@ -385,6 +384,46 @@ func TestConfig_OIDC_Write(t *testing.T) {
 
 	if diff := deep.Equal(expected, conf); diff != nil {
 		t.Fatal(diff)
+	}
+
+	discoveryURLTests := []struct {
+		name         string
+		discoveryURL string
+	}{
+		{
+			"base url with trailing slash",
+			"https://team-vault.auth0.com/",
+		},
+		// verify that the .well-known component gets stripped
+		{
+			"full url with trailing slash",
+			"https://team-vault.auth0.com/.well-known/openid-configuration",
+		},
+		{
+			"full url without trailing slash",
+			"https://team-vault.auth0.com/.well-known/openid-configuration/",
+		},
+	}
+
+	for _, test := range discoveryURLTests {
+		t.Run(test.name, func(t *testing.T) {
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      configPath,
+				Storage:   storage,
+				Data: map[string]interface{}{
+					"oidc_discovery_url": test.discoveryURL,
+					"oidc_client_id":     "abc",
+					"oidc_client_secret": "def",
+				},
+			}
+			res, err := b.HandleRequest(context.Background(), req)
+			require.False(t, res.IsError())
+			require.NoError(t, err)
+			conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+			require.NoError(t, err)
+			require.Equal(t, "https://team-vault.auth0.com/", conf.OIDCDiscoveryURL)
+		})
 	}
 
 	// Verify OIDC config sanity:

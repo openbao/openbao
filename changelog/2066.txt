@@ -1,3 +1,3 @@
 ```release-note:bug
-auth/jwt: Support OIDCDiscoveryURL with specified '.well-known/' component, which gets stripped while parsed.
+auth/jwt: Allow OIDCDiscoveryURL to optionally include '.well-known/openid-configuration' path suffix.
 ```

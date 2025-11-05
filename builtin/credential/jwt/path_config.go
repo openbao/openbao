@@ -48,7 +48,7 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 		Fields: map[string]*framework.FieldSchema{
 			"oidc_discovery_url": {
 				Type:        framework.TypeString,
-				Description: `The OIDC Discovery URL, any .well-known component will be trimmed by default. Cannot be used with "jwks_url" or "jwt_validation_pubkeys".`,
+				Description: `Either the base URL of the OIDC Discovery endpoint or the full URL with ".well-known/openid-configuration" path suffix. Cannot be used with "jwks_url" or "jwt_validation_pubkeys".`,
 			},
 			"oidc_discovery_ca_pem": {
 				Type:        framework.TypeString,
@@ -384,8 +384,18 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse("both 'oidc_client_id' and 'oidc_client_secret' must be set for OIDC"), nil
 
 	case config.OIDCDiscoveryURL != "":
-		// trim '.well-known'
-		config.OIDCDiscoveryURL, _, _ = strings.Cut(config.OIDCDiscoveryURL, ".well-known/")
+		// due to `go-oidc` issuer matching logic, we cannot handle base urls
+		// not ending with a trailing slash, but that's been always the case
+
+		// trim '.well-known/openid-configuration', due to jwt.NewOIDCDiscoveryKeySet()
+		// not accounting for its presence.
+		// config is saved to the storage without '.well-known' component
+		trimmedDiscoveryURL, _, _ := strings.Cut(config.OIDCDiscoveryURL, ".well-known/openid-configuration")
+		if trimmedDiscoveryURL != config.OIDCDiscoveryURL {
+			config.OIDCDiscoveryURL = trimmedDiscoveryURL
+			resp.AddWarning(fmt.Sprintf("modifying provided `OIDCDiscoveryURL` to %q", trimmedDiscoveryURL))
+		}
+
 		var err error
 		if config.OIDCClientID != "" && config.OIDCClientSecret != "" {
 			_, err = b.createProvider(config)

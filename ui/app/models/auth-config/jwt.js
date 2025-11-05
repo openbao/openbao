@@ -14,7 +14,7 @@ export default AuthConfig.extend({
   oidcDiscoveryUrl: attr('string', {
     label: 'OIDC discovery URL',
     helpText:
-      'The OIDC Discovery URL, any .well-known component will be trimmed by default. Cannot be used with jwt_validation_pubkeys',
+      'Either the base URL of the OIDC Discovery endpoint or the full URL with ".well-known/openid-configuration" path suffix. Cannot be used with jwt_validation_pubkeys',
   }),
 
   oidcClientId: attr('string', {

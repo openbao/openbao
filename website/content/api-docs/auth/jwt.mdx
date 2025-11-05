@@ -37,7 +37,7 @@ set.
 
 ### Parameters
 
-- `oidc_discovery_url` `(string: <optional>)` - The OIDC Discovery URL, any .well-known component will be trimmed by default. Cannot be used with "jwks_url" or "jwt_validation_pubkeys".
+- `oidc_discovery_url` `(string: <optional>)` - Either the base URL of the OIDC Discovery endpoint or the full URL with ".well-known/openid-configuration" path suffix. Cannot be used with "jwks_url" or "jwt_validation_pubkeys".
 - `oidc_discovery_ca_pem` `(string: <optional>)` - The contents of a CA certificate or chain of certificates, in PEM format, to use to validate connections to the OIDC Discovery URL. If not set, system certificates are used.
 - `oidc_client_id` `(string: <optional>)` - The OAuth Client ID from the provider for OIDC roles.
 - `oidc_client_secret` `(string: <optional>)` - The OAuth Client Secret from the provider for OIDC roles.

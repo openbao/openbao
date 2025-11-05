@@ -480,6 +480,43 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 		}
 	})
 
+	t.Run("valid provider_config with discovery_url containing .well-known component", func(t *testing.T) {
+		req.Data = map[string]interface{}{
+			"oidc_discovery_url": "https://team-vault.auth0.com/.well-known/openid-configuration",
+			"provider_config": map[string]interface{}{
+				"provider":     "azure",
+				"extraOptions": "abound",
+			},
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		expected := &jwtConfig{
+			JWTValidationPubKeys:       []string{},
+			JWTSupportedAlgs:           []string{},
+			OIDCResponseTypes:          []string{},
+			OverrideAllowedServerNames: []string{},
+			OIDCDiscoveryURL:           "https://team-vault.auth0.com/",
+			ProviderConfig: map[string]interface{}{
+				"provider":     "azure",
+				"extraOptions": "abound",
+			},
+			NamespaceInState: true,
+		}
+
+		conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := deep.Equal(expected, conf); diff != nil {
+			t.Fatal(diff)
+		}
+	})
+
 	t.Run("unknown provider in provider_config", func(t *testing.T) {
 		req.Data = map[string]interface{}{
 			"oidc_discovery_url": "https://team-vault.auth0.com/",

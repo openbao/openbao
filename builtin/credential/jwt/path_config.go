@@ -48,7 +48,7 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 		Fields: map[string]*framework.FieldSchema{
 			"oidc_discovery_url": {
 				Type:        framework.TypeString,
-				Description: `OIDC Discovery URL, without any .well-known component (base path). Cannot be used with "jwks_url" or "jwt_validation_pubkeys".`,
+				Description: `The OIDC Discovery URL, any .well-known component will be trimmed by default. Cannot be used with "jwks_url" or "jwt_validation_pubkeys".`,
 			},
 			"oidc_discovery_ca_pem": {
 				Type:        framework.TypeString,
@@ -242,10 +242,7 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 		return fmt.Errorf("error creating context for device auth: %w", err)
 	}
 
-	issuer := config.OIDCDiscoveryURL
-
-	wellKnown := strings.TrimSuffix(issuer, "/") + "/.well-known/openid-configuration"
-	body, err := contactIssuer(caCtx, wellKnown, nil, false)
+	body, err := contactIssuer(caCtx, strings.TrimSuffix(config.OIDCDiscoveryURL, "/")+"/.well-known/openid-configuration", nil, false)
 	if err != nil {
 		return fmt.Errorf("error reading issuer config: %w", err)
 	}
@@ -387,6 +384,8 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse("both 'oidc_client_id' and 'oidc_client_secret' must be set for OIDC"), nil
 
 	case config.OIDCDiscoveryURL != "":
+		// trim '.well-known'
+		config.OIDCDiscoveryURL, _, _ = strings.Cut(config.OIDCDiscoveryURL, ".well-known/")
 		var err error
 		if config.OIDCClientID != "" && config.OIDCClientSecret != "" {
 			_, err = b.createProvider(config)

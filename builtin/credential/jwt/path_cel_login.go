@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
-	"github.com/google/cel-go/common/types/ref"
 	"github.com/hashicorp/cap/jwt"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -187,15 +187,23 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 
 // runCelProgram executes the CelProgram for the celRoleEntry and returns a pb.Auth or error
 func (b *jwtAuthBackend) runCelProgram(ctx context.Context, operation logical.Operation, celRoleEntry *celRoleEntry, allClaims map[string]any) (*pb.Auth, error) {
-	result, err := b.celEvalProgram(celRoleEntry.CelProgram, operation, allClaims)
-	if err != nil {
-		return nil, fmt.Errorf("Cel role auth program failed: %w", err)
+	cfg := b.celEvalConfig()
+
+	// Initialize the evaluation context for CEL expressions with the claim
+	// data.
+	evaluationData := map[string]interface{}{
+		"claims":    allClaims,
+		"now":       time.Now(),
+		"operation": string(operation),
 	}
 
-	refVal := result.(ref.Val)
+	result, err := celRoleEntry.Program.Evaluate(ctx, cfg, evaluationData)
+	if err != nil {
+		return nil, fmt.Errorf("CEL auth program failed: %w", err)
+	}
 
 	// process result from CEL program
-	switch v := refVal.Value().(type) {
+	switch v := result.Value().(type) {
 	// if boolean false return auth failed
 	case bool:
 		if !v {
@@ -208,7 +216,7 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, operation logical.Op
 	}
 
 	// handle protobuf Auth return type
-	if msg, err := refVal.ConvertToNative(reflect.TypeOf(&pb.Auth{})); err == nil {
+	if msg, err := result.ConvertToNative(reflect.TypeOf(&pb.Auth{})); err == nil {
 		pbAuth, ok := msg.(*pb.Auth)
 		if ok {
 			return pbAuth, nil

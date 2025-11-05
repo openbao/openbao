@@ -3356,7 +3356,7 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 		return nil, errors.New("token is not from a valid namespace")
 	}
 
-	unwrapCtx := namespace.ContextWithNamespace(ctx, unwrapNS)
+	unwrapCtx := namespace.ContextWithNamespace(ctx, unwrapNS.Namespace)
 
 	var response string
 	switch te.Policies[0] {
@@ -3690,7 +3690,7 @@ func (b *SystemBackend) handleWrappingLookup(ctx context.Context, req *logical.R
 		return nil, errors.New("token is not from a valid namespace")
 	}
 
-	lookupCtx := namespace.ContextWithNamespace(ctx, lookupNS)
+	lookupCtx := namespace.ContextWithNamespace(ctx, lookupNS.Namespace)
 
 	cubbyReq := &logical.Request{
 		Operation:   logical.ReadOperation,

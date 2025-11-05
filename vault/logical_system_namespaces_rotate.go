@@ -15,7 +15,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-type namespaceExtractor func(ctx context.Context, data *framework.FieldData) (*namespace.Namespace, error)
+type namespaceExtractor func(ctx context.Context, data *framework.FieldData) (*Namespace, error)
 
 var namespaceFieldSchema = framework.FieldSchema{
 	Type:        framework.TypeString,
@@ -333,22 +333,22 @@ func (b *SystemBackend) namespaceRotatePaths() []*framework.Path {
 
 // parseNamespaceFromRequest satisfies namespaceExtractor signature, parsing
 // `namespace` from path, verifing if it exists and returning.
-func (b *SystemBackend) parseNamespaceFromRequest(ctx context.Context, data *framework.FieldData) (*namespace.Namespace, error) {
+func (b *SystemBackend) parseNamespaceFromRequest(ctx context.Context, data *framework.FieldData) (*Namespace, error) {
 	nsName := namespace.Canonicalize(data.Get("namespace").(string))
 	if len(nsName) > 0 && strings.Contains(nsName[:len(nsName)-1], "/") {
 		return nil, errors.New("namespace name must not contain /")
 	}
 
-	ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, nsName)
+	wrapper, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, nsName)
 	if err != nil {
 		return nil, err
 	}
 
-	if ns == nil {
+	if wrapper == nil {
 		return nil, fmt.Errorf("namespace %q doesn't exist", nsName)
 	}
 
-	return ns, nil
+	return wrapper, nil
 }
 
 var sysNamespacesRotateHelp = map[string][2]string{

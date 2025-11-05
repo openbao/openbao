@@ -30,13 +30,15 @@ func (c *Core) Capabilities(ctx context.Context, token, path string) ([]string, 
 		return nil, &logical.StatusBadRequest{Err: "invalid token"}
 	}
 
-	tokenNS, err := c.NamespaceByID(ctx, te.NamespaceID)
+	tokenNSWrapper, err := c.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
-	if tokenNS == nil {
+	if tokenNSWrapper == nil {
 		return nil, namespace.ErrNoNamespace
 	}
+
+	tokenNS := tokenNSWrapper.Namespace
 
 	var policyCount int
 	policyNames := make(map[string][]string)

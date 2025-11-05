@@ -299,14 +299,14 @@ func (c *Core) loadAudits(ctx context.Context) error {
 			needPersist = true
 		}
 		// Get the namespace from the namespace ID and load it in memory
-		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
+		nsWrapper, err := c.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return err
 		}
-		if ns == nil {
+		if nsWrapper == nil {
 			return namespace.ErrNoNamespace
 		}
-		entry.namespace = ns
+		entry.namespace = nsWrapper.Namespace
 	}
 
 	if !needPersist {

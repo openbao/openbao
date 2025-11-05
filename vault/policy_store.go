@@ -641,13 +641,15 @@ func (ps *PolicyStore) ACL(ctx context.Context, entity *identity.Entity, policyN
 
 	// Fetch the named policies
 	for nsID, nsPolicyNames := range policyNames {
-		policyNS, err := ps.core.NamespaceByID(ctx, nsID)
+		policyNSWrapper, err := ps.core.NamespaceByID(ctx, nsID)
 		if err != nil {
 			return nil, err
 		}
-		if policyNS == nil {
+		if policyNSWrapper == nil {
 			return nil, namespace.ErrNoNamespace
 		}
+
+		policyNS := policyNSWrapper.Namespace
 		policyCtx := namespace.ContextWithNamespace(ctx, policyNS)
 		for _, nsPolicyName := range nsPolicyNames {
 			p, err := ps.GetPolicy(policyCtx, nsPolicyName, PolicyTypeToken)

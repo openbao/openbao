@@ -73,17 +73,18 @@ func (e extendedSystemViewImpl) SudoPrivilege(ctx context.Context, path string, 
 	// Add token policies
 	policyNames[te.NamespaceID] = append(policyNames[te.NamespaceID], te.Policies...)
 
-	tokenNS, err := e.core.NamespaceByID(ctx, te.NamespaceID)
+	tokenNSWrapper, err := e.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		e.core.logger.Error("failed to lookup token namespace", "error", err)
 		return false
 	}
-	if tokenNS == nil {
+	if tokenNSWrapper == nil {
 		e.core.logger.Error("failed to lookup token namespace", "error", namespace.ErrNoNamespace)
 		return false
 	}
 
 	// Add identity policies from all the namespaces
+	tokenNS := tokenNSWrapper.Namespace
 	entity, identityPolicies, err := e.core.fetchEntityAndDerivedPolicies(ctx, tokenNS, te.EntityID, te.NoIdentityPolicies)
 	if err != nil {
 		e.core.logger.Error("failed to fetch identity policies", "error", err)

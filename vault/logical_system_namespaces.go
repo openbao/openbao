@@ -321,7 +321,8 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 			return nil, nil
 		}
 
-		return &logical.Response{Data: createNamespaceDataResponse(ns, nil)}, nil
+		wrapper, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+		return &logical.Response{Data: createNamespaceDataResponse(wrapper.Namespace, nil)}, nil
 	}
 }
 
@@ -362,33 +363,50 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		entry, new, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, name, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
-			ns.CustomMetadata = metadata
-			return ns, nil
-		})
+		wrapper, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
 		if err != nil {
 			return handleError(err)
 		}
 
-		if !new {
+		isNew := wrapper == nil
+
+		if !isNew {
+			// Existing namespace - cannot modify seal config
 			if sealConfigs != nil {
 				return nil, errors.New("cannot update existing namespace and modify its seal config")
 			}
-			return &logical.Response{Data: createNamespaceDataResponse(entry, nil)}, nil
-		}
+			wrapper.Namespace.CustomMetadata = metadata
 
-		keySharesMap := make(map[string][]string)
-		// TODO(wslabosz): write all the provided configs
-		if len(sealConfigs) > 0 {
-			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry, true); err != nil {
+			// Persist the changes
+			if _, err := b.Core.namespaceStore.SetNamespace(ctx, wrapper.Namespace, nil); err != nil {
 				return handleError(err)
 			}
 
-			nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, entry)
+			return &logical.Response{Data: createNamespaceDataResponse(wrapper.Namespace, nil)}, nil
+		}
+
+		baseNS := &namespace.Namespace{
+			Path:           name,
+			CustomMetadata: metadata,
+		}
+		wrapper = WrapNamespace(baseNS)
+
+		keySharesMap := make(map[string][]string)
+
+		// TODO(wslabosz): write all the provided configs
+		if len(sealConfigs) > 0 {
+			// Initialize seal with provided config
+			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], wrapper, true); err != nil {
+				return handleError(err)
+			}
+
+			// Initialize barrier and get key shares
+			nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, wrapper)
 			if err != nil {
 				return handleError(err)
 			}
 
+			// Convert key shares to hex strings
 			var keyShares []string
 			for _, keyShare := range nsSealKeyShares {
 				keyShares = append(keyShares, hex.EncodeToString(keyShare))
@@ -396,14 +414,23 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			if len(keyShares) > 0 {
 				keySharesMap["default"] = keyShares
 			}
+
+			if _, err := b.Core.namespaceStore.SetNamespace(ctx, wrapper.Namespace, sealConfigs[0]); err != nil {
+				return handleError(err)
+			}
 		} else {
-			// if there's no seal config provided we need to initialize the namespace
-			if err := b.Core.namespaceStore.initializeNamespace(ctx, entry); err != nil {
+			// No seal config provided - initialize with defaults
+			if err := b.Core.namespaceStore.initializeNamespace(ctx, wrapper.Namespace); err != nil {
+				return handleError(err)
+			}
+
+			// Persist the initialized namespace
+			if _, err := b.Core.namespaceStore.SetNamespace(ctx, wrapper.Namespace, nil); err != nil {
 				return handleError(err)
 			}
 		}
 
-		return &logical.Response{Data: createNamespaceDataResponse(entry, keySharesMap)}, nil
+		return &logical.Response{Data: createNamespaceDataResponse(wrapper.Namespace, keySharesMap)}, nil
 	}
 }
 

@@ -10,7 +10,7 @@ import (
 )
 
 // NamespaceByID returns back a namespace using its accessor (nsID).
-func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*namespace.Namespace, error) {
+func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*Namespace, error) {
 	return c.namespaceStore.GetNamespaceByAccessor(ctx, nsID)
 }
 

@@ -89,12 +89,12 @@ func (b *SystemBackend) handleNamespaceGenerateRootInit() framework.OperationFun
 			return nil, errors.New("name must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+		wrapper, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
 		if err != nil {
 			return handleError(err)
 		}
 
-		if ns == nil {
+		if wrapper == nil {
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
@@ -117,16 +117,16 @@ func (b *SystemBackend) handleNamespaceGenerateRootInit() framework.OperationFun
 			}
 		}
 
-		err = b.Core.GenerateRootInit(otp, pgpKey, GenerateStandardRootTokenStrategy, ns)
+		err = b.Core.GenerateRootInit(otp, pgpKey, GenerateStandardRootTokenStrategy, wrapper.Namespace)
 		if err != nil {
 			return handleError(err)
 		}
 
 		if genned {
-			return b.namespaceGenerateRootStatus(ctx, ns, otp)
+			return b.namespaceGenerateRootStatus(ctx, wrapper, otp)
 		}
 
-		return b.namespaceGenerateRootStatus(ctx, ns, "")
+		return b.namespaceGenerateRootStatus(ctx, wrapper, "")
 	}
 }
 
@@ -137,39 +137,38 @@ func (b *SystemBackend) handleNamespaceGenerateRootStatus() framework.OperationF
 			return nil, errors.New("name must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+		wrapper, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
 		if err != nil {
 			return handleError(err)
 		}
 
-		if ns == nil {
+		if wrapper == nil {
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
-		return b.namespaceGenerateRootStatus(ctx, ns, "")
+		return b.namespaceGenerateRootStatus(ctx, wrapper, "")
 	}
 }
 
-func (b *SystemBackend) namespaceGenerateRootStatus(ctx context.Context, ns *namespace.Namespace, otp string) (*logical.Response, error) {
-	seal := b.Core.sealManager.NamespaceSeal(ns.UUID)
-	if seal == nil {
+func (b *SystemBackend) namespaceGenerateRootStatus(ctx context.Context, wrapper *Namespace, otp string) (*logical.Response, error) {
+	if wrapper.seal == nil {
 		return handleError(ErrNotSealable)
 	}
 
-	barrierConfig, err := seal.Config(ctx)
+	barrierConfig, err := wrapper.seal.Config(ctx)
 	if err != nil {
 		return handleError(err)
 	}
 	if barrierConfig == nil {
-		return nil, fmt.Errorf("no barrier found for namespace %q", ns.Path)
+		return nil, fmt.Errorf("no barrier found for namespace %q", wrapper.Namespace.Path)
 	}
 
-	generationConfig, err := b.Core.GenerateRootConfiguration(ns)
+	generationConfig, err := b.Core.GenerateRootConfiguration(wrapper.Namespace)
 	if err != nil {
 		return handleError(err)
 	}
 
-	progress, err := b.Core.GenerateRootProgress(ns)
+	progress, err := b.Core.GenerateRootProgress(wrapper.Namespace)
 	if err != nil {
 		return handleError(err)
 	}
@@ -205,11 +204,11 @@ func (b *SystemBackend) handleNamespaceGenerateRootUpdate() framework.OperationF
 			return nil, errors.New("name must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+		wrapper, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
 		if err != nil {
 			return handleError(err)
 		}
-		if ns == nil {
+		if wrapper == nil {
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
@@ -230,11 +229,11 @@ func (b *SystemBackend) handleNamespaceGenerateRootUpdate() framework.OperationF
 			return logical.ErrorResponse("key is required"), logical.ErrInvalidRequest
 		}
 
-		return b.namespaceGenerateRootUpdate(ctx, ns, key, nonce)
+		return b.namespaceGenerateRootUpdate(ctx, wrapper, key, nonce)
 	}
 }
 
-func (b *SystemBackend) namespaceGenerateRootUpdate(ctx context.Context, ns *namespace.Namespace, key, nonce string) (*logical.Response, error) {
+func (b *SystemBackend) namespaceGenerateRootUpdate(ctx context.Context, wrapper *Namespace, key, nonce string) (*logical.Response, error) {
 	key = strings.TrimSpace(key)
 	decodedKey, err := hex.DecodeString(key)
 	if err != nil {
@@ -244,7 +243,7 @@ func (b *SystemBackend) namespaceGenerateRootUpdate(ctx context.Context, ns *nam
 		}
 	}
 
-	ctx = namespace.ContextWithNamespace(ctx, ns)
+	ctx = namespace.ContextWithNamespace(ctx, wrapper.Namespace)
 	result, err := b.Core.GenerateRootUpdate(ctx, decodedKey, nonce, GenerateStandardRootTokenStrategy)
 	if err != nil {
 		return nil, err
@@ -269,16 +268,16 @@ func (b *SystemBackend) handleNamespaceGenerateRootCancel() framework.OperationF
 			return nil, errors.New("name must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+		wrapper, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
 		if err != nil {
 			return handleError(err)
 		}
 
-		if ns == nil {
+		if wrapper == nil {
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
-		if err = b.Core.GenerateRootCancel(ns); err != nil {
+		if err = b.Core.GenerateRootCancel(wrapper.Namespace); err != nil {
 			return handleError(err)
 		}
 

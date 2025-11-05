@@ -484,8 +484,9 @@ func (b *SystemBackend) rotatePaths() []*framework.Path {
 }
 
 // rootNamespaceExtractor satisfies namespaceExtractor signature, returning rootNamespace.
-func (*SystemBackend) rootNamespaceExtractor(_ context.Context, _ *framework.FieldData) (*namespace.Namespace, error) {
-	return namespace.RootNamespace, nil
+func (b *SystemBackend) rootNamespaceExtractor(ctx context.Context, data *framework.FieldData) (*Namespace, error) {
+	wrapper := WrapNamespace(namespace.RootNamespace)
+	return wrapper, nil
 }
 
 // handleRotate handles the GET `/sys/rotate` and `/sys/rotate/keyring`
@@ -654,7 +655,7 @@ func (b *SystemBackend) handleRotateInitGet(nsExtr namespaceExtractor) framework
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		sealThreshold, err := b.Core.sealManager.RotationThreshold(ctx, ns, recovery)
+		sealThreshold, err := b.Core.sealManager.RotationThreshold(ctx, ns.Namespace, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -668,10 +669,10 @@ func (b *SystemBackend) handleRotateInitGet(nsExtr namespaceExtractor) framework
 			},
 		}
 
-		rotationConfig := b.Core.sealManager.RotationConfig(ns, recovery)
+		rotationConfig := b.Core.sealManager.RotationConfig(ns.Namespace, recovery)
 		if rotationConfig != nil {
 			config := rotationConfig.Clone()
-			started, progress, err := b.Core.sealManager.RotationProgress(ns, recovery, false)
+			started, progress, err := b.Core.sealManager.RotationProgress(ns.Namespace, recovery, false)
 			if err != nil {
 				return handleError(err)
 			}
@@ -747,7 +748,7 @@ func (b *SystemBackend) handleRotateInitPut(nsExtr namespaceExtractor) framework
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.sealManager.InitRotation(ctx, ns, rotateConf, recovery)
+		result, err := b.Core.sealManager.InitRotation(ctx, ns.Namespace, rotateConf, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -792,7 +793,7 @@ func (b *SystemBackend) handleRotateInitDelete(nsExtr namespaceExtractor) framew
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.sealManager.CancelRotation(ns, recovery); err != nil {
+		if err := b.Core.sealManager.CancelRotation(ns.Namespace, recovery); err != nil {
 			return handleError(err)
 		}
 		return nil, nil
@@ -849,7 +850,7 @@ func (b *SystemBackend) handleRotateUpdate(nsExtr namespaceExtractor) framework.
 
 		// Use the key to make progress on rotation
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.sealManager.UpdateRotation(ctx, ns, key, reqNonce, recovery)
+		result, err := b.Core.sealManager.UpdateRotation(ctx, ns.Namespace, key, reqNonce, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -889,18 +890,18 @@ func (b *SystemBackend) handleRotateVerifyGet(nsExtr namespaceExtractor) framewo
 			return handleError(err)
 		}
 
-		barrierConfig := b.Core.sealManager.NamespaceSeal(ns.UUID)
+		barrierConfig := ns.seal
 		if barrierConfig == nil {
 			return handleError(errors.New("server is not yet initialized"))
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		rotateConfig := b.Core.sealManager.RotationConfig(ns, recovery)
+		rotateConfig := b.Core.sealManager.RotationConfig(ns.Namespace, recovery)
 		if rotateConfig == nil {
 			return handleError(errors.New("no rotation configuration found"))
 		}
 
-		started, progress, err := b.Core.sealManager.RotationProgress(ns, recovery, true)
+		started, progress, err := b.Core.sealManager.RotationProgress(ns.Namespace, recovery, true)
 		if err != nil {
 			return handleError(err)
 		}
@@ -967,7 +968,7 @@ func (b *SystemBackend) handleRotateVerifyPut(nsExtr namespaceExtractor) framewo
 
 		// Use the key to make progress on rotation (rekey) verification
 		recovery := strings.Contains(req.Path, "recovery")
-		result, err := b.Core.sealManager.VerifyRotation(ctx, ns, key, reqNonce, recovery)
+		result, err := b.Core.sealManager.VerifyRotation(ctx, ns.Namespace, key, reqNonce, recovery)
 		if err != nil {
 			return handleError(err)
 		}
@@ -995,7 +996,7 @@ func (b *SystemBackend) handleRotateVerifyDelete(nsExtr namespaceExtractor) fram
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.sealManager.RestartRotationVerification(ns, recovery); err != nil {
+		if err := b.Core.sealManager.RestartRotationVerification(ns.Namespace, recovery); err != nil {
 			return handleError(err)
 		}
 		return b.handleRotateVerifyGet(nsExtr)(ctx, req, data)
@@ -1012,7 +1013,7 @@ func (b *SystemBackend) handleRotateBackupRetrieve(nsExtr namespaceExtractor) fr
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		backup, err := b.Core.sealManager.RetrieveRotationBackup(ctx, ns, recovery)
+		backup, err := b.Core.sealManager.RetrieveRotationBackup(ctx, ns.Namespace, recovery)
 		if err != nil {
 			return handleError(fmt.Errorf("unable to look up backed-up keys: %w", err))
 		}
@@ -1056,7 +1057,7 @@ func (b *SystemBackend) handleRotateBackupDelete(nsExtr namespaceExtractor) fram
 		}
 
 		recovery := strings.Contains(req.Path, "recovery")
-		if err := b.Core.sealManager.DeleteRotationBackup(ctx, ns, recovery); err != nil {
+		if err := b.Core.sealManager.DeleteRotationBackup(ctx, ns.Namespace, recovery); err != nil {
 			return handleError(err)
 		}
 

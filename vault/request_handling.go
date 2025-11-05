@@ -226,13 +226,14 @@ func (c *Core) filterGroupPoliciesByNS(ctx context.Context, tokenNS *namespace.N
 // apply to the token based on the group policy application mode,
 // and the relationship between the token namespace and the group namespace.
 func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespace.Namespace, nsID string, nsPolicies []string, policyApplicationMode string) ([]string, error) {
-	policyNS, err := c.NamespaceByID(ctx, nsID)
+	policyNSWrapper, err := c.NamespaceByID(ctx, nsID)
 	if err != nil {
 		return nil, err
 	}
-	if policyNS == nil {
+	if policyNSWrapper == nil {
 		return nil, namespace.ErrNoNamespace
 	}
+	policyNS := policyNSWrapper.Namespace
 
 	var filteredPolicies []string
 
@@ -251,7 +252,7 @@ func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespac
 			// When we attempt to get a non-EGP policy type, and receive an
 			// explicit error that it doesn't exist (in the type map) we log the
 			// ns/policy and continue without error.
-			c.Logger().Debug(fmt.Errorf("%w: %v/%v", err, policyNS.ID, policyName).Error())
+			c.Logger().Debug(fmt.Errorf("%w: %v/%v", err, policyNSWrapper.ID, policyName).Error())
 			continue
 		}
 		if err != nil || t == nil {
@@ -339,15 +340,17 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	// Add tokens policies
 	policyNames[te.NamespaceID] = append(policyNames[te.NamespaceID], te.Policies...)
 
-	tokenNS, err := c.NamespaceByID(ctx, te.NamespaceID)
+	tokenNSWrapper, err := c.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		c.logger.Error("failed to fetch token namespace", "error", err)
 		return nil, nil, nil, nil, ErrInternalError
 	}
-	if tokenNS == nil {
+	if tokenNSWrapper == nil {
 		c.logger.Error("failed to fetch token namespace", "error", namespace.ErrNoNamespace)
 		return nil, nil, nil, nil, ErrInternalError
 	}
+
+	tokenNS := tokenNSWrapper.Namespace
 
 	// Add identity policies from all the namespaces
 	entity, identityPolicies, err := c.fetchEntityAndDerivedPolicies(ctx, tokenNS, te.EntityID, te.NoIdentityPolicies)
@@ -847,7 +850,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 				return nil, err
 			}
 			if ns != nil {
-				newCtx = namespace.ContextWithNamespace(ctx, ns)
+				newCtx = namespace.ContextWithNamespace(ctx, ns.Namespace)
 			}
 		}
 		switch req.Path {
@@ -911,7 +914,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 					return nil, err
 				}
 				if ns != nil {
-					ctx = namespace.ContextWithNamespace(ctx, ns)
+					ctx = namespace.ContextWithNamespace(ctx, ns.Namespace)
 				}
 			}
 		}
@@ -937,7 +940,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 					return nil, err
 				}
 				if ns != nil {
-					ctx = namespace.ContextWithNamespace(ctx, ns)
+					ctx = namespace.ContextWithNamespace(ctx, ns.Namespace)
 				}
 			}
 		}
@@ -1382,17 +1385,19 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 		}
 
 		// Fetch the namespace to which the token belongs
-		tokenNS, err := c.NamespaceByID(ctx, te.NamespaceID)
+		tokenNSWrapper, err := c.NamespaceByID(ctx, te.NamespaceID)
 		if err != nil {
 			c.logger.Error("failed to fetch token's namespace", "error", err)
 			retErr = multierror.Append(retErr, err)
 			return nil, auth, retErr
 		}
-		if tokenNS == nil {
+		if tokenNSWrapper == nil {
 			c.logger.Error(namespace.ErrNoNamespace.Error())
 			retErr = multierror.Append(retErr, namespace.ErrNoNamespace)
 			return nil, auth, retErr
 		}
+
+		tokenNS := tokenNSWrapper.Namespace
 
 		_, identityPolicies, err := c.fetchEntityAndDerivedPolicies(ctx, tokenNS, resp.Auth.EntityID, false)
 		if err != nil {

@@ -556,16 +556,16 @@ func (c *Core) decodeMountTable(ctx context.Context, raw []byte) (*MountTable, e
 		if entry.NamespaceID == "" {
 			entry.NamespaceID = namespace.RootNamespaceID
 		}
-		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
+		wrapper, err := c.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return nil, err
 		}
-		if ns == nil {
+		if wrapper == nil {
 			c.logger.Error("namespace on mount entry not found", "namespace_id", entry.NamespaceID, "mount_path", entry.Path, "mount_description", entry.Description)
 			continue
 		}
 
-		entry.namespace = ns
+		entry.namespace = wrapper.Namespace
 		mountEntries = append(mountEntries, entry)
 	}
 
@@ -599,16 +599,17 @@ func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logica
 	if entry.NamespaceID == "" {
 		entry.NamespaceID = namespace.RootNamespaceID
 	}
-	ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
+
+	wrapper, err := c.NamespaceByID(ctx, entry.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
-	if ns == nil {
+	if wrapper == nil {
 		c.logger.Error("namespace on mount entry not found", "table", prefix, "uuid", uuid, "namespace_id", entry.NamespaceID, "mount_path", entry.Path, "mount_description", entry.Description)
 		return nil, nil
 	}
 
-	entry.namespace = ns
+	entry.namespace = wrapper.Namespace
 
 	return entry, nil
 }
@@ -1733,7 +1734,7 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 		if ns == nil {
 			return namespace.ErrNoNamespace
 		}
-		entry.namespace = ns
+		entry.namespace = ns.Namespace
 
 		// Don't store built-in version in the mount table, to make upgrades smoother.
 		if versions.IsBuiltinVersion(entry.Version) {

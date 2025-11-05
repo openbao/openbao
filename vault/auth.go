@@ -890,14 +890,14 @@ func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage
 			entry.NamespaceID = namespace.RootNamespaceID
 			needPersist = true
 		}
-		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
+		nsWrapper, err := c.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return err
 		}
-		if ns == nil {
+		if nsWrapper == nil {
 			return namespace.ErrNoNamespace
 		}
-		entry.namespace = ns
+		entry.namespace = nsWrapper.Namespace
 
 		// Sync values to the cache
 		entry.SyncCache()

@@ -105,9 +105,9 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.setDisableUserLockoutEnvVar != "" {
-				os.Setenv("VAULT_DISABLE_USER_LOCKOUT", tt.setDisableUserLockoutEnvVar)
+				require.NoError(t, os.Setenv("VAULT_DISABLE_USER_LOCKOUT", tt.setDisableUserLockoutEnvVar))
 			} else {
-				os.Unsetenv("VAULT_DISABLE_USER_LOCKOUT")
+				require.NoError(t, os.Unsetenv("VAULT_DISABLE_USER_LOCKOUT"))
 			}
 
 			// tune auth mount
@@ -149,7 +149,7 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 			DisableLockout: pointerutil.BoolPtr(false),
 		},
 	}))
-	os.Unsetenv("VAULT_DISABLE_USER_LOCKOUT")
+	require.NoError(t, os.Unsetenv("VAULT_DISABLE_USER_LOCKOUT"))
 
 	t.Run("successful login resets counter", func(t *testing.T) {
 		// almost lock the user

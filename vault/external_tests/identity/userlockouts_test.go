@@ -5,14 +5,15 @@ package identity
 
 import (
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -48,28 +49,20 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// create a userpass user
-	_, err = client.Logical().Write("auth/userpass/users/bsmith", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bsmith", map[string]any{
 		"password": "training",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// get mount accessor for userpass mount
 	secret, err := client.Logical().Read("sys/auth/userpass")
-	if err != nil || secret == nil {
-		t.Fatal(err)
-	}
-	mountAccessor := secret.Data["accessor"].(string)
+	require.NoError(t, err)
+	require.NotNil(t, secret)
 
-	// variables for auth tune
-	disableLockout := true
-	enableLockout := false
+	mountAccessor := secret.Data["accessor"].(string)
 
 	tests := []struct {
 		name                        string
@@ -117,62 +110,85 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 				os.Unsetenv("VAULT_DISABLE_USER_LOCKOUT")
 			}
 
-			var disableLockoutAuthTune *bool
-
-			// default for disable lockout is false
-			disableLockoutAuthTune = &enableLockout
-
-			if tt.setDisableLockoutAuthTune == true {
-				disableLockoutAuthTune = &disableLockout
-			}
-
 			// tune auth mount
-			userlockoutConfig := &api.UserLockoutConfigInput{
-				DisableLockout: disableLockoutAuthTune,
+			userLockoutConfig := &api.UserLockoutConfigInput{
+				DisableLockout: &tt.setDisableLockoutAuthTune,
 			}
 			err := client.Sys().TuneMount("auth/userpass", api.MountConfigInput{
-				UserLockoutConfig: userlockoutConfig,
+				UserLockoutConfig: userLockoutConfig,
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// login for default lockout threshold times with wrong credentials
-			for i := 0; i < UserLockoutThresholdDefault; i++ {
-				_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]interface{}{
+			for i := range UserLockoutThresholdDefault {
+				_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]any{
 					"password": "wrongPassword",
 				})
-				if err == nil {
-					t.Fatal("expected login to fail due to wrong credentials")
-				}
-				if !strings.Contains(err.Error(), "invalid username or password") {
-					t.Fatal(err)
-				}
+				require.ErrorContains(t, err, "invalid username or password", "expected login attempt %d to fail due to wrong credentials", i+1)
 			}
 
 			// login to check if user locked
-			_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]interface{}{
+			_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]any{
 				"password": "wrongPassword",
 			})
-			if err == nil {
-				t.Fatal("expected login to fail due to wrong credentials")
-			}
 
-			switch tt.expectedUserLocked {
-			case true:
-				if !strings.Contains(err.Error(), logical.ErrPermissionDenied.Error()) {
-					t.Fatalf("expected user to get locked but got %v", err)
-				}
+			if tt.expectedUserLocked {
+				require.ErrorContains(t, err, logical.ErrPermissionDenied.Error(), "expected login to fail due to wrong credentials")
+
 				// user locked, unlock user to perform next test iteration
-				if _, err = client.Logical().Write("sys/locked-users/"+mountAccessor+"/unlock/bsmith", nil); err != nil {
-					t.Fatal(err)
-				}
-
-			default:
-				if !strings.Contains(err.Error(), "invalid username or password") {
-					t.Fatalf("expected user to be unlocked but locked, got  %v", err)
-				}
+				_, err = client.Logical().Write("sys/locked-users/"+mountAccessor+"/unlock/bsmith", nil)
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, "invalid username or password", "expected login to fail due to wrong credentials")
 			}
 		})
 	}
+
+	require.NoError(t, client.Sys().TuneMount("auth/userpass", api.MountConfigInput{
+		UserLockoutConfig: &api.UserLockoutConfigInput{
+			DisableLockout: pointerutil.BoolPtr(false),
+		},
+	}))
+	os.Unsetenv("VAULT_DISABLE_USER_LOCKOUT")
+
+	t.Run("successful login resets counter", func(t *testing.T) {
+		// almost lock the user
+		for i := range UserLockoutThresholdDefault - 1 {
+			_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]any{
+				"password": "wrongPassword",
+			})
+			require.ErrorContains(t, err, "invalid username or password", "expected login attempt %d to fail due to wrong credentials", i+1)
+		}
+
+		// successful login should reset the counter
+		_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]any{
+			"password": "training",
+		})
+		require.NoError(t, err)
+
+		// almost lock the user again
+		for i := range UserLockoutThresholdDefault - 1 {
+			_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]any{
+				"password": "wrongPassword",
+			})
+			require.ErrorContains(t, err, "invalid username or password", "expected login attempt %d to fail due to wrong credentials", i+1)
+		}
+
+		// successful inline-auth login should reset the counter
+		inlineAuthClient, err := client.WithInlineAuth("auth/userpass/login/bsmith", map[string]any{
+			"password": "training",
+		})
+		require.NoError(t, err)
+
+		_, err = inlineAuthClient.Logical().Read("cubbyhole/hello")
+		require.NoError(t, err)
+
+		// almost lock the user again
+		for i := range UserLockoutThresholdDefault - 1 {
+			_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]any{
+				"password": "wrongPassword",
+			})
+			require.ErrorContains(t, err, "invalid username or password", "expected login attempt %d to fail due to wrong credentials", i+1)
+		}
+	})
 }

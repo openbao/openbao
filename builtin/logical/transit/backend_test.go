@@ -1300,16 +1300,16 @@ func testPolicyFuzzingCommon(t *testing.T, be *backend) {
 					if resp.Data["error"].(string) == keysutil.ErrTooOld {
 						continue
 					}
-					t.Errorf("got an error: %v, resp is %#v, ciphertext was %s, chosenKey is %s, id is %d", err, *resp, ct, chosenKey, id)
+					assert.Fail(t, "got an error", "error: %v, resp is %#v, ciphertext was %s, chosenKey is %s, id is %d", err, *resp, ct, chosenKey, id)
 				}
 				ptb64, ok := resp.Data["plaintext"].(string)
 				if !ok {
-					t.Errorf("no plaintext found, response was %#v", *resp)
+					assert.Fail(t, "no plaintext found", "response was %#v", *resp)
 					return
 				}
 				pt, err := base64.StdEncoding.DecodeString(ptb64)
 				if err != nil {
-					t.Errorf("got an error decoding base64 plaintext: %v", err)
+					assert.Fail(t, "decoding base64 plaintext failed", "error: %v", err)
 					return
 				}
 				assert.Equalf(t, string(pt), testPlaintext, "got bad plaintext back: %s", pt)

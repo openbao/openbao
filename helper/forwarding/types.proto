@@ -53,7 +53,7 @@ message Response {
 
 message LoginAttempt {
     string namespace_uuid = 1;
-    string mount_uuid = 2;
+    string mount_accessor = 2;
     string user_alias_name = 3;
     bool successful = 4;
 }

@@ -1971,7 +1971,7 @@ func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntr
 	if c.standby.Load() {
 		_, err := c.rpcForwardingClient.ForwardLoginAttempt(ctx, &forwarding.LoginAttempt{
 			NamespaceUuid: mountEntry.Namespace().UUID,
-			MountUuid:     mountEntry.UUID,
+			MountAccessor: mountEntry.Accessor,
 			UserAliasName: userLockoutInfo.aliasName,
 		}) // TODO: should we make this async?
 		if s, ok := status.FromError(err); ok && s.Code() == codes.Unimplemented {
@@ -2303,10 +2303,23 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 		if te.ExternalID != "" {
 			auth.ClientToken = te.ExternalID
 		}
-		// Successful login, remove any entry from userFailedLoginInfo map
-		// if it exists. This is done for service tokens (for oss) here.
-		// For ent it is taken care by registerAuth RPC calls.
-		if userLockoutInfo != nil {
+
+		if c.standby.Load() {
+			// If we are a standby, notify the primary about the successful login
+			// The primary will use this to reset the user lockout counter
+			c.logger.Trace("forwarding successful login attempt", "mount_accessor", userLockoutInfo.mountAccessor, "user_alias", userLockoutInfo.aliasName)
+			_, err = c.rpcForwardingClient.ForwardLoginAttempt(ctx, &forwarding.LoginAttempt{
+				NamespaceUuid: ns.UUID,
+				MountAccessor: userLockoutInfo.mountAccessor,
+				UserAliasName: userLockoutInfo.aliasName,
+				Successful:    true,
+			})
+			if err != nil {
+				c.logger.Warn("failed to forward successful login attempt", "error", err, "mount_accessor", userLockoutInfo.mountAccessor, "user_alias", userLockoutInfo.aliasName)
+			}
+		} else if userLockoutInfo != nil {
+			// Successful login, remove any entry from userFailedLoginInfo map
+			// if it exists. This is done for service tokens here.
 			// We don't need to try to delete the lockedUsers storage entry, since we're
 			// processing a login request. If a login attempt is allowed, it means the user is
 			// unlocked and we only add storage entry when the user gets locked.

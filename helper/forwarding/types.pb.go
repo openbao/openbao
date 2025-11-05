@@ -336,7 +336,7 @@ func (x *Response) GetLastRemoteWal() uint64 {
 type LoginAttempt struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	NamespaceUuid string                 `protobuf:"bytes,1,opt,name=namespace_uuid,json=namespaceUuid,proto3" json:"namespace_uuid,omitempty"`
-	MountUuid     string                 `protobuf:"bytes,2,opt,name=mount_uuid,json=mountUuid,proto3" json:"mount_uuid,omitempty"`
+	MountAccessor string                 `protobuf:"bytes,2,opt,name=mount_accessor,json=mountAccessor,proto3" json:"mount_accessor,omitempty"`
 	UserAliasName string                 `protobuf:"bytes,3,opt,name=user_alias_name,json=userAliasName,proto3" json:"user_alias_name,omitempty"`
 	Successful    bool                   `protobuf:"varint,4,opt,name=successful,proto3" json:"successful,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -380,9 +380,9 @@ func (x *LoginAttempt) GetNamespaceUuid() string {
 	return ""
 }
 
-func (x *LoginAttempt) GetMountUuid() string {
+func (x *LoginAttempt) GetMountAccessor() string {
 	if x != nil {
-		return x.MountUuid
+		return x.MountAccessor
 	}
 	return ""
 }
@@ -437,11 +437,10 @@ const file_helper_forwarding_types_proto_rawDesc = "" +
 	"\x0flast_remote_wal\x18\x05 \x01(\x04R\rlastRemoteWal\x1aY\n" +
 	"\x12HeaderEntriesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.forwarding.HeaderEntryR\x05value:\x028\x01\"\x9c\x01\n" +
+	"\x05value\x18\x02 \x01(\v2\x17.forwarding.HeaderEntryR\x05value:\x028\x01\"\xa4\x01\n" +
 	"\fLoginAttempt\x12%\n" +
-	"\x0enamespace_uuid\x18\x01 \x01(\tR\rnamespaceUuid\x12\x1d\n" +
-	"\n" +
-	"mount_uuid\x18\x02 \x01(\tR\tmountUuid\x12&\n" +
+	"\x0enamespace_uuid\x18\x01 \x01(\tR\rnamespaceUuid\x12%\n" +
+	"\x0emount_accessor\x18\x02 \x01(\tR\rmountAccessor\x12&\n" +
 	"\x0fuser_alias_name\x18\x03 \x01(\tR\ruserAliasName\x12\x1e\n" +
 	"\n" +
 	"successful\x18\x04 \x01(\bR\n" +

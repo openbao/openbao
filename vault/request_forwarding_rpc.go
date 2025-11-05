@@ -16,8 +16,6 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -30,10 +28,6 @@ type forwardedRequestRPCServer struct {
 }
 
 func (s *forwardedRequestRPCServer) ForwardLoginAttempt(ctx context.Context, attempt *forwarding.LoginAttempt) (*emptypb.Empty, error) {
-	if attempt.Successful {
-		return nil, status.Errorf(codes.Unimplemented, "method ForwardLoginAttempt for successful attempts not yet implemented")
-	}
-
 	//  Find the namespace
 
 	ns, err := s.core.namespaceStore.GetNamespace(ctx, attempt.NamespaceUuid)
@@ -46,11 +40,23 @@ func (s *forwardedRequestRPCServer) ForwardLoginAttempt(ctx context.Context, att
 
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 
+	if attempt.Successful {
+		err = s.core.LocalUpdateUserFailedLoginInfo(ctx, FailedLoginUser{
+			aliasName:     attempt.UserAliasName,
+			mountAccessor: attempt.MountAccessor,
+		}, nil, true)
+		if err != nil {
+			return nil, err
+		}
+
+		return &emptypb.Empty{}, nil
+	}
+
 	// Find the mount
 
 	s.core.authLock.RLock()
 	me, err := s.core.auth.find(ctx, func(me *MountEntry) bool {
-		return me.UUID == attempt.MountUuid
+		return me.Accessor == attempt.MountAccessor
 	})
 	s.core.authLock.RUnlock()
 
@@ -65,7 +71,7 @@ func (s *forwardedRequestRPCServer) ForwardLoginAttempt(ctx context.Context, att
 
 	err = s.core.failedUserLoginProcess(ctx, me, &FailedLoginUser{
 		aliasName:     attempt.UserAliasName,
-		mountAccessor: me.Accessor,
+		mountAccessor: attempt.MountAccessor,
 	})
 	if err != nil {
 		return nil, err

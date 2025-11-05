@@ -1,13 +1,15 @@
 <a id="privileged-endpoints" />
 
-<Note>
-  The CLI commands associated with restricted API paths are also restricted.
-</Note>
+::info
 
-API path                                    | Root | Admin
+The CLI commands associated with restricted API paths are also restricted.
+
+:::
+
+API path                                    | Root | Child
 ------------------------------------------- | ---- | -----
 `sys/audit`                                 | YES  | NO
-`sys/audit-hash`                            | YES  | YES
+`sys/audit-hash`                            | YES  | NO
 `sys/config/auditing/*`                     | YES  | NO
 `sys/config/cors`                           | YES  | NO
 `sys/config/group-policy-application`       | YES  | NO
@@ -32,7 +34,7 @@ API path                                    | Root | Admin
 `sys/managed-keys/*`                        | YES  | NO
 `sys/metrics`                               | YES  | NO
 `sys/mfa/method/*`                          | YES  | NO
-`sys/monitor`                               | YES  | YES
+`sys/monitor`                               | YES  | NO
 `sys/pprof/*`                               | YES  | NO
 `sys/quotas/config`                         | YES  | NO
 `sys/quotas/lease-count`                    | YES  | NO

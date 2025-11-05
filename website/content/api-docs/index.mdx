@@ -57,7 +57,7 @@ in periods. Otherwise, OpenBao will return a 404 unsupported path error.
 
 ## Namespaces
 
-When using [Namespaces](/docs/enterprise/namespaces) the final path of the API
+When using [Namespaces](/docs/concepts/namespaces) the final path of the API
 request is relative to the `X-Vault-Namespace` header. For instance, if a
 request URI is `secret/foo` with the `X-Vault-Namespace` header set as `ns1/ns2/`,
 then the resulting request path to Vault will be `ns1/ns2/secret/foo`.

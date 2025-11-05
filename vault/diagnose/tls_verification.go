@@ -258,32 +258,37 @@ func TLSFileWarningChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) 
 
 	for _, c := range leafCerts {
 		if willExpire, timeToExpiry := NearExpiration(c); willExpire {
-			warnings = append(warnings, fmt.Sprintf("Leaf certificate %d is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
+			warnings = append(warnings, fmt.Sprintf("Leaf certificate (serial %x) is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
 		}
 	}
 	for _, c := range interCerts {
 		if willExpire, timeToExpiry := NearExpiration(c); willExpire {
-			warnings = append(warnings, fmt.Sprintf("Intermediate certificate %d is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
+			warnings = append(warnings, fmt.Sprintf("Intermediate certificate (serial %x) is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
 		}
 	}
 	for _, c := range rootCerts {
 		if willExpire, timeToExpiry := NearExpiration(c); willExpire {
-			warnings = append(warnings, fmt.Sprintf("Root certificate %d is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
+			warnings = append(warnings, fmt.Sprintf("Root certificate (serial %x) is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
 		}
 	}
 
 	return warnings, nil
 }
 
-// NearExpiration returns a true if a certficate will expire in a month and false otherwise
+// NearExpiration returns (true, time to expiration) if less than 15% of c's
+// validity period remains.
+//
+// For   7-day certs, that's     ~1 day.
+// For  30-day certs, that's   ~4.5 days.
+// For  90-day certs, that's  ~13.5 days.
+// For 365-day certs, that's ~54.75 days.
 func NearExpiration(c *x509.Certificate) (bool, time.Duration) {
-	oneMonthFromNow := time.Now().Add(30 * 24 * time.Hour)
-	var timeToExpiry time.Duration
-	if oneMonthFromNow.After(c.NotAfter) {
-		timeToExpiry := oneMonthFromNow.Sub(c.NotAfter)
-		return true, timeToExpiry
+	now := time.Now()
+	lifetime := c.NotAfter.Sub(c.NotBefore)
+	if now.Add(lifetime * 15 / 100).After(c.NotAfter) {
+		return true, c.NotAfter.Sub(now).Round(time.Second)
 	}
-	return false, timeToExpiry
+	return false, 0
 }
 
 // TLSMutualExclusionCertCheck returns error if both TLSDisableClientCerts and TLSRequireAndVerifyClientCert are set

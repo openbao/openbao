@@ -1,0 +1,7 @@
+```release-note:feature
+Support **Horizontal Read Scalability**: all existing HA standby nodes are automatically upgraded with read support.
+  - Requests which only perform storage read operations will be handled locally on the standby node.
+  - Requests which perform a storage write operation (or as indicated by plugins) are forwarded to the active leader.
+  - Results are eventually consistent: a write may not be immediately visible on the standby.
+  - To disable, set `disable_standby_reads=true` in the config file before startup.
+```

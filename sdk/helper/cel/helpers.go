@@ -5,7 +5,7 @@ import (
 	"net/mail"
 
 	celgo "github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/decls"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/ext"
@@ -67,11 +67,11 @@ func RegisterAllCelFunctions(env *celgo.Env) (*celgo.Env, error) {
 // and is useful for secret engines.
 func IdentityDeclarations() []celgo.EnvOption {
 	return []celgo.EnvOption{
-		celgo.Declarations(
-			decls.NewVar("client_token", decls.String),
-			decls.NewVar("entity_id", decls.String),
-			decls.NewVar("entity_groups", decls.NewListType(decls.Dyn)),
-			decls.NewVar("entity_info", decls.NewMapType(decls.String, decls.Dyn)),
+		celgo.VariableDecls(
+			decls.NewVariable("client_token", types.StringType),
+			decls.NewVariable("entity_id", types.StringType),
+			decls.NewVariable("entity_groups", types.NewListType(types.DynType)),
+			decls.NewVariable("entity_info", types.NewMapType(types.StringType, types.DynType)),
 		),
 	}
 }

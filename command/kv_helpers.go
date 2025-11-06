@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	paths "path"
 	"sort"
 	"strings"
@@ -18,11 +19,11 @@ import (
 )
 
 func kvReadRequest(client *api.Client, path string, params map[string]string) (*api.Secret, error) {
-	r := client.NewRequest("GET", "/v1/"+path)
+	readParams := make(url.Values, len(params))
 	for k, v := range params {
-		r.Params.Set(k, v)
+		readParams.Set(k, v)
 	}
-	resp, err := client.RawRequest(r)
+	resp, err := client.Logical().ReadRawWithData(path, readParams)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -60,8 +61,7 @@ func kvPreflightVersionRequest(client *api.Client, path string) (string, int, er
 	client.SetOutputPolicy(false)
 	defer client.SetOutputPolicy(currentOutputPolicy)
 
-	r := client.NewRequest("GET", "/v1/sys/internal/ui/mounts/"+path)
-	resp, err := client.RawRequest(r)
+	resp, err := client.Logical().ReadRaw("sys/internal/ui/mounts/" + path)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

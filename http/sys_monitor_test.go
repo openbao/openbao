@@ -6,6 +6,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -23,9 +24,8 @@ func TestSysMonitorUnknownLogLevel(t *testing.T) {
 	defer cluster.Cleanup()
 
 	client := cluster.Cores[0].Client
-	request := client.NewRequest("GET", "/v1/sys/monitor")
-	request.Params.Add("log_level", "haha")
-	_, err := client.RawRequest(request)
+	params := url.Values{"log_level": []string{"haha"}}
+	_, err := client.Logical().ReadRawWithData("sys/monitor", params)
 
 	if err == nil {
 		t.Fatal("expected to get an error, but didn't")
@@ -49,9 +49,8 @@ func TestSysMonitorUnknownLogFormat(t *testing.T) {
 	defer cluster.Cleanup()
 
 	client := cluster.Cores[0].Client
-	request := client.NewRequest("GET", "/v1/sys/monitor")
-	request.Params.Add("log_format", "haha")
-	_, err := client.RawRequest(request)
+	params := url.Values{"log_format": []string{"haha"}}
+	_, err := client.Logical().ReadRawWithData("sys/monitor", params)
 
 	if err == nil {
 		t.Fatal("expected to get an error, but didn't")

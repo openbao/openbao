@@ -386,45 +386,20 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		t.Fatal(diff)
 	}
 
-	discoveryURLTests := []struct {
-		name         string
-		discoveryURL string
-	}{
-		{
-			"base url with trailing slash",
-			"https://team-vault.auth0.com/",
-		},
-		// verify that the .well-known component gets stripped
-		{
-			"full url with trailing slash",
-			"https://team-vault.auth0.com/.well-known/openid-configuration",
-		},
-		{
-			"full url without trailing slash",
-			"https://team-vault.auth0.com/.well-known/openid-configuration/",
+	// verify that specifying the '.well-known' component gets rejected with appriopriate err message
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"oidc_discovery_url": "https://team-vault.auth0.com/.well-known/openid-configuration",
+			"oidc_client_id":     "abc",
+			"oidc_client_secret": "def",
 		},
 	}
-
-	for _, test := range discoveryURLTests {
-		t.Run(test.name, func(t *testing.T) {
-			req := &logical.Request{
-				Operation: logical.UpdateOperation,
-				Path:      configPath,
-				Storage:   storage,
-				Data: map[string]interface{}{
-					"oidc_discovery_url": test.discoveryURL,
-					"oidc_client_id":     "abc",
-					"oidc_client_secret": "def",
-				},
-			}
-			res, err := b.HandleRequest(context.Background(), req)
-			require.False(t, res.IsError())
-			require.NoError(t, err)
-			conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
-			require.NoError(t, err)
-			require.Equal(t, "https://team-vault.auth0.com/", conf.OIDCDiscoveryURL)
-		})
-	}
+	res, _ := b.HandleRequest(context.Background(), req)
+	require.True(t, res.IsError())
+	require.Equal(t, res.Data["error"], "'oidc_discovery_url' contains '.well-known' component")
 
 	// Verify OIDC config sanity:
 	//   - if providing client id/secret, discovery URL needs to be set

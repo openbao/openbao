@@ -504,6 +504,7 @@ func (c *Sys) RotateRecoveryVerificationCancelWithContext(ctx context.Context) e
 
 // Deprecated: use RotateKeyring instead.
 func (c *Sys) Rotate() error {
+	//nolint:staticcheck // method already marked as deprecated
 	return c.RotateWithContext(context.Background())
 }
 

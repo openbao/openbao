@@ -282,9 +282,11 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 	keyTypeRequired := keyTypeUnseal
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyInit
 	case "recovery", "hsm":
 		keyTypeRequired = keyTypeRecovery
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRecoveryKeyInit
 	default:
 		c.UI.Error(fmt.Sprintf("Unknown target: %s", c.flagTarget))
@@ -341,13 +343,17 @@ func (c *OperatorRekeyCommand) cancel(client *api.Client) int {
 	var fn func() error
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyCancel
 		if c.flagVerify {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			fn = client.Sys().RekeyVerificationCancel
 		}
 	case "recovery", "hsm":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRecoveryKeyCancel
 		if c.flagVerify {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			fn = client.Sys().RekeyRecoveryKeyVerificationCancel
 		}
 
@@ -375,32 +381,40 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
 		statusFn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyStatus()
 		}
 		updateFn = func(s1 string, s2 string) (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyUpdate(s1, s2)
 		}
 		if c.flagVerify {
 			statusFn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyVerificationStatus()
 			}
 			updateFn = func(s1 string, s2 string) (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyVerificationUpdate(s1, s2)
 			}
 		}
 	case "recovery", "hsm":
 		keyTypeRequired = keyTypeRecovery
 		statusFn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyRecoveryKeyStatus()
 		}
 		updateFn = func(s1 string, s2 string) (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyRecoveryKeyUpdate(s1, s2)
 		}
 		if c.flagVerify {
 			statusFn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyRecoveryKeyVerificationStatus()
 			}
 			updateFn = func(s1 string, s2 string) (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyRecoveryKeyVerificationUpdate(s1, s2)
 			}
 		}
@@ -542,19 +556,23 @@ func (c *OperatorRekeyCommand) status(client *api.Client) int {
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
 		fn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyStatus()
 		}
 		if c.flagVerify {
 			fn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyVerificationStatus()
 			}
 		}
 	case "recovery", "hsm":
 		fn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyRecoveryKeyStatus()
 		}
 		if c.flagVerify {
 			fn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyRecoveryKeyVerificationStatus()
 			}
 		}
@@ -579,8 +597,10 @@ func (c *OperatorRekeyCommand) backupRetrieve(client *api.Client) int {
 	var fn func() (*api.RotateRetrieveResponse, error)
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRetrieveBackup
 	case "recovery", "hsm":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRetrieveRecoveryBackup
 	default:
 		c.UI.Error(fmt.Sprintf("Unknown target: %s", c.flagTarget))
@@ -607,8 +627,10 @@ func (c *OperatorRekeyCommand) backupDelete(client *api.Client) int {
 	var fn func() error
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyDeleteBackup
 	case "recovery", "hsm":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyDeleteRecoveryBackup
 	default:
 		c.UI.Error(fmt.Sprintf("Unknown target: %s", c.flagTarget))

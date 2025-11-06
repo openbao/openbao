@@ -1,0 +1,3 @@
+```release-note:change
+api: The deprecated api.MountConfigOutput.PluginName field was removed. This was already always empty.
+```

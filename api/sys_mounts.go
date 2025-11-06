@@ -336,8 +336,6 @@ type MountConfigOutput struct {
 	TokenType                 string                   `json:"token_type,omitempty" mapstructure:"token_type"`
 	AllowedManagedKeys        []string                 `json:"allowed_managed_keys,omitempty" mapstructure:"allowed_managed_keys"`
 	UserLockoutConfig         *UserLockoutConfigOutput `json:"user_lockout_config,omitempty"`
-	// Deprecated: This field will always be blank for newer server responses.
-	PluginName string `json:"plugin_name,omitempty" mapstructure:"plugin_name"`
 }
 
 type UserLockoutConfigInput struct {

@@ -57,7 +57,7 @@ type ClusterHook interface {
 	StopHandler(alpn string)
 	TLSConfig(ctx context.Context) (*tls.Config, error)
 	Addr() net.Addr
-	GetDialerFunc(ctx context.Context, alpnProto string) func(string, time.Duration) (net.Conn, error)
+	GetContextDialerFunc(ctx context.Context, alpnProto string) func(context.Context, string) (net.Conn, error)
 }
 
 // Listener is the source of truth for cluster handlers and connection
@@ -430,10 +430,8 @@ func (cl *Listener) Stop() {
 	cl.logger.Info("rpc listeners successfully shut down")
 }
 
-// GetDialerFunc returns a function that looks up the TLS information for the
-// provided alpn name and calls the network layer's dial function.
-func (cl *Listener) GetDialerFunc(ctx context.Context, alpn string) func(string, time.Duration) (net.Conn, error) {
-	return func(addr string, timeout time.Duration) (net.Conn, error) {
+func (cl *Listener) GetContextDialerFunc(ctx context.Context, alpn string) func(context.Context, string) (net.Conn, error) {
+	return func(dctx context.Context, addr string) (net.Conn, error) {
 		tlsConfig, err := cl.TLSConfig(ctx)
 		if err != nil {
 			cl.logger.Error("failed to get tls configuration", "error", err)
@@ -467,7 +465,7 @@ func (cl *Listener) GetDialerFunc(ctx context.Context, alpn string) func(string,
 		tlsConfig.NextProtos = []string{alpn}
 		cl.logger.Debug("creating rpc dialer", "address", addr, "alpn", alpn, "host", tlsConfig.ServerName)
 
-		conn, err := cl.networkLayer.Dial(addr, timeout, tlsConfig)
+		conn, err := cl.networkLayer.DialContext(dctx, addr, tlsConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -503,7 +501,7 @@ type NetworkListener interface {
 type NetworkLayer interface {
 	Addrs() []net.Addr
 	Listeners() []NetworkListener
-	Dial(address string, timeout time.Duration, tlsConfig *tls.Config) (*tls.Conn, error)
+	DialContext(ctx context.Context, address string, tlsConfig *tls.Config) (*tls.Conn, error)
 	Close() error
 }
 

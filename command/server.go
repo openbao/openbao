@@ -435,7 +435,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
-	grpclog.SetLogger(&grpclogFaker{
+	grpclog.SetLoggerV2(&grpclogFaker{
 		logger: namedGRPCLogFaker,
 		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
@@ -1059,7 +1059,7 @@ func (c *ServerCommand) Run(args []string) int {
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
 	c.allLoggers = append(c.allLoggers, namedGRPCLogFaker)
-	grpclog.SetLogger(&grpclogFaker{
+	grpclog.SetLoggerV2(&grpclogFaker{
 		logger: namedGRPCLogFaker,
 		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
@@ -3027,6 +3027,42 @@ type grpclogFaker struct {
 	log    bool
 }
 
+func (g *grpclogFaker) Info(args ...any) {
+	g.logger.Info(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Infof(format string, args ...any) {
+	g.logger.Info(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Infoln(args ...any) {
+	g.logger.Info(fmt.Sprintln(args...))
+}
+
+func (g *grpclogFaker) Warning(args ...any) {
+	g.logger.Warn(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Warningf(format string, args ...any) {
+	g.logger.Warn(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Warningln(args ...any) {
+	g.logger.Warn(fmt.Sprintln(args...))
+}
+
+func (g *grpclogFaker) Error(args ...any) {
+	g.logger.Error(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Errorf(format string, args ...any) {
+	g.logger.Error(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Errorln(args ...any) {
+	g.logger.Error(fmt.Sprintln(args...))
+}
+
 func (g *grpclogFaker) Fatal(args ...interface{}) {
 	g.logger.Error(fmt.Sprint(args...))
 	os.Exit(1)
@@ -3042,20 +3078,7 @@ func (g *grpclogFaker) Fatalln(args ...interface{}) {
 	os.Exit(1)
 }
 
-func (g *grpclogFaker) Print(args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprint(args...))
-	}
-}
-
-func (g *grpclogFaker) Printf(format string, args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprintf(format, args...))
-	}
-}
-
-func (g *grpclogFaker) Println(args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprintln(args...))
-	}
+func (g *grpclogFaker) V(l int) bool {
+	currentLevel := int(g.logger.GetLevel())
+	return l >= currentLevel
 }

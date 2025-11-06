@@ -69,16 +69,26 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 	client := cluster.Cores[0].Client
 	client.SetMaxRetries(0)
 
+	//nolint:staticcheck // endpoint already marked as deprecated
 	initFunc := client.Sys().RekeyInit
+	//nolint:staticcheck // endpoint already marked as deprecated
 	updateFunc := client.Sys().RekeyUpdate
+	//nolint:staticcheck // endpoint already marked as deprecated
 	verificationUpdateFunc := client.Sys().RekeyVerificationUpdate
+	//nolint:staticcheck // endpoint already marked as deprecated
 	verificationStatusFunc := client.Sys().RekeyVerificationStatus
+	//nolint:staticcheck // endpoint already marked as deprecated
 	verificationCancelFunc := client.Sys().RekeyVerificationCancel
 	if recovery {
+		//nolint:staticcheck // endpoint already marked as deprecated
 		initFunc = client.Sys().RekeyRecoveryKeyInit
+		//nolint:staticcheck // endpoint already marked as deprecated
 		updateFunc = client.Sys().RekeyRecoveryKeyUpdate
+		//nolint:staticcheck // endpoint already marked as deprecated
 		verificationUpdateFunc = client.Sys().RekeyRecoveryKeyVerificationUpdate
+		//nolint:staticcheck // endpoint already marked as deprecated
 		verificationStatusFunc = client.Sys().RekeyRecoveryKeyVerificationStatus
+		//nolint:staticcheck // endpoint already marked as deprecated
 		verificationCancelFunc = client.Sys().RekeyRecoveryKeyVerificationCancel
 	}
 
@@ -105,7 +115,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 			keys = cluster.RecoveryKeys
 		}
 		var resp *api.RotateUpdateResponse
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			resp, err = updateFunc(base64.StdEncoding.EncodeToString(keys[i]), status.Nonce)
 			if err != nil {
 				t.Fatal(err)

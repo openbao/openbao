@@ -519,7 +519,6 @@ func (b *backend) matchesCertificateExtensions(clientCert *x509.Certificate, con
 		_, err := asn1.Unmarshal(ext.Value, &parsedValue)
 		if err != nil {
 			b.Logger().Trace("failed to unmarshal client certificate extension", "error", err)
-			continue
 		}
 		clientExtMap[ext.Id.String()] = parsedValue
 	}
@@ -561,7 +560,6 @@ func (b *backend) certificateExtensionsMetadata(clientCert *x509.Certificate, co
 			_, err := asn1.Unmarshal(ext.Value, &parsedValue)
 			if err != nil {
 				b.Logger().Trace("failed to unmarshal metadata certificate extension", "error", err)
-				continue
 			}
 			metadata[metadataKey] = parsedValue
 		}

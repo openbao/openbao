@@ -1741,7 +1741,7 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 	} else {
 		lowestActiveIndex = b.fsm.fastTxnTracker.lowestActiveIndex()
 	}
-	lowestActiveIndex = min(b.raft.AppliedIndex()-1, lowestActiveIndex) // we need to cap the lowest active index - 1, otherwise we might miss transaction started concurrently
+	lowestActiveIndex = min(b.raft.AppliedIndex(), lowestActiveIndex) // we need to cap the lowest active index, otherwise we might miss transaction started concurrently
 	command.LowestActiveIndex = pointerutil.Ptr(lowestActiveIndex)
 
 	isTx := len(command.Operations) > 0 && command.Operations[0].OpType == beginTxOp

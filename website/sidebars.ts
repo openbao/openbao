@@ -512,6 +512,7 @@ const sidebars: SidebarsConfig = {
                 "policies/support",
                 "policies/osps-baseline",
                 "policies/cve",
+                "policies/repo-setup",
             ],
             Contributing: [
                 "contributing/index",

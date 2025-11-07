@@ -215,14 +215,15 @@ func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error 
 	}
 
 	if len(rootCerts) == 0 {
-		// This is a self signed server certificate, or the root is just not
-		// provided. In any case, we need to bypass the root verification step
-		// by adding the intermediate (or leaf, if there is no intermediate)
-		// itself to the root pool.
+		// No root is provided, so:
 		switch {
 		case len(interCerts) > 0:
-			rootPool.AddCert(interCerts[0])
-		case len(leafCerts) > 0:
+			// ... we'll treat the highest intermediate cert in the chain as a
+			// root certificate.
+			rootPool.AddCert(interCerts[len(interCerts)-1])
+		default:
+			// ... we'll treat the leaf itself as a root certificate if there
+			// are no intermediates.
 			rootPool.AddCert(leafCerts[0])
 		}
 	}
@@ -230,8 +231,9 @@ func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error 
 	// Verifying intermediate certs
 	for _, inter := range interCerts {
 		_, err = inter.Verify(x509.VerifyOptions{
-			Roots:     rootPool,
-			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			Roots:         rootPool,
+			Intermediates: interPool,
+			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to verify intermediate certificate: %w.", err)

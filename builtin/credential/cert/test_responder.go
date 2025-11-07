@@ -195,7 +195,10 @@ func (rs *Responder) ServeHTTP(response http.ResponseWriter, request *http.Reque
 		if err == ErrNotFound {
 			rs.log.Log("No response found for request: serial %x, request body %s",
 				ocspRequest.SerialNumber, b64Body)
-			response.Write(unauthorizedErrorResponse)
+			_, errWrite := response.Write(unauthorizedErrorResponse)
+			if errWrite != nil {
+				rs.log.Log("Error writing unauthorizedErrorResponse", errWrite)
+			}
 			if rs.stats != nil {
 				rs.stats.ResponseStatus(ocsp.Unauthorized)
 			}
@@ -204,7 +207,10 @@ func (rs *Responder) ServeHTTP(response http.ResponseWriter, request *http.Reque
 		rs.log.Log("Error retrieving response for request: serial %x, request body %s, error",
 			ocspRequest.SerialNumber, b64Body, err)
 		response.WriteHeader(http.StatusInternalServerError)
-		response.Write(internalErrorErrorResponse)
+		_, errWrite := response.Write(internalErrorErrorResponse)
+		if errWrite != nil {
+			rs.log.Log("Error writing internalErrorErrorResponse", errWrite)
+		}
 		if rs.stats != nil {
 			rs.stats.ResponseStatus(ocsp.InternalError)
 		}
@@ -215,7 +221,10 @@ func (rs *Responder) ServeHTTP(response http.ResponseWriter, request *http.Reque
 	if err != nil {
 		rs.log.Log("Error parsing response for serial %x",
 			ocspRequest.SerialNumber, err)
-		response.Write(internalErrorErrorResponse)
+		_, errWrite := response.Write(internalErrorErrorResponse)
+		if errWrite != nil {
+			rs.log.Log("Error writing internalErrorErrorResponse", errWrite)
+		}
 		if rs.stats != nil {
 			rs.stats.ResponseStatus(ocsp.InternalError)
 		}

@@ -52,8 +52,7 @@ func addPeer(t *testing.T, leader, follower *RaftBackend) {
 
 func TestRaft_Snapshot_Loading(t *testing.T) {
 	t.Parallel()
-	raft, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
+	raft, _ := GetRaft(t, true, false)
 
 	// Write some data
 	for i := 0; i < 1000; i++ {
@@ -137,8 +136,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 
 func TestRaft_Snapshot_Index(t *testing.T) {
 	t.Parallel()
-	raft, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
+	raft, _ := GetRaft(t, true, false)
 
 	err := raft.Put(context.Background(), &physical.Entry{
 		Key:   "key",
@@ -225,12 +223,9 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 
 func TestRaft_Snapshot_Peers(t *testing.T) {
 	t.Parallel()
-	raft1, dir := GetRaft(t, true, false)
-	raft2, dir2 := GetRaft(t, false, false)
-	raft3, dir3 := GetRaft(t, false, false)
-	defer os.RemoveAll(dir)
-	defer os.RemoveAll(dir2)
-	defer os.RemoveAll(dir3)
+	raft1, _ := GetRaft(t, true, false)
+	raft2, _ := GetRaft(t, false, false)
+	raft3, _ := GetRaft(t, false, false)
 
 	// Write some data
 	for i := 0; i < 1000; i++ {
@@ -309,10 +304,8 @@ func ensureCommitApplied(t *testing.T, leaderCommitIdx uint64, backend *RaftBack
 
 func TestRaft_Snapshot_Restart(t *testing.T) {
 	t.Parallel()
-	raft1, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
-	raft2, dir2 := GetRaft(t, false, false)
-	defer os.RemoveAll(dir2)
+	raft1, _ := GetRaft(t, true, false)
+	raft2, _ := GetRaft(t, false, false)
 
 	// Write some data
 	for i := 0; i < 100; i++ {
@@ -376,9 +369,6 @@ func TestRaft_Snapshot_ErrorRecovery(t *testing.T) {
 	raft1, dir := GetRaft(t, true, false)
 	raft2, dir2 := GetRaft(t, false, false)
 	raft3, dir3 := GetRaft(t, false, false)
-	defer os.RemoveAll(dir)
-	defer os.RemoveAll(dir2)
-	defer os.RemoveAll(dir3)
 
 	// Add raft2 to the cluster
 	addPeer(t, raft1, raft2)
@@ -456,10 +446,8 @@ func TestRaft_Snapshot_ErrorRecovery(t *testing.T) {
 
 func TestRaft_Snapshot_Take_Restore(t *testing.T) {
 	t.Parallel()
-	raft1, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
-	raft2, dir2 := GetRaft(t, false, false)
-	defer os.RemoveAll(dir2)
+	raft1, _ := GetRaft(t, true, false)
+	raft2, _ := GetRaft(t, false, false)
 
 	addPeer(t, raft1, raft2)
 

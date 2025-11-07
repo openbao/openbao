@@ -51,6 +51,7 @@ func addPeer(t *testing.T, leader, follower *RaftBackend) {
 }
 
 func TestRaft_Snapshot_Loading(t *testing.T) {
+	t.Parallel()
 	raft, dir := GetRaft(t, true, false)
 	defer os.RemoveAll(dir)
 
@@ -135,6 +136,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 }
 
 func TestRaft_Snapshot_Index(t *testing.T) {
+	t.Parallel()
 	raft, dir := GetRaft(t, true, false)
 	defer os.RemoveAll(dir)
 
@@ -222,6 +224,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 }
 
 func TestRaft_Snapshot_Peers(t *testing.T) {
+	t.Parallel()
 	raft1, dir := GetRaft(t, true, false)
 	raft2, dir2 := GetRaft(t, false, false)
 	raft3, dir3 := GetRaft(t, false, false)
@@ -305,6 +308,7 @@ func ensureCommitApplied(t *testing.T, leaderCommitIdx uint64, backend *RaftBack
 }
 
 func TestRaft_Snapshot_Restart(t *testing.T) {
+	t.Parallel()
 	raft1, dir := GetRaft(t, true, false)
 	defer os.RemoveAll(dir)
 	raft2, dir2 := GetRaft(t, false, false)
@@ -451,6 +455,7 @@ func TestRaft_Snapshot_ErrorRecovery(t *testing.T) {
 }*/
 
 func TestRaft_Snapshot_Take_Restore(t *testing.T) {
+	t.Parallel()
 	raft1, dir := GetRaft(t, true, false)
 	defer os.RemoveAll(dir)
 	raft2, dir2 := GetRaft(t, false, false)
@@ -526,6 +531,7 @@ func TestRaft_Snapshot_Take_Restore(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_CreateSnapshotMissingParentDir(t *testing.T) {
+	t.Parallel()
 	parent, err := os.MkdirTemp("", "raft")
 	if err != nil {
 		t.Fatalf("err: %v ", err)
@@ -568,6 +574,7 @@ func TestBoltSnapshotStore_CreateSnapshotMissingParentDir(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_Listing(t *testing.T) {
+	t.Parallel()
 	// Create a test dir
 	parent, err := os.MkdirTemp("", "raft")
 	if err != nil {
@@ -633,6 +640,7 @@ func TestBoltSnapshotStore_Listing(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
+	t.Parallel()
 	// Create a test dir
 	parent, err := os.MkdirTemp("", "raft")
 	if err != nil {
@@ -815,6 +823,7 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_CancelSnapshot(t *testing.T) {
+	t.Parallel()
 	// Create a test dir
 	dir, err := os.MkdirTemp("", "raft")
 	if err != nil {
@@ -868,6 +877,7 @@ func TestBoltSnapshotStore_CancelSnapshot(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_BadPerm(t *testing.T) {
+	t.Parallel()
 	var err error
 	if runtime.GOOS == "windows" {
 		t.Skip("skipping file permission test on windows")
@@ -904,6 +914,7 @@ func TestBoltSnapshotStore_BadPerm(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_CloseFailure(t *testing.T) {
+	t.Parallel()
 	// Create a test dir
 	dir, err := os.MkdirTemp("", "raft")
 	if err != nil {

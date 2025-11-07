@@ -30,6 +30,7 @@ func (*mockClusterHook) GetContextDialerFunc(ctx context.Context, alpnProto stri
 }
 
 func TestStreamLayer_UnspecifiedIP(t *testing.T) {
+	t.Parallel()
 	m := &mockClusterHook{
 		address: &cluster.NetAddr{
 			Host: "0.0.0.0:8200",

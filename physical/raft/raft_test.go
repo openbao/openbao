@@ -107,6 +107,7 @@ func compareDBs(t *testing.T, boltDB1, boltDB2 *bolt.DB, dataOnly bool) error {
 }
 
 func TestRaft_Backend(t *testing.T) {
+	t.Parallel()
 	b, dir := GetRaft(t, true, true)
 	defer os.RemoveAll(dir)
 
@@ -121,6 +122,7 @@ func TestRaft_TransactionalBackend(t *testing.T) {
 }
 
 func TestRaft_ParseAutopilotUpgradeVersion(t *testing.T) {
+	t.Parallel()
 	raftDir, err := os.MkdirTemp("", "vault-raft-")
 	if err != nil {
 		t.Fatal(err)
@@ -210,6 +212,7 @@ func TestRaft_ParseNonVoter(t *testing.T) {
 }
 
 func TestRaft_Backend_LargeKey(t *testing.T) {
+	t.Parallel()
 	b, dir := GetRaft(t, true, true)
 	defer os.RemoveAll(dir)
 
@@ -238,6 +241,7 @@ func TestRaft_Backend_LargeKey(t *testing.T) {
 }
 
 func TestRaft_Backend_LargeValue(t *testing.T) {
+	t.Parallel()
 	b, dir := GetRaft(t, true, true)
 	defer os.RemoveAll(dir)
 
@@ -264,6 +268,7 @@ func TestRaft_Backend_LargeValue(t *testing.T) {
 }
 
 func TestRaft_Backend_ListPrefix(t *testing.T) {
+	t.Parallel()
 	b, dir := GetRaft(t, true, true)
 	defer os.RemoveAll(dir)
 
@@ -272,6 +277,7 @@ func TestRaft_Backend_ListPrefix(t *testing.T) {
 
 func TestRaft_HABackend(t *testing.T) {
 	t.Skip()
+	t.Parallel()
 	raft, dir := GetRaft(t, true, true)
 	defer os.RemoveAll(dir)
 	raft2, dir2 := GetRaft(t, false, true)
@@ -284,6 +290,7 @@ func TestRaft_HABackend(t *testing.T) {
 }
 
 func TestRaft_Backend_ThreeNode(t *testing.T) {
+	t.Parallel()
 	raft1, dir := GetRaft(t, true, true)
 	raft2, dir2 := GetRaft(t, false, true)
 	raft3, dir3 := GetRaft(t, false, true)
@@ -306,6 +313,7 @@ func TestRaft_Backend_ThreeNode(t *testing.T) {
 }
 
 func TestRaft_GetOfflineConfig(t *testing.T) {
+	t.Parallel()
 	// Create 3 raft nodes
 	raft1, dir1 := GetRaft(t, true, true)
 	raft2, dir2 := GetRaft(t, false, true)
@@ -344,6 +352,8 @@ func TestRaft_GetOfflineConfig(t *testing.T) {
 }
 
 func TestRaft_Recovery(t *testing.T) {
+	t.Parallel()
+
 	// Create 4 raft nodes
 	raft1, dir1 := GetRaft(t, true, true)
 	raft2, dir2 := GetRaft(t, false, true)
@@ -432,6 +442,7 @@ func TestRaft_Recovery(t *testing.T) {
 }
 
 func TestRaft_Backend_Performance(t *testing.T) {
+	t.Parallel()
 	b, dir := GetRaft(t, true, false)
 	defer os.RemoveAll(dir)
 
@@ -488,6 +499,7 @@ func TestRaft_Backend_Performance(t *testing.T) {
 }
 
 func TestRaft_Backend_PutTxnMargin(t *testing.T) {
+	t.Parallel()
 	b, dir := GetRaft(t, true, true)
 	defer os.RemoveAll(dir)
 

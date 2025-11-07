@@ -147,14 +147,14 @@ func ParseTLSInformation(certFilePath string) ([]*x509.Certificate, []*x509.Cert
 	}
 
 	certBlocks := []*pem.Block{}
-	rst := []byte(data)
-	for len(rst) != 0 {
-		block, rest := pem.Decode(rst)
+	rest := data
+	for {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
 		if block == nil {
-			return leafCerts, interCerts, rootCerts, errors.New("Could not decode certificate in certificate file.")
+			break
 		}
 		certBlocks = append(certBlocks, block)
-		rst = rest
 	}
 
 	if len(certBlocks) == 0 {
@@ -214,22 +214,30 @@ func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error 
 		}
 	}
 
+	if len(rootCerts) == 0 {
+		// No root is provided, so:
+		switch {
+		case len(interCerts) > 0:
+			// ... we'll treat the highest intermediate cert in the chain as a
+			// root certificate.
+			rootPool.AddCert(interCerts[len(interCerts)-1])
+		default:
+			// ... we'll treat the leaf itself as a root certificate if there
+			// are no intermediates.
+			rootPool.AddCert(leafCerts[0])
+		}
+	}
+
 	// Verifying intermediate certs
 	for _, inter := range interCerts {
 		_, err = inter.Verify(x509.VerifyOptions{
-			Roots:     rootPool,
-			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			Roots:         rootPool,
+			Intermediates: interPool,
+			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		})
 		if err != nil {
 			return fmt.Errorf("Failed to verify intermediate certificate: %w.", err)
 		}
-	}
-
-	if x509.NewCertPool().Equal(rootPool) && len(leafCerts) > 0 {
-		// this is a self signed server certificate, or the root is just not provided. In any
-		// case, we need to bypass the root verification step by adding the leaf itself to the
-		// root pool.
-		rootPool.AddCert(leafCerts[0])
 	}
 
 	// Verifying leaf cert

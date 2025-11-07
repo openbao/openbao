@@ -386,6 +386,21 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		t.Fatal(diff)
 	}
 
+	// verify that specifying the '.well-known' component gets rejected with appriopriate err message
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"oidc_discovery_url": "https://team-vault.auth0.com/.well-known/openid-configuration",
+			"oidc_client_id":     "abc",
+			"oidc_client_secret": "def",
+		},
+	}
+	res, _ := b.HandleRequest(context.Background(), req)
+	require.True(t, res.IsError())
+	require.Equal(t, res.Data["error"], "'oidc_discovery_url' contains '.well-known' component")
+
 	// Verify OIDC config sanity:
 	//   - if providing client id/secret, discovery URL needs to be set
 	//   - both oidc client and secret should be provided if either one is
@@ -826,7 +841,6 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 
 			defer server.Close()
 
-			ctx, _ := context.WithCancel(context.Background())
 			uri := server.URL
 
 			b := new(jwtAuthBackend)
@@ -838,7 +852,10 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 				rootCAString = caPEM.String()
 			}
 
-			caCtx, err := b.createCAContext(ctx, rootCAString, test.allowedServerNames)
+			caCtx, err := b.createCAContext(t.Context(), rootCAString, test.allowedServerNames)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			client, ok := caCtx.Value(oauth2.HTTPClient).(*http.Client)
 			if !ok {
 				t.Fatalf("unexpected error; can't retrieve client")

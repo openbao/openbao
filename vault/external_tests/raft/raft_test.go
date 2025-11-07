@@ -402,8 +402,7 @@ func TestRaft_NodeIDHeader(t *testing.T) {
 				}
 
 				client := c.Client
-				req := client.NewRequest("GET", "/v1/sys/seal-status")
-				resp, err := client.RawRequest(req)
+				resp, err := client.Logical().ReadRaw("sys/seal-status")
 				if err != nil {
 					t.Fatalf("err: %s", err)
 				}

@@ -56,7 +56,7 @@ func TestTLSFakeCert(t *testing.T) {
 	if len(errs) != 1 {
 		t.Fatalf("more than one error returned: %+v", errs)
 	}
-	if !strings.Contains(errs[0].Error(), "Could not decode certificate") {
+	if !strings.Contains(errs[0].Error(), "No certificates found in certificate file.") {
 		t.Fatalf("Bad error message: %s", errs[0])
 	}
 }

@@ -1609,7 +1609,6 @@ func (b *RaftBackend) Delete(ctx context.Context, path string) error {
 				Key:    path,
 			},
 		},
-		LowestActiveIndex: pointerutil.Ptr(b.fsm.fastTxnTracker.lowestActiveIndex()),
 	}
 	b.permitPool.Acquire()
 	defer b.permitPool.Release()
@@ -1671,7 +1670,6 @@ func (b *RaftBackend) Put(ctx context.Context, entry *physical.Entry) error {
 				Value:  entry.Value,
 			},
 		},
-		LowestActiveIndex: pointerutil.Ptr(b.fsm.fastTxnTracker.lowestActiveIndex()),
 	}
 
 	b.permitPool.Acquire()
@@ -1737,12 +1735,14 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 		return err
 	}
 
-	if command.LowestActiveIndex != nil { // we need to cap the lowest active index - 1, otherwise we might miss transaction started concurrently
-		appliedIndex := b.raft.AppliedIndex()
-		if *command.LowestActiveIndex >= appliedIndex {
-			command.LowestActiveIndex = pointerutil.Ptr(appliedIndex - 1)
-		}
+	var lowestActiveIndex uint64
+	if command.LowestActiveIndex != nil {
+		lowestActiveIndex = *command.LowestActiveIndex
+	} else {
+		lowestActiveIndex = b.fsm.fastTxnTracker.lowestActiveIndex()
 	}
+	lowestActiveIndex = min(b.raft.AppliedIndex()-1, lowestActiveIndex) // we need to cap the lowest active index - 1, otherwise we might miss transaction started concurrently
+	command.LowestActiveIndex = pointerutil.Ptr(lowestActiveIndex)
 
 	isTx := len(command.Operations) > 0 && command.Operations[0].OpType == beginTxOp
 	commandBytes, err := proto.Marshal(command)

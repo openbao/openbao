@@ -42,8 +42,7 @@ The correct 'oidc_discovery_url' is the base realm URL. OpenBao will append the 
 | **'oidc_discovery_url'** | The base URL of the Keycloak realm. | `https://<KEYCLOAK_URL>/realms/<REALM-NAME>` | 
 | **'jwks_url'** | *Optional* - Provides the public key source manually. | `https://<KEYCLOAK_URL>/realms/<REALM-NAME>/protocol/openid-connect/certs` | 
 
-**Note on URLs:** If 'jwks_url' is provided, 'oidc_discovery_url' must be omitted. Also omit using the 'oidc_client_id' and the 'oidc_client_secret'. 
-Also, at the time of writing these docs, the jwks path for access to Keycloak was just added and might still have bugs.  
+**Note on URLs:** If 'jwks_url' is provided, 'oidc_discovery_url' must be omitted. Also omit using the 'oidc_client_id' and the 'oidc_client_secret'. When doing this, the auth mount cannot be used for OIDC and can only be used for explicit JWT verification.
 
 **Working Example Command**
 

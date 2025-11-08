@@ -5,6 +5,7 @@ package logical
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net/http"
@@ -107,6 +108,9 @@ type Request struct {
 	// inspect the connection information and potentially use it for
 	// authentication/protection.
 	Connection *Connection `json:"connection" structs:"connection" mapstructure:"connection"`
+
+	// ClientHeaderCert is the x509 client certificate passed from a header. nil if unset.
+	ClientHeaderCert *x509.Certificate
 
 	// ClientToken is provided to the core so that the identity
 	// can be verified and ACLs applied. This value is passed

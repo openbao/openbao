@@ -6,6 +6,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -575,6 +576,70 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 		}
 
 		r.RemoteAddr = net.JoinHostPort(acc[indexToUse], port)
+		h.ServeHTTP(w, r)
+	})
+}
+
+func WrapRemoveProcessedCertificateHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Strip any X-Processed-Tls-Client-Certificate headers.
+		r.Header.Del("X-Processed-Tls-Client-Certificate")
+		h.ServeHTTP(w, r)
+		return
+	})
+}
+
+func WrapRemoveDefaultClientCertificateHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Remove any Client-Cert if not configured to use them. To prevent injection of client certs in plugins.
+		r.Header.Del("Client-Cert")
+		h.ServeHTTP(w, r)
+		return
+	})
+}
+
+func WrapClientCertificateHandler(h http.Handler, l *configutil.Listener) http.Handler {
+	clientCertificateHeader := l.XForwardedForClientCertHeader
+	// Iterate through the processors to handle the header.
+	decoders := l.XForwardedForClientCertDecoders
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Strip any X-Processed-Tls-Client-Certificate headers.
+		r.Header.Del("X-Processed-Tls-Client-Certificate")
+		// Use the CanonicalMIMEHeaderKey so that if the user has the header not canonicalized in the config.
+		clientCertHeaders, clientCertHeadersOK := r.Header[textproto.CanonicalMIMEHeaderKey(clientCertificateHeader)]
+		// Short circuit if no client cert header
+		if !clientCertHeadersOK || len(clientCertHeaders) == 0 {
+			h.ServeHTTP(w, r)
+			return
+		}
+		// Do not handle multiple certs.
+		// This is out of scope and if a proxy is following RFC 9440 the chain excluding the end entity would be a separate header
+		headerValue := clientCertHeaders[0]
+		for _, decoder := range decoders {
+			var err error
+			switch decoder {
+			case "RFC9440":
+				headerValue, err = rfc9440DecodeHeader(headerValue)
+			case "URL":
+				headerValue, err = urlDecodeHeader(headerValue)
+			case "PEM":
+				headerValue, err = pemDecodeHeader(headerValue)
+			}
+			if err != nil {
+				respondError(w, http.StatusBadRequest, err)
+				return
+			}
+		}
+		// Validate that the processed cert is valid StdEncoding base64
+		_, err := base64.StdEncoding.DecodeString(headerValue)
+		if err != nil {
+			respondError(w, http.StatusBadRequest, errors.New("error decoding client certificate header as base64"))
+			return
+		}
+		// Add the client cert header
+		r.Header.Add("X-Processed-Tls-Client-Certificate", headerValue)
+		// Delete the unprocessed header.
+		r.Header.Del(l.XForwardedForClientCertHeader)
 		h.ServeHTTP(w, r)
 	})
 }

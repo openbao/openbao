@@ -6,7 +6,6 @@ package cert
 import (
 	"context"
 	"crypto/subtle"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/base64"
@@ -60,6 +59,23 @@ func pathLogin(b *backend) *framework.Path {
 	}
 }
 
+// Handle headers and client certs
+func (b *backend) handleCerts(req *logical.Request) (*x509.Certificate, error) {
+	if req.ClientHeaderCert != nil {
+		return req.ClientHeaderCert, nil
+	} else {
+		// Default to the normal behavior
+		if req.Connection == nil || req.Connection.ConnState == nil {
+			return nil, errors.New("tls connection not found")
+		}
+		clientCerts := req.Connection.ConnState.PeerCertificates
+		if len(clientCerts) == 0 {
+			return nil, errors.New("no client certificate found")
+		}
+		return clientCerts[0], nil
+	}
+}
+
 func (b *backend) loginPathWrapper(wrappedOp func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error)) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		// Make sure that the CRLs have been loaded before processing a login request,
@@ -90,18 +106,14 @@ func (b *backend) pathLoginResolveRole(ctx context.Context, req *logical.Request
 }
 
 func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if req.Connection == nil || req.Connection.ConnState == nil {
-		return nil, errors.New("tls connection not found")
+	clientCert, err := b.handleCerts(req)
+	if err != nil {
+		return nil, err
 	}
-	clientCerts := req.Connection.ConnState.PeerCertificates
-	if len(clientCerts) == 0 {
-		return nil, errors.New("no client certificate found")
-	}
-
 	return &logical.Response{
 		Auth: &logical.Auth{
 			Alias: &logical.Alias{
-				Name: clientCerts[0].Subject.CommonName,
+				Name: clientCert.Subject.CommonName,
 			},
 		},
 	}, nil
@@ -139,24 +151,24 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 		}
 	}
 
-	clientCerts := req.Connection.ConnState.PeerCertificates
-	if len(clientCerts) == 0 {
-		return logical.ErrorResponse("no client certificate found"), nil
+	clientCert, err := b.handleCerts(req)
+	if err != nil {
+		return nil, err
 	}
-	skid := base64.StdEncoding.EncodeToString(clientCerts[0].SubjectKeyId)
-	akid := base64.StdEncoding.EncodeToString(clientCerts[0].AuthorityKeyId)
+	skid := base64.StdEncoding.EncodeToString(clientCert.SubjectKeyId)
+	akid := base64.StdEncoding.EncodeToString(clientCert.AuthorityKeyId)
 
 	metadata := map[string]string{
 		"cert_name":        matched.Entry.Name,
-		"common_name":      clientCerts[0].Subject.CommonName,
-		"serial_number":    clientCerts[0].SerialNumber.String(),
-		"subject_key_id":   certutil.GetHexFormatted(clientCerts[0].SubjectKeyId, ":"),
-		"authority_key_id": certutil.GetHexFormatted(clientCerts[0].AuthorityKeyId, ":"),
+		"common_name":      clientCert.Subject.CommonName,
+		"serial_number":    clientCert.SerialNumber.String(),
+		"subject_key_id":   certutil.GetHexFormatted(clientCert.SubjectKeyId, ":"),
+		"authority_key_id": certutil.GetHexFormatted(clientCert.AuthorityKeyId, ":"),
 	}
 
 	// Add metadata from allowed_metadata_extensions when present,
 	// with sanitized oids (dash-separated instead of dot-separated) as keys.
-	for k, v := range b.certificateExtensionsMetadata(clientCerts[0], matched) {
+	for k, v := range b.certificateExtensionsMetadata(clientCert, matched) {
 		metadata[k] = v
 	}
 
@@ -168,7 +180,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 		DisplayName: matched.Entry.DisplayName,
 		Metadata:    metadata,
 		Alias: &logical.Alias{
-			Name: clientCerts[0].Subject.CommonName,
+			Name: clientCert.Subject.CommonName,
 		},
 	}
 
@@ -208,12 +220,12 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 			return nil, nil
 		}
 
-		clientCerts := req.Connection.ConnState.PeerCertificates
-		if len(clientCerts) == 0 {
-			return logical.ErrorResponse("no client certificate found"), nil
+		clientCert, err := b.handleCerts(req)
+		if err != nil {
+			return logical.ErrorResponse(err.Error()), nil
 		}
-		skid := base64.StdEncoding.EncodeToString(clientCerts[0].SubjectKeyId)
-		akid := base64.StdEncoding.EncodeToString(clientCerts[0].AuthorityKeyId)
+		skid := base64.StdEncoding.EncodeToString(clientCert.SubjectKeyId)
+		akid := base64.StdEncoding.EncodeToString(clientCert.AuthorityKeyId)
 
 		// Certificate should not only match a registered certificate policy.
 		// Also, the identity of the certificate presented should match the identity of the certificate used during login
@@ -244,16 +256,10 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 }
 
 func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d *framework.FieldData) (*ParsedCert, *logical.Response, error) {
-	// Get the connection state
-	if req.Connection == nil || req.Connection.ConnState == nil {
-		return nil, logical.ErrorResponse("tls connection required"), nil
+	clientCert, err := b.handleCerts(req)
+	if err != nil {
+		return nil, logical.ErrorResponse(err.Error()), nil
 	}
-	connState := req.Connection.ConnState
-
-	if len(connState.PeerCertificates) == 0 {
-		return nil, logical.ErrorResponse("client certificate must be supplied"), nil
-	}
-	clientCert := connState.PeerCertificates[0]
 
 	// Allow constraining the login request to a single CertEntry
 	var certName string
@@ -268,7 +274,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 
 	// Get the list of full chains matching the connection and validates the
 	// certificate itself
-	trustedChains, err := validateConnState(roots, connState)
+	trustedChains, err := validateConnState(roots, clientCert)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -693,9 +699,8 @@ func parsePEM(raw []byte) (certs []*x509.Certificate) {
 // by at trusted certificate. Most of this logic is lifted from the client
 // verification logic here:  http://golang.org/src/crypto/tls/handshake_server.go
 // The trusted chains are returned.
-func validateConnState(roots *x509.CertPool, cs *tls.ConnectionState) ([][]*x509.Certificate, error) {
-	certs := cs.PeerCertificates
-	if len(certs) == 0 {
+func validateConnState(roots *x509.CertPool, cert *x509.Certificate) ([][]*x509.Certificate, error) {
+	if cert == nil {
 		return nil, nil
 	}
 
@@ -705,13 +710,14 @@ func validateConnState(roots *x509.CertPool, cs *tls.ConnectionState) ([][]*x509
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 
-	if len(certs) > 1 {
-		for _, cert := range certs[1:] {
-			opts.Intermediates.AddCert(cert)
-		}
-	}
+	// TODO: Handle intermediates?
+	//if len(certs) > 1 {
+	//	for _, cert := range certs[1:] {
+	//		opts.Intermediates.AddCert(cert)
+	//	}
+	//}
 
-	chains, err := certs[0].Verify(opts)
+	chains, err := cert.Verify(opts)
 	if err != nil {
 		if _, ok := err.(x509.UnknownAuthorityError); ok {
 			return nil, nil

@@ -72,14 +72,15 @@ func TestCert_RoleResolve(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{dns: "example.com"}, false),
-			testAccStepLoginWithName(t, connState, "web"),
+			testAccStepLoginWithName(t, connState, "web", false),
+			testAccStepLoginWithName(t, connState, "web", true),
 			testAccStepResolveRoleWithName(t, connState, "web"),
 		},
 	})
 }
 
 func testAccStepResolveRoleWithName(t *testing.T, connState tls.ConnectionState, certName string) logicaltest.TestStep {
-	return logicaltest.TestStep{
+	testStep := logicaltest.TestStep{
 		Operation:       logical.ResolveRoleOperation,
 		Path:            "login",
 		Unauthenticated: true,
@@ -94,6 +95,7 @@ func testAccStepResolveRoleWithName(t *testing.T, connState tls.ConnectionState,
 			"name": certName,
 		},
 	}
+	return testStep
 }
 
 func TestCert_RoleResolveWithoutProvidingCertName(t *testing.T) {
@@ -116,7 +118,8 @@ func TestCert_RoleResolveWithoutProvidingCertName(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{dns: "example.com"}, false),
-			testAccStepLoginWithName(t, connState, "web"),
+			testAccStepLoginWithName(t, connState, "web", false),
+			testAccStepLoginWithName(t, connState, "web", true),
 			testAccStepResolveRoleWithEmptyDataMap(t, connState, "web"),
 		},
 	})
@@ -214,7 +217,8 @@ func TestCert_RoleResolve_RoleDoesNotExist(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{dns: "example.com"}, false),
-			testAccStepLoginWithName(t, connState, "web"),
+			testAccStepLoginWithName(t, connState, "web", false),
+			testAccStepLoginWithName(t, connState, "web", true),
 			testAccStepResolveRoleExpectRoleResolutionToFail(t, connState, "notweb"),
 		},
 	})
@@ -285,10 +289,12 @@ func TestCert_RoleResolveOCSP(t *testing.T) {
 			var resolveStep logicaltest.TestStep
 			var loginStep logicaltest.TestStep
 			if c.errExpected {
-				loginStep = testAccStepLoginWithNameInvalid(t, connState, "web")
+				// TODO: Handle header auth step here
+				loginStep = testAccStepLoginWithNameInvalid(t, connState, "web", false)
 				resolveStep = testAccStepResolveRoleOCSPFail(t, connState, "web")
 			} else {
-				loginStep = testAccStepLoginWithName(t, connState, "web")
+				// TODO: Handle header auth step here
+				loginStep = testAccStepLoginWithName(t, connState, "web", false)
 				resolveStep = testAccStepResolveRoleWithName(t, connState, "web")
 			}
 			logicaltest.Test(t, logicaltest.TestCase{

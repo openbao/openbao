@@ -4,6 +4,7 @@
 package http
 
 import (
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -22,6 +23,23 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
+
+func handleCertHeader(req *http.Request) *x509.Certificate {
+	clientCertHeader, clientCertHeaderOk := req.Header["X-Processed-Tls-Client-Certificate"]
+	if !clientCertHeaderOk || len(clientCertHeader) == 0 {
+		return nil
+	}
+	certHeaderValue := clientCertHeader[0]
+	certDER, err := base64.StdEncoding.DecodeString(certHeaderValue)
+	if err != nil {
+		return nil
+	}
+	x509ClientCert, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		return nil
+	}
+	return x509ClientCert
+}
 
 const MergePatchContentTypeHeader = "application/merge-patch+json"
 
@@ -207,6 +225,11 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		Data:       data,
 		Connection: getConnection(r),
 		Headers:    r.Header.Clone(),
+	}
+
+	headerCert := handleCertHeader(r)
+	if headerCert != nil {
+		req.ClientHeaderCert = headerCert
 	}
 
 	if passHTTPReq {

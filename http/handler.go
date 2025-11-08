@@ -6,7 +6,9 @@ package http
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -579,6 +581,61 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 		}
 
 		r.RemoteAddr = net.JoinHostPort(acc[indexToUse], port)
+		h.ServeHTTP(w, r)
+	})
+}
+
+func WrapClientCertificateHandler(h http.Handler, l *configutil.Listener) http.Handler {
+	clientCertificateHeader := l.XForwardedForClientCertHeader
+	// Iterate through the processors to handle the header.
+	decoders := l.XForwardedForClientCertDecoders
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Strip any X-Processed-TLS-Client-Certificate headers.
+		forwardedHeader, forwardedHeaderOK := r.Header["X-Processed-TLS-Client-Certificate"]
+		if forwardedHeaderOK || len(forwardedHeader) > 0 {
+			r.Header.Del("X-Processed-TLS-Client-Certificate")
+		}
+		clientCertHeaders, clientCertHeadersOK := r.Header[clientCertificateHeader]
+		// Short circuit if no client cert header
+		if !clientCertHeadersOK || len(clientCertHeaders) == 0 {
+			h.ServeHTTP(w, r)
+			return
+		}
+		// TODO: Handle multiple clientCertHeaders
+		headerValue := clientCertHeaders[0]
+		if len(decoders) > 0 {
+			for i := range decoders {
+				// The end result should be a base64 encoded DER certificate.
+				// URL is for converting urlencoded strings back into text
+				if decoders[i] == "URL" {
+					decoded, err := url.QueryUnescape(headerValue)
+					if err != nil {
+						respondError(w, http.StatusBadRequest, errors.New("error decoding client certificate header"))
+						return
+					}
+					headerValue = decoded
+				}
+				// Convert PEM text into Base64 DER.
+				if decoders[i] == "PEM" {
+					block, _ := pem.Decode([]byte(headerValue))
+					if block == nil || block.Type != "CERTIFICATE" {
+						respondError(w, http.StatusBadRequest, errors.New("failed to decode PEM certificate"))
+						return
+					}
+					headerValue = base64.StdEncoding.EncodeToString(block.Bytes)
+				}
+			}
+		}
+		// Validate that the processed cert is valid StdEncoding base64
+		_, err := base64.StdEncoding.DecodeString(headerValue)
+		if err != nil {
+			respondError(w, http.StatusBadRequest, errors.New("error decoding client certificate header as base64"))
+			return
+		}
+		// Add the client cert header
+		r.Header.Add("X-Processed-TLS-Client-Certificate", headerValue)
+		// Delete the unprocessed header.
+		r.Header.Del(l.XForwardedForClientCertHeader)
 		h.ServeHTTP(w, r)
 	})
 }

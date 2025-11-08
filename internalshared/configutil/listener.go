@@ -119,6 +119,12 @@ type Listener struct {
 	XForwardedForRejectNotAuthorized    bool                          `hcl:"-"`
 	XForwardedForRejectNotAuthorizedRaw interface{}                   `hcl:"x_forwarded_for_reject_not_authorized,alias:XForwardedForRejectNotAuthorized"`
 
+	// This is different from upstream by using array of strings to allow easier ordering of processing.
+	// Internally all certs are passed as headers that are base64 encoded DER.
+	// Available decoders: PEM, URL
+	XForwardedForClientCertHeader   string   `hcl:"x_forwarded_for_client_cert_header,alias:XForwardedForClientCertHeader"`
+	XForwardedForClientCertDecoders []string `hcl:"x_forwarded_for_client_cert_decoders,alias:XForwardedForClientCertificateProcessing"`
+
 	SocketMode  string `hcl:"socket_mode"`
 	SocketUser  string `hcl:"socket_user"`
 	SocketGroup string `hcl:"socket_group"`

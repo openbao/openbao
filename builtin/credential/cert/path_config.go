@@ -37,6 +37,11 @@ func pathConfig(b *backend) *framework.Path {
 				Default:     100,
 				Description: `The size of the in memory OCSP response cache, shared by all configured certs`,
 			},
+			"use_client_certificate_header": {
+				Type:        framework.TypeBool,
+				Default:     false,
+				Description: `Use the client certificate header passed to upstream. Defaults to false.`,
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -74,6 +79,9 @@ func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, dat
 	if enableIdentityAliasMetadataRaw, ok := data.GetOk("enable_identity_alias_metadata"); ok {
 		config.EnableIdentityAliasMetadata = enableIdentityAliasMetadataRaw.(bool)
 	}
+	if useClientCertificateHeaderRaw, ok := data.GetOk("use_client_certificate_header"); ok {
+		config.UseClientCertificateHeader = useClientCertificateHeaderRaw.(bool)
+	}
 	if cacheSizeRaw, ok := data.GetOk("ocsp_cache_size"); ok {
 		cacheSize := cacheSizeRaw.(int)
 		if cacheSize < 2 || cacheSize > maxCacheSize {
@@ -103,6 +111,7 @@ func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, d *f
 		"disable_binding":                cfg.DisableBinding,
 		"enable_identity_alias_metadata": cfg.EnableIdentityAliasMetadata,
 		"ocsp_cache_size":                cfg.OcspCacheSize,
+		"use_client_certificate_header":  cfg.UseClientCertificateHeader,
 	}
 
 	return &logical.Response{
@@ -131,4 +140,5 @@ type config struct {
 	DisableBinding              bool `json:"disable_binding"`
 	EnableIdentityAliasMetadata bool `json:"enable_identity_alias_metadata"`
 	OcspCacheSize               int  `json:"ocsp_cache_size"`
+	UseClientCertificateHeader  bool `json:"use_client_certificate_header"`
 }

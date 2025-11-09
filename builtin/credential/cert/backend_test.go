@@ -647,6 +647,14 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 }
 
 func TestBackend_NonCAExpiry(t *testing.T) {
+	testbackendNoncaexpiryFunc(t, false)
+}
+
+func TestBackend_NonCAExpiryHeader(t *testing.T) {
+	testbackendNoncaexpiryFunc(t, true)
+}
+
+func testbackendNoncaexpiryFunc(t *testing.T, useHeader bool) {
 	var resp *logical.Response
 	var err error
 
@@ -849,6 +857,12 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 		},
 	}
 
+	// If we are testing header handling yank the peer certificate and put it in the ClientHeaderCert
+	if useHeader {
+		loginReq.Connection.ConnState = nil
+		loginReq.ClientHeaderCert = connState.PeerCertificates[0]
+	}
+
 	// Login when the certificate is still valid. Login should succeed.
 	resp, err = b.HandleRequest(context.Background(), loginReq)
 	if err != nil || (resp != nil && resp.IsError()) {
@@ -866,6 +880,12 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 }
 
 func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
+	testbackendRegisteredNonCACRLFunc(t, false)
+}
+func TestBackend_RegisteredNonCA_CRLHeader(t *testing.T) {
+	testbackendRegisteredNonCACRLFunc(t, true)
+}
+func testbackendRegisteredNonCACRLFunc(t *testing.T, useHeader bool) {
 	config := logical.TestBackendConfig()
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
@@ -912,6 +932,11 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 		Connection: &logical.Connection{
 			ConnState: &connState,
 		},
+	}
+	// If we are testing header handling yank the peer certificate and put it in the ClientHeaderCert
+	if useHeader {
+		loginReq.Connection.ConnState = nil
+		loginReq.ClientHeaderCert = connState.PeerCertificates[0]
 	}
 	// Login should succeed.
 	resp, err = b.HandleRequest(context.Background(), loginReq)
@@ -964,6 +989,14 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 }
 
 func TestBackend_CRLs(t *testing.T) {
+	testbackendCrlsfunc(t, false)
+}
+
+func TestBackend_CRLsHeader(t *testing.T) {
+	testbackendCrlsfunc(t, true)
+}
+
+func testbackendCrlsfunc(t *testing.T, useHeader bool) {
 	config := logical.TestBackendConfig()
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
@@ -1011,6 +1044,13 @@ func TestBackend_CRLs(t *testing.T) {
 			ConnState: &connState,
 		},
 	}
+
+	// If we are testing header handling yank the peer certificate and put it in the ClientHeaderCert
+	if useHeader {
+		loginReq.Connection.ConnState = nil
+		loginReq.ClientHeaderCert = connState.PeerCertificates[0]
+	}
+
 	resp, err = b.HandleRequest(context.Background(), loginReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
@@ -1023,6 +1063,12 @@ func TestBackend_CRLs(t *testing.T) {
 		t.Fatalf("error testing connection state: %v", err)
 	}
 	loginReq.Connection.ConnState = &connState
+
+	// If we are testing header handling yank the peer certificate and put it in the ClientHeaderCert
+	if useHeader {
+		loginReq.Connection.ConnState = nil
+		loginReq.ClientHeaderCert = connState.PeerCertificates[0]
+	}
 
 	// Attempt login with the updated connection
 	resp, err = b.HandleRequest(context.Background(), loginReq)
@@ -1076,6 +1122,11 @@ func TestBackend_CRLs(t *testing.T) {
 		t.Fatalf("error testing connection state: %v", err)
 	}
 	loginReq.Connection.ConnState = &connState
+	// If we are testing header handling yank the peer certificate and put it in the ClientHeaderCert
+	if useHeader {
+		loginReq.Connection.ConnState = nil
+		loginReq.ClientHeaderCert = connState.PeerCertificates[0]
+	}
 
 	// Attempt login with the updated connection
 	resp, err = b.HandleRequest(context.Background(), loginReq)
@@ -1169,18 +1220,24 @@ func TestBackend_basic_CA(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCert(t, "web", ca, "foo", allowed{}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCertLease(t, "web", ca, "foo"),
 			testAccStepCertTTL(t, "web", ca, "foo"),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCertMaxTTL(t, "web", ca, "foo"),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCertNoLease(t, "web", ca, "foo"),
-			testAccStepLoginDefaultLease(t, connState),
+			testAccStepLoginDefaultLease(t, connState, false),
+			testAccStepLoginDefaultLease(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "*.example.com"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "*.invalid.com"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 		},
 	})
 }
@@ -1204,12 +1261,15 @@ func TestBackend_Basic_CRLs(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCertNoLease(t, "web", ca, "foo"),
-			testAccStepLoginDefaultLease(t, connState),
+			testAccStepLoginDefaultLease(t, connState, false),
+			testAccStepLoginDefaultLease(t, connState, true),
 			testAccStepAddCRL(t, crl, connState),
 			testAccStepReadCRL(t, connState),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepDeleteCRL(t, connState),
-			testAccStepLoginDefaultLease(t, connState),
+			testAccStepLoginDefaultLease(t, connState, false),
+			testAccStepLoginDefaultLease(t, connState, true),
 		},
 	})
 }
@@ -1229,13 +1289,17 @@ func TestBackend_basic_singleCert(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCert(t, "web", ca, "foo", allowed{}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "example.com"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "invalid"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{ext: "1.2.3.4:invalid"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 		},
 	})
 }
@@ -1254,13 +1318,17 @@ func TestBackend_common_name_singleCert(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCert(t, "web", ca, "foo", allowed{}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{common_names: "example.com"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{common_names: "invalid"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{ext: "1.2.3.4:invalid"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 		},
 	})
 }
@@ -1283,50 +1351,71 @@ func TestBackend_ext_singleCert(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCert(t, "web", ca, "foo", allowed{ext: "2.1.1.1:A UTF8String Extension"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{ext: "2.1.1.1:*,2.1.1.2:A UTF8*"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{ext: "1.2.3.45:*"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{ext: "2.1.1.1:The Wrong Value"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{ext: "2.1.1.1:*,2.1.1.2:The Wrong Value"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{ext: "2.1.1.1:"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{ext: "2.1.1.1:,2.1.1.2:*"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "example.com", ext: "2.1.1.1:A UTF8String Extension"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "example.com", ext: "2.1.1.1:*,2.1.1.2:A UTF8*"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "example.com", ext: "1.2.3.45:*"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "example.com", ext: "2.1.1.1:The Wrong Value"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "example.com", ext: "2.1.1.1:*,2.1.1.2:The Wrong Value"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "invalid", ext: "2.1.1.1:A UTF8String Extension"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "invalid", ext: "2.1.1.1:*,2.1.1.2:A UTF8*"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "invalid", ext: "1.2.3.45:*"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "invalid", ext: "2.1.1.1:The Wrong Value"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{names: "invalid", ext: "2.1.1.1:*,2.1.1.2:The Wrong Value"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepReadConfig(t, config{EnableIdentityAliasMetadata: false}, connState),
 			testAccStepCert(t, "web", ca, "foo", allowed{metadata_ext: "2.1.1.1,1.2.3.45"}, false),
-			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{"2-1-1-1": "A UTF8String Extension"}, false),
+			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{"2-1-1-1": "A UTF8String Extension"}, false, false),
+			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{"2-1-1-1": "A UTF8String Extension"}, false, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{metadata_ext: "1.2.3.45"}, false),
-			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{}, false),
+			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{}, false, false),
+			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{}, false, true),
 			testAccStepSetConfig(t, config{EnableIdentityAliasMetadata: true}, connState),
 			testAccStepReadConfig(t, config{EnableIdentityAliasMetadata: true}, connState),
 			testAccStepCert(t, "web", ca, "foo", allowed{metadata_ext: "2.1.1.1,1.2.3.45"}, false),
-			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{"2-1-1-1": "A UTF8String Extension"}, true),
+			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{"2-1-1-1": "A UTF8String Extension"}, true, false),
+			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{"2-1-1-1": "A UTF8String Extension"}, true, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{metadata_ext: "1.2.3.45"}, false),
-			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{}, true),
+			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{}, true, false),
+			testAccStepLoginWithMetadata(t, connState, "web", map[string]string{}, true, true),
 		},
 	})
 }
@@ -1365,15 +1454,20 @@ func TestBackend_dns_singleCert(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCert(t, "web", ca, "foo", allowed{dns: "example.com"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{dns: "*ample.com"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{dns: "notincert.com"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{dns: "abc"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{dns: "*.example.com"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 		},
 	})
 }
@@ -1412,15 +1506,20 @@ func TestBackend_email_singleCert(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCert(t, "web", ca, "foo", allowed{emails: "valid@example.com"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{emails: "*@example.com"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{emails: "invalid@notincert.com"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{emails: "abc"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{emails: "*.example.com"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 		},
 	})
 }
@@ -1443,13 +1542,17 @@ func TestBackend_organizationalUnit_singleCert(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCert(t, "web", ca, "foo", allowed{organizational_units: "engineering"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{organizational_units: "eng*"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{organizational_units: "engineering,finance"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{organizational_units: "foo"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 		},
 	})
 }
@@ -1492,15 +1595,20 @@ func TestBackend_uri_singleCert(t *testing.T) {
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
 			testAccStepCert(t, "web", ca, "foo", allowed{uris: "spiffe://example.com/*"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{uris: "spiffe://example.com/host"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{uris: "spiffe://example.com/invalid"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{uris: "abc"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 			testAccStepCert(t, "web", ca, "foo", allowed{uris: "http://www.google.com"}, false),
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 		},
 	})
 }
@@ -1522,10 +1630,13 @@ func TestBackend_mixed_constraints(t *testing.T) {
 			testAccStepCert(t, "1unconstrained", ca, "foo", allowed{}, false),
 			testAccStepCert(t, "2matching", ca, "foo", allowed{names: "*.example.com,whatever"}, false),
 			testAccStepCert(t, "3invalid", ca, "foo", allowed{names: "invalid"}, false),
-			testAccStepLogin(t, connState),
+			testAccStepLogin(t, connState, false),
+			testAccStepLogin(t, connState, true),
 			// Assumes CertEntries are processed in alphabetical order (due to store.List), so we only match 2matching if 1unconstrained doesn't match
-			testAccStepLoginWithName(t, connState, "2matching"),
-			testAccStepLoginWithNameInvalid(t, connState, "3invalid"),
+			testAccStepLoginWithName(t, connState, "2matching", false),
+			testAccStepLoginWithName(t, connState, "2matching", true),
+			testAccStepLoginWithNameInvalid(t, connState, "3invalid", false),
+			testAccStepLoginWithNameInvalid(t, connState, "3invalid", true),
 		},
 	})
 }
@@ -1540,12 +1651,21 @@ func TestBackend_untrusted(t *testing.T) {
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepLoginInvalid(t, connState),
+			testAccStepLoginInvalid(t, connState, false),
+			testAccStepLoginInvalid(t, connState, true),
 		},
 	})
 }
 
 func TestBackend_validCIDR(t *testing.T) {
+	testbackendValidcidrfunc(t, false)
+}
+
+func TestBackend_validCIDRHeader(t *testing.T) {
+	testbackendValidcidrfunc(t, true)
+}
+
+func testbackendValidcidrfunc(t *testing.T, useHeader bool) {
 	config := logical.TestBackendConfig()
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
@@ -1594,6 +1714,11 @@ func TestBackend_validCIDR(t *testing.T) {
 		Path:       "certs/" + name,
 		Storage:    storage,
 		Connection: &logical.Connection{ConnState: &connState},
+	}
+	// If we are testing header handling yank the peer certificate and put it in the ClientHeaderCert
+	if useHeader {
+		readCertReq.Connection.ConnState = nil
+		readCertReq.ClientHeaderCert = connState.PeerCertificates[0]
 	}
 
 	readResult, err := b.HandleRequest(context.Background(), readCertReq)
@@ -1705,7 +1830,6 @@ func testAccStepReadCRL(t *testing.T, connState tls.ConnectionState) logicaltest
 	return logicaltest.TestStep{
 		Operation: logical.ReadOperation,
 		Path:      "crls/test",
-		ConnState: &connState,
 		Check: func(resp *logical.Response) error {
 			crlInfo := CRLInfo{}
 			err := mapstructure.Decode(resp.Data, &crlInfo)
@@ -1767,16 +1891,15 @@ func testAccStepReadConfig(t *testing.T, conf config, connState tls.ConnectionSt
 	}
 }
 
-func testAccStepLogin(t *testing.T, connState tls.ConnectionState) logicaltest.TestStep {
-	return testAccStepLoginWithName(t, connState, "")
+func testAccStepLogin(t *testing.T, connState tls.ConnectionState, useHeader bool) logicaltest.TestStep {
+	return testAccStepLoginWithName(t, connState, "", useHeader)
 }
 
-func testAccStepLoginWithName(t *testing.T, connState tls.ConnectionState, certName string) logicaltest.TestStep {
-	return logicaltest.TestStep{
+func testAccStepLoginWithName(t *testing.T, connState tls.ConnectionState, certName string, useHeader bool) logicaltest.TestStep {
+	testStep := logicaltest.TestStep{
 		Operation:       logical.UpdateOperation,
 		Path:            "login",
 		Unauthenticated: true,
-		ConnState:       &connState,
 		Check: func(resp *logical.Response) error {
 			if resp.Auth.TTL != 1000*time.Second {
 				t.Fatalf("bad lease length: %#v", resp.Auth)
@@ -1793,14 +1916,22 @@ func testAccStepLoginWithName(t *testing.T, connState tls.ConnectionState, certN
 			"name": certName,
 		},
 	}
+	if useHeader {
+		testStep.PreFlight = func(req *logical.Request) error {
+			req.ClientHeaderCert = connState.PeerCertificates[0]
+			return nil
+		}
+	} else {
+		testStep.ConnState = &connState
+	}
+	return testStep
 }
 
-func testAccStepLoginDefaultLease(t *testing.T, connState tls.ConnectionState) logicaltest.TestStep {
-	return logicaltest.TestStep{
+func testAccStepLoginDefaultLease(t *testing.T, connState tls.ConnectionState, useHeader bool) logicaltest.TestStep {
+	testStep := logicaltest.TestStep{
 		Operation:       logical.UpdateOperation,
 		Path:            "login",
 		Unauthenticated: true,
-		ConnState:       &connState,
 		Check: func(resp *logical.Response) error {
 			if resp.Auth.TTL != 1000*time.Second {
 				t.Fatalf("bad lease length: %#v", resp.Auth)
@@ -1810,10 +1941,20 @@ func testAccStepLoginDefaultLease(t *testing.T, connState tls.ConnectionState) l
 			return fn(resp)
 		},
 	}
+	if useHeader {
+		testStep.PreFlight = func(req *logical.Request) error {
+			req.ClientHeaderCert = connState.PeerCertificates[0]
+			return nil
+		}
+	} else {
+		testStep.ConnState = &connState
+	}
+	return testStep
 }
 
-func testAccStepLoginWithMetadata(t *testing.T, connState tls.ConnectionState, certName string, metadata map[string]string, expectAliasMetadata bool) logicaltest.TestStep {
-	return logicaltest.TestStep{
+func testAccStepLoginWithMetadata(t *testing.T, connState tls.ConnectionState, certName string, metadata map[string]string, expectAliasMetadata bool, useHeader bool) logicaltest.TestStep {
+	cert := connState.PeerCertificates[0]
+	testStep := logicaltest.TestStep{
 		Operation:       logical.UpdateOperation,
 		Path:            "login",
 		Unauthenticated: true,
@@ -1821,10 +1962,10 @@ func testAccStepLoginWithMetadata(t *testing.T, connState tls.ConnectionState, c
 		Check: func(resp *logical.Response) error {
 			// Check for fixed metadata too
 			metadata["cert_name"] = certName
-			metadata["common_name"] = connState.PeerCertificates[0].Subject.CommonName
-			metadata["serial_number"] = connState.PeerCertificates[0].SerialNumber.String()
-			metadata["subject_key_id"] = certutil.GetHexFormatted(connState.PeerCertificates[0].SubjectKeyId, ":")
-			metadata["authority_key_id"] = certutil.GetHexFormatted(connState.PeerCertificates[0].AuthorityKeyId, ":")
+			metadata["common_name"] = cert.Subject.CommonName
+			metadata["serial_number"] = cert.SerialNumber.String()
+			metadata["subject_key_id"] = certutil.GetHexFormatted(cert.SubjectKeyId, ":")
+			metadata["authority_key_id"] = certutil.GetHexFormatted(cert.AuthorityKeyId, ":")
 
 			for key, expected := range metadata {
 				value, ok := resp.Auth.Metadata[key]
@@ -1859,18 +2000,26 @@ func testAccStepLoginWithMetadata(t *testing.T, connState tls.ConnectionState, c
 			"metadata": metadata,
 		},
 	}
+	if useHeader {
+		testStep.PreFlight = func(req *logical.Request) error {
+			req.ClientHeaderCert = connState.PeerCertificates[0]
+			return nil
+		}
+	} else {
+		testStep.ConnState = &connState
+	}
+	return testStep
 }
 
-func testAccStepLoginInvalid(t *testing.T, connState tls.ConnectionState) logicaltest.TestStep {
-	return testAccStepLoginWithNameInvalid(t, connState, "")
+func testAccStepLoginInvalid(t *testing.T, connState tls.ConnectionState, useHeader bool) logicaltest.TestStep {
+	return testAccStepLoginWithNameInvalid(t, connState, "", useHeader)
 }
 
-func testAccStepLoginWithNameInvalid(t *testing.T, connState tls.ConnectionState, certName string) logicaltest.TestStep {
-	return logicaltest.TestStep{
+func testAccStepLoginWithNameInvalid(t *testing.T, connState tls.ConnectionState, certName string, useHeader bool) logicaltest.TestStep {
+	testStep := logicaltest.TestStep{
 		Operation:       logical.UpdateOperation,
 		Path:            "login",
 		Unauthenticated: true,
-		ConnState:       &connState,
 		Check: func(resp *logical.Response) error {
 			if resp.Auth != nil {
 				return fmt.Errorf("should not be authorized: %#v", resp)
@@ -1882,6 +2031,15 @@ func testAccStepLoginWithNameInvalid(t *testing.T, connState tls.ConnectionState
 		},
 		ErrorOk: true,
 	}
+	if useHeader {
+		testStep.PreFlight = func(req *logical.Request) error {
+			req.ClientHeaderCert = connState.PeerCertificates[0]
+			return nil
+		}
+	} else {
+		testStep.ConnState = &connState
+	}
+	return testStep
 }
 
 func testAccStepListCerts(

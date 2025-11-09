@@ -40,7 +40,7 @@ func pathConfig(b *backend) *framework.Path {
 			"use_client_certificate_header": {
 				Type:        framework.TypeBool,
 				Default:     false,
-				Description: `Use the client certificate header passed to upstream. Defaults to false.`,
+				Description: `Use the client certificate header passed by the upstream proxy. Defaults to false.`,
 			},
 		},
 

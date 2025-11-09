@@ -109,7 +109,7 @@ type Request struct {
 	// authentication/protection.
 	Connection *Connection `json:"connection" structs:"connection" mapstructure:"connection"`
 
-	// ClientHeaderCert is the TLS client certificate passed from a header. nil if unset.
+	// ClientHeaderCert is the x509 client certificate passed from a header. nil if unset.
 	ClientHeaderCert *x509.Certificate
 
 	// ClientToken is provided to the core so that the identity

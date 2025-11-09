@@ -228,12 +228,12 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 			return nil, nil
 		}
 
-		clientCerts := req.Connection.ConnState.PeerCertificates
-		if len(clientCerts) == 0 {
-			return logical.ErrorResponse("no client certificate found"), nil
+		clientCert, err := b.handleCerts(ctx, req)
+		if err != nil {
+			return logical.ErrorResponse(err.Error()), nil
 		}
-		skid := base64.StdEncoding.EncodeToString(clientCerts[0].SubjectKeyId)
-		akid := base64.StdEncoding.EncodeToString(clientCerts[0].AuthorityKeyId)
+		skid := base64.StdEncoding.EncodeToString(clientCert.SubjectKeyId)
+		akid := base64.StdEncoding.EncodeToString(clientCert.AuthorityKeyId)
 
 		// Certificate should not only match a registered certificate policy.
 		// Also, the identity of the certificate presented should match the identity of the certificate used during login

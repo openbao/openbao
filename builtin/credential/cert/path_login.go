@@ -60,17 +60,9 @@ func pathLogin(b *backend) *framework.Path {
 }
 
 // Handle headers and client certs
-func (b *backend) handleCerts(ctx context.Context, req *logical.Request) (*x509.Certificate, error) {
-	config, err := b.Config(ctx, req.Storage)
-	if err != nil {
-		return nil, errors.New("failed to load config")
-	}
-	if config.UseClientCertificateHeader {
-		if req.ClientHeaderCert != nil {
-			return req.ClientHeaderCert, nil
-		} else {
-			return nil, errors.New("no client certificate header found")
-		}
+func (b *backend) handleCerts(req *logical.Request) (*x509.Certificate, error) {
+	if req.ClientHeaderCert != nil {
+		return req.ClientHeaderCert, nil
 	} else {
 		// Default to the normal behavior
 		if req.Connection == nil || req.Connection.ConnState == nil {
@@ -114,7 +106,7 @@ func (b *backend) pathLoginResolveRole(ctx context.Context, req *logical.Request
 }
 
 func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	clientCert, err := b.handleCerts(ctx, req)
+	clientCert, err := b.handleCerts(req)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +151,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 		}
 	}
 
-	clientCert, err := b.handleCerts(ctx, req)
+	clientCert, err := b.handleCerts(req)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +220,7 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 			return nil, nil
 		}
 
-		clientCert, err := b.handleCerts(ctx, req)
+		clientCert, err := b.handleCerts(req)
 		if err != nil {
 			return logical.ErrorResponse(err.Error()), nil
 		}
@@ -264,7 +256,7 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 }
 
 func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d *framework.FieldData) (*ParsedCert, *logical.Response, error) {
-	clientCert, err := b.handleCerts(ctx, req)
+	clientCert, err := b.handleCerts(req)
 	if err != nil {
 		return nil, logical.ErrorResponse(err.Error()), nil
 	}

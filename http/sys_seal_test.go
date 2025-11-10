@@ -590,8 +590,7 @@ func TestHA_UnsealLeaderThenStandbys_SharedKeys(t *testing.T) {
 		c := cluster.Cores[coreIndex]
 		testhelpers.WaitForStandbyNode(t, c)
 
-		isStandby, err := c.Standby()
-		require.NoError(t, err)
+		isStandby := c.Standby()
 		if !isStandby {
 			t.Fatalf("core[%d] should not be leader", coreIndex)
 		}

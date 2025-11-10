@@ -307,10 +307,7 @@ func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx
 func testCluster_ForwardRequests(t *testing.T, c *TestClusterCore, rootToken, remoteCoreID string) {
 	t.Helper()
 
-	standby, err := c.Standby()
-	if err != nil {
-		t.Fatal(err)
-	}
+	standby := c.Standby()
 	if !standby {
 		t.Fatal("expected core to be standby")
 	}

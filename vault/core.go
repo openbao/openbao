@@ -2328,7 +2328,7 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		return err
 	}
 
-	if err := s.readonlyUnsealStrategy.unseal(ctx, logger, c); err != nil {
+	if err := s.unsealShared(ctx, logger, c, false /* active */); err != nil {
 		return err
 	}
 
@@ -2361,12 +2361,13 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 // unseal work: startup of various internal subsystems, mounts, &c.
 type readonlyUnsealStrategy struct{}
 
-func (readonlyUnsealStrategy) unseal(
-	ctx context.Context, logger log.Logger, c *Core,
-) error {
+func (s readonlyUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c *Core) error {
 	c.logger.Debug("read-only unseal starting")
+	return s.unsealShared(ctx, logger, c, true /* standby */)
+}
 
-	if c.standby.Load() {
+func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logger, c *Core, standby bool) error {
+	if standby {
 		// Start tracking invalidations.
 		c.invalidations.Track()
 	}
@@ -2434,7 +2435,7 @@ func (readonlyUnsealStrategy) unseal(
 	// Finally, start processing invalidations. We'll have cleared the queue
 	// when we started this, but any invalidations that occurred during
 	// startup will now be processed.
-	if c.standby.Load() {
+	if standby {
 		c.invalidations.Start(ctx)
 	}
 

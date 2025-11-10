@@ -82,7 +82,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 			t.Fatal("client certificate header should not have been set")
 		}
 	})
-	
+
 	t.Run("valid_base64", func(t *testing.T) {
 		t.Parallel()
 		testHandler := getTestHandler([]string{})
@@ -226,7 +226,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		req := client.NewRequest("GET", "/")
 		req.Headers = make(http.Header)
 		// Intentionally use the wrong canonical name.
-		req.Headers.Add("X-Processed-TLS-Client-Certificate", base64.StdEncoding.EncodeToString(clientCertBlock.Bytes))
+		req.Headers.Add("X-Processed-TLS-Client-Certificate", clientCertBase64)
 		resp, err := client.RawRequest(req)
 		if err != nil {
 			t.Fatal(err)

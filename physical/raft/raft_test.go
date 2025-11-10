@@ -114,6 +114,7 @@ func TestRaft_Backend(t *testing.T) {
 }
 
 func TestRaft_TransactionalBackend(t *testing.T) {
+	t.Parallel()
 	b, _ := GetRaft(t, true, true)
 
 	physical.ExerciseTransactionalBackend(t, b)

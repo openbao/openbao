@@ -14,8 +14,7 @@ import (
 
 func wrapHelpHandler(h http.Handler, core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
-		// If the help parameter is not blank, then show the help. We request
-		// forward because standby nodes do not have mounts and other state.
+		// If the help parameter is not blank, then show the help.
 		if v := req.URL.Query().Get("help"); v != "" || req.Method == "HELP" {
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				handleHelp(core, w, r)

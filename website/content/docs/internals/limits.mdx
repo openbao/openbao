@@ -23,7 +23,7 @@ by that backend.
 
 For the Integrated Storage backend, the default limit is 1 MiB. This may be
 configured via `max_entry_size` in the [storage
-stanza](/docs/configuration/storage/raft#max_entry_size).
+stanza](../configuration/storage/raft.mdx#max_entry_size).
 
 Many of the other limits within OpenBao derive from the maximum size of
 a storage entry, as described in the next sections. It is possible to
@@ -59,9 +59,9 @@ similar sub-paths for namespaces respectively, like: `namespace1/sys/auth`,
 `namespace1/sys/mounts`, etc.
 
 Alternatively, use the
-[`vault.core.mount_table.num_entries`](/docs/internals/telemetry/metrics/core-system#vault-core-mount_table-num_entries)
+[`vault.core.mount_table.num_entries`](telemetry/metrics/core-system.mdx#vault-core-mount_table-num_entries)
 and
-[`vault.core.mount_table.size`](/docs/internals/telemetry/metrics/core-system#vault-core-mount_table-size)
+[`vault.core.mount_table.size`](telemetry/metrics/core-system.mdx#vault-core-mount_table-size)
 telemetry metrics to monitor the number of mount points and size of each mount table.
 
 ### Namespace limits
@@ -131,7 +131,7 @@ group has a large number of members.
 | Maximum number of groups (100 entities per group)                                        | ~50,000                            |
 | Maximum number of members in a group                                                     | ~23,000                            |
 
-The number of entities can be monitored using OpenBao's [telemetry](/docs/internals/telemetry#token-identity-and-lease-metrics); see `vault.identity.num_entities` (total) or `vault.identity.entities.count` (by namespace).
+The number of entities can be monitored using OpenBao's [telemetry](telemetry/index.mdx#token-identity-and-lease-metrics); see `vault.identity.num_entities` (total) or `vault.identity.entities.count` (by namespace).
 
 The cost of entity and group updates grows as the number of objects in
 each shard increases. This cost can be monitored via the
@@ -140,7 +140,7 @@ the `vault.identity.upsert_group_txn` metrics.
 
 Very large internal groups should be avoided (more than 1000 members),
 because the membership list in a group must reside in a single storage entry.
-Instead, consider using [external groups](/docs/concepts/identity#external-vs-internal-groups) or split the group up into multiple sub-groups.
+Instead, consider using [external groups](../concepts/identity.mdx#external-vs-internal-groups) or split the group up into multiple sub-groups.
 
 ### Token limits
 
@@ -174,7 +174,7 @@ policies attached to that token, to the entity, to any groups that the
 entity belongs to, and recursively to any groups that contain those groups.
 Very large numbers of policies are possible, but can cause OpenBao’s
 response time to increase. You can monitor the
-[`vault.core.fetch_acl_and_token`](/docs/internals/telemetry#core-metrics)
+[`vault.core.fetch_acl_and_token`](telemetry/index.mdx#core-metrics)
 metric to determine if the time required to assemble an access control list
 is becoming excessive.
 
@@ -228,23 +228,23 @@ This limit depends on the key size.
 ### Request size
 
 The maximum size of an HTTP request sent to OpenBao is limited by
-the `max_request_size` option in the [listener stanza](/docs/configuration/listener/tcp). It defaults to 32 MiB. This value, minus the overhead of
+the `max_request_size` option in the [listener stanza](../configuration/listener/tcp.mdx). It defaults to 32 MiB. This value, minus the overhead of
 the HTTP request itself, places an upper bound on any Transit operation,
 and on the maximum size of any key-value secrets.
 
 ### Request duration
 
 The maximum duration of an OpenBao operation is
-[`max_request_duration`](/docs/configuration/listener/tcp), which defaults to
+[`max_request_duration`](../configuration/listener/tcp.mdx), which defaults to
 90 seconds. If a particular secret engine takes longer than this to perform an
 operation on a remote service, the OpenBao client will see a failure.
 
-The environment variable [`VAULT_CLIENT_TIMEOUT`](/docs/commands#vault_client_timeout) sets a client-side maximum duration as well,
+The environment variable [`VAULT_CLIENT_TIMEOUT`](../commands/index.mdx#vault_client_timeout) sets a client-side maximum duration as well,
 which is 60 seconds by default.
 
 ### Lease limits
 
-A systemwide [maximum TTL](/docs/configuration#max_lease_ttl), and a
+A systemwide [maximum TTL](../configuration/index.mdx#max_lease_ttl), and a
 [maximum TTL per mount point](/api-docs/system/mounts#max_lease_ttl-1) can be
 configured.
 
@@ -259,11 +259,11 @@ unexpired leases, or a large number of simultaneous expirations.
 | Maximum duration of lease or token | 768 hours by default      |
 
 The current number of unexpired leases can be monitored via the
-[`vault.expire.num_leases`](/docs/internals/telemetry#token-identity-and-lease-metrics) metric.
+[`vault.expire.num_leases`](telemetry/index.mdx#token-identity-and-lease-metrics) metric.
 
 ### External plugin limits
 
-The [plugin system](/docs/plugins) launches a separate process
+The [plugin system](../plugins/index.mdx) launches a separate process
 initiated by OpenBao that communicates over RPC. For each secret engine and auth
 method that's enabled as an external plugin, OpenBao will spawn a process on the
 host system. For the Database Secrets Engines, external database plugins will

@@ -36,7 +36,7 @@ OpenBao Agent can restore tokens and leases from a persistent cache file created
 by a previous OpenBao Agent process.
 
 Refer to the [OpenBao Agent Persistent
-Caching](/docs/agent-and-proxy/agent/caching/persistent-caches) page for more information on
+Caching](persistent-caches/index.mdx) page for more information on
 this functionality.
 
 ## Cache evictions
@@ -156,7 +156,7 @@ The top level `cache` block has the following configuration entry:
 
 The `cache` block also supports the `use_auto_auth_token`, `enforce_consistency`, and
 `when_inconsistent` configuration values of the `api_proxy` block
-[described in the API Proxy documentation](/docs/agent-and-proxy/agent/apiproxy#configuration-api_proxy) only to
+[described in the API Proxy documentation](../apiproxy.mdx#configuration-api_proxy) only to
 maintain backwards compatibility. This configuration **cannot** be specified alongside `api_proxy` equivalents,
 should not be preferred over configuring these values in the `api_proxy` block,
 and `api_proxy` should be the preferred place to configure these values.
@@ -169,8 +169,8 @@ in the config, otherwise there is no way to utilize the cache.
 
 :::
 
-[agent-template]: /docs/agent-and-proxy/agent/template
-[agent-listener]: /docs/agent-and-proxy/agent#listener-stanza
+[agent-template]: ../template.mdx
+[agent-listener]: ../index.mdx#listener-stanza
 
 ### Configuration (Persist)
 
@@ -199,9 +199,9 @@ Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
 - `listener` `(array of objects: required)` - Configuration for the listeners.
 
 There can be one or more `listener` blocks at the top level. Adding a listener enables
-the [API Proxy](/docs/agent-and-proxy/agent/apiproxy) and enables the API proxy to use the cache, if configured.
+the [API Proxy](../apiproxy.mdx) and enables the API proxy to use the cache, if configured.
 These configuration values are common to both `tcp` and `unix` listener blocks. Blocks of type
-`tcp` support the standard `tcp` [listener](/docs/configuration/listener/tcp)
+`tcp` support the standard `tcp` [listener](../../../configuration/listener/tcp.mdx)
 options. Additionally, the `role` string option is available as part of the top level
 of the `listener` block, which can be configured to `metrics_only` to serve only metrics,
 or the default role, `default`, which serves everything (including metrics).

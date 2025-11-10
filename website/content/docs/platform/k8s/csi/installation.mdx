@@ -16,7 +16,7 @@ description: The OpenBao CSI Provider can be installed using OpenBao Helm.
 
 ## Installation using helm
 
-The [OpenBao Helm chart](/docs/platform/k8s/helm) is the recommended way to
+The [OpenBao Helm chart](../helm/index.mdx) is the recommended way to
 install and configure the OpenBao CSI Provider in Kubernetes.
 
 To install a new instance of OpenBao and the OpenBao CSI Provider, first add the
@@ -48,14 +48,14 @@ always run Helm with `--dry-run` before any install or upgrade to verify
 changes.
 
 You can see all the available values settings by running `helm inspect values openbao/openbao` or by reading the [OpenBao Helm Configuration
-Docs](/docs/platform/k8s/helm/configuration). Commonly used values in the Helm
+Docs](../helm/configuration.mdx). Commonly used values in the Helm
 chart include limiting the namespaces the OpenBao CSI Provider runs in, TLS options and
 more.
 
 <!-- TODO: uncomment once OpenShift is known to work -->
 <!-- ## Installation on OpenShift -->
 
-<!-- We recommend using the [OpenBao agent injector on Openshift](/docs/platform/k8s/helm/openshift) -->
+<!-- We recommend using the [OpenBao agent injector on Openshift](../helm/openshift.mdx) -->
 <!-- instead of the Secrets Store CSI driver. OpenShift -->
 <!-- [does not recommend](https://docs.openshift.com/container-platform/4.9/storage/persistent_storage/persistent-storage-hostpath.html) -->
 <!-- using `hostPath` mounting in production or -->

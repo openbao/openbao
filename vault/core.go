@@ -991,8 +991,8 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	c.standby.Store(true)
-	c.standbyStopCh.Store(make(chan struct{}))
-	c.standbyRestartCh.Store(make(chan struct{}))
+	c.standbyStopCh.Store(make(chan struct{}, 1))
+	c.standbyRestartCh.Store(make(chan struct{}, 1))
 	atomic.StoreUint32(c.sealed, 1)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
 
@@ -1951,8 +1951,8 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 		// Go to standby mode, wait until we are active to unseal
 		c.standbyDoneCh = make(chan struct{})
 		c.manualStepDownCh = make(chan struct{}, 1)
-		c.standbyStopCh.Store(make(chan struct{}))
-		c.standbyRestartCh.Store(make(chan struct{}))
+		c.standbyStopCh.Store(make(chan struct{}, 1))
+		c.standbyRestartCh.Store(make(chan struct{}, 1))
 		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}), c.standbyRestartCh.Load().(chan struct{}))
 	}
 

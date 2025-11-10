@@ -39,6 +39,7 @@ func getFSM(t testing.TB) (*FSM, string) {
 }
 
 func TestFSM_Batching(t *testing.T) {
+	t.Parallel()
 	fsm, dir := getFSM(t)
 	defer func() { _ = os.RemoveAll(dir) }()
 
@@ -132,6 +133,7 @@ func TestFSM_Batching(t *testing.T) {
 }
 
 func TestFSM_List(t *testing.T) {
+	t.Parallel()
 	fsm, dir := getFSM(t)
 	defer func() { _ = os.RemoveAll(dir) }()
 

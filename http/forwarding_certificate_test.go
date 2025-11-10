@@ -159,6 +159,37 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		}
 	})
 
+	t.Run("invalid_pem_header", func(t *testing.T) {
+		t.Parallel()
+		testHandler := getTestHandler([]string{"URL", "PEM"})
+		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+			HandlerFunc: HandlerFunc(testHandler),
+		})
+		cluster.Start()
+		defer cluster.Cleanup()
+		client := cluster.Cores[0].Client
+		req := client.NewRequest("GET", "/")
+		req.Headers = make(http.Header)
+		invalidPem := strings.ReplaceAll(clientCertPemText, "CERTIFICATE", "INVALID")
+		req.Headers.Add("X-Forwarded-For-Client-Cert", url.QueryEscape(invalidPem))
+		resp, err := client.RawRequest(req)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		defer resp.Body.Close()
+		buf := bytes.NewBuffer(nil)
+		_, err = buf.ReadFrom(resp.Body)
+		if err != nil {
+			t.Fatal("failed to read response body")
+		}
+		if !strings.Contains(buf.String(), "failed to decode PEM certificate") {
+			t.Fatalf("bad body: %s", buf.String())
+		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
+			t.Fatal("client certificate header should not have been set")
+		}
+	})
+
 	t.Run("invalid_escaped_cert", func(t *testing.T) {
 		t.Parallel()
 		testHandler := getTestHandler([]string{"URL", "PEM"})

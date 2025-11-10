@@ -369,7 +369,7 @@ func handleLogicalInternal(core *vault.Core, injectDataIntoTopLevel bool, noForw
 		if core.HAEnabled() && !core.StandbyReadsEnabled() {
 			standby, err := core.Standby()
 			if err != nil {
-				respondError(w, 503, err)
+				respondError(w, http.StatusServiceUnavailable, err)
 				return
 			}
 			if standby {

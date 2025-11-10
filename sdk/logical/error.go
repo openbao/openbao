@@ -140,12 +140,8 @@ func ShouldForward(err error) bool {
 	}
 
 	errMsg := err.Error()
-	if strings.Contains(errMsg, ErrPerfStandbyPleaseForward.Error()) ||
+	return strings.Contains(errMsg, ErrPerfStandbyPleaseForward.Error()) ||
 		strings.Contains(errMsg, ErrReadOnly.Error()) ||
 		strings.Contains(errMsg, "node is not the leader") ||
-		strings.Contains(errMsg, consts.ErrStandby.Error()) {
-		return true
-	}
-
-	return false
+		strings.Contains(errMsg, consts.ErrStandby.Error())
 }

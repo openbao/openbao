@@ -2356,7 +2356,9 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	return nil
 }
 
-// readonlyUnsealStrategy
+// readonlyUnsealStrategy is called directly on standby nodes and indirectly
+// (via standardUnsealStrategy) on active nodes to handle the core shared
+// unseal work: startup of various internal subsystems, mounts, &c.
 type readonlyUnsealStrategy struct{}
 
 func (readonlyUnsealStrategy) unseal(
@@ -2430,7 +2432,8 @@ func (readonlyUnsealStrategy) unseal(
 	}
 
 	// Finally, start processing invalidations. We'll have cleared the queue
-	// when we started this, but any
+	// when we started this, but any invalidations that occurred during
+	// startup will now be processed.
 	if c.standby.Load() {
 		c.invalidations.Start(ctx)
 	}

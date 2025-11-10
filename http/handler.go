@@ -590,10 +590,10 @@ func WrapClientCertificateHandler(h http.Handler, l *configutil.Listener) http.H
 	// Iterate through the processors to handle the header.
 	decoders := l.XForwardedForClientCertDecoders
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Strip any X-Processed-TLS-Client-Certificate headers.
-		forwardedHeader, forwardedHeaderOK := r.Header["X-Processed-TLS-Client-Certificate"]
+		// Strip any X-Processed-Tls-Client-Certificate headers.a
+		forwardedHeader, forwardedHeaderOK := r.Header["X-Processed-Tls-Client-Certificate"]
 		if forwardedHeaderOK || len(forwardedHeader) > 0 {
-			r.Header.Del("X-Processed-TLS-Client-Certificate")
+			r.Header.Del(textproto.CanonicalMIMEHeaderKey("X-Processed-Tls-Client-Certificate"))
 		}
 		clientCertHeaders, clientCertHeadersOK := r.Header[clientCertificateHeader]
 		// Short circuit if no client cert header
@@ -622,6 +622,7 @@ func WrapClientCertificateHandler(h http.Handler, l *configutil.Listener) http.H
 						respondError(w, http.StatusBadRequest, errors.New("failed to decode PEM certificate"))
 						return
 					}
+					// This is later validated in handleCertHeader in http/logical.go as part of buildLogicalRequestNoAuth
 					headerValue = base64.StdEncoding.EncodeToString(block.Bytes)
 				}
 			}
@@ -633,7 +634,7 @@ func WrapClientCertificateHandler(h http.Handler, l *configutil.Listener) http.H
 			return
 		}
 		// Add the client cert header
-		r.Header.Add("X-Processed-TLS-Client-Certificate", headerValue)
+		r.Header.Add("X-Processed-Tls-Client-Certificate", headerValue)
 		// Delete the unprocessed header.
 		r.Header.Del(l.XForwardedForClientCertHeader)
 		h.ServeHTTP(w, r)

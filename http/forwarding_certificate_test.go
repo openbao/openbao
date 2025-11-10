@@ -23,6 +23,8 @@ const testCertPath1 = "../builtin/credential/cert/test-fixtures/testissuedcert4.
 func getTestHandler(decoders []string) func(props *vault.HandlerProperties) http.Handler {
 	return func(props *vault.HandlerProperties) http.Handler {
 		origHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Write out what we internally processed.
+			w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", r.Header.Get("X-Processed-Tls-Client-Certificate"))
 			w.WriteHeader(http.StatusOK)
 		})
 		listenerConfig := getListenerConfigForClientCerts(decoders)
@@ -48,6 +50,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		t.Fatalf("failed to decode test client certificate")
 	}
 	clientCertPemText := string(clientCertFile)
+	clientCertBase64 := base64.StdEncoding.EncodeToString(clientCertBlock.Bytes)
 
 	t.Run("invalid_base64", func(t *testing.T) {
 		t.Parallel()
@@ -75,7 +78,11 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		if !strings.Contains(buf.String(), "error decoding client certificate header as base64") {
 			t.Fatalf("bad body: %s", buf.String())
 		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
+			t.Fatal("client certificate header should not have been set")
+		}
 	})
+	
 	t.Run("valid_base64", func(t *testing.T) {
 		t.Parallel()
 		testHandler := getTestHandler([]string{})
@@ -87,7 +94,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		client := cluster.Cores[0].Client
 		req := client.NewRequest("GET", "/")
 		req.Headers = make(http.Header)
-		req.Headers.Add("X-Forwarded-For-Client-Cert", base64.StdEncoding.EncodeToString(clientCertBlock.Bytes))
+		req.Headers.Add("X-Forwarded-For-Client-Cert", clientCertBase64)
 		resp, err := client.RawRequest(req)
 		if err != nil {
 			t.Fatal(err)
@@ -95,7 +102,11 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != clientCertBase64 {
+			t.Fatal("mismatched client certificate response")
+		}
 	})
+
 	// This will not work for some reason. Go refuses the header even when encoded with /r/n and with leading tabs.
 	t.Run("nginx_ssl_client_cert_fails", func(t *testing.T) {
 		t.Parallel()
@@ -143,6 +154,9 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != clientCertBase64 {
+			t.Fatal("mismatched client certificate response")
+		}
 	})
 
 	t.Run("invalid_escaped_cert", func(t *testing.T) {
@@ -172,6 +186,57 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		}
 		if !strings.Contains(buf.String(), "error decoding client certificate header") {
 			t.Fatalf("bad body: %s", buf.String())
+		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
+			t.Fatal("client certificate header should not have been set")
+		}
+	})
+
+	t.Run("no_header", func(t *testing.T) {
+		t.Parallel()
+		testHandler := getTestHandler([]string{})
+		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+			HandlerFunc: HandlerFunc(testHandler),
+		})
+		cluster.Start()
+		defer cluster.Cleanup()
+		client := cluster.Cores[0].Client
+		req := client.NewRequest("GET", "/")
+		resp, err := client.RawRequest(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("bad status: %d", resp.StatusCode)
+		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
+			t.Fatal("client certificate header should not have been set")
+		}
+	})
+
+	t.Run("inject_processed_header", func(t *testing.T) {
+		t.Parallel()
+		testHandler := getTestHandler([]string{})
+		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+			HandlerFunc: HandlerFunc(testHandler),
+		})
+		cluster.Start()
+		defer cluster.Cleanup()
+		client := cluster.Cores[0].Client
+		req := client.NewRequest("GET", "/")
+		req.Headers = make(http.Header)
+		// Intentionally use the wrong canonical name.
+		req.Headers.Add("X-Processed-TLS-Client-Certificate", base64.StdEncoding.EncodeToString(clientCertBlock.Bytes))
+		resp, err := client.RawRequest(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("bad status: %d", resp.StatusCode)
+		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
+			t.Fatal("client certificate header should not have been set")
 		}
 	})
 }

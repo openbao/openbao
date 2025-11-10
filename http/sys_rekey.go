@@ -16,7 +16,7 @@ import (
 
 func handleSysRekeyInit(core *vault.Core, recovery bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		standby, _ := core.Standby()
+		standby := core.Standby()
 		if standby {
 			respondStandby(core, w, r.URL)
 			return
@@ -144,7 +144,7 @@ func handleSysRekeyInitDelete(ctx context.Context, core *vault.Core, recovery bo
 
 func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		standby, _ := core.Standby()
+		standby := core.Standby()
 		if standby {
 			respondStandby(core, w, r.URL)
 			return
@@ -217,7 +217,7 @@ func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 
 func handleSysRekeyVerify(core *vault.Core, recovery bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		standby, _ := core.Standby()
+		standby := core.Standby()
 		if standby {
 			respondStandby(core, w, r.URL)
 			return

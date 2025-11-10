@@ -12,72 +12,72 @@ Steering Committee.
 
 ## Accepted
 
- - [Authenticated rekey](/docs/rfcs/authenticated-rekey), to make the rekey
+ - [Authenticated rekey](authenticated-rekey.mdx), to make the rekey
    root and rekey recovery keys endpoints authenticated and additionally
    authorized by a token and its policy.
- - [Declarative Self-Initialization](/docs/rfcs/self-init), to allow operators
+ - [Declarative Self-Initialization](self-init.mdx), to allow operators
    to define initial mounts, auth, policies, and audit logs from a static
    configuration applied once on early startup, preventing the need to call
    manual `sys/init` except with manual unseal mechanisms.
- - [Per-Namespace Sealing](/docs/rfcs/namespace-sealing), to add per-tenant 
+ - [Per-Namespace Sealing](namespace-sealing.mdx), to add per-tenant 
    encryption key separation.
- - [External Key Configuration for KMS and HSM Access](/docs/rfcs/external-keys),
+ - [External Key Configuration for KMS and HSM Access](external-keys.mdx),
    to add support for secure key material storage and interaction from
    secrets engines like PKI, Transit, and SSH.
- - [Web UI Modernization](/docs/rfcs/web-ui-modernization), for rewriting OpenBao’s web UI from EmberJS to React
+ - [Web UI Modernization](web-ui-modernization.mdx), for rewriting OpenBao’s web UI from EmberJS to React
    to create a modern, secure, and extensible interface.
 
 ## Landed
 
- - [Paginated lists](/docs/rfcs/paginated-lists), for adding pagination
+ - [Paginated lists](paginated-lists.mdx), for adding pagination
    to the user-facing API and storage backends. This landed in
    [PR #170](https://github.com/openbao/openbao/pull/170).
- - [`mlock` removal](/docs/rfcs/mlock-removal), to remove the `mlock`
+ - [`mlock` removal](mlock-removal.mdx), to remove the `mlock`
    syscall from OpenBao. This landed in
    [PR #363](https://github.com/openbao/openbao/pull/363).
- - [Discontinue enforcing signed commits](/docs/rfcs/signed-commits), for
+ - [Discontinue enforcing signed commits](signed-commits.mdx), for
    allowing users to contribute without GPG/SSH signing their commits.
- - [Transactional storage](/docs/rfcs/transactions), for supporting safer
+ - [Transactional storage](transactions.mdx), for supporting safer
    storage semantics in `physical.Backend` and `logical.Storage` for use
    by Core and plugins. This landed in several parts concluding in
    [PR #292](https://github.com/openbao/openbao/pull/292).
- - [SCAN operation](/docs/rfcs/scan-operation), for supporting recursive
+ - [SCAN operation](scan-operation.mdx), for supporting recursive
    lists as a native operation and as an ACL capability. This landed in
    [PR #763](https://github.com/openbao/openbao/pull/763).
- - [ACME TLS Listeners](/docs/rfcs/acme-tls-listeners), for supporting
+ - [ACME TLS Listeners](acme-tls-listeners.mdx), for supporting
    just-in-time certificate acquisition for TLS-enabled listeners via the
    ACME protocol. This landed in [PR #857](https://github.com/openbao/openbao/pull/857).
- - [Safely limit pagination via ACL policies](/docs/rfcs/acl-paginated-lists),
+ - [Safely limit pagination via ACL policies](acl-paginated-lists.mdx),
    adding a new ACL policy parameter, `pagination_limit`, to restrict the size
    of list and scan operation requests. This landed in
    [PR #802](https://github.com/openbao/openbao/pull/802).
- - [Split the mount table using transactional storage](/docs/rfcs/split-mount-tables),
+ - [Split the mount table using transactional storage](split-mount-tables.mdx),
    removes mount table limits, allowing potentially hundreds of thousands of
    mounts on a single scaled-up server. This landed in
    [622](https://github.com/openbao/openbao/pull/622).
- - [SSH CA Multi-issuer](/docs/rfcs/ssh-ca-multi-issuer), adds support for multiple issuers on SSH secret engine mounts.
+ - [SSH CA Multi-issuer](ssh-ca-multi-issuer.mdx), adds support for multiple issuers on SSH secret engine mounts.
    Landed in [880](https://github.com/openbao/openbao/pull/880).
- - [Using CEL Roles For JWT/OIDC Auth](/docs/rfcs/cel-jwt), adds support for CEL roles in JWT Auth
+ - [Using CEL Roles For JWT/OIDC Auth](cel-jwt.mdx), adds support for CEL roles in JWT Auth
    Landed in [769](https://github.com/openbao/openbao/pull/769)
- - [Using CEL Roles For PKI cert issuance/sign policies](/docs/rfcs/cel-pki), adds support for CEL roles in PKI
+ - [Using CEL Roles For PKI cert issuance/sign policies](cel-pki.mdx), adds support for CEL roles in PKI
    Landed in [794](https://github.com/openbao/openbao/pull/794)
- - [Filtering list and scan results](/docs/rfcs/filtering-list) to only
+ - [Filtering list and scan results](filtering-list.mdx) to only
    results visible by the client token. This landed in
    [PR #1389](https://github.com/openbao/openbao/pull/1389).
- - [Static Auto-Unseal](/docs/rfcs/static-auto-unseal), introducing a new
+ - [Static Auto-Unseal](static-auto-unseal.mdx), introducing a new
    auto-unseal mechanism, `static`, which loads keys from the environment,
    filesystem, or directly in the configuration file. Landed in
    [PR #1425](https://github.com/openbao/openbao/pull/1425).
- - [Support inline authentication for non-leased operations](/docs/rfcs/inline-auth),
+ - [Support inline authentication for non-leased operations](inline-auth.mdx),
    to discuss how to incorporate authentication sent via the main operation,
    without returning or storing the resulting token, for operations that do
    not create leases. Landed in [PR #1433](https://github.com/openbao/openbao/pull/1433).
- - [Define audit devices in the configuration file](/docs/rfcs/config-audit-devices),
+ - [Define audit devices in the configuration file](config-audit-devices.mdx),
    solving the security and usability gaps after HCSEC-2025-14.
    Landed in [PR #1700](https://github.com/openbao/openbao/pull/1700).
 
 ## Strategic
 
- - [Best Practices for Integrating CEL in Auth, Secrets, and Elsewhere](/docs/rfcs/cel-best-practices),
+ - [Best Practices for Integrating CEL in Auth, Secrets, and Elsewhere](cel-best-practices.mdx),
    to discuss how Google's Common Expression Language should be integrated
    into OpenBao.

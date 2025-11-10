@@ -15,9 +15,9 @@ This FAQ section contains frequently asked questions about the Login MFA feature
 
 ### Q: what are the various MFA workflows that are available to me as an OpenBao user and how are they different?
 
-| MFA workflow                                   | What does it do?                                                                                                                                                                                                                                                                                    | Who manages the MFA?              | 
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| [Login MFA](/docs/auth/login-mfa)              | MFA in OpenBao provides MFA on login. CLI, API, and UI-based login are supported.                                                                                                                                                                                                                 | MFA is managed by OpenBao | 
+| MFA workflow           | What does it do?                                                                  | Who manages the MFA?      |
+|------------------------|-----------------------------------------------------------------------------------|---------------------------|
+| [Login MFA](index.mdx) | MFA in OpenBao provides MFA on login. CLI, API, and UI-based login are supported. | MFA is managed by OpenBao |
 
 ### Q: what is Single-Phase MFA vs. Two-Phase MFA?
 
@@ -36,15 +36,15 @@ If the configured MFA methods, such as PingID, Okta, or Duo, do not require a pa
 
 ### Q: what are the ways to configure the various MFA workflows?
 
-| MFA workflow                                   | Configuration methods                                                                     | Details                                                                                                                                                                                                                                                                                     |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Login MFA](/docs/auth/login-mfa)              | CLI/API | Configured using the `identity/mfa/method` endpoints, then passing those method IDs to the `identity/mfa/login-enforcement` endpoint. MFA methods supported: TOTP, Okta, Duo, PingID.                                                                                                       |
+| MFA workflow           | Configuration methods | Details                                                                                                                                                                               |
+|------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Login MFA](index.mdx) | CLI/API               | Configured using the `identity/mfa/method` endpoints, then passing those method IDs to the `identity/mfa/login-enforcement` endpoint. MFA methods supported: TOTP, Okta, Duo, PingID. |
 
 ### Q: which MFA mechanism is used with the different MFA workflows in OpenBao?
 
-| MFA workflow                                   | UI        | CLI/API                                                                                                                                   | Single-Phase                | Two-Phase                   |
-| ---------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | --------------------------- |
-| [Login MFA](/docs/auth/login-mfa)              | Supported | Supported. You can select single-phase MFA by supplying the X-Vault-MFA header. In the absence of this header, the Two- Phase MFA is used | N/A                         | Supported                   |
+| MFA workflow           | UI        | CLI/API                                                                                                                                   | Single-Phase | Two-Phase |
+|------------------------|-----------|-------------------------------------------------------------------------------------------------------------------------------------------|--------------|-----------|
+| [Login MFA](index.mdx) | Supported | Supported. You can select single-phase MFA by supplying the X-Vault-MFA header. In the absence of this header, the Two- Phase MFA is used | N/A          | Supported |
 
 ### Q: i use the OpenBao agent. does MFA pose any challenges for me?
 

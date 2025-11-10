@@ -182,6 +182,7 @@ const sidebars: SidebarsConfig = {
                 "commands/list",
                 "commands/login",
                 "commands/monitor",
+                "commands/namespace",
                 {
                     operator: [
                         "commands/operator/index",

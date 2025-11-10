@@ -882,9 +882,11 @@ func testbackendNoncaexpiryFunc(t *testing.T, useHeader bool) {
 func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 	testbackendRegisteredNonCACRLFunc(t, false)
 }
+
 func TestBackend_RegisteredNonCA_CRLHeader(t *testing.T) {
 	testbackendRegisteredNonCACRLFunc(t, true)
 }
+
 func testbackendRegisteredNonCACRLFunc(t *testing.T, useHeader bool) {
 	config := logical.TestBackendConfig()
 	storage := &logical.InmemStorage{}

@@ -679,6 +679,8 @@ func (t *RaftTransaction) Commit(ctx context.Context) error {
 		// is a good approximation as to the size of the operation log and
 		// saves us from continually allocating in future appends.
 		Operations: make([]*LogOperation, 0, 2+len(t.reads)+len(t.lists)+len(t.updates)),
+
+		LowestActiveIndex: pointerutil.Ptr(t.b.fsm.fastTxnTracker.lowestActiveIndexAfterCommit(t.index)),
 	}
 	log.Operations = append(log.Operations, &LogOperation{
 		OpType: beginTxOp,
@@ -713,8 +715,6 @@ func (t *RaftTransaction) Commit(ctx context.Context) error {
 		OpType: commitTxOp,
 	})
 
-	lowestActiveIndex := t.b.fsm.fastTxnTracker.lowestActiveIndexAfterCommit(t.index)
-
 	// Acquire a regular operation permit pool entry to let us access the
 	// underlying storage.
 	t.b.permitPool.Acquire()
@@ -724,7 +724,6 @@ func (t *RaftTransaction) Commit(ctx context.Context) error {
 	// the transaction application in Raft, applyLog will gather it for us
 	// and return it as a proper error.
 	t.b.l.RLock()
-	log.LowestActiveIndex = pointerutil.Ptr(min(lowestActiveIndex, t.b.raft.AppliedIndex()-1)) // we need to cap the lowest active index, otherwise we might miss transaction started later
 	err = t.b.applyLog(ctx, log)
 	t.b.l.RUnlock()
 
@@ -821,6 +820,12 @@ func (t *fsmTxnCommitIndexTracker) lowestActiveIndexAfterCommit(transactionStart
 		lowestActiveIndex = min(lowestActiveIndex, index)
 	}
 	return lowestActiveIndex
+}
+
+// lowestActiveIndex returns the lowest starting index of among active
+// transactions.
+func (t *fsmTxnCommitIndexTracker) lowestActiveIndex() uint64 {
+	return t.lowestActiveIndexAfterCommit(uint64(math.MaxUint64))
 }
 
 func (t *fsmTxnCommitIndexTracker) clearOldEntries(lowestActiveIndex uint64) {

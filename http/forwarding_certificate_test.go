@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -21,19 +22,18 @@ import (
 // Reuse the test fixtures from the cert credential handler
 const testCertPath1 = "../builtin/credential/cert/test-fixtures/testissuedcert4.pem"
 
-func getTestHandler(decoders []string) func(props *vault.HandlerProperties) http.Handler {
+func getTestHandler(listenerConfig *configutil.Listener) func(props *vault.HandlerProperties) http.Handler {
 	return func(props *vault.HandlerProperties) http.Handler {
 		origHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Write out what we internally processed.
 			w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", r.Header.Get("X-Processed-Tls-Client-Certificate"))
 			w.WriteHeader(http.StatusOK)
 		})
-		listenerConfig := getListenerConfigForClientCerts(decoders)
 		return WrapClientCertificateHandler(origHandler, listenerConfig)
 	}
 }
 
-func getListenerConfigForClientCerts(decoders []string) *configutil.Listener {
+func getDefaultListenerConfigForClientCerts(decoders []string) *configutil.Listener {
 	return &configutil.Listener{
 		XForwardedForClientCertHeader:   "X-Forwarded-For-Client-Cert",
 		XForwardedForClientCertDecoders: decoders,
@@ -53,45 +53,55 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 	clientCertPemText := string(clientCertFile)
 	clientCertBase64 := base64.StdEncoding.EncodeToString(clientCertBlock.Bytes)
 
-	t.Run("invalid_base64", func(t *testing.T) {
-		t.Parallel()
-		testHandler := getTestHandler([]string{})
-		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
-			HandlerFunc: HandlerFunc(testHandler),
-		})
-		cluster.Start()
-		defer cluster.Cleanup()
+	invalidBase64Values := []struct {
+		name  string
+		value string
+	}{
+		{"invalid_length", "invalid"},
+		{"invalid_character", "::" + clientCertBase64},
+	}
+	for _, testItem := range invalidBase64Values {
+		testName := fmt.Sprintf("invalid_base64_%s", testItem.name)
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+			testHandler := getTestHandler(getDefaultListenerConfigForClientCerts([]string{}))
+			cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+				HandlerFunc: HandlerFunc(testHandler),
+			})
+			cluster.Start()
+			defer cluster.Cleanup()
 
-		client := cluster.Cores[0].Client
-		req := client.NewRequest("GET", "/")
-		req.Headers = make(http.Header)
-		req.Headers.Add("X-Forwarded-For-Client-Cert", "invalid")
-		resp, err := client.RawRequest(req)
-		if err == nil {
-			t.Fatal("expected error")
-		}
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-				t.Fatal("failed to close response body")
+			client := cluster.Cores[0].Client
+			req := client.NewRequest("GET", "/")
+			req.Headers = make(http.Header)
+			req.Headers.Add("X-Forwarded-For-Client-Cert", "invalid")
+			resp, err := client.RawRequest(req)
+			if err == nil {
+				t.Fatal("expected error")
 			}
-		}(resp.Body)
-		buf := bytes.NewBuffer(nil)
-		_, err = buf.ReadFrom(resp.Body)
-		if err != nil {
-			t.Fatal("failed to read response body")
-		}
-		if !strings.Contains(buf.String(), "error decoding client certificate header as base64") {
-			t.Fatalf("bad body: %s", buf.String())
-		}
-		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
-			t.Fatal("client certificate header should not have been set")
-		}
-	})
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+					t.Fatal("failed to close response body")
+				}
+			}(resp.Body)
+			buf := bytes.NewBuffer(nil)
+			_, err = buf.ReadFrom(resp.Body)
+			if err != nil {
+				t.Fatal("failed to read response body")
+			}
+			if !strings.Contains(buf.String(), "error decoding client certificate header as base64") {
+				t.Fatalf("bad body: %s", buf.String())
+			}
+			if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
+				t.Fatal("client certificate header should not have been set")
+			}
+		})
+	}
 
 	t.Run("valid_base64", func(t *testing.T) {
 		t.Parallel()
-		testHandler := getTestHandler([]string{})
+		testHandler := getTestHandler(getDefaultListenerConfigForClientCerts([]string{}))
 		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
 			HandlerFunc: HandlerFunc(testHandler),
 		})
@@ -113,10 +123,81 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		}
 	})
 
-	// This will not work for some reason. Go refuses the header even when encoded with /r/n and with leading tabs.
-	t.Run("nginx_ssl_client_cert_fails", func(t *testing.T) {
+	t.Run("valid_rfc9440", func(t *testing.T) {
 		t.Parallel()
-		testHandler := getTestHandler([]string{"PEM"})
+		testHandler := getTestHandler(getDefaultListenerConfigForClientCerts([]string{"RFC9440"}))
+		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+			HandlerFunc: HandlerFunc(testHandler),
+		})
+		cluster.Start()
+		defer cluster.Cleanup()
+		client := cluster.Cores[0].Client
+		req := client.NewRequest("GET", "/")
+		req.Headers = make(http.Header)
+		req.Headers.Add("X-Forwarded-For-Client-Cert", ":"+clientCertBase64+":")
+		resp, err := client.RawRequest(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("bad status: %d", resp.StatusCode)
+		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != clientCertBase64 {
+			t.Fatal("mismatched client certificate response")
+		}
+	})
+
+	invalidRfc9440Values := []struct {
+		name  string
+		value string
+	}{
+		{"no_first_colon", clientCertBase64 + ":"},
+		{"no_last_colon", ":" + clientCertBase64},
+		{"no_colons", clientCertBase64},
+	}
+
+	for _, testItem := range invalidRfc9440Values {
+		testName := fmt.Sprintf("invalid_rfc9440_%s", testItem.name)
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
+			testHandler := getTestHandler(getDefaultListenerConfigForClientCerts([]string{"RFC9440"}))
+			cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+				HandlerFunc: HandlerFunc(testHandler),
+			})
+			cluster.Start()
+			defer cluster.Cleanup()
+			client := cluster.Cores[0].Client
+			req := client.NewRequest("GET", "/")
+			req.Headers = make(http.Header)
+			req.Headers.Add("X-Forwarded-For-Client-Cert", testItem.value)
+			resp, err := client.RawRequest(req)
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+					t.Fatal("failed to close response body")
+				}
+			}(resp.Body)
+			buf := bytes.NewBuffer(nil)
+			_, err = buf.ReadFrom(resp.Body)
+			if err != nil {
+				t.Fatal("failed to read response body")
+			}
+			if !strings.Contains(buf.String(), "error decoding RFC9440 client certificate header") {
+				t.Fatalf("bad body: %s", buf.String())
+			}
+			if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
+				t.Fatal("client certificate header should not have been set")
+			}
+		})
+	}
+
+	// This will not work due to https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
+	t.Run("nginx_ssl_client_cert_multiline", func(t *testing.T) {
+		t.Parallel()
+		testHandler := getTestHandler(getDefaultListenerConfigForClientCerts([]string{"PEM"}))
 		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
 			HandlerFunc: HandlerFunc(testHandler),
 		})
@@ -127,6 +208,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		req.Headers = make(http.Header)
 		// NGINX Prepends a tab before every line except the first
 		// https://nginx.org/en/docs/http/ngx_http_ssl_module.html#var_ssl_client_cert
+		// This is deprecated
 		clientCertPemTextHeader := strings.ReplaceAll(clientCertPemText, "\n", "\r\n\t")
 		req.Headers.Add("X-Forwarded-For-Client-Cert", clientCertPemTextHeader)
 		_, err := client.RawRequest(req)
@@ -141,7 +223,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 	// https://nginx.org/en/docs/http/ngx_http_ssl_module.html#var_ssl_client_escaped_cert
 	t.Run("nginx_ssl_client_escaped_cert", func(t *testing.T) {
 		t.Parallel()
-		testHandler := getTestHandler([]string{"URL", "PEM"})
+		testHandler := getTestHandler(getDefaultListenerConfigForClientCerts([]string{"URL", "PEM"}))
 		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
 			HandlerFunc: HandlerFunc(testHandler),
 		})
@@ -167,7 +249,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 
 	t.Run("invalid_pem_header", func(t *testing.T) {
 		t.Parallel()
-		testHandler := getTestHandler([]string{"URL", "PEM"})
+		testHandler := getTestHandler(getDefaultListenerConfigForClientCerts([]string{"URL", "PEM"}))
 		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
 			HandlerFunc: HandlerFunc(testHandler),
 		})
@@ -203,7 +285,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 
 	t.Run("invalid_escaped_cert", func(t *testing.T) {
 		t.Parallel()
-		testHandler := getTestHandler([]string{"URL", "PEM"})
+		testHandler := getTestHandler(getDefaultListenerConfigForClientCerts([]string{"URL", "PEM"}))
 		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
 			HandlerFunc: HandlerFunc(testHandler),
 		})
@@ -241,7 +323,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 
 	t.Run("no_header", func(t *testing.T) {
 		t.Parallel()
-		testHandler := getTestHandler([]string{})
+		testHandler := getTestHandler(getDefaultListenerConfigForClientCerts([]string{}))
 		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
 			HandlerFunc: HandlerFunc(testHandler),
 		})
@@ -263,7 +345,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 
 	t.Run("inject_processed_header", func(t *testing.T) {
 		t.Parallel()
-		testHandler := getTestHandler([]string{})
+		testHandler := getTestHandler(getDefaultListenerConfigForClientCerts([]string{}))
 		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
 			HandlerFunc: HandlerFunc(testHandler),
 		})
@@ -289,6 +371,34 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		}
 		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
 			t.Fatal("client certificate header should not have been set")
+		}
+	})
+
+	t.Run("non_canonical_header_name", func(t *testing.T) {
+		// Test to make sure everything works even if the user provides a non-canonical header format.
+		t.Parallel()
+		listener := getDefaultListenerConfigForClientCerts([]string{})
+		// Notice that TLS is in all caps.
+		listener.XForwardedForClientCertHeader = "X-TLS-Client-Certificate"
+		testHandler := getTestHandler(listener)
+		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+			HandlerFunc: HandlerFunc(testHandler),
+		})
+		cluster.Start()
+		defer cluster.Cleanup()
+		client := cluster.Cores[0].Client
+		req := client.NewRequest("GET", "/")
+		req.Headers = make(http.Header)
+		req.Headers.Add("X-TLS-Client-Certificate", clientCertBase64)
+		resp, err := client.RawRequest(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("bad status: %d", resp.StatusCode)
+		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != clientCertBase64 {
+			t.Fatal("mismatched client certificate response")
 		}
 	})
 }

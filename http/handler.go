@@ -590,41 +590,50 @@ func WrapClientCertificateHandler(h http.Handler, l *configutil.Listener) http.H
 	// Iterate through the processors to handle the header.
 	decoders := l.XForwardedForClientCertDecoders
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Strip any X-Processed-Tls-Client-Certificate headers.a
-		forwardedHeader, forwardedHeaderOK := r.Header["X-Processed-Tls-Client-Certificate"]
-		if forwardedHeaderOK || len(forwardedHeader) > 0 {
-			r.Header.Del(textproto.CanonicalMIMEHeaderKey("X-Processed-Tls-Client-Certificate"))
-		}
-		clientCertHeaders, clientCertHeadersOK := r.Header[clientCertificateHeader]
+		// Strip any X-Processed-Tls-Client-Certificate headers.
+		r.Header.Del("X-Processed-Tls-Client-Certificate")
+		// Use the CanonicalMIMEHeaderKey so that if the user has the header not canonicalized in the config.
+		clientCertHeaders, clientCertHeadersOK := r.Header[textproto.CanonicalMIMEHeaderKey(clientCertificateHeader)]
 		// Short circuit if no client cert header
 		if !clientCertHeadersOK || len(clientCertHeaders) == 0 {
 			h.ServeHTTP(w, r)
 			return
 		}
-		// TODO: Handle multiple clientCertHeaders
+		// Do not handle multiple certs.
+		// This is out of scope and if a proxy is following RFC 9440 the chain excluding the end entity would be a separate header
 		headerValue := clientCertHeaders[0]
-		if len(decoders) > 0 {
-			for i := range decoders {
-				// The end result should be a base64 encoded DER certificate.
-				// URL is for converting urlencoded strings back into text
-				if decoders[i] == "URL" {
-					decoded, err := url.QueryUnescape(headerValue)
-					if err != nil {
-						respondError(w, http.StatusBadRequest, errors.New("error decoding client certificate header"))
-						return
-					}
-					headerValue = decoded
+		for i := range decoders {
+			// https://www.rfc-editor.org/rfc/rfc9440.html#name-encoding
+			// The cert is base64 encoded with colons at the end and beginning.
+			if decoders[i] == "RFC9440" {
+				// validate that it starts and ends with :
+				if headerValue[0] == ':' && headerValue[len(headerValue)-1] == ':' {
+					// return the value between the :
+					headerValue = headerValue[1 : len(headerValue)-1]
+				} else {
+					respondError(w, http.StatusBadRequest, errors.New("error decoding RFC9440 client certificate header"))
+					return
 				}
-				// Convert PEM text into Base64 DER.
-				if decoders[i] == "PEM" {
-					block, _ := pem.Decode([]byte(headerValue))
-					if block == nil || block.Type != "CERTIFICATE" {
-						respondError(w, http.StatusBadRequest, errors.New("failed to decode PEM certificate"))
-						return
-					}
-					// This is later validated in handleCertHeader in http/logical.go as part of buildLogicalRequestNoAuth
-					headerValue = base64.StdEncoding.EncodeToString(block.Bytes)
+			}
+			// The end result should be a base64 encoded DER certificate.
+			// URL is for converting urlencoded strings back into text
+			if decoders[i] == "URL" {
+				decoded, err := url.QueryUnescape(headerValue)
+				if err != nil {
+					respondError(w, http.StatusBadRequest, errors.New("error decoding client certificate header"))
+					return
 				}
+				headerValue = decoded
+			}
+			// Convert PEM text into Base64 DER.
+			if decoders[i] == "PEM" {
+				block, _ := pem.Decode([]byte(headerValue))
+				if block == nil || block.Type != "CERTIFICATE" {
+					respondError(w, http.StatusBadRequest, errors.New("failed to decode PEM certificate"))
+					return
+				}
+				// This is later validated in handleCertHeader in http/logical.go as part of buildLogicalRequestNoAuth
+				headerValue = base64.StdEncoding.EncodeToString(block.Bytes)
 			}
 		}
 		// Validate that the processed cert is valid StdEncoding base64

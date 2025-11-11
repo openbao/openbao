@@ -604,7 +604,7 @@ func WrapClientCertificateHandler(h http.Handler, l *configutil.Listener) http.H
 		headerValue := clientCertHeaders[0]
 		for i := range decoders {
 			// https://www.rfc-editor.org/rfc/rfc9440.html#name-encoding
-			// The cert is base64 encoded with colons at the end and beginning.
+			// The cert is base64 encoded with colons at the beginning and end.
 			if decoders[i] == "RFC9440" {
 				// validate that it starts and ends with :
 				if headerValue[0] == ':' && headerValue[len(headerValue)-1] == ':' {

@@ -121,7 +121,7 @@ type Listener struct {
 
 	// This is different from upstream by using array of strings to allow easier ordering of processing.
 	// Internally all certs are passed as headers that are base64 encoded DER.
-	// Available decoders: PEM, URL
+	// Available decoders: PEM, URL, RFC9440
 	XForwardedForClientCertHeader   string   `hcl:"x_forwarded_for_client_cert_header,alias:XForwardedForClientCertHeader"`
 	XForwardedForClientCertDecoders []string `hcl:"x_forwarded_for_client_cert_decoders,alias:XForwardedForClientCertificateProcessing"`
 

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/pem"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -69,7 +70,12 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				t.Fatal("failed to close response body")
+			}
+		}(resp.Body)
 		buf := bytes.NewBuffer(nil)
 		_, err = buf.ReadFrom(resp.Body)
 		if err != nil {
@@ -176,7 +182,12 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				t.Fatal("failed to close response body")
+			}
+		}(resp.Body)
 		buf := bytes.NewBuffer(nil)
 		_, err = buf.ReadFrom(resp.Body)
 		if err != nil {
@@ -209,7 +220,12 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error")
 		}
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				t.Fatal("failed to close response body")
+			}
+		}(resp.Body)
 		buf := bytes.NewBuffer(nil)
 		_, err = buf.ReadFrom(resp.Body)
 		if err != nil {
@@ -262,7 +278,12 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				t.Fatal("failed to close response body")
+			}
+		}(resp.Body)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("bad status: %d", resp.StatusCode)
 		}

@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"

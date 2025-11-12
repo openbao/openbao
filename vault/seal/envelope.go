@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	metrics "github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 )
 

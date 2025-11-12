@@ -17,7 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	raftlib "github.com/hashicorp/raft"
 	"github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/api/v2"

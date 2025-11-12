@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	bolt "go.etcd.io/bbolt"

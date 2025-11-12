@@ -420,7 +420,7 @@ func TestPolicyStore_LoadACLPolicyNamespaces(t *testing.T) {
 	require.NotNil(t, ns, "namespace not found: %s", nsPath)
 
 	// Create namespace context
-	nsCtx := namespace.ContextWithNamespace(ctx, ns)
+	nsCtx := namespace.ContextWithNamespace(ctx, UnwrapNamespace(ns))
 
 	testPolicy := `
 path "secret/*" {
@@ -447,7 +447,7 @@ path "secret/*" {
 `
 
 	// Create a new policy in the namespace
-	policy, _ := ParseACLPolicy(ns, modifiedPolicy)
+	policy, _ := ParseACLPolicy(UnwrapNamespace(ns), modifiedPolicy)
 	policy.Name = "test-load-policy"
 	err = ps.SetPolicy(nsCtx, policy, nil)
 	require.NoError(t, err)
@@ -481,8 +481,8 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 	require.NotNil(t, ns, "namespace not found: %s", nsPath)
 
 	// Create policy in namespace
-	nsCtx := namespace.ContextWithNamespace(ctx, ns)
-	policy, _ := ParseACLPolicy(ns, aclPolicy)
+	nsCtx := namespace.ContextWithNamespace(ctx, UnwrapNamespace(ns))
+	policy, _ := ParseACLPolicy(UnwrapNamespace(ns), aclPolicy)
 	policy.Name = "test-policy"
 	require.NoError(t, ps.SetPolicy(nsCtx, policy, nil))
 
@@ -497,7 +497,7 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 	assert.Nil(t, rootP, "unexpected policy found in root namespace")
 
 	// Check storage locations
-	nsBarrierView := ps.getACLView(ns)
+	nsBarrierView := ps.getACLView(UnwrapNamespace(ns))
 	require.NotNil(t, nsBarrierView, "expected namespace storage")
 
 	out, err := nsBarrierView.Get(nsCtx, "test-policy")
@@ -561,7 +561,7 @@ func TestPolicyStore_NamespaceAPI(t *testing.T) {
 	ns, err := core.namespaceStore.GetNamespaceByPath(ctx, nsPath)
 	require.NoError(t, err)
 	require.NotNil(t, ns, "namespace not found: %s", nsPath)
-	nsCtx := namespace.ContextWithNamespace(ctx, ns)
+	nsCtx := namespace.ContextWithNamespace(ctx, UnwrapNamespace(ns))
 
 	// Create and verify namespace policy
 	nsPolicyData := map[string]interface{}{
@@ -645,7 +645,7 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 	// Get parent namespace context
 	parentNS, err := core.namespaceStore.GetNamespaceByPath(rootCtx, "parent")
 	require.NoError(t, err)
-	parentCtx := namespace.ContextWithNamespace(rootCtx, parentNS)
+	parentCtx := namespace.ContextWithNamespace(rootCtx, UnwrapNamespace(parentNS))
 
 	// Create child namespace
 	childResp, err := core.HandleRequest(parentCtx, &logical.Request{
@@ -660,7 +660,7 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 	childNS, err := core.namespaceStore.GetNamespaceByPath(parentCtx, "child")
 	require.NoError(t, err)
 	// Create child context from root context to avoid inheriting parent context
-	childCtx := namespace.ContextWithNamespace(parentCtx, childNS)
+	childCtx := namespace.ContextWithNamespace(parentCtx, UnwrapNamespace(childNS))
 
 	// Add distinct policies to each namespace
 	policyTemplates := []struct {
@@ -670,8 +670,8 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 		content string
 	}{
 		{namespace.RootNamespace, rootCtx, "root-policy", `path "sys/*" { capabilities = ["read"] }`},
-		{parentNS, parentCtx, "parent-policy", `path "secret/*" { capabilities = ["list"] }`},
-		{childNS, childCtx, "child-policy", `path "auth/*" { capabilities = ["create"] }`},
+		{UnwrapNamespace(parentNS), parentCtx, "parent-policy", `path "secret/*" { capabilities = ["list"] }`},
+		{UnwrapNamespace(childNS), childCtx, "child-policy", `path "auth/*" { capabilities = ["create"] }`},
 	}
 
 	for _, tmpl := range policyTemplates {
@@ -773,7 +773,7 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	parentNS, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
 	require.NoError(t, err)
 	require.NotNil(t, parentNS, "parent namespace not found")
-	parentCtx := namespace.ContextWithNamespace(ctx, parentNS)
+	parentCtx := namespace.ContextWithNamespace(ctx, UnwrapNamespace(parentNS))
 
 	// Create a child namespace
 	childPath := "child"
@@ -789,7 +789,7 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	childNS, err := core.namespaceStore.GetNamespaceByPath(parentCtx, childPath)
 	require.NoError(t, err)
 	require.NotNil(t, childNS, "child namespace not found")
-	childCtx := namespace.ContextWithNamespace(parentCtx, childNS)
+	childCtx := namespace.ContextWithNamespace(parentCtx, UnwrapNamespace(childNS))
 
 	// Create policies in each namespace
 	rootPolicy := `path "secret/*" { capabilities = ["read"] }`
@@ -802,12 +802,12 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	require.NoError(t, ps.SetPolicy(ctx, policy, nil))
 
 	// Create in parent namespace
-	policy, _ = ParseACLPolicy(parentNS, parentPolicy)
+	policy, _ = ParseACLPolicy(UnwrapNamespace(parentNS), parentPolicy)
 	policy.Name = "test-nested-policy"
 	require.NoError(t, ps.SetPolicy(parentCtx, policy, nil))
 
 	// Create in child namespace
-	policy, _ = ParseACLPolicy(childNS, childPolicy)
+	policy, _ = ParseACLPolicy(UnwrapNamespace(childNS), childPolicy)
 	policy.Name = "test-nested-policy"
 	require.NoError(t, ps.SetPolicy(childCtx, policy, nil))
 
@@ -829,8 +829,8 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 
 	// Verify storage locations by directly accessing the barrier views
 	rootView := ps.getACLView(namespace.RootNamespace)
-	parentView := ps.getACLView(parentNS)
-	childView := ps.getACLView(childNS)
+	parentView := ps.getACLView(UnwrapNamespace(parentNS))
+	childView := ps.getACLView(UnwrapNamespace(childNS))
 
 	rootEntry, err := rootView.Get(ctx, "test-nested-policy")
 	require.NoError(t, err)

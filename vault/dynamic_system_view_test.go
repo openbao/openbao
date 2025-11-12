@@ -314,15 +314,15 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_namespaces(t *testing.T) {
 	b64Policy := base64.StdEncoding.EncodeToString([]byte(rawTestPasswordPolicy))
 	req.Data["policy"] = b64Policy
 	req.ClientToken = token
-	_, err = core.HandleRequest(namespace.ContextWithNamespace(ctx, fooNs), req)
+	_, err = core.HandleRequest(namespace.ContextWithNamespace(ctx, UnwrapNamespace(fooNs)), req)
 	require.NoError(t, err)
 
 	// Password policy should only work in the 'foo/' namespace,
 	// not a child namespace, not the root namespace.
-	pass, err := TestDynamicSystemView(core, fooNs).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	pass, err := TestDynamicSystemView(core, UnwrapNamespace(fooNs)).GeneratePasswordFromPolicy(ctx, testPolicyName)
 	require.NoError(t, err)
 	require.NotEmpty(t, pass)
-	pass, err = TestDynamicSystemView(core, barNs).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	pass, err = TestDynamicSystemView(core, UnwrapNamespace(barNs)).GeneratePasswordFromPolicy(ctx, testPolicyName)
 	require.Error(t, err)
 	require.Empty(t, pass)
 	pass, err = TestDynamicSystemView(core, nil).GeneratePasswordFromPolicy(ctx, testPolicyName)
@@ -339,7 +339,7 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_namespaces(t *testing.T) {
 	require.NoError(t, err)
 
 	// Password policy in 'foo/' should still act the same
-	pass, err = TestDynamicSystemView(core, fooNs).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	pass, err = TestDynamicSystemView(core, UnwrapNamespace(fooNs)).GeneratePasswordFromPolicy(ctx, testPolicyName)
 	require.NoError(t, err)
 	require.NotEmpty(t, pass)
 	require.Len(t, pass, 20)

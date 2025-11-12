@@ -332,7 +332,7 @@ func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.
 		parentPath, _ := ns.ParentPath()
 		parent, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
 		require.NoError(t, err)
-		parentCtx := namespace.ContextWithNamespace(ctx, parent)
+		parentCtx := namespace.ContextWithNamespace(ctx, UnwrapNamespace(parent))
 		_, err = core.namespaceStore.SetNamespace(parentCtx, ns, nil)
 		require.NoError(t, err)
 	}
@@ -354,7 +354,7 @@ func TestCoreCreateSealedNamespaces(t testing.T, core *Core, namespaces ...*name
 		parent, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
 		require.NoError(t, err)
 
-		nsSealKeyShares, err := core.namespaceStore.SetNamespace(namespace.ContextWithNamespace(ctx, parent), ns, sealConfig)
+		nsSealKeyShares, err := core.namespaceStore.SetNamespace(namespace.ContextWithNamespace(ctx, UnwrapNamespace(parent)), ns, sealConfig)
 		require.NoError(t, err)
 		keysPerNamespace[ns.Path] = nsSealKeyShares
 	}
@@ -369,14 +369,16 @@ func TestCoreCreateUnsealedNamespaces(t testing.T, core *Core, namespaces ...*na
 	for _, ns := range namespaces {
 		keys := TestCoreCreateSealedNamespaces(t, core, ns)
 		for _, key := range keys[ns.Path] {
-			unsealed, err := core.sealManager.UnsealNamespace(namespace.ContextWithNamespace(context.Background(), ns), ns, TestKeyCopy(key))
+			wrappedNs := WrapNamespace(ns)
+			unsealed, err := core.sealManager.UnsealNamespace(namespace.ContextWithNamespace(context.Background(), ns), wrappedNs, TestKeyCopy(key))
 			require.NoError(t, err)
 			if unsealed {
 				break
 			}
 		}
 
-		require.False(t, core.NamespaceSealed(ns))
+		wrappedNs := WrapNamespace(ns)
+		require.False(t, core.NamespaceSealed(UnwrapNamespace(wrappedNs)))
 		keysPerNamespace[ns.Path] = keys[ns.Path]
 	}
 	return keysPerNamespace

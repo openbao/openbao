@@ -295,18 +295,17 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 
 	// verify that modifying a locked namespace does not affect lock
 	// status.
-	ret, _, err = c.namespaceStore.ModifyNamespaceByPath(ctx, testNamespace.Path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+	retWrap, _, err := c.namespaceStore.ModifyNamespaceByPath(ctx, testNamespace.Path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 		ns.CustomMetadata["testing"] = "pass"
 
 		// Ensure we do not see the unlock key during modification either.
-		require.Empty(t, ret.UnlockKey)
-
+		require.Empty(t, ns.UnlockKey)
 		return ns, nil
 	})
 	require.NoError(t, err)
-	require.Equal(t, true, ret.Locked)
-	require.Contains(t, ret.CustomMetadata, "testing")
-	require.Empty(t, ret.UnlockKey)
+	require.Equal(t, true, retWrap.Locked)
+	require.Contains(t, retWrap.CustomMetadata, "testing")
+	require.Empty(t, retWrap.UnlockKey)
 
 	// Verify that listing does not return locks.
 	all, err := c.namespaceStore.ListAllNamespaces(ctx, true, true)
@@ -559,7 +558,7 @@ func TestNamespaceTree(t *testing.T) {
 	require.Equal(t, "foobar", pathSuffix)
 }
 
-func randomNamespace(ns *NamespaceStore) *namespace.Namespace {
+func randomNamespace(ns *NamespaceStore) *Namespace {
 	// make use of random map iteration order
 	for _, item := range ns.namespacesByUUID {
 		return item
@@ -586,7 +585,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 
 	for i := range n {
 		parent := randomNamespace(s)
-		ctx := namespace.ContextWithNamespace(ctx, parent)
+		ctx := namespace.ContextWithNamespace(ctx, UnwrapNamespace(parent))
 		item := &namespace.Namespace{
 			Path: parent.Path + "ns" + strconv.Itoa(i) + "/",
 		}
@@ -633,7 +632,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 	b.Run("ListNamespaces non-recursive", func(b *testing.B) {
 		for b.Loop() {
 			parent := randomNamespace(s)
-			ctx = namespace.ContextWithNamespace(ctx, parent)
+			ctx = namespace.ContextWithNamespace(ctx, UnwrapNamespace(parent))
 			s.ListNamespaces(ctx, false, false)
 		}
 	})
@@ -641,7 +640,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 	b.Run("ListNamespaces recursive", func(b *testing.B) {
 		for b.Loop() {
 			parent := randomNamespace(s)
-			ctx = namespace.ContextWithNamespace(ctx, parent)
+			ctx = namespace.ContextWithNamespace(ctx, UnwrapNamespace(parent))
 			s.ListNamespaces(ctx, false, true)
 		}
 	})

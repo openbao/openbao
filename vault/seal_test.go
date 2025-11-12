@@ -102,7 +102,8 @@ func TestDefaultSeal_IsNSSealed(t *testing.T) {
 	TestCoreCreateNamespaces(t, c, namespace)
 	require.False(t, c.NamespaceSealed(namespace))
 
-	err := sm.SetSeal(ctx, sealConfig, namespace, true)
+	wrappedNamespace := WrapNamespace(namespace)
+	err := sm.SetSeal(ctx, sealConfig, wrappedNamespace, true)
 	require.NoError(t, err)
 
 	err = ns.SealNamespace(ctx, namespace.Path)

@@ -115,7 +115,7 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		ns, err := c.namespaceStore.GetNamespaceByPath(rootCtx, "baz")
 		require.NoError(t, err)
 
-		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+		nsCtx := namespace.ContextWithNamespace(rootCtx, UnwrapNamespace(ns))
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/child")
 		res, err = b.HandleRequest(nsCtx, req)
 		require.Error(t, err)
@@ -147,7 +147,7 @@ func TestNamespaceBackend_SealUnseal(t *testing.T) {
 		keyshares := TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "foobar/"})
 		ns, err := c.namespaceStore.GetNamespaceByPath(rootCtx, "foobar")
 		require.NoError(t, err)
-		nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+		nsCtx := namespace.ContextWithNamespace(rootCtx, UnwrapNamespace(ns))
 
 		// mount a kv engine
 		req := logical.TestRequest(t, logical.UpdateOperation, "mounts/my_secrets")

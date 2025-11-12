@@ -455,7 +455,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 	ns := &namespace.Namespace{ID: "ns1-id", Path: "ns1"}
 	TestCoreCreateNamespaces(t, c, ns)
 	nsCtx := namespace.ContextWithNamespace(context.Background(), ns)
-	ns, err = c.NamespaceByID(nsCtx, ns.ID)
+	wrappedNs, err := c.NamespaceByID(nsCtx, ns.ID)
 	require.NoError(t, err)
 
 	ent = &logical.TokenEntry{
@@ -465,7 +465,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		CreationTime:   time.Now().Unix(),
 		ExplicitMaxTTL: 100,
 		NumUses:        10,
-		NamespaceID:    ns.ID,
+		NamespaceID:    wrappedNs.ID,
 	}
 	if err := ts.create(nsCtx, ent, true); err != nil {
 		t.Fatalf("err: %s", err)

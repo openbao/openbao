@@ -113,9 +113,9 @@ func (c *Client) ClearCache() {
 	c.ocspResponseCache.Purge()
 }
 
-// isInValidityRange checks the validity
+// isInValidityRange checks the validity.
 func isInValidityRange(currTime, nextUpdate time.Time) bool {
-	return !nextUpdate.IsZero() && !currTime.After(nextUpdate)
+	return nextUpdate.IsZero() || !currTime.After(nextUpdate)
 }
 
 func extractCertIDKeyFromRequest(ocspReq []byte) (*certIDKey, *ocspStatus) {
@@ -509,6 +509,14 @@ LOOP:
 	if !isValidOCSPStatus(ret.code) {
 		return ret, nil
 	}
+
+	// If the next update is zero, do not bother caching the result; there is
+	// always fresher OCSP info available and we should re-validate the
+	// request.
+	if ocspRes.NextUpdate.IsZero() {
+		return ret, nil
+	}
+
 	v := ocspCachedResponse{
 		status:     ret.code,
 		time:       float64(time.Now().UTC().Unix()),

@@ -294,9 +294,10 @@ type Core struct {
 	stateLock locking.RWMutex
 	sealed    *uint32
 
-	standby              bool
+	standby              atomic.Bool
 	standbyDoneCh        chan struct{}
 	standbyStopCh        *atomic.Value
+	standbyRestartCh     *atomic.Value
 	manualStepDownCh     chan struct{}
 	keepHALockOnStepDown *uint32
 	heldHALock           physical.Lock
@@ -648,12 +649,20 @@ type Core struct {
 	// Whether we use a single global memdb instance for identity; see
 	// commentary below.
 	unsafeCrossNamespaceIdentity bool
+
+	// Core invalidation tracker handles dispatching invalidations and
+	// refreshing the Core-adjacent caches afterwards.
+	invalidations *invalidationManager
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
 func (c *Core) HAState() consts.HAState {
 	switch {
-	case c.standby:
+	case c.standby.Load():
+		if c.StandbyReadsEnabled() {
+			return consts.PerfStandby
+		}
+
 		return consts.Standby
 	default:
 		return consts.Active
@@ -925,8 +934,8 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		router:               NewRouter(),
 		sealed:               new(uint32),
 		sealMigrationDone:    new(uint32),
-		standby:              true,
 		standbyStopCh:        new(atomic.Value),
+		standbyRestartCh:     new(atomic.Value),
 		baseLogger:           conf.Logger,
 		logger:               conf.Logger.Named("core"),
 		logLevel:             conf.LogLevel,
@@ -981,7 +990,9 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
 	}
 
+	c.standby.Store(true)
 	c.standbyStopCh.Store(make(chan struct{}))
+	c.standbyRestartCh.Store(make(chan struct{}))
 	atomic.StoreUint32(c.sealed, 1)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
 
@@ -1059,6 +1070,10 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		c.seal = NewDefaultSeal(vaultseal.NewAccess(wrapper))
 	}
 	c.seal.SetCore(c)
+
+	// Create the invalidation manager.
+	c.NewInvalidationManager()
+
 	return c, nil
 }
 
@@ -1073,6 +1088,10 @@ func coreInit(c *Core, conf *CoreConfig) error {
 	// Wrap in encoding checks
 	if !conf.DisableKeyEncodingChecks {
 		c.physical = physical.NewStorageEncoding(c.physical)
+	}
+
+	if c.StandbyReadsEnabled() {
+		c.underlyingPhysical.(physical.CacheInvalidationBackend).HookInvalidate(c.Invalidate)
 	}
 
 	return nil
@@ -1927,13 +1946,14 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 			c.seal.SetRecoveryConfig(ctx, nil)
 		}
 
-		c.standby = false
+		c.standby.Store(false)
 	} else {
 		// Go to standby mode, wait until we are active to unseal
 		c.standbyDoneCh = make(chan struct{})
 		c.manualStepDownCh = make(chan struct{}, 1)
 		c.standbyStopCh.Store(make(chan struct{}))
-		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}))
+		c.standbyRestartCh.Store(make(chan struct{}))
+		go c.runStandby(c.standbyDoneCh, c.manualStepDownCh, c.standbyStopCh.Load().(chan struct{}), c.standbyRestartCh.Load().(chan struct{}))
 	}
 
 	// Success!
@@ -2026,12 +2046,12 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 		return errors.New("nil request to seal")
 	}
 
-	// Since there is no token store in standby nodes, sealing cannot be done.
-	// Ideally, the request has to be forwarded to leader node for validation
-	// and the operation should be performed. But for now, just returning with
-	// an error and recommending a vault restart, which essentially does the
-	// same thing.
-	if c.standby {
+	// Since there is no token store in true standby nodes, sealing cannot
+	// be done. Ideally, the request has to be forwarded to leader node for
+	// validation and the operation should be performed. But for now, just
+	// returning with an error and recommending a vault restart, which
+	// essentially does the same thing.
+	if c.standby.Load() && !c.StandbyReadsEnabled() {
 		c.logger.Error("vault cannot seal when in standby mode; please restart instead")
 		return errors.New("vault cannot seal when in standby mode; please restart instead")
 	}
@@ -2179,8 +2199,15 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 			}
 		}()
 
+		// Stop the standby before attempting to acquire the standby lock.
+		// This will prevent a race condition between runStandby and this
+		// method.
+		c.stopStandby()
+
+		// Acquire the state lock.
 		c.stateLock.Lock()
 		close(doneCh)
+
 		// Stop requests from processing
 		if activeCtxCancel != nil {
 			activeCtxCancel()
@@ -2194,16 +2221,11 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 			defer c.stateLock.Unlock()
 		}
 		// Even in a non-HA context we key off of this for some things
-		c.standby = true
+		c.standby.Store(true)
 
 		// Stop requests from processing
 		if activeCtxCancel != nil {
 			activeCtxCancel()
-		}
-
-		if err := c.preSeal(); err != nil {
-			c.logger.Error("pre-seal teardown failed", "error", err)
-			return errors.New("internal error")
 		}
 	} else {
 		// If we are keeping the lock we already have the state write lock
@@ -2229,6 +2251,12 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 		<-c.standbyDoneCh
 		atomic.StoreUint32(c.keepHALockOnStepDown, 0)
 		c.logger.Debug("runStandby done")
+	}
+
+	// Stop all running subsystems.
+	if err := c.preSeal(); err != nil {
+		c.logger.Error("pre-seal teardown failed", "error", err)
+		return errors.New("internal error")
 	}
 
 	// Perform additional cleanup upon sealing.
@@ -2273,9 +2301,14 @@ type UnsealStrategy interface {
 	unseal(context.Context, log.Logger, *Core) error
 }
 
-type standardUnsealStrategy struct{}
+type standardUnsealStrategy struct {
+	// Inherit read-only unseal methods
+	readonlyUnsealStrategy
+}
 
 func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c *Core) error {
+	c.logger.Debug("standard unseal starting")
+
 	// Clear forwarding clients; we're active
 	c.requestForwardingConnectionLock.Lock()
 	c.clearForwardingClients()
@@ -2294,6 +2327,48 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.ensureWrappingKey(ctx); err != nil {
 		return err
 	}
+
+	if err := s.readonlyUnsealStrategy.unseal(ctx, logger, c); err != nil {
+		return err
+	}
+
+	if c.getClusterListener() != nil {
+		if err := c.setupRaftActiveNode(ctx); err != nil {
+			return err
+		}
+		if err := c.startForwarding(ctx); err != nil {
+			return err
+		}
+
+	}
+
+	c.clusterParamsLock.Lock()
+	defer c.clusterParamsLock.Unlock()
+
+	c.metricsCh = make(chan struct{})
+	go c.emitMetricsActiveNode(c.metricsCh)
+
+	// Establish version timestamps at the end of unseal on active nodes only.
+	if err := c.handleVersionTimeStamps(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// readonlyUnsealStrategy
+type readonlyUnsealStrategy struct{}
+
+func (readonlyUnsealStrategy) unseal(
+	ctx context.Context, logger log.Logger, c *Core,
+) error {
+	c.logger.Debug("read-only unseal starting")
+
+	if c.standby.Load() {
+		// Start tracking invalidations.
+		c.invalidations.Track()
+	}
+
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
@@ -2333,12 +2408,12 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupExpiration(expireLeaseStrategyFairsharing); err != nil {
 		return err
 	}
-	if err := c.loadAudits(ctx); err != nil {
-		return err
-	}
 	if err := c.setupAudits(ctx); err != nil {
 		return err
 	}
+	// Adding new audit devices only occurs on the active node. Standby nodes
+	// will consume audit devices from storage only, but we want to run this
+	// from startup anyways to report any discrepancies.
 	if err := c.handleAuditLogSetup(ctx); err != nil {
 		return err
 	}
@@ -2354,26 +2429,10 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		return err
 	}
 
-	if c.getClusterListener() != nil {
-		if err := c.setupRaftActiveNode(ctx); err != nil {
-			return err
-		}
-
-		if err := c.startForwarding(ctx); err != nil {
-			return err
-		}
-
-	}
-
-	c.clusterParamsLock.Lock()
-	defer c.clusterParamsLock.Unlock()
-
-	c.metricsCh = make(chan struct{})
-	go c.emitMetricsActiveNode(c.metricsCh)
-
-	// Establish version timestamps at the end of unseal on active nodes only.
-	if err := c.handleVersionTimeStamps(ctx); err != nil {
-		return err
+	// Finally, start processing invalidations. We'll have cleared the queue
+	// when we started this, but any
+	if c.standby.Load() {
+		c.invalidations.Start(ctx)
 	}
 
 	return nil
@@ -2516,6 +2575,9 @@ func (c *Core) preSeal() error {
 	c.stopRaftActiveNode()
 	c.cancelNamespaceDeletion()
 
+	if err := c.invalidations.Stop(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down invalidations: %w", err))
+	}
 	if err := c.teardownAudits(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down audits: %w", err))
 	}
@@ -3151,7 +3213,7 @@ func (c *Core) ResolveNamespaceFromRequest(nsHeader, reqPath string) (*namespace
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
 
-	if c.Sealed() || c.standby || c.namespaceStore == nil {
+	if c.Sealed() || c.namespaceStore == nil {
 		return nil, ""
 	}
 

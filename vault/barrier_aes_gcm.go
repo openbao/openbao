@@ -66,8 +66,9 @@ var (
 type AESGCMBarrier struct {
 	backend physical.Backend
 
-	l      sync.RWMutex
-	sealed bool
+	l        sync.RWMutex
+	sealed   bool
+	readOnly atomic.Bool
 
 	// keyring is used to maintain all of the encryption keys, including
 	// the active key used for encryption, but also prior keys to allow
@@ -787,6 +788,11 @@ func (b *AESGCMBarrier) Put(ctx context.Context, entry *logical.StorageEntry) er
 
 func (b *AESGCMBarrier) putWithBackend(ctx context.Context, backend physical.Backend, entry *logical.StorageEntry) error {
 	defer metrics.MeasureSince([]string{"barrier", "put"}, time.Now())
+
+	if b.readOnly.Load() {
+		return logical.ErrReadOnly
+	}
+
 	b.l.RLock()
 	if b.sealed {
 		b.l.RUnlock()
@@ -893,6 +899,11 @@ func (b *AESGCMBarrier) Delete(ctx context.Context, key string) error {
 
 func (b *AESGCMBarrier) deleteWithBackend(ctx context.Context, backend physical.Backend, key string) error {
 	defer metrics.MeasureSince([]string{"barrier", "delete"}, time.Now())
+
+	if b.readOnly.Load() {
+		return logical.ErrReadOnly
+	}
+
 	b.l.RLock()
 	sealed := b.sealed
 	b.l.RUnlock()
@@ -1265,6 +1276,10 @@ func (b *AESGCMBarrier) encryptions() int64 {
 		}
 	}
 	return 0
+}
+
+func (b *AESGCMBarrier) SetReadOnly(readOnly bool) {
+	b.readOnly.Store(readOnly)
 }
 
 func (b *TransactionalAESGCMBarrier) BeginReadOnlyTx(ctx context.Context) (logical.Transaction, error) {

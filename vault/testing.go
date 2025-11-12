@@ -168,9 +168,14 @@ func TestCoreWithSealAndUI(t testing.T, opts *CoreConfig) *Core {
 
 func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	logger := corehelpers.NewTestLogger(t)
-	physicalBackend, err := physInmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
+
+	physicalBackend := opts.Physical
+	if physicalBackend == nil {
+		var err error
+		physicalBackend, err = physInmem.NewInmem(nil, logger)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	errInjector := physical.NewErrorInjector(physicalBackend, 0, logger)
@@ -826,6 +831,7 @@ func (c *TestCluster) SetRootToken(token string) {
 }
 
 func (c *TestCluster) Start() {
+	time.Sleep(2 * time.Second)
 }
 
 func (c *TestCluster) start(t testing.T) {
@@ -928,7 +934,7 @@ func (c *TestCluster) UnsealCoresWithError(useStoredKeys bool) error {
 	}
 
 	// Let them come fully up to standby
-	time.Sleep(2 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	// Ensure cluster connection info is populated.
 	// Other cores should not come up as leaders.
@@ -1230,6 +1236,8 @@ type TestClusterOptions struct {
 
 	// ABCDLoggerNames names the loggers according to our ABCD convention when generating 4 clusters
 	ABCDLoggerNames bool
+
+	DisableStandbyReads bool
 }
 
 type TestPluginConfig struct {
@@ -1608,6 +1616,9 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		c := new(server.Config)
 		c.SharedConfig = &configutil.SharedConfig{LogFormat: logging.UnspecifiedFormat.String()}
 		c.UnsafeAllowAPIAuditCreation = true
+		if opts != nil && opts.DisableStandbyReads {
+			c.DisableStandbyReads = true
+		}
 		coreConfig.RawConfig = c
 	}
 
@@ -1617,7 +1628,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 	}
 
 	if coreConfig.Physical == nil && (opts == nil || opts.PhysicalFactory == nil) {
-		coreConfig.Physical, err = physInmem.NewInmem(nil, testCluster.Logger)
+		coreConfig.Physical, err = physInmem.NewInmemHA(nil, testCluster.Logger)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -2128,7 +2139,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		}
 
 		// Let them come fully up to standby
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second)
 
 		// Ensure cluster connection info is populated.
 		// Other cores should not come up as leaders.

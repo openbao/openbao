@@ -464,12 +464,12 @@ func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, 
 	}
 
 	for _, namespace := range namespaces {
-		view := m.leaseView(namespace)
+		view := m.leaseView(UnwrapNamespace(namespace))
 		keys, err := logical.CollectKeys(m.quitContext, view)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan for leases: %w", err)
 		}
-		existing[namespace] = keys
+		existing[UnwrapNamespace(namespace)] = keys
 		leaseCount += len(keys)
 	}
 

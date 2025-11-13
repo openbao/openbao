@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/metricsutil"
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/storagepacker"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -122,8 +121,8 @@ type LocalNode interface {
 var _ LocalNode = &Core{}
 
 type Namespacer interface {
-	NamespaceByID(context.Context, string) (*namespace.Namespace, error)
-	ListNamespaces(context.Context) ([]*namespace.Namespace, error)
+	NamespaceByID(context.Context, string) (*Namespace, error)
+	ListNamespaces(context.Context) ([]*Namespace, error)
 }
 
 var _ Namespacer = &Core{}

@@ -5,8 +5,6 @@ package vault
 
 import (
 	"context"
-
-	"github.com/openbao/openbao/helper/namespace"
 )
 
 // NamespaceByID returns back a namespace using its accessor (nsID).
@@ -15,6 +13,18 @@ func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*Namespace, erro
 }
 
 // ListNamespaces returns back a list of all namespaces including root.
-func (c *Core) ListNamespaces(ctx context.Context) ([]*namespace.Namespace, error) {
-	return c.namespaceStore.ListAllNamespaces(ctx, true, false)
+func (c *Core) ListNamespaces(ctx context.Context) ([]*Namespace, error) {
+	baseNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Wrap each ns
+	wrappers := make([]*Namespace, len(baseNamespaces))
+	for i, base := range baseNamespaces {
+		wrappers[i] = &Namespace{
+			Namespace: base,
+		}
+	}
+	return wrappers, nil
 }

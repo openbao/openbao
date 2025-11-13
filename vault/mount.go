@@ -1384,7 +1384,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 	globalEntries := make(map[string][]string, len(allNamespaces))
 	localEntries := make(map[string][]string, len(allNamespaces))
 	for index, ns := range allNamespaces {
-		view := c.NamespaceView(ns)
+		view := c.NamespaceView(UnwrapNamespace(ns))
 		nsGlobal, nsLocal, err := listTransactionalMountsForNamespace(ctx, view)
 		if err != nil {
 			c.logger.Error("failed to list transactional mounts for namespace", "error", err, "ns_index", index, "namespace", ns.ID)
@@ -1412,7 +1412,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 		}
 
 		for nsIndex, ns := range allNamespaces {
-			view := c.NamespaceView(ns)
+			view := c.NamespaceView(UnwrapNamespace(ns))
 			for index, uuid := range globalEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreMountConfigPath, uuid)
 				if err != nil {
@@ -1428,7 +1428,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 
 	if len(localEntries) > 0 {
 		for nsIndex, ns := range allNamespaces {
-			view := c.NamespaceView(ns)
+			view := c.NamespaceView(UnwrapNamespace(ns))
 			for index, uuid := range localEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalMountConfigPath, uuid)
 				if err != nil {
@@ -1888,7 +1888,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := c.NamespaceView(ns)
+					view := c.NamespaceView(UnwrapNamespace(ns))
 					path := path.Join(prefix, mount)
 					if err := view.Delete(ctx, path); err != nil {
 						return -1, fmt.Errorf("requested removal of auth mount from namespace %v (%v) but failed: %w", ns.ID, nsIndex, err)
@@ -1903,7 +1903,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := c.NamespaceView(ns)
+					view := c.NamespaceView(UnwrapNamespace(ns))
 
 					// List all entries and remove any deleted ones.
 					presentEntries, err := view.List(ctx, prefix+"/")

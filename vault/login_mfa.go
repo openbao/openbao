@@ -262,7 +262,7 @@ func (i *IdentityStore) handleMFAMethodReadCommon(ctx context.Context, req *logi
 	}
 
 	// reading the method config either from the same namespace or from the parent or from the child should all work
-	if !(ns.ID == mfaNs.ID || mfaNs.HasParent(ns) || ns.HasParent(mfaNs)) {
+	if !(ns.ID == mfaNs.ID || mfaNs.HasParent(ns) || ns.HasParent(UnwrapNamespace(mfaNs))) {
 		return logical.ErrorResponse("request namespace does not match method namespace"), logical.ErrPermissionDenied
 	}
 
@@ -501,7 +501,7 @@ func (i *IdentityStore) handleLoginMFAGenerateCommon(ctx context.Context, req *l
 		return logical.ErrorResponse("methodID namespace not found"), nil
 	}
 
-	if configNS.ID != entityNS.ID && !entityNS.HasParent(configNS) {
+	if configNS.ID != entityNS.ID && !entityNS.HasParent(UnwrapNamespace(configNS)) {
 		return logical.ErrorResponse("entity namespace %s outside of the config namespace %s", entityNS.Path, configNS.Path), nil
 	}
 
@@ -572,7 +572,7 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 		return logical.ErrorResponse("methodID namespace not found"), nil
 	}
 
-	if configNS.ID != entityNS.ID && !entityNS.HasParent(configNS) {
+	if configNS.ID != entityNS.ID && !entityNS.HasParent(UnwrapNamespace(configNS)) {
 		return logical.ErrorResponse("entity namespace %s outside of the current namespace %s", entityNS.Path, ns.Path), nil
 	}
 
@@ -935,7 +935,7 @@ func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req
 			return logical.ErrorResponse("failed to retrieve config namespace"), nil
 		}
 
-		if ns.ID != mfaNs.ID && !ns.HasParent(mfaNs) {
+		if ns.ID != mfaNs.ID && !ns.HasParent(UnwrapNamespace(mfaNs)) {
 			return logical.ErrorResponse("one of the provided method ids is in an incompatible namespace and can't be used"), nil
 		}
 	}
@@ -1342,7 +1342,7 @@ func (b *LoginMFABackend) mfaMethodList(ctx context.Context, methodType string) 
 		}
 
 		// the namespaces have to match, or the config namespace needs to be a parent of the request namespace
-		if !(ns.ID == mfaNs.ID || ns.HasParent(mfaNs)) {
+		if !(ns.ID == mfaNs.ID || ns.HasParent(UnwrapNamespace(mfaNs))) {
 			continue
 		}
 
@@ -1757,7 +1757,7 @@ ECONFIG_LOOP:
 			return nil, errors.New("failed to find the MFAEnforcementConfig namespace")
 		}
 
-		if eConfig == nil || eConfigNS == nil || (eConfigNS.ID != ns.ID && !ns.HasParent(eConfigNS)) {
+		if eConfig == nil || eConfigNS == nil || (eConfigNS.ID != ns.ID && !ns.HasParent(UnwrapNamespace(eConfigNS))) {
 			continue
 		}
 
@@ -2702,7 +2702,7 @@ func (b *LoginMFABackend) deleteMFALoginEnforcementConfigByNameAndNamespace(ctx 
 		return err
 	}
 
-	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	barrierView := NamespaceView(b.Core.barrier, UnwrapNamespace(ns)).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 	err = barrierView.Delete(ctx, eConfig.ID)
 	if err != nil {
 		return err
@@ -2878,7 +2878,7 @@ func (b *LoginMFABackend) putMFAConfigByID(ctx context.Context, mConfig *mfa.Con
 		return err
 	}
 
-	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	barrierView := NamespaceView(b.Core.barrier, UnwrapNamespace(ns)).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
 	marshaledEntry, err := proto.Marshal(mConfig)
 	if err != nil {
 		return err
@@ -2939,7 +2939,7 @@ func (b *LoginMFABackend) putMFALoginEnforcementConfig(ctx context.Context, eCon
 		return err
 	}
 
-	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	barrierView := NamespaceView(b.Core.barrier, UnwrapNamespace(ns)).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 
 	return barrierView.Put(ctx, &logical.StorageEntry{
 		Key:   eConfig.ID,

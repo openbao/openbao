@@ -2066,7 +2066,7 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 				i.Logger().Warn("error expiring OIDC public keys", "err", err)
 			}
 
-			if err := i.oidcCache.Flush(ns); err != nil {
+			if err := i.oidcCache.Flush(UnwrapNamespace(ns)); err != nil {
 				i.Logger().Error("error flushing oidc cache", "err", err)
 			}
 

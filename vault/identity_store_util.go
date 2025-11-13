@@ -46,7 +46,7 @@ func (c *Core) loadIdentityStoreArtifacts(ctx context.Context) error {
 		}
 
 		for _, ns := range allNs {
-			nsCtx := namespace.ContextWithNamespace(ctx, ns)
+			nsCtx := namespace.ContextWithNamespace(ctx, UnwrapNamespace(ns))
 
 			if err := c.identityStore.loadEntities(nsCtx); err != nil {
 				return err
@@ -143,7 +143,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 				}
 				continue
 			}
-			nsCtx := namespace.ContextWithNamespace(ctx, ns)
+			nsCtx := namespace.ContextWithNamespace(ctx, UnwrapNamespace(ns))
 
 			// Ensure that there are no groups with duplicate names
 			groupByName, err := i.MemDBGroupByName(nsCtx, group.Name, false)
@@ -315,7 +315,7 @@ LOOP:
 					}
 					continue
 				}
-				nsCtx := namespace.ContextWithNamespace(ctx, ns)
+				nsCtx := namespace.ContextWithNamespace(ctx, UnwrapNamespace(ns))
 
 				// Ensure that there are no entities with duplicate names
 				entityByName, err := i.MemDBEntityByName(nsCtx, entity.Name, false)

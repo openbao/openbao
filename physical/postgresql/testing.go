@@ -45,7 +45,7 @@ func SetupDatabaseObjects(t *testing.T, pg *PostgreSQLBackend) {
 			" ha_value                                    TEXT COLLATE \"C\", "+
 			" valid_until                                 TIMESTAMP WITH TIME ZONE NOT NULL, "+
 			" CONSTRAINT ha_key PRIMARY KEY (ha_key) "+
-			" ); ", pg.ha_table)
+			" ); ", pg.haTable)
 
 	_, err = pg.client.Exec(createHaTableSQL)
 	if err != nil {

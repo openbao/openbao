@@ -542,7 +542,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/external-keys",
                 "rfcs/config-audit-devices",
                 "rfcs/opentelemetry",
-                "rfcs/recovery-seal",
+                "rfcs/emergency-seal",
                 {
                   "UI/UX": ["rfcs/web-ui-modernization"],
                 },

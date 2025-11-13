@@ -75,14 +75,14 @@ func NewTestExecDevCluster(t *testing.T, opts *ExecDevClusterOptions) *ExecDevCl
 }
 
 func NewExecDevCluster(ctx context.Context, opts *ExecDevClusterOptions) (*ExecDevCluster, error) {
+	if opts == nil {
+		opts = &ExecDevClusterOptions{}
+	}
 	dc := &ExecDevCluster{
 		ClusterName: opts.ClusterName,
 		stopCh:      make(chan struct{}),
 	}
 
-	if opts == nil {
-		opts = &ExecDevClusterOptions{}
-	}
 	if opts.NumCores == 0 {
 		opts.NumCores = 3
 	}

@@ -345,7 +345,7 @@ func WaitForActiveNode(t testing.T, cluster *vault.TestCluster) *vault.TestClust
 	t.Helper()
 	for i := 0; i < 60; i++ {
 		for _, core := range cluster.Cores {
-			if standby, _ := core.Standby(); !standby {
+			if standby := core.Standby(); !standby {
 				return core
 			}
 		}
@@ -620,12 +620,22 @@ func GenerateDebugLogs(t testing.T, client *api.Client) chan struct{} {
 					},
 				})
 				if err != nil {
-					t.Fatal(err)
+					select {
+					case <-stopCh:
+						return
+					default:
+						t.Fatal(err)
+					}
 				}
 
 				err = client.Sys().Unmount("foo")
 				if err != nil {
-					t.Fatal(err)
+					select {
+					case <-stopCh:
+						return
+					default:
+						t.Fatal(err)
+					}
 				}
 			}
 		}
@@ -1034,7 +1044,7 @@ func WaitForNodesExcludingSelectedStandbys(t testing.T, cluster *vault.TestClust
 			continue
 		}
 
-		if standby, _ := core.Standby(); standby {
+		if standby := core.Standby(); standby {
 			WaitForStandbyNode(t, core)
 		}
 	}

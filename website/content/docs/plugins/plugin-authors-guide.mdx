@@ -83,13 +83,14 @@ Now, if your plugin returns an error when trying to revoke the non-existing
 credentials, OpenBao will retry to revoke them forever (or until manual
 intervention).
 
-When implementing this logic make sure you properly distinguish the "credentials
-not found" (or "token not found" or "user not found") error from other errors.
-For example, it might be problematic to simply match on the HTTP 404 status
-code, because that can have other reasons (like a reverse proxy restarting). See
-the [Consul plugin revoke operation] for an example implementation.
+When implementing this logic, make sure you properly distinguish the
+"credentials not found" (or "token not found" or "user not found") error from
+other errors. For example, it might be problematic to simply match on the HTTP
+404 status code, because that can have other reasons (like a reverse proxy
+restarting). See the [Consul plugin revoke operation] for an example
+implementation.
 
-If you can not safely detect the not found error, it is better to document this
+If you cannot safely detect the not found error, it is better to document this
 as a known limitation and document how to manually recover from a revoke retry
 loop (i.e. using the [`bao lease revoke`](../../commands/lease/revoke/) command
 with the `-force` flag).

@@ -390,7 +390,7 @@ func TestTidyCancellation(t *testing.T) {
 	require.NotNil(t, statusResp.Data)
 	require.Equal(t, "Cancelled", statusResp.Data["state"])
 	nowMany := statusResp.Data["cert_store_deleted_count"].(uint)
-	require.LessOrEqualf(t, howMany+3, nowMany, "expected to only process at most 3 more certificates, but processed (%v >>> %v) certs", nowMany, howMany)
+	require.Lessf(t, nowMany, howMany+3, "expected to only process at most 3 more certificates, but processed (%v >>> %v) certs", nowMany, howMany)
 }
 
 func TestTidyIssuers(t *testing.T) {
@@ -621,11 +621,17 @@ func TestCertStorageMetrics(t *testing.T) {
 	backendUUID := tidyStatus.Data["internal_backend_uuid"].(string)
 	// "current_cert_store_count", "current_revoked_cert_count"
 	countData, ok := tidyStatus.Data["current_cert_store_count"]
-	require.True(t, ok)
-	require.NotNilf(t, countData, "Certificate counting should be off by default, but current cert store count %v appeared in tidy status in unconfigured mount", countData)
+	if ok && countData != nil {
+		require.FailNowf(t,
+			"Certificate counting should be off by default, but current cert store count appeared in tidy status in unconfigured mount",
+			"Found count data: %v", countData)
+	}
 	revokedCountData, ok := tidyStatus.Data["current_revoked_cert_count"]
-	require.True(t, ok)
-	require.NotNilf(t, revokedCountData, "Certificate counting should be off by default, but revoked cert count %v appeared in tidy status in unconfigured mount", revokedCountData)
+	if ok && revokedCountData != nil {
+		require.FailNowf(t,
+			"Certificate counting should be off by default, but revoked cert count appeared in tidy status in unconfigured mount",
+			"Found count data: %v", countData)
+	}
 
 	// Since certificate counts are off by default, those metrics should not exist yet
 	stableMetric := inmemSink.Data()

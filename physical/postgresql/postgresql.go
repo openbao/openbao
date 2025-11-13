@@ -69,6 +69,7 @@ type PostgreSQLBackend struct {
 	haTable                  string
 	haGetLockValueQuery      string
 	haUpsertLockIdentityExec string
+	haRenewLockIdentityExec  string
 	haDeleteLockExec         string
 	haCheckLockHeldQuery     string
 
@@ -222,12 +223,20 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		" SELECT ha_value FROM " + quotedHaTable + " WHERE NOW() <= valid_until AND ha_key = $1 ",
 		haUpsertLockIdentityExec:
 		// $1=identity $2=ha_key $3=ha_value $4=TTL in seconds
-		// update either steal expired lock OR update expiry for lock owned by me
+		// update only steals an expired lock
 		" INSERT INTO " + quotedHaTable + " as t (ha_identity, ha_key, ha_value, valid_until) VALUES ($1, $2, $3, NOW() + $4 * INTERVAL '1 seconds'  ) " +
 			" ON CONFLICT (ha_key) DO " +
 			" UPDATE SET (ha_identity, ha_key, ha_value, valid_until) = ($1, $2, $3, NOW() + $4 * INTERVAL '1 seconds') " +
-			" WHERE (t.valid_until < NOW() AND t.ha_key = $2) OR " +
-			" (t.ha_identity = $1 AND t.ha_key = $2)  ",
+			" WHERE (t.valid_until < NOW() AND t.ha_key = $2)",
+		haRenewLockIdentityExec:
+		// Same parameters as haUpsertLockIdentityExec; just for the renewal
+		// flow instead of the lock creation flow.
+		//
+		// update only renews our lock; it will not steal it and will not
+		// create it if it doesn't exist.
+		" UPDATE " + quotedHaTable +
+			" SET (ha_identity, ha_key, ha_value, valid_until) = ($1, $2, $3, NOW() + $4 * INTERVAL '1 seconds') " +
+			" WHERE (ha_identity = $1 AND ha_key = $2)  ",
 		haDeleteLockExec:
 		// $1=ha_identity $2=ha_key
 		" DELETE FROM " + quotedHaTable + " WHERE ha_identity=$1 AND ha_key=$2 ",
@@ -676,7 +685,7 @@ func (l *PostgreSQLLock) tryToLock(stop <-chan struct{}, success chan struct{}, 
 		case <-stop:
 			return
 		case <-ticker.C:
-			gotlock, err := l.writeItem()
+			gotlock, err := l.writeItem(l.backend.haUpsertLockIdentityExec)
 			switch {
 			case err != nil:
 				errors <- err
@@ -691,10 +700,17 @@ func (l *PostgreSQLLock) tryToLock(stop <-chan struct{}, success chan struct{}, 
 
 func (l *PostgreSQLLock) periodicallyRenewLock(done chan struct{}) {
 	for range l.renewTicker.C {
-		gotlock, err := l.writeItem()
+		gotlock, err := l.writeItem(l.backend.haRenewLockIdentityExec)
 		if err != nil || !gotlock {
 			close(done)
 			l.renewTicker.Stop()
+
+			// If we got an error, log it so that operators can see the
+			// renewal failure.
+			if err != nil {
+				l.backend.logger.Error("lock renewal failed", "key", l.key, "err", err)
+			}
+
 			return
 		}
 	}
@@ -704,12 +720,32 @@ func (l *PostgreSQLLock) periodicallyRenewLock(done chan struct{}) {
 // evaluate the TTL.  Returns true if the lock was obtained, false if not.
 // If false error may be nil or non-nil: nil indicates simply that someone
 // else has the lock, whereas non-nil means that something unexpected happened.
-func (l *PostgreSQLLock) writeItem() (bool, error) {
+//
+// Notably, query is variable (but chosen between one of two static values)
+// as we need to handle strict upsert (creating a new lock and/or claiming an
+// expired lock from someone else) versus renewing our lock: if someone else
+// grabs the lock (and it expires) before we get a chance to renew, or if the
+// lock is deleted from under us, renewal should not happen. Similarly, if we
+// attempt to grab the lock and we already hold it, we should fail. This
+// latter case was already handled in the upsert (by virtue of identity being
+// a per-lock UIUD), but was not explicitly made clear.
+func (l *PostgreSQLLock) writeItem(query string) (bool, error) {
 	pg := l.backend
 
-	// Try steal lock or update expiry on my lock
+	// Set a timeout on lock renewal: ensure we block at most 2/3rds of the
+	// total lock period.
+	//
+	// This ensures we do not stall renewal indefinitely and miss a subsequent
+	// lock acquisition by another party. We give ourselves a little grace
+	// period to ensure we do not hit false positives due to network latency.
+	//
+	// This is important to ensure that we notify on leadership loss before the
+	// other node could acquire the lock and take over as leader.
+	ctx, cancel := context.WithTimeout(context.Background(), PostgreSQLLockTTLSeconds*2/3*time.Second)
+	defer cancel()
 
-	sqlResult, err := pg.client.Exec(pg.haUpsertLockIdentityExec, l.identity, l.key, l.value, l.ttlSeconds)
+	// Try steal lock or update expiry on my lock.
+	sqlResult, err := pg.client.ExecContext(ctx, query, l.identity, l.key, l.value, l.ttlSeconds)
 	if err != nil {
 		return false, err
 	}

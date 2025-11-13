@@ -155,7 +155,7 @@ type RedirectDetect interface {
 type Lock interface {
 	// Lock is used to acquire the given lock
 	// The stopCh is optional and if closed should interrupt the lock
-	// acquisition attempt. The return struct should be closed when
+	// acquisition attempt. The returned channel will be closed when
 	// leadership is lost.
 	Lock(stopCh <-chan struct{}) (<-chan struct{}, error)
 
@@ -164,6 +164,14 @@ type Lock interface {
 
 	// Returns the value of the lock and if it is held by _any_ node
 	Value() (bool, string, error)
+}
+
+// When Lock is implemented by a remote server, typically RemoteLock
+// should also be implemented.
+type RemoteLock interface {
+	// IsActivelyHeld allows callers to online validate that this lock
+	// instance is valid, independently of a closed leader loss channel.
+	IsActivelyHeld(ctx context.Context) (bool, error)
 }
 
 // Factory is the factory function to create a physical backend.

@@ -70,6 +70,7 @@ type PostgreSQLBackend struct {
 	haGetLockValueQuery      string
 	haUpsertLockIdentityExec string
 	haDeleteLockExec         string
+	haCheckLockHeldQuery     string
 
 	haEnabled     bool
 	logger        log.Logger
@@ -230,6 +231,10 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		haDeleteLockExec:
 		// $1=ha_identity $2=ha_key
 		" DELETE FROM " + quotedHaTable + " WHERE ha_identity=$1 AND ha_key=$2 ",
+		haCheckLockHeldQuery:
+		// $1=ha_identity $2=ha_key $3=ha_value
+		" SELECT COUNT(*) FROM " + quotedHaTable + " WHERE " +
+			" ha_identity=$1 AND ha_key=$2 AND ha_value=$3 AND valid_until > NOW()  ",
 		logger:        logger,
 		txnPermitPool: physical.NewPermitPool(txnMaxParInt),
 		haEnabled:     conf["ha_enabled"] == "true",
@@ -553,12 +558,12 @@ func (p *PostgreSQLBackend) validateFence(ctx context.Context) error {
 		return nil
 	}
 
-	held, value, err := p.fence.Value()
+	held, err := p.fence.IsActivelyHeld(ctx)
 	if err != nil {
 		return fmt.Errorf("%v: err from database: %w", physical.ErrFencedWriteFailed, err)
 	}
-	if !held || value != p.fence.value {
-		return fmt.Errorf("%v: lock values differed", physical.ErrFencedWriteFailed)
+	if !held {
+		return fmt.Errorf("%v: lock changed ownership", physical.ErrFencedWriteFailed)
 	}
 
 	return nil
@@ -623,6 +628,37 @@ func (l *PostgreSQLLock) Value() (bool, string, error) {
 		return false, "", nil
 	default:
 		return false, "", err
+	}
+}
+
+// Whether or not this lock is currently held by this instance of the lock.
+//
+// Returns true if and only if this lock is active. Returns false if the lock
+// is held by another caller or an error occurred. While errors may occur
+// which prevent checking lock status, this likely also affects whether or not
+// the lock can be renewed and so should likely be treated as an error.
+//
+// While leaderLossCh returned from Lock() is the ultimate notification of
+// lock loss, this check is a online check and goes to the database to verify
+// the lock is held.
+func (l *PostgreSQLLock) IsActivelyHeld(ctx context.Context) (bool, error) {
+	pg := l.backend
+
+	// For simplicity and compatibility with all versions of PostgreSQL, we
+	// return the number of rows matching our lookup. This is zero if the
+	// lock isn't held by us (identity, key, and value all match and the lock
+	// is valid) and one if it is held by us. Uniqueness constraints prevent
+	// us from having more than one lock.
+	var result int
+	err := pg.client.QueryRowContext(ctx, pg.haCheckLockHeldQuery, l.identity, l.key, l.value).Scan(&result)
+
+	switch err {
+	case nil:
+		return result == 1, nil
+	case sql.ErrNoRows:
+		return false, nil
+	default:
+		return false, err
 	}
 }
 

@@ -4,6 +4,7 @@
 package server
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -337,14 +338,11 @@ func (p *PluginConfig) Validate(pluginName, sourceFilePath string) []configutil.
 		})
 	} else {
 		// Check if it's valid hex
-		for i, c := range p.SHA256Sum {
-			//nolint:staticcheck // applying De Morgan's law does not make this any easier to understand
-			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
-				results = append(results, configutil.ConfigError{
-					Problem: fmt.Sprintf("plugin %q: sha256sum contains invalid character '%c' at position %d, must be hexadecimal", pluginName, c, i),
-				})
-				break
-			}
+		_, err := hex.DecodeString(p.SHA256Sum)
+		if err != nil {
+			results = append(results, configutil.ConfigError{
+				Problem: fmt.Sprintf("plugin %q: sha256sum is not valid hex encoded", pluginName),
+			})
 		}
 	}
 

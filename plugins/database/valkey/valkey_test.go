@@ -302,7 +302,12 @@ func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 
 	err = revokeUser(t, userResp.Username, address, port)
 	if err != nil {
-		t.Fatalf("Could not revoke user: %s", userResp.Username)
+		t.Fatalf("Could not revoke user %q: %v", userResp.Username, err)
+	}
+
+	err = revokeUser(t, userResp.Username, address, port) // revoke again https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors
+	if err != nil {
+		t.Fatalf("Could not revoke non-existing user %q: %v", userResp.Username, err)
 	}
 }
 

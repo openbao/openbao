@@ -19,6 +19,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 const (
@@ -104,6 +106,104 @@ func buildResolver(config *acmeConfigEntry) (*net.Resolver, error) {
 			return d.DialContext(ctx, network, config.DNSResolver)
 		},
 	}, nil
+}
+
+func getNameserverFromConfig(config *acmeConfigEntry) (*string, error) {
+	if len(config.DNSResolver) == 0 {
+		conf, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+		if err != nil {
+			return nil, err
+		}
+		return &conf.Servers[0], nil
+	}
+
+	return &config.DNSResolver, nil
+}
+
+func NewDNSMessage() *dns.Msg {
+	dnsMessage := &dns.Msg{
+		MsgHdr: dns.MsgHdr{
+			RecursionDesired: true,
+		},
+	}
+
+	dnsMessage.SetEdns0(4096, true)
+	return dnsMessage
+}
+
+func PerformDNSQuery(client *dns.Client, nameserver string, qname string, qtype uint16) (*dns.Msg, error) {
+	dnsMessage := NewDNSMessage()
+	dnsMessage.SetQuestion(fmt.Sprintf("%s.", qname), qtype)
+
+	r, _, err := client.Exchange(dnsMessage, nameserver)
+	if err != nil {
+		return nil, err
+	}
+
+	return r, err
+}
+
+func resolveCNAME(client *dns.Client, nameserver string, qname string) (record *string, err error) {
+	msg, err := PerformDNSQuery(client, nameserver, qname, dns.TypeCNAME)
+	if err != nil {
+		return nil, err
+	}
+
+	// Look if there's a CNAME RR, if there's, return it.
+	// If there's not, return nil, nil.
+	for _, rr := range msg.Answer {
+		switch rr.(type) {
+		case *dns.CNAME:
+			next_cname := rr.String()
+			return &next_cname, nil
+		}
+	}
+
+	return nil, nil
+}
+
+func resolveCanonicalName(client *dns.Client, nameserver string, qname string) (record *string, err error) {
+	record, err = resolveCNAME(client, nameserver, qname)
+	if err != nil {
+		return nil, err
+	}
+
+	// If there's no new record, we have found the canonical name, it's `qname`.
+	if record == nil {
+		return &qname, nil
+	}
+
+	// Recurse further now.
+	return resolveCanonicalName(client, nameserver, *record)
+}
+
+func resolveTXT(client *dns.Client, nameserver string, qname string) (records []string, err error) {
+	if len(qname) < 1 {
+		return nil, nil
+	}
+
+	canonical, err := resolveCanonicalName(client, nameserver, qname)
+	if err != nil {
+		return nil, err
+	}
+
+	// resolve TXT on the canonical name.
+	msg, err := PerformDNSQuery(client, nameserver, *canonical, dns.TypeTXT)
+	if err != nil {
+		return nil, err
+	}
+
+	// Look if there's a TXT RR, if there's, return it.
+	// If there's not, return an empty list, nil.
+	var txts []string
+	for _, rr := range msg.Answer {
+		switch rr.(type) {
+		case *dns.TXT:
+			txts = append(txts, dns.Field(rr, 1))
+		}
+	}
+
+	return txts, nil
 }
 
 func buildDialerConfig(config *acmeConfigEntry) (*net.Dialer, error) {
@@ -214,16 +314,25 @@ func ValidateDNS01Challenge(domain string, token string, thumbprint string, conf
 	//
 	// 1. To control the actual resolver via ACME configuration,
 	// 2. To use a context to set stricter timeout limits.
-	resolver, err := buildResolver(config)
+	client := &dns.Client{
+		DialTimeout:  10 * time.Second,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		Net:          "udp",
+		Dialer: &net.Dialer{
+			Timeout: 10 * time.Second,
+		},
+	}
+	nameserver, err := getNameserverFromConfig(config)
 	if err != nil {
 		return false, fmt.Errorf("failed to build resolver: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// defer cancel()
 
 	name := DNSChallengePrefix + domain
-	results, err := resolver.LookupTXT(ctx, name)
+	results, err := resolveTXT(client, *nameserver, name)
 	if err != nil {
 		return false, fmt.Errorf("dns-01: failed to lookup TXT records for domain (%v) via resolver %v: %w", name, config.DNSResolver, err)
 	}

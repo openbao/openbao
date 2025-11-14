@@ -241,6 +241,8 @@ func TestDeleteUser(t *testing.T) {
 	dbtesting.AssertDeleteUser(t, db, deleteReq)
 
 	assertNoCreds(t, db.Hosts, db.Port, createResp.Username, password, nil, 5*time.Second)
+
+	dbtesting.AssertDeleteUser(t, db, deleteReq) // delete again https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors
 }
 
 func assertCreds(t testing.TB, address string, port int, username, password string, sslOpts *gocql.SslOptions, timeout time.Duration) {

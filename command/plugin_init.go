@@ -128,7 +128,7 @@ func (c *PluginInitCommand) runPluginInit() int {
 	}
 
 	// Parse configuration using the same logic as the server command
-	config, configErrors, err := c.parseConfig()
+	config, configErrors, err := c.ParseConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error parsing configuration: %v", err))
 		return 1
@@ -136,7 +136,7 @@ func (c *PluginInitCommand) runPluginInit() int {
 
 	// Display configuration errors if any and exit
 	for _, configError := range configErrors {
-		c.UI.Error(configError.Error())
+		c.UI.Error(configError.String())
 	}
 
 	if len(configErrors) > 0 {
@@ -170,41 +170,6 @@ func (c *PluginInitCommand) runPluginInit() int {
 
 	// Initialize plugins using the existing reconciliation logic
 	return c.reconcilePlugins(config, pluginDir)
-}
-
-func (c *PluginInitCommand) parseConfig() (*server.Config, []error, error) {
-	var configErrors []error
-	var config *server.Config
-
-	// Load configuration using the same logic as the server command
-	for _, path := range c.flagConfigs {
-		current, err := server.LoadConfig(path, c.flagConfigs)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error loading configuration from %s: %w", path, err)
-		}
-
-		if current != nil {
-			// Validate the configuration
-			validationErrors := current.Validate(path)
-			for _, verr := range validationErrors {
-				configErrors = append(configErrors, fmt.Errorf("%s", verr.String()))
-			}
-
-			if config == nil {
-				config = current
-			} else {
-				config = config.Merge(current)
-			}
-		} else {
-			c.UI.Warn(fmt.Sprintf("WARNING: ignoring duplicate configuration found in directory: %v", path))
-		}
-	}
-
-	if config == nil {
-		return nil, configErrors, fmt.Errorf("no valid configuration found")
-	}
-
-	return config, configErrors, nil
 }
 
 func (c *PluginInitCommand) reconcilePlugins(config *server.Config, pluginDir string) int {

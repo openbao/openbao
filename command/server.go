@@ -371,36 +371,8 @@ func (c *ServerCommand) flushLog() {
 	}, c.logGate)
 }
 
-func (c *ServerCommand) parseConfig() (*server.Config, []configutil.ConfigError, error) {
-	var configErrors []configutil.ConfigError
-	// Load the configuration
-	var config *server.Config
-	for _, path := range c.flagConfigs {
-		current, err := server.LoadConfig(path, c.flagConfigs)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error loading configuration from %s: %w", path, err)
-		}
-
-		// While current may be nil, we'll never get a nil configuration as a
-		// result of ignoring a configuration file present in a directory.
-		if current != nil {
-			configErrors = append(configErrors, current.Validate(path)...)
-
-			if config == nil {
-				config = current
-			} else {
-				config = config.Merge(current)
-			}
-		} else {
-			c.UI.Warn(fmt.Sprintf("WARNING: ignoring duplicate configuration found in directory: %v", path))
-		}
-	}
-
-	return config, configErrors, nil
-}
-
 func (c *ServerCommand) runRecoveryMode() int {
-	config, configErrors, err := c.parseConfig()
+	config, configErrors, err := c.ParseConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -1008,7 +980,7 @@ func (c *ServerCommand) Run(args []string) int {
 		config.Listeners[0].Telemetry.UnauthenticatedMetricsAccess = true
 	}
 
-	parsedConfig, configErrors, err := c.parseConfig()
+	parsedConfig, configErrors, err := c.ParseConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1

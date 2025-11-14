@@ -584,6 +584,24 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 	})
 }
 
+func WrapRemoveProcessedCertificateHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Strip any X-Processed-Tls-Client-Certificate headers.
+		r.Header.Del("X-Processed-Tls-Client-Certificate")
+		h.ServeHTTP(w, r)
+		return
+	})
+}
+
+func WrapRemoveDefaultClientCertificateHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Remove any Client-Cert if not configured to use them. To prevent injection of client certs in plugins.
+		r.Header.Del("Client-Cert")
+		h.ServeHTTP(w, r)
+		return
+	})
+}
+
 func WrapClientCertificateHandler(h http.Handler, l *configutil.Listener) http.Handler {
 	clientCertificateHeader := l.XForwardedForClientCertHeader
 	// Iterate through the processors to handle the header.

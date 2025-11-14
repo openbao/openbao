@@ -29,7 +29,21 @@ func getTestHandler(listenerConfig *configutil.Listener) func(props *vault.Handl
 			w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", r.Header.Get("X-Processed-Tls-Client-Certificate"))
 			w.WriteHeader(http.StatusOK)
 		})
-		return WrapClientCertificateHandler(origHandler, listenerConfig)
+		// This mirrors how the handlers would be set in server.go
+		return WrapRemoveProcessedCertificateHandler(WrapClientCertificateHandler(origHandler, listenerConfig))
+	}
+}
+
+// Test for configs that have WrapClientCertificate disabled.
+func getTestHandlerNoWrapping(listenerConfig *configutil.Listener) func(props *vault.HandlerProperties) http.Handler {
+	return func(props *vault.HandlerProperties) http.Handler {
+		origHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Write out what we internally processed.
+			w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", r.Header.Get("X-Processed-Tls-Client-Certificate"))
+			w.WriteHeader(http.StatusOK)
+		})
+		// This mirrors how the handlers would be set in server.go
+		return WrapRemoveProcessedCertificateHandler(origHandler)
 	}
 }
 
@@ -346,6 +360,36 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 	t.Run("inject_processed_header", func(t *testing.T) {
 		t.Parallel()
 		testHandler := getTestHandler(getDefaultListenerConfigForClientCerts([]string{}))
+		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+			HandlerFunc: HandlerFunc(testHandler),
+		})
+		cluster.Start()
+		defer cluster.Cleanup()
+		client := cluster.Cores[0].Client
+		req := client.NewRequest("GET", "/")
+		req.Headers = make(http.Header)
+		// Intentionally use the wrong canonical name.
+		req.Headers.Add("X-Processed-TLS-Client-Certificate", clientCertBase64)
+		resp, err := client.RawRequest(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				t.Fatal("failed to close response body")
+			}
+		}(resp.Body)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("bad status: %d", resp.StatusCode)
+		}
+		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {
+			t.Fatal("client certificate header should not have been set")
+		}
+	})
+
+	t.Run("inject_processed_header_no_handler", func(t *testing.T) {
+		testHandler := getTestHandlerNoWrapping(&configutil.Listener{})
 		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
 			HandlerFunc: HandlerFunc(testHandler),
 		})

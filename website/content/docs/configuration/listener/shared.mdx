@@ -12,7 +12,7 @@ There is config that is common between all listeners.
 
 - `x_forwarded_for_client_cert_header` `(string: "")` -
   Specifies the header to be used for client certificate authentication. This is required
-  if [Client Certificate Auth](/docs/auth/cert.mdx) is used and your server is behind a reverse
+  if [Client Certificate Auth](../../auth/cert.mdx) is used and your server is behind a reverse
   proxy. It is recommended to have this set to the canonical `Client-Cert` header as defined in
   [RFC 9440](https://www.rfc-editor.org/rfc/rfc9440.html). The header value should result in
   base64 encoded DER at the end of processing.
@@ -76,4 +76,4 @@ location / {
 
 
 [RFC 9440 2.1]: https://www.rfc-editor.org/rfc/rfc9440.html#section-2.1
-[tcp-listener]: /docs/configuration/listener/tcp/#tcp-listener-parameters
+[tcp-listener]: tcp.mdx/#tcp-listener-parameters

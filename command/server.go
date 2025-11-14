@@ -5,9 +5,7 @@ package command
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -45,6 +43,7 @@ import (
 	loghelper "github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/osutil"
 	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/helper/useragent"
@@ -2201,23 +2200,9 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 
 // addPlugin adds any plugins to the catalog
 func (c *ServerCommand) addPlugin(path, token string, core *vault.Core) error {
-	// Get the sha256 of the file at the given path.
-	pluginSum := func(p string) (string, error) {
-		hasher := sha256.New()
-		f, err := os.Open(p)
-		if err != nil {
-			return "", err
-		}
-		defer f.Close()
-		if _, err := io.Copy(hasher, f); err != nil {
-			return "", err
-		}
-		return hex.EncodeToString(hasher.Sum(nil)), nil
-	}
-
 	// Mount any test plugins. We do this explicitly before we inform tests of
 	// a completely booted server intentionally.
-	sha256sum, err := pluginSum(path)
+	sha256sum, err := osutil.FileSha256Sum(path)
 	if err != nil {
 		return err
 	}

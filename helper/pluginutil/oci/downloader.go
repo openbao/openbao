@@ -7,8 +7,6 @@ package oci
 import (
 	"archive/tar"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -23,6 +21,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/helper/osutil"
 )
 
 const (
@@ -110,7 +109,7 @@ func (d *PluginDownloader) IsPluginCacheValid(pluginName string, config *server.
 	if linkInfo.Mode()&os.ModeSymlink == 0 {
 		// If it's not a symlink, it might be a regular file from manual installation
 		// Let's validate it directly
-		actualHash, err := d.calculateSHA256(symlinkPath)
+		actualHash, err := osutil.FileSha256Sum(symlinkPath)
 		if err != nil {
 			return false
 		}
@@ -134,7 +133,7 @@ func (d *PluginDownloader) IsPluginCacheValid(pluginName string, config *server.
 	}
 
 	// Validate SHA256 of the cached file
-	actualHash, err := d.calculateSHA256(cachedFilePath)
+	actualHash, err := osutil.FileSha256Sum(cachedFilePath)
 	if err != nil {
 		d.logger.Debug("failed to calculate plugin hash", "plugin", pluginName, "error", err)
 		return false
@@ -171,7 +170,7 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, pluginName string
 	}
 
 	// Verify the SHA256 hash of the cached file
-	actualHash, err := d.calculateSHA256(cachedPluginPath)
+	actualHash, err := osutil.FileSha256Sum(cachedPluginPath)
 	if err != nil {
 		// Clean up the cached file if hash verification fails
 		removeErr := os.Remove(cachedPluginPath)
@@ -219,26 +218,6 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, pluginName string
 		"hash", actualHash)
 
 	return nil
-}
-
-// calculateSHA256 computes the SHA256 hash of a file
-func (d *PluginDownloader) calculateSHA256(filePath string) (result string, err error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		err = errors.Join(err, file.Close())
-	}()
-
-	hasher := sha256.New()
-	_, err = io.Copy(hasher, file)
-	if err != nil {
-		return "", err
-	}
-
-	result = hex.EncodeToString(hasher.Sum(nil))
-	return result, err
 }
 
 // ExtractPluginFromImage extracts the plugin binary from the OCI image (public for testing)

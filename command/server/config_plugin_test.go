@@ -190,7 +190,7 @@ plugins {
   }
 }`,
 			expectError: true,
-			errorMsg:    "contains invalid character",
+			errorMsg:    "sha256sum is not valid hex encoded",
 		},
 		{
 			name: "invalid download behavior",

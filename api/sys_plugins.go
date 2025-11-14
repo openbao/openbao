@@ -346,7 +346,7 @@ func (c *Sys) ReloadPluginStatusWithContext(ctx context.Context, reloadStatusInp
 		return nil, err
 	}
 	if resp == nil {
-		return nil, nil
+		return nil, errors.New("nil plugin status response")
 	}
 
 	defer resp.Body.Close() //nolint:errcheck

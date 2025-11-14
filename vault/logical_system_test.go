@@ -2192,7 +2192,8 @@ func TestSystemBackend_disableAuth(t *testing.T) {
 	// Register the backend
 	req := logical.TestRequest(t, logical.UpdateOperation, "auth/foo")
 	req.Data["type"] = "noop"
-	b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
 
 	// Deregister it
 	req = logical.TestRequest(t, logical.DeleteOperation, "auth/foo")
@@ -2809,7 +2810,8 @@ func TestSystemBackend_auditTable(t *testing.T) {
 		"foo": "bar",
 	}
 	req.Data["local"] = true
-	b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	_, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
 
 	req = logical.TestRequest(t, logical.ReadOperation, "audit")
 	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)

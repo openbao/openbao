@@ -313,7 +313,7 @@ func TestHandler_XForwardedForClientCert(t *testing.T) {
 		if err != nil {
 			t.Fatal("failed to read response body")
 		}
-		if !strings.Contains(buf.String(), "error decoding client certificate header") {
+		if !strings.Contains(buf.String(), "error url decoding client certificate header") {
 			t.Fatalf("bad body: %s", buf.String())
 		}
 		if resp.Header.Get("X-Processed-Tls-Client-Certificate-Resp") != "" {

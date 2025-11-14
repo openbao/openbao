@@ -4,6 +4,7 @@
 package server
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
@@ -33,6 +35,9 @@ const (
 	VaultDevCAFilename   = "vault-ca.pem"
 	VaultDevCertFilename = "vault-cert.pem"
 	VaultDevKeyFilename  = "vault-key.pem"
+
+	PluginDownloadFail     = "fail"
+	PluginDownloadContinue = "continue"
 )
 
 var entConfigValidate = func(_ *Config, _ string) []configutil.ConfigError {
@@ -73,6 +78,9 @@ type Config struct {
 
 	PluginFilePermissions    int         `hcl:"-"`
 	PluginFilePermissionsRaw interface{} `hcl:"plugin_file_permissions,alias:PluginFilePermissions"`
+
+	Plugins                map[string]*PluginConfig `hcl:"plugins"`
+	PluginDownloadBehavior string                   `hcl:"plugin_download_behavior"`
 
 	EnableIntrospectionEndpoint    bool        `hcl:"-"`
 	EnableIntrospectionEndpointRaw interface{} `hcl:"introspection_endpoint,alias:EnableIntrospectionEndpoint"`
@@ -144,6 +152,23 @@ func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 	for _, a := range c.Audits {
 		results = append(results, a.Validate(sourceFilePath)...)
 	}
+
+	// Validate plugin configurations
+	for pluginName, pluginConfig := range c.Plugins {
+		if pluginConfig != nil {
+			results = append(results, pluginConfig.Validate(pluginName, sourceFilePath)...)
+		}
+	}
+
+	// Validate plugin_download_behavior
+	if c.PluginDownloadBehavior != "" {
+		if c.PluginDownloadBehavior != PluginDownloadFail && c.PluginDownloadBehavior != PluginDownloadContinue {
+			results = append(results, configutil.ConfigError{
+				Problem: fmt.Sprintf("plugin_download_behavior must be either %q or %q, got %q", PluginDownloadFail, PluginDownloadContinue, c.PluginDownloadBehavior),
+			})
+		}
+	}
+
 	results = append(results, c.validateEnt(sourceFilePath)...)
 	return results
 }
@@ -265,6 +290,60 @@ func (b *ServiceRegistration) Validate(source string) []configutil.ConfigError {
 
 func (b *ServiceRegistration) GoString() string {
 	return fmt.Sprintf("*%#v", *b)
+}
+
+// PluginConfig represents the configuration for a single OCI-based plugin
+type PluginConfig struct {
+	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
+	URL        string                  `hcl:"url"`
+	BinaryName string                  `hcl:"binary_name"`
+	SHA256Sum  string                  `hcl:"sha256sum"`
+}
+
+// Validate validates a PluginConfig
+func (p *PluginConfig) Validate(pluginName, sourceFilePath string) []configutil.ConfigError {
+	var results []configutil.ConfigError
+
+	// Validate unused keys
+	results = append(results, configutil.ValidateUnusedFields(p.UnusedKeys, sourceFilePath)...)
+
+	// Validate URL is not empty
+	if p.URL == "" {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: url cannot be empty", pluginName),
+		})
+	}
+
+	// Ensure URL is a valid image reference
+	if _, err := name.ParseReference(p.URL); err != nil {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: url is not a valid image reference. %v", pluginName, err),
+		})
+	}
+
+	// Validate binary_name is not empty
+	if p.BinaryName == "" {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: binary_name cannot be empty", pluginName),
+		})
+	}
+
+	// Validate sha256sum is exactly 64 hex characters
+	if len(p.SHA256Sum) != 64 {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: sha256sum must be exactly 64 characters, got %d", pluginName, len(p.SHA256Sum)),
+		})
+	} else {
+		// Check if it's valid hex
+		_, err := hex.DecodeString(p.SHA256Sum)
+		if err != nil {
+			results = append(results, configutil.ConfigError{
+				Problem: fmt.Sprintf("plugin %q: sha256sum is not valid hex encoded", pluginName),
+			})
+		}
+	}
+
+	return results
 }
 
 func NewConfig() *Config {
@@ -482,6 +561,21 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.Audits = make([]*AuditDevice, len(c.Audits)+len(c2.Audits))
 		copy(result.Audits[0:len(c.Audits)], c.Audits)
 		copy(result.Audits[len(c.Audits):], c2.Audits)
+	}
+
+	// Merge plugin configurations
+	result.Plugins = make(map[string]*PluginConfig)
+	for name, plugin := range c.Plugins {
+		result.Plugins[name] = plugin
+	}
+	for name, plugin := range c2.Plugins {
+		result.Plugins[name] = plugin // c2 takes precedence
+	}
+
+	// Merge plugin download behavior
+	result.PluginDownloadBehavior = c.PluginDownloadBehavior
+	if c2.PluginDownloadBehavior != "" {
+		result.PluginDownloadBehavior = c2.PluginDownloadBehavior
 	}
 
 	return result

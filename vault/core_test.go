@@ -954,12 +954,14 @@ func TestCore_OneTenPlus_BatchTokens(t *testing.T) {
 // GH-3497
 func TestCore_Seal_SingleUse(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	c.tokenStore.create(namespace.RootContext(context.TODO()), &logical.TokenEntry{
+	err := c.tokenStore.create(namespace.RootContext(context.TODO()), &logical.TokenEntry{
 		ID:          "foo",
 		NumUses:     1,
 		Policies:    []string{"root"},
 		NamespaceID: namespace.RootNamespaceID,
 	}, true)
+	require.NoError(t, err)
+
 	if err := c.Seal("foo"); err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2256,10 +2258,11 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		core.barrier.Put(namespace.RootContext(context.TODO()), &logical.StorageEntry{
+		err = core.barrier.Put(namespace.RootContext(context.TODO()), &logical.StorageEntry{
 			Key:   coreLeaderPrefix + keyUUID,
 			Value: []byte(valueUUID),
 		})
+		require.NoError(t, err)
 	}
 
 	entries, err := core.barrier.List(namespace.RootContext(context.TODO()), coreLeaderPrefix)

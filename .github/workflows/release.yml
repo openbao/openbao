@@ -26,6 +26,11 @@ on:
         required: true
         default: true
         type: boolean
+      dorpmrelease:
+        description: "Release RPM packages in YUM repository"
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -335,6 +340,14 @@ jobs:
           name: deb-packages-${{ matrix.release_os }}
           path: 'dist/*.deb'
           retention-days: 1
+      
+      - name: Upload rpm packages artifact
+        if: inputs.dorpmrelease
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-packages-${{ matrix.release_os }}
+          path: 'dist/*.rpm'
+          retention-days: 1
 
       - name: Remove GPG Signing Key File
         if: always()
@@ -437,3 +450,55 @@ jobs:
       - name: Upload APT repository
         run: |
           aws s3 sync build/deb s3://${BUCKET}/deb
+
+  release-rpm:
+    runs-on: ubuntu-latest
+    if: inputs.dorpmrelease && inputs.dogorelease
+    needs:
+      - build-ui-dist
+      - release-main
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
+      AWS_REGION: 'fra'
+      AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
+      BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
+      TAGNAME: v${{ needs.build-ui-dist.outputs.version }}
+    steps:
+      - name: Download repodata
+        run: |
+          aws s3 sync s3://${BUCKET}/rpm/repodata build/rpm/repodata
+
+      - name: Download rpm-packages artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: rpm-packages-*
+          merge-multiple: true
+      
+      - name: Install createrepo_c
+        env:
+          CREATEREPO_VERSION: 0.17.3
+        run: |
+          sudo apt update
+          sudo apt install -y createrepo-c=$CREATEREPO_VERSION
+
+      # Might be required if createrepo-c 0.17.3 is missing features ...
+      # - name: Install createrepo_c from debian trixie
+      #   env:
+      #     CREATEREPO_VERSION: 1.2.0-2
+      #   run: |
+      #     echo "deb http://ftp.debian.org/debian trixie main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null
+      #     wget -qO- https://ftp-master.debian.org/keys/archive-key-13.asc | sudo tee /etc/apt/trusted.gpg.d/archive-key-13.asc > /dev/null
+      #     sudo apt update
+      #     sudo apt install -y createrepo-c=$CREATEREPO_VERSION
+
+      - name: Update RPM repository
+        run: |
+          mkdir -p build/rpm/$TAGNAME
+          mv *.rpm build/rpm/$TAGNAME/
+          ls build/rpm/$TAGNAME/*.rpm > pkglist.txt
+          createrepo_c --update --recycle-pkglist --skip-stat --pkglist pkglist.txt build/rpm
+      
+      - name: Upload RPM repository
+        run: |
+          aws s3 sync build/rpm s3://${BUCKET}/rpm

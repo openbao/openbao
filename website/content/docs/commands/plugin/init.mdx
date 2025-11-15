@@ -6,9 +6,9 @@ description: |-
 
 # plugin init
 
-The `plugin init` command downloads OCI-based plugins configured in OpenBao server configuration files. It reads [plugin definitions](/docs/configuration/oci-plugins) from the configuration and downloads the specified OCI images containing plugin binaries.
+The `plugin init` command downloads OCI-based plugins configured in OpenBao server configuration files. It reads [plugin definitions](../../configuration/oci-plugins.mdx) from the configuration and downloads the specified OCI images containing plugin binaries.
 
-Downloaded plugins are placed in the plugin directory but are **not** automatically registered in the plugin catalog. Use [`plugin register`](/docs/commands/plugin/register) to register downloaded plugins.
+Downloaded plugins are placed in the plugin directory but are **not** automatically registered in the plugin catalog. Use [`plugin register`](register.mdx) to register downloaded plugins.
 
 ## Examples
 
@@ -32,7 +32,7 @@ $ bao plugin init -config=/etc/openbao -config=/opt/openbao/extra.hcl
 
 ## Usage
 
-The following flags are available in addition to the [standard set of flags](/docs/commands) included on all commands.
+The following flags are available in addition to the [standard set of flags](../index.mdx) included on all commands.
 
 ### Command options
 

@@ -477,10 +477,12 @@ jobs:
           pattern: rpm-packages-*
           merge-multiple: true
       
-      - name: Install createrepo_c
+      - name: Install createrepo_c from debian trixie
         env:
-          CREATEREPO_VERSION: 0.17.3-2ubuntu3
+          CREATEREPO_VERSION: 1.2.0-2+b1
         run: |
+          sudo apt update && sudo apt install -y debian-archive-keyring
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian trixie main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null # required for createrepo-c > 0.17.3
           sudo apt update
           sudo apt install -y createrepo-c=$CREATEREPO_VERSION
 

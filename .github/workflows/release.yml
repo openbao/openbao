@@ -492,7 +492,7 @@ jobs:
           mv *.rpm build/rpm/$TAGNAME/
           cd build/rpm
           ls $TAGNAME/*.rpm > pkglist.txt
-          createrepo_c --update --recycle-pkglist --skip-stat --pkglist pkglist.txt build/rpm
+          createrepo_c --update --recycle-pkglist --skip-stat --pkglist pkglist.txt .
       
       - name: Upload RPM repository
         run: |

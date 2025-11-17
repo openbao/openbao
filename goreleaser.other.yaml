@@ -120,7 +120,6 @@ signs:
     signature: "${artifact}.sigstore.json"
     args:
       - "sign-blob"
-      - "--oidc-issuer=https://token.actions.githubusercontent.com"
       - "--bundle=${signature}" # needed on cosign 3.0.0+
       - "${artifact}"
       - "--yes" # needed on cosign 2.0.0+

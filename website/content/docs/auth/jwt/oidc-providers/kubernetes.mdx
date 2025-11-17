@@ -34,7 +34,47 @@ Kubernetes cluster requirements:
 * Must use short-lived service account tokens when logging in.
   * Tokens mounted into pods default to short-lived from 1.21.
 
-Configuration steps:
+#### Configuration steps when OpenBao is running in Kubernetes
+
+1. Find the issuer URL of the cluster.
+
+   ```bash
+   ISSUER="$(kubectl get --raw /.well-known/openid-configuration | jq -r '.issuer')"
+   ```
+
+1. Enable and configure JWT auth in OpenBao.
+
+   ```bash
+   kubectl exec openbao-0 -- bao auth enable jwt
+   kubectl exec openbao-0 -- bao write auth/jwt/config -<<EOF
+   {
+      "oidc_discovery_url": "https://kubernetes.default.svc.cluster.local",
+      "provider_config": {
+          "provider": "kubernetes"
+      }
+   }
+   EOF
+   ```
+
+* `provider_config.provider` `(string: <required>)` - Name of the provider.
+   Must be set to "kubernetes".
+
+OpenBao automatically uses the service account token found at `/var/run/secrets/kubernetes.io/serviceaccount/token`
+for authentication with the Kubernetes API server, and the CA certificate at `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`
+to verify the server's TLS certificate. It supports short-lived tokens.
+
+No special Kubernetes RBAC permissions are required for the service account token.
+The default service account token is sufficient.
+
+#### Configuration steps when OpenBao is _not_ running in Kubernetes:
+
+:::info
+
+**Note:** When OpenBao is outside the cluster, the `$ISSUER` endpoint below
+may or may not be reachable. If not, you can configure JWT auth using
+[`jwt_validation_pubkeys`](#using-jwt-validation-public-keys) instead.
+
+:::
 
 1. Ensure OIDC discovery URLs do not require authentication, as detailed
    [here][k8s-sa-issuer-discovery]:
@@ -45,39 +85,13 @@ Configuration steps:
       --group=system:unauthenticated
    ```
 
-1. Find the issuer URL of the cluster.
-
-   ```bash
-   ISSUER="$(kubectl get --raw /.well-known/openid-configuration | jq -r '.issuer')"
-   ```
-
 1. Enable and configure JWT auth in OpenBao.
 
-  1. If OpenBao is running in Kubernetes:
+   ```bash
+   bao auth enable jwt
+   bao write auth/jwt/config oidc_discovery_url="${ISSUER}"
+   ```
 
-     ```bash
-     kubectl exec openbao-0 -- bao auth enable jwt
-     kubectl exec openbao-0 -- bao write auth/jwt/config \
-        oidc_discovery_url=https://kubernetes.default.svc.cluster.local \
-        oidc_discovery_ca_pem=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-     ```
-
-  1. Alternatively, if OpenBao is _not_ running in Kubernetes:
-
-     :::info
-
-     **Note:** When OpenBao is outside the cluster, the `$ISSUER` endpoint below
-     may or may not be reachable. If not, you can configure JWT auth using
-     [`jwt_validation_pubkeys`](#using-jwt-validation-public-keys) instead.
-
-     :::
-
-     ```bash
-     bao auth enable jwt
-     bao write auth/jwt/config oidc_discovery_url="${ISSUER}"
-     ```
-
-1. Configure a role and log in as detailed [below](#creating-a-role-and-logging-in).
 
 [k8s-sa-issuer-discovery]: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-issuer-discovery
 

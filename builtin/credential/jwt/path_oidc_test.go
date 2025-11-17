@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1414,6 +1415,8 @@ type oidcProvider struct {
 	code          string
 	codeChallenge string
 	customClaims  map[string]interface{}
+	requests      []*http.Request
+	requestsMutex sync.Mutex
 }
 
 func newOIDCProvider(t *testing.T) *oidcProvider {
@@ -1426,6 +1429,10 @@ func newOIDCProvider(t *testing.T) *oidcProvider {
 
 func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	o.requestsMutex.Lock()
+	o.requests = append(o.requests, r)
+	o.requestsMutex.Unlock()
 
 	switch r.URL.Path {
 	case "/.well-known/openid-configuration":
@@ -1539,6 +1546,27 @@ func (o *oidcProvider) getTLSCert() (string, error) {
 	}
 
 	return pemBuf.String(), nil
+}
+
+// getRequests returns and clears the list of requests received by the mock provider.
+func (o *oidcProvider) getRequests() []*http.Request {
+	o.requestsMutex.Lock()
+	defer o.requestsMutex.Unlock()
+	r := o.requests
+	o.requests = []*http.Request{}
+	return r
+}
+
+func (o *oidcProvider) issuerToken(subject string) string {
+	stdClaims := jwt.Claims{
+		Subject:   subject,
+		Issuer:    o.server.URL,
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+		Expiry:    jwt.NewNumericDate(time.Now().Add(5 * time.Second)),
+		Audience:  jwt.Audience{o.clientID},
+	}
+	jwtData, _ := getTestJWT(o.t, ecdsaPrivKey, stdClaims, o.customClaims)
+	return jwtData
 }
 
 func getQueryParam(t *testing.T, inputURL, param string) string {

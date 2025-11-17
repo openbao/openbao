@@ -490,9 +490,10 @@ jobs:
         run: |
           mkdir -p build/rpm/$TAGNAME
           mv *.rpm build/rpm/$TAGNAME/
-          ls build/rpm/$TAGNAME/*.rpm > pkglist.txt
+          cd build/rpm
+          ls $TAGNAME/*.rpm > pkglist.txt
           createrepo_c --update --recycle-pkglist --skip-stat --pkglist pkglist.txt build/rpm
       
       - name: Upload RPM repository
         run: |
-          aws s3 sync build/rpm s3://${BUCKET}/rpm
+          aws s3 sync build/rpm s3://${BUCKET}/rpm --exclude pkglist.txt

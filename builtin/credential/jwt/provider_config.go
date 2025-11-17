@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"golang.org/x/oauth2"
 )
@@ -22,6 +23,7 @@ func ProviderMap() map[string]CustomProvider {
 		"gsuite":     &GSuiteProvider{},
 		"secureauth": &SecureAuthProvider{},
 		"ibmisam":    &IBMISAMProvider{},
+		"kubernetes": &KubernetesProvider{},
 	}
 }
 
@@ -67,4 +69,10 @@ type UserInfoFetcher interface {
 type GroupsFetcher interface {
 	// FetchGroups queries for groups claims during login
 	FetchGroups(context.Context, *jwtAuthBackend, map[string]interface{}, *jwtRole, oauth2.TokenSource) (interface{}, error)
+}
+
+// HTTPClient- Optional support for custom HTTP client.
+type HTTPClient interface {
+	// GetHTTPClient returns an HTTP client to be used for requests.
+	GetHTTPClient() *http.Client
 }

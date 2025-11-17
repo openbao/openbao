@@ -374,6 +374,12 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		methodCount++
 	}
 
+	// Validate provider_config
+	pConfig, err := NewProviderConfig(ctx, config, ProviderMap())
+	if err != nil {
+		return logical.ErrorResponse("invalid provider_config: %s", err), nil
+	}
+
 	resp := &logical.Response{}
 	switch {
 	case methodCount != 1:
@@ -392,7 +398,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		if config.OIDCClientID != "" && config.OIDCClientSecret != "" {
 			_, err = b.createProvider(config)
 		} else {
-			_, err = jwt.NewOIDCDiscoveryKeySet(ctx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
+			_, err = jwt.NewOIDCDiscoveryKeySet(injectProviderHTTPClient(pConfig, ctx), config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
 		}
 		if err != nil {
 			if !skipJwksValidation {
@@ -407,7 +413,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse("'oidc_discovery_url' must be set for OIDC"), nil
 
 	case config.JWKSURL != "":
-		keyset, err := jwt.NewJSONWebKeySet(ctx, config.JWKSURL, config.JWKSCAPEM)
+		keyset, err := jwt.NewJSONWebKeySet(injectProviderHTTPClient(pConfig, ctx), config.JWKSURL, config.JWKSCAPEM)
 		if err != nil {
 			b.Logger().Error("error checking jwks_ca_pem", "error", err)
 			return logical.ErrorResponse("error checking jwks_ca_pem"), nil
@@ -462,11 +468,6 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	case responseModeFormPost:
 	default:
 		return logical.ErrorResponse("invalid response_mode: %q", config.OIDCResponseMode), nil
-	}
-
-	// Validate provider_config
-	if _, err := NewProviderConfig(ctx, config, ProviderMap()); err != nil {
-		return logical.ErrorResponse("invalid provider_config: %s", err), nil
 	}
 
 	entry, err := logical.StorageEntryJSON(configPath, config)

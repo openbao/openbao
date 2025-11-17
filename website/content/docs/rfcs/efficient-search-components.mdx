@@ -24,7 +24,7 @@ An issue with larger deployments of upstream and now OpenBao has always been per
 Key Management (PKI) – Searching for cryptographic keys based on metadata (e.g., expiration date, issuer, subject components, or usage constraints).
 Static Secrets (KV) - Searching for secrets by content or metadata (e.g., finding stored passwords or secrets matching some metadata criteria)
 The lack of an efficient search mechanism forces users to retrieve large datasets and filter results client-side, leading to performance bottlenecks, increased API load, and degraded user experience. Addressing this limitation would improve scalability and usability across multiple storage backends, albeit by shifting some of the load to the server.
-An alternative is leveraging third party tools to create an external index(es) via the audit logs. This approach does, however, leak sensitive information ([not directly](https://openbao.org/docs/audit/#sensitive-information), unless log_raw=true is enabled).
+An alternative is leveraging third party tools to create an external index(es) via the audit logs. This approach does, however, leak sensitive information ([not directly](../audit/index.mdx#sensitive-information), unless log_raw=true is enabled).
 
 ## User-facing Description
 

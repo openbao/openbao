@@ -477,22 +477,14 @@ jobs:
           pattern: rpm-packages-*
           merge-multiple: true
       
-      - name: Install createrepo_c
+      - name: Install createrepo_c from debian trixie
         env:
-          CREATEREPO_VERSION: 0.17.3
+          CREATEREPO_VERSION: 1.2.0-2
         run: |
+          echo "deb http://ftp.debian.org/debian trixie main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null
+          wget -qO- https://ftp-master.debian.org/keys/archive-key-13.asc | sudo tee /etc/apt/trusted.gpg.d/archive-key-13.asc > /dev/null
           sudo apt update
           sudo apt install -y createrepo-c=$CREATEREPO_VERSION
-
-      # Might be required if createrepo-c 0.17.3 is missing features ...
-      # - name: Install createrepo_c from debian trixie
-      #   env:
-      #     CREATEREPO_VERSION: 1.2.0-2
-      #   run: |
-      #     echo "deb http://ftp.debian.org/debian trixie main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null
-      #     wget -qO- https://ftp-master.debian.org/keys/archive-key-13.asc | sudo tee /etc/apt/trusted.gpg.d/archive-key-13.asc > /dev/null
-      #     sudo apt update
-      #     sudo apt install -y createrepo-c=$CREATEREPO_VERSION
 
       - name: Update RPM repository
         run: |

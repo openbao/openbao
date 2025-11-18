@@ -71,7 +71,7 @@ nfpms:
       - openbao
       - bao
     replaces:
-      - bao
+      - bao-hsm
     bindir: /usr/bin
     section: default
     contents:

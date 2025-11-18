@@ -1,6 +1,7 @@
 #!/bin/sh
 
 zero=$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')
+initial_commit="ed3069f01d4ee023d296212a3521d3354f109194"
 
 while read local_ref local_oid remote_ref remote_oid
 do
@@ -21,7 +22,7 @@ do
 		commit=$(git rev-list --reverse --extended-regexp --invert-grep --grep '^Signed-off-by: ' --grep '\(#[0-9]+\)$' "$range" | head -n 1)
 		# find commits which                                ^ are not            ^ signed off              ^ or merge commits
 
-		if test -n "$commit"
+		if [ -n "$commit" ] && [ "$commit" != "$initial_commit" ]
 		then
 			rebase_commit=$(git rev-parse --short "$commit"^)
 			echo >&2 "Found commit(s) which are not signed-off."

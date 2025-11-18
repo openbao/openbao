@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -165,6 +167,8 @@ func TestRaft_TransactionalBackend(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	physical.ExerciseTransactionalBackend(t, b)
+
+	testRaft_assertFastTxnTrackerCleanup(t, b)
 }
 
 func TestRaft_ParseAutopilotUpgradeVersion(t *testing.T) {
@@ -328,6 +332,9 @@ func TestRaft_HABackend(t *testing.T) {
 	addPeer(t, raft, raft2)
 
 	physical.ExerciseHABackend(t, raft, raft2)
+
+	testRaft_assertFastTxnTrackerCleanup(t, raft)
+	testRaft_assertFastTxnTrackerCleanup(t, raft2)
 }
 
 func TestRaft_Backend_ThreeNode(t *testing.T) {
@@ -350,6 +357,24 @@ func TestRaft_Backend_ThreeNode(t *testing.T) {
 	// Make sure all stores are the same
 	compareFSMs(t, raft1.fsm, raft2.fsm)
 	compareFSMs(t, raft1.fsm, raft3.fsm)
+
+	testRaft_assertFastTxnTrackerCleanup(t, raft1)
+	testRaft_assertFastTxnTrackerCleanup(t, raft2)
+	testRaft_assertFastTxnTrackerCleanup(t, raft3)
+}
+
+func testRaft_assertFastTxnTrackerCleanup(t testing.TB, raft *RaftBackend) {
+	t.Helper()
+	if assert.Equal(t, raft.fsm.fastTxnTracker.lowestActiveIndex(), uint64(math.MaxUint64), "the test assumes that no transaction is in flight") {
+		assert.Len(t, raft.fsm.fastTxnTracker.indexModifiedMap,
+			2,
+			"two entries are expected: the one that was the latest when we applied the final operation and the final operation itself",
+			// Why? we can not evict the currently active as a new transaction might be started concurrently to our apply
+			// neither can the latest operation itself, for the same reason
+			// Put in other words: Once the indexModifiedMap has reached a length of 2, it should never fall below 2 again.
+		)
+		assert.Empty(t, raft.fsm.fastTxnTracker.sourceIndexMap)
+	}
 }
 
 func TestRaft_GetOfflineConfig(t *testing.T) {
@@ -476,6 +501,10 @@ func TestRaft_Recovery(t *testing.T) {
 
 	compareFSMs(t, raft1.fsm, raft2.fsm)
 	compareFSMs(t, raft1.fsm, raft4.fsm)
+
+	testRaft_assertFastTxnTrackerCleanup(t, raft1)
+	testRaft_assertFastTxnTrackerCleanup(t, raft2)
+	testRaft_assertFastTxnTrackerCleanup(t, raft3)
 }
 
 func TestRaft_Backend_Performance(t *testing.T) {

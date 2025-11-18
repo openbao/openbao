@@ -80,7 +80,7 @@ mechanism, the operator can unseal using the emergency seal by specifying the
 emergency seal name. This functions similarly to unsealing using a standard
 Shamir's seal.
 
-`bao unseal -seal=emergency <share>`
+`bao operator unseal -seal=emergency <share>`
 
 ## Technical Description
 
@@ -89,6 +89,10 @@ Shamir's seal.
 The following storage layout proposed by Parallel Unseal is followed by this
 proposal. This allows for forward compatibility with Parallel Unseal while also
 enabling us to have multiple paths to the root key.
+
+> **_NOTE:_** The diagram below is from Parallel Unseal, which supports an
+> arbitrary number of seals. The approach in this proposal only supports 2
+> seals: a primary auto seal and an emergency Shamir's seal.
 
 ```mermaid
 flowchart LR
@@ -187,7 +191,8 @@ adopt relevant specifications proposed by Parallel Unseal.
 
 `POST sys/unseal`
 
-This endpoint will have a new optional parameter `seal` to specify the seal
+This endpoint will have a new optional parameter `seal` to specify the seal. It
+defaults to the primary seal.
 
 ```
 {

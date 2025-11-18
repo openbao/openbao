@@ -58,7 +58,7 @@ This has the following benefits:
   `key_info` map containing metadata for each issuer. The `-detailed` flag
   simply controls whether this metadata is displayed in the CLI output.
 - Restricts access to detailed listing by default unless an administrator has
-  set up wildcards. For instance, when using `- detailed`, an admin who doesn't
+  set up wildcards. For instance, when using `-detailed`, an admin who doesn't
   want users listing detailed information (because it is too resource intensive)
   would need to explicitly update their ACL policies to include
   `denied_parameters=detailed`.
@@ -69,8 +69,7 @@ If your secrets engine plugin implements a revoke operation for dynamic
 credentials, it should consider a "credentials not found" error from the backing
 system a successful revocation.
 
-There are several reasons why credentials, that have already been revoked, will
-be tried to be revoked by OpenBao:
+OpenBao may try to revoke already revoked credentials for several reasons:
 
 - OpenBao was restored from a backup / snapshot
 - OpenBao could not delete the lease from its storage after revoking the

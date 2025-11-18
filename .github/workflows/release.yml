@@ -469,7 +469,7 @@ jobs:
     steps:
       - name: Download repodata
         run: |
-          aws s3 sync s3://${BUCKET}/rpm/repodata build/rpm/repodata
+          aws s3 sync s3://${BUCKET}/rpm build/rpm --exclude \*.rpm
 
       - name: Download rpm-packages artifacts
         uses: actions/download-artifact@v5
@@ -488,12 +488,14 @@ jobs:
 
       - name: Update RPM repository
         run: |
-          mkdir -p build/rpm/$TAGNAME
-          mv *.rpm build/rpm/$TAGNAME/
-          cd build/rpm
-          ls $TAGNAME/*.rpm > pkglist.txt
-          createrepo_c --update --recycle-pkglist --skip-stat --pkglist pkglist.txt .
+          ls *.rpm > pkglist.txt
+          while read pkg ; do
+            ARCH=$(rpm -q $pkg --qf "%{arch}")
+            mkdir -p build/rpm/$ARCH
+            mv $pkg build/rpm/$ARCH/
+            createrepo_c --update --recycle-pkglist --skip-stat --includepkg $(basename $pkg) build/rpm/$ARCH
+          done < pkglist.txt
       
       - name: Upload RPM repository
         run: |
-          aws s3 sync build/rpm s3://${BUCKET}/rpm --exclude pkglist.txt
+          aws s3 sync build/rpm s3://${BUCKET}/rpm

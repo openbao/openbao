@@ -783,12 +783,8 @@ func TestWaitActiveForwardingReady(t testing.T, core *Core) {
 func TestWaitActiveWithError(core *Core) error {
 	start := time.Now()
 	var standby bool
-	var err error
 	for time.Since(start) < 30*time.Second {
-		standby, err = core.Standby()
-		if err != nil {
-			return err
-		}
+		standby = core.Standby()
 		if !standby {
 			break
 		}
@@ -858,7 +854,7 @@ func (c *TestCluster) start(t testing.T) {
 WAITACTIVE:
 	for i := 0; i < 60; i++ {
 		for i, core := range c.Cores {
-			if standby, _ := core.Standby(); !standby {
+			if standby := core.Standby(); !standby {
 				activeCore = i
 				break WAITACTIVE
 			}

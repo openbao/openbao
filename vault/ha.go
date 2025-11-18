@@ -49,8 +49,8 @@ const (
 )
 
 // Standby checks if the Vault is in standby mode
-func (c *Core) Standby() (bool, error) {
-	return c.standby.Load(), nil
+func (c *Core) Standby() bool {
+	return c.standby.Load()
 }
 
 func (c *Core) ActiveTime() time.Time {
@@ -58,12 +58,6 @@ func (c *Core) ActiveTime() time.Time {
 	activeTime := c.activeTime
 	c.stateLock.RUnlock()
 	return activeTime
-}
-
-// StandbyStates is meant as a way to avoid some extra locking on the very
-// common sys/health check.
-func (c *Core) StandbyStates() (standby bool) {
-	return c.standby.Load()
 }
 
 // getHAMembers retrieves cluster membership that doesn't depend on raft. This should only ever be called by the

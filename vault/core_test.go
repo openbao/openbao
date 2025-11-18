@@ -1927,10 +1927,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 	}
 
 	// Core2 should be in standby
-	standby, err := core2.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby := core2.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -1987,10 +1984,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 	}
 
 	// Core3 should be in standby
-	standby, err = core3.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby = core3.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2103,10 +2097,7 @@ func TestCore_StepDown(t *testing.T) {
 	}
 
 	// Core2 should be in standby
-	standby, err := core2.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby := core2.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2144,10 +2135,7 @@ func TestCore_StepDown(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Core1 should be in standby
-	standby, err = core.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby = core.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2187,10 +2175,7 @@ func TestCore_StepDown(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	// Core2 should be in standby
-	standby, err = core2.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby = core2.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2320,10 +2305,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	}
 
 	// Core2 should be in standby
-	standby, err := core2.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby := core2.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2347,10 +2329,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	}
 
 	// Core should be in standby
-	standby, err = core.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby = core.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2487,10 +2466,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 	}
 
 	// Core2 should be in standby
-	standby, err := core2.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby := core2.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2531,10 +2507,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 	}
 
 	// Core should be in standby
-	standby, err = core.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby = core.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}

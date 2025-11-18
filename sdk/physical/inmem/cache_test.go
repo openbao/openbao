@@ -124,7 +124,7 @@ func TestCache_Invalidate(t *testing.T) {
 	tx, err := cache.(physical.TransactionalBackend).BeginTx(context.Background())
 	require.NoError(err)
 
-	// Modify in under
+	// Modify in underlying backend
 	require.NoError(inm.Put(context.Background(), &physical.Entry{
 		Key:   "foo",
 		Value: []byte("bazz"),

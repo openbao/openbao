@@ -232,7 +232,7 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 	// Disable collection if configured.
 	if c.MetricSink().GaugeInterval == time.Duration(0) {
 		c.logger.Info("usage gauge collection is disabled")
-	} else if standby, _ := c.Standby(); !standby {
+	} else if standby := c.Standby(); !standby {
 		for _, init := range metricsInit {
 			if init.DisableEnvVar != "" {
 				if api.ReadBaoVariable(init.DisableEnvVar) != "" {

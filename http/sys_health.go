@@ -118,7 +118,7 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 
 	// Check system status
 	sealed := core.Sealed()
-	standby := core.StandbyStates()
+	standby := core.Standby()
 	var replicationState consts.ReplicationState
 	if standby {
 		replicationState = core.ActiveNodeReplicationState()

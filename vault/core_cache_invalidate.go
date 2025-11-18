@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	metrics "github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/fairshare"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/physical"

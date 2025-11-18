@@ -367,11 +367,7 @@ func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.Value) http.Hand
 func handleLogicalInternal(core *vault.Core, injectDataIntoTopLevel bool, noForward bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if core.HAEnabled() && !core.StandbyReadsEnabled() {
-			standby, err := core.Standby()
-			if err != nil {
-				respondError(w, http.StatusServiceUnavailable, err)
-				return
-			}
+			standby := core.Standby()
 			if standby {
 				forwardRequest(core, w, r)
 				return

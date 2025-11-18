@@ -55,6 +55,37 @@ client or passed via the `X-Vault-Token` or `Authorization` header for future re
 Several OpenBao APIs require specifying path parameters. The path parameter cannot end
 in periods. Otherwise, OpenBao will return a 404 unsupported path error.
 
+## Namespaces
+
+When using [Namespaces](/docs/concepts/namespaces) the final path of the API
+request is relative to the `X-Vault-Namespace` header. For instance, if a
+request URI is `secret/foo` with the `X-Vault-Namespace` header set as `ns1/ns2/`,
+then the resulting request path to Vault will be `ns1/ns2/secret/foo`.
+
+Note that it is semantically equivalent to use the full path rather than the
+`X-Vault-Namespace` header, Vault will match the corresponding namespace
+based on correlating user input. Similar path results may be achieved if
+`X-Vault-Namespace` is set to `ns1/` with the request path of `ns2/secret/foo`
+as well, or otherwise if `X-Vault-Namespace` is omitted entirely and instead a
+complete path is provided such as: `ns1/ns2/secret/foo`.
+
+For example, the following two commands result in equivalent requests:
+
+```shell-session
+$ curl \
+    -H "X-Vault-Token: f3b09679-3001-009d-2b80-9c306ab81aa6" \
+    -H "X-Vault-Namespace: ns1/ns2/" \
+    -X GET \
+    http://127.0.0.1:8200/v1/secret/foo
+```
+
+```shell-session
+$ curl \
+    -H "X-Vault-Token: f3b09679-3001-009d-2b80-9c306ab81aa6" \
+    -X GET \
+    http://127.0.0.1:8200/v1/ns1/ns2/secret/foo
+```
+
 ## API operations
 
 Typically the request data, body and response data to and from OpenBao is in JSON.

@@ -59,8 +59,8 @@ nfpms:
       - openssl
     provides:
       - openbao
-      - bao
     conflicts:
+      - openbao
       - bao
     replaces:
       - bao

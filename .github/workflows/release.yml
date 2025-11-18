@@ -422,14 +422,12 @@ jobs:
           passphrase: ${{ secrets.GPG_PASSWORD }}
       
       - name: Install reprepro from debian experimental
-        env:
-          REPREPRO_VERSION: 5.4.7-1
         run: |
           sudo apt update && sudo apt install -y debian-archive-keyring
           echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian experimental main" | sudo tee /etc/apt/sources.list.d/debian-experimental.list > /dev/null # required for reprepro with "Limit" support
-          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian trixie main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null # required for libpgpme11t64 >= 1.23.2
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian sid main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null # required for libgpgme45 >= 1.23.2
           sudo apt update
-          sudo apt install -y reprepro=$REPREPRO_VERSION
+          sudo apt install -t experimental -y reprepro
 
       - name: Update APT repository
         run: |
@@ -478,13 +476,11 @@ jobs:
           merge-multiple: true
       
       - name: Install createrepo_c from debian trixie
-        env:
-          CREATEREPO_VERSION: 1.2.0-2+b1
         run: |
           sudo apt update && sudo apt install -y debian-archive-keyring
           echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian trixie main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null # required for createrepo-c > 0.17.3
           sudo apt update
-          sudo apt install -y createrepo-c=$CREATEREPO_VERSION
+          sudo apt install -t trixie -y createrepo-c
 
       - name: Update RPM repository
         run: |

@@ -74,6 +74,7 @@ const sidebars: SidebarsConfig = {
                         "concepts/integrated-storage/autopilot",
                     ],
                 },
+                "concepts/namespaces/index",
                 "concepts/pgp-gpg-keybase",
                 "concepts/recovery-mode",
                 "concepts/resource-quotas",
@@ -181,6 +182,7 @@ const sidebars: SidebarsConfig = {
                 "commands/list",
                 "commands/login",
                 "commands/monitor",
+                "commands/namespace",
                 {
                     operator: [
                         "commands/operator/index",

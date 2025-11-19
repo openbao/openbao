@@ -175,42 +175,41 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/init", handleSysInit(core))
 		mux.Handle("/v1/sys/seal-status", handleSysSealStatus(core))
 		mux.Handle("/v1/sys/seal", handleSysSeal(core))
-		mux.Handle("/v1/sys/step-down", handleRequestForwarding(core, handleSysStepDown(core)))
+		mux.Handle("/v1/sys/step-down", handleSysStepDown(core))
 		mux.Handle("/v1/sys/unseal", handleSysUnseal(core))
 		mux.Handle("/v1/sys/leader", handleSysLeader(core))
 		mux.Handle("/v1/sys/health", handleSysHealth(core))
 		mux.Handle("/v1/sys/monitor", handleLogicalNoForward(core))
 
-		mux.Handle("/v1/sys/generate-root/attempt", handleRequestForwarding(core,
-			handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy))))
-		mux.Handle("/v1/sys/generate-root/update", handleRequestForwarding(core,
-			handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy))))
+		mux.Handle("/v1/sys/generate-root/attempt",
+			handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy)))
+		mux.Handle("/v1/sys/generate-root/update",
+			handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy)))
 
 		// Register without unauthenticated rekey, if necessary.
 		if props.ListenerConfig == nil || !props.ListenerConfig.DisableUnauthedRekeyEndpoints {
-			mux.Handle("/v1/sys/rekey/init", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyInit(core, false))))
-			mux.Handle("/v1/sys/rekey/update", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyUpdate(core, false))))
-			mux.Handle("/v1/sys/rekey/verify", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyVerify(core, false))))
-			mux.Handle("/v1/sys/rekey-recovery-key/init", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyInit(core, true))))
-			mux.Handle("/v1/sys/rekey-recovery-key/update", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyUpdate(core, true))))
-			mux.Handle("/v1/sys/rekey-recovery-key/verify", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyVerify(core, true))))
+			mux.Handle("/v1/sys/rekey/init",
+				handleAuditNonLogical(core, handleSysRekeyInit(core, false)))
+			mux.Handle("/v1/sys/rekey/update",
+				handleAuditNonLogical(core, handleSysRekeyUpdate(core, false)))
+			mux.Handle("/v1/sys/rekey/verify",
+				handleAuditNonLogical(core, handleSysRekeyVerify(core, false)))
+			mux.Handle("/v1/sys/rekey-recovery-key/init",
+				handleAuditNonLogical(core, handleSysRekeyInit(core, true)))
+			mux.Handle("/v1/sys/rekey-recovery-key/update",
+				handleAuditNonLogical(core, handleSysRekeyUpdate(core, true)))
+			mux.Handle("/v1/sys/rekey-recovery-key/verify",
+				handleAuditNonLogical(core, handleSysRekeyVerify(core, true)))
 		}
 
 		mux.Handle("/v1/sys/storage/raft/bootstrap", handleSysRaftBootstrap(core))
 		mux.Handle("/v1/sys/storage/raft/join", handleSysRaftJoin(core))
-		mux.Handle("/v1/sys/internal/ui/feature-flags", handleSysInternalFeatureFlags(core))
 
 		for _, path := range injectDataIntoTopRoutes {
-			mux.Handle(path, handleRequestForwarding(core, handleLogicalWithInjector(core)))
+			mux.Handle(path, handleLogicalWithInjector(core))
 		}
-		mux.Handle("/v1/sys/", handleRequestForwarding(core, handleLogical(core)))
-		mux.Handle("/v1/", handleRequestForwarding(core, handleLogical(core)))
+		mux.Handle("/v1/sys/", handleLogical(core))
+		mux.Handle("/v1/", handleLogical(core))
 		if core.UIEnabled() {
 			if uiBuiltIn {
 				mux.Handle("/ui/", http.StripPrefix("/ui/", gziphandler.GzipHandler(handleUIHeaders(core, handleUI(http.FileServer(&UIAssetWrapper{FileSystem: assetFS()}))))))
@@ -300,15 +299,11 @@ func (w *copyResponseWriter) WriteHeader(code int) {
 
 func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origBody := new(bytes.Buffer)
-		reader := io.NopCloser(io.TeeReader(r.Body, origBody))
-		r.Body = reader
-		req, _, status, err := buildLogicalRequestNoAuth(w, r)
+		req, status, err := buildLogicalRequestNoAuth(w, r)
 		if err != nil || status != 0 {
 			respondError(w, status, err)
 			return
 		}
-		r.Body = io.NopCloser(origBody)
 		input := &logical.LogInput{
 			Request: req,
 		}
@@ -728,20 +723,31 @@ func parseQuery(values url.Values) map[string]interface{} {
 	return nil
 }
 
-func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) (io.ReadCloser, error) {
+func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) error {
 	ctx := r.Context()
 
-	reader, _, _, err := NewSafeJSONReader(ctx, r.Body)
+	// Enforce limits on JSON complexity.
+	_, _, err := EnforceJSONComplexityLimits(ctx, r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to limit JSON input: %w", err)
+		return fmt.Errorf("failed to limit JSON input: %w", err)
 	}
 
-	err = jsonutil.DecodeJSONFromReader(reader, out)
+	// Reset to the beginning.
+	if err := resetBody(r); err != nil {
+		return fmt.Errorf("failed to reset body: %w", err)
+	}
+
+	err = jsonutil.DecodeJSONFromReader(r.Body, out)
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("failed to parse JSON input: %w", err)
+		return fmt.Errorf("failed to parse JSON input: %w", err)
 	}
 
-	return nil, err
+	// Reset to the beginning again.
+	if err := resetBody(r); err != nil {
+		return fmt.Errorf("failed to reset body: %w", err)
+	}
+
+	return err
 }
 
 // parseFormRequest parses values from a form POST.
@@ -772,47 +778,32 @@ func parseFormRequest(r *http.Request) (map[string]interface{}, error) {
 	return data, nil
 }
 
-// handleRequestForwarding determines whether to forward a request or not,
-// falling back on the older behavior of redirecting the client
-func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Note: in an HA setup, this call will also ensure that connections to
-		// the leader are set up, as that happens once the advertised cluster
-		// values are read during this function
-		isLeader, leaderAddr, _, err := core.Leader()
-		if err != nil {
-			if err == vault.ErrHANotEnabled {
-				// Standalone node, serve request normally
-				handler.ServeHTTP(w, r)
-				return
-			}
-			// Some internal error occurred
-			respondError(w, http.StatusInternalServerError, err)
-			return
-		}
-		if isLeader {
-			// No forwarding needed, we're leader
-			handler.ServeHTTP(w, r)
-			return
-		}
-		if leaderAddr == "" {
-			respondError(w, http.StatusInternalServerError, errors.New("local node not active but active cluster node not found"))
-			return
-		}
-
-		forwardRequest(core, w, r)
-	})
-}
-
 func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
+	// Reset our body before forwarding to ensure an accurate location.
+	if err := resetBody(r); err != nil {
+		respondStandby(core, w, r.URL)
+		return
+	}
+
 	if r.Header.Get(vault.IntNoForwardingHeaderName) != "" {
 		respondStandby(core, w, r.URL)
 		return
 	}
 
+	_, leaderAddr, _, err := core.Leader()
+	if err != nil {
+		// Some internal error occurred
+		respondError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if leaderAddr == "" {
+		respondError(w, http.StatusInternalServerError, errors.New("local node not active but active cluster node not found"))
+		return
+	}
+
 	if r.Header.Get(NoRequestForwardingHeaderName) != "" {
 		// Forwarding explicitly disabled, fall back to previous behavior
-		core.Logger().Debug("handleRequestForwarding: forwarding disabled by client request")
+		core.Logger().Debug("forwardRequest: forwarding disabled by client request")
 		respondStandby(core, w, r.URL)
 		return
 	}
@@ -850,11 +841,8 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 // case of an error.
 func request(core *vault.Core, w http.ResponseWriter, rawReq *http.Request, r *logical.Request) (*logical.Response, bool, bool) {
 	resp, err := core.HandleRequest(rawReq.Context(), r)
-	if errwrap.Contains(err, consts.ErrStandby.Error()) {
-		respondStandby(core, w, rawReq.URL)
-		return resp, false, false
-	}
-	if err != nil && errwrap.Contains(err, logical.ErrPerfStandbyPleaseForward.Error()) {
+
+	if logical.ShouldForward(err) || (resp != nil && logical.ShouldForward(resp.Error())) {
 		return nil, false, true
 	}
 

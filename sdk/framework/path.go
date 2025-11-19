@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/openbao/openbao/sdk/v2/helper/license"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -119,10 +118,6 @@ type Path struct {
 	// also true. If not specified, the Update action is forced and the user
 	// must have UpdateCapability on the path.
 	ExistenceCheck ExistenceFunc
-
-	// FeatureRequired, if implemented, will validate if the given feature is
-	// enabled for the set of paths
-	FeatureRequired license.Features
 
 	// Deprecated denotes that this path is considered deprecated. This may
 	// be reflected in help and documentation.

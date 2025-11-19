@@ -12,7 +12,8 @@ import (
 
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/decls"
+	"github.com/google/cel-go/common/types"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -439,7 +440,7 @@ func (b *jwtAuthBackend) celEnv(program celhelper.CelProgram) (*cel.Env, error) 
 
 	// Add all variable declarations to the CEL environment.
 	for _, variable := range program.Variables {
-		envOptions = append(envOptions, cel.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
+		envOptions = append(envOptions, cel.VariableDecls(decls.NewVariable(variable.Name, types.DynType)))
 	}
 
 	// Add "pb.Auth" return type to environment

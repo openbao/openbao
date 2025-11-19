@@ -6,6 +6,7 @@ package http
 import (
 	"encoding/json"
 	"io"
+	"net/url"
 	"os"
 	"reflect"
 	"sync"
@@ -140,7 +141,7 @@ func TestPlugin_MockRawResponse(t *testing.T) {
 	cluster, core := getPluginClusterAndCore(t, logger)
 	defer cluster.Cleanup()
 
-	resp, err := core.Client.RawRequest(core.Client.NewRequest("GET", "/v1/mock/raw"))
+	resp, err := core.Client.Logical().ReadRaw("mock/raw")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,9 +173,8 @@ func TestPlugin_GetParams(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r := core.Client.NewRequest("GET", "/v1/mock/kv/foo")
-	r.Params.Add("version", "12")
-	resp, err := core.Client.RawRequest(r)
+	params := url.Values{"version": []string{"12"}}
+	resp, err := core.Client.Logical().ReadRawWithData("mock/kv/foo", params)
 	if err != nil {
 		t.Fatal(err)
 	}

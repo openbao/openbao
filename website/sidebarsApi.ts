@@ -102,7 +102,6 @@ const sidebars: SidebarsConfig = {
           ],
         },
         "system/internal-specs-openapi",
-        "system/internal-ui-feature",
         "system/internal-ui-mounts",
         "system/internal-ui-namespaces",
         "system/internal-ui-resultant-acl",

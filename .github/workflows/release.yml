@@ -158,7 +158,7 @@ jobs:
 
       - name: Upload distribution source tarball artifact
         if: inputs.dodistrelease
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: dist-tarball
           path: '*.xz'
@@ -231,13 +231,13 @@ jobs:
           key: ${{ github.ref }}-ui
 
       # Supports syft/sbom generation
-      - uses: anchore/sbom-action/download-syft@aa0e114b2e19480f157109b9922bda359bd98b90 # v0
+      - uses: anchore/sbom-action/download-syft@8e94d75ddd33f69f691467e42275782e4bfefe84 # v0.20.9
         if: inputs.dogorelease
 
         # Supports Buildx
       - name: Qemu Setup
         if: inputs.dogorelease
-        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
 
       - name: Buildx Setup
         if: inputs.dogorelease
@@ -349,7 +349,7 @@ jobs:
           gh release create -t $TAGNAME --verify-tag $TAGNAME || true
 
       - name: Download dist-tarball artifact
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: dist-tarball
 

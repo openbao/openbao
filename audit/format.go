@@ -400,7 +400,7 @@ type AuditRequestEntry struct {
 	Auth          *AuditAuth    `json:"auth,omitempty"`
 	Request       *AuditRequest `json:"request,omitempty"`
 	Error         string        `json:"error,omitempty"`
-	ForwardedFrom string        `json:"forwarded_from,omitempty"` // Populated in Enterprise when a request is forwarded
+	ForwardedFrom string        `json:"forwarded_from,omitempty"`
 }
 
 // AuditResponseEntry is the structure of a response audit log entry in Audit.
@@ -555,21 +555,12 @@ func NewTemporaryFormatter(format, prefix string) *AuditFormatter {
 	temporarySalt := func(ctx context.Context) (*salt.Salt, error) {
 		return salt.NewNonpersistentSalt(), nil
 	}
-	ret := &AuditFormatter{}
-
-	switch format {
-	case "jsonx":
-		ret.AuditFormatWriter = &JSONxFormatWriter{
+	return &AuditFormatter{
+		AuditFormatWriter: &JSONFormatWriter{
 			Prefix:   prefix,
 			SaltFunc: temporarySalt,
-		}
-	default:
-		ret.AuditFormatWriter = &JSONFormatWriter{
-			Prefix:   prefix,
-			SaltFunc: temporarySalt,
-		}
+		},
 	}
-	return ret
 }
 
 // doElideListResponseData performs the actual elision of list operation

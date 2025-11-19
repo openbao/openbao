@@ -8,7 +8,7 @@ description: |-
 # pki
 
 The `pki` command groups subcommands for interacting with OpenBao's
-[PKI Secrets Engine](/docs/secrets/pki).
+[PKI Secrets Engine](../../secrets/pki/index.mdx).
 
 ## Syntax
 
@@ -16,7 +16,7 @@ Option flags for a given subcommand are provided after the subcommand, but befor
 
 ## Example health check
 
-To [health check](/docs/commands/pki/health-check) a mount, use the
+To [health check](health-check.mdx) a mount, use the
 `bao pki health-check <mount>` command:
 
 ```
@@ -32,7 +32,7 @@ ok        /pki/issuer/da41ffb1-cc6d-5a5c-f147-e4d7beeb1b73    Issuer's validity 
 
 ## Example verify sign
 
-To [verify](/docs/commands/pki/verify-sign) the signature between two
+To [verify](verify-sign.mdx) the signature between two
 issuer certificates, use the `bao pki verify-sign <parent> <child>` command:
 
 ```shell-session
@@ -51,7 +51,7 @@ signature_match    true
 
 ## Example list child issuers
 
-To [list intermediate](/docs/commands/pki/list-intermediates) certificates
+To [list intermediate](list-intermediates.mdx) certificates
 potentially issued by a certificate inside OpenBao, use the
 `bao pki list-intermediates <parent>` command:
 
@@ -68,7 +68,7 @@ pki_int/issuer/b8cc0b41-e0e9-1a92-12c4-6849c9d6f837      true
 
 ## Example issue
 
-To [issue](/docs/commands/pki/issue) a new issuer certificate, use the
+To [issue](issue.mdx) a new issuer certificate, use the
 `bao pki issue <parent-certificate-path> <mount>` command:
 
 ```shell-session
@@ -81,7 +81,7 @@ MIIDsDCCApigAwIBAgIULEPuHTW7UDtAQg+qcc18osNWgZIwDQYJKoZIhvcNAQEL...
 
 ## Example reissue
 
-To [reissue](/docs/commands/pki/reissue) an issuer certificate, using the
+To [reissue](reissue.mdx) an issuer certificate, using the
 same fields as an existing issuer template, use the
 `bao pki reissue <parent-certificate-path> <template> <mount>` command:
 

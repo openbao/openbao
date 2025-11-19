@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
@@ -485,7 +484,7 @@ type dockerClusterNode struct {
 	TLSConfig         *tls.Config
 	WorkDir           string
 	Cluster           *DockerCluster
-	container         *types.ContainerJSON
+	container         *container.InspectResponse
 	dockerAPI         *docker.Client
 }
 

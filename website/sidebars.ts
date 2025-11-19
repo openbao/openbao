@@ -74,6 +74,7 @@ const sidebars: SidebarsConfig = {
                         "concepts/integrated-storage/autopilot",
                     ],
                 },
+                "concepts/namespaces/index",
                 "concepts/pgp-gpg-keybase",
                 "concepts/recovery-mode",
                 "concepts/resource-quotas",
@@ -84,6 +85,7 @@ const sidebars: SidebarsConfig = {
                 "concepts/cel",
             ],
             Guides: [
+                "guides/migration",
                 {
                     Unsealing: [
                         {
@@ -180,6 +182,7 @@ const sidebars: SidebarsConfig = {
                 "commands/list",
                 "commands/login",
                 "commands/monitor",
+                "commands/namespace",
                 {
                     operator: [
                         "commands/operator/index",
@@ -511,6 +514,7 @@ const sidebars: SidebarsConfig = {
                 "policies/support",
                 "policies/osps-baseline",
                 "policies/cve",
+                "policies/repo-setup",
             ],
             Contributing: [
                 "contributing/index",

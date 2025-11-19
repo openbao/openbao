@@ -17,7 +17,8 @@ import (
 	"time"
 
 	celgo "github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/decls"
+	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
@@ -787,9 +788,9 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	// Declare a map variable named "request" to represent the incoming data.
 	envOptions := []celgo.EnvOption{
 		celgo.Container("openbao.pki"),
-		celgo.Declarations(
-			decls.NewVar("request", decls.NewMapType(decls.String, decls.Dyn)),
-			decls.NewVar("now", decls.Timestamp),
+		celgo.VariableDecls(
+			decls.NewVariable("request", types.NewMapType(types.StringType, types.DynType)),
+			decls.NewVariable("now", types.TimestampType),
 		),
 		celgo.Types(
 			&CertTemplate{},
@@ -798,12 +799,12 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	}
 
 	if useCSR {
-		envOptions = append(envOptions, celgo.Declarations(decls.NewVar("parsed_csr", decls.NewMapType(decls.String, decls.Dyn))))
+		envOptions = append(envOptions, celgo.VariableDecls(decls.NewVariable("parsed_csr", types.NewMapType(types.StringType, types.DynType))))
 	}
 
 	// Add all variable declarations to the CEL environment.
 	for _, variable := range celRole.CelProgram.Variables {
-		envOptions = append(envOptions, celgo.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
+		envOptions = append(envOptions, celgo.VariableDecls(decls.NewVariable(variable.Name, types.DynType)))
 	}
 
 	// Add identity information into the environment

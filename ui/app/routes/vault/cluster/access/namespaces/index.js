@@ -18,13 +18,6 @@ export default Route.extend(UnloadModel, {
 
   version: service(),
 
-  beforeModel() {
-    this.store.unloadAll('namespace');
-    return this.version.fetchFeatures().then(() => {
-      return this._super(...arguments);
-    });
-  },
-
   model(params) {
     return this.store
       .lazyPaginatedQuery('namespace', {

@@ -65,7 +65,8 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 		},
 	}
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
-		HandlerFunc: vaulthttp.Handler,
+		HandlerFunc:         vaulthttp.Handler,
+		DisableStandbyReads: true,
 	})
 	cluster.Start()
 	defer cluster.Cleanup()
@@ -84,8 +85,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 
 	// Here, should succeed but we should not see the header since it's
 	// not in the allowed list
-	req := client.NewRequest("GET", "/v1/auth/headtest/loginnoerror")
-	resp, err := client.RawRequest(req)
+	resp, err := client.Logical().ReadRaw("auth/headtest/loginnoerror")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,8 +98,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 
 	// Should fail but we should not see the header since it's
 	// not in the allowed list
-	req = client.NewRequest("GET", "/v1/auth/headtest/login")
-	resp, err = client.RawRequest(req)
+	resp, err = client.Logical().ReadRaw("auth/headtest/login")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -118,8 +117,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req = client.NewRequest("GET", "/v1/auth/headtest/loginnoerror")
-	resp, err = client.RawRequest(req)
+	resp, err = client.Logical().ReadRaw("auth/headtest/loginnoerror")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,8 +128,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 		t.Fatalf("expected negotiate header; headers:\n%s", pretty.Sprint(resp.Header))
 	}
 
-	req = client.NewRequest("GET", "/v1/auth/headtest/login")
-	resp, err = client.RawRequest(req)
+	resp, err = client.Logical().ReadRaw("auth/headtest/login")
 	if err == nil {
 		t.Fatal("expected error")
 	}

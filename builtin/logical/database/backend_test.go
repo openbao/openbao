@@ -795,7 +795,7 @@ func TestBackend_roleCrud(t *testing.T) {
 			Renewal:    resp.Data["renew_statements"].([]string),
 		}
 
-		if diff := deep.Equal(expected, actual); diff != nil {
+		if diff := deep.Equal(&expected, &actual); diff != nil {
 			t.Fatal(diff)
 		}
 
@@ -854,8 +854,8 @@ func TestBackend_roleCrud(t *testing.T) {
 			Renewal:    resp.Data["renew_statements"].([]string),
 		}
 
-		if !reflect.DeepEqual(expected, actual) {
-			t.Fatalf("Statements did not match, expected %#v, got %#v", expected, actual)
+		if !reflect.DeepEqual(&expected, &actual) {
+			t.Fatalf("Statements did not match, expected %#v, got %#v", &expected, &actual)
 		}
 
 		if diff := deep.Equal(resp.Data["db_name"], "plugin-test"); diff != nil {
@@ -917,7 +917,7 @@ func TestBackend_roleCrud(t *testing.T) {
 			Renewal:    resp.Data["renew_statements"].([]string),
 		}
 
-		if diff := deep.Equal(expected, actual); diff != nil {
+		if diff := deep.Equal(&expected, &actual); diff != nil {
 			t.Fatal(diff)
 		}
 

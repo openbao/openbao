@@ -161,9 +161,6 @@ func (c *AuthListCommand) detailedMounts(auths map[string]*api.AuthMount) []stri
 		}
 
 		pluginName := mount.Type
-		if pluginName == "plugin" {
-			pluginName = mount.Config.PluginName
-		}
 
 		out = append(out, fmt.Sprintf("%s | %s | %s | %s | %s | %s | %s | %t | %v | %s | %s | %s | %s | %s | %s | %s",
 			path,

@@ -68,9 +68,6 @@ export default Service.extend({
   },
 
   tokenForUrl(url) {
-    if (this.version.isOSS) {
-      return null;
-    }
     let pathForUrl = parseURL(url).pathname;
     pathForUrl = pathForUrl.replace('/v1/', '');
     const tokenInfo = this.tokenToUnwrap;
@@ -84,7 +81,6 @@ export default Service.extend({
   checkForControlGroup(callbackArgs, response, wasWrapTTLRequested) {
     const creationPath = response && response?.wrap_info?.creation_path;
     if (
-      this.version.isOSS ||
       wasWrapTTLRequested ||
       !response ||
       (creationPath && WRAPPED_RESPONSE_PATHS.includes(creationPath)) ||

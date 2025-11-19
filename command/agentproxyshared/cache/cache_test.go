@@ -220,7 +220,7 @@ func TestCache_ConcurrentRequests(t *testing.T) {
 	}
 
 	wg := &sync.WaitGroup{}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -229,14 +229,17 @@ func TestCache_ConcurrentRequests(t *testing.T) {
 				"key": key,
 			})
 			if err != nil {
-				t.Fatal(err)
+				t.Log(err)
+				t.Fail()
 			}
 			secret, err := testClient.Logical().Read(key)
 			if err != nil {
-				t.Fatal(err)
+				t.Log(err)
+				t.Fail()
 			}
 			if secret == nil || secret.Data["key"].(string) != key {
-				t.Fatalf("failed to read value for key: %q", key)
+				t.Logf("failed to read value for key: %q", key)
+				t.Fail()
 			}
 		}(i)
 
@@ -854,11 +857,8 @@ func TestCache_NonCacheable(t *testing.T) {
 	}
 
 	// Query a non-existing mount, expect an error from api.Response
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	r := testClient.NewRequest("GET", "/v1/kv-invalid")
-
-	apiResp, err := testClient.RawRequestWithContext(ctx, r)
+	ctx := t.Context()
+	apiResp, err := testClient.Logical().ReadRawWithContext(ctx, "kv-invalid")
 	if apiResp != nil {
 		defer apiResp.Body.Close()
 	}
@@ -1095,8 +1095,7 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 		t.Fatal(err)
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
+	ctx := t.Context()
 	apiResp, err := testClient.RawRequestWithContext(ctx, r)
 	if apiResp != nil {
 		defer apiResp.Body.Close()

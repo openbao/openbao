@@ -1,0 +1,3 @@
+```release-note:change
+core/audit: removed `jsonx` as a output format option for audit mounts
+```

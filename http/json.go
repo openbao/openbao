@@ -4,7 +4,6 @@
 package http
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -79,22 +78,20 @@ func memoryForToken(rawToken json.Token) int64 {
 	return safeJSONCostBase
 }
 
-// NewSafeJSONReader is a shim to be placed between the raw underlying
+// EnforceJSONComplexityLimits is a shim to be placed between the raw underlying
 // io.Reader and a JSON Unmarshaler to enforce limits on the number of
 // memory (defined to be a new object, list, string, number, or constant),
 // or number of distinct strings (currently defined to be all strings,
 // including keys in a map, which aren't HMAC'd but will contribute to
 // overhead).
-func NewSafeJSONReader(ctx context.Context, parent io.Reader) (io.Reader, int64, int64, error) {
+func EnforceJSONComplexityLimits(ctx context.Context, reader io.Reader) (int64, int64, error) {
 	maxMemory := maximumJsonMemoryFromContext(ctx)
 	maxStrings := maximumJsonStringsFromContext(ctx)
 
 	if maxMemory < 0 && maxStrings < 0 {
-		return parent, -1, -1, nil
+		// Nothing to do.
+		return -1, -1, nil
 	}
-
-	buf := &bytes.Buffer{}
-	reader := io.TeeReader(parent, buf)
 
 	var memory int64
 	var strings int64
@@ -108,14 +105,14 @@ func NewSafeJSONReader(ctx context.Context, parent io.Reader) (io.Reader, int64,
 				break
 			}
 
-			return buf, memory, strings, err
+			return memory, strings, err
 		}
 
 		// Limit our estimated cost to parse the input.
 		tokenCost := memoryForToken(token)
 		memory += tokenCost
 		if maxMemory >= 0 && memory > maxMemory {
-			return buf, memory, strings, ErrJSONExceededMemory
+			return memory, strings, ErrJSONExceededMemory
 		}
 
 		// Separately limit the total number of strings to reduce cost
@@ -123,15 +120,15 @@ func NewSafeJSONReader(ctx context.Context, parent io.Reader) (io.Reader, int64,
 		if _, ok := token.(string); ok {
 			strings += 1
 			if maxStrings >= 0 && strings > maxStrings {
-				return buf, memory, strings, ErrJSONExceededStrings
+				return memory, strings, ErrJSONExceededStrings
 			}
 		}
 	}
 
 	// Check for context cancellation.
 	if err := ctx.Err(); err != nil {
-		return buf, memory, strings, err
+		return memory, strings, err
 	}
 
-	return buf, memory, strings, nil
+	return memory, strings, nil
 }

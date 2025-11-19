@@ -1,0 +1,7 @@
+```release-note:bug
+command: `operator diagnose` now correctly verifies intermediate certs if no root certs are supplied.
+```
+
+```release-note:bug
+command: `operator diagnose` now correctly ignores trailing data in certificate files.
+```

@@ -37,7 +37,7 @@ set.
 
 ### Parameters
 
-- `oidc_discovery_url` `(string: <optional>)` - The OIDC Discovery URL, without any .well-known component (base path). Cannot be used with "jwks_url" or "jwt_validation_pubkeys".
+- `oidc_discovery_url` `(string: <optional>)` - The base URL of the OIDC Discovery URL without ".well-known/openid-configuration" component. Cannot be used with "jwks_url" or "jwt_validation_pubkeys".
 - `oidc_discovery_ca_pem` `(string: <optional>)` - The contents of a CA certificate or chain of certificates, in PEM format, to use to validate connections to the OIDC Discovery URL. If not set, system certificates are used.
 - `oidc_client_id` `(string: <optional>)` - The OAuth Client ID from the provider for OIDC roles.
 - `oidc_client_secret` `(string: <optional>)` - The OAuth Client Secret from the provider for OIDC roles.
@@ -157,7 +157,9 @@ entities attempting to login. At least one of the bound values must be set.
   syntax for referencing claims.
 - `claim_mappings` `(map: <optional>)` - If set, a map of claims (keys) to be copied to
   specified metadata fields (values). Keys support [JSON pointer](/docs/auth/jwt#claim-specifications-and-json-pointer)
-  syntax for referencing claims.
+  syntax for referencing claims but may also be direct claim key names.
+  [See claim mapping documentation](/docs/auth/jwt#claims-as-metadata) for
+  more information.
 - `oauth2_metadata` `(list: <optional>` - If set, a list of token types
   that come from the OIDC provider to return in metadata.
   The types can be any of `access_token`, `id_token`, or `refresh_token`,
@@ -383,7 +385,7 @@ which should be shown to the user to enter at the `auth_url`.
   provider. See [Redirect URIs](/docs/auth/jwt#redirect-uris) for more information.
 - `client_nonce` `(string: <optional>)` - Optional client-provided nonce that
   must match the `client_nonce` value provided during a subsequent request to the
-  [callback](/api-docs/auth/jwt#oidc-callback) API.
+  [callback](jwt.mdx#oidc-callback) API.
 
 ### Sample payloads
 
@@ -465,7 +467,7 @@ or direct callback modes, and is not used in device callback mode.
   instead of exchanging the code to get it.  Required if no `code` given.
 - `client_nonce` `(string: <optional>)` - Optional client-provided nonce that must
   match the `client_nonce` value provided during the prior request to the
-  [auth_url](/api-docs/auth/jwt#oidc-authorization-url-request) API.
+  [auth_url](jwt.mdx#oidc-authorization-url-request) API.
 - `error_description` `(string: <optional>)` - Detailed description of an error if there was an error.
   If present, will be included in the error message passed back to the requester.
 
@@ -498,7 +500,7 @@ $ curl \
 ## OIDC poll
 
 Poll for a response when using the direct or device callback modes in order to complete a login.
-The response from the [auth_url](/api-docs/auth/jwt#oidc-authorization-url-request) API
+The response from the [auth_url](jwt.mdx#oidc-authorization-url-request) API
 returns a `poll_interval` data item containing the number of seconds that the client
 should wait between invoking the poll API.
 
@@ -521,7 +523,7 @@ message or successfully return an authorization token.
   and must match the state returned from the OIDC provider.
 - `client_nonce` `(string: <optional>)` - Optional client-provided nonce that must
   match the `client_nonce` value provided during the prior request to the
-  [auth_url](/api-docs/auth/jwt#oidc-authorization-url-request) API.
+  [auth_url](jwt.mdx#oidc-authorization-url-request) API.
 
 ### Sample payload
 

@@ -68,7 +68,7 @@ func (c *Core) RekeyThreshold(ctx context.Context, recovery bool) (int, logical.
 	if c.Sealed() {
 		return 0, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return 0, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -102,7 +102,7 @@ func (c *Core) RekeyProgress(recovery, verification bool) (bool, int, logical.HT
 	if c.Sealed() {
 		return false, 0, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return false, 0, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -133,7 +133,7 @@ func (c *Core) RekeyConfig(recovery bool) (*SealConfig, logical.HTTPCodedError) 
 	if c.Sealed() {
 		return nil, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return nil, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -207,7 +207,7 @@ func (c *Core) BarrierRekeyInit(config *SealConfig) logical.HTTPCodedError {
 	if c.Sealed() {
 		return logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -259,7 +259,7 @@ func (c *Core) RecoveryRekeyInit(config *SealConfig) logical.HTTPCodedError {
 	if c.Sealed() {
 		return logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -308,7 +308,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 	if c.Sealed() {
 		return nil, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return nil, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -583,7 +583,7 @@ func (c *Core) RecoveryRekeyUpdate(ctx context.Context, key []byte, nonce string
 	if c.Sealed() {
 		return nil, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return nil, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -784,7 +784,7 @@ func (c *Core) RekeyVerify(ctx context.Context, key []byte, nonce string, recove
 	if c.Sealed() {
 		return nil, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return nil, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -898,7 +898,7 @@ func (c *Core) RekeyCancel(recovery bool) logical.HTTPCodedError {
 	if c.Sealed() {
 		return logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -921,7 +921,7 @@ func (c *Core) RekeyVerifyRestart(recovery bool) logical.HTTPCodedError {
 	if c.Sealed() {
 		return logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -958,7 +958,7 @@ func (c *Core) RekeyRetrieveBackup(ctx context.Context, recovery bool) (*RekeyBa
 	if c.Sealed() {
 		return nil, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return nil, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -993,7 +993,7 @@ func (c *Core) RekeyDeleteBackup(ctx context.Context, recovery bool) logical.HTT
 	if c.Sealed() {
 		return logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 

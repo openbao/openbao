@@ -15,8 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/namespace"
@@ -99,11 +99,17 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 
 // NamespaceView uses given barrier and namespace to return back a view scoped to that namespace.
 func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView {
+	return NewBarrierView(barrier, NamespaceBarrierPrefix(ns))
+}
+
+// NamespaceBarrierPrefix uses given namespace to return back the common prefix
+// used for all keys that belong to that namespace.
+func NamespaceBarrierPrefix(ns *namespace.Namespace) string {
 	if ns.ID == namespace.RootNamespaceID {
-		return NewBarrierView(barrier, "")
+		return ""
 	}
 
-	return NewBarrierView(barrier, path.Join(namespaceBarrierPrefix, ns.UUID)+"/")
+	return path.Join(namespaceBarrierPrefix, ns.UUID) + "/"
 }
 
 // cancelNamespaceDeletion cancels goroutine that runs namespace deletion.
@@ -278,10 +284,7 @@ func (c *Core) teardownNamespaceStore() error {
 	return nil
 }
 
-// invalidate will be used in the future for implementing read replica nodes
-//
-//nolint:unused
-func (ns *NamespaceStore) invalidate(ctx context.Context, path string) error {
+func (ns *NamespaceStore) invalidate(ctx context.Context, path string) {
 	// We want to keep invalidation proper fast (as it holds up replication),
 	// so defer invalidation to the next load.
 	//
@@ -289,7 +292,6 @@ func (ns *NamespaceStore) invalidate(ctx context.Context, path string) error {
 	// need to handle child namespace invalidation as well. sync.Map could be
 	// used instead in the future alongside the actual boolean.
 	ns.invalidated.Store(true)
-	return nil
 }
 
 // SetNamespace is used to create or update a given namespace

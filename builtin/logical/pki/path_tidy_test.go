@@ -19,13 +19,12 @@ import (
 	"testing"
 	"time"
 
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"golang.org/x/crypto/acme"
 
 	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
-
-	"github.com/armon/go-metrics"
 
 	"github.com/openbao/openbao/api/v2"
 	vaulthttp "github.com/openbao/openbao/http"

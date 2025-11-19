@@ -83,17 +83,17 @@ func NewBarrierView(barrier logical.Storage, prefix string) BarrierView {
 }
 
 func newBarrierView(s logical.StorageView) BarrierView {
-	bv := &barrierView{
-		storage: s,
-	}
-
 	if _, ok := s.(logical.TransactionalStorageView); ok {
 		return &transactionalBarrierView{
-			*bv,
+			barrierView: barrierView{
+				storage: s,
+			},
 		}
 	}
 
-	return bv
+	return &barrierView{
+		storage: s,
+	}
 }
 
 func (v *barrierView) SetReadOnlyErr(readOnlyErr error) {

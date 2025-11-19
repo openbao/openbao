@@ -377,6 +377,8 @@ func (l *raftLayer) Addr() net.Addr {
 
 // Dial is used to create a new outgoing connection
 func (l *raftLayer) Dial(address raft.ServerAddress, timeout time.Duration) (net.Conn, error) {
-	dialFunc := l.clusterListener.GetDialerFunc(context.Background(), consts.RaftStorageALPN)
-	return dialFunc(string(address), timeout)
+	dialFunc := l.clusterListener.GetContextDialerFunc(context.Background(), consts.RaftStorageALPN)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return dialFunc(ctx, string(address))
 }

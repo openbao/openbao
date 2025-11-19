@@ -93,7 +93,7 @@ initialize "audit" {
 
 :::info
 
-Use of this feature requires using an [auto-unseal](/docs/configuration/seal)
+Use of this feature requires using an [auto-unseal](seal/index.mdx)
 mechanism. No recovery keys are generated; instead, use the [authenticated
 recovery key rotation](/api-docs/system/rotate) endpoints.
 
@@ -115,7 +115,7 @@ The `initialize` stanza can only contain one or more `request` stanzas. Each
 ### `request` parameters
 
 - `operation` `(value[string]: <required>)` - type of operation to perform; see
-  [ACL Capabilities](/docs/concepts/policies#capabilities) for a list.
+  [ACL Capabilities](../concepts/policies.mdx#capabilities) for a list.
 - `path` `(value[string]: <required>)` - path to perform the given operation
   on.
 - `token` `(value[string]: <optional>)` - the OpenBao API token to use for
@@ -126,4 +126,4 @@ The `initialize` stanza can only contain one or more `request` stanzas. Each
   
 ## Profiles
 
-For more information on profiles, see the [concepts page](/docs/concepts/profiles).
+For more information on profiles, see the [concepts page](../concepts/profiles.mdx).

@@ -17,9 +17,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	metrics "github.com/armon/go-metrics"
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/api/v2"
@@ -886,7 +886,9 @@ func (m *ExpirationManager) Stop() error {
 	newStrategy := ExpireLeaseStrategy(expireNoop)
 	m.expireFunc.Store(&newStrategy)
 	oldPending := &m.pending
-	m.pending, m.nonexpiring, m.irrevocable = sync.Map{}, sync.Map{}, sync.Map{}
+	m.pending.Clear()
+	m.nonexpiring.Clear()
+	m.irrevocable.Clear()
 	m.leaseCount = 0
 	m.uniquePolicies = make(map[string][]string)
 	m.irrevocableLeaseCount = 0

@@ -423,8 +423,7 @@ listener "tcp" {
 	// Test against a listener configuration that sets 'require_request_header'
 	// to 'true', with the header missing from the request.
 	agentClient = newApiClient("http://"+listenAddr3, false)
-	req = agentClient.NewRequest("GET", "/v1/sys/health")
-	resp, err := agentClient.RawRequest(req)
+	resp, err := agentClient.Logical().ReadRaw("sys/health")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -438,8 +437,7 @@ listener "tcp" {
 	h := agentClient.Headers()
 	h[consts.RequestHeaderName] = []string{"bogus"}
 	agentClient.SetHeaders(h)
-	req = agentClient.NewRequest("GET", "/v1/sys/health")
-	resp, err = agentClient.RawRequest(req)
+	resp, err = agentClient.Logical().ReadRaw("sys/health")
 	if err == nil {
 		t.Fatal("expected error")
 	}

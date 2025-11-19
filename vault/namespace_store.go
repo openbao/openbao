@@ -320,12 +320,7 @@ func (ns *NamespaceStore) SetNamespace(ctx context.Context, entry *namespace.Nam
 		return nil, err
 	}
 
-	nsKeyShares, err := ns.setNamespaceLocked(ctx, entry, sealConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return nsKeyShares, nil
+	return ns.setNamespaceLocked(ctx, entry, sealConfig)
 }
 
 // setNamespaceLocked must be called while holding a write lock over the
@@ -449,7 +444,6 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		delete(ns.namespacesByAccessor, entry.ID)
 		ns.lock.Unlock()
 
-		// do we remove seal config?
 		ns.core.sealManager.RemoveNamespace(entry)
 
 		// Handle in-memory mount table entries that we should also clean
@@ -516,14 +510,14 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		if err := ns.initializeNamespace(ctx, storage, entry); err != nil {
 			return nil, fmt.Errorf("failed to initialize namespace: %w", err)
 		}
+		ns.lock.Lock()
+		unlocked = false
 	}
 
 	// Finally commit the changes into storage.
 	if err := commit(); err != nil {
 		return nil, err
 	}
-
-	failed = false
 
 	// seal the namespace, as we've finished the setup
 	if sealConfig != nil {
@@ -532,6 +526,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		}
 	}
 
+	failed = false
 	return nsSealKeyShares, nil
 }
 
@@ -1139,18 +1134,13 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 		}
 
 		ctx = namespace.ContextWithNamespace(ctx, namespaceEntry)
-		if err := ns.clearNamespacePolicies(ctx, namespaceEntry, false); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if err := ns.core.identityStore.RemoveNamespaceView(namespaceEntry); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if err := ns.UnloadNamespaceCredentials(ctx, namespaceEntry); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if err := ns.UnloadNamespaceMounts(ctx, namespaceEntry); err != nil {
-			errs = errors.Join(errs, err)
-		}
+		errs = errors.Join(
+			ns.clearNamespacePolicies(ctx, namespaceEntry, false),
+			ns.core.identityStore.RemoveNamespaceView(namespaceEntry),
+			ns.UnloadNamespaceCredentials(ctx, namespaceEntry),
+			ns.UnloadNamespaceMounts(ctx, namespaceEntry),
+		)
+
 		if barrier != nil {
 			if err := barrier.Seal(); err != nil {
 				errs = errors.Join(errs, err)
@@ -1285,7 +1275,6 @@ func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path s
 	defer func() {
 		if !unlocked {
 			unlock()
-			unlocked = true
 		}
 	}()
 
@@ -1347,7 +1336,6 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 	defer func() {
 		if !unlocked {
 			unlock()
-			unlocked = true
 		}
 	}()
 

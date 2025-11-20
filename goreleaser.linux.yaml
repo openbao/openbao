@@ -59,9 +59,6 @@ nfpms:
       - openssl
     provides:
       - openbao
-    conflicts:
-      - openbao
-      - bao
     replaces:
       - bao
     bindir: /usr/bin

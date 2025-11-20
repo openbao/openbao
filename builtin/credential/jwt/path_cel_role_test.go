@@ -97,7 +97,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 
 				// Validate fields
 				require.Equal(t, tc.Name, data["name"], fmt.Sprintf("bad [%d] name mismatch", tcNum))
-				require.Equal(t, tc.CelProgram["expression"], data["cel_program"].(celhelper.CelProgram).Expression, fmt.Sprintf("bad [%d] cel_program mismatch", tcNum))
+				require.Equal(t, tc.CelProgram["expression"], data["cel_program"].(*celhelper.Program).Expression, fmt.Sprintf("bad [%d] cel_program mismatch", tcNum))
 			}
 
 			// List roles to verify

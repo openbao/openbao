@@ -125,7 +125,7 @@ func isAcmeEnabled(fetcher *PathFetch) (bool, error) {
 	return parseBool, nil
 }
 
-func verifyLocalPathUrl(h *EnableAcmeIssuance) error {
+func verifyLocalPathUrl(h *EnableAcmeIssuance, mount string) error {
 	localPathRaw, ok := h.ClusterConfigFetcher.Secret.Data["path"]
 	if !ok {
 		return errors.New("'path' field missing from config")
@@ -137,7 +137,7 @@ func verifyLocalPathUrl(h *EnableAcmeIssuance) error {
 	}
 
 	if localPath == "" {
-		return errors.New("'path' field not configured within /{{mount}}/config/cluster")
+		return fmt.Errorf("'path' field not configured within /%s/config/cluster", mount)
 	}
 
 	parsedUrl, err := url.Parse(localPath)
@@ -146,7 +146,7 @@ func verifyLocalPathUrl(h *EnableAcmeIssuance) error {
 	}
 
 	if parsedUrl.Scheme != "https" {
-		return errors.New("the configured 'path' field in /{{mount}}/config/cluster was not using an https scheme")
+		return fmt.Errorf("the configured 'path' field in /%s/config/cluster was not using an https scheme", mount)
 	}
 
 	// Avoid issues with SSL certificates for this check, we just want to validate that we would
@@ -159,8 +159,8 @@ func verifyLocalPathUrl(h *EnableAcmeIssuance) error {
 	acmeClient := acme.Client{HTTPClient: client, DirectoryURL: acmeDirectoryUrl.String()}
 	_, err = acmeClient.Discover(context.Background())
 	if err != nil {
-		return fmt.Errorf("using configured 'path' field ('%s') in /{{mount}}/config/cluster failed to reach the ACME"+
-			" directory: %s: %w", parsedUrl.String(), acmeDirectoryUrl.String(), err)
+		return fmt.Errorf("using configured 'path' field (%q) in /%s/config/cluster failed to reach the ACME"+
+			" directory: %s: %w", parsedUrl.String(), mount, acmeDirectoryUrl.String(), err)
 	}
 
 	return nil
@@ -218,7 +218,7 @@ func (h *EnableAcmeIssuance) Evaluate(e *Executor) (results []*Result, err error
 		return craftInsufficientPermissionResult(e, h.ClusterConfigFetcher.Path, msg), nil
 	}
 
-	localPathIssue := verifyLocalPathUrl(h)
+	localPathIssue := verifyLocalPathUrl(h, e.Mount)
 
 	if localPathIssue != nil {
 		ret := Result{

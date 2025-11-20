@@ -2,6 +2,8 @@
 description: >-
   OpenBao server configuration reference for OCI plugin parameters.
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # OCI plugins
 
@@ -29,23 +31,29 @@ managing the plugin binaries:
     allows operators to make use of the registries security features like
     authentication, vulnerability scanning and immutable storage.
  
-## `plugins`
+## `plugin`
 
-The `plugins` block defines OCI-based plugins to download.
+A `plugin` block defines an OCI-based plugin to download.
 
 ```hcl
-plugins {
-  "plugin-name" {
-    url         = "registry.example.com/org/plugin:tag"
-    binary_name = "plugin-binary-name"  
-    sha256sum   = "sha256-checksum"
-  }
+plugin "type" "name" {
+  image       = "registry.example.com/org/plugin"
+  version     = "v0.0.0"
+  binary_name = "plugin-binary-name"
+  sha256sum   = "sha256-checksum"
 }
 ```
 
+Multiple `plugin` blocks may exist and plugins are downloaded in the order they
+are specified in the configuration file(s). Blocks may share the same `type` and
+`name` but must have different a `version`. This allows for seamless upgrades of
+plugin versions. 
+
 ### Parameters
 
-- `url` `(string: required)` - Full OCI image URL including registry, repository, and tag.
+- `image` `(string: required)` - OCI image URL including registry and repository.
+
+- `version` `(string: required)` - The image version or tag.
 
 - `binary_name` `(string: required)` - Name of the plugin binary file within the OCI image.
 
@@ -53,15 +61,40 @@ plugins {
 
 ### Example
 
-```hcl
-plugins {
-  "secrets-aws" {
-    url         = "ghcr.io/openbao/openbao-plugin-secrets-aws:v1.0.0"
-    binary_name = "openbao-plugin-secrets-aws"
-    sha256sum   = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
-  }
+<Tabs groupId="config">
+<TabItem value="JSON">
+
+```json
+{
+  "plugin": [
+    {
+      "secrets": {
+        "aws": {
+          "image": "ghcr.io/openbao/openbao-plugin-secrets-aws",
+          "version": "v1.0.0",
+          "binary_name": "openbao-plugin-secrets-aws",
+          "sha256sum": "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+        }
+      }
+    }
+  ]
 }
 ```
+
+</TabItem>
+<TabItem value="HCL">
+
+```hcl
+plugin "secrets" "aws" {
+  image       = "ghcr.io/openbao/openbao-plugin-secrets-aws"
+  version     = "v1.0.0"
+  binary_name = "openbao-plugin-secrets-aws"
+  sha256sum   = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+}
+```
+
+</TabItem>
+</Tabs>
 
 ## `plugin_download_behavior`
 
@@ -108,12 +141,11 @@ listener "tcp" {
 plugin_directory = "/opt/openbao/plugins"
 plugin_download_behavior = "fail"
 
-plugins {
-  "secrets-aws" {
-    url         = "ghcr.io/openbao/openbao-plugin-secrets-aws:v1.0.0"
-    binary_name = "openbao-plugin-secrets-aws"
-    sha256sum   = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
-  }
+plugin "secrets" "aws" {
+  image       = "ghcr.io/openbao/openbao-plugin-secrets-aws"
+  version     = "v1.0.0"
+  binary_name = "openbao-plugin-secrets-aws"
+  sha256sum   = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
 }
 ```
 

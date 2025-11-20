@@ -68,7 +68,7 @@ plugin versions.
 {
   "plugin": [
     {
-      "secrets": {
+      "secret": {
         "aws": {
           "image": "ghcr.io/openbao/openbao-plugin-secrets-aws",
           "version": "v1.0.0",
@@ -85,7 +85,7 @@ plugin versions.
 <TabItem value="HCL">
 
 ```hcl
-plugin "secrets" "aws" {
+plugin "secret" "aws" {
   image       = "ghcr.io/openbao/openbao-plugin-secrets-aws"
   version     = "v1.0.0"
   binary_name = "openbao-plugin-secrets-aws"
@@ -141,7 +141,7 @@ listener "tcp" {
 plugin_directory = "/opt/openbao/plugins"
 plugin_download_behavior = "fail"
 
-plugin "secrets" "aws" {
+plugin "secret" "aws" {
   image       = "ghcr.io/openbao/openbao-plugin-secrets-aws"
   version     = "v1.0.0"
   binary_name = "openbao-plugin-secrets-aws"

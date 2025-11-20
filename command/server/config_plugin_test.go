@@ -19,7 +19,7 @@ listener "tcp" {
 
 plugin_directory = "/opt/openbao/plugins"
 
-plugin "secrets" "aws" {
+plugin "secret" "aws" {
   image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
   version = "v0.0.1"
   binary_name = "openbao-plugin-secrets-aws"
@@ -57,8 +57,8 @@ plugin_download_behavior = "fail"
 	}
 
 	awsPlugin := config.Plugins[0]
-	if awsPlugin.Slug() != "secrets-aws" {
-		t.Fatal("secrets-aws plugin not found")
+	if awsPlugin.Slug() != "secret-aws" {
+		t.Fatal("secret-aws plugin not found")
 	}
 
 	if awsPlugin.URL() != "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1" {
@@ -96,7 +96,7 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true 
 }
-plugin "secrets" "aws" {
+plugin "secret" "aws" {
   image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
   version = "v0.0.1"
   binary_name = "openbao-plugin-secrets-aws"
@@ -112,7 +112,7 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true 
 }
-plugin "secrets" "aws" {
+plugin "secret" "aws" {
   version = "v0.0.1"
   binary_name = "openbao-plugin-secrets-aws"
   sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
@@ -128,7 +128,7 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true
 }
-plugin "secrets" "aws" {
+plugin "secret" "aws" {
   image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
   version = "v0.0.1:v0.0.1"
   binary_name = "openbao-plugin-secrets-aws"
@@ -145,7 +145,7 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true 
 }
-plugin "secrets" "aws" {
+plugin "secret" "aws" {
   image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
   version = "v0.0.1"
   sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
@@ -161,7 +161,7 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true 
 }
-plugin "secrets" "aws" {
+plugin "secret" "aws" {
   image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
   version = "v0.0.1:v0.0.1"
   binary_name = "openbao-plugin-secrets-aws"
@@ -178,7 +178,7 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true 
 }
-plugin "secrets" "aws" {
+plugin "secret" "aws" {
   image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
   version = "v0.0.1:v0.0.1"
   binary_name = "openbao-plugin-secrets-aws"

@@ -327,7 +327,7 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 	// Validate Name is not empty
 	if p.Name == "" {
 		results = append(results, configutil.ConfigError{
-			Problem: fmt.Sprintf("plugin name cannot be empty"),
+			Problem: "plugin name cannot be empty",
 		})
 	}
 
@@ -335,6 +335,14 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 	if p.Type == "" {
 		results = append(results, configutil.ConfigError{
 			Problem: fmt.Sprintf("plugin %q: type cannot be empty", p.Name),
+		})
+	}
+
+	// Validate Type is valid
+	_, err := consts.ParsePluginType(p.Type)
+	if err != nil {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: %s", p.Name, err.Error()),
 		})
 	}
 

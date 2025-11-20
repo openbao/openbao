@@ -175,7 +175,7 @@ jobs:
           retention-days: 1
 
   release-main:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs:
       - build-ui-dist
     env:
@@ -187,11 +187,11 @@ jobs:
         release_os:
           - linux
           - hsm
-          # - darwin
-          # - freebsd
-          # - netbsd
-          # - openbsd
-          # - windows
+          - darwin
+          - freebsd
+          - netbsd
+          - openbsd
+          - windows
     steps:
       - name: Free additional storage on runner
         if: inputs.dogorelease
@@ -261,8 +261,6 @@ jobs:
       - name: Cosign Install
         if: inputs.dogorelease
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-        with:
-          cosign-release: 'v2.6.1'   # temporary: use old cosign until fix is merged upstream
 
       - name: GPG Import
         if: inputs.dogorelease

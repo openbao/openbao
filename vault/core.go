@@ -2500,8 +2500,24 @@ func (c *Core) preSeal() error {
 	if err := c.stopExpiration(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error stopping expiration: %w", err))
 	}
-	if err := c.sealManager.Reset(context.Background()); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error reseting seal manager: %w", err))
+
+	// Lock ordering: NS lock acquired first, then SM lock acquired inside ResetInternal
+	unlock, err := c.namespaceStore.lockWithInvalidation(context.Background(), false)
+	if err != nil {
+		result = multierror.Append(result, fmt.Errorf("error during acquire namespace lock during preSeal: %w", err))
+	} else {
+		defer unlock()
+
+		// Seal root namespace (cascades to all children)
+		if err := c.namespaceStore.sealNamespaceLocked(context.Background(), namespace.RootNamespace); err != nil {
+			result = multierror.Append(result, fmt.Errorf("error failed to seal namespaces during preSeal: %w", err))
+		}
+	}
+
+	// Always reset SealManager state, even if namespace operations failed
+	// This ensures SM is in clean state for next unseal
+	if err := c.sealManager.ResetInternal(context.Background()); err != nil {
+		result = multierror.Append(result, fmt.Errorf("failed to reset seal manager during preSeal: %w", err))
 	}
 	if err := c.teardownCredentials(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down credentials: %w", err))

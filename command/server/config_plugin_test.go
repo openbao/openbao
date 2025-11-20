@@ -19,18 +19,18 @@ listener "tcp" {
 
 plugin_directory = "/opt/openbao/plugins"
 
-plugins {
-  "secrets-aws" {
-    url = "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1"
-    binary_name = "openbao-plugin-secrets-aws"
-    sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
-  }
+plugin "secrets" "aws" {
+  image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
+  version = "v0.0.1"
+  binary_name = "openbao-plugin-secrets-aws"
+  sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+}
 
-  "auth-gcp" {
-    url = "ghcr.io/openbao/openbao-plugin-auth-gcp:v0.21.0"
-    binary_name = "openbao-plugin-auth-gcp"
-    sha256sum = "f586717376b20763b3ecef0412cdd6cbb4f8295b9679da4bfa4e1f75b8e00a63"
-  }
+plugin "auth" "gcp" {
+  image = "ghcr.io/openbao/openbao-plugin-auth-gcp"
+  version = "v0.21.0"
+  binary_name = "openbao-plugin-auth-gcp"
+  sha256sum = "f586717376b20763b3ecef0412cdd6cbb4f8295b9679da4bfa4e1f75b8e00a63"
 }
 
 plugin_download_behavior = "fail"
@@ -56,12 +56,13 @@ plugin_download_behavior = "fail"
 		t.Fatalf("Expected 2 plugins, got %d", len(config.Plugins))
 	}
 
-	awsPlugin, exists := config.Plugins["secrets-aws"]
-	if !exists {
+	awsPlugin := config.Plugins[0]
+	if awsPlugin.Slug() != "secrets-aws" {
 		t.Fatal("secrets-aws plugin not found")
 	}
-	if awsPlugin.URL != "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1" {
-		t.Errorf("Expected AWS plugin URL 'ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1', got '%s'", awsPlugin.URL)
+
+	if awsPlugin.URL() != "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1" {
+		t.Errorf("Expected AWS plugin URL 'ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1', got '%s'", awsPlugin.URL())
 	}
 	if awsPlugin.BinaryName != "openbao-plugin-secrets-aws" {
 		t.Errorf("Expected AWS plugin binary 'openbao-plugin-secrets-aws', got '%s'", awsPlugin.BinaryName)
@@ -95,12 +96,11 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true 
 }
-plugins {
-  "secrets-aws" {
-    url = "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1"
-    binary_name = "openbao-plugin-secrets-aws"
-    sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
-  }
+plugin "secrets" "aws" {
+  image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
+  version = "v0.0.1"
+  binary_name = "openbao-plugin-secrets-aws"
+  sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
 }`,
 			expectError: false,
 		},
@@ -112,14 +112,13 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true 
 }
-plugins {
-  "secrets-aws" {
-    binary_name = "openbao-plugin-secrets-aws"
-    sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
-  }
+plugin "secrets" "aws" {
+  version = "v0.0.1"
+  binary_name = "openbao-plugin-secrets-aws"
+  sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
 }`,
 			expectError: true,
-			errorMsg:    "url cannot be empty",
+			errorMsg:    "image cannot be empty",
 		},
 		{
 			name: "invalid url",
@@ -129,15 +128,14 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true
 }
-plugins {
-  "secrets-aws" {
-    url = "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1:v.0.1.0"
-    binary_name = "openbao-plugin-secrets-aws"
-    sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
-  }
+plugin "secrets" "aws" {
+  image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
+  version = "v0.0.1:v0.0.1"
+  binary_name = "openbao-plugin-secrets-aws"
+  sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
 }`,
 			expectError: true,
-			errorMsg:    "url is not a valid image reference",
+			errorMsg:    "image and version do not form a valid image reference",
 		},
 		{
 			name: "missing binary_name",
@@ -147,11 +145,10 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true 
 }
-plugins {
-  "secrets-aws" {
-    url = "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1"
-    sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
-  }
+plugin "secrets" "aws" {
+  image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
+  version = "v0.0.1"
+  sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
 }`,
 			expectError: true,
 			errorMsg:    "binary_name cannot be empty",
@@ -164,12 +161,11 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true 
 }
-plugins {
-  "secrets-aws" {
-    url = "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1"
-    binary_name = "openbao-plugin-secrets-aws"
-    sha256sum = "9fdd8be7947e4a4caf7cce4"
-  }
+plugin "secrets" "aws" {
+  image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
+  version = "v0.0.1:v0.0.1"
+  binary_name = "openbao-plugin-secrets-aws"
+  sha256sum = "9fdd8be7947e4a4caf7cce4"
 }`,
 			expectError: true,
 			errorMsg:    "sha256sum must be exactly 64 characters",
@@ -182,12 +178,11 @@ listener "tcp" {
   address = "127.0.0.1:8200"
   tls_disable = true 
 }
-plugins {
-  "secrets-aws" {
-    url = "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1"
-    binary_name = "openbao-plugin-secrets-aws"
-    sha256sum = "gfdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
-  }
+plugin "secrets" "aws" {
+  image = "ghcr.io/openbao/openbao-plugin-secrets-aws"
+  version = "v0.0.1:v0.0.1"
+  binary_name = "openbao-plugin-secrets-aws"
+  sha256sum = "gfdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
 }`,
 			expectError: true,
 			errorMsg:    "sha256sum is not valid hex encoded",

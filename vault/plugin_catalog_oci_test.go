@@ -167,9 +167,12 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	// Create a test configuration with the real Nomad plugin
 	config := &server.Config{
 		PluginDirectory: tempDir,
-		Plugins: map[string]*server.PluginConfig{
-			"openbao-plugin-secrets-nomad": {
-				URL:        "ghcr.io/openbao/openbao-plugin-secrets-nomad:v0.1.4",
+		Plugins: []*server.PluginConfig{
+			{
+				Type:       "secrets",
+				Name:       "nomad",
+				Image:      "ghcr.io/openbao/openbao-plugin-secrets-nomad",
+				Version:    "v0.1.4",
 				BinaryName: "openbao-plugin-secrets-nomad",
 				SHA256Sum:  nomadPluginSHA256,
 			},
@@ -197,7 +200,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	}
 
 	// Verify the plugin was downloaded and symlinked correctly
-	pluginPath := filepath.Join(tempDir, "openbao-plugin-secrets-nomad")
+	pluginPath := filepath.Join(tempDir, config.Plugins[0].FullName())
 
 	// Check if the symlink exists
 	linkInfo, err := os.Lstat(pluginPath)
@@ -215,8 +218,8 @@ func TestReconcileOCIPlugins(t *testing.T) {
 		t.Fatalf("Failed to read symlink: %v", err)
 	}
 
-	// Should point to .oci-cache/openbao-plugin-secrets-nomad/{sha256_prefix}/openbao-plugin-secrets-nomad
-	expectedPrefix := ".oci-cache/openbao-plugin-secrets-nomad/"
+	// Should point to .oci-cache/secrets-nomad/{sha256_prefix}/openbao-plugin-secrets-nomad
+	expectedPrefix := ".oci-cache/secrets-nomad/"
 	if !strings.HasPrefix(target, expectedPrefix) {
 		t.Errorf("Symlink target should start with %q, got %q", expectedPrefix, target)
 	}
@@ -259,15 +262,18 @@ func TestPluginCacheStructure(t *testing.T) {
 
 	// Test plugin configuration
 	pluginConfig := &server.PluginConfig{
-		URL:        "docker.io/test/plugin:latest",
+		Image:      "docker.io/test/plugin",
+		Version:    "latest",
+		Type:       "test",
+		Name:       "plugin",
 		BinaryName: "test-plugin",
 		SHA256Sum:  "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", // SHA256 of "test"
 	}
 
 	// Manually create the expected cache structure to test validation
 	sha256Prefix := pluginConfig.SHA256Sum[:8] // "9f86d081"
-	cacheDir := filepath.Join(tempDir, ".oci-cache", "test-plugin", sha256Prefix)
-	cachedPluginPath := filepath.Join(cacheDir, "test-plugin")
+	cacheDir := filepath.Join(tempDir, ".oci-cache", pluginConfig.Slug(), sha256Prefix)
+	cachedPluginPath := filepath.Join(cacheDir, pluginConfig.BinaryName)
 
 	// Create the cache directory
 	err = os.MkdirAll(cacheDir, 0o755)
@@ -283,7 +289,7 @@ func TestPluginCacheStructure(t *testing.T) {
 	}
 
 	// Create symlink in plugin directory
-	symlinkPath := filepath.Join(tempDir, "test-plugin")
+	symlinkPath := filepath.Join(tempDir, pluginConfig.FullName())
 	relativeTarget := filepath.Join(".oci-cache", "test-plugin", sha256Prefix, "test-plugin")
 	err = os.Symlink(relativeTarget, symlinkPath)
 	if err != nil {
@@ -293,7 +299,7 @@ func TestPluginCacheStructure(t *testing.T) {
 	// Test that cache validation works with symlinks using the OCI downloader
 	config := &server.Config{}
 	downloader := oci.NewPluginDownloader(tempDir, config, hclog.NewNullLogger())
-	isValid := downloader.IsPluginCacheValid("test-plugin", pluginConfig)
+	isValid := downloader.IsPluginCacheValid(pluginConfig)
 	if !isValid {
 		t.Error("Expected plugin cache to be valid with symlink")
 	}

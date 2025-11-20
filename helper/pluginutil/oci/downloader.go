@@ -52,24 +52,20 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 		return nil
 	}
 
-	for pluginName, pluginConfig := range plugins {
-		if pluginConfig == nil {
-			continue
-		}
-
-		pluginLogger := d.logger.With("plugin", pluginName)
-		pluginLogger.Debug("processing plugin", "url", pluginConfig.URL, "binary_name", pluginConfig.BinaryName)
+	for _, pluginConfig := range plugins {
+		pluginLogger := d.logger.With("plugin", pluginConfig.Slug())
+		pluginLogger.Debug("processing plugin", "url", pluginConfig.URL(), "binary_name", pluginConfig.BinaryName)
 
 		// Fast path: check if plugin already exists and matches expected SHA256
-		if d.IsPluginCacheValid(pluginName, pluginConfig) {
+		if d.IsPluginCacheValid(pluginConfig) {
 			pluginLogger.Info("plugin is cached on disk, skipping download")
 			continue
 		}
 
 		// Slow path: download from OCI registry
-		if err := d.DownloadPlugin(ctx, pluginName, pluginConfig, pluginLogger); err != nil {
+		if err := d.DownloadPlugin(ctx, pluginConfig, pluginLogger); err != nil {
 			if d.shouldFailOnPluginError() {
-				return fmt.Errorf("failed to download plugin %q: %w", pluginName, err)
+				return fmt.Errorf("failed to download plugin %q: %w", pluginConfig.Slug(), err)
 			} else {
 				pluginLogger.Warn("failed to download plugin", "error", err)
 				continue
@@ -92,13 +88,13 @@ func (d *PluginDownloader) shouldFailOnPluginError() bool {
 
 // IsPluginCacheValid checks if the plugin already exists in the plugin directory
 // and matches the expected SHA256 hash (fast path)
-func (d *PluginDownloader) IsPluginCacheValid(pluginName string, config *server.PluginConfig) bool {
+func (d *PluginDownloader) IsPluginCacheValid(config *server.PluginConfig) bool {
 	if d.pluginDirectory == "" {
 		return false
 	}
 
 	// Check if the symlink exists in the plugin directory
-	symlinkPath := filepath.Join(d.pluginDirectory, pluginName)
+	symlinkPath := filepath.Join(d.pluginDirectory, config.FullName())
 
 	// Check if symlink exists and is a symlink
 	linkInfo, err := os.Lstat(symlinkPath)
@@ -135,7 +131,7 @@ func (d *PluginDownloader) IsPluginCacheValid(pluginName string, config *server.
 	// Validate SHA256 of the cached file
 	actualHash, err := osutil.FileSha256Sum(cachedFilePath)
 	if err != nil {
-		d.logger.Debug("failed to calculate plugin hash", "plugin", pluginName, "error", err)
+		d.logger.Debug("failed to calculate plugin hash", "plugin", config.Slug(), "error", err)
 		return false
 	}
 
@@ -143,14 +139,14 @@ func (d *PluginDownloader) IsPluginCacheValid(pluginName string, config *server.
 }
 
 // DownloadPlugin downloads a plugin from an OCI registry
-func (d *PluginDownloader) DownloadPlugin(ctx context.Context, pluginName string, config *server.PluginConfig, logger hclog.Logger) error {
+func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.PluginConfig, logger hclog.Logger) error {
 	logger.Info("downloading plugin from OCI registry",
-		"url", config.URL)
+		"url", config.URL())
 
 	// Parse the OCI reference
-	ref, err := name.ParseReference(config.URL)
+	ref, err := name.ParseReference(config.URL())
 	if err != nil {
-		return fmt.Errorf("invalid OCI reference %q: %w", config.URL, err)
+		return fmt.Errorf("invalid OCI reference %q: %w", config.URL(), err)
 	}
 
 	// Download the image
@@ -160,9 +156,9 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, pluginName string
 	}
 
 	// Extract the plugin binary from the image using hidden cache path
-	// Format: <plugin_directory>/.oci-cache/<plugin_name>/<sha256_prefix>/<binary_name>
+	// Format: <plugin_directory>/.oci-cache/<plugin_slug>/<sha256_prefix>/<binary_name>
 	sha256Prefix := config.SHA256Sum[:8]
-	cacheDir := filepath.Join(d.pluginDirectory, PluginCacheDir, pluginName, sha256Prefix)
+	cacheDir := filepath.Join(d.pluginDirectory, PluginCacheDir, config.Slug(), sha256Prefix)
 	cachedPluginPath := filepath.Join(cacheDir, config.BinaryName)
 
 	if err := d.ExtractPluginFromImage(img, cachedPluginPath, config.BinaryName, logger); err != nil {
@@ -192,7 +188,7 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, pluginName string
 	}
 
 	// Create symlink in the plugin directory pointing to the cached file
-	symlinkPath := filepath.Join(d.pluginDirectory, pluginName)
+	symlinkPath := filepath.Join(d.pluginDirectory, config.FullName())
 
 	// Remove existing symlink or file if it exists
 	if _, err := os.Lstat(symlinkPath); err == nil {

@@ -685,7 +685,14 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 			locked = false
 		}
 	}
-	defer unlock()
+
+	return c.mountInternalWithLock(ctx, entry, updateStorage, unlock)
+}
+
+func (c *Core) mountInternalWithLock(ctx context.Context, entry *MountEntry, updateStorage bool, unlock func()) error {
+	if unlock != nil {
+		defer unlock()
+	}
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -2498,6 +2505,12 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 	}
 	invalidations := map[string]invalidation{}
 
+	c.mountsLock.Lock()
+	defer c.mountsLock.Unlock()
+
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
+
 	for _, path := range keys {
 		table := mountTableType
 		if path == coreAuthConfigPath && path != coreLocalAuthConfigPath {
@@ -2530,8 +2543,6 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 	}
 
 	// Loop over all mounts in memory, this is required to find mount deletions
-	c.mountsLock.RLock()
-	c.authLock.RLock()
 	for _, table := range []*MountTable{c.mounts, c.auth} {
 		if table == nil {
 			continue
@@ -2559,8 +2570,6 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 			}
 		}
 	}
-	c.authLock.RUnlock()
-	c.mountsLock.RUnlock()
 
 	for uuid, value := range invalidations {
 		err := c.reloadMountInternal(namespace.ContextWithNamespace(ctx, value.Namespace), value.Table, uuid, value.DesiredMountEntry)
@@ -2582,6 +2591,17 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 			return fmt.Errorf("invalid path prefix %q", prefix)
 		}
 		table = credentialTableType
+	}
+
+	switch table {
+	case mountTableType:
+		c.mountsLock.Lock()
+		defer c.mountsLock.Unlock()
+	case credentialTableType:
+		c.authLock.Lock()
+		defer c.authLock.Unlock()
+	default:
+		return fmt.Errorf("unknown table to lock: %v", table)
 	}
 
 	ns, err := namespace.FromContext(ctx)
@@ -2647,13 +2667,13 @@ func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desi
 		c.logger.Debug("cache invalidation: mount was created", "type", table, "uuid", uuid)
 
 		if table == credentialTableType {
-			err = c.enableCredentialInternal(ctx, desiredMountEntry, false)
+			err = c.enableCredentialInternalWithLock(ctx, desiredMountEntry, false, nil)
 			if err != nil {
 				return err
 			}
 		} else {
 			c.logger.Info("calling mount internal", "path", desiredMountEntry.Path)
-			err := c.mountInternal(ctx, desiredMountEntry, false)
+			err := c.mountInternalWithLock(ctx, desiredMountEntry, false, nil)
 			if err != nil {
 				return err
 			}
@@ -2661,14 +2681,6 @@ func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desi
 
 	case desiredMountEntry != nil && actualMountEntry != nil: // mount was modified (e.g. tuned or tainted)
 		c.logger.Debug("cache invalidation: mount was modified", "type", table, "uuid", uuid)
-
-		lock := &c.mountsLock
-		if table == credentialTableType {
-			lock = &c.authLock
-		}
-
-		lock.Lock()
-		defer lock.Unlock()
 
 		routerPath := actualMountEntry.Path
 		if table == credentialTableType {

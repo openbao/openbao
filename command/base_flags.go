@@ -386,7 +386,7 @@ func (i *uintValue) Set(s string) error {
 		return nil
 	}
 
-	return fmt.Errorf("ncorrect conversion of a 64-bit integer to a lower bit size. Value %d is not within bounds for uint32", v)
+	return fmt.Errorf("incorrect conversion of a 64-bit integer to a lower bit size; value %d is not within bounds for uint32", v)
 }
 
 func (i *uintValue) Get() interface{} { return uint(*i.target) }

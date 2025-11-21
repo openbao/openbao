@@ -1,0 +1,3 @@
+```release-note:security
+core/sys: BREAKING: default value of `disable_unauthed_rekey_endpoints` is `true`, to continue using unauthed rekey endpoints, set `disable_unauthed_rekey_endpoints=false` in listeners explicitly.  
+```

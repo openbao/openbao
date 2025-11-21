@@ -122,8 +122,11 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"generate-root/update",
 				"decode-token",
 				"mfa/validate",
-				// these endpoint are unauthenticated only with
-				// "disable_unauthed_rekey_endpoints" listener property set to true
+
+				// These endpoints are unauthenticated only with the
+				// "disable_unauthed_rekey_endpoints" listener property explicitly
+				// set to false. Note that they are not routable through the normal
+				// SystemBackend calls but are instead specially handled by http.
 				"rekey/init",
 				"rekey/update",
 				"rekey/verify",

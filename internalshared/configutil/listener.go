@@ -144,13 +144,13 @@ type Listener struct {
 	CustomResponseHeaders    map[string]map[string]string `hcl:"-"`
 	CustomResponseHeadersRaw interface{}                  `hcl:"custom_response_headers"`
 
-	// Whether to disable responding to unauthenticated rekey endpoints
+	// Whether to enable handling the unauthenticated rekey endpoints
 	// (via /sys/rekey/* and /sys/rekey-recovery-key/*) on this particular
 	// listener.
 	//
-	// This defaults to false, i.e., respond to requests; in the future when
-	// an authenticated variant with new semantics is available on a new
-	// endpoint, this will be set to true (disabling request handling).
+	// This defaults to true, i.e., requests are not served; in the future
+	// to enable handling the unauthenticated rekey endpoints the property
+	// value has to be set to true.
 	DisableUnauthedRekeyEndpoints    *bool       `hcl:"-"`
 	DisableUnauthedRekeyEndpointsRaw interface{} `hcl:"disable_unauthed_rekey_endpoints"`
 }

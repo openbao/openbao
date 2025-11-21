@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -108,21 +109,21 @@ func TestSysRekeyUnauthenticated(t *testing.T) {
 	ln, addr := TestServer(t, core)
 	TestServerAuth(t, addr, token)
 
-	// Default: Allow unauthenticated access
+	// Default: Disallow unauthenticated access
 	resp := testHttpGet(t, "", addr+"/v1/sys/rekey/init")
-	testResponseStatus(t, resp, 200)
+	testResponseStatus(t, resp, 405)
 	resp = testHttpGet(t, token, addr+"/v1/sys/rekey/init")
-	testResponseStatus(t, resp, 200)
+	testResponseStatus(t, resp, 405)
 
 	// Close listener
 	ln.Close()
 
-	// Setup new custom listener denying unauthenticated rekey access
+	// Setup new custom listener allowing for unauthenticated rekey access
 	ln, addr = TestListener(t)
 	props := &vault.HandlerProperties{
 		Core: core,
 		ListenerConfig: &configutil.Listener{
-			DisableUnauthedRekeyEndpoints: true,
+			DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
 		},
 	}
 	TestServerWithListenerAndProperties(t, ln, addr, core, props)
@@ -132,9 +133,9 @@ func TestSysRekeyUnauthenticated(t *testing.T) {
 	// Testing with and without token should fail; we have completely removed
 	// the endpoint.
 	resp = testHttpGet(t, "", addr+"/v1/sys/rekey/init")
-	testResponseStatus(t, resp, 405)
+	testResponseStatus(t, resp, 200)
 	resp = testHttpGet(t, token, addr+"/v1/sys/rekey/init")
-	testResponseStatus(t, resp, 405)
+	testResponseStatus(t, resp, 200)
 }
 
 func TestSysMetricsCustomPath(t *testing.T) {

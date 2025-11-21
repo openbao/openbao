@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/vault"
 )
@@ -187,7 +189,15 @@ func TestSysRekey_Init_Cancel(t *testing.T) {
 
 func TestSysRekey_badKey(t *testing.T) {
 	core, _, token := vault.TestCoreUnsealed(t)
-	ln, addr := TestServer(t, core)
+	ln, addr := TestListener(t)
+	TestServerWithListenerAndProperties(t, ln, addr, core, &vault.HandlerProperties{
+		Core: core,
+		ListenerConfig: &configutil.Listener{
+			Address:                       addr,
+			MaxRequestSize:                1024,
+			DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+		},
+	})
 	defer ln.Close()
 	TestServerAuth(t, addr, token)
 
@@ -200,7 +210,15 @@ func TestSysRekey_badKey(t *testing.T) {
 func TestSysRekey_Update(t *testing.T) {
 	t.Run("rekey-barrier-barrier-key", func(t *testing.T) {
 		core, keys, token := vault.TestCoreUnsealed(t)
-		ln, addr := TestServer(t, core)
+		ln, addr := TestListener(t)
+		TestServerWithListenerAndProperties(t, ln, addr, core, &vault.HandlerProperties{
+			Core: core,
+			ListenerConfig: &configutil.Listener{
+				Address:                       addr,
+				MaxRequestSize:                1024,
+				DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+			},
+		})
 		defer ln.Close()
 		TestServerAuth(t, addr, token)
 
@@ -269,7 +287,15 @@ func TestSysRekey_Update(t *testing.T) {
 
 func TestSysRekey_ReInitUpdate(t *testing.T) {
 	core, keys, token := vault.TestCoreUnsealed(t)
-	ln, addr := TestServer(t, core)
+	ln, addr := TestListener(t)
+	TestServerWithListenerAndProperties(t, ln, addr, core, &vault.HandlerProperties{
+		Core: core,
+		ListenerConfig: &configutil.Listener{
+			Address:                       addr,
+			MaxRequestSize:                1024,
+			DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+		},
+	})
 	defer ln.Close()
 	TestServerAuth(t, addr, token)
 

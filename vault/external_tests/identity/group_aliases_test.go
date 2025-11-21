@@ -56,7 +56,7 @@ func TestIdentityStore_GroupAliasLocalMount(t *testing.T) {
 	groupID := secret.Data["id"].(string)
 
 	// Attempt to create a group alias against a local mount should fail
-	secret, err = client.Logical().Write("identity/group-alias", map[string]interface{}{
+	_, err = client.Logical().Write("identity/group-alias", map[string]interface{}{
 		"name":           "testuser",
 		"mount_accessor": ldapMountAccessor,
 		"canonical_id":   groupID,

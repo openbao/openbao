@@ -17,7 +17,7 @@ func TestSSH_CreateTLSClient(t *testing.T) {
 		panic(fmt.Sprintf("error loading agent's config file: %s", err))
 	}
 
-	client, err := config.NewClient()
+	_, err = config.NewClient()
 	if err != nil {
 		panic(fmt.Sprintf("error creating the client: %s", err))
 	}
@@ -25,7 +25,7 @@ func TestSSH_CreateTLSClient(t *testing.T) {
 	// Provide a certificate and enforce setting of transport
 	config.CACert = "./test-fixtures/vault.crt"
 
-	client, err = config.NewClient()
+	client, err := config.NewClient()
 	if err != nil {
 		panic(fmt.Sprintf("error creating the client: %s", err))
 	}

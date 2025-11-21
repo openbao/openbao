@@ -266,7 +266,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		"input":          plaintext,
 		"hash_algorithm": "invalid",
 	}
-	resp, err = b.HandleRequest(context.Background(), signReq)
+	_, err = b.HandleRequest(context.Background(), signReq)
 	if err == nil {
 		t.Fatal(err)
 	}
@@ -1533,7 +1533,7 @@ func testPolicyFuzzingCommon(t *testing.T, be *backend) {
 				setVersion := (rand.Int() % latestVersion) + 1
 				fd.Raw["min_decryption_version"] = setVersion
 				fd.Schema = be.pathKeysConfig().Fields
-				resp, err = be.pathKeysConfigWrite(context.Background(), req, fd)
+				_, err = be.pathKeysConfigWrite(context.Background(), req, fd)
 				if err != nil {
 					t.Errorf("got an error setting min decryption version: %v", err)
 				}
@@ -1542,7 +1542,7 @@ func testPolicyFuzzingCommon(t *testing.T, be *backend) {
 	}
 
 	// Spawn 1000 of these workers for 10 seconds
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		wg.Add(1)
 		go doFuzzy(i)
 	}

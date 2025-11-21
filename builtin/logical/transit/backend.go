@@ -95,7 +95,7 @@ func Backend(ctx context.Context, conf *logical.BackendConfig) (*backend, error)
 		var err error
 		cacheSize, err = GetCacheSizeFromStorage(ctx, conf.StorageView)
 		if err != nil {
-			return nil, fmt.Errorf("Error retrieving cache size from storage: %w", err)
+			return nil, fmt.Errorf("error retrieving cache size from storage: %w", err)
 		}
 
 		if cacheSize != 0 && cacheSize < minCacheSize {

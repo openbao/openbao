@@ -34,7 +34,7 @@ var (
 	_ cli.CommandAutocomplete = (*OperatorMigrateCommand)(nil)
 )
 
-var errAbort = errors.New("Migration aborted")
+var errAbort = errors.New("migration aborted")
 
 type OperatorMigrateCommand struct {
 	*BaseCommand

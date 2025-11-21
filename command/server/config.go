@@ -505,7 +505,7 @@ func LoadConfig(path string, allPaths []string) (*Config, error) {
 			var err error
 			enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 			if err != nil {
-				return nil, errors.New("Error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
+				return nil, errors.New("error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
 			}
 		}
 		f, err := os.Open(path)
@@ -576,7 +576,7 @@ func LoadConfigFile(path string, allPaths []string) (*Config, error) {
 		var err error
 		enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 		if err != nil {
-			return nil, errors.New("Error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
+			return nil, errors.New("error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
 		}
 	}
 

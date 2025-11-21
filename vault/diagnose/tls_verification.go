@@ -65,12 +65,14 @@ func ListenerChecks(ctx context.Context, listeners []*configutil.Listener) ([]st
 		}
 		_, ok := tlsutil.TLSLookup[l.TLSMinVersion]
 		if !ok {
+			//nolint:staticcheck // user-facing error
 			err := fmt.Errorf("Listener at address %s: %s.", listenerID, fmt.Sprintf(minVersionError, l.TLSMinVersion))
 			listenerErrors = append(listenerErrors, err)
 			Fail(ctx, err.Error())
 		}
 		_, ok = tlsutil.TLSLookup[l.TLSMaxVersion]
 		if !ok {
+			//nolint:staticcheck // user-facing error
 			err := fmt.Errorf("Listener at address %s: %s.", listenerID, fmt.Sprintf(maxVersionError, l.TLSMaxVersion))
 			listenerErrors = append(listenerErrors, err)
 			Fail(ctx, err.Error())
@@ -143,6 +145,7 @@ func ParseTLSInformation(certFilePath string) ([]*x509.Certificate, []*x509.Cert
 	rootCerts := []*x509.Certificate{}
 	data, err := os.ReadFile(certFilePath)
 	if err != nil {
+		//nolint:staticcheck // user-facing error
 		return leafCerts, interCerts, rootCerts, fmt.Errorf("Failed to read certificate file: %w.", err)
 	}
 
@@ -158,12 +161,14 @@ func ParseTLSInformation(certFilePath string) ([]*x509.Certificate, []*x509.Cert
 	}
 
 	if len(certBlocks) == 0 {
+		//nolint:staticcheck // user-facing error
 		return leafCerts, interCerts, rootCerts, errors.New("No certificates found in certificate file.")
 	}
 
 	for _, certBlock := range certBlocks {
 		cert, err := x509.ParseCertificate(certBlock.Bytes)
 		if err != nil {
+			//nolint:staticcheck // user-facing error
 			return leafCerts, interCerts, rootCerts, fmt.Errorf("A PEM block does not parse to a certificate: %w.", err)
 		}
 
@@ -187,6 +192,7 @@ func ParseTLSInformation(certFilePath string) ([]*x509.Certificate, []*x509.Cert
 func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error {
 	// Make sure there's the proper number of leafCerts. If there are multiple, it's a bad pem file.
 	if len(leafCerts) == 0 {
+		//nolint:staticcheck // user-facing error
 		return errors.New("No leaf certificates detected.")
 	}
 
@@ -210,6 +216,7 @@ func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error 
 			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		})
 		if err != nil {
+			//nolint:staticcheck // user-facing error
 			return fmt.Errorf("Failed to verify root certificate: %w.", err)
 		}
 	}
@@ -236,6 +243,7 @@ func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error 
 			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		})
 		if err != nil {
+			//nolint:staticcheck // user-facing error
 			return fmt.Errorf("Failed to verify intermediate certificate: %w.", err)
 		}
 	}
@@ -248,6 +256,7 @@ func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error 
 			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		})
 		if err != nil {
+			//nolint:staticcheck // user-facing error
 			return fmt.Errorf("Failed to verify primary provided leaf certificate: %w.", err)
 		}
 	}
@@ -330,6 +339,7 @@ func TLSCAFileCheck(CAFilePath string) ([]string, error) {
 	}
 
 	if len(rootCerts) == 0 {
+		//nolint:staticcheck // user-facing error
 		return nil, errors.New("No root certificate found in CA certificate file.")
 	}
 	if len(rootCerts) > 1 {

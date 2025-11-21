@@ -15,7 +15,7 @@ import (
 )
 
 func testBarrier(t *testing.T, b SecurityBarrier) {
-	err, e, key := testInitAndUnseal(t, b)
+	e, key, err := testInitAndUnseal(t, b)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -143,7 +143,7 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	}
 }
 
-func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.StorageEntry, []byte) {
+func testInitAndUnseal(t *testing.T, b SecurityBarrier) (*logical.StorageEntry, []byte, error) {
 	// Should not be initialized
 	init, err := b.Initialized(context.Background())
 	if err != nil {
@@ -253,7 +253,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 	if err := b.VerifyRoot(key); err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	return err, e, key
+	return e, key, err
 }
 
 func testBarrier_Rotate(t *testing.T, b SecurityBarrier) {

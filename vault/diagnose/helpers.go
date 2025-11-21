@@ -235,6 +235,7 @@ func WithTimeout(d time.Duration, f testFunction) testFunction {
 		go func() { rch <- f(ctx) }()
 		select {
 		case <-t.C:
+			//nolint:staticcheck // user-facing error
 			return fmt.Errorf("Timeout after %s.", d.String())
 		case err := <-rch:
 			return err

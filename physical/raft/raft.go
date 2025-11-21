@@ -83,7 +83,7 @@ var (
 	defaultMaxEntrySize    = uint64(2 * raftchunking.ChunkSize)
 	defaultMaxTxnSize      = 8 * defaultMaxEntrySize
 
-	GetInTxnDisabledError = errors.New("get operations inside transactions are disabled in raft backend")
+	ErrGetInTxnDisabled = errors.New("get operations inside transactions are disabled in raft backend")
 )
 
 // RaftBackend implements the backend interfaces and uses the raft protocol to

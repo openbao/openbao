@@ -15,18 +15,21 @@ import (
 var (
 	// ErrBarrierSealed is returned if an operation is performed on
 	// a sealed barrier. No operation is expected to succeed before unsealing
+	//nolint:staticcheck // Vault is a proper name
 	ErrBarrierSealed = errors.New("Vault is sealed")
 
 	// ErrBarrierAlreadyInit is returned if the barrier is already
 	// initialized. This prevents a re-initialization.
+	//nolint:staticcheck // Vault is a proper name
 	ErrBarrierAlreadyInit = errors.New("Vault is already initialized")
 
 	// ErrBarrierNotInit is returned if a non-initialized barrier
 	// is attempted to be unsealed.
+	//nolint:staticcheck // Vault is a proper name
 	ErrBarrierNotInit = errors.New("Vault is not initialized")
 
 	// ErrBarrierInvalidKey is returned if the Unseal key is invalid
-	ErrBarrierInvalidKey = errors.New("Unseal failed, invalid key")
+	ErrBarrierInvalidKey = errors.New("unseal failed, invalid key")
 
 	// ErrPlaintextTooLarge is returned if a plaintext is offered for encryption
 	// that is too large to encrypt in memory

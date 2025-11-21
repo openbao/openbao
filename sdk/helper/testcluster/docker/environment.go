@@ -13,6 +13,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -23,6 +24,7 @@ import (
 	mathrand "math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,6 +32,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/volume"
@@ -41,6 +45,8 @@ import (
 	dockhelper "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
+	thpsql "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 )
 
@@ -940,6 +946,7 @@ type DockerClusterOptions struct {
 	Args        []string
 	StartProbe  func(*api.Client) error
 	Storage     testcluster.ClusterStorage
+	StorageType string
 	Root        bool
 	Entrypoint  string
 	HADisabled  bool
@@ -1197,6 +1204,99 @@ COPY bao /bin/bao
 	}
 	dc.builtTags[tag] = struct{}{}
 	return tag, nil
+}
+
+type PostgreSQLStorage struct {
+	cleanup     func()
+	ExternalUrl string
+	InternalUrl string
+	Runner      *dockhelper.Runner
+	Service     *dockhelper.Service
+	Id          string
+}
+
+var _ testcluster.ClusterStorage = &PostgreSQLStorage{}
+
+// NewPostgreSQLStorage starts the underlying PSQL container and saves its
+// connection URL.
+func NewPostgreSQLStorage(t *testing.T, network string) *PostgreSQLStorage {
+	env := []string{
+		"POSTGRES_PASSWORD=secret",
+		"POSTGRES_DB=database",
+	}
+
+	runner, svc, cleanup, externalUrl, containerID := thpsql.PrepareTestContainerRaw(t, "postgres", "docker.mirror.hashicorp.services/postgres", "latest", "secret", true, false, false, env, false /* don't wait */, network)
+
+	u, err := url.Parse(externalUrl)
+	require.NoError(t, err, "failed to parse returned external URL")
+
+	var host string
+	if network != "" {
+		host = svc.Container.NetworkSettings.Networks[network].IPAddress
+	} else {
+		for name, info := range svc.Container.NetworkSettings.Networks {
+			network = name
+			host = info.IPAddress
+
+			t.Logf("found network [%v]: %v", network, info)
+		}
+
+		if len(svc.Container.NetworkSettings.Networks) != 1 {
+			t.Fatalf("expected only one network if no network name given: %v", network)
+		}
+	}
+	u.Host = fmt.Sprintf("%v:5432", host)
+
+	internalUrl := u.String()
+
+	return &PostgreSQLStorage{
+		cleanup:     cleanup,
+		ExternalUrl: externalUrl,
+		InternalUrl: internalUrl,
+		Runner:      runner,
+		Service:     svc,
+		Id:          containerID,
+	}
+}
+
+func (p *PostgreSQLStorage) Start(context.Context, *testcluster.ClusterOptions) error {
+	// Initialization already occurred when creating this object.
+	return nil
+}
+
+func (p *PostgreSQLStorage) Cleanup() error {
+	if p.cleanup != nil {
+		p.cleanup()
+		p.cleanup = nil
+	}
+	return nil
+}
+
+func (p *PostgreSQLStorage) Opts() map[string]interface{} {
+	return map[string]interface{}{
+		"connection_url":       p.InternalUrl,
+		"ha_enabled":           true,
+		"max_parallel":         5,
+		"max_idle_connections": 3,
+		"max_connect_retries":  30,
+	}
+}
+
+func (p *PostgreSQLStorage) Type() string {
+	return "postgresql"
+}
+
+func (p *PostgreSQLStorage) Client(ctx context.Context) (*sql.DB, error) {
+	db, err := sql.Open("pgx", p.ExternalUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = db.PingContext(ctx); err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }
 
 /* Notes on testing the non-bridge network case:

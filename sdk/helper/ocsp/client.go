@@ -167,7 +167,7 @@ func validateOCSP(ocspRes *ocsp.Response) (*ocspStatus, error) {
 	if ocspRes == nil {
 		return nil, errors.New("OCSP Response is nil")
 	}
-	if !isInValidityRange(curTime, ocspRes.NextUpdate) {
+	if ocspRes.ProducedAt.IsZero() || !isInValidityRange(curTime, ocspRes.NextUpdate) {
 		return &ocspStatus{
 			code: ocspInvalidValidity,
 			err:  fmt.Errorf("invalid validity: producedAt: %v, thisUpdate: %v, nextUpdate: %v", ocspRes.ProducedAt, ocspRes.ThisUpdate, ocspRes.NextUpdate),

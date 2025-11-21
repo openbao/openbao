@@ -347,6 +347,7 @@ func TestUnitValidateOCSP(t *testing.T) {
 	}
 
 	currentTime := time.Now()
+	ocspRes.ProducedAt = currentTime
 	ocspRes.ThisUpdate = currentTime.Add(-2 * time.Hour)
 	ocspRes.NextUpdate = currentTime.Add(2 * time.Hour)
 	ocspRes.Status = ocsp.Revoked

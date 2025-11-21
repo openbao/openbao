@@ -6,7 +6,6 @@ package cert
 import (
 	"context"
 	"crypto/subtle"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/base64"
@@ -60,6 +59,24 @@ func pathLogin(b *backend) *framework.Path {
 	}
 }
 
+// Handle headers and client certs
+func (b *backend) handleCerts(req *logical.Request) ([]*x509.Certificate, error) {
+	if req == nil || req.Connection == nil {
+		return nil, errors.New("tls connection not found")
+	}
+
+	chain, err := req.Connection.GetPreferredCerts()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(chain) == 0 {
+		return nil, errors.New("no client certificate found")
+	}
+
+	return chain, nil
+}
+
 func (b *backend) loginPathWrapper(wrappedOp func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error)) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		// Make sure that the CRLs have been loaded before processing a login request,
@@ -90,12 +107,9 @@ func (b *backend) pathLoginResolveRole(ctx context.Context, req *logical.Request
 }
 
 func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if req.Connection == nil || req.Connection.ConnState == nil {
-		return nil, errors.New("tls connection not found")
-	}
-	clientCerts := req.Connection.ConnState.PeerCertificates
-	if len(clientCerts) == 0 {
-		return nil, errors.New("no client certificate found")
+	clientCerts, err := b.handleCerts(req)
+	if err != nil {
+		return nil, err
 	}
 
 	return &logical.Response{
@@ -139,10 +153,11 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 		}
 	}
 
-	clientCerts := req.Connection.ConnState.PeerCertificates
-	if len(clientCerts) == 0 {
-		return logical.ErrorResponse("no client certificate found"), nil
+	clientCerts, err := b.handleCerts(req)
+	if err != nil {
+		return nil, err
 	}
+
 	skid := base64.StdEncoding.EncodeToString(clientCerts[0].SubjectKeyId)
 	akid := base64.StdEncoding.EncodeToString(clientCerts[0].AuthorityKeyId)
 
@@ -208,10 +223,11 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 			return nil, nil
 		}
 
-		clientCerts := req.Connection.ConnState.PeerCertificates
-		if len(clientCerts) == 0 {
-			return logical.ErrorResponse("no client certificate found"), nil
+		clientCerts, err := b.handleCerts(req)
+		if err != nil {
+			return logical.ErrorResponse(err.Error()), nil
 		}
+
 		skid := base64.StdEncoding.EncodeToString(clientCerts[0].SubjectKeyId)
 		akid := base64.StdEncoding.EncodeToString(clientCerts[0].AuthorityKeyId)
 
@@ -244,16 +260,12 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 }
 
 func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d *framework.FieldData) (*ParsedCert, *logical.Response, error) {
-	// Get the connection state
-	if req.Connection == nil || req.Connection.ConnState == nil {
-		return nil, logical.ErrorResponse("tls connection required"), nil
+	clientCerts, err := b.handleCerts(req)
+	if err != nil {
+		return nil, logical.ErrorResponse(err.Error()), nil
 	}
-	connState := req.Connection.ConnState
 
-	if len(connState.PeerCertificates) == 0 {
-		return nil, logical.ErrorResponse("client certificate must be supplied"), nil
-	}
-	clientCert := connState.PeerCertificates[0]
+	clientCert := clientCerts[0]
 
 	// Allow constraining the login request to a single CertEntry
 	var certName string
@@ -268,7 +280,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 
 	// Get the list of full chains matching the connection and validates the
 	// certificate itself
-	trustedChains, err := validateConnState(roots, connState)
+	trustedChains, err := validateConnState(roots, clientCerts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -693,8 +705,7 @@ func parsePEM(raw []byte) (certs []*x509.Certificate) {
 // by at trusted certificate. Most of this logic is lifted from the client
 // verification logic here:  http://golang.org/src/crypto/tls/handshake_server.go
 // The trusted chains are returned.
-func validateConnState(roots *x509.CertPool, cs *tls.ConnectionState) ([][]*x509.Certificate, error) {
-	certs := cs.PeerCertificates
+func validateConnState(roots *x509.CertPool, certs []*x509.Certificate) ([][]*x509.Certificate, error) {
 	if len(certs) == 0 {
 		return nil, nil
 	}

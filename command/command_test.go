@@ -22,7 +22,9 @@ import (
 	"github.com/openbao/openbao/builtin/logical/transit"
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/builtinplugins"
+	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
@@ -197,6 +199,47 @@ func testVaultServerCoreConfig(tb testing.TB, coreConfig *vault.CoreConfig) (*ap
 	return testVaultServerCoreConfigWithOpts(tb, coreConfig, &vault.TestClusterOptions{
 		HandlerFunc: vaulthttp.Handler,
 		NumCores:    1, // Default is 3, but we don't need that many
+	})
+}
+
+func testVaultServerUnauthedEndpointsEnabledWithAutoseal(tb testing.TB) (*api.Client, []string, func()) {
+	testSeal, _ := seal.NewTestSeal(nil)
+	autoSeal, err := vault.NewAutoSeal(testSeal)
+	if err != nil {
+		tb.Fatal("unable to create autoseal", err)
+	}
+
+	return testVaultServerCoreConfigWithOpts(tb, &vault.CoreConfig{
+		DisableCache:       true,
+		Seal:               autoSeal,
+		CredentialBackends: defaultVaultCredentialBackends,
+		AuditBackends:      defaultVaultAuditBackends,
+		LogicalBackends:    defaultVaultLogicalBackends,
+	}, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		DefaultHandlerProperties: vault.HandlerProperties{
+			ListenerConfig: &configutil.Listener{
+				DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+			},
+		},
+		NumCores: 1,
+	})
+}
+
+func testVaultServerUnauthedEndpointsEnabled(tb testing.TB) (*api.Client, []string, func()) {
+	return testVaultServerCoreConfigWithOpts(tb, &vault.CoreConfig{
+		DisableCache:       true,
+		CredentialBackends: defaultVaultCredentialBackends,
+		AuditBackends:      defaultVaultAuditBackends,
+		LogicalBackends:    defaultVaultLogicalBackends,
+	}, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		DefaultHandlerProperties: vault.HandlerProperties{
+			ListenerConfig: &configutil.Listener{
+				DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+			},
+		},
+		NumCores: 1,
 	})
 }
 

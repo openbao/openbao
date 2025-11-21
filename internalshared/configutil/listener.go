@@ -149,8 +149,8 @@ type Listener struct {
 	// listener.
 	//
 	// This defaults to true, i.e., requests are not served; in the future
-	// to enable handling the unauthenticated rekey endpoints the property
-	// value has to be set to true.
+	// to enable handling the unauthenticated rekey endpoints the
+	// `disable_unauthed_rekey_endpoints` value has to be set to false.
 	DisableUnauthedRekeyEndpoints    *bool       `hcl:"-"`
 	DisableUnauthedRekeyEndpointsRaw interface{} `hcl:"disable_unauthed_rekey_endpoints"`
 }

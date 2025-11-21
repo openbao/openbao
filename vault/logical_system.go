@@ -123,7 +123,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"decode-token",
 				"mfa/validate",
 
-				// These endpoint are unauthenticated only with
+				// These endpoints are unauthenticated only with the
 				// "disable_unauthed_rekey_endpoints" listener property explicitly
 				// set to false. Note that they are not routable through the normal
 				// SystemBackend calls but are instead specially handled by http.

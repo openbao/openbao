@@ -41,7 +41,12 @@ func TestSysRekey_Init_pgpKeysEntriesForRekey(t *testing.T) {
 func TestSysRekey_Init_Status(t *testing.T) {
 	t.Run("status-barrier-default", func(t *testing.T) {
 		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
-			HandlerFunc:             Handler,
+			HandlerFunc: Handler,
+			DefaultHandlerProperties: vault.HandlerProperties{
+				ListenerConfig: &configutil.Listener{
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+				},
+			},
 			RequestResponseCallback: schema.ResponseValidatingCallback(t),
 		})
 		cluster.Start()
@@ -75,7 +80,12 @@ func TestSysRekey_Init_Status(t *testing.T) {
 func TestSysRekey_Init_Setup(t *testing.T) {
 	t.Run("init-barrier-barrier-key", func(t *testing.T) {
 		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
-			HandlerFunc:             Handler,
+			HandlerFunc: Handler,
+			DefaultHandlerProperties: vault.HandlerProperties{
+				ListenerConfig: &configutil.Listener{
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+				},
+			},
 			RequestResponseCallback: schema.ResponseValidatingCallback(t),
 		})
 		cluster.Start()
@@ -144,7 +154,12 @@ func TestSysRekey_Init_Setup(t *testing.T) {
 func TestSysRekey_Init_Cancel(t *testing.T) {
 	t.Run("cancel-barrier-barrier-key", func(t *testing.T) {
 		cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
-			HandlerFunc:             Handler,
+			HandlerFunc: Handler,
+			DefaultHandlerProperties: vault.HandlerProperties{
+				ListenerConfig: &configutil.Listener{
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+				},
+			},
 			RequestResponseCallback: schema.ResponseValidatingCallback(t),
 		})
 		cluster.Start()

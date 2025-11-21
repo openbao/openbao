@@ -289,6 +289,56 @@ func createCaLeafCerts(t *testing.T) (*ecdsa.PrivateKey, *x509.Certificate, *x50
 	return rootCaKey, rootCa, leafCert
 }
 
+func TestUnitNoCachedOCSPResponse(t *testing.T) {
+	rootCaKey, rootCa, leafCert := createCaLeafCerts(t)
+
+	reqCount := 0
+	noCacheOcspResponse := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		now := time.Now()
+		ocspRes := ocsp.Response{
+			SerialNumber: big.NewInt(2),
+			ThisUpdate:   now.Add(-1 * time.Hour),
+			Status:       ocsp.Good,
+		}
+		response, err := ocsp.CreateResponse(rootCa, rootCa, ocspRes, rootCaKey)
+		if err != nil {
+			_, _ = w.Write(ocsp.InternalErrorErrorResponse)
+			t.Fatalf("failed generating OCSP response: %v", err)
+		}
+		_, _ = w.Write(response)
+
+		reqCount += 1
+	})
+	ts := httptest.NewServer(noCacheOcspResponse)
+	defer ts.Close()
+
+	logFactory := func() hclog.Logger {
+		return hclog.NewNullLogger()
+	}
+	client := New(logFactory, 100)
+
+	ctx := context.Background()
+
+	config := &VerifyConfig{
+		OcspEnabled:         true,
+		OcspServersOverride: []string{ts.URL},
+		OcspFailureMode:     FailOpenFalse,
+		QueryAllServers:     false,
+	}
+
+	status, err := client.GetRevocationStatus(ctx, leafCert, rootCa, config)
+	require.NoError(t, err)
+	require.NotNil(t, status)
+	require.Equal(t, status.code, ocspStatusGood)
+	require.Equal(t, reqCount, 1)
+
+	status, err = client.GetRevocationStatus(ctx, leafCert, rootCa, config)
+	require.NoError(t, err)
+	require.NotNil(t, status)
+	require.Equal(t, status.code, ocspStatusGood)
+	require.Equal(t, reqCount, 2)
+}
+
 func TestUnitValidateOCSP(t *testing.T) {
 	ocspRes := &ocsp.Response{}
 	ost, err := validateOCSP(ocspRes)
@@ -297,6 +347,7 @@ func TestUnitValidateOCSP(t *testing.T) {
 	}
 
 	currentTime := time.Now()
+	ocspRes.ProducedAt = currentTime
 	ocspRes.ThisUpdate = currentTime.Add(-2 * time.Hour)
 	ocspRes.NextUpdate = currentTime.Add(2 * time.Hour)
 	ocspRes.Status = ocsp.Revoked

@@ -6,6 +6,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -69,6 +70,16 @@ const (
 	// provided and the server is fed ever more data until it exhausts memory.
 	// Can be overridden per listener.
 	DefaultMaxRequestSize = 32 * 1024 * 1024
+
+	// ProcessedForwardedClientCertHeader is an internal-only header used for
+	// passing the leaf certificate to the logical layer from the http handler
+	// layer, when forwarded by a client.
+	ProcessedForwardedClientCertHeader = "X-Processed-Tls-Client-Certificate"
+
+	// RFC 9440 standardizes proposed headers for use with proxies. We trim
+	// these to avoid a confusion attack.
+	RFC9440ClientCertHeader  = "Client-Cert"
+	RFC9440ClientChainHeader = "Client-Chain"
 )
 
 var (
@@ -253,7 +264,8 @@ func handler(props *vault.HandlerProperties) http.Handler {
 
 	// Wrap the handler in another handler to trigger all help paths.
 	helpWrappedHandler := wrapHelpHandler(mux, core)
-	corsWrappedHandler := wrapCORSHandler(helpWrappedHandler, core)
+	clientCertHandler := wrapClientCertificateHandler(helpWrappedHandler, props)
+	corsWrappedHandler := wrapCORSHandler(clientCertHandler, core)
 	quotaWrappedHandler := rateLimitQuotaWrapping(corsWrappedHandler, core)
 	genericWrappedHandler := genericWrapping(core, quotaWrappedHandler, props)
 	metricsWrappedHandler := wrapMetricsListenerHandler(genericWrappedHandler, props)
@@ -482,15 +494,39 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 	})
 }
 
-func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handler {
+func WrapHttpServerHandler(h http.Handler, l *configutil.Listener) http.Handler {
+	if l == nil {
+		return h
+	}
+
+	if len(l.XForwardedForAuthorizedAddrs) > 0 {
+		h = wrapForwardedForHandler(h, l)
+	}
+
+	return h
+}
+
+func wrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handler {
 	rejectNotPresent := l.XForwardedForRejectNotPresent
 	hopSkips := l.XForwardedForHopSkips
 	authorizedAddrs := l.XForwardedForAuthorizedAddrs
 	rejectNotAuthz := l.XForwardedForRejectNotAuthorized
+	keepUnauthorizedCertHeaders := l.XForwardedForClientCertKeepUnauthorized
+	keepNotForwardedCertHeaders := l.XForwardedForClientCertKeepNotForwarded
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		headers, headersOK := r.Header[textproto.CanonicalMIMEHeaderKey("X-Forwarded-For")]
 		if !headersOK || len(headers) == 0 {
 			if !rejectNotPresent {
+				if !keepNotForwardedCertHeaders {
+					// This request is not from a forwarding system, so we should
+					// remove any forwarded leaf certificate headers. Even Unix
+					// sockets should attach this information for us.
+					if len(l.XForwardedForClientCertHeader) > 0 {
+						r.Header.Del(l.XForwardedForClientCertHeader)
+					}
+					r.Header.Del(RFC9440ClientCertHeader)
+					r.Header.Del(RFC9440ClientChainHeader)
+				}
 				h.ServeHTTP(w, r)
 				return
 			}
@@ -536,7 +572,17 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 				// We need to delete the X-Forwarded-For header before
 				// passing it along, otherwise downstream systems will not
 				// know whether or not to trust it.
+				//
+				// This is true of the forwarded certificate headers as well.
 				r.Header.Del(textproto.CanonicalMIMEHeaderKey("X-Forwarded-For"))
+
+				if !keepUnauthorizedCertHeaders {
+					if len(l.XForwardedForClientCertHeader) > 0 {
+						r.Header.Del(l.XForwardedForClientCertHeader)
+					}
+					r.Header.Del(RFC9440ClientCertHeader)
+					r.Header.Del(RFC9440ClientChainHeader)
+				}
 
 				// Now serve the request, having rejected the header.
 				h.ServeHTTP(w, r)
@@ -580,41 +626,57 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 	})
 }
 
-func WrapRemoveProcessedCertificateHandler(h http.Handler) http.Handler {
+func wrapClientCertificateHandler(h http.Handler, props *vault.HandlerProperties) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Strip any X-Processed-Tls-Client-Certificate headers.
-		r.Header.Del("X-Processed-Tls-Client-Certificate")
-		h.ServeHTTP(w, r)
-		return
-	})
-}
+		// Strip any X-Processed-Tls-Client-Certificate headers before
+		// processing.
+		r.Header.Del(ProcessedForwardedClientCertHeader)
 
-func WrapRemoveDefaultClientCertificateHandler(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Remove any Client-Cert if not configured to use them. To prevent injection of client certs in plugins.
-		r.Header.Del("Client-Cert")
-		h.ServeHTTP(w, r)
-		return
-	})
-}
+		var clientCertificateHeaderName string
+		var decoders []string
+		if props != nil && props.ListenerConfig != nil {
+			clientCertificateHeaderName = props.ListenerConfig.XForwardedForClientCertHeader
+			decoders = props.ListenerConfig.XForwardedForClientCertDecoders
+		}
 
-func WrapClientCertificateHandler(h http.Handler, l *configutil.Listener) http.Handler {
-	clientCertificateHeader := l.XForwardedForClientCertHeader
-	// Iterate through the processors to handle the header.
-	decoders := l.XForwardedForClientCertDecoders
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Strip any X-Processed-Tls-Client-Certificate headers.
-		r.Header.Del("X-Processed-Tls-Client-Certificate")
-		// Use the CanonicalMIMEHeaderKey so that if the user has the header not canonicalized in the config.
-		clientCertHeaders, clientCertHeadersOK := r.Header[textproto.CanonicalMIMEHeaderKey(clientCertificateHeader)]
-		// Short circuit if no client cert header
-		if !clientCertHeadersOK || len(clientCertHeaders) == 0 {
+		if len(clientCertificateHeaderName) == 0 {
+			// Nothing to do; listener configuration does not set the
+			// x_forwarded_for_client_cert_header option so we should
+			// continue on.
+			//
+			// Remove the standardized client cert headers for safety,
+			// even though we don't explicitly process them; they'd be
+			// untrusted.
+			r.Header.Del(RFC9440ClientCertHeader)
+			r.Header.Del(RFC9440ClientChainHeader)
+
 			h.ServeHTTP(w, r)
 			return
 		}
-		// Do not handle multiple certs.
-		// This is out of scope and if a proxy is following RFC 9440 the chain excluding the end entity would be a separate header
-		headerValue := clientCertHeaders[0]
+
+		// Short circuit if no client cert header value.
+		clientCertHeaderValues := r.Header.Values(clientCertificateHeaderName)
+		if len(clientCertHeaderValues) == 0 || len(clientCertHeaderValues[0]) == 0 {
+			h.ServeHTTP(w, r)
+			return
+		}
+
+		// Do not handle multiple certs. If there are multiple certificates,
+		// throw an error for non-compliant behavior.
+		//
+		// This is out of scope and if a proxy is following RFC 9440, the chain
+		// excluding the end entity would be a separate header.
+		//
+		// For now, we ignore the chain and assume the cert auth operator can
+		// configure their auth mount with additional intermediates if
+		// required.
+		if len(clientCertHeaderValues) > 1 {
+			respondError(w, http.StatusBadRequest, errors.New("too many values for client certificate header; check RFC 9440 and do not send chain"))
+			return
+		}
+
+		// Different servers have different ways of encoding the certificate.
+		headerValue := clientCertHeaderValues[0]
 		for _, decoder := range decoders {
 			var err error
 			switch decoder {
@@ -625,21 +687,40 @@ func WrapClientCertificateHandler(h http.Handler, l *configutil.Listener) http.H
 			case "PEM":
 				headerValue, err = pemDecodeHeader(headerValue)
 			}
+
 			if err != nil {
 				respondError(w, http.StatusBadRequest, err)
 				return
 			}
 		}
+
 		// Validate that the processed cert is valid StdEncoding base64
-		_, err := base64.StdEncoding.DecodeString(headerValue)
+		certDer, err := base64.StdEncoding.DecodeString(headerValue)
 		if err != nil {
 			respondError(w, http.StatusBadRequest, errors.New("error decoding client certificate header as base64"))
 			return
 		}
-		// Add the client cert header
-		r.Header.Add("X-Processed-Tls-Client-Certificate", headerValue)
+
+		// Validate that the processed certificate is a valid certificate.
+		_, err = x509.ParseCertificate(certDer)
+		if err != nil {
+			respondError(w, http.StatusBadRequest, errors.New("error decoding client certificate header as x509.Certificate"))
+			return
+		}
+
+		// Add the client cert header.
+		r.Header.Add(ProcessedForwardedClientCertHeader, headerValue)
+
 		// Delete the unprocessed header.
-		r.Header.Del(l.XForwardedForClientCertHeader)
+		r.Header.Del(clientCertificateHeaderName)
+
+		// Remove the standardized client cert headers for safety,
+		// even though we don't explicitly process them; they'd be
+		// untrusted.
+		r.Header.Del(RFC9440ClientCertHeader)
+		r.Header.Del(RFC9440ClientChainHeader)
+
+		// Call our next handler.
 		h.ServeHTTP(w, r)
 	})
 }

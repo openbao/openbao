@@ -26,11 +26,11 @@ func getTestHandler(listenerConfig *configutil.Listener) func(props *vault.Handl
 	return func(props *vault.HandlerProperties) http.Handler {
 		origHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Write out what we internally processed.
-			w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", r.Header.Get("X-Processed-Tls-Client-Certificate"))
+			w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", r.Header.Get(ProcessedForwardedClientCertHeader))
 			w.WriteHeader(http.StatusOK)
 		})
 		// This mirrors how the handlers would be set in server.go
-		return WrapRemoveProcessedCertificateHandler(WrapClientCertificateHandler(origHandler, listenerConfig))
+		return WrapHttpServerHandler(origHandler, listenerConfig)
 	}
 }
 
@@ -39,11 +39,11 @@ func getTestHandlerNoWrapping(listenerConfig *configutil.Listener) func(props *v
 	return func(props *vault.HandlerProperties) http.Handler {
 		origHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Write out what we internally processed.
-			w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", r.Header.Get("X-Processed-Tls-Client-Certificate"))
+			w.Header().Set("X-Processed-Tls-Client-Certificate-Resp", r.Header.Get(ProcessedForwardedClientCertHeader))
 			w.WriteHeader(http.StatusOK)
 		})
 		// This mirrors how the handlers would be set in server.go
-		return WrapRemoveProcessedCertificateHandler(origHandler)
+		return WrapHttpServerHandler(origHandler, listenerConfig)
 	}
 }
 

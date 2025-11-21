@@ -62,6 +62,7 @@ func TestPostgreSQLBackend(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create new backend: %v", err)
 	}
+
 	pg := b1.(*PostgreSQLBackend)
 
 	// Read postgres version to test basic connects works

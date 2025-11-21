@@ -340,6 +340,7 @@ jobs:
           name: deb-packages-${{ matrix.release_os }}
           path: 'dist/*.deb'
           retention-days: 1
+          if-no-files-found: ignore
       
       - name: Upload rpm packages artifact
         if: inputs.dorpmrelease
@@ -348,6 +349,7 @@ jobs:
           name: rpm-packages-${{ matrix.release_os }}
           path: 'dist/*.rpm'
           retention-days: 1
+          if-no-files-found: ignore
 
       - name: Remove GPG Signing Key File
         if: always()
@@ -390,9 +392,8 @@ jobs:
 
   release-deb:
     runs-on: ubuntu-latest
-    if: inputs.dodebrelease && inputs.dogorelease
+    if: inputs.dodebrelease && inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
     needs:
-      - build-ui-dist
       - release-main
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
@@ -451,9 +452,8 @@ jobs:
 
   release-rpm:
     runs-on: ubuntu-latest
-    if: inputs.dorpmrelease && inputs.dogorelease
+    if: inputs.dorpmrelease && inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
     needs:
-      - build-ui-dist
       - release-main
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}

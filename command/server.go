@@ -734,13 +734,13 @@ func (q quiescenceSink) Accept(name string, level hclog.Level, msg string, args 
 func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, error) {
 	// Ensure that a backend is provided
 	if config.Storage == nil {
-		return nil, errors.New("A storage backend must be specified")
+		return nil, errors.New("a storage backend must be specified")
 	}
 
 	// Initialize the backend
 	factory, exists := c.PhysicalBackends[config.Storage.Type]
 	if !exists {
-		return nil, fmt.Errorf("Unknown storage type %s", config.Storage.Type)
+		return nil, fmt.Errorf("unknown storage type %s", config.Storage.Type)
 	}
 
 	// Do any custom configuration needed per backend
@@ -750,7 +750,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 			config.ClusterAddr = envCA
 		}
 		if len(config.ClusterAddr) == 0 {
-			return nil, errors.New("Cluster address must be set when using raft storage")
+			return nil, errors.New("cluster address must be set when using raft storage")
 		}
 	}
 
@@ -758,7 +758,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 	c.allLoggers = append(c.allLoggers, namedStorageLogger)
 	backend, err := factory(config.Storage.Config, namedStorageLogger)
 	if err != nil {
-		return nil, fmt.Errorf("Error initializing storage of type %s: %w", config.Storage.Type, err)
+		return nil, fmt.Errorf("error initializing storage of type %s: %w", config.Storage.Type, err)
 	}
 
 	return backend, nil
@@ -767,7 +767,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 func beginServiceRegistration(c *ServerCommand, config *server.Config) (sr.ServiceRegistration, error) {
 	sdFactory, ok := c.ServiceRegistrations[config.ServiceRegistration.Type]
 	if !ok {
-		return nil, fmt.Errorf("Unknown service_registration type %s", config.ServiceRegistration.Type)
+		return nil, fmt.Errorf("unknown service_registration type %s", config.ServiceRegistration.Type)
 	}
 
 	namedSDLogger := c.logger.Named("service_registration." + config.ServiceRegistration.Type)
@@ -828,7 +828,7 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 			} else {
 				tcpAddr, ok := ln.Addr().(*net.TCPAddr)
 				if !ok {
-					errMsg = errors.New("Failed to parse tcp listener")
+					errMsg = errors.New("failed to parse tcp listener")
 					return 1, nil, nil, errMsg
 				}
 				clusterAddr := &net.TCPAddr{
@@ -2547,6 +2547,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 	var ok bool
 	if config.HAStorage != nil {
 		if config.Storage.Type == storageTypeRaft && config.HAStorage.Type == storageTypeRaft {
+			//nolint:staticcheck // Raft is a proper noun
 			return false, errors.New("Raft cannot be set both as 'storage' and 'ha_storage'. Setting 'storage' to 'raft' will automatically set it up for HA operations as well")
 		}
 
@@ -2556,7 +2557,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 
 		factory, exists := c.PhysicalBackends[config.HAStorage.Type]
 		if !exists {
-			return false, fmt.Errorf("Unknown HA storage type %s", config.HAStorage.Type)
+			return false, fmt.Errorf("unknown HA storage type %s", config.HAStorage.Type)
 		}
 
 		namedHALogger := c.logger.Named("ha." + config.HAStorage.Type)
@@ -2567,18 +2568,18 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 		}
 
 		if coreConfig.HAPhysical, ok = habackend.(physical.HABackend); !ok {
-			return false, errors.New("Specified HA storage does not support HA")
+			return false, errors.New("specified HA storage does not support HA")
 		}
 
 		if !coreConfig.HAPhysical.HAEnabled() {
-			return false, errors.New("Specified HA storage has HA support disabled; please consult documentation")
+			return false, errors.New("specified HA storage has HA support disabled; please consult documentation")
 		}
 
 		coreConfig.RedirectAddr = config.HAStorage.RedirectAddr
 		disableClustering := config.HAStorage.DisableClustering
 
 		if config.HAStorage.Type == storageTypeRaft && disableClustering {
-			return disableClustering, errors.New("Disable clustering cannot be set to true when Raft is the HA storage type")
+			return disableClustering, errors.New("disable clustering cannot be set to true when Raft is the HA storage type")
 		}
 
 		if !disableClustering {
@@ -2590,7 +2591,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 			disableClustering := config.Storage.DisableClustering
 
 			if (config.Storage.Type == storageTypeRaft) && disableClustering {
-				return disableClustering, errors.New("Disable clustering cannot be set to true when Raft is the storage type")
+				return disableClustering, errors.New("disable clustering cannot be set to true when Raft is the storage type")
 			}
 
 			if !disableClustering {
@@ -2630,7 +2631,7 @@ func determineRedirectAddr(c *ServerCommand, coreConfig *vault.CoreConfig, confi
 		if err != nil {
 			retErr = fmt.Errorf("Error detecting api address: %s", err)
 		} else if redirect == "" {
-			retErr = errors.New("Failed to detect api address")
+			retErr = errors.New("failed to detect api address")
 		} else {
 			coreConfig.RedirectAddr = redirect
 		}
@@ -2687,7 +2688,7 @@ func findClusterAddress(c *ServerCommand, coreConfig *vault.CoreConfig, config *
 CLUSTER_SYNTHESIS_COMPLETE:
 
 	if coreConfig.RedirectAddr == coreConfig.ClusterAddr && len(coreConfig.RedirectAddr) != 0 {
-		return fmt.Errorf("Address %q used for both API and cluster addresses", coreConfig.RedirectAddr)
+		return fmt.Errorf("address %q used for both API and cluster addresses", coreConfig.RedirectAddr)
 	}
 
 	if coreConfig.ClusterAddr != "" {
@@ -2949,7 +2950,7 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config, lns []listenerutil.Listener) error {
 	for _, ln := range lns {
 		if ln.Config == nil {
-			return errors.New("Found nil listener config after parsing")
+			return errors.New("found nil listener config after parsing")
 		}
 
 		if err := config2.IsValidListener(ln.Config); err != nil {

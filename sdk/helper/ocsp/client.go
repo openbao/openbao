@@ -190,12 +190,12 @@ func returnOCSPStatus(ocspRes *ocsp.Response) *ocspStatus {
 	case ocsp.Unknown:
 		return &ocspStatus{
 			code: ocspStatusUnknown,
-			err:  errors.New("OCSP status unknown."),
+			err:  errors.New("OCSP status unknown"),
 		}
 	default:
 		return &ocspStatus{
 			code: ocspStatusOthers,
-			err:  fmt.Errorf("OCSP others. %v", ocspRes.Status),
+			err:  fmt.Errorf("OCSP others: %v", ocspRes.Status),
 		}
 	}
 }

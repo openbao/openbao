@@ -866,7 +866,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 	case bool:
 		// The CEL program decided the request is invalid and returned a bool.
-		return nil, errors.New("Request denied.")
+		return nil, errors.New("request denied")
 
 	default:
 		// Any other type is unexpected and indicates an error in MainProgram's policy.

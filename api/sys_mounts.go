@@ -107,6 +107,7 @@ func (c *Sys) RemountWithContext(ctx context.Context, from, to string) error {
 			return nil
 		}
 		if remountStatusResp.MigrationInfo.MigrationStatus == "failure" {
+			//nolint:staticcheck // user-facing error
 			return fmt.Errorf("Failure! Error encountered moving mount %s to %s, with migration ID %s", from, to, remountResp.MigrationID)
 		}
 		time.Sleep(1 * time.Second)

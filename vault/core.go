@@ -115,14 +115,17 @@ const (
 var (
 	// ErrAlreadyInit is returned if the core is already
 	// initialized. This prevents a re-initialization.
+	//nolint:staticcheck // Vault is a proper name
 	ErrAlreadyInit = errors.New("Vault is already initialized")
 
 	// ErrParallelInit is returned if the core is undergoing
 	// initialization on another node. This prevents a re-initialization.
+	//nolint:staticcheck // Vault is a proper name
 	ErrParallelInit = errors.New("Vault is being initialized on another node")
 
 	// ErrNotInit is returned if a non-initialized barrier
 	// is attempted to be unsealed.
+	//nolint:staticcheck // Vault is a proper name
 	ErrNotInit = errors.New("Vault is not initialized")
 
 	// ErrInternalError is returned when we don't want to leak
@@ -131,11 +134,12 @@ var (
 
 	// ErrHANotEnabled is returned if the operation only makes sense
 	// in an HA setting
+	//nolint:staticcheck // Vault is a proper name
 	ErrHANotEnabled = errors.New("Vault is not configured for highly-available mode")
 
 	// ErrIntrospectionNotEnabled is returned if "introspection_endpoint" is not
 	// enabled in the configuration file
-	ErrIntrospectionNotEnabled = errors.New("The Vault configuration must set \"introspection_endpoint\" to true to enable this endpoint")
+	ErrIntrospectionNotEnabled = errors.New("the Vault configuration must set \"introspection_endpoint\" to true to enable this endpoint")
 
 	// errNoMatchingMount is returned if the mount is not found
 	errNoMatchingMount = errors.New("no matching mount")
@@ -2770,6 +2774,7 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 		// in the config and disabled.
 
 		if unwrapSeal.BarrierType() == wrapping.WrapperTypeShamir {
+			//nolint:staticcheck // Shamir is a proper noun
 			return errors.New("Shamir seals cannot be set disabled (they should simply not be set)")
 		}
 	}
@@ -2779,7 +2784,7 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 	unwrapSeal.SetCore(c)
 
 	if existBarrierSealConfig.Type != wrapping.WrapperTypeShamir.String() && existRecoverySealConfig == nil {
-		return errors.New("Recovery seal configuration not found for existing seal")
+		return errors.New("recovery seal configuration not found for existing seal")
 	}
 
 	c.migrationInfo = &migrationInformation{

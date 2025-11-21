@@ -69,6 +69,8 @@ nfpms:
       - openbao
     conflicts:
       - openbao
+      - bao
+      - bao-hsm
     replaces:
       - bao-hsm
     bindir: /usr/bin

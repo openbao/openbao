@@ -1,0 +1,3 @@
+```release-note:feature
+Add **declarative plugin distribution via OCI images**: using the `plugin` configuration keyword.
+```

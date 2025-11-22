@@ -54,6 +54,21 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 
 	for _, pluginConfig := range plugins {
 		pluginLogger := d.logger.With("plugin", pluginConfig.Slug())
+		configErr := pluginConfig.Validate("")
+
+		// Display configuration errors if any and exit
+		for _, configError := range configErr {
+			d.logger.Error(configError.String())
+		}
+
+		if len(configErr) > 0 {
+			if d.shouldFailOnPluginError() {
+				return fmt.Errorf("plugin %s %s: config not valid", pluginConfig.Type, pluginConfig.Name)
+			} else {
+				pluginLogger.Warn("plugin config not valid")
+				continue
+			}
+		}
 		pluginLogger.Debug("processing plugin", "url", pluginConfig.URL(), "binary_name", pluginConfig.BinaryName)
 
 		// Fast path: check if plugin already exists and matches expected SHA256

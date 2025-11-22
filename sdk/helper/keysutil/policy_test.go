@@ -27,6 +27,8 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestPolicy_KeyEntryMapUpgrade(t *testing.T) {
@@ -988,4 +990,138 @@ func isUnsupportedGoHashType(hashType HashType, err error) bool {
 	}
 
 	return false
+}
+
+func TestKeyType_CapabilitiesAndString(t *testing.T) {
+	cases := []struct {
+		kt                               KeyType
+		wantEnc, wantDec, wantSign       bool
+		wantHashSig, wantDeriv           bool
+		wantKeyAgree, wantAssoc, wantImp bool
+		wantStr                          string
+	}{
+		// --- Symmetric Ciphers ---
+		{
+			kt:      KeyType_AES128_GCM96,
+			wantEnc: true, wantDec: true,
+			wantSign:    false,
+			wantHashSig: false, wantDeriv: true,
+			wantKeyAgree: false, wantAssoc: true, wantImp: false,
+			wantStr: "aes128-gcm96",
+		},
+		{
+			kt:      KeyType_AES256_GCM96,
+			wantEnc: true, wantDec: true,
+			wantSign:    false,
+			wantHashSig: false, wantDeriv: true,
+			wantKeyAgree: false, wantAssoc: true, wantImp: false,
+			wantStr: "aes256-gcm96",
+		},
+		{
+			kt:      KeyType_ChaCha20_Poly1305,
+			wantEnc: true, wantDec: true,
+			wantSign:    false,
+			wantHashSig: false, wantDeriv: true,
+			wantKeyAgree: false, wantAssoc: true, wantImp: false,
+			wantStr: "chacha20-poly1305",
+		},
+		{
+			kt:      KeyType_XChaCha20_Poly1305,
+			wantEnc: true, wantDec: true,
+			wantSign:    false,
+			wantHashSig: false, wantDeriv: true,
+			wantKeyAgree: false, wantAssoc: true, wantImp: false,
+			wantStr: "xchacha20-poly1305",
+		},
+		// --- ECDSA / ED25519 ---
+		{
+			kt:      KeyType_ECDSA_P256,
+			wantEnc: false, wantDec: false,
+			wantSign:    true,
+			wantHashSig: true, wantDeriv: false,
+			wantKeyAgree: true, wantAssoc: false, wantImp: true,
+			wantStr: "ecdsa-p256",
+		},
+		{
+			kt:      KeyType_ECDSA_P384,
+			wantEnc: false, wantDec: false,
+			wantSign:    true,
+			wantHashSig: true, wantDeriv: false,
+			wantKeyAgree: true, wantAssoc: false, wantImp: true,
+			wantStr: "ecdsa-p384",
+		},
+		{
+			kt:      KeyType_ECDSA_P521,
+			wantEnc: false, wantDec: false,
+			wantSign:    true,
+			wantHashSig: true, wantDeriv: false,
+			wantKeyAgree: true, wantAssoc: false, wantImp: true,
+			wantStr: "ecdsa-p521",
+		},
+		{
+			kt:      KeyType_ED25519,
+			wantEnc: false, wantDec: false,
+			wantSign:    true,
+			wantHashSig: false, wantDeriv: true,
+			wantKeyAgree: false, wantAssoc: false, wantImp: true,
+			wantStr: "ed25519",
+		},
+		// --- RSA ---
+		{
+			kt:      KeyType_RSA2048,
+			wantEnc: true, wantDec: true,
+			wantSign:    true,
+			wantHashSig: true, wantDeriv: false,
+			wantKeyAgree: false, wantAssoc: false, wantImp: true,
+			wantStr: "rsa-2048",
+		},
+		{
+			kt:      KeyType_RSA3072,
+			wantEnc: true, wantDec: true,
+			wantSign:    true,
+			wantHashSig: true, wantDeriv: false,
+			wantKeyAgree: false, wantAssoc: false, wantImp: true,
+			wantStr: "rsa-3072",
+		},
+		{
+			kt:      KeyType_RSA4096,
+			wantEnc: true, wantDec: true,
+			wantSign:    true,
+			wantHashSig: true, wantDeriv: false,
+			wantKeyAgree: false, wantAssoc: false, wantImp: true,
+			wantStr: "rsa-4096",
+		},
+		// --- HMAC ---
+		{
+			kt:      KeyType_HMAC,
+			wantEnc: false, wantDec: false,
+			wantSign:    false,
+			wantHashSig: false, wantDeriv: false,
+			wantKeyAgree: false, wantAssoc: false, wantImp: false,
+			wantStr: "hmac",
+		},
+		// -- Unknown ---
+		{
+			kt:      KeyType(999),
+			wantEnc: false, wantDec: false,
+			wantSign:    false,
+			wantHashSig: false, wantDeriv: false,
+			wantKeyAgree: false, wantAssoc: false, wantImp: false,
+			wantStr: "[unknown]",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.kt.String(), func(t *testing.T) {
+			require.Equal(t, tc.wantEnc, tc.kt.EncryptionSupported())
+			require.Equal(t, tc.wantDec, tc.kt.DecryptionSupported())
+			require.Equal(t, tc.wantSign, tc.kt.SigningSupported())
+			require.Equal(t, tc.wantHashSig, tc.kt.HashSignatureInput())
+			require.Equal(t, tc.wantDeriv, tc.kt.DerivationSupported())
+			require.Equal(t, tc.wantKeyAgree, tc.kt.KeyAgreementSupported())
+			require.Equal(t, tc.wantAssoc, tc.kt.AssociatedDataSupported())
+			require.Equal(t, tc.wantImp, tc.kt.ImportPublicKeySupported())
+			require.Equal(t, tc.wantStr, tc.kt.String())
+			require.Equal(t, tc.kt.EncryptionSupported(), tc.kt.DecryptionSupported(), "Encryption/Decryption support mismatch for %v", tc.kt)
+		})
+	}
 }

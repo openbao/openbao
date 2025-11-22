@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -23,6 +22,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/pluginutil/oci"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 // createTestOCIImage creates a test OCI image with a plugin binary
@@ -155,11 +155,10 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	}
 
 	// Create a temporary directory for plugins
-	tempDir, err := os.MkdirTemp("", "oci-reconcile-test")
+	tempDir, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
+		t.Fatal(err)
 	}
-	defer os.RemoveAll(tempDir) //nolint:errcheck
 
 	// The actual SHA256 of the Nomad plugin binary in ghcr.io/openbao/openbao-plugin-secrets-nomad:v0.1.4
 	nomadPluginSHA256 := "04f9a349982449415037dbb8a7854250dea4e2328ff890cf767a5d38739699d4"
@@ -169,7 +168,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 		PluginDirectory: tempDir,
 		Plugins: []*server.PluginConfig{
 			{
-				Type:       "secrets",
+				Type:       "secret",
 				Name:       "nomad",
 				Image:      "ghcr.io/openbao/openbao-plugin-secrets-nomad",
 				Version:    "v0.1.4",
@@ -181,12 +180,9 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	}
 
 	// Create a test core
-	logger := hclog.NewNullLogger()
-	core := &Core{
-		logger:          logger,
-		pluginDirectory: tempDir,
-		rawConfig:       &atomic.Value{},
-	}
+	core, _, _ := TestCoreUnsealed(t)
+	core.pluginDirectory = tempDir
+	core.pluginCatalog.directory = tempDir
 
 	// Store the config
 	core.rawConfig.Store(config)
@@ -218,8 +214,8 @@ func TestReconcileOCIPlugins(t *testing.T) {
 		t.Fatalf("Failed to read symlink: %v", err)
 	}
 
-	// Should point to .oci-cache/secrets-nomad/{sha256_prefix}/openbao-plugin-secrets-nomad
-	expectedPrefix := ".oci-cache/secrets-nomad/"
+	// Should point to .oci-cache/secret-nomad/{sha256_prefix}/openbao-plugin-secrets-nomad
+	expectedPrefix := ".oci-cache/secret-nomad/"
 	if !strings.HasPrefix(target, expectedPrefix) {
 		t.Errorf("Symlink target should start with %q, got %q", expectedPrefix, target)
 	}
@@ -248,7 +244,13 @@ func TestReconcileOCIPlugins(t *testing.T) {
 		t.Errorf("SHA256 mismatch: expected %s, got %s", nomadPluginSHA256, actualSHA256)
 	}
 
-	t.Logf("Successfully downloaded and verified Nomad plugin (size: %d bytes)", len(content))
+	// Try to register downloaded plugin
+	pluginType, _ := consts.ParsePluginType(config.Plugins[0].Type)
+	pluginSha, _ := hex.DecodeString(config.Plugins[0].SHA256Sum)
+	err = core.pluginCatalog.Set(context.Background(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha)
+	if err != nil {
+		t.Errorf("failed to register plugin: %v", err)
+	}
 }
 
 // TestPluginCacheStructure tests the new hidden cache structure and symlink functionality

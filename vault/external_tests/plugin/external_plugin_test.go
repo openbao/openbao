@@ -291,7 +291,7 @@ func testExternalPlugin_ContinueOnError(t *testing.T, mismatch bool, pluginType 
 
 // TestExternalPlugin_AuthMethod tests that we can build, register and use an
 // external auth method
-func TestExternalPlugin_AuthMethod(t *testing.T) {
+func TestExternalPlugin_AuthMethodBuild(t *testing.T) {
 	cluster := getCluster(t, consts.PluginTypeCredential, 5)
 	defer cluster.Cleanup()
 
@@ -338,7 +338,18 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 						"bind_secret_id": "true",
 						"period":         "300",
 					})
-					require.NoError(collect, err)
+					if err != nil {
+						var info string
+						for j := 0; j < 5; j++ {
+							resp, errRaw := cluster.Cores[j].Client.Logical().Read("sys/raw/core/auth")
+							require.NoError(collect, errRaw, "failed reading config")
+							require.NotNil(collect, resp)
+							require.NotNil(collect, resp.Data)
+							require.Contains(collect, resp.Data, "value")
+							info += fmt.Sprintf("[node %v]:\n%#v\n\n", j, resp.Data["value"])
+						}
+						require.NoError(collect, err, "\nadditional information:\n%v\n\n\n", info)
+					}
 				}, 20*time.Second, 10*time.Millisecond)
 
 				secret, err := client.Logical().Write("auth/"+pluginPath+"/role/role1/secret-id", nil)

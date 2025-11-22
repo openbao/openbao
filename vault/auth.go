@@ -94,7 +94,14 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 			locked = false
 		}
 	}
-	defer unlock()
+
+	return c.enableCredentialInternalWithLock(ctx, entry, updateStorage, unlock)
+}
+
+func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *MountEntry, updateStorage bool, unlock func()) error {
+	if unlock != nil {
+		defer unlock()
+	}
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {

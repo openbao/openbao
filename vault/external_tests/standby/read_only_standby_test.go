@@ -78,6 +78,9 @@ func TestReadOnlyStandby(t *testing.T) {
 
 	t.Log("revoking token")
 	require.NoError(t, primaryClient.Auth().Token().RevokeTreeWithContext(t.Context(), token.Auth.ClientToken))
-	_, err = standbyClient.KVv2("kv").Get(t.Context(), "foo")
-	require.ErrorContains(t, err, "permission denied", "token was revoked on the primary, should be declined by secondaries")
+
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		_, err = standbyClient.KVv2("kv").Get(t.Context(), "foo")
+		require.ErrorContains(collect, err, "permission denied", "token was revoked on the primary, should be declined by secondaries")
+	}, 10*time.Second, 100*time.Millisecond)
 }

@@ -930,7 +930,10 @@ func (c *PluginCatalog) setInternal(ctx context.Context, name string, pluginType
 	}
 
 	// Format: <plugin_directory>/.oci-cache/<plugin_slug>/<sha256_prefix>
-	shaPrefix := hex.EncodeToString(sha256)[:8]
+	shaPrefix := hex.EncodeToString(sha256)
+	if len(shaPrefix) >= 8 {
+		shaPrefix = shaPrefix[:8]
+	}
 	ociCachePath := filepath.Join(c.directory, oci.PluginCacheDir, fmt.Sprintf("%s-%s", pluginType.String(), name), shaPrefix)
 	if symAbs != c.directory && symAbs != ociCachePath {
 		return nil, errors.New("cannot execute files outside of configured plugin directory")

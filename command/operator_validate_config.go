@@ -164,7 +164,7 @@ func (c *OperatorValidateConfigCommand) validateConfig(ctx context.Context) {
 
 	server.flagConfigs = c.flagConfigs
 
-	_, configErrors, err := server.parseConfig()
+	_, configErrors, err := server.ParseConfig(server.flagConfigs)
 	if err != nil {
 		diagnose.Fail(ctx, fmt.Sprintf("Could not parse configuration: %v.", err))
 		return

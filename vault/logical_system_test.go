@@ -2231,7 +2231,7 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 		if err := file.Close(); err != nil {
 			t.Fatal(err)
 		}
-		err = c.pluginCatalog.Set(context.Background(), "token", consts.PluginTypeCredential, "v1.0.0", "foo", []string{}, []string{}, []byte{})
+		err = c.pluginCatalog.Set(context.Background(), "token", consts.PluginTypeCredential, "v1.0.0", "foo", []string{}, []string{}, []byte{}, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -3656,6 +3656,8 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 		"builtin":            true,
 		"version":            versions.GetBuiltinVersion(consts.PluginTypeDatabase, "mysql-database-plugin"),
 		"deprecation_status": deprecationStatus.String(),
+		"oci":                false,
+		"declarative":        false,
 	}
 	if !reflect.DeepEqual(actualRespData, expectedRespData) {
 		t.Fatalf("expected did not match actual, got %#v\n expected %#v\n", actualRespData, expectedRespData)
@@ -3703,12 +3705,14 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 
 	actual := resp.Data
 	expected := map[string]interface{}{
-		"name":    "test-plugin",
-		"command": filepath.Base(file.Name()),
-		"args":    []string{"--test"},
-		"sha256":  "31",
-		"builtin": false,
-		"version": "",
+		"name":        "test-plugin",
+		"command":     filepath.Base(file.Name()),
+		"args":        []string{"--test"},
+		"sha256":      "31",
+		"builtin":     false,
+		"version":     "",
+		"oci":         false,
+		"declarative": false,
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected did not match actual, got %#v\n expected %#v\n", actual, expected)
@@ -3753,12 +3757,14 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 
 	actual = resp.Data
 	expected = map[string]interface{}{
-		"name":    "test-plugin",
-		"command": filepath.Base(file.Name()),
-		"args":    []string{"--test"},
-		"sha256":  "31",
-		"builtin": false,
-		"version": "v0.1.0",
+		"name":        "test-plugin",
+		"command":     filepath.Base(file.Name()),
+		"args":        []string{"--test"},
+		"sha256":      "31",
+		"builtin":     false,
+		"version":     "v0.1.0",
+		"oci":         false,
+		"declarative": false,
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected did not match actual, got %#v\n expected %#v\n", actual, expected)
@@ -6132,7 +6138,7 @@ func TestValidateVersion_HelpfulErrorWhenBuiltinOverridden(t *testing.T) {
 	defer file.Close()
 
 	command := filepath.Base(file.Name())
-	err = core.pluginCatalog.Set(context.Background(), "kubernetes", consts.PluginTypeCredential, "", command, nil, nil, nil)
+	err = core.pluginCatalog.Set(context.Background(), "kubernetes", consts.PluginTypeCredential, "", command, nil, nil, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}

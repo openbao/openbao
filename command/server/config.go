@@ -82,6 +82,10 @@ type Config struct {
 	// Plugins specifies declaratively defined external plugins
 	Plugins                []*PluginConfig `hcl:"-"`
 	PluginDownloadBehavior string          `hcl:"plugin_download_behavior"`
+	PluginAutoDownload     bool            `hcl:"-"`
+	PluginAutoDownloadRaw  interface{}     `hcl:"plugin_auto_download"`
+	PluginAutoRegister     bool            `hcl:"-"`
+	PluginAutoRegisterRaw  interface{}     `hcl:"plugin_auto_register"`
 
 	EnableIntrospectionEndpoint    bool        `hcl:"-"`
 	EnableIntrospectionEndpointRaw interface{} `hcl:"introspection_endpoint,alias:EnableIntrospectionEndpoint"`
@@ -299,10 +303,13 @@ type PluginConfig struct {
 
 	Type       string
 	Name       string
-	Image      string `hcl:"image"`
-	Version    string `hcl:"version"`
-	BinaryName string `hcl:"binary_name"`
-	SHA256Sum  string `hcl:"sha256sum"`
+	Image      string   `hcl:"image"`
+	Version    string   `hcl:"version"`
+	BinaryName string   `hcl:"binary_name"`
+	SHA256Sum  string   `hcl:"sha256sum"`
+	Command    string   `hcl:"command"`
+	Args       []string `hcl:"args"`
+	Env        []string `hcl:"env"`
 }
 
 func (p *PluginConfig) URL() string {
@@ -315,6 +322,14 @@ func (p *PluginConfig) Slug() string {
 
 func (p *PluginConfig) FullName() string {
 	return fmt.Sprintf("%s-%s-%s", p.Type, p.Name, p.Version)
+}
+
+func (p *PluginConfig) CommandPath() string {
+	if p.Image != "" {
+		return p.FullName()
+	}
+
+	return p.Command
 }
 
 // Validate validates a PluginConfig
@@ -347,9 +362,13 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 	}
 
 	// Validate Image is not empty
-	if p.Image == "" {
+	if p.Image == "" && p.Command == "" {
 		results = append(results, configutil.ConfigError{
-			Problem: fmt.Sprintf("plugin %q: image cannot be empty", p.Slug()),
+			Problem: fmt.Sprintf("plugin %q: image and command cannot both be empty", p.Slug()),
+		})
+	} else if p.Image != "" && p.Command != "" {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: command must be empty if image is specified", p.Slug()),
 		})
 	}
 
@@ -368,9 +387,9 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 	}
 
 	// Validate binary_name is not empty
-	if p.BinaryName == "" {
+	if p.BinaryName == "" && p.Image != "" {
 		results = append(results, configutil.ConfigError{
-			Problem: fmt.Sprintf("plugin %q: binary_name cannot be empty", p.Slug()),
+			Problem: fmt.Sprintf("plugin %q: binary_name cannot be empty when image specified", p.Slug()),
 		})
 	}
 
@@ -385,6 +404,14 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 		if err != nil {
 			results = append(results, configutil.ConfigError{
 				Problem: fmt.Sprintf("plugin %q: sha256sum is not valid hex encoded", p.Slug()),
+			})
+		}
+	}
+
+	for index, envVar := range p.Env {
+		if !strings.Contains(envVar, "=") {
+			results = append(results, configutil.ConfigError{
+				Problem: fmt.Sprintf("plugin %q: env %d: environment variable must contain '=' to separate variable name from value", p.Slug(), index),
 			})
 		}
 	}
@@ -654,6 +681,18 @@ func (c *Config) Merge(c2 *Config) *Config {
 	result.PluginDownloadBehavior = c.PluginDownloadBehavior
 	if c2.PluginDownloadBehavior != "" {
 		result.PluginDownloadBehavior = c2.PluginDownloadBehavior
+	}
+
+	result.PluginAutoDownload = c.PluginAutoDownload
+	if c2.PluginAutoDownloadRaw != nil {
+		result.PluginAutoDownload = c2.PluginAutoDownload
+		result.PluginAutoDownloadRaw = c2.PluginAutoDownloadRaw
+	}
+
+	result.PluginAutoRegister = c.PluginAutoRegister
+	if c2.PluginAutoRegisterRaw != nil {
+		result.PluginAutoRegister = c2.PluginAutoRegister
+		result.PluginAutoRegisterRaw = c2.PluginAutoRegisterRaw
 	}
 
 	return result
@@ -981,6 +1020,22 @@ func ParseConfig(d, source string) (*Config, error) {
 		}
 
 		result.Plugins = plugins
+	}
+
+	if result.PluginAutoDownloadRaw != nil {
+		autoDownload, err := parseutil.ParseBool(result.PluginAutoDownloadRaw)
+		if err != nil {
+			return nil, err
+		}
+		result.PluginAutoDownload = autoDownload
+	}
+
+	if result.PluginAutoRegisterRaw != nil {
+		autoRegister, err := parseutil.ParseBool(result.PluginAutoRegisterRaw)
+		if err != nil {
+			return nil, err
+		}
+		result.PluginAutoRegister = autoRegister
 	}
 
 	// Remove all unused keys from Config that were satisfied by SharedConfig.

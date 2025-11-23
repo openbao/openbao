@@ -729,7 +729,7 @@ func printFlagDetail(w io.Writer, f *flag.Flag) {
 	fmt.Fprintf(w, "%s\n\n", indented)
 }
 
-func (c *BaseCommand) ParseConfig(configFiles []string) (*server.Config, []configutil.ConfigError, error) {
+func (c *BaseCommand) ParseServerConfig(configFiles []string) (*server.Config, []configutil.ConfigError, error) {
 	var configErrors []configutil.ConfigError
 	// Load the configuration
 	var config *server.Config

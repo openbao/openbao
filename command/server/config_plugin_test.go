@@ -118,7 +118,7 @@ plugin "secret" "aws" {
   sha256sum = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
 }`,
 			expectError: true,
-			errorMsg:    "image cannot be empty",
+			errorMsg:    "image and command cannot both be empty",
 		},
 		{
 			name: "invalid url",

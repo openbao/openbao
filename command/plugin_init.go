@@ -40,7 +40,12 @@ func (c *PluginInitCommand) Help() string {
 Usage: bao plugin init [options]
 
   This command reads the plugin configuration from the server config files,
-  downloads the specified OCI images and extracts the contained plugin binaries.
+  downloads the specified OCI images, and extracts the contained plugin
+  binaries. This command does not automatically register the plugin to the
+  server, which is handled automatically via the server on startup and SIGHUP
+  if 'plugin_auto_register=true' is set in the configuration file. When the
+  server's configuration includes 'plugin_auto_download=true', plugins will be
+  automatically downloaded on server startup and on SIGHUP.
 
   Initialize plugins using configuration files:
 
@@ -128,7 +133,7 @@ func (c *PluginInitCommand) runPluginInit() int {
 	}
 
 	// Parse configuration using the same logic as the server command
-	config, configErrors, err := c.ParseConfig(c.flagConfigs)
+	config, configErrors, err := c.ParseServerConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error parsing configuration: %v", err))
 		return 1

@@ -371,7 +371,7 @@ func (c *ServerCommand) flushLog() {
 }
 
 func (c *ServerCommand) runRecoveryMode() int {
-	config, configErrors, err := c.ParseConfig(c.flagConfigs)
+	config, configErrors, err := c.ParseServerConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -979,7 +979,7 @@ func (c *ServerCommand) Run(args []string) int {
 		config.Listeners[0].Telemetry.UnauthenticatedMetricsAccess = true
 	}
 
-	parsedConfig, configErrors, err := c.ParseConfig(c.flagConfigs)
+	parsedConfig, configErrors, err := c.ParseServerConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -1517,6 +1517,9 @@ func (c *ServerCommand) Run(args []string) int {
 			// Update audit devices if necessary. This cannot be done as part of
 			// c.Reload as it needs the reloadFuncsLock.
 			core.ReloadAuditLogs()
+
+			// Update plugins as necessary.
+			core.ReloadPlugins()
 
 			// Reload log level for loggers
 			if config.LogLevel != "" {

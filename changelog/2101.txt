@@ -1,0 +1,3 @@
+```release-note:improvement
+database: all database plugins now ignore "not found" errors on revoke by default. See [Plugin Author Guide](https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors) for rationale.
+```

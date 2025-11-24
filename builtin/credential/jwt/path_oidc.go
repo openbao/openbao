@@ -439,7 +439,8 @@ func (b *jwtAuthBackend) processToken(ctx context.Context, req *logical.Request,
 		Alias:        alias,
 		GroupAliases: groupAliases,
 		InternalData: map[string]interface{}{
-			"role": roleName,
+			"role":      roleName,
+			"role_type": "native",
 		},
 		Metadata: tokenMetadata,
 		LeaseOptions: logical.LeaseOptions{

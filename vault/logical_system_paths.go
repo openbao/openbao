@@ -1758,6 +1758,10 @@ func (b *SystemBackend) pluginsCatalogCRUDPath() *framework.Path {
 				Type:        framework.TypeString,
 				Description: strings.TrimSpace(sysHelp["plugin-catalog_version"][0]),
 			},
+			"oci": {
+				Type:        framework.TypeBool,
+				Description: strings.TrimSpace(sysHelp["plugin-catalog_oci"][0]),
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -1830,6 +1834,16 @@ func (b *SystemBackend) pluginsCatalogCRUDPath() *framework.Path {
 							"deprecation_status": {
 								Type:     framework.TypeString,
 								Required: false,
+							},
+							"oci": {
+								Type:        framework.TypeBool,
+								Description: strings.TrimSpace(sysHelp["plugin-catalog_oci"][0]),
+								Required:    true,
+							},
+							"declarative": {
+								Type:        framework.TypeBool,
+								Description: strings.TrimSpace(sysHelp["plugin-catalog_declarative"][0]),
+								Required:    true,
 							},
 						},
 					}},

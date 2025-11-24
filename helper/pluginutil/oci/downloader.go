@@ -69,6 +69,12 @@ func (d *PluginDownloader) ReconcilePlugins(ctx context.Context) error {
 				continue
 			}
 		}
+
+		// Skip plugins which are manually downloaded but defined declaratively.
+		if pluginConfig.Image == "" {
+			continue
+		}
+
 		pluginLogger.Debug("processing plugin", "url", pluginConfig.URL(), "binary_name", pluginConfig.BinaryName)
 
 		// Fast path: check if plugin already exists and matches expected SHA256

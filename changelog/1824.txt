@@ -1,3 +1,6 @@
 ```release-note:feature
 Add **declarative plugin distribution via OCI images**: using the `plugin` configuration keyword.
+  - Plugins can be automatically downloaded via the `plugin_auto_download=true` option.
+  - Plugins can be manually downloaded via the `bao plugin init` command.
+  - Plugins can be automatically registered via the `plugin_auto_register=true` option, regardless if they were manually provisioned or from OCI images.
 ```

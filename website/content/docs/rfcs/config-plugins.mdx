@@ -1,0 +1,235 @@
+---
+sidebar_label: Declarative Plugins
+description: |-
+  An OpenBao RFC for defining plugins in the server configuration
+  file through the complete plugin life cycle from download to
+  registration and removal.
+---
+
+# Plugin Distribution via OCI Images
+
+### Summary
+
+This RFC proposes adopting Open Container Initiative (OCI) images as the primary
+method for distributing OpenBao plugins. Users will define required plugins
+within a new `plugin` configuration block, specifying the OCI image URL, the
+plugin binary's name within the image, the version and its SHA256 checksum. On startup,
+OpenBao will check for locally cached binaries, verify their integrity, and only
+download and extract new or updated plugin binaries from the specified OCI
+images if necessary. This approach uses existing container ecosystem tooling and
+infrastructure for robust, secure, and efficient plugin management.
+
+### Problem Statement
+
+Currently, OpenBao requires plugins to be manually placed into a designated
+directory. This manual process lacks built-in mechanisms for:
+
+  * **Automated Discovery and Installation:** Users must manually acquire plugin
+    binaries, often from disparate sources, and correctly place them.
+  * **Integrity Verification:** There's no inherent, automated way to verify the
+    authenticity and integrity of downloaded plugins beyond manual checksum
+    checks.
+  * **Version Management:** Managing specific plugin versions across different
+    OpenBao instances is a manual and error-prone process.
+  * **Supply Chain Security:** Without a standardized, verifiable distribution
+    mechanism, ensuring the security of plugin binaries from their source to
+    deployment is challenging.
+
+A more robust, automated, and secure distribution mechanism is needed to
+streamline plugin management, enhance security, and improve the overall user and
+developer experience for OpenBao.
+
+### User-facing description
+
+As an OpenBao operator, you will now manage your desired plugins directly within
+OpenBao's configuration file using a new `plugin` block. For each plugin, you
+will provide:
+
+  * The **OCI image URL** where the plugin is hosted (e.g., on Docker Hub,
+    Artifactory, or your private registry).
+  * The **exact name of the plugin binary** inside that image.
+  * The **version of the plugin**.
+  * The **SHA256 checksum** of the plugin binary to ensure its integrity.
+
+**Example `plugin` configuration blocks:**
+
+```hcl
+plugin "secret" "my-secret-plugin" {
+  image = "myregistry.com/openbao/plugins/my-secret-plugin:1.0.0@sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+  binary_name = "my-secret-plugin"
+  version     = "1.0.0"
+  sha256sum   = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  env         = ["SOME_ENV=custom-value"]
+}
+
+plugin "auth" "another-auth-plugin" {
+  image = "anotherregistry.io/openbao/plugins/auth-plugin:2.1.0@sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+  binary_name = "auth-plugin"
+  version     = "2.1.0"
+  sha256sum   = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+  args        = ["-my-arg"]
+}
+```
+
+On OpenBao startup, the system will automatically check if these plugins are
+already available locally with the correct checksum. If not, it will download
+the specified OCI image, extract the plugin binary, verify its checksum, and
+place it into the designated plugin directory. This ensures your OpenBao
+instance always has the correct and verified versions of your required plugins.
+
+### Technical description
+
+The proposed solution involves the following technical components and logic:
+
+1.  **Configuration Parsing:** OpenBao's configuration loader will be extended
+    to parse a new top-level `plugin` block. This block will be a single plugin,
+    with two required keys: the plugin type (e.g., `secret`) and the plugin name
+    (e.g., `"my-secret-plugin"`) and the object containings `image` (string),
+    `binary_name` (string), and `sha256sum` (string).
+2.  **Plugin Directory Management:** OpenBao will use a configurable plugin
+    directory (e.g., via `VAULT_PLUGIN_DIR` environment variable or a
+    configuration parameter). This directory will be where extracted plugin
+    binaries are stored.
+3.  **Startup Plugin Loading Logic (Per Plugin):**
+      * **Local Cache Check:** For each plugin defined in the configuration,
+        OpenBao will first construct the expected path to the plugin binary
+        within the plugin directory (e.g.,
+        `${VAULT_PLUGIN_DIR}/${binary_name}`). It will attempt to read this
+        local file.
+      * **Local Checksum Verification:** If the local file exists and is
+        readable, OpenBao will compute its SHA256 checksum. This local checksum
+        will be compared against the `sha256sum` provided in the `plugins`
+        configuration block.
+      * **Conditional Download:**
+          * If the local file's checksum matches the configured `sha256sum`,
+            OpenBao will consider the plugin correctly loaded from the local
+            cache and proceed to initialize it. No network operation for this
+            plugin will occur.
+          * If the local file does not exist, is unreadable, or its checksum
+            *does not match* the configured `sha256sum`, OpenBao will initiate
+            the download process.
+      * **OCI Image Pull:** OpenBao will use an OCI client library (e.g.,
+        `go-containerregistry` or similar) to pull the OCI image specified by
+        the `image`. This URL is expected to support standard OCI registry
+        authentication mechanisms (e.g., Docker Hub, private registries).
+      * **Binary Extraction:** Once the OCI image is pulled, OpenBao will
+        inspect its contents. It will identify and extract the file specified by
+        `binary_name` from the image's layers. The image should ideally be a
+        single-file artifact or a simple tarball containing the plugin binary.
+      * **Extracted Binary Checksum Verification:** The SHA256 checksum of the
+        *extracted* plugin binary will be computed and compared against the
+        `sha256sum` from the configuration. This is a crucial security step.
+      * **Installation:** If the checksum matches, the extracted binary will be
+        moved/copied into the designated plugin directory, overwriting any
+        previous version if one existed. It should be made executable.
+      * **Error Handling:** Robust error handling will be implemented at each
+        step (network errors, OCI image not found, extraction failures, checksum
+        mismatches, file system errors). Plugin loading failures will be logged
+        with sufficient detail, potentially preventing OpenBao from fully
+        starting if a critical plugin fails.
+
+### Rationale and alternatives
+
+The choice of OCI images for plugin distribution is based on several key
+rationales:
+
+  * **Industry Standard:** OCI is the de facto standard for container image
+    distribution, benefiting from widespread adoption, mature tooling, and
+    established security practices.
+  * **Existing Infrastructure:** Leveraging existing OCI registries means
+    OpenBao doesn't need to build, host, and maintain a separate, dedicated
+    registry service, significantly reducing operational overhead for the
+    project.
+  * **Security Features:** OCI registries and image formats support features
+    like content-addressable storage (via digests), which inherently ensures
+    immutability, and often integrate with image signing (e.g., Notary, Cosign)
+    for enhanced supply chain security.
+  * **Familiarity for Users:** Many OpenBao users are already familiar with OCI
+    images and registries from their containerized deployments, reducing the
+    learning curve.
+
+**Alternatives:**
+
+  * **Dedicated OpenBao Plugin Registry:** While offering full control, this
+    approach introduces significant complexity in terms of development, hosting,
+    maintenance, and security (e.g., building a CDN, handling authentication,
+    DDoS protection). The benefits are largely outweighed by the overhead
+    compared to leveraging OCI.
+  * **Direct HTTP/S Downloads:** This would be simpler to implement but lacks
+    the inherent integrity verification (beyond a checksum file), rich metadata,
+    and established security infrastructure provided by OCI registries. It would
+    also require OpenBao to manage more complex download logic.
+  * **Package Managers (e.g., APT, YUM, Homebrew):** While good for system-level
+    binaries, this would tie OpenBao to specific operating system ecosystems and
+    introduce external dependencies beyond the application's control for plugin
+    management. It's less portable and flexible for cross-platform plugin
+    distribution.
+
+### Downsides
+
+  * **Dependency on OCI Registries:** OpenBao's plugin distribution becomes
+    dependent on the availability and performance of external OCI registries.
+    Private registries mitigate this but still require external infrastructure.
+  * **Initial Download Size:** The initial download of an OCI image might be
+    larger than just the plugin binary if the image contains other files or
+    layers, though well-crafted plugin images should be minimal.
+  * **Client Library Complexity:** Integrating an OCI client library adds a new
+    dependency and complexity to the OpenBao codebase.
+  * **Authentication Complexity:** While standard, OCI registry authentication
+    (e.g., for private registries) might require additional configuration within
+    OpenBao, potentially involving credentials management.
+
+### Security Implications
+
+This proposal significantly improves OpenBao's plugin security posture:
+
+  * **Mandatory SHA256 Verification:** By requiring and verifying the SHA256 sum
+    of the plugin binary, we ensure its integrity. Any tampering during
+    transmission or within the OCI image will be detected, preventing the
+    execution of malicious or corrupted plugins.
+  * **Immutable Image Digests:** Encouraging the use of OCI image digests in the
+    `image` (e.g., `registry.com/...@sha256:digest`) provides strong content
+    addressability. This ensures that the exact, same image bits are always
+    retrieved, eliminating mutable tag vulnerabilities.
+  * **Leveraging OCI Registry Security:** OCI registries often provide features
+    like access control, vulnerability scanning (e.g., Trivy, Clair), and audit
+    logs, contributing to a more secure supply chain.
+  * **Future Cryptographic Signing:** This design lays the groundwork for future
+    integration of more robust cryptographic signature verification of OCI
+    images (e.g., using Notary or Cosign). This would allow OpenBao to verify
+    that the image was indeed published by a trusted entity.
+  * **Reduced Manual Risk:** Automating the plugin acquisition and verification
+    process reduces the human element, minimizing the risk of manual errors or
+    accidental download of malicious binaries.
+
+### User/Developer Experience
+
+**User Experience:**
+
+  * **Simplified Configuration:** Users define plugins directly in the HCL
+    configuration, making plugin dependencies explicit and declarative.
+  * **Automated Management:** OpenBao automatically handles downloading,
+    verifying, and placing plugins, significantly reducing manual effort.
+  * **Reproducibility:** The combination of OCI image URLs (ideally with
+    digests) and binary SHA256 sums ensures that OpenBao deployments are highly
+    reproducible across different environments.
+
+**Developer Experience:**
+
+  * **Standardized Packaging:** Plugin developers will package their plugins
+    into OCI images, a familiar process for many.
+  * **Simplified Distribution:** Developers can leverage public or private OCI
+    registries for distributing their plugins without needing to set up custom
+    download servers.
+  * **Tooling Consistency:** Developers can use standard OCI tools (e.g.,
+    `oras`, `docker build`) to create and push their plugin images.
+
+### Unresolved questions
+
+  * **Image Structure Requirements:** What are the strict requirements for the
+    OCI image structure? Will it be a single tarball with the binary, or do we
+    need to define a custom Manifest structure similar to [OpenTofu](https://opentofu.org/docs/main/cli/oci_registries/provider-mirror/#manifest-structure)?
+  * **Plugin registration:** Should the downloaded plugins also automatically be
+    registered in the plugin catalog?
+  * **Multiple Plugin Versions:** How to best handle mulitple versions of the same plugin?
+

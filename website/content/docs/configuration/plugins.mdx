@@ -1,11 +1,12 @@
 ---
+sidebar_label: plugin
 description: >-
-  OpenBao server configuration reference for OCI plugin parameters.
+  OpenBao server configuration reference for declarative plugin parameters.
 ---
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# OCI plugins
+# Declarative plugins
 
 OpenBao supports the distribution of plugins in Open Container Initiative (OCI)
 images. Operators can define the desired plugins for their OpenBao cluster
@@ -30,7 +31,14 @@ managing the plugin binaries:
   * **Supply Chain Security:** Using OCI registries for plugin distribution
     allows operators to make use of the registries security features like
     authentication, vulnerability scanning and immutable storage.
- 
+
+:::info
+
+Even if plugins are not distributed via OCI images, manually downloaded plugins
+can also be registered.
+
+:::
+
 ## `plugin`
 
 A `plugin` block defines an OCI-based plugin to download.
@@ -44,20 +52,40 @@ plugin "type" "name" {
 }
 ```
 
-Multiple `plugin` blocks may exist and plugins are downloaded in the order they
+or it specifies a plugin to automatically register that was manually downloaded.
+
+```hcl
+plugin "type" "name" {
+  command     = "plugin"
+  version     = "v0.0.0"
+  binary_name = "plugin-binary-name"
+  sha256sum   = "sha256-checksum"
+  env         = ["MY_ENV=value"]
+  args        = ["-some-argument"]
+}
+
+```
+
+Multiple `plugin` blocks may exist and OCI plugins are downloaded in the order they
 are specified in the configuration file(s). Blocks may share the same `type` and
 `name` but must have different a `version`. This allows for seamless upgrades of
-plugin versions. 
+plugin versions.
 
 ### Parameters
 
-- `image` `(string: required)` - OCI image URL including registry and repository.
+- `image` `(string: required)` - OCI image URL including registry and repository. Conflicts with the `command` value. One of `image` or `command` is required.
+
+- `command` `(string: required)` - Command name of the plugin that has been manually downloaded. Conflicts with the `image` value. One of `image` or `command` is required.
 
 - `version` `(string: required)` - The image version or tag.
 
 - `binary_name` `(string: required)` - Name of the plugin binary file within the OCI image.
 
 - `sha256sum` `(string: required)` - Expected SHA256 checksum of the plugin binary. Must be a 64-character hexadecimal string.
+
+- `args` `([]string: optional)` - Any arguments to pass to the running plugin. Only used if `plugin_auto_register=true` is set at the global level.
+
+- `env` `([]string: optional)` - Any environment variables to pass to the running plugin. Only used if `plugin_auto_register=true` is set at the global level.
 
 ### Example
 
@@ -98,7 +126,7 @@ plugin "secret" "aws" {
 
 ## `plugin_download_behavior`
 
-Controls server behavior when plugin downloads fail.
+A string which controls server behavior when plugin downloads fail.
 
 ```hcl
 plugin_download_behavior = "fail"
@@ -108,6 +136,32 @@ plugin_download_behavior = "fail"
 
 - `"fail"` `(default)` - Server startup fails if any plugin download fails
 - `"warn"` - Log warnings for failed downloads but continue startup
+
+## `plugin_auto_download`
+
+A boolean which controls server behavior of whether or not plugins are automatically downloaded on server startup and `SIGHUP`.
+
+```hcl
+plugin_auto_download = true
+```
+
+### Values
+
+- `true` - server startup and `SIGHUP` triggers downloading of plugins; can still be manually downloaded with `bao plugin init`.
+- `false` - only `bao plugin init` will manually download plugins.
+
+## `plugin_auto_register`
+
+A boolean which controls server behavior of whether or not plugins are automatically registered on server startup and `SIGHUP`.
+
+```hcl
+plugin_auto_register = true
+```
+
+### Values
+
+- `true` - server startup and `SIGHUP` triggers registering of plugins; can still be manually registered with `bao plugin register`.
+- `false` - only `bao plugin register` will manually register plugins.
 
 ## Authentication
 

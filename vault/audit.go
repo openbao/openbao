@@ -658,7 +658,7 @@ func (c *Core) ReloadAuditLogs() {
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
 
-	if c.Sealed() {
+	if c.Sealed() || (c.standby.Load() && !c.StandbyReadsEnabled()) || c.activeContext == nil {
 		return
 	}
 

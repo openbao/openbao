@@ -163,6 +163,9 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	// The actual SHA256 of the Nomad plugin binary in ghcr.io/openbao/openbao-plugin-secrets-nomad:v0.1.4
 	nomadPluginSHA256 := "04f9a349982449415037dbb8a7854250dea4e2328ff890cf767a5d38739699d4"
 
+	// The actual SHA256 of the AWS plugin binary in ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1
+	awsPluginSHA256 := "c8d23e6d31be2a59d0c269bb7243158c4c61c5073f7ba50ce6f1a0050e023e2d"
+
 	// Create a test configuration with the real Nomad plugin
 	config := &server.Config{
 		PluginDirectory: tempDir,
@@ -177,6 +180,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 			},
 		},
 		PluginDownloadBehavior: "continue", // Don't fail startup on download errors during testing
+		PluginAutoDownload:     true,
 	}
 
 	// Create a test core
@@ -189,7 +193,7 @@ func TestReconcileOCIPlugins(t *testing.T) {
 
 	// Test the OCI plugin reconciliation
 	ctx := context.Background()
-	err = core.reconcileOCIPlugins(ctx)
+	err = core.reconcileOCIPlugins(ctx, false /* standby */)
 	// Verify the download worked
 	if err != nil {
 		t.Fatalf("OCI plugin reconciliation failed: %v", err)
@@ -247,9 +251,104 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	// Try to register downloaded plugin
 	pluginType, _ := consts.ParsePluginType(config.Plugins[0].Type)
 	pluginSha, _ := hex.DecodeString(config.Plugins[0].SHA256Sum)
-	err = core.pluginCatalog.Set(context.Background(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha)
+
+	err = core.pluginCatalog.Set(context.Background(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha, false)
+	if err == nil {
+		t.Errorf("expected failed to register OCI plugin without setting oci=true: %v", err)
+	}
+
+	err = core.pluginCatalog.Set(context.Background(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version, config.Plugins[0].FullName(), []string{}, []string{}, pluginSha, true)
 	if err != nil {
 		t.Errorf("failed to register plugin: %v", err)
+	}
+
+	// Try to unregister it.
+	err = core.pluginCatalog.Delete(context.Background(), config.Plugins[0].Name, pluginType, config.Plugins[0].Version)
+	if err != nil {
+		t.Errorf("failed to deregister plugin: %v", err)
+	}
+
+	// Update the config to add another plugin.
+	config = &server.Config{
+		PluginDirectory: tempDir,
+		Plugins: []*server.PluginConfig{
+			{
+				Type:       "secret",
+				Name:       "nomad",
+				Image:      "ghcr.io/openbao/openbao-plugin-secrets-nomad",
+				Version:    "v0.1.4",
+				BinaryName: "openbao-plugin-secrets-nomad",
+				SHA256Sum:  nomadPluginSHA256,
+			},
+			{
+				Type:       "secret",
+				Name:       "aws",
+				Image:      "ghcr.io/openbao/openbao-plugin-secrets-aws",
+				Version:    "v0.0.1",
+				BinaryName: "openbao-plugin-secrets-aws",
+				SHA256Sum:  awsPluginSHA256,
+			},
+		},
+		PluginDownloadBehavior: "continue", // Don't fail startup on download errors during testing
+		PluginAutoDownload:     true,
+		PluginAutoRegister:     true,
+	}
+	core.rawConfig.Store(config)
+
+	// Reconcile, but this time use the SIGHUP handler.
+	core.ReloadPlugins()
+
+	// We should have both nomad and aws in our list.
+	list, err := core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
+	if err != nil {
+		t.Fatalf("failed to list plugins after additions")
+	}
+
+	for _, name := range []string{"nomad", "aws"} {
+		found := false
+		for _, plugin := range list {
+			if plugin.Name == name {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			t.Fatalf("failed to find %v plugins catalog:\nlist: %#v", name, list)
+		}
+	}
+
+	// Now remove them from the config and ensure they're deregistered.
+	config = &server.Config{
+		PluginDirectory:        tempDir,
+		Plugins:                []*server.PluginConfig{},
+		PluginDownloadBehavior: "continue", // Don't fail startup on download errors during testing
+		PluginAutoDownload:     true,
+		PluginAutoRegister:     true,
+	}
+	core.rawConfig.Store(config)
+
+	// Reconcile, but this time use the SIGHUP handler.
+	core.ReloadPlugins()
+
+	// We should have both nomad and aws in our list.
+	list, err = core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
+	if err != nil {
+		t.Fatalf("failed to list plugins after removal")
+	}
+
+	for _, name := range []string{"nomad", "aws"} {
+		found := false
+		for _, plugin := range list {
+			if plugin.Name == name {
+				found = true
+				break
+			}
+		}
+
+		if found {
+			t.Fatalf("unexpectedly found %v plugin in catalog after removal from config:\nlist: %#v", name, list)
+		}
 	}
 }
 

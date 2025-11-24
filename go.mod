@@ -133,27 +133,27 @@ require (
 	github.com/sasha-s/go-deadlock v0.3.5
 	github.com/sethvargo/go-limiter v1.0.0
 	github.com/shirou/gopsutil/v4 v4.25.6
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/tink-crypto/tink-go/v2 v2.5.0
 	github.com/yeqown/go-qrcode/v2 v2.2.5
 	go.etcd.io/bbolt v1.4.3
-	go.opentelemetry.io/otel v1.37.0
-	go.opentelemetry.io/otel/sdk v1.37.0
-	go.opentelemetry.io/otel/trace v1.37.0
+	go.opentelemetry.io/otel v1.38.0
+	go.opentelemetry.io/otel/sdk v1.38.0
+	go.opentelemetry.io/otel/trace v1.38.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.43.0
-	golang.org/x/exp v0.0.0-20251017212417-90e834f514db
-	golang.org/x/net v0.46.0
-	golang.org/x/oauth2 v0.32.0
-	golang.org/x/sync v0.17.0
-	golang.org/x/sys v0.37.0
-	golang.org/x/term v0.36.0
-	golang.org/x/text v0.30.0
+	golang.org/x/crypto v0.45.0
+	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
+	golang.org/x/net v0.47.0
+	golang.org/x/oauth2 v0.33.0
+	golang.org/x/sync v0.18.0
+	golang.org/x/sys v0.38.0
+	golang.org/x/term v0.37.0
+	golang.org/x/text v0.31.0
 	google.golang.org/api v0.246.0
-	google.golang.org/grpc v1.76.0
-	google.golang.org/protobuf v1.36.8
+	google.golang.org/grpc v1.77.0
+	google.golang.org/protobuf v1.36.10
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0
 	k8s.io/api v0.33.0
 	k8s.io/apimachinery v0.33.0
@@ -168,7 +168,7 @@ require (
 	cloud.google.com/go v0.121.2 // indirect
 	cloud.google.com/go/auth v0.16.3 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
-	cloud.google.com/go/compute/metadata v0.7.0 // indirect
+	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	cloud.google.com/go/iam v1.5.2 // indirect
 	cloud.google.com/go/kms v1.22.0 // indirect
 	cloud.google.com/go/longrunning v0.6.7 // indirect
@@ -350,18 +350,18 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zclconf/go-cty v1.13.0 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
-	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
+	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
-	go.opentelemetry.io/otel/metric v1.37.0 // indirect
+	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
-	golang.org/x/mod v0.29.0 // indirect
+	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	golang.org/x/tools v0.38.0 // indirect
+	golang.org/x/tools v0.39.0 // indirect
 	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20251022142026-3a174f9686a8 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

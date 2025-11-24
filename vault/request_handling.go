@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -1964,18 +1965,30 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 	return leaseGenerated, resp, nil
 }
 
-// failedUserLoginProcess updates the userFailedLoginMap with login count and  last failed
+var failedUserLoginProcessNotSupportedWarning sync.Once
+
+// failedUserLoginProcess updates the userFailedLoginMap with login count and last failed
 // login time for users with failed login attempt
 // If the user gets locked for current login attempt, it updates the storage entry too
 func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntry, userLockoutInfo *FailedLoginUser) error {
 	if c.standby.Load() {
-		_, err := c.rpcForwardingClient.ForwardLoginAttempt(ctx, &forwarding.LoginAttempt{
+		c.requestForwardingConnectionLock.RLock()
+		rpcForwardingClient := c.rpcForwardingClient
+		c.requestForwardingConnectionLock.RUnlock()
+
+		if rpcForwardingClient == nil {
+			return nil
+		}
+
+		_, err := rpcForwardingClient.ForwardLoginAttempt(ctx, &forwarding.LoginAttempt{
 			NamespaceUuid: mountEntry.Namespace().UUID,
 			MountAccessor: mountEntry.Accessor,
 			UserAliasName: userLockoutInfo.aliasName,
-		}) // TODO: should we make this async?
-		if s, ok := status.FromError(err); ok && s.Code() == codes.Unimplemented {
-			c.logger.Warn("can not forward failed login attempt to primary, please update your primary")
+		})
+		if s, ok := status.FromError(err); ok && s.Code() == codes.Unimplemented { // remove in OpenBao 4.0.0
+			failedUserLoginProcessNotSupportedWarning.Do(func() {
+				c.logger.Warn("can not forward failed login attempt to primary, please update your primary")
+			})
 			err = nil
 		}
 		return err
@@ -2307,15 +2320,22 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 		if c.standby.Load() {
 			// If we are a standby, notify the primary about the successful login
 			// The primary will use this to reset the user lockout counter
-			c.logger.Trace("forwarding successful login attempt", "mount_accessor", userLockoutInfo.mountAccessor, "user_alias", userLockoutInfo.aliasName)
-			_, err = c.rpcForwardingClient.ForwardLoginAttempt(ctx, &forwarding.LoginAttempt{
-				NamespaceUuid: ns.UUID,
-				MountAccessor: userLockoutInfo.mountAccessor,
-				UserAliasName: userLockoutInfo.aliasName,
-				Successful:    true,
-			})
-			if err != nil {
-				c.logger.Warn("failed to forward successful login attempt", "error", err, "mount_accessor", userLockoutInfo.mountAccessor, "user_alias", userLockoutInfo.aliasName)
+
+			c.requestForwardingConnectionLock.RLock()
+			rpcForwardingClient := c.rpcForwardingClient
+			c.requestForwardingConnectionLock.RUnlock()
+
+			if rpcForwardingClient != nil {
+				c.logger.Trace("forwarding successful login attempt", "mount_accessor", userLockoutInfo.mountAccessor, "user_alias", userLockoutInfo.aliasName)
+				_, err = c.rpcForwardingClient.ForwardLoginAttempt(ctx, &forwarding.LoginAttempt{
+					NamespaceUuid: ns.UUID,
+					MountAccessor: userLockoutInfo.mountAccessor,
+					UserAliasName: userLockoutInfo.aliasName,
+					Successful:    true,
+				})
+				if err != nil {
+					c.logger.Warn("failed to forward successful login attempt", "error", err, "mount_accessor", userLockoutInfo.mountAccessor, "user_alias", userLockoutInfo.aliasName)
+				}
 			}
 		} else if userLockoutInfo != nil {
 			// Successful login, remove any entry from userFailedLoginInfo map

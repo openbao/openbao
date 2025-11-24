@@ -2379,7 +2379,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
-	if err := c.reconcileOCIPlugins(ctx); err != nil {
+	if err := c.reconcileOCIPlugins(ctx, standby); err != nil {
 		return err
 	}
 	if err := c.setupNamespaceStore(ctx); err != nil {

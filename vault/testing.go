@@ -603,7 +603,7 @@ func TestAddTestPlugin(t testing.T, c *Core, name string, pluginType consts.Plug
 	c.pluginCatalog.directory = fullPath
 
 	args := []string{fmt.Sprintf("--test.run=%s", testFunc)}
-	err = c.pluginCatalog.Set(context.Background(), name, pluginType, version, fileName, args, env, sum)
+	err = c.pluginCatalog.Set(context.Background(), name, pluginType, version, fileName, args, env, sum, false /* oci */)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -477,6 +477,8 @@ func (b *SystemBackend) handlePluginCatalogUpdate(ctx context.Context, _ *logica
 		return nil, err
 	}
 
+	oci := d.Get("oci").(bool)
+
 	// For backwards compatibility, also accept args as part of command. Don't
 	// accepts args in both command and args.
 	args := d.Get("args").([]string)
@@ -496,7 +498,7 @@ func (b *SystemBackend) handlePluginCatalogUpdate(ctx context.Context, _ *logica
 		return logical.ErrorResponse("Could not decode SHA-256 value from Hex"), err
 	}
 
-	err = b.Core.pluginCatalog.Set(ctx, pluginName, pluginType, pluginVersion, parts[0], args, env, sha256Bytes)
+	err = b.Core.pluginCatalog.Set(ctx, pluginName, pluginType, pluginVersion, parts[0], args, env, sha256Bytes, oci)
 	if err != nil {
 		if errors.Is(err, ErrPluginNotFound) || strings.HasPrefix(err.Error(), "plugin version mismatch") {
 			return logical.ErrorResponse(err.Error()), nil
@@ -550,12 +552,14 @@ func (b *SystemBackend) handlePluginCatalogRead(ctx context.Context, _ *logical.
 	}
 
 	data := map[string]interface{}{
-		"name":    plugin.Name,
-		"args":    plugin.Args,
-		"command": command,
-		"sha256":  hex.EncodeToString(plugin.Sha256),
-		"builtin": plugin.Builtin,
-		"version": plugin.Version,
+		"name":        plugin.Name,
+		"args":        plugin.Args,
+		"command":     command,
+		"sha256":      hex.EncodeToString(plugin.Sha256),
+		"builtin":     plugin.Builtin,
+		"version":     plugin.Version,
+		"oci":         plugin.Oci,
+		"declarative": plugin.Declarative,
 	}
 
 	if plugin.Builtin {

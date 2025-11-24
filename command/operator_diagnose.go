@@ -226,7 +226,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 	diagnose.Test(ctx, "Parse Configuration", func(ctx context.Context) (err error) {
 		server.flagConfigs = c.flagConfigs
 		var configErrors []configutil.ConfigError
-		config, configErrors, err = server.ParseConfig(server.flagConfigs)
+		config, configErrors, err = server.ParseServerConfig(server.flagConfigs)
 		if err != nil {
 			return fmt.Errorf("Could not parse configuration: %w.", err) //nolint:staticcheck // user-facing error
 		}

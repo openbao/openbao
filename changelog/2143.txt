@@ -1,0 +1,3 @@
+```release-note:security
+core/identity: Correctly lowercase policy names on identity groups to prevent root policy assignment. CVE-2025-64761 / GHSA-7ff4-jw48-3436. Second part of upstream's HCSEC-2025-13 / CVE-2025-5999.
+```

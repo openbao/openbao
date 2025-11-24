@@ -14,6 +14,7 @@ import (
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIdentityStore_Groups_AddByNameEntityUpdate(t *testing.T) {
@@ -982,6 +983,26 @@ func TestIdentityStore_GroupsCRUD_ByID(t *testing.T) {
 	expectedData["modify_index"] = resp.Data["modify_index"]
 	if !reflect.DeepEqual(expectedData, resp.Data) {
 		t.Fatalf("bad: group data; expected: %#v\n actual: %#v\n", expectedData, resp.Data)
+	}
+
+	// For HCSEC-2025-13 / CVE-2025-5999, validate that we cannot set root
+	// policies with other casing.
+	for _, name := range []string{"rooT", "Root", "rOoT", "root", "root ", " root"} {
+		groupReq.Operation = logical.UpdateOperation
+		groupReq.Data = map[string]interface{}{
+			"policies": []string{name},
+		}
+		resp, err = is.HandleRequest(ctx, groupReq)
+		if err == nil && (resp == nil || !resp.IsError()) {
+			t.Fatalf("[policy: %v] err:%v resp:%#v", name, err, resp)
+		}
+
+		groupReq.Operation = logical.ReadOperation
+		resp, err = is.HandleRequest(ctx, groupReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v", err, resp)
+		}
+		require.NotContains(t, resp.Data["policies"].([]string), "root")
 	}
 
 	// Check if delete is working properly

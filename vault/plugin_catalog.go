@@ -260,7 +260,7 @@ func (c *Core) registerOCIPlugins(ctx context.Context, logger log.Logger, config
 		return nil
 	}
 
-	// Create OCI plugin downloader
+	// Register declarative plugins
 	logger.Info("starting OCI plugin registration")
 	defer logger.Info("OCI plugin registration completed")
 

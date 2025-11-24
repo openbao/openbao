@@ -491,6 +491,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	var nsSealKeyShares [][]byte
 	if !exists {
 		if sealConfig != nil {
+			// TODO(wslabosz): should seal config also be written in transaction?
 			if err := ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
 				return nil, fmt.Errorf("failed to set namespace seal: %w", err)
 			}

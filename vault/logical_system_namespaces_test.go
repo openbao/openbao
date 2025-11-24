@@ -162,6 +162,33 @@ func TestNamespaceBackend_Set(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, res, "expected empty response")
 	})
+
+	t.Run("create namespace with multiple seal configs should fail", func(t *testing.T) {
+		sealConfigs := []map[string]interface{}{
+			{
+				"type":             "shamir",
+				"secret_shares":    5,
+				"secret_threshold": 3,
+			},
+			{
+				"type":             "shamir",
+				"secret_shares":    3,
+				"secret_threshold": 2,
+			},
+		}
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/multiple_seals")
+		req.Data["seals"] = sealConfigs
+		res, err := b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+		require.Contains(t, res.Data["error"], "cannot specify more than one namespace seal")
+
+		// namespace should not have been created
+		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/multiple_seals")
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res, "expected empty response")
+	})
 }
 
 func TestNamespaceBackend_Read(t *testing.T) {

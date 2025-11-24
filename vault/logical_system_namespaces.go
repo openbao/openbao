@@ -360,9 +360,13 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		}
 
 		var sealConfig *SealConfig
-		if len(sealConfigs) > 0 {
+		switch len(sealConfigs) {
+		case 0:
+		case 1:
 			// for now we only use a single seal config
 			sealConfig = sealConfigs[0]
+		default:
+			return logical.ErrorResponse("cannot specify more than one namespace seal, got: %d", len(sealConfigs)), logical.ErrInvalidRequest
 		}
 
 		entry, keyShares, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, name, sealConfig,

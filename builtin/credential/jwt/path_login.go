@@ -200,12 +200,12 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 }
 
 func (b *jwtAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	roleName := req.Auth.InternalData["role"].(string)
+	roleName, _ := req.Auth.InternalData["role"].(string)
 	if roleName == "" {
 		return nil, errors.New("failed to fetch role_name during renewal")
 	}
 
-	roleType := req.Auth.InternalData["role_type"].(string)
+	roleType, _ := req.Auth.InternalData["role_type"].(string)
 
 	switch roleType {
 	case "cel":

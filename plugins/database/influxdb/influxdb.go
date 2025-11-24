@@ -199,7 +199,10 @@ func (i *Influxdb) DeleteUser(ctx context.Context, req dbplugin.DeleteUserReques
 			response, err := cli.Query(q)
 			result = multierror.Append(result, err)
 			if response != nil {
-				result = multierror.Append(result, response.Error())
+				err = response.Error()
+				if err != nil && err.Error() != "user not found" {
+					result = multierror.Append(result, err)
+				}
 			}
 		}
 	}

@@ -1,0 +1,111 @@
+---
+layout: docs
+description: The "namespace" command groups subcommands for interacting with namespaces.
+---
+
+# namespace
+
+The `namespace` command groups subcommands for interacting with namespaces.
+
+## Examples
+
+List all namespaces:
+
+```shell-session
+$ bao namespace list
+```
+
+List all namespaces with additional details such as namespace ID and custom metadata:
+
+```shell-session
+$ bao namespace list -detailed
+```
+
+Recursively list (scan) all namespaces:
+
+```shell-session
+$ bao namespace scan
+```
+
+Recursively list (scan) all namespaces with additional details such as namespace ID and custom metadata:
+
+```shell-session
+$ bao namespace scan -detailed
+```
+
+Create a namespace at the path `ns1/` with no custom metadata:
+
+```shell-session
+$ bao namespace create ns1/
+```
+
+Create a namespace at the path `ns1/` with multiple custom metadata keys:
+
+```shell-session
+$ bao namespace create -custom-metadata=foo=abc -custom-metadata=bar=123 ns1/
+```
+
+Patch an existing namespace at the path `ns1/` to add custom metadata key `bar` and remove key `foo`
+
+```shell-session
+$ bao namespace patch -custom-metadata=bar=123 -remove-custom-metadata=foo ns1/
+```
+
+Delete the namespace at path `ns1/`:
+
+```shell-session
+$ bao namespace delete ns1/
+```
+
+Lookup the namespace information at path `ns1/`:
+
+```shell-session
+$ bao namespace lookup ns1/
+```
+
+Lock the API for the current namespace:
+
+```shell-session
+$ bao namespace lock
+```
+
+Lock the API for a descendant namespace at path `current/namespace/ns1/`:
+
+```shell-session
+$ bao namespace lock ns1/
+```
+
+Unlock the API for the current namespace:
+
+```shell-session
+$ bao namespace unlock -unlock-key <unlock key>
+```
+
+Unlock the API for a descendant namespace at path `current/namespacens1/`:
+
+```shell-session
+$ bao namespace unlock -unlock-key <unlock key> ns1/
+```
+
+## Usage
+
+```text
+Usage: bao namespace <subcommand> [options] [args]
+
+  This command groups subcommands for interacting with OpenBao namespaces.
+  These set of subcommands operate on the context of the namespace that the
+  current logged in token belongs to.
+
+Subcommands:
+    create    Create a new namespace
+    delete    Delete an existing namespace
+    list      List child namespaces
+    lock      Lock the API for particular namespaces
+    lookup    Look up an existing namespace
+    patch     Patch an existing namespace
+    scan      List all (child) namespaces recursively
+    unlock    Unlock the API for particular namespaces
+```
+
+For more information, examples, and usage about a subcommand, click on the name
+of the subcommand in the sidebar.

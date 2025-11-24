@@ -24,23 +24,6 @@ import (
 	"github.com/openbao/openbao/vault"
 )
 
-func handleCertHeader(req *http.Request) *x509.Certificate {
-	clientCertHeader, clientCertHeaderOk := req.Header["X-Processed-Tls-Client-Certificate"]
-	if !clientCertHeaderOk || len(clientCertHeader) == 0 {
-		return nil
-	}
-	certHeaderValue := clientCertHeader[0]
-	certDER, err := base64.StdEncoding.DecodeString(certHeaderValue)
-	if err != nil {
-		return nil
-	}
-	x509ClientCert, err := x509.ParseCertificate(certDER)
-	if err != nil {
-		return nil
-	}
-	return x509ClientCert
-}
-
 const MergePatchContentTypeHeader = "application/merge-patch+json"
 
 func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical.Request, int, error) {
@@ -225,11 +208,6 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		Data:       data,
 		Connection: getConnection(r),
 		Headers:    r.Header.Clone(),
-	}
-
-	headerCert := handleCertHeader(r)
-	if headerCert != nil {
-		req.ClientHeaderCert = headerCert
 	}
 
 	if passHTTPReq {
@@ -613,5 +591,37 @@ func getConnection(r *http.Request) (connection *logical.Connection) {
 		RemotePort: remotePort,
 		ConnState:  r.TLS,
 	}
+
+	if r.TLS != nil {
+		connection.PeerCertificates = r.TLS.PeerCertificates
+	}
+
+	connection.ProxiedCertificates = handleForwardedCertHeaders(r)
+
 	return connection
+}
+
+// handleForwardedCertHeaders handles proxied/forwarded client certificates
+// from TLS terminated by an earlier reverse proxy.
+func handleForwardedCertHeaders(req *http.Request) []*x509.Certificate {
+	// We know we only set a single value.
+	headerValue := req.Header.Get(ProcessedForwardedClientCertHeader)
+	if len(headerValue) == 0 {
+		return nil
+	}
+
+	// Subsequent errors in this function should not occur:
+	// wrapClientCertificateHandler has previously validated this exact
+	// flow.
+	certDER, err := base64.StdEncoding.DecodeString(headerValue)
+	if err != nil {
+		return nil
+	}
+
+	x509ClientCert, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		return nil
+	}
+
+	return []*x509.Certificate{x509ClientCert}
 }

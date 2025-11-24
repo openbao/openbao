@@ -46,6 +46,15 @@ There is config that is common between all listeners.
 
   :::
 
+- `x_forwarded_for_client_cert_keep_not_forwarded` `(bool: false)` - allows
+  keeping headers on non-forwarded requests. This is dangerous to enable as
+  it means arbitrary clients can set these values.
+
+- `x_forwarded_for_client_cert_keep_unauthorized` `(bool: false)` - allows
+  keeping headers on non-forwarded requests. This is dangerous to enable as
+  it means that clients connected to unauthorized forwarders (or, directly
+  to OpenBao) could set these headers.
+
 ### Example configs
 
 #### NGINX
@@ -76,4 +85,4 @@ location / {
 
 
 [RFC 9440 2.1]: https://www.rfc-editor.org/rfc/rfc9440.html#section-2.1
-[tcp-listener]: tcp.mdx/#tcp-listener-parameters
+[tcp-listener]: tcp.mdx#tcp-listener-parameters

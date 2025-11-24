@@ -2925,16 +2925,8 @@ func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config,
 			RecoveryMode:          c.flagRecovery,
 		})
 
-		if len(ln.Config.XForwardedForAuthorizedAddrs) > 0 {
-			handler = vaulthttp.WrapForwardedForHandler(handler, ln.Config)
-		}
-		// Small handler that always removes `X-Processed-Tls-Client-Certificate`
-		handler = vaulthttp.WrapRemoveProcessedCertificateHandler(handler)
-		if len(ln.Config.XForwardedForClientCertHeader) > 0 {
-			handler = vaulthttp.WrapClientCertificateHandler(handler, ln.Config)
-		} else {
-			// Remove Client-Cert if we are not using them
-			handler = vaulthttp.WrapRemoveDefaultClientCertificateHandler(handler)
+		if ln.Config != nil {
+			handler = vaulthttp.WrapHttpServerHandler(handler, ln.Config)
 		}
 
 		// server defaults

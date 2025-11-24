@@ -60,20 +60,21 @@ func pathLogin(b *backend) *framework.Path {
 }
 
 // Handle headers and client certs
-func (b *backend) handleCerts(req *logical.Request) (*x509.Certificate, error) {
-	if req.ClientHeaderCert != nil {
-		return req.ClientHeaderCert, nil
-	} else {
-		// Default to the normal behavior
-		if req.Connection == nil || req.Connection.ConnState == nil {
-			return nil, errors.New("tls connection not found")
-		}
-		clientCerts := req.Connection.ConnState.PeerCertificates
-		if len(clientCerts) == 0 {
-			return nil, errors.New("no client certificate found")
-		}
-		return clientCerts[0], nil
+func (b *backend) handleCerts(req *logical.Request) ([]*x509.Certificate, error) {
+	if req == nil || req.Connection == nil {
+		return nil, errors.New("tls connection not found")
 	}
+
+	chain, err := req.Connection.GetPreferredCerts()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(chain) == 0 {
+		return nil, errors.New("no client certificate found")
+	}
+
+	return chain, nil
 }
 
 func (b *backend) loginPathWrapper(wrappedOp func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error)) framework.OperationFunc {
@@ -106,14 +107,15 @@ func (b *backend) pathLoginResolveRole(ctx context.Context, req *logical.Request
 }
 
 func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	clientCert, err := b.handleCerts(req)
+	clientCerts, err := b.handleCerts(req)
 	if err != nil {
 		return nil, err
 	}
+
 	return &logical.Response{
 		Auth: &logical.Auth{
 			Alias: &logical.Alias{
-				Name: clientCert.Subject.CommonName,
+				Name: clientCerts[0].Subject.CommonName,
 			},
 		},
 	}, nil
@@ -151,24 +153,25 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 		}
 	}
 
-	clientCert, err := b.handleCerts(req)
+	clientCerts, err := b.handleCerts(req)
 	if err != nil {
 		return nil, err
 	}
-	skid := base64.StdEncoding.EncodeToString(clientCert.SubjectKeyId)
-	akid := base64.StdEncoding.EncodeToString(clientCert.AuthorityKeyId)
+
+	skid := base64.StdEncoding.EncodeToString(clientCerts[0].SubjectKeyId)
+	akid := base64.StdEncoding.EncodeToString(clientCerts[0].AuthorityKeyId)
 
 	metadata := map[string]string{
 		"cert_name":        matched.Entry.Name,
-		"common_name":      clientCert.Subject.CommonName,
-		"serial_number":    clientCert.SerialNumber.String(),
-		"subject_key_id":   certutil.GetHexFormatted(clientCert.SubjectKeyId, ":"),
-		"authority_key_id": certutil.GetHexFormatted(clientCert.AuthorityKeyId, ":"),
+		"common_name":      clientCerts[0].Subject.CommonName,
+		"serial_number":    clientCerts[0].SerialNumber.String(),
+		"subject_key_id":   certutil.GetHexFormatted(clientCerts[0].SubjectKeyId, ":"),
+		"authority_key_id": certutil.GetHexFormatted(clientCerts[0].AuthorityKeyId, ":"),
 	}
 
 	// Add metadata from allowed_metadata_extensions when present,
 	// with sanitized oids (dash-separated instead of dot-separated) as keys.
-	for k, v := range b.certificateExtensionsMetadata(clientCert, matched) {
+	for k, v := range b.certificateExtensionsMetadata(clientCerts[0], matched) {
 		metadata[k] = v
 	}
 
@@ -180,7 +183,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 		DisplayName: matched.Entry.DisplayName,
 		Metadata:    metadata,
 		Alias: &logical.Alias{
-			Name: clientCert.Subject.CommonName,
+			Name: clientCerts[0].Subject.CommonName,
 		},
 	}
 
@@ -220,12 +223,13 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 			return nil, nil
 		}
 
-		clientCert, err := b.handleCerts(req)
+		clientCerts, err := b.handleCerts(req)
 		if err != nil {
 			return logical.ErrorResponse(err.Error()), nil
 		}
-		skid := base64.StdEncoding.EncodeToString(clientCert.SubjectKeyId)
-		akid := base64.StdEncoding.EncodeToString(clientCert.AuthorityKeyId)
+
+		skid := base64.StdEncoding.EncodeToString(clientCerts[0].SubjectKeyId)
+		akid := base64.StdEncoding.EncodeToString(clientCerts[0].AuthorityKeyId)
 
 		// Certificate should not only match a registered certificate policy.
 		// Also, the identity of the certificate presented should match the identity of the certificate used during login
@@ -256,10 +260,12 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 }
 
 func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d *framework.FieldData) (*ParsedCert, *logical.Response, error) {
-	clientCert, err := b.handleCerts(req)
+	clientCerts, err := b.handleCerts(req)
 	if err != nil {
 		return nil, logical.ErrorResponse(err.Error()), nil
 	}
+
+	clientCert := clientCerts[0]
 
 	// Allow constraining the login request to a single CertEntry
 	var certName string
@@ -274,7 +280,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 
 	// Get the list of full chains matching the connection and validates the
 	// certificate itself
-	trustedChains, err := validateConnState(roots, clientCert)
+	trustedChains, err := validateConnState(roots, clientCerts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -699,8 +705,8 @@ func parsePEM(raw []byte) (certs []*x509.Certificate) {
 // by at trusted certificate. Most of this logic is lifted from the client
 // verification logic here:  http://golang.org/src/crypto/tls/handshake_server.go
 // The trusted chains are returned.
-func validateConnState(roots *x509.CertPool, cert *x509.Certificate) ([][]*x509.Certificate, error) {
-	if cert == nil {
+func validateConnState(roots *x509.CertPool, certs []*x509.Certificate) ([][]*x509.Certificate, error) {
+	if len(certs) == 0 {
 		return nil, nil
 	}
 
@@ -710,14 +716,13 @@ func validateConnState(roots *x509.CertPool, cert *x509.Certificate) ([][]*x509.
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 
-	// TODO: Handle intermediates?
-	//if len(certs) > 1 {
-	//	for _, cert := range certs[1:] {
-	//		opts.Intermediates.AddCert(cert)
-	//	}
-	//}
+	if len(certs) > 1 {
+		for _, cert := range certs[1:] {
+			opts.Intermediates.AddCert(cert)
+		}
+	}
 
-	chains, err := cert.Verify(opts)
+	chains, err := certs[0].Verify(opts)
 	if err != nil {
 		if _, ok := err.(x509.UnknownAuthorityError); ok {
 			return nil, nil

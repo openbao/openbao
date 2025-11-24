@@ -97,6 +97,9 @@ func (sm *SealManager) setup() {
 // Lock ordering: This method acquires SM lock. The caller (Core.preSeal)
 // should already hold NS lock, maintaining NS -> SM lock ordering.
 func (sm *SealManager) ResetInternal(ctx context.Context) error {
+	if sm.core.namespaceStore == nil {
+		return nil
+	}
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 

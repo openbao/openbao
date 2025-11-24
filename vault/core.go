@@ -2501,16 +2501,9 @@ func (c *Core) preSeal() error {
 		result = multierror.Append(result, fmt.Errorf("error stopping expiration: %w", err))
 	}
 
-	// Lock ordering: NS lock acquired first, then SM lock acquired inside ResetInternal
-	unlock, err := c.namespaceStore.lockWithInvalidation(context.Background(), false)
-	if err != nil {
-		result = multierror.Append(result, fmt.Errorf("error during acquire namespace lock during preSeal: %w", err))
-	} else {
-		defer unlock()
-
-		// Seal root namespace (cascades to all children)
-		if err := c.namespaceStore.sealNamespaceLocked(context.Background(), namespace.RootNamespace); err != nil {
-			result = multierror.Append(result, fmt.Errorf("error failed to seal namespaces during preSeal: %w", err))
+	if c.namespaceStore != nil {
+		if err := c.namespaceStore.SealAllNamespacesLocked(context.Background()); err != nil {
+			result = multierror.Append(result, fmt.Errorf("error sealing namespaces during preSeal: %w", err))
 		}
 	}
 

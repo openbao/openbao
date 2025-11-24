@@ -32,6 +32,15 @@ func TestSealManager_ResetInternal(t *testing.T) {
 
 	// Verify that it's a new map
 	if c.sealManager.barrierByNamespace == originalBarriers {
-		t.Fatal("expected barrierByNamespace to be reinitialized with new map")
+		t.Fatal("expected barrierByNamespace to be reinitialized")
+	}
+	if len(c.sealManager.sealsByNamespace) == 0 {
+		t.Fatal("expected sealsByNamespace to be reinitialized after reset")
+	}
+	if len(c.sealManager.unlockInformationByNamespace) == 0 {
+		t.Fatal("expected unlockInformationByNamespace to be reinitialized after reset")
+	}
+	if len(c.sealManager.rotationConfigByNamespace) == 0 {
+		t.Fatal("expected rotationConfigByNamespace to be reinitialized after reset")
 	}
 }

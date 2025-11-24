@@ -1384,3 +1384,13 @@ func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namesp
 
 	return ns, rest, nil
 }
+
+func (ns *NamespaceStore) SealAllNamespacesLocked(ctx context.Context) error {
+	unlock, err := ns.lockWithInvalidation(ctx, false)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	return ns.sealNamespaceLocked(ctx, namespace.RootNamespace)
+}

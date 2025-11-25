@@ -40,9 +40,6 @@ builds:
       - goos: windows
     mod_timestamp: "{{ .CommitTimestamp }}"
     skip: false
-    hooks:
-      post:
-        - go clean -cache
 report_sizes: true
 
 nfpms:

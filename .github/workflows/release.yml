@@ -183,7 +183,12 @@ jobs:
           - openbsd
           - windows
     steps:
-      - name: "Check free space on runner"
+      - name: Free additional storage on runner
+        if: inputs.dogorelease
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+
+      - name: Check free storage on runner
         if: inputs.dogorelease
         run: |
           df -h .

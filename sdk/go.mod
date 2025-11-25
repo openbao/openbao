@@ -45,7 +45,7 @@ require (
 	github.com/mitchellh/go-testing-interface v1.14.1
 	github.com/moby/go-archive v0.1.0
 	github.com/openbao/go-kms-wrapping/entropy/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/v2 v2.5.0
+	github.com/openbao/go-kms-wrapping/v2 v2.6.0
 	github.com/openbao/openbao/api/v2 v2.5.0
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.11.1

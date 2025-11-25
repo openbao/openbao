@@ -123,4 +123,6 @@ endpoints. But, for security reasons, OpenBao restricts access to some of the
 system backend endpoints to calls from the root namespace or calls that use a
 token in the root namespace with elevated permissions.
 
-@include 'api/restricted-endpoints.mdx'
+import RestrictedEndpoints from "@site/content/partials/api/restricted-endpoints.mdx";
+
+<RestrictedEndpoints />

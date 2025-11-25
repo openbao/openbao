@@ -99,17 +99,17 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/oklog/run v1.2.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
-	github.com/openbao/go-kms-wrapping/v2 v2.5.0
-	github.com/openbao/go-kms-wrapping/wrappers/aead/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/v2 v2.6.0
+	github.com/openbao/go-kms-wrapping/wrappers/aead/v2 v2.3.0
 	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.3.0
 	github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.1.0
 	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0
-	github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.4.0
-	github.com/openbao/go-kms-wrapping/wrappers/static/v2 v2.0.0
-	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.6.0
+	github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.5.1
+	github.com/openbao/go-kms-wrapping/wrappers/static/v2 v2.1.0
+	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.7.0
 	github.com/openbao/openbao-template v1.0.1
 	github.com/openbao/openbao/api/auth/approle/v2 v2.0.0
 	github.com/openbao/openbao/api/auth/userpass/v2 v2.0.0

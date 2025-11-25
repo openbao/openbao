@@ -43,6 +43,15 @@ it may be resumed from an arbitrary key prefix:
 $ bao operator migrate -config migrate.hcl -start "data/logical/fd"
 ```
 
+Alternatively, you can specify the configuration path using the `BAO_OP_MIGRATE_CONFIG_PATH` environment variable. If the `-config` flag is provided, the environment variable is ignored.
+
+**Example using environment variable:**
+
+```shell-session
+$ export BAO_OP_MIGRATE_CONFIG_PATH=/etc/openbao/migrate.hcl
+$ bao operator migrate -start "data/logical/fd"
+```
+
 ## Configuration
 
 The `operator migrate` command uses a dedicated configuration file to specify the source

@@ -203,7 +203,7 @@ func contactIssuer(ctx context.Context, uri string, data *url.Values, ignoreBad 
 	if err != nil {
 		return nil, nil
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -1183,7 +1183,7 @@ func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
 				"Restricted API should return 400 Bad Request with namespace")
 
 			if resp != nil && resp.Body != nil {
-				resp.Body.Close()
+				resp.Body.Close() //nolint:errcheck
 			}
 		})
 
@@ -1199,7 +1199,7 @@ func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
 			}
 
 			if resp != nil && resp.Body != nil {
-				resp.Body.Close()
+				resp.Body.Close() //nolint:errcheck
 			}
 		})
 	}
@@ -1215,7 +1215,7 @@ func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
 			require.Equal(t, http.StatusOK, resp.StatusCode,
 				"Non-restricted API should return 200 OK with namespace and proper permissions")
 
-			resp.Body.Close()
+			resp.Body.Close() //nolint:errcheck
 		})
 	}
 
@@ -1232,7 +1232,7 @@ func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
 				"Restricted API should return 400 Bad Request with namespace and proper permissions")
 
 			if resp != nil && resp.Body != nil {
-				resp.Body.Close()
+				resp.Body.Close() //nolint:errcheck
 			}
 		})
 	}

@@ -251,7 +251,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 			if resp == nil {
 				return nil, errors.New("nil response")
 			}
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			// Make sure we weren't redirected
 			if resp.StatusCode > 300 && resp.StatusCode < 400 {

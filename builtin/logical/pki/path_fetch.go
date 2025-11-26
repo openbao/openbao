@@ -333,7 +333,7 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 			return nil, fmt.Errorf("failed to start read-only transaction: %w", err)
 		}
 
-		defer readOnlyTxn.Rollback(ctx) // Ensure rollback after the operation
+		defer readOnlyTxn.Rollback(ctx) //nolint:errcheck // Ensure rollback after the operation
 		req.Storage = readOnlyTxn
 	}
 

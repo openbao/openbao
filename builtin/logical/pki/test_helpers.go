@@ -166,7 +166,7 @@ func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *x509.Rev
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	crlBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

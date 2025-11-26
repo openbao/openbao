@@ -198,7 +198,7 @@ func getTestOIDC(t *testing.T) string {
 		t.Fatal(err)
 	}
 
-	defer res.Body.Close()
+	defer res.Body.Close() //nolint:errcheck
 	body, _ := io.ReadAll(res.Body)
 
 	type a0r struct {

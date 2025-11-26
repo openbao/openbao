@@ -107,7 +107,7 @@ func WithTransaction(ctx context.Context, originalStorage Storage, callback func
 		if err != nil {
 			return err
 		}
-		defer txn.Rollback(ctx)
+		defer txn.Rollback(ctx) //nolint:errcheck
 		if err := callback(txnStorage); err != nil {
 			return err
 		}
@@ -130,7 +130,7 @@ func StartTxStorage(ctx context.Context, req *Request) (func(), error) {
 		}
 		req.OriginalStorage = req.Storage
 		req.Storage = txn
-		return func() { txn.Rollback(ctx) }, nil
+		return func() { txn.Rollback(ctx) }, nil //nolint:errcheck
 	}
 	return func() {}, nil
 }

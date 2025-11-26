@@ -126,7 +126,7 @@ func TestKV_Subkeys_Deleted(t *testing.T) {
 	}
 
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 
 	if err == nil || apiResp == nil {
@@ -233,7 +233,7 @@ func TestKV_Subkeys_Destroyed(t *testing.T) {
 	}
 
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 
 	if err == nil || apiResp == nil {
@@ -342,7 +342,7 @@ func TestKV_Subkeys_CurrentVersion(t *testing.T) {
 	}
 
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 
 	if err != nil || apiResp == nil {

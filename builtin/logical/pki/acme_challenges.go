@@ -176,7 +176,7 @@ func ValidateHTTP01Challenge(domain string, token string, thumbprint string, con
 	minExpected := len(token) + 1 + len(thumbprint)
 	maxExpected := 512
 
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Attempt to read the body, but don't do so infinitely.
 	body, err := io.ReadAll(io.LimitReader(resp.Body, int64(maxExpected+1)))

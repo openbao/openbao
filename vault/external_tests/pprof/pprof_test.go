@@ -63,7 +63,7 @@ func TestSysPprof_MaxRequestDuration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	httpRespBody, err := io.ReadAll(resp.Body)
 	if err != nil {

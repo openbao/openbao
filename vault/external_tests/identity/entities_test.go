@@ -50,7 +50,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	}
 
 	// Create role
-	resp, err := client.Logical().Write("auth/approle/role/role-period", map[string]interface{}{
+	_, err = client.Logical().Write("auth/approle/role/role-period", map[string]interface{}{
 		"period": "5m",
 	})
 	if err != nil {
@@ -58,7 +58,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	}
 
 	// Get role_id
-	resp, err = client.Logical().Read("auth/approle/role/role-period/role-id")
+	resp, err := client.Logical().Read("auth/approle/role/role-period/role-id")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	}
 
 	client.SetToken(cluster.RootToken)
-	resp, err = client.Logical().Write("identity/entity/id/"+entityID, map[string]interface{}{
+	_, err = client.Logical().Write("identity/entity/id/"+entityID, map[string]interface{}{
 		"disabled": true,
 	})
 	if err != nil {
@@ -146,7 +146,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	}
 
 	client.SetToken(cluster.RootToken)
-	resp, err = client.Logical().Write("identity/entity/id/"+entityID, map[string]interface{}{
+	_, err = client.Logical().Write("identity/entity/id/"+entityID, map[string]interface{}{
 		"disabled": false,
 	})
 	if err != nil {
@@ -154,7 +154,7 @@ func TestIdentityStore_EntityDisabled(t *testing.T) {
 	}
 
 	client.SetToken(roleToken)
-	resp, err = client.Auth().Token().LookupSelf()
+	_, err = client.Auth().Token().LookupSelf()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +214,7 @@ func TestIdentityStore_EntityPoliciesInInitialAuth(t *testing.T) {
 	}
 
 	// Create role
-	resp, err := client.Logical().Write("auth/approle/role/role-period", map[string]interface{}{
+	_, err = client.Logical().Write("auth/approle/role/role-period", map[string]interface{}{
 		"period": "5m",
 	})
 	if err != nil {
@@ -222,7 +222,7 @@ func TestIdentityStore_EntityPoliciesInInitialAuth(t *testing.T) {
 	}
 
 	// Get role_id
-	resp, err = client.Logical().Read("auth/approle/role/role-period/role-id")
+	resp, err := client.Logical().Read("auth/approle/role/role-period/role-id")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +303,7 @@ func TestIdentityStore_EntityPoliciesInInitialAuth(t *testing.T) {
 
 	// Write more policies into the entity
 	client.SetToken(cluster.RootToken)
-	resp, err = client.Logical().Write("identity/entity/id/"+entityID, map[string]interface{}{
+	_, err = client.Logical().Write("identity/entity/id/"+entityID, map[string]interface{}{
 		"policies": []string{"foo", "bar"},
 	})
 	if err != nil {

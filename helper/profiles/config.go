@@ -69,7 +69,7 @@ func ParseOuterConfig(outerBlockType string, list *ast.ObjectList) ([]*OuterConf
 		list := objT.List
 
 		if o := list.Filter("request"); len(o.Items) > 0 {
-			requests, err := ParseRequestConfig(nil, o)
+			requests, err := ParseRequestConfig(o)
 			if err != nil {
 				return result, fmt.Errorf("%v.%d: error parsing 'request': %w", outerBlockType, index, err)
 			}
@@ -94,8 +94,8 @@ func CreateOuterConfig(requests []*RequestConfig) []*OuterConfig {
 }
 
 // ParseRequestConfig handles parsing of individual requests from an HCL AST.
-func ParseRequestConfig(result []*RequestConfig, list *ast.ObjectList) ([]*RequestConfig, error) {
-	result = make([]*RequestConfig, 0, len(list.Items))
+func ParseRequestConfig(list *ast.ObjectList) ([]*RequestConfig, error) {
+	result := make([]*RequestConfig, 0, len(list.Items))
 	for i, item := range list.Items {
 		var r RequestConfig
 		if err := hcl.DecodeObject(&r, item.Val); err != nil {

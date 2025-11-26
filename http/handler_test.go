@@ -706,7 +706,7 @@ func TestHandler_error(t *testing.T) {
 func TestHandler_requestAuth(t *testing.T) {
 	core, _, token := vault.TestCoreUnsealed(t)
 
-	rootCtx := namespace.RootContext(nil)
+	rootCtx := namespace.RootContext(context.TODO())
 	te, err := core.LookupToken(rootCtx, token)
 	if err != nil {
 		t.Fatalf("err: %s", err)

@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"testing"
 
 	"github.com/openbao/openbao/helper/namespace"
@@ -14,7 +15,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
@@ -180,7 +181,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	groupReq := &logical.Request{

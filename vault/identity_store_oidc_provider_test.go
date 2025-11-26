@@ -36,7 +36,7 @@ const (
 // for a token using a different provider that the client is allowed to use.
 func TestOIDC_Path_OIDC_Cross_Provider_Exchange(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	s := new(logical.InmemStorage)
 
 	// Create the common OIDC configuration
@@ -78,7 +78,7 @@ func TestOIDC_Path_OIDC_Cross_Provider_Exchange(t *testing.T) {
 
 func TestOIDC_Path_OIDC_Token_Authorization_Code_Flow(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	s := new(logical.InmemStorage)
 
 	entityID, groupID, _, clientID, clientSecret := setupOIDCCommon(t, c, s)
@@ -841,7 +841,7 @@ func TestOIDC_Path_OIDC_Token_Client_Credentials_Flow(t *testing.T) {
 
 func TestOIDC_Path_OIDC_Authorize(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	s := new(logical.InmemStorage)
 
 	entityID, groupID, parentGroupID, clientID, _ := setupOIDCCommon(t, c, s)
@@ -1430,7 +1430,7 @@ func TestOIDC_Path_OIDC_Authorize(t *testing.T) {
 // Returns the entity ID, group ID, client ID, client secret to be used in tests.
 func setupOIDCCommon(t *testing.T, c *Core, s logical.Storage) (string, string, string, string, string) {
 	t.Helper()
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create a key
 	resp, err := c.identityStore.HandleRequest(ctx, testKeyReq(s, []string{"*"}, "RS256"))
@@ -1524,7 +1524,7 @@ func setupOIDCCommon(t *testing.T, c *Core, s logical.Storage) (string, string, 
 // enables the tests to continue operating using the same underlying storage
 // throughout many test cases that modify the configuration resources.
 func resetCommonOIDCConfig(t *testing.T, s logical.Storage, c *Core, entityID, groupID, clientID string) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	req := testAssignmentReq(s, entityID, groupID)
 	req.Operation = logical.UpdateOperation
@@ -1725,7 +1725,7 @@ func basicAuthHeader(username, password string) string {
 // path can handle the read operation when the provider does not exist
 func TestOIDC_Path_OIDC_ProviderReadPublicKey_ProviderDoesNotExist(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Read "test-provider" .well-known keys
@@ -1744,7 +1744,7 @@ func TestOIDC_Path_OIDC_ProviderReadPublicKey_ProviderDoesNotExist(t *testing.T)
 // keys endpoint read operations
 func TestOIDC_Path_OIDC_ProviderReadPublicKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key-1"
@@ -1868,7 +1868,7 @@ func TestOIDC_Path_OIDC_ProviderReadPublicKey(t *testing.T) {
 
 func TestOIDC_Path_OIDC_Client_Type(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -1991,7 +1991,7 @@ func TestOIDC_Path_OIDC_Client_Type(t *testing.T) {
 // client uses the default key if none provided at creation time.
 func TestOIDC_Path_OIDC_ProviderClient_DefaultKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	require.NoError(t, c.identityStore.storeOIDCDefaultResources(ctx, c.identityStore.view(ctx)))
 
 	// Create a test client "test-client" without a key param
@@ -2018,7 +2018,7 @@ func TestOIDC_Path_OIDC_ProviderClient_DefaultKey(t *testing.T) {
 // created when a key parameter is provided but the key does not exist
 func TestOIDC_Path_OIDC_ProviderClient_NilKeyEntry(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test client "test-client1" with a non-existent key -- should fail
@@ -2041,7 +2041,7 @@ func TestOIDC_Path_OIDC_ProviderClient_NilKeyEntry(t *testing.T) {
 // TestOIDC_Path_OIDC_ProviderClient_InvalidTokenTTL tests the TokenTTL validation
 func TestOIDC_Path_OIDC_ProviderClient_InvalidTokenTTL(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -2089,7 +2089,7 @@ func TestOIDC_Path_OIDC_ProviderClient_InvalidTokenTTL(t *testing.T) {
 // does not allow key modification on Update operations
 func TestOIDC_Path_OIDC_ProviderClient_UpdateKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key1"
@@ -2148,7 +2148,7 @@ func TestOIDC_Path_OIDC_ProviderClient_UpdateKey(t *testing.T) {
 // cannot be created with assignments that do not exist
 func TestOIDC_Path_OIDC_ProviderClient_AssignmentDoesNotExist(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -2183,7 +2183,7 @@ func TestOIDC_Path_OIDC_ProviderClient_AssignmentDoesNotExist(t *testing.T) {
 // TestOIDC_Path_OIDC_ProviderClient tests CRUD operations for clients
 func TestOIDC_Path_OIDC_ProviderClient(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -2318,7 +2318,7 @@ func TestOIDC_Path_OIDC_ProviderClient(t *testing.T) {
 // client doesn't have duplicate redirect URIs or Assignments
 func TestOIDC_Path_OIDC_ProviderClient_Deduplication(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -2380,7 +2380,7 @@ func TestOIDC_Path_OIDC_ProviderClient_Deduplication(t *testing.T) {
 // TestOIDC_Path_OIDC_ProviderClient_Update tests Update operations for clients
 func TestOIDC_Path_OIDC_ProviderClient_Update(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -2480,7 +2480,7 @@ func TestOIDC_Path_OIDC_ProviderClient_Update(t *testing.T) {
 // TestOIDC_Path_OIDC_ProviderClient_List tests the List operation for clients
 func TestOIDC_Path_OIDC_ProviderClient_List(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := c.identityStore.view(ctx)
 
 	// Prepare two clients, test-client1 and test-client2
@@ -2536,7 +2536,7 @@ func TestOIDC_Path_OIDC_ProviderClient_List(t *testing.T) {
 
 func TestOIDC_Path_OIDC_Client_List_KeyInfo(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create clients with different parameters
 	clients := map[string]interface{}{
@@ -2606,7 +2606,7 @@ func TestOIDC_Path_OIDC_Client_List_KeyInfo(t *testing.T) {
 // TestOIDC_pathOIDCClientExistenceCheck tests pathOIDCClientExistenceCheck
 func TestOIDC_pathOIDCClientExistenceCheck(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	clientName := "test"
@@ -2667,7 +2667,7 @@ func TestOIDC_pathOIDCClientExistenceCheck(t *testing.T) {
 // "openid" cannot be used when creating a scope
 func TestOIDC_Path_OIDC_ProviderScope_ReservedName(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test scope "test-scope" -- should succeed
@@ -2688,7 +2688,7 @@ func TestOIDC_Path_OIDC_ProviderScope_ReservedName(t *testing.T) {
 // validation does not allow restricted claims
 func TestOIDC_Path_OIDC_ProviderScope_TemplateValidation(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	testCases := []struct {
@@ -2760,7 +2760,7 @@ func TestOIDC_Path_OIDC_ProviderScope_TemplateValidation(t *testing.T) {
 // TestOIDC_Path_OIDC_ProviderScope tests CRUD operations for scopes
 func TestOIDC_Path_OIDC_ProviderScope(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test scope "test-scope" -- should succeed
@@ -2837,7 +2837,7 @@ func TestOIDC_Path_OIDC_ProviderScope(t *testing.T) {
 // TestOIDC_Path_OIDC_ProviderScope_Update tests Update operations for scopes
 func TestOIDC_Path_OIDC_ProviderScope_Update(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	templ := `{ "groups": {{identity.entity.groups.names}} }`
@@ -2900,7 +2900,7 @@ func TestOIDC_Path_OIDC_ProviderScope_Update(t *testing.T) {
 // TestOIDC_Path_OIDC_ProviderScope_List tests the List operation for scopes
 func TestOIDC_Path_OIDC_ProviderScope_List(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Prepare two scopes, test-scope1 and test-scope2
@@ -2951,7 +2951,7 @@ func TestOIDC_Path_OIDC_ProviderScope_List(t *testing.T) {
 // TestOIDC_pathOIDCScopeExistenceCheck tests pathOIDCScopeExistenceCheck
 func TestOIDC_pathOIDCScopeExistenceCheck(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	scopeName := "test"
@@ -3012,7 +3012,7 @@ func TestOIDC_pathOIDCScopeExistenceCheck(t *testing.T) {
 // Scope cannot be deleted when it is referenced by a provider
 func TestOIDC_Path_OIDC_ProviderScope_DeleteWithExistingProvider(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test scope "test-scope" -- should succeed
@@ -3063,7 +3063,7 @@ func TestOIDC_Path_OIDC_ProviderScope_DeleteWithExistingProvider(t *testing.T) {
 // TestOIDC_Path_OIDC_ProviderAssignment tests CRUD operations for assignments
 func TestOIDC_Path_OIDC_ProviderAssignment(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test assignment "test-assignment" -- should succeed
@@ -3139,7 +3139,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment(t *testing.T) {
 // assignment cannot be deleted when it is referenced by a client
 func TestOIDC_Path_OIDC_ProviderAssignment_DeleteWithExistingClient(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test assignment "test-assignment" -- should succeed
@@ -3206,7 +3206,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_DeleteWithExistingClient(t *testing.T
 // TestOIDC_Path_OIDC_ProviderAssignment_Update tests Update operations for assignments
 func TestOIDC_Path_OIDC_ProviderAssignment_Update(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test assignment "test-assignment" -- should succeed
@@ -3266,7 +3266,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_Update(t *testing.T) {
 // TestOIDC_Path_OIDC_ProviderAssignment_List tests the List operation for assignments
 func TestOIDC_Path_OIDC_ProviderAssignment_List(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Prepare two assignments, test-assignment1 and test-assignment2
@@ -3317,7 +3317,7 @@ func TestOIDC_Path_OIDC_ProviderAssignment_List(t *testing.T) {
 // TestOIDC_pathOIDCAssignmentExistenceCheck tests pathOIDCAssignmentExistenceCheck
 func TestOIDC_pathOIDCAssignmentExistenceCheck(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	assignmentName := "test"
@@ -3381,7 +3381,7 @@ func TestOIDC_Path_OIDCProvider(t *testing.T) {
 		RedirectAddr: redirectAddr,
 	}
 	c, _, _ := TestCoreUnsealedWithConfig(t, conf)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test provider "test-provider" with non-existing scope
@@ -3531,7 +3531,7 @@ func TestOIDC_Path_OIDCProvider(t *testing.T) {
 // scopes have the same top-level keys when creating a provider
 func TestOIDC_Path_OIDCProvider_DuplicateTemplateKeys(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test scope "test-scope1" -- should succeed
@@ -3605,7 +3605,7 @@ func TestOIDC_Path_OIDCProvider_Deduplication(t *testing.T) {
 	}
 	c, _, _ := TestCoreUnsealedWithConfig(t, conf)
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test scope "test-scope1" -- should succeed
@@ -3652,7 +3652,7 @@ func TestOIDC_Path_OIDCProvider_Deduplication(t *testing.T) {
 // TestOIDC_Path_OIDCProvider_Update tests Update operations for providers
 func TestOIDC_Path_OIDCProvider_Update(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test provider "test-provider" -- should succeed
@@ -3714,7 +3714,7 @@ func TestOIDC_Path_OIDCProvider_Update(t *testing.T) {
 // TestOIDC_Path_OIDC_Provider_List tests the List operation for providers
 func TestOIDC_Path_OIDC_Provider_List(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	// Use the identity store's storage view so that the default provider will
 	// show up in the test
 	storage := c.identityStore.view(ctx)
@@ -3766,7 +3766,7 @@ func TestOIDC_Path_OIDC_Provider_List(t *testing.T) {
 
 func TestOIDC_Path_OIDC_Provider_List_KeyInfo(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create a custom scope
 	template := `{
@@ -3836,7 +3836,7 @@ func TestOIDC_Path_OIDC_Provider_List_KeyInfo(t *testing.T) {
 
 func TestOIDC_Path_OIDC_Provider_List_Filter(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create providers with different allowed_client_ids values
 	providers := []struct {
@@ -3923,7 +3923,7 @@ func TestOIDC_Path_OIDC_Provider_List_Filter(t *testing.T) {
 // openid-configuration path
 func TestOIDC_Path_OpenIDProviderConfig(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test scope "test-scope-1" -- should succeed
@@ -4042,7 +4042,7 @@ func TestOIDC_Path_OpenIDProviderConfig(t *testing.T) {
 // exist
 func TestOIDC_Path_OpenIDProviderConfig_ProviderDoesNotExist(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Expect defaults from .well-known/openid-configuration

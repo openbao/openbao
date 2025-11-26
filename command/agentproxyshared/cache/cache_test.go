@@ -75,7 +75,7 @@ func TestCache_AutoAuthTokenStripping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create a muxer and add paths relevant for the lease cache layer
 	mux := http.NewServeMux()
@@ -164,7 +164,7 @@ func TestCache_AutoAuthClientTokenProxyStripping(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create a muxer and add paths relevant for the lease cache layer
 	mux := http.NewServeMux()
@@ -209,7 +209,7 @@ func TestCache_ConcurrentRequests(t *testing.T) {
 		},
 	}
 
-	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	err := testClient.Sys().Mount("kv", &api.MountInput{
@@ -258,7 +258,7 @@ func TestCache_TokenRevocations_RevokeOrphan(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	token1 := testClient.Token()
@@ -358,7 +358,7 @@ func TestCache_TokenRevocations_LeafLevelToken(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	token1 := testClient.Token()
@@ -457,7 +457,7 @@ func TestCache_TokenRevocations_IntermediateLevelToken(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	token1 := testClient.Token()
@@ -554,7 +554,7 @@ func TestCache_TokenRevocations_TopLevelToken(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	token1 := testClient.Token()
@@ -648,7 +648,7 @@ func TestCache_TokenRevocations_Shutdown(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	ctx, rootCancelFunc := context.WithCancel(namespace.RootContext(nil))
+	ctx, rootCancelFunc := context.WithCancel(namespace.RootContext(context.TODO()))
 	cleanup, _, testClient, leaseCache := setupClusterAndAgent(ctx, t, coreConfig)
 	defer cleanup()
 
@@ -737,7 +737,7 @@ func TestCache_TokenRevocations_BaseContextCancellation(t *testing.T) {
 
 	sampleSpace := make(map[string]string)
 
-	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	token1 := testClient.Token()
@@ -825,7 +825,7 @@ func TestCache_NonCacheable(t *testing.T) {
 		},
 	}
 
-	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	// Query mounts first
@@ -871,7 +871,7 @@ func TestCache_NonCacheable(t *testing.T) {
 }
 
 func TestCache_Caching_AuthResponse(t *testing.T) {
-	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(nil), t, nil)
+	cleanup, _, testClient, _ := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, nil)
 	defer cleanup()
 
 	resp, err := testClient.Logical().Write("auth/token/create", nil)
@@ -929,7 +929,7 @@ func TestCache_Caching_LeaseResponse(t *testing.T) {
 		},
 	}
 
-	cleanup, client, testClient, _ := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, client, testClient, _ := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	err := client.Sys().Mount("kv", &api.MountInput{
@@ -1030,7 +1030,7 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 		},
 	}
 
-	cleanup, client, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, coreConfig)
+	cleanup, client, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, coreConfig)
 	defer cleanup()
 
 	err := client.Sys().Mount("kv", &api.MountInput{
@@ -1129,7 +1129,7 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 	t.Run("create", func(t *testing.T) {
 		t.Run("managed", func(t *testing.T) {
-			cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, nil)
+			cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, nil)
 			defer cleanup()
 
 			reqOpts := &api.TokenCreateRequest{
@@ -1152,7 +1152,7 @@ func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 		})
 
 		t.Run("non-managed", func(t *testing.T) {
-			cleanup, clusterClient, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, nil)
+			cleanup, clusterClient, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, nil)
 			defer cleanup()
 
 			reqOpts := &api.TokenCreateRequest{
@@ -1181,7 +1181,7 @@ func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 
 	t.Run("create-orphan", func(t *testing.T) {
 		t.Run("managed", func(t *testing.T) {
-			cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, nil)
+			cleanup, _, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, nil)
 			defer cleanup()
 
 			reqOpts := &api.TokenCreateRequest{
@@ -1203,7 +1203,7 @@ func TestCache_AuthTokenCreateOrphan(t *testing.T) {
 		})
 
 		t.Run("non-managed", func(t *testing.T) {
-			cleanup, clusterClient, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(nil), t, nil)
+			cleanup, clusterClient, testClient, leaseCache := setupClusterAndAgent(namespace.RootContext(context.TODO()), t, nil)
 			defer cleanup()
 
 			reqOpts := &api.TokenCreateRequest{

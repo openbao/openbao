@@ -316,35 +316,16 @@ func (ns *NamespaceStore) invalidate(ctx context.Context, path string) {
 func (ns *NamespaceStore) SetNamespace(ctx context.Context, entry *namespace.Namespace, sealConfig *SealConfig) ([][]byte, error) {
 	defer metrics.MeasureSince([]string{"namespace", "set_namespace"}, time.Now())
 
-	unlock, err := ns.lockWithInvalidation(ctx, true)
-	if err != nil {
+	if _, err := ns.lockWithInvalidation(ctx, true); err != nil {
 		return nil, err
 	}
 
-	new, err := ns.setNamespaceLocked(ctx, entry)
-	if err != nil {
-		unlock()
-		ns.logger.Error("set namespace failed", "error", err)
-		return nil, err
-	}
-
-	unlock()
-	if new {
-		if sealConfig != nil {
-			if err = ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
-				return nil, err
-			}
-			return ns.core.sealManager.InitializeBarrier(ctx, entry)
-		}
-		return nil, ns.initializeNamespace(ctx, ns.storage, entry)
-	}
-
-	return nil, nil
+	return ns.setNamespaceLocked(ctx, entry, sealConfig)
 }
 
 // setNamespaceLocked must be called while holding a write lock over the
 // NamespaceStore.
-func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *namespace.Namespace) (new bool, err error) {
+func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *namespace.Namespace, sealConfig *SealConfig) ([][]byte, error) {
 	// If we are creating a net-new namespace, we have to unlock before
 	// creating required mounts as the mount type will call
 	// GetNamespaceByAccessor. In that case, we will manually call
@@ -365,40 +346,45 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	// Copy the entry before validating and potentially mutating it.
 	entry := nsEntry.Clone(true /* preserve unlock */)
 	if err := entry.Validate(); err != nil {
-		return false, logical.CodedError(http.StatusBadRequest, err.Error())
+		return nil, logical.CodedError(http.StatusBadRequest, err.Error())
 	}
 
 	// Validate that we have a parent namespace.
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
-		return false, fmt.Errorf("error loading parent namespace from context: %w", err)
+		return nil, fmt.Errorf("error loading parent namespace from context: %w", err)
 	}
 
 	var exists bool
 	if entry.UUID == "" {
 		id, err := ns.assignIdentifier(entry.Path)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 
 		entry.ID = id
 		entry.UUID, err = uuid.GenerateUUID()
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 	} else {
 		var existing *namespace.Namespace
 		existing, exists = ns.namespacesByUUID[entry.UUID]
 		if !exists {
-			return false, errors.New("trying to update a non-existent namespace")
+			return nil, errors.New("trying to update a non-existent namespace")
 		}
 
 		if existing.ID != entry.ID {
-			return false, errors.New("accessor ID does not match")
+			return nil, errors.New("accessor ID does not match")
 		}
 
 		if existing.Path != entry.Path {
-			return false, errors.New("unable to remount namespace at new path")
+			return nil, errors.New("unable to remount namespace at new path")
+		}
+
+		// reject update calls with seal config provided
+		if sealConfig != nil {
+			return nil, errors.New("cannot modify existing namespace seal config")
 		}
 	}
 
@@ -412,15 +398,14 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		path := entry.Path
 		if parent.ID != namespace.RootNamespaceID {
 			if !entry.HasParent(parent) {
-				return false, errors.New("namespace path lacks parent as a prefix")
+				return nil, errors.New("namespace path lacks parent as a prefix")
 			}
 
 			path = namespace.Canonicalize(parent.TrimmedPath(entry.Path))
 		}
 
-		conflict := ns.core.router.matchingPrefixInternal(ctx, path)
-		if conflict != "" {
-			return false, fmt.Errorf("new namespace conflicts with existing mount: %v", conflict)
+		if conflict := ns.core.router.matchingPrefixInternal(ctx, path); conflict != "" {
+			return nil, fmt.Errorf("new namespace conflicts with existing mount: %v", conflict)
 		}
 	}
 
@@ -459,6 +444,8 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		delete(ns.namespacesByAccessor, entry.ID)
 		ns.lock.Unlock()
 
+		ns.core.sealManager.RemoveNamespace(entry)
+
 		// Handle in-memory mount table entries that we should also clean
 		// up.
 		nsCtx := namespace.ContextWithNamespace(ctx, entry)
@@ -469,7 +456,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 
 		txn, err := txnable.BeginTx(ctx)
 		if err != nil {
-			return false, fmt.Errorf("failed to begin transaction: %w", err)
+			return nil, fmt.Errorf("failed to begin transaction: %w", err)
 		}
 
 		defer func() {
@@ -489,7 +476,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	}
 
 	if err := ns.writeNamespace(ctx, storage, entry); err != nil {
-		return false, fmt.Errorf("failed to persist namespace: %w", err)
+		return nil, fmt.Errorf("failed to persist namespace: %w", err)
 	}
 
 	ns.namespacesByPath.Insert(entry)
@@ -501,25 +488,47 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	nsEntry.ID = entry.ID
 	nsEntry.Path = entry.Path
 
+	var nsSealKeyShares [][]byte
 	if !exists {
-		// unlock before initializeNamespace since that will re-acquire the lock
+		if sealConfig != nil {
+			// TODO(wslabosz): should seal config also be written in transaction?
+			if err := ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
+				return nil, fmt.Errorf("failed to set namespace seal: %w", err)
+			}
+
+			nsSealKeyShares, err = ns.core.sealManager.InitializeBarrier(ctx, entry)
+			if err != nil {
+				return nil, fmt.Errorf("failed to initialize namespace barrier: %w", err)
+			}
+		}
+
+		// unlock before initializeNamespace since creating mounts require lock-free
+		// namespace store
 		ns.lock.Unlock()
 		unlocked = true
 
 		// Create sys/, token/ mounts and policies for the new namespace.
 		if err := ns.initializeNamespace(ctx, storage, entry); err != nil {
-			return false, err
+			return nil, fmt.Errorf("failed to initialize namespace: %w", err)
 		}
+		ns.lock.Lock()
+		unlocked = false
 	}
 
 	// Finally commit the changes into storage.
 	if err := commit(); err != nil {
-		return false, err
+		return nil, err
+	}
+
+	// seal the namespace, as we've finished the setup
+	if sealConfig != nil {
+		if err := ns.sealNamespaceLocked(ctx, entry); err != nil {
+			return nil, fmt.Errorf("failed to seal namespace: %w", err)
+		}
 	}
 
 	failed = false
-
-	return !exists, nil
+	return nsSealKeyShares, nil
 }
 
 func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage logical.Storage, entry *namespace.Namespace) error {
@@ -582,7 +591,7 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, storage logic
 	// while we'd like to, it has cache interaction semantics which makes
 	// it difficult to do correctly. This likely requires hooks such as
 	// https://github.com/openbao/openbao/issues/1988.
-	if err := ns.core.policyStore.loadDefaultPolicies(ctx); err != nil {
+	if err := ns.core.policyStore.loadDefaultPolicies(nsCtx); err != nil {
 		return fmt.Errorf("error creating default policies: %w", err)
 	}
 
@@ -644,11 +653,11 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Stor
 // undoCreateMounts handles commit failure for in-memory resources. Note
 // that we do not modify storage here as our context has (usually) been
 // canceled and so we'd need activeContext or similar.
-func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDelete *namespace.Namespace) {
+func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, entry *namespace.Namespace) {
 	// clear auth mounts
 	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
 	if err != nil {
-		ns.logger.Error("failed to retrieve namespace credentials", "namespace", namespaceToDelete.Path, "error", err.Error())
+		ns.logger.Error("failed to retrieve namespace credentials", "namespace", entry.Path, "error", err.Error())
 	} else {
 		for _, me := range authMountEntries {
 			err := ns.core.disableCredentialInternal(nsCtx, me.Path, false)
@@ -657,7 +666,7 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 					continue
 				}
 
-				ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
+				ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", entry.Path, "error", err.Error())
 				continue
 			}
 		}
@@ -666,7 +675,7 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 	// clear mounts
 	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
 	if err != nil {
-		ns.logger.Error("failed to retrieve namespace mounts", "namespace", namespaceToDelete.Path, "error", err.Error())
+		ns.logger.Error("failed to retrieve namespace mounts", "namespace", entry.Path, "error", err.Error())
 	} else {
 		for _, me := range mountEntries {
 			err := ns.core.unmountInternal(nsCtx, me.Path, false)
@@ -675,7 +684,7 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 					continue
 				}
 
-				ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
+				ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", entry.Path, "error", err.Error())
 				continue
 			}
 		}
@@ -765,29 +774,29 @@ func (ns *NamespaceStore) getNamespaceByPathLocked(
 // prevent other changes to namespaces from occurring at the same time.
 // Function returns a copy of the created namespace, flag whether it was
 // modified or created and error.
-func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string, callback func(context.Context, *namespace.Namespace) (*namespace.Namespace, error)) (*namespace.Namespace, bool, error) {
+func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string, sealConfig *SealConfig, callback func(context.Context, *namespace.Namespace) (*namespace.Namespace, error)) (*namespace.Namespace, [][]byte, error) {
 	defer metrics.MeasureSince([]string{"namespace", "modify_namespace"}, time.Now())
 
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
-		return nil, false, err
+		return nil, nil, err
 	}
 
 	path = namespace.Canonicalize(parent.Path + path)
 	if path == "" {
-		return nil, false, logical.CodedError(http.StatusBadRequest, "refusing to modify root namespace")
+		return nil, nil, logical.CodedError(http.StatusBadRequest, "refusing to modify root namespace")
 	}
 
 	unlock, err := ns.lockWithInvalidation(ctx, true)
 	if err != nil {
-		return nil, false, err
+		return nil, nil, err
 	}
-	defer unlock()
 
 	entry := ns.namespacesByPath.Get(path)
 	if entry != nil {
 		if entry.Tainted {
-			return nil, false, errors.New("namespace with that name exists and is currently tainted")
+			unlock()
+			return nil, nil, errors.New("namespace with that name exists and is currently tainted")
 		}
 		entry = entry.Clone(true /* preserve unlock key so we can copy it */)
 	} else {
@@ -803,7 +812,8 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		entry.UnlockKey = ""
 		entry, err = callback(ctx, entry)
 		if err != nil {
-			return nil, false, err
+			unlock()
+			return nil, nil, err
 		}
 
 		// ModifyNamespaceByPath can never modify lock status.
@@ -811,13 +821,13 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 	}
 
 	// setNamespaceLocked will unlock ns.lock
-	new, err := ns.setNamespaceLocked(ctx, entry)
+	nsKeyShares, err := ns.setNamespaceLocked(ctx, entry, sealConfig)
 	if err != nil {
 		ns.logger.Error("set namespace failed", "error", err)
-		return nil, new, err
+		return nil, nil, err
 	}
 
-	return entry.Clone(false), new, nil
+	return entry.Clone(false), nsKeyShares, nil
 }
 
 // ListAllNamespaces lists all available namespaces, optionally including the
@@ -1125,18 +1135,13 @@ func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSe
 		}
 
 		ctx = namespace.ContextWithNamespace(ctx, namespaceEntry)
-		if err := ns.clearNamespacePolicies(ctx, namespaceEntry, false); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if err := ns.core.identityStore.RemoveNamespaceView(namespaceEntry); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if err := ns.UnloadNamespaceCredentials(ctx, namespaceEntry); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if err := ns.UnloadNamespaceMounts(ctx, namespaceEntry); err != nil {
-			errs = errors.Join(errs, err)
-		}
+		errs = errors.Join(
+			ns.clearNamespacePolicies(ctx, namespaceEntry, false),
+			ns.core.identityStore.RemoveNamespaceView(namespaceEntry),
+			ns.UnloadNamespaceCredentials(ctx, namespaceEntry),
+			ns.UnloadNamespaceMounts(ctx, namespaceEntry),
+		)
+
 		if barrier != nil {
 			if err := barrier.Seal(); err != nil {
 				errs = errors.Join(errs, err)
@@ -1266,7 +1271,13 @@ func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path s
 	if err != nil {
 		return err
 	}
-	defer unlock()
+
+	var unlocked bool
+	defer func() {
+		if !unlocked {
+			unlock()
+		}
+	}()
 
 	namespaceToUnlock, err := ns.getNamespaceByPathLocked(ctx, path, true)
 	if err != nil {
@@ -1307,7 +1318,9 @@ func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path s
 	}
 	parentCtx := namespace.ContextWithNamespace(ctx, parentNs)
 
-	_, err = ns.setNamespaceLocked(parentCtx, namespaceToUnlock)
+	// setNamespaceLocked will release the lock on its own
+	unlocked = true
+	_, err = ns.setNamespaceLocked(parentCtx, namespaceToUnlock, nil)
 	return err
 }
 
@@ -1319,7 +1332,13 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 	if err != nil {
 		return "", err
 	}
-	defer unlock()
+
+	var unlocked bool
+	defer func() {
+		if !unlocked {
+			unlock()
+		}
+	}()
 
 	namespaceToLock, err := ns.getNamespaceByPathLocked(ctx, path, false)
 	if err != nil {
@@ -1357,7 +1376,9 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 	}
 	parentCtx := namespace.ContextWithNamespace(ctx, parentNs)
 
-	if _, err := ns.setNamespaceLocked(parentCtx, namespaceToLock); err != nil {
+	// setNamespaceLocked will release the lock on its own
+	unlocked = true
+	if _, err := ns.setNamespaceLocked(parentCtx, namespaceToLock, nil); err != nil {
 		return "", fmt.Errorf("unable to save locked namespace %q", namespaceToLock.Path)
 	}
 

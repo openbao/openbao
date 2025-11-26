@@ -295,7 +295,7 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 
 	// verify that modifying a locked namespace does not affect lock
 	// status.
-	ret, _, err = c.namespaceStore.ModifyNamespaceByPath(ctx, testNamespace.Path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+	ret, _, err = c.namespaceStore.ModifyNamespaceByPath(ctx, testNamespace.Path, nil, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 		ns.CustomMetadata["testing"] = "pass"
 
 		// Ensure we do not see the unlock key during modification either.
@@ -620,7 +620,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 	b.Run("ModifyNamespaceByPath", func(b *testing.B) {
 		for b.Loop() {
 			path := randomNamespace(s).Path
-			s.ModifyNamespaceByPath(ctx, path, testModifyNamespace)
+			_, _, _ = s.ModifyNamespaceByPath(ctx, path, nil, testModifyNamespace)
 		}
 	})
 
@@ -700,7 +700,7 @@ func BenchmarkNamespace_Set(b *testing.B) {
 		for b.Loop() {
 			item.Path = "ns" + strconv.Itoa(i)
 			s.lock.Lock()
-			s.setNamespaceLocked(ctx, item)
+			_, _ = s.setNamespaceLocked(ctx, item, nil)
 			i += 1
 		}
 	})

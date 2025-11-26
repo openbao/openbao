@@ -321,22 +321,33 @@ func (ns *NamespaceStore) SetNamespace(ctx context.Context, entry *namespace.Nam
 		return nil, err
 	}
 
+	// Track whether the lock was already released by setNamespaceLocked
+	lockReleased := false
+	defer func() {
+		if !lockReleased {
+			unlock()
+		}
+	}()
+
 	new, err := ns.setNamespaceLocked(ctx, entry)
 	if err != nil {
-		unlock()
 		ns.logger.Error("set namespace failed", "error", err)
 		return nil, err
 	}
 
-	unlock()
+	// If a new namespace was created, the lock was already released by
+	// setNamespaceLocked before initializeNamespace was called
 	if new {
+		lockReleased = true
 		if sealConfig != nil {
 			if err = ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
 				return nil, err
 			}
 			return ns.core.sealManager.InitializeBarrier(ctx, entry)
 		}
-		return nil, ns.initializeNamespace(ctx, ns.storage, entry)
+		// initializeNamespace has already been called in setNamespaceLocked
+		// after the lock was released.
+		return nil, nil
 	}
 
 	return nil, nil
@@ -358,7 +369,6 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	defer func() {
 		if !unlocked {
 			ns.lock.Unlock()
-			unlocked = true
 		}
 	}()
 
@@ -472,11 +482,13 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 			return false, fmt.Errorf("failed to begin transaction: %w", err)
 		}
 
+		// Only rollback and cleanup if an error occurred.
 		defer func() {
-			if err := txn.Rollback(ctx); err != nil {
-				ns.logger.Error("failed to rollback transaction", "error", err)
+			if err != nil {
+				if rollbackErr := txn.Rollback(ctx); rollbackErr != nil {
+					ns.logger.Error("failed to rollback transaction", "error", rollbackErr)
+				}
 			}
-
 			cleanupFailed()
 		}()
 
@@ -484,8 +496,12 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		commit = func() error { return txn.Commit(ctx) }
 	} else {
 		// While we don't have transactions to aid us, we still shouldn't
-		// leave partial namespaces lying around in memory.
-		defer cleanupFailed()
+		// leave partial namespaces lying around in memory on error.
+		defer func() {
+			if err != nil {
+				cleanupFailed()
+			}
+		}()
 	}
 
 	if err := ns.writeNamespace(ctx, storage, entry); err != nil {

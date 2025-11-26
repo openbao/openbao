@@ -616,14 +616,6 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		return nil, fmt.Errorf("failed to unseal namespace barrier: %w", err)
 	}
 
-	if err := sm.core.namespaceStore.initializeNamespace(ctx, sm.core.namespaceStore.storage, ns); err != nil {
-		return nil, fmt.Errorf("failed to initialize namespace: %w", err)
-	}
-
-	if err := sm.core.namespaceStore.SealNamespace(ctx, ns.Path); err != nil {
-		return nil, fmt.Errorf("failed to seal namespace: %w", err)
-	}
-
 	switch nsSeal.StoredKeysSupported() {
 	case vaultseal.StoredKeysSupportedShamirRoot:
 		shamirWrapper, err := nsSeal.GetShamirWrapper()

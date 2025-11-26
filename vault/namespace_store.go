@@ -314,30 +314,30 @@ func (ns *NamespaceStore) invalidate(ctx context.Context, path string) {
 // Note that you cannot change the Seal config of a namespace with this function;
 // only add a seal config to a net-new namespace.
 func (ns *NamespaceStore) SetNamespace(ctx context.Context, entry *namespace.Namespace, sealConfig *SealConfig) ([][]byte, error) {
-    defer metrics.MeasureSince([]string{"namespace", "set_namespace"}, time.Now())
-    unlock, err := ns.lockWithInvalidation(ctx, true)
-    if err != nil {
-        return nil, err
-    }
+	defer metrics.MeasureSince([]string{"namespace", "set_namespace"}, time.Now())
+	unlock, err := ns.lockWithInvalidation(ctx, true)
+	if err != nil {
+		return nil, err
+	}
 
-    // Track whether the lock was already released by setNamespaceLocked
-    lockReleased := false
-    defer func() {
-        if !lockReleased {
-            unlock()
-        }
-    }()
+	// Track whether the lock was already released by setNamespaceLocked
+	lockReleased := false
+	defer func() {
+		if !lockReleased {
+			unlock()
+		}
+	}()
 
-    result, err := ns.setNamespaceLocked(ctx, entry, sealConfig)
-    if err != nil {
-        ns.logger.Error("set namespace failed", "error", err)
-        return nil, err
-    }
+	result, err := ns.setNamespaceLocked(ctx, entry, sealConfig)
+	if err != nil {
+		ns.logger.Error("set namespace failed", "error", err)
+		return nil, err
+	}
 
-    // Lock was released by setNamespaceLocked, so mark it
-    lockReleased = true
+	// Lock was released by setNamespaceLocked, so mark it
+	lockReleased = true
 
-    return result, nil
+	return result, nil
 }
 
 // setNamespaceLocked must be called while holding a write lock over the

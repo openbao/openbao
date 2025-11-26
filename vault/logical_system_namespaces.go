@@ -239,7 +239,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 
 // createNamespaceDataResponse is the standard response object
 // for any operations concerning a namespace.
-func createNamespaceDataResponse(ns *namespace.Namespace, keySharesMap map[string][]string) map[string]any {
+func createNamespaceDataResponse(ns *namespace.Namespace) map[string]any {
 	ret := map[string]any{
 		"uuid":            ns.UUID,
 		"path":            ns.Path,
@@ -247,9 +247,6 @@ func createNamespaceDataResponse(ns *namespace.Namespace, keySharesMap map[strin
 		"tainted":         ns.Tainted,
 		"locked":          ns.Locked,
 		"custom_metadata": ns.CustomMetadata,
-	}
-	if len(keySharesMap) > 0 {
-		ret["key_shares"] = keySharesMap
 	}
 
 	return ret
@@ -272,7 +269,7 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
-			keyInfo[p] = createNamespaceDataResponse(entry, nil)
+			keyInfo[p] = createNamespaceDataResponse(entry)
 		}
 
 		return logical.ListResponseWithInfo(keys, keyInfo), nil
@@ -296,7 +293,7 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
-			keyInfo[p] = createNamespaceDataResponse(entry, nil)
+			keyInfo[p] = createNamespaceDataResponse(entry)
 		}
 
 		return logical.ListResponseWithInfo(keys, keyInfo), nil
@@ -321,7 +318,7 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 			return nil, nil
 		}
 
-		return &logical.Response{Data: createNamespaceDataResponse(ns, nil)}, nil
+		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
 	}
 }
 
@@ -362,48 +359,35 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		entry, new, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, name, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
-			ns.CustomMetadata = metadata
-			return ns, nil
-		})
+		var sealConfig *SealConfig
+		switch len(sealConfigs) {
+		case 0:
+		case 1:
+			// for now we only use a single seal config
+			sealConfig = sealConfigs[0]
+		default:
+			return logical.ErrorResponse("cannot specify more than one namespace seal, got: %d", len(sealConfigs)), logical.ErrInvalidRequest
+		}
+
+		entry, keyShares, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, name, sealConfig,
+			func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+				ns.CustomMetadata = metadata
+				return ns, nil
+			})
 		if err != nil {
 			return handleError(err)
 		}
 
-		if !new {
-			if sealConfigs != nil {
-				return nil, errors.New("cannot update existing namespace and modify its seal config")
+		resp := &logical.Response{Data: createNamespaceDataResponse(entry)}
+		if len(keyShares) != 0 {
+			encoded := make([]string, 0, len(keyShares))
+			for _, share := range keyShares {
+				encoded = append(encoded, hex.EncodeToString(share))
 			}
-			return &logical.Response{Data: createNamespaceDataResponse(entry, nil)}, nil
+			resp.Data["key_shares"] = map[string][]string{"default": encoded}
 		}
 
-		keySharesMap := make(map[string][]string)
-		// TODO(wslabosz): write all the provided configs
-		if len(sealConfigs) > 0 {
-			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry, true); err != nil {
-				return handleError(err)
-			}
-
-			nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, entry)
-			if err != nil {
-				return handleError(err)
-			}
-
-			var keyShares []string
-			for _, keyShare := range nsSealKeyShares {
-				keyShares = append(keyShares, hex.EncodeToString(keyShare))
-			}
-			if len(keyShares) > 0 {
-				keySharesMap["default"] = keyShares
-			}
-		} else {
-			// if there's no seal config provided we need to initialize the namespace
-			if err := b.Core.namespaceStore.initializeNamespace(ctx, b.Core.namespaceStore.storage, entry); err != nil {
-				return handleError(err)
-			}
-		}
-
-		return &logical.Response{Data: createNamespaceDataResponse(entry, keySharesMap)}, nil
+		return resp, nil
 	}
 }
 
@@ -432,7 +416,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, errors.New("name must not contain /")
 		}
 
-		ns, _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, name, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		ns, _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, name, nil, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			if ns.UUID == "" {
 				return nil, fmt.Errorf("requested namespace does not exist")
 			}
@@ -459,7 +443,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 
-		return &logical.Response{Data: createNamespaceDataResponse(ns, nil)}, nil
+		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
 	}
 }
 

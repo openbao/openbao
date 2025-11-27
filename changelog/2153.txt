@@ -1,4 +1,4 @@
 ```release-note:improvement
-command: Adds support for using environment variables to provide configuration for Proxy, Agent, and Operator Migrator via 
-BAO_PROXY_CONFIG_PATH, BAO_AGENT_CONFIG_PATH, and BAO_OP_MIGRATE_CONFIG_PATH.
+command: Add environment variables to provide configuration for Proxy, Agent, and `bao operator migrate` via
+`BAO_PROXY_CONFIG_PATH`, `BAO_AGENT_CONFIG_PATH`, and `BAO_MIGRATE_CONFIG_PATH`.
 ```

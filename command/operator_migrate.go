@@ -84,7 +84,7 @@ func (c *OperatorMigrateCommand) Flags() *FlagSets {
 
 	f.StringVar(&StringVar{
 		Name:   "config",
-		EnvVar: "BAO_OP_MIGRATE_CONFIG_PATH",
+		EnvVar: "BAO_MIGRATE_CONFIG_PATH",
 		Target: &c.flagConfig,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),

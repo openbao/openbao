@@ -417,15 +417,22 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 			return
 		}
 
+		if unlocked {
+			// Re-lock if needed.
+			ns.lock.Lock()
+			unlocked = false
+		}
+
 		// When commit fails and the namespace did not exist, we should back
 		// out the entry from our in-memory versions.
-		ns.lock.Lock()
 		if err := ns.namespacesByPath.Delete(entry.Path); err != nil {
 			ns.logger.Error("failed to remove namespace from path manager", "error", err)
 		}
 		delete(ns.namespacesByUUID, entry.UUID)
 		delete(ns.namespacesByAccessor, entry.ID)
+
 		ns.lock.Unlock()
+		unlocked = true
 
 		// Handle in-memory mount table entries that we should also clean
 		// up.

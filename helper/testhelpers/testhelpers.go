@@ -13,6 +13,7 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -26,6 +27,7 @@ import (
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/xor"
 	"github.com/openbao/openbao/vault"
+	"github.com/stretchr/testify/require"
 )
 
 type GenerateRootKind int
@@ -220,7 +222,7 @@ func deriveStableActiveCore(t testing.T, cluster *vault.TestCluster) *vault.Test
 	activeCore := DeriveActiveCore(t, cluster)
 	minDuration := time.NewTimer(3 * time.Second)
 
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		leaderResp, err := activeCore.Client.Sys().Leader()
 		if err != nil {
 			t.Fatal(err)
@@ -246,7 +248,7 @@ func deriveStableActiveCore(t testing.T, cluster *vault.TestCluster) *vault.Test
 
 func DeriveActiveCore(t testing.T, cluster *vault.TestCluster) *vault.TestClusterCore {
 	t.Helper()
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		for _, core := range cluster.Cores {
 			oldNS := core.Client.Namespace()
 			core.Client.ClearNamespace()
@@ -286,7 +288,7 @@ func DeriveStandbyCores(t testing.T, cluster *vault.TestCluster) []*vault.TestCl
 
 func WaitForNCoresUnsealed(t testing.T, cluster *vault.TestCluster, n int) {
 	t.Helper()
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		unsealed := 0
 		for _, core := range cluster.Cores {
 			if !core.Sealed() {
@@ -324,7 +326,7 @@ func SealCores(t testing.T, cluster *vault.TestCluster) {
 
 func WaitForNCoresSealed(t testing.T, cluster *vault.TestCluster, n int) {
 	t.Helper()
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		sealed := 0
 		for _, core := range cluster.Cores {
 			if core.Sealed() {
@@ -343,7 +345,7 @@ func WaitForNCoresSealed(t testing.T, cluster *vault.TestCluster, n int) {
 
 func WaitForActiveNode(t testing.T, cluster *vault.TestCluster) *vault.TestClusterCore {
 	t.Helper()
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		for _, core := range cluster.Cores {
 			if standby := core.Standby(); !standby {
 				return core
@@ -359,7 +361,7 @@ func WaitForActiveNode(t testing.T, cluster *vault.TestCluster) *vault.TestClust
 
 func WaitForStandbyNode(t testing.T, core *vault.TestClusterCore) {
 	t.Helper()
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		if isLeader, _, clusterAddr, _ := core.Leader(); !isLeader && clusterAddr != "" {
 			return
 		}
@@ -402,12 +404,9 @@ func RotateClusterKeys(t testing.T, cluster *vault.TestCluster, recovery bool) [
 	}
 	for j := 0; j < len(keys); j++ {
 		statusResp, err = updateFunc(base64.StdEncoding.EncodeToString(keys[j]), init.Nonce)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if statusResp == nil {
-			t.Fatal("nil status response during unseal")
-		}
+		require.NoError(t, err)
+		require.NotNil(t, statusResp, "nil status response during unseal")
+
 		if statusResp.Complete {
 			break
 		}
@@ -417,16 +416,12 @@ func RotateClusterKeys(t testing.T, cluster *vault.TestCluster, recovery bool) [
 	if cluster.Cores[0].Core.SealAccess().RecoveryKeySupported() && !recovery {
 		return nil
 	}
-	if len(statusResp.KeysB64) != 5 {
-		t.Fatal("wrong number of keys")
-	}
+	require.Len(t, statusResp.KeysB64, 5, "wrong number of keys")
 
 	newKeys := make([][]byte, 5)
 	for i, key := range statusResp.KeysB64 {
 		newKeys[i], err = base64.StdEncoding.DecodeString(key)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	return newKeys
 }
@@ -483,9 +478,7 @@ func RaftClusterJoinNodes(t testing.T, cluster *vault.TestCluster) {
 		core := cluster.Cores[i]
 		core.UnderlyingRawStorage.(*raft.RaftBackend).SetServerAddressProvider(addressProvider)
 		_, err := core.JoinRaftCluster(namespace.RootContext(context.Background()), leaderInfos, false)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		cluster.UnsealCore(t, core)
 	}
@@ -576,7 +569,7 @@ func WaitForRaftApply(t testing.T, core *vault.TestClusterCore, index uint64) {
 		time.Sleep(time.Second)
 	}
 
-	t.Fatal("node did not apply index")
+	require.Fail(t, "node did not apply index")
 }
 
 // AwaitLeader waits for one of the cluster's nodes to become leader.
@@ -653,23 +646,15 @@ func VerifyRaftPeers(t testing.T, client *api.Client, expected map[string]bool) 
 	t.Helper()
 
 	resp, err := client.Logical().Read("sys/storage/raft/configuration")
-	if err != nil {
-		t.Fatalf("error reading raft config: %v", err)
-	}
-
-	if resp == nil || resp.Data == nil {
-		t.Fatal("missing response data")
-	}
+	require.NoError(t, err, "error reading raft config")
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Data)
 
 	config, ok := resp.Data["config"].(map[string]interface{})
-	if !ok {
-		t.Fatal("missing config in response data")
-	}
+	require.True(t, ok, "missing config in response data")
 
 	servers, ok := config["servers"].([]interface{})
-	if !ok {
-		t.Fatal("missing servers in response data config")
-	}
+	require.True(t, ok, "missing servers in response data config")
 
 	// Iterate through the servers and remove the node found in the response
 	// from the expected collection
@@ -795,7 +780,7 @@ func RetryUntilAtCadence(t testing.T, timeout, sleepTime time.Duration, f func()
 		}
 		time.Sleep(sleepTime)
 	}
-	t.Fatalf("did not complete before deadline, err: %v", err)
+	require.Failf(t, err.Error(), "did not complete before deadline")
 }
 
 // RetryUntil runs f until it returns a nil result or the timeout is reached.
@@ -810,7 +795,7 @@ func RetryUntil(t testing.T, timeout time.Duration, f func() error) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	t.Fatalf("did not complete before deadline, err: %v", err)
+	require.Failf(t, err.Error(), "did not complete before deadline")
 }
 
 // CreateEntityAndAlias clones an existing client and creates an entity/alias.
@@ -818,17 +803,13 @@ func RetryUntil(t testing.T, timeout time.Duration, f func() error) {
 func CreateEntityAndAlias(t testing.T, client *api.Client, mountAccessor, entityName, aliasName string) (*api.Client, string, string) {
 	t.Helper()
 	userClient, err := client.Clone()
-	if err != nil {
-		t.Fatalf("failed to clone the client:%v", err)
-	}
+	require.NoError(t, err, "failed to clone the client")
 	userClient.SetToken(client.Token())
 
 	resp, err := client.Logical().WriteWithContext(context.Background(), "identity/entity", map[string]interface{}{
 		"name": entityName,
 	})
-	if err != nil {
-		t.Fatalf("failed to create an entity:%v", err)
-	}
+	require.NoError(t, err, "failed to create an entity")
 	entityID := resp.Data["id"].(string)
 
 	aliasResp, err := client.Logical().WriteWithContext(context.Background(), "identity/entity-alias", map[string]interface{}{
@@ -836,19 +817,13 @@ func CreateEntityAndAlias(t testing.T, client *api.Client, mountAccessor, entity
 		"canonical_id":   entityID,
 		"mount_accessor": mountAccessor,
 	})
-	if err != nil {
-		t.Fatalf("failed to create an entity alias:%v", err)
-	}
+	require.NoError(t, err, "failed to create an entity alias")
 	aliasID := aliasResp.Data["id"].(string)
-	if aliasID == "" {
-		t.Fatal("Alias ID not present in response")
-	}
+	require.NotEmpty(t, aliasID, "Alias ID not present in response")
 	_, err = client.Logical().WriteWithContext(context.Background(), fmt.Sprintf("auth/userpass/users/%s", aliasName), map[string]interface{}{
 		"password": "testpassword",
 	})
-	if err != nil {
-		t.Fatalf("failed to configure userpass backend: %v", err)
-	}
+	require.NoError(t, err, "failed to configure userpass backend")
 
 	return userClient, entityID, aliasID
 }
@@ -861,9 +836,8 @@ func SetupTOTPMount(t testing.T, client *api.Client) {
 	mountInfo := &api.MountInput{
 		Type: "totp",
 	}
-	if err := client.Sys().Mount("totp", mountInfo); err != nil {
-		t.Fatalf("failed to mount totp backend: %v", err)
-	}
+	err := client.Sys().Mount("totp", mountInfo)
+	require.NoError(t, err, "failed to mount totp backend")
 }
 
 // SetupTOTPMethod configures the TOTP secrets engine with a provided config map.
@@ -872,14 +846,11 @@ func SetupTOTPMethod(t testing.T, client *api.Client, config map[string]interfac
 
 	resp1, err := client.Logical().Write("identity/mfa/method/totp", config)
 
-	if err != nil || (resp1 == nil) {
-		t.Fatalf("bad: resp: %#v\n err: %v", resp1, err)
-	}
+	require.NoError(t, err)
+	require.NotNil(t, resp1)
 
 	methodID := resp1.Data["method_id"].(string)
-	if methodID == "" {
-		t.Fatal("method ID is empty")
-	}
+	require.NotEmpty(t, methodID, "method ID is empty")
 
 	return methodID
 }
@@ -889,13 +860,9 @@ func SetupTOTPMethod(t testing.T, client *api.Client, config map[string]interfac
 func SetupMFALoginEnforcement(t testing.T, client *api.Client, config map[string]interface{}) {
 	t.Helper()
 	enfName, ok := config["name"]
-	if !ok {
-		t.Fatal("couldn't find name in login-enforcement config")
-	}
+	require.True(t, ok, "couldn't find name in login-enforcement config")
 	_, err := client.Logical().WriteWithContext(context.Background(), fmt.Sprintf("identity/mfa/login-enforcement/%s", enfName), config)
-	if err != nil {
-		t.Fatalf("failed to configure MFAEnforcementConfig: %v", err)
-	}
+	require.NoError(t, err, "failed to configure MFAEnforcementConfig")
 }
 
 // SetupUserpassMountAccessor sets up userpass auth and returns its mount
@@ -907,17 +874,12 @@ func SetupUserpassMountAccessor(t testing.T, client *api.Client) string {
 	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
 		Type: "userpass",
 	})
-	if err != nil {
-		t.Fatalf("failed to enable userpass auth: %v", err)
-	}
+	require.NoError(t, err, "failed to enable userpass auth")
 
 	auths, err := client.Sys().ListAuthWithContext(context.Background())
-	if err != nil {
-		t.Fatalf("failed to list auth methods: %v", err)
-	}
-	if auths == nil || auths["userpass/"] == nil {
-		t.Fatal("failed to get userpass mount accessor")
-	}
+	require.NoError(t, err, "failed to list auth methods")
+	require.NotNil(t, auths)
+	require.NotNil(t, auths["userpass/"])
 
 	return auths["userpass/"].Accessor
 }
@@ -931,28 +893,20 @@ func RegisterEntityInTOTPEngine(t testing.T, client *api.Client, entityID, metho
 		"entity_id": entityID,
 		"method_id": methodID,
 	})
-	if err != nil {
-		t.Fatalf("failed to generate a TOTP secret on an entity: %v", err)
-	}
+	require.NoError(t, err, "failed to generate a TOTP secret on an entity")
 	totpURL := secret.Data["url"].(string)
-	if totpURL == "" {
-		t.Fatalf("failed to get TOTP url in secret response: %+v", secret)
-	}
+	require.NotEmptyf(t, totpURL, "failed to get TOTP url in secret response: %+v", secret)
 	_, err = client.Logical().WriteWithContext(context.Background(), fmt.Sprintf("totp/keys/%s", totpGenName), map[string]interface{}{
 		"url": totpURL,
 	})
-	if err != nil {
-		t.Fatalf("failed to register a TOTP URL: %v", err)
-	}
+	require.NoError(t, err, "failed to register a TOTP URL")
 	enfPath := fmt.Sprintf("identity/mfa/login-enforcement/%s", methodID[0:4])
 	_, err = client.Logical().WriteWithContext(context.Background(), enfPath, map[string]interface{}{
 		"name":                methodID[0:4],
 		"identity_entity_ids": []string{entityID},
 		"mfa_method_ids":      []string{methodID},
 	})
-	if err != nil {
-		t.Fatal("failed to create login enforcement")
-	}
+	require.NoError(t, err, "failed to create login enforcement")
 
 	return totpGenName
 }
@@ -962,12 +916,9 @@ func GetTOTPCodeFromEngine(t testing.T, client *api.Client, enginePath string) s
 	t.Helper()
 	totpPath := fmt.Sprintf("totp/code/%s", enginePath)
 	secret, err := client.Logical().ReadWithContext(context.Background(), totpPath)
-	if err != nil {
-		t.Fatalf("failed to create totp passcode: %v", err)
-	}
-	if secret == nil || secret.Data == nil {
-		t.Fatalf("bad secret returned from %s", totpPath)
-	}
+	require.NoError(t, err, "failed to create totp passcode")
+	require.NotNil(t, secret)
+	require.NotNilf(t, secret.Data, "bad secret returned from %s", totpPath)
 	return secret.Data["code"].(string)
 }
 
@@ -1030,17 +981,8 @@ func SkipUnlessEnvVarsSet(t testing.T, envVars []string) {
 func WaitForNodesExcludingSelectedStandbys(t testing.T, cluster *vault.TestCluster, indexesToSkip ...int) {
 	WaitForActiveNode(t, cluster)
 
-	contains := func(elems []int, e int) bool {
-		for _, v := range elems {
-			if v == e {
-				return true
-			}
-		}
-
-		return false
-	}
 	for i, core := range cluster.Cores {
-		if contains(indexesToSkip, i) {
+		if slices.Contains(indexesToSkip, i) {
 			continue
 		}
 

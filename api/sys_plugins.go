@@ -345,8 +345,8 @@ func (c *Sys) ReloadPluginStatusWithContext(ctx context.Context, reloadStatusInp
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close() //nolint:errcheck
 	if resp != nil {
+		defer resp.Body.Close() //nolint:errcheck
 		secret, parseErr := ParseSecret(resp.Body)
 		if parseErr != nil {
 			return nil, err

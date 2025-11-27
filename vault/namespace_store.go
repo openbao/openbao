@@ -477,12 +477,12 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 
 		// Only rollback and cleanup if an error occurred.
 		defer func() {
-			if err != nil {
+			if failed {
 				if rollbackErr := txn.Rollback(ctx); rollbackErr != nil {
 					ns.logger.Error("failed to rollback transaction", "error", rollbackErr)
 				}
+				cleanupFailed()
 			}
-			cleanupFailed()
 		}()
 
 		storage = txn

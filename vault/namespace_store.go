@@ -315,27 +315,15 @@ func (ns *NamespaceStore) invalidate(ctx context.Context, path string) {
 // only add a seal config to a net-new namespace.
 func (ns *NamespaceStore) SetNamespace(ctx context.Context, entry *namespace.Namespace, sealConfig *SealConfig) ([][]byte, error) {
 	defer metrics.MeasureSince([]string{"namespace", "set_namespace"}, time.Now())
-	unlock, err := ns.lockWithInvalidation(ctx, true)
-	if err != nil {
+	if _, err := ns.lockWithInvalidation(ctx, true); err != nil {
 		return nil, err
 	}
-
-	// Track whether the lock was already released by setNamespaceLocked
-	lockReleased := false
-	defer func() {
-		if !lockReleased {
-			unlock()
-		}
-	}()
 
 	result, err := ns.setNamespaceLocked(ctx, entry, sealConfig)
 	if err != nil {
 		ns.logger.Error("set namespace failed", "error", err)
 		return nil, err
 	}
-
-	// Lock was released by setNamespaceLocked, so mark it
-	lockReleased = true
 
 	return result, nil
 }
@@ -1429,11 +1417,9 @@ func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namesp
 }
 
 func (ns *NamespaceStore) SealAllNamespacesLocked(ctx context.Context) error {
-	unlock, err := ns.lockWithInvalidation(ctx, false)
+	_, err := ns.lockWithInvalidation(ctx, false)
 	if err != nil {
 		return err
 	}
-	defer unlock()
-
 	return ns.sealNamespaceLocked(ctx, namespace.RootNamespace)
 }

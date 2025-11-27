@@ -2424,7 +2424,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	// Adding new audit devices only occurs on the active node. Standby nodes
 	// will consume audit devices from storage only, but we want to run this
 	// from startup anyways to report any discrepancies.
-	if err := c.handleAuditLogSetup(ctx); err != nil {
+	if err := c.handleAuditLogSetup(ctx, standby); err != nil {
 		return err
 	}
 	if err := c.loadIdentityStoreArtifacts(ctx); err != nil {

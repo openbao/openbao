@@ -11,7 +11,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"sync"
 	"testing"
 	"time"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
+	"golang.org/x/sync/errgroup"
 )
 
 func tokenRevocationValidation(t *testing.T, sampleSpace map[string]string, expected map[string]string, leaseCache *LeaseCache) {
@@ -219,32 +219,30 @@ func TestCache_ConcurrentRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wg := &sync.WaitGroup{}
+	eg := errgroup.Group{}
 	for i := range 100 {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
+		eg.Go(func() error {
 			key := fmt.Sprintf("kv/foo/%d_%d", i, rand.Int())
-			_, err := testClient.Logical().Write(key, map[string]interface{}{
+			_, err := testClient.Logical().Write(key, map[string]any{
 				"key": key,
 			})
 			if err != nil {
-				t.Log(err)
-				t.Fail()
+				return err
 			}
 			secret, err := testClient.Logical().Read(key)
 			if err != nil {
-				t.Log(err)
-				t.Fail()
+				return err
 			}
 			if secret == nil || secret.Data["key"].(string) != key {
-				t.Logf("failed to read value for key: %q", key)
-				t.Fail()
+				return fmt.Errorf("failed to read value for key: %q", key)
 			}
-		}(i)
-
+			return nil
+		})
 	}
-	wg.Wait()
+
+	if err := eg.Wait(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestCache_TokenRevocations_RevokeOrphan(t *testing.T) {

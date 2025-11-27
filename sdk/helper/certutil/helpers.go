@@ -553,11 +553,7 @@ func HandleOtherCSRSANs(in *x509.CertificateRequest, sans map[string][]string) e
 	if err := HandleOtherSANs(certTemplate, sans); err != nil {
 		return err
 	}
-	if len(certTemplate.ExtraExtensions) > 0 {
-		for _, v := range certTemplate.ExtraExtensions {
-			in.ExtraExtensions = append(in.ExtraExtensions, v)
-		}
-	}
+	in.ExtraExtensions = append(in.ExtraExtensions, certTemplate.ExtraExtensions...)
 	return nil
 }
 

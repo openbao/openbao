@@ -192,7 +192,7 @@ func (p *PostgreSQL) changeUserPassword(ctx context.Context, username string, ch
 	if err != nil {
 		return fmt.Errorf("unable to start transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck
 
 	for _, stmt := range stmts {
 		for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
@@ -246,9 +246,7 @@ func (p *PostgreSQL) changeUserExpiration(ctx context.Context, username string, 
 	if err != nil {
 		return err
 	}
-	defer func() {
-		tx.Rollback()
-	}()
+	defer tx.Rollback() //nolint:errcheck
 
 	expirationStr := changeExp.NewExpiration.Format(expirationFormat)
 
@@ -297,7 +295,7 @@ func (p *PostgreSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (
 	if err != nil {
 		return dbplugin.NewUserResponse{}, fmt.Errorf("unable to start transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck
 
 	m := map[string]string{
 		"name":       username,
@@ -366,9 +364,7 @@ func (p *PostgreSQL) customDeleteUser(ctx context.Context, username string, revo
 	if err != nil {
 		return err
 	}
-	defer func() {
-		tx.Rollback()
-	}()
+	defer tx.Rollback() //nolint:errcheck
 
 	for _, stmt := range revocationStmts {
 		if containsMultilineStatement(stmt) {

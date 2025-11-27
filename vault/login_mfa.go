@@ -2179,7 +2179,7 @@ func (c *Core) validatePingID(ctx context.Context, mConfig *mfa.Config, username
 		}
 		bodyBytes := bytes.NewBuffer(nil)
 		_, err = bodyBytes.ReadFrom(resp.Body)
-		resp.Body.Close()
+		resp.Body.Close() //nolint:errcheck
 		if err != nil {
 			return nil, fmt.Errorf("error reading pingid response: %w", err)
 		}

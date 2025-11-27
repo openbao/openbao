@@ -23,7 +23,7 @@ func (c *Sys) LeaderWithContext(ctx context.Context) (*LeaderResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var result LeaderResponse
 	err = resp.DecodeJSON(&result)

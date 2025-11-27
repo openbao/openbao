@@ -253,7 +253,7 @@ func (c *Client) retryOCSP(
 			retErr = multierror.Append(retErr, err)
 			continue
 		} else {
-			defer res.Body.Close()
+			defer res.Body.Close() //nolint:errcheck
 		}
 
 		if res.StatusCode != http.StatusOK {

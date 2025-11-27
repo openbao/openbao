@@ -61,7 +61,7 @@ func TestOCSP(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to GET contents. err: %v", err)
 			}
-			defer res.Body.Close()
+			defer res.Body.Close() //nolint:errcheck
 			_, err = io.ReadAll(res.Body)
 			if err != nil {
 				t.Fatalf("failed to read content body for %v", tgt)

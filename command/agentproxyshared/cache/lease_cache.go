@@ -414,7 +414,7 @@ func (c *LeaseCache) Send(ctx context.Context, req *SendRequest) (*SendResponse,
 
 	// Reset the response body for upper layers to read
 	if resp.Response.Body != nil {
-		resp.Response.Body.Close()
+		resp.Response.Body.Close() //nolint:errcheck
 	}
 	resp.Response.Body = io.NopCloser(bytes.NewReader(resp.ResponseBody))
 

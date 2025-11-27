@@ -31,7 +31,7 @@ func (c *Sys) SealWithContext(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }
@@ -88,7 +88,7 @@ func sealStatusRequestWithContext(ctx context.Context, c *Sys, r *Request) (*Sea
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var result SealStatusResponse
 	err = resp.DecodeJSON(&result)

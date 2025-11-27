@@ -67,7 +67,7 @@ func NewSendResponse(apiResponse *api.Response, responseBody []byte) (*SendRespo
 			return nil, err
 		}
 		// Close the old body
-		apiResponse.Body.Close()
+		apiResponse.Body.Close() //nolint:errcheck
 
 		// Re-set the response body after reading from the Reader
 		apiResponse.Body = io.NopCloser(bytes.NewReader(respBody))

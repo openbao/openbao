@@ -141,7 +141,7 @@ func parseResponse(resp *http.Response) (*authv1.TokenReview, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// If the request was not a success create a kuberenets error
 	if resp.StatusCode < http.StatusOK || resp.StatusCode > http.StatusPartialContent {

@@ -70,7 +70,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 		buf := bytes.NewBuffer(nil)
 		buf.ReadFrom(resp.Body)
 		if !strings.HasPrefix(buf.String(), "1.2.3.4:") {
@@ -105,7 +105,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 		buf := bytes.NewBuffer(nil)
 		buf.ReadFrom(resp.Body)
 		if !strings.HasPrefix(buf.String(), "127.0.0.1:") {
@@ -209,7 +209,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 		buf := bytes.NewBuffer(nil)
 		buf.ReadFrom(resp.Body)
 		if !strings.HasPrefix(buf.String(), "4.5.6.7:") {
@@ -248,7 +248,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 		buf := bytes.NewBuffer(nil)
 		buf.ReadFrom(resp.Body)
 		if !strings.HasPrefix(buf.String(), "4.5.6.7:") {

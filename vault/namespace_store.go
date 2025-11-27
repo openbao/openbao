@@ -441,10 +441,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		}
 
 		defer func() {
-			if err := txn.Rollback(ctx); err != nil {
-				ns.logger.Error("failed to rollback transaction", "error", err)
-			}
-
+			txn.Rollback(ctx) //nolint:errcheck
 			cleanupFailed()
 		}()
 

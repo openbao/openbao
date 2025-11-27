@@ -290,7 +290,7 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 			return nil, err
 		}
 
-		defer txn.Rollback(ctx)
+		defer txn.Rollback(ctx) //nolint:errcheck
 		req.Storage = txn
 	}
 

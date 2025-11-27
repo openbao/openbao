@@ -860,7 +860,7 @@ func TestCache_NonCacheable(t *testing.T) {
 	ctx := t.Context()
 	apiResp, err := testClient.Logical().ReadRawWithContext(ctx, "kv-invalid")
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 	if apiResp.Error() == nil || (apiResp != nil && apiResp.StatusCode != 404) {
 		t.Fatalf("expected an error response and a 404 from requesting an invalid path, got: %#v", apiResp)
@@ -1098,7 +1098,7 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 	ctx := t.Context()
 	apiResp, err := testClient.RawRequestWithContext(ctx, r)
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 	if apiResp != nil && apiResp.StatusCode == 404 {
 		_, parseErr := api.ParseSecret(apiResp.Body)

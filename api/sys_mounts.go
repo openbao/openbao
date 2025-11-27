@@ -27,7 +27,7 @@ func (c *Sys) ListMountsWithContext(ctx context.Context) (map[string]*MountOutpu
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
@@ -63,7 +63,7 @@ func (c *Sys) MountWithContext(ctx context.Context, path string, mountInfo *Moun
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }
@@ -80,7 +80,7 @@ func (c *Sys) UnmountWithContext(ctx context.Context, path string) error {
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err == nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	return err
 }
@@ -138,7 +138,7 @@ func (c *Sys) StartRemountWithContext(ctx context.Context, from, to string) (*Mo
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
 		return nil, err
@@ -172,7 +172,7 @@ func (c *Sys) RemountStatusWithContext(ctx context.Context, migrationID string) 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
 		return nil, err
@@ -205,7 +205,7 @@ func (c *Sys) TuneMountWithContext(ctx context.Context, path string, config Moun
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err == nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	return err
 }
@@ -224,7 +224,7 @@ func (c *Sys) MountConfigWithContext(ctx context.Context, path string) (*MountCo
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
@@ -257,7 +257,7 @@ func (c *Sys) MountInfoWithContext(ctx context.Context, path string) (*MountOutp
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {

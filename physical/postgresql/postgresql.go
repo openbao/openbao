@@ -324,7 +324,7 @@ func (m *PostgreSQLBackend) createTables() error {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer txn.Rollback()
+	defer txn.Rollback() //nolint:errcheck
 
 	createTableQuery := "CREATE TABLE IF NOT EXISTS " + m.table + " (" +
 		`parent_path TEXT COLLATE "C" NOT NULL,` +

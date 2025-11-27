@@ -710,7 +710,7 @@ func SysMetricsReq(client *api.Client, cluster *vault.TestCluster, unauth bool) 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 	if err := json.Unmarshal(bodyBytes, &data); err != nil {
 		return nil, errors.New("failed to unmarshal:" + err.Error())
 	}

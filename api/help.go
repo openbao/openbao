@@ -26,7 +26,7 @@ func (c *Client) HelpWithContext(ctx context.Context, path string) (*Help, error
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var result Help
 	err = resp.DecodeJSON(&result)

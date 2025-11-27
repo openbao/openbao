@@ -1379,7 +1379,7 @@ func (c *Core) loadMounts(ctx context.Context) error {
 	// Defer rolling back: we may commit the transaction anyways, but we
 	// need to ensure the transaction is cleaned up in the event of an
 	// error.
-	defer txn.Rollback(ctx)
+	defer txn.Rollback(ctx) //nolint:errcheck
 
 	legacy, err := c.loadLegacyMounts(ctx, txn)
 	if err != nil {
@@ -1701,7 +1701,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 
 		// In the event of an unexpected error, rollback this transaction.
 		// A rollback of a committed transaction does not impact the commit.
-		defer barrier.(logical.Transaction).Rollback(ctx)
+		defer barrier.(logical.Transaction).Rollback(ctx) //nolint:errcheck
 	}
 
 	if table.Type != mountTableType {

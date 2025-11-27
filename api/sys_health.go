@@ -32,7 +32,7 @@ func (c *Sys) HealthWithContext(ctx context.Context) (*HealthResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var result HealthResponse
 	err = resp.DecodeJSON(&result)

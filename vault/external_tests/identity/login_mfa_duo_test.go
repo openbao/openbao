@@ -129,7 +129,7 @@ path "secret/foo" {
 	// Make the request
 	resp, err := client.Logical().ReadRaw("secret/foo")
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 403 {
 		return errors.New("failed to read the secret")

@@ -159,7 +159,7 @@ func (m *MySQL) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest) 
 	if err != nil {
 		return dbplugin.DeleteUserResponse{}, err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck
 
 	if len(req.Statements.Commands) == 0 {
 		return dbplugin.DeleteUserResponse{}, m.defaultDeleteUser(ctx, tx, req.Username)
@@ -263,9 +263,7 @@ func (m *MySQL) executePreparedStatementsWithMap(ctx context.Context, statements
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
+	defer tx.Rollback() //nolint:errcheck
 
 	// Execute each query
 	for _, stmt := range statements {

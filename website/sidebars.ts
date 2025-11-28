@@ -552,6 +552,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/config-audit-devices",
                 "rfcs/opentelemetry",
                 "rfcs/efficient-search-components",
+                "rfcs/emergency-seal",
                 {
                     "UI/UX": ["rfcs/web-ui-modernization"],
                 },

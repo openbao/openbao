@@ -4,6 +4,22 @@ import type * as Preset from "@docusaurus/preset-classic";
 import { includeMarkdown } from "@hashicorp/remark-plugins";
 import path from "path";
 
+const docVersions = {
+  current: { label: "Development" },
+  "2.4.x": { label: "Version 2.4.x" },
+  "2.3.x": { label: "Version 2.3.x" },
+};
+
+function getDocVersions(docVersions: any) {
+  if (process.env.VERSIONED_DOCS == "true") {
+    return docVersions;
+  } else {
+    return {
+      current: { label: "Development" },
+    };
+  }
+}
+
 const config: Config = {
   title: "OpenBao",
   tagline:
@@ -58,6 +74,7 @@ const config: Config = {
             ],
           ],
           path: "content/docs",
+          versions: getDocVersions(docVersions),
         },
         sitemap: {
           lastmod: "datetime",
@@ -99,6 +116,7 @@ const config: Config = {
             },
           ],
         ],
+        versions: getDocVersions(docVersions),
       },
     ],
     [
@@ -173,20 +191,12 @@ const config: Config = {
         },
         {
           type: "docsVersionDropdown",
-          versions: {
-            current: { label: "Development" },
-            "2.4.x": { label: "Version 2.4.x" },
-            "2.3.x": { label: "Version 2.3.x" },
-          },
+          versions: getDocVersions(docVersions),
           position: "right",
         },
         {
           type: "docsVersionDropdown",
-          versions: {
-            current: { label: "Development" },
-            "2.4.x": { label: "Version 2.4.x" },
-            "2.3.x": { label: "Version 2.3.x" },
-          },
+          versions: getDocVersions(docVersions),
           docsPluginId: "api-docs",
           position: "right",
         },

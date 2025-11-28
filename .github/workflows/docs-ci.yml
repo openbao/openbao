@@ -45,6 +45,10 @@ jobs:
         working-directory: ./website
         run: |
           make build-versioned
+      - uses: actions/upload-artifact@v4
+        with:
+          name: website
+          path: website/build/
 
   lint-docs:
     name: Lint Docs

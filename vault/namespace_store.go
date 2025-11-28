@@ -319,13 +319,7 @@ func (ns *NamespaceStore) SetNamespace(ctx context.Context, entry *namespace.Nam
 		return nil, err
 	}
 
-	result, err := ns.setNamespaceLocked(ctx, entry, sealConfig)
-	if err != nil {
-		ns.logger.Error("set namespace failed", "error", err)
-		return nil, err
-	}
-
-	return result, nil
+	return ns.setNamespaceLocked(ctx, entry, sealConfig)
 }
 
 // setNamespaceLocked must be called while holding a write lock over the
@@ -344,6 +338,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	defer func() {
 		if !unlocked {
 			ns.lock.Unlock()
+			unlocked = true
 		}
 	}()
 
@@ -463,26 +458,20 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 			return nil, fmt.Errorf("failed to begin transaction: %w", err)
 		}
 
-		// Only rollback and cleanup if an error occurred.
 		defer func() {
-			if failed {
-				if rollbackErr := txn.Rollback(ctx); rollbackErr != nil {
-					ns.logger.Error("failed to rollback transaction", "error", rollbackErr)
-				}
-				cleanupFailed()
+			if err := txn.Rollback(ctx); err != nil {
+				ns.logger.Error("failed to rollback transaction", "error", err)
 			}
+
+			cleanupFailed()
 		}()
 
 		storage = txn
 		commit = func() error { return txn.Commit(ctx) }
 	} else {
 		// While we don't have transactions to aid us, we still shouldn't
-		// leave partial namespaces lying around in memory on error.
-		defer func() {
-			if err != nil {
-				cleanupFailed()
-			}
-		}()
+		// leave partial namespaces lying around in memory.
+		defer cleanupFailed()
 	}
 
 	if err := ns.writeNamespace(ctx, storage, entry); err != nil {

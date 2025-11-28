@@ -75,11 +75,11 @@ func (c *Core) SetupSealManager() {
 	sealLogger := c.baseLogger.Named("seal")
 	c.AddLogger(sealLogger)
 	c.sealManager = NewSealManager(c, sealLogger)
-	c.sealManager.setup()
+	c.sealManager.Reset()
 }
 
-// setup is used to initialize the internal structs of a sealManager.
-func (sm *SealManager) setup() {
+// Reset clears all internal state, leaving only the root namespace's seal.
+func (sm *SealManager) Reset() {
 	sm.barrierByNamespace = radix.NewFromMap(map[string]interface{}{
 		"": sm.core.barrier,
 	})
@@ -92,15 +92,6 @@ func (sm *SealManager) setup() {
 			recoveryConfig: nil,
 		},
 	}
-}
-
-// Lock ordering: This method acquires SM lock. The caller (Core.preSeal)
-// should already hold NS lock, maintaining NS -> SM lock ordering.
-func (sm *SealManager) Reset(ctx context.Context) {
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-
-	sm.setup()
 }
 
 // SetSeal creates a seal using provided config and sets and initializes it

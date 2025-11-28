@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"testing"
 )
 
@@ -20,7 +19,7 @@ func TestSealManager_Reset(t *testing.T) {
 	originalBarriers := c.sealManager.barrierByNamespace
 
 	// Call Reset
-	c.sealManager.Reset(context.Background())
+	c.sealManager.Reset()
 
 	// Verify that SM state was reset and setup() reinitializes maps
 	if c.sealManager.barrierByNamespace == nil {

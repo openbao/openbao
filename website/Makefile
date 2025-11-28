@@ -4,7 +4,7 @@ DOCKER?=docker
 # For Podman, invoke via `make docker-start DOCKER=podman DOCKER_MOUNT_ARGS=,chown=true,relabel=shared`
 DOCKER_MOUNT_ARGS?=
 
-.PHONY: start, clean, deploy, serve, install, build, build-versioned
+.PHONY: start, clean, deploy, serve, install, build-versioned
 
 start: node_modules
 	@$(NPM) run start

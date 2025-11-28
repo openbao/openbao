@@ -300,6 +300,16 @@ func (c *Core) teardownNamespaceStore() error {
 	return nil
 }
 
+// sealAllNamespaces seals all namespaces to prepare for core to seal.
+func (c *Core) sealAllNamespaces(ctx context.Context) (err error) {
+	// This is called in preSeal(), so no locks should be required.
+	if c.namespaceStore != nil {
+		err = c.namespaceStore.sealNamespaceLocked(ctx, namespace.RootNamespace)
+	}
+	c.sealManager.Reset()
+	return err
+}
+
 func (ns *NamespaceStore) invalidate(ctx context.Context, path string) {
 	// We want to keep invalidation proper fast (as it holds up replication),
 	// so defer invalidation to the next load.

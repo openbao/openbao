@@ -38,7 +38,7 @@ jobs:
         name: build-docs
         working-directory: ./website
         run: |
-          make lint build
+          make lint build-versioned
       - name: Setup Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
       - name: Upload artifact

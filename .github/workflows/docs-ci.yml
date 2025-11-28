@@ -44,7 +44,7 @@ jobs:
         name: build-docs
         working-directory: ./website
         run: |
-          make build
+          make build-versioned
 
   lint-docs:
     name: Lint Docs

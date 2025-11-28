@@ -6,6 +6,7 @@ syntax = "proto3";
 option go_package = "github.com/openbao/openbao/vault";
 
 import "helper/forwarding/types.proto";
+import "google/protobuf/empty.proto";
 
 package vault;
 
@@ -54,5 +55,6 @@ message ClientKey {
 
 service RequestForwarding {
 	rpc ForwardRequest(forwarding.Request) returns (forwarding.Response) {}
+	rpc ForwardLoginAttempt(forwarding.LoginAttempt) returns (google.protobuf.Empty) {}
 	rpc Echo(EchoRequest) returns (EchoReply) {}
 }

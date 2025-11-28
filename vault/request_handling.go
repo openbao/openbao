@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -23,10 +24,13 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -1595,7 +1599,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	// if routeErr has invalid credentials error, update the userFailedLoginMap
 	if routeErr != nil && routeErr == logical.ErrInvalidCredentials {
 		if !isUserLockoutDisabled {
-			err := c.failedUserLoginProcess(ctx, entry, req, userLockoutInfo)
+			err := c.failedUserLoginProcess(ctx, entry, userLockoutInfo)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1961,10 +1965,35 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 	return leaseGenerated, resp, nil
 }
 
-// failedUserLoginProcess updates the userFailedLoginMap with login count and  last failed
+var failedUserLoginProcessNotSupportedWarning sync.Once
+
+// failedUserLoginProcess updates the userFailedLoginMap with login count and last failed
 // login time for users with failed login attempt
 // If the user gets locked for current login attempt, it updates the storage entry too
-func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntry, req *logical.Request, userLockoutInfo *FailedLoginUser) error {
+func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntry, userLockoutInfo *FailedLoginUser) error {
+	if c.standby.Load() {
+		c.requestForwardingConnectionLock.RLock()
+		rpcForwardingClient := c.rpcForwardingClient
+		c.requestForwardingConnectionLock.RUnlock()
+
+		if rpcForwardingClient == nil {
+			return nil
+		}
+
+		_, err := rpcForwardingClient.ForwardLoginAttempt(ctx, &forwarding.LoginAttempt{
+			NamespaceUuid: mountEntry.Namespace().UUID,
+			MountAccessor: mountEntry.Accessor,
+			UserAliasName: userLockoutInfo.aliasName,
+		})
+		if s, ok := status.FromError(err); ok && s.Code() == codes.Unimplemented { // remove in OpenBao 4.0.0
+			failedUserLoginProcessNotSupportedWarning.Do(func() {
+				c.logger.Warn("can not forward failed login attempt to primary, please update your primary")
+			})
+			err = nil
+		}
+		return err
+	}
+
 	// get the user lockout configuration for the user
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
 
@@ -2287,10 +2316,30 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 		if te.ExternalID != "" {
 			auth.ClientToken = te.ExternalID
 		}
-		// Successful login, remove any entry from userFailedLoginInfo map
-		// if it exists. This is done for service tokens (for oss) here.
-		// For ent it is taken care by registerAuth RPC calls.
-		if userLockoutInfo != nil {
+
+		if c.standby.Load() {
+			// If we are a standby, notify the primary about the successful login
+			// The primary will use this to reset the user lockout counter
+
+			c.requestForwardingConnectionLock.RLock()
+			rpcForwardingClient := c.rpcForwardingClient
+			c.requestForwardingConnectionLock.RUnlock()
+
+			if rpcForwardingClient != nil {
+				c.logger.Trace("forwarding successful login attempt", "mount_accessor", userLockoutInfo.mountAccessor, "user_alias", userLockoutInfo.aliasName)
+				_, err = c.rpcForwardingClient.ForwardLoginAttempt(ctx, &forwarding.LoginAttempt{
+					NamespaceUuid: ns.UUID,
+					MountAccessor: userLockoutInfo.mountAccessor,
+					UserAliasName: userLockoutInfo.aliasName,
+					Successful:    true,
+				})
+				if err != nil {
+					c.logger.Warn("failed to forward successful login attempt", "error", err, "mount_accessor", userLockoutInfo.mountAccessor, "user_alias", userLockoutInfo.aliasName)
+				}
+			}
+		} else if userLockoutInfo != nil {
+			// Successful login, remove any entry from userFailedLoginInfo map
+			// if it exists. This is done for service tokens here.
 			// We don't need to try to delete the lockedUsers storage entry, since we're
 			// processing a login request. If a login attempt is allowed, it means the user is
 			// unlocked and we only add storage entry when the user gets locked.

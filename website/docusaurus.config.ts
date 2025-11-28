@@ -3,6 +3,7 @@ import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 import { includeMarkdown } from "@hashicorp/remark-plugins";
 import path from "path";
+import pluginSidebarJson from "./src/docusaurus-plugin-sidebar-json";
 
 const docVersions = {
   current: { label: "Development" },
@@ -131,6 +132,7 @@ const config: Config = {
       },
     ],
     require.resolve("docusaurus-lunr-search"),
+    pluginSidebarJson,
   ],
 
   themeConfig: {

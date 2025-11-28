@@ -1,0 +1,3 @@
+```release-note:feature
+**ExpirationManager transaction support**: Added datastore transaction support to the expiration manager.
+```

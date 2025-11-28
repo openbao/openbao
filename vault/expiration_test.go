@@ -451,7 +451,7 @@ func TestExpiration_Tidy(t *testing.T) {
 
 	ctx := namespace.RootContext(context.Background())
 
-	view := exp.leaseView(namespace.RootNamespace)
+	view := exp.leaseView(context.Background(), namespace.RootNamespace)
 
 	// Scan the storage with the count func set
 	if err := logical.ScanView(ctx, view, countFunc); err != nil {

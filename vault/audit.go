@@ -662,12 +662,12 @@ func (c *Core) ReloadAuditLogs() {
 		return
 	}
 
-	if err := c.handleAuditLogSetup(c.activeContext); err != nil {
+	if err := c.handleAuditLogSetup(c.activeContext, c.standby.Load()); err != nil {
 		c.logger.Error("failed to set up audit logs on reload", "error", err)
 	}
 }
 
-func (c *Core) handleAuditLogSetup(ctx context.Context) error {
+func (c *Core) handleAuditLogSetup(ctx context.Context, standby bool) error {
 	conf := c.rawConfig.Load().(*server.Config)
 
 	c.auditLock.RLock()
@@ -703,7 +703,7 @@ func (c *Core) handleAuditLogSetup(ctx context.Context) error {
 		}
 
 		if entry == nil {
-			if err := c.addAuditFromConfig(ctx, auditConfig); err != nil {
+			if err := c.addAuditFromConfig(ctx, auditConfig, standby); err != nil {
 				return fmt.Errorf("failed to create new audit device %v: %w", auditConfig.Path, err)
 			}
 		} else {
@@ -728,7 +728,7 @@ func (c *Core) handleAuditLogSetup(ctx context.Context) error {
 			continue
 		}
 
-		if c.standby.Load() {
+		if standby {
 			c.logger.Warn("audit device present in storage but not standby node configuration; this may be a false-positive depending on data replication state", "path", auditMount.Path)
 			continue
 		}
@@ -742,8 +742,8 @@ func (c *Core) handleAuditLogSetup(ctx context.Context) error {
 	return nil
 }
 
-func (c *Core) addAuditFromConfig(ctx context.Context, auditConfig *server.AuditDevice) error {
-	if c.standby.Load() {
+func (c *Core) addAuditFromConfig(ctx context.Context, auditConfig *server.AuditDevice, standby bool) error {
+	if standby {
 		c.logger.Warn("audit device present in local configuration but not in the configuration of the active node; this may be a false-positive depending on data replication state", "path", auditConfig.Path)
 		return nil
 	}

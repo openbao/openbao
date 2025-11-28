@@ -1417,8 +1417,7 @@ func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namesp
 }
 
 func (ns *NamespaceStore) SealAllNamespacesLocked(ctx context.Context) error {
-	_, err := ns.lockWithInvalidation(ctx, false)
-	if err != nil {
+	if _, err := ns.lockWithInvalidation(ctx, false); err != nil {
 		return err
 	}
 	return ns.sealNamespaceLocked(ctx, namespace.RootNamespace)

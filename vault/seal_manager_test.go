@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestSealManager_ResetInternal(t *testing.T) {
+func TestSealManager_Reset(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 
 	// Verify that SM state exists before reset
@@ -19,11 +19,8 @@ func TestSealManager_ResetInternal(t *testing.T) {
 	// Store reference to original barrier map
 	originalBarriers := c.sealManager.barrierByNamespace
 
-	// Call ResetInternal
-	err := c.sealManager.ResetInternal(context.Background())
-	if err != nil {
-		t.Fatalf("ResetInternal failed: %v", err)
-	}
+	// Call Reset
+	c.sealManager.Reset(context.Background())
 
 	// Verify that SM state was reset and setup() reinitializes maps
 	if c.sealManager.barrierByNamespace == nil {

@@ -1405,7 +1405,7 @@ func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namesp
 	return ns, rest, nil
 }
 
-func (ns *NamespaceStore) SealAllNamespacesLocked(ctx context.Context) error {
+func (ns *NamespaceStore) SealAllNamespaces(ctx context.Context) error {
 	if _, err := ns.lockWithInvalidation(ctx, false); err != nil {
 		return err
 	}

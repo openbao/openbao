@@ -96,15 +96,11 @@ func (sm *SealManager) setup() {
 
 // Lock ordering: This method acquires SM lock. The caller (Core.preSeal)
 // should already hold NS lock, maintaining NS -> SM lock ordering.
-func (sm *SealManager) ResetInternal(ctx context.Context) error {
-	if sm.core.namespaceStore == nil {
-		return nil
-	}
+func (sm *SealManager) Reset(ctx context.Context) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
 	sm.setup()
-	return nil
 }
 
 // SetSeal creates a seal using provided config and sets and initializes it

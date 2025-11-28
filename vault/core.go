@@ -2502,16 +2502,14 @@ func (c *Core) preSeal() error {
 	}
 
 	if c.namespaceStore != nil {
-		if err := c.namespaceStore.SealAllNamespacesLocked(context.Background()); err != nil {
+		if err := c.namespaceStore.SealAllNamespaces(context.Background()); err != nil {
 			result = multierror.Append(result, fmt.Errorf("error sealing namespaces during preSeal: %w", err))
 		}
 	}
 
 	// Always reset SealManager state, even if namespace operations failed
 	// This ensures SM is in clean state for next unseal
-	if err := c.sealManager.ResetInternal(context.Background()); err != nil {
-		result = multierror.Append(result, fmt.Errorf("failed to reset seal manager during preSeal: %w", err))
-	}
+	c.sealManager.Reset(context.Background())
 	if err := c.teardownCredentials(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down credentials: %w", err))
 	}

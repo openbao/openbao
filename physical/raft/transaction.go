@@ -14,6 +14,8 @@ import (
 	"maps"
 	"math"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -186,6 +188,7 @@ type RaftTransaction struct {
 	haveFinishedTx bool
 	index          uint64
 	started        time.Time
+	cleanup        runtime.Cleanup
 }
 
 var _ physical.Transaction = &RaftTransaction{}
@@ -216,16 +219,52 @@ func (b *RaftBackend) newTransaction(ctx context.Context, writable bool) (*RaftT
 		b.fsm.fastTxnTracker.trackTransaction(index)
 	}
 
-	return &RaftTransaction{
+	updates := make(map[string]*raftTxnUpdateRecord)
+	reads := make(map[string]*LogOperation)
+	lists := make(map[string]map[string]map[int]*LogOperation)
+
+	txn := &RaftTransaction{
 		b:        b,
 		tx:       tx,
-		updates:  make(map[string]*raftTxnUpdateRecord),
-		reads:    make(map[string]*LogOperation),
-		lists:    make(map[string]map[string]map[int]*LogOperation),
+		updates:  updates,
+		reads:    reads,
+		lists:    lists,
 		writable: writable,
 		index:    index,
 		started:  time.Now(),
-	}, nil
+	}
+
+	txn.cleanup = runtime.AddCleanup(txn, func(startIndex uint64) {
+		// make sure we don't use txn directly in the function,
+		// otherwise we prevent it from ever being garbage collected.
+
+		b.logger.Error("transaction was leaked",
+			// we include some details about the transaction, to make it easier to find the leak
+			"start_index", startIndex,
+			"updated_keys", slices.Collect(maps.Keys(updates)),
+			"read_keys", slices.Collect(maps.Keys(reads)),
+			"listed_keys", slices.Collect(maps.Keys(lists)),
+			"writeable", writable,
+		)
+
+		if writable {
+			b.fsm.fastTxnTracker.completeTransaction(startIndex)
+			lowestActiveIndex := b.fsm.fastTxnTracker.lowestActiveIndex()
+
+			b.l.RLock()
+			lowestActiveIndex = min(lowestActiveIndex, b.raft.AppliedIndex()) // we need to cap the lowest active index, otherwise we might miss transaction started later
+			b.l.RUnlock()
+
+			b.fsm.fastTxnTracker.clearOldEntries(lowestActiveIndex)
+		}
+
+		b.fsm.l.RUnlock()
+		b.txnPermitPool.Release()
+
+		_ = tx.Rollback() // ignore the error, not much we can do about this
+	}, index)
+
+	return txn, nil
 }
 
 func (t *RaftTransaction) Put(ctx context.Context, entry *physical.Entry) error {
@@ -618,6 +657,8 @@ func (t *RaftTransaction) Commit(ctx context.Context) error {
 		return physical.ErrTransactionAlreadyCommitted
 	}
 
+	t.cleanup.Stop()
+
 	commitRuntimeStart := time.Now()
 
 	// The transaction is done; release the permit pool entry now that we're
@@ -738,19 +779,22 @@ func (t *RaftTransaction) Rollback(ctx context.Context) error {
 		return physical.ErrTransactionAlreadyCommitted
 	}
 
+	t.cleanup.Stop()
+
 	// The transaction is done; release the permit pool entry when we're done
 	// here.
 	//
 	// Also unlock the read lock on the underlying fsm.
 	defer func() {
 		if t.writable {
-			lowestActiveIndex := t.b.fsm.fastTxnTracker.lowestActiveIndexAfterCommit(t.index)
+			t.b.fsm.fastTxnTracker.completeTransaction(t.index)
+			lowestActiveIndex := t.b.fsm.fastTxnTracker.lowestActiveIndex()
+
 			t.b.l.RLock()
-			lowestActiveIndex = min(lowestActiveIndex, t.b.raft.AppliedIndex()-1) // we need to cap the lowest active index, otherwise we might miss transaction started later
+			lowestActiveIndex = min(lowestActiveIndex, t.b.raft.AppliedIndex()) // we need to cap the lowest active index, otherwise we might miss transaction started later
 			t.b.l.RUnlock()
 
 			t.b.fsm.fastTxnTracker.clearOldEntries(lowestActiveIndex)
-			t.b.fsm.fastTxnTracker.completeTransaction(t.index)
 		}
 
 		t.b.fsm.l.RUnlock()

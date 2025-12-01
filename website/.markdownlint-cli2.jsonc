@@ -27,6 +27,7 @@
     "emphasis-style": false,
     "commands-show-output": false,
     "no-trailing-punctuation": false,
+    "table-column-style": false,
 
     // "Permanent" config
     "first-line-h1": false, // to support partials

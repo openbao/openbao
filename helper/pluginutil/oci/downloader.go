@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/containerd/platforms"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -164,6 +165,14 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.Pl
 	logger.Info("downloading plugin from OCI registry",
 		"url", config.URL())
 
+	// Detect local platform to download correct image variant
+	localSpec := platforms.DefaultString()
+	platform, err := v1.ParsePlatform(localSpec)
+	if err != nil {
+		return fmt.Errorf("failed to detect local platform: %w", err)
+	}
+	logger.Debug("local platform", "platform", platform.String())
+
 	// Parse the OCI reference
 	ref, err := name.ParseReference(config.URL())
 	if err != nil {
@@ -171,7 +180,7 @@ func (d *PluginDownloader) DownloadPlugin(ctx context.Context, config *server.Pl
 	}
 
 	// Download the image
-	img, err := remote.Image(ref, remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	img, err := remote.Image(ref, remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithPlatform(*platform))
 	if err != nil {
 		return fmt.Errorf("failed to download OCI image: %w", err)
 	}

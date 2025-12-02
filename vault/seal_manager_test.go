@@ -4,39 +4,109 @@
 package vault
 
 import (
+	"context"
 	"testing"
+
+	"github.com/openbao/openbao/helper/namespace"
 )
 
-func TestSealManager_Reset(t *testing.T) {
+func TestSealManager_Resets(t *testing.T) {
+	t.Helper()
+
 	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
 
-	// Verify that SM state exists before reset
-	if c.sealManager.barrierByNamespace == nil {
-		t.Fatal("expected barrierByNamespace to be initialized")
+	nsSealCfg := &SealConfig{
+		Type:            "shamir",
+		SecretShares:    1,
+		SecretThreshold: 1,
+		StoredShares:    1,
 	}
 
-	// Store reference to original barrier map
-	originalBarriers := c.sealManager.barrierByNamespace
+	nsA, keySharesA := createSealableNamespace(t, c, ctx, "a/", nsSealCfg)
+	if nsA == nil || len(keySharesA) == 0 {
+		t.Fatal("failed to create namespace a/")
+	}
 
-	// Call Reset
+	nsB, keySharesB := createSealableNamespace(t, c, ctx, "b/", nsSealCfg)
+	if nsB == nil || len(keySharesB) == 0 {
+		t.Fatal("failed to create namespace b/")
+	}
+
+	// Capture pre-reset state
+	c.sealManager.lock.RLock()
+	preSeals := len(c.sealManager.sealsByNamespace)
+	preRotation := len(c.sealManager.rotationConfigByNamespace)
+	preBarriers := c.sealManager.barrierByNamespace.Len()
+	c.sealManager.lock.RUnlock()
+
+	if preSeals < 3 {
+		t.Fatalf("expected 3 namespaces (root, a and b) before reset, got %d", preSeals)
+	}
+
+	// Call Reset() with write lock held
+	c.sealManager.lock.Lock()
 	c.sealManager.Reset()
+	c.sealManager.lock.Unlock()
 
-	// Verify that SM state was reset and setup() reinitializes maps
-	if c.sealManager.barrierByNamespace == nil {
-		t.Fatal("expected barrierByNamespace to be initialized after reset")
+	// Verify post reset state
+	c.sealManager.lock.RLock()
+	defer c.sealManager.lock.RUnlock()
+
+	if len(c.sealManager.sealsByNamespace) != 1 {
+		t.Fatalf("sealsByNamespace: expected 1, got %d", len(c.sealManager.sealsByNamespace))
 	}
 
-	// Verify that it's a new map
-	if c.sealManager.barrierByNamespace == originalBarriers {
-		t.Fatal("expected barrierByNamespace to be reinitialized")
+	if _, ok := c.sealManager.sealsByNamespace[namespace.RootNamespaceUUID]; !ok {
+		t.Fatal("root namespace not found in sealsByNamespace")
 	}
-	if len(c.sealManager.sealsByNamespace) == 0 {
-		t.Fatal("expected sealsByNamespace to be reinitialized after reset")
+
+	if len(c.sealManager.rotationConfigByNamespace) != 1 {
+		t.Fatalf("rotationConfigByNamespace: expected 1, got %d", len(c.sealManager.rotationConfigByNamespace))
 	}
-	if len(c.sealManager.unlockInformationByNamespace) == 0 {
-		t.Fatal("expected unlockInformationByNamespace to be reinitialized after reset")
+
+	if _, ok := c.sealManager.rotationConfigByNamespace[namespace.RootNamespaceUUID]; !ok {
+		t.Fatal("root namespace not found in rotationConfigByNamespace")
 	}
-	if len(c.sealManager.rotationConfigByNamespace) == 0 {
-		t.Fatal("expected rotationConfigByNamespace to be reinitialized after reset")
+
+	if c.sealManager.barrierByNamespace.Len() != 1 {
+		t.Fatalf("barrierByNamespace: expected 1, got %d", c.sealManager.barrierByNamespace.Len())
 	}
+
+	_, v, ok := c.sealManager.barrierByNamespace.LongestPrefix("")
+	if !ok || v == nil {
+		t.Fatal("root barrier not found")
+	}
+
+	if len(c.sealManager.unlockInformationByNamespace) != 1 {
+		t.Fatalf("unlockInformationByNamespace: expected 1, got %d", len(c.sealManager.unlockInformationByNamespace))
+	}
+
+	t.Logf("Reset() cleared: seals %d =1, barriers %d =1, rotation %d =1",
+		preSeals, preBarriers, preRotation)
+}
+
+// createSealableNamespace creates a namespace with a seal configuration.
+func createSealableNamespace(t *testing.T, c *Core, parentCtx context.Context, relPath string, sealCfg *SealConfig) (*namespace.Namespace, [][]byte) {
+	t.Helper()
+
+	if c.namespaceStore == nil {
+		t.Fatal("namespaceStore not initialized")
+	}
+
+	relPath = namespace.Canonicalize(relPath)
+
+	nsEntry, nsKeyShares, err := c.namespaceStore.ModifyNamespaceByPath(parentCtx, relPath, sealCfg, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		return ns, nil
+	},
+	)
+	if err != nil {
+		t.Fatalf("failed to create namespace %q: %v", relPath, err)
+	}
+
+	if nsEntry == nil {
+		t.Fatalf("namespace %q not created", relPath)
+	}
+
+	return nsEntry, nsKeyShares
 }

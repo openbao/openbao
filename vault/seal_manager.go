@@ -84,12 +84,20 @@ func (sm *SealManager) Reset() {
 		"": sm.core.barrier,
 	})
 
-	sm.sealsByNamespace[namespace.RootNamespaceUUID] = map[string]Seal{"default": sm.core.seal}
-	sm.unlockInformationByNamespace[namespace.RootNamespaceUUID] = map[string]*unlockInformation{}
-	sm.rotationConfigByNamespace[namespace.RootNamespaceUUID] = map[string]*rotationConfig{
-		"default": {
-			rootConfig:     nil,
-			recoveryConfig: nil,
+	sm.sealsByNamespace = map[string]map[string]Seal{
+		namespace.RootNamespaceUUID: {"default": sm.core.seal},
+	}
+
+	sm.unlockInformationByNamespace = map[string]map[string]*unlockInformation{
+		namespace.RootNamespaceUUID: {},
+	}
+
+	sm.rotationConfigByNamespace = map[string]map[string]*rotationConfig{
+		namespace.RootNamespaceUUID: {
+			"default": {
+				rootConfig:     nil,
+				recoveryConfig: nil,
+			},
 		},
 	}
 }

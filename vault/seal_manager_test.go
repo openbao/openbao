@@ -8,12 +8,11 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSealManager_Resets(t *testing.T) {
-	t.Helper()
-
-	c, _, _ := TestCoreUnsealed(t)
+	c, _, rootToken := TestCoreUnsealed(t)
 	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
 
 	nsSealCfg := &SealConfig{
@@ -23,90 +22,48 @@ func TestSealManager_Resets(t *testing.T) {
 		StoredShares:    1,
 	}
 
-	nsA, keySharesA := createSealableNamespace(t, c, ctx, "a/", nsSealCfg)
-	if nsA == nil || len(keySharesA) == 0 {
-		t.Fatal("failed to create namespace a/")
-	}
+	require := require.New(t)
+	// Create Namespace A using SetNamespace
+	nsA := &namespace.Namespace{Path: "a/"}
+	_, err := c.namespaceStore.SetNamespace(ctx, nsA, nsSealCfg)
+	require.NoError(err)
 
-	nsB, keySharesB := createSealableNamespace(t, c, ctx, "b/", nsSealCfg)
-	if nsB == nil || len(keySharesB) == 0 {
-		t.Fatal("failed to create namespace b/")
-	}
+	// Create Namespace B using SetNamespace
+	nsB := &namespace.Namespace{Path: "b/"}
+	_, err = c.namespaceStore.SetNamespace(ctx, nsB, nsSealCfg)
+	require.NoError(err)
 
-	// Capture pre-reset state
 	c.sealManager.lock.RLock()
 	preSeals := len(c.sealManager.sealsByNamespace)
 	preRotation := len(c.sealManager.rotationConfigByNamespace)
 	preBarriers := c.sealManager.barrierByNamespace.Len()
 	c.sealManager.lock.RUnlock()
 
-	if preSeals < 3 {
-		t.Fatalf("expected 3 namespaces (root, a and b) before reset, got %d", preSeals)
-	}
+	require.GreaterOrEqual(preSeals, 3, "expected at least 3 namespaces (root, a/ and b/) before seal")
 
-	// Call Reset() with write lock held
-	c.sealManager.lock.Lock()
-	c.sealManager.Reset()
-	c.sealManager.lock.Unlock()
+	// Seal the core and this triggers Reset() internally via preSeal
+	err = c.Seal(rootToken)
+	require.NoError(err)
 
-	// Verify post reset state
+	// Verify
 	c.sealManager.lock.RLock()
 	defer c.sealManager.lock.RUnlock()
 
-	if len(c.sealManager.sealsByNamespace) != 1 {
-		t.Fatalf("sealsByNamespace: expected 1, got %d", len(c.sealManager.sealsByNamespace))
-	}
+	require.Equal(1, len(c.sealManager.sealsByNamespace), "sealsByNamespace should be reset to 1")
+	_, ok := c.sealManager.sealsByNamespace[namespace.RootNamespaceUUID]
+	require.True(ok, "root namespace not found in sealsByNamespace")
 
-	if _, ok := c.sealManager.sealsByNamespace[namespace.RootNamespaceUUID]; !ok {
-		t.Fatal("root namespace not found in sealsByNamespace")
-	}
+	require.Equal(1, len(c.sealManager.rotationConfigByNamespace), "rotationConfigByNamespace should be reset to 1")
+	_, ok = c.sealManager.rotationConfigByNamespace[namespace.RootNamespaceUUID]
+	require.True(ok, "root namespace not found in rotationConfigByNamespace")
 
-	if len(c.sealManager.rotationConfigByNamespace) != 1 {
-		t.Fatalf("rotationConfigByNamespace: expected 1, got %d", len(c.sealManager.rotationConfigByNamespace))
-	}
-
-	if _, ok := c.sealManager.rotationConfigByNamespace[namespace.RootNamespaceUUID]; !ok {
-		t.Fatal("root namespace not found in rotationConfigByNamespace")
-	}
-
-	if c.sealManager.barrierByNamespace.Len() != 1 {
-		t.Fatalf("barrierByNamespace: expected 1, got %d", c.sealManager.barrierByNamespace.Len())
-	}
-
+	require.Equal(1, c.sealManager.barrierByNamespace.Len(), "barrierByNamespace should be reset to 1")
 	_, v, ok := c.sealManager.barrierByNamespace.LongestPrefix("")
-	if !ok || v == nil {
-		t.Fatal("root barrier not found")
-	}
+	require.True(ok, "root barrier not found")
+	require.NotNil(v, "root barrier is nil")
 
-	if len(c.sealManager.unlockInformationByNamespace) != 1 {
-		t.Fatalf("unlockInformationByNamespace: expected 1, got %d", len(c.sealManager.unlockInformationByNamespace))
-	}
+	require.Equal(1, len(c.sealManager.unlockInformationByNamespace), "unlockInformationByNamespace should be reset to 1")
 
-	t.Logf("Reset() cleared: seals %d =1, barriers %d =1, rotation %d =1",
+	t.Logf("Seal() correctly reset SealManager: seals %d→1, barriers %d→1, rotation %d→1",
 		preSeals, preBarriers, preRotation)
-}
-
-// createSealableNamespace creates a namespace with a seal configuration.
-func createSealableNamespace(t *testing.T, c *Core, parentCtx context.Context, relPath string, sealCfg *SealConfig) (*namespace.Namespace, [][]byte) {
-	t.Helper()
-
-	if c.namespaceStore == nil {
-		t.Fatal("namespaceStore not initialized")
-	}
-
-	relPath = namespace.Canonicalize(relPath)
-
-	nsEntry, nsKeyShares, err := c.namespaceStore.ModifyNamespaceByPath(parentCtx, relPath, sealCfg, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
-		return ns, nil
-	},
-	)
-	if err != nil {
-		t.Fatalf("failed to create namespace %q: %v", relPath, err)
-	}
-
-	if nsEntry == nil {
-		t.Fatalf("namespace %q not created", relPath)
-	}
-
-	return nsEntry, nsKeyShares
 }

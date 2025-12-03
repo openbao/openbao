@@ -570,11 +570,16 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 	globalEntries := make(map[string][]string, len(allNamespaces))
 	localEntries := make(map[string][]string, len(allNamespaces))
 	for index, ns := range allNamespaces {
+		if ns.Tainted {
+			c.logger.Info("skipping loading auth mounts for tainted namespace", "ns", ns.ID)
+			continue
+		}
+
 		view := NamespaceView(barrier, ns)
 
 		nsGlobal, nsLocal, err := c.listTransactionalCredentialsForNamespace(ctx, view)
 		if err != nil {
-			c.logger.Error("failed to list transactional mounts for namespace", "error", err, "ns_index", index, "namespace", ns.ID)
+			c.logger.Error("failed to list transactional auth mounts for namespace", "error", err, "ns_index", index, "namespace", ns.ID)
 			return err
 		}
 

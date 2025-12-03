@@ -1414,6 +1414,11 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 	globalEntries := make(map[string][]string, len(allNamespaces))
 	localEntries := make(map[string][]string, len(allNamespaces))
 	for index, ns := range allNamespaces {
+		if ns.Tainted {
+			c.logger.Info("skipping loading mounts for tainted namespace", "ns", ns.ID)
+			continue
+		}
+
 		view := NamespaceView(barrier, ns)
 		nsGlobal, nsLocal, err := listTransactionalMountsForNamespace(ctx, view)
 		if err != nil {
@@ -2580,6 +2585,14 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 		if err.Error() != "unexpected empty storage entry for mount" {
 			return err
 		}
+		desiredMountEntry = nil
+	}
+
+	if desiredMountEntry != nil && ns.Tainted {
+		// The desired state of this mount is deleted, because we've tainted
+		// this namespace. Because we're on a standby node, we don't actually
+		// write to storage but let the active node handle deletion.
+		c.logger.Debug("cache invalidation: marking mount as deleted due to tainted namespace", "mount_uuid", uuid, "ns_uuid", ns.UUID)
 		desiredMountEntry = nil
 	}
 

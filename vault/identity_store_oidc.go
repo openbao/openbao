@@ -2048,6 +2048,11 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 			i.Logger().Error("error listing namespaces", "err", err)
 		}
 		for _, ns := range allNs {
+			if ns.Tainted {
+				i.logger.Info("skipping OIDC function for tainted namespace", "ns", ns.ID)
+				continue
+			}
+
 			nsPath := ns.Path
 
 			s := i.router.MatchingStorageByAPIPath(ctx, nsPath+"identity/oidc")

@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"testing"
 
 	"github.com/openbao/openbao/helper/namespace"

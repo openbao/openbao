@@ -78,7 +78,6 @@ const sidebars: SidebarsConfig = {
                 "concepts/pgp-gpg-keybase",
                 "concepts/recovery-mode",
                 "concepts/resource-quotas",
-                "concepts/transform",
                 "concepts/mount-migration",
                 "concepts/duration-format",
                 "concepts/user-lockout",

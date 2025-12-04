@@ -75,48 +75,31 @@ func (c *Core) SetupSealManager() {
 	sealLogger := c.baseLogger.Named("seal")
 	c.AddLogger(sealLogger)
 	c.sealManager = NewSealManager(c, sealLogger)
-	c.sealManager.setup()
+	c.sealManager.Reset()
 }
 
-// setup is used to initialize the internal structs of a sealManager.
-func (sm *SealManager) setup() {
+// Reset clears all internal state, leaving only the root namespace's seal.
+func (sm *SealManager) Reset() {
 	sm.barrierByNamespace = radix.NewFromMap(map[string]interface{}{
 		"": sm.core.barrier,
 	})
 
-	sm.sealsByNamespace[namespace.RootNamespaceUUID] = map[string]Seal{"default": sm.core.seal}
-	sm.unlockInformationByNamespace[namespace.RootNamespaceUUID] = map[string]*unlockInformation{}
-	sm.rotationConfigByNamespace[namespace.RootNamespaceUUID] = map[string]*rotationConfig{
-		"default": {
-			rootConfig:     nil,
-			recoveryConfig: nil,
+	sm.sealsByNamespace = map[string]map[string]Seal{
+		namespace.RootNamespaceUUID: {"default": sm.core.seal},
+	}
+
+	sm.unlockInformationByNamespace = map[string]map[string]*unlockInformation{
+		namespace.RootNamespaceUUID: {},
+	}
+
+	sm.rotationConfigByNamespace = map[string]map[string]*rotationConfig{
+		namespace.RootNamespaceUUID: {
+			"default": {
+				rootConfig:     nil,
+				recoveryConfig: nil,
+			},
 		},
 	}
-}
-
-// Reset seals all namespaces (except root) and calls the
-// `(*SealManager) setupSealManager` to overwrite the internal
-// storage of a sealManger with a default values for root namespace.
-func (sm *SealManager) Reset(ctx context.Context) error {
-	if sm.core.namespaceStore == nil {
-		return nil
-	}
-
-	unlock, err := sm.core.namespaceStore.lockWithInvalidation(ctx, false)
-	if err != nil {
-		return err
-	}
-	defer unlock()
-
-	// providing root namespace to the function, but it will be omitted from actual sealing
-	if err := sm.core.namespaceStore.sealNamespaceLocked(ctx, namespace.RootNamespace); err != nil {
-		return err
-	}
-
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-	sm.setup()
-	return nil
 }
 
 // SetSeal creates a seal using provided config and sets and initializes it

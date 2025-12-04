@@ -2507,8 +2507,8 @@ func (c *Core) preSeal() error {
 	if err := c.stopExpiration(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error stopping expiration: %w", err))
 	}
-	if err := c.sealManager.Reset(context.Background()); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error reseting seal manager: %w", err))
+	if err := c.sealAllNamespaces(context.Background()); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error sealing namespaces: %v", err))
 	}
 	if err := c.teardownCredentials(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down credentials: %w", err))

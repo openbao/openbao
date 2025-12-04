@@ -278,12 +278,14 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 				return false, fmt.Errorf("failed to set seal for namespace %s: %w", namespace.ID, err)
 			}
 
+			// TODO: figure out why standbys do not load
 			if ns.core.HAEnabled() && ns.core.Standby() {
 				if namespace.Sealed {
 					ns.logger.Debug(fmt.Sprintf("namespace %q is sealed", namespace.Path))
 					if err := ns.core.sealManager.NamespaceBarrier(namespace.Path).Seal(); err != nil {
 						return false, fmt.Errorf("failed to seal barrier for namespace %s: %w", namespace.ID, err)
 					}
+					// Question: Do we clean up the ns resources from memory?
 				} else {
 					ns.logger.Debug(fmt.Sprintf("namespace %q is unsealed", namespace.Path))
 					// request root key from the leader, we should do this with a backoff
@@ -294,9 +296,10 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 					if err := ns.core.sealManager.NamespaceBarrier(namespace.Path).Unseal(ctx, sealStatus.RootKey); err != nil {
 						return false, fmt.Errorf("failed to unseal barrier for namespace %s: %w", namespace.ID, err)
 					}
-					if err := ns.postNamespaceUnseal(ctx, &namespace); err != nil {
-						return false, fmt.Errorf("failed to load mounts for namespace %s: %w", namespace.ID, err)
-					}
+					// TODO: if we've pruned ns resources from memory, we need to load them again
+					// 	if err := ns.postNamespaceUnseal(ctx, &namespace); err != nil {
+					// 	return false, fmt.Errorf("failed to load mounts for namespace %s: %w", namespace.ID, err)
+					// }
 				}
 			}
 			return true, nil
@@ -405,6 +408,10 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		if err != nil {
 			return nil, err
 		}
+
+		if sealConfig != nil {
+			entry.Sealed = true
+		}
 	} else {
 		var existing *namespace.Namespace
 		existing, exists = ns.namespacesByUUID[entry.UUID]
@@ -461,7 +468,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	// when a namespace entry existed but the corresponding sys/ mount table
 	// entry wasn't created.
 	failed := true
-	storage := ns.storage
+	storage := ns.core.NamespaceView(parent)
 	commit := func() error { return nil }
 	cleanupFailed := func() {
 		if !failed {
@@ -509,7 +516,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 			cleanupFailed()
 		}()
 
-		storage = txn
+		storage = txn.(BarrierViewTransaction)
 		commit = func() error { return txn.Commit(ctx) }
 	} else {
 		// While we don't have transactions to aid us, we still shouldn't
@@ -573,18 +580,16 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	return nsSealKeyShares, nil
 }
 
-func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage logical.Storage, entry *namespace.Namespace) error {
-	parent, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
+func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage BarrierView, entry *namespace.Namespace) error {
 	if storage == nil {
-		storage = ns.storage
+		parent, err := namespace.FromContext(ctx)
+		if err != nil {
+			return err
+		}
+		storage = NamespaceView(storage, parent)
 	}
 
-	view := NamespaceView(storage, parent).SubView(namespaceStoreSubPath)
-	if err := logical.WithTransaction(ctx, view, func(s logical.Storage) error {
+	if err := logical.WithTransaction(ctx, storage.SubView(namespaceStoreSubPath), func(s logical.Storage) error {
 		item, err := logical.StorageEntryJSON(entry.UUID, &entry)
 		if err != nil {
 			return fmt.Errorf("error marshalling storage entry: %w", err)
@@ -1157,12 +1162,12 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return errors.New("unable to seal tainted namespace")
 	}
 
-	return ns.sealNamespaceLocked(ctx, ns.storage, namespaceToSeal)
+	return ns.sealNamespaceLocked(ctx, nil, namespaceToSeal)
 }
 
 // sealNamespaceLocked assumes the read lock is hold, and seals provided namespace,
 // cleaning up namespace resources.
-func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, storage logical.Storage, namespaceToSeal *namespace.Namespace) error {
+func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, storage BarrierView, namespaceToSeal *namespace.Namespace) error {
 	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 
 	var errs error
@@ -1460,6 +1465,10 @@ func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namesp
 	ns, err := c.namespaceStore.GetNamespace(ctx, uuid)
 	if err != nil {
 		return nil, path, err
+	}
+
+	if ns == nil {
+		return nil, path, errors.New("requested namespace does not exist")
 	}
 
 	return ns, rest, nil

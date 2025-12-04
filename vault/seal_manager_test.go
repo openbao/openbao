@@ -13,7 +13,7 @@ import (
 
 func TestSealManager_Resets(t *testing.T) {
 	c, _, rootToken := TestCoreUnsealed(t)
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+	ctx := namespace.RootContext(t.Context())
 
 	nsSealCfg := &SealConfig{
 		Type:            "shamir",

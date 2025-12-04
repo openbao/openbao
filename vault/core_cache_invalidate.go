@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -417,14 +418,42 @@ func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
 	// parent namespace UUID.
 	namespaceUUID := strings.TrimPrefix(ij.nsKey, namespaceStoreSubPath)
 
+	beforeNs, beforeErr := ij.im.core.namespaceStore.GetNamespace(ctx, namespaceUUID)
+
 	// First notify the namespace storage that our next lookup might be stale.
 	ij.im.core.namespaceStore.invalidate(ctx, ij.key)
 
+	afterNs, afterErr := ij.im.core.namespaceStore.GetNamespace(ctx, namespaceUUID)
+
+	// There are three happy paths for namespace invalidation:
+	//
+	// 1. Namespace deletion; before the namespace would be present but
+	//    afterwards it would be nil.
+	// 2. Namespace creation; before the namespace would be missing and
+	//    afterwards it will be present.
+	// 3. Namespace update; this exists in both places but we'd prefer the
+	//    updated version.
+	var preferredNs *namespace.Namespace
+	var deleted bool
+	switch {
+	case beforeErr != nil && afterErr != nil:
+		return fmt.Errorf("failed loading invalidated namespace; before=%w; after=%v", beforeErr, afterErr)
+	case beforeNs == nil && afterNs == nil:
+		return errors.New("failed loading invalidated namespace: does not exist before or after")
+	case afterNs != nil && afterErr == nil:
+		preferredNs = afterNs
+	case beforeNs != nil && beforeErr == nil:
+		preferredNs = beforeNs
+		deleted = true
+	}
+
+	childCtx := namespace.ContextWithNamespace(ctx, preferredNs)
+
 	// Invalidate all policies within the namespace.
-	ij.im.core.policyStore.invalidateNamespace(ctx, namespaceUUID)
+	ij.im.core.policyStore.invalidateNamespace(childCtx, namespaceUUID)
 
 	// Now reload all mounts within the namespace.
-	if err := ij.im.core.reloadNamespaceMounts(ctx, namespaceUUID); err != nil {
+	if err := ij.im.core.reloadNamespaceMounts(ctx, childCtx, namespaceUUID, deleted); err != nil {
 		return fmt.Errorf("unable to invalidate mounts in namespace %q: %w", ij.nsUUID, err)
 	}
 

@@ -233,7 +233,7 @@ func TestServer(t *testing.T) {
 		{
 			"bad_separate_ha",
 			testBaseHCL(t, "") + inmemHCL + badHAInmemHCL,
-			"Specified HA storage does not support HA",
+			"specified HA storage does not support HA",
 			1,
 			[]string{"-test-verify-only"},
 		},

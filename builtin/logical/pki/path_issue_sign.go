@@ -17,8 +17,7 @@ import (
 	"time"
 
 	celgo "github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
-	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/common/types"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -778,19 +777,11 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 	return resp, nil
 }
 
-func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request, data *framework.FieldData, useCSR bool) (*logical.Response, error) {
-	celRole, err := b.fetchAndValidateCelRole(ctx, req, data)
-	if err != nil {
-		return nil, err
-	}
-
-	// Declare a map variable named "request" to represent the incoming data.
+func (b *backend) getCelEvalConfig(useCSR bool) *celhelper.EvalConfig {
 	envOptions := []celgo.EnvOption{
-		celgo.Container("openbao.pki"),
-		celgo.Declarations(
-			decls.NewVar("request", decls.NewMapType(decls.String, decls.Dyn)),
-			decls.NewVar("now", decls.Timestamp),
-		),
+		celgo.Variable("request", types.NewMapType(types.StringType, types.DynType)),
+		celgo.Variable("now", types.TimestampType),
+		celgo.Variable("use_csr", types.BoolType),
 		celgo.Types(
 			&CertTemplate{},
 			&ValidationOutput{},
@@ -798,39 +789,36 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	}
 
 	if useCSR {
-		envOptions = append(envOptions, celgo.Declarations(decls.NewVar("parsed_csr", decls.NewMapType(decls.String, decls.Dyn))))
+		envOptions = append(envOptions,
+			celgo.Variable("parsed_csr",
+				types.NewMapType(
+					types.StringType,
+					types.DynType)))
 	}
 
-	// Add all variable declarations to the CEL environment.
-	for _, variable := range celRole.CelProgram.Variables {
-		envOptions = append(envOptions, celgo.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
+	return &celhelper.EvalConfig{
+		Container:     "openbao.pki",
+		WithExtLib:    true,
+		WithEmail:     true,
+		WithIdentity:  true,
+		CustomOptions: envOptions,
 	}
+}
 
-	// Add identity information into the environment
-	envOptions = append(envOptions, celhelper.IdentityDeclarations()...)
-
-	// Create the CEL environment using the prepared declarations.
-	env, err := celgo.NewEnv(envOptions...)
+func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request, data *framework.FieldData, useCSR bool) (*logical.Response, error) {
+	celRole, err := b.fetchAndValidateCelRole(ctx, req, data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create CEL environment: %w", err)
+		return nil, err
 	}
 
-	// Add custom CEL functions into the env
-	env, err = celhelper.RegisterAllCelFunctions(env)
-	if err != nil {
-		return nil, fmt.Errorf("%w", err)
-	}
-
+	cfg := b.getCelEvalConfig(useCSR)
 	// Initialize the evaluation context for CEL expressions with the raw request data.
 	// The "request" key allows CEL expressions to access and evaluate against input fields.
 	// Additional variables and evaluated results will be added dynamically during processing.
 	evaluationData := map[string]interface{}{
+		"use_csr": useCSR,
 		"request": data.Raw,
 		"now":     time.Now(),
-	}
-
-	if err := celhelper.AddIdentity(b.System(), req, evaluationData); err != nil {
-		return nil, err
 	}
 
 	// Parse then add the CSR to the evaluationData
@@ -850,29 +838,14 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		evaluationData["parsed_csr"] = parsedCsr
 	}
 
-	// Evaluate all variables
-	for _, variable := range celRole.CelProgram.Variables {
-		result, err := celhelper.ParseCompileAndEvaluateExpression(env, variable.Expression, evaluationData)
-		if err != nil {
-			return nil, fmt.Errorf("%w", err)
-		}
-
-		// Add the evaluated result for subsequent CEL evaluations.
-		// This ensures variables can reference each other and build a cumulative evaluation context.
-		evaluationData[variable.Name] = result.Value()
-	}
-
 	// Evaluate MainProgram
-	result, err := evaluateCelExpression(env,
-		celRole.CelProgram.Expression,
-		evaluationData)
+	result, err := celRole.Program.Evaluate(ctx, cfg, evaluationData)
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating mainProgram: %w", err)
 	}
 
 	validationOutput := new(ValidationOutput)
 	switch v := result.Value().(type) {
-
 	case *dynamicpb.Message:
 		// The CEL program succeeded.
 
@@ -893,7 +866,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 	case bool:
 		// The CEL program decided the request is invalid and returned a bool.
-		return nil, errors.New("Request denied.")
+		return nil, errors.New("request denied")
 
 	default:
 		// Any other type is unexpected and indicates an error in MainProgram's policy.
@@ -1155,20 +1128,6 @@ func (b *backend) fetchCaSigningBundle(ctx context.Context, req *logical.Request
 		}
 	}
 	return signingBundle, sc, nil
-}
-
-// Helper function to evaluate a CEL expression
-func evaluateCelExpression(env *celgo.Env, expression string, evaluationData map[string]interface{}) (ref.Val, error) {
-	if expression == "" {
-		return nil, fmt.Errorf("CEL expression is empty")
-	}
-
-	evalResult, err := celhelper.ParseCompileAndEvaluateExpression(env, expression, evaluationData)
-	if err != nil {
-		return nil, err
-	}
-
-	return evalResult, nil
 }
 
 // csrToMap parses the CSR and returns it as a map of its attributes

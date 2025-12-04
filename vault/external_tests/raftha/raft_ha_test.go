@@ -129,9 +129,10 @@ func TestRaft_HA_ExistingCluster(t *testing.T) {
 		DisablePerformanceStandby: true,
 	}
 	opts := vault.TestClusterOptions{
-		HandlerFunc:        vaulthttp.Handler,
-		NumCores:           vault.DefaultNumCores,
-		KeepStandbysSealed: true,
+		HandlerFunc:         vaulthttp.Handler,
+		NumCores:            vault.DefaultNumCores,
+		KeepStandbysSealed:  true,
+		DisableStandbyReads: true,
 	}
 	logger := logging.NewVaultLogger(hclog.Debug).Named(t.Name())
 

@@ -4,6 +4,7 @@
 package cluster
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -116,8 +117,8 @@ func (l *InmemLayer) Listeners() []NetworkListener {
 	return []NetworkListener{l.listener}
 }
 
-// Dial implements NetworkLayer.
-func (l *InmemLayer) Dial(addr string, timeout time.Duration, tlsConfig *tls.Config) (*tls.Conn, error) {
+// DialContext implements NetworkLayer.
+func (l *InmemLayer) DialContext(ctx context.Context, addr string, tlsConfig *tls.Config) (*tls.Conn, error) {
 	l.l.Lock()
 	connectionCh := l.connectionCh
 
@@ -143,10 +144,6 @@ func (l *InmemLayer) Dial(addr string, timeout time.Duration, tlsConfig *tls.Con
 	l.l.Unlock()
 	if !ok {
 		return nil, errors.New("inmemlayer: no address found")
-	}
-
-	if timeout < 0 {
-		return nil, fmt.Errorf("inmemlayer: timeout given is less than 0: %d", timeout)
 	}
 
 	alpn := ""

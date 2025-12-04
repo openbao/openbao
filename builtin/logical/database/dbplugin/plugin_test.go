@@ -27,7 +27,7 @@ type mockPlugin struct {
 var _ dbplugin.Database = &mockPlugin{}
 
 func (m *mockPlugin) Type() (string, error) { return "mock", nil }
-func (m *mockPlugin) CreateUser(_ context.Context, statements dbplugin.Statements, usernameConf dbplugin.UsernameConfig, expiration time.Time) (username string, password string, err error) {
+func (m *mockPlugin) CreateUser(_ context.Context, statements dbplugin.Statements, usernameConf dbplugin.UsernameConfig, expiration time.Time) (username string, password string, err error) { //nolint:govet // we can't change this, the interface is released
 	err = errors.New("err")
 	if usernameConf.DisplayName == "" || expiration.IsZero() {
 		return "", "", err
@@ -42,7 +42,7 @@ func (m *mockPlugin) CreateUser(_ context.Context, statements dbplugin.Statement
 	return usernameConf.DisplayName, "test", nil
 }
 
-func (m *mockPlugin) RenewUser(_ context.Context, statements dbplugin.Statements, username string, expiration time.Time) error {
+func (m *mockPlugin) RenewUser(_ context.Context, statements dbplugin.Statements, username string, expiration time.Time) error { //nolint:govet // we can't change this, the interface is released
 	err := errors.New("err")
 	if username == "" || expiration.IsZero() {
 		return err
@@ -55,7 +55,7 @@ func (m *mockPlugin) RenewUser(_ context.Context, statements dbplugin.Statements
 	return nil
 }
 
-func (m *mockPlugin) RevokeUser(_ context.Context, statements dbplugin.Statements, username string) error {
+func (m *mockPlugin) RevokeUser(_ context.Context, statements dbplugin.Statements, username string) error { //nolint:govet // we can't change this, the interface is released
 	err := errors.New("err")
 	if username == "" {
 		return err
@@ -100,7 +100,7 @@ func (m *mockPlugin) GenerateCredentials(ctx context.Context) (password string, 
 	return password, err
 }
 
-func (m *mockPlugin) SetCredentials(ctx context.Context, statements dbplugin.Statements, staticConfig dbplugin.StaticUserConfig) (username string, password string, err error) {
+func (m *mockPlugin) SetCredentials(ctx context.Context, statements dbplugin.Statements, staticConfig dbplugin.StaticUserConfig) (username string, password string, err error) { //nolint:govet // we can't change this, the interface is released
 	return username, password, err
 }
 
@@ -180,12 +180,10 @@ func TestPlugin_CreateUser(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	usernameConf := dbplugin.UsernameConfig{
+	us, pw, err := db.CreateUser(context.Background(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
-	}
-
-	us, pw, err := db.CreateUser(context.Background(), dbplugin.Statements{}, usernameConf, time.Now().Add(time.Minute))
+	}, time.Now().Add(time.Minute))
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -195,7 +193,10 @@ func TestPlugin_CreateUser(t *testing.T) {
 
 	// try and save the same user again to verify it saved the first time, this
 	// should return an error
-	_, _, err = db.CreateUser(context.Background(), dbplugin.Statements{}, usernameConf, time.Now().Add(time.Minute))
+	_, _, err = db.CreateUser(context.Background(), dbplugin.Statements{}, dbplugin.UsernameConfig{
+		DisplayName: "test",
+		RoleName:    "test",
+	}, time.Now().Add(time.Minute))
 	if err == nil {
 		t.Fatal("expected an error, user wasn't created correctly")
 	}
@@ -219,12 +220,10 @@ func TestPlugin_RenewUser(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	usernameConf := dbplugin.UsernameConfig{
+	us, _, err := db.CreateUser(context.Background(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
-	}
-
-	us, _, err := db.CreateUser(context.Background(), dbplugin.Statements{}, usernameConf, time.Now().Add(time.Minute))
+	}, time.Now().Add(time.Minute))
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -253,12 +252,10 @@ func TestPlugin_RevokeUser(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	usernameConf := dbplugin.UsernameConfig{
+	us, _, err := db.CreateUser(context.Background(), dbplugin.Statements{}, dbplugin.UsernameConfig{
 		DisplayName: "test",
 		RoleName:    "test",
-	}
-
-	us, _, err := db.CreateUser(context.Background(), dbplugin.Statements{}, usernameConf, time.Now().Add(time.Minute))
+	}, time.Now().Add(time.Minute))
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -270,7 +267,10 @@ func TestPlugin_RevokeUser(t *testing.T) {
 	}
 
 	// Try adding the same username back so we can verify it was removed
-	_, _, err = db.CreateUser(context.Background(), dbplugin.Statements{}, usernameConf, time.Now().Add(time.Minute))
+	_, _, err = db.CreateUser(context.Background(), dbplugin.Statements{}, dbplugin.UsernameConfig{
+		DisplayName: "test",
+		RoleName:    "test",
+	}, time.Now().Add(time.Minute))
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

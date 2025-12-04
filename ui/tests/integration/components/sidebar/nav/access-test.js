@@ -2,7 +2,7 @@ import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
 import { render } from '@ember/test-helpers';
 import hbs from 'htmlbars-inline-precompile';
-import { stubFeaturesAndPermissions } from 'vault/tests/helpers/components/sidebar-nav';
+import { stubPermissions } from 'vault/tests/helpers/components/sidebar-nav';
 
 const renderComponent = () => {
   return render(hbs`
@@ -18,7 +18,7 @@ module('Integration | Component | sidebar-nav-access', function (hooks) {
   test('it should render nav headings', async function (assert) {
     const headings = ['Authentication', 'Organization', 'Administration'];
 
-    stubFeaturesAndPermissions(this.owner);
+    stubPermissions(this.owner);
     await renderComponent();
 
     assert
@@ -52,7 +52,7 @@ module('Integration | Component | sidebar-nav-access', function (hooks) {
       'Entities',
       'Leases',
     ];
-    stubFeaturesAndPermissions(this.owner);
+    stubPermissions(this.owner);
     await renderComponent();
 
     assert

@@ -5,9 +5,7 @@ package command
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -45,6 +43,7 @@ import (
 	loghelper "github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/osutil"
 	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/helper/useragent"
@@ -175,6 +174,7 @@ func (c *ServerCommand) Flags() *FlagSets {
 
 	f.StringSliceVar(&StringSliceVar{
 		Name:   "config",
+		EnvVar: "BAO_CONFIG_PATH",
 		Target: &c.flagConfigs,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
@@ -370,36 +370,8 @@ func (c *ServerCommand) flushLog() {
 	}, c.logGate)
 }
 
-func (c *ServerCommand) parseConfig() (*server.Config, []configutil.ConfigError, error) {
-	var configErrors []configutil.ConfigError
-	// Load the configuration
-	var config *server.Config
-	for _, path := range c.flagConfigs {
-		current, err := server.LoadConfig(path, c.flagConfigs)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error loading configuration from %s: %w", path, err)
-		}
-
-		// While current may be nil, we'll never get a nil configuration as a
-		// result of ignoring a configuration file present in a directory.
-		if current != nil {
-			configErrors = append(configErrors, current.Validate(path)...)
-
-			if config == nil {
-				config = current
-			} else {
-				config = config.Merge(current)
-			}
-		} else {
-			c.UI.Warn(fmt.Sprintf("WARNING: ignoring duplicate configuration found in directory: %v", path))
-		}
-	}
-
-	return config, configErrors, nil
-}
-
 func (c *ServerCommand) runRecoveryMode() int {
-	config, configErrors, err := c.parseConfig()
+	config, configErrors, err := c.ParseServerConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -435,7 +407,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
-	grpclog.SetLogger(&grpclogFaker{
+	grpclog.SetLoggerV2(&grpclogFaker{
 		logger: namedGRPCLogFaker,
 		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
@@ -733,13 +705,13 @@ func (q quiescenceSink) Accept(name string, level hclog.Level, msg string, args 
 func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, error) {
 	// Ensure that a backend is provided
 	if config.Storage == nil {
-		return nil, errors.New("A storage backend must be specified")
+		return nil, errors.New("a storage backend must be specified")
 	}
 
 	// Initialize the backend
 	factory, exists := c.PhysicalBackends[config.Storage.Type]
 	if !exists {
-		return nil, fmt.Errorf("Unknown storage type %s", config.Storage.Type)
+		return nil, fmt.Errorf("unknown storage type %s", config.Storage.Type)
 	}
 
 	// Do any custom configuration needed per backend
@@ -749,7 +721,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 			config.ClusterAddr = envCA
 		}
 		if len(config.ClusterAddr) == 0 {
-			return nil, errors.New("Cluster address must be set when using raft storage")
+			return nil, errors.New("cluster address must be set when using raft storage")
 		}
 	}
 
@@ -757,7 +729,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 	c.allLoggers = append(c.allLoggers, namedStorageLogger)
 	backend, err := factory(config.Storage.Config, namedStorageLogger)
 	if err != nil {
-		return nil, fmt.Errorf("Error initializing storage of type %s: %w", config.Storage.Type, err)
+		return nil, fmt.Errorf("error initializing storage of type %s: %w", config.Storage.Type, err)
 	}
 
 	return backend, nil
@@ -766,7 +738,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 func beginServiceRegistration(c *ServerCommand, config *server.Config) (sr.ServiceRegistration, error) {
 	sdFactory, ok := c.ServiceRegistrations[config.ServiceRegistration.Type]
 	if !ok {
-		return nil, fmt.Errorf("Unknown service_registration type %s", config.ServiceRegistration.Type)
+		return nil, fmt.Errorf("unknown service_registration type %s", config.ServiceRegistration.Type)
 	}
 
 	namedSDLogger := c.logger.Named("service_registration." + config.ServiceRegistration.Type)
@@ -827,7 +799,7 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 			} else {
 				tcpAddr, ok := ln.Addr().(*net.TCPAddr)
 				if !ok {
-					errMsg = errors.New("Failed to parse tcp listener")
+					errMsg = errors.New("failed to parse tcp listener")
 					return 1, nil, nil, errMsg
 				}
 				clusterAddr := &net.TCPAddr{
@@ -1007,7 +979,7 @@ func (c *ServerCommand) Run(args []string) int {
 		config.Listeners[0].Telemetry.UnauthenticatedMetricsAccess = true
 	}
 
-	parsedConfig, configErrors, err := c.parseConfig()
+	parsedConfig, configErrors, err := c.ParseServerConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -1059,7 +1031,7 @@ func (c *ServerCommand) Run(args []string) int {
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
 	c.allLoggers = append(c.allLoggers, namedGRPCLogFaker)
-	grpclog.SetLogger(&grpclogFaker{
+	grpclog.SetLoggerV2(&grpclogFaker{
 		logger: namedGRPCLogFaker,
 		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
@@ -1545,6 +1517,9 @@ func (c *ServerCommand) Run(args []string) int {
 			// Update audit devices if necessary. This cannot be done as part of
 			// c.Reload as it needs the reloadFuncsLock.
 			core.ReloadAuditLogs()
+
+			// Update plugins as necessary.
+			core.ReloadPlugins()
 
 			// Reload log level for loggers
 			if config.LogLevel != "" {
@@ -2228,23 +2203,9 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 
 // addPlugin adds any plugins to the catalog
 func (c *ServerCommand) addPlugin(path, token string, core *vault.Core) error {
-	// Get the sha256 of the file at the given path.
-	pluginSum := func(p string) (string, error) {
-		hasher := sha256.New()
-		f, err := os.Open(p)
-		if err != nil {
-			return "", err
-		}
-		defer f.Close()
-		if _, err := io.Copy(hasher, f); err != nil {
-			return "", err
-		}
-		return hex.EncodeToString(hasher.Sum(nil)), nil
-	}
-
 	// Mount any test plugins. We do this explicitly before we inform tests of
 	// a completely booted server intentionally.
-	sha256sum, err := pluginSum(path)
+	sha256sum, err := osutil.FileSha256Sum(path)
 	if err != nil {
 		return err
 	}
@@ -2546,6 +2507,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 	var ok bool
 	if config.HAStorage != nil {
 		if config.Storage.Type == storageTypeRaft && config.HAStorage.Type == storageTypeRaft {
+			//nolint:staticcheck // Raft is a proper noun
 			return false, errors.New("Raft cannot be set both as 'storage' and 'ha_storage'. Setting 'storage' to 'raft' will automatically set it up for HA operations as well")
 		}
 
@@ -2555,7 +2517,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 
 		factory, exists := c.PhysicalBackends[config.HAStorage.Type]
 		if !exists {
-			return false, fmt.Errorf("Unknown HA storage type %s", config.HAStorage.Type)
+			return false, fmt.Errorf("unknown HA storage type %s", config.HAStorage.Type)
 		}
 
 		namedHALogger := c.logger.Named("ha." + config.HAStorage.Type)
@@ -2566,18 +2528,18 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 		}
 
 		if coreConfig.HAPhysical, ok = habackend.(physical.HABackend); !ok {
-			return false, errors.New("Specified HA storage does not support HA")
+			return false, errors.New("specified HA storage does not support HA")
 		}
 
 		if !coreConfig.HAPhysical.HAEnabled() {
-			return false, errors.New("Specified HA storage has HA support disabled; please consult documentation")
+			return false, errors.New("specified HA storage has HA support disabled; please consult documentation")
 		}
 
 		coreConfig.RedirectAddr = config.HAStorage.RedirectAddr
 		disableClustering := config.HAStorage.DisableClustering
 
 		if config.HAStorage.Type == storageTypeRaft && disableClustering {
-			return disableClustering, errors.New("Disable clustering cannot be set to true when Raft is the HA storage type")
+			return disableClustering, errors.New("disable clustering cannot be set to true when Raft is the HA storage type")
 		}
 
 		if !disableClustering {
@@ -2589,7 +2551,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 			disableClustering := config.Storage.DisableClustering
 
 			if (config.Storage.Type == storageTypeRaft) && disableClustering {
-				return disableClustering, errors.New("Disable clustering cannot be set to true when Raft is the storage type")
+				return disableClustering, errors.New("disable clustering cannot be set to true when Raft is the storage type")
 			}
 
 			if !disableClustering {
@@ -2629,7 +2591,7 @@ func determineRedirectAddr(c *ServerCommand, coreConfig *vault.CoreConfig, confi
 		if err != nil {
 			retErr = fmt.Errorf("Error detecting api address: %s", err)
 		} else if redirect == "" {
-			retErr = errors.New("Failed to detect api address")
+			retErr = errors.New("failed to detect api address")
 		} else {
 			coreConfig.RedirectAddr = redirect
 		}
@@ -2686,7 +2648,7 @@ func findClusterAddress(c *ServerCommand, coreConfig *vault.CoreConfig, config *
 CLUSTER_SYNTHESIS_COMPLETE:
 
 	if coreConfig.RedirectAddr == coreConfig.ClusterAddr && len(coreConfig.RedirectAddr) != 0 {
-		return fmt.Errorf("Address %q used for both API and cluster addresses", coreConfig.RedirectAddr)
+		return fmt.Errorf("address %q used for both API and cluster addresses", coreConfig.RedirectAddr)
 	}
 
 	if coreConfig.ClusterAddr != "" {
@@ -2948,7 +2910,7 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config, lns []listenerutil.Listener) error {
 	for _, ln := range lns {
 		if ln.Config == nil {
-			return errors.New("Found nil listener config after parsing")
+			return errors.New("found nil listener config after parsing")
 		}
 
 		if err := config2.IsValidListener(ln.Config); err != nil {
@@ -3027,6 +2989,42 @@ type grpclogFaker struct {
 	log    bool
 }
 
+func (g *grpclogFaker) Info(args ...any) {
+	g.logger.Info(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Infof(format string, args ...any) {
+	g.logger.Info(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Infoln(args ...any) {
+	g.logger.Info(fmt.Sprintln(args...))
+}
+
+func (g *grpclogFaker) Warning(args ...any) {
+	g.logger.Warn(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Warningf(format string, args ...any) {
+	g.logger.Warn(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Warningln(args ...any) {
+	g.logger.Warn(fmt.Sprintln(args...))
+}
+
+func (g *grpclogFaker) Error(args ...any) {
+	g.logger.Error(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Errorf(format string, args ...any) {
+	g.logger.Error(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Errorln(args ...any) {
+	g.logger.Error(fmt.Sprintln(args...))
+}
+
 func (g *grpclogFaker) Fatal(args ...interface{}) {
 	g.logger.Error(fmt.Sprint(args...))
 	os.Exit(1)
@@ -3042,20 +3040,7 @@ func (g *grpclogFaker) Fatalln(args ...interface{}) {
 	os.Exit(1)
 }
 
-func (g *grpclogFaker) Print(args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprint(args...))
-	}
-}
-
-func (g *grpclogFaker) Printf(format string, args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprintf(format, args...))
-	}
-}
-
-func (g *grpclogFaker) Println(args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprintln(args...))
-	}
+func (g *grpclogFaker) V(l int) bool {
+	currentLevel := int(g.logger.GetLevel())
+	return l >= currentLevel
 }

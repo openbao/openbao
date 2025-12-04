@@ -12,7 +12,7 @@ Steering Committee.
 
 ## Accepted
 
- - [Per-Namespace Sealing](namespace-sealing.mdx), to add per-tenant 
+ - [Per-Namespace Sealing](namespace-sealing.mdx), to add per-tenant
    encryption key separation.
  - [External Key Configuration for KMS and HSM Access](external-keys.mdx),
    to add support for secure key material storage and interaction from
@@ -24,6 +24,8 @@ Steering Committee.
    requests directly, improving horizontal scalability.
  - [Switch to OpenTelemetry](opentelemetry.mdx), to replace the current
    metrics based on `go-metrics` with OpenTelemetry based metrics.
+ - [Components for efficient search over encrypted data](efficient-search-components.mdx), adds the
+   necessary constructs to build indexes on data efficiently allowing for faster search operations.
 
 ## Landed
 
@@ -80,6 +82,9 @@ Steering Committee.
  - [Define audit devices in the configuration file](config-audit-devices.mdx),
    solving the security and usability gaps after HCSEC-2025-14.
    Landed in [PR #1700](https://github.com/openbao/openbao/pull/1700).
+ - [Define plugins in the configuration file](config-plugins.mdx), solving
+   automatic distribution of plugins and eventually leading to a path to
+   minimization of the `bao` server binary.
 
 ## Strategic
 

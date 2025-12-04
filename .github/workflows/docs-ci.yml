@@ -10,11 +10,31 @@ on:
       - "website/**"
 
 jobs:
+  check-links:
+    name: Check Absolute Links
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - name: Find absolute links
+        run: |
+          echo "Checking for absolute links in website/content/docs/..."
+          grep -rn -P "(\(|: |openbao.org)/docs/[^)]+" website/content/docs > grep_output.txt || true
+
+          echo "Checking for absolute links in website/content/api-docs/..."
+          grep -rn -P "(\(|: |openbao.org)/api-docs/[^)]+" website/content/api-docs >> grep_output.txt || true
+
+          # Check if any absolute links were found
+          if [ -s grep_output.txt ]; then
+            echo "::error::Found absolute links that should be relative. See annotations for details."
+            jq -rRs 'split("\n")[:-1][]| split(":") | "::error file=\(.[0]),line=\(.[1]),title=Absolute Link found::\(.[2:]| join(":"))"' grep_output.txt
+            exit 1
+          fi
   test-docs:
     name: Test Docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version-file: "./website/package.json"
@@ -30,7 +50,7 @@ jobs:
     name: Lint Docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version-file: "./website/package.json"

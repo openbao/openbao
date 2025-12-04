@@ -290,6 +290,15 @@ As with OpenBao, the `-config` flag can be used in three different ways:
 - Use the flag multiple times to name multiple configuration files, which will be composed at runtime.
 - Use the flag to name a directory of configuration files, the contents of which will be composed at runtime.
 
+Alternatively, you can specify the configuration path using the `BAO_PROXY_CONFIG_PATH` environment variable. If the `-config` flag is provided, the environment variable is ignored.
+
+**Example using environment variable:**
+
+```shell-session
+$ export BAO_PROXY_CONFIG_PATH=/etc/openbao/proxy-config.hcl
+$ bao proxy
+```
+
 ## Example configuration
 
 An example configuration, with very contrived values, follows:
@@ -351,11 +360,11 @@ listener "tcp" {
 }
 ```
 
-[vault]: /docs/agent-and-proxy/proxy#vault-stanza
-[autoauth]: /docs/agent-and-proxy/autoauth
-[caching]: /docs/agent-and-proxy/proxy/caching
-[apiproxy]: /docs/agent-and-proxy/proxy/apiproxy
-[proxy-api]: /docs/agent-and-proxy/proxy/#proxy_api-stanza
-[listener]: /docs/agent-and-proxy/proxy#listener-stanza
-[listener_main]: /docs/configuration/listener/tcp
-[telemetry]: /docs/configuration/telemetry
+[vault]: #vault-stanza
+[autoauth]: ../autoauth/index.mdx
+[caching]: caching/index.mdx
+[apiproxy]: apiproxy.mdx
+[proxy-api]: #proxy_api-stanza
+[listener]: #listener-stanza
+[listener_main]: ../../configuration/listener/tcp.mdx
+[telemetry]: ../../configuration/telemetry.mdx

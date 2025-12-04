@@ -324,6 +324,15 @@ As with OpenBao, the `-config` flag can be used in three different ways:
 - Use the flag multiple times to name multiple configuration files, which will be composed at runtime.
 - Use the flag to name a directory of configuration files, the contents of which will be composed at runtime.
 
+Alternatively, you can specify the configuration path using the `BAO_AGENT_CONFIG_PATH` environment variable. If the `-config` flag is provided, the environment variable is ignored.
+
+**Example using environment variable:**
+
+```shell-session
+$ export BAO_AGENT_CONFIG_PATH=/etc/openbao/agent-config.hcl
+$ bao agent
+```
+
 ## Example configuration
 
 An example configuration, with very contrived values, follows:
@@ -395,16 +404,16 @@ template {
 }
 ```
 
-[vault]: /docs/agent-and-proxy/agent#vault-stanza
-[autoauth]: /docs/agent-and-proxy/autoauth
-[caching]: /docs/agent-and-proxy/agent/caching
-[apiproxy]: /docs/agent-and-proxy/agent/apiproxy
-[persistent-cache]: /docs/agent-and-proxy/agent/caching/persistent-caches
-[template]: /docs/agent-and-proxy/agent/template
-[process-supervisor]: /docs/agent-and-proxy/agent/process-supervisor
-[template-config]: /docs/agent-and-proxy/agent/template#template-configurations
-[agent-api]: /docs/agent-and-proxy/agent/#agent_api-stanza
-[listener]: /docs/agent-and-proxy/agent#listener-stanza
-[listener_main]: /docs/configuration/listener/tcp
-[winsvc]: /docs/agent-and-proxy/agent/winsvc
-[telemetry]: /docs/configuration/telemetry
+[vault]: #vault-stanza
+[autoauth]: ../autoauth/index.mdx
+[caching]: ./caching/index.mdx
+[apiproxy]: apiproxy.mdx
+[persistent-cache]: caching/persistent-caches/index.mdx
+[template]: template.mdx
+[process-supervisor]: process-supervisor.mdx
+[template-config]: template.mdx#template-configurations
+[agent-api]: #agent_api-stanza
+[listener]: #listener-stanza
+[listener_main]: ../../configuration/listener/tcp.mdx
+[winsvc]: winsvc.mdx
+[telemetry]: ../../configuration/telemetry.mdx

@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"maps"
 	"math/rand"
 	"net/http"
 	"path"
@@ -121,8 +122,11 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"generate-root/update",
 				"decode-token",
 				"mfa/validate",
-				// these endpoint are unauthenticated only with
-				// "disable_unauthed_rekey_endpoints" listener property set to true
+
+				// These endpoints are unauthenticated only with the
+				// "disable_unauthed_rekey_endpoints" listener property explicitly
+				// set to false. Note that they are not routable through the normal
+				// SystemBackend calls but are instead specially handled by http.
 				"rekey/init",
 				"rekey/update",
 				"rekey/verify",
@@ -473,6 +477,8 @@ func (b *SystemBackend) handlePluginCatalogUpdate(ctx context.Context, _ *logica
 		return nil, err
 	}
 
+	oci := d.Get("oci").(bool)
+
 	// For backwards compatibility, also accept args as part of command. Don't
 	// accepts args in both command and args.
 	args := d.Get("args").([]string)
@@ -492,7 +498,7 @@ func (b *SystemBackend) handlePluginCatalogUpdate(ctx context.Context, _ *logica
 		return logical.ErrorResponse("Could not decode SHA-256 value from Hex"), err
 	}
 
-	err = b.Core.pluginCatalog.Set(ctx, pluginName, pluginType, pluginVersion, parts[0], args, env, sha256Bytes)
+	err = b.Core.pluginCatalog.Set(ctx, pluginName, pluginType, pluginVersion, parts[0], args, env, sha256Bytes, oci)
 	if err != nil {
 		if errors.Is(err, ErrPluginNotFound) || strings.HasPrefix(err.Error(), "plugin version mismatch") {
 			return logical.ErrorResponse(err.Error()), nil
@@ -546,12 +552,14 @@ func (b *SystemBackend) handlePluginCatalogRead(ctx context.Context, _ *logical.
 	}
 
 	data := map[string]interface{}{
-		"name":    plugin.Name,
-		"args":    plugin.Args,
-		"command": command,
-		"sha256":  hex.EncodeToString(plugin.Sha256),
-		"builtin": plugin.Builtin,
-		"version": plugin.Version,
+		"name":        plugin.Name,
+		"args":        plugin.Args,
+		"command":     command,
+		"sha256":      hex.EncodeToString(plugin.Sha256),
+		"builtin":     plugin.Builtin,
+		"version":     plugin.Version,
+		"oci":         plugin.Oci,
+		"declarative": plugin.Declarative,
 	}
 
 	if plugin.Builtin {
@@ -1195,7 +1203,7 @@ func (b *SystemBackend) handleReadMount(ctx context.Context, req *logical.Reques
 func handleError(
 	err error,
 ) (*logical.Response, error) {
-	if strings.Contains(err.Error(), logical.ErrReadOnly.Error()) {
+	if logical.ShouldForward(err) {
 		return logical.ErrorResponse(err.Error()), err
 	}
 	switch err.(type) {
@@ -1211,7 +1219,7 @@ func handleError(
 func handleErrorNoReadOnlyForward(
 	err error,
 ) (*logical.Response, error) {
-	if strings.Contains(err.Error(), logical.ErrReadOnly.Error()) {
+	if logical.ShouldForward(err) {
 		return nil, errors.New("operation could not be completed as storage is read-only")
 	}
 	switch err.(type) {
@@ -4384,8 +4392,6 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 		return nil, err
 	}
 
-	context := d.Get("context").(string)
-
 	// Set up target document
 	doc := framework.NewOASDocument(version.Version)
 
@@ -4507,9 +4513,7 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 			}
 
 			// Merge backend schema components
-			for e, schema := range backendDoc.Components.Schemas {
-				doc.Components.Schemas[e] = schema
-			}
+			maps.Copy(doc.Components.Schemas, backendDoc.Components.Schemas)
 		}
 		return nil
 	}
@@ -4520,8 +4524,6 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 	if err := procMountGroup("auth", "auth/"); err != nil {
 		return nil, err
 	}
-
-	doc.CreateOperationIDs(context)
 
 	buf, err := json.Marshal(doc)
 	if err != nil {
@@ -5782,10 +5784,6 @@ This path responds to the following HTTP methods.
 	},
 	"raw": {
 		"Write, Read, and Delete data directly in the Storage backend.",
-		"",
-	},
-	"internal-ui-feature-flags": {
-		"Enabled feature flags. Internal API; its location, inputs, and outputs may change.",
 		"",
 	},
 	"internal-ui-mounts": {

@@ -21,7 +21,6 @@ sys/leader
 sys/health
 sys/storage/raft/bootstrap
 sys/storage/raft/join
-sys/internal/ui/feature-flags
 ```
 
 and also, if the relevant listener configuration settings allow unauthenticated access:
@@ -159,8 +158,9 @@ docs](/api-docs/system/audit) for more details.
 - `elide_list_responses` `(bool: false)` - See [Eliding list response
   bodies](index.mdx#eliding-list-response-bodies) below.
 
-- `format` `(string: "json")` - Allows selecting the output format. Valid values
-  are `"json"` and `"jsonx"`, which formats the normal log entries as XML.
+- `format` `(string: "json")` - Allows selecting the output format. The only
+  valid value is `"json"`, which will be defaulted to if provided an empty
+  string.
 
 - `hmac_accessor` `(bool: true)` - If enabled, enables the hashing of token
   accessor.

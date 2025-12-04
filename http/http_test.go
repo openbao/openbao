@@ -121,7 +121,7 @@ func testResponseStatus(t *testing.T, resp *http.Response, code int) {
 	if resp.StatusCode != code {
 		body := new(bytes.Buffer)
 		io.Copy(body, resp.Body)
-		resp.Body.Close()
+		resp.Body.Close() //nolint:errcheck
 
 		t.Fatalf(
 			"Expected status %d, got %d. Body:\n\n%s",
@@ -140,7 +140,7 @@ func testResponseHeader(t *testing.T, resp *http.Response, expectedHeaders map[s
 }
 
 func testResponseBody(t *testing.T, resp *http.Response, out interface{}) {
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if err := jsonutil.DecodeJSONFromReader(resp.Body, out); err != nil {
 		t.Fatalf("err: %s", err)

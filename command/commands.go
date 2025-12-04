@@ -531,6 +531,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"plugin init": func() (cli.Command, error) {
+			return &PluginInitCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"plugin list": func() (cli.Command, error) {
 			return &PluginListCommand{
 				BaseCommand: getBaseCommand(),

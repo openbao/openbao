@@ -74,6 +74,7 @@ const sidebars: SidebarsConfig = {
                         "concepts/integrated-storage/autopilot",
                     ],
                 },
+                "concepts/namespaces/index",
                 "concepts/pgp-gpg-keybase",
                 "concepts/recovery-mode",
                 "concepts/resource-quotas",
@@ -84,16 +85,17 @@ const sidebars: SidebarsConfig = {
                 "concepts/cel",
             ],
             Guides: [
+                "guides/migration",
                 {
                     Unsealing: [
                         {
                             "PKCS#11": [
                                 "guides/unseal/pkcs11/securosys",
                                 "guides/unseal/pkcs11/utimaco",
-                            ]
-                        }
-                    ]
-                }
+                            ],
+                        },
+                    ],
+                },
             ],
             Configuration: [
                 "configuration/index",
@@ -129,6 +131,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/storage/postgresql",
                     ],
                 },
+                "configuration/plugins",
                 "configuration/telemetry",
                 "configuration/ui",
                 "configuration/user-lockout",
@@ -180,6 +183,7 @@ const sidebars: SidebarsConfig = {
                 "commands/list",
                 "commands/login",
                 "commands/monitor",
+                "commands/namespace",
                 {
                     operator: [
                         "commands/operator/index",
@@ -214,6 +218,7 @@ const sidebars: SidebarsConfig = {
                         "commands/plugin/index",
                         "commands/plugin/deregister",
                         "commands/plugin/info",
+                        "commands/plugin/init",
                         "commands/plugin/list",
                         "commands/plugin/register",
                         "commands/plugin/reload",
@@ -491,6 +496,7 @@ const sidebars: SidebarsConfig = {
             ],
             "Release Notes": [
                 "release-notes/index",
+                "release-notes/2-5-0",
                 "release-notes/2-4-0",
                 "release-notes/2-3-0",
                 "release-notes/2-2-0",
@@ -500,7 +506,11 @@ const sidebars: SidebarsConfig = {
         },
         "known-issues",
         {
-            "Deprecation Notices": ["deprecation/index", "deprecation/faq", "deprecation/unauthed-rekey"],
+            "Deprecation Notices": [
+                "deprecation/index",
+                "deprecation/faq",
+                "deprecation/unauthed-rekey",
+            ],
             Policies: [
                 "policies/index",
                 "policies/brand",
@@ -511,6 +521,7 @@ const sidebars: SidebarsConfig = {
                 "policies/support",
                 "policies/osps-baseline",
                 "policies/cve",
+                "policies/repo-setup",
             ],
             Contributing: [
                 "contributing/index",
@@ -540,14 +551,16 @@ const sidebars: SidebarsConfig = {
                 "rfcs/external-keys",
                 "rfcs/config-audit-devices",
                 "rfcs/opentelemetry",
+                "rfcs/efficient-search-components",
                 {
-                  "UI/UX": ["rfcs/web-ui-modernization"],
+                    "UI/UX": ["rfcs/web-ui-modernization"],
                 },
                 {
                     "Horizontal Scalability": [
                         "rfcs/standby-nodes-handle-read-requests",
                     ],
                 },
+                "rfcs/config-plugins",
             ],
         },
         "glossary",

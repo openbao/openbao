@@ -114,7 +114,7 @@ func getSelfSigned(t *testing.T, subject, issuer *x509.Certificate, key *rsa.Pri
 func getCrlCertificateList(t *testing.T, client *api.Client, mountPoint string) *x509.RevocationList {
 	t.Helper()
 
-	path := fmt.Sprintf("/v1/%s/crl", mountPoint)
+	path := fmt.Sprintf("%s/crl", mountPoint)
 	return getParsedCrlAtPath(t, client, path)
 }
 
@@ -155,19 +155,18 @@ func requireSerialNumberInCRL(t *testing.T, revokeList *x509.RevocationList, ser
 func getParsedCrl(t *testing.T, client *api.Client, mountPoint string) *x509.RevocationList {
 	t.Helper()
 
-	path := fmt.Sprintf("/v1/%s/crl", mountPoint)
+	path := fmt.Sprintf("%s/crl", mountPoint)
 	return getParsedCrlAtPath(t, client, path)
 }
 
 func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *x509.RevocationList {
 	t.Helper()
 
-	req := client.NewRequest("GET", path)
-	resp, err := client.RawRequest(req)
+	resp, err := client.Logical().ReadRaw(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	crlBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

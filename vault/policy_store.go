@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
@@ -220,14 +220,21 @@ func (c *Core) teardownPolicyStore() error {
 	return nil
 }
 
-// invalidate will be used in the future for implementing read replica nodes
-//
-//nolint:unused
-func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType PolicyType) {
+func (ps *PolicyStore) invalidateNamespace(ctx context.Context, uuid string) {
+	ps.modifyLock.Lock()
+	defer ps.modifyLock.Unlock()
+
+	for _, key := range ps.tokenPoliciesLRU.Keys() {
+		if strings.HasPrefix(key, uuid) {
+			ps.tokenPoliciesLRU.Remove(key)
+		}
+	}
+}
+
+func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType PolicyType) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		ps.logger.Error("unable to invalidate key, no namespace info passed", "key", name)
-		return
+		return err
 	}
 
 	// This may come with a prefixed "/" due to joining the file path
@@ -246,23 +253,10 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 		}
 
 	default:
-		// Can't do anything
-		return
+		return fmt.Errorf("unknown policy type: %w", err)
 	}
 
-	// Force a reload
-	out, err := ps.switchedGetPolicy(ctx, name, policyType, false)
-	if err != nil {
-		ps.logger.Error("error fetching policy after invalidation", "name", saneName)
-	}
-
-	// If true, the invalidation was actually a delete, so we may need to
-	// perform further deletion tasks. We skip the physical deletion just in
-	// case another process has re-written the policy; instead next time Get is
-	// called the values will be loaded back in.
-	if out == nil {
-		ps.switchedDeletePolicy(ctx, name, policyType, false, true)
-	}
+	return nil
 }
 
 // SetPolicy is used to create or update the given policy
@@ -738,7 +732,7 @@ func (ps *PolicyStore) sanitizeName(name string) string {
 }
 
 func (ps *PolicyStore) cacheKey(ns *namespace.Namespace, name string) string {
-	return path.Join(ns.ID, name)
+	return path.Join(ns.UUID, name)
 }
 
 // loadDefaultPolicies loads default policies for the namespace in the provided context

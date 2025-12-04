@@ -160,6 +160,12 @@ func GetSubjectKeyID(pub interface{}) ([]byte, error) {
 			return nil, errutil.InternalError{Err: fmt.Sprintf("error marshalling public key: %s", err)}
 		}
 	case *ecdsa.PublicKey:
+		// TODO: Replace usage of elliptic.Marshal by below code once we compile with Go 1.25
+		// var err error
+		// publicKeyBytes, err = pub.Bytes()
+		// if err != nil {
+		// 	return nil, errutil.InternalError{Err: fmt.Sprintf("error marshalling public key: %s", err)}
+		// }
 		publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
 	case ed25519.PublicKey:
 		publicKeyBytes = pub
@@ -547,11 +553,7 @@ func HandleOtherCSRSANs(in *x509.CertificateRequest, sans map[string][]string) e
 	if err := HandleOtherSANs(certTemplate, sans); err != nil {
 		return err
 	}
-	if len(certTemplate.ExtraExtensions) > 0 {
-		for _, v := range certTemplate.ExtraExtensions {
-			in.ExtraExtensions = append(in.ExtraExtensions, v)
-		}
-	}
+	in.ExtraExtensions = append(in.ExtraExtensions, certTemplate.ExtraExtensions...)
 	return nil
 }
 

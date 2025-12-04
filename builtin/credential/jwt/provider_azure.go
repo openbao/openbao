@@ -164,7 +164,7 @@ func (a *AzureProvider) getAzureGroups(groupsURL string, tokenSource oauth2.Toke
 	if err != nil {
 		return nil, fmt.Errorf("unable to call Microsoft Graph API: %s", err)
 	}
-	defer res.Body.Close()
+	defer res.Body.Close() //nolint:errcheck
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read Microsoft Graph API response: %s", err)

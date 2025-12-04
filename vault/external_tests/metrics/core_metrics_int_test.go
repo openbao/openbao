@@ -4,7 +4,6 @@
 package metrics
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -140,10 +139,8 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	standbyClient := cores[1].Client
 
 	r := client.NewRequest("GET", "/v1/sys/metrics")
-	r2 := standbyClient.NewRequest("GET", "/v1/sys/metrics")
 	r.Headers.Set("X-Vault-Token", cluster.RootToken)
-	r2.Headers.Set("X-Vault-Token", cluster.RootToken)
-	respo, err := client.RawRequestWithContext(context.Background(), r)
+	respo, err := client.RawRequest(r)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +149,7 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 		t.Fatal(err)
 	}
 	if respo != nil {
-		defer respo.Body.Close()
+		defer respo.Body.Close() //nolint:errcheck
 	}
 	var data testhelpers.SysMetricsJSON
 	coreLeaderMetric := false
@@ -187,7 +184,7 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 
 	r = standbyClient.NewRequest("GET", "/v1/sys/metrics")
 	r.Headers.Set("X-Vault-Token", cluster.RootToken)
-	respo, err = standbyClient.RawRequestWithContext(context.Background(), r)
+	respo, err = standbyClient.RawRequest(r)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,6 +216,6 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 		}
 	}
 	if respo != nil {
-		defer respo.Body.Close()
+		defer respo.Body.Close() //nolint:errcheck
 	}
 }

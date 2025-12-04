@@ -27,10 +27,10 @@ var (
 )
 
 var (
-	PutDisabledError    = errors.New("put operations disabled in inmem backend")
-	GetDisabledError    = errors.New("get operations disabled in inmem backend")
-	DeleteDisabledError = errors.New("delete operations disabled in inmem backend")
-	ListDisabledError   = errors.New("list operations disabled in inmem backend")
+	ErrPutDisabled    = errors.New("put operations disabled in inmem backend")
+	ErrGetDisabled    = errors.New("get operations disabled in inmem backend")
+	ErrDeleteDisabled = errors.New("delete operations disabled in inmem backend")
+	ErrListDisabled   = errors.New("list operations disabled in inmem backend")
 )
 
 // InmemBackend is an in-memory only physical backend. It is useful
@@ -182,7 +182,7 @@ func (i *InmemBackend) PutInternal(ctx context.Context, entry *physical.Entry) e
 		i.logger.Trace("put", "key", entry.Key)
 	}
 	if atomic.LoadUint32(i.failPut) != 0 {
-		return PutDisabledError
+		return ErrPutDisabled
 	}
 
 	select {
@@ -223,7 +223,7 @@ func (i *InmemBackend) GetInternal(ctx context.Context, key string) (*physical.E
 		i.logger.Trace("get", "key", key)
 	}
 	if atomic.LoadUint32(i.failGet) != 0 {
-		return nil, GetDisabledError
+		return nil, ErrGetDisabled
 	}
 
 	select {
@@ -269,7 +269,7 @@ func (i *InmemBackend) DeleteInternal(ctx context.Context, key string) error {
 		i.logger.Trace("delete", "key", key)
 	}
 	if atomic.LoadUint32(i.failDelete) != 0 {
-		return DeleteDisabledError
+		return ErrDeleteDisabled
 	}
 	select {
 	case <-ctx.Done():
@@ -323,7 +323,7 @@ func (i *InmemBackend) ListPaginatedInternal(ctx context.Context, prefix string,
 		i.logger.Trace("list", "prefix", prefix)
 	}
 	if atomic.LoadUint32(i.failList) != 0 {
-		return nil, ListDisabledError
+		return nil, ErrListDisabled
 	}
 
 	return i.listPaginatedInternal(ctx, prefix, after, limit)

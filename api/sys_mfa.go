@@ -30,7 +30,7 @@ func (c *Sys) MFAValidateWithContext(ctx context.Context, requestID string, payl
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if err != nil {
 		return nil, err

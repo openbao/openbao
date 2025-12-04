@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/cenkalti/backoff/v4"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -56,23 +56,29 @@ var (
 // PostgreSQL Backend is a physical backend that stores data
 // within a PostgreSQL database.
 type PostgreSQLBackend struct {
-	table                   string
-	client                  *sql.DB
-	put_query               string
-	get_query               string
-	delete_query            string
-	list_query              string
-	list_page_query         string
-	list_page_limited_query string
+	table  string
+	client *sql.DB
 
-	ha_table                 string
+	putQuery             string
+	getQuery             string
+	deleteQuery          string
+	listQuery            string
+	listPageQuery        string
+	listPageLimitedQuery string
+
+	haTable                  string
 	haGetLockValueQuery      string
 	haUpsertLockIdentityExec string
+	haRenewLockIdentityExec  string
 	haDeleteLockExec         string
+	haCheckLockHeldQuery     string
 
 	haEnabled     bool
 	logger        log.Logger
 	txnPermitPool *physical.PermitPool
+
+	fenceLock sync.RWMutex
+	fence     *PostgreSQLLock
 }
 
 // PostgreSQLLock implements a lock using an PostgreSQL client.
@@ -100,11 +106,11 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 	// Get the PostgreSQL credentials to perform read/write operations.
 	connURL := connectionURL(conf)
 
-	unquoted_table, ok := conf["table"]
+	unquotedTable, ok := conf["table"]
 	if !ok {
-		unquoted_table = "openbao_kv_store"
+		unquotedTable = "openbao_kv_store"
 	}
-	quoted_table := dbutil.QuoteIdentifier(unquoted_table)
+	quotedTable := dbutil.QuoteIdentifier(unquotedTable)
 
 	maxParStr, ok := conf["max_parallel"]
 	var maxParInt int
@@ -184,63 +190,79 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		return nil, errors.New("PostgreSQL version must be at least 9.5")
 	}
 
-	unquoted_ha_table, ok := conf["ha_table"]
+	unquotedHaTable, ok := conf["haTable"]
 	if !ok {
-		unquoted_ha_table = "openbao_ha_locks"
+		unquotedHaTable = "openbao_ha_locks"
 	}
-	quoted_ha_table := dbutil.QuoteIdentifier(unquoted_ha_table)
+	quotedHaTable := dbutil.QuoteIdentifier(unquotedHaTable)
 
 	// Setup the backend.
 	m := &PostgreSQLBackend{
-		table:  quoted_table,
+		table:  quotedTable,
 		client: db,
-		put_query: "INSERT INTO " + quoted_table + " VALUES($1, $2, $3, $4)" +
+		putQuery: "INSERT INTO " + quotedTable + " VALUES($1, $2, $3, $4)" +
 			" ON CONFLICT (path, key) DO " +
 			" UPDATE SET (parent_path, path, key, value) = ($1, $2, $3, $4)",
-		get_query:    "SELECT value FROM " + quoted_table + " WHERE path = $1 AND key = $2",
-		delete_query: "DELETE FROM " + quoted_table + " WHERE path = $1 AND key = $2",
-		list_query: "SELECT key FROM " + quoted_table + " WHERE path = $1" +
-			" UNION ALL SELECT DISTINCT substring(substr(path, length($1)+1) from '^.*?/') FROM " + quoted_table +
+		getQuery:    "SELECT value FROM " + quotedTable + " WHERE path = $1 AND key = $2",
+		deleteQuery: "DELETE FROM " + quotedTable + " WHERE path = $1 AND key = $2",
+		listQuery: "SELECT key FROM " + quotedTable + " WHERE path = $1" +
+			" UNION ALL SELECT DISTINCT substring(substr(path, length($1)+1) from '^.*?/') FROM " + quotedTable +
 			" WHERE parent_path LIKE $1 || '%'" +
 			" ORDER BY key",
-		list_page_query: "SELECT key FROM " + quoted_table + " WHERE path = $1 AND key > $2" +
-			" UNION ALL SELECT DISTINCT substring(substr(path, length($1)+1) from '^.*?/') FROM " + quoted_table +
+		listPageQuery: "SELECT key FROM " + quotedTable + " WHERE path = $1 AND key > $2" +
+			" UNION ALL SELECT DISTINCT substring(substr(path, length($1)+1) from '^.*?/') FROM " + quotedTable +
 			" WHERE parent_path LIKE $1 || '%' AND substring(substr(path, length($1)+1) from '^.*?/') > $2" +
 			" ORDER BY key",
-		list_page_limited_query: "SELECT key FROM " + quoted_table + " WHERE path = $1 AND key > $2" +
-			" UNION ALL SELECT DISTINCT substring(substr(path, length($1)+1) from '^.*?/') FROM " + quoted_table +
+		listPageLimitedQuery: "SELECT key FROM " + quotedTable + " WHERE path = $1 AND key > $2" +
+			" UNION ALL SELECT DISTINCT substring(substr(path, length($1)+1) from '^.*?/') FROM " + quotedTable +
 			" WHERE parent_path LIKE $1 || '%' AND substring(substr(path, length($1)+1) from '^.*?/') > $2" +
 			" ORDER BY key LIMIT $3",
-		ha_table: quoted_ha_table,
+		haTable: quotedHaTable,
 		haGetLockValueQuery:
 		// only read non expired data
-		" SELECT ha_value FROM " + quoted_ha_table + " WHERE NOW() <= valid_until AND ha_key = $1 ",
+		" SELECT ha_value FROM " + quotedHaTable + " WHERE NOW() <= valid_until AND ha_key = $1 ",
 		haUpsertLockIdentityExec:
 		// $1=identity $2=ha_key $3=ha_value $4=TTL in seconds
-		// update either steal expired lock OR update expiry for lock owned by me
-		" INSERT INTO " + quoted_ha_table + " as t (ha_identity, ha_key, ha_value, valid_until) VALUES ($1, $2, $3, NOW() + $4 * INTERVAL '1 seconds'  ) " +
+		// update only steals an expired lock
+		" INSERT INTO " + quotedHaTable + " as t (ha_identity, ha_key, ha_value, valid_until) VALUES ($1, $2, $3, NOW() + $4 * INTERVAL '1 seconds'  ) " +
 			" ON CONFLICT (ha_key) DO " +
 			" UPDATE SET (ha_identity, ha_key, ha_value, valid_until) = ($1, $2, $3, NOW() + $4 * INTERVAL '1 seconds') " +
-			" WHERE (t.valid_until < NOW() AND t.ha_key = $2) OR " +
-			" (t.ha_identity = $1 AND t.ha_key = $2)  ",
+			" WHERE (t.valid_until < NOW() AND t.ha_key = $2)",
+		haRenewLockIdentityExec:
+		// Same parameters as haUpsertLockIdentityExec; just for the renewal
+		// flow instead of the lock creation flow.
+		//
+		// update only renews our lock; it will not steal it and will not
+		// create it if it doesn't exist.
+		" UPDATE " + quotedHaTable +
+			" SET (ha_identity, ha_key, ha_value, valid_until) = ($1, $2, $3, NOW() + $4 * INTERVAL '1 seconds') " +
+			" WHERE (ha_identity = $1 AND ha_key = $2)  ",
 		haDeleteLockExec:
 		// $1=ha_identity $2=ha_key
-		" DELETE FROM " + quoted_ha_table + " WHERE ha_identity=$1 AND ha_key=$2 ",
+		" DELETE FROM " + quotedHaTable + " WHERE ha_identity=$1 AND ha_key=$2 ",
+		haCheckLockHeldQuery:
+		// $1=ha_identity $2=ha_key $3=ha_value
+		" SELECT COUNT(*) FROM " + quotedHaTable + " WHERE " +
+			" ha_identity=$1 AND ha_key=$2 AND ha_value=$3 AND valid_until > NOW()  ",
 		logger:        logger,
 		txnPermitPool: physical.NewPermitPool(txnMaxParInt),
 		haEnabled:     conf["ha_enabled"] == "true",
+
+		// No initial fence, but if a fence is here, we'll validate it inside
+		// write transactions.
+		fence: nil,
 	}
 
 	// Determine if we should create tables.
-	raw_skip_create_table, ok := conf["skip_create_table"]
+	rawSkipCreateTable, ok := conf["skip_create_table"]
 	if !ok {
-		raw_skip_create_table = "false"
+		rawSkipCreateTable = "false"
 	}
-	skip_create_table, err := parseutil.ParseBool(raw_skip_create_table)
+	skipCreateTable, err := parseutil.ParseBool(rawSkipCreateTable)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse value for `skip_create_table`: %w", err)
 	}
-	if !skip_create_table {
+	if !skipCreateTable {
 		if err := m.createTables(); err != nil {
 			return nil, fmt.Errorf("failed to create tables: %w", err)
 		}
@@ -302,7 +324,7 @@ func (m *PostgreSQLBackend) createTables() error {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer txn.Rollback()
+	defer txn.Rollback() //nolint:errcheck
 
 	createTableQuery := "CREATE TABLE IF NOT EXISTS " + m.table + " (" +
 		`parent_path TEXT COLLATE "C" NOT NULL,` +
@@ -335,7 +357,7 @@ func (m *PostgreSQLBackend) createTables() error {
 
 	if m.haEnabled {
 		// Successfully detected that there is no table; create it.
-		createTableQuery := `CREATE TABLE IF NOT EXISTS ` + m.ha_table + ` (` +
+		createTableQuery := `CREATE TABLE IF NOT EXISTS ` + m.haTable + ` (` +
 			`  ha_key      TEXT COLLATE "C" NOT NULL,` +
 			`  ha_identity TEXT COLLATE "C" NOT NULL,` +
 			`  ha_value    TEXT COLLATE "C",` +
@@ -393,7 +415,11 @@ func (m *PostgreSQLBackend) Put(ctx context.Context, entry *physical.Entry) erro
 
 	parentPath, path, key := m.splitKey(entry.Key)
 
-	_, err := m.client.ExecContext(ctx, m.put_query, parentPath, path, key, entry.Value)
+	if err := m.validateFence(ctx); err != nil {
+		return err
+	}
+
+	_, err := m.client.ExecContext(ctx, m.putQuery, parentPath, path, key, entry.Value)
 	if err != nil {
 		return err
 	}
@@ -407,7 +433,7 @@ func (m *PostgreSQLBackend) Get(ctx context.Context, fullPath string) (*physical
 	_, path, key := m.splitKey(fullPath)
 
 	var result []byte
-	err := m.client.QueryRowContext(ctx, m.get_query, path, key).Scan(&result)
+	err := m.client.QueryRowContext(ctx, m.getQuery, path, key).Scan(&result)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -428,7 +454,11 @@ func (m *PostgreSQLBackend) Delete(ctx context.Context, fullPath string) error {
 
 	_, path, key := m.splitKey(fullPath)
 
-	_, err := m.client.ExecContext(ctx, m.delete_query, path, key)
+	if err := m.validateFence(ctx); err != nil {
+		return err
+	}
+
+	_, err := m.client.ExecContext(ctx, m.deleteQuery, path, key)
 	if err != nil {
 		return err
 	}
@@ -440,7 +470,7 @@ func (m *PostgreSQLBackend) Delete(ctx context.Context, fullPath string) error {
 func (m *PostgreSQLBackend) List(ctx context.Context, prefix string) ([]string, error) {
 	defer metrics.MeasureSince([]string{"postgres", "list"}, time.Now())
 
-	rows, err := m.client.QueryContext(ctx, m.list_query, "/"+prefix)
+	rows, err := m.client.QueryContext(ctx, m.listQuery, "/"+prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -468,9 +498,9 @@ func (m *PostgreSQLBackend) ListPage(ctx context.Context, prefix string, after s
 	var rows *sql.Rows
 	var err error
 	if limit <= 0 {
-		rows, err = m.client.QueryContext(ctx, m.list_page_query, "/"+prefix, after)
+		rows, err = m.client.QueryContext(ctx, m.listPageQuery, "/"+prefix, after)
 	} else {
-		rows, err = m.client.QueryContext(ctx, m.list_page_limited_query, "/"+prefix, after, limit)
+		rows, err = m.client.QueryContext(ctx, m.listPageLimitedQuery, "/"+prefix, after, limit)
 	}
 	if err != nil {
 		return nil, err
@@ -510,6 +540,42 @@ func (p *PostgreSQLBackend) LockWith(key, value string) (physical.Lock, error) {
 
 func (p *PostgreSQLBackend) HAEnabled() bool {
 	return p.haEnabled
+}
+
+func (p *PostgreSQLBackend) RegisterActiveNodeLock(l physical.Lock) error {
+	lock, ok := l.(*PostgreSQLLock)
+	if !ok {
+		return fmt.Errorf("expected PostgreSQLLock; got %T", l)
+	}
+
+	p.fenceLock.Lock()
+	defer p.fenceLock.Unlock()
+	p.fence = lock
+
+	return nil
+}
+
+func (p *PostgreSQLBackend) validateFence(ctx context.Context) error {
+	p.fenceLock.RLock()
+	defer p.fenceLock.RUnlock()
+
+	if p.fence == nil {
+		return nil
+	}
+
+	if physical.IsUnfencedWrite(ctx) {
+		return nil
+	}
+
+	held, err := p.fence.IsActivelyHeld(ctx)
+	if err != nil {
+		return fmt.Errorf("%v: err from database: %w", physical.ErrFencedWriteFailed, err)
+	}
+	if !held {
+		return fmt.Errorf("%v: lock changed ownership", physical.ErrFencedWriteFailed)
+	}
+
+	return nil
 }
 
 // Lock tries to acquire the lock by repeatedly trying to create a record in the
@@ -571,7 +637,37 @@ func (l *PostgreSQLLock) Value() (bool, string, error) {
 		return false, "", nil
 	default:
 		return false, "", err
+	}
+}
 
+// Whether or not this lock is currently held by this instance of the lock.
+//
+// Returns true if and only if this lock is active. Returns false if the lock
+// is held by another caller or an error occurred. While errors may occur
+// which prevent checking lock status, this likely also affects whether or not
+// the lock can be renewed and so should likely be treated as an error.
+//
+// While leaderLossCh returned from Lock() is the ultimate notification of
+// lock loss, this check is a online check and goes to the database to verify
+// the lock is held.
+func (l *PostgreSQLLock) IsActivelyHeld(ctx context.Context) (bool, error) {
+	pg := l.backend
+
+	// For simplicity and compatibility with all versions of PostgreSQL, we
+	// return the number of rows matching our lookup. This is zero if the
+	// lock isn't held by us (identity, key, and value all match and the lock
+	// is valid) and one if it is held by us. Uniqueness constraints prevent
+	// us from having more than one lock.
+	var result int
+	err := pg.client.QueryRowContext(ctx, pg.haCheckLockHeldQuery, l.identity, l.key, l.value).Scan(&result)
+
+	switch err {
+	case nil:
+		return result == 1, nil
+	case sql.ErrNoRows:
+		return false, nil
+	default:
+		return false, err
 	}
 }
 
@@ -589,7 +685,7 @@ func (l *PostgreSQLLock) tryToLock(stop <-chan struct{}, success chan struct{}, 
 		case <-stop:
 			return
 		case <-ticker.C:
-			gotlock, err := l.writeItem()
+			gotlock, err := l.writeItem(l.backend.haUpsertLockIdentityExec)
 			switch {
 			case err != nil:
 				errors <- err
@@ -604,10 +700,17 @@ func (l *PostgreSQLLock) tryToLock(stop <-chan struct{}, success chan struct{}, 
 
 func (l *PostgreSQLLock) periodicallyRenewLock(done chan struct{}) {
 	for range l.renewTicker.C {
-		gotlock, err := l.writeItem()
+		gotlock, err := l.writeItem(l.backend.haRenewLockIdentityExec)
 		if err != nil || !gotlock {
 			close(done)
 			l.renewTicker.Stop()
+
+			// If we got an error, log it so that operators can see the
+			// renewal failure.
+			if err != nil {
+				l.backend.logger.Error("lock renewal failed", "key", l.key, "err", err)
+			}
+
 			return
 		}
 	}
@@ -617,12 +720,32 @@ func (l *PostgreSQLLock) periodicallyRenewLock(done chan struct{}) {
 // evaluate the TTL.  Returns true if the lock was obtained, false if not.
 // If false error may be nil or non-nil: nil indicates simply that someone
 // else has the lock, whereas non-nil means that something unexpected happened.
-func (l *PostgreSQLLock) writeItem() (bool, error) {
+//
+// Notably, query is variable (but chosen between one of two static values)
+// as we need to handle strict upsert (creating a new lock and/or claiming an
+// expired lock from someone else) versus renewing our lock: if someone else
+// grabs the lock (and it expires) before we get a chance to renew, or if the
+// lock is deleted from under us, renewal should not happen. Similarly, if we
+// attempt to grab the lock and we already hold it, we should fail. This
+// latter case was already handled in the upsert (by virtue of identity being
+// a per-lock UIUD), but was not explicitly made clear.
+func (l *PostgreSQLLock) writeItem(query string) (bool, error) {
 	pg := l.backend
 
-	// Try steal lock or update expiry on my lock
+	// Set a timeout on lock renewal: ensure we block at most 2/3rds of the
+	// total lock period.
+	//
+	// This ensures we do not stall renewal indefinitely and miss a subsequent
+	// lock acquisition by another party. We give ourselves a little grace
+	// period to ensure we do not hit false positives due to network latency.
+	//
+	// This is important to ensure that we notify on leadership loss before the
+	// other node could acquire the lock and take over as leader.
+	ctx, cancel := context.WithTimeout(context.Background(), PostgreSQLLockTTLSeconds*2/3*time.Second)
+	defer cancel()
 
-	sqlResult, err := pg.client.Exec(pg.haUpsertLockIdentityExec, l.identity, l.key, l.value, l.ttlSeconds)
+	// Try steal lock or update expiry on my lock.
+	sqlResult, err := pg.client.ExecContext(ctx, query, l.identity, l.key, l.value, l.ttlSeconds)
 	if err != nil {
 		return false, err
 	}

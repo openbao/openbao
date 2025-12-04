@@ -5,6 +5,30 @@ description: Release notes for OpenBao 2.4.x
 
 # OpenBao 2.4.x release notes
 
+## v2.4.4
+
+**Release date**: November 24, 2025
+
+### SECURITY
+
+* core/identity: Correctly lowercase policy names on identity groups to prevent root policy assignment. CVE-2025-64761 / GHSA-7ff4-jw48-3436. Second part of upstream's HCSEC-2025-13 / CVE-2025-5999. [[GH-2143](https://github.com/openbao/openbao/pull/2143)]
+
+### IMPROVEMENTS
+
+* command: `operator diagnose` certificate expiration warnings are now raised if less than 15% of the certificate's validity period remains. Previously, any certificate that was set to expire in the next 30 days would be flagged. This made little sense for short-lived certificates. [[GH-2062](https://github.com/openbao/openbao/pull/2062)]
+
+### BUG FIXES
+
+* auth/cert: allow use of always-fresh OCSP servers which elide NextUpdate [[GH-2079](https://github.com/openbao/openbao/pull/2079)]
+* auth/jwt: Fix token renewal of pre-v2.3.x JWT tokens and all OIDC tokens after CEL support was introduced. [[GH-2148](https://github.com/openbao/openbao/pull/2148)]
+* command: `operator diagnose` certificate expiration warnings now contain the correct time to expiration. [[GH-2062](https://github.com/openbao/openbao/pull/2062)]
+* command: `operator diagnose` now correctly ignores trailing data in certificate files. [[GH-2065](https://github.com/openbao/openbao/pull/2065)]
+* command: `operator diagnose` now correctly verifies intermediate certs if no root certs are supplied. [[GH-2065](https://github.com/openbao/openbao/pull/2065)]
+* command: pki health check error now contains actual mount path instead of a template placeholder. [[GH-2061](https://github.com/openbao/openbao/pull/2061)]
+* core: fix nil panic in the rare case were an expiration retry is running during shutdown [[GH-2019](https://github.com/openbao/openbao/pull/2019)]
+* raft: fix memory leak when using only non-transactional operations. This was a regression introduced in release 2.4.2 with #1889. [[GH-2067](https://github.com/openbao/openbao/pull/2067)]
+* sdk/helper/ocsp: allow use of always-fresh OCSP servers which elide NextUpdate [[GH-2079](https://github.com/openbao/openbao/pull/2079)]
+
 ## v2.4.3
 
 **Release date**: October 22, 2025

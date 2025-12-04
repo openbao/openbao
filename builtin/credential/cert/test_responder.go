@@ -33,7 +33,7 @@ var (
 
 	// ErrNotFound indicates the request OCSP response was not found. It is used to
 	// indicate that the responder should reply with unauthorizedErrorResponse.
-	ErrNotFound = errors.New("Request OCSP Response not found")
+	ErrNotFound = errors.New("request OCSP Response not found")
 )
 
 // Source represents the logical source of OCSP responses, i.e.,

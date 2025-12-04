@@ -172,7 +172,7 @@ func (b *backend) acmeParsedWrapper(op acmeParsedOperation) framework.OperationF
 
 				rawBody, err := json.Marshal(fields)
 				if err != nil {
-					return nil, fmt.Errorf("Error marshaling JSON body: %w", err)
+					return nil, fmt.Errorf("error marshaling JSON body: %w", err)
 				}
 
 				body[logical.HTTPRawBody] = rawBody

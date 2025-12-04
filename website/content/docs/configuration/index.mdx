@@ -145,6 +145,18 @@ to specify where the configuration is.
   This only needs to be set if the file permissions check is enabled via the environment variable
   `VAULT_ENABLE_FILE_PERMISSIONS_CHECK`.
 
+- `plugin` <code>([Plugin][oci-plugins]: &lt;none&gt;)</code> – Specifies declarative plugin
+  downloading from OCI images and registration. Can be specified multiple times.
+
+- `plugin_auto_download` `bool: false` - Whether automatic plugin downloading is enabled. See
+  [OCI plugin documentation][oci-plugins] for more information.
+
+- `plugin_auto_register` `bool: false` - Whether automatic plugin registration is enabled. See
+  [OCI plugin documentation][oci-plugins] for more information.
+
+- `plugin_download_behavior` `string: "fail"` - Whether plugin downloading is treated as fatal
+  failure. See [OCI plugin documentation][oci-plugins] for more information.
+
 - `telemetry` <code>([Telemetry][telemetry]: &lt;none&gt;)</code> – Specifies the telemetry
   reporting system.
 
@@ -244,6 +256,9 @@ can have a negative effect on performance due to the tracking of each lock attem
   like the above option, this one is best toggled only temporarily to enable the
   desired audit device.
 
+- `disable_standby_reads` `(bool: false)` - Disable the handling of read-only
+  requests on standby nodes.
+
 ### High Availability parameters
 
 The following parameters are used on backends that support [High Availability][high-availability].
@@ -271,12 +286,13 @@ The following parameters are used on backends that support [High Availability][h
   will disable these features _only when that node is the active node_. This
   parameter cannot be set to `true` if `raft` is the storage type.
 
-[audit]: /docs/configuration/audit
-[storage-backend]: /docs/configuration/storage
-[listener]: /docs/configuration/listener
-[seal]: /docs/configuration/seal
-[telemetry]: /docs/configuration/telemetry
-[initialize]: /docs/configuration/self-init
-[high-availability]: /docs/concepts/ha
-[plugins]: /docs/plugins
-[userlockout]: /docs/configuration/user-lockout
+[audit]: audit.mdx
+[storage-backend]: storage/index.mdx
+[listener]: listener/index.mdx
+[seal]: seal/index.mdx
+[telemetry]: telemetry.mdx
+[initialize]: self-init.mdx
+[high-availability]: ../concepts/ha.mdx
+[plugins]: ../plugins/index.mdx
+[oci-plugins]: plugins.mdx
+[userlockout]: user-lockout.mdx

@@ -56,7 +56,7 @@ func (cg *CertificateGetter) Reload() error {
 	if x509.IsEncryptedPEMBlock(keyBlock) {
 		keyBlock.Bytes, err = x509.DecryptPEMBlock(keyBlock, []byte(cg.passphrase))
 		if err != nil {
-			return fmt.Errorf("Decrypting PEM block failed %w", err)
+			return fmt.Errorf("decrypting PEM block failed %w", err)
 		}
 		keyPEMBlock = pem.EncodeToMemory(keyBlock)
 	}

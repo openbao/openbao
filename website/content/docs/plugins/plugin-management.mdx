@@ -4,7 +4,7 @@ description: >-
   plugin system.
 ---
 
-# Plugin management
+# Plugin Management
 
 External plugins are the components in OpenBao that can be implemented separately
 from OpenBao's built-in plugins. These plugins can be either authentication or
@@ -17,6 +17,18 @@ will automatically attempt to determine the `api_addr` as well.
 
 Detailed information regarding the plugin system can be found in the
 [internals documentation](index.mdx).
+
+## Plugin distribution methods
+
+OpenBao supports two methods for distributing external plugins:
+
+1. **Manual management** - Manual download of plugin binaries
+2. **OCI-based distribution** - Automatic download from container registries
+   with declarative configuration. See the [OCI
+   Plugin](..//configuration/plugins.mdx) configuration reference for complete
+   documentation.
+
+Both methods require the plugin to be registered in OpenBao before it can be used.
 
 ## Registering external plugins
 
@@ -63,5 +75,5 @@ $ bao secrets disable my-secrets
 Upgrade instructions can be found in the [Upgrading Plugins - Guides][upgrading_plugins]
 page.
 
-[api_addr]: /docs/configuration#api_addr
-[upgrading_plugins]: /docs/upgrading/plugins
+[api_addr]: ../configuration/index.mdx#api_addr
+[upgrading_plugins]: ../upgrading/plugins.mdx

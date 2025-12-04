@@ -348,8 +348,24 @@ parameter is a map of items to copy. The map elements are of the form: `"<JWT cl
 ```
 
 This specifies that the value in the JWT claim "division" should be copied to the metadata key "organization". The JWT
-"department" claim value will also be copied into metadata but will retain the key name. If a claim is configured in `claim_mappings`,
-it must existing in the JWT or else the authentication will fail.
+"department" claim value will also be copied into metadata but will retain the key name.
+
+If a claim is configured in `claim_mappings`, it must exist in the JWT when
+using JSON pointer syntax (beginning with a `/`) or else the authentication
+will fail. Claim mappings which do not begin with a `/` are optional. For
+example, in the configuration:
+
+```json
+{
+    "optional_jwt_claim": "optional_metadata_key",
+    "/required_jwt_claim": "required_metadata_key",
+}
+```
+
+the claim `optional_jwt_claim` may or may not be present, and when elided,
+`optional_metadata_key` will be skipped as a metadata value. However, the
+claim `required_jwt_claim` must always be present on the JWT or authentication
+will fail otherwise.
 
 Note: the metadata key name "role" is reserved and may not be used for claim mappings.
 

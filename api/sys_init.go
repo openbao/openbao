@@ -22,7 +22,7 @@ func (c *Sys) InitStatusWithContext(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var result InitStatusResponse
 	err = resp.DecodeJSON(&result)
@@ -46,7 +46,7 @@ func (c *Sys) InitWithContext(ctx context.Context, opts *InitRequest) (*InitResp
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var result InitResponse
 	err = resp.DecodeJSON(&result)

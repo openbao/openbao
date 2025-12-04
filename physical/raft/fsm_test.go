@@ -9,12 +9,15 @@ import (
 	"math/rand"
 	"os"
 	"sort"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -39,11 +42,17 @@ func getFSM(t testing.TB) (*FSM, string) {
 }
 
 func TestFSM_Batching(t *testing.T) {
+	t.Parallel()
 	fsm, dir := getFSM(t)
 	defer func() { _ = os.RemoveAll(dir) }()
 
 	var index uint64
 	var term uint64 = 1
+
+	var hookCallCount atomic.Int64
+	fsm.hookInvalidate(func(key ...string) {
+		hookCallCount.Add(int64(len(key)))
+	})
 
 	getLog := func(i uint64) (int, *raft.Log) {
 		if rand.Intn(10) >= 8 {
@@ -109,6 +118,10 @@ func TestFSM_Batching(t *testing.T) {
 		}
 	}
 
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		assert.EqualValues(collect, totalKeys, hookCallCount.Load())
+	}, time.Second, time.Millisecond)
+
 	keys, err := fsm.List(context.Background(), "")
 	if err != nil {
 		t.Fatal(err)
@@ -132,6 +145,7 @@ func TestFSM_Batching(t *testing.T) {
 }
 
 func TestFSM_List(t *testing.T) {
+	t.Parallel()
 	fsm, dir := getFSM(t)
 	defer func() { _ = os.RemoveAll(dir) }()
 

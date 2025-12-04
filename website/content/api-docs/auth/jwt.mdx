@@ -37,7 +37,7 @@ set.
 
 ### Parameters
 
-- `oidc_discovery_url` `(string: <optional>)` - The OIDC Discovery URL, without any .well-known component (base path). Cannot be used with "jwks_url" or "jwt_validation_pubkeys".
+- `oidc_discovery_url` `(string: <optional>)` - The base URL of the OIDC Discovery URL without ".well-known/openid-configuration" component. Cannot be used with "jwks_url" or "jwt_validation_pubkeys".
 - `oidc_discovery_ca_pem` `(string: <optional>)` - The contents of a CA certificate or chain of certificates, in PEM format, to use to validate connections to the OIDC Discovery URL. If not set, system certificates are used.
 - `oidc_client_id` `(string: <optional>)` - The OAuth Client ID from the provider for OIDC roles.
 - `oidc_client_secret` `(string: <optional>)` - The OAuth Client Secret from the provider for OIDC roles.
@@ -157,7 +157,9 @@ entities attempting to login. At least one of the bound values must be set.
   syntax for referencing claims.
 - `claim_mappings` `(map: <optional>)` - If set, a map of claims (keys) to be copied to
   specified metadata fields (values). Keys support [JSON pointer](/docs/auth/jwt#claim-specifications-and-json-pointer)
-  syntax for referencing claims.
+  syntax for referencing claims but may also be direct claim key names.
+  [See claim mapping documentation](/docs/auth/jwt#claims-as-metadata) for
+  more information.
 - `oauth2_metadata` `(list: <optional>` - If set, a list of token types
   that come from the OIDC provider to return in metadata.
   The types can be any of `access_token`, `id_token`, or `refresh_token`,

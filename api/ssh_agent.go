@@ -276,7 +276,7 @@ func (c *SSHHelper) VerifyWithContext(ctx context.Context, otp string) (*SSHVeri
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {

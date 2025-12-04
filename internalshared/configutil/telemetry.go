@@ -12,13 +12,13 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 
 	monitoring "cloud.google.com/go/monitoring/apiv3"
-	"github.com/armon/go-metrics"
-	"github.com/armon/go-metrics/circonus"
-	"github.com/armon/go-metrics/datadog"
-	"github.com/armon/go-metrics/prometheus"
 	stackdriver "github.com/google/go-metrics-stackdriver"
 	stackdrivervault "github.com/google/go-metrics-stackdriver/vault"
 	"github.com/hashicorp/cli"
+	metrics "github.com/hashicorp/go-metrics/compat"
+	"github.com/hashicorp/go-metrics/compat/circonus"
+	"github.com/hashicorp/go-metrics/compat/datadog"
+	"github.com/hashicorp/go-metrics/compat/prometheus"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
@@ -366,7 +366,7 @@ func SetupTelemetry(opts *SetupTelemetryOpts) (*metrics.InmemSink, *metricsutil.
 	if opts.Config.StackdriverProjectID != "" {
 		client, err := monitoring.NewMetricClient(context.Background(), option.WithUserAgent(opts.UserAgent))
 		if err != nil {
-			return nil, nil, false, fmt.Errorf("Failed to create stackdriver client: %v", err)
+			return nil, nil, false, fmt.Errorf("failed to create stackdriver client: %v", err)
 		}
 		sink := stackdriver.NewSink(client, &stackdriver.Config{
 			LabelExtractor: stackdrivervault.Extractor,
@@ -418,7 +418,7 @@ func parsePrefixFilter(prefixFilters []string) ([]string, []string, error) {
 
 	for _, rule := range prefixFilters {
 		if rule == "" {
-			return nil, nil, errors.New("Cannot have empty filter rule in prefix_filter")
+			return nil, nil, errors.New("cannot have empty filter rule in prefix_filter")
 		}
 		switch rule[0] {
 		case '+':
@@ -426,7 +426,7 @@ func parsePrefixFilter(prefixFilters []string) ([]string, []string, error) {
 		case '-':
 			telemetryBlockedPrefixes = append(telemetryBlockedPrefixes, rule[1:])
 		default:
-			return nil, nil, fmt.Errorf("Filter rule must begin with either '+' or '-': %q", rule)
+			return nil, nil, fmt.Errorf("filter rule must begin with either '+' or '-': %q", rule)
 		}
 	}
 	return telemetryAllowedPrefixes, telemetryBlockedPrefixes, nil

@@ -16,7 +16,7 @@ import (
 
 func handleSysRekeyInit(core *vault.Core, recovery bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		standby, _ := core.Standby()
+		standby := core.Standby()
 		if standby {
 			respondStandby(core, w, r.URL)
 			return
@@ -102,7 +102,7 @@ func handleSysRekeyInitGet(ctx context.Context, core *vault.Core, recovery bool,
 func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
 	// Parse the request
 	var req RekeyRequest
-	if _, err := parseJSONRequest(r, w, &req); err != nil {
+	if err := parseJSONRequest(r, w, &req); err != nil {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -144,7 +144,7 @@ func handleSysRekeyInitDelete(ctx context.Context, core *vault.Core, recovery bo
 
 func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		standby, _ := core.Standby()
+		standby := core.Standby()
 		if standby {
 			respondStandby(core, w, r.URL)
 			return
@@ -152,7 +152,7 @@ func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 
 		// Parse the request
 		var req RekeyUpdateRequest
-		if _, err := parseJSONRequest(r, w, &req); err != nil {
+		if err := parseJSONRequest(r, w, &req); err != nil {
 			respondError(w, http.StatusBadRequest, err)
 			return
 		}
@@ -217,7 +217,7 @@ func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 
 func handleSysRekeyVerify(core *vault.Core, recovery bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		standby, _ := core.Standby()
+		standby := core.Standby()
 		if standby {
 			respondStandby(core, w, r.URL)
 			return
@@ -293,7 +293,7 @@ func handleSysRekeyVerifyDelete(ctx context.Context, core *vault.Core, recovery 
 func handleSysRekeyVerifyPut(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
 	// Parse the request
 	var req RekeyVerificationUpdateRequest
-	if _, err := parseJSONRequest(r, w, &req); err != nil {
+	if err := parseJSONRequest(r, w, &req); err != nil {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}

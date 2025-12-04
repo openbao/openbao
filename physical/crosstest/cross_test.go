@@ -91,8 +91,7 @@ func Test_RandomOpsBackends(t *testing.T) {
 func Test_RandomOpsTransactionalBackends(t *testing.T) {
 	t.Parallel()
 
-	backends, cleanup := allTransactionalPhysical(t)
-	defer cleanup()
+	backends := allTransactionalPhysical(t)
 
 	txLimit := 10
 	ops := getRandomOps(t, numTxOps, true, txLimit)
@@ -103,8 +102,7 @@ func Test_ExerciseTransactionalBackends(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	backends, cleanup := allTransactionalPhysical(t)
-	defer cleanup()
+	backends := allTransactionalPhysical(t)
 
 	// Create transactions and exercise the backend, rolling them back.
 	txns := make(map[string]physical.Backend, 2*len(backends))
@@ -146,18 +144,15 @@ func Test_ExerciseTransactionalBackends(t *testing.T) {
 	exerciseTransactions(t, backends)
 }
 
-func getFile(t *testing.T, logger log.Logger) (physical.Backend, func()) {
-	backendPath, err := os.MkdirTemp("", "vault")
-	require.NoError(t, err, "error while creating file storage")
+func getFile(t *testing.T, logger log.Logger) physical.Backend {
+	backendPath := t.TempDir()
 
 	b, err := file.NewFileBackend(map[string]string{
 		"path": backendPath,
 	}, logger)
 	require.NoError(t, err, "error while initializing file backend")
 
-	return b, func() {
-		os.RemoveAll(backendPath)
-	}
+	return b
 }
 
 func allPhysical(t *testing.T) (map[string]physical.Backend, func()) {
@@ -168,10 +163,10 @@ func allPhysical(t *testing.T) (map[string]physical.Backend, func()) {
 	// Basic storage backends.
 
 	// raft, no transaction called on it.
-	prb, raftPureDir := raft.GetRaft(t, true, true)
+	prb := raft.GetRaft(t, true, true)
 
 	// raft
-	rb, raftDir := raft.GetRaft(t, true, true)
+	rb := raft.GetRaft(t, true, true)
 
 	// raft-in-tx
 	//
@@ -182,7 +177,7 @@ func allPhysical(t *testing.T) (map[string]physical.Backend, func()) {
 	require.NoError(t, err, "failed to start raft transaction")
 
 	// file
-	fb, fileCleanup := getFile(t, logger)
+	fb := getFile(t, logger)
 
 	// inmem
 	inm, err := inmem.NewInmem(disableTxConf, logger)
@@ -203,7 +198,7 @@ func allPhysical(t *testing.T) (map[string]physical.Backend, func()) {
 	// Now compose multiple storage backends together!
 
 	// raft + cache
-	rbc, raftCacheDir := raft.GetRaft(t, true, true)
+	rbc := raft.GetRaft(t, true, true)
 	crb := physical.NewCache(rbc, 0, logger, &metrics.BlackholeSink{})
 
 	// raft + cache-in-tx
@@ -217,7 +212,7 @@ func allPhysical(t *testing.T) (map[string]physical.Backend, func()) {
 	crt := physical.NewCache(rtc, 0, logger, &metrics.BlackholeSink{})
 
 	// file + cache
-	fbc, fileCacheCleanup := getFile(t, logger)
+	fbc := getFile(t, logger)
 	cfb := physical.NewCache(fbc, 0, logger, &metrics.BlackholeSink{})
 
 	// inmem + cache
@@ -230,7 +225,7 @@ func allPhysical(t *testing.T) (map[string]physical.Backend, func()) {
 	cpsql := physical.NewCache(psqlc, 0, logger, &metrics.BlackholeSink{})
 
 	// raft + encoding
-	rbe, raftEncodingDir := raft.GetRaft(t, true, true)
+	rbe := raft.GetRaft(t, true, true)
 	erb := physical.NewStorageEncoding(rbe)
 
 	// raft + encoding-in-tx
@@ -244,7 +239,7 @@ func allPhysical(t *testing.T) (map[string]physical.Backend, func()) {
 	ert := physical.NewStorageEncoding(rte)
 
 	// file + encoding
-	fbe, fileEncodingCleanup := getFile(t, logger)
+	fbe := getFile(t, logger)
 	efb := physical.NewStorageEncoding(fbe)
 
 	// inmem + encoding
@@ -257,12 +252,12 @@ func allPhysical(t *testing.T) (map[string]physical.Backend, func()) {
 	epsql := physical.NewStorageEncoding(psqle)
 
 	// raft + cache + encoding
-	rbce, raftCacheEncodingDir := raft.GetRaft(t, true, true)
+	rbce := raft.GetRaft(t, true, true)
 	crbe := physical.NewCache(rbce, 0, logger, &metrics.BlackholeSink{})
 	erbc := physical.NewStorageEncoding(crbe)
 
 	// file + cache + encoding
-	fbce, fileCacheEncodingCleanup := getFile(t, logger)
+	fbce := getFile(t, logger)
 	cfbe := physical.NewCache(fbce, 0, logger, &metrics.BlackholeSink{})
 	efbc := physical.NewStorageEncoding(cfbe)
 
@@ -311,40 +306,31 @@ func allPhysical(t *testing.T) (map[string]physical.Backend, func()) {
 			"psql+encoding":       epsql,
 			"psql+cache+encoding": epsqlc,
 		}, func() {
-			os.RemoveAll(raftPureDir)
-			os.RemoveAll(raftDir)
-			fileCleanup()
 			psqlCleanup()
-			os.RemoveAll(raftCacheDir)
-			fileCacheCleanup()
 			psqlcCleanup()
-			os.RemoveAll(raftEncodingDir)
-			fileEncodingCleanup()
 			psqleCleanup()
-			os.RemoveAll(raftCacheEncodingDir)
-			fileCacheEncodingCleanup()
 			psqlceCleanup()
 		}
 }
 
-func allTransactionalPhysical(t *testing.T) (map[string]physical.TransactionalBackend, func()) {
+func allTransactionalPhysical(t *testing.T) map[string]physical.TransactionalBackend {
 	logger := logging.NewVaultLogger(log.Debug)
 
 	// Basic storage backends.
 
 	// raft
-	rb, raftDir := raft.GetRaft(t, true, true)
+	rb := raft.GetRaft(t, true, true)
 
 	// raft + cache
-	rbc, raftCacheDir := raft.GetRaft(t, true, true)
+	rbc := raft.GetRaft(t, true, true)
 	crb := physical.NewCache(rbc, 0, logger, &metrics.BlackholeSink{}).(physical.TransactionalBackend)
 
 	// raft + encoding
-	rbe, raftEncodingDir := raft.GetRaft(t, true, true)
+	rbe := raft.GetRaft(t, true, true)
 	erb := physical.NewStorageEncoding(rbe).(physical.TransactionalBackend)
 
 	// raft + cache + encoding
-	rbce, raftCacheEncodingDir := raft.GetRaft(t, true, true)
+	rbce := raft.GetRaft(t, true, true)
 	crbe := physical.NewCache(rbce, 0, logger, &metrics.BlackholeSink{}).(physical.TransactionalBackend)
 	ecrb := physical.NewStorageEncoding(crbe).(physical.TransactionalBackend)
 
@@ -360,18 +346,13 @@ func allTransactionalPhysical(t *testing.T) (map[string]physical.TransactionalBa
 	cim := physical.NewCache(imc, 0, logger, &metrics.BlackholeSink{}).(physical.TransactionalBackend)
 
 	return map[string]physical.TransactionalBackend{
-			"raft":                rb,
-			"raft+cache":          crb,
-			"raft+encoding":       erb,
-			"raft+cache+encoding": ecrb,
-			"txinmem":             im,
-			"txinmem+cache":       cim,
-		}, func() {
-			os.RemoveAll(raftDir)
-			os.RemoveAll(raftCacheDir)
-			os.RemoveAll(raftEncodingDir)
-			os.RemoveAll(raftCacheEncodingDir)
-		}
+		"raft":                rb,
+		"raft+cache":          crb,
+		"raft+encoding":       erb,
+		"raft+cache+encoding": ecrb,
+		"txinmem":             im,
+		"txinmem+cache":       cim,
+	}
 }
 
 func allDoList(t *testing.T, backends map[string]physical.Backend, prefix string) (map[string][]string, map[string]error) {
@@ -1286,8 +1267,7 @@ func BenchmarkClearView(b *testing.B) {
 	})
 
 	b.Run("Raft/WithoutPagination", func(b *testing.B) {
-		raft, dir := raft.GetRaft(b, true, true)
-		defer os.RemoveAll(dir)
+		raft := raft.GetRaft(b, true, true)
 
 		r := logical.NewLogicalStorage(raft)
 
@@ -1307,8 +1287,7 @@ func BenchmarkClearView(b *testing.B) {
 	})
 
 	b.Run("Raft/WithPagination", func(b *testing.B) {
-		raft, dir := raft.GetRaft(b, true, true)
-		defer os.RemoveAll(dir)
+		raft := raft.GetRaft(b, true, true)
 
 		r := logical.NewLogicalStorage(raft)
 

@@ -67,10 +67,8 @@ const (
 
 func generateTestCertAndConnState(t *testing.T, template *x509.Certificate) (string, tls.ConnectionState, error) {
 	t.Helper()
-	tempDir, err := os.MkdirTemp("", "vault-cert-auth-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tempDir := t.TempDir()
+
 	t.Logf("test %s, temp dir %s", t.Name(), tempDir)
 	caCertTemplate := &x509.Certificate{
 		Subject: pkix.Name{
@@ -1352,9 +1350,6 @@ func TestBackend_dns_singleCert(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -1399,9 +1394,6 @@ func TestBackend_email_singleCert(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -1480,9 +1472,6 @@ func TestBackend_uri_singleCert(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}

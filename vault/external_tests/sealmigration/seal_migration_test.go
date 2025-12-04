@@ -38,8 +38,7 @@ func testVariousBackends(t *testing.T, tf testFunc, basePort int, includeRaft bo
 			vault.TestingUpdateClusterAddr.Store(true)
 			addressProvider := testhelpers.NewHardcodedServerAddressProvider(numTestCores, raftBasePort+10)
 
-			storage, cleanup := teststorage.MakeReusableRaftStorage(t, logger, numTestCores, addressProvider)
-			defer cleanup()
+			storage := teststorage.MakeReusableRaftStorage(t, logger, numTestCores, addressProvider)
 			tf(t, logger, storage, raftBasePort)
 		})
 	}

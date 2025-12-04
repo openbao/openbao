@@ -1414,6 +1414,11 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 	globalEntries := make(map[string][]string, len(allNamespaces))
 	localEntries := make(map[string][]string, len(allNamespaces))
 	for index, ns := range allNamespaces {
+		if ns.Tainted {
+			c.logger.Info("skipping loading mounts for tainted namespace", "ns", ns.ID)
+			continue
+		}
+
 		view := NamespaceView(barrier, ns)
 		nsGlobal, nsLocal, err := listTransactionalMountsForNamespace(ctx, view)
 		if err != nil {
@@ -2379,22 +2384,14 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 	return nil, errors.New("invalid mount entry")
 }
 
-func (c *Core) reloadNamespaceMounts(ctx context.Context, uuid string) error {
-	ns, err := c.namespaceStore.GetNamespace(ctx, uuid)
-	if err != nil {
-		return fmt.Errorf("unable to invalidate mounts for namespace: %w", err)
-	}
-
+func (c *Core) reloadNamespaceMounts(parentCtx context.Context, childCtx context.Context, uuid string, deleted bool) error {
 	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
-		if ns != nil {
-			ctx = namespace.ContextWithNamespace(ctx, ns)
-		}
-		return c.reloadLegacyMounts(ctx)
+		return c.reloadLegacyMounts(childCtx)
 	}
 
 	keys := []string{}
 
-	if ns == nil {
+	if deleted {
 		c.mountsLock.RLock()
 		for _, entry := range c.mounts.Entries {
 			if entry.Namespace().UUID == uuid {
@@ -2403,10 +2400,6 @@ func (c *Core) reloadNamespaceMounts(ctx context.Context, uuid string) error {
 					key = path.Join(coreLocalMountConfigPath, entry.UUID)
 				}
 				keys = append(keys, key)
-
-				if ns == nil {
-					ns = entry.Namespace()
-				}
 			}
 		}
 		c.mountsLock.RUnlock()
@@ -2419,10 +2412,6 @@ func (c *Core) reloadNamespaceMounts(ctx context.Context, uuid string) error {
 					key = path.Join(coreLocalAuthConfigPath, entry.UUID)
 				}
 				keys = append(keys, key)
-
-				if ns == nil {
-					ns = entry.Namespace()
-				}
 			}
 		}
 		c.authLock.RUnlock()
@@ -2430,21 +2419,22 @@ func (c *Core) reloadNamespaceMounts(ctx context.Context, uuid string) error {
 		if len(keys) == 0 {
 			return nil
 		}
-
-		ctx = namespace.ContextWithNamespace(ctx, ns)
 	} else {
-		ctx = namespace.ContextWithNamespace(ctx, ns)
+		ns, err := namespace.FromContext(childCtx)
+		if err != nil {
+			return fmt.Errorf("failed to get namespace from context: %w", err)
+		}
 
 		barrier := NamespaceView(c.barrier, ns)
 
-		mountGlobal, mountLocal, err := listTransactionalMountsForNamespace(ctx, barrier)
+		mountGlobal, mountLocal, err := listTransactionalMountsForNamespace(childCtx, barrier)
 		if err != nil {
-			return fmt.Errorf("unable to invalidate mounts for namespace %q: %w", ns.UUID, err)
+			return fmt.Errorf("unable to invalidate mounts for namespace %q: %w", uuid, err)
 		}
 
-		authGlobal, authLocal, err := c.listTransactionalCredentialsForNamespace(ctx, barrier)
+		authGlobal, authLocal, err := c.listTransactionalCredentialsForNamespace(childCtx, barrier)
 		if err != nil {
-			return fmt.Errorf("unable to invalidate auths for namespace %q: %w", ns.UUID, err)
+			return fmt.Errorf("unable to invalidate auths for namespace %q: %w", uuid, err)
 		}
 
 		for _, mount := range mountGlobal {
@@ -2463,9 +2453,9 @@ func (c *Core) reloadNamespaceMounts(ctx context.Context, uuid string) error {
 
 	c.logger.Debug("invalidating namespace mount", "ns", uuid, "keys", keys)
 	for _, key := range keys {
-		err := c.reloadMount(ctx, key)
+		err := c.reloadMount(childCtx, key)
 		if err != nil {
-			return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", key, ns.UUID, err)
+			return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", key, uuid, err)
 		}
 	}
 
@@ -2595,6 +2585,14 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 		if err.Error() != "unexpected empty storage entry for mount" {
 			return err
 		}
+		desiredMountEntry = nil
+	}
+
+	if desiredMountEntry != nil && ns.Tainted {
+		// The desired state of this mount is deleted, because we've tainted
+		// this namespace. Because we're on a standby node, we don't actually
+		// write to storage but let the active node handle deletion.
+		c.logger.Debug("cache invalidation: marking mount as deleted due to tainted namespace", "mount_uuid", uuid, "ns_uuid", ns.UUID)
 		desiredMountEntry = nil
 	}
 

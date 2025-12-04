@@ -472,6 +472,11 @@ func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, 
 	}
 
 	for _, namespace := range namespaces {
+		if namespace.Tainted {
+			m.logger.Info("skipping expiration manager lease collection for tainted namespace", "ns", namespace.ID)
+			continue
+		}
+
 		view := m.leaseView(namespace)
 		keys, err := logical.CollectKeys(m.quitContext, view)
 		if err != nil {

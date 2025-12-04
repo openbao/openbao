@@ -26,12 +26,7 @@ func TestAuditFile_fileModeNew(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	path, err := os.MkdirTemp("", "vault-test_audit_file-file_mode_new")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer os.RemoveAll(path)
+	path := t.TempDir()
 
 	file := filepath.Join(path, "auditTest.txt")
 

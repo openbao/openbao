@@ -4,7 +4,6 @@
 package file
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,11 +19,7 @@ const (
 )
 
 func testFileSink(t *testing.T, log hclog.Logger) (*sink.SinkConfig, string) {
-	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("%s.", fileServerTestDir))
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "token")
 
 	config := &sink.SinkConfig{
@@ -47,7 +42,6 @@ func TestFileSink(t *testing.T) {
 	log := logging.NewVaultLogger(hclog.Trace)
 
 	fs, tmpDir := testFileSink(t, log)
-	defer os.RemoveAll(tmpDir)
 
 	path := filepath.Join(tmpDir, "token")
 
@@ -84,11 +78,7 @@ func TestFileSink(t *testing.T) {
 }
 
 func testFileSinkMode(t *testing.T, log hclog.Logger) (*sink.SinkConfig, string) {
-	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("%s.", fileServerTestDir))
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "token")
 
 	config := &sink.SinkConfig{
@@ -112,7 +102,6 @@ func TestFileSinkMode(t *testing.T) {
 	log := logging.NewVaultLogger(hclog.Trace)
 
 	fs, tmpDir := testFileSinkMode(t, log)
-	defer os.RemoveAll(tmpDir)
 
 	path := filepath.Join(tmpDir, "token")
 

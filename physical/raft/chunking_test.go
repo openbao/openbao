@@ -28,7 +28,7 @@ func TestRaft_Chunking_Lifecycle(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	b, _ := GetRaft(t, true, false)
+	b := GetRaft(t, true, false)
 
 	t.Log("applying configuration")
 
@@ -112,7 +112,7 @@ func TestFSM_Chunking_TermChange(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	b, _ := GetRaft(t, true, false)
+	b := GetRaft(t, true, false)
 
 	t.Log("applying configuration")
 
@@ -184,7 +184,7 @@ func TestFSM_Chunking_TermChange(t *testing.T) {
 
 func TestRaft_Chunking_AppliedIndex(t *testing.T) {
 	// t.Parallel() this can't be parallel, because we modify a global variable "raftchunking.ChunkSize"
-	raft, _ := GetRaft(t, true, false)
+	raft := GetRaft(t, true, false)
 
 	// Lower the size for tests
 	originalChunkSize := raftchunking.ChunkSize

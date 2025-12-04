@@ -5,7 +5,6 @@ package teststorage
 
 import (
 	"fmt"
-	"os"
 
 	hclog "github.com/hashicorp/go-hclog"
 	raftlib "github.com/hashicorp/raft"
@@ -73,10 +72,10 @@ func MakeReusableStorage(t testing.T, logger hclog.Logger, bundle *vault.Physica
 
 // MakeReusableRaftStorage makes a physical raft backend that can be re-used
 // across multiple test clusters in sequence.
-func MakeReusableRaftStorage(t testing.T, logger hclog.Logger, numCores int, addressProvider raftlib.ServerAddressProvider) (ReusableStorage, StorageCleanup) {
+func MakeReusableRaftStorage(t testing.T, logger hclog.Logger, numCores int, addressProvider raftlib.ServerAddressProvider) ReusableStorage {
 	raftDirs := make([]string, numCores)
-	for i := 0; i < numCores; i++ {
-		raftDirs[i] = makeRaftDir(t)
+	for i := range numCores {
+		raftDirs[i] = t.TempDir()
 	}
 
 	storage := ReusableStorage{
@@ -92,19 +91,13 @@ func MakeReusableRaftStorage(t testing.T, logger hclog.Logger, numCores int, add
 
 		// Close open files being used by raft.
 		Cleanup: func(t testing.T, cluster *vault.TestCluster) {
-			for i := 0; i < len(cluster.Cores); i++ {
+			for i := range cluster.Cores {
 				CloseRaftStorage(t, cluster, i)
 			}
 		},
 	}
 
-	cleanup := func() {
-		for _, rd := range raftDirs {
-			os.RemoveAll(rd)
-		}
-	}
-
-	return storage, cleanup
+	return storage
 }
 
 // CloseRaftStorage closes open files being used by raft.
@@ -117,8 +110,8 @@ func CloseRaftStorage(t testing.T, cluster *vault.TestCluster, idx int) {
 
 func MakeReusableRaftHAStorage(t testing.T, logger hclog.Logger, numCores int, bundle *vault.PhysicalBackendBundle) (ReusableStorage, StorageCleanup) {
 	raftDirs := make([]string, numCores)
-	for i := 0; i < numCores; i++ {
-		raftDirs[i] = makeRaftDir(t)
+	for i := range numCores {
+		raftDirs[i] = t.TempDir()
 	}
 
 	storage := ReusableStorage{
@@ -149,22 +142,9 @@ func MakeReusableRaftHAStorage(t testing.T, logger hclog.Logger, numCores int, b
 		if bundle.Cleanup != nil {
 			bundle.Cleanup()
 		}
-
-		for _, rd := range raftDirs {
-			os.RemoveAll(rd)
-		}
 	}
 
 	return storage, cleanup
-}
-
-func makeRaftDir(t testing.T) string {
-	raftDir, err := os.MkdirTemp("", "vault-raft-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// t.Logf("raft dir: %s", raftDir)
-	return raftDir
 }
 
 func makeReusableRaftBackend(t testing.T, coreIdx int, logger hclog.Logger, raftDir string, addressProvider raftlib.ServerAddressProvider, ha bool) *vault.PhysicalBackendBundle {

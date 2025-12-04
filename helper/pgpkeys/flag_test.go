@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
 	"reflect"
 	"strings"
 	"testing"
@@ -26,11 +27,7 @@ func TestPubKeyFilesFlag_implements(t *testing.T) {
 }
 
 func TestPubKeyFilesFlagSetBinary(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "vault-test")
-	if err != nil {
-		t.Fatalf("Error creating temporary directory: %s", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	decoder := base64.StdEncoding
 	pub1Bytes, err := decoder.DecodeString(pubKey1)
@@ -76,32 +73,28 @@ func TestPubKeyFilesFlagSetBinary(t *testing.T) {
 }
 
 func TestPubKeyFilesFlagSetB64(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "vault-test")
-	if err != nil {
-		t.Fatalf("Error creating temporary directory: %s", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
-	err = os.WriteFile(tempDir+"/pubkey1", []byte(pubKey1), 0o755)
+	err := os.WriteFile(path.Join(tempDir, "pubkey1"), []byte(pubKey1), 0o755)
 	if err != nil {
 		t.Fatalf("Error writing pub key 1 to temp file: %s", err)
 	}
-	err = os.WriteFile(tempDir+"/pubkey2", []byte(pubKey2), 0o755)
+	err = os.WriteFile(path.Join(tempDir, "pubkey2"), []byte(pubKey2), 0o755)
 	if err != nil {
 		t.Fatalf("Error writing pub key 2 to temp file: %s", err)
 	}
-	err = os.WriteFile(tempDir+"/pubkey3", []byte(pubKey3), 0o755)
+	err = os.WriteFile(path.Join(tempDir, "pubkey3"), []byte(pubKey3), 0o755)
 	if err != nil {
 		t.Fatalf("Error writing pub key 3 to temp file: %s", err)
 	}
 
 	pkf := new(PubKeyFilesFlag)
-	err = pkf.Set(tempDir + "/pubkey1,@" + tempDir + "/pubkey2")
+	err = pkf.Set(fmt.Sprintf("%s,@%s", path.Join(tempDir, "pubkey1"), path.Join(tempDir, "pubkey2")))
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	err = pkf.Set(tempDir + "/pubkey3")
+	err = pkf.Set(path.Join(tempDir, "pubkey3"))
 	if err == nil {
 		t.Fatal("err: should not have been able to set a second value")
 	}
@@ -113,19 +106,15 @@ func TestPubKeyFilesFlagSetB64(t *testing.T) {
 }
 
 func TestPubKeyFilesFlagSetKeybase(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "vault-test")
-	if err != nil {
-		t.Fatalf("Error creating temporary directory: %s", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
-	err = os.WriteFile(tempDir+"/pubkey2", []byte(pubKey2), 0o755)
+	err := os.WriteFile(path.Join(tempDir, "pubkey2"), []byte(pubKey2), 0o755)
 	if err != nil {
 		t.Fatalf("Error writing pub key 2 to temp file: %s", err)
 	}
 
 	pkf := new(PubKeyFilesFlag)
-	err = pkf.Set("keybase:jefferai,@" + tempDir + "/pubkey2" + ",keybase:hashicorp")
+	err = pkf.Set(fmt.Sprintf("keybase:jefferai,@%s,keybase:hashicorp", path.Join(tempDir, "/pubkey2")))
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

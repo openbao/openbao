@@ -37,11 +37,7 @@ func testDebugCommand(tb testing.TB) (*cli.MockUi, *DebugCommand) {
 func TestDebugCommand_Run(t *testing.T) {
 	t.Parallel()
 
-	testDir, err := os.MkdirTemp("", "vault-debug")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	cases := []struct {
 		name string
@@ -139,11 +135,7 @@ func TestDebugCommand_Archive(t *testing.T) {
 
 			// Create temp dirs for each test case since os.Stat and tgz.Walk
 			// (called down below) exhibits raciness otherwise.
-			testDir, err := os.MkdirTemp("", "vault-debug")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(testDir)
+			testDir := t.TempDir()
 
 			client, closer := testVaultServer(t)
 			defer closer()
@@ -179,7 +171,7 @@ func TestDebugCommand_Archive(t *testing.T) {
 			}
 
 			bundlePath := filepath.Join(testDir, basePath+expectedExt)
-			_, err = os.Stat(bundlePath)
+			_, err := os.Stat(bundlePath)
 			if os.IsNotExist(err) {
 				t.Log(ui.OutputWriter.String())
 				t.Fatal(err)
@@ -272,11 +264,7 @@ func TestDebugCommand_CaptureTargets(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			testDir, err := os.MkdirTemp("", "vault-debug")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(testDir)
+			testDir := t.TempDir()
 
 			client, closer := testVaultServer(t)
 			defer closer()
@@ -301,7 +289,7 @@ func TestDebugCommand_CaptureTargets(t *testing.T) {
 			}
 
 			bundlePath := filepath.Join(testDir, basePath+debugCompressionExt)
-			_, err = os.Open(bundlePath)
+			_, err := os.Open(bundlePath)
 			if err != nil {
 				t.Fatalf("failed to open archive: %s", err)
 			}
@@ -357,11 +345,7 @@ func TestDebugCommand_CaptureTargets(t *testing.T) {
 }
 
 func TestDebugCommand_Pprof(t *testing.T) {
-	testDir, err := os.MkdirTemp("", "vault-debug")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	client, closer := testVaultServer(t)
 	defer closer()
@@ -415,11 +399,7 @@ func TestDebugCommand_Pprof(t *testing.T) {
 func TestDebugCommand_IndexFile(t *testing.T) {
 	t.Parallel()
 
-	testDir, err := os.MkdirTemp("", "vault-debug")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	client, closer := testVaultServer(t)
 	defer closer()
@@ -462,11 +442,7 @@ func TestDebugCommand_IndexFile(t *testing.T) {
 func TestDebugCommand_TimingChecks(t *testing.T) {
 	t.Parallel()
 
-	testDir, err := os.MkdirTemp("", "vault-debug")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	cases := []struct {
 		name            string
@@ -621,11 +597,7 @@ func TestDebugCommand_OutputExists(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			testDir, err := os.MkdirTemp("", "vault-debug")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(testDir)
+			testDir := t.TempDir()
 
 			client, closer := testVaultServer(t)
 			defer closer()
@@ -636,6 +608,7 @@ func TestDebugCommand_OutputExists(t *testing.T) {
 
 			outputPath := filepath.Join(testDir, tc.outputFile)
 
+			var err error
 			// Create a conflicting file/directory
 			if tc.compress {
 				_, err = os.Create(outputPath)
@@ -675,11 +648,7 @@ func TestDebugCommand_OutputExists(t *testing.T) {
 func TestDebugCommand_PartialPermissions(t *testing.T) {
 	t.Parallel()
 
-	testDir, err := os.MkdirTemp("", "vault-debug")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	client, closer := testVaultServer(t)
 	defer closer()
@@ -794,11 +763,7 @@ func TestDebugCommand_InsecureUmask(t *testing.T) {
 			// set insecure umask
 			defer syscall.Umask(syscall.Umask(0))
 
-			testDir, err := os.MkdirTemp("", "vault-debug")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(testDir)
+			testDir := t.TempDir()
 
 			client, closer := testVaultServer(t)
 			defer closer()
@@ -869,8 +834,8 @@ func TestDebugCommand_InsecureUmask(t *testing.T) {
 					t.Fatalf("failed reading file: %v", err)
 				}
 			case false:
-				err = filepath.Walk(bundlePath, func(path string, info os.FileInfo, err error) error {
-					err = isValidFilePermissions(info.Mode(), info.Name())
+				err = filepath.Walk(bundlePath, func(path string, info os.FileInfo, _ error) error {
+					err := isValidFilePermissions(info.Mode(), info.Name())
 					if err != nil {
 						t.Fatal(err.Error())
 					}

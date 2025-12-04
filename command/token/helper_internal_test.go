@@ -20,11 +20,7 @@ func TestCommand(t *testing.T) {
 }
 
 func TestInternalHelperFilePerms(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	helper, err := NewInternalTokenHelper()
 	if err != nil {

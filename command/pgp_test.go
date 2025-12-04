@@ -15,11 +15,8 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 )
 
-func getPubKeyFiles(t *testing.T) (string, []string, error) {
-	tempDir, err := os.MkdirTemp("", "vault-test")
-	if err != nil {
-		t.Fatalf("Error creating temporary directory: %s", err)
-	}
+func getPubKeyFiles(t *testing.T) ([]string, error) {
+	tempDir := t.TempDir()
 
 	pubFiles := []string{
 		tempDir + "/pubkey1",
@@ -57,7 +54,7 @@ func getPubKeyFiles(t *testing.T) (string, []string, error) {
 		t.Fatalf("Error writing aa pub key 1 to temp file: %s", err)
 	}
 
-	return tempDir, pubFiles, nil
+	return pubFiles, nil
 }
 
 func testPGPDecrypt(tb testing.TB, privKey, enc string) string {

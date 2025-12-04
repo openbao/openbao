@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -643,14 +642,13 @@ func TestLeaseCache_Concurrent_Cacheable(t *testing.T) {
 	}
 }
 
-func setupBoltStorage(t *testing.T) (tempCacheDir string, boltStorage *cacheboltdb.BoltStorage) {
+func setupBoltStorage(t *testing.T) (boltStorage *cacheboltdb.BoltStorage) {
 	t.Helper()
 
 	km, err := keymanager.NewPassthroughKeyManager(context.Background(), nil)
 	require.NoError(t, err)
 
-	tempCacheDir, err = os.MkdirTemp("", "agent-cache-test")
-	require.NoError(t, err)
+	tempCacheDir := t.TempDir()
 	boltStorage, err = cacheboltdb.NewBoltStorage(&cacheboltdb.BoltStorageConfig{
 		Path:    tempCacheDir,
 		Logger:  hclog.Default(),
@@ -659,7 +657,7 @@ func setupBoltStorage(t *testing.T) (tempCacheDir string, boltStorage *cachebolt
 	require.NoError(t, err)
 	require.NotNil(t, boltStorage)
 	// The calling function should `defer boltStorage.Close()` and `defer os.RemoveAll(tempCacheDir)`
-	return tempCacheDir, boltStorage
+	return boltStorage
 }
 
 func compareBeforeAndAfter(t *testing.T, before, after *LeaseCache, beforeLen, afterLen int) {
@@ -718,8 +716,7 @@ func TestLeaseCache_PersistAndRestore(t *testing.T) {
 		newTestSendResponse(251, `{"lease_id": "secret3-lease", "renewable": true, "data": {"number": "three"}, "lease_duration": 600}`),
 	}
 
-	tempDir, boltStorage := setupBoltStorage(t)
-	defer os.RemoveAll(tempDir)
+	boltStorage := setupBoltStorage(t)
 	defer boltStorage.Close()
 	lc := testNewLeaseCacheWithPersistence(t, responses, boltStorage)
 
@@ -864,8 +861,7 @@ func TestLeaseCache_PersistAndRestore(t *testing.T) {
 }
 
 func TestLeaseCache_PersistAndRestore_WithManyDependencies(t *testing.T) {
-	tempDir, boltStorage := setupBoltStorage(t)
-	defer os.RemoveAll(tempDir)
+	boltStorage := setupBoltStorage(t)
 	defer boltStorage.Close()
 
 	var requests []*SendRequest
@@ -953,8 +949,7 @@ func TestEvictPersistent(t *testing.T) {
 		newTestSendResponse(201, `{"lease_id": "foo", "renewable": true, "data": {"value": "foo"}}`),
 	}
 
-	tempDir, boltStorage := setupBoltStorage(t)
-	defer os.RemoveAll(tempDir)
+	boltStorage := setupBoltStorage(t)
 	defer boltStorage.Close()
 	lc := testNewLeaseCacheWithPersistence(t, responses, boltStorage)
 
@@ -1102,8 +1097,7 @@ func TestLeaseCacheRestore_expired(t *testing.T) {
 		newTestSendResponse(201, `{"lease_id": "foo", "renewable": true, "data": {"value": "foo"}, "lease_duration": -600}`),
 	}
 
-	tempDir, boltStorage := setupBoltStorage(t)
-	defer os.RemoveAll(tempDir)
+	boltStorage := setupBoltStorage(t)
 	defer boltStorage.Close()
 	lc := testNewLeaseCacheWithPersistence(t, responses, boltStorage)
 

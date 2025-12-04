@@ -13,10 +13,10 @@ resources. A control-group restriction placed on a path would require
 a user to obtain prior authorization before the action would
 succeed. 
 
-Control groups utilize the existing response-wrapping workflow
-(https://openbao.org/docs/concepts/response-wrapping/) because of the
-asynchronous character, and usage would follow this general pattern (via API
-endpoints):
+Control groups utilize the existing
+[response-wrapping](../concepts/response-wrapping.mdx) workflow because
+of the asynchronous character, and usage would follow this general
+pattern (via API endpoints):
 
 1. A path is assigned a control-group policy
 2. A user requesting the protected path receives a wrapped response with a `wrapping_accessor` 

@@ -5,7 +5,12 @@ package logical
 
 import (
 	"context"
+	"errors"
 )
+
+type contextKey string
+
+const TransactionContextKey contextKey = "transaction"
 
 // Transactional is an optional interface for backends that support
 // interactive (mixed code & statement) transactions in a similar
@@ -47,4 +52,23 @@ type Transaction interface {
 type TransactionalStorage interface {
 	Storage
 	Transactional
+}
+
+// TransactionFromContext will return Transaction from context where available
+func TransactionFromContext(ctx context.Context) (Transaction, error) {
+	if ctx == nil {
+		return nil, errors.New("context was nil")
+	}
+
+	txRaw := ctx.Value(TransactionContextKey)
+	if txRaw == nil {
+		return nil, errors.New("context does not have transaction")
+	}
+
+	tx, ok := txRaw.(Transaction)
+	if !ok || tx == nil {
+		return nil, errors.New("context does not have transaction")
+	}
+
+	return tx, nil
 }

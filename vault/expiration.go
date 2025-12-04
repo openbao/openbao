@@ -449,7 +449,11 @@ func (c *Core) stopExpiration() error {
 	return nil
 }
 
-func (m *ExpirationManager) leaseView(ns *namespace.Namespace) BarrierView {
+func (m *ExpirationManager) leaseView(ctx context.Context, ns *namespace.Namespace) BarrierView {
+	if tx, err := logical.TransactionFromContext(ctx); err == nil && tx != nil {
+		return tx.(BarrierViewTransaction)
+	}
+
 	if ns.ID == namespace.RootNamespaceID {
 		return m.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
 	}
@@ -472,7 +476,7 @@ func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, 
 	}
 
 	for _, namespace := range namespaces {
-		view := m.leaseView(namespace)
+		view := m.leaseView(m.quitContext, namespace)
 		keys, err := logical.CollectKeys(m.quitContext, view)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan for leases: %w", err)
@@ -671,7 +675,7 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	leaseView := m.leaseView(ns)
+	leaseView := m.leaseView(ctx, ns)
 	if err := logical.ScanView(m.quitContext, leaseView, tidyFunc); err != nil {
 		return err
 	}
@@ -931,24 +935,26 @@ func (m *ExpirationManager) lazyRevokeInternal(ctx context.Context, leaseID stri
 	leaseLock.Lock()
 	defer leaseLock.Unlock()
 
-	// Load the entry
-	le, err := m.loadEntry(ctx, leaseID)
-	if err != nil {
-		return err
-	}
+	err := m.WithTransaction(ctx, func(ctx context.Context) error {
+		// Load the entry
+		le, err := m.loadEntry(ctx, leaseID)
+		if err != nil {
+			return err
+		}
 
-	// If there is no entry, nothing to revoke
-	if le == nil {
+		// If there is no entry, nothing to revoke
+		if le == nil {
+			return nil
+		}
+
+		le.ExpireTime = time.Now()
+		if err := m.persistEntry(ctx, le); err != nil {
+			return err
+		}
+		m.updatePending(le)
 		return nil
-	}
-
-	le.ExpireTime = time.Now()
-	if err := m.persistEntry(ctx, le); err != nil {
-		return err
-	}
-	m.updatePending(le)
-
-	return nil
+	})
+	return err
 }
 
 // should be run on a schedule. something like once a day, maybe once a week
@@ -1187,7 +1193,7 @@ func (m *ExpirationManager) revokePrefixCommon(ctx context.Context, prefix strin
 	if err != nil {
 		return err
 	}
-	view := m.leaseView(ns).SubView(prefix)
+	view := m.leaseView(ctx, ns).SubView(prefix)
 	existing, err := logical.CollectKeys(ctx, view)
 	if err != nil {
 		return fmt.Errorf("failed to scan for leases: %w", err)
@@ -1365,81 +1371,85 @@ func (m *ExpirationManager) RenewToken(ctx context.Context, req *logical.Request
 	leaseLock.Lock()
 	defer leaseLock.Unlock()
 
-	// Load the entry
-	le, err := m.loadEntry(ctx, leaseID)
-	if err != nil {
-		return nil, err
-	}
-	if le == nil {
-		return logical.ErrorResponse("invalid lease ID"), logical.ErrInvalidRequest
-	}
-
-	// Check if the lease is renewable. Note that this also checks for a nil
-	// lease and errors in that case as well.
-	if _, err := le.renewable(); err != nil {
-		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-	}
-
-	// Attempt to renew the auth entry
-	resp, err := m.renewAuthEntry(ctx, req, le, increment)
-	if err != nil {
-		return nil, err
-	}
-	if resp == nil {
-		return nil, nil
-	}
-	if resp.IsError() {
-		return &logical.Response{
-			Data: resp.Data,
-		}, nil
-	}
-	if resp.Auth == nil {
-		return nil, nil
-	}
-
-	sysViewCtx := namespace.ContextWithNamespace(ctx, le.namespace)
-	sysView := m.router.MatchingSystemView(sysViewCtx, le.Path)
-	if sysView == nil {
-		return nil, errors.New("unable to retrieve system view from router")
-	}
-
-	ttl, warnings, err := framework.CalculateTTL(sysView, increment, resp.Auth.TTL, resp.Auth.Period, resp.Auth.MaxTTL, resp.Auth.ExplicitMaxTTL, le.IssueTime)
-	if err != nil {
-		return nil, err
-	}
 	retResp := &logical.Response{}
-	for _, warning := range warnings {
-		retResp.AddWarning(warning)
-	}
-	resp.Auth.TTL = ttl
 
-	// Attach the ClientToken
-	resp.Auth.ClientToken = te.ID
-
-	// Refresh groups
-	if resp.Auth.EntityID != "" && m.core.identityStore != nil {
-		mountAccessor := ""
-		if resp.Auth.Alias != nil {
-			mountAccessor = resp.Auth.Alias.MountAccessor
-		}
-		validAliases, err := m.core.identityStore.refreshExternalGroupMembershipsByEntityID(ctx, resp.Auth.EntityID, resp.Auth.GroupAliases, mountAccessor)
+	if err := m.WithTransaction(ctx, func(ctx context.Context) error {
+		// Load the entry
+		le, err := m.loadEntry(ctx, leaseID)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		resp.Auth.GroupAliases = validAliases
+		if le == nil {
+			return errors.New("invalid lease ID")
+		}
+
+		// Check if the lease is renewable. Note that this also checks for a nil
+		// lease and errors in that case as well.
+		if _, err := le.renewable(); err != nil {
+			return logical.ErrInvalidRequest
+		}
+
+		// Attempt to renew the auth entry
+		resp, err := m.renewAuthEntry(ctx, req, le, increment)
+		if err != nil {
+			return err
+		}
+		if resp == nil {
+			return nil
+		}
+		if resp.IsError() {
+			return errors.New(resp.Error().Error())
+		}
+		if resp.Auth == nil {
+			return nil
+		}
+
+		sysViewCtx := namespace.ContextWithNamespace(ctx, le.namespace)
+		sysView := m.router.MatchingSystemView(sysViewCtx, le.Path)
+		if sysView == nil {
+			return errors.New("unable to retrieve system view from router")
+		}
+
+		ttl, warnings, err := framework.CalculateTTL(sysView, increment, resp.Auth.TTL, resp.Auth.Period, resp.Auth.MaxTTL, resp.Auth.ExplicitMaxTTL, le.IssueTime)
+		if err != nil {
+			return err
+		}
+		for _, warning := range warnings {
+			retResp.AddWarning(warning)
+		}
+		resp.Auth.TTL = ttl
+
+		// Attach the ClientToken
+		resp.Auth.ClientToken = te.ID
+
+		// Refresh groups
+		if resp.Auth.EntityID != "" && m.core.identityStore != nil {
+			mountAccessor := ""
+			if resp.Auth.Alias != nil {
+				mountAccessor = resp.Auth.Alias.MountAccessor
+			}
+			validAliases, err := m.core.identityStore.refreshExternalGroupMembershipsByEntityID(ctx, resp.Auth.EntityID, resp.Auth.GroupAliases, mountAccessor)
+			if err != nil {
+				return err
+			}
+			resp.Auth.GroupAliases = validAliases
+		}
+
+		// Update the lease entry
+		le.Auth = resp.Auth
+		le.ExpireTime = resp.Auth.ExpirationTime()
+		le.LastRenewalTime = time.Now()
+
+		if err := m.persistEntry(ctx, le); err != nil {
+			return err
+		}
+		m.updatePending(le)
+
+		retResp.Auth = resp.Auth
+		return nil
+	}); err != nil {
+		return logical.ErrorResponse(err.Error()), nil
 	}
-
-	// Update the lease entry
-	le.Auth = resp.Auth
-	le.ExpireTime = resp.Auth.ExpirationTime()
-	le.LastRenewalTime = time.Now()
-
-	if err := m.persistEntry(ctx, le); err != nil {
-		return nil, err
-	}
-	m.updatePending(le)
-
-	retResp.Auth = resp.Auth
 	return retResp, nil
 }
 
@@ -2006,19 +2016,6 @@ func (m *ExpirationManager) loadEntry(ctx context.Context, leaseID string) (*lea
 		}
 	}
 
-	_, nsID := namespace.SplitIDFromString(leaseID)
-	if nsID != "" {
-		leaseNS, err := m.core.NamespaceByID(ctx, nsID)
-		if err != nil {
-			return nil, err
-		}
-		if leaseNS != nil {
-			ctx = namespace.ContextWithNamespace(ctx, leaseNS)
-		}
-	} else {
-		ctx = namespace.ContextWithNamespace(ctx, namespace.RootNamespace)
-	}
-
 	// If a lease entry is nil, proactively delete the lease lock, in case we
 	// created one erroneously.
 	// If there was an error, we don't know whether the lease entry exists or not.
@@ -2037,7 +2034,7 @@ func (m *ExpirationManager) loadEntryInternal(ctx context.Context, leaseID strin
 		return nil, err
 	}
 
-	out, err := m.leaseView(ns).Get(ctx, leaseID)
+	out, err := m.leaseView(ctx, ns).Get(ctx, leaseID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read lease entry %s: %w", leaseID, err)
 	}
@@ -2087,7 +2084,7 @@ func (m *ExpirationManager) persistEntry(ctx context.Context, le *leaseEntry) er
 		ent.SealWrap = true
 	}
 
-	if err := m.leaseView(le.namespace).Put(ctx, &ent); err != nil {
+	if err := m.leaseView(ctx, le.namespace).Put(ctx, &ent); err != nil {
 		return fmt.Errorf("failed to persist lease entry: %w", err)
 	}
 	return nil
@@ -2095,7 +2092,7 @@ func (m *ExpirationManager) persistEntry(ctx context.Context, le *leaseEntry) er
 
 // deleteEntry is used to delete a lease entry
 func (m *ExpirationManager) deleteEntry(ctx context.Context, le *leaseEntry) error {
-	if err := m.leaseView(le.namespace).Delete(ctx, le.LeaseID); err != nil {
+	if err := m.leaseView(ctx, le.namespace).Delete(ctx, le.LeaseID); err != nil {
 		return fmt.Errorf("failed to delete lease entry: %w", err)
 	}
 	return nil

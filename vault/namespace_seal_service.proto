@@ -1,0 +1,29 @@
+// Copyright (c) 2025 OpenBao a Series of LF Projects, LLC
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+option go_package = "github.com/openbao/openbao/vault";
+
+package vault;
+
+message SealStateRequest {
+    // namespace_uuid is the UUID of the namespace
+    string namespace_uuid = 1;
+ };
+
+message SealStateStatus {
+    // namespace_uuid is the UUID of the namespace
+    string namespace_uuid = 1;
+    // root_key contains the namespace root key if it is unsealed. 
+    // It is unset otherwise.
+    optional bytes root_key = 2;
+};
+
+message SealStateResponse {
+    repeated SealStateStatus seal_status = 1;
+}
+
+service SealStatusForwarding {
+    rpc RequestRootKey(SealStateRequest) returns (SealStateResponse) {}
+}

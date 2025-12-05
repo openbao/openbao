@@ -2254,10 +2254,9 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		if err := c.setupRaftActiveNode(ctx); err != nil {
 			return err
 		}
-		if err := c.startForwarding(ctx); err != nil {
+		if err := c.startForwarding(); err != nil {
 			return err
 		}
-
 	}
 
 	c.clusterParamsLock.Lock()

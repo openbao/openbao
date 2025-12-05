@@ -28,12 +28,14 @@ const (
 
 	PerfStandbyALPN = "perf_standby_v1"
 
+	// Request-Forwarding-Standby-Active-V1 is the negotiated protocol used
+	// for forwarding requests and requesting root keys by standby nodes.
 	RequestForwardingALPN = "req_fw_sb-act_v1"
 
 	RaftStorageALPN = "raft_storage_v1"
 
 	// ReplicationResolverALPN is the negotiated protocol used for
-	// resolving replicaiton addresses
+	// resolving replication addresses
 	ReplicationResolverALPN = "replication_resolver_v1"
 
 	VaultEnableFilePermissionsCheckEnv = "BAO_ENABLE_FILE_PERMISSIONS_CHECK"

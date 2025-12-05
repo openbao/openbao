@@ -174,8 +174,13 @@ func TestPSQLParallelInit(t *testing.T) {
 
 	_, err = tmpConfig.Write(configBytes)
 	require.NoError(t, err, "write config")
-	tmpConfig.Close()
-	defer os.Remove(configFile)
+	err = tmpConfig.Close()
+	require.NoError(t, err, "close config")
+	defer func() {
+		if err := os.Remove(configFile); err != nil {
+			t.Logf("failed to remove tmp config file: %v", err)
+		}
+	}()
 
 	opts := &docker.DockerClusterOptions{
 		ImageRepo:   "quay.io/openbao/openbao",

@@ -3,7 +3,7 @@ name: Deploy docs
 on:
   # Runs on pushes targeting the default branch
   push:
-    branches: ["main"]
+    branches: ["main", "release/**"]
     paths:
       - "website/**"
   # Allows you to run this workflow manually from the Actions tab
@@ -29,6 +29,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          # always build docs from main branch, even when triggered from a release branch.
+          # The release branch docs will be included by the build step
+          ref: main
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version-file: "./website/package.json"

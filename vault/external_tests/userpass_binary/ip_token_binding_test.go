@@ -159,7 +159,7 @@ func Test_StrictIPBinding(t *testing.T) {
 
 	// Using the remote token locally should fail...
 	cloned.SetToken(remoteToken)
-	resp, err = cloned.Logical().Read("sys/host-info")
+	_, err = cloned.Logical().Read("sys/host-info")
 	require.Error(t, err)
 
 	// ...but using it remotely should work fine

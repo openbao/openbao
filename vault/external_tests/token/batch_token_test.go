@@ -290,7 +290,7 @@ path "kv/*" {
 	leaseID := resp.LeaseID
 
 	// Check the lease
-	resp, err = client.Logical().Write("sys/leases/lookup", map[string]interface{}{
+	_, err = client.Logical().Write("sys/leases/lookup", map[string]interface{}{
 		"lease_id": leaseID,
 	})
 	if err != nil {
@@ -314,7 +314,7 @@ path "kv/*" {
 	}
 
 	// Verify the lease has been revoked
-	resp, err = client.Logical().Write("sys/leases/lookup", map[string]interface{}{
+	_, err = client.Logical().Write("sys/leases/lookup", map[string]interface{}{
 		"lease_id": leaseID,
 	})
 	if err == nil {

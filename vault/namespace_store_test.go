@@ -717,7 +717,7 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 	ns3Entry := &namespace.Namespace{Path: "ns1/ns2/ns3/"}
 
 	// Create namespaces
-	rootCtx := namespace.RootContext(nil)
+	rootCtx := namespace.RootContext(context.TODO())
 
 	// Set child into root
 	require.NoError(t, nsStore.SetNamespace(rootCtx, ns1Entry))
@@ -832,7 +832,7 @@ func TestNamespaceStorage(t *testing.T) {
 	}
 	TestCoreCreateNamespaces(t, c, namespaces...)
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	nsKeys, err := s.storage.List(ctx, namespaceStoreSubPath)
 	require.NoError(t, err)

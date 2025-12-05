@@ -45,7 +45,7 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 				"verify_connection": false,
 			},
 		}
-		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -60,7 +60,7 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 			Storage:   config.StorageView,
 		}
 
-		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
@@ -156,7 +156,7 @@ func TestWriteConfig_HelpfulErrorMessageWhenBuiltinOverridden(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal(err)
 	}

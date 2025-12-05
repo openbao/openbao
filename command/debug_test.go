@@ -869,8 +869,8 @@ func TestDebugCommand_InsecureUmask(t *testing.T) {
 					t.Fatalf("failed reading file: %v", err)
 				}
 			case false:
-				err = filepath.Walk(bundlePath, func(path string, info os.FileInfo, err error) error {
-					err = isValidFilePermissions(info.Mode(), info.Name())
+				err = filepath.Walk(bundlePath, func(path string, info os.FileInfo, _ error) error {
+					err := isValidFilePermissions(info.Mode(), info.Name())
 					if err != nil {
 						t.Fatal(err.Error())
 					}

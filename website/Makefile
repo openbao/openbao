@@ -35,7 +35,7 @@ docker-start:
 	$(DOCKER) run -p 3000:3000 --mount "type=bind,source=$(CURDIR),destination=/opt/docusaurus$(DOCKER_MOUNT_ARGS)" -it openbao-docs
 
 # Versioned docs
-GIT_REMOTE := $(shell git remote get-url origin)
+GIT_REMOTE ?= $(shell git remote get-url origin)
 DOCS_VERSIONS := $(shell grep -o '"2\..\.x"' docusaurus.config.ts | tr -d '["]')
 
 build-versioned: node_modules $(addprefix versioned_docs/version-,$(DOCS_VERSIONS)) $(addprefix api-docs_versioned_docs/version-,$(DOCS_VERSIONS)) versions.json api-docs_versions.json

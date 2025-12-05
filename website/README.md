@@ -8,7 +8,7 @@ Website](https://openbao.org).  It is built using
 
 - [Contributions](#contributions-welcome)
 - [Running the Site Locally](#running-the-site-locally)
-- [Versioned documentation](#versioned-documentation)
+- [Versioned Documentation](#versioned-documentation)
 - [Editing Markdown Content](#editing-markdown-content)
 - [Editing Navigation Sidebars](#editing-navigation-sidebars)
 - [Deployment](#deployment)

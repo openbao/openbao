@@ -36,7 +36,7 @@ docker-start:
 
 # Versioned docs
 GIT_REMOTE ?= $(shell git remote get-url origin)
-DOCS_VERSIONS := $(shell grep -o '"2\..\.x"' docusaurus.config.ts | tr -d '["]')
+DOCS_VERSIONS := $(shell jq -r 'keys_unsorted - ["current"] | .[]' doc-versions.json)
 
 build-versioned: node_modules $(addprefix versioned_docs/version-,$(DOCS_VERSIONS)) $(addprefix api-docs_versioned_docs/version-,$(DOCS_VERSIONS)) versions.json api-docs_versions.json
 	VERSIONED_DOCS="true" $(NPM) run build
@@ -56,8 +56,8 @@ versioned_docs/version-%: node_modules | versioned_docs versioned_sidebars
 	@mv $@/website/content/docs/* $@/
 	@rm -rf $@/website
 
-versions.json:
-	@echo -n $(DOCS_VERSIONS) | jq -Rs '. | split(" ")' > $@
+versions.json api-docs_versions.json: doc-versions.json
+	@jq 'keys_unsorted - ["current"]' $< > $@
 
 api-docs_versioned_docs:
 	@mkdir -p $@
@@ -73,6 +73,3 @@ api-docs_versioned_docs/version-%: node_modules | api-docs_versioned_docs api-do
 	@$(NPM) run docusaurus sidebar:json $@/website/sidebarsApi.ts | tail -n+5 > $(subst _docs,_sidebars,$@)-sidebars.json
 	@mv $@/website/content/api-docs/* $@/
 	@rm -rf $@/website
-
-api-docs_versions.json:
-	@echo -n $(DOCS_VERSIONS) | jq -Rs '. | split(" ")' > $@

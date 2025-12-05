@@ -2,18 +2,15 @@ import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 import { includeMarkdown } from "@hashicorp/remark-plugins";
-import path from "path";
+import * as path from "path";
+import * as fs from "fs";
 import pluginSidebarJson from "./src/docusaurus-plugin-sidebar-json";
 
-const docVersions = {
-  current: { label: "Development" },
-  "2.4.x": { label: "Version 2.4.x" },
-  "2.3.x": { label: "Version 2.3.x" },
-};
-
-function getDocVersions(docVersions: any) {
+function getDocVersions() {
   if (process.env.VERSIONED_DOCS == "true") {
-    return docVersions;
+    const filePath = path.join(__dirname, "doc-versions.json");
+    const fileContent = fs.readFileSync(filePath, "utf-8");
+    return JSON.parse(fileContent);
   } else {
     return {
       current: { label: "Development" },
@@ -75,7 +72,7 @@ const config: Config = {
             ],
           ],
           path: "content/docs",
-          versions: getDocVersions(docVersions),
+          versions: getDocVersions(),
         },
         sitemap: {
           lastmod: "datetime",
@@ -117,7 +114,7 @@ const config: Config = {
             },
           ],
         ],
-        versions: getDocVersions(docVersions),
+        versions: getDocVersions(),
       },
     ],
     [
@@ -193,12 +190,12 @@ const config: Config = {
         },
         {
           type: "docsVersionDropdown",
-          versions: getDocVersions(docVersions),
+          versions: getDocVersions(),
           position: "right",
         },
         {
           type: "docsVersionDropdown",
-          versions: getDocVersions(docVersions),
+          versions: getDocVersions(),
           docsPluginId: "api-docs",
           position: "right",
         },

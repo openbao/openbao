@@ -25,7 +25,7 @@ export default class PkiCertificateBaseAdapter extends ApplicationAdapter {
         });
         resp.data.backend = backend;
         return resp;
-      } catch (err) {
+      } catch {
         // fallback to regular /certs
         const fallbackResp = await this.ajax(`${uri}/certs`, 'GET', {
           data: { list: true },

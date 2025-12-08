@@ -373,11 +373,8 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	if config.JWKSURL != "" {
 		methodCount++
 	}
-
-	// Validate provider_config
-	pConfig, err := NewProviderConfig(ctx, config, ProviderMap())
-	if err != nil {
-		return logical.ErrorResponse("invalid provider_config: %s", err), nil
+	if config.hasCustomProviderDiscovery() {
+		methodCount++
 	}
 
 	resp := &logical.Response{}
@@ -398,7 +395,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		if config.OIDCClientID != "" && config.OIDCClientSecret != "" {
 			_, err = b.createProvider(config)
 		} else {
-			_, err = jwt.NewOIDCDiscoveryKeySet(injectProviderHTTPClient(pConfig, ctx), config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
+			_, err = jwt.NewOIDCDiscoveryKeySet(ctx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
 		}
 		if err != nil {
 			if !skipJwksValidation {
@@ -408,12 +405,11 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 
 			resp.AddWarning("error checking oidc discovery URL")
 		}
-
 	case config.OIDCClientID != "" && config.OIDCDiscoveryURL == "":
 		return logical.ErrorResponse("'oidc_discovery_url' must be set for OIDC"), nil
 
 	case config.JWKSURL != "":
-		keyset, err := jwt.NewJSONWebKeySet(injectProviderHTTPClient(pConfig, ctx), config.JWKSURL, config.JWKSCAPEM)
+		keyset, err := jwt.NewJSONWebKeySet(ctx, config.JWKSURL, config.JWKSCAPEM)
 		if err != nil {
 			b.Logger().Error("error checking jwks_ca_pem", "error", err)
 			return logical.ErrorResponse("error checking jwks_ca_pem"), nil
@@ -442,7 +438,15 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 				return logical.ErrorResponse(fmt.Errorf("error parsing public key: %w", err).Error()), nil
 			}
 		}
-
+	case config.hasCustomProviderDiscovery():
+		pConfig, initErr := NewProviderConfig(b.providerCtx, config, ProviderMap())
+		if initErr != nil {
+			return nil, initErr
+		}
+		_, err = pConfig.(KeySetDiscovery).NewKeySet(b.providerCtx)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, errors.New("unknown condition")
 	}
@@ -468,6 +472,11 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	case responseModeFormPost:
 	default:
 		return logical.ErrorResponse("invalid response_mode: %q", config.OIDCResponseMode), nil
+	}
+
+	// Validate provider_config
+	if _, err := NewProviderConfig(ctx, config, ProviderMap()); err != nil {
+		return logical.ErrorResponse("invalid provider_config: %s", err), nil
 	}
 
 	entry, err := logical.StorageEntryJSON(configPath, config)
@@ -632,6 +641,7 @@ const (
 	JWKS
 	OIDCDiscovery
 	OIDCFlow
+	CustomProviderDiscovery
 	unconfigured
 )
 
@@ -647,6 +657,8 @@ func (c jwtConfig) authType() int {
 			return OIDCFlow
 		}
 		return OIDCDiscovery
+	case c.hasCustomProviderDiscovery():
+		return CustomProviderDiscovery
 	}
 
 	return unconfigured
@@ -660,6 +672,28 @@ func (c jwtConfig) hasType(t string) bool {
 	}
 
 	return slices.Contains(c.OIDCResponseTypes, t)
+}
+
+// hasCustomProviderDiscovery returns true if the configuration refers to a custom provider
+// that implements KeySetDiscovery interface.
+func (c jwtConfig) hasCustomProviderDiscovery() bool {
+	if len(c.ProviderConfig) == 0 {
+		return false
+	}
+
+	provider, ok := c.ProviderConfig["provider"].(string)
+	if !ok {
+		return false
+	}
+
+	providerMap := ProviderMap()
+	newCustomProvider, ok := providerMap[provider]
+	if !ok {
+		return false
+	}
+
+	_, ok = newCustomProvider.(KeySetDiscovery)
+	return ok
 }
 
 // Adapted from similar code in https://github.com/golang/go/blob/86fca3dcb63157b8e45e565e821e7fb098fcf368/src/crypto/tls/handshake_client.go#L1160-L1181

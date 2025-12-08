@@ -7,8 +7,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 
+	"github.com/hashicorp/cap/jwt"
 	"golang.org/x/oauth2"
 )
 
@@ -71,8 +71,8 @@ type GroupsFetcher interface {
 	FetchGroups(context.Context, *jwtAuthBackend, map[string]interface{}, *jwtRole, oauth2.TokenSource) (interface{}, error)
 }
 
-// HTTPClient- Optional support for custom HTTP client.
-type HTTPClient interface {
-	// GetHTTPClient returns an HTTP client to be used for requests.
-	GetHTTPClient() *http.Client
+// KeySetDiscovery - Optional support for custom provider-specific discovery mechanism
+type KeySetDiscovery interface {
+	// NewKeySet returns a new KeySet that will be used to verify JWTs
+	NewKeySet(context.Context) (jwt.KeySet, error)
 }

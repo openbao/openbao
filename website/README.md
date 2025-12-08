@@ -29,7 +29,7 @@ installed](https://nodejs.org/en/) you can run:
 
 ...and then visit `http://localhost:3000/openbao`.
 
-## Versioned documentation
+## Versioned Documentation
 
 By default only the documentation for the main branch is built. When deploying
 to GitHub pages we enable [versioned

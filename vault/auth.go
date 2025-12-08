@@ -598,7 +598,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 	}
 
 	if len(globalEntries) == 0 {
-		// TODO(ascheel) Assertion: globalEntries is empty iff there is only
+		// TODO(ascheel) Assertion: globalEntries is empty if there is only
 		// one namespace (the root namespace).
 		c.logger.Info("no auth mounts in transactional auth mount table; adding default auth mount table")
 		c.auth, err = c.defaultAuthTable(ctx)
@@ -612,7 +612,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 		}
 
 		for nsIndex, ns := range allNamespaces {
-			view := c.NamespaceView(ns)
+			view := NamespaceView(barrier, ns)
 			for index, uuid := range globalEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreAuthConfigPath, uuid)
 				if err != nil {
@@ -629,8 +629,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 
 	if len(localEntries) > 0 {
 		for nsIndex, ns := range allNamespaces {
-			view := c.NamespaceView(ns)
-
+			view := NamespaceView(barrier, ns)
 			for index, uuid := range localEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalAuthConfigPath, uuid)
 				if err != nil {
@@ -1010,7 +1009,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 					continue
 				}
 
-				view := c.NamespaceView(mtEntry.Namespace())
+				view := NamespaceView(barrier, mtEntry.Namespace())
 
 				found = true
 				currentEntries[mtEntry.UUID] = struct{}{}
@@ -1049,7 +1048,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := c.NamespaceView(ns)
+					view := NamespaceView(barrier, ns)
 					path := path.Join(prefix, mount)
 					if err := view.Delete(ctx, path); err != nil {
 						return -1, fmt.Errorf("requested removal of auth mount from namespace %v (%v) but failed: %w", ns.ID, nsIndex, err)
@@ -1064,7 +1063,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := c.NamespaceView(ns)
+					view := NamespaceView(barrier, ns)
 
 					// List all entries and remove any deleted ones.
 					presentEntries, err := view.List(ctx, prefix+"/")

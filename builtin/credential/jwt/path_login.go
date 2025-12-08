@@ -368,19 +368,6 @@ func toAlg(a []string) []jwt.Alg {
 	return alg
 }
 
-// injectProviderHTTPClient checks if the given provider provides a custom HTTP client.
-// If so, it injects it into the context and returns the new context.
-// Otherwise, it returns the original context.
-func injectProviderHTTPClient(pConfig CustomProvider, ctx context.Context) context.Context {
-	if httpClientProvider, ok := pConfig.(HTTPClient); ok {
-		httpClient := httpClientProvider.GetHTTPClient()
-		if httpClient != nil {
-			ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)
-		}
-	}
-	return ctx
-}
-
 const (
 	pathLoginHelpSyn = `
 	Authenticates to OpenBao using a JWT (or OIDC) token.

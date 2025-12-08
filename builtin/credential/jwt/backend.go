@@ -151,19 +151,20 @@ func (b *jwtAuthBackend) jwtValidator(config *jwtConfig) (*jwt.Validator, error)
 	var err error
 	var keySet jwt.KeySet
 
-	pConfig, err := NewProviderConfig(b.providerCtx, config, ProviderMap())
-	if err != nil {
-		return nil, fmt.Errorf("error initializing provider_config: %w", err)
-	}
-
 	// Configure the key set for the validator
 	switch config.authType() {
 	case JWKS:
-		keySet, err = jwt.NewJSONWebKeySet(injectProviderHTTPClient(pConfig, b.providerCtx), config.JWKSURL, config.JWKSCAPEM)
+		keySet, err = jwt.NewJSONWebKeySet(b.providerCtx, config.JWKSURL, config.JWKSCAPEM)
 	case StaticKeys:
 		keySet, err = jwt.NewStaticKeySet(config.ParsedJWTPubKeys)
 	case OIDCDiscovery, OIDCFlow:
-		keySet, err = jwt.NewOIDCDiscoveryKeySet(injectProviderHTTPClient(pConfig, b.providerCtx), config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
+		keySet, err = jwt.NewOIDCDiscoveryKeySet(b.providerCtx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
+	case CustomProviderDiscovery:
+		pConfig, initErr := NewProviderConfig(b.providerCtx, config, ProviderMap())
+		if initErr != nil {
+			return nil, initErr
+		}
+		keySet, err = pConfig.(KeySetDiscovery).NewKeySet(b.providerCtx)
 	default:
 		return nil, errors.New("unsupported config type")
 	}

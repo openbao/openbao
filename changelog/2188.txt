@@ -1,0 +1,3 @@
+```release-note:bug
+core/namespaces: improve recovery from partial deletion of namespaces, preventing server startup failure
+```

@@ -456,10 +456,6 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		defer cleanupFailed()
 	}
 
-	if err := ns.writeNamespace(ctx, storage, entry); err != nil {
-		return fmt.Errorf("failed to persist namespace: %w", err)
-	}
-
 	ns.namespacesByPath.Insert(entry)
 	ns.namespacesByUUID[entry.UUID] = entry
 	ns.namespacesByAccessor[entry.ID] = entry
@@ -478,6 +474,10 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		if err := ns.initializeNamespace(ctx, storage, entry); err != nil {
 			return err
 		}
+	}
+
+	if err := ns.writeNamespace(ctx, storage, entry); err != nil {
+		return fmt.Errorf("failed to persist namespace: %w", err)
 	}
 
 	// Finally commit the changes into storage.

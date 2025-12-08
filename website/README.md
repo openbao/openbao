@@ -42,14 +42,21 @@ make build-versioned
 make serve
 ```
 
-The doc versions can be configured in the `docusaurus.config.ts` file:
+The doc versions can be configured in the `doc-versions.json` file. Have a look at the
+[Docusaurus docs](https://docusaurus.io/docs/api/plugins/@docusaurus/plugin-content-docs#VersionsConfig) for all available config options.
 
 ``` typescript
-const docVersions = {
-  current: { label: "Development" },
-  "2.4.x": { label: "Version 2.4.x" },
-  "2.3.x": { label: "Version 2.3.x" },
-};
+{
+    "current": {
+        "label": "Development"
+    },
+    "2.4.x": {
+        "label": "Version 2.4.x"
+    },
+    "2.3.x": {
+        "label": "Version 2.3.x"
+    }
+}
 ```
 
 ## Editing Markdown Content

@@ -83,6 +83,19 @@ const sidebars: SidebarsConfig = {
                 "concepts/user-lockout",
                 "concepts/cel",
             ],
+            Guides: [
+                "guides/migration",
+                {
+                    Unsealing: [
+                        {
+                            "PKCS#11": [
+                                "guides/unseal/pkcs11/securosys",
+                                "guides/unseal/pkcs11/utimaco",
+                            ],
+                        },
+                    ],
+                },
+            ],
             Configuration: [
                 "configuration/index",
                 "configuration/audit",

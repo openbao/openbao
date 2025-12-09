@@ -6,6 +6,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"net/textproto"
 	"net/url"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -110,6 +112,10 @@ var (
 	}
 
 	oidcProtectedPathRegex = regexp.MustCompile(`^identity/oidc/provider/\w(([\w-.]+)?\w)?/userinfo$`)
+)
+
+const (
+	originalRequestPathKey = "original_request_path"
 )
 
 func init() {
@@ -382,7 +388,7 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		} else {
 			ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
 		}
-		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
+		ctx = context.WithValue(ctx, originalRequestPathKey, r.URL.Path)
 
 		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
 		if nsHeader != "" {
@@ -412,6 +418,8 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		isRestrictedSysAPI := nsHeader != "" && strings.HasPrefix(r.URL.Path, "/v1/sys/") &&
 			restrictedSysAPIsNonLogical.HasPathSegments(r.URL.Path[len("/v1/sys/"):])
 
+		var estMountHint *estMountTarget
+
 		switch {
 		case isRestrictedSysAPI:
 			respondError(nw, http.StatusBadRequest, fmt.Errorf("operation unavailable in namespaces"))
@@ -432,8 +440,31 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 					}
 				}
 			}
+		case strings.HasPrefix(r.URL.Path, "/.well-known/est/"):
+			// Handle EST requests at the root .well-known/est/ path
+			mountTarget, err := findDefaultESTMount(ctx, core)
+			if err != nil {
+				core.Logger().Warn("EST root path: failed to find default mount", "error", err)
+				respondError(nw, http.StatusNotFound, err)
+				cancelFunc()
+				return
+			}
+
+			estMountHint = mountTarget
+
+			originalPath := r.URL.Path
+			r.URL.Path = "/v1/" + mountTarget.namespacedMountPath() + originalPath
+
+			core.Logger().Info("EST root path: rewritten", "from", originalPath, "to", r.URL.Path)
+
+			// Continue with normal logical handling
 		default:
 			respondError(nw, http.StatusNotFound, nil)
+			cancelFunc()
+			return
+		}
+
+		if handled := maybeAuthenticateESTRequest(ctx, core, nw, r, estMountHint); handled {
 			cancelFunc()
 			return
 		}
@@ -1141,6 +1172,599 @@ func respondOk(w http.ResponseWriter, body interface{}) {
 		enc := json.NewEncoder(w)
 		enc.Encode(body)
 	}
+}
+
+// EST authentication constants
+const (
+	estInternalRemoteAddr = "127.0.0.1" // Remote address for internal EST auth requests
+)
+
+// normalizeMountPath ensures a mount path ends with a trailing slash.
+// This is required for proper storage path lookup via RouterAccess.
+func normalizeMountPath(mountPath string) string {
+	if !strings.HasSuffix(mountPath, "/") {
+		return mountPath + "/"
+	}
+	return mountPath
+}
+
+// estMountTarget captures the namespace-aware location of a PKI mount that serves EST traffic.
+type estMountTarget struct {
+	mountPath string
+	namespace *namespace.Namespace
+}
+
+func newESTMountTarget(ctx context.Context, core *vault.Core, entry *vault.MountEntry) (*estMountTarget, error) {
+	if entry == nil {
+		return nil, errors.New("mount entry is nil")
+	}
+
+	ns := entry.Namespace()
+	if ns == nil && entry.NamespaceID != "" {
+		var err error
+		ns, err = core.NamespaceByID(namespace.RootContext(ctx), entry.NamespaceID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve namespace for mount %s: %w", entry.Path, err)
+		}
+	}
+	if ns == nil {
+		ns = namespace.RootNamespace
+	}
+
+	return &estMountTarget{
+		mountPath: strings.TrimSuffix(entry.Path, "/"),
+		namespace: ns,
+	}, nil
+}
+
+func (m *estMountTarget) relativeMountPath() string {
+	if m == nil {
+		return ""
+	}
+	return m.mountPath
+}
+
+func (m *estMountTarget) relativeMountPathWithSlash() string {
+	if m == nil || m.mountPath == "" {
+		return ""
+	}
+	return m.mountPath + "/"
+}
+
+func (m *estMountTarget) namespacedMountPath() string {
+	if m == nil {
+		return ""
+	}
+	nsPath := ""
+	if m.namespace != nil {
+		nsPath = m.namespace.Path
+	}
+	rel := m.mountPath
+	if rel == "" {
+		return strings.TrimSuffix(nsPath, "/")
+	}
+	return strings.TrimSuffix(nsPath+rel, "/")
+}
+
+func (m *estMountTarget) namespaceContext(ctx context.Context) context.Context {
+	base := namespace.RootContext(ctx)
+	if m == nil || m.namespace == nil {
+		return base
+	}
+	return namespace.ContextWithNamespace(base, m.namespace)
+}
+
+// getAuthenticatorsFromConfig extracts the authenticators map from EST configuration.
+// It handles type conversion using reflection for compatibility with different config formats.
+func getAuthenticatorsFromConfig(configData map[string]interface{}) (map[string]interface{}, error) {
+	if configData == nil {
+		return nil, errors.New("config data is nil")
+	}
+
+	var authenticators map[string]interface{}
+
+	// Try to get authenticators field - it may be map[string]interface{} or map[string]SomeStruct
+	// We need to convert it to map[string]interface{} using reflection
+	if authField := configData["authenticators"]; authField != nil {
+		// Use reflection to convert any map type to map[string]interface{}
+		authValue := reflect.ValueOf(authField)
+		if authValue.Kind() == reflect.Map {
+			authenticators = make(map[string]interface{})
+			for _, key := range authValue.MapKeys() {
+				val := authValue.MapIndex(key)
+				authenticators[key.String()] = val.Interface()
+			}
+		}
+	}
+
+	if len(authenticators) == 0 {
+		return nil, errors.New("no authenticators configured - set 'authenticators' in pki/config/est")
+	}
+
+	return authenticators, nil
+}
+
+func extractCertRoleFromConfig(config interface{}) string {
+	if config == nil {
+		return ""
+	}
+
+	configValue := reflect.ValueOf(config)
+
+	// Handle both struct and map types
+	if configValue.Kind() == reflect.Struct {
+		// For struct, try to get Accessor field
+		accessorField := configValue.FieldByName("CertRole")
+		if accessorField.IsValid() && accessorField.Kind() == reflect.String {
+			return accessorField.String()
+		}
+	} else if configValue.Kind() == reflect.Map {
+		// For map, try to get accessor key
+		if accessorVal := configValue.MapIndex(reflect.ValueOf("cert_role")); accessorVal.IsValid() {
+			if accessorStr, ok := accessorVal.Interface().(string); ok {
+				return accessorStr
+			}
+		}
+	}
+
+	return ""
+}
+
+// extractAccessorFromConfig extracts the accessor string from an authenticator config.
+// It handles both struct and map types using reflection.
+func extractAccessorFromConfig(config interface{}) string {
+	if config == nil {
+		return ""
+	}
+
+	configValue := reflect.ValueOf(config)
+
+	// Handle both struct and map types
+	if configValue.Kind() == reflect.Struct {
+		// For struct, try to get Accessor field
+		accessorField := configValue.FieldByName("Accessor")
+		if accessorField.IsValid() && accessorField.Kind() == reflect.String {
+			return accessorField.String()
+		}
+	} else if configValue.Kind() == reflect.Map {
+		// For map, try to get accessor key
+		if accessorVal := configValue.MapIndex(reflect.ValueOf("accessor")); accessorVal.IsValid() {
+			if accessorStr, ok := accessorVal.Interface().(string); ok {
+				return accessorStr
+			}
+		}
+	}
+
+	return ""
+}
+
+func isESTPath(path string) bool {
+	return strings.Contains(path, "/.well-known/est") || strings.Contains(path, "/est/")
+}
+
+func estMountSegmentFromPath(apiPath string) (string, error) {
+	if !strings.HasPrefix(apiPath, "/v1/") {
+		return "", fmt.Errorf("path %q is not a v1 API path", apiPath)
+	}
+	marker := "/.well-known/est"
+	idx := strings.Index(apiPath, marker)
+	if idx == -1 {
+		marker = "/est/"
+		idx = strings.Index(apiPath, marker)
+	}
+	if idx == -1 {
+		return "", fmt.Errorf("path %q is not an EST path", apiPath)
+	}
+	segment := strings.Trim(apiPath[len("/v1/"):idx], "/")
+	if segment == "" {
+		return "", fmt.Errorf("path %q missing mount prefix", apiPath)
+	}
+	return segment, nil
+}
+
+func resolveEstMountFromPath(ctx context.Context, core *vault.Core, apiPath string) (*estMountTarget, error) {
+	segment, err := estMountSegmentFromPath(apiPath)
+	if err != nil {
+		return nil, err
+	}
+	normalizedSegment := strings.TrimSuffix(segment, "/")
+
+	mounts, err := core.ListMounts()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list mounts: %w", err)
+	}
+
+	for _, entry := range mounts {
+		if entry.Type != "pki" {
+			continue
+		}
+		target, err := newESTMountTarget(ctx, core, entry)
+		if err != nil {
+			return nil, err
+		}
+		if target.namespacedMountPath() == normalizedSegment {
+			return target, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no PKI mount found for %s", normalizedSegment)
+}
+
+// validateAuthResponse checks if an authentication response is valid and contains a token.
+func validateAuthResponse(resp *logical.Response, authType string) error {
+	prefix := "login failed"
+	if authType != "" {
+		prefix = fmt.Sprintf("%s login failed", authType)
+	}
+	if resp == nil {
+		return fmt.Errorf("%s: no response", prefix)
+	}
+
+	if resp.IsError() {
+		return fmt.Errorf("%s: %v", prefix, resp.Error())
+	}
+
+	if resp.Auth == nil || resp.Auth.ClientToken == "" {
+		return fmt.Errorf("%s: no token returned", prefix)
+	}
+
+	return nil
+}
+
+// readEstConfig reads the EST configuration from storage for a given mount path.
+// It handles all the common logic of accessing storage, reading config/est, and decoding it.
+func readEstConfig(ctx context.Context, core *vault.Core, target *estMountTarget) (map[string]interface{}, error) {
+	if core == nil {
+		return nil, errors.New("core is nil")
+	}
+	if target == nil {
+		return nil, errors.New("EST mount target is nil")
+	}
+
+	// Normalize mount path relative to the mount's namespace.
+	mountPath := normalizeMountPath(target.relativeMountPath())
+
+	nsCtx := target.namespaceContext(ctx)
+	storage := core.RouterAccess().StorageByAPIPath(nsCtx, mountPath)
+	if storage == nil {
+		return nil, fmt.Errorf("no storage found for mount %s", mountPath)
+	}
+
+	storageEntry, err := storage.Get(nsCtx, "config/est")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config/est from storage: %w", err)
+	}
+
+	if storageEntry == nil {
+		return nil, errors.New("config/est not found")
+	}
+
+	// Decode the storage entry
+	var configData map[string]interface{}
+	if err := jsonutil.DecodeJSON(storageEntry.Value, &configData); err != nil {
+		return nil, fmt.Errorf("failed to decode config/est: %w", err)
+	}
+
+	return configData, nil
+}
+
+// handleEstBasicAuth authenticates a user via HTTP Basic Auth for EST
+// by calling configured auth backends (userpass, ldap, etc.) and returning the auth response
+func handleEstBasicAuth(ctx context.Context, core *vault.Core, mountTarget *estMountTarget, username, password string) (*logical.Response, error) {
+	if core == nil {
+		return nil, errors.New("core is nil")
+	}
+	if mountTarget == nil {
+		return nil, errors.New("EST mount target is nil")
+	}
+
+	if username == "" || password == "" {
+		return nil, errors.New("username and password required")
+	}
+
+	// Get EST configuration to determine which authenticators to try
+	core.Logger().Debug("EST HTTP Basic Auth: reading config from storage", "mount", mountTarget.namespacedMountPath())
+
+	configData, err := readEstConfig(ctx, core, mountTarget)
+	if err != nil {
+		core.Logger().Debug("EST HTTP Basic Auth: error reading config", "error", err)
+		return nil, fmt.Errorf("EST HTTP Basic Auth: %w", err)
+	}
+
+	core.Logger().Debug("EST HTTP Basic Auth: config data", "data", configData)
+	authenticators, err := getAuthenticatorsFromConfig(configData)
+	if err != nil {
+		return nil, fmt.Errorf("EST HTTP Basic Auth: %w", err)
+	}
+
+	core.Logger().Debug("EST HTTP Basic Auth: found authenticators", "count", len(authenticators))
+	config, ok := authenticators["userpass"]
+	if !ok {
+		return nil, fmt.Errorf("userpass authenticator not configured")
+	}
+
+	core.Logger().Debug("EST HTTP Basic Auth: processing authenticator", "config", config, "configType", fmt.Sprintf("%T", config))
+
+	// Extract the accessor field to lookup the auth mount path
+	accessor := extractAccessorFromConfig(config)
+	core.Logger().Debug("EST HTTP Basic Auth: extracted accessor", "accessor", accessor)
+
+	// Lookup the auth mount path by accessor
+	authTarget := lookupAuthByAccessor(ctx, core, accessor)
+	if authTarget == nil {
+		return nil, fmt.Errorf("no auth mount found for accessor %s", accessor)
+	}
+
+	core.Logger().Debug("EST HTTP Basic Auth: found mount path", "path", authTarget.namespacedMountPath())
+
+	// Build the login path
+	loginReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      fmt.Sprintf("auth/%slogin/%s", authTarget.relativeMountPathWithSlash(), username),
+		Data: map[string]interface{}{
+			"password": password,
+		},
+		Connection: &logical.Connection{
+			RemoteAddr: estInternalRemoteAddr, // EST request from HTTP handler
+		},
+	}
+	core.Logger().Debug("EST HTTP Basic Auth: trying authentication", "loginPath", loginReq.Path)
+
+	resp, err := tryAuthBackend(authTarget.namespaceContext(ctx), core, loginReq, "basic-auth")
+	if err == nil && resp != nil && resp.Auth != nil && resp.Auth.ClientToken != "" {
+		core.Logger().Debug("EST HTTP Basic Auth: authentication successful")
+		return resp, nil
+	}
+	core.Logger().Debug("EST HTTP Basic Auth: authentication failed", "error", err)
+
+	return nil, errors.New("authentication failed: no valid authenticators configured")
+}
+
+// tryAuthBackend attempts to authenticate using a specific auth backend
+func tryAuthBackend(ctx context.Context, core *vault.Core, loginReq *logical.Request, authType string) (*logical.Response, error) {
+	// Perform the login via the core
+	resp, err := core.HandleRequest(ctx, loginReq)
+	if err != nil {
+		return nil, fmt.Errorf("login failed: %w", err)
+	}
+
+	// Validate the response
+	if err := validateAuthResponse(resp, authType); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+// handleEstClientCertAuth authenticates EST requests using TLS client certificates.
+// This implements RFC 7030 Section 3.3.2 (TLS-Based Client Authentication).
+func handleEstClientCertAuth(ctx context.Context, core *vault.Core, mountTarget *estMountTarget, connState *tls.ConnectionState) (*logical.Response, error) {
+	if core == nil {
+		return nil, fmt.Errorf("core is nil")
+	}
+	if mountTarget == nil {
+		return nil, fmt.Errorf("EST mount target is nil")
+	}
+
+	if connState == nil || len(connState.PeerCertificates) == 0 {
+		return nil, fmt.Errorf("no client certificates provided")
+	}
+
+	// Read the EST configuration to get the cert authenticator
+	// Use direct storage access because config/est requires authentication
+	core.Logger().Debug("EST client cert auth: reading config from storage", "mount", mountTarget.namespacedMountPath())
+
+	configData, err := readEstConfig(ctx, core, mountTarget)
+	if err != nil {
+		core.Logger().Debug("EST client cert auth: error reading config", "error", err)
+		return nil, fmt.Errorf("EST client cert auth: %w", err)
+	}
+
+	core.Logger().Debug("EST client cert auth: config data", "data", configData)
+	authenticators, err := getAuthenticatorsFromConfig(configData)
+	if err != nil {
+		return nil, fmt.Errorf("EST client cert auth: %w", err)
+	}
+
+	core.Logger().Debug("EST client cert auth: found authenticators", "count", len(authenticators))
+	config, ok := authenticators["cert"]
+	if !ok {
+		return nil, fmt.Errorf("cert authenticator not configured in EST config")
+	}
+
+	core.Logger().Debug("EST client cert auth: processing authenticator", "config", config, "configType", fmt.Sprintf("%T", config))
+
+	// Extract the accessor field to lookup the auth mount path
+	accessor := extractAccessorFromConfig(config)
+	certRole := extractCertRoleFromConfig(config)
+	core.Logger().Debug("EST client cert auth: extracted accessor", "accessor", accessor)
+
+	// Lookup the auth mount path by accessor
+	authTarget := lookupAuthByAccessor(ctx, core, accessor)
+	if authTarget == nil {
+		return nil, fmt.Errorf("no auth mount found for accessor %s", accessor)
+	}
+
+	core.Logger().Debug("EST client cert auth: found mount path", "path", authTarget.namespacedMountPath())
+
+	// Prepare login data with cert_role if specified
+	loginData := map[string]interface{}{}
+	if certRole != "" {
+		loginData["name"] = certRole
+	}
+
+	loginReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      fmt.Sprintf("auth/%slogin", authTarget.relativeMountPathWithSlash()),
+		Data:      loginData,
+		Connection: &logical.Connection{
+			RemoteAddr: estInternalRemoteAddr, // EST request from HTTP handler
+			ConnState:  connState,
+		},
+	}
+
+	resp, err := tryAuthBackend(authTarget.namespaceContext(ctx), core, loginReq, "client-cert")
+	if err == nil && resp != nil && resp.Auth != nil && resp.Auth.ClientToken != "" {
+		core.Logger().Debug("EST client cert auth: authentication successful")
+		return resp, nil
+	}
+	core.Logger().Debug("EST client cert auth: authentication failed", "error", err)
+
+	return nil, errors.New("authentication failed: cert authenticator not configured or client cert invalid")
+}
+
+func maybeAuthenticateESTRequest(ctx context.Context, core *vault.Core, w http.ResponseWriter, r *http.Request, mountHint *estMountTarget) bool {
+	if !isESTPath(r.URL.Path) {
+		return false
+	}
+
+	mountTarget := mountHint
+	if mountTarget == nil {
+		var err error
+		mountTarget, err = resolveEstMountFromPath(ctx, core, r.URL.Path)
+		if err != nil {
+			core.Logger().Debug("EST: unable to resolve mount", "path", r.URL.Path, "error", err)
+			return false
+		}
+	}
+
+	existingToken, _ := getTokenFromReq(r)
+	if existingToken != "" {
+		core.Logger().Debug("EST: using existing Vault token from request")
+		return false
+	}
+
+	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+		if resp, err := handleEstClientCertAuth(ctx, core, mountTarget, r.TLS); err == nil && resp != nil && resp.Auth != nil && resp.Auth.ClientToken != "" {
+			r.Header.Set("X-Vault-Token", resp.Auth.ClientToken)
+			core.Logger().Debug("EST TLS client cert auth: authenticated", "mount", mountTarget.namespacedMountPath())
+			return false
+		} else if err != nil {
+			core.Logger().Debug("EST TLS client cert auth failed", "mount", mountTarget.namespacedMountPath(), "error", err)
+		}
+	}
+
+	if r.Header.Get("X-Vault-Token") != "" {
+		return false
+	}
+
+	if username, password, ok := r.BasicAuth(); ok && username != "" {
+		resp, err := handleEstBasicAuth(ctx, core, mountTarget, username, password)
+		if err != nil {
+			core.Logger().Warn("EST HTTP Basic Auth failed", "username", username, "mount", mountTarget.namespacedMountPath(), "error", err)
+			setESTWWWAuthenticateHeader(w)
+			respondError(w, http.StatusUnauthorized, fmt.Errorf("authentication failed"))
+			return true
+		}
+		r.Header.Set("X-Vault-Token", resp.Auth.ClientToken)
+		core.Logger().Debug("EST HTTP Basic Auth: authenticated", "username", username, "mount", mountTarget.namespacedMountPath())
+	}
+
+	return false
+}
+
+// lookupAuthByAccessor finds an auth mount by its accessor ID.
+// Returns the namespace-aware mount target or nil if not found.
+func lookupAuthByAccessor(ctx context.Context, core *vault.Core, accessor string) *estMountTarget {
+	if core == nil || accessor == "" {
+		return nil
+	}
+
+	mounts, err := core.ListAuths()
+	if err != nil {
+		return nil
+	}
+
+	for _, entry := range mounts {
+		if entry.Accessor != accessor {
+			continue
+		}
+		target, err := newESTMountTarget(ctx, core, entry)
+		if err != nil {
+			core.Logger().Warn("EST auth lookup: failed to resolve namespace for auth mount", "accessor", accessor, "error", err)
+			return nil
+		}
+		return target
+	}
+
+	return nil
+}
+
+// findDefaultESTMount finds the PKI mount that has default_mount enabled in its EST configuration.
+// It returns the mount path (without leading /v1/ and without trailing /) or an error if none found.
+// If multiple mounts have default_mount enabled, it returns an error.
+func findDefaultESTMount(ctx context.Context, core *vault.Core) (*estMountTarget, error) {
+	if core == nil {
+		return nil, errors.New("core is nil")
+	}
+
+	// List all mounts
+	mounts, err := core.ListMounts()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list mounts: %w", err)
+	}
+
+	var foundTarget *estMountTarget
+	var foundCount int
+	rootCtx := namespace.RootContext(ctx)
+
+	// Check each PKI mount for EST configuration
+	for _, entry := range mounts {
+		// Only check PKI mounts
+		if entry.Type != "pki" {
+			continue
+		}
+
+		target, err := newESTMountTarget(rootCtx, core, entry)
+		if err != nil {
+			return nil, err
+		}
+
+		// Try to read the EST configuration directly from storage
+		configData, err := readEstConfig(ctx, core, target)
+		if err != nil {
+			// Config not found or error reading - skip this mount
+			core.Logger().Debug("EST findDefaultMount: skipping mount", "mount", target.namespacedMountPath(), "error", err)
+			continue
+		}
+
+		// Check if EST is enabled
+		enabledRaw, ok := configData["enabled"]
+		if !ok {
+			continue
+		}
+		enabled, ok := enabledRaw.(bool)
+		if !ok || !enabled {
+			// EST not enabled for this mount
+			continue
+		}
+
+		// Check if this is the default mount
+		defaultMountRaw, ok := configData["default_mount"]
+		if !ok {
+			continue
+		}
+		defaultMount, ok := defaultMountRaw.(bool)
+		if !ok || !defaultMount {
+			// Not the default mount
+			continue
+		}
+
+		// Found a PKI mount with EST enabled and default_mount=true
+		core.Logger().Info("EST root path: found default EST mount", "mount", target.namespacedMountPath())
+		foundTarget = target
+		foundCount++
+	}
+
+	if foundCount == 0 {
+		return nil, errors.New("no PKI mount found with EST enabled and default_mount=true")
+	}
+
+	if foundCount > 1 {
+		return nil, fmt.Errorf("multiple PKI mounts have default_mount=true, only one mount can be configured with default_mount enabled")
+	}
+
+	return foundTarget, nil
 }
 
 // oidcPermissionDenied returns true if the given path matches the

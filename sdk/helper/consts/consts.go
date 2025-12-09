@@ -73,4 +73,8 @@ const (
 	// often returned without response bodies. But when a non-empty response
 	// is given, this disambiguates inline auth from subsequent call responses.
 	InlineAuthErrorResponseHeader = "X-Vault-Inline-Auth-Failed"
+
+	// ESTWWWAuthenticateHeaderValue is the value advertised when returning
+	// HTTP 401 responses for EST (RFC 7030) Basic authentication challenges.
+	ESTWWWAuthenticateHeaderValue = "Basic realm=\"EST\""
 )

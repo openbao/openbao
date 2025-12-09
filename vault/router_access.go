@@ -3,7 +3,11 @@
 
 package vault
 
-import "context"
+import (
+	"context"
+
+	"github.com/openbao/openbao/sdk/v2/logical"
+)
 
 // RouterAccess provides access into some things necessary for testing
 type RouterAccess struct {
@@ -16,4 +20,8 @@ func NewRouterAccess(c *Core) *RouterAccess {
 
 func (r *RouterAccess) StoragePrefixByAPIPath(ctx context.Context, path string) (string, bool) {
 	return r.c.router.MatchingStoragePrefixByAPIPath(ctx, path)
+}
+
+func (r *RouterAccess) StorageByAPIPath(ctx context.Context, path string) logical.Storage {
+	return r.c.router.MatchingStorageByAPIPath(ctx, path)
 }

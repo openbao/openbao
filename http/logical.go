@@ -96,11 +96,13 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 	case "POST", "PUT":
 		op = logical.UpdateOperation
 
-		// If we are uploading a snapshot or receiving an ocsp-request (which
-		// is der encoded) we don't want to parse it. Instead, we will simply
-		// add the HTTP request to the logical request object for later consumption.
+		// If we are uploading a snapshot, receiving an ocsp-request (which
+		// is der encoded), or receiving an EST enrollment request (which is
+		// DER-encoded PKCS#10 or PKCS#7) we don't want to parse it. Instead,
+		// we will simply add the HTTP request to the logical request object for
+		// later consumption.
 		contentType := r.Header.Get("Content-Type")
-		if path == "sys/storage/raft/snapshot" || path == "sys/storage/raft/snapshot-force" || isOcspRequest(contentType) {
+		if path == "sys/storage/raft/snapshot" || path == "sys/storage/raft/snapshot-force" || isOcspRequest(contentType) || isEstRequest(contentType) {
 			// While snapshots are handled specially to size-limit the request,
 			// OCSP requests are still bound by the maximum content size.
 			passHTTPReq = true
@@ -233,6 +235,17 @@ func isOcspRequest(contentType string) bool {
 	return contentType == "application/ocsp-request"
 }
 
+func isEstRequest(contentType string) bool {
+	contentType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+
+	// EST requests use application/pkcs10 for CSRs
+	// Could also be application/pkcs7-mime for wrapped requests
+	return contentType == "application/pkcs10" || contentType == "application/pkcs7-mime"
+}
+
 func buildLogicalPath(r *http.Request) (string, int, error) {
 	path := r.URL.Path[len("/v1/"):]
 
@@ -284,9 +297,91 @@ func buildLogicalPath(r *http.Request) (string, int, error) {
 	return path, 0, nil
 }
 
+// handleEstAuthentication processes EST authentication for requests.
+// It handles Bearer tokens and HTTP Basic Auth, injecting tokens into the request header.
+// Returns an error with HTTP status code if authentication fails.
+func handleEstAuthentication(core *vault.Core, r *http.Request, req *logical.Request) (int, error) {
+	// Only process EST paths that don't already have a token
+	isEstPath := strings.Contains(req.Path, "/est/") || strings.Contains(req.Path, "/.well-known/est/")
+	if !isEstPath || r.Header.Get("X-Vault-Token") != "" {
+		return 0, nil
+	}
+
+	apiPath := "/v1/" + strings.TrimPrefix(req.Path, "/")
+	var mountTarget *estMountTarget
+	resolveMountTarget := func() (*estMountTarget, error) {
+		if mountTarget != nil {
+			return mountTarget, nil
+		}
+		target, err := resolveEstMountFromPath(r.Context(), core, apiPath)
+		if err != nil {
+			return nil, err
+		}
+		mountTarget = target
+		return mountTarget, nil
+	}
+
+	// Check for RFC 6750 Bearer token in Authorization header
+	authHeader := r.Header.Get("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		// Extract token and set it as X-Vault-Token for standard Vault processing
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		if token != "" {
+			r.Header.Set("X-Vault-Token", token)
+			return 0, nil
+		}
+	}
+
+	// Attempt TLS client authentication before falling back to HTTP Basic
+	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+		target, err := resolveMountTarget()
+		if err != nil {
+			core.Logger().Debug("EST TLS client cert auth: unable to resolve mount", "path", req.Path, "error", err)
+		} else if resp, err := handleEstClientCertAuth(r.Context(), core, target, r.TLS); err == nil && resp != nil && resp.Auth != nil && resp.Auth.ClientToken != "" {
+			r.Header.Set("X-Vault-Token", resp.Auth.ClientToken)
+			return 0, nil
+		} else if err != nil {
+			core.Logger().Debug("EST TLS client cert auth failed", "path", req.Path, "error", err)
+		}
+	}
+
+	// Only attempt HTTP Basic Auth if we don't have a token yet
+	// This ensures Bearer token takes precedence over Basic Auth
+	if r.Header.Get("X-Vault-Token") == "" {
+		if username, password, ok := r.BasicAuth(); ok && username != "" {
+			target, err := resolveMountTarget()
+			if err != nil {
+				core.Logger().Debug("EST authentication: unable to resolve mount for basic auth", "path", req.Path, "error", err)
+				return 0, nil
+			}
+
+			// Attempt to authenticate via configured EST authenticators
+			authResp, err := handleEstBasicAuth(r.Context(), core, target, username, password)
+			if err != nil {
+				return http.StatusUnauthorized, fmt.Errorf("EST authentication failed")
+			}
+
+			if authResp != nil && authResp.Auth != nil && authResp.Auth.ClientToken != "" {
+				r.Header.Set("X-Vault-Token", authResp.Auth.ClientToken)
+			}
+		}
+	}
+
+	return 0, nil
+}
+
 func buildLogicalRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) (*logical.Request, int, error) {
 	req, status, err := buildLogicalRequestNoAuth(w, r)
 	if err != nil || status != 0 {
+		return nil, status, err
+	}
+
+	// Handle authentication for EST requests (RFC 7030 Section 3.2.3)
+	// EST paths: /v1/<mount>/est/* or /v1/<mount>/.well-known/est/*
+	if status, err := handleEstAuthentication(core, r, req); err != nil {
+		if status == http.StatusUnauthorized {
+			setESTWWWAuthenticateHeader(w)
+		}
 		return nil, status, err
 	}
 
@@ -563,6 +658,10 @@ WRITE_RESPONSE:
 
 	if wwwAuthn, ok := resp.Data[logical.HTTPWWWAuthenticateHeader].(string); ok {
 		w.Header().Set("WWW-Authenticate", wwwAuthn)
+	}
+
+	if contentTransferEncoding, ok := resp.Data[logical.HTTPContentTransferEncodingHeader].(string); ok {
+		w.Header().Set("Content-Transfer-Encoding", contentTransferEncoding)
 	}
 
 	w.WriteHeader(status)

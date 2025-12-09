@@ -2,29 +2,11 @@ package pki
 
 import (
 	"context"
-	"crypto/x509"
 	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
-
-type estAuthMethod int
-
-const (
-	estAuthNone estAuthMethod = iota
-	estAuthToken
-	estAuthTLSClientCert
-	estAuthHTTPBasic
-)
-
-type estAuthInfo struct {
-	Method        estAuthMethod
-	Token         string
-	ClientCerts   []*x509.Certificate
-	BasicAuthUser string
-	BasicAuthPass string
-}
 
 func (b *backend) validateEstAuthentication(ctx context.Context, req *logical.Request, config *estConfigEntry) (*logical.Auth, error) {
 	if config == nil || !config.Enabled {

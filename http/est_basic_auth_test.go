@@ -697,6 +697,7 @@ func parseCertFromPKCS7(data []byte) (*x509.Certificate, error) {
 	if len(rest) > 0 {
 		// There are more certificates, but we only need the first one for this test
 		// In a real implementation, you might want to validate the chain
+		fmt.Println("warning: multiple certificates found, using the first one")
 	}
 
 	// Parse the certificate

@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 
-	"github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/vault"
@@ -108,21 +109,21 @@ func TestSysRekeyUnauthenticated(t *testing.T) {
 	ln, addr := TestServer(t, core)
 	TestServerAuth(t, addr, token)
 
-	// Default: Allow unauthenticated access
+	// Default: Disallow unauthenticated access
 	resp := testHttpGet(t, "", addr+"/v1/sys/rekey/init")
-	testResponseStatus(t, resp, 200)
+	testResponseStatus(t, resp, 405)
 	resp = testHttpGet(t, token, addr+"/v1/sys/rekey/init")
-	testResponseStatus(t, resp, 200)
+	testResponseStatus(t, resp, 405)
 
 	// Close listener
 	ln.Close()
 
-	// Setup new custom listener denying unauthenticated rekey access
+	// Setup new custom listener allowing for unauthenticated rekey access
 	ln, addr = TestListener(t)
 	props := &vault.HandlerProperties{
 		Core: core,
 		ListenerConfig: &configutil.Listener{
-			DisableUnauthedRekeyEndpoints: true,
+			DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
 		},
 	}
 	TestServerWithListenerAndProperties(t, ln, addr, core, props)
@@ -132,7 +133,66 @@ func TestSysRekeyUnauthenticated(t *testing.T) {
 	// Testing with and without token should fail; we have completely removed
 	// the endpoint.
 	resp = testHttpGet(t, "", addr+"/v1/sys/rekey/init")
-	testResponseStatus(t, resp, 405)
+	testResponseStatus(t, resp, 200)
 	resp = testHttpGet(t, token, addr+"/v1/sys/rekey/init")
-	testResponseStatus(t, resp, 405)
+	testResponseStatus(t, resp, 200)
+}
+
+func TestSysMetricsCustomPath(t *testing.T) {
+	inm := metrics.NewInmemSink(10*time.Second, time.Minute)
+	metrics.DefaultInmemSignal(inm)
+	conf := &vault.CoreConfig{
+		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
+		MetricsHelper:   metricsutil.NewMetricsHelper(inm, true),
+	}
+	core, _, token := vault.TestCoreUnsealedWithConfig(t, conf)
+	ln, addr := TestServer(t, core)
+	TestServerAuth(t, addr, token)
+
+	// Default: Only authenticated access on standard path.
+	resp := testHttpGet(t, "", addr+"/v1/sys/metrics")
+	testResponseStatus(t, resp, 403)
+	resp = testHttpGet(t, token, addr+"/v1/sys/metrics")
+	testResponseStatus(t, resp, 200)
+
+	resp = testHttpGet(t, "", addr+"/metrics")
+	testResponseStatus(t, resp, 404)
+	resp = testHttpGet(t, token, addr+"/metrics")
+	testResponseStatus(t, resp, 404)
+
+	// Close listener
+	ln.Close() //nolint:errcheck
+
+	// Setup new custom listener with unauthenticated metrics access
+	ln, addr = TestListener(t)
+	props := &vault.HandlerProperties{
+		Core: core,
+		ListenerConfig: &configutil.Listener{
+			Telemetry: configutil.ListenerTelemetry{
+				MetricsOnly: true,
+				MetricsPath: "/metrics",
+			},
+		},
+	}
+	TestServerWithListenerAndProperties(t, ln, addr, core, props)
+	defer ln.Close() //nolint:errcheck
+	TestServerAuth(t, addr, token)
+
+	// Test with and without token, on default endpoint.
+	resp = testHttpGet(t, "", addr+"/v1/sys/metrics")
+	testResponseStatus(t, resp, 404)
+	resp = testHttpGet(t, token, addr+"/v1/sys/metrics")
+	testResponseStatus(t, resp, 404)
+
+	// Should work with token, on custom endpoint
+	resp = testHttpGet(t, token, addr+"/metrics")
+	testResponseStatus(t, resp, 200)
+
+	// Should fail without token, on custom endpoint
+	resp = testHttpGet(t, "", addr+"/metrics")
+	testResponseStatus(t, resp, 403)
+
+	// Test if prometheus response is correct
+	resp = testHttpGet(t, token, addr+"/metrics?format=prometheus")
+	testResponseStatus(t, resp, 200)
 }

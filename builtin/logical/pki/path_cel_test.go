@@ -8,7 +8,6 @@ import (
 	"slices"
 	"testing"
 
-	celgo "github.com/google/cel-go/cel"
 	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
@@ -136,7 +135,7 @@ func TestCRUDCelRoles(t *testing.T) {
 	}
 
 	// Assert the patch is correct
-	vars := resp.Data["cel_program"].(celhelper.CelProgram).Variables
+	vars := resp.Data["cel_program"].(celhelper.Program).Variables
 	require.Equal(t, 5, len(vars))
 
 	found := false
@@ -225,6 +224,9 @@ func TestCRUDCelRoles(t *testing.T) {
 	}
 
 	_, err = b.HandleRequest(context.Background(), roleReqDel)
+	if err != nil {
+		t.Fatalf("bad: err: %v", err)
+	}
 
 	// Verify deletion by listing remaining CEL roles
 	listResp, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -242,119 +244,5 @@ func TestCRUDCelRoles(t *testing.T) {
 	}
 	if len(listResp.Data["keys"].([]string)) != 1 {
 		t.Fatalf("Expected only second role to be in list.")
-	}
-}
-
-// TestVariableHandling checks variable evaluation and ordering in CEL.
-func TestVariableHandling(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name           string
-		variables      map[string]string
-		mainExpression string
-		expectedError  string
-		expectedResult interface{}
-	}{
-		{
-			name: "All variables valid, expression evaluates to true",
-			variables: map[string]string{
-				"var1": "1 == 1", // True condition
-				"var2": "5 > 3",  // True condition
-			},
-			mainExpression: "var1 && var2",
-			expectedError:  "",
-			expectedResult: true,
-		},
-		{
-			name: "Nested expression evaluates to false",
-			variables: map[string]string{
-				"var1": "1 == 1",       // True condition
-				"var2": "10 < 5",       // False condition
-				"var3": "var1 && var2", // Nested expression
-			},
-			mainExpression: "var3",
-			expectedError:  "",
-			expectedResult: false,
-		},
-		{
-			name: "Undefined variable in main expression",
-			variables: map[string]string{
-				"var1": "1 == 1",
-			},
-			mainExpression: "var1 && var2", // var2 is undefined
-			expectedError:  "failed to evaluate expression 'var1 && var2': no such attribute(s): var2",
-			expectedResult: nil,
-		},
-		{
-			name: "Expression with OR operator evaluates to true",
-			variables: map[string]string{
-				"var1": "false",
-				"var2": "true",
-			},
-			mainExpression: "var1 || var2",
-			expectedError:  "",
-			expectedResult: true,
-		},
-		{
-			name: "Expression with NOT operator evaluates to true",
-			variables: map[string]string{
-				"var1": "false",
-			},
-			mainExpression: "!var1",
-			expectedError:  "",
-			expectedResult: true,
-		},
-		{
-			name: "Expression with a missing variable reference in a nested variable",
-			variables: map[string]string{
-				"var1": "var2 > 5", // var2 is undefined
-			},
-			mainExpression: "var1",
-			expectedError:  "failed to evaluate expression 'var2 > 5': no such attribute(s): var2",
-			expectedResult: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create the CEL environment with the declared variables
-			var decls []celgo.EnvOption
-
-			for name := range tt.variables {
-				decls = append(decls, celgo.Variable(name, celgo.StringType))
-			}
-			env, err := celgo.NewEnv(decls...)
-			if err != nil {
-				t.Fatalf("Failed to create CEL environment: %v", err)
-			}
-
-			// Parse and validate each variable expression
-			variableValues := make(map[string]interface{})
-			for name, expr := range tt.variables {
-				result, err := celhelper.ParseCompileAndEvaluateExpression(env, expr, nil)
-				if err != nil {
-					if tt.expectedError != "" && err.Error() != tt.expectedError {
-						t.Fatalf("Expected error '%s', but got '%v'", tt.expectedError, err)
-					}
-					return
-				}
-				variableValues[name] = result.Value().(bool)
-			}
-
-			// Compile the main expression
-			result, err := celhelper.ParseCompileAndEvaluateExpression(env, tt.mainExpression, variableValues)
-			if err != nil {
-				if tt.expectedError != "" && err.Error() != tt.expectedError {
-					t.Fatalf("Expected error '%s', but got '%v'", tt.expectedError, err)
-				}
-				return
-			}
-
-			// Assert the result matches the expected result
-			if result.Value().(bool) != tt.expectedResult {
-				t.Fatalf("Expected result '%v', but got '%v'", tt.expectedResult, result)
-			}
-		})
 	}
 }

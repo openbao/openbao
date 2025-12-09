@@ -17,13 +17,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fatih/structs"
 	"github.com/go-test/deep"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
 	semver "github.com/hashicorp/go-version"
 	"github.com/openbao/openbao/audit"
+	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
+	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
@@ -36,6 +37,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/version"
@@ -51,6 +53,8 @@ func TestSystemBackend_RootPaths(t *testing.T) {
 		"raw",
 		"raw/*",
 		"rotate",
+		"rotate/keyring",
+		"rotate/root",
 		"config/cors",
 		"config/auditing/*",
 		"config/ui/headers/*",
@@ -829,7 +833,7 @@ func TestSystemBackend_remount_auth(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/userpass1"
 	req.Data["to"] = "auth/userpass2"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	// validate the response structure for remount named read
@@ -869,7 +873,7 @@ func TestSystemBackend_remount_auth_invalid(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/unknown"
 	req.Data["to"] = "auth/foo"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -896,7 +900,7 @@ func TestSystemBackend_remount_auth_protected(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/token"
 	req.Data["to"] = "auth/foo"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -951,7 +955,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/userpass1"
 	req.Data["to"] = "auth/userpass2"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -999,7 +1003,7 @@ func TestSystemBackend_remount(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "secret"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	corehelpers.RetryUntil(t, 5*time.Second, func() error {
 		req = logical.TestRequest(t, logical.ReadOperation, fmt.Sprintf("remount/status/%s", resp.Data["migration_id"]))
@@ -1031,7 +1035,7 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "secret"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -1078,7 +1082,7 @@ func TestSystemBackend_remount_invalid(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "unknown"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1109,7 +1113,7 @@ func TestSystemBackend_remount_clean(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = "foo//bar"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1125,7 +1129,7 @@ func TestSystemBackend_remount_nonPrintable(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = "foo\nbar"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1143,7 +1147,7 @@ func TestSystemBackend_remount_trailingSpacesInFromPath(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = " foo/ "
 	req.Data["to"] = "bar"
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1161,7 +1165,7 @@ func TestSystemBackend_remount_trailingSpacesInToPath(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = " bar/ "
-	req.Data["config"] = structs.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1860,7 +1864,7 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 
 	ctx := namespace.RootContext(nil)
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
-	err := b.Backend.Setup(ctx, bc)
+	err := b.Setup(ctx, bc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1926,7 +1930,7 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 
 	ctx := namespace.RootContext(nil)
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
-	err := b.Backend.Setup(ctx, bc)
+	err := b.Setup(ctx, bc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2227,7 +2231,7 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 		if err := file.Close(); err != nil {
 			t.Fatal(err)
 		}
-		err = c.pluginCatalog.Set(context.Background(), "token", consts.PluginTypeCredential, "v1.0.0", "foo", []string{}, []string{}, []byte{})
+		err = c.pluginCatalog.Set(context.Background(), "token", consts.PluginTypeCredential, "v1.0.0", "foo", []string{}, []string{}, []byte{}, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -2264,15 +2268,21 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 func TestSystemBackend_tuneSys(t *testing.T) {
 	// Create a noop audit backend
 	var noop *corehelpers.NoopAudit
-	c, b, root := testCoreSystemBackend(t)
-	c.auditBackends["noop"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
-		var err error
-		noop, err = corehelpers.NewNoopAudit(config.Config)
-		if err != nil {
-			return nil, err
-		}
-		return noop, nil
-	}
+	c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"noop": func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
+				var err error
+				noop, err = corehelpers.NewNoopAudit(config.Config)
+				if err != nil {
+					return nil, err
+				}
+				return noop, nil
+			},
+		},
+	})
+
+	b := c.systemBackend
 
 	// Validate Tune behavior.
 	req := logical.TestRequest(t, logical.UpdateOperation, "mounts/sys/tune")
@@ -2533,6 +2543,7 @@ func TestSystemBackend_PoliciesDetailedAcl(t *testing.T) {
 
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	require.NoError(t, err)
+	require.Nil(t, resp)
 
 	// Now test the detailed ACL list endpoint
 	req = logical.TestRequest(t, logical.ListOperation, "policies/detailed/acl")
@@ -2556,16 +2567,18 @@ func TestSystemBackend_PoliciesDetailedAcl(t *testing.T) {
 	entry := entryRaw.(map[string]interface{})
 	require.Contains(t, entry, "policy")
 	require.Equal(t, entry["policy"].(string), policy)
+	require.Contains(t, entry, "version")
+	require.Contains(t, entry, "cas_required")
+	require.Contains(t, entry, "name")
 }
 
 func TestSystemBackend_enableAudit(t *testing.T) {
-	c, b, _ := testCoreSystemBackend(t)
-	c.auditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
+	b := testSystemBackendUnsafeAuditCreation(t)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "audit/foo")
 	req.Data["type"] = "noop"
 
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2629,8 +2642,7 @@ func TestSystemBackend_decodeToken(t *testing.T) {
 }
 
 func TestSystemBackend_auditHash(t *testing.T) {
-	c, b, _ := testCoreSystemBackend(t)
-	c.auditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
+	b := testSystemBackendUnsafeAuditCreation(t)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "audit/foo")
 	req.Data["type"] = "noop"
@@ -2678,10 +2690,12 @@ func TestSystemBackend_auditHash(t *testing.T) {
 }
 
 func TestSystemBackend_enableAudit_invalid(t *testing.T) {
-	b := testSystemBackend(t)
+	b := testSystemBackendUnsafeAuditCreation(t)
+
 	req := logical.TestRequest(t, logical.UpdateOperation, "audit/foo")
 	req.Data["type"] = "nope"
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+
+	resp, err := b.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
 	}
@@ -2690,9 +2704,61 @@ func TestSystemBackend_enableAudit_invalid(t *testing.T) {
 	}
 }
 
+func TestSystemBackend_enableAudit_apiCreationDisabled(t *testing.T) {
+	// Note: this is not 'testSystemBackendUnsafeAuditCreation',
+	// so unsafe audit creation is false.
+	b := testSystemBackend(t)
+
+	req := logical.TestRequest(t, logical.UpdateOperation, "audit/foo")
+	req.Data["type"] = "noop"
+
+	_, err := b.HandleRequest(namespace.RootContext(context.Background()), req)
+	require.ErrorIs(t, err, logical.ErrInvalidRequest)
+}
+
+func TestSystemBackend_enableAudit_withPrefix(t *testing.T) {
+	c, _, _ := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{
+			UnsafeAllowAPIAuditCreation: true,
+			AllowAuditLogPrefixing:      false,
+		},
+		AuditBackends: map[string]audit.Factory{
+			"noop": corehelpers.NoopAuditFactory(nil),
+		},
+	})
+
+	req := logical.TestRequest(t, logical.UpdateOperation, "audit/foo")
+	req.Data["type"] = "noop"
+	req.Data["options"] = map[string]any{"prefix": "foo"}
+
+	_, err := c.systemBackend.HandleRequest(namespace.RootContext(context.Background()), req)
+	require.ErrorIs(t, err, logical.ErrInvalidRequest)
+
+	req = logical.TestRequest(t, logical.UpdateOperation, "audit/foo")
+	req.Data["type"] = "noop"
+	_, err = c.systemBackend.HandleRequest(namespace.RootContext(context.Background()), req)
+	require.NoError(t, err)
+
+	c, _, _ = TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{
+			UnsafeAllowAPIAuditCreation: true,
+			AllowAuditLogPrefixing:      true,
+		},
+		AuditBackends: map[string]audit.Factory{
+			"noop": corehelpers.NoopAuditFactory(nil),
+		},
+	})
+
+	req = logical.TestRequest(t, logical.UpdateOperation, "audit/foo")
+	req.Data["type"] = "noop"
+	req.Data["options"] = map[string]any{"prefix": "foo"}
+
+	_, err = c.systemBackend.HandleRequest(namespace.RootContext(context.Background()), req)
+	require.NoError(t, err)
+}
+
 func TestSystemBackend_auditTable(t *testing.T) {
-	c, b, _ := testCoreSystemBackend(t)
-	c.auditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
+	b := testSystemBackendUnsafeAuditCreation(t)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "audit/foo")
 	req.Data["type"] = "noop"
@@ -2726,26 +2792,23 @@ func TestSystemBackend_auditTable(t *testing.T) {
 }
 
 func TestSystemBackend_disableAudit(t *testing.T) {
-	c, b, _ := testCoreSystemBackend(t)
-	c.auditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
+	b := testSystemBackendUnsafeAuditCreation(t)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "audit/foo")
 	req.Data["type"] = "noop"
 	req.Data["description"] = "testing"
-	req.Data["options"] = map[string]interface{}{
-		"foo": "bar",
-	}
-	b.HandleRequest(namespace.RootContext(nil), req)
+	req.Data["options"] = map[string]any{"foo": "bar"}
+
+	// Register it
+	resp, err := b.HandleRequest(namespace.RootContext(context.Background()), req)
+	require.NoError(t, err)
+	require.Nil(t, resp)
 
 	// Deregister it
 	req = logical.TestRequest(t, logical.DeleteOperation, "audit/foo")
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if resp != nil {
-		t.Fatalf("bad: %v", resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.Background()), req)
+	require.NoError(t, err)
+	require.Nil(t, resp)
 }
 
 func TestSystemBackend_rawRead_Compressed(t *testing.T) {
@@ -2856,7 +2919,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		b := testSystemBackendRaw(t)
 		req := logical.TestRequest(t, logical.CreateOperation, "raw/test_raw")
 		req.Data = map[string]interface{}{
-			"value": "414c1e7f-0a9a-49e0-9fc4-61af329d0724",
+			"value": "G14c1e7f-0a9a-49e0-9fc4-61af329d0724",
 		}
 
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
@@ -2894,7 +2957,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		if resp.IsError() {
 			t.Fatalf("bad: %v", resp)
 		}
-		if resp.Data["value"].(string) != "414c1e7f-0a9a-49e0-9fc4-61af329d0724" {
+		if resp.Data["value"].(string) != "G14c1e7f-0a9a-49e0-9fc4-61af329d0724" {
 			t.Fatalf("bad: %v", resp)
 		}
 	})
@@ -3347,7 +3410,7 @@ func TestSystemBackend_keyStatus(t *testing.T) {
 	}
 }
 
-func TestSystemBackend_rotateConfig(t *testing.T) {
+func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {
 	b := testSystemBackend(t)
 	req := logical.TestRequest(t, logical.ReadOperation, "rotate/config")
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
@@ -3408,7 +3471,57 @@ func TestSystemBackend_rotateConfig(t *testing.T) {
 	}
 }
 
-func TestSystemBackend_rotate(t *testing.T) {
+func TestSystemBackend_rotateConfig(t *testing.T) {
+	b := testSystemBackend(t)
+	req := logical.TestRequest(t, logical.ReadOperation, "rotate/keyring/config")
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
+
+	schema.ValidateResponse(
+		t,
+		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation),
+		resp,
+		true,
+	)
+
+	exp := map[string]interface{}{
+		"max_operations": absoluteOperationMaximum,
+		"interval":       0,
+		"enabled":        true,
+	}
+	require.Equalf(t, resp.Data, exp, "got: %#v expect: %#v", resp.Data, exp)
+
+	req2 := logical.TestRequest(t, logical.UpdateOperation, "rotate/keyring/config")
+	req2.Data["max_operations"] = int64(3221225472)
+	req2.Data["interval"] = "5432h0m0s"
+	req2.Data["enabled"] = false
+
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req2)
+	require.NoError(t, err)
+	schema.ValidateResponse(
+		t,
+		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req2.Path), req2.Operation),
+		resp,
+		true,
+	)
+
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
+	schema.ValidateResponse(
+		t,
+		schema.GetResponseSchema(t, b.(*SystemBackend).Route(req.Path), req.Operation), resp,
+		true,
+	)
+
+	exp = map[string]interface{}{
+		"max_operations": int64(3221225472),
+		"interval":       "5432h0m0s",
+		"enabled":        false,
+	}
+	require.Equalf(t, resp.Data, exp, "got: %#v expect: %#v", resp.Data, exp)
+}
+
+func TestSystemBackend_deprecatedRotate(t *testing.T) {
 	b := testSystemBackend(t)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "rotate")
@@ -3436,6 +3549,27 @@ func TestSystemBackend_rotate(t *testing.T) {
 	}
 }
 
+func TestSystemBackend_rotate(t *testing.T) {
+	b := testSystemBackend(t)
+
+	req := logical.TestRequest(t, logical.UpdateOperation, "rotate/keyring")
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
+	require.Empty(t, resp)
+
+	req = logical.TestRequest(t, logical.ReadOperation, "key-status")
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
+
+	exp := map[string]interface{}{
+		"term": 2,
+	}
+	delete(resp.Data, "install_time")
+	delete(resp.Data, "encryptions")
+
+	require.Equalf(t, resp.Data, exp, "got: %#v expect: %#v", resp.Data, exp)
+}
+
 func testSystemBackend(t *testing.T) logical.Backend {
 	t.Helper()
 	c, _, _ := TestCoreUnsealed(t)
@@ -3458,6 +3592,17 @@ func testCoreSystemBackendRaw(t *testing.T) (*Core, logical.Backend, string) {
 	t.Helper()
 	c, _, root := TestCoreUnsealedRaw(t)
 	return c, c.systemBackend, root
+}
+
+func testSystemBackendUnsafeAuditCreation(t *testing.T) logical.Backend {
+	t.Helper()
+	c, _, _ := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"noop": corehelpers.NoopAuditFactory(nil),
+		},
+	})
+	return c.systemBackend
 }
 
 func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
@@ -3511,6 +3656,8 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 		"builtin":            true,
 		"version":            versions.GetBuiltinVersion(consts.PluginTypeDatabase, "mysql-database-plugin"),
 		"deprecation_status": deprecationStatus.String(),
+		"oci":                false,
+		"declarative":        false,
 	}
 	if !reflect.DeepEqual(actualRespData, expectedRespData) {
 		t.Fatalf("expected did not match actual, got %#v\n expected %#v\n", actualRespData, expectedRespData)
@@ -3558,12 +3705,14 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 
 	actual := resp.Data
 	expected := map[string]interface{}{
-		"name":    "test-plugin",
-		"command": filepath.Base(file.Name()),
-		"args":    []string{"--test"},
-		"sha256":  "31",
-		"builtin": false,
-		"version": "",
+		"name":        "test-plugin",
+		"command":     filepath.Base(file.Name()),
+		"args":        []string{"--test"},
+		"sha256":      "31",
+		"builtin":     false,
+		"version":     "",
+		"oci":         false,
+		"declarative": false,
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected did not match actual, got %#v\n expected %#v\n", actual, expected)
@@ -3608,12 +3757,14 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 
 	actual = resp.Data
 	expected = map[string]interface{}{
-		"name":    "test-plugin",
-		"command": filepath.Base(file.Name()),
-		"args":    []string{"--test"},
-		"sha256":  "31",
-		"builtin": false,
-		"version": "v0.1.0",
+		"name":        "test-plugin",
+		"command":     filepath.Base(file.Name()),
+		"args":        []string{"--test"},
+		"sha256":      "31",
+		"builtin":     false,
+		"version":     "v0.1.0",
+		"oci":         false,
+		"declarative": false,
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected did not match actual, got %#v\n expected %#v\n", actual, expected)
@@ -3636,7 +3787,12 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 }
 
 func TestSystemBackend_PluginCatalog_ListPlugins_SucceedsWithAuditLogEnabled(t *testing.T) {
-	core, b, root := testCoreSystemBackend(t)
+	c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"file": auditFile.Factory,
+		},
+	})
 
 	tempDir := t.TempDir()
 	f, err := os.CreateTemp(tempDir, "")
@@ -3653,7 +3809,7 @@ func TestSystemBackend_PluginCatalog_ListPlugins_SucceedsWithAuditLogEnabled(t *
 		},
 	}
 	ctx := namespace.RootContext(nil)
-	resp, err := b.HandleRequest(ctx, req)
+	resp, err := c.systemBackend.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v, err: %v", resp, err)
 	}
@@ -3661,7 +3817,7 @@ func TestSystemBackend_PluginCatalog_ListPlugins_SucceedsWithAuditLogEnabled(t *
 	// List plugins
 	req = logical.TestRequest(t, logical.ReadOperation, "sys/plugins/catalog")
 	req.ClientToken = root
-	resp, err = core.HandleRequest(ctx, req)
+	resp, err = c.HandleRequest(ctx, req)
 	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("resp: %#v, err: %v", resp, err)
 	}
@@ -4301,8 +4457,8 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 		}
 
 		doc := resp.Data["openapi"].(*framework.OASDocument)
-		if len(doc.Paths) != 1 {
-			t.Fatalf("expected 1 path, actual: %d", len(doc.Paths))
+		if len(doc.Paths) != 2 {
+			t.Fatalf("expected 2 paths, actual: %d", len(doc.Paths))
 		}
 
 		if doc.Paths["/rotate"] == nil {
@@ -5982,7 +6138,7 @@ func TestValidateVersion_HelpfulErrorWhenBuiltinOverridden(t *testing.T) {
 	defer file.Close()
 
 	command := filepath.Base(file.Name())
-	err = core.pluginCatalog.Set(context.Background(), "kubernetes", consts.PluginTypeCredential, "", command, nil, nil, nil)
+	err = core.pluginCatalog.Set(context.Background(), "kubernetes", consts.PluginTypeCredential, "", command, nil, nil, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -6126,7 +6282,7 @@ func TestPolicyStore_Store(t *testing.T) {
 		require.Contains(t, resp.Data, "modified")
 		exp := resp.Data["expiration"].(time.Time)
 		modified := resp.Data["modified"].(time.Time)
-		require.LessOrEqual(t, time.Now().Sub(modified), 2*time.Second)
+		require.LessOrEqual(t, time.Since(modified), 2*time.Second)
 
 		time.Sleep(2 * time.Second)
 

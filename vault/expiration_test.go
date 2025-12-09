@@ -12,13 +12,12 @@ import (
 	"reflect"
 	"sort"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/fairshare"
@@ -30,8 +29,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 )
-
-var testImagePull sync.Once
 
 // mockExpiration returns a mock expiration manager
 func mockExpiration(t testing.TB) *ExpirationManager {
@@ -48,11 +45,6 @@ func mockExpiration(t testing.TB) *ExpirationManager {
 	}
 
 	return c.expiration
-}
-
-func mockBackendExpiration(t testing.TB, backend physical.Backend) (*Core, *ExpirationManager) {
-	c, _, _ := TestCoreUnsealedBackend(benchhelpers.TBtoT(t), backend)
-	return c, c.expiration
 }
 
 func TestExpiration_Metrics(t *testing.T) {
@@ -148,7 +140,7 @@ func TestExpiration_Metrics(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var conf metricsutil.TelemetryConstConfig = metricsutil.TelemetryConstConfig{
+	conf := metricsutil.TelemetryConstConfig{
 		LeaseMetricsEpsilon:         time.Hour,
 		NumLeaseMetricsTimeBuckets:  2,
 		LeaseMetricsNameSpaceLabels: true,
@@ -885,7 +877,7 @@ func TestExpiration_Restore(t *testing.T) {
 
 	// Ensure all are reaped
 	start := time.Now()
-	for time.Now().Sub(start) < time.Second {
+	for time.Since(start) < time.Second {
 		noop.Lock()
 		less := len(noop.Requests) < 3
 		noop.Unlock()
@@ -1052,7 +1044,7 @@ func TestExpiration_Register_BatchToken(t *testing.T) {
 	start := time.Now()
 	reqID := 0
 	for {
-		if time.Now().Sub(start) > 10*time.Second {
+		if time.Since(start) > 10*time.Second {
 			t.Fatal("didn't revoke lease")
 		}
 		req = nil
@@ -1225,13 +1217,13 @@ func TestExpiration_RegisterAuth_NoTTL(t *testing.T) {
 	}
 
 	// First on core
-	_, err = c.RegisterAuth(ctx, 0, "auth/github/login", auth, "", true)
+	_, err = c.RegisterAuth(ctx, 0, "auth/github/login", auth, "", true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	auth.TokenPolicies[0] = "default"
-	_, err = c.RegisterAuth(ctx, 0, "auth/github/login", auth, "", true)
+	_, err = c.RegisterAuth(ctx, 0, "auth/github/login", auth, "", true, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -1342,7 +1334,7 @@ func TestExpiration_RevokeOnExpire(t *testing.T) {
 	}
 
 	start := time.Now()
-	for time.Now().Sub(start) < time.Second {
+	for time.Since(start) < time.Second {
 		req = nil
 
 		noop.Lock()
@@ -2022,7 +2014,7 @@ func TestExpiration_Renew_RevokeOnExpire(t *testing.T) {
 	}
 
 	start := time.Now()
-	for time.Now().Sub(start) < time.Second {
+	for time.Since(start) < time.Second {
 		req = nil
 
 		noop.Lock()
@@ -2445,10 +2437,7 @@ func TestExpiration_revokeEntry_rejected_fairsharing(t *testing.T) {
 	}
 	exp = core.expiration
 
-	for {
-		if !exp.inRestoreMode() {
-			break
-		}
+	for exp.inRestoreMode() {
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -2626,7 +2615,7 @@ func TestLeaseEntry(t *testing.T) {
 	if r, err := le.renewable(); !r {
 		t.Fatalf("lease with future expire time is renewable, err: %v", err)
 	}
-	le.Secret.LeaseOptions.Renewable = false
+	le.Secret.Renewable = false
 	if r, _ := le.renewable(); r {
 		t.Fatal("secret is set to not be renewable but returns as renewable")
 	}
@@ -2639,7 +2628,7 @@ func TestLeaseEntry(t *testing.T) {
 	if r, err := le.renewable(); !r {
 		t.Fatalf("auth is renewable but is set to not be, err: %v", err)
 	}
-	le.Auth.LeaseOptions.Renewable = false
+	le.Auth.Renewable = false
 	if r, _ := le.renewable(); r {
 		t.Fatal("auth is set to not be renewable but returns as renewable")
 	}
@@ -2877,7 +2866,7 @@ func TestExpiration_WalkTokens(t *testing.T) {
 
 	waitForRestore(t, exp)
 
-	for true {
+	for {
 		// Count before and after each revocation
 		t.Logf("Counting %d tokens.", len(tokenEntries))
 		count := 0

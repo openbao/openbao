@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/cap/oidc"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -439,7 +439,8 @@ func (b *jwtAuthBackend) processToken(ctx context.Context, req *logical.Request,
 		Alias:        alias,
 		GroupAliases: groupAliases,
 		InternalData: map[string]interface{}{
-			"role": roleName,
+			"role":      roleName,
+			"role_type": "native",
 		},
 		Metadata: tokenMetadata,
 		LeaseOptions: logical.LeaseOptions{
@@ -557,7 +558,7 @@ func (b *jwtAuthBackend) pathPoll(ctx context.Context, req *logical.Request, d *
 			// already been unmarshalled once, unlikely
 			return nil, err
 		}
-		oauth2Token := tokenOrError.Token.WithExtra(extra)
+		oauth2Token := tokenOrError.WithExtra(extra)
 
 		// idToken, ok := oauth2Token.Extra("id_token").(oidc.IDToken)
 		rawToken, ok := oauth2Token.Extra("id_token").(string)
@@ -819,18 +820,18 @@ func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rol
 		clientNonce: clientNonce,
 		deviceCode:  deviceCode,
 	}
-	b.oidcRequests.SetDefault(request.State(), oidcReq)
+	b.oidcRequests.Set(request.State(), oidcReq)
 
 	return oidcReq, nil
 }
 
 func (b *jwtAuthBackend) setOIDCRequest(stateID string, oidcReq *oidcRequest) {
-	b.oidcRequests.SetDefault(stateID, oidcReq)
+	b.oidcRequests.Set(stateID, oidcReq)
 }
 
 func (b *jwtAuthBackend) getOIDCRequest(stateID string) *oidcRequest {
 	if requestRaw, ok := b.oidcRequests.Get(stateID); ok {
-		return requestRaw.(*oidcRequest)
+		return requestRaw
 	}
 	return nil
 }
@@ -848,8 +849,8 @@ func validRedirect(uri string, allowed []string) bool {
 	}
 
 	// if uri isn't a loopback, just string search the allowed list
-	if !strutil.StrListContains([]string{"localhost", "127.0.0.1", "::1"}, inputURI.Hostname()) {
-		return strutil.StrListContains(allowed, uri)
+	if !slices.Contains([]string{"localhost", "127.0.0.1", "::1"}, inputURI.Hostname()) {
+		return slices.Contains(allowed, uri)
 	}
 
 	// otherwise, search for a match in a port-agnostic manner, per the OAuth RFC.

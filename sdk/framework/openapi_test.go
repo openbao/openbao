@@ -72,11 +72,11 @@ func TestOpenAPI_ExpandPattern(t *testing.T) {
 		outPathlets []string
 	}{
 		// A simple string without regexp metacharacters passes through as is
-		{"rekey/backup", []string{"rekey/backup"}},
+		{"rotate/root/backup", []string{"rotate/root/backup"}},
 		// A trailing regexp anchor metacharacter is removed
-		{"rekey/backup$", []string{"rekey/backup"}},
+		{"rotate/root/backup$", []string{"rotate/root/backup"}},
 		// As is a leading one
-		{"^rekey/backup", []string{"rekey/backup"}},
+		{"^rotate/root/backup", []string{"rotate/root/backup"}},
 		// Named capture groups become OpenAPI parameters
 		{"auth/(?P<path>.+?)/tune$", []string{"auth/{path}/tune"}},
 		{"auth/(?P<path>.+?)/tune/(?P<more>.*?)$", []string{"auth/{path}/tune/{more}"}},
@@ -869,7 +869,6 @@ func testPath(t *testing.T, path *Path, sp *logical.Paths, expectedJSON string) 
 	if err := documentPath(path, sp, "kv", logical.TypeLogical, doc); err != nil {
 		t.Fatal(err)
 	}
-	doc.CreateOperationIDs("")
 
 	docJSON, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
@@ -889,19 +888,6 @@ func testPath(t *testing.T, path *Path, sp *logical.Paths, expectedJSON string) 
 	if diff := deep.Equal(actual, expected); diff != nil {
 		// fmt.Println(string(docJSON)) // uncomment to debug generated JSON (very helpful when fixing tests)
 		t.Fatal(diff)
-	}
-}
-
-func getPathOp(pi *OASPathItem, op string) *OASOperation {
-	switch op {
-	case "get":
-		return pi.Get
-	case "post":
-		return pi.Post
-	case "delete":
-		return pi.Delete
-	default:
-		panic("unexpected operation: " + op)
 	}
 }
 

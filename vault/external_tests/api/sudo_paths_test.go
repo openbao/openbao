@@ -87,13 +87,12 @@ func TestSudoPaths(t *testing.T) {
 }
 
 func getSudoPathsFromSpec(client *api.Client) (map[string]struct{}, error) {
-	r := client.NewRequest("GET", "/v1/sys/internal/specs/openapi")
-	resp, err := client.RawRequest(r)
+	resp, err := client.Logical().ReadRaw("sys/internal/specs/openapi")
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve sudo endpoints: %v", err)
 	}
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 
 	oasInfo := make(map[string]interface{})

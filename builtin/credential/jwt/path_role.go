@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -550,7 +550,7 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 	}
 
 	if role.TokenPeriod > b.System().MaxLeaseTTL() {
-		return logical.ErrorResponse(fmt.Sprintf("'period' of '%q' is greater than the backend's maximum lease TTL of '%q'", role.TokenPeriod.String(), b.System().MaxLeaseTTL().String())), nil
+		return logical.ErrorResponse("'period' of '%q' is greater than the backend's maximum lease TTL of '%q'", role.TokenPeriod.String(), b.System().MaxLeaseTTL().String()), nil
 	}
 
 	if tokenExpLeewayRaw, ok := data.GetOk("expiration_leeway"); ok {
@@ -620,7 +620,7 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 		// sanity check mappings for duplicates and collision with reserved names
 		targets := make(map[string]bool)
 		for _, metadataKey := range claimMappings {
-			if strutil.StrListContains(reservedMetadata, metadataKey) {
+			if slices.Contains(reservedMetadata, metadataKey) {
 				return logical.ErrorResponse("metadata key %q is reserved and may not be a mapping destination", metadataKey), nil
 			}
 

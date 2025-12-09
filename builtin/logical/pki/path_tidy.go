@@ -12,15 +12,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-var tidyCancelledError = errors.New("tidy operation cancelled")
+var errTidyCancelled = errors.New("tidy operation cancelled")
 
 type tidyStatusState int
 
@@ -769,7 +769,7 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 		var err error
 		pauseDuration, err = parseutil.ParseDurationSecond(pauseDurationStr)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("Error parsing pause_duration: %v", err)), nil
+			return logical.ErrorResponse("Error parsing pause_duration: %v", err), nil
 		}
 
 		if pauseDuration < (0 * time.Second) {
@@ -863,7 +863,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.RevokedCerts || config.IssuerAssocs || config.InvalidCerts {
@@ -876,7 +876,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if rebuildCRL {
@@ -887,7 +887,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.ExpiredIssuers {
@@ -898,7 +898,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.BackupBundle {
@@ -909,7 +909,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			if config.TidyAcme {
@@ -956,7 +956,7 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 
 		// Check for cancel before continuing
 		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption
@@ -1058,7 +1058,7 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 	}
 
 	// Use HandleListPage to process paginated results
-	err := logical.HandleListPage(req.Storage, "certs/", config.PageSize, itemCallback, batchCallback)
+	err := logical.HandleListPage(ctx, req.Storage, "certs/", config.PageSize, itemCallback, batchCallback)
 	if err != nil {
 		return 0, err
 	}
@@ -1091,9 +1091,9 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 	// Number of certificates on current page. This value is <= PageSize.
 	var lenSerials int
 	// Total number of revoked certificates in storage
-	var totalRevokedSerialCount int = 0
+	totalRevokedSerialCount := 0
 	// Total number of deleted revoked certificates in this tidy call
-	var revokedDeletedCount int = 0
+	revokedDeletedCount := 0
 
 	var revInfo revocationInfo
 	haveWarned := false
@@ -1107,7 +1107,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 
 		// Check for cancel before continuing.
 		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption.
@@ -1183,7 +1183,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 		// Tidy operations over revoked certs should execute prior to
 		// tidyRevokedCerts as that may remove the entry. If that happens,
 		// we won't persist the revInfo changes (as it was deleted instead).
-		var storeCert bool = false
+		storeCert := false
 		if config.IssuerAssocs {
 			if !isRevInfoIssuerValid(&revInfo, issuerIDCertMap) {
 				b.tidyStatusIncMissingIssuerCertCount()
@@ -1238,7 +1238,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 	}
 
 	// Use handleListPage to process paginated results
-	err = logical.HandleListPage(req.Storage, "revoked/", config.PageSize, itemCallback, batchCallback)
+	err = logical.HandleListPage(ctx, req.Storage, "revoked/", config.PageSize, itemCallback, batchCallback)
 	if err != nil {
 		return false, err
 	}
@@ -1474,7 +1474,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 
 		// Check for cancel before continuing.
 		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption.
@@ -1493,7 +1493,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 	}
 
 	// Use HandleListPage to process paginated results
-	err := logical.HandleListPage(req.Storage, acmeThumbprintPrefix, config.PageSize, itemCallback, batchCallback)
+	err := logical.HandleListPage(ctx, req.Storage, acmeThumbprintPrefix, config.PageSize, itemCallback, batchCallback)
 	if err != nil {
 		return err
 	}
@@ -1541,7 +1541,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+				return errTidyCancelled
 			}
 
 			// Check for pause duration to reduce resource consumption.
@@ -1708,7 +1708,7 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 	if intervalRaw, ok := d.GetOk("interval_duration"); ok {
 		config.Interval = time.Duration(intervalRaw.(int)) * time.Second
 		if config.Interval < 0 {
-			return logical.ErrorResponse(fmt.Sprintf("given interval_duration must be greater than or equal to zero seconds; got: %v", intervalRaw)), nil
+			return logical.ErrorResponse("given interval_duration must be greater than or equal to zero seconds; got: %v", intervalRaw), nil
 		}
 	}
 
@@ -1731,7 +1731,7 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 	if safetyBufferRaw, ok := d.GetOk("safety_buffer"); ok {
 		config.SafetyBuffer = time.Duration(safetyBufferRaw.(int)) * time.Second
 		if config.SafetyBuffer < 1*time.Second {
-			return logical.ErrorResponse(fmt.Sprintf("given safety_buffer must be at least one second; got: %v", safetyBufferRaw)), nil
+			return logical.ErrorResponse("given safety_buffer must be at least one second; got: %v", safetyBufferRaw), nil
 		}
 	}
 
@@ -1739,14 +1739,14 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 		revokedSafetyBuffer := time.Duration(revokedSafetyBufferRaw.(int)) * time.Second
 		config.RevokedSafetyBuffer = &revokedSafetyBuffer
 		if *config.RevokedSafetyBuffer < 1*time.Second {
-			return logical.ErrorResponse(fmt.Sprintf("revoked_safety_buffer must be at least one second; got: %v", revokedSafetyBufferRaw)), nil
+			return logical.ErrorResponse("revoked_safety_buffer must be at least one second; got: %v", revokedSafetyBufferRaw), nil
 		}
 	}
 
 	if pauseDurationRaw, ok := d.GetOk("pause_duration"); ok {
 		config.PauseDuration, err = parseutil.ParseDurationSecond(pauseDurationRaw.(string))
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("unable to parse given pause_duration: %v", err)), nil
+			return logical.ErrorResponse("unable to parse given pause_duration: %v", err), nil
 		}
 
 		if config.PauseDuration < (0 * time.Second) {
@@ -1768,7 +1768,7 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 	if issuerSafetyBufferRaw, ok := d.GetOk("issuer_safety_buffer"); ok {
 		config.IssuerSafetyBuffer = time.Duration(issuerSafetyBufferRaw.(int)) * time.Second
 		if config.IssuerSafetyBuffer < 1*time.Second {
-			return logical.ErrorResponse(fmt.Sprintf("given safety_buffer must be at least one second; got: %v", issuerSafetyBufferRaw)), nil
+			return logical.ErrorResponse("given safety_buffer must be at least one second; got: %v", issuerSafetyBufferRaw), nil
 		}
 	}
 
@@ -1783,7 +1783,7 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 	if acmeAccountSafetyBufferRaw, ok := d.GetOk("acme_account_safety_buffer"); ok {
 		config.AcmeAccountSafetyBuffer = time.Duration(acmeAccountSafetyBufferRaw.(int)) * time.Second
 		if config.AcmeAccountSafetyBuffer < 1*time.Second {
-			return logical.ErrorResponse(fmt.Sprintf("given acme_account_safety_buffer must be at least one second; got: %v", acmeAccountSafetyBufferRaw)), nil
+			return logical.ErrorResponse("given acme_account_safety_buffer must be at least one second; got: %v", acmeAccountSafetyBufferRaw), nil
 		}
 	}
 
@@ -1848,11 +1848,12 @@ func (b *backend) tidyStatusStop(err error) {
 
 	b.tidyStatus.timeFinished = time.Now()
 	b.tidyStatus.err = err
-	if err == nil {
+	switch err {
+	case nil:
 		b.tidyStatus.state = tidyStatusFinished
-	} else if err == tidyCancelledError {
+	case errTidyCancelled:
 		b.tidyStatus.state = tidyStatusCancelled
-	} else {
+	default:
 		b.tidyStatus.state = tidyStatusError
 	}
 

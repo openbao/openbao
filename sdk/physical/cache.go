@@ -8,8 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	metrics "github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
@@ -296,7 +296,7 @@ func (c *transactionalCache) BeginReadOnlyTx(ctx context.Context) (Transaction, 
 
 	// txn does not implement TransactionalBackend because we don't support
 	// nested transactions so this will always cast to *cache.
-	ctxn := c.cache.cloneWithStorage(txn)
+	ctxn := c.cloneWithStorage(txn)
 	return &cacheTransaction{
 		*ctxn,
 		c,
@@ -306,13 +306,13 @@ func (c *transactionalCache) BeginReadOnlyTx(ctx context.Context) (Transaction, 
 }
 
 func (c *transactionalCache) BeginTx(ctx context.Context) (Transaction, error) {
-	txn, err := c.cache.backend.(TransactionalBackend).BeginTx(ctx)
+	txn, err := c.backend.(TransactionalBackend).BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// See note above in BeginReadOnlyTx(...).
-	ctxn := c.cache.cloneWithStorage(txn)
+	ctxn := c.cloneWithStorage(txn)
 	return &cacheTransaction{
 		*ctxn,
 		c,
@@ -411,4 +411,14 @@ func (c *cacheTransaction) Rollback(ctx context.Context) error {
 	// the underlying storage at all.
 
 	return nil
+}
+
+// Invalidate removes the value for key from the cache.
+// This will not affect transactions that have already been started.
+func (c *cache) Invalidate(ctx context.Context, key string) {
+	lock := locksutil.LockForKey(c.locks, key)
+	lock.Lock()
+	defer lock.Unlock()
+
+	c.lru.Remove(key)
 }

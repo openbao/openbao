@@ -1,0 +1,6 @@
+```release-note:security
+audit: redact `HTTPRawBody` response parameter in audit logs; CVE-2025-62513 / GHSA-ghfh-fmx4-26h8.
+```
+```release-note:security
+audit: redact `[]byte` type response parameters in audit logs; GHSA-rc54-2g2c-g36g.
+```

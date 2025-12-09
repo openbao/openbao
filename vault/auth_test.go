@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -58,7 +58,7 @@ func TestAuthMountMetrics(t *testing.T) {
 	mountKeyName := "core.mount_table.num_entries.type|auth||local|false||"
 	mountMetrics := &c.metricsHelper.LoopMetrics.Metrics
 	loadMetric, ok := mountMetrics.Load(mountKeyName)
-	var numEntriesMetric metricsutil.GaugeMetric = loadMetric.(metricsutil.GaugeMetric)
+	numEntriesMetric := loadMetric.(metricsutil.GaugeMetric)
 
 	// 1 default nonlocal auth backend
 	if !ok || numEntriesMetric.Value != 1 {

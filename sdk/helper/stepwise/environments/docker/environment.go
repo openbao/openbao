@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
@@ -485,7 +484,7 @@ type dockerClusterNode struct {
 	TLSConfig         *tls.Config
 	WorkDir           string
 	Cluster           *DockerCluster
-	container         *types.ContainerJSON
+	container         *container.InspectResponse
 	dockerAPI         *docker.Client
 }
 
@@ -615,7 +614,7 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 		IP:   net.ParseIP(n.container.NetworkSettings.IPAddress),
 		Port: 8200,
 	}
-	ports := n.container.NetworkSettings.NetworkSettingsBase.Ports[nat.Port("8200/tcp")]
+	ports := n.container.NetworkSettings.Ports[nat.Port("8200/tcp")]
 	if len(ports) == 0 {
 		n.Cleanup()
 		return errors.New("could not find port binding for 8200/tcp")

@@ -404,7 +404,7 @@ func ListSets(b logical.Backend, s logical.Storage) func(t *testing.T) {
 		if len(listedKeys) != 1 {
 			t.Fatalf("expected 1 key but received %s", listedKeys)
 		}
-		if "test-set" != listedKeys[0] {
+		if listedKeys[0] != "test-set" {
 			t.Fatal("expected test-set to be the only listed item")
 		}
 	}

@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -264,7 +265,7 @@ func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage
 	}
 
 	// Make sure the seal configs were updated correctly.
-	b, r, err := cluster.Cores[0].Core.PhysicalSealConfigs(context.Background())
+	b, r, err := cluster.Cores[0].PhysicalSealConfigs(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,8 +341,6 @@ func migrateFromShamirToTransit_Pre14(t *testing.T, logger hclog.Logger, storage
 func validateMigration(t *testing.T, storage teststorage.ReusableStorage,
 	cluster *vault.TestCluster, leaderIdx int, f func(t *testing.T, core *vault.TestClusterCore),
 ) {
-	t.Helper()
-
 	leader := cluster.Cores[leaderIdx]
 
 	secret, err := leader.Client.Logical().Read("kv-wrapped/foo")
@@ -439,7 +438,6 @@ func migratePost14(t *testing.T, storage teststorage.ReusableStorage, cluster *v
 }
 
 func unsealMigrate(t *testing.T, client *api.Client, keys [][]byte, transitServerAvailable bool) {
-	t.Helper()
 	if err := attemptUnseal(client, keys); err == nil {
 		t.Fatal("expected error due to lack of migrate parameter")
 	}
@@ -472,7 +470,7 @@ func attemptUnsealMigrate(client *api.Client, keys [][]byte, transitServerAvaila
 			} else {
 				// The transit server is stopped.
 				if err == nil {
-					return errors.New("expected error due to transit server being stopped.")
+					return errors.New("expected error due to transit server being stopped")
 				}
 			}
 			break
@@ -483,14 +481,18 @@ func attemptUnsealMigrate(client *api.Client, keys [][]byte, transitServerAvaila
 
 // awaitMigration waits for migration to finish.
 func awaitMigration(t *testing.T, client *api.Client) {
-	timeout := time.Now().Add(60 * time.Second)
-	for {
-		if time.Now().After(timeout) {
-			break
-		}
-
+	timeout := time.Now().Add(120 * time.Second)
+	for time.Now().Before(timeout) {
 		resp, err := client.Sys().SealStatus()
 		if err != nil {
+			// When a node is started and unsealed, it is still in standby
+			// mode before it steps up and completes seal migration.
+			// During that time, SealStatus() returns "barrier seal type of ..."
+			// error until the node adopts the new seal config.
+			// Ignore that error and keep trying until seal is migrated.
+			if strings.Contains(err.Error(), "barrier seal type of") {
+				continue
+			}
 			t.Fatal(err)
 		}
 		if !resp.Migration {
@@ -504,7 +506,6 @@ func awaitMigration(t *testing.T, client *api.Client) {
 }
 
 func unseal(t *testing.T, client *api.Client, keys [][]byte) {
-	t.Helper()
 	if err := attemptUnseal(client, keys); err != nil {
 		t.Fatal(err)
 	}
@@ -535,7 +536,6 @@ func attemptUnseal(client *api.Client, keys [][]byte) error {
 }
 
 func verifySealConfigShamir(t *testing.T, core *vault.TestClusterCore) {
-	t.Helper()
 	b, r, err := core.PhysicalSealConfigs(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -547,7 +547,6 @@ func verifySealConfigShamir(t *testing.T, core *vault.TestClusterCore) {
 }
 
 func verifySealConfigTransit(t *testing.T, core *vault.TestClusterCore) {
-	t.Helper()
 	b, r, err := core.PhysicalSealConfigs(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -558,7 +557,6 @@ func verifySealConfigTransit(t *testing.T, core *vault.TestClusterCore) {
 
 // verifyBarrierConfig verifies that a barrier configuration is correct.
 func verifyBarrierConfig(t *testing.T, cfg *vault.SealConfig, sealType string, shares, threshold int, stored uint) {
-	t.Helper()
 	if cfg.Type != sealType {
 		t.Fatalf("bad seal config: %#v, expected type=%q", cfg, sealType)
 	}
@@ -575,8 +573,6 @@ func verifyBarrierConfig(t *testing.T, cfg *vault.SealConfig, sealType string, s
 
 // initializeShamir initializes a brand new backend storage with Shamir.
 func initializeShamir(t *testing.T, logger hclog.Logger, storage teststorage.ReusableStorage, basePort int) (*vault.TestCluster, *vault.TestClusterOptions) {
-	t.Helper()
-
 	baseClusterPort := basePort + 10
 
 	// Start the cluster
@@ -629,7 +625,6 @@ func initializeShamir(t *testing.T, logger hclog.Logger, storage teststorage.Reu
 
 // runShamir uses a pre-populated backend storage with Shamir.
 func runShamir(t *testing.T, logger hclog.Logger, storage teststorage.ReusableStorage, basePort int, rootToken string, barrierKeys [][]byte) {
-	t.Helper()
 	baseClusterPort := basePort + 10
 
 	// Start the cluster
@@ -700,8 +695,6 @@ func runShamir(t *testing.T, logger hclog.Logger, storage teststorage.ReusableSt
 func InitializeTransit(t *testing.T, logger hclog.Logger, storage teststorage.ReusableStorage, basePort int,
 	tss *sealhelper.TransitSealServer, sealKeyName string,
 ) (*vault.TestCluster, *vault.TestClusterOptions) {
-	t.Helper()
-
 	baseClusterPort := basePort + 10
 
 	// Start the cluster

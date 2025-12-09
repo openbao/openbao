@@ -133,6 +133,10 @@ supplied name.
   execution of the plugin. Each entry is of the form "key=value". e.g
   `"FOO=BAR"`.
 
+- `oci` `(bool: false)` - Whether the plugin is a declaratively donwloaded OCI plugin.
+  Note that manually registering such plugins means that `plugin_auto_register=true`
+  cannot be used.
+
 ### Sample payload
 
 ```json

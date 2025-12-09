@@ -1,0 +1,3 @@
+```release-note:change
+sys/host-info: This endpoint may start reporting slightly higher memory usage than before (On Linux only). See https://github.com/shirou/gopsutil/releases/tag/v4.25.8 for more information.
+```

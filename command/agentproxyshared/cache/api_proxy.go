@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	gohttp "net/http"
-	"sync"
 
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/api/v2"
@@ -18,8 +17,6 @@ import (
 type APIProxy struct {
 	client                  *api.Client
 	logger                  hclog.Logger
-	l                       sync.RWMutex
-	lastIndexStates         []string
 	userAgentString         string
 	userAgentStringFunction func(string) string
 }
@@ -91,6 +88,7 @@ func (ap *APIProxy) Send(ctx context.Context, req *SendRequest) (*SendResponse, 
 	// Make the request to Vault and get the response
 	ap.logger.Info("forwarding request to OpenBao", "method", req.Request.Method, "path", req.Request.URL.Path)
 
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	resp, err := client.RawRequestWithContext(ctx, fwReq)
 	if resp == nil && err != nil {
 		// We don't want to cache nil responses, so we simply return the error

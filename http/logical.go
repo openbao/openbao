@@ -4,7 +4,6 @@
 package http
 
 import (
-	"bufio"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -15,40 +14,21 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
-	"go.uber.org/atomic"
 )
-
-// bufferedReader can be used to replace a request body with a buffered
-// version. The Close method invokes the original Closer.
-type bufferedReader struct {
-	*bufio.Reader
-	rOrig io.ReadCloser
-}
-
-func newBufferedReader(r io.ReadCloser) *bufferedReader {
-	return &bufferedReader{
-		Reader: bufio.NewReader(r),
-		rOrig:  r,
-	}
-}
-
-func (b *bufferedReader) Close() error {
-	return b.rOrig.Close()
-}
 
 const MergePatchContentTypeHeader = "application/merge-patch+json"
 
-func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
+func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical.Request, int, error) {
 	path := r.URL.Path[len("/v1/"):]
 
 	var data map[string]interface{}
-	var origBody io.ReadCloser
 	var passHTTPReq bool
 	var responseWriter http.ResponseWriter
 
@@ -70,7 +50,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		if listStr != "" {
 			list, err = strconv.ParseBool(listStr)
 			if err != nil {
-				return nil, nil, http.StatusBadRequest, nil
+				return nil, http.StatusBadRequest, nil
 			}
 		}
 
@@ -78,12 +58,12 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		if scanStr != "" {
 			scan, err = strconv.ParseBool(scanStr)
 			if err != nil {
-				return nil, nil, http.StatusBadRequest, nil
+				return nil, http.StatusBadRequest, nil
 			}
 		}
 
 		if list && scan {
-			return nil, nil, http.StatusBadRequest, nil
+			return nil, http.StatusBadRequest, nil
 		}
 
 		if list {
@@ -116,28 +96,30 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 	case "POST", "PUT":
 		op = logical.UpdateOperation
 
-		// Buffer the request body in order to allow us to peek at the beginning
-		// without consuming it. This approach involves no copying.
-		bufferedBody := newBufferedReader(r.Body)
-		r.Body = bufferedBody
-
 		// If we are uploading a snapshot or receiving an ocsp-request (which
 		// is der encoded) we don't want to parse it. Instead, we will simply
 		// add the HTTP request to the logical request object for later consumption.
 		contentType := r.Header.Get("Content-Type")
 		if path == "sys/storage/raft/snapshot" || path == "sys/storage/raft/snapshot-force" || isOcspRequest(contentType) {
+			// While snapshots are handled specially to size-limit the request,
+			// OCSP requests are still bound by the maximum content size.
 			passHTTPReq = true
-			origBody = r.Body
 		} else {
 			// Sample the first bytes to determine whether this should be parsed as
 			// a form or as JSON. The amount to look ahead (512 bytes) is arbitrary
 			// but extremely tolerant (i.e. allowing 511 bytes of leading whitespace
 			// and an incorrect content-type).
-			head, err := bufferedBody.Peek(512)
-			if err != nil && err != bufio.ErrBufferFull && err != io.EOF {
+			head, err := io.ReadAll(io.LimitReader(r.Body, 512))
+			if err != nil && err != io.EOF {
 				status := http.StatusBadRequest
 				logical.AdjustErrorStatusCode(&status, err)
-				return nil, nil, status, errors.New("error reading data")
+				return nil, status, errors.New("error reading data")
+			}
+
+			// Seek back to the start.
+			if err := resetBody(r); err != nil {
+				status := http.StatusInternalServerError
+				return nil, status, fmt.Errorf("failed to reset body: %w", err)
 			}
 
 			if isForm(head, contentType) {
@@ -145,12 +127,12 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 				if err != nil {
 					status := http.StatusBadRequest
 					logical.AdjustErrorStatusCode(&status, err)
-					return nil, nil, status, errors.New("error parsing form data")
+					return nil, status, errors.New("error parsing form data")
 				}
 
 				data = formData
 			} else {
-				origBody, err = parseJSONRequest(r, w, &data)
+				err = parseJSONRequest(r, w, &data)
 				if err == io.EOF {
 					data = nil
 					err = nil
@@ -158,7 +140,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 				if err != nil {
 					status := http.StatusBadRequest
 					logical.AdjustErrorStatusCode(&status, err)
-					return nil, nil, status, errors.New("error parsing JSON")
+					return nil, status, errors.New("error parsing JSON")
 				}
 			}
 		}
@@ -171,14 +153,14 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		if err != nil {
 			status := http.StatusBadRequest
 			logical.AdjustErrorStatusCode(&status, err)
-			return nil, nil, status, err
+			return nil, status, err
 		}
 
 		if contentType != MergePatchContentTypeHeader {
-			return nil, nil, http.StatusUnsupportedMediaType, fmt.Errorf("PATCH requires Content-Type of %s, provided %s", MergePatchContentTypeHeader, contentType)
+			return nil, http.StatusUnsupportedMediaType, fmt.Errorf("PATCH requires Content-Type of %s, provided %s", MergePatchContentTypeHeader, contentType)
 		}
 
-		origBody, err = parseJSONRequest(r, w, &data)
+		err = parseJSONRequest(r, w, &data)
 
 		if err == io.EOF {
 			data = nil
@@ -188,7 +170,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		if err != nil {
 			status := http.StatusBadRequest
 			logical.AdjustErrorStatusCode(&status, err)
-			return nil, nil, status, errors.New("error parsing JSON")
+			return nil, status, errors.New("error parsing JSON")
 		}
 
 	case "LIST":
@@ -210,12 +192,12 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		data = parseQuery(r.URL.Query())
 	case "OPTIONS":
 	default:
-		return nil, nil, http.StatusMethodNotAllowed, nil
+		return nil, http.StatusMethodNotAllowed, nil
 	}
 
 	requestId, err := uuid.GenerateUUID()
 	if err != nil {
-		return nil, nil, http.StatusInternalServerError, fmt.Errorf("failed to generate identifier for the request: %w", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to generate identifier for the request: %w", err)
 	}
 
 	req := &logical.Request{
@@ -224,7 +206,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		Path:       path,
 		Data:       data,
 		Connection: getConnection(r),
-		Headers:    r.Header,
+		Headers:    r.Header.Clone(),
 	}
 
 	if passHTTPReq {
@@ -234,7 +216,12 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		req.ResponseWriter = logical.NewHTTPResponseWriter(responseWriter)
 	}
 
-	return req, origBody, 0, nil
+	// Be a good citizen and reset our body back to the beginning.
+	if err := resetBody(r); err != nil {
+		respondError(w, http.StatusInternalServerError, err)
+	}
+
+	return req, 0, nil
 }
 
 func isOcspRequest(contentType string) bool {
@@ -297,30 +284,30 @@ func buildLogicalPath(r *http.Request) (string, int, error) {
 	return path, 0, nil
 }
 
-func buildLogicalRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
-	req, origBody, status, err := buildLogicalRequestNoAuth(w, r)
+func buildLogicalRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) (*logical.Request, int, error) {
+	req, status, err := buildLogicalRequestNoAuth(w, r)
 	if err != nil || status != 0 {
-		return nil, nil, status, err
+		return nil, status, err
 	}
 
 	requestAuth(r, req)
 
 	req, err = requestWrapInfo(r, req)
 	if err != nil {
-		return nil, nil, http.StatusBadRequest, fmt.Errorf("error parsing X-Vault-Wrap-TTL header: %w", err)
+		return nil, http.StatusBadRequest, fmt.Errorf("error parsing X-Vault-Wrap-TTL header: %w", err)
 	}
 
 	err = parseMFAHeader(req)
 	if err != nil {
-		return nil, nil, http.StatusBadRequest, fmt.Errorf("failed to parse X-Vault-MFA header: %w", err)
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to parse X-Vault-MFA header: %w", err)
 	}
 
 	err = requestPolicyOverride(r, req)
 	if err != nil {
-		return nil, nil, http.StatusBadRequest, fmt.Errorf("failed to parse %s header: %w", PolicyOverrideHeaderName, err)
+		return nil, http.StatusBadRequest, fmt.Errorf("failed to parse %s header: %w", PolicyOverrideHeaderName, err)
 	}
 
-	return req, origBody, 0, nil
+	return req, 0, nil
 }
 
 // handleLogical returns a handler for processing logical requests. These requests
@@ -347,9 +334,9 @@ func handleLogicalNoForward(core *vault.Core) http.Handler {
 	return handleLogicalInternal(core, false, true)
 }
 
-func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.String) http.Handler {
+func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.Value) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req, _, statusCode, err := buildLogicalRequestNoAuth(w, r)
+		req, statusCode, err := buildLogicalRequestNoAuth(w, r)
 		if err != nil || statusCode != 0 {
 			respondError(w, statusCode, err)
 			return
@@ -379,7 +366,15 @@ func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.String) http.Han
 // toggles. Refer to usage on functions for possible behaviors.
 func handleLogicalInternal(core *vault.Core, injectDataIntoTopLevel bool, noForward bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req, origBody, statusCode, err := buildLogicalRequest(core, w, r)
+		if core.HAEnabled() && !core.StandbyReadsEnabled() {
+			standby := core.Standby()
+			if standby {
+				forwardRequest(core, w, r)
+				return
+			}
+		}
+
+		req, statusCode, err := buildLogicalRequest(core, w, r)
 		if err != nil || statusCode != 0 {
 			respondError(w, statusCode, err)
 			return
@@ -396,9 +391,6 @@ func handleLogicalInternal(core *vault.Core, injectDataIntoTopLevel bool, noForw
 			respondError(w, http.StatusBadRequest, vault.ErrCannotForwardLocalOnly)
 			return
 		case needsForward && !noForward:
-			if origBody != nil {
-				r.Body = origBody
-			}
 			forwardRequest(core, w, r)
 			return
 		case !ok:
@@ -428,7 +420,7 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 		if resp.Redirect != "" {
 			// If we have a redirect, redirect! We use a 307 code
 			// because we don't actually know if its permanent.
-			http.Redirect(w, r, resp.Redirect, 307)
+			http.Redirect(w, r, resp.Redirect, http.StatusTemporaryRedirect)
 			return
 		}
 
@@ -598,5 +590,5 @@ func getConnection(r *http.Request) (connection *logical.Connection) {
 		RemotePort: remotePort,
 		ConnState:  r.TLS,
 	}
-	return
+	return connection
 }

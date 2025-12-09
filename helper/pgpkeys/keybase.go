@@ -51,7 +51,7 @@ func FetchKeybasePubkeys(input []string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	type PublicKeys struct {
 		Primary struct {

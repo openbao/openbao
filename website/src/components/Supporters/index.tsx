@@ -39,11 +39,19 @@ const SupportList: SupportItem[] = [
         description: "Development; open-source community efforts",
     },
     {
+        title: "SAP",
+        description: "Development; open-source community efforts",
+    },
+    {
         title: "NeoNephos",
         description: "Development; open-source community efforts",
     },
     {
         title: "Adfinis",
+        description: "Development; open-source community efforts",
+    },
+    {
+        title: "Liquid Reply",
         description: "Development; open-source community efforts",
     },
 ];

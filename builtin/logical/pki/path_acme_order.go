@@ -15,11 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openbao/openbao/sdk/v2/helper/strutil"
-
-	"github.com/openbao/openbao/sdk/v2/helper/certutil"
-
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/net/idna"
 )
@@ -1056,7 +1054,7 @@ func (b *backend) acmeTidyOrder(sc *storageContext, accountId string, orderPath 
 		}
 		orderExpiry = order.Expires
 	}
-	if shouldTidy == false {
+	if !shouldTidy {
 		return shouldTidy, orderExpiry, nil
 	}
 

@@ -9,14 +9,14 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/armon/go-metrics"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/api/v2"
@@ -194,7 +194,7 @@ type MountMigrationInfo struct {
 // Note that the reported storage sizes are pre-encryption
 // sizes. Currently barrier uses aes-gcm for encryption, which
 // preserves plaintext size, adding a constant of 30 bytes of
-// padding, which is negligable and subject to change, and thus
+// padding, which is negligible and subject to change, and thus
 // not accounted for.
 func (c *Core) tableMetrics(entryCount int, isLocal bool, isAuth bool, compressedTableLen int) {
 	if c.metricsHelper == nil {
@@ -241,15 +241,46 @@ func (c *Core) tableMetrics(entryCount int, isLocal bool, isAuth bool, compresse
 // other locations holding pointers. Care needs to be taken
 // if modifying entries rather than modifying the table itself
 func (t *MountTable) shallowClone() *MountTable {
-	mt := &MountTable{
+	return &MountTable{
 		Type:    t.Type,
-		Entries: make([]*MountEntry, len(t.Entries)),
+		Entries: slices.Clone(t.Entries),
+	}
+}
+
+func (old *MountTable) delta(new *MountTable) (additions []*MountEntry, deletions []*MountEntry) {
+	if old == nil {
+		additions = new.Entries
+		return additions, deletions
 	}
 
-	for i, e := range t.Entries {
-		mt.Entries[i] = e
+	additions = slices.Clone(new.Entries)
+	deletions = slices.Clone(old.Entries)
+
+	slices.SortFunc(additions, func(a, b *MountEntry) int {
+		return strings.Compare(a.Accessor, b.Accessor)
+	})
+
+	slices.SortFunc(deletions, func(a, b *MountEntry) int {
+		return strings.Compare(a.Accessor, b.Accessor)
+	})
+
+	idxOld := 0
+	idxNew := 0
+
+	for idxNew < len(additions) && idxOld < len(deletions) {
+		diff := strings.Compare(additions[idxNew].Accessor, deletions[idxOld].Accessor)
+		switch {
+		case diff == 0:
+			additions = slices.Delete(additions, idxNew, idxNew+1)
+			deletions = slices.Delete(deletions, idxOld, idxOld+1)
+		case diff < 0:
+			idxNew += 1
+		case diff > 0:
+			idxOld += 1
+		}
 	}
-	return mt
+
+	return additions, deletions
 }
 
 // setTaint is used to set the taint on given entry Accepts either the mount
@@ -380,49 +411,49 @@ type MountEntry struct {
 
 // MountConfig is used to hold settable options
 type MountConfig struct {
-	DefaultLeaseTTL           time.Duration         `json:"default_lease_ttl,omitempty" structs:"default_lease_ttl" mapstructure:"default_lease_ttl"` // Override for global default
-	MaxLeaseTTL               time.Duration         `json:"max_lease_ttl,omitempty" structs:"max_lease_ttl" mapstructure:"max_lease_ttl"`             // Override for global default
-	ForceNoCache              bool                  `json:"force_no_cache,omitempty" structs:"force_no_cache" mapstructure:"force_no_cache"`          // Override for global default
-	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" structs:"audit_non_hmac_request_keys" mapstructure:"audit_non_hmac_request_keys"`
-	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" structs:"audit_non_hmac_response_keys" mapstructure:"audit_non_hmac_response_keys"`
-	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" structs:"listing_visibility" mapstructure:"listing_visibility"`
-	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" structs:"passthrough_request_headers" mapstructure:"passthrough_request_headers"`
-	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
-	TokenType                 logical.TokenType     `json:"token_type,omitempty" structs:"token_type" mapstructure:"token_type"`
+	DefaultLeaseTTL           time.Duration         `json:"default_lease_ttl,omitempty" mapstructure:"default_lease_ttl"` // Override for global default
+	MaxLeaseTTL               time.Duration         `json:"max_lease_ttl,omitempty" mapstructure:"max_lease_ttl"`         // Override for global default
+	ForceNoCache              bool                  `json:"force_no_cache,omitempty" mapstructure:"force_no_cache"`       // Override for global default
+	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" mapstructure:"audit_non_hmac_request_keys"`
+	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" mapstructure:"audit_non_hmac_response_keys"`
+	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" mapstructure:"listing_visibility"`
+	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" mapstructure:"passthrough_request_headers"`
+	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" mapstructure:"allowed_response_headers"`
+	TokenType                 logical.TokenType     `json:"token_type,omitempty" mapstructure:"token_type"`
 	AllowedManagedKeys        []string              `json:"allowed_managed_keys,omitempty" mapstructure:"allowed_managed_keys"`
 	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
 
 	// PluginName is the name of the plugin registered in the catalog.
 	//
 	// Deprecated: MountEntry.Type should be used instead for Vault 1.0.0 and beyond.
-	PluginName string `json:"plugin_name,omitempty" structs:"plugin_name,omitempty" mapstructure:"plugin_name"`
+	PluginName string `json:"plugin_name,omitempty" mapstructure:"plugin_name"`
 }
 
 type UserLockoutConfig struct {
-	LockoutThreshold    uint64        `json:"lockout_threshold,omitempty" structs:"lockout_threshold" mapstructure:"lockout_threshold"`
-	LockoutDuration     time.Duration `json:"lockout_duration,omitempty" structs:"lockout_duration" mapstructure:"lockout_duration"`
-	LockoutCounterReset time.Duration `json:"lockout_counter_reset,omitempty" structs:"lockout_counter_reset" mapstructure:"lockout_counter_reset"`
-	DisableLockout      bool          `json:"disable_lockout,omitempty" structs:"disable_lockout" mapstructure:"disable_lockout"`
+	LockoutThreshold    uint64        `json:"lockout_threshold,omitempty" mapstructure:"lockout_threshold"`
+	LockoutDuration     time.Duration `json:"lockout_duration,omitempty" mapstructure:"lockout_duration"`
+	LockoutCounterReset time.Duration `json:"lockout_counter_reset,omitempty" mapstructure:"lockout_counter_reset"`
+	DisableLockout      bool          `json:"disable_lockout,omitempty" mapstructure:"disable_lockout"`
 }
 
 type APIUserLockoutConfig struct {
-	LockoutThreshold            string `json:"lockout_threshold,omitempty" structs:"lockout_threshold" mapstructure:"lockout_threshold"`
-	LockoutDuration             string `json:"lockout_duration,omitempty" structs:"lockout_duration" mapstructure:"lockout_duration"`
-	LockoutCounterResetDuration string `json:"lockout_counter_reset_duration,omitempty" structs:"lockout_counter_reset_duration" mapstructure:"lockout_counter_reset_duration"`
-	DisableLockout              *bool  `json:"lockout_disable,omitempty" structs:"lockout_disable" mapstructure:"lockout_disable"`
+	LockoutThreshold            string `json:"lockout_threshold,omitempty" mapstructure:"lockout_threshold"`
+	LockoutDuration             string `json:"lockout_duration,omitempty" mapstructure:"lockout_duration"`
+	LockoutCounterResetDuration string `json:"lockout_counter_reset_duration,omitempty" mapstructure:"lockout_counter_reset_duration"`
+	DisableLockout              *bool  `json:"lockout_disable,omitempty" mapstructure:"lockout_disable"`
 }
 
 // APIMountConfig is an embedded struct of api.MountConfigInput
 type APIMountConfig struct {
-	DefaultLeaseTTL           string                `json:"default_lease_ttl" structs:"default_lease_ttl" mapstructure:"default_lease_ttl"`
-	MaxLeaseTTL               string                `json:"max_lease_ttl" structs:"max_lease_ttl" mapstructure:"max_lease_ttl"`
-	ForceNoCache              bool                  `json:"force_no_cache" structs:"force_no_cache" mapstructure:"force_no_cache"`
-	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" structs:"audit_non_hmac_request_keys" mapstructure:"audit_non_hmac_request_keys"`
-	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" structs:"audit_non_hmac_response_keys" mapstructure:"audit_non_hmac_response_keys"`
-	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" structs:"listing_visibility" mapstructure:"listing_visibility"`
-	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" structs:"passthrough_request_headers" mapstructure:"passthrough_request_headers"`
-	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
-	TokenType                 string                `json:"token_type" structs:"token_type" mapstructure:"token_type"`
+	DefaultLeaseTTL           string                `json:"default_lease_ttl" mapstructure:"default_lease_ttl"`
+	MaxLeaseTTL               string                `json:"max_lease_ttl" mapstructure:"max_lease_ttl"`
+	ForceNoCache              bool                  `json:"force_no_cache" mapstructure:"force_no_cache"`
+	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" mapstructure:"audit_non_hmac_request_keys"`
+	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" mapstructure:"audit_non_hmac_response_keys"`
+	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" mapstructure:"listing_visibility"`
+	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" mapstructure:"passthrough_request_headers"`
+	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" mapstructure:"allowed_response_headers"`
+	TokenType                 string                `json:"token_type" mapstructure:"token_type"`
 	AllowedManagedKeys        []string              `json:"allowed_managed_keys,omitempty" mapstructure:"allowed_managed_keys"`
 	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
 	PluginVersion             string                `json:"plugin_version,omitempty" mapstructure:"plugin_version"`
@@ -430,7 +461,7 @@ type APIMountConfig struct {
 	// PluginName is the name of the plugin registered in the catalog.
 	//
 	// Deprecated: MountEntry.Type should be used instead for Vault 1.0.0 and beyond.
-	PluginName string `json:"plugin_name,omitempty" structs:"plugin_name,omitempty" mapstructure:"plugin_name"`
+	PluginName string `json:"plugin_name,omitempty" mapstructure:"plugin_name"`
 }
 
 type FailedLoginUser struct {
@@ -624,14 +655,14 @@ func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 	// Prevent protected paths from being mounted
 	for _, p := range protectedMounts {
 		if strings.HasPrefix(entry.Path, p) && entry.namespace == nil {
-			return logical.CodedError(403, fmt.Sprintf("cannot mount %q", entry.Path))
+			return logical.CodedError(403, "cannot mount %q", entry.Path)
 		}
 	}
 
 	// Do not allow more than one instance of a singleton mount
 	for _, p := range singletonMounts {
 		if entry.Type == p {
-			return logical.CodedError(403, fmt.Sprintf("mount type of %q is not mountable", entry.Type))
+			return logical.CodedError(403, "mount type of %q is not mountable", entry.Type)
 		}
 	}
 
@@ -673,14 +704,14 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 			case strings.HasPrefix(ent.Path, entry.Path):
 				fallthrough
 			case strings.HasPrefix(entry.Path, ent.Path):
-				return logical.CodedError(409, fmt.Sprintf("path is already in use at %s", ent.Path))
+				return logical.CodedError(409, "path is already in use at %s", ent.Path)
 			}
 		}
 	}
 
 	// Verify there are no conflicting mounts in the router
 	if match := c.router.MountConflict(ctx, entry.Path); match != "" {
-		return logical.CodedError(409, fmt.Sprintf("existing mount at %s", match))
+		return logical.CodedError(409, "existing mount at %s", match)
 	}
 
 	// Generate a new UUID and view
@@ -757,6 +788,10 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
 		if err := c.persistMounts(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
+			if logical.ShouldForward(err) {
+				return err
+			}
+
 			c.logger.Error("failed to update mount table", "error", err)
 			return logical.CodedError(500, "failed to update mount table")
 		}
@@ -780,6 +815,26 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 		c.logger.Info("successful mount", "namespace", entry.Namespace().Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
 	}
 	return nil
+}
+
+// mountEntrySysView creates a logical.SystemView from global and
+// mount-specific entries; because this should be called when setting
+// up a mountEntry, it doesn't check to ensure that me is not nil
+func (c *Core) mountEntrySysView(entry *MountEntry) extendedSystemView {
+	esi := extendedSystemViewImpl{
+		dynamicSystemView{
+			core:       c,
+			mountEntry: entry,
+		},
+	}
+
+	// Due to complexity in the ACME interface, only return it when we
+	// are a PKI plugin that needs it.
+	if entry.Type != "pki" {
+		return esi
+	}
+
+	return esi
 }
 
 // builtinTypeFromMountEntry attempts to find a builtin PluginType associated
@@ -855,7 +910,7 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 	// Verify exact match of the route
 	match := c.router.MatchingMount(ctx, path)
 	if match == "" || ns.Path+path != match {
-		return errors.New("no matching mount")
+		return errNoMatchingMount
 	}
 
 	// Get the view for this backend
@@ -888,7 +943,7 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 		// replication like returning this error would do.
 		if err := c.rollback.Rollback(revokeCtx, path); err != nil {
 			c.logger.Error("ignoring rollback error during unmount", "error", err, "path", path)
-			err = nil
+			err = nil //nolint:ineffassign // this is done to be explicit about the fact that we ignore the error
 		}
 	}
 	if backend != nil && c.expiration != nil && updateStorage {
@@ -1050,32 +1105,6 @@ func (c *Core) handleDeprecatedMountEntry(ctx context.Context, entry *MountEntry
 	return nil, nil
 }
 
-// remountForceInternal takes a copy of the mount entry for the path and fully unmounts
-// and remounts the backend to pick up any changes, such as filtered paths.
-// Should be only used for internal usage.
-func (c *Core) remountForceInternal(ctx context.Context, path string, updateStorage bool) error {
-	me := c.router.MatchingMountEntry(ctx, path)
-	if me == nil {
-		return fmt.Errorf("cannot find mount for path %q", path)
-	}
-
-	me, err := me.Clone()
-	if err != nil {
-		return err
-	}
-
-	if err := c.unmountInternal(ctx, path, updateStorage); err != nil {
-		return err
-	}
-
-	// Mount internally
-	if err := c.mountInternal(ctx, me, updateStorage); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (c *Core) remountSecretsEngineCurrentNamespace(ctx context.Context, src, dst string, updateStorage bool) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -1141,7 +1170,7 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	if c.rollback != nil && c.router.MatchingBackend(ctx, srcRelativePath) != nil {
 		if err := c.rollback.Rollback(rCtx, srcRelativePath); err != nil {
 			c.logger.Error("ignoring rollback error during remount", "error", err, "path", src.Namespace.Path+src.MountPath)
-			err = nil
+			err = nil //nolint:ineffassign // we explicitly ignore the error
 		}
 	}
 
@@ -1301,8 +1330,7 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 // this returns the namespace object for ns1/ns2/ns3/, and the string "secret-mount"
 func (c *Core) splitNamespaceAndMountFromPath(currNs, path string) namespace.MountPathDetails {
 	fullPath := currNs + path
-
-	ns, mountPath := c.NamespaceByPath(namespace.RootContext(nil), fullPath)
+	ns, mountPath := c.namespaceStore.GetNamespaceByLongestPrefix(namespace.RootContext(context.TODO()), fullPath)
 
 	return namespace.MountPathDetails{
 		Namespace: ns,
@@ -1351,7 +1379,7 @@ func (c *Core) loadMounts(ctx context.Context) error {
 	// Defer rolling back: we may commit the transaction anyways, but we
 	// need to ensure the transaction is cleaned up in the event of an
 	// error.
-	defer txn.Rollback(ctx)
+	defer txn.Rollback(ctx) //nolint:errcheck
 
 	legacy, err := c.loadLegacyMounts(ctx, txn)
 	if err != nil {
@@ -1386,6 +1414,11 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 	globalEntries := make(map[string][]string, len(allNamespaces))
 	localEntries := make(map[string][]string, len(allNamespaces))
 	for index, ns := range allNamespaces {
+		if ns.Tainted {
+			c.logger.Info("skipping loading mounts for tainted namespace", "ns", ns.ID)
+			continue
+		}
+
 		view := NamespaceView(barrier, ns)
 		nsGlobal, nsLocal, err := listTransactionalMountsForNamespace(ctx, view)
 		if err != nil {
@@ -1673,7 +1706,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 
 		// In the event of an unexpected error, rollback this transaction.
 		// A rollback of a committed transaction does not impact the commit.
-		defer barrier.(logical.Transaction).Rollback(ctx)
+		defer barrier.(logical.Transaction).Rollback(ctx) //nolint:errcheck
 	}
 
 	if table.Type != mountTableType {
@@ -1708,7 +1741,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 
 	// Handle writing the legacy mount table by default.
 	writeTable := func(mt *MountTable, path string) (int, error) {
-		// Encode the mount table into JSON and compress it (lzw).
+		// Encode the mount table into JSON and compress it (Gzip).
 		compressedBytes, err := jsonutil.EncodeJSONAndCompress(mt, nil)
 		if err != nil {
 			c.logger.Error("failed to encode or compress mount table", "error", err)
@@ -1885,7 +1918,7 @@ func (c *Core) setupMounts(ctx context.Context) error {
 		// ensure that it is reset after. This ensures that there will be no
 		// writes during the construction of the backend.
 		view.SetReadOnlyErr(logical.ErrSetupReadOnly)
-		if strutil.StrListContains(singletonMounts, entry.Type) {
+		if slices.Contains(singletonMounts, entry.Type) {
 			defer view.SetReadOnlyErr(origReadOnlyErr)
 		}
 
@@ -1960,7 +1993,7 @@ func (c *Core) setupMounts(ctx context.Context) error {
 				postUnsealLogger.Error("skipping initialization for nil backend", "path", localEntry.Path)
 				return
 			}
-			if !strutil.StrListContains(singletonMounts, localEntry.Type) {
+			if !slices.Contains(singletonMounts, localEntry.Type) {
 				view.SetReadOnlyErr(origReadOnlyErr)
 			}
 
@@ -2045,8 +2078,8 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *MountEntry, sysView
 		conf[k] = v
 	}
 
-	switch {
-	case entry.Type == mountTypePlugin:
+	switch entry.Type {
+	case mountTypePlugin:
 		conf["plugin_name"] = entry.Config.PluginName
 	default:
 		conf["plugin_name"] = t
@@ -2248,7 +2281,7 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 
 	c.mountsLock.RLock()
 	for _, entry := range c.mounts.Entries {
-		if strutil.StrListContains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace().ID == namespace.RootNamespaceID {
+		if slices.Contains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace().ID == namespace.RootNamespaceID {
 			mounts.Entries = append(mounts.Entries, entry)
 		}
 	}
@@ -2256,13 +2289,13 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 
 	c.authLock.RLock()
 	for _, entry := range c.auth.Entries {
-		if strutil.StrListContains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace().ID == namespace.RootNamespaceID {
+		if slices.Contains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace().ID == namespace.RootNamespaceID {
 			auth.Entries = append(auth.Entries, entry)
 		}
 	}
 	c.authLock.RUnlock()
 
-	return
+	return mounts, auth
 }
 
 func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view BarrierView) {
@@ -2296,7 +2329,7 @@ func (c *Core) createMigrationStatus(from, to namespace.MountPathDetails) (strin
 func (c *Core) setMigrationStatus(migrationID string, migrationStatus MountMigrationStatus) error {
 	migrationInfoRaw, ok := c.mountMigrationTracker.Load(migrationID)
 	if !ok {
-		return fmt.Errorf("Migration Tracker entry missing for ID %s", migrationID)
+		return fmt.Errorf("migration Tracker entry missing for ID %s", migrationID)
 	}
 	migrationInfo := migrationInfoRaw.(MountMigrationInfo)
 	migrationInfo.MigrationStatus = migrationStatus.String()
@@ -2344,9 +2377,330 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 			return c.namespaceMountEntryView(me.Namespace(), credentialBarrierPrefix+me.UUID+"/"), nil
 		}
 		return NewBarrierView(c.barrier, credentialBarrierPrefix+me.UUID+"/"), nil
-	case auditTableType:
+	case auditTableType, configAuditTableType:
 		return NewBarrierView(c.barrier, auditBarrierPrefix+me.UUID+"/"), nil
 	}
 
 	return nil, errors.New("invalid mount entry")
+}
+
+func (c *Core) reloadNamespaceMounts(parentCtx context.Context, childCtx context.Context, uuid string, deleted bool) error {
+	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
+		return c.reloadLegacyMounts(childCtx)
+	}
+
+	keys := []string{}
+
+	if deleted {
+		c.mountsLock.RLock()
+		for _, entry := range c.mounts.Entries {
+			if entry.Namespace().UUID == uuid {
+				key := path.Join(coreMountConfigPath, entry.UUID)
+				if entry.Local {
+					key = path.Join(coreLocalMountConfigPath, entry.UUID)
+				}
+				keys = append(keys, key)
+			}
+		}
+		c.mountsLock.RUnlock()
+
+		c.authLock.RLock()
+		for _, entry := range c.auth.Entries {
+			if entry.Namespace().UUID == uuid {
+				key := path.Join(coreAuthConfigPath, entry.UUID)
+				if entry.Local {
+					key = path.Join(coreLocalAuthConfigPath, entry.UUID)
+				}
+				keys = append(keys, key)
+			}
+		}
+		c.authLock.RUnlock()
+
+		if len(keys) == 0 {
+			return nil
+		}
+	} else {
+		ns, err := namespace.FromContext(childCtx)
+		if err != nil {
+			return fmt.Errorf("failed to get namespace from context: %w", err)
+		}
+
+		barrier := NamespaceView(c.barrier, ns)
+
+		mountGlobal, mountLocal, err := listTransactionalMountsForNamespace(childCtx, barrier)
+		if err != nil {
+			return fmt.Errorf("unable to invalidate mounts for namespace %q: %w", uuid, err)
+		}
+
+		authGlobal, authLocal, err := c.listTransactionalCredentialsForNamespace(childCtx, barrier)
+		if err != nil {
+			return fmt.Errorf("unable to invalidate auths for namespace %q: %w", uuid, err)
+		}
+
+		for _, mount := range mountGlobal {
+			keys = append(keys, path.Join(coreMountConfigPath, mount))
+		}
+		for _, mount := range mountLocal {
+			keys = append(keys, path.Join(coreLocalMountConfigPath, mount))
+		}
+		for _, mount := range authGlobal {
+			keys = append(keys, path.Join(coreAuthConfigPath, mount))
+		}
+		for _, mount := range authLocal {
+			keys = append(keys, path.Join(coreLocalAuthConfigPath, mount))
+		}
+	}
+
+	c.logger.Debug("invalidating namespace mount", "ns", uuid, "keys", keys)
+	for _, key := range keys {
+		err := c.reloadMount(childCtx, key)
+		if err != nil {
+			return fmt.Errorf("unable to invalidate mount for key %q in namespace %q: %w", key, uuid, err)
+		}
+	}
+
+	return nil
+}
+
+func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
+	if len(keys) == 0 {
+		keys = []string{coreMountConfigPath, coreLocalMountConfigPath, coreAuthConfigPath, coreLocalAuthConfigPath}
+	}
+
+	// If we have a transactional storage backend, assume the primary will
+	// migrate us to a new storage layout and return early.
+	if _, ok := c.barrier.(logical.TransactionalStorage); ok {
+		return nil
+	}
+
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		if err != namespace.ErrNoNamespace {
+			return fmt.Errorf("failed to extract namespace from context: %w", err)
+		}
+		ns = namespace.RootNamespace
+	}
+
+	type invalidation struct {
+		Table             string
+		DesiredMountEntry *MountEntry
+		Namespace         *namespace.Namespace
+	}
+	invalidations := map[string]invalidation{}
+
+	for _, path := range keys {
+		table := mountTableType
+		if path == coreAuthConfigPath && path != coreLocalAuthConfigPath {
+			table = credentialTableType
+		}
+
+		raw, err := c.barrier.Get(ctx, path)
+		if err != nil {
+			return fmt.Errorf("failed to read legacy mount table: %w", err)
+		}
+
+		if raw != nil {
+			mountTable, err := c.decodeMountTable(ctx, raw.Value)
+			if err != nil {
+				return fmt.Errorf("failed to decompress and/or decode the legacy mount table: %w", err)
+			}
+
+			for _, mount := range mountTable.Entries {
+				if ns.ID != namespace.RootNamespaceID && ns.ID != mount.NamespaceID {
+					continue
+				}
+
+				invalidations[mount.UUID] = invalidation{
+					Table:             table,
+					DesiredMountEntry: mount,
+					Namespace:         mount.Namespace(),
+				}
+			}
+		}
+	}
+
+	// Loop over all mounts in memory, this is required to find mount deletions
+	c.mountsLock.RLock()
+	c.authLock.RLock()
+	for _, table := range []*MountTable{c.mounts, c.auth} {
+		if table == nil {
+			continue
+		}
+		for _, entry := range table.Entries {
+			if ns.ID != namespace.RootNamespaceID && ns.ID != entry.NamespaceID {
+				continue
+			}
+
+			storagePath := entry.Table
+			if entry.Local {
+				storagePath = "local-" + storagePath
+			}
+			storagePath = path.Join("core", storagePath)
+			if !slices.Contains(keys, storagePath) {
+				continue
+			}
+
+			if _, ok := invalidations[entry.UUID]; !ok {
+				invalidations[entry.UUID] = invalidation{
+					Table:             entry.Table,
+					DesiredMountEntry: nil,
+					Namespace:         entry.Namespace(),
+				}
+			}
+		}
+	}
+	c.authLock.RUnlock()
+	c.mountsLock.RUnlock()
+
+	for uuid, value := range invalidations {
+		err := c.reloadMountInternal(namespace.ContextWithNamespace(ctx, value.Namespace), value.Table, uuid, value.DesiredMountEntry)
+		if err != nil {
+			return fmt.Errorf("unable to invalidate mount: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (c *Core) reloadMount(ctx context.Context, key string) error {
+	prefix, uuid := path.Split(key)
+	prefix = path.Clean(prefix)
+
+	table := mountTableType
+	if prefix != coreLocalMountConfigPath && prefix != coreMountConfigPath {
+		if prefix != coreAuthConfigPath && prefix != coreLocalAuthConfigPath {
+			return fmt.Errorf("invalid path prefix %q", prefix)
+		}
+		table = credentialTableType
+	}
+
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+	barrier := NamespaceView(c.barrier, ns)
+
+	desiredMountEntry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, prefix, uuid)
+	if err != nil {
+		if err.Error() != "unexpected empty storage entry for mount" {
+			return err
+		}
+		desiredMountEntry = nil
+	}
+
+	if desiredMountEntry != nil && ns.Tainted {
+		// The desired state of this mount is deleted, because we've tainted
+		// this namespace. Because we're on a standby node, we don't actually
+		// write to storage but let the active node handle deletion.
+		c.logger.Debug("cache invalidation: marking mount as deleted due to tainted namespace", "mount_uuid", uuid, "ns_uuid", ns.UUID)
+		desiredMountEntry = nil
+	}
+
+	return c.reloadMountInternal(ctx, table, uuid, desiredMountEntry)
+}
+
+func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desiredMountEntry *MountEntry) error {
+	switch table {
+	case credentialTableType, mountTableType:
+	default:
+		return fmt.Errorf("invalid mount table type passed: %q", table)
+	}
+
+	actualMountEntry := c.router.MatchingMountByUUID(uuid)
+
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case desiredMountEntry == nil && actualMountEntry != nil: // mount was deleted
+		c.logger.Debug("cache invalidation: mount was deleted", "type", table, "uuid", uuid)
+
+		if table == credentialTableType {
+			err = c.removeCredEntry(ctx, actualMountEntry.Path, false)
+		} else {
+			err = c.removeMountEntry(ctx, actualMountEntry.Path, false)
+		}
+		if err != nil {
+			return err
+		}
+
+		routerPath := actualMountEntry.Path
+		if table == credentialTableType {
+			routerPath = path.Join(credentialRoutePrefix, routerPath) + "/"
+		}
+		if err := c.router.Unmount(ctx, routerPath); err != nil {
+			return err
+		}
+
+		if c.quotaManager != nil {
+			if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, actualMountEntry.APIPathNoNamespace()); err != nil {
+				c.logger.Error("failed to update quotas after disabling mount", "error", err, "namespace", ns.Path, "uuid", uuid)
+				return err
+			}
+		}
+
+	case desiredMountEntry != nil && actualMountEntry == nil: // mount was created
+		c.logger.Debug("cache invalidation: mount was created", "type", table, "uuid", uuid)
+
+		if table == credentialTableType {
+			err = c.enableCredentialInternal(ctx, desiredMountEntry, false)
+			if err != nil {
+				return err
+			}
+		} else {
+			c.logger.Info("calling mount internal", "path", desiredMountEntry.Path)
+			err := c.mountInternal(ctx, desiredMountEntry, false)
+			if err != nil {
+				return err
+			}
+		}
+
+	case desiredMountEntry != nil && actualMountEntry != nil: // mount was modified (e.g. tuned or tainted)
+		c.logger.Debug("cache invalidation: mount was modified", "type", table, "uuid", uuid)
+
+		lock := &c.mountsLock
+		if table == credentialTableType {
+			lock = &c.authLock
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+
+		routerPath := actualMountEntry.Path
+		if table == credentialTableType {
+			routerPath = path.Join(credentialRoutePrefix, routerPath) + "/"
+		}
+
+		if desiredMountEntry.Tainted != actualMountEntry.Tainted {
+			if desiredMountEntry.Tainted {
+				err = c.router.Taint(ctx, routerPath)
+				if err != nil {
+					return err
+				}
+				actualMountEntry.Tainted = true
+			} else {
+				err = c.router.Untaint(ctx, routerPath)
+				if err != nil {
+					return err
+				}
+				actualMountEntry.Tainted = false
+			}
+		}
+
+		if !reflect.DeepEqual(desiredMountEntry.Config, actualMountEntry.Config) {
+			actualMountEntry.Config = desiredMountEntry.Config
+			actualMountEntry.SyncCache()
+		}
+
+		if desiredMountEntry.Options["version"] != actualMountEntry.Options["version"] {
+			err = c.reloadBackendCommon(ctx, desiredMountEntry, table == credentialTableType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

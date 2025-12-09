@@ -16,9 +16,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 )
 
-// testTesting is used for testing the legacy testing framework
-var testTesting = false
-
 type testRun struct {
 	expectedTestT *mockT
 	environment   *mockEnvironment
@@ -28,7 +25,7 @@ type testRun struct {
 }
 
 // TestStepwise_Run_SkipIfNotAcc tests if the Stepwise Run function skips tests
-// if the VAULT_ACC environment variable is not set. This test is seperate from
+// if the VAULT_ACC environment variable is not set. This test is separate from
 // the table tests due to the unsetting/re-setting of the environment variable,
 // which is assumed/needed for all other tests.
 func TestStepwise_Run_SkipIfNotAcc(t *testing.T) {

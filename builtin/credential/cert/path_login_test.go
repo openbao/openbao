@@ -52,9 +52,9 @@ func TestMain(m *testing.M) {
 		Handler: NewResponder(&testLogger{}, source, nil),
 	}
 	go func() {
-		srv.Serve(listener)
+		srv.Serve(listener) //nolint:errcheck // ignore error
 	}()
-	defer srv.Shutdown(context.Background())
+	defer srv.Shutdown(context.Background()) //nolint:errcheck // ignore error
 	m.Run()
 }
 
@@ -354,8 +354,4 @@ func TestCert_RoleResolveOCSP(t *testing.T) {
 			})
 		})
 	}
-}
-
-func serialFromBigInt(serial *big.Int) string {
-	return strings.TrimSpace(certutil.GetHexFormatted(serial.Bytes(), ":"))
 }

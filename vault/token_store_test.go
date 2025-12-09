@@ -33,8 +33,10 @@ import (
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
@@ -6291,7 +6293,7 @@ func expectInGaugeCollection(t *testing.T, expectedLabels map[string]string, exp
 		}
 		if labelsMatch(actualLabels, expectedLabels) {
 			if expectedValue != glv.Value {
-				t.Errorf("expeced %v for %v, got %v", expectedValue, expectedLabels, glv.Value)
+				t.Errorf("expected %v for %v, got %v", expectedValue, expectedLabels, glv.Value)
 			}
 			return
 		}
@@ -6364,4 +6366,116 @@ func TestTokenStore_Collectors(t *testing.T) {
 
 	// Need to set up router for this to work, TODO
 	// ts.gaugeCollectorByMethod( ctx )
+}
+
+// TestTokenStore_LookupSchemaMatchesHandler ensures that tokenLookupResponseSchema
+// accurately reflects the actual fields returned by all lookup handlers
+func TestTokenStore_LookupSchemaMatchesHandler(t *testing.T) {
+	c, _, root := TestCoreUnsealed(t)
+	ts := c.tokenStore
+	ctx := namespace.RootContext(context.TODO())
+
+	// Create a test token with specific properties
+	createResp, err := c.HandleRequest(ctx, &logical.Request{
+		Operation:   logical.UpdateOperation,
+		Path:        "auth/token/create",
+		ClientToken: root,
+		Data: map[string]interface{}{
+			"policies":     []string{"default", "test-policy"},
+			"ttl":          "2h",
+			"meta":         map[string]string{"test": "value", "env": "test"},
+			"display_name": "schema-validation-token",
+			"num_uses":     5,
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, createResp.Auth)
+
+	testToken := createResp.Auth.ClientToken
+
+	// Create framework response schema for validation
+	responseSchema := &framework.Response{
+		Fields: tokenLookupResponseSchema,
+	}
+
+	// Test all lookup handler operations
+	testCases := []struct {
+		name      string
+		path      string
+		operation logical.Operation
+		setupReq  func(*logical.Request)
+	}{
+		{
+			name:      "lookup GET",
+			path:      "lookup",
+			operation: logical.ReadOperation,
+			setupReq: func(req *logical.Request) {
+				req.Data = map[string]interface{}{"token": testToken}
+			},
+		},
+		{
+			name:      "lookup POST",
+			path:      "lookup",
+			operation: logical.UpdateOperation,
+			setupReq: func(req *logical.Request) {
+				req.Data = map[string]interface{}{"token": testToken}
+			},
+		},
+		{
+			name:      "lookup-self GET",
+			path:      "lookup-self",
+			operation: logical.ReadOperation,
+			setupReq: func(req *logical.Request) {
+				req.ClientToken = testToken // Use test token as client token for self-lookup
+			},
+		},
+		{
+			name:      "lookup-self POST",
+			path:      "lookup-self",
+			operation: logical.UpdateOperation,
+			setupReq: func(req *logical.Request) {
+				req.ClientToken = testToken // Use test token as client token for self-lookup
+			},
+		},
+		{
+			name:      "lookup-accessor",
+			path:      "lookup-accessor",
+			operation: logical.UpdateOperation,
+			setupReq: func(req *logical.Request) {
+				// Get accessor first
+				lookupReq := logical.TestRequest(t, logical.UpdateOperation, "lookup")
+				lookupReq.ClientToken = root
+				lookupReq.Data = map[string]interface{}{"token": testToken}
+
+				lookupResp, err := ts.HandleRequest(ctx, lookupReq)
+				require.NoError(t, err)
+				require.NotNil(t, lookupResp)
+
+				accessor, ok := lookupResp.Data["accessor"].(string)
+				require.True(t, ok)
+				require.NotEmpty(t, accessor)
+
+				req.Data = map[string]interface{}{"accessor": accessor}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Prepare request
+			req := logical.TestRequest(t, tc.operation, tc.path)
+			req.ClientToken = root
+			tc.setupReq(req)
+
+			// Execute handler
+			handlerResp, err := ts.HandleRequest(ctx, req)
+			require.NoError(t, err)
+			require.NotNil(t, handlerResp)
+			require.False(t, handlerResp.IsError(), "Handler %s should not return error: %v", tc.name, handlerResp.Error())
+			require.NotNil(t, handlerResp.Data)
+
+			// Use the framework's existing response validation with strict mode
+			schema.ValidateResponseData(t, responseSchema, handlerResp.Data, true)
+		})
+	}
 }

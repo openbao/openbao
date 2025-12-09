@@ -140,7 +140,7 @@ func (b *backend) pathCAGenerateRoot(ctx context.Context, req *logical.Request, 
 			return nil, err
 		}
 
-		defer txn.Rollback(ctx)
+		defer txn.Rollback(ctx) //nolint:errcheck
 		req.Storage = txn
 	}
 
@@ -188,7 +188,7 @@ func (b *backend) pathCAGenerateRoot(ctx context.Context, req *logical.Request, 
 		apiData: data,
 		role:    role,
 	}
-	parsedBundle, warnings, err := generateCert(sc, input, nil, true, b.Backend.GetRandomReader())
+	parsedBundle, warnings, err := generateCert(sc, input, nil, true, b.GetRandomReader())
 	if err != nil {
 		switch err.(type) {
 		case errutil.UserError:
@@ -545,10 +545,10 @@ func (b *backend) pathIssuerSignSelfIssued(ctx context.Context, req *logical.Req
 	}
 	certs, err := x509.ParseCertificates(block.Bytes)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("error parsing certificate: %s", err)), nil
+		return logical.ErrorResponse("error parsing certificate: %s", err), nil
 	}
 	if len(certs) != 1 {
-		return logical.ErrorResponse(fmt.Sprintf("%d certificates found in PEM file, expected 1", len(certs))), nil
+		return logical.ErrorResponse("%d certificates found in PEM file, expected 1", len(certs)), nil
 	}
 
 	cert := certs[0]
@@ -652,7 +652,7 @@ func publicKeyType(pub crypto.PublicKey) (pubType x509.PublicKeyAlgorithm, sigAl
 	default:
 		err = errors.New("x509: only RSA, ECDSA and Ed25519 keys supported")
 	}
-	return
+	return pubType, sigAlgo, err
 }
 
 const pathGenerateRootHelpSyn = `

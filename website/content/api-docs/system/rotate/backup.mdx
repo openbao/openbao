@@ -1,0 +1,78 @@
+---
+description: The `/sys/rotate/(root|recovery)/backup` endpoints are used to read or delete backed-up rotation keys.
+---
+
+# `/sys/rotate/(root|recovery)/backup`
+
+:::info
+
+The `/sys/rotate/(root|recovery)/backup` endpoints are available from version `v2.4.0`.
+
+:::
+
+This endpoint returns the backup copy of PGP-encrypted unseal keys. The returned
+value is the nonce of the rotation and a map of PGP key fingerprint to hex-encoded
+PGP-encrypted key.
+
+| Method | Path                                   |
+| :----- | :------------------------------------- |
+| `GET`  | `/sys/rotate/(root\|recovery)/backup`  |
+
+### Sample requests
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/rotate/root/backup
+```
+or
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/rotate/recovery/backup
+```
+
+### Sample response
+
+```json
+{
+  "request_id": "9311c844-6be7-3c00-d2bc-e97fa8345338",
+  "lease_id": "",
+  "renewable": false,
+  "lease_duration": 0,
+  "data": {
+    "nonce": "2dbd10f1-8528-6246-09e7-82b25b8aba63",
+    "keys": {
+      "abcd1234": "..."
+    }
+  },
+  "wrap_info": null,
+  "warnings": null,
+  "auth": null
+}
+```
+
+## Delete backup key
+
+This endpoint deletes the backup copy of PGP-encrypted unseal keys.
+
+| Method   | Path                                  |
+| :------- | :------------------------------------ |
+| `DELETE` | `/sys/rotate/(root\|recovery)/backup` |
+
+
+### Sample requests
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request DELETE \
+    http://127.0.0.1:8200/v1/sys/rotate/root/backup
+```
+or 
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request DELETE \
+    http://127.0.0.1:8200/v1/sys/rotate/recovery/backup
+```

@@ -93,7 +93,7 @@ export default function FAQSection() {
                 key={index}
                 item={item}
                 isExpanded={index === expanded}
-                onClick={() => setExpanded(index)}
+                onClick={() => setExpanded(index === expanded ? -1 : index)}
               />
             ))}
           </div>

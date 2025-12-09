@@ -38,8 +38,6 @@ const (
 	testCIDRList      = "127.0.0.1/32"
 	testAtRoleName    = "test@RoleName"
 	testOTPRoleName   = "testOTPRoleName"
-	// testKeyName is the name of the entry that will be written to SSHMOUNTPOINT/ssh/keys
-	testKeyName = "testKeyName"
 	// testSharedPrivateKey is the value of the entry that will be written to SSHMOUNTPOINT/ssh/keys
 	testSharedPrivateKey = `
 -----BEGIN RSA PRIVATE KEY-----
@@ -2104,12 +2102,12 @@ func validateSSHCertificate(cert *ssh.Certificate, keyID string, certType int, v
 		return fmt.Errorf("incorrect Signature: %v", cert.Signature)
 	}
 
-	if !reflect.DeepEqual(cert.Permissions.Extensions, extensionPermissions) {
-		return fmt.Errorf("incorrect Permissions.Extensions: Expected: %v, Actual: %v", extensionPermissions, cert.Permissions.Extensions)
+	if !reflect.DeepEqual(cert.Extensions, extensionPermissions) {
+		return fmt.Errorf("incorrect Permissions.Extensions: Expected: %v, Actual: %v", extensionPermissions, cert.Extensions)
 	}
 
-	if !reflect.DeepEqual(cert.Permissions.CriticalOptions, criticalOptionPermissions) {
-		return fmt.Errorf("incorrect Permissions.CriticalOptions: %v", cert.Permissions.CriticalOptions)
+	if !reflect.DeepEqual(cert.CriticalOptions, criticalOptionPermissions) {
+		return fmt.Errorf("incorrect Permissions.CriticalOptions: %v", cert.CriticalOptions)
 	}
 
 	return nil
@@ -2698,18 +2696,6 @@ func TestProperAuthing(t *testing.T) {
 		}
 
 		openapi_data := raw_data.(map[string]interface{})
-		hasList := false
-		rawGetData, hasGet := openapi_data["get"]
-		if hasGet {
-			getData := rawGetData.(map[string]interface{})
-			getParams, paramsPresent := getData["parameters"].(map[string]interface{})
-			if getParams != nil && paramsPresent {
-				if _, hasList = getParams["list"]; hasList {
-					// LIST is exclusive from GET on the same endpoint usually.
-					hasGet = false
-				}
-			}
-		}
 		_, hasPost := openapi_data["post"]
 		_, hasDelete := openapi_data["delete"]
 
@@ -2722,26 +2708,6 @@ func TestProperAuthing(t *testing.T) {
 
 	if !validatedPath {
 		t.Fatal("Expected to have validated at least one path.")
-	}
-}
-
-func submitCAIssuerStep(issuerName string, parameters map[string]interface{}) logicaltest.TestStep {
-	path := "issuers/import"
-	if issuerName != "" {
-		path += "/" + issuerName
-	}
-	return logicaltest.TestStep{
-		Operation: logical.UpdateOperation,
-		Path:      path,
-		Data:      parameters,
-	}
-}
-
-func updateIssuersConfigStep(parameters map[string]interface{}) logicaltest.TestStep {
-	return logicaltest.TestStep{
-		Operation: logical.UpdateOperation,
-		Path:      "config/issuers",
-		Data:      parameters,
 	}
 }
 
@@ -3105,7 +3071,7 @@ func TestSSHBackend_BasicIssuerOperations(t *testing.T) {
 		t.Fatalf("expected key signing to have failed as no issuer is configured, got resp: %+v, err: %v", resp, err)
 	}
 
-	// submit an issuer to be used by the role and don't set it explicity
+	// submit an issuer to be used by the role and don't set it explicitly
 	// as the first issuer imported is set as default
 	importIssuerReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -3268,7 +3234,7 @@ func TestSSHBackend_RoleIssuerBinding(t *testing.T) {
 
 		require.NotEqual(t, issuer1ID, issuer2ID, "issuer IDs should be different")
 
-		// Create role with issuer1 explicity bound
+		// Create role with issuer1 explicitly bound
 		role1Name := "role-with-issuer1"
 		role1Req := &logical.Request{
 			Operation: logical.UpdateOperation,

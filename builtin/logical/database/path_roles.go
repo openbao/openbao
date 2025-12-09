@@ -506,12 +506,6 @@ func (b *databaseBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 		} else if createOperation {
 			role.Statements.Renewal = data.Get("renew_statements").([]string)
 		}
-
-		// Do not persist deprecated statements that are populated on role read
-		role.Statements.CreationStatements = ""
-		role.Statements.RevocationStatements = ""
-		role.Statements.RenewStatements = ""
-		role.Statements.RollbackStatements = ""
 	}
 
 	role.Statements.Revocation = strutil.RemoveEmpty(role.Statements.Revocation)
@@ -621,7 +615,7 @@ func (b *databaseBackend) pathStaticRoleCreateUpdate(ctx context.Context, req *l
 			// If rotation frequency is specified, and this is an update, the value
 			// must be at least that of the queue tick interval (5 seconds at
 			// time of writing), otherwise we wont be able to rotate in time
-			return logical.ErrorResponse(fmt.Sprintf("rotation_period must be %d seconds or more", defaultQueueTickSeconds)), nil
+			return logical.ErrorResponse("rotation_period must be %d seconds or more", defaultQueueTickSeconds), nil
 		}
 		role.StaticAccount.RotationPeriod = time.Duration(rotationPeriodSeconds) * time.Second
 	}
@@ -834,7 +828,7 @@ func (s *staticAccount) NextRotationTime() time.Time {
 // be invalidated.
 func (s *staticAccount) CredentialTTL() time.Duration {
 	next := s.NextRotationTime()
-	ttl := next.Sub(time.Now()).Round(time.Second)
+	ttl := time.Until(next).Round(time.Second)
 	if ttl < 0 {
 		ttl = time.Duration(0)
 	}

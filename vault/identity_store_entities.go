@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -279,24 +280,24 @@ func (i *IdentityStore) pathEntityMergeID() framework.OperationFunc {
 			return nil, err
 		}
 
-		userErr, intErr, aliases := i.mergeEntity(ctx, txn, toEntity, fromEntityIDs, conflictingAliasIDsToKeep, force, false, false, true, false)
-		if userErr != nil {
+		aliases, err := i.mergeEntity(ctx, txn, toEntity, fromEntityIDs, conflictingAliasIDsToKeep, force, false, false, true, false)
+		switch {
+		case errors.Is(err, userError{}):
 			// Not an error due to alias clash, return like normal
 			if len(aliases) == 0 {
-				return logical.ErrorResponse(userErr.Error()), nil
+				return logical.ErrorResponse(err.Error()), nil
 			}
 			// Alias clash error, so include additional details
 			resp := &logical.Response{
 				Data: map[string]interface{}{
-					"error": userErr.Error(),
+					"error": err.Error(),
 					"data":  aliases,
 				},
 			}
 
 			return resp, nil
-		}
-		if intErr != nil {
-			return nil, intErr
+		case err != nil:
+			return nil, err
 		}
 
 		// Committing the transaction *after* successfully performing storage
@@ -355,10 +356,10 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 		// Update the policies if supplied
 		entityPoliciesRaw, ok := d.GetOk("policies")
 		if ok {
-			entity.Policies = strutil.RemoveDuplicates(entityPoliciesRaw.([]string), false)
+			entity.Policies = strutil.RemoveDuplicates(entityPoliciesRaw.([]string), true /* lowercase */)
 		}
 
-		if strutil.StrListContains(entity.Policies, "root") {
+		if slices.Contains(entity.Policies, "root") {
 			return logical.ErrorResponse("policies cannot contain root"), nil
 		}
 
@@ -370,7 +371,7 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 		// Get entity metadata
 		metadata, ok, err := d.GetOkErr("metadata")
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("failed to parse metadata: %v", err)), nil
+			return logical.ErrorResponse("failed to parse metadata: %v", err), nil
 		}
 		if ok {
 			entity.Metadata = metadata.(map[string]string)
@@ -470,13 +471,13 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 	respData["name"] = entity.Name
 	respData["metadata"] = entity.Metadata
 	respData["merged_entity_ids"] = entity.MergedEntityIDs
-	respData["policies"] = strutil.RemoveDuplicates(entity.Policies, false)
+	respData["policies"] = strutil.RemoveDuplicates(entity.Policies, true /* lowercase */)
 	respData["disabled"] = entity.Disabled
 	respData["namespace_id"] = entity.NamespaceID
 
-	// Convert protobuf timestamp into RFC3339 format
-	respData["creation_time"] = entity.CreationTime.AsTime().Format(time.RFC3339)
-	respData["last_update_time"] = entity.LastUpdateTime.AsTime().Format(time.RFC3339)
+	// Convert protobuf timestamp into RFC3339Nano format
+	respData["creation_time"] = entity.CreationTime.AsTime().Format(time.RFC3339Nano)
+	respData["last_update_time"] = entity.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 
 	// Convert each alias into a map and replace the time format in each
 	aliasesToReturn := make([]interface{}, len(entity.Aliases))
@@ -488,8 +489,8 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 		aliasMap["metadata"] = alias.Metadata
 		aliasMap["name"] = alias.Name
 		aliasMap["merged_from_canonical_ids"] = alias.MergedFromCanonicalIDs
-		aliasMap["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339)
-		aliasMap["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339)
+		aliasMap["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339Nano)
+		aliasMap["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 		aliasMap["local"] = alias.Local
 		aliasMap["custom_metadata"] = alias.CustomMetadata
 
@@ -527,9 +528,7 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 
 	respData["group_ids"] = append(groupIDs, inheritedGroupIDs...)
 
-	return &logical.Response{
-		Data: respData,
-	}, nil
+	return &logical.Response{Data: respData}, nil
 }
 
 // pathEntityIDDelete deletes the entity for a given entity ID
@@ -833,9 +832,9 @@ func (i *IdentityStore) handlePathEntityListCommon(ctx context.Context, req *log
 	return logical.ListResponseWithInfo(keys, entityInfo), nil
 }
 
-func (i *IdentityStore) mergeEntityAsPartOfUpsert(ctx context.Context, txn *memdb.Txn, toEntity *identity.Entity, fromEntityID string, persist bool) (error, error) {
-	err1, err2, _ := i.mergeEntity(ctx, txn, toEntity, []string{fromEntityID}, []string{}, true, false, true, persist, true)
-	return err1, err2
+func (i *IdentityStore) mergeEntityAsPartOfUpsert(ctx context.Context, txn *memdb.Txn, toEntity *identity.Entity, fromEntityID string, persist bool) error {
+	_, err := i.mergeEntity(ctx, txn, toEntity, []string{fromEntityID}, []string{}, true, false, true, persist, true)
+	return err
 }
 
 // A small type to return useful information to the UI after an entity clash
@@ -848,26 +847,47 @@ type aliasClashInformation struct {
 	MountPath string `json:"mount_path"`
 }
 
-func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntity *identity.Entity, fromEntityIDs, conflictingAliasIDsToKeep []string, force, grabLock, mergePolicies, persist, forceMergeAliases bool) (error, error, []aliasClashInformation) {
+type userError struct {
+	err error
+}
+
+func (e userError) Error() string {
+	return e.err.Error()
+}
+
+func (e userError) Unwrap() error {
+	return e.err
+}
+
+func (e userError) Is(err error) bool {
+	_, ok := err.(userError)
+	return ok
+}
+
+func newUserError(err error) error {
+	return userError{err: err}
+}
+
+func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntity *identity.Entity, fromEntityIDs, conflictingAliasIDsToKeep []string, force, grabLock, mergePolicies, persist, forceMergeAliases bool) ([]aliasClashInformation, error) {
 	if grabLock {
 		i.lock.Lock()
 		defer i.lock.Unlock()
 	}
 
 	if toEntity == nil {
-		return errors.New("entity id to merge to is invalid"), nil, nil
+		return nil, newUserError(errors.New("entity id to merge to is invalid"))
 	}
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
-		return nil, err, nil
+		return nil, err
 	}
 	if toEntity.NamespaceID != ns.ID {
-		return errors.New("entity id to merge into does not belong to the request's namespace"), nil, nil
+		return nil, newUserError(errors.New("entity id to merge into does not belong to the request's namespace"))
 	}
 
 	if len(fromEntityIDs) > 1 && len(conflictingAliasIDsToKeep) > 1 {
-		return errors.New("aliases conflicts cannot be resolved with multiple from entity ids - merge one entity at a time"), nil, nil
+		return nil, newUserError(errors.New("aliases conflicts cannot be resolved with multiple from entity ids - merge one entity at a time"))
 	}
 
 	sanitizedFromEntityIDs := strutil.RemoveDuplicates(fromEntityIDs, false)
@@ -884,20 +904,20 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 	for _, fromEntityID := range sanitizedFromEntityIDs {
 		if fromEntityID == toEntity.ID {
-			return errors.New("to_entity_id should not be present in from_entity_ids"), nil, nil
+			return nil, newUserError(errors.New("to_entity_id should not be present in from_entity_ids"))
 		}
 
 		fromEntity, err := i.MemDBEntityByID(ctx, fromEntityID, false)
 		if err != nil {
-			return nil, err, nil
+			return nil, err
 		}
 
 		if fromEntity == nil {
-			return errors.New("entity id to merge from is invalid"), nil, nil
+			return nil, newUserError(errors.New("entity id to merge from is invalid"))
 		}
 
 		if fromEntity.NamespaceID != toEntity.NamespaceID {
-			return errors.New("entity id to merge from does not belong to this namespace"), nil, nil
+			return nil, newUserError(errors.New("entity id to merge from does not belong to this namespace"))
 		}
 
 		// If we're not resolving a conflict, we check to see if
@@ -908,7 +928,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 					// First, check to see if this alias clashes with an alias from any of the other fromEntities:
 					id, mountAccessorInAnotherFromEntity := fromEntityAccessors[fromAlias.MountAccessor]
 					if mountAccessorInAnotherFromEntity && (id != fromEntityID) {
-						return fmt.Errorf("mount accessor %s found in multiple fromEntities, merge should be done with one fromEntity at a time", fromAlias.MountAccessor), nil, nil
+						return nil, newUserError(fmt.Errorf("mount accessor %s found in multiple fromEntities, merge should be done with one fromEntity at a time", fromAlias.MountAccessor))
 					}
 
 					fromEntityAccessors[fromAlias.MountAccessor] = fromEntityID
@@ -961,7 +981,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 		for configID, configSecret := range fromEntity.MFASecrets {
 			_, ok := toEntity.MFASecrets[configID]
 			if ok && !force {
-				return nil, fmt.Errorf("conflicting MFA config ID %q in entity ID %q", configID, fromEntity.ID), nil
+				return nil, fmt.Errorf("conflicting MFA config ID %q in entity ID %q", configID, fromEntity.ID)
 			} else {
 				if toEntity.MFASecrets == nil {
 					toEntity.MFASecrets = make(map[string]*mfa.Secret)
@@ -973,7 +993,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 	// Check alias clashes after validating every fromEntity, so that we have a full list of errors
 	if aliasClashError != nil {
-		return aliasClashError, nil, aliasesInvolvedInClashes
+		return aliasesInvolvedInClashes, newUserError(aliasClashError)
 	}
 
 	var fromEntityGroups []*identity.Group
@@ -994,20 +1014,20 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 	for _, fromEntityID := range sanitizedFromEntityIDs {
 		if fromEntityID == toEntity.ID {
-			return errors.New("to_entity_id should not be present in from_entity_ids"), nil, nil
+			return nil, newUserError(errors.New("to_entity_id should not be present in from_entity_ids"))
 		}
 
 		fromEntity, err := i.MemDBEntityByID(ctx, fromEntityID, true)
 		if err != nil {
-			return nil, err, nil
+			return nil, err
 		}
 
 		if fromEntity == nil {
-			return errors.New("entity id to merge from is invalid"), nil, nil
+			return nil, newUserError(errors.New("entity id to merge from is invalid"))
 		}
 
 		if fromEntity.NamespaceID != toEntity.NamespaceID {
-			return errors.New("entity id to merge from does not belong to this namespace"), nil, nil
+			return nil, newUserError(errors.New("entity id to merge from does not belong to this namespace"))
 		}
 
 		for _, fromAlias := range fromEntity.Aliases {
@@ -1022,25 +1042,25 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 						i.logger.Info("Deleting to_entity alias during entity merge", "to_entity", toEntity.ID, "deleted_alias", toAliasId)
 						err := i.MemDBDeleteAliasByIDInTxn(txn, toAliasId, false)
 						if err != nil {
-							return nil, fmt.Errorf("failed to delete orphaned alias during merge: %w", err), nil
+							return nil, fmt.Errorf("failed to delete orphaned alias during merge: %w", err)
 						}
-					} else if strutil.StrListContains(conflictingAliasIDsToKeep, toAliasId) {
+					} else if slices.Contains(conflictingAliasIDsToKeep, toAliasId) {
 						i.logger.Info("Deleting from_entity alias during entity merge", "from_entity", fromEntityID, "deleted_alias", fromAlias.ID)
 						err := i.MemDBDeleteAliasByIDInTxn(txn, fromAlias.ID, false)
 						if err != nil {
-							return nil, fmt.Errorf("failed to delete orphaned alias during merge: %w", err), nil
+							return nil, fmt.Errorf("failed to delete orphaned alias during merge: %w", err)
 						}
 
 						// Continue to next alias, as there's no alias to merge left in the from_entity
 						continue
-					} else if strutil.StrListContains(conflictingAliasIDsToKeep, fromAlias.ID) {
+					} else if slices.Contains(conflictingAliasIDsToKeep, fromAlias.ID) {
 						i.logger.Info("Deleting to_entity alias during entity merge", "to_entity", toEntity.ID, "deleted_alias", toAliasId)
 						err := i.MemDBDeleteAliasByIDInTxn(txn, toAliasId, false)
 						if err != nil {
-							return nil, fmt.Errorf("failed to delete orphaned alias during merge: %w", err), nil
+							return nil, fmt.Errorf("failed to delete orphaned alias during merge: %w", err)
 						}
 					} else {
-						return fmt.Errorf("conflicting mount accessors in following alias IDs and neither were present in conflicting_alias_ids_to_keep: %s, %s", fromAlias.ID, toAliasId), nil, nil
+						return nil, newUserError(fmt.Errorf("conflicting mount accessors in following alias IDs and neither were present in conflicting_alias_ids_to_keep: %s, %s", fromAlias.ID, toAliasId))
 					}
 				}
 			}
@@ -1052,7 +1072,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 			err = i.MemDBUpsertAliasInTxn(txn, fromAlias, false)
 			if err != nil {
-				return nil, fmt.Errorf("failed to update alias during merge: %w", err), nil
+				return nil, fmt.Errorf("failed to update alias during merge: %w", err)
 			}
 
 			// Add the alias to the desired entity
@@ -1061,7 +1081,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 		// If told to, merge policies
 		if mergePolicies {
-			toEntity.Policies = strutil.RemoveDuplicates(strutil.MergeSlices(toEntity.Policies, fromEntity.Policies), false)
+			toEntity.Policies = strutil.RemoveDuplicates(strutil.MergeSlices(toEntity.Policies, fromEntity.Policies), true /* lowercase */)
 		}
 
 		// If the entity from which we are merging from was already a merged
@@ -1077,13 +1097,13 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 		// internal and external
 		groups, err := i.MemDBGroupsByMemberEntityIDInTxn(txn, fromEntity.ID, true, false)
 		if err != nil {
-			return nil, err, nil
+			return nil, err
 		}
 		for _, group := range groups {
 			group.MemberEntityIDs = strutil.StrListDelete(group.MemberEntityIDs, fromEntity.ID)
 			err = i.UpsertGroupInTxn(ctx, txn, group, persist)
 			if err != nil {
-				return nil, err, nil
+				return nil, err
 			}
 
 			fromEntityGroups = append(fromEntityGroups, group)
@@ -1092,14 +1112,14 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 		// Delete the entity which we are merging from in MemDB using the same transaction
 		err = i.MemDBDeleteEntityByIDInTxn(txn, fromEntity.ID)
 		if err != nil {
-			return nil, err, nil
+			return nil, err
 		}
 
 		if persist {
 			// Delete the entity which we are merging from in storage
 			err = i.entityPacker(ctx).DeleteItem(ctx, fromEntity.ID)
 			if err != nil {
-				return nil, err, nil
+				return nil, err
 			}
 		}
 	}
@@ -1107,14 +1127,14 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 	// Update MemDB with changes to the entity we are merging to
 	err = i.MemDBUpsertEntityInTxn(txn, toEntity)
 	if err != nil {
-		return nil, err, nil
+		return nil, err
 	}
 
 	for _, group := range fromEntityGroups {
 		group.MemberEntityIDs = append(group.MemberEntityIDs, toEntity.ID)
 		err = i.UpsertGroupInTxn(ctx, txn, group, persist)
 		if err != nil {
-			return nil, err, nil
+			return nil, err
 		}
 	}
 
@@ -1122,7 +1142,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 		// Persist the entity which we are merging to
 		toEntityAsAny, err := anypb.New(toEntity)
 		if err != nil {
-			return nil, err, nil
+			return nil, err
 		}
 		item := &storagepacker.Item{
 			ID:      toEntity.ID,
@@ -1131,11 +1151,11 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 		err = i.entityPacker(ctx).PutItem(ctx, item)
 		if err != nil {
-			return nil, err, nil
+			return nil, err
 		}
 	}
 
-	return nil, nil, nil
+	return nil, nil
 }
 
 var entityHelp = map[string][2]string{

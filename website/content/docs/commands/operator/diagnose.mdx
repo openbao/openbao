@@ -22,13 +22,13 @@ messages or warnings.
 ## Usage
 
 The following flags are available in addition to the [standard set of
-flags](/docs/commands) included on all commands.
+flags](../index.mdx) included on all commands.
 
 ### Output options
 
 - `-format` `(string: "table")` - Print the output in the given format. Valid
-  formats are "table", "json", or "yaml". This can also be specified via the
-  `BAO_FORMAT` environment variable.
+  formats are "table" or "json". This can also be specified via the `BAO_FORMAT`
+  environment variable.
 
 #### Output layout
 
@@ -52,8 +52,8 @@ the Storage check fails, the `[ failure ]` prefix will bubble up to the Storage 
 
 ### Command options
 
-- `-config` `(string; "")` - The path to the OpenBao configuration file used by 
-the OpenBao server on startup. 
+- `-config` `(string; "")` - The paths to the OpenBao configuration files used by 
+the OpenBao server on startup. See the [server `-config` option](../../server#command-options) for more details.
 
 ### Diagnose checks
 

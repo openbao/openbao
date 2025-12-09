@@ -27,7 +27,7 @@ jobs:
       go-tags: ""
       checkout-ref: ${{ steps.checkout-ref-output.outputs.checkout-ref }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Ensure Go modules are cached
         uses: ./.github/actions/set-up-go
         with:
@@ -128,23 +128,23 @@ jobs:
       - setup
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - uses: ./.github/actions/set-up-go
       # Setup node.js without caching to allow running npm install -g yarn (next step)
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version-file: "./ui/package.json"
       - id: install-yarn
         run: |
           npm install -g yarn
       # Setup node.js with caching using the yarn.lock file
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version-file: "./ui/package.json"
           cache: yarn
           cache-dependency-path: ui/yarn.lock
       - id: install-browser
-        uses: browser-actions/setup-chrome@4c4260df9622eff1b597d1653b7a388b6b0f8341 # v2.0.0
+        uses: browser-actions/setup-chrome@b94431e051d1c52dcbe9a7092a4f10f827795416 # v2.1.0
       - id: ui-dependencies
         name: ui-dependencies
         working-directory: ./ui
@@ -166,8 +166,8 @@ jobs:
           # Run Ember tests
           cd ui
           mkdir -p test-results/qunit
-          yarn test:oss
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+          yarn test
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: test-results-ui
           path: ui/test-results

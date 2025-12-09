@@ -7,10 +7,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"io"
-	"math/rand"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,58 +24,13 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
-
-func connectPeers(nodes ...*RaftBackend) {
-	for _, node := range nodes {
-		for _, peer := range nodes {
-			if node == peer {
-				continue
-			}
-
-			node.raftTransport.(*raft.InmemTransport).Connect(raft.ServerAddress(peer.NodeID()), peer.raftTransport)
-			peer.raftTransport.(*raft.InmemTransport).Connect(raft.ServerAddress(node.NodeID()), node.raftTransport)
-		}
-	}
-}
-
-func stepDownLeader(t *testing.T, node *RaftBackend) {
-	t.Helper()
-
-	if err := node.raft.LeadershipTransfer().Error(); err != nil {
-		t.Fatal(err)
-	}
-
-	timeout := time.Now().Add(time.Second * 10)
-	for !time.Now().After(timeout) {
-		if err := node.raft.VerifyLeader().Error(); err != nil {
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	t.Fatal("still leader")
-}
-
-func waitForLeader(t *testing.T, nodes ...*RaftBackend) *RaftBackend {
-	t.Helper()
-	timeout := time.Now().Add(time.Second * 10)
-	for !time.Now().After(timeout) {
-		for _, node := range nodes {
-			if node.raft.Leader() == raft.ServerAddress(node.NodeID()) {
-				return node
-			}
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	t.Fatal("no leader")
-	return nil
-}
 
 func compareFSMs(t *testing.T, fsm1, fsm2 *FSM) {
 	t.Helper()
@@ -154,25 +110,24 @@ func compareDBs(t *testing.T, boltDB1, boltDB2 *bolt.DB, dataOnly bool) error {
 }
 
 func TestRaft_Backend(t *testing.T) {
-	b, dir := GetRaft(t, true, true)
-	defer os.RemoveAll(dir)
+	t.Parallel()
+	b, _ := GetRaft(t, true, true)
 
 	physical.ExerciseBackend(t, b)
 }
 
 func TestRaft_TransactionalBackend(t *testing.T) {
-	b, dir := GetRaft(t, true, true)
-	defer os.RemoveAll(dir)
+	t.Parallel()
+	b, _ := GetRaft(t, true, true)
 
 	physical.ExerciseTransactionalBackend(t, b)
+
+	testRaft_assertFastTxnTrackerCleanup(t, b)
 }
 
 func TestRaft_ParseAutopilotUpgradeVersion(t *testing.T) {
-	raftDir, err := os.MkdirTemp("", "vault-raft-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(raftDir)
+	t.Parallel()
+	raftDir := t.TempDir()
 
 	conf := map[string]string{
 		"path":                      raftDir,
@@ -180,7 +135,7 @@ func TestRaft_ParseAutopilotUpgradeVersion(t *testing.T) {
 		"autopilot_upgrade_version": "hahano",
 	}
 
-	_, err = NewRaftBackend(conf, hclog.NewNullLogger())
+	_, err := NewRaftBackend(conf, hclog.NewNullLogger())
 	if err == nil {
 		t.Fatal("expected an error but got none")
 	}
@@ -257,8 +212,8 @@ func TestRaft_ParseNonVoter(t *testing.T) {
 }
 
 func TestRaft_Backend_LargeKey(t *testing.T) {
-	b, dir := GetRaft(t, true, true)
-	defer os.RemoveAll(dir)
+	t.Parallel()
+	b, _ := GetRaft(t, true, true)
 
 	key, err := base62.Random(bolt.MaxKeySize + 1)
 	if err != nil {
@@ -285,8 +240,8 @@ func TestRaft_Backend_LargeKey(t *testing.T) {
 }
 
 func TestRaft_Backend_LargeValue(t *testing.T) {
-	b, dir := GetRaft(t, true, true)
-	defer os.RemoveAll(dir)
+	t.Parallel()
+	b, _ := GetRaft(t, true, true)
 
 	value := make([]byte, defaultMaxEntrySize+1)
 	rand.Read(value)
@@ -311,32 +266,32 @@ func TestRaft_Backend_LargeValue(t *testing.T) {
 }
 
 func TestRaft_Backend_ListPrefix(t *testing.T) {
-	b, dir := GetRaft(t, true, true)
-	defer os.RemoveAll(dir)
+	t.Parallel()
+	b, _ := GetRaft(t, true, true)
 
 	physical.ExerciseBackend_ListPrefix(t, b)
 }
 
 func TestRaft_HABackend(t *testing.T) {
 	t.Skip()
-	raft, dir := GetRaft(t, true, true)
-	defer os.RemoveAll(dir)
-	raft2, dir2 := GetRaft(t, false, true)
-	defer os.RemoveAll(dir2)
+	t.Parallel()
+	raft, _ := GetRaft(t, true, true)
+	raft2, _ := GetRaft(t, false, true)
 
 	// Add raft2 to the cluster
 	addPeer(t, raft, raft2)
 
 	physical.ExerciseHABackend(t, raft, raft2)
+
+	testRaft_assertFastTxnTrackerCleanup(t, raft)
+	testRaft_assertFastTxnTrackerCleanup(t, raft2)
 }
 
 func TestRaft_Backend_ThreeNode(t *testing.T) {
-	raft1, dir := GetRaft(t, true, true)
-	raft2, dir2 := GetRaft(t, false, true)
-	raft3, dir3 := GetRaft(t, false, true)
-	defer os.RemoveAll(dir)
-	defer os.RemoveAll(dir2)
-	defer os.RemoveAll(dir3)
+	t.Parallel()
+	raft1, _ := GetRaft(t, true, true)
+	raft2, _ := GetRaft(t, false, true)
+	raft3, _ := GetRaft(t, false, true)
 
 	// Add raft2 to the cluster
 	addPeer(t, raft1, raft2)
@@ -350,16 +305,32 @@ func TestRaft_Backend_ThreeNode(t *testing.T) {
 	// Make sure all stores are the same
 	compareFSMs(t, raft1.fsm, raft2.fsm)
 	compareFSMs(t, raft1.fsm, raft3.fsm)
+
+	testRaft_assertFastTxnTrackerCleanup(t, raft1)
+	testRaft_assertFastTxnTrackerCleanup(t, raft2)
+	testRaft_assertFastTxnTrackerCleanup(t, raft3)
+}
+
+func testRaft_assertFastTxnTrackerCleanup(t testing.TB, raft *RaftBackend) {
+	t.Helper()
+	if assert.Equal(t, raft.fsm.fastTxnTracker.lowestActiveIndex(), uint64(math.MaxUint64), "the test assumes that no transaction is in flight") {
+		assert.Len(t, raft.fsm.fastTxnTracker.indexModifiedMap,
+			2,
+			"two entries are expected: the one that was the latest when we applied the final operation and the final operation itself",
+			// Why? we can not evict the currently active as a new transaction might be started concurrently to our apply
+			// neither can the latest operation itself, for the same reason
+			// Put in other words: Once the indexModifiedMap has reached a length of 2, it should never fall below 2 again.
+		)
+		assert.Empty(t, raft.fsm.fastTxnTracker.sourceIndexMap)
+	}
 }
 
 func TestRaft_GetOfflineConfig(t *testing.T) {
+	t.Parallel()
 	// Create 3 raft nodes
-	raft1, dir1 := GetRaft(t, true, true)
-	raft2, dir2 := GetRaft(t, false, true)
-	raft3, dir3 := GetRaft(t, false, true)
-	defer os.RemoveAll(dir1)
-	defer os.RemoveAll(dir2)
-	defer os.RemoveAll(dir3)
+	raft1, _ := GetRaft(t, true, true)
+	raft2, _ := GetRaft(t, false, true)
+	raft3, _ := GetRaft(t, false, true)
 
 	// Add them all to the cluster
 	addPeer(t, raft1, raft2)
@@ -391,15 +362,13 @@ func TestRaft_GetOfflineConfig(t *testing.T) {
 }
 
 func TestRaft_Recovery(t *testing.T) {
+	t.Parallel()
+
 	// Create 4 raft nodes
 	raft1, dir1 := GetRaft(t, true, true)
 	raft2, dir2 := GetRaft(t, false, true)
-	raft3, dir3 := GetRaft(t, false, true)
+	raft3, _ := GetRaft(t, false, true)
 	raft4, dir4 := GetRaft(t, false, true)
-	defer os.RemoveAll(dir1)
-	defer os.RemoveAll(dir2)
-	defer os.RemoveAll(dir3)
-	defer os.RemoveAll(dir4)
 
 	// Add them all to the cluster
 	addPeer(t, raft1, raft2)
@@ -476,11 +445,15 @@ func TestRaft_Recovery(t *testing.T) {
 
 	compareFSMs(t, raft1.fsm, raft2.fsm)
 	compareFSMs(t, raft1.fsm, raft4.fsm)
+
+	testRaft_assertFastTxnTrackerCleanup(t, raft1)
+	testRaft_assertFastTxnTrackerCleanup(t, raft2)
+	testRaft_assertFastTxnTrackerCleanup(t, raft3)
 }
 
 func TestRaft_Backend_Performance(t *testing.T) {
+	t.Parallel()
 	b, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
 
 	defaultConfig := raft.DefaultConfig()
 
@@ -535,8 +508,8 @@ func TestRaft_Backend_Performance(t *testing.T) {
 }
 
 func TestRaft_Backend_PutTxnMargin(t *testing.T) {
-	b, dir := GetRaft(t, true, true)
-	defer os.RemoveAll(dir)
+	t.Parallel()
+	b, _ := GetRaft(t, true, true)
 
 	// Ensure different key sizes don't change the results.
 	for _, keySize := range []int{1, 3, 13, 34, 144, 610, 17631} {
@@ -567,11 +540,18 @@ func TestRaft_Backend_PutTxnMargin(t *testing.T) {
 	}
 }
 
+func TestRaft_LeaderConstant(t *testing.T) {
+	// To avoid a full dependency on the hashicorp/raft module,
+	// logical.ShouldForward(...) depends on the exact string of
+	// raft.ErrNotLeader. This test ensures that Put(...) and
+	// Delete(...) operations on the standby result in forwarding
+	// to the active.
+	require.True(t, logical.ShouldForward(raft.ErrNotLeader))
+}
+
 func BenchmarkDB_Puts(b *testing.B) {
-	raft, dir := GetRaft(b, true, false)
-	defer os.RemoveAll(dir)
-	raft2, dir2 := GetRaft(b, true, false)
-	defer os.RemoveAll(dir2)
+	raft, _ := GetRaft(b, true, false)
+	raft2, _ := GetRaft(b, true, false)
 
 	bench := func(b *testing.B, s physical.Backend, dataSize int) {
 		data, err := uuid.GenerateRandomBytes(dataSize)
@@ -587,7 +567,7 @@ func BenchmarkDB_Puts(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pe.Key = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s-%d", testName, i))))
+			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 			err := s.Put(ctx, pe)
 			if err != nil {
 				b.Fatal(err)
@@ -600,8 +580,7 @@ func BenchmarkDB_Puts(b *testing.B) {
 }
 
 func BenchmarkDB_Snapshot(b *testing.B) {
-	raft, dir := GetRaft(b, true, false)
-	defer os.RemoveAll(dir)
+	raft, _ := GetRaft(b, true, false)
 
 	data, err := uuid.GenerateRandomBytes(256 * 1024)
 	if err != nil {
@@ -615,7 +594,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 	testName := b.Name()
 
 	for i := 0; i < 100; i++ {
-		pe.Key = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s-%d", testName, i))))
+		pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 		err = raft.Put(ctx, pe)
 		if err != nil {
 			b.Fatal(err)
@@ -625,7 +604,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 	bench := func(b *testing.B, s *FSM) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pe.Key = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s-%d", testName, i))))
+			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 			s.writeTo(ctx, discardCloser{Writer: io.Discard}, discardCloser{Writer: io.Discard})
 		}
 	}

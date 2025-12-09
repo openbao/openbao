@@ -21,6 +21,12 @@ const (
 	vaultVersionPath string = "core/versions/"
 )
 
+type VaultVersion struct {
+	TimestampInstalled time.Time
+	Version            string
+	BuildDate          string
+}
+
 // storeVersionEntry will store the version, timestamp, and build date to storage
 // only if no entry for that version already exists in storage. Version
 // timestamps were initially stored in local time. UTC should be used. Existing

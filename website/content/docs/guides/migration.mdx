@@ -1,0 +1,189 @@
+---
+sidebar_label: In-Place Migration Guide
+description: >-
+  This page contains a guide to migrate from HashiCorp Vault Community Edition to OpenBao
+---
+
+# In-Place Migration from Vault CE
+
+This page contains a guide to migrate a HashiCorp Vault Community Edition
+cluster to OpenBao.
+
+:::info
+
+This guide assumes in-place upgrade, that is, OpenBao will replace the
+Vault server process on all nodes. All configuration, including
+all endpoints and URLs will remain unchanged.
+
+OpenBao API should be compatible with Vault to the extent that existing
+clients should not even register a difference.
+
+Some clients/service might have to be restarted.
+
+:::
+
+## Constraints
+
+ * Vault version 1.14.1 (OSS)
+ * OpenBao version 2.2.0
+ * Raft storage
+ * Shamir unseal (no auto-unseal)
+
+Previous (and future) OpenBao versions will probably work fine. However,
+this guide was tested with OpenBao 2.2.0 with Shamir unseal.
+
+Only the community edition (v1.14.x) Vault was tested, not Vault Enterprise.
+
+## Limitations
+
+If your Vault version is lower than 1.14.1, upgrade to v1.14.1.
+
+:::warning
+
+This guide will not work on Vault versions 1.15.0 and newer; use at your own risk.
+
+:::
+
+If your Vault has been bootstrapped with Vault version < 1.3,
+you may need to rekey. Vault pre 1.3 used a different Shamir seal
+implementation which has been [removed](https://github.com/openbao/openbao/commit/ad0870c7361807192bfa1fc32964d8b1bca416ab)
+from OpenBao.
+
+This guide is based on a fairly simple setup, ymmv.
+
+### Plugins
+
+:::warning
+
+OpenBao comes [without many plugins](https://github.com/orgs/openbao/discussions/64) by default.
+If your plugin isn't included, you may need to resort to some [workarounds](https://github.com/openbao/openbao/issues/257#issuecomment-3228461262).
+This guide assumes no external plugins (external to Bao) are used.
+
+## Known issues
+
+Check [known-issues](known-issues.mdx) documentation
+to get familiar with currently known problems and issues of the latest
+release.
+
+## Breaking changes
+
+- OpenBao uses a different type of
+  [tokens](concepts/tokens.mdx#token-formats)
+  in the form of `[sbr].<random>` while Vault uses much
+  [longer](https://developer.hashicorp.com/vault/docs/concepts/tokens#token-types)
+  tokens (`{hvs,hvb,hvr}.<long_random>`). Old tokens will still be accepted
+  according to their TTLs. However, newly issued tokens will have the Bao
+  form. This is not a breaking change on Bao side but it might break some
+  assupmtions consumers make about the token format. Make sure your consumers
+  are aware of this change.
+
+## Preparation
+
+### Backup
+
+Make a backup of your data! A [raft snapshot](commands/operator/raft.mdx#snapshot)
+will do. So will a filesystem snapshot so long as your filesystem supports
+atomic snapshots (like ZFS or BTRFS).
+
+### Install and configure OpenBao
+
+Make sure to have OpenBao [installed](install.mdx) and
+[configured](configuration/index.mdx), _but not started_
+on your nodes. The configuration is largely compatible.
+
+It is recommended to use different storage path for the OpenBao instance.
+The nodes will pull the data from the cluster when joining, there is no
+need to reuse existing data. This also has the added benefit that a rollback
+is slightly easier in case it's needed.
+
+:::warning
+
+If you use Vault `audit file` backend, you need to make sure OpenBao
+can write to the existing file. In most cases this means something
+like `chown openbao:openbao vault_audit_log.log`. You need to do this
+_after_ you stop the Vault instance a node.
+
+:::
+
+If you have `disable_mlock` in your Vault config, remove it. OpenBao does
+not use `mlock` [since 2.0.0](rfcs/mlock-removal.mdx).
+
+
+### Upgrade the cluster
+
+:::info
+
+In this guide we do not rely on [Autopilot](commands/operator/raft.mdx#autopilot)
+
+:::
+
+Make a note of which node is the _leader_:
+```
+$ vault status
+
+Key                     Value
+---                     -----
+Seal Type               shamir
+Initialized             true
+Sealed                  false
+...
+Active Node Address     https://vault-03.example.com:8200
+...
+```
+
+or
+
+```
+curl https://vault.example.com:8200/v1/sys/leader
+```
+
+**One by one**, upgrade the _follower_ nodes first.
+
+1. stop Vault service
+2. start OpenBao service
+3. join the node to the cluster
+   ```
+   $ bao operator raft join vault-03.example.com:8200
+   ```
+4. unseal the node
+   ```
+   $ bao operator unseal
+   ```
+5. wait until the node becomes a voter (Voter field is `true`)
+   Assuming you just joined node `vault-04`:
+   ```
+   $ bao operator raft list-peers
+
+   Node        Address                         State       Voter
+   ----        -------                         -----       -----
+   ...
+   vault-04    172.17.13.4:8201                follower    false
+   ...
+   ```
+
+Repeat for for all _follower_ nodes.
+
+Once all _followers_ run OpenBao, upgrade the _leader_ like this:
+
+First make sure the leader steps down:
+
+```
+VAULT_ADDR=https://vault-03.example.com:8200 vault operator step-down
+```
+
+Make sure the cluster elected a new leader:
+```
+$ vault status
+
+Key                     Value
+---                     -----
+Seal Type               shamir
+Initialized             true
+Sealed                  false
+...
+Active Node Address     https://vault-01.example.com:8200
+...
+```
+
+Repeat steps 1 through 5 above on the former leader, except in step 3
+use the current leader address.

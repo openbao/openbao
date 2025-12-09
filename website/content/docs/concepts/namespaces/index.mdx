@@ -1,0 +1,128 @@
+---
+sidebar_label: Namespaces
+description: >-
+  OpenBao Namespaces enable secure multi-tenancy and self-management of
+  instances.
+---
+
+# Namespaces
+
+Many organizations implement OpenBao as a service to provide centralized
+management of sensitive data and ensure that the different teams in an
+organization operate within isolated environments known as **tenants**.
+
+Multi-tenant environments have the following implementation challenges:
+
+- **Tenant isolation**. Teams within a Visualization as a Service (VaaS)
+  environment require strong isolation for their policies, secrets, and
+  identities. Tenant isolation may also be required due to organizational
+  security and privacy requirements or to address compliance regulations like
+  [GDPR](https://gdpr.eu).
+- **Long-term management**. Tenants typically have different policies and teams
+  request changes to their tenants at different rates. As a result, managing a
+  multi-tenant environment can become difficult for a single team as the number
+  of tenants within the organization grows.
+
+Namespaces support secure multi-tenancy (**SMT**) within a single OpenBao
+instance with tenant isolation and administration delegation so OpenBao
+administrators can empower delegates to manage their own tenant environment.
+
+When you create a namespace, you establish an isolated environment with separate
+login paths that functions as a mini-OpenBao instance within your OpenBao
+installation. Users can then create and manage their sensitive data within the
+confines of that namespace, including:
+
+- secret engines
+- authentication methods
+- ACL, EGP, and RGP policies
+- password policies
+- entities
+- identity groups
+- tokens
+
+## Namespace naming restrictions
+
+Valid OpenBao namespace names:
+
+- **CANNOT** end with `/`
+- **CANNOT** contain spaces
+- **CANNOT** be one of the following reserved strings:
+  - `.`
+  - `..`
+  - `root`
+  - `sys`
+  - `audit`
+  - `auth`
+  - `cubbyhole`
+  - `identity`
+
+Refer to the [Namespace limits section](../../internals/limits.mdx#namespace-limits)
+of [OpenBao limits and maximums](../../internals/limits.mdx) for storage limits
+related to managing namespaces.
+
+## Child namespaces
+
+A **child namespace** is any namespace that exists entirely within the scope of
+another namespace. The containing namespace is the **parent namespace**. For 
+example, given the namespace path `A/B/C`:
+
+- `A` is the top-most namespace and exists under the root namespace for the
+  OpenBao instance.
+- `B` is a child namespace of `A` and the parent namespace of `C`.
+- `C` is a child namespace of `B` and the grandchild namespace of `A`.
+
+Children can inherit elements from their parent namespaces. For example,
+policies for a child namespace might reference entities or groups from the parent
+namespace. Parent namespaces can also **assert** policies on identities within
+a child namespace. 
+
+## Delegation and administrative namespaces
+
+OpenBao system administrators can assign administration rights to delegate
+admins to allow teams to self-manage their namespace. In addition to basic
+management, delegate admins can create child namespaces and assign admin rights
+to subordinate delegate admins.
+
+Administrators of child namespaces cannot escape the limits of namespace,
+though may create additional nested namespaces of their own.
+
+## OpenBao API and namespaces
+
+Users can perform API operations under a specific namespace by setting the
+`X-Vault-Namespace` header to the absolute or relative namespace path. Relative
+namespace paths are assumed to be child namespaces of the calling namespace.
+You can also provide an absolute namespace path without using the
+`X-Vault-Namespace` header.
+
+OpenBao constructs the fully qualified namespace path based on the calling
+namespace and the `X-Vault` header to route the request to the
+appropriate namespace. For example, the following requests all route to the
+`ns1/ns2/secret/foo` namespace:
+
+1. Path: `ns1/ns2/secret/foo`
+2. Path: `secret/foo`, Header: `X-Vault-Namespace: ns1/ns2/`
+3. Path: `ns2/secret/foo`, Header: `X-Vault-Namespace: ns1/`
+
+
+:::info
+
+  Use the [/sys/namespaces](/api-docs/system/namespaces) API or
+  [`namespace`](../../commands/namespace.mdx) CLI command to manage
+  your namespaces.
+
+:::
+
+## Restricted API paths
+
+The OpenBao API includes system backend endpoints, which are mounted under the
+`sys/` path. System endpoints let you interact with the internal features of
+your OpenBao instance.
+
+By default, OpenBao allows non-root calls to the less-sensitive system backend
+endpoints. But, for security reasons, OpenBao restricts access to some of the
+system backend endpoints to calls from the root namespace or calls that use a
+token in the root namespace with elevated permissions.
+
+import RestrictedEndpoints from "@site/content/partials/api/restricted-endpoints.mdx";
+
+<RestrictedEndpoints />

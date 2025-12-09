@@ -21,7 +21,8 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/docker/docker/api/types"
+	"github.com/containerd/errdefs"
+	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
@@ -29,10 +30,10 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
 	"github.com/hashicorp/go-uuid"
+	"github.com/moby/go-archive"
 )
 
 const DockerAPIVersion = "1.40"
@@ -285,9 +286,9 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 	}
 
 	cleanup := func() {
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			err := d.DockerAPI.ContainerRemove(ctx, result.Container.ID, container.RemoveOptions{Force: true})
-			if err == nil || client.IsErrNotFound(err) {
+			if err == nil || errdefs.IsNotFound(err) {
 				return
 			}
 			time.Sleep(1 * time.Second)
@@ -339,12 +340,12 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 type Service struct {
 	Config      ServiceConfig
 	Cleanup     func()
-	Container   *types.ContainerJSON
+	Container   *container.InspectResponse
 	StartResult *StartResult
 }
 
 type StartResult struct {
-	Container *types.ContainerJSON
+	Container *container.InspectResponse
 	Addrs     []string
 	RealIP    string
 }
@@ -461,7 +462,7 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 	var realIP string
 	if d.RunOptions.NetworkID == "" {
 		if len(inspect.NetworkSettings.Networks) > 1 {
-			return nil, fmt.Errorf("Set d.RunOptions.NetworkName instead for container with multiple networks: %v", inspect.NetworkSettings.Networks)
+			return nil, fmt.Errorf("set d.RunOptions.NetworkName instead for container with multiple networks: %v", inspect.NetworkSettings.Networks)
 		}
 		for _, network := range inspect.NetworkSettings.Networks {
 			realIP = network.IPAddress
@@ -579,12 +580,12 @@ func RunCmdWithOutput(api *client.Client, ctx context.Context, c string, cmd []s
 
 	ret, err := api.ContainerExecCreate(ctx, c, runCfg)
 	if err != nil {
-		return nil, nil, -1, fmt.Errorf("error creating execution environment: %v\ncfg: %v\n", err, runCfg)
+		return nil, nil, -1, fmt.Errorf("error creating execution environment: %v\ncfg: %v", err, runCfg)
 	}
 
 	resp, err := api.ContainerExecAttach(ctx, ret.ID, container.ExecStartOptions{})
 	if err != nil {
-		return nil, nil, -1, fmt.Errorf("error attaching to command execution: %v\ncfg: %v\nret: %v\n", err, runCfg, ret)
+		return nil, nil, -1, fmt.Errorf("error attaching to command execution: %v\ncfg: %v\nret: %v", err, runCfg, ret)
 	}
 	defer resp.Close()
 
@@ -625,12 +626,12 @@ func RunCmdInBackground(api *client.Client, ctx context.Context, c string, cmd [
 
 	ret, err := api.ContainerExecCreate(ctx, c, runCfg)
 	if err != nil {
-		return "", fmt.Errorf("error creating execution environment: %w\ncfg: %v\n", err, runCfg)
+		return "", fmt.Errorf("error creating execution environment: %w\ncfg: %v", err, runCfg)
 	}
 
 	err = api.ContainerExecStart(ctx, ret.ID, container.ExecStartOptions{})
 	if err != nil {
-		return "", fmt.Errorf("error starting command execution: %w\ncfg: %v\nret: %v\n", err, runCfg, ret)
+		return "", fmt.Errorf("error starting command execution: %w\ncfg: %v\nret: %v", err, runCfg, ret)
 	}
 
 	return ret.ID, nil
@@ -692,7 +693,7 @@ func BuildContextFromTarball(reader io.Reader) (BuildContext, error) {
 	archive := tar.NewReader(reader)
 	bCtx := NewBuildContext()
 
-	for true {
+	for {
 		header, err := archive.Next()
 		if err != nil {
 			if err == io.EOF {
@@ -770,14 +771,14 @@ func (bCtx *BuildContext) ToTarball() (io.Reader, error) {
 }
 
 type BuildOpt interface {
-	Apply(cfg *types.ImageBuildOptions) error
+	Apply(cfg *build.ImageBuildOptions) error
 }
 
 type BuildRemove bool
 
 var _ BuildOpt = (*BuildRemove)(nil)
 
-func (u BuildRemove) Apply(cfg *types.ImageBuildOptions) error {
+func (u BuildRemove) Apply(cfg *build.ImageBuildOptions) error {
 	cfg.Remove = bool(u)
 	return nil
 }
@@ -786,7 +787,7 @@ type BuildForceRemove bool
 
 var _ BuildOpt = (*BuildForceRemove)(nil)
 
-func (u BuildForceRemove) Apply(cfg *types.ImageBuildOptions) error {
+func (u BuildForceRemove) Apply(cfg *build.ImageBuildOptions) error {
 	cfg.ForceRemove = bool(u)
 	return nil
 }
@@ -795,7 +796,7 @@ type BuildPullParent bool
 
 var _ BuildOpt = (*BuildPullParent)(nil)
 
-func (u BuildPullParent) Apply(cfg *types.ImageBuildOptions) error {
+func (u BuildPullParent) Apply(cfg *build.ImageBuildOptions) error {
 	cfg.PullParent = bool(u)
 	return nil
 }
@@ -804,7 +805,7 @@ type BuildArgs map[string]*string
 
 var _ BuildOpt = (*BuildArgs)(nil)
 
-func (u BuildArgs) Apply(cfg *types.ImageBuildOptions) error {
+func (u BuildArgs) Apply(cfg *build.ImageBuildOptions) error {
 	cfg.BuildArgs = u
 	return nil
 }
@@ -813,7 +814,7 @@ type BuildTags []string
 
 var _ BuildOpt = (*BuildTags)(nil)
 
-func (u BuildTags) Apply(cfg *types.ImageBuildOptions) error {
+func (u BuildTags) Apply(cfg *build.ImageBuildOptions) error {
 	cfg.Tags = u
 	return nil
 }
@@ -825,7 +826,7 @@ func (d *Runner) BuildImage(ctx context.Context, containerfile string, container
 }
 
 func BuildImage(ctx context.Context, api *client.Client, containerfile string, containerContext BuildContext, opts ...BuildOpt) ([]byte, error) {
-	var cfg types.ImageBuildOptions
+	var cfg build.ImageBuildOptions
 
 	// Build container context tarball, provisioning containerfile in.
 	containerContext[containerfilePath] = PathContentsFromBytes([]byte(containerfile))

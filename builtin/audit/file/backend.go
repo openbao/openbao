@@ -50,7 +50,9 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 		format = "json"
 	}
 	switch format {
-	case "json", "jsonx":
+	case "json":
+	case "jsonx":
+		return nil, errors.New(`jsonx formatting has been removed, consider switching to json by omitting "format" or setting it to "json"`)
 	default:
 		return nil, fmt.Errorf("unknown format type %q", format)
 	}
@@ -104,8 +106,16 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 		default:
 			mode = os.FileMode(m)
 
-		}
+			// Refuse setting an irregular file mode.
+			if !mode.IsRegular() {
+				return nil, errors.New("file mode does not represent a regular file")
+			}
 
+			// Strip executable bits. Part of the exploit for HCSEC-2025-14 /
+			// CVE-2025-6000 / CVE-2025-54997 consists of abusing the ability
+			// to create executable files.
+			mode &^= 0o111 // &^ means "bit clear", a combination of "bitwise complement" (^) and "bitwise and" (&)
+		}
 	}
 
 	b := &Backend{
@@ -124,18 +134,9 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 	// Ensure we are working with the right type by explicitly storing a nil of
 	// the right type
 	b.salt.Store((*salt.Salt)(nil))
-
-	switch format {
-	case "json":
-		b.formatter.AuditFormatWriter = &audit.JSONFormatWriter{
-			Prefix:   conf.Config["prefix"],
-			SaltFunc: b.Salt,
-		}
-	case "jsonx":
-		b.formatter.AuditFormatWriter = &audit.JSONxFormatWriter{
-			Prefix:   conf.Config["prefix"],
-			SaltFunc: b.Salt,
-		}
+	b.formatter.AuditFormatWriter = &audit.JSONFormatWriter{
+		Prefix:   conf.Config["prefix"],
+		SaltFunc: b.Salt,
 	}
 
 	switch path {
@@ -251,7 +252,7 @@ func (b *Backend) log(ctx context.Context, buf *bytes.Buffer, writer io.Writer) 
 	// If writing to stdout there's no real reason to think anything would have
 	// changed so return above. Otherwise, opportunistically try to re-open the
 	// FD, once per call.
-	b.f.Close()
+	b.f.Close() //nolint:errcheck // try to close, ignore error
 	b.f = nil
 
 	if err := b.open(); err != nil {
@@ -259,7 +260,10 @@ func (b *Backend) log(ctx context.Context, buf *bytes.Buffer, writer io.Writer) 
 		return err
 	}
 
-	reader.Seek(0, io.SeekStart)
+	if _, err := reader.Seek(0, io.SeekStart); err != nil {
+		b.fileLock.Unlock()
+		return err
+	}
 	_, err := reader.WriteTo(writer)
 	b.fileLock.Unlock()
 	return err

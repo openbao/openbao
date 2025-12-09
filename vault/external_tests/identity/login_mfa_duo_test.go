@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"reflect"
 	"testing"
 
@@ -127,17 +126,10 @@ path "secret/foo" {
 	defer client.SetToken(originalToken)
 	client.SetToken(userpassToken)
 
-	// Create a GET request and set the MFA header containing the generated
-	// TOTP passcode
-	secretRequest := client.NewRequest("GET", "/v1/secret/foo")
-	secretRequest.Headers = make(http.Header)
-	// mfaHeaderValue := "my_duo:" + totpPasscode
-	// secretRequest.Headers.Add("X-Vault-MFA", mfaHeaderValue)
-
 	// Make the request
-	resp, err := client.RawRequest(secretRequest)
+	resp, err := client.Logical().ReadRaw("secret/foo")
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 403 {
 		return errors.New("failed to read the secret")

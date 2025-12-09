@@ -22,7 +22,6 @@ const config: Config = {
   projectName: "openbao", // Usually your repo name.
 
   onBrokenLinks: "throw",
-  onBrokenMarkdownLinks: "warn",
   // ignore broken anchors as most of them are false positives
   onBrokenAnchors: "ignore",
 
@@ -39,7 +38,6 @@ const config: Config = {
     mermaid: true,
   },
   themes: ['@docusaurus/theme-mermaid'],
-
   presets: [
     [
       "classic",
@@ -74,10 +72,10 @@ const config: Config = {
         theme: {
           customCss: "./src/css/custom.css",
         },
-		gtag: {
-		  trackingID: "GTM-MWH2V47T",
-		  anonymizeIP: true,
-		},
+        gtag: {
+          trackingID: "GTM-MWH2V47T",
+          anonymizeIP: true,
+        },
       } satisfies Preset.Options,
     ],
   ],
@@ -98,6 +96,17 @@ const config: Config = {
               resolveFrom: path.join(process.cwd(), "content", "partials"),
             },
           ],
+        ],
+      },
+    ],
+    [
+      "@docusaurus/plugin-client-redirects",
+      {
+        redirects: [
+          {
+            from: "/api-docs/system/rotate-config",
+            to: "/api-docs/system/rotate/keyring-config",
+          },
         ],
       },
     ],
@@ -139,8 +148,8 @@ const config: Config = {
               href: "https://github.com/openbao/openbao/discussions",
             },
             {
-              label: "Matrix Chat Server",
-              href: "https://chat.lfx.linuxfoundation.org/",
+              label: "Zulip Chat Server",
+              href: "https://linuxfoundation.zulipchat.com/",
             },
             {
               label: "LF Edge Wiki",
@@ -182,9 +191,9 @@ const config: Config = {
       additionalLanguages: ["hcl"],
     },
     metadata: [
-      {name: 'keywords', content: 'openbao, secrets management, open source, linux foundation, encryption as a service, key management system, pki, transit, ssh, secret vault, database passwords'},
-      {name: 'author', content: 'OpenBao a Series of LF Projects, LLC'},
-      {name: 'twitter:card', content: 'summary_large_image'},
+      { name: 'keywords', content: 'openbao, secrets management, open source, linux foundation, encryption as a service, key management system, pki, transit, ssh, secret vault, database passwords' },
+      { name: 'author', content: 'OpenBao a Series of LF Projects, LLC' },
+      { name: 'twitter:card', content: 'summary_large_image' },
     ],
     headTags: [
       {

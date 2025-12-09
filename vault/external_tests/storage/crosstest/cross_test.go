@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/physical/postgresql"
@@ -73,17 +73,6 @@ func Test_RandomOpsTransactionalBackends(t *testing.T) {
 	txLimit := 10
 	ops := getRandomOps(t, numTxOps, true, txLimit)
 	executeRandomTransactionalOps(t, backends, ops, txLimit)
-}
-
-func replayOps(t *testing.T, file string) []*inmem.InmemOp {
-	data, err := os.ReadFile(file)
-	require.NoError(t, err, "error reading operations file")
-
-	var results []*inmem.InmemOp
-	err = json.Unmarshal(data, &results)
-	require.NoError(t, err, "error unmarshaling operations json")
-
-	return results
 }
 
 func Test_ExerciseTransactionalBackends(t *testing.T) {
@@ -958,7 +947,7 @@ func getRandomOps(t *testing.T, count int, transactional bool, txLimit int) []*i
 		opI := rand.Intn(len(opTypes))
 		op := opTypes[opI]
 
-		var tx int = rand.Intn(txLimit+1) - 1
+		tx := rand.Intn(txLimit+1) - 1
 		var path string
 		var contents string
 		var after string

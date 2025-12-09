@@ -26,13 +26,13 @@ jobs:
 
     steps:
       - name: 'Repository Checkout'
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: 'Setup Golang'
         uses: ./.github/actions/set-up-go
 
       - name: 'Submit Dependencies To GitHub'
-        uses: actions/go-dependency-submission@v2.0.3
+        uses: actions/go-dependency-submission@f35d5c9af13ce9cc32f7930b171e315e878f6921 # v2.0.3
         #with:
           # GitHub Personal Access Token (PAT). Defaults to PAT provided by Action runner
           # token: # optional, default is ${{ github.token }}

@@ -423,8 +423,7 @@ listener "tcp" {
 	// Test against a listener configuration that sets 'require_request_header'
 	// to 'true', with the header missing from the request.
 	agentClient = newApiClient("http://"+listenAddr3, false)
-	req = agentClient.NewRequest("GET", "/v1/sys/health")
-	resp, err := agentClient.RawRequest(req)
+	resp, err := agentClient.Logical().ReadRaw("sys/health")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -438,8 +437,7 @@ listener "tcp" {
 	h := agentClient.Headers()
 	h[consts.RequestHeaderName] = []string{"bogus"}
 	agentClient.SetHeaders(h)
-	req = agentClient.NewRequest("GET", "/v1/sys/health")
-	resp, err = agentClient.RawRequest(req)
+	resp, err = agentClient.Logical().ReadRaw("sys/health")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -653,7 +651,7 @@ auto_auth {
 					continue
 				}
 				if string(c) != templateRendered(i)+suffix {
-					err = fmt.Errorf("expected=%q, got=%q", templateRendered(i)+suffix, string(c))
+					err = fmt.Errorf("expected=%q, got=%q", templateRendered(i)+suffix, string(c)) //nolint:ineffassign,staticcheck // false positive: after a timeout the last error is returned
 					continue
 				}
 			}
@@ -863,7 +861,7 @@ auto_auth {
 							continue
 						}
 						if string(c) != templateRendered(i)+suffix {
-							err = fmt.Errorf("expected=%q, got=%q", templateRendered(i)+suffix, string(c))
+							err = fmt.Errorf("expected=%q, got=%q", templateRendered(i)+suffix, string(c)) //nolint:ineffassign,staticcheck // false positive: after a timeout the last error is returned
 							continue
 						}
 					}
@@ -1417,7 +1415,6 @@ func (h *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 // by Vault
 type userAgentHandler struct {
 	props                *vault.HandlerProperties
-	failCount            int
 	userAgentToCheckFor  string
 	pathToCheck          string
 	requestMethodToCheck string
@@ -1427,7 +1424,7 @@ type userAgentHandler struct {
 func (h *userAgentHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method == h.requestMethodToCheck && strings.Contains(req.RequestURI, h.pathToCheck) {
 		userAgent := req.UserAgent()
-		if !(userAgent == h.userAgentToCheckFor) {
+		if userAgent != h.userAgentToCheckFor {
 			h.t.Fatalf("User-Agent string not as expected. Expected to find %s, got %s", h.userAgentToCheckFor, userAgent)
 		}
 	}

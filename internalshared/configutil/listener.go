@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"net/textproto"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-sockaddr/template"
@@ -25,6 +25,11 @@ type ListenerTelemetry struct {
 	UnusedKeys                      UnusedKeyMap `hcl:",unusedKeyPositions"`
 	UnauthenticatedMetricsAccess    bool         `hcl:"-"`
 	UnauthenticatedMetricsAccessRaw interface{}  `hcl:"unauthenticated_metrics_access,alias:UnauthenticatedMetricsAccess"`
+	DisallowMetrics                 bool         `hcl:"-"`
+	DisallowMetricsRaw              interface{}  `hcl:"disallow_metrics,alias:DisallowMetrics"`
+	MetricsOnly                     bool         `hcl:"-"`
+	MetricsOnlyRaw                  interface{}  `hcl:"metrics_only,alias:MetricsOnly"`
+	MetricsPath                     string       `hcl:"metrics_path,alias:MetricsPath"`
 }
 
 type ListenerProfiling struct {
@@ -49,14 +54,18 @@ type Listener struct {
 	PurposeRaw interface{} `hcl:"purpose"`
 	Role       string      `hcl:"role"`
 
-	Address                 string        `hcl:"address"`
-	ClusterAddress          string        `hcl:"cluster_address"`
-	MaxRequestSize          int64         `hcl:"-"`
-	MaxRequestSizeRaw       interface{}   `hcl:"max_request_size"`
-	MaxRequestDuration      time.Duration `hcl:"-"`
-	MaxRequestDurationRaw   interface{}   `hcl:"max_request_duration"`
-	RequireRequestHeader    bool          `hcl:"-"`
-	RequireRequestHeaderRaw interface{}   `hcl:"require_request_header"`
+	Address                  string        `hcl:"address"`
+	ClusterAddress           string        `hcl:"cluster_address"`
+	MaxRequestSize           int64         `hcl:"-"`
+	MaxRequestSizeRaw        interface{}   `hcl:"max_request_size"`
+	MaxRequestJsonMemory     int64         `hcl:"-"`
+	MaxRequestJsonMemoryRaw  interface{}   `hcl:"max_request_json_memory"`
+	MaxRequestJsonStrings    int64         `hcl:"-"`
+	MaxRequestJsonStringsRaw interface{}   `hcl:"max_request_json_strings"`
+	MaxRequestDuration       time.Duration `hcl:"-"`
+	MaxRequestDurationRaw    interface{}   `hcl:"max_request_duration"`
+	RequireRequestHeader     bool          `hcl:"-"`
+	RequireRequestHeaderRaw  interface{}   `hcl:"require_request_header"`
 
 	TLSDisable    bool        `hcl:"-"`
 	TLSDisableRaw interface{} `hcl:"tls_disable"`
@@ -135,14 +144,15 @@ type Listener struct {
 	CustomResponseHeaders    map[string]map[string]string `hcl:"-"`
 	CustomResponseHeadersRaw interface{}                  `hcl:"custom_response_headers"`
 
-	// Whether to disable responding to unauthenticated rekey endpoints
+	// Whether to enable handling the unauthenticated rekey endpoints
 	// (via /sys/rekey/* and /sys/rekey-recovery-key/*) on this particular
 	// listener.
 	//
-	// This defaults to false, i.e., respond to requests; in the future when
-	// an authenticated variant with new semantics is available on a new
-	// endpoint, this will be set to true (disabling request handling).
-	DisableUnauthedRekeyEndpoints bool `hcl:"disable_unauthed_rekey_endpoints"`
+	// This defaults to true, i.e., requests are not served; in the future
+	// to enable handling the unauthenticated rekey endpoints the
+	// `disable_unauthed_rekey_endpoints` value has to be set to false.
+	DisableUnauthedRekeyEndpoints    *bool       `hcl:"-"`
+	DisableUnauthedRekeyEndpointsRaw interface{} `hcl:"disable_unauthed_rekey_endpoints"`
 }
 
 // AgentAPI allows users to select which parts of the Agent API they want enabled.
@@ -254,6 +264,22 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 				}
 
 				l.RequireRequestHeaderRaw = nil
+			}
+
+			if l.MaxRequestJsonMemoryRaw != nil {
+				if l.MaxRequestJsonMemory, err = parseutil.ParseInt(l.MaxRequestJsonMemoryRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("error parsing max_request_json_memory: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.MaxRequestJsonMemoryRaw = nil
+			}
+
+			if l.MaxRequestJsonStringsRaw != nil {
+				if l.MaxRequestJsonStrings, err = parseutil.ParseInt(l.MaxRequestJsonStringsRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("error parsing max_request_json_strings: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.MaxRequestJsonStringsRaw = nil
 			}
 		}
 
@@ -391,6 +417,22 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 
 				l.Telemetry.UnauthenticatedMetricsAccessRaw = nil
 			}
+
+			if l.Telemetry.DisallowMetricsRaw != nil {
+				if l.Telemetry.DisallowMetrics, err = parseutil.ParseBool(l.Telemetry.DisallowMetricsRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for telemetry.disallow_metrics: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.Telemetry.DisallowMetricsRaw = nil
+			}
+
+			if l.Telemetry.MetricsOnlyRaw != nil {
+				if l.Telemetry.MetricsOnly, err = parseutil.ParseBool(l.Telemetry.MetricsOnlyRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for telemetry.metrics_only: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.Telemetry.MetricsOnlyRaw = nil
+			}
 		}
 
 		// Profiling
@@ -425,7 +467,7 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 				l.CorsEnabledRaw = nil
 			}
 
-			if strutil.StrListContains(l.CorsAllowedOrigins, "*") && len(l.CorsAllowedOrigins) > 1 {
+			if slices.Contains(l.CorsAllowedOrigins, "*") && len(l.CorsAllowedOrigins) > 1 {
 				return multierror.Prefix(errors.New("cors_allowed_origins must only contain a wildcard or only non-wildcard values"), fmt.Sprintf("listeners.%d", i))
 			}
 
@@ -470,6 +512,20 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 
 				l.TLSACMEDisableAlpnChallengeRaw = nil
 			}
+		}
+
+		// Unauthed Rekey
+		if l.DisableUnauthedRekeyEndpointsRaw != nil {
+			value, err := parseutil.ParseBool(l.DisableUnauthedRekeyEndpointsRaw)
+			if err != nil {
+				return multierror.Prefix(fmt.Errorf("invalid value for disable_unauthed_rekey_endpoints: %w", err), fmt.Sprintf("listeners.%d", i))
+			}
+
+			l.DisableUnauthedRekeyEndpoints = &value
+			l.DisableUnauthedRekeyEndpointsRaw = nil
+		} else {
+			disabled := true
+			l.DisableUnauthedRekeyEndpoints = &disabled
 		}
 
 		result.Listeners = append(result.Listeners, &l)

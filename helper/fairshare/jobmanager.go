@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"

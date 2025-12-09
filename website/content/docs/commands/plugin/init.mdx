@@ -1,0 +1,72 @@
+---
+description: |-
+  The "plugin init" command downloads OCI-based plugins configured in 
+  OpenBao server configuration files.
+---
+
+# plugin init
+
+The `plugin init` command downloads OCI-based plugins configured in OpenBao server configuration files. It reads [plugin definitions](../../configuration/plugins.mdx) from the configuration and downloads the specified OCI images containing plugin binaries.
+
+Downloaded plugins are placed in the plugin directory but are **not** automatically registered in the plugin catalog. Use [`plugin register`](register.mdx) to register downloaded plugins.
+
+## Examples
+
+Download plugins using a configuration file:
+
+```shell-session
+$ bao plugin init -config=/etc/openbao/openbao.hcl
+```
+
+Download to a custom directory:
+
+```shell-session
+$ bao plugin init -config=/etc/openbao/openbao.hcl -directory=/opt/custom-plugins
+```
+
+Load multiple configuration files:
+
+```shell-session
+$ bao plugin init -config=/etc/openbao -config=/opt/openbao/extra.hcl
+```
+
+## Usage
+
+The following flags are available in addition to the [standard set of flags](../index.mdx) included on all commands.
+
+### Command options
+
+- `-config` `(string: required)` - Path to configuration file or directory. Can
+  be specified multiple times. The environment variable `BAO_CONFIG_PATH` may
+  also be used to specify multiple configuration paths using a comma (,) as a
+  separator.
+
+- `-directory` `(string: optional)` - Plugin directory override. Uses `plugin_directory` from config if not specified.
+
+- `-timeout` `(duration: "5m")` - Timeout for downloading all plugins.
+
+## Configuration requirements
+
+The command requires:
+- At least one plugin defined in a `plugins` block
+- A plugin directory (via `-directory` flag or `plugin_directory` in config)
+- Network access to configured OCI registries
+- Valid credentials for private registries
+
+## Workflow
+
+Typical workflow using `plugin init`:
+
+```shell-session
+# 1. Download plugins
+$ bao plugin init -config=openbao.hcl
+
+# 2. Start OpenBao server
+$ bao server -config=openbao.hcl &
+
+# 3. Register downloaded plugins
+$ bao plugin register -sha256=abc123... secret secrets-aws
+
+# 4. Enable plugins
+$ bao secrets enable -path=aws secrets-aws
+```

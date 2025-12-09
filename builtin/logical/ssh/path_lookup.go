@@ -5,7 +5,6 @@ package ssh
 
 import (
 	"context"
-	"fmt"
 	"net"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -53,7 +52,7 @@ func (b *backend) pathLookupWrite(ctx context.Context, req *logical.Request, d *
 	}
 	ip := net.ParseIP(ipAddr)
 	if ip == nil {
-		return logical.ErrorResponse(fmt.Sprintf("Invalid IP %q", ip.String())), nil
+		return logical.ErrorResponse("Invalid IP %q", ip.String()), nil
 	}
 
 	// Get all the roles created in the backend.

@@ -19,6 +19,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/cap/jwt"
@@ -47,7 +48,7 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 		Fields: map[string]*framework.FieldSchema{
 			"oidc_discovery_url": {
 				Type:        framework.TypeString,
-				Description: `OIDC Discovery URL, without any .well-known component (base path). Cannot be used with "jwks_url" or "jwt_validation_pubkeys".`,
+				Description: `The base URL of the OIDC Discovery URL without ".well-known/openid-configuration" component. Cannot be used with "jwks_url" or "jwt_validation_pubkeys".`,
 			},
 			"oidc_discovery_ca_pem": {
 				Type:        framework.TypeString,
@@ -202,7 +203,7 @@ func contactIssuer(ctx context.Context, uri string, data *url.Values, ignoreBad 
 	if err != nil {
 		return nil, nil
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -241,10 +242,7 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 		return fmt.Errorf("error creating context for device auth: %w", err)
 	}
 
-	issuer := config.OIDCDiscoveryURL
-
-	wellKnown := strings.TrimSuffix(issuer, "/") + "/.well-known/openid-configuration"
-	body, err := contactIssuer(caCtx, wellKnown, nil, false)
+	body, err := contactIssuer(caCtx, strings.TrimSuffix(config.OIDCDiscoveryURL, "/")+"/.well-known/openid-configuration", nil, false)
 	if err != nil {
 		return fmt.Errorf("error reading issuer config: %w", err)
 	}
@@ -386,6 +384,10 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse("both 'oidc_client_id' and 'oidc_client_secret' must be set for OIDC"), nil
 
 	case config.OIDCDiscoveryURL != "":
+		if strings.Contains(config.OIDCDiscoveryURL, ".well-known/openid-configuration") {
+			return logical.ErrorResponse("'oidc_discovery_url' contains '.well-known' component"), nil
+		}
+
 		var err error
 		if config.OIDCClientID != "" && config.OIDCClientSecret != "" {
 			_, err = b.createProvider(config)
@@ -656,7 +658,7 @@ func (c jwtConfig) hasType(t string) bool {
 		return true
 	}
 
-	return strutil.StrListContains(c.OIDCResponseTypes, t)
+	return slices.Contains(c.OIDCResponseTypes, t)
 }
 
 // Adapted from similar code in https://github.com/golang/go/blob/86fca3dcb63157b8e45e565e821e7fb098fcf368/src/crypto/tls/handshake_client.go#L1160-L1181

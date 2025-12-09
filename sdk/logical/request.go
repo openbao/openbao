@@ -185,10 +185,6 @@ type Request struct {
 	// properly use the token.
 	tokenEntry *TokenEntry
 
-	// For replication, contains the last WAL on the remote side after handling
-	// the request, used for best-effort avoidance of stale read-after-write
-	lastRemoteWAL uint64
-
 	// ClientTokenSource tells us where the client token was sourced from, so
 	// we can delete it before sending off to plugins
 	ClientTokenSource ClientTokenSource

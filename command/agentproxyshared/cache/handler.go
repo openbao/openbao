@@ -14,8 +14,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared/sink"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -45,7 +45,7 @@ func ProxyHandler(ctx context.Context, logger hclog.Logger, proxier Proxier, inm
 			return
 		}
 		if r.Body != nil {
-			r.Body.Close()
+			r.Body.Close() //nolint:errcheck
 		}
 		r.Body = io.NopCloser(bytes.NewReader(reqBody))
 		req := &SendRequest{
@@ -75,7 +75,7 @@ func ProxyHandler(ctx context.Context, logger hclog.Logger, proxier Proxier, inm
 			return
 		}
 
-		defer resp.Response.Body.Close()
+		defer resp.Response.Body.Close() //nolint:errcheck
 
 		metrics.IncrCounter([]string{"agent", "proxy", "success"}, 1)
 		if resp.CacheMeta != nil {
@@ -196,7 +196,7 @@ func sanitizeAutoAuthTokenResponse(ctx context.Context, logger hclog.Logger, inm
 		return err
 	}
 	if resp.Response.Body != nil {
-		resp.Response.Body.Close()
+		resp.Response.Body.Close() //nolint:errcheck
 	}
 	resp.Response.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	resp.Response.ContentLength = int64(len(bodyBytes))

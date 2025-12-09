@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"net/url"
 	"sync/atomic"
+	"time"
 
+	uuid "github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/vault/seal"
@@ -155,6 +157,35 @@ func (c *Core) generateShares(sc *SealConfig) ([]byte, [][]byte, error) {
 // Initialize is used to initialize the Vault with the given
 // configurations.
 func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitResult, error) {
+	results, err := c.initializeInternal(ctx, initParams)
+	if err != nil {
+		return results, err
+	}
+
+	if c.seal.RecoveryKeySupported() {
+		recoveryConfig, err := c.seal.RecoveryConfig(ctx)
+		if err != nil {
+			// Discard the error; we know we initialized successfully.
+			c.logger.Error("failed to read recovery configuration", "err", err)
+			return results, nil
+		}
+
+		if recoveryConfig.SecretShares == 0 {
+			// When we have no recovery keys generated on an auto-unseal
+			// mechanism, the caller has no option but to restart the service.
+			// This ensures we can start using the node immediately.
+			if err := c.UnsealWithStoredKeys(ctx); err != nil {
+				// Discard this error; caller will need the root key to debug.
+				c.logger.Error("failed to automatically unseal after initialization with no recovery keys", "err", err)
+				return results, nil
+			}
+		}
+	}
+
+	return results, nil
+}
+
+func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (*InitResult, error) {
 	atomic.StoreUint32(&initInProgress, 1)
 	defer atomic.StoreUint32(&initInProgress, 0)
 	barrierConfig := initParams.BarrierConfig
@@ -181,14 +212,10 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 
 	barrierConfig.StoredShares = 1
 
-	if len(barrierConfig.PGPKeys) > 0 && len(barrierConfig.PGPKeys) != barrierConfig.SecretShares {
-		return nil, errors.New("incorrect number of PGP keys")
-	}
-
-	if c.SealAccess().RecoveryKeySupported() {
-		if len(recoveryConfig.PGPKeys) > 0 && len(recoveryConfig.PGPKeys) != recoveryConfig.SecretShares {
-			return nil, errors.New("incorrect number of PGP keys for recovery")
-		}
+	// Check if the seal configuration is valid
+	if err := barrierConfig.Validate(); err != nil {
+		c.logger.Error("invalid seal configuration", "error", err)
+		return nil, fmt.Errorf("invalid seal configuration: %w", err)
 	}
 
 	if c.seal.RecoveryKeySupported() {
@@ -196,24 +223,14 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 			return nil, errors.New("recovery configuration must be supplied")
 		}
 
-		if recoveryConfig.SecretShares < 1 {
-			return nil, errors.New("recovery configuration must specify a positive number of shares")
-		}
-
 		// Check if the seal configuration is valid
-		if err := recoveryConfig.Validate(); err != nil {
+		if err := recoveryConfig.ValidateRecovery(); err != nil {
 			c.logger.Error("invalid recovery configuration", "error", err)
 			return nil, fmt.Errorf("invalid recovery configuration: %w", err)
 		}
 	}
 
-	// Check if the seal configuration is valid
-	if err := barrierConfig.Validate(); err != nil {
-		c.logger.Error("invalid seal configuration", "error", err)
-		return nil, fmt.Errorf("invalid seal configuration: %w", err)
-	}
-
-	// Avoid an initialization race
+	// Avoid an initialization race on the local node.
 	c.stateLock.Lock()
 	defer c.stateLock.Unlock()
 
@@ -240,6 +257,57 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		defer func() {
 			if err := raftBackend.TeardownCluster(nil); err != nil {
 				c.logger.Error("failed to stop raft", "error", err)
+			}
+		}()
+	}
+
+	// If we have a HA backend, acquire an initialization lock. This type of
+	// race condition is possible on some storage backends which allow
+	// multiple writers, such as PostgreSQL, with declarative initialization
+	// if multiple nodes come up at the same exact time.
+	if c.ha != nil {
+		// Create a lock
+		uuid, err := uuid.GenerateUUID()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate uuid: %w", err)
+		}
+		lock, err := c.ha.LockWith(CoreInitLockPath, uuid)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create initialization lock: %w", err)
+		}
+
+		stopCh := make(chan struct{})
+		go func() {
+			// Add a timeout for lock acquisition: if multiple nodes race to
+			// acquire this lock, we wish to stop the losing nodes rather than
+			// hang indefinitely. One initialization is sufficient in this
+			// case.
+			time.Sleep(5 * time.Second)
+			stopCh <- struct{}{}
+		}()
+
+		// This lock should not be held long enough to trigger a loss of
+		// leadership so ignore the loss channel.
+		_, err = lock.Lock(stopCh)
+		if err != nil {
+			c.logger.Error("got error acquiring lock", "error", err)
+			return nil, ErrParallelInit
+		}
+
+		// Check if we are initialized again after acquiring this lock.
+		init, err = c.InitializedLocally(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if init {
+			return nil, ErrAlreadyInit
+		}
+
+		c.logger.Info("acquired HA initialization lock")
+
+		defer func() {
+			if err := lock.Unlock(); err != nil {
+				c.logger.Error("failed to unlock initialization lock", "error", err)
 			}
 		}()
 	}

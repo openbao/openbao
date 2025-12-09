@@ -22,7 +22,6 @@ Router.map(function () {
       this.route('init');
       this.route('logout');
       this.mount('open-api-explorer', { path: '/api-explorer' });
-      this.route('license');
       this.route('mfa-setup');
       this.route('storage', { path: '/storage/raft' });
       this.route('storage-restore', { path: '/storage/raft/restore' });
@@ -101,9 +100,9 @@ Router.map(function () {
             this.route('show', { path: '/:item_alias_id/:section' });
           });
         });
-        this.route('control-groups');
-        this.route('control-groups-configure', { path: '/control-groups/configure' });
-        this.route('control-group-accessor', { path: '/control-groups/:accessor' });
+        // this.route('control-groups');
+        // this.route('control-groups-configure', { path: '/control-groups/configure' });
+        // this.route('control-group-accessor', { path: '/control-groups/:accessor' });
         this.route('namespaces', function () {
           this.route('index', { path: '/' });
           this.route('create');

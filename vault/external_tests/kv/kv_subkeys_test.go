@@ -47,8 +47,7 @@ func TestKV_Subkeys_NotFound(t *testing.T) {
 	}
 
 	apiRespRaw, err := kvRequestWithRetry(t, func() (interface{}, error) {
-		req := c.NewRequest("GET", "/v1/kv/subkeys/foo")
-		return c.RawRequestWithContext(context.Background(), req)
+		return c.Logical().ReadRaw("kv/subkeys/foo")
 	})
 
 	apiResp, ok := apiRespRaw.(*api.Response)
@@ -118,8 +117,7 @@ func TestKV_Subkeys_Deleted(t *testing.T) {
 	}
 
 	apiRespRaw, err := kvRequestWithRetry(t, func() (interface{}, error) {
-		req := c.NewRequest("GET", "/v1/kv/subkeys/foo")
-		return c.RawRequestWithContext(context.Background(), req)
+		return c.Logical().ReadRaw("kv/subkeys/foo")
 	})
 
 	apiResp, ok := apiRespRaw.(*api.Response)
@@ -128,7 +126,7 @@ func TestKV_Subkeys_Deleted(t *testing.T) {
 	}
 
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 
 	if err == nil || apiResp == nil {
@@ -226,8 +224,7 @@ func TestKV_Subkeys_Destroyed(t *testing.T) {
 	}
 
 	apiRespRaw, err := kvRequestWithRetry(t, func() (interface{}, error) {
-		req := c.NewRequest("GET", "/v1/kv/subkeys/foo")
-		return c.RawRequestWithContext(context.Background(), req)
+		return c.Logical().ReadRaw("kv/subkeys/foo")
 	})
 
 	apiResp, ok := apiRespRaw.(*api.Response)
@@ -236,7 +233,7 @@ func TestKV_Subkeys_Destroyed(t *testing.T) {
 	}
 
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 
 	if err == nil || apiResp == nil {
@@ -336,8 +333,7 @@ func TestKV_Subkeys_CurrentVersion(t *testing.T) {
 	}
 
 	apiRespRaw, err := kvRequestWithRetry(t, func() (interface{}, error) {
-		req := c.NewRequest("GET", "/v1/kv/subkeys/foo")
-		return c.RawRequestWithContext(context.Background(), req)
+		return c.Logical().ReadRaw("kv/subkeys/foo")
 	})
 
 	apiResp, ok := apiRespRaw.(*api.Response)
@@ -346,7 +342,7 @@ func TestKV_Subkeys_CurrentVersion(t *testing.T) {
 	}
 
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 
 	if err != nil || apiResp == nil {

@@ -38,7 +38,7 @@ the Auto-Auth token for these requests. Please see the [API Proxy docs][apiproxy
 for more information.
 
 API Proxy functionality takes place within a defined `listener`, and its behaviour can be configured with an
-[`api_proxy` stanza](/docs/agent-and-proxy/proxy/apiproxy#configuration-api_proxy).
+[`api_proxy` stanza](apiproxy.mdx#configuration-api_proxy).
 
 ## Caching
 
@@ -60,7 +60,7 @@ to only enable this on trusted interfaces, as it does not require any authorizat
 
 ### Cache
 
-See the [caching](/docs/agent-and-proxy/proxy/caching#api) page for details on the cache API.
+See the [caching](caching/index.mdx#api) page for details on the cache API.
 
 ## Configuration
 
@@ -112,12 +112,14 @@ These are the currently-available general configuration options:
 
 - `listener` <code>([listener][listener]: \<optional>)</code> - Specifies the addresses and ports on which the Proxy will respond to requests.
 
-:::warning
+  :::warning
 
-**Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Proxy will attempt to reload listener TLS configuration.
-This method can be used to refresh certificates used by OpenBao Proxy without having to restart its process.
+  **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Proxy will
+  attempt to reload listener TLS configuration. This method can be used to
+  refresh certificates used by OpenBao Proxy without having to restart its
+  process.
 
-:::
+  :::
 
 - `pid_file` `(string: "")` - Path to the file in which the Proxy's Process ID
 (PID) should be stored
@@ -139,27 +141,29 @@ environment variable as a comma separated string. This environment variable will
 - `template_config` <code>(template_config: \<optional>)</code> - Specifies templating engine behavior.
 
 - `telemetry` <code>([telemetry][telemetry]: \<optional>)</code> – Specifies the telemetry
-reporting system. See the [telemetry Stanza](/docs/agent-and-proxy/proxy#telemetry-stanza) section below
+reporting system. See the [telemetry Stanza](index.mdx#telemetry-stanza) section below
 for a list of metrics specific to Proxy.
 
-- `log_level` - Equivalent to the [`-log-level` command-line flag](#_log_level).
+- `log_level` - Equivalent to the `-log-level` command-line flag.
 
-:::warning
+  :::warning
 
-**Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Proxy will update the log level to the value
-specified by configuration file (including overriding values set using CLI or environment variable parameters).
+  **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Proxy will update
+  the log level to the value specified by configuration file (including
+  overriding values set using CLI or environment variable parameters).
 
-:::
+  :::
 
-- `log_format` - Equivalent to the [`-log-format` command-line flag](#_log_format).
+- `log_format` - Equivalent to the `-log-format` command-line flag.
 
-- `log_file` - Equivalent to the [`-log-file` command-line flag](#_log_file).
+- `log_file` - Equivalent to the `-log-file` command-line flag.
 
-- `log_rotate_duration` - Equivalent to the [`-log-rotate-duration` command-line flag](#_log_rotate_duration).
+- `log_rotate_duration` - Equivalent to the `-log-rotate-duration` command-line flag.
 
-- `log_rotate_bytes` - Equivalent to the [`-log-rotate-bytes` command-line flag](#_log_rotate_bytes).
+- `log_rotate_bytes` - Equivalent to the `-log-rotate-bytes` command-line flag.
 
-- `log_rotate_max_files` - Equivalent to the [`-log-rotate-max-files` command-line flag](#_log_rotate_max_files).
+- `log_rotate_max_files` - Equivalent to the `-log-rotate-max-files`
+  command-line flag.
 
 ### vault stanza
 
@@ -239,7 +243,7 @@ to `metrics_only` listeners.
 
 #### proxy_api stanza
 
-- `enable_quit` `(bool: false)` - If set to `true`, the Proxy will enable the [quit](/docs/agent-and-proxy/proxy#quit) API.
+- `enable_quit` `(bool: false)` - If set to `true`, the Proxy will enable the [quit](index.mdx#quit) API.
 
 ### telemetry stanza
 
@@ -285,6 +289,15 @@ As with OpenBao, the `-config` flag can be used in three different ways:
 - Use the flag once to name the path to a single specific configuration file.
 - Use the flag multiple times to name multiple configuration files, which will be composed at runtime.
 - Use the flag to name a directory of configuration files, the contents of which will be composed at runtime.
+
+Alternatively, you can specify the configuration path using the `BAO_PROXY_CONFIG_PATH` environment variable. If the `-config` flag is provided, the environment variable is ignored.
+
+**Example using environment variable:**
+
+```shell-session
+$ export BAO_PROXY_CONFIG_PATH=/etc/openbao/proxy-config.hcl
+$ bao proxy
+```
 
 ## Example configuration
 
@@ -347,12 +360,11 @@ listener "tcp" {
 }
 ```
 
-[vault]: /docs/agent-and-proxy/proxy#vault-stanza
-[autoauth]: /docs/agent-and-proxy/autoauth
-[caching]: /docs/agent-and-proxy/proxy/caching
-[apiproxy]: /docs/agent-and-proxy/proxy/apiproxy
-[persistent-cache]: /docs/agent-and-proxy/proxy/caching/persistent-caches
-[proxy-api]: /docs/agent-and-proxy/proxy/#proxy_api-stanza
-[listener]: /docs/agent-and-proxy/proxy#listener-stanza
-[listener_main]: /docs/configuration/listener/tcp
-[telemetry]: /docs/configuration/telemetry
+[vault]: #vault-stanza
+[autoauth]: ../autoauth/index.mdx
+[caching]: caching/index.mdx
+[apiproxy]: apiproxy.mdx
+[proxy-api]: #proxy_api-stanza
+[listener]: #listener-stanza
+[listener_main]: ../../configuration/listener/tcp.mdx
+[telemetry]: ../../configuration/telemetry.mdx

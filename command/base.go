@@ -17,9 +17,10 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/mattn/go-isatty"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/command/token"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/pkg/errors"
+	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/posener/complete"
 )
 
@@ -84,7 +85,7 @@ func (c *BaseCommand) ClientWithoutToken() (*api.Client, error) {
 	config := api.DefaultConfig()
 
 	if err := config.ReadEnvironment(); err != nil {
-		return nil, errors.Wrap(err, "failed to read environment")
+		return nil, fmt.Errorf("failed to read environment: %w", err)
 	}
 
 	if c.flagAddress != "" {
@@ -115,14 +116,14 @@ func (c *BaseCommand) ClientWithoutToken() (*api.Client, error) {
 
 		// Setup TLS config
 		if err := config.ConfigureTLS(t); err != nil {
-			return nil, errors.Wrap(err, "failed to setup TLS config")
+			return nil, fmt.Errorf("failed to setup TLS config: %w", err)
 		}
 	}
 
 	// Build the client
 	client, err := api.NewClient(config)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create client")
+		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
 	// Turn off retries on the CLI
@@ -187,11 +188,11 @@ func (c *BaseCommand) Client() (*api.Client, error) {
 	if token == "" {
 		helper, err := c.TokenHelper(client.Address())
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to get token helper")
+			return nil, fmt.Errorf("failed to get token helper: %w", err)
 		}
 		token, err = helper.Get()
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to get token from token helper")
+			return nil, fmt.Errorf("failed to get token from token helper: %w", err)
 		}
 	}
 
@@ -726,4 +727,32 @@ func printFlagDetail(w io.Writer, f *flag.Flag) {
 	usage := reRemoveWhitespace.ReplaceAllString(f.Usage, " ")
 	indented := wrapAtLengthWithPadding(usage, 6)
 	fmt.Fprintf(w, "%s\n\n", indented)
+}
+
+func (c *BaseCommand) ParseServerConfig(configFiles []string) (*server.Config, []configutil.ConfigError, error) {
+	var configErrors []configutil.ConfigError
+	// Load the configuration
+	var config *server.Config
+	for _, path := range configFiles {
+		current, err := server.LoadConfig(path, configFiles)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error loading configuration from %s: %w", path, err)
+		}
+
+		// While current may be nil, we'll never get a nil configuration as a
+		// result of ignoring a configuration file present in a directory.
+		if current != nil {
+			configErrors = append(configErrors, current.Validate(path)...)
+
+			if config == nil {
+				config = current
+			} else {
+				config = config.Merge(current)
+			}
+		} else {
+			c.UI.Warn(fmt.Sprintf("WARNING: ignoring duplicate configuration found in directory: %v", path))
+		}
+	}
+
+	return config, configErrors, nil
 }

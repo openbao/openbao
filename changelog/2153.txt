@@ -1,0 +1,4 @@
+```release-note:improvement
+command: Add environment variables to provide configuration for Proxy, Agent, and `bao operator migrate` via
+`BAO_PROXY_CONFIG_PATH`, `BAO_AGENT_CONFIG_PATH`, and `BAO_MIGRATE_CONFIG_PATH`.
+```

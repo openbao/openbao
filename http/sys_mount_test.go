@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fatih/structs"
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -1535,8 +1535,8 @@ func TestSysTuneMount(t *testing.T) {
 	// read secret
 	resp = testHttpGet(t, token, addr+"/v1/secret/foo")
 	var result struct {
-		LeaseID       string `json:"lease_id" structs:"lease_id"`
-		LeaseDuration int    `json:"lease_duration" structs:"lease_duration"`
+		LeaseID       string `json:"lease_id"`
+		LeaseDuration int    `json:"lease_duration"`
 	}
 
 	testResponseBody(t, resp, &result)
@@ -1546,8 +1546,8 @@ func TestSysTuneMount(t *testing.T) {
 		"lease_id":       result.LeaseID,
 	}
 
-	if !reflect.DeepEqual(structs.Map(result), expected) {
-		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, structs.Map(result))
+	if !reflect.DeepEqual(structtomap.Map(result), expected) {
+		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, structtomap.Map(result))
 	}
 
 	// Now with lease TTL unspecified
@@ -1566,8 +1566,8 @@ func TestSysTuneMount(t *testing.T) {
 		"lease_id":       result.LeaseID,
 	}
 
-	if !reflect.DeepEqual(structs.Map(result), expected) {
-		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, structs.Map(result))
+	if !reflect.DeepEqual(structtomap.Map(result), expected) {
+		t.Fatalf("bad:\nExpected: %#v\nActual:%#v", expected, structtomap.Map(result))
 	}
 }
 

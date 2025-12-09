@@ -691,7 +691,7 @@ func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 
 	mfaEnforcementConfigKeys, err := mfaEnforcementConfigBarrierView.List(ctx, "")
 	require.NoError(t, err)
-	require.Empty(t, mfaConfigKeys)
+	require.Empty(t, mfaEnforcementConfigKeys)
 
 	// store configs
 	mConfig := &mfa.Config{Name: "mConfig", NamespaceID: ns1.ID, ID: "mConfigID", Type: mfaMethodTypeTOTP}
@@ -1447,14 +1447,16 @@ func TestCore_HandleLogin_Token(t *testing.T) {
 
 func TestCore_HandleRequest_AuditTrail(t *testing.T) {
 	// Create a noop audit backend
-	noop := &corehelpers.NoopAudit{}
-	c, _, root := TestCoreUnsealed(t)
-	c.auditBackends["noop"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
-		noop = &corehelpers.NoopAudit{
-			Config: config,
-		}
-		return noop, nil
-	}
+	var noop *corehelpers.NoopAudit
+	c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"noop": func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
+				noop = &corehelpers.NoopAudit{Config: config}
+				return noop, nil
+			},
+		},
+	})
 
 	// Enable the audit backend
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/audit/noop")
@@ -1512,13 +1514,15 @@ func TestCore_HandleRequest_AuditTrail(t *testing.T) {
 func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	// Create a noop audit backend
 	var noop *corehelpers.NoopAudit
-	c, _, root := TestCoreUnsealed(t)
-	c.auditBackends["noop"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
-		noop = &corehelpers.NoopAudit{
-			Config: config,
-		}
-		return noop, nil
-	}
+	c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"noop": func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
+				noop = &corehelpers.NoopAudit{Config: config}
+				return noop, nil
+			},
+		},
+	})
 
 	// Specify some keys to not HMAC
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/secret/tune")
@@ -1528,6 +1532,9 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
+	if resp != nil {
+		t.Fatalf("resp != nil: %v", resp)
+	}
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "sys/mounts/secret/tune")
 	req.Data["audit_non_hmac_response_keys"] = "baz"
@@ -1535,6 +1542,9 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 	resp, err = c.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("resp != nil: %v", resp)
 	}
 
 	// Enable the audit backend
@@ -1631,16 +1641,20 @@ func TestCore_HandleLogin_AuditTrail(t *testing.T) {
 		},
 		BackendType: logical.TypeCredential,
 	}
-	c, _, root := TestCoreUnsealed(t)
-	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
-		return noopBack, nil
-	}
-	c.auditBackends["noop"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
-		noop = &corehelpers.NoopAudit{
-			Config: config,
-		}
-		return noop, nil
-	}
+	c, _, root := TestCoreUnsealedWithConfig(t, &CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"noop": func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
+				noop = &corehelpers.NoopAudit{Config: config}
+				return noop, nil
+			},
+		},
+		CredentialBackends: map[string]logical.Factory{
+			"noop": func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
+				return noopBack, nil
+			},
+		},
+	})
 
 	// Enable the credential backend
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/foo")
@@ -1853,6 +1867,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
+		Logger:       logging.NewVaultLogger(log.Trace).Named("core0"),
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1891,6 +1906,10 @@ func TestCore_Standby_Seal(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
+		RawConfig: &server.Config{
+			DisableStandbyReads: true,
+		},
+		Logger: logging.NewVaultLogger(log.Trace).Named("core2"),
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1908,10 +1927,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 	}
 
 	// Core2 should be in standby
-	standby, err := core2.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby := core2.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -1931,7 +1947,7 @@ func TestCore_Standby_Seal(t *testing.T) {
 	// Seal the standby core with the correct token. Shouldn't go down
 	err = core2.Seal(root)
 	if err == nil {
-		t.Fatal("should not be sealed")
+		t.Fatalf("should not be sealed: %v", err)
 	}
 
 	keyUUID, err := uuid.GenerateUUID()
@@ -1942,6 +1958,67 @@ func TestCore_Standby_Seal(t *testing.T) {
 	err = core2.Seal(keyUUID)
 	if err == nil {
 		t.Fatal("should not be sealed")
+	}
+
+	// Create the third (read-enabled) core and initialize it.
+	redirectOriginal3 := "http://127.0.0.1:8700"
+	core3, err := NewCore(&CoreConfig{
+		Physical:     inm,
+		HAPhysical:   inmha.(physical.HABackend),
+		RedirectAddr: redirectOriginal3,
+		Logger:       logging.NewVaultLogger(log.Trace).Named("core3"),
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	defer core3.Shutdown() //nolint:errcheck
+	for _, key := range keys {
+		if _, err := TestCoreUnseal(core3, TestKeyCopy(key)); err != nil {
+			t.Fatalf("unseal err: %s", err)
+		}
+	}
+
+	// Verify unsealed
+	if core3.Sealed() {
+		t.Fatal("should not be sealed")
+	}
+
+	// Core3 should be in standby
+	standby = core3.Standby()
+	if !standby {
+		t.Fatal("should be standby")
+	}
+
+	// Check the leader is not local
+	isLeader, advertise, _, err = core3.Leader()
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if isLeader {
+		t.Fatal("should not be leader")
+	}
+	if advertise != redirectOriginal {
+		t.Fatalf("Bad advertise: %v, orig is %v", advertise, redirectOriginal)
+	}
+
+	// Seal the standby core with the correct token. This should go
+	// down as we can verify the root token.
+	require.Eventually(t, func() bool {
+		err = core3.Seal(root)
+		return err == nil
+	}, 10*time.Second, 50*time.Millisecond, "should be sealed: sealed=%v/ err=%v", core3.Sealed(), err)
+
+	// Now unseal the node.
+	for _, key := range keys {
+		if _, err := TestCoreUnseal(core3, TestKeyCopy(key)); err != nil {
+			t.Fatalf("unseal err: %s", err)
+		}
+	}
+
+	// Seal the standby core with an invalid token. Shouldn't go down.
+	err = core3.Seal(keyUUID)
+	if err == nil {
+		t.Fatalf("should not be sealed: sealed=%v / err=%v", core3.Sealed(), err)
 	}
 }
 
@@ -2020,10 +2097,7 @@ func TestCore_StepDown(t *testing.T) {
 	}
 
 	// Core2 should be in standby
-	standby, err := core2.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby := core2.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2061,10 +2135,7 @@ func TestCore_StepDown(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Core1 should be in standby
-	standby, err = core.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby = core.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2104,10 +2175,7 @@ func TestCore_StepDown(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	// Core2 should be in standby
-	standby, err = core2.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby = core2.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2237,10 +2305,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	}
 
 	// Core2 should be in standby
-	standby, err := core2.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby := core2.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2264,10 +2329,7 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 	}
 
 	// Core should be in standby
-	standby, err = core.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby = core.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
@@ -2404,17 +2466,25 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 	}
 
 	// Core2 should be in standby
-	standby, err := core2.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby := core2.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}
 
-	// Request should fail in standby mode
+	// Wait for postUnseal to conclude
+	require.Eventually(t, func() bool {
+		core2.stateLock.RLock()
+		c2ctx := core2.activeContext
+		core2.stateLock.RUnlock()
+
+		return c2ctx != nil
+	}, 1*time.Minute, 50*time.Millisecond, "did not acquire active context")
+
+	// Forwarding happens at the listener level current, not at the
+	// HandleRequest level; this means that we should get a forwarding
+	// error from sending the request to the standby at this place.
 	_, err = core2.HandleRequest(namespace.RootContext(nil), req)
-	if err != consts.ErrStandby {
+	if err == nil || !logical.ShouldForward(err) {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -2437,10 +2507,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 	}
 
 	// Core should be in standby
-	standby, err = core.Standby()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	standby = core.Standby()
 	if !standby {
 		t.Fatal("should be standby")
 	}

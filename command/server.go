@@ -5,9 +5,8 @@ package command
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -17,10 +16,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	systemd "github.com/coreos/go-systemd/v22/daemon"
@@ -42,6 +43,8 @@ import (
 	loghelper "github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/osutil"
+	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/helper/useragent"
 	vaulthttp "github.com/openbao/openbao/http"
@@ -49,7 +52,6 @@ import (
 	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -57,10 +59,8 @@ import (
 	"github.com/openbao/openbao/vault"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
-	"github.com/pkg/errors"
 	"github.com/posener/complete"
 	"github.com/sasha-s/go-deadlock"
-	"go.uber.org/atomic"
 	"golang.org/x/net/http/httpproxy"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -174,6 +174,7 @@ func (c *ServerCommand) Flags() *FlagSets {
 
 	f.StringSliceVar(&StringSliceVar{
 		Name:   "config",
+		EnvVar: "BAO_CONFIG_PATH",
 		Target: &c.flagConfigs,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
@@ -369,36 +370,8 @@ func (c *ServerCommand) flushLog() {
 	}, c.logGate)
 }
 
-func (c *ServerCommand) parseConfig() (*server.Config, []configutil.ConfigError, error) {
-	var configErrors []configutil.ConfigError
-	// Load the configuration
-	var config *server.Config
-	for _, path := range c.flagConfigs {
-		current, err := server.LoadConfig(path, c.flagConfigs)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error loading configuration from %s: %w", path, err)
-		}
-
-		// While current may be nil, we'll never get a nil configuration as a
-		// result of ignoring a configuration file present in a directory.
-		if current != nil {
-			configErrors = append(configErrors, current.Validate(path)...)
-
-			if config == nil {
-				config = current
-			} else {
-				config = config.Merge(current)
-			}
-		} else {
-			c.UI.Warn(fmt.Sprintf("WARNING: ignoring duplicate configuration found in directory: %v", path))
-		}
-	}
-
-	return config, configErrors, nil
-}
-
 func (c *ServerCommand) runRecoveryMode() int {
-	config, configErrors, err := c.parseConfig()
+	config, configErrors, err := c.ParseServerConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -434,7 +407,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
-	grpclog.SetLogger(&grpclogFaker{
+	grpclog.SetLoggerV2(&grpclogFaker{
 		logger: namedGRPCLogFaker,
 		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
@@ -493,12 +466,10 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	configSeal := config.Seals[0]
-	sealType := wrapping.WrapperTypeShamir.String()
+	sealType := configSeal.Type
 	if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
 		sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 		configSeal.Type = sealType
-	} else {
-		sealType = configSeal.Type
 	}
 
 	infoKeys = append(infoKeys, "Seal Type")
@@ -581,8 +552,12 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	listenerCloseFunc := func() {
+		var errs error
 		for _, ln := range lns {
-			ln.Listener.Close()
+			errs = errors.Join(errs, ln.Close())
+		}
+		if errs != nil {
+			c.UI.Error(fmt.Sprintf("Error closing listeners: %v", errs))
 		}
 	}
 
@@ -634,7 +609,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 			AllListeners:          lns,
 			DisablePrintableCheck: config.DisablePrintableCheck,
 			RecoveryMode:          c.flagRecovery,
-			RecoveryToken:         atomic.NewString(""),
+			RecoveryToken:         &atomic.Value{},
 		})
 
 		server := &http.Server{
@@ -730,13 +705,13 @@ func (q quiescenceSink) Accept(name string, level hclog.Level, msg string, args 
 func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, error) {
 	// Ensure that a backend is provided
 	if config.Storage == nil {
-		return nil, errors.New("A storage backend must be specified")
+		return nil, errors.New("a storage backend must be specified")
 	}
 
 	// Initialize the backend
 	factory, exists := c.PhysicalBackends[config.Storage.Type]
 	if !exists {
-		return nil, fmt.Errorf("Unknown storage type %s", config.Storage.Type)
+		return nil, fmt.Errorf("unknown storage type %s", config.Storage.Type)
 	}
 
 	// Do any custom configuration needed per backend
@@ -746,7 +721,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 			config.ClusterAddr = envCA
 		}
 		if len(config.ClusterAddr) == 0 {
-			return nil, errors.New("Cluster address must be set when using raft storage")
+			return nil, errors.New("cluster address must be set when using raft storage")
 		}
 	}
 
@@ -754,7 +729,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 	c.allLoggers = append(c.allLoggers, namedStorageLogger)
 	backend, err := factory(config.Storage.Config, namedStorageLogger)
 	if err != nil {
-		return nil, fmt.Errorf("Error initializing storage of type %s: %w", config.Storage.Type, err)
+		return nil, fmt.Errorf("error initializing storage of type %s: %w", config.Storage.Type, err)
 	}
 
 	return backend, nil
@@ -763,7 +738,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 func beginServiceRegistration(c *ServerCommand, config *server.Config) (sr.ServiceRegistration, error) {
 	sdFactory, ok := c.ServiceRegistrations[config.ServiceRegistration.Type]
 	if !ok {
-		return nil, fmt.Errorf("Unknown service_registration type %s", config.ServiceRegistration.Type)
+		return nil, fmt.Errorf("unknown service_registration type %s", config.ServiceRegistration.Type)
 	}
 
 	namedSDLogger := c.logger.Named("service_registration." + config.ServiceRegistration.Type)
@@ -824,7 +799,7 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 			} else {
 				tcpAddr, ok := ln.Addr().(*net.TCPAddr)
 				if !ok {
-					errMsg = errors.New("Failed to parse tcp listener")
+					errMsg = errors.New("failed to parse tcp listener")
 					return 1, nil, nil, errMsg
 				}
 				clusterAddr := &net.TCPAddr{
@@ -851,6 +826,16 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 			Listener: ln,
 			Config:   lnConfig,
 		})
+
+		if lnConfig.MaxRequestJsonMemory == 0 {
+			lnConfig.MaxRequestJsonMemory = vault.DefaultMaxJsonMemory
+		}
+		props["max_request_json_memory"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonMemory)
+
+		if lnConfig.MaxRequestJsonStrings == 0 {
+			lnConfig.MaxRequestJsonStrings = vault.DefaultMaxJsonStrings
+		}
+		props["max_request_json_strings"] = fmt.Sprintf("%d", lnConfig.MaxRequestJsonStrings)
 
 		// Store the listener props for output later
 		key := fmt.Sprintf("listener %d", i+1)
@@ -994,7 +979,7 @@ func (c *ServerCommand) Run(args []string) int {
 		config.Listeners[0].Telemetry.UnauthenticatedMetricsAccess = true
 	}
 
-	parsedConfig, configErrors, err := c.parseConfig()
+	parsedConfig, configErrors, err := c.ParseServerConfig(c.flagConfigs)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -1046,7 +1031,7 @@ func (c *ServerCommand) Run(args []string) int {
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
 	c.allLoggers = append(c.allLoggers, namedGRPCLogFaker)
-	grpclog.SetLogger(&grpclogFaker{
+	grpclog.SetLoggerV2(&grpclogFaker{
 		logger: namedGRPCLogFaker,
 		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
@@ -1212,7 +1197,7 @@ func (c *ServerCommand) Run(args []string) int {
 			"inmem", "inmem_ha",
 		}
 
-		if strutil.StrListContains(inMemStorageTypes, coreConfig.StorageType) {
+		if slices.Contains(inMemStorageTypes, coreConfig.StorageType) {
 			c.UI.Warn("")
 			c.UI.Warn(wrapAtLength(fmt.Sprintf("WARNING: storage configured to use %q which should NOT be used in production", coreConfig.StorageType)))
 			c.UI.Warn("")
@@ -1274,8 +1259,12 @@ func (c *ServerCommand) Run(args []string) int {
 
 	// Make sure we close all listeners from this point on
 	listenerCloseFunc := func() {
+		var errs error
 		for _, ln := range lns {
-			ln.Listener.Close()
+			errs = errors.Join(errs, ln.Close())
+		}
+		if errs != nil {
+			c.UI.Error(fmt.Sprintf("Error closing listeners: %v", errs))
 		}
 	}
 
@@ -1364,6 +1353,13 @@ func (c *ServerCommand) Run(args []string) int {
 	// If we're in Dev mode, then initialize the core
 	clusterJson := &testcluster.ClusterJson{}
 	err = initDevCore(c, &coreConfig, config, core, certDir, clusterJson)
+	if err != nil {
+		c.UI.Error(err.Error())
+		return 1
+	}
+
+	// Else if we're in production mode, initialize the core as well.
+	err = c.Initialize(core, config)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -1517,6 +1513,13 @@ func (c *ServerCommand) Run(args []string) int {
 
 			// Setting log request with the new value in the config after reload
 			core.ReloadLogRequestsLevel()
+
+			// Update audit devices if necessary. This cannot be done as part of
+			// c.Reload as it needs the reloadFuncsLock.
+			core.ReloadAuditLogs()
+
+			// Update plugins as necessary.
+			core.ReloadPlugins()
 
 			// Reload log level for loggers
 			if config.LogLevel != "" {
@@ -1678,6 +1681,154 @@ func (c *ServerCommand) notifySystemd(status string) {
 			c.logger.Debug("would have sent systemd notification (systemd not present)", "notification", status)
 		}
 	}
+}
+
+func (c *ServerCommand) waitForLeader(core *vault.Core) (bool, error) {
+	// By definition of self-initialization, we can't have added any follower
+	// nodes yet because key material was just created prior to this. We can
+	// only ever become the leader unless we were somehow started as a
+	// non-voting node. Assume we'll become leader.
+	//
+	// When HA mode is not enabled, core.Leader() returns ErrHANotEnabled,
+	// which means we'll vacuously become the leader so we can skip the
+	// subsequent loop to wait for leadership.
+	isLeader, _, _, err := core.Leader()
+	if err != nil && err != vault.ErrHANotEnabled {
+		return false, fmt.Errorf("failed to check active status: %w", err)
+	}
+	if err == nil {
+		// Raft is slower than dev mode. We allow up to 35 seconds for
+		// a leader to be elected before failing with a stack trace.
+		leaderCount := 35
+		for !isLeader {
+			if leaderCount == 0 {
+				// We did not become leader in the specified time window;
+				// give up and assume another node won. Unlike dev mode,
+				// we don't really care about the stack trace here since
+				// it is feasible another node beat us to leadership
+				// acquisition.
+				return false, nil
+			}
+
+			time.Sleep(1 * time.Second)
+			isLeader, _, _, err = core.Leader()
+			if err != nil {
+				return false, fmt.Errorf("failed to check active status: %w", err)
+			}
+			leaderCount--
+		}
+	}
+
+	return true, nil
+}
+
+// Initialize performs declarative self-initialization of a production-mode
+// OpenBao core. This will exit early if there is no configuration for this
+// or if the core is already initialized.
+func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) error {
+	if len(config.Initialization) == 0 {
+		return nil
+	}
+
+	if !core.SealAccess().RecoveryKeySupported() {
+		return errors.New("self-initialization requires auto-unseal as there is no way to persist the Shamir's keys")
+	}
+
+	ctx := namespace.RootContext(context.Background())
+
+	// Fast path skipping self-initialization if already initialized.
+	inited, err := core.Initialized(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to check core initialization status: %w", err)
+	}
+	if inited {
+		// We refuse to rerun self-initialization as it is a highly privileged
+		// way of sidestepping authentication. At first startup there is no
+		// other authentication information but on subsequent startups
+		// presumably the admin has created an alternative mechanism we should
+		// defer to.
+		return nil
+	}
+
+	// Initialize the cluster without recovery keys; a root token can be
+	// used to create recovery keys in the future.
+	var recoveryConfig *vault.SealConfig
+	barrierConfig := &vault.SealConfig{}
+	recoveryConfig = &vault.SealConfig{}
+
+	init, err := core.Initialize(ctx, &vault.InitParams{
+		BarrierConfig:  barrierConfig,
+		RecoveryConfig: recoveryConfig,
+	})
+	if err != nil {
+		core.Logger().Error("failed to initialize", "error", err)
+		if errors.Is(err, vault.ErrParallelInit) || errors.Is(err, vault.ErrAlreadyInit) {
+			return nil
+		}
+
+		return fmt.Errorf("self-initialization failed: %w", err)
+	}
+
+	// Wait for leadership; if we don't get the leadership status, it means
+	// that someone has brought up more than one node at a time and we've
+	// lost the race. This is bad and they should reset storage and ensure
+	// only one active node.
+	isLeader, err := c.waitForLeader(core)
+	if err != nil {
+		return fmt.Errorf("failed to wait for leadership: %w", err)
+	}
+	if !isLeader {
+		return fmt.Errorf("initializing node did not win leadership election: ensure only one active, voting node during initialization")
+	}
+
+	// Now perform the component requests of self-initialization.
+	return c.doSelfInit(core, config, init.RootToken)
+}
+
+// doSelfInit is the internal helper that uses the profile system with this
+// freshly initialized core to perform the component requests of the
+// self-initialization process.
+func (c *ServerCommand) doSelfInit(core *vault.Core, config *server.Config, rootToken string) error {
+	c.UI.Warn("Beginning post-unseal configuration")
+	p, err := profiles.NewEngine(
+		// Set up the profile system with relevant parameter sources:
+		// - Environment variables
+		// - Files
+		// - Other requests & responses
+		profiles.WithEnvSource(),
+		profiles.WithFileSource(),
+		profiles.WithRequestSource(),
+		profiles.WithResponseSource(),
+
+		// Because we're initializing, we have a default (root) token to use.
+		profiles.WithDefaultToken(rootToken),
+
+		// Our outer block is called initialize, to contain multiple requests.
+		profiles.WithOuterBlockName("initialize"),
+
+		// The actual profile we're executing is contained in our
+		// server configuration.
+		profiles.WithProfile(config.Initialization),
+
+		// Hook the profile system directly up to our core request handler.
+		profiles.WithRequestHandler(func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
+			return core.HandleRequest(ctx, req)
+		}),
+
+		// Create a named logger for this, to allow operators to debug
+		// initialization issues.
+		profiles.WithLogger(c.logger.Named("self-init")),
+	)
+	if err != nil {
+		return err
+	}
+
+	// Initialize creates a context with the root namespace; this would
+	// override routing and result in us assuming all requests are in the
+	// root namespace, even if they create (nested) namespaces. Since the
+	// above context was derived from background (we're a server after all),
+	// derive a new one here, too.
+	return p.Evaluate(context.Background())
 }
 
 func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig) (*vault.InitResult, error) {
@@ -2052,23 +2203,9 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 
 // addPlugin adds any plugins to the catalog
 func (c *ServerCommand) addPlugin(path, token string, core *vault.Core) error {
-	// Get the sha256 of the file at the given path.
-	pluginSum := func(p string) (string, error) {
-		hasher := sha256.New()
-		f, err := os.Open(p)
-		if err != nil {
-			return "", err
-		}
-		defer f.Close()
-		if _, err := io.Copy(hasher, f); err != nil {
-			return "", err
-		}
-		return hex.EncodeToString(hasher.Sum(nil)), nil
-	}
-
 	// Mount any test plugins. We do this explicitly before we inform tests of
 	// a completely booted server intentionally.
-	sha256sum, err := pluginSum(path)
+	sha256sum, err := osutil.FileSha256Sum(path)
 	if err != nil {
 		return err
 	}
@@ -2215,7 +2352,7 @@ func (c *ServerCommand) storePidFile(pidPath string) error {
 
 	// Write out the PID
 	pid := os.Getpid()
-	_, err = pidFile.WriteString(fmt.Sprintf("%d", pid))
+	_, err = fmt.Fprintf(pidFile, "%d", pid)
 	if err != nil {
 		return fmt.Errorf("could not write to pid file: %w", err)
 	}
@@ -2318,14 +2455,12 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 			config.Seals = append(config.Seals, &configutil.KMS{Type: wrapping.WrapperTypeShamir.String()})
 		}
 	}
-	var createdSeals []vault.Seal = make([]vault.Seal, len(config.Seals))
+	createdSeals := make([]vault.Seal, len(config.Seals))
 	for _, configSeal := range config.Seals {
-		sealType := wrapping.WrapperTypeShamir.String()
+		sealType := configSeal.Type
 		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
 			sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 			configSeal.Type = sealType
-		} else {
-			sealType = configSeal.Type
 		}
 
 		var seal vault.Seal
@@ -2372,6 +2507,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 	var ok bool
 	if config.HAStorage != nil {
 		if config.Storage.Type == storageTypeRaft && config.HAStorage.Type == storageTypeRaft {
+			//nolint:staticcheck // Raft is a proper noun
 			return false, errors.New("Raft cannot be set both as 'storage' and 'ha_storage'. Setting 'storage' to 'raft' will automatically set it up for HA operations as well")
 		}
 
@@ -2381,7 +2517,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 
 		factory, exists := c.PhysicalBackends[config.HAStorage.Type]
 		if !exists {
-			return false, fmt.Errorf("Unknown HA storage type %s", config.HAStorage.Type)
+			return false, fmt.Errorf("unknown HA storage type %s", config.HAStorage.Type)
 		}
 
 		namedHALogger := c.logger.Named("ha." + config.HAStorage.Type)
@@ -2392,18 +2528,18 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 		}
 
 		if coreConfig.HAPhysical, ok = habackend.(physical.HABackend); !ok {
-			return false, errors.New("Specified HA storage does not support HA")
+			return false, errors.New("specified HA storage does not support HA")
 		}
 
 		if !coreConfig.HAPhysical.HAEnabled() {
-			return false, errors.New("Specified HA storage has HA support disabled; please consult documentation")
+			return false, errors.New("specified HA storage has HA support disabled; please consult documentation")
 		}
 
 		coreConfig.RedirectAddr = config.HAStorage.RedirectAddr
 		disableClustering := config.HAStorage.DisableClustering
 
 		if config.HAStorage.Type == storageTypeRaft && disableClustering {
-			return disableClustering, errors.New("Disable clustering cannot be set to true when Raft is the HA storage type")
+			return disableClustering, errors.New("disable clustering cannot be set to true when Raft is the HA storage type")
 		}
 
 		if !disableClustering {
@@ -2415,7 +2551,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 			disableClustering := config.Storage.DisableClustering
 
 			if (config.Storage.Type == storageTypeRaft) && disableClustering {
-				return disableClustering, errors.New("Disable clustering cannot be set to true when Raft is the storage type")
+				return disableClustering, errors.New("disable clustering cannot be set to true when Raft is the storage type")
 			}
 
 			if !disableClustering {
@@ -2455,7 +2591,7 @@ func determineRedirectAddr(c *ServerCommand, coreConfig *vault.CoreConfig, confi
 		if err != nil {
 			retErr = fmt.Errorf("Error detecting api address: %s", err)
 		} else if redirect == "" {
-			retErr = errors.New("Failed to detect api address")
+			retErr = errors.New("failed to detect api address")
 		} else {
 			coreConfig.RedirectAddr = redirect
 		}
@@ -2512,7 +2648,7 @@ func findClusterAddress(c *ServerCommand, coreConfig *vault.CoreConfig, config *
 CLUSTER_SYNTHESIS_COMPLETE:
 
 	if coreConfig.RedirectAddr == coreConfig.ClusterAddr && len(coreConfig.RedirectAddr) != 0 {
-		return fmt.Errorf("Address %q used for both API and cluster addresses", coreConfig.RedirectAddr)
+		return fmt.Errorf("address %q used for both API and cluster addresses", coreConfig.RedirectAddr)
 	}
 
 	if coreConfig.ClusterAddr != "" {
@@ -2774,7 +2910,7 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config, lns []listenerutil.Listener) error {
 	for _, ln := range lns {
 		if ln.Config == nil {
-			return errors.New("Found nil listener config after parsing")
+			return errors.New("found nil listener config after parsing")
 		}
 
 		if err := config2.IsValidListener(ln.Config); err != nil {
@@ -2853,6 +2989,42 @@ type grpclogFaker struct {
 	log    bool
 }
 
+func (g *grpclogFaker) Info(args ...any) {
+	g.logger.Info(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Infof(format string, args ...any) {
+	g.logger.Info(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Infoln(args ...any) {
+	g.logger.Info(fmt.Sprintln(args...))
+}
+
+func (g *grpclogFaker) Warning(args ...any) {
+	g.logger.Warn(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Warningf(format string, args ...any) {
+	g.logger.Warn(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Warningln(args ...any) {
+	g.logger.Warn(fmt.Sprintln(args...))
+}
+
+func (g *grpclogFaker) Error(args ...any) {
+	g.logger.Error(fmt.Sprint(args...))
+}
+
+func (g *grpclogFaker) Errorf(format string, args ...any) {
+	g.logger.Error(fmt.Sprintf(format, args...))
+}
+
+func (g *grpclogFaker) Errorln(args ...any) {
+	g.logger.Error(fmt.Sprintln(args...))
+}
+
 func (g *grpclogFaker) Fatal(args ...interface{}) {
 	g.logger.Error(fmt.Sprint(args...))
 	os.Exit(1)
@@ -2868,20 +3040,7 @@ func (g *grpclogFaker) Fatalln(args ...interface{}) {
 	os.Exit(1)
 }
 
-func (g *grpclogFaker) Print(args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprint(args...))
-	}
-}
-
-func (g *grpclogFaker) Printf(format string, args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprintf(format, args...))
-	}
-}
-
-func (g *grpclogFaker) Println(args ...interface{}) {
-	if g.log && g.logger.IsDebug() {
-		g.logger.Debug(fmt.Sprintln(args...))
-	}
+func (g *grpclogFaker) V(l int) bool {
+	currentLevel := int(g.logger.GetLevel())
+	return l >= currentLevel
 }

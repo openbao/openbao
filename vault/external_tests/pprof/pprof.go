@@ -4,7 +4,6 @@
 package pprof
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -85,7 +84,7 @@ func SysPprof_Test(t *testing.T, cluster testcluster.VaultCluster) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		httpRespBody, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -117,12 +116,11 @@ func SysPprof_Test(t *testing.T, cluster testcluster.VaultCluster) {
 
 func SysPprof_Standby_Test(t *testing.T, cluster testcluster.VaultCluster) {
 	pprof := func(client *api.Client) (string, error) {
-		req := client.NewRequest("GET", "/v1/sys/pprof/cmdline")
-		resp, err := client.RawRequestWithContext(context.Background(), req)
+		resp, err := client.Logical().ReadRaw("sys/pprof/cmdline")
 		if err != nil {
 			return "", err
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		data, err := io.ReadAll(resp.Body)
 		return string(data), err

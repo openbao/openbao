@@ -5,6 +5,7 @@ package command
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/cli"
@@ -142,14 +143,16 @@ func (c *OperatorInitCommand) Flags() *FlagSets {
 		Name:       "recovery-shares",
 		Target:     &c.flagRecoveryShares,
 		Completion: complete.PredictAnything,
+		Default:    defRecoveryShares,
 		Usage: "Number of key shares to split the recovery key into. " +
-			"This is only used in auto-unseal mode.",
+			"This is only used in Auto Unseal mode.",
 	})
 
 	f.IntVar(&IntVar{
 		Name:       "recovery-threshold",
 		Target:     &c.flagRecoveryThreshold,
 		Completion: complete.PredictAnything,
+		Default:    defRecoveryThreshold,
 		Usage: "Number of key shares required to reconstruct the recovery key. " +
 			"This is only used in Auto Unseal mode.",
 	})
@@ -212,21 +215,18 @@ func (c *OperatorInitCommand) Run(args []string) int {
 	client.SetOutputCurlString(currentOutputCurlString)
 	client.SetOutputPolicy(outputPolicy)
 
-	switch sealInfo.RecoverySeal {
-	case true:
-		if c.flagRecoveryShares == 0 {
-			c.flagRecoveryShares = defRecoveryShares
-		}
-		if c.flagRecoveryThreshold == 0 {
-			c.flagRecoveryThreshold = defRecoveryThreshold
-		}
-	default:
+	// for barrier seals use the default value of key shares and key threshold,
+	// as we do not support 0 as a valid value for those
+	if !sealInfo.RecoverySeal {
 		if c.flagKeyShares == 0 {
 			c.flagKeyShares = defKeyShares
 		}
 		if c.flagKeyThreshold == 0 {
 			c.flagKeyThreshold = defKeyThreshold
 		}
+		// override default values for recovery shares as it's not supported
+		c.flagRecoveryShares = 0
+		c.flagRecoveryThreshold = 0
 	}
 
 	// Build the initial init request
@@ -302,7 +302,7 @@ func (c *OperatorInitCommand) init(client *api.Client, req *api.InitRequest) int
 		c.UI.Output("")
 		c.UI.Output(wrapAtLength(
 			"It is possible to generate new unseal keys, provided you have a quorum " +
-				"of existing unseal keys shares. See \"bao operator rekey\" for " +
+				"of existing unseal keys shares. See \"bao operator rotate-keys\" for " +
 				"more information."))
 	} else {
 		c.UI.Output("")
@@ -367,15 +367,8 @@ type machineInit struct {
 func newMachineInit(req *api.InitRequest, resp *api.InitResponse) *machineInit {
 	init := &machineInit{}
 
-	init.UnsealKeysHex = make([]string, len(resp.Keys))
-	for i, v := range resp.Keys {
-		init.UnsealKeysHex[i] = v
-	}
-
-	init.UnsealKeysB64 = make([]string, len(resp.KeysB64))
-	for i, v := range resp.KeysB64 {
-		init.UnsealKeysB64[i] = v
-	}
+	init.UnsealKeysHex = slices.Clone(resp.Keys)
+	init.UnsealKeysB64 = slices.Clone(resp.KeysB64)
 
 	// If we don't get a set of keys back, it means that we are storing the keys,
 	// so the key shares and threshold has been set to 1.
@@ -387,15 +380,8 @@ func newMachineInit(req *api.InitRequest, resp *api.InitResponse) *machineInit {
 		init.UnsealThreshold = req.SecretThreshold
 	}
 
-	init.RecoveryKeysHex = make([]string, len(resp.RecoveryKeys))
-	for i, v := range resp.RecoveryKeys {
-		init.RecoveryKeysHex[i] = v
-	}
-
-	init.RecoveryKeysB64 = make([]string, len(resp.RecoveryKeysB64))
-	for i, v := range resp.RecoveryKeysB64 {
-		init.RecoveryKeysB64[i] = v
-	}
+	init.RecoveryKeysHex = slices.Clone(resp.RecoveryKeys)
+	init.RecoveryKeysB64 = slices.Clone(resp.RecoveryKeysB64)
 
 	init.RecoveryShares = req.RecoveryShares
 	init.RecoveryThreshold = req.RecoveryThreshold

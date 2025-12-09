@@ -429,8 +429,7 @@ func (b *backend) pathKeyCreate(ctx context.Context, req *logical.Request, data 
 
 		_, err := base32.StdEncoding.DecodeString(strings.ToUpper(keyString))
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid key value: %s", err)), nil
+			return logical.ErrorResponse("invalid key value: %s", err), nil
 		}
 	}
 
@@ -455,13 +454,13 @@ func (b *backend) pathKeyCreate(ctx context.Context, req *logical.Request, data 
 }
 
 type keyEntry struct {
-	Key         string           `json:"key" mapstructure:"key" structs:"key"`
-	Issuer      string           `json:"issuer" mapstructure:"issuer" structs:"issuer"`
-	AccountName string           `json:"account_name" mapstructure:"account_name" structs:"account_name"`
-	Period      uint             `json:"period" mapstructure:"period" structs:"period"`
-	Algorithm   otplib.Algorithm `json:"algorithm" mapstructure:"algorithm" structs:"algorithm"`
-	Digits      otplib.Digits    `json:"digits" mapstructure:"digits" structs:"digits"`
-	Skew        uint             `json:"skew" mapstructure:"skew" structs:"skew"`
+	Key         string           `json:"key" mapstructure:"key"`
+	Issuer      string           `json:"issuer" mapstructure:"issuer"`
+	AccountName string           `json:"account_name" mapstructure:"account_name"`
+	Period      uint             `json:"period" mapstructure:"period"`
+	Algorithm   otplib.Algorithm `json:"algorithm" mapstructure:"algorithm"`
+	Digits      otplib.Digits    `json:"digits" mapstructure:"digits"`
+	Skew        uint             `json:"skew" mapstructure:"skew"`
 }
 
 const pathKeyHelpSyn = `

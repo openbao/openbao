@@ -29,30 +29,34 @@ func TestLoadConfigFile_AgentCache(t *testing.T) {
 			PidFile: "./pidfile",
 			Listeners: []*configutil.Listener{
 				{
-					Type:        "unix",
-					Address:     "/path/to/socket",
-					TLSDisable:  true,
-					SocketMode:  "configmode",
-					SocketUser:  "configuser",
-					SocketGroup: "configgroup",
+					Type:                          "unix",
+					Address:                       "/path/to/socket",
+					TLSDisable:                    true,
+					SocketMode:                    "configmode",
+					SocketUser:                    "configuser",
+					SocketGroup:                   "configgroup",
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:8300",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:3000",
-					Role:       "metrics_only",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:3000",
+					Role:                          "metrics_only",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 				{
-					Type:        "tcp",
-					Role:        "default",
-					Address:     "127.0.0.1:8400",
-					TLSKeyFile:  "/path/to/cakey.pem",
-					TLSCertFile: "/path/to/cacert.pem",
+					Type:                          "tcp",
+					Role:                          "default",
+					Address:                       "127.0.0.1:8400",
+					TLSKeyFile:                    "/path/to/cakey.pem",
+					TLSCertFile:                   "/path/to/cacert.pem",
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 			},
 		},
@@ -134,30 +138,34 @@ func TestLoadConfigDir_AgentCache(t *testing.T) {
 			PidFile: "./pidfile",
 			Listeners: []*configutil.Listener{
 				{
-					Type:        "unix",
-					Address:     "/path/to/socket",
-					TLSDisable:  true,
-					SocketMode:  "configmode",
-					SocketUser:  "configuser",
-					SocketGroup: "configgroup",
+					Type:                          "unix",
+					Address:                       "/path/to/socket",
+					TLSDisable:                    true,
+					SocketMode:                    "configmode",
+					SocketUser:                    "configuser",
+					SocketGroup:                   "configgroup",
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:8300",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:3000",
-					Role:       "metrics_only",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:3000",
+					Role:                          "metrics_only",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 				{
-					Type:        "tcp",
-					Role:        "default",
-					Address:     "127.0.0.1:8400",
-					TLSKeyFile:  "/path/to/cakey.pem",
-					TLSCertFile: "/path/to/cacert.pem",
+					Type:                          "tcp",
+					Role:                          "default",
+					Address:                       "127.0.0.1:8400",
+					TLSKeyFile:                    "/path/to/cakey.pem",
+					TLSCertFile:                   "/path/to/cacert.pem",
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 			},
 		},
@@ -221,6 +229,9 @@ func TestLoadConfigDir_AgentCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	config2, err := LoadConfigFile("./test-fixtures/config-dir-cache/config-cache2.hcl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	mergedConfig := config.Merge(config2)
 
@@ -241,9 +252,10 @@ func TestLoadConfigDir_AutoAuthAndListener(t *testing.T) {
 			PidFile: "./pidfile",
 			Listeners: []*configutil.Listener{
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:8300",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 			},
 		},
@@ -279,6 +291,9 @@ func TestLoadConfigDir_AutoAuthAndListener(t *testing.T) {
 		t.Fatal(err)
 	}
 	config2, err := LoadConfigFile("./test-fixtures/config-dir-auto-auth-and-listener/config2.hcl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	mergedConfig := config.Merge(config2)
 
@@ -342,6 +357,9 @@ func TestLoadConfigDir_VaultBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	config2, err := LoadConfigFile("./test-fixtures/config-dir-vault-block/config2.hcl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	mergedConfig := config.Merge(config2)
 
@@ -622,9 +640,10 @@ func TestLoadConfigFile_AgentCache_NoAutoAuth(t *testing.T) {
 			PidFile: "./pidfile",
 			Listeners: []*configutil.Listener{
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:8300",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 			},
 		},
@@ -737,9 +756,10 @@ func TestLoadConfigFile_AgentCache_AutoAuth_NoSink(t *testing.T) {
 		SharedConfig: &configutil.SharedConfig{
 			Listeners: []*configutil.Listener{
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:8300",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 			},
 			PidFile: "./pidfile",
@@ -780,9 +800,10 @@ func TestLoadConfigFile_AgentCache_AutoAuth_Force(t *testing.T) {
 		SharedConfig: &configutil.SharedConfig{
 			Listeners: []*configutil.Listener{
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:8300",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 			},
 			PidFile: "./pidfile",
@@ -823,9 +844,10 @@ func TestLoadConfigFile_AgentCache_AutoAuth_True(t *testing.T) {
 		SharedConfig: &configutil.SharedConfig{
 			Listeners: []*configutil.Listener{
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:8300",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 			},
 			PidFile: "./pidfile",
@@ -866,9 +888,10 @@ func TestLoadConfigFile_Agent_AutoAuth_APIProxyAllConfig(t *testing.T) {
 		SharedConfig: &configutil.SharedConfig{
 			Listeners: []*configutil.Listener{
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:8300",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 			},
 			PidFile: "./pidfile",
@@ -905,9 +928,10 @@ func TestLoadConfigFile_AgentCache_AutoAuth_False(t *testing.T) {
 		SharedConfig: &configutil.SharedConfig{
 			Listeners: []*configutil.Listener{
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:8300",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 			},
 			PidFile: "./pidfile",
@@ -965,9 +989,10 @@ func TestLoadConfigFile_AgentCache_Persist(t *testing.T) {
 			PidFile: "./pidfile",
 			Listeners: []*configutil.Listener{
 				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
+					Type:                          "tcp",
+					Address:                       "127.0.0.1:8300",
+					TLSDisable:                    true,
+					DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(true),
 				},
 			},
 		},

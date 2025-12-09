@@ -967,7 +967,7 @@ func GetPolicyIdentifierFromString(policyIdentifier string) (*PolicyIdentifierWi
 	// Now Check If JSON Entry
 	jsonErr := json.Unmarshal([]byte(policyIdentifier), &entry)
 	if jsonErr != nil { // Neither, if we got here
-		return entry, fmt.Errorf("Policy Identifier %q is neither a valid OID: %s, Nor JSON Policy Identifier: %s", policyIdentifier, err.Error(), jsonErr.Error())
+		return entry, fmt.Errorf("policy identifier %q is neither a valid OID: %s, Nor JSON Policy Identifier: %s", policyIdentifier, err.Error(), jsonErr.Error())
 	}
 	return entry, nil
 }

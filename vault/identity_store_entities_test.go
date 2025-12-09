@@ -7,15 +7,16 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 )
@@ -938,7 +939,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 
 	if resp.Data["id"] != id ||
 		resp.Data["name"] != registerData["name"] ||
-		!reflect.DeepEqual(resp.Data["policies"], strutil.RemoveDuplicates(registerData["policies"].([]string), false)) {
+		!reflect.DeepEqual(resp.Data["policies"], strutil.RemoveDuplicates(registerData["policies"].([]string), true /* lowercase */)) {
 		t.Fatal("bad: entity response")
 	}
 
@@ -970,6 +971,24 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 		t.Fatalf("bad: entity response after update; resp: %#v\n updateData: %#v\n", resp.Data, updateData)
 	}
 
+	// For HCSEC-2025-13 / CVE-2025-5999, validate that we cannot set root
+	// policies with other casing.
+	for _, name := range []string{"rooT", "Root", "rOoT", "root", "root ", " root"} {
+		updateReq.Data = map[string]interface{}{
+			"policies": []string{name},
+		}
+		resp, err = is.HandleRequest(ctx, updateReq)
+		if err == nil && (resp == nil || !resp.IsError()) {
+			t.Fatalf("[policy: %v] err:%v resp:%#v", name, err, resp)
+		}
+
+		resp, err = is.HandleRequest(ctx, readReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v", err, resp)
+		}
+		require.NotContains(t, resp.Data["policies"].([]string), "root")
+	}
+
 	deleteReq := &logical.Request{
 		Path:      "entity/id/" + id,
 		Operation: logical.DeleteOperation,
@@ -990,12 +1009,20 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 }
 
 func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
+	ctx := namespace.RootContext(context.Background())
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
+	testIdentityStoreMergeEntitiesById(t, ctx, is, approleAccessor, upAccessor, core)
+}
+
+func TestIdentityStore_MergeEntitiesByID_UnsafeShared(t *testing.T) {
+	ctx := namespace.RootContext(context.Background())
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
+	testIdentityStoreMergeEntitiesById(t, ctx, is, approleAccessor, upAccessor, core)
+}
+
+func testIdentityStoreMergeEntitiesById(t *testing.T, ctx context.Context, is *IdentityStore, approleAccessor string, upAccessor string, core *Core) {
 	var err error
 	var resp *logical.Response
-
-	ctx := namespace.RootContext(nil)
-	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t)
-
 	registerData := map[string]interface{}{
 		"name":     "testentityname2",
 		"metadata": []string{"someusefulkey=someusefulvalue"},
@@ -1179,7 +1206,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 	}
 
 	for _, group := range []string{entity1GroupID, entity2GroupID} {
-		if !strutil.StrListContains(entity1Groups, group) {
+		if !slices.Contains(entity1Groups, group) {
 			t.Fatalf("group id %q not found in merged entity direct groups %q", group, entity1Groups)
 		}
 
@@ -1188,7 +1215,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 			t.Fatal(err)
 		}
 		expectedEntityIDs := []string{entity1.ID}
-		if !strutil.EquivalentSlices(groupLookedUp.MemberEntityIDs, expectedEntityIDs) {
+		if !slices.Equal(groupLookedUp.MemberEntityIDs, expectedEntityIDs) {
 			t.Fatalf("group id %q should contain %q but contains %q", group, expectedEntityIDs, groupLookedUp.MemberEntityIDs)
 		}
 	}

@@ -8,9 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
-	"github.com/asaskevich/govalidator"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -163,7 +163,8 @@ set on all PR Secondary clusters.`,
 
 func validateURLs(urls []string) string {
 	for _, curr := range urls {
-		if !govalidator.IsURL(curr) || strings.Contains(curr, "{{issuer_id}}") || strings.Contains(curr, "{{cluster_path}}") || strings.Contains(curr, "{{cluster_aia_path}}") {
+		u, err := url.Parse(curr)
+		if err != nil || u.Scheme == "" || u.Host == "" || strings.Contains(curr, "{{issuer_id}}") || strings.Contains(curr, "{{cluster_path}}") || strings.Contains(curr, "{{cluster_aia_path}}") {
 			return curr
 		}
 	}
@@ -284,23 +285,19 @@ func (b *backend) pathWriteURL(ctx context.Context, req *logical.Request, data *
 		}
 	} else if !entries.EnableTemplating {
 		if badURL := validateURLs(entries.IssuingCertificates); badURL != "" {
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid URL found in Authority Information Access (AIA) parameter issuing_certificates: %s", badURL)), nil
+			return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter issuing_certificates: %s", badURL), nil
 		}
 
 		if badURL := validateURLs(entries.CRLDistributionPoints); badURL != "" {
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid URL found in Authority Information Access (AIA) parameter crl_distribution_points: %s", badURL)), nil
+			return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter crl_distribution_points: %s", badURL), nil
 		}
 
 		if badURL := validateURLs(entries.DeltaCRLDistributionPoints); badURL != "" {
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid URL found in Authority Information Access (AIA) parameter delta_crl_distribution_points: %s", badURL)), nil
+			return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter delta_crl_distribution_points: %s", badURL), nil
 		}
 
 		if badURL := validateURLs(entries.OCSPServers); badURL != "" {
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid URL found in Authority Information Access (AIA) parameter ocsp_servers: %s", badURL)), nil
+			return logical.ErrorResponse("invalid URL found in Authority Information Access (AIA) parameter ocsp_servers: %s", badURL), nil
 		}
 	}
 

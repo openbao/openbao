@@ -5,25 +5,26 @@ package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/cli"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault"
-	"github.com/pkg/errors"
 	"github.com/posener/complete"
 	"golang.org/x/sync/errgroup"
 )
@@ -33,7 +34,7 @@ var (
 	_ cli.CommandAutocomplete = (*OperatorMigrateCommand)(nil)
 )
 
-var errAbort = errors.New("Migration aborted")
+var errAbort = errors.New("migration aborted")
 
 type OperatorMigrateCommand struct {
 	*BaseCommand
@@ -83,6 +84,7 @@ func (c *OperatorMigrateCommand) Flags() *FlagSets {
 
 	f.StringVar(&StringVar{
 		Name:   "config",
+		EnvVar: "BAO_MIGRATE_CONFIG_PATH",
 		Target: &c.flagConfig,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
@@ -141,7 +143,7 @@ func (c *OperatorMigrateCommand) Run(args []string) int {
 	}
 	c.flagLogLevel = strings.ToLower(c.flagLogLevel)
 	validLevels := []string{"trace", "debug", "info", "warn", "error"}
-	if !strutil.StrListContains(validLevels, c.flagLogLevel) {
+	if !slices.Contains(validLevels, c.flagLogLevel) {
 		c.UI.Error(fmt.Sprintf("%s is an unknown log level. Valid log levels are: %s", c.flagLogLevel, validLevels))
 		return 1
 	}
@@ -330,7 +332,7 @@ func (c *OperatorMigrateCommand) loadMigratorConfig(path string) (*migratorConfi
 		return nil, err
 	}
 
-	obj, err := hcl.ParseBytes(d)
+	obj, err := hclutil.ParseConfig(d)
 	if err != nil {
 		return nil, err
 	}

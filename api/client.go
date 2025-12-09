@@ -6,6 +6,8 @@ package api
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -13,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -92,6 +95,9 @@ const (
 		"    BAO_ADDR=http://<address> vault <command>\n\n" +
 		"where <address> is replaced by the actual address to the server."
 )
+
+// InlineAuthOpts represents an option for inline authentication
+type InlineAuthOpts func() map[string][]string
 
 // Deprecated values
 const (
@@ -257,7 +263,7 @@ func DefaultConfig() *Config {
 		MinRetryWait: time.Millisecond * 1000,
 		MaxRetryWait: time.Millisecond * 1500,
 		MaxRetries:   2,
-		Backoff:      retryablehttp.LinearJitterBackoff,
+		Backoff:      retryablehttp.RateLimitLinearJitterBackoff,
 	}
 
 	transport := config.HttpClient.Transport.(*http.Transport)
@@ -1033,9 +1039,7 @@ func (c *Client) Headers() http.Header {
 
 	ret := make(http.Header)
 	for k, v := range c.headers {
-		for _, val := range v {
-			ret[k] = append(ret[k], val)
-		}
+		ret[k] = slices.Clone(v)
 	}
 
 	return ret
@@ -1250,9 +1254,9 @@ func (c *Client) NewRequest(method, requestPath string) *Request {
 // a Vault server not configured with this client. This is an advanced operation
 // that generally won't need to be called externally.
 //
-// Deprecated: RawRequest exists for historical compatibility and should not be
-// used directly. Use client.Logical().ReadRaw(...) or higher level methods
-// instead.
+// RawRequest exists for historical compatibility and should not be used
+// directly. Use client.Logical().ReadRaw(...) or higher level methods instead
+// if possible.
 func (c *Client) RawRequest(r *Request) (*Response, error) {
 	return c.RawRequestWithContext(context.Background(), r)
 }
@@ -1261,9 +1265,9 @@ func (c *Client) RawRequest(r *Request) (*Response, error) {
 // a Vault server not configured with this client. This is an advanced operation
 // that generally won't need to be called externally.
 //
-// Deprecated: RawRequestWithContext exists for historical compatibility and
-// should not be used directly. Use client.Logical().ReadRawWithContext(...)
-// or higher level methods instead.
+// RawRequestWithContext exists for historical compatibility and should not be
+// used directly. Use client.Logical().ReadRawWithContext(...) or higher level
+// methods instead if possible.
 func (c *Client) RawRequestWithContext(ctx context.Context, r *Request) (*Response, error) {
 	// Note: we purposefully do not call cancel manually. The reason is
 	// when canceled, the request.Body will EOF when reading due to the way
@@ -1350,7 +1354,7 @@ START:
 	req.Request = req.Request.WithContext(ctx)
 
 	if backoff == nil {
-		backoff = retryablehttp.LinearJitterBackoff
+		backoff = retryablehttp.RateLimitLinearJitterBackoff
 	}
 
 	if checkRetry == nil {
@@ -1375,7 +1379,7 @@ START:
 	}
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
-			err = fmt.Errorf("%w\n\n"+TLSErrorString, err)
+			err = fmt.Errorf("%w\n\n"+TLSErrorString, err) //nolint:staticcheck // user-facing error
 		}
 		return result, err
 	}
@@ -1504,7 +1508,7 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
-			err = fmt.Errorf("%w\n\n"+TLSErrorString, err)
+			err = fmt.Errorf("%w\n\n"+TLSErrorString, err) //nolint:staticcheck // user-facing error
 		}
 		return result, err
 	}
@@ -1571,6 +1575,77 @@ func (c *Client) WithResponseCallbacks(callbacks ...ResponseCallback) *Client {
 	c2.modifyLock = sync.RWMutex{}
 	c2.responseCallbacks = callbacks
 	return &c2
+}
+
+// InlineWithNamespace is used with WithInlineAuth(...) to set the namespace
+// of the inline authentication call.
+func InlineWithNamespace(ns string) InlineAuthOpts {
+	return func() map[string][]string {
+		return map[string][]string{
+			InlineAuthNamespaceHeaderName: {ns},
+		}
+	}
+}
+
+// InlineWithOperation is used with WithInlineAuth(...) to set the operation
+// of the inline authentication call.
+func InlineWithOperation(op string) InlineAuthOpts {
+	return func() map[string][]string {
+		return map[string][]string{
+			InlineAuthOperationHeaderName: {op},
+		}
+	}
+}
+
+// WithInlineAuth returns a client with no authentication information but
+// which sets headers which perform inline authentication. This
+// re-authenticates on every request and does not persist any token.
+// Operations which result in lease creation will not work.
+//
+// Refer to the OpenBao documentation for more information.
+func (c *Client) WithInlineAuth(path string, data map[string]interface{}, opts ...InlineAuthOpts) (*Client, error) {
+	client, err := c.Clone()
+	if err != nil {
+		return nil, fmt.Errorf("error cloning client: %w", err)
+	}
+
+	headers := client.Headers()
+	for h := range client.Headers() {
+		if strings.HasPrefix(h, InlineAuthParameterHeaderPrefix) {
+			delete(headers, h)
+		}
+	}
+
+	delete(headers, InlineAuthOperationHeaderName)
+	delete(headers, InlineAuthNamespaceHeaderName)
+	delete(headers, AuthHeaderName)
+
+	headers[InlineAuthPathHeaderName] = []string{path}
+
+	for _, opt := range opts {
+		oHeader := opt()
+		for name, value := range oHeader {
+			headers[name] = value
+		}
+	}
+
+	for key, value := range data {
+		jEncoded, err := json.Marshal(map[string]interface{}{
+			"key":   key,
+			"value": value,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode inline auth data key `%v`: %w", key, err)
+		}
+
+		b64Encoded := base64.RawURLEncoding.EncodeToString(jEncoded)
+		headers[fmt.Sprintf("%v%v", InlineAuthParameterHeaderPrefix, key)] = []string{b64Encoded}
+	}
+
+	client.ClearToken()
+	client.SetHeaders(headers)
+
+	return client, nil
 }
 
 // withConfiguredTimeout wraps the context with a timeout from the client configuration.

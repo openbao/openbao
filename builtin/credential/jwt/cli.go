@@ -37,6 +37,7 @@ const (
 	FieldPort           = "port"
 	FieldCallbackPort   = "callbackport"
 	FieldSkipBrowser    = "skip_browser"
+	FieldQRCode         = "show_qr"
 	FieldAbortOnError   = "abort_on_error"
 )
 
@@ -134,6 +135,13 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		skipBrowserLaunch = v
 	}
 
+	var showQR bool
+	if v, err := parseBool(FieldQRCode, false); err != nil {
+		return nil, err
+	} else {
+		showQR = v
+	}
+
 	var abortOnError bool
 	if v, err := parseBool(FieldAbortOnError, false); err != nil {
 		return nil, err
@@ -201,6 +209,9 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 	} else {
 		fmt.Fprintf(os.Stderr, "Complete the login via your OIDC provider. Open the following link in your browser:\n\n    %s\n\n\n", authURL)
 	}
+	if showQR {
+		printQR(os.Stderr, authURL)
+	}
 	fmt.Fprintf(os.Stderr, "Waiting for OIDC authentication to complete...\n")
 
 	if userCode != "" {
@@ -242,9 +253,9 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 	case s := <-doneCh:
 		return s.secret, s.err
 	case <-sigintCh:
-		return nil, errors.New("Interrupted")
+		return nil, errors.New("interrupted")
 	case <-time.After(2 * time.Minute):
-		return nil, errors.New("Timed out waiting for response from provider")
+		return nil, errors.New("timed out waiting for response from provider")
 	}
 }
 
@@ -320,7 +331,7 @@ func fetchAuthURL(c *api.Client, role, mount, callbackPort string, callbackMetho
 	}
 
 	if authURL == "" {
-		return "", "", nil, fmt.Errorf("Unable to authorize role %q with redirect_uri %q. Check OpenBao logs for more information.", role, redirectURI)
+		return "", "", nil, fmt.Errorf("Unable to authorize role %q with redirect_uri %q. Check OpenBao logs for more information.", role, redirectURI) //nolint:staticcheck // user-facing error
 	}
 
 	return authURL, clientNonce, secret, nil
@@ -416,12 +427,16 @@ Configuration:
     Toggle the automatic launching of the default browser to the login URL. (default: false).
 
   %s=<bool>
+    Display a QR code of the login URL. Requires UTF-8 support from your
+    terminal emulator (default: false).
+
+  %s=<bool>
     Abort on any error. (default: false).
 `,
 		FieldCallbackMode,
 		FieldListenAddress, FieldPort, FieldCallbackMethod,
 		FieldCallbackHost, FieldCallbackPort, FieldSkipBrowser,
-		FieldAbortOnError,
+		FieldQRCode, FieldAbortOnError,
 	)
 
 	return strings.TrimSpace(help)

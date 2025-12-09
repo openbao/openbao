@@ -1,0 +1,3 @@
+```release-note:improvement
+core: Added `metrics_only` and `disallow_metrics` options to control metrics endpoint exposure on a per-listener basis.
+```

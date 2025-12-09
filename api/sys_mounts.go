@@ -27,7 +27,7 @@ func (c *Sys) ListMountsWithContext(ctx context.Context) (map[string]*MountOutpu
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
@@ -63,7 +63,7 @@ func (c *Sys) MountWithContext(ctx context.Context, path string, mountInfo *Moun
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }
@@ -80,7 +80,7 @@ func (c *Sys) UnmountWithContext(ctx context.Context, path string) error {
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err == nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	return err
 }
@@ -107,6 +107,7 @@ func (c *Sys) RemountWithContext(ctx context.Context, from, to string) error {
 			return nil
 		}
 		if remountStatusResp.MigrationInfo.MigrationStatus == "failure" {
+			//nolint:staticcheck // user-facing error
 			return fmt.Errorf("Failure! Error encountered moving mount %s to %s, with migration ID %s", from, to, remountResp.MigrationID)
 		}
 		time.Sleep(1 * time.Second)
@@ -137,7 +138,7 @@ func (c *Sys) StartRemountWithContext(ctx context.Context, from, to string) (*Mo
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
 		return nil, err
@@ -171,7 +172,7 @@ func (c *Sys) RemountStatusWithContext(ctx context.Context, migrationID string) 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
 		return nil, err
@@ -204,7 +205,7 @@ func (c *Sys) TuneMountWithContext(ctx context.Context, path string, config Moun
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err == nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	return err
 }
@@ -223,7 +224,7 @@ func (c *Sys) MountConfigWithContext(ctx context.Context, path string) (*MountCo
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
@@ -256,7 +257,7 @@ func (c *Sys) MountInfoWithContext(ctx context.Context, path string) (*MountOutp
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
@@ -336,8 +337,6 @@ type MountConfigOutput struct {
 	TokenType                 string                   `json:"token_type,omitempty" mapstructure:"token_type"`
 	AllowedManagedKeys        []string                 `json:"allowed_managed_keys,omitempty" mapstructure:"allowed_managed_keys"`
 	UserLockoutConfig         *UserLockoutConfigOutput `json:"user_lockout_config,omitempty"`
-	// Deprecated: This field will always be blank for newer server responses.
-	PluginName string `json:"plugin_name,omitempty" mapstructure:"plugin_name"`
 }
 
 type UserLockoutConfigInput struct {

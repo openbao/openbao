@@ -1,0 +1,46 @@
+name: Sync Dependencies
+
+on:
+  push:
+    branches:
+      - "dependabot/**"
+    paths:
+      - go.mod
+
+permissions:
+  contents: write
+
+jobs:
+  sync-deps:
+    name: Sync Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ github.head_ref }}
+          ssh-key: ${{ secrets.DEPENDABOT_DEPLOY_KEY }}
+      - name: Set up Go
+        uses: ./.github/actions/set-up-go
+      - name: Run sync-deps
+        run: make sync-deps
+      - name: Check for changes
+        id: changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changes=true" >> "$GITHUB_OUTPUT"
+            echo "Found dependency changes:"
+            git status --short
+          else
+            echo "changes=false" >> "$GITHUB_OUTPUT"
+            echo "No dependency changes found"
+          fi
+
+      - name: Commit changes
+        if: steps.changes.outputs.changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "make sync-deps" --signoff
+          git push

@@ -123,6 +123,7 @@ func (c *ProxyCommand) Flags() *FlagSets {
 
 	f.StringSliceVar(&StringSliceVar{
 		Name:   "config",
+		EnvVar: "BAO_PROXY_CONFIG_PATH",
 		Target: &c.flagConfigs,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
@@ -505,7 +506,7 @@ func (c *ProxyCommand) Run(args []string) int {
 
 		// Parse 'require_request_header' listener config option, and wrap
 		// the request handler if necessary
-		if lnConfig.RequireRequestHeader && ("metrics_only" != lnConfig.Role) {
+		if lnConfig.RequireRequestHeader && (lnConfig.Role != "metrics_only") {
 			muxHandler = verifyRequestHeader(muxHandler)
 		}
 
@@ -514,7 +515,7 @@ func (c *ProxyCommand) Run(args []string) int {
 		quitEnabled := lnConfig.ProxyAPI != nil && lnConfig.ProxyAPI.EnableQuit
 
 		mux.Handle(consts.ProxyPathMetrics, c.handleMetrics())
-		if "metrics_only" != lnConfig.Role {
+		if lnConfig.Role != "metrics_only" {
 			mux.Handle(consts.ProxyPathCacheClear, leaseCache.HandleCacheClear(ctx))
 			mux.Handle(consts.ProxyPathQuit, c.handleQuit(quitEnabled))
 			mux.Handle("/", muxHandler)
@@ -866,7 +867,7 @@ func (c *ProxyCommand) storePidFile(pidPath string) error {
 
 	// Write out the PID
 	pid := os.Getpid()
-	_, err = pidFile.WriteString(fmt.Sprintf("%d", pid))
+	_, err = fmt.Fprintf(pidFile, "%d", pid)
 	if err != nil {
 		return fmt.Errorf("could not write to pid file: %w", err)
 	}

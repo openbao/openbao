@@ -29,7 +29,7 @@ func (c *OperatorRotateCommand) Help() string {
 Usage: bao operator rotate [options]
 
   Rotates the underlying encryption key which is used to secure data written
-  to the storage backend. This installs a new key in the key ring. This new
+  to the storage backend. This installs a new key in the keyring. This new
   key is used to encrypted new data, while older keys in the ring are used to
   decrypt older data.
 
@@ -80,8 +80,8 @@ func (c *OperatorRotateCommand) Run(args []string) int {
 		return 2
 	}
 
-	// Rotate the key
-	err = client.Sys().Rotate()
+	// Rotate the keyring
+	err = client.Sys().RotateKeyring()
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error rotating key: %s", err))
 		return 2

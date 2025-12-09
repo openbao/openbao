@@ -13,7 +13,7 @@ import (
 func WaitForActiveNodeAndStandbys(t testing.T, cluster *vault.TestCluster) {
 	WaitForActiveNode(t, cluster)
 	for _, core := range cluster.Cores {
-		if standby, _ := core.Core.Standby(); standby {
+		if standby := core.Standby(); standby {
 			WaitForStandbyNode(t, core)
 		}
 	}

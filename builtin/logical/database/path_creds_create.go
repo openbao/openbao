@@ -6,11 +6,11 @@ package database
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
-	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -86,7 +86,7 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 			return nil, err
 		}
 		if role == nil {
-			return logical.ErrorResponse(fmt.Sprintf("unknown role: %s", name)), nil
+			return logical.ErrorResponse("unknown role: %s", name), nil
 		}
 
 		dbConfig, err := b.DatabaseConfig(ctx, req.Storage, role.DBName)
@@ -96,7 +96,7 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 
 		// If role name isn't in the database's allowed roles, send back a
 		// permission denied.
-		if !strutil.StrListContains(dbConfig.AllowedRoles, "*") && !strutil.StrListContainsGlob(dbConfig.AllowedRoles, name) {
+		if !slices.Contains(dbConfig.AllowedRoles, "*") && !strutil.StrListContainsGlob(dbConfig.AllowedRoles, name) {
 			return nil, fmt.Errorf("%q is not an allowed role", name)
 		}
 
@@ -124,15 +124,15 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 		// to ensure the database credential does not expire before the lease
 		expiration = expiration.Add(5 * time.Second)
 
-		newUserReq := v5.NewUserRequest{
-			UsernameConfig: v5.UsernameMetadata{
+		newUserReq := dbplugin.NewUserRequest{
+			UsernameConfig: dbplugin.UsernameMetadata{
 				DisplayName: req.DisplayName,
 				RoleName:    name,
 			},
-			Statements: v5.Statements{
+			Statements: dbplugin.Statements{
 				Commands: role.Statements.Creation,
 			},
-			RollbackStatements: v5.Statements{
+			RollbackStatements: dbplugin.Statements{
 				Commands: role.Statements.Rollback,
 			},
 			Expiration: expiration,
@@ -142,7 +142,7 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 
 		// Generate the credential based on the role's credential type
 		switch role.CredentialType {
-		case v5.CredentialTypePassword:
+		case dbplugin.CredentialTypePassword:
 			generator, err := newPasswordGenerator(role.CredentialConfig)
 			if err != nil {
 				return nil, fmt.Errorf("failed to construct credential generator: %s", err)
@@ -161,10 +161,10 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 			}
 
 			// Set input credential
-			newUserReq.CredentialType = v5.CredentialTypePassword
+			newUserReq.CredentialType = dbplugin.CredentialTypePassword
 			newUserReq.Password = password
 
-		case v5.CredentialTypeRSAPrivateKey:
+		case dbplugin.CredentialTypeRSAPrivateKey:
 			generator, err := newRSAKeyGenerator(role.CredentialConfig)
 			if err != nil {
 				return nil, fmt.Errorf("failed to construct credential generator: %s", err)
@@ -177,12 +177,12 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 			}
 
 			// Set input credential
-			newUserReq.CredentialType = v5.CredentialTypeRSAPrivateKey
+			newUserReq.CredentialType = dbplugin.CredentialTypeRSAPrivateKey
 			newUserReq.PublicKey = public
 
 			// Set output credential
 			respData["rsa_private_key"] = string(private)
-		case v5.CredentialTypeClientCertificate:
+		case dbplugin.CredentialTypeClientCertificate:
 			generator, err := newClientCertificateGenerator(role.CredentialConfig)
 			if err != nil {
 				return nil, fmt.Errorf("failed to construct credential generator: %s", err)
@@ -216,7 +216,7 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 
 		// Database plugins using the v4 interface generate and return the password.
 		// Set the password response to what is returned by the NewUser request.
-		if role.CredentialType == v5.CredentialTypePassword {
+		if role.CredentialType == dbplugin.CredentialTypePassword {
 			respData["password"] = password
 		}
 
@@ -263,7 +263,7 @@ func (b *databaseBackend) pathStaticCredsRead() framework.OperationFunc {
 
 		// If role name isn't in the database's allowed roles, send back a
 		// permission denied.
-		if !strutil.StrListContains(dbConfig.AllowedRoles, "*") && !strutil.StrListContainsGlob(dbConfig.AllowedRoles, name) {
+		if !slices.Contains(dbConfig.AllowedRoles, "*") && !strutil.StrListContainsGlob(dbConfig.AllowedRoles, name) {
 			return nil, fmt.Errorf("%q is not an allowed role", name)
 		}
 
@@ -275,9 +275,9 @@ func (b *databaseBackend) pathStaticCredsRead() framework.OperationFunc {
 		}
 
 		switch role.CredentialType {
-		case v5.CredentialTypePassword:
+		case dbplugin.CredentialTypePassword:
 			respData["password"] = role.StaticAccount.Password
-		case v5.CredentialTypeRSAPrivateKey:
+		case dbplugin.CredentialTypeRSAPrivateKey:
 			respData["rsa_private_key"] = string(role.StaticAccount.PrivateKey)
 		}
 

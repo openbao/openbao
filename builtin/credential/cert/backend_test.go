@@ -29,6 +29,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-sockaddr"
+	"github.com/stretchr/testify/require"
 
 	"golang.org/x/net/http2"
 
@@ -193,7 +194,7 @@ func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
-	defer list.Close()
+	defer list.Close() //nolint:errcheck // try to close, ignore error
 
 	// Accept connections.
 	serverErrors := make(chan error, 1)
@@ -206,7 +207,7 @@ func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath
 			close(serverErrors)
 			return
 		}
-		defer serverConn.Close()
+		defer serverConn.Close() //nolint:errcheck // try to close, ignore error
 
 		// Read the ping
 		buf := make([]byte, 4)
@@ -438,11 +439,14 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 		config.HttpClient = client
 
 		// Set the above issued certificates as the client certificates
-		config.ConfigureTLS(&api.TLSConfig{
+		err := config.ConfigureTLS(&api.TLSConfig{
 			CACert:     caCertFile.Name(),
 			ClientCert: leafCertFile.Name(),
 			ClientKey:  leafCertKeyFile.Name(),
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		apiClient, err := api.NewClient(config)
 		if err != nil {
@@ -587,11 +591,14 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 		config.HttpClient = client
 
 		// Set the client certificates
-		config.ConfigureTLS(&api.TLSConfig{
+		err := config.ConfigureTLS(&api.TLSConfig{
 			CACertBytes: cluster.CACertPEM,
 			ClientCert:  "test-fixtures/root/rootcawextcert.pem",
 			ClientKey:   "test-fixtures/root/rootcawextkey.pem",
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		apiClient, err := api.NewClient(config)
 		if err != nil {
@@ -2082,13 +2089,13 @@ func testConnState(certPath, keyPath, rootCertPath string) (tls.ConnectionState,
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
-	defer list.Close()
+	defer list.Close() //nolint:errcheck // try to close, ignore error
 
 	// Accept connections.
 	serverErrors := make(chan error, 1)
 	connState := make(chan tls.ConnectionState)
 	go func() {
-		defer close(connState)
+		defer close(connState) //nolint:errcheck // try to close, ignore error
 		serverConn, err := list.Accept()
 		serverErrors <- err
 		if err != nil {
@@ -2563,6 +2570,42 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Parse the leaf and create a cloned copy of it with a different subject
+	// name to validate against HCSEC-2025-18 (CVE-2025-6037).
+	bundle, err := certutil.ParsePEMBundle(RegTrustedLeafCertA + "\n" + RegTrustedLeafKeyA)
+	require.NoError(t, err)
+	bundle.Certificate.Subject.CommonName = "a-fake.cipherboy.com"
+	bundle.Certificate.Raw = nil
+	bundle.Certificate.RawIssuer = nil
+	bundle.Certificate.RawSubject = nil
+	bundle.Certificate.RawSubjectPublicKeyInfo = nil
+	bundle.Certificate.RawTBSCertificate = nil
+	certATampered, err := x509.CreateCertificate(rand.Reader, bundle.Certificate, bundle.Certificate, bundle.Certificate.PublicKey, bundle.PrivateKey)
+	require.NoError(t, err)
+
+	regTamperedLeafCertA := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certATampered,
+	})
+
+	// Also create a variant of key B with the same subject as key A to detect
+	// attempted reuse that way.
+	bundle, err = certutil.ParsePEMBundle(RegTrustedLeafCertB + "\n" + RegTrustedLeafKeyB)
+	require.NoError(t, err)
+	bundle.Certificate.Subject.CommonName = "a.cipherboy.com"
+	bundle.Certificate.Raw = nil
+	bundle.Certificate.RawIssuer = nil
+	bundle.Certificate.RawSubject = nil
+	bundle.Certificate.RawSubjectPublicKeyInfo = nil
+	bundle.Certificate.RawTBSCertificate = nil
+	certBTampered, err := x509.CreateCertificate(rand.Reader, bundle.Certificate, bundle.Certificate, bundle.Certificate.PublicKey, bundle.PrivateKey)
+	require.NoError(t, err)
+
+	regTamperedLeafCertB := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBTampered,
+	})
+
 	// Create temporary files for CA cert, client cert and client cert key.
 	// This is used to configure TLS in the api client.
 	caCertFile, err := os.CreateTemp("", "caCert")
@@ -2586,6 +2629,36 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := leafCertAFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	leafCertATamperedFile, err := os.CreateTemp("", "leafCertATampered")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(leafCertATamperedFile.Name()) //nolint:errcheck
+	if _, err := leafCertATamperedFile.Write(regTamperedLeafCertA); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := leafCertATamperedFile.Write([]byte("\n")); err != nil {
+		t.Fatal(err)
+	}
+	if err := leafCertATamperedFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	leafCertBTamperedFile, err := os.CreateTemp("", "leafCertBTampered")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(leafCertBTamperedFile.Name()) //nolint:errcheck
+	if _, err := leafCertBTamperedFile.Write(regTamperedLeafCertB); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := leafCertBTamperedFile.Write([]byte("\n")); err != nil {
+		t.Fatal(err)
+	}
+	if err := leafCertBTamperedFile.Close(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2649,11 +2722,14 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 		config.HttpClient = client
 
 		// Set the above issued certificates as the client certificates
-		config.ConfigureTLS(&api.TLSConfig{
+		err := config.ConfigureTLS(&api.TLSConfig{
 			CACert:     caCertFile.Name(),
 			ClientCert: leafCert,
 			ClientKey:  leafKey,
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		apiClient, err := api.NewClient(config)
 		if err != nil {
@@ -2686,5 +2762,30 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	}
 	if secret.Auth == nil || secret.Auth.ClientToken == "" {
 		t.Fatal("expected a successful authentication")
+	}
+
+	// Create a new API client with the tampered leaves; it should fail.
+	tamperedAClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafCertATamperedFile.Name(), leafCertAKeyFile.Name())
+
+	secret, err = tamperedAClient.Logical().Write("auth/cert/login", map[string]interface{}{
+		"name": "trusted-leaf",
+	})
+	if err == nil {
+		t.Fatalf("when logging in with different leaf from trusted, expected err but got none: err=%v / secret=%v", err, secret)
+	}
+	if secret != nil {
+		t.Fatalf("when logging in with different leaf from trusted, expected empty secret but got %v", secret)
+	}
+
+	tamperedBClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafCertBTamperedFile.Name(), leafCertBKeyFile.Name())
+
+	secret, err = tamperedBClient.Logical().Write("auth/cert/login", map[string]interface{}{
+		"name": "trusted-leaf",
+	})
+	if err == nil {
+		t.Fatalf("when logging in with different leaf from trusted, expected err but got none: err=%v / secret=%v", err, secret)
+	}
+	if secret != nil {
+		t.Fatalf("when logging in with different leaf from trusted, expected empty secret but got %v", secret)
 	}
 }

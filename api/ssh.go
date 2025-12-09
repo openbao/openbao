@@ -47,7 +47,7 @@ func (c *SSH) CredentialWithContext(ctx context.Context, role string, data map[s
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }
@@ -72,7 +72,7 @@ func (c *SSH) SignKeyWithContext(ctx context.Context, role string, data map[stri
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return ParseSecret(resp.Body)
 }

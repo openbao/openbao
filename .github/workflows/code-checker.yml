@@ -14,65 +14,60 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deprecations:
-    name: Deprecated functions
-    runs-on: ubuntu-latest
-    if: github.base_ref == 'main'
-    steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: ./.github/actions/set-up-go
-      - run: make ci-deprecations
-        name: Check deprecations
-
   vulnerabilities:
     name: Vulnerable dependencies
     runs-on: ubuntu-latest
-    if: github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/set-up-go
-      - run: make vulncheck
-        name: Check dependencies for vulnerabilities
+      - name: Check dependencies for vulnerabilities
+        run: make vulncheck
 
   codechecker:
     name: Code checks
     runs-on: ubuntu-latest
-    if: github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/set-up-go
-        # Note: if there is a function we want to ignore the nilnil check for,
-        # You can add 'ignore-nil-nil-function-check' somewhere in the
-        # godoc for the function.
-      - run: make ci-vet-codechecker
-        name: Check custom linters
-
-  format:
-    name: Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-        with:  
-          persist-credentials: false 
-      - uses: ./.github/actions/set-up-go
-      - name: Go format
-        run: |
-          make ci-bootstrap
-          echo "Using gofumpt version $(go run mvdan.cc/gofumpt -version)"
-          make fmt
-          if ! git diff --exit-code; then
-            echo "Code has formatting errors. Run 'make fmt' to fix"
-            exit 1
-          fi
+      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: v2.5
+          only-new-issues: true
+      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        if: always()
+        with:
+          version: v2.5
+          only-new-issues: true
+          working-directory: ./api
+      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        if: always()
+        with:
+          version: v2.5
+          only-new-issues: true
+          working-directory: ./api/auth/approle
+      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        if: always()
+        with:
+          version: v2.5
+          only-new-issues: true
+          working-directory: ./api/auth/kubernetes
+      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        if: always()
+        with:
+          version: v2.5
+          only-new-issues: true
+          working-directory: ./api/auth/userpass
+      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        if: always()
+        with:
+          version: v2.5
+          only-new-issues: true
+          working-directory: ./sdk
 
   semgrep:
     name: Semgrep
@@ -82,9 +77,9 @@ jobs:
     # Skip any PR created by dependabot and any check triggered by merge group
     if: (github.actor != 'dependabot[bot]') && (github.event != 'merge_group')
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          persist-credentials: false 
+          persist-credentials: false
       - name: Run Semgrep Rules
         id: semgrep
         run: semgrep ci --include '*.go' --config 'tools/semgrep/ci'
@@ -92,11 +87,59 @@ jobs:
   gomod:
     name: Go mod checks
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: ./.github/actions/set-up-go
+      - name: Run go mod tidy to check for differences
+        run: make ci-tidy-all
+      - name: Run go.mod synchronization to check for differences
+        run: make ci-sync-deps
+
+  el8gobuild:
+    # make sure that bao can still be built with the golang version on el8
+    # unless there is a `no-el8gobuild` label
+    if: "!contains(github.event.pull_request.labels.*.name, 'no-el8gobuild')"
+    name: EL8 Go build checks
+    runs-on: ubuntu-latest
+    container: ghcr.io/almalinux/8-base
+    steps:
+      - name: Install required packages
+        run: dnf -y install golang git
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Set safe.directory
+        # This is supposed to be done by default in the checkout action
+        # but it doesn't work within a container.
+        # See https://github.com/actions/checkout/issues/2031
+        run: git config --global --add safe.directory $(pwd)
+      - name: Set the go version in go.mod
+        run: |
+          GO_VERSION="$(go version | awk '{print $3}' | sed 's/go//')"
+          set -ex
+          go mod edit -go=$GO_VERSION
+          go mod tidy
+      - name: go build bao
+        run: go build -o bin/bao
+      - name: Check that the binary runs
+        run: ./bin/bao version
+
+  protobuf:
+    name: Protobuf checks
+    runs-on: ubuntu-latest
     if: github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - uses: ./.github/actions/set-up-go
-      - run: make ci-tidy-all
-        name: Run go mod tidy to check for differences
-      - run: make ci-sync-deps
-        name: Run go.mod synchronization to check for differences
+      - name: Install protobuf
+        run: |
+          mkdir -p ~/.protoc
+          cd ~/.protoc
+          wget https://github.com/google/protobuf/releases/download/v32.1/protoc-32.1-linux-x86_64.zip
+          sha256sum -c <<< 'e9c129c176bb7df02546c4cd6185126ca53c89e7d2f09511e209319704b5dd7e  protoc-32.1-linux-x86_64.zip' || exit 1
+          unzip protoc-32.1-linux-x86_64.zip
+          sudo ln -s $PWD/bin/protoc /usr/local/bin
+          protoc --version
+      - name: Run protobuf and check for differences
+        run: |
+          git diff --quiet || exit 1
+          make proto
+          git diff --quiet || (echo -e "\n\nModified files:" && git status --short && echo -e "\n\nRun 'make proto' locally and commit the changes.\n" && exit 1)

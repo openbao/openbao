@@ -324,7 +324,7 @@ func TestRaft_RemovePeer(t *testing.T) {
 	defer cluster.Cleanup()
 
 	for i, c := range cluster.Cores {
-		if c.Core.Sealed() {
+		if c.Sealed() {
 			t.Fatalf("failed to unseal core %d", i)
 		}
 	}
@@ -397,13 +397,12 @@ func TestRaft_NodeIDHeader(t *testing.T) {
 			defer cluster.Cleanup()
 
 			for i, c := range cluster.Cores {
-				if c.Core.Sealed() {
+				if c.Sealed() {
 					t.Fatalf("failed to unseal core %d", i)
 				}
 
 				client := c.Client
-				req := client.NewRequest("GET", "/v1/sys/seal-status")
-				resp, err := client.RawRequest(req)
+				resp, err := client.Logical().ReadRaw("sys/seal-status")
 				if err != nil {
 					t.Fatalf("err: %s", err)
 				}
@@ -412,7 +411,7 @@ func TestRaft_NodeIDHeader(t *testing.T) {
 				}
 
 				rniHeader := resp.Header.Get("X-Vault-Raft-Node-ID")
-				nodeID := c.Core.GetRaftNodeID()
+				nodeID := c.GetRaftNodeID()
 
 				if tc.headerPresent && rniHeader == "" {
 					t.Fatal("missing 'X-Vault-Raft-Node-ID' header entry in response")
@@ -441,7 +440,7 @@ func TestRaft_ShamirUnseal(t *testing.T) {
 	defer cluster.Cleanup()
 
 	for i, c := range cluster.Cores {
-		if c.Core.Sealed() {
+		if c.Sealed() {
 			t.Fatalf("failed to unseal core %d", i)
 		}
 	}
@@ -560,28 +559,28 @@ func TestRaft_SnapshotAPI_MidstreamFailure(t *testing.T) {
 	}
 }
 
-func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
+func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 	type testCase struct {
-		Name   string
-		Rekey  bool
-		Rotate bool
+		Name          string
+		Rotate        bool
+		RotateKeyring bool
 	}
 
 	tCases := []testCase{
 		{
-			Name:   "rekey",
-			Rekey:  true,
-			Rotate: false,
+			Name:          "rotate",
+			Rotate:        true,
+			RotateKeyring: false,
 		},
 		{
-			Name:   "rotate",
-			Rekey:  false,
-			Rotate: true,
+			Name:          "rotateKeyring",
+			Rotate:        false,
+			RotateKeyring: true,
 		},
 		{
-			Name:   "both",
-			Rekey:  true,
-			Rotate: true,
+			Name:          "both",
+			Rotate:        true,
+			RotateKeyring: true,
 		},
 	}
 
@@ -625,7 +624,7 @@ func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			snap, err := io.ReadAll(resp.Body)
 			if err != nil {
@@ -638,9 +637,9 @@ func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
 			// cache the original barrier keys
 			barrierKeys := cluster.BarrierKeys
 
-			if tCaseLocal.Rotate {
+			if tCaseLocal.RotateKeyring {
 				// Rotate
-				err = leaderClient.Sys().Rotate()
+				err = leaderClient.Sys().RotateKeyring()
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -649,15 +648,15 @@ func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
 				testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
 			}
 
-			if tCaseLocal.Rekey {
-				// Rekey
-				cluster.BarrierKeys = testhelpers.RekeyCluster(t, cluster, false)
+			if tCaseLocal.Rotate {
+				// Rotate keys
+				cluster.BarrierKeys = testhelpers.RotateClusterKeys(t, cluster, false)
 
 				testhelpers.EnsureStableActiveNode(t, cluster)
 				testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
 			}
 
-			if tCaseLocal.Rekey {
+			if tCaseLocal.Rotate {
 				// Restore snapshot, should fail.
 				req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot")
 				req.Body = bytes.NewBuffer(snap)
@@ -719,34 +718,34 @@ func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
 	}
 }
 
-func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
+func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 	type testCase struct {
-		Name       string
-		Rekey      bool
-		Rotate     bool
-		ShouldSeal bool
+		Name          string
+		Rotate        bool
+		RotateKeyring bool
+		ShouldSeal    bool
 	}
 
 	tCases := []testCase{
 		{
-			Name:       "rekey",
-			Rekey:      true,
-			Rotate:     false,
-			ShouldSeal: false,
+			Name:          "rotate",
+			Rotate:        true,
+			RotateKeyring: false,
+			ShouldSeal:    false,
 		},
 		{
-			Name:   "rotate",
-			Rekey:  false,
-			Rotate: true,
-			// Rotate writes a new root key upgrade using the new term, which
+			Name:          "rotateKeyring",
+			Rotate:        false,
+			RotateKeyring: true,
+			// RotateKeyring writes a new root key upgrade using the new term, which
 			// we can no longer decrypt. We must seal here.
 			ShouldSeal: true,
 		},
 		{
-			Name:   "both",
-			Rekey:  true,
-			Rotate: true,
-			// If we are moving forward and we have rekeyed and rotated there
+			Name:          "both",
+			Rotate:        true,
+			RotateKeyring: true,
+			// If we are moving forward and we have rotated keys and keyring there
 			// isn't any way to restore the latest keys so expect to seal.
 			ShouldSeal: true,
 		},
@@ -794,7 +793,7 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 			}
 
 			snap, err := io.ReadAll(resp.Body)
-			resp.Body.Close()
+			resp.Body.Close() //nolint:errcheck
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -802,23 +801,24 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 				t.Fatal("no snapshot returned")
 			}
 
-			if tCaseLocal.Rekey {
-				// Rekey
-				cluster.BarrierKeys = testhelpers.RekeyCluster(t, cluster, false)
+			if tCaseLocal.Rotate {
+				// Rotate keys
+				cluster.BarrierKeys = testhelpers.RotateClusterKeys(t, cluster, false)
 
 				testhelpers.EnsureStableActiveNode(t, cluster)
 				testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
 			}
-			if tCaseLocal.Rotate {
+
+			if tCaseLocal.RotateKeyring {
 				// Set the key clean up to 0 so it's cleaned immediately. This
 				// will simulate that there are no ways to upgrade to the latest
 				// term.
 				for _, c := range cluster.Cores {
-					c.Core.SetKeyRotateGracePeriod(0)
+					c.SetKeyRotateGracePeriod(0)
 				}
 
-				// Rotate
-				err = leaderClient.Sys().Rotate()
+				// Rotate keyring
+				err = leaderClient.Sys().RotateKeyring()
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -839,7 +839,7 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 			}
 
 			snap2, err := io.ReadAll(resp.Body)
-			resp.Body.Close()
+			resp.Body.Close() //nolint:errcheck
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -862,7 +862,7 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 
 			testhelpers.EnsureStableActiveNode(t, cluster)
 			testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
-			if tCaseLocal.Rekey {
+			if tCaseLocal.Rotate {
 				// Restore snapshot, should fail.
 				req = leaderClient.NewRequest("POST", "/v1/sys/storage/raft/snapshot")
 				req.Body = bytes.NewBuffer(snap2)
@@ -969,7 +969,7 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 	}
 
 	snap, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	resp.Body.Close() //nolint:errcheck
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1041,7 +1041,7 @@ func BenchmarkRaft_SingleNode(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			key := fmt.Sprintf("secret/%x", md5.Sum([]byte(fmt.Sprintf("%s-%d", testName, i))))
+			key := fmt.Sprintf("secret/%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 			_, err := leaderClient.Logical().Write(key, map[string]interface{}{
 				"test": data,
 			})

@@ -74,7 +74,11 @@ func TestEstBearerTokenAuth(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Fatalf("failed to close response body: %v", cerr)
+			}
+		}()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
@@ -126,7 +130,11 @@ func TestEstBearerTokenAuth(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Fatalf("failed to close response body: %v", cerr)
+			}
+		}()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
@@ -175,7 +183,11 @@ func TestEstBearerTokenAuth(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Fatalf("failed to close response body: %v", cerr)
+			}
+		}()
 
 		// Should get 403 Forbidden (invalid token)
 		if resp.StatusCode != http.StatusForbidden {
@@ -204,7 +216,11 @@ func TestEstBearerTokenAuth(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Fatalf("failed to close response body: %v", cerr)
+			}
+		}()
 
 		// Should get 401 or 403 (no authentication provided)
 		if resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusForbidden {
@@ -283,7 +299,11 @@ func TestEstBearerTokenVsBasicAuth(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Fatalf("failed to close response body: %v", cerr)
+			}
+		}()
 
 		// Should succeed with Bearer token
 		if resp.StatusCode != http.StatusOK {

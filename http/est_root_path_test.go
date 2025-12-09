@@ -132,7 +132,11 @@ func TestEstRootPathWithoutDefaultMount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			t.Fatalf("failed to close response body: %v", cerr)
+		}
+	}()
 
 	// Should get 404 since default_mount is not enabled
 	if resp.StatusCode != http.StatusNotFound {
@@ -234,7 +238,11 @@ func TestEstRootPathMultipleMounts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			t.Fatalf("failed to close response body: %v", cerr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusNotFound {
 		body, _ := io.ReadAll(resp.Body)
@@ -284,7 +292,11 @@ func testRootEstPath(t *testing.T, cluster *vault.TestCluster, path string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			t.Fatalf("failed to close response body: %v", cerr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

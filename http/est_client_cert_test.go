@@ -245,7 +245,11 @@ func TestEstClientCertAuthSimpleEnroll(t *testing.T) {
 		if err != nil {
 			t.Fatalf("EST request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Fatalf("failed to close response body: %v", cerr)
+			}
+		}()
 
 		// Should be unauthorized
 		if resp.StatusCode == http.StatusOK {
@@ -327,7 +331,11 @@ func TestEstClientCertAuthCacerts(t *testing.T) {
 		if err != nil {
 			t.Fatalf("EST cacerts request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Fatalf("failed to close response body: %v", cerr)
+			}
+		}()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
@@ -421,7 +429,11 @@ func TestEstClientCertAuthErrors(t *testing.T) {
 		if err != nil {
 			t.Fatalf("EST request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Fatalf("failed to close response body: %v", cerr)
+			}
+		}()
 
 		// Should fail - no certificate provided
 		if resp.StatusCode == http.StatusOK {
@@ -497,7 +509,11 @@ path "pki/est/*" {
 		if err != nil {
 			t.Fatalf("EST request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Fatalf("failed to close response body: %v", cerr)
+			}
+		}()
 
 		// Should fail - invalid accessor
 		if resp.StatusCode == http.StatusOK {
@@ -731,7 +747,11 @@ func estSimpleEnrollWithToken(t *testing.T, cluster *vault.TestCluster, path, to
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			t.Fatalf("failed to close response body: %v", cerr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

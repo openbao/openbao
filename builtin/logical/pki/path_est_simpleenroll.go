@@ -186,7 +186,11 @@ func readEstCSRPayload(req *logical.Request) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read request body: %v", err)
 	}
-	defer req.HTTPRequest.Body.Close()
+	defer func() {
+		if cerr := req.HTTPRequest.Body.Close(); cerr != nil {
+			fmt.Println("failed to close request body: %v", cerr)
+		}
+	}()
 
 	if len(bodyData) == 0 {
 		return nil, fmt.Errorf("empty request body")

@@ -114,7 +114,12 @@ func TestEstHttpBasicAuthSimpleEnroll(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Fatalf("failed to close response body: %v", cerr)
+			}
+		}()
 
 		if resp.StatusCode != http.StatusUnauthorized {
 			t.Fatalf("expected 401 Unauthorized, got %d", resp.StatusCode)
@@ -146,7 +151,11 @@ func TestEstHttpBasicAuthSimpleEnroll(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if cerr := resp.Body.Close(); cerr != nil {
+				t.Fatalf("failed to close response body: %v", cerr)
+			}
+		}()
 
 		// Should get 401 Unauthorized or 403 Forbidden when no credentials provided
 		if resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusForbidden {
@@ -283,7 +292,11 @@ func TestEstBasicAuthCacerts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer resp.Body.Close()
+			defer func() {
+				if cerr := resp.Body.Close(); cerr != nil {
+					t.Fatalf("failed to close response body: %v", cerr)
+				}
+			}()
 
 			if resp.StatusCode != http.StatusOK {
 				body, _ := io.ReadAll(resp.Body)

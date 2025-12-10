@@ -164,6 +164,8 @@ This endpoint configures LDAP in the Kerberos auth method.
   `groupfilter` in order to enumerate user group membership. Examples: for
   groupfilter queries returning _group_ objects, use: `cn`. For queries
   returning _user_ objects, use: `memberOf`. The default is `cn`.
+- `disable_pac` `(bool: true)` - Allows disabling of the PAC decoding in the
+  kerberos ticket
 
 @include 'tokenfields.mdx'
 

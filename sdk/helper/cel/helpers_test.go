@@ -1,6 +1,7 @@
 package cel
 
 import (
+	"encoding/json"
 	"testing"
 
 	celgo "github.com/google/cel-go/cel"
@@ -16,6 +17,8 @@ func TestCELHelpers(t *testing.T) {
 	// Initialize CEL environment with our custom functions
 	env, err := celgo.NewEnv(
 		CheckValidEmailFunction(),
+		EncodeJSONFunction(),
+		DecodeJSONFunction(),
 	)
 	require.NoError(t, err)
 	env, err = env.Extend(CelGoExtFunctions()...)
@@ -48,6 +51,38 @@ func TestCELHelpers(t *testing.T) {
 				assert.Equal(t, tc.want, isValid)
 			})
 		}
+	})
+
+	t.Run("JSON_roundtrip", func(t *testing.T) {
+		t.Parallel()
+
+		expr := `decode_json(encode_json({'foo':'bar','num':42}))['foo'] == 'bar'`
+		prog := buildTestProgram(t, env, expr)
+		val, _, err := prog.Eval(interpreter.EmptyActivation())
+		require.NoError(t, err)
+		assert.Equal(t, true, val.Value())
+	})
+
+	t.Run("decode_json", func(t *testing.T) {
+		t.Parallel()
+		expr := `decode_json("{\"k\":\"v\"}")['k']`
+		prog := buildTestProgram(t, env, expr)
+		val, _, err := prog.Eval(interpreter.EmptyActivation())
+		require.NoError(t, err)
+		assert.Equal(t, "v", val.Value())
+	})
+
+	t.Run("encode_json", func(t *testing.T) {
+		t.Parallel()
+		expr := `encode_json({'a':1,'b':2})`
+		prog := buildTestProgram(t, env, expr)
+		val, _, err := prog.Eval(interpreter.EmptyActivation())
+		require.NoError(t, err)
+
+		// Unmarshal and compare
+		var got map[string]int
+		require.NoError(t, json.Unmarshal([]byte(val.Value().(string)), &got))
+		assert.Equal(t, map[string]int{"a": 1, "b": 2}, got)
 	})
 
 	t.Run("cel_go_ext_functions", func(t *testing.T) {

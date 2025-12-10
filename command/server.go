@@ -2925,8 +2925,8 @@ func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config,
 			RecoveryMode:          c.flagRecovery,
 		})
 
-		if len(ln.Config.XForwardedForAuthorizedAddrs) > 0 {
-			handler = vaulthttp.WrapForwardedForHandler(handler, ln.Config)
+		if ln.Config != nil {
+			handler = vaulthttp.WrapHttpServerHandler(handler, ln.Config)
 		}
 
 		// server defaults

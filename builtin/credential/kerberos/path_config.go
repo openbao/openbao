@@ -47,7 +47,8 @@ func (b *backend) pathConfig() *framework.Path {
 			},
 			"decode_pac": {
 				Type:        framework.TypeBool,
-				Description: `Remove the need for decoding the PAC payload in the kerberos ticket`,
+				Description: `Specifies whether to decode the PAC (Privilege Attribute Certificate)
+				from the Kerberos ticket.`,
 				Default:     true, // in order to keep backwards compatibility
 			},
 		},

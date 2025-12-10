@@ -1,0 +1,3 @@
+```release-note:bug
+builtin/credential/kerberos: add the `decode_pac` option in order to improve compatibility with kerberos systems
+```

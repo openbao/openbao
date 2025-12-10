@@ -46,10 +46,10 @@ func (b *backend) pathConfig() *framework.Path {
 				Description: `Remove instance/FQDN from keytab principal names.`,
 			},
 			"decode_pac": {
-				Type:        framework.TypeBool,
+				Type: framework.TypeBool,
 				Description: `Specifies whether to decode the PAC (Privilege Attribute Certificate)
 				from the Kerberos ticket.`,
-				Default:     true, // in order to keep backwards compatibility
+				Default: true, // in order to keep backwards compatibility
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{

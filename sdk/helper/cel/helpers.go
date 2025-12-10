@@ -1,8 +1,10 @@
 package cel
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/mail"
+	"reflect"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
@@ -90,4 +92,55 @@ func AddIdentity(view logical.SystemView, req *logical.Request, data map[string]
 	}
 
 	return nil
+}
+
+func encodeJSON(value ref.Val) ref.Val {
+	native, err := value.ConvertToNative(
+		reflect.TypeOf(map[string]any{}),
+	)
+	if err != nil {
+		return types.Bool(false)
+	}
+
+	b, err := json.Marshal(native)
+	if err != nil {
+		return types.Bool(false)
+	}
+	return types.String(string(b))
+}
+
+func decodeJSON(value ref.Val) ref.Val {
+	raw, ok := value.Value().(string)
+	if !ok {
+		return types.Bool(false)
+	}
+	var v any
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
+		return types.Bool(false)
+	}
+	return types.DefaultTypeAdapter.NativeToValue(v)
+}
+
+// EncodeJSONFunction adds the encode_json function.
+func EncodeJSONFunction() cel.EnvOption {
+	return cel.Function("encode_json",
+		cel.Overload(
+			"encode_json_dyn",
+			[]*cel.Type{cel.DynType},
+			cel.StringType,
+			cel.UnaryBinding(encodeJSON),
+		),
+	)
+}
+
+// DecodeJSONFunction adds the decode_json function.
+func DecodeJSONFunction() cel.EnvOption {
+	return cel.Function("decode_json",
+		cel.Overload(
+			"decode_json_string",
+			[]*cel.Type{cel.StringType},
+			cel.DynType,
+			cel.UnaryBinding(decodeJSON),
+		),
+	)
 }

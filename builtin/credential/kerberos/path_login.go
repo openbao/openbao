@@ -175,8 +175,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 	})
 
 	// Now let's use our inner handler to compose the overall function.
-	authHTTPHandler := spnego.SPNEGOKRB5Authenticate(inner, kt, service.Logger(l), service.KeytabPrincipal(kerbCfg.ServiceAccount))
-
+	authHTTPHandler := spnego.SPNEGOKRB5Authenticate(inner, kt, service.Logger(l), service.KeytabPrincipal(kerbCfg.ServiceAccount), service.DecodePAC(kerbCfg.DecodePAC))
 	// Because the outer application strips off the raw request, we need to
 	// re-compose it to use this authentication handler. Only the request
 	// remote addr and headers are used anyways. We use an arbitrary port

@@ -775,8 +775,6 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
 			require.Equal(t, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
 
-			storagePath := "core/mounts"
-
 			triggerReadCall := func(collect require.TestingT, expectedErrors ...string) {
 				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
 					Operation:   logical.ReadOperation,
@@ -788,7 +786,10 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
 
 			// 3. Manipulate mount table in storage: delete entry from mount table
-			storageEntry, err := c.barrier.Get(ctx, storagePath)
+			ns, err := namespace.FromContext(ctx)
+			require.NoError(t, err)
+			storagePath := "core/mounts"
+			storageEntry, err := c.NamespaceView(ns).Get(ctx, storagePath)
 			require.NoError(t, err)
 			require.NotNil(t, storageEntry, "expected mount table to be written at %s", storagePath)
 
@@ -1051,8 +1052,6 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
 			require.Equal(t, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
 
-			storagePath := "core/auth"
-
 			callLogin := func(collect require.TestingT, expectedErrors ...string) {
 				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
 					Operation:   logical.ReadOperation,
@@ -1064,7 +1063,10 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
 
 			// 3. Manipulate mount table in storage: delete entry from mount table
-			storageEntry, err := c.barrier.Get(ctx, storagePath)
+			ns, err := namespace.FromContext(ctx)
+			require.NoError(t, err)
+			storagePath := "core/auth"
+			storageEntry, err := c.NamespaceView(ns).Get(ctx, storagePath)
 			require.NoError(t, err)
 			require.NotNil(t, storageEntry, "expected mount table to be written at %s", storagePath)
 

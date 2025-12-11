@@ -695,7 +695,7 @@ func (c *Config) Merge(c2 *Config) *Config {
 
 // LoadConfig loads the configuration at the given path, regardless if
 // its a file or directory.
-func LoadConfig(path string, allPaths []string) (*Config, error) {
+func LoadConfig(path string, allPaths []string) (cfg *Config, err error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -715,7 +715,9 @@ func LoadConfig(path string, allPaths []string) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer f.Close()
+		defer func() {
+			err = errors.Join(err, f.Close())
+		}()
 
 		if enableFilePermissionsCheck {
 			err = osutil.OwnerPermissionsMatchFile(f, 0, 0)
@@ -746,7 +748,7 @@ func CheckConfig(c *Config, e error) (*Config, error) {
 }
 
 // LoadConfigFile loads the configuration from the given file.
-func LoadConfigFile(path string, allPaths []string) (*Config, error) {
+func LoadConfigFile(path string, allPaths []string) (cfg *Config, err error) {
 	// Before we read the configuration, check if we would've loaded it from
 	// a configuration directory at some point in time. If so, ignore the
 	// duplicate load.
@@ -762,7 +764,9 @@ func LoadConfigFile(path string, allPaths []string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		err = errors.Join(err, f.Close())
+	}()
 	// Read the file
 	d, err := io.ReadAll(f)
 	if err != nil {
@@ -1047,12 +1051,14 @@ func ParseConfig(d, source string) (*Config, error) {
 
 // LoadConfigDir loads all the configurations in the given directory
 // in alphabetical order.
-func LoadConfigDir(dir string) (*Config, error) {
+func LoadConfigDir(dir string) (cfg *Config, err error) {
 	f, err := os.Open(dir)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		err = errors.Join(err, f.Close())
+	}()
 
 	fi, err := f.Stat()
 	if err != nil {

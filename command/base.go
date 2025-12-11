@@ -701,7 +701,7 @@ func (f *FlagSet) VisitAll(fn func(*flag.Flag)) {
 
 // printFlagTitle prints a consistently-formatted title to the given writer.
 func printFlagTitle(w io.Writer, s string) {
-	fmt.Fprintf(w, "%s\n\n", s)
+	_, _ = fmt.Fprintf(w, "%s\n\n", s)
 }
 
 // printFlagDetail prints a single flag to the given writer.
@@ -719,14 +719,14 @@ func printFlagDetail(w io.Writer, f *flag.Flag) {
 	}
 
 	if example != "" {
-		fmt.Fprintf(w, "  -%s=<%s>\n", f.Name, example)
+		_, _ = fmt.Fprintf(w, "  -%s=<%s>\n", f.Name, example)
 	} else {
-		fmt.Fprintf(w, "  -%s\n", f.Name)
+		_, _ = fmt.Fprintf(w, "  -%s\n", f.Name)
 	}
 
 	usage := reRemoveWhitespace.ReplaceAllString(f.Usage, " ")
 	indented := wrapAtLengthWithPadding(usage, 6)
-	fmt.Fprintf(w, "%s\n\n", indented)
+	_, _ = fmt.Fprintf(w, "%s\n\n", indented)
 }
 
 func (c *BaseCommand) ParseServerConfig(configFiles []string) (*server.Config, []configutil.ConfigError, error) {

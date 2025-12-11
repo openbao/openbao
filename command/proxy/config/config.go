@@ -269,12 +269,14 @@ func LoadConfig(path string) (*Config, error) {
 }
 
 // LoadConfigDir loads the configuration at the given path if it's a directory
-func LoadConfigDir(dir string) (*Config, error) {
+func LoadConfigDir(dir string) (cfg *Config, err error) {
 	f, err := os.Open(dir)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		err = errors.Join(err, f.Close())
+	}()
 
 	fi, err := f.Stat()
 	if err != nil {

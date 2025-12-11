@@ -12,7 +12,7 @@ import (
 
 func TestManualRotate(t *testing.T) {
 	t.Run("rotate root", func(t *testing.T) {
-		b, storage := getBackend(false)
+		b, storage := getBackend(t, false)
 		defer b.Cleanup(context.Background())
 
 		originalBindPass := "pa$$w0rd"
@@ -62,7 +62,7 @@ func TestManualRotate(t *testing.T) {
 	})
 
 	t.Run("rotate root that doesn't exist", func(t *testing.T) {
-		b, storage := getBackend(false)
+		b, storage := getBackend(t, false)
 		defer b.Cleanup(context.Background())
 
 		req := &logical.Request{
@@ -79,7 +79,7 @@ func TestManualRotate(t *testing.T) {
 	})
 
 	t.Run("rotate role", func(t *testing.T) {
-		b, storage := getBackend(false)
+		b, storage := getBackend(t, false)
 		defer b.Cleanup(context.Background())
 
 		data := map[string]interface{}{
@@ -182,7 +182,7 @@ func TestManualRotate(t *testing.T) {
 	})
 
 	t.Run("rotate role that doesn't exist", func(t *testing.T) {
-		b, storage := getBackend(false)
+		b, storage := getBackend(t, false)
 		defer b.Cleanup(context.Background())
 
 		req := &logical.Request{

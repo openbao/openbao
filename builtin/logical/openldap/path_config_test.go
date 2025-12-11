@@ -214,7 +214,7 @@ func TestConfig_Create(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			b, storage := getBackend(false)
+			b, storage := getBackend(t, false)
 			defer b.Cleanup(context.Background())
 
 			req := &logical.Request{
@@ -251,7 +251,7 @@ func TestConfig_Create(t *testing.T) {
 
 func TestConfig_Update(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
-		b, storage := getBackend(false)
+		b, storage := getBackend(t, false)
 		defer b.Cleanup(context.Background())
 
 		data := map[string]interface{}{
@@ -310,7 +310,7 @@ func TestConfig_Update(t *testing.T) {
 	})
 
 	t.Run("missing bindpass", func(t *testing.T) {
-		b, storage := getBackend(false)
+		b, storage := getBackend(t, false)
 		defer b.Cleanup(context.Background())
 
 		data := map[string]interface{}{
@@ -335,7 +335,7 @@ func TestConfig_Update(t *testing.T) {
 	})
 
 	t.Run("update retains prior config values in storage", func(t *testing.T) {
-		b, storage := getBackend(false)
+		b, storage := getBackend(t, false)
 		defer b.Cleanup(context.Background())
 
 		data := map[string]interface{}{
@@ -397,7 +397,7 @@ func TestConfig_Update(t *testing.T) {
 	})
 
 	t.Run("update retains prior schema and password_policy values in storage", func(t *testing.T) {
-		b, storage := getBackend(false)
+		b, storage := getBackend(t, false)
 		defer b.Cleanup(context.Background())
 
 		initialSchema := "ad"
@@ -471,7 +471,7 @@ func TestConfig_Update(t *testing.T) {
 
 func TestConfig_Delete(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
-		b, storage := getBackend(false)
+		b, storage := getBackend(t, false)
 		defer b.Cleanup(context.Background())
 
 		data := map[string]interface{}{

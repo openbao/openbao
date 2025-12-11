@@ -18,3 +18,11 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Versioned docs
+/api-docs_versioned_docs
+/api-docs_versioned_sidebars
+api-docs_versions.json
+/versioned_docs
+/versioned_sidebars
+versions.json

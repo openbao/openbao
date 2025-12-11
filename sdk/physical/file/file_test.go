@@ -17,11 +17,7 @@ import (
 )
 
 func TestFileBackend_Base64URLEncoding(t *testing.T) {
-	backendPath, err := os.MkdirTemp("", "vault")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-	defer os.RemoveAll(backendPath)
+	backendPath := t.TempDir()
 
 	logger := logging.NewVaultLogger(log.Debug)
 
@@ -179,11 +175,7 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 }
 
 func TestFileBackend_ValidatePath(t *testing.T) {
-	dir, err := os.MkdirTemp("", "vault")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	logger := logging.NewVaultLogger(log.Debug)
 
@@ -203,11 +195,7 @@ func TestFileBackend_ValidatePath(t *testing.T) {
 }
 
 func TestFileBackend(t *testing.T) {
-	dir, err := os.MkdirTemp("", "vault")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	logger := logging.NewVaultLogger(log.Debug)
 

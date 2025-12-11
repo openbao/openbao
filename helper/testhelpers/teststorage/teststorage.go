@@ -88,15 +88,7 @@ func MakeFileBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBun
 
 func MakeRaftBackend(t testing.T, coreIdx int, logger hclog.Logger, extraConf map[string]interface{}) *vault.PhysicalBackendBundle {
 	nodeID := fmt.Sprintf("core-%d", coreIdx)
-	raftDir, err := os.MkdirTemp("", "vault-raft-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// t.Logf("raft dir: %s", raftDir)
-	cleanupFunc := func() {
-		os.RemoveAll(raftDir)
-	}
-
+	raftDir := t.TempDir()
 	logger.Info("raft dir", "dir", raftDir)
 
 	conf := map[string]string{
@@ -113,13 +105,11 @@ func MakeRaftBackend(t testing.T, coreIdx int, logger hclog.Logger, extraConf ma
 
 	backend, err := raft.NewRaftBackend(conf, logger.Named("raft"))
 	if err != nil {
-		cleanupFunc()
 		t.Fatal(err)
 	}
 
 	return &vault.PhysicalBackendBundle{
 		Backend: backend,
-		Cleanup: cleanupFunc,
 	}
 }
 
@@ -137,11 +127,7 @@ func RaftHAFactory(f PhysicalBackendBundler) func(t testing.T, coreIdx int, logg
 			bundle = new(vault.PhysicalBackendBundle)
 		}
 
-		raftDir := makeRaftDir(t)
-		cleanupFunc := func() {
-			os.RemoveAll(raftDir)
-		}
-
+		raftDir := t.TempDir()
 		nodeID := fmt.Sprintf("core-%d", coreIdx)
 		backendConf := map[string]string{
 			"path":                         raftDir,
@@ -165,7 +151,6 @@ func RaftHAFactory(f PhysicalBackendBundler) func(t testing.T, coreIdx int, logg
 			if bundleCleanup != nil {
 				bundleCleanup()
 			}
-			cleanupFunc()
 		}
 
 		return bundle

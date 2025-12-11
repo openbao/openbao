@@ -69,7 +69,7 @@ func (c *PolicyWriteCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *PolicyWriteCommand) Run(args []string) int {
+func (c *PolicyWriteCommand) Run(args []string) (retcode int) {
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
@@ -111,7 +111,12 @@ func (c *PolicyWriteCommand) Run(args []string) int {
 			c.UI.Error(fmt.Sprintf("Error opening policy file: %s", err))
 			return 2
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				c.UI.Error(fmt.Sprintf("Error closing policy file: %s", err))
+				retcode = 2
+			}
+		}()
 		reader = file
 	}
 

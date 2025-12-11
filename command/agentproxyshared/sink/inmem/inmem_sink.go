@@ -37,7 +37,7 @@ func (s *inmemSink) WriteToken(token string) error {
 	s.token.Store(token)
 
 	if s.leaseCache != nil {
-		s.leaseCache.RegisterAutoAuthToken(token)
+		return s.leaseCache.RegisterAutoAuthToken(token)
 	}
 
 	return nil

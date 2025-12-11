@@ -104,7 +104,7 @@ func (k *kubernetesMethod) Shutdown() {
 // the method falls back to reading the token path with os.Open, opening a file
 // from either the default location or from the token_path path specified in
 // configuration.
-func (k *kubernetesMethod) readJWT() (string, error) {
+func (k *kubernetesMethod) readJWT() (jwt string, err error) {
 	// load configured token path if set, default to serviceAccountFile
 	tokenFilePath := serviceAccountFile
 	if k.tokenPath != "" {
@@ -120,7 +120,9 @@ func (k *kubernetesMethod) readJWT() (string, error) {
 		}
 		data = f
 	}
-	defer data.Close()
+	defer func() {
+		err = errors.Join(err, data.Close())
+	}()
 
 	contentBytes, err := io.ReadAll(data)
 	if err != nil {

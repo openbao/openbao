@@ -59,6 +59,7 @@ type EvalConfig struct {
 	WithExtLib    bool
 	WithEmail     bool
 	WithIdentity  bool
+	WithJSON      bool
 	CustomOptions []cel.EnvOption
 }
 
@@ -80,6 +81,11 @@ func (e *EvalConfig) ToOptions() []cel.EnvOption {
 
 	if e.WithIdentity {
 		options = append(options, IdentityDeclarations()...)
+	}
+
+	if e.WithJSON {
+		options = append(options, EncodeJSONFunction())
+		options = append(options, DecodeJSONFunction())
 	}
 
 	if len(e.CustomOptions) > 0 {

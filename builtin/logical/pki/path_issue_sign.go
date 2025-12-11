@@ -801,6 +801,7 @@ func (b *backend) getCelEvalConfig(useCSR bool) *celhelper.EvalConfig {
 		WithExtLib:    true,
 		WithEmail:     true,
 		WithIdentity:  true,
+		WithJSON:      true,
 		CustomOptions: envOptions,
 	}
 }

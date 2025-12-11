@@ -773,8 +773,12 @@ func TestCelCustomFunction(t *testing.T) {
 		"cel_program": map[string]interface{}{
 			"variables": []map[string]interface{}{
 				{
+					"name":       "emails",
+					"expression": `decode_json(request.extensions["subject_alt_name"]).emails`,
+				},
+				{
 					"name":       "valid_emails",
-					"expression": `check_valid_email(request.alt_names)`,
+					"expression": `check_valid_email(emails[0])`,
 				},
 				{
 					"name":       "ttl",
@@ -783,20 +787,20 @@ func TestCelCustomFunction(t *testing.T) {
 				{
 					"name": "cert",
 					"expression": `CertTemplate{
-						Subject: PKIX.Name{                   
+						Subject: PKIX.Name{
 							CommonName: request.common_name,
 						},
 						NotBefore: now,
 						NotAfter: now + duration(ttl),
-						EmailAddresses: [request.alt_names],		
+						EmailAddresses: emails,
 					}`,
 				},
 				{
 					"name": "output",
 					"expression": `ValidationOutput{
-						template:        cert,						
-						issuer_ref:         "default",
-						warnings: [duration(request.ttl) < duration('5h') ? 'ttl has been modified to 5h.' : ''],
+						template:   cert,
+						issuer_ref: "default",
+						warnings:   [duration(request.ttl) < duration('5h') ? 'ttl has been modified to 5h.' : ''],
 					  }`,
 				},
 				{
@@ -825,6 +829,13 @@ func TestCelCustomFunction(t *testing.T) {
 		"common_name": "example.com",
 		"alt_names":   "example@gmail.com",
 		"ttl":         "4h",
+		"extensions": map[string]interface{}{
+			"subject_alt_name": `{
+				"dns":    ["example.com", "www.example.com"],
+				"emails": ["example@gmail.com"],
+				"ips":    ["203.0.113.7"]
+			}`,
+		},
 	}
 
 	issueReq := &logical.Request{

@@ -1211,12 +1211,14 @@ func TestPolicyFuzzing(t *testing.T) {
 	}
 
 	be, _ = Backend(context.Background(), conf)
-	be.Setup(context.Background(), conf)
+	err := be.Setup(context.Background(), conf)
+	require.NoError(t, err)
 	testPolicyFuzzingCommon(t, be)
 
 	sysView.CachingDisabledVal = true
 	be, _ = Backend(context.Background(), conf)
-	be.Setup(context.Background(), conf)
+	err = be.Setup(context.Background(), conf)
+	require.NoError(t, err)
 	testPolicyFuzzingCommon(t, be)
 }
 

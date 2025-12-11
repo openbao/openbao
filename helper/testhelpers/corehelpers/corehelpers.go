@@ -127,14 +127,18 @@ func (m *mockBuiltinRegistry) Get(name string, pluginType consts.PluginType) (fu
 	case "cert":
 		return toFunc(func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 			b := new(framework.Backend)
-			b.Setup(ctx, config)
+			if err := b.Setup(ctx, config); err != nil {
+				return nil, err
+			}
 			b.BackendType = logical.TypeCredential
 			return b, nil
 		}), true
 	case "postgresql-database-plugin":
 		return toFunc(func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 			b := new(framework.Backend)
-			b.Setup(ctx, config)
+			if err := b.Setup(ctx, config); err != nil {
+				return nil, err
+			}
 			b.BackendType = logical.TypeLogical
 			return b, nil
 		}), true
@@ -143,7 +147,9 @@ func (m *mockBuiltinRegistry) Get(name string, pluginType consts.PluginType) (fu
 	case "kv":
 		return toFunc(func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 			b := new(framework.Backend)
-			b.Setup(ctx, config)
+			if err := b.Setup(ctx, config); err != nil {
+				return nil, err
+			}
 			b.BackendType = logical.TypeLogical
 			return b, nil
 		}), true

@@ -166,11 +166,9 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 	sm.barrierByNamespace.Delete(ns.Path)
 }
 
-// NamespaceView finds the correct barrier to use for the namespace
-// and returns BarrierView restricted to the logical.Storage space
-// of the given namespace. As this function retrieves the barrier
-// from the seal manager, remember to __not__ shadow the transaction
-// by retrieving the view using this method.
+// NamespaceView returns the BarrierView that applies to the given namespace.
+// Remember that this method does not take in an existing storage type and is
+// likely wrong to call within the context of a transaction.
 func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
 	barrier := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
 	return NamespaceView(barrier, ns)

@@ -349,16 +349,16 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		},
 	}
 
+	ctx := namespace.RootContext(context.Background())
 	// Both should set up successfully
-	err := c.setupCredentials(context.Background())
-	if err != nil {
+	if err := c.setupCredentials(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if len(c.auth.Entries) != 2 {
 		t.Fatalf("expected two entries, got %d", len(c.auth.Entries))
 	}
 
-	localEntries, err := c.barrier.List(context.Background(), coreLocalAuthConfigPath+"/")
+	localEntries, err := c.barrier.List(ctx, coreLocalAuthConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,11 +367,11 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	c.auth.Entries[1].Local = true
-	if err := c.persistAuth(context.Background(), nil, c.auth, nil, ""); err != nil {
+	if err := c.persistAuth(ctx, nil, c.auth, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	localEntries, err = c.barrier.List(context.Background(), coreLocalAuthConfigPath+"/")
+	localEntries, err = c.barrier.List(ctx, coreLocalAuthConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +379,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		t.Fatalf("expected one entry in local auth table, got %#v", localEntries)
 	}
 	for _, localEntry := range localEntries {
-		rawLocal, err := c.barrier.Get(context.Background(), coreLocalAuthConfigPath+"/"+localEntry)
+		rawLocal, err := c.barrier.Get(ctx, coreLocalAuthConfigPath+"/"+localEntry)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -397,7 +397,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	oldCredential := c.auth
-	if err := c.loadCredentials(context.Background()); err != nil {
+	if err := c.loadCredentials(ctx); err != nil {
 		t.Fatal(err)
 	}
 
@@ -740,7 +740,7 @@ func TestCore_RemountCredential(t *testing.T) {
 		t.Fatalf("auth method not at new location, match: %q", match)
 	}
 
-	c.sealInternal()
+	_ = c.sealInternal()
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
 		if err != nil {
@@ -834,74 +834,122 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 
 func TestCore_RemountCredential_Namespaces(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	rootCtx := namespace.RootContext(context.Background())
-	ns1 := &namespace.Namespace{Path: "ns1/"}
-	ns2 := &namespace.Namespace{Path: "ns1/ns2/"}
-	ns3 := &namespace.Namespace{Path: "ns1/ns3/"}
-
-	TestCoreCreateNamespaces(t, c, ns1, ns2, ns3)
-	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
-	ns2Ctx := namespace.ContextWithNamespace(rootCtx, ns2)
-	ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
+	ns := &namespace.Namespace{Path: "ns/"}
+	unsealable1 := &namespace.Namespace{Path: "ns/unsealable1/"}
+	unsealable2 := &namespace.Namespace{Path: "ns/unsealable2/"}
+	sealable1 := &namespace.Namespace{Path: "ns/sealable1/"}
+	sealable2 := &namespace.Namespace{Path: "ns/sealable2/"}
+	TestCoreCreateNamespaces(t, c, ns, unsealable1, unsealable2)
+	unsealKeys := TestCoreCreateUnsealedNamespaces(t, c, sealable1, sealable2)
+	unsealKeys["root"] = keys
 
 	me := &MountEntry{
 		Table: credentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableCredential(ns2Ctx, me)
-	if err != nil {
-		t.Fatalf("err: %v", err)
+
+	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	err := c.enableCredential(namespace.ContextWithNamespace(ctx, unsealable1), me)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name string
+		src  namespace.MountPathDetails
+		dst  namespace.MountPathDetails
+	}{
+		{
+			name: "remount unsealable -> unsealable",
+			src: namespace.MountPathDetails{
+				Namespace: unsealable1,
+				MountPath: "auth/foo/",
+			},
+			dst: namespace.MountPathDetails{
+				Namespace: unsealable2,
+				MountPath: "auth/bar/",
+			},
+		},
+		{
+			name: "remount unsealable -> sealable",
+			src: namespace.MountPathDetails{
+				Namespace: unsealable2,
+				MountPath: "auth/bar/",
+			},
+			dst: namespace.MountPathDetails{
+				Namespace: sealable1,
+				MountPath: "auth/foo/",
+			},
+		},
+		{
+			name: "remount sealable -> sealable",
+			src: namespace.MountPathDetails{
+				Namespace: sealable1,
+				MountPath: "auth/foo/",
+			},
+			dst: namespace.MountPathDetails{
+				Namespace: sealable2,
+				MountPath: "auth/bar/",
+			},
+		},
+		{
+			name: "remount sealable -> unsealable",
+			src: namespace.MountPathDetails{
+				Namespace: sealable2,
+				MountPath: "auth/bar/",
+			},
+			dst: namespace.MountPathDetails{
+				Namespace: unsealable1,
+				MountPath: "auth/foo/",
+			},
+		},
 	}
 
-	src := namespace.MountPathDetails{
-		Namespace: ns2,
-		MountPath: "auth/foo/",
-	}
-	dst := namespace.MountPathDetails{
-		Namespace: ns3,
-		MountPath: "auth/bar/",
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, ns := range []*namespace.Namespace{tt.src.Namespace, tt.dst.Namespace} {
+				for i, key := range unsealKeys[ns.Path] {
+					unsealed, err := TestNamespaceUnseal(c, ns, key)
+					require.NoError(t, err)
+					require.False(t, i+1 == len(keys) && !unsealed, "should be unsealed")
+				}
+			}
 
-	match := c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
-	if match != ns2.Path+"auth/foo/" {
-		t.Fatalf("missing mount, match: %q", match)
-	}
+			srcCtx := namespace.ContextWithNamespace(ctx, tt.src.Namespace)
+			dstCtx := namespace.ContextWithNamespace(ctx, tt.dst.Namespace)
 
-	err = c.remountCredential(ns1Ctx, src, dst, true)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+			match := c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
+			require.Equalf(t, tt.src.Namespace.Path+tt.src.MountPath, match, "missing mount, match: %q", match)
 
-	match = c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
-	if match != "" {
-		t.Fatalf("auth method still at old location, match: %q", err)
-	}
+			err := c.remountCredential(ctx, tt.src, tt.dst, true)
+			require.NoError(t, err)
 
-	match = c.router.MatchingMount(ns3Ctx, "auth/bar/baz")
-	if match != ns3.Path+"auth/bar/" {
-		t.Fatalf("auth method not at new location, match: %q", match)
-	}
+			match = c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
+			require.Equalf(t, "", match, "auth method still at old location, match: %q", match)
 
-	c.sealInternal()
-	for i, key := range keys {
-		unseal, err := TestCoreUnseal(c, key)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
-		if i+1 == len(keys) && !unseal {
-			t.Fatal("should be unsealed")
-		}
-	}
+			match = c.router.MatchingMount(dstCtx, tt.dst.MountPath+"baz")
+			require.Equalf(t, tt.dst.Namespace.Path+tt.dst.MountPath, match, "auth method not at new location, match: %q", match)
 
-	match = c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
-	if match != "" {
-		t.Fatalf("auth method still at old location after unseal, match: %q", match)
-	}
+			_ = c.sealInternal()
+			for i, key := range unsealKeys["root"] {
+				unsealed, err := TestCoreUnseal(c, key)
+				require.NoError(t, err)
+				require.False(t, i+1 == len(keys) && !unsealed, "should be unsealed")
+			}
 
-	match = c.router.MatchingMount(ns3Ctx, "auth/bar/baz")
-	if match != ns3.Path+"auth/bar/" {
-		t.Fatalf("auth method not at new location after unseal, match: %q", match)
+			for _, ns := range []*namespace.Namespace{tt.src.Namespace, tt.dst.Namespace} {
+				for i, key := range unsealKeys[ns.Path] {
+					unsealed, err := TestNamespaceUnseal(c, ns, key)
+					require.NoError(t, err)
+					require.False(t, i+1 == len(keys) && !unsealed, "should be unsealed")
+				}
+			}
+
+			match = c.router.MatchingMount(srcCtx, tt.src.MountPath+"foobar")
+			require.Equalf(t, "", match, "auth method still at old location after unseal, match: %q", match)
+
+			match = c.router.MatchingMount(dstCtx, tt.dst.MountPath+"baz")
+			require.Equalf(t, tt.dst.Namespace.Path+tt.dst.MountPath, match, "auth method not at new location after unseal, match: %q", match)
+		})
 	}
 }
 

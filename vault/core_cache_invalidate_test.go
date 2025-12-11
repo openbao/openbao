@@ -206,7 +206,7 @@ func TestCore_Invalidate_Namespaces_NonTransactional(t *testing.T) {
 	testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
 
 	// 2.2 add mount to namespace
-	storageEntry, err := c.barrier.Get(t.Context(), "core/mounts")
+	storageEntry, err := c.barrier.Get(t.Context(), coreMountConfigPath)
 	require.NoError(t, err)
 	require.NotNil(t, storageEntry, "expected mount table to be written at %s", storagePath)
 
@@ -227,7 +227,7 @@ func TestCore_Invalidate_Namespaces_NonTransactional(t *testing.T) {
 	require.NoError(t, err)
 
 	testCore_Invalidate_sneakValueAroundCache(t, c, &logical.StorageEntry{
-		Key:   "core/mounts",
+		Key:   coreMountConfigPath,
 		Value: updatedData,
 	})
 
@@ -588,7 +588,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			resp := testCore_Invalidate_handleRequest(t, ctx, c, readReq)
 
 			uuid := resp.Data["uuid"].(string)
-			storagePath := path.Join(nsPrefix, "core/mounts", uuid)
+			storagePath := path.Join(nsPrefix, coreMountConfigPath, uuid)
 
 			triggerReadCall := func(collect require.TestingT, expectedErrors ...string) {
 				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
@@ -775,8 +775,6 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
 			require.Equal(t, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
 
-			storagePath := "core/mounts"
-
 			triggerReadCall := func(collect require.TestingT, expectedErrors ...string) {
 				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
 					Operation:   logical.ReadOperation,
@@ -788,9 +786,11 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
 
 			// 3. Manipulate mount table in storage: delete entry from mount table
-			storageEntry, err := c.barrier.Get(ctx, storagePath)
+			ns, err := namespace.FromContext(ctx)
 			require.NoError(t, err)
-			require.NotNil(t, storageEntry, "expected mount table to be written at %s", storagePath)
+			storageEntry, err := c.NamespaceView(ns).Get(ctx, coreMountConfigPath)
+			require.NoError(t, err)
+			require.NotNil(t, storageEntry, "expected mount table to be written at %s", coreMountConfigPath)
 
 			mountTable := new(MountTable)
 			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountTable))
@@ -802,12 +802,12 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			require.NoError(t, err)
 
 			testCore_Invalidate_sneakValueAroundCache(t, c, &logical.StorageEntry{
-				Key:   storagePath,
+				Key:   coreMountConfigPath,
 				Value: updatedData,
 			})
 
 			// 4. call invalidate
-			c.invalidateSynchronous(storagePath)
+			c.invalidateSynchronous(coreMountConfigPath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.mountsLock.RLock()
@@ -825,7 +825,7 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			testCore_Invalidate_sneakValueAroundCache(t, c, storageEntry)
 
 			// 7. call invalidate
-			c.invalidateSynchronous(storagePath)
+			c.invalidateSynchronous(coreMountConfigPath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.mountsLock.RLock()
@@ -910,7 +910,7 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 			resp := testCore_Invalidate_handleRequest(t, ctx, c, readReq)
 
 			uuid := resp.Data["uuid"].(string)
-			storagePath := path.Join(nsPrefix, "core/auth", uuid)
+			storagePath := path.Join(nsPrefix, coreAuthConfigPath, uuid)
 
 			callLogin := func(collect require.TestingT, expectedErrors ...string) {
 				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
@@ -1051,8 +1051,6 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
 			require.Equal(t, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
 
-			storagePath := "core/auth"
-
 			callLogin := func(collect require.TestingT, expectedErrors ...string) {
 				testCore_Invalidate_handleRequest(collect, ctx, c, &logical.Request{
 					Operation:   logical.ReadOperation,
@@ -1064,9 +1062,12 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
 
 			// 3. Manipulate mount table in storage: delete entry from mount table
-			storageEntry, err := c.barrier.Get(ctx, storagePath)
+			ns, err := namespace.FromContext(ctx)
 			require.NoError(t, err)
-			require.NotNil(t, storageEntry, "expected mount table to be written at %s", storagePath)
+
+			storageEntry, err := c.NamespaceView(ns).Get(ctx, coreAuthConfigPath)
+			require.NoError(t, err)
+			require.NotNil(t, storageEntry, "expected mount table to be written at %s", coreAuthConfigPath)
 
 			mountTable := new(MountTable)
 			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountTable))
@@ -1078,12 +1079,12 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			require.NoError(t, err)
 
 			testCore_Invalidate_sneakValueAroundCache(t, c, &logical.StorageEntry{
-				Key:   storagePath,
+				Key:   coreAuthConfigPath,
 				Value: updatedData,
 			})
 
 			// 4. call invalidate
-			c.invalidateSynchronous(storagePath)
+			c.invalidateSynchronous(coreAuthConfigPath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.authLock.RLock()
@@ -1101,7 +1102,7 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			testCore_Invalidate_sneakValueAroundCache(t, c, storageEntry)
 
 			// 7. call invalidate
-			c.invalidateSynchronous(storagePath)
+			c.invalidateSynchronous(coreAuthConfigPath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				c.authLock.RLock()
@@ -1120,12 +1121,12 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			require.NoError(t, err)
 
 			testCore_Invalidate_sneakValueAroundCache(t, c, &logical.StorageEntry{
-				Key:   storagePath,
+				Key:   coreAuthConfigPath,
 				Value: updatedData,
 			})
 
 			// 9. call invalidate
-			c.invalidateSynchronous(storagePath)
+			c.invalidateSynchronous(coreAuthConfigPath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				callLogin(collect, "unsupported path")

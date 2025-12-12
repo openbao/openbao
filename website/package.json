@@ -27,7 +27,8 @@
     "docusaurus-lunr-search": "^3.6.0",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "openbao-ecosystem-logos": "openbao/openbao-ecosystem-logos#2c21ba8dd7afe3698c2fec9be5cf0f335a98ce7d"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.6.3",

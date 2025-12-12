@@ -1,0 +1,4 @@
+```release-note:feature
+kube-auth-login: Implemented CLI login-interface for Kubernetes service account token authentication
+Supports both interactive (prompting for JWT) and non-interactive modes
+```

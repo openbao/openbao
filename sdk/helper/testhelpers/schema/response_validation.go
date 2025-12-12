@@ -89,6 +89,7 @@ func validateResponseDataImpl(schema *framework.Response, data map[string]interf
 		logical.HTTPCacheControlHeader,
 		logical.HTTPPragmaHeader,
 		logical.HTTPWWWAuthenticateHeader,
+		logical.HTTPContentTransferEncodingHeader,
 	} {
 		delete(dataWithStringValues, field)
 

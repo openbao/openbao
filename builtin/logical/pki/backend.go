@@ -96,6 +96,7 @@ func Backend(conf *logical.BackendConfig) *backend {
 				"ocsp/*",   // OCSP GET
 
 				// ACME paths are added below
+				// EST paths are added below
 			},
 
 			LocalStorage: []string{
@@ -106,6 +107,7 @@ func Backend(conf *logical.BackendConfig) *backend {
 				"crls/",
 				"certs/",
 				acmePathPrefix,
+				estPathPrefix,
 			},
 
 			Root: []string{
@@ -198,6 +200,9 @@ func Backend(conf *logical.BackendConfig) *backend {
 			pathAcmeConfig(&b),
 			pathAcmeEabList(&b),
 			pathAcmeEabDelete(&b),
+
+			// EST
+			pathEstConfig(&b),
 		},
 
 		Secrets: []*framework.Secret{
@@ -228,6 +233,21 @@ func Backend(conf *logical.BackendConfig) *backend {
 	acmePaths = append(acmePaths, pathAcmeNewEab(&b)...) // auth'd API that lives underneath the various /acme paths
 
 	b.Paths = append(b.Paths, acmePaths...)
+
+	// Add EST paths to backend
+	var estPaths []*framework.Path
+	estPaths = append(estPaths, pathEstCaCerts(&b)...)
+	estPaths = append(estPaths, pathEstSimpleEnroll(&b)...)
+	estPaths = append(estPaths, pathEstSimpleReenroll(&b)...)
+
+	b.Paths = append(b.Paths, estPaths...)
+
+	// Only /cacerts is unauthenticated per RFC 7030, so add the minimal EST
+	// variants that surface that path.
+	b.PathsSpecial.Unauthenticated = append(b.PathsSpecial.Unauthenticated, "est/cacerts")
+	b.PathsSpecial.Unauthenticated = append(b.PathsSpecial.Unauthenticated, "roles/+/est/cacerts")
+	b.PathsSpecial.Unauthenticated = append(b.PathsSpecial.Unauthenticated, ".well-known/est/cacerts")
+	b.PathsSpecial.Unauthenticated = append(b.PathsSpecial.Unauthenticated, ".well-known/est/+/cacerts")
 
 	// Add specific un-auth'd paths for ACME APIs
 	for _, acmePrefix := range []string{"", "issuer/+/", "roles/+/", "issuer/+/roles/+/"} {

@@ -51,6 +51,11 @@ const (
 	// If set, HTTPWWWAuthenticateHeader will set the WWW-Authenticate response header.
 	// The value must be a string.
 	HTTPWWWAuthenticateHeader = "http_www_authenticate"
+
+	// If set, HTTPContentTransferEncodingHeader will set the Content-Transfer-Encoding response header.
+	// This is used by EST (RFC 7030) to indicate base64 encoding.
+	// The value must be a string.
+	HTTPContentTransferEncodingHeader = "http_content_transfer_encoding"
 )
 
 // Response is a struct that stores the response of a request.

@@ -7370,6 +7370,7 @@ func TestProperAuthing(t *testing.T) {
 		"certs/detailed":                         shouldBeAuthed,
 		"certs/revoked":                          shouldBeAuthed,
 		"config/acme":                            shouldBeAuthed,
+		"config/est":                             shouldBeAuthed,
 		"config/auto-tidy":                       shouldBeAuthed,
 		"config/ca":                              shouldBeAuthed,
 		"config/cluster":                         shouldBeAuthed,
@@ -7474,6 +7475,26 @@ func TestProperAuthing(t *testing.T) {
 		// Make sure this new-eab path is auth'd
 		paths[acmePrefix+"acme/new-eab"] = shouldBeAuthed
 	}
+
+	// Add EST based paths to the test suite
+	// RFC 7030 Section 4.1.1 - only /cacerts is unauthenticated
+	for _, estPrefix := range []string{"", "roles/test/"} {
+		paths[estPrefix+"est/cacerts"] = shouldBeUnauthedReadList
+		// Authenticated EST operations
+		paths[estPrefix+"est/simpleenroll"] = shouldBeAuthed
+		paths[estPrefix+"est/simplereenroll"] = shouldBeAuthed
+	}
+	// Well-known EST paths - also unauthenticated per RFC 7030
+	// These are registered as literal paths with regex anchors
+	paths["^.well-known/est/cacerts$"] = shouldBeUnauthedReadList
+	paths["^.well-known/est/(?P<label>\\w(([\\w-.]+)?\\w)?)/cacerts$"] = shouldBeUnauthedReadList
+	// Well-known authenticated EST operations
+	paths["^.well-known/est/simpleenroll$"] = shouldBeAuthed
+	paths["^.well-known/est/simplereenroll$"] = shouldBeAuthed
+	paths["^.well-known/est/(?P<label>\\w(([\\w-.]+)?\\w)?)/simpleenroll$"] = shouldBeAuthed
+	paths["^.well-known/est/(?P<label>\\w(([\\w-.]+)?\\w)?)/simplereenroll$"] = shouldBeAuthed
+	// EST configuration endpoint - authenticated
+	paths["config/est"] = shouldBeAuthed
 
 	for path, checkerType := range paths {
 		checker := pathAuthChckerMap[checkerType]

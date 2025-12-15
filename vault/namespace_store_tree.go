@@ -127,7 +127,7 @@ func (nt *namespaceTree) List(path string, includeParent bool, recursive bool) (
 	var entries []*namespace.Namespace
 	if includeParent {
 		entries = make([]*namespace.Namespace, 0, len(node.children)+1)
-		entries = append(entries, node.entry)
+		entries = append(entries, node.entry.Clone(false))
 	}
 	for idx := 0; idx < len(nodes); idx++ {
 		node = nodes[idx]

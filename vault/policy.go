@@ -128,6 +128,7 @@ type PathRules struct {
 	IsPrefix            bool
 	HasSegmentWildcards bool
 	Capabilities        []string
+	ControlGroup        *ControlGroup
 
 	ExpirationRaw string    `hcl:"expiration"`
 	Expiration    time.Time `hcl:"-"`
@@ -161,6 +162,22 @@ type ACLPermissions struct {
 	PaginationLimit        int
 	GrantingPoliciesMap    map[uint32][]logical.PolicyInfo
 	ResponseKeysFilterPath string
+}
+
+type ControlGroup struct {
+	TTL     time.Duration
+	Factors []ControlGroupFactor
+}
+
+type ControlGroupFactor struct {
+	Name                   string
+	ControlledCapabilities []string
+	Identity               ControlGroupIdentity
+}
+
+type ControlGroupIdentity struct {
+	GroupNames []string
+	Approvals  int
 }
 
 func (p *ACLPermissions) Clone() (*ACLPermissions, error) {
@@ -347,6 +364,7 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 			"pagination_limit",
 			"expiration",
 			"list_scan_response_keys_filter_path",
+			"control_group",
 		}
 		if err := hclutil.CheckHCLKeys(item.Val, valid); err != nil {
 			return multierror.Prefix(err, fmt.Sprintf("path %q:", key))

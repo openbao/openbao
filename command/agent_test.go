@@ -531,11 +531,7 @@ func TestAgent_Template_UserAgent(t *testing.T) {
 
 	// make a temp directory to hold renders. Each test will create a temp dir
 	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
+	tmpDirRoot := t.TempDir()
 	// create temp dir for this test run
 	tmpDir, err := os.MkdirTemp(tmpDirRoot, "TestAgent_Template_UserAgent")
 	if err != nil {
@@ -703,11 +699,7 @@ func TestAgent_Template_Basic(t *testing.T) {
 
 	// make a temp directory to hold renders. Each test will create a temp dir
 	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
+	tmpDirRoot := t.TempDir()
 
 	// start test cases here
 	testCases := map[string]struct {
@@ -1002,14 +994,6 @@ func TestAgent_Template_VaultClientFromEnv(t *testing.T) {
 
 	roleIDPath, secretIDPath := setupAppRoleAndKVMounts(t, serverClient)
 
-	// make a temp directory to hold renders. Each test will create a temp dir
-	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
-
 	vaultAddr := "https://" + cluster.Cores[0].Listeners[0].Address.String()
 	testCases := map[string]struct {
 		env map[string]string
@@ -1104,6 +1088,7 @@ auto_auth {
 			// likely fail the test
 			tick := time.Tick(1 * time.Second)
 			timeout := time.After(10 * time.Second)
+			var err error
 			for {
 				select {
 				case <-timeout:
@@ -1188,11 +1173,7 @@ func TestAgent_Template_ExitCounter(t *testing.T) {
 
 	// make a temp directory to hold renders. Each test will create a temp dir
 	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
+	tmpDirRoot := t.TempDir()
 
 	// create temp dir for this test run
 	tmpDir, err := os.MkdirTemp(tmpDirRoot, "agent-test")
@@ -1494,11 +1475,7 @@ func TestAgent_Template_Retry(t *testing.T) {
 
 	// make a temp directory to hold renders. Each test will create a temp dir
 	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
+	tmpDirRoot := t.TempDir()
 
 	intRef := func(i int) *int {
 		return &i
@@ -2339,11 +2316,7 @@ func TestAgent_TemplateConfig_ExitOnRetryFailure(t *testing.T) {
 
 	// make a temp directory to hold renders. Each test will create a temp dir
 	// inside this one
-	tmpDirRoot, err := os.MkdirTemp("", "agent-test-renders")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDirRoot)
+	tmpDirRoot := t.TempDir()
 
 	// Note that missing key is different from a non-existent secret. A missing
 	// key (2xx response with missing keys in the response map) can still yield

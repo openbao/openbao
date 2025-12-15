@@ -36,6 +36,11 @@ import (
 	"zgo.at/zcache/v2"
 )
 
+const (
+	nextRunKey                = "nextRun"
+	jwksCacheControlMaxAgeKey = "jwksCacheControlMaxAge"
+)
+
 type oidcConfig struct {
 	Issuer string `json:"issuer"`
 
@@ -141,9 +146,6 @@ var (
 		string(jose.EdDSA),
 	}
 )
-
-// pseudo-namespace for cache items that don't belong to any real namespace.
-var noNamespace = &namespace.Namespace{ID: "__NO_NAMESPACE"}
 
 func oidcPaths(i *IdentityStore) []*framework.Path {
 	return []*framework.Path{
@@ -1450,10 +1452,10 @@ func (i *IdentityStore) pathOIDCDiscovery(ctx context.Context, req *logical.Requ
 
 // getKeysCacheControlHeader returns the cache control header for all public
 // keys at the .well-known/keys endpoint
-func (i *IdentityStore) getKeysCacheControlHeader() (string, error) {
+func (i *IdentityStore) getKeysCacheControlHeader(ns *namespace.Namespace) (string, error) {
 	// if jwksCacheControlMaxAge is set use that, otherwise fall back on the
 	// more conservative nextRun values
-	jwksCacheControlMaxAge, ok, err := i.oidcCache.Get(noNamespace, "jwksCacheControlMaxAge")
+	jwksCacheControlMaxAge, ok, err := i.oidcCache.Get(ns, jwksCacheControlMaxAgeKey)
 	if err != nil {
 		return "", err
 	}
@@ -1465,7 +1467,7 @@ func (i *IdentityStore) getKeysCacheControlHeader() (string, error) {
 		return fmt.Sprintf("max-age=%.0f", durationInSeconds), nil
 	}
 
-	nextRun, ok, err := i.oidcCache.Get(noNamespace, "nextRun")
+	nextRun, ok, err := i.oidcCache.Get(ns, nextRunKey)
 	if err != nil {
 		return "", err
 	}
@@ -1529,7 +1531,7 @@ func (i *IdentityStore) pathOIDCReadPublicKeys(ctx context.Context, req *logical
 		return nil, err
 	}
 	if len(keys) > 0 {
-		header, err := i.getKeysCacheControlHeader()
+		header, err := i.getKeysCacheControlHeader(ns)
 		if err != nil {
 			return nil, err
 		}
@@ -2020,12 +2022,23 @@ func (i *IdentityStore) oidcKeyRotation(ctx context.Context, s logical.Storage) 
 // oidcPeriodFunc is invoked by the backend's periodFunc and runs regular key
 // rotations and expiration actions.
 func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		i.Logger().Error("identity store periodic function called without namespace", "error", err)
+		return
+	}
+
+	if ns.Tainted {
+		i.logger.Info("skipping OIDC periodic function for tainted namespace", "ns", ns.UUID)
+		return
+	}
+
 	var nextRun time.Time
 	now := time.Now()
 
-	v, ok, err := i.oidcCache.Get(noNamespace, "nextRun")
+	v, ok, err := i.oidcCache.Get(ns, nextRunKey)
 	if err != nil {
-		i.Logger().Error("error reading oidc cache", "err", err)
+		i.Logger().Error("error reading oidc cache", "ns", ns.UUID, "err", err)
 		return
 	}
 
@@ -2037,77 +2050,63 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 	// be run at any time safely, but there is no need to invoke them (which
 	// might be somewhat expensive if there are many roles/keys) if we're not
 	// past any rotation/expiration TTLs.
-	if now.Equal(nextRun) || now.After(nextRun) {
-		// Initialize to a fairly distant next run time. This will be brought in
-		// based on key rotation times.
-		nextRun = now.Add(24 * time.Hour)
-		minJwksClientCacheDuration := time.Duration(math.MaxInt64)
+	if now.Before(nextRun) {
+		return
+	}
 
-		allNs, err := i.namespacer.ListNamespaces(ctx)
-		if err != nil {
-			i.Logger().Error("error listing namespaces", "err", err)
+	nextRun = now.Add(24 * time.Hour)
+	minJwksClientCacheDuration := time.Duration(math.MaxInt64)
+
+	nsPath := ns.Path
+	s := i.router.MatchingStorageByAPIPath(ctx, nsPath+"identity/oidc")
+	if s == nil {
+		return
+	}
+
+	nextRotation, jwksClientCacheDuration, err := i.oidcKeyRotation(ctx, s)
+	if err != nil {
+		i.Logger().Warn("error rotating OIDC keys", "ns", ns.UUID, "err", err)
+	}
+
+	nextExpiration, err := i.expireOIDCPublicKeys(ctx, s)
+	if err != nil {
+		i.Logger().Warn("error expiring OIDC public keys", "ns", ns.UUID, "err", err)
+	}
+
+	if err := i.oidcCache.Flush(ns); err != nil {
+		i.Logger().Error("error flushing oidc cache", "ns", ns.UUID, "err", err)
+	}
+
+	// re-run at the soonest expiration or rotation time
+	if nextRotation.Before(nextRun) {
+		nextRun = nextRotation
+	}
+
+	if nextExpiration.Before(nextRun) {
+		nextRun = nextExpiration
+	}
+
+	if jwksClientCacheDuration < minJwksClientCacheDuration {
+		minJwksClientCacheDuration = jwksClientCacheDuration
+	}
+
+	if err := i.oidcCache.Set(ns, nextRunKey, nextRun); err != nil {
+		i.Logger().Error("error setting oidc nextRun cache", "ns", ns.UUID, "err", err)
+	}
+
+	if minJwksClientCacheDuration < math.MaxInt64 {
+		// the OIDC JWKS endpoint returns a Cache-Control HTTP header time between
+		// 0 and the minimum verificationTTL or minimum rotationPeriod out of all
+		// keys, whichever value is lower.
+		//
+		// This smooths calls from services validating JWTs to Vault, while
+		// ensuring that operators can assert that servers honoring the
+		// Cache-Control header will always have a superset of all valid keys, and
+		// not trust any keys longer than a jwksCacheControlMaxAge duration after a
+		// key is rotated out of signing use
+		if err := i.oidcCache.Set(ns, jwksCacheControlMaxAgeKey, minJwksClientCacheDuration); err != nil {
+			i.Logger().Error("error setting jwksCacheControlMaxAge in oidc cache", "err", err)
 		}
-		for _, ns := range allNs {
-			if ns.Tainted {
-				i.logger.Info("skipping OIDC function for tainted namespace", "ns", ns.ID)
-				continue
-			}
-
-			nsPath := ns.Path
-
-			s := i.router.MatchingStorageByAPIPath(ctx, nsPath+"identity/oidc")
-
-			if s == nil {
-				continue
-			}
-
-			nextRotation, jwksClientCacheDuration, err := i.oidcKeyRotation(ctx, s)
-			if err != nil {
-				i.Logger().Warn("error rotating OIDC keys", "err", err)
-			}
-
-			nextExpiration, err := i.expireOIDCPublicKeys(ctx, s)
-			if err != nil {
-				i.Logger().Warn("error expiring OIDC public keys", "err", err)
-			}
-
-			if err := i.oidcCache.Flush(ns); err != nil {
-				i.Logger().Error("error flushing oidc cache", "err", err)
-			}
-
-			// re-run at the soonest expiration or rotation time
-			if nextRotation.Before(nextRun) {
-				nextRun = nextRotation
-			}
-
-			if nextExpiration.Before(nextRun) {
-				nextRun = nextExpiration
-			}
-
-			if jwksClientCacheDuration < minJwksClientCacheDuration {
-				minJwksClientCacheDuration = jwksClientCacheDuration
-			}
-		}
-
-		if err := i.oidcCache.Set(noNamespace, "nextRun", nextRun); err != nil {
-			i.Logger().Error("error setting oidc cache", "err", err)
-		}
-
-		if minJwksClientCacheDuration < math.MaxInt64 {
-			// the OIDC JWKS endpoint returns a Cache-Control HTTP header time between
-			// 0 and the minimum verificationTTL or minimum rotationPeriod out of all
-			// keys, whichever value is lower.
-			//
-			// This smooths calls from services validating JWTs to Vault, while
-			// ensuring that operators can assert that servers honoring the
-			// Cache-Control header will always have a superset of all valid keys, and
-			// not trust any keys longer than a jwksCacheControlMaxAge duration after a
-			// key is rotated out of signing use
-			if err := i.oidcCache.Set(noNamespace, "jwksCacheControlMaxAge", minJwksClientCacheDuration); err != nil {
-				i.Logger().Error("error setting jwksCacheControlMaxAge in oidc cache", "err", err)
-			}
-		}
-
 	}
 }
 
@@ -2154,7 +2153,7 @@ func (c *oidcCache) Flush(ns *namespace.Namespace) error {
 
 	// Remove all items from the provided namespace as well as the shared, "no namespace" section.
 	for itemKey := range c.c.Items() {
-		if isTargetNamespacedKey(itemKey, []string{noNamespace.ID, ns.ID}) {
+		if isTargetNamespacedKey(itemKey, ns.ID) {
 			c.c.Delete(itemKey)
 		}
 	}
@@ -2164,7 +2163,7 @@ func (c *oidcCache) Flush(ns *namespace.Namespace) error {
 
 // isTargetNamespacedKey returns true for a properly constructed namespaced key (<version>:<nsID>:<key>)
 // where <nsID> matches any targeted nsID
-func isTargetNamespacedKey(nskey string, nsTargets []string) bool {
+func isTargetNamespacedKey(nskey string, nsTarget string) bool {
 	split := strings.Split(nskey, ":")
-	return len(split) >= 3 && slices.Contains(nsTargets, split[1])
+	return len(split) >= 3 && nsTarget == split[1]
 }

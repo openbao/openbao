@@ -381,8 +381,7 @@ func TestServerRun(t *testing.T) {
 				ExitAfterAuth: true,
 			}
 
-			var server *Server
-			server = NewServer(&sc)
+			server := NewServer(&sc)
 			if ts == nil {
 				t.Fatal("nil server returned")
 			}

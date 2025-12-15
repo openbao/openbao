@@ -104,7 +104,7 @@ func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespa
 // List lists child Namespace entries at a given path, optionally including the
 // namespace at the given path, optionally recursing down into all child
 // namespaces.
-func (nt *namespaceTree) List(path string, includeParent bool, recursive bool) ([]*namespace.Namespace, error) {
+func (nt *namespaceTree) List(path string, includeParent bool, recursive bool, tainted map[string]bool) ([]*namespace.Namespace, error) {
 	path = namespace.Canonicalize(path)
 	var segments []string
 	if path != "" {
@@ -127,12 +127,23 @@ func (nt *namespaceTree) List(path string, includeParent bool, recursive bool) (
 	var entries []*namespace.Namespace
 	if includeParent {
 		entries = make([]*namespace.Namespace, 0, len(node.children)+1)
-		entries = append(entries, node.entry.Clone(false))
+
+		entry := node.entry.Clone(false)
+		if value := tainted[entry.UUID]; value {
+			entry.Tainted = value
+		}
+
+		entries = append(entries, entry)
 	}
 	for idx := 0; idx < len(nodes); idx++ {
 		node = nodes[idx]
 		for _, child := range node.children {
-			entries = append(entries, child.entry.Clone(false))
+			entry := child.entry.Clone(false)
+			if value := tainted[entry.UUID]; value {
+				entry.Tainted = value
+			}
+
+			entries = append(entries, entry)
 			if recursive {
 				nodes = append(nodes, child)
 			}

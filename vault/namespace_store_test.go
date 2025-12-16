@@ -538,11 +538,11 @@ func TestNamespaceTree(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, beforeSize-1, tree.size)
 
-	entries, err := tree.List("", false, false)
+	entries, err := tree.List("", false, false, map[string]bool{})
 	require.NoError(t, err)
 	require.Equal(t, 2, len(entries))
 
-	entries, err = tree.List("", true, true)
+	entries, err = tree.List("", true, true, map[string]bool{})
 	require.NoError(t, err)
 	require.Equal(t, tree.size, len(entries))
 
@@ -675,7 +675,8 @@ func BenchmarkClearNamespaceResources(b *testing.B) {
 
 	for b.Loop() {
 		ns := randomNamespace(s)
-		s.clearNamespaceResources(ctx, ns)
+		err := s.clearNamespaceResources(ctx, namespace.RootNamespace, ns)
+		require.NoError(b, err)
 	}
 }
 

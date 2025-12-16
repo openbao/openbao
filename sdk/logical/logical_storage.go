@@ -108,7 +108,7 @@ func WithTransaction(ctx context.Context, originalStorage Storage, callback func
 			return err
 		}
 		defer txn.Rollback(ctx) //nolint:errcheck
-		if err := callback(txnStorage); err != nil {
+		if err := callback(txn); err != nil {
 			return err
 		}
 		if err := txn.Commit(ctx); err != nil {

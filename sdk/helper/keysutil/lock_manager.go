@@ -59,6 +59,9 @@ type PolicyRequest struct {
 
 	// Indicates whether a private or public key is imported/upserted
 	IsPrivateKey bool
+
+	// The UUID of the managed key, if using one
+	ManagedKeyUUID string
 }
 
 type LockManager struct {

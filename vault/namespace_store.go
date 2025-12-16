@@ -617,7 +617,7 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, storage logic
 		return err
 	}
 
-	if err := ns.createMounts(nsCtx, storage); err != nil {
+	if err := ns.createMounts(nsCtx, ns.storage); err != nil {
 		return err
 	}
 
@@ -650,35 +650,47 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Stor
 		return fmt.Errorf("for new namespace: %w", err)
 	}
 
-	for _, mount := range mounts.Entries {
-		if err := ns.core.mountInternal(ctx, mount, MountTableNoUpdateStorage); err != nil {
-			return err
-		}
-	}
-
 	credentials, err := ns.core.defaultAuthTable(ctx)
 	if err != nil {
 		return fmt.Errorf("for new namespace: %w", err)
 	}
 
-	for _, credential := range credentials.Entries {
-		if err := ns.core.enableCredentialInternal(ctx, credential, MountTableNoUpdateStorage); err != nil {
+	// Grab all locks in the correct order. We hold these locks over updating
+	// both the in-memory mount table and the transaction.
+	ns.core.mountsLock.Lock()
+	ns.core.authLock.Lock()
+	defer ns.core.authLock.Unlock()
+	defer ns.core.mountsLock.Unlock()
+
+	for _, mount := range mounts.Entries {
+		if err := ns.core.mountInternalWithLock(ctx, mount, MountTableNoUpdateStorage); err != nil {
 			return err
 		}
 	}
 
-	// Persist the mounts using the above storage entry. This should already
-	// be a transaction so there's no need to handle it separately.
-	for _, mount := range mounts.Entries {
-		if err := ns.core.persistMounts(ctx, storage, ns.core.mounts, &mount.Local, mount.UUID); err != nil {
-			return fmt.Errorf("failed to persist secret mount (path=%v): %w", mount.Path, err)
+	for _, credential := range credentials.Entries {
+		if err := ns.core.enableCredentialInternalWithLock(ctx, credential, MountTableNoUpdateStorage); err != nil {
+			return err
 		}
 	}
 
-	for _, mount := range credentials.Entries {
-		if err := ns.core.persistAuth(ctx, storage, ns.core.auth, &mount.Local, mount.UUID); err != nil {
-			return fmt.Errorf("failed to persist auth mount (path=%v): %w", mount.Path, err)
+	// Persist the mounts using the above storage transaction.
+	if err := logical.WithTransaction(ctx, storage, func(txn logical.Storage) error {
+		for _, mount := range mounts.Entries {
+			if err := ns.core.persistMounts(ctx, txn, ns.core.mounts, &mount.Local, mount.UUID); err != nil {
+				return fmt.Errorf("failed to persist secret mount (path=%v): %w", mount.Path, err)
+			}
 		}
+
+		for _, mount := range credentials.Entries {
+			if err := ns.core.persistAuth(ctx, txn, ns.core.auth, &mount.Local, mount.UUID); err != nil {
+				return fmt.Errorf("failed to persist auth mount (path=%v): %w", mount.Path, err)
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	return nil

@@ -1,0 +1,21 @@
+```release-note:bug
+core/namespaces: Fix deadlock on namespace creation, deletion due to transaction/lock ordering.
+```
+```release-note:improvement
+core/namespaces: Use JobManager for namespace deletion, decreasing lock contention.
+```
+```release-note:bug
+core/namespaces: Ensure namespace creation is interruptable, allowing namespace deletion for cleanup.
+```
+```release-note:improvement
+core/policies: Use per-namespace write lock, improving parallelism.
+```
+```release-note:bug
+sdk/logical: Use created transaction for WithTransaction callback.
+```
+```release-note:bug
+helper/jobmanager: Fix queue length metrics to report as gauges.
+```
+```release-note:bug
+core/identity: Ensure periodic func only operates on a single namespace at a time, decreasing storage contention.
+```

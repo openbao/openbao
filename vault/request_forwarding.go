@@ -61,6 +61,9 @@ func NewRequestForwardingHandler(c *Core, fws *http2.Server) (*requestForwarding
 			handler:            c.clusterHandler,
 			raftFollowerStates: c.raftFollowerStates,
 		})
+		RegisterSealStatusForwardingServer(fwRPCServer, &forwardedSealStatusRPCServer{
+			core: c,
+		})
 	}
 
 	return &requestForwardingHandler{
@@ -192,7 +195,7 @@ func (rf *requestForwardingHandler) Stop() error {
 }
 
 // Starts the listeners and servers necessary to handle forwarded requests
-func (c *Core) startForwarding(ctx context.Context) error {
+func (c *Core) startForwarding() error {
 	c.logger.Debug("request forwarding setup function")
 	defer c.logger.Debug("leaving request forwarding setup function")
 
@@ -211,7 +214,6 @@ func (c *Core) startForwarding(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	clusterListener.AddHandler(consts.RequestForwardingALPN, handler)
 
 	return nil
@@ -289,10 +291,11 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 	c.rpcClientConnContext = dctx
 	c.rpcClientConnCancelFunc = cancelFunc
 	c.rpcForwardingClient = &forwardingClient{
-		RequestForwardingClient: NewRequestForwardingClient(c.rpcClientConn),
-		core:                    c,
-		echoTicker:              time.NewTicker(c.clusterHeartbeatInterval),
-		echoContext:             dctx,
+		RequestForwardingClient:    NewRequestForwardingClient(c.rpcClientConn),
+		SealStatusForwardingClient: NewSealStatusForwardingClient(c.rpcClientConn),
+		core:                       c,
+		echoTicker:                 time.NewTicker(c.clusterHeartbeatInterval),
+		echoContext:                dctx,
 	}
 	c.rpcForwardingClient.startHeartbeat()
 
@@ -366,4 +369,21 @@ func (c *Core) ForwardRequest(req *http.Request) (int, http.Header, []byte, erro
 	}
 
 	return int(resp.StatusCode), header, resp.Body, nil
+}
+
+// TODO:
+func (c *Core) GetRootKeyFromLeader(ctx context.Context, namespaceUUID string) (*SealStateStatus, error) {
+	c.requestForwardingConnectionLock.RLock()
+	defer c.requestForwardingConnectionLock.RUnlock()
+
+	if c.rpcForwardingClient == nil {
+		return nil, ErrCannotForward
+	}
+
+	ssResp, err := c.rpcForwardingClient.RequestRootKey(ctx, &SealStateRequest{NamespaceUuid: namespaceUUID})
+	if err != nil {
+		return nil, err
+	}
+
+	return ssResp.SealStatus[0], nil
 }

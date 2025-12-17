@@ -106,8 +106,37 @@ func (s *forwardedRequestRPCServer) Echo(ctx context.Context, in *EchoRequest) (
 	return reply, nil
 }
 
+type forwardedSealStatusRPCServer struct {
+	UnimplementedSealStatusForwardingServer
+
+	core *Core
+}
+
+// TODO:
+func (s *forwardedSealStatusRPCServer) RequestRootKey(ctx context.Context, ssr *SealStateRequest) (*SealStateResponse, error) {
+	ns, err := s.core.namespaceStore.GetNamespace(ctx, ssr.NamespaceUuid)
+	if err != nil {
+		return nil, err
+	}
+
+	keyring, err := s.core.sealManager.NamespaceBarrier(ns.Path).Keyring()
+	if err != nil {
+		return nil, err
+	}
+
+	return &SealStateResponse{
+		SealStatus: []*SealStateStatus{
+			{
+				NamespaceUuid: ssr.NamespaceUuid,
+				RootKey:       keyring.RootKey(),
+			},
+		},
+	}, nil
+}
+
 type forwardingClient struct {
 	RequestForwardingClient
+	SealStatusForwardingClient
 	core        *Core
 	echoTicker  *time.Ticker
 	echoContext context.Context

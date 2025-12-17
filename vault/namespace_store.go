@@ -564,19 +564,13 @@ func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage logical.St
 	}
 
 	view := NamespaceView(storage, parent).SubView(namespaceStoreSubPath)
-	if err := logical.WithTransaction(ctx, view, func(s logical.Storage) error {
-		item, err := logical.StorageEntryJSON(entry.UUID, &entry)
-		if err != nil {
-			return fmt.Errorf("error marshalling storage entry: %w", err)
-		}
+	item, err := logical.StorageEntryJSON(entry.UUID, &entry)
+	if err != nil {
+		return fmt.Errorf("error marshalling storage entry: %w", err)
+	}
 
-		if err := s.Put(ctx, item); err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		return fmt.Errorf("error writing namespace: %w", err)
+	if err := view.Put(ctx, item); err != nil {
+		return err
 	}
 
 	return nil

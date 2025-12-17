@@ -229,6 +229,7 @@ type UsernameConfig struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	DisplayName   string                 `protobuf:"bytes,1,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	RoleName      string                 `protobuf:"bytes,2,opt,name=role_name,json=roleName,proto3" json:"role_name,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -273,6 +274,13 @@ func (x *UsernameConfig) GetDisplayName() string {
 func (x *UsernameConfig) GetRoleName() string {
 	if x != nil {
 		return x.RoleName
+	}
+	return ""
+}
+
+func (x *UsernameConfig) GetReason() string {
+	if x != nil {
+		return x.Reason
 	}
 	return ""
 }
@@ -838,10 +846,11 @@ const file_sdk_database_dbplugin_v5_proto_database_proto_rawDesc = "" +
 	"\x0fcredential_type\x18\x06 \x01(\x05R\x0ecredentialType\x12\x1d\n" +
 	"\n" +
 	"public_key\x18\a \x01(\fR\tpublicKey\x12\x18\n" +
-	"\asubject\x18\b \x01(\tR\asubject\"P\n" +
+	"\asubject\x18\b \x01(\tR\asubject\"h\n" +
 	"\x0eUsernameConfig\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12\x1b\n" +
-	"\trole_name\x18\x02 \x01(\tR\broleName\"-\n" +
+	"\trole_name\x18\x02 \x01(\tR\broleName\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"-\n" +
 	"\x0fNewUserResponse\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"\x8d\x02\n" +
 	"\x11UpdateUserRequest\x12\x1a\n" +

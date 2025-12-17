@@ -121,6 +121,7 @@ func newUserReqToProto(req NewUserRequest) (*proto.NewUserRequest, error) {
 		UsernameConfig: &proto.UsernameConfig{
 			DisplayName: req.UsernameConfig.DisplayName,
 			RoleName:    req.UsernameConfig.RoleName,
+			Reason:      req.UsernameConfig.Reason,
 		},
 		CredentialType: int32(req.CredentialType),
 		Password:       req.Password,

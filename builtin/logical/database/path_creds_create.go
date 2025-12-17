@@ -6,6 +6,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"slices"
 	"time"
 
@@ -18,18 +19,24 @@ import (
 func pathCredsCreate(b *databaseBackend) []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: "creds/" + framework.GenericNameRegex("name"),
+			Pattern: "creds/" + framework.GenericNameRegex("name") + framework.OptionalParamRegex("reason"),
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: operationPrefixDatabase,
 				OperationVerb:   "generate",
-				OperationSuffix: "credentials",
+				OperationSuffix: "credentials|credentials-with-reason",
 			},
 
 			Fields: map[string]*framework.FieldSchema{
 				"name": {
 					Type:        framework.TypeString,
 					Description: "Name of the role.",
+				},
+				"reason": {
+					Type: framework.TypeString,
+					Description: `Reason used in template to generate
+						usernames. Can include ticket numbers or any other
+						task-related information that justifies the credential generation.`,
 				},
 			},
 
@@ -106,6 +113,16 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 				role.CredentialType.String()), nil
 		}
 
+		// Get the reason
+		reason := data.Get("reason").(string)
+
+		// Validate the `reason` string to ensure it contains only alphanumeric characters or dashes
+		// and is no longer than 16 characters. This prevents injection or malformed input.
+		re := regexp.MustCompile(`^[a-zA-Z0-9-]{0,16}$`)
+		if !re.MatchString(reason) {
+			return nil, fmt.Errorf("invalid reason %q: must be alphanumeric or dash and at most 16 characters", reason)
+		}
+
 		// Get the Database object
 		dbi, err := b.GetConnection(ctx, req.Storage, role.DBName)
 		if err != nil {
@@ -128,6 +145,7 @@ func (b *databaseBackend) pathCredsCreateRead() framework.OperationFunc {
 			UsernameConfig: dbplugin.UsernameMetadata{
 				DisplayName: req.DisplayName,
 				RoleName:    name,
+				Reason:      reason,
 			},
 			Statements: dbplugin.Statements{
 				Commands: role.Statements.Creation,

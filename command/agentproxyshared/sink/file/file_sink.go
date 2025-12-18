@@ -101,8 +101,8 @@ func (f *fileSink) WriteToken(token string) error {
 	_, err = tmpFile.WriteString(valToWrite)
 	if err != nil {
 		// Attempt closing and deleting but ignore any error
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
+		tmpFile.Close()           //nolint:errcheck
+		os.Remove(tmpFile.Name()) //nolint:errcheck
 		return fmt.Errorf("error writing to %s: %w", tmpFile.Name(), err)
 	}
 

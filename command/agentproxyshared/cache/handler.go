@@ -60,7 +60,7 @@ func ProxyHandler(ctx context.Context, logger hclog.Logger, proxier Proxier, inm
 			if resp != nil && resp.Response.Error() != nil {
 				copyHeader(w.Header(), resp.Response.Header)
 				w.WriteHeader(resp.Response.StatusCode)
-				io.Copy(w, resp.Response.Body)
+				io.Copy(w, resp.Response.Body) //nolint:errcheck // nothing we can do here
 				metrics.IncrCounter([]string{"agent", "proxy", "client_error"}, 1)
 			} else {
 				metrics.IncrCounter([]string{"agent", "proxy", "error"}, 1)
@@ -90,7 +90,7 @@ func ProxyHandler(ctx context.Context, logger hclog.Logger, proxier Proxier, inm
 		setHeaders(w, resp)
 
 		// Set response body
-		io.Copy(w, resp.Response.Body)
+		io.Copy(w, resp.Response.Body) //nolint:errcheck // nothing we can do here
 	})
 }
 

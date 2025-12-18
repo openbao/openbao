@@ -5,6 +5,7 @@ package token
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -40,7 +41,7 @@ func (i *InternalTokenHelper) Path() string {
 }
 
 // Get gets the value of the stored token, if any
-func (i *InternalTokenHelper) Get() (string, error) {
+func (i *InternalTokenHelper) Get() (value string, err error) {
 	i.populateTokenPath()
 	f, err := os.Open(i.tokenPath)
 	if os.IsNotExist(err) {
@@ -49,7 +50,9 @@ func (i *InternalTokenHelper) Get() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() {
+		err = errors.Join(err, f.Close())
+	}()
 
 	buf := bytes.NewBuffer(nil)
 	if _, err := io.Copy(buf, f); err != nil {
@@ -69,12 +72,11 @@ func (i *InternalTokenHelper) Store(input string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	defer os.Remove(tmpFile)
+	defer os.Remove(tmpFile) //nolint:errcheck // tmp file will have been moved if successful
 
 	_, err = io.WriteString(f, input)
 	if err != nil {
-		return err
+		return errors.Join(err, f.Close())
 	}
 	err = f.Close()
 	if err != nil {

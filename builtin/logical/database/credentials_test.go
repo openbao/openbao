@@ -452,7 +452,8 @@ func Test_newRSAKeyGenerator(t *testing.T) {
 func Test_passwordGenerator_generate(t *testing.T) {
 	config := logical.TestBackendConfig()
 	b := Backend(config)
-	b.Setup(context.Background(), config)
+	err := b.Setup(context.Background(), config)
+	require.NoError(t, err)
 
 	type args struct {
 		config  map[string]interface{}

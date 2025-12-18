@@ -483,10 +483,10 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 		}
 
 		w := getWriterFromUI(c.UI)
-		fmt.Fprintf(w, "Rekey operation nonce: %s\n", nonce)
-		fmt.Fprintf(w, "%s Key (will be hidden): ", keyTypeRequired)
+		_, _ = fmt.Fprintf(w, "Rekey operation nonce: %s\n", nonce)
+		_, _ = fmt.Fprintf(w, "%s Key (will be hidden): ", keyTypeRequired)
 		key, err = password.Read(os.Stdin)
-		fmt.Fprintf(w, "\n")
+		_, _ = fmt.Fprintf(w, "\n")
 		if err != nil {
 			if err == password.ErrInterrupted {
 				c.UI.Error("user canceled")

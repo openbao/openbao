@@ -433,7 +433,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	// when a namespace entry existed but the corresponding sys/ mount table
 	// entry wasn't created.
 	failed := true
-	storage := ns.storage
+	storage := ns.core.NamespaceView(parent)
 	commit := func() error { return nil }
 	cleanupFailed := func() {
 		if !failed {
@@ -481,7 +481,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 			cleanupFailed()
 		}()
 
-		storage = txn
+		storage = txn.(BarrierViewTransaction)
 		commit = func() error { return txn.Commit(ctx) }
 	} else {
 		// While we don't have transactions to aid us, we still shouldn't
@@ -518,7 +518,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		unlocked = true
 
 		// Create sys/, token/ mounts and policies for the new namespace.
-		if err := ns.initializeNamespace(ctx, storage, entry); err != nil {
+		if err := ns.initializeNamespace(ctx, entry); err != nil {
 			return nil, fmt.Errorf("failed to initialize namespace: %w", err)
 		}
 		ns.lock.Lock()
@@ -545,29 +545,28 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	return nsSealKeyShares, nil
 }
 
-func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage logical.Storage, entry *namespace.Namespace) error {
-	parent, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
+func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage BarrierView, entry *namespace.Namespace) error {
 	if storage == nil {
-		storage = ns.storage
-	}
-
-	view := NamespaceView(storage, parent).SubView(namespaceStoreSubPath)
-	if err := logical.WithTransaction(ctx, view, func(s logical.Storage) error {
-		item, err := logical.StorageEntryJSON(entry.UUID, &entry)
+		parent, err := namespace.FromContext(ctx)
 		if err != nil {
-			return fmt.Errorf("error marshalling storage entry: %w", err)
-		}
-
-		if err := s.Put(ctx, item); err != nil {
 			return err
 		}
+		storage = ns.core.NamespaceView(parent)
+	}
 
-		return nil
-	}); err != nil {
+	if err := logical.WithTransaction(ctx, storage.SubView(namespaceStoreSubPath),
+		func(s logical.Storage) error {
+			item, err := logical.StorageEntryJSON(entry.UUID, &entry)
+			if err != nil {
+				return fmt.Errorf("error marshalling storage entry: %w", err)
+			}
+
+			if err := s.Put(ctx, item); err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
 		return fmt.Errorf("error writing namespace: %w", err)
 	}
 
@@ -595,8 +594,8 @@ func (ns *NamespaceStore) assignIdentifier(path string) (string, error) {
 	}
 }
 
-// initializeNamespace initializes default policies and  sys/ and token/ mounts for a new namespace
-func (ns *NamespaceStore) initializeNamespace(ctx context.Context, storage logical.Storage, entry *namespace.Namespace) error {
+// initializeNamespace initializes default policies and sys/ and token/ mounts for a new namespace
+func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *namespace.Namespace) error {
 	// ctx may have a namespace of the parent of our newly created namespace,
 	// so create a new context with the newly created child namespace.
 	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone(false))
@@ -609,16 +608,16 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, storage logic
 		return fmt.Errorf("error creating default policies: %w", err)
 	}
 
-	return ns.createMounts(nsCtx, storage)
+	return ns.createMounts(nsCtx, ns.core.NamespaceView(entry))
 }
 
-// createMounts handles creation of sys/ and token/ mounts for this new
+// createMounts handles creation of sys/ and token/ mounts for new
 // namespace.
 //
 // This is a two-step process:
 //
 // 1. Create in-memory versions of the mount.
-// 2. Persist into storage using the passed transaction.
+// 2. Persist into storage.
 //
 // In particular, mountInternal and enableCredentialInternal do not easily
 // support passing external storage transactions just for persisting the
@@ -647,8 +646,7 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Stor
 		}
 	}
 
-	// Persist the mounts using the above storage entry. This should already
-	// be a transaction so there's no need to handle it separately.
+	// This should already be a transaction so there's no need to handle it separately.
 	for _, mount := range mounts.Entries {
 		if err := ns.core.persistMounts(ctx, storage, ns.core.mounts, &mount.Local, mount.UUID); err != nil {
 			return fmt.Errorf("failed to persist secret mount (path=%v): %w", mount.Path, err)
@@ -1183,22 +1181,27 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 		return errors.New("unable to unseal root namespace")
 	}
 
+	_, err = ns.unsealNamespace(ctx, namespaceToUnseal, key)
+	return err
+}
+
+func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal *namespace.Namespace, key []byte) (bool, error) {
 	// this means that the namespace wasn't sealed before the call
 	if !ns.core.NamespaceSealed(namespaceToUnseal) {
-		return nil
+		return true, nil
 	}
 
 	unsealed, err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// If namespace is still sealed meaning we do not have enough shards yet, return early
 	if !unsealed {
-		return nil
+		return unsealed, nil
 	}
 
-	return ns.postNamespaceUnseal(ctx, namespaceToUnseal)
+	return unsealed, ns.postNamespaceUnseal(ctx, namespaceToUnseal)
 }
 
 func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNamespace *namespace.Namespace) error {

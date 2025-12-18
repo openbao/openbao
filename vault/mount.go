@@ -283,22 +283,20 @@ func (old *MountTable) delta(new *MountTable) (additions []*MountEntry, deletion
 	return additions, deletions
 }
 
-// setTaint is used to set the taint on given entry Accepts either the mount
+// setTaint is used to set the taint on given entry. Accepts either the mount
 // entry's path or namespace + path, i.e. <ns-path>/secret/ or <ns-path>/token/
-func (t *MountTable) setTaint(nsID, path string, tainted bool, mountState string) (*MountEntry, error) {
+func (t *MountTable) setTaint(nsID, path string) (*MountEntry, error) {
 	n := len(t.Entries)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if entry := t.Entries[i]; entry.Path == path && entry.Namespace().ID == nsID {
-			t.Entries[i].Tainted = tainted
-			t.Entries[i].MountState = mountState
+			t.Entries[i].Tainted = true
 			return t.Entries[i], nil
 		}
 	}
 	return nil, nil
 }
 
-// remove is used to remove a given path entry; returns the entry that was
-// removed
+// remove is used to remove a given path entry; returning removed entry
 func (t *MountTable) remove(ctx context.Context, path string) (*MountEntry, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -373,8 +371,6 @@ func (t *MountTable) sortEntriesByPathDepth() *MountTable {
 	})
 	return t
 }
-
-const mountStateUnmounting = "unmounting"
 
 // MountEntry is used to represent a mount table entry
 type MountEntry struct {
@@ -667,11 +663,7 @@ func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 	}
 
 	// Mount internally
-	if err := c.mountInternal(ctx, entry, MountTableUpdateStorage); err != nil {
-		return err
-	}
-
-	return nil
+	return c.mountInternal(ctx, entry, MountTableUpdateStorage)
 }
 
 func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStorage bool) error {
@@ -787,7 +779,7 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	newTable := c.mounts.shallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
-		if err := c.persistMounts(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
+		if err := c.persistMounts(ctx, c.NamespaceView(ns), newTable, &entry.Local, entry.UUID); err != nil {
 			if logical.ShouldForward(err) {
 				return err
 			}
@@ -1023,7 +1015,7 @@ func (c *Core) removeMountEntryLocked(ctx context.Context, path string, updateSt
 
 	if updateStorage {
 		// Update the mount table
-		if err := c.persistMounts(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
+		if err := c.persistMounts(ctx, c.NamespaceView(entry.Namespace()), newTable, &entry.Local, entry.UUID); err != nil {
 			c.logger.Error("failed to remove entry from mounts table", "error", err)
 			return logical.CodedError(500, "failed to remove entry from mounts table")
 		}
@@ -1038,14 +1030,9 @@ func (c *Core) taintMountEntry(ctx context.Context, nsID, mountPath string, upda
 	c.mountsLock.Lock()
 	defer c.mountsLock.Unlock()
 
-	mountState := ""
-	if unmounting {
-		mountState = mountStateUnmounting
-	}
-
 	// As modifying the taint of an entry affects shallow clones,
 	// we simply use the original
-	entry, err := c.mounts.setTaint(nsID, mountPath, true, mountState)
+	entry, err := c.mounts.setTaint(nsID, mountPath)
 	if err != nil {
 		return err
 	}
@@ -1056,7 +1043,7 @@ func (c *Core) taintMountEntry(ctx context.Context, nsID, mountPath string, upda
 
 	if updateStorage {
 		// Update the mount table
-		if err := c.persistMounts(ctx, nil, c.mounts, &entry.Local, entry.UUID); err != nil {
+		if err := c.persistMounts(ctx, c.NamespaceView(entry.Namespace()), c.mounts, &entry.Local, entry.UUID); err != nil {
 			c.logger.Error("failed to taint entry in mounts table", "error", err)
 			return logical.CodedError(500, "failed to taint entry in mounts table")
 		}
@@ -1152,11 +1139,6 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 		return fmt.Errorf("path in use at %q", match)
 	}
 
-	srcBarrierView, err := c.mountEntryView(mountEntry)
-	if err != nil {
-		return err
-	}
-
 	// Mark the entry as tainted
 	if err := c.taintMountEntry(ctx, src.Namespace.ID, src.MountPath, updateStorage, false); err != nil {
 		return err
@@ -1197,13 +1179,8 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	srcPath := mountEntry.Path
 	mountEntry.Path = dst.MountPath
 
-	dstBarrierView, err := c.mountEntryView(mountEntry)
-	if err != nil {
-		return err
-	}
-
 	// Update the mount table
-	if err := c.persistMounts(ctx, nil, c.mounts, &mountEntry.Local, mountEntry.UUID); err != nil {
+	if err := c.persistMounts(ctx, c.NamespaceView(mountEntry.Namespace()), c.mounts, &mountEntry.Local, mountEntry.UUID); err != nil {
 		mountEntry.namespace = src.Namespace
 		mountEntry.NamespaceID = src.Namespace.ID
 		mountEntry.Path = srcPath
@@ -1214,10 +1191,15 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 
 	if src.Namespace.ID != dst.Namespace.ID {
 		// Handle storage entries
-		if err := c.moveMountStorage(ctx, src, mountEntry, srcBarrierView, dstBarrierView); err != nil {
+		if err := c.moveMountStorage(ctx, src, mountEntry); err != nil {
 			c.mountsLock.Unlock()
 			return err
 		}
+	}
+
+	dstBarrierView, err := c.mountEntryView(mountEntry)
+	if err != nil {
+		return err
 	}
 
 	// Remount the backend
@@ -1233,41 +1215,36 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	c.mountsLock.Unlock()
 
 	// Un-taint the path
-	if err := c.router.Untaint(ctx, dstRelativePath); err != nil {
-		return err
-	}
-
-	return nil
+	return c.router.Untaint(ctx, dstRelativePath)
 }
 
 // moveMountStorage moves storage entries of a mount mountEntry to its new destination
-func (c *Core) moveMountStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView BarrierView) error {
-	return c.moveStorage(ctx, src, me, srcBarrierView, dstBarrierView)
+func (c *Core) moveMountStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry) error {
+	return c.moveStorage(ctx, src, me, backendBarrierPrefix)
 }
 
 // moveAuthStorage moves storage entries of an auth mountEntry to its new destination
-func (c *Core) moveAuthStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView BarrierView) error {
-	return c.moveStorage(ctx, src, me, srcBarrierView, dstBarrierView)
+func (c *Core) moveAuthStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry) error {
+	return c.moveStorage(ctx, src, me, credentialBarrierPrefix)
 }
 
 // moveStorage moves storage entries of a mountEntry to its new destination
 // It detects the mountEntry type
-func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView BarrierView) error {
-	srcPrefix := srcBarrierView.Prefix()
-	dstPrefix := dstBarrierView.Prefix()
-
-	barrier := c.barrier
+func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, prefix string) error {
+	srcBarrier := c.NamespaceView(src.Namespace)
+	dstBarrier := c.NamespaceView(me.Namespace())
 
 	var key string
-	keys, err := barrier.List(ctx, srcPrefix)
+	keys, err := srcBarrier.List(ctx, path.Join(prefix, me.UUID)+"/")
 	if err != nil {
 		return err
 	}
 
 	for len(keys) > 0 {
 		key, keys = keys[0], keys[1:]
+		entryKey := path.Join(prefix, me.UUID, key)
 		if strings.HasSuffix(key, "/") {
-			nestedKeys, err := barrier.List(ctx, srcPrefix+key)
+			nestedKeys, err := srcBarrier.List(ctx, entryKey)
 			if err != nil {
 				return err
 			}
@@ -1279,32 +1256,29 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 			continue
 		}
 
-		if err := logical.WithTransaction(ctx, barrier, func(s logical.Storage) error {
-			se, err := s.Get(ctx, srcPrefix+key)
-			if err != nil {
+		// Reading and deleting using root namespace barrier is fine, but writing using
+		// different barrier than the namespace we write to is probably wrong.
+		if err := logical.WithTransaction(ctx, srcBarrier, func(s logical.Storage) error {
+			se, err := srcBarrier.Get(ctx, entryKey)
+			if err != nil || se == nil {
 				return err
 			}
-			if se == nil {
-				return nil
-			}
-			se.Key = dstPrefix + key
-			err = s.Put(ctx, se)
-			if err != nil {
+
+			if err := logical.WithTransaction(ctx, dstBarrier, func(s logical.Storage) error {
+				se.Key = entryKey
+				return s.Put(ctx, se)
+			}); err != nil {
 				return err
 			}
-			err = s.Delete(ctx, srcPrefix+key)
-			if err != nil {
-				return err
-			}
-			return nil
+
+			return s.Delete(ctx, entryKey)
 		}); err != nil {
 			return err
 		}
 	}
 
-	srcEntryView := c.NamespaceView(src.Namespace)
+	// Delete the mount storage entry from the source location
 	var coreLocalPath, corePath string
-
 	switch me.Table {
 	case mountTableType:
 		coreLocalPath = coreLocalMountConfigPath
@@ -1317,16 +1291,10 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 	}
 
 	if me.Local {
-		srcEntryView = srcEntryView.SubView(coreLocalPath + "/")
-	} else {
-		srcEntryView = srcEntryView.SubView(corePath + "/")
-	}
-	err = srcEntryView.Delete(ctx, me.UUID)
-	if err != nil {
-		return err
+		return srcBarrier.Delete(ctx, path.Join(coreLocalPath, me.UUID))
 	}
 
-	return nil
+	return srcBarrier.Delete(ctx, path.Join(corePath, me.UUID))
 }
 
 // From an input path that has a relative namespace hierarchy followed by a mount point, return the full
@@ -1452,7 +1420,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 		}
 
 		for nsIndex, ns := range allNamespaces {
-			view := c.NamespaceView(ns)
+			view := NamespaceView(barrier, ns)
 			for index, uuid := range globalEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreMountConfigPath, uuid)
 				if err != nil {
@@ -1468,7 +1436,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 
 	if len(localEntries) > 0 {
 		for nsIndex, ns := range allNamespaces {
-			view := c.NamespaceView(ns)
+			view := NamespaceView(barrier, ns)
 			for index, uuid := range localEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalMountConfigPath, uuid)
 				if err != nil {
@@ -1525,7 +1493,6 @@ func (c *Core) loadLegacyMountsForNamespace(ctx context.Context, ns *namespace.N
 	}
 
 	view := c.NamespaceView(ns)
-
 	raw, err := view.Get(ctx, coreMountConfigPath)
 	if err != nil {
 		c.logger.Error("failed to read legacy mount table", "error", err)
@@ -1801,10 +1768,8 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 
 // persistMounts is used to persist the mount table after modification.
 func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table *MountTable, local *bool, mount string) error {
-	// Sometimes we may not want to explicitly pass barrier; fetch it if
-	// necessary.
 	if barrier == nil {
-		barrier = c.barrier
+		return errors.New("nil barrier encountered while persisting auth mount changes")
 	}
 
 	// Gracefully handle a transaction-aware backend, if a transaction
@@ -1889,8 +1854,6 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 					continue
 				}
 
-				view := c.NamespaceView(mtEntry.Namespace())
-
 				found = true
 				currentEntries[mtEntry.UUID] = struct{}{}
 
@@ -1910,7 +1873,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				}
 
 				// Write to the backend.
-				if err := view.Put(ctx, sEntry); err != nil {
+				if err := barrier.Put(ctx, sEntry); err != nil {
 					c.logger.Error("failed to persist mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
 					return -1, err
 				}
@@ -1928,9 +1891,8 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := c.NamespaceView(ns)
 					path := path.Join(prefix, mount)
-					if err := view.Delete(ctx, path); err != nil {
+					if err := barrier.Delete(ctx, path); err != nil {
 						return -1, fmt.Errorf("requested removal of auth mount from namespace %v (%v) but failed: %w", ns.ID, nsIndex, err)
 					}
 				}
@@ -1943,10 +1905,8 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := c.NamespaceView(ns)
-
 					// List all entries and remove any deleted ones.
-					presentEntries, err := view.List(ctx, prefix+"/")
+					presentEntries, err := barrier.List(ctx, prefix+"/")
 					if err != nil {
 						return -1, fmt.Errorf("failed to list entries in namespace %v (%v) for removal: %w", ns.ID, nsIndex, err)
 					}
@@ -1956,7 +1916,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 							continue
 						}
 
-						if err := view.Delete(ctx, prefix+"/"+presentEntry); err != nil {
+						if err := barrier.Delete(ctx, prefix+"/"+presentEntry); err != nil {
 							return -1, fmt.Errorf("failed to remove deleted mount %v (%v) in namespace %v (%v): %w", presentEntry, index, ns.ID, nsIndex, err)
 						}
 					}
@@ -2314,7 +2274,6 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *MountEntry, sysView
 	}
 
 	ctx = namespace.ContextWithNamespace(ctx, entry.namespace)
-	ctx = context.WithValue(ctx, "core_number", c.coreNumber)
 	b, err := f(ctx, config)
 	if err != nil {
 		return nil, "", err

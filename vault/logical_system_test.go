@@ -6219,16 +6219,15 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 			t.Fatal()
 		}
 		mountEntry.Version = nonExistentBuiltinVersion
+		barrier := core.NamespaceView(mountEntry.Namespace())
 		if tc.mountTable == "mounts" {
-			err = core.persistMounts(ctx, nil, core.mounts, &mountEntry.Local, mountEntry.UUID)
-			if err != nil {
-				t.Fatal(err)
-			}
+			err = core.persistMounts(ctx, barrier, core.mounts, &mountEntry.Local, mountEntry.UUID)
 		} else {
-			err = core.persistAuth(ctx, nil, core.auth, &mountEntry.Local, mountEntry.UUID)
-			if err != nil {
-				t.Fatal(err)
-			}
+			err = core.persistAuth(ctx, barrier, core.auth, &mountEntry.Local, mountEntry.UUID)
+		}
+
+		if err != nil {
+			t.Fatal(err)
 		}
 
 		config = readMountConfig(tc.pluginName, tc.mountTable)

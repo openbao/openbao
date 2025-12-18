@@ -90,6 +90,7 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 	ran := make(chan string)
 	release := make(chan struct{})
 	core, _, _ = testCoreUnsealed(t, core)
+	ctx := namespace.RootContext(t.Context())
 
 	// create 10 backends
 	// when a rollback happens, each backend will try to write to an unbuffered
@@ -121,11 +122,11 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 			newTable.Entries = append(newTable.Entries, mountEntry)
 			core.mounts = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)
-			require.NoError(t, core.persistMounts(context.Background(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
+			require.NoError(t, core.persistMounts(ctx, core.NamespaceView(mountEntry.Namespace()), newTable, &mountEntry.Local, mountEntry.UUID))
 		}()
 	}
 
-	timeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	timeout, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	got := make(map[string]bool)
 	hasMore := true
@@ -173,6 +174,7 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 	ran := make(chan string)
 	release := make(chan struct{})
 	core, _, _ = testCoreUnsealed(t, core)
+	ctx := namespace.RootContext(t.Context())
 
 	// create 10 backends
 	// when a rollback happens, each backend will try to write to an unbuffered
@@ -204,11 +206,11 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 			newTable.Entries = append(newTable.Entries, mountEntry)
 			core.mounts = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)
-			require.NoError(t, core.persistMounts(context.Background(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
+			require.NoError(t, core.persistMounts(ctx, core.NamespaceView(mountEntry.Namespace()), newTable, &mountEntry.Local, mountEntry.UUID))
 		}()
 	}
 
-	timeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	timeout, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	got := make(map[string]bool)
 	hasMore := true

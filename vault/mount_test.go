@@ -333,7 +333,7 @@ func TestCore_Mount_Local(t *testing.T) {
 	}
 
 	c.mounts.Entries[1].Local = true
-	if err := c.persistMounts(ctx, nil, c.mounts, nil, ""); err != nil {
+	if err := c.persistMounts(ctx, c.barrier, c.mounts, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1091,19 +1091,19 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	// Now try saving invalid versions
 	origTableType := mt.Type
 	mt.Type = "foo"
-	if err := persistFunc(ctx, nil, mt, nil, ""); err == nil {
+	if err := persistFunc(ctx, c.barrier, mt, nil, ""); err == nil {
 		t.Fatal("expected error")
 	}
 
 	if len(mt.Entries) > 0 {
 		mt.Type = origTableType
 		mt.Entries[0].Table = "bar"
-		if err := persistFunc(ctx, nil, mt, nil, ""); err == nil {
+		if err := persistFunc(ctx, c.barrier, mt, nil, ""); err == nil {
 			t.Fatal("expected error")
 		}
 
 		mt.Entries[0].Table = mt.Type
-		if err := persistFunc(ctx, nil, mt, nil, ""); err != nil {
+		if err := persistFunc(ctx, c.barrier, mt, nil, ""); err != nil {
 			t.Fatal(err)
 		}
 	}

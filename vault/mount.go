@@ -779,7 +779,7 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	newTable := c.mounts.shallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
-		if err := c.persistMounts(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
+		if err := c.persistMounts(ctx, c.NamespaceView(ns), newTable, &entry.Local, entry.UUID); err != nil {
 			if logical.ShouldForward(err) {
 				return err
 			}
@@ -1015,7 +1015,7 @@ func (c *Core) removeMountEntryLocked(ctx context.Context, path string, updateSt
 
 	if updateStorage {
 		// Update the mount table
-		if err := c.persistMounts(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
+		if err := c.persistMounts(ctx, c.NamespaceView(entry.Namespace()), newTable, &entry.Local, entry.UUID); err != nil {
 			c.logger.Error("failed to remove entry from mounts table", "error", err)
 			return logical.CodedError(500, "failed to remove entry from mounts table")
 		}
@@ -1768,16 +1768,8 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 
 // persistMounts is used to persist the mount table after modification.
 func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table *MountTable, local *bool, mount string) error {
-	// TODO: refactor barrier passing
-
-	// Sometimes we may not want to explicitly pass barrier; fetch it if
-	// necessary.
 	if barrier == nil {
-		ns, err := namespace.FromContext(ctx)
-		if err != nil {
-			return err
-		}
-		barrier = c.NamespaceView(ns)
+		return errors.New("nil barrier encountered while persisting auth mount changes")
 	}
 
 	// Gracefully handle a transaction-aware backend, if a transaction

@@ -367,7 +367,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	c.auth.Entries[1].Local = true
-	if err := c.persistAuth(ctx, nil, c.auth, nil, ""); err != nil {
+	if err := c.persistAuth(ctx, c.barrier, c.auth, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 

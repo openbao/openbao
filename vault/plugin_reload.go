@@ -118,8 +118,8 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 	return nil
 }
 
-// reloadBackendCommon is a generic method to reload a backend provided a
-// MountEntry.
+// reloadBackendCommon is a generic method to reload a backend
+// represented by a MountEntry.
 func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAuth bool) error {
 	// Make sure our cache is up-to-date. Since some singleton mounts can be
 	// tuned, we do this before the below check.
@@ -192,19 +192,18 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 		}
 	}
 
+	barrier := c.NamespaceView(entry.Namespace())
 	// update the mount table since we changed the runningSha
 	if oldSha != entry.RunningSha256 && MountTableUpdateStorage {
 		if isAuth {
-			err = c.persistAuth(ctx, nil, c.auth, &entry.Local, entry.UUID)
-			if err != nil {
-				return err
-			}
+			err = c.persistAuth(ctx, barrier, c.auth, &entry.Local, entry.UUID)
 		} else {
-			err = c.persistMounts(ctx, nil, c.mounts, &entry.Local, entry.UUID)
-			if err != nil {
-				return err
-			}
+			err = c.persistMounts(ctx, barrier, c.mounts, &entry.Local, entry.UUID)
 		}
+	}
+
+	if err != nil {
+		return err
 	}
 
 	// Set the backend back

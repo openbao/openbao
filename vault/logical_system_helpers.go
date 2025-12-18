@@ -39,11 +39,12 @@ func (b *SystemBackend) tuneMountTTLs(ctx context.Context, path string, me *Moun
 
 	// Update the mount table
 	var err error
+	barrier := b.Core.NamespaceView(me.Namespace())
 	switch {
 	case strings.HasPrefix(path, credentialRoutePrefix):
-		err = b.Core.persistAuth(ctx, nil, b.Core.auth, &me.Local, me.UUID)
+		err = b.Core.persistAuth(ctx, barrier, b.Core.auth, &me.Local, me.UUID)
 	default:
-		err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &me.Local, me.UUID)
+		err = b.Core.persistMounts(ctx, barrier, b.Core.mounts, &me.Local, me.UUID)
 	}
 	if err != nil {
 		me.Config.MaxLeaseTTL = origMax

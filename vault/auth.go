@@ -185,8 +185,7 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	newTable := c.auth.shallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
-		// barrier nil is fine here, as the namespace is embedded in the context
-		if err := c.persistAuth(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
+		if err := c.persistAuth(ctx, c.NamespaceView(ns), newTable, &entry.Local, entry.UUID); err != nil {
 			c.logger.Error("failed to update auth table", "error", err)
 			return fmt.Errorf("failed to update auth table: %w", err)
 		}
@@ -341,9 +340,7 @@ func (c *Core) removeCredEntryLocked(ctx context.Context, path string, updateSto
 	}
 
 	if updateStorage {
-		// Update the auth table
-		// barrier nil is fine here, as the namespace is embedded in the context
-		if err := c.persistAuth(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
+		if err := c.persistAuth(ctx, c.NamespaceView(entry.Namespace()), newTable, &entry.Local, entry.UUID); err != nil {
 			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
@@ -909,16 +906,8 @@ func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage
 
 // persistAuth is used to persist the auth table after modification
 func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *MountTable, local *bool, mount string) error {
-	// TODO: refactor barrier passing
-
-	// Sometimes we may not want to explicitly pass barrier; fetch it if
-	// necessary.
 	if barrier == nil {
-		ns, err := namespace.FromContext(ctx)
-		if err != nil {
-			return err
-		}
-		barrier = c.NamespaceView(ns)
+		return errors.New("nil barrier encountered while persisting auth mount changes")
 	}
 
 	// Gracefully handle a transaction-aware backend, if a transaction

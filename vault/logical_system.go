@@ -1763,9 +1763,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		if len(userLockoutConfigMap) > 0 {
 			switch {
 			case strings.HasPrefix(path, "auth/"):
-				err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+				err = b.Core.persistAuth(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 			default:
-				err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+				err = b.Core.persistMounts(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 			}
 			if err != nil {
 				mountEntry.Config.UserLockoutConfig.LockoutCounterReset = oldUserLockoutCounterReset
@@ -1790,9 +1790,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		var err error
 		switch {
 		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistAuth(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistMounts(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 		}
 		if err != nil {
 			mountEntry.Description = oldDesc
@@ -1827,9 +1827,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		// Update the mount table
 		switch {
 		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistAuth(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistMounts(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 		}
 		if err != nil {
 			mountEntry.Version = oldVersion
@@ -1850,9 +1850,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		var err error
 		switch {
 		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistAuth(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistMounts(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 		}
 		if err != nil {
 			mountEntry.Config.AuditNonHMACRequestKeys = oldVal
@@ -1876,9 +1876,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		var err error
 		switch {
 		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistAuth(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistMounts(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 		}
 		if err != nil {
 			mountEntry.Config.AuditNonHMACResponseKeys = oldVal
@@ -1907,9 +1907,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		var err error
 		switch {
 		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistAuth(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistMounts(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 		}
 		if err != nil {
 			mountEntry.Config.ListingVisibility = oldVal
@@ -1948,7 +1948,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		mountEntry.Config.TokenType = tokenType
 
 		// Update the mount table
-		if err := b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID); err != nil {
+		if err := b.Core.persistAuth(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.auth, &mountEntry.Local, mountEntry.UUID); err != nil {
 			mountEntry.Config.TokenType = oldVal
 			return handleError(err)
 		}
@@ -1968,9 +1968,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		var err error
 		switch {
 		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistAuth(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistMounts(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 		}
 		if err != nil {
 			mountEntry.Config.PassthroughRequestHeaders = oldVal
@@ -1993,9 +1993,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		var err error
 		switch {
 		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistAuth(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistMounts(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 		}
 		if err != nil {
 			mountEntry.Config.AllowedResponseHeaders = oldVal
@@ -2019,9 +2019,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		var err error
 		switch {
 		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistAuth(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistMounts(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 		}
 		if err != nil {
 			mountEntry.Config.AllowedManagedKeys = oldVal
@@ -2100,9 +2100,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		mountEntry.Options = newOptions
 		switch {
 		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistAuth(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+			err = b.Core.persistMounts(ctx, b.Core.NamespaceView(mountEntry.Namespace()), b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 		}
 		if err != nil {
 			mountEntry.Options = oldVal

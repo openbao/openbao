@@ -35,7 +35,6 @@ import (
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/hostutil"
 	"github.com/openbao/openbao/helper/identity"
-	"github.com/openbao/openbao/helper/locking"
 	"github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/monitor"
@@ -1556,8 +1555,7 @@ func (b *SystemBackend) handleAuthTuneWrite(ctx context.Context, req *logical.Re
 	if path == "" {
 		return logical.ErrorResponse("missing path"), nil
 	}
-
-	return b.handleTuneWriteCommon(ctx, "auth/"+path, data)
+	return b.handleTuneWriteCommon(ctx, "auth/"+path, data, true)
 }
 
 // handleMountTuneWrite is used to set config settings on a backend
@@ -1570,11 +1568,11 @@ func (b *SystemBackend) handleMountTuneWrite(ctx context.Context, req *logical.R
 	// This call will write both logical backend's configuration as well as auth methods'.
 	// Retaining this behavior for backward compatibility. If this behavior is not desired,
 	// an error can be returned if path has a prefix of "auth/".
-	return b.handleTuneWriteCommon(ctx, path, data)
+	return b.handleTuneWriteCommon(ctx, path, data, strings.HasPrefix(path, "auth/"))
 }
 
 // handleTuneWriteCommon is used to set config settings on a path
-func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, data *framework.FieldData) (*logical.Response, error) {
+func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, data *framework.FieldData, isAuth bool) (*logical.Response, error) {
 	path = sanitizePath(path)
 
 	// Prevent protected paths from being changed
@@ -1589,13 +1587,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 				}
 
 				// Check if this field is allowed to be tuned on this untunable path
-				found := false
-				for _, match := range allowedField {
-					if match == field {
-						found = true
-						break
-					}
-				}
+				found := slices.Contains(allowedField, field)
 
 				// Err if so.
 				if !found {
@@ -1615,12 +1607,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		return handleError(fmt.Errorf("tune of path %q failed: no mount entry found", path))
 	}
 
-	var lock *locking.DeadlockRWMutex
-	switch {
-	case strings.HasPrefix(path, credentialRoutePrefix):
+	lock := &b.Core.mountsLock
+	if isAuth {
 		lock = &b.Core.authLock
-	default:
-		lock = &b.Core.mountsLock
 	}
 
 	lock.Lock()
@@ -1633,55 +1622,69 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		return handleError(fmt.Errorf("tune of path %q failed: no mount entry found", path))
 	}
 
-	// Timing configuration parameters
+	mountEntryCopy, err := mountEntry.Clone()
+	if err != nil {
+		return handleError(fmt.Errorf("failed to clone mount entry: %w", err))
+	}
+
 	if !isUntunable {
-		var newDefault, newMax time.Duration
+		// Timing configuration parameters
 		defTTL := data.Get("default_lease_ttl").(string)
 		switch defTTL {
 		case "":
-			newDefault = mountEntry.Config.DefaultLeaseTTL
 		case "system":
-			newDefault = time.Duration(0)
+			mountEntry.Config.DefaultLeaseTTL = time.Duration(0)
 		default:
 			tmpDef, err := parseutil.ParseDurationSecond(defTTL)
 			if err != nil {
 				return handleError(err)
 			}
-			newDefault = tmpDef
+			mountEntry.Config.DefaultLeaseTTL = tmpDef
 		}
 
 		maxTTL := data.Get("max_lease_ttl").(string)
 		switch maxTTL {
 		case "":
-			newMax = mountEntry.Config.MaxLeaseTTL
 		case "system":
-			newMax = time.Duration(0)
+			mountEntry.Config.MaxLeaseTTL = time.Duration(0)
 		default:
 			tmpMax, err := parseutil.ParseDurationSecond(maxTTL)
 			if err != nil {
 				return handleError(err)
 			}
-			newMax = tmpMax
+			mountEntry.Config.MaxLeaseTTL = tmpMax
 		}
 
-		if newDefault != mountEntry.Config.DefaultLeaseTTL ||
-			newMax != mountEntry.Config.MaxLeaseTTL {
+		if mountEntry.Config.DefaultLeaseTTL != mountEntryCopy.Config.DefaultLeaseTTL ||
+			mountEntry.Config.MaxLeaseTTL != mountEntryCopy.Config.MaxLeaseTTL {
 
-			if err := b.tuneMountTTLs(ctx, path, mountEntry, newDefault, newMax); err != nil {
-				b.Backend.Logger().Error("tuning failed", "path", path, "error", err)
-				return handleError(err)
+			zero := time.Duration(0)
+			switch {
+			case mountEntry.Config.DefaultLeaseTTL == zero && mountEntry.Config.MaxLeaseTTL == zero:
+				// No checks needed
+
+			case mountEntry.Config.DefaultLeaseTTL == zero && mountEntry.Config.MaxLeaseTTL != zero:
+				// No default/max conflict, no checks needed
+
+			case mountEntry.Config.DefaultLeaseTTL != zero && mountEntry.Config.MaxLeaseTTL == zero:
+				// No default/max conflict, no checks needed
+
+			case mountEntry.Config.DefaultLeaseTTL != zero && mountEntry.Config.MaxLeaseTTL != zero:
+				if mountEntry.Config.MaxLeaseTTL < mountEntry.Config.DefaultLeaseTTL {
+					err := fmt.Errorf("backend max lease TTL of %d would be less than backend default lease TTL of %d", int(mountEntry.Config.MaxLeaseTTL.Seconds()), int(mountEntry.Config.DefaultLeaseTTL.Seconds()))
+					// revert to previous values
+					mountEntry.Config.MaxLeaseTTL = mountEntryCopy.Config.MaxLeaseTTL
+					mountEntry.Config.DefaultLeaseTTL = mountEntryCopy.Config.DefaultLeaseTTL
+					return handleError(err)
+				}
 			}
 		}
-	}
 
-	// user-lockout config
-	if !isUntunable {
-		var apiuserLockoutConfig APIUserLockoutConfig
-
+		// user-lockout config
+		var apiUserLockoutConfig APIUserLockoutConfig
 		userLockoutConfigMap := data.Get("user_lockout_config").(map[string]interface{})
-		var err error
 		if len(userLockoutConfigMap) != 0 {
-			err := mapstructure.Decode(userLockoutConfigMap, &apiuserLockoutConfig)
+			err := mapstructure.Decode(userLockoutConfigMap, &apiUserLockoutConfig)
 			if err != nil {
 				return logical.ErrorResponse(
 						"unable to convert given user lockout config information"),
@@ -1702,104 +1705,47 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 			mountEntry.Config.UserLockoutConfig = &UserLockoutConfig{}
 		}
 
-		var oldUserLockoutThreshold uint64
-		var newUserLockoutDuration, oldUserLockoutDuration time.Duration
-		var newUserLockoutCounterReset, oldUserLockoutCounterReset time.Duration
-		var oldUserLockoutDisable bool
-
-		if apiuserLockoutConfig.LockoutThreshold != "" {
-			userLockoutThreshold, err := strconv.ParseUint(apiuserLockoutConfig.LockoutThreshold, 10, 64)
+		if apiUserLockoutConfig.LockoutThreshold != "" {
+			userLockoutThreshold, err := strconv.ParseUint(apiUserLockoutConfig.LockoutThreshold, 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("unable to parse user lockout threshold: %w", err)
+				return handleError(fmt.Errorf("unable to parse user lockout threshold: %w", err))
 			}
-			oldUserLockoutThreshold = mountEntry.Config.UserLockoutConfig.LockoutThreshold
 			mountEntry.Config.UserLockoutConfig.LockoutThreshold = userLockoutThreshold
 		}
 
-		if apiuserLockoutConfig.LockoutDuration != "" {
-			oldUserLockoutDuration = mountEntry.Config.UserLockoutConfig.LockoutDuration
-			switch apiuserLockoutConfig.LockoutDuration {
-			case "":
-				newUserLockoutDuration = oldUserLockoutDuration
+		if apiUserLockoutConfig.LockoutDuration != "" {
+			switch apiUserLockoutConfig.LockoutDuration {
 			case "system":
-				newUserLockoutDuration = time.Duration(0)
+				mountEntry.Config.UserLockoutConfig.LockoutDuration = time.Duration(0)
 			default:
-				tmpUserLockoutDuration, err := parseutil.ParseDurationSecond(apiuserLockoutConfig.LockoutDuration)
+				tmpUserLockoutDuration, err := parseutil.ParseDurationSecond(apiUserLockoutConfig.LockoutDuration)
 				if err != nil {
 					return handleError(err)
 				}
-				newUserLockoutDuration = tmpUserLockoutDuration
-
+				mountEntry.Config.UserLockoutConfig.LockoutDuration = tmpUserLockoutDuration
 			}
-			mountEntry.Config.UserLockoutConfig.LockoutDuration = newUserLockoutDuration
 		}
 
-		if apiuserLockoutConfig.LockoutCounterResetDuration != "" {
-			oldUserLockoutCounterReset = mountEntry.Config.UserLockoutConfig.LockoutCounterReset
-			switch apiuserLockoutConfig.LockoutCounterResetDuration {
-			case "":
-				newUserLockoutCounterReset = oldUserLockoutCounterReset
+		if apiUserLockoutConfig.LockoutCounterResetDuration != "" {
+			switch apiUserLockoutConfig.LockoutCounterResetDuration {
 			case "system":
-				newUserLockoutCounterReset = time.Duration(0)
+				mountEntry.Config.UserLockoutConfig.LockoutCounterReset = time.Duration(0)
 			default:
-				tmpUserLockoutCounterReset, err := parseutil.ParseDurationSecond(apiuserLockoutConfig.LockoutCounterResetDuration)
+				tmpUserLockoutCounterReset, err := parseutil.ParseDurationSecond(apiUserLockoutConfig.LockoutCounterResetDuration)
 				if err != nil {
 					return handleError(err)
 				}
-				newUserLockoutCounterReset = tmpUserLockoutCounterReset
-			}
-
-			mountEntry.Config.UserLockoutConfig.LockoutCounterReset = newUserLockoutCounterReset
-		}
-
-		if apiuserLockoutConfig.DisableLockout != nil {
-			oldUserLockoutDisable = mountEntry.Config.UserLockoutConfig.DisableLockout
-			userLockoutDisable := apiuserLockoutConfig.DisableLockout
-			mountEntry.Config.UserLockoutConfig.DisableLockout = *userLockoutDisable
-		}
-
-		// Update the mount table
-		if len(userLockoutConfigMap) > 0 {
-			switch {
-			case strings.HasPrefix(path, "auth/"):
-				err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-			default:
-				err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-			}
-			if err != nil {
-				mountEntry.Config.UserLockoutConfig.LockoutCounterReset = oldUserLockoutCounterReset
-				mountEntry.Config.UserLockoutConfig.LockoutThreshold = oldUserLockoutThreshold
-				mountEntry.Config.UserLockoutConfig.LockoutDuration = oldUserLockoutDuration
-				mountEntry.Config.UserLockoutConfig.DisableLockout = oldUserLockoutDisable
-				return handleError(err)
-			}
-			if b.Core.logger.IsInfo() {
-				b.Core.logger.Info("tuning of user_lockout_config successful", "path", path)
+				mountEntry.Config.UserLockoutConfig.LockoutCounterReset = tmpUserLockoutCounterReset
 			}
 		}
 
+		if apiUserLockoutConfig.DisableLockout != nil {
+			mountEntry.Config.UserLockoutConfig.DisableLockout = *apiUserLockoutConfig.DisableLockout
+		}
 	}
+
 	if rawVal, ok := data.GetOk("description"); ok {
-		description := rawVal.(string)
-
-		oldDesc := mountEntry.Description
-		mountEntry.Description = description
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Description = oldDesc
-			return handleError(err)
-		}
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of description successful", "path", path, "description", description)
-		}
+		mountEntry.Description = rawVal.(string)
 	}
 
 	if rawVal, ok := data.GetOk("plugin_version"); ok {
@@ -1810,118 +1756,39 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 		version = "v" + semanticVersion.String()
 
-		// Lookup the version to ensure it exists in the catalog before committing.
 		pluginType := consts.PluginTypeSecrets
-		if strings.HasPrefix(path, "auth/") {
+		if isAuth {
 			pluginType = consts.PluginTypeCredential
 		}
-		_, err = b.System().LookupPluginVersion(ctx, mountEntry.Type, pluginType, version)
-		if err != nil {
+
+		// Lookup the version to ensure it exists in the catalog before committing.
+		if _, err = b.System().LookupPluginVersion(ctx, mountEntry.Type, pluginType, version); err != nil {
 			return handleError(err)
 		}
 
-		oldVersion := mountEntry.Version
 		mountEntry.Version = version
-
-		// Update the mount table
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Version = oldVersion
-			return handleError(err)
-		}
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of version successful", "path", path, "version", version)
-		}
 	}
 
 	if rawVal, ok := data.GetOk("audit_non_hmac_request_keys"); ok {
-		auditNonHMACRequestKeys := rawVal.([]string)
-
-		oldVal := mountEntry.Config.AuditNonHMACRequestKeys
-		mountEntry.Config.AuditNonHMACRequestKeys = auditNonHMACRequestKeys
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.AuditNonHMACRequestKeys = oldVal
-			return handleError(err)
-		}
-
-		mountEntry.SyncCache()
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of audit_non_hmac_request_keys successful", "path", path)
-		}
+		mountEntry.Config.AuditNonHMACRequestKeys = rawVal.([]string)
 	}
 
 	if rawVal, ok := data.GetOk("audit_non_hmac_response_keys"); ok {
-		auditNonHMACResponseKeys := rawVal.([]string)
-
-		oldVal := mountEntry.Config.AuditNonHMACResponseKeys
-		mountEntry.Config.AuditNonHMACResponseKeys = auditNonHMACResponseKeys
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.AuditNonHMACResponseKeys = oldVal
-			return handleError(err)
-		}
-
-		mountEntry.SyncCache()
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of audit_non_hmac_response_keys successful", "path", path)
-		}
+		mountEntry.Config.AuditNonHMACResponseKeys = rawVal.([]string)
 	}
 
 	if rawVal, ok := data.GetOk("listing_visibility"); ok {
-		lvString := rawVal.(string)
-		listingVisibility := ListingVisibilityType(lvString)
+		listingVisibility := ListingVisibilityType(rawVal.(string))
 
 		if err := checkListingVisibility(listingVisibility); err != nil {
 			return logical.ErrorResponse("invalid listing_visibility %s", listingVisibility), nil
 		}
 
-		oldVal := mountEntry.Config.ListingVisibility
 		mountEntry.Config.ListingVisibility = listingVisibility
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.ListingVisibility = oldVal
-			return handleError(err)
-		}
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of listing_visibility successful", "path", path)
-		}
 	}
 
 	if rawVal, ok := data.GetOk("token_type"); ok {
-		if !strings.HasPrefix(path, "auth/") {
+		if !isAuth {
 			return logical.ErrorResponse("'token_type' can only be modified on auth mounts"), logical.ErrInvalidRequest
 		}
 		if mountEntry.Type == mountTypeToken || mountEntry.Type == mountTypeNSToken {
@@ -1929,9 +1796,8 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 
 		tokenType := logical.TokenTypeDefaultService
-		ttString := rawVal.(string)
 
-		switch ttString {
+		switch rawVal.(string) {
 		case "", "default-service":
 		case "default-batch":
 			tokenType = logical.TokenTypeDefaultBatch
@@ -1943,183 +1809,108 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 			return logical.ErrorResponse("invalid value for 'token_type'"), logical.ErrInvalidRequest
 		}
 
-		oldVal := mountEntry.Config.TokenType
 		mountEntry.Config.TokenType = tokenType
-
-		// Update the mount table
-		if err := b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID); err != nil {
-			mountEntry.Config.TokenType = oldVal
-			return handleError(err)
-		}
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of token_type successful", "path", path, "token_type", ttString)
-		}
 	}
 
 	if rawVal, ok := data.GetOk("passthrough_request_headers"); ok {
-		headers := rawVal.([]string)
-
-		oldVal := mountEntry.Config.PassthroughRequestHeaders
-		mountEntry.Config.PassthroughRequestHeaders = headers
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.PassthroughRequestHeaders = oldVal
-			return handleError(err)
-		}
-
-		mountEntry.SyncCache()
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of passthrough_request_headers successful", "path", path)
-		}
+		mountEntry.Config.PassthroughRequestHeaders = rawVal.([]string)
 	}
 
 	if rawVal, ok := data.GetOk("allowed_response_headers"); ok {
-		headers := rawVal.([]string)
-		oldVal := mountEntry.Config.AllowedResponseHeaders
-		mountEntry.Config.AllowedResponseHeaders = headers
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.AllowedResponseHeaders = oldVal
-			return handleError(err)
-		}
-
-		mountEntry.SyncCache()
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of allowed_response_headers successful", "path", path)
-		}
+		mountEntry.Config.AllowedResponseHeaders = rawVal.([]string)
 	}
 
 	if rawVal, ok := data.GetOk("allowed_managed_keys"); ok {
-		allowedManagedKeys := rawVal.([]string)
-
-		oldVal := mountEntry.Config.AllowedManagedKeys
-		mountEntry.Config.AllowedManagedKeys = allowedManagedKeys
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.AllowedManagedKeys = oldVal
-			return handleError(err)
-		}
-
-		mountEntry.SyncCache()
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of allowed_managed_keys successful", "path", path)
-		}
+		mountEntry.Config.AllowedManagedKeys = rawVal.([]string)
 	}
 
-	var err error
-	var resp *logical.Response
-	var options map[string]string
+	var kvUpgrade bool
+	var meVersion, optVersion int64
 	if optionsRaw, ok := data.GetOk("options"); ok {
-		options = optionsRaw.(map[string]string)
+		options := optionsRaw.(map[string]string)
+		if len(options) > 0 {
+			b.Core.logger.Info("mount tuning of options", "path", path, "options", options)
+
+			// The version options should only apply to the KV mount, check that first
+			if v, ok := options["version"]; ok {
+				var err error
+				// Special case to make sure we can not disable versioning once it's
+				// enabled. If the kv backend suports downgrading this can be removed.
+				meVersion, err = parseutil.ParseInt(mountEntry.Options["version"])
+				if err != nil {
+					return handleError(fmt.Errorf("unable to parse mount entry: %w", err))
+				}
+				optVersion, err := parseutil.ParseInt(v)
+				if err != nil {
+					return handleError(fmt.Errorf("unable to parse options: %w", err))
+				}
+
+				// Only accept valid versions
+				switch optVersion {
+				case 1:
+				case 2:
+				default:
+					return logical.ErrorResponse("invalid version provided: %d", optVersion), logical.ErrInvalidRequest
+				}
+
+				if meVersion > optVersion {
+					// Return early if version option asks for a downgrade
+					return logical.ErrorResponse("cannot downgrade mount from version %d", meVersion), logical.ErrInvalidRequest
+				}
+				if meVersion < optVersion {
+					kvUpgrade = true
+				}
+			}
+
+			newOptions := make(map[string]string)
+			// Upsert options value to a copy of the existing mountEntry's options
+			maps.Copy(newOptions, mountEntry.Options)
+
+			for k, v := range options {
+				// If the value of the provided option is empty, delete the key
+				// We special-case the version value here to guard against KV
+				// downgrades, but this piece could potentially be refactored
+				// in the future to be non-KV specific.
+				if len(v) == 0 && k != "version" {
+					delete(newOptions, k)
+				} else {
+					newOptions[k] = v
+				}
+			}
+
+			mountEntry.Options = newOptions
+		}
 	}
 
-	if len(options) > 0 {
-		b.Core.logger.Info("mount tuning of options", "path", path, "options", options)
-		newOptions := make(map[string]string)
-		var kvUpgraded bool
+	if isAuth {
+		err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+	} else {
+		err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+	}
 
-		// The version options should only apply to the KV mount, check that first
-		if v, ok := options["version"]; ok {
-			// Special case to make sure we can not disable versioning once it's
-			// enabled. If the vkv backend suports downgrading this can be removed.
-			meVersion, err := parseutil.ParseInt(mountEntry.Options["version"])
-			if err != nil {
-				return nil, fmt.Errorf("unable to parse mount entry: %w", err)
-			}
-			optVersion, err := parseutil.ParseInt(v)
-			if err != nil {
-				return handleError(fmt.Errorf("unable to parse options: %w", err))
-			}
+	if err != nil {
+		mountEntry.SyncCache()
+		b.Backend.Logger().Error("tuning failed", "path", path, "error", err)
+		return handleError(err)
+	}
 
-			// Only accept valid versions
-			switch optVersion {
-			case 1:
-			case 2:
-			default:
-				return logical.ErrorResponse("invalid version provided: %d", optVersion), logical.ErrInvalidRequest
-			}
-
-			if meVersion > optVersion {
-				// Return early if version option asks for a downgrade
-				return logical.ErrorResponse("cannot downgrade mount from version %d", meVersion), logical.ErrInvalidRequest
-			}
-			if meVersion < optVersion {
-				kvUpgraded = true
-				resp = &logical.Response{}
-				resp.AddWarning(fmt.Sprintf("Upgrading mount from version %d to version %d. This mount will be unavailable for a brief period and will resume service shortly.", meVersion, optVersion))
-			}
-		}
-
-		// Upsert options value to a copy of the existing mountEntry's options
-		for k, v := range mountEntry.Options {
-			newOptions[k] = v
-		}
-		for k, v := range options {
-			// If the value of the provided option is empty, delete the key We
-			// special-case the version value here to guard against KV downgrades, but
-			// this piece could potentially be refactored in the future to be non-KV
-			// specific.
-			if len(v) == 0 && k != "version" {
-				delete(newOptions, k)
-			} else {
-				newOptions[k] = v
-			}
-		}
-
-		// Update the mount table
-		oldVal := mountEntry.Options
-		mountEntry.Options = newOptions
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Options = oldVal
+	// Reload the backend to kick off the upgrade process.
+	// It should only apply to KV backend so we trigger based
+	// on the version logic parsed with options parameter.
+	if kvUpgrade {
+		resp := &logical.Response{}
+		resp.AddWarning(fmt.Sprintf("Upgrading mount from version %d to version %d. This mount will be unavailable for a brief period and will resume service shortly.", meVersion, optVersion))
+		if err := b.Core.reloadBackendCommon(ctx, mountEntry, isAuth); err != nil {
+			b.Core.logger.Error("mount tuning of options: could not reload backend", "error", err, "path", path, "options", mountEntry.Options)
 			return handleError(err)
 		}
-
-		// Reload the backend to kick off the upgrade process. It should only apply to KV backend so we
-		// trigger based on the version logic above.
-		if kvUpgraded {
-			err = b.Core.reloadBackendCommon(ctx, mountEntry, strings.HasPrefix(path, credentialRoutePrefix))
-			if err != nil {
-				b.Core.logger.Error("mount tuning of options: could not reload backend", "error", err, "path", path, "options", options)
-			}
-
-		}
+		// we are returning the warning here with 200 http status code
+		return resp, nil
 	}
 
-	return resp, nil
+	mountEntry.SyncCache()
+	//nolint:nilnil // nil response is a valid 204 status code body
+	return nil, nil
 }
 
 // handleLockedUsersMetricQuery reports the locked user count metrics for this namespace and all child namespaces

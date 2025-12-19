@@ -166,19 +166,21 @@ type ACLPermissions struct {
 
 type ControlGroup struct {
 	TTL     time.Duration `hcl:"-"`
-	TTLRaw  interface{}   `hcl:"ttl"`
+	TTLHCL  interface{}   `hcl:"ttl"`
 	Factors []ControlGroupFactor
 }
 
 type ControlGroupFactor struct {
-	Name                   string
-	ControlledCapabilities []string
-	Identity               ControlGroupIdentity
+	Name                      string
+	ControlledCapabilitiesHCL []string `hcl:"controlled_capabilities"`
+	ControlledCapabilities    []string `hcl:"-"`
+	Identity                  ControlGroupIdentity
 }
 
 type ControlGroupIdentity struct {
-	GroupNames []string
-	Approvals  int
+	GroupNamesHCL []string `hcl:"group_names"`
+	GroupNames    []string `hcl:"-"`
+	Approvals     int
 }
 
 func (p *ACLPermissions) Clone() (*ACLPermissions, error) {
@@ -382,11 +384,22 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 			if err := hcl.DecodeObject(&cg, ob); err != nil {
 				return multierror.Prefix(err, "path control_group:")
 			}
-			ttl, err := parseutil.ParseDurationSecond(cg.TTLRaw)
+			ttl, err := parseutil.ParseDurationSecond(cg.TTLHCL)
 			if err != nil {
 				return fmt.Errorf("path control_group: invalid ttl: %w", err)
 			}
 			cg.TTL = ttl
+
+			for i := range cg.Factors {
+				factor := &cg.Factors[i]
+				if len(factor.ControlledCapabilitiesHCL) > 0 {
+					factor.ControlledCapabilities = factor.ControlledCapabilitiesHCL[:]
+				}
+				if len(factor.Identity.GroupNamesHCL) > 0 {
+					factor.Identity.GroupNames = factor.Identity.GroupNamesHCL[:]
+				}
+			}
+
 			pc.ControlGroup = cg
 			return nil
 		}); err != nil {

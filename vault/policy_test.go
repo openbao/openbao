@@ -127,11 +127,20 @@ path "test/metadata/*" {
 	capabilities = ["list"]
 	list_scan_response_keys_filter_path = "test/metadata/{{ .key }}"
 }
-# Check that control_group is added
 path "test/control_group" {
-	capabilities = ["list"]
+	capabilities = ["create", "list"]
         control_group = {
 		"ttl" = "48m"
+                factors = [
+                        {
+                                name = "admin-approval"
+                                controlled_capabilities = ["create"]
+                                identity = {
+                                        group_names = ["admin"]
+                                        approvals = 1
+                                }
+                        }
+                ]
         }
 }
 `)
@@ -422,13 +431,25 @@ func validatePolicy(t *testing.T, p *Policy) {
 		},
 		{
 			Path:         "test/control_group",
-			Capabilities: []string{"list"},
+			Capabilities: []string{"create", "list"},
 			Permissions: &ACLPermissions{
-				CapabilitiesBitmap: ListCapabilityInt,
+				CapabilitiesBitmap: (CreateCapabilityInt | ListCapabilityInt),
 			},
 			ControlGroup: &ControlGroup{
-				TTLRaw: controlGroupTTLRaw,
+				TTLHCL: controlGroupTTLRaw,
 				TTL:    controlGroupTTL,
+				Factors: []ControlGroupFactor{
+					{
+						Name:                      "admin-approval",
+						ControlledCapabilities:    []string{"create"},
+						ControlledCapabilitiesHCL: []string{"create"},
+						Identity: ControlGroupIdentity{
+							GroupNames:    []string{"admin"},
+							GroupNamesHCL: []string{"admin"},
+							Approvals:     1,
+						},
+					},
+				},
 			},
 		},
 	}

@@ -165,7 +165,8 @@ type ACLPermissions struct {
 }
 
 type ControlGroup struct {
-	TTL     time.Duration
+	TTL     time.Duration `hcl:"-"`
+	TTLRaw  interface{}   `hcl:"ttl"`
 	Factors []ControlGroupFactor
 }
 
@@ -374,6 +375,23 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 
 		// allocate memory so that DecodeObject can initialize the ACLPermissions struct
 		pc.Permissions = new(ACLPermissions)
+
+		// decode ControlGroup if needed
+		if err := hclutil.WhenHCLKeyPresent(item.Val, "control_group", func(ob ast.Node) error {
+			cg := new(ControlGroup)
+			if err := hcl.DecodeObject(&cg, ob); err != nil {
+				return multierror.Prefix(err, "path control_group:")
+			}
+			ttl, err := parseutil.ParseDurationSecond(cg.TTLRaw)
+			if err != nil {
+				return fmt.Errorf("path control_group: invalid ttl: %w", err)
+			}
+			cg.TTL = ttl
+			pc.ControlGroup = cg
+			return nil
+		}); err != nil {
+			return fmt.Errorf("error handling control_group: %w", err)
+		}
 
 		pc.Path = key
 

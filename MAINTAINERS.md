@@ -42,6 +42,7 @@ See the information about community membership roles to learn about the role of 
 | Gabriel Santos  | [@Gabrielopesantos](https://github.com/Gabrielopesantos) |
 | Michael Hofer   | [@karras](https://github.com/karras)                     |
 | Philipp Stehle  | [@phil9909](https://github.com/phil9909)                 |
+| Klaus Kiefer    | [@klaus-sap](https://klaus-sap)                          |
 
 # OpenBao Community Roles
 

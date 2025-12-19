@@ -1,0 +1,3 @@
+```release-note:fix
+helper/profiles: changed the checked object in nested eval_* blocks used to find mismatch between map and direct types
+```

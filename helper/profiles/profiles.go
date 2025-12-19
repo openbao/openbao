@@ -428,7 +428,7 @@ func (p *ProfileEngine) maybeEvaluateTypedField(ctx context.Context, history *Ev
 							resultMap[fieldKey] = fieldValue
 						}
 					default:
-						if len(obj) > 1 {
+						if len(listObj) > 1 {
 							return nil, fmt.Errorf("got direct typed value (%T) when more than one outer item exist in list-map", v)
 						}
 

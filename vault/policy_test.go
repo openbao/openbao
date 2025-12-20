@@ -129,19 +129,19 @@ path "test/metadata/*" {
 }
 path "test/control_group" {
 	capabilities = ["create", "list"]
-        control_group = {
-		"ttl" = "48m"
-                factors = [
-                        {
-                                name = "admin-approval"
-                                controlled_capabilities = ["create"]
-                                identity = {
-                                        group_names = ["admin"]
-                                        approvals = 1
-                                }
-                        }
-                ]
-        }
+	control_group = {
+		ttl = "48m"
+		factors = [
+			{
+				name = "admin-approval"
+				controlled_capabilities = ["create"]
+				identity = {
+					group_names = ["admin"]
+					approvals = 1
+				}
+			}
+		]
+	}
 }
 `)
 
@@ -436,17 +436,14 @@ func validatePolicy(t *testing.T, p *Policy) {
 				CapabilitiesBitmap: (CreateCapabilityInt | ListCapabilityInt),
 			},
 			ControlGroup: &ControlGroup{
-				TTLHCL: controlGroupTTLRaw,
-				TTL:    controlGroupTTL,
+				TTL: controlGroupTTL,
 				Factors: []ControlGroupFactor{
 					{
-						Name:                      "admin-approval",
-						ControlledCapabilities:    []string{"create"},
-						ControlledCapabilitiesHCL: []string{"create"},
+						Name:                   "admin-approval",
+						ControlledCapabilities: []string{"create"},
 						Identity: ControlGroupIdentity{
-							GroupNames:    []string{"admin"},
-							GroupNamesHCL: []string{"admin"},
-							Approvals:     1,
+							GroupNames: []string{"admin"},
+							Approvals:  1,
 						},
 					},
 				},

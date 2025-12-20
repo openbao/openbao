@@ -379,9 +379,9 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 		pc.Permissions = new(ACLPermissions)
 
 		// decode ControlGroup if needed
-		if err := hclutil.WhenHCLKeyPresent(item.Val, "control_group", func(ob ast.Node) error {
+		if err := hclutil.WhenHCLKeyPresent(item.Val, "control_group", func(val ast.Node) error {
 			cg := new(ControlGroup)
-			if err := hcl.DecodeObject(&cg, ob); err != nil {
+			if err := hcl.DecodeObject(&cg, val); err != nil {
 				return multierror.Prefix(err, "path control_group:")
 			}
 			ttl, err := parseutil.ParseDurationSecond(cg.TTLHCL)
@@ -389,14 +389,17 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 				return fmt.Errorf("path control_group: invalid ttl: %w", err)
 			}
 			cg.TTL = ttl
+			cg.TTLHCL = nil
 
 			for i := range cg.Factors {
 				factor := &cg.Factors[i]
 				if len(factor.ControlledCapabilitiesHCL) > 0 {
 					factor.ControlledCapabilities = factor.ControlledCapabilitiesHCL[:]
+					factor.ControlledCapabilitiesHCL = nil
 				}
 				if len(factor.Identity.GroupNamesHCL) > 0 {
 					factor.Identity.GroupNames = factor.Identity.GroupNamesHCL[:]
+					factor.Identity.GroupNamesHCL = nil
 				}
 			}
 

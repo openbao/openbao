@@ -1571,6 +1571,10 @@ func (b *SystemBackend) handleMountTuneWrite(ctx context.Context, req *logical.R
 	return b.handleTuneWriteCommon(ctx, path, data, strings.HasPrefix(path, "auth/"))
 }
 
+// rollback is a generic function used in _handleTuneWriteCommon_ to reassign
+// previous values of the changed properties of the [MountEntry] struct
+// By defering the returned function from rollback, we ensure that the
+// [MountEntry] modification is atomic.
 func rollback[T any](dst *T, val T, success *bool) func() {
 	prev := *dst
 	*dst = val
@@ -1633,6 +1637,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	}
 
 	success := false
+	defer mountEntry.SyncCache()
 
 	if !isUntunable {
 		var err error
@@ -1893,7 +1898,6 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	}
 
 	if err != nil {
-		mountEntry.SyncCache()
 		b.Backend.Logger().Error("tuning failed", "path", path, "error", err)
 		return handleError(err)
 	}
@@ -1913,7 +1917,6 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		return resp, nil
 	}
 
-	mountEntry.SyncCache()
 	//nolint:nilnil // nil response is a valid 204 status code body
 	return nil, nil
 }

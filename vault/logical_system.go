@@ -1571,6 +1571,16 @@ func (b *SystemBackend) handleMountTuneWrite(ctx context.Context, req *logical.R
 	return b.handleTuneWriteCommon(ctx, path, data, strings.HasPrefix(path, "auth/"))
 }
 
+func rollback[T any](dst *T, val T, success *bool) func() {
+	prev := *dst
+	*dst = val
+	return func() {
+		if !*success {
+			*dst = prev
+		}
+	}
+}
+
 // handleTuneWriteCommon is used to set config settings on a path
 func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, data *framework.FieldData, isAuth bool) (*logical.Response, error) {
 	path = sanitizePath(path)
@@ -1622,62 +1632,55 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		return handleError(fmt.Errorf("tune of path %q failed: no mount entry found", path))
 	}
 
-	mountEntryCopy, err := mountEntry.Clone()
-	if err != nil {
-		return handleError(fmt.Errorf("failed to clone mount entry: %w", err))
-	}
+	success := false
 
 	if !isUntunable {
+		var err error
 		// Timing configuration parameters
 		defTTL := data.Get("default_lease_ttl").(string)
+		var newDefTTL time.Duration
 		switch defTTL {
 		case "":
+			newDefTTL = mountEntry.Config.DefaultLeaseTTL
 		case "system":
-			mountEntry.Config.DefaultLeaseTTL = time.Duration(0)
+			newDefTTL = time.Duration(0)
 		default:
-			tmpDef, err := parseutil.ParseDurationSecond(defTTL)
+			newDefTTL, err = parseutil.ParseDurationSecond(defTTL)
 			if err != nil {
 				return handleError(err)
 			}
-			mountEntry.Config.DefaultLeaseTTL = tmpDef
 		}
 
 		maxTTL := data.Get("max_lease_ttl").(string)
+		var newMaxTTL time.Duration
 		switch maxTTL {
 		case "":
+			newMaxTTL = mountEntry.Config.MaxLeaseTTL
 		case "system":
-			mountEntry.Config.MaxLeaseTTL = time.Duration(0)
+			newMaxTTL = time.Duration(0)
 		default:
-			tmpMax, err := parseutil.ParseDurationSecond(maxTTL)
+			newMaxTTL, err = parseutil.ParseDurationSecond(maxTTL)
 			if err != nil {
 				return handleError(err)
 			}
-			mountEntry.Config.MaxLeaseTTL = tmpMax
 		}
 
-		if mountEntry.Config.DefaultLeaseTTL != mountEntryCopy.Config.DefaultLeaseTTL ||
-			mountEntry.Config.MaxLeaseTTL != mountEntryCopy.Config.MaxLeaseTTL {
-
+		if mountEntry.Config.DefaultLeaseTTL != newDefTTL || mountEntry.Config.MaxLeaseTTL != newMaxTTL {
 			zero := time.Duration(0)
 			switch {
-			case mountEntry.Config.DefaultLeaseTTL == zero && mountEntry.Config.MaxLeaseTTL == zero:
+			case newDefTTL == zero && newMaxTTL == zero:
 				// No checks needed
-
-			case mountEntry.Config.DefaultLeaseTTL == zero && mountEntry.Config.MaxLeaseTTL != zero:
+			case newDefTTL == zero && newMaxTTL != zero:
 				// No default/max conflict, no checks needed
-
-			case mountEntry.Config.DefaultLeaseTTL != zero && mountEntry.Config.MaxLeaseTTL == zero:
+			case newDefTTL != zero && newMaxTTL == zero:
 				// No default/max conflict, no checks needed
-
-			case mountEntry.Config.DefaultLeaseTTL != zero && mountEntry.Config.MaxLeaseTTL != zero:
-				if mountEntry.Config.MaxLeaseTTL < mountEntry.Config.DefaultLeaseTTL {
-					err := fmt.Errorf("backend max lease TTL of %d would be less than backend default lease TTL of %d", int(mountEntry.Config.MaxLeaseTTL.Seconds()), int(mountEntry.Config.DefaultLeaseTTL.Seconds()))
-					// revert to previous values
-					mountEntry.Config.MaxLeaseTTL = mountEntryCopy.Config.MaxLeaseTTL
-					mountEntry.Config.DefaultLeaseTTL = mountEntryCopy.Config.DefaultLeaseTTL
-					return handleError(err)
+			case newDefTTL != zero && newMaxTTL != zero:
+				if newMaxTTL < newDefTTL {
+					return handleError(fmt.Errorf("backend max lease TTL of %d would be less than backend default lease TTL of %d", int(newMaxTTL.Seconds()), int(newDefTTL.Seconds())))
 				}
 			}
+			defer rollback(&mountEntry.Config.DefaultLeaseTTL, newDefTTL, &success)()
+			defer rollback(&mountEntry.Config.MaxLeaseTTL, newMaxTTL, &success)()
 		}
 
 		// user-lockout config
@@ -1702,7 +1705,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 
 		if len(userLockoutConfigMap) > 0 && mountEntry.Config.UserLockoutConfig == nil {
-			mountEntry.Config.UserLockoutConfig = &UserLockoutConfig{}
+			defer rollback(&mountEntry.Config.UserLockoutConfig, &UserLockoutConfig{}, &success)()
 		}
 
 		if apiUserLockoutConfig.LockoutThreshold != "" {
@@ -1710,42 +1713,42 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 			if err != nil {
 				return handleError(fmt.Errorf("unable to parse user lockout threshold: %w", err))
 			}
-			mountEntry.Config.UserLockoutConfig.LockoutThreshold = userLockoutThreshold
+			defer rollback(&mountEntry.Config.UserLockoutConfig.LockoutThreshold, userLockoutThreshold, &success)()
 		}
 
 		if apiUserLockoutConfig.LockoutDuration != "" {
 			switch apiUserLockoutConfig.LockoutDuration {
 			case "system":
-				mountEntry.Config.UserLockoutConfig.LockoutDuration = time.Duration(0)
+				defer rollback(&mountEntry.Config.UserLockoutConfig.LockoutDuration, time.Duration(0), &success)()
 			default:
 				tmpUserLockoutDuration, err := parseutil.ParseDurationSecond(apiUserLockoutConfig.LockoutDuration)
 				if err != nil {
 					return handleError(err)
 				}
-				mountEntry.Config.UserLockoutConfig.LockoutDuration = tmpUserLockoutDuration
+				defer rollback(&mountEntry.Config.UserLockoutConfig.LockoutDuration, tmpUserLockoutDuration, &success)()
 			}
 		}
 
 		if apiUserLockoutConfig.LockoutCounterResetDuration != "" {
 			switch apiUserLockoutConfig.LockoutCounterResetDuration {
 			case "system":
-				mountEntry.Config.UserLockoutConfig.LockoutCounterReset = time.Duration(0)
+				defer rollback(&mountEntry.Config.UserLockoutConfig.LockoutCounterReset, time.Duration(0), &success)()
 			default:
 				tmpUserLockoutCounterReset, err := parseutil.ParseDurationSecond(apiUserLockoutConfig.LockoutCounterResetDuration)
 				if err != nil {
 					return handleError(err)
 				}
-				mountEntry.Config.UserLockoutConfig.LockoutCounterReset = tmpUserLockoutCounterReset
+				defer rollback(&mountEntry.Config.UserLockoutConfig.LockoutCounterReset, tmpUserLockoutCounterReset, &success)()
 			}
 		}
 
 		if apiUserLockoutConfig.DisableLockout != nil {
-			mountEntry.Config.UserLockoutConfig.DisableLockout = *apiUserLockoutConfig.DisableLockout
+			defer rollback(&mountEntry.Config.UserLockoutConfig.DisableLockout, *apiUserLockoutConfig.DisableLockout, &success)()
 		}
 	}
 
 	if rawVal, ok := data.GetOk("description"); ok {
-		mountEntry.Description = rawVal.(string)
+		defer rollback(&mountEntry.Description, rawVal.(string), &success)()
 	}
 
 	if rawVal, ok := data.GetOk("plugin_version"); ok {
@@ -1766,15 +1769,15 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 			return handleError(err)
 		}
 
-		mountEntry.Version = version
+		defer rollback(&mountEntry.Version, version, &success)()
 	}
 
 	if rawVal, ok := data.GetOk("audit_non_hmac_request_keys"); ok {
-		mountEntry.Config.AuditNonHMACRequestKeys = rawVal.([]string)
+		defer rollback(&mountEntry.Config.AuditNonHMACRequestKeys, rawVal.([]string), &success)()
 	}
 
 	if rawVal, ok := data.GetOk("audit_non_hmac_response_keys"); ok {
-		mountEntry.Config.AuditNonHMACResponseKeys = rawVal.([]string)
+		defer rollback(&mountEntry.Config.AuditNonHMACResponseKeys, rawVal.([]string), &success)()
 	}
 
 	if rawVal, ok := data.GetOk("listing_visibility"); ok {
@@ -1784,7 +1787,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 			return logical.ErrorResponse("invalid listing_visibility %s", listingVisibility), nil
 		}
 
-		mountEntry.Config.ListingVisibility = listingVisibility
+		defer rollback(&mountEntry.Config.ListingVisibility, listingVisibility, &success)()
 	}
 
 	if rawVal, ok := data.GetOk("token_type"); ok {
@@ -1809,19 +1812,19 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 			return logical.ErrorResponse("invalid value for 'token_type'"), logical.ErrInvalidRequest
 		}
 
-		mountEntry.Config.TokenType = tokenType
+		defer rollback(&mountEntry.Config.TokenType, tokenType, &success)()
 	}
 
 	if rawVal, ok := data.GetOk("passthrough_request_headers"); ok {
-		mountEntry.Config.PassthroughRequestHeaders = rawVal.([]string)
+		defer rollback(&mountEntry.Config.PassthroughRequestHeaders, rawVal.([]string), &success)()
 	}
 
 	if rawVal, ok := data.GetOk("allowed_response_headers"); ok {
-		mountEntry.Config.AllowedResponseHeaders = rawVal.([]string)
+		defer rollback(&mountEntry.Config.AllowedResponseHeaders, rawVal.([]string), &success)()
 	}
 
 	if rawVal, ok := data.GetOk("allowed_managed_keys"); ok {
-		mountEntry.Config.AllowedManagedKeys = rawVal.([]string)
+		defer rollback(&mountEntry.Config.AllowedManagedKeys, rawVal.([]string), &success)()
 	}
 
 	var kvUpgrade bool
@@ -1878,10 +1881,11 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 				}
 			}
 
-			mountEntry.Options = newOptions
+			defer rollback(&mountEntry.Options, newOptions, &success)()
 		}
 	}
 
+	var err error
 	if isAuth {
 		err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
 	} else {
@@ -1893,6 +1897,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		b.Backend.Logger().Error("tuning failed", "path", path, "error", err)
 		return handleError(err)
 	}
+	success = true
 
 	// Reload the backend to kick off the upgrade process.
 	// It should only apply to KV backend so we trigger based

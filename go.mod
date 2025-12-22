@@ -46,7 +46,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.7
 	github.com/google/go-metrics-stackdriver v0.2.0
-	github.com/hashicorp/cap v0.11.0
+	github.com/hashicorp/cap v0.12.0
 	github.com/hashicorp/cli v1.1.7
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2

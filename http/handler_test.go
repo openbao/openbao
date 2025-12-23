@@ -126,7 +126,7 @@ func TestHandler_cors(t *testing.T) {
 
 	// Enable CORS and allow from any origin for testing.
 	corsConfig := core.CORSConfig()
-	err := corsConfig.Enable(context.Background(), []string{addr}, nil)
+	err := corsConfig.Enable(context.Background(), []string{addr}, nil, false)
 	if err != nil {
 		t.Fatalf("Error enabling CORS: %s", err)
 	}
@@ -187,6 +187,31 @@ func TestHandler_cors(t *testing.T) {
 		"Access-Control-Max-Age":       "300",
 		"Vary":                         "Origin",
 	}
+
+	for expHeader, expected := range expHeaders {
+		actual := resp.Header.Get(expHeader)
+		if actual == "" {
+			t.Fatalf("bad:\nHeader: %#v was not on response.", expHeader)
+		}
+
+		if actual != expected {
+			t.Fatalf("bad:\nExpected: %#v\nActual: %#v\n", expected, actual)
+		}
+	}
+
+	// Test that the Access-Control-Allow-Credentials is set correctly when configured
+	err = corsConfig.Enable(context.Background(), []string{addr}, nil, true)
+	if err != nil {
+		t.Fatalf("Error enabling CORS: %s", err)
+	}
+
+	client = cleanhttp.DefaultClient()
+	resp, err = client.Do(req)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	expHeaders["Access-Control-Allow-Credentials"] = "true"
 
 	for expHeader, expected := range expHeaders {
 		actual := resp.Header.Get(expHeader)

@@ -551,6 +551,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/config-audit-devices",
                 "rfcs/opentelemetry",
                 "rfcs/efficient-search-components",
+                "rfcs/acl-boundaries",
                 {
                     "UI/UX": ["rfcs/web-ui-modernization"],
                 },

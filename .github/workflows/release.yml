@@ -242,11 +242,11 @@ jobs:
         # Supports Buildx
       - name: Qemu Setup
         if: inputs.dogorelease
-        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
       - name: Buildx Setup
         if: inputs.dogorelease
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
       - name: Cosign Install
         if: inputs.dogorelease
@@ -255,14 +255,14 @@ jobs:
       - name: GPG Import
         if: inputs.dogorelease
         id: gpg-import
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}
 
       - name: "Docker Login: ghcr.io"
         if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -270,14 +270,14 @@ jobs:
 
       - name: "Docker Login: docker.io"
         if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: "Docker Login: quay.io"
         if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
@@ -295,7 +295,7 @@ jobs:
 
       - name: Install GoReleaser
         if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
-        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           install-only: true
           # TODO: remove version pinning when Goreleaser 2.8 is released

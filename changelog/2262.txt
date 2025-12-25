@@ -1,0 +1,3 @@
+```release-note:improvement
+core: add a parameter to allow cross-origin requests to include credentials
+```

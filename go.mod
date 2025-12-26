@@ -147,7 +147,7 @@ require (
 	golang.org/x/text v0.31.0
 	google.golang.org/api v0.257.0
 	google.golang.org/grpc v1.77.0
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0
 	k8s.io/api v0.34.3
 	k8s.io/apimachinery v0.35.0

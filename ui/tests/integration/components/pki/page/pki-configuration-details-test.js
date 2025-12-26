@@ -56,7 +56,6 @@ module('Integration | Component | Page::PkiConfigurationDetails', function (hook
       config: this.store.createRecord('mount-config', {
         defaultLease: '12h',
         maxLeaseTtl: '400h',
-        allowedManagedKeys: true,
       }),
     };
   });

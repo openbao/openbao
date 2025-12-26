@@ -159,7 +159,6 @@ export default class SecretEngineModel extends Model {
       fields.push('config.defaultLeaseTtl', 'config.maxLeaseTtl');
     }
     fields.push(
-      'config.allowedManagedKeys',
       'config.auditNonHmacRequestKeys',
       'config.auditNonHmacResponseKeys',
       'config.passthroughRequestHeaders',
@@ -194,7 +193,6 @@ export default class SecretEngineModel extends Model {
           ...CORE_OPTIONS,
           'config.defaultLeaseTtl',
           'config.maxLeaseTtl',
-          'config.allowedManagedKeys',
           ...STANDARD_CONFIG,
         ];
         break;
@@ -204,32 +202,25 @@ export default class SecretEngineModel extends Model {
           ...CORE_OPTIONS,
           'config.defaultLeaseTtl',
           'config.maxLeaseTtl',
-          'config.allowedManagedKeys',
           ...STANDARD_CONFIG,
         ];
         break;
       case 'database':
         // Highlight TTLs in default
         defaultFields = ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl'];
-        optionFields = [...CORE_OPTIONS, 'config.allowedManagedKeys', ...STANDARD_CONFIG];
+        optionFields = [...CORE_OPTIONS, ...STANDARD_CONFIG];
         break;
       case 'pki':
-        defaultFields = ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl', 'config.allowedManagedKeys'];
+        defaultFields = ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl'];
         optionFields = [...CORE_OPTIONS, ...STANDARD_CONFIG];
         break;
       case 'keymgmt':
         // no ttl options for keymgmt
-        optionFields = [...CORE_OPTIONS, 'config.allowedManagedKeys', ...STANDARD_CONFIG];
+        optionFields = [...CORE_OPTIONS, ...STANDARD_CONFIG];
         break;
       default:
         defaultFields = ['path'];
-        optionFields = [
-          ...CORE_OPTIONS,
-          'config.defaultLeaseTtl',
-          'config.maxLeaseTtl',
-          'config.allowedManagedKeys',
-          ...STANDARD_CONFIG,
-        ];
+        optionFields = [...CORE_OPTIONS, 'config.defaultLeaseTtl', 'config.maxLeaseTtl', ...STANDARD_CONFIG];
         break;
     }
 

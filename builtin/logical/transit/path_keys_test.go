@@ -170,6 +170,9 @@ func TestTransit_CreateKeyWithAutorotation(t *testing.T) {
 
 			_, err = client.Logical().Write(fmt.Sprintf("transit/keys/%s", keyName), map[string]interface{}{
 				"auto_rotate_period": test.autoRotatePeriod,
+				"custom_metadata": map[string]interface{}{
+					"metadata_key": "metadata_value",
+				},
 			})
 			switch {
 			case test.shouldError && err == nil:
@@ -226,6 +229,9 @@ func testOpsFailAfterDeletion(t *testing.T, keyType string, encrypt bool, sign b
 		Data: map[string]interface{}{
 			"type":       keyType,
 			"exportable": true,
+			"custom_metadata": map[string]interface{}{
+				"foo": "bar",
+			},
 		},
 	}
 	if keyType == "hmac" {
@@ -235,6 +241,9 @@ func testOpsFailAfterDeletion(t *testing.T, keyType string, encrypt bool, sign b
 	resp, err := b.HandleRequest(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
+	require.Equal(t, map[string]string{
+		"foo": "bar",
+	}, resp.Data["custom_metadata"])
 
 	// Now create a wrapping key for BYOK
 	req.Path = "keys/byok-key"

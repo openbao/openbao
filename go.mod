@@ -129,7 +129,7 @@ require (
 	github.com/sethvargo/go-limiter v1.1.0
 	github.com/shirou/gopsutil/v4 v4.25.11
 	github.com/stretchr/testify v1.11.1
-	github.com/tink-crypto/tink-go/v2 v2.5.0
+	github.com/tink-crypto/tink-go/v2 v2.6.0
 	github.com/yeqown/go-qrcode/v2 v2.2.5
 	go.etcd.io/bbolt v1.4.3
 	go.opentelemetry.io/otel v1.39.0

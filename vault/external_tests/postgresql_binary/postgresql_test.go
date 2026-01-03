@@ -2,7 +2,9 @@ package raft_binary
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -133,4 +135,96 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Nil(t, resp)
+}
+
+func TestPSQLParallelInit(t *testing.T) {
+	t.Parallel()
+
+	binary := api.ReadBaoVariable("BAO_BINARY")
+	if binary == "" {
+		t.Skip("missing $BAO_BINARY")
+	}
+
+	configData, err := os.ReadFile("config-postgresql.json")
+	require.NoError(t, err, "read config")
+
+	var config map[string]interface{}
+	err = json.Unmarshal(configData, &config)
+	require.NoError(t, err, "parse config")
+
+	psql := docker.NewPostgreSQLStorage(t, "")
+	defer func() {
+		if err := psql.Cleanup(); err != nil {
+			t.Errorf("postgres cleanup: %v", err)
+		}
+	}()
+
+	if storage, ok := config["storage"].(map[string]interface{}); ok {
+		if postgresql, ok := storage["postgresql"].(map[string]interface{}); ok {
+			postgresql["connection_url"] = psql.InternalUrl
+		}
+	}
+
+	configBytes, err := json.MarshalIndent(config, "", "  ")
+	require.NoError(t, err, "marshal config")
+
+	tmpConfig, err := os.CreateTemp("", "openbao-config-*.hcl")
+	require.NoError(t, err, "create temp config")
+	configFile := tmpConfig.Name()
+
+	_, err = tmpConfig.Write(configBytes)
+	require.NoError(t, err, "write config")
+	err = tmpConfig.Close()
+	require.NoError(t, err, "close config")
+	defer func() {
+		if err := os.Remove(configFile); err != nil {
+			t.Logf("failed to remove tmp config file: %v", err)
+		}
+	}()
+
+	opts := &docker.DockerClusterOptions{
+		ImageRepo:   "quay.io/openbao/openbao",
+		ImageTag:    "latest",
+		VaultBinary: binary,
+		Args:        []string{"server", "-config", configFile},
+		Storage:     psql,
+		ClusterOptions: testcluster.ClusterOptions{
+			VaultNodeConfig: &testcluster.VaultNodeConfig{
+				LogLevel: "TRACE",
+			},
+		},
+	}
+
+	cluster := docker.NewTestDockerCluster(t, opts)
+	defer cluster.Cleanup()
+
+	nodes := cluster.Nodes()
+	require.Greater(t, len(nodes), 0, "nodes error")
+
+	for i := 0; i < 60; i++ {
+		status, err := nodes[0].APIClient().Sys().SealStatus()
+		if err == nil && status.Initialized && !status.Sealed {
+			t.Logf("Ready after %ds", i)
+			break
+		}
+	}
+
+	var active, sealed int
+	for i, node := range nodes {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		_, err := node.APIClient().Logical().ListWithContext(ctx, "sys/policies/acl")
+		cancel()
+
+		if err == nil {
+			active++
+			t.Logf("node %d: ACTIVE", i)
+		} else if strings.Contains(err.Error(), "Vault is sealed") {
+			sealed++
+			t.Logf("node %d: SEALED", i)
+		} else {
+			t.Logf("node %d: ERROR: %v", i, err)
+		}
+	}
+	t.Logf("State: active=%d sealed=%d total=%d", active, sealed, len(nodes))
+	require.Equal(t, len(nodes), active, "all nodes accessible")
 }

@@ -223,7 +223,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 
 	var config *cserver.Config
 
-	diagnose.Test(ctx, "Parse Configuration", func(ctx context.Context) (err error) {
+	_ = diagnose.Test(ctx, "Parse Configuration", func(ctx context.Context) (err error) {
 		server.flagConfigs = c.flagConfigs
 		var configErrors []configutil.ConfigError
 		config, configErrors, err = server.ParseServerConfig(server.flagConfigs)
@@ -240,7 +240,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		return errors.New("No vault server configuration found.") //nolint:staticcheck // user-facing error
 	}
 
-	diagnose.Test(ctx, "Check Telemetry", func(ctx context.Context) (err error) {
+	_ = diagnose.Test(ctx, "Check Telemetry", func(ctx context.Context) (err error) {
 		if config.Telemetry == nil {
 			diagnose.Warn(ctx, "Telemetry is using default configuration")
 			diagnose.Advise(ctx, "By default only Prometheus and JSON metrics are available.  Ignore this warning if you are using telemetry or are using these metrics and are satisfied with the default retention time and gauge period.")
@@ -280,14 +280,14 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 	var metricsHelper *metricsutil.MetricsHelper
 
 	var backend *physical.Backend
-	diagnose.Test(ctx, "Check Storage", func(ctx context.Context) error {
+	_ = diagnose.Test(ctx, "Check Storage", func(ctx context.Context) error {
 		// Ensure that there is a storage stanza
 		if config.Storage == nil {
 			diagnose.Advise(ctx, "To learn how to specify a storage backend, see the Vault server configuration documentation.")
 			return errors.New("No storage stanza in Vault server configuration.") //nolint:staticcheck // user-facing error
 		}
 
-		diagnose.Test(ctx, "Create Storage Backend", func(ctx context.Context) error {
+		_ = diagnose.Test(ctx, "Create Storage Backend", func(ctx context.Context) error {
 			b, err := server.setupStorage(config)
 			if err != nil {
 				return err
@@ -313,7 +313,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 				path, ok := config.Storage.Config["path"]
 				if !ok {
 					//nolint:staticcheck // user-facing error
-					diagnose.SpotError(ctx, "Check Raft Folder Permissions", errors.New("Storage folder path is required."))
+					_ = diagnose.SpotError(ctx, "Check Raft Folder Permissions", errors.New("Storage folder path is required."))
 				}
 				diagnose.RaftFileChecks(ctx, path)
 			}
@@ -322,7 +322,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 
 		// Attempt to use storage backend
 		if !c.skipEndEnd && config.Storage.Type != storageTypeRaft {
-			diagnose.Test(ctx, "Check Storage Access", diagnose.WithTimeout(30*time.Second, func(ctx context.Context) error {
+			_ = diagnose.Test(ctx, "Check Storage Access", diagnose.WithTimeout(30*time.Second, func(ctx context.Context) error {
 				maxDurationCrudOperation := "write"
 				maxDuration := time.Duration(0)
 				uuidSuffix, err := uuid.GenerateUUID()
@@ -367,7 +367,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 	}
 
 	var configSR sr.ServiceRegistration
-	diagnose.Test(ctx, "Check Service Discovery", func(ctx context.Context) error {
+	_ = diagnose.Test(ctx, "Check Service Discovery", func(ctx context.Context) error {
 		if config.ServiceRegistration == nil || config.ServiceRegistration.Config == nil {
 			diagnose.Skipped(ctx, "No service registration configured.")
 			return nil
@@ -421,7 +421,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 SEALFAIL:
 	sealspan.End()
 
-	diagnose.Test(ctx, "Check Transit Seal TLS", func(ctx context.Context) error {
+	_ = diagnose.Test(ctx, "Check Transit Seal TLS", func(ctx context.Context) error {
 		var checkSealTransit bool
 		for _, seal := range config.Seals {
 			if seal.Type == "transit" {
@@ -475,7 +475,7 @@ SEALFAIL:
 	})
 
 	var coreConfig vault.CoreConfig
-	diagnose.Test(ctx, "Create Core Configuration", func(ctx context.Context) error {
+	_ = diagnose.Test(ctx, "Create Core Configuration", func(ctx context.Context) error {
 		var secureRandomReader io.Reader
 		// prepare a secure random reader for core
 		randReaderTestName := "Initialize Randomness for Core"
@@ -490,8 +490,8 @@ SEALFAIL:
 	})
 
 	var disableClustering bool
-	diagnose.Test(ctx, "HA Storage", func(ctx context.Context) error {
-		diagnose.Test(ctx, "Create HA Storage Backend", func(ctx context.Context) error {
+	_ = diagnose.Test(ctx, "HA Storage", func(ctx context.Context) error {
+		_ = diagnose.Test(ctx, "Create HA Storage Backend", func(ctx context.Context) error {
 			// Initialize the separate HA storage backend, if it exists
 			disableClustering, err = initHaBackend(server, config, &coreConfig, *backend)
 			if err != nil {
@@ -500,7 +500,7 @@ SEALFAIL:
 			return nil
 		})
 
-		diagnose.Test(ctx, "Check HA Consul Direct Storage Access", func(ctx context.Context) error {
+		_ = diagnose.Test(ctx, "Check HA Consul Direct Storage Access", func(ctx context.Context) error {
 			if config.HAStorage == nil {
 				diagnose.Skipped(ctx, "No HA storage stanza is configured.")
 			} else {
@@ -538,7 +538,7 @@ SEALFAIL:
 	// Run all the checks that are utilized when initializing a core object
 	// without actually calling core.Init. These are in the init-core section
 	// as they are runtime checks.
-	diagnose.Test(ctx, "Check Core Creation", func(ctx context.Context) error {
+	_ = diagnose.Test(ctx, "Check Core Creation", func(ctx context.Context) error {
 		var newCoreError error
 		if coreConfig.RawConfig == nil {
 			return ErrCoreConfigUninitialized
@@ -563,7 +563,7 @@ SEALFAIL:
 	}
 
 	var lns []listenerutil.Listener
-	diagnose.Test(ctx, "Start Listeners", func(ctx context.Context) error {
+	_ = diagnose.Test(ctx, "Start Listeners", func(ctx context.Context) error {
 		disableClustering := config.HAStorage != nil && config.HAStorage.DisableClustering
 		infoKeys := make([]string, 0, 10)
 		info := make(map[string]string)
@@ -572,7 +572,7 @@ SEALFAIL:
 
 		diagnose.ListenerChecks(ctx, config.Listeners)
 
-		diagnose.Test(ctx, "Create Listeners", func(ctx context.Context) error {
+		_ = diagnose.Test(ctx, "Create Listeners", func(ctx context.Context) error {
 			status, listeners, _, err = server.InitListeners(nil, config, disableClustering, &infoKeys, &info)
 			if status != 0 {
 				return err
@@ -602,7 +602,7 @@ SEALFAIL:
 
 	// The unseal diagnose check will simply attempt to use the barrier to encrypt and
 	// decrypt a mock value. It will not call runUnseal.
-	diagnose.Test(ctx, "Check Autounseal Encryption", diagnose.WithTimeout(30*time.Second, func(ctx context.Context) error {
+	_ = diagnose.Test(ctx, "Check Autounseal Encryption", diagnose.WithTimeout(30*time.Second, func(ctx context.Context) error {
 		if barrierSeal == nil {
 			//nolint:staticcheck // user-facing error
 			return errors.New("Diagnose could not create a barrier seal object.")
@@ -639,7 +639,7 @@ SEALFAIL:
 	// checks during resource creation. Currently there is nothing important in this
 	// diagnose check. For now it is a placeholder for any checks that will be done
 	// before server run.
-	diagnose.Test(ctx, "Check Server Before Runtime", func(ctx context.Context) error {
+	_ = diagnose.Test(ctx, "Check Server Before Runtime", func(ctx context.Context) error {
 		for _, ln := range lns {
 			if ln.Config == nil {
 				//nolint:staticcheck // user-facing error

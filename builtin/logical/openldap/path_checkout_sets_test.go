@@ -16,7 +16,7 @@ import (
 // end-to-end tests of these interrelated endpoints.
 func TestCheckOuts(t *testing.T) {
 	ctx := context.Background()
-	b, s := getBackend(false)
+	b, s := getBackend(t, false)
 	defer b.Cleanup(ctx)
 
 	req := &logical.Request{
@@ -69,7 +69,7 @@ func TestCheckOutRaces(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	b, s := getBackend(false)
+	b, s := getBackend(t, false)
 	defer b.Cleanup(ctx)
 
 	// Get 100 goroutines ready to go.

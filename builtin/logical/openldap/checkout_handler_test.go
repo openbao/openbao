@@ -13,7 +13,7 @@ import (
 
 func TestCheckOutHandlerStorageLayer(t *testing.T) {
 	ctx := context.Background()
-	b, s := getBackend(false)
+	b, s := getBackend(t, false)
 	defer b.Cleanup(ctx)
 
 	checkOut := &CheckOut{
@@ -90,7 +90,7 @@ func TestCheckOutHandlerStorageLayer(t *testing.T) {
 
 func TestPasswordHandlerInterfaceFulfillment(t *testing.T) {
 	ctx := context.Background()
-	b, s := getBackend(false)
+	b, s := getBackend(t, false)
 	defer b.Cleanup(ctx)
 
 	checkOut := &CheckOut{

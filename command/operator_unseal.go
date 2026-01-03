@@ -140,9 +140,9 @@ func (c *OperatorUnsealCommand) Run(args []string) int {
 			writer = c.testOutput
 		}
 
-		fmt.Fprintf(writer, "Unseal Key (will be hidden): ")
+		_, _ = fmt.Fprint(writer, "Unseal Key (will be hidden): ")
 		value, err := password.Read(os.Stdin)
-		fmt.Fprintf(writer, "\n")
+		_, _ = fmt.Fprint(writer, "\n")
 		if err != nil {
 			c.UI.Error(wrapAtLength(fmt.Sprintf("An error occurred attempting to "+
 				"ask for an unseal key. The raw error message is shown below, but "+

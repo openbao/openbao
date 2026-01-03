@@ -2258,7 +2258,7 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 	)
 
 	if resp.Data["description"] != "" {
-		t.Fatalf("got: %#v expect: %#v", resp.Data["description"], "")
+		t.Fatalf("got: %#v expected: %#v", resp.Data["description"], "")
 	}
 	if resp.Data["plugin_version"] != "v1.0.0" {
 		t.Fatalf("got: %#v, expected: %v", resp.Data["version"], "v1.0.0")

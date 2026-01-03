@@ -919,9 +919,6 @@ func (b *SystemBackend) mountInfo(ctx context.Context, entry *MountEntry) map[st
 	if rawVal, ok := entry.synthesizedConfigCache.Load("allowed_response_headers"); ok {
 		entryConfig["allowed_response_headers"] = rawVal.([]string)
 	}
-	if rawVal, ok := entry.synthesizedConfigCache.Load("allowed_managed_keys"); ok {
-		entryConfig["allowed_managed_keys"] = rawVal.([]string)
-	}
 	if entry.Table == credentialTableType {
 		entryConfig["token_type"] = entry.Config.TokenType.String()
 	}
@@ -1115,9 +1112,6 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	}
 	if len(apiConfig.AllowedResponseHeaders) > 0 {
 		config.AllowedResponseHeaders = apiConfig.AllowedResponseHeaders
-	}
-	if len(apiConfig.AllowedManagedKeys) > 0 {
-		config.AllowedManagedKeys = apiConfig.AllowedManagedKeys
 	}
 
 	// Create the mount entry
@@ -1526,10 +1520,6 @@ func (b *SystemBackend) handleTuneReadCommon(ctx context.Context, path string) (
 
 	if rawVal, ok := mountEntry.synthesizedConfigCache.Load("allowed_response_headers"); ok {
 		resp.Data["allowed_response_headers"] = rawVal.([]string)
-	}
-
-	if rawVal, ok := mountEntry.synthesizedConfigCache.Load("allowed_managed_keys"); ok {
-		resp.Data["allowed_managed_keys"] = rawVal.([]string)
 	}
 
 	if mountEntry.Config.UserLockoutConfig != nil {
@@ -2008,32 +1998,6 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 	}
 
-	if rawVal, ok := data.GetOk("allowed_managed_keys"); ok {
-		allowedManagedKeys := rawVal.([]string)
-
-		oldVal := mountEntry.Config.AllowedManagedKeys
-		mountEntry.Config.AllowedManagedKeys = allowedManagedKeys
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.AllowedManagedKeys = oldVal
-			return handleError(err)
-		}
-
-		mountEntry.SyncCache()
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of allowed_managed_keys successful", "path", path)
-		}
-	}
-
 	var err error
 	var resp *logical.Response
 	var options map[string]string
@@ -2384,7 +2348,6 @@ func expandStringValsWithCommas(configMap map[string]interface{}) error {
 		"audit_non_hmac_response_keys",
 		"passthrough_request_headers",
 		"allowed_response_headers",
-		"allowed_managed_keys",
 	}
 	for _, paramName := range configParamNameSlice {
 		if raw, ok := configMap[paramName]; ok {
@@ -2532,9 +2495,6 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	}
 	if len(apiConfig.AllowedResponseHeaders) > 0 {
 		config.AllowedResponseHeaders = apiConfig.AllowedResponseHeaders
-	}
-	if len(apiConfig.AllowedManagedKeys) > 0 {
-		config.AllowedManagedKeys = apiConfig.AllowedManagedKeys
 	}
 
 	// Create the mount entry

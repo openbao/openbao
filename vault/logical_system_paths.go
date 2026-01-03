@@ -33,6 +33,10 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 					Type:        framework.TypeCommaStringSlice,
 					Description: "A comma-separated string or array of strings indicating headers that are allowed on cross-origin requests.",
 				},
+				"allow_credentials": {
+					Type:        framework.TypeBool,
+					Description: "If true, the browser will be allowed to send credentials (e.g. kerberos authentication) with cross-origin requests.",
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -57,6 +61,10 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 								},
 								"allowed_headers": {
 									Type:     framework.TypeCommaStringSlice,
+									Required: false,
+								},
+								"allow_credentials": {
+									Type:     framework.TypeBool,
 									Required: false,
 								},
 							},

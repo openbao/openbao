@@ -231,6 +231,7 @@ func (b *SystemBackend) handleCORSRead(ctx context.Context, req *logical.Request
 		corsConf.RLock()
 		resp.Data["allowed_origins"] = corsConf.AllowedOrigins
 		resp.Data["allowed_headers"] = corsConf.AllowedHeaders
+		resp.Data["allow_credentials"] = corsConf.AllowCredentials
 		corsConf.RUnlock()
 	}
 
@@ -242,8 +243,9 @@ func (b *SystemBackend) handleCORSRead(ctx context.Context, req *logical.Request
 func (b *SystemBackend) handleCORSUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	origins := d.Get("allowed_origins").([]string)
 	headers := d.Get("allowed_headers").([]string)
+	allow_credentials := d.Get("allow_credentials").(bool)
 
-	return nil, b.Core.corsConfig.Enable(ctx, origins, headers)
+	return nil, b.Core.corsConfig.Enable(ctx, origins, headers, allow_credentials)
 }
 
 // handleCORSDelete sets the CORS enabled flag to false and clears the list of

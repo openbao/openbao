@@ -70,6 +70,7 @@ func LoadConfig(path string) (*DefaultConfig, error) {
 
 	conf, err := ParseConfig(string(contents))
 	if err != nil {
+		//nolint:staticcheck // user-facing error
 		return nil, fmt.Errorf("error parsing config file at %q: %w; ensure that the file is valid; Ansible Vault is known to conflict with it.", path, err)
 	}
 

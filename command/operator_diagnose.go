@@ -88,6 +88,7 @@ func (c *OperatorDiagnoseCommand) Flags() *FlagSets {
 
 	f.StringSliceVar(&StringSliceVar{
 		Name:   "config",
+		EnvVar: "BAO_CONFIG_PATH",
 		Target: &c.flagConfigs,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
@@ -225,18 +226,18 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 	diagnose.Test(ctx, "Parse Configuration", func(ctx context.Context) (err error) {
 		server.flagConfigs = c.flagConfigs
 		var configErrors []configutil.ConfigError
-		config, configErrors, err = server.parseConfig()
+		config, configErrors, err = server.ParseServerConfig(server.flagConfigs)
 		if err != nil {
-			return fmt.Errorf("Could not parse configuration: %w.", err)
+			return fmt.Errorf("Could not parse configuration: %w.", err) //nolint:staticcheck // user-facing error
 		}
 		for _, ce := range configErrors {
 			diagnose.Warn(ctx, diagnose.CapitalizeFirstLetter(ce.String())+".")
 		}
-		diagnose.Success(ctx, "Vault configuration syntax is ok.")
+		diagnose.Success(ctx, "Vault configuration syntax is ok.") //nolint:staticcheck // user-facing error
 		return nil
 	})
 	if config == nil {
-		return errors.New("No vault server configuration found.")
+		return errors.New("No vault server configuration found.") //nolint:staticcheck // user-facing error
 	}
 
 	diagnose.Test(ctx, "Check Telemetry", func(ctx context.Context) (err error) {
@@ -283,7 +284,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		// Ensure that there is a storage stanza
 		if config.Storage == nil {
 			diagnose.Advise(ctx, "To learn how to specify a storage backend, see the Vault server configuration documentation.")
-			return errors.New("No storage stanza in Vault server configuration.")
+			return errors.New("No storage stanza in Vault server configuration.") //nolint:staticcheck // user-facing error
 		}
 
 		diagnose.Test(ctx, "Create Storage Backend", func(ctx context.Context) error {
@@ -293,7 +294,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 			}
 			if b == nil {
 				diagnose.Advise(ctx, "To learn how to specify a storage backend, see the Vault server configuration documentation.")
-				return errors.New("Storage backend could not be initialized.")
+				return errors.New("Storage backend could not be initialized.") //nolint:staticcheck // user-facing error
 			}
 			backend = &b
 			return nil
@@ -302,7 +303,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		if backend == nil {
 			diagnose.Fail(ctx, "Diagnose could not initialize storage backend.")
 			span.End()
-			return errors.New("Diagnose could not initialize storage backend.")
+			return errors.New("Diagnose could not initialize storage backend.") //nolint:staticcheck // user-facing error
 		}
 
 		// Check for raft quorum status
@@ -311,6 +312,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 			if path == "" {
 				path, ok := config.Storage.Config["path"]
 				if !ok {
+					//nolint:staticcheck // user-facing error
 					diagnose.SpotError(ctx, "Check Raft Folder Permissions", errors.New("Storage folder path is required."))
 				}
 				diagnose.RaftFileChecks(ctx, path)
@@ -361,7 +363,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 
 	// Return from top-level span when backend is nil
 	if backend == nil {
-		return errors.New("Diagnose could not initialize storage backend.")
+		return errors.New("Diagnose could not initialize storage backend.") //nolint:staticcheck // user-facing error
 	}
 
 	var configSR sr.ServiceRegistration
@@ -444,6 +446,7 @@ SEALFAIL:
 				}
 				_, err := diagnose.TLSFileChecks(tlsClientCert, tlsClientKey)
 				if err != nil {
+					//nolint:staticcheck // user-facing error
 					return fmt.Errorf("The TLS certificate and key configured through the tls_client_cert and tls_client_key fields of the transit seal configuration are invalid: %w.", err)
 				}
 
@@ -460,6 +463,7 @@ SEALFAIL:
 					}
 				}
 				if err != nil {
+					//nolint:staticcheck // user-facing error
 					return fmt.Errorf("The TLS CA certificate configured through the tls_ca_cert field of the transit seal configuration is invalid: %w.", err)
 				}
 			}
@@ -477,6 +481,7 @@ SEALFAIL:
 		randReaderTestName := "Initialize Randomness for Core"
 		secureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config.SharedConfig, barrierWrapper)
 		if err != nil {
+			//nolint:staticcheck // user-facing error
 			return diagnose.SpotError(ctx, randReaderTestName, fmt.Errorf("Could not initialize randomness for core: %w.", err))
 		}
 		diagnose.SpotOk(ctx, randReaderTestName, "")
@@ -515,12 +520,14 @@ SEALFAIL:
 	// Determine the redirect address from environment variables
 	err = determineRedirectAddr(server, &coreConfig, config)
 	if err != nil {
+		//nolint:staticcheck // user-facing error
 		return diagnose.SpotError(ctx, "Determine Redirect Address", fmt.Errorf("Redirect Address could not be determined: %w.", err))
 	}
 	diagnose.SpotOk(ctx, "Determine Redirect Address", "")
 
 	err = findClusterAddress(server, &coreConfig, config, disableClustering)
 	if err != nil {
+		//nolint:staticcheck // user-facing error
 		return diagnose.SpotError(ctx, "Check Cluster Address", fmt.Errorf("Cluster Address could not be determined or was invalid: %w.", err),
 			diagnose.Advice("Please check that the API and Cluster addresses are different, and that the API, Cluster and Redirect addresses have both a host and port."))
 	}
@@ -539,6 +546,7 @@ SEALFAIL:
 		core, newCoreError := vault.CreateCore(&coreConfig)
 		if newCoreError != nil {
 			if vault.IsFatalError(newCoreError) {
+				//nolint:staticcheck // user-facing error
 				return fmt.Errorf("Error initializing core: %s.", newCoreError)
 			}
 			diagnose.Warn(ctx, wrapAtLength(
@@ -550,6 +558,7 @@ SEALFAIL:
 	})
 
 	if vaultCore == nil {
+		//nolint:staticcheck // user-facing error
 		return errors.New("Diagnose could not initialize the Vault core from the Vault server configuration.")
 	}
 
@@ -595,6 +604,7 @@ SEALFAIL:
 	// decrypt a mock value. It will not call runUnseal.
 	diagnose.Test(ctx, "Check Autounseal Encryption", diagnose.WithTimeout(30*time.Second, func(ctx context.Context) error {
 		if barrierSeal == nil {
+			//nolint:staticcheck // user-facing error
 			return errors.New("Diagnose could not create a barrier seal object.")
 		}
 		if barrierSeal.BarrierType() == wrapping.WrapperTypeShamir {
@@ -603,18 +613,22 @@ SEALFAIL:
 		}
 		barrierUUID, err := uuid.GenerateUUID()
 		if err != nil {
+			//nolint:staticcheck // user-facing error
 			return errors.New("Diagnose could not create unique UUID for unsealing.")
 		}
 		barrierEncValue := "diagnose-" + barrierUUID
 		ciphertext, err := barrierWrapper.Encrypt(ctx, []byte(barrierEncValue), nil)
 		if err != nil {
+			//nolint:staticcheck // user-facing error
 			return fmt.Errorf("Error encrypting with seal barrier: %w.", err)
 		}
 		plaintext, err := barrierWrapper.Decrypt(ctx, ciphertext, nil)
 		if err != nil {
-			return fmt.Errorf("Error decrypting with seal barrier: %w", err)
+			//nolint:staticcheck // user-facing error
+			return fmt.Errorf("Error decrypting with seal barrier: %w.", err)
 		}
 		if string(plaintext) != barrierEncValue {
+			//nolint:staticcheck // user-facing error
 			return errors.New("Barrier returned incorrect decrypted value for mock data.")
 		}
 		return nil
@@ -628,6 +642,7 @@ SEALFAIL:
 	diagnose.Test(ctx, "Check Server Before Runtime", func(ctx context.Context) error {
 		for _, ln := range lns {
 			if ln.Config == nil {
+				//nolint:staticcheck // user-facing error
 				return errors.New("Found no listener config after parsing the Vault configuration.")
 			}
 		}

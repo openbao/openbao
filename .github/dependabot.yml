@@ -36,13 +36,11 @@ updates:
       semver-major-days: 30
     ignore:
       # armon/go-metrics was moved to hashicorp/go-metrics, but we cannot
-      # migrate to the new location without introducing other workarounds just
-      # yet: https://github.com/openbao/openbao/pull/1929
-      # This causes errors in dependabot's update job, making other issues
-      # related to dependabot harder to debug. These ignores can be removed once
-      # armon/go-metrics has been replaced entirely by hashicorp/go-metrics.
+      # drop the indirect dependency on it just yet. This causes errors in
+      # dependabot's update job, making other issues related to dependabot
+      # harder to debug. These ignores can be removed once we've fully dropped
+      # armon/go-metrics.
       - dependency-name: github.com/armon/go-metrics
-      - dependency-name: github.com/hashicorp/go-metrics
     open-pull-requests-limit: 10
     labels:
       - dependencies

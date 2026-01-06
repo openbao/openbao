@@ -981,7 +981,7 @@ func decodeRawRequest(t *testing.T, client *api.Client, method, path string, par
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	require.Equal(t, http.StatusOK, r.StatusCode)
-	defer r.Body.Close()
+	defer r.Body.Close() //nolint:errcheck
 
 	// Decode the body into v
 	require.NoError(t, json.NewDecoder(r.Body).Decode(v))

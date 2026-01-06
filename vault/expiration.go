@@ -17,9 +17,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	metrics "github.com/armon/go-metrics"
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/api/v2"
@@ -472,6 +472,11 @@ func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, 
 	}
 
 	for _, namespace := range namespaces {
+		if namespace.Tainted {
+			m.logger.Info("skipping expiration manager lease collection for tainted namespace", "ns", namespace.ID)
+			continue
+		}
+
 		view := m.leaseView(namespace)
 		keys, err := logical.CollectKeys(m.quitContext, view)
 		if err != nil {
@@ -886,7 +891,9 @@ func (m *ExpirationManager) Stop() error {
 	newStrategy := ExpireLeaseStrategy(expireNoop)
 	m.expireFunc.Store(&newStrategy)
 	oldPending := &m.pending
-	m.pending, m.nonexpiring, m.irrevocable = sync.Map{}, sync.Map{}, sync.Map{}
+	m.pending.Clear()
+	m.nonexpiring.Clear()
+	m.irrevocable.Clear()
 	m.leaseCount = 0
 	m.uniquePolicies = make(map[string][]string)
 	m.irrevocableLeaseCount = 0

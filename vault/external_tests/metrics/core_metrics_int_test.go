@@ -149,7 +149,7 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 		t.Fatal(err)
 	}
 	if respo != nil {
-		defer respo.Body.Close()
+		defer respo.Body.Close() //nolint:errcheck
 	}
 	var data testhelpers.SysMetricsJSON
 	coreLeaderMetric := false
@@ -216,6 +216,6 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 		}
 	}
 	if respo != nil {
-		defer respo.Body.Close()
+		defer respo.Body.Close() //nolint:errcheck
 	}
 }

@@ -77,7 +77,7 @@ func TestPluginCatalog_CRUD(t *testing.T) {
 	defer file.Close()
 
 	command := filepath.Base(file.Name())
-	err = core.pluginCatalog.Set(context.Background(), pluginName, consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{"FOO=BAR"}, []byte{'1'})
+	err = core.pluginCatalog.Set(context.Background(), pluginName, consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{"FOO=BAR"}, []byte{'1'}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 	const name = "mysql-database-plugin"
 	const version = "1.0.0"
 	command := filepath.Base(file.Name())
-	err = core.pluginCatalog.Set(context.Background(), name, consts.PluginTypeDatabase, version, command, []string{"--test"}, []string{"FOO=BAR"}, []byte{'1'})
+	err = core.pluginCatalog.Set(context.Background(), name, consts.PluginTypeDatabase, version, command, []string{"--test"}, []string{"FOO=BAR"}, []byte{'1'}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,13 +268,13 @@ func TestPluginCatalog_List(t *testing.T) {
 	defer file.Close()
 
 	command := filepath.Base(file.Name())
-	err = core.pluginCatalog.Set(context.Background(), "mysql-database-plugin", consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{}, []byte{'1'})
+	err = core.pluginCatalog.Set(context.Background(), "mysql-database-plugin", consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{}, []byte{'1'}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Set another plugin
-	err = core.pluginCatalog.Set(context.Background(), "aaaaaaa", consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{}, []byte{'1'})
+	err = core.pluginCatalog.Set(context.Background(), "aaaaaaa", consts.PluginTypeDatabase, "", command, []string{"--test"}, []string{}, []byte{'1'}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,6 +348,7 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 		[]string{"--test"},
 		[]string{},
 		[]byte{'1'},
+		false,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -363,6 +364,7 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 		[]string{"--test"},
 		[]string{},
 		[]byte{'1'},
+		false,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -456,7 +458,7 @@ func TestPluginCatalog_ListHandlesPluginNamesWithSlashes(t *testing.T) {
 		},
 	}
 	for _, entry := range pluginsToRegister {
-		err = core.pluginCatalog.Set(ctx, entry.Name, consts.PluginTypeCredential, entry.Version, command, nil, nil, nil)
+		err = core.pluginCatalog.Set(ctx, entry.Name, consts.PluginTypeCredential, entry.Version, command, nil, nil, nil, false)
 		if err != nil {
 			t.Fatal(err)
 		}

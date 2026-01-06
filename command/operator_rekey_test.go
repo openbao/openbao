@@ -74,12 +74,10 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		t.Parallel()
 
 		for _, tc := range cases {
-			tc := tc
-
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				client, closer := testVaultServer(t)
+				client, _, closer := testVaultServerUnauthedEndpointsEnabled(t)
 				defer closer()
 
 				ui, cmd := testOperatorRekeyCommand(t)
@@ -101,7 +99,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 	t.Run("status", func(t *testing.T) {
 		t.Parallel()
 
-		client, closer := testVaultServer(t)
+		client, _, closer := testVaultServerUnauthedEndpointsEnabled(t)
 		defer closer()
 
 		ui, cmd := testOperatorRekeyCommand(t)
@@ -150,7 +148,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 	t.Run("cancel", func(t *testing.T) {
 		t.Parallel()
 
-		client, closer := testVaultServer(t)
+		client, _, closer := testVaultServerUnauthedEndpointsEnabled(t)
 		defer closer()
 
 		// Initialize a rekey
@@ -191,7 +189,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 	t.Run("init", func(t *testing.T) {
 		t.Parallel()
 
-		client, closer := testVaultServer(t)
+		client, _, closer := testVaultServerUnauthedEndpointsEnabled(t)
 		defer closer()
 
 		ui, cmd := testOperatorRekeyCommand(t)
@@ -228,7 +226,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		pgpKey := "keybase:hashicorp"
 		pgpFingerprints := []string{"c874011f0ab405110d02105534365d9472d7468f"}
 
-		client, closer := testVaultServer(t)
+		client, _, closer := testVaultServerUnauthedEndpointsEnabled(t)
 		defer closer()
 
 		ui, cmd := testOperatorRekeyCommand(t)
@@ -266,7 +264,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 	t.Run("provide_arg_recovery_keys", func(t *testing.T) {
 		t.Parallel()
 
-		client, keys, closer := testVaultServerAutoUnseal(t)
+		client, keys, closer := testVaultServerUnauthedEndpointsEnabledWithAutoseal(t)
 		defer closer()
 
 		// Initialize a rekey
@@ -344,7 +342,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 	t.Run("provide_arg", func(t *testing.T) {
 		t.Parallel()
 
-		client, keys, closer := testVaultServerUnseal(t)
+		client, keys, closer := testVaultServerUnauthedEndpointsEnabled(t)
 		defer closer()
 
 		// Initialize a rekey
@@ -407,7 +405,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 	t.Run("provide_stdin", func(t *testing.T) {
 		t.Parallel()
 
-		client, keys, closer := testVaultServerUnseal(t)
+		client, keys, closer := testVaultServerUnauthedEndpointsEnabled(t)
 		defer closer()
 
 		// Initialize a rekey
@@ -484,7 +482,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 	t.Run("provide_stdin_recovery_keys", func(t *testing.T) {
 		t.Parallel()
 
-		client, keys, closer := testVaultServerAutoUnseal(t)
+		client, keys, closer := testVaultServerUnauthedEndpointsEnabledWithAutoseal(t)
 		defer closer()
 
 		// Initialize a rekey
@@ -576,7 +574,7 @@ func TestOperatorRekeyCommand_Run(t *testing.T) {
 		pgpKey := "keybase:hashicorp"
 		// pgpFingerprints := []string{"c874011f0ab405110d02105534365d9472d7468f"}
 
-		client, keys, closer := testVaultServerUnseal(t)
+		client, keys, closer := testVaultServerUnauthedEndpointsEnabled(t)
 		defer closer()
 
 		ui, cmd := testOperatorRekeyCommand(t)

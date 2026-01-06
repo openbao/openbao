@@ -15,7 +15,7 @@ You can tell if a data store supports High Availability mode by starting
 the server and seeing if "(HA available)" is output next to the data store
 information. If it is, then OpenBao will automatically use HA mode. This
 information is also available on the
-[Configuration](../configuration/index.mdx) page.
+[Configuration](../configuration/storage/index.mdx) page.
 
 To be Highly Available, one of the OpenBao server nodes grabs a lock within the
 data store. The successful server node then becomes the active node; all other
@@ -165,12 +165,12 @@ variable, which takes precedence.
 
 ## Storage support
 
-Currently the only officially supported storage backend that supports high
-availability is the  [Integrated
-Storage](../configuration/storage/raft.mdx) backend. In addition to that,
-some community supported storage backends
-implement High Availability as well. These may change over time, and the [configuration
-page](../configuration/index.mdx) should be referenced.
+Currently, officially supported storage backends that support high availability
+include the [Integrated Storage](../configuration/storage/raft.mdx) and
+[PostgreSQL](../configuration/storage/postgresql.mdx) backends. In addition to
+that, some community supported storage backends implement High Availability as
+well. These may change over time, and the [configuration
+page](../configuration/storage/index.mdx) should be referenced.
 
 The [OpenBao Integrated Storage](../configuration/storage/raft.mdx) is
 recommended as the default HA backend for new deployments of OpenBao. See the

@@ -8,6 +8,7 @@ Website](https://openbao.org).  It is built using
 
 - [Contributions](#contributions-welcome)
 - [Running the Site Locally](#running-the-site-locally)
+- [Versioned Documentation](#versioned-documentation)
 - [Editing Markdown Content](#editing-markdown-content)
 - [Editing Navigation Sidebars](#editing-navigation-sidebars)
 - [Deployment](#deployment)
@@ -27,6 +28,36 @@ installed](https://nodejs.org/en/) you can run:
 - `make`
 
 ...and then visit `http://localhost:3000/openbao`.
+
+## Versioned Documentation
+
+By default only the documentation for the main branch is built. When deploying
+to GitHub pages we enable [versioned
+documentation](https://docusaurus.io/docs/versioning) and build the docs for the
+`main` branch and the last two minor releases (e.g. `2.4.x` and `2.3.x`).  To
+build the versioned docs locally, run:
+
+``` console
+make build-versioned
+make serve
+```
+
+The doc versions can be configured in the `doc-versions.json` file. Have a look at the
+[Docusaurus docs](https://docusaurus.io/docs/api/plugins/@docusaurus/plugin-content-docs#VersionsConfig) for all available config options.
+
+``` typescript
+{
+    "current": {
+        "label": "Development"
+    },
+    "2.4.x": {
+        "label": "Version 2.4.x"
+    },
+    "2.3.x": {
+        "label": "Version 2.3.x"
+    }
+}
+```
 
 ## Editing Markdown Content
 

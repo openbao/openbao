@@ -104,6 +104,8 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 	// Create an HA Vault
 	logger := logging.NewVaultLogger(log.Debug)
 
+	coreLogger := logging.NewVaultLogger(log.Trace)
+
 	inmha, err := inmem.NewInmemHA(nil, logger)
 	if err != nil {
 		t.Fatal(err)
@@ -112,6 +114,7 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		Physical:     inmha,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: addr1,
+		Logger:       coreLogger.Named("active"),
 	}
 	core1, err := vault.NewCore(conf)
 	if err != nil {
@@ -134,6 +137,7 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		Physical:     inmha,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: addr2,
+		Logger:       coreLogger.Named("standby"),
 	}
 	core2, err := vault.NewCore(conf2)
 	if err != nil {
@@ -146,19 +150,22 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		}
 	}
 
+	// Reduce race window between post-unseal namespaceStore setup and request handling.
+	time.Sleep(2 * time.Second)
+
 	TestServerWithListener(t, ln1, addr1, core1)
 	TestServerWithListener(t, ln2, addr2, core2)
 	TestServerAuth(t, addr1, root)
 
 	// WRITE to STANDBY
-	resp := testHttpPutDisableRedirect(t, root, addr2+"/v1/secret/foo", map[string]interface{}{
+	resp := testHttpPutDisableRedirect(t, root, addr2+"/v1/cubbyhole/foo", map[string]interface{}{
 		"data": "bar",
 	})
 	logger.Debug("307 test one starting")
 	testResponseStatus(t, resp, 307)
 	logger.Debug("307 test one stopping")
 
-	//// READ to standby
+	// READ to standby
 	resp = testHttpGet(t, root, addr2+"/v1/auth/token/lookup-self")
 	var actual map[string]interface{}
 	var nilWarnings interface{}
@@ -197,8 +204,8 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		t.Fatal(diff)
 	}
 
-	//// DELETE to standby
-	resp = testHttpDeleteDisableRedirect(t, root, addr2+"/v1/secret/foo")
+	// DELETE to standby
+	resp = testHttpDeleteDisableRedirect(t, root, addr2+"/v1/cubbyhole/foo")
 	logger.Debug("307 test two starting")
 	testResponseStatus(t, resp, 307)
 	logger.Debug("307 test two stopping")
@@ -321,7 +328,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err := buildLogicalRequest(core, nil, req)
+	lreq, status, err := buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -336,7 +343,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,12 +358,12 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
+	_, status, err = buildLogicalRequestNoAuth(nil, req)
 	if err != nil || status != 0 {
 		t.Fatal(err)
 	}
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,7 +434,7 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 			req = req.WithContext(namespace.RootContext(nil))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
-			lreq, _, status, err := buildLogicalRequest(core, nil, req)
+			lreq, status, err := buildLogicalRequest(core, nil, req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -453,7 +460,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err := buildLogicalRequest(core, nil, req)
+	lreq, status, err := buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -468,7 +475,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -483,12 +490,12 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
+	_, status, err = buildLogicalRequestNoAuth(nil, req)
 	if err != nil || status != 0 {
 		t.Fatal(err)
 	}
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -559,7 +566,7 @@ func TestLogical_ScanWithQueryParameters(t *testing.T) {
 			req = req.WithContext(namespace.RootContext(nil))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
-			lreq, _, status, err := buildLogicalRequest(core, nil, req)
+			lreq, status, err := buildLogicalRequest(core, nil, req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1176,7 +1183,7 @@ func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
 				"Restricted API should return 400 Bad Request with namespace")
 
 			if resp != nil && resp.Body != nil {
-				resp.Body.Close()
+				resp.Body.Close() //nolint:errcheck
 			}
 		})
 
@@ -1192,7 +1199,7 @@ func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
 			}
 
 			if resp != nil && resp.Body != nil {
-				resp.Body.Close()
+				resp.Body.Close() //nolint:errcheck
 			}
 		})
 	}
@@ -1208,7 +1215,7 @@ func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
 			require.Equal(t, http.StatusOK, resp.StatusCode,
 				"Non-restricted API should return 200 OK with namespace and proper permissions")
 
-			resp.Body.Close()
+			resp.Body.Close() //nolint:errcheck
 		})
 	}
 
@@ -1225,7 +1232,7 @@ func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
 				"Restricted API should return 400 Bad Request with namespace and proper permissions")
 
 			if resp != nil && resp.Body != nil {
-				resp.Body.Close()
+				resp.Body.Close() //nolint:errcheck
 			}
 		})
 	}

@@ -535,7 +535,7 @@ func (c *Core) loadCredentials(ctx context.Context) error {
 	// Defer rolling back: we may commit the transaction anyways, but we
 	// need to ensure the transaction is cleaned up in the event of an
 	// error.
-	defer txn.Rollback(ctx)
+	defer txn.Rollback(ctx) //nolint:errcheck
 
 	legacy, err := c.loadLegacyCredentials(ctx, txn)
 	if err != nil {
@@ -570,11 +570,16 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 	globalEntries := make(map[string][]string, len(allNamespaces))
 	localEntries := make(map[string][]string, len(allNamespaces))
 	for index, ns := range allNamespaces {
+		if ns.Tainted {
+			c.logger.Info("skipping loading auth mounts for tainted namespace", "ns", ns.ID)
+			continue
+		}
+
 		view := NamespaceView(barrier, ns)
 
 		nsGlobal, nsLocal, err := c.listTransactionalCredentialsForNamespace(ctx, view)
 		if err != nil {
-			c.logger.Error("failed to list transactional mounts for namespace", "error", err, "ns_index", index, "namespace", ns.ID)
+			c.logger.Error("failed to list transactional auth mounts for namespace", "error", err, "ns_index", index, "namespace", ns.ID)
 			return err
 		}
 
@@ -823,7 +828,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 
 		// In the event of an unexpected error, rollback this transaction.
 		// A rollback of a committed transaction does not impact the commit.
-		defer barrier.(logical.Transaction).Rollback(ctx)
+		defer barrier.(logical.Transaction).Rollback(ctx) //nolint:errcheck
 	}
 
 	if table.Type != credentialTableType {

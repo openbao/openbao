@@ -130,7 +130,7 @@ func (c *ReadCommand) Run(args []string) int {
 		c.UI.Error(fmt.Sprintf("No value found at %s", path))
 		return 2
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	contents, err := io.ReadAll(resp.Body)
 	if err != nil {

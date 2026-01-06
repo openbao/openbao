@@ -93,6 +93,21 @@ restoring backups.
 
 - Integrated Storage [snapshots](../commands/operator/raft.mdx#snapshot)
 
+#### Automated Snapshot
+
+There is currently no built-in support for automated snapshots. However, OpenBao
+snapshots can be automated in various ways such as using a cron job.
+
+We maintain [a repository](https://github.com/openbao/openbao-snapshot-agent) 
+containing a collection of external tools and instructions for automating snapshots. 
+
+Currently for [VMs, we rely on systemd unit 
+files](https://github.com/openbao/openbao-snapshot-agent/blob/main/docs/vm-configuration.md) 
+and cronjobs while for [Kubernetes we provide a container image and CronJob
+resource](https://github.com/openbao/openbao-snapshot-agent/blob/main/docs/k8s-configuration.md).
+The Kubernetes CronJob can also be configured and deployed via the [OpenBao Helm
+chart](https://github.com/openbao/openbao-helm).
+
 ### Configuration
 
 In addition to backing up OpenBao's encrypted data via the storage backend, you

@@ -84,7 +84,7 @@ func SysPprof_Test(t *testing.T, cluster testcluster.VaultCluster) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		httpRespBody, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -120,7 +120,7 @@ func SysPprof_Standby_Test(t *testing.T, cluster testcluster.VaultCluster) {
 		if err != nil {
 			return "", err
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		data, err := io.ReadAll(resp.Body)
 		return string(data), err

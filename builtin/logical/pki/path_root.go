@@ -140,7 +140,7 @@ func (b *backend) pathCAGenerateRoot(ctx context.Context, req *logical.Request, 
 			return nil, err
 		}
 
-		defer txn.Rollback(ctx)
+		defer txn.Rollback(ctx) //nolint:errcheck
 		req.Storage = txn
 	}
 

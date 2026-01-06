@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/armon/go-radix"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -755,10 +755,6 @@ func (ts *TokenStore) paths() []*framework.Path {
 func (c *Core) LookupToken(ctx context.Context, token string) (*logical.TokenEntry, error) {
 	if c.Sealed() {
 		return nil, consts.ErrSealed
-	}
-
-	if c.standby {
-		return nil, consts.ErrStandby
 	}
 
 	// Many tests don't have a token store running

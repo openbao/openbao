@@ -624,7 +624,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			snap, err := io.ReadAll(resp.Body)
 			if err != nil {
@@ -793,7 +793,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			}
 
 			snap, err := io.ReadAll(resp.Body)
-			resp.Body.Close()
+			resp.Body.Close() //nolint:errcheck
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -839,7 +839,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			}
 
 			snap2, err := io.ReadAll(resp.Body)
-			resp.Body.Close()
+			resp.Body.Close() //nolint:errcheck
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -969,7 +969,7 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 	}
 
 	snap, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	resp.Body.Close() //nolint:errcheck
 	if err != nil {
 		t.Fatal(err)
 	}

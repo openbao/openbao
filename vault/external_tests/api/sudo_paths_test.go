@@ -92,7 +92,7 @@ func getSudoPathsFromSpec(client *api.Client) (map[string]struct{}, error) {
 		return nil, fmt.Errorf("unable to retrieve sudo endpoints: %v", err)
 	}
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 
 	oasInfo := make(map[string]interface{})

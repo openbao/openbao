@@ -114,15 +114,15 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
   be comma-delimited if provided as a string. At least one source IP must be provided,
   `proxy_protocol_authorized_addrs` cannot be an empty array or string.
 
-- `disable_unauthed_rekey_endpoints` `(bool: false)` - Whether to disable requests to the
+- `disable_unauthed_rekey_endpoints` `(bool: true)` - Whether to disable requests to the
   legacy unauthenticated rekey endpoints (under `/sys/rekey/*` and
   `/sys/rekey-recovery-key/*`). These are a security risk to leave exposed on
   public listeners.
 
   :::warning
 
-  In OpenBao v2.4.0, this parameter will default to true, forbidding any calls
-  to the unauthenticated rekey endpoints. This will be a breaking change.
+  **As of OpenBao v2.5.0, this parameter defaults to true, forbidding any calls
+  to the unauthenticated rekey endpoints.**
 
   :::
 

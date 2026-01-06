@@ -33,7 +33,7 @@ func (c *Sys) AuditHashWithContext(ctx context.Context, path string, input strin
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
@@ -69,7 +69,7 @@ func (c *Sys) ListAuditWithContext(ctx context.Context) (map[string]*Audit, erro
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
@@ -116,7 +116,7 @@ func (c *Sys) EnableAuditWithOptionsWithContext(ctx context.Context, path string
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }
@@ -134,7 +134,7 @@ func (c *Sys) DisableAuditWithContext(ctx context.Context, path string) error {
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 
 	if err == nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	return err
 }

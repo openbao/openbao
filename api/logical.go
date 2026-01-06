@@ -114,7 +114,7 @@ func (c *Logical) ReadRawWithDataWithContext(ctx context.Context, path string, d
 
 func (c *Logical) ParseRawResponseAndCloseBody(resp *Response, err error) (*Secret, error) {
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -173,7 +173,7 @@ func (c *Logical) ListWithContext(ctx context.Context, path string) (*Secret, er
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -214,7 +214,7 @@ func (c *Logical) ListPageWithContext(ctx context.Context, path string, after st
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -253,7 +253,7 @@ func (c *Logical) ScanWithContext(ctx context.Context, path string) (*Secret, er
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -294,7 +294,7 @@ func (c *Logical) ScanPageWithContext(ctx context.Context, path string, after st
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -357,7 +357,7 @@ func (c *Logical) write(ctx context.Context, request *Request) (*Secret, error) 
 
 	resp, err := c.c.rawRequestWithContext(ctx, request)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -413,7 +413,7 @@ func (c *Logical) DeleteWithDataWithContext(ctx context.Context, path string, da
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -462,7 +462,7 @@ func (c *Logical) UnwrapWithContext(ctx context.Context, wrappingToken string) (
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp == nil || resp.StatusCode != 404 {
 		if err != nil {

@@ -27,17 +27,17 @@ multiple sockets.
 
 - `socket_group` `(string: "", <optional>)` – Changes the group owner of the Unix socket.
 
-- `disable_unauthed_rekey_endpoints` `(bool: false)` - Whether to disable requests to the
+- `disable_unauthed_rekey_endpoints` `(bool: true)` - Whether to disable requests to the
   legacy unauthenticated rekey endpoints (under `/sys/rekey/*` and
   `/sys/rekey-recovery-key/*`). These are a security risk to leave exposed on
   public listeners.
 
-   :::warning
+  :::warning
 
-   **In OpenBao v2.4.0, this parameter will default to true, forbidding any calls
-   to the unauthenticated rekey endpoints. This will be a breaking change.**
+  **As of OpenBao v2.5.0, this parameter defaults to true, forbidding any calls
+  to the unauthenticated rekey endpoints.**
 
-   :::
+  :::
 
 ### `telemetry` parameters
 

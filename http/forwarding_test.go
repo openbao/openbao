@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	"github.com/openbao/openbao/builtin/logical/transit"
+	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -144,7 +145,8 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 	}
 
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
-		HandlerFunc: Handler,
+		HandlerFunc:         Handler,
+		DisableStandbyReads: true,
 	})
 	cluster.Start()
 	defer cluster.Cleanup()
@@ -249,7 +251,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 			if resp == nil {
 				return nil, errors.New("nil response")
 			}
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			// Make sure we weren't redirected
 			if resp.StatusCode > 300 && resp.StatusCode < 400 {
@@ -573,18 +575,18 @@ func TestHTTP_Forwarding_HelpOperation(t *testing.T) {
 
 	vault.TestWaitActive(t, cores[0].Core)
 
-	testHelp := func(client *api.Client) {
+	testHelp := func(node string, client *api.Client) {
 		help, err := client.Help("auth/token")
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("[on %v]: %v", node, err)
 		}
 		if help == nil {
-			t.Fatal("help was nil")
+			t.Fatalf("[on %v]: help was nil", node)
 		}
 	}
 
-	testHelp(cores[0].Client)
-	testHelp(cores[1].Client)
+	testHelp("active", cores[0].Client)
+	testHelp("standby", cores[1].Client)
 }
 
 func TestHTTP_Forwarding_LocalOnly(t *testing.T) {
@@ -596,11 +598,16 @@ func TestHTTP_Forwarding_LocalOnly(t *testing.T) {
 	cores := cluster.Cores
 
 	vault.TestWaitActive(t, cores[0].Core)
+	testhelpers.WaitForStandbyNode(t, cluster.Cores[1])
+	testhelpers.WaitForStandbyNode(t, cluster.Cores[2])
 
 	testLocalOnly := func(client *api.Client) {
-		_, err := client.Logical().Read("sys/config/state/sanitized")
-		if err == nil {
-			t.Fatal("expected error")
+		sec, err := client.Logical().Read("sys/config/state/sanitized")
+		if err != nil {
+			t.Fatalf("standby should handle local read without forwarding: %v", err)
+		}
+		if sec == nil || sec.Data == nil {
+			t.Fatalf("expected non-nil secret/data from local read")
 		}
 	}
 

@@ -25,7 +25,7 @@ func kvReadRequest(client *api.Client, path string, params map[string]string) (*
 	}
 	resp, err := client.Logical().ReadRawWithData(path, readParams)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := api.ParseSecret(resp.Body)
@@ -63,7 +63,7 @@ func kvPreflightVersionRequest(client *api.Client, path string) (string, int, er
 
 	resp, err := client.Logical().ReadRaw("sys/internal/ui/mounts/" + path)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if err != nil {
 		// If we get a 404 we are using an older version of vault, default to
@@ -77,6 +77,7 @@ func kvPreflightVersionRequest(client *api.Client, path string) (string, int, er
 			if (currentOutputCurlString || currentOutputPolicy) && resp.StatusCode == 403 {
 				// we provide a more helpful error for the user,
 				// who may not understand why the flag isn't working.
+				//nolint:staticcheck // user-facing error
 				err = fmt.Errorf(
 					`This output flag requires the success of a preflight request 
 to determine the version of a KV secrets engine. Please 

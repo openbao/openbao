@@ -1303,7 +1303,7 @@ func validateNoBeforeBound(notBeforebound string) (*logical.Response, error) {
 	// nothing to do
 	default:
 		resp = logical.ErrorResponse("Unknown value for field `not_before_bound`. Possible values are `permit` or `forbid`")
-		err = errors.New("Unknown value")
+		err = errors.New("unknown value")
 	}
 	return resp, err
 }

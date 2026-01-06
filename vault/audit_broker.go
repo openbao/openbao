@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	metrics "github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -65,6 +65,13 @@ func (a *AuditBroker) IsRegistered(name string) bool {
 	defer a.RUnlock()
 	_, ok := a.backends[name]
 	return ok
+}
+
+// Count returns the number of registered backends
+func (a *AuditBroker) Count() int {
+	a.RLock()
+	defer a.RUnlock()
+	return len(a.backends)
 }
 
 // IsLocal is used to check if a given audit backend is registered

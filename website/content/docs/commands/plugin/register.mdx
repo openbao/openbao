@@ -50,6 +50,10 @@ flags](../index.mdx) included on all commands.
 - `-args` `(string: "")` - List of arguments to pass to the binary plugin during
   each invocation. Specify multiple arguments with commas.
 
+- `-oci` `(bool: false)` - Whether the plugin is a declaratively donwloaded OCI plugin.
+  Note that manually registering such plugins means that `plugin_auto_register=true`
+  cannot be used.
+
 - `-command` `(string: "")` - Name of the command to run to invoke the binary.
   By default, this is the name of the plugin.
 

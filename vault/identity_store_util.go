@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	metrics "github.com/armon/go-metrics"
 	"github.com/hashicorp/errwrap"
 	memdb "github.com/hashicorp/go-memdb"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/identity"
@@ -46,6 +46,11 @@ func (c *Core) loadIdentityStoreArtifacts(ctx context.Context) error {
 		}
 
 		for _, ns := range allNs {
+			if ns.Tainted {
+				c.logger.Info("skipping loading entities for tainted namespace", "ns", ns.ID)
+				continue
+			}
+
 			nsCtx := namespace.ContextWithNamespace(ctx, ns)
 
 			if err := c.identityStore.loadEntities(nsCtx); err != nil {

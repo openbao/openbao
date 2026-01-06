@@ -99,7 +99,7 @@ func ScanViewPaginated(ctx context.Context, view ClearableView, logger hclog.Log
 		}
 
 		// This transaction is not used for any operations within the scan.
-		defer txn.Rollback(ctx)
+		defer txn.Rollback(ctx) //nolint:errcheck
 		view = txn.(ClearableView)
 	}
 

@@ -19,8 +19,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-raftchunking"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
@@ -36,6 +36,7 @@ import (
 	"github.com/openbao/openbao/helper/tlsdebug"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/cluster"
@@ -64,10 +65,11 @@ var getMmapFlags = func(string) int { return 0 }
 
 // Verify RaftBackend satisfies the correct interfaces
 var (
-	_ physical.Backend       = (*RaftBackend)(nil)
-	_ physical.Transactional = (*RaftBackend)(nil)
-	_ physical.HABackend     = (*RaftBackend)(nil)
-	_ physical.Lock          = (*RaftLock)(nil)
+	_ physical.Backend                  = (*RaftBackend)(nil)
+	_ physical.Transactional            = (*RaftBackend)(nil)
+	_ physical.HABackend                = (*RaftBackend)(nil)
+	_ physical.CacheInvalidationBackend = (*RaftBackend)(nil)
+	_ physical.Lock                     = (*RaftLock)(nil)
 )
 
 var (
@@ -81,7 +83,7 @@ var (
 	defaultMaxEntrySize    = uint64(2 * raftchunking.ChunkSize)
 	defaultMaxTxnSize      = 8 * defaultMaxEntrySize
 
-	GetInTxnDisabledError = errors.New("get operations inside transactions are disabled in raft backend")
+	ErrGetInTxnDisabled = errors.New("get operations inside transactions are disabled in raft backend")
 )
 
 // RaftBackend implements the backend interfaces and uses the raft protocol to
@@ -204,6 +206,11 @@ type RaftBackend struct {
 
 	effectiveSDKVersion string
 	failGetInTxn        *uint32
+}
+
+// HookInvalidate implements physical.CacheInvalidationBackend.
+func (r *RaftBackend) HookInvalidate(hook physical.InvalidateFunc) {
+	r.fsm.hookInvalidate(hook)
 }
 
 // LeaderJoinInfo contains information required by a node to join itself as a
@@ -1615,6 +1622,7 @@ func (b *RaftBackend) Delete(ctx context.Context, path string) error {
 	b.l.RLock()
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
+
 	return err
 }
 
@@ -1677,6 +1685,7 @@ func (b *RaftBackend) Put(ctx context.Context, entry *physical.Entry) error {
 	b.l.RLock()
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
+
 	return err
 }
 
@@ -1733,6 +1742,15 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+
+	var lowestActiveIndex uint64
+	if command.LowestActiveIndex != nil {
+		lowestActiveIndex = *command.LowestActiveIndex
+	} else {
+		lowestActiveIndex = b.fsm.fastTxnTracker.lowestActiveIndex()
+	}
+	lowestActiveIndex = min(b.raft.AppliedIndex(), lowestActiveIndex) // we need to cap the lowest active index, otherwise we might miss transaction started concurrently
+	command.LowestActiveIndex = pointerutil.Ptr(lowestActiveIndex)
 
 	isTx := len(command.Operations) > 0 && command.Operations[0].OpType == beginTxOp
 	commandBytes, err := proto.Marshal(command)

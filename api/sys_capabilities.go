@@ -50,7 +50,7 @@ func (c *Sys) CapabilitiesWithContext(ctx context.Context, token, path string) (
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {

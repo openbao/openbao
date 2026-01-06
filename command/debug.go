@@ -676,7 +676,7 @@ func (c *DebugCommand) collectHostInfo(ctx context.Context) {
 			return
 		}
 		if resp != nil {
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			secret, err := api.ParseSecret(resp.Body)
 			if err != nil {
@@ -714,7 +714,7 @@ func (c *DebugCommand) collectMetrics(ctx context.Context) {
 			continue
 		}
 		if resp != nil {
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			metricsEntry := make(map[string]interface{})
 			err := json.NewDecoder(resp.Body).Decode(&metricsEntry)
@@ -855,7 +855,7 @@ func (c *DebugCommand) collectReplicationStatus(ctx context.Context) {
 			return
 		}
 		if resp != nil {
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 
 			secret, err := api.ParseSecret(resp.Body)
 			if err != nil {
@@ -929,7 +929,7 @@ func (c *DebugCommand) collectInFlightRequestStatus(ctx context.Context) {
 
 		var data map[string]interface{}
 		if resp != nil {
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 			err = jsonutil.DecodeJSONFromReader(resp.Body, &data)
 			if err != nil {
 				c.captureError("requests", err)
@@ -1054,7 +1054,7 @@ func pprofTarget(ctx context.Context, client *api.Client, target string, params 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -1073,7 +1073,7 @@ func pprofProfile(ctx context.Context, client *api.Client, duration time.Duratio
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -1092,7 +1092,7 @@ func pprofTrace(ctx context.Context, client *api.Client, duration time.Duration)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {

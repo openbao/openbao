@@ -189,7 +189,7 @@ func (c *ValkeyDB) changeUserPassword(ctx context.Context, username, password st
 	}
 
 	if mn.Null {
-		return fmt.Errorf("changeUserPassword for user %s failed, user not found!", username)
+		return fmt.Errorf("changeUserPassword for user %s failed: user not found", username)
 	}
 
 	var sresponse string

@@ -113,9 +113,9 @@ func (c *Client) ClearCache() {
 	c.ocspResponseCache.Purge()
 }
 
-// isInValidityRange checks the validity
+// isInValidityRange checks the validity.
 func isInValidityRange(currTime, nextUpdate time.Time) bool {
-	return !nextUpdate.IsZero() && !currTime.After(nextUpdate)
+	return nextUpdate.IsZero() || !currTime.After(nextUpdate)
 }
 
 func extractCertIDKeyFromRequest(ocspReq []byte) (*certIDKey, *ocspStatus) {
@@ -167,7 +167,7 @@ func validateOCSP(ocspRes *ocsp.Response) (*ocspStatus, error) {
 	if ocspRes == nil {
 		return nil, errors.New("OCSP Response is nil")
 	}
-	if !isInValidityRange(curTime, ocspRes.NextUpdate) {
+	if ocspRes.ProducedAt.IsZero() || !isInValidityRange(curTime, ocspRes.NextUpdate) {
 		return &ocspStatus{
 			code: ocspInvalidValidity,
 			err:  fmt.Errorf("invalid validity: producedAt: %v, thisUpdate: %v, nextUpdate: %v", ocspRes.ProducedAt, ocspRes.ThisUpdate, ocspRes.NextUpdate),
@@ -190,12 +190,12 @@ func returnOCSPStatus(ocspRes *ocsp.Response) *ocspStatus {
 	case ocsp.Unknown:
 		return &ocspStatus{
 			code: ocspStatusUnknown,
-			err:  errors.New("OCSP status unknown."),
+			err:  errors.New("OCSP status unknown"),
 		}
 	default:
 		return &ocspStatus{
 			code: ocspStatusOthers,
-			err:  fmt.Errorf("OCSP others. %v", ocspRes.Status),
+			err:  fmt.Errorf("OCSP others: %v", ocspRes.Status),
 		}
 	}
 }
@@ -253,7 +253,7 @@ func (c *Client) retryOCSP(
 			retErr = multierror.Append(retErr, err)
 			continue
 		} else {
-			defer res.Body.Close()
+			defer res.Body.Close() //nolint:errcheck
 		}
 
 		if res.StatusCode != http.StatusOK {
@@ -509,6 +509,14 @@ LOOP:
 	if !isValidOCSPStatus(ret.code) {
 		return ret, nil
 	}
+
+	// If the next update is zero, do not bother caching the result; there is
+	// always fresher OCSP info available and we should re-validate the
+	// request.
+	if ocspRes.NextUpdate.IsZero() {
+		return ret, nil
+	}
+
 	v := ocspCachedResponse{
 		status:     ret.code,
 		time:       float64(time.Now().UTC().Unix()),

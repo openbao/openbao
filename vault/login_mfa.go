@@ -1876,6 +1876,7 @@ func (c *Core) validateDuo(ctx context.Context, mfaFactors *MFAFactor, mConfig *
 		return err
 	}
 	if check == nil {
+		//nolint:staticcheck // Duo is a proper name
 		return errors.New("Duo api check returned nil, possibly bad integration key")
 	}
 	var message string
@@ -2178,7 +2179,7 @@ func (c *Core) validatePingID(ctx context.Context, mConfig *mfa.Config, username
 		}
 		bodyBytes := bytes.NewBuffer(nil)
 		_, err = bodyBytes.ReadFrom(resp.Body)
-		resp.Body.Close()
+		resp.Body.Close() //nolint:errcheck
 		if err != nil {
 			return nil, fmt.Errorf("error reading pingid response: %w", err)
 		}

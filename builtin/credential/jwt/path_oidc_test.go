@@ -823,7 +823,8 @@ func TestOIDC_Callback(t *testing.T) {
 					MaxTTL:    5 * time.Minute,
 				},
 				InternalData: map[string]interface{}{
-					"role": "test",
+					"role":      "test",
+					"role_type": "native",
 				},
 				DisplayName: "bob@example.com",
 				Alias: &logical.Alias{

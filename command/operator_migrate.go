@@ -34,7 +34,7 @@ var (
 	_ cli.CommandAutocomplete = (*OperatorMigrateCommand)(nil)
 )
 
-var errAbort = errors.New("Migration aborted")
+var errAbort = errors.New("migration aborted")
 
 type OperatorMigrateCommand struct {
 	*BaseCommand
@@ -84,6 +84,7 @@ func (c *OperatorMigrateCommand) Flags() *FlagSets {
 
 	f.StringVar(&StringVar{
 		Name:   "config",
+		EnvVar: "BAO_MIGRATE_CONFIG_PATH",
 		Target: &c.flagConfig,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),

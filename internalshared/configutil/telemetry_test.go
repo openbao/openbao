@@ -19,13 +19,13 @@ func TestParsePrefixFilters(t *testing.T) {
 	}{
 		{
 			[]string{""},
-			"Cannot have empty filter rule in prefix_filter",
+			"cannot have empty filter rule in prefix_filter",
 			[]string(nil),
 			[]string(nil),
 		},
 		{
 			[]string{"vault.abc"},
-			"Filter rule must begin with either '+' or '-': \"vault.abc\"",
+			"filter rule must begin with either '+' or '-': \"vault.abc\"",
 			[]string(nil),
 			[]string(nil),
 		},

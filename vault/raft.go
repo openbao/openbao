@@ -1182,7 +1182,7 @@ func (c *Core) joinRaftSendAnswer(ctx context.Context, sealAccess seal.Access, r
 
 	answerRespJson, err := raftInfo.leaderClient.RawRequestWithContext(ctx, answerReq)
 	if answerRespJson != nil {
-		defer answerRespJson.Body.Close()
+		defer answerRespJson.Body.Close() //nolint:errcheck
 	}
 	if err != nil {
 		return err

@@ -63,6 +63,7 @@ func (c *OperatorValidateConfigCommand) Flags() *FlagSets {
 
 	f.StringSliceVar(&StringSliceVar{
 		Name:   "config",
+		EnvVar: "BAO_CONFIG_PATH",
 		Target: &c.flagConfigs,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
@@ -163,7 +164,7 @@ func (c *OperatorValidateConfigCommand) validateConfig(ctx context.Context) {
 
 	server.flagConfigs = c.flagConfigs
 
-	_, configErrors, err := server.parseConfig()
+	_, configErrors, err := server.ParseServerConfig(server.flagConfigs)
 	if err != nil {
 		diagnose.Fail(ctx, fmt.Sprintf("Could not parse configuration: %v.", err))
 		return

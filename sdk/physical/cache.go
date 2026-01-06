@@ -8,8 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	metrics "github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
@@ -411,4 +411,14 @@ func (c *cacheTransaction) Rollback(ctx context.Context) error {
 	// the underlying storage at all.
 
 	return nil
+}
+
+// Invalidate removes the value for key from the cache.
+// This will not affect transactions that have already been started.
+func (c *cache) Invalidate(ctx context.Context, key string) {
+	lock := locksutil.LockForKey(c.locks, key)
+	lock.Lock()
+	defer lock.Unlock()
+
+	c.lru.Remove(key)
 }

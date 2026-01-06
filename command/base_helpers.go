@@ -336,7 +336,7 @@ func generateFlagErrors(f *FlagSets, opts ...ParseOptions) error {
 		}
 
 		if !canUseRaw {
-			return errors.New("This command does not support the -format=raw option.")
+			return errors.New("This command does not support the -format=raw option.") //nolint:staticcheck // user-facing error
 		}
 	}
 

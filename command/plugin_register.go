@@ -22,6 +22,7 @@ type PluginRegisterCommand struct {
 
 	flagArgs    []string
 	flagCommand string
+	flagOci     bool
 	flagSHA256  string
 	flagVersion string
 }
@@ -74,6 +75,12 @@ func (c *PluginRegisterCommand) Flags() *FlagSets {
 		Completion: complete.PredictAnything,
 		Usage: "Command to spawn the plugin. This defaults to the name of the " +
 			"plugin if unspecified.",
+	})
+
+	f.BoolVar(&BoolVar{
+		Name:   "oci",
+		Target: &c.flagOci,
+		Usage:  "Whether the plugin is specified in the server configuration file via OCI image.",
 	})
 
 	f.StringVar(&StringVar{

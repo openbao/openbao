@@ -157,7 +157,9 @@ entities attempting to login. At least one of the bound values must be set.
   syntax for referencing claims.
 - `claim_mappings` `(map: <optional>)` - If set, a map of claims (keys) to be copied to
   specified metadata fields (values). Keys support [JSON pointer](/docs/auth/jwt#claim-specifications-and-json-pointer)
-  syntax for referencing claims.
+  syntax for referencing claims but may also be direct claim key names.
+  [See claim mapping documentation](/docs/auth/jwt#claims-as-metadata) for
+  more information.
 - `oauth2_metadata` `(list: <optional>` - If set, a list of token types
   that come from the OIDC provider to return in metadata.
   The types can be any of `access_token`, `id_token`, or `refresh_token`,

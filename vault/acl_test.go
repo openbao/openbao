@@ -38,6 +38,73 @@ func testNewACL(t *testing.T, ns *namespace.Namespace) {
 	}
 }
 
+func TestACL_ControlGroup(t *testing.T) {
+	t.Run("root-ns", func(t *testing.T) {
+		t.Parallel()
+		testACLControlGroup(t, namespace.RootNamespace)
+	})
+}
+
+func testACLControlGroup(t *testing.T, ns *namespace.Namespace) {
+	controlGroupHCL := `
+path "test/control_group" {
+	capabilities = ["create", "list"]
+	control_group = {
+		ttl = "48m"
+		factors = [
+			{
+				name = "admin-approval"
+				controlled_capabilities = ["create"]
+				identity = {
+					group_names = ["admin"]
+					approvals = 1
+				}
+			}
+		]
+	}
+}
+        `
+
+	policy, err := ParseACLPolicy(ns, controlGroupHCL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	acl, err := NewACL(ctx, []*Policy{policy})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	request := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "test/control_group",
+	}
+
+	results := acl.AllowOperation(ctx, request, false)
+	cg := results.ControlGroup
+	ttl, _ := time.ParseDuration("48m")
+
+	expected := &ControlGroup{
+		TTL: ttl,
+		Factors: []ControlGroupFactor{
+			{
+				Name:                   "admin-approval",
+				ControlledCapabilities: []string{"create"},
+				Identity: ControlGroupIdentity{
+					GroupNames: []string{"admin"},
+					Approvals:  1,
+				},
+			},
+		},
+	}
+
+	if !reflect.DeepEqual(expected, cg) {
+		t.Fatalf("bad: ControlGroup; expected: %#v\n actual: %#v\n", expected, cg)
+	}
+
+}
+
 func TestACL_MFAMethods(t *testing.T) {
 	t.Run("root-ns", func(t *testing.T) {
 		t.Parallel()

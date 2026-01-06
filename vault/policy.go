@@ -162,6 +162,7 @@ type ACLPermissions struct {
 	PaginationLimit        int
 	GrantingPoliciesMap    map[uint32][]logical.PolicyInfo
 	ResponseKeysFilterPath string
+	ControlGroup           *ControlGroup
 }
 
 type ControlGroup struct {
@@ -241,6 +242,23 @@ func (p *ACLPermissions) Clone() (*ACLPermissions, error) {
 		ret.GrantingPoliciesMap = clonedGrantingPoliciesMap.(map[uint32][]logical.PolicyInfo)
 	}
 
+	if p.ControlGroup != nil {
+		cg, err := p.ControlGroup.Clone()
+		if err != nil {
+			return nil, err
+		}
+		ret.ControlGroup = cg
+	}
+
+	return ret, nil
+}
+
+func (cg *ControlGroup) Clone() (*ControlGroup, error) {
+	cgCopy, err := copystructure.Copy(cg)
+	if err != nil {
+		return nil, err
+	}
+	ret := cgCopy.(*ControlGroup)
 	return ret, nil
 }
 

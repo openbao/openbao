@@ -183,9 +183,7 @@ func validatePolicy(t *testing.T, p *Policy) {
 		t.Fatalf("bad name: %q", p.Name)
 	}
 
-	controlGroupTTLRaw := "48m"
-	controlGroupTTL, _ := time.ParseDuration(controlGroupTTLRaw)
-
+	controlGroupTTL, _ := time.ParseDuration("48m")
 	expect := []*PathRules{
 		{
 			Path:   "",

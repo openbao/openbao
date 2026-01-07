@@ -556,13 +556,19 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		return auth, acl, te, entity, retErr
 	}
 
-	if authResults.ACLResults != nil && len(authResults.ACLResults.GrantingPolicies) > 0 {
-		auth.PolicyResults.GrantingPolicies = authResults.ACLResults.GrantingPolicies
+	if authResults.ACLResults != nil {
+		if len(authResults.ACLResults.GrantingPolicies) > 0 {
+			auth.PolicyResults.GrantingPolicies = authResults.ACLResults.GrantingPolicies
+		}
+		if authResults.ACLResults.ControlGroup != nil {
+			auth.PolicyResults.ControlGroup = &logical.ControlGroup{
+				TTL: authResults.ACLResults.ControlGroup.TTL,
+			}
+		}
 	}
 	if authResults.SentinelResults != nil && len(authResults.SentinelResults.GrantingPolicies) > 0 {
 		auth.PolicyResults.GrantingPolicies = append(auth.PolicyResults.GrantingPolicies, authResults.SentinelResults.GrantingPolicies...)
 	}
-
 	return auth, acl, te, entity, nil
 }
 

@@ -1270,6 +1270,14 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 			}
 		}
 
+		// Set wrapTTL from ControlGroup.TTL if present
+		if auth.PolicyResults != nil && auth.PolicyResults.ControlGroup != nil {
+			cgTTL := auth.PolicyResults.ControlGroup.TTL
+			if cgTTL > 0 {
+				wrapTTL = cgTTL
+			}
+		}
+
 		if wrapTTL > 0 {
 			resp.WrapInfo = &wrapping.ResponseWrapInfo{
 				TTL:          wrapTTL,

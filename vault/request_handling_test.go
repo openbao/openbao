@@ -72,6 +72,100 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 	}
 }
 
+func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
+	core, _, root := TestCoreUnsealed(t)
+
+	core.logicalBackends["kv"] = PassthroughBackendFactory
+
+	meUUID, _ := uuid.GenerateUUID()
+	err := core.mount(namespace.RootContext(nil), &MountEntry{
+		Table: mountTableType,
+		UUID:  meUUID,
+		Path:  "cg_test",
+		Type:  "kv",
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	// Create a secret
+	req := &logical.Request{
+		Path:        "cg_test/foo",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"zip": "zap",
+		},
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	// Create a ControlGroup policy governing secret path
+	cgPolicy := `path "cg_test/foo" {
+		capabilities = ["create", "list", "read"]
+		control_group = {
+			ttl = "15s"
+			factors = [
+				{
+					name = "admin-approval"
+					controlled_capabilities = ["read"]
+					identity = {
+						group_names = ["admin"]
+						approvals = 1
+					}
+				}
+			]
+		}
+	}
+	`
+	req = &logical.Request{
+		Path:        "sys/policies/acl/cg_test",
+		Operation:   logical.UpdateOperation,
+		ClientToken: root,
+		Data:        map[string]interface{}{"policy": cgPolicy},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+
+	// Assign policy to a token
+	req = &logical.Request{
+		Path:        "auth/token/create",
+		ClientToken: root,
+		Operation:   logical.CreateOperation,
+		Data: map[string]interface{}{
+			"policies": []string{"cg_test"},
+			"ttl":      "5m",
+		},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+	nonRootToken := resp.Auth.ClientToken
+
+	// Request protected resource
+	req = &logical.Request{
+		Path:        "cg_test/foo",
+		ClientToken: nonRootToken,
+		Operation:   logical.ReadOperation,
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+
+	// Expect it to be wrapped
+	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
+		t.Fatalf("bad wrap_info: %#v", resp)
+	}
+}
+
 func TestRequestHandling_LoginWrapping(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 

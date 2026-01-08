@@ -1,4 +1,0 @@
-```release-note:change
-Nathan Phelps is stepping down from TSC. IBM relinquishing voting seat.
-Removing IBM products and mentions from website.
-```

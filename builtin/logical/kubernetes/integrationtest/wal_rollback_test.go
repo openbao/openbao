@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v5"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -207,36 +207,36 @@ func checkObjects(t *testing.T, roleConfig map[string]interface{}, isClusterBind
 	}
 
 	// Check the k8s objects that should have been created (all but the ServiceAccount)
-	operation := func() error {
+	operation := func() (any, error) {
 		if existingRole == "" {
 			exists, err := checkRoleExists(k8sClient, listOptions, roleType)
 			require.NoError(t, err)
 			if exists != shouldExist {
-				return fmt.Errorf("%s exists (%v) but should be (%v)", roleType, exists, shouldExist)
+				return nil, fmt.Errorf("%s exists (%v) but should be (%v)", roleType, exists, shouldExist)
 			}
 		}
 
 		exists, err := checkRoleBindingExists(k8sClient, listOptions, isClusterBinding)
 		require.NoError(t, err)
 		if exists != shouldExist {
-			return fmt.Errorf("binding (cluster %v) exists (%v) but should be (%v)", isClusterBinding, exists, shouldExist)
+			return nil, fmt.Errorf("binding (cluster %v) exists (%v) but should be (%v)", isClusterBinding, exists, shouldExist)
 		}
 
 		exists, err = checkServiceAccountExists(k8sClient, listOptions)
 		require.NoError(t, err)
 		// No permission to create services accounts, so they should never get created
 		if exists {
-			return fmt.Errorf("service account exists (%v) but should be (false)", exists)
+			return nil, fmt.Errorf("service account exists (%v) but should be (false)", exists)
 		}
 
-		return nil
+		return nil, nil
 	}
+
 	bo := backoff.NewExponentialBackOff()
-	bo.MaxElapsedTime = maxWaitTime
 	// Don't actually back off, just keep retrying quickly to speed up the test.
 	bo.Multiplier = 1
 
-	err = backoff.Retry(operation, bo)
+	_, err = backoff.Retry(t.Context(), operation, backoff.WithBackOff(bo), backoff.WithMaxElapsedTime(maxWaitTime))
 	assert.NoError(t, err, "timed out waiting for objects to exist=%v", shouldExist)
 }
 

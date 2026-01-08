@@ -11,16 +11,8 @@ const SupportList: SupportItem[] = [
         description: "Development; open-source community efforts",
     },
     {
-        title: "IBM Edge Application Manager",
-        description: "Open-source community efforts",
-    },
-    {
         title: "Open Horizon",
         description: "Development; open-source community efforts",
-    },
-    {
-        title: "NS1",
-        description: "Open-source community efforts",
     },
     {
         title: "IOTech Systems",

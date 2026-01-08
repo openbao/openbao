@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v5"
 	log "github.com/hashicorp/go-hclog"
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -169,7 +169,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 	}
 
 	// Create PostgreSQL handle for the database.
-	db, err := doRetryConnect(logger, connURL, uint64(maxRetriesInt))
+	db, err := doRetryConnect(logger, connURL, uint(maxRetriesInt))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
 	}
@@ -284,33 +284,26 @@ func connectionURL(conf map[string]string) string {
 	return connURL
 }
 
-func doRetryConnect(logger log.Logger, connURL string, retries uint64) (*sql.DB, error) {
+func doRetryConnect(logger log.Logger, connURL string, retries uint) (*sql.DB, error) {
 	db, err := sql.Open("pgx", connURL)
 	if err != nil {
 		return nil, err
 	}
 
-	var b backoff.BackOff = backoff.NewExponentialBackOff(
-		backoff.WithMaxInterval(5*time.Second),
-		backoff.WithInitialInterval(15*time.Millisecond),
-	)
-	if retries > 0 {
-		b = backoff.WithMaxRetries(b, retries)
+	b := backoff.NewExponentialBackOff()
+	b.MaxInterval = 5 * time.Second
+	b.InitialInterval = 15 * time.Millisecond
+
+	op := func() (any, error) {
+		if err := db.Ping(); err != nil {
+			logger.Debug("database not ready", "err", err)
+			return nil, err
+		}
+		return nil, nil
 	}
 
-	b.Reset()
-
-	if err := backoff.Retry(func() error {
-		err := db.Ping()
-		if err != nil {
-			logger.Debug("database not ready", "err", err)
-			return err
-		}
-
-		return nil
-	}, b); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("unable to verify connection: %w", err)
+	if _, err := backoff.Retry(context.Background(), op, backoff.WithBackOff(b), backoff.WithMaxTries(retries)); err != nil {
+		return nil, errors.Join(fmt.Errorf("unable to verify connection: %w", err), db.Close())
 	}
 
 	return db, nil

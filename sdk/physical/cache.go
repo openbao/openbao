@@ -80,7 +80,7 @@ type cache struct {
 	lru             *lru.TwoQueueCache[string, *Entry]
 	locks           []*locksutil.LockEntry
 	logger          log.Logger
-	enabled         *uint32
+	enabled         atomic.Bool
 	cacheExceptions *pathmanager.PathManager
 	metricSink      metrics.MetricSink
 }
@@ -137,7 +137,7 @@ func newCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricS
 		locks:   locksutil.CreateLocks(),
 		logger:  logger,
 		// This fails safe.
-		enabled:         new(uint32),
+		enabled:         atomic.Bool{},
 		cacheExceptions: pm,
 		metricSink:      metricSink,
 	}
@@ -152,7 +152,7 @@ func newCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricS
 }
 
 func (c *cache) ShouldCache(key string) bool {
-	if atomic.LoadUint32(c.enabled) == 0 {
+	if !c.enabled.Load() {
 		return false
 	}
 
@@ -162,15 +162,7 @@ func (c *cache) ShouldCache(key string) bool {
 // SetEnabled is used to toggle whether the cache is on or off. It must be
 // called with true to actually activate the cache after creation.
 func (c *cache) SetEnabled(enabled bool) {
-	if enabled {
-		atomic.StoreUint32(c.enabled, 1)
-		return
-	}
-	atomic.StoreUint32(c.enabled, 0)
-}
-
-func (c *cache) GetEnabled() bool {
-	return atomic.LoadUint32(c.enabled) == 1
+	c.enabled.Store(enabled)
 }
 
 // Purge is used to clear the cache
@@ -284,7 +276,7 @@ func (c *cache) cloneWithStorage(b Backend) *cache {
 	// with an empty cache), but easiest to implement (as the transaction can
 	// modify its cache as it pleases).
 	cacheCopy := newCache(b, c.size/TransactionCacheFactor, c.logger, c.metricSink).(*cache)
-	cacheCopy.SetEnabled(c.GetEnabled())
+	cacheCopy.SetEnabled(c.enabled.Load())
 	return cacheCopy
 }
 

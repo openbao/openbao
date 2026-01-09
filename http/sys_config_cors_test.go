@@ -60,15 +60,38 @@ func TestSysConfigCors(t *testing.T) {
 		"warnings":       nil,
 		"auth":           nil,
 		"data": map[string]interface{}{
-			"enabled":         true,
-			"allowed_origins": []interface{}{addr},
-			"allowed_headers": expectedHeaders,
+			"enabled":           true,
+			"allowed_origins":   []interface{}{addr},
+			"allowed_headers":   expectedHeaders,
+			"allow_credentials": false,
 		},
-		"enabled":         true,
-		"allowed_origins": []interface{}{addr},
-		"allowed_headers": expectedHeaders,
+		"enabled":           true,
+		"allowed_origins":   []interface{}{addr},
+		"allowed_headers":   expectedHeaders,
+		"allow_credentials": false,
 	}
 
+	testResponseStatus(t, resp, 200)
+
+	testResponseBody(t, resp, &actual)
+	expected["request_id"] = actual["request_id"]
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("bad: expected: %#v\nactual: %#v", expected, actual)
+	}
+
+	// Enable CORS, but with allow_credentials turned on
+	resp = testHttpPut(t, token, addr+"/v1/sys/config/cors", map[string]interface{}{
+		"allowed_origins":   addr,
+		"allowed_headers":   "X-Custom-Header",
+		"allow_credentials": "true",
+	})
+	testResponseStatus(t, resp, 204)
+
+	expected["allow_credentials"] = true
+	expected["data"].(map[string]interface{})["allow_credentials"] = true
+
+	resp = testHttpGet(t, token, addr+"/v1/sys/config/cors")
 	testResponseStatus(t, resp, 200)
 
 	testResponseBody(t, resp, &actual)

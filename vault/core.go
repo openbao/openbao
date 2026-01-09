@@ -1273,7 +1273,6 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 	credentialBackends[mountTypeToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		tsLogger := logger.Named("token")
 		c.AddLogger(tsLogger)
-
 		return NewTokenStore(ctx, tsLogger, c, config)
 	}
 	credentialBackends[mountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
@@ -1317,16 +1316,7 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 		b := NewSystemBackend(c, sysBackendLogger)
 		return b, b.Setup(ctx, config)
 	}
-	logicalBackends[mountTypeNSSystem] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-		ns, err := namespace.FromContext(ctx)
-		if err != nil {
-			return nil, err
-		}
-		sysBackendLogger := logger.Named(fmt.Sprintf("%s_system", ns.Path))
-		c.AddLogger(sysBackendLogger)
-		b := NewSystemBackend(c, sysBackendLogger)
-		return b, b.Setup(ctx, config)
-	}
+	logicalBackends[mountTypeNSSystem] = logicalBackends[mountTypeSystem]
 
 	// Identity
 	logicalBackends[mountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {

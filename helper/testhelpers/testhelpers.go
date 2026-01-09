@@ -15,7 +15,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	metrics "github.com/hashicorp/go-metrics/compat"
@@ -453,8 +452,7 @@ func (p *TestRaftServerAddressProvider) ServerAddr(id raftlib.ServerID) (raftlib
 
 func RaftClusterJoinNodes(t testing.T, cluster *vault.TestCluster) {
 	addressProvider := &TestRaftServerAddressProvider{Cluster: cluster}
-
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	leader := cluster.Cores[0]
 

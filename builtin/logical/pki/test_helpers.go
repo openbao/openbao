@@ -40,7 +40,7 @@ func CreateBackendWithStorage(t testing.TB) (*backend, logical.Storage) {
 		t.Fatal(err)
 	}
 	// Assume for our tests we have performed the migration already.
-	b.pkiStorageVersion.Store(1)
+	b.pkiStorageVersion.Store(true)
 	return b, config.StorageView
 }
 

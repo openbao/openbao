@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -805,7 +804,7 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 		AcmeAccountSafetyBuffer: acmeAccountSafetyBufferDuration,
 	}
 
-	if !atomic.CompareAndSwapUint32(b.tidyCASGuard, 0, 1) {
+	if !b.tidyCASGuard.CompareAndSwap(false, true) {
 		resp := &logical.Response{}
 		resp.AddWarning("Tidy operation already in progress.")
 		return resp, nil
@@ -838,8 +837,8 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 
 func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 	go func() {
-		atomic.StoreUint32(b.tidyCancelCAS, 0)
-		defer atomic.StoreUint32(b.tidyCASGuard, 0)
+		b.tidyCancelCAS.Store(false)
+		defer b.tidyCASGuard.Store(false)
 
 		b.tidyStatusStart(config)
 
@@ -862,7 +861,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
 				return errTidyCancelled
 			}
 
@@ -875,7 +874,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
 				return errTidyCancelled
 			}
 
@@ -886,7 +885,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
 				return errTidyCancelled
 			}
 
@@ -897,7 +896,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
 				return errTidyCancelled
 			}
 
@@ -908,7 +907,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
 				return errTidyCancelled
 			}
 
@@ -955,7 +954,7 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 		metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_current_entry"}, float32(totalSerialCount+index))
 
 		// Check for cancel before continuing
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+		if b.tidyCancelCAS.CompareAndSwap(true, false) {
 			return false, errTidyCancelled
 		}
 
@@ -1106,7 +1105,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 		metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_current_entry"}, float32(int(totalRevokedSerialCount)+index))
 
 		// Check for cancel before continuing.
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+		if b.tidyCancelCAS.CompareAndSwap(true, false) {
 			return false, errTidyCancelled
 		}
 
@@ -1473,7 +1472,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 		}
 
 		// Check for cancel before continuing.
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+		if b.tidyCancelCAS.CompareAndSwap(true, false) {
 			return false, errTidyCancelled
 		}
 
@@ -1540,7 +1539,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
 				return errTidyCancelled
 			}
 
@@ -1558,7 +1557,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 }
 
 func (b *backend) pathTidyCancelWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if atomic.LoadUint32(b.tidyCASGuard) == 0 {
+	if !b.tidyCASGuard.Load() {
 		resp := &logical.Response{}
 		resp.AddWarning("Tidy operation cannot be cancelled as none is currently running.")
 		return resp, nil
@@ -1570,8 +1569,8 @@ func (b *backend) pathTidyCancelWrite(ctx context.Context, req *logical.Request,
 	//
 	// Unlock needs to occur prior to calling read.
 	b.tidyStatusLock.Lock()
-	if b.tidyStatus.state == tidyStatusStarted || atomic.LoadUint32(b.tidyCASGuard) == 1 {
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 0, 1) {
+	if b.tidyStatus.state == tidyStatusStarted || b.tidyCASGuard.Load() {
+		if b.tidyCancelCAS.CompareAndSwap(false, true) {
 			b.tidyStatus.state = tidyStatusCancelling
 		}
 	}

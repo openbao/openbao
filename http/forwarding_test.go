@@ -191,19 +191,21 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	// core.Logger().Printf("[TRACE] done mounting transit")
 
-	totalOps := new(uint32)
-	successfulOps := new(uint32)
-	key1ver := new(int32)
-	*key1ver = 1
-	key2ver := new(int32)
-	*key2ver = 1
-	key3ver := new(int32)
-	*key3ver = 1
-	numWorkers := new(uint32)
-	*numWorkers = 50
-	numWorkersStarted := new(uint32)
+	totalOps := atomic.Uint32{}
+	successfulOps := atomic.Uint32{}
+	key1ver := atomic.Int32{}
+	key1ver.Store(1)
+
+	key2ver := atomic.Int32{}
+	key2ver.Store(1)
+
+	key3ver := atomic.Int32{}
+	key3ver.Store(1)
+
+	numWorkers := atomic.Uint32{}
+	numWorkers.Store(50)
+	numWorkersStarted := atomic.Uint32{}
 	var waitLock sync.Mutex
 	waitCond := sync.NewCond(&waitLock)
 
@@ -218,8 +220,8 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 				core.Logger().Error("got a panic", "error", err)
 				t.Fail()
 			}
-			atomic.AddUint32(totalOps, myTotalOps)
-			atomic.AddUint32(successfulOps, mySuccessfulOps)
+			totalOps.Add(myTotalOps)
+			successfulOps.Add(mySuccessfulOps)
 			wg.Done()
 		}()
 
@@ -292,10 +294,10 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 			}
 		}
 
-		atomic.AddUint32(numWorkersStarted, 1)
+		numWorkersStarted.Add(1)
 
 		waitCond.L.Lock()
-		for atomic.LoadUint32(numWorkersStarted) != atomic.LoadUint32(numWorkers) {
+		for numWorkersStarted.Load() != numWorkers.Load() {
 			waitCond.Wait()
 		}
 		waitCond.L.Unlock()
@@ -386,11 +388,11 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 				if parallel {
 					switch chosenKey {
 					case "test1":
-						atomic.AddInt32(key1ver, 1)
+						key1ver.Add(1)
 					case "test2":
-						atomic.AddInt32(key2ver, 1)
+						key2ver.Add(1)
 					case "test3":
-						atomic.AddInt32(key3ver, 1)
+						key3ver.Add(1)
 					}
 				} else {
 					keyVer++
@@ -404,11 +406,11 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 				if parallel {
 					switch chosenKey {
 					case "test1":
-						latestVersion = atomic.LoadInt32(key1ver)
+						latestVersion = key1ver.Load()
 					case "test2":
-						latestVersion = atomic.LoadInt32(key2ver)
+						latestVersion = key2ver.Load()
 					case "test3":
-						latestVersion = atomic.LoadInt32(key3ver)
+						latestVersion = key3ver.Load()
 					}
 				}
 
@@ -426,22 +428,22 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 		}
 	}
 
-	atomic.StoreUint32(numWorkers, num)
-
+	numWorkers.Store(num)
 	// Spawn some of these workers for 10 seconds
-	for i := 0; i < int(atomic.LoadUint32(numWorkers)); i++ {
+	for i := 0; i < int(numWorkers.Load()); i++ {
 		wg.Add(1)
-		// core.Logger().Printf("[TRACE] spawning %d", i)
 		go doFuzzy(i+1, parallel)
 	}
 
 	// Wait for them all to finish
 	wg.Wait()
 
-	if *totalOps == 0 || *totalOps != *successfulOps {
-		t.Fatalf("total/successful ops zero or mismatch: %d/%d; parallel: %t, num %d", *totalOps, *successfulOps, parallel, num)
+	tOps := totalOps.Load()
+	sOps := successfulOps.Load()
+	if tOps == 0 || tOps != sOps {
+		t.Fatalf("total/successful ops zero or mismatch: %d/%d; parallel: %t, num %d", tOps, sOps, parallel, num)
 	}
-	t.Logf("total operations tried: %d, total successful: %d; parallel: %t, num %d", *totalOps, *successfulOps, parallel, num)
+	t.Logf("total operations tried: %d, total successful: %d; parallel: %t, num %d", tOps, sOps, parallel, num)
 }
 
 // This tests TLS connection state forwarding by ensuring that we can use a

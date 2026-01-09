@@ -22,9 +22,7 @@ func TestSinkServer(t *testing.T) {
 	log := logging.NewVaultLogger(hclog.Trace)
 
 	fs1, path1 := testFileSink(t, log)
-	defer os.RemoveAll(path1)
 	fs2, path2 := testFileSink(t, log)
-	defer os.RemoveAll(path2)
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 

@@ -111,14 +111,14 @@ func compareDBs(t *testing.T, boltDB1, boltDB2 *bolt.DB, dataOnly bool) error {
 
 func TestRaft_Backend(t *testing.T) {
 	t.Parallel()
-	b, _ := GetRaft(t, true, true)
+	b := GetRaft(t, true, true)
 
 	physical.ExerciseBackend(t, b)
 }
 
 func TestRaft_TransactionalBackend(t *testing.T) {
 	t.Parallel()
-	b, _ := GetRaft(t, true, true)
+	b := GetRaft(t, true, true)
 
 	physical.ExerciseTransactionalBackend(t, b)
 
@@ -174,11 +174,7 @@ func TestRaft_ParseNonVoter(t *testing.T) {
 					if tc.envValue != nil {
 						t.Setenv(EnvVaultRaftNonVoter, *tc.envValue)
 					}
-					raftDir, err := os.MkdirTemp("", "vault-raft-")
-					if err != nil {
-						t.Fatal(err)
-					}
-					defer os.RemoveAll(raftDir)
+					raftDir := t.TempDir()
 
 					conf := map[string]string{
 						"path":       raftDir,
@@ -213,7 +209,7 @@ func TestRaft_ParseNonVoter(t *testing.T) {
 
 func TestRaft_Backend_LargeKey(t *testing.T) {
 	t.Parallel()
-	b, _ := GetRaft(t, true, true)
+	b := GetRaft(t, true, true)
 
 	key, err := base62.Random(bolt.MaxKeySize + 1)
 	if err != nil {
@@ -241,7 +237,7 @@ func TestRaft_Backend_LargeKey(t *testing.T) {
 
 func TestRaft_Backend_LargeValue(t *testing.T) {
 	t.Parallel()
-	b, _ := GetRaft(t, true, true)
+	b := GetRaft(t, true, true)
 
 	value := make([]byte, defaultMaxEntrySize+1)
 	rand.Read(value)
@@ -267,7 +263,7 @@ func TestRaft_Backend_LargeValue(t *testing.T) {
 
 func TestRaft_Backend_ListPrefix(t *testing.T) {
 	t.Parallel()
-	b, _ := GetRaft(t, true, true)
+	b := GetRaft(t, true, true)
 
 	physical.ExerciseBackend_ListPrefix(t, b)
 }
@@ -275,8 +271,8 @@ func TestRaft_Backend_ListPrefix(t *testing.T) {
 func TestRaft_HABackend(t *testing.T) {
 	t.Skip()
 	t.Parallel()
-	raft, _ := GetRaft(t, true, true)
-	raft2, _ := GetRaft(t, false, true)
+	raft := GetRaft(t, true, true)
+	raft2 := GetRaft(t, false, true)
 
 	// Add raft2 to the cluster
 	addPeer(t, raft, raft2)
@@ -289,9 +285,9 @@ func TestRaft_HABackend(t *testing.T) {
 
 func TestRaft_Backend_ThreeNode(t *testing.T) {
 	t.Parallel()
-	raft1, _ := GetRaft(t, true, true)
-	raft2, _ := GetRaft(t, false, true)
-	raft3, _ := GetRaft(t, false, true)
+	raft1 := GetRaft(t, true, true)
+	raft2 := GetRaft(t, false, true)
+	raft3 := GetRaft(t, false, true)
 
 	// Add raft2 to the cluster
 	addPeer(t, raft1, raft2)
@@ -328,9 +324,9 @@ func testRaft_assertFastTxnTrackerCleanup(t testing.TB, raft *RaftBackend) {
 func TestRaft_GetOfflineConfig(t *testing.T) {
 	t.Parallel()
 	// Create 3 raft nodes
-	raft1, _ := GetRaft(t, true, true)
-	raft2, _ := GetRaft(t, false, true)
-	raft3, _ := GetRaft(t, false, true)
+	raft1 := GetRaft(t, true, true)
+	raft2 := GetRaft(t, false, true)
+	raft3 := GetRaft(t, false, true)
 
 	// Add them all to the cluster
 	addPeer(t, raft1, raft2)
@@ -365,10 +361,13 @@ func TestRaft_Recovery(t *testing.T) {
 	t.Parallel()
 
 	// Create 4 raft nodes
-	raft1, dir1 := GetRaft(t, true, true)
-	raft2, dir2 := GetRaft(t, false, true)
-	raft3, _ := GetRaft(t, false, true)
-	raft4, dir4 := GetRaft(t, false, true)
+	raft1 := GetRaft(t, true, true)
+	dir1 := raft1.dataDir
+	raft2 := GetRaft(t, false, true)
+	dir2 := raft2.dataDir
+	raft3 := GetRaft(t, false, true)
+	raft4 := GetRaft(t, false, true)
+	dir4 := raft4.dataDir
 
 	// Add them all to the cluster
 	addPeer(t, raft1, raft2)
@@ -453,7 +452,8 @@ func TestRaft_Recovery(t *testing.T) {
 
 func TestRaft_Backend_Performance(t *testing.T) {
 	t.Parallel()
-	b, dir := GetRaft(t, true, false)
+	b := GetRaft(t, true, false)
+	dir := b.dataDir
 
 	defaultConfig := raft.DefaultConfig()
 
@@ -509,7 +509,7 @@ func TestRaft_Backend_Performance(t *testing.T) {
 
 func TestRaft_Backend_PutTxnMargin(t *testing.T) {
 	t.Parallel()
-	b, _ := GetRaft(t, true, true)
+	b := GetRaft(t, true, true)
 
 	// Ensure different key sizes don't change the results.
 	for _, keySize := range []int{1, 3, 13, 34, 144, 610, 17631} {
@@ -550,8 +550,8 @@ func TestRaft_LeaderConstant(t *testing.T) {
 }
 
 func BenchmarkDB_Puts(b *testing.B) {
-	raft, _ := GetRaft(b, true, false)
-	raft2, _ := GetRaft(b, true, false)
+	raft := GetRaft(b, true, false)
+	raft2 := GetRaft(b, true, false)
 
 	bench := func(b *testing.B, s physical.Backend, dataSize int) {
 		data, err := uuid.GenerateRandomBytes(dataSize)
@@ -580,7 +580,7 @@ func BenchmarkDB_Puts(b *testing.B) {
 }
 
 func BenchmarkDB_Snapshot(b *testing.B) {
-	raft, _ := GetRaft(b, true, false)
+	raft := GetRaft(b, true, false)
 
 	data, err := uuid.GenerateRandomBytes(256 * 1024)
 	if err != nil {

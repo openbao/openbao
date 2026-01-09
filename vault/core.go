@@ -1271,17 +1271,19 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 	}
 
 	credentialBackends[mountTypeToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-		tsLogger := logger.Named("token")
-		c.AddLogger(tsLogger)
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
 
-		return NewTokenStore(ctx, tsLogger, c, config)
-	}
-	credentialBackends[mountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		tsLogger := logger.Named("token").With("namespace", ns.Path)
+		c.AddLogger(tsLogger)
 		if c.tokenStore != nil {
 			return c.tokenStore, nil
 		}
-		return nil, errors.New("token store does not exist")
+		return NewTokenStore(ctx, tsLogger, c, config)
 	}
+	credentialBackends[mountTypeNSToken] = credentialBackends[mountTypeToken]
 
 	c.credentialBackends = credentialBackends
 }
@@ -1302,52 +1304,47 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 	}
 
 	// Cubbyhole
-	logicalBackends[mountTypeCubbyhole] = CubbyholeBackendFactory
-	logicalBackends[mountTypeNSCubbyhole] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	logicalBackends[mountTypeCubbyhole] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		if c.cubbyholeBackend != nil {
 			return c.cubbyholeBackend, nil
 		}
-		return nil, errors.New("cubbyhole backend does not exist")
+		return CubbyholeBackendFactory(ctx, config)
 	}
+	logicalBackends[mountTypeNSCubbyhole] = logicalBackends[mountTypeCubbyhole]
 
 	// System
 	logicalBackends[mountTypeSystem] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-		sysBackendLogger := logger.Named("system")
-		c.AddLogger(sysBackendLogger)
-		b := NewSystemBackend(c, sysBackendLogger)
-		return b, b.Setup(ctx, config)
-	}
-	logicalBackends[mountTypeNSSystem] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		ns, err := namespace.FromContext(ctx)
 		if err != nil {
 			return nil, err
 		}
-		sysBackendLogger := logger.Named(fmt.Sprintf("%s_system", ns.Path))
+
+		sysBackendLogger := logger.Named("system").With("namespace", ns.Path)
 		c.AddLogger(sysBackendLogger)
 		b := NewSystemBackend(c, sysBackendLogger)
 		return b, b.Setup(ctx, config)
 	}
+	logicalBackends[mountTypeNSSystem] = logicalBackends[mountTypeSystem]
 
 	// Identity
 	logicalBackends[mountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-		identityLogger := logger.Named("identity")
-		c.AddLogger(identityLogger)
-		return NewIdentityStore(ctx, c, config, identityLogger)
-	}
-	logicalBackends[mountTypeNSIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-		if c.identityStore != nil {
-			ns, err := namespace.FromContext(ctx)
-			if err != nil {
-				return nil, err
-			}
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
 
+		identityLogger := logger.Named("identity").With("namespace", ns.Path)
+		c.AddLogger(identityLogger)
+		if c.identityStore != nil {
 			if err := c.identityStore.AddNamespaceView(c, ns, config.StorageView); err != nil {
 				return nil, fmt.Errorf("failed to register namespace to identity store: %w", err)
 			}
 			return c.identityStore, nil
 		}
-		return nil, errors.New("identity store does not exist")
+
+		return NewIdentityStore(ctx, c, config, identityLogger)
 	}
+	logicalBackends[mountTypeNSIdentity] = logicalBackends[mountTypeIdentity]
 
 	c.logicalBackends = logicalBackends
 }

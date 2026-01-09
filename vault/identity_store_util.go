@@ -102,12 +102,7 @@ func (i *IdentityStore) sanitizeName(name string) string {
 }
 
 func (i *IdentityStore) loadGroups(ctx context.Context) error {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
-	i.logger.Debug("identity loading groups", "namespace", ns.Path)
+	i.logger.Debug("identity loading groups")
 	existing, err := i.groupPacker(ctx).View().List(ctx, groupBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for groups: %w", err)
@@ -203,13 +198,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 }
 
 func (i *IdentityStore) loadEntities(ctx context.Context) error {
-	// Accumulate existing entities
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
-	i.logger.Debug("loading entities", "namespace", ns.Path)
+	i.logger.Debug("loading entities")
 	existing, err := i.entityPacker(ctx).View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for entities: %w", err)

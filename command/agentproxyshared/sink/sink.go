@@ -54,19 +54,17 @@ type SinkServer struct {
 	client        *api.Client
 	random        *rand.Rand
 	exitAfterAuth bool
-	remaining     *int32
+	remaining     atomic.Int32
 }
 
 func NewSinkServer(conf *SinkServerConfig) *SinkServer {
-	ss := &SinkServer{
+	return &SinkServer{
 		logger:        conf.Logger,
 		client:        conf.Client,
 		random:        rand.New(rand.NewSource(int64(time.Now().Nanosecond()))),
 		exitAfterAuth: conf.ExitAfterAuth,
-		remaining:     new(int32),
+		remaining:     atomic.Int32{},
 	}
-
-	return ss
 }
 
 // Run executes the server's run loop, which is responsible for reading
@@ -122,7 +120,7 @@ func (ss *SinkServer) Run(ctx context.Context, incoming chan string, sinks []*Si
 					for {
 						select {
 						case <-sinkCh:
-							atomic.AddInt32(ss.remaining, -1)
+							ss.remaining.Add(-1)
 						default:
 							break drainLoop
 						}
@@ -131,7 +129,7 @@ func (ss *SinkServer) Run(ctx context.Context, incoming chan string, sinks []*Si
 					*latestToken = token
 
 					for _, s := range sinks {
-						atomic.AddInt32(ss.remaining, 1)
+						ss.remaining.Add(1)
 						sinkCh <- sinkToken{s, token}
 					}
 				}
@@ -143,7 +141,7 @@ func (ss *SinkServer) Run(ctx context.Context, incoming chan string, sinks []*Si
 				}
 			}
 		case st := <-sinkCh:
-			atomic.AddInt32(ss.remaining, -1)
+			ss.remaining.Add(-1)
 			select {
 			case <-ctx.Done():
 				return nil
@@ -159,11 +157,11 @@ func (ss *SinkServer) Run(ctx context.Context, incoming chan string, sinks []*Si
 					timer.Stop()
 					return nil
 				case <-timer.C:
-					atomic.AddInt32(ss.remaining, 1)
+					ss.remaining.Add(1)
 					sinkCh <- st
 				}
 			} else {
-				if atomic.LoadInt32(ss.remaining) == 0 && ss.exitAfterAuth {
+				if ss.remaining.Load() == 0 && ss.exitAfterAuth {
 					return nil
 				}
 			}

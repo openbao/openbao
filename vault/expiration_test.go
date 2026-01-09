@@ -2368,12 +2368,12 @@ func TestExpiration_revokeEntry_rejected_fairsharing(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
 	exp := core.expiration
 
-	rejected := new(uint32)
+	rejected := atomic.Bool{}
 
 	noop := &NoopBackend{
 		RequestHandler: func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
 			if req.Operation == logical.RevokeOperation {
-				if atomic.CompareAndSwapUint32(rejected, 0, 1) {
+				if rejected.CompareAndSwap(false, true) {
 					t.Log("denying revocation")
 					return nil, errors.New("nope")
 				}
@@ -2422,7 +2422,7 @@ func TestExpiration_revokeEntry_rejected_fairsharing(t *testing.T) {
 	// Give time to let the request be handled
 	time.Sleep(1 * time.Second)
 
-	if atomic.LoadUint32(rejected) != 1 {
+	if !rejected.Load() {
 		t.Fatal("unexpected val for rejected")
 	}
 

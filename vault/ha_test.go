@@ -29,13 +29,13 @@ func TestGrabLockOrStop(t *testing.T) {
 	)
 	done := make(chan struct{})
 	defer close(done)
-	var lockCount int64
+	lockCount := atomic.Uint32{}
 	go func() {
 		select {
 		case <-done:
 		case <-time.After(testTimeout):
 			panic(fmt.Sprintf("deadlock after %d lock count",
-				atomic.LoadInt64(&lockCount)))
+				lockCount.Load()))
 		}
 	}()
 
@@ -82,7 +82,7 @@ func TestGrabLockOrStop(t *testing.T) {
 
 				// This lets us know how many lock/unlock and rlock/runlock have
 				// happened if there's a deadlock.
-				atomic.AddInt64(&lockCount, 1)
+				lockCount.Add(1)
 			}
 		}()
 	}

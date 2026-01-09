@@ -265,7 +265,7 @@ type Core struct {
 	// postUnsealStarted informs the raft retry join routine that unseal key
 	// validation is completed and post unseal has started so that it can complete
 	// the join process when Shamir seal is in use
-	postUnsealStarted *uint32
+	postUnsealStarted atomic.Bool
 
 	// raftInfo will contain information required for this node to join as a
 	// peer to an existing raft cluster. This is marked atomic to prevent data
@@ -273,11 +273,11 @@ type Core struct {
 	raftInfo *atomic.Value
 
 	// migrationInfo is used during (and possibly after) a seal migration.
-	// This contains information about the seal we are migrating *from*.  Even
+	// This contains information about the seal we are migrating *from*. Even
 	// post seal migration, provided the old seal is still in configuration
 	// migrationInfo will be populated, which may be necessary for seal rewrap.
 	migrationInfo     *migrationInformation
-	sealMigrationDone *uint32
+	sealMigrationDone atomic.Bool
 
 	// barrier is the security barrier wrapping the physical backend
 	barrier SecurityBarrier
@@ -296,14 +296,14 @@ type Core struct {
 
 	// stateLock protects mutable state
 	stateLock locking.RWMutex
-	sealed    *uint32
+	sealed    atomic.Bool
 
 	standby              atomic.Bool
 	standbyDoneCh        chan struct{}
 	standbyStopCh        *atomic.Value
 	standbyRestartCh     *atomic.Value
 	manualStepDownCh     chan struct{}
-	keepHALockOnStepDown *uint32
+	keepHALockOnStepDown *atomic.Bool
 	heldHALock           physical.Lock
 
 	// shutdownDoneCh is used to notify when core.Shutdown() completes.
@@ -492,8 +492,8 @@ type Core struct {
 
 	// replicationState keeps the current replication state cached for quick
 	// lookup; activeNodeReplicationState stores the active value on standbys
-	replicationState           *uint32
-	activeNodeReplicationState *uint32
+	replicationState           *atomic.Uint32
+	activeNodeReplicationState *atomic.Uint32
 
 	// uiConfig contains UI configuration
 	uiConfig *UIConfig
@@ -551,10 +551,6 @@ type Core struct {
 	allLoggers     []log.Logger
 	allLoggersLock sync.RWMutex
 
-	// Can be toggled atomically to cause the core to never try to become
-	// active, or give up active as soon as it gets it
-	neverBecomeActive *uint32
-
 	// clusterListener starts up and manages connections on the cluster ports
 	clusterListener *atomic.Value
 
@@ -596,7 +592,7 @@ type Core struct {
 
 	// KeyRotateGracePeriod is how long we allow an upgrade path
 	// for standby instances before we delete the upgrade keys
-	keyRotateGracePeriod *int64
+	keyRotateGracePeriod *atomic.Int64
 
 	autoRotateCancel context.CancelFunc
 
@@ -936,8 +932,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		seal:                 conf.Seal,
 		stateLock:            stateLock,
 		router:               NewRouter(),
-		sealed:               new(uint32),
-		sealMigrationDone:    new(uint32),
 		standbyStopCh:        new(atomic.Value),
 		standbyRestartCh:     new(atomic.Value),
 		baseLogger:           conf.Logger,
@@ -954,29 +948,27 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		rawEnabled:                     conf.EnableRaw,
 		introspectionEnabled:           conf.EnableIntrospection,
 		shutdownDoneCh:                 new(atomic.Value),
-		replicationState:               new(uint32),
+		replicationState:               new(atomic.Uint32),
+		activeNodeReplicationState:     new(atomic.Uint32),
 		localClusterPrivateKey:         new(atomic.Value),
 		localClusterCert:               new(atomic.Value),
 		localClusterParsedCert:         new(atomic.Value),
-		activeNodeReplicationState:     new(uint32),
-		keepHALockOnStepDown:           new(uint32),
+		keepHALockOnStepDown:           new(atomic.Bool),
 		replicationFailure:             new(uint32),
 		activeContextCancelFunc:        new(atomic.Value),
 		allLoggers:                     conf.AllLoggers,
 		builtinRegistry:                conf.BuiltinRegistry,
-		neverBecomeActive:              new(uint32),
 		clusterLeaderParams:            new(atomic.Value),
 		metricsHelper:                  conf.MetricsHelper,
 		metricSink:                     conf.MetricSink,
 		secureRandomReader:             conf.SecureRandomReader,
 		rawConfig:                      new(atomic.Value),
 		recoveryMode:                   conf.RecoveryMode,
-		postUnsealStarted:              new(uint32),
 		raftInfo:                       new(atomic.Value),
 		raftJoinDoneCh:                 make(chan struct{}),
 		pendingRaftPeerChallengeKey:    make([]byte, 32),
 		clusterHeartbeatInterval:       clusterHeartbeatInterval,
-		keyRotateGracePeriod:           new(int64),
+		keyRotateGracePeriod:           new(atomic.Int64),
 		numExpirationWorkers:           conf.NumExpirationWorkers,
 		raftFollowerStates:             raft.NewFollowerStates(),
 		disableAutopilot:               conf.DisableAutopilot,
@@ -997,7 +989,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	c.standby.Store(true)
 	c.standbyStopCh.Store(make(chan struct{}, 1))
 	c.standbyRestartCh.Store(make(chan struct{}, 1))
-	atomic.StoreUint32(c.sealed, 1)
+	c.sealed.Store(true)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
 
 	c.shutdownDoneCh.Store(make(chan struct{}))
@@ -1014,7 +1006,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	c.SetConfig(conf.RawConfig)
 
-	atomic.StoreUint32(c.replicationState, uint32(consts.ReplicationDRDisabled|consts.ReplicationPerformanceDisabled))
+	c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceDisabled))
 	c.localClusterCert.Store(([]byte)(nil))
 	c.localClusterParsedCert.Store((*x509.Certificate)(nil))
 	c.localClusterPrivateKey.Store((*ecdsa.PrivateKey)(nil))
@@ -1022,7 +1014,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	c.clusterLeaderParams.Store((*ClusterLeaderParams)(nil))
 	c.clusterAddr.Store(conf.ClusterAddr)
 	c.activeContextCancelFunc.Store((context.CancelFunc)(nil))
-	atomic.StoreInt64(c.keyRotateGracePeriod, int64(2*time.Minute))
+	c.keyRotateGracePeriod.Store(int64(2 * time.Minute))
 
 	c.raftInfo.Store((*raftInformation)(nil))
 
@@ -1060,7 +1052,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	// Load CORS config and provide a value for the core field.
 	c.corsConfig = &CORSConfig{
 		core:    c,
-		Enabled: new(uint32),
+		Enabled: new(atomic.Bool),
 	}
 
 	// Load write-forwarded path manager.
@@ -1070,7 +1062,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	if c.seal == nil {
 		wrapper := aeadwrapper.NewShamirWrapper()
 		wrapper.SetConfig(context.Background(), awskms.WithLogger(c.logger.Named("shamir")))
-
 		c.seal = NewDefaultSeal(vaultseal.NewAccess(wrapper))
 	}
 	c.seal.SetCore(c)
@@ -1442,7 +1433,7 @@ func (c *Core) GetContext() (context.Context, context.CancelFunc) {
 
 // Sealed checks if the Vault is current sealed
 func (c *Core) Sealed() bool {
-	return atomic.LoadUint32(c.sealed) == 1
+	return c.sealed.Load()
 }
 
 // SecretProgress returns the number of keys provided so far. Lock
@@ -1604,7 +1595,7 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 		// Inform that routine that unseal key validation is complete so that it can continue to
 		// try and join possible leader nodes, and wait for it to complete.
 
-		atomic.StoreUint32(c.postUnsealStarted, 1)
+		c.postUnsealStarted.Store(true)
 
 		c.logger.Info("waiting for raft retry join process to complete")
 		<-c.raftJoinDoneCh
@@ -1744,13 +1735,13 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 	return unsealKey, nil
 }
 
-// sealMigrated must be called with the stateLock held.  It returns true if
+// sealMigrated must be called with the stateLock held. It returns true if
 // the seal configured in HCL and the seal configured in storage match.
 // For the auto->auto same seal migration scenario, it will return false even
 // if the preceding conditions are true but we cannot decrypt the root key
 // in storage using the configured seal.
 func (c *Core) sealMigrated(ctx context.Context) (bool, error) {
-	if atomic.LoadUint32(c.sealMigrationDone) == 1 {
+	if c.sealMigrationDone.Load() {
 		return true, nil
 	}
 
@@ -1893,7 +1884,7 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 	}
 
 	// Flag migration performed for seal-rewrap later
-	atomic.StoreUint32(c.sealMigrationDone, 1)
+	c.sealMigrationDone.Store(true)
 
 	c.logger.Info("seal migration complete")
 	return nil
@@ -1957,7 +1948,7 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 	}
 
 	// Success!
-	atomic.StoreUint32(c.sealed, 0)
+	c.sealed.Store(false)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
 
 	if c.logger.IsInfo() {
@@ -2173,7 +2164,7 @@ func (c *Core) sealInternal() error {
 
 func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup bool) error {
 	// Mark sealed, and if already marked return
-	if swapped := atomic.CompareAndSwapUint32(c.sealed, 0, 1); !swapped {
+	if swapped := c.sealed.CompareAndSwap(false, true); !swapped {
 		return nil
 	}
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
@@ -2232,7 +2223,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 		// held. Otherwise grab it here so that when stopCh is triggered we are
 		// locked.
 		if keepHALock {
-			atomic.StoreUint32(c.keepHALockOnStepDown, 1)
+			c.keepHALockOnStepDown.Store(true)
 		}
 		if grabStateLock {
 			cancelCtxAndLock()
@@ -2249,7 +2240,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 
 		// Wait for runStandby to stop
 		<-c.standbyDoneCh
-		atomic.StoreUint32(c.keepHALockOnStepDown, 0)
+		c.keepHALockOnStepDown.Store(false)
 		c.logger.Debug("runStandby done")
 	}
 
@@ -2632,11 +2623,11 @@ func (c *Core) preSeal() error {
 }
 
 func (c *Core) ReplicationState() consts.ReplicationState {
-	return consts.ReplicationState(atomic.LoadUint32(c.replicationState))
+	return consts.ReplicationState(c.replicationState.Load())
 }
 
 func (c *Core) ActiveNodeReplicationState() consts.ReplicationState {
-	return consts.ReplicationState(atomic.LoadUint32(c.activeNodeReplicationState))
+	return consts.ReplicationState(c.activeNodeReplicationState.Load())
 }
 
 func (c *Core) SealAccess() *SealAccess {
@@ -3279,11 +3270,11 @@ func (c *Core) RateLimitResponseHeadersEnabled() bool {
 }
 
 func (c *Core) KeyRotateGracePeriod() time.Duration {
-	return time.Duration(atomic.LoadInt64(c.keyRotateGracePeriod))
+	return time.Duration(c.keyRotateGracePeriod.Load())
 }
 
 func (c *Core) SetKeyRotateGracePeriod(t time.Duration) {
-	atomic.StoreInt64(c.keyRotateGracePeriod, int64(t))
+	c.keyRotateGracePeriod.Store(int64(t))
 }
 
 // Periodically test whether to automatically rotate the barrier key

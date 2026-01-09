@@ -15,11 +15,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-const (
-	CORSDisabled uint32 = iota
-	CORSEnabled
-)
-
 var StdAllowedHeaders = []string{
 	"Content-Type",
 	"X-Requested-With",
@@ -46,10 +41,10 @@ type CORSConfig struct {
 func (c *Core) saveCORSConfig(ctx context.Context) error {
 	view := c.systemBarrierView.SubView("config/")
 
-	enabled := atomic.LoadUint32(c.corsConfig.Enabled)
 	localConfig := &CORSConfig{
-		Enabled: &enabled,
+		Enabled: &atomic.Bool{},
 	}
+	localConfig.Enabled.Store(c.corsConfig.Enabled.Load())
 	c.corsConfig.RLock()
 	localConfig.AllowedOrigins = c.corsConfig.AllowedOrigins
 	localConfig.AllowedHeaders = c.corsConfig.AllowedHeaders
@@ -88,11 +83,10 @@ func (c *Core) loadCORSConfig(ctx context.Context) error {
 	}
 
 	if newConfig.Enabled == nil {
-		newConfig.Enabled = new(uint32)
+		newConfig.Enabled = &atomic.Bool{}
 	}
 
 	newConfig.core = c
-
 	c.corsConfig = newConfig
 
 	return nil
@@ -125,19 +119,14 @@ func (c *CORSConfig) Enable(ctx context.Context, urls []string, headers []string
 	}
 	c.Unlock()
 
-	atomic.StoreUint32(c.Enabled, CORSEnabled)
+	c.Enabled.Store(true)
 
 	return c.core.saveCORSConfig(ctx)
 }
 
-// IsEnabled returns the value of CORSConfig.isEnabled
-func (c *CORSConfig) IsEnabled() bool {
-	return atomic.LoadUint32(c.Enabled) == CORSEnabled
-}
-
 // Disable sets CORS to disabled and clears the allowed origins & headers.
 func (c *CORSConfig) Disable(ctx context.Context) error {
-	atomic.StoreUint32(c.Enabled, CORSDisabled)
+	c.Enabled.Store(false)
 	c.Lock()
 
 	c.AllowedOrigins = nil
@@ -153,7 +142,7 @@ func (c *CORSConfig) Disable(ctx context.Context) error {
 // cross-origin requests based on the CORSConfig.
 func (c *CORSConfig) IsValidOrigin(origin string) bool {
 	// If we aren't enabling CORS then all origins are valid
-	if !c.IsEnabled() {
+	if !c.Enabled.Load() {
 		return true
 	}
 

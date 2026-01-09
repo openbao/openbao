@@ -29,7 +29,7 @@ func wrapCORSHandler(h http.Handler, core *vault.Core) http.Handler {
 		// If CORS is not enabled or if no Origin header is present (i.e. the request
 		// is from the Vault CLI. A browser will always send an Origin header), then
 		// just return a 204.
-		if !corsConf.IsEnabled() {
+		if !corsConf.Enabled.Load() {
 			h.ServeHTTP(w, req)
 			return
 		}

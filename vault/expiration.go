@@ -130,7 +130,7 @@ type ExpirationManager struct {
 
 	tidyLock *int32
 
-	restoreMode        *int32
+	restoreMode        atomic.Bool
 	restoreModeLock    sync.RWMutex
 	restoreRequestLock sync.RWMutex
 	restoreLocks       []*locksutil.LockEntry
@@ -140,7 +140,7 @@ type ExpirationManager struct {
 	// do not hold coreStateLock in any API handler code - it is already held
 	coreStateLock     locking.RWMutex
 	quitContext       context.Context
-	leaseCheckCounter *uint32
+	leaseCheckCounter atomic.Uint32
 
 	logLeaseExpirations bool
 	expireFunc          atomic.Pointer[ExpireLeaseStrategy]
@@ -347,15 +347,12 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 		uniquePolicies:      make(map[string][]string),
 		emptyUniquePolicies: time.NewTicker(7 * 24 * time.Hour),
 
-		// new instances of the expiration manager will go immediately into
-		// restore mode
-		restoreMode:  new(int32),
 		restoreLocks: locksutil.CreateLocks(),
 		quitCh:       make(chan struct{}),
 
 		coreStateLock:     c.stateLock,
 		quitContext:       c.activeContext,
-		leaseCheckCounter: new(uint32),
+		leaseCheckCounter: atomic.Uint32{},
 
 		logLeaseExpirations: api.ReadBaoVariable("BAO_SKIP_LOGGING_LEASE_EXPIRATIONS") == "",
 
@@ -366,7 +363,10 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 	if exp.revokeRetryBase == 0 {
 		exp.revokeRetryBase = revokeRetryBase
 	}
-	*exp.restoreMode = 1
+
+	// new instances of the expiration manager will go
+	// immediately into restore mode
+	exp.restoreMode.Store(true)
 
 	if exp.logger == nil {
 		opts := log.LoggerOptions{Name: "expiration_manager"}
@@ -501,7 +501,7 @@ func (m *ExpirationManager) unlockLease(leaseID string) {
 
 // inRestoreMode returns if we are currently in restore mode
 func (m *ExpirationManager) inRestoreMode() bool {
-	return atomic.LoadInt32(m.restoreMode) == 1
+	return m.restoreMode.Load()
 }
 
 // invalidate will be used in the future for implementing read replica nodes
@@ -697,7 +697,7 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 		// if restore mode finished successfully, restore mode was already
 		// disabled with the lock. In an error state, this will allow the
 		// Stop() function to shut everything down.
-		atomic.StoreInt32(m.restoreMode, 0)
+		m.restoreMode.Store(false)
 
 		switch {
 		case retErr == nil:
@@ -830,7 +830,7 @@ LOOP:
 	}
 
 	m.restoreModeLock.Lock()
-	atomic.StoreInt32(m.restoreMode, 0)
+	m.restoreMode.Store(false)
 	m.restoreLoaded.Range(func(k, v interface{}) bool {
 		m.restoreLoaded.Delete(k)
 		return true
@@ -2036,7 +2036,7 @@ func (m *ExpirationManager) loadEntry(ctx context.Context, leaseID string) (*lea
 
 // loadEntryInternal is used when you need to load an entry but also need to
 // control the lifecycle of the restoreLock
-func (m *ExpirationManager) loadEntryInternal(ctx context.Context, leaseID string, restoreMode bool, checkRestored bool) (*leaseEntry, error) {
+func (m *ExpirationManager) loadEntryInternal(ctx context.Context, leaseID string, restoreMode, checkRestored bool) (*leaseEntry, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -2363,11 +2363,11 @@ func (m *ExpirationManager) emitMetrics() {
 	metrics.SetGauge([]string{"expire", "num_irrevocable_leases"}, float32(irrevocableLeases))
 	// Check if lease count is greater than the threshold
 	if allLeases > maxLeaseThreshold {
-		if atomic.LoadUint32(m.leaseCheckCounter) > 59 {
+		if m.leaseCheckCounter.Load() > 59 {
 			m.logger.Warn("lease count exceeds warning lease threshold", "have", allLeases, "threshold", maxLeaseThreshold)
-			atomic.StoreUint32(m.leaseCheckCounter, 0)
+			m.leaseCheckCounter.Store(0)
 		} else {
-			atomic.AddUint32(m.leaseCheckCounter, 1)
+			m.leaseCheckCounter.Add(1)
 		}
 	}
 }

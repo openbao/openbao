@@ -4647,7 +4647,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 					"}",
 			}),
 
-			storage: new(logical.InmemStorage).FailPut(true),
+			storage: new(logical.InmemStorage).FailPut(),
 
 			expectedResp:  nil,
 			expectErr:     true,
@@ -4775,7 +4775,7 @@ func TestHandlePoliciesPasswordGet(t *testing.T) {
 				"name": "testpolicy",
 			}),
 
-			storage: new(logical.InmemStorage).FailGet(true),
+			storage: new(logical.InmemStorage).FailGet(),
 
 			expectedResp:  nil,
 			expectErr:     true,
@@ -4876,7 +4876,7 @@ func TestHandlePoliciesPasswordDelete(t *testing.T) {
 				"name": "testpolicy",
 			}),
 
-			storage: new(logical.InmemStorage).FailDelete(true),
+			storage: new(logical.InmemStorage).FailDelete(),
 
 			expectedResp:  nil,
 			expectErr:     true,
@@ -5080,7 +5080,7 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 			},
 		},
 		"storage failure": {
-			storage: new(logical.InmemStorage).FailList(true),
+			storage: new(logical.InmemStorage).FailList(),
 
 			expectErr: true,
 		},
@@ -5137,7 +5137,7 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 					"name": "testpolicy",
 				}),
 
-				storage: new(logical.InmemStorage).FailGet(true),
+				storage: new(logical.InmemStorage).FailGet(),
 
 				expectedResp: nil,
 				expectErr:    true,

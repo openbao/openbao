@@ -6,6 +6,7 @@ package approle
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -37,7 +38,7 @@ type backend struct {
 	view logical.Storage
 
 	// Guard to clean-up the expired SecretID entries
-	tidySecretIDCASGuard *uint32
+	tidySecretIDCASGuard atomic.Bool
 
 	// Locks to make changes to role entries. These will be initialized to a
 	// predefined number of locks when the backend is created, and will be
@@ -92,8 +93,6 @@ func Backend(conf *logical.BackendConfig) (*backend, error) {
 
 		// Create locks to modify the generated SecretIDAccessors
 		secretIDAccessorLocks: locksutil.CreateLocks(),
-
-		tidySecretIDCASGuard: new(uint32),
 	}
 
 	// Attach the paths and secrets that are to be handled by the backend

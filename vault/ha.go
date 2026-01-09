@@ -517,7 +517,7 @@ func (c *Core) runStandbyOnce(doneCh chan<- struct{}, manualStepDownCh chan stru
 		defer readStandbyCancel()
 
 		// Unseal, holding the state lock.
-		atomic.StoreUint32(c.replicationState, uint32(consts.ReplicationDRDisabled|consts.ReplicationPerformanceStandby))
+		c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))
 		if err := c.postUnseal(readStandbyCtx, readStandbyCancel, readonlyUnsealStrategy{}); err != nil {
 			c.logger.Error("read-only post-unseal setup failed", "error", err)
 			if err := c.barrier.Seal(); err != nil {
@@ -645,13 +645,6 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 		// Bail if we are being shutdown
 		if leaderLostCh == nil {
 			return
-		}
-
-		if atomic.LoadUint32(c.neverBecomeActive) == 1 {
-			c.heldHALock = nil
-			lock.Unlock()
-			c.logger.Info("marked never become active, giving up active state")
-			continue
 		}
 
 		// If the backend is a FencingHABackend, register the lock with it so it can
@@ -786,7 +779,7 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 		}
 
 		// Attempt the post-unseal process
-		atomic.StoreUint32(c.replicationState, uint32(consts.ReplicationDRDisabled|consts.ReplicationPerformancePrimary))
+		c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformancePrimary))
 		err = c.postUnseal(activeCtx, activeCtxCancel, standardUnsealStrategy{})
 		if err == nil {
 			c.standby.Store(false)
@@ -798,7 +791,7 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 
 		// Handle a failure to unseal
 		if err != nil {
-			atomic.StoreUint32(c.replicationState, uint32(consts.ReplicationDRDisabled|consts.ReplicationPerformanceStandby))
+			c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))
 			c.standby.Store(true)
 			c.logger.Error("post-unseal setup failed", "error", err)
 			lock.Unlock()
@@ -856,7 +849,7 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 			}
 
 			// If we are not meant to keep the HA lock, clear it
-			if atomic.LoadUint32(c.keepHALockOnStepDown) == 0 {
+			if !c.keepHALockOnStepDown.Load() {
 				if err := c.clearLeader(uuid); err != nil {
 					c.logger.Error("clearing leader advertisement failed", "error", err)
 				}
@@ -963,16 +956,16 @@ func (l *lockGrabber) grab() {
 // onerous and avoid more traffic than needed, so we just call that and ignore
 // the result.
 func (c *Core) periodicLeaderRefresh(stopCh chan struct{}) {
-	opCount := new(int32)
+	opCount := atomic.Int32{}
 
 	clusterAddr := ""
 	for {
 		timer := time.NewTimer(leaderCheckInterval)
 		select {
 		case <-timer.C:
-			count := atomic.AddInt32(opCount, 1)
+			count := opCount.Add(1)
 			if count > 1 {
-				atomic.AddInt32(opCount, -1)
+				opCount.Add(-1)
 				continue
 			}
 			// We do this in a goroutine because otherwise if this refresh is
@@ -981,7 +974,6 @@ func (c *Core) periodicLeaderRefresh(stopCh chan struct{}) {
 			// block shutdown
 			go func() {
 				// Bind locally, as the race detector is tripping here
-				lopCount := opCount
 				isLeader, _, newClusterAddr, err := c.Leader()
 				if err != nil {
 					// This is debug level because it's not really something the user
@@ -1006,7 +998,7 @@ func (c *Core) periodicLeaderRefresh(stopCh chan struct{}) {
 					clusterAddr = newClusterAddr
 				}
 
-				atomic.AddInt32(lopCount, -1)
+				opCount.Add(-1)
 			}()
 		case <-stopCh:
 			timer.Stop()
@@ -1020,25 +1012,21 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 	raftBackend := c.getRaftBackend()
 	isRaft := raftBackend != nil
 
-	opCount := new(int32)
+	opCount := atomic.Int32{}
 	for {
 		timer := time.NewTimer(keyRotateCheckInterval)
 		select {
 		case <-timer.C:
-			count := atomic.AddInt32(opCount, 1)
+			count := opCount.Add(1)
 			if count > 1 {
-				atomic.AddInt32(opCount, -1)
+				opCount.Add(-1)
 				continue
 			}
 
 			go func() {
-				// Bind locally, as the race detector is tripping here
-				lopCount := opCount
-
 				// Only check if we are a standby
-				standby := c.standby.Load()
-				if !standby {
-					atomic.AddInt32(lopCount, -1)
+				if !c.standby.Load() {
+					opCount.Add(-1)
 					return
 				}
 
@@ -1052,7 +1040,7 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 					// raft during replication secondary enablement. This will
 					// allow us to keep making progress on the raft log.
 					go c.sealInternalWithOptions(true, false, !isRaft)
-					atomic.AddInt32(lopCount, -1)
+					opCount.Add(-1)
 					return
 				}
 
@@ -1073,7 +1061,7 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 					}
 				}
 
-				atomic.AddInt32(lopCount, -1)
+				opCount.Add(-1)
 			}()
 		case <-stopCh:
 			timer.Stop()
@@ -1297,14 +1285,6 @@ func (c *Core) cleanLeaderPrefix(ctx context.Context, uuid string, leaderLostCh 
 func (c *Core) clearLeader(uuid string) error {
 	key := coreLeaderPrefix + uuid
 	return c.barrier.Delete(context.Background(), key)
-}
-
-func (c *Core) SetNeverBecomeActive(on bool) {
-	if on {
-		atomic.StoreUint32(c.neverBecomeActive, 1)
-	} else {
-		atomic.StoreUint32(c.neverBecomeActive, 0)
-	}
 }
 
 // StandbyReadsEnabled returns true iff standby read are enabled and supported

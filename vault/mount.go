@@ -677,16 +677,13 @@ func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStorage bool) error {
 	c.mountsLock.Lock()
 	c.authLock.Lock()
-	locked := true
-	unlock := func() {
-		if locked {
-			c.authLock.Unlock()
-			c.mountsLock.Unlock()
-			locked = false
-		}
-	}
-	defer unlock()
+	defer c.authLock.Unlock()
+	defer c.mountsLock.Unlock()
 
+	return c.mountInternalWithLock(ctx, entry, updateStorage)
+}
+
+func (c *Core) mountInternalWithLock(ctx context.Context, entry *MountEntry, updateStorage bool) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err

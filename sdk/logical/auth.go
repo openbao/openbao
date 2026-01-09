@@ -126,8 +126,13 @@ func (a *Auth) GoString() string {
 }
 
 type PolicyResults struct {
-	Allowed          bool         `json:"allowed"`
-	GrantingPolicies []PolicyInfo `json:"granting_policies"`
+	Allowed          bool          `json:"allowed"`
+	GrantingPolicies []PolicyInfo  `json:"granting_policies"`
+	ControlGroup     *ControlGroup `json:"control_group"`
+}
+
+type ControlGroup struct {
+	TTL time.Duration `json:"ttl"`
 }
 
 type PolicyInfo struct {

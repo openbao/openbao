@@ -13,6 +13,24 @@ import (
 	jsonParser "github.com/hashicorp/hcl/json/parser"
 )
 
+// WhenHCLKeyPresent will execute the given function if the key is present with first-match node as argument
+func WhenHCLKeyPresent(node ast.Node, key string, fn func(ast.Node) error) error {
+	var list *ast.ObjectList
+	switch n := node.(type) {
+	case *ast.ObjectList:
+		list = n
+	case *ast.ObjectType:
+		list = n.List
+	default:
+		return nil
+	}
+	filtered := list.Filter(key)
+	if len(filtered.Items) > 0 {
+		return fn(filtered.Items[0].Val)
+	}
+	return nil
+}
+
 // CheckHCLKeys checks whether the keys in the AST list contains any of the valid keys provided.
 func CheckHCLKeys(node ast.Node, valid []string) error {
 	var list *ast.ObjectList

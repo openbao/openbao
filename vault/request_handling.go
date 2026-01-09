@@ -556,13 +556,19 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		return auth, acl, te, entity, retErr
 	}
 
-	if authResults.ACLResults != nil && len(authResults.ACLResults.GrantingPolicies) > 0 {
-		auth.PolicyResults.GrantingPolicies = authResults.ACLResults.GrantingPolicies
+	if authResults.ACLResults != nil {
+		if len(authResults.ACLResults.GrantingPolicies) > 0 {
+			auth.PolicyResults.GrantingPolicies = authResults.ACLResults.GrantingPolicies
+		}
+		if authResults.ACLResults.ControlGroup != nil {
+			auth.PolicyResults.ControlGroup = &logical.ControlGroup{
+				TTL: authResults.ACLResults.ControlGroup.TTL,
+			}
+		}
 	}
 	if authResults.SentinelResults != nil && len(authResults.SentinelResults.GrantingPolicies) > 0 {
 		auth.PolicyResults.GrantingPolicies = append(auth.PolicyResults.GrantingPolicies, authResults.SentinelResults.GrantingPolicies...)
 	}
-
 	return auth, acl, te, entity, nil
 }
 
@@ -1261,6 +1267,14 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 			// the request format
 			if req.WrapInfo.Format != "" && wrapFormat == "" {
 				wrapFormat = req.WrapInfo.Format
+			}
+		}
+
+		// Set wrapTTL from ControlGroup.TTL if present
+		if auth.PolicyResults != nil && auth.PolicyResults.ControlGroup != nil {
+			cgTTL := auth.PolicyResults.ControlGroup.TTL
+			if cgTTL > 0 {
+				wrapTTL = cgTTL
 			}
 		}
 

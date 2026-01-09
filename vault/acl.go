@@ -61,6 +61,7 @@ type ACLResults struct {
 	CapabilitiesBitmap     uint32
 	GrantingPolicies       []logical.PolicyInfo
 	ResponseKeysFilterPath string
+	ControlGroup           *ControlGroup
 }
 
 type SentinelResults struct {
@@ -145,6 +146,11 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 				// Store this policy name as the policy that permits these
 				// capabilities
 				clonedPerms.GrantingPoliciesMap = addGrantingPoliciesToMap(nil, policy, clonedPerms.CapabilitiesBitmap)
+				clonedPerms.ControlGroup, err = pc.ControlGroup.Clone()
+				if err != nil {
+					return nil, fmt.Errorf("error cloning ACL control group: %w", err)
+				}
+
 				switch {
 				case pc.HasSegmentWildcards:
 					a.segmentWildcardPaths[pc.Path] = clonedPerms
@@ -420,6 +426,9 @@ func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheck
 	return ret
 
 CHECK:
+	// Copy ControlGroup from ACL to ACLResults
+	ret.ControlGroup = permissions.ControlGroup
+
 	// Check if the minimum permissions are met
 	// If "deny" has been explicitly set, only deny will be in the map, so we
 	// only need to check for the existence of other values

@@ -6,6 +6,7 @@ package openldap
 import (
 	"context"
 	"errors"
+	"testing"
 	"time"
 
 	"github.com/go-ldap/ldif"
@@ -25,7 +26,7 @@ var (
 	testPasswordFromPolicy2 = "TestPolicy2Password"
 )
 
-func getBackend(throwsErr bool) (*backend, logical.Storage) {
+func getBackend(t *testing.T, throwsErr bool) (*backend, logical.Storage) {
 	config := &logical.BackendConfig{
 		Logger: logging.NewVaultLogger(log.Debug),
 
@@ -45,7 +46,9 @@ func getBackend(throwsErr bool) (*backend, logical.Storage) {
 	}
 
 	b := Backend(&fakeLdapClient{throwErrs: throwsErr})
-	b.Setup(context.Background(), config)
+	if err := b.Setup(t.Context(), config); err != nil {
+		t.Fatalf("failed to set up backend: %s", err.Error())
+	}
 
 	b.credRotationQueue = queue.New()
 	// Create a context with a cancel method for processing any WAL entries and

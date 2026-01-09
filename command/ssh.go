@@ -412,7 +412,11 @@ func (c *SSHCommand) handleTypeCA(username, ip, port string, sshArgs []string) i
 		name := fmt.Sprintf("vault_ssh_ca_known_hosts_%s_%s", username, ip)
 		data := fmt.Sprintf("@cert-authority %s %s", c.flagHostKeyHostnames, publicKey)
 		knownHosts, closer, err := c.writeTemporaryFile(name, []byte(data), 0o644)
-		defer closer()
+		defer func() {
+			if err := closer(); err != nil {
+				c.UI.Error(fmt.Sprintf("failed to delete temporary file: %s", err))
+			}
+		}()
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("failed to write host public key: %s", err))
 			return 1
@@ -426,7 +430,11 @@ func (c *SSHCommand) handleTypeCA(username, ip, port string, sshArgs []string) i
 	// Write the signed public key to disk
 	name := fmt.Sprintf("vault_ssh_ca_%s_%s", username, ip)
 	signedPublicKeyPath, closer, err := c.writeTemporaryKey(name, []byte(key))
-	defer closer()
+	defer func() {
+		if err := closer(); err != nil {
+			c.UI.Error(fmt.Sprintf("failed to delete temporary key: %s", err))
+		}
+	}()
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("failed to write signed public key: %s", err))
 		return 2
@@ -593,7 +601,11 @@ func (c *SSHCommand) handleTypeDynamic(username, ip, port string, sshArgs []stri
 	// Write the dynamic key to disk
 	name := fmt.Sprintf("vault_ssh_dynamic_%s_%s", username, ip)
 	keyPath, closer, err := c.writeTemporaryKey(name, []byte(cred.Key))
-	defer closer()
+	defer func() {
+		if err := closer(); err != nil {
+			c.UI.Error(fmt.Sprintf("failed to delete temporary key: %s", err))
+		}
+	}()
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("failed to write dynamic key: %s", err))
 		return 1

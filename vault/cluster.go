@@ -384,3 +384,21 @@ func (c *Core) SetClusterHandler(handler http.Handler) {
 func (c *Core) ClusterID() string {
 	return c.clusterID.Load().(string)
 }
+
+type contextKeyOriginalRequestPath struct{}
+
+var contextOriginalRequestPath contextKeyOriginalRequestPath = struct{}{}
+
+func OriginalRequestPathFromContext(ctx context.Context) (string, bool) {
+	path := ctx.Value(contextOriginalRequestPath)
+
+	if path != nil {
+		return path.(string), true
+	}
+
+	return "", false
+}
+
+func ContextWithOriginalRequestPath(ctx context.Context, reqPath string) context.Context {
+	return context.WithValue(ctx, contextOriginalRequestPath, reqPath)
+}

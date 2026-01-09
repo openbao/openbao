@@ -269,7 +269,7 @@ func TestRoles(t *testing.T) {
 		}, resp.Data)
 
 		// Delete one
-		resp, err = testRolesDelete(t, b, s, "jsonrules")
+		_, err = testRolesDelete(t, b, s, "jsonrules")
 		require.NoError(t, err)
 		// Now there should be three
 		resp, err = testRolesList(t, b, s)
@@ -278,11 +278,11 @@ func TestRoles(t *testing.T) {
 			"keys": []string{"jsonselector", "yamlrules", "yamlselector"},
 		}, resp.Data)
 		// Delete the last three
-		resp, err = testRolesDelete(t, b, s, "yamlrules")
+		_, err = testRolesDelete(t, b, s, "yamlrules")
 		require.NoError(t, err)
-		resp, err = testRolesDelete(t, b, s, "jsonselector")
+		_, err = testRolesDelete(t, b, s, "jsonselector")
 		require.NoError(t, err)
-		resp, err = testRolesDelete(t, b, s, "yamlselector")
+		_, err = testRolesDelete(t, b, s, "yamlselector")
 		require.NoError(t, err)
 		// Now there should be none
 		resp, err = testRolesList(t, b, s)

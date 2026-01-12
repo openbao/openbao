@@ -330,7 +330,7 @@ const LinuxPackage = ({ version, name }) => {
     const { options } = useOptions();
     return (
         <Tabs>
-            <TabItem value="deb" label="Deb">
+            <TabItem value="deb" label="DEB">
                 <PackageRepo type={"deb"} />
                 <nav className="pagination-nav">
                     {/* Check if version is not undefined before accessing releases */}

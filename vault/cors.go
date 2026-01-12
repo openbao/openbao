@@ -32,18 +32,16 @@ var StdAllowedHeaders = []string{
 type CORSConfig struct {
 	sync.RWMutex     `json:"-"`
 	core             *Core
-	Enabled          *uint32  `json:"enabled"`
-	AllowedOrigins   []string `json:"allowed_origins,omitempty"`
-	AllowedHeaders   []string `json:"allowed_headers,omitempty"`
-	AllowCredentials bool     `json:"allow_credentials,omitempty"`
+	Enabled          *atomic.Uint32 `json:"enabled"`
+	AllowedOrigins   []string       `json:"allowed_origins,omitempty"`
+	AllowedHeaders   []string       `json:"allowed_headers,omitempty"`
+	AllowCredentials bool           `json:"allow_credentials,omitempty"`
 }
 
 func (c *Core) saveCORSConfig(ctx context.Context) error {
 	view := c.systemBarrierView.SubView("config/")
 
-	localConfig := &CORSConfig{
-		Enabled: &atomic.Bool{},
-	}
+	localConfig := &CORSConfig{}
 	localConfig.Enabled.Store(c.corsConfig.Enabled.Load())
 	c.corsConfig.RLock()
 	localConfig.AllowedOrigins = c.corsConfig.AllowedOrigins
@@ -65,10 +63,8 @@ func (c *Core) saveCORSConfig(ctx context.Context) error {
 
 // This should only be called with the core state lock held for writing
 func (c *Core) loadCORSConfig(ctx context.Context) error {
-	view := c.systemBarrierView.SubView("config/")
-
 	// Load the config in
-	out, err := view.Get(ctx, "cors")
+	out, err := c.systemBarrierView.SubView("config/").Get(ctx, "cors")
 	if err != nil {
 		return fmt.Errorf("failed to read CORS config: %w", err)
 	}
@@ -76,18 +72,17 @@ func (c *Core) loadCORSConfig(ctx context.Context) error {
 		return nil
 	}
 
-	newConfig := new(CORSConfig)
-	err = out.DecodeJSON(newConfig)
-	if err != nil {
+	config := new(CORSConfig)
+	if err = out.DecodeJSON(config); err != nil {
 		return err
 	}
 
-	if newConfig.Enabled == nil {
-		newConfig.Enabled = &atomic.Bool{}
+	if config.Enabled == nil {
+		config.Enabled = &atomic.Uint32{}
 	}
 
-	newConfig.core = c
-	c.corsConfig = newConfig
+	config.core = c
+	c.corsConfig = config
 
 	return nil
 }
@@ -119,14 +114,16 @@ func (c *CORSConfig) Enable(ctx context.Context, urls []string, headers []string
 	}
 	c.Unlock()
 
-	c.Enabled.Store(true)
+	// as true
+	c.Enabled.Store(1)
 
 	return c.core.saveCORSConfig(ctx)
 }
 
 // Disable sets CORS to disabled and clears the allowed origins & headers.
 func (c *CORSConfig) Disable(ctx context.Context) error {
-	c.Enabled.Store(false)
+	// as false
+	c.Enabled.Store(0)
 	c.Lock()
 
 	c.AllowedOrigins = nil
@@ -142,7 +139,7 @@ func (c *CORSConfig) Disable(ctx context.Context) error {
 // cross-origin requests based on the CORSConfig.
 func (c *CORSConfig) IsValidOrigin(origin string) bool {
 	// If we aren't enabling CORS then all origins are valid
-	if !c.Enabled.Load() {
+	if c.Enabled.Load() == 0 {
 		return true
 	}
 

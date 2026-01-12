@@ -201,7 +201,8 @@ func (b *SystemBackend) handleConfigReload(ctx context.Context, req *logical.Req
 func (b *SystemBackend) handleCORSRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	corsConf := b.Core.corsConfig
 
-	enabled := corsConf.Enabled.Load()
+	// unfortunately 'enabled' field is a boolean represented by uint32
+	enabled := corsConf.Enabled.Load() != 0
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{

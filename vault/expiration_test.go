@@ -2367,8 +2367,7 @@ func TestExpiration_renewEntry(t *testing.T) {
 func TestExpiration_revokeEntry_rejected_fairsharing(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
 	exp := core.expiration
-
-	rejected := atomic.Bool{}
+	var rejected atomic.Bool
 
 	noop := &NoopBackend{
 		RequestHandler: func(ctx context.Context, req *logical.Request) (*logical.Response, error) {

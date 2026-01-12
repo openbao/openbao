@@ -63,7 +63,6 @@ func NewSinkServer(conf *SinkServerConfig) *SinkServer {
 		client:        conf.Client,
 		random:        rand.New(rand.NewSource(int64(time.Now().Nanosecond()))),
 		exitAfterAuth: conf.ExitAfterAuth,
-		remaining:     atomic.Int32{},
 	}
 }
 

@@ -128,7 +128,7 @@ type ExpirationManager struct {
 	uniquePolicies      map[string][]string
 	emptyUniquePolicies *time.Ticker
 
-	tidyLock *int32
+	tidyLock atomic.Bool
 
 	restoreMode        atomic.Bool
 	restoreModeLock    sync.RWMutex
@@ -340,7 +340,6 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 		pendingLock: &locking.SyncRWMutex{},
 		nonexpiring: sync.Map{},
 		leaseCount:  0,
-		tidyLock:    new(int32),
 
 		lockPerLease: sync.Map{},
 
@@ -350,9 +349,8 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 		restoreLocks: locksutil.CreateLocks(),
 		quitCh:       make(chan struct{}),
 
-		coreStateLock:     c.stateLock,
-		quitContext:       c.activeContext,
-		leaseCheckCounter: atomic.Uint32{},
+		coreStateLock: c.stateLock,
+		quitContext:   c.activeContext,
 
 		logLeaseExpirations: api.ReadBaoVariable("BAO_SKIP_LOGGING_LEASE_EXPIRATIONS") == "",
 
@@ -582,12 +580,12 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 	logger := m.logger.Named("tidy")
 	m.core.AddLogger(logger)
 
-	if !atomic.CompareAndSwapInt32(m.tidyLock, 0, 1) {
+	if !m.tidyLock.CompareAndSwap(false, true) {
 		logger.Warn("tidy operation on leases is already in progress")
 		return nil
 	}
 
-	defer atomic.CompareAndSwapInt32(m.tidyLock, 1, 0)
+	defer m.tidyLock.CompareAndSwap(true, false)
 
 	logger.Info("beginning tidy operation on leases")
 	defer logger.Info("finished tidy operation on leases")

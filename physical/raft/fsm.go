@@ -110,8 +110,8 @@ type FSM struct {
 
 	// latestIndex and latestTerm are the term and index of the last log we
 	// received
-	latestIndex *atomic.Uint64
-	latestTerm  *atomic.Uint64
+	latestIndex atomic.Uint64
+	latestTerm  atomic.Uint64
 	// latestConfig is the latest server configuration we've seen
 	latestConfig atomic.Value
 
@@ -146,9 +146,6 @@ func NewFSM(path string, localID string, logger log.Logger) (*FSM, error) {
 		path:   path,
 		logger: logger,
 
-		latestTerm:   new(atomic.Uint64),
-		latestIndex:  new(atomic.Uint64),
-		latestConfig: atomic.Value{},
 		// Assume that the default intent is to join as as voter. This will be updated
 		// when this node joins a cluster with a different suffrage, or during cluster
 		// setup if this is already part of a cluster with a desired suffrage.

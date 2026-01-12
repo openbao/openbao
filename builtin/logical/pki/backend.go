@@ -263,8 +263,6 @@ func Backend(conf *logical.BackendConfig) *backend {
 
 	// Metrics initialization for count of certificates in storage
 	b.certCountError = "Initialize Not Yet Run, Cert Counts Unavailable"
-	b.certCount = atomic.Uint32{}
-	b.revokedCertCount = atomic.Uint32{}
 	b.possibleDoubleCountedSerials = make([]string, 0, 250)
 	b.possibleDoubleCountedRevokedSerials = make([]string, 0, 250)
 

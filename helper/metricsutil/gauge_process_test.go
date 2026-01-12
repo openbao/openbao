@@ -69,11 +69,10 @@ func (s *SimulatedTime) allowTickers(n int) {
 }
 
 func startSimulatedTime() *SimulatedTime {
-	s := &SimulatedTime{
+	return &SimulatedTime{
 		now:           time.Now(),
 		tickerBarrier: make(chan *SimulatedTicker, 1),
 	}
-	return s
 }
 
 type SimulatedCollector struct {
@@ -83,7 +82,6 @@ type SimulatedCollector struct {
 
 func newSimulatedCollector() *SimulatedCollector {
 	return &SimulatedCollector{
-		numCalls:    atomic.Uint32{},
 		callBarrier: make(chan uint32, 1),
 	}
 }
@@ -100,8 +98,7 @@ func (s *SimulatedCollector) waitForCall(t *testing.T) {
 }
 
 func (s *SimulatedCollector) EmptyCollectionFunction(ctx context.Context) ([]GaugeLabelValues, error) {
-	s.numCalls.Add(1)
-	s.callBarrier <- s.numCalls.Load()
+	s.callBarrier <- s.numCalls.Add(1)
 	return []GaugeLabelValues{}, nil
 }
 
@@ -281,10 +278,9 @@ func TestGauge_Backoff(t *testing.T) {
 
 	threshold := sink.GaugeInterval / 100
 	f := func(ctx context.Context) ([]GaugeLabelValues, error) {
-		c.numCalls.Add(1)
 		// Move time forward by more than 1% of the gauge interval
 		s.now = s.now.Add(threshold).Add(time.Second)
-		c.callBarrier <- c.numCalls.Load()
+		c.callBarrier <- c.numCalls.Add(1)
 		return []GaugeLabelValues{}, nil
 	}
 
@@ -438,10 +434,9 @@ func (c *SimulatedCollector) makeFunctionForValues(
 ) GaugeCollector {
 	// A function that returns a static list
 	return func(ctx context.Context) ([]GaugeLabelValues, error) {
-		c.numCalls.Add(1)
 		// TODO: this seems like a data race?
 		s.now = s.now.Add(advanceTime)
-		c.callBarrier <- c.numCalls.Load()
+		c.callBarrier <- c.numCalls.Add(1)
 		return values, nil
 	}
 }
@@ -545,8 +540,7 @@ func TestGauge_MeasurementError(t *testing.T) {
 	}
 
 	f := func(ctx context.Context) ([]GaugeLabelValues, error) {
-		c.numCalls.Add(1)
-		c.callBarrier <- c.numCalls.Load()
+		c.callBarrier <- c.numCalls.Add(1)
 		return values, errors.New("test error")
 	}
 

@@ -206,16 +206,13 @@ func RespondWithStatusCode(resp *Response, req *Request, code int) (*Response, e
 // write directly to the HTTP response writer.
 type HTTPResponseWriter struct {
 	http.ResponseWriter
-	written *atomic.Bool
+	written atomic.Bool
 }
 
 // NewHTTPResponseWriter creates a new HTTPResponseWriter object that wraps the
 // provided io.Writer.
 func NewHTTPResponseWriter(w http.ResponseWriter) *HTTPResponseWriter {
-	return &HTTPResponseWriter{
-		ResponseWriter: w,
-		written:        new(atomic.Bool),
-	}
+	return &HTTPResponseWriter{ResponseWriter: w}
 }
 
 // Write will write the bytes to the underlying io.Writer.

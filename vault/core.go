@@ -1052,7 +1052,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	// Load CORS config and provide a value for the core field.
 	c.corsConfig = &CORSConfig{
 		core:    c,
-		Enabled: new(atomic.Bool),
+		Enabled: new(atomic.Uint32),
 	}
 
 	// Load write-forwarded path manager.

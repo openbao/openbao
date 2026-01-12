@@ -1017,7 +1017,23 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		resp.WrapInfo.Token == ""
 
 	if wrapping {
-		cubbyResp, cubbyErr := c.wrapInCubbyhole(ctx, req, resp, auth)
+
+		extraData := map[string]interface{}{}
+		// For controlgroup, store the original request and control group details with the cubbyhole data
+		if auth.PolicyResults.ControlGroup != nil {
+			reqJson, err := jsonutil.EncodeJSON(req)
+			if err != nil {
+				return resp, err
+			}
+			extraData["request"] = reqJson
+			cgJson, err := jsonutil.EncodeJSON(auth.PolicyResults.ControlGroup)
+			if err != nil {
+				return resp, err
+			}
+			extraData["control_group"] = cgJson
+		}
+
+		cubbyResp, cubbyErr := c.wrapInCubbyhole(ctx, req, resp, auth, extraData)
 		// If not successful, returns either an error response from the
 		// cubbyhole backend or an error; if either is set, set resp and err to
 		// those and continue so that that's what we audit log. Otherwise
@@ -1032,6 +1048,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			}
 			resp = wrappingResp
 		}
+
 	}
 
 	auditResp := resp

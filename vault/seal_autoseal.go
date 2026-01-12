@@ -40,8 +40,8 @@ type autoSeal struct {
 	seal.Access
 
 	barrierType    wrapping.WrapperType
-	barrierConfig  atomic.Value
-	recoveryConfig atomic.Value
+	barrierConfig  atomic.Pointer[SealConfig]
+	recoveryConfig atomic.Pointer[SealConfig]
 	core           *Core
 	logger         log.Logger
 
@@ -188,7 +188,7 @@ func (d *autoSeal) UpgradeKeys(ctx context.Context) error {
 
 func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	if config := d.barrierConfig.Load(); config != nil {
-		return config.(*SealConfig).Clone(), nil
+		return config.Clone(), nil
 	}
 
 	if err := d.checkCore(); err != nil {
@@ -278,7 +278,7 @@ func (d *autoSeal) RecoveryType() string {
 // RecoveryConfig returns the recovery config on recoverySealConfigPath.
 func (d *autoSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
 	if config := d.recoveryConfig.Load(); config != nil {
-		return config.(*SealConfig).Clone(), nil
+		return config.Clone(), nil
 	}
 
 	if err := d.checkCore(); err != nil {

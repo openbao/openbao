@@ -1,0 +1,3 @@
+```release-note:bug
+core: Fix race condition between retry_join and initialize stanza that could cause split-brain clusters.
+```

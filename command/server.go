@@ -6,6 +6,7 @@ package command
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -1736,6 +1737,27 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 
 	ctx := namespace.RootContext(context.Background())
 
+	// If retry_join is configured, we need to wait for it to potentially
+	// succeed before attempting self-initialization. Without this wait,
+	// there is a coordination problem: InitiateRetryJoin() starts a background
+	// goroutine that retries joining every 2 seconds, but this function is
+	// called immediately after. If the join hasn't completed yet, this node
+	// would self-initialize and create a separate cluster instead of joining
+	// the existing one.
+	// See: https://github.com/openbao/openbao/issues/2274
+	if c.hasRetryJoinConfig(config) {
+		if err := c.waitForRetryJoin(ctx, core, config); err != nil {
+			// If we were initialized by joining a cluster, return success
+			inited, checkErr := core.Initialized(ctx)
+			if checkErr == nil && inited {
+				c.logger.Info("node was initialized by joining existing cluster, skipping self-initialization")
+				return nil
+			}
+			// Log the error but continue - we may need to self-initialize as leader
+			c.logger.Warn("error waiting for retry_join", "error", err)
+		}
+	}
+
 	// Fast path skipping self-initialization if already initialized.
 	inited, err := core.Initialized(ctx)
 	if err != nil {
@@ -1829,6 +1851,177 @@ func (c *ServerCommand) doSelfInit(core *vault.Core, config *server.Config, root
 	// above context was derived from background (we're a server after all),
 	// derive a new one here, too.
 	return p.Evaluate(context.Background())
+}
+
+// hasRetryJoinConfig checks if retry_join is configured in the storage config.
+func (c *ServerCommand) hasRetryJoinConfig(config *server.Config) bool {
+	if config.Storage == nil {
+		return false
+	}
+	if config.Storage.Type != storageTypeRaft {
+		return false
+	}
+	return config.Storage.Config["retry_join"] != ""
+}
+
+// selfInitRetryJoinWaitDuration is the default maximum time to wait for the
+// async retry_join background process to potentially succeed before proceeding
+// with self-initialization. The actual wait may be shorter if we determine
+// early that no other nodes are available.
+// This can be overridden via the OPENBAO_SELF_INIT_RETRY_JOIN_WAIT environment variable.
+const selfInitRetryJoinWaitDuration = 30 * time.Second
+
+// selfInitMinWaitBeforeLeaderCheck is the minimum time to wait before checking
+// if any leader candidates are reachable. This gives other nodes a chance to
+// start up in simultaneous deployment scenarios.
+const selfInitMinWaitBeforeLeaderCheck = 5 * time.Second
+
+// waitForRetryJoin provides coordination between the async retry_join process
+// and self-initialization. It uses smart exit conditions:
+// - Exits immediately if we become initialized (joined a cluster)
+// - Exits early if no leader candidates are reachable (we're likely first)
+// - Waits up to the timeout if leaders are reachable (they may initialize us)
+func (c *ServerCommand) waitForRetryJoin(ctx context.Context, core *vault.Core, config *server.Config) error {
+	maxWaitDuration := selfInitRetryJoinWaitDuration
+
+	// Allow override via environment variable
+	if envWait := os.Getenv("OPENBAO_SELF_INIT_RETRY_JOIN_WAIT"); envWait != "" {
+		parsed, err := parseutil.ParseDurationSecond(envWait)
+		if err != nil {
+			c.logger.Warn("invalid OPENBAO_SELF_INIT_RETRY_JOIN_WAIT value, using default",
+				"value", envWait, "default", maxWaitDuration, "error", err)
+		} else {
+			maxWaitDuration = parsed
+		}
+	}
+
+	// If wait duration is 0 or negative, skip waiting
+	if maxWaitDuration <= 0 {
+		c.logger.Info("retry_join wait disabled, proceeding with self-initialization")
+		return nil
+	}
+
+	c.logger.Info("waiting for possible raft cluster join before self-initialization",
+		"max_wait_duration", maxWaitDuration)
+
+	checkInterval := time.Second
+	deadline := time.Now().Add(maxWaitDuration)
+	minWaitDeadline := time.Now().Add(selfInitMinWaitBeforeLeaderCheck)
+	leaderCheckPerformed := false
+
+	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// Check if we've been initialized by joining a cluster
+		inited, err := core.Initialized(ctx)
+		if err != nil {
+			c.logger.Debug("error checking initialization status during retry_join wait", "error", err)
+		} else if inited {
+			c.logger.Info("node was initialized by joining cluster during wait period")
+			return nil
+		}
+
+		// After minimum wait, check if any leader candidates are reachable
+		// If none are reachable, we're likely the first node and should proceed
+		if !leaderCheckPerformed && time.Now().After(minWaitDeadline) {
+			leaderCheckPerformed = true
+			if !c.anyLeaderCandidateReachable(config) {
+				c.logger.Info("no leader candidates are reachable, proceeding as potential first node")
+				return nil
+			}
+			c.logger.Debug("at least one leader candidate is reachable, continuing to wait for possible join")
+		}
+
+		time.Sleep(checkInterval)
+	}
+
+	c.logger.Info("retry_join wait period expired, proceeding with self-initialization check")
+	return nil
+}
+
+// anyLeaderCandidateReachable checks if any of the retry_join leader addresses
+// are reachable. This helps determine if we should wait longer (other nodes exist)
+// or proceed with self-initialization (we're likely the first node).
+// Uses TCP dial instead of HTTP to avoid TLS certificate verification issues
+// during bootstrap when certificates may not yet be trusted.
+func (c *ServerCommand) anyLeaderCandidateReachable(config *server.Config) bool {
+	if config.Storage == nil || config.Storage.Config == nil {
+		return false
+	}
+
+	retryJoinConfig := config.Storage.Config["retry_join"]
+	if retryJoinConfig == "" {
+		return false
+	}
+
+	// Parse the retry_join config to get leader addresses
+	var leaderInfos []struct {
+		LeaderAPIAddr string `json:"leader_api_addr"`
+	}
+	if err := json.Unmarshal([]byte(retryJoinConfig), &leaderInfos); err != nil {
+		if c.logger != nil {
+			c.logger.Debug("failed to parse retry_join config for leader check", "error", err)
+		}
+		return false
+	}
+
+	// Try to reach each leader candidate with a TCP dial
+	// We use TCP instead of HTTP to avoid TLS certificate verification issues
+	// during the bootstrap phase when certificates may not yet be configured
+	dialer := &net.Dialer{
+		Timeout: 2 * time.Second,
+	}
+
+	for _, info := range leaderInfos {
+		if info.LeaderAPIAddr == "" {
+			continue
+		}
+
+		// Parse the URL to extract host and port
+		u, err := url.Parse(info.LeaderAPIAddr)
+		if err != nil {
+			if c.logger != nil {
+				c.logger.Debug("failed to parse leader address", "addr", info.LeaderAPIAddr, "error", err)
+			}
+			continue
+		}
+
+		host := u.Host
+		if host == "" {
+			continue
+		}
+
+		// Add default port if not specified
+		if !strings.Contains(host, ":") {
+			if u.Scheme == "https" {
+				host = host + ":443"
+			} else {
+				host = host + ":80"
+			}
+		}
+
+		// Try TCP dial to check if the host is reachable
+		conn, err := dialer.Dial("tcp", host)
+		if err != nil {
+			if c.logger != nil {
+				c.logger.Debug("leader candidate not reachable", "addr", info.LeaderAPIAddr)
+			}
+			continue
+		}
+		_ = conn.Close()
+
+		// Connection successful means the node is up
+		if c.logger != nil {
+			c.logger.Debug("leader candidate is reachable", "addr", info.LeaderAPIAddr)
+		}
+		return true
+	}
+
+	return false
 }
 
 func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig) (*vault.InitResult, error) {

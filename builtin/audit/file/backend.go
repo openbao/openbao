@@ -123,7 +123,6 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 		mode:       mode,
 		saltConfig: conf.SaltConfig,
 		saltView:   conf.SaltView,
-		salt:       new(atomic.Value),
 		formatConfig: audit.FormatterConfig{
 			Raw:                logRaw,
 			HMACAccessor:       hmacAccessor,
@@ -131,9 +130,6 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 		},
 	}
 
-	// Ensure we are working with the right type by explicitly storing a nil of
-	// the right type
-	b.salt.Store((*salt.Salt)(nil))
 	b.formatter.AuditFormatWriter = &audit.JSONFormatWriter{
 		Prefix:   conf.Config["prefix"],
 		SaltFunc: b.Salt,
@@ -170,7 +166,7 @@ type Backend struct {
 	mode     os.FileMode
 
 	saltMutex  sync.RWMutex
-	salt       *atomic.Value
+	salt       atomic.Pointer[salt.Salt]
 	saltConfig *salt.Config
 	saltView   logical.Storage
 }
@@ -178,22 +174,20 @@ type Backend struct {
 var _ audit.Backend = (*Backend)(nil)
 
 func (b *Backend) Salt(ctx context.Context) (*salt.Salt, error) {
-	s := b.salt.Load().(*salt.Salt)
-	if s != nil {
+	if s := b.salt.Load(); s != nil {
 		return s, nil
 	}
 
 	b.saltMutex.Lock()
 	defer b.saltMutex.Unlock()
 
-	s = b.salt.Load().(*salt.Salt)
-	if s != nil {
+	if s := b.salt.Load(); s != nil {
 		return s, nil
 	}
 
 	newSalt, err := salt.NewSalt(ctx, b.saltView, b.saltConfig)
 	if err != nil {
-		b.salt.Store((*salt.Salt)(nil))
+		b.salt.Store(nil)
 		return nil, err
 	}
 
@@ -363,5 +357,5 @@ func (b *Backend) Reload(_ context.Context) error {
 func (b *Backend) Invalidate(_ context.Context) {
 	b.saltMutex.Lock()
 	defer b.saltMutex.Unlock()
-	b.salt.Store((*salt.Salt)(nil))
+	b.salt.Store(nil)
 }

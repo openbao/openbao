@@ -80,7 +80,7 @@ func TestConfigCustomHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	listenerCustomHeaders := NewListenerCustomHeader(rawListenerConfig, logger, uiHeaders)
+	listenerCustomHeaders := *NewListenerCustomHeader(rawListenerConfig, logger, uiHeaders)
 	if listenerCustomHeaders == nil || len(listenerCustomHeaders) != 1 {
 		t.Fatal("failed to get custom header configuration")
 	}
@@ -130,7 +130,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 		t.Fatal("custom header config should be configured")
 	}
 	b.(*SystemBackend).Core.customListenerHeader.Store(customListenerHeader)
-	clh := b.(*SystemBackend).Core.customListenerHeader
+	clh := b.(*SystemBackend).Core.customListenerHeader.Load()
 	if clh == nil {
 		t.Fatal("custom header config should be configured in core")
 	}

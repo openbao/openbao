@@ -5,8 +5,6 @@ package vault
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"os"
@@ -21,7 +19,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/oklog/run"
-	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -155,7 +152,7 @@ func (c *Core) LeaderLocked() (isLeader bool, leaderAddr, clusterAddr string, er
 	}
 
 	var localLeaderUUID, localRedirectAddr, localClusterAddr string
-	clusterLeaderParams := c.clusterLeaderParams.Load().(*ClusterLeaderParams)
+	clusterLeaderParams := c.clusterLeaderParams.Load()
 	if clusterLeaderParams != nil {
 		localLeaderUUID = clusterLeaderParams.LeaderUUID
 		localRedirectAddr = clusterLeaderParams.LeaderRedirectAddr
@@ -174,7 +171,7 @@ func (c *Core) LeaderLocked() (isLeader bool, leaderAddr, clusterAddr string, er
 	defer c.leaderParamsLock.Unlock()
 
 	// Validate base conditions again
-	clusterLeaderParams = c.clusterLeaderParams.Load().(*ClusterLeaderParams)
+	clusterLeaderParams = c.clusterLeaderParams.Load()
 	if clusterLeaderParams != nil {
 		localLeaderUUID = clusterLeaderParams.LeaderUUID
 		localRedirectAddr = clusterLeaderParams.LeaderRedirectAddr
@@ -693,7 +690,7 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 		// Create the active context
 		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(nil))
 		c.activeContext = activeCtx
-		c.activeContextCancelFunc.Store(activeCtxCancel)
+		c.activeContextCancelFunc.Store(&activeCtxCancel)
 
 		// Mark storage as readable again.
 		c.barrier.SetReadOnly(false)
@@ -749,9 +746,9 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 		{
 			// Clear previous local cluster cert info so we generate new. Since the
 			// UUID will have changed, standbys will know to look for new info
-			c.localClusterParsedCert.Store((*x509.Certificate)(nil))
-			c.localClusterCert.Store(([]byte)(nil))
-			c.localClusterPrivateKey.Store((*ecdsa.PrivateKey)(nil))
+			c.localClusterParsedCert.Store(nil)
+			c.localClusterCert.Store(nil)
+			c.localClusterPrivateKey.Store(nil)
 
 			if err := c.setupCluster(activeCtx); err != nil {
 				c.heldHALock = nil
@@ -1212,13 +1209,9 @@ func (c *Core) advertiseLeader(ctx context.Context, uuid string, leaderLostCh <-
 		go c.cleanLeaderPrefix(ctx, uuid, leaderLostCh)
 	}
 
-	var key *ecdsa.PrivateKey
-	switch c.localClusterPrivateKey.Load().(type) {
-	case *ecdsa.PrivateKey:
-		key = c.localClusterPrivateKey.Load().(*ecdsa.PrivateKey)
-	default:
-		c.logger.Error("unknown cluster private key type", "key_type", fmt.Sprintf("%T", c.localClusterPrivateKey.Load()))
-		return fmt.Errorf("unknown cluster private key type %T", c.localClusterPrivateKey.Load())
+	key := c.localClusterPrivateKey.Load()
+	if key == nil {
+		return errors.New("missing local cluster private key")
 	}
 
 	keyParams := &certutil.ClusterKeyParams{
@@ -1228,7 +1221,7 @@ func (c *Core) advertiseLeader(ctx context.Context, uuid string, leaderLostCh <-
 		D:    key.D,
 	}
 
-	locCert := c.localClusterCert.Load().([]byte)
+	locCert := *c.localClusterCert.Load()
 	localCert := make([]byte, len(locCert))
 	copy(localCert, locCert)
 	adv := &activeAdvertisement{
@@ -1298,5 +1291,5 @@ func (c *Core) StandbyReadsEnabled() bool {
 	if conf == nil {
 		return false
 	}
-	return !conf.(*server.Config).DisableStandbyReads
+	return !conf.DisableStandbyReads
 }

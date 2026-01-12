@@ -113,7 +113,7 @@ type FSM struct {
 	latestIndex atomic.Uint64
 	latestTerm  atomic.Uint64
 	// latestConfig is the latest server configuration we've seen
-	latestConfig atomic.Value
+	latestConfig atomic.Pointer[ConfigurationValue]
 
 	l           sync.RWMutex
 	path        string
@@ -395,7 +395,7 @@ func (f *FSM) upgradeLocalNodeConfig() error {
 
 	// Get the last known suffrage of the node and assume that it is the desired
 	// suffrage. There is no better alternative here.
-	for _, srv := range config.(*ConfigurationValue).Servers {
+	for _, srv := range config.Servers {
 		if srv.Id == f.localID {
 			switch srv.Suffrage {
 			case int32(raft.Nonvoter):
@@ -460,16 +460,10 @@ func (f *FSM) witnessSnapshot(metadata *raft.SnapshotMeta) error {
 // LatestState returns the latest index and configuration values
 // we have seen on this FSM.
 func (f *FSM) LatestState() (*IndexValue, *ConfigurationValue) {
-	config := f.latestConfig.Load()
-	indexValue := &IndexValue{
+	return &IndexValue{
 		Term:  f.latestTerm.Load(),
 		Index: f.latestIndex.Load(),
-	}
-
-	if config != nil {
-		return indexValue, config.(*ConfigurationValue)
-	}
-	return indexValue, nil
+	}, f.latestConfig.Load()
 }
 
 // Delete deletes the given key from the bolt file.

@@ -951,7 +951,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 
 		if c.seal.BarrierType() == wrapping.WrapperTypeShamir && !isRaftHAOnly {
 			// Reset the state
-			c.raftInfo.Store((*raftInformation)(nil))
+			c.raftInfo.Store(nil)
 
 			// In case of Shamir unsealing, inform the unseal process that raft join is completed
 			close(c.raftJoinDoneCh)
@@ -1285,7 +1285,7 @@ func (c *Core) RaftBootstrap(ctx context.Context, onInit bool) error {
 }
 
 func (c *Core) isRaftUnseal() bool {
-	return c.raftInfo.Load().(*raftInformation) != nil
+	return c.raftInfo.Load() != nil
 }
 
 type answerRespData struct {

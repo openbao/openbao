@@ -41,7 +41,9 @@ type CORSConfig struct {
 func (c *Core) saveCORSConfig(ctx context.Context) error {
 	view := c.systemBarrierView.SubView("config/")
 
-	localConfig := &CORSConfig{}
+	localConfig := &CORSConfig{
+		Enabled: new(atomic.Uint32),
+	}
 	localConfig.Enabled.Store(c.corsConfig.Enabled.Load())
 	c.corsConfig.RLock()
 	localConfig.AllowedOrigins = c.corsConfig.AllowedOrigins

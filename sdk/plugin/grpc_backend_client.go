@@ -43,7 +43,7 @@ type backendGRPCPluginClient struct {
 	cleanupCh chan struct{}
 
 	// server is the grpc server used for serving storage and sysview requests.
-	server *atomic.Value
+	server atomic.Pointer[grpc.Server]
 
 	doneCtx context.Context
 }
@@ -193,7 +193,7 @@ func (b *backendGRPCPluginClient) Cleanup(ctx context.Context) {
 	<-b.cleanupCh
 	server := b.server.Load()
 	if server != nil {
-		server.(*grpc.Server).GracefulStop()
+		server.GracefulStop()
 	}
 }
 

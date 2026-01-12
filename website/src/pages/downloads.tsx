@@ -199,6 +199,83 @@ const Asset = ({ urls }) => {
     );
 };
 
+const PackageRepo = ({ type }) => {
+    var cardBody = null;
+    var gpgKeyName = "openbao-gpg-pub-20240618.asc";
+
+    if ( type == "deb" ) {
+        const [gpgKey, setGPGKey] = useState("");
+        try {
+            fetch("/assets/" + gpgKeyName)
+                .then(r => r.text())
+                .then(data => setGPGKey(data.replace("\n\n", "\n.\n")))
+        } catch (error) {
+            console.error(error);
+        }
+
+        cardBody = <div className="card__body">
+            <h6>Set up the OpenBao repository</h6>
+            Simply add this repository configuration to your DEB-sources.
+            APT then verifies that the packages have been created and signed by the official pipeline and have not been tampered with.
+            <CodeBlock
+                language="shell"
+                title="/etc/apt/sources.list.d/openbao.sources"
+                showLineNumbers>
+                {`Types: deb
+URIs: https://pkgs.openbao.org/deb/
+Suites: stable
+Components: main
+Signed-By:
+` + gpgKey.replaceAll(/^(?!$)/gm, " ")}
+            </CodeBlock>
+
+            <h6>Install OpenBao</h6>
+            <CodeBlock
+                language="shell">
+                {`sudo apt update && sudo apt install openbao`}
+            </CodeBlock>
+        </div>
+    }
+
+    if ( type == "rpm" ) {
+        cardBody = <div className="card__body">
+            <h6>Set up the OpenBao repository</h6>
+            Simply add this repository configuration to your YUM-repos.
+            YUM then verifies that the packages have been created and signed by the official pipeline and have not been tampered with.
+            <CodeBlock
+                language="shell"
+                title="/etc/yum.repos.de/openbao.repo"
+                showLineNumbers>
+                {`[openbao]
+name=openbao
+baseurl=https://pkgs.openbao.org/rpm/$basearch
+repo_gpgcheck=0
+gpgcheck=1
+enabled=1
+gpgkey=https://openbao.org/assets/` + gpgKeyName + `
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+metadata_expire=300`}
+            </CodeBlock>
+
+            <h6>Install OpenBao</h6>
+            <CodeBlock
+                language="shell">
+                {`sudo yum install -y openbao`}
+            </CodeBlock>
+        </div>
+    }
+
+    return (
+        <div className="card download-card package-repo">
+            <div className="card__header">
+                <h5>Installation via official Package Repository</h5>
+            </div>
+            { cardBody }
+        </div>
+    )
+}
+
 const Docker = ({ version, name }) => {
     const { options } = useOptions();
     return (
@@ -254,6 +331,7 @@ const LinuxPackage = ({ version, name }) => {
     return (
         <Tabs>
             <TabItem value="deb" label="Deb">
+                <PackageRepo type={"deb"} />
                 <nav className="pagination-nav">
                     {/* Check if version is not undefined before accessing releases */}
                     {version &&
@@ -266,6 +344,7 @@ const LinuxPackage = ({ version, name }) => {
                 </nav>
             </TabItem>
             <TabItem value="rpm" label="RPM">
+                <PackageRepo type={"rpm"} />
                 <nav className="pagination-nav">
                     {/* Check if version is not undefined before accessing releases */}
                     {version &&

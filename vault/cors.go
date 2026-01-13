@@ -35,11 +35,12 @@ var StdAllowedHeaders = []string{
 
 // CORSConfig stores the state of the CORS configuration.
 type CORSConfig struct {
-	sync.RWMutex   `json:"-"`
-	core           *Core
-	Enabled        *uint32  `json:"enabled"`
-	AllowedOrigins []string `json:"allowed_origins,omitempty"`
-	AllowedHeaders []string `json:"allowed_headers,omitempty"`
+	sync.RWMutex     `json:"-"`
+	core             *Core
+	Enabled          *uint32  `json:"enabled"`
+	AllowedOrigins   []string `json:"allowed_origins,omitempty"`
+	AllowedHeaders   []string `json:"allowed_headers,omitempty"`
+	AllowCredentials bool     `json:"allow_credentials,omitempty"`
 }
 
 func (c *Core) saveCORSConfig(ctx context.Context) error {
@@ -52,6 +53,7 @@ func (c *Core) saveCORSConfig(ctx context.Context) error {
 	c.corsConfig.RLock()
 	localConfig.AllowedOrigins = c.corsConfig.AllowedOrigins
 	localConfig.AllowedHeaders = c.corsConfig.AllowedHeaders
+	localConfig.AllowCredentials = c.corsConfig.AllowCredentials
 	c.corsConfig.RUnlock()
 
 	entry, err := logical.StorageEntryJSON("cors", localConfig)
@@ -98,7 +100,7 @@ func (c *Core) loadCORSConfig(ctx context.Context) error {
 
 // Enable takes either a '*' or a comma-separated list of URLs that can make
 // cross-origin requests to Vault.
-func (c *CORSConfig) Enable(ctx context.Context, urls []string, headers []string) error {
+func (c *CORSConfig) Enable(ctx context.Context, urls []string, headers []string, allow_credentials bool) error {
 	if len(urls) == 0 {
 		return errors.New("at least one origin or the wildcard must be provided")
 	}
@@ -112,6 +114,9 @@ func (c *CORSConfig) Enable(ctx context.Context, urls []string, headers []string
 
 	// Start with the standard headers to Vault accepts.
 	c.AllowedHeaders = append([]string{}, StdAllowedHeaders...)
+
+	// Whether to return the "Access-Control-Allow-Credentials: true" header
+	c.AllowCredentials = allow_credentials
 
 	// Allow the user to add additional headers to the list of
 	// headers allowed on cross-origin requests.
@@ -137,6 +142,7 @@ func (c *CORSConfig) Disable(ctx context.Context) error {
 
 	c.AllowedOrigins = nil
 	c.AllowedHeaders = nil
+	c.AllowCredentials = false
 
 	c.Unlock()
 

@@ -1018,19 +1018,19 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 
 	if wrapping {
 
-		extraData := map[string]interface{}{}
+		extraData := map[string]string{}
 		// For controlgroup, store the original request and control group details with the cubbyhole data
 		if auth.PolicyResults.ControlGroup != nil {
 			reqJson, err := jsonutil.EncodeJSON(req)
 			if err != nil {
 				return resp, err
 			}
-			extraData["request"] = reqJson
+			extraData["request"] = string(reqJson)
 			cgJson, err := jsonutil.EncodeJSON(auth.PolicyResults.ControlGroup)
 			if err != nil {
 				return resp, err
 			}
-			extraData["control_group"] = cgJson
+			extraData["control_group"] = string(cgJson)
 		}
 
 		cubbyResp, cubbyErr := c.wrapInCubbyhole(ctx, req, resp, auth, extraData)

@@ -164,6 +164,30 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
 		t.Fatalf("bad wrap_info: %#v", resp)
 	}
+
+	// Fetch token with accessor
+	accessor := resp.WrapInfo.Accessor
+	req = &logical.Request{
+		Path:        "auth/token/lookup-accessor",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"accessor": accessor,
+		},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+
+	// Expect metadata
+	meta, ok := resp.Data["meta"].(map[string]string)
+	require.True(t, ok)
+	require.NotEmpty(t, meta["control_group"])
+	require.NotEmpty(t, meta["request"])
 }
 
 func TestRequestHandling_LoginWrapping(t *testing.T) {

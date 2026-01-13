@@ -28,7 +28,6 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	semver "github.com/hashicorp/go-version"
@@ -53,25 +52,11 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-const (
-	maxBytes    = 128 * 1024
-	globalScope = "global"
-)
-
-func systemBackendMemDBSchema() *memdb.DBSchema {
-	systemSchema := &memdb.DBSchema{
-		Tables: make(map[string]*memdb.TableSchema),
-	}
-
-	return systemSchema
-}
+const maxBytes = 128 * 1024
 
 func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
-	db, _ := memdb.NewMemDB(systemBackendMemDBSchema())
-
 	b := &SystemBackend{
 		Core:   core,
-		db:     db,
 		logger: logger,
 	}
 
@@ -195,7 +180,6 @@ func (b *SystemBackend) rawPaths() []*framework.Path {
 type SystemBackend struct {
 	*framework.Backend
 	Core   *Core
-	db     *memdb.MemDB
 	logger log.Logger
 }
 
@@ -203,11 +187,9 @@ type SystemBackend struct {
 // data that it returns is a sanitized version of the combined configuration
 // file(s) provided.
 func (b *SystemBackend) handleConfigStateSanitized(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	config := b.Core.SanitizedConfig()
-	resp := &logical.Response{
-		Data: config,
-	}
-	return resp, nil
+	return &logical.Response{
+		Data: b.Core.SanitizedConfig(),
+	}, nil
 }
 
 // handleConfigReload handles reloading specific pieces of the configuration.

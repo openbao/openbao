@@ -1165,7 +1165,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// Logical backends
-	c.configureLogicalBackends(conf.LogicalBackends, conf.Logger, conf.AdministrativeNamespacePath)
+	c.configureLogicalBackends(conf.LogicalBackends, conf.Logger)
 
 	// Credentials backends
 	c.configureCredentialsBackends(conf.CredentialBackends, conf.Logger)
@@ -1273,7 +1273,6 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 	credentialBackends[mountTypeToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		tsLogger := logger.Named("token")
 		c.AddLogger(tsLogger)
-
 		return NewTokenStore(ctx, tsLogger, c, config)
 	}
 	credentialBackends[mountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
@@ -1288,7 +1287,7 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 
 // configureLogicalBackends configures the Core with the ability to create
 // logical backends for various types.
-func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, logger log.Logger, adminNamespacePath string) {
+func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, logger log.Logger) {
 	logicalBackends := make(map[string]logical.Factory, len(backends))
 
 	for k, f := range backends {
@@ -1315,10 +1314,7 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 		sysBackendLogger := logger.Named("system")
 		c.AddLogger(sysBackendLogger)
 		b := NewSystemBackend(c, sysBackendLogger)
-		if err := b.Setup(ctx, config); err != nil {
-			return nil, err
-		}
-		return b, nil
+		return b, b.Setup(ctx, config)
 	}
 	logicalBackends[mountTypeNSSystem] = logicalBackends[mountTypeSystem]
 

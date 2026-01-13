@@ -54,4 +54,3 @@ pid_file = "./pidfile"
 raw_storage_endpoint = true
 disable_sealwrap = true
 disable_sentinel_trace = true
-administrative_namespace_path = "admin/"

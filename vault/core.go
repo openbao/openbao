@@ -802,10 +802,6 @@ type CoreConfig struct {
 
 	ExpirationRevokeRetryBase time.Duration
 
-	// AdministrativeNamespacePath is used to configure the administrative namespace, which has access to some sys endpoints that are
-	// only accessible in the root namespace, currently sys/audit-hash and sys/monitor.
-	AdministrativeNamespacePath string
-
 	NumRollbackWorkers int
 
 	// UnsafeCrossNamespaceIdentity is used to comply with Vault Enterprise's

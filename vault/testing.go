@@ -197,7 +197,6 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	conf.DisableSSCTokens = opts.DisableSSCTokens
 	conf.PluginDirectory = opts.PluginDirectory
 	conf.DetectDeadlocks = opts.DetectDeadlocks
-	conf.AdministrativeNamespacePath = opts.AdministrativeNamespacePath
 	conf.ImpreciseLeaseRoleTracking = opts.ImpreciseLeaseRoleTracking
 	conf.UnsafeCrossNamespaceIdentity = opts.UnsafeCrossNamespaceIdentity
 
@@ -1540,7 +1539,6 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.DisableSentinelTrace = base.DisableSentinelTrace
 		coreConfig.ClusterName = base.ClusterName
 		coreConfig.DisableAutopilot = base.DisableAutopilot
-		coreConfig.AdministrativeNamespacePath = base.AdministrativeNamespacePath
 		coreConfig.ServiceRegistration = base.ServiceRegistration
 		coreConfig.ImpreciseLeaseRoleTracking = base.ImpreciseLeaseRoleTracking
 

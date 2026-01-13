@@ -458,11 +458,7 @@ func (b *backend) updatePkiStorageVersion(ctx context.Context, grabIssuersLock b
 		defer b.issuersLock.Unlock()
 	}
 
-	if info.isRequired {
-		b.pkiStorageVersion.Store(false)
-	} else {
-		b.pkiStorageVersion.Store(true)
-	}
+	b.pkiStorageVersion.Store(!info.isRequired)
 }
 
 func (b *backend) invalidate(ctx context.Context, key string) {

@@ -191,8 +191,7 @@ func (b *backendGRPCPluginClient) Cleanup(ctx context.Context) {
 	// exit, which is fine. Overall this ensures that we do not miss stopping
 	// the server if it ends up being created after Cleanup is called.
 	<-b.cleanupCh
-	server := b.server.Load()
-	if server != nil {
+	if server := b.server.Load(); server != nil {
 		server.GracefulStop()
 	}
 }

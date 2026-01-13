@@ -397,7 +397,7 @@ func Test_StorageErrorSafety(t *testing.T) {
 		checkKeys(t, ctx, p, storage, keysArchive, "rotate", i, i, i)
 	}
 
-	storage.Underlying().FailPut()
+	storage.Underlying().FailPut(true)
 	priorLen := len(p.Keys)
 
 	err = p.Rotate(ctx, storage, rand.Reader)
@@ -453,7 +453,7 @@ func Test_BadUpgrade(t *testing.T) {
 	}
 
 	// Do it again with a failing storage call
-	storage.Underlying().FailPut()
+	storage.Underlying().FailPut(true)
 
 	p.Key = p.Keys["1"].Key
 	p.Keys = nil
@@ -533,7 +533,7 @@ func Test_BadArchive(t *testing.T) {
 		t.Fatalf("unexpected key length %d", len(p.Keys))
 	}
 
-	storage.Underlying().FailPut()
+	storage.Underlying().FailPut(true)
 
 	// Set back, which should cause p.Keys to be changed if the persist works,
 	// but it doesn't

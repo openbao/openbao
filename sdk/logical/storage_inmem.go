@@ -76,23 +76,23 @@ func (s *InmemStorage) Underlying() *inmem.InmemBackend {
 	return s.underlying.(*inmem.InmemBackend)
 }
 
-func (s *InmemStorage) FailPut() *InmemStorage {
-	s.Underlying().FailPut()
+func (s *InmemStorage) FailPut(fail bool) *InmemStorage {
+	s.Underlying().FailPut(fail)
 	return s
 }
 
-func (s *InmemStorage) FailGet() *InmemStorage {
-	s.Underlying().FailGet()
+func (s *InmemStorage) FailGet(fail bool) *InmemStorage {
+	s.Underlying().FailGet(fail)
 	return s
 }
 
-func (s *InmemStorage) FailDelete() *InmemStorage {
-	s.Underlying().FailDelete()
+func (s *InmemStorage) FailDelete(fail bool) *InmemStorage {
+	s.Underlying().FailDelete(fail)
 	return s
 }
 
-func (s *InmemStorage) FailList() *InmemStorage {
-	s.Underlying().FailList()
+func (s *InmemStorage) FailList(fail bool) *InmemStorage {
+	s.Underlying().FailList(fail)
 	return s
 }
 

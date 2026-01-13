@@ -970,7 +970,6 @@ func (c *Core) periodicLeaderRefresh(stopCh chan struct{}) {
 			// deadlock, which then means stopCh can never been seen and we can
 			// block shutdown
 			go func() {
-				// Bind locally, as the race detector is tripping here
 				isLeader, _, newClusterAddr, err := c.Leader()
 				if err != nil {
 					// This is debug level because it's not really something the user

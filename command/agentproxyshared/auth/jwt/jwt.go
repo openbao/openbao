@@ -180,10 +180,10 @@ func (j *jwtMethod) runWatcher() {
 			return
 
 		case <-j.ticker.C:
-			latestToken := *j.latestToken.Load()
+			latestToken := j.latestToken.Load()
 			j.ingressToken()
-			newToken := *j.latestToken.Load()
-			if newToken != latestToken {
+			newToken := j.latestToken.Load()
+			if (latestToken != nil && newToken != nil) && *latestToken != *newToken {
 				j.logger.Debug("new jwt file found")
 				j.credsFound <- struct{}{}
 			}

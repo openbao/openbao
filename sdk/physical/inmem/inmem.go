@@ -195,8 +195,8 @@ func (i *InmemBackend) PutInternal(ctx context.Context, entry *physical.Entry) e
 	return nil
 }
 
-func (i *InmemBackend) FailPut() {
-	i.failPut.Store(true)
+func (i *InmemBackend) FailPut(fail bool) {
+	i.failPut.Store(fail)
 }
 
 // Get is used to fetch an entry
@@ -237,8 +237,8 @@ func (i *InmemBackend) getInternal(ctx context.Context, key string) (*physical.E
 	return nil, nil
 }
 
-func (i *InmemBackend) FailGet() {
-	i.failGet.Store(true)
+func (i *InmemBackend) FailGet(fail bool) {
+	i.failGet.Store(fail)
 }
 
 // Delete is used to permanently delete an entry
@@ -269,8 +269,8 @@ func (i *InmemBackend) DeleteInternal(ctx context.Context, key string) error {
 	return nil
 }
 
-func (i *InmemBackend) FailDelete() {
-	i.failDelete.Store(true)
+func (i *InmemBackend) FailDelete(fail bool) {
+	i.failDelete.Store(fail)
 }
 
 // List is used to list all the keys under a given
@@ -361,8 +361,8 @@ func (i *InmemBackend) listPaginatedInternal(ctx context.Context, prefix string,
 	return out, nil
 }
 
-func (i *InmemBackend) FailList() {
-	i.failList.Store(true)
+func (i *InmemBackend) FailList(fail bool) {
+	i.failList.Store(fail)
 }
 
 func (i *TransactionalInmemBackend) BeginReadOnlyTx(ctx context.Context) (physical.Transaction, error) {

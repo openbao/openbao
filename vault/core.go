@@ -303,7 +303,7 @@ type Core struct {
 	standbyStopCh        *atomic.Value
 	standbyRestartCh     *atomic.Value
 	manualStepDownCh     chan struct{}
-	keepHALockOnStepDown *atomic.Bool
+	keepHALockOnStepDown atomic.Bool
 	heldHALock           physical.Lock
 
 	// shutdownDoneCh is used to notify when core.Shutdown() completes.
@@ -947,7 +947,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		shutdownDoneCh:                 new(atomic.Value),
 		replicationState:               new(atomic.Uint32),
 		activeNodeReplicationState:     new(atomic.Uint32),
-		keepHALockOnStepDown:           new(atomic.Bool),
 		replicationFailure:             new(uint32),
 		allLoggers:                     conf.AllLoggers,
 		builtinRegistry:                conf.BuiltinRegistry,
@@ -1034,7 +1033,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	// Load CORS config and provide a value for the core field.
 	c.corsConfig = &CORSConfig{
 		core:    c,
-		Enabled: new(atomic.Uint32),
+		Enabled: new(uint32),
 	}
 
 	// Load write-forwarded path manager.

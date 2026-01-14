@@ -449,6 +449,10 @@ func (c *Core) validateWrappingToken(ctx context.Context, req *logical.Request) 
 		req.SetTokenEntry(te)
 	}
 
+	if val, ok := te.Meta["control_group"]; ok {
+		return validateControlGroup(val)
+	}
+
 	return true, nil
 }
 

@@ -560,23 +560,8 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		if len(authResults.ACLResults.GrantingPolicies) > 0 {
 			auth.PolicyResults.GrantingPolicies = authResults.ACLResults.GrantingPolicies
 		}
-		if authResults.ACLResults.ControlGroup != nil {
-			cg := &logical.ControlGroup{
-				TTL: authResults.ACLResults.ControlGroup.TTL,
-			}
-			cg.Factors = make([]logical.ControlGroupFactor, len(authResults.ACLResults.ControlGroup.Factors))
-			for i, factor := range authResults.ACLResults.ControlGroup.Factors {
-				cg.Factors[i] = logical.ControlGroupFactor{
-					Name:                   factor.Name,
-					ControlledCapabilities: factor.ControlledCapabilities,
-					Identity: logical.ControlGroupIdentity{
-						GroupNames: factor.Identity.GroupNames,
-						Approvals:  factor.Identity.Approvals,
-					},
-				}
-			}
-			auth.PolicyResults.ControlGroup = cg
-		}
+		// Create logical.ControlGroup for PolicyResults
+		auth.PolicyResults.ControlGroup = makeLogicalControlGroup(authResults.ACLResults.ControlGroup)
 	}
 	if authResults.SentinelResults != nil && len(authResults.SentinelResults.GrantingPolicies) > 0 {
 		auth.PolicyResults.GrantingPolicies = append(auth.PolicyResults.GrantingPolicies, authResults.SentinelResults.GrantingPolicies...)

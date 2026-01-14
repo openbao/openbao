@@ -132,9 +132,10 @@ type PolicyResults struct {
 }
 
 type ControlGroupFactor struct {
-	Name                   string               `json:"name"`
-	ControlledCapabilities []string             `json:"controlled_capabilities"`
-	Identity               ControlGroupIdentity `json:"identity"`
+	Name                   string                      `json:"name"`
+	ControlledCapabilities []string                    `json:"controlled_capabilities"`
+	Identity               ControlGroupIdentity        `json:"identity"`
+	Authorizations         []ControlGroupAuthorization `json:"authorizations"`
 }
 
 type ControlGroupIdentity struct {
@@ -145,6 +146,11 @@ type ControlGroupIdentity struct {
 type ControlGroup struct {
 	TTL     time.Duration        `json:"ttl"`
 	Factors []ControlGroupFactor `json:"factors"`
+}
+
+type ControlGroupAuthorization struct {
+	Timestamp time.Time `json:"timestamp"`
+	Approver  string    `json:"approver"`
 }
 
 type PolicyInfo struct {

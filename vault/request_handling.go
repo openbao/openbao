@@ -561,9 +561,21 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 			auth.PolicyResults.GrantingPolicies = authResults.ACLResults.GrantingPolicies
 		}
 		if authResults.ACLResults.ControlGroup != nil {
-			auth.PolicyResults.ControlGroup = &logical.ControlGroup{
+			cg := &logical.ControlGroup{
 				TTL: authResults.ACLResults.ControlGroup.TTL,
 			}
+			cg.Factors = make([]logical.ControlGroupFactor, len(authResults.ACLResults.ControlGroup.Factors))
+			for i, factor := range authResults.ACLResults.ControlGroup.Factors {
+				cg.Factors[i] = logical.ControlGroupFactor{
+					Name:                   factor.Name,
+					ControlledCapabilities: factor.ControlledCapabilities,
+					Identity: logical.ControlGroupIdentity{
+						GroupNames: factor.Identity.GroupNames,
+						Approvals:  factor.Identity.Approvals,
+					},
+				}
+			}
+			auth.PolicyResults.ControlGroup = cg
 		}
 	}
 	if authResults.SentinelResults != nil && len(authResults.SentinelResults.GrantingPolicies) > 0 {

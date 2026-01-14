@@ -131,8 +131,20 @@ type PolicyResults struct {
 	ControlGroup     *ControlGroup `json:"control_group"`
 }
 
+type ControlGroupFactor struct {
+	Name                   string               `json:"name"`
+	ControlledCapabilities []string             `json:"controlled_capabilities"`
+	Identity               ControlGroupIdentity `json:"identity"`
+}
+
+type ControlGroupIdentity struct {
+	GroupNames []string `json:"group_names"`
+	Approvals  int      `json:"approvals"`
+}
+
 type ControlGroup struct {
-	TTL time.Duration `json:"ttl"`
+	TTL     time.Duration        `json:"ttl"`
+	Factors []ControlGroupFactor `json:"factors"`
 }
 
 type PolicyInfo struct {

@@ -1,6 +1,8 @@
 package vault
 
 import (
+	"context"
+	"slices"
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -30,11 +32,51 @@ func makeLogicalControlGroup(authResultsControlGroup *ControlGroup) *logical.Con
 	return cg
 }
 
-// validateControlGroup checks for a passing factor
-func validateControlGroup(controlGroup string) (bool, error) {
+// getControlGroup will fetch a control group from a token entry where present
+func (c *Core) getControlGroup(ctx context.Context, token string) (*logical.ControlGroup, error) {
+	tokenEntry, err := c.tokenStore.Lookup(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
+	controlGroup, ok := tokenEntry.Meta["control_group"]
+	if !ok {
+		// if there's no control group, token is valid
+		return nil, nil
+	}
+
 	cg := logical.ControlGroup{}
 	if err := jsonutil.DecodeJSON([]byte(controlGroup), &cg); err != nil {
+		return nil, err
+	}
+
+	return &cg, nil
+}
+
+// setControlGroup will replace control group metadata on a token entry
+func (c *Core) setControlGroup(ctx context.Context, token string, cg *logical.ControlGroup) error {
+	tokenEntry, err := c.tokenStore.Lookup(ctx, token)
+	if err != nil {
+		return err
+	}
+
+	cgJson, err := jsonutil.EncodeJSON(cg)
+	if err != nil {
+		return err
+	}
+	tokenEntry.Meta["control_group"] = string(cgJson)
+	return c.tokenStore.store(ctx, tokenEntry)
+}
+
+// validateControlGroup checks for a passing control group factor
+func (c *Core) validateControlGroup(ctx context.Context, token string) (bool, error) {
+	cg, err := c.getControlGroup(ctx, token)
+	if err != nil {
 		return false, err
+	}
+	// when no control group policy found, we pass this check
+	if cg == nil {
+		return true, nil
 	}
 
 	for _, factor := range cg.Factors {
@@ -53,4 +95,34 @@ func validateControlGroup(controlGroup string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// addAuthorization updates the control group metadata on the token with the given approval if applicable
+func (c *Core) addAuthorization(ctx context.Context, token string, approver logical.Auth) error {
+	cg, err := c.getControlGroup(ctx, token)
+	if err != nil {
+		return err
+	}
+
+	foundAuthorization := false
+	for i, factor := range cg.Factors {
+		identityGroups := factor.Identity.GroupNames
+		for _, group := range approver.GroupAliases {
+			if slices.Contains(identityGroups, group.Name) {
+				foundAuthorization = true
+				cg.Factors[i].Authorizations = append(factor.Authorizations, logical.ControlGroupAuthorization{
+					Timestamp: time.Now(),
+					Approver:  approver.EntityID,
+				})
+			}
+		}
+	}
+
+	if foundAuthorization {
+		err = c.setControlGroup(ctx, token, cg)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

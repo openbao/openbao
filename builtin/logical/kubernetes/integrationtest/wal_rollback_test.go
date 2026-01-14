@@ -207,29 +207,29 @@ func checkObjects(t *testing.T, roleConfig map[string]interface{}, isClusterBind
 	}
 
 	// Check the k8s objects that should have been created (all but the ServiceAccount)
-	operation := func() (any, error) {
+	operation := func() (none struct{}, err error) {
 		if existingRole == "" {
 			exists, err := checkRoleExists(k8sClient, listOptions, roleType)
 			require.NoError(t, err)
 			if exists != shouldExist {
-				return nil, fmt.Errorf("%s exists (%v) but should be (%v)", roleType, exists, shouldExist)
+				return none, fmt.Errorf("%s exists (%v) but should be (%v)", roleType, exists, shouldExist)
 			}
 		}
 
 		exists, err := checkRoleBindingExists(k8sClient, listOptions, isClusterBinding)
 		require.NoError(t, err)
 		if exists != shouldExist {
-			return nil, fmt.Errorf("binding (cluster %v) exists (%v) but should be (%v)", isClusterBinding, exists, shouldExist)
+			return none, fmt.Errorf("binding (cluster %v) exists (%v) but should be (%v)", isClusterBinding, exists, shouldExist)
 		}
 
 		exists, err = checkServiceAccountExists(k8sClient, listOptions)
 		require.NoError(t, err)
 		// No permission to create services accounts, so they should never get created
 		if exists {
-			return nil, fmt.Errorf("service account exists (%v) but should be (false)", exists)
+			return none, fmt.Errorf("service account exists (%v) but should be (false)", exists)
 		}
 
-		return nil, nil
+		return none, nil
 	}
 
 	bo := backoff.NewExponentialBackOff()

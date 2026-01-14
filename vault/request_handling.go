@@ -96,7 +96,6 @@ func init() {
 		"internal/inspect/router",
 		"key-status",
 		"loggers",
-		"managed-keys",
 		"metrics",
 		"mfa/method",
 		"monitor",

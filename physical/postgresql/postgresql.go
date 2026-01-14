@@ -294,12 +294,12 @@ func doRetryConnect(logger log.Logger, connURL string, retries uint) (*sql.DB, e
 	b.MaxInterval = 5 * time.Second
 	b.InitialInterval = 15 * time.Millisecond
 
-	op := func() (any, error) {
+	op := func() (none struct{}, err error) {
 		if err := db.Ping(); err != nil {
 			logger.Debug("database not ready", "err", err)
-			return nil, err
+			return none, err
 		}
-		return nil, nil
+		return none, nil
 	}
 
 	if _, err := backoff.Retry(context.Background(), op, backoff.WithBackOff(b), backoff.WithMaxTries(retries)); err != nil {

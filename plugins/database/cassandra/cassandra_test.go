@@ -286,11 +286,11 @@ func connect(t testing.TB, address string, port int, username, password string, 
 func assertNoCreds(t testing.TB, address string, port int, username, password string, sslOpts *gocql.SslOptions, timeout time.Duration) {
 	t.Helper()
 
-	op := backoff.Operation[any](func() (any, error) {
+	op := func() (none struct{}, err error) {
 		// "Invert" the error so the backoff logic sees a failure to connect as a success
 		_ = connect(t, address, port, username, password, sslOpts)
-		return nil, nil
-	})
+		return none, nil
+	}
 
 	bo := backoff.NewExponentialBackOff()
 	bo.MaxInterval = bo.InitialInterval

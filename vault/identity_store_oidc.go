@@ -2029,7 +2029,7 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 	}
 
 	if ns.Tainted {
-		i.logger.Info("skipping OIDC periodic function for tainted namespace", "ns", ns.UUID)
+		i.logger.Info("skipping OIDC periodic function for tainted namespace", "namespace", ns.Path)
 		return
 	}
 
@@ -2038,7 +2038,7 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 
 	v, ok, err := i.oidcCache.Get(ns, nextRunKey)
 	if err != nil {
-		i.Logger().Error("error reading oidc cache", "ns", ns.UUID, "err", err)
+		i.Logger().Error("error reading oidc cache", "namespace", ns.Path, "err", err)
 		return
 	}
 
@@ -2065,16 +2065,16 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 
 	nextRotation, jwksClientCacheDuration, err := i.oidcKeyRotation(ctx, s)
 	if err != nil {
-		i.Logger().Warn("error rotating OIDC keys", "ns", ns.UUID, "err", err)
+		i.Logger().Warn("error rotating OIDC keys", "namespace", ns.Path, "err", err)
 	}
 
 	nextExpiration, err := i.expireOIDCPublicKeys(ctx, s)
 	if err != nil {
-		i.Logger().Warn("error expiring OIDC public keys", "ns", ns.UUID, "err", err)
+		i.Logger().Warn("error expiring OIDC public keys", "namespace", ns.Path, "err", err)
 	}
 
 	if err := i.oidcCache.Flush(ns); err != nil {
-		i.Logger().Error("error flushing oidc cache", "ns", ns.UUID, "err", err)
+		i.Logger().Error("error flushing oidc cache", "namespace", ns.Path, "err", err)
 	}
 
 	// re-run at the soonest expiration or rotation time
@@ -2091,7 +2091,7 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 	}
 
 	if err := i.oidcCache.Set(ns, nextRunKey, nextRun); err != nil {
-		i.Logger().Error("error setting oidc nextRun cache", "ns", ns.UUID, "err", err)
+		i.Logger().Error("error setting oidc nextRun cache", "namespace", ns.Path, "err", err)
 	}
 
 	if minJwksClientCacheDuration < math.MaxInt64 {

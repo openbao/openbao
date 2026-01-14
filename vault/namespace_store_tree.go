@@ -78,7 +78,7 @@ func (nt *namespaceTree) LongestPrefix(path string) (string, *namespace.Namespac
 
 	namespacePrefix := node.entry.Path
 	pathSuffix := strings.TrimPrefix(path, namespacePrefix)
-	return namespacePrefix, node.entry, pathSuffix
+	return namespacePrefix, node.entry.Clone(false), pathSuffix
 }
 
 func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespace.Namespace) bool) {

@@ -505,7 +505,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		// This initial write sets up the namespace as tainted, preventing
 		// a lot of subsystems from using it if it is reloaded from storage.
 		entry.Tainted = true
-		if err := ns.writeNamespace(ctx, nil, entry); err != nil {
+		if err := ns.writeNamespace(ctx, ns.storage, entry); err != nil {
 			return fmt.Errorf("failed to persist initial tainted namespace: %w", err)
 		}
 
@@ -539,7 +539,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 
 	// Finally, write the non-tainted namespace or perform our only write if
 	// we are modifying an existing entry.
-	if err := ns.writeNamespace(ctx, nil, entry); err != nil {
+	if err := ns.writeNamespace(ctx, ns.storage, entry); err != nil {
 		return fmt.Errorf("failed to persist namespace: %w", err)
 	}
 
@@ -557,10 +557,6 @@ func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage logical.St
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
-	}
-
-	if storage == nil {
-		storage = ns.storage
 	}
 
 	view := NamespaceView(storage, parent).SubView(namespaceStoreSubPath)
@@ -611,7 +607,7 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, storage logic
 		return err
 	}
 
-	if err := ns.createMounts(nsCtx, ns.storage); err != nil {
+	if err := ns.createMounts(nsCtx, storage); err != nil {
 		return err
 	}
 
@@ -669,7 +665,7 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Stor
 	}
 
 	// Persist the mounts using the above storage transaction.
-	if err := logical.WithTransaction(ctx, storage, func(txn logical.Storage) error {
+	return logical.WithTransaction(ctx, storage, func(txn logical.Storage) error {
 		for _, mount := range mounts.Entries {
 			if err := ns.core.persistMounts(ctx, txn, ns.core.mounts, &mount.Local, mount.UUID); err != nil {
 				return fmt.Errorf("failed to persist secret mount (path=%v): %w", mount.Path, err)
@@ -683,11 +679,7 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Stor
 		}
 
 		return nil
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	})
 }
 
 // undoCreateMounts handles commit failure for in-memory resources. Note
@@ -697,7 +689,9 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 	success := true
 
 	// clear auth mounts
+	ns.core.authLock.Lock()
 	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
+	ns.core.authLock.Unlock()
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace credentials", "namespace", namespaceToDelete.Path, "error", err.Error())
 		success = false
@@ -717,7 +711,9 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 	}
 
 	// clear mounts
+	ns.core.mountsLock.Lock()
 	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
+	ns.core.mountsLock.Unlock()
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace mounts", "namespace", namespaceToDelete.Path, "error", err.Error())
 		success = false
@@ -929,12 +925,7 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool
 	}
 	defer unlock()
 
-	entries, err := ns.namespacesByPath.List(parent.Path, includeParent, recursive, ns.creationDeletionMap)
-	if err != nil {
-		return nil, err
-	}
-
-	return entries, nil
+	return ns.namespacesByPath.List(parent.Path, includeParent, recursive, ns.creationDeletionMap)
 }
 
 // taintNamespace is used to taint the namespace designated to be deleted
@@ -953,7 +944,7 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 	}
 
 	nsCopy := namespaceToTaint.Clone(true /* preserve unlock */)
-	if err := ns.writeNamespace(ctx, nil, nsCopy); err != nil {
+	if err := ns.writeNamespace(ctx, ns.storage, nsCopy); err != nil {
 		return fmt.Errorf("failed to persist namespace taint: %w", err)
 	}
 
@@ -1029,7 +1020,9 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 	}
 
 	// clear auth mounts
+	ns.core.authLock.Lock()
 	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
+	ns.core.authLock.Unlock()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve namespace credentials: %w", err)
 	}
@@ -1046,7 +1039,9 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 	}
 
 	// clear mounts
+	ns.core.mountsLock.Lock()
 	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
+	ns.core.mountsLock.Unlock()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve namespace mounts: %w", err)
 	}
@@ -1092,6 +1087,7 @@ func (ns *NamespaceStore) ResolveNamespaceFromRequest(nsHeader, reqPath string) 
 	// Find namespace that matches the longest prefix of reqPath.
 	ns.lock.RLock()
 	_, resolvedNs, trimmedPath := ns.namespacesByPath.LongestPrefix(reqPath)
+	resolvedNs.Tainted = resolvedNs.Tainted || ns.creationDeletionMap[resolvedNs.UUID]
 	ns.lock.RUnlock()
 
 	// Ensure that entire header was matched, so unmatched paths don't leak

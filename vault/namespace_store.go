@@ -17,6 +17,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	metrics "github.com/hashicorp/go-metrics/compat"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/fairshare"
@@ -454,49 +455,9 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 			unlocked = true
 		}
 
-		// Handle in-memory mount table entries that we should also clean
-		// up.
-		nsCtx := namespace.ContextWithNamespace(ns.creationDeletionJobContext, entry)
-		cleanupSuccess := ns.undoCreateMounts(nsCtx, entry)
-
-		// Clear the view corresponding with the namespace for
-		// completeness.
-		view := NamespaceView(ns.core.barrier, entry)
-		if err := logical.ClearViewWithLogging(ns.creationDeletionJobContext, view, ns.logger); err != nil {
-			ns.logger.Error("failed to remove remaining namespace storage", "error", err)
-			cleanupSuccess = false
-		}
-
-		// Now grab the lock again to handle updating the namespace store.
-		ns.lock.Lock()
-		unlocked = false
-
-		// Cleanup finished either way.
-		delete(ns.creationDeletionMap, entry.UUID)
-
-		// Only perform cleanup from in-memory and stored contexts if we had
-		// success removing entries. Otherwise, we'll treat this as a failed
-		// deletion.
-		entry.Tainted = true
-
-		if cleanupSuccess {
-			// When cleanup succeeds and the namespace did not exist, we should back
-			// out the entry from our in-memory and stored versions.
-			if err := ns.namespacesByPath.Delete(entry.Path); err != nil {
-				ns.logger.Error("failed to remove namespace from path manager", "error", err)
-			}
-
-			delete(ns.namespacesByUUID, entry.UUID)
-			delete(ns.namespacesByAccessor, entry.ID)
-
-			nsView := NamespaceView(ns.storage, parent).SubView(namespaceStoreSubPath)
-			if err := nsView.Delete(ns.creationDeletionJobContext, entry.UUID); err != nil {
-				ns.logger.Error("failed to remove created namespace storage entry on failure", "namespace", entry.Path, "error", err.Error())
-			}
-		}
-
-		ns.lock.Unlock()
-		unlocked = true
+		// Queue partially created namespace deletion for the background
+		// workers rather than doing it synchronously.
+		ns.deletionDispatcher.AddJob(ns.newNamespaceCreationFailureJob(parent, entry), parent.UUID)
 	}
 
 	defer cleanupFailed()
@@ -1314,4 +1275,73 @@ func (j *namespaceDeletionJob) Execute() error {
 
 func (j *namespaceDeletionJob) OnFailure(err error) {
 	j.store.logger.Error("failed to handle namespace deletion; job may be retried", "namespace", j.target.Path, "ns_uuid", j.target.UUID, "error", err.Error())
+}
+
+// namespaceCreationFailureJob is used with NamespaceStore.setNamespaceLocked
+// to gracefully handle long-lived deletion.
+type namespaceCreationFailureJob struct {
+	store  *NamespaceStore
+	parent *namespace.Namespace
+	target *namespace.Namespace
+}
+
+func (ns *NamespaceStore) newNamespaceCreationFailureJob(parent *namespace.Namespace, target *namespace.Namespace) fairshare.Job {
+	return &namespaceCreationFailureJob{
+		store:  ns,
+		parent: parent,
+		target: target,
+	}
+}
+
+func (j *namespaceCreationFailureJob) Execute() error {
+	// Handle in-memory mount table entries that we should also clean
+	// up.
+	nsCtx := namespace.ContextWithNamespace(j.store.creationDeletionJobContext, j.target)
+	cleanupSuccess := j.store.undoCreateMounts(nsCtx, j.target)
+
+	var retErr error
+
+	// Clear the view corresponding with the namespace for
+	// completeness.
+	view := NamespaceView(j.store.core.barrier, j.target)
+	if err := logical.ClearViewWithLogging(j.store.creationDeletionJobContext, view, j.store.logger); err != nil {
+		retErr = fmt.Errorf("failed to remove remaining namespace storage: %w", err)
+		cleanupSuccess = false
+	}
+
+	// Now grab the lock again to handle updating the namespace store.
+	j.store.lock.Lock()
+	defer j.store.lock.Unlock()
+
+	// Cleanup finished either way.
+	delete(j.store.creationDeletionMap, j.target.UUID)
+
+	// Only perform cleanup from in-memory and stored contexts if we had
+	// success removing entries. Otherwise, we'll treat this as a failed
+	// deletion.
+	j.target.Tainted = true
+
+	if cleanupSuccess {
+		// When cleanup succeeds and the namespace did not exist, we should back
+		// out the entry from our in-memory and stored versions.
+		if err := j.store.namespacesByPath.Delete(j.target.Path); err != nil {
+			err = fmt.Errorf("failed to remove namespace from path manager: %w", err)
+			retErr = multierror.Append(retErr, err)
+		}
+
+		delete(j.store.namespacesByUUID, j.target.UUID)
+		delete(j.store.namespacesByAccessor, j.target.ID)
+
+		nsView := NamespaceView(j.store.storage, j.parent).SubView(namespaceStoreSubPath)
+		if err := nsView.Delete(j.store.creationDeletionJobContext, j.target.UUID); err != nil {
+			err = fmt.Errorf("failed to remove created namespace storage entry on failure: %w", err)
+			retErr = multierror.Append(retErr, err)
+		}
+	}
+
+	return retErr
+}
+
+func (j *namespaceCreationFailureJob) OnFailure(err error) {
+	j.store.logger.Error("failed to handle namespace deletion following failed creation; job may be retried via deletion of tainted namespace", "namespace", j.target.Path, "ns_uuid", j.target.UUID, "error", err.Error())
 }

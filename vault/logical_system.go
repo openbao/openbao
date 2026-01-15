@@ -4991,18 +4991,6 @@ as well as perform core operations.
 
 // sysHelp is all the help text for the sys backend.
 var sysHelp = map[string][2]string{
-	"license": {
-		"Sets the license of the server.",
-		`
-The path responds to the following HTTP methods.
-
-    GET /
-        Returns information on the installed license
-
-    POST
-        Sets the license for the server
-	`,
-	},
 	"config/cors": {
 		"Configures or returns the current configuration of CORS settings.",
 		`

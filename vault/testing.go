@@ -1002,10 +1002,6 @@ func (c *TestClusterCore) stop() error {
 		}
 		c.Logger().Info("listeners successfully shut down")
 	}
-	if c.licensingStopCh != nil {
-		close(c.licensingStopCh)
-		c.licensingStopCh = nil
-	}
 
 	if err := c.Shutdown(); err != nil {
 		return err

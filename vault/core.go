@@ -300,8 +300,8 @@ type Core struct {
 
 	standby              atomic.Bool
 	standbyDoneCh        chan struct{}
-	standbyStopCh        *atomic.Value
-	standbyRestartCh     *atomic.Value
+	standbyStopCh        atomic.Value
+	standbyRestartCh     atomic.Value
 	manualStepDownCh     chan struct{}
 	keepHALockOnStepDown atomic.Bool
 	heldHALock           physical.Lock
@@ -432,7 +432,7 @@ type Core struct {
 	physicalCache physical.ToggleablePurgemonster
 
 	// logRequestsLevel indicates at which level requests should be logged
-	logRequestsLevel *atomic.Int32
+	logRequestsLevel atomic.Int32
 
 	// reloadFuncs is a map containing reload functions
 	reloadFuncs map[string][]reloadutil.ReloadFunc
@@ -492,8 +492,8 @@ type Core struct {
 
 	// replicationState keeps the current replication state cached for quick
 	// lookup; activeNodeReplicationState stores the active value on standbys
-	replicationState           *atomic.Uint32
-	activeNodeReplicationState *atomic.Uint32
+	replicationState           atomic.Uint32
+	activeNodeReplicationState atomic.Uint32
 
 	// uiConfig contains UI configuration
 	uiConfig *UIConfig
@@ -541,12 +541,6 @@ type Core struct {
 	// recovery mode
 	postRecoveryUnsealFuncs []func() error
 
-	// replicationFailure is used to mark when replication has entered an
-	// unrecoverable failure.
-	replicationFailure *uint32
-
-	licensingStopCh chan struct{}
-
 	// Stores loggers so we can reset the level
 	allLoggers     []log.Logger
 	allLoggersLock sync.RWMutex
@@ -592,7 +586,7 @@ type Core struct {
 
 	// KeyRotateGracePeriod is how long we allow an upgrade path
 	// for standby instances before we delete the upgrade keys
-	keyRotateGracePeriod *atomic.Int64
+	keyRotateGracePeriod atomic.Int64
 
 	autoRotateCancel context.CancelFunc
 
@@ -929,8 +923,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		seal:                conf.Seal,
 		stateLock:           stateLock,
 		router:              NewRouter(),
-		standbyStopCh:       new(atomic.Value),
-		standbyRestartCh:    new(atomic.Value),
 		baseLogger:          conf.Logger,
 		logger:              conf.Logger.Named("core"),
 		logLevel:            conf.LogLevel,
@@ -945,9 +937,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		rawEnabled:                     conf.EnableRaw,
 		introspectionEnabled:           conf.EnableIntrospection,
 		shutdownDoneCh:                 new(atomic.Value),
-		replicationState:               new(atomic.Uint32),
-		activeNodeReplicationState:     new(atomic.Uint32),
-		replicationFailure:             new(uint32),
 		allLoggers:                     conf.AllLoggers,
 		builtinRegistry:                conf.BuiltinRegistry,
 		metricsHelper:                  conf.MetricsHelper,
@@ -957,7 +946,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		raftJoinDoneCh:                 make(chan struct{}),
 		pendingRaftPeerChallengeKey:    make([]byte, 32),
 		clusterHeartbeatInterval:       clusterHeartbeatInterval,
-		keyRotateGracePeriod:           new(atomic.Int64),
 		numExpirationWorkers:           conf.NumExpirationWorkers,
 		raftFollowerStates:             raft.NewFollowerStates(),
 		disableAutopilot:               conf.DisableAutopilot,
@@ -1209,8 +1197,6 @@ func (c *Core) configureListeners(conf *CoreConfig) error {
 
 // configureLogRequestsLevel configures the Core with the supplied log requests level.
 func (c *Core) configureLogRequestsLevel(level string) {
-	c.logRequestsLevel = &atomic.Int32{}
-
 	lvl := log.LevelFromString(level)
 
 	switch {
@@ -3583,7 +3569,7 @@ func (c *Core) StoreInFlightReqData(reqID string, data InFlightReqData) {
 // request from the inFlightReqMap and decrement the number of in-flight
 // requests by one.
 func (c *Core) FinalizeInFlightReqData(reqID string, statusCode int) {
-	if c.logRequestsLevel != nil && c.logRequestsLevel.Load() != 0 {
+	if c.logRequestsLevel.Load() != 0 {
 		c.LogCompletedRequests(reqID, statusCode)
 	}
 

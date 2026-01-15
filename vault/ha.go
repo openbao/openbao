@@ -1220,9 +1220,12 @@ func (c *Core) advertiseLeader(ctx context.Context, uuid string, leaderLostCh <-
 		D:    key.D,
 	}
 
-	locCert := *c.localClusterCert.Load()
-	localCert := make([]byte, len(locCert))
-	copy(localCert, locCert)
+	locCert := c.localClusterCert.Load()
+	if locCert == nil {
+		return errors.New("couldn't load local cluster cert")
+	}
+	localCert := make([]byte, len(*locCert))
+	copy(localCert, *locCert)
 	adv := &activeAdvertisement{
 		RedirectAddr:     c.redirectAddr,
 		ClusterAddr:      c.ClusterAddr(),

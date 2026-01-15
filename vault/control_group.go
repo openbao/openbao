@@ -32,7 +32,7 @@ func makeLogicalControlGroup(authResultsControlGroup *ControlGroup) *logical.Con
 	return cg
 }
 
-// getControlGroup will fetch a control group from a token entry where present
+// getControlGroup fetches control group from a token entry where present
 func (c *Core) getControlGroup(ctx context.Context, token string) (*logical.ControlGroup, error) {
 	tokenEntry, err := c.tokenStore.Lookup(ctx, token)
 	if err != nil {
@@ -53,7 +53,7 @@ func (c *Core) getControlGroup(ctx context.Context, token string) (*logical.Cont
 	return &cg, nil
 }
 
-// setControlGroup will replace control group metadata on a token entry
+// setControlGroup sets/replaces control group metadata on a token entry
 func (c *Core) setControlGroup(ctx context.Context, token string, cg *logical.ControlGroup) error {
 	tokenEntry, err := c.tokenStore.Lookup(ctx, token)
 	if err != nil {

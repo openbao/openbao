@@ -68,6 +68,10 @@ div.download-card a.button span {
     );
 }
 
+div.package-repo {
+  margin-bottom: var(--ifm-spacing-horizontal);
+}
+
 @media (max-width: 500px) {
   div.all-downloads nav.pagination-nav {
     grid-template-columns: 1fr;

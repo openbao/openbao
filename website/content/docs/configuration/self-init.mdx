@@ -101,6 +101,34 @@ The root token is not returned to the caller and is revoked after use.
 
 :::
 
+## HA Cluster Considerations
+
+When using the `initialize` stanza with [`retry_join`](storage/raft.mdx#retry_join-stanza)
+in a Raft HA cluster, OpenBao will automatically wait for the `retry_join` process
+to potentially succeed before attempting self-initialization. This coordination
+is necessary because `retry_join` runs asynchronously in the background - without
+waiting, a node might self-initialize and create a separate cluster instead of
+joining an existing one.
+
+By default, OpenBao waits up to 30 seconds for a potential cluster join. This can
+be configured using the `OPENBAO_SELF_INIT_RETRY_JOIN_WAIT` environment variable:
+
+```bash
+# Wait up to 60 seconds for retry_join
+export OPENBAO_SELF_INIT_RETRY_JOIN_WAIT=60s
+
+# Disable the wait (not recommended in HA deployments)
+export OPENBAO_SELF_INIT_RETRY_JOIN_WAIT=0s
+```
+
+:::warning
+
+In multi-node deployments, ensure that only the intended leader node runs the
+`initialize` stanza, or stagger the startup of nodes to allow the first node
+to complete initialization before other nodes start.
+
+:::
+
 Multiple `initialize` stanzas may exist and are executed in the order they
 are specified in the configuration file(s). Multiple `request` blocks may
 exist inside a single `initialize` stanza and are executed in the order they

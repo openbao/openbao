@@ -14,13 +14,15 @@ import (
 func TestControlGroup_makeLogicalControlGroup(t *testing.T) {
 	input := &ControlGroup{
 		TTL: 14440,
-		Factors: []ControlGroupFactor{{
-			Name:                   "tester",
-			ControlledCapabilities: []string{"create"},
-			Identity: ControlGroupIdentity{
-				GroupNames: []string{"admin"},
-				Approvals:  2,
-			}},
+		Factors: []ControlGroupFactor{
+			{
+				Name:                   "tester",
+				ControlledCapabilities: []string{"create"},
+				Identity: ControlGroupIdentity{
+					GroupNames: []string{"admin"},
+					Approvals:  2,
+				},
+			},
 		},
 	}
 	output := makeLogicalControlGroup(input)
@@ -280,5 +282,4 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	validates, err = c.validateControlGroup(ctx, te.ID)
 	require.Nil(t, err)
 	require.False(t, validates)
-
 }

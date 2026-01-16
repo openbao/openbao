@@ -102,7 +102,6 @@ path "test/control_group" {
 	if !reflect.DeepEqual(expected, cg) {
 		t.Fatalf("bad: ControlGroup; expected: %#v\n actual: %#v\n", expected, cg)
 	}
-
 }
 
 func TestACL_MFAMethods(t *testing.T) {

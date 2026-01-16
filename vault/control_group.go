@@ -68,7 +68,7 @@ func (c *Core) setControlGroup(ctx context.Context, token string, cg *logical.Co
 	return c.tokenStore.store(ctx, tokenEntry)
 }
 
-// validateControlGroup checks for a passing control group factor
+// validateControlGroup checks for a passing control group factor; passes if there is no control group config
 func (c *Core) validateControlGroup(ctx context.Context, token string) (bool, error) {
 	cg, err := c.getControlGroup(ctx, token)
 	if err != nil {

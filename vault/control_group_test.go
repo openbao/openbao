@@ -221,7 +221,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	require.Empty(t, te.Meta["control_group"]) // no control group
 
 	cg := logical.ControlGroup{
-		TTL: time.Duration(1 * time.Minute),
+		TTL: time.Duration(1 * time.Second),
 		Factors: []logical.ControlGroupFactor{
 			{
 				Name: "test-secops",
@@ -267,11 +267,18 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	require.Nil(t, err)
 	require.False(t, validates)
 
-	// Second auth should permit validation
+	// Second auth should now permit validation
 	err = c.addAuthorization(ctx, te.ID, auth)
 	require.Nil(t, err)
 
 	validates, err = c.validateControlGroup(ctx, te.ID)
 	require.Nil(t, err)
 	require.True(t, validates)
+
+	// After TTL, authorizations should expire
+	time.Sleep(1 * time.Second)
+	validates, err = c.validateControlGroup(ctx, te.ID)
+	require.Nil(t, err)
+	require.False(t, validates)
+
 }

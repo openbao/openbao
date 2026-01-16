@@ -361,6 +361,39 @@ func (ts *TokenStore) paths() []*framework.Path {
 		},
 
 		{
+			Pattern: "approve-accessor",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixToken,
+				OperationVerb:   "approve",
+				OperationSuffix: "by-accessor",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"accessor": {
+					Type:        framework.TypeString,
+					Description: "Accessor of the token to approve (request body)",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleUpdateApproveAccessor,
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields:      tokenLookupResponseSchema,
+							SchemaName:  "TokenLookupResponse",
+						}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(tokenApproveAccessorHelp),
+			HelpDescription: strings.TrimSpace(tokenApproveAccessorHelp),
+		},
+
+		{
 			Pattern: "lookup-accessor",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -2665,6 +2698,60 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 	return logical.RespondWithStatusCode(resp, req, http.StatusAccepted)
 }
 
+// handleUpdateApproveAccessor handles the auth/token/approve-accessor path for authorizing
+// a wrapped response token governed by a control-group policy.
+func (ts *TokenStore) handleUpdateApproveAccessor(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	accessor := data.Get("accessor").(string)
+	if accessor == "" {
+		return nil, &logical.StatusBadRequest{Err: "missing accessor"}
+	}
+
+	aEntry, err := ts.lookupByAccessor(ctx, accessor, false, false)
+	if err != nil {
+		return nil, err
+	}
+	if aEntry == nil {
+		return nil, &logical.StatusBadRequest{Err: "invalid accessor"}
+	}
+
+	// Adds authorization record to the token entry if applicable
+	err = ts.core.addAuthorization(ctx, aEntry.TokenID, req.Auth)
+	if err != nil {
+		return nil, err
+	}
+
+	// Prepare the field data required for a lookup call
+	d := &framework.FieldData{
+		Raw: map[string]interface{}{
+			"token": aEntry.TokenID,
+		},
+		Schema: map[string]*framework.FieldSchema{
+			"token": {
+				Type:        framework.TypeString,
+				Description: "Token to lookup",
+			},
+		},
+	}
+
+	resp, err := ts.handleLookup(ctx, req, d)
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, errors.New("failed to lookup the token")
+	}
+	if resp.IsError() {
+		return resp, nil
+	}
+
+	// Remove the token ID from the response
+	if resp.Data != nil {
+		resp.Data["id"] = ""
+	}
+
+	return resp, nil
+}
+
 // handleUpdateLookupAccessor handles the auth/token/lookup-accessor path for returning
 // the properties of the token associated with the accessor
 func (ts *TokenStore) handleUpdateLookupAccessor(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -4413,6 +4500,7 @@ as revocation of tokens. The tokens are renewable if associated with a lease.`
 	tokenListRolesHelp       = `This endpoint lists configured roles.`
 	tokenLookupAccessorHelp  = `This endpoint will lookup a token associated with the given accessor and its properties. Response will not contain the token ID.`
 	tokenRenewAccessorHelp   = `This endpoint will renew a token associated with the given accessor and its properties. Response will not contain the token ID.`
+	tokenApproveAccessorHelp = `This endpoint will authorize a token associated with the given accessor. Response will not contain the token ID. Only applicable when control-group policy resulted in wrapped response.`
 	tokenLookupHelp          = `This endpoint will lookup a token and its properties.`
 	tokenPathRolesHelp       = `This endpoint allows creating, reading, and deleting roles.`
 	tokenRevokeAccessorHelp  = `This endpoint will delete the token associated with the accessor and all of its child tokens.`

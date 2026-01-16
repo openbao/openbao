@@ -417,7 +417,9 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 			path = namespace.Canonicalize(parent.TrimmedPath(entry.Path))
 		}
 
+		ns.core.router.l.RLock()
 		conflict := ns.core.router.matchingPrefixInternal(ctx, path)
+		ns.core.router.l.RUnlock()
 		if conflict != "" {
 			return fmt.Errorf("new namespace conflicts with existing mount: %v", conflict)
 		}

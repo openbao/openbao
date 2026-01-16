@@ -39,8 +39,7 @@ func testVariousBackends(t *testing.T, tf testFunc, basePort int, includeRaft bo
 			atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
 			addressProvider := testhelpers.NewHardcodedServerAddressProvider(numTestCores, raftBasePort+10)
 
-			storage, cleanup := teststorage.MakeReusableRaftStorage(t, logger, numTestCores, addressProvider)
-			defer cleanup()
+			storage := teststorage.MakeReusableRaftStorage(t, logger, numTestCores, addressProvider)
 			tf(t, logger, storage, raftBasePort)
 		})
 	}

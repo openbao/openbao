@@ -194,7 +194,7 @@ func TestLogger_SetupLoggerWithInValidLogPathPermission(t *testing.T) {
 
 	err := os.Mkdir(tmpDir, 0o000)
 	assert.NoError(t, err, "unexpected error testing with invalid log path permission")
-	defer os.RemoveAll(tmpDir)
+	defer os.RemoveAll(tmpDir) //nolint:errcheck
 
 	cfg := newTestLogConfig(t)
 	cfg.LogLevel = hclog.Info

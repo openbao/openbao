@@ -42,7 +42,7 @@ func TestAuth_ReadOnlyViewDuringMount(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableCredential(namespace.RootContext(nil), me)
+	err := c.authMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestAuthMountMetrics(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableCredential(namespace.RootContext(nil), me)
+	err := c.authMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestAuthMountMetrics(t *testing.T) {
 
 func TestCore_DefaultAuthTable(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	verifyDefaultAuthTable(t, c.auth)
+	verifyDefaultAuthTable(t, c.authMounts.table)
 
 	// Start a second core with same physical
 	inmemSink := metrics.NewInmemSink(1000000*time.Hour, 2000000*time.Hour)
@@ -143,8 +143,8 @@ func TestCore_DefaultAuthTable(t *testing.T) {
 	}
 
 	// Verify matching mount tables
-	if diff := deep.Equal(c.auth, c2.auth); diff != nil {
-		t.Fatalf("mismatch:\n\tc.auth: %#v\n\tc2.auth: %#v\n\tdiff: %#v", c.auth, c2.auth, diff)
+	if diff := deep.Equal(c.authMounts.table, c2.authMounts.table); diff != nil {
+		t.Fatalf("mismatch:\n\tc.auth: %#v\n\tc2.auth: %#v\n\tdiff: %#v", c.authMounts.table, c2.authMounts.table, diff)
 	}
 }
 
@@ -171,7 +171,7 @@ func TestCore_BuiltinRegistry(t *testing.T) {
 			Version: versions.GetBuiltinVersion(consts.PluginTypeCredential, "approle"),
 		},
 	} {
-		err := c.enableCredential(namespace.RootContext(nil), me)
+		err := c.authMounts.mount(namespace.RootContext(t.Context()), me)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -191,12 +191,12 @@ func TestCore_EnableCredential(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableCredential(namespace.RootContext(nil), me)
+	err := c.authMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(namespace.RootContext(nil), "auth/foo/bar")
+	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "auth/foo/bar")
 	if match != "auth/foo/" {
 		t.Fatalf("missing mount, match: %q", match)
 	}
@@ -229,13 +229,13 @@ func TestCore_EnableCredential(t *testing.T) {
 	}
 
 	// Verify matching auth tables, up to order.
-	cAuth := make(map[string]*MountEntry, len(c.auth.Entries))
-	for _, entry := range c.auth.Entries {
+	cAuth := make(map[string]*MountEntry, len(c.authMounts.table.Entries))
+	for _, entry := range c.authMounts.table.Entries {
 		cAuth[entry.UUID] = entry
 	}
 
-	c2Auth := make(map[string]*MountEntry, len(c2.auth.Entries))
-	for _, entry := range c2.auth.Entries {
+	c2Auth := make(map[string]*MountEntry, len(c2.authMounts.table.Entries))
+	for _, entry := range c2.authMounts.table.Entries {
 		c2Auth[entry.UUID] = entry
 	}
 
@@ -259,12 +259,12 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 		Path:  "foo",
 		Type:  "aws-ec2",
 	}
-	err := c.enableCredential(namespace.RootContext(nil), me)
+	err := c.authMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(namespace.RootContext(nil), "auth/foo/bar")
+	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "auth/foo/bar")
 	if match != "auth/foo/" {
 		t.Fatalf("missing mount, match: %q", match)
 	}
@@ -297,13 +297,13 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 	}
 
 	// Verify matching auth tables, up to order.
-	cAuth := make(map[string]*MountEntry, len(c.auth.Entries))
-	for _, entry := range c.auth.Entries {
+	cAuth := make(map[string]*MountEntry, len(c.authMounts.table.Entries))
+	for _, entry := range c.authMounts.table.Entries {
 		cAuth[entry.UUID] = entry
 	}
 
-	c2Auth := make(map[string]*MountEntry, len(c2.auth.Entries))
-	for _, entry := range c2.auth.Entries {
+	c2Auth := make(map[string]*MountEntry, len(c2.authMounts.table.Entries))
+	for _, entry := range c2.authMounts.table.Entries {
 		c2Auth[entry.UUID] = entry
 	}
 
@@ -323,7 +323,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		}, nil
 	}
 
-	c.auth = &MountTable{
+	c.authMounts.table = &MountTable{
 		Type: credentialTableType,
 		Entries: []*MountEntry{
 			{
@@ -350,12 +350,12 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	// Both should set up successfully
-	err := c.setupCredentials(context.Background())
+	err := c.authMounts.setupMounts(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(c.auth.Entries) != 2 {
-		t.Fatalf("expected two entries, got %d", len(c.auth.Entries))
+	if len(c.authMounts.table.Entries) != 2 {
+		t.Fatalf("expected two entries, got %d", len(c.authMounts.table.Entries))
 	}
 
 	localEntries, err := c.barrier.List(context.Background(), coreLocalAuthConfigPath+"/")
@@ -366,8 +366,8 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		t.Fatalf("expected zero entry in local auth table, got %#v", localEntries)
 	}
 
-	c.auth.Entries[1].Local = true
-	if err := c.persistAuth(context.Background(), nil, c.auth, nil, ""); err != nil {
+	c.authMounts.table.Entries[1].Local = true
+	if err := c.authMounts.persistMounts(context.Background(), c.barrier, c.authMounts.table); err != nil {
 		t.Fatal(err)
 	}
 
@@ -396,17 +396,17 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		}
 	}
 
-	oldCredential := c.auth
-	if err := c.loadCredentials(context.Background()); err != nil {
+	oldCredential := c.authMounts.table
+	if err := c.authMounts.loadMounts(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 
-	if diff := deep.Equal(oldCredential, c.auth); diff != nil {
-		t.Fatalf("expected\n%#v\ngot\n%#v\ndiff: %#v\n", oldCredential, c.auth, diff)
+	if diff := deep.Equal(oldCredential, c.authMounts.table); diff != nil {
+		t.Fatalf("expected\n%#v\ngot\n%#v\ndiff: %#v\n", oldCredential, c.authMounts.table, diff)
 	}
 
-	if len(c.auth.Entries) != 2 {
-		t.Fatalf("expected two credential entries, got %#v", c.auth.Entries)
+	if len(c.authMounts.table.Entries) != 2 {
+		t.Fatalf("expected two credential entries, got %#v", c.authMounts.table.Entries)
 	}
 }
 
@@ -423,13 +423,13 @@ func TestCore_EnableCredential_twice_409(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableCredential(namespace.RootContext(nil), me)
+	err := c.authMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// 2nd should be a 409 error
-	err2 := c.enableCredential(namespace.RootContext(nil), me)
+	err2 := c.authMounts.mount(namespace.RootContext(t.Context()), me)
 	switch e := err2.(type) {
 	case logical.HTTPCodedError:
 		if e.Code() != 409 {
@@ -447,8 +447,8 @@ func TestCore_EnableCredential_Token(t *testing.T) {
 		Path:  "foo",
 		Type:  "token",
 	}
-	err := c.enableCredential(namespace.RootContext(nil), me)
-	if err.Error() != "token credential backend cannot be instantiated" {
+	err := c.authMounts.mount(namespace.RootContext(t.Context()), me)
+	if err.Error() != `mount type of "token" is not mountable` {
 		t.Fatalf("err: %v", err)
 	}
 }
@@ -461,7 +461,7 @@ func TestCore_DisableCredential(t *testing.T) {
 		}, nil
 	}
 
-	err := c.disableCredential(namespace.RootContext(nil), "foo")
+	err := c.authMounts.unmount(namespace.RootContext(t.Context()), "foo")
 	if err != nil && !strings.HasPrefix(err.Error(), "no matching mount") {
 		t.Fatal(err)
 	}
@@ -471,17 +471,17 @@ func TestCore_DisableCredential(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err = c.enableCredential(namespace.RootContext(nil), me)
+	err = c.authMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	err = c.disableCredential(namespace.RootContext(nil), "foo")
+	err = c.authMounts.unmount(namespace.RootContext(t.Context()), "foo")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(namespace.RootContext(nil), "auth/foo/bar")
+	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "auth/foo/bar")
 	if match != "" {
 		t.Fatal("backend present")
 	}
@@ -509,14 +509,14 @@ func TestCore_DisableCredential(t *testing.T) {
 	}
 
 	// Verify matching mount tables
-	if diff := deep.Equal(c.auth, c2.auth); diff != nil {
-		t.Fatalf("mismatch:\n\tc.auth: %v\n\tc2.auth: %v\n\tdiff: %#v", c.auth, c2.auth, diff)
+	if diff := deep.Equal(c.authMounts.table, c2.authMounts.table); diff != nil {
+		t.Fatalf("mismatch:\n\tc.auth: %v\n\tc2.auth: %v\n\tdiff: %#v", c.authMounts.table, c2.authMounts.table, diff)
 	}
 }
 
 func TestCore_DisableCredential_Protected(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	err := c.disableCredential(namespace.RootContext(nil), "token")
+	err := c.authMounts.unmount(namespace.RootContext(t.Context()), "token")
 	if err.Error() != "token credential backend cannot be disabled" {
 		t.Fatalf("err: %v", err)
 	}
@@ -537,13 +537,13 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableCredential(namespace.RootContext(nil), me)
+	err := c.authMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Store the view
-	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(nil), "auth/foo/")
+	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "auth/foo/")
 
 	// Inject data
 	se := &logical.StorageEntry{
@@ -564,7 +564,7 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "auth/foo/login",
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(nil), r)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), r)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -573,13 +573,13 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 	}
 
 	// Disable should cleanup
-	err = c.disableCredential(namespace.RootContext(nil), "foo")
+	err = c.authMounts.unmount(namespace.RootContext(t.Context()), "foo")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Token should be revoked
-	te, err := c.tokenStore.Lookup(namespace.RootContext(nil), resp.Auth.ClientToken)
+	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), resp.Auth.ClientToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -599,7 +599,7 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 
 func TestDefaultAuthTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	table, err := c.defaultAuthTable(context.Background())
+	table, err := c.authMounts.defaultMountTable(context.Background())
 	require.NoError(t, err)
 	verifyDefaultAuthTable(t, table)
 }
@@ -648,7 +648,7 @@ func TestCore_CredentialInitialize(t *testing.T) {
 			Path:  "foo/",
 			Type:  "initable",
 		}
-		err := c.enableCredential(namespace.RootContext(nil), me)
+		err := c.authMounts.mount(namespace.RootContext(t.Context()), me)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -669,7 +669,7 @@ func TestCore_CredentialInitialize(t *testing.T) {
 			return backend, nil
 		}
 
-		c.auth = &MountTable{
+		c.authMounts.table = &MountTable{
 			Type: credentialTableType,
 			Entries: []*MountEntry{
 				{
@@ -685,7 +685,7 @@ func TestCore_CredentialInitialize(t *testing.T) {
 			},
 		}
 
-		err := c.setupCredentials(context.Background())
+		err := c.authMounts.setupMounts(context.Background())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -704,7 +704,7 @@ func TestCore_CredentialInitialize(t *testing.T) {
 func remountCredentialFromRoot(c *Core, src, dst string, updateStorage bool) error {
 	srcPathDetails := c.splitNamespaceAndMountFromPath("", src)
 	dstPathDetails := c.splitNamespaceAndMountFromPath("", dst)
-	return c.remountCredential(namespace.RootContext(nil), srcPathDetails, dstPathDetails, updateStorage)
+	return c.authMounts.remount(namespace.RootContext(context.Background()), srcPathDetails, dstPathDetails, updateStorage)
 }
 
 func TestCore_RemountCredential(t *testing.T) {
@@ -720,12 +720,12 @@ func TestCore_RemountCredential(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableCredential(namespace.RootContext(nil), me)
+	err := c.authMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(namespace.RootContext(nil), "auth/foo/bar")
+	match := c.router.MatchingMount(namespace.RootContext(t.Context()), "auth/foo/bar")
 	if match != "auth/foo/" {
 		t.Fatalf("missing mount, match: %q", match)
 	}
@@ -735,7 +735,7 @@ func TestCore_RemountCredential(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	match = c.router.MatchingMount(namespace.RootContext(nil), "auth/bar/baz")
+	match = c.router.MatchingMount(namespace.RootContext(t.Context()), "auth/bar/baz")
 	if match != "auth/bar/" {
 		t.Fatalf("auth method not at new location, match: %q", match)
 	}
@@ -751,7 +751,7 @@ func TestCore_RemountCredential(t *testing.T) {
 		}
 	}
 
-	match = c.router.MatchingMount(namespace.RootContext(nil), "auth/bar/baz")
+	match = c.router.MatchingMount(namespace.RootContext(t.Context()), "auth/bar/baz")
 	if match != "auth/bar/" {
 		t.Fatalf("auth method not at new location after unseal, match: %q", match)
 	}
@@ -772,13 +772,13 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableCredential(namespace.RootContext(nil), me)
+	err := c.authMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Store the view
-	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(nil), "auth/foo/")
+	view := c.router.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "auth/foo/")
 
 	// Inject data
 	se := &logical.StorageEntry{
@@ -799,7 +799,7 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "auth/foo/login",
 	}
-	resp, err := c.HandleRequest(namespace.RootContext(nil), r)
+	resp, err := c.HandleRequest(namespace.RootContext(t.Context()), r)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -814,7 +814,7 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 	}
 
 	// Token should be revoked
-	te, err := c.tokenStore.Lookup(namespace.RootContext(nil), resp.Auth.ClientToken)
+	te, err := c.tokenStore.Lookup(namespace.RootContext(t.Context()), resp.Auth.ClientToken)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -834,7 +834,7 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 
 func TestCore_RemountCredential_Namespaces(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	rootCtx := namespace.RootContext(nil)
+	rootCtx := namespace.RootContext(t.Context())
 	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
 	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
 	ns2 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
@@ -847,7 +847,7 @@ func TestCore_RemountCredential_Namespaces(t *testing.T) {
 		Path:  "foo",
 		Type:  "noop",
 	}
-	err := c.enableCredential(ns2Ctx, me)
+	err := c.authMounts.mount(ns2Ctx, me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -866,7 +866,7 @@ func TestCore_RemountCredential_Namespaces(t *testing.T) {
 		t.Fatalf("missing mount, match: %q", match)
 	}
 
-	err = c.remountCredential(ns1Ctx, src, dst, true)
+	err = c.authMounts.remount(ns1Ctx, src, dst, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -906,7 +906,7 @@ func TestCore_RemountCredential_Namespaces(t *testing.T) {
 func TestCore_RemountCredential_InvalidSource(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	err := remountCredentialFromRoot(c, "foo", "auth/bar", true)
-	if err.Error() != `cannot remount non-auth mount "foo/"` {
+	if err.Error() != `cannot remount cross-type mounts from "foo/" to "auth/bar/"` {
 		t.Fatalf("err: %v", err)
 	}
 }
@@ -914,7 +914,7 @@ func TestCore_RemountCredential_InvalidSource(t *testing.T) {
 func TestCore_RemountCredential_InvalidDestination(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	err := remountCredentialFromRoot(c, "auth/foo", "bar", true)
-	if err.Error() != `cannot remount auth mount to non-auth mount "bar/"` {
+	if err.Error() != `cannot remount cross-type mounts from "auth/foo/" to "bar/"` {
 		t.Fatalf("err: %v", err)
 	}
 }

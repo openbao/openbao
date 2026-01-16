@@ -1030,10 +1030,10 @@ func (i *IdentityStore) handleMFALoginEnforcementDelete(ctx context.Context, req
 }
 
 func (b *LoginMFABackend) validateAuthEntriesForAccessorOrType(ctx context.Context, ns *namespace.Namespace, validFunc func(entry *MountEntry) bool) (bool, error) {
-	b.Core.authLock.RLock()
-	defer b.Core.authLock.RUnlock()
+	b.Core.authMounts.lock.RLock()
+	defer b.Core.authMounts.lock.RUnlock()
 
-	for _, entry := range b.Core.auth.Entries {
+	for _, entry := range b.Core.authMounts.table.Entries {
 		// only check auth methods in the current namespace
 		if entry.Namespace().ID != ns.ID {
 			continue

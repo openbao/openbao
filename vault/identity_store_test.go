@@ -102,7 +102,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		Description: "approle auth",
 	}
 
-	err = c.enableCredential(namespace.RootContext(nil), meGH)
+	err = c.authMounts.mount(namespace.RootContext(t.Context()), meGH)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -572,7 +572,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		Description: "approle auth",
 	}
 
-	err = c.enableCredential(namespace.RootContext(nil), meGH)
+	err = c.authMounts.mount(namespace.RootContext(t.Context()), meGH)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -688,7 +688,7 @@ func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*I
 		Description: "approle auth",
 	}
 
-	err = c.enableCredential(ctx, meGH)
+	err = c.authMounts.mount(ctx, meGH)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -726,7 +726,7 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T,
 		Description: "approle auth",
 	}
 
-	err = c.enableCredential(ctx, githubMe)
+	err = c.authMounts.mount(ctx, githubMe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -738,7 +738,7 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T,
 		Description: "userpass",
 	}
 
-	err = c.enableCredential(ctx, userpassMe)
+	err = c.authMounts.mount(ctx, userpassMe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -807,7 +807,7 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 	}
 
 	ctx := namespace.RootContext(nil)
-	err = c.enableCredential(ctx, meGH)
+	err = c.authMounts.mount(ctx, meGH)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -967,7 +967,7 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		Type:        "userpass",
 		Description: "userpass auth in root",
 	}
-	err = c.enableCredential(rootCtx, rootMount)
+	err = c.authMounts.mount(rootCtx, rootMount)
 	require.NoError(t, err)
 	rootAccessor := rootMount.Accessor
 
@@ -978,7 +978,7 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		Type:        "userpass",
 		Description: "userpass auth in ns1",
 	}
-	err = c.enableCredential(ns1Ctx, ns1Mount)
+	err = c.authMounts.mount(ns1Ctx, ns1Mount)
 	require.NoError(t, err)
 	ns1Accessor := ns1Mount.Accessor
 
@@ -989,7 +989,7 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		Type:        "userpass",
 		Description: "userpass auth in ns2",
 	}
-	err = c.enableCredential(ns2Ctx, ns2Mount)
+	err = c.authMounts.mount(ns2Ctx, ns2Mount)
 	require.NoError(t, err)
 	ns2Accessor := ns2Mount.Accessor
 
@@ -1233,7 +1233,7 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 			Type:        "userpass",
 			Description: "userpass auth in child",
 		}
-		err = c.enableCredential(childCtx, childMount)
+		err = c.authMounts.mount(childCtx, childMount)
 		require.NoError(t, err)
 		childAccessor := childMount.Accessor
 
@@ -1298,7 +1298,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		Type:        "userpass",
 		Description: "userpass auth in root",
 	}
-	err = c.enableCredential(rootCtx, rootMount)
+	err = c.authMounts.mount(rootCtx, rootMount)
 	require.NoError(t, err)
 	rootAccessor := rootMount.Accessor
 
@@ -1308,7 +1308,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		Type:        "userpass",
 		Description: "userpass auth in ns1",
 	}
-	err = c.enableCredential(ns1Ctx, ns1Mount)
+	err = c.authMounts.mount(ns1Ctx, ns1Mount)
 	require.NoError(t, err)
 	ns1Accessor := ns1Mount.Accessor
 
@@ -1318,7 +1318,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		Type:        "userpass",
 		Description: "userpass auth in ns2",
 	}
-	err = c.enableCredential(ns2Ctx, ns2Mount)
+	err = c.authMounts.mount(ns2Ctx, ns2Mount)
 	require.NoError(t, err)
 	ns2Accessor := ns2Mount.Accessor
 
@@ -1596,7 +1596,7 @@ func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *
 		Type:        "userpass",
 		Description: "userpass auth in root",
 	}
-	err = c.enableCredential(rootCtx, rootMount)
+	err = c.authMounts.mount(rootCtx, rootMount)
 	require.NoError(t, err)
 	rootAccessor = rootMount.Accessor
 
@@ -1606,7 +1606,7 @@ func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *
 		Type:        "userpass",
 		Description: "userpass auth in ns1",
 	}
-	err = c.enableCredential(ns1Ctx, ns1Mount)
+	err = c.authMounts.mount(ns1Ctx, ns1Mount)
 	require.NoError(t, err)
 	ns1Accessor = ns1Mount.Accessor
 
@@ -1616,7 +1616,7 @@ func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *
 		Type:        "userpass",
 		Description: "userpass auth in ns2",
 	}
-	err = c.enableCredential(ns2Ctx, ns2Mount)
+	err = c.authMounts.mount(ns2Ctx, ns2Mount)
 	require.NoError(t, err)
 	ns2Accessor = ns2Mount.Accessor
 

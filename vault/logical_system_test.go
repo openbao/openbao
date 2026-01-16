@@ -860,7 +860,7 @@ func TestSystemBackend_remount_auth(t *testing.T) {
 		Type:        "userpass",
 		Description: "userpass",
 	}
-	err = c.enableCredential(namespace.RootContext(nil), userpassMe)
+	err = c.authMounts.mount(namespace.RootContext(t.Context()), userpassMe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -971,7 +971,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 		Type:        "userpass",
 		Description: "userpass",
 	}
-	err = c.enableCredential(namespace.RootContext(nil), userpassMe)
+	err = c.authMounts.mount(namespace.RootContext(t.Context()), userpassMe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -982,7 +982,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 		Type:        "userpass",
 		Description: "userpass",
 	}
-	err = c.enableCredential(namespace.RootContext(nil), userpassMe2)
+	err = c.authMounts.mount(namespace.RootContext(t.Context()), userpassMe2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1016,7 +1016,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 		Type:        "userpass",
 		Description: "userpass",
 	}
-	err = c.enableCredential(namespace.RootContext(nil), userpassMe3)
+	err = c.authMounts.mount(namespace.RootContext(t.Context()), userpassMe3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1062,7 +1062,7 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 		Path:  "foo/",
 		Type:  "generic",
 	}
-	err := c.mount(namespace.RootContext(nil), me)
+	err := c.secretMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1095,7 +1095,7 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 		Path:  "foo2/foo3/",
 		Type:  "generic",
 	}
-	err = c.mount(namespace.RootContext(nil), me2)
+	err = c.secretMounts.mount(namespace.RootContext(t.Context()), me2)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -4514,7 +4514,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 		Type:    "kv",
 		Options: map[string]string{"version": "1"},
 	}
-	if err := core.mount(ctx, me); err != nil {
+	if err := core.secretMounts.mount(ctx, me); err != nil {
 		t.Fatal(err)
 	}
 
@@ -6242,10 +6242,10 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		// an upgrade from 1.12.1 to 1.12.2 by sealing and unsealing.
 		const nonExistentBuiltinVersion = "v1.0.0+builtin"
 		var mountEntry *MountEntry
-		if tc.mountTable == "mounts" {
-			mountEntry, err = core.mounts.findByPath(ctx, tc.pluginName+"/")
+		if tc.mountTable == mountTableType {
+			mountEntry, err = core.secretMounts.table.findByPath(ctx, tc.pluginName+"/")
 		} else {
-			mountEntry, err = core.auth.findByPath(ctx, tc.pluginName+"/")
+			mountEntry, err = core.authMounts.table.findByPath(ctx, tc.pluginName+"/")
 		}
 		if err != nil {
 			t.Fatal(err)
@@ -6254,16 +6254,13 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 			t.Fatal()
 		}
 		mountEntry.Version = nonExistentBuiltinVersion
-		if tc.mountTable == "mounts" {
-			err = core.persistMounts(ctx, nil, core.mounts, &mountEntry.Local, mountEntry.UUID)
-			if err != nil {
-				t.Fatal(err)
-			}
+		if tc.mountTable == mountTableType {
+			err = core.secretMounts.persistMount(ctx, core.barrier, core.secretMounts.table, mountEntry)
 		} else {
-			err = core.persistAuth(ctx, nil, core.auth, &mountEntry.Local, mountEntry.UUID)
-			if err != nil {
-				t.Fatal(err)
-			}
+			err = core.authMounts.persistMount(ctx, core.barrier, core.authMounts.table, mountEntry)
+		}
+		if err != nil {
+			t.Fatal(err)
 		}
 
 		config = readMountConfig(tc.pluginName, tc.mountTable)

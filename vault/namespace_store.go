@@ -586,24 +586,24 @@ func (ns *NamespaceStore) initializeNamespacePolicies(ctx context.Context) error
 // mount.
 func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Storage) error {
 	// Do not persist mounts yet.
-	mounts, err := ns.core.requiredMountTable(ctx)
+	mounts, err := ns.core.secretMounts.defaultMountTable(ctx)
 	if err != nil {
 		return fmt.Errorf("for new namespace: %w", err)
 	}
 
 	for _, mount := range mounts.Entries {
-		if err := ns.core.mountInternal(ctx, mount, MountTableNoUpdateStorage); err != nil {
+		if err := ns.core.secretMounts.mountInternal(ctx, mount, false); err != nil {
 			return err
 		}
 	}
 
-	credentials, err := ns.core.defaultAuthTable(ctx)
+	credentials, err := ns.core.authMounts.defaultMountTable(ctx)
 	if err != nil {
 		return fmt.Errorf("for new namespace: %w", err)
 	}
 
 	for _, credential := range credentials.Entries {
-		if err := ns.core.enableCredentialInternal(ctx, credential, MountTableNoUpdateStorage); err != nil {
+		if err := ns.core.authMounts.mountInternal(ctx, credential, false); err != nil {
 			return err
 		}
 	}
@@ -611,13 +611,13 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Stor
 	// Persist the mounts using the above storage entry. This should already
 	// be a transaction so there's no need to handle it separately.
 	for _, mount := range mounts.Entries {
-		if err := ns.core.persistMounts(ctx, storage, ns.core.mounts, &mount.Local, mount.UUID); err != nil {
+		if err := ns.core.secretMounts.persistMount(ctx, storage, ns.core.secretMounts.table, mount); err != nil {
 			return fmt.Errorf("failed to persist secret mount (path=%v): %w", mount.Path, err)
 		}
 	}
 
 	for _, mount := range credentials.Entries {
-		if err := ns.core.persistAuth(ctx, storage, ns.core.auth, &mount.Local, mount.UUID); err != nil {
+		if err := ns.core.authMounts.persistMount(ctx, storage, ns.core.authMounts.table, mount); err != nil {
 			return fmt.Errorf("failed to persist auth mount (path=%v): %w", mount.Path, err)
 		}
 	}
@@ -630,12 +630,12 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Stor
 // canceled and so we'd need activeContext or similar.
 func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDelete *namespace.Namespace) {
 	// clear auth mounts
-	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
+	authMountEntries, err := ns.core.authMounts.table.findAllNamespaceMounts(nsCtx)
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace credentials", "namespace", namespaceToDelete.Path, "error", err.Error())
 	} else {
 		for _, me := range authMountEntries {
-			err := ns.core.disableCredentialInternal(nsCtx, me.Path, false)
+			err := ns.core.authMounts.unmountInternal(nsCtx, me.Path, false)
 			if err != nil {
 				if errors.Is(err, errNoMatchingMount) {
 					continue
@@ -648,12 +648,12 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 	}
 
 	// clear mounts
-	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
+	mountEntries, err := ns.core.secretMounts.table.findAllNamespaceMounts(nsCtx)
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace mounts", "namespace", namespaceToDelete.Path, "error", err.Error())
 	} else {
 		for _, me := range mountEntries {
-			err := ns.core.unmountInternal(nsCtx, me.Path, false)
+			err := ns.core.secretMounts.unmountInternal(nsCtx, me.Path, false)
 			if err != nil {
 				if errors.Is(err, errNoMatchingMount) {
 					continue
@@ -969,14 +969,14 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, namespa
 	}
 
 	// clear auth mounts
-	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
+	authMountEntries, err := ns.core.authMounts.table.findAllNamespaceMounts(nsCtx)
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace credentials", "namespace", namespaceToDelete.Path, "error", err.Error())
 		return false
 	}
 
 	for _, me := range authMountEntries {
-		err := ns.core.disableCredentialInternal(nsCtx, me.Path, true)
+		err := ns.core.authMounts.unmountInternal(nsCtx, me.Path, true)
 		if err != nil {
 			if errors.Is(err, errNoMatchingMount) {
 				continue
@@ -987,14 +987,14 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, namespa
 	}
 
 	// clear mounts
-	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
+	mountEntries, err := ns.core.secretMounts.table.findAllNamespaceMounts(nsCtx)
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace mounts", "namespace", namespaceToDelete.Path, "error", err.Error())
 		return false
 	}
 
 	for _, me := range mountEntries {
-		err := ns.core.unmountInternal(nsCtx, me.Path, true)
+		err := ns.core.secretMounts.unmountInternal(nsCtx, me.Path, true)
 		if err != nil {
 			if errors.Is(err, errNoMatchingMount) {
 				continue

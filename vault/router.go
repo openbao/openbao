@@ -147,15 +147,10 @@ func (r *Router) ValidateMountByAccessor(accessor string) *ValidateMountResponse
 		return nil
 	}
 
-	mountPath := mountEntry.Path
-	if mountEntry.Table == credentialTableType {
-		mountPath = credentialRoutePrefix + mountPath
-	}
-
 	return &ValidateMountResponse{
 		MountAccessor: mountEntry.Accessor,
 		MountType:     mountEntry.Type,
-		MountPath:     mountPath,
+		MountPath:     mountEntry.APIPathNoNamespace(),
 		MountLocal:    mountEntry.Local,
 	}
 }
@@ -596,13 +591,7 @@ func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string
 	re.l.RLock()
 	defer re.l.RUnlock()
 
-	mountPath := re.mountEntry.Path
-	// Add back the prefix for credential backends
-	if strings.HasPrefix(path, credentialBarrierPrefix) {
-		mountPath = credentialRoutePrefix + mountPath
-	}
-
-	return re.mountEntry.Namespace(), mountPath, re.storagePrefix, found
+	return re.mountEntry.Namespace(), re.mountEntry.APIPathNoNamespace(), re.storagePrefix, found
 }
 
 func (r *Router) matchingRouteEntryByPath(ctx context.Context, path string, apiPath bool) (*routeEntry, bool) {

@@ -2644,7 +2644,7 @@ func TestExpiration_RevokeForce(t *testing.T) {
 		Accessor: "badrenewaccessor",
 	}
 
-	err := core.mount(namespace.RootContext(nil), me)
+	err := core.secretMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2695,7 +2695,7 @@ func TestExpiration_RevokeForceSingle(t *testing.T) {
 		Accessor: "badrenewaccessor",
 	}
 
-	err := core.mount(namespace.RootContext(nil), me)
+	err := core.secretMounts.mount(namespace.RootContext(t.Context()), me)
 	if err != nil {
 		t.Fatal(err)
 	}

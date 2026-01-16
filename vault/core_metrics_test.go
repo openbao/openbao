@@ -50,7 +50,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 			Type:    tm.Type,
 			Options: map[string]string{"version": tm.Version},
 		}
-		err := core.mount(ctx, me)
+		err := core.secretMounts.mount(ctx, me)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -167,7 +167,7 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 		Options: map[string]string{"version": "1"},
 	}
 	ctx := namespace.RootContext(nil)
-	err := core.mount(ctx, me)
+	err := core.secretMounts.mount(ctx, me)
 	if err != nil {
 		t.Fatalf("mount error: %v", err)
 	}

@@ -563,7 +563,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 				return b, b.Setup(ctx, config)
 			}
 
-			mountTableCount := len(c.mounts.Entries)
+			mountTableCount := len(c.secretMounts.table.Entries)
 
 			// 2. Enable mount kv store
 			registerReq := &logical.Request{
@@ -577,7 +577,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			testCore_Invalidate_handleRequest(t, ctx, c, registerReq)
 
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
-			require.Equal(t, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
+			require.Equal(t, mountTableCount+1, len(c.secretMounts.table.Entries), "expected mount table to grew by one")
 
 			// 3. Get the UUID
 			readReq := &logical.Request{
@@ -611,9 +611,9 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				c.mountsLock.RLock()
-				defer c.mountsLock.RUnlock()
-				require.Equal(collect, mountTableCount, len(c.mounts.Entries), "expected mount table to be back at original size")
+				c.secretMounts.lock.RLock()
+				defer c.secretMounts.lock.RUnlock()
+				require.Equal(collect, mountTableCount, len(c.secretMounts.table.Entries), "expected mount table to be back at original size")
 				require.EqualValues(t, 1, cleanCallCount.Load(), "expected one cleanup call")
 			}, 10*time.Second, 10*time.Millisecond)
 
@@ -629,9 +629,9 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				c.mountsLock.RLock()
-				defer c.mountsLock.RUnlock()
-				require.Equal(collect, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
+				c.secretMounts.lock.RLock()
+				defer c.secretMounts.lock.RUnlock()
+				require.Equal(collect, mountTableCount+1, len(c.secretMounts.table.Entries), "expected mount table to grew by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
 				triggerReadCall(collect)
 			}, 10*time.Second, 10*time.Millisecond)
@@ -759,7 +759,7 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 				return b, b.Setup(ctx, config)
 			}
 
-			mountTableCount := len(c.mounts.Entries)
+			mountTableCount := len(c.secretMounts.table.Entries)
 
 			// 2. Enable mount kv store
 			registerReq := &logical.Request{
@@ -773,7 +773,7 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			testCore_Invalidate_handleRequest(t, ctx, c, registerReq)
 
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
-			require.Equal(t, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
+			require.Equal(t, mountTableCount+1, len(c.secretMounts.table.Entries), "expected mount table to grew by one")
 
 			storagePath := "core/mounts"
 
@@ -810,9 +810,9 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				c.mountsLock.RLock()
-				defer c.mountsLock.RUnlock()
-				require.Equal(collect, mountTableCount, len(c.mounts.Entries), "expected mount table to be back at original size")
+				c.secretMounts.lock.RLock()
+				defer c.secretMounts.lock.RUnlock()
+				require.Equal(collect, mountTableCount, len(c.secretMounts.table.Entries), "expected mount table to be back at original size")
 				require.EqualValues(t, 1, cleanCallCount.Load(), "expected one cleanup call")
 			}, 10*time.Second, 10*time.Millisecond)
 
@@ -828,9 +828,9 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				c.mountsLock.RLock()
-				defer c.mountsLock.RUnlock()
-				require.Equal(collect, mountTableCount+1, len(c.mounts.Entries), "expected mount table to grew by one")
+				c.secretMounts.lock.RLock()
+				defer c.secretMounts.lock.RUnlock()
+				require.Equal(collect, mountTableCount+1, len(c.secretMounts.table.Entries), "expected mount table to grew by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
 				triggerReadCall(collect)
 			}, 10*time.Second, 10*time.Millisecond)
@@ -885,7 +885,7 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 				return b, b.Setup(ctx, config)
 			}
 
-			mountTableCount := len(c.auth.Entries)
+			mountTableCount := len(c.authMounts.table.Entries)
 
 			// 2. Enable mount dummy auth
 			registerReq := &logical.Request{
@@ -899,7 +899,7 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 			testCore_Invalidate_handleRequest(t, ctx, c, registerReq)
 
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
-			require.Equal(t, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
+			require.Equal(t, mountTableCount+1, len(c.authMounts.table.Entries), "expected mount table to grew by one")
 
 			// 3. Get the UUID
 			readReq := &logical.Request{
@@ -933,9 +933,9 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				c.authLock.RLock()
-				defer c.authLock.RUnlock()
-				require.Equal(collect, mountTableCount, len(c.auth.Entries), "expected mount table to be back at original size")
+				c.authMounts.lock.RLock()
+				defer c.authMounts.lock.RUnlock()
+				require.Equal(collect, mountTableCount, len(c.authMounts.table.Entries), "expected mount table to be back at original size")
 				require.EqualValues(t, 1, cleanCallCount.Load(), "expected one cleanup call")
 			}, 10*time.Second, 10*time.Millisecond)
 
@@ -951,9 +951,9 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				c.authLock.RLock()
-				defer c.authLock.RUnlock()
-				require.Equal(collect, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
+				c.authMounts.lock.RLock()
+				defer c.authMounts.lock.RUnlock()
+				require.Equal(collect, mountTableCount+1, len(c.authMounts.table.Entries), "expected mount table to grew by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
 				callLogin(collect)
 			}, 10*time.Second, 10*time.Millisecond)
@@ -1035,7 +1035,7 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 				return b, b.Setup(ctx, config)
 			}
 
-			mountTableCount := len(c.auth.Entries)
+			mountTableCount := len(c.authMounts.table.Entries)
 
 			// 2. Enable mount dummy auth
 			registerReq := &logical.Request{
@@ -1049,7 +1049,7 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			testCore_Invalidate_handleRequest(t, ctx, c, registerReq)
 
 			require.EqualValues(t, 1, factoryCallCount.Load(), "expected factory to be called exactly once")
-			require.Equal(t, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
+			require.Equal(t, mountTableCount+1, len(c.authMounts.table.Entries), "expected mount table to grew by one")
 
 			storagePath := "core/auth"
 
@@ -1086,9 +1086,9 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				c.authLock.RLock()
-				defer c.authLock.RUnlock()
-				require.Equal(collect, mountTableCount, len(c.auth.Entries), "expected mount table to be back at original size")
+				c.authMounts.lock.RLock()
+				defer c.authMounts.lock.RUnlock()
+				require.Equal(collect, mountTableCount, len(c.authMounts.table.Entries), "expected mount table to be back at original size")
 				require.EqualValues(t, 1, cleanCallCount.Load(), "expected one cleanup call")
 			}, 10*time.Second, 10*time.Millisecond)
 
@@ -1104,9 +1104,9 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			c.invalidateSynchronous(storagePath)
 
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
-				c.authLock.RLock()
-				defer c.authLock.RUnlock()
-				require.Equal(collect, mountTableCount+1, len(c.auth.Entries), "expected mount table to grew by one")
+				c.authMounts.lock.RLock()
+				defer c.authMounts.lock.RUnlock()
+				require.Equal(collect, mountTableCount+1, len(c.authMounts.table.Entries), "expected mount table to grew by one")
 				require.EqualValues(collect, 2, factoryCallCount.Load(), "expected factory to be called exactly twice")
 				callLogin(collect)
 			}, 10*time.Second, 10*time.Millisecond)

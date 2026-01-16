@@ -146,20 +146,15 @@ func (e *MountEntry) Namespace() *namespace.Namespace {
 
 // APIPath returns the full API Path for the given mount entry
 func (e *MountEntry) APIPath() string {
-	path := e.Path
-	if e.Table == credentialTableType {
-		path = credentialRoutePrefix + path
-	}
-	return e.namespace.Path + path
+	return e.namespace.Path + e.APIPathNoNamespace()
 }
 
 // APIPathNoNamespace returns the API Path without the namespace for the given mount entry
 func (e *MountEntry) APIPathNoNamespace() string {
-	path := e.Path
 	if e.Table == credentialTableType {
-		path = credentialRoutePrefix + path
+		return credentialRoutePrefix + e.Path
 	}
-	return path
+	return e.Path
 }
 
 // SyncCache syncs tunable configuration values to the cache. In the case of

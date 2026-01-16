@@ -25,7 +25,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 	core.logicalBackends["kv"] = PassthroughBackendFactory
 
 	meUUID, _ := uuid.GenerateUUID()
-	err := core.mount(namespace.RootContext(nil), &MountEntry{
+	err := core.secretMounts.mount(namespace.RootContext(t.Context()), &MountEntry{
 		Table: mountTableType,
 		UUID:  meUUID,
 		Path:  "wraptest",
@@ -60,7 +60,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 			TTL: time.Duration(15 * time.Second),
 		},
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 func TestRequestHandling_LoginWrapping(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.secretMounts.loadMounts(namespace.RootContext(t.Context())); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -157,7 +157,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.secretMounts.loadMounts(namespace.RootContext(t.Context())); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -354,7 +354,7 @@ func checkCounter(t *testing.T, inmemSink *metrics.InmemSink, keyPrefix string, 
 func TestRequestHandling_LoginMetric(t *testing.T) {
 	core, _, root, sink := TestCoreUnsealedWithMetrics(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.secretMounts.loadMounts(namespace.RootContext(t.Context())); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -483,7 +483,7 @@ func TestRequestHandling_ListFiltering(t *testing.T) {
 
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.secretMounts.loadMounts(namespace.RootContext(t.Context())); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 

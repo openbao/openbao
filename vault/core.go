@@ -328,25 +328,14 @@ type Core struct {
 	recoveryRotationConfig *SealConfig
 	rotationLock           sync.RWMutex
 
-	// mounts is loaded after unseal since it is a protected
-	// configuration
-	mounts *MountTable
-
-	// mountsLock is used to ensure that the mounts table does not
-	// change underneath a calling function
-	mountsLock locking.DeadlockRWMutex
+	// secretMounts and authMounts are loaded after unseal as they
+	// are a protected configuration
+	secretMounts *mountable
+	authMounts   *mountable
 
 	// mountMigrationTracker tracks past and ongoing remount operations
 	// against their migration ids
 	mountMigrationTracker *sync.Map
-
-	// auth is loaded after unseal since it is a protected
-	// configuration
-	auth *MountTable
-
-	// authLock is used to ensure that the auth table does not
-	// change underneath a calling function
-	authLock locking.DeadlockRWMutex
 
 	// audit is loaded after unseal since it is a protected
 	// configuration
@@ -2334,10 +2323,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
-	if err := c.loadMounts(ctx); err != nil {
-		return err
-	}
-	if err := c.setupMounts(ctx); err != nil {
+	if err := c.setupSecretMounts(ctx); err != nil {
 		return err
 	}
 	if err := c.setupPolicyStore(ctx); err != nil {
@@ -2346,10 +2332,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.loadCORSConfig(ctx); err != nil {
 		return err
 	}
-	if err := c.loadCredentials(ctx); err != nil {
-		return err
-	}
-	if err := c.setupCredentials(ctx); err != nil {
+	if err := c.setupAuthMounts(ctx); err != nil {
 		return err
 	}
 	if err := c.setupQuotas(ctx); err != nil {
@@ -2544,18 +2527,18 @@ func (c *Core) preSeal() error {
 	if err := c.stopExpiration(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error stopping expiration: %w", err))
 	}
-	if err := c.teardownCredentials(context.Background()); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error tearing down credentials: %w", err))
-	}
+
+	c.unload(context.Background(), c.authMounts)
+
 	if err := c.teardownPolicyStore(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down policy store: %w", err))
 	}
 	if err := c.stopRollback(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error stopping rollback: %w", err))
 	}
-	if err := c.unloadMounts(context.Background()); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error unloading mounts: %w", err))
-	}
+
+	c.unload(context.Background(), c.secretMounts)
+
 	if err := c.teardownLoginMFA(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA: %w", err))
 	}
@@ -2582,6 +2565,50 @@ func (c *Core) preSeal() error {
 
 	c.logger.Info("pre-seal teardown complete")
 	return result
+}
+
+// unload is used before we seal the core to reset the mounts to their
+// unloaded state, calling Cleanup if defined. This is action is reversed
+// by load and setup.
+func (c *Core) unload(ctx context.Context, m *mountable) {
+	if m == nil {
+		return
+	}
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	if m.table != nil {
+		mountTable := m.table.shallowClone()
+		for _, e := range mountTable.Entries {
+			switch m.tableType {
+			case credentialTableType, mountTableType:
+				backend := m.core.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.namespace), e.Path)
+				if backend != nil {
+					backend.Cleanup(ctx)
+				}
+			case auditTableType, configAuditTableType:
+				m.core.removeAuditReloadFunc(e)
+			default:
+				// TODO:
+			}
+		}
+	}
+
+	switch m.tableType {
+	case credentialTableType:
+		if m.core.tokenStore != nil {
+			m.core.tokenStore.teardown()
+			m.core.tokenStore = nil
+		}
+	case mountTableType:
+		m.core.router.reset()
+		m.core.systemBarrierView = nil
+	case auditTableType, configAuditTableType:
+		m.core.auditBroker = nil
+	}
+
+	m = nil
 }
 
 func (c *Core) ReplicationState() consts.ReplicationState {
@@ -3712,8 +3739,8 @@ func (c *Core) LoadNodeID() (string, error) {
 // DetermineRoleFromLoginRequest will determine the role that should be applied to a quota for a given
 // login request
 func (c *Core) DetermineRoleFromLoginRequest(ctx context.Context, mountPoint string, data map[string]interface{}) string {
-	c.authLock.RLock()
-	defer c.authLock.RUnlock()
+	c.authMounts.lock.RLock()
+	defer c.authMounts.lock.RUnlock()
 	matchingBackend := c.router.MatchingBackend(ctx, mountPoint)
 	if matchingBackend == nil || matchingBackend.Type() != logical.TypeCredential {
 		// Role based quotas do not apply to this request
@@ -3727,8 +3754,8 @@ func (c *Core) DetermineRoleFromLoginRequest(ctx context.Context, mountPoint str
 // consumed if the matching backend for the mount point exists and is a secret
 // backend
 func (c *Core) DetermineRoleFromLoginRequestFromReader(ctx context.Context, mountPoint string, reader io.Reader) string {
-	c.authLock.RLock()
-	defer c.authLock.RUnlock()
+	c.authMounts.lock.RLock()
+	defer c.authMounts.lock.RUnlock()
 	matchingBackend := c.router.MatchingBackend(ctx, mountPoint)
 	if matchingBackend == nil || matchingBackend.Type() != logical.TypeCredential {
 		// Role based quotas do not apply to this request
@@ -3771,8 +3798,8 @@ func (c *Core) ResolveRoleForQuotas(req *quotas.Request) (bool, error) {
 
 // aliasNameFromLoginRequest will determine the aliasName from the login Request
 func (c *Core) aliasNameFromLoginRequest(ctx context.Context, req *logical.Request) (string, error) {
-	c.authLock.RLock()
-	defer c.authLock.RUnlock()
+	c.authMounts.lock.RLock()
+	defer c.authMounts.lock.RUnlock()
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return "", err
@@ -3813,41 +3840,18 @@ func (c *Core) aliasNameFromLoginRequest(ctx context.Context, req *logical.Reque
 	return resp.Auth.Alias.Name, nil
 }
 
-// ListMounts will provide a slice containing a deep copy each mount entry
-func (c *Core) ListMounts() ([]*MountEntry, error) {
-	if c.Sealed() {
-		return nil, errors.New("vault is sealed")
-	}
-
-	c.mountsLock.RLock()
-	defer c.mountsLock.RUnlock()
-
-	var entries []*MountEntry
-
-	for _, entry := range c.mounts.Entries {
-		clone, err := entry.Clone()
-		if err != nil {
-			return nil, err
-		}
-
-		entries = append(entries, clone)
-	}
-
-	return entries, nil
-}
-
 // ListAuths will provide a slice containing a deep copy each auth entry
 func (c *Core) ListAuths() ([]*MountEntry, error) {
 	if c.Sealed() {
 		return nil, errors.New("vault is sealed")
 	}
 
-	c.authLock.RLock()
-	defer c.authLock.RUnlock()
+	c.authMounts.lock.RLock()
+	defer c.authMounts.lock.RUnlock()
 
 	var entries []*MountEntry
 
-	for _, entry := range c.auth.Entries {
+	for _, entry := range c.authMounts.table.Entries {
 		clone, err := entry.Clone()
 		if err != nil {
 			return nil, err

@@ -144,6 +144,25 @@ func (t *MountTable) find(ctx context.Context, predicate func(*MountEntry) bool)
 	return nil, nil
 }
 
+// TODO: comment
+func (t *MountTable) splitByLocal() (*MountTable, *MountTable) {
+	local := &MountTable{
+		Type: t.Type,
+	}
+	global := &MountTable{
+		Type: t.Type,
+	}
+
+	for _, entry := range t.Entries {
+		if entry.Local {
+			local.Entries = append(local.Entries, entry)
+		} else {
+			global.Entries = append(global.Entries, entry)
+		}
+	}
+	return local, global
+}
+
 // sortEntriesByPath sorts the entries in the table by path
 // and returns the table; this is useful for tests
 func (t *MountTable) sortEntriesByPath() *MountTable {

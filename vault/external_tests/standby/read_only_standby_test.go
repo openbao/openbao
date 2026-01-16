@@ -56,10 +56,12 @@ func TestReadOnlyStandby(t *testing.T) {
 		expectedValue := fmt.Sprintf("expected value #%d", i)
 
 		t.Logf("writing expected value on node %d", i)
-		_, err := core.Client.KVv2("kv").Put(t.Context(), "foo", map[string]any{
-			"bar": expectedValue,
-		})
-		require.NoError(t, err)
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			_, err := core.Client.KVv2("kv").Put(t.Context(), "foo", map[string]any{
+				"bar": expectedValue,
+			})
+			require.NoError(collect, err)
+		}, 2*time.Second, 100*time.Millisecond)
 
 		t.Logf("validating expected value on primary %d", i)
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {

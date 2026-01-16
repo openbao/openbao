@@ -115,13 +115,13 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 			Path:        fmt.Sprintf("logical/foo/%d", i),
 		}
 		func() {
-			core.mountsLock.Lock()
-			defer core.mountsLock.Unlock()
-			newTable := core.mounts.shallowClone()
+			core.secretMounts.lock.Lock()
+			defer core.secretMounts.lock.Unlock()
+			newTable := core.secretMounts.table.shallowClone()
 			newTable.Entries = append(newTable.Entries, mountEntry)
-			core.mounts = newTable
+			core.secretMounts.table = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)
-			require.NoError(t, core.persistMounts(context.Background(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
+			require.NoError(t, core.secretMounts.persistMount(context.Background(), core.barrier, newTable, mountEntry))
 		}()
 	}
 
@@ -198,13 +198,13 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 			Path:        fmt.Sprintf("logical/foo/%d", i),
 		}
 		func() {
-			core.mountsLock.Lock()
-			defer core.mountsLock.Unlock()
-			newTable := core.mounts.shallowClone()
+			core.secretMounts.lock.Lock()
+			defer core.secretMounts.lock.Unlock()
+			newTable := core.secretMounts.table.shallowClone()
 			newTable.Entries = append(newTable.Entries, mountEntry)
-			core.mounts = newTable
+			core.secretMounts.table = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)
-			require.NoError(t, core.persistMounts(context.Background(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
+			require.NoError(t, core.secretMounts.persistMount(context.Background(), core.barrier, newTable, mountEntry))
 		}()
 	}
 

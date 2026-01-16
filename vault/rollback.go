@@ -197,21 +197,15 @@ func (m *RollbackManager) triggerRollbacks() {
 	backends := m.backends()
 
 	for _, e := range backends {
-		path := e.Path
-		if e.Table == credentialTableType {
-			path = credentialRoutePrefix + path
-		}
-
 		// When the mount is filtered, the backend will be nil
 		ctx := namespace.ContextWithNamespace(m.quitContext, e.namespace)
-		backend := m.router.MatchingBackend(ctx, path)
+		backend := m.router.MatchingBackend(ctx, e.APIPathNoNamespace())
 		if backend == nil {
 			continue
 		}
-		fullPath := e.namespace.Path + path
 
 		// Start a rollback if necessary
-		m.startOrLookupRollback(ctx, fullPath, true)
+		m.startOrLookupRollback(ctx, e.APIPath(), true)
 	}
 }
 
@@ -383,19 +377,19 @@ func (m *RollbackManager) Rollback(ctx context.Context, path string) error {
 func (c *Core) startRollback() error {
 	backendsFunc := func() []*MountEntry {
 		ret := []*MountEntry{}
-		c.mountsLock.RLock()
-		defer c.mountsLock.RUnlock()
+		c.secretMounts.lock.RLock()
+		defer c.secretMounts.lock.RUnlock()
 		// During teardown/setup after a leader change or unseal there could be
 		// something racy here so make sure the table isn't nil
-		if c.mounts != nil {
-			ret = append(ret, c.mounts.Entries...)
+		if c.secretMounts != nil {
+			ret = append(ret, c.secretMounts.table.Entries...)
 		}
-		c.authLock.RLock()
-		defer c.authLock.RUnlock()
+		c.authMounts.lock.RLock()
+		defer c.authMounts.lock.RUnlock()
 		// During teardown/setup after a leader change or unseal there could be
 		// something racy here so make sure the table isn't nil
-		if c.auth != nil {
-			ret = append(ret, c.auth.Entries...)
+		if c.authMounts != nil {
+			ret = append(ret, c.authMounts.table.Entries...)
 		}
 		return ret
 	}

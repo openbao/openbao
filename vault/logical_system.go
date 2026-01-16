@@ -925,27 +925,21 @@ func (b *SystemBackend) mountInfo(ctx context.Context, entry *MountEntry) map[st
 
 // handleMountTable handles the "mounts" endpoint to provide the mount table
 func (b *SystemBackend) handleMountTable(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	b.Core.mountsLock.RLock()
-	defer b.Core.mountsLock.RUnlock()
-
 	resp := &logical.Response{
 		Data: make(map[string]interface{}),
 	}
 
-	for _, entry := range b.Core.mounts.Entries {
-		// Only show entries for current namespace
-		if entry.Namespace().Path != ns.Path {
-			continue
-		}
+	b.Core.secretMounts.lock.RLock()
+	defer b.Core.secretMounts.lock.RUnlock()
 
+	entries, err := b.Core.secretMounts.table.findAllNamespaceMounts(ctx)
+	if err != nil {
+		return handleError(err)
+	}
+
+	for _, entry := range entries {
 		// Populate mount info
 		info := b.mountInfo(ctx, entry)
-
 		resp.Data[entry.Path] = info
 	}
 
@@ -1118,7 +1112,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	}
 
 	// Attempt mount
-	if err := b.Core.mount(ctx, me); err != nil {
+	if err := b.Core.secretMounts.mount(ctx, me); err != nil {
 		b.Backend.Logger().Error("error occurred during enable mount", "path", me.Path, "error", err)
 		return handleError(err)
 	}
@@ -1229,7 +1223,7 @@ func (b *SystemBackend) handleUnmount(ctx context.Context, req *logical.Request,
 	}
 
 	// Attempt unmount
-	if err := b.Core.unmount(ctx, path); err != nil {
+	if err := b.Core.secretMounts.unmount(ctx, path); err != nil {
 		b.Backend.Logger().Error("unmount failed", "path", path, "error", err)
 		return handleError(err)
 	}
@@ -1294,33 +1288,24 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 		return handleError(fmt.Errorf("invalid destination mount: %v", err))
 	}
 
+	protected := protectedMounts
 	// Check that target is a valid auth mount, if source is an auth mount
 	if strings.HasPrefix(fromPathDetails.MountPath, credentialRoutePrefix) {
 		if !strings.HasPrefix(toPathDetails.MountPath, credentialRoutePrefix) {
 			return handleError(fmt.Errorf("cannot remount auth mount to non-auth mount %q", toPathDetails.MountPath))
 		}
-		// Prevent target and source auth mounts from being in a protected path
-		for _, auth := range protectedAuths {
-			if strings.HasPrefix(fromPathDetails.MountPath, auth) {
-				return handleError(fmt.Errorf("cannot remount %q", fromPathDetails.MountPath))
-			}
-		}
+		protected = protectedAuths
+	}
 
-		for _, auth := range protectedAuths {
-			if strings.HasPrefix(toPathDetails.MountPath, auth) {
-				return handleError(fmt.Errorf("cannot remount to destination %q", toPathDetails.MountPath))
-			}
+	for _, p := range protected {
+		if strings.HasPrefix(fromPathDetails.MountPath, p) {
+			return handleError(fmt.Errorf("cannot remount %q", fromPathDetails.MountPath))
 		}
-	} else {
-		// Prevent target and source non-auth mounts from being in a protected path
-		for _, p := range protectedMounts {
-			if strings.HasPrefix(fromPathDetails.MountPath, p) {
-				return handleError(fmt.Errorf("cannot remount %q", fromPathDetails.MountPath))
-			}
+	}
 
-			if strings.HasPrefix(toPathDetails.MountPath, p) {
-				return handleError(fmt.Errorf("cannot remount to destination %+v", toPathDetails.MountPath))
-			}
+	for _, p := range protected {
+		if strings.HasPrefix(toPathDetails.MountPath, p) {
+			return handleError(fmt.Errorf("cannot remount to destination %q", toPathDetails.MountPath))
 		}
 	}
 
@@ -1374,9 +1359,9 @@ func (b *SystemBackend) moveMount(ns *namespace.Namespace, logger log.Logger, mi
 	// Attempt remount
 	switch entry.Table {
 	case credentialTableType:
-		err = b.Core.remountCredential(revokeCtx, fromPathDetails, toPathDetails, true)
+		err = b.Core.authMounts.remount(revokeCtx, fromPathDetails, toPathDetails, true)
 	case mountTableType:
-		err = b.Core.remountSecretsEngine(revokeCtx, fromPathDetails, toPathDetails, true)
+		err = b.Core.secretMounts.remount(revokeCtx, fromPathDetails, toPathDetails, true)
 	default:
 		return fmt.Errorf("cannot remount mount of table %q", entry.Table)
 	}
@@ -1593,9 +1578,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		return handleError(fmt.Errorf("tune of path %q failed: no mount entry found", path))
 	}
 
-	lock := &b.Core.mountsLock
+	lock := &b.Core.secretMounts.lock
 	if isAuth {
-		lock = &b.Core.authLock
+		lock = &b.Core.authMounts.lock
 	}
 
 	lock.Lock()
@@ -1859,9 +1844,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 	var err error
 	if isAuth {
-		err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+		err = b.Core.authMounts.persistMount(ctx, b.Core.barrier, b.Core.authMounts.table, mountEntry)
 	} else {
-		err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
+		err = b.Core.secretMounts.persistMount(ctx, b.Core.barrier, b.Core.secretMounts.table, mountEntry)
 	}
 
 	if err != nil {
@@ -2091,6 +2076,7 @@ func (b *SystemBackend) handleRevokePrefixCommon(ctx context.Context,
 	return logical.RespondWithStatusCode(nil, nil, http.StatusAccepted)
 }
 
+// TODO: unify with mounts?
 // handleAuthTable handles the "auth" endpoint to provide the auth table
 func (b *SystemBackend) handleAuthTable(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	ns, err := namespace.FromContext(ctx)
@@ -2098,14 +2084,14 @@ func (b *SystemBackend) handleAuthTable(ctx context.Context, req *logical.Reques
 		return nil, err
 	}
 
-	b.Core.authLock.RLock()
-	defer b.Core.authLock.RUnlock()
+	b.Core.authMounts.lock.RLock()
+	defer b.Core.authMounts.lock.RUnlock()
 
 	resp := &logical.Response{
 		Data: make(map[string]interface{}),
 	}
 
-	for _, entry := range b.Core.auth.Entries {
+	for _, entry := range b.Core.authMounts.table.Entries {
 		// Only show entries for current namespace
 		if entry.Namespace().Path != ns.Path {
 			continue
@@ -2127,10 +2113,10 @@ func (b *SystemBackend) handleReadAuth(ctx context.Context, req *logical.Request
 		return nil, err
 	}
 
-	b.Core.authLock.RLock()
-	defer b.Core.authLock.RUnlock()
+	b.Core.authMounts.lock.RLock()
+	defer b.Core.authMounts.lock.RUnlock()
 
-	for _, entry := range b.Core.auth.Entries {
+	for _, entry := range b.Core.authMounts.table.Entries {
 		// Only show entry for current namespace
 		if entry.Namespace().Path != ns.Path || entry.Path != path {
 			continue
@@ -2322,8 +2308,8 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 		}
 	}
 
-	// Attempt enabling
-	if err := b.Core.enableCredential(ctx, me); err != nil {
+	// Attempt mounting
+	if err := b.Core.authMounts.mount(ctx, me); err != nil {
 		b.Backend.Logger().Error("error occurred during enable credential", "path", me.Path, "error", err)
 		return handleError(err)
 	}
@@ -2418,9 +2404,9 @@ func (b *SystemBackend) handleDisableAuth(ctx context.Context, req *logical.Requ
 		return handleError(fmt.Errorf("unable to find storage for path: %q", fullPath))
 	}
 
-	// Attempt disable
-	if err := b.Core.disableCredential(ctx, path); err != nil {
-		b.Backend.Logger().Error("disable auth mount failed", "path", path, "error", err)
+	// Attempt unmounting
+	if err := b.Core.authMounts.unmount(ctx, path); err != nil {
+		b.Backend.Logger().Error("unmounting auth mount failed", "path", path, "error", err)
 		return handleError(err)
 	}
 
@@ -3796,8 +3782,8 @@ func (b *SystemBackend) pathInternalUIMountsRead(ctx context.Context, req *logic
 		return false
 	}
 
-	b.Core.mountsLock.RLock()
-	for _, entry := range b.Core.mounts.Entries {
+	b.Core.secretMounts.lock.RLock()
+	for _, entry := range b.Core.secretMounts.table.Entries {
 		if ns.ID == entry.NamespaceID && hasAccess(ctx, entry) {
 			if isAuthed {
 				// If this is an authed request return all the mount info
@@ -3811,10 +3797,10 @@ func (b *SystemBackend) pathInternalUIMountsRead(ctx context.Context, req *logic
 			}
 		}
 	}
-	b.Core.mountsLock.RUnlock()
+	b.Core.secretMounts.lock.RUnlock()
 
-	b.Core.authLock.RLock()
-	for _, entry := range b.Core.auth.Entries {
+	b.Core.authMounts.lock.RLock()
+	for _, entry := range b.Core.authMounts.table.Entries {
 		if ns.ID == entry.NamespaceID && hasAccess(ctx, entry) {
 			if isAuthed {
 				// If this is an authed request return all the mount info
@@ -3828,7 +3814,7 @@ func (b *SystemBackend) pathInternalUIMountsRead(ctx context.Context, req *logic
 			}
 		}
 	}
-	b.Core.authLock.RUnlock()
+	b.Core.authMounts.lock.RUnlock()
 
 	return resp, nil
 }

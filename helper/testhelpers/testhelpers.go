@@ -970,6 +970,16 @@ func SkipUnlessEnvVarsSet(t testing.T, envVars []string) {
 	}
 }
 
+// WaitForActiveNodeAndStandbys waits for the active node and any standbys.
+func WaitForActiveNodeAndStandbys(t testing.T, cluster *vault.TestCluster) {
+	WaitForActiveNode(t, cluster)
+	for _, core := range cluster.Cores {
+		if standby := core.Standby(); standby {
+			WaitForStandbyNode(t, core)
+		}
+	}
+}
+
 // WaitForNodesExcludingSelectedStandbys is variation on WaitForActiveNodeAndStandbys.
 // It waits for the active node before waiting for standby nodes, however
 // it will not wait for cores with indexes that match those specified as arguments.

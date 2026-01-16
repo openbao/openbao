@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -123,7 +122,7 @@ func TestInspectAPIReload(t *testing.T) {
 		t.Fatalf("expected invalid configuration error but received: %s", resp.Error())
 	}
 
-	originalConfig := core.rawConfig.Load().(*server.Config)
+	originalConfig := core.rawConfig.Load()
 	newConfig := originalConfig
 	newConfig.EnableIntrospectionEndpointRaw = true
 	newConfig.EnableIntrospectionEndpoint = true

@@ -74,18 +74,14 @@ type Seal interface {
 
 type defaultSeal struct {
 	access seal.Access
-	config atomic.Value
+	config atomic.Pointer[SealConfig]
 	core   *Core
 }
 
 var _ Seal = (*defaultSeal)(nil)
 
 func NewDefaultSeal(lowLevel seal.Access) Seal {
-	ret := &defaultSeal{
-		access: lowLevel,
-	}
-	ret.config.Store((*SealConfig)(nil))
-	return ret
+	return &defaultSeal{access: lowLevel}
 }
 
 func (d *defaultSeal) SealWrapable() bool {
@@ -141,7 +137,7 @@ func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
 }
 
 func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
-	cfg := d.config.Load().(*SealConfig)
+	cfg := d.config.Load()
 	if cfg != nil {
 		return cfg.Clone(), nil
 	}
@@ -199,7 +195,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 	// Provide a way to wipe out the cached value (also prevents actually
 	// saving a nil config)
 	if config == nil {
-		d.config.Store((*SealConfig)(nil))
+		d.config.Store(nil)
 		return nil
 	}
 

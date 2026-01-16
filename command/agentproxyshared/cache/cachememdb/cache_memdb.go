@@ -17,7 +17,7 @@ const (
 
 // CacheMemDB is the underlying cache database for storing indexes.
 type CacheMemDB struct {
-	db *atomic.Value
+	db atomic.Pointer[memdb.MemDB]
 }
 
 // New creates a new instance of CacheMemDB.
@@ -27,9 +27,7 @@ func New() (*CacheMemDB, error) {
 		return nil, err
 	}
 
-	c := &CacheMemDB{
-		db: new(atomic.Value),
-	}
+	c := &CacheMemDB{}
 	c.db.Store(db)
 
 	return c, nil
@@ -136,7 +134,7 @@ func (c *CacheMemDB) Get(indexName string, indexValues ...interface{}) (*Index, 
 		return nil, fmt.Errorf("invalid index name %q", indexName)
 	}
 
-	txn := c.db.Load().(*memdb.MemDB).Txn(false)
+	txn := c.db.Load().Txn(false)
 
 	raw, err := txn.First(tableNameIndexer, indexName, indexValues...)
 	if err != nil {
@@ -161,7 +159,7 @@ func (c *CacheMemDB) Set(index *Index) error {
 		return errors.New("nil index provided")
 	}
 
-	txn := c.db.Load().(*memdb.MemDB).Txn(true)
+	txn := c.db.Load().Txn(true)
 	defer txn.Abort()
 
 	if err := txn.Insert(tableNameIndexer, index); err != nil {
@@ -183,7 +181,7 @@ func (c *CacheMemDB) GetByPrefix(indexName string, indexValues ...interface{}) (
 	indexName = indexName + "_prefix"
 
 	// Get all the objects
-	txn := c.db.Load().(*memdb.MemDB).Txn(false)
+	txn := c.db.Load().Txn(false)
 
 	iter, err := txn.Get(tableNameIndexer, indexName, indexValues...)
 	if err != nil {
@@ -218,7 +216,7 @@ func (c *CacheMemDB) Evict(indexName string, indexValues ...interface{}) error {
 		return nil
 	}
 
-	txn := c.db.Load().(*memdb.MemDB).Txn(true)
+	txn := c.db.Load().Txn(true)
 	defer txn.Abort()
 
 	if err := txn.Delete(tableNameIndexer, index); err != nil {

@@ -31,7 +31,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	semver "github.com/hashicorp/go-version"
-	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/hostutil"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/logging"
@@ -201,7 +200,6 @@ func (b *SystemBackend) handleCORSRead(ctx context.Context, req *logical.Request
 	corsConf := b.Core.corsConfig
 
 	enabled := corsConf.IsEnabled()
-
 	resp := &logical.Response{
 		Data: map[string]interface{}{
 			"enabled": enabled,
@@ -2927,7 +2925,7 @@ func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Requ
 	description := data.Get("description").(string)
 	options := data.Get("options").(map[string]string)
 
-	conf := b.Core.rawConfig.Load().(*server.Config)
+	conf := b.Core.rawConfig.Load()
 
 	if !conf.UnsafeAllowAPIAuditCreation {
 		return handleError(fmt.Errorf("cannot enable audit device via API; use declarative, config-based audit device management instead"))

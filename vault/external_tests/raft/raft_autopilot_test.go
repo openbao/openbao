@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"math"
 	"reflect"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -746,7 +745,7 @@ func setupLeaderAndUnseal(t *testing.T, cluster *vault.TestCluster) (*vault.Test
 	leader, _ := clusterLeader(t, cluster)
 
 	// Lots of tests seem to do this when they deal with a TestRaftServerAddressProvider, it makes the test work rather than error out.
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	addressProvider := &testhelpers.TestRaftServerAddressProvider{Cluster: cluster}
 	testhelpers.EnsureCoreSealed(t, leader)

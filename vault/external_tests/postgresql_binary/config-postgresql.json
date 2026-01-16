@@ -1,0 +1,93 @@
+{
+  "ui": true,
+  "cluster_addr": "https://127.0.0.1:8201",
+  "api_addr": "https://127.0.0.1:8200",
+  "storage": {
+    "postgresql": {
+      "connection_url": "postgres://username:password@127.0.0.1:5432/postgres",
+      "max_connect_retries": 0,
+      "ha_enabled": true
+    }
+  },
+  "listener": [
+    {
+      "tcp": {
+        "address": "127.0.0.1:8200",
+        "tls_disable": true
+      }
+    }
+  ],
+  "seal": {
+    "static": {
+      "current_key_id": "20250630",
+      "current_key": "542a91c2aff86797e8dfa16adf86dcbea5706410791b319798936a1b08e4ef8b"
+    }
+  },
+  "initialize": [
+    {
+      "audit": {
+        "request": [
+          {
+            "enable-audit": {
+              "operation": "update",
+              "path": "sys/audit/stdout",
+              "data": {
+                "type": "file",
+                "options": {
+                  "file_path": "/dev/stdout",
+                  "log_raw": true
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "identity": {
+        "request": [
+          {
+            "mount-userpass": {
+              "operation": "update",
+              "path": "sys/auth/userpass",
+              "data": {
+                "type": "userpass",
+                "path": "userpass/",
+                "description": "admin"
+              }
+            }
+          },
+          {
+            "userpass-add-admin": {
+              "operation": "update",
+              "path": "auth/userpass/users/admin",
+              "data": {
+                "password": {
+                  "eval_type": "string",
+                  "eval_source": "env",
+                  "env_var": "INITIAL_ADMIN_PASSWORD"
+                },
+                "token_policies": ["superuser"]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "policy": {
+        "request": [
+          {
+            "add-superuser-policy": {
+              "operation": "update",
+              "path": "sys/policies/acl/superuser",
+              "data": {
+                "policy": "path \"*\" {\n  capabilities = [\"create\", \"update\", \"read\", \"delete\", \"list\", \"scan\", \"sudo\"]\n}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

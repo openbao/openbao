@@ -110,9 +110,11 @@ func (c *Core) addAuthorization(ctx context.Context, token string, approver logi
 		for _, group := range approver.GroupAliases {
 			if slices.Contains(identityGroups, group.Name) {
 				foundAuthorization = true
+				// TODO dedupe approvers
+				// TODO make sure token doesn't have same identity as approver
 				cg.Factors[i].Authorizations = append(factor.Authorizations, logical.ControlGroupAuthorization{
 					Timestamp: time.Now(),
-					Approver:  approver.EntityID,
+					Approver:  approver.DisplayName,
 				})
 			}
 		}
@@ -124,5 +126,6 @@ func (c *Core) addAuthorization(ctx context.Context, token string, approver logi
 			return err
 		}
 	}
+
 	return nil
 }

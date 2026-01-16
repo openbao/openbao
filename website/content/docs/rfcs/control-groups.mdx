@@ -59,7 +59,7 @@ The control group implementation will consist of the following.
    2. Self authorization not permitted
 3. Authorization storage
    1. Request, authorization details, and response will be stored in
-      wrapped response/`cubbyhole`.
+      the metadata for the wrapping token.
 
 Reusing the response wrapping framework should be familiar, but the
 developer will need to add new `control-group` paths to the system
@@ -100,7 +100,7 @@ Using a path having the policy would look like the following:
 
 ```
 # Normal request by some user (blocked by control group by default)
-POST /pki/issue/web-server
+POST pki/issue/web-server
 {
   "common_name": "web.example.com",
   "ttl": "24h"
@@ -108,93 +108,123 @@ POST /pki/issue/web-server
 
 # Which returns a wrapped response:
 {
-	"wrapping_token": "bd3dbfbb-f80f-488c-9981-08ebb3f51020",
-	"wrapping_accessor": "0fe8e46b-dc82-4ceb-b74b-07425d27fa8e",
+  "wrap_info": {
+    "token": "s.4DpwkLfT9vZmQ7xRnYh2Ws3B",
+    "accessor": "7YbxK2mNQp9vLZrT3wDfHs1J"
+  }
 }
 ```
 
 An authorizer can view and approve the request:
 ```
 # Authorizer inspecting the request
-POST /sys/control-group/request
+POST auth/token/lookup-accessor
 {
-	"accessor": "0fe8e46b-dc82-4ceb-b74b-07425d27fa8e",
+  "accessor": "7YbxK2mNQp9vLZrT3wDfHs1J"
 }
 
-# Which returns the request content:
+# Which returns the wrapping token entry with request and applicable control-group policy in the metadata:
 {
+  "request_id": "...",
+  "lease_id": "",
+  "renewable": false,
+  "lease_duration": 0,
   "data": {
-    "created": "2023-12-01T10:30:00Z",
-    "approved": false,
-    "request_path": "pki/issue/web-server",
-	"request_payload": {
-	  "common_name": "web.example.com",
-	  "ttl": "24h"
-	},
-    "request_entity": {
-      "id": "8feb298c-a84d-4c73-9c33-6a87853e95cf",
-      "name": "Requester"
+    "accessor": "7YbxK2mNQp9vLZrT3wDfHs1J",
+    "creation_time": 1705412345,
+    "creation_ttl": 600,
+    "display_name": "token",
+    "entity_id": "",
+    "expire_time": "2024-01-16T15:00:00Z",
+    "explicit_max_ttl": 0,
+    "id": "",
+    "meta": {
+      "control_group": "{\"ttl\":3600000000000,\"factors\":[{\"name\":\"require-secops-approval\",\"controlled_capabilities\":[\"read\"],\"identity\":{\"group_names\":[\"secops\",\"security-admins\"],\"approvals\":2},\"authorizations\":[]}]}",
+      "request": "{\"id\":\"f4d37c6a-1b2e-9c3d-8a4f-5b6e7c8d9e0f\",\"operation\":\"create\",\"path\":\"pki/issue/web-server\",\"map\":{\"version\":\"0\"},\"client_token_accessor\":\"\",\"display_name\":\"token-developer-ldap\",\"mount_point\":pki/\",\"mount_type\":\"pki\",\"entity_id\":\"abc12345-6789-def0-1234-567890abcdef\"}"
     },
-    "authorizations": []
-  }
+    "num_uses": 1,
+    "orphan": true,
+    "path": "auth/token/create",
+    "policies": [
+      "response-wrapping"
+    ],
+    "renewable": false,
+    "ttl": 598,
+    "type": "service"
+  },
+  "wrap_info": null,
+  "warnings": null,
+  "auth": null
 }
 
-# Authorizer approving the request
-POST /sys/control-group/approve
+# Authorizer approves the request
+POST auth/token/approve-accessor
 {
-	"wrapping_accessor": "0fe8e46b-dc82-4ceb-b74b-07425d27fa8e",
+  "accessor": "7YbxK2mNQp9vLZrT3wDfHs1J"
 }
 
-# Which returns the updated request status
+
+# Which returns the updated token entry (approver is added to control_group/factors/authorizations):
 {
+  "request_id": "...",
+  "lease_id": "",
+  "renewable": false,
+  "lease_duration": 0,
   "data": {
-    "created": "2023-12-01T10:30:00Z",
-    "approved": true,
-    "request_path": "pki/issue/web-server",
-	"request_payload": {
-	  "common_name": "web.example.com",
-	  "ttl": "24h"
-	},
-    "request_entity": {
-      "id": "8feb298c-a84d-4c73-9c33-6a87853e95cf",
-      "name": "Requester"
+    "accessor": "7YbxK2mNQp9vLZrT3wDfHs1J",
+    "creation_time": 1705412345,
+    "creation_ttl": 600,
+    "display_name": "token",
+    "entity_id": "",
+    "expire_time": "2024-01-16T15:00:00Z",
+    "explicit_max_ttl": 0,
+    "id": "",
+    "meta": {
+      "control_group": "{\"ttl\":3600000000000,\"factors\":[{\"name\":\"require-secops-approval\",\"controlled_capabilities\":[\"read\"],\"identity\":{\"group_names\":[\"secops\",\"security-admins\"],\"approvals\":2},\"authorizations\":[{\"timestamp\": \"20250115T23:10:09\",\"approver\":\"john.doe@example.com\"}]}]}",
+      "request": "{\"id\":\"f4d37c6a-1b2e-9c3d-8a4f-5b6e7c8d9e0f\",\"operation\":\"create\",\"path\":\"pki/issue/web-server\",\"map\":{\"version\":\"0\"},\"client_token_accessor\":\"\",\"display_name\":\"token-developer-ldap\",\"mount_point\":\"pki/\",\"mount_type\":\"pki\",\"entity_id\":\"abc12345-6789-def0-1234-567890abcdef\"}"
     },
-    "authorizations": [
-      {
-        "entity_id": "d5c59658-b210-4f1d-9a2e-68ccf0512e4e",
-        "entity_name": "Authorizer"
-      }
-    ]
-  }
+    "num_uses": 1,
+    "orphan": true,
+    "path": "auth/token/create",
+    "policies": [
+      "response-wrapping"
+    ],
+    "renewable": false,
+    "ttl": 598,
+    "type": "service"
+  },
+  "wrap_info": null,
+  "warnings": null,
+  "auth": null
 }
 ```
 
-Requesting user can now retrieve the response:
+Requesting user can now retrieve the response if the nomber of authorizations is equal to the approvers attribute:
 
 ```
 # Unwrap request
 POST /sys/wrapping/unwrap
 {
-	"token": "bd3dbfbb-f80f-488c-9981-08ebb3f51020"
+  "token": "s.4DpwkLfT9vZmQ7xRnYh2Ws3B"
 }
 
-# Which returns the original response data:
+# Which now returns the original response data:
 {
   "request_id": "12345678-abcd-efgh-ijkl-123456789abc",
   "lease_id": "",
   "renewable": false,
   "lease_duration": 0,
   "data": {
-	"ca_chain": [
-	  "-----BEGIN CERTIFICATE-----\nMIIBuDCCAV6g...\n-----END CERTIFICATE-----"
-	],
-	"certificate": "-----BEGIN CERTIFICATE-----\nMIIDATCCAemgAwIBAgIUK8ZQgT...\n-----END CERTIFICATE-----",
-	"expiration": 1701504000,
-	"issuing_ca": "-----BEGIN CERTIFICATE-----\nMIIBuDCCAV6gAwIBAgIUK8ZQ...\n-----END CERTIFICATE-----",
-	"not_before": 1701500400,
-	"private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0B...\n-----END PRIVATE KEY-----",
-	"private_key_type": "rsa",
-	"serial_number": "2b:c6:50:81:3f:e4:2a:1d:f3:4c:5e:6f:8a:9b:0c:1d:2e:3f:4a:5b"
+    "ca_chain": [
+      "-----BEGIN CERTIFICATE-----\nMIIBuDCCAV6g...\n-----END CERTIFICATE-----"
+    ],
+    "certificate": "-----BEGIN CERTIFICATE-----\nMIIDATCCAemgAwIBAgIUK8ZQgT...\n-----END CERTIFICATE-----",
+    "expiration": 1701504000,
+    "issuing_ca": "-----BEGIN CERTIFICATE-----\nMIIBuDCCAV6gAwIBAgIUK8ZQ...\n-----END CERTIFICATE-----",
+    "not_before": 1701500400,
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0B...\n-----END PRIVATE KEY-----",
+    "private_key_type": "rsa",
+    "serial_number": "2b:c6:50:81:3f:e4:2a:1d:f3:4c:5e:6f:8a:9b:0c:1d:2e:3f:4a:5b"
   },
   "warnings": null,
   "auth": null
@@ -234,8 +264,8 @@ users, we will need some documentation describing usage and value. For
 users who do not need, it can be ignored.
 
 ## Unresolved Questions
-Using `sys/control-group` and the `cubbyhole` mounts might lead us to
-break the namespace partitioning. Should these be per namespace?
+Relying on `sys/wrapping` and the `auth/token` endpoints might conflict
+with namespace partitioning.
 
 ## Related Issues
 
@@ -243,4 +273,5 @@ break the namespace partitioning. Should these be per namespace?
 
 ## Proof of Concept
 
-TBD
+- https://github.com/openbao/openbao/pull/2241
+

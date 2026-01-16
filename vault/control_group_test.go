@@ -188,7 +188,7 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 	auth := logical.Auth{
 		GroupAliases: groups,
 	}
-	err = c.addAuthorization(ctx, te.ID, auth)
+	err = c.addAuthorization(ctx, te.ID, &auth)
 
 	// Token entry should now have the authorization
 	cgFetched, err := c.getControlGroup(ctx, te.ID)
@@ -262,7 +262,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 		DisplayName:  "user@example.com",
 		GroupAliases: groups,
 	}
-	err = c.addAuthorization(ctx, te.ID, auth)
+	err = c.addAuthorization(ctx, te.ID, &auth)
 
 	// Should not yet validate
 	validates, err := c.validateControlGroup(ctx, te.ID)
@@ -270,7 +270,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 	require.False(t, validates)
 
 	// Second auth should now permit validation
-	err = c.addAuthorization(ctx, te.ID, auth)
+	err = c.addAuthorization(ctx, te.ID, &auth)
 	require.Nil(t, err)
 
 	validates, err = c.validateControlGroup(ctx, te.ID)

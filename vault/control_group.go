@@ -98,7 +98,7 @@ func (c *Core) validateControlGroup(ctx context.Context, token string) (bool, er
 }
 
 // addAuthorization updates the control group metadata on the token with the given approval if applicable
-func (c *Core) addAuthorization(ctx context.Context, token string, approver logical.Auth) error {
+func (c *Core) addAuthorization(ctx context.Context, token string, approver *logical.Auth) error {
 	cg, err := c.getControlGroup(ctx, token)
 	if err != nil {
 		return err

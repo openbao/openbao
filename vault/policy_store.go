@@ -370,7 +370,7 @@ func (ps *PolicyStore) getACLView(ns *namespace.Namespace) BarrierView {
 		return ps.core.systemBarrierView.SubView(policyACLSubPath)
 	}
 
-	return ps.core.namespaceMountEntryView(ns, systemBarrierPrefix+policyACLSubPath)
+	return NamespaceView(ps.core.barrier, ns).SubView(systemBarrierPrefix + policyACLSubPath)
 }
 
 // getBarrierView returns the appropriate barrier view for the given namespace and policy type.

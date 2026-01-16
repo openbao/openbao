@@ -6297,7 +6297,7 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 	// Revoke certificates A + B
 	revocations := serials[0:2]
 	for _, key := range revocations {
-		resp, err = CBWrite(b, s, "revoke", map[string]interface{}{
+		_, err = CBWrite(b, s, "revoke", map[string]interface{}{
 			"serial_number": key,
 		})
 		if err != nil {
@@ -6320,7 +6320,7 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 	// Revoke certificates C, D
 	dirtyRevocations := serials[2:4]
 	for _, key := range dirtyRevocations {
-		resp, err = CBWrite(b, s, "revoke", map[string]interface{}{
+		_, err = CBWrite(b, s, "revoke", map[string]interface{}{
 			"serial_number": key,
 		})
 		if err != nil {
@@ -6331,7 +6331,7 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 	// Put certificates F, G in the backend
 	dirtyCertificates := []string{"f", "g"}
 	for _, cn := range dirtyCertificates {
-		resp, err = CBWrite(b, s, "issue/example", map[string]interface{}{
+		_, err = CBWrite(b, s, "issue/example", map[string]interface{}{
 			"common_name": cn + ".example.com",
 		})
 		if err != nil {
@@ -6511,7 +6511,7 @@ nebuK22ZwzbPe4NhOvAdfNDElkrrtGvTnzkDB7ezPYjelA==
 	require.NotNil(t, resp.Data)
 	require.NotEmpty(t, resp.Data["certificate"])
 
-	resp, err = CBWrite(b, s, "issuers/import/bundle", map[string]interface{}{
+	_, err = CBWrite(b, s, "issuers/import/bundle", map[string]interface{}{
 		"pem_bundle": resp.Data["certificate"].(string),
 	})
 	require.NoError(t, err)

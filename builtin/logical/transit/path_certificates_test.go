@@ -225,7 +225,7 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	require.NoError(t, err)
 
 	// create role to be used in the certificate issuing
-	resp, err = apiClient.Logical().Write("pki/roles/example-dot-com", map[string]interface{}{
+	_, err = apiClient.Logical().Write("pki/roles/example-dot-com", map[string]interface{}{
 		"issuer_ref":                         issuerName,
 		"allowed_domains":                    "example.com",
 		"allow_bare_domains":                 true,

@@ -988,7 +988,7 @@ func (c *DebugCommand) compress(dst string) error {
 		child := filepath.Base(c.flagOutput)
 
 		ofs := os.DirFS(parent)
-		if err := fs.WalkDir(ofs, child, func(path string, d fs.DirEntry, err error) error {
+		if err := fs.WalkDir(ofs, child, func(path string, d fs.DirEntry, _ error) error {
 			var fileType byte = tar.TypeReg
 			tarPath := path
 			if d.IsDir() {

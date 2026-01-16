@@ -430,7 +430,7 @@ func testCoreAddSecretMountContext(ctx context.Context, t testing.T, core *Core,
 }
 
 func testCoreAddSecretMount(t testing.T, core *Core, token string) {
-	rootCtx := namespace.RootContext(nil)
+	rootCtx := namespace.RootContext(context.TODO())
 	testCoreAddSecretMountContext(rootCtx, t, core, "secret/", token)
 }
 
@@ -483,7 +483,7 @@ func TestCoreUpgradeToKVv2(t testing.T, core *Core, token string) {
 		Operation:   logical.DeleteOperation,
 	}
 
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -496,7 +496,7 @@ func TestCoreUpgradeToKVv2(t testing.T, core *Core, token string) {
 		"type": "kv-v2",
 	}
 
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 }

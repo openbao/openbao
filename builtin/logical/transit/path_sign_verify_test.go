@@ -280,6 +280,7 @@ func testTransit_SignVerify_ECDSA(t *testing.T, bits int) {
 	// Bad value
 	req.Data["marshaling_algorithm"] = "asn2"
 	sig = signRequest(req, true, "")
+	verifyRequest(req, true, "", sig)
 	// Use the default, verify we can't validate with jws
 	req.Data["marshaling_algorithm"] = "asn1"
 	sig = signRequest(req, false, "")

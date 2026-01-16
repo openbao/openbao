@@ -267,7 +267,7 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 		return nil
 	}
 
-	ctx, cancel := context.WithCancel(namespace.RootContext(nil))
+	ctx, cancel := context.WithCancel(namespace.RootContext(context.Background()))
 	defer cancel()
 
 	go func() {
@@ -698,7 +698,7 @@ func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 		c.heldHALock = lock
 
 		// Create the active context
-		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(nil))
+		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(context.Background()))
 		c.activeContext = activeCtx
 		c.activeContextCancelFunc.Store(activeCtxCancel)
 

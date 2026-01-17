@@ -10,7 +10,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -38,6 +41,9 @@ type mySQLConnectionProducer struct {
 
 	// tlsConfigName is a globally unique name that references the TLS config for this instance in the mysql driver
 	tlsConfigName string
+
+	// hosts holds parsed host:port pairs for multi-host failover
+	hosts []string
 
 	RawConfig             map[string]interface{}
 	maxConnectionLifetime time.Duration
@@ -75,6 +81,11 @@ func (c *mySQLConnectionProducer) Init(ctx context.Context, conf map[string]inte
 		"username": url.PathEscape(c.Username),
 		"password": password,
 	})
+
+	// Parse multi-host DSN for failover support
+	if err := c.parseMultiHostDSN(); err != nil {
+		return nil, fmt.Errorf("error parsing multi-host DSN: %w", err)
+	}
 
 	if c.MaxOpenConnections == 0 {
 		c.MaxOpenConnections = 4
@@ -143,15 +154,29 @@ func (c *mySQLConnectionProducer) Connection(ctx context.Context) (interface{}, 
 		c.db.Close()
 	}
 
-	connURL, err := c.addTLStoDSN()
+	// Parse the DSN into a Config struct
+	config, err := mysql.ParseDSN(c.ConnectionURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to parse connectionURL: %w", err)
 	}
 
-	c.db, err = sql.Open("mysql", connURL)
-	if err != nil {
-		return nil, err
+	// Set TLS config if configured
+	if c.tlsConfigName != "" {
+		config.TLSConfig = c.tlsConfigName
 	}
+
+	// Enable multi-host failover if multiple hosts are configured
+	if len(c.hosts) > 1 {
+		config.DialFunc = c.dialWithFailover
+	}
+
+	// Create connector and open DB using the connector-based approach
+	connector, err := mysql.NewConnector(config)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create mysql connector: %w", err)
+	}
+
+	c.db = sql.OpenDB(connector)
 
 	// Set some connection pool settings. We don't need much of this,
 	// since the request rate shouldn't be high.
@@ -230,4 +255,78 @@ func (c *mySQLConnectionProducer) addTLStoDSN() (connURL string, err error) {
 
 	connURL = config.FormatDSN()
 	return connURL, nil
+}
+
+// parseMultiHostDSN extracts multiple hosts from connection URL for failover.
+func (c *mySQLConnectionProducer) parseMultiHostDSN() error {
+	// Match tcp(...) in the connection URL
+	re := regexp.MustCompile(`tcp\(([^)]+)\)`)
+	match := re.FindStringSubmatch(c.ConnectionURL)
+
+	if match == nil {
+		// No tcp() found - could be unix socket or other format
+		// Leave hosts empty, single-host behavior will be used
+		return nil
+	}
+
+	hostsPart := match[1]
+
+	// Check if there are multiple hosts (comma-separated)
+	if !strings.Contains(hostsPart, ",") {
+		// Single host - ensure it has a port, store it, and return
+		host := strings.TrimSpace(hostsPart)
+		if !strings.Contains(host, ":") {
+			host += ":3306"
+		}
+		c.hosts = []string{host}
+		return nil
+	}
+
+	// Multiple hosts found - parse each one
+	hostList := strings.Split(hostsPart, ",")
+	c.hosts = make([]string, 0, len(hostList))
+
+	for _, h := range hostList {
+		h = strings.TrimSpace(h)
+		if h == "" {
+			continue
+		}
+		// Ensure each host has a port
+		if !strings.Contains(h, ":") {
+			h += ":3306"
+		}
+		c.hosts = append(c.hosts, h)
+	}
+
+	if len(c.hosts) == 0 {
+		return errors.New("no valid hosts found in connection URL")
+	}
+
+	// Normalize the ConnectionURL to use only the first host
+	// This is required because mysql.ParseDSN() doesn't support multiple hosts
+	normalizedAddr := "tcp(" + c.hosts[0] + ")"
+	c.ConnectionURL = re.ReplaceAllString(c.ConnectionURL, normalizedAddr)
+
+	return nil
+}
+
+// dialWithFailover tries each host in sequence until one succeeds.
+func (c *mySQLConnectionProducer) dialWithFailover(ctx context.Context, network, _ string) (conn net.Conn, err error) {
+	var lastErr error
+
+	for _, host := range c.hosts {
+		var d net.Dialer
+
+		conn, err := d.DialContext(ctx, network, host)
+		if err == nil {
+			return conn, nil
+		}
+		lastErr = fmt.Errorf("failed to connect to %s: %w", host, err)
+	}
+
+	if lastErr != nil {
+		return nil, fmt.Errorf("all hosts failed, last error: %w", lastErr)
+	}
+
+	return nil, errors.New("no hosts configured")
 }

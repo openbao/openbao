@@ -316,3 +316,69 @@ func writeFile(t *testing.T, filename string, data []byte, perms os.FileMode) {
 		t.Fatalf("Unable to write to file [%s]: %s", filename, err)
 	}
 }
+
+func Test_parseMultiHostDSN(t *testing.T) {
+	type testCase struct {
+		connectionURL         string
+		expectedHosts         []string
+		expectedConnectionURL string
+	}
+
+	tests := map[string]testCase{
+		"single host": {
+			connectionURL:         "user:password@tcp(localhost:3306)/test",
+			expectedHosts:         []string{"localhost:3306"},
+			expectedConnectionURL: "user:password@tcp(localhost:3306)/test",
+		},
+		"multiple hosts": {
+			connectionURL:         "user:password@tcp(host1:3306,host2:3307)/test",
+			expectedHosts:         []string{"host1:3306", "host2:3307"},
+			expectedConnectionURL: "user:password@tcp(host1:3306)/test",
+		},
+		"multiple hosts without ports": {
+			connectionURL:         "user:password@tcp(host1,host2)/test",
+			expectedHosts:         []string{"host1:3306", "host2:3306"},
+			expectedConnectionURL: "user:password@tcp(host1:3306)/test",
+		},
+		"unix socket": {
+			connectionURL:         "user:password@unix(/var/run/mysqld/mysqld.sock)/test",
+			expectedHosts:         nil,
+			expectedConnectionURL: "user:password@unix(/var/run/mysqld/mysqld.sock)/test",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			producer := &mySQLConnectionProducer{
+				ConnectionURL: test.connectionURL,
+			}
+
+			err := producer.parseMultiHostDSN()
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+
+			if !reflect.DeepEqual(producer.hosts, test.expectedHosts) {
+				t.Fatalf("hosts: got %v, expected %v", producer.hosts, test.expectedHosts)
+			}
+
+			if producer.ConnectionURL != test.expectedConnectionURL {
+				t.Fatalf("connectionURL: got %s, expected %s", producer.ConnectionURL, test.expectedConnectionURL)
+			}
+		})
+	}
+}
+
+func Test_dialWithFailover(t *testing.T) {
+	producer := &mySQLConnectionProducer{
+		hosts: []string{"invalid-host-1:3306", "invalid-host-2:3306"},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	_, err := producer.dialWithFailover(ctx, "tcp", "ignored")
+	if err == nil {
+		t.Fatal("expected error when connecting to invalid hosts")
+	}
+}

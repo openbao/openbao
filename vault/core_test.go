@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -304,18 +303,16 @@ func TestNewCore_configureListeners(t *testing.T) {
 			require.NoError(t, err)
 			storage := &logical.InmemStorage{}
 			core := &Core{
-				clusterListener:      new(atomic.Value),
-				customListenerHeader: new(atomic.Value),
-				uiConfig:             NewUIConfig(false, backend, storage),
+				uiConfig: NewUIConfig(false, backend, storage),
 			}
 
 			err = core.configureListeners(tc.config)
 			require.NoError(t, err)
 			switch tc.expectedListeners {
 			case nil:
-				require.Nil(t, core.customListenerHeader.Load())
+				require.Empty(t, core.customListenerHeader.Load())
 			default:
-				for i, v := range core.customListenerHeader.Load().([]*ListenerCustomHeaders) {
+				for i, v := range *core.customListenerHeader.Load() {
 					require.Equal(t, v.Address, tc.config.RawConfig.Listeners[i].Address)
 				}
 			}

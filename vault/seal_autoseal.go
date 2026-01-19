@@ -40,8 +40,8 @@ type autoSeal struct {
 	seal.Access
 
 	barrierType    wrapping.WrapperType
-	barrierConfig  atomic.Value
-	recoveryConfig atomic.Value
+	barrierConfig  atomic.Pointer[SealConfig]
+	recoveryConfig atomic.Pointer[SealConfig]
 	core           *Core
 	logger         log.Logger
 
@@ -56,8 +56,6 @@ func NewAutoSeal(lowLevel seal.Access) (*autoSeal, error) {
 	ret := &autoSeal{
 		Access: lowLevel,
 	}
-	ret.barrierConfig.Store((*SealConfig)(nil))
-	ret.recoveryConfig.Store((*SealConfig)(nil))
 
 	// Having the wrapper type in a field is just a convenience since Seal.BarrierType()
 	// does not return an error.
@@ -189,8 +187,8 @@ func (d *autoSeal) UpgradeKeys(ctx context.Context) error {
 }
 
 func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
-	if d.barrierConfig.Load().(*SealConfig) != nil {
-		return d.barrierConfig.Load().(*SealConfig).Clone(), nil
+	if config := d.barrierConfig.Load(); config != nil {
+		return config.Clone(), nil
 	}
 
 	if err := d.checkCore(); err != nil {
@@ -241,7 +239,7 @@ func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig) error
 	}
 
 	if conf == nil {
-		d.barrierConfig.Store((*SealConfig)(nil))
+		d.barrierConfig.Store(nil)
 		return nil
 	}
 
@@ -279,8 +277,8 @@ func (d *autoSeal) RecoveryType() string {
 
 // RecoveryConfig returns the recovery config on recoverySealConfigPath.
 func (d *autoSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
-	if d.recoveryConfig.Load().(*SealConfig) != nil {
-		return d.recoveryConfig.Load().(*SealConfig).Clone(), nil
+	if config := d.recoveryConfig.Load(); config != nil {
+		return config.Clone(), nil
 	}
 
 	if err := d.checkCore(); err != nil {
@@ -330,7 +328,7 @@ func (d *autoSeal) SetRecoveryConfig(ctx context.Context, conf *SealConfig) erro
 	}
 
 	if conf == nil {
-		d.recoveryConfig.Store((*SealConfig)(nil))
+		d.recoveryConfig.Store(nil)
 		return nil
 	}
 

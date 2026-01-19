@@ -668,7 +668,10 @@ func (c *Core) ReloadAuditLogs() {
 }
 
 func (c *Core) handleAuditLogSetup(ctx context.Context, standby bool) error {
-	conf := c.rawConfig.Load().(*server.Config)
+	conf := c.rawConfig.Load()
+	if conf == nil {
+		return errors.New("empty config encountered")
+	}
 
 	c.auditLock.RLock()
 	table := c.audit.shallowClone()

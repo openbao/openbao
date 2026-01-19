@@ -26,7 +26,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/openbao/openbao/api/v2"
-	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -2165,7 +2164,7 @@ func (c *Core) getUserLockoutFromConfig(mountType string) UserLockoutConfig {
 	if conf == nil {
 		return defaultUserLockoutConfig
 	}
-	userlockouts := conf.(*server.Config).UserLockouts
+	userlockouts := conf.UserLockouts
 	if userlockouts == nil {
 		return defaultUserLockoutConfig
 	}

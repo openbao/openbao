@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -158,7 +157,7 @@ func TestRaft_RetryAutoJoin(t *testing.T) {
 
 	addressProvider := &testhelpers.TestRaftServerAddressProvider{Cluster: cluster}
 	leaderCore := cluster.Cores[0]
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	{
 		testhelpers.EnsureCoreSealed(t, leaderCore)
@@ -206,7 +205,7 @@ func TestRaft_Retry_Join(t *testing.T) {
 
 	leaderCore := cluster.Cores[0]
 	leaderAPI := leaderCore.Client.Address()
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	{
 		testhelpers.EnsureCoreSealed(t, leaderCore)
@@ -269,7 +268,7 @@ func TestRaft_Join(t *testing.T) {
 
 	leaderCore := cluster.Cores[0]
 	leaderAPI := leaderCore.Client.Address()
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	// Seal the leader so we can install an address provider
 	{
@@ -1068,7 +1067,7 @@ func TestRaft_Join_InitStatus(t *testing.T) {
 
 	leaderCore := cluster.Cores[0]
 	leaderAPI := leaderCore.Client.Address()
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	// Seal the leader so we can install an address provider
 	{

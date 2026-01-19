@@ -22,7 +22,7 @@ type ListenerCustomHeaders struct {
 	configuredHeadersStatusCodeMap map[string][]string
 }
 
-func NewListenerCustomHeader(ln []*configutil.Listener, logger log.Logger, uiHeaders http.Header) []*ListenerCustomHeaders {
+func NewListenerCustomHeader(ln []*configutil.Listener, logger log.Logger, uiHeaders http.Header) *[]*ListenerCustomHeaders {
 	var listenerCustomHeadersList []*ListenerCustomHeaders
 
 	for _, l := range ln {
@@ -70,7 +70,7 @@ func NewListenerCustomHeader(ln []*configutil.Listener, logger log.Logger, uiHea
 		listenerCustomHeadersList = append(listenerCustomHeadersList, listenerCustomHeaderStruct)
 	}
 
-	return listenerCustomHeadersList
+	return &listenerCustomHeadersList
 }
 
 func (l *ListenerCustomHeaders) ExistCustomResponseHeader(header string) bool {

@@ -114,8 +114,7 @@ func BlackholeSink() *ClusterMetricSink {
 	conf.EnableRuntimeMetrics = false
 	sink, _ := metrics.New(conf, &metrics.BlackholeSink{})
 	cms := &ClusterMetricSink{
-		ClusterName: atomic.Value{},
-		Sink:        sink,
+		Sink: sink,
 	}
 	cms.ClusterName.Store("")
 	return cms
@@ -123,7 +122,6 @@ func BlackholeSink() *ClusterMetricSink {
 
 func NewClusterMetricSink(clusterName string, sink metrics.MetricSink) *ClusterMetricSink {
 	cms := &ClusterMetricSink{
-		ClusterName:     atomic.Value{},
 		Sink:            sink,
 		TelemetryConsts: TelemetryConstConfig{},
 	}

@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-cleanhttp"
@@ -1002,10 +1001,6 @@ func (c *TestClusterCore) stop() error {
 		}
 		c.Logger().Info("listeners successfully shut down")
 	}
-	if c.licensingStopCh != nil {
-		close(c.licensingStopCh)
-		c.licensingStopCh = nil
-	}
 
 	if err := c.Shutdown(); err != nil {
 		return err
@@ -1103,10 +1098,6 @@ func (c *TestCluster) ensureCoresSealed() error {
 		}
 	}
 	return nil
-}
-
-func SetReplicationFailureMode(core *TestClusterCore, mode uint32) {
-	atomic.StoreUint32(core.replicationFailure, mode)
 }
 
 type TestListener struct {

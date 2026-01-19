@@ -13,6 +13,7 @@ import (
 	forwarding "github.com/openbao/openbao/helper/forwarding"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -385,7 +386,7 @@ var File_vault_request_forwarding_service_proto protoreflect.FileDescriptor
 
 const file_vault_request_forwarding_service_proto_rawDesc = "" +
 	"\n" +
-	"&vault/request_forwarding_service.proto\x12\x05vault\x1a\x1dhelper/forwarding/types.proto\"\x98\x03\n" +
+	"&vault/request_forwarding_service.proto\x12\x05vault\x1a\x1dhelper/forwarding/types.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x98\x03\n" +
 	"\vEchoRequest\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12!\n" +
 	"\fcluster_addr\x18\x02 \x01(\tR\vclusterAddr\x12#\n" +
@@ -418,9 +419,10 @@ const file_vault_request_forwarding_service_proto_rawDesc = "" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\f\n" +
 	"\x01x\x18\x02 \x01(\fR\x01x\x12\f\n" +
 	"\x01y\x18\x03 \x01(\fR\x01y\x12\f\n" +
-	"\x01d\x18\x04 \x01(\fR\x01d2\x82\x01\n" +
+	"\x01d\x18\x04 \x01(\fR\x01d2\xcd\x01\n" +
 	"\x11RequestForwarding\x12=\n" +
-	"\x0eForwardRequest\x12\x13.forwarding.Request\x1a\x14.forwarding.Response\"\x00\x12.\n" +
+	"\x0eForwardRequest\x12\x13.forwarding.Request\x1a\x14.forwarding.Response\"\x00\x12I\n" +
+	"\x13ForwardLoginAttempt\x12\x18.forwarding.LoginAttempt\x1a\x16.google.protobuf.Empty\"\x00\x12.\n" +
 	"\x04Echo\x12\x12.vault.EchoRequest\x1a\x10.vault.EchoReply\"\x00B\"Z github.com/openbao/openbao/vaultb\x06proto3"
 
 var (
@@ -437,22 +439,26 @@ func file_vault_request_forwarding_service_proto_rawDescGZIP() []byte {
 
 var file_vault_request_forwarding_service_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_vault_request_forwarding_service_proto_goTypes = []any{
-	(*EchoRequest)(nil),         // 0: vault.EchoRequest
-	(*EchoReply)(nil),           // 1: vault.EchoReply
-	(*NodeInformation)(nil),     // 2: vault.NodeInformation
-	(*ClientKey)(nil),           // 3: vault.ClientKey
-	(*forwarding.Request)(nil),  // 4: forwarding.Request
-	(*forwarding.Response)(nil), // 5: forwarding.Response
+	(*EchoRequest)(nil),             // 0: vault.EchoRequest
+	(*EchoReply)(nil),               // 1: vault.EchoReply
+	(*NodeInformation)(nil),         // 2: vault.NodeInformation
+	(*ClientKey)(nil),               // 3: vault.ClientKey
+	(*forwarding.Request)(nil),      // 4: forwarding.Request
+	(*forwarding.LoginAttempt)(nil), // 5: forwarding.LoginAttempt
+	(*forwarding.Response)(nil),     // 6: forwarding.Response
+	(*emptypb.Empty)(nil),           // 7: google.protobuf.Empty
 }
 var file_vault_request_forwarding_service_proto_depIDxs = []int32{
 	2, // 0: vault.EchoRequest.node_info:type_name -> vault.NodeInformation
 	2, // 1: vault.EchoReply.node_info:type_name -> vault.NodeInformation
 	4, // 2: vault.RequestForwarding.ForwardRequest:input_type -> forwarding.Request
-	0, // 3: vault.RequestForwarding.Echo:input_type -> vault.EchoRequest
-	5, // 4: vault.RequestForwarding.ForwardRequest:output_type -> forwarding.Response
-	1, // 5: vault.RequestForwarding.Echo:output_type -> vault.EchoReply
-	4, // [4:6] is the sub-list for method output_type
-	2, // [2:4] is the sub-list for method input_type
+	5, // 3: vault.RequestForwarding.ForwardLoginAttempt:input_type -> forwarding.LoginAttempt
+	0, // 4: vault.RequestForwarding.Echo:input_type -> vault.EchoRequest
+	6, // 5: vault.RequestForwarding.ForwardRequest:output_type -> forwarding.Response
+	7, // 6: vault.RequestForwarding.ForwardLoginAttempt:output_type -> google.protobuf.Empty
+	1, // 7: vault.RequestForwarding.Echo:output_type -> vault.EchoReply
+	5, // [5:8] is the sub-list for method output_type
+	2, // [2:5] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
 	2, // [2:2] is the sub-list for extension extendee
 	0, // [0:2] is the sub-list for field type_name

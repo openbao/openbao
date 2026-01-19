@@ -15,6 +15,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -23,8 +24,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RequestForwarding_ForwardRequest_FullMethodName = "/vault.RequestForwarding/ForwardRequest"
-	RequestForwarding_Echo_FullMethodName           = "/vault.RequestForwarding/Echo"
+	RequestForwarding_ForwardRequest_FullMethodName      = "/vault.RequestForwarding/ForwardRequest"
+	RequestForwarding_ForwardLoginAttempt_FullMethodName = "/vault.RequestForwarding/ForwardLoginAttempt"
+	RequestForwarding_Echo_FullMethodName                = "/vault.RequestForwarding/Echo"
 )
 
 // RequestForwardingClient is the client API for RequestForwarding service.
@@ -32,6 +34,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RequestForwardingClient interface {
 	ForwardRequest(ctx context.Context, in *forwarding.Request, opts ...grpc.CallOption) (*forwarding.Response, error)
+	ForwardLoginAttempt(ctx context.Context, in *forwarding.LoginAttempt, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Echo(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoReply, error)
 }
 
@@ -53,6 +56,16 @@ func (c *requestForwardingClient) ForwardRequest(ctx context.Context, in *forwar
 	return out, nil
 }
 
+func (c *requestForwardingClient) ForwardLoginAttempt(ctx context.Context, in *forwarding.LoginAttempt, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, RequestForwarding_ForwardLoginAttempt_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *requestForwardingClient) Echo(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EchoReply)
@@ -68,6 +81,7 @@ func (c *requestForwardingClient) Echo(ctx context.Context, in *EchoRequest, opt
 // for forward compatibility.
 type RequestForwardingServer interface {
 	ForwardRequest(context.Context, *forwarding.Request) (*forwarding.Response, error)
+	ForwardLoginAttempt(context.Context, *forwarding.LoginAttempt) (*emptypb.Empty, error)
 	Echo(context.Context, *EchoRequest) (*EchoReply, error)
 	mustEmbedUnimplementedRequestForwardingServer()
 }
@@ -81,6 +95,9 @@ type UnimplementedRequestForwardingServer struct{}
 
 func (UnimplementedRequestForwardingServer) ForwardRequest(context.Context, *forwarding.Request) (*forwarding.Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ForwardRequest not implemented")
+}
+func (UnimplementedRequestForwardingServer) ForwardLoginAttempt(context.Context, *forwarding.LoginAttempt) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ForwardLoginAttempt not implemented")
 }
 func (UnimplementedRequestForwardingServer) Echo(context.Context, *EchoRequest) (*EchoReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Echo not implemented")
@@ -124,6 +141,24 @@ func _RequestForwarding_ForwardRequest_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RequestForwarding_ForwardLoginAttempt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(forwarding.LoginAttempt)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RequestForwardingServer).ForwardLoginAttempt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RequestForwarding_ForwardLoginAttempt_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RequestForwardingServer).ForwardLoginAttempt(ctx, req.(*forwarding.LoginAttempt))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RequestForwarding_Echo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EchoRequest)
 	if err := dec(in); err != nil {
@@ -152,6 +187,10 @@ var RequestForwarding_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ForwardRequest",
 			Handler:    _RequestForwarding_ForwardRequest_Handler,
+		},
+		{
+			MethodName: "ForwardLoginAttempt",
+			Handler:    _RequestForwarding_ForwardLoginAttempt_Handler,
 		},
 		{
 			MethodName: "Echo",

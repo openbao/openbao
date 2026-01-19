@@ -335,7 +335,7 @@ jobs:
 
       - name: Upload deb packages artifact
         if: inputs.dodebrelease
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: deb-packages-${{ matrix.release_os }}
           path: 'dist/*.deb'
@@ -344,7 +344,7 @@ jobs:
       
       - name: Upload rpm packages artifact
         if: inputs.dorpmrelease
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: rpm-packages-${{ matrix.release_os }}
           path: 'dist/*.rpm'
@@ -408,14 +408,14 @@ jobs:
           aws s3 sync s3://${BUCKET}/deb/dists build/deb/dists
 
       - name: Download deb-packages artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: deb-packages-*
           merge-multiple: true
 
       - name: GPG Import
         id: gpg-import
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}
@@ -468,7 +468,7 @@ jobs:
           aws s3 sync s3://${BUCKET}/rpm build/rpm --exclude \*.rpm
 
       - name: Download rpm-packages artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: rpm-packages-*
           merge-multiple: true

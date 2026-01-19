@@ -199,12 +199,9 @@ const Asset = ({ urls }) => {
     );
 };
 
-const PackageRepo = ({ type }) => {
-    var cardBody = null;
-    var gpgKeyName = "openbao-gpg-pub-20240618.asc";
-
-    if ( type == "deb" ) {
-        const [gpgKey, setGPGKey] = useState("");
+const DebRepo = ({ gpgKeyName }) => {
+    const [gpgKey, setGPGKey] = useState("");
+    useEffect(() => {
         try {
             fetch("/assets/" + gpgKeyName)
                 .then(r => r.text())
@@ -212,8 +209,10 @@ const PackageRepo = ({ type }) => {
         } catch (error) {
             console.error(error);
         }
+    }, []);
 
-        cardBody = <div className="card__body">
+    return (
+        <div className="card__body">
             <h6>Set up the OpenBao repository</h6>
             Simply add this repository configuration to your DEB-sources.
             APT then verifies that the packages have been created and signed by the official pipeline and have not been tampered with.
@@ -235,10 +234,12 @@ Signed-By:
                 {`sudo apt update && sudo apt install openbao`}
             </CodeBlock>
         </div>
-    }
+    )
+}
 
-    if ( type == "rpm" ) {
-        cardBody = <div className="card__body">
+const RpmRepo = ({ gpgKeyName }) => {
+    return (
+        <div className="card__body">
             <h6>Set up the OpenBao repository</h6>
             Simply add this repository configuration to your YUM-repos.
             YUM then verifies that the packages have been created and signed by the official pipeline and have not been tampered with.
@@ -264,14 +265,19 @@ metadata_expire=300`}
                 {`sudo yum install -y openbao`}
             </CodeBlock>
         </div>
-    }
+    )
+}
+
+const PackageRepo = ({ type }) => {
+    var gpgKeyName = "openbao-gpg-pub-20240618.asc";
 
     return (
         <div className="card download-card package-repo">
             <div className="card__header">
                 <h5>Installation via official Package Repository</h5>
             </div>
-            { cardBody }
+            {type === 'deb' && <DebRepo gpgKeyName={gpgKeyName} />}
+            {type === 'rpm' && <RpmRepo gpgKeyName={gpgKeyName} />}
         </div>
     )
 }

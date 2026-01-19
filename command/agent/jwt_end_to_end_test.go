@@ -44,7 +44,6 @@ func TestJWTEndToEnd(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc // capture range variable
 		t.Run(fmt.Sprintf("ahWrapping=%v, useSymlink=%v, removeJWTAfterReading=%v", tc.ahWrapping, tc.useSymlink, tc.removeJWTAfterReading), func(t *testing.T) {
 			t.Parallel()
 			testJWTEndToEnd(t, tc.ahWrapping, tc.useSymlink, tc.removeJWTAfterReading)

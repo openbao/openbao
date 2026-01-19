@@ -16,7 +16,7 @@ import (
 // sink.SinkReader interface.
 type inmemSink struct {
 	logger     hclog.Logger
-	token      *atomic.Value
+	token      atomic.Value
 	leaseCache *cache.LeaseCache
 }
 
@@ -29,7 +29,6 @@ func New(conf *sink.SinkConfig, leaseCache *cache.LeaseCache) (sink.Sink, error)
 	return &inmemSink{
 		logger:     conf.Logger,
 		leaseCache: leaseCache,
-		token:      &atomic.Value{},
 	}, nil
 }
 
@@ -44,5 +43,8 @@ func (s *inmemSink) WriteToken(token string) error {
 }
 
 func (s *inmemSink) Token() string {
-	return s.token.Load().(string)
+	if token := s.token.Load(); token != nil {
+		return token.(string)
+	}
+	return ""
 }

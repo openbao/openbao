@@ -280,7 +280,7 @@ func testCluster_Forwarding(t *testing.T, cluster *TestCluster, oldLeaderCoreIdx
 	for time.Now().Before(deadline) {
 		for i := range 3 {
 			if i != newLeaderCoreIdx {
-				leaderParams := cluster.Cores[i].clusterLeaderParams.Load().(*ClusterLeaderParams)
+				leaderParams := cluster.Cores[i].clusterLeaderParams.Load()
 				if leaderParams != nil && leaderParams.LeaderClusterAddr == cluster.Cores[newLeaderCoreIdx].ClusterAddr() {
 					ready++
 				}

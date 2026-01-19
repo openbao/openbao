@@ -205,7 +205,7 @@ type RaftBackend struct {
 	nonVoter bool
 
 	effectiveSDKVersion string
-	failGetInTxn        *uint32
+	failGetInTxn        atomic.Bool
 }
 
 // HookInvalidate implements physical.CacheInvalidationBackend.
@@ -557,7 +557,6 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		autopilotUpdateInterval:    updateInterval,
 		nonVoter:                   nonVoter,
 		upgradeVersion:             upgradeVersion,
-		failGetInTxn:               new(uint32),
 	}, nil
 }
 
@@ -609,12 +608,8 @@ func (b *RaftBackend) Close() error {
 	return nil
 }
 
-func (b *RaftBackend) FailGetInTxn(fail bool) {
-	var val uint32
-	if fail {
-		val = 1
-	}
-	atomic.StoreUint32(b.failGetInTxn, val)
+func (b *RaftBackend) FailGetInTxn() {
+	b.failGetInTxn.Store(true)
 }
 
 func (b *RaftBackend) SetEffectiveSDKVersion(sdkVersion string) {

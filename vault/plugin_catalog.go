@@ -223,13 +223,11 @@ func (c *Core) reconcileOCIPlugins(ctx context.Context, standby bool) error {
 		return nil
 	}
 
-	config := conf.(*server.Config)
-
-	if err := c.downloadOCIPlugins(ctx, logger, config); err != nil {
+	if err := c.downloadOCIPlugins(ctx, logger, conf); err != nil {
 		return fmt.Errorf("failed to download OCI plugins: %w", err)
 	}
 
-	if err := c.registerOCIPlugins(ctx, logger, config, standby); err != nil {
+	if err := c.registerOCIPlugins(ctx, logger, conf, standby); err != nil {
 		return fmt.Errorf("failed to register OCI plugins: %w", err)
 	}
 

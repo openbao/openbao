@@ -59,10 +59,16 @@ func (c *Core) setControlGroup(ctx context.Context, token string, cg *logical.Co
 	if err != nil {
 		return err
 	}
+	if tokenEntry == nil {
+		return nil
+	}
 
 	cgJson, err := jsonutil.EncodeJSON(cg)
 	if err != nil {
 		return err
+	}
+	if tokenEntry.Meta == nil {
+		tokenEntry.Meta = map[string]string{}
 	}
 	tokenEntry.Meta["control_group"] = string(cgJson)
 	return c.tokenStore.store(ctx, tokenEntry)
@@ -102,6 +108,11 @@ func (c *Core) addAuthorization(ctx context.Context, token string, approver *log
 	cg, err := c.getControlGroup(ctx, token)
 	if err != nil {
 		return err
+	}
+
+	// if there's no control group, no action taken but not an error
+	if cg == nil {
+		return nil
 	}
 
 	foundAuthorization := false

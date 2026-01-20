@@ -2714,6 +2714,10 @@ func (ts *TokenStore) handleUpdateApproveAccessor(ctx context.Context, req *logi
 		return nil, &logical.StatusBadRequest{Err: "invalid accessor"}
 	}
 
+	if req.Auth == nil {
+		return nil, &logical.StatusBadRequest{Err: "missing auth"}
+	}
+
 	// Adds authorization record to the token entry if applicable
 	err = ts.core.addAuthorization(ctx, aEntry.TokenID, req.Auth)
 	if err != nil {

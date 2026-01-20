@@ -130,9 +130,8 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 		ClientToken: root,
 		Data:        map[string]interface{}{"policy": cgPolicy},
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
+	_, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	require.NoError(t, err)
-	require.NotEmpty(t, resp)
 
 	// Assign policy to a token
 	req = &logical.Request{

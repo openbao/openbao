@@ -61,7 +61,7 @@ const (
 	WrapTTLHeaderName = api.WrapTTLHeaderName
 
 	// RawErrorHeaderName is the name of the header that holds any errors that
-	// occured responding to requests to special endpoints that return raw
+	// occurred responding to requests to special endpoints that return raw
 	// response bodies.
 	RawErrorHeaderName = api.RawErrorHeaderName
 

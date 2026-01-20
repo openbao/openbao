@@ -449,7 +449,7 @@ func (c *Core) validateWrappingToken(ctx context.Context, req *logical.Request) 
 		req.SetTokenEntry(te)
 	}
 
-	return c.validateControlGroup(ctx, te.ExternalID)
+	return c.validateControlGroup(ctx, te.ID)
 }
 
 func IsWrappingToken(te *logical.TokenEntry) bool {

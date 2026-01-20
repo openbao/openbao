@@ -131,6 +131,7 @@ func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
 	require.NoError(t, err)
+	require.NotEmpty(t, resp)
 
 	// Assign policy to a token
 	req = &logical.Request{

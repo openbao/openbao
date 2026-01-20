@@ -189,9 +189,11 @@ func TestControlGroup_addAuthorization(t *testing.T) {
 		GroupAliases: groups,
 	}
 	err = c.addAuthorization(ctx, te.ID, &auth)
+	require.Nil(t, err)
 
 	// Token entry should now have the authorization
 	cgFetched, err := c.getControlGroup(ctx, te.ID)
+	require.Nil(t, err)
 
 	// expect all matching factors to receive an authorization
 	require.NotEmpty(t, cgFetched)
@@ -263,6 +265,7 @@ func TestControlGroup_validateControlGroup(t *testing.T) {
 		GroupAliases: groups,
 	}
 	err = c.addAuthorization(ctx, te.ID, &auth)
+	require.Nil(t, err)
 
 	// Should not yet validate
 	validates, err := c.validateControlGroup(ctx, te.ID)

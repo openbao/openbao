@@ -939,9 +939,11 @@ func TestTokenStore_HandleRequest_ApproveAccessor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
+	require.NotEmpty(t, resp)
 
 	// Token entry should now have the authorization
 	cgFetched, err := c.getControlGroup(ctx, "tokenid")
+	require.Nil(t, err)
 
 	// expect all matching factors to receive an authorization
 	require.NotEmpty(t, cgFetched)

@@ -42,6 +42,7 @@ func (c *Core) getControlGroup(ctx context.Context, token string) (*logical.Cont
 	controlGroup, ok := tokenEntry.Meta["control_group"]
 	if !ok {
 		// if there's no control group, token is valid
+		// nolint: nilnil
 		return nil, nil
 	}
 

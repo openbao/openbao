@@ -948,7 +948,6 @@ func TestTokenStore_HandleRequest_ApproveAccessor(t *testing.T) {
 	require.Len(t, cgFetched.Factors[0].Authorizations, 1)
 	require.Len(t, cgFetched.Factors[1].Authorizations, 0)
 	require.Len(t, cgFetched.Factors[2].Authorizations, 1)
-
 }
 
 func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {

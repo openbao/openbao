@@ -865,10 +865,10 @@ func TestTokenStore_HandleRequest_LookupAccessor(t *testing.T) {
 func TestTokenStore_HandleRequest_ApproveAccessor(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
 	ts := c.tokenStore
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.Background())
 
 	testMakeServiceTokenViaBackend(t, ts, root, "tokenid", "60s", []string{"foo"})
-	out, err := ts.Lookup(namespace.RootContext(nil), "tokenid")
+	out, err := ts.Lookup(ctx, "tokenid")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

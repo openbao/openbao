@@ -11,7 +11,7 @@ description: |-
 This feature would implement second-party authorization for protected
 resources. A control-group restriction placed on a path would require
 a user to obtain prior authorization before the action would
-succeed. 
+succeed.
 
 Control groups utilize the existing
 [response-wrapping](../concepts/response-wrapping.mdx) workflow because
@@ -109,8 +109,8 @@ POST pki/issue/web-server
 # Which returns a wrapped response:
 {
   "wrap_info": {
-    "token": "s.4DpwkLfT9vZmQ7xRnYh2Ws3B",
-    "accessor": "7YbxK2mNQp9vLZrT3wDfHs1J"
+    "token": "TOKEN",
+    "accessor": "ACCESSOR"
   }
 }
 ```
@@ -120,7 +120,7 @@ An authorizer can view and approve the request:
 # Authorizer inspecting the request
 POST auth/token/lookup-accessor
 {
-  "accessor": "7YbxK2mNQp9vLZrT3wDfHs1J"
+  "accessor": "ACCESSOR"
 }
 
 # Which returns the wrapping token entry with request and applicable control-group policy in the metadata:
@@ -130,7 +130,7 @@ POST auth/token/lookup-accessor
   "renewable": false,
   "lease_duration": 0,
   "data": {
-    "accessor": "7YbxK2mNQp9vLZrT3wDfHs1J",
+    "accessor": "ACCESSOR",
     "creation_time": 1705412345,
     "creation_ttl": 600,
     "display_name": "token",
@@ -160,7 +160,7 @@ POST auth/token/lookup-accessor
 # Authorizer approves the request
 POST auth/token/approve-accessor
 {
-  "accessor": "7YbxK2mNQp9vLZrT3wDfHs1J"
+  "accessor": "ACCESSOR"
 }
 
 
@@ -171,7 +171,7 @@ POST auth/token/approve-accessor
   "renewable": false,
   "lease_duration": 0,
   "data": {
-    "accessor": "7YbxK2mNQp9vLZrT3wDfHs1J",
+    "accessor": "ACCESSOR",
     "creation_time": 1705412345,
     "creation_ttl": 600,
     "display_name": "token",
@@ -205,7 +205,7 @@ Requesting user can now retrieve the response if the nomber of authorizations is
 # Unwrap request
 POST /sys/wrapping/unwrap
 {
-  "token": "s.4DpwkLfT9vZmQ7xRnYh2Ws3B"
+  "token": "TOKEN"
 }
 
 # Which now returns the original response data:

@@ -3,21 +3,14 @@
 
 package consts
 
+import (
+	"github.com/openbao/openbao/api/v2"
+)
+
 const (
 	// ExpirationRestoreWorkerCount specifies the number of workers to use while
 	// restoring leases into the expiration manager
 	ExpirationRestoreWorkerCount = 64
-
-	// NamespaceHeaderName is the header set to specify which namespace the
-	// request is indented for.
-	NamespaceHeaderName = "X-Vault-Namespace"
-
-	// AuthHeaderName is the name of the header containing the token.
-	AuthHeaderName = "X-Vault-Token"
-
-	// RequestHeaderName is the name of the header used by the Agent for
-	// SSRF protection.
-	RequestHeaderName = "X-Vault-Request"
 
 	// PerformanceReplicationALPN is the negotiated protocol used for
 	// performance replication.
@@ -44,13 +37,66 @@ const (
 
 	DRReplicationPathTarget = "dr"
 
+	// NamespaceHeaderName is the header set to specify which namespace the
+	// request is intended for.
+	NamespaceHeaderName = api.NamespaceHeaderName
+
+	// AuthHeaderName is the name of the header containing the token.
+	AuthHeaderName = api.AuthHeaderName
+
+	// RequestHeaderName is the name of the header used by the Agent for
+	// SSRF protection.
+	RequestHeaderName = api.RequestHeaderName
+
+	// NoRequestForwardingHeaderName is the name of the header telling Vault not
+	// to use request forwarding.
+	NoRequestForwardingHeaderName = api.NoRequestForwardingHeaderName
+
+	// MFAHeaderName represents the HTTP header which carries the credentials
+	// required to perform MFA on any path.
+	MFAHeaderName = api.MFAHeaderName
+
+	// WrapTTLHeaderName is the name of the header containing a directive to
+	// wrap the response.
+	WrapTTLHeaderName = api.WrapTTLHeaderName
+
+	// RawErrorHeaderName is the name of the header that holds any errors that
+	// occured responding to requests to special endpoints that return raw
+	// response bodies.
+	RawErrorHeaderName = api.RawErrorHeaderName
+
+	// HostnameHeaderName is the name of the header that holds the responding
+	// node's hostname when enable_response_header_hostname is set in the server
+	// configuration.
+	HostnameHeaderName = api.HostnameHeaderName
+
+	// RaftNodeIDHeaderName is the name of the header that holds the responding
+	// node's Raft node ID if enable_response_header_raft_node_id is set in the
+	// server configuration and the node is participating in a Raft cluster.
+	RaftNodeIDHeaderName = api.RaftNodeIDHeaderName
+
+	// WrapFormatHeaderName is the name of the header containing the format to
+	// wrap in; has no effect if the wrap TTL is not set.
+	WrapFormatHeaderName = api.WrapFormatHeaderName
+
 	// Path to perform inline authentication against. Any authentication
 	// performed must be single-request.
-	InlineAuthPathHeaderName = "X-Vault-Inline-Auth-Path"
+	InlineAuthPathHeaderName = api.InlineAuthPathHeaderName
 
 	// Request operation to perform inline authentication with. Defaults to
 	// update.
-	InlineAuthOperationHeaderName = "X-Vault-Inline-Auth-Operation"
+	InlineAuthOperationHeaderName = api.InlineAuthOperationHeaderName
+
+	// Namespace to perform inline authentication with. Defaults to
+	// the value of X-Vault-Namespace; can be combined with any potential
+	// namespace in X-Vault-Inline-Auth-Path.
+	InlineAuthNamespaceHeaderName = api.InlineAuthNamespaceHeaderName
+
+	// Whether the response object is from the underlying auth method. This
+	// is sometimes not a sufficient check as a 404s and server errors are
+	// often returned without response bodies. But when a non-empty response
+	// is given, this disambiguates inline auth from subsequent call responses.
+	InlineAuthErrorResponseHeader = api.InlineAuthErrorResponseHeader
 
 	// Prefix of user-specified parameters sent to the endpoint specified
 	// in InlineAuthPathHeaderName. Each parameter is a raw base64 url-safe
@@ -61,16 +107,5 @@ const (
 	// so that typing of the value and case sensitivity of the key can be
 	// preserved. The remainder of the header value (after the trailing
 	// dash) is ignored. Any repeated header keys result in request failure.
-	InlineAuthParameterHeaderPrefix = "X-Vault-Inline-Auth-Parameter-"
-
-	// Namespace to perform inline authentication with. Defaults to
-	// the value of X-Vault-Namespace; can be combined with any potential
-	// namespace in X-Vault-Inline-Auth-Path.
-	InlineAuthNamespaceHeaderName = "X-Vault-Inline-Auth-Namespace"
-
-	// Whether the response object is from the underlying auth method. This
-	// is sometimes not a sufficient check as a 404s and server errors are
-	// often returned without response bodies. But when a non-empty response
-	// is given, this disambiguates inline auth from subsequent call responses.
-	InlineAuthErrorResponseHeader = "X-Vault-Inline-Auth-Failed"
+	InlineAuthParameterHeaderPrefix = api.InlineAuthParameterHeaderPrefix
 )

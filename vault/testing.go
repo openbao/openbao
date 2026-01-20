@@ -1574,6 +1574,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.RollbackPeriod = base.RollbackPeriod
 		coreConfig.PendingRemovalMountsAllowed = base.PendingRemovalMountsAllowed
 		coreConfig.ExpirationRevokeRetryBase = base.ExpirationRevokeRetryBase
+		coreConfig.UnsafeCrossNamespaceIdentity = base.UnsafeCrossNamespaceIdentity
 	}
 	if coreConfig.ClusterName == "" {
 		coreConfig.ClusterName = t.Name()

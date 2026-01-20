@@ -1017,7 +1017,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 
 		extraData := map[string]string{}
 		// For controlgroup, store the original request and control group details with the cubbyhole data
-		if auth.PolicyResults.ControlGroup != nil {
+		if auth.PolicyResults != nil && auth.PolicyResults.ControlGroup != nil {
 			reqJson, err := jsonutil.EncodeJSON(req)
 			if err != nil {
 				return resp, err

@@ -17,15 +17,15 @@ import (
 
 var StdAllowedHeaders = []string{
 	"Content-Type",
-	"X-Requested-With",
-	"X-Vault-AWS-IAM-Server-ID",
-	"X-Vault-MFA",
-	"X-Vault-No-Request-Forwarding",
-	"X-Vault-Wrap-Format",
-	"X-Vault-Wrap-TTL",
-	"X-Vault-Policy-Override",
 	"Authorization",
 	consts.AuthHeaderName,
+	consts.MFAHeaderName,
+	consts.NoRequestForwardingHeaderName,
+	consts.WrapFormatHeaderName,
+	consts.WrapTTLHeaderName,
+	"X-Requested-With",
+	"X-Vault-AWS-IAM-Server-ID",
+	"X-Vault-Policy-Override",
 }
 
 // CORSConfig stores the state of the CORS configuration.

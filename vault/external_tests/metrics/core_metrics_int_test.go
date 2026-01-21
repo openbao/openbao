@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/testhelpers"
@@ -139,7 +140,7 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	standbyClient := cores[1].Client
 
 	r := client.NewRequest("GET", "/v1/sys/metrics")
-	r.Headers.Set("X-Vault-Token", cluster.RootToken)
+	r.Headers.Set(consts.AuthHeaderName, cluster.RootToken)
 	respo, err := client.RawRequest(r)
 	if err != nil {
 		t.Fatal(err)
@@ -183,7 +184,7 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	vault.TestWaitActive(t, cores[1].Core)
 
 	r = standbyClient.NewRequest("GET", "/v1/sys/metrics")
-	r.Headers.Set("X-Vault-Token", cluster.RootToken)
+	r.Headers.Set(consts.AuthHeaderName, cluster.RootToken)
 	respo, err = standbyClient.RawRequest(r)
 	if err != nil {
 		t.Fatal(err)

@@ -39,30 +39,6 @@ import (
 )
 
 const (
-	// WrapTTLHeaderName is the name of the header containing a directive to
-	// wrap the response
-	WrapTTLHeaderName = "X-Vault-Wrap-TTL"
-
-	// WrapFormatHeaderName is the name of the header containing the format to
-	// wrap in; has no effect if the wrap TTL is not set
-	WrapFormatHeaderName = "X-Vault-Wrap-Format"
-
-	// NoRequestForwardingHeaderName is the name of the header telling Vault
-	// not to use request forwarding
-	NoRequestForwardingHeaderName = "X-Vault-No-Request-Forwarding"
-
-	// MFAHeaderName represents the HTTP header which carries the credentials
-	// required to perform MFA on any path.
-	MFAHeaderName = "X-Vault-MFA"
-
-	// canonicalMFAHeaderName is the MFA header value's format in the request
-	// headers. Do not alter the casing of this string.
-	canonicalMFAHeaderName = "X-Vault-Mfa"
-
-	// PolicyOverrideHeaderName is the header set to request overriding
-	// soft-mandatory Sentinel policies.
-	PolicyOverrideHeaderName = "X-Vault-Policy-Override"
-
 	// DefaultMaxRequestSize is the default maximum accepted request size. This
 	// is to prevent a denial of service attack where no Content-Length is
 	// provided and the server is fed ever more data until it exhausts memory.
@@ -71,6 +47,10 @@ const (
 )
 
 var (
+	// canonicalMFAHeaderName is the MFA header value's format in the request
+	// headers. Do not alter the casing of this string.
+	canonicalMFAHeaderName = http.CanonicalHeaderKey(consts.MFAHeaderName)
+
 	// Set to false by stub_asset if the ui build tag isn't enabled
 	uiBuiltIn = true
 
@@ -401,12 +381,12 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		if core.RaftNodeIDHeaderEnabled() {
 			nodeID := core.GetRaftNodeID()
 			if nodeID != "" {
-				nw.Header().Set("X-Vault-Raft-Node-ID", nodeID)
+				nw.Header().Set(consts.RaftNodeIDHeaderName, nodeID)
 			}
 		}
 
 		if core.HostnameHeaderEnabled() && hostname != "" {
-			nw.Header().Set("X-Vault-Hostname", hostname)
+			nw.Header().Set(consts.HostnameHeaderName, hostname)
 		}
 
 		isRestrictedSysAPI := nsHeader != "" && strings.HasPrefix(r.URL.Path, "/v1/sys/") &&
@@ -801,7 +781,7 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Header.Get(NoRequestForwardingHeaderName) != "" {
+	if r.Header.Get(consts.NoRequestForwardingHeaderName) != "" {
 		// Forwarding explicitly disabled, fall back to previous behavior
 		core.Logger().Debug("forwardRequest: forwarding disabled by client request")
 		respondStandby(core, w, r.URL)
@@ -973,25 +953,10 @@ func requestAuth(r *http.Request, req *logical.Request) {
 	}
 }
 
-func requestPolicyOverride(r *http.Request, req *logical.Request) error {
-	raw := r.Header.Get(PolicyOverrideHeaderName)
-	if raw == "" {
-		return nil
-	}
-
-	override, err := parseutil.ParseBool(raw)
-	if err != nil {
-		return err
-	}
-
-	req.PolicyOverride = override
-	return nil
-}
-
 // requestWrapInfo adds the WrapInfo value to the logical.Request if wrap info exists
 func requestWrapInfo(r *http.Request, req *logical.Request) (*logical.Request, error) {
 	// First try for the header value
-	wrapTTL := r.Header.Get(WrapTTLHeaderName)
+	wrapTTL := r.Header.Get(consts.WrapTTLHeaderName)
 	if wrapTTL == "" {
 		return req, nil
 	}
@@ -1009,7 +974,7 @@ func requestWrapInfo(r *http.Request, req *logical.Request) (*logical.Request, e
 		TTL: dur,
 	}
 
-	wrapFormat := r.Header.Get(WrapFormatHeaderName)
+	wrapFormat := r.Header.Get(consts.WrapFormatHeaderName)
 	switch wrapFormat {
 	case "jwt":
 		req.WrapInfo.Format = "jwt"
@@ -1051,11 +1016,11 @@ func parseMFAHeader(req *logical.Request) error {
 
 		shardSplits := strings.SplitN(mfaHeaderValue, ":", 2)
 		if shardSplits[0] == "" {
-			return fmt.Errorf("invalid data in header %q; missing method name or ID", MFAHeaderName)
+			return fmt.Errorf("invalid data in header %q; missing method name or ID", consts.MFAHeaderName)
 		}
 
 		if shardSplits[1] == "" {
-			return fmt.Errorf("invalid data in header %q; missing method value", MFAHeaderName)
+			return fmt.Errorf("invalid data in header %q; missing method value", consts.MFAHeaderName)
 		}
 
 		req.MFACreds[shardSplits[0]] = append(req.MFACreds[shardSplits[0]], shardSplits[1])

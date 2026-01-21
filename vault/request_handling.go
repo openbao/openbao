@@ -1765,7 +1765,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 				}
 			} else if len(matchedMfaEnforcementList) > 0 && len(req.MFACreds) == 0 {
 				if req.IsInlineAuth {
-					return nil, nil, fmt.Errorf("unable to perform inline authentication with login MFA; use the X-Vault-MFA header to specify MFA information on the inline auth request")
+					return nil, nil, errors.New("unable to perform inline authentication with login MFA; use the X-Vault-MFA header to specify MFA information on the inline auth request")
 				}
 
 				mfaRequestID, err := uuid.GenerateUUID()

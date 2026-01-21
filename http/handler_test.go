@@ -39,7 +39,7 @@ func TestHandler_parseMFAHandler(t *testing.T) {
 		Headers: make(map[string][]string),
 	}
 
-	headerName := textproto.CanonicalMIMEHeaderKey(MFAHeaderName)
+	headerName := textproto.CanonicalMIMEHeaderKey(consts.MFAHeaderName)
 
 	// Set TOTP passcode in the MFA header
 	req.Headers[headerName] = []string{
@@ -274,7 +274,7 @@ func TestHandler_HostnameHeader(t *testing.T) {
 				t.Fatal("nil response")
 			}
 
-			hnHeader := resp.Header.Get("X-Vault-Hostname")
+			hnHeader := resp.Header.Get(consts.HostnameHeaderName)
 			if tc.headerPresent && hnHeader == "" {
 				t.Logf("header configured = %t", core.HostnameHeaderEnabled())
 				t.Fatal("missing 'X-Vault-Hostname' header entry in response")
@@ -283,7 +283,7 @@ func TestHandler_HostnameHeader(t *testing.T) {
 				t.Fatal("didn't expect 'X-Vault-Hostname' header but it was present anyway")
 			}
 
-			rniHeader := resp.Header.Get("X-Vault-Raft-Node-ID")
+			rniHeader := resp.Header.Get(consts.RaftNodeIDHeaderName)
 			if rniHeader != "" {
 				t.Fatalf("no raft node ID header was expected, since we're not running a raft cluster. instead, got %s", rniHeader)
 			}
@@ -301,7 +301,7 @@ func TestHandler_CacheControlNoStore(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 	req.Header.Set(consts.AuthHeaderName, token)
-	req.Header.Set(WrapTTLHeaderName, "60s")
+	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
@@ -377,7 +377,7 @@ func TestHandler_MissingToken(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	req.Header.Set(WrapTTLHeaderName, "60s")
+	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
@@ -606,7 +606,7 @@ func TestSysMounts_headerAuth_Wrapped(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 	req.Header.Set(consts.AuthHeaderName, token)
-	req.Header.Set(WrapTTLHeaderName, "60s")
+	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)

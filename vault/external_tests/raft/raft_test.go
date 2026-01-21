@@ -28,6 +28,7 @@ import (
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	vaultseal "github.com/openbao/openbao/vault/seal"
@@ -409,7 +410,7 @@ func TestRaft_NodeIDHeader(t *testing.T) {
 					t.Fatal("nil response")
 				}
 
-				rniHeader := resp.Header.Get("X-Vault-Raft-Node-ID")
+				rniHeader := resp.Header.Get(consts.RaftNodeIDHeaderName)
 				nodeID := c.GetRaftNodeID()
 
 				if tc.headerPresent && rniHeader == "" {

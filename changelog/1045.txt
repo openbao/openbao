@@ -1,0 +1,3 @@
+```release-note:bug
+PKI/ACME: resolve CNAMEs before resolving TXT for challenge validation
+```

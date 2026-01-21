@@ -302,11 +302,6 @@ func buildLogicalRequest(core *vault.Core, w http.ResponseWriter, r *http.Reques
 		return nil, http.StatusBadRequest, fmt.Errorf("failed to parse X-Vault-MFA header: %w", err)
 	}
 
-	err = requestPolicyOverride(r, req)
-	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("failed to parse %s header: %w", PolicyOverrideHeaderName, err)
-	}
-
 	return req, 0, nil
 }
 
@@ -426,7 +421,7 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 
 		// Check if this is a raw response
 		if _, ok := resp.Data[logical.HTTPStatusCode]; ok {
-			respondRaw(w, r, resp)
+			respondRaw(w, resp)
 			return
 		}
 
@@ -465,9 +460,9 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 // respondRaw is used when the response is using HTTPContentType and HTTPRawBody
 // to change the default response handling. This is only used for specific things like
 // returning the CRL information on the PKI backends.
-func respondRaw(w http.ResponseWriter, r *http.Request, resp *logical.Response) {
+func respondRaw(w http.ResponseWriter, resp *logical.Response) {
 	retErr := func(w http.ResponseWriter, err string) {
-		w.Header().Set("X-Vault-Raw-Error", err)
+		w.Header().Set(consts.RawErrorHeaderName, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write(nil)
 	}

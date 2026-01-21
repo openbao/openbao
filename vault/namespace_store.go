@@ -513,7 +513,8 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	delete(ns.creationDeletionMap, entry.UUID)
 	failed = false
 
-	return nil
+	// Lastly, push the change to all mounts.
+	return ns.pushToMounts(ctx, entry)
 }
 
 func (ns *NamespaceStore) writeNamespace(ctx context.Context, storage logical.Storage, entry *namespace.Namespace) error {
@@ -696,6 +697,32 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 	}
 
 	return success
+}
+
+func (ns *NamespaceStore) pushToMounts(ctx context.Context, entry *namespace.Namespace) error {
+	ns.core.mountsLock.Lock()
+	defer ns.core.mountsLock.Unlock()
+
+	ns.core.authLock.Lock()
+	defer ns.core.authLock.Unlock()
+
+	for _, mount := range ns.core.auth.Entries {
+		if mount.NamespaceID != entry.ID {
+			continue
+		}
+
+		mount.namespace = entry
+	}
+
+	for _, mount := range ns.core.mounts.Entries {
+		if mount.NamespaceID != entry.ID {
+			continue
+		}
+
+		mount.namespace = entry
+	}
+
+	return nil
 }
 
 // GetNamespace is used to fetch the namespace with the given uuid.
@@ -911,7 +938,8 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 		return fmt.Errorf("failed to persist namespace taint: %w", err)
 	}
 
-	return nil
+	// Push the update to all mounts.
+	return ns.pushToMounts(ctx, namespaceToTaint.Clone(false))
 }
 
 // DeleteNamespace is used to delete the named namespace

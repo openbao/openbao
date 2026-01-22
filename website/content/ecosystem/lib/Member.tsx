@@ -2,12 +2,32 @@ import clsx from "clsx";
 import styles from "./styles.module.css";
 
 const logos = require.context(
-    "openbao-ecosystem-logos", false, /\.svg$/
+    "openbao-ecosystem-logos", true, /\.svg$/
 );
 
-export default function Member({ title, children }) {
-    const key = title.trim().toLowerCase();
-    const logo = logos(`./${key}.svg`).default ?? logos(`./${key}.svg`);
+import { useColorMode } from '@docusaurus/theme-common';
+
+
+function getLogo(title: string, logoName: string) {
+    const key = logoName != null? logoName :title.trim().toLowerCase();
+
+    const { colorMode } = useColorMode();
+
+    const darkLogo = `./${key}/dark.svg`
+    const lightLogo = `./${key}/light.svg`
+
+    if (colorMode == "dark" && logos.keys().includes(darkLogo)) {
+        return logos(`${darkLogo}`).default ?? logos(`./${darkLogo}`);
+    } else if (colorMode != "dark" && logos.keys().includes(lightLogo)) {
+        return logos(`${lightLogo}`).default ?? logos(`./${lightLogo}`);
+    } else {
+        return logos(`./${key}.svg`).default ?? logos(`./${key}.svg`);
+    }
+}
+
+export default function Member({ title, logoName, children }) {
+    const logo = getLogo(title, logoName);
+
     return (
         <div className="col col--6 padding-bottom--lg">
             <div className="card card--full-height">

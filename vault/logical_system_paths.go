@@ -2681,6 +2681,19 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 									Description: "Time to Live set for the lease, returns 0 if unset",
 									Required:    true,
 								},
+								"path": {
+									Type:        framework.TypeString,
+									Description: "Lease path (will start with the mount path)",
+									Required:    true,
+								},
+								"namespace_path": {
+									Type:        framework.TypeString,
+									Description: "Path of the namespace of the lease",
+								},
+								"revoke_error": {
+									Type:        framework.TypeString,
+									Description: "Details about errors during last time revocation was tried (if any)",
+								},
 							},
 						}},
 					},

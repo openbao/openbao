@@ -1260,6 +1260,10 @@ func TestSystemBackend_leases(t *testing.T) {
 		t.Fatal("kv leases are not renewable")
 	}
 
+	if path := resp.Data["path"]; path != "secret/foo" {
+		t.Fatalf("unexpected path %s", path)
+	}
+
 	// Invalid lease
 	req = logical.TestRequest(t, logical.UpdateOperation, "leases/lookup")
 	req.Data["lease_id"] = "invalid"

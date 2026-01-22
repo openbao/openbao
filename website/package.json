@@ -29,7 +29,7 @@
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "openbao-ecosystem-logos": "openbao/openbao-ecosystem-logos#f77b5e548861f6e10e332e8eff07ed65ebcb9856"
+    "openbao-ecosystem-logos": "openbao/openbao-ecosystem-logos#32ef277bca5be4e722e7ddf484ae54714422cdb9"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.6.3",

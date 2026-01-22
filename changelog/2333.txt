@@ -1,0 +1,3 @@
+```release-note:change
+COMPONENT: Added Crypto4A to the Openbao ecosystem integrators page.
+```

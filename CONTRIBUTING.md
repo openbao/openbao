@@ -189,6 +189,54 @@ You do not need to include the link at the end of the summary that appears in
 CHANGELOG.md, those are generated automatically by the changelog-building
 process.
 
+### Merge Policy
+
+PRs might only be merged once all the following conditions are met:
+
+* Codeowner rules must be satisfied (as defined in the repos
+  [`CODEOWNERS`](./CODEOWNERS) file). See [examples](#codeowners-examples)
+  below.
+* At least one qualified review must be done by someone from a different
+  organization than the PR author. "Qualified" means someone with write access
+  to the repo (As of today, GitHub indicates this with a green check-mark next
+  to the reviewer name as opposed to a gray check-mark for non-qualified
+  reviews). Independent contributors are considered to be a one person
+  organization here. If organization A pays organization B for contributing to
+  OpenBao, they will be considered to be the same organization.
+* All review comments are resolved.
+
+The preferred person to actually hit the merge button is the author of the PR,
+if they have the required permissions to do so, as they are expected to be aware
+of any inter-PR dependencies (e.g. a feature PR depending on a bug-fix from a
+different PR).
+
+#### Codeowners Examples
+
+Given the following `CODEOWNERS` file:
+
+```CODEOWNERS
+component-a/  @a-team  @core-team
+component-b/  @b-team  @core-team
+component-c/  @c-team  @core-team
+```
+
+And a PR that touches files in `component-a` and `component-b`, the PR will need
+a review from either:
+
+* Two people, one member of the `a-team` and one member of the `b-team`
+* One person, who is a member of both the `a-team` and the `b-team`
+* One person, who is a member of the `core-team`
+
+Also, in the `CODEOWNERS` only the last matching pattern applies to a file. For example:
+
+```CODEOWNERS
+component-a/                    @a-team
+component-a/subcomponent-alpha  @alpha-team
+```
+
+In a PR that only changes `component-a/subcomponent-alpha/`, you will need a
+review from the `alpha-team`, but not from the `a-team`.
+
 ### OpenBao UI
 
 How you contribute to the UI depends on what you want to contribute. If that is

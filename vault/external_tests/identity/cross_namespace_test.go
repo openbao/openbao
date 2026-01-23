@@ -78,7 +78,6 @@ func TestUnsafeCrossNamespaceIdentity(t *testing.T) {
 
 			childClient, err := client.Clone()
 			require.NoError(t, err)
-			require.NoError(t, err)
 			if tc.childNamespaced {
 				childClient.SetNamespace("test")
 			}

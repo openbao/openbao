@@ -1406,13 +1406,13 @@ func (b *RaftBackend) GetConfiguration(ctx context.Context) (*RaftConfigurationR
 		Index: future.Index(),
 	}
 
+	_, leader := b.raft.LeaderWithID()
+
 	for _, server := range future.Configuration().Servers {
 		entry := &RaftServer{
-			NodeID:  string(server.ID),
-			Address: string(server.Address),
-			// Since we only service this request on the active node our node ID
-			// denotes the raft leader.
-			Leader:          string(server.ID) == b.NodeID(),
+			NodeID:          string(server.ID),
+			Address:         string(server.Address),
+			Leader:          server.ID == leader,
 			Voter:           server.Suffrage == raft.Voter,
 			ProtocolVersion: strconv.Itoa(raft.ProtocolVersionMax),
 		}

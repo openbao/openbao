@@ -1,0 +1,3 @@
+```release-note:feature
+database/mysql: Add multi-host connection failover support. Connection URLs can now specify multiple hosts (e.g., `tcp(host1:3306,host2:3306)`) for automatic failover when a host becomes unavailable.
+```

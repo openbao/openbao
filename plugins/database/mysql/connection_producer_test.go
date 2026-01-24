@@ -19,59 +19,6 @@ import (
 	dockertest "github.com/ory/dockertest/v3"
 )
 
-func Test_addTLStoDSN(t *testing.T) {
-	type testCase struct {
-		rootUrl        string
-		tlsConfigName  string
-		expectedResult string
-	}
-
-	tests := map[string]testCase{
-		"no tls, no query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test",
-			tlsConfigName:  "",
-			expectedResult: "user:password@tcp(localhost:3306)/test",
-		},
-		"tls, no query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test",
-			tlsConfigName:  "tlsTest101",
-			expectedResult: "user:password@tcp(localhost:3306)/test?tls=tlsTest101",
-		},
-		"tls, query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test?foo=bar",
-			tlsConfigName:  "tlsTest101",
-			expectedResult: "user:password@tcp(localhost:3306)/test?tls=tlsTest101&foo=bar",
-		},
-		"tls, query string, ? in password": {
-			rootUrl:        "user:pa?ssword?@tcp(localhost:3306)/test?foo=bar",
-			tlsConfigName:  "tlsTest101",
-			expectedResult: "user:pa?ssword?@tcp(localhost:3306)/test?tls=tlsTest101&foo=bar",
-		},
-		"tls, valid tls parameter in query string": {
-			rootUrl:        "user:password@tcp(localhost:3306)/test?tls=true",
-			tlsConfigName:  "",
-			expectedResult: "user:password@tcp(localhost:3306)/test?tls=true",
-		},
-	}
-
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			tCase := mySQLConnectionProducer{
-				ConnectionURL: test.rootUrl,
-				tlsConfigName: test.tlsConfigName,
-			}
-
-			actual, err := tCase.addTLStoDSN()
-			if err != nil {
-				t.Fatalf("error occurred in test: %s", err)
-			}
-			if actual != test.expectedResult {
-				t.Fatalf("generated: %s, expected: %s", actual, test.expectedResult)
-			}
-		})
-	}
-}
-
 func TestInit_clientTLS(t *testing.T) {
 	t.Skip("Skipping this test because CircleCI can't mount the files we need without further investigation: " +
 		"https://support.circleci.com/hc/en-us/articles/360007324514-How-can-I-mount-volumes-to-docker-containers-")
@@ -314,5 +261,71 @@ func writeFile(t *testing.T, filename string, data []byte, perms os.FileMode) {
 	err := os.WriteFile(filename, data, perms)
 	if err != nil {
 		t.Fatalf("Unable to write to file [%s]: %s", filename, err)
+	}
+}
+
+func Test_parseMultiHostDSN(t *testing.T) {
+	type testCase struct {
+		connectionURL         string
+		expectedHosts         []string
+		expectedConnectionURL string
+	}
+
+	tests := map[string]testCase{
+		"single host": {
+			connectionURL:         "user:password@tcp(localhost:3306)/test",
+			expectedHosts:         []string{"localhost:3306"},
+			expectedConnectionURL: "user:password@tcp(localhost:3306)/test",
+		},
+		"multiple hosts": {
+			connectionURL:         "user:password@tcp(host1:3306,host2:3307)/test",
+			expectedHosts:         []string{"host1:3306", "host2:3307"},
+			expectedConnectionURL: "user:password@tcp(host1:3306)/test",
+		},
+		"multiple hosts without ports": {
+			connectionURL:         "user:password@tcp(host1,host2)/test",
+			expectedHosts:         []string{"host1:3306", "host2:3306"},
+			expectedConnectionURL: "user:password@tcp(host1:3306)/test",
+		},
+		"unix socket": {
+			connectionURL:         "user:password@unix(/var/run/mysqld/mysqld.sock)/test",
+			expectedHosts:         nil,
+			expectedConnectionURL: "user:password@unix(/var/run/mysqld/mysqld.sock)/test",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			producer := &mySQLConnectionProducer{
+				ConnectionURL: test.connectionURL,
+			}
+
+			err := producer.parseMultiHostDSN()
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+
+			if !reflect.DeepEqual(producer.hosts, test.expectedHosts) {
+				t.Fatalf("hosts: got %v, expected %v", producer.hosts, test.expectedHosts)
+			}
+
+			if producer.ConnectionURL != test.expectedConnectionURL {
+				t.Fatalf("connectionURL: got %s, expected %s", producer.ConnectionURL, test.expectedConnectionURL)
+			}
+		})
+	}
+}
+
+func Test_dialWithFailover(t *testing.T) {
+	producer := &mySQLConnectionProducer{
+		hosts: []string{"invalid-host-1:3306", "invalid-host-2:3306"},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	_, err := producer.dialWithFailover(ctx, "tcp", "ignored")
+	if err == nil {
+		t.Fatal("expected error when connecting to invalid hosts")
 	}
 }

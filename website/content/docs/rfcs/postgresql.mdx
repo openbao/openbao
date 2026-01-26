@@ -1,0 +1,281 @@
+---
+sidebar_label: PostgreSQL Improvements
+description: |-
+  Changes to better operationalize the PostgreSQL Storage Engine
+---
+
+# Better Operationalizing the PostgreSQL Storage Engine
+
+## Summary
+
+Operationalizing OpenBao with the PostgreSQL storage backend is currently not
+a well-documented process. This document seeks to combine understanding of
+various in-flight and finished RFCs along with proposing new changes to
+improve the operator experience in certain environments.
+ CockroachDB and PostgreSQL are both relational databases, but they differ significantly in their architecture and capabilities. CockroachDB is a distributed database, designed for scalability and fault tolerance across multiple nodes, while PostgreSQL is a single-node database known for its advanced features and ACID compliance.
+
+## Problem Statement
+
+While the PostgreSQL engine existed in upstream, it was an unsupported (from
+a production environment and HashiCorp Support PoV) backend. OpenBao revived
+this engine, aiming to make it fully supported. Notably, we included support
+for [paginated lists](paginated-lists.mdx) and
+[transactional storage](transactions.mdx) in our
+revival of the engine after its [initial removal](../policies/plugins.mdx#storage-backends).
+
+Notably absent from existing documentation and [future
+RFCs](https://gist.github.com/cipherboy/92828019e89d8adde219d08dec47e5a9) are
+an understanding of the different environments OpenBao might run in:
+
+ 1. What load is expected on the database?
+ 2. Is the PostgreSQL expected to be dedicated or shared?
+ 3. How should OpenBao operate if it cannot create tables (e.g., when
+    considering future work to split the monolithic table)?
+ 4. How are database _structure_ migrations supposed to occur, if OpenBao is
+    not granted _migration_ rights?
+ 5. How does OpenBao interact with a replicated PostgreSQL cluster or database
+    proxies such as PgBouncer, especially in a future with [horizontal
+    scalability](https://openbao.org/blog/vision-for-namespaces/)?
+
+Some of these are dependent on understanding the environment OpenBao is
+running in and the expected workloads attached to it. For this, we seek to
+[maintain an updated benchmarking tool](https://github.com/openbao/benchmark-openbao)
+to help operators with discovery here.
+
+## User-facing Description
+
+We seek to split out three main lifecycle components of an application's
+interactions with a database, inline with traditional best practices:
+
+1. Initial database stand up (such as table creation),
+2. Ongoing database migrations, and
+3. Steady-state operations.
+
+Currently (after [adding support for table creation](https://github.com/openbao/openbao/pull/614)),
+OpenBao mixes all three concerns in the main OpenBao `server` invocation.
+Point two, ongoing database migrations, may be more complicated as OpenBao
+currently does not have a mechanism for a plugin to indicate that data-level
+migrations need to occur or to perform them.
+
+## Technical Description
+
+The following changes are suggested to improve operational behavior of
+OpenBao.
+
+### Add PostgreSQL init command line
+
+Some OpenBao instances will not receive credentials with permission to create
+new tables within the database. However, operators may still want to automate
+this part of the process. We should add a new command line:
+
+```
+$ bao operator postgresql init
+```
+
+which takes either explicit credentials or a configuration file and performs
+initialization.
+
+If no credentials are given or they lack relevant permissions, we should
+output database creation statements. The same should occur when the database
+table exists but we need to perform a schema-level migration.
+
+This tool would also benefit from a:
+
+```
+$ bao operator postgresql check -config=...
+```
+
+to validate connectivity, permissions, and supported versions.
+
+### Add storage migration command line
+
+The above `bao operator postgresql init` handles migration at the schema
+level, but if downtime is acceptable, we may also wish to support an offline
+data migration operation for data stored within the PostgreSQL database. Some
+examples of past migrations include PKI and SSH multi-issuer storage layouts,
+KVv1 to KVv2 migrations, &c.
+
+This will require a full server configuration be available; any auto-unseal
+mechanism will be required to perform unseal. No listeners will be started
+and thus no audit logs will be generated.
+
+This will look like:
+
+```
+$ bao operator storage migrate -config=...
+```
+
+In the event of using manual, Shamir's based unseal, the command line will
+prompt for unseal shards. Parallelism should be controllable.
+
+### Support storage entry invalidation
+
+Raft supports storage-level invalidation natively, due to its vote-based
+process. However, data written by the active OpenBao node may not be
+immediately visible to standby nodes (if PostgreSQL replicas are in use)
+and no native mechanism for update notifications exists.
+
+Notably, use of [PostgreSQL's native `LISTEN`/`NOTIFY`](https://www.postgresql.org/docs/current/sql-notify.html)
+will not work as they are best-effort only and do not work across replicas.
+In the event a PgBouncer instance re-establishes the connection without
+informing OpenBao of an outage, OpenBao will lose any sent events within that
+window.
+
+**This requires a separate RFC when horizontal scalability is started.**
+
+However, an initial design might be to include a new column in the schema:
+
+```
+CREATE TABLE openbao_kv_store (
+    ... snip ...
+    generation bigint,
+    ... snip ...
+);
+```
+
+where `generation` is an incrementing identifier on insert/update into the
+field. An external active to follower replication mechanism (based on the
+current follower to active GRPC) will allow sending notifications about
+changes to storage. This will include the new generation UUID to tell if
+this matches and thus to invalidate caches once the follower sees this entry
+in storage (or any later revision). This will require the standby nodes poll
+the current status of the entry. We will need to update the storage interface
+to support returning the unique value generated by the underlying HA mechanism;
+Raft will not need to implement it.
+
+### Retrying PostgreSQL connection
+
+One issue for operators in a Kubernetes environment is that the connection may
+be through a proxy such as [PgBouncer](https://www.pgbouncer.org/) or [Cloud
+SQL Auth Proxy](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy).
+This may start in a sidecar in parallel with OpenBao; thus OpenBao may fail to
+connect on startup. Operators may need a retry loop or proxy startup detection
+added to the OpenBao container.
+
+We can simplify operationalizing by [including this retry in OpenBao
+directly](https://github.com/openbao/openbao/pull/1280).
+
+### Non-Voting Status in PostgreSQL
+
+While PostgreSQL internally uses a [lock-based architecture](../configuration/storage/postgresql.mdx#manually-creating-tables),
+we still need the option to mark OpenBao nodes as non-voters so that they
+never attempt to become the leader. This is especially important for
+replicated database clusters; replicas are read-only and will err if a write
+operation is performed.
+
+We can introduce PostgreSQL [non-voting node support](https://github.com/openbao/openbao/pull/1284)
+to solve this gap. When OpenBao supports read-request processing on standby
+nodes, the status may be dynamically configurable at runtime by hitting an
+API endpoint to promote and demote voter status.
+
+### Empty Connection URLs
+
+OpenBao uses [libpgx](https://github.com/jackc/pgx) which
+[supports](https://pkg.go.dev/github.com/jackc/pgconn#ParseConfig) standard
+[PostgreSQL component-wise database connection environment
+variables](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING).
+However, it arbitrarily enforces a non-empty connection URL. Despite this,
+the "empty" `postgres://` attribute works. This reduces operator cognitive
+overhead, especially in places where standard component-wise constructs are
+already in place.
+
+This change is [already proposed for inclusion](https://github.com/openbao/openbao/pull/1297).
+
+### Removing parallel locking
+
+OpenBao's `postgresql` storage backend includes its own `PermitPool`,
+ensuring `max_parallel` is enforced at the storage layer. However, it
+also calls `db.SetMaxOpenConns(...)` which internally uses channels to
+achive the same thing. We can remove the outer permit pool and rely
+strictly on Go's implementation.
+
+This change is [already proposed for inclusion](https://github.com/openbao/openbao/pull/1299).
+
+### Lower default open connections
+
+OpenBao defaults to 128 parallel connections; this is fine for Raft,
+where reads are local and writes are batched and thus incur little
+overhead for high pallelism, but not nice for database servers. Each
+open connection incurs resources on the remote server and potentially
+starves any other connections to the same instance. We should perform
+some load testing and lower this to a reasonable value that still allows
+parallelism but doesn't put undue stress on the remote server (5-20).
+
+### Automatic max connections adjustment
+
+Within some range, we might also consider dynamically adjusting the
+value of max parallel, perhaps up to 25%, if we see consistent out of
+connection errors. This might also wrap the default operation handlers,
+so that we can automatically retry at the storage level if we get an
+out-of-connections error especially if we've automatically adjusted.
+
+This will make PostgreSQL more forgiving and OpenBao lighter on the
+remote database server in times of load.
+
+We may also want to scale back up the number of connections if we
+time has passed.
+
+### Document upgrade, backup, and restore procedures
+
+Upgrading PostgreSQL, while never an easy tasks, should be easy in
+OpenBao's case: we'll rely on basic features without extensions,
+available at least in the [currently supported versions](https://endoflife.date/postgresql).
+At some point, we should deprecate support for PostgreSQL 9.5 and
+enforce a new minimum. Whether this will have `ha_enabled=true` by
+default will be up for discussion then.
+
+We should document that we do not intend to add the PostgreSQL
+equivalent of the [`sys/storage/raft/snapshot`](https://openbao.org/api-docs/system/storage/raft/#take-a-snapshot-of-the-raft-cluster)
+endpoint, and instead should rely on native, database-level [backup andd
+restore procedures](https://www.postgresql.org/docs/current/backup.html).
+This will be possible and durable especially after the remaining work
+of [using transactions (#607)](https://github.com/openbao/openbao/issues/607)
+finishes.
+
+## Rationale and Alternatives
+
+This change is largely informs approaches to other external storage engines
+that behave similarly to PostgreSQL, e.g., [#651](https://github.com/openbao/openbao/issues/651).
+
+## Downsides
+
+This may add some new complexity to OpenBao to better support these types of
+databases. However, PostgreSQL is an important alternative to internal storage
+from a long-term maintainability and usability perspective.
+
+## Security Implications
+
+There should be no new security implications with these changes, unless noted
+separately.
+
+## User/Developer Experience
+
+This does not change the end-user experience at all, merely improving operator
+experience.
+
+## Unresolved Questions
+
+Not discussed in this RFC are any additional storage-API improvements
+necessary for HA work. Until that is well understood (along with partitioning
+of backends), it is suggested that external (pluggable) storage engines are
+not added.
+
+## Related Issues
+
+Pull requests:
+
+ - https://github.com/openbao/openbao/pull/1280
+ - https://github.com/openbao/openbao/pull/1284
+ - https://github.com/openbao/openbao/pull/1297
+
+Issues:
+
+ - https://github.com/openbao/openbao/issues/270 an early issue filed to
+   support a proper database backend.
+ - https://github.com/openbao/openbao/issues/651 filed by @ajaygk95, to
+   support the MySQL backend.
+
+## Proof of Concept
+
+n/a - various components described here warrant an additional RFC, have
+already been proposed, or have yet to be written.

@@ -560,6 +560,7 @@ const sidebars: SidebarsConfig = {
                     ],
                 },
                 "rfcs/config-plugins",
+                "rfcs/postgresql",
             ],
         },
         "glossary",

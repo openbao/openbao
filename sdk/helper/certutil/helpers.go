@@ -27,8 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/errwrap"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"golang.org/x/crypto/cryptobyte"
@@ -101,7 +100,7 @@ func GetHexFormatted(buf []byte, sep string) string {
 	var ret bytes.Buffer
 	for _, cur := range buf {
 		if ret.Len() > 0 {
-			fmt.Fprintf(&ret, sep)
+			fmt.Fprintf(&ret, "%s", sep)
 		}
 		fmt.Fprintf(&ret, "%02x", cur)
 	}
@@ -161,6 +160,12 @@ func GetSubjectKeyID(pub interface{}) ([]byte, error) {
 			return nil, errutil.InternalError{Err: fmt.Sprintf("error marshalling public key: %s", err)}
 		}
 	case *ecdsa.PublicKey:
+		// TODO: Replace usage of elliptic.Marshal by below code once we compile with Go 1.25
+		// var err error
+		// publicKeyBytes, err = pub.Bytes()
+		// if err != nil {
+		// 	return nil, errutil.InternalError{Err: fmt.Sprintf("error marshalling public key: %s", err)}
+		// }
 		publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
 	case ed25519.PublicKey:
 		publicKeyBytes = pub
@@ -210,13 +215,13 @@ func ParseDERKey(privateKeyBytes []byte) (signer crypto.Signer, format BlockType
 	var firstError error
 	if signer, firstError = x509.ParseECPrivateKey(privateKeyBytes); firstError == nil {
 		format = ECBlock
-		return
+		return signer, format, err
 	}
 
 	var secondError error
 	if signer, secondError = x509.ParsePKCS1PrivateKey(privateKeyBytes); secondError == nil {
 		format = PKCS1Block
-		return
+		return signer, format, err
 	}
 
 	var thirdError error
@@ -234,7 +239,7 @@ func ParseDERKey(privateKeyBytes []byte) (signer crypto.Signer, format BlockType
 		}
 
 		format = PKCS8Block
-		return
+		return signer, format, err
 	}
 
 	return nil, UnknownBlock, fmt.Errorf("got errors attempting to parse DER private key:\n1. %v\n2. %v\n3. %v", firstError, secondError, thirdError)
@@ -327,7 +332,7 @@ func generatePrivateKey(keyType string, keyBits int, container ParsedPrivateKeyC
 	var privateKeyBytes []byte
 	var privateKey crypto.Signer
 
-	var randReader io.Reader = rand.Reader
+	randReader := rand.Reader
 	if entropyReader != nil {
 		randReader = entropyReader
 	}
@@ -477,13 +482,13 @@ func ComparePublicKeys(key1Iface, key2Iface crypto.PublicKey) (bool, error) {
 }
 
 // ParsePublicKeyPEM is used to parse RSA and ECDSA public keys from PEMs
-func ParsePublicKeyPEM(data []byte) (interface{}, error) {
+func ParsePublicKeyPEM(data []byte) (crypto.PublicKey, error) {
 	block, data := pem.Decode(data)
 	if block != nil {
 		if len(bytes.TrimSpace(data)) > 0 {
 			return nil, errutil.UserError{Err: "unexpected trailing data after parsed PEM block"}
 		}
-		var rawKey interface{}
+		var rawKey any
 		var err error
 		if rawKey, err = x509.ParsePKIXPublicKey(block.Bytes); err != nil {
 			if cert, err := x509.ParseCertificate(block.Bytes); err == nil {
@@ -548,11 +553,7 @@ func HandleOtherCSRSANs(in *x509.CertificateRequest, sans map[string][]string) e
 	if err := HandleOtherSANs(certTemplate, sans); err != nil {
 		return err
 	}
-	if len(certTemplate.ExtraExtensions) > 0 {
-		for _, v := range certTemplate.ExtraExtensions {
-			in.ExtraExtensions = append(in.ExtraExtensions, v)
-		}
-	}
+	in.ExtraExtensions = append(in.ExtraExtensions, certTemplate.ExtraExtensions...)
 	return nil
 }
 
@@ -838,6 +839,19 @@ func certTemplateSetSigAlgo(certTemplate *x509.Certificate, data *CreationBundle
 	}
 }
 
+// Set correct RSA sig algo
+func celSetSigAlgo(certTemplate *x509.Certificate, usePSS bool, signatureBits int) {
+	data := CreationBundle{
+		Params: &CreationParameters{
+			UsePSS:        usePSS,
+			SignatureBits: signatureBits,
+		},
+		SigningBundle: nil,
+		CSR:           nil,
+	}
+	certTemplateSetSigAlgo(certTemplate, &data)
+}
+
 // selectSignatureAlgorithmForRSA returns the proper x509.SignatureAlgorithm based on various properties set in the
 // Creation Bundle parameter. This method will default to a SHA256 signature algorithm if the requested signature
 // bits is not set/unknown.
@@ -923,7 +937,7 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 	}
 
 	if err := HandleOtherSANs(certTemplate, data.Params.OtherSANs); err != nil {
-		return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling other SANs: {{err}}", err).Error()}
+		return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling other SANs: %w", err).Error()}
 	}
 
 	// Add this before calling addKeyUsages
@@ -1014,7 +1028,7 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 			var chain []*CertBlock
 
 			signingChain := data.SigningBundle.CAChain
-			// Some bundles already include the root included in the chain, so don't include it twice.
+			// Some bundles already include the root in the chain, so don't include it twice.
 			if len(signingChain) == 0 || !bytes.Equal(signingChain[0].Bytes, data.SigningBundle.CertificateBytes) {
 				chain = append(chain, &CertBlock{
 					Certificate: data.SigningBundle.Certificate,
@@ -1028,6 +1042,150 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 
 			result.CAChain = chain
 		}
+	}
+
+	return result, nil
+}
+
+func CreateCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[string]interface{}, certTemplate x509.Certificate, randReader io.Reader) (*ParsedCertBundle, error) {
+	return createCertificateWithTemplate(caSign, evaluationData, certTemplate, randReader, generatePrivateKey)
+}
+
+func createCertificateWithTemplate(caSign *CAInfoBundle, evaluationData map[string]interface{}, certTemplate x509.Certificate, randReader io.Reader, privateKeyGenerator KeyGenerator) (*ParsedCertBundle, error) {
+	var (
+		err           error
+		keyType       string
+		keyBits       int
+		usePSS        bool
+		signatureBits int
+	)
+
+	serialNumber, err := GenerateSerialNumber()
+	if err != nil {
+		return nil, err
+	}
+	certTemplate.SerialNumber = serialNumber
+
+	if v, ok := evaluationData["key_type"].(string); ok {
+		keyType = v
+	}
+	if v, ok := evaluationData["key_bits"].(int); ok {
+		keyBits = v
+	}
+	if v, ok := evaluationData["use_pss"].(bool); ok {
+		usePSS = v
+	}
+	if v, ok := evaluationData["signature_bits"].(int); ok {
+		signatureBits = v
+	}
+
+	result := &ParsedCertBundle{}
+	if err := privateKeyGenerator(keyType, keyBits, result, randReader); err != nil {
+		return nil, err
+	}
+
+	certTemplate.PublicKey = result.PrivateKey.Public()
+
+	subjKeyID, err := GetSubjKeyID(result.PrivateKey)
+	if err != nil {
+		return nil, errutil.InternalError{Err: fmt.Sprintf("error getting subject key ID: %s", err)}
+	}
+	certTemplate.SubjectKeyId = subjKeyID
+
+	certTemplate.IssuingCertificateURL = caSign.URLs.IssuingCertificates
+	certTemplate.CRLDistributionPoints = caSign.URLs.CRLDistributionPoints
+	certTemplate.OCSPServer = caSign.URLs.OCSPServers
+
+	if len(caSign.URLs.DeltaCRLDistributionPoints) > 0 {
+		ext, err := CreateFreshestCRLExt(caSign.URLs.DeltaCRLDistributionPoints)
+		if err != nil {
+			return nil, err
+		}
+		certTemplate.ExtraExtensions = append(certTemplate.ExtraExtensions, ext)
+	}
+
+	var certBytes []byte
+	if caSign != nil {
+		privateKeyType := caSign.PrivateKeyType
+		switch privateKeyType {
+		case RSAPrivateKey:
+			celSetSigAlgo(&certTemplate, usePSS, signatureBits)
+		case Ed25519PrivateKey:
+			certTemplate.SignatureAlgorithm = x509.PureEd25519
+		case ECPrivateKey:
+			certTemplate.SignatureAlgorithm = selectSignatureAlgorithmForECDSA(caSign.PrivateKey.Public(), signatureBits)
+		}
+
+		caCert := caSign.Certificate
+		certTemplate.AuthorityKeyId = caCert.SubjectKeyId
+
+		certBytes, err = x509.CreateCertificate(randReader, &certTemplate, caCert, result.PrivateKey.Public(), caSign.PrivateKey)
+	} else {
+		// Creating a self-signed root
+		if certTemplate.MaxPathLen == 0 {
+			certTemplate.MaxPathLenZero = true
+		}
+
+		switch keyType {
+		case "rsa":
+			if usePSS {
+				switch signatureBits {
+				case 256:
+					certTemplate.SignatureAlgorithm = x509.SHA256WithRSAPSS
+				case 384:
+					certTemplate.SignatureAlgorithm = x509.SHA384WithRSAPSS
+				case 512:
+					certTemplate.SignatureAlgorithm = x509.SHA512WithRSAPSS
+				}
+			} else {
+				switch signatureBits {
+				case 256:
+					certTemplate.SignatureAlgorithm = x509.SHA256WithRSA
+				case 384:
+					certTemplate.SignatureAlgorithm = x509.SHA384WithRSA
+				case 512:
+					certTemplate.SignatureAlgorithm = x509.SHA512WithRSA
+				}
+			}
+		case "ed25519":
+			certTemplate.SignatureAlgorithm = x509.PureEd25519
+		case "ec":
+			certTemplate.SignatureAlgorithm = selectSignatureAlgorithmForECDSA(result.PrivateKey.Public(), signatureBits)
+		}
+
+		certTemplate.AuthorityKeyId = subjKeyID
+		certTemplate.BasicConstraintsValid = true
+		certBytes, err = x509.CreateCertificate(randReader, &certTemplate, &certTemplate, result.PrivateKey.Public(), result.PrivateKey)
+	}
+
+	if err != nil {
+		return nil, errutil.InternalError{Err: fmt.Sprintf("unable to create certificate: %s", err)}
+	}
+
+	result.CertificateBytes = certBytes
+	result.Certificate, err = x509.ParseCertificate(certBytes)
+	if err != nil {
+		return nil, errutil.InternalError{Err: fmt.Sprintf("unable to parse created certificate: %s", err)}
+	}
+
+	if caSign != nil &&
+		len(caSign.Certificate.AuthorityKeyId) > 0 &&
+		!bytes.Equal(caSign.Certificate.AuthorityKeyId, caSign.Certificate.SubjectKeyId) {
+
+		var chain []*CertBlock
+		signingChain := caSign.CAChain
+
+		// Some bundles already include the root in the chain; avoid duplication.
+		if len(signingChain) == 0 ||
+			!bytes.Equal(signingChain[0].Bytes, caSign.CertificateBytes) {
+			chain = append(chain, &CertBlock{
+				Certificate: caSign.Certificate,
+				Bytes:       caSign.CertificateBytes,
+			})
+		}
+
+		chain = append(chain, signingChain...)
+		result.CAChain = chain
 	}
 
 	return result, nil
@@ -1113,7 +1271,7 @@ func createCSR(data *CreationBundle, addBasicConstraints bool, randReader io.Rea
 	}
 
 	if err := HandleOtherCSRSANs(csrTemplate, data.Params.OtherSANs); err != nil {
-		return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling other SANs: {{err}}", err).Error()}
+		return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling other SANs: %w", err).Error()}
 	}
 
 	if addBasicConstraints {
@@ -1123,7 +1281,7 @@ func createCSR(data *CreationBundle, addBasicConstraints bool, randReader io.Rea
 		}
 		val, err := asn1.Marshal(basicConstraints{IsCA: true, MaxPathLen: -1})
 		if err != nil {
-			return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling basic constraints: {{err}}", err).Error()}
+			return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling basic constraints: %w", err).Error()}
 		}
 		ext := pkix.Extension{
 			Id:       ExtensionBasicConstraintsOID,
@@ -1243,7 +1401,7 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 		certTemplate.URIs = data.CSR.URIs
 
 		for _, name := range data.CSR.Extensions {
-			if !name.Id.Equal(ExtensionBasicConstraintsOID) && !(len(data.Params.OtherSANs) > 0 && name.Id.Equal(ExtensionSubjectAltNameOID)) {
+			if !name.Id.Equal(ExtensionBasicConstraintsOID) && (len(data.Params.OtherSANs) == 0 || !name.Id.Equal(ExtensionSubjectAltNameOID)) {
 				certTemplate.ExtraExtensions = append(certTemplate.ExtraExtensions, name)
 			}
 		}
@@ -1256,7 +1414,7 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 	}
 
 	if err := HandleOtherSANs(certTemplate, data.Params.OtherSANs); err != nil {
-		return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling other SANs: {{err}}", err).Error()}
+		return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling other SANs: %w", err).Error()}
 	}
 
 	AddPolicyIdentifiers(data, certTemplate)
@@ -1314,6 +1472,111 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 	}
 
 	result.CAChain = data.SigningBundle.GetFullChain()
+
+	return result, nil
+}
+
+func SignCertificateWithTemplate(caSign *CAInfoBundle, csr *x509.CertificateRequest, evaluationData map[string]interface{}, certTemplate x509.Certificate) (*ParsedCertBundle, error) {
+	return signCertificateWithTemplate(caSign, csr, evaluationData, certTemplate, rand.Reader)
+}
+
+func signCertificateWithTemplate(caSign *CAInfoBundle, CSR *x509.CertificateRequest, evaluationData map[string]interface{}, certTemplate x509.Certificate, randReader io.Reader) (*ParsedCertBundle, error) {
+	var (
+		usePSS        bool
+		signatureBits int
+		subjKeyID     []byte
+	)
+
+	switch {
+	case caSign == nil:
+		return nil, errutil.UserError{Err: "nil signing bundle given to signCertificate"}
+	case CSR == nil:
+		return nil, errutil.UserError{Err: "nil csr given to signCertificate"}
+	}
+
+	err := CSR.CheckSignature()
+	if err != nil {
+		return nil, errutil.UserError{Err: "request signature invalid"}
+	}
+
+	serialNumber, err := GenerateSerialNumber()
+	if err != nil {
+		return nil, err
+	}
+	certTemplate.SerialNumber = serialNumber
+
+	if v, ok := evaluationData["use_pss"].(bool); ok {
+		usePSS = v
+	}
+	if v, ok := evaluationData["signature_bits"].(int); ok {
+		signatureBits = v
+	}
+	if v, ok := evaluationData["subject_key_id"].([]byte); ok {
+		subjKeyID = v
+	}
+
+	if len(subjKeyID) == 0 {
+		subjKeyID, err = GetSubjectKeyID(CSR.PublicKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+	certTemplate.SubjectKeyId = subjKeyID[:]
+	certTemplate.AuthorityKeyId = caSign.Certificate.SubjectKeyId
+
+	privateKeyType := caSign.PrivateKeyType
+	switch privateKeyType {
+	case RSAPrivateKey:
+		celSetSigAlgo(&certTemplate, usePSS, signatureBits)
+	case ECPrivateKey:
+		switch signatureBits {
+		case 256:
+			certTemplate.SignatureAlgorithm = x509.ECDSAWithSHA256
+		case 384:
+			certTemplate.SignatureAlgorithm = x509.ECDSAWithSHA384
+		case 512:
+			certTemplate.SignatureAlgorithm = x509.ECDSAWithSHA512
+		}
+	}
+
+	var certBytes []byte
+
+	certTemplate.IssuingCertificateURL = caSign.URLs.IssuingCertificates
+	certTemplate.CRLDistributionPoints = caSign.URLs.CRLDistributionPoints
+	certTemplate.OCSPServer = caSign.URLs.OCSPServers
+
+	if len(caSign.URLs.DeltaCRLDistributionPoints) > 0 {
+		ext, err := CreateFreshestCRLExt(caSign.URLs.DeltaCRLDistributionPoints)
+		if err != nil {
+			return nil, err
+		}
+		certTemplate.ExtraExtensions = append(certTemplate.ExtraExtensions, ext)
+	}
+
+	if certTemplate.IsCA {
+		if caSign.Certificate.MaxPathLen == 0 &&
+			caSign.Certificate.MaxPathLenZero {
+			return nil, errutil.UserError{Err: "signing certificate has a max path length of zero, and cannot issue further CA certificates"}
+		}
+
+		if certTemplate.MaxPathLen == 0 {
+			certTemplate.MaxPathLenZero = true
+		}
+	}
+
+	certBytes, err = x509.CreateCertificate(randReader, &certTemplate, caSign.Certificate, CSR.PublicKey, caSign.PrivateKey)
+	if err != nil {
+		return nil, errutil.InternalError{Err: fmt.Sprintf("unable to create certificate: %s", err)}
+	}
+
+	result := &ParsedCertBundle{}
+	result.CertificateBytes = certBytes
+	result.Certificate, err = x509.ParseCertificate(certBytes)
+	if err != nil {
+		return nil, errutil.InternalError{Err: fmt.Sprintf("unable to parse created certificate: %s", err)}
+	}
+
+	result.CAChain = caSign.GetFullChain()
 
 	return result, nil
 }

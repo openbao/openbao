@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // pathsDelete returns the path configuration for the delete and undelete paths
@@ -91,7 +91,7 @@ func (b *versionedKVBackend) pathUndeleteWrite() framework.OperationFunc {
 				return nil, err
 			}
 
-			defer txn.Rollback(ctx)
+			defer txn.Rollback(ctx) //nolint:errcheck
 			req.Storage = txn
 		}
 
@@ -113,11 +113,10 @@ func (b *versionedKVBackend) pathUndeleteWrite() framework.OperationFunc {
 
 			if !config.IsDeleteVersionAfterDisabled() {
 				if dtime, ok := deletionTime(time.Now(), deleteVersionAfter(config), deleteVersionAfter(meta)); ok {
-					dt, err := ptypes.TimestampProto(dtime)
-					if err != nil {
+					lv.DeletionTime = timestamppb.New(dtime)
+					if err := lv.DeletionTime.CheckValid(); err != nil {
 						return logical.ErrorResponse("error setting deletion_time: converting %v to protobuf: %v", dtime, err), logical.ErrInvalidRequest
 					}
-					lv.DeletionTime = dt
 				}
 			}
 		}
@@ -161,7 +160,7 @@ func (b *versionedKVBackend) pathDeleteWrite() framework.OperationFunc {
 				return nil, err
 			}
 
-			defer txn.Rollback(ctx)
+			defer txn.Rollback(ctx) //nolint:errcheck
 			req.Storage = txn
 		}
 
@@ -182,17 +181,17 @@ func (b *versionedKVBackend) pathDeleteWrite() framework.OperationFunc {
 			}
 
 			if lv.DeletionTime != nil {
-				deletionTime, err := ptypes.Timestamp(lv.DeletionTime)
-				if err != nil {
+				if err := lv.DeletionTime.CheckValid(); err != nil {
 					return nil, err
 				}
+				deletionTime := lv.DeletionTime.AsTime()
 
 				if deletionTime.Before(time.Now()) {
 					continue
 				}
 			}
 
-			lv.DeletionTime = ptypes.TimestampNow()
+			lv.DeletionTime = timestamppb.Now()
 		}
 
 		err = b.writeKeyMetadata(ctx, req.Storage, meta)

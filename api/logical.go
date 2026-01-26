@@ -12,8 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/hashicorp/errwrap"
 )
 
 const (
@@ -116,7 +114,7 @@ func (c *Logical) ReadRawWithDataWithContext(ctx context.Context, path string, d
 
 func (c *Logical) ParseRawResponseAndCloseBody(resp *Response, err error) (*Secret, error) {
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -175,7 +173,7 @@ func (c *Logical) ListWithContext(ctx context.Context, path string) (*Secret, er
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -216,7 +214,7 @@ func (c *Logical) ListPageWithContext(ctx context.Context, path string, after st
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -255,7 +253,7 @@ func (c *Logical) ScanWithContext(ctx context.Context, path string) (*Secret, er
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -296,7 +294,7 @@ func (c *Logical) ScanPageWithContext(ctx context.Context, path string, after st
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -359,7 +357,7 @@ func (c *Logical) write(ctx context.Context, request *Request) (*Secret, error) 
 
 	resp, err := c.c.rawRequestWithContext(ctx, request)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -415,7 +413,7 @@ func (c *Logical) DeleteWithDataWithContext(ctx context.Context, path string, da
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
@@ -464,7 +462,7 @@ func (c *Logical) UnwrapWithContext(ctx context.Context, wrappingToken string) (
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp == nil || resp.StatusCode != 404 {
 		if err != nil {
@@ -499,7 +497,7 @@ func (c *Logical) UnwrapWithContext(ctx context.Context, wrappingToken string) (
 
 	secret, err = c.ReadWithContext(ctx, wrappedResponseLocation)
 	if err != nil {
-		return nil, errwrap.Wrapf(fmt.Sprintf("error reading %q: {{err}}", wrappedResponseLocation), err)
+		return nil, fmt.Errorf("error reading %q: %w", wrappedResponseLocation, err)
 	}
 	if secret == nil {
 		return nil, fmt.Errorf("no value found at %q", wrappedResponseLocation)
@@ -516,7 +514,7 @@ func (c *Logical) UnwrapWithContext(ctx context.Context, wrappingToken string) (
 	dec := json.NewDecoder(buf)
 	dec.UseNumber()
 	if err := dec.Decode(wrappedSecret); err != nil {
-		return nil, errwrap.Wrapf("error unmarshalling wrapped secret: {{err}}", err)
+		return nil, fmt.Errorf("error unmarshalling wrapped secret: %w", err)
 	}
 
 	return wrappedSecret, nil

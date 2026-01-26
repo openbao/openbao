@@ -7,10 +7,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-raftchunking"
 	raftchunkingtypes "github.com/hashicorp/go-raftchunking/types"
 	"github.com/hashicorp/go-uuid"
@@ -19,6 +17,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // This chunks encoded data and then performing out-of-order applies of half
@@ -29,8 +28,7 @@ func TestRaft_Chunking_Lifecycle(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	b, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
+	b, _ := GetRaft(t, true, false)
 
 	t.Log("applying configuration")
 
@@ -114,8 +112,7 @@ func TestFSM_Chunking_TermChange(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	b, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
+	b, _ := GetRaft(t, true, false)
 
 	t.Log("applying configuration")
 
@@ -186,13 +183,16 @@ func TestFSM_Chunking_TermChange(t *testing.T) {
 }
 
 func TestRaft_Chunking_AppliedIndex(t *testing.T) {
-	t.Parallel()
-
-	raft, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
+	// t.Parallel() this can't be parallel, because we modify a global variable "raftchunking.ChunkSize"
+	raft, _ := GetRaft(t, true, false)
 
 	// Lower the size for tests
+	originalChunkSize := raftchunking.ChunkSize
 	raftchunking.ChunkSize = 1024
+	t.Cleanup(func() {
+		raftchunking.ChunkSize = originalChunkSize
+	})
+
 	val, err := uuid.GenerateRandomBytes(3 * raftchunking.ChunkSize)
 	if err != nil {
 		t.Fatal(err)

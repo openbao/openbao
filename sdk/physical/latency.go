@@ -7,10 +7,10 @@ import (
 	"context"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	uberAtomic "go.uber.org/atomic"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 type LatencyInjector struct {
 	logger        log.Logger
 	backend       Backend
-	latency       *uberAtomic.Duration
+	latency       *atomic.Int64
 	jitterPercent int
 	randomLock    *sync.Mutex
 	random        *rand.Rand
@@ -39,11 +39,13 @@ func NewLatencyInjector(b Backend, latency time.Duration, jitter int, logger log
 		jitter = DefaultJitterPercent
 	}
 	logger.Info("creating latency injector")
+	atomicLatency := &atomic.Int64{}
+	atomicLatency.Store(int64(latency))
 
 	return &LatencyInjector{
 		logger:        logger,
 		backend:       b,
-		latency:       uberAtomic.NewDuration(latency),
+		latency:       atomicLatency,
 		jitterPercent: jitter,
 		randomLock:    new(sync.Mutex),
 		random:        rand.New(rand.NewSource(int64(time.Now().Nanosecond()))),
@@ -52,7 +54,7 @@ func NewLatencyInjector(b Backend, latency time.Duration, jitter int, logger log
 
 func (l *LatencyInjector) SetLatency(latency time.Duration) {
 	l.logger.Info("Changing backend latency", "latency", latency)
-	l.latency.Store(latency)
+	l.latency.Store(int64(latency))
 }
 
 func (l *LatencyInjector) addLatency() {

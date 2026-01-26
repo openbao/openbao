@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -255,12 +256,12 @@ func TestRouter_Remount(t *testing.T) {
 	}
 
 	me.Path = "stage/aws/"
-	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/")
+	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/", nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/")
+	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/", nil)
 	if !strings.Contains(err.Error(), "no mount at") {
 		t.Fatalf("err: %v", err)
 	}
@@ -293,6 +294,50 @@ func TestRouter_Remount(t *testing.T) {
 	}
 	if prefix != "logical/" {
 		t.Fatalf("Bad prefix: %s", prefix)
+	}
+}
+
+func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
+	r := NewRouter()
+	_, barrier, _ := mockBarrier(t)
+	view := NewBarrierView(barrier, "logical/")
+
+	// Create a test namespace "team1/"
+	nsTeam := &namespace.Namespace{ID: "team1", Path: "team1/"}
+
+	// Mount a sys/ backend for the namespace to simulate the namespace sentinel
+	meUUID, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := &NoopBackend{}
+	// Router.Mount will prepend the namespace path; pass a namespace-relative prefix
+	err = r.Mount(n, "sys/", &MountEntry{UUID: meUUID, Accessor: "sysaccessor", NamespaceID: nsTeam.ID, namespace: nsTeam}, view)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	// When operating inside namespace "team1", mounting a backend at path
+	// equal to the namespace name ("team1/") should not be treated as a
+	// namespace conflict.
+	ctxTeam := namespace.ContextWithNamespace(context.Background(), nsTeam)
+	if conflict := r.MountConflict(ctxTeam, "team1/"); conflict != "" {
+		t.Fatalf("unexpected conflict for namespace-equal mount: %q", conflict)
+	}
+
+	// However, if there is a child namespace (e.g., team1/child/), mounting
+	// at that child name should be reported as a conflict.
+	child := &namespace.Namespace{ID: "child", Path: "team1/child/"}
+	meUUID2, err := uuid.GenerateUUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = r.Mount(n, "sys/", &MountEntry{UUID: meUUID2, Accessor: "syschild", NamespaceID: child.ID, namespace: child}, view)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if conflict := r.MountConflict(ctxTeam, "child/"); conflict == "" {
+		t.Fatal("expected conflict for child namespace mount path")
 	}
 }
 
@@ -626,7 +671,7 @@ func TestParseUnauthenticatedPaths_Error(t *testing.T) {
 
 	for _, tc := range tcases {
 		_, err := parseUnauthenticatedPaths(tc.paths)
-		if err == nil || err != nil && !strings.Contains(err.Error(), tc.err) {
+		if err == nil || !strings.Contains(err.Error(), tc.err) {
 			t.Fatalf("bad: path: %s expect: %v got %v", tc.paths, tc.err, err)
 		}
 	}

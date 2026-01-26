@@ -44,7 +44,7 @@ func handleSysInitPut(core *vault.Core, w http.ResponseWriter, r *http.Request) 
 
 	// Parse the request
 	var req InitRequest
-	if _, err := parseJSONRequest(r, w, &req); err != nil {
+	if err := parseJSONRequest(r, w, &req); err != nil {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -80,9 +80,6 @@ func handleSysInitPut(core *vault.Core, w http.ResponseWriter, r *http.Request) 
 		if vault.IsFatalError(initErr) {
 			respondError(w, http.StatusBadRequest, initErr)
 			return
-		} else {
-			// Add a warnings field? The error will be logged in the vault log
-			// already.
 		}
 	}
 

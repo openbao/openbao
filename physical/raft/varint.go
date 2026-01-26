@@ -31,15 +31,9 @@ package raft
 import (
 	"bufio"
 	"encoding/binary"
-	"errors"
 	"io"
 
-	"github.com/golang/protobuf/proto"
-)
-
-var (
-	errSmallBuffer = errors.New("Buffer Too Small")
-	errLargeValue  = errors.New("Value is Larger than 64 bits")
+	"google.golang.org/protobuf/proto"
 )
 
 func NewDelimitedWriter(w io.Writer) WriteCloser {
@@ -52,23 +46,23 @@ type varintWriter struct {
 	buffer []byte
 }
 
-func (this *varintWriter) WriteMsg(msg proto.Message) (err error) {
+func (w *varintWriter) WriteMsg(msg proto.Message) (err error) {
 	data, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}
 	length := uint64(len(data))
-	n := binary.PutUvarint(this.lenBuf, length)
-	_, err = this.w.Write(this.lenBuf[:n])
+	n := binary.PutUvarint(w.lenBuf, length)
+	_, err = w.w.Write(w.lenBuf[:n])
 	if err != nil {
 		return err
 	}
-	_, err = this.w.Write(data)
+	_, err = w.w.Write(data)
 	return err
 }
 
-func (this *varintWriter) Close() error {
-	if closer, ok := this.w.(io.Closer); ok {
+func (w *varintWriter) Close() error {
+	if closer, ok := w.w.(io.Closer); ok {
 		return closer.Close()
 	}
 	return nil
@@ -89,28 +83,28 @@ type varintReader struct {
 	closer  io.Closer
 }
 
-func (this *varintReader) ReadMsg(msg proto.Message) error {
-	length64, err := binary.ReadUvarint(this.r)
+func (r *varintReader) ReadMsg(msg proto.Message) error {
+	length64, err := binary.ReadUvarint(r.r)
 	if err != nil {
 		return err
 	}
 	length := int(length64)
-	if length < 0 || length > this.maxSize {
+	if length < 0 || length > r.maxSize {
 		return io.ErrShortBuffer
 	}
-	if len(this.buf) < length {
-		this.buf = make([]byte, length)
+	if len(r.buf) < length {
+		r.buf = make([]byte, length)
 	}
-	buf := this.buf[:length]
-	if _, err := io.ReadFull(this.r, buf); err != nil {
+	buf := r.buf[:length]
+	if _, err := io.ReadFull(r.r, buf); err != nil {
 		return err
 	}
 	return proto.Unmarshal(buf, msg)
 }
 
-func (this *varintReader) Close() error {
-	if this.closer != nil {
-		return this.closer.Close()
+func (r *varintReader) Close() error {
+	if r.closer != nil {
+		return r.closer.Close()
 	}
 	return nil
 }

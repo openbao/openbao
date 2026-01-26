@@ -13,6 +13,7 @@ import (
 
 	"github.com/openbao/openbao/api/auth/userpass/v2"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	hDocker "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
@@ -52,6 +53,7 @@ func Test_StrictIPBinding(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	nodeIndex, err := testcluster.WaitForActiveNode(ctx, cluster)
+	require.NoError(t, err)
 
 	node := cluster.ClusterNodes[nodeIndex]
 	client := node.APIClient()
@@ -94,7 +96,7 @@ func Test_StrictIPBinding(t *testing.T) {
 	curlRunner, err := hDocker.NewServiceRunner(hDocker.RunOptions{
 		ImageRepo:     "docker.mirror.hashicorp.services/curlimages/curl",
 		ImageTag:      "8.4.0",
-		ContainerName: fmt.Sprintf("curl_test_ip_binding"),
+		ContainerName: "curl_test_ip_binding",
 		NetworkName:   vaultNetwork,
 		Entrypoint:    []string{"sleep", sleepTimer},
 		LogConsumer: func(s string) {
@@ -111,13 +113,14 @@ func Test_StrictIPBinding(t *testing.T) {
 		"curl",
 		"-sSL",
 		"--insecure",
-		"--header", "X-Vault-Token: " + localToken,
+		"--header", fmt.Sprintf("%s: %s", consts.AuthHeaderName, localToken),
 		"https://" + vaultAddr + ":8200/v1/sys/host-info",
 	}
 	stdout, stderr, retcode, err := curlRunner.RunCmdWithOutput(ctx, curlResult.Container.ID, curlCmd)
 	t.Logf("cURL Command: %v\nstdout: %v\nstderr: %v\n", curlCmd, string(stdout), string(stderr))
 	require.NoError(t, err, "got error running cURL command")
 	require.Contains(t, string(stdout), "permission denied", "expected failure retcode cURL command result")
+	require.Zero(t, retcode)
 
 	cloned, err := client.Clone()
 	require.NoError(t, err)
@@ -136,7 +139,10 @@ func Test_StrictIPBinding(t *testing.T) {
 
 		"-H", "Content-Type: application/json",
 		"--data", `{"password": "password"}`,
-		"https://" + vaultAddr + ":8200/v1/auth/userpass/login/testing",
+		// We switch the username to Testing to ensure case validation
+		// does not affect user lockout attribution. This is a test
+		// to validate our fix for HCSEC-2025-16 / CVE-2025-6004.
+		"https://" + vaultAddr + ":8200/v1/auth/userpass/login/Testing",
 	}
 	stdout, stderr, retcode, err = curlRunner.RunCmdWithOutput(ctx, curlResult.Container.ID, curlCmd)
 	t.Logf("cURL Command: %v\nstdout: %v\nstderr: %v\n", curlCmd, string(stdout), string(stderr))
@@ -146,8 +152,11 @@ func Test_StrictIPBinding(t *testing.T) {
 	var data map[string]interface{}
 	err = json.Unmarshal(stdout, &data)
 	require.NoError(t, err)
+	require.NotContains(t, data, "errors")
+	require.Contains(t, data, "auth")
 
 	auth := data["auth"].(map[string]interface{})
+	require.Contains(t, auth, "client_token")
 	remoteToken := auth["client_token"].(string)
 
 	// Using the remote token locally should fail...
@@ -160,7 +169,7 @@ func Test_StrictIPBinding(t *testing.T) {
 		"curl",
 		"-sSL",
 		"--insecure",
-		"--header", "X-Vault-Token: " + remoteToken,
+		"--header", fmt.Sprintf("%s: %s", consts.AuthHeaderName, remoteToken),
 		"https://" + vaultAddr + ":8200/v1/sys/host-info",
 	}
 	stdout, stderr, retcode, err = curlRunner.RunCmdWithOutput(ctx, curlResult.Container.ID, curlCmd)

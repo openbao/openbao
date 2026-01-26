@@ -8,11 +8,20 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/vault"
 )
 
 func TestSysAudit(t *testing.T) {
-	core, _, token := vault.TestCoreUnsealed(t)
+	core, _, token := vault.TestCoreUnsealedWithConfig(t, &vault.CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"noop": corehelpers.NoopAuditFactory(nil),
+		},
+	})
+
 	ln, addr := TestServer(t, core)
 	defer ln.Close()
 	TestServerAuth(t, addr, token)
@@ -60,7 +69,13 @@ func TestSysAudit(t *testing.T) {
 }
 
 func TestSysDisableAudit(t *testing.T) {
-	core, _, token := vault.TestCoreUnsealed(t)
+	core, _, token := vault.TestCoreUnsealedWithConfig(t, &vault.CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"noop": corehelpers.NoopAuditFactory(nil),
+		},
+	})
+
 	ln, addr := TestServer(t, core)
 	defer ln.Close()
 	TestServerAuth(t, addr, token)
@@ -97,7 +112,13 @@ func TestSysDisableAudit(t *testing.T) {
 }
 
 func TestSysAuditHash(t *testing.T) {
-	core, _, token := vault.TestCoreUnsealed(t)
+	core, _, token := vault.TestCoreUnsealedWithConfig(t, &vault.CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
+		AuditBackends: map[string]audit.Factory{
+			"noop": corehelpers.NoopAuditFactory(nil),
+		},
+	})
+
 	ln, addr := TestServer(t, core)
 	defer ln.Close()
 	TestServerAuth(t, addr, token)

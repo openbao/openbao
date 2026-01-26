@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 )
 
 func (c *Sys) ListPolicies() ([]string, error) {
@@ -30,7 +30,7 @@ func (c *Sys) ListPoliciesWithContext(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
@@ -61,7 +61,7 @@ func (c *Sys) GetPolicyWithContext(ctx context.Context, name string) (string, er
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 		if resp.StatusCode == 404 {
 			return "", nil
 		}
@@ -106,7 +106,7 @@ func (c *Sys) PutPolicyWithContext(ctx context.Context, name, rules string) erro
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }
@@ -123,15 +123,7 @@ func (c *Sys) DeletePolicyWithContext(ctx context.Context, name string) error {
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err == nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	return err
-}
-
-type getPoliciesResp struct {
-	Rules string `json:"rules"`
-}
-
-type listPoliciesResp struct {
-	Policies []string `json:"policies"`
 }

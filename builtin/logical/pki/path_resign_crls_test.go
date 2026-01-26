@@ -36,7 +36,7 @@ func TestResignCrls_ForbidSigningOtherIssuerCRL(t *testing.T) {
 	})
 	requireSuccessNonNilResponse(t, resp, err)
 
-	resp, err = CBWrite(b, s, "issuer/default/resign-crls", map[string]interface{}{
+	_, err = CBWrite(b, s, "issuer/default/resign-crls", map[string]interface{}{
 		"crl_number":  "2",
 		"next_update": "1h",
 		"format":      "pem",
@@ -133,11 +133,7 @@ func TestResignCrls_ConflictingExpiry(t *testing.T) {
 
 	// Wait until at least we have rolled over to the next second to match sure the generated CRL time
 	// on backend 2 for the serial 1 will be different
-	for {
-		if time.Now().After(timeAfterMountSetup.Add(1 * time.Second)) {
-			break
-		}
-	}
+	time.Sleep(time.Until(timeAfterMountSetup.Add(1 * time.Second)))
 
 	// Use BYOC to revoke the same certificate on backend 2 now
 	resp, err = CBWrite(b2, s2, "revoke", map[string]interface{}{
@@ -316,16 +312,16 @@ func TestSignRevocationList(t *testing.T) {
 	require.Equal(t, 3, len(serials), "expected 3 serials within CRL")
 
 	// Make sure extensions on serials match what we expect.
-	require.Equal(t, 0, len(crl.RevokedCertificates[0].Extensions), "Expected no extensions on 1st serial")
-	require.Equal(t, 0, len(crl.RevokedCertificates[1].Extensions), "Expected no extensions on 2nd serial")
-	require.Equal(t, 2, len(crl.RevokedCertificates[2].Extensions), "Expected 2 extensions on 3 serial")
-	require.Equal(t, "2.5.29.100", crl.RevokedCertificates[2].Extensions[0].Id.String())
-	require.True(t, crl.RevokedCertificates[2].Extensions[0].Critical)
-	require.Equal(t, []byte("hello"), crl.RevokedCertificates[2].Extensions[0].Value)
+	require.Equal(t, 0, len(crl.RevokedCertificateEntries[0].Extensions), "Expected no extensions on 1st serial")
+	require.Equal(t, 0, len(crl.RevokedCertificateEntries[1].Extensions), "Expected no extensions on 2nd serial")
+	require.Equal(t, 2, len(crl.RevokedCertificateEntries[2].Extensions), "Expected 2 extensions on 3 serial")
+	require.Equal(t, "2.5.29.100", crl.RevokedCertificateEntries[2].Extensions[0].Id.String())
+	require.True(t, crl.RevokedCertificateEntries[2].Extensions[0].Critical)
+	require.Equal(t, []byte("hello"), crl.RevokedCertificateEntries[2].Extensions[0].Value)
 
-	require.Equal(t, "2.5.29.101", crl.RevokedCertificates[2].Extensions[1].Id.String())
-	require.False(t, crl.RevokedCertificates[2].Extensions[1].Critical)
-	require.Equal(t, []byte("bye"), crl.RevokedCertificates[2].Extensions[1].Value)
+	require.Equal(t, "2.5.29.101", crl.RevokedCertificateEntries[2].Extensions[1].Id.String())
+	require.False(t, crl.RevokedCertificateEntries[2].Extensions[1].Critical)
+	require.Equal(t, []byte("bye"), crl.RevokedCertificateEntries[2].Extensions[1].Value)
 
 	// CRL Number and times
 	require.Equal(t, big.NewInt(int64(1)), crl.Number)
@@ -390,7 +386,7 @@ func TestSignRevocationList_ReservedExtensions(t *testing.T) {
 			})
 			requireSuccessNonNilResponse(t, resp, err)
 
-			resp, err = CBWrite(b, s, "issuer/default/sign-revocation-list", map[string]interface{}{
+			_, err = CBWrite(b, s, "issuer/default/sign-revocation-list", map[string]interface{}{
 				"crl_number":  "1",
 				"next_update": "12h",
 				"format":      "pem",
@@ -501,7 +497,7 @@ func extractSerialsFromCrl(t *testing.T, crl *x509.RevocationList) map[string]ti
 
 	serials := map[string]time.Time{}
 
-	for _, revokedCert := range crl.RevokedCertificates {
+	for _, revokedCert := range crl.RevokedCertificateEntries {
 		serial := serialFromBigInt(revokedCert.SerialNumber)
 		if _, exists := serials[serial]; exists {
 			t.Fatalf("Serial number %s was duplicated in CRL", serial)

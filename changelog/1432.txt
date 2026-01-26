@@ -1,0 +1,6 @@
+```release-note:bug
+core/identity: load namespace entities, groups into MemDB preventing them from disappearing on restart.
+```
+```release-note:improvement
+core/identity: add unsafe_cross_namespace_identity to give compatibility with Vault Enterprise's cross-namespace group membership.
+```

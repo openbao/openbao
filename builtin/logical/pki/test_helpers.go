@@ -9,14 +9,12 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"math"
 	"math/big"
-	http2 "net/http"
 	"strings"
 	"testing"
 	"time"
@@ -42,7 +40,7 @@ func CreateBackendWithStorage(t testing.TB) (*backend, logical.Storage) {
 		t.Fatal(err)
 	}
 	// Assume for our tests we have performed the migration already.
-	b.pkiStorageVersion.Store(1)
+	b.pkiStorageVersion.Store(true)
 	return b, config.StorageView
 }
 
@@ -95,15 +93,6 @@ func parseCert(t *testing.T, pemCert string) *x509.Certificate {
 	return cert
 }
 
-func requireMatchingPublicKeys(t *testing.T, cert *x509.Certificate, key crypto.PublicKey) {
-	t.Helper()
-
-	certPubKey := cert.PublicKey
-	areEqual, err := certutil.ComparePublicKeysAndType(certPubKey, key)
-	require.NoError(t, err, "failed comparing public keys: %#v", err)
-	require.True(t, areEqual, "public keys mismatched: got: %v, expected: %v", certPubKey, key)
-}
-
 func getSelfSigned(t *testing.T, subject, issuer *x509.Certificate, key *rsa.PrivateKey) (string, *x509.Certificate) {
 	t.Helper()
 	selfSigned, err := x509.CreateCertificate(rand.Reader, subject, issuer, key.Public(), key)
@@ -122,28 +111,33 @@ func getSelfSigned(t *testing.T, subject, issuer *x509.Certificate, key *rsa.Pri
 }
 
 // CRL related helpers
-func getCrlCertificateList(t *testing.T, client *api.Client, mountPoint string) pkix.TBSCertificateList {
+func getCrlCertificateList(t *testing.T, client *api.Client, mountPoint string) *x509.RevocationList {
 	t.Helper()
 
-	path := fmt.Sprintf("/v1/%s/crl", mountPoint)
-	return getParsedCrlAtPath(t, client, path).TBSCertList
+	path := fmt.Sprintf("%s/crl", mountPoint)
+	return getParsedCrlAtPath(t, client, path)
 }
 
-func parseCrlPemBytes(t *testing.T, crlPem []byte) pkix.TBSCertificateList {
+func parseCrlPemBytes(t *testing.T, crlPem []byte) *x509.RevocationList {
 	t.Helper()
 
-	certList, err := x509.ParseCRL(crlPem)
+	block, _ := pem.Decode(crlPem)
+	if block == nil {
+		t.Fatalf("Unable to parse CRL: nil PEM block\n[%v]\n", crlPem)
+	}
+
+	certList, err := x509.ParseRevocationList(block.Bytes)
 	require.NoError(t, err)
-	return certList.TBSCertList
+	return certList
 }
 
-func requireSerialNumberInCRL(t *testing.T, revokeList pkix.TBSCertificateList, serialNum string) bool {
+func requireSerialNumberInCRL(t *testing.T, revokeList *x509.RevocationList, serialNum string) bool {
 	if t != nil {
 		t.Helper()
 	}
 
-	serialsInList := make([]string, 0, len(revokeList.RevokedCertificates))
-	for _, revokeEntry := range revokeList.RevokedCertificates {
+	serialsInList := make([]string, 0, len(revokeList.RevokedCertificateEntries))
+	for _, revokeEntry := range revokeList.RevokedCertificateEntries {
 		formattedSerial := certutil.GetHexFormatted(revokeEntry.SerialNumber.Bytes(), ":")
 		serialsInList = append(serialsInList, formattedSerial)
 		if formattedSerial == serialNum {
@@ -158,22 +152,21 @@ func requireSerialNumberInCRL(t *testing.T, revokeList pkix.TBSCertificateList, 
 	return false
 }
 
-func getParsedCrl(t *testing.T, client *api.Client, mountPoint string) *pkix.CertificateList {
+func getParsedCrl(t *testing.T, client *api.Client, mountPoint string) *x509.RevocationList {
 	t.Helper()
 
-	path := fmt.Sprintf("/v1/%s/crl", mountPoint)
+	path := fmt.Sprintf("%s/crl", mountPoint)
 	return getParsedCrlAtPath(t, client, path)
 }
 
-func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *pkix.CertificateList {
+func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *x509.RevocationList {
 	t.Helper()
 
-	req := client.NewRequest("GET", path)
-	resp, err := client.RawRequest(req)
+	resp, err := client.Logical().ReadRaw(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	crlBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -183,14 +176,14 @@ func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *pkix.Cer
 		t.Fatal("expected CRL in response body")
 	}
 
-	crl, err := x509.ParseDERCRL(crlBytes)
+	crl, err := x509.ParseRevocationList(crlBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return crl
 }
 
-func getParsedCrlFromBackend(t *testing.T, b *backend, s logical.Storage, path string) *pkix.CertificateList {
+func getParsedCrlFromBackend(t *testing.T, b *backend, s logical.Storage, path string) *x509.RevocationList {
 	t.Helper()
 
 	resp, err := CBRead(b, s, path)
@@ -198,7 +191,7 @@ func getParsedCrlFromBackend(t *testing.T, b *backend, s logical.Storage, path s
 		t.Fatal(err)
 	}
 
-	crl, err := x509.ParseDERCRL(resp.Data[logical.HTTPRawBody].([]byte))
+	crl, err := x509.ParseRevocationList(resp.Data[logical.HTTPRawBody].([]byte))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -284,21 +277,7 @@ func requireSuccessNonNilResponse(t *testing.T, resp *logical.Response, err erro
 	require.NotNil(t, resp, msgAndArgs...)
 }
 
-func requireSuccessNilResponse(t *testing.T, resp *logical.Response, err error, msgAndArgs ...interface{}) {
-	t.Helper()
-
-	require.NoError(t, err, msgAndArgs...)
-	if resp.IsError() {
-		errContext := fmt.Sprintf("Expected successful response but got error: %v", resp.Error())
-		require.Falsef(t, resp.IsError(), errContext, msgAndArgs...)
-	}
-	if resp != nil {
-		msg := fmt.Sprintf("expected nil response but got: %v", resp)
-		require.Nilf(t, resp, msg, msgAndArgs...)
-	}
-}
-
-func getCRLNumber(t *testing.T, crl pkix.TBSCertificateList) int {
+func getCRLNumber(t *testing.T, crl *x509.RevocationList) int {
 	t.Helper()
 
 	for _, extension := range crl.Extensions {
@@ -317,7 +296,7 @@ func getCRLNumber(t *testing.T, crl pkix.TBSCertificateList) int {
 	return 0
 }
 
-func getCrlReferenceFromDelta(t *testing.T, crl pkix.TBSCertificateList) int {
+func getCrlReferenceFromDelta(t *testing.T, crl *x509.RevocationList) int {
 	t.Helper()
 
 	for _, extension := range crl.Extensions {
@@ -340,29 +319,28 @@ func getCrlReferenceFromDelta(t *testing.T, crl pkix.TBSCertificateList) int {
 // up for a maxWait duration and gives up if the timeout has been reached. If a negative
 // value for lastSeenCRLNumber is provided, the method will load the current CRL and wait
 // for a newer CRL be generated.
-func waitForUpdatedCrl(t *testing.T, client *api.Client, crlPath string, lastSeenCRLNumber int, maxWait time.Duration) pkix.TBSCertificateList {
+func waitForUpdatedCrl(t *testing.T, client *api.Client, crlPath string, lastSeenCRLNumber int, maxWait time.Duration) *x509.RevocationList {
 	t.Helper()
 
 	newCrl, didTimeOut := waitForUpdatedCrlUntil(t, client, crlPath, lastSeenCRLNumber, maxWait)
 	if didTimeOut {
 		t.Fatalf("Timed out waiting for new CRL rebuild on path %s", crlPath)
 	}
-	return newCrl.TBSCertList
+	return newCrl
 }
 
 // waitForUpdatedCrlUntil is a helper method that will wait for a CRL to be updated up until maxWait duration
 // or give up and return the last CRL it loaded. It will not fail, if it does not see a new CRL within the
 // max duration unlike waitForUpdatedCrl. Returns the last loaded CRL at the provided path and a boolean
 // indicating if we hit maxWait duration or not.
-func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, lastSeenCrlNumber int, maxWait time.Duration) (*pkix.CertificateList, bool) {
+func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, lastSeenCrlNumber int, maxWait time.Duration) (*x509.RevocationList, bool) {
 	t.Helper()
 
 	crl := getParsedCrlAtPath(t, client, crlPath)
-	initialCrlRevision := getCRLNumber(t, crl.TBSCertList)
-	newCrlRevision := initialCrlRevision
+	initialCrlRevision := getCRLNumber(t, crl)
 
 	// Short circuit the fetches if we have a version of the CRL we want
-	if lastSeenCrlNumber > 0 && getCRLNumber(t, crl.TBSCertList) > lastSeenCrlNumber {
+	if lastSeenCrlNumber > 0 && getCRLNumber(t, crl) > lastSeenCrlNumber {
 		return crl, false
 	}
 
@@ -373,34 +351,20 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 
 		if time.Since(start) > maxWait {
 			t.Logf("Timed out waiting for new CRL on path %s after iteration %d, delay: %v",
-				crlPath, iteration, time.Now().Sub(start))
+				crlPath, iteration, time.Since(start))
 			return crl, true
 		}
 
 		crl = getParsedCrlAtPath(t, client, crlPath)
-		newCrlRevision = getCRLNumber(t, crl.TBSCertList)
+		newCrlRevision := getCRLNumber(t, crl)
 		if newCrlRevision > initialCrlRevision {
 			t.Logf("Got new revision of CRL %s from %d to %d after iteration %d, delay %v",
-				crlPath, initialCrlRevision, newCrlRevision, iteration, time.Now().Sub(start))
+				crlPath, initialCrlRevision, newCrlRevision, iteration, time.Since(start))
 			return crl, false
 		}
 
 		time.Sleep(100 * time.Millisecond)
 	}
-}
-
-// A quick CRL to string to provide better test error messages
-func summarizeCrl(t *testing.T, crl pkix.TBSCertificateList) string {
-	version := getCRLNumber(t, crl)
-	serials := []string{}
-	for _, cert := range crl.RevokedCertificates {
-		serials = append(serials, normalizeSerialFromBigInt(cert.SerialNumber))
-	}
-	return fmt.Sprintf("CRL Version: %d\n"+
-		"This Update: %s\n"+
-		"Next Update: %s\n"+
-		"Revoked Serial Count: %d\n"+
-		"Revoked Serials: %v", version, crl.ThisUpdate, crl.NextUpdate, len(serials), serials)
 }
 
 // OCSP helpers
@@ -418,28 +382,4 @@ func requireOcspResponseSignedBy(t *testing.T, ocspResp *ocsp.Response, issuer *
 
 	err := ocspResp.CheckSignatureFrom(issuer)
 	require.NoError(t, err, "Failed signature verification of ocsp response: %w", err)
-}
-
-func performOcspPost(t *testing.T, cert *x509.Certificate, issuerCert *x509.Certificate, client *api.Client, ocspPath string) *ocsp.Response {
-	t.Helper()
-
-	baseClient := client.WithNamespace("")
-
-	ocspReq := generateRequest(t, crypto.SHA256, cert, issuerCert)
-	ocspPostReq := baseClient.NewRequest(http2.MethodPost, ocspPath)
-	ocspPostReq.Headers.Set("Content-Type", "application/ocsp-request")
-	ocspPostReq.BodyBytes = ocspReq
-	rawResp, err := baseClient.RawRequest(ocspPostReq)
-	require.NoError(t, err, "failed sending ocsp post request")
-
-	require.Equal(t, 200, rawResp.StatusCode)
-	require.Equal(t, ocspResponseContentType, rawResp.Header.Get("Content-Type"))
-	bodyReader := rawResp.Body
-	respDer, err := io.ReadAll(bodyReader)
-	bodyReader.Close()
-	require.NoError(t, err, "failed reading response body")
-
-	ocspResp, err := ocsp.ParseResponse(respDer, issuerCert)
-	require.NoError(t, err, "parsing ocsp get response")
-	return ocspResp
 }

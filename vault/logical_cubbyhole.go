@@ -19,20 +19,18 @@ import (
 
 // CubbyholeBackendFactory constructs a new cubbyhole backend
 func CubbyholeBackendFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
+	if conf == nil {
+		return nil, errors.New("configuration passed into backend is nil")
+	}
+
 	b := &CubbyholeBackend{}
 	b.Backend = &framework.Backend{
 		Help:           strings.TrimSpace(cubbyholeHelp),
 		RunningVersion: versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
+		Paths:          b.paths(),
 	}
 
-	b.Backend.Paths = append(b.Backend.Paths, b.paths()...)
-
-	if conf == nil {
-		return nil, errors.New("configuration passed into backend is nil")
-	}
-	b.Backend.Setup(ctx, conf)
-
-	return b, nil
+	return b, b.Setup(ctx, conf)
 }
 
 // CubbyholeBackend is used for storing secrets directly into the physical
@@ -42,8 +40,7 @@ func CubbyholeBackendFactory(ctx context.Context, conf *logical.BackendConfig) (
 type CubbyholeBackend struct {
 	*framework.Backend
 
-	saltUUID    string
-	storageView logical.Storage
+	saltUUID string
 }
 
 func (b *CubbyholeBackend) paths() []*framework.Path {

@@ -20,7 +20,7 @@ in persistent storage, you cannot encrypt this key in transit.
 To help address this problem, OpenBao includes a feature called _response
 wrapping_. When requested, OpenBao can take the response it would have sent to an
 HTTP client and instead insert it into the
-[`cubbyhole`](/docs/secrets/cubbyhole) of a single-use token,
+[`cubbyhole`](../secrets/cubbyhole.mdx) of a single-use token,
 returning that single-use token instead.
 
 Logically speaking, the response is
@@ -129,7 +129,7 @@ If a client requests wrapping:
 5. The new response is returned to the caller
 
 Note that policies can control minimum/maximum wrapping TTLs; see the [policies
-concepts page](/docs/concepts/policies) for
+concepts page](policies.mdx) for
 more information.
 
 ## Response-Wrapping token validation

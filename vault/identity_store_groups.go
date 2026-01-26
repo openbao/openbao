@@ -6,9 +6,10 @@ package vault
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
+	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
@@ -213,7 +214,7 @@ func (i *IdentityStore) pathGroupIDUpdate() framework.OperationFunc {
 		i.groupLock.Lock()
 		defer i.groupLock.Unlock()
 
-		group, err := i.MemDBGroupByID(groupID, true)
+		group, err := i.MemDBGroupByID(ctx, groupID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -253,10 +254,10 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 	// Update the policies if supplied
 	policiesRaw, ok := d.GetOk("policies")
 	if ok {
-		group.Policies = strutil.RemoveDuplicatesStable(policiesRaw.([]string), true)
+		group.Policies = strutil.RemoveDuplicates(policiesRaw.([]string), true /* lowercase */)
 	}
 
-	if strutil.StrListContains(group.Policies, "root") {
+	if slices.Contains(group.Policies, "root") {
 		return logical.ErrorResponse("policies cannot contain root"), nil
 	}
 
@@ -264,7 +265,7 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 	if ok {
 		groupType := groupTypeRaw.(string)
 		if group.Type != "" && groupType != group.Type {
-			return logical.ErrorResponse(fmt.Sprintf("group type cannot be changed")), nil
+			return logical.ErrorResponse("group type cannot be changed"), nil
 		}
 
 		group.Type = groupType
@@ -276,7 +277,7 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 	}
 
 	if group.Type != groupTypeInternal && group.Type != groupTypeExternal {
-		return logical.ErrorResponse(fmt.Sprintf("invalid group type %q", group.Type)), nil
+		return logical.ErrorResponse("invalid group type %q", group.Type), nil
 	}
 
 	// Get the name
@@ -302,7 +303,7 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 
 	metadata, ok, err := d.GetOkErr("metadata")
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("failed to parse metadata: %v", err)), nil
+		return logical.ErrorResponse("failed to parse metadata: %v", err), nil
 	}
 	if ok {
 		group.Metadata = metadata.(map[string]string)
@@ -354,7 +355,7 @@ func (i *IdentityStore) pathGroupIDRead() framework.OperationFunc {
 			return logical.ErrorResponse("empty group id"), nil
 		}
 
-		group, err := i.MemDBGroupByID(groupID, false)
+		group, err := i.MemDBGroupByID(ctx, groupID, false)
 		if err != nil {
 			return nil, err
 		}
@@ -405,8 +406,8 @@ func (i *IdentityStore) handleGroupReadCommon(ctx context.Context, group *identi
 	respData["member_entity_ids"] = group.MemberEntityIDs
 	respData["parent_group_ids"] = group.ParentGroupIDs
 	respData["metadata"] = group.Metadata
-	respData["creation_time"] = ptypes.TimestampString(group.CreationTime)
-	respData["last_update_time"] = ptypes.TimestampString(group.LastUpdateTime)
+	respData["creation_time"] = group.CreationTime.AsTime().Format(time.RFC3339Nano)
+	respData["last_update_time"] = group.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 	respData["modify_index"] = group.ModifyIndex
 	respData["type"] = group.Type
 	respData["namespace_id"] = group.NamespaceID
@@ -419,8 +420,8 @@ func (i *IdentityStore) handleGroupReadCommon(ctx context.Context, group *identi
 		aliasMap["metadata"] = group.Alias.Metadata
 		aliasMap["name"] = group.Alias.Name
 		aliasMap["merged_from_canonical_ids"] = group.Alias.MergedFromCanonicalIDs
-		aliasMap["creation_time"] = ptypes.TimestampString(group.Alias.CreationTime)
-		aliasMap["last_update_time"] = ptypes.TimestampString(group.Alias.LastUpdateTime)
+		aliasMap["creation_time"] = group.Alias.CreationTime.AsTime().Format(time.RFC3339Nano)
+		aliasMap["last_update_time"] = group.Alias.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 
 		if mountValidationResp := i.router.ValidateMountByAccessor(group.Alias.MountAccessor); mountValidationResp != nil {
 			aliasMap["mount_path"] = mountValidationResp.MountPath
@@ -431,7 +432,7 @@ func (i *IdentityStore) handleGroupReadCommon(ctx context.Context, group *identi
 	respData["alias"] = aliasMap
 
 	var memberGroupIDs []string
-	memberGroups, err := i.MemDBGroupsByParentGroupID(group.ID, false)
+	memberGroups, err := i.MemDBGroupsByParentGroupID(ctx, group.ID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -441,9 +442,7 @@ func (i *IdentityStore) handleGroupReadCommon(ctx context.Context, group *identi
 
 	respData["member_group_ids"] = memberGroupIDs
 
-	return &logical.Response{
-		Data: respData,
-	}, nil
+	return &logical.Response{Data: respData}, nil
 }
 
 func (i *IdentityStore) pathGroupIDDelete() framework.OperationFunc {
@@ -474,7 +473,7 @@ func (i *IdentityStore) handleGroupDeleteCommon(ctx context.Context, key string,
 	defer i.groupLock.Unlock()
 
 	// Create a MemDB transaction to delete group
-	txn := i.db.Txn(true)
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 
 	var group *identity.Group
@@ -518,7 +517,7 @@ func (i *IdentityStore) handleGroupDeleteCommon(ctx context.Context, key string,
 	}
 
 	// Delete the group from storage
-	err = i.groupPacker.DeleteItem(ctx, group.ID)
+	err = i.groupPacker(ctx).DeleteItem(ctx, group.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +548,7 @@ func (i *IdentityStore) handleGroupListCommon(ctx context.Context, byID bool) (*
 		return nil, err
 	}
 
-	txn := i.db.Txn(false)
+	txn := i.db(ctx).Txn(false)
 
 	iter, err := txn.Get(groupsTable, "namespace_id", ns.ID)
 	if err != nil {

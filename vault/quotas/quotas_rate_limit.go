@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/sdk/v2/helper/cryptoutil"
@@ -76,6 +76,10 @@ type RateLimitQuota struct {
 	// reaches the rate limit.
 	BlockInterval time.Duration `json:"block_interval"`
 
+	// Inheritable defines a quota on a namespace to be inheritable by child
+	// namespaces.
+	Inheritable bool `json:"inheritable"`
+
 	lock                *sync.RWMutex
 	store               limiter.Store
 	logger              log.Logger
@@ -92,7 +96,7 @@ type RateLimitQuota struct {
 // provided, which will default to 1s when initialized. An optional block
 // duration may be provided, where if set, when a client reaches the rate limit,
 // subsequent requests will fail until the block duration has passed.
-func NewRateLimitQuota(name, nsPath, mountPath, pathSuffix, role string, rate float64, interval, block time.Duration) *RateLimitQuota {
+func NewRateLimitQuota(name, nsPath, mountPath, pathSuffix, role string, rate float64, interval, block time.Duration, inheritable bool) *RateLimitQuota {
 	id, err := uuid.GenerateUUID()
 	if err != nil {
 		// Fall back to generating with a hash of the name, later in initialize
@@ -109,6 +113,7 @@ func NewRateLimitQuota(name, nsPath, mountPath, pathSuffix, role string, rate fl
 		Rate:          rate,
 		Interval:      interval,
 		BlockInterval: block,
+		Inheritable:   inheritable,
 		purgeInterval: DefaultRateLimitPurgeInterval,
 		staleAge:      DefaultRateLimitStaleAge,
 	}
@@ -126,6 +131,7 @@ func (q *RateLimitQuota) Clone() Quota {
 		BlockInterval: q.BlockInterval,
 		Rate:          q.Rate,
 		Interval:      q.Interval,
+		Inheritable:   q.Inheritable,
 	}
 	return rlq
 }
@@ -276,6 +282,10 @@ func (rlq *RateLimitQuota) QuotaName() string {
 	return rlq.Name
 }
 
+func (rlq *RateLimitQuota) IsInheritable() bool {
+	return rlq.Inheritable
+}
+
 // allow decides if the request is allowed by the quota. An error will be
 // returned if the request ID or address is empty. If the path is exempt, the
 // quota will not be evaluated. Otherwise, the client rate limiter is retrieved
@@ -294,7 +304,7 @@ func (rlq *RateLimitQuota) allow(ctx context.Context, req *Request) (Response, e
 	defer func() {
 		if !resp.Allowed {
 			resp.Headers[httplimit.HeaderRetryAfter] = retryAfter
-			rlq.metricSink.IncrCounterWithLabels([]string{"quota", "rate_limit", "violation"}, 1, []metrics.Label{{"name", rlq.Name}})
+			rlq.metricSink.IncrCounterWithLabels([]string{"quota", "rate_limit", "violation"}, 1, []metrics.Label{{Name: "name", Value: rlq.Name}})
 		}
 	}()
 

@@ -9,13 +9,13 @@ import (
 	"reflect"
 	"unicode/utf8"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/hcl"
-	"github.com/mitchellh/mapstructure"
 )
 
 // ParsePolicy is a convenience function for parsing HCL into a StringGenerator.
 // See PolicyParser.ParsePolicy for details.
-func ParsePolicy(raw string) (gen StringGenerator, err error) {
+func ParsePolicy(raw string) (gen *StringGenerator, err error) {
 	parser := PolicyParser{
 		RuleRegistry: Registry{
 			Rules: defaultRuleNameMapping,
@@ -26,7 +26,7 @@ func ParsePolicy(raw string) (gen StringGenerator, err error) {
 
 // ParsePolicyBytes is a convenience function for parsing HCL into a StringGenerator.
 // See PolicyParser.ParsePolicy for details.
-func ParsePolicyBytes(raw []byte) (gen StringGenerator, err error) {
+func ParsePolicyBytes(raw []byte) (gen *StringGenerator, err error) {
 	return ParsePolicy(string(raw))
 }
 
@@ -37,7 +37,7 @@ type PolicyParser struct {
 }
 
 // ParsePolicy parses the provided HCL into a StringGenerator.
-func (p PolicyParser) ParsePolicy(raw string) (sg StringGenerator, err error) {
+func (p PolicyParser) ParsePolicy(raw string) (sg *StringGenerator, err error) {
 	rawData := map[string]interface{}{}
 	err = hcl.Decode(&rawData, raw)
 	if err != nil {
@@ -45,39 +45,39 @@ func (p PolicyParser) ParsePolicy(raw string) (sg StringGenerator, err error) {
 	}
 
 	// Decode the top level items
-	gen := StringGenerator{}
+	gen := &StringGenerator{}
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		Result:     &gen,
+		Result:     gen,
 		DecodeHook: stringToRunesFunc,
 	})
 	if err != nil {
-		return sg, fmt.Errorf("unable to decode configuration: %w", err)
+		return nil, fmt.Errorf("unable to decode configuration: %w", err)
 	}
 
 	err = decoder.Decode(rawData)
 	if err != nil {
-		return sg, fmt.Errorf("failed to decode configuration: %w", err)
+		return nil, fmt.Errorf("failed to decode configuration: %w", err)
 	}
 
 	// Decode & parse rules
 	rawRules, err := getMapSlice(rawData, "rule")
 	if err != nil {
-		return sg, fmt.Errorf("unable to retrieve rules: %w", err)
+		return nil, fmt.Errorf("unable to retrieve rules: %w", err)
 	}
 
 	rules, err := parseRules(p.RuleRegistry, rawRules)
 	if err != nil {
-		return sg, fmt.Errorf("unable to parse rules: %w", err)
+		return nil, fmt.Errorf("unable to parse rules: %w", err)
 	}
 
-	gen = StringGenerator{
+	gen = &StringGenerator{
 		Length: gen.Length,
 		Rules:  rules,
 	}
 
 	err = gen.validateConfig()
 	if err != nil {
-		return sg, err
+		return nil, err
 	}
 
 	return gen, nil

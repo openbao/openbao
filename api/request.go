@@ -77,13 +77,13 @@ func (r *Request) ToHTTP() (*http.Request, error) {
 		// No body
 
 	case r.BodyBytes != nil:
-		req.Request.Body = io.NopCloser(bytes.NewReader(r.BodyBytes))
+		req.Body = io.NopCloser(bytes.NewReader(r.BodyBytes))
 
 	default:
 		if c, ok := r.Body.(io.ReadCloser); ok {
-			req.Request.Body = c
+			req.Body = c
 		} else {
-			req.Request.Body = io.NopCloser(r.Body)
+			req.Body = io.NopCloser(r.Body)
 		}
 	}
 
@@ -135,12 +135,12 @@ func (r *Request) toRetryableHTTP() (*retryablehttp.Request, error) {
 	}
 
 	if len(r.WrapTTL) != 0 {
-		req.Header.Set("X-Vault-Wrap-TTL", r.WrapTTL)
+		req.Header.Set(WrapTTLHeaderName, r.WrapTTL)
 	}
 
 	if len(r.MFAHeaderVals) != 0 {
 		for _, mfaHeaderVal := range r.MFAHeaderVals {
-			req.Header.Add("X-Vault-MFA", mfaHeaderVal)
+			req.Header.Add(MFAHeaderName, mfaHeaderVal)
 		}
 	}
 

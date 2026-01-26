@@ -18,14 +18,15 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/awskms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/kmip/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2"
+	statickms "github.com/openbao/go-kms-wrapping/wrappers/static/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -131,7 +132,7 @@ func parseKMS(result *[]*KMS, list *ast.ObjectList, blockName string, maxKMS int
 
 func ParseKMSes(d string) ([]*KMS, error) {
 	// Parse!
-	obj, err := hcl.Parse(d)
+	obj, err := hclutil.ParseConfig([]byte(d))
 	if err != nil {
 		return nil, err
 	}
@@ -174,9 +175,6 @@ func configureWrapper(configKMS *KMS, infoKeys *[]string, info *map[string]strin
 	case wrapping.WrapperTypeShamir:
 		return nil, nil
 
-	case wrapping.WrapperTypeAead:
-		wrapper, kmsInfo, err = GetAEADKMSFunc(configKMS, opts...)
-
 	case wrapping.WrapperTypeAliCloudKms:
 		wrapper, kmsInfo, err = GetAliCloudKMSFunc(configKMS, opts...)
 
@@ -204,8 +202,11 @@ func configureWrapper(configKMS *KMS, infoKeys *[]string, info *map[string]strin
 	case wrapping.WrapperTypeKmip:
 		wrapper, kmsInfo, err = GetKmipKMSFunc(configKMS, opts...)
 
+	case wrapping.WrapperTypeStatic:
+		wrapper, kmsInfo, err = GetStaticKMSFunc(configKMS, opts...)
+
 	default:
-		return nil, fmt.Errorf("Unknown KMS type %q", configKMS.Type)
+		return nil, fmt.Errorf("unknown KMS type %q", configKMS.Type)
 	}
 
 	if err != nil {
@@ -220,23 +221,6 @@ func configureWrapper(configKMS *KMS, infoKeys *[]string, info *map[string]strin
 	}
 
 	return wrapper, nil
-}
-
-func GetAEADKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
-	wrapper := aeadwrapper.NewWrapper()
-	wrapperInfo, err := wrapper.SetConfig(context.Background(), append(opts, wrapping.WithConfigMap(kms.Config))...)
-	if err != nil {
-		return nil, nil, err
-	}
-	info := make(map[string]string)
-	if wrapperInfo != nil {
-		str := "AEAD Type"
-		if len(kms.Purpose) > 0 {
-			str = fmt.Sprintf("%v %s", kms.Purpose, str)
-		}
-		info[str] = wrapperInfo.Metadata["aead_type"]
-	}
-	return wrapper, info, nil
 }
 
 func GetAliCloudKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
@@ -377,6 +361,25 @@ func GetKmipKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[st
 		if serverName := wrapperInfo.Metadata["server_name"]; serverName != "" {
 			info["KMIP Server Name"] = serverName
 		}
+	}
+	return wrapper, info, nil
+}
+
+func GetStaticKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
+	wrapper := statickms.NewWrapper()
+	wrapperInfo, err := wrapper.SetConfig(context.Background(), append(opts, wrapping.WithConfigMap(kms.Config))...)
+	if err != nil {
+		// If the error is any other than logical.KeyNotFoundError, return the error
+		if !errwrap.ContainsType(err, new(logical.KeyNotFoundError)) {
+			return nil, nil, err
+		}
+	}
+	info := make(map[string]string)
+	if wrapperInfo != nil {
+		if prev, ok := wrapperInfo.Metadata["previous_key_id"]; ok {
+			info["Static KMS Previous Key ID"] = prev
+		}
+		info["Static KMS Key ID"] = wrapperInfo.Metadata["current_key_id"]
 	}
 	return wrapper, info, nil
 }

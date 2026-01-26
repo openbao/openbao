@@ -4,9 +4,17 @@ description: The `/sys/rekey` endpoints are used to rekey the unseal keys for Op
 
 # `/sys/rekey`
 
+:::warning
+
+Note: As of v2.4.0 usage of these endpoints is [deprecated](/docs/deprecation/unauthed-rekey)
+and will be disabled by default. For the new authenticated version of the rekey
+endpoints, please see [rotation endpoints](rotate/index.mdx).
+
+:::
+
 The `/sys/rekey` endpoints are used to rekey the unseal keys for OpenBao.
 
-On seals that support stored keys (e.g. HSM PKCS11), the recovery key share(s)
+On seals that support stored keys (e.g. HSM PKCS#11), the recovery key share(s)
 can be provided to rekey the root key since no unseal keys are available. The
 secret shares, secret threshold, and stored shares parameters must be set to 1.
 Upon successful rekey, no split unseal key shares are returned.
@@ -23,7 +31,6 @@ This endpoint reads the configuration and progress of the current rekey attempt.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     http://127.0.0.1:8200/v1/sys/rekey/init
 ```
 
@@ -105,7 +112,6 @@ and starting a new rekey, which will also provide a new nonce.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request POST \
     --data @payload.json \
     http://127.0.0.1:8200/v1/sys/rekey/init
@@ -126,7 +132,6 @@ during the verification flow, the current unseal keys remain valid.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request DELETE \
     http://127.0.0.1:8200/v1/sys/rekey/init
 ```
@@ -216,7 +221,6 @@ for the verification operation.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request POST \
     --data @payload.json \
     http://127.0.0.1:8200/v1/sys/rekey/update
@@ -254,7 +258,6 @@ verification attempt.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     http://127.0.0.1:8200/v1/sys/rekey/verify
 ```
 
@@ -290,7 +293,6 @@ nonce.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request DELETE \
     http://127.0.0.1:8200/v1/sys/rekey/verify
 ```
@@ -343,7 +345,6 @@ below; otherwise the response will be the same as the `GET` method against
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request POST \
     --data @payload.json \
     http://127.0.0.1:8200/v1/sys/rekey/verify

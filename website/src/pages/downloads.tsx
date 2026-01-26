@@ -204,30 +204,45 @@ const Docker = ({ version, name }) => {
     return (
         <Tabs>
             <TabItem value="quay" label="quay.io">
+                <p>Alpine Image Distribution</p>
                 <CodeBlock language="shell">
                     {`docker pull quay.io/openbao/openbao:${version.slice(1)}`}
                 </CodeBlock>
-                <p>or</p>
+                <p>Red Hat Universal Base Image (UBI) Distribution</p>
                 <CodeBlock language="shell">
                     {`docker pull quay.io/openbao/openbao-ubi:${version.slice(1)}`}
                 </CodeBlock>
+                <p>HSM Distribution</p>
+                <CodeBlock language="shell">
+                    {`docker pull quay.io/openbao/openbao-hsm-ubi:${version.slice(1)}`}
+                </CodeBlock>
             </TabItem>
             <TabItem value="ghcr" label="ghcr.io">
+                <p>Alpine Image Distribution</p>
                 <CodeBlock language="shell">
                     {`docker pull ghcr.io/openbao/openbao:${version.slice(1)}`}
                 </CodeBlock>
-                <p>or</p>
+                <p>Red Hat Universal Base Image (UBI) Distribution</p>
                 <CodeBlock language="shell">
                     {`docker pull ghcr.io/openbao/openbao-ubi:${version.slice(1)}`}
                 </CodeBlock>
+                <p>HSM Distribution</p>
+                <CodeBlock language="shell">
+                    {`docker pull ghcr.io/openbao/openbao-hsm-ubi:${version.slice(1)}`}
+                </CodeBlock>
             </TabItem>
             <TabItem value="docker" label="docker.io">
+                <p>Alpine Image Distribution</p>
                 <CodeBlock language="shell">
                     {`docker pull docker.io/openbao/openbao:${version.slice(1)}`}
                 </CodeBlock>
-                <p>or</p>
+                <p>Red Hat Universal Base Image (UBI) Distribution</p>
                 <CodeBlock language="shell">
                     {`docker pull docker.io/openbao/openbao-ubi:${version.slice(1)}`}
+                </CodeBlock>
+                <p>HSM Distribution</p>
+                <CodeBlock language="shell">
+                    {`docker pull docker.io/openbao/openbao-hsm-ubi:${version.slice(1)}`}
                 </CodeBlock>
             </TabItem>
         </Tabs>

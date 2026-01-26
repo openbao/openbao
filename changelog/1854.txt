@@ -1,0 +1,9 @@
+```release-note:improvement
+auth/jwt: Add type checking to role
+```
+```release-note:bug
+auth/jwt: Fix ordering of variable declarations in CEL program roles
+```
+```release-note:bug
+secrets/pki: Fix ordering of variable declarations in CEL program roles
+```

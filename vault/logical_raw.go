@@ -157,7 +157,7 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 			return handleErrorNoReadOnlyForward(err)
 		}
 		if entry == nil {
-			err := fmt.Sprintf("cannot figure out compression type because entry does not exist")
+			err := "cannot figure out compression type because entry does not exist"
 			return logical.ErrorResponse(err), logical.ErrInvalidRequest
 		}
 
@@ -167,7 +167,7 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		// Ensure compression_type matches existing entries' compression
 		// except allow writing non-compressed data over compressed data
 		if existingCompressionType != compressionType && compressionType != "" {
-			err := fmt.Sprintf("the entry uses a different compression scheme then compression_type")
+			err := "the entry uses a different compression scheme then compression_type"
 			return logical.ErrorResponse(err), logical.ErrInvalidRequest
 		}
 
@@ -179,27 +179,15 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 	if compressionType != "" {
 		var config *compressutil.CompressionConfig
 		switch compressionType {
-		case compressutil.CompressionTypeLZ4:
-			config = &compressutil.CompressionConfig{
-				Type: compressutil.CompressionTypeLZ4,
-			}
-			break
-		case compressutil.CompressionTypeLZW:
-			config = &compressutil.CompressionConfig{
-				Type: compressutil.CompressionTypeLZW,
-			}
-			break
 		case compressutil.CompressionTypeGzip:
 			config = &compressutil.CompressionConfig{
 				Type:                 compressutil.CompressionTypeGzip,
 				GzipCompressionLevel: gzip.BestCompression,
 			}
-			break
 		case compressutil.CompressionTypeSnappy:
 			config = &compressutil.CompressionConfig{
 				Type: compressutil.CompressionTypeSnappy,
 			}
-			break
 		default:
 			err := fmt.Sprintf("invalid compression type %q", compressionType)
 			return logical.ErrorResponse(err), logical.ErrInvalidRequest

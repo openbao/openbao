@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -223,9 +224,9 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 		Name: "testentityname",
 	}
 
-	entity.BucketKey = is.entityPacker.BucketKey(entity.ID)
+	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
 
-	txn := is.db.Txn(true)
+	txn := is.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
 	if err != nil {
@@ -243,10 +244,10 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 			"testkey1": "testmetadatavalue1",
 			"testkey2": "testmetadatavalue2",
 		},
-		LocalBucketKey: is.localAliasPacker.BucketKey(entity.ID),
+		LocalBucketKey: is.localAliasPacker(ctx).BucketKey(entity.ID),
 	}
 
-	txn = is.db.Txn(true)
+	txn = is.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias, false)
 	if err != nil {
@@ -254,7 +255,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	}
 	txn.Commit()
 
-	aliasFetched, err := is.MemDBAliasByID("testaliasid", false, false)
+	aliasFetched, err := is.MemDBAliasByID(ctx, "testaliasid", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +264,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 		t.Fatalf("bad: mismatched aliases; expected: %#v\n actual: %#v\n", alias, aliasFetched)
 	}
 
-	aliasFetched, err = is.MemDBAliasByFactors(validateMountResp.MountAccessor, "testaliasname", false, false)
+	aliasFetched, err = is.MemDBAliasByFactors(ctx, validateMountResp.MountAccessor, "testaliasname", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,10 +283,10 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 			"testkey1": "testmetadatavalue1",
 			"testkey3": "testmetadatavalue3",
 		},
-		LocalBucketKey: is.localAliasPacker.BucketKey(entity.ID),
+		LocalBucketKey: is.localAliasPacker(ctx).BucketKey(entity.ID),
 	}
 
-	txn = is.db.Txn(true)
+	txn = is.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias2, false)
 	if err != nil {
@@ -297,7 +298,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	}
 	txn.Commit()
 
-	aliasFetched, err = is.MemDBAliasByID("testaliasid", false, false)
+	aliasFetched, err = is.MemDBAliasByID(ctx, "testaliasid", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -654,11 +655,24 @@ func TestIdentityStore_AliasMove_DuplicateAccessor(t *testing.T) {
 // Test that the alias cannot be changed to a mount for which
 // the entity already has an alias
 func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
+	ctx := namespace.RootContext(context.Background())
+
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
+
+	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor, core)
+}
+
+func TestIdentityStore_AliasUpdate_DuplicateAccessor_UnsafeShared(t *testing.T) {
+	ctx := namespace.RootContext(context.Background())
+
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
+
+	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor, core)
+}
+
+func testIdentityStoreAliasUpdateDuplicateAccessor(t *testing.T, ctx context.Context, is *IdentityStore, approleAccessor string, upAccessor string, core *Core) {
 	var err error
 	var resp *logical.Response
-	ctx := namespace.RootContext(nil)
-
-	is, ghAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t)
 
 	// Create 1 entity and 2 aliases on it, one for each mount
 	resp, err = is.HandleRequest(ctx, &logical.Request{
@@ -675,7 +689,7 @@ func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
 
 	alias1Data := map[string]interface{}{
 		"name":           "testaliasname1",
-		"mount_accessor": ghAccessor,
+		"mount_accessor": approleAccessor,
 		"canonical_id":   entityID,
 	}
 
@@ -708,7 +722,7 @@ func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
 
 	// Attempt to update the userpass mount to point to the github mount
 	updateData := map[string]interface{}{
-		"mount_accessor": ghAccessor,
+		"mount_accessor": approleAccessor,
 	}
 
 	aliasReq.Data = updateData

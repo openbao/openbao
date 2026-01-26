@@ -1,0 +1,11 @@
+```release-note:bug
+command: `operator diagnose` certificate expiration warnings now contain the
+correct time to expiration.
+```
+
+```release-note:improvement
+command: `operator diagnose` certificate expiration warnings are now raised
+if less than 15% of the certificate's validity period remains. Previously, any
+certificate that was set to expire in the next 30 days would be flagged. This
+made little sense for short-lived certificates.
+```

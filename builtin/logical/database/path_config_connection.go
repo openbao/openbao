@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"sort"
 
-	"github.com/fatih/structs"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/go-version"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -30,16 +30,16 @@ var (
 // DatabaseConfig is used by the Factory function to configure a Database
 // object.
 type DatabaseConfig struct {
-	PluginName    string `json:"plugin_name" structs:"plugin_name" mapstructure:"plugin_name"`
-	PluginVersion string `json:"plugin_version" structs:"plugin_version" mapstructure:"plugin_version"`
+	PluginName    string `json:"plugin_name" mapstructure:"plugin_name"`
+	PluginVersion string `json:"plugin_version" mapstructure:"plugin_version"`
 	// ConnectionDetails stores the database specific connection settings needed
 	// by each database type.
-	ConnectionDetails map[string]interface{} `json:"connection_details" structs:"connection_details" mapstructure:"connection_details"`
-	AllowedRoles      []string               `json:"allowed_roles" structs:"allowed_roles" mapstructure:"allowed_roles"`
+	ConnectionDetails map[string]interface{} `json:"connection_details" mapstructure:"connection_details"`
+	AllowedRoles      []string               `json:"allowed_roles" mapstructure:"allowed_roles"`
 
-	RootCredentialsRotateStatements []string `json:"root_credentials_rotate_statements" structs:"root_credentials_rotate_statements" mapstructure:"root_credentials_rotate_statements"`
+	RootCredentialsRotateStatements []string `json:"root_credentials_rotate_statements" mapstructure:"root_credentials_rotate_statements"`
 
-	PasswordPolicy string `json:"password_policy" structs:"password_policy" mapstructure:"password_policy"`
+	PasswordPolicy string `json:"password_policy" mapstructure:"password_policy"`
 }
 
 func (c *DatabaseConfig) SupportsCredentialType(credentialType v5.CredentialType) bool {
@@ -155,8 +155,8 @@ func pathConfigurePluginConnection(b *databaseBackend) *framework.Path {
 			"root_rotation_statements": {
 				Type: framework.TypeStringSlice,
 				Description: `Specifies the database statements to be executed
-				to rotate the root user's credentials. See the plugin's API 
-				page for more information on support and formatting for this 
+				to rotate the root user's credentials. See the plugin's API
+				page for more information on support and formatting for this
 				parameter.`,
 			},
 			"password_policy": {
@@ -221,7 +221,7 @@ func (b *databaseBackend) connectionExistenceCheck() framework.ExistenceFunc {
 
 func pathListPluginConnection(b *databaseBackend) *framework.Path {
 	return &framework.Path{
-		Pattern: fmt.Sprintf("config/?$"),
+		Pattern: "config/?$",
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixDatabase,
@@ -288,7 +288,7 @@ func (b *databaseBackend) connectionReadHandler() framework.OperationFunc {
 		delete(config.ConnectionDetails, "private_key")
 
 		return &logical.Response{
-			Data: structs.New(config).Map(),
+			Data: structtomap.Map(config),
 		}, nil
 	}
 }
@@ -542,7 +542,7 @@ const pathConfigConnectionHelpDesc = `
 This path configures the connection details used to connect to a particular
 database. This path runs the provided plugin name and passes the configured
 connection details to the plugin. See the documentation for the plugin specified
-for a full list of accepted connection details. 
+for a full list of accepted connection details.
 
 In addition to the database specific connection details, this endpoint also
 accepts:

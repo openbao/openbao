@@ -1,0 +1,86 @@
+---
+sidebar_label: Overview
+description: >- 
+  The `/sys/rotate` endpoints are used to rotate unseal, root, backend encryption keys.
+---
+
+# `/sys/rotate`
+
+### Encryption key rotation
+
+The `/sys/rotate/keyring` endpoint is used to rotate the encryption key. It is
+also possible to configure automatic encryption key rotation using
+`/sys/rotate/keyring/config` endpoint.
+
+### Rotate unseal/recovery keys
+
+The `/sys/rotate/root` endpoints are used to rotate the root key for OpenBao,
+and the unseal key shares when using Shamir's manual unseal mechanism.
+
+On seals that support stored keys (e.g. HSM PKCS#11), the recovery key share(s)
+can be provided to rotate the root key since no unseal keys are available. The
+secret shares, secret threshold, and stored shares parameters must be set to 1.
+Upon successful rotation, no split unseal key shares are returned.
+
+The `/sys/rotate/recovery` endpoints are used to rotate the recovery keys for
+OpenBao. These endpoints only apply to seals that support recovery keys.
+
+Depending on the variable in the request path (`root` or `recovery`) 
+operation is performed for the root or recovery keys.
+
+#### Rotation Process
+
+Rotation normally is a two- or three-step process:
+
+1. The [`.../init`](init.mdx) endpoint is called with rotation parameters,
+   yielding a nonce to be used on all subsequent operations.
+2. The [`.../update`](update.mdx) endpoint is called by a sufficient quorum,
+   providing an existing share to prove the validity of the operation.
+   - When the last necessary share has been provided, the new key shares will
+     be returned on the `update` call. These should be distributed to relevant
+     parties. When `require_verification=false` (default), the rotation is
+     finalized and the state reset.
+3. Optionally when `require_verification=true` is set, each _new_ share must
+   be provided to this endpoint separately. When the last necessary share has
+   been provided, the rotation is finalized and the state reset.
+
+The rotation may also be [cancelled](init.mdx#cancel-rotation) before it is
+finished. Attempting to start a new rotation while an existing rotation is
+happening will cause an error.
+
+When PGP keys are provided as encryption targets for key shares, the
+[`.../backup`](backup.mdx) endpoint can be called after rotation has been
+completed to preserve the current (encrypted) key shares.
+
+As a special case, when using [declarative self-initialization with an
+auto-unseal mechanism](/docs/configuration/self-init/), no recovery
+shares are provisioned by default. In this case, `sys/rotate/recovery/init`
+will immediately yield new key shares aligning with the specified
+configuration, as no existing key shares exist.
+
+### Progress rotation
+
+`/sys/rotate/(root|recovery)/update` endpoint is used to enter a single
+key share to progress the rotation of the OpenBao. If the threshold number
+of key shares is reached, OpenBao will complete the rotation.
+
+### Rotation verification
+
+`/sys/rotate/(root|recovery)/verify` endpoint reads the configuration and
+progress of the current rotation verification attempt.
+
+### Backup rotated keys
+
+`/sys/rotate/(root|recovery)/backup` endpoint returns the backup copy of
+PGP-encrypted unseal keys. The returned value is the nonce of the rotate
+operation and a map of PGP key fingerprint to hex-encoded PGP-encrypted key.
+
+## Supported rotation endpoints
+
+- [Rotate encryption key](keyring.mdx)
+- [Configure automatic encryption key rotation config](keyring-config.mdx)
+- [Rotate root key without providing existing key shares](root.mdx)
+- [Read, initialize or cancel rotation](init.mdx)
+- [Progress rotation](update.mdx)
+- [Read, progress or cancel rotation verification operation](verify.mdx)
+- [Read or delete backed-up rotation keys](backup.mdx)

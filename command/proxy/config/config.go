@@ -23,6 +23,7 @@ import (
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 )
 
 // Config is the configuration for Vault Proxy.
@@ -32,7 +33,7 @@ type Config struct {
 	AutoAuth                  *AutoAuth `hcl:"auto_auth"`
 	ExitAfterAuth             bool      `hcl:"exit_after_auth"`
 	Cache                     *Cache    `hcl:"cache"`
-	APIProxy                  *APIProxy `hcl:"api_proxy""`
+	APIProxy                  *APIProxy `hcl:"api_proxy"`
 	Vault                     *Vault    `hcl:"vault"`
 	DisableIdleConns          []string  `hcl:"disable_idle_connections"`
 	DisableIdleConnsAPIProxy  bool      `hcl:"-"`
@@ -56,8 +57,8 @@ func (c *Config) Prune() {
 	}
 	c.FoundKeys = nil
 	c.UnusedKeys = nil
-	c.SharedConfig.FoundKeys = nil
-	c.SharedConfig.UnusedKeys = nil
+	c.FoundKeys = nil
+	c.UnusedKeys = nil
 	if c.Telemetry != nil {
 		c.Telemetry.FoundKeys = nil
 		c.Telemetry.UnusedKeys = nil
@@ -359,7 +360,7 @@ func LoadConfigFile(path string) (*Config, error) {
 	}
 
 	// Parse!
-	obj, err := hcl.Parse(string(d))
+	obj, err := hclutil.ParseConfig(d)
 	if err != nil {
 		return nil, err
 	}

@@ -14,14 +14,15 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
-	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/crypto/ssh"
 )
@@ -83,7 +84,7 @@ func (b *backend) pathSignIssueCertificateHelper(sc *storageContext, req *logica
 				return nil, err
 			}
 		}
-		parsedPrincipals, err = b.calculateValidPrincipals(data, req, role, defaultPrincipal, role.AllowedUsers, role.AllowedUsersTemplate, strutil.StrListContains)
+		parsedPrincipals, err = b.calculateValidPrincipals(data, req, role, defaultPrincipal, role.AllowedUsers, role.AllowedUsersTemplate, slices.Contains)
 		if err != nil {
 			return logical.ErrorResponse(err.Error()), nil
 		}
@@ -306,7 +307,7 @@ func (b *backend) calculateCriticalOptions(data *framework.FieldData, role *sshR
 		allowedCriticalOptions := strings.Split(role.AllowedCriticalOptions, ",")
 
 		for option := range criticalOptions {
-			if !strutil.StrListContains(allowedCriticalOptions, option) {
+			if !slices.Contains(allowedCriticalOptions, option) {
 				notAllowedOptions = append(notAllowedOptions, option)
 			}
 		}
@@ -333,7 +334,7 @@ func (b *backend) calculateExtensions(data *framework.FieldData, req *logical.Re
 		notAllowed := []string{}
 		allowedExtensions := strings.Split(role.AllowedExtensions, ",")
 		for extensionKey := range extensions {
-			if !strutil.StrListContains(allowedExtensions, extensionKey) {
+			if !slices.Contains(allowedExtensions, extensionKey) {
 				notAllowed = append(notAllowed, extensionKey)
 			}
 		}
@@ -427,7 +428,7 @@ func (b *backend) validateSignedKeyRequirements(publickey ssh.PublicKey, role *s
 				keyBits = k.N.BitLen()
 			case *dsa.PublicKey:
 				keyType = "dsa"
-				keyBits = k.Parameters.P.BitLen()
+				keyBits = k.P.BitLen()
 			case *ecdsa.PublicKey:
 				keyType = "ecdsa"
 				keyBits = k.Curve.Params().BitSize
@@ -544,7 +545,7 @@ func (b *creationBundle) sign() (retCert *ssh.Certificate, retErr error) {
 
 	// Handle the new default algorithm selection process correctly.
 	if algo == DefaultAlgorithmSigner && sshAlgorithmSigner.PublicKey().Type() == ssh.KeyAlgoRSA {
-		algo = ssh.SigAlgoRSASHA2256
+		algo = ssh.KeyAlgoRSASHA256
 	} else if algo == DefaultAlgorithmSigner {
 		algo = ""
 	}

@@ -66,7 +66,7 @@ func (b *backend) pathCredsRead(ctx context.Context, req *logical.Request, d *fr
 		return nil, err
 	}
 	if role == nil {
-		return logical.ErrorResponse(fmt.Sprintf("unknown role: %s", name)), nil
+		return logical.ErrorResponse("unknown role: %s", name), nil
 	}
 
 	config, err := readConfig(ctx, req.Storage)

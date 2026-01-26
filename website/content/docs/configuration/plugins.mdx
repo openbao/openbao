@@ -1,0 +1,221 @@
+---
+sidebar_label: plugin
+description: >-
+  OpenBao server configuration reference for declarative plugin parameters.
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Declarative plugins
+
+OpenBao supports the distribution of plugins in Open Container Initiative (OCI)
+images. Operators can define the desired plugins for their OpenBao cluster
+directly in the server configuration files. On startup, OpenBao will check for
+locally cached binaries, verify their integrity, and only download and extract
+new or updated plugin binaries from the specified OCI images if necessary. This
+approach uses existing container ecosystem tooling and infrastructure for
+robust, secure, and efficient plugin management.
+
+Making use of OCI based plugins provides a number of advantages over manually
+managing the plugin binaries:
+
+  * **Automated Discovery and Installation:** Operators can define the used
+    plugins in code and OpenBao will automatically download and extract them
+    during startup.
+  * **Integrity Verification:**  When extracting plugin binaries from OCI images
+    OpenBao ensures the SHA256 sum of the extracted binary is the same as in the
+    configuration files.
+  * **Version Management:** Distributing new a new version of a plugin just
+    requires an update of the configuration file instead of manually placing the
+    binary on every node.
+  * **Supply Chain Security:** Using OCI registries for plugin distribution
+    allows operators to make use of the registries security features like
+    authentication, vulnerability scanning and immutable storage.
+
+:::info
+
+Even if plugins are not distributed via OCI images, manually downloaded plugins
+can also be registered.
+
+:::
+
+## `plugin`
+
+A `plugin` block defines an OCI-based plugin to download.
+
+```hcl
+plugin "type" "name" {
+  image       = "registry.example.com/org/plugin"
+  version     = "v0.0.0"
+  binary_name = "plugin-binary-name"
+  sha256sum   = "sha256-checksum"
+}
+```
+
+or it specifies a plugin to automatically register that was manually downloaded.
+
+```hcl
+plugin "type" "name" {
+  command     = "plugin"
+  version     = "v0.0.0"
+  binary_name = "plugin-binary-name"
+  sha256sum   = "sha256-checksum"
+  env         = ["MY_ENV=value"]
+  args        = ["-some-argument"]
+}
+
+```
+
+Multiple `plugin` blocks may exist and OCI plugins are downloaded in the order they
+are specified in the configuration file(s). Blocks may share the same `type` and
+`name` but must have different a `version`. This allows for seamless upgrades of
+plugin versions.
+
+### Parameters
+
+- `image` `(string: required)` - OCI image URL including registry and repository. Conflicts with the `command` value. One of `image` or `command` is required.
+
+- `command` `(string: required)` - Command name of the plugin that has been manually downloaded. Conflicts with the `image` value. One of `image` or `command` is required.
+
+- `version` `(string: required)` - The image version or tag.
+
+- `binary_name` `(string: required)` - Name of the plugin binary file within the OCI image.
+
+- `sha256sum` `(string: required)` - Expected SHA256 checksum of the plugin binary. Must be a 64-character hexadecimal string.
+
+- `args` `([]string: optional)` - Any arguments to pass to the running plugin. Only used if `plugin_auto_register=true` is set at the global level.
+
+- `env` `([]string: optional)` - Any environment variables to pass to the running plugin. Only used if `plugin_auto_register=true` is set at the global level.
+
+### Example
+
+<Tabs groupId="config">
+<TabItem value="JSON">
+
+```json
+{
+  "plugin": [
+    {
+      "secret": {
+        "aws": {
+          "image": "ghcr.io/openbao/openbao-plugin-secrets-aws",
+          "version": "v1.0.0",
+          "binary_name": "openbao-plugin-secrets-aws",
+          "sha256sum": "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+        }
+      }
+    }
+  ]
+}
+```
+
+</TabItem>
+<TabItem value="HCL">
+
+```hcl
+plugin "secret" "aws" {
+  image       = "ghcr.io/openbao/openbao-plugin-secrets-aws"
+  version     = "v1.0.0"
+  binary_name = "openbao-plugin-secrets-aws"
+  sha256sum   = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+}
+```
+
+</TabItem>
+</Tabs>
+
+## `plugin_download_behavior`
+
+A string which controls server behavior when plugin downloads fail.
+
+```hcl
+plugin_download_behavior = "fail"
+```
+
+### Values
+
+- `"fail"` `(default)` - Server startup fails if any plugin download fails
+- `"warn"` - Log warnings for failed downloads but continue startup
+
+## `plugin_auto_download`
+
+A boolean which controls server behavior of whether or not plugins are automatically downloaded on server startup and `SIGHUP`.
+
+```hcl
+plugin_auto_download = true
+```
+
+### Values
+
+- `true` - server startup and `SIGHUP` triggers downloading of plugins; can still be manually downloaded with `bao plugin init`.
+- `false` - only `bao plugin init` will manually download plugins.
+
+## `plugin_auto_register`
+
+A boolean which controls server behavior of whether or not plugins are automatically registered on server startup and `SIGHUP`.
+
+```hcl
+plugin_auto_register = true
+```
+
+### Values
+
+- `true` - server startup and `SIGHUP` triggers registering of plugins; can still be manually registered with `bao plugin register`.
+- `false` - only `bao plugin register` will manually register plugins.
+
+## Authentication
+
+When downloading plugin images from a private registry, OpenBao will use
+credentials as described in the Docker or Podman configuration files present on
+the system in the following order:
+
+1. `~/.docker/config.json` or `%USERPROFILE%\.docker\config.json` on Windows.
+2. A `config.json` file in the directory specified in the `DOCKER_CONFIG` environment variable.
+3. The path specified by the `REGISTRY_AUTH_FILE` environment variable.
+4. `$XDG_RUNTIME_DIR/containers/auth.json`
+
+:::tip
+
+When deploying OpenBao to Kubernetes you can mount an Image Pull Secret into the
+Pods to use for authentication.
+
+:::
+
+## Complete example
+
+```hcl
+storage "raft" {
+  path = "/opt/openbao/data"
+}
+
+listener "tcp" {
+  address = "0.0.0.0:8200"
+}
+
+plugin_directory = "/opt/openbao/plugins"
+plugin_download_behavior = "fail"
+
+plugin "secret" "aws" {
+  image       = "ghcr.io/openbao/openbao-plugin-secrets-aws"
+  version     = "v1.0.0"
+  binary_name = "openbao-plugin-secrets-aws"
+  sha256sum   = "9fdd8be7947e4a4caf7cce4f0e02695081b6c85178aa912df5d37be97363144c"
+}
+```
+
+## OCI image requirements
+
+OpenBao requires the plugin binary to be present in the image's root directory.
+It is also advised to make use of a static Go binary to not run into any libc
+issues.
+
+### Example Containerfile
+
+```
+FROM scratch
+LABEL org.opencontainers.image.source=https://github.com/openbao/openbao-plugins
+
+COPY bin/openbao-plugin-auth-aws_linux_amd64* openbao-plugin-auth-aws
+
+ENTRYPOINT ["/openbao-plugin-auth-aws"]
+```

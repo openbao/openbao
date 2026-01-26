@@ -46,7 +46,7 @@ func genSalt(size int) ([]byte, error) {
 func encodeB64(src []byte) (dst []byte) {
 	dst = make([]byte, base64.StdEncoding.EncodedLen(len(src)))
 	base64.StdEncoding.Encode(dst, src)
-	return
+	return dst
 }
 
 func getHMACSum(key, msg []byte) []byte {

@@ -58,7 +58,10 @@ $ curl \
 ```json
 {
   "name": "my-policy",
-  "rules": "path \"secret/*\"...
+  "rules": "path \"secret/*\"...",
+  "modified": "2025-03-25T16:50:49.348095648-05:00",
+  "version": "1",
+  "cas_required": false
 }
 ```
 
@@ -77,6 +80,28 @@ updated, it takes effect immediately to all associated users.
   This is specified as part of the request URL.
 
 - `policy` `(string: <required>)` - Specifies the policy document.
+
+- `expiration` `(time: <optional>)` - Specifies an expiration time after which
+  the policy will no longer be valid and will be removed on next load. Cannot
+  be set in conjunction with `ttl` and cannot be in the past.
+
+- `ttl` `(duration: <optional>)` - Specifies a time for which the policy will
+  be valid and will be removed on next load. Cannot be set in conjunction with
+  `expiration`.
+
+- `cas` `(int: <optional>)` - Optional version of the policy to compare
+  against before performing any modifications (check-and-set). If the existing
+  version of the policy has `cas_required=true` or the `cas_required=true`
+  parameter is provided on the request, the `cas` parameter is required. When
+  no policy exists and this should strictly be a create operation, set the
+  value to `-1`; existing policies created before this field start at version
+  `0`.
+
+- `cas_required` `(bool: <optional>)` - Whether or not check-and-set semantics
+  should be required on this and the next request. Note that because this is
+  a create/update operation, this parameter needs to reset to true on every
+  subsequent operation for continued usage. When set to true, `cas` becomes
+  a required parameter. Defaults to false.
 
 ### Sample payload
 

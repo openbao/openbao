@@ -6,6 +6,7 @@ package command
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"fmt"
 	"math/rand"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
@@ -26,10 +26,6 @@ import (
 )
 
 const trailing_slash_key = "trailing_slash/"
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 func TestMigration(t *testing.T) {
 	t.Run("Default", func(t *testing.T) {
@@ -360,7 +356,7 @@ func generateData() map[string][]byte {
 			segments[j] = s
 		}
 		data := make([]byte, 100)
-		rand.Read(data)
+		crand.Read(data)
 		result[strings.Join(segments, "/")] = data
 	}
 

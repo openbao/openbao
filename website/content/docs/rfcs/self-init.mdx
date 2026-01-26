@@ -1,0 +1,292 @@
+---
+sidebar_label: Declarative self-initialization
+description: |-
+  An OpenBao RFC to discuss self-initializing OpenBao from a configuration
+  file entry rather than manual API calls.
+---
+
+# Declarative self-initialization
+
+## Summary
+
+OpenBao needs to make changes to improve provisioning and initialization in
+order to facilitate day-zero automation and audited-by-default changes. We
+suggest using an initialization structure based on request/response patterns,
+with an optional output section for preserving any necessary responses. This
+will improve operator experience by replacing manual post-startup steps with
+greater end-to-end automation especially when orchestrated by an IaC tool.
+
+## Problem Statement
+
+OpenBao currently has a stateful, one-time initialization process. This makes
+operating it in a fully declarative environment, such as NixOS or OpenTofu,
+rather hard. In particular, initialization returns two items: a set of unseal
+or recovery key shards and a highly privileged root token; some initial setup
+using this root token should also be taken (such as initial auth method
+creation, policies, and audit logging), before this root token is ideally
+revoked. For auto-unseal, the initialization process does not yield necessary
+unseal shards and all information required to unseal exists immediately on
+first binary startup. Instead, recovery shards, used to generate new root
+tokens, are returned from auto-unseal initializations. Without an initial root
+token, no access to OpenBao is possible as no authentication methods are
+configured.
+
+Thus, simply initializing OpenBao and removing the need for the root token's
+one-off use is insufficient unless recovery shares are placed elsewhere (in
+a secure location) and used on subsequent configuration steps. Changes to
+recovery key handling will be discussed in a subsequent RFC.
+
+Ideally, initialization should set up an audit method, an initial policy, and
+an auth method which would be used by the administrator via any declarative
+policy. Then subsequent configuration could be entirely declarative and not
+feature any one-time steps or one-time authentication methods. Only when an
+operator is ready should one-time steps be taken, such as generating and
+preserving long-term access to recovery keys.
+
+However, each auth method and organization's policy requirements are
+different. While we cannot seek to fully replace a declarative framework like
+OpenTofu, we should have sufficient flexibility to define all initialization
+up-front. Adding to this, output or request chaining is necessary: if OpenBao
+creates a certificate authority, we may wish to make that available on disk
+for other automation to use and deploy or reuse it in subsequent requests to
+the instance during initialization (to e.g., configure a certificate auth
+mount).
+
+To bound the security risk, initialization configuration must only be applied
+on first startup. It should not be treated as the long-term owner of these
+resources and an import to a proper IaC tool would be preferable long-term.
+
+We need this to interact nicely with existing configuration management
+techniques; HCL and JSON-equivalent representations should be possible for
+any initialization and we should not attempt to build a new DSL for this.
+
+Lastly, whatever format is chosen should ultimately form the basis of the
+[profile system](/blog/profiles/) and should ideally have some code reuse
+with it.
+
+## User-facing Description
+
+Users will define one or more initialization blocks:
+
+```hcl
+initialize "identity" {
+  request "mount-userpass" {
+    operation = "update"
+    path = "sys/auth/userpass"
+    data = {
+      type = "kv"
+      path = "userpass/"
+      description = "admin
+    }
+  }
+
+  request "userpass-add-admin" {
+    operation = "update"
+    path = "auth/userpass/users/admin"
+    data = {
+      "password" = {
+        type = "string"
+        source = "env"
+        env_var = "INITIAL_ADMIN_PASSWORD"
+      }
+      "token_policies" = ["superuser"]
+    }
+  }
+}
+
+initialize "policy" {
+  request "add-superuser-policy" {
+    operation = "update"
+    path = "sys/policies/acl/superuser"
+    data = {
+      policy = << EOP
+path "*" {
+  capabilities = ["create", "update", "read", "delete", "list", "scan", "sudo"]
+}
+EOP
+    }
+  }
+}
+```
+
+Equivalently in JSON this looks like:
+
+```json
+{
+  "initialize": [
+    {
+      "audit": {
+        "request": [
+          {
+            "enable-audit": {
+              "operation": "update",
+              "path": "sys/audit/stdout",
+              "data": {
+                "type": "file",
+                "options": {
+                  "file_path": "/dev/stdout",
+                  "log_raw": true
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "identity": {
+        "request": [
+          {
+            "mount-userpass": {
+              "operation": "update",
+              "path": "sys/auth/userpass",
+              "data": {
+                "type": "userpass",
+                "path": "userpass/",
+                "description": "admin"
+              }
+            }
+          },
+          {
+            "userpass-add-admin": {
+              "operation": "update",
+              "path": "auth/userpass/users/admin",
+              "data": {
+                "password": {
+                  "eval_type": "string",
+                  "eval_source": "env",
+                  "env_var": "INITIAL_ADMIN_PASSWORD"
+                },
+                "token_policies": ["superuser"]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "policy": {
+        "request": [
+          {
+            "add-superuser-policy": {
+              "operation": "update",
+              "path": "sys/policies/acl/superuser",
+              "data": {
+                "policy": "path \"*\" {\n  capabilities = [\"create\", \"update\", \"read\", \"delete\", \"list\", \"scan\", \"sudo\"]\n}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Items which ultimately need literals (such as operations, paths, &c) can
+alternatively take an object, defining an output type (`string`, `int`, &c)
+and a source (`env`, `file`, `request.data`, `response.data`, &c) to serve
+as the source value for the field.
+
+Initialization will occur in the order provided by the configuration file
+[ordering](../configuration/index.mdx): each initialization block is executed in
+the order they appear in the configuration file and blocks in different
+files are executed in alphabetically sorted order.
+
+In the future, `for_each` might be a valid object, taking an iterable
+structure (perhaps a `LIST` result, a set of files in a directory, &c) and
+a template set of requests to apply with each item yielded by the iterable.
+This would allow blanket creation of policies from a directory, for instance.
+
+## Technical Description
+
+This will hook into `command.ServerCommand.Run(...)` as an alternative to
+`command.initDevCore(...)`. Like how `command.ServerCommand.enableDev(...)`
+performs requests into the Core and directly performs initialization, the
+new self-initialization call will operate in a similar fashion.
+
+### Profile System
+
+This starts development on a profile system. Generally, the profile system
+takes a request handler (taking `*logical.Request` and yielding a
+`*logical.Response`) and a parsed profile configuration, templating it into
+one or more requests to the handler. Such templating supports custom data
+sources via the `eval_source` parameter, such as:
+
+ - `env`, to support reading environment variables;
+ - `file`, to support reading files from disk;
+ - `request` and `response`, to support reading the data from past requests
+   and responses; and
+ - `template`, to support using the `sdk/helpers/template` helpers.
+
+These are configurable by the profile engine: `env` and `file` should not be
+used to implement the suggested [API profiles](/blog/profiles/) as they allow
+accessing arbitrary environment variables or files on disk.
+
+While the profile system for self-initialization executes requests directly,
+this could be hooked into a storage-based approach, allowing incremental
+profile evaluation, and allow output of incremental responses or debugging.
+
+This should live in `/helpers/profiles` for use by other callers.
+
+## Rationale and Alternatives
+
+The request/response chanining structure does not use any HCL-specific features,
+outside of potential templating or function invocation, and thus could be portable
+to any other configuration language in the future.
+
+This greatly improves the operator experience, solving early initialization issues.
+
+We do have some prior art: `bao server -dev` supports a command-line flag,
+`-dev-root-token-id`, which [writes into
+storge](https://github.com/openbao/openbao/blob/ef8d04c6cbc14fd34e68f0fd4071faf06e528266/command/server.go#L1746-L1763)
+a new root token. This token is persisted throughout the lifetime of the
+server, which in dev-mode is safely bounded by restart and is not intended
+for production. One issue with this alternative approach is that we do not
+have a safe bound for production servers: a persistent root token would be
+valid indefinitely, letting any leak gain root access. Similarly, there's
+confusion around behavior if this value were to change: should we
+administratively create a new one? Replace the old one? &c. A one-time
+initialization is very clearly scoped and lets proper authentication
+mechanisms take over sooner.
+
+## Downsides
+
+The initialization-via-requests approach is rather flexible and generic,
+requiring some familiarity with the desired API calls to implement. However,
+users will ultimately have great control over the desired requests.
+
+## Security Implications
+
+One-time initialization limits scope versus continual re-initialization
+(config-based management). The decisions around delaying initial recovery
+[key creation](authenticated-rekey.mdx) are part of a separate RFC
+with security implications discussed there.
+
+Otherwise, this is functionally equivalent to an operator manually wrapping
+the OpenBao binary with a custom script which implements this themselves,
+but with hopefully greater reliability.
+
+## User/Developer Experience
+
+This does not impact end users at all. For operators, this provides a
+significantly easier getting started path, assuming familiarity with the
+system and the available endpoints, and lets us have fully declaratively
+configurable instances that integrate nicely into other IaC providers like
+OpenTofu from initial startup.
+
+## Unresolved Questions
+
+There are no unresolved questions.
+
+## Related Issues
+
+ - https://github.com/openbao/openbao/issues/944
+ - https://github.com/orgs/openbao/discussions/1115
+ - https://bank-vaults.dev/docs/concepts/external-configuration/
+ - https://github.com/orgs/openbao/discussions/1339
+ - https://github.com/openbao/openbao-helm/issues/54
+
+## Proof of Concept
+
+See https://github.com/openbao/openbao/pull/1506.

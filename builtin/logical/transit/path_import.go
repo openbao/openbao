@@ -20,7 +20,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/tink-crypto/tink-go/kwp/subtle"
+	"github.com/tink-crypto/tink-go/v2/kwp/subtle"
 )
 
 const EncryptedKeyBytes = 512
@@ -221,7 +221,7 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 	case "hmac":
 		polReq.KeyType = keysutil.KeyType_HMAC
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unknown key type: %v", keyType)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("unknown key type: %v", keyType), logical.ErrInvalidRequest
 	}
 
 	p, _, err := b.GetPolicy(ctx, polReq, b.GetRandomReader())
@@ -432,11 +432,8 @@ func checkKeyFieldsSet(d *framework.FieldData) (bool, error) {
 
 func isFieldSet(fieldName string, d *framework.FieldData) bool {
 	_, fieldSet := d.Raw[fieldName]
-	if !fieldSet {
-		return false
-	}
 
-	return true
+	return fieldSet
 }
 
 const (

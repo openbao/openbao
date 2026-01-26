@@ -94,15 +94,14 @@ type ClusterJson struct {
 }
 
 type ClusterOptions struct {
-	ClusterName                 string
-	KeepStandbysSealed          bool
-	SkipInit                    bool
-	CACert                      []byte
-	NumCores                    int
-	TmpDir                      string
-	Logger                      hclog.Logger
-	VaultNodeConfig             *VaultNodeConfig
-	AdministrativeNamespacePath string
+	ClusterName        string
+	KeepStandbysSealed bool
+	SkipInit           bool
+	CACert             []byte
+	NumCores           int
+	TmpDir             string
+	Logger             hclog.Logger
+	VaultNodeConfig    *VaultNodeConfig
 }
 
 type CA struct {

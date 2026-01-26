@@ -72,6 +72,18 @@ export default class OidcClientModel extends Model {
   })
   idTokenTtl;
 
+  @attr('boolean', {
+    defaultValue: true,
+    label: 'Allow authorization code flow',
+  })
+  authorizationCode;
+
+  @attr('boolean', {
+    defaultValue: false,
+    label: 'Allow client credential flow',
+  })
+  clientCredentials;
+
   // >> END MORE OPTIONS TOGGLE <<
 
   @attr('array', { label: 'Assign access' }) assignments; // no editType because does not use form-field component

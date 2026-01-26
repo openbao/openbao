@@ -4,6 +4,7 @@
 package server
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,15 +16,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/osutil"
+	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 )
 
@@ -31,6 +35,9 @@ const (
 	VaultDevCAFilename   = "vault-ca.pem"
 	VaultDevCertFilename = "vault-cert.pem"
 	VaultDevKeyFilename  = "vault-key.pem"
+
+	PluginDownloadFail     = "fail"
+	PluginDownloadContinue = "continue"
 )
 
 var entConfigValidate = func(_ *Config, _ string) []configutil.ConfigError {
@@ -72,6 +79,14 @@ type Config struct {
 	PluginFilePermissions    int         `hcl:"-"`
 	PluginFilePermissionsRaw interface{} `hcl:"plugin_file_permissions,alias:PluginFilePermissions"`
 
+	// Plugins specifies declaratively defined external plugins
+	Plugins                []*PluginConfig `hcl:"-"`
+	PluginDownloadBehavior string          `hcl:"plugin_download_behavior"`
+	PluginAutoDownload     bool            `hcl:"-"`
+	PluginAutoDownloadRaw  interface{}     `hcl:"plugin_auto_download"`
+	PluginAutoRegister     bool            `hcl:"-"`
+	PluginAutoRegisterRaw  interface{}     `hcl:"plugin_auto_register"`
+
 	EnableIntrospectionEndpoint    bool        `hcl:"-"`
 	EnableIntrospectionEndpointRaw interface{} `hcl:"introspection_endpoint,alias:EnableIntrospectionEndpoint"`
 
@@ -109,11 +124,27 @@ type Config struct {
 	EnableResponseHeaderRaftNodeIDRaw interface{} `hcl:"enable_response_header_raft_node_id"`
 
 	DisableSSCTokens *bool `hcl:"-"`
-}
 
-const (
-	sectionSeal = "Seal"
-)
+	UnsafeCrossNamespaceIdentity bool `hcl:"unsafe_cross_namespace_identity"`
+
+	UnsafeAllowAPIAuditCreation bool `hcl:"unsafe_allow_api_audit_creation"`
+	AllowAuditLogPrefixing      bool `hcl:"allow_audit_log_prefixing"`
+
+	// Initialization is a configuration object that helps to initialize
+	// OpenBao. It can be specified multiple times and each instance can
+	// contain one or more `request` objects. This is used by the
+	// declarative self-initialization subsystem on non-dev-mode instances
+	// and is part of the profile system.
+	Initialization []*profiles.OuterConfig `hcl:"-"`
+
+	// Audit specifies declaratively defined audit devices; these are created
+	// on the active node. Updates cannot occur, only additions or deletions,
+	// but can be modified through SIGHUP on a running server.
+	Audits []*AuditDevice `hcl:"-"`
+
+	// Whether read requests are disabled on standby nodes.
+	DisableStandbyReads bool `hcl:"disable_standby_reads"`
+}
 
 func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 	results := configutil.ValidateUnusedFields(c.UnusedKeys, sourceFilePath)
@@ -126,6 +157,22 @@ func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 	for _, l := range c.Listeners {
 		results = append(results, l.Validate(sourceFilePath)...)
 	}
+	for _, a := range c.Audits {
+		results = append(results, a.Validate(sourceFilePath)...)
+	}
+	for _, p := range c.Plugins {
+		results = append(results, p.Validate(sourceFilePath)...)
+	}
+
+	// Validate plugin_download_behavior
+	if c.PluginDownloadBehavior != "" {
+		if c.PluginDownloadBehavior != PluginDownloadFail && c.PluginDownloadBehavior != PluginDownloadContinue {
+			results = append(results, configutil.ConfigError{
+				Problem: fmt.Sprintf("plugin_download_behavior must be either %q or %q, got %q", PluginDownloadFail, PluginDownloadContinue, c.PluginDownloadBehavior),
+			})
+		}
+	}
+
 	results = append(results, c.validateEnt(sourceFilePath)...)
 	return results
 }
@@ -211,7 +258,7 @@ storage "%s" {
 
 ui = true
 `
-	certDirEscaped := strings.Replace(certDir, "\\", "\\\\", -1)
+	certDirEscaped := strings.ReplaceAll(certDir, "\\", "\\\\")
 	hclStr = fmt.Sprintf(hclStr, certDirEscaped, certDirEscaped, storageType)
 	parsed, err := ParseConfig(hclStr, "")
 	if err != nil {
@@ -247,6 +294,165 @@ func (b *ServiceRegistration) Validate(source string) []configutil.ConfigError {
 
 func (b *ServiceRegistration) GoString() string {
 	return fmt.Sprintf("*%#v", *b)
+}
+
+// PluginConfig represents the configuration for a single OCI-based plugin
+type PluginConfig struct {
+	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
+	RawConfig  map[string]interface{}
+
+	Type       string
+	Name       string
+	Image      string   `hcl:"image"`
+	Version    string   `hcl:"version"`
+	BinaryName string   `hcl:"binary_name"`
+	SHA256Sum  string   `hcl:"sha256sum"`
+	Command    string   `hcl:"command"`
+	Args       []string `hcl:"args"`
+	Env        []string `hcl:"env"`
+}
+
+func (p *PluginConfig) URL() string {
+	return fmt.Sprintf("%s:%s", p.Image, p.Version)
+}
+
+func (p *PluginConfig) Slug() string {
+	return fmt.Sprintf("%s-%s", p.Type, p.Name)
+}
+
+func (p *PluginConfig) FullName() string {
+	return fmt.Sprintf("%s-%s-%s", p.Type, p.Name, p.Version)
+}
+
+func (p *PluginConfig) CommandPath() string {
+	if p.Image != "" {
+		return p.FullName()
+	}
+
+	return p.Command
+}
+
+// Validate validates a PluginConfig
+func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError {
+	var results []configutil.ConfigError
+
+	// Validate unused keys
+	results = append(results, configutil.ValidateUnusedFields(p.UnusedKeys, sourceFilePath)...)
+
+	// Validate Name is not empty
+	if p.Name == "" {
+		results = append(results, configutil.ConfigError{
+			Problem: "plugin name cannot be empty",
+		})
+	}
+
+	// Validate Type is not empty
+	if p.Type == "" {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: type cannot be empty", p.Name),
+		})
+	}
+
+	// Validate Type is valid
+	_, err := consts.ParsePluginType(p.Type)
+	if err != nil {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: %s", p.Name, err.Error()),
+		})
+	}
+
+	// Validate Image is not empty
+	if p.Image == "" && p.Command == "" {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: image and command cannot both be empty", p.Slug()),
+		})
+	} else if p.Image != "" && p.Command != "" {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: command must be empty if image is specified", p.Slug()),
+		})
+	}
+
+	// Validate Version is not empty
+	if p.Version == "" {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: version cannot be empty", p.Slug()),
+		})
+	}
+
+	// Ensure Image:Version is a valid image reference
+	if _, err := name.ParseReference(p.URL()); err != nil {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: image and version do not form a valid image reference. %v", p.Slug(), err),
+		})
+	}
+
+	// Validate binary_name is not empty
+	if p.BinaryName == "" && p.Image != "" {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: binary_name cannot be empty when image specified", p.Slug()),
+		})
+	}
+
+	// Validate sha256sum is exactly 64 hex characters
+	if len(p.SHA256Sum) != 64 {
+		results = append(results, configutil.ConfigError{
+			Problem: fmt.Sprintf("plugin %q: sha256sum must be exactly 64 characters, got %d", p.Slug(), len(p.SHA256Sum)),
+		})
+	} else {
+		// Check if it's valid hex
+		_, err := hex.DecodeString(p.SHA256Sum)
+		if err != nil {
+			results = append(results, configutil.ConfigError{
+				Problem: fmt.Sprintf("plugin %q: sha256sum is not valid hex encoded", p.Slug()),
+			})
+		}
+	}
+
+	for index, envVar := range p.Env {
+		if !strings.Contains(envVar, "=") {
+			results = append(results, configutil.ConfigError{
+				Problem: fmt.Sprintf("plugin %q: env %d: environment variable must contain '=' to separate variable name from value", p.Slug(), index),
+			})
+		}
+	}
+
+	return results
+}
+
+func parsePlugins(name string, list *ast.ObjectList) ([]*PluginConfig, error) {
+	result := make([]*PluginConfig, 0, len(list.Items))
+	for index, item := range list.Items {
+		var i PluginConfig
+		if err := hcl.DecodeObject(&i, item.Val); err != nil {
+			return result, fmt.Errorf("%v.%d: %w", name, index, err)
+		}
+
+		var m map[string]interface{}
+		if err := hcl.DecodeObject(&m, item.Val); err != nil {
+			return result, fmt.Errorf("%v.%d: %w", name, index, err)
+		}
+		i.RawConfig = m
+
+		switch {
+		case i.Type != "":
+		case len(item.Keys) == 2:
+			i.Type = item.Keys[0].Token.Value().(string)
+		default:
+			return result, fmt.Errorf("%v.%d: %v type must be specified: %#v", name, index, name, item)
+		}
+
+		switch {
+		case i.Name != "":
+		case len(item.Keys) == 2:
+			i.Name = item.Keys[1].Token.Value().(string)
+		default:
+			return result, fmt.Errorf("%v.%d: %v name must be specified: %#v", name, index, name, item)
+		}
+
+		result = append(result, &i)
+	}
+
+	return result, nil
 }
 
 func NewConfig() *Config {
@@ -409,6 +615,21 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.EnableResponseHeaderRaftNodeID = c2.EnableResponseHeaderRaftNodeID
 	}
 
+	result.UnsafeCrossNamespaceIdentity = c.UnsafeCrossNamespaceIdentity
+	if c2.UnsafeCrossNamespaceIdentity {
+		result.UnsafeCrossNamespaceIdentity = c2.UnsafeCrossNamespaceIdentity
+	}
+
+	result.UnsafeAllowAPIAuditCreation = c.UnsafeAllowAPIAuditCreation
+	if c2.UnsafeAllowAPIAuditCreation {
+		result.UnsafeAllowAPIAuditCreation = c2.UnsafeAllowAPIAuditCreation
+	}
+
+	result.AllowAuditLogPrefixing = c.AllowAuditLogPrefixing
+	if c2.AllowAuditLogPrefixing {
+		result.AllowAuditLogPrefixing = c2.AllowAuditLogPrefixing
+	}
+
 	// Use values from top-level configuration for storage if set
 	if storage := result.Storage; storage != nil {
 		if result.APIAddr != "" {
@@ -434,9 +655,39 @@ func (c *Config) Merge(c2 *Config) *Config {
 		}
 	}
 
-	result.AdministrativeNamespacePath = c.AdministrativeNamespacePath
-	if c2.AdministrativeNamespacePath != "" {
-		result.AdministrativeNamespacePath = c2.AdministrativeNamespacePath
+	if len(c.Initialization) > 0 || len(c2.Initialization) > 0 {
+		result.Initialization = make([]*profiles.OuterConfig, len(c.Initialization)+len(c2.Initialization))
+		copy(result.Initialization[0:len(c.Initialization)], c.Initialization)
+		copy(result.Initialization[len(c.Initialization):], c2.Initialization)
+	}
+
+	if len(c.Audits) > 0 || len(c2.Audits) > 0 {
+		result.Audits = make([]*AuditDevice, len(c.Audits)+len(c2.Audits))
+		copy(result.Audits[0:len(c.Audits)], c.Audits)
+		copy(result.Audits[len(c.Audits):], c2.Audits)
+	}
+
+	if len(c.Plugins) > 0 || len(c2.Plugins) > 0 {
+		result.Plugins = make([]*PluginConfig, len(c.Plugins)+len(c2.Plugins))
+		copy(result.Plugins[0:len(c.Plugins)], c.Plugins)
+		copy(result.Plugins[len(c.Plugins):], c2.Plugins)
+	}
+
+	result.PluginDownloadBehavior = c.PluginDownloadBehavior
+	if c2.PluginDownloadBehavior != "" {
+		result.PluginDownloadBehavior = c2.PluginDownloadBehavior
+	}
+
+	result.PluginAutoDownload = c.PluginAutoDownload
+	if c2.PluginAutoDownloadRaw != nil {
+		result.PluginAutoDownload = c2.PluginAutoDownload
+		result.PluginAutoDownloadRaw = c2.PluginAutoDownloadRaw
+	}
+
+	result.PluginAutoRegister = c.PluginAutoRegister
+	if c2.PluginAutoRegisterRaw != nil {
+		result.PluginAutoRegister = c2.PluginAutoRegister
+		result.PluginAutoRegisterRaw = c2.PluginAutoRegisterRaw
 	}
 
 	return result
@@ -457,7 +708,7 @@ func LoadConfig(path string, allPaths []string) (*Config, error) {
 			var err error
 			enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 			if err != nil {
-				return nil, errors.New("Error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
+				return nil, errors.New("error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
 			}
 		}
 		f, err := os.Open(path)
@@ -528,7 +779,7 @@ func LoadConfigFile(path string, allPaths []string) (*Config, error) {
 		var err error
 		enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 		if err != nil {
-			return nil, errors.New("Error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
+			return nil, errors.New("error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
 		}
 	}
 
@@ -551,8 +802,8 @@ func LoadConfigFile(path string, allPaths []string) (*Config, error) {
 }
 
 func ParseConfig(d, source string) (*Config, error) {
-	// Parse!
-	obj, err := hcl.Parse(d)
+	// Parse using the helper function that handles both HCL and JSON
+	obj, err := hclutil.ParseConfig([]byte(d))
 	if err != nil {
 		return nil, err
 	}
@@ -731,6 +982,55 @@ func ParseConfig(d, source string) (*Config, error) {
 		if err := parseServiceRegistration(result, o, "service_registration"); err != nil {
 			return nil, fmt.Errorf("error parsing 'service_registration': %w", err)
 		}
+	}
+
+	// Parse self-initialization stanzas.
+	if o := list.Filter("initialize"); len(o.Items) > 0 {
+		delete(result.UnusedKeys, "initialize")
+		init, err := profiles.ParseOuterConfig("initialize", o)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing 'initialize': %w", err)
+		}
+
+		result.Initialization = init
+	}
+
+	// Parse audit device stanzas.
+	if o := list.Filter("audit"); len(o.Items) > 0 {
+		delete(result.UnusedKeys, "audit")
+		audits, err := parseAuditDevices("audit", o)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing 'audit': %w", err)
+		}
+
+		result.Audits = audits
+	}
+
+	// Parse plugin stanzas.
+	if o := list.Filter("plugin"); len(o.Items) > 0 {
+		delete(result.UnusedKeys, "plugin")
+		plugins, err := parsePlugins("plugin", o)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing 'plugin': %w", err)
+		}
+
+		result.Plugins = plugins
+	}
+
+	if result.PluginAutoDownloadRaw != nil {
+		autoDownload, err := parseutil.ParseBool(result.PluginAutoDownloadRaw)
+		if err != nil {
+			return nil, err
+		}
+		result.PluginAutoDownload = autoDownload
+	}
+
+	if result.PluginAutoRegisterRaw != nil {
+		autoRegister, err := parseutil.ParseBool(result.PluginAutoRegisterRaw)
+		if err != nil {
+			return nil, err
+		}
+		result.PluginAutoRegister = autoRegister
 	}
 
 	// Remove all unused keys from Config that were satisfied by SharedConfig.
@@ -1066,6 +1366,11 @@ func (c *Config) Sanitized() map[string]interface{} {
 		"detect_deadlocks": c.DetectDeadlocks,
 
 		"imprecise_lease_role_tracking": c.ImpreciseLeaseRoleTracking,
+
+		"unsafe_cross_namespace_identity": c.UnsafeCrossNamespaceIdentity,
+
+		"unsafe_allow_api_audit_creation": c.UnsafeAllowAPIAuditCreation,
+		"allow_audit_log_prefixing":       c.AllowAuditLogPrefixing,
 	}
 	for k, v := range sharedResult {
 		result[k] = v
@@ -1115,6 +1420,19 @@ func (c *Config) Sanitized() map[string]interface{} {
 			"type": c.ServiceRegistration.Type,
 		}
 		result["service_registration"] = sanitizedServiceRegistration
+	}
+
+	if len(c.Audits) > 0 {
+		var sanitizedAudits []map[string]interface{}
+		for _, a := range c.Audits {
+			cfg := map[string]interface{}{
+				"path":        a.Path,
+				"type":        a.Type,
+				"description": a.Description,
+			}
+			sanitizedAudits = append(sanitizedAudits, cfg)
+		}
+		result["audits"] = sanitizedAudits
 	}
 
 	return result
@@ -1176,4 +1494,60 @@ func checkSkipPaths(path string, allPaths []string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// AuditDevice is a config-defined audit device for the server.
+type AuditDevice struct {
+	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
+	RawConfig  map[string]interface{}
+
+	Type        string
+	Path        string
+	Description string            `hcl:"description"`
+	Options     map[string]string `hcl:"options"`
+	Local       bool              `hcl:"local"`
+}
+
+func (a *AuditDevice) Validate(source string) []configutil.ConfigError {
+	return configutil.ValidateUnusedFields(a.UnusedKeys, source)
+}
+
+func (a *AuditDevice) GoString() string {
+	return fmt.Sprintf("*%#v", *a)
+}
+
+func parseAuditDevices(name string, list *ast.ObjectList) ([]*AuditDevice, error) {
+	result := make([]*AuditDevice, 0, len(list.Items))
+	for index, item := range list.Items {
+		var i AuditDevice
+		if err := hcl.DecodeObject(&i, item.Val); err != nil {
+			return result, fmt.Errorf("%v.%d: %w", name, index, err)
+		}
+
+		var m map[string]interface{}
+		if err := hcl.DecodeObject(&m, item.Val); err != nil {
+			return result, fmt.Errorf("%v.%d: %w", name, index, err)
+		}
+		i.RawConfig = m
+
+		switch {
+		case i.Type != "":
+		case len(item.Keys) == 2:
+			i.Type = item.Keys[0].Token.Value().(string)
+		default:
+			return result, fmt.Errorf("%v.%d: %v type must be specified: %#v", name, index, name, item)
+		}
+
+		switch {
+		case i.Path != "":
+		case len(item.Keys) == 2:
+			i.Path = item.Keys[1].Token.Value().(string)
+		default:
+			return result, fmt.Errorf("%v.%d: %v path must be specified: %#v", name, index, name, item)
+		}
+
+		result = append(result, &i)
+	}
+
+	return result, nil
 }

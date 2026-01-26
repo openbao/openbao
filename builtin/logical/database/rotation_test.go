@@ -7,22 +7,21 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/namespace"
-	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/dbtxn"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/queue"
 	"github.com/stretchr/testify/mock"
@@ -420,10 +419,10 @@ func createTestPGUser(t *testing.T, connURL string, username, password, query st
 	log.Printf("[TRACE] Creating test user")
 
 	db, err := sql.Open("pgx", connURL)
-	defer db.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer db.Close()
 
 	// Start a transaction
 	ctx := context.Background()
@@ -829,18 +828,18 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 		if len(v) < 3 {
 			t.Fatalf("expected to find 3 passwords for (%s), only found (%d)", k, len(v))
 		}
-		switch {
-		case k == "plugin-static-role-10":
+		switch k {
+		case "plugin-static-role-10":
 			// expect all passwords to be different
 			if v[0] == v[1] || v[1] == v[2] || v[0] == v[2] {
 				pass = false
 			}
-		case k == "plugin-static-role-20":
+		case "plugin-static-role-20":
 			// expect the first two to be equal, but different from the third
 			if v[0] != v[1] || v[0] == v[2] {
 				pass = false
 			}
-		case k == "plugin-static-role-100":
+		case "plugin-static-role-100":
 			// expect all passwords to be equal
 			if v[0] != v[1] || v[1] != v[2] {
 				pass = false
@@ -852,12 +851,6 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 	if !pass {
 		t.Fatalf("password rotations did not match expected: %#v", pws)
 	}
-}
-
-type createUserCommand struct {
-	Username string        `bson:"createUser"`
-	Password string        `bson:"pwd"`
-	Roles    []interface{} `bson:"roles"`
 }
 
 // Demonstrates a bug fix for the credential rotation not releasing locks
@@ -1315,7 +1308,7 @@ func setupMockDB(b *databaseBackend) *mockNewDatabase {
 // plugin init code paths, allowing us to use a manually populated mock DB object.
 func configureDBMount(t *testing.T, storage logical.Storage) {
 	t.Helper()
-	entry, err := logical.StorageEntryJSON(fmt.Sprintf("config/mockv5"), &DatabaseConfig{
+	entry, err := logical.StorageEntryJSON("config/mockv5", &DatabaseConfig{
 		AllowedRoles: []string{"*"},
 	})
 	if err != nil {

@@ -5,7 +5,6 @@ package vault
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/openbao/openbao/helper/identity"
@@ -140,25 +139,25 @@ func (i *IdentityStore) pathLookupEntityUpdate() framework.OperationFunc {
 
 		switch {
 		case inputCount == 0:
-			return logical.ErrorResponse(fmt.Sprintf("query parameter not supplied")), nil
+			return logical.ErrorResponse("query parameter not supplied"), nil
 
 		case inputCount != 1:
 			switch {
 			case inputCount == 2 && aliasName != "" && aliasMountAccessor != "":
 			default:
-				return logical.ErrorResponse(fmt.Sprintf("query parameter conflict; please supply distinct set of query parameters")), nil
+				return logical.ErrorResponse("query parameter conflict; please supply distinct set of query parameters"), nil
 			}
 
 		case inputCount == 1:
 			switch {
 			case aliasName != "" || aliasMountAccessor != "":
-				return logical.ErrorResponse(fmt.Sprintf("both 'alias_name' and 'alias_mount_accessor' needs to be set")), nil
+				return logical.ErrorResponse("both 'alias_name' and 'alias_mount_accessor' needs to be set"), nil
 			}
 		}
 
 		switch {
 		case id != "":
-			entity, err = i.MemDBEntityByID(id, false)
+			entity, err = i.MemDBEntityByID(ctx, id, false)
 			if err != nil {
 				return nil, err
 			}
@@ -170,7 +169,7 @@ func (i *IdentityStore) pathLookupEntityUpdate() framework.OperationFunc {
 			}
 
 		case aliasID != "":
-			alias, err := i.MemDBAliasByID(aliasID, false, false)
+			alias, err := i.MemDBAliasByID(ctx, aliasID, false, false)
 			if err != nil {
 				return nil, err
 			}
@@ -179,13 +178,13 @@ func (i *IdentityStore) pathLookupEntityUpdate() framework.OperationFunc {
 				break
 			}
 
-			entity, err = i.MemDBEntityByAliasID(alias.ID, false)
+			entity, err = i.MemDBEntityByAliasID(ctx, alias.ID, false)
 			if err != nil {
 				return nil, err
 			}
 
 		case aliasName != "" && aliasMountAccessor != "":
-			alias, err := i.MemDBAliasByFactors(aliasMountAccessor, aliasName, false, false)
+			alias, err := i.MemDBAliasByFactors(ctx, aliasMountAccessor, aliasName, false, false)
 			if err != nil {
 				return nil, err
 			}
@@ -194,7 +193,7 @@ func (i *IdentityStore) pathLookupEntityUpdate() framework.OperationFunc {
 				break
 			}
 
-			entity, err = i.MemDBEntityByAliasID(alias.ID, false)
+			entity, err = i.MemDBEntityByAliasID(ctx, alias.ID, false)
 			if err != nil {
 				return nil, err
 			}
@@ -252,25 +251,25 @@ func (i *IdentityStore) pathLookupGroupUpdate() framework.OperationFunc {
 
 		switch {
 		case inputCount == 0:
-			return logical.ErrorResponse(fmt.Sprintf("query parameter not supplied")), nil
+			return logical.ErrorResponse("query parameter not supplied"), nil
 
 		case inputCount != 1:
 			switch {
 			case inputCount == 2 && aliasName != "" && aliasMountAccessor != "":
 			default:
-				return logical.ErrorResponse(fmt.Sprintf("query parameter conflict; please supply distinct set of query parameters")), nil
+				return logical.ErrorResponse("query parameter conflict; please supply distinct set of query parameters"), nil
 			}
 
 		case inputCount == 1:
 			switch {
 			case aliasName != "" || aliasMountAccessor != "":
-				return logical.ErrorResponse(fmt.Sprintf("both 'alias_name' and 'alias_mount_accessor' needs to be set")), nil
+				return logical.ErrorResponse("both 'alias_name' and 'alias_mount_accessor' needs to be set"), nil
 			}
 		}
 
 		switch {
 		case id != "":
-			group, err = i.MemDBGroupByID(id, false)
+			group, err = i.MemDBGroupByID(ctx, id, false)
 			if err != nil {
 				return nil, err
 			}
@@ -280,7 +279,7 @@ func (i *IdentityStore) pathLookupGroupUpdate() framework.OperationFunc {
 				return nil, err
 			}
 		case aliasID != "":
-			alias, err := i.MemDBAliasByID(aliasID, false, true)
+			alias, err := i.MemDBAliasByID(ctx, aliasID, false, true)
 			if err != nil {
 				return nil, err
 			}
@@ -289,13 +288,13 @@ func (i *IdentityStore) pathLookupGroupUpdate() framework.OperationFunc {
 				break
 			}
 
-			group, err = i.MemDBGroupByAliasID(alias.ID, false)
+			group, err = i.MemDBGroupByAliasID(ctx, alias.ID, false)
 			if err != nil {
 				return nil, err
 			}
 
 		case aliasName != "" && aliasMountAccessor != "":
-			alias, err := i.MemDBAliasByFactors(aliasMountAccessor, aliasName, false, true)
+			alias, err := i.MemDBAliasByFactors(ctx, aliasMountAccessor, aliasName, false, true)
 			if err != nil {
 				return nil, err
 			}
@@ -304,7 +303,7 @@ func (i *IdentityStore) pathLookupGroupUpdate() framework.OperationFunc {
 				break
 			}
 
-			group, err = i.MemDBGroupByAliasID(alias.ID, false)
+			group, err = i.MemDBGroupByAliasID(ctx, alias.ID, false)
 			if err != nil {
 				return nil, err
 			}

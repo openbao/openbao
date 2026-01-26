@@ -21,6 +21,7 @@ import (
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	kv "github.com/openbao/openbao/builtin/logical/kv"
+	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -28,6 +29,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
@@ -102,6 +104,8 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 	// Create an HA Vault
 	logger := logging.NewVaultLogger(log.Debug)
 
+	coreLogger := logging.NewVaultLogger(log.Trace)
+
 	inmha, err := inmem.NewInmemHA(nil, logger)
 	if err != nil {
 		t.Fatal(err)
@@ -110,6 +114,7 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		Physical:     inmha,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: addr1,
+		Logger:       coreLogger.Named("active"),
 	}
 	core1, err := vault.NewCore(conf)
 	if err != nil {
@@ -132,6 +137,7 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		Physical:     inmha,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: addr2,
+		Logger:       coreLogger.Named("standby"),
 	}
 	core2, err := vault.NewCore(conf2)
 	if err != nil {
@@ -144,19 +150,22 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		}
 	}
 
+	// Reduce race window between post-unseal namespaceStore setup and request handling.
+	time.Sleep(2 * time.Second)
+
 	TestServerWithListener(t, ln1, addr1, core1)
 	TestServerWithListener(t, ln2, addr2, core2)
 	TestServerAuth(t, addr1, root)
 
 	// WRITE to STANDBY
-	resp := testHttpPutDisableRedirect(t, root, addr2+"/v1/secret/foo", map[string]interface{}{
+	resp := testHttpPutDisableRedirect(t, root, addr2+"/v1/cubbyhole/foo", map[string]interface{}{
 		"data": "bar",
 	})
 	logger.Debug("307 test one starting")
 	testResponseStatus(t, resp, 307)
 	logger.Debug("307 test one stopping")
 
-	//// READ to standby
+	// READ to standby
 	resp = testHttpGet(t, root, addr2+"/v1/auth/token/lookup-self")
 	var actual map[string]interface{}
 	var nilWarnings interface{}
@@ -195,8 +204,8 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		t.Fatal(diff)
 	}
 
-	//// DELETE to standby
-	resp = testHttpDeleteDisableRedirect(t, root, addr2+"/v1/secret/foo")
+	// DELETE to standby
+	resp = testHttpDeleteDisableRedirect(t, root, addr2+"/v1/cubbyhole/foo")
 	logger.Debug("307 test two starting")
 	testResponseStatus(t, resp, 307)
 	logger.Debug("307 test two stopping")
@@ -267,7 +276,7 @@ func TestLogical_RawHTTP(t *testing.T) {
 	// Get the body
 	body := new(bytes.Buffer)
 	io.Copy(body, resp.Body)
-	if string(body.Bytes()) != "hello world" {
+	if body.String() != "hello world" {
 		t.Fatalf("Bad: %s", body.Bytes())
 	}
 }
@@ -293,9 +302,11 @@ func TestLogical_RequestSizeDisableLimit(t *testing.T) {
 	props := &vault.HandlerProperties{
 		Core: core,
 		ListenerConfig: &configutil.Listener{
-			MaxRequestSize: -1,
-			Address:        "127.0.0.1",
-			TLSDisable:     true,
+			MaxRequestSize:        -1,
+			MaxRequestJsonMemory:  -1,
+			MaxRequestJsonStrings: -1,
+			Address:               "127.0.0.1",
+			TLSDisable:            true,
 		},
 	}
 	TestServerWithListenerAndProperties(t, ln, addr, core, props)
@@ -317,7 +328,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err := buildLogicalRequest(core, nil, req)
+	lreq, status, err := buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +343,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,12 +358,12 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
+	_, status, err = buildLogicalRequestNoAuth(nil, req)
 	if err != nil || status != 0 {
 		t.Fatal(err)
 	}
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -423,7 +434,7 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 			req = req.WithContext(namespace.RootContext(nil))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
-			lreq, _, status, err := buildLogicalRequest(core, nil, req)
+			lreq, status, err := buildLogicalRequest(core, nil, req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -449,7 +460,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err := buildLogicalRequest(core, nil, req)
+	lreq, status, err := buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,7 +475,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -479,12 +490,12 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
+	_, status, err = buildLogicalRequestNoAuth(nil, req)
 	if err != nil || status != 0 {
 		t.Fatal(err)
 	}
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, status, err = buildLogicalRequest(core, nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -555,7 +566,7 @@ func TestLogical_ScanWithQueryParameters(t *testing.T) {
 			req = req.WithContext(namespace.RootContext(nil))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
-			lreq, _, status, err := buildLogicalRequest(core, nil, req)
+			lreq, status, err := buildLogicalRequest(core, nil, req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -610,6 +621,7 @@ func TestLogical_Audit_invalidWrappingToken(t *testing.T) {
 	// Create a noop audit backend
 	noop := corehelpers.TestNoopAudit(t, nil)
 	c, _, root := vault.TestCoreUnsealedWithConfig(t, &vault.CoreConfig{
+		RawConfig: &server.Config{UnsafeAllowAPIAuditCreation: true},
 		AuditBackends: map[string]audit.Factory{
 			"noop": func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
 				return noop, nil
@@ -971,8 +983,8 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) {
 		testBuiltinPluginMetadataAuditLog(t, auditRequest, consts.PluginTypeCredential.String())
 
 		auditResponse := map[string]interface{}{}
-		if req, ok := auditRecord["response"]; ok {
-			auditRequest = req.(map[string]interface{})
+		if res, ok := auditRecord["response"]; ok {
+			auditResponse = res.(map[string]interface{})
 			if auditResponse["path"] != "auth/token/create" {
 				continue
 			}
@@ -985,6 +997,9 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) {
 // in audit log when it is enabled
 func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
+		RawConfig: &server.Config{
+			UnsafeAllowAPIAuditCreation: true,
+		},
 		LogicalBackends: map[string]logical.Factory{
 			"kv": kv.VersionedKVFactory,
 		},
@@ -1058,12 +1073,167 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T) {
 		testBuiltinPluginMetadataAuditLog(t, auditRequest, consts.PluginTypeSecrets.String())
 
 		auditResponse := map[string]interface{}{}
-		if req, ok := auditRecord["response"]; ok {
-			auditRequest = req.(map[string]interface{})
+		if res, ok := auditRecord["response"]; ok {
+			auditResponse = res.(map[string]interface{})
 			if auditResponse["path"] != "kv/data/foo" {
 				continue
 			}
 		}
 		testBuiltinPluginMetadataAuditLog(t, auditResponse, consts.PluginTypeSecrets.String())
+	}
+}
+
+// TestLogical_NamespaceRestrictedAPIs verifies that:
+// 1. Restricted APIs cannot be accessed from non-root namespaces (400 error)
+// 2. Non-restricted APIs can be successfully accessed from namespaces with proper permissions
+func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
+	// Create a test cluster
+	cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+		HandlerFunc: Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	rootClient := cluster.Cores[0].Client
+	core := cluster.Cores[0].Core
+	rootToken := cluster.RootToken
+
+	// Create a test namespace
+	ns := &namespace.Namespace{
+		ID:   "testns-id",
+		Path: "testns/",
+	}
+	vault.TestCoreCreateNamespaces(t, core, ns)
+
+	// Create a policy in the namespace that grants access to sys/mounts and sys/policy
+	nsClient, err := rootClient.Clone()
+	require.NoError(t, err, "Failed to clone root client")
+	nsClient.SetNamespace("testns/")
+	nsClient.SetToken(rootToken)
+
+	// Write policy that grants access to the non-restricted APIs we want to test
+	// grants access to sys/health, sys/init, and sys/metrics verifying that the namespace
+	// still has no access to the restricted APIs
+	policyName := "ns-test-policy"
+	policyHCL := `
+	path "sys/mounts" {
+		capabilities = ["read"]
+	}
+	path "sys/policy" {
+		capabilities = ["read"]
+	}
+	path "sys/health" {
+		capabilities = ["read"]
+	}
+	path "sys/init" {
+		capabilities = ["read"]
+	}
+	path "sys/metrics" {
+		capabilities = ["read"]
+	}
+	`
+
+	err = nsClient.Sys().PutPolicy(policyName, policyHCL)
+	require.NoError(t, err, "Failed to create policy in namespace")
+
+	// Create a token within the namespace with the policy
+	tokenResp, err := nsClient.Auth().Token().Create(&api.TokenCreateRequest{
+		Policies: []string{policyName},
+	})
+	require.NoError(t, err, "Failed to create token in namespace")
+	require.NotNil(t, tokenResp, "Token response should not be nil")
+	require.NotNil(t, tokenResp.Auth, "Token auth should not be nil")
+
+	nsToken := tokenResp.Auth.ClientToken
+
+	// Create a client with namespace and token
+	nsAuthClient, err := rootClient.Clone()
+	require.NoError(t, err, "Failed to clone root client")
+	nsAuthClient.SetNamespace("testns/")
+	nsAuthClient.SetToken(nsToken)
+
+	// Test cases
+	restrictedAPIs := []string{
+		"sys/health",
+		"sys/init",
+		"sys/metrics",
+	}
+
+	nonRestrictedAPIs := []string{
+		"sys/mounts",
+		"sys/policy",
+	}
+
+	// Test restricted APIs - they should fail with 400 when accessed with namespace
+	for _, path := range restrictedAPIs {
+		t.Run("restricted-"+path, func(t *testing.T) {
+			// Use root token but with namespace
+			client, err := rootClient.Clone()
+			require.NoError(t, err, "Failed to clone root client")
+			client.SetNamespace("testns/")
+			client.SetToken(rootToken)
+
+			resp, err := client.Logical().ReadRaw(path)
+
+			// Should get 400 Bad Request (namespace restriction)
+			require.Error(t, err, "Restricted API should fail with namespace")
+			respErr, ok := err.(*api.ResponseError)
+			require.True(t, ok, "Expected ResponseError")
+			require.Equal(t, http.StatusBadRequest, respErr.StatusCode,
+				"Restricted API should return 400 Bad Request with namespace")
+
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close() //nolint:errcheck
+			}
+		})
+
+		t.Run("restricted-root-"+path, func(t *testing.T) {
+			// Same API from root should not fail with 400
+			resp, err := rootClient.Logical().ReadRaw(path)
+			if err != nil {
+				respErr, ok := err.(*api.ResponseError)
+				if ok {
+					require.NotEqual(t, http.StatusBadRequest, respErr.StatusCode,
+						"API should not return 400 Bad Request from root namespace")
+				}
+			}
+
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close() //nolint:errcheck
+			}
+		})
+	}
+
+	// Test non-restricted APIs - they should succeed with 200 when accessed with namespace and proper permissions
+	for _, path := range nonRestrictedAPIs {
+		t.Run("allowed-"+path, func(t *testing.T) {
+			resp, err := nsAuthClient.Logical().ReadRaw(path)
+
+			// Should succeed with 200 OK
+			require.NoError(t, err, "Non-restricted API should succeed with proper permissions")
+			require.NotNil(t, resp, "Response should not be nil")
+			require.Equal(t, http.StatusOK, resp.StatusCode,
+				"Non-restricted API should return 200 OK with namespace and proper permissions")
+
+			resp.Body.Close() //nolint:errcheck
+		})
+	}
+
+	// Test restricted APIs - they should fail with 400 when accessed with namespace and proper permissions
+	for _, path := range restrictedAPIs {
+		t.Run("restricted-"+path, func(t *testing.T) {
+			resp, err := nsAuthClient.Logical().ReadRaw(path)
+
+			// Should get 400 Bad Request (namespace restriction)
+			require.Error(t, err, "Restricted API should fail with proper permissions")
+			respErr, ok := err.(*api.ResponseError)
+			require.True(t, ok, "Expected ResponseError")
+			require.Equal(t, http.StatusBadRequest, respErr.StatusCode,
+				"Restricted API should return 400 Bad Request with namespace and proper permissions")
+
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close() //nolint:errcheck
+			}
+		})
 	}
 }

@@ -4,17 +4,19 @@
 package vault
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/builtin/credential/approle"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRequestHandling_Wrapping(t *testing.T) {
@@ -472,4 +474,247 @@ func TestRequestHandling_SecretLeaseMetric(t *testing.T) {
 			"creation_ttl":  "+Inf",
 		},
 	)
+}
+
+// TestRequestHandling_ListFiltering validates that list filtering occurs as
+// expected, including with templating and wildcards.
+func TestRequestHandling_ListFiltering(t *testing.T) {
+	t.Parallel()
+
+	core, _, root := TestCoreUnsealed(t)
+
+	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	core.credentialBackends["userpass"] = credUserpass.Factory
+
+	// Upgrade to kv-v2
+	TestCoreUpgradeToKVv2(t, core, root)
+
+	// Enable userpass
+	req := &logical.Request{
+		Path:        "sys/auth/userpass",
+		Operation:   logical.UpdateOperation,
+		ClientToken: root,
+		Data: map[string]interface{}{
+			"type": "userpass",
+		},
+	}
+
+	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	// Add policy
+	req.Path = "sys/policies/acl/list-filtered"
+	req.Data = map[string]interface{}{
+		"policy": `
+path "secret/metadata/by-data/*" {
+	capabilities = ["list", "scan"]
+	list_scan_response_keys_filter_path = "{{ .path | replace \"secret/metadata/\" \"secret/data/\" }}{{ .key }}"
+}
+
+path "secret/detailed-metadata/by-data/*" {
+	capabilities = ["list", "scan"]
+	list_scan_response_keys_filter_path = "{{ .path | replace \"secret/detailed-metadata/\" \"secret/data/\" }}{{ .key }}"
+}
+
+path "secret/data/by-data/data-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-data/data-no" {
+	capabilities = ["deny"]
+}
+
+path "secret/metadata/by-data/metadata-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-data/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-data/both" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-data/subdir/data-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-data/subdir/data-no" {
+	capabilities = ["deny"]
+}
+
+path "secret/metadata/by-data/subdir/metadata-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-data/subdir/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-data/subdir/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/*" {
+	capabilities = ["list", "scan"]
+	list_scan_response_keys_filter_path = "{{ .path }}{{ .key }}"
+}
+
+path "secret/detailed-metadata/by-metadata/*" {
+	capabilities = ["list", "scan"]
+	list_scan_response_keys_filter_path = "{{ .path | replace \"secret/detailed-metadata/\" \"secret/metadata/\" }}{{ .key }}"
+}
+
+path "secret/metadata/by-metadata/metadata-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/metadata-no" {
+	capabilities = ["deny"]
+}
+
+path "secret/data/by-metadata/data-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-metadata/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/subdir/metadata-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/subdir/metadata-no" {
+	capabilities = ["deny"]
+}
+
+path "secret/data/by-metadata/subdir/data-yes" {
+	capabilities = ["read"]
+}
+
+path "secret/data/by-metadata/subdir/both" {
+	capabilities = ["read"]
+}
+
+path "secret/metadata/by-metadata/subdir/both" {
+	capabilities = ["read"]
+}
+`,
+	}
+
+	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	req.Path = "auth/userpass/users/filtered"
+	req.Data = map[string]interface{}{
+		"password":       "filtered",
+		"token_policies": "list-filtered",
+	}
+
+	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	req.Path = "auth/userpass/login/filtered"
+	tokenResp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+	require.NotNil(t, tokenResp)
+	require.False(t, tokenResp.IsError())
+
+	// Create all entries.
+	for _, prefix := range []string{"by-data", "by-metadata", "by-data/subdir", "by-metadata/subdir"} {
+		for _, name := range []string{"data-yes", "data-no", "metadata-yes", "metadata-no", "elided", "both"} {
+			req.Path = fmt.Sprintf("secret/data/%v/%v", prefix, name)
+			req.Data = map[string]interface{}{
+				"data": map[string]interface{}{
+					"key-name": req.Path,
+				},
+			}
+
+			resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+			require.NoError(t, err)
+			require.False(t, resp.IsError())
+		}
+	}
+
+	// map from prefix (by-data or by-metadata) to allowed keys, with
+	// indication whether it shows on list and scan (true) vs just scan
+	// (false).
+	allowed := map[string]map[string]bool{
+		"by-data": {
+			"data-yes":        true,
+			"both":            true,
+			"subdir/data-yes": false,
+			"subdir/both":     false,
+		},
+		"by-data/subdir": {
+			"data-yes": true,
+			"both":     true,
+		},
+		"by-metadata": {
+			"metadata-yes":        true,
+			"both":                true,
+			"subdir/metadata-yes": false,
+			"subdir/both":         false,
+		},
+		"by-metadata/subdir": {
+			"metadata-yes": true,
+			"both":         true,
+		},
+	}
+
+	req.ClientToken = tokenResp.Auth.ClientToken
+	req.ClientTokenAccessor = tokenResp.Auth.Accessor
+
+	for prefix, entries := range allowed {
+		for _, op := range []string{"list", "scan"} {
+			for _, listType := range []string{"metadata", "detailed-metadata"} {
+				isDetailed := strings.Contains(listType, "detailed")
+
+				req.Operation = logical.Operation(op)
+				req.Data = nil
+				req.Path = fmt.Sprintf("secret/%v/%v/", listType, prefix)
+
+				resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+				require.NoError(t, err, "[%v] path: %v", req.Operation, req.Path)
+				require.NotNil(t, resp, "[%v] path: %v", req.Operation, req.Path)
+				require.False(t, resp.IsError())
+
+				require.NotEmpty(t, resp.Data, "[%v] path: %v\n\tresp: %#v", req.Operation, req.Path, resp)
+				require.NotEmpty(t, resp.Data["keys"], "[%v] path: %v\n\tresp: %#v", req.Operation, req.Path, resp)
+
+				if isDetailed {
+					require.NotEmpty(t, resp.Data["key_info"], "[%v] path: %v\n\tresp: %#v", req.Operation, req.Path, resp)
+				}
+
+				for _, entry := range resp.Data["keys"].([]string) {
+					if strings.HasSuffix(entry, "/") {
+						continue
+					}
+
+					onList, present := entries[entry]
+					require.True(t,
+						present,
+						"list included %v but shouldn't have; path: %v\n\texpected: %#v\n\tactual: %#v", entry, req.Path, entries, resp.Data["keys"].([]string),
+					)
+
+					require.False(t,
+						req.Operation == logical.ListOperation && !onList,
+						"list operation included recursive entry %v\n\tactual: %#v", entry, resp.Data["keys"].([]string),
+					)
+				}
+			}
+		}
+	}
 }

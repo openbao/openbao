@@ -11,11 +11,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	bolt "go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -104,12 +104,12 @@ func NewBoltStorage(config *BoltStorageConfig) (*BoltStorage, error) {
 }
 
 func createBoltSchema(tx *bolt.Tx, createVersion string) error {
-	switch {
-	case createVersion == "1":
+	switch createVersion {
+	case "1":
 		if err := createV1BoltSchema(tx); err != nil {
 			return err
 		}
-	case createVersion == "2":
+	case "2":
 		if err := createV2BoltSchema(tx); err != nil {
 			return err
 		}
@@ -424,9 +424,9 @@ func (b *BoltStorage) Clear() error {
 // DBFileExists checks whether the vault agent cache file at `filePath` exists
 func DBFileExists(path string) (bool, error) {
 	checkFile, err := os.OpenFile(filepath.Join(path, DatabaseFileName), os.O_RDWR, 0o600)
-	defer checkFile.Close()
 	switch {
 	case err == nil:
+		checkFile.Close()
 		return true, nil
 	case os.IsNotExist(err):
 		return false, nil

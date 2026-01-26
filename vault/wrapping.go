@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/armon/go-metrics"
-	"github.com/go-jose/go-jose/v3"
-	"github.com/go-jose/go-jose/v3/jwt"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -140,7 +140,7 @@ DONELISTHANDLING:
 		NamespaceID:    ns.ID,
 	}
 
-	if err := c.CreateToken(ctx, &te); err != nil {
+	if err := c.CreateToken(ctx, &te, true); err != nil {
 		c.logger.Error("failed to create wrapping token", "error", err)
 		return nil, ErrInternalError
 	}
@@ -156,11 +156,11 @@ DONELISTHANDLING:
 			// The type of the secret engine is not all that useful;
 			// we could use "token" but let's be more descriptive,
 			// even if it's not a real auth method.
-			{"auth_method", "response_wrapping"},
-			{"mount_point", mountPointWithoutNs},
-			{"creation_ttl", ttl_label},
+			{Name: "auth_method", Value: "response_wrapping"},
+			{Name: "mount_point", Value: mountPointWithoutNs},
+			{Name: "creation_ttl", Value: ttl_label},
 			// *Should* be service, but let's use whatever create() did..
-			{"token_type", te.Type.String()},
+			{Name: "token_type", Value: te.Type.String()},
 		},
 	)
 
@@ -221,7 +221,7 @@ DONELISTHANDLING:
 			c.logger.Error("failed to create JWT builder", "error", err)
 			return nil, ErrInternalError
 		}
-		ser, err := jwt.Signed(sig).Claims(claims).Claims(priClaims).CompactSerialize()
+		ser, err := jwt.Signed(sig).Claims(claims).Claims(priClaims).Serialize()
 		if err != nil {
 			c.tokenStore.revokeOrphan(ctx, te.ID)
 			c.logger.Error("failed to serialize JWT", "error", err)
@@ -325,7 +325,7 @@ DONELISTHANDLING:
 
 	// Register the wrapped token with the expiration manager. We skip the role
 	// lookup here as we are not logging in, and only logins apply to role based quotas.
-	if err := c.expiration.RegisterAuth(ctx, &te, wAuth, ""); err != nil {
+	if err := c.expiration.RegisterAuth(ctx, &te, wAuth, "", true /* persist */); err != nil {
 		// Revoke since it's not yet being tracked for expiration
 		c.tokenStore.revokeOrphan(ctx, te.ID)
 		c.logger.Error("failed to register cubbyhole wrapping token lease", "request_path", req.Path, "error", err)
@@ -345,10 +345,6 @@ func (c *Core) validateWrappingToken(ctx context.Context, req *logical.Request) 
 
 	if c.Sealed() {
 		return false, consts.ErrSealed
-	}
-
-	if c.standby {
-		return false, consts.ErrStandby
 	}
 
 	defer func() {
@@ -404,7 +400,7 @@ func (c *Core) validateWrappingToken(ctx context.Context, req *logical.Request) 
 	// and then a dot.
 	if IsJWT(token) {
 		// Implement the jose library way
-		parsedJWT, err := jwt.ParseSigned(token)
+		parsedJWT, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.ES512})
 		if err != nil {
 			return false, fmt.Errorf("wrapping token could not be parsed: %w", err)
 		}

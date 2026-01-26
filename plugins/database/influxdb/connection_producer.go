@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	influx "github.com/influxdata/influxdb1-client/v2"
-	"github.com/mitchellh/mapstructure"
 	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/database/helper/connutil"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -23,16 +23,16 @@ import (
 // influxdbConnectionProducer implements ConnectionProducer and provides an
 // interface for influxdb databases to make connections.
 type influxdbConnectionProducer struct {
-	Host              string      `json:"host" structs:"host" mapstructure:"host"`
-	Username          string      `json:"username" structs:"username" mapstructure:"username"`
-	Password          string      `json:"password" structs:"password" mapstructure:"password"`
-	Port              string      `json:"port" structs:"port" mapstructure:"port"` // default to 8086
-	TLS               bool        `json:"tls" structs:"tls" mapstructure:"tls"`
-	InsecureTLS       bool        `json:"insecure_tls" structs:"insecure_tls" mapstructure:"insecure_tls"`
-	ConnectTimeoutRaw interface{} `json:"connect_timeout" structs:"connect_timeout" mapstructure:"connect_timeout"`
-	TLSMinVersion     string      `json:"tls_min_version" structs:"tls_min_version" mapstructure:"tls_min_version"`
-	PemBundle         string      `json:"pem_bundle" structs:"pem_bundle" mapstructure:"pem_bundle"`
-	PemJSON           string      `json:"pem_json" structs:"pem_json" mapstructure:"pem_json"`
+	Host              string      `json:"host" mapstructure:"host"`
+	Username          string      `json:"username" mapstructure:"username"`
+	Password          string      `json:"password" mapstructure:"password"`
+	Port              string      `json:"port" mapstructure:"port"` // default to 8086
+	TLS               bool        `json:"tls" mapstructure:"tls"`
+	InsecureTLS       bool        `json:"insecure_tls" mapstructure:"insecure_tls"`
+	ConnectTimeoutRaw interface{} `json:"connect_timeout" mapstructure:"connect_timeout"`
+	TLSMinVersion     string      `json:"tls_min_version" mapstructure:"tls_min_version"`
+	PemBundle         string      `json:"pem_bundle" mapstructure:"pem_bundle"`
+	PemJSON           string      `json:"pem_json" mapstructure:"pem_json"`
 
 	connectTimeout time.Duration
 	certificate    string
@@ -87,7 +87,7 @@ func (i *influxdbConnectionProducer) Initialize(ctx context.Context, req dbplugi
 		}
 		certBundle, err = parsedCertBundle.ToCertBundle()
 		if err != nil {
-			return dbplugin.InitializeResponse{}, fmt.Errorf("Error marshaling PEM information: %w", err)
+			return dbplugin.InitializeResponse{}, fmt.Errorf("error marshaling PEM information: %w", err)
 		}
 		i.certificate = certBundle.Certificate
 		i.privateKey = certBundle.PrivateKey
@@ -97,11 +97,11 @@ func (i *influxdbConnectionProducer) Initialize(ctx context.Context, req dbplugi
 	case len(i.PemBundle) != 0:
 		parsedCertBundle, err = certutil.ParsePEMBundle(i.PemBundle)
 		if err != nil {
-			return dbplugin.InitializeResponse{}, fmt.Errorf("Error parsing the given PEM information: %w", err)
+			return dbplugin.InitializeResponse{}, fmt.Errorf("error parsing the given PEM information: %w", err)
 		}
 		certBundle, err = parsedCertBundle.ToCertBundle()
 		if err != nil {
-			return dbplugin.InitializeResponse{}, fmt.Errorf("Error marshaling PEM information: %w", err)
+			return dbplugin.InitializeResponse{}, fmt.Errorf("error marshaling PEM information: %w", err)
 		}
 		i.certificate = certBundle.Certificate
 		i.privateKey = certBundle.PrivateKey

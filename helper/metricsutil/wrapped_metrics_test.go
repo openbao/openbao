@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 )
 
 func isLabelPresent(toFind Label, ls []Label) bool {
@@ -46,10 +46,10 @@ func TestClusterLabelPresent(t *testing.T) {
 	key1 := []string{"aaa", "bbb"}
 	key2 := []string{"ccc", "ddd"}
 	key3 := []string{"eee", "fff"}
-	labels1 := []Label{{"dim1", "val1"}}
-	labels2 := []Label{{"dim2", "val2"}}
-	labels3 := []Label{{"dim3", "val3"}}
-	clusterLabel := Label{"cluster", testClusterName}
+	labels1 := []Label{{Name: "dim1", Value: "val1"}}
+	labels2 := []Label{{Name: "dim2", Value: "val2"}}
+	labels3 := []Label{{Name: "dim3", Value: "val3"}}
+	clusterLabel := Label{Name: "cluster", Value: testClusterName}
 	expectedKey1 := "aaa.bbb;dim1=val1;cluster=" + testClusterName
 	expectedKey2 := "ccc.ddd;dim2=val2;cluster=" + testClusterName
 	expectedKey3 := "eee.fff;dim3=val3;cluster=" + testClusterName

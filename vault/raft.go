@@ -15,14 +15,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-discover"
 	discoverk8s "github.com/hashicorp/go-discover/provider/k8s"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
-	"github.com/mitchellh/mapstructure"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/physical/raft"
@@ -30,6 +29,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/seal"
 	"golang.org/x/net/http2"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -39,7 +39,7 @@ var (
 	raftAutopilotConfigurationStoragePath = "core/raft/autopilot/configuration"
 
 	// TestingUpdateClusterAddr is used in tests to override the cluster address
-	TestingUpdateClusterAddr uint32
+	TestingUpdateClusterAddr atomic.Bool
 )
 
 // GetRaftNodeID returns the raft node ID if there is one, or an empty string if there's not
@@ -939,7 +939,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 			// Wait until unseal keys are supplied
 			raftInfo.joinInProgress = true
 			c.raftInfo.Store(raftInfo)
-			if atomic.LoadUint32(c.postUnsealStarted) != 1 {
+			if !c.postUnsealStarted.Load() {
 				return errors.New("waiting for unseal keys to be supplied")
 			}
 		}
@@ -951,7 +951,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 
 		if c.seal.BarrierType() == wrapping.WrapperTypeShamir && !isRaftHAOnly {
 			// Reset the state
-			c.raftInfo.Store((*raftInformation)(nil))
+			c.raftInfo.Store(nil)
 
 			// In case of Shamir unsealing, inform the unseal process that raft join is completed
 			close(c.raftJoinDoneCh)
@@ -998,9 +998,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 			}
 			expandedJoinInfos = append(expandedJoinInfos, joinInfos...)
 		}
-		if err != nil {
-			return err
-		}
+
 		var wg sync.WaitGroup
 		for i := range expandedJoinInfos {
 			wg.Add(1)
@@ -1162,7 +1160,7 @@ func (c *Core) joinRaftSendAnswer(ctx context.Context, sealAccess seal.Access, r
 		return fmt.Errorf("error parsing cluster address: %w", err)
 	}
 	clusterAddr := parsedClusterAddr.Host
-	if atomic.LoadUint32(&TestingUpdateClusterAddr) == 1 && strings.HasSuffix(clusterAddr, ":0") {
+	if TestingUpdateClusterAddr.Load() && strings.HasSuffix(clusterAddr, ":0") {
 		// We are testing and have an address provider, so just create a random
 		// addr, it will be overwritten later.
 		var err error
@@ -1184,7 +1182,7 @@ func (c *Core) joinRaftSendAnswer(ctx context.Context, sealAccess seal.Access, r
 
 	answerRespJson, err := raftInfo.leaderClient.RawRequestWithContext(ctx, answerReq)
 	if answerRespJson != nil {
-		defer answerRespJson.Body.Close()
+		defer answerRespJson.Body.Close() //nolint:errcheck
 	}
 	if err != nil {
 		return err
@@ -1287,7 +1285,7 @@ func (c *Core) RaftBootstrap(ctx context.Context, onInit bool) error {
 }
 
 func (c *Core) isRaftUnseal() bool {
-	return c.raftInfo.Load().(*raftInformation) != nil
+	return c.raftInfo.Load() != nil
 }
 
 type answerRespData struct {

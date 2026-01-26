@@ -32,7 +32,6 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
   permissions: service(),
   store: service(),
   auth: service(),
-  featureFlagService: service('featureFlag'),
   currentCluster: service(),
   modelTypes: computed(function () {
     return ['node', 'secret', 'secret-engine'];
@@ -54,11 +53,6 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
     const params = this.paramsFor(this.routeName);
     let namespace = params.namespaceQueryParam;
     const currentTokenName = this.auth.get('currentTokenName');
-    const managedRoot = this.featureFlagService.managedNamespaceRoot;
-    if (managedRoot && this.version.isOSS) {
-      // eslint-disable-next-line no-console
-      console.error('Cannot use Cloud Admin Namespace flag with OpenBao');
-    }
     if (!namespace && currentTokenName && !Ember.testing) {
       // if no namespace queryParam and user authenticated,
       // use user's root namespace to redirect to properly param'd url
@@ -68,11 +62,6 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
       if (namespace) {
         this.transitionTo({ queryParams: { namespace } });
       }
-    } else if (managedRoot !== null) {
-      const managed = getManagedNamespace(namespace, managedRoot);
-      if (managed !== namespace) {
-        this.transitionTo({ queryParams: { namespace: managed } });
-      }
     }
     this.namespaceService.setNamespace(namespace);
     const id = this.getClusterId(params);
@@ -81,7 +70,6 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
       if (this.auth.currentToken) {
         await this.permissions.getPaths.perform();
       }
-      return this.version.fetchFeatures();
     } else {
       return reject({ httpStatus: 404, message: 'not found', path: params.cluster_name });
     }
@@ -119,11 +107,7 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
     this._super(...arguments);
     this.currentCluster.setCluster(model);
 
-    // Check that namespaces is enabled and if not,
-    // clear the namespace by transition to this route w/o it
-    if (this.namespaceService.path && !this.version.hasNamespaces) {
-      return this.transitionTo(this.routeName, { queryParams: { namespace: '' } });
-    }
+    // Proceed to the target route, as namespace features are assumed to be always enabled.
     return this.transitionToTargetRoute(transition);
   },
 

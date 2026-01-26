@@ -6,10 +6,10 @@ package monitor
 import (
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"go.uber.org/atomic"
 )
 
 // Monitor provides a mechanism to stream logs using go-hclog
@@ -72,8 +72,8 @@ func newMonitor(buf int, logger log.InterceptLogger, opts *log.LoggerOptions) (*
 		doneCh:            make(chan struct{}),
 		bufSize:           buf,
 		dropCheckInterval: 3 * time.Second,
-		droppedCount:      atomic.NewUint32(0),
-		started:           atomic.NewBool(false),
+		droppedCount:      &atomic.Uint32{},
+		started:           &atomic.Bool{},
 	}
 
 	opts.Output = sw
@@ -95,7 +95,7 @@ func (d *monitor) Stop() {
 func (d *monitor) Start() <-chan []byte {
 	// Check to see if this has already been started. If not, flag
 	// it and proceed. If so, bail out early.
-	if !d.started.CAS(false, true) {
+	if !d.started.CompareAndSwap(false, true) {
 		return nil
 	}
 
@@ -126,7 +126,7 @@ func (d *monitor) Start() <-chan []byte {
 				dc := d.droppedCount.Load()
 
 				if dc > 0 {
-					logMessage = []byte(fmt.Sprintf("Monitor dropped %d logs during monitor request\n", dc))
+					logMessage = fmt.Appendf(nil, "Monitor dropped %d logs during monitor request\n", dc)
 					d.droppedCount.Swap(0)
 				}
 			case logMessage = <-d.logCh:
@@ -153,7 +153,7 @@ func (d *monitor) Write(p []byte) (n int, err error) {
 	// ensure logCh is still open
 	select {
 	case <-d.doneCh:
-		return
+		return n, err
 	default:
 	}
 

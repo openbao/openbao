@@ -1,0 +1,3 @@
+```release-note:improvement
+When using auto-unseal via KMS, KMS-specific configuration information (non-sensitive) is now logged at server startup.
+```

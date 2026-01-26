@@ -1,20 +1,27 @@
 # OpenBao
 
-----
-
-**Please note**: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, _please responsibly disclose_ by contacting us at [openbao-security@lists.lfedge.org](mailto:openbao-security@lists.lfedge.org).
 
 ----
 
-<!-- -	Website: https://www.openbao.org -->
-- [Mailing List](https://lists.lfedge.org/g/openbao)
+**Please note**: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, _please responsibly disclose_ by contacting us at [openbao-security@lists.openssf.org](mailto:openbao-security@lists.openssf.org).
+
+----
+
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/openbao/openbao/badge)](https://scorecard.dev/viewer/?uri=github.com/openbao/openbao) [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/9126/badge)](https://www.bestpractices.dev/projects/9126)
+
+- [Website](https://www.openbao.org)
+- [Mailing List](https://lists.openssf.org/g/openbao)
 - [GitHub Discussions](https://github.com/openbao/openbao/discussions)
-- [Chat Server](https://chat.lfx.linuxfoundation.org/)
-  - `#openbao-announcements` ([matrix client](https://matrix.to/#/#openbao-announcements:chat.lfx.linuxfoundation.org), [home server](https://chat.lfx.linuxfoundation.org/#/room/#openbao-announcements:chat.lfx.linuxfoundation.org))
-  - `#openbao-development` ([matrix client](https://matrix.to/#/#openbao-development:chat.lfx.linuxfoundation.org), [home server](https://chat.lfx.linuxfoundation.org/#/room/#openbao-development:chat.lfx.linuxfoundation.org))
-  - `#openbao-general` ([matrix client](https://matrix.to/#/#openbao-general:chat.lfx.linuxfoundation.org), [home server](https://chat.lfx.linuxfoundation.org/#/room/#openbao-general:chat.lfx.linuxfoundation.org))
-  - `#openbao-questions` ([matrix client](https://matrix.to/#/#openbao-questions:chat.lfx.linuxfoundation.org), [home server](https://chat.lfx.linuxfoundation.org/#/room/#openbao-questions:chat.lfx.linuxfoundation.org))
-  - `#openbao-random` ([matrix client](https://matrix.to/#/#openbao-random:chat.lfx.linuxfoundation.org), [home server](https://chat.lfx.linuxfoundation.org/#/room/#openbao-random:chat.lfx.linuxfoundation.org))
+- [Chat Server](https://linuxfoundation.zulipchat.com/)
+  - [`#openssf-openbao-discussion`](https://linuxfoundation.zulipchat.com/#narrow/channel/529890-openssf-openbao-discussion)
+  - [`#openssf-openbao-support`](https://linuxfoundation.zulipchat.com/#narrow/channel/530381-openssf-openbao-support)
+  - [`#openssf-openbao-tsc`](https://linuxfoundation.zulipchat.com/#narrow/channel/530382-openssf-openbao-tsc)
+  - Working Groups:
+    - [`#openssf-openbao-wg-namespaces`](https://linuxfoundation.zulipchat.com/#narrow/channel/532995-openssf-openbao-wg-namespaces)
+    - [`#openssf-openbao-wg-pkcs11`](https://linuxfoundation.zulipchat.com/#narrow/channel/532994-openssf-openbao-wg-pkcs11)
+    - [`#openssf-openbao-wg-scalability`](https://linuxfoundation.zulipchat.com/#narrow/channel/532998-openssf-openbao-wg-scalability)
+    - [`#openssf-openbao-wg-supply`](https://linuxfoundation.zulipchat.com/#narrow/channel/532999-openssf-openbao-wg-supply)
+    - [`#openssf-openbao-wg-ui`](https://linuxfoundation.zulipchat.com/#narrow/channel/532997-openssf-openbao-wg-ui)
 
 <p align="center">
   <img width="300" alt="OpenBao Mascot" src="https://raw.githubusercontent.com/openbao/artwork/main/color/openbao-color.svg">
@@ -29,7 +36,7 @@ The key features of OpenBao are:
 * **Secure Secret Storage**: Arbitrary key/value secrets can be stored
   in OpenBao. OpenBao encrypts these secrets prior to writing them to persistent
   storage, so gaining access to the raw storage isn't enough to access
-  your secrets. OpenBao can write to disk, [Consul](https://www.consul.io),
+  your secrets. OpenBao can write to disk, [PostgreSQL](https://www.postgresql.org/),
   and more.
 
 * **Dynamic Secrets**: OpenBao can generate secrets on-demand for some
@@ -57,7 +64,7 @@ The key features of OpenBao are:
 Documentation, Getting Started, and Certification Exams
 -------------------------------
 
-<!-- Documentation is available on the [OpenBao website](https://www.openbao.org/docs/). -->
+Documentation is available on the [OpenBao website](https://www.openbao.org/docs/).
 
 Developing OpenBao
 --------------------
@@ -150,7 +157,7 @@ you're testing.
 To run the acceptance tests, invoke `make testacc`:
 
 ```sh
-$ make testacc TEST=./builtin/logical/consul
+$ make testacc TEST=./builtin/logical/pki
 ...
 ```
 

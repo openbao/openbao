@@ -75,6 +75,7 @@ func TestAuthHandler(t *testing.T) {
 	client := cluster.Cores[0].Client
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
 
 	ah := NewAuthHandler(&AuthHandlerConfig{
 		Logger: logger.Named("auth.handler"),
@@ -101,7 +102,7 @@ consumption:
 		case <-ah.OutputCh:
 		case <-ah.TemplateTokenCh:
 		// Nothing
-		case <-time.After(stopTime.Sub(time.Now())):
+		case <-time.After(time.Until(stopTime)):
 			if !closed {
 				cancelFunc()
 				closed = true

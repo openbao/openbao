@@ -60,9 +60,7 @@ func (p *PathManager) RemovePaths(paths []string) {
 		}
 
 		// Exceptions aren't stored with the leading ! so strip it
-		if strings.HasPrefix(prefix, "!") {
-			prefix = strings.TrimPrefix(prefix, "!")
-		}
+		prefix = strings.TrimPrefix(prefix, "!")
 
 		// We trim any trailing *, but we don't touch whether it is a trailing
 		// slash or not since we want to be able to ignore prefixes that fully
@@ -132,6 +130,31 @@ func (p *PathManager) HasExactPath(path string) bool {
 
 		strVal := string(val)
 		if strings.HasSuffix(strVal, "/") || strVal == path {
+			return !exception
+		}
+	}
+	return false
+}
+
+// HasPathSegments returns if the prefix for a given path exists,
+// as long as full path components (delimited by '/') are matched.
+func (p *PathManager) HasPathSegments(path string) bool {
+	p.l.RLock()
+	defer p.l.RUnlock()
+
+	if val, exceptionRaw, ok := p.paths.Root().LongestPrefix([]byte(path)); ok {
+		var exception bool
+		if exceptionRaw != nil {
+			exception = exceptionRaw.(bool)
+		}
+
+		strVal := string(val)
+		if path == strVal || // exact match, down to the trailing '/'
+			// prefix match is continued by a new path segment, where `strVal` has no trailing '/'
+			path[len(strVal)] == '/' ||
+			// prefix match is continued by a new path segment, where `strVal` has an trailing '/'
+			// -- in this case we enforce the trailing '/' in `path` as well.
+			(path[len(strVal)-1] == '/' && strVal[len(strVal)-1] == '/') {
 			return !exception
 		}
 	}

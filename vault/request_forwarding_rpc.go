@@ -8,10 +8,9 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
-	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -79,7 +78,7 @@ func (s *forwardedRequestRPCServer) Echo(ctx context.Context, in *EchoRequest) (
 		upgradeVersion: in.RaftUpgradeVersion,
 	}
 	if in.ClusterAddr != "" {
-		s.core.clusterPeerClusterAddrsCache.Set(in.ClusterAddr, incomingNodeConnectionInfo, 0)
+		s.core.clusterPeerClusterAddrsCache.Set(in.ClusterAddr, incomingNodeConnectionInfo)
 	}
 
 	if in.RaftAppliedIndex > 0 && len(in.RaftNodeID) > 0 && s.raftFollowerStates != nil {
@@ -126,7 +125,7 @@ func (c *forwardingClient) startHeartbeat() {
 		}
 		tick := func() {
 			labels := make([]metrics.Label, 0, 1)
-			defer metrics.MeasureSinceWithLabels([]string{"ha", "rpc", "client", "echo"}, time.Now(), labels)
+			now := time.Now()
 
 			req := &EchoRequest{
 				Message:     "ping",
@@ -143,9 +142,10 @@ func (c *forwardingClient) startHeartbeat() {
 				req.RaftUpgradeVersion = raftBackend.EffectiveVersion()
 				labels = append(labels, metrics.Label{Name: "peer_id", Value: raftBackend.NodeID()})
 			}
+			defer metrics.MeasureSinceWithLabels([]string{"ha", "rpc", "client", "echo"}, now, labels)
 
 			ctx, cancel := context.WithTimeout(c.echoContext, 2*time.Second)
-			resp, err := c.RequestForwardingClient.Echo(ctx, req)
+			resp, err := c.Echo(ctx, req)
 			cancel()
 			if err != nil {
 				metrics.IncrCounter([]string{"ha", "rpc", "client", "echo", "errors"}, 1)
@@ -162,7 +162,7 @@ func (c *forwardingClient) startHeartbeat() {
 			}
 			// Store the active node's replication state to display in
 			// sys/health calls
-			atomic.StoreUint32(c.core.activeNodeReplicationState, resp.ReplicationState)
+			c.core.activeNodeReplicationState.Store(resp.ReplicationState)
 		}
 
 		tick()
@@ -172,7 +172,7 @@ func (c *forwardingClient) startHeartbeat() {
 			case <-c.echoContext.Done():
 				c.echoTicker.Stop()
 				c.core.logger.Debug("forwarding: stopping heartbeating")
-				atomic.StoreUint32(c.core.activeNodeReplicationState, uint32(consts.ReplicationUnknown))
+				c.core.activeNodeReplicationState.Store(uint32(consts.ReplicationUnknown))
 				return
 			case <-c.echoTicker.C:
 				tick()

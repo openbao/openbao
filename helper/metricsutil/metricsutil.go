@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
@@ -89,7 +89,7 @@ func (m *MetricsHelper) AddGaugeLoopMetric(key []string, val float32, labels []L
 }
 
 func (m *MetricsHelper) CreateMetricsCacheKeyName(key []string, val float32, labels []Label) string {
-	var keyJoin string = strings.Join(key, ".")
+	keyJoin := strings.Join(key, ".")
 	labelJoinStr := ""
 	for _, label := range labels {
 		labelJoinStr = labelJoinStr + label.Name + "|" + label.Value + "||"

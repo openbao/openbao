@@ -12,28 +12,24 @@ the OpenBao API, including errors - except for a few paths which do not go via t
 
 The non-audited paths are:
 
-    sys/init
-    sys/seal-status
-    sys/seal
-    sys/step-down
-    sys/unseal
-    sys/leader
-    sys/health
-    sys/rekey/init
-    sys/rekey/update
-    sys/rekey/verify
-    sys/rekey-recovery-key/init
-    sys/rekey-recovery-key/update
-    sys/rekey-recovery-key/verify
-    sys/storage/raft/bootstrap
-    sys/storage/raft/join
-    sys/internal/ui/feature-flags
+```
+sys/init
+sys/seal-status
+sys/seal
+sys/unseal
+sys/leader
+sys/health
+sys/storage/raft/bootstrap
+sys/storage/raft/join
+```
 
 and also, if the relevant listener configuration settings allow unauthenticated access:
 
-    sys/metrics
-    sys/pprof/*
-    sys/in-flight-req
+```
+sys/metrics
+sys/pprof/*
+sys/in-flight-req
+```
 
 ## Enabling multiple devices
 
@@ -43,7 +39,7 @@ a way to check for data tampering in the logs themselves.
 
 OpenBao considers a request to be successful if it can log to *at least* one
 configured audit device (see: [Blocked Audit
-Devices](/docs/audit#blocked-audit-devices) section below).  Therefore in order
+Devices](index.mdx#blocked-audit-devices) section below).  Therefore in order
 to build a complete picture of all audited actions, use the aggregate/union of
 the logs from each audit device.
 
@@ -54,7 +50,6 @@ devices. Audit failures can prevent OpenBao from servicing requests, so it is
 important to provide at least one other device.
 
 :::
-
 
 ## Format
 
@@ -81,15 +76,13 @@ inside all JSON sent to OpenBao (i.e., that integer values are provided in quote
 
 :::
 
-While most strings are hashed, OpenBao does make some exceptions, such as auth and secrets, and users can enable additional exceptions using the [secrets enable](/docs/commands/secrets/enable) command, and then tune it afterward.
+While most strings are hashed, OpenBao does make some exceptions, such as auth and secrets, and users can enable additional exceptions using the [secrets enable](../commands/secrets/enable.mdx) command, and then tune it afterward.
 
-**see also**:
+**See also**:
 
-[secrets tune](/docs/commands/secrets/tune)
-
-[auth enable](/docs/commands/auth/enable)
-
-[auth tune](/docs/commands/auth/tune)
+* [secrets tune](../commands/secrets/tune.mdx)
+* [auth enable](../commands/auth/enable.mdx)
+* [auth tune](../commands/auth/tune.mdx)
 
 ## Enabling/Disabling audit devices
 
@@ -106,6 +99,21 @@ $ bao audit enable file file_path=/var/log/openbao_audit.log
 In the command above, we passed the "file_path" parameter to specify the path
 where the audit log will be written to. Each audit device has its own
 set of parameters. See the documentation to the left for more details.
+
+:::warning
+
+Note: Enabling audit devices using the API (and, by proxy, using the CLI) allows
+the operator to create files at arbitrary locations on the host system or send
+network requests to arbitrary addresses, which may have unwanted effects. As a
+result, the `unsafe_allow_api_audit_creation = true` option must be set in the
+[server configuration](../configuration/index.mdx) starting with OpenBao v2.3.2.
+
+In future releases (v2.4+), we will enable a new model where audit devices are
+managed within the server configuration itself. This will become the
+recommended way to configure audits, while support for legacy audit
+configuration will be retained via the unsafe flag described above.
+
+:::
 
 :::warning
 
@@ -148,10 +156,11 @@ docs](/api-docs/system/audit) for more details.
 ## Common configuration options
 
 - `elide_list_responses` `(bool: false)` - See [Eliding list response
-  bodies](/docs/audit#eliding-list-response-bodies) below.
+  bodies](index.mdx#eliding-list-response-bodies) below.
 
-- `format` `(string: "json")` - Allows selecting the output format. Valid values
-  are `"json"` and `"jsonx"`, which formats the normal log entries as XML.
+- `format` `(string: "json")` - Allows selecting the output format. The only
+  valid value is `"json"`, which will be defaulted to if provided an empty
+  string.
 
 - `hmac_accessor` `(bool: true)` - If enabled, enables the hashing of token
   accessor.
@@ -161,6 +170,15 @@ docs](/api-docs/system/audit) for more details.
 
 - `prefix` `(string: "")` - A customizable string prefix to write before the
   actual log line.
+
+  :::warning
+
+  Note: The `prefix` option lets operators write semi-arbitrary content to the
+  audit log. Starting with OpenBao v2.3.2, enabling new audit devices with this
+  option is only supported if `allow_audit_log_prefixing = true` is set in the
+  [server configuration](../configuration/index.mdx).
+
+  :::
 
 ## Eliding list response bodies
 
@@ -196,6 +214,7 @@ it will be left as is by this feature.
 Here is an example of an audit record that has been processed by this feature
 (formatted with extra whitespace, and with fields not relevant to the example
 omitted):
+
 ```json
 {
   "type": "response",

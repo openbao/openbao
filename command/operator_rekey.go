@@ -10,22 +10,17 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fatih/structs"
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/posener/complete"
 )
 
 var (
 	_ cli.Command             = (*OperatorRekeyCommand)(nil)
 	_ cli.CommandAutocomplete = (*OperatorRekeyCommand)(nil)
-)
-
-const (
-	keyTypeRecovery = "Recovery"
-	keyTypeUnseal   = "Unseal"
 )
 
 type OperatorRekeyCommand struct {
@@ -57,6 +52,10 @@ func (c *OperatorRekeyCommand) Help() string {
 	helpText := `
 Usage: bao operator rekey [options] [KEY]
 
+  WARNING: this method is being deprecated, please use:
+    $ bao operator rotate-keys
+  instead.
+
   Generates a new set of unseal keys. This can optionally change the total
   number of key shares or the required threshold of those key shares to
   reconstruct the root key. This operation is zero downtime, but it requires
@@ -68,7 +67,7 @@ Usage: bao operator rekey [options] [KEY]
   a TTY is available, the command will prompt for text.
 
   If the flag -target=recovery is supplied, then this operation will require a
-  quorum of recovery keys in order to generate a new set of recovery keys. 
+  quorum of recovery keys in order to generate a new set of recovery keys.
 
   Initialize a rekey:
 
@@ -279,13 +278,15 @@ func (c *OperatorRekeyCommand) Run(args []string) int {
 // init starts the rekey process.
 func (c *OperatorRekeyCommand) init(client *api.Client) int {
 	// Handle the different API requests
-	var fn func(*api.RekeyInitRequest) (*api.RekeyStatusResponse, error)
+	var fn func(*api.RotateInitRequest) (*api.RotateStatusResponse, error)
 	keyTypeRequired := keyTypeUnseal
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyInit
 	case "recovery", "hsm":
 		keyTypeRequired = keyTypeRecovery
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRecoveryKeyInit
 	default:
 		c.UI.Error(fmt.Sprintf("Unknown target: %s", c.flagTarget))
@@ -293,7 +294,7 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 	}
 
 	// Make the request
-	status, err := fn(&api.RekeyInitRequest{
+	status, err := fn(&api.RotateInitRequest{
 		SecretShares:        c.flagKeyShares,
 		SecretThreshold:     c.flagKeyThreshold,
 		PGPKeys:             c.flagPGPKeys,
@@ -342,13 +343,17 @@ func (c *OperatorRekeyCommand) cancel(client *api.Client) int {
 	var fn func() error
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyCancel
 		if c.flagVerify {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			fn = client.Sys().RekeyVerificationCancel
 		}
 	case "recovery", "hsm":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRecoveryKeyCancel
 		if c.flagVerify {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			fn = client.Sys().RekeyRecoveryKeyVerificationCancel
 		}
 
@@ -376,32 +381,40 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
 		statusFn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyStatus()
 		}
 		updateFn = func(s1 string, s2 string) (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyUpdate(s1, s2)
 		}
 		if c.flagVerify {
 			statusFn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyVerificationStatus()
 			}
 			updateFn = func(s1 string, s2 string) (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyVerificationUpdate(s1, s2)
 			}
 		}
 	case "recovery", "hsm":
 		keyTypeRequired = keyTypeRecovery
 		statusFn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyRecoveryKeyStatus()
 		}
 		updateFn = func(s1 string, s2 string) (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyRecoveryKeyUpdate(s1, s2)
 		}
 		if c.flagVerify {
 			statusFn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyRecoveryKeyVerificationStatus()
 			}
 			updateFn = func(s1 string, s2 string) (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyRecoveryKeyVerificationUpdate(s1, s2)
 			}
 		}
@@ -420,11 +433,11 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	var nonce string
 
 	switch status := status.(type) {
-	case *api.RekeyStatusResponse:
+	case *api.RotateStatusResponse:
 		stat := status
 		started = stat.Started
 		nonce = stat.Nonce
-	case *api.RekeyVerificationStatusResponse:
+	case *api.RotateVerificationStatusResponse:
 		stat := status
 		started = stat.Started
 		nonce = stat.Nonce
@@ -465,7 +478,7 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	case "": // Prompt using the tty
 		// Nonce value is not required if we are prompting via the terminal
 		if c.flagNonInteractive {
-			c.UI.Error(wrapAtLength(fmt.Sprintf("Refusing to read from stdin with -non-interactive specified; specify nonce via the -nonce flag")))
+			c.UI.Error(wrapAtLength("Refusing to read from stdin with -non-interactive specified; specify nonce via the -nonce flag"))
 			return 1
 		}
 
@@ -513,10 +526,10 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	var mightContainUnsealKeys bool
 
 	switch resp := resp.(type) {
-	case *api.RekeyUpdateResponse:
+	case *api.RotateUpdateResponse:
 		complete = resp.Complete
 		mightContainUnsealKeys = true
-	case *api.RekeyVerificationUpdateResponse:
+	case *api.RotateVerificationUpdateResponse:
 		complete = resp.Complete
 	default:
 		c.UI.Error("Unknown update response type")
@@ -528,8 +541,8 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	}
 
 	if mightContainUnsealKeys {
-		return c.printUnsealKeys(client, status.(*api.RekeyStatusResponse),
-			resp.(*api.RekeyUpdateResponse))
+		return c.printUnsealKeys(client, status.(*api.RotateStatusResponse),
+			resp.(*api.RotateUpdateResponse))
 	}
 
 	c.UI.Output(wrapAtLength("Rekey verification successful. The rekey operation is complete and the new keys are now active."))
@@ -543,19 +556,23 @@ func (c *OperatorRekeyCommand) status(client *api.Client) int {
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
 		fn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyStatus()
 		}
 		if c.flagVerify {
 			fn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyVerificationStatus()
 			}
 		}
 	case "recovery", "hsm":
 		fn = func() (interface{}, error) {
+			//nolint:staticcheck // endpoint already marked as deprecated
 			return client.Sys().RekeyRecoveryKeyStatus()
 		}
 		if c.flagVerify {
 			fn = func() (interface{}, error) {
+				//nolint:staticcheck // endpoint already marked as deprecated
 				return client.Sys().RekeyRecoveryKeyVerificationStatus()
 			}
 		}
@@ -577,11 +594,13 @@ func (c *OperatorRekeyCommand) status(client *api.Client) int {
 // backupRetrieve retrieves the stored backup keys.
 func (c *OperatorRekeyCommand) backupRetrieve(client *api.Client) int {
 	// Handle the different API requests
-	var fn func() (*api.RekeyRetrieveResponse, error)
+	var fn func() (*api.RotateRetrieveResponse, error)
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRetrieveBackup
 	case "recovery", "hsm":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyRetrieveRecoveryBackup
 	default:
 		c.UI.Error(fmt.Sprintf("Unknown target: %s", c.flagTarget))
@@ -596,7 +615,7 @@ func (c *OperatorRekeyCommand) backupRetrieve(client *api.Client) int {
 	}
 
 	secret := &api.Secret{
-		Data: structs.New(storedKeys).Map(),
+		Data: structtomap.Map(storedKeys),
 	}
 
 	return OutputSecret(c.UI, secret)
@@ -608,8 +627,10 @@ func (c *OperatorRekeyCommand) backupDelete(client *api.Client) int {
 	var fn func() error
 	switch strings.ToLower(strings.TrimSpace(c.flagTarget)) {
 	case "barrier":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyDeleteBackup
 	case "recovery", "hsm":
+		//nolint:staticcheck // endpoint already marked as deprecated
 		fn = client.Sys().RekeyDeleteRecoveryBackup
 	default:
 		c.UI.Error(fmt.Sprintf("Unknown target: %s", c.flagTarget))
@@ -632,7 +653,7 @@ func (c *OperatorRekeyCommand) printStatus(in interface{}) int {
 	out = append(out, "Key | Value")
 
 	switch in := in.(type) {
-	case *api.RekeyStatusResponse:
+	case *api.RotateStatusResponse:
 		status := in
 		out = append(out, fmt.Sprintf("Nonce | %s", status.Nonce))
 		out = append(out, fmt.Sprintf("Started | %t", status.Started))
@@ -653,7 +674,7 @@ func (c *OperatorRekeyCommand) printStatus(in interface{}) int {
 			out = append(out, fmt.Sprintf("PGP Fingerprints | %s", status.PGPFingerprints))
 			out = append(out, fmt.Sprintf("Backup | %t", status.Backup))
 		}
-	case *api.RekeyVerificationStatusResponse:
+	case *api.RotateVerificationStatusResponse:
 		status := in
 		out = append(out, fmt.Sprintf("Started | %t", status.Started))
 		out = append(out, fmt.Sprintf("New Shares | %d", status.N))
@@ -674,7 +695,7 @@ func (c *OperatorRekeyCommand) printStatus(in interface{}) int {
 	}
 }
 
-func (c *OperatorRekeyCommand) printUnsealKeys(client *api.Client, status *api.RekeyStatusResponse, resp *api.RekeyUpdateResponse) int {
+func (c *OperatorRekeyCommand) printUnsealKeys(client *api.Client, status *api.RotateStatusResponse, resp *api.RotateUpdateResponse) int {
 	switch Format(c.UI) {
 	case "table":
 	default:

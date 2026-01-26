@@ -19,8 +19,12 @@ func GetPKCS11KMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[
 	info := make(map[string]string)
 	if wrapperInfo != nil {
 		info["PKCS#11 KMS Library"] = wrapperInfo.Metadata["lib"]
-		info["PKCS#11 KMS Key Label"] = wrapperInfo.Metadata["key_label"]
-		info["PKCS#11 KMS Key ID"] = wrapperInfo.Metadata["key_id"]
+		if val, present := wrapperInfo.Metadata["key_id"]; present {
+			info["PKCS#11 KMS Key ID"] = val
+		}
+		if val, present := wrapperInfo.Metadata["key_label"]; present {
+			info["PKCS#11 KMS Key Label"] = val
+		}
 		if val, present := wrapperInfo.Metadata["slot"]; present {
 			info["PKCS#11 KMS Slot"] = val
 		}

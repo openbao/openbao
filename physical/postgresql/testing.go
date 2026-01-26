@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	_ "github.com/jackc/pgx/v4/stdlib"
-	thpsql "github.com/openbao/openbao/helper/testhelpers/postgresql"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	thpsql "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/stretchr/testify/require"
 )
@@ -45,7 +45,7 @@ func SetupDatabaseObjects(t *testing.T, pg *PostgreSQLBackend) {
 			" ha_value                                    TEXT COLLATE \"C\", "+
 			" valid_until                                 TIMESTAMP WITH TIME ZONE NOT NULL, "+
 			" CONSTRAINT ha_key PRIMARY KEY (ha_key) "+
-			" ); ", pg.ha_table)
+			" ); ", pg.haTable)
 
 	_, err = pg.client.Exec(createHaTableSQL)
 	if err != nil {

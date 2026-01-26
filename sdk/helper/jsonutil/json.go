@@ -8,9 +8,9 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
 )
 
@@ -58,7 +58,7 @@ func EncodeJSONAndCompress(in interface{}, config *compressutil.CompressionConfi
 // is JSON decoded directly. Otherwise the decompressed data will be JSON
 // decoded.
 func DecodeJSON(data []byte, out interface{}) error {
-	if data == nil || len(data) == 0 {
+	if len(data) == 0 {
 		return errors.New("'data' being decoded is nil")
 	}
 	if out == nil {
@@ -68,9 +68,9 @@ func DecodeJSON(data []byte, out interface{}) error {
 	// Decompress the data if it was compressed in the first place
 	decompressedBytes, uncompressed, err := compressutil.Decompress(data)
 	if err != nil {
-		return errwrap.Wrapf("failed to decompress JSON: {{err}}", err)
+		return fmt.Errorf("failed to decompress JSON: %w", err)
 	}
-	if !uncompressed && (decompressedBytes == nil || len(decompressedBytes) == 0) {
+	if !uncompressed && len(decompressedBytes) == 0 {
 		return errors.New("decompressed data being decoded is invalid")
 	}
 

@@ -6,7 +6,6 @@ package vault
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -18,6 +17,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -34,6 +34,12 @@ rule "charset" {
 }
 rule "charset" {
 	charset = "0123456789"
+	min_chars = 1
+}`
+	rawTestPasswordPolicy2 = `
+length = 10
+rule "charset" {
+	charset = "abcdefghijklmnopqrstuvwxyz"
 	min_chars = 1
 }`
 )
@@ -241,8 +247,7 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_successful(t *testing.T) {
 func TestDynamicSystemView_GeneratePasswordFromPolicy_failed(t *testing.T) {
 	type testCase struct {
 		policyName string
-		getEntry   *logical.StorageEntry
-		getErr     error
+		entry      *logical.StorageEntry
 	}
 
 	tests := map[string]testCase{
@@ -251,38 +256,32 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_failed(t *testing.T) {
 		},
 		"no policy found": {
 			policyName: "testpolicy",
-			getEntry:   nil,
-			getErr:     nil,
 		},
 		"error retrieving policy": {
 			policyName: "testpolicy",
-			getEntry:   nil,
-			getErr:     errors.New("a test error"),
 		},
 		"saved policy is malformed": {
 			policyName: "testpolicy",
-			getEntry: &logical.StorageEntry{
+			entry: &logical.StorageEntry{
 				Key:   getPasswordPolicyKey("testpolicy"),
 				Value: []byte(`{"policy":"asdfahsdfasdf"}`),
 			},
-			getErr: nil,
 		},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			testStorage := fakeBarrier{
-				getEntry: test.getEntry,
-				getErr:   test.getErr,
-			}
-
-			core := &Core{
-				systemBarrierView: NewBarrierView(testStorage, "sys/"),
-			}
-			dsv := TestDynamicSystemView(core, nil)
+			core, _, _ := TestCoreUnsealed(t)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
+
+			if test.entry != nil {
+				core.systemBarrierView.Put(ctx, test.entry)
+			}
+
+			dsv := TestDynamicSystemView(core, nil)
+
 			actualPassword, err := dsv.GeneratePasswordFromPolicy(ctx, test.policyName)
 			if err == nil {
 				t.Fatal("err expected, got nil")
@@ -294,33 +293,67 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_failed(t *testing.T) {
 	}
 }
 
+func TestDynamicSystemView_GeneratePasswordFromPolicy_namespaces(t *testing.T) {
+	core, _, token := TestCoreUnsealed(t)
+
+	TestCoreCreateNamespaces(t, core,
+		&namespace.Namespace{Path: "foo/"},
+		&namespace.Namespace{Path: "foo/bar/"},
+	)
+
+	ctx := namespace.RootContext(nil)
+
+	fooNs, err := core.namespaceStore.GetNamespaceByPath(ctx, "foo/")
+	require.NoError(t, err)
+	barNs, err := core.namespaceStore.GetNamespaceByPath(ctx, "foo/bar")
+	require.NoError(t, err)
+
+	// Create password policy in the 'foo/' namespace.
+	path := fmt.Sprintf("sys/policies/password/%s", testPolicyName)
+	req := logical.TestRequest(t, logical.CreateOperation, path)
+	b64Policy := base64.StdEncoding.EncodeToString([]byte(rawTestPasswordPolicy))
+	req.Data["policy"] = b64Policy
+	req.ClientToken = token
+	_, err = core.HandleRequest(namespace.ContextWithNamespace(ctx, fooNs), req)
+	require.NoError(t, err)
+
+	// Password policy should only work in the 'foo/' namespace,
+	// not a child namespace, not the root namespace.
+	pass, err := TestDynamicSystemView(core, fooNs).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	require.NoError(t, err)
+	require.NotEmpty(t, pass)
+	pass, err = TestDynamicSystemView(core, barNs).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	require.Error(t, err)
+	require.Empty(t, pass)
+	pass, err = TestDynamicSystemView(core, nil).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	require.Error(t, err)
+	require.Empty(t, pass)
+
+	// Create another password policy in the root namespace, with the same name.
+	path = fmt.Sprintf("sys/policies/password/%s", testPolicyName)
+	req = logical.TestRequest(t, logical.CreateOperation, path)
+	b64Policy = base64.StdEncoding.EncodeToString([]byte(rawTestPasswordPolicy2))
+	req.Data["policy"] = b64Policy
+	req.ClientToken = token
+	_, err = core.HandleRequest(ctx, req)
+	require.NoError(t, err)
+
+	// Password policy in 'foo/' should still act the same
+	pass, err = TestDynamicSystemView(core, fooNs).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	require.NoError(t, err)
+	require.NotEmpty(t, pass)
+	require.Len(t, pass, 20)
+
+	// Password policy in root namespace should now be available, but generate passwords
+	// according to different constraints.
+	pass, err = TestDynamicSystemView(core, nil).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	require.NoError(t, err)
+	require.NotEmpty(t, pass)
+	require.Len(t, pass, 10)
+}
+
 type runes []rune
 
 func (r runes) Len() int           { return len(r) }
 func (r runes) Less(i, j int) bool { return r[i] < r[j] }
 func (r runes) Swap(i, j int)      { r[i], r[j] = r[j], r[i] }
-
-type fakeBarrier struct {
-	getEntry *logical.StorageEntry
-	getErr   error
-}
-
-func (b fakeBarrier) Get(context.Context, string) (*logical.StorageEntry, error) {
-	return b.getEntry, b.getErr
-}
-
-func (b fakeBarrier) List(context.Context, string) ([]string, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (b fakeBarrier) ListPage(context.Context, string, string, int) ([]string, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (b fakeBarrier) Put(context.Context, *logical.StorageEntry) error {
-	return errors.New("not implemented")
-}
-
-func (b fakeBarrier) Delete(context.Context, string) error {
-	return errors.New("not implemented")
-}

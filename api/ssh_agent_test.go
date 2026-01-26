@@ -14,12 +14,12 @@ func TestSSH_CreateTLSClient(t *testing.T) {
 	// load the default configuration
 	config, err := LoadSSHHelperConfig("./test-fixtures/agent_config.hcl")
 	if err != nil {
-		panic(fmt.Sprintf("error loading agent's config file: %s", err))
+		t.Fatalf("error loading agent's config file: %s", err)
 	}
 
 	client, err := config.NewClient()
 	if err != nil {
-		panic(fmt.Sprintf("error creating the client: %s", err))
+		t.Errorf("error creating the client: %s", err)
 	}
 
 	// Provide a certificate and enforce setting of transport
@@ -27,10 +27,10 @@ func TestSSH_CreateTLSClient(t *testing.T) {
 
 	client, err = config.NewClient()
 	if err != nil {
-		panic(fmt.Sprintf("error creating the client: %s", err))
+		t.Fatalf("error creating the client: %s", err)
 	}
 	if client.config.HttpClient.Transport == nil {
-		panic(fmt.Sprintf("error creating client with TLS transport"))
+		t.Fatal("error creating client with TLS transport")
 	}
 }
 
@@ -43,17 +43,17 @@ vault_addr = "1.2.3.4"
 tls_server_name = "%s"
 `, tlsServerName))
 	if err != nil {
-		panic(fmt.Sprintf("error loading config: %s", err))
+		t.Fatalf("error loading config: %s", err)
 	}
 
 	client, err := config.NewClient()
 	if err != nil {
-		panic(fmt.Sprintf("error creating the client: %s", err))
+		t.Fatalf("error creating the client: %s", err)
 	}
 
 	actualTLSServerName := client.config.HttpClient.Transport.(*http.Transport).TLSClientConfig.ServerName
 	if actualTLSServerName != tlsServerName {
-		panic(fmt.Sprintf("incorrect TLS server name. expected: %s actual: %s", tlsServerName, actualTLSServerName))
+		t.Fatalf("incorrect TLS server name. expected: %s actual: %s", tlsServerName, actualTLSServerName)
 	}
 }
 

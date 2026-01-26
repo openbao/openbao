@@ -112,7 +112,7 @@ func main() {
 		fmt.Printf("request failed: %s\n", err)
 		os.Exit(1)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	b, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {

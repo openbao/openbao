@@ -5,10 +5,10 @@ import (
 	"path"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/proto"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 )
 
 // pathConfig returns the path configuration for CRUD operations on the backend
@@ -24,6 +24,10 @@ func pathConfig(b *versionedKVBackend) *framework.Path {
 			"cas_required": {
 				Type:        framework.TypeBool,
 				Description: "If true, the backend will require the cas parameter to be set for each write",
+			},
+			"metadata_cas_required": {
+				Type:        framework.TypeBool,
+				Description: "If true, the backend will require the metadata_cas parameter to be set for each metadata update",
 			},
 			"delete_version_after": {
 				Type: framework.TypeSignedDurationSecond,
@@ -61,16 +65,17 @@ func (b *versionedKVBackend) pathConfigRead() framework.OperationFunc {
 		}
 
 		rdata := map[string]interface{}{
-			"max_versions": config.MaxVersions,
-			"cas_required": config.CasRequired,
+			"max_versions":          config.MaxVersions,
+			"cas_required":          config.CasRequired,
+			"metadata_cas_required": config.MetadataCasRequired,
 		}
 
 		var deleteVersionAfter time.Duration
 		if config.GetDeleteVersionAfter() != nil {
-			deleteVersionAfter, err = ptypes.Duration(config.GetDeleteVersionAfter())
-			if err != nil {
+			if err := config.GetDeleteVersionAfter().CheckValid(); err != nil {
 				return nil, err
 			}
+			deleteVersionAfter = config.GetDeleteVersionAfter().AsDuration()
 		}
 		rdata["delete_version_after"] = deleteVersionAfter.String()
 
@@ -91,16 +96,17 @@ func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 				return nil, err
 			}
 
-			defer txn.Rollback(ctx)
+			defer txn.Rollback(ctx) //nolint:errcheck
 			req.Storage = txn
 		}
 
 		maxRaw, mOk := data.GetOk("max_versions")
 		casRaw, cOk := data.GetOk("cas_required")
+		metadataCasRaw, mcOk := data.GetOk("metadata_cas_required")
 		dvaRaw, dvaOk := data.GetOk("delete_version_after")
 
 		// Fast path validation
-		if !mOk && !cOk && !dvaOk {
+		if !mOk && !cOk && !mcOk && !dvaOk {
 			return nil, nil
 		}
 
@@ -115,6 +121,9 @@ func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 		if cOk {
 			config.CasRequired = casRaw.(bool)
 		}
+		if mcOk {
+			config.MetadataCasRequired = metadataCasRaw.(bool)
+		}
 
 		if dvaOk {
 			dva := dvaRaw.(int)
@@ -124,7 +133,7 @@ func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 			case dva == 0:
 				config.ResetDeleteVersionAfter()
 			default:
-				config.DeleteVersionAfter = ptypes.DurationProto(time.Duration(dva) * time.Second)
+				config.DeleteVersionAfter = durationpb.New(time.Duration(dva) * time.Second)
 			}
 		}
 

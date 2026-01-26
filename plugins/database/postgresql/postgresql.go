@@ -13,7 +13,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/openbao/openbao/plugins/database/postgresql/scram"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/database/helper/connutil"
@@ -85,7 +85,7 @@ type PostgreSQL struct {
 }
 
 func (p *PostgreSQL) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
-	newConf, err := p.SQLConnectionProducer.Init(ctx, req.Config, req.VerifyConnection)
+	newConf, err := p.Init(ctx, req.Config, req.VerifyConnection)
 	if err != nil {
 		return dbplugin.InitializeResponse{}, err
 	}
@@ -192,7 +192,7 @@ func (p *PostgreSQL) changeUserPassword(ctx context.Context, username string, ch
 	if err != nil {
 		return fmt.Errorf("unable to start transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck
 
 	for _, stmt := range stmts {
 		for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
@@ -246,9 +246,7 @@ func (p *PostgreSQL) changeUserExpiration(ctx context.Context, username string, 
 	if err != nil {
 		return err
 	}
-	defer func() {
-		tx.Rollback()
-	}()
+	defer tx.Rollback() //nolint:errcheck
 
 	expirationStr := changeExp.NewExpiration.Format(expirationFormat)
 
@@ -297,7 +295,7 @@ func (p *PostgreSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (
 	if err != nil {
 		return dbplugin.NewUserResponse{}, fmt.Errorf("unable to start transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck
 
 	m := map[string]string{
 		"name":       username,
@@ -366,9 +364,7 @@ func (p *PostgreSQL) customDeleteUser(ctx context.Context, username string, revo
 	if err != nil {
 		return err
 	}
-	defer func() {
-		tx.Rollback()
-	}()
+	defer tx.Rollback() //nolint:errcheck
 
 	for _, stmt := range revocationStmts {
 		if containsMultilineStatement(stmt) {

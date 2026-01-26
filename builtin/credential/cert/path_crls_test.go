@@ -47,7 +47,6 @@ func TestCRLFetch(t *testing.T) {
 			case <-t.C:
 				b.PeriodicFunc(context.Background(), &logical.Request{Storage: storage})
 			case <-closeChan:
-				break
 			}
 		}
 	}()
@@ -64,6 +63,7 @@ func TestCRLFetch(t *testing.T) {
 	caKeyPEM, err := os.ReadFile("test-fixtures/keys/key.pem")
 	require.NoError(t, err)
 	certPEM, err := os.ReadFile("test-fixtures/keys/cert.pem")
+	require.NoError(t, err)
 
 	caBundle, err := certutil.ParsePEMBundle(string(caPEM))
 	require.NoError(t, err)

@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/namespace"
 )
 
@@ -60,13 +60,13 @@ type SinkWrapper struct {
 
 func (s SinkWrapper) AddDurationWithLabels(key []string, d time.Duration, labels []Label) {
 	val := float32(d) / float32(time.Millisecond)
-	s.MetricSink.AddSampleWithLabels(key, val, labels)
+	s.AddSampleWithLabels(key, val, labels)
 }
 
 func (s SinkWrapper) MeasureSinceWithLabels(key []string, start time.Time, labels []Label) {
-	elapsed := time.Now().Sub(start)
+	elapsed := time.Since(start)
 	val := float32(elapsed) / float32(time.Millisecond)
-	s.MetricSink.AddSampleWithLabels(key, val, labels)
+	s.AddSampleWithLabels(key, val, labels)
 }
 
 var _ Metrics = SinkWrapper{}
@@ -75,26 +75,26 @@ var _ Metrics = SinkWrapper{}
 type Label = metrics.Label
 
 func (m *ClusterMetricSink) SetGauge(key []string, val float32) {
-	m.Sink.SetGaugeWithLabels(key, val, []Label{{"cluster", m.ClusterName.Load().(string)}})
+	m.Sink.SetGaugeWithLabels(key, val, []Label{{Name: "cluster", Value: m.ClusterName.Load().(string)}})
 }
 
 func (m *ClusterMetricSink) SetGaugeWithLabels(key []string, val float32, labels []Label) {
 	m.Sink.SetGaugeWithLabels(key, val,
-		append(labels, Label{"cluster", m.ClusterName.Load().(string)}))
+		append(labels, Label{Name: "cluster", Value: m.ClusterName.Load().(string)}))
 }
 
 func (m *ClusterMetricSink) IncrCounterWithLabels(key []string, val float32, labels []Label) {
 	m.Sink.IncrCounterWithLabels(key, val,
-		append(labels, Label{"cluster", m.ClusterName.Load().(string)}))
+		append(labels, Label{Name: "cluster", Value: m.ClusterName.Load().(string)}))
 }
 
 func (m *ClusterMetricSink) AddSample(key []string, val float32) {
-	m.Sink.AddSampleWithLabels(key, val, []Label{{"cluster", m.ClusterName.Load().(string)}})
+	m.Sink.AddSampleWithLabels(key, val, []Label{{Name: "cluster", Value: m.ClusterName.Load().(string)}})
 }
 
 func (m *ClusterMetricSink) AddSampleWithLabels(key []string, val float32, labels []Label) {
 	m.Sink.AddSampleWithLabels(key, val,
-		append(labels, Label{"cluster", m.ClusterName.Load().(string)}))
+		append(labels, Label{Name: "cluster", Value: m.ClusterName.Load().(string)}))
 }
 
 func (m *ClusterMetricSink) AddDurationWithLabels(key []string, d time.Duration, labels []Label) {
@@ -103,7 +103,7 @@ func (m *ClusterMetricSink) AddDurationWithLabels(key []string, d time.Duration,
 }
 
 func (m *ClusterMetricSink) MeasureSinceWithLabels(key []string, start time.Time, labels []Label) {
-	elapsed := time.Now().Sub(start)
+	elapsed := time.Since(start)
 	val := float32(elapsed) / float32(time.Millisecond)
 	m.AddSampleWithLabels(key, val, labels)
 }
@@ -114,8 +114,7 @@ func BlackholeSink() *ClusterMetricSink {
 	conf.EnableRuntimeMetrics = false
 	sink, _ := metrics.New(conf, &metrics.BlackholeSink{})
 	cms := &ClusterMetricSink{
-		ClusterName: atomic.Value{},
-		Sink:        sink,
+		Sink: sink,
 	}
 	cms.ClusterName.Store("")
 	return cms
@@ -123,7 +122,6 @@ func BlackholeSink() *ClusterMetricSink {
 
 func NewClusterMetricSink(clusterName string, sink metrics.MetricSink) *ClusterMetricSink {
 	cms := &ClusterMetricSink{
-		ClusterName:     atomic.Value{},
 		Sink:            sink,
 		TelemetryConsts: TelemetryConstConfig{},
 	}
@@ -147,13 +145,13 @@ func (m *ClusterMetricSink) SetDefaultClusterName(clusterName string) {
 func NamespaceLabel(ns *namespace.Namespace) metrics.Label {
 	switch {
 	case ns == nil:
-		return metrics.Label{"namespace", "root"}
+		return metrics.Label{Name: "namespace", Value: "root"}
 	case ns.ID == namespace.RootNamespaceID:
-		return metrics.Label{"namespace", "root"}
+		return metrics.Label{Name: "namespace", Value: "root"}
 	default:
 		return metrics.Label{
-			"namespace",
-			strings.Trim(ns.Path, "/"),
+			Name:  "namespace",
+			Value: strings.Trim(ns.Path, "/"),
 		}
 	}
 }

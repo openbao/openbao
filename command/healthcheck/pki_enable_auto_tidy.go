@@ -111,7 +111,7 @@ func (h *EnableAutoTidy) Evaluate(e *Executor) (results []*Result, err error) {
 	}
 
 	if h.TidyConfig == nil {
-		return
+		return results, err
 	}
 
 	if h.TidyConfig.IsSecretPermissionsError() {
@@ -193,5 +193,5 @@ func (h *EnableAutoTidy) Evaluate(e *Executor) (results []*Result, err error) {
 		}
 	}
 
-	return
+	return results, err
 }

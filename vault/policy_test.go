@@ -119,105 +119,13 @@ path "paginated-kv/metadata" {
 path "unpaginated-kv/metadata" {
 	capabilities = ["list"]
 }
-`)
-
-var rawPolicyJSON = strings.TrimSpace(`
-{
-  "name": "dev",
-  "path": {
-    "*": {
-        "policy": "deny"
-    },
-    "stage/*": {
-        "policy": "sudo"
-    },
-    "prod/version": {
-        "policy": "read",
-        "comment": "this comment is stored but not parsed"
-    },
-    "/foo/bar": {
-      "policy": "read",
-      "min_wrapping_ttl": 300,
-      "max_wrapping_ttl": "1h"
-    },
-    "foo/bar": {
-      "capabilities": ["create", "sudo"],
-      "min_wrapping_ttl": "300s",
-      "max_wrapping_ttl": 3600
-    },
-    "foo/bar": {
-      "capabilities": ["create", "sudo"],
-      "allowed_parameters": {
-        "zip": [],
-        "zap": []
-      }
-    },
-    "baz/bar": {
-      "capabilities": ["create", "sudo"],
-      "denied_parameters": {
-        "zip": [],
-        "zap": []
-      }
-    },
-    "biz/bar": {
-      "capabilities": ["create", "sudo"],
-      "allowed_parameters": {
-        "zim": [],
-        "zam": []
-      },
-      "denied_parameters": {
-        "zip": [],
-        "zap": []
-      }
-    },
-    "test/types": {
-      "capabilities": ["create", "sudo"],
-      "allowed_parameters": {
-		"map": [{"good": "one"}],
-        "int": [1, 2]
-      },
-      "denied_parameters": {
-        "string": ["test"],
-        "bool": [false]
-      }
-    },
-    "test/req": {
-      "capabilities": ["create", "sudo"],
-      "required_parameters": ["foo"]
-    },
-    "test/patch": {
-      "capabilities": ["patch"]
-    },
-    "test/scan": {
-      "capabilities": ["scan"]
-    },
-    "test/mfa": {
-      "capabilities": ["create", "sudo"],
-      "mfa_methods": ["my_totp", "my_totp2"]
-    },
-    "test/+/segment": {
-      "capabilities": ["create", "sudo"]
-    },
-    "test/segment/at/end/+": {
-      "capabilities": ["create", "sudo"]
-    },
-    "test/segment/at/end/v2/+/": {
-      "capabilities": ["create", "sudo"]
-    },
-    "test/+/wildcard/+/*": {
-      "capabilities": ["create", "sudo"]
-    },
-    "test/+/wildcard/+/end*": {
-      "capabilities": ["create", "sudo"]
-    },
-    "paginated-kv/metadata": {
-      "capabilities": ["list"],
-      "pagination_limit": 12345
-    },
-    "unpaginated-kv/metadata": {
-      "capabilities": ["list"]
-    }
-  }
+path "some-expired-path" {
+	capabilities = ["list"]
+	expiration = "2006-01-02T15:04:05Z"
+}
+path "test/metadata/*" {
+	capabilities = ["list"]
+	list_scan_response_keys_filter_path = "test/metadata/{{ .key }}"
 }
 `)
 
@@ -491,6 +399,16 @@ func validatePolicy(t *testing.T, p *Policy) {
 			Permissions: &ACLPermissions{
 				CapabilitiesBitmap: ListCapabilityInt,
 			},
+		},
+		{
+			Path:         "test/metadata/",
+			Capabilities: []string{"list"},
+			Permissions: &ACLPermissions{
+				CapabilitiesBitmap:     ListCapabilityInt,
+				ResponseKeysFilterPath: "test/metadata/{{ .key }}",
+			},
+			ResponseKeysFilterPathHCL: "test/metadata/{{ .key }}",
+			IsPrefix:                  true,
 		},
 	}
 

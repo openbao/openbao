@@ -47,10 +47,10 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 			}
 
 			var keys []string
-			switch keysRaw.(type) {
+			switch k := keysRaw.(type) {
 			case []interface{}:
-				keys = make([]string, len(keysRaw.([]interface{})))
-				for i, el := range keysRaw.([]interface{}) {
+				keys = make([]string, len(k))
+				for i, el := range k {
 					s, ok := el.(string)
 					if !ok {
 						return http.StatusInternalServerError, nil
@@ -59,7 +59,7 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 				}
 
 			case []string:
-				keys = keysRaw.([]string)
+				keys = k
 			default:
 				return http.StatusInternalServerError, nil
 			}
@@ -122,6 +122,8 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 			statusCode = http.StatusMethodNotAllowed
 		case errwrap.Contains(err, ErrUnsupportedPath.Error()):
 			statusCode = http.StatusNotFound
+		case errwrap.Contains(err, ErrLockedNamespace.Error()):
+			statusCode = http.StatusServiceUnavailable
 		case errwrap.Contains(err, ErrInvalidRequest.Error()):
 			statusCode = http.StatusBadRequest
 		case errwrap.Contains(err, ErrUpstreamRateLimited.Error()):
@@ -172,8 +174,14 @@ func AdjustErrorStatusCode(status *int, err error) {
 	}
 
 	// Allow HTTPCoded error passthrough to specify a code
-	if t, ok := err.(HTTPCodedError); ok {
-		*status = t.Code()
+	var hce HTTPCodedError = &codedError{}
+	if errwrap.ContainsType(err, hce) {
+		t := errwrap.GetType(err, hce)
+		if t != nil {
+			if coded, ok := t.(HTTPCodedError); ok {
+				*status = coded.Code()
+			}
+		}
 	}
 }
 
@@ -203,7 +211,7 @@ func RespondErrorAndData(w http.ResponseWriter, status int, data interface{}, er
 
 	type ErrorAndDataResponse struct {
 		Errors []string    `json:"errors"`
-		Data   interface{} `json:"data""`
+		Data   interface{} `json:"data"`
 	}
 	resp := &ErrorAndDataResponse{Errors: make([]string, 0, 1)}
 	if err != nil {

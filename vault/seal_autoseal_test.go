@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/metricsutil"
+	"google.golang.org/protobuf/proto"
 
-	proto "github.com/golang/protobuf/proto"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
@@ -189,11 +189,9 @@ func TestAutoSeal_HealthCheck(t *testing.T) {
 
 	metrics.NewGlobal(metricsConf, inmemSink)
 
-	pBackend := newTestBackend(t)
 	testSealAccess, setErr := seal.NewToggleableTestSeal(nil)
 	core, _, _ := TestCoreUnsealedWithConfig(t, &CoreConfig{
 		MetricSink: metricsutil.NewClusterMetricSink("", inmemSink),
-		Physical:   pBackend,
 	})
 	sealHealthTestIntervalNominal = 10 * time.Millisecond
 	sealHealthTestIntervalUnhealthy = 10 * time.Millisecond
@@ -210,7 +208,7 @@ func TestAutoSeal_HealthCheck(t *testing.T) {
 
 	asu := strings.Join(autoSealUnavailableDuration, ".") + ";cluster=" + core.clusterName
 	tries := 10
-	for tries = 10; tries > 0; tries-- {
+	for ; tries > 0; tries-- {
 		intervals := inmemSink.Data()
 		if len(intervals) == 1 {
 			interval := inmemSink.Data()[0]

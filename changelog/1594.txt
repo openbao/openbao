@@ -1,0 +1,3 @@
+```release-note:bug
+Ignore missing mounts when deleting a namespace. This can happen when a mount is unmounted in parallel.
+```

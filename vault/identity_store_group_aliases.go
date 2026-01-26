@@ -6,14 +6,13 @@ package vault
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func groupAliasPaths(i *IdentityStore) []*framework.Path {
@@ -150,7 +149,7 @@ func (i *IdentityStore) pathGroupAliasIDUpdate() framework.OperationFunc {
 		i.groupLock.Lock()
 		defer i.groupLock.Unlock()
 
-		groupAlias, err := i.MemDBAliasByID(groupAliasID, true, true)
+		groupAlias, err := i.MemDBAliasByID(ctx, groupAliasID, true, true)
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +174,7 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 
 	if groupAlias == nil {
 		groupAlias = &identity.Alias{
-			CreationTime: ptypes.TimestampNow(),
+			CreationTime: timestamppb.Now(),
 			NamespaceID:  ns.ID,
 		}
 		groupAlias.LastUpdateTime = groupAlias.CreationTime
@@ -183,7 +182,7 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 		if ns.ID != groupAlias.NamespaceID {
 			return logical.ErrorResponse("existing alias not in the same namespace as request"), logical.ErrPermissionDenied
 		}
-		groupAlias.LastUpdateTime = ptypes.TimestampNow()
+		groupAlias.LastUpdateTime = timestamppb.Now()
 		if groupAlias.CreationTime == nil {
 			groupAlias.CreationTime = groupAlias.LastUpdateTime
 		}
@@ -213,7 +212,7 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 	// Canonical ID handling
 	{
 		if canonicalID != "" {
-			newGroup, err = i.MemDBGroupByID(canonicalID, true)
+			newGroup, err = i.MemDBGroupByID(ctx, canonicalID, true)
 			if err != nil {
 				return nil, err
 			}
@@ -234,16 +233,16 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 	{
 		mountEntry := i.router.MatchingMountByAccessor(mountAccessor)
 		if mountEntry == nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid mount accessor %q", mountAccessor)), nil
+			return logical.ErrorResponse("invalid mount accessor %q", mountAccessor), nil
 		}
 		if mountEntry.Local {
-			return logical.ErrorResponse(fmt.Sprintf("mount accessor %q is a local mount", mountAccessor)), nil
+			return logical.ErrorResponse("mount accessor %q is a local mount", mountAccessor), nil
 		}
 		if mountEntry.NamespaceID != groupAlias.NamespaceID {
 			return logical.ErrorResponse("mount referenced via 'mount_accessor' not in the same namespace as alias"), logical.ErrPermissionDenied
 		}
 
-		groupAliasByFactors, err := i.MemDBAliasByFactors(mountEntry.Accessor, name, false, true)
+		groupAliasByFactors, err := i.MemDBAliasByFactors(ctx, mountEntry.Accessor, name, false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -270,7 +269,7 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 
 	default:
 		// Fetch the group, if any, to which the alias is tied to
-		previousGroup, err = i.MemDBGroupByAliasID(groupAlias.ID, true)
+		previousGroup, err = i.MemDBGroupByAliasID(ctx, groupAlias.ID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -317,7 +316,7 @@ func (i *IdentityStore) pathGroupAliasIDRead() framework.OperationFunc {
 			return logical.ErrorResponse("empty group alias id"), nil
 		}
 
-		groupAlias, err := i.MemDBAliasByID(groupAliasID, false, true)
+		groupAlias, err := i.MemDBAliasByID(ctx, groupAliasID, false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -337,7 +336,7 @@ func (i *IdentityStore) pathGroupAliasIDDelete() framework.OperationFunc {
 		i.groupLock.Lock()
 		defer i.groupLock.Unlock()
 
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		alias, err := i.MemDBAliasByIDInTxn(txn, groupAliasID, false, true)

@@ -38,7 +38,7 @@ func TestOutputStringError_CurlStringAndError(t *testing.T) {
 			name:    "GET request with Vault token",
 			method:  http.MethodGet,
 			url:     "https://example.com/foo",
-			headers: map[string]string{"X-Vault-Token": "abcd1234"},
+			headers: map[string]string{AuthHeaderName: "abcd1234"},
 			wantSubstr: []string{
 				`curl `,
 				`-H "X-Vault-Token: $(bao print token)"`,

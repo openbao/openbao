@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/timeutil"
 )
 
@@ -69,21 +69,19 @@ func (s *SimulatedTime) allowTickers(n int) {
 }
 
 func startSimulatedTime() *SimulatedTime {
-	s := &SimulatedTime{
+	return &SimulatedTime{
 		now:           time.Now(),
 		tickerBarrier: make(chan *SimulatedTicker, 1),
 	}
-	return s
 }
 
 type SimulatedCollector struct {
-	numCalls    uint32
+	numCalls    atomic.Uint32
 	callBarrier chan uint32
 }
 
 func newSimulatedCollector() *SimulatedCollector {
 	return &SimulatedCollector{
-		numCalls:    0,
 		callBarrier: make(chan uint32, 1),
 	}
 }
@@ -100,8 +98,7 @@ func (s *SimulatedCollector) waitForCall(t *testing.T) {
 }
 
 func (s *SimulatedCollector) EmptyCollectionFunction(ctx context.Context) ([]GaugeLabelValues, error) {
-	atomic.AddUint32(&s.numCalls, 1)
-	s.callBarrier <- s.numCalls
+	s.callBarrier <- s.numCalls.Add(1)
 	return []GaugeLabelValues{}, nil
 }
 
@@ -111,7 +108,7 @@ func TestGauge_Creation(t *testing.T) {
 	sink.GaugeInterval = 33 * time.Minute
 
 	key := []string{"example", "count"}
-	labels := []Label{{"gauge", "test"}}
+	labels := []Label{{Name: "gauge", Value: "test"}}
 
 	p, err := sink.NewGaugeCollectionProcess(
 		key,
@@ -154,7 +151,7 @@ func TestGauge_StartDelay(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		c.EmptyCollectionFunction,
 		sink,
 		sink.GaugeInterval,
@@ -172,7 +169,7 @@ func TestGauge_StartDelay(t *testing.T) {
 		t.Errorf("Delayed start %v is more than interval %v.",
 			delayTicker.duration, sink.GaugeInterval)
 	}
-	if c.numCalls > 0 {
+	if c.numCalls.Load() > 0 {
 		t.Error("Collection function has been called")
 	}
 
@@ -184,15 +181,15 @@ func TestGauge_StartDelay(t *testing.T) {
 		t.Errorf("Ticker duration is %v, expected %v",
 			intervalTicker.duration, sink.GaugeInterval)
 	}
-	if c.numCalls > 0 {
+	if c.numCalls.Load() > 0 {
 		t.Error("Collection function has been called")
 	}
 
 	// Time's up, ensure the collection function is executed.
 	intervalTicker.sender <- time.Now()
 	c.waitForCall(t)
-	if c.numCalls != 1 {
-		t.Errorf("Collection function called %v times, expected %v.", c.numCalls, 1)
+	if c.numCalls.Load() != 1 {
+		t.Errorf("Collection function called %v times, expected %v.", c.numCalls.Load(), 1)
 	}
 
 	p.Stop()
@@ -219,7 +216,7 @@ func TestGauge_StoppedDuringInitialDelay(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		c.EmptyCollectionFunction,
 		sink,
 		sink.GaugeInterval,
@@ -248,7 +245,7 @@ func TestGauge_StoppedAfterInitialDelay(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		c.EmptyCollectionFunction,
 		sink,
 		sink.GaugeInterval,
@@ -281,16 +278,15 @@ func TestGauge_Backoff(t *testing.T) {
 
 	threshold := sink.GaugeInterval / 100
 	f := func(ctx context.Context) ([]GaugeLabelValues, error) {
-		atomic.AddUint32(&c.numCalls, 1)
 		// Move time forward by more than 1% of the gauge interval
 		s.now = s.now.Add(threshold).Add(time.Second)
-		c.callBarrier <- c.numCalls
+		c.callBarrier <- c.numCalls.Add(1)
 		return []GaugeLabelValues{}, nil
 	}
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		f,
 		sink,
 		sink.GaugeInterval,
@@ -319,7 +315,7 @@ func TestGauge_RestartTimer(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		c.EmptyCollectionFunction,
 		sink,
 		sink.GaugeInterval,
@@ -371,8 +367,8 @@ func makeLabels(numLabels int) []GaugeLabelValues {
 	values := make([]GaugeLabelValues, numLabels)
 	for i := range values {
 		values[i].Labels = []Label{
-			{"test", "true"},
-			{"which", fmt.Sprintf("%v", i)},
+			{Name: "test", Value: "true"},
+			{Name: "which", Value: fmt.Sprintf("%v", i)},
 		}
 		values[i].Value = float32(i + 1)
 	}
@@ -392,7 +388,7 @@ func TestGauge_InterruptedStreaming(t *testing.T) {
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		nil, // shouldn't be called
 		sink,
 		sink.GaugeInterval,
@@ -438,10 +434,9 @@ func (c *SimulatedCollector) makeFunctionForValues(
 ) GaugeCollector {
 	// A function that returns a static list
 	return func(ctx context.Context) ([]GaugeLabelValues, error) {
-		atomic.AddUint32(&c.numCalls, 1)
 		// TODO: this seems like a data race?
 		s.now = s.now.Add(advanceTime)
-		c.callBarrier <- c.numCalls
+		c.callBarrier <- c.numCalls.Add(1)
 		return values, nil
 	}
 }
@@ -470,7 +465,7 @@ func TestGauge_MaximumMeasurements(t *testing.T) {
 	advance := time.Duration(int(0.005 * float32(sink.GaugeInterval)))
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		c.makeFunctionForValues(values, s, advance),
 		sink,
 		sink.GaugeInterval,
@@ -538,21 +533,20 @@ func TestGauge_MeasurementError(t *testing.T) {
 	values := make([]GaugeLabelValues, numGauges)
 	for i := range values {
 		values[i].Labels = []Label{
-			{"test", "true"},
-			{"which", fmt.Sprintf("%v", i)},
+			{Name: "test", Value: "true"},
+			{Name: "which", Value: fmt.Sprintf("%v", i)},
 		}
 		values[i].Value = float32(i + 1)
 	}
 
 	f := func(ctx context.Context) ([]GaugeLabelValues, error) {
-		atomic.AddUint32(&c.numCalls, 1)
-		c.callBarrier <- c.numCalls
+		c.callBarrier <- c.numCalls.Add(1)
 		return values, errors.New("test error")
 	}
 
 	p, err := newGaugeCollectionProcessWithClock(
 		[]string{"example", "count"},
-		[]Label{{"gauge", "test"}},
+		[]Label{{Name: "gauge", Value: "test"}},
 		f,
 		sink,
 		sink.GaugeInterval,

@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/text/cases"
@@ -519,8 +519,17 @@ func documentPath(p *Path, specialPaths *logical.Paths, requestResponsePrefix st
 					}
 
 					if len(resp.Fields) != 0 {
-						responseName := hyphenatedToTitleCase(operationID) + "Response"
-						doc.Components.Schemas[responseName] = responseSchema
+						// Use custom schema name if provided, otherwise generate from operationID
+						responseName := resp.SchemaName
+						if responseName == "" {
+							responseName = hyphenatedToTitleCase(operationID) + "Response"
+						}
+
+						// Only add to schemas if not already present (allows schema reuse)
+						if _, exists := doc.Components.Schemas[responseName]; !exists {
+							doc.Components.Schemas[responseName] = responseSchema
+						}
+
 						content = OASContent{
 							"application/json": &OASMediaTypeObject{
 								Schema: &OASSchema{Ref: fmt.Sprintf("#/components/schemas/%s", responseName)},
@@ -1086,6 +1095,8 @@ func (d *OASDocument) CreateOperationIDs(context string) {
 	}
 	sort.Strings(paths)
 
+	titleCaser := cases.Title(language.English, cases.NoLower)
+
 	for _, path := range paths {
 		pi := d.Paths[path]
 		for _, method := range []string{"get", "post", "delete"} {
@@ -1112,7 +1123,7 @@ func (d *OASDocument) CreateOperationIDs(context string) {
 
 			// Space-split on non-words, title case everything, recombine
 			opID := nonWordRe.ReplaceAllString(strings.ToLower(path), " ")
-			opID = strings.Title(opID)
+			opID = titleCaser.String(opID)
 			opID = method + strings.ReplaceAll(opID, " ", "")
 
 			// deduplicate operationIds. This is a safeguard, since generated IDs should

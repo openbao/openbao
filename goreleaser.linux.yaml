@@ -45,7 +45,7 @@ report_sizes: true
 nfpms:
   - vendor: OpenBao
     homepage: https://openbao.org
-    maintainer: OpenBao <openbao@lists.lfedge.org>
+    maintainer: OpenBao <openbao@lists.openssf.org>
     description: |
       OpenBao exists to provide a software solution to manage, store, and distribute
       sensitive data including secrets, certificates, and keys.
@@ -693,12 +693,10 @@ signs:
   - id: cosign
     artifacts: all
     cmd: cosign
-    certificate: "${artifact}.pem"
+    signature: "${artifact}.sigstore.json"
     args:
       - "sign-blob"
-      - "--oidc-issuer=https://token.actions.githubusercontent.com"
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
+      - "--bundle=${signature}" # needed on cosign 3.0.0+
       - "${artifact}"
       - "--yes" # needed on cosign 2.0.0+
   - id: gpg
@@ -717,7 +715,6 @@ docker_signs:
   - artifacts: all
     args:
       - "sign"
-      - "--oidc-issuer=https://token.actions.githubusercontent.com"
       - "${artifact}@${digest}"
       - "--yes" # needed on cosign 2.0.0+
 

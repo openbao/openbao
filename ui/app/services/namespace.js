@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { alias, equal } from '@ember/object/computed';
+import { equal } from '@ember/object/computed';
+import { computed } from '@ember/object';
 import Service, { inject as service } from '@ember/service';
 import { task } from 'ember-concurrency';
 
@@ -11,7 +12,12 @@ const ROOT_NAMESPACE = '';
 export default Service.extend({
   store: service(),
   auth: service(),
-  userRootNamespace: alias('auth.authData.userRootNamespace'),
+
+  // Safe computed property for userRootNamespace
+  userRootNamespace: computed('auth.authData.userRootNamespace', function () {
+    return this.auth?.authData?.userRootNamespace || '';
+  }),
+
   //populated by the query param on the cluster route
   path: '',
   // list of namespaces available to the current user under the
@@ -34,25 +40,29 @@ export default Service.extend({
     // want to keep track of these separately
     const store = this.store;
     const adapter = store.adapterFor('namespace');
-    const userRoot = this.auth.authData.userRootNamespace;
+
+    // Safe access to userRootNamespace using ES5 getter
+    const userRoot = this.userRootNamespace;
+
+    // Use current namespace path, fallback to userRoot for initial load
+    const currentNamespace = this.path || userRoot || '';
+
     try {
       const ns = yield adapter.findAll(store, 'namespace', null, {
         adapterOptions: {
           forUser: true,
-          namespace: userRoot,
+          namespace: currentNamespace,
         },
       });
       const keys = ns.data.keys || [];
+
       this.set(
         'accessibleNamespaces',
         keys.map((n) => {
           let fullNS = n;
-          // if the user's root isn't '', then we need to construct
-          // the paths so they connect to the user root to the list
-          // otherwise using the current ns to grab the correct leaf
-          // node in the graph doesn't work
-          if (userRoot) {
-            fullNS = `${userRoot}/${n}`;
+          // if we're in a namespace, construct full paths
+          if (currentNamespace) {
+            fullNS = `${currentNamespace}/${n}`;
           }
           return fullNS.replace(/\/$/, '');
         })

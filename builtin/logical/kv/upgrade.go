@@ -6,16 +6,15 @@ import (
 	"fmt"
 	"path"
 	"strings"
-	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (b *versionedKVBackend) perfSecondaryCheck() bool {
@@ -29,14 +28,14 @@ func (b *versionedKVBackend) perfSecondaryCheck() bool {
 
 func (b *versionedKVBackend) upgradeCheck(next framework.OperationFunc) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		if atomic.LoadUint32(b.upgrading) == 1 {
+		if b.upgrading.Load() {
 			// Sleep for a very short time before returning. This helps clients
 			// that are trying to access a mount immediately upon enabling be
 			// more likely to behave correctly since the operation should take
 			// almost no time.
 			time.Sleep(15 * time.Millisecond)
 
-			if atomic.LoadUint32(b.upgrading) == 1 {
+			if b.upgrading.Load() {
 				if b.perfSecondaryCheck() {
 					return logical.ErrorResponse("Waiting for the primary to upgrade from non-versioned to versioned data. This backend will be unavailable for a brief period and will resume service when the primary is finished."), logical.ErrInvalidRequest
 				} else {
@@ -81,7 +80,7 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 		return nil
 	}
 
-	if !atomic.CompareAndSwapUint32(b.upgrading, 0, 1) {
+	if !b.upgrading.CompareAndSwap(false, true) {
 		return errors.New("upgrade already in process")
 	}
 
@@ -98,7 +97,7 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 				// shutting down. Close this go routine and set the upgrade
 				// flag back to 0 for good measure.
 				if ctx.Err() != nil {
-					atomic.StoreUint32(b.upgrading, 0)
+					b.upgrading.Store(false)
 					return
 				}
 
@@ -112,14 +111,14 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 				}
 			}
 
-			atomic.StoreUint32(b.upgrading, 0)
+			b.upgrading.Store(false)
 		}()
 
 		return nil
 	}
 
 	upgradeInfo := &UpgradeInfo{
-		StartedTime: ptypes.TimestampNow(),
+		StartedTime: timestamppb.Now(),
 	}
 
 	// Encode the canary
@@ -145,7 +144,7 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 				return err
 			}
 
-			defer txn.Rollback(ctx)
+			defer txn.Rollback(ctx) //nolint:errcheck
 			storage = txn
 		}
 
@@ -170,7 +169,7 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 
 		version := &Version{
 			Data:        data.Value,
-			CreatedTime: ptypes.TimestampNow(),
+			CreatedTime: timestamppb.Now(),
 		}
 
 		buf, err := proto.Marshal(version)
@@ -277,7 +276,7 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 			b.Logger().Error("writing upgrade done resulted in an error", "error", err)
 		}
 
-		atomic.StoreUint32(b.upgrading, 0)
+		b.upgrading.Store(false)
 	}()
 
 	return nil

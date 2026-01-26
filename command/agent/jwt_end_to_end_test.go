@@ -44,7 +44,6 @@ func TestJWTEndToEnd(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc // capture range variable
 		t.Run(fmt.Sprintf("ahWrapping=%v, useSymlink=%v, removeJWTAfterReading=%v", tc.ahWrapping, tc.useSymlink, tc.removeJWTAfterReading), func(t *testing.T) {
 			t.Parallel()
 			testJWTEndToEnd(t, tc.ahWrapping, tc.useSymlink, tc.removeJWTAfterReading)
@@ -373,10 +372,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 		// Period of 3 seconds, so should still be alive after 7
 		timeout := time.Now().Add(7 * time.Second)
 		cloned.SetToken(origToken)
-		for {
-			if time.Now().After(timeout) {
-				break
-			}
+		for time.Now().Before(timeout) {
 			secret, err := cloned.Auth().Token().LookupSelf()
 			if err != nil {
 				t.Fatal(err)
@@ -408,10 +404,7 @@ func testJWTEndToEnd(t *testing.T, ahWrapping, useSymlink, removeJWTAfterReading
 		// the new token should still be alive after 7
 		timeout := time.Now().Add(7 * time.Second)
 		cloned.SetToken(newToken)
-		for {
-			if time.Now().After(timeout) {
-				break
-			}
+		for time.Now().Before(timeout) {
 			secret, err := cloned.Auth().Token().LookupSelf()
 			if err != nil {
 				t.Fatal(err)

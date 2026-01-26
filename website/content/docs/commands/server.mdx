@@ -15,13 +15,13 @@ API before the server can respond to requests.
 
 For more information, please see:
 
-- [`operator init` command](/docs/commands/operator/init) for information
+- [`operator init` command](operator/init.mdx) for information
   on initializing an OpenBao server.
 
-- [`operator unseal` command](/docs/commands/operator/unseal) for
+- [`operator unseal` command](operator/unseal.mdx) for
   information on providing unseal keys.
 
-- [OpenBao configuration](/docs/configuration) for the syntax and
+- [OpenBao configuration](../configuration/index.mdx) for the syntax and
   various configuration options for an OpenBao server.
 
 ## Examples
@@ -41,14 +41,21 @@ $ bao server -dev -dev-root-token-id="root"
 ## Usage
 
 The following flags are available in addition to the [standard set of
-flags](/docs/commands) included on all commands.
+flags](index.mdx) included on all commands.
 
 ### Command options
 
 - `-config` `(string: "")` - Path to a configuration file or directory of
   configuration files. This flag can be specified multiple times to load
   multiple configurations. If the path is a directory, all files which end in
-  .hcl or .json are loaded.
+  `.hcl` or `.json` are loaded. Files in a directory are loaded in alphabetical
+  order; if duplicate content is present across multiple configuration files
+  and the type of the top-level entry is not a list, the last present option
+  wins. Otherwise, list types like listeners, of which multiple may be present,
+  are appended to the config.
+
+  The environment variable `BAO_CONFIG_PATH` may also be used to specify multiple 
+  configuration paths using a comma (,) as a separator. 
 
 - `-log-level` `(string: "info")` - Log verbosity level. Supported values (in
   order of descending detail) are `trace`, `debug`, `info`, `warn`, and `error`. This can
@@ -89,7 +96,7 @@ flags](/docs/commands) included on all commands.
   upgrade and disable these engines. Once these engines are marked `Removed` (in
   the next major release of OpenBao), the environment variable will no longer work
   and a downgrade must be performed in order to remove the offending engines. For
-  more information, see the [deprecation faq](/docs/deprecation/faq/#q-what-are-the-phases-of-deprecation).
+  more information, see the [deprecation faq](../deprecation/faq.mdx#q-what-are-the-phases-of-deprecation).
 
 ### Dev options
 

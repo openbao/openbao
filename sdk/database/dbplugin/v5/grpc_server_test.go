@@ -12,9 +12,8 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/proto"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"google.golang.org/grpc/codes"
@@ -214,7 +213,7 @@ func TestGRPCServer_NewUser(t *testing.T) {
 					DisplayName: "dispname",
 					RoleName:    "rolename",
 				},
-				Expiration: &timestamp.Timestamp{
+				Expiration: &timestamppb.Timestamp{
 					Seconds: invalidExpiration.Unix(),
 				},
 			},
@@ -231,7 +230,7 @@ func TestGRPCServer_NewUser(t *testing.T) {
 					DisplayName: "dispname",
 					RoleName:    "rolename",
 				},
-				Expiration: ptypes.TimestampNow(),
+				Expiration: timestamppb.Now(),
 			},
 			expectedResp: &proto.NewUserResponse{},
 			expectErr:    true,
@@ -248,7 +247,7 @@ func TestGRPCServer_NewUser(t *testing.T) {
 					DisplayName: "dispname",
 					RoleName:    "rolename",
 				},
-				Expiration: ptypes.TimestampNow(),
+				Expiration: timestamppb.Now(),
 			},
 			expectedResp: &proto.NewUserResponse{
 				Username: "someuser_foo",
@@ -345,7 +344,7 @@ func TestGRPCServer_UpdateUser(t *testing.T) {
 			req: &proto.UpdateUserRequest{
 				Username: "someuser",
 				Expiration: &proto.ChangeExpiration{
-					NewExpiration: &timestamp.Timestamp{
+					NewExpiration: &timestamppb.Timestamp{
 						// Before minValidSeconds in ptypes package
 						Seconds: invalidExpiration.Unix(),
 					},
@@ -372,7 +371,7 @@ func TestGRPCServer_UpdateUser(t *testing.T) {
 			req: &proto.UpdateUserRequest{
 				Username: "someuser",
 				Expiration: &proto.ChangeExpiration{
-					NewExpiration: ptypes.TimestampNow(),
+					NewExpiration: timestamppb.Now(),
 				},
 			},
 			expectedResp: &proto.UpdateUserResponse{},

@@ -10,9 +10,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	rabbithole "github.com/michaelklishin/rabbit-hole/v3"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api/v2"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	vaulthttp "github.com/openbao/openbao/http"
@@ -20,6 +20,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -43,7 +44,7 @@ func prepareRabbitMQTestContainer(t *testing.T) (func(), string) {
 
 	runner, err := docker.NewServiceRunner(docker.RunOptions{
 		ImageRepo:     "docker.mirror.hashicorp.services/library/rabbitmq",
-		ImageTag:      "3-management",
+		ImageTag:      "4-management",
 		ContainerName: "rabbitmq",
 		Ports:         []string{"15672/tcp"},
 	})
@@ -72,6 +73,8 @@ func prepareRabbitMQTestContainer(t *testing.T) (func(), string) {
 }
 
 func TestBackend_basic(t *testing.T) {
+	t.Parallel()
+
 	b, _ := Factory(context.Background(), logical.TestBackendConfig())
 
 	cleanup, uri := prepareRabbitMQTestContainer(t)
@@ -89,6 +92,8 @@ func TestBackend_basic(t *testing.T) {
 }
 
 func TestBackend_returnsErrs(t *testing.T) {
+	t.Parallel()
+
 	b, _ := Factory(context.Background(), logical.TestBackendConfig())
 
 	cleanup, uri := prepareRabbitMQTestContainer(t)
@@ -118,6 +123,8 @@ func TestBackend_returnsErrs(t *testing.T) {
 }
 
 func TestBackend_roleCrud(t *testing.T) {
+	t.Parallel()
+
 	b, _ := Factory(context.Background(), logical.TestBackendConfig())
 
 	cleanup, uri := prepareRabbitMQTestContainer(t)
@@ -137,8 +144,10 @@ func TestBackend_roleCrud(t *testing.T) {
 }
 
 func TestBackend_roleWithPasswordPolicy(t *testing.T) {
+	t.Parallel()
+
 	if os.Getenv(logicaltest.TestEnvVar) == "" {
-		t.Skip(fmt.Sprintf("Acceptance tests skipped unless env %q set", logicaltest.TestEnvVar))
+		t.Skipf("Acceptance tests skipped unless env %q set", logicaltest.TestEnvVar)
 		return
 	}
 
@@ -231,9 +240,9 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, uri, name string) log
 				t.Fatal(err)
 			}
 
-			_, err = client.ListVhosts()
+			_, err = client.ListQueues()
 			if err != nil {
-				t.Fatalf("unable to list vhosts with generated credentials: %s", err)
+				t.Fatalf("unable to list queues with generated credentials: %s", err)
 			}
 
 			resp, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -259,9 +268,9 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, uri, name string) log
 				t.Fatal(err)
 			}
 
-			_, err = client.ListVhosts()
+			_, err = client.ListQueues()
 			if err == nil {
-				t.Fatalf("expected to fail listing vhosts: %s", err)
+				t.Fatalf("expected to fail listing queues: %s", err)
 			}
 
 			return nil
@@ -353,6 +362,7 @@ func testAccStepReadRole(t *testing.T, name, tags, rawVHosts string, rawVHostTop
 
 func TestBackend_RoleReadCrash(t *testing.T) {
 	// Reproducer from https://github.com/openbao/openbao/issues/97.
+	t.Parallel()
 
 	coreConfig := &vault.CoreConfig{
 		LogicalBackends: map[string]logical.Factory{
@@ -417,4 +427,57 @@ func TestBackend_RoleReadCrash(t *testing.T) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 	t.Logf("response: %#v", resp)
+}
+
+func TestBackend_RevokeMissingCredentials(t *testing.T) {
+	t.Parallel()
+
+	coreConfig := &vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"rabbitmq": Factory,
+		},
+	}
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		NumCores:    1,
+		HandlerFunc: vaulthttp.Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+	client := cluster.Cores[0].Client
+
+	cleanup, uri := prepareRabbitMQTestContainer(t)
+	defer cleanup()
+
+	// mount
+	err := client.Sys().Mount("rabbitmq", &api.MountInput{
+		Type: "rabbitmq",
+	})
+	require.NoError(t, err)
+
+	// configure connection
+	_, err = client.Logical().Write("rabbitmq/config/connection", map[string]interface{}{
+		"connection_uri": uri,
+		"username":       "guest",
+		"password":       "guest",
+	})
+	require.NoError(t, err)
+
+	// configure role
+	_, err = client.Logical().Write("rabbitmq/roles/newrole", map[string]interface{}{
+		"tags": "administrator",
+	})
+	require.NoError(t, err)
+
+	// read credentials
+	resp, err := client.Logical().Read("rabbitmq/creds/newrole")
+	require.NoError(t, err)
+
+	// delete credentials with RabbitMQ API
+	rabbitClient, err := rabbithole.NewClient(uri, "guest", "guest")
+	require.NoError(t, err)
+	_, err = rabbitClient.DeleteUser(resp.Data["username"].(string))
+	require.NoError(t, err)
+
+	// revoke
+	require.NoError(t, client.Sys().Revoke(resp.LeaseID))
 }

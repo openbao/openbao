@@ -149,6 +149,11 @@ The 'rate' must be positive.`,
 					Description: `If set, when a client reaches a rate limit threshold, the client will be prohibited
 from any further requests until after the 'block_interval' has elapsed.`,
 				},
+				"inheritable": {
+					Type: framework.TypeBool,
+					Description: `If set to true, child namespaces will use this quota, unless another more specific
+quota exists. Can only be set on namespace quotas. A quota on the root namespace will by default be inheritable.`,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
@@ -197,6 +202,10 @@ from any further requests until after the 'block_interval' has elapsed.`,
 								},
 								"block_interval": {
 									Type:     framework.TypeInt,
+									Required: true,
+								},
+								"inheritable": {
+									Type:     framework.TypeBool,
 									Required: true,
 								},
 							},
@@ -301,10 +310,7 @@ func (b *SystemBackend) handleRateLimitQuotasUpdate() framework.OperationFunc {
 		}
 
 		mountPath := sanitizePath(d.Get("path").(string))
-		ns := namespace.RootNamespace
-		if ns.ID != namespace.RootNamespaceID {
-			mountPath = strings.TrimPrefix(mountPath, ns.Path)
-		}
+		ns, mountPath := b.Core.namespaceStore.GetNamespaceByLongestPrefix(ctx, mountPath)
 
 		var pathSuffix string
 		if mountPath != "" {
@@ -354,9 +360,17 @@ func (b *SystemBackend) handleRateLimitQuotasUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		switch {
-		case quota == nil:
-			quota = quotas.NewRateLimitQuota(name, ns.Path, mountPath, pathSuffix, role, rate, interval, blockInterval)
+		inheritable := false
+		inheritableI, ok := d.GetOk("inheritable")
+		if ok {
+			inheritable = inheritableI.(bool)
+		} else if ns.Path == "" && mountPath == "" {
+			inheritable = true
+		}
+
+		switch quota {
+		case nil:
+			quota = quotas.NewRateLimitQuota(name, ns.Path, mountPath, pathSuffix, role, rate, interval, blockInterval, inheritable)
 		default:
 			// Re-inserting the already indexed object in memdb might cause problems.
 			// So, clone the object. See https://github.com/hashicorp/go-memdb/issues/76.
@@ -368,6 +382,7 @@ func (b *SystemBackend) handleRateLimitQuotasUpdate() framework.OperationFunc {
 			rlq.Rate = rate
 			rlq.Interval = interval
 			rlq.BlockInterval = blockInterval
+			rlq.Inheritable = inheritable
 			quota = rlq
 		}
 
@@ -416,6 +431,7 @@ func (b *SystemBackend) handleRateLimitQuotasRead() framework.OperationFunc {
 			"rate":           rlq.Rate,
 			"interval":       int(rlq.Interval.Seconds()),
 			"block_interval": int(rlq.BlockInterval.Seconds()),
+			"inheritable":    rlq.Inheritable,
 		}
 
 		return &logical.Response{

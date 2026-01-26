@@ -1,0 +1,3 @@
+```release-note:deprecation
+Configuration of PKCS#11 auto-unseal using the duplicate and undocumented `module`, `token` and `key` options is now deprecated. Use the documented alternative options `lib`, `token_label` and `key_label` instead, respectively. ([More details](https://github.com/openbao/go-kms-wrapping/pull/33#discussion_r2112177962))
+```

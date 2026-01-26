@@ -363,7 +363,7 @@ func pathRoles(b *backend) *framework.Path {
 				When supplied, this value specifies a signing algorithm for the key. Possible values:
 				ssh-rsa, rsa-sha2-256, rsa-sha2-512, default, or the empty string.
 				`,
-				AllowedValues: []interface{}{"", DefaultAlgorithmSigner, ssh.SigAlgoRSA, ssh.SigAlgoRSASHA2256, ssh.SigAlgoRSASHA2512},
+				AllowedValues: []interface{}{"", DefaultAlgorithmSigner, ssh.KeyAlgoRSA, ssh.KeyAlgoRSASHA256, ssh.KeyAlgoRSASHA512},
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name: "Signing Algorithm",
 				},
@@ -448,7 +448,7 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 			return nil, fmt.Errorf("failed to validate exclude_cidr_list entry: %w", err)
 		}
 		if !valid {
-			return logical.ErrorResponse(fmt.Sprintf("failed to validate exclude_cidr_list entry: %v", err)), nil
+			return logical.ErrorResponse("failed to validate exclude_cidr_list entry: %v", err), nil
 		}
 	}
 
@@ -464,7 +464,8 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 	keyType = strings.ToLower(keyType)
 
 	var roleEntry sshRole
-	if keyType == KeyTypeOTP {
+	switch keyType {
+	case KeyTypeOTP:
 		defaultUser := d.Get("default_user").(string)
 		if defaultUser == "" {
 			return logical.ErrorResponse("missing default user"), nil
@@ -480,15 +481,15 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 			AllowedUsers:    allowedUsers,
 			Version:         roleEntryVersion,
 		}
-	} else if keyType == KeyTypeDynamic {
+	case KeyTypeDynamic:
 		return logical.ErrorResponse("dynamic key type roles are no longer supported"), nil
-	} else if keyType == KeyTypeCA {
+	case KeyTypeCA:
 		algorithmSigner := DefaultAlgorithmSigner
 		algorithmSignerRaw, ok := d.GetOk("algorithm_signer")
 		if ok {
 			algorithmSigner = algorithmSignerRaw.(string)
 			switch algorithmSigner {
-			case ssh.SigAlgoRSA, ssh.SigAlgoRSASHA2256, ssh.SigAlgoRSASHA2512:
+			case ssh.KeyAlgoRSA, ssh.KeyAlgoRSASHA256, ssh.KeyAlgoRSASHA512:
 			case "", DefaultAlgorithmSigner:
 				// This case is valid, and the sign operation will use the signer's
 				// default algorithm. Explicitly reset the value to the default value
@@ -504,7 +505,7 @@ func (b *backend) pathRoleWrite(ctx context.Context, req *logical.Request, d *fr
 			return errorResponse, nil
 		}
 		roleEntry = *role
-	} else {
+	default:
 		return logical.ErrorResponse("invalid key type"), nil
 	}
 
@@ -554,7 +555,7 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 	defaultExtensions := convertMapToStringValue(data.Get("default_extensions").(map[string]interface{}))
 	allowedUserKeyLengths, err := convertMapToIntSlice(data.Get("allowed_user_key_lengths").(map[string]interface{}))
 	if err != nil {
-		return nil, logical.ErrorResponse(fmt.Sprintf("error processing allowed_user_key_lengths: %s", err.Error()))
+		return nil, logical.ErrorResponse("error processing allowed_user_key_lengths: %s", err.Error())
 	}
 
 	if ttl != 0 && maxTTL != 0 && ttl > maxTTL {
@@ -645,7 +646,7 @@ func (b *backend) checkUpgrade(ctx context.Context, s logical.Storage, n string,
 			goto SKIPVERSION2
 		}
 		if publicKeyEntry == nil || publicKeyEntry.Key == "" {
-			b.Logger().Debug(fmt.Sprintf("got empty public key entry while attempting to migrate"))
+			b.Logger().Debug("got empty public key entry while attempting to migrate")
 			goto SKIPVERSION2
 		}
 
@@ -657,7 +658,7 @@ func (b *backend) checkUpgrade(ctx context.Context, s logical.Storage, n string,
 			// Vault. By making it explicit, operators can see that this is
 			// the value and move it to a newer algorithm in the future.
 			if publicKey.Type() == ssh.KeyAlgoRSA && result.AlgorithmSigner == "" {
-				result.AlgorithmSigner = ssh.SigAlgoRSA
+				result.AlgorithmSigner = ssh.KeyAlgoRSA
 			}
 
 			result.Version = 2
@@ -665,7 +666,7 @@ func (b *backend) checkUpgrade(ctx context.Context, s logical.Storage, n string,
 		}
 
 	SKIPVERSION2:
-		err = nil
+		err = nil //nolint:ineffassign // we explicitly ignore the error
 	}
 
 	if result.Version < 3 {

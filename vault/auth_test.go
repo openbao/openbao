@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
+	metrics "github.com/hashicorp/go-metrics/compat"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -57,7 +58,7 @@ func TestAuthMountMetrics(t *testing.T) {
 	mountKeyName := "core.mount_table.num_entries.type|auth||local|false||"
 	mountMetrics := &c.metricsHelper.LoopMetrics.Metrics
 	loadMetric, ok := mountMetrics.Load(mountKeyName)
-	var numEntriesMetric metricsutil.GaugeMetric = loadMetric.(metricsutil.GaugeMetric)
+	numEntriesMetric := loadMetric.(metricsutil.GaugeMetric)
 
 	// 1 default nonlocal auth backend
 	if !ok || numEntriesMetric.Value != 1 {
@@ -429,9 +430,9 @@ func TestCore_EnableCredential_twice_409(t *testing.T) {
 
 	// 2nd should be a 409 error
 	err2 := c.enableCredential(namespace.RootContext(nil), me)
-	switch err2.(type) {
+	switch e := err2.(type) {
 	case logical.HTTPCodedError:
-		if err2.(logical.HTTPCodedError).Code() != 409 {
+		if e.Code() != 409 {
 			t.Fatal("invalid code given")
 		}
 	default:
@@ -598,7 +599,8 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 
 func TestDefaultAuthTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	table := c.defaultAuthTable()
+	table, err := c.defaultAuthTable(context.Background())
+	require.NoError(t, err)
 	verifyDefaultAuthTable(t, table)
 }
 
@@ -827,6 +829,77 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 	}
 	if len(out) != 1 && out[0] != "plstokeep" {
 		t.Fatalf("bad: %#v", out)
+	}
+}
+
+func TestCore_RemountCredential_Namespaces(t *testing.T) {
+	c, keys, _ := TestCoreUnsealed(t)
+	rootCtx := namespace.RootContext(nil)
+	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
+	ns2 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
+	ns2Ctx := namespace.ContextWithNamespace(rootCtx, ns2)
+	ns3 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
+	ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
+
+	me := &MountEntry{
+		Table: credentialTableType,
+		Path:  "foo",
+		Type:  "noop",
+	}
+	err := c.enableCredential(ns2Ctx, me)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	src := namespace.MountPathDetails{
+		Namespace: ns2,
+		MountPath: "auth/foo/",
+	}
+	dst := namespace.MountPathDetails{
+		Namespace: ns3,
+		MountPath: "auth/bar/",
+	}
+
+	match := c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
+	if match != ns2.Path+"auth/foo/" {
+		t.Fatalf("missing mount, match: %q", match)
+	}
+
+	err = c.remountCredential(ns1Ctx, src, dst, true)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	match = c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
+	if match != "" {
+		t.Fatalf("auth method still at old location, match: %q", err)
+	}
+
+	match = c.router.MatchingMount(ns3Ctx, "auth/bar/baz")
+	if match != ns3.Path+"auth/bar/" {
+		t.Fatalf("auth method not at new location, match: %q", match)
+	}
+
+	c.sealInternal()
+	for i, key := range keys {
+		unseal, err := TestCoreUnseal(c, key)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if i+1 == len(keys) && !unseal {
+			t.Fatal("should be unsealed")
+		}
+	}
+
+	match = c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
+	if match != "" {
+		t.Fatalf("auth method still at old location after unseal, match: %q", match)
+	}
+
+	match = c.router.MatchingMount(ns3Ctx, "auth/bar/baz")
+	if match != ns3.Path+"auth/bar/" {
+		t.Fatalf("auth method not at new location after unseal, match: %q", match)
 	}
 }
 

@@ -46,7 +46,7 @@ the Auto-Auth token for these requests. Please see the [API Proxy docs][apiproxy
 for more information.
 
 API Proxy functionality takes place within a defined `listener`, and its behaviour can be configured with an
-[`api_proxy` stanza](/docs/agent-and-proxy/agent/apiproxy#configuration-api_proxy).
+[`api_proxy` stanza](apiproxy.mdx#configuration-api_proxy).
 
 ## Caching
 
@@ -68,7 +68,7 @@ to only enable this on trusted interfaces, as it does not require any authorizat
 
 ### Cache
 
-See the [caching](/docs/agent-and-proxy/agent/caching#api) page for details on the cache API.
+See the [caching](caching/index.mdx#api) page for details on the cache API.
 
 ## Configuration
 
@@ -120,12 +120,14 @@ These are the currently-available general configuration options:
 
 - `listener` <code>([listener][listener]: \<optional>)</code> - Specifies the addresses and ports on which the Agent will respond to requests.
 
-:::warning
+  :::warning
 
- **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Agent will attempt to reload listener TLS configuration.
-  This method can be used to refresh certificates used by OpenBao Agent without having to restart its process.
+  **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Agent will
+  attempt to reload listener TLS configuration. This method can be used to
+  refresh certificates used by OpenBao Agent without having to restart its
+  process.
 
-:::
+  :::
 
 - `pid_file` `(string: "")` - Path to the file in which the agent's Process ID
   (PID) should be stored
@@ -153,30 +155,32 @@ These are the currently-available general configuration options:
 
 - `env_template` <code>([env_template][template]: \<optional>)</code> - Multiple blocks accepted. Each block contains
   the options used for templating OpenBao secrets as environment variables via the
-  [process supervisor mode](/docs/agent-and-proxy/agent/process-supervisor).
+  [process supervisor mode](process-supervisor.mdx).
 
 - `telemetry` <code>([telemetry][telemetry]: \<optional>)</code> – Specifies the telemetry
-  reporting system. See the [telemetry Stanza](/docs/agent-and-proxy/agent#telemetry-stanza) section below
+  reporting system. See the [telemetry Stanza](index.mdx#telemetry-stanza) section below
   for a list of metrics specific to Agent.
 
-- `log_level` - Equivalent to the [`-log-level` command-line flag](#_log_level).
+- `log_level` - Equivalent to the `-log-level` command-line flag.
 
-:::warning
+  :::warning
 
- **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Agent will update the log level to the value
-  specified by configuration file (including overriding values set using CLI or environment variable parameters).
+  **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Agent will update
+  the log level to the value specified by configuration file (including
+  overriding values set using CLI or environment variable parameters).
 
-:::
+  :::
 
-- `log_format` - Equivalent to the [`-log-format` command-line flag](#_log_format).
+- `log_format` - Equivalent to the `-log-format` command-line flag.
 
-- `log_file` - Equivalent to the [`-log-file` command-line flag](#_log_file).
+- `log_file` - Equivalent to the `-log-file` command-line flag.
 
-- `log_rotate_duration` - Equivalent to the [`-log-rotate-duration` command-line flag](#_log_rotate_duration).
+- `log_rotate_duration` - Equivalent to the `-log-rotate-duration` command-line flag.
 
-- `log_rotate_bytes` - Equivalent to the [`-log-rotate-bytes` command-line flag](#_log_rotate_bytes).
+- `log_rotate_bytes` - Equivalent to the `-log-rotate-bytes` command-line flag.
 
-- `log_rotate_max_files` - Equivalent to the [`-log-rotate-max-files` command-line flag](#_log_rotate_max_files).
+- `log_rotate_max_files` - Equivalent to the `-log-rotate-max-files`
+  command-line flag.
 
 ### vault stanza
 
@@ -273,7 +277,7 @@ listener configuration, an Agent's listener configuration also supports the foll
 
 #### agent_api stanza
 
-- `enable_quit` `(bool: false)` - If set to `true`, the agent will enable the [quit](/docs/agent-and-proxy/agent#quit) API.
+- `enable_quit` `(bool: false)` - If set to `true`, the agent will enable the [quit](index.mdx#quit) API.
 
 ### telemetry stanza
 
@@ -319,6 +323,15 @@ As with OpenBao, the `-config` flag can be used in three different ways:
 - Use the flag once to name the path to a single specific configuration file.
 - Use the flag multiple times to name multiple configuration files, which will be composed at runtime.
 - Use the flag to name a directory of configuration files, the contents of which will be composed at runtime.
+
+Alternatively, you can specify the configuration path using the `BAO_AGENT_CONFIG_PATH` environment variable. If the `-config` flag is provided, the environment variable is ignored.
+
+**Example using environment variable:**
+
+```shell-session
+$ export BAO_AGENT_CONFIG_PATH=/etc/openbao/agent-config.hcl
+$ bao agent
+```
 
 ## Example configuration
 
@@ -391,16 +404,16 @@ template {
 }
 ```
 
-[vault]: /docs/agent-and-proxy/agent#vault-stanza
-[autoauth]: /docs/agent-and-proxy/autoauth
-[caching]: /docs/agent-and-proxy/agent/caching
-[apiproxy]: /docs/agent-and-proxy/agent/apiproxy
-[persistent-cache]: /docs/agent-and-proxy/agent/caching/persistent-caches
-[template]: /docs/agent-and-proxy/agent/template
-[process-supervisor]: /docs/agent-and-proxy/agent/process-supervisor
-[template-config]: /docs/agent-and-proxy/agent/template#template-configurations
-[agent-api]: /docs/agent-and-proxy/agent/#agent_api-stanza
-[listener]: /docs/agent-and-proxy/agent#listener-stanza
-[listener_main]: /docs/configuration/listener/tcp
-[winsvc]: /docs/agent-and-proxy/agent/winsvc
-[telemetry]: /docs/configuration/telemetry
+[vault]: #vault-stanza
+[autoauth]: ../autoauth/index.mdx
+[caching]: ./caching/index.mdx
+[apiproxy]: apiproxy.mdx
+[persistent-cache]: caching/persistent-caches/index.mdx
+[template]: template.mdx
+[process-supervisor]: process-supervisor.mdx
+[template-config]: template.mdx#template-configurations
+[agent-api]: #agent_api-stanza
+[listener]: #listener-stanza
+[listener_main]: ../../configuration/listener/tcp.mdx
+[winsvc]: winsvc.mdx
+[telemetry]: ../../configuration/telemetry.mdx

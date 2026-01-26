@@ -8,11 +8,10 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/proto"
 )
 
 func pathSubkeys(b *versionedKVBackend) *framework.Path {
@@ -101,7 +100,7 @@ func (b *versionedKVBackend) pathSubkeysRead() framework.OperationFunc {
 				return nil, err
 			}
 
-			defer txn.Rollback(ctx)
+			defer txn.Rollback(ctx) //nolint:errcheck
 			req.Storage = txn
 		}
 
@@ -146,10 +145,10 @@ func (b *versionedKVBackend) pathSubkeysRead() framework.OperationFunc {
 		}
 
 		if versionMetadata.DeletionTime != nil {
-			deletionTime, err := ptypes.Timestamp(versionMetadata.DeletionTime)
-			if err != nil {
+			if err := versionMetadata.DeletionTime.CheckValid(); err != nil {
 				return nil, err
 			}
+			deletionTime := versionMetadata.DeletionTime.AsTime()
 
 			if deletionTime.Before(time.Now()) {
 				return logical.RespondWithStatusCode(resp, req, http.StatusNotFound)

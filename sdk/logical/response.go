@@ -85,6 +85,9 @@ type Response struct {
 	// Headers will contain the http headers from the plugin that it wishes to
 	// have as part of the output
 	Headers map[string][]string `json:"headers" structs:"headers" mapstructure:"headers"`
+
+	// When performing an inline auth, preserved inline authentication information.
+	InlineAuthTokenEntry *TokenEntry `json:"-" structs:"" mapstructure:""`
 }
 
 // AddWarning adds a warning into the response's warning list
@@ -203,27 +206,24 @@ func RespondWithStatusCode(resp *Response, req *Request, code int) (*Response, e
 // write directly to the HTTP response writer.
 type HTTPResponseWriter struct {
 	http.ResponseWriter
-	written *uint32
+	written atomic.Bool
 }
 
 // NewHTTPResponseWriter creates a new HTTPResponseWriter object that wraps the
 // provided io.Writer.
 func NewHTTPResponseWriter(w http.ResponseWriter) *HTTPResponseWriter {
-	return &HTTPResponseWriter{
-		ResponseWriter: w,
-		written:        new(uint32),
-	}
+	return &HTTPResponseWriter{ResponseWriter: w}
 }
 
 // Write will write the bytes to the underlying io.Writer.
 func (w *HTTPResponseWriter) Write(bytes []byte) (int, error) {
-	atomic.StoreUint32(w.written, 1)
+	w.written.Store(true)
 	return w.ResponseWriter.Write(bytes)
 }
 
 // Written tells us if the writer has been written to yet.
 func (w *HTTPResponseWriter) Written() bool {
-	return atomic.LoadUint32(w.written) == 1
+	return w.written.Load()
 }
 
 type WrappingResponseWriter interface {
@@ -318,8 +318,6 @@ func (w *StatusHeaderResponseWriter) setCustomResponseHeaders(status int) {
 	if val, ok := sch[strconv.Itoa(status)]; ok {
 		setter(val)
 	}
-
-	return
 }
 
 var _ WrappingResponseWriter = &StatusHeaderResponseWriter{}

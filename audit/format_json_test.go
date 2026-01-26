@@ -134,7 +134,7 @@ func TestFormatJSON_formatRequest(t *testing.T) {
 		expectedjson.Request.Namespace = &AuditNamespace{ID: "root"}
 
 		actualjson := new(AuditRequestEntry)
-		if err := jsonutil.DecodeJSON([]byte(buf.String())[len(tc.Prefix):], &actualjson); err != nil {
+		if err := jsonutil.DecodeJSON(buf.Bytes()[len(tc.Prefix):], &actualjson); err != nil {
 			t.Fatalf("bad json: %s", err)
 		}
 

@@ -9,8 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/errwrap"
-	"github.com/openbao/openbao/sdk/v2/helper/license"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -120,10 +118,6 @@ type Path struct {
 	// also true. If not specified, the Update action is forced and the user
 	// must have UpdateCapability on the path.
 	ExistenceCheck ExistenceFunc
-
-	// FeatureRequired, if implemented, will validate if the given feature is
-	// enabled for the set of paths
-	FeatureRequired license.Features
 
 	// Deprecated denotes that this path is considered deprecated. This may
 	// be reflected in help and documentation.
@@ -290,6 +284,7 @@ type Response struct {
 	MediaType   string                  // media type of the response, defaulting to "application/json" if empty
 	Fields      map[string]*FieldSchema // the fields present in this response, used to generate openapi response
 	Example     *logical.Response       // example response data
+	SchemaName  string                  // optional name of the schema for this response in OpenAPI spec
 }
 
 // PathOperation is a concrete implementation of OperationHandler.
@@ -364,7 +359,7 @@ func (p *Path) helpCallback(b *Backend) OperationFunc {
 
 		help, err := executeTemplate(pathHelpTemplate, &tplData)
 		if err != nil {
-			return nil, errwrap.Wrapf("error executing template: {{err}}", err)
+			return nil, fmt.Errorf("error executing template: %w", err)
 		}
 
 		// The plugin type (e.g. "kv", "cubbyhole") is only assigned at the time

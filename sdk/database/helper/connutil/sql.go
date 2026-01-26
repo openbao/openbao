@@ -7,14 +7,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/hashicorp/errwrap"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 )
@@ -37,11 +37,6 @@ type SQLConnectionProducer struct {
 	Initialized           bool
 	db                    *sql.DB
 	sync.Mutex
-}
-
-func (c *SQLConnectionProducer) Initialize(ctx context.Context, conf map[string]interface{}, verifyConnection bool) error {
-	_, err := c.Init(ctx, conf, verifyConnection)
-	return err
 }
 
 func (c *SQLConnectionProducer) Init(ctx context.Context, conf map[string]interface{}, verifyConnection bool) (map[string]interface{}, error) {
@@ -104,7 +99,7 @@ func (c *SQLConnectionProducer) Init(ctx context.Context, conf map[string]interf
 
 	c.maxConnectionLifetime, err = parseutil.ParseDurationSecond(c.MaxConnectionLifetimeRaw)
 	if err != nil {
-		return nil, errwrap.Wrapf("invalid max_connection_lifetime: {{err}}", err)
+		return nil, fmt.Errorf("invalid max_connection_lifetime: %w", err)
 	}
 
 	// Set initialized to true at this point since all fields are set,
@@ -113,11 +108,11 @@ func (c *SQLConnectionProducer) Init(ctx context.Context, conf map[string]interf
 
 	if verifyConnection {
 		if _, err := c.Connection(ctx); err != nil {
-			return nil, errwrap.Wrapf("error verifying connection: {{err}}", err)
+			return nil, fmt.Errorf("error verifying connection: %w", err)
 		}
 
 		if err := c.db.PingContext(ctx); err != nil {
-			return nil, errwrap.Wrapf("error verifying connection: {{err}}", err)
+			return nil, fmt.Errorf("error verifying connection: %w", err)
 		}
 	}
 

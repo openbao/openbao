@@ -221,7 +221,7 @@ func fetchCertBySerial(sc *storageContext, prefix, serial string) (*logical.Stor
 		return nil, errutil.InternalError{Err: fmt.Sprintf("error fetching certificate %s: %s", serial, err)}
 	}
 	if certEntry != nil {
-		if certEntry.Value == nil || len(certEntry.Value) == 0 {
+		if len(certEntry.Value) == 0 {
 			return nil, errutil.InternalError{Err: fmt.Sprintf("returned certificate bytes for serial %s were empty", serial)}
 		}
 		return certEntry, nil
@@ -240,7 +240,7 @@ func fetchCertBySerial(sc *storageContext, prefix, serial string) (*logical.Stor
 	if certEntry == nil {
 		return nil, nil
 	}
-	if certEntry.Value == nil || len(certEntry.Value) == 0 {
+	if len(certEntry.Value) == 0 {
 		return nil, errutil.InternalError{Err: fmt.Sprintf("returned certificate bytes for serial %s were empty", serial)}
 	}
 
@@ -824,6 +824,34 @@ func generateCert(sc *storageContext,
 	return parsedBundle, warnings, nil
 }
 
+// Generate a certificate evaluating params against CEL role
+func generateCELCert(
+	evaluationData map[string]interface{},
+	caSign *certutil.CAInfoBundle,
+	cert *x509.Certificate,
+	randomSource io.Reader,
+) (*certutil.ParsedCertBundle, error) {
+	parsedBundle, err := certutil.CreateCertificateWithTemplate(caSign, evaluationData, *cert, randomSource)
+	if err != nil {
+		return nil, err
+	}
+	return parsedBundle, nil
+}
+
+// Generate a certificate evaluating params against CEL role
+func signCELCert(
+	evaluationData map[string]interface{},
+	caSign *certutil.CAInfoBundle,
+	cert *x509.Certificate,
+	csr *x509.CertificateRequest,
+) (*certutil.ParsedCertBundle, error) {
+	parsedBundle, err := certutil.SignCertificateWithTemplate(caSign, csr, evaluationData, *cert)
+	if err != nil {
+		return nil, err
+	}
+	return parsedBundle, nil
+}
+
 // N.B.: This is only meant to be used for generating intermediate CAs.
 // It skips some sanity checks.
 func generateIntermediateCSR(sc *storageContext, input *inputBundle, randomSource io.Reader) (*certutil.ParsedCSRBundle, []string, error) {
@@ -998,7 +1026,8 @@ func signCert(b *backend,
 	//
 	// This validation needs to occur regardless of the role's key type, so
 	// that we always validate both RSA and ECDSA key sizes.
-	if actualKeyType == "rsa" {
+	switch actualKeyType {
+	case "rsa":
 		if actualKeyBits < data.role.KeyBits {
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 				"role requires a minimum of a %d-bit key, but CSR's key is %d bits",
@@ -1010,7 +1039,7 @@ func signCert(b *backend,
 				"OpenBao requires a minimum of a 2048-bit key, but CSR's key is %d bits",
 				actualKeyBits)}
 		}
-	} else if actualKeyType == "ec" {
+	case "ec":
 		if actualKeyBits < data.role.KeyBits {
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 				"role requires a minimum of a %d-bit key, but CSR's key is %d bits",
@@ -1361,7 +1390,24 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 						return nil, nil, errutil.UserError{Err: fmt.Sprintf(
 							"the value %q is not a valid IP address", v)}
 					}
-					ipAddresses = append(ipAddresses, parsedIP)
+					if len(data.role.AllowedIPSANsCIDR) > 0 {
+						valid := false
+						for _, allowedNetwork := range data.role.AllowedIPSANsCIDR {
+							if allowedNetwork.Contains(parsedIP) {
+								valid = true
+								break
+							}
+						}
+
+						if !valid {
+							return nil, nil, errutil.UserError{Err: fmt.Sprintf(
+								"the IP address %q is not allowed in this role", v)}
+						}
+
+						ipAddresses = append(ipAddresses, parsedIP)
+					} else {
+						ipAddresses = append(ipAddresses, parsedIP)
+					}
 				}
 			}
 		}
@@ -1433,7 +1479,6 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 		StreetAddress:      strutil.RemoveDuplicatesStable(data.role.StreetAddress, false),
 		PostalCode:         strutil.RemoveDuplicatesStable(data.role.PostalCode, false),
 	}
-
 	// Get certificate's Not Before
 	notBefore, err := getCertificateNotBefore(data)
 	if err != nil {
@@ -1739,6 +1784,11 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 		case certutil.PermitNotAfterBehavior:
 			// Explicitly do nothing.
 		case certutil.TruncateNotAfterBehavior:
+			// Error out if notAfter is in the past
+			if notAfter.Before(time.Now()) {
+				return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf(
+					"cannot satisfy request, as NotAfter date %s is in the past", notAfter)}
+			}
 			notAfter = caSign.Certificate.NotAfter
 		case certutil.ErrNotAfterBehavior:
 			fallthrough

@@ -13,8 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/go-secure-stdlib/strutil"
-
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
@@ -94,8 +92,8 @@ func TestBackendHandleRequestFieldWarnings(t *testing.T) {
 	require.NotNil(t, resp)
 	t.Log(resp.Warnings)
 	require.Len(t, resp.Warnings, 2)
-	require.True(t, strutil.StrListContains(resp.Warnings, "Endpoint ignored these unrecognized parameters: [unrecognized1 unrecognized2]"))
-	require.True(t, strutil.StrListContains(resp.Warnings, "Endpoint replaced the value of these parameters with the values captured from the endpoint's path: [name]"))
+	require.Contains(t, resp.Warnings, "Endpoint ignored these unrecognized parameters: [unrecognized1 unrecognized2]")
+	require.Contains(t, resp.Warnings, "Endpoint replaced the value of these parameters with the values captured from the endpoint's path: [name]")
 }
 
 func TestBackendHandleRequest(t *testing.T) {
@@ -397,9 +395,9 @@ func TestBackendHandleRequest_renewAuth(t *testing.T) {
 }
 
 func TestBackendHandleRequest_renewAuthCallback(t *testing.T) {
-	called := new(uint32)
+	called := atomic.Uint32{}
 	callback := func(context.Context, *logical.Request, *FieldData) (*logical.Response, error) {
-		atomic.AddUint32(called, 1)
+		called.Add(1)
 		return nil, nil
 	}
 
@@ -411,15 +409,15 @@ func TestBackendHandleRequest_renewAuthCallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	if v := atomic.LoadUint32(called); v != 1 {
+	if v := called.Load(); v != 1 {
 		t.Fatalf("bad: %#v", v)
 	}
 }
 
 func TestBackendHandleRequest_renew(t *testing.T) {
-	called := new(uint32)
+	called := atomic.Uint32{}
 	callback := func(context.Context, *logical.Request, *FieldData) (*logical.Response, error) {
-		atomic.AddUint32(called, 1)
+		called.Add(1)
 		return nil, nil
 	}
 
@@ -435,15 +433,15 @@ func TestBackendHandleRequest_renew(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	if v := atomic.LoadUint32(called); v != 1 {
+	if v := called.Load(); v != 1 {
 		t.Fatalf("bad: %#v", v)
 	}
 }
 
 func TestBackendHandleRequest_revoke(t *testing.T) {
-	called := new(uint32)
+	called := atomic.Uint32{}
 	callback := func(context.Context, *logical.Request, *FieldData) (*logical.Response, error) {
-		atomic.AddUint32(called, 1)
+		called.Add(1)
 		return nil, nil
 	}
 
@@ -459,16 +457,16 @@ func TestBackendHandleRequest_revoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	if v := atomic.LoadUint32(called); v != 1 {
+	if v := called.Load(); v != 1 {
 		t.Fatalf("bad: %#v", v)
 	}
 }
 
 func TestBackendHandleRequest_rollback(t *testing.T) {
-	called := new(uint32)
+	called := atomic.Uint32{}
 	callback := func(_ context.Context, req *logical.Request, kind string, data interface{}) error {
 		if data == "foo" {
-			atomic.AddUint32(called, 1)
+			called.Add(1)
 		}
 		return nil
 	}
@@ -493,16 +491,16 @@ func TestBackendHandleRequest_rollback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	if v := atomic.LoadUint32(called); v != 1 {
+	if v := called.Load(); v != 1 {
 		t.Fatalf("bad: %#v", v)
 	}
 }
 
 func TestBackendHandleRequest_rollbackMinAge(t *testing.T) {
-	called := new(uint32)
+	called := atomic.Uint32{}
 	callback := func(_ context.Context, req *logical.Request, kind string, data interface{}) error {
 		if data == "foo" {
-			atomic.AddUint32(called, 1)
+			called.Add(1)
 		}
 		return nil
 	}
@@ -525,7 +523,7 @@ func TestBackendHandleRequest_rollbackMinAge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	if v := atomic.LoadUint32(called); v != 0 {
+	if v := called.Load(); v != 0 {
 		t.Fatalf("bad: %#v", v)
 	}
 }

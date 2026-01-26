@@ -57,13 +57,14 @@ leader node.
   stream. This can be used to add read scalability to a cluster in cases where a
   high volume of reads to servers are needed. The default is false.
 
-:::warning
+  :::warning
 
-Adding a large number of non-voters to a cluster will impact application
-latency. Make sure to tune the [Raft settings](/docs/configuration/storage/raft/#raft-parameters)
-for your intended use case.
+  Adding a large number of non-voters to a cluster will impact application
+  latency. Make sure to tune the [Raft
+  settings](/docs/configuration/storage/raft/#raft-parameters) for your intended
+  use case.
 
-:::
+  :::
 
 ### Sample payload
 

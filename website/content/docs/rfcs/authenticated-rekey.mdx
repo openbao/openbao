@@ -1,0 +1,196 @@
+---
+sidebar_label: Authenticated Rekey
+description: |-
+  An OpenBao RFC for requiring rekey root and recovery keys to be performed
+  with authentication and authorization under new endpoints.
+---
+
+# Delay recovery key generation for auto-unseal mechanisms and make rotation authenticated
+
+### Summary
+
+We propose adding authenticated root and recovery key rotation endpoints, allow
+delayed recovery key generation (setting initial shares to 0) and add a CLI helper
+to manually perform offline recovery key generation on an auto-unseal cluster if
+keys were lost. This will allow better side-effect-less self-initialization and
+and solves the issue with the unauthenticated recovery key rotation APIs.
+
+### Problem Statement
+
+OpenBao's initialization with an auto-unseal mechanism is side-effecting in
+a way that requires long-term storage of recovery keys, used to create root
+tokens for use during initialization (to create any initial audit, auth, and
+secret engines) and [recovery mode](../concepts/recovery-mode.mdx).
+
+When running in certain environments, like Kubernetes or provisioning via
+OpenTofu, having such a side-effecting change makes writing automation
+difficult. For instance, [in the context of GitLab deployments](https://docs.gitlab.com/charts/installation/secrets/),
+the GitLab helm chart does not assume RBAC access to create secrets and
+may optionally be installed with pre-created secrets provisioned manually
+by an operator. We wish to support this type of ahead-of-time static
+definition of required secrets; creating a random, long-term, persistent
+secret (such as recovery key shards) during the installation process is at
+odds with this.
+
+While a [separate RFC](https://github.com/openbao/openbao/issues/1340)
+discusses approaches for declarative self-initialization and another focuses
+on [static unseal](https://github.com/openbao/openbao/pull/1304), this focuses
+on changes to the unseal process to improve operator experience.
+
+This effort is made more important by the recent vulnerability in rekeying
+[recovery and root keys](https://github.com/openbao/openbao/pull/1496),
+where an unauthenticated attacker could effectively disable rekey without
+notification to a server operator. Creating authenticated varieties of these
+endpoints thus serve a dual purpose: to adequately defend against this
+category of attack and to allow us to default to zero recovery keys returned
+on initialization, instead using a privileged token to create them.
+
+Lastly, this document proposes explicit use of `rotate` + `<descriptive noun>`
+as the authoritative descriptive of key rotation processes. `rekey` as a term
+should not be used to describe something unique as it is a synonym to `rotate`.
+This should help to address issues with clarity and ambiguity.
+
+### User-facing Description
+
+This change lets the `sys/init` API endpoint take the `0` value for number of
+shares when using an auto-unseal mechanism. When specified, the recovery keys
+will not be generated at initialization time and thus will not be returned.
+The system will function as if it has no recovery keys. This will not be
+applicable for Shamir's based unsealing; when used with
+[parallel unseal](https://github.com/openbao/openbao/issues/1021), it will
+apply to any specified auto-unseal mechanism. Recovery mode will not function
+until such keys are created.
+
+After this change, a new set of endpoints under `sys/rotate` will allow
+rotating the keyring, root key, and recovery keys. The existing `sys/rotate`
+and `sys/rotate/config` will still function but be aliased under the clearer
+paths `sys/rotate/keyring` and `sys/rotate/keyring/config`.
+
+Two new sets of endpoints are added:
+
+ - `sys/rotate/root/*`, for rotating the root key; equivalent to the existing
+   `sys/rekey/*` endpoints but fully authenticated, and
+ - `sys/rotate/recovery/*`, for rotating the recovery key; equivalent to the
+   existing `sys/rekey-recovery-key/*` endpoints but fully authenticated.
+
+Note that `sys/rotate/root/*` endpoints also rotate Shamir shares when using
+the manual Shamir's unseal method; both the root key and Shamir shares are
+rotated at the same time.
+
+When no key shares exist, only `sys/rotate/recovery/*` can be used to create
+them; in this case, a call to `sys/rotate/recovery/init` will return working
+keys immediately.
+
+The bare `sys/rotate/root` will be a `sudo`-protected endpoint to directly
+perform a root key rotation without requiring existing key shares be provided.
+Just root keys are rotated under this endpoint; if the unseal mechanism is
+Shamir's, it will not rotate the provided shards. In the future, this could
+have a config endpoint like the existing `sys/rotate/keyring/config` for doing
+automatic (temporal) rotation of the root key.
+
+Finally, a new CLI, `bao operator recovery generate` will be added, to support
+offline (re-)generation of recovery key shards from a servers' configuration
+and access to storage and seal configuration.
+
+### Technical Description
+
+From [historical evidence](https://github.com/openbao/openbao/commit/6cf1b79fe10),
+Vault previously intended to allow recovery keys to be optional. However, a
+[subsequent commit](https://github.com/openbao/openbao/commit/99772d3cff7)
+removed this, paving the way for "dualseal" (likely an early precursor to what
+is planned in our [parallel unseal RFC](https://github.com/openbao/openbao/issues/1021)).
+
+In particular, we will introduce a new method, `SealConfig.ValidateRecovery()`
+which does not have the shares and threshold limits of the main seal
+configuration. When such an empty configuration is in use, we will deny the
+`sys/rekey-recovery-key` endpoint if it is enabled.
+
+The other benefit of moving these handlers out of `http/` an into `vault/`
+will be that we can use the `framework` processing and get both authentication
+and authorization on the endpoint.
+
+#### `POST sys/rotate/root`
+
+This endpoint rotates [the root key](https://github.com/openbao/openbao/issues/1021).
+
+It takes no parameters and returns no data.
+
+This differs from `sys/rotate/root/init` in that it does not require key
+shares be provided _just_ to rotate the root key independent from the
+Shamir's or recovery key shares. Because this is still a privileged action
+and inline with the keyring equivalent at `sys/rotate/keyring` or
+`sys/rotate`, this endpoint requires `sudo` permissions and is added to the
+`PathSpecial` for the `SystemBackend`.
+
+Note that, for Shamir's seals, the `sys/rotate/root/init` endpoint performs
+both rotations (the root key and the Shamir shares), conflating concerns,
+but `sys/rotate/root` and `sys/rotate/root/init` endpoint behave the same
+for auto-unseal mechanisms (minus the difference in when the rotation occurs).
+
+This sets us up to add a configuration similar to `sys/rotate/keyring/config`
+here as `sys/rotate/root/config` to perform automatic root key rotations,
+though this isn't strictly part of this config. That would take two
+parameters, `enabled` and `interval` only, as the root key sees relatively
+few encryption uses (only when the barrier keyring itself is rotated).
+
+### Rationale and Alternatives
+
+This preserves the security implications, however, it protects the rotation
+itself by requiring the operator be authenticated to the OpenBao instance.
+When operators of the instance are not users within the service, this does
+prohibit them from using the new endpoints. However, as long as the added
+protections of `disable_unauthed_rekey_endpoints=true` are enforced by
+default on external listeners, such operators may configure an additional
+local-only listener and use it to perform unauthenticated rotations.
+
+Another alternative was not adding the `bao operator recovery generate`
+utility and instead rolling it into the API: if a token has `sudo`
+permissions, allow it to bypass existing share creation and directly
+perform rotation. As this changes the threat model for rotating recovery
+keys, it was not considered. However, it was added to the root key rotation
+endpoint.
+
+Lastly, there remains an alternative to leave these endpoints alone but
+protect the rekey some other way. An example of this can be seen in the Vault
+1.20 fix for HCSEC-2025-11: [requiring a nonce on delete](https://developer.hashicorp.com/vault/docs/v1.20.x/updates/important-changes#rekey-cancellations-use-a-nonce).
+However, this doesn't solve the issue that the initialization endpoint remains
+unauthenticated.
+
+### Downsides
+
+This RFC improves the security posture of rotating in an auto-unseal and
+manual Shamir's environment, but in a way that requires breaking compatibility
+with previous releases. On the whole, this improved security posture is
+beneficial. This has been announced in the v2.3.1 security bulletin but may
+be too short of notice for some users. Given that key rotation should be
+relatively rare and likely not automated, it is expected that users will
+be able to adjust accordingly.
+
+### Security Implications
+
+By requiring privileged tokens be used to create and rotate recovery key
+shares, we seek to improve the security posture of OpenBao. In addition,
+we prevent creation of long-lived highly privileged access tokens at the
+start of OpenBao's lifecycle, allowing this to be delayed until an operator
+can safely store them.
+
+### User/Developer Experience
+
+Because the format of these APIs are preserved, this should mostly be an
+equivalent user experience except due to the deprecation of the existing
+endpoints. However, the new endpoints _should_ otherwise be fully compatible
+and an operator _should_ be able to migrate to them, assuming authentication
+is available within their rotation environment.
+
+### Unresolved Questions
+
+None.
+
+### Related Issues
+
+ - https://github.com/openbao/openbao/pull/1496
+ - https://github.com/openbao/openbao/pull/1506
+
+### Proof of Concept
+
+n/a

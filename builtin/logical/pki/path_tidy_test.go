@@ -19,19 +19,19 @@ import (
 	"testing"
 	"time"
 
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"golang.org/x/crypto/acme"
 
 	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 
-	"github.com/armon/go-metrics"
-
 	"github.com/openbao/openbao/api/v2"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -76,9 +76,7 @@ func TestTidyConfigs(t *testing.T) {
 		if len(resp.Warnings) > 0 {
 			t.Logf("got warnings while starting manual tidy: %v", resp.Warnings)
 			for _, warning := range resp.Warnings {
-				if strings.Contains(warning, "Manual tidy requested but no tidy operations were set.") {
-					t.Fatalf("expected to be able to enable tidy operation with just %v but got warning: %v / (resp=%v)", operation, warning, resp)
-				}
+				require.NotContainsf(t, warning, "Manual tidy requested but no tidy operations were set.", "expected to be able to enable tidy operation with just %v but got warning: %v / (resp=%v)", operation, warning, resp)
 			}
 		}
 
@@ -124,7 +122,7 @@ func TestTidyConfigs(t *testing.T) {
 
 		resp, err := CBRead(b, s, "config/auto-tidy")
 		requireSuccessNonNilResponse(t, resp, err, "expected to be able to read auto-tidy operation for flag "+flag.Config)
-		require.Equal(t, resp.Data[flag.Config].(int), flag.DefaultValue, "expected initial auto-tidy config to match default value for "+flag.Config)
+		require.Equal(t, flag.DefaultValue, resp.Data[flag.Config].(int), "expected initial auto-tidy config to match default value for "+flag.Config)
 
 		resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
 			"enabled":         true,
@@ -135,7 +133,7 @@ func TestTidyConfigs(t *testing.T) {
 
 		resp, err = CBRead(b, s, "config/auto-tidy")
 		requireSuccessNonNilResponse(t, resp, err, "expected to be able to read auto-tidy operation for config "+flag.Config)
-		require.Equal(t, resp.Data[flag.Config].(int), flag.FirstValue, "expected value to be set after reading auto-tidy config "+flag.Config)
+		require.Equal(t, flag.FirstValue, resp.Data[flag.Config].(int), "expected value to be set after reading auto-tidy config "+flag.Config)
 
 		resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
 			"enabled":         true,
@@ -146,7 +144,7 @@ func TestTidyConfigs(t *testing.T) {
 
 		resp, err = CBRead(b, s, "config/auto-tidy")
 		requireSuccessNonNilResponse(t, resp, err, "expected to be able to read auto-tidy operation for config "+flag.Config)
-		require.Equal(t, resp.Data[flag.Config].(int), flag.SecondValue, "expected value to be set after reading auto-tidy config "+flag.Config)
+		require.Equal(t, flag.SecondValue, resp.Data[flag.Config].(int), "expected value to be set after reading auto-tidy config "+flag.Config)
 
 		resp, err = CBWrite(b, s, "tidy", map[string]interface{}{
 			"tidy_cert_store": true,
@@ -156,8 +154,8 @@ func TestTidyConfigs(t *testing.T) {
 		requireSuccessNonNilResponse(t, resp, err, "expected to be able to start tidy operation with "+flag.Config)
 		if len(resp.Warnings) > 0 {
 			for _, warning := range resp.Warnings {
-				if strings.Contains(warning, "unrecognized parameter") && strings.Contains(warning, flag.Config) {
-					t.Fatalf("warning '%v' claims parameter '%v' is unknown", warning, flag.Config)
+				if strings.Contains(warning, flag.Config) {
+					require.NotContainsf(t, warning, "unrecognized parameter", "warning '%v' claims parameter '%v' is unknown", warning, flag.Config)
 				}
 			}
 		}
@@ -167,7 +165,7 @@ func TestTidyConfigs(t *testing.T) {
 		resp, err = CBRead(b, s, "tidy-status")
 		requireSuccessNonNilResponse(t, resp, err, "expected to be able to start tidy operation with "+flag.Config)
 		t.Logf("got response: %v for config: %v", resp, flag.Config)
-		require.Equal(t, resp.Data[flag.Config].(int), flag.FirstValue, "expected flag to be set in tidy-status for config "+flag.Config)
+		require.Equal(t, flag.FirstValue, resp.Data[flag.Config].(int), "expected flag to be set in tidy-status for config "+flag.Config)
 	}
 }
 
@@ -268,6 +266,7 @@ func TestAutoTidy(t *testing.T) {
 	require.NotNil(t, resp.Data)
 	require.NotEmpty(t, resp.Data["certificate"])
 	revocationTime, err := (resp.Data["revocation_time"].(json.Number)).Int64()
+	require.NoError(t, err)
 	require.Equal(t, int64(0), revocationTime, "revocation time was not zero")
 	require.Empty(t, resp.Data["revocation_time_rfc3339"], "revocation_time_rfc3339 was not empty")
 	require.Empty(t, resp.Data["issuer_id"], "issuer_id was not empty")
@@ -287,9 +286,9 @@ func TestAutoTidy(t *testing.T) {
 	require.NoError(t, err, "failed converting %s to int", resp.Data["revocation_time"])
 	revTime := time.Unix(revocationTime, 0)
 	now := time.Now()
-	if !(now.After(revTime) && now.Add(-10*time.Minute).Before(revTime)) {
-		t.Fatalf("parsed revocation time not within the last 10 minutes current time: %s, revocation time: %s", now, revTime)
-	}
+	require.Conditionf(t, func() bool {
+		return now.After(revTime) && now.Add(-10*time.Minute).Before(revTime)
+	}, "parsed revocation time not within the last 10 minutes current time: %s, revocation time: %s", now, revTime)
 	utcLoc, err := time.LoadLocation("UTC")
 	require.NoError(t, err, "failed to parse UTC location?")
 
@@ -348,6 +347,8 @@ func TestTidyCancellation(t *testing.T) {
 		"safety_buffer":   "1s",
 		"pause_duration":  "1s",
 	})
+	require.NoError(t, err)
+
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("tidy"), logical.UpdateOperation), resp, true)
 
 	// If we wait six seconds, the operation should still be running. That's
@@ -359,7 +360,7 @@ func TestTidyCancellation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data)
-	require.Equal(t, resp.Data["state"], "Running")
+	require.Equal(t, "Running", resp.Data["state"])
 
 	// If we now cancel the operation, the response should say Cancelling.
 	cancelResp, err := CBWrite(b, s, "tidy-cancel", map[string]interface{}{})
@@ -376,7 +377,7 @@ func TestTidyCancellation(t *testing.T) {
 		return
 	}
 
-	require.Equal(t, state, "Cancelling")
+	require.Equal(t, "Cancelling", state)
 
 	// Wait a little longer, and ensure we only processed at most 2 more certs
 	// after the cancellation respon.
@@ -387,11 +388,9 @@ func TestTidyCancellation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, statusResp)
 	require.NotNil(t, statusResp.Data)
-	require.Equal(t, statusResp.Data["state"], "Cancelled")
+	require.Equal(t, "Cancelled", statusResp.Data["state"])
 	nowMany := statusResp.Data["cert_store_deleted_count"].(uint)
-	if howMany+3 <= nowMany {
-		t.Fatalf("expected to only process at most 3 more certificates, but processed (%v >>> %v) certs", nowMany, howMany)
-	}
+	require.Lessf(t, nowMany, howMany+3, "expected to only process at most 3 more certificates, but processed (%v >>> %v) certs", nowMany, howMany)
 }
 
 func TestTidyIssuers(t *testing.T) {
@@ -497,8 +496,8 @@ func TestTidyIssuers(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, statusResp)
 	require.NotNil(t, statusResp.Data)
-	require.Equal(t, statusResp.Data["issuer_safety_buffer"], 1)
-	require.Equal(t, statusResp.Data["tidy_expired_issuers"], true)
+	require.Equal(t, 1, statusResp.Data["issuer_safety_buffer"])
+	require.True(t, statusResp.Data["tidy_expired_issuers"].(bool))
 }
 
 func TestTidyIssuerConfig(t *testing.T) {
@@ -536,7 +535,7 @@ func TestTidyIssuerConfig(t *testing.T) {
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("config/auto-tidy"), logical.UpdateOperation), resp, true)
 
 	requireSuccessNonNilResponse(t, resp, err)
-	require.Equal(t, true, resp.Data["tidy_expired_issuers"])
+	require.True(t, resp.Data["tidy_expired_issuers"].(bool))
 	require.Equal(t, 5, resp.Data["issuer_safety_buffer"])
 }
 
@@ -559,9 +558,7 @@ func TestCertStorageMetrics(t *testing.T) {
 	metricsConf.EnableTypePrefix = false
 
 	_, err := metrics.NewGlobal(metricsConf, inmemSink)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// This test requires the periodicFunc to trigger, which requires we stand
 	// up a full test cluster.
@@ -619,32 +616,31 @@ func TestCertStorageMetrics(t *testing.T) {
 
 	// Since certificate counts are off by default, we shouldn't see counts in the tidy status
 	tidyStatus, err := client.Logical().Read("pki/tidy-status")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// backendUUID should exist, we need this for metrics
 	backendUUID := tidyStatus.Data["internal_backend_uuid"].(string)
 	// "current_cert_store_count", "current_revoked_cert_count"
 	countData, ok := tidyStatus.Data["current_cert_store_count"]
 	if ok && countData != nil {
-		t.Fatalf("Certificate counting should be off by default, but current cert store count %v appeared in tidy status in unconfigured mount", countData)
+		require.FailNowf(t,
+			"Certificate counting should be off by default, but current cert store count appeared in tidy status in unconfigured mount",
+			"Found count data: %v", countData)
 	}
 	revokedCountData, ok := tidyStatus.Data["current_revoked_cert_count"]
 	if ok && revokedCountData != nil {
-		t.Fatalf("Certificate counting should be off by default, but revoked cert count %v appeared in tidy status in unconfigured mount", revokedCountData)
+		require.FailNowf(t,
+			"Certificate counting should be off by default, but revoked cert count appeared in tidy status in unconfigured mount",
+			"Found count data: %v", countData)
 	}
 
 	// Since certificate counts are off by default, those metrics should not exist yet
 	stableMetric := inmemSink.Data()
 	mostRecentInterval := stableMetric[len(stableMetric)-1]
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_revoked_certificates_stored"]
-	if ok {
-		t.Fatal("Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
-	}
+	require.False(t, ok, "Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
+
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_certificates_stored"]
-	if ok {
-		t.Fatal("Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
-	}
+	require.False(t, ok, "Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
 
 	// Write the auto-tidy config.
 	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
@@ -679,13 +675,9 @@ func TestCertStorageMetrics(t *testing.T) {
 	stableMetric = inmemSink.Data()
 	mostRecentInterval = stableMetric[len(stableMetric)-1]
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_revoked_certificates_stored"]
-	if ok {
-		t.Fatal("Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
-	}
+	require.False(t, ok, "Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_certificates_stored"]
-	if ok {
-		t.Fatal("Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
-	}
+	require.False(t, ok, "Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
 
 	// But since certificate counting is on, the metrics should exist on tidyStatus endpoint:
 	tidyStatus, err = client.Logical().Read("pki/tidy-status")
@@ -695,19 +687,11 @@ func TestCertStorageMetrics(t *testing.T) {
 	backendUUID = tidyStatus.Data["internal_backend_uuid"].(string)
 	// "current_cert_store_count", "current_revoked_cert_count"
 	certStoreCount, ok := tidyStatus.Data["current_cert_store_count"]
-	if !ok {
-		t.Fatal("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
-	}
-	if certStoreCount != json.Number("1") {
-		t.Fatalf("Only created one certificate, but a got a certificate count of %v", certStoreCount)
-	}
+	require.True(t, ok, "Certificate counting has been turned on, but current cert store count does not appear in tidy status")
+	require.Equalf(t, json.Number("1"), certStoreCount, "Only created one certificate, but a got a certificate count of %v", certStoreCount)
 	revokedCertCount, ok := tidyStatus.Data["current_revoked_cert_count"]
-	if !ok {
-		t.Fatal("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
-	}
-	if revokedCertCount != json.Number("0") {
-		t.Fatalf("Have not yet revoked a certificate, but got a revoked cert store count of %v", revokedCertCount)
-	}
+	require.True(t, ok, "Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
+	require.Equalf(t, json.Number("0"), revokedCertCount, "Have not yet revoked a certificate, but got a revoked cert store count of %v", revokedCertCount)
 
 	// Write the auto-tidy config, again, this time turning on metrics
 	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
@@ -766,24 +750,15 @@ func TestCertStorageMetrics(t *testing.T) {
 
 	backendUUID = tidyStatus.Data["internal_backend_uuid"].(string)
 	certStoreCount, ok = tidyStatus.Data["current_cert_store_count"]
-	if !ok {
-		t.Fatal("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
-	}
-	if certStoreCount != json.Number("2") {
-		t.Fatalf("Created root and leaf certificate, but a got a certificate count of %v", certStoreCount)
-	}
+	require.True(t, ok, "Certificate counting has been turned on, but current cert store count does not appear in tidy status")
+	require.Equalf(t, json.Number("2"), certStoreCount, "Created root and leaf certificate, but a got a certificate count of %v", certStoreCount)
 	revokedCertCount, ok = tidyStatus.Data["current_revoked_cert_count"]
-	if !ok {
-		t.Fatal("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
-	}
-	if revokedCertCount != json.Number("1") {
-		t.Fatalf("Revoked one certificate, but got a revoked cert store count of %v\n:%v", revokedCertCount, tidyStatus)
-	}
+	require.True(t, ok, "Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
+	require.Equalf(t, json.Number("1"), revokedCertCount, "Revoked one certificate, but got a revoked cert store count of %v\n:%v", revokedCertCount, tidyStatus)
 	// This should now be initialized
 	certCountError, ok := tidyStatus.Data["certificate_counting_error"]
-	if ok && certCountError.(string) != "" {
-		t.Fatalf("Expected certificate count error to disappear after initialization, but got error %v", certCountError)
-	}
+	assert.False(t, ok)
+	require.Nil(t, certCountError, "Expected certificate count error to disappear after initialization, but got error %v", certCountError)
 
 	testhelpers.RetryUntil(t, newPeriod*5, func() error {
 		stableMetric = inmemSink.Data()
@@ -816,25 +791,15 @@ func TestCertStorageMetrics(t *testing.T) {
 	// After Tidy, Cert Store Count Should Still Be Available, and Be Updated:
 	// Check Metrics After Cert Has Be Created and Revoked
 	tidyStatus, err = client.Logical().Read("pki/tidy-status")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	backendUUID = tidyStatus.Data["internal_backend_uuid"].(string)
 	// "current_cert_store_count", "current_revoked_cert_count"
 	certStoreCount, ok = tidyStatus.Data["current_cert_store_count"]
-	if !ok {
-		t.Fatal("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
-	}
-	if certStoreCount != json.Number("1") {
-		t.Fatalf("Created root and leaf certificate, deleted leaf, but a got a certificate count of %v", certStoreCount)
-	}
+	require.True(t, ok, "Certificate counting has been turned on, but current cert store count does not appear in tidy status")
+	require.Equalf(t, json.Number("1"), certStoreCount, "Created root and leaf certificate, deleted leaf, but a got a certificate count of %v", certStoreCount)
 	revokedCertCount, ok = tidyStatus.Data["current_revoked_cert_count"]
-	if !ok {
-		t.Fatal("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
-	}
-	if revokedCertCount != json.Number("0") {
-		t.Fatalf("Revoked certificate has been tidied, but got a revoked cert store count of %v", revokedCertCount)
-	}
+	require.True(t, ok, "Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
+	require.Equalf(t, json.Number("0"), revokedCertCount, "Revoked certificate has been tidied, but got a revoked cert store count of %v", revokedCertCount)
 
 	testhelpers.RetryUntil(t, newPeriod*5, func() error {
 		stableMetric = inmemSink.Data()
@@ -927,7 +892,7 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, listResp)
 	thumbprintEntries := listResp.Data["keys"].([]interface{})
-	require.Equal(t, len(thumbprintEntries), 1)
+	require.Equal(t, 1, len(thumbprintEntries))
 	thumbprint := thumbprintEntries[0].(string)
 
 	// Let "Time Pass"; this is a HACK, this function sys-writes to overwrite the date on objects in storage
@@ -945,11 +910,11 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 	// Wait for tidy to finish.
 	tidyResp := waitForTidyToFinish(t, client, "pki")
 
-	require.Equal(t, tidyResp.Data["acme_orders_deleted_count"], json.Number("1"),
+	require.Equal(t, json.Number("1"), tidyResp.Data["acme_orders_deleted_count"],
 		"expected to revoke a single ACME order: %v", tidyResp)
-	require.Equal(t, tidyResp.Data["acme_account_revoked_count"], json.Number("0"),
+	require.Equal(t, json.Number("0"), tidyResp.Data["acme_account_revoked_count"],
 		"no ACME account should have been revoked: %v", tidyResp)
-	require.Equal(t, tidyResp.Data["acme_account_deleted_count"], json.Number("0"),
+	require.Equal(t, json.Number("0"), tidyResp.Data["acme_account_deleted_count"],
 		"no ACME account should have been revoked: %v", tidyResp)
 
 	// Make sure our order is indeed deleted.
@@ -972,11 +937,11 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 
 	// Wait for tidy to finish.
 	tidyResp = waitForTidyToFinish(t, client, "pki")
-	require.Equal(t, tidyResp.Data["acme_orders_deleted_count"], json.Number("0"),
+	require.Equal(t, json.Number("0"), tidyResp.Data["acme_orders_deleted_count"],
 		"no ACME orders should have been deleted: %v", tidyResp)
-	require.Equal(t, tidyResp.Data["acme_account_revoked_count"], json.Number("1"),
+	require.Equal(t, json.Number("1"), tidyResp.Data["acme_account_revoked_count"],
 		"expected to revoke a single ACME account: %v", tidyResp)
-	require.Equal(t, tidyResp.Data["acme_account_deleted_count"], json.Number("0"),
+	require.Equal(t, json.Number("0"), tidyResp.Data["acme_account_deleted_count"],
 		"no ACME account should have been revoked: %v", tidyResp)
 
 	// Lookup our account to make sure we get the appropriate revoked status
@@ -1045,7 +1010,7 @@ func TestTidyAcmeWithSafetyBuffer(t *testing.T) {
 	require.NoError(t, err, "failed listing ACME thumbprints")
 	require.NotEmpty(t, listResp.Data["keys"], "expected non-empty list response")
 	thumbprintEntries := listResp.Data["keys"].([]interface{})
-	require.Equal(t, len(thumbprintEntries), 1)
+	require.Equal(t, 1, len(thumbprintEntries))
 
 	// Wait for the account to expire.
 	time.Sleep(2 * time.Second)
@@ -1059,7 +1024,7 @@ func TestTidyAcmeWithSafetyBuffer(t *testing.T) {
 
 	// Wait for tidy to finish.
 	statusResp := waitForTidyToFinish(t, client, "pki")
-	require.Equal(t, statusResp.Data["acme_account_revoked_count"], json.Number("1"), "expected to revoke a single ACME account")
+	require.Equal(t, json.Number("1"), statusResp.Data["acme_account_revoked_count"], "expected to revoke a single ACME account")
 
 	// Wait for the account to expire.
 	time.Sleep(2 * time.Second)
@@ -1095,27 +1060,19 @@ func TestTidyAcmeWithSafetyBuffer(t *testing.T) {
 func backDateAcmeAccountSys(t *testing.T, testContext context.Context, client *api.Client, thumbprintString string, backdateAmount time.Duration, mount string) {
 	rawThumbprintPath := path.Join("sys/raw/logical/", mount, acmeThumbprintPrefix+thumbprintString)
 	thumbprintResp, err := client.Logical().ReadWithContext(testContext, rawThumbprintPath)
-	if err != nil {
-		t.Fatalf("unable to fetch thumbprint response at %v: %v", rawThumbprintPath, err)
-	}
+	require.NoErrorf(t, err, "unable to fetch thumbprint response at %v", rawThumbprintPath)
 
 	var thumbprint acmeThumbprint
 	err = jsonutil.DecodeJSON([]byte(thumbprintResp.Data["value"].(string)), &thumbprint)
-	if err != nil {
-		t.Fatalf("unable to decode thumbprint response %v to find account entry: %v", thumbprintResp.Data, err)
-	}
+	require.NoErrorf(t, err, "unable to decode thumbprint response %v to find account entry", thumbprintResp.Data)
 
 	accountPath := path.Join("sys/raw/logical", mount, acmeAccountPrefix+thumbprint.Kid)
 	accountResp, err := client.Logical().ReadWithContext(testContext, accountPath)
-	if err != nil {
-		t.Fatalf("unable to fetch account entry %v: %v", thumbprint.Kid, err)
-	}
+	require.NoErrorf(t, err, "unable to fetch account entry %v", thumbprint.Kid)
 
 	var account acmeAccount
 	err = jsonutil.DecodeJSON([]byte(accountResp.Data["value"].(string)), &account)
-	if err != nil {
-		t.Fatalf("unable to decode acme account %v: %v", accountResp, err)
-	}
+	require.NoErrorf(t, err, "unable to decode acme account %v", accountResp)
 
 	t.Logf("got account before update: %v", account)
 
@@ -1126,13 +1083,13 @@ func backDateAcmeAccountSys(t *testing.T, testContext context.Context, client *a
 	t.Logf("got account after update: %v", account)
 
 	encodeJSON, err := jsonutil.EncodeJSON(account)
+	require.NoErrorf(t, err, "json encoding failed")
+
 	_, err = client.Logical().WriteWithContext(context.Background(), accountPath, map[string]interface{}{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
 	})
-	if err != nil {
-		t.Fatalf("error saving backdated account entry at %v: %v", accountPath, err)
-	}
+	require.NoErrorf(t, err, "error saving backdated account entry at %v", accountPath)
 
 	ordersPath := path.Join("sys/raw/logical", mount, acmeAccountPrefix, thumbprint.Kid, "/orders/")
 	ordersRaw, err := client.Logical().ListWithContext(context.Background(), ordersPath)
@@ -1158,27 +1115,23 @@ func backDateAcmeAccountSys(t *testing.T, testContext context.Context, client *a
 func backDateAcmeOrderSys(t *testing.T, testContext context.Context, client *api.Client, accountKid string, orderId string, backdateAmount time.Duration, mount string) {
 	rawOrderPath := path.Join("sys/raw/logical/", mount, acmeAccountPrefix, accountKid, "orders", orderId)
 	orderResp, err := client.Logical().ReadWithContext(testContext, rawOrderPath)
-	if err != nil {
-		t.Fatalf("unable to fetch order entry %v on account %v at %v", orderId, accountKid, rawOrderPath)
-	}
+	require.NoErrorf(t, err, "unable to fetch order entry %v on account %v at %v", orderId, accountKid, rawOrderPath)
 
 	var order *acmeOrder
 	err = jsonutil.DecodeJSON([]byte(orderResp.Data["value"].(string)), &order)
-	if err != nil {
-		t.Fatalf("error decoding order entry %v on account %v, %v produced: %v", orderId, accountKid, orderResp, err)
-	}
+	require.NoErrorf(t, err, "error decoding order entry %v on account %v with response %v", orderId, accountKid, orderResp)
 
 	order.Expires = backDate(order.Expires, backdateAmount)
 	order.CertificateExpiry = backDate(order.CertificateExpiry, backdateAmount)
 
 	encodeJSON, err := jsonutil.EncodeJSON(order)
+	require.NoError(t, err)
+
 	_, err = client.Logical().WriteWithContext(context.Background(), rawOrderPath, map[string]interface{}{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
 	})
-	if err != nil {
-		t.Fatalf("error saving backdated order entry %v on account %v : %v", orderId, accountKid, err)
-	}
+	require.NoErrorf(t, err, "error saving backdated order entry %v on account %v", orderId, accountKid)
 
 	for _, authId := range order.AuthorizationIds {
 		backDateAcmeAuthorizationSys(t, testContext, client, accountKid, authId, backdateAmount, mount)
@@ -1189,31 +1142,25 @@ func backDateAcmeAuthorizationSys(t *testing.T, testContext context.Context, cli
 	rawAuthPath := path.Join("sys/raw/logical/", mount, acmeAccountPrefix, accountKid, "/authorizations/", authId)
 
 	authResp, err := client.Logical().ReadWithContext(testContext, rawAuthPath)
-	if err != nil {
-		t.Fatalf("unable to fetch authorization %v : %v", rawAuthPath, err)
-	}
+	require.NoErrorf(t, err, "unable to fetch authorization %v", rawAuthPath)
 
 	var auth *ACMEAuthorization
 	err = jsonutil.DecodeJSON([]byte(authResp.Data["value"].(string)), &auth)
-	if err != nil {
-		t.Fatalf("error decoding auth %v, auth entry %v produced %v", rawAuthPath, authResp, err)
-	}
+	require.NoErrorf(t, err, "error decoding auth %v, auth entry with response %v", rawAuthPath, authResp)
 
 	expiry, err := auth.GetExpires()
-	if err != nil {
-		t.Fatalf("could not get expiry on %v: %v", rawAuthPath, err)
-	}
+	require.NoErrorf(t, err, "could not get expiry on %v", rawAuthPath)
 	newExpiry := backDate(expiry, backdateAmount)
 	auth.Expires = time.Time.Format(newExpiry, time.RFC3339)
 
 	encodeJSON, err := jsonutil.EncodeJSON(auth)
+	require.NoError(t, err)
+
 	_, err = client.Logical().WriteWithContext(context.Background(), rawAuthPath, map[string]interface{}{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
 	})
-	if err != nil {
-		t.Fatalf("error updating authorization date on %v: %v", rawAuthPath, err)
-	}
+	require.NoErrorf(t, err, "error updating authorization date on %v", rawAuthPath)
 }
 
 func backDate(original time.Time, change time.Duration) time.Time {
@@ -1244,7 +1191,7 @@ func waitForTidyToFinish(t *testing.T, client *api.Client, mount string) *api.Se
 			return errors.New("tidy status state is still running")
 		}
 
-		if errorOccurred, ok := statusResp.Data["error"]; !ok || !(errorOccurred == nil || errorOccurred == "") {
+		if errorOccurred, ok := statusResp.Data["error"]; !ok || (errorOccurred != nil && errorOccurred != "") {
 			return fmt.Errorf("tidy status returned an error: %s", errorOccurred)
 		}
 
@@ -1260,14 +1207,10 @@ func waitForAutoTidyToFinish(t *testing.T, client *api.Client) {
 	var foundTidyFinished bool
 	timeoutChan := time.After(120 * time.Second)
 
-	for {
-		if foundTidyRunning != "" && foundTidyFinished {
-			break
-		}
-
+	for foundTidyRunning == "" || !foundTidyFinished {
 		select {
 		case <-timeoutChan:
-			t.Fatalf("expected auto-tidy to run (%v) and finish (%v) before timeout", foundTidyRunning, foundTidyFinished)
+			require.FailNowf(t, "expected auto-tidy to run (%v) and finish (%v) before timeout", foundTidyRunning, foundTidyFinished)
 		default:
 			time.Sleep(250 * time.Millisecond)
 
@@ -1308,7 +1251,7 @@ func waitForManualTidy(t *testing.T, client *api.Client, tidyConfig map[string]i
 	for {
 		select {
 		case <-timeoutChan:
-			t.Fatal("expected manual tidy to run before timeout")
+			require.FailNow(t, "expected manual tidy to run before timeout")
 		default:
 			time.Sleep(50 * time.Millisecond)
 
@@ -1505,6 +1448,7 @@ func TestRevokedSafetyBufferConfig(t *testing.T) {
 
 	// Verify that the default of revoked_safety_buffer is the default of safety_buffer when neither are set
 	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	requireSuccessNonNilResponse(t, resp, err, "expected to write auto-tidy config")
 	resp, err = CBRead(b, s, "config/auto-tidy")
 	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
 	require.Equal(t, resp.Data["safety_buffer"].(int), resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer")
@@ -1700,6 +1644,7 @@ func TestTidyPaginationConfig(t *testing.T) {
 
 	// Verify that the default of page_size is 1000
 	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	requireSuccessNonNilResponse(t, resp, err, "expected to write auto-tidy config")
 	resp, err = CBRead(b, s, "config/auto-tidy")
 	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
 	require.Equal(t, 1000, resp.Data["page_size"].(int), "expected page_size to be defaulted to 1000")
@@ -1819,7 +1764,7 @@ func TestTidyPagination(t *testing.T) {
 	// the tidy operation can process certificates less than its the page size.
 	for i := 0; i < 4; i++ {
 		resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
-			"common_name": fmt.Sprintf("revoked.com"),
+			"common_name": "revoked.com",
 			"ttl":         "1s",
 		})
 		require.NoError(t, err)

@@ -19,7 +19,7 @@ type CustomPromoter struct {
 
 // GetNodeTypes will return a map of node types for each server in the cluster. This particular interface implementation
 // will mark all servers as voters except for those that are marked as non-voters in the configuration.
-func (_ *CustomPromoter) GetNodeTypes(c *autopilot.Config, s *autopilot.State) map[raft.ServerID]autopilot.NodeType {
+func (*CustomPromoter) GetNodeTypes(c *autopilot.Config, s *autopilot.State) map[raft.ServerID]autopilot.NodeType {
 	types := make(map[raft.ServerID]autopilot.NodeType)
 	nonVoters := c.Ext.(map[raft.ServerID]bool)
 	for id := range s.Servers {
@@ -36,7 +36,7 @@ func (_ *CustomPromoter) GetNodeTypes(c *autopilot.Config, s *autopilot.State) m
 // CalculatePromotionsAndDemotions will return a list of all promotions and demotions to be done as well as the server id of
 // the desired leader. This particular interface implementation maintains a stable leader and will promote healthy servers
 // to voting status if they are not marked as permanent non-voters. It will never change the leader ID nor will it perform demotions.
-func (_ *CustomPromoter) CalculatePromotionsAndDemotions(c *autopilot.Config, s *autopilot.State) autopilot.RaftChanges {
+func (*CustomPromoter) CalculatePromotionsAndDemotions(c *autopilot.Config, s *autopilot.State) autopilot.RaftChanges {
 	var changes autopilot.RaftChanges
 
 	now := time.Now()

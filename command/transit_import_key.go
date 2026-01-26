@@ -20,7 +20,7 @@ import (
 
 	"github.com/openbao/openbao/api/v2"
 
-	"github.com/tink-crypto/tink-go/kwp/subtle"
+	"github.com/tink-crypto/tink-go/v2/kwp/subtle"
 
 	"github.com/hashicorp/cli"
 	"github.com/posener/complete"
@@ -77,6 +77,7 @@ func (c *TransitImportCommand) Run(args []string) int {
 func transitImportKeyPath(s string, operation string) (path string, apiPath string, err error) {
 	parts := keyPath.FindStringSubmatch(s)
 	if len(parts) != 3 {
+		//nolint:staticcheck // colon is used for path placeholders
 		return "", "", errors.New("expected transit path and key name in the form :path:/keys/:name:")
 	}
 	path = parts[1]

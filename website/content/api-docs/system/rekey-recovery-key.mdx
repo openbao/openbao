@@ -6,6 +6,15 @@ description: >-
 
 # `/sys/rekey-recovery-key`
 
+:::warning
+
+Note: As of v2.4.0 usage of these endpoints is [deprecated](/docs/deprecation/unauthed-rekey)
+and will be disabled by default. For the new authenticated version of the rekey
+endpoints, please see [rotation endpoints](rotate/index.mdx). To re-enable,
+see the documentation around the `disable_unauthed_rekey_endpoints` [listener parameter](/docs/configuration/listener/unix/).
+
+:::
+
 The `/sys/rekey-recovery-key` endpoints are used to rekey the recovery keys for
 OpenBao. Rekey endpoints only apply to seals that support recovery keys.
 
@@ -21,7 +30,6 @@ This endpoint reads the configuration and progress of the current rekey attempt.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     http://127.0.0.1:8200/v1/sys/rekey-recovery-key/init
 ```
 
@@ -104,7 +112,6 @@ nonce.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request POST \
     --data @payload.json \
     http://127.0.0.1:8200/v1/sys/rekey-recovery-key/init
@@ -125,7 +132,6 @@ during the verification flow, the current unseal keys remain valid.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     --request DELETE \
     http://127.0.0.1:8200/v1/sys/rekey-recovery-key/init
 ```
@@ -215,7 +221,6 @@ for the verification operation.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token" \
     --request POST \
     --data @payload.json \
     http://127.0.0.1:8200/v1/sys/rekey-recovery-key/update
@@ -253,7 +258,6 @@ verification attempt.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token: ..." \
     http://127.0.0.1:8200/v1/sys/rekey-recovery-key/verify
 ```
 
@@ -289,7 +293,6 @@ along with the new nonce.
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token" \
     --request DELETE \
     http://127.0.0.1:8200/v1/sys/rekey-recovery-key/verify
 ```
@@ -342,7 +345,6 @@ below; otherwise the response will be the same as the `GET` method against
 
 ```shell-session
 $ curl \
-    --header "X-Vault-Token" \
     --request POST \
     --data @payload.json \
     http://127.0.0.1:8200/v1/sys/rekey-recovery-key/verify

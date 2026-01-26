@@ -14,6 +14,8 @@ import (
 
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/api/auth/approle/v2"
 	"github.com/openbao/openbao/api/v2"
@@ -21,13 +23,13 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/testhelpers/pluginhelpers"
-	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func getClusterWithFileAuditBackend(t *testing.T, typ consts.PluginType, numCores int) *vault.TestCluster {
@@ -196,7 +198,7 @@ func testExternalPlugin_ContinueOnError(t *testing.T, mismatch bool, pluginType 
 	req := logical.TestRequest(t, logical.ReadOperation, pluginPath)
 	req.ClientToken = core.Client.Token()
 	resp, err := core.HandleRequest(namespace.RootContext(testCtx), req)
-	if err != nil || resp == nil || (resp != nil && resp.IsError()) {
+	if err != nil || resp == nil || resp.IsError() {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
@@ -328,14 +330,16 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				// Configure
-				_, err := client.Logical().Write("auth/"+pluginPath+"/role/role1", map[string]interface{}{
-					"bind_secret_id": "true",
-					"period":         "300",
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
+				// Configure the new mount; this takes some time as the
+				// secondary has not yet invalidated the mount from the call
+				// above.
+				require.EventuallyWithT(t, func(collect *assert.CollectT) {
+					_, err := client.Logical().Write("auth/"+pluginPath+"/role/role1", map[string]interface{}{
+						"bind_secret_id": "true",
+						"period":         "300",
+					})
+					require.NoError(collect, err)
+				}, 20*time.Second, 10*time.Millisecond)
 
 				secret, err := client.Logical().Write("auth/"+pluginPath+"/role/role1/secret-id", nil)
 				if err != nil {
@@ -385,10 +389,10 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 				client.SetToken(cluster.RootToken)
 
 				// Lookup - expect FAILURE
-				resp, err = client.Auth().Token().Lookup(revokeToken)
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
+				require.EventuallyWithT(t, func(collect *assert.CollectT) {
+					resp, err = client.Auth().Token().Lookup(revokeToken)
+					require.Error(collect, err)
+				}, 20*time.Second, 10*time.Millisecond)
 
 				// Reset root token
 				client.SetToken(cluster.RootToken)
@@ -904,7 +908,7 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Auth(t *testing.T) 
 
 		auditResponse := map[string]interface{}{}
 		if req, ok := auditRecord["response"]; ok {
-			auditRequest = req.(map[string]interface{})
+			auditResponse = req.(map[string]interface{})
 			if auditResponse["path"] != "auth/"+plugin.Name+"/role/role1" {
 				continue
 			}
@@ -974,8 +978,8 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T
 		testExternalPluginMetadataAuditLog(t, auditRequest, consts.PluginTypeSecrets.String())
 
 		auditResponse := map[string]interface{}{}
-		if req, ok := auditRecord["response"]; ok {
-			auditRequest = req.(map[string]interface{})
+		if res, ok := auditRecord["response"]; ok {
+			auditResponse = res.(map[string]interface{})
 			if auditResponse["path"] != plugin.Name+"/data/creds" {
 				continue
 			}

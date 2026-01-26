@@ -19,9 +19,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
-	"github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-raftchunking"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
@@ -34,14 +33,17 @@ import (
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/metricsutil"
+	"github.com/openbao/openbao/helper/tlsdebug"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
 	bolt "go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -63,10 +65,11 @@ var getMmapFlags = func(string) int { return 0 }
 
 // Verify RaftBackend satisfies the correct interfaces
 var (
-	_ physical.Backend       = (*RaftBackend)(nil)
-	_ physical.Transactional = (*RaftBackend)(nil)
-	_ physical.HABackend     = (*RaftBackend)(nil)
-	_ physical.Lock          = (*RaftLock)(nil)
+	_ physical.Backend                  = (*RaftBackend)(nil)
+	_ physical.Transactional            = (*RaftBackend)(nil)
+	_ physical.HABackend                = (*RaftBackend)(nil)
+	_ physical.CacheInvalidationBackend = (*RaftBackend)(nil)
+	_ physical.Lock                     = (*RaftLock)(nil)
 )
 
 var (
@@ -80,7 +83,7 @@ var (
 	defaultMaxEntrySize    = uint64(2 * raftchunking.ChunkSize)
 	defaultMaxTxnSize      = 8 * defaultMaxEntrySize
 
-	GetInTxnDisabledError = errors.New("get operations inside transactions are disabled in raft backend")
+	ErrGetInTxnDisabled = errors.New("get operations inside transactions are disabled in raft backend")
 )
 
 // RaftBackend implements the backend interfaces and uses the raft protocol to
@@ -202,7 +205,12 @@ type RaftBackend struct {
 	nonVoter bool
 
 	effectiveSDKVersion string
-	failGetInTxn        *uint32
+	failGetInTxn        atomic.Bool
+}
+
+// HookInvalidate implements physical.CacheInvalidationBackend.
+func (r *RaftBackend) HookInvalidate(hook physical.InvalidateFunc) {
+	r.fsm.hookInvalidate(hook)
 }
 
 // LeaderJoinInfo contains information required by a node to join itself as a
@@ -288,7 +296,7 @@ func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
 		}
 
 		info.Retry = true
-		info.TLSConfig, err = parseTLSInfo(info)
+		info.TLSConfig, err = b.parseTLSInfo(info)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create tls config to communicate with leader node (retry_join index: %d): %w", i, err)
 		}
@@ -299,7 +307,7 @@ func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
 
 // parseTLSInfo is a helper for parses the TLS information, preferring file
 // paths over raw certificate content.
-func parseTLSInfo(leaderInfo *LeaderJoinInfo) (*tls.Config, error) {
+func (b *RaftBackend) parseTLSInfo(leaderInfo *LeaderJoinInfo) (*tls.Config, error) {
 	var tlsConfig *tls.Config
 	var err error
 	if len(leaderInfo.LeaderCACertFile) != 0 || len(leaderInfo.LeaderClientCertFile) != 0 || len(leaderInfo.LeaderClientKeyFile) != 0 {
@@ -317,7 +325,7 @@ func parseTLSInfo(leaderInfo *LeaderJoinInfo) (*tls.Config, error) {
 		tlsConfig.ServerName = leaderInfo.LeaderTLSServerName
 	}
 
-	return tlsConfig, nil
+	return tlsdebug.Inject(b.logger, tlsConfig), nil
 }
 
 // EnsurePath is used to make sure a path exists
@@ -420,8 +428,9 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		dbPath := filepath.Join(path, "raft.db")
 		opts := boltOptions(dbPath)
 		raftOptions := raftboltdb.Options{
-			Path:        dbPath,
-			BoltOptions: opts,
+			Path:                    dbPath,
+			BoltOptions:             opts,
+			MsgpackUseNewTimeFormat: true,
 		}
 		store, err := raftboltdb.New(raftOptions)
 		if err != nil {
@@ -548,7 +557,6 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		autopilotUpdateInterval:    updateInterval,
 		nonVoter:                   nonVoter,
 		upgradeVersion:             upgradeVersion,
-		failGetInTxn:               new(uint32),
 	}, nil
 }
 
@@ -600,12 +608,8 @@ func (b *RaftBackend) Close() error {
 	return nil
 }
 
-func (b *RaftBackend) FailGetInTxn(fail bool) {
-	var val uint32
-	if fail {
-		val = 1
-	}
-	atomic.StoreUint32(b.failGetInTxn, val)
+func (b *RaftBackend) FailGetInTxn() {
+	b.failGetInTxn.Store(true)
 }
 
 func (b *RaftBackend) SetEffectiveSDKVersion(sdkVersion string) {
@@ -661,7 +665,7 @@ func (b *RaftBackend) CollectMetrics(sink *metricsutil.ClusterMetricSink) {
 
 func (b *RaftBackend) collectMetricsWithStats(stats bolt.Stats, sink *metricsutil.ClusterMetricSink, database string) {
 	txstats := stats.TxStats
-	labels := []metricsutil.Label{{"database", database}}
+	labels := []metricsutil.Label{{Name: "database", Value: database}}
 	sink.SetGaugeWithLabels([]string{"raft_storage", "bolt", "freelist", "free_pages"}, float32(stats.FreePageN), labels)
 	sink.SetGaugeWithLabels([]string{"raft_storage", "bolt", "freelist", "pending_pages"}, float32(stats.PendingPageN), labels)
 	sink.SetGaugeWithLabels([]string{"raft_storage", "bolt", "freelist", "allocated_bytes"}, float32(stats.FreeAlloc), labels)
@@ -911,14 +915,14 @@ func (b *RaftBackend) SetupCluster(ctx context.Context, opts SetupOpts) error {
 	}
 
 	listenerIsNil := func(cl cluster.ClusterHook) bool {
-		switch {
-		case opts.ClusterListener == nil:
+		switch opts.ClusterListener {
+		case nil:
 			return true
 		default:
 			// Concrete type checks
-			switch cl.(type) {
+			switch listener := cl.(type) {
 			case *cluster.Listener:
-				return cl.(*cluster.Listener) == nil
+				return listener == nil
 			}
 		}
 		return false
@@ -1036,11 +1040,7 @@ func (b *RaftBackend) SetupCluster(ctx context.Context, opts SetupOpts) error {
 		// for - select pattern.
 		ticker := time.NewTicker(10 * time.Millisecond)
 		defer ticker.Stop()
-		for {
-			if raftObj.State() == raft.Leader {
-				break
-			}
-
+		for raftObj.State() != raft.Leader {
 			ticker.Reset(10 * time.Millisecond)
 			select {
 			case <-ctx.Done():
@@ -1401,13 +1401,13 @@ func (b *RaftBackend) GetConfiguration(ctx context.Context) (*RaftConfigurationR
 		Index: future.Index(),
 	}
 
+	_, leader := b.raft.LeaderWithID()
+
 	for _, server := range future.Configuration().Servers {
 		entry := &RaftServer{
-			NodeID:  string(server.ID),
-			Address: string(server.Address),
-			// Since we only service this request on the active node our node ID
-			// denotes the raft leader.
-			Leader:          string(server.ID) == b.NodeID(),
+			NodeID:          string(server.ID),
+			Address:         string(server.Address),
+			Leader:          server.ID == leader,
 			Voter:           server.Suffrage == raft.Voter,
 			ProtocolVersion: strconv.Itoa(raft.ProtocolVersionMax),
 		}
@@ -1617,6 +1617,7 @@ func (b *RaftBackend) Delete(ctx context.Context, path string) error {
 	b.l.RLock()
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
+
 	return err
 }
 
@@ -1679,6 +1680,7 @@ func (b *RaftBackend) Put(ctx context.Context, entry *physical.Entry) error {
 	b.l.RLock()
 	err := b.applyLog(ctx, command)
 	b.l.RUnlock()
+
 	return err
 }
 
@@ -1735,6 +1737,15 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+
+	var lowestActiveIndex uint64
+	if command.LowestActiveIndex != nil {
+		lowestActiveIndex = *command.LowestActiveIndex
+	} else {
+		lowestActiveIndex = b.fsm.fastTxnTracker.lowestActiveIndex()
+	}
+	lowestActiveIndex = min(b.raft.AppliedIndex(), lowestActiveIndex) // we need to cap the lowest active index, otherwise we might miss transaction started concurrently
+	command.LowestActiveIndex = pointerutil.Ptr(lowestActiveIndex)
 
 	isTx := len(command.Operations) > 0 && command.Operations[0].OpType == beginTxOp
 	commandBytes, err := proto.Marshal(command)

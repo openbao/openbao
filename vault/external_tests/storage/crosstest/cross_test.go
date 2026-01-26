@@ -7,16 +7,15 @@ import (
 	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/physical/postgresql"
@@ -76,17 +75,6 @@ func Test_RandomOpsTransactionalBackends(t *testing.T) {
 	executeRandomTransactionalOps(t, backends, ops, txLimit)
 }
 
-func replayOps(t *testing.T, file string) []*inmem.InmemOp {
-	data, err := os.ReadFile(file)
-	require.NoError(t, err, "error reading operations file")
-
-	var results []*inmem.InmemOp
-	err = json.Unmarshal(data, &results)
-	require.NoError(t, err, "error unmarshaling operations json")
-
-	return results
-}
-
 func Test_ExerciseTransactionalBackends(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -135,7 +123,7 @@ func Test_ExerciseTransactionalBackends(t *testing.T) {
 }
 
 func getFile(t *testing.T, logger log.Logger) (physical.Backend, func()) {
-	backendPath, err := ioutil.TempDir("", "vault")
+	backendPath, err := os.MkdirTemp("", "vault")
 	require.NoError(t, err, "error while creating file storage")
 
 	b, err := file.NewFileBackend(map[string]string{
@@ -959,7 +947,7 @@ func getRandomOps(t *testing.T, count int, transactional bool, txLimit int) []*i
 		opI := rand.Intn(len(opTypes))
 		op := opTypes[opI]
 
-		var tx int = rand.Intn(txLimit+1) - 1
+		tx := rand.Intn(txLimit+1) - 1
 		var path string
 		var contents string
 		var after string

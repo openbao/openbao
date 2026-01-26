@@ -563,11 +563,13 @@ func TestMySQL_RotateRootCredentials(t *testing.T) {
 func TestMySQL_DeleteUser(t *testing.T) {
 	type testCase struct {
 		revokeStmts []string
+		deleteTwice bool
 	}
 
 	tests := map[string]testCase{
 		"empty statements": {
 			revokeStmts: nil,
+			deleteTwice: true,
 		},
 		"default name": {
 			revokeStmts: []string{defaultMysqlRevocationStmts},
@@ -650,6 +652,14 @@ func TestMySQL_DeleteUser(t *testing.T) {
 
 			if err := mysqlhelper.TestCredsExist(t, connURL, userResp.Username, password); err == nil {
 				t.Fatal("Credentials were not revoked!")
+			}
+
+			if test.deleteTwice { // revoke again https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors
+				t.Log("calling delete again")
+				_, err = db.DeleteUser(context.Background(), deleteReq)
+				if err != nil {
+					t.Fatalf("err: %s", err)
+				}
 			}
 		})
 	}
@@ -748,10 +758,10 @@ func TestMySQL_UpdateUser(t *testing.T) {
 func createTestMySQLUser(t *testing.T, connURL, username, password, query string) {
 	t.Helper()
 	db, err := sql.Open("mysql", connURL)
-	defer db.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer db.Close()
 
 	// Start a transaction
 	ctx := context.Background()

@@ -18,9 +18,11 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/internalshared/configutil"
@@ -37,7 +39,7 @@ func TestHandler_parseMFAHandler(t *testing.T) {
 		Headers: make(map[string][]string),
 	}
 
-	headerName := textproto.CanonicalMIMEHeaderKey(MFAHeaderName)
+	headerName := textproto.CanonicalMIMEHeaderKey(consts.MFAHeaderName)
 
 	// Set TOTP passcode in the MFA header
 	req.Headers[headerName] = []string{
@@ -124,7 +126,7 @@ func TestHandler_cors(t *testing.T) {
 
 	// Enable CORS and allow from any origin for testing.
 	corsConfig := core.CORSConfig()
-	err := corsConfig.Enable(context.Background(), []string{addr}, nil)
+	err := corsConfig.Enable(context.Background(), []string{addr}, nil, false)
 	if err != nil {
 		t.Fatalf("Error enabling CORS: %s", err)
 	}
@@ -196,6 +198,31 @@ func TestHandler_cors(t *testing.T) {
 			t.Fatalf("bad:\nExpected: %#v\nActual: %#v\n", expected, actual)
 		}
 	}
+
+	// Test that the Access-Control-Allow-Credentials is set correctly when configured
+	err = corsConfig.Enable(context.Background(), []string{addr}, nil, true)
+	if err != nil {
+		t.Fatalf("Error enabling CORS: %s", err)
+	}
+
+	client = cleanhttp.DefaultClient()
+	resp, err = client.Do(req)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	expHeaders["Access-Control-Allow-Credentials"] = "true"
+
+	for expHeader, expected := range expHeaders {
+		actual := resp.Header.Get(expHeader)
+		if actual == "" {
+			t.Fatalf("bad:\nHeader: %#v was not on response.", expHeader)
+		}
+
+		if actual != expected {
+			t.Fatalf("bad:\nExpected: %#v\nActual: %#v\n", expected, actual)
+		}
+	}
 }
 
 func TestHandler_HostnameHeader(t *testing.T) {
@@ -247,7 +274,7 @@ func TestHandler_HostnameHeader(t *testing.T) {
 				t.Fatal("nil response")
 			}
 
-			hnHeader := resp.Header.Get("X-Vault-Hostname")
+			hnHeader := resp.Header.Get(consts.HostnameHeaderName)
 			if tc.headerPresent && hnHeader == "" {
 				t.Logf("header configured = %t", core.HostnameHeaderEnabled())
 				t.Fatal("missing 'X-Vault-Hostname' header entry in response")
@@ -256,7 +283,7 @@ func TestHandler_HostnameHeader(t *testing.T) {
 				t.Fatal("didn't expect 'X-Vault-Hostname' header but it was present anyway")
 			}
 
-			rniHeader := resp.Header.Get("X-Vault-Raft-Node-ID")
+			rniHeader := resp.Header.Get(consts.RaftNodeIDHeaderName)
 			if rniHeader != "" {
 				t.Fatalf("no raft node ID header was expected, since we're not running a raft cluster. instead, got %s", rniHeader)
 			}
@@ -274,7 +301,7 @@ func TestHandler_CacheControlNoStore(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 	req.Header.Set(consts.AuthHeaderName, token)
-	req.Header.Set(WrapTTLHeaderName, "60s")
+	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
@@ -322,7 +349,7 @@ func TestHandler_InFlightRequest(t *testing.T) {
 	var actual map[string]interface{}
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
-	if actual == nil || len(actual) == 0 {
+	if len(actual) == 0 {
 		t.Fatal("expected to get at least one in-flight request, got nil or zero length map")
 	}
 	for _, v := range actual {
@@ -350,7 +377,7 @@ func TestHandler_MissingToken(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	req.Header.Set(WrapTTLHeaderName, "60s")
+	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
@@ -579,7 +606,7 @@ func TestSysMounts_headerAuth_Wrapped(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 	req.Header.Set(consts.AuthHeaderName, token)
-	req.Header.Set(WrapTTLHeaderName, "60s")
+	req.Header.Set(consts.WrapTTLHeaderName, "60s")
 
 	client := cleanhttp.DefaultClient()
 	resp, err := client.Do(req)
@@ -915,7 +942,10 @@ func TestHandler_MaxRequestSize(t *testing.T) {
 		"bar": strings.Repeat("a", 1025),
 	})
 
-	require.ErrorContains(t, err, "error parsing JSON")
+	var respErr *api.ResponseError
+	require.ErrorAs(t, err, &respErr)
+	require.Equal(t, http.StatusRequestEntityTooLarge, respErr.StatusCode)
+	require.ErrorContains(t, err, "request body too large")
 }
 
 // TestHandler_MaxRequestSize_Memory sets the max request size to 1024 bytes,
@@ -948,4 +978,125 @@ func TestHandler_MaxRequestSize_Memory(t *testing.T) {
 	client.Do(req)
 	runtime.ReadMemStats(&end)
 	require.Less(t, end.TotalAlloc-start.TotalAlloc, uint64(1024*1024))
+}
+
+func TestHandler_RestrictedEndpointCalls(t *testing.T) {
+	core, _, token := vault.TestCoreUnsealed(t)
+	// add namespaces for tests
+	vault.TestCoreCreateNamespaces(t, core,
+		&namespace.Namespace{Path: "test"},
+		&namespace.Namespace{Path: "test/test2"},
+	)
+
+	tests := []struct {
+		name            string
+		method          string
+		path            string
+		namespaceHeader string
+
+		expectedStatusCode int
+	}{
+		{
+			name:               "happy path - root namespace quota call",
+			method:             "GET",
+			path:               "/v1/sys/quotas/rate-limit?list=true",
+			expectedStatusCode: 404,
+		},
+		{
+			name:               "happy path - root namespace quota call through sys-raw",
+			method:             "GET",
+			path:               "/v1/sys/raw/sys/quotas/rate-limit?list=true",
+			expectedStatusCode: 404,
+		},
+		{
+			name:               "bad path - namespace in path request",
+			method:             "GET",
+			path:               "/v1/test/sys/quotas/rate-limit?list=true",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "bad path - namespace in header request",
+			method:             "GET",
+			path:               "/v1/sys/quotas/rate-limit?list=true",
+			namespaceHeader:    "test",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "bad path - namespace in both header and path request",
+			method:             "GET",
+			path:               "/v1/test2/sys/quotas/rate-limit?list=true",
+			namespaceHeader:    "test",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "bad path - namespace at the beginning path request through sys-raw",
+			method:             "GET",
+			path:               "/v1/test/sys/raw/sys/quotas/rate-limit?list=true",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "bad path - namespace in header passed for request through sys-raw",
+			method:             "GET",
+			path:               "/v1/sys/raw/sys/quotas/rate-limit?list=true",
+			namespaceHeader:    "test",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "bad path - namespace in both header and path passed for request through sys-raw",
+			method:             "GET",
+			path:               "/v1/test2/sys/raw/sys/quotas/rate-limit?list=true",
+			namespaceHeader:    "test",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "happy path - root can create policy with restricted name",
+			method:             "PUT",
+			path:               "/v1/sys/policies/acl/sys/raw",
+			expectedStatusCode: 204,
+		},
+		{
+			name:               "happy path - namespace (path) can create policy with restricted name",
+			method:             "PUT",
+			path:               "/v1/test/sys/policies/acl/sys/raw",
+			expectedStatusCode: 204,
+		},
+		{
+			name:               "happy path - namespace (header) can create policy with restricted name",
+			method:             "PUT",
+			path:               "/v1/sys/policies/acl/sys/raw",
+			namespaceHeader:    "test",
+			expectedStatusCode: 204,
+		},
+		{
+			name:               "happy path - namespace (path & header) can create policy with restricted name",
+			method:             "PUT",
+			path:               "/v1/test2/sys/policies/acl/sys/raw",
+			namespaceHeader:    "test",
+			expectedStatusCode: 204,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ln, addr := TestServer(t, core)
+			defer ln.Close()
+
+			var body io.Reader
+			if tt.method == "PUT" {
+				bodyString := `{"policy":"path \"auth/token/lookup\" {\n capabilities = [\"read\", \"update\"]\n}\n\npath \"*/auth/token/lookup\" {\n capabilities = [\"read\", \"update\"]\n}"}`
+				body = bytes.NewBufferString(bodyString)
+			}
+			req, err := http.NewRequest(tt.method, addr+tt.path, body)
+			require.NoError(t, err)
+
+			req.Header.Set(consts.AuthHeaderName, token)
+			req.Header.Set(consts.NamespaceHeaderName, tt.namespaceHeader)
+			client := cleanhttp.DefaultClient()
+			client.Timeout = 60 * time.Second
+
+			res, err := client.Do(req)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedStatusCode, res.StatusCode)
+		})
+	}
 }

@@ -10,12 +10,32 @@ on:
       - "website/**"
 
 jobs:
+  check-links:
+    name: Check Absolute Links
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Find absolute links
+        run: |
+          echo "Checking for absolute links in website/content/docs/..."
+          grep -rn -P "(\(|: |openbao.org)/docs/[^)]+" website/content/docs > grep_output.txt || true
+
+          echo "Checking for absolute links in website/content/api-docs/..."
+          grep -rn -P "(\(|: |openbao.org)/api-docs/[^)]+" website/content/api-docs >> grep_output.txt || true
+
+          # Check if any absolute links were found
+          if [ -s grep_output.txt ]; then
+            echo "::error::Found absolute links that should be relative. See annotations for details."
+            jq -rRs 'split("\n")[:-1][]| split(":") | "::error file=\(.[0]),line=\(.[1]),title=Absolute Link found::\(.[2:]| join(":"))"' grep_output.txt
+            exit 1
+          fi
   test-docs:
     name: Test Docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: "./website/package.json"
           cache: npm
@@ -24,4 +44,24 @@ jobs:
         name: build-docs
         working-directory: ./website
         run: |
-          make build
+          make build-versioned
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: website
+          path: website/build/
+
+  lint-docs:
+    name: Lint Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version-file: "./website/package.json"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - id: lint-docs
+        name: lint-docs
+        working-directory: ./website
+        run: |
+          make lint

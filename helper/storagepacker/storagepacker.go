@@ -12,17 +12,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/armon/go-metrics"
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-hclog"
-	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
-	bucketCount = 256
 	// StoragePackerBucketsPrefix is the default storage key prefix under which
 	// bucket data will be stored.
 	StoragePackerBucketsPrefix = "packer/buckets/"
@@ -33,7 +31,7 @@ const (
 // hence relies on the first byte of the hash value for indexing.
 type StoragePacker struct {
 	view         logical.Storage
-	logger       log.Logger
+	logger       hclog.Logger
 	storageLocks []*locksutil.LockEntry
 	viewPrefix   string
 }
@@ -45,6 +43,10 @@ func (s *StoragePacker) View() logical.Storage {
 
 // GetBucket returns a bucket for a given key
 func (s *StoragePacker) GetBucket(ctx context.Context, key string) (*Bucket, error) {
+	return s.GetBucketWithStorage(ctx, s.view, key)
+}
+
+func (s *StoragePacker) GetBucketWithStorage(ctx context.Context, view logical.Storage, key string) (*Bucket, error) {
 	if key == "" {
 		return nil, errors.New("missing bucket key")
 	}
@@ -54,7 +56,7 @@ func (s *StoragePacker) GetBucket(ctx context.Context, key string) (*Bucket, err
 	defer lock.RUnlock()
 
 	// Read from storage
-	storageEntry, err := s.view.Get(ctx, key)
+	storageEntry, err := view.Get(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read packed storage entry: %w", err)
 	}
@@ -130,10 +132,18 @@ func (s *StoragePacker) BucketKey(itemID string) string {
 
 // DeleteItem removes the item from the respective bucket
 func (s *StoragePacker) DeleteItem(ctx context.Context, itemID string) error {
-	return s.DeleteMultipleItems(ctx, nil, []string{itemID})
+	return s.DeleteItemWithStorage(ctx, s.view, itemID)
+}
+
+func (s *StoragePacker) DeleteItemWithStorage(ctx context.Context, view logical.Storage, itemID string) error {
+	return s.DeleteMultipleItemsWithStorage(ctx, nil, view, []string{itemID})
 }
 
 func (s *StoragePacker) DeleteMultipleItems(ctx context.Context, logger hclog.Logger, itemIDs []string) error {
+	return s.DeleteMultipleItemsWithStorage(ctx, logger, s.view, itemIDs)
+}
+
+func (s *StoragePacker) DeleteMultipleItemsWithStorage(ctx context.Context, logger hclog.Logger, view logical.Storage, itemIDs []string) error {
 	defer metrics.MeasureSince([]string{"storage_packer", "delete_items"}, time.Now())
 	if len(itemIDs) == 0 {
 		return nil
@@ -174,7 +184,7 @@ func (s *StoragePacker) DeleteMultipleItems(ctx context.Context, logger hclog.Lo
 	idx := 0
 	for bucketKey, itemsToRemove := range byBucket {
 		// Read bucket from storage
-		storageEntry, err := s.view.Get(ctx, bucketKey)
+		storageEntry, err := view.Get(ctx, bucketKey)
 		if err != nil {
 			return fmt.Errorf("failed to read packed storage value: %w", err)
 		}
@@ -214,7 +224,7 @@ func (s *StoragePacker) DeleteMultipleItems(ctx context.Context, logger hclog.Lo
 			return ctx.Err()
 		}
 
-		err = s.putBucket(ctx, bucket)
+		err = s.putBucket(ctx, view, bucket)
 		if err != nil {
 			return err
 		}
@@ -231,7 +241,7 @@ func (s *StoragePacker) DeleteMultipleItems(ctx context.Context, logger hclog.Lo
 	return nil
 }
 
-func (s *StoragePacker) putBucket(ctx context.Context, bucket *Bucket) error {
+func (s *StoragePacker) putBucket(ctx context.Context, view logical.Storage, bucket *Bucket) error {
 	defer metrics.MeasureSince([]string{"storage_packer", "put_bucket"}, time.Now())
 	if bucket == nil {
 		return errors.New("nil bucket entry")
@@ -258,7 +268,7 @@ func (s *StoragePacker) putBucket(ctx context.Context, bucket *Bucket) error {
 	}
 
 	// Store the compressed value
-	err = s.view.Put(ctx, &logical.StorageEntry{
+	err = view.Put(ctx, &logical.StorageEntry{
 		Key:   bucket.Key,
 		Value: compressedBucket,
 	})
@@ -272,6 +282,10 @@ func (s *StoragePacker) putBucket(ctx context.Context, bucket *Bucket) error {
 // GetItem fetches the storage entry for a given key from its corresponding
 // bucket.
 func (s *StoragePacker) GetItem(itemID string) (*Item, error) {
+	return s.GetItemWithStorage(s.view, itemID)
+}
+
+func (s *StoragePacker) GetItemWithStorage(view logical.Storage, itemID string) (*Item, error) {
 	defer metrics.MeasureSince([]string{"storage_packer", "get_item"}, time.Now())
 
 	if itemID == "" {
@@ -281,7 +295,7 @@ func (s *StoragePacker) GetItem(itemID string) (*Item, error) {
 	bucketKey := s.BucketKey(itemID)
 
 	// Fetch the bucket entry
-	bucket, err := s.GetBucket(context.Background(), bucketKey)
+	bucket, err := s.GetBucketWithStorage(context.Background(), view, bucketKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read packed storage item: %w", err)
 	}
@@ -301,6 +315,10 @@ func (s *StoragePacker) GetItem(itemID string) (*Item, error) {
 
 // PutItem stores the given item in its respective bucket
 func (s *StoragePacker) PutItem(ctx context.Context, item *Item) error {
+	return s.PutItemWithStorage(ctx, s.view, item)
+}
+
+func (s *StoragePacker) PutItemWithStorage(ctx context.Context, view logical.Storage, item *Item) error {
 	defer metrics.MeasureSince([]string{"storage_packer", "put_item"}, time.Now())
 
 	if item == nil {
@@ -326,7 +344,7 @@ func (s *StoragePacker) PutItem(ctx context.Context, item *Item) error {
 	defer lock.Unlock()
 
 	// Check if there is an existing bucket for a given key
-	storageEntry, err := s.view.Get(ctx, bucketKey)
+	storageEntry, err := view.Get(ctx, bucketKey)
 	if err != nil {
 		return fmt.Errorf("failed to read packed storage bucket entry: %w", err)
 	}
@@ -357,11 +375,29 @@ func (s *StoragePacker) PutItem(ctx context.Context, item *Item) error {
 		}
 	}
 
-	return s.putBucket(ctx, bucket)
+	return s.putBucket(ctx, view, bucket)
+}
+
+func (s *StoragePacker) SwapItem(ctx context.Context, oldId string, item *Item) error {
+	if err := logical.WithTransaction(ctx, s.view, func(v logical.Storage) error {
+		if err := s.DeleteItemWithStorage(ctx, v, oldId); err != nil {
+			return fmt.Errorf("failed to remove old item: %w", err)
+		}
+
+		if err := s.PutItemWithStorage(ctx, v, item); err != nil {
+			return fmt.Errorf("failed to write new item: %w", err)
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // NewStoragePacker creates a new storage packer for a given view
-func NewStoragePacker(view logical.Storage, logger log.Logger, viewPrefix string) (*StoragePacker, error) {
+func NewStoragePacker(view logical.Storage, logger hclog.Logger, viewPrefix string) (*StoragePacker, error) {
 	if view == nil {
 		return nil, errors.New("nil view")
 	}

@@ -1,0 +1,14 @@
+{
+    "current": {
+        "label": "Development"
+    },
+    "2.5.x": {
+        "label": "Version 2.5.x"
+    },
+    "2.4.x": {
+        "label": "Version 2.4.x"
+    },
+    "2.3.x": {
+        "label": "Version 2.3.x"
+    }
+}

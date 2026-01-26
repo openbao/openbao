@@ -14,8 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
@@ -23,6 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"golang.org/x/crypto/hkdf"
+	"google.golang.org/protobuf/proto"
 )
 
 // Previously server_id was of unbounded size (capped by max_request_size);
@@ -609,11 +609,11 @@ func (b *SystemBackend) handleStorageRaftAutopilotConfigUpdate() framework.Opera
 		effectiveConf.Merge(config)
 
 		if effectiveConf.CleanupDeadServers && effectiveConf.MinQuorum < 3 {
-			return logical.ErrorResponse(fmt.Sprintf("min_quorum must be set when cleanup_dead_servers is set and it should at least be 3; cleanup_dead_servers: %#v, min_quorum: %#v", effectiveConf.CleanupDeadServers, effectiveConf.MinQuorum)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("min_quorum must be set when cleanup_dead_servers is set and it should at least be 3; cleanup_dead_servers: %#v, min_quorum: %#v", effectiveConf.CleanupDeadServers, effectiveConf.MinQuorum), logical.ErrInvalidRequest
 		}
 
 		if effectiveConf.CleanupDeadServers && effectiveConf.DeadServerLastContactThreshold.Seconds() < 60 {
-			return logical.ErrorResponse(fmt.Sprintf("dead_server_last_contact_threshold should not be set to less than 1m; received: %v", deadServerLastContactThreshold)), logical.ErrInvalidRequest
+			return logical.ErrorResponse("dead_server_last_contact_threshold should not be set to less than 1m; received: %v", deadServerLastContactThreshold), logical.ErrInvalidRequest
 		}
 
 		// Persist only the user supplied fields
@@ -664,7 +664,7 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 			default:
 				return logical.ErrorResponse("could not verify hash file, possibly the snapshot is using a different autoseal key; use the snapshot-force API to bypass this check"), logical.ErrInvalidRequest
 			}
-		case err != nil:
+		default:
 			b.Core.logger.Error("raft snapshot restore: failed to write snapshot", "error", err)
 			return nil, err
 		}
@@ -680,7 +680,7 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 			go l.grab()
 			if stopped := l.lockOrStop(); stopped {
 				b.Core.logger.Error("not applying snapshot; shutting down")
-				return
+				return retErr
 			}
 			defer b.Core.stateLock.Unlock()
 
@@ -695,6 +695,11 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 			}()
 
 			ctx, ctxCancel := context.WithCancel(namespace.RootContext(nil))
+			defer func() {
+				if retErr != nil {
+					ctxCancel()
+				}
+			}()
 
 			// We are calling the callback function synchronously here while we
 			// have the lock. So set it to nil and restore the callback when we

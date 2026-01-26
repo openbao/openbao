@@ -11,9 +11,11 @@ import (
 	"testing"
 	"time"
 
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -58,7 +60,7 @@ func TestLogicalMountMetrics(t *testing.T) {
 	mountKeyName := "core.mount_table.num_entries.type|logical||local|false||"
 	mountMetrics := &c.metricsHelper.LoopMetrics.Metrics
 	loadMetric, ok := mountMetrics.Load(mountKeyName)
-	var numEntriesMetric metricsutil.GaugeMetric = loadMetric.(metricsutil.GaugeMetric)
+	numEntriesMetric := loadMetric.(metricsutil.GaugeMetric)
 
 	// 3 default nonlocal logical backends
 	if !ok || numEntriesMetric.Value != 3 {
@@ -432,7 +434,7 @@ func TestCore_FindOps(t *testing.T) {
 	if err != nil || entry != nil {
 		t.Fatalf("expected no errors nor matches got, error: %#v entry: %#v", err, entry)
 	}
-	entry, err = c.mounts.find(namespace.RootContext(nil), "unknown")
+	entry, err = c.mounts.findByPath(namespace.RootContext(nil), "unknown")
 	if err != nil || entry != nil {
 		t.Fatalf("expected no errors nor matches got, error: %#v entry: %#v", err, entry)
 	}
@@ -447,7 +449,7 @@ func TestCore_FindOps(t *testing.T) {
 	}
 
 	// Find another entry by its path
-	entry, err = c.mounts.find(namespace.RootContext(nil), path2)
+	entry, err = c.mounts.findByPath(namespace.RootContext(nil), path2)
 	if err != nil || entry == nil {
 		t.Fatalf("failed finding entry by path error: %#v entry: %#v", err, entry)
 	}
@@ -732,9 +734,144 @@ func TestCore_Remount_Protected(t *testing.T) {
 	}
 }
 
+type RemountStruct struct {
+	Title        string
+	SrcParentCtx context.Context
+	DstParentCtx context.Context
+	SrcNS        namespace.MountPathDetails
+	DstNs        namespace.MountPathDetails
+	TestSecret   *logical.Request
+}
+
+func TestCore_Remount_Namespaces(t *testing.T) {
+	c, keys, token := TestCoreUnsealed(t)
+	rootCtx := namespace.RootContext(nil)
+	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
+	ns2 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
+	// ns2Ctx := namespace.ContextWithNamespace(rootCtx, ns2)
+	ns3 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
+	// ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
+
+	table := []RemountStruct{
+		{
+			Title:        "Remount Namespace ns1/ns2 to Namespace ns1/ns3",
+			SrcParentCtx: ns1Ctx,
+			SrcNS: namespace.MountPathDetails{
+				Namespace: ns2,
+				MountPath: "secret/",
+			},
+			DstParentCtx: ns1Ctx,
+			DstNs: namespace.MountPathDetails{
+				Namespace: ns3,
+				MountPath: "secret1/",
+			},
+		},
+		{
+			Title:        "Remount Namespace ns1 to Root",
+			SrcParentCtx: rootCtx,
+			SrcNS: namespace.MountPathDetails{
+				Namespace: ns1,
+				MountPath: "secret/",
+			},
+			DstParentCtx: rootCtx,
+			DstNs: namespace.MountPathDetails{
+				Namespace: namespace.RootNamespace,
+				MountPath: "secret2/",
+			},
+		},
+		{
+			Title:        "Remount Root to Root",
+			SrcParentCtx: rootCtx,
+			SrcNS: namespace.MountPathDetails{
+				Namespace: namespace.RootNamespace,
+				MountPath: "secret/",
+			},
+			DstParentCtx: rootCtx,
+			DstNs: namespace.MountPathDetails{
+				Namespace: namespace.RootNamespace,
+				MountPath: "secretFoo/",
+			},
+		},
+		{
+			Title:        "Remount Root to Namespace ns1/ns2",
+			SrcParentCtx: rootCtx,
+			SrcNS: namespace.MountPathDetails{
+				Namespace: namespace.RootNamespace,
+				MountPath: "secretFoo/", // Note that this is depending on previous test case
+			},
+			DstParentCtx: ns1Ctx,
+			DstNs: namespace.MountPathDetails{
+				Namespace: ns2,
+				MountPath: "secret3/",
+			},
+		},
+	}
+
+	for _, test := range table {
+		t.Run(test.Title, func(t *testing.T) {
+			src := test.SrcNS
+			dst := test.DstNs
+
+			srcNSCtx := namespace.ContextWithNamespace(test.SrcParentCtx, src.Namespace)
+			dstNSCtx := namespace.ContextWithNamespace(test.DstParentCtx, dst.Namespace)
+
+			srcMountPath := src.MountPath
+			dstMountPath := dst.MountPath
+
+			// Create a secret in the source namespace
+			// Already present in root
+			if src.Namespace != namespace.RootNamespace {
+				testCoreAddSecretMountContext(srcNSCtx, t, c, srcMountPath, token)
+			}
+
+			match := c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
+			if match != src.Namespace.Path+srcMountPath {
+				t.Fatalf("missing mount, match %q", match)
+			}
+
+			err := c.remountSecretsEngine(test.SrcParentCtx, src, dst, true)
+			if err != nil {
+				t.Fatalf("err: %v", err)
+			}
+
+			match = c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
+			if match != "" {
+				t.Fatalf("secret still at old location, match %q", match)
+			}
+
+			match = c.router.MatchingMount(dstNSCtx, dstMountPath+"bar")
+			if match != dst.Namespace.Path+dstMountPath {
+				t.Fatalf("secret not at new location, match %q", match)
+			}
+
+			c.sealInternal()
+			for i, key := range keys {
+				unseal, err := TestCoreUnseal(c, key)
+				if err != nil {
+					t.Fatalf("err: %v", err)
+				}
+				if i+1 == len(keys) && !unseal {
+					t.Fatal("should be unsealed")
+				}
+			}
+
+			match = c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
+			if match != "" {
+				t.Fatalf("secret still at old location after unseal, match %q", match)
+			}
+
+			match = c.router.MatchingMount(dstNSCtx, dstMountPath+"bar")
+			if match != dst.Namespace.Path+dstMountPath {
+				t.Fatalf("secret not at new location after unseal, match %q", match)
+			}
+		})
+	}
+}
+
 func TestDefaultMountTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	table := c.defaultMountTable()
+	table := c.defaultMountTable(context.Background())
 	verifyDefaultTable(t, table, 3)
 }
 
@@ -867,7 +1004,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		persistFunc = c.persistAuth
 		mt = c.auth
 	case "audits":
-		err = c.loadAudits(context.Background())
+		err = c.loadAudits(context.Background(), false)
 		persistFunc = func(ctx context.Context, barrier logical.Storage, mt *MountTable, b *bool, mount string) error {
 			if b == nil {
 				b = new(bool)
@@ -1118,4 +1255,349 @@ func TestCore_MountInitialize(t *testing.T) {
 			t.Fatal("backend is not initialized")
 		}
 	}
+}
+
+func TestCore_MountEntryView(t *testing.T) {
+	t.Parallel()
+	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+
+	testMountEntryUUID := "mount-entry-uuid"
+	testNamespace1 := &namespace.Namespace{Path: "ns1/"}
+	testNamespace2 := &namespace.Namespace{Path: "ns1/ns2/"}
+
+	err := s.SetNamespace(ctx, testNamespace1)
+	require.NoError(t, err)
+	err = s.SetNamespace(ctx, testNamespace2)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		mountEntry *MountEntry
+
+		wantViewPrefix string
+		wantError      bool
+	}{
+		{
+			name: "entry without type nor table type leading to error",
+			mountEntry: &MountEntry{
+				UUID: testMountEntryUUID,
+			},
+
+			wantError: true,
+		},
+		{
+			name: "entry of 'system' mount type",
+			mountEntry: &MountEntry{
+				UUID: testMountEntryUUID,
+				Type: mountTypeSystem,
+			},
+
+			wantViewPrefix: systemBarrierPrefix,
+		},
+		{
+			name: "entry of 'token' mount type",
+			mountEntry: &MountEntry{
+				UUID: testMountEntryUUID,
+				Type: mountTypeToken,
+			},
+
+			wantViewPrefix: systemBarrierPrefix + tokenSubPath,
+		},
+		{
+			name: "entry of 'credential' table type",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Type:  "approle",
+				Table: credentialTableType,
+			},
+
+			wantViewPrefix: credentialBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'audit' table type",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: auditTableType,
+			},
+
+			wantViewPrefix: auditBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table type and 'identity' type",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: mountTableType,
+				Type:  mountTypeIdentity,
+			},
+
+			wantViewPrefix: backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table type, and 'cubbyholeNS' type",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       mountTableType,
+				Type:        mountTypeNSCubbyhole,
+				NamespaceID: testNamespace1.ID,
+				namespace:   testNamespace1,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table type, and 'cubbyholeNS' type with namespace not present in store",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: mountTableType,
+				Type:  mountTypeNSCubbyhole,
+				// does not exist in store
+				NamespaceID: "ns-2",
+				namespace:   testNamespace1,
+			},
+
+			wantError: true,
+		},
+		{
+			name: "entry of 'mount' table, and 'kv' type with namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       mountTableType,
+				Type:        mountTypeKV,
+				NamespaceID: testNamespace1.ID,
+				namespace:   testNamespace1,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table, and 'kv' type with nested namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       mountTableType,
+				Type:        mountTypeKV,
+				NamespaceID: testNamespace2.ID,
+				namespace:   testNamespace2,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table, and 'kv' type without namespace present",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: mountTableType,
+				Type:  mountTypeKV,
+			},
+
+			wantViewPrefix: backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'auth' table, and 'userpass' type with namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       credentialTableType,
+				Type:        "userpass",
+				NamespaceID: testNamespace1.ID,
+				namespace:   testNamespace1,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'auth' table, and 'userpass' type with nested namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       credentialTableType,
+				Type:        "userpass",
+				NamespaceID: testNamespace2.ID,
+				namespace:   testNamespace2,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'auth' table, and 'userpass' type without namespace present",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: credentialTableType,
+				Type:  "userpass",
+			},
+
+			wantViewPrefix: credentialBarrierPrefix + testMountEntryUUID + "/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotView, err := c.mountEntryView(tt.mountEntry)
+
+			require.Equalf(t, tt.wantError, (err != nil), "(*Core).mountEntryView() got unexpected error: %v", err)
+			if err == nil {
+				require.Equalf(t, tt.wantViewPrefix, gotView.Prefix(), "(*Core).mountEntryView() gotViewPrefix: %v, want: %v", gotView.Prefix(), tt.wantViewPrefix)
+			}
+		})
+	}
+}
+
+func TestNamespaceMount_Exclusion(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		return &NoopBackend{}, nil
+	}
+
+	// Creating a mount and then a namespace with the same name should fail.
+	me := &MountEntry{
+		Table:       mountTableType,
+		Path:        "foo/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err := c.mount(namespace.RootContext(nil), me)
+	require.NoError(t, err)
+
+	ns, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// In openbao#1198, the first creation erred but left a ghost namespace
+	// object lying around. This meant that list and subsequent create
+	// namespace operations returned this ghost structure and did not error
+	// properly. Retrying the create ensures no ghost object exists.
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// Creating a deeply nested mount should also cause failures.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "fud/bar/baz/foo/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err = c.mount(namespace.RootContext(nil), me)
+	require.NoError(t, err)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// Creating a new namespace should succeed.
+	nsBar, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "bar/", nil)
+	require.NoError(t, err)
+	require.NotNil(t, nsBar)
+
+	barCtx := namespace.ContextWithNamespace(context.Background(), nsBar)
+
+	// Doing the above inside bar should behave the same.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "foo/",
+		Type:        "noop",
+		NamespaceID: nsBar.ID,
+	}
+	err = c.mount(barCtx, me)
+	require.NoError(t, err)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "fud/bar/baz/foo/",
+		Type:        "noop",
+		NamespaceID: nsBar.ID,
+	}
+	err = c.mount(barCtx, me)
+	require.NoError(t, err)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// Creating a mount at the root level that conflicts with bar/ should fail.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "bar/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err = c.mount(namespace.RootContext(nil), me)
+	require.Error(t, err)
+
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "bar/baz/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err = c.mount(namespace.RootContext(nil), me)
+	require.Error(t, err)
+
+	// Ensure creating sibling mounts still works.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "fud/bar/baz/qux/",
+		Type:        "noop",
+		NamespaceID: nsBar.ID,
+	}
+	err = c.mount(barCtx, me)
+	require.NoError(t, err)
+}
+
+func TestMount_Delta(t *testing.T) {
+	old := MountTable{
+		Entries: []*MountEntry{{
+			Accessor: "f",
+		}, {
+			Accessor: "a",
+		}, {
+			Accessor: "c",
+		}, {
+			Accessor: "b",
+		}, {
+			Accessor: "e",
+		}},
+	}
+
+	new := MountTable{
+		Entries: []*MountEntry{{
+			Accessor: "a",
+		}, {
+			Accessor: "b",
+		}, {
+			Accessor: "d",
+		}, {
+			Accessor: "g",
+		}, {
+			Accessor: "e",
+		}, {
+			Accessor: "f",
+		}},
+	}
+
+	additions, deletions := old.delta(&new)
+	require.Len(t, additions, 2)
+	require.Len(t, deletions, 1)
+
+	assert.Equal(t, additions[0].Accessor, "d")
+	assert.Equal(t, additions[1].Accessor, "g")
+	assert.Equal(t, deletions[0].Accessor, "c")
 }

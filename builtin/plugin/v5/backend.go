@@ -12,7 +12,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin"
-	bplugin "github.com/openbao/openbao/sdk/v2/plugin"
 )
 
 // Backend returns an instance of the backend, either as a plugin if external
@@ -63,7 +62,7 @@ func (b *backend) reloadBackend(ctx context.Context, storage logical.Storage) er
 	// Pass a context value so that the plugin client will call the appropriate
 	// cleanup method for reloading
 	reloadCtx := context.WithValue(ctx, plugin.ContextKeyPluginReload, "reload")
-	b.Backend.Cleanup(reloadCtx)
+	b.Cleanup(reloadCtx)
 
 	nb, err := plugin.NewBackendV5(ctx, pluginName, pluginType, pluginVersion, b.config.System, b.config)
 	if err != nil {
@@ -77,7 +76,7 @@ func (b *backend) reloadBackend(ctx context.Context, storage logical.Storage) er
 
 	// Re-initialize the backend in case plugin was reloaded
 	// after it crashed
-	err = b.Backend.Initialize(ctx, &logical.InitializationRequest{
+	err = b.Initialize(ctx, &logical.InitializationRequest{
 		Storage: storage,
 	})
 	if err != nil {
@@ -96,7 +95,7 @@ func (b *backend) HandleRequest(ctx context.Context, req *logical.Request) (*log
 	// Need to compare string value for case were err comes from plugin RPC
 	// and is returned as plugin.BasicError type.
 	if err != nil &&
-		(err.Error() == rpc.ErrShutdown.Error() || err == bplugin.ErrPluginShutdown) {
+		(err.Error() == rpc.ErrShutdown.Error() || err == plugin.ErrPluginShutdown) {
 		// Reload plugin if it's an rpc.ErrShutdown
 		b.mu.Lock()
 		if b.canary == canary {
@@ -128,7 +127,7 @@ func (b *backend) HandleExistenceCheck(ctx context.Context, req *logical.Request
 	checkFound, exists, err := b.Backend.HandleExistenceCheck(ctx, req)
 	b.mu.RUnlock()
 	if err != nil &&
-		(err.Error() == rpc.ErrShutdown.Error() || err == bplugin.ErrPluginShutdown) {
+		(err.Error() == rpc.ErrShutdown.Error() || err == plugin.ErrPluginShutdown) {
 		// Reload plugin if it's an rpc.ErrShutdown
 		b.mu.Lock()
 		if b.canary == canary {

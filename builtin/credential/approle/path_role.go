@@ -1378,7 +1378,7 @@ func (b *backend) pathRoleSecretIDList(ctx context.Context, req *logical.Request
 		return nil, err
 	}
 	if role == nil {
-		return logical.ErrorResponse(fmt.Sprintf("role %q does not exist", roleName)), nil
+		return logical.ErrorResponse("role %q does not exist", roleName), nil
 	}
 
 	// Guard the list operation with an outer lock
@@ -1609,7 +1609,7 @@ func (b *backend) pathRoleCreateUpdate(ctx context.Context, req *logical.Request
 	}
 
 	if len(roleName) > maxHmacInputLength {
-		return logical.ErrorResponse(fmt.Sprintf("role_name is longer than maximum of %d bytes", maxHmacInputLength)), nil
+		return logical.ErrorResponse("role_name is longer than maximum of %d bytes", maxHmacInputLength), nil
 	}
 
 	lock := b.roleLock(roleName)
@@ -1635,7 +1635,7 @@ func (b *backend) pathRoleCreateUpdate(ctx context.Context, req *logical.Request
 			LowerCaseRoleName: true,
 		}
 	case role == nil:
-		return logical.ErrorResponse(fmt.Sprintf("role name %q doesn't exist", roleName)), logical.ErrUnsupportedPath
+		return logical.ErrorResponse("role name %q doesn't exist", roleName), logical.ErrUnsupportedPath
 	}
 
 	var resp *logical.Response
@@ -1660,8 +1660,8 @@ func (b *backend) pathRoleCreateUpdate(ctx context.Context, req *logical.Request
 
 	localSecretIDsRaw, ok := data.GetOk("local_secret_ids")
 	if ok {
-		switch {
-		case req.Operation == logical.CreateOperation:
+		switch req.Operation {
+		case logical.CreateOperation:
 			localSecretIDs := localSecretIDsRaw.(bool)
 			if localSecretIDs {
 				role.SecretIDPrefix = secretIDLocalPrefix
@@ -1732,7 +1732,7 @@ func (b *backend) pathRoleCreateUpdate(ctx context.Context, req *logical.Request
 	}
 
 	if role.Period > b.System().MaxLeaseTTL() {
-		return logical.ErrorResponse(fmt.Sprintf("period of %q is greater than the backend's maximum lease TTL of %q", role.Period.String(), b.System().MaxLeaseTTL().String())), nil
+		return logical.ErrorResponse("period of %q is greater than the backend's maximum lease TTL of %q", role.Period.String(), b.System().MaxLeaseTTL().String()), nil
 	}
 
 	if role.TokenMaxTTL > b.System().MaxLeaseTTL() {
@@ -2524,10 +2524,7 @@ func (b *backend) pathRoleLocalSecretIDsRead(ctx context.Context, req *logical.R
 		return nil, nil
 	}
 
-	localSecretIDs := false
-	if role.SecretIDPrefix == secretIDLocalPrefix {
-		localSecretIDs = true
-	}
+	localSecretIDs := role.SecretIDPrefix == secretIDLocalPrefix
 
 	return &logical.Response{
 		Data: map[string]interface{}{
@@ -2982,7 +2979,7 @@ func (b *backend) pathRolePeriodUpdate(ctx context.Context, req *logical.Request
 	}
 
 	if role.TokenPeriod > b.System().MaxLeaseTTL() {
-		return logical.ErrorResponse(fmt.Sprintf("period of %q is greater than the backend's maximum lease TTL of %q", role.Period.String(), b.System().MaxLeaseTTL().String())), nil
+		return logical.ErrorResponse("period of %q is greater than the backend's maximum lease TTL of %q", role.Period.String(), b.System().MaxLeaseTTL().String()), nil
 	}
 
 	if err := b.setRoleEntry(ctx, req.Storage, role.name, role, ""); err != nil {
@@ -3400,7 +3397,7 @@ func (b *backend) handleRoleSecretIDCommon(ctx context.Context, req *logical.Req
 		return nil, err
 	}
 	if role == nil {
-		return logical.ErrorResponse(fmt.Sprintf("role %q does not exist", roleName)), logical.ErrUnsupportedPath
+		return logical.ErrorResponse("role %q does not exist", roleName), logical.ErrUnsupportedPath
 	}
 
 	if !role.BindSecretID {
@@ -3481,7 +3478,7 @@ func (b *backend) handleRoleSecretIDCommon(ctx context.Context, req *logical.Req
 	}
 
 	if err = strutil.ParseArbitraryKeyValues(data.Get("metadata").(string), secretIDStorage.Metadata, ","); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("failed to parse metadata: %v", err)), nil
+		return logical.ErrorResponse("failed to parse metadata: %v", err), nil
 	}
 
 	if secretIDStorage, err = b.registerSecretIDEntry(ctx, req.Storage, role.name, secretID, role.HMACKey, role.SecretIDPrefix, secretIDStorage); err != nil {
@@ -3637,7 +3634,7 @@ defined on the role, can access the role.`,
 		`If a SecretID is generated/assigned against a role using the
 'role/<role_name>/secret-id' or 'role/<role_name>/custom-secret-id' endpoint,
 then the number of times this SecretID can be used is defined by this option.
-However, this option may be overriden by the request's 'num_uses' field.`,
+However, this option may be overridden by the request's 'num_uses' field.`,
 	},
 	"role-secret-id-ttl": {
 		"Duration in seconds of the SecretID generated against the role.",

@@ -22,7 +22,9 @@ import (
 	"github.com/openbao/openbao/builtin/logical/transit"
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/builtinplugins"
+	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
@@ -200,6 +202,47 @@ func testVaultServerCoreConfig(tb testing.TB, coreConfig *vault.CoreConfig) (*ap
 	})
 }
 
+func testVaultServerUnauthedEndpointsEnabledWithAutoseal(tb testing.TB) (*api.Client, []string, func()) {
+	testSeal, _ := seal.NewTestSeal(nil)
+	autoSeal, err := vault.NewAutoSeal(testSeal)
+	if err != nil {
+		tb.Fatal("unable to create autoseal", err)
+	}
+
+	return testVaultServerCoreConfigWithOpts(tb, &vault.CoreConfig{
+		DisableCache:       true,
+		Seal:               autoSeal,
+		CredentialBackends: defaultVaultCredentialBackends,
+		AuditBackends:      defaultVaultAuditBackends,
+		LogicalBackends:    defaultVaultLogicalBackends,
+	}, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		DefaultHandlerProperties: vault.HandlerProperties{
+			ListenerConfig: &configutil.Listener{
+				DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+			},
+		},
+		NumCores: 1,
+	})
+}
+
+func testVaultServerUnauthedEndpointsEnabled(tb testing.TB) (*api.Client, []string, func()) {
+	return testVaultServerCoreConfigWithOpts(tb, &vault.CoreConfig{
+		DisableCache:       true,
+		CredentialBackends: defaultVaultCredentialBackends,
+		AuditBackends:      defaultVaultAuditBackends,
+		LogicalBackends:    defaultVaultLogicalBackends,
+	}, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+		DefaultHandlerProperties: vault.HandlerProperties{
+			ListenerConfig: &configutil.Listener{
+				DisableUnauthedRekeyEndpoints: pointerutil.BoolPtr(false),
+			},
+		},
+		NumCores: 1,
+	})
+}
+
 // testVaultServerCoreConfig creates a new vault cluster with the given core
 // configuration. This is a lower-level test helper. If the seal config supports recovery keys, then
 // recovery keys are returned. Otherwise, unseal keys are returned
@@ -334,17 +377,4 @@ func testTokenAndAccessor(tb testing.TB, client *api.Client) (string, string) {
 		tb.Fatalf("missing auth data: %#v", secret)
 	}
 	return secret.Auth.ClientToken, secret.Auth.Accessor
-}
-
-func testClient(tb testing.TB, addr string, token string) *api.Client {
-	tb.Helper()
-	config := api.DefaultConfig()
-	config.Address = addr
-	client, err := api.NewClient(config)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	client.SetToken(token)
-
-	return client
 }

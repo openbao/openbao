@@ -112,11 +112,12 @@ func TestListCertificatesWithDetails(t *testing.T) {
 
 		// Determine if the certificate is root or leaf based on the common name
 		commonName := certData["common_name"].(string)
-		if commonName == RootCN {
+		switch commonName {
+		case RootCN:
 			checkCertificateDetails(t, certData, expectedRootCertDetails)
-		} else if commonName == leafCN {
+		case leafCN:
 			checkCertificateDetails(t, certData, expectedLeafCertDetails)
-		} else {
+		default:
 			t.Fatalf("Unexpected common name found: %s", commonName)
 		}
 	}

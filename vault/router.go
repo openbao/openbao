@@ -13,9 +13,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/armon/go-radix"
 	"github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -64,8 +64,8 @@ type routeEntry struct {
 	mountEntry    *MountEntry
 	storageView   logical.Storage
 	storagePrefix string
-	rootPaths     atomic.Value
-	loginPaths    atomic.Value
+	rootPaths     atomic.Pointer[radix.Tree]
+	loginPaths    atomic.Pointer[loginPathsEntry]
 	l             sync.RWMutex
 }
 
@@ -83,10 +83,10 @@ type loginPathsEntry struct {
 }
 
 type ValidateMountResponse struct {
-	MountType     string `json:"mount_type" structs:"mount_type" mapstructure:"mount_type"`
-	MountAccessor string `json:"mount_accessor" structs:"mount_accessor" mapstructure:"mount_accessor"`
-	MountPath     string `json:"mount_path" structs:"mount_path" mapstructure:"mount_path"`
-	MountLocal    bool   `json:"mount_local" structs:"mount_local" mapstructure:"mount_local"`
+	MountType     string `json:"mount_type" mapstructure:"mount_type"`
+	MountAccessor string `json:"mount_accessor" mapstructure:"mount_accessor"`
+	MountPath     string `json:"mount_path" mapstructure:"mount_path"`
+	MountLocal    bool   `json:"mount_local" mapstructure:"mount_local"`
 }
 
 func (r *Router) reset() {
@@ -241,6 +241,9 @@ func (r *Router) Unmount(ctx context.Context, prefix string) error {
 
 	// Call backend's Cleanup routine
 	re := raw.(*routeEntry)
+	re.l.Lock()
+	defer re.l.Unlock()
+
 	if re.backend != nil {
 		re.backend.Cleanup(ctx)
 	}
@@ -255,7 +258,7 @@ func (r *Router) Unmount(ctx context.Context, prefix string) error {
 }
 
 // Remount is used to change the mount location of a logical backend
-func (r *Router) Remount(ctx context.Context, src, dst string) error {
+func (r *Router) Remount(ctx context.Context, src, dst string, callback func(*routeEntry) error) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -270,6 +273,13 @@ func (r *Router) Remount(ctx context.Context, src, dst string) error {
 	raw, ok := r.root.Get(src)
 	if !ok {
 		return fmt.Errorf("no mount at %q", src)
+	}
+
+	if callback != nil {
+		err = callback(raw.(*routeEntry))
+		if err != nil {
+			return fmt.Errorf("unable to update route entry: %w", err)
+		}
 	}
 
 	// Update the mount point
@@ -291,7 +301,10 @@ func (r *Router) Taint(ctx context.Context, path string) error {
 	defer r.l.Unlock()
 	_, raw, ok := r.root.LongestPrefix(path)
 	if ok {
-		raw.(*routeEntry).tainted = true
+		re := raw.(*routeEntry)
+		re.l.Lock()
+		re.tainted = true
+		re.l.Unlock()
 	}
 	return nil
 }
@@ -308,7 +321,10 @@ func (r *Router) Untaint(ctx context.Context, path string) error {
 	defer r.l.Unlock()
 	_, raw, ok := r.root.LongestPrefix(path)
 	if ok {
-		raw.(*routeEntry).tainted = false
+		re := raw.(*routeEntry)
+		re.l.Lock()
+		re.tainted = false
+		re.l.Unlock()
 	}
 	return nil
 }
@@ -390,6 +406,51 @@ func (r *Router) matchingPrefixInternal(ctx context.Context, path string) string
 	return existing
 }
 
+// matchingNamespaceInternal returns a namespace prefix that a path may be a part of
+func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) string {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return ""
+	}
+	// Ensure comparisons are done against absolute paths within the
+	// current namespace context, consistent with other matching helpers.
+	// Without this, a mount path that matches the current namespace name
+	// (e.g., mounting "team14/" inside namespace "team14/") would be
+	// incorrectly detected as conflicting with the namespace itself.
+	path = ns.Path + path
+
+	// Every namespace has a sys/ mount. We can use that as a sentinel that
+	// our given path conflicts. Walk the parent namespace of path and check
+	// if there's a common prefix between a child namespace's sys/ entry and
+	// path.
+	//
+	// This allows us to avoid calling into the namespace store, which may be
+	// locked as we're trying to mount required mounts for a new namespace.
+	var existing string
+	fn := func(existingPath string, v interface{}) bool {
+		nsPath, ok := strings.CutSuffix(existingPath, "sys/")
+		if !ok {
+			return false
+		}
+
+		// Ignore the current namespace's own sys mount; we only want to
+		// detect conflicts with child namespace prefixes.
+		if nsPath == ns.Path {
+			return false
+		}
+
+		if strings.HasPrefix(path, nsPath) {
+			existing = nsPath
+			return true
+		}
+
+		return false
+	}
+
+	r.root.WalkPrefix(ns.Path, fn)
+	return existing
+}
+
 // MountConflict determines if there are potential path conflicts
 func (r *Router) MountConflict(ctx context.Context, path string) string {
 	r.l.RLock()
@@ -399,6 +460,9 @@ func (r *Router) MountConflict(ctx context.Context, path string) string {
 	}
 	if prefixMatch := r.matchingPrefixInternal(ctx, path); prefixMatch != "" {
 		return prefixMatch
+	}
+	if nsMatch := r.matchingNamespaceInternal(ctx, path); nsMatch != "" {
+		return nsMatch
 	}
 	return ""
 }
@@ -492,11 +556,15 @@ func (r *Router) MatchingSystemView(ctx context.Context, path string) logical.Sy
 }
 
 func (r *Router) MatchingMountByAPIPath(ctx context.Context, path string) string {
-	me, _, _ := r.matchingMountEntryByPath(ctx, path, true)
-	if me == nil {
+	re, _ := r.matchingRouteEntryByPath(ctx, path, true)
+	if re == nil {
 		return ""
 	}
-	return me.Path
+
+	re.l.RLock()
+	defer re.l.RUnlock()
+
+	return re.mountEntry.Path
 }
 
 // MatchingStoragePrefixByAPIPath the storage prefix for the given api path
@@ -507,27 +575,37 @@ func (r *Router) MatchingStoragePrefixByAPIPath(ctx context.Context, path string
 	}
 	path = ns.Path + path
 
-	_, prefix, found := r.matchingMountEntryByPath(ctx, path, true)
-	return prefix, found
+	re, found := r.matchingRouteEntryByPath(ctx, path, true)
+	if !found {
+		return "", false
+	}
+
+	re.l.RLock()
+	defer re.l.RUnlock()
+
+	return re.storagePrefix, true
 }
 
 // MatchingAPIPrefixByStoragePath the api path information for the given storage path
 func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string) (*namespace.Namespace, string, string, bool) {
-	me, prefix, found := r.matchingMountEntryByPath(ctx, path, false)
+	re, found := r.matchingRouteEntryByPath(ctx, path, false)
 	if !found {
 		return nil, "", "", found
 	}
 
-	mountPath := me.Path
+	re.l.RLock()
+	defer re.l.RUnlock()
+
+	mountPath := re.mountEntry.Path
 	// Add back the prefix for credential backends
 	if strings.HasPrefix(path, credentialBarrierPrefix) {
 		mountPath = credentialRoutePrefix + mountPath
 	}
 
-	return me.Namespace(), mountPath, prefix, found
+	return re.mountEntry.Namespace(), mountPath, re.storagePrefix, found
 }
 
-func (r *Router) matchingMountEntryByPath(ctx context.Context, path string, apiPath bool) (*MountEntry, string, bool) {
+func (r *Router) matchingRouteEntryByPath(ctx context.Context, path string, apiPath bool) (*routeEntry, bool) {
 	var raw interface{}
 	var ok bool
 	r.l.RLock()
@@ -538,14 +616,12 @@ func (r *Router) matchingMountEntryByPath(ctx context.Context, path string, apiP
 	}
 	r.l.RUnlock()
 	if !ok {
-		return nil, "", false
+		return nil, false
 	}
 
 	// Extract the mount path and storage prefix
 	re := raw.(*routeEntry)
-	prefix := re.storagePrefix
-
-	return re.mountEntry, prefix, true
+	return re, true
 }
 
 // Route is used to route a given request
@@ -578,7 +654,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 	}
 	r.l.RUnlock()
 	if !ok {
-		return logical.ErrorResponse(fmt.Sprintf("no handler for route %q. route entry not found.", req.Path)), false, false, logical.ErrUnsupportedPath
+		return logical.ErrorResponse("no handler for route %q. route entry not found.", req.Path), false, false, logical.ErrUnsupportedPath
 	}
 	req.Path = adjustedPath
 	if !existenceCheck {
@@ -594,23 +670,23 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 	// token store; such a request will have already been routed through the
 	// token store -> exp manager -> here so we need to not grab the lock again
 	// or we'll be recursively grabbing it.
-	if !(req.Operation == logical.RenewOperation && strings.HasPrefix(req.Path, "auth/token/")) {
+	if req.Operation != logical.RenewOperation || !strings.HasPrefix(req.Path, "auth/token/") {
 		re.l.RLock()
 		defer re.l.RUnlock()
 	}
 
 	// Filtered mounts will have a nil backend
 	if re.backend == nil {
-		return logical.ErrorResponse(fmt.Sprintf("no handler for route %q. route entry found, but backend is nil.", req.Path)), false, false, logical.ErrUnsupportedPath
+		return logical.ErrorResponse("no handler for route %q. route entry found, but backend is nil.", req.Path), false, false, logical.ErrUnsupportedPath
 	}
 
-	// If the path is tainted, we reject any operation except for
-	// Rollback and Revoke
-	if re.tainted {
+	// If the path or namespace is tainted, we reject any operation
+	// except for Rollback and Revoke
+	if re.tainted || ns.Tainted {
 		switch req.Operation {
 		case logical.RevokeOperation, logical.RollbackOperation:
 		default:
-			return logical.ErrorResponse(fmt.Sprintf("no handler for route %q. route entry is tainted.", req.Path)), false, false, logical.ErrUnsupportedPath
+			return logical.ErrorResponse("no handler for route %q on namespace %q. route entry or namespace is tainted.", req.Path, ns.Path), false, false, logical.ErrUnsupportedPath
 		}
 	}
 
@@ -654,7 +730,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 		}
 
 		if te.Type != logical.TokenTypeService {
-			return logical.ErrorResponse(`cubbyhole operations are only supported by "service" type tokens`), false, false, nil
+			return logical.ErrorResponse("cubbyhole operations are only supported by 'service' type tokens"), false, false, nil
 		}
 
 		switch {
@@ -850,11 +926,14 @@ func (r *Router) RootPath(ctx context.Context, path string) bool {
 	}
 	re := raw.(*routeEntry)
 
+	re.l.RLock()
+	defer re.l.RUnlock()
+
 	// Trim to get remaining path
 	remain := strings.TrimPrefix(adjustedPath, mount)
 
 	// Check the rootPaths of this backend
-	rootPaths := re.rootPaths.Load().(*radix.Tree)
+	rootPaths := re.rootPaths.Load()
 	match, raw, ok := rootPaths.LongestPrefix(remain)
 	if !ok {
 		return false
@@ -889,13 +968,17 @@ func (r *Router) LoginPath(ctx context.Context, path string) bool {
 	if !ok {
 		return false
 	}
+
 	re := raw.(*routeEntry)
+
+	re.l.RLock()
+	defer re.l.RUnlock()
 
 	// Trim to get remaining path
 	remain := strings.TrimPrefix(adjustedPath, mount)
 
 	// Check the loginPaths of this backend
-	pe := re.loginPaths.Load().(*loginPathsEntry)
+	pe := re.loginPaths.Load()
 	match, raw, ok := pe.paths.LongestPrefix(remain)
 	if !ok && len(pe.wildcardPaths) == 0 {
 		// no match found
@@ -1055,4 +1138,16 @@ func filteredHeaders(origHeaders map[string][]string, candidateHeaders, deniedHe
 	}
 
 	return retHeaders
+}
+
+// Invalidate is used to route a cache invalidation request to the correct plugin
+func (r *Router) Invalidate(ctx context.Context, key string) bool {
+	re, ok := r.matchingRouteEntryByPath(ctx, key, false)
+	if ok && strings.HasPrefix(key, re.storagePrefix) {
+		re.l.RLock()
+		defer re.l.RUnlock()
+		re.backend.InvalidateKey(ctx, strings.TrimPrefix(key, re.storagePrefix))
+		return true
+	}
+	return false
 }

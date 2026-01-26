@@ -13,27 +13,26 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"maps"
 	"math/rand"
 	"net/http"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	semver "github.com/hashicorp/go-version"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/helper/hostutil"
 	"github.com/openbao/openbao/helper/identity"
-	"github.com/openbao/openbao/helper/locking"
 	"github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/monitor"
@@ -51,25 +50,11 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-const (
-	maxBytes    = 128 * 1024
-	globalScope = "global"
-)
-
-func systemBackendMemDBSchema() *memdb.DBSchema {
-	systemSchema := &memdb.DBSchema{
-		Tables: make(map[string]*memdb.TableSchema),
-	}
-
-	return systemSchema
-}
+const maxBytes = 128 * 1024
 
 func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
-	db, _ := memdb.NewMemDB(systemBackendMemDBSchema())
-
 	b := &SystemBackend{
 		Core:   core,
-		db:     db,
 		logger: logger,
 	}
 
@@ -86,6 +71,8 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"raw",
 				"raw/*",
 				"rotate",
+				"rotate/keyring",
+				"rotate/root",
 				"config/cors",
 				"config/auditing/*",
 				"config/ui/headers/*",
@@ -117,13 +104,18 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"generate-root/attempt",
 				"generate-root/update",
 				"decode-token",
+				"mfa/validate",
+
+				// These endpoints are unauthenticated only with the
+				// "disable_unauthed_rekey_endpoints" listener property explicitly
+				// set to false. Note that they are not routable through the normal
+				// SystemBackend calls but are instead specially handled by http.
 				"rekey/init",
 				"rekey/update",
 				"rekey/verify",
 				"rekey-recovery-key/init",
 				"rekey-recovery-key/update",
 				"rekey-recovery-key/verify",
-				"mfa/validate",
 			},
 
 			LocalStorage: []string{
@@ -133,38 +125,40 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 		},
 	}
 
-	b.Backend.Paths = append(b.Backend.Paths, b.configPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.rekeyPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.sealPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.statusPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.pluginsCatalogListPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.pluginsCatalogCRUDPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.pluginsReloadPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.auditPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.mountPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.authPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.lockedUserPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.leasePaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.policyPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.wrappingPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.toolsPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.capabilitiesPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.internalPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.pprofPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.remountPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.metricsPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.monitorPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.inFlightRequestPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.hostInfoPath())
-	b.Backend.Paths = append(b.Backend.Paths, b.quotasPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.loginMFAPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.introspectionPaths()...)
+	b.Paths = append(b.Paths, b.configPaths()...)
+	b.Paths = append(b.Paths, b.rekeyPaths()...)
+	b.Paths = append(b.Paths, b.rotatePaths()...)
+	b.Paths = append(b.Paths, b.sealPaths()...)
+	b.Paths = append(b.Paths, b.statusPaths()...)
+	b.Paths = append(b.Paths, b.pluginsCatalogListPaths()...)
+	b.Paths = append(b.Paths, b.pluginsCatalogCRUDPath())
+	b.Paths = append(b.Paths, b.pluginsReloadPath())
+	b.Paths = append(b.Paths, b.auditPaths()...)
+	b.Paths = append(b.Paths, b.mountPaths()...)
+	b.Paths = append(b.Paths, b.authPaths()...)
+	b.Paths = append(b.Paths, b.lockedUserPaths()...)
+	b.Paths = append(b.Paths, b.leasePaths()...)
+	b.Paths = append(b.Paths, b.policyPaths()...)
+	b.Paths = append(b.Paths, b.namespacePaths()...)
+	b.Paths = append(b.Paths, b.wrappingPaths()...)
+	b.Paths = append(b.Paths, b.toolsPaths()...)
+	b.Paths = append(b.Paths, b.capabilitiesPaths()...)
+	b.Paths = append(b.Paths, b.internalPaths()...)
+	b.Paths = append(b.Paths, b.pprofPaths()...)
+	b.Paths = append(b.Paths, b.remountPaths()...)
+	b.Paths = append(b.Paths, b.metricsPath())
+	b.Paths = append(b.Paths, b.monitorPath())
+	b.Paths = append(b.Paths, b.inFlightRequestPath())
+	b.Paths = append(b.Paths, b.hostInfoPath())
+	b.Paths = append(b.Paths, b.quotasPaths()...)
+	b.Paths = append(b.Paths, b.loginMFAPaths()...)
+	b.Paths = append(b.Paths, b.introspectionPaths()...)
 
 	if core.rawEnabled {
-		b.Backend.Paths = append(b.Backend.Paths, b.rawPaths()...)
+		b.Paths = append(b.Paths, b.rawPaths()...)
 	}
 	if backend := core.getRaftBackend(); backend != nil {
-		b.Backend.Paths = append(b.Backend.Paths, b.raftStoragePaths()...)
+		b.Paths = append(b.Paths, b.raftStoragePaths()...)
 	}
 
 	return b
@@ -184,7 +178,6 @@ func (b *SystemBackend) rawPaths() []*framework.Path {
 type SystemBackend struct {
 	*framework.Backend
 	Core   *Core
-	db     *memdb.MemDB
 	logger log.Logger
 }
 
@@ -192,11 +185,9 @@ type SystemBackend struct {
 // data that it returns is a sanitized version of the combined configuration
 // file(s) provided.
 func (b *SystemBackend) handleConfigStateSanitized(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	config := b.Core.SanitizedConfig()
-	resp := &logical.Response{
-		Data: config,
-	}
-	return resp, nil
+	return &logical.Response{
+		Data: b.Core.SanitizedConfig(),
+	}, nil
 }
 
 // handleConfigReload handles reloading specific pieces of the configuration.
@@ -209,7 +200,6 @@ func (b *SystemBackend) handleCORSRead(ctx context.Context, req *logical.Request
 	corsConf := b.Core.corsConfig
 
 	enabled := corsConf.IsEnabled()
-
 	resp := &logical.Response{
 		Data: map[string]interface{}{
 			"enabled": enabled,
@@ -220,6 +210,7 @@ func (b *SystemBackend) handleCORSRead(ctx context.Context, req *logical.Request
 		corsConf.RLock()
 		resp.Data["allowed_origins"] = corsConf.AllowedOrigins
 		resp.Data["allowed_headers"] = corsConf.AllowedHeaders
+		resp.Data["allow_credentials"] = corsConf.AllowCredentials
 		corsConf.RUnlock()
 	}
 
@@ -231,8 +222,9 @@ func (b *SystemBackend) handleCORSRead(ctx context.Context, req *logical.Request
 func (b *SystemBackend) handleCORSUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	origins := d.Get("allowed_origins").([]string)
 	headers := d.Get("allowed_headers").([]string)
+	allow_credentials := d.Get("allow_credentials").(bool)
 
-	return nil, b.Core.corsConfig.Enable(ctx, origins, headers)
+	return nil, b.Core.corsConfig.Enable(ctx, origins, headers, allow_credentials)
 }
 
 // handleCORSDelete sets the CORS enabled flag to false and clears the list of
@@ -466,6 +458,8 @@ func (b *SystemBackend) handlePluginCatalogUpdate(ctx context.Context, _ *logica
 		return nil, err
 	}
 
+	oci := d.Get("oci").(bool)
+
 	// For backwards compatibility, also accept args as part of command. Don't
 	// accepts args in both command and args.
 	args := d.Get("args").([]string)
@@ -485,7 +479,7 @@ func (b *SystemBackend) handlePluginCatalogUpdate(ctx context.Context, _ *logica
 		return logical.ErrorResponse("Could not decode SHA-256 value from Hex"), err
 	}
 
-	err = b.Core.pluginCatalog.Set(ctx, pluginName, pluginType, pluginVersion, parts[0], args, env, sha256Bytes)
+	err = b.Core.pluginCatalog.Set(ctx, pluginName, pluginType, pluginVersion, parts[0], args, env, sha256Bytes, oci)
 	if err != nil {
 		if errors.Is(err, ErrPluginNotFound) || strings.HasPrefix(err.Error(), "plugin version mismatch") {
 			return logical.ErrorResponse(err.Error()), nil
@@ -539,12 +533,14 @@ func (b *SystemBackend) handlePluginCatalogRead(ctx context.Context, _ *logical.
 	}
 
 	data := map[string]interface{}{
-		"name":    plugin.Name,
-		"args":    plugin.Args,
-		"command": command,
-		"sha256":  hex.EncodeToString(plugin.Sha256),
-		"builtin": plugin.Builtin,
-		"version": plugin.Version,
+		"name":        plugin.Name,
+		"args":        plugin.Args,
+		"command":     command,
+		"sha256":      hex.EncodeToString(plugin.Sha256),
+		"builtin":     plugin.Builtin,
+		"version":     plugin.Version,
+		"oci":         plugin.Oci,
+		"declarative": plugin.Declarative,
 	}
 
 	if plugin.Builtin {
@@ -985,7 +981,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 				"unable to parse given auth config information"),
 			logical.ErrInvalidRequest
 	}
-	if configMap != nil && len(configMap) != 0 {
+	if len(configMap) != 0 {
 		err := mapstructure.Decode(configMap, &apiConfig)
 		if err != nil {
 			return logical.ErrorResponse(
@@ -1000,8 +996,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	default:
 		tmpDef, err := parseutil.ParseDurationSecond(apiConfig.DefaultLeaseTTL)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf(
-					"unable to parse default TTL of %s: %s", apiConfig.DefaultLeaseTTL, err)),
+			return logical.ErrorResponse("unable to parse default TTL of %s: %s", apiConfig.DefaultLeaseTTL, err),
 				logical.ErrInvalidRequest
 		}
 		config.DefaultLeaseTTL = tmpDef
@@ -1013,22 +1008,20 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	default:
 		tmpMax, err := parseutil.ParseDurationSecond(apiConfig.MaxLeaseTTL)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf(
-					"unable to parse max TTL of %s: %s", apiConfig.MaxLeaseTTL, err)),
+			return logical.ErrorResponse("unable to parse max TTL of %s: %s", apiConfig.MaxLeaseTTL, err),
 				logical.ErrInvalidRequest
 		}
 		config.MaxLeaseTTL = tmpMax
 	}
 
 	if config.MaxLeaseTTL != 0 && config.DefaultLeaseTTL > config.MaxLeaseTTL {
-		return logical.ErrorResponse(
-				"given default lease TTL greater than given max lease TTL"),
+		return logical.ErrorResponse("given default lease TTL greater than given max lease TTL"),
 			logical.ErrInvalidRequest
 	}
 
 	if config.DefaultLeaseTTL > b.Core.maxLeaseTTL && config.MaxLeaseTTL == 0 {
-		return logical.ErrorResponse(fmt.Sprintf(
-				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds()))),
+		return logical.ErrorResponse(
+				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds())),
 			logical.ErrInvalidRequest
 	}
 
@@ -1072,8 +1065,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 
 	default:
 		if options != nil && options["version"] != "" {
-			return logical.ErrorResponse(fmt.Sprintf(
-					"secrets engine %q does not allow setting a version", logicalType)),
+			return logical.ErrorResponse("secrets engine %q does not allow setting a version", logicalType),
 				logical.ErrInvalidRequest
 		}
 	}
@@ -1089,7 +1081,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	}
 
 	if err := checkListingVisibility(apiConfig.ListingVisibility); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid listing_visibility %s", apiConfig.ListingVisibility)), nil
+		return logical.ErrorResponse("invalid listing_visibility %s", apiConfig.ListingVisibility), nil
 	}
 	config.ListingVisibility = apiConfig.ListingVisibility
 
@@ -1192,7 +1184,7 @@ func (b *SystemBackend) handleReadMount(ctx context.Context, req *logical.Reques
 func handleError(
 	err error,
 ) (*logical.Response, error) {
-	if strings.Contains(err.Error(), logical.ErrReadOnly.Error()) {
+	if logical.ShouldForward(err) {
 		return logical.ErrorResponse(err.Error()), err
 	}
 	switch err.(type) {
@@ -1208,7 +1200,7 @@ func handleError(
 func handleErrorNoReadOnlyForward(
 	err error,
 ) (*logical.Response, error) {
-	if strings.Contains(err.Error(), logical.ErrReadOnly.Error()) {
+	if logical.ShouldForward(err) {
 		return nil, errors.New("operation could not be completed as storage is read-only")
 	}
 	switch err.(type) {
@@ -1300,6 +1292,10 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 	fromPathDetails := b.Core.splitNamespaceAndMountFromPath(ns.Path, fromPath)
 	toPathDetails := b.Core.splitNamespaceAndMountFromPath(ns.Path, toPath)
 
+	if toPathDetails.MountPath == "" {
+		return handleError(fmt.Errorf("invalid destination mount path %q", toPath))
+	}
+
 	if err = validateMountPath(toPathDetails.MountPath); err != nil {
 		return handleError(fmt.Errorf("invalid destination mount: %v", err))
 	}
@@ -1340,7 +1336,7 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 		return handleError(fmt.Errorf("no matching mount at %q", sanitizePath(fromPath)))
 	}
 
-	if match := b.Core.router.MountConflict(ctx, sanitizePath(toPath)); match != "" {
+	if match := b.Core.router.MountConflict(ctx, sanitizePath(toPath)); match != toPathDetails.Namespace.Path && match != "" {
 		return handleError(fmt.Errorf("path already in use at %q", match))
 	}
 
@@ -1541,8 +1537,7 @@ func (b *SystemBackend) handleAuthTuneWrite(ctx context.Context, req *logical.Re
 	if path == "" {
 		return logical.ErrorResponse("missing path"), nil
 	}
-
-	return b.handleTuneWriteCommon(ctx, "auth/"+path, data)
+	return b.handleTuneWriteCommon(ctx, "auth/"+path, data, true)
 }
 
 // handleMountTuneWrite is used to set config settings on a backend
@@ -1555,11 +1550,25 @@ func (b *SystemBackend) handleMountTuneWrite(ctx context.Context, req *logical.R
 	// This call will write both logical backend's configuration as well as auth methods'.
 	// Retaining this behavior for backward compatibility. If this behavior is not desired,
 	// an error can be returned if path has a prefix of "auth/".
-	return b.handleTuneWriteCommon(ctx, path, data)
+	return b.handleTuneWriteCommon(ctx, path, data, strings.HasPrefix(path, "auth/"))
+}
+
+// rollback is a generic function used in _handleTuneWriteCommon_ to reassign
+// previous values of the changed properties of the [MountEntry] struct
+// By defering the returned function from rollback, we ensure that the
+// [MountEntry] modification is atomic.
+func rollback[T any](dst *T, val T, success *bool) func() {
+	prev := *dst
+	*dst = val
+	return func() {
+		if !*success {
+			*dst = prev
+		}
+	}
 }
 
 // handleTuneWriteCommon is used to set config settings on a path
-func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, data *framework.FieldData) (*logical.Response, error) {
+func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, data *framework.FieldData, isAuth bool) (*logical.Response, error) {
 	path = sanitizePath(path)
 
 	// Prevent protected paths from being changed
@@ -1574,13 +1583,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 				}
 
 				// Check if this field is allowed to be tuned on this untunable path
-				found := false
-				for _, match := range allowedField {
-					if match == field {
-						found = true
-						break
-					}
-				}
+				found := slices.Contains(allowedField, field)
 
 				// Err if so.
 				if !found {
@@ -1600,12 +1603,9 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		return handleError(fmt.Errorf("tune of path %q failed: no mount entry found", path))
 	}
 
-	var lock *locking.DeadlockRWMutex
-	switch {
-	case strings.HasPrefix(path, credentialRoutePrefix):
+	lock := &b.Core.mountsLock
+	if isAuth {
 		lock = &b.Core.authLock
-	default:
-		lock = &b.Core.mountsLock
 	}
 
 	lock.Lock()
@@ -1618,55 +1618,63 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		return handleError(fmt.Errorf("tune of path %q failed: no mount entry found", path))
 	}
 
-	// Timing configuration parameters
+	success := false
+	defer mountEntry.SyncCache()
+
 	if !isUntunable {
-		var newDefault, newMax time.Duration
+		var err error
+		// Timing configuration parameters
 		defTTL := data.Get("default_lease_ttl").(string)
+		var newDefTTL time.Duration
 		switch defTTL {
 		case "":
-			newDefault = mountEntry.Config.DefaultLeaseTTL
+			newDefTTL = mountEntry.Config.DefaultLeaseTTL
 		case "system":
-			newDefault = time.Duration(0)
+			newDefTTL = time.Duration(0)
 		default:
-			tmpDef, err := parseutil.ParseDurationSecond(defTTL)
+			newDefTTL, err = parseutil.ParseDurationSecond(defTTL)
 			if err != nil {
 				return handleError(err)
 			}
-			newDefault = tmpDef
 		}
 
 		maxTTL := data.Get("max_lease_ttl").(string)
+		var newMaxTTL time.Duration
 		switch maxTTL {
 		case "":
-			newMax = mountEntry.Config.MaxLeaseTTL
+			newMaxTTL = mountEntry.Config.MaxLeaseTTL
 		case "system":
-			newMax = time.Duration(0)
+			newMaxTTL = time.Duration(0)
 		default:
-			tmpMax, err := parseutil.ParseDurationSecond(maxTTL)
+			newMaxTTL, err = parseutil.ParseDurationSecond(maxTTL)
 			if err != nil {
 				return handleError(err)
 			}
-			newMax = tmpMax
 		}
 
-		if newDefault != mountEntry.Config.DefaultLeaseTTL ||
-			newMax != mountEntry.Config.MaxLeaseTTL {
-
-			if err := b.tuneMountTTLs(ctx, path, mountEntry, newDefault, newMax); err != nil {
-				b.Backend.Logger().Error("tuning failed", "path", path, "error", err)
-				return handleError(err)
+		if mountEntry.Config.DefaultLeaseTTL != newDefTTL || mountEntry.Config.MaxLeaseTTL != newMaxTTL {
+			zero := time.Duration(0)
+			switch {
+			case newDefTTL == zero && newMaxTTL == zero:
+				// No checks needed
+			case newDefTTL == zero && newMaxTTL != zero:
+				// No default/max conflict, no checks needed
+			case newDefTTL != zero && newMaxTTL == zero:
+				// No default/max conflict, no checks needed
+			case newDefTTL != zero && newMaxTTL != zero:
+				if newMaxTTL < newDefTTL {
+					return handleError(fmt.Errorf("backend max lease TTL of %d would be less than backend default lease TTL of %d", int(newMaxTTL.Seconds()), int(newDefTTL.Seconds())))
+				}
 			}
+			defer rollback(&mountEntry.Config.DefaultLeaseTTL, newDefTTL, &success)()
+			defer rollback(&mountEntry.Config.MaxLeaseTTL, newMaxTTL, &success)()
 		}
-	}
 
-	// user-lockout config
-	if !isUntunable {
-		var apiuserLockoutConfig APIUserLockoutConfig
-
+		// user-lockout config
+		var apiUserLockoutConfig APIUserLockoutConfig
 		userLockoutConfigMap := data.Get("user_lockout_config").(map[string]interface{})
-		var err error
-		if userLockoutConfigMap != nil && len(userLockoutConfigMap) != 0 {
-			err := mapstructure.Decode(userLockoutConfigMap, &apiuserLockoutConfig)
+		if len(userLockoutConfigMap) != 0 {
+			err := mapstructure.Decode(userLockoutConfigMap, &apiUserLockoutConfig)
 			if err != nil {
 				return logical.ErrorResponse(
 						"unable to convert given user lockout config information"),
@@ -1684,107 +1692,50 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 
 		if len(userLockoutConfigMap) > 0 && mountEntry.Config.UserLockoutConfig == nil {
-			mountEntry.Config.UserLockoutConfig = &UserLockoutConfig{}
+			defer rollback(&mountEntry.Config.UserLockoutConfig, &UserLockoutConfig{}, &success)()
 		}
 
-		var oldUserLockoutThreshold uint64
-		var newUserLockoutDuration, oldUserLockoutDuration time.Duration
-		var newUserLockoutCounterReset, oldUserLockoutCounterReset time.Duration
-		var oldUserLockoutDisable bool
-
-		if apiuserLockoutConfig.LockoutThreshold != "" {
-			userLockoutThreshold, err := strconv.ParseUint(apiuserLockoutConfig.LockoutThreshold, 10, 64)
+		if apiUserLockoutConfig.LockoutThreshold != "" {
+			userLockoutThreshold, err := strconv.ParseUint(apiUserLockoutConfig.LockoutThreshold, 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("unable to parse user lockout threshold: %w", err)
+				return handleError(fmt.Errorf("unable to parse user lockout threshold: %w", err))
 			}
-			oldUserLockoutThreshold = mountEntry.Config.UserLockoutConfig.LockoutThreshold
-			mountEntry.Config.UserLockoutConfig.LockoutThreshold = userLockoutThreshold
+			defer rollback(&mountEntry.Config.UserLockoutConfig.LockoutThreshold, userLockoutThreshold, &success)()
 		}
 
-		if apiuserLockoutConfig.LockoutDuration != "" {
-			oldUserLockoutDuration = mountEntry.Config.UserLockoutConfig.LockoutDuration
-			switch apiuserLockoutConfig.LockoutDuration {
-			case "":
-				newUserLockoutDuration = oldUserLockoutDuration
+		if apiUserLockoutConfig.LockoutDuration != "" {
+			switch apiUserLockoutConfig.LockoutDuration {
 			case "system":
-				newUserLockoutDuration = time.Duration(0)
+				defer rollback(&mountEntry.Config.UserLockoutConfig.LockoutDuration, time.Duration(0), &success)()
 			default:
-				tmpUserLockoutDuration, err := parseutil.ParseDurationSecond(apiuserLockoutConfig.LockoutDuration)
+				tmpUserLockoutDuration, err := parseutil.ParseDurationSecond(apiUserLockoutConfig.LockoutDuration)
 				if err != nil {
 					return handleError(err)
 				}
-				newUserLockoutDuration = tmpUserLockoutDuration
-
+				defer rollback(&mountEntry.Config.UserLockoutConfig.LockoutDuration, tmpUserLockoutDuration, &success)()
 			}
-			mountEntry.Config.UserLockoutConfig.LockoutDuration = newUserLockoutDuration
 		}
 
-		if apiuserLockoutConfig.LockoutCounterResetDuration != "" {
-			oldUserLockoutCounterReset = mountEntry.Config.UserLockoutConfig.LockoutCounterReset
-			switch apiuserLockoutConfig.LockoutCounterResetDuration {
-			case "":
-				newUserLockoutCounterReset = oldUserLockoutCounterReset
+		if apiUserLockoutConfig.LockoutCounterResetDuration != "" {
+			switch apiUserLockoutConfig.LockoutCounterResetDuration {
 			case "system":
-				newUserLockoutCounterReset = time.Duration(0)
+				defer rollback(&mountEntry.Config.UserLockoutConfig.LockoutCounterReset, time.Duration(0), &success)()
 			default:
-				tmpUserLockoutCounterReset, err := parseutil.ParseDurationSecond(apiuserLockoutConfig.LockoutCounterResetDuration)
+				tmpUserLockoutCounterReset, err := parseutil.ParseDurationSecond(apiUserLockoutConfig.LockoutCounterResetDuration)
 				if err != nil {
 					return handleError(err)
 				}
-				newUserLockoutCounterReset = tmpUserLockoutCounterReset
-			}
-
-			mountEntry.Config.UserLockoutConfig.LockoutCounterReset = newUserLockoutCounterReset
-		}
-
-		if apiuserLockoutConfig.DisableLockout != nil {
-			oldUserLockoutDisable = mountEntry.Config.UserLockoutConfig.DisableLockout
-			userLockoutDisable := apiuserLockoutConfig.DisableLockout
-			mountEntry.Config.UserLockoutConfig.DisableLockout = *userLockoutDisable
-		}
-
-		// Update the mount table
-		if len(userLockoutConfigMap) > 0 {
-			switch {
-			case strings.HasPrefix(path, "auth/"):
-				err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-			default:
-				err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-			}
-			if err != nil {
-				mountEntry.Config.UserLockoutConfig.LockoutCounterReset = oldUserLockoutCounterReset
-				mountEntry.Config.UserLockoutConfig.LockoutThreshold = oldUserLockoutThreshold
-				mountEntry.Config.UserLockoutConfig.LockoutDuration = oldUserLockoutDuration
-				mountEntry.Config.UserLockoutConfig.DisableLockout = oldUserLockoutDisable
-				return handleError(err)
-			}
-			if b.Core.logger.IsInfo() {
-				b.Core.logger.Info("tuning of user_lockout_config successful", "path", path)
+				defer rollback(&mountEntry.Config.UserLockoutConfig.LockoutCounterReset, tmpUserLockoutCounterReset, &success)()
 			}
 		}
 
+		if apiUserLockoutConfig.DisableLockout != nil {
+			defer rollback(&mountEntry.Config.UserLockoutConfig.DisableLockout, *apiUserLockoutConfig.DisableLockout, &success)()
+		}
 	}
+
 	if rawVal, ok := data.GetOk("description"); ok {
-		description := rawVal.(string)
-
-		oldDesc := mountEntry.Description
-		mountEntry.Description = description
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Description = oldDesc
-			return handleError(err)
-		}
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of description successful", "path", path, "description", description)
-		}
+		defer rollback(&mountEntry.Description, rawVal.(string), &success)()
 	}
 
 	if rawVal, ok := data.GetOk("plugin_version"); ok {
@@ -1795,128 +1746,48 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 		version = "v" + semanticVersion.String()
 
-		// Lookup the version to ensure it exists in the catalog before committing.
 		pluginType := consts.PluginTypeSecrets
-		if strings.HasPrefix(path, "auth/") {
+		if isAuth {
 			pluginType = consts.PluginTypeCredential
 		}
-		_, err = b.System().LookupPluginVersion(ctx, mountEntry.Type, pluginType, version)
-		if err != nil {
+
+		// Lookup the version to ensure it exists in the catalog before committing.
+		if _, err = b.System().LookupPluginVersion(ctx, mountEntry.Type, pluginType, version); err != nil {
 			return handleError(err)
 		}
 
-		oldVersion := mountEntry.Version
-		mountEntry.Version = version
-
-		// Update the mount table
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Version = oldVersion
-			return handleError(err)
-		}
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of version successful", "path", path, "version", version)
-		}
+		defer rollback(&mountEntry.Version, version, &success)()
 	}
 
 	if rawVal, ok := data.GetOk("audit_non_hmac_request_keys"); ok {
-		auditNonHMACRequestKeys := rawVal.([]string)
-
-		oldVal := mountEntry.Config.AuditNonHMACRequestKeys
-		mountEntry.Config.AuditNonHMACRequestKeys = auditNonHMACRequestKeys
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.AuditNonHMACRequestKeys = oldVal
-			return handleError(err)
-		}
-
-		mountEntry.SyncCache()
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of audit_non_hmac_request_keys successful", "path", path)
-		}
+		defer rollback(&mountEntry.Config.AuditNonHMACRequestKeys, rawVal.([]string), &success)()
 	}
 
 	if rawVal, ok := data.GetOk("audit_non_hmac_response_keys"); ok {
-		auditNonHMACResponseKeys := rawVal.([]string)
-
-		oldVal := mountEntry.Config.AuditNonHMACResponseKeys
-		mountEntry.Config.AuditNonHMACResponseKeys = auditNonHMACResponseKeys
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.AuditNonHMACResponseKeys = oldVal
-			return handleError(err)
-		}
-
-		mountEntry.SyncCache()
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of audit_non_hmac_response_keys successful", "path", path)
-		}
+		defer rollback(&mountEntry.Config.AuditNonHMACResponseKeys, rawVal.([]string), &success)()
 	}
 
 	if rawVal, ok := data.GetOk("listing_visibility"); ok {
-		lvString := rawVal.(string)
-		listingVisibility := ListingVisibilityType(lvString)
+		listingVisibility := ListingVisibilityType(rawVal.(string))
 
 		if err := checkListingVisibility(listingVisibility); err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid listing_visibility %s", listingVisibility)), nil
+			return logical.ErrorResponse("invalid listing_visibility %s", listingVisibility), nil
 		}
 
-		oldVal := mountEntry.Config.ListingVisibility
-		mountEntry.Config.ListingVisibility = listingVisibility
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.ListingVisibility = oldVal
-			return handleError(err)
-		}
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of listing_visibility successful", "path", path)
-		}
+		defer rollback(&mountEntry.Config.ListingVisibility, listingVisibility, &success)()
 	}
 
 	if rawVal, ok := data.GetOk("token_type"); ok {
-		if !strings.HasPrefix(path, "auth/") {
-			return logical.ErrorResponse(fmt.Sprintf("'token_type' can only be modified on auth mounts")), logical.ErrInvalidRequest
+		if !isAuth {
+			return logical.ErrorResponse("'token_type' can only be modified on auth mounts"), logical.ErrInvalidRequest
 		}
 		if mountEntry.Type == mountTypeToken || mountEntry.Type == mountTypeNSToken {
-			return logical.ErrorResponse(fmt.Sprintf("'token_type' cannot be set for 'token' or 'ns_token' auth mounts")), logical.ErrInvalidRequest
+			return logical.ErrorResponse("'token_type' cannot be set for 'token' or 'ns_token' auth mounts"), logical.ErrInvalidRequest
 		}
 
 		tokenType := logical.TokenTypeDefaultService
-		ttString := rawVal.(string)
 
-		switch ttString {
+		switch rawVal.(string) {
 		case "", "default-service":
 		case "default-batch":
 			tokenType = logical.TokenTypeDefaultBatch
@@ -1925,187 +1796,111 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		case "batch":
 			tokenType = logical.TokenTypeBatch
 		default:
-			return logical.ErrorResponse(fmt.Sprintf(
-				"invalid value for 'token_type'")), logical.ErrInvalidRequest
+			return logical.ErrorResponse("invalid value for 'token_type'"), logical.ErrInvalidRequest
 		}
 
-		oldVal := mountEntry.Config.TokenType
-		mountEntry.Config.TokenType = tokenType
-
-		// Update the mount table
-		if err := b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID); err != nil {
-			mountEntry.Config.TokenType = oldVal
-			return handleError(err)
-		}
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of token_type successful", "path", path, "token_type", ttString)
-		}
+		defer rollback(&mountEntry.Config.TokenType, tokenType, &success)()
 	}
 
 	if rawVal, ok := data.GetOk("passthrough_request_headers"); ok {
-		headers := rawVal.([]string)
-
-		oldVal := mountEntry.Config.PassthroughRequestHeaders
-		mountEntry.Config.PassthroughRequestHeaders = headers
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.PassthroughRequestHeaders = oldVal
-			return handleError(err)
-		}
-
-		mountEntry.SyncCache()
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of passthrough_request_headers successful", "path", path)
-		}
+		defer rollback(&mountEntry.Config.PassthroughRequestHeaders, rawVal.([]string), &success)()
 	}
 
 	if rawVal, ok := data.GetOk("allowed_response_headers"); ok {
-		headers := rawVal.([]string)
-		oldVal := mountEntry.Config.AllowedResponseHeaders
-		mountEntry.Config.AllowedResponseHeaders = headers
-
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.AllowedResponseHeaders = oldVal
-			return handleError(err)
-		}
-
-		mountEntry.SyncCache()
-
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of allowed_response_headers successful", "path", path)
-		}
+		defer rollback(&mountEntry.Config.AllowedResponseHeaders, rawVal.([]string), &success)()
 	}
 
 	if rawVal, ok := data.GetOk("allowed_managed_keys"); ok {
-		allowedManagedKeys := rawVal.([]string)
+		defer rollback(&mountEntry.Config.AllowedManagedKeys, rawVal.([]string), &success)()
+	}
 
-		oldVal := mountEntry.Config.AllowedManagedKeys
-		mountEntry.Config.AllowedManagedKeys = allowedManagedKeys
+	var kvUpgrade bool
+	var meVersion, optVersion int64
+	if optionsRaw, ok := data.GetOk("options"); ok {
+		options := optionsRaw.(map[string]string)
+		if len(options) > 0 {
+			b.Core.logger.Info("mount tuning of options", "path", path, "options", options)
 
-		// Update the mount table
-		var err error
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Config.AllowedManagedKeys = oldVal
-			return handleError(err)
-		}
+			// The version options should only apply to the KV mount, check that first
+			if v, ok := options["version"]; ok {
+				var err error
+				// Special case to make sure we can not disable versioning once it's
+				// enabled. If the kv backend suports downgrading this can be removed.
+				meVersion, err = parseutil.ParseInt(mountEntry.Options["version"])
+				if err != nil {
+					return handleError(fmt.Errorf("unable to parse mount entry: %w", err))
+				}
+				optVersion, err := parseutil.ParseInt(v)
+				if err != nil {
+					return handleError(fmt.Errorf("unable to parse options: %w", err))
+				}
 
-		mountEntry.SyncCache()
+				// Only accept valid versions
+				switch optVersion {
+				case 1:
+				case 2:
+				default:
+					return logical.ErrorResponse("invalid version provided: %d", optVersion), logical.ErrInvalidRequest
+				}
 
-		if b.Core.logger.IsInfo() {
-			b.Core.logger.Info("mount tuning of allowed_managed_keys successful", "path", path)
+				if meVersion > optVersion {
+					// Return early if version option asks for a downgrade
+					return logical.ErrorResponse("cannot downgrade mount from version %d", meVersion), logical.ErrInvalidRequest
+				}
+				if meVersion < optVersion {
+					kvUpgrade = true
+				}
+			}
+
+			newOptions := make(map[string]string)
+			// Upsert options value to a copy of the existing mountEntry's options
+			maps.Copy(newOptions, mountEntry.Options)
+
+			for k, v := range options {
+				// If the value of the provided option is empty, delete the key
+				// We special-case the version value here to guard against KV
+				// downgrades, but this piece could potentially be refactored
+				// in the future to be non-KV specific.
+				if len(v) == 0 && k != "version" {
+					delete(newOptions, k)
+				} else {
+					newOptions[k] = v
+				}
+			}
+
+			defer rollback(&mountEntry.Options, newOptions, &success)()
 		}
 	}
 
 	var err error
-	var resp *logical.Response
-	var options map[string]string
-	if optionsRaw, ok := data.GetOk("options"); ok {
-		options = optionsRaw.(map[string]string)
+	if isAuth {
+		err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
+	} else {
+		err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
 	}
 
-	if len(options) > 0 {
-		b.Core.logger.Info("mount tuning of options", "path", path, "options", options)
-		newOptions := make(map[string]string)
-		var kvUpgraded bool
+	if err != nil {
+		b.Backend.Logger().Error("tuning failed", "path", path, "error", err)
+		return handleError(err)
+	}
+	success = true
 
-		// The version options should only apply to the KV mount, check that first
-		if v, ok := options["version"]; ok {
-			// Special case to make sure we can not disable versioning once it's
-			// enabled. If the vkv backend suports downgrading this can be removed.
-			meVersion, err := parseutil.ParseInt(mountEntry.Options["version"])
-			if err != nil {
-				return nil, fmt.Errorf("unable to parse mount entry: %w", err)
-			}
-			optVersion, err := parseutil.ParseInt(v)
-			if err != nil {
-				return handleError(fmt.Errorf("unable to parse options: %w", err))
-			}
-
-			// Only accept valid versions
-			switch optVersion {
-			case 1:
-			case 2:
-			default:
-				return logical.ErrorResponse(fmt.Sprintf("invalid version provided: %d", optVersion)), logical.ErrInvalidRequest
-			}
-
-			if meVersion > optVersion {
-				// Return early if version option asks for a downgrade
-				return logical.ErrorResponse(fmt.Sprintf("cannot downgrade mount from version %d", meVersion)), logical.ErrInvalidRequest
-			}
-			if meVersion < optVersion {
-				kvUpgraded = true
-				resp = &logical.Response{}
-				resp.AddWarning(fmt.Sprintf("Upgrading mount from version %d to version %d. This mount will be unavailable for a brief period and will resume service shortly.", meVersion, optVersion))
-			}
-		}
-
-		// Upsert options value to a copy of the existing mountEntry's options
-		for k, v := range mountEntry.Options {
-			newOptions[k] = v
-		}
-		for k, v := range options {
-			// If the value of the provided option is empty, delete the key We
-			// special-case the version value here to guard against KV downgrades, but
-			// this piece could potentially be refactored in the future to be non-KV
-			// specific.
-			if len(v) == 0 && k != "version" {
-				delete(newOptions, k)
-			} else {
-				newOptions[k] = v
-			}
-		}
-
-		// Update the mount table
-		oldVal := mountEntry.Options
-		mountEntry.Options = newOptions
-		switch {
-		case strings.HasPrefix(path, "auth/"):
-			err = b.Core.persistAuth(ctx, nil, b.Core.auth, &mountEntry.Local, mountEntry.UUID)
-		default:
-			err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &mountEntry.Local, mountEntry.UUID)
-		}
-		if err != nil {
-			mountEntry.Options = oldVal
+	// Reload the backend to kick off the upgrade process.
+	// It should only apply to KV backend so we trigger based
+	// on the version logic parsed with options parameter.
+	if kvUpgrade {
+		resp := &logical.Response{}
+		resp.AddWarning(fmt.Sprintf("Upgrading mount from version %d to version %d. This mount will be unavailable for a brief period and will resume service shortly.", meVersion, optVersion))
+		if err := b.Core.reloadBackendCommon(ctx, mountEntry, isAuth); err != nil {
+			b.Core.logger.Error("mount tuning of options: could not reload backend", "error", err, "path", path, "options", mountEntry.Options)
 			return handleError(err)
 		}
-
-		// Reload the backend to kick off the upgrade process. It should only apply to KV backend so we
-		// trigger based on the version logic above.
-		if kvUpgraded {
-			err = b.Core.reloadBackendCommon(ctx, mountEntry, strings.HasPrefix(path, credentialRoutePrefix))
-			if err != nil {
-				b.Core.logger.Error("mount tuning of options: could not reload backend", "error", err, "path", path, "options", options)
-			}
-
-		}
+		// we are returning the warning here with 200 http status code
+		return resp, nil
 	}
 
-	return resp, nil
+	//nolint:nilnil // nil response is a valid 204 status code body
+	return nil, nil
 }
 
 // handleLockedUsersMetricQuery reports the locked user count metrics for this namespace and all child namespaces
@@ -2145,7 +1940,7 @@ func (b *SystemBackend) handleUnlockUser(ctx context.Context, req *logical.Reque
 			logical.ErrInvalidRequest
 	}
 
-	if err := unlockUser(ctx, b.Core, mountAccessor, aliasName); err != nil {
+	if err := b.unlockUser(ctx, mountAccessor, aliasName); err != nil {
 		b.Backend.Logger().Error("unlock user failed", "mount accessor", mountAccessor, "alias identifier", aliasName, "error", err)
 		return handleError(err)
 	}
@@ -2202,8 +1997,7 @@ func (b *SystemBackend) handleLeaseLookupList(ctx context.Context, req *logical.
 	if err != nil {
 		return nil, err
 	}
-	view := b.Core.expiration.leaseView(ns)
-	keys, err := view.List(ctx, prefix)
+	keys, err := b.Core.expiration.leaseView(ns).List(ctx, prefix)
 	if err != nil {
 		b.Backend.Logger().Error("error listing leases", "prefix", prefix, "error", err)
 		return handleErrorNoReadOnlyForward(err)
@@ -2416,7 +2210,7 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 				"unable to parse given auth config information"),
 			logical.ErrInvalidRequest
 	}
-	if configMap != nil && len(configMap) != 0 {
+	if len(configMap) != 0 {
 		err := mapstructure.Decode(configMap, &apiConfig)
 		if err != nil {
 			return logical.ErrorResponse(
@@ -2431,8 +2225,7 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	default:
 		tmpDef, err := parseutil.ParseDurationSecond(apiConfig.DefaultLeaseTTL)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf(
-					"unable to parse default TTL of %s: %s", apiConfig.DefaultLeaseTTL, err)),
+			return logical.ErrorResponse("unable to parse default TTL of %s: %s", apiConfig.DefaultLeaseTTL, err),
 				logical.ErrInvalidRequest
 		}
 		config.DefaultLeaseTTL = tmpDef
@@ -2444,22 +2237,20 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	default:
 		tmpMax, err := parseutil.ParseDurationSecond(apiConfig.MaxLeaseTTL)
 		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf(
-					"unable to parse max TTL of %s: %s", apiConfig.MaxLeaseTTL, err)),
+			return logical.ErrorResponse("unable to parse max TTL of %s: %s", apiConfig.MaxLeaseTTL, err),
 				logical.ErrInvalidRequest
 		}
 		config.MaxLeaseTTL = tmpMax
 	}
 
 	if config.MaxLeaseTTL != 0 && config.DefaultLeaseTTL > config.MaxLeaseTTL {
-		return logical.ErrorResponse(
-				"given default lease TTL greater than given max lease TTL"),
+		return logical.ErrorResponse("given default lease TTL greater than given max lease TTL"),
 			logical.ErrInvalidRequest
 	}
 
 	if config.DefaultLeaseTTL > b.Core.maxLeaseTTL && config.MaxLeaseTTL == 0 {
-		return logical.ErrorResponse(fmt.Sprintf(
-				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds()))),
+		return logical.ErrorResponse(
+				"given default lease TTL greater than system max lease TTL of %d", int(b.Core.maxLeaseTTL.Seconds())),
 			logical.ErrInvalidRequest
 	}
 
@@ -2473,8 +2264,7 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	case "batch":
 		config.TokenType = logical.TokenTypeBatch
 	default:
-		return logical.ErrorResponse(fmt.Sprintf(
-			"invalid value for 'token_type'")), logical.ErrInvalidRequest
+		return logical.ErrorResponse("invalid value for 'token_type'"), logical.ErrInvalidRequest
 	}
 
 	switch logicalType {
@@ -2503,13 +2293,12 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	}
 
 	if options != nil && options["version"] != "" {
-		return logical.ErrorResponse(fmt.Sprintf(
-				"auth method %q does not allow setting a version", logicalType)),
+		return logical.ErrorResponse("auth method %q does not allow setting a version", logicalType),
 			logical.ErrInvalidRequest
 	}
 
 	if err := checkListingVisibility(apiConfig.ListingVisibility); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid listing_visibility %s", apiConfig.ListingVisibility)), nil
+		return logical.ErrorResponse("invalid listing_visibility %s", apiConfig.ListingVisibility), nil
 	}
 	config.ListingVisibility = apiConfig.ListingVisibility
 
@@ -2669,7 +2458,7 @@ func (b *SystemBackend) handlePoliciesList(policyType PolicyType) framework.Oper
 		if err != nil {
 			return nil, err
 		}
-		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, policyType, prefix)
+		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, policyType, prefix, true)
 		if err != nil {
 			return nil, err
 		}
@@ -2706,23 +2495,37 @@ func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.Oper
 			return nil, nil
 		}
 
+		respData := readPolicyResponse(policy)
+
 		// If the request is from sys/policy/ we handle backwards compatibility
-		var respDataPolicyName string
 		if policyType == PolicyTypeACL && strings.HasPrefix(req.Path, "policy") {
-			respDataPolicyName = "rules"
-		} else {
-			respDataPolicyName = "policy"
+			respData["rules"] = respData["policy"]
+			delete(respData, "policy")
 		}
 
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"name":             policy.Name,
-				respDataPolicyName: policy.Raw,
-			},
-		}
-
-		return resp, nil
+		return &logical.Response{
+			Data: respData,
+		}, nil
 	}
+}
+
+func readPolicyResponse(policy *Policy) map[string]interface{} {
+	data := map[string]interface{}{
+		"name":         policy.Name,
+		"version":      policy.DataVersion,
+		"cas_required": policy.CASRequired,
+		"policy":       policy.Raw,
+	}
+
+	if !policy.Expiration.IsZero() {
+		data["expiration"] = policy.Expiration
+	}
+
+	if !policy.Modified.IsZero() {
+		data["modified"] = policy.Modified
+	}
+
+	return data
 }
 
 // handlePoliciesSet handles the "/sys/policy/<name>" and "/sys/policies/<type>/<name>" endpoints to set a policy
@@ -2765,6 +2568,20 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 			policy.Raw = string(polBytes)
 		}
 
+		expirationRaw, expirationOk := data.GetOk("expiration")
+		ttlRaw, ttlOk := data.GetOk("ttl")
+		if expirationOk && ttlOk {
+			return logical.ErrorResponse("cannot supply both 'expiration' and 'ttl' for policies"), nil
+		} else if expirationOk {
+			policy.Expiration = expirationRaw.(time.Time)
+		} else if ttlOk {
+			policy.Expiration = time.Now().Add(time.Duration(ttlRaw.(int)) * time.Second)
+		}
+
+		if !policy.Expiration.IsZero() && !time.Now().Before(policy.Expiration) {
+			return logical.ErrorResponse("refusing to update policy as expiration time has already elapsed"), nil
+		}
+
 		switch policyType {
 		case PolicyTypeACL:
 			p, err := ParseACLPolicy(ns, policy.Raw)
@@ -2778,8 +2595,18 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 			return logical.ErrorResponse("unknown policy type"), nil
 		}
 
+		var cas *int
+		casRaw, casOk := data.GetOk("cas")
+		if casOk {
+			cas = new(int)
+			*cas = casRaw.(int)
+		}
+
+		casRequired := data.Get("cas_required").(bool)
+		policy.CASRequired = casRequired
+
 		// Update the policy
-		if err := b.Core.policyStore.SetPolicy(ctx, policy); err != nil {
+		if err := b.Core.policyStore.SetPolicy(ctx, policy, cas); err != nil {
 			return handleError(err)
 		}
 
@@ -2844,12 +2671,12 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 	// Parse the policy to ensure that it's valid
 	policy, err := random.ParsePolicy(rawPolicy)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("invalid password policy: %s", err))
+		return nil, logical.CodedError(http.StatusBadRequest, "invalid password policy: %s", err)
 	}
 
 	if policy.Length > maxPasswordLength || policy.Length < minPasswordLength {
 		return nil, logical.CodedError(http.StatusBadRequest,
-			fmt.Sprintf("passwords must be between %d and %d characters", minPasswordLength, maxPasswordLength))
+			"passwords must be between %d and %d characters", minPasswordLength, maxPasswordLength)
 	}
 
 	// Attempt to construct a test password from the rules to ensure that the policy isn't impossible
@@ -2858,7 +2685,7 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 	for _, rule := range policy.Rules {
 		charsetRule, ok := rule.(random.CharsetRule)
 		if !ok {
-			return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("unexpected rule type %T", charsetRule))
+			return nil, logical.CodedError(http.StatusBadRequest, "unexpected rule type %T", charsetRule)
 		}
 
 		for j := 0; j < charsetRule.MinLength(); j++ {
@@ -2874,7 +2701,7 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 			}
 			charsetRule, ok := rule.(random.CharsetRule)
 			if !ok {
-				return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("unexpected rule type %T", charsetRule))
+				return nil, logical.CodedError(http.StatusBadRequest, "unexpected rule type %T", charsetRule)
 			}
 
 			charIndex := rand.Intn(len(charsetRule.Chars()))
@@ -2897,13 +2724,13 @@ func (*SystemBackend) handlePoliciesPasswordSet(ctx context.Context, req *logica
 	}
 	entry, err := logical.StorageEntryJSON(getPasswordPolicyKey(policyName), cfg)
 	if err != nil {
-		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Sprintf("unable to save password policy: %s", err))
+		return nil, logical.CodedError(http.StatusInternalServerError, "unable to save password policy: %s", err)
 	}
 
 	err = req.Storage.Put(ctx, entry)
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError,
-			fmt.Sprintf("failed to save policy to storage backend: %s", err))
+			"failed to save policy to storage backend: %s", err)
 	}
 
 	return logical.RespondWithStatusCode(nil, req, http.StatusNoContent)
@@ -2962,7 +2789,7 @@ func (*SystemBackend) handlePoliciesPasswordDelete(ctx context.Context, req *log
 	err := req.Storage.Delete(ctx, getPasswordPolicyKey(policyName))
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError,
-			fmt.Sprintf("failed to delete password policy: %s", err))
+			"failed to delete password policy: %s", err)
 	}
 
 	return nil, nil
@@ -3001,6 +2828,47 @@ func (*SystemBackend) handlePoliciesPasswordGenerate(ctx context.Context, req *l
 		},
 	}
 	return resp, nil
+}
+
+// handlePoliciesDetailedAclList handles the listing of ACL policies with detailed information
+func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		prefix := ""
+		if _, present := data.Schema["name"]; present {
+			prefix = data.Get("name").(string)
+		}
+
+		// Get policies list
+		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, PolicyTypeACL, prefix, true)
+		if err != nil {
+			return nil, err
+		}
+
+		// Add root policy if in root namespace
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if ns.ID == namespace.RootNamespaceID {
+			policies = append(policies, "root")
+		}
+
+		// Get detailed information for each policy
+		policyInfos := make(map[string]interface{})
+		for _, policyName := range policies {
+			policy, err := b.Core.policyStore.GetPolicy(ctx, policyName, PolicyTypeACL)
+			if err != nil {
+				continue
+			}
+			if policy == nil {
+				continue
+			}
+
+			policyInfos[policyName] = readPolicyResponse(policy)
+		}
+
+		return logical.ListResponseWithInfo(policies, policyInfos), nil
+	}
 }
 
 // handleAuditTable handles the "audit" endpoint to provide the audit table
@@ -3057,8 +2925,19 @@ func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Requ
 	description := data.Get("description").(string)
 	options := data.Get("options").(map[string]string)
 
+	conf := b.Core.rawConfig.Load()
+
+	if !conf.UnsafeAllowAPIAuditCreation {
+		return handleError(fmt.Errorf("cannot enable audit device via API; use declarative, config-based audit device management instead"))
+	}
+
+	if _, hasPrefix := options["prefix"]; hasPrefix && !conf.AllowAuditLogPrefixing {
+		return handleError(fmt.Errorf("audit log prefixing is not allowed"))
+	}
+
 	// Create the mount entry
 	me := &MountEntry{
+		// API-created
 		Table:       auditTableType,
 		Path:        path,
 		Type:        backendType,
@@ -3089,7 +2968,7 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 
 	b.Core.auditLock.RLock()
 	table := b.Core.audit.shallowClone()
-	entry, err := table.find(ctx, path)
+	entry, err := table.findByPath(ctx, path)
 	b.Core.auditLock.RUnlock()
 
 	if err != nil {
@@ -3097,6 +2976,10 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 	}
 	if entry == nil {
 		return nil, nil
+	}
+
+	if entry.Table == configAuditTableType {
+		return handleError(errors.New("cannot disable configuration-managed audit device"))
 	}
 
 	// Attempt disable
@@ -3208,96 +3091,6 @@ func (b *SystemBackend) handleKeyStatus(ctx context.Context, req *logical.Reques
 	return resp, nil
 }
 
-// handleKeyRotationConfigRead returns the barrier key rotation config
-func (b *SystemBackend) handleKeyRotationConfigRead(_ context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	// Get the key info
-	rotConfig, err := b.Core.barrier.RotationConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &logical.Response{
-		Data: map[string]interface{}{
-			"max_operations": rotConfig.MaxOperations,
-			"enabled":        !rotConfig.Disabled,
-		},
-	}
-	if rotConfig.Interval > 0 {
-		resp.Data["interval"] = rotConfig.Interval.String()
-	} else {
-		resp.Data["interval"] = 0
-	}
-	return resp, nil
-}
-
-// handleKeyRotationConfigRead returns the barrier key rotation config
-func (b *SystemBackend) handleKeyRotationConfigUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	rotConfig, err := b.Core.barrier.RotationConfig()
-	if err != nil {
-		return nil, err
-	}
-	maxOps, ok, err := data.GetOkErr("max_operations")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.MaxOperations = maxOps.(int64)
-	}
-	interval, ok, err := data.GetOkErr("interval")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.Interval = time.Second * time.Duration(interval.(int))
-	}
-
-	enabled, ok, err := data.GetOkErr("enabled")
-	if err != nil {
-		return nil, err
-	}
-	if ok {
-		rotConfig.Disabled = !enabled.(bool)
-	}
-
-	// Reject out of range settings
-	if rotConfig.Interval < minimumRotationInterval && rotConfig.Interval != 0 {
-		return logical.ErrorResponse("interval must be greater or equal to %s", minimumRotationInterval.String()), logical.ErrInvalidRequest
-	}
-
-	if rotConfig.MaxOperations < absoluteOperationMinimum || rotConfig.MaxOperations > absoluteOperationMaximum {
-		return logical.ErrorResponse("max_operations must be in the range [%d,%d]", absoluteOperationMinimum, absoluteOperationMaximum), logical.ErrInvalidRequest
-	}
-
-	// Store the rotation config
-	err = b.Core.barrier.SetRotationConfig(ctx, rotConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-// handleRotate is used to trigger a key rotation
-func (b *SystemBackend) handleRotate(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	if err := b.rotateBarrierKey(ctx); err != nil {
-		b.Backend.Logger().Error("error handling key rotation", "error", err)
-		return handleError(err)
-	}
-	return nil, nil
-}
-
-func (b *SystemBackend) handleWrappingPubkey(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	x, _ := b.Core.wrappingJWTKey.X.MarshalText()
-	y, _ := b.Core.wrappingJWTKey.Y.MarshalText()
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"jwt_x":     string(x),
-			"jwt_y":     string(y),
-			"jwt_curve": corePrivateKeyTypeP521,
-		},
-	}, nil
-}
-
 func (b *SystemBackend) handleWrappingWrap(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if req.WrapInfo == nil || req.WrapInfo.TTL == 0 {
 		return logical.ErrorResponse("endpoint requires response wrapping to be used"), logical.ErrInvalidRequest
@@ -3347,7 +3140,7 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 		return nil, errors.New("token is not a valid unwrap token")
 	}
 
-	unwrapNS, err := NamespaceByID(ctx, te.NamespaceID, b.Core)
+	unwrapNS, err := b.Core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -3402,12 +3195,12 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 		rawBody := httpResp.Data[logical.HTTPRawBody]
 		if rawBody != nil {
 			// Decode here so that we can audit properly
-			switch rawBody.(type) {
+			switch bod := rawBody.(type) {
 			case string:
 				// Best effort decoding; if this works, the original value was
 				// probably a []byte instead of a string, but was marshaled
 				// when the value was saved, so this restores it as it was
-				decBytes, err := base64.StdEncoding.DecodeString(rawBody.(string))
+				decBytes, err := base64.StdEncoding.DecodeString(bod)
 				if err == nil {
 					// We end up with []byte, will not be HMAC'd
 					resp.Data[logical.HTTPRawBody] = decBytes
@@ -3459,7 +3252,7 @@ func (b *SystemBackend) responseWrappingUnwrap(ctx context.Context, te *logical.
 	if cubbyResp == nil {
 		return "no information found; wrapping token may be from a previous OpenBao version", ErrInternalError
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp.Error().Error(), nil
 	}
 	if cubbyResp.Data == nil {
@@ -3525,7 +3318,7 @@ func (b *SystemBackend) handleMonitor(ctx context.Context, req *logical.Request,
 	lowerLogFormat := strings.ToLower(lf)
 
 	validFormats := []string{"standard", "json"}
-	if !strutil.StrListContains(validFormats, lowerLogFormat) {
+	if !slices.Contains(validFormats, lowerLogFormat) {
 		return logical.ErrorResponse("unknown log format"), nil
 	}
 
@@ -3681,7 +3474,7 @@ func (b *SystemBackend) handleWrappingLookup(ctx context.Context, req *logical.R
 		return nil, errors.New("token is not a valid unwrap token")
 	}
 
-	lookupNS, err := NamespaceByID(ctx, te.NamespaceID, b.Core)
+	lookupNS, err := b.Core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -3704,7 +3497,7 @@ func (b *SystemBackend) handleWrappingLookup(ctx context.Context, req *logical.R
 	if cubbyResp == nil {
 		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
@@ -3785,7 +3578,7 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 	if cubbyResp == nil {
 		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
@@ -3823,7 +3616,7 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 	if cubbyResp == nil {
 		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
-	if cubbyResp != nil && cubbyResp.IsError() {
+	if cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
@@ -3858,14 +3651,14 @@ func (b *SystemBackend) pathHashWrite(ctx context.Context, req *logical.Request,
 
 	input, err := base64.StdEncoding.DecodeString(inputB64)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("unable to decode input as base64: %s", err)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("unable to decode input as base64: %s", err), logical.ErrInvalidRequest
 	}
 
 	switch format {
 	case "hex":
 	case "base64":
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unsupported encoding format %s; must be \"hex\" or \"base64\"", format)), nil
+		return logical.ErrorResponse("unsupported encoding format %s; must be \"hex\" or \"base64\"", format), nil
 	}
 
 	var hf hash.Hash
@@ -3887,7 +3680,7 @@ func (b *SystemBackend) pathHashWrite(ctx context.Context, req *logical.Request,
 	case "sha3-512":
 		hf = sha3.New512()
 	default:
-		return logical.ErrorResponse(fmt.Sprintf("unsupported algorithm %s", algorithm)), nil
+		return logical.ErrorResponse("unsupported algorithm %s", algorithm), nil
 	}
 	hf.Write(input)
 	retBytes := hf.Sum(nil)
@@ -3922,7 +3715,7 @@ func hasMountAccess(ctx context.Context, acl *ACL, path string) bool {
 	// If a policy is giving us direct access to the mount path then we can do
 	// a fast return.
 	capabilities := acl.Capabilities(ctx, ns.TrimmedPath(path))
-	if !strutil.StrListContains(capabilities, DenyCapability) {
+	if !slices.Contains(capabilities, DenyCapability) {
 		return true
 	}
 
@@ -4080,7 +3873,7 @@ func (b *SystemBackend) pathInternalUIMountRead(ctx context.Context, req *logica
 		return nil, logical.ErrPermissionDenied
 	}
 
-	errResp := logical.ErrorResponse(fmt.Sprintf("preflight capability check returned 403, please ensure client's policies grant access to path %q", path))
+	errResp := logical.ErrorResponse("preflight capability check returned 403, please ensure client's policies grant access to path %q", path)
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -4118,6 +3911,47 @@ func (b *SystemBackend) pathInternalUIMountRead(ctx context.Context, req *logica
 	}
 
 	return resp, nil
+}
+
+func (b *SystemBackend) pathInternalUINamespacesRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	// Short-circuit here if there's no client token provided
+	if req.ClientToken == "" {
+		return nil, errors.New("client token empty")
+	}
+
+	// Load the ACL policies so we can check for access and filter namespaces
+	acl, te, entity, _, err := b.Core.fetchACLTokenEntryAndEntity(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if entity != nil && entity.Disabled {
+		b.logger.Warn("permission denied as the entity on the token is disabled")
+		return nil, logical.ErrPermissionDenied
+	}
+	if te != nil && te.EntityID != "" && entity == nil {
+		b.logger.Warn("permission denied as the entity on the token is invalid")
+		return nil, logical.ErrPermissionDenied
+	}
+
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := b.Core.namespaceStore.ListNamespaces(ctx, false, false)
+	if err != nil {
+		return nil, errors.New("failed to list namespaces")
+	}
+
+	var nsList []string
+	for _, entry := range list {
+		if acl != nil && hasMountAccess(ctx, acl, entry.Path) {
+			relativePath := parent.TrimmedPath(entry.Path)
+			nsList = append(nsList, relativePath)
+		}
+	}
+
+	return logical.ListResponse(nsList), nil
 }
 
 func (b *SystemBackend) pathInternalCountersRequests(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -4339,8 +4173,6 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 		return nil, err
 	}
 
-	context := d.Get("context").(string)
-
 	// Set up target document
 	doc := framework.NewOASDocument(version.Version)
 
@@ -4462,9 +4294,7 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 			}
 
 			// Merge backend schema components
-			for e, schema := range backendDoc.Components.Schemas {
-				doc.Components.Schemas[e] = schema
-			}
+			maps.Copy(doc.Components.Schemas, backendDoc.Components.Schemas)
 		}
 		return nil
 	}
@@ -4475,8 +4305,6 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 	if err := procMountGroup("auth", "auth/"); err != nil {
 		return nil, err
 	}
-
-	doc.CreateOperationIDs(context)
 
 	buf, err := json.Marshal(doc)
 	if err != nil {
@@ -4495,21 +4323,22 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 }
 
 type SealStatusResponse struct {
-	Type         string   `json:"type"`
-	Initialized  bool     `json:"initialized"`
-	Sealed       bool     `json:"sealed"`
-	T            int      `json:"t"`
-	N            int      `json:"n"`
-	Progress     int      `json:"progress"`
-	Nonce        string   `json:"nonce"`
-	Version      string   `json:"version"`
-	BuildDate    string   `json:"build_date"`
-	Migration    bool     `json:"migration"`
-	ClusterName  string   `json:"cluster_name,omitempty"`
-	ClusterID    string   `json:"cluster_id,omitempty"`
-	RecoverySeal bool     `json:"recovery_seal"`
-	StorageType  string   `json:"storage_type,omitempty"`
-	Warnings     []string `json:"warnings,omitempty"`
+	Type             string   `json:"type"`
+	Initialized      bool     `json:"initialized"`
+	Sealed           bool     `json:"sealed"`
+	T                int      `json:"t"`
+	N                int      `json:"n"`
+	Progress         int      `json:"progress"`
+	Nonce            string   `json:"nonce"`
+	Version          string   `json:"version"`
+	BuildDate        string   `json:"build_date"`
+	Migration        bool     `json:"migration"`
+	ClusterName      string   `json:"cluster_name,omitempty"`
+	ClusterID        string   `json:"cluster_id,omitempty"`
+	RecoverySeal     bool     `json:"recovery_seal"`
+	RecoverySealType string   `json:"recovery_seal_type,omitempty"`
+	StorageType      string   `json:"storage_type,omitempty"`
+	Warnings         []string `json:"warnings,omitempty"`
 }
 
 func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResponse, error) {
@@ -4521,8 +4350,10 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 	}
 
 	var sealConfig *SealConfig
+	var recoveryType string
 	if core.SealAccess().RecoveryKeySupported() {
 		sealConfig, err = core.SealAccess().RecoveryConfig(ctx)
+		recoveryType = core.SealAccess().RecoveryType()
 	} else {
 		sealConfig, err = core.SealAccess().BarrierConfig(ctx)
 	}
@@ -4532,13 +4363,14 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 
 	if sealConfig == nil {
 		s := &SealStatusResponse{
-			Type:         core.SealAccess().BarrierType().String(),
-			Initialized:  initialized,
-			Sealed:       true,
-			RecoverySeal: core.SealAccess().RecoveryKeySupported(),
-			StorageType:  core.StorageType(),
-			Version:      version.GetVersion().VersionNumber(),
-			BuildDate:    version.BuildDate,
+			Type:             core.SealAccess().BarrierType().String(),
+			Initialized:      initialized,
+			Sealed:           true,
+			RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
+			RecoverySealType: recoveryType,
+			StorageType:      core.StorageType(),
+			Version:          version.GetVersion().VersionNumber(),
+			BuildDate:        version.BuildDate,
 		}
 
 		return s, nil
@@ -4561,20 +4393,21 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 	progress, nonce := core.SecretProgress(lock)
 
 	s := &SealStatusResponse{
-		Type:         sealConfig.Type,
-		Initialized:  initialized,
-		Sealed:       sealed,
-		T:            sealConfig.SecretThreshold,
-		N:            sealConfig.SecretShares,
-		Progress:     progress,
-		Nonce:        nonce,
-		Version:      version.GetVersion().VersionNumber(),
-		BuildDate:    version.BuildDate,
-		Migration:    core.IsInSealMigrationMode(lock) && !core.IsSealMigrated(lock),
-		ClusterName:  clusterName,
-		ClusterID:    clusterID,
-		RecoverySeal: core.SealAccess().RecoveryKeySupported(),
-		StorageType:  core.StorageType(),
+		Type:             core.SealAccess().BarrierType().String(),
+		Initialized:      initialized,
+		Sealed:           sealed,
+		T:                sealConfig.SecretThreshold,
+		N:                sealConfig.SecretShares,
+		Progress:         progress,
+		Nonce:            nonce,
+		Version:          version.GetVersion().VersionNumber(),
+		BuildDate:        version.BuildDate,
+		Migration:        core.IsInSealMigrationMode(lock) && !core.IsSealMigrated(lock),
+		ClusterName:      clusterName,
+		ClusterID:        clusterID,
+		RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
+		RecoverySealType: recoveryType,
+		StorageType:      core.StorageType(),
 	}
 
 	return s, nil
@@ -4666,7 +4499,7 @@ func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
 	// Rotate to the new term
 	newTerm, err := b.Core.barrier.Rotate(ctx, b.Core.secureRandomReader)
 	if err != nil {
-		return errwrap.Wrap(errors.New("failed to create new encryption key"), err)
+		return fmt.Errorf("failed to create new encryption key: %w", err)
 	}
 	b.Backend.Logger().Info("installed new encryption key")
 
@@ -4690,10 +4523,10 @@ func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
 	// replication
 	if err := b.Core.barrier.Put(ctx, &logical.StorageEntry{
 		Key:   coreKeyringCanaryPath,
-		Value: []byte(fmt.Sprintf("new-rotation-term-%d", newTerm)),
+		Value: fmt.Appendf(nil, "new-rotation-term-%d", newTerm),
 	}); err != nil {
 		b.Core.logger.Error("error saving keyring canary", "error", err)
-		return errwrap.Wrap(errors.New("failed to save keyring canary"), err)
+		return fmt.Errorf("failed to save keyring canary: %w", err)
 	}
 
 	return nil
@@ -4801,7 +4634,7 @@ func (b *SystemBackend) handleLoggersWrite(ctx context.Context, req *logical.Req
 
 	level, err := logging.ParseLogLevel(logLevel)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid level provided: %s", err.Error())), nil
+		return logical.ErrorResponse("invalid level provided: %s", err.Error()), nil
 	}
 
 	b.Core.SetLogLevel(level)
@@ -4812,7 +4645,7 @@ func (b *SystemBackend) handleLoggersWrite(ctx context.Context, req *logical.Req
 func (b *SystemBackend) handleLoggersDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	level, err := logging.ParseLogLevel(b.Core.logLevel)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("log level from config is invalid: %s", err.Error())), nil
+		return logical.ErrorResponse("log level from config is invalid: %s", err.Error()), nil
 	}
 
 	b.Core.SetLogLevel(level)
@@ -4890,12 +4723,12 @@ func (b *SystemBackend) handleLoggersByNameWrite(ctx context.Context, req *logic
 
 	level, err := logging.ParseLogLevel(logLevel)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid level provided: %s", err.Error())), nil
+		return logical.ErrorResponse("invalid level provided: %s", err.Error()), nil
 	}
 
 	success := b.Core.SetLogLevelByName(name, level)
 	if !success {
-		return logical.ErrorResponse(fmt.Sprintf("logger %q not found", name)), nil
+		return logical.ErrorResponse("logger %q not found", name), nil
 	}
 
 	return nil, nil
@@ -4909,7 +4742,7 @@ func (b *SystemBackend) handleLoggersByNameDelete(ctx context.Context, req *logi
 
 	level, err := logging.ParseLogLevel(b.Core.logLevel)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("log level from config is invalid: %s", err.Error())), nil
+		return logical.ErrorResponse("log level from config is invalid: %s", err.Error()), nil
 	}
 
 	name := nameRaw.(string)
@@ -4919,7 +4752,7 @@ func (b *SystemBackend) handleLoggersByNameDelete(ctx context.Context, req *logi
 
 	success := b.Core.SetLogLevelByName(name, level)
 	if !success {
-		return logical.ErrorResponse(fmt.Sprintf("logger %q not found", name)), nil
+		return logical.ErrorResponse("logger %q not found", name), nil
 	}
 
 	return nil, nil
@@ -4930,9 +4763,7 @@ func sanitizePath(path string) string {
 		path += "/"
 	}
 
-	if strings.HasPrefix(path, "/") {
-		path = path[1:]
-	}
+	path = strings.TrimPrefix(path, "/")
 
 	return path
 }
@@ -4957,18 +4788,6 @@ as well as perform core operations.
 
 // sysHelp is all the help text for the sys backend.
 var sysHelp = map[string][2]string{
-	"license": {
-		"Sets the license of the server.",
-		`
-The path responds to the following HTTP methods.
-
-    GET /
-        Returns information on the installed license
-
-    POST
-        Sets the license for the server
-	`,
-	},
 	"config/cors": {
 		"Configures or returns the current configuration of CORS settings.",
 		`
@@ -5482,13 +5301,6 @@ Enable a new audit backend or disable an existing backend.
 		`,
 	},
 
-	"rotate-config": {
-		"Configures settings related to the backend encryption key management.",
-		`
-		Configures settings related to the automatic rotation of the backend encryption key.
-		`,
-	},
-
 	"rotation-enabled": {
 		"Whether automatic rotation is enabled.",
 		"",
@@ -5501,16 +5313,54 @@ Enable a new audit backend or disable an existing backend.
 		"How long after installation of an active key term that the key will be automatically rotated.",
 		"",
 	},
-	"rotate": {
+
+	"rotate-keyring": {
 		"Rotates the backend encryption key used to persist data.",
 		`
 		Rotate generates a new encryption key which is used to encrypt all
-		data going to the storage backend. The old encryption keys are kept so
-		that data encrypted using those keys can still be decrypted.
+		data going to the storage backend. The old encryption keys are kept
+		so that data encrypted using those keys can still be decrypted.
+		`,
+	},
+	"rotate-keyring-config": {
+		"Configures settings related to the backend encryption key management.",
+		`
+		Configures settings related to the automatic rotation of the backend
+		encryption key.
 		`,
 	},
 
-	"rekey_backup": {
+	"rotate-root": {
+		"Perform a root key rotation without requiring key shares to be provided.",
+		"",
+	},
+
+	"rotate-init": {
+		`Initialize, read status or cancel the process of the rotation of
+		the root or recovery key.
+		`,
+		"",
+	},
+
+	"rotate-update": {
+		"Progress the rotation process by providing a single key share.",
+		`This endpoint is used to enter a single key share to progress the
+		rotation of the recovery or root key. If the threshold number of key
+		shares is reached, rotation will be completed. Otherwise, this API
+		must be called multiple times until that threshold is met.
+		The rotation nonce operation must be provided with each call.
+		On the final call, any new key shares will be returned immediately.
+		`,
+	},
+
+	"rotate-verify": {
+		`Read status of, progress or cancel the verification process of the
+		rotation attempt.
+		`,
+		"",
+	},
+
+	"rotate-backup": {
 		"Allows fetching or deleting the backup of the rotated unseal keys.",
 		"",
 	},
@@ -5705,10 +5555,6 @@ This path responds to the following HTTP methods.
 		"Write, Read, and Delete data directly in the Storage backend.",
 		"",
 	},
-	"internal-ui-feature-flags": {
-		"Enabled feature flags. Internal API; its location, inputs, and outputs may change.",
-		"",
-	},
 	"internal-ui-mounts": {
 		"Information about mounts returned according to their tuned visibility. Internal API; its location, inputs, and outputs may change.",
 		"",
@@ -5785,6 +5631,55 @@ This path responds to the following HTTP methods.
 
     LIST /
         Returns a list historical version changes sorted by installation time in ascending order.
+		`,
+	},
+
+	"list-namespaces": {
+		"List namespaces.",
+		`
+This path responds to the following HTTP methods.
+
+	LIST /
+		List namespaces.
+
+	SCAN /
+		Scan (recursively list) namespaces.
+		`,
+	},
+	"namespaces": {
+		"Create, read, update and delete namespaces.",
+		`
+This path responds to the following HTTP methods.
+
+	GET /<path>
+		Retrieve a namespace.
+
+	PUT /<path>
+		Create or update a namespace.
+
+	PATCH /<path>
+		Update a namespace's custom metadata.
+
+	DELETE /<path>
+		Delete a namespace.
+		`,
+	},
+	"namespaces-lock": {
+		"Lock a namespace.",
+		`
+This path responds to the following HTTP methods.
+
+	PUT /<path>
+		Lock the API for a namespace.
+		`,
+	},
+	"namespaces-unlock": {
+		"Unlock a namespace.",
+		`
+This path responds to the following HTTP methods.
+
+	PUT /<path>
+		Unlock the API for a namespace.
 		`,
 	},
 }

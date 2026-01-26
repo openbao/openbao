@@ -5,11 +5,7 @@ package ssh
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"net"
@@ -32,27 +28,6 @@ var (
 	errIssuerNameInUse   = errutil.UserError{Err: "issuer name already in use"}
 	errIssuerNameIsEmpty = errutil.UserError{Err: "expected non-empty issuer name"}
 )
-
-// Creates a new RSA key pair with the given key length. The private key will be
-// of pem format and the public key will be of OpenSSH format.
-func generateRSAKeys(keyBits int) (publicKeyRsa string, privateKeyRsa string, err error) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, keyBits)
-	if err != nil {
-		return "", "", fmt.Errorf("error generating RSA key-pair: %w", err)
-	}
-
-	privateKeyRsa = string(pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
-	}))
-
-	sshPublicKey, err := ssh.NewPublicKey(privateKey.Public())
-	if err != nil {
-		return "", "", fmt.Errorf("error generating RSA key-pair: %w", err)
-	}
-	publicKeyRsa = "ssh-rsa " + base64.StdEncoding.EncodeToString(sshPublicKey.Marshal())
-	return
-}
 
 // Takes an IP address and role name and checks if the IP is part
 // of CIDR blocks belonging to the role.
@@ -161,7 +136,7 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (publicKey stri
 	case ok && generateSigningKeyRaw.(bool):
 		if publicKey != "" || privateKey != "" {
 			err = errutil.UserError{Err: "public_key and private_key must not be set when generate_signing_key is set to true"}
-			return
+			return publicKey, privateKey, generateSigningKey, err
 		}
 		generateSigningKey = true
 	// generation of signing key explicitly set to false, or not set and we have both a public and private key
@@ -169,13 +144,13 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (publicKey stri
 		_, err = parsePublicSSHKey(publicKey)
 		if err != nil {
 			err = errutil.UserError{Err: fmt.Sprintf("could not parse public_key provided value: %v", err)}
-			return
+			return publicKey, privateKey, generateSigningKey, err
 		}
 
 		_, err = ssh.ParsePrivateKey([]byte(privateKey))
 		if err != nil {
 			err = errutil.UserError{Err: fmt.Sprintf("could not parse private_key provided value: %v", err)}
-			return
+			return publicKey, privateKey, generateSigningKey, err
 		}
 	// generation of signing key not set and no key material provided so generate
 	case publicKey == "" && privateKey == "" && !ok:
@@ -183,21 +158,21 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (publicKey stri
 	// generation of signing key set as false but not key material provided
 	case publicKey == "" && privateKey == "" && ok && !generateSigningKeyRaw.(bool):
 		err = errutil.UserError{Err: "missing public_key"}
-		return
+		return publicKey, privateKey, generateSigningKey, err
 	// generation of signing key not set and only one key material provided
 	default:
-		err = errutil.UserError{Err: fmt.Sprintf("only one of public_key and private_key set; both must be set to use, or both must be blank to auto-generate")}
-		return
+		err = errutil.UserError{Err: "only one of public_key and private_key set; both must be set to use, or both must be blank to auto-generate"}
+		return publicKey, privateKey, generateSigningKey, err
 	}
 
 	if generateSigningKey {
 		keyType := data.Get("key_type").(string)
 		keyBits := data.Get("key_bits").(int)
 
-		publicKey, privateKey, err = generateSSHKeyPair(b.Backend.GetRandomReader(), keyType, keyBits)
+		publicKey, privateKey, err = generateSSHKeyPair(b.GetRandomReader(), keyType, keyBits)
 		if err != nil {
 			err = errutil.InternalError{Err: err.Error()}
-			return
+			return publicKey, privateKey, generateSigningKey, err
 		}
 	}
 
@@ -205,7 +180,7 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (publicKey stri
 		err = errutil.InternalError{Err: "failed to generate or parse the keys"}
 	}
 
-	return
+	return publicKey, privateKey, generateSigningKey, err
 }
 
 func getIssuerRef(data *framework.FieldData) string {

@@ -26,7 +26,18 @@ function writeKeysFile(unsealKeys, rootToken, filePath) {
   keys.unsealKeys = unsealKeys;
   keys.rootToken = rootToken;
 
-  fs.writeFile(filePath, `export default ${JSON.stringify(keys, null, 2)}`, (err) => {
+  // Format with single quotes and proper spacing to match ESLint rules
+  // Use single line array format when there's only one key
+  const keysArray =
+    unsealKeys.length === 1 ? `['${unsealKeys[0]}']` : `[\n    '${unsealKeys.join("',\n    '")}',\n  ]`;
+
+  const formattedKeys = `export default {
+  unsealKeys: ${keysArray},
+  rootToken: '${rootToken}',
+};
+`;
+
+  fs.writeFile(filePath, formattedKeys, (err) => {
     if (err) throw err;
   });
 }

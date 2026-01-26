@@ -12,8 +12,9 @@ import (
 	"testing"
 	"time"
 
-	josejwt "github.com/go-jose/go-jose/v3/jwt"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -38,7 +39,7 @@ func newK8sClient(t *testing.T, token string) kubernetes.Interface {
 		Host:        os.Getenv("KUBE_HOST"),
 		BearerToken: token,
 	}
-	config.TLSClientConfig.CAData = append(config.TLSClientConfig.CAData, []byte(os.Getenv("KUBERNETES_CA"))...)
+	config.CAData = append(config.CAData, []byte(os.Getenv("KUBERNETES_CA"))...)
 
 	client, err := kubernetes.NewForConfig(&config)
 	if err != nil {
@@ -105,6 +106,7 @@ func testClusterRoleBindingToken(t *testing.T, credsResponse *api.Secret) {
 
 	canListPods, err = tryListPods(t, "default", token, 0)
 	assert.NoError(t, err)
+	assert.True(t, canListPods)
 
 	canListDeployments, err := tryListDeployments(t, "default", token)
 	assert.Errorf(t, err, `pods is forbidden: User "system:serviceaccount:test:%s" cannot list resource "pods" in API group "" in the namespace "default"`, serviceAccountName)
@@ -124,9 +126,9 @@ func verifyRole(t *testing.T, roleConfig map[string]interface{}, credsResponse *
 	expectedAnnotations := asMapString(roleConfig["extra_annotations"].(map[string]interface{}))
 	expectedRules := makeRules(t, roleConfig["generated_role_rules"].(string))
 
-	returnedLabels := map[string]string{}
-	returnedAnnotations := map[string]string{}
-	returnedRules := []rbacv1.PolicyRule{}
+	var returnedLabels map[string]string
+	var returnedAnnotations map[string]string
+	var returnedRules []rbacv1.PolicyRule
 
 	k8sClient := newK8sClient(t, os.Getenv("SUPER_JWT"))
 	if roleType == "role" {
@@ -166,9 +168,9 @@ func verifyBinding(t *testing.T, roleConfig map[string]interface{}, credsRespons
 		},
 	}
 
-	returnedLabels := map[string]string{}
-	returnedAnnotations := map[string]string{}
-	returnedSubjects := []rbacv1.Subject{}
+	var returnedLabels map[string]string
+	var returnedAnnotations map[string]string
+	var returnedSubjects []rbacv1.Subject
 
 	k8sClient := newK8sClient(t, os.Getenv("SUPER_JWT"))
 	if isClusterBinding {
@@ -380,7 +382,7 @@ func testClusterRoleType(t *testing.T, client *api.Client, mountPath string, rol
 }
 
 func testK8sTokenTTL(t *testing.T, expectedSec int, token string) {
-	parsed, err := josejwt.ParseSigned(token)
+	parsed, err := josejwt.ParseSigned(token, consts.AllowedJWTSignatureAlgorithmsK8s)
 	require.NoError(t, err)
 	claims := map[string]interface{}{}
 	err = parsed.UnsafeClaimsWithoutVerification(&claims)
@@ -391,7 +393,7 @@ func testK8sTokenTTL(t *testing.T, expectedSec int, token string) {
 }
 
 func testK8sTokenAudiences(t *testing.T, expectedAudiences []interface{}, token string) {
-	parsed, err := josejwt.ParseSigned(token)
+	parsed, err := josejwt.ParseSigned(token, consts.AllowedJWTSignatureAlgorithmsK8s)
 	require.NoError(t, err)
 	claims := map[string]interface{}{}
 	err = parsed.UnsafeClaimsWithoutVerification(&claims)
@@ -425,7 +427,7 @@ func makeRules(t *testing.T, rules string) []rbacv1.PolicyRule {
 func makeExpectedLabels(t *testing.T, extraLabels map[string]interface{}) map[string]string {
 	t.Helper()
 
-	expectedLabels := map[string]string{}
+	var expectedLabels map[string]string
 	if extraLabels != nil {
 		expectedLabels = combineMaps(asMapString(extraLabels), standardLabels)
 	} else {

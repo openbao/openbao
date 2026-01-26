@@ -5,18 +5,18 @@ package command
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	kvbuilder "github.com/hashicorp/go-secure-stdlib/kv-builder"
 	"github.com/kr/text"
 	homedir "github.com/mitchellh/go-homedir"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api/v2"
-	"github.com/pkg/errors"
 	"github.com/ryanuber/columnize"
 )
 
@@ -151,7 +151,7 @@ func parseArgsDataString(stdin io.Reader, args []string) (map[string]string, err
 
 	var result map[string]string
 	if err := mapstructure.WeakDecode(raw, &result); err != nil {
-		return nil, errors.Wrap(err, "failed to convert values to strings")
+		return nil, fmt.Errorf("failed to convert values to strings: %w", err)
 	}
 	if result == nil {
 		result = make(map[string]string)
@@ -170,7 +170,7 @@ func parseArgsDataStringLists(stdin io.Reader, args []string) (map[string][]stri
 
 	var result map[string][]string
 	if err := mapstructure.WeakDecode(raw, &result); err != nil {
-		return nil, errors.Wrap(err, "failed to convert values to strings")
+		return nil, fmt.Errorf("failed to convert values to strings: %w", err)
 	}
 	return result, nil
 }
@@ -336,7 +336,7 @@ func generateFlagErrors(f *FlagSets, opts ...ParseOptions) error {
 		}
 
 		if !canUseRaw {
-			return errors.New("This command does not support the -format=raw option.")
+			return errors.New("This command does not support the -format=raw option.") //nolint:staticcheck // user-facing error
 		}
 	}
 

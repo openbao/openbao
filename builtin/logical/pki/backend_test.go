@@ -41,17 +41,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/armon/go-metrics"
-	"github.com/fatih/structs"
 	"github.com/go-test/deep"
+	"github.com/go-viper/mapstructure/v2"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/mitchellh/mapstructure"
 	auth "github.com/openbao/openbao/api/auth/userpass/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"golang.org/x/net/idna"
@@ -940,7 +940,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		// to hit all of the various values below. However, for normal
 		// testing we use a randomized time for maximum fuzziness.
 	*/
-	var seed int64 = 1
+	var seed int64
 	fixedSeed := api.ReadBaoVariable("BAO_PKITESTS_FIXED_SEED")
 	if len(fixedSeed) == 0 {
 		seed = time.Now().UnixNano()
@@ -973,7 +973,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		roleTestStep.Data = roleVals.ToResponseData()
 		roleTestStep.Data["generate_lease"] = false
 		ret = append(ret, roleTestStep)
-		issueTestStep.Data = structs.New(issueVals).Map()
+		issueTestStep.Data = structtomap.Map(issueVals)
 		switch {
 		case issueTestStep.ErrorOk:
 			issueTestStep.Check = genericErrorOkCheck
@@ -1318,16 +1318,16 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 
 	// Common names to test with the various role flags toggled
 	var commonNames struct {
-		Localhost            bool `structs:"localhost"`
-		BareDomain           bool `structs:"example.com"`
-		SecondDomain         bool `structs:"foobar.com"`
-		SubDomain            bool `structs:"foo.example.com"`
-		Wildcard             bool `structs:"*.example.com"`
-		SubSubdomain         bool `structs:"foo.bar.example.com"`
-		SubSubdomainWildcard bool `structs:"*.bar.example.com"`
-		GlobDomain           bool `structs:"fooexample.com"`
-		IDN                  bool `structs:"daɪˈɛrɨsɨs"`
-		AnyHost              bool `structs:"porkslap.beer"`
+		Localhost            bool `json:"localhost"`
+		BareDomain           bool `json:"example.com"`
+		SecondDomain         bool `json:"foobar.com"`
+		SubDomain            bool `json:"foo.example.com"`
+		Wildcard             bool `json:"*.example.com"`
+		SubSubdomain         bool `json:"foo.bar.example.com"`
+		SubSubdomainWildcard bool `json:"*.bar.example.com"`
+		GlobDomain           bool `json:"fooexample.com"`
+		IDN                  bool `json:"daɪˈɛrɨsɨs"`
+		AnyHost              bool `json:"porkslap.beer"`
 	}
 
 	// Adds a series of tests based on the current selection of
@@ -1336,7 +1336,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 	// This allows for a variety of common names to be tested in various
 	// combinations with allowed toggles of the role
 	addCnTests := func() {
-		cnMap := structs.New(commonNames).Map()
+		cnMap := structtomap.Map(commonNames)
 		for name, allowedInt := range cnMap {
 			roleVals.KeyType = "rsa"
 			roleVals.KeyBits = 2048
@@ -1387,8 +1387,8 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 
 			var extUsage x509.ExtKeyUsage
 			i := mathRand.Int() % 4
-			switch {
-			case i == 0:
+			switch i {
+			case 0:
 				// Punt on this for now since I'm not clear the actual proper
 				// way to format these
 				if name != "daɪˈɛrɨsɨs" {
@@ -1397,10 +1397,10 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 					break
 				}
 				fallthrough
-			case i == 1:
+			case 1:
 				extUsage = x509.ExtKeyUsageServerAuth
 				roleVals.ServerFlag = true
-			case i == 2:
+			case 2:
 				extUsage = x509.ExtKeyUsageClientAuth
 				roleVals.ClientFlag = true
 			default:
@@ -1711,7 +1711,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 				}
 			}
 			t.Fatalf("error parsing otherName: %q", s)
-			return
+			return ret
 		}
 		oid1 := "1.3.6.1.4.1.311.20.2.3"
 		oth1str := oid1 + ";utf8:devops@nope.com"
@@ -2063,6 +2063,10 @@ func TestBackend_PathFetchCertList(t *testing.T) {
 		Data:       urlsData,
 		MountPoint: "pki/",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("config/urls"), logical.UpdateOperation), resp, true)
 
 	resp, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -2758,6 +2762,10 @@ func TestBackend_SignIntermediate_AllowedPastCAValidity(t *testing.T) {
 	resp, err := CBWrite(b_int, s_int, "intermediate/generate/internal", map[string]interface{}{
 		"common_name": "myint.com",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b_root.Route("intermediate/generate/internal"), logical.UpdateOperation), resp, true)
 	require.Contains(t, resp.Data, "key_id")
 	intKeyId := resp.Data["key_id"].(keyID)
@@ -3549,6 +3557,85 @@ func TestBackend_URI_SANs(t *testing.T) {
 	}
 }
 
+func TestBackend_IP_SANs(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	var err error
+
+	_, err = CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+		"ttl":         "40h",
+		"common_name": "example.com",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = CBWrite(b, s, "roles/test", map[string]interface{}{
+		"allowed_domains":      []string{"foobar.com", "zipzap.com"},
+		"allow_bare_domains":   true,
+		"allow_subdomains":     true,
+		"allow_ip_sans":        true,
+		"allowed_ip_sans_cidr": []string{"4.3.2.1/32", "1.2.3.4/31"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// First test some bad stuff that shouldn't work
+	_, err = CBWrite(b, s, "issue/test", map[string]interface{}{
+		"common_name": "foobar.com",
+		"ip_sans":     "5.6.7.8",
+		"alt_names":   "foo.foobar.com,bar.foobar.com",
+		"ttl":         "1h",
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	// Test valid single entry
+	_, err = CBWrite(b, s, "issue/test", map[string]interface{}{
+		"common_name": "foobar.com",
+		"ip_sans":     "1.2.3.4",
+		"alt_names":   "foo.foobar.com,bar.foobar.com",
+		"ttl":         "1h",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test multiple entries
+	resp, err := CBWrite(b, s, "issue/test", map[string]interface{}{
+		"common_name": "foobar.com",
+		"ip_sans":     "1.2.3.4,1.2.3.5",
+		"alt_names":   "foo.foobar.com,bar.foobar.com",
+		"ttl":         "1h",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	certStr := resp.Data["certificate"].(string)
+	block, _ := pem.Decode([]byte(certStr))
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	IP0 := net.ParseIP("1.2.3.4")
+	IP1 := net.ParseIP("1.2.3.5")
+
+	if len(cert.IPAddresses) != 2 {
+		t.Fatalf("expected 2 valid IPs SANs %v", cert.IPAddresses)
+	}
+
+	if cert.IPAddresses[0].String() != IP0.String() || cert.IPAddresses[1].String() != IP1.String() {
+		t.Fatalf(
+			"expected IPs SANs %v to equal provided values 1.2.3.4, 1.2.3.5",
+			cert.IPAddresses)
+	}
+}
+
 func TestBackend_AllowedURISANsTemplate(t *testing.T) {
 	t.Parallel()
 	coreConfig := &vault.CoreConfig{
@@ -3693,7 +3780,7 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 
 	// Write test policy for userpass auth method.
 	err := client.Sys().PutPolicy("test", `
-   path "pki/*" {  
+   path "pki/*" {
      capabilities = ["update"]
    }`)
 	if err != nil {
@@ -3842,7 +3929,7 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 	}
 
 	if resp != nil {
-		t.Fatalf("response should have been emtpy but was:\n%#v", resp)
+		t.Fatalf("response should have been empty but was:\n%#v", resp)
 	}
 
 	// Write role PKI.
@@ -3900,6 +3987,7 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 		"server_flag":                        true,
 		"allow_bare_domains":                 false,
 		"allow_ip_sans":                      true,
+		"allowed_ip_sans_cidr":               []interface{}{},
 		"ext_key_usage_oids":                 []interface{}{},
 		"allow_any_name":                     false,
 		"ext_key_usage":                      []interface{}{},
@@ -3948,9 +4036,6 @@ func setCerts() {
 		Bytes: marshaledKey,
 	}
 	ecCAKey = strings.TrimSpace(string(pem.EncodeToMemory(keyPEMBlock)))
-	if err != nil {
-		panic(err)
-	}
 	subjKeyID, err := certutil.GetSubjKeyID(cak)
 	if err != nil {
 		panic(err)
@@ -3987,9 +4072,6 @@ func setCerts() {
 		Bytes: marshaledKey,
 	}
 	rsaCAKey = strings.TrimSpace(string(pem.EncodeToMemory(keyPEMBlock)))
-	if err != nil {
-		panic(err)
-	}
 	_, err = certutil.GetSubjKeyID(rak)
 	if err != nil {
 		panic(err)
@@ -4017,9 +4099,6 @@ func setCerts() {
 		Bytes: marshaledKey,
 	}
 	edCAKey = strings.TrimSpace(string(pem.EncodeToMemory(keyPEMBlock)))
-	if err != nil {
-		panic(err)
-	}
 	_, err = certutil.GetSubjKeyID(edk)
 	if err != nil {
 		panic(err)
@@ -4089,9 +4168,16 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 		"maintain_stored_certificate_counts":       true,
 		"publish_stored_certificate_count_metrics": true,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, err = client.Logical().Write("/sys/plugins/reload/backend", map[string]interface{}{
 		"mounts": "pki/",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Check the metrics initialized in order to calculate backendUUID for /pki
 	// BackendUUID not consistent during tests with UUID from /sys/mounts/pki
@@ -4129,14 +4215,22 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	// Set up Metric Configuration, then restart to enable it
 	_, err = client.Logical().Write("pki2/config/auto-tidy", map[string]interface{}{
 		"maintain_stored_certificate_counts":       true,
 		"publish_stored_certificate_count_metrics": true,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_, err = client.Logical().Write("/sys/plugins/reload/backend", map[string]interface{}{
 		"mounts": "pki2/",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create a CSR for the intermediate CA
 	secret, err := client.Logical().Write("pki2/intermediate/generate/internal", nil)
@@ -4205,7 +4299,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 	// operation since it's not past the NotAfter (ttl) value yet.
 	crl := getParsedCrl(t, client, "pki")
 
-	revokedCerts := crl.TBSCertList.RevokedCertificates
+	revokedCerts := crl.RevokedCertificateEntries
 	if len(revokedCerts) == 0 {
 		t.Fatal("expected CRL to be non-empty")
 	}
@@ -4348,7 +4442,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 
 	crl = getParsedCrl(t, client, "pki")
 
-	revokedCerts = crl.TBSCertList.RevokedCertificates
+	revokedCerts = crl.RevokedCertificateEntries
 	if len(revokedCerts) != 0 {
 		t.Fatal("expected CRL to be empty")
 	}
@@ -4412,6 +4506,9 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 	_, err = client.Logical().Write("/sys/plugins/reload/backend", map[string]interface{}{
 		"mounts": "pki/",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Set the cluster's certificate as the root CA in /pki
 	pemBundleRootCA := string(cluster.CACertPEM) + string(cluster.CAKeyPEM)
@@ -4542,7 +4639,7 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 	found := false
 	for i := 1; i < maxAttempts; i++ {
 		crl := getParsedCrl(t, client, "pki")
-		revokedCerts := crl.TBSCertList.RevokedCertificates
+		revokedCerts := crl.RevokedCertificateEntries
 		for _, revoked := range revokedCerts {
 			serial := certutil.GetHexFormatted(revoked.SerialNumber.Bytes(), ":")
 			if serial == certSerial1 && i == maxAttempts {
@@ -4710,7 +4807,7 @@ func runFullCAChainTest(t *testing.T, keyType string) {
 
 	// Verify we have a proper CRL now
 	crl := getParsedCrlFromBackend(t, b_int, s_int, "crl")
-	require.Equal(t, 0, len(crl.TBSCertList.RevokedCertificates))
+	require.Equal(t, 0, len(crl.RevokedCertificateEntries))
 
 	fullChain = resp.Data["ca_chain"].(string)
 	requireCertInCaChainString(t, fullChain, intermediateCert, "expected full chain to contain intermediate certificate from pki-intermediate/cert/ca_chain")
@@ -4809,7 +4906,7 @@ func requireCertInCaChainArray(t *testing.T, chain []string, cert string, msgAnd
 func requireCertInCaChainString(t *testing.T, chain string, cert string, msgAndArgs ...interface{}) {
 	count := strings.Count(chain, cert)
 	if count != 1 {
-		failMsg := fmt.Sprintf("Found %d occurrances of the cert in the provided chain", count)
+		failMsg := fmt.Sprintf("Found %d occurrences of the cert in the provided chain", count)
 		require.FailNow(t, failMsg, msgAndArgs...)
 	}
 }
@@ -5316,7 +5413,7 @@ func TestRootWithExistingKey(t *testing.T) {
 
 	// Fetch the parsed CRL; it should be empty as we've not revoked anything
 	parsedCrl := getParsedCrlFromBackend(t, b, s, "issuer/my-issuer1/crl/der")
-	require.Equal(t, len(parsedCrl.TBSCertList.RevokedCertificates), 0, "should have no revoked certificates")
+	require.Equal(t, len(parsedCrl.RevokedCertificateEntries), 0, "should have no revoked certificates")
 
 	// Fail if the specified issuer name is re-used.
 	_, err = CBWrite(b, s, "issuers/generate/root/internal", map[string]interface{}{
@@ -5342,7 +5439,7 @@ func TestRootWithExistingKey(t *testing.T) {
 
 	// Fetch the parsed CRL; it should be empty as we've not revoked anything
 	parsedCrl = getParsedCrlFromBackend(t, b, s, "issuer/my-issuer2/crl/der")
-	require.Equal(t, len(parsedCrl.TBSCertList.RevokedCertificates), 0, "should have no revoked certificates")
+	require.Equal(t, len(parsedCrl.RevokedCertificateEntries), 0, "should have no revoked certificates")
 
 	// Fail if the specified key name is re-used.
 	_, err = CBWrite(b, s, "issuers/generate/root/internal", map[string]interface{}{
@@ -5368,11 +5465,11 @@ func TestRootWithExistingKey(t *testing.T) {
 
 	// Fetch the parsed CRL; it should be empty as we've not revoking anything.
 	parsedCrl = getParsedCrlFromBackend(t, b, s, "issuer/my-issuer3/crl/der")
-	require.Equal(t, len(parsedCrl.TBSCertList.RevokedCertificates), 0, "should have no revoked certificates")
+	require.Equal(t, len(parsedCrl.RevokedCertificateEntries), 0, "should have no revoked certificates")
 	// Signatures should be the same since this is just a reissued cert. We
 	// use signature as a proxy for "these two CRLs are equal".
 	firstCrl := getParsedCrlFromBackend(t, b, s, "issuer/my-issuer1/crl/der")
-	require.Equal(t, parsedCrl.SignatureValue, firstCrl.SignatureValue)
+	require.Equal(t, parsedCrl.Signature, firstCrl.Signature)
 
 	require.NotEqual(t, myIssuerId1, myIssuerId2)
 	require.NotEqual(t, myIssuerId1, myIssuerId3)
@@ -5556,7 +5653,7 @@ func TestIssuanceTTLs(t *testing.T) {
 func TestSealWrappedStorageConfigured(t *testing.T) {
 	t.Parallel()
 	b, _ := CreateBackendWithStorage(t)
-	wrappedEntries := b.Backend.PathsSpecial.SealWrapStorage
+	wrappedEntries := b.PathsSpecial.SealWrapStorage
 
 	// Make sure our legacy bundle is within the list
 	// NOTE: do not convert these test values to constants, we should always have these paths within seal wrap config
@@ -6177,7 +6274,7 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 	}
 
 	// Put certificates A, B, C, D, E in backend
-	var certificates []string = []string{"a", "b", "c", "d", "e"}
+	certificates := []string{"a", "b", "c", "d", "e"}
 	serials := make([]string, 5)
 	for i, cn := range certificates {
 		resp, err = CBWrite(b, s, "issue/example", map[string]interface{}{
@@ -6253,8 +6350,6 @@ func TestBackend_InitializeCertificateCounts(t *testing.T) {
 	if b.revokedCertCount.Load() != 4 {
 		t.Fatalf("Failed to count revoked certificates A,B,C,D counted %d certs", b.revokedCertCount.Load())
 	}
-
-	return
 }
 
 // Verify that our default values are consistent when creating an issuer and when we do an
@@ -6626,6 +6721,8 @@ func TestPKI_TemplatedAIAs(t *testing.T) {
 	}
 	resp, err = CBWrite(b, s, "root/generate/internal", rootData)
 	require.NoError(t, err)
+	requireSuccessNonNilResponse(t, resp, err, "failed to generate root certificate")
+
 	_, err = CBDelete(b, s, "root")
 	require.NoError(t, err)
 
@@ -6689,6 +6786,7 @@ func TestPKI_TemplatedAIAs(t *testing.T) {
 		"ocsp_servers":                  "http://localhost/c",
 		"delta_crl_distribution_points": "http://localhost/d",
 	})
+	require.NoError(t, err)
 
 	resp, err = CBWrite(b, s, "issue/testing", map[string]interface{}{
 		"common_name": "example.com",
@@ -7257,6 +7355,8 @@ func TestProperAuthing(t *testing.T) {
 		"cert/ca_chain":                          shouldBeUnauthedReadList,
 		"ca":                                     shouldBeUnauthedReadList,
 		"ca/pem":                                 shouldBeUnauthedReadList,
+		"cel/issue/test":                         shouldBeAuthed,
+		"cel/sign/test":                          shouldBeAuthed,
 		"cert/" + serial:                         shouldBeUnauthedReadList,
 		"cert/" + serial + "/raw":                shouldBeUnauthedReadList,
 		"cert/" + serial + "/raw/pem":            shouldBeUnauthedReadList,
@@ -7332,6 +7432,8 @@ func TestProperAuthing(t *testing.T) {
 		"revoke-with-key":                        shouldBeAuthed,
 		"roles/test":                             shouldBeAuthed,
 		"roles":                                  shouldBeAuthed,
+		"cel/roles/test":                         shouldBeAuthed,
+		"cel/roles":                              shouldBeAuthed,
 		"root":                                   shouldBeAuthed,
 		"root/generate/exported":                 shouldBeAuthed,
 		"root/generate/internal":                 shouldBeAuthed,
@@ -7453,11 +7555,12 @@ func TestProperAuthing(t *testing.T) {
 		_, hasPost := openapi_data["post"]
 		_, hasDelete := openapi_data["delete"]
 
-		if handler == shouldBeUnauthedReadList {
+		switch handler {
+		case shouldBeUnauthedReadList:
 			if hasPost || hasDelete {
 				t.Fatalf("Unauthed read-only endpoints should not have POST/DELETE capabilities: %v->%v", openapi_path, raw_path)
 			}
-		} else if handler == shouldBeUnauthedWriteOnly {
+		case shouldBeUnauthedWriteOnly:
 			if hasGet || hasList {
 				t.Fatalf("Unauthed write-only endpoints should not have GET/LIST capabilities: %v->%v", openapi_path, raw_path)
 			}

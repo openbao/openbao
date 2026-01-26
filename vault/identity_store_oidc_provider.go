@@ -5,21 +5,26 @@ package vault
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/go-jose/go-jose/v3"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -92,6 +97,24 @@ type scope struct {
 	Description string `json:"description"`
 }
 
+type GrantType string
+
+const (
+	AuthorizationCode GrantType = "authorization_code"
+	ClientCredentials GrantType = "client_credentials"
+)
+
+func parseGrantType(s string) (GrantType, error) {
+	switch s {
+	case "authorization_code":
+		return AuthorizationCode, nil
+	case "client_credentials":
+		return ClientCredentials, nil
+	default:
+		return "", errors.New("unknown color: " + s)
+	}
+}
+
 type client struct {
 	// Used for indexing in memdb
 	Name        string `json:"name"`
@@ -104,10 +127,33 @@ type client struct {
 	IDTokenTTL     time.Duration `json:"id_token_ttl"`
 	AccessTokenTTL time.Duration `json:"access_token_ttl"`
 	Type           clientType    `json:"type"`
+	// We want AuthorizationCode to be true by default if it is not set already.
+	AuthorizationCode *bool `json:"authorization_code"`
+	ClientCredentials bool  `json:"client_credentials"`
 
 	// Generated values that are used in OIDC endpoints
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
+}
+
+func (c *client) isAuthorizationCodeFlow() bool {
+	if c.AuthorizationCode == nil {
+		return true
+	} else {
+		return *c.AuthorizationCode
+	}
+}
+
+// isFlowAllowed returns true if the given client ID is allowed to use the client flow
+func (c *client) isFlowAllowed(credentials GrantType) bool {
+	switch credentials {
+	case AuthorizationCode:
+		return c.isAuthorizationCodeFlow()
+	case ClientCredentials:
+		return c.ClientCredentials
+	default:
+		return false
+	}
 }
 
 type clientType int
@@ -324,6 +370,16 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 					Type:        framework.TypeString,
 					Description: "The client type based on its ability to maintain confidentiality of credentials. The following client types are supported: 'confidential', 'public'. Defaults to 'confidential'.",
 					Default:     "confidential",
+				},
+				"authorization_code": {
+					Type:        framework.TypeBool,
+					Default:     true,
+					Description: "Whether or not to authorization code flow is allowed in this provider",
+				},
+				"client_credentials": {
+					Type:        framework.TypeBool,
+					Default:     false,
+					Description: "Whether or not to client credentials flow is allowed in this provider",
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -555,7 +611,7 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 				},
 				"grant_type": {
 					Type:        framework.TypeString,
-					Description: "The authorization grant type. The following grant types are supported: 'authorization_code'.",
+					Description: "The authorization grant type. The following grant types are supported: 'authorization_code','client_credentials'.",
 					Required:    true,
 				},
 				"redirect_uri": {
@@ -566,6 +622,11 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 				"code_verifier": {
 					Type:        framework.TypeString,
 					Description: "The code verifier associated with the authorization code.",
+				},
+				"scope": {
+					Type:        framework.TypeString,
+					Description: "A space-delimited, case-sensitive list of scopes to be requested. The 'openid' scope is required. This is used when using in with 'client_credentials' flow",
+					Required:    true,
 				},
 				// For confidential clients, the client_id and client_secret are provided to
 				// the token endpoint via the 'client_secret_basic' or 'client_secret_post'
@@ -783,9 +844,13 @@ func (i *IdentityStore) pathOIDCCreateUpdateAssignment(ctx context.Context, req 
 		assignment.GroupIDs = d.Get("group_ids").([]string)
 	}
 
-	// remove duplicates and lowercase entities and groups
-	assignment.EntityIDs = strutil.RemoveDuplicates(assignment.EntityIDs, true)
-	assignment.GroupIDs = strutil.RemoveDuplicates(assignment.GroupIDs, true)
+	// lowercase UUID segments
+	assignment.EntityIDs = lowercaseIdentityIDs(assignment.EntityIDs)
+	assignment.GroupIDs = lowercaseIdentityIDs(assignment.GroupIDs)
+
+	// remove duplicates
+	assignment.EntityIDs = strutil.RemoveDuplicates(assignment.EntityIDs, false)
+	assignment.GroupIDs = strutil.RemoveDuplicates(assignment.GroupIDs, false)
 
 	// store assignment
 	entry, err := logical.StorageEntryJSON(assignmentPath+name, assignment)
@@ -945,8 +1010,8 @@ func (i *IdentityStore) pathOIDCCreateUpdateScope(ctx context.Context, req *logi
 		}
 
 		for key := range tmp {
-			if strutil.StrListContains(reservedClaims, key) {
-				return logical.ErrorResponse(`top level key %q not allowed. Restricted keys: %s`,
+			if slices.Contains(reservedClaims, key) {
+				return logical.ErrorResponse("top level key %q not allowed. Restricted keys: %s",
 					key, strings.Join(reservedClaims, ", ")), nil
 			}
 		}
@@ -1142,6 +1207,20 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 		client.AccessTokenTTL = time.Duration(d.Get("access_token_ttl").(int)) * time.Second
 	}
 
+	if authorizationCode, ok := d.GetOk("authorization_code"); ok {
+		b := authorizationCode.(bool)
+		client.AuthorizationCode = &b
+	} else if req.Operation == logical.CreateOperation {
+		b := d.Get("authorization_code").(bool)
+		client.AuthorizationCode = &b
+	}
+
+	if clientCredentials, ok := d.GetOk("client_credentials"); ok {
+		client.ClientCredentials = clientCredentials.(bool)
+	} else if req.Operation == logical.CreateOperation {
+		client.ClientCredentials = d.Get("client_credentials").(bool)
+	}
+
 	if clientTypeRaw, ok := d.GetOk("client_type"); ok {
 		clientType := clientTypeRaw.(string)
 		if req.Operation == logical.UpdateOperation && client.Type.String() != clientType {
@@ -1166,7 +1245,6 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 		}
 		client.ClientID = clientID
 	}
-
 	// client secrets are only generated for confidential clients
 	if client.Type == confidential && client.ClientSecret == "" {
 		// generate client_secret
@@ -1206,13 +1284,15 @@ func (i *IdentityStore) pathOIDCListClient(ctx context.Context, req *logical.Req
 	for _, client := range clients {
 		keys = append(keys, client.Name)
 		keyInfo[client.Name] = map[string]interface{}{
-			"redirect_uris":    client.RedirectURIs,
-			"assignments":      client.Assignments,
-			"key":              client.Key,
-			"id_token_ttl":     int64(client.IDTokenTTL.Seconds()),
-			"access_token_ttl": int64(client.AccessTokenTTL.Seconds()),
-			"client_type":      client.Type.String(),
-			"client_id":        client.ClientID,
+			"redirect_uris":      client.RedirectURIs,
+			"assignments":        client.Assignments,
+			"key":                client.Key,
+			"id_token_ttl":       int64(client.IDTokenTTL.Seconds()),
+			"access_token_ttl":   int64(client.AccessTokenTTL.Seconds()),
+			"client_type":        client.Type.String(),
+			"client_id":          client.ClientID,
+			"client_credentials": client.ClientCredentials,
+			"authorization_code": client.AuthorizationCode,
 			// client_secret is intentionally omitted
 		}
 	}
@@ -1234,13 +1314,15 @@ func (i *IdentityStore) pathOIDCReadClient(ctx context.Context, req *logical.Req
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"redirect_uris":    client.RedirectURIs,
-			"assignments":      client.Assignments,
-			"key":              client.Key,
-			"id_token_ttl":     int64(client.IDTokenTTL.Seconds()),
-			"access_token_ttl": int64(client.AccessTokenTTL.Seconds()),
-			"client_id":        client.ClientID,
-			"client_type":      client.Type.String(),
+			"redirect_uris":      client.RedirectURIs,
+			"assignments":        client.Assignments,
+			"key":                client.Key,
+			"id_token_ttl":       int64(client.IDTokenTTL.Seconds()),
+			"access_token_ttl":   int64(client.AccessTokenTTL.Seconds()),
+			"client_id":          client.ClientID,
+			"client_type":        client.Type.String(),
+			"client_credentials": client.ClientCredentials,
+			"authorization_code": client.AuthorizationCode,
 		},
 	}
 
@@ -1640,7 +1722,7 @@ func (i *IdentityStore) keyIDsReferencedByTargetClientIDs(ctx context.Context, s
 	keyNames := make(map[string]bool)
 
 	// Get all key names referenced by clients if wildcard "*" in target client IDs
-	if strutil.StrListContains(targetIDs, "*") {
+	if slices.Contains(targetIDs, "*") {
 		clients, err := i.listClients(ctx, s)
 		if err != nil {
 			return nil, err
@@ -1703,6 +1785,9 @@ func (i *IdentityStore) pathOIDCAuthorize(ctx context.Context, req *logical.Requ
 	if client == nil {
 		return authResponse("", state, ErrAuthInvalidClientID, "client with client_id not found")
 	}
+	if !client.isAuthorizationCodeFlow() {
+		return authResponse("", state, ErrTokenInvalidGrant, "client not allowed to perform authorization code credential flow")
+	}
 
 	// Validate the redirect URI
 	redirectURI := d.Get("redirect_uri").(string)
@@ -1737,19 +1822,10 @@ func (i *IdentityStore) pathOIDCAuthorize(ctx context.Context, req *logical.Requ
 		return authResponse("", "", ErrAuthRequestURINotSupported, "request_uri parameter is not supported")
 	}
 
-	// Validate that a scope parameter is present and contains the openid scope value
-	requestedScopes := strutil.ParseDedupAndSortStrings(d.Get("scope").(string), scopesDelimiter)
-	if len(requestedScopes) == 0 || !strutil.StrListContains(requestedScopes, openIDScope) {
+	scopes := validateScopes(d, provider)
+	if scopes == nil {
 		return authResponse("", state, ErrAuthInvalidRequest,
 			fmt.Sprintf("scope parameter must contain the %q value", openIDScope))
-	}
-
-	// Scope values that are not supported by the provider should be ignored
-	scopes := make([]string, 0)
-	for _, scope := range requestedScopes {
-		if strutil.StrListContains(provider.ScopesSupported, scope) && scope != openIDScope {
-			scopes = append(scopes, scope)
-		}
 	}
 
 	// Validate the response type
@@ -1765,7 +1841,7 @@ func (i *IdentityStore) pathOIDCAuthorize(ctx context.Context, req *logical.Requ
 	if req.EntityID == "" {
 		return authResponse("", state, ErrAuthAccessDenied, "identity entity must be associated with the request")
 	}
-	entity, err := i.MemDBEntityByID(req.EntityID, false)
+	entity, err := i.MemDBEntityByID(ctx, req.EntityID, false)
 	if err != nil {
 		return authResponse("", state, ErrAuthServerError, err.Error())
 	}
@@ -1871,7 +1947,7 @@ func (i *IdentityStore) pathOIDCAuthorize(ctx context.Context, req *logical.Requ
 	}
 
 	// Cache the authorization code for a subsequent token exchange
-	if err := i.oidcAuthCodeCache.SetDefault(ns, code, authCodeEntry); err != nil {
+	if err := i.oidcAuthCodeCache.Set(ns, code, authCodeEntry); err != nil {
 		return authResponse("", state, ErrAuthServerError, err.Error())
 	}
 
@@ -1976,20 +2052,80 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	}
 
 	// Validate that the client is authorized to use the key
-	if !strutil.StrListContains(key.AllowedClientIDs, "*") &&
-		!strutil.StrListContains(key.AllowedClientIDs, clientID) {
+	if !slices.Contains(key.AllowedClientIDs, "*") &&
+		!slices.Contains(key.AllowedClientIDs, clientID) {
 		return tokenResponse(nil, ErrTokenInvalidClient, "client is not authorized to use the key")
 	}
 
 	// Validate the grant type
-	grantType := d.Get("grant_type").(string)
-	if grantType == "" {
-		return tokenResponse(nil, ErrTokenInvalidRequest, "grant_type parameter is required")
+	grantType, err := parseGrantType(d.Get("grant_type").(string))
+	if err != nil {
+		return tokenResponse(nil, ErrTokenUnsupportedGrantType, "unsupported grant_type or parameter is empty value")
 	}
-	if grantType != "authorization_code" {
-		return tokenResponse(nil, ErrTokenUnsupportedGrantType, "unsupported grant_type value")
+	// Validate that the client allows auth flow to use the provider
+	if !client.isFlowAllowed(grantType) {
+		return tokenResponse(nil, ErrTokenInvalidGrant, "client is not authorized to use given credentials flow")
+	}
+	switch grantType {
+	case AuthorizationCode:
+		return i.authorizationCodeFlow(ctx, req, d, ns, name, client, key, provider)
+	case ClientCredentials:
+		return i.clientCredentialsFlow(ctx, req, d, ns, client, key, provider)
+	default:
+		return tokenResponse(nil, ErrTokenUnsupportedGrantType, "unsupported grant_type or parameter is empty value")
+	}
+}
+
+func (i *IdentityStore) clientCredentialsFlow(ctx context.Context, req *logical.Request, d *framework.FieldData, ns *namespace.Namespace, client *client, key *namedKey, provider *provider) (*logical.Response, error) {
+	scopes := validateScopes(d, provider)
+	if scopes == nil {
+		return tokenResponse(nil, ErrAuthInvalidRequest, fmt.Sprintf("scope parameter must contain the %q value", openIDScope))
+	}
+	// Set the ID token claims
+	accessTokenIssuedAt := time.Now()
+	accessTokenExpiry := accessTokenIssuedAt.Add(client.IDTokenTTL)
+	jti, err := uuid.GenerateUUID()
+	if err != nil {
+		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}
 
+	accessToken := accessToken{
+		Namespace: ns.ID,
+		Issuer:    provider.effectiveIssuer,
+		Subject:   client.ClientID,
+		Audience:  client.ClientID,
+		Expiry:    accessTokenExpiry.Unix(),
+		IssuedAt:  accessTokenIssuedAt.Unix(),
+		JTI:       jti,
+	}
+
+	// Populate each of the requested scope templates
+	templates, conflict, err := i.populateScopeTemplates(ctx, ClientCredentials, req.Storage, ns, nil, scopes...)
+	if err != nil {
+		if conflict {
+			return tokenResponse(nil, ErrTokenInvalidRequest, err.Error())
+		} else {
+			return tokenResponse(nil, ErrTokenServerError, err.Error())
+		}
+	}
+	payload, err := accessToken.generatePayload(i.Logger(), templates...)
+	if err != nil {
+		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	}
+	// Sign the ID token using the client's key
+	signedAccessToken, err := key.signPayload(payload)
+	if err != nil {
+		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	}
+
+	return tokenResponse(map[string]interface{}{
+		"token_type":   "Bearer",
+		"access_token": signedAccessToken,
+		"expires_in":   int64(accessTokenExpiry.Sub(accessTokenIssuedAt).Seconds()),
+	}, "", "")
+}
+
+func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.Request, d *framework.FieldData, ns *namespace.Namespace, name string, client *client, key *namedKey, provider *provider) (*logical.Response, error) {
 	// Validate the authorization code
 	code := d.Get("code").(string)
 	if code == "" {
@@ -2011,6 +2147,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	}
 
 	// Ensure the authorization code was issued to the authenticated client
+	clientID := client.ClientID
 	if authCodeEntry.clientID != clientID {
 		return tokenResponse(nil, ErrTokenInvalidGrant, "authorization code was not issued to the client")
 	}
@@ -2031,7 +2168,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	}
 
 	// Get the entity associated with the initial authorization request
-	entity, err := i.MemDBEntityByID(authCodeEntry.entityID, true)
+	entity, err := i.MemDBEntityByID(ctx, authCodeEntry.entityID, true)
 	if err != nil {
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}
@@ -2086,7 +2223,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 			"oidc_token_type": "access token",
 		},
 		InternalMeta: map[string]string{
-			accessTokenClientIDMeta: client.ClientID,
+			accessTokenClientIDMeta: clientID,
 			accessTokenScopesMeta:   strings.Join(authCodeEntry.scopes, scopesDelimiter),
 		},
 		InlinePolicy: fmt.Sprintf(`
@@ -2095,7 +2232,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 			}
 		`, name),
 	}
-	err = i.tokenStorer.CreateToken(ctx, accessToken)
+	err = i.tokenStorer.CreateToken(ctx, accessToken, true)
 	if err != nil {
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
 	}
@@ -2133,15 +2270,14 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	}
 
 	// Populate each of the requested scope templates
-	templates, conflict, err := i.populateScopeTemplates(ctx, req.Storage, ns, entity, authCodeEntry.scopes...)
-	if !conflict && err != nil {
-		return tokenResponse(nil, ErrTokenServerError, err.Error())
+	templates, conflict, err := i.populateScopeTemplates(ctx, AuthorizationCode, req.Storage, ns, entity, authCodeEntry.scopes...)
+	if err != nil {
+		if conflict {
+			return tokenResponse(nil, ErrTokenInvalidRequest, err.Error())
+		} else {
+			return tokenResponse(nil, ErrTokenServerError, err.Error())
+		}
 	}
-	if conflict && err != nil {
-		return tokenResponse(nil, ErrTokenInvalidRequest, err.Error())
-	}
-
-	// Generate the ID token payload
 	payload, err := idToken.generatePayload(i.Logger(), templates...)
 	if err != nil {
 		return tokenResponse(nil, ErrTokenServerError, err.Error())
@@ -2264,7 +2400,7 @@ func (i *IdentityStore) pathOIDCUserInfo(ctx context.Context, req *logical.Reque
 	if req.EntityID == "" {
 		return userInfoResponse(nil, ErrUserInfoAccessDenied, "identity entity must be associated with the request")
 	}
-	entity, err := i.MemDBEntityByID(req.EntityID, false)
+	entity, err := i.MemDBEntityByID(ctx, req.EntityID, false)
 	if err != nil {
 		return userInfoResponse(nil, ErrUserInfoServerError, err.Error())
 	}
@@ -2301,13 +2437,13 @@ func (i *IdentityStore) pathOIDCUserInfo(ctx context.Context, req *logical.Reque
 	// Scope values that are not supported by the provider should be ignored
 	scopes := make([]string, 0)
 	for _, scope := range parsedScopes {
-		if strutil.StrListContains(provider.ScopesSupported, scope) {
+		if slices.Contains(provider.ScopesSupported, scope) {
 			scopes = append(scopes, scope)
 		}
 	}
 
 	// Populate each of the token's scope templates
-	templates, conflict, err := i.populateScopeTemplates(ctx, req.Storage, ns, entity, scopes...)
+	templates, conflict, err := i.populateScopeTemplates(ctx, AuthorizationCode, req.Storage, ns, entity, scopes...)
 	if !conflict && err != nil {
 		return userInfoResponse(nil, ErrUserInfoServerError, err.Error())
 	}
@@ -2401,32 +2537,36 @@ func (i *IdentityStore) getScopeTemplates(ctx context.Context, s logical.Storage
 // populateScopeTemplates populates the templates for each of the passed scopes.
 // Returns a slice of the populated JSON template strings and a bool to indicate
 // if a conflict in scope template claims occurred.
-func (i *IdentityStore) populateScopeTemplates(ctx context.Context, s logical.Storage, ns *namespace.Namespace, entity *identity.Entity, scopes ...string) ([]string, bool, error) {
+func (i *IdentityStore) populateScopeTemplates(ctx context.Context, grantType GrantType, s logical.Storage, ns *namespace.Namespace, entity *identity.Entity, scopes ...string) ([]string, bool, error) {
 	// Gather the templates for each scope
 	templates, err := i.getScopeTemplates(ctx, s, scopes...)
 	if err != nil {
 		return nil, false, err
 	}
 
-	// Get the groups for the entity
-	groups, inheritedGroups, err := i.groupsByEntityID(entity.ID)
-	if err != nil {
-		return nil, false, err
-	}
-	groups = append(groups, inheritedGroups...)
-
 	claimsToScopes := make(map[string]string)
 	populatedTemplates := make([]string, 0)
 	for scope, template := range templates {
 		// Parse and integrate the populated template. Structural errors with the template
 		// should be caught during configuration. Errors found during runtime will be logged.
-		_, populatedTemplate, err := identitytpl.PopulateString(identitytpl.PopulateStringInput{
+		input := identitytpl.PopulateStringInput{
 			Mode:        identitytpl.JSONTemplating,
 			String:      template,
-			Entity:      identity.ToSDKEntity(entity),
-			Groups:      identity.ToSDKGroups(groups),
 			NamespaceID: ns.ID,
-		})
+		}
+		// Templates only needed in AuthorizationCode
+		if grantType == AuthorizationCode {
+			input.Entity = identity.ToSDKEntity(entity)
+
+			// Get the groups for the entity
+			groups, inheritedGroups, err := i.groupsByEntityID(ctx, entity.ID)
+			if err != nil {
+				return nil, false, err
+			}
+			groups = append(groups, inheritedGroups...)
+			input.Groups = identity.ToSDKGroups(groups)
+		}
+		_, populatedTemplate, err := identitytpl.PopulateString(input)
 		if err != nil {
 			i.Logger().Warn("error populating OIDC token template", "scope", scope,
 				"template", template, "error", err)
@@ -2461,12 +2601,12 @@ func (i *IdentityStore) entityHasAssignment(ctx context.Context, s logical.Stora
 		return false, nil
 	}
 
-	if strutil.StrListContains(assignments, allowAllAssignmentName) {
+	if slices.Contains(assignments, allowAllAssignmentName) {
 		return true, nil
 	}
 
 	// Get the group IDs that the entity is a member of
-	groups, inheritedGroups, err := i.groupsByEntityID(entity.GetID())
+	groups, inheritedGroups, err := i.groupsByEntityID(ctx, entity.GetID())
 	if err != nil {
 		return false, err
 	}
@@ -2492,7 +2632,7 @@ func (i *IdentityStore) entityHasAssignment(ctx context.Context, s logical.Stora
 		}
 
 		// Check if the entity is a member of the assignment's entities
-		if strutil.StrListContains(assignment.EntityIDs, entity.GetID()) {
+		if slices.Contains(assignment.EntityIDs, entity.GetID()) {
 			return true, nil
 		}
 	}
@@ -2632,17 +2772,26 @@ func (i *IdentityStore) lazyGenerateDefaultKey(ctx context.Context, storage logi
 }
 
 func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
-	i.logger.Debug("identity loading OIDC clients")
-
-	clients, err := i.view.List(ctx, clientPath)
+	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
 	}
 
-	txn := i.db.Txn(true)
+	i.logger.Debug("identity loading OIDC clients", "namespace", ns.Path)
+
+	if err := i.validateCtx(ctx); err != nil {
+		return err
+	}
+
+	clients, err := i.view(ctx).List(ctx, clientPath)
+	if err != nil {
+		return err
+	}
+
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 	for _, name := range clients {
-		entry, err := i.view.Get(ctx, clientPath+name)
+		entry, err := i.view(ctx).Get(ctx, clientPath+name)
 		if err != nil {
 			return err
 		}
@@ -2667,7 +2816,7 @@ func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
 // clientByID returns the client with the given ID.
 func (i *IdentityStore) clientByID(ctx context.Context, s logical.Storage, id string) (*client, error) {
 	// Read the client from memdb
-	client, err := i.memDBClientByID(id)
+	client, err := i.memDBClientByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -2685,7 +2834,7 @@ func (i *IdentityStore) clientByID(ctx context.Context, s logical.Storage, id st
 	}
 
 	// Upsert the client in memdb
-	txn := i.db.Txn(true)
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 	if err := i.memDBUpsertClientInTxn(txn, client); err != nil {
 		i.logger.Debug("failed to upsert client in memdb", "error", err)
@@ -2717,7 +2866,7 @@ func (i *IdentityStore) clientByName(ctx context.Context, s logical.Storage, nam
 	}
 
 	// Upsert the client in memdb
-	txn := i.db.Txn(true)
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 	if err := i.memDBUpsertClientInTxn(txn, client); err != nil {
 		i.logger.Debug("failed to upsert client in memdb", "error", err)
@@ -2729,12 +2878,16 @@ func (i *IdentityStore) clientByName(ctx context.Context, s logical.Storage, nam
 }
 
 // memDBClientByID returns the client with the given ID from memdb.
-func (i *IdentityStore) memDBClientByID(id string) (*client, error) {
+func (i *IdentityStore) memDBClientByID(ctx context.Context, id string) (*client, error) {
 	if id == "" {
 		return nil, errors.New("missing client ID")
 	}
 
-	txn := i.db.Txn(false)
+	if err := i.validateCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	txn := i.db(ctx).Txn(false)
 
 	return i.memDBClientByIDInTxn(txn, id)
 }
@@ -2771,7 +2924,7 @@ func (i *IdentityStore) memDBClientByName(ctx context.Context, name string) (*cl
 		return nil, errors.New("missing client name")
 	}
 
-	txn := i.db.Txn(false)
+	txn := i.db(ctx).Txn(false)
 
 	return i.memDBClientByNameInTxn(ctx, txn, name)
 }
@@ -2813,7 +2966,11 @@ func (i *IdentityStore) memDBDeleteClientByName(ctx context.Context, name string
 		return errors.New("missing client name")
 	}
 
-	txn := i.db.Txn(true)
+	if err := i.validateCtx(ctx); err != nil {
+		return err
+	}
+
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 
 	if err := i.memDBDeleteClientByNameInTxn(ctx, txn, name); err != nil {
@@ -2945,4 +3102,134 @@ func (i *IdentityStore) listClients(ctx context.Context, s logical.Storage) ([]*
 	}
 
 	return clients, nil
+}
+
+// validRedirect checks whether uri is in allowed using special handling for loopback uris.
+// Ref: https://tools.ietf.org/html/rfc8252#section-7.3
+func validRedirect(uri string, allowed []string) bool {
+	inputURI, err := url.Parse(uri)
+	if err != nil {
+		return false
+	}
+
+	// if uri isn't a loopback, just string search the allowed list
+	if !slices.Contains([]string{"localhost", "127.0.0.1", "::1"}, inputURI.Hostname()) {
+		return slices.Contains(allowed, uri)
+	}
+
+	// otherwise, search for a match in a port-agnostic manner, per the OAuth RFC.
+	inputURI.Host = inputURI.Hostname()
+
+	for _, a := range allowed {
+		allowedURI, err := url.Parse(a)
+		if err != nil {
+			return false
+		}
+		allowedURI.Host = allowedURI.Hostname()
+
+		if inputURI.String() == allowedURI.String() {
+			return true
+		}
+	}
+
+	return false
+}
+
+// computeHashClaim computes the hash value to be used for the at_hash
+// and c_hash claims. For details on how this value is computed and the
+// class of attacks it's used to prevent, see the spec at
+// - https://openid.net/specs/openid-connect-core-1_0.html#CodeIDToken
+// - https://openid.net/specs/openid-connect-core-1_0.html#HybridIDToken
+// - https://openid.net/specs/openid-connect-core-1_0.html#TokenSubstitution
+func computeHashClaim(alg string, input string) (string, error) {
+	signatureAlgToHash := map[jose.SignatureAlgorithm]func() hash.Hash{
+		jose.RS256: sha256.New,
+		jose.RS384: sha512.New384,
+		jose.RS512: sha512.New,
+		jose.ES256: sha256.New,
+		jose.ES384: sha512.New384,
+		jose.ES512: sha512.New,
+
+		// We use the Ed25519 curve key for EdDSA, which uses
+		// SHA-512 for its digest algorithm. See details at
+		// https://bitbucket.org/openid/connect/issues/1125.
+		jose.EdDSA: sha512.New,
+	}
+
+	newHash, ok := signatureAlgToHash[jose.SignatureAlgorithm(alg)]
+	if !ok {
+		return "", fmt.Errorf("unsupported signature algorithm: %q", alg)
+	}
+	h := newHash()
+
+	// Writing to the hash will never return an error
+	_, _ = h.Write([]byte(input))
+	sum := h.Sum(nil)
+	return base64.RawURLEncoding.EncodeToString(sum[:len(sum)/2]), nil
+}
+
+// computeCodeChallenge computes a Proof Key for Code Exchange (PKCE)
+// code challenge given a code verifier and code challenge method.
+func computeCodeChallenge(verifier string, method string) (string, error) {
+	switch method {
+	case codeChallengeMethodPlain:
+		return verifier, nil
+	case codeChallengeMethodS256:
+		hf := sha256.New()
+		hf.Write([]byte(verifier))
+		return base64.RawURLEncoding.EncodeToString(hf.Sum(nil)), nil
+	default:
+		return "", fmt.Errorf("invalid code challenge method %q", method)
+	}
+}
+
+// authCodeUsedPKCE returns true if the given entry was granted using PKCE.
+func authCodeUsedPKCE(entry *authCodeCacheEntry) bool {
+	return entry.codeChallenge != "" && entry.codeChallengeMethod != ""
+}
+
+// basicAuth returns the username/password provided in the logical.Request's
+// authorization header and a bool indicating if the request used basic
+// authentication.
+func basicAuth(req *logical.Request) (string, string, bool) {
+	headerReq := &http.Request{Header: req.Headers}
+	return headerReq.BasicAuth()
+}
+
+// lowercaseIdentityIDs lowercases the UUID segments of given entity IDs
+// without affecting namespace accessor.
+func lowercaseIdentityIDs(identities []string) []string {
+	out := make([]string, len(identities))
+
+	for i, identityID := range identities {
+		id, namespaceID, ok := strings.Cut(identityID, ".")
+		if !ok { // bare ID with no namespace
+			out[i] = strings.ToLower(identityID)
+			continue
+		}
+		out[i] = strings.ToLower(id) + "." + namespaceID
+	}
+
+	return out
+}
+
+// validateScopes validates the "scope" parameter according to OIDC requirements.
+//
+// According to the OpenID Connect Core specification (Section 3.1.2.1):
+// - Authorization requests MUST contain the "openid" scope value to indicate an OIDC request.
+// - Requests without "openid" are not considered OIDC authentication requests.
+func validateScopes(d *framework.FieldData, provider *provider) []string {
+	requestedScopes := strutil.ParseDedupAndSortStrings(d.Get("scope").(string), scopesDelimiter)
+	if len(requestedScopes) == 0 || !slices.Contains(requestedScopes, openIDScope) {
+		return nil
+	}
+
+	// Scope values that are not supported by the provider should be ignored
+	scopes := make([]string, 0)
+	for _, scope := range requestedScopes {
+		if slices.Contains(provider.ScopesSupported, scope) && scope != openIDScope {
+			scopes = append(scopes, scope)
+		}
+	}
+	return scopes
 }

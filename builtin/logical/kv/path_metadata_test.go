@@ -22,10 +22,11 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 	}
 
 	data := map[string]interface{}{
-		"max_versions":         2,
-		"cas_required":         true,
-		"delete_version_after": d.String(),
-		"custom_metadata":      expectedCustomMetadata,
+		"max_versions":          2,
+		"cas_required":          true,
+		"metadata_cas_required": true,
+		"delete_version_after":  d.String(),
+		"custom_metadata":       expectedCustomMetadata,
 	}
 
 	req := &logical.Request{
@@ -58,8 +59,15 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 	if resp.Data["cas_required"] != true {
 		t.Fatalf("Bad response: %#v", resp)
 	}
+	if resp.Data["metadata_cas_required"] != true {
+		t.Fatalf("Bad response: %#v", resp)
+	}
 	if resp.Data["delete_version_after"] != d.String() {
 		t.Fatalf("Bad response: %#v", resp)
+	}
+
+	if resp.Data["current_metadata_version"] != uint64(1) {
+		t.Fatalf("Expected initial current_metadata_version to be 1, got: %v", resp.Data["current_metadata_version"])
 	}
 
 	if diff := deep.Equal(resp.Data["custom_metadata"], expectedCustomMetadata); len(diff) > 0 {
@@ -180,6 +188,10 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
+	if resp.Data["current_metadata_version"] != uint64(1) {
+		t.Fatalf("Expected current_metadata_version to still be 1, got: %v", resp.Data["current_metadata_version"])
+	}
+
 	if _, ok := resp.Data["versions"].(map[string]interface{})["2"]; !ok {
 		t.Fatalf("Bad response: %#v", resp)
 	}
@@ -188,11 +200,35 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
+	// First, attempt to update the metadata without passing metadata_cas which we expect to fail.
+	data = map[string]interface{}{
+		"max_versions": 1,
+		"cas_required": false,
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	// Should fail with with metadata_cas required error
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || resp == nil || !resp.IsError() {
+		t.Fatalf("expected error response, got err:%s resp:%#v", err, resp)
+	}
+	if resp.Error().Error() != "metadata check-and-set parameter required for this call" {
+		t.Fatalf("expected error, %#v", resp)
+	}
+
+	// Next, attempt to update the metadata while also passing the correct metadata_cas value.
 	// Update the metadata settings, remove the cas requirement and lower the
 	// max versions.
 	data = map[string]interface{}{
 		"max_versions": 1,
 		"cas_required": false,
+		"metadata_cas": 1,
 	}
 
 	req = &logical.Request{
@@ -249,6 +285,11 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
+	// Expect that the metadata version was incremented
+	if resp.Data["current_metadata_version"] != uint64(2) {
+		t.Fatalf("Bad response: %#v", resp)
+	}
+
 	if _, ok := resp.Data["versions"].(map[string]interface{})["4"]; !ok {
 		t.Fatalf("Bad response: %#v", resp)
 	}
@@ -278,6 +319,84 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 	expected := resp.Data
 	if diff := deep.Equal(actual, expected); len(diff) > 0 {
 		t.Fatalf("expected detailed-metadata/ listing to have same contents as read on foo/\ndiff: %#v", diff)
+	}
+
+	// Next, attempt to update the metadata while passing an incorrect metadata_cas value which we expect to fail
+	data = map[string]interface{}{
+		"metadata_cas_required": false,
+		// This will not match the current metadata version which is 2
+		"metadata_cas": 1,
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	// Should fail with with metadata_cas mismatch error
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || resp == nil || !resp.IsError() {
+		t.Fatalf("expected error response, got err:%s resp:%#v", err, resp)
+	}
+	if resp.Error().Error() != "metadata check-and-set parameter does not match the current version" {
+		t.Fatalf("expected error, %#v", resp)
+	}
+
+	// Correctly update the metadata and disable metadata cas check
+	data = map[string]interface{}{
+		"metadata_cas_required": false,
+		// This will match the current metadata version
+		"metadata_cas": 2,
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	req = &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || resp == nil || resp.IsError() {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	if resp.Data["metadata_cas_required"] != false {
+		t.Fatalf("Bad response: %#v", resp)
+	}
+
+	if resp.Data["current_metadata_version"] != uint64(3) {
+		t.Fatalf("Bad response: %#v", resp)
+	}
+
+	// Given metadata_cas_required has been disabled, confirm that we can update metadata even if metadata_cas is not passed
+	data = map[string]interface{}{
+		"metadata_cas_required": true,
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 }
 
@@ -1043,6 +1162,126 @@ func TestVersionedKV_Metadata_Patch_CasRequiredWarning(t *testing.T) {
 	}
 }
 
+// TestVersionedKV_Metadata_Patch_MetadataCasRequiredWarning tests that a warning is returned
+// when metadata_cas_required is set to false but is mandated by backend config.
+func TestVersionedKV_Metadata_Patch_MetadataCasRequiredWarning(t *testing.T) {
+	b, storage := getBackend(t)
+
+	// Set global metadata_cas_required
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "config",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"metadata_cas_required": true,
+		},
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("config request failed, err:%s resp:%#v\n", err, resp)
+	}
+
+	// Create without metadata_cas which should fail because it is required
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"max_versions": 5,
+		},
+	}
+
+	// Should fail with with metadata_cas required error
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || resp == nil || !resp.IsError() {
+		t.Fatalf("expected error response, got err:%s resp:%#v", err, resp)
+	}
+	if resp.Error().Error() != "metadata check-and-set parameter required for this call" {
+		t.Fatalf("expected error, %#v", resp)
+	}
+
+	// Create with correct metadata_cas which is 0
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"max_versions": 5,
+			"metadata_cas": 0,
+		},
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("metadata create request failed, err:%s resp:%#v\n", err, resp)
+	}
+
+	// Try to disable metadata_cas_required via PATCH
+	req = &logical.Request{
+		Operation: logical.PatchOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"metadata_cas_required": false,
+			"metadata_cas":          1,
+		},
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || resp == nil || resp.IsError() {
+		t.Fatalf("metadata patch request failed, err:%s resp:%#v\n", err, resp)
+	}
+
+	// Should get warning
+	if len(resp.Warnings) != 1 ||
+		!strings.Contains(resp.Warnings[0], "\"metadata_cas_required\" set to false, but is mandated by backend config") {
+		t.Fatalf("expected metadata_cas_required warning, resp warnings: %#v", resp.Warnings)
+	}
+}
+
+// TestVersionedKV_Metadata_Create_InvalidMetadataCasError tests that metadata creation
+// fails when metadata_cas parameter is provided with a non-zero value.
+func TestVersionedKV_Metadata_Create_InvalidMetadataCasError(t *testing.T) {
+	b, storage := getBackend(t)
+
+	// Create with incorrect metadata_cas which is > 0
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"max_versions": 5,
+			"metadata_cas": 1,
+		},
+	}
+
+	// Should fail with with invalid metadata_cas error
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || resp == nil || !resp.IsError() {
+		t.Fatalf("expected error response, got err:%s resp:%#v", err, resp)
+	}
+	if resp.Error().Error() != "metadata_cas must be 0 when creating new metadata" {
+		t.Fatalf("expected error, %#v", resp)
+	}
+
+	// Create with correct metadata_cas which is 0
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"max_versions": 5,
+			"metadata_cas": 0,
+		},
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("metadata create request failed, err:%s resp:%#v\n", err, resp)
+	}
+}
+
 func TestVersionedKV_Metadata_Patch_CustomMetadata(t *testing.T) {
 	t.Parallel()
 
@@ -1181,11 +1420,12 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 		{
 			"ignored_fields",
 			map[string]interface{}{
-				"foo":             ignoreVal,
-				"created_time":    ignoreVal,
-				"current_version": ignoreVal,
-				"oldest_version":  ignoreVal,
-				"updated_time":    ignoreVal,
+				"foo":                      ignoreVal,
+				"created_time":             ignoreVal,
+				"current_version":          ignoreVal,
+				"current_metadata_version": ignoreVal,
+				"oldest_version":           ignoreVal,
+				"updated_time":             ignoreVal,
 			},
 			0,
 		},
@@ -1200,7 +1440,7 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 				"cas_required": true,
 				"max_versions": uint32(5),
 			},
-			2,
+			4, // also updates metadata version and updated time
 		},
 		{
 			"top_level_mixed",
@@ -1210,7 +1450,7 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 				"delete_version_after": nil,
 				"updated_time":         ignoreVal,
 			},
-			2,
+			4, // also updates metadata version and updated time
 		},
 	}
 
@@ -1255,6 +1495,8 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 				Data:      tc.input,
 			}
 
+			time.Sleep(time.Second)
+
 			resp, err = b.HandleRequest(context.Background(), req)
 
 			if err != nil || (resp != nil && resp.IsError()) {
@@ -1283,6 +1525,11 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 			}
 
 			for k, v := range patchedMetadata {
+				// Skip fields that always change
+				if k == "current_metadata_version" || k == "updated_time" {
+					continue
+				}
+
 				var expectedVal interface{}
 
 				if inputVal, ok := tc.input[k]; ok && inputVal != nil && inputVal != ignoreVal {
@@ -1367,5 +1614,49 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 
 	if maxVersions := resp.Data["max_versions"].(uint32); maxVersions != 0 {
 		t.Fatal("expected max_versions to be unset to zero value")
+	}
+}
+
+// TestVersionedKV_ListDetailedMetadata ensures that detailed listing in
+// KVv2 does not cause a panic due to directories with missing metadata
+// entries.
+func TestVersionedKV_ListDetailedMetadata(t *testing.T) {
+	b, storage := getBackend(t)
+
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "data/subdir/entry",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"data": map[string]interface{}{
+				"value": 10,
+			},
+		},
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("create request failed, err: %#v, resp: %#v", err, resp)
+	}
+
+	req = &logical.Request{
+		Operation: logical.ListOperation,
+		Path:      "detailed-metadata/",
+		Storage:   storage,
+	}
+
+	listResp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || listResp == nil || listResp.IsError() {
+		t.Fatalf("err:%s resp:%#v\n", err, listResp)
+	}
+
+	if len(listResp.Data["keys"].([]string)) != 1 || listResp.Data["keys"].([]string)[0] != "subdir/" {
+		t.Fatalf("expected one key (foo) - resp: %#v", listResp)
+	}
+
+	value := listResp.Data["key_info"].(map[string]interface{})["subdir"]
+
+	if value != nil && len(value.(map[string]interface{})) != 0 {
+		t.Fatalf("unexpected info about directory in detailed list response: %v", listResp.Data)
 	}
 }

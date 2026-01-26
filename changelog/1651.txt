@@ -1,0 +1,5 @@
+```release-note:security
+audit/file: Restrict `mode` parameter
+  - Refuse setting an [irregular](https://pkg.go.dev/io/fs#FileMode.IsRegular) file mode
+  - Silently strip any executable bits
+```

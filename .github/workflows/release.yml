@@ -11,6 +11,16 @@ on:
         required: true
         default: true
         type: boolean
+      dogorelease:
+        description: "Run goreleaser"
+        required: true
+        default: true
+        type: boolean
+      dodistrelease:
+        description: "Release distribution source tarball"
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -36,13 +46,15 @@ jobs:
             exit 1
           fi
 
-  build-ui:
+  build-ui-dist:
     runs-on: ubuntu-latest
     needs:
       - setup
+    outputs:
+      version: ${{ steps.make-distribution-tarball.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0 # Required by GoRelease
 
@@ -67,7 +79,7 @@ jobs:
           git tag "$nightly_tag"
 
       - name: Node setup
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: "./ui/package.json"
 
@@ -77,7 +89,7 @@ jobs:
           npm install -g yarn
 
       - name: UI Cache Setup
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
           path: |
             http/web_ui/
@@ -96,13 +108,70 @@ jobs:
         run: |
           make static-dist
 
-  release:
+      - name: Make LICENSE_NODE_MODULES.txt
+        if: inputs.dodistrelease
+        run: |
+          set -e
+          sudo npm install --global generate-license-file
+          cd ui
+          generate-license-file --input package.json --output ../LICENSE_NODE_MODULES.txt
+
+      - name: Make SPDX_NODE_MODULES.txt
+        if: inputs.dodistrelease
+        run: |
+          sudo apt install -y jq
+          jq -r .license ui/node_modules/*/package.json | \
+            grep -v url | \
+            sed 's/.*"type": "//;s/",//' | \
+            grep -v { | grep -v } | grep -v ^null$ | \
+            awk '{if ((($2 == "OR") || ($2 == "AND")) && (substr($1, 0, 1) != "(")) { print "(" $0 ")"} else {print $0}}' | \
+            sort -u >SPDX_NODE_MODULES.txt
+
+      - name: Make VERSION_NODE_MODULES.txt
+        if: inputs.dodistrelease
+        run: jq -r '"\(.name) \(.version)"'  ui/node_modules/*/package.json >VERSION_NODE_MODULES.txt
+
+      - name: Golang Setup
+        uses: ./.github/actions/set-up-go
+
+      - name: go-check
+        run: go version
+
+      - name: Make LICENSE_DEPENDENCIES.md
+        if: inputs.dodistrelease
+        run: |
+          go run github.com/google/go-licenses@v1.6.0 report ./... --ignore github.com/openbao/openbao --template LICENSE_DEPENDENCIES.tpl > LICENSE_DEPENDENCIES.md
+
+      - name: go mod vendor
+        if: inputs.dodistrelease
+        run: |
+          go mod vendor
+
+      - name: Make distribution source tarball
+        if: inputs.dodistrelease
+        id: make-distribution-tarball
+        run: |
+          version="$(git describe --tags --exclude "api/*" --exclude "sdk/*" --abbrev=0 | sed 's/^v//')"
+          echo "version=$version" | tee -a "$GITHUB_OUTPUT"
+          tar --exclude .git --exclude '*.gz' --exclude '*/ui/.yarn/cache' --exclude node_modules -cJf ../openbao-dist-$version.tar.xz --xform="s,^\.,openbao-dist-$version," .
+          mv ../*.xz .
+
+      - name: Upload distribution source tarball artifact
+        if: inputs.dodistrelease
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: dist-tarball
+          path: '*.xz'
+          retention-days: 1
+
+  release-main:
     runs-on: ubuntu-latest
     needs:
-      - setup
-      - build-ui
+      - build-ui-dist
     env:
       DOCKER_CLI_EXPERIMENTAL: "enabled"
+      SYFT_GOLANG_SEARCH_LOCAL_MOD_CACHE_LICENSES: "true"
+      SYFT_GOLANG_SEARCH_REMOTE_LICENSES: "true"
     strategy:
       matrix:
         release_os:
@@ -110,22 +179,28 @@ jobs:
           - hsm
           - darwin
           - freebsd
-          - illumos
           - netbsd
           - openbsd
           - windows
     steps:
-      - name: "Check free space on runner"
+      - name: Free additional storage on runner
+        if: inputs.dogorelease
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+
+      - name: Check free storage on runner
+        if: inputs.dogorelease
         run: |
           df -h .
 
       - name: Checkout
-        uses: actions/checkout@v4.1.7
+        if: inputs.dogorelease
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0 # Required by GoRelease
 
       - name: Configure nightly build
-        if: inputs.nightly
+        if: inputs.dogorelease && inputs.nightly
         run: |
           # Locally remove previous nightly tags so they do not interfere
           # with nightly tag computation. Also add the upstream.
@@ -145,56 +220,64 @@ jobs:
           git tag "$nightly_tag"
 
       - name: Golang Setup
+        if: inputs.dogorelease
         uses: ./.github/actions/set-up-go
 
       - name: go-check
+        if: inputs.dogorelease
         run: go version
 
       - name: UI Cache Setup
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        if: inputs.dogorelease
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
           path: |
             http/web_ui/
           key: ${{ github.ref }}-ui
 
       # Supports syft/sbom generation
-      - uses: anchore/sbom-action/download-syft@v0
+      - uses: anchore/sbom-action/download-syft@0b82b0b1a22399a1c542d4d656f70cd903571b5c # v0.21.1
+        if: inputs.dogorelease
 
         # Supports Buildx
       - name: Qemu Setup
-        uses: docker/setup-qemu-action@v3
+        if: inputs.dogorelease
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
       - name: Buildx Setup
-        uses: docker/setup-buildx-action@v3
+        if: inputs.dogorelease
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Cosign Install
-        uses: sigstore/cosign-installer@v3
+        if: inputs.dogorelease
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
 
       - name: GPG Import
+        if: inputs.dogorelease
         id: gpg-import
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}
 
       - name: "Docker Login: ghcr.io"
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
-        uses: docker/login-action@v3
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Docker Login: docker.io"
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
-        uses: docker/login-action@v3
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: "Docker Login: quay.io"
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
-        uses: docker/login-action@v3
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
@@ -202,7 +285,7 @@ jobs:
 
         # Needed for nPFM
       - name: Create GPG Signing Key File
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
         run: |
           GPG_KEY_FILE=/tmp/signing-key.gpg
           echo "${{ secrets.GPG_PRIVATE_KEY_BASE64 }}" | base64 -di > "${GPG_KEY_FILE}"
@@ -211,15 +294,19 @@ jobs:
           GPG_TTY: /dev/ttys000 # Set the GPG_TTY to avoid issues with pinentry
 
       - name: Install GoReleaser
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
-        uses: goreleaser/goreleaser-action@v6
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           install-only: true
           # TODO: remove version pinning when Goreleaser 2.8 is released
           version: v2.5.1
 
+      - name: Install C compiler for arm64 CGO cross-compilation
+        if: inputs.dogorelease && matrix.release_os == 'hsm'
+        run: sudo apt install -y gcc-aarch64-linux-gnu
+
       - name: "GoReleaser: Release"
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
+        if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
         run: |
           if [[ ! -f "goreleaser.${{ matrix.release_os }}.yaml" ]]; then
             yq e '.builds[0].goos |= ["${{ matrix.release_os }}"] | .checksum.name_template |= "checksums-${{ matrix.release_os }}.txt"' "goreleaser.other.yaml" | goreleaser release --clean --timeout=60m --verbose --parallelism 2 -f -
@@ -242,3 +329,35 @@ jobs:
           if [ -n "${GPG_KEY_FILE}" ]; then
             rm -rf "${GPG_KEY_FILE}"
           fi
+
+  release-dist:
+    runs-on: ubuntu-latest
+    if: inputs.dodistrelease
+    needs:
+      - build-ui-dist
+      - release-main
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAGNAME: v${{ needs.build-ui-dist.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # "fetch-tags: true" instead of "fetch-depth: 0" should be enough
+          # but it fails in combination with dogorelease
+          # https://github.com/actions/checkout/issues/1467
+          fetch-depth: 0
+
+      - name: Create release if necessary
+        if: ${{ !inputs.dogorelease }}
+        run: |
+          gh release create -t $TAGNAME --verify-tag $TAGNAME || true
+
+      - name: Download dist-tarball artifact
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: dist-tarball
+
+      - name: Release distribution source tarball
+        run: |
+          gh release upload $TAGNAME *.xz

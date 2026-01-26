@@ -9,14 +9,26 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/mitchellh/mapstructure"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+)
+
+const (
+	metadataHelpSyn  = `Allows interaction with key metadata and settings in the KV store.`
+	metadataHelpDesc = `
+This endpoint allows for reading key metadata in the key-value store, writing
+key settings, or permanently deleting a key and all its versions.
+`
+	detailedMetadataHelpSyn  = `Allows listing detailed information about key metadata in the KV store.`
+	detailedMetadataHelpDesc = `
+This endpoint allows for listing keys and their metadata in the key-value store. `
 )
 
 // pathMetadata returns the path configuration for CRUD operations on the
@@ -34,6 +46,12 @@ func pathMetadata(b *versionedKVBackend) *framework.Path {
 				Description: `
 If true the key will require the cas parameter to be set on all write requests.
 If false, the backend’s configuration will be used.`,
+			},
+			"metadata_cas_required": {
+				Type: framework.TypeBool,
+				Description: `
+If true the key will require the cas parameter to be set on all metadata update
+requests. If false, the backend's configuration will be used.`,
 			},
 			"max_versions": {
 				Type: framework.TypeInt,
@@ -56,6 +74,10 @@ A negative duration will cause an error.
 User-provided key-value pairs that are used to describe arbitrary and
 version-agnostic information about a secret.
 `,
+			},
+			"metadata_cas": {
+				Type:        framework.TypeInt,
+				Description: `Check-and-set parameter for metadata updates. Must match the current metadata version for the update to succeed. Set to 0 for initial metadata creation.`,
 			},
 			"after": {
 				Type:        framework.TypeString,
@@ -93,8 +115,8 @@ version-agnostic information about a secret.
 
 		ExistenceCheck: b.metadataExistenceCheck(),
 
-		HelpSynopsis:    confHelpSyn,
-		HelpDescription: confHelpDesc,
+		HelpSynopsis:    metadataHelpSyn,
+		HelpDescription: metadataHelpDesc,
 	}
 }
 
@@ -129,8 +151,8 @@ func pathDetailedMetadata(b *versionedKVBackend) *framework.Path {
 
 		ExistenceCheck: b.metadataExistenceCheck(),
 
-		HelpSynopsis:    confHelpSyn,
-		HelpDescription: confHelpDesc,
+		HelpSynopsis:    detailedMetadataHelpSyn,
+		HelpDescription: detailedMetadataHelpDesc,
 	}
 }
 
@@ -174,7 +196,7 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 				return nil, err
 			}
 
-			defer txn.Rollback(ctx)
+			defer txn.Rollback(ctx) //nolint:errcheck
 			req.Storage = txn
 		}
 
@@ -205,6 +227,12 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 			meta, err := b.getKeyMetadata(ctx, req.Storage, path)
 			if err != nil {
 				return nil, fmt.Errorf("[%d] failed to read entry: %w", index, err)
+			}
+
+			// No metadata for a directory or deleted entry.
+			if meta == nil {
+				keyInfos[subKey] = map[string]interface{}{}
+				continue
 			}
 
 			data, err := b.metadataResponseData(meta)
@@ -282,23 +310,24 @@ func (b *versionedKVBackend) metadataResponseData(meta *KeyMetadata) (map[string
 
 	var deleteVersionAfter time.Duration
 	if meta.GetDeleteVersionAfter() != nil {
-		var err error
-		deleteVersionAfter, err = ptypes.Duration(meta.GetDeleteVersionAfter())
-		if err != nil {
+		if err := meta.GetDeleteVersionAfter().CheckValid(); err != nil {
 			return nil, err
 		}
+		deleteVersionAfter = meta.GetDeleteVersionAfter().AsDuration()
 	}
 
 	return map[string]interface{}{
-		"versions":             versions,
-		"current_version":      meta.CurrentVersion,
-		"oldest_version":       meta.OldestVersion,
-		"created_time":         ptypesTimestampToString(meta.CreatedTime),
-		"updated_time":         ptypesTimestampToString(meta.UpdatedTime),
-		"max_versions":         meta.MaxVersions,
-		"cas_required":         meta.CasRequired,
-		"delete_version_after": deleteVersionAfter.String(),
-		"custom_metadata":      meta.CustomMetadata,
+		"versions":                 versions,
+		"current_version":          meta.CurrentVersion,
+		"current_metadata_version": meta.CurrentMetadataVersion,
+		"oldest_version":           meta.OldestVersion,
+		"created_time":             ptypesTimestampToString(meta.CreatedTime),
+		"updated_time":             ptypesTimestampToString(meta.UpdatedTime),
+		"max_versions":             meta.MaxVersions,
+		"cas_required":             meta.CasRequired,
+		"metadata_cas_required":    meta.MetadataCasRequired,
+		"delete_version_after":     deleteVersionAfter.String(),
+		"custom_metadata":          meta.CustomMetadata,
 	}, nil
 }
 
@@ -312,7 +341,7 @@ func (b *versionedKVBackend) pathMetadataRead() framework.OperationFunc {
 				return nil, err
 			}
 
-			defer txn.Rollback(ctx)
+			defer txn.Rollback(ctx) //nolint:errcheck
 			req.Storage = txn
 		}
 
@@ -327,6 +356,9 @@ func (b *versionedKVBackend) pathMetadataRead() framework.OperationFunc {
 		}
 
 		respData, err := b.metadataResponseData(meta)
+		if err != nil {
+			return nil, err
+		}
 
 		return &logical.Response{
 			Data: respData,
@@ -363,7 +395,7 @@ func validateCustomMetadata(customMetadata map[string]string) error {
 
 	// Perform validation on each key and value and return ALL errors
 	for key, value := range customMetadata {
-		if keyLen := len(key); 0 == keyLen || keyLen > maxCustomMetadataKeyLength {
+		if keyLen := len(key); keyLen == 0 || keyLen > maxCustomMetadataKeyLength {
 			errs = multierror.Append(errs, fmt.Errorf("%s: length of key %q is %d but must be 0 < len(key) <= %d",
 				customMetadataValidationErrorPrefix,
 				key,
@@ -371,7 +403,7 @@ func validateCustomMetadata(customMetadata map[string]string) error {
 				maxCustomMetadataKeyLength))
 		}
 
-		if valueLen := len(value); 0 == valueLen || valueLen > maxCustomMetadataValueLength {
+		if valueLen := len(value); valueLen == 0 || valueLen > maxCustomMetadataValueLength {
 			errs = multierror.Append(errs, fmt.Errorf("%s: length of value for key %q is %d but must be 0 < len(value) <= %d",
 				customMetadataValidationErrorPrefix,
 				key,
@@ -432,11 +464,13 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 
 		maxRaw, mOk := data.GetOk("max_versions")
 		casRaw, cOk := data.GetOk("cas_required")
+		metadataCasRaw, mcasOk := data.GetOk("metadata_cas_required")
+		metadataCasValueRaw, mcasValueOk := data.GetOk("metadata_cas")
 		deleteVersionAfterRaw, dvaOk := data.GetOk("delete_version_after")
 		customMetadataRaw, cmOk := data.GetOk("custom_metadata")
 
 		// Fast path validation
-		if !mOk && !cOk && !dvaOk && !cmOk {
+		if !mOk && !cOk && !dvaOk && !cmOk && !mcasOk {
 			return nil, nil
 		}
 
@@ -450,7 +484,7 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 		if cmOk {
 			customMetadataMap, err = parseCustomMetadata(customMetadataRaw.(map[string]interface{}), false)
 			if err != nil {
-				return logical.ErrorResponse(fmt.Sprintf("%s: %s", customMetadataValidationErrorPrefix, err.Error())), nil
+				return logical.ErrorResponse("%s: %s", customMetadataValidationErrorPrefix, err.Error()), nil
 			}
 
 			customMetadataErrs := validateCustomMetadata(customMetadataMap)
@@ -461,9 +495,20 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 		}
 
 		var resp *logical.Response
+
+		addWarning := func(msg string) {
+			if resp == nil {
+				resp = &logical.Response{}
+			}
+			resp.AddWarning(msg)
+		}
+
 		if cOk && config.CasRequired && !casRaw.(bool) {
-			resp = &logical.Response{}
-			resp.AddWarning("\"cas_required\" set to false, but is mandated by backend config. This value will be ignored.")
+			addWarning("\"cas_required\" set to false, but is mandated by backend config. This value will be ignored.")
+		}
+
+		if mcasOk && config.MetadataCasRequired && !metadataCasRaw.(bool) {
+			addWarning("\"metadata_cas_required\" set to false, but is mandated by backend config. This value will be ignored.")
 		}
 
 		lock := locksutil.LockForKey(b.locks, key)
@@ -478,7 +523,7 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 				return nil, err
 			}
 
-			defer txn.Rollback(ctx)
+			defer txn.Rollback(ctx) //nolint:errcheck
 			req.Storage = txn
 		}
 
@@ -486,14 +531,40 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
+
+		checkMetadataCas := (meta != nil && meta.MetadataCasRequired) || config.MetadataCasRequired
+
+		if checkMetadataCas && !mcasValueOk {
+			return logical.ErrorResponse("metadata check-and-set parameter required for this call"), nil
+		}
+
+		now := timestamppb.Now()
 		if meta == nil {
-			now := ptypes.TimestampNow()
-			meta = &KeyMetadata{
-				Key:         key,
-				Versions:    map[uint64]*VersionMetadata{},
-				CreatedTime: now,
-				UpdatedTime: now,
+			if mcasValueOk {
+				metadataCasValue := uint64(metadataCasValueRaw.(int))
+				if metadataCasValue != 0 {
+					return logical.ErrorResponse("metadata_cas must be 0 when creating new metadata"), nil
+				}
 			}
+
+			meta = &KeyMetadata{
+				Key:                    key,
+				Versions:               map[uint64]*VersionMetadata{},
+				CreatedTime:            now,
+				UpdatedTime:            now,
+				CurrentMetadataVersion: 1, // Initialize to 1 for new metadata
+			}
+		} else {
+			if mcasValueOk {
+				metadataCasValue := uint64(metadataCasValueRaw.(int))
+				if metadataCasValue != meta.CurrentMetadataVersion {
+					return logical.ErrorResponse("metadata check-and-set parameter does not match the current version"), nil
+				}
+			}
+
+			// Increment metadata version on update
+			meta.CurrentMetadataVersion++
+			meta.UpdatedTime = now
 		}
 
 		if mOk {
@@ -502,8 +573,11 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 		if cOk {
 			meta.CasRequired = casRaw.(bool)
 		}
+		if mcasOk {
+			meta.MetadataCasRequired = metadataCasRaw.(bool)
+		}
 		if dvaOk {
-			meta.DeleteVersionAfter = ptypes.DurationProto(time.Duration(deleteVersionAfterRaw.(int)) * time.Second)
+			meta.DeleteVersionAfter = durationpb.New(time.Duration(deleteVersionAfterRaw.(int)) * time.Second)
 		}
 		if cmOk {
 			meta.CustomMetadata = customMetadataMap
@@ -529,15 +603,14 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 // be provided to framework.HandlePatchOperation. The returned
 // framework.PatchPreprocessorFunc handles filtering out Vault-managed fields,
 // and ensuring appropriate handling of data types not supported directly by FieldType.
-func metadataPatchPreprocessor() framework.PatchPreprocessorFunc {
+func metadataPatchPreprocessor(patchableKeys []string) framework.PatchPreprocessorFunc {
 	return func(input map[string]interface{}) (map[string]interface{}, error) {
-		patchableKeys := []string{"max_versions", "cas_required", "delete_version_after", "custom_metadata"}
 		patchData := map[string]interface{}{}
 
 		for _, k := range patchableKeys {
 			if v, ok := input[k]; ok {
 				if k == "delete_version_after" {
-					patchData[k] = ptypes.DurationProto(time.Duration(v.(int)) * time.Second)
+					patchData[k] = durationpb.New(time.Duration(v.(int)) * time.Second)
 				} else {
 					patchData[k] = v
 				}
@@ -552,6 +625,20 @@ func metadataPatchPreprocessor() framework.PatchPreprocessorFunc {
 // The key metadata entry must exist to apply the provided patch data.
 func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		patchableFields := []string{"max_versions", "cas_required", "metadata_cas_required", "delete_version_after", "custom_metadata"}
+
+		hasPatchableFields := false
+		for _, field := range patchableFields {
+			if _, ok := data.GetOk(field); ok {
+				hasPatchableFields = true
+				break
+			}
+		}
+
+		if !hasPatchableFields {
+			return nil, nil
+		}
+
 		key := data.Get("path").(string)
 
 		if key == "" {
@@ -561,7 +648,7 @@ func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 		if cmRaw, cmOk := data.GetOk("custom_metadata"); cmOk {
 			customMetadataMap, err := parseCustomMetadata(cmRaw.(map[string]interface{}), true)
 			if err != nil {
-				return logical.ErrorResponse(fmt.Sprintf("%s: %s", customMetadataValidationErrorPrefix, err.Error())), nil
+				return logical.ErrorResponse("%s: %s", customMetadataValidationErrorPrefix, err.Error()), nil
 			}
 
 			customMetadataErrs := validateCustomMetadata(customMetadataMap)
@@ -588,7 +675,7 @@ func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 				return nil, err
 			}
 
-			defer txn.Rollback(ctx)
+			defer txn.Rollback(ctx) //nolint:errcheck
 			req.Storage = txn
 		}
 
@@ -601,12 +688,35 @@ func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 			return logical.RespondWithStatusCode(nil, req, http.StatusNotFound)
 		}
 
+		// Check if metadata_cas is required for this update
+		checkMetadataCas := meta.MetadataCasRequired || config.MetadataCasRequired
+		metadataCasValueRaw, mcasValueOk := data.GetOk("metadata_cas")
+
+		if checkMetadataCas && !mcasValueOk {
+			return logical.ErrorResponse("metadata check-and-set parameter required for this call"), nil
+		}
+
+		if mcasValueOk {
+			metadataCasValue := uint64(metadataCasValueRaw.(int))
+			if metadataCasValue != meta.CurrentMetadataVersion {
+				return logical.ErrorResponse("metadata check-and-set parameter does not match the current version"), nil
+			}
+		}
+
 		var resp *logical.Response
 		casRaw, cOk := data.GetOk("cas_required")
 
 		if cOk && config.CasRequired && !casRaw.(bool) {
 			resp = &logical.Response{}
 			resp.AddWarning("\"cas_required\" set to false, but is mandated by backend config. This value will be ignored.")
+		}
+
+		metadataCasRaw, mcOk := data.GetOk("metadata_cas_required")
+		if mcOk && config.MetadataCasRequired && !metadataCasRaw.(bool) {
+			if resp == nil {
+				resp = &logical.Response{}
+			}
+			resp.AddWarning("\"metadata_cas_required\" set to false, but is mandated by backend config. This value will be ignored.")
 		}
 
 		// proto-generated structs do not have mapstructure tags so marshal
@@ -621,7 +731,7 @@ func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 			return nil, err
 		}
 
-		patchedBytes, err := framework.HandlePatchOperation(data, metaMap, metadataPatchPreprocessor())
+		patchedBytes, err := framework.HandlePatchOperation(data, metaMap, metadataPatchPreprocessor(patchableFields))
 		if err != nil {
 			return nil, err
 		}
@@ -630,6 +740,10 @@ func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 		if err = json.Unmarshal(patchedBytes, &patchedMetadata); err != nil {
 			return nil, err
 		}
+
+		// Increment metadata version after patching
+		patchedMetadata.CurrentMetadataVersion++
+		patchedMetadata.UpdatedTime = timestamppb.Now()
 
 		if err = b.writeKeyMetadata(ctx, req.Storage, patchedMetadata); err != nil {
 			return nil, err
@@ -664,7 +778,7 @@ func (b *versionedKVBackend) pathMetadataDelete() framework.OperationFunc {
 				return nil, err
 			}
 
-			defer txn.Rollback(ctx)
+			defer txn.Rollback(ctx) //nolint:errcheck
 			req.Storage = txn
 		}
 
@@ -712,11 +826,3 @@ func (b *versionedKVBackend) pathMetadataDelete() framework.OperationFunc {
 		return nil, err
 	}
 }
-
-const (
-	metadataHelpSyn  = `Allows interaction with key metadata and settings in the KV store.`
-	metadataHelpDesc = `
-This endpoint allows for reading, information about a key in the key-value
-store, writing key settings, and permanently deleting a key and all versions. 
-`
-)

@@ -10,22 +10,16 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
-	shared                   = false
-	exclusive                = true
 	currentConvergentVersion = 3
 )
-
-var errNeedExclusiveLock = errors.New("an exclusive lock is needed for this operation")
 
 // PolicyRequest holds values used when requesting a policy. Most values are
 // only used during an upsert.
@@ -88,7 +82,7 @@ func NewLockManager(useCache bool, cacheSize int) (*LockManager, error) {
 	case cacheSize > 0:
 		newLRUCache, err := NewTransitLRU(cacheSize)
 		if err != nil {
-			return nil, errwrap.Wrapf("failed to create cache: {{err}}", err)
+			return nil, fmt.Errorf("failed to create cache: %w", err)
 		}
 		cache = newLRUCache
 	}
@@ -129,7 +123,7 @@ func (lm *LockManager) InitCache(cacheSize int) error {
 		case cacheSize > 0:
 			newLRUCache, err := NewTransitLRU(cacheSize)
 			if err != nil {
-				return errwrap.Wrapf("failed to create cache: {{err}}", err)
+				return fmt.Errorf("failed to create cache: %w", err)
 			}
 			lm.cache = newLRUCache
 		}
@@ -214,7 +208,7 @@ func (lm *LockManager) RestorePolicy(ctx context.Context, storage logical.Storag
 	if keyData.ArchivedKeys != nil {
 		err = keyData.Policy.storeArchive(ctx, storage, keyData.ArchivedKeys)
 		if err != nil {
-			return errwrap.Wrapf(fmt.Sprintf("failed to restore archived keys for key %q: {{err}}", name), err)
+			return fmt.Errorf("failed to restore archived keys for key %q: %w", name, err)
 		}
 	}
 
@@ -227,7 +221,7 @@ func (lm *LockManager) RestorePolicy(ctx context.Context, storage logical.Storag
 	// Restore the policy. This will also attempt to adjust the archive.
 	err = keyData.Policy.Persist(ctx, storage)
 	if err != nil {
-		return errwrap.Wrapf(fmt.Sprintf("failed to restore the policy %q: {{err}}", name), err)
+		return fmt.Errorf("failed to restore the policy %q: %w", name, err)
 	}
 
 	keyData.Policy.l = new(sync.RWMutex)
@@ -270,7 +264,7 @@ func (lm *LockManager) BackupPolicy(ctx context.Context, storage logical.Storage
 		}
 	}
 
-	if atomic.LoadUint32(&p.deleted) == 1 {
+	if p.deleted.Load() {
 		return "", fmt.Errorf("key %q not found", name)
 	}
 
@@ -296,7 +290,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 	}
 	if ok {
 		p = pRaw.(*Policy)
-		if atomic.LoadUint32(&p.deleted) == 1 {
+		if p.deleted.Load() {
 			return nil, false, nil
 		}
 		return p, false, nil
@@ -331,11 +325,11 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 	}
 	if ok {
 		p = pRaw.(*Policy)
-		if atomic.LoadUint32(&p.deleted) == 1 {
+		if p.deleted.Load() {
 			return nil, false, nil
 		}
 		retP = p
-		return
+		return retP, retUpserted, retErr
 	}
 
 	// Load it from storage
@@ -428,7 +422,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 		// We don't need to worry about upgrading since it will be a new policy
 		retP = p
 		retUpserted = true
-		return
+		return retP, retUpserted, retErr
 	}
 
 	if p.NeedsUpgrade() {
@@ -445,7 +439,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 	}
 
 	retP = p
-	return
+	return retP, retUpserted, retErr
 }
 
 func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key []byte, rand io.Reader) error {
@@ -460,7 +454,7 @@ func (lm *LockManager) ImportPolicy(ctx context.Context, req PolicyRequest, key 
 	}
 	if ok {
 		p = pRaw.(*Policy)
-		if atomic.LoadUint32(&p.deleted) == 1 {
+		if p.deleted.Load() {
 			return nil
 		}
 	}
@@ -540,7 +534,7 @@ func (lm *LockManager) DeletePolicy(ctx context.Context, storage logical.Storage
 		return errors.New("deletion is not allowed for this key")
 	}
 
-	atomic.StoreUint32(&p.deleted, 1)
+	p.deleted.Store(true)
 
 	if lm.useCache {
 		lm.cache.Delete(name)
@@ -548,12 +542,12 @@ func (lm *LockManager) DeletePolicy(ctx context.Context, storage logical.Storage
 
 	err = storage.Delete(ctx, "policy/"+name)
 	if err != nil {
-		return errwrap.Wrapf(fmt.Sprintf("error deleting key %q: {{err}}", name), err)
+		return fmt.Errorf("error deleting key %q: %w", name, err)
 	}
 
 	err = storage.Delete(ctx, "archive/"+name)
 	if err != nil {
-		return errwrap.Wrapf(fmt.Sprintf("error deleting key %q archive: {{err}}", name), err)
+		return fmt.Errorf("error deleting key %q archive: %w", name, err)
 	}
 
 	return nil

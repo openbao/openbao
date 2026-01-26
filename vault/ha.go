@@ -5,8 +5,6 @@ package vault
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"os"
@@ -16,8 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/hashicorp/errwrap"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/oklog/run"
@@ -47,16 +45,9 @@ const (
 	leaderPrefixCleanDelay = 200 * time.Millisecond
 )
 
-var addEnterpriseHaActors func(*Core, *run.Group) chan func() = addEnterpriseHaActorsNoop
-
-func addEnterpriseHaActorsNoop(*Core, *run.Group) chan func() { return nil }
-
 // Standby checks if the Vault is in standby mode
-func (c *Core) Standby() (bool, error) {
-	c.stateLock.RLock()
-	standby := c.standby
-	c.stateLock.RUnlock()
-	return standby, nil
+func (c *Core) Standby() bool {
+	return c.standby.Load()
 }
 
 func (c *Core) ActiveTime() time.Time {
@@ -64,15 +55,6 @@ func (c *Core) ActiveTime() time.Time {
 	activeTime := c.activeTime
 	c.stateLock.RUnlock()
 	return activeTime
-}
-
-// StandbyStates is meant as a way to avoid some extra locking on the very
-// common sys/health check.
-func (c *Core) StandbyStates() (standby bool) {
-	c.stateLock.RLock()
-	standby = c.standby
-	c.stateLock.RUnlock()
-	return
 }
 
 // getHAMembers retrieves cluster membership that doesn't depend on raft. This should only ever be called by the
@@ -150,7 +132,7 @@ func (c *Core) LeaderLocked() (isLeader bool, leaderAddr, clusterAddr string, er
 	}
 
 	// Check if we are the leader
-	if !c.standby {
+	if !c.standby.Load() {
 		return true, c.redirectAddr, c.ClusterAddr(), nil
 	}
 
@@ -170,7 +152,7 @@ func (c *Core) LeaderLocked() (isLeader bool, leaderAddr, clusterAddr string, er
 	}
 
 	var localLeaderUUID, localRedirectAddr, localClusterAddr string
-	clusterLeaderParams := c.clusterLeaderParams.Load().(*ClusterLeaderParams)
+	clusterLeaderParams := c.clusterLeaderParams.Load()
 	if clusterLeaderParams != nil {
 		localLeaderUUID = clusterLeaderParams.LeaderUUID
 		localRedirectAddr = clusterLeaderParams.LeaderRedirectAddr
@@ -189,7 +171,7 @@ func (c *Core) LeaderLocked() (isLeader bool, leaderAddr, clusterAddr string, er
 	defer c.leaderParamsLock.Unlock()
 
 	// Validate base conditions again
-	clusterLeaderParams = c.clusterLeaderParams.Load().(*ClusterLeaderParams)
+	clusterLeaderParams = c.clusterLeaderParams.Load()
 	if clusterLeaderParams != nil {
 		localLeaderUUID = clusterLeaderParams.LeaderUUID
 		localRedirectAddr = clusterLeaderParams.LeaderRedirectAddr
@@ -278,7 +260,7 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 	if c.Sealed() {
 		return nil
 	}
-	if c.ha == nil || c.standby {
+	if c.ha == nil || c.standby.Load() {
 		return nil
 	}
 
@@ -388,20 +370,173 @@ func (c *Core) StepDown(httpCtx context.Context, req *logical.Request) (retErr e
 	return retErr
 }
 
+func (c *Core) stopStandby() {
+	standbyStopCh := c.standbyStopCh.Load()
+	if standbyStopCh == nil {
+		return
+	}
+
+	select {
+	case standbyStopCh.(chan struct{}) <- struct{}{}:
+	default:
+		c.logger.Warn("ignoring standby stop request: stop is already in progress")
+	}
+}
+
+func (c *Core) restart() {
+	restartCh := c.standbyRestartCh.Load()
+	if restartCh == nil {
+		return
+	}
+
+	select {
+	case restartCh.(chan struct{}) <- struct{}{}:
+	default:
+		c.logger.Warn("ignoring restart request: restart is already in progress")
+	}
+}
+
+func (c *Core) drainPendingRestarts() {
+	for {
+		restartCh := c.standbyRestartCh.Load()
+		if restartCh == nil {
+			return
+		}
+
+		select {
+		case <-restartCh.(chan struct{}):
+			c.logger.Warn("ignoring restart request: restart is already in progress")
+
+		default:
+			return
+		}
+	}
+}
+
+func (c *Core) runStandbyGrabStateLock(stopCh <-chan struct{}) error {
+	acquiredCh := make(chan struct{})
+	quitCh := make(chan struct{})
+
+	// We want to quit lock acquisition on two conditions:
+	//
+	// 1. Timeout.
+	// 2. If we're told to stop.
+	//
+	// While technically unnecessary, we only quit lock acquisition
+	// if we've not been canceled.
+	go func() {
+		timeout := time.NewTimer(DefaultMaxRequestDuration)
+
+		canceled := false
+		select {
+		case <-timeout.C:
+			canceled = true
+		case <-stopCh:
+			canceled = true
+		case <-acquiredCh:
+		}
+
+		if !timeout.Stop() {
+			<-timeout.C
+		}
+
+		if canceled {
+			select {
+			case quitCh <- struct{}{}:
+			default:
+			}
+		}
+
+		close(quitCh)
+	}()
+
+	// Grab lock.
+	l := newLockGrabber(c.stateLock.Lock, c.stateLock.Unlock, quitCh)
+	go l.grab()
+
+	// Check if we got the lock successfully.
+	stopped := l.lockOrStop()
+	if stopped {
+		return fmt.Errorf("failed to acquire state lock")
+	}
+
+	close(acquiredCh)
+
+	return nil
+}
+
 // runStandby is a long running process that manages a number of the HA
 // subsystems.
-func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}) {
+// doneCh will be closed once the standby has finished operating in this
+// invocation.
+// manualStepDownCh is a channel passed to the leadership acquisition process,
+// to allow interrupting leadership acquisition by this node. A step-down is
+// triggered for every message in the channel and the channel is closed once
+// this invocation returns.
+// stopCh can be used to stop the standby and shutdown the process.
+// restartCh can be used to gracefully reset standby node state, reloading all
+// cached information.
+//
+// stopCh and restartCh differ in that the former is terminal and the latter is
+// re-entrant. Both can be triggered by writing to the respective channel.
+func (c *Core) runStandby(doneCh chan<- struct{}, manualStepDownCh chan struct{}, stopCh, restartCh <-chan struct{}) {
 	defer close(doneCh)
 	defer close(manualStepDownCh)
+
+	for restart := true; restart; {
+		restart = c.runStandbyOnce(doneCh, manualStepDownCh, stopCh, restartCh)
+	}
+
+	c.logger.Info("runStandby stopped")
+}
+
+func (c *Core) runStandbyOnce(doneCh chan<- struct{}, manualStepDownCh chan struct{}, stopCh, restartCh <-chan struct{}) bool {
 	c.logger.Info("entering standby mode")
+	restart := false
+
+	if c.StandbyReadsEnabled() {
+		c.logger.Info("enabling horizontal scalability (reads)")
+		c.barrier.SetReadOnly(true)
+
+		if err := c.runStandbyGrabStateLock(stopCh); err != nil {
+			c.logger.Error("runStandby: unable to grab state lock", "err", err)
+			return false
+		}
+
+		// wipe any existing mount tables
+		if err := c.preSeal(); err != nil {
+			c.logger.Error("pre-seal teardown failed", "error", err)
+		}
+
+		c.drainPendingRestarts()
+
+		readStandbyCtx, readStandbyCancel := context.WithCancel(namespace.RootContext(context.Background()))
+		defer readStandbyCancel()
+
+		// Unseal, holding the state lock.
+		c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))
+		if err := c.postUnseal(readStandbyCtx, readStandbyCancel, readonlyUnsealStrategy{}); err != nil {
+			c.logger.Error("read-only post-unseal setup failed", "error", err)
+			if err := c.barrier.Seal(); err != nil {
+				c.logger.Error("failed to re-seal barrier after post-unseal setup failed", "error", err)
+			}
+			c.logger.Warn("vault is sealed")
+		}
+
+		// Yield the state lock.
+		c.stateLock.Unlock()
+	}
 
 	var g run.Group
-	newLeaderCh := addEnterpriseHaActors(c, &g)
 	{
 		// This will cause all the other actors to close when the stop channel
-		// is closed.
+		// is closed or the restartCh is triggered.
 		g.Add(func() error {
-			<-stopCh
+			select {
+			case <-stopCh:
+			case <-restartCh:
+				restart = true
+			}
 			return nil
 		}, func(error) {})
 	}
@@ -422,7 +557,7 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}) {
 		checkLeaderStop := make(chan struct{})
 
 		g.Add(func() error {
-			c.periodicLeaderRefresh(newLeaderCh, checkLeaderStop)
+			c.periodicLeaderRefresh(checkLeaderStop)
 			return nil
 		}, func(error) {
 			close(checkLeaderStop)
@@ -445,7 +580,7 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}) {
 		leaderStopCh := make(chan struct{})
 
 		g.Add(func() error {
-			c.waitForLeadership(newLeaderCh, manualStepDownCh, leaderStopCh)
+			c.waitForLeadership(manualStepDownCh, leaderStopCh)
 			return nil
 		}, func(error) {
 			close(leaderStopCh)
@@ -453,14 +588,20 @@ func (c *Core) runStandby(doneCh, manualStepDownCh, stopCh chan struct{}) {
 		})
 	}
 
-	// Start all the actors
-	g.Run()
+	// Start all the actors; when leadership changes or we're told to restart,
+	// we'll exit from this with an error.
+	err := g.Run()
+	if err != nil {
+		c.logger.Error("unexpected error in runStandby", "error", err.Error())
+	}
+
+	return restart
 }
 
 // waitForLeadership is a long running routine that is used when an HA backend
 // is enabled. It waits until we are leader and switches this Vault to
 // active.
-func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stopCh chan struct{}) {
+func (c *Core) waitForLeadership(manualStepDownCh, stopCh <-chan struct{}) {
 	var manualStepDown bool
 	firstIteration := true
 	for {
@@ -503,13 +644,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			return
 		}
 
-		if atomic.LoadUint32(c.neverBecomeActive) == 1 {
-			c.heldHALock = nil
-			lock.Unlock()
-			c.logger.Info("marked never become active, giving up active state")
-			continue
-		}
-
 		// If the backend is a FencingHABackend, register the lock with it so it can
 		// correctly fence all writes from now on  (i.e. assert that we still hold
 		// the lock atomically with each write).
@@ -547,13 +681,19 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			return
 		}
 
+		// Clear pending standby restarts, not that it matters too much.
+		c.drainPendingRestarts()
+
 		// Store the lock so that we can manually clear it later if needed
 		c.heldHALock = lock
 
 		// Create the active context
 		activeCtx, activeCtxCancel := context.WithCancel(namespace.RootContext(nil))
 		c.activeContext = activeCtx
-		c.activeContextCancelFunc.Store(activeCtxCancel)
+		c.activeContextCancelFunc.Store(&activeCtxCancel)
+
+		// Mark storage as readable again.
+		c.barrier.SetReadOnly(false)
 
 		// Perform seal migration
 		if err := c.migrateSeal(c.activeContext); err != nil {
@@ -606,9 +746,9 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		{
 			// Clear previous local cluster cert info so we generate new. Since the
 			// UUID will have changed, standbys will know to look for new info
-			c.localClusterParsedCert.Store((*x509.Certificate)(nil))
-			c.localClusterCert.Store(([]byte)(nil))
-			c.localClusterPrivateKey.Store((*ecdsa.PrivateKey)(nil))
+			c.localClusterParsedCert.Store(nil)
+			c.localClusterCert.Store(nil)
+			c.localClusterPrivateKey.Store(nil)
 
 			if err := c.setupCluster(activeCtx); err != nil {
 				c.heldHALock = nil
@@ -630,10 +770,16 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			continue
 		}
 
+		// wipe any existing mount tables before stepping up as leader
+		if err := c.preSeal(); err != nil {
+			c.logger.Error("pre-seal teardown failed", "error", err)
+		}
+
 		// Attempt the post-unseal process
+		c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformancePrimary))
 		err = c.postUnseal(activeCtx, activeCtxCancel, standardUnsealStrategy{})
 		if err == nil {
-			c.standby = false
+			c.standby.Store(false)
 			c.leaderUUID = uuid
 			c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 1, nil)
 		}
@@ -642,6 +788,8 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 
 		// Handle a failure to unseal
 		if err != nil {
+			c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceStandby))
+			c.standby.Store(true)
 			c.logger.Error("post-unseal setup failed", "error", err)
 			lock.Unlock()
 			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
@@ -684,17 +832,21 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			metrics.MeasureSince([]string{"core", "leadership_lost"}, activeTime)
 
 			// Mark as standby
-			c.standby = true
+			c.standby.Store(true)
 			c.leaderUUID = ""
 			c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 0, nil)
 
-			// Seal
-			if err := c.preSeal(); err != nil {
-				c.logger.Error("pre-seal teardown failed", "error", err)
+			// Seal if this was a regular leadership change or stepdown. We
+			// do not seal when the stop channel is acquired, as
+			// sealInternal(...) handles that for us.
+			if !stopped {
+				if err := c.preSeal(); err != nil {
+					c.logger.Error("pre-seal teardown failed", "error", err)
+				}
 			}
 
 			// If we are not meant to keep the HA lock, clear it
-			if atomic.LoadUint32(c.keepHALockOnStepDown) == 0 {
+			if !c.keepHALockOnStepDown.Load() {
 				if err := c.clearLeader(uuid); err != nil {
 					c.logger.Error("clearing leader advertisement failed", "error", err)
 				}
@@ -738,7 +890,7 @@ func grabLockOrStop(lockFunc, unlockFunc func(), stopCh chan struct{}) (stopped 
 
 type lockGrabber struct {
 	// stopCh provides a way to interrupt the grab-or-stop
-	stopCh chan struct{}
+	stopCh <-chan struct{}
 	// doneCh is closed when the child goroutine is done.
 	doneCh     chan struct{}
 	lockFunc   func()
@@ -749,7 +901,7 @@ type lockGrabber struct {
 	locked        bool
 }
 
-func newLockGrabber(lockFunc, unlockFunc func(), stopCh chan struct{}) *lockGrabber {
+func newLockGrabber(lockFunc, unlockFunc func(), stopCh <-chan struct{}) *lockGrabber {
 	return &lockGrabber{
 		doneCh:        make(chan struct{}),
 		lockFunc:      lockFunc,
@@ -800,17 +952,17 @@ func (l *lockGrabber) grab() {
 // leader pretty quickly. There is logic in Leader() already to not make this
 // onerous and avoid more traffic than needed, so we just call that and ignore
 // the result.
-func (c *Core) periodicLeaderRefresh(newLeaderCh chan func(), stopCh chan struct{}) {
-	opCount := new(int32)
+func (c *Core) periodicLeaderRefresh(stopCh chan struct{}) {
+	opCount := atomic.Int32{}
 
 	clusterAddr := ""
 	for {
 		timer := time.NewTimer(leaderCheckInterval)
 		select {
 		case <-timer.C:
-			count := atomic.AddInt32(opCount, 1)
+			count := opCount.Add(1)
 			if count > 1 {
-				atomic.AddInt32(opCount, -1)
+				opCount.Add(-1)
 				continue
 			}
 			// We do this in a goroutine because otherwise if this refresh is
@@ -818,8 +970,6 @@ func (c *Core) periodicLeaderRefresh(newLeaderCh chan func(), stopCh chan struct
 			// deadlock, which then means stopCh can never been seen and we can
 			// block shutdown
 			go func() {
-				// Bind locally, as the race detector is tripping here
-				lopCount := opCount
 				isLeader, _, newClusterAddr, err := c.Leader()
 				if err != nil {
 					// This is debug level because it's not really something the user
@@ -839,16 +989,12 @@ func (c *Core) periodicLeaderRefresh(newLeaderCh chan func(), stopCh chan struct
 					clusterAddr = ""
 				}
 
-				if !isLeader && newClusterAddr != clusterAddr && newLeaderCh != nil {
-					select {
-					case newLeaderCh <- nil:
-						c.logger.Debug("new leader found, triggering new leader channel")
-						clusterAddr = newClusterAddr
-					default:
-						c.logger.Debug("new leader found, but still processing previous leader change")
-					}
+				if !isLeader && newClusterAddr != clusterAddr {
+					c.logger.Debug("new leader found", "new", newClusterAddr, "past", clusterAddr)
+					clusterAddr = newClusterAddr
 				}
-				atomic.AddInt32(lopCount, -1)
+
+				opCount.Add(-1)
 			}()
 		case <-stopCh:
 			timer.Stop()
@@ -862,27 +1008,21 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 	raftBackend := c.getRaftBackend()
 	isRaft := raftBackend != nil
 
-	opCount := new(int32)
+	opCount := atomic.Int32{}
 	for {
 		timer := time.NewTimer(keyRotateCheckInterval)
 		select {
 		case <-timer.C:
-			count := atomic.AddInt32(opCount, 1)
+			count := opCount.Add(1)
 			if count > 1 {
-				atomic.AddInt32(opCount, -1)
+				opCount.Add(-1)
 				continue
 			}
 
 			go func() {
-				// Bind locally, as the race detector is tripping here
-				lopCount := opCount
-
 				// Only check if we are a standby
-				c.stateLock.RLock()
-				standby := c.standby
-				c.stateLock.RUnlock()
-				if !standby {
-					atomic.AddInt32(lopCount, -1)
+				if !c.standby.Load() {
+					opCount.Add(-1)
 					return
 				}
 
@@ -896,7 +1036,7 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 					// raft during replication secondary enablement. This will
 					// allow us to keep making progress on the raft log.
 					go c.sealInternalWithOptions(true, false, !isRaft)
-					atomic.AddInt32(lopCount, -1)
+					opCount.Add(-1)
 					return
 				}
 
@@ -917,8 +1057,7 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 					}
 				}
 
-				atomic.AddInt32(lopCount, -1)
-				return
+				opCount.Add(-1)
 			}()
 		case <-stopCh:
 			timer.Stop()
@@ -1069,13 +1208,9 @@ func (c *Core) advertiseLeader(ctx context.Context, uuid string, leaderLostCh <-
 		go c.cleanLeaderPrefix(ctx, uuid, leaderLostCh)
 	}
 
-	var key *ecdsa.PrivateKey
-	switch c.localClusterPrivateKey.Load().(type) {
-	case *ecdsa.PrivateKey:
-		key = c.localClusterPrivateKey.Load().(*ecdsa.PrivateKey)
-	default:
-		c.logger.Error("unknown cluster private key type", "key_type", fmt.Sprintf("%T", c.localClusterPrivateKey.Load()))
-		return fmt.Errorf("unknown cluster private key type %T", c.localClusterPrivateKey.Load())
+	key := c.localClusterPrivateKey.Load()
+	if key == nil {
+		return errors.New("missing local cluster private key")
 	}
 
 	keyParams := &certutil.ClusterKeyParams{
@@ -1085,9 +1220,12 @@ func (c *Core) advertiseLeader(ctx context.Context, uuid string, leaderLostCh <-
 		D:    key.D,
 	}
 
-	locCert := c.localClusterCert.Load().([]byte)
-	localCert := make([]byte, len(locCert))
-	copy(localCert, locCert)
+	locCert := c.localClusterCert.Load()
+	if locCert == nil {
+		return errors.New("couldn't load local cluster cert")
+	}
+	localCert := make([]byte, len(*locCert))
+	copy(localCert, *locCert)
 	adv := &activeAdvertisement{
 		RedirectAddr:     c.redirectAddr,
 		ClusterAddr:      c.ClusterAddr(),
@@ -1144,10 +1282,16 @@ func (c *Core) clearLeader(uuid string) error {
 	return c.barrier.Delete(context.Background(), key)
 }
 
-func (c *Core) SetNeverBecomeActive(on bool) {
-	if on {
-		atomic.StoreUint32(c.neverBecomeActive, 1)
-	} else {
-		atomic.StoreUint32(c.neverBecomeActive, 0)
+// StandbyReadsEnabled returns true iff standby read are enabled and supported
+// by the physical backend
+func (c *Core) StandbyReadsEnabled() bool {
+	if _, ok := c.underlyingPhysical.(physical.CacheInvalidationBackend); !ok {
+		return false
 	}
+
+	conf := c.rawConfig.Load()
+	if conf == nil {
+		return false
+	}
+	return !conf.DisableStandbyReads
 }

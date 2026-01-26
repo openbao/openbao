@@ -13,9 +13,8 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
-
-	"go.uber.org/atomic"
 )
 
 const (
@@ -42,21 +41,9 @@ var updatePodTagsResponse string
 //go:embed token
 var token string
 
-var (
-	// ReturnGatewayTimeouts toggles whether the test server should return,
-	// well, gateway timeouts...
-	ReturnGatewayTimeouts = atomic.NewBool(false)
-
-	pathToFiles = func() string {
-		wd, _ := os.Getwd()
-		repoName := "vault-enterprise"
-		if !strings.Contains(wd, repoName) {
-			repoName = "vault"
-		}
-		pathParts := strings.Split(wd, repoName)
-		return pathParts[0] + "vault/serviceregistration/kubernetes/testing/"
-	}()
-)
+// ReturnGatewayTimeouts toggles whether the test server should return,
+// well, gateway timeouts...
+var ReturnGatewayTimeouts = &atomic.Bool{}
 
 // Conf returns the info needed to configure the client to point at
 // the test server. This must be done by the caller to avoid an import
@@ -137,7 +124,7 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 		namespace, podName, err := parsePath(r.URL.Path)
 		if err != nil {
 			w.WriteHeader(400)
-			w.Write([]byte(fmt.Sprintf("unable to parse %s: %s", r.URL.Path, err.Error())))
+			_, _ = fmt.Fprintf(w, "unable to parse %s: %s", r.URL.Path, err.Error())
 			return
 		}
 
@@ -154,7 +141,7 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 			var patches []interface{}
 			if err := json.NewDecoder(r.Body).Decode(&patches); err != nil {
 				w.WriteHeader(400)
-				w.Write([]byte(fmt.Sprintf("unable to decode patches %s: %s", r.URL.Path, err.Error())))
+				_, _ = fmt.Fprintf(w, "unable to decode patches %s: %s", r.URL.Path, err.Error())
 				return
 			}
 			for _, patch := range patches {
@@ -167,7 +154,7 @@ func Server(t *testing.T) (testState *State, testConf *Conf, closeFunc func()) {
 			return
 		default:
 			w.WriteHeader(400)
-			w.Write([]byte(fmt.Sprintf("unexpected request method: %s", r.Method)))
+			_, _ = fmt.Fprintf(w, "unexpected request method: %s", r.Method)
 		}
 	}))
 	closers = append(closers, ts.Close)
@@ -229,12 +216,4 @@ func parsePath(urlPath string) (namespace, podName string, err error) {
 		return "", "", fmt.Errorf("received unexpected path: %s", original)
 	}
 	return namespace, podName, nil
-}
-
-func readFile(fileName string) (string, error) {
-	b, err := os.ReadFile(pathToFiles + fileName)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
 }

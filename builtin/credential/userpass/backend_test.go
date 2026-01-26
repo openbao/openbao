@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	"github.com/go-viper/mapstructure/v2"
 	sockaddr "github.com/hashicorp/go-sockaddr"
-	"github.com/mitchellh/mapstructure"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
@@ -80,7 +80,7 @@ func TestBackend_CRUD(t *testing.T) {
 	if diff := deep.Equal(resp.Data["token_policies"], []string{"foo"}); diff != nil {
 		t.Fatal(diff)
 	}
-	if diff := deep.Equal(resp.Data["token_bound_cidrs"], []*sockaddr.SockAddrMarshaler{{localhostSockAddr}}); diff != nil {
+	if diff := deep.Equal(resp.Data["token_bound_cidrs"], []*sockaddr.SockAddrMarshaler{{SockAddr: localhostSockAddr}}); diff != nil {
 		t.Fatal(diff)
 	}
 
@@ -126,10 +126,10 @@ func TestBackend_CRUD(t *testing.T) {
 	if diff := deep.Equal(resp.Data["token_policies"], []string{"bar"}); diff != nil {
 		t.Fatal(diff)
 	}
-	if diff := deep.Equal(resp.Data["bound_cidrs"], []*sockaddr.SockAddrMarshaler{{localhostSockAddr}}); diff != nil {
+	if diff := deep.Equal(resp.Data["bound_cidrs"], []*sockaddr.SockAddrMarshaler{{SockAddr: localhostSockAddr}}); diff != nil {
 		t.Fatal(diff)
 	}
-	if diff := deep.Equal(resp.Data["token_bound_cidrs"], []*sockaddr.SockAddrMarshaler{{localhostSockAddr}}); diff != nil {
+	if diff := deep.Equal(resp.Data["token_bound_cidrs"], []*sockaddr.SockAddrMarshaler{{SockAddr: localhostSockAddr}}); diff != nil {
 		t.Fatal(diff)
 	}
 }

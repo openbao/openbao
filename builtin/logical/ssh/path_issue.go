@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -97,7 +96,7 @@ func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *fra
 		return nil, err
 	}
 	if role == nil {
-		return logical.ErrorResponse(fmt.Sprintf("unknown role: %s", roleName)), nil
+		return logical.ErrorResponse("unknown role: %s", roleName), nil
 	}
 
 	if role.KeyType != "ca" {
@@ -134,7 +133,7 @@ func (b *backend) pathIssueCertificate(ctx context.Context, req *logical.Request
 	// Sign key
 	userPublicKey, err := parsePublicSSHKey(publicKey)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("failed to parse public_key as SSH key: %s", err)), nil
+		return logical.ErrorResponse("failed to parse public_key as SSH key: %s", err), nil
 	}
 
 	response, err := b.pathSignIssueCertificateHelper(sc, req, data, role, userPublicKey)

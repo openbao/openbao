@@ -20,10 +20,9 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 
 	// Test case for creating CEL roles
 	type TestCase struct {
-		Name          string
-		CelProgram    map[string]any
-		ExpectErr     bool
-		FailurePolicy string
+		Name       string
+		CelProgram map[string]any
+		ExpectErr  bool
 	}
 
 	testCases := []TestCase{
@@ -32,16 +31,14 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 			CelProgram: map[string]any{
 				"expression": "1 == 1",
 			},
-			ExpectErr:     false,
-			FailurePolicy: "Modify",
+			ExpectErr: false,
 		},
 		{
 			Name: "testcelrole_invalid",
 			CelProgram: map[string]any{
 				"expression": "invalid_cel_syntax",
 			},
-			ExpectErr:     true,
-			FailurePolicy: "Modify",
+			ExpectErr: true,
 		},
 	}
 
@@ -57,11 +54,6 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 			// Data for creating the role
 			roleData := map[string]interface{}{
 				"cel_program": tc.CelProgram,
-			}
-
-			// Add failure_policy only if it's provided in the test case
-			if tc.FailurePolicy != "" {
-				roleData["failure_policy"] = tc.FailurePolicy
 			}
 
 			// Create the CEL role
@@ -105,13 +97,16 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 
 				// Validate fields
 				require.Equal(t, tc.Name, data["name"], fmt.Sprintf("bad [%d] name mismatch", tcNum))
-				require.Equal(t, tc.CelProgram["expression"], data["cel_program"].(celhelper.CelProgram).Expression, fmt.Sprintf("bad [%d] cel_program mismatch", tcNum))
+				require.Equal(t, tc.CelProgram["expression"], data["cel_program"].(*celhelper.Program).Expression, fmt.Sprintf("bad [%d] cel_program mismatch", tcNum))
 			}
 
 			// List roles to verify
 			roleReq.Path = "cel/role"
 			roleReq.Operation = logical.ListOperation
 			roleListResp, err := b.HandleRequest(context.Background(), roleReq)
+			if err != nil {
+				t.Fatalf("bad [%d/%s] unexpected error %v", tcNum, tc.Name, err)
+			}
 			foundRoleInList := roleListResp != nil && slices.Contains(roleListResp.Data["keys"].([]string), tc.Name)
 			if tc.ExpectErr {
 				if foundRoleInList {

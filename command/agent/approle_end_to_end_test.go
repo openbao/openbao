@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"testing"
@@ -344,10 +345,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 
 	// Make sure it gets renewed
 	timeout := time.Now().Add(4 * time.Second)
-	for {
-		if time.Now().After(timeout) {
-			break
-		}
+	for time.Now().Before(timeout) {
 		secret, err := client.Auth().Token().LookupSelf()
 		if err != nil {
 			t.Fatal(err)
@@ -384,10 +382,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 	}
 
 	timeout = time.Now().Add(4 * time.Second)
-	for {
-		if time.Now().After(timeout) {
-			break
-		}
+	for time.Now().Before(timeout) {
 		secret, err := client.Auth().Token().LookupSelf()
 		if err != nil {
 			t.Fatal(err)
@@ -733,10 +728,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 
 	// Make sure it gets renewed
 	timeout := time.Now().Add(4 * time.Second)
-	for {
-		if time.Now().After(timeout) {
-			break
-		}
+	for time.Now().Before(timeout) {
 		secret, err := client.Auth().Token().LookupSelf()
 		if err != nil {
 			t.Fatal(err)
@@ -775,10 +767,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 	}
 
 	timeout = time.Now().Add(4 * time.Second)
-	for {
-		if time.Now().After(timeout) {
-			break
-		}
+	for time.Now().Before(timeout) {
 		secret, err := client.Auth().Token().LookupSelf()
 		if err != nil {
 			t.Fatal(err)
@@ -800,9 +789,7 @@ func addConstraints(add bool, cfg map[string]interface{}) map[string]interface{}
 			"secret_id_bound_cidrs": "127.0.0.1/32",
 			"token_bound_cidrs":     "127.0.0.1/32",
 		}
-		for k, v := range extraConstraints {
-			cfg[k] = v
-		}
+		maps.Copy(cfg, extraConstraints)
 	}
 	return cfg
 }

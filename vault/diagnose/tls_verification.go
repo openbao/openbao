@@ -65,12 +65,14 @@ func ListenerChecks(ctx context.Context, listeners []*configutil.Listener) ([]st
 		}
 		_, ok := tlsutil.TLSLookup[l.TLSMinVersion]
 		if !ok {
+			//nolint:staticcheck // user-facing error
 			err := fmt.Errorf("Listener at address %s: %s.", listenerID, fmt.Sprintf(minVersionError, l.TLSMinVersion))
 			listenerErrors = append(listenerErrors, err)
 			Fail(ctx, err.Error())
 		}
 		_, ok = tlsutil.TLSLookup[l.TLSMaxVersion]
 		if !ok {
+			//nolint:staticcheck // user-facing error
 			err := fmt.Errorf("Listener at address %s: %s.", listenerID, fmt.Sprintf(maxVersionError, l.TLSMaxVersion))
 			listenerErrors = append(listenerErrors, err)
 			Fail(ctx, err.Error())
@@ -143,27 +145,30 @@ func ParseTLSInformation(certFilePath string) ([]*x509.Certificate, []*x509.Cert
 	rootCerts := []*x509.Certificate{}
 	data, err := os.ReadFile(certFilePath)
 	if err != nil {
+		//nolint:staticcheck // user-facing error
 		return leafCerts, interCerts, rootCerts, fmt.Errorf("Failed to read certificate file: %w.", err)
 	}
 
 	certBlocks := []*pem.Block{}
-	rst := []byte(data)
-	for len(rst) != 0 {
-		block, rest := pem.Decode(rst)
+	rest := data
+	for {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
 		if block == nil {
-			return leafCerts, interCerts, rootCerts, errors.New("Could not decode certificate in certificate file.")
+			break
 		}
 		certBlocks = append(certBlocks, block)
-		rst = rest
 	}
 
 	if len(certBlocks) == 0 {
+		//nolint:staticcheck // user-facing error
 		return leafCerts, interCerts, rootCerts, errors.New("No certificates found in certificate file.")
 	}
 
 	for _, certBlock := range certBlocks {
 		cert, err := x509.ParseCertificate(certBlock.Bytes)
 		if err != nil {
+			//nolint:staticcheck // user-facing error
 			return leafCerts, interCerts, rootCerts, fmt.Errorf("A PEM block does not parse to a certificate: %w.", err)
 		}
 
@@ -187,6 +192,7 @@ func ParseTLSInformation(certFilePath string) ([]*x509.Certificate, []*x509.Cert
 func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error {
 	// Make sure there's the proper number of leafCerts. If there are multiple, it's a bad pem file.
 	if len(leafCerts) == 0 {
+		//nolint:staticcheck // user-facing error
 		return errors.New("No leaf certificates detected.")
 	}
 
@@ -210,26 +216,36 @@ func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error 
 			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		})
 		if err != nil {
+			//nolint:staticcheck // user-facing error
 			return fmt.Errorf("Failed to verify root certificate: %w.", err)
+		}
+	}
+
+	if len(rootCerts) == 0 {
+		// No root is provided, so:
+		switch {
+		case len(interCerts) > 0:
+			// ... we'll treat the highest intermediate cert in the chain as a
+			// root certificate.
+			rootPool.AddCert(interCerts[len(interCerts)-1])
+		default:
+			// ... we'll treat the leaf itself as a root certificate if there
+			// are no intermediates.
+			rootPool.AddCert(leafCerts[0])
 		}
 	}
 
 	// Verifying intermediate certs
 	for _, inter := range interCerts {
 		_, err = inter.Verify(x509.VerifyOptions{
-			Roots:     rootPool,
-			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			Roots:         rootPool,
+			Intermediates: interPool,
+			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		})
 		if err != nil {
+			//nolint:staticcheck // user-facing error
 			return fmt.Errorf("Failed to verify intermediate certificate: %w.", err)
 		}
-	}
-
-	if x509.NewCertPool().Equal(rootPool) && len(leafCerts) > 0 {
-		// this is a self signed server certificate, or the root is just not provided. In any
-		// case, we need to bypass the root verification step by adding the leaf itself to the
-		// root pool.
-		rootPool.AddCert(leafCerts[0])
 	}
 
 	// Verifying leaf cert
@@ -240,6 +256,7 @@ func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error 
 			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		})
 		if err != nil {
+			//nolint:staticcheck // user-facing error
 			return fmt.Errorf("Failed to verify primary provided leaf certificate: %w.", err)
 		}
 	}
@@ -253,37 +270,42 @@ func TLSFileWarningChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) 
 	var warnings []string
 	// add a warning for when there are more than one leaf certs
 	if len(leafCerts) > 1 {
-		warnings = append(warnings, fmt.Sprintf("More than one leaf certificate detected. Please ensure that there is one unique leaf certificate being supplied to OpenBao in the OpenBao server configuration file."))
+		warnings = append(warnings, "More than one leaf certificate detected. Please ensure that there is one unique leaf certificate being supplied to OpenBao in the OpenBao server configuration file.")
 	}
 
 	for _, c := range leafCerts {
 		if willExpire, timeToExpiry := NearExpiration(c); willExpire {
-			warnings = append(warnings, fmt.Sprintf("Leaf certificate %d is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
+			warnings = append(warnings, fmt.Sprintf("Leaf certificate (serial %x) is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
 		}
 	}
 	for _, c := range interCerts {
 		if willExpire, timeToExpiry := NearExpiration(c); willExpire {
-			warnings = append(warnings, fmt.Sprintf("Intermediate certificate %d is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
+			warnings = append(warnings, fmt.Sprintf("Intermediate certificate (serial %x) is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
 		}
 	}
 	for _, c := range rootCerts {
 		if willExpire, timeToExpiry := NearExpiration(c); willExpire {
-			warnings = append(warnings, fmt.Sprintf("Root certificate %d is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
+			warnings = append(warnings, fmt.Sprintf("Root certificate (serial %x) is expired or near expiry. Time to expire is: %s.", c.SerialNumber, timeToExpiry))
 		}
 	}
 
 	return warnings, nil
 }
 
-// NearExpiration returns a true if a certficate will expire in a month and false otherwise
+// NearExpiration returns (true, time to expiration) if less than 15% of c's
+// validity period remains.
+//
+// For   7-day certs, that's     ~1 day.
+// For  30-day certs, that's   ~4.5 days.
+// For  90-day certs, that's  ~13.5 days.
+// For 365-day certs, that's ~54.75 days.
 func NearExpiration(c *x509.Certificate) (bool, time.Duration) {
-	oneMonthFromNow := time.Now().Add(30 * 24 * time.Hour)
-	var timeToExpiry time.Duration
-	if oneMonthFromNow.After(c.NotAfter) {
-		timeToExpiry := oneMonthFromNow.Sub(c.NotAfter)
-		return true, timeToExpiry
+	now := time.Now()
+	lifetime := c.NotAfter.Sub(c.NotBefore)
+	if now.Add(lifetime * 15 / 100).After(c.NotAfter) {
+		return true, c.NotAfter.Sub(now).Round(time.Second)
 	}
-	return false, timeToExpiry
+	return false, 0
 }
 
 // TLSMutualExclusionCertCheck returns error if both TLSDisableClientCerts and TLSRequireAndVerifyClientCert are set
@@ -317,10 +339,11 @@ func TLSCAFileCheck(CAFilePath string) ([]string, error) {
 	}
 
 	if len(rootCerts) == 0 {
+		//nolint:staticcheck // user-facing error
 		return nil, errors.New("No root certificate found in CA certificate file.")
 	}
 	if len(rootCerts) > 1 {
-		warningsSlc = append(warningsSlc, fmt.Sprintf("Found multiple root certificates in CA Certificate file instead of just one."))
+		warningsSlc = append(warningsSlc, "Found multiple root certificates in CA Certificate file instead of just one.")
 	}
 
 	// Checking for Self-Signed cert and return an explicit error about it.

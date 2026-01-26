@@ -18,9 +18,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
-	"github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-raftchunking"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -29,6 +28,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	bolt "go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -110,10 +110,10 @@ type FSM struct {
 
 	// latestIndex and latestTerm are the term and index of the last log we
 	// received
-	latestIndex *uint64
-	latestTerm  *uint64
+	latestIndex atomic.Uint64
+	latestTerm  atomic.Uint64
 	// latestConfig is the latest server configuration we've seen
-	latestConfig atomic.Value
+	latestConfig atomic.Pointer[ConfigurationValue]
 
 	l           sync.RWMutex
 	path        string
@@ -136,25 +136,16 @@ type FSM struct {
 
 	// tracker for fast application of transactions
 	fastTxnTracker *fsmTxnCommitIndexTracker
+
+	invalidateHook physical.InvalidateFunc
 }
 
 // NewFSM constructs a FSM using the given directory
 func NewFSM(path string, localID string, logger log.Logger) (*FSM, error) {
-	// Initialize the latest term, index, and config values
-	latestTerm := new(uint64)
-	latestIndex := new(uint64)
-	latestConfig := atomic.Value{}
-	atomic.StoreUint64(latestTerm, 0)
-	atomic.StoreUint64(latestIndex, 0)
-	latestConfig.Store((*ConfigurationValue)(nil))
-
 	f := &FSM{
 		path:   path,
 		logger: logger,
 
-		latestTerm:   latestTerm,
-		latestIndex:  latestIndex,
-		latestConfig: latestConfig,
 		// Assume that the default intent is to join as as voter. This will be updated
 		// when this node joins a cluster with a different suffrage, or during cluster
 		// setup if this is already part of a cluster with a desired suffrage.
@@ -176,6 +167,13 @@ func NewFSM(path string, localID string, logger log.Logger) (*FSM, error) {
 	}
 
 	return f, nil
+}
+
+func (f *FSM) hookInvalidate(hook physical.InvalidateFunc) {
+	f.l.Lock()
+	defer f.l.Unlock()
+
+	f.invalidateHook = hook
 }
 
 func (f *FSM) getDB() *bolt.DB {
@@ -221,7 +219,7 @@ func (f *FSM) openDBFile(dbPath string) error {
 	if err != nil {
 		return err
 	}
-	elapsed := time.Now().Sub(start)
+	elapsed := time.Since(start)
 	f.logger.Debug("time to open database", "elapsed", elapsed, "path", dbPath)
 	metrics.MeasureSince([]string{"raft_storage", "fsm", "open_db_file"}, start)
 
@@ -245,8 +243,8 @@ func (f *FSM) openDBFile(dbPath string) error {
 				return err
 			}
 
-			atomic.StoreUint64(f.latestTerm, latest.Term)
-			atomic.StoreUint64(f.latestIndex, latest.Index)
+			f.latestTerm.Store(latest.Term)
+			f.latestIndex.Store(latest.Index)
 		}
 
 		// Read in our latest config and populate it inmemory
@@ -384,7 +382,7 @@ func (f *FSM) upgradeLocalNodeConfig() error {
 	lnConfig = &LocalNodeConfigValue{}
 
 	// Refer to the persisted latest raft config
-	config := f.latestConfig.Load().(*ConfigurationValue)
+	config := f.latestConfig.Load()
 
 	// If there is no config, then this is a fresh node coming up. This could end up
 	// being a voter or non-voter. But by default assume that this is a voter. It
@@ -452,20 +450,20 @@ func (f *FSM) witnessSnapshot(metadata *raft.SnapshotMeta) error {
 		return err
 	}
 
-	atomic.StoreUint64(f.latestIndex, metadata.Index)
-	atomic.StoreUint64(f.latestTerm, metadata.Term)
+	f.latestIndex.Store(metadata.Index)
+	f.latestTerm.Store(metadata.Term)
 	f.latestConfig.Store(raftConfigurationToProtoConfiguration(metadata.ConfigurationIndex, metadata.Configuration))
 
 	return nil
 }
 
-// LatestState returns the latest index and configuration values we have seen on
-// this FSM.
+// LatestState returns the latest index and configuration values
+// we have seen on this FSM.
 func (f *FSM) LatestState() (*IndexValue, *ConfigurationValue) {
 	return &IndexValue{
-		Term:  atomic.LoadUint64(f.latestTerm),
-		Index: atomic.LoadUint64(f.latestIndex),
-	}, f.latestConfig.Load().(*ConfigurationValue)
+		Term:  f.latestTerm.Load(),
+		Index: f.latestIndex.Load(),
+	}, f.latestConfig.Load()
 }
 
 // Delete deletes the given key from the bolt file.
@@ -821,6 +819,8 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 		f.applyCallback()
 	}
 
+	var lowestActiveIndex *uint64
+
 	// One would think that this f.db.Update(...) and the following loop over
 	// commands should be in the opposite order, as we want transactions to be
 	// applied atomically. Indeed, 2c154ad516162dcb8b15ad270cd6a15516f2ce59 had
@@ -839,7 +839,7 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 		var err error
 		b := tx.Bucket(dataBucketName)
 		configB := tx.Bucket(configBucketName)
-		latestIndex := atomic.LoadUint64(f.latestIndex)
+		latestIndex := f.latestIndex.Load()
 
 		for commandIndex, commandRaw := range commands {
 			entrySlice := make([]*FSMEntry, 0, 1)
@@ -852,6 +852,10 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 					err = f.applyBatchNonTxOps(b, txnState, command)
 				} else {
 					err = f.applyBatchTxOps(tx, b, txnState, command)
+				}
+
+				if command.LowestActiveIndex != nil {
+					lowestActiveIndex = command.LowestActiveIndex
 				}
 
 				if err != nil {
@@ -913,10 +917,31 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 		panic("failed to store data")
 	}
 
+	if lowestActiveIndex != nil {
+		f.fastTxnTracker.clearOldEntries(*lowestActiveIndex)
+	}
+
+	if f.invalidateHook != nil {
+		var keys []string
+		for _, commandRaw := range commands {
+			switch command := commandRaw.(type) {
+			case *LogData:
+				for _, op := range command.Operations {
+					switch op.OpType {
+					case putOp, deleteOp:
+						keys = append(keys, op.Key)
+					}
+				}
+			}
+		}
+
+		go f.invalidateHook(keys...)
+	}
+
 	// If we advanced the latest value, update the in-memory representation too.
 	if len(logIndex) > 0 {
-		atomic.StoreUint64(f.latestTerm, lastLog.Term)
-		atomic.StoreUint64(f.latestIndex, lastLog.Index)
+		f.latestTerm.Store(lastLog.Term)
+		f.latestIndex.Store(lastLog.Index)
 	}
 
 	// If one or more configuration changes were processed, store the latest one.

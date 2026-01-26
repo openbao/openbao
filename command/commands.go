@@ -23,6 +23,7 @@ import (
 	_ "github.com/openbao/openbao/helper/builtinplugins"
 
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
+	auditHttp "github.com/openbao/openbao/builtin/audit/http"
 	auditSocket "github.com/openbao/openbao/builtin/audit/socket"
 	auditSyslog "github.com/openbao/openbao/builtin/audit/syslog"
 
@@ -129,6 +130,7 @@ const (
 var (
 	auditBackends = map[string]audit.Factory{
 		"file":   auditFile.Factory,
+		"http":   auditHttp.Factory,
 		"socket": auditSocket.Factory,
 		"syslog": auditSyslog.Factory,
 	}
@@ -307,6 +309,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"namespace scan": func() (cli.Command, error) {
+			return &NamespaceScanCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"namespace lookup": func() (cli.Command, error) {
 			return &NamespaceLookupCommand{
 				BaseCommand: getBaseCommand(),
@@ -359,6 +366,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"operator key-status": func() (cli.Command, error) {
 			return &OperatorKeyStatusCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"operator members": func() (cli.Command, error) {
+			return &OperatorMembersCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
@@ -439,6 +451,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"operator rotate-keys": func() (cli.Command, error) {
+			return &OperatorRotateKeysCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"operator seal": func() (cli.Command, error) {
 			return &OperatorSealCommand{
 				BaseCommand: getBaseCommand(),
@@ -454,8 +471,8 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
-		"operator members": func() (cli.Command, error) {
-			return &OperatorMembersCommand{
+		"operator validate-config": func() (cli.Command, error) {
+			return &OperatorValidateConfigCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
@@ -511,6 +528,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"plugin info": func() (cli.Command, error) {
 			return &PluginInfoCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"plugin init": func() (cli.Command, error) {
+			return &PluginInitCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},

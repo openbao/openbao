@@ -6,20 +6,23 @@ package api
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"unicode"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -50,7 +53,7 @@ const (
 	EnvVaultDisableRedirects = "BAO_DISABLE_REDIRECTS"
 
 	// NamespaceHeaderName is the header set to specify which namespace the
-	// request is indented for.
+	// request is intended for.
 	NamespaceHeaderName = "X-Vault-Namespace"
 
 	// AuthHeaderName is the name of the header containing the token.
@@ -59,6 +62,67 @@ const (
 	// RequestHeaderName is the name of the header used by the Agent for
 	// SSRF protection.
 	RequestHeaderName = "X-Vault-Request"
+
+	// NoRequestForwardingHeaderName is the name of the header telling Vault not
+	// to use request forwarding.
+	NoRequestForwardingHeaderName = "X-Vault-No-Request-Forwarding"
+
+	// MFAHeaderName represents the HTTP header which carries the credentials
+	// required to perform MFA on any path.
+	MFAHeaderName = "X-Vault-MFA"
+
+	// WrapTTLHeaderName is the name of the header containing a directive to
+	// wrap the response.
+	WrapTTLHeaderName = "X-Vault-Wrap-TTL"
+
+	// WrapFormatHeaderName is the name of the header containing the format to
+	// wrap in; has no effect if the wrap TTL is not set.
+	WrapFormatHeaderName = "X-Vault-Wrap-Format"
+
+	// RawErrorHeaderName is the name of the header that holds any errors that
+	// occurred responding to requests to special endpoints that return raw
+	// response bodies.
+	RawErrorHeaderName = "X-Vault-Raw-Error"
+
+	// HostnameHeaderName is the name of the header that holds the responding
+	// node's hostname when enable_response_header_hostname is set in the server
+	// configuration.
+	HostnameHeaderName = "X-Vault-Hostname"
+
+	// RaftNodeIDHeaderName is the name of the header that holds the responding
+	// node's Raft node ID if enable_response_header_raft_node_id is set in the
+	// server configuration and the node is participating in a Raft cluster.
+	RaftNodeIDHeaderName = "X-Vault-Raft-Node-ID"
+
+	// Path to perform inline authentication against. Any authentication
+	// performed must be single-request.
+	InlineAuthPathHeaderName = "X-Vault-Inline-Auth-Path"
+
+	// Request operation to perform inline authentication with. Defaults to
+	// update.
+	InlineAuthOperationHeaderName = "X-Vault-Inline-Auth-Operation"
+
+	// Namespace to perform inline authentication with. Defaults to
+	// the value of X-Vault-Namespace; can be combined with any potential
+	// namespace in X-Vault-Inline-Auth-Path.
+	InlineAuthNamespaceHeaderName = "X-Vault-Inline-Auth-Namespace"
+
+	// Whether the response object is from the underlying auth method. This
+	// is sometimes not a sufficient check as a 404s and server errors are
+	// often returned without response bodies. But when a non-empty response
+	// is given, this disambiguates inline auth from subsequent call responses.
+	InlineAuthErrorResponseHeader = "X-Vault-Inline-Auth-Failed"
+
+	// Prefix of user-specified parameters sent to the endpoint specified
+	// in InlineAuthPathHeaderName. Each parameter is a base64 url-safe
+	// encoded JSON object containing:
+	//
+	// { "key": <name>, "value": <value> }
+	//
+	// so that typing of the value and case sensitivity of the key can be
+	// preserved. The remainder of the header value (after the trailing
+	// dash) is ignored. Any repeated header keys result in request failure.
+	InlineAuthParameterHeaderPrefix = "X-Vault-Inline-Auth-Parameter-"
 
 	TLSErrorString = "This error usually means that the server is running with TLS disabled\n" +
 		"but the client is configured to use TLS. Please either enable TLS\n" +
@@ -69,6 +133,9 @@ const (
 		"    BAO_ADDR=http://<address> vault <command>\n\n" +
 		"where <address> is replaced by the actual address to the server."
 )
+
+// InlineAuthOpts represents an option for inline authentication
+type InlineAuthOpts func() map[string][]string
 
 // Deprecated values
 const (
@@ -234,7 +301,7 @@ func DefaultConfig() *Config {
 		MinRetryWait: time.Millisecond * 1000,
 		MaxRetryWait: time.Millisecond * 1500,
 		MaxRetries:   2,
-		Backoff:      retryablehttp.LinearJitterBackoff,
+		Backoff:      retryablehttp.RateLimitLinearJitterBackoff,
 	}
 
 	transport := config.HttpClient.Transport.(*http.Transport)
@@ -504,11 +571,9 @@ func (c *Config) ParseAddress(address string) (*url.URL, error) {
 
 	c.Address = address
 
-	if strings.HasPrefix(address, "unix://") {
+	if socket, ok := strings.CutPrefix(address, "unix://"); ok {
 		// When the address begins with unix://, always change the transport's
 		// DialContext (to match previous behaviour)
-		socket := strings.TrimPrefix(address, "unix://")
-
 		if transport, ok := c.HttpClient.Transport.(*http.Transport); ok {
 			transport.DialContext = func(context.Context, string, string) (net.Conn, error) {
 				return net.Dial("unix", socket)
@@ -578,7 +643,7 @@ func NewClient(c *Config) (*Client, error) {
 		return nil, errors.New("could not create/read default configuration")
 	}
 	if def.Error != nil {
-		return nil, errwrap.Wrapf("error encountered setting up default configuration: {{err}}", def.Error)
+		return nil, fmt.Errorf("error encountered setting up default configuration: %w", def.Error)
 	}
 
 	if c == nil {
@@ -669,7 +734,7 @@ func (c *Client) SetAddress(addr string) error {
 
 	parsedAddr, err := c.config.ParseAddress(addr)
 	if err != nil {
-		return errwrap.Wrapf("failed to set address: {{err}}", err)
+		return fmt.Errorf("failed to set address: %w", err)
 	}
 
 	c.addr = parsedAddr
@@ -1010,9 +1075,7 @@ func (c *Client) Headers() http.Header {
 
 	ret := make(http.Header)
 	for k, v := range c.headers {
-		for _, val := range v {
-			ret[k] = append(ret[k], val)
-		}
+		ret[k] = slices.Clone(v)
 	}
 
 	return ret
@@ -1227,9 +1290,9 @@ func (c *Client) NewRequest(method, requestPath string) *Request {
 // a Vault server not configured with this client. This is an advanced operation
 // that generally won't need to be called externally.
 //
-// Deprecated: RawRequest exists for historical compatibility and should not be
-// used directly. Use client.Logical().ReadRaw(...) or higher level methods
-// instead.
+// RawRequest exists for historical compatibility and should not be used
+// directly. Use client.Logical().ReadRaw(...) or higher level methods instead
+// if possible.
 func (c *Client) RawRequest(r *Request) (*Response, error) {
 	return c.RawRequestWithContext(context.Background(), r)
 }
@@ -1238,9 +1301,9 @@ func (c *Client) RawRequest(r *Request) (*Response, error) {
 // a Vault server not configured with this client. This is an advanced operation
 // that generally won't need to be called externally.
 //
-// Deprecated: RawRequestWithContext exists for historical compatibility and
-// should not be used directly. Use client.Logical().ReadRawWithContext(...)
-// or higher level methods instead.
+// RawRequestWithContext exists for historical compatibility and should not be
+// used directly. Use client.Logical().ReadRawWithContext(...) or higher level
+// methods instead if possible.
 func (c *Client) RawRequestWithContext(ctx context.Context, r *Request) (*Response, error) {
 	// Note: we purposefully do not call cancel manually. The reason is
 	// when canceled, the request.Body will EOF when reading due to the way
@@ -1327,7 +1390,7 @@ START:
 	req.Request = req.Request.WithContext(ctx)
 
 	if backoff == nil {
-		backoff = retryablehttp.LinearJitterBackoff
+		backoff = retryablehttp.RateLimitLinearJitterBackoff
 	}
 
 	if checkRetry == nil {
@@ -1352,7 +1415,7 @@ START:
 	}
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
-			err = errwrap.Wrapf("{{err}}\n\n"+TLSErrorString, err)
+			err = fmt.Errorf("%w\n\n"+TLSErrorString, err) //nolint:staticcheck // user-facing error
 		}
 		return result, err
 	}
@@ -1449,12 +1512,12 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 	}
 
 	if len(r.WrapTTL) != 0 {
-		req.Header.Set("X-Vault-Wrap-TTL", r.WrapTTL)
+		req.Header.Set(WrapTTLHeaderName, r.WrapTTL)
 	}
 
 	if len(r.MFAHeaderVals) != 0 {
 		for _, mfaHeaderVal := range r.MFAHeaderVals {
-			req.Header.Add("X-Vault-MFA", mfaHeaderVal)
+			req.Header.Add(MFAHeaderName, mfaHeaderVal)
 		}
 	}
 
@@ -1481,7 +1544,7 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
-			err = errwrap.Wrapf("{{err}}\n\n"+TLSErrorString, err)
+			err = fmt.Errorf("%w\n\n"+TLSErrorString, err) //nolint:staticcheck // user-facing error
 		}
 		return result, err
 	}
@@ -1548,6 +1611,74 @@ func (c *Client) WithResponseCallbacks(callbacks ...ResponseCallback) *Client {
 	c2.modifyLock = sync.RWMutex{}
 	c2.responseCallbacks = callbacks
 	return &c2
+}
+
+// InlineWithNamespace is used with WithInlineAuth(...) to set the namespace
+// of the inline authentication call.
+func InlineWithNamespace(ns string) InlineAuthOpts {
+	return func() map[string][]string {
+		return map[string][]string{
+			InlineAuthNamespaceHeaderName: {ns},
+		}
+	}
+}
+
+// InlineWithOperation is used with WithInlineAuth(...) to set the operation
+// of the inline authentication call.
+func InlineWithOperation(op string) InlineAuthOpts {
+	return func() map[string][]string {
+		return map[string][]string{
+			InlineAuthOperationHeaderName: {op},
+		}
+	}
+}
+
+// WithInlineAuth returns a client with no authentication information but
+// which sets headers which perform inline authentication. This
+// re-authenticates on every request and does not persist any token.
+// Operations which result in lease creation will not work.
+//
+// Refer to the OpenBao documentation for more information.
+func (c *Client) WithInlineAuth(path string, data map[string]interface{}, opts ...InlineAuthOpts) (*Client, error) {
+	client, err := c.Clone()
+	if err != nil {
+		return nil, fmt.Errorf("error cloning client: %w", err)
+	}
+
+	headers := client.Headers()
+	for h := range client.Headers() {
+		if strings.HasPrefix(h, InlineAuthParameterHeaderPrefix) {
+			delete(headers, h)
+		}
+	}
+
+	delete(headers, InlineAuthOperationHeaderName)
+	delete(headers, InlineAuthNamespaceHeaderName)
+	delete(headers, AuthHeaderName)
+
+	headers[InlineAuthPathHeaderName] = []string{path}
+
+	for _, opt := range opts {
+		maps.Copy(headers, opt())
+	}
+
+	for key, value := range data {
+		jEncoded, err := json.Marshal(map[string]interface{}{
+			"key":   key,
+			"value": value,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode inline auth data key `%v`: %w", key, err)
+		}
+
+		b64Encoded := base64.RawURLEncoding.EncodeToString(jEncoded)
+		headers[fmt.Sprintf("%v%v", InlineAuthParameterHeaderPrefix, key)] = []string{b64Encoded}
+	}
+
+	client.ClearToken()
+	client.SetHeaders(headers)
+
+	return client, nil
 }
 
 // withConfiguredTimeout wraps the context with a timeout from the client configuration.

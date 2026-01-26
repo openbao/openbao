@@ -1,0 +1,33 @@
+---
+sidebar_label: Unauthenticated Rekey Endpoints
+description: |-
+  Deprecating the `sys/rekey/*` and `sys/rekey-recovery-key/*` endpoints.
+---
+
+# Deprecating Unauthenticated Rekey Endpoints
+
+## What
+
+In OpenBao v2.5.0, the `disable_unauthed_rekey_endpoints` parameter will be
+set to `true` by default (currently `false`), preventing all requests to the
+unauthenticated `sys/rekey/*` and `sys/rekey-recovery-key/*` endpoints.
+
+A replacement will be made available ahead of this change landing.
+
+## Why
+
+These endpoints pose a security risk. An unauthenticated attacker may call
+the cancel endpoint (`DELETE /sys/rekey/init` or
+`DELETE /sys/rekey-recovery-key/init`), interrupting a valid rekey operation.
+Additionally, an attacker may choose to initiate their own rekey operation.
+
+Such interaction is not audited and may not result in log messages.
+
+A log line such as:
+
+```
+2025-05-12T14:59:20.819-0500 [INFO]  core: rekey initialized: nonce=592d7982-47aa-b8c9-3d72-b37db72e389f shares=1 threshold=1 validation_required=false
+```
+
+may be visible if an attacker initiated their own rekey operation; this
+operation would not be successful.

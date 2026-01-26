@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	dbtesting "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/testing"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 	"github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/template"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -181,6 +181,7 @@ func TestPostgreSQL_PasswordAuthentication_SCRAMSHA256(t *testing.T) {
 		Expiration: time.Now().Add(1 * time.Minute),
 	}
 	newUserResponse, err := db.NewUser(ctx, newUserRequest)
+	require.NoError(t, err)
 
 	assertCredsExist(t, db.ConnectionURL, newUserResponse.Username, newUserRequest.Password)
 }

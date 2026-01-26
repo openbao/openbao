@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/gocql/gocql"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
-	"github.com/mitchellh/mapstructure"
 	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/database/helper/connutil"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
@@ -24,22 +24,22 @@ import (
 // cassandraConnectionProducer implements ConnectionProducer and provides an
 // interface for cassandra databases to make connections.
 type cassandraConnectionProducer struct {
-	Hosts              string      `json:"hosts" structs:"hosts" mapstructure:"hosts"`
-	Port               int         `json:"port" structs:"port" mapstructure:"port"`
-	Username           string      `json:"username" structs:"username" mapstructure:"username"`
-	Password           string      `json:"password" structs:"password" mapstructure:"password"`
-	TLS                bool        `json:"tls" structs:"tls" mapstructure:"tls"`
-	InsecureTLS        bool        `json:"insecure_tls" structs:"insecure_tls" mapstructure:"insecure_tls"`
-	TLSServerName      string      `json:"tls_server_name" structs:"tls_server_name" mapstructure:"tls_server_name"`
-	ProtocolVersion    int         `json:"protocol_version" structs:"protocol_version" mapstructure:"protocol_version"`
-	ConnectTimeoutRaw  interface{} `json:"connect_timeout" structs:"connect_timeout" mapstructure:"connect_timeout"`
-	SocketKeepAliveRaw interface{} `json:"socket_keep_alive" structs:"socket_keep_alive" mapstructure:"socket_keep_alive"`
-	TLSMinVersion      string      `json:"tls_min_version" structs:"tls_min_version" mapstructure:"tls_min_version"`
-	Consistency        string      `json:"consistency" structs:"consistency" mapstructure:"consistency"`
-	LocalDatacenter    string      `json:"local_datacenter" structs:"local_datacenter" mapstructure:"local_datacenter"`
-	PemBundle          string      `json:"pem_bundle" structs:"pem_bundle" mapstructure:"pem_bundle"`
-	PemJSON            string      `json:"pem_json" structs:"pem_json" mapstructure:"pem_json"`
-	SkipVerification   bool        `json:"skip_verification" structs:"skip_verification" mapstructure:"skip_verification"`
+	Hosts              string      `json:"hosts" mapstructure:"hosts"`
+	Port               int         `json:"port" mapstructure:"port"`
+	Username           string      `json:"username" mapstructure:"username"`
+	Password           string      `json:"password" mapstructure:"password"`
+	TLS                bool        `json:"tls" mapstructure:"tls"`
+	InsecureTLS        bool        `json:"insecure_tls" mapstructure:"insecure_tls"`
+	TLSServerName      string      `json:"tls_server_name" mapstructure:"tls_server_name"`
+	ProtocolVersion    int         `json:"protocol_version" mapstructure:"protocol_version"`
+	ConnectTimeoutRaw  interface{} `json:"connect_timeout" mapstructure:"connect_timeout"`
+	SocketKeepAliveRaw interface{} `json:"socket_keep_alive" mapstructure:"socket_keep_alive"`
+	TLSMinVersion      string      `json:"tls_min_version" mapstructure:"tls_min_version"`
+	Consistency        string      `json:"consistency" mapstructure:"consistency"`
+	LocalDatacenter    string      `json:"local_datacenter" mapstructure:"local_datacenter"`
+	PemBundle          string      `json:"pem_bundle" mapstructure:"pem_bundle"`
+	PemJSON            string      `json:"pem_json" mapstructure:"pem_json"`
+	SkipVerification   bool        `json:"skip_verification" mapstructure:"skip_verification"`
 
 	connectTimeout  time.Duration
 	socketKeepAlive time.Duration

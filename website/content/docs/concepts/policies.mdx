@@ -16,7 +16,7 @@ system.
 ## Policy-authorization workflow
 
 Before a human or machine can gain access, an administrator must configure OpenBao
-with an [auth method](/docs/concepts/auth). Authentication is
+with an [auth method](auth.mdx). Authentication is
 the process by which human or machine-supplied information is verified against
 an internal or external system.
 
@@ -95,7 +95,7 @@ Equivalently in JSON, this would be:
 
 ```json
 {
-  "paths": {
+  "path": {
     "secret/foo": {
       "capabilities": ["read"]
     }
@@ -215,8 +215,9 @@ _lower_ priority.
 
 :::danger
 
-**Informational:**The glob character referred to in this documentation is the asterisk (`*`).
-It _is not a regular expression_ and is only supported **as the last character of the path**!
+**Informational:** The glob character referred to in this documentation is the
+asterisk (`*`). It _is not a regular expression_ and is only supported **as the
+last character of the path**!
 
 :::
 
@@ -231,7 +232,7 @@ control over permitted (or denied) operations. As shown in the examples above,
 capabilities are always specified as a list of strings, even if there is only
 one capability.
 
-To determine the capabilities needed to perform a specific operation, the `-output-policy` flag can be added to the CLI subcommand. For an example, refer to the [Print Policy Requirements](/docs/commands#print-policy-requirements) document section.
+To determine the capabilities needed to perform a specific operation, the `-output-policy` flag can be added to the CLI subcommand. For an example, refer to the [Print Policy Requirements](../commands/index.mdx#print-policy-requirements) document section.
 
 
 The list of capabilities include the following:
@@ -391,17 +392,38 @@ path "pki/*" {
 }
 ```
 
+### Path expiration
+
+Specific paths in a policy can be set to automatically remove access at a
+point in time. This allows for lazy cleanup of policies: temporary access can
+be granted and long-term access guaranteed to be denied, without requiring
+cleanup and removal of the entire policy. When a policy is attached to an
+external authentication system's properties (e.g., LDAP groups or JWT claims)
+this is a useful additional control on top of expiring entire policies.
+
+- `expiration` `(string: <optional>)` - An optional expiration time for the
+  given path, in [`time.RFC3339` format](https://www.rfc-editor.org/rfc/rfc3339.html).
+
+For example:
+
+```hcl
+path "secret/data/in-case-of-emergency" {
+  capabilities = ["read"]
+  expiration = "2006-01-02T15:04:05Z"
+}
+```
+
 ### Parameter constraints
 
 :::danger
 
-**Note:** The use of [globs](/docs/concepts/policies#policy-syntax) (`*`) may result in [surprising or unexpected behavior](#parameter-constraints-limitations).
+**Note:** The use of [globs](policies.mdx#policy-syntax) (`*`) may result in [surprising or unexpected behavior](#parameter-constraints-limitations).
 
 :::
 
 :::warning
 
-**Note:** The `allowed_parameters`, `denied_parameters`, and `required_parameters` fields are not supported for policies used with the [version 2 kv secrets engine](/docs/secrets/kv/kv-v2).
+**Note:** The `allowed_parameters`, `denied_parameters`, and `required_parameters` fields are not supported for policies used with the [version 2 kv secrets engine](../secrets/kv/kv-v2.mdx).
 
 :::
 
@@ -637,6 +659,7 @@ path "secret/foo" {
 ```
 
 ##### Limiting pagination
+
 The `pagination_limit` parameter allows policy authors to control the value of
 `limit` on paginated list and scan endpoints. In conjunction with setting
 `required_parameters=["limit"]` on the ACL policy, pagination becomes fully
@@ -645,17 +668,58 @@ pagination is optional but, when `limit` is specified, the maximum number of
 results is limited to the value of `pagination_limit`.
 
 It is assumed that the policy author only sets `pagination_limit` on endpoints
-conforming to the [Paginated Lists RFC](/docs/rfcs/paginated-lists/). This
+conforming to the [Paginated Lists RFC](../rfcs/paginated-lists.mdx). This
 allows the API to safely translate the value `limit=max` to a numerical value,
 either `limit=0` if no value was set or to the actual limit set by the policy
 author.
+
+##### Filtering list or scan results
+
+By granting `list` or `scan` capabilities on a path, all results are returned
+from the plugin, including entries which correlate to paths the token cannot
+access. To filter these results, restricting them to only visible entries, use
+the `list_scan_response_keys_filter_path` parameter. This parameter takes a
+path containing a `{{ .key }}` template for which the line item is
+substituted. When this key is an entry (without a trailing `/`), the path is
+checked for `read` capability; when the key is a folder (with a trailing `/`),
+this path is checked for `list` capability. The path of the `list` or `scan`
+request is available via the `{{ .path }}` member. This path supports the
+[templating](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2/helper/template#StringTemplate)
+helpers.
+
+For example, restrict results in a KVv2 mount, based on whether the token
+can read the metadata:
+
+```
+path "test/metadata/*" {
+    capabilities = ["list", "scan"]
+    list_scan_response_keys_filter_path = "{{ .path }}{{ .key }}"
+}
+```
+
+or on the ability to read the data:
+
+```
+path "test/metadata/*" {
+    capabilities = ["list", "scan"]
+    list_scan_response_keys_filter_path = "{{ .path | replace \"test/metadata/\" \"test/data/\" }}{{ .key }}"
+}
+```
+
+:::warning
+
+We currently do not support this capability when policy evaluation for
+individual entries requires additional parameters; in this case, the list
+result may be completely empty.
+
+:::
 
 ### Required response wrapping TTLs
 
 These parameters can be used to set minimums/maximums on TTLs set by clients
 when requesting that a response be
-[wrapped](/docs/concepts/response-wrapping), with a granularity of a
-second. These use [duration format strings](/docs/concepts/duration-format).
+[wrapped](response-wrapping.mdx), with a granularity of a
+second. These use [duration format strings](duration-format.mdx).
 
 In practice, setting a minimum TTL of one second effectively makes response
 wrapping mandatory for a particular path.
@@ -897,8 +961,8 @@ The following paths requires a root token or `sudo` capability in the policy:
 | -------------------------------------------------------------------------------------------------------------------------------------------------------| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [auth/token/accessors](/api-docs/auth/token#list-accessors)                                                                                      | LIST              | List token accessors for all current OpenBao service tokens                                                                                           |
 | [auth/token/create](/api-docs/auth/token#create-token)                                                                                           | POST              | Create a periodic or an orphan token (`period` or `no_parent`) option                                                                               |
-| [pki/root](/api-docs/secret/pki#delete-all-issuers-and-keys)                                                                                     | DELETE            | Delete the current CA key ([pki secrets engine](/docs/secrets/pki))                                                                           |
-| [pki/root/sign-self-issued](/api-docs/secret/pki#sign-self-issued)                                                                               | POST              | Use the configured CA certificate to sign a self-issued certificate ([pki secrets engine](/docs/secrets/pki))                                 |
+| [pki/root](/api-docs/secret/pki#delete-all-issuers-and-keys)                                                                                     | DELETE            | Delete the current CA key ([pki secrets engine](../secrets/pki/index.mdx))                                                                           |
+| [pki/root/sign-self-issued](/api-docs/secret/pki#sign-self-issued)                                                                               | POST              | Use the configured CA certificate to sign a self-issued certificate ([pki secrets engine](../secrets/pki/index.mdx))                                 |
 | [sys/audit](/api-docs/system/audit)                                                                                                              | GET               | List enabled audit devices                                                                                                                          |
 | [sys/audit/:path](/api-docs/system/audit)                                                                                                        | POST, DELETE      | Enable or remove an audit device                                                                                                                    |
 | [sys/auth/:path](/api-docs/system/auth)                                                                                                          | GET, POST, DELETE | Manage the auth methods (enable, read, and delete)                                                                                                  |

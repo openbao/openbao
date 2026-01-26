@@ -220,6 +220,7 @@ func (p *PathFetch) FetchSurfaceError() error {
 	}
 
 	if strings.Contains(p.FetchError.Error(), "route entry not found") {
+		//nolint:staticcheck // user-facing error
 		return fmt.Errorf("Error making API request: was a bad mount given?\n\nOperation: %v\nPath: %v\nOriginal Error:\n%w", p.Operation, p.Path, p.FetchError)
 	}
 
@@ -298,7 +299,8 @@ func ValidateMountType(client *api.Client, mount string, expectedType string) er
 	case "pki":
 		// Provide clear error message for auth mounts.
 		if strings.HasPrefix(mount, "auth/") || strings.HasPrefix(mount, "/auth/") {
-			return errors.New("Refusing to run PKI health-check on auth mount; this command is only relevant to PKI secrets engines.")
+			//nolint:staticcheck // user-facing error
+			return errors.New("refusing to run PKI health-check on auth mount; this command is only relevant to PKI secrets engines.")
 		}
 	}
 
@@ -306,7 +308,7 @@ func ValidateMountType(client *api.Client, mount string, expectedType string) er
 	info, err := client.Sys().MountInfo(mount)
 	if err == nil && info != nil {
 		if info.Type != expectedType {
-			return fmt.Errorf("Refusing to run %v health-check on mount of type %v", expectedType, info.Type)
+			return fmt.Errorf("refusing to run %v health-check on mount of type %v", expectedType, info.Type)
 		}
 
 		return nil
@@ -318,7 +320,7 @@ func ValidateMountType(client *api.Client, mount string, expectedType string) er
 		mountType, ok := resp.Data["type"].(string)
 		if ok {
 			if mountType != expectedType {
-				return fmt.Errorf("Refusing to run %v health-check on mount of type %v", expectedType, mountType)
+				return fmt.Errorf("refusing to run %v health-check on mount of type %v", expectedType, mountType)
 			}
 		}
 	}
@@ -329,15 +331,15 @@ func ValidateMountType(client *api.Client, mount string, expectedType string) er
 		// Our token doesn't have permissions so fallback to expected path check.
 		resp, err := client.Logical().Read(path.Join(mount, "cert/ca"))
 		if err != nil {
-			return fmt.Errorf("Detection of PKI mount failed:\n\t%w", err)
+			return fmt.Errorf("detection of PKI mount failed:\n\t%w", err)
 		}
 
 		if resp == nil {
-			return errors.New("Refusing to run PKI health-check on non-PKI mount: path cert/ca did not exist: route entry not found")
+			return errors.New("refusing to run PKI health-check on non-PKI mount: path cert/ca did not exist: route entry not found")
 		}
 
 		if _, ok := resp.Data["certificate"]; !ok {
-			return errors.New("Refusing to run PKI health-check on non-PKI mount: path cert/ca returned invalid data")
+			return errors.New("refusing to run PKI health-check on non-PKI mount: path cert/ca returned invalid data")
 		}
 
 		return nil

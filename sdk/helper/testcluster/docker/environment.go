@@ -13,6 +13,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -23,14 +24,18 @@ import (
 	mathrand "math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/volume"
 	docker "github.com/docker/docker/client"
 	"github.com/hashicorp/go-cleanhttp"
@@ -40,7 +45,8 @@ import (
 	dockhelper "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
-	uberAtomic "go.uber.org/atomic"
+	thpsql "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 )
 
@@ -74,6 +80,9 @@ type DockerCluster struct {
 	builtTags map[string]struct{}
 
 	storage testcluster.ClusterStorage
+
+	// Whether HA mode is disabled
+	HADisabled bool
 }
 
 func (dc *DockerCluster) NamedLogger(s string) log.Logger {
@@ -208,28 +217,10 @@ func (dc *DockerCluster) setupNode0(ctx context.Context) error {
 		return err
 	}
 
-	err = ensureLeaderMatches(ctx, client, func(leader *api.LeaderResponse) error {
-		if !leader.IsSelf {
-			return fmt.Errorf("node %d leader=%v, expected=%v", 0, leader.IsSelf, true)
-		}
-
-		return nil
-	})
-
-	status, err := client.Sys().SealStatusWithContext(ctx)
-	if err != nil {
-		return err
-	}
-	dc.ID = status.ClusterID
-	return err
-}
-
-func (dc *DockerCluster) clusterReady(ctx context.Context) error {
-	for i, node := range dc.ClusterNodes {
-		expectLeader := i == 0
-		err := ensureLeaderMatches(ctx, node.client, func(leader *api.LeaderResponse) error {
-			if expectLeader != leader.IsSelf {
-				return fmt.Errorf("node %d leader=%v, expected=%v", i, leader.IsSelf, expectLeader)
+	if !dc.HADisabled {
+		err = ensureLeaderMatches(ctx, client, func(leader *api.LeaderResponse) error {
+			if !leader.IsSelf {
+				return fmt.Errorf("node %d leader=%v, expected=%v", 0, leader.IsSelf, true)
 			}
 
 			return nil
@@ -239,7 +230,12 @@ func (dc *DockerCluster) clusterReady(ctx context.Context) error {
 		}
 	}
 
-	return nil
+	status, err := client.Sys().SealStatusWithContext(ctx)
+	if err != nil {
+		return err
+	}
+	dc.ID = status.ClusterID
+	return err
 }
 
 func (dc *DockerCluster) setupCA(opts *DockerClusterOptions) error {
@@ -440,6 +436,11 @@ func NewDockerCluster(ctx context.Context, opts *DockerClusterOptions) (*DockerC
 		builtTags:   map[string]struct{}{},
 		CA:          opts.CA,
 		storage:     opts.Storage,
+		HADisabled:  opts.HADisabled,
+	}
+
+	if dc.HADisabled && opts.NumCores > 1 {
+		return nil, fmt.Errorf("expected at most one core (%v) when HA mode is disabled", opts.NumCores)
 	}
 
 	if err := dc.setupDockerCluster(ctx, opts); err != nil {
@@ -465,7 +466,7 @@ type DockerClusterNode struct {
 	tlsConfig            *tls.Config
 	WorkDir              string
 	Cluster              *DockerCluster
-	Container            *types.ContainerJSON
+	Container            *container.InspectResponse
 	DockerAPI            *docker.Client
 	Service              *dockhelper.Service
 	Runner               *dockhelper.Runner
@@ -587,8 +588,8 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 			},
 		},
 	}
-	if opts.ClusterOptions.VaultNodeConfig != nil && opts.ClusterOptions.VaultNodeConfig.AdditionalListeners != nil {
-		lsCfg := opts.ClusterOptions.VaultNodeConfig.AdditionalListeners
+	if opts.VaultNodeConfig != nil && opts.VaultNodeConfig.AdditionalListeners != nil {
+		lsCfg := opts.VaultNodeConfig.AdditionalListeners
 		listeners = append(listeners, lsCfg...)
 		for _, lCfgRaw := range lsCfg {
 			lCfg := lCfgRaw.(map[string]interface{})
@@ -650,8 +651,6 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	vaultCfg["api_addr"] = `https://{{- GetAllInterfaces | exclude "flags" "loopback" | attr "address" -}}:8200`
 	vaultCfg["cluster_addr"] = `https://{{- GetAllInterfaces | exclude "flags" "loopback" | attr "address" -}}:8201`
 
-	vaultCfg["administrative_namespace_path"] = opts.AdministrativeNamespacePath
-
 	systemJSON, err := json.Marshal(vaultCfg)
 	if err != nil {
 		return err
@@ -689,16 +688,16 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	var seenLogs uberAtomic.Bool
+	var seenLogs atomic.Bool
 	logConsumer := func(s string) {
-		if seenLogs.CAS(false, true) {
+		if seenLogs.CompareAndSwap(false, true) {
 			wg.Done()
 		}
 		n.Logger.Trace(s)
 	}
 	logStdout := &LogConsumerWriter{logConsumer}
 	logStderr := &LogConsumerWriter{func(s string) {
-		if seenLogs.CAS(false, true) {
+		if seenLogs.CompareAndSwap(false, true) {
 			wg.Done()
 		}
 		testcluster.JSONLogNoTimestamp(n.Logger, s)
@@ -787,7 +786,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	netName := opts.NetworkName
 	if netName == "" {
 		if len(svc.Container.NetworkSettings.Networks) > 1 {
-			return fmt.Errorf("Set d.RunOptions.NetworkName instead for container with multiple networks: %v", svc.Container.NetworkSettings.Networks)
+			return fmt.Errorf("set d.RunOptions.NetworkName instead for container with multiple networks: %v", svc.Container.NetworkSettings.Networks)
 		}
 		for netName = range svc.Container.NetworkSettings.Networks {
 			// Networks above is a map; we just need to find the first and
@@ -861,7 +860,7 @@ func (n *DockerClusterNode) PartitionFromCluster(ctx context.Context) error {
 	stdout, stderr, exitCode, err := n.Runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
 		"/bin/sh",
 		"-xec", strings.Join([]string{
-			fmt.Sprintf("echo partitioning container from network"),
+			"echo partitioning container from network",
 			"apk add iproute2",
 			// Get the gateway address for the bridge so we can allow host to
 			// container traffic still.
@@ -895,7 +894,7 @@ func (n *DockerClusterNode) UnpartitionFromCluster(ctx context.Context) error {
 	stdout, stderr, exitCode, err := n.Runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
 		"/bin/sh",
 		"-xec", strings.Join([]string{
-			fmt.Sprintf("echo un-partitioning container from network"),
+			"echo un-partitioning container from network",
 			// Get the gateway address for the bridge so we can allow host to
 			// container traffic still.
 			"GW=$(ip r | grep default | grep eth0 | cut -f 3 -d' ')",
@@ -945,8 +944,10 @@ type DockerClusterOptions struct {
 	Args        []string
 	StartProbe  func(*api.Client) error
 	Storage     testcluster.ClusterStorage
+	StorageType string
 	Root        bool
 	Entrypoint  string
+	HADisabled  bool
 }
 
 func DefaultOptions(t *testing.T) *DockerClusterOptions {
@@ -1009,7 +1010,11 @@ func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClu
 
 	var numCores int
 	if opts.NumCores == 0 {
-		numCores = DefaultNumCores
+		if dc.HADisabled {
+			numCores = 1
+		} else {
+			numCores = DefaultNumCores
+		}
 	} else {
 		numCores = opts.NumCores
 	}
@@ -1020,7 +1025,7 @@ func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClu
 		}
 	}
 	dc.RootCAs = x509.NewCertPool()
-	dc.RootCAs.AddCert(dc.CA.CACert)
+	dc.RootCAs.AddCert(dc.CACert)
 
 	if dc.storage != nil {
 		if err := dc.storage.Start(ctx, &opts.ClusterOptions); err != nil {
@@ -1037,7 +1042,7 @@ func (dc *DockerCluster) setupDockerCluster(ctx context.Context, opts *DockerClu
 		}
 		if i == 0 {
 			if err := dc.setupNode0(ctx); err != nil {
-				return nil
+				return err
 			}
 		} else {
 			if err := dc.joinNode(ctx, i, 0); err != nil {
@@ -1197,6 +1202,99 @@ COPY bao /bin/bao
 	}
 	dc.builtTags[tag] = struct{}{}
 	return tag, nil
+}
+
+type PostgreSQLStorage struct {
+	cleanup     func()
+	ExternalUrl string
+	InternalUrl string
+	Runner      *dockhelper.Runner
+	Service     *dockhelper.Service
+	Id          string
+}
+
+var _ testcluster.ClusterStorage = &PostgreSQLStorage{}
+
+// NewPostgreSQLStorage starts the underlying PSQL container and saves its
+// connection URL.
+func NewPostgreSQLStorage(t *testing.T, network string) *PostgreSQLStorage {
+	env := []string{
+		"POSTGRES_PASSWORD=secret",
+		"POSTGRES_DB=database",
+	}
+
+	runner, svc, cleanup, externalUrl, containerID := thpsql.PrepareTestContainerRaw(t, "postgres", "docker.mirror.hashicorp.services/postgres", "latest", "secret", true, false, false, env, false /* don't wait */, network)
+
+	u, err := url.Parse(externalUrl)
+	require.NoError(t, err, "failed to parse returned external URL")
+
+	var host string
+	if network != "" {
+		host = svc.Container.NetworkSettings.Networks[network].IPAddress
+	} else {
+		for name, info := range svc.Container.NetworkSettings.Networks {
+			network = name
+			host = info.IPAddress
+
+			t.Logf("found network [%v]: %v", network, info)
+		}
+
+		if len(svc.Container.NetworkSettings.Networks) != 1 {
+			t.Fatalf("expected only one network if no network name given: %v", network)
+		}
+	}
+	u.Host = fmt.Sprintf("%v:5432", host)
+
+	internalUrl := u.String()
+
+	return &PostgreSQLStorage{
+		cleanup:     cleanup,
+		ExternalUrl: externalUrl,
+		InternalUrl: internalUrl,
+		Runner:      runner,
+		Service:     svc,
+		Id:          containerID,
+	}
+}
+
+func (p *PostgreSQLStorage) Start(context.Context, *testcluster.ClusterOptions) error {
+	// Initialization already occurred when creating this object.
+	return nil
+}
+
+func (p *PostgreSQLStorage) Cleanup() error {
+	if p.cleanup != nil {
+		p.cleanup()
+		p.cleanup = nil
+	}
+	return nil
+}
+
+func (p *PostgreSQLStorage) Opts() map[string]interface{} {
+	return map[string]interface{}{
+		"connection_url":       p.InternalUrl,
+		"ha_enabled":           true,
+		"max_parallel":         5,
+		"max_idle_connections": 3,
+		"max_connect_retries":  30,
+	}
+}
+
+func (p *PostgreSQLStorage) Type() string {
+	return "postgresql"
+}
+
+func (p *PostgreSQLStorage) Client(ctx context.Context) (*sql.DB, error) {
+	db, err := sql.Open("pgx", p.ExternalUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = db.PingContext(ctx); err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }
 
 /* Notes on testing the non-bridge network case:

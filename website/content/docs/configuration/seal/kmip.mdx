@@ -25,7 +25,7 @@ key material.
 :::warning
 
 Because KMIP auto-unseal was not present in Vault v1.14 OSS, it is not
-expected that it is [seal-compatible](/docs/policies/migration/); manual
+expected that it is [seal-compatible](../../policies/migration.mdx); manual
 migration of data between nodes may be required.
 
 :::
@@ -129,7 +129,7 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
-Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
+Refer to the [Seal Migration](../../concepts/seal.mdx#seal-migration) documentation for more information about the seal migration process.
   
 ## `kmip` environment variables
 
@@ -152,7 +152,7 @@ BAO_KMIP_TLS12_CIPHERS
 ## Key rotation
 
 This seal supports rotating keys by using different key IDs to track key versions. To rotate
-the key value, create a new key or perform a rekey operation in the KMIP server and update OpenBao's
+the key value, create a new key or perform a rotation in the KMIP server and update OpenBao's
 configuration with the new key ID. 
 The key type and encryption algorithm can also be changed as OpenBao keeps track of the algorithm.
 Restart your OpenBao instance to pick up the new keyID and all new encryption operations will use 

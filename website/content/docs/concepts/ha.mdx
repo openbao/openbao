@@ -15,7 +15,7 @@ You can tell if a data store supports High Availability mode by starting
 the server and seeing if "(HA available)" is output next to the data store
 information. If it is, then OpenBao will automatically use HA mode. This
 information is also available on the
-[Configuration](/docs/configuration) page.
+[Configuration](../configuration/storage/index.mdx) page.
 
 To be Highly Available, one of the OpenBao server nodes grabs a lock within the
 data store. The successful server node then becomes the active node; all other
@@ -30,11 +30,11 @@ Certain storage backends can support High Availability mode, which enable them
 to store both OpenBao's information in addition to the HA lock. However, OpenBao
 also supports split data/HA mode, whereby the lock value and the rest of the
 data live separately. This can be done by specifying both the
-[`storage`](/docs/configuration#storage) and
-[`ha_storage`](/docs/configuration#ha_storage) stanzas in the configuration file
+[`storage`](../configuration/index.mdx#storage) and
+[`ha_storage`](../configuration/index.mdx#ha_storage) stanzas in the configuration file
 with different backends. For instance, an OpenBao cluster can be set up to use
-Consul as the [`ha_storage`](/docs/configuration#ha_storage) to manage the lock,
-and use Amazon S3 as the [`storage`](/docs/configuration#storage) for all other
+Consul as the [`ha_storage`](../configuration/index.mdx#ha_storage) to manage the lock,
+and use Amazon S3 as the [`storage`](../configuration/index.mdx#storage) for all other
 persisted data.
 
 The sections below explain the server communication patterns and each type of
@@ -84,35 +84,35 @@ always required for all HA setups.
 
 Some HA data store drivers can autodetect the redirect address, but it is often
 necessary to configure it manually via a top-level value in the configuration
-file. The key for this value is [`api_addr`](/docs/configuration#api_addr) and
+file. The key for this value is [`api_addr`](../configuration/index.mdx#api_addr) and
 the value can also be specified by the `VAULT_API_ADDR` environment variable,
 which takes precedence.
 
-What the [`api_addr`](/docs/configuration#api_addr) value should be set to
+What the [`api_addr`](../configuration/index.mdx#api_addr) value should be set to
 depends on how OpenBao is set up. There are two common scenarios: OpenBao servers
 accessed directly by clients, and OpenBao servers accessed via a load balancer.
 
-In both cases, the [`api_addr`](/docs/configuration#api_addr) should be a full
+In both cases, the [`api_addr`](../configuration/index.mdx#api_addr) should be a full
 URL including scheme (`http`/`https`), not simply an IP address and port.
 
 ### Direct access
 
 When clients are able to access OpenBao directly, the
-[`api_addr`](/docs/configuration#api_addr) for each node should be that node's
+[`api_addr`](../configuration/index.mdx#api_addr) for each node should be that node's
 address. For instance, if there are two OpenBao nodes:
 
 - `A`, accessed via `https://a.openbao.mycompany.com:8200`
 - `B`, accessed via `https://b.openbao.mycompany.com:8200`
 
 Then node `A` would set its
-[`api_addr`](/docs/configuration#api_addr) to
+[`api_addr`](../configuration/index.mdx#api_addr) to
 `https://a.openbao.mycompany.com:8200` and node `B` would set its
-[`api_addr`](/docs/configuration#api_addr) to
+[`api_addr`](../configuration/index.mdx#api_addr) to
 `https://b.openbao.mycompany.com:8200`.
 
 This way, when `A` is the active node, any requests received by node `B` will
 cause it to redirect the client to node `A`'s
-[`api_addr`](/docs/configuration#api_addr) at `https://a.openbao.mycompany.com`,
+[`api_addr`](../configuration/index.mdx#api_addr) at `https://a.openbao.mycompany.com`,
 and vice-versa.
 
 ### Behind load balancers
@@ -123,7 +123,7 @@ case, the OpenBao servers should actually be set up as described in the above
 section, since for redirection purposes the clients have direct access.
 
 However, if the only access to the OpenBao servers is via the load balancer, the
-[`api_addr`](/docs/configuration#api_addr) on each node should be the same: the
+[`api_addr`](../configuration/index.mdx#api_addr) on each node should be the same: the
 address of the load balancer. Clients that reach a standby node will be
 redirected back to the load balancer; at that point hopefully the load
 balancer's configuration will have been updated to know the address of the
@@ -132,16 +132,16 @@ setup when it can be avoided.
 
 ### Per-Node cluster listener addresses
 
-Each [`listener`](/docs/configuration/listener) block in OpenBao's configuration
-file contains an [`address`](/docs/configuration/listener/tcp#address) value on
+Each [`listener`](../configuration/listener/index.mdx) block in OpenBao's configuration
+file contains an [`address`](../configuration/listener/tcp.mdx#address) value on
 which OpenBao listens for requests. Similarly, each
-[`listener`](/docs/configuration/listener) block can contain a
-[`cluster_address`](/docs/configuration/listener/tcp#cluster_address) on which
+[`listener`](../configuration/listener/index.mdx) block can contain a
+[`cluster_address`](../configuration/listener/tcp.mdx#cluster_address) on which
 OpenBao listens for server-to-server cluster requests. If this value is not set,
 its IP address will be automatically set to same as the
-[`address`](/docs/configuration/listener/tcp#address) value, and its port will
+[`address`](../configuration/listener/tcp.mdx#address) value, and its port will
 be automatically set to the same as the
-[`address`](/docs/configuration/listener/tcp#address) value plus one (so by
+[`address`](../configuration/listener/tcp.mdx#address) value plus one (so by
 default, port `8201`).
 
 Note that _only_ active nodes have active listeners. When a node becomes active
@@ -149,14 +149,14 @@ it will start cluster listeners, and when it becomes standby it will stop them.
 
 ### Per-Node cluster address
 
-Similar to the [`api_addr`](/docs/configuration#api_addr),
-[`cluster_addr`](/docs/configuration#cluster_addr) is the value that each node,
+Similar to the [`api_addr`](../configuration/index.mdx#api_addr),
+[`cluster_addr`](../configuration/index.mdx#cluster_addr) is the value that each node,
 if active, should advertise to the standbys to use for server-to-server
 communications, and lives as a top-level value in the configuration file. On
 each node, this should be set to a host name or IP address that a standby can
 use to reach one of that node's
-[`cluster_address`](/docs/configuration#cluster_address) values set in the
-[`listener`](/docs/configuration/listener) blocks, including port. (Note that
+[`cluster_address`](../configuration/index.mdx#cluster_address) values set in the
+[`listener`](../configuration/listener/index.mdx) blocks, including port. (Note that
 this will always be forced to `https` since only TLS connections are used
 between servers.)
 
@@ -165,17 +165,17 @@ variable, which takes precedence.
 
 ## Storage support
 
-Currently the only officially supported storage backend that supports high
-availability is the  [Integrated
-Storage](/docs/configuration/storage/raft) backend. In addition to that,
-some community supported storage backends
-implement High Availability as well. These may change over time, and the [configuration
-page](/docs/configuration) should be referenced.
+Currently, officially supported storage backends that support high availability
+include the [Integrated Storage](../configuration/storage/raft.mdx) and
+[PostgreSQL](../configuration/storage/postgresql.mdx) backends. In addition to
+that, some community supported storage backends implement High Availability as
+well. These may change over time, and the [configuration
+page](../configuration/storage/index.mdx) should be referenced.
 
-The [OpenBao Integrated Storage](/docs/configuration/storage/raft) is
+The [OpenBao Integrated Storage](../configuration/storage/raft.mdx) is
 recommended as the default HA backend for new deployments of OpenBao. See the
 [comparison
-chart](/docs/configuration/storage#integrated-storage-vs-external-storage)
+chart](../configuration/storage/index.mdx#integrated-storage-vs-external-storage)
 for help deciding which option is best for you.
 
 If you're interested in implementing another backend or adding HA support to

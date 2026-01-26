@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/hashicorp/hcl/hcl/token"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 )
 
 const mlockMsg = "OpenBao has dropped support for mlock. Please remove\n" +
@@ -35,7 +36,7 @@ type SharedConfig struct {
 	// compatibility's sake and to give a warning for those expecting it.
 	DisableMlockRaw interface{} `hcl:"disable_mlock"`
 
-	Telemetry *Telemetry `hcl:"telemetry"`
+	Telemetry *Telemetry `hcl:"-"`
 
 	DefaultMaxRequestDuration    time.Duration `hcl:"-"`
 	DefaultMaxRequestDurationRaw interface{}   `hcl:"default_max_request_duration"`
@@ -55,13 +56,11 @@ type SharedConfig struct {
 	PidFile string `hcl:"pid_file"`
 
 	ClusterName string `hcl:"cluster_name"`
-
-	AdministrativeNamespacePath string `hcl:"administrative_namespace_path"`
 }
 
 func ParseConfig(d string) (*SharedConfig, error) {
-	// Parse!
-	obj, err := hcl.Parse(d)
+	// Parse using the helper function that handles both HCL and JSON
+	obj, err := hclutil.ParseConfig([]byte(d))
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +85,7 @@ func ParseConfig(d string) (*SharedConfig, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error parsing 'disable_mlock': %w", err)
 		} else if !isDisabled {
-			return nil, fmt.Errorf(mlockMsg)
+			return nil, errors.New(mlockMsg)
 		}
 		result.DisableMlockRaw = nil
 	}
@@ -154,12 +153,11 @@ func (c *SharedConfig) Sanitized() map[string]interface{} {
 	}
 
 	result := map[string]interface{}{
-		"default_max_request_duration":  c.DefaultMaxRequestDuration,
-		"log_level":                     c.LogLevel,
-		"log_format":                    c.LogFormat,
-		"pid_file":                      c.PidFile,
-		"cluster_name":                  c.ClusterName,
-		"administrative_namespace_path": c.AdministrativeNamespacePath,
+		"default_max_request_duration": c.DefaultMaxRequestDuration,
+		"log_level":                    c.LogLevel,
+		"log_format":                   c.LogFormat,
+		"pid_file":                     c.PidFile,
+		"cluster_name":                 c.ClusterName,
 	}
 
 	// Optional log related settings

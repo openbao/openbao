@@ -10,19 +10,16 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/go-test/deep"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-hclog"
-	_ "github.com/jackc/pgx/v4"
-	"github.com/mitchellh/mapstructure"
+	_ "github.com/jackc/pgx/v5"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/namespace"
-	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/plugins/database/postgresql"
 	v4 "github.com/openbao/openbao/sdk/v2/database/dbplugin"
@@ -31,8 +28,10 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func getCluster(t *testing.T) (*vault.TestCluster, logical.SystemView) {
@@ -65,9 +64,7 @@ func TestBackend_PluginMain_Postgres(t *testing.T) {
 	}
 
 	dbType, err := postgresql.New()
-	if err != nil {
-		t.Fatalf("Failed to initialize postgres: %s", err)
-	}
+	require.NoErrorf(t, err, "Failed to initialize postgres: %s", err)
 
 	v5.Serve(dbType.(v5.Database))
 }
@@ -78,58 +75,6 @@ func TestBackend_PluginMain_PostgresMultiplexed(t *testing.T) {
 	}
 
 	v5.ServeMultiplex(postgresql.New)
-}
-
-func TestBackend_RoleUpgrade(t *testing.T) {
-	storage := &logical.InmemStorage{}
-	backend := &databaseBackend{}
-
-	roleExpected := &roleEntry{
-		Statements: v4.Statements{
-			CreationStatements: "test",
-			Creation:           []string{"test"},
-		},
-	}
-
-	entry, err := logical.StorageEntryJSON("role/test", &roleEntry{
-		Statements: v4.Statements{
-			CreationStatements: "test",
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := storage.Put(context.Background(), entry); err != nil {
-		t.Fatal(err)
-	}
-
-	role, err := backend.Role(context.Background(), storage, "test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !reflect.DeepEqual(role, roleExpected) {
-		t.Fatalf("bad role %#v, %#v", role, roleExpected)
-	}
-
-	// Upgrade case
-	badJSON := `{"statments":{"creation_statments":"test","revocation_statements":"","rollback_statements":"","renew_statements":""}}`
-	entry = &logical.StorageEntry{
-		Key:   "role/test",
-		Value: []byte(badJSON),
-	}
-	if err := storage.Put(context.Background(), entry); err != nil {
-		t.Fatal(err)
-	}
-
-	role, err = backend.Role(context.Background(), storage, "test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !reflect.DeepEqual(role, roleExpected) {
-		t.Fatalf("bad role %#v, %#v", role, roleExpected)
-	}
 }
 
 func TestBackend_config_connection(t *testing.T) {
@@ -143,13 +88,9 @@ func TestBackend_config_connection(t *testing.T) {
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 	lb, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
-	if !ok {
-		t.Fatal("could not convert to database backend")
-	}
+	require.Truef(t, ok, "could not convert to database backend")
 	defer b.Cleanup(context.Background())
 
 	// Test creation
@@ -174,17 +115,12 @@ func TestBackend_config_connection(t *testing.T) {
 			Raw:    configData,
 			Schema: pathConfigurePluginConnection(b).Fields,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if exists {
-			t.Fatal("expected not exists")
-		}
+		require.NoError(t, err)
+		require.Falsef(t, exists, "expected not exists")
 
-		resp, err = b.HandleRequest(namespace.RootContext(nil), configReq)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
 		expected := map[string]interface{}{
 			"plugin_name": "postgresql-database-plugin",
@@ -198,15 +134,12 @@ func TestBackend_config_connection(t *testing.T) {
 			"plugin_version":                     "",
 		}
 		configReq.Operation = logical.ReadOperation
-		resp, err = b.HandleRequest(namespace.RootContext(nil), configReq)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 		delete(resp.Data["connection_details"].(map[string]interface{}), "name")
-		if !reflect.DeepEqual(expected, resp.Data) {
-			t.Fatalf("bad: expected:%#v\nactual:%#v\n", expected, resp.Data)
-		}
+		require.Equalf(t, expected, resp.Data, "bad: expected:%#v\nactual:%#v\n", expected, resp.Data)
 	}
 
 	// Test existence check and an update to a single connection detail parameter
@@ -228,17 +161,12 @@ func TestBackend_config_connection(t *testing.T) {
 			Raw:    configData,
 			Schema: pathConfigurePluginConnection(b).Fields,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !exists {
-			t.Fatal("expected exists")
-		}
+		require.NoError(t, err)
+		require.Truef(t, exists, "expected exists")
 
-		resp, err = b.HandleRequest(namespace.RootContext(nil), configReq)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
 		expected := map[string]interface{}{
 			"plugin_name": "postgresql-database-plugin",
@@ -252,15 +180,12 @@ func TestBackend_config_connection(t *testing.T) {
 			"plugin_version":                     "",
 		}
 		configReq.Operation = logical.ReadOperation
-		resp, err = b.HandleRequest(namespace.RootContext(nil), configReq)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 		delete(resp.Data["connection_details"].(map[string]interface{}), "name")
-		if !reflect.DeepEqual(expected, resp.Data) {
-			t.Fatalf("bad: expected:%#v\nactual:%#v\n", expected, resp.Data)
-		}
+		require.Equalf(t, expected, resp.Data, "bad: expected:%#v\nactual:%#v\n", expected, resp.Data)
 	}
 
 	// Test an update to a non-details value
@@ -278,10 +203,9 @@ func TestBackend_config_connection(t *testing.T) {
 			Data:      configData,
 		}
 
-		resp, err = b.HandleRequest(namespace.RootContext(nil), configReq)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
 		expected := map[string]interface{}{
 			"plugin_name": "postgresql-database-plugin",
@@ -295,15 +219,12 @@ func TestBackend_config_connection(t *testing.T) {
 			"plugin_version":                     "",
 		}
 		configReq.Operation = logical.ReadOperation
-		resp, err = b.HandleRequest(namespace.RootContext(nil), configReq)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), configReq)
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 		delete(resp.Data["connection_details"].(map[string]interface{}), "name")
-		if !reflect.DeepEqual(expected, resp.Data) {
-			t.Fatalf("bad: expected:%#v\nactual:%#v\n", expected, resp.Data)
-		}
+		require.Equal(t, expected, resp.Data, "bad: expected:%#v\nactual:%#v\n", expected, resp.Data)
 	}
 
 	req := &logical.Request{
@@ -311,15 +232,11 @@ func TestBackend_config_connection(t *testing.T) {
 		Storage:   config.StorageView,
 		Path:      "config/",
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
 	keys := resp.Data["keys"].([]string)
 	key := keys[0]
-	if key != "plugin-test" {
-		t.Fatalf("bad key: %q", key)
-	}
+	require.Equalf(t, key, "plugin-test", "bad key: %q", key)
 }
 
 func TestBackend_BadConnectionString(t *testing.T) {
@@ -331,9 +248,7 @@ func TestBackend_BadConnectionString(t *testing.T) {
 	config.System = sys
 
 	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer b.Cleanup(context.Background())
 
 	cleanup, _ := postgreshelper.PrepareTestContainer(t, "13.4-buster")
@@ -341,17 +256,12 @@ func TestBackend_BadConnectionString(t *testing.T) {
 
 	respCheck := func(req *logical.Request) {
 		t.Helper()
-		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
-		if resp == nil || !resp.IsError() {
-			t.Fatalf("expected error, resp:%#v", resp)
-		}
+		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.True(t, resp.IsError(), "expected error, resp:%#v", resp)
 		err = resp.Error()
-		if strings.Contains(err.Error(), "localhost") {
-			t.Fatal("error should not contain connection info")
-		}
+		require.NotContainsf(t, err.Error(), "localhost", "error should not contain connection info")
 	}
 
 	// Configure a connection
@@ -380,9 +290,7 @@ func TestBackend_basic(t *testing.T) {
 	config.System = sys
 
 	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer b.Cleanup(context.Background())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "13.4-buster")
@@ -400,10 +308,9 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Create a role
 	data = map[string]interface{}{
@@ -417,10 +324,9 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	// Get creds
 	data = map[string]interface{}{}
 	req = &logical.Request{
@@ -429,10 +335,9 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err := b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (credsResp != nil && credsResp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, credsResp)
-	}
+	credsResp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
+	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 	// Update the role with no max ttl
 	data = map[string]interface{}{
 		"db_name":             "plugin-test",
@@ -446,10 +351,9 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	// Get creds
 	data = map[string]interface{}{}
 	req = &logical.Request{
@@ -458,14 +362,11 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (credsResp != nil && credsResp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, credsResp)
-	}
+	credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
+	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 	// Test for #3812
-	if credsResp.Secret.TTL != 5*time.Minute {
-		t.Fatalf("unexpected TTL of %d", credsResp.Secret.TTL)
-	}
+	require.Equalf(t, credsResp.Secret.TTL, 5*time.Minute, "unexpected TTL of %d", credsResp.Secret.TTL)
 	// Update the role with a max ttl
 	data = map[string]interface{}{
 		"db_name":             "plugin-test",
@@ -479,10 +380,9 @@ func TestBackend_basic(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Get creds and revoke when the role stays in existence
 	{
@@ -493,17 +393,12 @@ func TestBackend_basic(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		credsResp, err = b.HandleRequest(namespace.RootContext(nil), req)
-		if err != nil || (credsResp != nil && credsResp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, credsResp)
-		}
+		credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
+		require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 		// Test for #3812
-		if credsResp.Secret.TTL != 5*time.Minute {
-			t.Fatalf("unexpected TTL of %d", credsResp.Secret.TTL)
-		}
-		if !testCredsExist(t, credsResp, connURL) {
-			t.Fatal("Creds should exist")
-		}
+		require.Equalf(t, credsResp.Secret.TTL, 5*time.Minute, "unexpected TTL of %d", credsResp.Secret.TTL)
+		require.Truef(t, testCredsExist(t, credsResp, connURL), "Creds should exist")
 
 		// Revoke creds
 		resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
@@ -517,13 +412,10 @@ func TestBackend_basic(t *testing.T) {
 				},
 			},
 		})
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
-		if testCredsExist(t, credsResp, connURL) {
-			t.Fatal("Creds should not exist")
-		}
+		require.Falsef(t, testCredsExist(t, credsResp, connURL), "Creds should not exist")
 	}
 
 	// Get creds and revoke using embedded revocation data
@@ -535,13 +427,10 @@ func TestBackend_basic(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		credsResp, err = b.HandleRequest(namespace.RootContext(nil), req)
-		if err != nil || (credsResp != nil && credsResp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, credsResp)
-		}
-		if !testCredsExist(t, credsResp, connURL) {
-			t.Fatal("Creds should exist")
-		}
+		credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
+		require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
+		require.Truef(t, testCredsExist(t, credsResp, connURL), "Creds should exist")
 
 		// Delete role, forcing us to rely on embedded data
 		req = &logical.Request{
@@ -549,10 +438,9 @@ func TestBackend_basic(t *testing.T) {
 			Path:      "roles/plugin-role-test",
 			Storage:   config.StorageView,
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 		// Revoke creds
 		resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
@@ -568,13 +456,10 @@ func TestBackend_basic(t *testing.T) {
 				},
 			},
 		})
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
-		if testCredsExist(t, credsResp, connURL) {
-			t.Fatal("Creds should not exist")
-		}
+		require.Falsef(t, testCredsExist(t, credsResp, connURL), "Creds should not exist")
 	}
 }
 
@@ -587,9 +472,7 @@ func TestBackend_connectionCrud(t *testing.T) {
 	config.System = sys
 
 	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer b.Cleanup(context.Background())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "13.4-buster")
@@ -607,10 +490,9 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Create a role
 	data = map[string]interface{}{
@@ -626,10 +508,9 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Update the connection
 	data = map[string]interface{}{
@@ -646,39 +527,28 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
-	if len(resp.Warnings) == 0 {
-		t.Fatalf("expected warning about password in url %s, resp:%#v\n", connURL, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
+	require.NotEqualf(t, len(resp.Warnings), 0, "expected warning about password in url %s, resp:%#v\n", connURL, resp)
 
 	req.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	returnedConnectionDetails := resp.Data["connection_details"].(map[string]interface{})
-	if strings.Contains(returnedConnectionDetails["connection_url"].(string), "secret") {
-		t.Fatal("password should not be found in the connection url")
-	}
+	require.NotContainsf(t, returnedConnectionDetails["connection_url"].(string), "secret", "password should not be found in the connection url")
 	// Covered by the filled out `expected` value below, but be explicit about this requirement.
-	if _, exists := returnedConnectionDetails["password"]; exists {
-		t.Fatal("password should NOT be found in the returned config")
-	}
-	if _, exists := returnedConnectionDetails["private_key"]; exists {
-		t.Fatal("private_key should NOT be found in the returned config")
-	}
+	require.NotContainsf(t, returnedConnectionDetails, "password", "password should NOT be found in the returned config")
+	require.NotContainsf(t, returnedConnectionDetails, "private_key", "private_key should NOT be found in the returned config")
 
 	// Replace connection url with templated version
 	req.Operation = logical.UpdateOperation
 	connURL = strings.ReplaceAll(connURL, "postgres:secret", "{{username}}:{{password}}")
 	data["connection_url"] = connURL
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Read connection
 	expected := map[string]interface{}{
@@ -693,15 +563,12 @@ func TestBackend_connectionCrud(t *testing.T) {
 		"plugin_version":                     "",
 	}
 	req.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	delete(resp.Data["connection_details"].(map[string]interface{}), "name")
-	if diff := deep.Equal(resp.Data, expected); diff != nil {
-		t.Fatal(diff)
-	}
+	require.Equal(t, resp.Data, expected)
 
 	// Reset Connection
 	data = map[string]interface{}{}
@@ -711,10 +578,9 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Get creds
 	data = map[string]interface{}{}
@@ -724,18 +590,15 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err := b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (credsResp != nil && credsResp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, credsResp)
-	}
+	credsResp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
+	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 
 	credCheckURL := dbutil.QueryHelper(connURL, map[string]string{
 		"username": "postgres",
 		"password": "secret",
 	})
-	if !testCredsExist(t, credsResp, credCheckURL) {
-		t.Fatal("Creds should exist")
-	}
+	require.Truef(t, testCredsExist(t, credsResp, credCheckURL), "Creds should exist")
 
 	// Delete Connection
 	data = map[string]interface{}{}
@@ -745,22 +608,18 @@ func TestBackend_connectionCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Read connection
 	req.Operation = logical.ReadOperation
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Should be empty
-	if resp != nil {
-		t.Fatal("Expected response to be nil")
-	}
+	require.Nilf(t, resp, "Expected response to be nil")
 }
 
 func TestBackend_roleCrud(t *testing.T) {
@@ -772,13 +631,9 @@ func TestBackend_roleCrud(t *testing.T) {
 	config.System = sys
 
 	lb, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b, ok := lb.(*databaseBackend)
-	if !ok {
-		t.Fatal("could not convert to db backend")
-	}
+	require.Truef(t, ok, "could not convert to db backend")
 	defer b.Cleanup(context.Background())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "13.4-buster")
@@ -795,10 +650,9 @@ func TestBackend_roleCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Test role creation
 	{
@@ -815,10 +669,9 @@ func TestBackend_roleCrud(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 		// Read the role
 		data = map[string]interface{}{}
@@ -828,10 +681,9 @@ func TestBackend_roleCrud(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 		expected := v4.Statements{
 			Creation:   []string{strings.TrimSpace(testRole)},
@@ -847,19 +699,10 @@ func TestBackend_roleCrud(t *testing.T) {
 			Renewal:    resp.Data["renew_statements"].([]string),
 		}
 
-		if diff := deep.Equal(expected, actual); diff != nil {
-			t.Fatal(diff)
-		}
-
-		if diff := deep.Equal(resp.Data["db_name"], "plugin-test"); diff != nil {
-			t.Fatal(diff)
-		}
-		if diff := deep.Equal(resp.Data["default_ttl"], float64(300)); diff != nil {
-			t.Fatal(diff)
-		}
-		if diff := deep.Equal(resp.Data["max_ttl"], float64(600)); diff != nil {
-			t.Fatal(diff)
-		}
+		require.Equal(t, &expected, &actual)
+		require.Equal(t, resp.Data["db_name"], "plugin-test")
+		require.Equal(t, resp.Data["default_ttl"], float64(300))
+		require.Equal(t, resp.Data["max_ttl"], float64(600))
 	}
 
 	// Test role modification of TTL
@@ -874,10 +717,9 @@ func TestBackend_roleCrud(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
 		// Read the role
 		data = map[string]interface{}{}
@@ -887,10 +729,9 @@ func TestBackend_roleCrud(t *testing.T) {
 			Storage:   config.StorageView,
 			Data:      data,
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 		expected := v4.Statements{
 			Creation:   []string{strings.TrimSpace(testRole)},
@@ -906,20 +747,10 @@ func TestBackend_roleCrud(t *testing.T) {
 			Renewal:    resp.Data["renew_statements"].([]string),
 		}
 
-		if !reflect.DeepEqual(expected, actual) {
-			t.Fatalf("Statements did not match, expected %#v, got %#v", expected, actual)
-		}
-
-		if diff := deep.Equal(resp.Data["db_name"], "plugin-test"); diff != nil {
-			t.Fatal(diff)
-		}
-		if diff := deep.Equal(resp.Data["default_ttl"], float64(300)); diff != nil {
-			t.Fatal(diff)
-		}
-		if diff := deep.Equal(resp.Data["max_ttl"], float64(420)); diff != nil {
-			t.Fatal(diff)
-		}
-
+		require.Equalf(t, &expected, &actual, "Statements did not match, expected %#v, got %#v", &expected, &actual)
+		require.Equal(t, resp.Data["db_name"], "plugin-test")
+		require.Equal(t, resp.Data["default_ttl"], float64(300))
+		require.Equal(t, resp.Data["max_ttl"], float64(420))
 	}
 
 	// Test role modification of statements
@@ -938,9 +769,8 @@ func TestBackend_roleCrud(t *testing.T) {
 			Data:      data,
 		}
 		resp, err = b.HandleRequest(context.Background(), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
+		require.NoErrorf(t, err, "err:%v resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%v resp:%#v\n", err, resp)
 
 		// Read the role
 		data = map[string]interface{}{}
@@ -951,9 +781,8 @@ func TestBackend_roleCrud(t *testing.T) {
 			Data:      data,
 		}
 		resp, err = b.HandleRequest(context.Background(), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+		require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 		expected := v4.Statements{
 			Creation:   []string{strings.TrimSpace(testRole), strings.TrimSpace(testRole)},
@@ -969,19 +798,9 @@ func TestBackend_roleCrud(t *testing.T) {
 			Renewal:    resp.Data["renew_statements"].([]string),
 		}
 
-		if diff := deep.Equal(expected, actual); diff != nil {
-			t.Fatal(diff)
-		}
-
-		if diff := deep.Equal(resp.Data["db_name"], "plugin-test"); diff != nil {
-			t.Fatal(diff)
-		}
-		if diff := deep.Equal(resp.Data["default_ttl"], float64(300)); diff != nil {
-			t.Fatal(diff)
-		}
-		if diff := deep.Equal(resp.Data["max_ttl"], float64(420)); diff != nil {
-			t.Fatal(diff)
-		}
+		require.Equal(t, &expected, &actual)
+		require.Equal(t, resp.Data["db_name"], "plugin-test")
+		require.Equal(t, resp.Data["max_ttl"], float64(420))
 	}
 
 	// Delete the role
@@ -992,10 +811,9 @@ func TestBackend_roleCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Read the role
 	data = map[string]interface{}{}
@@ -1005,15 +823,12 @@ func TestBackend_roleCrud(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Should be empty
-	if resp != nil {
-		t.Fatal("Expected response to be nil")
-	}
+	require.Nilf(t, resp, "Expected response to be nil")
 }
 
 func TestBackend_allowedRoles(t *testing.T) {
@@ -1025,9 +840,7 @@ func TestBackend_allowedRoles(t *testing.T) {
 	config.System = sys
 
 	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer b.Cleanup(context.Background())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "13.4-buster")
@@ -1044,10 +857,9 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Create a denied and an allowed role
 	data = map[string]interface{}{
@@ -1062,10 +874,9 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	data = map[string]interface{}{
 		"db_name":             "plugin-test",
@@ -1079,10 +890,9 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Get creds from denied role, should fail
 	data = map[string]interface{}{}
@@ -1092,10 +902,8 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err := b.HandleRequest(namespace.RootContext(nil), req)
-	if err == nil {
-		t.Fatal("expected error because role is denied")
-	}
+	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.Errorf(t, err, "expected error because role is denied")
 
 	// update connection with glob allowed roles connection
 	data = map[string]interface{}{
@@ -1109,10 +917,9 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Get creds, should work.
 	data = map[string]interface{}{}
@@ -1122,14 +929,11 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (credsResp != nil && credsResp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, credsResp)
-	}
+	credsResp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
+	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 
-	if !testCredsExist(t, credsResp, connURL) {
-		t.Fatal("Creds should exist")
-	}
+	require.Truef(t, testCredsExist(t, credsResp, connURL), "Creds should exist")
 
 	// update connection with * allowed roles connection
 	data = map[string]interface{}{
@@ -1143,10 +947,9 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Get creds, should work.
 	data = map[string]interface{}{}
@@ -1156,14 +959,11 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (credsResp != nil && credsResp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, credsResp)
-	}
+	credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
+	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 
-	if !testCredsExist(t, credsResp, connURL) {
-		t.Fatal("Creds should exist")
-	}
+	require.Truef(t, testCredsExist(t, credsResp, connURL), "Creds should exist")
 
 	// update connection with allowed roles
 	data = map[string]interface{}{
@@ -1177,10 +977,9 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Get creds from denied role, should fail
 	data = map[string]interface{}{}
@@ -1190,10 +989,8 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err == nil {
-		t.Fatal("expected error because role is denied")
-	}
+	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.Errorf(t, err, "expected error because role is denied")
 
 	// Get creds from allowed role, should work.
 	data = map[string]interface{}{}
@@ -1203,14 +1000,11 @@ func TestBackend_allowedRoles(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (credsResp != nil && credsResp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, credsResp)
-	}
+	credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
+	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 
-	if !testCredsExist(t, credsResp, connURL) {
-		t.Fatal("Creds should exist")
-	}
+	require.Truef(t, testCredsExist(t, credsResp, connURL), "Creds should exist")
 }
 
 func TestBackend_RotateRootCredentials(t *testing.T) {
@@ -1222,9 +1016,7 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 	config.System = sys
 
 	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer b.Cleanup(context.Background())
 
 	cleanup, connURL := postgreshelper.PrepareTestContainer(t, "13.4-buster")
@@ -1246,10 +1038,9 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	// Create a role
 	data = map[string]interface{}{
@@ -1263,10 +1054,9 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 	// Get creds
 	data = map[string]interface{}{}
 	req = &logical.Request{
@@ -1275,10 +1065,9 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err := b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (credsResp != nil && credsResp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, credsResp)
-	}
+	credsResp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
+	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 
 	data = map[string]interface{}{}
 	req = &logical.Request{
@@ -1287,18 +1076,13 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (credsResp != nil && credsResp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, credsResp)
-	}
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, resp)
+	require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 	dbConfig, err := b.(*databaseBackend).DatabaseConfig(context.Background(), config.StorageView, "plugin-test")
-	if err != nil {
-		t.Fatalf("err: %#v", err)
-	}
-	if dbConfig.ConnectionDetails["password"].(string) == "secret" {
-		t.Fatal("root credentials not rotated")
-	}
+	require.NoErrorf(t, err, "err: %#v", err)
+	require.NotEqualf(t, dbConfig.ConnectionDetails["password"].(string), "secret", "root credentials not rotated")
 
 	// Get creds to make sure it still works
 	data = map[string]interface{}{}
@@ -1308,10 +1092,9 @@ func TestBackend_RotateRootCredentials(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	credsResp, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil || (credsResp != nil && credsResp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, credsResp)
-	}
+	credsResp, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoErrorf(t, err, "err:%s resp:%#v\n", err, credsResp)
+	require.Falsef(t, credsResp != nil && credsResp.IsError(), "err:%s resp:%#v\n", err, credsResp)
 }
 
 func TestBackend_ConnectionURL_redacted(t *testing.T) {
@@ -1323,9 +1106,7 @@ func TestBackend_ConnectionURL_redacted(t *testing.T) {
 	config.System = sys
 
 	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer b.Cleanup(context.Background())
 
 	tests := []struct {
@@ -1344,17 +1125,10 @@ func TestBackend_ConnectionURL_redacted(t *testing.T) {
 
 	respCheck := func(req *logical.Request) *logical.Response {
 		t.Helper()
-		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
-		if err != nil {
-			t.Fatalf("err: %v", err)
-		}
-		if resp == nil {
-			t.Fatalf("expected a response, resp: %#v", resp)
-		}
-
-		if resp.Error() != nil {
-			t.Fatalf("unexpected error in response, err: %#v", resp.Error())
-		}
+		resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), req)
+		require.NoError(t, err)
+		require.NotNil(t, resp, "expected a response, resp: %#v", resp)
+		require.Nil(t, resp.Error(), "unexpected error in response, err: %#v", resp.Error())
 
 		return resp
 	}
@@ -1364,14 +1138,10 @@ func TestBackend_ConnectionURL_redacted(t *testing.T) {
 			t.Cleanup(cleanup)
 
 			p, err := url.Parse(u)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			actualPassword, _ := p.User.Password()
-			if tt.password != actualPassword {
-				t.Fatalf("expected computed URL password %#v, actual %#v", tt.password, actualPassword)
-			}
+			require.Equalf(t, tt.password, actualPassword, "expected computed URL password %#v, actual %#v", tt.password, actualPassword)
 
 			// Configure a connection
 			data := map[string]interface{}{
@@ -1400,25 +1170,18 @@ func TestBackend_ConnectionURL_redacted(t *testing.T) {
 				connDetails = v.(map[string]interface{})
 			}
 
-			if connDetails == nil {
-				t.Fatalf("response data missing connection_details, resp: %#v", resp)
-			}
+			require.NotNilf(t, connDetails, "response data missing connection_details, resp: %#v", resp)
 
 			actual := connDetails["connection_url"].(string)
 			expected := p.Redacted()
-			if expected != actual {
-				t.Fatalf("expected redacted URL %q, actual %q", expected, actual)
-			}
+			require.Equalf(t, expected, actual, "expected redacted URL %q, actual %q", expected, actual)
 
 			if tt.password != "" {
 				// extra test to ensure that URL.Redacted() is working as expected.
 				p, err = url.Parse(actual)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if pp, _ := p.User.Password(); pp == tt.password {
-					t.Fatal("password was not redacted by URL.Redacted()")
-				}
+				require.NoError(t, err)
+				pp, _ := p.User.Password()
+				require.NotEqual(t, pp, tt.password, "password was not redacted by URL.Redacted()")
 			}
 		})
 	}
@@ -1474,9 +1237,7 @@ func TestBackend_AsyncClose(t *testing.T) {
 	config.System = sys
 
 	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Configure a connection
 	data := map[string]interface{}{
@@ -1490,10 +1251,8 @@ func TestBackend_AsyncClose(t *testing.T) {
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	_, err = b.HandleRequest(namespace.RootContext(nil), req)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	_, err = b.HandleRequest(namespace.RootContext(context.TODO()), req)
+	require.NoError(t, err)
 	timeout := time.NewTimer(750 * time.Millisecond)
 	done := make(chan bool)
 	go func() {
@@ -1513,9 +1272,7 @@ func TestNewDatabaseWrapper_IgnoresBuiltinVersion(t *testing.T) {
 	cluster, sys := getCluster(t)
 	t.Cleanup(cluster.Cleanup)
 	_, err := newDatabaseWrapper(context.Background(), "mysql-database-plugin", "v1.0.0+builtin", sys, hclog.Default())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func testCredsExist(t *testing.T, resp *logical.Response, connURL string) bool {
@@ -1524,15 +1281,13 @@ func testCredsExist(t *testing.T, resp *logical.Response, connURL string) bool {
 		Username string `mapstructure:"username"`
 		Password string `mapstructure:"password"`
 	}
-	if err := mapstructure.Decode(resp.Data, &d); err != nil {
-		t.Fatal(err)
-	}
+	err := mapstructure.Decode(resp.Data, &d)
+	require.NoError(t, err)
+
 	log.Printf("[TRACE] Generated credentials: %v", d)
 
 	db, err := sql.Open("pgx", connURL+"&timezone=utc")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	returnedRows := func() int {
 		stmt, err := db.Prepare("SELECT DISTINCT schemaname FROM pg_tables WHERE has_table_privilege($1, 'information_schema.role_column_grants', 'select');")

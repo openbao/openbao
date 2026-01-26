@@ -21,9 +21,10 @@ import (
 	"testing"
 	"time"
 
-	josejwt "github.com/go-jose/go-jose/v3/jwt"
+	josejwt "github.com/go-jose/go-jose/v4/jwt"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/go-uuid"
-	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -157,6 +158,10 @@ func init() {
 
 	var blockBytes []byte
 	blockBytes, err = x509.MarshalPKIXPublicKey(ecdsaPrivateKey.Public())
+	if err != nil {
+		panic(err)
+	}
+
 	ecdsaPublicKeyText := pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: blockBytes,
@@ -613,7 +618,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, _ := b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -632,7 +637,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -652,7 +657,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, _ = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -675,11 +680,11 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if !errors.Is(logical.ErrPermissionDenied, err) {
+	if !errors.Is(err, logical.ErrPermissionDenied) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
@@ -701,7 +706,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	resp, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("Expected error")
-	} else if !errors.Is(logical.ErrPermissionDenied, err) {
+	} else if !errors.Is(err, logical.ErrPermissionDenied) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
@@ -974,22 +979,6 @@ func TestLoginIssValidation(t *testing.T) {
 	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
-
-	// test successful login with default issuer
-	data = map[string]interface{}{
-		"role": "plugin-test",
-		"jwt":  jwtGoodDataToken,
-	}
-
-	req = &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "login",
-		Storage:   storage,
-		Data:      data,
-		Connection: &logical.Connection{
-			RemoteAddr: "127.0.0.1",
-		},
 	}
 
 	// test iss validation enabled with explicitly defined issuer
@@ -1429,7 +1418,7 @@ func Test_kubeAuthBackend_getAliasName(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			tok, err := josejwt.ParseSigned(s)
+			tok, err := josejwt.ParseSigned(s, consts.AllowedJWTSignatureAlgorithmsK8s)
 			if err != nil {
 				t.Fatal(err)
 			}

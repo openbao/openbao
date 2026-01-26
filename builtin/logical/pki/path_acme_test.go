@@ -667,7 +667,7 @@ func TestAcmeDisabledWithEnvVar(t *testing.T) {
 
 	// Make sure that ACME is disabled now.
 	for _, method := range []string{http.MethodHead, http.MethodGet} {
-		t.Run(fmt.Sprintf("%s", method), func(t *testing.T) {
+		t.Run(method, func(t *testing.T) {
 			req := client.NewRequest(method, "/v1/pki/acme/new-nonce")
 			_, err := client.RawRequestWithContext(ctx, req)
 			require.Error(t, err, "should have received an error as ACME should have been disabled")
@@ -831,6 +831,7 @@ func TestAcmeRoleExtKeyUsage(t *testing.T) {
 	}
 
 	_, err := client.Logical().Write("pki/roles/"+roleName, roleOpt)
+	require.NoError(t, err, "failed creating role")
 
 	baseAcmeURL := "/v1/pki/roles/" + roleName + "/acme/"
 	accountKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -1023,10 +1024,11 @@ func TestIssuerRoleDirectoryAssociations(t *testing.T) {
 		// Path should override role.
 		directory := "/v1/pki/issuer/" + issuer + "/acme/"
 		issuerPath := "/pki/issuer/" + issuer
-		if issuer == "" {
+		switch issuer {
+		case "":
 			directory = "/v1/pki/acme/"
 			issuerPath = "/pki/issuer/int-ca"
-		} else if issuer == "default" {
+		case "default":
 			issuerPath = "/pki/issuer/int-ca"
 		}
 
@@ -1320,6 +1322,7 @@ func setupAcmeBackendOnClusterAtPath(t *testing.T, cluster *vault.TestCluster, c
 			"max_ttl":     "920000h",
 		})
 	require.NoError(t, err, "failed creating root CA")
+	require.NotNil(t, resp)
 
 	resp, err = client.Logical().WriteWithContext(context.Background(), mount+"/issuers/generate/intermediate/internal",
 		map[string]interface{}{
@@ -1714,7 +1717,7 @@ func TestACMEClientRequestLimits(t *testing.T) {
 		{
 			"validate-only-cn",
 			[]acme.AuthzID{
-				{"dns", "localhost"},
+				{Type: "dns", Value: "localhost"},
 			},
 			x509.CertificateRequest{
 				Subject: pkix.Name{CommonName: "localhost"},
@@ -1724,7 +1727,7 @@ func TestACMEClientRequestLimits(t *testing.T) {
 		{
 			"validate-only-san",
 			[]acme.AuthzID{
-				{"dns", "localhost"},
+				{Type: "dns", Value: "localhost"},
 			},
 			x509.CertificateRequest{
 				DNSNames: []string{"localhost"},
@@ -1734,7 +1737,7 @@ func TestACMEClientRequestLimits(t *testing.T) {
 		{
 			"validate-only-ip-address",
 			[]acme.AuthzID{
-				{"ip", "127.0.0.1"},
+				{Type: "ip", Value: "127.0.0.1"},
 			},
 			x509.CertificateRequest{
 				IPAddresses: []net.IP{{127, 0, 0, 1}},

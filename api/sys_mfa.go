@@ -23,14 +23,14 @@ func (c *Sys) MFAValidateWithContext(ctx context.Context, requestID string, payl
 		"mfa_payload":    payload,
 	}
 
-	r := c.c.NewRequest(http.MethodPost, fmt.Sprintf("/v1/sys/mfa/validate"))
+	r := c.c.NewRequest(http.MethodPost, "/v1/sys/mfa/validate")
 	if err := r.SetJSONBody(body); err != nil {
 		return nil, fmt.Errorf("failed to set request body: %w", err)
 	}
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if err != nil {
 		return nil, err

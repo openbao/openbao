@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/cap/jwt"
-	"github.com/hashicorp/errwrap"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -181,7 +180,8 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		Alias:        alias,
 		GroupAliases: groupAliases,
 		InternalData: map[string]interface{}{
-			"role": roleName,
+			"role":      roleName,
+			"role_type": "native",
 		},
 		Metadata: tokenMetadata,
 	}
@@ -200,6 +200,37 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 }
 
 func (b *jwtAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	roleName, _ := req.Auth.InternalData["role"].(string)
+	if roleName == "" {
+		return nil, errors.New("failed to fetch role_name during renewal")
+	}
+
+	roleType, _ := req.Auth.InternalData["role_type"].(string)
+
+	switch roleType {
+	case "cel":
+		return b.pathCelLoginRenew(ctx, req, data)
+	case "native":
+		return b.pathNativeLoginRenew(ctx, req, data)
+	case "":
+		// Check if this is a native role. This is a fallback for earlier versions which didn't write role type.
+		role, err := b.role(ctx, req.Storage, roleName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate role %s during renewal: %w", roleName, err)
+		}
+		if role == nil {
+			// Assume it is a CEL role.
+			return b.pathCelLoginRenew(ctx, req, data)
+		}
+
+		// Otherwise, the role exists so presume it is a native role.
+		return b.pathNativeLoginRenew(ctx, req, data)
+	default:
+		return nil, fmt.Errorf("unknown role type: %v", roleType)
+	}
+}
+
+func (b *jwtAuthBackend) pathNativeLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	roleName := req.Auth.InternalData["role"].(string)
 	if roleName == "" {
 		return nil, errors.New("failed to fetch role_name during renewal")
@@ -208,7 +239,7 @@ func (b *jwtAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Reques
 	// Ensure that the Role still exists.
 	role, err := b.role(ctx, req.Storage, roleName)
 	if err != nil {
-		return nil, errwrap.Wrapf(fmt.Sprintf("failed to validate role %s during renewal: {{err}}", roleName), err)
+		return nil, fmt.Errorf("failed to validate role %s during renewal: %w", roleName, err)
 	}
 	if role == nil {
 		return nil, fmt.Errorf("role %s does not exist during renewal", roleName)

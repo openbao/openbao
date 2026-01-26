@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
@@ -17,6 +17,8 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/custommetadata"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // aliasPaths returns the API endpoints to operate on aliases.
@@ -201,7 +203,7 @@ func (i *IdentityStore) handleAliasCreateUpdate() framework.OperationFunc {
 			// If they provide an ID it must be an update. Find the alias, perform
 			// due diligence, call the update function.
 			if id != "" {
-				alias, err := i.MemDBAliasByID(id, true, false)
+				alias, err := i.MemDBAliasByID(ctx, id, true, false)
 				if err != nil {
 					return nil, err
 				}
@@ -245,12 +247,12 @@ func (i *IdentityStore) handleAliasCreateUpdate() framework.OperationFunc {
 		// Look up the alias by factors; if it's found it's an update
 		mountEntry := i.router.MatchingMountByAccessor(mountAccessor)
 		if mountEntry == nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid mount accessor %q", mountAccessor)), nil
+			return logical.ErrorResponse("invalid mount accessor %q", mountAccessor), nil
 		}
 		if mountEntry.NamespaceID != ns.ID {
 			return logical.ErrorResponse("matching mount is in a different namespace than request"), logical.ErrPermissionDenied
 		}
-		alias, err := i.MemDBAliasByFactors(mountAccessor, name, false, false)
+		alias, err := i.MemDBAliasByFactors(ctx, mountAccessor, name, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -273,7 +275,7 @@ func (i *IdentityStore) handleAliasCreate(ctx context.Context, canonicalID, name
 
 	var entity *identity.Entity
 	if canonicalID != "" {
-		entity, err = i.MemDBEntityByID(canonicalID, true)
+		entity, err = i.MemDBEntityByID(ctx, canonicalID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -282,14 +284,6 @@ func (i *IdentityStore) handleAliasCreate(ctx context.Context, canonicalID, name
 		}
 		if entity.NamespaceID != ns.ID {
 			return logical.ErrorResponse("entity found with 'canonical_id' not in request namespace"), logical.ErrPermissionDenied
-		}
-	}
-
-	if entity == nil && local {
-		// Check to see if the entity creation should be forwarded.
-		entity, err = i.entityCreator.CreateEntity(ctx)
-		if err != nil {
-			return nil, err
 		}
 	}
 
@@ -361,11 +355,11 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
 		return nil, nil
 	}
 
-	alias.LastUpdateTime = ptypes.TimestampNow()
+	alias.LastUpdateTime = timestamppb.Now()
 
 	// Get our current entity, which may be the same as the new one if the
 	// canonical ID hasn't changed
-	currentEntity, err := i.MemDBEntityByAliasID(alias.ID, true)
+	currentEntity, err := i.MemDBEntityByAliasID(ctx, alias.ID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -393,13 +387,13 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
 		// Check here to see if such an alias already exists, if so bail
 		mountEntry := i.router.MatchingMountByAccessor(mountAccessor)
 		if mountEntry == nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid mount accessor %q", mountAccessor)), nil
+			return logical.ErrorResponse("invalid mount accessor %q", mountAccessor), nil
 		}
 		if mountEntry.NamespaceID != alias.NamespaceID {
 			return logical.ErrorResponse("given mount accessor is not in the same namespace as the existing alias"), logical.ErrPermissionDenied
 		}
 
-		existingAlias, err := i.MemDBAliasByFactors(mountAccessor, name, false, false)
+		existingAlias, err := i.MemDBAliasByFactors(ctx, mountAccessor, name, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -427,7 +421,7 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
 			return logical.ErrorResponse("local aliases can't be moved between entities"), nil
 		}
 
-		newEntity, err = i.MemDBEntityByID(canonicalID, true)
+		newEntity, err = i.MemDBEntityByID(ctx, canonicalID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -514,7 +508,7 @@ func (i *IdentityStore) pathAliasIDRead() framework.OperationFunc {
 			return logical.ErrorResponse("missing alias id"), nil
 		}
 
-		alias, err := i.MemDBAliasByID(aliasID, false, false)
+		alias, err := i.MemDBAliasByID(ctx, aliasID, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -552,13 +546,11 @@ func (i *IdentityStore) handleAliasReadCommon(ctx context.Context, alias *identi
 		respData["mount_type"] = mountValidationResp.MountType
 	}
 
-	// Convert protobuf timestamp into RFC3339 format
-	respData["creation_time"] = ptypes.TimestampString(alias.CreationTime)
-	respData["last_update_time"] = ptypes.TimestampString(alias.LastUpdateTime)
+	// Convert protobuf timestamp into RFC3339Nano format
+	respData["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339Nano)
+	respData["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339Nano)
 
-	return &logical.Response{
-		Data: respData,
-	}, nil
+	return &logical.Response{Data: respData}, nil
 }
 
 // pathAliasIDDelete deletes the alias for a given alias ID
@@ -573,7 +565,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 		defer i.lock.Unlock()
 
 		// Create a MemDB transaction to delete entity
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		// Fetch the alias
@@ -624,7 +616,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 
 		switch alias.Local {
 		case true:
-			localAliases, err := i.parseLocalAliases(entity.ID)
+			localAliases, err := i.parseLocalAliases(ctx, entity.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -640,12 +632,12 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 				}
 			}
 
-			marshaledAliases, err := ptypes.MarshalAny(localAliases)
+			marshaledAliases, err := anypb.New(localAliases)
 			if err != nil {
 				return nil, err
 			}
 
-			if err := i.localAliasPacker.PutItem(ctx, &storagepacker.Item{
+			if err := i.localAliasPacker(ctx).PutItem(ctx, &storagepacker.Item{
 				ID:      entity.ID,
 				Message: marshaledAliases,
 			}); err != nil {

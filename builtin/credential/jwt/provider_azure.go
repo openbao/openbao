@@ -61,7 +61,7 @@ func (a *AzureProvider) FetchGroups(_ context.Context, b *jwtAuthBackend, allCla
 			return nil, fmt.Errorf("unable to get claim sources: %s", err)
 		}
 
-		a.ctx, err = b.createCAContext(b.providerCtx, b.cachedConfig.OIDCDiscoveryCAPEM)
+		a.ctx, err = b.createCAContext(b.providerCtx, b.cachedConfig.OIDCDiscoveryCAPEM, b.cachedConfig.OverrideAllowedServerNames)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create CA Context: %s", err)
 		}
@@ -119,10 +119,11 @@ func (a *AzureProvider) getClaimSource(logger log.Logger, allClaims map[string]i
 	// - https://developer.microsoft.com/en-us/office/blogs/microsoft-graph-or-azure-ad-graph/
 	// - https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0
 	// - https://docs.microsoft.com/en-us/graph/migrate-azure-ad-graph-request-differences
-	if urlParsed.Host == azureADGraphHost {
+	switch urlParsed.Host {
+	case azureADGraphHost:
 		urlParsed.Host = microsoftGraphHost
 		urlParsed.Path = microsoftGraphAPIVersion + urlParsed.Path
-	} else if urlParsed.Host == azureADGraphUShost {
+	case azureADGraphUShost:
 		urlParsed.Host = microsoftGraphUSHost
 		urlParsed.Path = microsoftGraphAPIVersion + urlParsed.Path
 	}
@@ -163,7 +164,7 @@ func (a *AzureProvider) getAzureGroups(groupsURL string, tokenSource oauth2.Toke
 	if err != nil {
 		return nil, fmt.Errorf("unable to call Microsoft Graph API: %s", err)
 	}
-	defer res.Body.Close()
+	defer res.Body.Close() //nolint:errcheck
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read Microsoft Graph API response: %s", err)

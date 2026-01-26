@@ -39,7 +39,7 @@ Usage: bao namespace unlock [options] PATH
 
 	Unlock a child namespace, and all of its descendants (e.g. ns1/ns2/):
 
-		$ bao namespace lock -unlock-key=<key> ns1/ns2
+		$ bao namespace unlock -unlock-key=<key> ns1/ns2
 
 ` + c.Flags().Help()
 
@@ -84,12 +84,18 @@ func (c *NamespaceAPIUnlockCommand) Run(args []string) int {
 		optionalChildNSPath = fmt.Sprintf("/%s", namespace.Canonicalize(args[0]))
 	}
 
-	_, err = client.Logical().Write(fmt.Sprintf("sys/namespaces/api-lock/unlock%s", optionalChildNSPath), map[string]interface{}{
+	secret, err := client.Logical().Write(fmt.Sprintf("sys/namespaces/api-lock/unlock%s", optionalChildNSPath), map[string]interface{}{
 		"unlock_key": c.flagUnlockKey,
 	})
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error unlocking namespace: %v", err))
 		return 2
+	}
+
+	if secret != nil && len(secret.Warnings) > 0 {
+		c.UI.Warn(secret.Warnings[0])
+	} else {
+		c.UI.Info("Namespace unlocked successfully!")
 	}
 
 	return 0

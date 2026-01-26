@@ -11,7 +11,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"sync"
 	"testing"
 	"time"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
+	"golang.org/x/sync/errgroup"
 )
 
 func tokenRevocationValidation(t *testing.T, sampleSpace map[string]string, expected map[string]string, leaseCache *LeaseCache) {
@@ -219,29 +219,30 @@ func TestCache_ConcurrentRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wg := &sync.WaitGroup{}
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
+	eg := errgroup.Group{}
+	for i := range 100 {
+		eg.Go(func() error {
 			key := fmt.Sprintf("kv/foo/%d_%d", i, rand.Int())
-			_, err := testClient.Logical().Write(key, map[string]interface{}{
+			_, err := testClient.Logical().Write(key, map[string]any{
 				"key": key,
 			})
 			if err != nil {
-				t.Fatal(err)
+				return err
 			}
 			secret, err := testClient.Logical().Read(key)
 			if err != nil {
-				t.Fatal(err)
+				return err
 			}
 			if secret == nil || secret.Data["key"].(string) != key {
-				t.Fatal(fmt.Sprintf("failed to read value for key: %q", key))
+				return fmt.Errorf("failed to read value for key: %q", key)
 			}
-		}(i)
-
+			return nil
+		})
 	}
-	wg.Wait()
+
+	if err := eg.Wait(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestCache_TokenRevocations_RevokeOrphan(t *testing.T) {
@@ -854,13 +855,10 @@ func TestCache_NonCacheable(t *testing.T) {
 	}
 
 	// Query a non-existing mount, expect an error from api.Response
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	r := testClient.NewRequest("GET", "/v1/kv-invalid")
-
-	apiResp, err := testClient.RawRequestWithContext(ctx, r)
+	ctx := t.Context()
+	apiResp, err := testClient.Logical().ReadRawWithContext(ctx, "kv-invalid")
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 	if apiResp.Error() == nil || (apiResp != nil && apiResp.StatusCode != 404) {
 		t.Fatalf("expected an error response and a 404 from requesting an invalid path, got: %#v", apiResp)
@@ -1095,11 +1093,10 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 		t.Fatal(err)
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
+	ctx := t.Context()
 	apiResp, err := testClient.RawRequestWithContext(ctx, r)
 	if apiResp != nil {
-		defer apiResp.Body.Close()
+		defer apiResp.Body.Close() //nolint:errcheck
 	}
 	if apiResp != nil && apiResp.StatusCode == 404 {
 		_, parseErr := api.ParseSecret(apiResp.Body)

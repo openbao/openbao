@@ -8,7 +8,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/api/v2"
@@ -95,6 +95,9 @@ func TestRecovery_Docker(t *testing.T) {
 		}
 		var result []string
 		err = mapstructure.Decode(secret.Data["keys"], &result)
+		if err != nil {
+			t.Fatal(err)
+		}
 		return result
 	}
 

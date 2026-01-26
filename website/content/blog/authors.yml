@@ -20,3 +20,27 @@ JamesButcher:
   socials:
     linkedin: https://www.linkedin.com/in/james-butcher-15698115
 
+ChristophVoigt:
+  name: Christoph Voigt
+  url: https://www.christophvoigt.com
+  image_url: https://christophvoigt.com/img/author.jpg
+  socials:
+    github: https://github.com/voigt
+    linkedin: https://www.linkedin.com/in/chris-cloud-native/
+    mastodon: https://hachyderm.io/@cv
+  
+AndriiFedorchuk:
+  name: Andrii Fedorchuk
+  image_url: https://andrii.fedorchuk.me/public/images/IMG_2360_2.JPG
+  socials:
+    github: https://github.com/driif
+    linkedin: https://www.linkedin.com/in/andrii-fedorchuk-b966911b9/
+
+OpenSSF:
+  name: OpenSSF
+  url: https://openssf.org
+  image_url: https://raw.githubusercontent.com/ossf/artwork/refs/heads/main/openssf/stacked/color/openssf-stacked-color.png
+  socials:
+    github: https://github.com/ossf
+    linkedin: https://www.linkedin.com/company/openssf/
+    mastodon: https://social.lfx.dev/@openssf

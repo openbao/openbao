@@ -10,11 +10,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -74,30 +74,30 @@ func ErrToProtoErr(e error) *ProtoError {
 		ErrType: ErrTypeUnknown,
 	}
 
-	switch e.(type) {
+	switch err := e.(type) {
 	case errutil.UserError:
 		pbErr.ErrType = ErrTypeUserError
 	case errutil.InternalError:
 		pbErr.ErrType = ErrTypeInternalError
 	case logical.HTTPCodedError:
 		pbErr.ErrType = ErrTypeCodedError
-		pbErr.ErrCode = int64(e.(logical.HTTPCodedError).Code())
+		pbErr.ErrCode = int64(err.Code())
 	case *logical.StatusBadRequest:
 		pbErr.ErrType = ErrTypeStatusBadRequest
 	}
 
-	switch {
-	case e == logical.ErrUnsupportedOperation:
+	switch e {
+	case logical.ErrUnsupportedOperation:
 		pbErr.ErrType = ErrTypeUnsupportedOperation
-	case e == logical.ErrUnsupportedPath:
+	case logical.ErrUnsupportedPath:
 		pbErr.ErrType = ErrTypeUnsupportedPath
-	case e == logical.ErrInvalidRequest:
+	case logical.ErrInvalidRequest:
 		pbErr.ErrType = ErrTypeInvalidRequest
-	case e == logical.ErrPermissionDenied:
+	case logical.ErrPermissionDenied:
 		pbErr.ErrType = ErrTypePermissionDenied
-	case e == logical.ErrMultiAuthzPending:
+	case logical.ErrMultiAuthzPending:
 		pbErr.ErrType = ErrTypeMultiAuthzPending
-	case e == logical.ErrUnrecoverable:
+	case logical.ErrUnrecoverable:
 		pbErr.ErrType = ErrTypeUnrecoverable
 	}
 
@@ -141,29 +141,24 @@ func ProtoLeaseOptionsToLogicalLeaseOptions(l *LeaseOptions) (logical.LeaseOptio
 		return logical.LeaseOptions{}, nil
 	}
 
-	t, err := ptypes.Timestamp(l.IssueTime)
+	err := l.IssueTime.CheckValid()
 	return logical.LeaseOptions{
 		TTL:       time.Duration(l.TTL),
 		Renewable: l.Renewable,
 		Increment: time.Duration(l.Increment),
-		IssueTime: t,
+		IssueTime: l.IssueTime.AsTime(),
 		MaxTTL:    time.Duration(l.MaxTTL),
 	}, err
 }
 
 func LogicalLeaseOptionsToProtoLeaseOptions(l logical.LeaseOptions) (*LeaseOptions, error) {
-	t, err := ptypes.TimestampProto(l.IssueTime)
-	if err != nil {
-		return nil, err
-	}
-
 	return &LeaseOptions{
 		TTL:       int64(l.TTL),
 		Renewable: l.Renewable,
 		Increment: int64(l.Increment),
-		IssueTime: t,
+		IssueTime: timestamppb.New(l.IssueTime),
 		MaxTTL:    int64(l.MaxTTL),
-	}, err
+	}, nil
 }
 
 func ProtoSecretToLogicalSecret(s *Secret) (*logical.Secret, error) {
@@ -421,16 +416,11 @@ func ProtoResponseWrapInfoToLogicalResponseWrapInfo(i *ResponseWrapInfo) (*wrapp
 		return nil, nil
 	}
 
-	t, err := ptypes.Timestamp(i.CreationTime)
-	if err != nil {
-		return nil, err
-	}
-
 	return &wrapping.ResponseWrapInfo{
 		TTL:             time.Duration(i.TTL),
 		Token:           i.Token,
 		Accessor:        i.Accessor,
-		CreationTime:    t,
+		CreationTime:    i.CreationTime.AsTime(),
 		WrappedAccessor: i.WrappedAccessor,
 		WrappedEntityID: i.WrappedEntityID,
 		Format:          i.Format,
@@ -444,16 +434,11 @@ func LogicalResponseWrapInfoToProtoResponseWrapInfo(i *wrapping.ResponseWrapInfo
 		return nil, nil
 	}
 
-	t, err := ptypes.TimestampProto(i.CreationTime)
-	if err != nil {
-		return nil, err
-	}
-
 	return &ResponseWrapInfo{
 		TTL:             int64(i.TTL),
 		Token:           i.Token,
 		Accessor:        i.Accessor,
-		CreationTime:    t,
+		CreationTime:    timestamppb.New(i.CreationTime),
 		WrappedAccessor: i.WrappedAccessor,
 		WrappedEntityID: i.WrappedEntityID,
 		Format:          i.Format,
@@ -687,12 +672,13 @@ func TLSConnectionStateToProtoConnectionState(connState *tls.ConnectionState) *C
 	}
 
 	return &ConnectionState{
-		Version:                     uint32(connState.Version),
-		HandshakeComplete:           connState.HandshakeComplete,
-		DidResume:                   connState.DidResume,
-		CipherSuite:                 uint32(connState.CipherSuite),
-		NegotiatedProtocol:          connState.NegotiatedProtocol,
-		NegotiatedProtocolIsMutual:  connState.NegotiatedProtocolIsMutual,
+		Version:            uint32(connState.Version),
+		HandshakeComplete:  connState.HandshakeComplete,
+		DidResume:          connState.DidResume,
+		CipherSuite:        uint32(connState.CipherSuite),
+		NegotiatedProtocol: connState.NegotiatedProtocol,
+		// Deprecated: (*tls.ConnectionState).NegotiatedProtocolIsMutual is always true
+		NegotiatedProtocolIsMutual:  true,
 		ServerName:                  connState.ServerName,
 		PeerCertificates:            CertificateChainToProtoCertificateChain(connState.PeerCertificates),
 		VerifiedChains:              verifiedChains,
@@ -727,12 +713,13 @@ func ProtoConnectionStateToTLSConnectionState(cs *ConnectionState) (*tls.Connect
 	}
 
 	connState := &tls.ConnectionState{
-		Version:                     uint16(cs.Version),
-		HandshakeComplete:           cs.HandshakeComplete,
-		DidResume:                   cs.DidResume,
-		CipherSuite:                 uint16(cs.CipherSuite),
-		NegotiatedProtocol:          cs.NegotiatedProtocol,
-		NegotiatedProtocolIsMutual:  cs.NegotiatedProtocolIsMutual,
+		Version:            uint16(cs.Version),
+		HandshakeComplete:  cs.HandshakeComplete,
+		DidResume:          cs.DidResume,
+		CipherSuite:        uint16(cs.CipherSuite),
+		NegotiatedProtocol: cs.NegotiatedProtocol,
+		// Deprecated: (*tls.ConnectionState).NegotiatedProtocolIsMutual is always true
+		NegotiatedProtocolIsMutual:  true,
 		ServerName:                  cs.ServerName,
 		PeerCertificates:            peerCertificates,
 		VerifiedChains:              verifiedChains,

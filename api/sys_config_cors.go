@@ -8,7 +8,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 )
 
 func (c *Sys) CORSStatus() (*CORSResponse, error) {
@@ -25,7 +25,7 @@ func (c *Sys) CORSStatusWithContext(ctx context.Context) (*CORSResponse, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	secret, err := ParseSecret(resp.Body)
 	if err != nil {
@@ -59,7 +59,7 @@ func (c *Sys) ConfigureCORSWithContext(ctx context.Context, req *CORSRequest) er
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err == nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	return err
 }
@@ -76,19 +76,21 @@ func (c *Sys) DisableCORSWithContext(ctx context.Context) error {
 
 	resp, err := c.c.rawRequestWithContext(ctx, r)
 	if err == nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	return err
 }
 
 type CORSRequest struct {
-	AllowedOrigins []string `json:"allowed_origins" mapstructure:"allowed_origins"`
-	AllowedHeaders []string `json:"allowed_headers" mapstructure:"allowed_headers"`
-	Enabled        bool     `json:"enabled" mapstructure:"enabled"`
+	AllowedOrigins   []string `json:"allowed_origins" mapstructure:"allowed_origins"`
+	AllowedHeaders   []string `json:"allowed_headers" mapstructure:"allowed_headers"`
+	AllowCredentials bool     `json:"allow_credentials" mapstructure:"allow_credentials"`
+	Enabled          bool     `json:"enabled" mapstructure:"enabled"`
 }
 
 type CORSResponse struct {
-	AllowedOrigins []string `json:"allowed_origins" mapstructure:"allowed_origins"`
-	AllowedHeaders []string `json:"allowed_headers" mapstructure:"allowed_headers"`
-	Enabled        bool     `json:"enabled" mapstructure:"enabled"`
+	AllowedOrigins   []string `json:"allowed_origins" mapstructure:"allowed_origins"`
+	AllowedHeaders   []string `json:"allowed_headers" mapstructure:"allowed_headers"`
+	AllowCredentials bool     `json:"allow_credentials" mapstructure:"allow_credentials"`
+	Enabled          bool     `json:"enabled" mapstructure:"enabled"`
 }

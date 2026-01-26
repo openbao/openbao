@@ -9,7 +9,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
@@ -17,11 +16,11 @@ import (
 	"time"
 
 	"github.com/caddyserver/certmagic"
+	"github.com/hashicorp/cli"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mholt/acmez/v3/acme"
-	"github.com/mitchellh/cli"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -137,7 +136,7 @@ func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger
 	if l.TLSACMECARoot != "" {
 		caPool := x509.NewCertPool()
 
-		data, err := ioutil.ReadFile(l.TLSACMECARoot)
+		data, err := os.ReadFile(l.TLSACMECARoot)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read ACME CA file: %w", err)
 		}

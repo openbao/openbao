@@ -1191,3 +1191,24 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 
 	return lockKey, nil
 }
+
+// NamespaceByStoragePath parses an absolute storage path and returns the
+// matching namespace that the path belongs to.
+func (c *Core) NamespaceByStoragePath(ctx context.Context, path string) (*namespace.Namespace, string, error) {
+	rest, ok := strings.CutPrefix(path, namespaceBarrierPrefix)
+	if !ok || rest == "" {
+		return namespace.RootNamespace, path, nil
+	}
+
+	uuid, rest, ok := strings.Cut(rest, "/")
+	if !ok {
+		return namespace.RootNamespace, path, nil
+	}
+
+	ns, err := c.namespaceStore.GetNamespace(ctx, uuid)
+	if err != nil {
+		return nil, path, err
+	}
+
+	return ns, rest, nil
+}

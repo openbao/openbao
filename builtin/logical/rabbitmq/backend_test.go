@@ -44,7 +44,7 @@ func prepareRabbitMQTestContainer(t *testing.T) (func(), string) {
 
 	runner, err := docker.NewServiceRunner(docker.RunOptions{
 		ImageRepo:     "docker.mirror.hashicorp.services/library/rabbitmq",
-		ImageTag:      "3-management",
+		ImageTag:      "4-management",
 		ContainerName: "rabbitmq",
 		Ports:         []string{"15672/tcp"},
 	})
@@ -240,9 +240,9 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, uri, name string) log
 				t.Fatal(err)
 			}
 
-			_, err = client.ListVhosts()
+			_, err = client.ListQueues()
 			if err != nil {
-				t.Fatalf("unable to list vhosts with generated credentials: %s", err)
+				t.Fatalf("unable to list queues with generated credentials: %s", err)
 			}
 
 			resp, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -268,9 +268,9 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, uri, name string) log
 				t.Fatal(err)
 			}
 
-			_, err = client.ListVhosts()
+			_, err = client.ListQueues()
 			if err == nil {
-				t.Fatalf("expected to fail listing vhosts: %s", err)
+				t.Fatalf("expected to fail listing queues: %s", err)
 			}
 
 			return nil

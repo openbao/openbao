@@ -157,7 +157,7 @@ directly](https://github.com/openbao/openbao/pull/1280).
 
 ### Non-Voting Status in PostgreSQL
 
-While PostgreSQL internally uses a [lock-based architecture](https://openbao.org/docs/configuration/storage/postgresql/#manually-creating-tables),
+While PostgreSQL internally uses a [lock-based architecture](../configuration/storage/postgresql.mdx#manually-creating-tables),
 we still need the option to mark OpenBao nodes as non-voters so that they
 never attempt to become the leader. This is especially important for
 replicated database clusters; replicas are read-only and will err if a write

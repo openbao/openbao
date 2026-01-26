@@ -56,7 +56,7 @@ commit signing, such as using `PGP` or `gitsign`.
 If you have met the above requirements, you can add your sign-off by including
 the --signoff option in your `git commit` or `git rebase` commands:
 
-```
+```bash
 # Sign off a commit
 git commit --signoff -m"my commit"
 
@@ -69,7 +69,7 @@ git rebase --signoff master
 
 This will add a line similar to the following at the end of your commit:
 
-```
+```commit
 Signed-off-by: Alex Smith <alex@example.com>
 ```
 
@@ -150,28 +150,30 @@ quickly merge or address your contributions.
 
 ## Pull requests
 
-When submitting a PR you should reference an existing issue. If no issue already exists,
-please create one. This can be skipped for trivial PRs like fixing typos.
+When submitting a PR you should reference an existing issue. If no issue already
+exists, please create one. This can be skipped for trivial PRs like fixing
+typos.
 
-Creating an issue in advance of working on the PR can help to avoid duplication of effort,
-e.g. maybe we know of existing related work. Or it may be that we can provide guidance
-that will help with your approach.
+Creating an issue in advance of working on the PR can help to avoid duplication
+of effort, e.g. maybe we know of existing related work. Or it may be that we can
+provide guidance that will help with your approach.
 
-Your pull request should have a description of what it accomplishes, how it does so,
-and why you chose the approach you did.  PRs should include unit tests that validate
-correctness and the existing tests must pass. Follow-up work to fix tests
-does not need a fresh issue filed.
+Your pull request should have a description of what it accomplishes, how it does
+so, and why you chose the approach you did. PRs should include unit tests that
+validate correctness and the existing tests must pass. Follow-up work to fix
+tests does not need a fresh issue filed.
 
 Someone will do a first pass review on your PR making sure it follows the guidelines
 in this document. If it doesn't we'll mark the PR incomplete and ask you to follow
 up on the missing requirements.
 
 ### Changelog Entries
+
 Please include a file within your PR named `changelog/#.txt`, where `#` is your
 pull request ID.  There are many examples under [changelog](changelog/), but
 the general format is
 
-````
+````markdown
 ```release-note:CATEGORY
 COMPONENT: summary of change
 ```

@@ -10,6 +10,12 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
+// StorageAccess dispatches storage operations to either encrypted storage
+// (via logical.Storage) or to raw storage (via physical.Backend). This is
+// useful when the same codepath must operate on either encrypted or raw
+// storage depending on context, such as is the case when operating on seal
+// configurations which are stored in plaintext for the root namespace and as
+// ciphertext for sealable child namespaces.
 type StorageAccess interface {
 	Put(context.Context, string, []byte) error
 	Get(context.Context, string) ([]byte, error)

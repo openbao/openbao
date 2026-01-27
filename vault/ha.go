@@ -1162,12 +1162,7 @@ func (c *Core) scheduleUpgradeCleanup(ctx context.Context) error {
 
 	// Schedule cleanup for all of them
 	time.AfterFunc(c.KeyRotateGracePeriod(), func() {
-		sealed, err := c.barrier.Sealed()
-		if err != nil {
-			c.logger.Warn("failed to check barrier status at upgrade cleanup time")
-			return
-		}
-		if sealed {
+		if c.barrier.Sealed() {
 			c.logger.Warn("barrier sealed at upgrade cleanup time")
 			return
 		}

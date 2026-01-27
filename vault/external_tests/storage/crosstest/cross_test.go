@@ -193,9 +193,7 @@ func allLogical(t *testing.T) (map[string]logical.Storage, func()) {
 }
 
 func newAESBarrier(t *testing.T, parent physical.Backend) vault.SecurityBarrier {
-	b, err := vault.NewAESGCMBarrier(parent)
-	require.NoError(t, err, "failed wrapping parent in AES-GCM barrier")
-
+	b := vault.NewAESGCMBarrier(parent, "")
 	key, err := b.GenerateKey(crand.Reader)
 	require.NoError(t, err, "failed generating random key")
 

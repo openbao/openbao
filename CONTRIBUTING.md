@@ -81,11 +81,10 @@ that lacks a sign-off to this agreement will not be accepted by the OpenBao proj
 
 | Member           | Email                     | GitHub                                     | Alternate                                       | Company/Organization | TSC Position |
 |------------------|---------------------------|--------------------------------------------|-------------------------------------------------|----------------------|--------------|
-| Nathan Phelps    | naphelps@us.ibm.com       | [@naphelps](https://github.com/naphelps)   |                                                 | IBM                  | Member       |
 | James Butcher    | james@iotechsys.com       |                                            | Brad Corrion (brad@iotechsys.com)               | IOTech Systems       | Member       |
 | Julian Cassignol | jcassignol@wallix.com     |                                            | Dan Ghita (dghita@wallix.com)                   | Wallix               | Member       |
 | Michael Hofer    | michael.hofer@adfinis.com | [@karras](https://github.com/karras)       | Andrii Fedorchuk (andrii.fedorchuk@adfinis.com) | Adfinis              | Member       |
-| Alexander Scheel | ascheel@gitlab.com        | [@cipherboy](https://github.com/cipherboy) | Ken McDonald (kmcdonald@gitlab.com)             | GitLab               | Chair        |
+| Maw Wildpaner    | maw@gitlab.com            |                                            | Mark Mishaev (mmishaev@gitlab.com)              | GitLab               | Member       |
 | Klaus Kiefer     | klaus.kiefer@sap.com      | [@klaus-sap](https://github.com/klaus-sap) | Jonas Köhnen (j.koehnen@reply.de)               | SAP                  | Member       |
 
 To view the process for joining the TSC, see [GOVERNANCE.md](GOVERNANCE.md) in

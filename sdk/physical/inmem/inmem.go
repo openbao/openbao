@@ -41,10 +41,10 @@ type InmemBackend struct {
 	root         *radix.Tree
 	permitPool   *physical.PermitPool
 	logger       log.Logger
-	failGet      *uint32
-	failPut      *uint32
-	failDelete   *uint32
-	failList     *uint32
+	failGet      atomic.Bool
+	failPut      atomic.Bool
+	failDelete   atomic.Bool
+	failList     atomic.Bool
 	logOps       bool
 	maxValueSize int
 }
@@ -140,10 +140,6 @@ func NewDirectInmem(conf map[string]string, logger log.Logger) (physical.Backend
 		root:         radix.New(),
 		permitPool:   physical.NewPermitPool(physical.DefaultParallelOperations),
 		logger:       logger,
-		failGet:      new(uint32),
-		failPut:      new(uint32),
-		failDelete:   new(uint32),
-		failList:     new(uint32),
 		logOps:       api.ReadBaoVariable("BAO_INMEM_LOG_ALL_OPS") != "",
 		maxValueSize: maxValueSize,
 	}, nil
@@ -181,7 +177,7 @@ func (i *InmemBackend) PutInternal(ctx context.Context, entry *physical.Entry) e
 	if i.logOps {
 		i.logger.Trace("put", "key", entry.Key)
 	}
-	if atomic.LoadUint32(i.failPut) != 0 {
+	if i.failPut.Load() {
 		return ErrPutDisabled
 	}
 
@@ -200,11 +196,7 @@ func (i *InmemBackend) PutInternal(ctx context.Context, entry *physical.Entry) e
 }
 
 func (i *InmemBackend) FailPut(fail bool) {
-	var val uint32
-	if fail {
-		val = 1
-	}
-	atomic.StoreUint32(i.failPut, val)
+	i.failPut.Store(fail)
 }
 
 // Get is used to fetch an entry
@@ -222,7 +214,7 @@ func (i *InmemBackend) GetInternal(ctx context.Context, key string) (*physical.E
 	if i.logOps {
 		i.logger.Trace("get", "key", key)
 	}
-	if atomic.LoadUint32(i.failGet) != 0 {
+	if i.failGet.Load() {
 		return nil, ErrGetDisabled
 	}
 
@@ -246,11 +238,7 @@ func (i *InmemBackend) getInternal(ctx context.Context, key string) (*physical.E
 }
 
 func (i *InmemBackend) FailGet(fail bool) {
-	var val uint32
-	if fail {
-		val = 1
-	}
-	atomic.StoreUint32(i.failGet, val)
+	i.failGet.Store(fail)
 }
 
 // Delete is used to permanently delete an entry
@@ -268,7 +256,7 @@ func (i *InmemBackend) DeleteInternal(ctx context.Context, key string) error {
 	if i.logOps {
 		i.logger.Trace("delete", "key", key)
 	}
-	if atomic.LoadUint32(i.failDelete) != 0 {
+	if i.failDelete.Load() {
 		return ErrDeleteDisabled
 	}
 	select {
@@ -282,11 +270,7 @@ func (i *InmemBackend) DeleteInternal(ctx context.Context, key string) error {
 }
 
 func (i *InmemBackend) FailDelete(fail bool) {
-	var val uint32
-	if fail {
-		val = 1
-	}
-	atomic.StoreUint32(i.failDelete, val)
+	i.failDelete.Store(fail)
 }
 
 // List is used to list all the keys under a given
@@ -322,7 +306,7 @@ func (i *InmemBackend) ListPaginatedInternal(ctx context.Context, prefix string,
 	if i.logOps {
 		i.logger.Trace("list", "prefix", prefix)
 	}
-	if atomic.LoadUint32(i.failList) != 0 {
+	if i.failList.Load() {
 		return nil, ErrListDisabled
 	}
 
@@ -378,11 +362,7 @@ func (i *InmemBackend) listPaginatedInternal(ctx context.Context, prefix string,
 }
 
 func (i *InmemBackend) FailList(fail bool) {
-	var val uint32
-	if fail {
-		val = 1
-	}
-	atomic.StoreUint32(i.failList, val)
+	i.failList.Store(fail)
 }
 
 func (i *TransactionalInmemBackend) BeginReadOnlyTx(ctx context.Context) (physical.Transaction, error) {
@@ -409,10 +389,6 @@ func (i *TransactionalInmemBackend) BeginTx(ctx context.Context) (physical.Trans
 			root:         radix.NewFromMap(i.root.ToMap()),
 			permitPool:   physical.NewPermitPool(physical.DefaultParallelOperations),
 			logger:       i.logger,
-			failGet:      new(uint32),
-			failPut:      new(uint32),
-			failDelete:   new(uint32),
-			failList:     new(uint32),
 			logOps:       i.logOps,
 			maxValueSize: i.maxValueSize,
 		},
@@ -421,10 +397,10 @@ func (i *TransactionalInmemBackend) BeginTx(ctx context.Context) (physical.Trans
 		parent:   i,
 	}
 
-	*tx.failGet = *i.failGet
-	*tx.failPut = *i.failPut
-	*tx.failDelete = *i.failDelete
-	*tx.failList = *i.failList
+	tx.failGet.Store(i.failGet.Load())
+	tx.failPut.Store(i.failPut.Load())
+	tx.failDelete.Store(i.failDelete.Load())
+	tx.failList.Store(i.failList.Load())
 
 	return tx, nil
 }

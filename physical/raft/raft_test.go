@@ -309,6 +309,8 @@ func TestRaft_Backend_ThreeNode(t *testing.T) {
 	testRaft_assertFastTxnTrackerCleanup(t, raft1)
 	testRaft_assertFastTxnTrackerCleanup(t, raft2)
 	testRaft_assertFastTxnTrackerCleanup(t, raft3)
+
+	testRaft_leaderConsistency(t, raft1, raft2, raft3)
 }
 
 func testRaft_assertFastTxnTrackerCleanup(t testing.TB, raft *RaftBackend) {
@@ -322,6 +324,25 @@ func testRaft_assertFastTxnTrackerCleanup(t testing.TB, raft *RaftBackend) {
 			// Put in other words: Once the indexModifiedMap has reached a length of 2, it should never fall below 2 again.
 		)
 		assert.Empty(t, raft.fsm.fastTxnTracker.sourceIndexMap)
+	}
+}
+
+func testRaft_leaderConsistency(t testing.TB, rafts ...*RaftBackend) {
+	var leaders []string
+
+	for i, b := range rafts {
+		resp, err := b.GetConfiguration(t.Context())
+		require.NoError(t, err)
+		for _, server := range resp.Servers {
+			if server.Leader {
+				leaders = append(leaders, server.NodeID)
+				break
+			}
+		}
+		if i == 0 {
+			continue
+		}
+		assert.Equal(t, leaders[i-1], leaders[i])
 	}
 }
 

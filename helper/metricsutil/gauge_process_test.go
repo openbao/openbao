@@ -69,21 +69,19 @@ func (s *SimulatedTime) allowTickers(n int) {
 }
 
 func startSimulatedTime() *SimulatedTime {
-	s := &SimulatedTime{
+	return &SimulatedTime{
 		now:           time.Now(),
 		tickerBarrier: make(chan *SimulatedTicker, 1),
 	}
-	return s
 }
 
 type SimulatedCollector struct {
-	numCalls    uint32
+	numCalls    atomic.Uint32
 	callBarrier chan uint32
 }
 
 func newSimulatedCollector() *SimulatedCollector {
 	return &SimulatedCollector{
-		numCalls:    0,
 		callBarrier: make(chan uint32, 1),
 	}
 }
@@ -100,8 +98,7 @@ func (s *SimulatedCollector) waitForCall(t *testing.T) {
 }
 
 func (s *SimulatedCollector) EmptyCollectionFunction(ctx context.Context) ([]GaugeLabelValues, error) {
-	atomic.AddUint32(&s.numCalls, 1)
-	s.callBarrier <- s.numCalls
+	s.callBarrier <- s.numCalls.Add(1)
 	return []GaugeLabelValues{}, nil
 }
 
@@ -172,7 +169,7 @@ func TestGauge_StartDelay(t *testing.T) {
 		t.Errorf("Delayed start %v is more than interval %v.",
 			delayTicker.duration, sink.GaugeInterval)
 	}
-	if c.numCalls > 0 {
+	if c.numCalls.Load() > 0 {
 		t.Error("Collection function has been called")
 	}
 
@@ -184,15 +181,15 @@ func TestGauge_StartDelay(t *testing.T) {
 		t.Errorf("Ticker duration is %v, expected %v",
 			intervalTicker.duration, sink.GaugeInterval)
 	}
-	if c.numCalls > 0 {
+	if c.numCalls.Load() > 0 {
 		t.Error("Collection function has been called")
 	}
 
 	// Time's up, ensure the collection function is executed.
 	intervalTicker.sender <- time.Now()
 	c.waitForCall(t)
-	if c.numCalls != 1 {
-		t.Errorf("Collection function called %v times, expected %v.", c.numCalls, 1)
+	if c.numCalls.Load() != 1 {
+		t.Errorf("Collection function called %v times, expected %v.", c.numCalls.Load(), 1)
 	}
 
 	p.Stop()
@@ -281,10 +278,9 @@ func TestGauge_Backoff(t *testing.T) {
 
 	threshold := sink.GaugeInterval / 100
 	f := func(ctx context.Context) ([]GaugeLabelValues, error) {
-		atomic.AddUint32(&c.numCalls, 1)
 		// Move time forward by more than 1% of the gauge interval
 		s.now = s.now.Add(threshold).Add(time.Second)
-		c.callBarrier <- c.numCalls
+		c.callBarrier <- c.numCalls.Add(1)
 		return []GaugeLabelValues{}, nil
 	}
 
@@ -438,10 +434,9 @@ func (c *SimulatedCollector) makeFunctionForValues(
 ) GaugeCollector {
 	// A function that returns a static list
 	return func(ctx context.Context) ([]GaugeLabelValues, error) {
-		atomic.AddUint32(&c.numCalls, 1)
 		// TODO: this seems like a data race?
 		s.now = s.now.Add(advanceTime)
-		c.callBarrier <- c.numCalls
+		c.callBarrier <- c.numCalls.Add(1)
 		return values, nil
 	}
 }
@@ -545,8 +540,7 @@ func TestGauge_MeasurementError(t *testing.T) {
 	}
 
 	f := func(ctx context.Context) ([]GaugeLabelValues, error) {
-		atomic.AddUint32(&c.numCalls, 1)
-		c.callBarrier <- c.numCalls
+		c.callBarrier <- c.numCalls.Add(1)
 		return values, errors.New("test error")
 	}
 

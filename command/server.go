@@ -1290,9 +1290,6 @@ func (c *ServerCommand) Run(args []string) int {
 	infoKeys = append(infoKeys, "go version")
 	info["go version"] = runtime.Version()
 
-	infoKeys = append(infoKeys, "administrative namespace")
-	info["administrative namespace"] = config.AdministrativeNamespacePath
-
 	sort.Strings(infoKeys)
 	c.UI.Output("==> OpenBao server configuration:\n")
 
@@ -2733,7 +2730,6 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		SecureRandomReader:             secureRandomReader,
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
-		AdministrativeNamespacePath:    config.AdministrativeNamespacePath,
 		UnsafeCrossNamespaceIdentity:   config.UnsafeCrossNamespaceIdentity,
 	}
 

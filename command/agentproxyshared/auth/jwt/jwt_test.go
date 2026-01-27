@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
@@ -92,8 +91,7 @@ func TestIngressToken(t *testing.T) {
 			logger: hclog.New(&hclog.LoggerOptions{
 				Output: &logBuffer,
 			}),
-			latestToken: new(atomic.Value),
-			path:        path.Join(testDir, tc.path),
+			path: path.Join(testDir, tc.path),
 		}
 
 		jwtAuth.ingressToken()

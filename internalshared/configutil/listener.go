@@ -134,11 +134,13 @@ type Listener struct {
 	// RandomPort is used only for some testing purposes
 	RandomPort bool `hcl:"-"`
 
-	CorsEnabledRaw        interface{} `hcl:"cors_enabled"`
-	CorsEnabled           bool        `hcl:"-"`
-	CorsAllowedOrigins    []string    `hcl:"cors_allowed_origins"`
-	CorsAllowedHeaders    []string    `hcl:"-"`
-	CorsAllowedHeadersRaw []string    `hcl:"cors_allowed_headers,alias:cors_allowed_headers"`
+	CorsEnabledRaw          interface{} `hcl:"cors_enabled"`
+	CorsEnabled             bool        `hcl:"-"`
+	CorsAllowedOrigins      []string    `hcl:"cors_allowed_origins"`
+	CorsAllowedHeaders      []string    `hcl:"-"`
+	CorsAllowedHeadersRaw   []string    `hcl:"cors_allowed_headers,alias:cors_allowed_headers"`
+	CorsAllowCredentialsRaw interface{} `hcl:"cors_allow_credentials,alias:cors_allow_credentials"`
+	CorsAllowCredentials    bool        `hcl:"-"`
 
 	// Custom Http response headers
 	CustomResponseHeaders    map[string]map[string]string `hcl:"-"`
@@ -475,6 +477,14 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 				for _, header := range l.CorsAllowedHeadersRaw {
 					l.CorsAllowedHeaders = append(l.CorsAllowedHeaders, textproto.CanonicalMIMEHeaderKey(header))
 				}
+			}
+
+			if l.CorsAllowCredentialsRaw != nil {
+				if l.CorsAllowCredentials, err = parseutil.ParseBool(l.CorsAllowCredentialsRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for cors_allow_credentials: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.CorsAllowCredentialsRaw = nil
 			}
 		}
 

@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -116,7 +115,7 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	start := time.Now()
 	for time.Since(start) < 10*time.Second {
-		if time.Since(start) > 100*time.Millisecond && atomic.LoadUint32(b.tidySecretIDCASGuard) == 0 {
+		if time.Since(start) > 100*time.Millisecond && !b.tidySecretIDCASGuard.Load() {
 			secret, err := b.tidySecretID(context.Background(), &logical.Request{
 				Storage: storage,
 			})
@@ -164,7 +163,7 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 
 	wg.Wait()
 	// Let tidy finish
-	for atomic.LoadUint32(b.tidySecretIDCASGuard) != 0 {
+	for b.tidySecretIDCASGuard.Load() {
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -185,12 +184,12 @@ func TestAppRole_TidyDanglingAccessors_RaceTest(t *testing.T) {
 	)
 
 	// Wait for tidy to start
-	for atomic.LoadUint32(b.tidySecretIDCASGuard) == 0 {
+	for !b.tidySecretIDCASGuard.Load() {
 		time.Sleep(100 * time.Millisecond)
 	}
 
 	// Let tidy finish
-	for atomic.LoadUint32(b.tidySecretIDCASGuard) != 0 {
+	for b.tidySecretIDCASGuard.Load() {
 		time.Sleep(100 * time.Millisecond)
 	}
 

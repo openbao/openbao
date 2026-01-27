@@ -89,9 +89,9 @@ func (c *Core) Cluster(ctx context.Context) (*Cluster, error) {
 func (c *Core) loadLocalClusterTLS(adv activeAdvertisement) (retErr error) {
 	defer func() {
 		if retErr != nil {
-			c.localClusterCert.Store(([]byte)(nil))
-			c.localClusterParsedCert.Store((*x509.Certificate)(nil))
-			c.localClusterPrivateKey.Store((*ecdsa.PrivateKey)(nil))
+			c.localClusterCert.Store(nil)
+			c.localClusterParsedCert.Store(nil)
+			c.localClusterPrivateKey.Store(nil)
 
 			c.requestForwardingConnectionLock.Lock()
 			c.clearForwardingClients()
@@ -133,7 +133,7 @@ func (c *Core) loadLocalClusterTLS(adv activeAdvertisement) (retErr error) {
 
 	locCert := make([]byte, len(adv.ClusterCert))
 	copy(locCert, adv.ClusterCert)
-	c.localClusterCert.Store(locCert)
+	c.localClusterCert.Store(&locCert)
 
 	cert, err := x509.ParseCertificate(adv.ClusterCert)
 	if err != nil {
@@ -208,7 +208,7 @@ func (c *Core) setupCluster(ctx context.Context) error {
 	// If we're using HA, generate server-to-server parameters
 	if c.ha != nil {
 		// Create a private key
-		if c.localClusterPrivateKey.Load().(*ecdsa.PrivateKey) == nil {
+		if c.localClusterPrivateKey.Load() == nil {
 			c.logger.Debug("generating cluster private key")
 			key, err := ecdsa.GenerateKey(elliptic.P521(), c.secureRandomReader)
 			if err != nil {
@@ -220,7 +220,7 @@ func (c *Core) setupCluster(ctx context.Context) error {
 		}
 
 		// Create a certificate
-		if c.localClusterCert.Load().([]byte) == nil {
+		if c.localClusterCert.Load() == nil {
 			host, err := uuid.GenerateUUID()
 			if err != nil {
 				return err
@@ -245,7 +245,7 @@ func (c *Core) setupCluster(ctx context.Context) error {
 				IsCA:                  true,
 			}
 
-			certBytes, err := x509.CreateCertificate(rand.Reader, template, template, c.localClusterPrivateKey.Load().(*ecdsa.PrivateKey).Public(), c.localClusterPrivateKey.Load().(*ecdsa.PrivateKey))
+			certBytes, err := x509.CreateCertificate(rand.Reader, template, template, c.localClusterPrivateKey.Load().Public(), c.localClusterPrivateKey.Load())
 			if err != nil {
 				c.logger.Error("error generating self-signed cert", "error", err)
 				return fmt.Errorf("unable to generate local cluster certificate: %w", err)
@@ -257,7 +257,7 @@ func (c *Core) setupCluster(ctx context.Context) error {
 				return fmt.Errorf("error parsing generated certificate: %w", err)
 			}
 
-			c.localClusterCert.Store(certBytes)
+			c.localClusterCert.Store(&certBytes)
 			c.localClusterParsedCert.Store(parsedCert)
 		}
 	}
@@ -346,11 +346,7 @@ func (c *Core) ClusterAddr() string {
 }
 
 func (c *Core) getClusterListener() *cluster.Listener {
-	cl := c.clusterListener.Load()
-	if cl == nil {
-		return nil
-	}
-	return cl.(*cluster.Listener)
+	return c.clusterListener.Load()
 }
 
 // stopClusterListener stops any existing listeners during seal. It is
@@ -365,7 +361,7 @@ func (c *Core) stopClusterListener() {
 	c.logger.Info("stopping cluster listeners")
 
 	clusterListener.Stop()
-	c.clusterListener.Store((*cluster.Listener)(nil))
+	c.clusterListener.Store(nil)
 
 	c.logger.Info("cluster listeners successfully shut down")
 }

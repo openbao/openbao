@@ -39,7 +39,7 @@ type InitResult struct {
 	RootToken      string
 }
 
-var initInProgress uint32
+var initInProgress atomic.Bool
 
 func (c *Core) InitializeRecovery(ctx context.Context) error {
 	if !c.recoveryMode {
@@ -186,8 +186,8 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 }
 
 func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (*InitResult, error) {
-	atomic.StoreUint32(&initInProgress, 1)
-	defer atomic.StoreUint32(&initInProgress, 0)
+	initInProgress.Store(true)
+	defer initInProgress.Store(false)
 	barrierConfig := initParams.BarrierConfig
 	recoveryConfig := initParams.RecoveryConfig
 

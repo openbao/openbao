@@ -655,10 +655,26 @@ func runShamir(t *testing.T, logger hclog.Logger, storage teststorage.ReusableSt
 		for _, core := range cluster.Cores {
 			cluster.UnsealCore(t, core)
 		}
-		// This is apparently necessary for the raft cluster to get itself
-		// situated.
-		time.Sleep(15 * time.Second)
-		if err := testhelpers.VerifyRaftConfiguration(leader, len(cluster.Cores)); err != nil {
+
+		ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+		defer cancel()
+
+		var err error
+	LOOP:
+		for {
+			select {
+			case <-ctx.Done():
+				break LOOP
+			default:
+				time.Sleep(5 * time.Second)
+				// We're taking the first core, but we're not assuming it's the leader here.
+				err = testhelpers.VerifyRaftConfiguration(leader, len(cluster.Cores))
+				if err == nil {
+					break LOOP
+				}
+			}
+		}
+		if err != nil {
 			t.Fatal(err)
 		}
 	} else {
@@ -787,11 +803,26 @@ func runAutoseal(t *testing.T, logger hclog.Logger, storage teststorage.Reusable
 		for _, core := range cluster.Cores {
 			cluster.UnsealCoreWithStoredKeys(t, core)
 		}
-		// This is apparently necessary for the raft cluster to get itself
-		// situated.
-		time.Sleep(15 * time.Second)
-		// We're taking the first core, but we're not assuming it's the leader here.
-		if err := testhelpers.VerifyRaftConfiguration(cluster.Cores[0], len(cluster.Cores)); err != nil {
+
+		ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+		defer cancel()
+
+		var err error
+	LOOP:
+		for {
+			select {
+			case <-ctx.Done():
+				break LOOP
+			default:
+				time.Sleep(5 * time.Second)
+				// We're taking the first core, but we're not assuming it's the leader here.
+				err = testhelpers.VerifyRaftConfiguration(cluster.Cores[0], len(cluster.Cores))
+				if err == nil {
+					break LOOP
+				}
+			}
+		}
+		if err != nil {
 			t.Fatal(err)
 		}
 	} else {

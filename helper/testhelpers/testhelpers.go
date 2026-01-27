@@ -15,7 +15,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	metrics "github.com/hashicorp/go-metrics/compat"
@@ -25,6 +24,7 @@ import (
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/xor"
 	"github.com/openbao/openbao/vault"
 	"github.com/stretchr/testify/require"
@@ -453,8 +453,7 @@ func (p *TestRaftServerAddressProvider) ServerAddr(id raftlib.ServerID) (raftlib
 
 func RaftClusterJoinNodes(t testing.T, cluster *vault.TestCluster) {
 	addressProvider := &TestRaftServerAddressProvider{Cluster: cluster}
-
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	leader := cluster.Cores[0]
 
@@ -684,7 +683,7 @@ func TestMetricSinkProvider(gaugeInterval time.Duration) func(string) (*metricsu
 func SysMetricsReq(client *api.Client, cluster *vault.TestCluster, unauth bool) (*SysMetricsJSON, error) {
 	r := client.NewRequest("GET", "/v1/sys/metrics")
 	if !unauth {
-		r.Headers.Set("X-Vault-Token", cluster.RootToken)
+		r.Headers.Set(consts.AuthHeaderName, cluster.RootToken)
 	}
 	var data SysMetricsJSON
 	resp, err := client.RawRequest(r)
@@ -966,6 +965,16 @@ func SkipUnlessEnvVarsSet(t testing.T, envVars []string) {
 	for _, i := range envVars {
 		if os.Getenv(i) == "" {
 			t.Skipf("%s must be set for this test to run", strings.Join(envVars, " "))
+		}
+	}
+}
+
+// WaitForActiveNodeAndStandbys waits for the active node and any standbys.
+func WaitForActiveNodeAndStandbys(t testing.T, cluster *vault.TestCluster) {
+	WaitForActiveNode(t, cluster)
+	for _, core := range cluster.Cores {
+		if standby := core.Standby(); standby {
+			WaitForStandbyNode(t, core)
 		}
 	}
 }

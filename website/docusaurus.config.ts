@@ -49,6 +49,13 @@ const config: Config = {
   },
   staticDirectories: ["public"],
 
+  future: {
+    v4: {
+      removeLegacyPostBuildHeadAttribute: true, // needed by experimental_faster
+    },
+    experimental_faster: true,
+  },
+
   markdown: {
     mermaid: true,
   },

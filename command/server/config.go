@@ -655,11 +655,6 @@ func (c *Config) Merge(c2 *Config) *Config {
 		}
 	}
 
-	result.AdministrativeNamespacePath = c.AdministrativeNamespacePath
-	if c2.AdministrativeNamespacePath != "" {
-		result.AdministrativeNamespacePath = c2.AdministrativeNamespacePath
-	}
-
 	if len(c.Initialization) > 0 || len(c2.Initialization) > 0 {
 		result.Initialization = make([]*profiles.OuterConfig, len(c.Initialization)+len(c2.Initialization))
 		copy(result.Initialization[0:len(c.Initialization)], c.Initialization)

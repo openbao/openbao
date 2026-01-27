@@ -6,7 +6,6 @@ package vault
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -76,11 +75,11 @@ func NewRequestForwardingHandler(c *Core, fws *http2.Server) (*requestForwarding
 // ClientLookup satisfies the ClusterClient interface and returns the ha tls
 // client certs.
 func (c *requestForwardingClusterClient) ClientLookup(ctx context.Context, requestInfo *tls.CertificateRequestInfo) (*tls.Certificate, error) {
-	parsedCert := c.core.localClusterParsedCert.Load().(*x509.Certificate)
+	parsedCert := c.core.localClusterParsedCert.Load()
 	if parsedCert == nil {
 		return nil, nil
 	}
-	currCert := c.core.localClusterCert.Load().([]byte)
+	currCert := *c.core.localClusterCert.Load()
 	if len(currCert) == 0 {
 		return nil, nil
 	}
@@ -91,8 +90,8 @@ func (c *requestForwardingClusterClient) ClientLookup(ctx context.Context, reque
 		if bytes.Equal(subj, parsedCert.RawIssuer) {
 			return &tls.Certificate{
 				Certificate: [][]byte{localCert},
-				PrivateKey:  c.core.localClusterPrivateKey.Load().(*ecdsa.PrivateKey),
-				Leaf:        c.core.localClusterParsedCert.Load().(*x509.Certificate),
+				PrivateKey:  c.core.localClusterPrivateKey.Load(),
+				Leaf:        c.core.localClusterParsedCert.Load(),
 			}, nil
 		}
 	}
@@ -101,7 +100,7 @@ func (c *requestForwardingClusterClient) ClientLookup(ctx context.Context, reque
 }
 
 func (c *requestForwardingClusterClient) ServerName() string {
-	parsedCert := c.core.localClusterParsedCert.Load().(*x509.Certificate)
+	parsedCert := c.core.localClusterParsedCert.Load()
 	if parsedCert == nil {
 		return ""
 	}
@@ -110,13 +109,13 @@ func (c *requestForwardingClusterClient) ServerName() string {
 }
 
 func (c *requestForwardingClusterClient) CACert(ctx context.Context) *x509.Certificate {
-	return c.core.localClusterParsedCert.Load().(*x509.Certificate)
+	return c.core.localClusterParsedCert.Load()
 }
 
 // ServerLookup satisfies the ClusterHandler interface and returns the server's
 // tls certs.
 func (rf *requestForwardingHandler) ServerLookup(ctx context.Context, clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	currCert := rf.core.localClusterCert.Load().([]byte)
+	currCert := *rf.core.localClusterCert.Load()
 	if len(currCert) == 0 {
 		return nil, errors.New("got forwarding connection but no local cert")
 	}
@@ -126,14 +125,14 @@ func (rf *requestForwardingHandler) ServerLookup(ctx context.Context, clientHell
 
 	return &tls.Certificate{
 		Certificate: [][]byte{localCert},
-		PrivateKey:  rf.core.localClusterPrivateKey.Load().(*ecdsa.PrivateKey),
-		Leaf:        rf.core.localClusterParsedCert.Load().(*x509.Certificate),
+		PrivateKey:  rf.core.localClusterPrivateKey.Load(),
+		Leaf:        rf.core.localClusterParsedCert.Load(),
 	}, nil
 }
 
 // CALookup satisfies the ClusterHandler interface and returns the ha ca cert.
 func (rf *requestForwardingHandler) CALookup(ctx context.Context) ([]*x509.Certificate, error) {
-	parsedCert := rf.core.localClusterParsedCert.Load().(*x509.Certificate)
+	parsedCert := rf.core.localClusterParsedCert.Load()
 
 	if parsedCert == nil {
 		return nil, errors.New("forwarding connection client but no local cert")
@@ -248,7 +247,7 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 		return err
 	}
 
-	parsedCert := c.localClusterParsedCert.Load().(*x509.Certificate)
+	parsedCert := c.localClusterParsedCert.Load()
 	if parsedCert == nil {
 		c.logger.Error("no request forwarding cluster certificate found")
 		return errors.New("no request forwarding cluster certificate found")
@@ -319,7 +318,7 @@ func (c *Core) clearForwardingClients() {
 	if clusterListener != nil {
 		clusterListener.RemoveClient(consts.RequestForwardingALPN)
 	}
-	c.clusterLeaderParams.Store((*ClusterLeaderParams)(nil))
+	c.clusterLeaderParams.Store(nil)
 }
 
 // ForwardRequest forwards a given request to the active node and returns the

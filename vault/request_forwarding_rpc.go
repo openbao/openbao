@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
-	"sync/atomic"
 	"time"
 
 	metrics "github.com/hashicorp/go-metrics/compat"
@@ -163,7 +162,7 @@ func (c *forwardingClient) startHeartbeat() {
 			}
 			// Store the active node's replication state to display in
 			// sys/health calls
-			atomic.StoreUint32(c.core.activeNodeReplicationState, resp.ReplicationState)
+			c.core.activeNodeReplicationState.Store(resp.ReplicationState)
 		}
 
 		tick()
@@ -173,7 +172,7 @@ func (c *forwardingClient) startHeartbeat() {
 			case <-c.echoContext.Done():
 				c.echoTicker.Stop()
 				c.core.logger.Debug("forwarding: stopping heartbeating")
-				atomic.StoreUint32(c.core.activeNodeReplicationState, uint32(consts.ReplicationUnknown))
+				c.core.activeNodeReplicationState.Store(uint32(consts.ReplicationUnknown))
 				return
 			case <-c.echoTicker.C:
 				tick()

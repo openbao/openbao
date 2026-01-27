@@ -1,14 +1,14 @@
 ---
 sidebar_label: PKCS#11 Unseal
 description: |-
-  The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the
-  autounseal mechanism.
+  The PKCS#11 seal configures OpenBao to use an HSM with PKCS#11 as the
+  auto-unseal mechanism.
 ---
 
 # `pkcs11` seal
 
-The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the autounseal
-mechanism. OpenBao's HSM PKCS11 support is activated by one of the following:
+The PKCS#11 seal configures OpenBao to use an HSM with PKCS#11 as the auto-unseal
+mechanism. OpenBao's PKCS#11 support is activated by one of the following:
 
 - The presence of a `seal "pkcs11"` block in OpenBao's configuration file
 - The presence of the environment variable `BAO_HSM_LIB` set to the library's
@@ -42,7 +42,7 @@ The following software packages are required for OpenBao:
 
 ## `pkcs11` example
 
-This example shows configuring HSM PKCS11 seal through the OpenBao configuration
+This example shows configuring a PKCS#11 seal through the OpenBao configuration
 file by providing all the required values:
 
 ```hcl

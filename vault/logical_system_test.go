@@ -92,9 +92,10 @@ func TestSystemConfigCORS(t *testing.T) {
 
 	expected := &logical.Response{
 		Data: map[string]interface{}{
-			"enabled":         true,
-			"allowed_origins": []string{"http://www.example.com"},
-			"allowed_headers": append(StdAllowedHeaders, "X-Custom-Header"),
+			"enabled":           true,
+			"allow_credentials": false,
+			"allowed_origins":   []string{"http://www.example.com"},
+			"allowed_headers":   append(StdAllowedHeaders, "X-Custom-Header"),
 		},
 	}
 
@@ -144,6 +145,40 @@ func TestSystemConfigCORS(t *testing.T) {
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("bad: %#v", actual)
 	}
+
+	req = logical.TestRequest(t, logical.UpdateOperation, "config/cors")
+	req.Data["allowed_origins"] = "http://www.example.com"
+	req.Data["allowed_headers"] = "X-Custom-Header"
+	req.Data["allow_credentials"] = "true"
+	_, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected = &logical.Response{
+		Data: map[string]interface{}{
+			"enabled":           true,
+			"allowed_origins":   []string{"http://www.example.com"},
+			"allowed_headers":   append(StdAllowedHeaders, "X-Custom-Header"),
+			"allow_credentials": true,
+		},
+	}
+
+	req = logical.TestRequest(t, logical.ReadOperation, "config/cors")
+	actual, err = b.HandleRequest(namespace.RootContext(t.Context()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("bad: %#v", actual)
+	}
+	schema.ValidateResponse(
+		t,
+		schema.FindResponseSchema(t, paths, 0, req.Operation),
+		actual,
+		true,
+	)
 
 	req = logical.TestRequest(t, logical.DeleteOperation, "config/cors")
 	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
@@ -2258,7 +2293,7 @@ func TestSystemBackend_tuneAuth(t *testing.T) {
 	)
 
 	if resp.Data["description"] != "" {
-		t.Fatalf("got: %#v expect: %#v", resp.Data["description"], "")
+		t.Fatalf("got: %#v expected: %#v", resp.Data["description"], "")
 	}
 	if resp.Data["plugin_version"] != "v1.0.0" {
 		t.Fatalf("got: %#v, expected: %v", resp.Data["version"], "v1.0.0")

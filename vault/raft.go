@@ -39,7 +39,7 @@ var (
 	raftAutopilotConfigurationStoragePath = "core/raft/autopilot/configuration"
 
 	// TestingUpdateClusterAddr is used in tests to override the cluster address
-	TestingUpdateClusterAddr uint32
+	TestingUpdateClusterAddr atomic.Bool
 )
 
 // GetRaftNodeID returns the raft node ID if there is one, or an empty string if there's not
@@ -939,7 +939,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 			// Wait until unseal keys are supplied
 			raftInfo.joinInProgress = true
 			c.raftInfo.Store(raftInfo)
-			if atomic.LoadUint32(c.postUnsealStarted) != 1 {
+			if !c.postUnsealStarted.Load() {
 				return errors.New("waiting for unseal keys to be supplied")
 			}
 		}
@@ -951,7 +951,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 
 		if c.seal.BarrierType() == wrapping.WrapperTypeShamir && !isRaftHAOnly {
 			// Reset the state
-			c.raftInfo.Store((*raftInformation)(nil))
+			c.raftInfo.Store(nil)
 
 			// In case of Shamir unsealing, inform the unseal process that raft join is completed
 			close(c.raftJoinDoneCh)
@@ -1160,7 +1160,7 @@ func (c *Core) joinRaftSendAnswer(ctx context.Context, sealAccess seal.Access, r
 		return fmt.Errorf("error parsing cluster address: %w", err)
 	}
 	clusterAddr := parsedClusterAddr.Host
-	if atomic.LoadUint32(&TestingUpdateClusterAddr) == 1 && strings.HasSuffix(clusterAddr, ":0") {
+	if TestingUpdateClusterAddr.Load() && strings.HasSuffix(clusterAddr, ":0") {
 		// We are testing and have an address provider, so just create a random
 		// addr, it will be overwritten later.
 		var err error
@@ -1285,7 +1285,7 @@ func (c *Core) RaftBootstrap(ctx context.Context, onInit bool) error {
 }
 
 func (c *Core) isRaftUnseal() bool {
-	return c.raftInfo.Load().(*raftInformation) != nil
+	return c.raftInfo.Load() != nil
 }
 
 type answerRespData struct {

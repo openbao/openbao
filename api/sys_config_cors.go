@@ -82,13 +82,15 @@ func (c *Sys) DisableCORSWithContext(ctx context.Context) error {
 }
 
 type CORSRequest struct {
-	AllowedOrigins []string `json:"allowed_origins" mapstructure:"allowed_origins"`
-	AllowedHeaders []string `json:"allowed_headers" mapstructure:"allowed_headers"`
-	Enabled        bool     `json:"enabled" mapstructure:"enabled"`
+	AllowedOrigins   []string `json:"allowed_origins" mapstructure:"allowed_origins"`
+	AllowedHeaders   []string `json:"allowed_headers" mapstructure:"allowed_headers"`
+	AllowCredentials bool     `json:"allow_credentials" mapstructure:"allow_credentials"`
+	Enabled          bool     `json:"enabled" mapstructure:"enabled"`
 }
 
 type CORSResponse struct {
-	AllowedOrigins []string `json:"allowed_origins" mapstructure:"allowed_origins"`
-	AllowedHeaders []string `json:"allowed_headers" mapstructure:"allowed_headers"`
-	Enabled        bool     `json:"enabled" mapstructure:"enabled"`
+	AllowedOrigins   []string `json:"allowed_origins" mapstructure:"allowed_origins"`
+	AllowedHeaders   []string `json:"allowed_headers" mapstructure:"allowed_headers"`
+	AllowCredentials bool     `json:"allow_credentials" mapstructure:"allow_credentials"`
+	Enabled          bool     `json:"enabled" mapstructure:"enabled"`
 }

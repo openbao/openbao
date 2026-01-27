@@ -7,11 +7,13 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/openbao/openbao/api/auth/userpass/v2"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	hDocker "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
@@ -111,7 +113,7 @@ func Test_StrictIPBinding(t *testing.T) {
 		"curl",
 		"-sSL",
 		"--insecure",
-		"--header", "X-Vault-Token: " + localToken,
+		"--header", fmt.Sprintf("%s: %s", consts.AuthHeaderName, localToken),
 		"https://" + vaultAddr + ":8200/v1/sys/host-info",
 	}
 	stdout, stderr, retcode, err := curlRunner.RunCmdWithOutput(ctx, curlResult.Container.ID, curlCmd)
@@ -167,7 +169,7 @@ func Test_StrictIPBinding(t *testing.T) {
 		"curl",
 		"-sSL",
 		"--insecure",
-		"--header", "X-Vault-Token: " + remoteToken,
+		"--header", fmt.Sprintf("%s: %s", consts.AuthHeaderName, remoteToken),
 		"https://" + vaultAddr + ":8200/v1/sys/host-info",
 	}
 	stdout, stderr, retcode, err = curlRunner.RunCmdWithOutput(ctx, curlResult.Container.ID, curlCmd)

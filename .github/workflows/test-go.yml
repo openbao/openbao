@@ -65,7 +65,7 @@ jobs:
   test-matrix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.checkout-ref }}
           persist-credentials: false
@@ -155,7 +155,7 @@ jobs:
     env:
       TIMEOUT_IN_MINUTES: ${{ inputs.timeout-minutes }}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.checkout-ref }}
           persist-credentials: false
@@ -301,7 +301,7 @@ jobs:
     needs: [test-go, test-matrix]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+      - uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
           path: test-results/go-test
           key: go-test-reports-${{ github.run_number }}

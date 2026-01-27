@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sync/atomic"
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -43,13 +42,13 @@ func pathTidySecretID(b *backend) *framework.Path {
 }
 
 // tidySecretID is used to delete entries in the whitelist that are expired.
-func (b *backend) tidySecretID(ctx context.Context, req *logical.Request) (*logical.Response, error) {
+func (b *backend) tidySecretID(_ context.Context, req *logical.Request) (*logical.Response, error) {
 	// If we are a performance standby forward the request to the active node
 	if b.System().ReplicationState().HasState(consts.ReplicationPerformanceStandby) {
 		return nil, logical.ErrReadOnly
 	}
 
-	if !atomic.CompareAndSwapUint32(b.tidySecretIDCASGuard, 0, 1) {
+	if !b.tidySecretIDCASGuard.CompareAndSwap(false, true) {
 		resp := &logical.Response{}
 		resp.AddWarning("Tidy operation already in progress.")
 		return resp, nil
@@ -68,8 +67,7 @@ type tidyHelperSecretIDAccessor struct {
 }
 
 func (b *backend) tidySecretIDinternal(s logical.Storage) {
-	defer atomic.StoreUint32(b.tidySecretIDCASGuard, 0)
-
+	defer b.tidySecretIDCASGuard.Store(false)
 	logger := b.Logger().Named("tidy")
 
 	checkCount := 0

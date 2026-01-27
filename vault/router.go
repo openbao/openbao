@@ -64,8 +64,8 @@ type routeEntry struct {
 	mountEntry    *MountEntry
 	storageView   logical.Storage
 	storagePrefix string
-	rootPaths     atomic.Value
-	loginPaths    atomic.Value
+	rootPaths     atomic.Pointer[radix.Tree]
+	loginPaths    atomic.Pointer[loginPathsEntry]
 	l             sync.RWMutex
 }
 
@@ -933,7 +933,7 @@ func (r *Router) RootPath(ctx context.Context, path string) bool {
 	remain := strings.TrimPrefix(adjustedPath, mount)
 
 	// Check the rootPaths of this backend
-	rootPaths := re.rootPaths.Load().(*radix.Tree)
+	rootPaths := re.rootPaths.Load()
 	match, raw, ok := rootPaths.LongestPrefix(remain)
 	if !ok {
 		return false
@@ -978,7 +978,7 @@ func (r *Router) LoginPath(ctx context.Context, path string) bool {
 	remain := strings.TrimPrefix(adjustedPath, mount)
 
 	// Check the loginPaths of this backend
-	pe := re.loginPaths.Load().(*loginPathsEntry)
+	pe := re.loginPaths.Load()
 	match, raw, ok := pe.paths.LongestPrefix(remain)
 	if !ok && len(pe.wildcardPaths) == 0 {
 		// no match found

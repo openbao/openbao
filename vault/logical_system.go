@@ -166,10 +166,10 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 
 func (b *SystemBackend) rawPaths() []*framework.Path {
 	r := &RawBackend{
-		barrier: b.Core.barrier,
-		logger:  b.logger,
+		core:   b.Core,
+		logger: b.logger,
 	}
-	return rawPaths("", r)
+	return r.rawPaths("")
 }
 
 // SystemBackend implements logical.Backend and is used to interact with

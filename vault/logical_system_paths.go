@@ -3340,10 +3340,6 @@ func (b *SystemBackend) authPaths() []*framework.Path {
 									Type:     framework.TypeCommaStringSlice,
 									Required: false,
 								},
-								"allowed_managed_keys": {
-									Type:     framework.TypeCommaStringSlice,
-									Required: false,
-								},
 								"user_lockout_counter_reset_duration": {
 									Type:     framework.TypeInt64,
 									Required: false,
@@ -4258,10 +4254,6 @@ func (b *SystemBackend) mountPaths() []*framework.Path {
 					Type:        framework.TypeString,
 					Description: strings.TrimSpace(sysHelp["token_type"][0]),
 				},
-				"allowed_managed_keys": {
-					Type:        framework.TypeCommaStringSlice,
-					Description: strings.TrimSpace(sysHelp["tune_allowed_managed_keys"][0]),
-				},
 				"plugin_version": {
 					Type:        framework.TypeString,
 					Description: strings.TrimSpace(sysHelp["plugin-catalog_version"][0]),
@@ -4305,11 +4297,6 @@ func (b *SystemBackend) mountPaths() []*framework.Path {
 								"token_type": {
 									Type:        framework.TypeString,
 									Description: strings.TrimSpace(sysHelp["token_type"][0]),
-									Required:    false,
-								},
-								"allowed_managed_keys": {
-									Type:        framework.TypeCommaStringSlice,
-									Description: strings.TrimSpace(sysHelp["tune_allowed_managed_keys"][0]),
 									Required:    false,
 								},
 								"allowed_response_headers": {

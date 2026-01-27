@@ -900,9 +900,6 @@ func (b *SystemBackend) mountInfo(ctx context.Context, entry *MountEntry) map[st
 	if rawVal, ok := entry.synthesizedConfigCache.Load("allowed_response_headers"); ok {
 		entryConfig["allowed_response_headers"] = rawVal.([]string)
 	}
-	if rawVal, ok := entry.synthesizedConfigCache.Load("allowed_managed_keys"); ok {
-		entryConfig["allowed_managed_keys"] = rawVal.([]string)
-	}
 	if entry.Table == credentialTableType {
 		entryConfig["token_type"] = entry.Config.TokenType.String()
 	}
@@ -1096,9 +1093,6 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	}
 	if len(apiConfig.AllowedResponseHeaders) > 0 {
 		config.AllowedResponseHeaders = apiConfig.AllowedResponseHeaders
-	}
-	if len(apiConfig.AllowedManagedKeys) > 0 {
-		config.AllowedManagedKeys = apiConfig.AllowedManagedKeys
 	}
 
 	// Create the mount entry
@@ -1509,10 +1503,6 @@ func (b *SystemBackend) handleTuneReadCommon(ctx context.Context, path string) (
 		resp.Data["allowed_response_headers"] = rawVal.([]string)
 	}
 
-	if rawVal, ok := mountEntry.synthesizedConfigCache.Load("allowed_managed_keys"); ok {
-		resp.Data["allowed_managed_keys"] = rawVal.([]string)
-	}
-
 	if mountEntry.Config.UserLockoutConfig != nil {
 		resp.Data["user_lockout_counter_reset_duration"] = int64(mountEntry.Config.UserLockoutConfig.LockoutCounterReset.Seconds())
 		resp.Data["user_lockout_threshold"] = mountEntry.Config.UserLockoutConfig.LockoutThreshold
@@ -1810,10 +1800,6 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		defer rollback(&mountEntry.Config.AllowedResponseHeaders, rawVal.([]string), &success)()
 	}
 
-	if rawVal, ok := data.GetOk("allowed_managed_keys"); ok {
-		defer rollback(&mountEntry.Config.AllowedManagedKeys, rawVal.([]string), &success)()
-	}
-
 	var kvUpgrade bool
 	var meVersion, optVersion int64
 	if optionsRaw, ok := data.GetOk("options"); ok {
@@ -1837,8 +1823,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 
 				// Only accept valid versions
 				switch optVersion {
-				case 1:
-				case 2:
+				case 1, 2:
 				default:
 					return logical.ErrorResponse("invalid version provided: %d", optVersion), logical.ErrInvalidRequest
 				}
@@ -2165,7 +2150,6 @@ func expandStringValsWithCommas(configMap map[string]interface{}) error {
 		"audit_non_hmac_response_keys",
 		"passthrough_request_headers",
 		"allowed_response_headers",
-		"allowed_managed_keys",
 	}
 	for _, paramName := range configParamNameSlice {
 		if raw, ok := configMap[paramName]; ok {
@@ -2313,9 +2297,6 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	}
 	if len(apiConfig.AllowedResponseHeaders) > 0 {
 		config.AllowedResponseHeaders = apiConfig.AllowedResponseHeaders
-	}
-	if len(apiConfig.AllowedManagedKeys) > 0 {
-		config.AllowedManagedKeys = apiConfig.AllowedManagedKeys
 	}
 
 	// Create the mount entry

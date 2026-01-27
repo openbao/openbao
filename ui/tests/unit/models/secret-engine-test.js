@@ -64,7 +64,6 @@ module('Unit | Model | secret-engine', function (hooks) {
         'accessor',
         'config.defaultLeaseTtl',
         'config.maxLeaseTtl',
-        'config.allowedManagedKeys',
         'config.auditNonHmacRequestKeys',
         'config.auditNonHmacResponseKeys',
         'config.passthroughRequestHeaders',
@@ -85,7 +84,6 @@ module('Unit | Model | secret-engine', function (hooks) {
         'accessor',
         'config.defaultLeaseTtl',
         'config.maxLeaseTtl',
-        'config.allowedManagedKeys',
         'config.auditNonHmacRequestKeys',
         'config.auditNonHmacResponseKeys',
         'config.passthroughRequestHeaders',
@@ -108,7 +106,6 @@ module('Unit | Model | secret-engine', function (hooks) {
         'accessor',
         'config.defaultLeaseTtl',
         'config.maxLeaseTtl',
-        'config.allowedManagedKeys',
         'config.auditNonHmacRequestKeys',
         'config.auditNonHmacResponseKeys',
         'config.passthroughRequestHeaders',
@@ -131,7 +128,6 @@ module('Unit | Model | secret-engine', function (hooks) {
         'path',
         'description',
         'accessor',
-        'config.allowedManagedKeys',
         'config.auditNonHmacRequestKeys',
         'config.auditNonHmacResponseKeys',
         'config.passthroughRequestHeaders',
@@ -155,7 +151,6 @@ module('Unit | Model | secret-engine', function (hooks) {
             'config.listingVisibility',
             'config.defaultLeaseTtl',
             'config.maxLeaseTtl',
-            'config.allowedManagedKeys',
             'config.auditNonHmacRequestKeys',
             'config.auditNonHmacResponseKeys',
             'config.passthroughRequestHeaders',
@@ -179,7 +174,6 @@ module('Unit | Model | secret-engine', function (hooks) {
             'config.listingVisibility',
             'config.defaultLeaseTtl',
             'config.maxLeaseTtl',
-            'config.allowedManagedKeys',
             'config.auditNonHmacRequestKeys',
             'config.auditNonHmacResponseKeys',
             'config.passthroughRequestHeaders',
@@ -204,7 +198,6 @@ module('Unit | Model | secret-engine', function (hooks) {
             'config.listingVisibility',
             'config.defaultLeaseTtl',
             'config.maxLeaseTtl',
-            'config.allowedManagedKeys',
             'config.auditNonHmacRequestKeys',
             'config.auditNonHmacResponseKeys',
             'config.passthroughRequestHeaders',
@@ -226,7 +219,6 @@ module('Unit | Model | secret-engine', function (hooks) {
           'Method Options': [
             'description',
             'config.listingVisibility',
-            'config.allowedManagedKeys',
             'config.auditNonHmacRequestKeys',
             'config.auditNonHmacResponseKeys',
             'config.passthroughRequestHeaders',
@@ -243,7 +235,7 @@ module('Unit | Model | secret-engine', function (hooks) {
       });
 
       assert.deepEqual(model.get('formFieldGroups'), [
-        { default: ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl', 'config.allowedManagedKeys'] },
+        { default: ['path', 'config.defaultLeaseTtl', 'config.maxLeaseTtl'] },
         {
           'Method Options': [
             'description',
@@ -269,7 +261,6 @@ module('Unit | Model | secret-engine', function (hooks) {
           'Method Options': [
             'description',
             'config.listingVisibility',
-            'config.allowedManagedKeys',
             'config.auditNonHmacRequestKeys',
             'config.auditNonHmacResponseKeys',
             'config.passthroughRequestHeaders',

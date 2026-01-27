@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	backoff "github.com/cenkalti/backoff/v4"
+	backoff "github.com/cenkalti/backoff/v5"
 	"github.com/gocql/gocql"
 	"github.com/openbao/openbao/helper/testhelpers/cassandra"
 	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
@@ -247,17 +247,19 @@ func TestDeleteUser(t *testing.T) {
 
 func assertCreds(t testing.TB, address string, port int, username, password string, sslOpts *gocql.SslOptions, timeout time.Duration) {
 	t.Helper()
-	op := func() error {
-		return connect(t, address, port, username, password, sslOpts)
-	}
+
+	op := backoff.Operation[any](func() (any, error) {
+		return nil, connect(t, address, port, username, password, sslOpts)
+	})
+
 	bo := backoff.NewExponentialBackOff()
-	bo.MaxElapsedTime = timeout
-	bo.InitialInterval = 500 * time.Millisecond
 	bo.MaxInterval = bo.InitialInterval
 	bo.RandomizationFactor = 0.0
 
-	err := backoff.Retry(op, bo)
-	if err != nil {
+	if _, err := backoff.Retry(t.Context(), op,
+		backoff.WithBackOff(bo),
+		backoff.WithMaxElapsedTime(timeout),
+	); err != nil {
 		t.Fatalf("failed to connect after %s: %s", timeout, err)
 	}
 }
@@ -284,22 +286,20 @@ func connect(t testing.TB, address string, port int, username, password string, 
 func assertNoCreds(t testing.TB, address string, port int, username, password string, sslOpts *gocql.SslOptions, timeout time.Duration) {
 	t.Helper()
 
-	op := func() error {
+	op := func() (none struct{}, err error) {
 		// "Invert" the error so the backoff logic sees a failure to connect as a success
-		err := connect(t, address, port, username, password, sslOpts)
-		if err != nil {
-			return nil
-		}
-		return nil
+		_ = connect(t, address, port, username, password, sslOpts)
+		return none, nil
 	}
+
 	bo := backoff.NewExponentialBackOff()
-	bo.MaxElapsedTime = timeout
-	bo.InitialInterval = 500 * time.Millisecond
 	bo.MaxInterval = bo.InitialInterval
 	bo.RandomizationFactor = 0.0
 
-	err := backoff.Retry(op, bo)
-	if err != nil {
+	if _, err := backoff.Retry(t.Context(), op,
+		backoff.WithBackOff(bo),
+		backoff.WithMaxElapsedTime(timeout),
+	); err != nil {
 		t.Fatalf("successfully connected after %s when it shouldn't", timeout)
 	}
 }

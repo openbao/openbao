@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v5"
 	"github.com/containerd/errdefs"
 	"github.com/hashicorp/go-uuid"
 	"github.com/moby/go-archive"
@@ -288,33 +288,32 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 		}
 	}
 
-	bo := backoff.NewExponentialBackOff()
-	bo.MaxInterval = time.Second * 5
-	bo.MaxElapsedTime = 2 * time.Minute
-
 	pieces := strings.Split(result.Addrs[0], ":")
 	portInt, err := strconv.Atoi(pieces[1])
 	if err != nil {
 		return nil, "", err
 	}
 
-	var config ServiceConfig
-	err = backoff.Retry(func() error {
+	bo := backoff.NewExponentialBackOff()
+	bo.MaxInterval = time.Second * 5
+
+	op := func() (ServiceConfig, error) {
 		container, err := d.DockerAPI.ContainerInspect(ctx, result.Container.ID, client.ContainerInspectOptions{})
 		if err != nil || !container.Container.State.Running {
-			return backoff.Permanent(fmt.Errorf("failed inspect or container %q not running: %w", result.Container.ID, err))
+			return nil, backoff.Permanent(fmt.Errorf("failed inspect or container %q not running: %w", result.Container.ID, err))
 		}
 
 		c, err := connect(ctx, pieces[0], portInt)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if c == nil {
-			return errors.New("service adapter returned nil error and config")
+			return nil, errors.New("service adapter returned nil error and config")
 		}
-		config = c
-		return nil
-	}, bo)
+		return c, nil
+	}
+
+	config, err := backoff.Retry(ctx, op, backoff.WithBackOff(bo), backoff.WithMaxElapsedTime(2*time.Minute))
 	if err != nil {
 		if !d.RunOptions.DoNotAutoRemove {
 			cleanup()

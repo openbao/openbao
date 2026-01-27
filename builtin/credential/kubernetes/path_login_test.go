@@ -224,10 +224,12 @@ func jwtSign(header string, payload string, privateKey *ecdsa.PrivateKey) string
 	if err != nil {
 		panic(err)
 	}
-	rBytes := r.Bytes()
-	sBytes := s.Bytes()
-	rBytes = append(rBytes, sBytes...)
-	sig64 := strings.ReplaceAll(base64.URLEncoding.EncodeToString(rBytes), "=", "")
+	curveKeyLenBytes := (privateKey.Curve.Params().BitSize + 7) / 8 // rounding up for P521
+	sig := make([]byte, 2*curveKeyLenBytes)
+	r.FillBytes(sig[:curveKeyLenBytes])
+	s.FillBytes(sig[curveKeyLenBytes:])
+
+	sig64 := strings.ReplaceAll(base64.URLEncoding.EncodeToString(sig), "=", "")
 	return toSign + "." + sig64
 }
 

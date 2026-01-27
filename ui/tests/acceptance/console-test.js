@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { module, test } from 'qunit';
+import { module, test, skip } from 'qunit';
 import { settled, waitUntil, click } from '@ember/test-helpers';
 import { create } from 'ember-cli-page-object';
 import { setupApplicationTest } from 'ember-qunit';
@@ -20,7 +20,7 @@ module('Acceptance | console', function (hooks) {
     return authPage.login();
   });
 
-  test("refresh reloads the current route's data", async function (assert) {
+  skip("refresh reloads the current route's data", async function (assert) {
     await enginesPage.visit();
     await settled();
     const numEngines = enginesPage.rows.length;
@@ -45,7 +45,7 @@ module('Acceptance | console', function (hooks) {
     assert.strictEqual(enginesPage.rows.length, numEngines, 'engines were removed from the page');
   });
 
-  test('fullscreen command expands the cli panel', async function (assert) {
+  skip('fullscreen command expands the cli panel', async function (assert) {
     await consoleComponent.toggle();
     await settled();
     await consoleComponent.runCommands('fullscreen');

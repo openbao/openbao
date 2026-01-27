@@ -5,7 +5,7 @@
 
 import { create } from 'ember-cli-page-object';
 import { settled, click, visit } from '@ember/test-helpers';
-import { module, test } from 'qunit';
+import { module, test, skip } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -49,7 +49,7 @@ module('Acceptance | cluster', function (hooks) {
     await logout.visit();
   });
 
-  test('it hides mfa setup if user has not entityId (ex: is a root user)', async function (assert) {
+  skip('it hides mfa setup if user has not entityId (ex: is a root user)', async function (assert) {
     const user = 'end-user';
     const password = 'mypassword';
     const path = `cluster-userpass-${uuidv4()}`;

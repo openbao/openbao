@@ -4,6 +4,7 @@
 package http
 
 import (
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -585,5 +586,37 @@ func getConnection(r *http.Request) (connection *logical.Connection) {
 		RemotePort: remotePort,
 		ConnState:  r.TLS,
 	}
+
+	if r.TLS != nil {
+		connection.PeerCertificates = r.TLS.PeerCertificates
+	}
+
+	connection.ProxiedCertificates = handleForwardedCertHeaders(r)
+
 	return connection
+}
+
+// handleForwardedCertHeaders handles proxied/forwarded client certificates
+// from TLS terminated by an earlier reverse proxy.
+func handleForwardedCertHeaders(req *http.Request) []*x509.Certificate {
+	// We know we only set a single value.
+	headerValue := req.Header.Get(ProcessedForwardedClientCertHeader)
+	if len(headerValue) == 0 {
+		return nil
+	}
+
+	// Subsequent errors in this function should not occur:
+	// wrapClientCertificateHandler has previously validated this exact
+	// flow.
+	certDER, err := base64.StdEncoding.DecodeString(headerValue)
+	if err != nil {
+		return nil
+	}
+
+	x509ClientCert, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		return nil
+	}
+
+	return []*x509.Certificate{x509ClientCert}
 }

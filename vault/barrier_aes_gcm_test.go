@@ -673,14 +673,18 @@ func TestAESGCMBarrier_Prefix_MissingRotateConfig(t *testing.T) {
 
 	// Initialize and unseal
 	key, _ := b.GenerateKey(rand.Reader)
-	b.Initialize(context.Background(), key, nil, rand.Reader)
-	b.Unseal(context.Background(), key)
+	err = b.Initialize(context.Background(), key, nil, rand.Reader)
+	require.NoError(t, err)
+	err = b.Unseal(context.Background(), key)
+	require.NoError(t, err)
 
 	// Write a keyring which lacks rotation config settings
 	oldKeyring := b.keyring.Clone()
 	oldKeyring.rotationConfig = KeyRotationConfig{}
-	b.persistKeyring(context.Background(), oldKeyring)
-	b.ReloadKeyring(context.Background())
+	err = b.persistKeyring(context.Background(), oldKeyring)
+	require.NoError(t, err)
+	err = b.ReloadKeyring(context.Background())
+	require.NoError(t, err)
 
 	// At this point, the rotation config should match the default
 	if !defaultRotationConfig.Equals(b.keyring.rotationConfig) {

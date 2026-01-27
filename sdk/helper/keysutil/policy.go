@@ -446,6 +446,10 @@ type Policy struct {
 
 	// Whether the key has been soft deleted.
 	SoftDeleted bool `json:"soft_deleted"`
+
+	// CustomMetadata is a map of string key-value pairs used to store
+	// user-provided information about the secret.
+	CustomMetadata map[string]string `json:"custom_metadata"`
 }
 
 func (p *Policy) Lock(exclusive bool) {

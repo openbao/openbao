@@ -62,6 +62,10 @@ type PolicyRequest struct {
 
 	// The UUID of the managed key, if using one
 	ManagedKeyUUID string
+
+	// CustomMetadata is a map of string key-value pairs used to store
+	// user-provided information about the key.
+	CustomMetadata map[string]string
 }
 
 type LockManager struct {
@@ -391,6 +395,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 			AllowPlaintextBackup: req.AllowPlaintextBackup,
 			AutoRotatePeriod:     req.AutoRotatePeriod,
 			KeySize:              req.KeySize,
+			CustomMetadata:       req.CustomMetadata,
 		}
 
 		if req.Derived {

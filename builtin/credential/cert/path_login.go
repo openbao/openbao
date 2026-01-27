@@ -310,7 +310,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 	// If no trusted chain was found, client is not authenticated
 	// This check happens after checking for a matching configured non-CA certs
 	if len(trustedChains) == 0 {
-		if retErr == nil {
+		if retErr != nil {
 			return nil, logical.ErrorResponse("invalid certificate or no client certificate supplied; additionally got errors during verification: %v", retErr), nil
 		}
 		return nil, logical.ErrorResponse("invalid certificate or no client certificate supplied"), nil

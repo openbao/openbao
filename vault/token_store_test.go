@@ -861,6 +861,96 @@ func TestTokenStore_HandleRequest_LookupAccessor(t *testing.T) {
 	}
 }
 
+func TestTokenStore_HandleRequest_ApproveAccessor(t *testing.T) {
+	c, _, root := TestCoreUnsealed(t)
+	ts := c.tokenStore
+	ctx := namespace.RootContext(context.Background())
+
+	testMakeServiceTokenViaBackend(t, ts, root, "tokenid", "60s", []string{"foo"})
+	out, err := ts.Lookup(ctx, "tokenid")
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	if out == nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	// if token has no control group, expect no error
+	req := logical.TestRequest(t, logical.UpdateOperation, "approve-accessor")
+	req.Data = map[string]interface{}{
+		"accessor": out.Accessor,
+	}
+	req.Auth = &logical.Auth{}
+
+	resp, err := ts.HandleRequest(ctx, req)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	if resp.Data == nil {
+		t.Fatal("response should contain data")
+	}
+
+	if resp.Data["accessor"].(string) == "" {
+		t.Fatal("accessor should not be empty")
+	}
+
+	// if token has control group, expect change to meta data
+	cg := logical.ControlGroup{
+		TTL: time.Duration(14440),
+		Factors: []logical.ControlGroupFactor{
+			{
+				Name: "test-secops",
+				Identity: logical.ControlGroupIdentity{
+					GroupNames: []string{"secops"},
+					Approvals:  2,
+				},
+			},
+			{
+				Name: "test-admin",
+				Identity: logical.ControlGroupIdentity{
+					GroupNames: []string{"admin"},
+					Approvals:  2,
+				},
+			},
+			{
+				Name: "test-both",
+				Identity: logical.ControlGroupIdentity{
+					GroupNames: []string{"admin", "secops"},
+					Approvals:  2,
+				},
+			},
+		},
+	}
+
+	// Set control group meta info on token
+	err = c.setControlGroup(ctx, "tokenid", &cg)
+	require.Nil(t, err)
+
+	// addAuthorzation
+	var groups []*logical.Alias
+	groups = append(groups, &logical.Alias{
+		Name: "secops",
+	})
+	req.Auth = &logical.Auth{
+		GroupAliases: groups,
+	}
+	resp, err = ts.HandleRequest(ctx, req)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	require.NotEmpty(t, resp)
+
+	// Token entry should now have the authorization
+	cgFetched, err := c.getControlGroup(ctx, "tokenid")
+	require.Nil(t, err)
+
+	// expect all matching factors to receive an authorization
+	require.NotEmpty(t, cgFetched)
+	require.Len(t, cgFetched.Factors[0].Authorizations, 1)
+	require.Len(t, cgFetched.Factors[1].Authorizations, 0)
+	require.Len(t, cgFetched.Factors[2].Authorizations, 1)
+}
+
 func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
 	ts := c.tokenStore

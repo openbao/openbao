@@ -127,6 +127,22 @@ path "test/metadata/*" {
 	capabilities = ["list"]
 	list_scan_response_keys_filter_path = "test/metadata/{{ .key }}"
 }
+path "test/control_group" {
+	capabilities = ["create", "list"]
+	control_group = {
+		ttl = "48m"
+		factors = [
+			{
+				name = "admin-approval"
+				controlled_capabilities = ["create"]
+				identity = {
+					group_names = ["admin"]
+					approvals = 1
+				}
+			}
+		]
+	}
+}
 `)
 
 func TestPolicy_Parse(t *testing.T) {
@@ -167,6 +183,7 @@ func validatePolicy(t *testing.T, p *Policy) {
 		t.Fatalf("bad name: %q", p.Name)
 	}
 
+	controlGroupTTL, _ := time.ParseDuration("48m")
 	expect := []*PathRules{
 		{
 			Path:   "",
@@ -409,6 +426,26 @@ func validatePolicy(t *testing.T, p *Policy) {
 			},
 			ResponseKeysFilterPathHCL: "test/metadata/{{ .key }}",
 			IsPrefix:                  true,
+		},
+		{
+			Path:         "test/control_group",
+			Capabilities: []string{"create", "list"},
+			Permissions: &ACLPermissions{
+				CapabilitiesBitmap: (CreateCapabilityInt | ListCapabilityInt),
+			},
+			ControlGroup: &ControlGroup{
+				TTL: controlGroupTTL,
+				Factors: []ControlGroupFactor{
+					{
+						Name:                   "admin-approval",
+						ControlledCapabilities: []string{"create"},
+						Identity: ControlGroupIdentity{
+							GroupNames: []string{"admin"},
+							Approvals:  1,
+						},
+					},
+				},
+			},
 		},
 	}
 

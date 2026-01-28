@@ -554,13 +554,16 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		return auth, acl, te, entity, retErr
 	}
 
-	if authResults.ACLResults != nil && len(authResults.ACLResults.GrantingPolicies) > 0 {
-		auth.PolicyResults.GrantingPolicies = authResults.ACLResults.GrantingPolicies
+	if authResults.ACLResults != nil {
+		if len(authResults.ACLResults.GrantingPolicies) > 0 {
+			auth.PolicyResults.GrantingPolicies = authResults.ACLResults.GrantingPolicies
+		}
+		// Create logical.ControlGroup for PolicyResults
+		auth.PolicyResults.ControlGroup = makeLogicalControlGroup(authResults.ACLResults.ControlGroup)
 	}
 	if authResults.SentinelResults != nil && len(authResults.SentinelResults.GrantingPolicies) > 0 {
 		auth.PolicyResults.GrantingPolicies = append(auth.PolicyResults.GrantingPolicies, authResults.SentinelResults.GrantingPolicies...)
 	}
-
 	return auth, acl, te, entity, nil
 }
 
@@ -1009,7 +1012,23 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		resp.WrapInfo.Token == ""
 
 	if wrapping {
-		cubbyResp, cubbyErr := c.wrapInCubbyhole(ctx, req, resp, auth)
+
+		extraData := map[string]string{}
+		// For controlgroup, store the original request and control group details with the cubbyhole data
+		if auth.PolicyResults != nil && auth.PolicyResults.ControlGroup != nil {
+			reqJson, err := jsonutil.EncodeJSON(req)
+			if err != nil {
+				return resp, err
+			}
+			extraData["request"] = string(reqJson)
+			cgJson, err := jsonutil.EncodeJSON(auth.PolicyResults.ControlGroup)
+			if err != nil {
+				return resp, err
+			}
+			extraData["control_group"] = string(cgJson)
+		}
+
+		cubbyResp, cubbyErr := c.wrapInCubbyhole(ctx, req, resp, auth, extraData)
 		// If not successful, returns either an error response from the
 		// cubbyhole backend or an error; if either is set, set resp and err to
 		// those and continue so that that's what we audit log. Otherwise
@@ -1024,6 +1043,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			}
 			resp = wrappingResp
 		}
+
 	}
 
 	auditResp := resp
@@ -1259,6 +1279,14 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 			// the request format
 			if req.WrapInfo.Format != "" && wrapFormat == "" {
 				wrapFormat = req.WrapInfo.Format
+			}
+		}
+
+		// Set wrapTTL from ControlGroup.TTL if present
+		if auth.PolicyResults != nil && auth.PolicyResults.ControlGroup != nil {
+			cgTTL := auth.PolicyResults.ControlGroup.TTL
+			if cgTTL > 0 {
+				wrapTTL = cgTTL
 			}
 		}
 

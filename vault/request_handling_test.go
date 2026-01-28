@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -25,7 +26,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 	core.logicalBackends["kv"] = PassthroughBackendFactory
 
 	meUUID, _ := uuid.GenerateUUID()
-	err := core.mount(namespace.RootContext(nil), &MountEntry{
+	err := core.mount(namespace.RootContext(context.Background()), &MountEntry{
 		Table: mountTableType,
 		UUID:  meUUID,
 		Path:  "wraptest",
@@ -44,7 +45,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 			"zip": "zap",
 		},
 	}
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -60,7 +61,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 			TTL: time.Duration(15 * time.Second),
 		},
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -72,10 +73,128 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 	}
 }
 
+func TestRequestHandling_ControlGroupWrapping(t *testing.T) {
+	core, _, root := TestCoreUnsealed(t)
+
+	core.logicalBackends["kv"] = PassthroughBackendFactory
+
+	meUUID, _ := uuid.GenerateUUID()
+	err := core.mount(namespace.RootContext(context.Background()), &MountEntry{
+		Table: mountTableType,
+		UUID:  meUUID,
+		Path:  "cg_test",
+		Type:  "kv",
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	// Create a secret
+	req := &logical.Request{
+		Path:        "cg_test/foo",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"zip": "zap",
+		},
+	}
+	resp, err := core.HandleRequest(namespace.RootContext(context.Background()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	// Create a ControlGroup policy governing secret path
+	cgPolicy := `path "cg_test/foo" {
+		capabilities = ["create", "list", "read"]
+		control_group = {
+			ttl = "15s"
+			factors = [
+				{
+					name = "admin-approval"
+					controlled_capabilities = ["read"]
+					identity = {
+						group_names = ["admin"]
+						approvals = 1
+					}
+				}
+			]
+		}
+	}
+	`
+	req = &logical.Request{
+		Path:        "sys/policies/acl/cg_test",
+		Operation:   logical.UpdateOperation,
+		ClientToken: root,
+		Data:        map[string]interface{}{"policy": cgPolicy},
+	}
+	_, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
+	require.NoError(t, err)
+
+	// Assign policy to a token
+	req = &logical.Request{
+		Path:        "auth/token/create",
+		ClientToken: root,
+		Operation:   logical.CreateOperation,
+		Data: map[string]interface{}{
+			"policies": []string{"cg_test"},
+			"ttl":      "5m",
+		},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
+	require.NoError(t, err)
+	nonRootToken := resp.Auth.ClientToken
+
+	// Request protected resource
+	req = &logical.Request{
+		Path:        "cg_test/foo",
+		ClientToken: nonRootToken,
+		Operation:   logical.ReadOperation,
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+
+	// Expect it to be wrapped
+	if resp.WrapInfo == nil || resp.WrapInfo.TTL != time.Duration(15*time.Second) {
+		t.Fatalf("bad wrap_info: %#v", resp)
+	}
+
+	// Fetch token with accessor
+	accessor := resp.WrapInfo.Accessor
+	req = &logical.Request{
+		Path:        "auth/token/lookup-accessor",
+		ClientToken: root,
+		Operation:   logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"accessor": accessor,
+		},
+	}
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("bad: %v", resp)
+	}
+
+	// Expect metadata
+	meta, ok := resp.Data["meta"].(map[string]string)
+	require.True(t, ok)
+	require.NotEmpty(t, meta["control_group"])
+	require.NotEmpty(t, meta["request"])
+}
+
 func TestRequestHandling_LoginWrapping(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.loadMounts(namespace.RootContext(context.Background())); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -91,7 +210,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		},
 		Connection: &logical.Connection{},
 	}
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -104,7 +223,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		"password": "foo",
 		"policies": "default",
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -120,7 +239,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		},
 		Connection: &logical.Connection{},
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -142,7 +261,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		},
 		Connection: &logical.Connection{},
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -157,7 +276,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.loadMounts(namespace.RootContext(context.Background())); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -173,7 +292,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		},
 		Connection: &logical.Connection{},
 	}
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -186,7 +305,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 	req.Data = map[string]interface{}{
 		"period": "5s",
 	}
-	_, err = core.HandleRequest(namespace.RootContext(nil), req)
+	_, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -195,7 +314,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 	req.Path = "auth/approle/role/role-period/role-id"
 	req.Operation = logical.ReadOperation
 	req.Data = nil
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -208,7 +327,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 	req.Path = "auth/approle/role/role-period/secret-id"
 	req.Operation = logical.UpdateOperation
 	req.Data = nil
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -227,7 +346,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		},
 		Connection: &logical.Connection{},
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -248,7 +367,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		},
 		Connection: &logical.Connection{},
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -354,7 +473,7 @@ func checkCounter(t *testing.T, inmemSink *metrics.InmemSink, keyPrefix string, 
 func TestRequestHandling_LoginMetric(t *testing.T) {
 	core, _, root, sink := TestCoreUnsealedWithMetrics(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.loadMounts(namespace.RootContext(context.Background())); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -370,7 +489,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 		},
 		Connection: &logical.Connection{},
 	}
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -384,7 +503,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 		"password": "foo",
 		"policies": "default",
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -404,7 +523,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 		},
 		Connection: &logical.Connection{},
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -442,7 +561,7 @@ func TestRequestHandling_SecretLeaseMetric(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "secret/foo")
 	req.Data["foo"] = "bar"
 	req.ClientToken = root
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -453,11 +572,11 @@ func TestRequestHandling_SecretLeaseMetric(t *testing.T) {
 	// Read a key with a LeaseID
 	req = logical.TestRequest(t, logical.ReadOperation, "secret/foo")
 	req.ClientToken = root
-	err = core.PopulateTokenEntry(namespace.RootContext(nil), req)
+	err = core.PopulateTokenEntry(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -483,7 +602,7 @@ func TestRequestHandling_ListFiltering(t *testing.T) {
 
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.loadMounts(namespace.RootContext(context.Background())); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -502,7 +621,7 @@ func TestRequestHandling_ListFiltering(t *testing.T) {
 		},
 	}
 
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(namespace.RootContext(context.Background()), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -612,7 +731,7 @@ path "secret/metadata/by-metadata/subdir/both" {
 `,
 	}
 
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
@@ -622,12 +741,12 @@ path "secret/metadata/by-metadata/subdir/both" {
 		"token_policies": "list-filtered",
 	}
 
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 	require.NoError(t, err)
 	require.False(t, resp.IsError())
 
 	req.Path = "auth/userpass/login/filtered"
-	tokenResp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	tokenResp, err := core.HandleRequest(namespace.RootContext(context.Background()), req)
 	require.NoError(t, err)
 	require.NotNil(t, tokenResp)
 	require.False(t, tokenResp.IsError())
@@ -642,7 +761,7 @@ path "secret/metadata/by-metadata/subdir/both" {
 				},
 			}
 
-			resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+			resp, err = core.HandleRequest(namespace.RootContext(context.Background()), req)
 			require.NoError(t, err)
 			require.False(t, resp.IsError())
 		}
@@ -686,7 +805,7 @@ path "secret/metadata/by-metadata/subdir/both" {
 				req.Data = nil
 				req.Path = fmt.Sprintf("secret/%v/%v/", listType, prefix)
 
-				resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+				resp, err := core.HandleRequest(namespace.RootContext(context.Background()), req)
 				require.NoError(t, err, "[%v] path: %v", req.Operation, req.Path)
 				require.NotNil(t, resp, "[%v] path: %v", req.Operation, req.Path)
 				require.False(t, resp.IsError())

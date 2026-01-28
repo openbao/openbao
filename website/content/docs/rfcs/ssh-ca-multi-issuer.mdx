@@ -12,7 +12,7 @@ OpenBao’s SSH engine is limited to one Certificate Authority (CA) issuer per m
 
 ### Problem Statement
 
-OpenBao’s current SSH engine design imposes limitations by allowing only one Certificate Authority (CA) issuer per mount. This restriction complicates the key rotation process, an important feature for security and operational continuity. To perform key rotation, new SSH mounts must be created, which necessitates duplicating all existing configurations (roles, ACLs, etc.) and updating all references to the new mounts or swapping the old and the new mount points via [two move operations](https://openbao.org/api-docs/system/remount/). This is not only time-consuming but prone to misconfigurations and errors.
+OpenBao’s current SSH engine design imposes limitations by allowing only one Certificate Authority (CA) issuer per mount. This restriction complicates the key rotation process, an important feature for security and operational continuity. To perform key rotation, new SSH mounts must be created, which necessitates duplicating all existing configurations (roles, ACLs, etc.) and updating all references to the new mounts or swapping the old and the new mount points via [two move operations](/api-docs/system/remount/). This is not only time-consuming but prone to misconfigurations and errors.
 
 While an alternative approach–deleting and recreating the CA issuer within an existing mount–can be used, it introduces significant risks. During the gap between deleting the old key and creating a new one, any requests for issuing access certificates fail. If the import or generation of a new CA issuer fails, this leads to service disruption. Even if the new key is created quickly, it lacks trust, as it is a fresh random key that cannot be cross-signed like in PKI. The key distribution process to all hosts is not instantaneous, leaving a window where authentication requests will fail.
 
@@ -42,11 +42,11 @@ To allow a pre-submitted CA to be used once this feature is released, the values
 **Endpoints**
 
 With this new "system", the existing endpoints to configure a CA cannot exist anymore in their current form so have to be updated. The following details which endpoints will be updated and how:
-- [Create/Update Role](https://openbao.org/api-docs/secret/ssh/#createupdate-role) (`POST ssh/roles/:name`): A new parameter `issuer_ref` added so operations performed through the role use the selected CA’s key material. If not set, `default` will be assumed. The CA can be referenced by name or ID.
-- [Delete CA Information](https://openbao.org/api-docs/secret/ssh/#delete-ca-information) (`DELETE ssh/config/ca`): Removes all pre-submitted/generated issuers, including the one referenced as `default`.
-- [Submit CA Information](https://openbao.org/api-docs/secret/ssh/#submit-ca-information) (`POST ssh/config/ca`): Creates a new CA’s configuration and set it as ‘default’. If another key is selected as ‘default’, it will be replaced.
-- [Read public key (Authenticated)](https://openbao.org/api-docs/secret/ssh/#read-public-key-authenticated) (`GET /ssh/config/ca`): Returns the `default` issuer's unique identifier, public_key and optional name. If a default isn't configured, a `400` response is returned.
-- [Read public key (Unauthenticated)](https://openbao.org/api-docs/secret/ssh/#read-public-key-unauthenticated) (`GET /ssh/public_key`) - Returns the `default` issuer's configured/generated public key in plain text.
+- [Create/Update Role](/api-docs/secret/ssh/#createupdate-role) (`POST ssh/roles/:name`): A new parameter `issuer_ref` added so operations performed through the role use the selected CA’s key material. If not set, `default` will be assumed. The CA can be referenced by name or ID.
+- [Delete CA Information](/api-docs/secret/ssh/#delete-ca-information) (`DELETE ssh/config/ca`): Removes all pre-submitted/generated issuers, including the one referenced as `default`.
+- [Submit CA Information](/api-docs/secret/ssh/#submit-ca-information) (`POST ssh/config/ca`): Creates a new CA’s configuration and set it as ‘default’. If another key is selected as ‘default’, it will be replaced.
+- [Read public key (Authenticated)](/api-docs/secret/ssh/#read-public-key-authenticated) (`GET /ssh/config/ca`): Returns the `default` issuer's unique identifier, public_key and optional name. If a default isn't configured, a `400` response is returned.
+- [Read public key (Unauthenticated)](/api-docs/secret/ssh/#read-public-key-unauthenticated) (`GET /ssh/public_key`) - Returns the `default` issuer's configured/generated public key in plain text.
 
 The following added:
 
@@ -54,8 +54,8 @@ The following added:
 - Read Default CA Configuration (`GET /ssh/config/issuers`): Returns the 'default' issuer, if configured.
 - List CA (`LIST /ssh/issuers`): This endpoint returns a list of all issuers in the mount, including their name and UUID.
 - Update CA (`POST /ssh/issuer/:issuer_ref`): This endpoint accepts an additional `issuer_ref` parameter to modify the CA name reference.
-- Read CA (`GET /ssh/issuer/:issuer_ref`): This is an extension of the existing ‘[Read Public Key (Authenticated)](https://openbao.org/api-docs/secret/ssh/#read-public-key-authenticated)’ endpoint but accepts the name of the CA from which the name, identifier and public key will be returned. If no `issuer_ref` is provided, the default CA is returned.
-- Read CA public key (`GET /ssh/issuer/:issuer_ref/public_key`): This is an extension of the existing ‘[Read public key (Unauthenticated)](https://openbao.org/api-docs/secret/ssh/#read-public-key-unauthenticated)’ endpoint but expects a reference of the CA from which public key, in plain text, will be returned.
+- Read CA (`GET /ssh/issuer/:issuer_ref`): This is an extension of the existing ‘[Read Public Key (Authenticated)](/api-docs/secret/ssh/#read-public-key-authenticated)’ endpoint but accepts the name of the CA from which the name, identifier and public key will be returned. If no `issuer_ref` is provided, the default CA is returned.
+- Read CA public key (`GET /ssh/issuer/:issuer_ref/public_key`): This is an extension of the existing ‘[Read public key (Unauthenticated)](/api-docs/secret/ssh/#read-public-key-unauthenticated)’ endpoint but expects a reference of the CA from which public key, in plain text, will be returned.
 - Delete CA (`DELETE ssh/issuer/:issuer_ref`): Given an `issuer_ref`, either CA’s name or ID, deletes a CA’s configuration. A warning will be issued if it’s set as default and referenced by a role.
 - Submit CA with Name (`POST /ssh/issuers/import/:issuer_name`): This is an extension of the ‘Submit CA Information’ endpoint but accepts an optional `issuer_name` parameter so the CA information has a name reference.
 

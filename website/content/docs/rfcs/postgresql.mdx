@@ -35,7 +35,7 @@ an understanding of the different environments OpenBao might run in:
     not granted _migration_ rights?
  5. How does OpenBao interact with a replicated PostgreSQL cluster or database
     proxies such as PgBouncer, especially in a future with [horizontal
-    scalability](https://openbao.org/blog/vision-for-namespaces/)?
+    scalability](/blog/vision-for-namespaces/)?
 
 Some of these are dependent on understanding the environment OpenBao is
 running in and the expected workloads attached to it. For this, we seek to
@@ -225,7 +225,7 @@ enforce a new minimum. Whether this will have `ha_enabled=true` by
 default will be up for discussion then.
 
 We should document that we do not intend to add the PostgreSQL
-equivalent of the [`sys/storage/raft/snapshot`](https://openbao.org/api-docs/system/storage/raft/#take-a-snapshot-of-the-raft-cluster)
+equivalent of the [`sys/storage/raft/snapshot`](/api-docs/system/storage/raft/#take-a-snapshot-of-the-raft-cluster)
 endpoint, and instead should rely on native, database-level [backup andd
 restore procedures](https://www.postgresql.org/docs/current/backup.html).
 This will be possible and durable especially after the remaining work

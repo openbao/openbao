@@ -21,4 +21,4 @@ Throughout the conference, we shared how OpenBao is able to help organizations t
 
 Furthermore, the conference was also a wonderful opportunity for OpenBao maintainers to meet in person, exchange ideas, and align on next steps. A big thank you goes to [**Adfinis**](https://adfinis.com/), [**Paymenttools**](https://www.paymenttools.com/) and [**Reply**](https://www.reply.com/), who supported the project by sending maintainers to represent OpenBao on-site.
 
-And finally, a heartfelt thanks to everyone who stopped by, joined discussions, or offered feedback. Your energy and curiosity keep the project moving forward. To everyone who was not able to join the conference, feel free to learn more at [**openbao.org**](https://openbao.org/docs/contributing/) or join the conversation on [**GitHub**](https://github.com/openbao).
+And finally, a heartfelt thanks to everyone who stopped by, joined discussions, or offered feedback. Your energy and curiosity keep the project moving forward. To everyone who was not able to join the conference, feel free to learn more at [**openbao.org**](/docs/contributing/) or join the conversation on [**GitHub**](https://github.com/openbao).

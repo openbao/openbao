@@ -111,9 +111,9 @@ The CEL expression itself may return one of the following:
 
 ## Rationale and alternatives
 
-Dynamic policy assignment can be implemented using templating for [ACLs](https://openbao.org/api-docs/auth/jwt/#acl-policy-templating-examples), but the expressiveness of CEL is much greater.
+Dynamic policy assignment can be implemented using templating for [ACLs](/api-docs/auth/jwt/#acl-policy-templating-examples), but the expressiveness of CEL is much greater.
 
-Some form CEL or regex evaluation could be added to existing role instead of creating a new type, as with [glob matching](https://openbao.org/api-docs/auth/jwt/#createupdate-role) for `bound_claims`. 
+Some form CEL or regex evaluation could be added to existing role instead of creating a new type, as with [glob matching](/api-docs/auth/jwt/#createupdate-role) for `bound_claims`. 
 
 Alternatively, a web hook approach like [Vault's CIEPS](https://developer.hashicorp.com/vault/docs/secrets/pki/cieps) could be used to achieve similar flexibility. However, the performance implications and system brittleness make this an unattractive alternative.
 

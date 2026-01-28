@@ -336,7 +336,7 @@ func TestRollbackManager_Join(t *testing.T) {
 	errCh := make(chan error, 3)
 	go func() {
 		defer wg.Done()
-		err := m.Rollback(namespace.RootContext(nil), "foo")
+		err := m.Rollback(namespace.RootContext(context.TODO()), "foo")
 		if err != nil {
 			errCh <- err
 		}
@@ -344,7 +344,7 @@ func TestRollbackManager_Join(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		err := m.Rollback(namespace.RootContext(nil), "foo")
+		err := m.Rollback(namespace.RootContext(context.TODO()), "foo")
 		if err != nil {
 			errCh <- err
 		}
@@ -352,7 +352,7 @@ func TestRollbackManager_Join(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		err := m.Rollback(namespace.RootContext(nil), "foo")
+		err := m.Rollback(namespace.RootContext(context.TODO()), "foo")
 		if err != nil {
 			errCh <- err
 		}

@@ -1571,7 +1571,7 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 		}
 
 		// Retry the request
-		resp, err = httpClient.Do(req)
+		_, err = httpClient.Do(req)
 		if err != nil {
 			return result, fmt.Errorf("redirect failed: %s", err)
 		}

@@ -906,7 +906,10 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 
 	if !namespaceToDelete.Tainted {
 		// taint the namespace
-		err = ns.taintNamespace(ctx, namespaceToDelete)
+		err := ns.taintNamespace(ctx, namespaceToDelete)
+		if err != nil {
+			return "", fmt.Errorf("error tainting namespace: %w", err)
+		}
 	}
 
 	parent, err := namespace.FromContext(ctx)

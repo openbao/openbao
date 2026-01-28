@@ -611,7 +611,7 @@ func TestRoles(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		_, err = b.HandleRequest(context.Background(), req)
 		if err == nil {
 			t.Fatal("expected error, got none")
 		}

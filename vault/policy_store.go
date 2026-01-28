@@ -366,11 +366,7 @@ func (ps *PolicyStore) GetNonEGPPolicyType(ctx context.Context, name string) (*P
 
 // getACLView returns the ACL view for the given namespace
 func (ps *PolicyStore) getACLView(ns *namespace.Namespace) BarrierView {
-	if ns.ID == namespace.RootNamespaceID {
-		return ps.core.systemBarrierView.SubView(policyACLSubPath)
-	}
-
-	return ps.core.namespaceMountEntryView(ns, systemBarrierPrefix+policyACLSubPath)
+	return NamespaceView(ps.core.barrier, ns).SubView(systemBarrierPrefix + policyACLSubPath)
 }
 
 // getBarrierView returns the appropriate barrier view for the given namespace and policy type.
@@ -425,10 +421,10 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	}
 
 	// Special case the root policy
-	if policyType == PolicyTypeACL && name == "root" && ns.ID == namespace.RootNamespaceID {
+	if policyType == PolicyTypeACL && name == "root" {
 		p := &Policy{
 			Name:      "root",
-			namespace: namespace.RootNamespace,
+			namespace: ns,
 			Type:      PolicyTypeACL,
 		}
 		if cache != nil {

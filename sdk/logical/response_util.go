@@ -159,25 +159,17 @@ func AdjustErrorStatusCode(status *int, err error) {
 		}
 	}
 
-	// Adjust status code when sealed
-	if errwrap.Contains(err, consts.ErrSealed.Error()) {
-		*status = http.StatusServiceUnavailable
-	}
-
-	if errwrap.Contains(err, consts.ErrAPILocked.Error()) {
-		*status = http.StatusServiceUnavailable
-	}
-
-	// Adjust status code on
-	if errwrap.Contains(err, "http: request body too large") {
-		*status = http.StatusRequestEntityTooLarge
-	}
-
 	// Allow HTTPCoded error passthrough to specify a code
 	var hce HTTPCodedError = &codedError{}
-	if errwrap.ContainsType(err, hce) {
-		t := errwrap.GetType(err, hce)
-		if t != nil {
+	switch {
+	case errwrap.Contains(err, consts.ErrSealed.Error()), errwrap.Contains(err, consts.ErrNamespaceSealed.Error()):
+		*status = http.StatusServiceUnavailable
+	case errwrap.Contains(err, consts.ErrAPILocked.Error()):
+		*status = http.StatusServiceUnavailable
+	case errwrap.Contains(err, "http: request body too large"):
+		*status = http.StatusRequestEntityTooLarge
+	case errwrap.ContainsType(err, hce):
+		if t := errwrap.GetType(err, hce); t != nil {
 			if coded, ok := t.(HTTPCodedError); ok {
 				*status = coded.Code()
 			}

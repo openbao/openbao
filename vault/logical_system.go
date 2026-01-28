@@ -4058,7 +4058,7 @@ func (b *SystemBackend) pathInternalUIResultantACL(ctx context.Context, req *log
 		},
 	}
 
-	if acl.root {
+	if acl.root != nil {
 		resp.Data["root"] = true
 		return resp, nil
 	}

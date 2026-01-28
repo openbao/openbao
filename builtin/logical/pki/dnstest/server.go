@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/moby/moby/client"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/stretchr/testify/require"
@@ -241,7 +242,12 @@ func (ts *TestServer) PushConfig() {
 				return fmt.Errorf("failed to update zone mtime: %w", err)
 			}
 		}
-		ts.runner.DockerAPI.ContainerKill(ts.ctx, ts.startup.Container.ID, "SIGHUP")
+		_, err = ts.runner.DockerAPI.ContainerKill(ts.ctx, ts.startup.Container.ID, client.ContainerKillOptions{
+			Signal: "SIGHUP",
+		})
+		if err != nil {
+			return err
+		}
 
 		// Connect to our bind resolver.
 		resolver := &net.Resolver{

@@ -24,21 +24,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	docker "github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-multierror"
 	uuid "github.com/hashicorp/go-uuid"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	docker "github.com/moby/moby/client"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/stepwise"
 	"golang.org/x/net/http2"
 )
 
 var _ stepwise.Environment = (*DockerCluster)(nil)
-
-const dockerVersion = "1.40"
 
 // DockerCluster is used to managing the lifecycle of the test Vault cluster
 type DockerCluster struct {
@@ -89,11 +86,11 @@ func (dc *DockerCluster) Teardown() error {
 
 	// clean up networks
 	if dc.networkID != "" {
-		cli, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion(dockerVersion))
+		cli, err := docker.New(docker.FromEnv, docker.WithAPIVersion(docker.MinAPIVersion))
 		if err != nil {
 			return multierror.Append(result, err)
 		}
-		if err := cli.NetworkRemove(context.Background(), dc.networkID); err != nil {
+		if _, err := cli.NetworkRemove(context.Background(), dc.networkID, docker.NetworkRemoveOptions{}); err != nil {
 			return multierror.Append(result, err)
 		}
 	}
@@ -522,7 +519,10 @@ func (n *dockerClusterNode) NewAPIClient() (*api.Client, error) {
 func (n *dockerClusterNode) Cleanup() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	return n.dockerAPI.ContainerKill(ctx, n.container.ID, "KILL")
+	_, err := n.dockerAPI.ContainerKill(ctx, n.container.ID, docker.ContainerKillOptions{
+		Signal: "KILL",
+	})
+	return err
 }
 
 func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, netCIDR *dockerClusterNode, pluginBinPath string) error {
@@ -598,11 +598,20 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 				fmt.Sprintf("BAO_REDIRECT_ADDR=https://%s:8200", n.Name()),
 			},
 			Labels:       nil,
-			ExposedPorts: nat.PortSet{"8200/tcp": {}, "8201/tcp": {}},
+			ExposedPorts: make(network.PortSet),
 		},
 		ContainerName: n.Name(),
 		NetName:       netName,
 		CopyFromTo:    copyFromTo,
+	}
+
+	// configure exposed ports
+	for _, p := range []string{"8200/tcp", "8201/tcp"} {
+		port, err := network.ParsePort(p)
+		if err != nil {
+			return err
+		}
+		r.ContainerConfig.ExposedPorts[port] = struct{}{}
 	}
 
 	n.container, err = r.Start(context.Background())
@@ -611,10 +620,14 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 	}
 
 	n.Address = &net.TCPAddr{
-		IP:   net.ParseIP(n.container.NetworkSettings.IPAddress),
+		IP:   n.container.NetworkSettings.Networks[netName].IPAddress.AsSlice(),
 		Port: 8200,
 	}
-	ports := n.container.NetworkSettings.Ports[nat.Port("8200/tcp")]
+	port, err := network.ParsePort("8200/tcp")
+	if err != nil {
+		return err
+	}
+	ports := n.container.NetworkSettings.Ports[port]
 	if len(ports) == 0 {
 		n.Cleanup()
 		return errors.New("could not find port binding for 8200/tcp")
@@ -738,7 +751,7 @@ func (cluster *DockerCluster) setupDockerCluster(opts *DockerClusterOptions) err
 		return err
 	}
 
-	cli, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithVersion(dockerVersion))
+	cli, err := docker.New(docker.FromEnv, docker.WithAPIVersion(docker.MinAPIVersion))
 	if err != nil {
 		return err
 	}
@@ -786,7 +799,7 @@ func setupNetwork(cli *docker.Client, netName string) (string, error) {
 }
 
 func createNetwork(cli *docker.Client, netName string) (string, error) {
-	resp, err := cli.NetworkCreate(context.Background(), netName, network.CreateOptions{
+	resp, err := cli.NetworkCreate(context.Background(), netName, docker.NetworkCreateOptions{
 		Driver:  "bridge",
 		Options: map[string]string{},
 		IPAM: &network.IPAM{

@@ -1,0 +1,3 @@
+```release-note:bug
+core/identity: fix corrupt data being stored when referencing `member_group_ids` across namespaces (requires `unsafe_cross_namespace_identity=true`)
+```

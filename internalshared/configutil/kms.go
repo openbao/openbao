@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/kmip/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2"
+	"github.com/openbao/go-kms-wrapping/wrappers/okms/v2"
 	statickms "github.com/openbao/go-kms-wrapping/wrappers/static/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
@@ -193,6 +194,9 @@ func configureWrapper(configKMS *KMS, infoKeys *[]string, info *map[string]strin
 		}
 		wrapper, kmsInfo, err = GetOCIKMSKMSFunc(configKMS, opts...)
 
+	case wrapping.WrapperTypeOkms:
+		wrapper, kmsInfo, err = GetOkmsFunc(configKMS, opts...)
+
 	case wrapping.WrapperTypeTransit:
 		wrapper, kmsInfo, err = GetTransitKMSFunc(configKMS, opts...)
 
@@ -333,6 +337,22 @@ var GetTransitKMSFunc = func(kms *KMS, opts ...wrapping.Option) (wrapping.Wrappe
 		if namespace, ok := wrapperInfo.Metadata["namespace"]; ok {
 			info["Transit Namespace"] = namespace
 		}
+	}
+	return wrapper, info, nil
+}
+
+func GetOkmsFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
+	wrapper := okms.NewWrapper()
+	wrapperInfo, err := wrapper.SetConfig(context.Background(), append(opts, wrapping.WithConfigMap(kms.Config))...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	info := make(map[string]string)
+	if wrapperInfo != nil {
+		info["Okms Key ID"] = wrapperInfo.Metadata["kms_key_id"]
+		info["Okms Endpoint"] = wrapperInfo.Metadata["endpoint"]
+		info["Okms ID"] = wrapperInfo.Metadata["okmsId"]
 	}
 	return wrapper, info, nil
 }

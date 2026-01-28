@@ -1,0 +1,71 @@
+---
+sidebar_label: OVHcloud KMS
+description: |-
+  The OKMS seal configures OpenBao to use OKMS as the seal wrapping
+  mechanism.
+---
+
+# `okms` seal
+
+The OKMS seal configures OpenBao to use OKMS as the seal wrapping mechanism.
+The OKMS seal is activated by one of the following:
+
+- The presence of a `seal "okms"` block in OpenBao's configuration file
+- The presence of the environment variable `BAO_SEAL_TYPE` set to `okms`. If
+  enabling via environment variable, all other required values specific to OKMS
+  (i.e. `VAULT_OKMS_SEAL_KEY_ID`) must be also supplied.
+
+If both are set, the environment variables take precedence.
+
+## `okms` example
+
+This example shows configuring OKMS seal through the OpenBao configuration file
+by providing all the required values:
+
+```hcl
+seal "okms" {
+  endpoint    = "https://eu-west-rbx.okms.ovh.net"
+  okmsId      = "734b9b45-8b1a-469c-b140-b10bd6540017"
+  kms_key_id  = "64dd44b5-eedb-9c25-1261-a5456f3a3542"
+  client_cert = "client-cert.pem"
+  client_key  = "client-key.pem"
+  ca_cert     = "ca.pem"
+}
+
+## `okms` parameters
+
+These parameters apply to the `seal` stanza in the OpenBao configuration file:
+
+- `kms_key_id` `(string: <required>)`: The OKMS Service Key ID to use for encryption
+  and decryption. May also be specified by the `BAO_OKMS_WRAPPER_KEY_ID`
+  environment variable.
+
+- `endpoint` `(string: <required>)`: The OKMS endpoint. May also be specified by the BAO_OKMS_ENDPOINT environment variable.
+
+- `okmsId` `(string: <required>)`: The OKMS ID. May also be specified by the BAO_OKMS_ID environment variable.
+
+- `client_cert` (string: <required>): Path to the client TLS certificate. May also be specified by the BAO_OKMS_CLIENT_CERT environment variable.
+
+- `client_key` (string: <required>): Path to the client TLS private key. May also be specified by the BAO_OKMS_CLIENT_KEY environment variable.
+
+- `ca_cert` (string: <optional>): Path to the OKMS CA certificate. May also be specified by the BAO_OKMS_CA_CERT environment variable.
+
+Refer to the [Seal Migration](../../concepts/seal.mdx#seal-migration) documentation for more information about the seal migration process.
+
+
+## `okms` environment variables
+
+Alternatively, the `okms` seal can be activated and configured by providing the following
+environment variables:
+
+```text
+BAO_SEAL_TYPE
+BAO_OKMS_WRAPPER_KEY_ID
+BAO_OKMS_ENDPOINT
+BAO_OKMS_ID
+BAO_OKMS_CLIENT_CERT
+BAO_OKMS_CLIENT_KEY
+```
+
+## Key rotation
+To rotate your `key ID`: perform a [Seal Migration](../../concepts/seal.mdx#seal-migration) from `okms` seal to `okms` seal with the new service key ID.

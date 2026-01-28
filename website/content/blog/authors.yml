@@ -9,7 +9,7 @@ cipherboy:
 
 FattiesPatties:
   name: Fatima Patel
-  url: https://fatties-portfolio.vercel.app 
+  url: https://fatties-portfolio.vercel.app
   socials:
     github: https://github.com/fatima2003
     linkedin: https://www.linkedin.com/in/fatima-p-201b50198/
@@ -28,7 +28,7 @@ ChristophVoigt:
     github: https://github.com/voigt
     linkedin: https://www.linkedin.com/in/chris-cloud-native/
     mastodon: https://hachyderm.io/@cv
-  
+
 AndriiFedorchuk:
   name: Andrii Fedorchuk
   image_url: https://andrii.fedorchuk.me/public/images/IMG_2360_2.JPG
@@ -44,3 +44,10 @@ OpenSSF:
     github: https://github.com/ossf
     linkedin: https://www.linkedin.com/company/openssf/
     mastodon: https://social.lfx.dev/@openssf
+
+phil9909:
+  name: Philipp Stehle
+  image_url: https://avatars.githubusercontent.com/phil9909
+  socials:
+    github: https://github.com/phli9909
+    linkedin: https://www.linkedin.com/in/phil9909/

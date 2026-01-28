@@ -199,6 +199,28 @@ func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
 	}
 }
 
+func TestIdentityStore_UpsertGroupInTxn(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(t.Context())
+
+	txn := c.identityStore.db(ctx).Txn(true)
+	defer txn.Abort()
+
+	group := &identity.Group{
+		ID:          "fake-id",
+		NamespaceID: "root",
+		Name:        "fake-group",
+		BucketKey:   "fake-bucket-key",
+	}
+
+	err := c.identityStore.UpsertGroupInTxn(ctx, txn, group, true)
+	require.NoError(t, err)
+
+	group.NamespaceID = "fake-namespace"
+	err = c.identityStore.UpsertGroupInTxn(ctx, txn, group, true)
+	require.ErrorContains(t, err, `group namespace id "fake-namespace" does not match context namespace "root"`)
+}
+
 func TestIdentityStore_MemberGroupIDDelete(t *testing.T) {
 	ctx := namespace.RootContext(nil)
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)

@@ -1435,7 +1435,16 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 		// Remove group ID from the parent group IDs
 		currentMemberGroup.ParentGroupIDs = strutil.StrListDelete(currentMemberGroup.ParentGroupIDs, group.ID)
 
-		err = i.UpsertGroupInTxn(ctx, txn, currentMemberGroup, true)
+		currentMemberCtx := ctx
+		if currentMemberGroup.NamespaceID != group.NamespaceID { // possible when using unsafe_cross_namespace_identity
+			ns, err := i.namespacer.NamespaceByID(currentMemberCtx, currentMemberGroup.NamespaceID)
+			if err != nil {
+				return err
+			}
+			currentMemberCtx = namespace.ContextWithNamespace(currentMemberCtx, ns)
+		}
+
+		err = i.UpsertGroupInTxn(currentMemberCtx, txn, currentMemberGroup, true)
 		if err != nil {
 			return err
 		}
@@ -1489,9 +1498,18 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 
 		memberGroup.ParentGroupIDs = append(memberGroup.ParentGroupIDs, group.ID)
 
+		memberCtx := ctx
+		if memberGroup.NamespaceID != group.NamespaceID { // possible when using unsafe_cross_namespace_identity
+			ns, err := i.namespacer.NamespaceByID(memberCtx, memberGroup.NamespaceID)
+			if err != nil {
+				return err
+			}
+			memberCtx = namespace.ContextWithNamespace(memberCtx, ns)
+		}
+
 		// This technically is not upsert. It is only update, only the method
 		// name is upsert here.
-		err = i.UpsertGroupInTxn(ctx, txn, memberGroup, true)
+		err = i.UpsertGroupInTxn(memberCtx, txn, memberGroup, true)
 		if err != nil {
 			// Ideally we would want to revert the whole operation in case of
 			// errors while persisting in member groups. But there is no
@@ -1686,6 +1704,16 @@ func (i *IdentityStore) UpsertGroupInTxn(ctx context.Context, txn *memdb.Txn, gr
 
 	if group == nil {
 		return errors.New("group is nil")
+	}
+
+	{
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return err
+		}
+		if ns.ID != group.NamespaceID {
+			return fmt.Errorf("group namespace id %q does not match context namespace %q", group.NamespaceID, ns.ID)
+		}
 	}
 
 	// Increment the modify index of the group

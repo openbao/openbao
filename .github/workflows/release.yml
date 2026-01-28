@@ -21,6 +21,16 @@ on:
         required: true
         default: true
         type: boolean
+      dodebrelease:
+        description: "Release DEB packages in APT repository"
+        required: true
+        default: true
+        type: boolean
+      dorpmrelease:
+        description: "Release RPM packages in YUM repository"
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -323,6 +333,24 @@ jobs:
           NFPM_DEFAULT_PASSPHRASE: ${{ secrets.GPG_PASSWORD }}
           NIGHTLY_RELEASE: ${{ inputs.nightly }}
 
+      - name: Upload deb packages artifact
+        if: inputs.dodebrelease
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: deb-packages-${{ matrix.release_os }}
+          path: 'dist/*.deb'
+          retention-days: 1
+          if-no-files-found: ignore
+      
+      - name: Upload rpm packages artifact
+        if: inputs.dorpmrelease
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: rpm-packages-${{ matrix.release_os }}
+          path: 'dist/*.rpm'
+          retention-days: 1
+          if-no-files-found: ignore
+
       - name: Remove GPG Signing Key File
         if: always()
         run: |
@@ -361,3 +389,107 @@ jobs:
       - name: Release distribution source tarball
         run: |
           gh release upload $TAGNAME *.xz
+
+  release-deb:
+    runs-on: ubuntu-latest
+    if: inputs.dodebrelease && inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
+    needs:
+      - release-main
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
+      AWS_REGION: 'fra'
+      AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
+      BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
+    steps:
+      - name: Download APT db and dists
+        run: |
+          aws s3 sync s3://${BUCKET}/deb/db build/deb/db
+          aws s3 sync s3://${BUCKET}/deb/dists build/deb/dists
+
+      - name: Download deb-packages artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: deb-packages-*
+          merge-multiple: true
+
+      - name: GPG Import
+        id: gpg-import
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSWORD }}
+      
+      - name: Install reprepro from debian experimental
+        run: |
+          sudo apt update && sudo apt install -y debian-archive-keyring
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian experimental main" | sudo tee /etc/apt/sources.list.d/debian-experimental.list > /dev/null # required for reprepro with "Limit" support
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian sid main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null # required for libgpgme45 >= 1.23.2
+          sudo apt update
+          sudo apt install -t experimental -y reprepro
+
+      - name: Update APT repository
+        run: |
+          mkdir -p build/deb/conf
+          cat > build/deb/conf/distributions <<EOF
+          Origin: OpenBao - Official
+          Label: OpenBao
+          Suite: stable
+          Codename: stable
+          Architectures: amd64 arm64 armhf ppc64el riscv64 s390x
+          Components: main
+          Description: Official APT repository for OpenBao
+          SignWith: ${GPG_FINGERPRINT}
+          Limit: 0
+          EOF
+          reprepro -b build/deb includedeb stable *.deb
+        env:
+          GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
+
+      - name: Upload APT repository
+        run: |
+          aws s3 sync build/deb s3://${BUCKET}/deb
+
+  release-rpm:
+    runs-on: ubuntu-latest
+    if: inputs.dorpmrelease && inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
+    needs:
+      - release-main
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
+      AWS_REGION: 'fra'
+      AWS_ENDPOINT_URL: "https://${{ secrets.PKG_S3_SERVER_NAME }}"
+      BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
+      TAGNAME: v${{ needs.build-ui-dist.outputs.version }}
+    steps:
+      - name: Download repodata
+        run: |
+          aws s3 sync s3://${BUCKET}/rpm build/rpm --exclude \*.rpm
+
+      - name: Download rpm-packages artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: rpm-packages-*
+          merge-multiple: true
+      
+      - name: Install createrepo_c from debian trixie
+        run: |
+          sudo apt update && sudo apt install -y debian-archive-keyring
+          echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian trixie main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null # required for createrepo-c > 0.17.3
+          sudo apt update
+          sudo apt install -t trixie -y createrepo-c
+
+      - name: Update RPM repository
+        run: |
+          ls *.rpm > pkglist.txt
+          while read pkg ; do
+            ARCH=$(rpm -q $pkg --qf "%{arch}")
+            mkdir -p build/rpm/$ARCH
+            mv $pkg build/rpm/$ARCH/
+            createrepo_c --update --recycle-pkglist --skip-stat --includepkg $(basename $pkg) build/rpm/$ARCH
+          done < pkglist.txt
+      
+      - name: Upload RPM repository
+        run: |
+          aws s3 sync build/rpm s3://${BUCKET}/rpm

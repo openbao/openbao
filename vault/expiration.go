@@ -451,14 +451,14 @@ func (m *ExpirationManager) leaseView(ns *namespace.Namespace) BarrierView {
 	if ns.ID == namespace.RootNamespaceID {
 		return m.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
 	}
-	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+leaseViewPrefix)
+	return NamespaceView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + leaseViewPrefix)
 }
 
 func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) BarrierView {
 	if ns.ID == namespace.RootNamespaceID {
 		return m.core.systemBarrierView.SubView(expirationSubPath + tokenViewPrefix)
 	}
-	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+tokenViewPrefix)
+	return NamespaceView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + tokenViewPrefix)
 }
 
 func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, int, error) {

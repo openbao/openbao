@@ -1593,7 +1593,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	// if routeErr has invalid credentials error, update the userFailedLoginMap
 	if routeErr != nil && routeErr == logical.ErrInvalidCredentials {
 		if !isUserLockoutDisabled {
-			err := c.failedUserLoginProcess(ctx, entry, req, userLockoutInfo)
+			err := c.failedUserLoginProcess(ctx, entry, userLockoutInfo)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1959,10 +1959,10 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 	return leaseGenerated, resp, nil
 }
 
-// failedUserLoginProcess updates the userFailedLoginMap with login count and  last failed
-// login time for users with failed login attempt
+// failedUserLoginProcess updates the userFailedLoginMap with login count
+// and last failed login time for users with failed login attempt.
 // If the user gets locked for current login attempt, it updates the storage entry too
-func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntry, req *logical.Request, userLockoutInfo *FailedLoginUser) error {
+func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntry, userLockoutInfo *FailedLoginUser) error {
 	// get the user lockout configuration for the user
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
 
@@ -1990,28 +1990,23 @@ func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntr
 	}
 
 	// update the userFailedLoginInfo map (and/or storage) with the updated/new entry
-	err := c.LocalUpdateUserFailedLoginInfo(ctx, *userLockoutInfo, &failedLoginInfo, false)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return c.LocalUpdateUserFailedLoginInfo(ctx, *userLockoutInfo, &failedLoginInfo, false)
 }
 
 // getLoginUserInfoKey gets failedUserLoginInfo map key for login user
-func (c *Core) getLoginUserInfoKey(ctx context.Context, mountEntry *MountEntry, req *logical.Request) (FailedLoginUser, error) {
-	userInfo := FailedLoginUser{}
+func (c *Core) getLoginUserInfoKey(ctx context.Context, mountEntry *MountEntry, req *logical.Request) (*FailedLoginUser, error) {
 	aliasName, err := c.aliasNameFromLoginRequest(ctx, req)
 	if err != nil {
-		return userInfo, err
+		return nil, err
 	}
 	if aliasName == "" {
-		return userInfo, errors.New("failed to determine alias name from login request")
+		return nil, errors.New("failed to determine alias name from login request")
 	}
 
-	userInfo.aliasName = aliasName
-	userInfo.mountAccessor = mountEntry.Accessor
-	return userInfo, nil
+	return &FailedLoginUser{
+		aliasName:     aliasName,
+		mountAccessor: mountEntry.Accessor,
+	}, nil
 }
 
 // isUserLockoutDisabled checks if user lockout feature to prevent brute forcing is disabled
@@ -2051,7 +2046,7 @@ func (c *Core) isUserLockoutDisabled(mountEntry *MountEntry) (bool, error) {
 	return false, nil
 }
 
-// isUserLocked determines if the login request user is locked
+// isUserLocked determines if the user used in login request is locked
 func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *logical.Request) (loginUser *FailedLoginUser, locked bool, err error) {
 	// get userFailedLoginInfo map key for login user
 	loginUserInfoKey, err := c.getLoginUserInfoKey(ctx, mountEntry, req)
@@ -2060,8 +2055,7 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 	}
 
 	// get entry from userFailedLoginInfo map for the key
-	userFailedLoginInfo := c.LocalGetUserFailedLoginInfo(ctx, loginUserInfoKey)
-
+	userFailedLoginInfo := c.LocalGetUserFailedLoginInfo(ctx, *loginUserInfoKey)
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
 
 	switch userFailedLoginInfo {
@@ -2081,22 +2075,21 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 		var lastLoginTime int
 		if existingEntry == nil {
 			// no storage entry found, user is not locked
-			return &loginUserInfoKey, false, nil
+			return loginUserInfoKey, false, nil
 		}
 
-		err = jsonutil.DecodeJSON(existingEntry.Value, &lastLoginTime)
-		if err != nil {
+		if err = jsonutil.DecodeJSON(existingEntry.Value, &lastLoginTime); err != nil {
 			return nil, false, err
 		}
 
 		// if time passed from last login time is within lockout duration, the user is locked
 		if time.Now().Unix()-int64(lastLoginTime) < int64(userLockoutConfiguration.LockoutDuration.Seconds()) {
 			// user locked
-			return &loginUserInfoKey, true, nil
+			return loginUserInfoKey, true, nil
 		}
 
-		// else user is not locked. Entry is stale, this will be removed from storage during cleanup
-		// by the background thread
+		// else user is not locked. Entry is stale, this will be
+		// removed from storage during cleanup by the background thread
 
 	default:
 		// entry found in userFailedLoginInfo map, check if the user is locked
@@ -2105,17 +2098,21 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 
 		if isCountOverLockoutThreshold && isWithinLockoutDuration {
 			// user locked
-			return &loginUserInfoKey, true, nil
+			return loginUserInfoKey, true, nil
 		}
 	}
 
-	return &loginUserInfoKey, false, nil
+	return loginUserInfoKey, false, nil
 }
 
-// getUserLockoutConfiguration gets the user lockout configuration for a mount entry
-// it checks the config file and auth tune values
-// precedence: auth tune >> config file values for auth type >> config file values for all type
-// >> default user lockout values
+// getUserLockoutConfiguration gets the user lockout configuration
+// for a mount entry, checking the config file and auth tune values
+// precedence:
+//  1. auth tune
+//  2. config file values for auth type
+//  3. config file values for all type
+//  4. default user lockout values
+//
 // getUserLockoutFromConfig call in this function takes care of config file precedence
 func (c *Core) getUserLockoutConfiguration(mountEntry *MountEntry) (userLockoutConfig UserLockoutConfig) {
 	// get user configuration values from config file
@@ -2301,18 +2298,16 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 	return &te, nil
 }
 
-// LocalGetUserFailedLoginInfo gets the failed login information for a user based on alias name and mountAccessor
+// LocalGetUserFailedLoginInfo gets the failed login information for
+// a user based on alias name and mountAccessor
 func (c *Core) LocalGetUserFailedLoginInfo(ctx context.Context, userKey FailedLoginUser) *FailedLoginInfo {
 	c.userFailedLoginInfoLock.Lock()
-	value, exists := c.userFailedLoginInfo[userKey]
-	c.userFailedLoginInfoLock.Unlock()
-	if exists {
-		return value
-	}
-	return nil
+	defer c.userFailedLoginInfoLock.Unlock()
+	return c.userFailedLoginInfo[userKey]
 }
 
-// LocalUpdateUserFailedLoginInfo updates the failed login information for a user based on alias name and mountAccessor
+// LocalUpdateUserFailedLoginInfo updates the failed login information for
+// a user based on alias name and mountAccessor
 func (c *Core) LocalUpdateUserFailedLoginInfo(ctx context.Context, userKey FailedLoginUser, failedLoginInfo *FailedLoginInfo, deleteEntry bool) error {
 	c.userFailedLoginInfoLock.Lock()
 	defer c.userFailedLoginInfoLock.Unlock()

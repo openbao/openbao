@@ -198,8 +198,9 @@ func Test(tt TestT, c TestCase) {
 		return
 	}
 
+	ctx := namespace.RootContext(context.Background())
 	// Initialize the core
-	init, err := core.Initialize(context.Background(), &vault.InitParams{
+	init, err := core.Initialize(ctx, &vault.InitParams{
 		BarrierConfig: &vault.SealConfig{
 			SecretShares:    1,
 			SecretThreshold: 1,
@@ -321,7 +322,7 @@ func Test(tt TestT, c TestCase) {
 		}
 
 		// Make the request
-		resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+		resp, err := core.HandleRequest(ctx, req)
 		if resp != nil && resp.Secret != nil {
 			// Revoke this secret later
 			revoke = append(revoke, &logical.Request{
@@ -375,7 +376,7 @@ func Test(tt TestT, c TestCase) {
 			logger.Warn("Revoking secret", "secret", fmt.Sprintf("%#v", req))
 		}
 		req.ClientToken = client.Token()
-		resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+		resp, err := core.HandleRequest(ctx, req)
 		if err == nil && resp.IsError() {
 			err = fmt.Errorf("erroneous response:\n\n%#v", resp)
 		}
@@ -396,7 +397,7 @@ func Test(tt TestT, c TestCase) {
 	req := logical.RollbackRequest(rollbackPath)
 	req.Data["immediate"] = true
 	req.ClientToken = client.Token()
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(ctx, req)
 	if err == nil && resp.IsError() {
 		err = fmt.Errorf("erroneous response:\n\n%#v", resp)
 	}

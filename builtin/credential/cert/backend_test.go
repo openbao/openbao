@@ -40,6 +40,7 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/builtin/logical/pki"
+	"github.com/openbao/openbao/helper/namespace"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -1106,7 +1107,8 @@ func TestBackend_CRLs(t *testing.T) {
 
 func testFactory(t *testing.T) logical.Backend {
 	storage := &logical.InmemStorage{}
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	ctx := namespace.RootContext(t.Context())
+	b, err := Factory(ctx, &logical.BackendConfig{
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: 1000 * time.Second,
 			MaxLeaseTTLVal:     1800 * time.Second,
@@ -1116,7 +1118,7 @@ func testFactory(t *testing.T) logical.Backend {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
-	if err := b.Initialize(context.Background(), &logical.InitializationRequest{
+	if err := b.Initialize(ctx, &logical.InitializationRequest{
 		Storage: storage,
 	}); err != nil {
 		t.Fatalf("error: %s", err)

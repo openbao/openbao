@@ -2338,10 +2338,6 @@ func (c *Core) readMigrationStatus(migrationID string) *MountMigrationInfo {
 	return &migrationInfo
 }
 
-func (c *Core) namespaceMountEntryView(namespace *namespace.Namespace, prefix string) BarrierView {
-	return NamespaceView(c.barrier, namespace).SubView(prefix)
-}
-
 // mountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace
 func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 	if me.Namespace() != nil && me.Namespace().ID != me.NamespaceID {
@@ -2350,27 +2346,18 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 
 	switch me.Type {
 	case mountTypeSystem, mountTypeNSSystem:
-		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
-			return c.namespaceMountEntryView(me.Namespace(), systemBarrierPrefix), nil
-		}
-		return NewBarrierView(c.barrier, systemBarrierPrefix), nil
+		return NamespaceView(c.barrier, me.Namespace()).SubView(systemBarrierPrefix), nil
 	case mountTypeToken:
-		return NewBarrierView(c.barrier, systemBarrierPrefix+tokenSubPath), nil
+		return NamespaceView(c.barrier, me.Namespace()).SubView(systemBarrierPrefix + tokenSubPath), nil
 	}
 
 	switch me.Table {
 	case mountTableType:
-		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
-			return c.namespaceMountEntryView(me.Namespace(), backendBarrierPrefix+me.UUID+"/"), nil
-		}
-		return NewBarrierView(c.barrier, backendBarrierPrefix+me.UUID+"/"), nil
+		return NamespaceView(c.barrier, me.Namespace()).SubView(backendBarrierPrefix + me.UUID + "/"), nil
 	case credentialTableType:
-		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
-			return c.namespaceMountEntryView(me.Namespace(), credentialBarrierPrefix+me.UUID+"/"), nil
-		}
-		return NewBarrierView(c.barrier, credentialBarrierPrefix+me.UUID+"/"), nil
+		return NamespaceView(c.barrier, me.Namespace()).SubView(credentialBarrierPrefix + me.UUID + "/"), nil
 	case auditTableType, configAuditTableType:
-		return NewBarrierView(c.barrier, auditBarrierPrefix+me.UUID+"/"), nil
+		return NamespaceView(c.barrier, me.Namespace()).SubView(auditBarrierPrefix + me.UUID + "/"), nil
 	}
 
 	return nil, errors.New("invalid mount entry")

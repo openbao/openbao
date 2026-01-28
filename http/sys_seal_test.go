@@ -4,7 +4,6 @@
 package http
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -166,7 +165,7 @@ func TestSysUnseal(t *testing.T) {
 
 func subtestBadSingleKey(t *testing.T, seal vault.Seal) {
 	core := vault.TestCoreWithSeal(t, seal, false)
-	_, err := core.Initialize(context.Background(), &vault.InitParams{
+	_, err := core.Initialize(namespace.RootContext(t.Context()), &vault.InitParams{
 		BarrierConfig: &vault.SealConfig{
 			SecretShares:    1,
 			SecretThreshold: 1,
@@ -251,7 +250,7 @@ func subtestBadMultiKey(t *testing.T, seal vault.Seal) {
 	numKeys := 3
 
 	core := vault.TestCoreWithSeal(t, seal, false)
-	_, err := core.Initialize(context.Background(), &vault.InitParams{
+	_, err := core.Initialize(namespace.RootContext(t.Context()), &vault.InitParams{
 		BarrierConfig: &vault.SealConfig{
 			SecretShares:    numKeys,
 			SecretThreshold: numKeys,

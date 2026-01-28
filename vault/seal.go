@@ -51,6 +51,7 @@ const (
 type Seal interface {
 	SetCore(*Core)
 	Init(context.Context) error
+	SetMetaPrefix(string)
 	Finalize(context.Context) error
 	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
 	SealWrapable() bool
@@ -74,8 +75,9 @@ type Seal interface {
 }
 
 type defaultSeal struct {
-	core   *Core
-	access seal.Access
+	core       *Core
+	access     seal.Access
+	metaPrefix string
 
 	config       atomic.Pointer[SealConfig]
 	configAccess StorageAccess
@@ -119,6 +121,10 @@ func (d *defaultSeal) Init(ctx context.Context) error {
 	return nil
 }
 
+func (d *defaultSeal) SetMetaPrefix(metaPrefix string) {
+	d.metaPrefix = metaPrefix
+}
+
 func (d *defaultSeal) Finalize(ctx context.Context) error {
 	return nil
 }
@@ -136,12 +142,11 @@ func (d *defaultSeal) RecoveryKeySupported() bool {
 }
 
 func (d *defaultSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.access, keys)
+	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access, keys)
 }
 
 func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	keys, err := readStoredKeys(ctx, d.core.physical, d.access)
-	return keys, err
+	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access)
 }
 
 func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
@@ -155,7 +160,7 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	}
 
 	// Fetch the seal configuration
-	valueBytes, err := d.configAccess.Get(ctx, barrierSealConfigPath)
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+barrierSealConfigPath)
 	if err != nil {
 		d.core.logger.Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
@@ -222,7 +227,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	if err := d.configAccess.Put(ctx, barrierSealConfigPath, buf); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+barrierSealConfigPath, buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
@@ -431,7 +436,7 @@ func (e *ErrDecrypt) Is(target error) bool {
 	return ok || errors.Is(e.Err, target)
 }
 
-func writeStoredKeys(ctx context.Context, storage physical.Backend, encryptor seal.Access, keys [][]byte) error {
+func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access, keys [][]byte) error {
 	if keys == nil {
 		return errors.New("keys were nil")
 	}
@@ -457,7 +462,7 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, encryptor se
 
 	// Store the seal configuration.
 	pe := &physical.Entry{
-		Key:   StoredBarrierKeysPath, // TODO(SEALHA): will we need to store more than one set of keys?
+		Key:   metaPrefix + StoredBarrierKeysPath, // TODO(SEALHA): will we need to store more than one set of keys?
 		Value: value,
 	}
 
@@ -468,8 +473,8 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, encryptor se
 	return nil
 }
 
-func readStoredKeys(ctx context.Context, storage physical.Backend, encryptor seal.Access) ([][]byte, error) {
-	pe, err := storage.Get(ctx, StoredBarrierKeysPath)
+func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access) ([][]byte, error) {
+	pe, err := storage.Get(ctx, metaPrefix+StoredBarrierKeysPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch stored keys: %w", err)
 	}

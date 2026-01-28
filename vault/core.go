@@ -1072,10 +1072,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// Construct a new AES-GCM barrier
-	c.barrier, err = NewAESGCMBarrier(c.physical)
-	if err != nil {
-		return nil, fmt.Errorf("barrier setup failed: %w", err)
-	}
+	c.barrier = NewAESGCMBarrier(c.physical, "")
 
 	// We create the funcs here, then populate the given config with it so that
 	// the caller can share state
@@ -1394,7 +1391,7 @@ func (c *Core) GetContext() (context.Context, context.CancelFunc) {
 	return context.WithCancel(namespace.RootContext(c.activeContext))
 }
 
-// Sealed checks if the Vault is current sealed
+// Sealed checks if the Vault is currently sealed
 func (c *Core) Sealed() bool {
 	return c.sealed.Load()
 }

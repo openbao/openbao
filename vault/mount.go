@@ -1045,7 +1045,7 @@ func (c *Core) taintMountEntry(ctx context.Context, nsID, mountPath string, upda
 		// Update the mount table
 		if err := c.persistMounts(ctx, nil, c.mounts, &entry.Local, entry.UUID); err != nil {
 			c.logger.Error("failed to taint entry in mounts table", "error", err)
-			return logical.CodedError(500, "failed to taint entry in mounts table")
+			return logical.CodedError(500, "failed to taint entry in mounts table: %v", err)
 		}
 	}
 

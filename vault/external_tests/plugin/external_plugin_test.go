@@ -341,10 +341,14 @@ func TestExternalPlugin_AuthMethod(t *testing.T) {
 					require.NoError(collect, err)
 				}, 20*time.Second, 10*time.Millisecond)
 
-				secret, err := client.Logical().Write("auth/"+pluginPath+"/role/role1/secret-id", nil)
-				if err != nil {
-					t.Fatal(err)
-				}
+				var (
+					secret *api.Secret
+					err    error
+				)
+				require.EventuallyWithT(t, func(collect *assert.CollectT) {
+					secret, err = client.Logical().Write("auth/"+pluginPath+"/role/role1/secret-id", nil)
+					require.NoError(collect, err)
+				}, 20*time.Second, 10*time.Millisecond)
 				secretID := secret.Data["secret_id"].(string)
 
 				secret, err = client.Logical().Read("auth/" + pluginPath + "/role/role1/role-id")

@@ -453,6 +453,7 @@ const sidebars: SidebarsConfig = {
                                         "platform/k8s/helm/examples/ha-tls",
                                         "platform/k8s/helm/examples/injector-tls",
                                         "platform/k8s/helm/examples/injector-tls-cert-manager",
+                                        "platform/k8s/helm/examples/snapshot-cronjob.mdx",
                                     ],
                                 },
                             ],

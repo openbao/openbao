@@ -13,16 +13,16 @@ description: |-
 :::
 
 
-The below `values.yaml` can be used to set up the Snapshot CronJob with OpenBao.
+The below `values.yaml` can be used to set up the [Snapshot CronJob with OpenBao](https://github.com/openbao/openbao-snapshot-agent).
 
-By Default the CronJob will run every 15 minutes. You can modify the schedule by changing the `schedule` field.
+By default the CronJob will run every 15 minutes. You can modify the schedule by changing the `schedule` field.
 
 ```yaml
 snapshotAgent:
   enabled: true
   schedule: "*/15 * * * *"
 
-  # name of the secret containing S3 credentials
+  # Name of the secret containing S3 credentials
   # the secret needs to be created prior to deploying the chart
   # example secret:
   # apiVersion: v1
@@ -35,17 +35,17 @@ snapshotAgent:
   #   AWS_SECRET_ACCESS_KEY: <AWS_SECRET_ACCESS_KEY>
   s3CredentialsSecret: "my-s3-credentials"
 
-  # configuration for the snapshot agent
+  # Configuration for the snapshot agent
   config:
     s3Host: "s3.eu-east-1.amazonaws.com"
     s3Bucket: "openbao-snapshots"
     s3Uri: "s3://openbao-snapshots"
     # after how many days snapshots should expire and be deleted
     s3ExpireDays: "14"
-    # Authentication path to use to connect to OpenBao
+    # Path to use to authenticate to OpenBao
     # preferably use the kubernetes auth method
     baoAuthPath: "kubernetes"
-    # Role to use to connect to OpenBao
+    # Role to use to authenticate to OpenBao
     baoRole: "snapshot"
 ```
 

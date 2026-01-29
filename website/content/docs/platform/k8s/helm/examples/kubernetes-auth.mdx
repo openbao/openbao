@@ -21,12 +21,12 @@ Exec into the OpenBao pod:
 kubectl exec -it openbao-0 -- /bin/sh
 ```
 
-If you didn't set `server.dev.enabled=true`, you'll need to log in to OpenBao first using `openbao login`.
+If you didn't set `server.dev.enabled=true`, you'll need to log in to OpenBao first using `bao login`.
 Then run the following commands to configure the Kubernetes Auth Method:
 
 ```bash
-openbao auth enable kubernetes
-openbao write auth/kubernetes/config \
+bao auth enable kubernetes
+bao write auth/kubernetes/config \
     kubernetes_host=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT
 ```
 

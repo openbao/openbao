@@ -1,0 +1,3 @@
+```release-note:bug
+agent/auth: Fix token reissue error with kerberos method
+```

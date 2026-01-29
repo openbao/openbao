@@ -56,7 +56,7 @@ commit signing, such as using `PGP` or `gitsign`.
 If you have met the above requirements, you can add your sign-off by including
 the --signoff option in your `git commit` or `git rebase` commands:
 
-```
+```bash
 # Sign off a commit
 git commit --signoff -m"my commit"
 
@@ -69,7 +69,7 @@ git rebase --signoff master
 
 This will add a line similar to the following at the end of your commit:
 
-```
+```commit
 Signed-off-by: Alex Smith <alex@example.com>
 ```
 
@@ -150,28 +150,30 @@ quickly merge or address your contributions.
 
 ## Pull requests
 
-When submitting a PR you should reference an existing issue. If no issue already exists,
-please create one. This can be skipped for trivial PRs like fixing typos.
+When submitting a PR you should reference an existing issue. If no issue already
+exists, please create one. This can be skipped for trivial PRs like fixing
+typos.
 
-Creating an issue in advance of working on the PR can help to avoid duplication of effort,
-e.g. maybe we know of existing related work. Or it may be that we can provide guidance
-that will help with your approach.
+Creating an issue in advance of working on the PR can help to avoid duplication
+of effort, e.g. maybe we know of existing related work. Or it may be that we can
+provide guidance that will help with your approach.
 
-Your pull request should have a description of what it accomplishes, how it does so,
-and why you chose the approach you did.  PRs should include unit tests that validate
-correctness and the existing tests must pass. Follow-up work to fix tests
-does not need a fresh issue filed.
+Your pull request should have a description of what it accomplishes, how it does
+so, and why you chose the approach you did. PRs should include unit tests that
+validate correctness and the existing tests must pass. Follow-up work to fix
+tests does not need a fresh issue filed.
 
 Someone will do a first pass review on your PR making sure it follows the guidelines
 in this document. If it doesn't we'll mark the PR incomplete and ask you to follow
 up on the missing requirements.
 
 ### Changelog Entries
+
 Please include a file within your PR named `changelog/#.txt`, where `#` is your
 pull request ID.  There are many examples under [changelog](changelog/), but
 the general format is
 
-````
+````markdown
 ```release-note:CATEGORY
 COMPONENT: summary of change
 ```
@@ -188,6 +190,54 @@ whichever one you see that seems the closest match.
 You do not need to include the link at the end of the summary that appears in
 CHANGELOG.md, those are generated automatically by the changelog-building
 process.
+
+### Merge Policy
+
+PRs might only be merged once all the following conditions are met:
+
+* Codeowner rules must be satisfied (as defined in the repos
+  [`CODEOWNERS`](./CODEOWNERS) file). See [examples](#codeowners-examples)
+  below.
+* At least one qualified review must be done by someone from a different
+  organization than the PR author. "Qualified" means someone with write access
+  to the repo (As of today, GitHub indicates this with a green check-mark next
+  to the reviewer name as opposed to a gray check-mark for non-qualified
+  reviews). Independent contributors are considered to be a one person
+  organization here. If organization A pays organization B for contributing to
+  OpenBao, they will be considered to be the same organization.
+* All review comments are resolved.
+
+The preferred person to actually hit the merge button is the author of the PR,
+if they have the required permissions to do so, as they are expected to be aware
+of any inter-PR dependencies (e.g. a feature PR depending on a bug-fix from a
+different PR).
+
+#### Codeowners Examples
+
+Given the following `CODEOWNERS` file:
+
+```CODEOWNERS
+component-a/  @a-team  @core-team
+component-b/  @b-team  @core-team
+component-c/  @c-team  @core-team
+```
+
+And a PR that touches files in `component-a` and `component-b`, the PR will need
+a review from either:
+
+* Two people, one member of the `a-team` and one member of the `b-team`
+* One person, who is a member of both the `a-team` and the `b-team`
+* One person, who is a member of the `core-team`
+
+Also, in the `CODEOWNERS` only the last matching pattern applies to a file. For example:
+
+```CODEOWNERS
+component-a/                    @a-team
+component-a/subcomponent-alpha  @alpha-team
+```
+
+In a PR that only changes `component-a/subcomponent-alpha/`, you will need a
+review from the `alpha-team`, but not from the `a-team`.
 
 ### OpenBao UI
 

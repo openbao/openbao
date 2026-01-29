@@ -67,8 +67,7 @@ func Test_RandomOpsBackends(t *testing.T) {
 func Test_RandomOpsTransactionalBackends(t *testing.T) {
 	t.Parallel()
 
-	backends, cleanup := allTransactionalLogical(t)
-	defer cleanup()
+	backends := allTransactionalLogical(t)
 
 	txLimit := 10
 	ops := getRandomOps(t, numTxOps, true, txLimit)
@@ -79,8 +78,7 @@ func Test_ExerciseTransactionalBackends(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	backends, cleanup := allTransactionalLogical(t)
-	defer cleanup()
+	backends := allTransactionalLogical(t)
 
 	// Create transactions and exercise the backend, rolling them back.
 	txns := make(map[string]logical.Storage, 2*len(backends))
@@ -122,18 +120,15 @@ func Test_ExerciseTransactionalBackends(t *testing.T) {
 	exerciseTransactions(t, backends)
 }
 
-func getFile(t *testing.T, logger log.Logger) (physical.Backend, func()) {
-	backendPath, err := os.MkdirTemp("", "vault")
-	require.NoError(t, err, "error while creating file storage")
+func getFile(t *testing.T, logger log.Logger) physical.Backend {
+	backendPath := t.TempDir()
 
 	b, err := file.NewFileBackend(map[string]string{
 		"path": backendPath,
 	}, logger)
 	require.NoError(t, err, "error while initializing file backend")
 
-	return b, func() {
-		os.RemoveAll(backendPath)
-	}
+	return b
 }
 
 func allLogical(t *testing.T) (map[string]logical.Storage, func()) {
@@ -144,10 +139,10 @@ func allLogical(t *testing.T) (map[string]logical.Storage, func()) {
 	// Basic storage backends.
 
 	// raft, no transaction called on it.
-	prb, raftPureDir := raft.GetRaft(t, true, true)
+	prb := raft.GetRaft(t, true, true)
 
 	// raft
-	rb, raftDir := raft.GetRaft(t, true, true)
+	rb := raft.GetRaft(t, true, true)
 
 	// raft-in-tx
 	//
@@ -158,7 +153,7 @@ func allLogical(t *testing.T) (map[string]logical.Storage, func()) {
 	require.NoError(t, err, "failed to start raft transaction")
 
 	// file
-	fb, fileCleanup := getFile(t, logger)
+	fb := getFile(t, logger)
 
 	// inmem
 	inm, err := inmem.NewInmem(disableTxConf, logger)
@@ -185,9 +180,6 @@ func allLogical(t *testing.T) (map[string]logical.Storage, func()) {
 
 			"psql": logical.NewLogicalStorage(psql),
 		}, func() {
-			os.RemoveAll(raftPureDir)
-			os.RemoveAll(raftDir)
-			fileCleanup()
 			psqlCleanup()
 		}
 }
@@ -203,13 +195,13 @@ func newAESBarrier(t *testing.T, parent physical.Backend) vault.SecurityBarrier 
 	return b
 }
 
-func allTransactionalLogical(t *testing.T) (map[string]logical.TransactionalStorage, func()) {
+func allTransactionalLogical(t *testing.T) map[string]logical.TransactionalStorage {
 	logger := logging.NewVaultLogger(log.Debug)
 
 	// Basic storage backends.
 
 	// raft
-	rb, raftDir := raft.GetRaft(t, true, true)
+	rb := raft.GetRaft(t, true, true)
 
 	// inmem
 	im, err := inmem.NewInmem(nil, logger)
@@ -241,7 +233,7 @@ func allTransactionalLogical(t *testing.T) (map[string]logical.TransactionalStor
 	bvimcae := vault.NewBarrierView(aimcebv, "prefix-for-testing/")
 
 	// raft+cache+encoding+aes+bv
-	rceabv, raftFullDir := raft.GetRaft(t, true, true)
+	rceabv := raft.GetRaft(t, true, true)
 	require.NoError(t, err, "failed to create transactional in-mem for AES-GCM with barrier view")
 	creabv := physical.NewCache(rceabv, 0, logger, &metrics.BlackholeSink{})
 	ercabv := physical.NewStorageEncoding(creabv)
@@ -249,17 +241,14 @@ func allTransactionalLogical(t *testing.T) (map[string]logical.TransactionalStor
 	bvrcae := vault.NewBarrierView(arcebv, "prefix-for-testing/")
 
 	return map[string]logical.TransactionalStorage{
-			"raft":                        logical.NewLogicalStorage(rb).(logical.TransactionalStorage),
-			"txinmem":                     logical.NewLogicalStorage(im).(logical.TransactionalStorage),
-			"inmem+sv":                    svim.(logical.TransactionalStorage),
-			"inmem+aes+sv":                svaim.(logical.TransactionalStorage),
-			"inmem+aes+bv":                bvaim.(logical.TransactionalStorage),
-			"inmem+cache+encoding+aes+bv": bvimcae.(logical.TransactionalStorage),
-			"raft+cache+encoding+aes+bv":  bvrcae.(logical.TransactionalStorage),
-		}, func() {
-			os.RemoveAll(raftDir)
-			os.RemoveAll(raftFullDir)
-		}
+		"raft":                        logical.NewLogicalStorage(rb).(logical.TransactionalStorage),
+		"txinmem":                     logical.NewLogicalStorage(im).(logical.TransactionalStorage),
+		"inmem+sv":                    svim.(logical.TransactionalStorage),
+		"inmem+aes+sv":                svaim.(logical.TransactionalStorage),
+		"inmem+aes+bv":                bvaim.(logical.TransactionalStorage),
+		"inmem+cache+encoding+aes+bv": bvimcae.(logical.TransactionalStorage),
+		"raft+cache+encoding+aes+bv":  bvrcae.(logical.TransactionalStorage),
+	}
 }
 
 func allDoList(t *testing.T, backends map[string]logical.Storage, prefix string) (map[string][]string, map[string]error) {

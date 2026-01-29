@@ -223,11 +223,7 @@ func TestServerRun(t *testing.T) {
 	ts := createHttpTestServer()
 	defer ts.Close()
 
-	tmpDir, err := os.MkdirTemp("", "agent-tests")
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := t.TempDir()
 
 	// secretRender is a simple struct that represents the secret we render to
 	// disk. It's used to unmarshal the file contents and test against
@@ -454,11 +450,7 @@ func TestNewServerLogLevels(t *testing.T) {
 	ts := createHttpTestServer()
 	defer ts.Close()
 
-	tmpDir, err := os.MkdirTemp("", "agent-tests")
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := t.TempDir()
 
 	levels := []hclog.Level{hclog.NoLevel, hclog.Trace, hclog.Debug, hclog.Info, hclog.Warn, hclog.Error}
 	for _, level := range levels {

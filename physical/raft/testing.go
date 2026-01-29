@@ -12,11 +12,11 @@ import (
 	"github.com/hashicorp/go-uuid"
 )
 
-func GetRaft(t testing.TB, bootstrap bool, noStoreState bool) (*RaftBackend, string) {
+func GetRaft(t testing.TB, bootstrap bool, noStoreState bool) *RaftBackend {
 	raftDir := t.TempDir()
 	t.Logf("raft dir: %s", raftDir)
 
-	return getRaftWithDir(t, bootstrap, noStoreState, raftDir), raftDir
+	return getRaftWithDir(t, bootstrap, noStoreState, raftDir)
 }
 
 func getRaftWithDir(t testing.TB, bootstrap bool, noStoreState bool, raftDir string) *RaftBackend {

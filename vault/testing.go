@@ -845,7 +845,7 @@ func (c *TestCluster) start(t testing.T) {
 
 	activeCore := -1
 WAITACTIVE:
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		for i, core := range c.Cores {
 			if standby := core.Standby(); !standby {
 				activeCore = i
@@ -1066,7 +1066,10 @@ func (c *TestCluster) Cleanup() {
 
 	// Remove any temp dir that exists
 	if c.TempDir != "" {
-		os.RemoveAll(c.TempDir)
+		err := os.RemoveAll(c.TempDir)
+		if err != nil {
+			c.Logger.Error("error deleting temp dir", "error", err)
+		}
 	}
 
 	// Give time to actually shut down/clean up before the next test

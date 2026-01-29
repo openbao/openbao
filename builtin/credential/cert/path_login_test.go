@@ -76,9 +76,6 @@ func TestCert_RoleResolve(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -133,9 +130,6 @@ func TestCert_RoleResolveWithoutProvidingCertName(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -244,9 +238,6 @@ func TestCert_RoleResolve_RoleDoesNotExist(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -296,9 +287,6 @@ func TestCert_RoleResolveOCSP(t *testing.T) {
 		OCSPServer:   []string{fmt.Sprintf("http://localhost:%d", ocspPort)},
 	}
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}

@@ -219,7 +219,8 @@ func (c *cache) Get(ctx context.Context, key string) (*Entry, error) {
 	if !cacheRefreshFromContext(ctx) {
 		if raw, ok := c.lru.Get(key); ok {
 			if raw == nil {
-				return nil, nil
+				// nil, nil is fine because the caller doesn't expect a particular error in this case. Handling it without significant refactoring of the test and logic can lead to a loss of backward compatibility.
+				return nil, nil //nolint:nilnil
 			}
 			c.metricSink.IncrCounter([]string{"cache", "hit"}, 1)
 			return raw, nil

@@ -952,7 +952,7 @@ func (b *AESGCMBarrier) aeadForTerm(term uint32) (cipher.AEAD, error) {
 	// Check for the keyring
 	keyring := b.keyring
 	if keyring == nil {
-		return nil, nil
+		return nil, fmt.Errorf("barrier: keyring not available")
 	}
 
 	// Check the cache for the aead
@@ -966,7 +966,7 @@ func (b *AESGCMBarrier) aeadForTerm(term uint32) (cipher.AEAD, error) {
 	// Read the underlying key
 	key := keyring.TermKey(term)
 	if key == nil {
-		return nil, nil
+		return nil, fmt.Errorf("barrier: could not read underlying key")
 	}
 
 	// Create a new aead

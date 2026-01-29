@@ -19,6 +19,8 @@ const OptionsContext = createContext(null);
 const OptionsProvider = ({ children }) => {
     const [options, setOptions] = useState({});
     const [selectedItem, setSelectedItem] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
 
     useEffect(() => {
         // Function to fetch options from API
@@ -33,6 +35,7 @@ const OptionsProvider = ({ children }) => {
                     const { data, timestamp } = JSON.parse(cachedOptions);
                     if (new Date().getTime() - timestamp < 600000) {
                         setOptions(data);
+                        setLoading(false);
                         const versions = Object.keys(data);
 
                         // Prefer version from the query string, if present.
@@ -59,6 +62,7 @@ const OptionsProvider = ({ children }) => {
                 const releases = GetReleases(ghReleases);
                 const versions = Object.keys(releases);
                 setOptions(releases);
+                setLoading(false);
                 localStorage.setItem(
                     "gh-releases",
                     JSON.stringify({
@@ -79,6 +83,8 @@ const OptionsProvider = ({ children }) => {
                 }
             } catch (error) {
                 console.error(error);
+                setLoading(false);
+                setError(true);
             }
         };
 
@@ -87,7 +93,7 @@ const OptionsProvider = ({ children }) => {
 
     return (
         <OptionsContext.Provider
-            value={{ options, selectedItem, setSelectedItem }}
+            value={{ options, selectedItem, setSelectedItem, loading, error }}
         >
             {children}
         </OptionsContext.Provider>
@@ -340,7 +346,7 @@ const OS = ({ name }) => {
 };
 
 const DownloadComponent = () => {
-    const { options, selectedItem } = useOptions();
+    const { options, selectedItem, loading, error } = useOptions();
     var version = "";
     if (selectedItem === "" && options) {
         version = Object.keys(options)[0];
@@ -370,7 +376,7 @@ const DownloadComponent = () => {
                     }}
                 >
                     <h1 className="margin-bottom--none">Download OpenBao</h1>
-                    <VersionSelect />
+                    {!loading && !error && <VersionSelect />}
                 </div>
             </div>
             <div className="row">
@@ -391,17 +397,38 @@ const DownloadComponent = () => {
                     </p>
                 </div>
             </div>
-            { prerelease_notice }
-            {/* Check if version is not undefined before accessing releases */}
-            {version &&
-                options[version]["assets"] &&
-                Object.entries(options[version]["assets"]).map(
-                    ([key, value]) => (
-                        <div className="row">
-                            <OS name={key} />
+            {loading ? (
+                <div className="row">
+                    <div className="col col--12 margin-horiz--md">
+                        <div class="alert alert--info" role="alert">
+                            <h3>Loading...</h3>
+                            Fetching release information from GitHub, please wait a moment.
                         </div>
-                    ),
-                )}
+                    </div>
+                </div>
+            ) : error ? (
+                <div className="row">
+                    <div className="col col--12 margin-horiz--md">
+                        <div class="alert alert--danger" role="alert">
+                            <h3>Failed to load releases</h3>
+                            Unable to fetch releases from GitHub. Please try refreshing the page or visit the <a href="https://github.com/openbao/openbao/releases">GitHub Releases page</a> directly.
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    { prerelease_notice }
+                    {version &&
+                        options[version]["assets"] &&
+                        Object.entries(options[version]["assets"]).map(
+                            ([key, value]) => (
+                                <div className="row">
+                                    <OS name={key} />
+                                </div>
+                            ),
+                        )}
+                </>
+            )}
         </div>
     );
 };

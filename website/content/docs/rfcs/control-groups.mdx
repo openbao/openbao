@@ -1,0 +1,277 @@
+---
+sidebar_label: Control Groups
+description: |-
+  An OpenBao RFC for protecting paths by a control group
+---
+
+# Support control groups for authorizing paths
+
+## Summary
+
+This feature would implement second-party authorization for protected
+resources. A control-group restriction placed on a path would require
+a user to obtain prior authorization before the action would
+succeed.
+
+Control groups utilize the existing
+[response-wrapping](../concepts/response-wrapping.mdx) workflow because
+of the asynchronous character, and usage would follow this general
+pattern (via API endpoints):
+
+1. A path is assigned a control-group policy
+2. A user requesting the protected path receives a wrapped response with a `wrapping_accessor` 
+and `wrapping_token`.
+3. Using the `wrapping_accessor`, a control group member can review and authorize the request.
+4. Access to the wrapped response via `wrapping_token` will now succeed once approved.
+
+A second phase might add a notification workflow, but this is not essential:
+1. A user requests access to the protected resource
+2. Members of the control group receive a notification of the request (on logging in to OpenBao web UI?)
+3. The original requester receives notification of the control-group approval when it occurs
+
+## Problem Statement
+
+An organization may want to review access to certain paths (eg, pki
+issuance) on a case-by-case basis, and/or requires a "second set
+of eyes" to approve access to a path. The reviewers are indicated by
+specifying a control group, whose members can grant access by using
+an `authorize` endpoint. However, the control group members should not be able to
+grant their own personal access.
+
+## User-facing Description
+
+Two users are implicated in the control-group workflow: a requester
+and an approver.  The requester will attempt to access a protected
+path, but will receive a wrapped response. The approver can access
+metadata about the request (entity, path, etc) and approve it. Once approved,
+the response can be unwrapped.
+
+## Technical Description
+
+The control group implementation will consist of the following.
+1. A control-group access policy:
+   1. Denies data access by default
+   2. Specifies the control group, number of authorizations, ttl
+   2. Allows authorizing action to control group members
+   3. Allows data access to authorized entity
+2. An authorizing endpoint (in `sys/control-group`):
+   1. Using wrapping accessor
+   2. Self authorization not permitted
+3. Authorization storage
+   1. Request, authorization details, and response will be stored in
+      the metadata for the wrapping token.
+
+Reusing the response wrapping framework should be familiar, but the
+developer will need to add new `control-group` paths to the system
+backend. Additional logic will be needed in the `wrapping/unwrap`
+handlers, as well as policy application.
+
+## API Details
+
+### Policy Extension
+
+Control groups could be implemented as a new object in the ACL policy
+for a path. Multiple named "factors" can be specified, eg:
+
+```
+path "pki/issue/*" {
+  capabilities = ["read", "update"]
+
+  control-group = {
+    factor "pki-approvers" {
+      controlled_capabilities = ["update"]
+      identity {
+		# Control groups that can authorize access
+		group_names = ["pki-approvers", "security-team"]
+		approvals = 1
+
+		# Max duration for which authorization is valid
+		ttl = "5d"
+
+		# Allow self-authorization when true
+		self_authorization = false
+	  }
+	}
+  }
+}
+```
+
+Using a path having the policy would look like the following:
+
+```
+# Normal request by some user (blocked by control group by default)
+POST pki/issue/web-server
+{
+  "common_name": "web.example.com",
+  "ttl": "24h"
+}
+
+# Which returns a wrapped response:
+{
+  "wrap_info": {
+    "token": "TOKEN",
+    "accessor": "ACCESSOR"
+  }
+}
+```
+
+An authorizer can view and approve the request:
+```
+# Authorizer inspecting the request
+POST auth/token/lookup-accessor
+{
+  "accessor": "ACCESSOR"
+}
+
+# Which returns the wrapping token entry with request and applicable control-group policy in the metadata:
+{
+  "request_id": "...",
+  "lease_id": "",
+  "renewable": false,
+  "lease_duration": 0,
+  "data": {
+    "accessor": "ACCESSOR",
+    "creation_time": 1705412345,
+    "creation_ttl": 600,
+    "display_name": "token",
+    "entity_id": "",
+    "expire_time": "2024-01-16T15:00:00Z",
+    "explicit_max_ttl": 0,
+    "id": "",
+    "meta": {
+      "control_group": "{\"ttl\":3600000000000,\"factors\":[{\"name\":\"require-secops-approval\",\"controlled_capabilities\":[\"read\"],\"identity\":{\"group_names\":[\"secops\",\"security-admins\"],\"approvals\":2},\"authorizations\":[]}]}",
+      "request": "{\"id\":\"f4d37c6a-1b2e-9c3d-8a4f-5b6e7c8d9e0f\",\"operation\":\"create\",\"path\":\"pki/issue/web-server\",\"map\":{\"version\":\"0\"},\"client_token_accessor\":\"\",\"display_name\":\"token-developer-ldap\",\"mount_point\":pki/\",\"mount_type\":\"pki\",\"entity_id\":\"abc12345-6789-def0-1234-567890abcdef\"}"
+    },
+    "num_uses": 1,
+    "orphan": true,
+    "path": "auth/token/create",
+    "policies": [
+      "response-wrapping"
+    ],
+    "renewable": false,
+    "ttl": 598,
+    "type": "service"
+  },
+  "wrap_info": null,
+  "warnings": null,
+  "auth": null
+}
+
+# Authorizer approves the request
+POST auth/token/approve-accessor
+{
+  "accessor": "ACCESSOR"
+}
+
+
+# Which returns the updated token entry (approver is added to control_group/factors/authorizations):
+{
+  "request_id": "...",
+  "lease_id": "",
+  "renewable": false,
+  "lease_duration": 0,
+  "data": {
+    "accessor": "ACCESSOR",
+    "creation_time": 1705412345,
+    "creation_ttl": 600,
+    "display_name": "token",
+    "entity_id": "",
+    "expire_time": "2024-01-16T15:00:00Z",
+    "explicit_max_ttl": 0,
+    "id": "",
+    "meta": {
+      "control_group": "{\"ttl\":3600000000000,\"factors\":[{\"name\":\"require-secops-approval\",\"controlled_capabilities\":[\"read\"],\"identity\":{\"group_names\":[\"secops\",\"security-admins\"],\"approvals\":2},\"authorizations\":[{\"timestamp\": \"20250115T23:10:09\",\"approver\":\"john.doe@example.com\"}]}]}",
+      "request": "{\"id\":\"f4d37c6a-1b2e-9c3d-8a4f-5b6e7c8d9e0f\",\"operation\":\"create\",\"path\":\"pki/issue/web-server\",\"map\":{\"version\":\"0\"},\"client_token_accessor\":\"\",\"display_name\":\"token-developer-ldap\",\"mount_point\":\"pki/\",\"mount_type\":\"pki\",\"entity_id\":\"abc12345-6789-def0-1234-567890abcdef\"}"
+    },
+    "num_uses": 1,
+    "orphan": true,
+    "path": "auth/token/create",
+    "policies": [
+      "response-wrapping"
+    ],
+    "renewable": false,
+    "ttl": 598,
+    "type": "service"
+  },
+  "wrap_info": null,
+  "warnings": null,
+  "auth": null
+}
+```
+
+Requesting user can now retrieve the response if the nomber of authorizations is equal to the approvers attribute:
+
+```
+# Unwrap request
+POST /sys/wrapping/unwrap
+{
+  "token": "TOKEN"
+}
+
+# Which now returns the original response data:
+{
+  "request_id": "12345678-abcd-efgh-ijkl-123456789abc",
+  "lease_id": "",
+  "renewable": false,
+  "lease_duration": 0,
+  "data": {
+    "ca_chain": [
+      "-----BEGIN CERTIFICATE-----\nMIIBuDCCAV6g...\n-----END CERTIFICATE-----"
+    ],
+    "certificate": "-----BEGIN CERTIFICATE-----\nMIIDATCCAemgAwIBAgIUK8ZQgT...\n-----END CERTIFICATE-----",
+    "expiration": 1701504000,
+    "issuing_ca": "-----BEGIN CERTIFICATE-----\nMIIBuDCCAV6gAwIBAgIUK8ZQ...\n-----END CERTIFICATE-----",
+    "not_before": 1701500400,
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0B...\n-----END PRIVATE KEY-----",
+    "private_key_type": "rsa",
+    "serial_number": "2b:c6:50:81:3f:e4:2a:1d:f3:4c:5e:6f:8a:9b:0c:1d:2e:3f:4a:5b"
+  },
+  "warnings": null,
+  "auth": null
+}
+```
+
+## Rationale and Alternatives
+The control group concept has a number of benefits:
+
+1. The administrator can delegate authorization responsibility to a
+   group, any member of which can grant access
+2. By inhibiting self-approval, the control group policy can ensure "second set of eyes"
+3. The wrapped_response workflow provides some additional security
+
+A workflow for requesting/granting in the UI could make admistration easier.
+
+As an alternative: the same second-person security arrangement can be
+achieved with a basic policy granting access to a path. However, this
+requires policy-granting permission for the "control group" member,
+and extra work to subsequently remove the policy.
+
+## Downsides
+
+Involving a second actor in securing a path creates some complexity and impedence for users.
+
+## Security Implications
+
+Using response wrapping and requiring authorization should increase
+security. Only the original token holder (the requester) will be able
+to obtain the original response.
+
+## User/Developer Experience
+
+The api is following Vault Enterprise, so it should be familiar for
+users who are already using the equivalent feature there. For new
+users, we will need some documentation describing usage and value. For
+users who do not need, it can be ignored.
+
+## Unresolved Questions
+Relying on `sys/wrapping` and the `auth/token` endpoints might conflict
+with namespace partitioning.
+
+## Related Issues
+
+- https://github.com/openbao/openbao/issues/1669
+
+## Proof of Concept
+
+- https://github.com/openbao/openbao/pull/2241
+

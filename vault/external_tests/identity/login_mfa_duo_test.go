@@ -91,7 +91,7 @@ path "secret/foo" {
 
 	userpassToken := secret.Auth.ClientToken
 
-	secret, err = client.Logical().Write("auth/token/lookup", map[string]interface{}{
+	_, err = client.Logical().Write("auth/token/lookup", map[string]interface{}{
 		"token": userpassToken,
 	})
 	if err != nil {

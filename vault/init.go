@@ -406,7 +406,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		return nil, err
 	}
 
-	activeCtx, ctxCancel := context.WithCancel(namespace.RootContext(nil))
+	activeCtx, ctxCancel := context.WithCancel(namespace.RootContext(context.Background()))
 	if err := c.postUnseal(activeCtx, ctxCancel, standardUnsealStrategy{}); err != nil {
 		c.logger.Error("post-unseal setup failed during init", "error", err)
 		return nil, err

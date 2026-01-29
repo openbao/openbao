@@ -22,10 +22,10 @@ import (
 )
 
 func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
-	i, _, _ := testIdentityStoreWithAppRoleAuth(namespace.RootContext(nil), t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(namespace.RootContext(context.TODO()), t)
 
 	// Create an entity
-	resp, err := i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err := i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -38,7 +38,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 	entityID := resp.Data["id"].(string)
 
 	// Create a group
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -51,7 +51,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 	}
 
 	// Ensure that the group has entity ID as its member
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "group/name/testgroup",
 		Operation: logical.ReadOperation,
 	})
@@ -65,7 +65,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 	}
 
 	// Delete the entity
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity/name/testentity",
 		Operation: logical.DeleteOperation,
 	})
@@ -74,7 +74,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 	}
 
 	// Ensure that the group does not have entity ID as it's member anymore
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "group/name/testgroup",
 		Operation: logical.ReadOperation,
 	})
@@ -89,7 +89,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 }
 
 func TestIdentityStore_CaseInsensitiveEntityName(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	testEntityName := "testEntityName"
@@ -160,7 +160,7 @@ func TestIdentityStore_CaseInsensitiveEntityName(t *testing.T) {
 }
 
 func TestIdentityStore_EntityByName(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity using the "name" endpoint
@@ -279,7 +279,7 @@ func TestIdentityStore_EntityReadGroupIDs(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
@@ -360,7 +360,7 @@ func TestIdentityStore_EntityCreateUpdate(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityData := map[string]interface{}{
@@ -414,7 +414,7 @@ func TestIdentityStore_EntityCreateUpdate(t *testing.T) {
 }
 
 func TestIdentityStore_BatchDelete(t *testing.T) {
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	ids := make([]string, 10000)
@@ -506,7 +506,7 @@ func TestIdentityStore_CloneImmutability(t *testing.T) {
 
 func TestIdentityStore_MemDBImmutability(t *testing.T) {
 	var err error
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	validateMountResp := is.router.ValidateMountByAccessor(approleAccessor)
@@ -571,7 +571,7 @@ func TestIdentityStore_ContextCancel(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx, cancelFunc := context.WithCancel(namespace.RootContext(nil))
+	ctx, cancelFunc := context.WithCancel(namespace.RootContext(context.TODO()))
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
@@ -579,13 +579,11 @@ func TestIdentityStore_ContextCancel(t *testing.T) {
 		Path:      "entity",
 	}
 
-	expected := []string{}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		resp, err = is.HandleRequest(ctx, entityReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v", err, resp)
 		}
-		expected = append(expected, resp.Data["id"].(string))
 	}
 
 	listReq := &logical.Request{
@@ -607,7 +605,7 @@ func TestIdentityStore_ListEntities(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
@@ -707,7 +705,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	}
 
 	// Identity store will be mounted by now, just fetch it from router
-	identitystore := c.router.MatchingBackend(namespace.RootContext(nil), "identity/")
+	identitystore := c.router.MatchingBackend(namespace.RootContext(context.TODO()), "identity/")
 	if identitystore == nil {
 		t.Fatal("failed to fetch identity store from router")
 	}
@@ -726,7 +724,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 		Data:      registerData,
 	}
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Register the entity
 	resp, err = is.HandleRequest(ctx, registerReq)
@@ -785,7 +783,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	var err error
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	validateMountResp := is.router.ValidateMountByAccessor(approleAccessor)
@@ -897,7 +895,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	registerData := map[string]interface{}{
@@ -1225,7 +1223,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Register the entity
@@ -1343,10 +1341,10 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 }
 
 func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
-	i, _, _ := testIdentityStoreWithAppRoleAuth(namespace.RootContext(nil), t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(namespace.RootContext(context.TODO()), t)
 
 	// Create an entity
-	resp, err := i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err := i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -1359,7 +1357,7 @@ func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
 	}
 
 	// Read the entity first.
-	readEntityResp, err := i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	readEntityResp, err := i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity/name/testentity",
 		Operation: logical.ReadOperation,
 	})
@@ -1368,7 +1366,7 @@ func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
 	}
 
 	// Update the entity to set the root policy; this should fail.
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity/name/testentity",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -1380,7 +1378,7 @@ func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
 	}
 
 	// Ensure that the entity was not modified.
-	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = i.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "entity/name/testentity",
 		Operation: logical.ReadOperation,
 	})

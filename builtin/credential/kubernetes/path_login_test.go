@@ -322,8 +322,11 @@ func TestLogin(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp == nil || !resp.IsError() {
-		t.Fatal("expected error")
+		t.Fatal("expected error response")
 	}
 	if resp.Error().Error() != "missing role" {
 		t.Fatalf("unexpected error: %s", resp.Error())
@@ -341,6 +344,9 @@ func TestLogin(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -361,6 +367,9 @@ func TestLogin(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -383,7 +392,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -407,7 +416,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("Expected error")
 	} else if !errors.Is(err, logical.ErrPermissionDenied) {
@@ -577,7 +586,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 		},
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	_, err := b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -602,7 +611,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -713,7 +722,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("Expected error")
 	} else if !errors.Is(err, logical.ErrPermissionDenied) {
@@ -1072,7 +1081,7 @@ func TestLoginIssValidation(t *testing.T) {
 		},
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
+	_, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}

@@ -180,8 +180,7 @@ func (sc *storageContext) rebuildIssuersChains(referenceCert *issuerEntry /* opt
 		// Fetch the certificate as we'll need it later.
 		childCert := issuerIdCertMap[child]
 
-		parentSubject := string(issuerIdCertMap[child].RawIssuer)
-		parentCerts, ok := subjectIssuerIdsMap[parentSubject]
+		parentCerts, ok := subjectIssuerIdsMap[string(issuerIdCertMap[child].RawIssuer)]
 		if !ok {
 			// When the issuer isn't known to Vault, the lookup by the issuer
 			// will be empty. This most commonly occurs when intermediates are

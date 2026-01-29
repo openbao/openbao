@@ -96,7 +96,7 @@ func BenchmarkCertBundleParsing(b *testing.B) {
 				continue
 			}
 
-			cbut, err = pcbut.ToCertBundle()
+			_, err = pcbut.ToCertBundle()
 			if err != nil {
 				b.Fatalf("Error converting to cert bundle: %s", err)
 			}

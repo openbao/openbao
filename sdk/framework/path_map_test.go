@@ -5,6 +5,7 @@ package framework
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	saltpkg "github.com/openbao/openbao/sdk/v2/helper/salt"
@@ -277,7 +278,7 @@ func testSalting(t *testing.T, ctx context.Context, storage logical.Storage, sal
 		t.Fatalf("err: %v", err)
 	}
 	// A read should transparently upgrade
-	resp, err = b.HandleRequest(ctx, &logical.Request{
+	_, err = b.HandleRequest(ctx, &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "map/foo/b",
 		Storage:   storage,
@@ -289,13 +290,7 @@ func testSalting(t *testing.T, ctx context.Context, storage logical.Storage, sal
 	if len(list) != 1 {
 		t.Fatalf("unexpected number of entries left after upgrade; expected 1, got %d", len(list))
 	}
-	found := false
-	for _, v := range list {
-		if v == "s"+salt.SaltIDHashFunc("b", saltpkg.SHA256Hash) {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(list, "s"+salt.SaltIDHashFunc("b", saltpkg.SHA256Hash))
 	if !found {
 		t.Fatal("did not find upgraded value")
 	}
@@ -311,7 +306,7 @@ func testSalting(t *testing.T, ctx context.Context, storage logical.Storage, sal
 	}
 
 	// A read should transparently upgrade
-	resp, err = b.HandleRequest(ctx, &logical.Request{
+	_, err = b.HandleRequest(ctx, &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "map/foo/b",
 		Storage:   storage,
@@ -323,13 +318,7 @@ func testSalting(t *testing.T, ctx context.Context, storage logical.Storage, sal
 	if len(list) != 1 {
 		t.Fatalf("unexpected number of entries left after upgrade; expected 1, got %d", len(list))
 	}
-	found = false
-	for _, v := range list {
-		if v == "s"+salt.SaltIDHashFunc("b", saltpkg.SHA256Hash) {
-			found = true
-			break
-		}
-	}
+	found = slices.Contains(list, "s"+salt.SaltIDHashFunc("b", saltpkg.SHA256Hash))
 	if !found {
 		t.Fatal("did not find upgraded value")
 	}

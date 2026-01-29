@@ -40,7 +40,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 		{"prefix/secret4/", "kv", "2", 5},
 		{"generic/", "generic", "1", 3},
 	}
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// skip 0, secret/ is already mounted
 	for _, tm := range testMounts[1:] {
@@ -166,7 +166,7 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 		Type:    "kv",
 		Options: map[string]string{"version": "1"},
 	}
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	err := core.mount(ctx, me)
 	if err != nil {
 		t.Fatalf("mount error: %v", err)
@@ -210,7 +210,7 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 
 func TestCoreMetrics_KvSecretGaugeError(t *testing.T) {
 	core, _, _, sink := TestCoreUnsealedWithMetrics(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	badKvMount := &kvMount{
 		Namespace:  namespace.RootNamespace,

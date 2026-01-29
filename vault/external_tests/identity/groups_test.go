@@ -188,7 +188,7 @@ func TestIdentityStore_ExternalGroupMembershipsAcrossMounts(t *testing.T) {
 	defer cleanup()
 
 	// Configure LDAP auth
-	secret, err := client.Logical().Write("auth/ldap/config", map[string]interface{}{
+	_, err = client.Logical().Write("auth/ldap/config", map[string]interface{}{
 		"url":       cfg.Url,
 		"userattr":  cfg.UserAttr,
 		"userdn":    cfg.UserDN,
@@ -219,7 +219,7 @@ func TestIdentityStore_ExternalGroupMembershipsAcrossMounts(t *testing.T) {
 	}
 
 	// Create an external group
-	secret, err = client.Logical().Write("identity/group", map[string]interface{}{
+	secret, err := client.Logical().Write("identity/group", map[string]interface{}{
 		"type": "external",
 	})
 	if err != nil {
@@ -290,7 +290,7 @@ func TestIdentityStore_ExternalGroupMembershipsAcrossMounts(t *testing.T) {
 	defer cleanup2()
 
 	// Configure LDAP auth
-	secret, err = client.Logical().Write("auth/ldap2/config", map[string]interface{}{
+	_, err = client.Logical().Write("auth/ldap2/config", map[string]interface{}{
 		"url":       cfg2.Url,
 		"userattr":  cfg2.UserAttr,
 		"userdn":    cfg2.UserDN,

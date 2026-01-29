@@ -1505,7 +1505,7 @@ func TestBackend_DefExtTemplatingEnabled(t *testing.T) {
 	invalidUserProvidedExtensionPermissions := map[string]string{
 		"login@foobar.com": "{{identity.entity.metadata}}",
 	}
-	resp, err = client.Logical().Write("ssh/sign/test", map[string]interface{}{
+	_, err = client.Logical().Write("ssh/sign/test", map[string]interface{}{
 		"public_key": publicKey4096,
 		"extensions": invalidUserProvidedExtensionPermissions,
 	})
@@ -2892,7 +2892,7 @@ func TestSSHBackend_IssuerLifecycle(t *testing.T) {
 		issuerId := resp.Data["issuer_id"].(string)
 
 		// Delete the issuer
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		_, err = b.HandleRequest(context.Background(), &logical.Request{
 			Operation: logical.DeleteOperation,
 			Path:      "issuer/" + issuerId,
 			Storage:   s,
@@ -2909,7 +2909,7 @@ func TestSSHBackend_IssuerLifecycle(t *testing.T) {
 		require.True(t, resp.IsError())
 
 		// Test bulk deletion via config/ca
-		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		_, err = b.HandleRequest(context.Background(), &logical.Request{
 			Operation: logical.DeleteOperation,
 			Path:      "config/ca",
 			Storage:   s,
@@ -2974,7 +2974,7 @@ func TestSSHBackend_IssuerLifecycle(t *testing.T) {
 			},
 			Storage: s,
 		}
-		resp, err = b.HandleRequest(context.Background(), updateReq)
+		_, err = b.HandleRequest(context.Background(), updateReq)
 		require.NoError(t, err)
 
 		resp, err = b.HandleRequest(context.Background(), &logical.Request{

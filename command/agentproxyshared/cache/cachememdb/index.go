@@ -55,7 +55,7 @@ type Index struct {
 	// RenewCtxInfo holds the context and the corresponding cancel func for the
 	// goroutine that manages the renewal of the secret belonging to the
 	// response in this index.
-	RenewCtxInfo *ContextInfo
+	RenewCtxInfo *ContextInfo `json:"-"`
 
 	// RequestMethod is the HTTP method of the request
 	RequestMethod string

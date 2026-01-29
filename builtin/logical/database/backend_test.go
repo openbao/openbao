@@ -401,7 +401,7 @@ func TestBackend_basic(t *testing.T) {
 		require.Truef(t, testCredsExist(t, credsResp, connURL), "Creds should exist")
 
 		// Revoke creds
-		resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 			Operation: logical.RevokeOperation,
 			Storage:   config.StorageView,
 			Secret: &logical.Secret{
@@ -443,7 +443,7 @@ func TestBackend_basic(t *testing.T) {
 		require.Falsef(t, resp != nil && resp.IsError(), "err:%s resp:%#v\n", err, resp)
 
 		// Revoke creds
-		resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 			Operation: logical.RevokeOperation,
 			Storage:   config.StorageView,
 			Secret: &logical.Secret{

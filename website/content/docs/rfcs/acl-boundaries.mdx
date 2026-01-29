@@ -1,0 +1,327 @@
+---
+sidebar_label: ACL Boundaries
+description: |-
+  An OpenBao RFC on adding ACL Boundaries to layer global access controls across
+  namespaces to better control capabilities in multi-tenant scenarios.
+---
+
+# ACL Boundaries
+
+## Summary
+
+This RFC proposes a new policy type, "ACL Boundary", that is based on existing
+ACL Policies. Unlike traditional ACL Policies, ACL Boundaries are attached
+to namespaces (rather than tokens or identity mappings) and allow operators
+and administrators to globally limit the base token capabilities granted to a
+tenant's subtree of namespaces.
+
+## Problem Statement
+
+With the introduction of namespaces (and, in the future, [Per-Namespace
+Sealing](namespace-sealing.mdx)), OpenBao now presents a strong foundation for
+multi-tenant use cases by delegating administration of a namespace or an entire
+subtree of namespaces to a separate tenant. While a tenant should generally
+receive full control over their namespace, the instance operator (or tenant of
+a parent namespace) may want to globally restrict certain capabilities within a
+sub-tenant's space.
+
+Thinkable use cases include:
+
+- Limiting the types of secrets and auth engines that can be mounted in a
+  namespace. For example, allow a tenant to create secrets engine mounts of type
+  `kv` and `pki` in their namespaces, but not `transit`.
+
+- Limiting the KMS providers that a tenant can consume via [External
+  Keys](external-keys.mdx) or via an Auto Seal used with [Per-Namespace
+  Sealing](namespace-sealing.mdx). For example, the operator may want to allow
+  only certain namespaces to access PKCS#11 modules.
+
+- Generally limiting available endpoints and their allowed parameters, like ACL
+  Policies do for tokens. For example, forbidding the creation of additional
+  child namespaces even when the operation is driven by a namespace-level root
+  token generated in a sealable namespace.
+
+Presently, there is no way to achieve any of the above unless tenants are not
+given the capability to manage policies in their namespaces or cannot generate
+their own root tokens given a sealable namespace.
+
+### Prior Work
+
+The accepted [External Keys RFC](external-keys.mdx) previously proposed to solve
+the respective subset of the problem described above by adding new configuration
+options specific to External Keys to both namespaces via the API and the server
+configuration file, storing what is effectively an allowlist of KMS providers
+per namespace. While workable, this design is feature-specific and does not
+generically handle many of the possible concerns around tenant restriction.
+This RFC proposes an alternative design that would supersede what was previously
+proposed for External Keys (Note that External Keys has not been released at the
+time of writing, hence the design is still free to pivot).
+
+## User-facing Description
+
+A new policy type, `acl-boundary`, will be available besides `/sys/policies/acl`
+under `/sys/policies/acl-boundary`. ACL Boundary Policies (and related
+endpoints) share the same parameters and syntax that present ACL Policies
+do - The additional endpoints are just provide an additional bucket of named
+policies. ACL Boundary Policies cannot be attached to tokens, which continue to
+refer to the existing ACL Policies only.
+
+A new field, `boundary_policies`, will be available under
+`/sys/namespaces/:name`. This is a list of policy names that refer to ACL
+Boundary Policies within the parent namespace (i.e., the namespace that hosts
+the `sys/` mount that is interacted with). For example:
+
+```shell-session
+$ bao write sys/policies/acl-boundary/foo policy=@foo.hcl
+$ bao write sys/namespaces/bar boundary_policies=foo
+```
+
+The policy is attached to the `bar/` namespace, but hosted in its parent
+namespace (the root namespace in this case).
+
+When OpenBao handles a request, it then evaluates ACL Boundaries against the
+request starting from the root namespace walking down to:
+
+- The token's namespace if it is an ancestor of the request's target namespace.
+- The request's target namespace if the token's namespace is not an ancestor
+  of the request's target namespace (this may be the case with cross-namespace
+  identity).
+
+Contrary to traditional token-level ACLs, the ACL built from the policy set
+retrieved from each namespace in the chain is built against a virtual allow-all
+policy:
+
+```hcl
+path "*" {
+ capabilities = ["read", "update", ..., "sudo"]
+}
+```
+
+While the above resembles a root policy, they are fundamentally different:
+Additional paths can be configured to reduce or fully deny sub-path capabilities
+while the root policy always bypass any additional rules. To be exact, neither a
+root policy nor a default policy exist in the context of ACL Boundary Policies.
+
+If ACL evaluation fails, the request is rejected. If the list of Boundary
+Policies in the namespace is empty (the default), the request is never rejected
+as only the virtual allow-all policy is included.
+
+Note that this process is disjoint from token/identity ACL policy evaluation,
+which occurs after ACL Boundary evaluation. Either step may fail and reject
+the request; if token policy evaluation previously rejected a request it will
+continue to do so regardless of ACL Boundaries as they cannot grant additional
+capabilities.
+
+Additionally, a new top-level boolean field `inheritable` (default `false`) is
+accepted in policy configuration files. If set to `true`, the policy's paths are
+always matched against the request's target namespace path rather than the path
+of the policy's namespace. This can be used to restrict well-known endpoints
+such as system backend endpoints across all child namespaces without needing to
+know or specify all child namespace paths:
+
+```hcl
+inheritable = true
+
+path "sys/mounts/*" {
+  capabilities = ["create", "read", "update", "delete"]
+
+  # This namespace (and all of its children) cannot
+  # create mounts that are not of type pki.
+  allowed_parameters = {
+    "type" = ["pki"]
+  }
+}
+```
+
+`inheritable` will only be an accepted field within the context of ACL Boundary
+Policies, though extending support to traditional ACL Policies further down the
+line is considerable.
+
+For completeness, Boundary Policies may also be attached to the root namespace
+by adding `boundary_policy` stanzas to the server configuration file.
+
+```hcl
+boundary_policy "<name>" {
+  inheritable = true
+
+  # An OpenBao instance that cannot have namespaces.
+  path "sys/namespaces/*" {
+    capabilities = ["deny"]
+  }
+}
+```
+
+Policies must be named to provide a better troubleshooting path when a request
+is rejected.
+
+Several stanzas can be provided to add multiple policies. In the future,
+this pattern could also support multiple root namespaces (non-hierarchical
+namespaces) by adding a namespace parameter via:
+
+```hcl
+boundary_policy "<namespace>" "<name>" { ... }
+```
+
+## Technical Description
+
+This would require changes in several places, though greatly benefits from
+existing ACL policy code.
+
+### Policy Changes
+
+We'd add a new policy type, `PolicyTypeBoundary`.
+
+```go
+const (
+  PolicyTypeToken    PolicyType = iota + 2
+  PolicyTypeBoundary PolicyType = iota + 3
+)
+```
+
+...and create new system backend paths that can reuse existing policy handlers
+which are already generic over policy type.
+
+We'd also add the `inheritable` flag to policies:
+
+```go
+type Policy struct {
+  // ...
+  Inheritable bool
+}
+```
+
+...which must then be supported in policy parsing code, and rejected for
+`PolicyTypeToken`.
+
+### Namespace Changes
+
+We'd add a list of Boundary Policies to namespaces:
+
+```go
+type Namespace struct {
+  // ...
+  BoundaryPolicies []string
+}
+```
+
+...and make those configurable via the existing `PUT /sys/namespaces/:name` and
+`PATCH /sys/namespaces/:name` endpoints.
+
+### Configuration Changes
+
+Server configuration would need to handle the `boundary_policy` stanzas. These
+would then be parsed by core, and need to be reparsed when server configuration
+updates via and a reload is triggered via `SIGHUP` interrupt.
+
+### Request Handling Changes
+
+Request handling would need to determine the correct chain of boundaries
+to evaluate the request against and build several ACLs that are iteratively
+evaluated. Namespaces that do not hold Boundary Policies can be skipped without
+any evaluation. This would likely happen before evaluating token-specific
+policies.
+
+## Rationale and Alternatives
+
+This design covers many of the possible needs an operator or administrator may
+have to restrict tenant capabilities, but not all. Given that the existing ACL
+Policy format is reused, any limitations previously set by ACL Policies still
+apply.
+
+Notable constraints that are immediately covered by this RFC include, but are
+not limited to:
+
+- Restricting the available plugin types
+- Restricting the path a plugin may be mounted at
+- Restricting the available KMS providers for External Keys
+- Restricting core features by denying paths such as namespace management or
+  identity.
+
+On the other hand, the ACL Policy format fails to express advanced constraints
+within request parameters when these are not easily captured by the request
+path or top-level parameters; this is because `allowed_parameters` and
+`denied_parameters` offer limited programmability.
+
+For example, ACL Policies cannot be used to limit the seal type used for
+namespace creation with [Per-Namespace Sealing](namespace-sealing.mdx) as the
+request object is too complex:
+
+```jsonc
+// POST /sys/namespaces/foo
+{
+  "seals": [
+    {
+      "type": "pkcs11",
+      "pin": "<secret>",
+      // ...
+    },
+    {
+      "type": "...",
+      // ...
+    },
+    // ...
+  ]
+}
+```
+
+If desired, this could be resolved by a separate RFC that adds programmability
+to ACL Policies. [CEL](https://cel.dev) would be a good match for this and is
+already used in other areas of OpenBao:
+
+```hcl
+path "/sys/namespaces/+" {
+  capabilities = ["read", "update"]
+
+  # Allow PKCS#11 and Shamir seals only.
+  expression = "request.data.seals.all(seal, seal.type == 'pkcs11' || seal.type == 'shamir')"
+}
+```
+
+An alternative administration path for namespace seals that is enabled by this
+RFC alone is to restrict a tenant from child namespace creation using a Boundary
+Policy and to perform child namespace creation for the tenant using tokens
+that live in a namespace above the tenant's main namespace. This works because
+boundaries only apply up to the requesting token, hence tokens from a higher
+namespace may perform actions in a namespace that would be restricted if the
+token originated from the namespace itself.
+
+The alternative to a generic system like described in this RFC would be one
+that is aware of concrete core and plugin functionality that may be restricted,
+like described in the [External Keys RFC](external-keys.mdx). This would require
+additional handling and endpoints or parameters per feature and does not allow
+for custom scenarios like policies do.
+
+## Security Implications
+
+This improves overall security posture by allowing operators and administrators
+to globally restrict capabilities across trees of tenants. ACL Boundaries would
+never lead to an increase in capabilities beyond what was previously granted by
+a token's policies, they can only ever decrease a token's initial capabilities.
+Similarly, ACL Boundaries placed in a child namespace can never re-grant
+capabilities that were revoked by a boundary in an upper namespace.
+
+## User/Developer Experience
+
+This change is backwards-compatible and optional, it does not change the default
+access semantics present in OpenBao today. ACL Boundaries would be mostly
+transparent from the API consumer's side and potentially lead to decreased
+capabilities if configured, just like an update to the token's policies could.
+
+## Unresolved Questions
+
+- Should `/sys/capabilities` reflect ACL Boundaries or not?
+- Should ACL Boundaries support [identity-based
+  templating](../concepts/policies.mdx#templated-policies)?
+
+## Related Issues
+
+- https://github.com/openbao/openbao/pull/1320
+- https://github.com/openbao/openbao/pull/1537
+- Not an issue, but related: AWS provides similar non-granting, revoke-only
+  policy types such as [Permissions boundaries and Organizations service control
+  policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html#access_policy-types),
+  where the former ultimately inspired the naming proposed in this RFC.
+
+## Proof of Concept
+
+TBD

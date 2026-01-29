@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/netip"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/strslice"
-	docker "github.com/docker/docker/client"
 	"github.com/moby/go-archive"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/api/types/strslice"
+	docker "github.com/moby/moby/client"
 )
 
 // Runner manages the lifecycle of the Docker container
@@ -43,8 +43,12 @@ func (d *Runner) Start(ctx context.Context) (*container.InspectResponse, error) 
 			Aliases: []string{d.ContainerName},
 		}
 		if len(d.IP) != 0 {
+			addr, err := netip.ParseAddr(d.IP)
+			if err != nil {
+				return nil, err
+			}
 			es.IPAMConfig = &network.EndpointIPAMConfig{
-				IPv4Address: d.IP,
+				IPv4Address: addr,
 			}
 		}
 		networkingConfig.EndpointsConfig = map[string]*network.EndpointSettings{
@@ -56,7 +60,7 @@ func (d *Runner) Start(ctx context.Context) (*container.InspectResponse, error) 
 	// Docker library, or if not found pull the matching image from docker hub. If
 	// not found on docker hub, returns an error. The response must be read in
 	// order for the local image.
-	resp, err := d.dockerAPI.ImageCreate(ctx, d.ContainerConfig.Image, image.CreateOptions{})
+	resp, err := d.dockerAPI.ImagePull(ctx, d.ContainerConfig.Image, docker.ImagePullOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +72,13 @@ func (d *Runner) Start(ctx context.Context) (*container.InspectResponse, error) 
 	hostConfig.CapAdd = strslice.StrSlice{"IPC_LOCK"}
 	cfg.Hostname = d.ContainerName
 	fullName := d.ContainerName
-	containerObj, err := d.dockerAPI.ContainerCreate(ctx, &cfg, hostConfig, networkingConfig, nil, fullName)
+	containerObj, err := d.dockerAPI.ContainerCreate(ctx, docker.ContainerCreateOptions{
+		Config:           &cfg,
+		HostConfig:       hostConfig,
+		NetworkingConfig: networkingConfig,
+		Platform:         nil,
+		Name:             fullName,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("container create failed: %v", err)
 	}
@@ -94,20 +104,23 @@ func (d *Runner) Start(ctx context.Context) (*container.InspectResponse, error) 
 			return nil, fmt.Errorf("error preparing copy from %q -> %q: %v", from, to, err)
 		}
 		defer content.Close()
-		err = d.dockerAPI.CopyToContainer(ctx, containerObj.ID, dstDir, content, container.CopyToContainerOptions{})
+		_, err = d.dockerAPI.CopyToContainer(ctx, containerObj.ID, docker.CopyToContainerOptions{
+			DestinationPath: dstDir,
+			Content:         content,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("error copying from %q -> %q: %v", from, to, err)
 		}
 	}
 
-	err = d.dockerAPI.ContainerStart(ctx, containerObj.ID, container.StartOptions{})
+	_, err = d.dockerAPI.ContainerStart(ctx, containerObj.ID, docker.ContainerStartOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("container start failed: %v", err)
 	}
 
-	inspect, err := d.dockerAPI.ContainerInspect(ctx, containerObj.ID)
+	inspect, err := d.dockerAPI.ContainerInspect(ctx, containerObj.ID, docker.ContainerInspectOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return &inspect, nil
+	return &inspect.Container, nil
 }

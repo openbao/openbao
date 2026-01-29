@@ -666,7 +666,7 @@ func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 	return nil
 }
 
-func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStorage bool) error {
+func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStorage bool) (err error) {
 	c.mountsLock.Lock()
 	c.authLock.Lock()
 	locked := true
@@ -756,6 +756,12 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	if backend == nil {
 		return fmt.Errorf("nil backend of type %q returned from creation function", entry.Type)
 	}
+
+	defer func() {
+		if err != nil {
+			backend.Cleanup(ctx)
+		}
+	}()
 
 	// Check for the correct backend type
 	backendType := backend.Type()

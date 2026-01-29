@@ -2443,7 +2443,7 @@ func TestExpiration_revokeEntry_rejected_fairsharing(t *testing.T) {
 	// Now let the revocation actually process
 	time.Sleep(1 * time.Second)
 
-	le, err = exp.FetchLeaseTimes(namespace.RootContext(nil), le.LeaseID)
+	le, err = exp.FetchLeaseInfo(namespace.RootContext(t.Context()), le.LeaseID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3097,7 +3097,7 @@ func TestExpiration_FetchLeaseTimesIrrevocable(t *testing.T) {
 	ctx := namespace.RootContext(nil)
 
 	leaseID := registerOneLease(t, ctx, exp)
-	expectedLeaseTimes, err := exp.FetchLeaseTimes(ctx, leaseID)
+	expectedLeaseTimes, err := exp.FetchLeaseInfo(ctx, leaseID)
 	if err != nil {
 		t.Fatalf("error getting lease times: %v", err)
 	}
@@ -3113,7 +3113,7 @@ func TestExpiration_FetchLeaseTimesIrrevocable(t *testing.T) {
 	exp.markLeaseIrrevocable(ctx, le, errors.New("test irrevocable error"))
 	exp.pendingLock.Unlock()
 
-	irrevocableLeaseTimes, err := exp.FetchLeaseTimes(ctx, leaseID)
+	irrevocableLeaseTimes, err := exp.FetchLeaseInfo(ctx, leaseID)
 	if err != nil {
 		t.Fatalf("error getting irrevocable lease times: %v", err)
 	}

@@ -35,12 +35,11 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/volume"
-	docker "github.com/docker/docker/client"
 	"github.com/hashicorp/go-cleanhttp"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
+	"github.com/moby/moby/api/types/container"
+	docker "github.com/moby/moby/client"
 	"github.com/openbao/openbao/api/v2"
 	dockhelper "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
@@ -565,13 +564,15 @@ func (n *DockerClusterNode) cleanup() error {
 
 func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOptions) error {
 	if n.DataVolumeName == "" {
-		vol, err := n.DockerAPI.VolumeCreate(ctx, volume.CreateOptions{})
+		vol, err := n.DockerAPI.VolumeCreate(ctx, docker.VolumeCreateOptions{})
 		if err != nil {
 			return err
 		}
-		n.DataVolumeName = vol.Name
+		n.DataVolumeName = vol.Volume.Name
 		n.cleanupVolume = func() {
-			_ = n.DockerAPI.VolumeRemove(ctx, vol.Name, false)
+			_, _ = n.DockerAPI.VolumeRemove(ctx, vol.Volume.Name, docker.VolumeRemoveOptions{
+				Force: false,
+			})
 		}
 	}
 	vaultCfg := map[string]interface{}{}
@@ -797,7 +798,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		}
 	}
 	n.ContainerNetworkName = netName
-	n.ContainerIPAddress = svc.Container.NetworkSettings.Networks[netName].IPAddress
+	n.ContainerIPAddress = svc.Container.NetworkSettings.Networks[netName].IPAddress.String()
 	n.RealAPIAddr = "https://" + n.ContainerIPAddress + ":8200"
 	n.cleanupContainer = svc.Cleanup
 
@@ -811,7 +812,8 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 }
 
 func (n *DockerClusterNode) Pause(ctx context.Context) error {
-	return n.DockerAPI.ContainerPause(ctx, n.Container.ID)
+	_, err := n.DockerAPI.ContainerPause(ctx, n.Container.ID, docker.ContainerPauseOptions{})
+	return err
 }
 
 func (n *DockerClusterNode) AddNetworkDelay(ctx context.Context, delay time.Duration, targetIP string) error {
@@ -1232,11 +1234,11 @@ func NewPostgreSQLStorage(t *testing.T, network string) *PostgreSQLStorage {
 
 	var host string
 	if network != "" {
-		host = svc.Container.NetworkSettings.Networks[network].IPAddress
+		host = svc.Container.NetworkSettings.Networks[network].IPAddress.String()
 	} else {
 		for name, info := range svc.Container.NetworkSettings.Networks {
 			network = name
-			host = info.IPAddress
+			host = info.IPAddress.String()
 
 			t.Logf("found network [%v]: %v", network, info)
 		}

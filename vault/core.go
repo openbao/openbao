@@ -243,7 +243,7 @@ type Core struct {
 	redirectAddr string
 
 	// clusterAddr is the address we use for clustering
-	clusterAddr *atomic.Value
+	clusterAddr atomic.Value
 
 	// physical backend is the un-trusted backend with durable data
 	physical physical.Backend
@@ -265,19 +265,19 @@ type Core struct {
 	// postUnsealStarted informs the raft retry join routine that unseal key
 	// validation is completed and post unseal has started so that it can complete
 	// the join process when Shamir seal is in use
-	postUnsealStarted *uint32
+	postUnsealStarted atomic.Bool
 
 	// raftInfo will contain information required for this node to join as a
 	// peer to an existing raft cluster. This is marked atomic to prevent data
 	// races and casted to raftInformation wherever it is used.
-	raftInfo *atomic.Value
+	raftInfo atomic.Pointer[raftInformation]
 
 	// migrationInfo is used during (and possibly after) a seal migration.
-	// This contains information about the seal we are migrating *from*.  Even
+	// This contains information about the seal we are migrating *from*. Even
 	// post seal migration, provided the old seal is still in configuration
 	// migrationInfo will be populated, which may be necessary for seal rewrap.
 	migrationInfo     *migrationInformation
-	sealMigrationDone *uint32
+	sealMigrationDone atomic.Bool
 
 	// barrier is the security barrier wrapping the physical backend
 	barrier SecurityBarrier
@@ -296,14 +296,14 @@ type Core struct {
 
 	// stateLock protects mutable state
 	stateLock locking.RWMutex
-	sealed    *uint32
+	sealed    atomic.Bool
 
 	standby              atomic.Bool
 	standbyDoneCh        chan struct{}
-	standbyStopCh        *atomic.Value
-	standbyRestartCh     *atomic.Value
+	standbyStopCh        atomic.Value
+	standbyRestartCh     atomic.Value
 	manualStepDownCh     chan struct{}
-	keepHALockOnStepDown *uint32
+	keepHALockOnStepDown atomic.Bool
 	heldHALock           physical.Lock
 
 	// shutdownDoneCh is used to notify when core.Shutdown() completes.
@@ -432,7 +432,7 @@ type Core struct {
 	physicalCache physical.ToggleablePurgemonster
 
 	// logRequestsLevel indicates at which level requests should be logged
-	logRequestsLevel *atomic.Int32
+	logRequestsLevel atomic.Int32
 
 	// reloadFuncs is a map containing reload functions
 	reloadFuncs map[string][]reloadutil.ReloadFunc
@@ -457,11 +457,11 @@ type Core struct {
 	clusterParamsLock sync.RWMutex
 	// The private key stored in the barrier used for establishing
 	// mutually-authenticated connections between Vault cluster members
-	localClusterPrivateKey *atomic.Value
+	localClusterPrivateKey atomic.Pointer[ecdsa.PrivateKey]
 	// The local cluster cert
-	localClusterCert *atomic.Value
+	localClusterCert atomic.Pointer[[]byte]
 	// The parsed form of the local cluster cert
-	localClusterParsedCert *atomic.Value
+	localClusterParsedCert atomic.Pointer[x509.Certificate]
 	// The TCP addresses we should use for clustering
 	clusterListenerAddrs []*net.TCPAddr
 	// The handler to use for request forwarding
@@ -473,7 +473,7 @@ type Core struct {
 	// that change things concurrently
 	leaderParamsLock sync.RWMutex
 	// Current cluster leader values
-	clusterLeaderParams *atomic.Value
+	clusterLeaderParams atomic.Pointer[ClusterLeaderParams]
 	// Info on cluster members
 	clusterPeerClusterAddrsCache *zcache.Cache[string, nodeHAConnectionInfo]
 	// The context for the client
@@ -492,8 +492,8 @@ type Core struct {
 
 	// replicationState keeps the current replication state cached for quick
 	// lookup; activeNodeReplicationState stores the active value on standbys
-	replicationState           *uint32
-	activeNodeReplicationState *uint32
+	replicationState           atomic.Uint32
+	activeNodeReplicationState atomic.Uint32
 
 	// uiConfig contains UI configuration
 	uiConfig *UIConfig
@@ -528,7 +528,7 @@ type Core struct {
 	// This can be used to trigger operations to stop running when Vault is
 	// going to be shut down, stepped down, or sealed
 	activeContext           context.Context
-	activeContextCancelFunc *atomic.Value
+	activeContextCancelFunc atomic.Pointer[context.CancelFunc]
 
 	// unsealwithStoredKeysLock is a mutex that prevents multiple processes from
 	// unsealing with stored keys are the same time.
@@ -541,25 +541,15 @@ type Core struct {
 	// recovery mode
 	postRecoveryUnsealFuncs []func() error
 
-	// replicationFailure is used to mark when replication has entered an
-	// unrecoverable failure.
-	replicationFailure *uint32
-
-	licensingStopCh chan struct{}
-
 	// Stores loggers so we can reset the level
 	allLoggers     []log.Logger
 	allLoggersLock sync.RWMutex
 
-	// Can be toggled atomically to cause the core to never try to become
-	// active, or give up active as soon as it gets it
-	neverBecomeActive *uint32
-
 	// clusterListener starts up and manages connections on the cluster ports
-	clusterListener *atomic.Value
+	clusterListener atomic.Pointer[cluster.Listener]
 
 	// customListenerHeader holds custom response headers for a listener
-	customListenerHeader *atomic.Value
+	customListenerHeader atomic.Pointer[[]*ListenerCustomHeaders]
 
 	// Telemetry objects
 	metricsHelper *metricsutil.MetricsHelper
@@ -575,7 +565,7 @@ type Core struct {
 	pendingRaftPeerChallengeKey []byte
 
 	// rawConfig stores the config as-is from the provided server configuration.
-	rawConfig *atomic.Value
+	rawConfig atomic.Pointer[server.Config]
 
 	coreNumber int
 
@@ -596,7 +586,7 @@ type Core struct {
 
 	// KeyRotateGracePeriod is how long we allow an upgrade path
 	// for standby instances before we delete the upgrade keys
-	keyRotateGracePeriod *int64
+	keyRotateGracePeriod atomic.Int64
 
 	autoRotateCancel context.CancelFunc
 
@@ -802,10 +792,6 @@ type CoreConfig struct {
 
 	ExpirationRevokeRetryBase time.Duration
 
-	// AdministrativeNamespacePath is used to configure the administrative namespace, which has access to some sys endpoints that are
-	// only accessible in the root namespace, currently sys/audit-hash and sys/monitor.
-	AdministrativeNamespacePath string
-
 	NumRollbackWorkers int
 
 	// UnsafeCrossNamespaceIdentity is used to comply with Vault Enterprise's
@@ -924,25 +910,18 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	// Setup the core
 	c := &Core{
-		devToken:             conf.DevToken,
-		physical:             conf.Physical,
-		serviceRegistration:  conf.GetServiceRegistration(),
-		underlyingPhysical:   conf.Physical,
-		storageType:          conf.StorageType,
-		redirectAddr:         conf.RedirectAddr,
-		clusterAddr:          new(atomic.Value),
-		clusterListener:      new(atomic.Value),
-		customListenerHeader: new(atomic.Value),
-		seal:                 conf.Seal,
-		stateLock:            stateLock,
-		router:               NewRouter(),
-		sealed:               new(uint32),
-		sealMigrationDone:    new(uint32),
-		standbyStopCh:        new(atomic.Value),
-		standbyRestartCh:     new(atomic.Value),
-		baseLogger:           conf.Logger,
-		logger:               conf.Logger.Named("core"),
-		logLevel:             conf.LogLevel,
+		devToken:            conf.DevToken,
+		physical:            conf.Physical,
+		serviceRegistration: conf.GetServiceRegistration(),
+		underlyingPhysical:  conf.Physical,
+		storageType:         conf.StorageType,
+		redirectAddr:        conf.RedirectAddr,
+		seal:                conf.Seal,
+		stateLock:           stateLock,
+		router:              NewRouter(),
+		baseLogger:          conf.Logger,
+		logger:              conf.Logger.Named("core"),
+		logLevel:            conf.LogLevel,
 
 		defaultLeaseTTL:                conf.DefaultLeaseTTL,
 		maxLeaseTTL:                    conf.MaxLeaseTTL,
@@ -954,29 +933,15 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		rawEnabled:                     conf.EnableRaw,
 		introspectionEnabled:           conf.EnableIntrospection,
 		shutdownDoneCh:                 new(atomic.Value),
-		replicationState:               new(uint32),
-		localClusterPrivateKey:         new(atomic.Value),
-		localClusterCert:               new(atomic.Value),
-		localClusterParsedCert:         new(atomic.Value),
-		activeNodeReplicationState:     new(uint32),
-		keepHALockOnStepDown:           new(uint32),
-		replicationFailure:             new(uint32),
-		activeContextCancelFunc:        new(atomic.Value),
 		allLoggers:                     conf.AllLoggers,
 		builtinRegistry:                conf.BuiltinRegistry,
-		neverBecomeActive:              new(uint32),
-		clusterLeaderParams:            new(atomic.Value),
 		metricsHelper:                  conf.MetricsHelper,
 		metricSink:                     conf.MetricSink,
 		secureRandomReader:             conf.SecureRandomReader,
-		rawConfig:                      new(atomic.Value),
 		recoveryMode:                   conf.RecoveryMode,
-		postUnsealStarted:              new(uint32),
-		raftInfo:                       new(atomic.Value),
 		raftJoinDoneCh:                 make(chan struct{}),
 		pendingRaftPeerChallengeKey:    make([]byte, 32),
 		clusterHeartbeatInterval:       clusterHeartbeatInterval,
-		keyRotateGracePeriod:           new(int64),
 		numExpirationWorkers:           conf.NumExpirationWorkers,
 		raftFollowerStates:             raft.NewFollowerStates(),
 		disableAutopilot:               conf.DisableAutopilot,
@@ -997,7 +962,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	c.standby.Store(true)
 	c.standbyStopCh.Store(make(chan struct{}, 1))
 	c.standbyRestartCh.Store(make(chan struct{}, 1))
-	atomic.StoreUint32(c.sealed, 1)
+	c.sealed.Store(true)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
 
 	c.shutdownDoneCh.Store(make(chan struct{}))
@@ -1014,17 +979,9 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	c.SetConfig(conf.RawConfig)
 
-	atomic.StoreUint32(c.replicationState, uint32(consts.ReplicationDRDisabled|consts.ReplicationPerformanceDisabled))
-	c.localClusterCert.Store(([]byte)(nil))
-	c.localClusterParsedCert.Store((*x509.Certificate)(nil))
-	c.localClusterPrivateKey.Store((*ecdsa.PrivateKey)(nil))
-
-	c.clusterLeaderParams.Store((*ClusterLeaderParams)(nil))
+	c.replicationState.Store(uint32(consts.ReplicationDRDisabled | consts.ReplicationPerformanceDisabled))
 	c.clusterAddr.Store(conf.ClusterAddr)
-	c.activeContextCancelFunc.Store((context.CancelFunc)(nil))
-	atomic.StoreInt64(c.keyRotateGracePeriod, int64(2*time.Minute))
-
-	c.raftInfo.Store((*raftInformation)(nil))
+	c.keyRotateGracePeriod.Store(int64(2 * time.Minute))
 
 	// Create a random key for raft peer challenges.
 	_, err := io.ReadFull(rand.Reader, c.pendingRaftPeerChallengeKey)
@@ -1070,7 +1027,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	if c.seal == nil {
 		wrapper := aeadwrapper.NewShamirWrapper()
 		wrapper.SetConfig(context.Background(), awskms.WithLogger(c.logger.Named("shamir")))
-
 		c.seal = NewDefaultSeal(vaultseal.NewAccess(wrapper))
 	}
 	c.seal.SetCore(c)
@@ -1116,10 +1072,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// Construct a new AES-GCM barrier
-	c.barrier, err = NewAESGCMBarrier(c.physical)
-	if err != nil {
-		return nil, fmt.Errorf("barrier setup failed: %w", err)
-	}
+	c.barrier = NewAESGCMBarrier(c.physical, "")
 
 	// We create the funcs here, then populate the given config with it so that
 	// the caller can share state
@@ -1165,7 +1118,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// Logical backends
-	c.configureLogicalBackends(conf.LogicalBackends, conf.Logger, conf.AdministrativeNamespacePath)
+	c.configureLogicalBackends(conf.LogicalBackends, conf.Logger)
 
 	// Credentials backends
 	c.configureCredentialsBackends(conf.CredentialBackends, conf.Logger)
@@ -1218,10 +1171,10 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 // configureListeners configures the Core with the listeners from the CoreConfig.
 func (c *Core) configureListeners(conf *CoreConfig) error {
-	c.clusterListener.Store((*cluster.Listener)(nil))
+	c.clusterListener.Store(nil)
 
 	if conf.RawConfig.Listeners == nil {
-		c.customListenerHeader.Store(([]*ListenerCustomHeaders)(nil))
+		c.customListenerHeader.Store(nil)
 		return nil
 	}
 
@@ -1237,8 +1190,6 @@ func (c *Core) configureListeners(conf *CoreConfig) error {
 
 // configureLogRequestsLevel configures the Core with the supplied log requests level.
 func (c *Core) configureLogRequestsLevel(level string) {
-	c.logRequestsLevel = &atomic.Int32{}
-
 	lvl := log.LevelFromString(level)
 
 	switch {
@@ -1273,7 +1224,6 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 	credentialBackends[mountTypeToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		tsLogger := logger.Named("token")
 		c.AddLogger(tsLogger)
-
 		return NewTokenStore(ctx, tsLogger, c, config)
 	}
 	credentialBackends[mountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
@@ -1288,7 +1238,7 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 
 // configureLogicalBackends configures the Core with the ability to create
 // logical backends for various types.
-func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, logger log.Logger, adminNamespacePath string) {
+func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, logger log.Logger) {
 	logicalBackends := make(map[string]logical.Factory, len(backends))
 
 	for k, f := range backends {
@@ -1315,10 +1265,7 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 		sysBackendLogger := logger.Named("system")
 		c.AddLogger(sysBackendLogger)
 		b := NewSystemBackend(c, sysBackendLogger)
-		if err := b.Setup(ctx, config); err != nil {
-			return nil, err
-		}
-		return b, nil
+		return b, b.Setup(ctx, config)
 	}
 	logicalBackends[mountTypeNSSystem] = logicalBackends[mountTypeSystem]
 
@@ -1444,9 +1391,9 @@ func (c *Core) GetContext() (context.Context, context.CancelFunc) {
 	return context.WithCancel(namespace.RootContext(c.activeContext))
 }
 
-// Sealed checks if the Vault is current sealed
+// Sealed checks if the Vault is currently sealed
 func (c *Core) Sealed() bool {
-	return atomic.LoadUint32(c.sealed) == 1
+	return c.sealed.Load()
 }
 
 // SecretProgress returns the number of keys provided so far. Lock
@@ -1594,33 +1541,32 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 		shamirWrapper, err := c.seal.GetShamirWrapper()
 		if err == nil {
 			err = shamirWrapper.SetAesGcmKeyBytes(combinedKey)
-		}
-		if err != nil {
+		} else {
 			return err
 		}
 	}
 
-	raftInfo := c.raftInfo.Load().(*raftInformation)
+	raftInfo := c.raftInfo.Load()
+	if raftInfo == nil {
+		return errors.New("raft information missing")
+	}
 
-	switch raftInfo.joinInProgress {
-	case true:
+	if raftInfo.joinInProgress {
 		// JoinRaftCluster is already trying to perform a join based on retry_join configuration.
 		// Inform that routine that unseal key validation is complete so that it can continue to
 		// try and join possible leader nodes, and wait for it to complete.
 
-		atomic.StoreUint32(c.postUnsealStarted, 1)
-
+		c.postUnsealStarted.Store(true)
 		c.logger.Info("waiting for raft retry join process to complete")
 		<-c.raftJoinDoneCh
-
-	default:
+	} else {
 		// This is the case for manual raft join. Send the answer to the leader node and
 		// wait for data to start streaming in.
 		if err := c.joinRaftSendAnswer(ctx, c.seal.GetAccess(), raftInfo); err != nil {
 			return err
 		}
 		// Reset the state
-		c.raftInfo.Store((*raftInformation)(nil))
+		c.raftInfo.Store(nil)
 	}
 
 	go func() {
@@ -1694,12 +1640,12 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 	var config *SealConfig
 	var err error
 
-	raftInfo := c.raftInfo.Load().(*raftInformation)
+	raftInfo := c.raftInfo.Load()
 
 	switch {
 	case seal.RecoveryKeySupported():
 		config, err = seal.RecoveryConfig(ctx)
-	case c.isRaftUnseal():
+	case raftInfo != nil:
 		// Ignore follower's seal config and refer to leader's barrier
 		// configuration.
 		config = raftInfo.leaderBarrierConfig
@@ -1748,13 +1694,13 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 	return unsealKey, nil
 }
 
-// sealMigrated must be called with the stateLock held.  It returns true if
+// sealMigrated must be called with the stateLock held. It returns true if
 // the seal configured in HCL and the seal configured in storage match.
 // For the auto->auto same seal migration scenario, it will return false even
 // if the preceding conditions are true but we cannot decrypt the root key
 // in storage using the configured seal.
 func (c *Core) sealMigrated(ctx context.Context) (bool, error) {
-	if atomic.LoadUint32(c.sealMigrationDone) == 1 {
+	if c.sealMigrationDone.Load() {
 		return true, nil
 	}
 
@@ -1897,7 +1843,7 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 	}
 
 	// Flag migration performed for seal-rewrap later
-	atomic.StoreUint32(c.sealMigrationDone, 1)
+	c.sealMigrationDone.Store(true)
 
 	c.logger.Info("seal migration complete")
 	return nil
@@ -1961,7 +1907,7 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 	}
 
 	// Success!
-	atomic.StoreUint32(c.sealed, 0)
+	c.sealed.Store(false)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
 
 	if c.logger.IsInfo() {
@@ -2177,7 +2123,7 @@ func (c *Core) sealInternal() error {
 
 func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup bool) error {
 	// Mark sealed, and if already marked return
-	if swapped := atomic.CompareAndSwapUint32(c.sealed, 0, 1); !swapped {
+	if swapped := c.sealed.CompareAndSwap(false, true); !swapped {
 		return nil
 	}
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
@@ -2189,7 +2135,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 	c.clearForwardingClients()
 	c.requestForwardingConnectionLock.Unlock()
 
-	activeCtxCancel := c.activeContextCancelFunc.Load().(context.CancelFunc)
+	activeCtxCancel := c.activeContextCancelFunc.Load()
 	cancelCtxAndLock := func() {
 		doneCh := make(chan struct{})
 		go func() {
@@ -2198,7 +2144,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 			// Attempt to drain any inflight requests
 			case <-time.After(DefaultMaxRequestDuration):
 				if activeCtxCancel != nil {
-					activeCtxCancel()
+					(*activeCtxCancel)()
 				}
 			}
 		}()
@@ -2214,7 +2160,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 
 		// Stop requests from processing
 		if activeCtxCancel != nil {
-			activeCtxCancel()
+			(*activeCtxCancel)()
 		}
 	}
 
@@ -2229,14 +2175,14 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 
 		// Stop requests from processing
 		if activeCtxCancel != nil {
-			activeCtxCancel()
+			(*activeCtxCancel)()
 		}
 	} else {
 		// If we are keeping the lock we already have the state write lock
 		// held. Otherwise grab it here so that when stopCh is triggered we are
 		// locked.
 		if keepHALock {
-			atomic.StoreUint32(c.keepHALockOnStepDown, 1)
+			c.keepHALockOnStepDown.Store(true)
 		}
 		if grabStateLock {
 			cancelCtxAndLock()
@@ -2253,7 +2199,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 
 		// Wait for runStandby to stop
 		<-c.standbyDoneCh
-		atomic.StoreUint32(c.keepHALockOnStepDown, 0)
+		c.keepHALockOnStepDown.Store(false)
 		c.logger.Debug("runStandby done")
 	}
 
@@ -2462,7 +2408,7 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 
 	// Create a new request context
 	c.activeContext = ctx
-	c.activeContextCancelFunc.Store(ctxCancelFunc)
+	c.activeContextCancelFunc.Store(&ctxCancelFunc)
 
 	defer func() {
 		if retErr != nil {
@@ -2636,11 +2582,11 @@ func (c *Core) preSeal() error {
 }
 
 func (c *Core) ReplicationState() consts.ReplicationState {
-	return consts.ReplicationState(atomic.LoadUint32(c.replicationState))
+	return consts.ReplicationState(c.replicationState.Load())
 }
 
 func (c *Core) ActiveNodeReplicationState() consts.ReplicationState {
-	return consts.ReplicationState(atomic.LoadUint32(c.activeNodeReplicationState))
+	return consts.ReplicationState(c.activeNodeReplicationState.Load())
 }
 
 func (c *Core) SealAccess() *SealAccess {
@@ -3043,17 +2989,12 @@ func (c *Core) SetConfig(conf *server.Config) {
 }
 
 func (c *Core) GetListenerCustomResponseHeaders(listenerAdd string) *ListenerCustomHeaders {
-	customHeaders := c.customListenerHeader.Load()
-	if customHeaders == nil {
+	customHeadersList := c.customListenerHeader.Load()
+	if customHeadersList == nil {
 		return nil
 	}
 
-	customHeadersList, ok := customHeaders.([]*ListenerCustomHeaders)
-	if customHeadersList == nil || !ok {
-		return nil
-	}
-
-	for _, l := range customHeadersList {
+	for _, l := range *customHeadersList {
 		if l.Address == listenerAdd {
 			return l
 		}
@@ -3064,17 +3005,12 @@ func (c *Core) GetListenerCustomResponseHeaders(listenerAdd string) *ListenerCus
 // ExistCustomResponseHeader checks if a custom header is configured in any
 // listener's stanza
 func (c *Core) ExistCustomResponseHeader(header string) bool {
-	customHeaders := c.customListenerHeader.Load()
-	if customHeaders == nil {
+	customHeadersList := c.customListenerHeader.Load()
+	if customHeadersList == nil {
 		return false
 	}
 
-	customHeadersList, ok := customHeaders.([]*ListenerCustomHeaders)
-	if customHeadersList == nil || !ok {
-		return false
-	}
-
-	for _, l := range customHeadersList {
+	for _, l := range *customHeadersList {
 		exist := l.ExistCustomResponseHeader(header)
 		if exist {
 			return true
@@ -3089,7 +3025,7 @@ func (c *Core) ReloadCustomResponseHeaders() error {
 	if conf == nil {
 		return errors.New("failed to load core raw config")
 	}
-	lns := conf.(*server.Config).Listeners
+	lns := conf.Listeners
 	if lns == nil {
 		return errors.New("no listener configured")
 	}
@@ -3136,13 +3072,13 @@ func (c *Core) SanitizedConfig() map[string]interface{} {
 	if conf == nil {
 		return nil
 	}
-	return conf.(*server.Config).Sanitized()
+	return conf.Sanitized()
 }
 
 // LogFormat returns the log format current in use.
 func (c *Core) LogFormat() string {
 	conf := c.rawConfig.Load()
-	return conf.(*server.Config).LogFormat
+	return conf.LogFormat
 }
 
 // LogLevel returns the log level provided by level provided by config, CLI flag, or env
@@ -3283,11 +3219,11 @@ func (c *Core) RateLimitResponseHeadersEnabled() bool {
 }
 
 func (c *Core) KeyRotateGracePeriod() time.Duration {
-	return time.Duration(atomic.LoadInt64(c.keyRotateGracePeriod))
+	return time.Duration(c.keyRotateGracePeriod.Load())
 }
 
 func (c *Core) SetKeyRotateGracePeriod(t time.Duration) {
-	atomic.StoreInt64(c.keyRotateGracePeriod, int64(t))
+	c.keyRotateGracePeriod.Store(int64(t))
 }
 
 // Periodically test whether to automatically rotate the barrier key
@@ -3626,7 +3562,7 @@ func (c *Core) StoreInFlightReqData(reqID string, data InFlightReqData) {
 // request from the inFlightReqMap and decrement the number of in-flight
 // requests by one.
 func (c *Core) FinalizeInFlightReqData(reqID string, statusCode int) {
-	if c.logRequestsLevel != nil && c.logRequestsLevel.Load() != 0 {
+	if c.logRequestsLevel.Load() != 0 {
 		c.LogCompletedRequests(reqID, statusCode)
 	}
 
@@ -3688,7 +3624,7 @@ func (c *Core) ReloadLogRequestsLevel() {
 		return
 	}
 
-	infoLevel := conf.(*server.Config).LogRequestsLevel
+	infoLevel := conf.LogRequestsLevel
 	switch {
 	case log.LevelFromString(infoLevel) > log.NoLevel && log.LevelFromString(infoLevel) < log.Off:
 		c.logRequestsLevel.Store(int32(log.LevelFromString(infoLevel)))
@@ -3704,7 +3640,7 @@ func (c *Core) ReloadIntrospectionEndpointEnabled() {
 	}
 	c.introspectionEnabledLock.Lock()
 	defer c.introspectionEnabledLock.Unlock()
-	c.introspectionEnabled = conf.(*server.Config).EnableIntrospectionEndpoint
+	c.introspectionEnabled = conf.EnableIntrospectionEndpoint
 }
 
 type PeerNode struct {
@@ -3966,7 +3902,7 @@ func (c *Core) ListenerAddresses() ([]string, error) {
 		return nil, errors.New("failed to load core raw config")
 	}
 
-	listeners := conf.(*server.Config).Listeners
+	listeners := conf.Listeners
 	if listeners == nil {
 		return nil, errors.New("no listener configured")
 	}
@@ -3981,7 +3917,7 @@ func (c *Core) ListenerAddresses() ([]string, error) {
 // IsRaftVoter specifies whether the node is a raft voter which is
 // always false if raft storage is not in use.
 func (c *Core) IsRaftVoter() bool {
-	raftInfo := c.raftInfo.Load().(*raftInformation)
+	raftInfo := c.raftInfo.Load()
 
 	if raftInfo == nil {
 		return false

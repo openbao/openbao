@@ -138,11 +138,11 @@ var (
 }`
 
 	// computed below by init()
-	jwtGoodDataToken          = ""
-	jwtBadServiceAccountToken = ""
-	jwtBadSigningKeyToken     = ""
-	jwtProjectedDataExpired   = ""
-	jwtProjectedData          = ""
+	jwtGoodDataToken          func() string
+	jwtBadServiceAccountToken func() string
+	jwtBadSigningKeyToken     func() string
+	jwtProjectedDataExpired   func() string
+	jwtProjectedData          func() string
 )
 
 func init() {
@@ -168,15 +168,17 @@ func init() {
 	})
 	testDefaultPEMs = []string{string(ecdsaPublicKeyText)}
 
-	jwtGoodDataToken = jwtSign(jwtES256Header, patchIat(jwtGoodDataPayload), ecdsaPrivateKey)
-	jwtBadServiceAccountToken = jwtSign(jwtES256Header, patchIat(jwtBadServiceAccountPayload), ecdsaPrivateKey)
+	jwtGoodDataToken = func() string { return jwtSign(jwtES256Header, patchIat(jwtGoodDataPayload), ecdsaPrivateKey) }
+	jwtBadServiceAccountToken = func() string { return jwtSign(jwtES256Header, patchIat(jwtBadServiceAccountPayload), ecdsaPrivateKey) }
 
-	jwtProjectedData = jwtSign(jwtES256Header, patchExp(patchIat(jwtProjectedDataPayload)), ecdsaPrivateKey)
+	jwtProjectedData = func() string {
+		return jwtSign(jwtES256Header, patchExp(patchIat(jwtProjectedDataPayload)), ecdsaPrivateKey)
+	}
 	// don't patch Issued At
-	jwtProjectedDataExpired = jwtSign(jwtES256Header, jwtProjectedDataExpiredPayload, ecdsaPrivateKey)
+	jwtProjectedDataExpired = func() string { return jwtSign(jwtES256Header, jwtProjectedDataExpiredPayload, ecdsaPrivateKey) }
 
 	// sign with an unknown key
-	jwtBadSigningKeyToken = jwtSign(jwtES256Header, patchIat(jwtInvalidPayload), ecdsaOtherPrivateKey)
+	jwtBadSigningKeyToken = func() string { return jwtSign(jwtES256Header, patchIat(jwtInvalidPayload), ecdsaOtherPrivateKey) }
 }
 
 // patches in the Issued At time to be now
@@ -222,10 +224,12 @@ func jwtSign(header string, payload string, privateKey *ecdsa.PrivateKey) string
 	if err != nil {
 		panic(err)
 	}
-	rBytes := r.Bytes()
-	sBytes := s.Bytes()
-	rBytes = append(rBytes, sBytes...)
-	sig64 := strings.ReplaceAll(base64.URLEncoding.EncodeToString(rBytes), "=", "")
+	curveKeyLenBytes := (privateKey.Curve.Params().BitSize + 7) / 8 // rounding up for P521
+	sig := make([]byte, 2*curveKeyLenBytes)
+	r.FillBytes(sig[:curveKeyLenBytes])
+	s.FillBytes(sig[curveKeyLenBytes:])
+
+	sig64 := strings.ReplaceAll(base64.URLEncoding.EncodeToString(sig), "=", "")
 	return toSign + "." + sig64
 }
 
@@ -300,6 +304,10 @@ func setupBackend(t *testing.T, config *testBackendConfig) (logical.Backend, log
 
 func TestLogin(t *testing.T) {
 	b, storage := setupBackend(t, defaultTestBackendConfig())
+
+	jwtGoodDataToken := jwtGoodDataToken()
+	jwtBadServiceAccountToken := jwtBadServiceAccountToken()
+	jwtBadSigningKeyToken := jwtBadSigningKeyToken()
 
 	// Test bad inputs
 	data := map[string]interface{}{
@@ -483,7 +491,7 @@ func TestLogin_ContextError(t *testing.T) {
 
 	data := map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtGoodDataToken,
+		"jwt":  jwtGoodDataToken(),
 	}
 
 	req := &logical.Request{
@@ -531,7 +539,7 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 	// test successful login
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtGoodDataToken,
+		"jwt":  jwtGoodDataToken(),
 	}
 
 	req = &logical.Request{
@@ -557,7 +565,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 	// test bad jwt service account
 	data := map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtBadServiceAccountToken,
+		"jwt":  jwtBadServiceAccountToken(),
 	}
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -581,7 +589,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 	// test successful login
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtGoodDataToken,
+		"jwt":  jwtGoodDataToken(),
 	}
 
 	req = &logical.Request{
@@ -605,6 +613,8 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	config.saName = "*"
 	config.saNamespace = "*"
 	b, storage := setupBackend(t, config)
+
+	jwtGoodDataToken := jwtGoodDataToken()
 
 	// Test bad inputs
 	data := map[string]interface{}{
@@ -668,7 +678,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	// test bad jwt service account
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtBadServiceAccountToken,
+		"jwt":  jwtBadServiceAccountToken(),
 	}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -691,7 +701,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	// test bad jwt key
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtBadSigningKeyToken,
+		"jwt":  jwtBadSigningKeyToken(),
 	}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -808,7 +818,7 @@ func TestLoginSvcAcctNamespaceSelector(t *testing.T) {
 
 			data := map[string]interface{}{
 				"role": "plugin-test",
-				"jwt":  jwtGoodDataToken,
+				"jwt":  jwtGoodDataToken(),
 			}
 
 			req := &logical.Request{
@@ -855,12 +865,12 @@ func TestAliasLookAhead(t *testing.T) {
 	}{
 		"default": {
 			role:              "plugin-test",
-			jwt:               jwtGoodDataToken,
+			jwt:               jwtGoodDataToken(),
 			config:            defaultTestBackendConfig(),
 			expectedAliasName: testUID,
 		},
 		"no_role": {
-			jwt:     jwtGoodDataToken,
+			jwt:     jwtGoodDataToken(),
 			config:  defaultTestBackendConfig(),
 			wantErr: errors.New("missing role"),
 		},
@@ -872,13 +882,13 @@ func TestAliasLookAhead(t *testing.T) {
 		"invalid_jwt": {
 			role:        "plugin-test",
 			config:      defaultTestBackendConfig(),
-			jwt:         jwtBadServiceAccountToken,
+			jwt:         jwtBadServiceAccountToken(),
 			wantErr:     errors.New("service account name not authorized"),
 			wantErrCode: http.StatusForbidden,
 		},
 		"wrong_namespace": {
 			role: "plugin-test",
-			jwt:  jwtGoodDataToken,
+			jwt:  jwtGoodDataToken(),
 			config: func() *testBackendConfig {
 				config := defaultTestBackendConfig()
 				config.saNamespace = "wrong-namespace"
@@ -889,7 +899,7 @@ func TestAliasLookAhead(t *testing.T) {
 		},
 		"serviceaccount_uid": {
 			role: "plugin-test",
-			jwt:  jwtGoodDataToken,
+			jwt:  jwtGoodDataToken(),
 			config: &testBackendConfig{
 				pems:            testDefaultPEMs,
 				saName:          testName,
@@ -900,7 +910,7 @@ func TestAliasLookAhead(t *testing.T) {
 		},
 		"serviceaccount_name": {
 			role: "plugin-test",
-			jwt:  jwtGoodDataToken,
+			jwt:  jwtGoodDataToken(),
 			config: &testBackendConfig{
 				pems:            testDefaultPEMs,
 				saName:          testName,
@@ -961,6 +971,8 @@ func TestAliasLookAhead(t *testing.T) {
 func TestLoginIssValidation(t *testing.T) {
 	config := defaultTestBackendConfig()
 	b, storage := setupBackend(t, config)
+
+	jwtGoodDataToken := jwtGoodDataToken()
 
 	// test iss validation enabled with default "kubernetes/serviceaccount" issuer
 	data := map[string]interface{}{
@@ -1148,29 +1160,29 @@ func TestLoginProjectedToken(t *testing.T) {
 	}{
 		"normal": {
 			role:        "plugin-test",
-			jwt:         jwtGoodDataToken,
+			jwt:         jwtGoodDataToken(),
 			tokenReview: testMockTokenReviewFactory,
 		},
 		"fail": {
 			role:        "plugin-test-x",
-			jwt:         jwtGoodDataToken,
+			jwt:         jwtGoodDataToken(),
 			tokenReview: testMockTokenReviewFactory,
 			e:           roleNameError,
 		},
 		"projected-token": {
 			role:        "plugin-test",
-			jwt:         jwtProjectedData,
+			jwt:         jwtProjectedData(),
 			tokenReview: testProjectedMockTokenReviewFactory,
 		},
 		"projected-token-expired": {
 			role:        "plugin-test",
-			jwt:         jwtProjectedDataExpired,
+			jwt:         jwtProjectedDataExpired(),
 			tokenReview: testProjectedMockTokenReviewFactory,
 			e:           errors.New("invalid expiration time (exp) claim: token is expired"),
 		},
 		"projected-token-invalid-role": {
 			role:        "plugin-test-x",
-			jwt:         jwtProjectedData,
+			jwt:         jwtProjectedData(),
 			tokenReview: testProjectedMockTokenReviewFactory,
 			e:           roleNameError,
 		},
@@ -1228,7 +1240,7 @@ func TestAliasLookAheadProjectedToken(t *testing.T) {
 	b, storage := setupBackend(t, config)
 
 	data := map[string]interface{}{
-		"jwt":  jwtProjectedData,
+		"jwt":  jwtProjectedData(),
 		"role": "plugin-test",
 	}
 

@@ -238,13 +238,13 @@ the others.
 
 **Generate Certificate and Key**
 * This endpoint generates a new set of credentials (private key and certificate) based on the policy named in the endpoint. 
-It takes in a set of parameters  like `common_name`, `alt_names`, &c similar to [pki/issue/:name](https://openbao.org/api-docs/secret/pki/#generate-certificate-and-key).
+It takes in a set of parameters  like `common_name`, `alt_names`, &c similar to [pki/issue/:name](/api-docs/secret/pki/#generate-certificate-and-key).
 The issuing CA certificate and full CA chain is returned as well, so that only the root CA need be in a client's trust store. 
 Choice of issuing CA is determined by the policy.
 
 **Sign Certificate**
 * This endpoint signs a new certificate based upon the provided `CSR` and the supplied parameters (like `common_name`, 
-`alt_names`, &c similar to [pki/sign/:name](https://openbao.org/api-docs/secret/pki/#sign-certificate)), subject to the 
+`alt_names`, &c similar to [pki/sign/:name](/api-docs/secret/pki/#sign-certificate)), subject to the 
 restrictions contained in the policy named in the endpoint. The issuing CA certificate and the full CA chain is returned 
 as well, so that only the root CA need be in a client's trust store.
 
@@ -254,7 +254,7 @@ _Access to these endpoints should be managed via ACLs. For instance, admin roles
 
 ## Rationale and alternatives
 
-Certain policies can be implemented using [roles](https://openbao.org/api-docs/secret/pki/#createupdate-role), 
+Certain policies can be implemented using [roles](/api-docs/secret/pki/#createupdate-role), 
 for instance, `allow_localhost` but for more flexible scenarios, such as validating specific request 
 metadata, or generating custom certificate templates based on runtime parameters, CEL policies would 
 provide the necessary adaptability and control. For example, a CEL policy could enforce a rule that 

@@ -64,32 +64,32 @@ func TestKVv2_UpgradePaths(t *testing.T) {
 
 	// Delete the policy from storage, to trigger the clean slate necessary for
 	// the error
-	mounts, err := core.UnderlyingStorage.List(ctx, "logical/")
+	mounts, err := core.UnderlyingRawStorage.List(ctx, "logical/")
 	if err != nil {
 		t.Fatal(err)
 	}
 	kvMount := mounts[0]
-	basePaths, err := core.UnderlyingStorage.List(ctx, "logical/"+kvMount)
+	basePaths, err := core.UnderlyingRawStorage.List(ctx, "logical/"+kvMount)
 	if err != nil {
 		t.Fatal(err)
 	}
 	basePath := basePaths[0]
 
-	beforeList, err := core.UnderlyingStorage.List(ctx, "logical/"+kvMount+basePath)
+	beforeList, err := core.UnderlyingRawStorage.List(ctx, "logical/"+kvMount+basePath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(pretty.Sprint(beforeList))
 
 	// Delete policy/archive
-	if err = logical.ClearView(ctx, physical.NewView(core.UnderlyingStorage, "logical/"+kvMount+basePath+"policy/")); err != nil {
+	if err = logical.ClearView(ctx, physical.NewView(core.UnderlyingRawStorage, "logical/"+kvMount+basePath+"policy/")); err != nil {
 		t.Fatal(err)
 	}
-	if err = logical.ClearView(ctx, physical.NewView(core.UnderlyingStorage, "logical/"+kvMount+basePath+"archive/")); err != nil {
+	if err = logical.ClearView(ctx, physical.NewView(core.UnderlyingRawStorage, "logical/"+kvMount+basePath+"archive/")); err != nil {
 		t.Fatal(err)
 	}
 
-	afterList, err := core.UnderlyingStorage.List(ctx, "logical/"+kvMount+basePath)
+	afterList, err := core.UnderlyingRawStorage.List(ctx, "logical/"+kvMount+basePath)
 	if err != nil {
 		t.Fatal(err)
 	}

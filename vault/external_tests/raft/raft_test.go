@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -29,6 +28,7 @@ import (
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	vaultseal "github.com/openbao/openbao/vault/seal"
@@ -158,7 +158,7 @@ func TestRaft_RetryAutoJoin(t *testing.T) {
 
 	addressProvider := &testhelpers.TestRaftServerAddressProvider{Cluster: cluster}
 	leaderCore := cluster.Cores[0]
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	{
 		testhelpers.EnsureCoreSealed(t, leaderCore)
@@ -206,7 +206,7 @@ func TestRaft_Retry_Join(t *testing.T) {
 
 	leaderCore := cluster.Cores[0]
 	leaderAPI := leaderCore.Client.Address()
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	{
 		testhelpers.EnsureCoreSealed(t, leaderCore)
@@ -269,7 +269,7 @@ func TestRaft_Join(t *testing.T) {
 
 	leaderCore := cluster.Cores[0]
 	leaderAPI := leaderCore.Client.Address()
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	// Seal the leader so we can install an address provider
 	{
@@ -410,7 +410,7 @@ func TestRaft_NodeIDHeader(t *testing.T) {
 					t.Fatal("nil response")
 				}
 
-				rniHeader := resp.Header.Get("X-Vault-Raft-Node-ID")
+				rniHeader := resp.Header.Get(consts.RaftNodeIDHeaderName)
 				nodeID := c.GetRaftNodeID()
 
 				if tc.headerPresent && rniHeader == "" {
@@ -1068,7 +1068,7 @@ func TestRaft_Join_InitStatus(t *testing.T) {
 
 	leaderCore := cluster.Cores[0]
 	leaderAPI := leaderCore.Client.Address()
-	atomic.StoreUint32(&vault.TestingUpdateClusterAddr, 1)
+	vault.TestingUpdateClusterAddr.Store(true)
 
 	// Seal the leader so we can install an address provider
 	{

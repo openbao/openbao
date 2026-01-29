@@ -4,10 +4,11 @@ description: |-
   This guide describes how to configure OpenBao auto-unsealing with a 
   Securosys Primus HSM by using the PKCS#11 interface.
 ---
+
 # Securosys Primus HSM
 
-This guide explains how to connect OpenBao with a Securosys Primus HSM by using
-PKCS#11.
+This guide describes how to configure OpenBao auto-unsealing with a
+Securosys Primus HSM by using the PKCS#11 interface.
 
 ## Install the PKCS#11 library
 
@@ -239,7 +240,9 @@ $ pkcs11-tool --module "/usr/local/primus/lib/libprimusP11.so" \
   --label "bao-root-key-aes" \
   --sensitive
 ```
+
 In this command:
+
 * `--module`: Specifies the path to the PKCS#11 library.
 * `--slot 0`: Specifies HSM slot 0. This value depends on your configuration.
 * `--pin 4321`: Specifies the user PIN for authentication.
@@ -247,3 +250,32 @@ In this command:
 * `--key-type aes:32`: Specifies an AES-256 key suitable for `CKM_AES_GCM`. To use RSA with `CKM_RSA_OAEP`, specify `rsa:4096` and swap `--keygen` for `--keypairgen`.
 * `--label "bao-root-key-aes"`: Sets the label of the key in the HSM.
 * `--sensitive`: Sets the `CKA_SENSITIVE` attribute, which prevents the key from being revealed in plaintext.
+
+## Configure the `pkcs11` seal
+
+Configure the PKCS#11 seal in the OpenBao configuration:
+
+```hcl
+seal "pkcs11" {
+  lib       = "/usr/local/primus/lib/libprimusP11.so"
+  slot      = "0"
+  key_label = "bao-root-key-aes"
+  mechanism = "CKM_AES_GCM"
+  # pin     = "1234"
+}
+```
+
+If you used the Kubernetes-based setup above, you may have already configured this.
+
+To avoid hard-coding the User PIN (also called the "PKCS#11 Password" by Securosys)
+in the configuration file, you can set it via the `BAO_HSM_PIN` environment variable.
+
+For more details, see the [`pkcs11` seal documentation](../../../configuration/seal/pkcs11.mdx).
+
+## Initialize OpenBao
+
+Finally, initialize OpenBao:
+
+```sh
+bao operator init
+```

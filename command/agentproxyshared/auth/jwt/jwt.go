@@ -35,7 +35,7 @@ type jwtMethod struct {
 	credSuccessGate          chan struct{}
 	ticker                   *time.Ticker
 	once                     *sync.Once
-	latestToken              *atomic.Value
+	latestToken              atomic.Pointer[string]
 }
 
 // NewJWTAuthMethod returns an implementation of Agent's auth.AuthMethod
@@ -58,9 +58,7 @@ func NewJWTAuthMethod(conf *auth.AuthConfig) (auth.AuthMethod, error) {
 		doneCh:                make(chan struct{}),
 		credSuccessGate:       make(chan struct{}),
 		once:                  new(sync.Once),
-		latestToken:           new(atomic.Value),
 	}
-	j.latestToken.Store("")
 
 	pathRaw, ok := conf.Config["path"]
 	if !ok {
@@ -135,14 +133,14 @@ func (j *jwtMethod) Authenticate(_ context.Context, _ *api.Client) (string, http
 
 	j.ingressToken()
 
-	latestToken := j.latestToken.Load().(string)
-	if latestToken == "" {
+	latestToken := j.latestToken.Load()
+	if latestToken == nil {
 		return "", nil, nil, errors.New("latest known jwt is empty, cannot authenticate")
 	}
 
 	return fmt.Sprintf("%s/login", j.mountPath), nil, map[string]interface{}{
 		"role": j.role,
-		"jwt":  latestToken,
+		"jwt":  *latestToken,
 	}, nil
 }
 
@@ -182,10 +180,10 @@ func (j *jwtMethod) runWatcher() {
 			return
 
 		case <-j.ticker.C:
-			latestToken := j.latestToken.Load().(string)
+			latestToken := j.latestToken.Load()
 			j.ingressToken()
-			newToken := j.latestToken.Load().(string)
-			if newToken != latestToken {
+			newToken := j.latestToken.Load()
+			if (latestToken != nil && newToken != nil) && *latestToken != *newToken {
 				j.logger.Debug("new jwt file found")
 				j.credsFound <- struct{}{}
 			}
@@ -243,7 +241,8 @@ func (j *jwtMethod) ingressToken() {
 		j.logger.Warn("empty jwt file read")
 
 	default:
-		j.latestToken.Store(string(token))
+		stringifiedToken := string(token)
+		j.latestToken.Store(&stringifiedToken)
 	}
 
 	if j.removeJWTAfterReading {

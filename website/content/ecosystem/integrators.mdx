@@ -5,7 +5,23 @@ sidebar_position: 3
 
 # Integrators
 
-Currently, there is no integrator, which has given the OpenBao project
-permission to use their name and logo. If you are in the position to change
-that, please [suggest the
-addition](https://github.com/openbao/openbao/issues/new?template=docs_ecosystem.yaml).
+import Randomize from './lib/Randomize.tsx';
+import Member from './lib/Member.tsx';
+
+<div className="container">
+<div className="row">
+<Randomize>
+  <Member title="Percona">
+    [Percona](https://percona.com/) provides OpenBao integration for managing encryption keys in Percona Server for MongoDB and PostgreSQL Transparent Data Encryption (pg_tde).
+  </Member>
+  <Member title="Securosys">
+    [Securosys](https://www.securosys.com/) Primus HSM provides hardware-backed sealing for OpenBao Vaults.
+  </Member>
+
+  <Member title="Crypto4A" logoName="c4a">
+      [Crypto4A's](https://crypto4a.com/) QxVault™ is a fully integrated Secrets Management Vault with a built-in HSM
+      for robust management of secrets, credentials, and API keys.
+  </Member>
+</Randomize>
+</div>
+</div>

@@ -56,6 +56,10 @@ func wrapCORSHandler(h http.Handler, core *vault.Core) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Vary", "Origin")
 
+		if corsConf.AllowCredentials {
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+
 		// apply headers for preflight requests
 		if req.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ","))

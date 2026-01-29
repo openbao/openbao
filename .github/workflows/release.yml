@@ -54,7 +54,7 @@ jobs:
       version: ${{ steps.make-distribution-tarball.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0 # Required by GoRelease
 
@@ -79,7 +79,7 @@ jobs:
           git tag "$nightly_tag"
 
       - name: Node setup
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: "./ui/package.json"
 
@@ -89,7 +89,7 @@ jobs:
           npm install -g yarn
 
       - name: UI Cache Setup
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
           path: |
             http/web_ui/
@@ -195,7 +195,7 @@ jobs:
 
       - name: Checkout
         if: inputs.dogorelease
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0 # Required by GoRelease
 
@@ -229,14 +229,14 @@ jobs:
 
       - name: UI Cache Setup
         if: inputs.dogorelease
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         with:
           path: |
             http/web_ui/
           key: ${{ github.ref }}-ui
 
       # Supports syft/sbom generation
-      - uses: anchore/sbom-action/download-syft@43a17d6e7add2b5535efe4dcae9952337c479a93 # v0.20.11
+      - uses: anchore/sbom-action/download-syft@0b82b0b1a22399a1c542d4d656f70cd903571b5c # v0.21.1
         if: inputs.dogorelease
 
         # Supports Buildx
@@ -341,7 +341,7 @@ jobs:
       TAGNAME: v${{ needs.build-ui-dist.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           # "fetch-tags: true" instead of "fetch-depth: 0" should be enough
           # but it fails in combination with dogorelease

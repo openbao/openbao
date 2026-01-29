@@ -15,13 +15,21 @@ import (
 )
 
 func testBarrier(t *testing.T, b SecurityBarrier) {
+	var prefix string
+	switch cb := b.(type) {
+	case *AESGCMBarrier:
+		prefix = cb.metaPrefix
+	case *TransactionalAESGCMBarrier:
+		prefix = cb.metaPrefix
+	}
+
 	e, key, err := testInitAndUnseal(t, b)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Operations should work
-	out, err := b.Get(context.Background(), "test")
+	out, err := b.Get(context.Background(), prefix+"test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -30,7 +38,7 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	}
 
 	// List should have only "core/"
-	keys, err := b.List(context.Background(), "")
+	keys, err := b.List(context.Background(), prefix)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -44,7 +52,7 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	}
 
 	// Should be equal
-	out, err = b.Get(context.Background(), "test")
+	out, err = b.Get(context.Background(), prefix+"test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -53,7 +61,7 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	}
 
 	// List should show the items
-	keys, err = b.List(context.Background(), "")
+	keys, err = b.List(context.Background(), prefix)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -65,19 +73,19 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	}
 
 	// Delete should clear
-	err = b.Delete(context.Background(), "test")
+	err = b.Delete(context.Background(), prefix+"test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Double Delete is fine
-	err = b.Delete(context.Background(), "test")
+	err = b.Delete(context.Background(), prefix+"test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Should be nil
-	out, err = b.Get(context.Background(), "test")
+	out, err = b.Get(context.Background(), prefix+"test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -86,7 +94,7 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	}
 
 	// List should have nothing
-	keys, err = b.List(context.Background(), "")
+	keys, err = b.List(context.Background(), prefix)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -105,7 +113,7 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	}
 
 	// No access allowed
-	if _, err := b.Get(context.Background(), "test"); err != ErrBarrierSealed {
+	if _, err := b.Get(context.Background(), prefix+"test"); err != ErrBarrierSealed {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -115,7 +123,7 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	}
 
 	// Should be equal
-	out, err = b.Get(context.Background(), "test")
+	out, err = b.Get(context.Background(), prefix+"test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -124,7 +132,7 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	}
 
 	// Final cleanup
-	err = b.Delete(context.Background(), "test")
+	err = b.Delete(context.Background(), prefix+"test")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -144,6 +152,14 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 }
 
 func testInitAndUnseal(t *testing.T, b SecurityBarrier) (*logical.StorageEntry, []byte, error) {
+	var prefix string
+	switch cb := b.(type) {
+	case *AESGCMBarrier:
+		prefix = cb.metaPrefix
+	case *TransactionalAESGCMBarrier:
+		prefix = cb.metaPrefix
+	}
+
 	// Should not be initialized
 	init, err := b.Initialized(context.Background())
 	if err != nil {
@@ -154,11 +170,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (*logical.StorageEntry, 
 	}
 
 	// Should start sealed
-	sealed, err := b.Sealed()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if !sealed {
+	if !b.Sealed() {
 		t.Fatal("should be sealed")
 	}
 
@@ -168,17 +180,17 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (*logical.StorageEntry, 
 	}
 
 	// All operations should fail
-	e := &logical.StorageEntry{Key: "test", Value: []byte("test")}
+	e := &logical.StorageEntry{Key: prefix + "test", Value: []byte("test")}
 	if err := b.Put(context.Background(), e); err != ErrBarrierSealed {
 		t.Fatalf("err: %v", err)
 	}
-	if _, err := b.Get(context.Background(), "test"); err != ErrBarrierSealed {
+	if _, err := b.Get(context.Background(), prefix+"test"); err != ErrBarrierSealed {
 		t.Fatalf("err: %v", err)
 	}
-	if err := b.Delete(context.Background(), "test"); err != ErrBarrierSealed {
+	if err := b.Delete(context.Background(), prefix+"test"); err != ErrBarrierSealed {
 		t.Fatalf("err: %v", err)
 	}
-	if _, err := b.List(context.Background(), ""); err != ErrBarrierSealed {
+	if _, err := b.List(context.Background(), prefix); err != ErrBarrierSealed {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -222,11 +234,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (*logical.StorageEntry, 
 	}
 
 	// Should still be sealed
-	sealed, err = b.Sealed()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if !sealed {
+	if !b.Sealed() {
 		t.Fatal("should sealed")
 	}
 
@@ -241,11 +249,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (*logical.StorageEntry, 
 	}
 
 	// Should no longer be sealed
-	sealed, err = b.Sealed()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if sealed {
+	if b.Sealed() {
 		t.Fatal("should be unsealed")
 	}
 

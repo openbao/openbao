@@ -1,6 +1,6 @@
 #!/bin/bash
 
-modules=$(find . -name go.mod -mindepth 2)
+modules=$(find . -mindepth 2 -name go.mod)
 
 grep '^	' go.mod | while read line; do
 	pkg="$(awk '{print $1}' <<< "$line")"

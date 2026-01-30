@@ -98,6 +98,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/pointerstructure v1.2.1
 	github.com/mitchellh/reflectwalk v1.0.2
+	github.com/moby/moby/client v0.2.1
 	github.com/oklog/run v1.2.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
 	github.com/openbao/go-kms-wrapping/v2 v2.6.0
@@ -132,17 +133,17 @@ require (
 	github.com/tink-crypto/tink-go/v2 v2.5.0
 	github.com/yeqown/go-qrcode/v2 v2.2.5
 	go.etcd.io/bbolt v1.4.3
-	go.opentelemetry.io/otel v1.38.0
+	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/sdk v1.38.0
-	go.opentelemetry.io/otel/trace v1.38.0
+	go.opentelemetry.io/otel/trace v1.39.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.45.0
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
 	golang.org/x/net v0.47.0
 	golang.org/x/oauth2 v0.33.0
-	golang.org/x/sync v0.18.0
-	golang.org/x/sys v0.38.0
+	golang.org/x/sync v0.19.0
+	golang.org/x/sys v0.40.0
 	golang.org/x/term v0.37.0
 	golang.org/x/text v0.31.0
 	google.golang.org/api v0.255.0
@@ -175,7 +176,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.8.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys v0.10.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/internal v0.7.1 // indirect
-	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.29 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.22 // indirect
@@ -240,7 +241,7 @@ require (
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker v28.3.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
-	github.com/docker/go-connections v0.5.0 // indirect
+	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/ebitengine/purego v0.9.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
@@ -269,7 +270,6 @@ require (
 	github.com/googleapis/gax-go/v2 v2.15.0 // indirect
 	github.com/gophercloud/gophercloud v0.1.0 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/consul/sdk v0.14.0 // indirect
 	github.com/hashicorp/go-discover/provider/gce v0.0.0-20241120163552-5eb1507d16b4 // indirect
@@ -309,12 +309,13 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.1.0 // indirect
+	github.com/moby/moby/api v1.52.0 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/spdystream v0.5.0 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect
 	github.com/moby/sys/user v0.4.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
-	github.com/moby/term v0.5.0 // indirect
+	github.com/moby/term v0.5.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -367,7 +368,7 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
-	go.opentelemetry.io/otel/metric v1.38.0 // indirect
+	go.opentelemetry.io/otel/metric v1.39.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect

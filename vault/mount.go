@@ -11,17 +11,11 @@ import (
 	"path"
 	"reflect"
 	"slices"
-	"sort"
 	"strings"
-	"sync"
-	"time"
 
-	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-uuid"
-	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/plugin"
-	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -151,415 +145,6 @@ func (c *Core) generateMountAccessor(entryType string) (string, error) {
 	}
 
 	return accessor, nil
-}
-
-// MountTable is used to represent the internal mount table
-type MountTable struct {
-	Type    string        `json:"type"`
-	Entries []*MountEntry `json:"entries"`
-}
-
-type MountMigrationStatus int
-
-const (
-	MigrationInProgressStatus MountMigrationStatus = iota
-	MigrationSuccessStatus
-	MigrationFailureStatus
-)
-
-func (m MountMigrationStatus) String() string {
-	switch m {
-	case MigrationInProgressStatus:
-		return "in-progress"
-	case MigrationSuccessStatus:
-		return "success"
-	case MigrationFailureStatus:
-		return "failure"
-	}
-	return "unknown"
-}
-
-type MountMigrationInfo struct {
-	SourceMount     string `json:"source_mount"`
-	TargetMount     string `json:"target_mount"`
-	MigrationStatus string `json:"status"`
-}
-
-// tableMetrics is responsible for setting gauge metrics for
-// mount table storage sizes (in bytes) and mount table num
-// entries. It does this via setGaugeWithLabels. It then
-// saves these metrics in a cache for regular reporting in
-// a loop, via AddGaugeLoopMetric.
-
-// Note that the reported storage sizes are pre-encryption
-// sizes. Currently barrier uses aes-gcm for encryption, which
-// preserves plaintext size, adding a constant of 30 bytes of
-// padding, which is negligible and subject to change, and thus
-// not accounted for.
-func (c *Core) tableMetrics(entryCount int, isLocal bool, isAuth bool, compressedTableLen int) {
-	if c.metricsHelper == nil {
-		// do nothing if metrics are not initialized
-		return
-	}
-	typeAuthLabelMap := map[bool]metrics.Label{
-		true:  {Name: "type", Value: "auth"},
-		false: {Name: "type", Value: "logical"},
-	}
-
-	typeLocalLabelMap := map[bool]metrics.Label{
-		true:  {Name: "local", Value: "true"},
-		false: {Name: "local", Value: "false"},
-	}
-
-	c.metricSink.SetGaugeWithLabels(metricsutil.LogicalTableSizeName,
-		float32(entryCount), []metrics.Label{
-			typeAuthLabelMap[isAuth],
-			typeLocalLabelMap[isLocal],
-		})
-
-	c.metricsHelper.AddGaugeLoopMetric(metricsutil.LogicalTableSizeName,
-		float32(entryCount), []metrics.Label{
-			typeAuthLabelMap[isAuth],
-			typeLocalLabelMap[isLocal],
-		})
-
-	c.metricSink.SetGaugeWithLabels(metricsutil.PhysicalTableSizeName,
-		float32(compressedTableLen), []metrics.Label{
-			typeAuthLabelMap[isAuth],
-			typeLocalLabelMap[isLocal],
-		})
-
-	c.metricsHelper.AddGaugeLoopMetric(metricsutil.PhysicalTableSizeName,
-		float32(compressedTableLen), []metrics.Label{
-			typeAuthLabelMap[isAuth],
-			typeLocalLabelMap[isLocal],
-		})
-}
-
-// shallowClone returns a copy of the mount table that
-// keeps the MountEntry locations, so as not to invalidate
-// other locations holding pointers. Care needs to be taken
-// if modifying entries rather than modifying the table itself
-func (t *MountTable) shallowClone() *MountTable {
-	return &MountTable{
-		Type:    t.Type,
-		Entries: slices.Clone(t.Entries),
-	}
-}
-
-func (old *MountTable) delta(new *MountTable) (additions []*MountEntry, deletions []*MountEntry) {
-	if old == nil {
-		additions = new.Entries
-		return additions, deletions
-	}
-
-	additions = slices.Clone(new.Entries)
-	deletions = slices.Clone(old.Entries)
-
-	slices.SortFunc(additions, func(a, b *MountEntry) int {
-		return strings.Compare(a.Accessor, b.Accessor)
-	})
-
-	slices.SortFunc(deletions, func(a, b *MountEntry) int {
-		return strings.Compare(a.Accessor, b.Accessor)
-	})
-
-	idxOld := 0
-	idxNew := 0
-
-	for idxNew < len(additions) && idxOld < len(deletions) {
-		diff := strings.Compare(additions[idxNew].Accessor, deletions[idxOld].Accessor)
-		switch {
-		case diff == 0:
-			additions = slices.Delete(additions, idxNew, idxNew+1)
-			deletions = slices.Delete(deletions, idxOld, idxOld+1)
-		case diff < 0:
-			idxNew += 1
-		case diff > 0:
-			idxOld += 1
-		}
-	}
-
-	return additions, deletions
-}
-
-// setTaint is used to set the taint on given entry Accepts either the mount
-// entry's path or namespace + path, i.e. <ns-path>/secret/ or <ns-path>/token/
-func (t *MountTable) setTaint(nsID, path string, tainted bool, mountState string) (*MountEntry, error) {
-	n := len(t.Entries)
-	for i := 0; i < n; i++ {
-		if entry := t.Entries[i]; entry.Path == path && entry.Namespace().ID == nsID {
-			t.Entries[i].Tainted = tainted
-			t.Entries[i].MountState = mountState
-			return t.Entries[i], nil
-		}
-	}
-	return nil, nil
-}
-
-// remove is used to remove a given path entry; returns the entry that was
-// removed
-func (t *MountTable) remove(ctx context.Context, path string) (*MountEntry, error) {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var mountEntryToDelete *MountEntry
-	t.Entries = slices.DeleteFunc(t.Entries, func(me *MountEntry) bool {
-		if me.Path == path && me.Namespace().ID == ns.ID {
-			mountEntryToDelete = me
-			return true
-		}
-		return false
-	})
-
-	return mountEntryToDelete, nil
-}
-
-func (t *MountTable) findByPath(ctx context.Context, path string) (*MountEntry, error) {
-	return t.find(ctx, func(me *MountEntry) bool { return me.Path == path })
-}
-
-func (t *MountTable) findByBackendUUID(ctx context.Context, backendUUID string) (*MountEntry, error) {
-	return t.find(ctx, func(me *MountEntry) bool { return me.BackendAwareUUID == backendUUID })
-}
-
-func (t *MountTable) findAllNamespaceMounts(ctx context.Context) ([]*MountEntry, error) {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var mounts []*MountEntry
-	for _, entry := range t.Entries {
-		if entry.Namespace().ID == ns.ID {
-			mounts = append(mounts, entry)
-		}
-	}
-
-	return mounts, nil
-}
-
-func (t *MountTable) find(ctx context.Context, predicate func(*MountEntry) bool) (*MountEntry, error) {
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, entry := range t.Entries {
-		if predicate(entry) && entry.Namespace().ID == ns.ID {
-			return entry, nil
-		}
-	}
-
-	return nil, nil
-}
-
-// sortEntriesByPath sorts the entries in the table by path and returns the
-// table; this is useful for tests
-func (t *MountTable) sortEntriesByPath() *MountTable {
-	sort.Slice(t.Entries, func(i, j int) bool {
-		return t.Entries[i].Path < t.Entries[j].Path
-	})
-	return t
-}
-
-// sortEntriesByPath sorts the entries in the table by path and returns the
-// table; this is useful for tests
-func (t *MountTable) sortEntriesByPathDepth() *MountTable {
-	sort.Slice(t.Entries, func(i, j int) bool {
-		return len(strings.Split(t.Entries[i].Namespace().Path+t.Entries[i].Path, "/")) < len(strings.Split(t.Entries[j].Namespace().Path+t.Entries[j].Path, "/"))
-	})
-	return t
-}
-
-const mountStateUnmounting = "unmounting"
-
-// MountEntry is used to represent a mount table entry
-type MountEntry struct {
-	Table                 string            `json:"table"`                             // The table it belongs to
-	Path                  string            `json:"path"`                              // Mount Path
-	Type                  string            `json:"type"`                              // Logical backend Type. NB: This is the plugin name, e.g. my-vault-plugin, NOT plugin type (e.g. auth).
-	Description           string            `json:"description"`                       // User-provided description
-	UUID                  string            `json:"uuid"`                              // Barrier view UUID
-	BackendAwareUUID      string            `json:"backend_aware_uuid"`                // UUID that can be used by the backend as a helper when a consistent value is needed outside of storage.
-	Accessor              string            `json:"accessor"`                          // Unique but more human-friendly ID. Does not change, not used for any sensitive things (like as a salt, which the UUID sometimes is).
-	Config                MountConfig       `json:"config"`                            // Configuration related to this mount (but not backend-derived)
-	Options               map[string]string `json:"options"`                           // Backend options
-	Local                 bool              `json:"local"`                             // Local mounts are not replicated or affected by replication
-	SealWrap              bool              `json:"seal_wrap"`                         // Whether to wrap CSPs
-	ExternalEntropyAccess bool              `json:"external_entropy_access,omitempty"` // Whether to allow external entropy source access
-	Tainted               bool              `json:"tainted,omitempty"`                 // Set as a Write-Ahead flag for unmount/remount
-	MountState            string            `json:"mount_state,omitempty"`             // The current mount state.  The only non-empty mount state right now is "unmounting"
-	NamespaceID           string            `json:"namespace_id"`
-
-	// namespace contains the populated namespace
-	namespace *namespace.Namespace
-
-	// synthesizedConfigCache is used to cache configuration values. These
-	// particular values are cached since we want to get them at a point-in-time
-	// without separately managing their locks individually. See SyncCache() for
-	// the specific values that are being cached.
-	synthesizedConfigCache sync.Map
-
-	// version info
-	Version        string `json:"plugin_version,omitempty"`         // The semantic version of the mounted plugin, e.g. v1.2.3.
-	RunningVersion string `json:"running_plugin_version,omitempty"` // The semantic version of the mounted plugin as reported by the plugin.
-	RunningSha256  string `json:"running_sha256,omitempty"`
-}
-
-// MountConfig is used to hold settable options
-type MountConfig struct {
-	DefaultLeaseTTL           time.Duration         `json:"default_lease_ttl,omitempty" mapstructure:"default_lease_ttl"` // Override for global default
-	MaxLeaseTTL               time.Duration         `json:"max_lease_ttl,omitempty" mapstructure:"max_lease_ttl"`         // Override for global default
-	ForceNoCache              bool                  `json:"force_no_cache,omitempty" mapstructure:"force_no_cache"`       // Override for global default
-	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" mapstructure:"audit_non_hmac_request_keys"`
-	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" mapstructure:"audit_non_hmac_response_keys"`
-	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" mapstructure:"listing_visibility"`
-	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" mapstructure:"passthrough_request_headers"`
-	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" mapstructure:"allowed_response_headers"`
-	TokenType                 logical.TokenType     `json:"token_type,omitempty" mapstructure:"token_type"`
-	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
-
-	// PluginName is the name of the plugin registered in the catalog.
-	//
-	// Deprecated: MountEntry.Type should be used instead for Vault 1.0.0 and beyond.
-	PluginName string `json:"plugin_name,omitempty" mapstructure:"plugin_name"`
-}
-
-type UserLockoutConfig struct {
-	LockoutThreshold    uint64        `json:"lockout_threshold,omitempty" mapstructure:"lockout_threshold"`
-	LockoutDuration     time.Duration `json:"lockout_duration,omitempty" mapstructure:"lockout_duration"`
-	LockoutCounterReset time.Duration `json:"lockout_counter_reset,omitempty" mapstructure:"lockout_counter_reset"`
-	DisableLockout      bool          `json:"disable_lockout,omitempty" mapstructure:"disable_lockout"`
-}
-
-type APIUserLockoutConfig struct {
-	LockoutThreshold            string `json:"lockout_threshold,omitempty" mapstructure:"lockout_threshold"`
-	LockoutDuration             string `json:"lockout_duration,omitempty" mapstructure:"lockout_duration"`
-	LockoutCounterResetDuration string `json:"lockout_counter_reset_duration,omitempty" mapstructure:"lockout_counter_reset_duration"`
-	DisableLockout              *bool  `json:"lockout_disable,omitempty" mapstructure:"lockout_disable"`
-}
-
-// APIMountConfig is an embedded struct of api.MountConfigInput
-type APIMountConfig struct {
-	DefaultLeaseTTL           string                `json:"default_lease_ttl" mapstructure:"default_lease_ttl"`
-	MaxLeaseTTL               string                `json:"max_lease_ttl" mapstructure:"max_lease_ttl"`
-	ForceNoCache              bool                  `json:"force_no_cache" mapstructure:"force_no_cache"`
-	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" mapstructure:"audit_non_hmac_request_keys"`
-	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" mapstructure:"audit_non_hmac_response_keys"`
-	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" mapstructure:"listing_visibility"`
-	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" mapstructure:"passthrough_request_headers"`
-	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" mapstructure:"allowed_response_headers"`
-	TokenType                 string                `json:"token_type" mapstructure:"token_type"`
-	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
-	PluginVersion             string                `json:"plugin_version,omitempty" mapstructure:"plugin_version"`
-
-	// PluginName is the name of the plugin registered in the catalog.
-	//
-	// Deprecated: MountEntry.Type should be used instead for Vault 1.0.0 and beyond.
-	PluginName string `json:"plugin_name,omitempty" mapstructure:"plugin_name"`
-}
-
-type FailedLoginUser struct {
-	aliasName     string
-	mountAccessor string
-}
-
-type FailedLoginInfo struct {
-	count               uint
-	lastFailedLoginTime int
-}
-
-// Clone returns a deep copy of the mount entry
-func (e *MountEntry) Clone() (*MountEntry, error) {
-	cp, err := copystructure.Copy(e)
-	if err != nil {
-		return nil, err
-	}
-	return cp.(*MountEntry), nil
-}
-
-// IsExternalPlugin returns whether the plugin is running externally
-// if the RunningSha256 is non-empty, the builtin is external. Otherwise, it's builtin
-func (e *MountEntry) IsExternalPlugin() bool {
-	return e.RunningSha256 != ""
-}
-
-// MountClass returns the mount class based on Accessor and Path
-func (e *MountEntry) MountClass() string {
-	if e.Accessor == "" || strings.HasPrefix(e.Path, fmt.Sprintf("%s/", mountPathSystem)) {
-		return ""
-	}
-
-	if e.Table == credentialTableType {
-		return consts.PluginTypeCredential.String()
-	}
-
-	return consts.PluginTypeSecrets.String()
-}
-
-// Namespace returns the namespace for the mount entry
-func (e *MountEntry) Namespace() *namespace.Namespace {
-	return e.namespace
-}
-
-// APIPath returns the full API Path for the given mount entry
-func (e *MountEntry) APIPath() string {
-	path := e.Path
-	if e.Table == credentialTableType {
-		path = credentialRoutePrefix + path
-	}
-	return e.namespace.Path + path
-}
-
-// APIPathNoNamespace returns the API Path without the namespace for the given mount entry
-func (e *MountEntry) APIPathNoNamespace() string {
-	path := e.Path
-	if e.Table == credentialTableType {
-		path = credentialRoutePrefix + path
-	}
-	return path
-}
-
-// SyncCache syncs tunable configuration values to the cache. In the case of
-// cached values, they should be retrieved via synthesizedConfigCache.Load()
-// instead of accessing them directly through MountConfig.
-func (e *MountEntry) SyncCache() {
-	if len(e.Config.AuditNonHMACRequestKeys) == 0 {
-		e.synthesizedConfigCache.Delete("audit_non_hmac_request_keys")
-	} else {
-		e.synthesizedConfigCache.Store("audit_non_hmac_request_keys", e.Config.AuditNonHMACRequestKeys)
-	}
-
-	if len(e.Config.AuditNonHMACResponseKeys) == 0 {
-		e.synthesizedConfigCache.Delete("audit_non_hmac_response_keys")
-	} else {
-		e.synthesizedConfigCache.Store("audit_non_hmac_response_keys", e.Config.AuditNonHMACResponseKeys)
-	}
-
-	if len(e.Config.PassthroughRequestHeaders) == 0 {
-		e.synthesizedConfigCache.Delete("passthrough_request_headers")
-	} else {
-		e.synthesizedConfigCache.Store("passthrough_request_headers", e.Config.PassthroughRequestHeaders)
-	}
-
-	if len(e.Config.AllowedResponseHeaders) == 0 {
-		e.synthesizedConfigCache.Delete("allowed_response_headers")
-	} else {
-		e.synthesizedConfigCache.Store("allowed_response_headers", e.Config.AllowedResponseHeaders)
-	}
-}
-
-func (entry *MountEntry) Deserialize() map[string]interface{} {
-	return map[string]interface{}{
-		"mount_path":      entry.Path,
-		"mount_namespace": entry.Namespace().Path,
-		"uuid":            entry.UUID,
-		"accessor":        entry.Accessor,
-		"mount_type":      entry.Type,
-	}
 }
 
 // DecodeMountTable is used for testing
@@ -809,26 +394,6 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	return nil
 }
 
-// mountEntrySysView creates a logical.SystemView from global and
-// mount-specific entries; because this should be called when setting
-// up a mountEntry, it doesn't check to ensure that me is not nil
-func (c *Core) mountEntrySysView(entry *MountEntry) extendedSystemView {
-	esi := extendedSystemViewImpl{
-		dynamicSystemView{
-			core:       c,
-			mountEntry: entry,
-		},
-	}
-
-	// Due to complexity in the ACME interface, only return it when we
-	// are a PKI plugin that needs it.
-	if entry.Type != "pki" {
-		return esi
-	}
-
-	return esi
-}
-
 // builtinTypeFromMountEntry attempts to find a builtin PluginType associated
 // with the specified MountEntry. Returns consts.PluginTypeUnknown if not found.
 func (c *Core) builtinTypeFromMountEntry(ctx context.Context, entry *MountEntry) consts.PluginType {
@@ -1025,17 +590,9 @@ func (c *Core) taintMountEntry(ctx context.Context, nsID, mountPath string, upda
 	c.mountsLock.Lock()
 	defer c.mountsLock.Unlock()
 
-	mountState := ""
-	if unmounting {
-		mountState = mountStateUnmounting
-	}
-
 	// As modifying the taint of an entry affects shallow clones,
 	// we simply use the original
-	entry, err := c.mounts.setTaint(nsID, mountPath, true, mountState)
-	if err != nil {
-		return err
-	}
+	entry := c.mounts.setTaint(nsID, mountPath)
 	if entry == nil {
 		c.logger.Error("nil entry found tainting entry in mounts table", "path", mountPath)
 		return logical.CodedError(500, "failed to taint entry in mounts table")
@@ -1514,7 +1071,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (b
 			c.logger.Error("failed to decompress and/or decode the legacy mount table", "error", err)
 			return false, err
 		}
-		c.tableMetrics(len(mountTable.Entries), false, false, len(raw.Value))
+		c.tableMetrics(mountTableType, false, len(mountTable.Entries), len(raw.Value))
 		c.mounts = mountTable
 	}
 
@@ -1534,7 +1091,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (b
 			c.logger.Info("migrating legacy mount table to transactional layout")
 			needPersist = true
 		}
-		c.tableMetrics(len(c.mounts.Entries), false, false, len(raw.Value))
+		c.tableMetrics(mountTableType, false, len(c.mounts.Entries), len(raw.Value))
 	}
 
 	if rawLocal != nil {
@@ -1544,7 +1101,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (b
 			return false, err
 		}
 		if localMountTable != nil && len(localMountTable.Entries) > 0 {
-			c.tableMetrics(len(localMountTable.Entries), true, false, len(rawLocal.Value))
+			c.tableMetrics(mountTableType, true, len(localMountTable.Entries), len(rawLocal.Value))
 			c.mounts.Entries = append(c.mounts.Entries, localMountTable.Entries...)
 		}
 	}
@@ -1857,14 +1414,14 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(nonLocalMounts.Entries), false, false, compressedBytesLen)
+		c.tableMetrics(mountTableType, false, len(nonLocalMounts.Entries), compressedBytesLen)
 
 		// Write local mounts
 		compressedBytesLen, err = writeTable(localMounts, coreLocalMountConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(localMounts.Entries), true, false, compressedBytesLen)
+		c.tableMetrics(mountTableType, true, len(localMounts.Entries), compressedBytesLen)
 
 	case *local:
 		// Write local mounts
@@ -1872,14 +1429,14 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(localMounts.Entries), true, false, compressedBytesLen)
+		c.tableMetrics(mountTableType, true, len(localMounts.Entries), compressedBytesLen)
 	default:
 		// Write non-local mounts
 		compressedBytesLen, err = writeTable(nonLocalMounts, coreMountConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(nonLocalMounts.Entries), false, false, compressedBytesLen)
+		c.tableMetrics(mountTableType, false, len(nonLocalMounts.Entries), compressedBytesLen)
 	}
 
 	if needTxnCommit {
@@ -2291,92 +1848,24 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 }
 
 func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view BarrierView) {
+	// bail for non-root namespace
+	if entry.NamespaceID != namespace.RootNamespaceID {
+		return
+	}
+
 	switch entry.Type {
 	case mountTypeSystem:
 		c.systemBackend = backend.(*SystemBackend)
 		c.systemBarrierView = view
 	case mountTypeCubbyhole:
-		ch := backend.(*CubbyholeBackend)
-		ch.saltUUID = entry.UUID
-		c.cubbyholeBackend = ch
+		c.cubbyholeBackend = backend.(*CubbyholeBackend)
+		c.cubbyholeBackend.saltUUID = entry.UUID
 	case mountTypeIdentity:
 		c.identityStore = backend.(*IdentityStore)
 	}
 }
 
-func (c *Core) createMigrationStatus(from, to namespace.MountPathDetails) (string, error) {
-	migrationID, err := uuid.GenerateUUID()
-	if err != nil {
-		return "", fmt.Errorf("error generating uuid for mount move invocation: %w", err)
-	}
-	migrationInfo := MountMigrationInfo{
-		SourceMount:     from.Namespace.Path + from.MountPath,
-		TargetMount:     to.Namespace.Path + to.MountPath,
-		MigrationStatus: MigrationInProgressStatus.String(),
-	}
-	c.mountMigrationTracker.Store(migrationID, migrationInfo)
-	return migrationID, nil
-}
-
-func (c *Core) setMigrationStatus(migrationID string, migrationStatus MountMigrationStatus) error {
-	migrationInfoRaw, ok := c.mountMigrationTracker.Load(migrationID)
-	if !ok {
-		return fmt.Errorf("migration Tracker entry missing for ID %s", migrationID)
-	}
-	migrationInfo := migrationInfoRaw.(MountMigrationInfo)
-	migrationInfo.MigrationStatus = migrationStatus.String()
-	c.mountMigrationTracker.Store(migrationID, migrationInfo)
-	return nil
-}
-
-func (c *Core) readMigrationStatus(migrationID string) *MountMigrationInfo {
-	migrationInfoRaw, ok := c.mountMigrationTracker.Load(migrationID)
-	if !ok {
-		return nil
-	}
-	migrationInfo := migrationInfoRaw.(MountMigrationInfo)
-	return &migrationInfo
-}
-
-func (c *Core) namespaceMountEntryView(namespace *namespace.Namespace, prefix string) BarrierView {
-	return NamespaceView(c.barrier, namespace).SubView(prefix)
-}
-
-// mountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace
-func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
-	if me.Namespace() != nil && me.Namespace().ID != me.NamespaceID {
-		return nil, errors.New("invalid namespace")
-	}
-
-	switch me.Type {
-	case mountTypeSystem, mountTypeNSSystem:
-		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
-			return c.namespaceMountEntryView(me.Namespace(), systemBarrierPrefix), nil
-		}
-		return NewBarrierView(c.barrier, systemBarrierPrefix), nil
-	case mountTypeToken:
-		return NewBarrierView(c.barrier, systemBarrierPrefix+tokenSubPath), nil
-	}
-
-	switch me.Table {
-	case mountTableType:
-		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
-			return c.namespaceMountEntryView(me.Namespace(), backendBarrierPrefix+me.UUID+"/"), nil
-		}
-		return NewBarrierView(c.barrier, backendBarrierPrefix+me.UUID+"/"), nil
-	case credentialTableType:
-		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
-			return c.namespaceMountEntryView(me.Namespace(), credentialBarrierPrefix+me.UUID+"/"), nil
-		}
-		return NewBarrierView(c.barrier, credentialBarrierPrefix+me.UUID+"/"), nil
-	case auditTableType, configAuditTableType:
-		return NewBarrierView(c.barrier, auditBarrierPrefix+me.UUID+"/"), nil
-	}
-
-	return nil, errors.New("invalid mount entry")
-}
-
-func (c *Core) reloadNamespaceMounts(parentCtx context.Context, childCtx context.Context, uuid string, deleted bool) error {
+func (c *Core) reloadNamespaceMounts(childCtx context.Context, uuid string, deleted bool) error {
 	if _, ok := c.barrier.(logical.TransactionalStorage); !ok {
 		return c.reloadLegacyMounts(childCtx)
 	}

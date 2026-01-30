@@ -453,7 +453,7 @@ func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
 	ij.im.core.policyStore.invalidateNamespace(childCtx, namespaceUUID)
 
 	// Now reload all mounts within the namespace.
-	if err := ij.im.core.reloadNamespaceMounts(ctx, childCtx, namespaceUUID, deleted); err != nil {
+	if err := ij.im.core.reloadNamespaceMounts(childCtx, namespaceUUID, deleted); err != nil {
 		return fmt.Errorf("unable to invalidate mounts in namespace %q: %w", ij.nsUUID, err)
 	}
 

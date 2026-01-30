@@ -373,6 +373,9 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	if config.JWKSURL != "" {
 		methodCount++
 	}
+	if config.hasCustomProviderDiscovery() {
+		methodCount++
+	}
 
 	resp := &logical.Response{}
 	switch {
@@ -402,7 +405,6 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 
 			resp.AddWarning("error checking oidc discovery URL")
 		}
-
 	case config.OIDCClientID != "" && config.OIDCDiscoveryURL == "":
 		return logical.ErrorResponse("'oidc_discovery_url' must be set for OIDC"), nil
 
@@ -436,7 +438,15 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 				return logical.ErrorResponse(fmt.Errorf("error parsing public key: %w", err).Error()), nil
 			}
 		}
-
+	case config.hasCustomProviderDiscovery():
+		pConfig, initErr := NewProviderConfig(b.providerCtx, config, ProviderMap())
+		if initErr != nil {
+			return nil, initErr
+		}
+		_, err = pConfig.(KeySetDiscovery).NewKeySet(b.providerCtx)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, errors.New("unknown condition")
 	}
@@ -631,6 +641,7 @@ const (
 	JWKS
 	OIDCDiscovery
 	OIDCFlow
+	CustomProviderDiscovery
 	unconfigured
 )
 
@@ -646,6 +657,8 @@ func (c jwtConfig) authType() int {
 			return OIDCFlow
 		}
 		return OIDCDiscovery
+	case c.hasCustomProviderDiscovery():
+		return CustomProviderDiscovery
 	}
 
 	return unconfigured
@@ -659,6 +672,28 @@ func (c jwtConfig) hasType(t string) bool {
 	}
 
 	return slices.Contains(c.OIDCResponseTypes, t)
+}
+
+// hasCustomProviderDiscovery returns true if the configuration refers to a custom provider
+// that implements KeySetDiscovery interface.
+func (c jwtConfig) hasCustomProviderDiscovery() bool {
+	if len(c.ProviderConfig) == 0 {
+		return false
+	}
+
+	provider, ok := c.ProviderConfig["provider"].(string)
+	if !ok {
+		return false
+	}
+
+	providerMap := ProviderMap()
+	newCustomProvider, ok := providerMap[provider]
+	if !ok {
+		return false
+	}
+
+	_, ok = newCustomProvider.(KeySetDiscovery)
+	return ok
 }
 
 // Adapted from similar code in https://github.com/golang/go/blob/86fca3dcb63157b8e45e565e821e7fb098fcf368/src/crypto/tls/handshake_client.go#L1160-L1181

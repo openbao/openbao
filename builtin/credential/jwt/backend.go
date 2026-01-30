@@ -159,6 +159,12 @@ func (b *jwtAuthBackend) jwtValidator(config *jwtConfig) (*jwt.Validator, error)
 		keySet, err = jwt.NewStaticKeySet(config.ParsedJWTPubKeys)
 	case OIDCDiscovery, OIDCFlow:
 		keySet, err = jwt.NewOIDCDiscoveryKeySet(b.providerCtx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
+	case CustomProviderDiscovery:
+		pConfig, initErr := NewProviderConfig(b.providerCtx, config, ProviderMap())
+		if initErr != nil {
+			return nil, initErr
+		}
+		keySet, err = pConfig.(KeySetDiscovery).NewKeySet(b.providerCtx)
 	default:
 		return nil, errors.New("unsupported config type")
 	}

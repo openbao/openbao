@@ -17,8 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openbao/go-kms-wrapping/entropy/v2"
-
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
@@ -401,14 +399,8 @@ func (b *Backend) Setup(ctx context.Context, config *logical.BackendConfig) erro
 	return nil
 }
 
-// GetRandomReader returns an io.Reader to use for generating key material in
-// backends. If the backend has access to an external entropy source it will
-// return that, otherwise it returns crypto/rand.Reader.
+// GetRandomReader returns crypto/rand.Reader.
 func (b *Backend) GetRandomReader() io.Reader {
-	if sourcer, ok := b.System().(entropy.Sourcer); ok {
-		return entropy.NewReader(sourcer)
-	}
-
 	return rand.Reader
 }
 

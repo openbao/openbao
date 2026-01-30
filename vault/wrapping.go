@@ -80,7 +80,7 @@ func (c *Core) ensureWrappingKey(ctx context.Context) error {
 // wrapInCubbyhole is invoked when a caller asks for response wrapping.
 // On success, return (nil, nil) and mutates resp.  On failure, returns
 // either a response describing the failure or an error.
-func (c *Core) wrapInCubbyhole(ctx context.Context, req *logical.Request, resp *logical.Response, auth *logical.Auth) (*logical.Response, error) {
+func (c *Core) wrapInCubbyhole(ctx context.Context, req *logical.Request, resp *logical.Response, auth *logical.Auth, extraData map[string]string) (*logical.Response, error) {
 	// Before wrapping, obey special rules for listing: if no entries are
 	// found, 404. This prevents unwrapping only to find empty data.
 	if req.Operation == logical.ListOperation {
@@ -138,6 +138,7 @@ DONELISTHANDLING:
 		NumUses:        1,
 		ExplicitMaxTTL: resp.WrapInfo.TTL,
 		NamespaceID:    ns.ID,
+		Meta:           extraData,
 	}
 
 	if err := c.CreateToken(ctx, &te, true); err != nil {
@@ -244,12 +245,11 @@ DONELISTHANDLING:
 		}
 	}
 	cubbyReq.SetTokenEntry(&te)
+	cubbyReq.Data = map[string]interface{}{}
 
 	// During a rewrap, store the original response, don't wrap it again.
 	if req.Path == "sys/wrapping/rewrap" {
-		cubbyReq.Data = map[string]interface{}{
-			"response": resp.Data["response"],
-		}
+		cubbyReq.Data["response"] = resp.Data["response"]
 	} else {
 		httpResponse := logical.LogicalResponseToHTTPResponse(resp)
 
@@ -270,9 +270,7 @@ DONELISTHANDLING:
 			return nil, ErrInternalError
 		}
 
-		cubbyReq.Data = map[string]interface{}{
-			"response": string(marshaledResponse),
-		}
+		cubbyReq.Data["response"] = string(marshaledResponse)
 	}
 
 	cubbyResp, err := c.router.Route(ctx, cubbyReq)
@@ -451,7 +449,7 @@ func (c *Core) validateWrappingToken(ctx context.Context, req *logical.Request) 
 		req.SetTokenEntry(te)
 	}
 
-	return true, nil
+	return c.validateControlGroup(ctx, te.ID)
 }
 
 func IsWrappingToken(te *logical.TokenEntry) bool {

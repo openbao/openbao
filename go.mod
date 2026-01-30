@@ -109,6 +109,7 @@ require (
 	github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.1.0
 	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/wrappers/okms/v2 v2.0.0-00010101000000-000000000000
 	github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.5.1
 	github.com/openbao/go-kms-wrapping/wrappers/static/v2 v2.1.1
 	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.7.0
@@ -199,6 +200,7 @@ require (
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v1.62.301 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
+	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-sdk-go v1.55.6 // indirect
@@ -319,6 +321,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/nicolai86/scaleway-sdk v1.10.2-0.20180628010248-798f60e20bb2 // indirect
+	github.com/oapi-codegen/runtime v1.1.2 // indirect
 	github.com/openbao/go-kms-wrapping/entropy/v2 v2.1.0 // indirect
 	github.com/openbao/openbao/api/auth/kubernetes/v2 v2.0.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
@@ -327,6 +330,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/oracle/oci-go-sdk/v60 v60.0.0 // indirect
 	github.com/ovh/kmip-go v0.3.3 // indirect
+	github.com/ovh/okms-sdk-go v0.5.1 // indirect
 	github.com/packethost/packngo v0.1.1-0.20180711074735-b9cb5096f54c // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/petermattis/goid v0.0.0-20250813065127-a731cc31b4fe // indirect

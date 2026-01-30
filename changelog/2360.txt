@@ -1,0 +1,3 @@
+```release-note:feature
+**OKMS Auto-Unseal**: Add support for automatic unsealing of OpenBao using OVHcloud's KMS
+```

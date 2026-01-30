@@ -11,20 +11,36 @@ export default class PkiCertificateBaseAdapter extends ApplicationAdapter {
 
   getURL(backend, id) {
     const uri = `${this.buildURL()}/${encodePath(backend)}`;
-    return id ? `${uri}/cert/${id}` : `${uri}/certs`;
+    return id ? `${uri}/cert/${id}` : `${uri}/certs/detailed`;
   }
 
-  fetchByQuery(query) {
+  async fetchByQuery(query) {
     const { backend, id } = query;
     const data = !id ? { list: true } : {};
-    return this.ajax(this.getURL(backend, id), 'GET', { data }).then((resp) => {
-      resp.data.backend = backend;
-      if (id) {
+    const uri = `${this.buildURL()}/${encodePath(backend)}`;
+    if (!id) {
+      try {
+        const resp = await this.ajax(`${uri}/certs/detailed`, 'GET', {
+          data: { list: true },
+        });
+        resp.data.backend = backend;
+        return resp;
+      } catch {
+        // fallback to regular /certs
+        const fallbackResp = await this.ajax(`${uri}/certs`, 'GET', {
+          data: { list: true },
+        });
+        fallbackResp.data.backend = backend;
+        return fallbackResp;
+      }
+    } else {
+      return this.ajax(`${uri}/cert/${id}`, 'GET', { data }).then((resp) => {
+        resp.data.backend = backend;
         resp.data.id = id;
         resp.data.serial_number = id;
-      }
-      return resp;
-    });
+        return resp;
+      });
+    }
   }
 
   query(store, type, query) {

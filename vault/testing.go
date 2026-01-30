@@ -294,9 +294,8 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 	barrierConfig := &SealConfig{
 		SecretShares:    3,
 		SecretThreshold: 3,
+		StoredShares:    1,
 	}
-
-	barrierConfig.StoredShares = 1
 
 	recoveryConfig := &SealConfig{
 		SecretShares:    3,
@@ -307,7 +306,7 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 		BarrierConfig:  barrierConfig,
 		RecoveryConfig: recoveryConfig,
 	}
-	result, err := core.Initialize(context.Background(), initParams)
+	result, err := core.Initialize(namespace.RootContext(context.Background()), initParams)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

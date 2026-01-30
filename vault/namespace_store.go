@@ -97,15 +97,16 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	return ns, nil
 }
 
-// NamespaceView uses given barrier and namespace to return back a view scoped to that namespace.
+// NamespaceView returns passed barrier scoped to the barrierView
+// of provided namespace.
 func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView {
 	return NewBarrierView(barrier, NamespaceBarrierPrefix(ns))
 }
 
-// NamespaceBarrierPrefix uses given namespace to return back the common prefix
-// used for all keys that belong to that namespace.
+// namespaceBarrierPrefix uses given namespace to return back the
+// common prefix used for all keys that belong to that namespace.
 func NamespaceBarrierPrefix(ns *namespace.Namespace) string {
-	if ns.ID == namespace.RootNamespaceID {
+	if ns == nil || ns.ID == namespace.RootNamespaceID {
 		return ""
 	}
 
@@ -802,9 +803,10 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 	return entry.Clone(false), nil
 }
 
-// ListAllNamespaces lists all available namespaces, optionally including the
-// root namespace.
-func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot bool) ([]*namespace.Namespace, error) {
+// ListAllNamespaces lists all available namespaces. includeRoot and includeSealed
+// flags control whether the result slice contains root and sealed namespaces
+// respectively.
+func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot, includeSealed bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_all_namespaces"}, time.Now())
 
 	unlock, err := ns.lockWithInvalidation(ctx, false)
@@ -815,10 +817,13 @@ func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot boo
 
 	namespaces := make([]*namespace.Namespace, 0, len(ns.namespacesByUUID))
 	for _, entry := range ns.namespacesByUUID {
-		if !includeRoot && entry.ID == namespace.RootNamespaceID {
+		switch {
+		case !includeRoot && entry.ID == namespace.RootNamespaceID,
+			!includeSealed && ns.core.NamespaceSealed(entry):
 			continue
+		default:
+			namespaces = append(namespaces, entry.Clone(false))
 		}
-		namespaces = append(namespaces, entry.Clone(false))
 	}
 
 	return namespaces, nil

@@ -1396,6 +1396,13 @@ func (c *Core) Sealed() bool {
 	return c.sealed.Load()
 }
 
+// NamespaceSealed checks if there's a namespace
+// (in direct ancestry line) that is currently sealed.
+func (c *Core) NamespaceSealed(ns *namespace.Namespace) bool {
+	// TODO(wslabosz): implement with seal manager
+	return false
+}
+
 // SecretProgress returns the number of keys provided so far. Lock
 // should only be false if the caller is already holding the read
 // statelock (such as calls originating from switchedLockHandleRequest).
@@ -3277,7 +3284,7 @@ func (c *Core) isPrimary() bool {
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {
 	eConfigs := make([]*mfa.MFAEnforcementConfig, 0)
-	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return err
 	}
@@ -3385,7 +3392,7 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 	}
 
 	// get all namespaces
-	nsList, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	nsList, err := c.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return err
 	}

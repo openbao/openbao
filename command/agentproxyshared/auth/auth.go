@@ -261,27 +261,23 @@ func (ah *AuthHandler) Run(ctx context.Context, am AuthMethod) error {
 			}
 		}
 
-		if ah.wrapTTL > 0 {
-			wrapClient, err := clientToUse.Clone()
-			if err != nil {
-				ah.logger.Error("error creating client for wrapped call", "error", err, "backoff", backoffCfg)
-				metrics.IncrCounter([]string{ah.metricsSignifier, "auth", "failure"}, 1)
+		// Clone client as we don't want to persist the authentication headers set below
+		clientToUse, err = clientToUse.Clone()
+		if err != nil {
+			ah.logger.Error("error creating client for authentication call", "error", err, "backoff", backoffCfg)
+			metrics.IncrCounter([]string{ah.metricsSignifier, "auth", "failure"}, 1)
 
-				if backoff(ctx, backoffCfg) {
-					continue
-				}
-				return err
+			if backoff(ctx, backoffCfg) {
+				continue
 			}
-			wrapClient.SetWrappingLookupFunc(func(string, string) string {
+			return err
+		}
+		if ah.wrapTTL > 0 {
+			clientToUse.SetWrappingLookupFunc(func(string, string) string {
 				return ah.wrapTTL.String()
 			})
-			clientToUse = wrapClient
 		}
-		for key, values := range header {
-			for _, value := range values {
-				clientToUse.AddHeader(key, value)
-			}
-		}
+		clientToUse.SetHeaders(header)
 
 		// This should only happen if there's no preloaded token (regular auto-auth login)
 		// or if a preloaded token has expired and is now switching to auto-auth.

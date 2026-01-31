@@ -1,0 +1,76 @@
+---
+description: |-
+  Describes how to set up and configure the OpenBao Snapshot CronJob.
+---
+
+# Snapshot Cronjob Example
+
+:::warning
+
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+**This feature is available starting with OpenBao Helm Chart Version 0.22.0.**
+
+:::
+
+
+The below `values.yaml` can be used to set up the [Snapshot CronJob with OpenBao](https://github.com/openbao/openbao-snapshot-agent).
+
+By default the CronJob will run every 15 minutes. You can modify the schedule by changing the `schedule` field.
+
+```yaml
+snapshotAgent:
+  enabled: true
+  schedule: "*/15 * * * *"
+
+  # Name of the secret containing S3 credentials
+  # the secret needs to be created prior to deploying the chart
+  # example secret:
+  # apiVersion: v1
+  # kind: Secret
+  # metadata:
+  #   name: my-s3-credentials
+  # type: Opaque
+  # stringData:
+  #   AWS_ACCES_KEY_ID: <AWS_ACCESS_KEY_ID>
+  #   AWS_SECRET_ACCESS_KEY: <AWS_SECRET_ACCESS_KEY>
+  s3CredentialsSecret: "my-s3-credentials"
+
+  # Configuration for the snapshot agent
+  config:
+    s3Host: "s3.eu-east-1.amazonaws.com"
+    s3Bucket: "openbao-snapshots"
+    s3Uri: "s3://openbao-snapshots"
+    # after how many days snapshots should expire and be deleted
+    s3ExpireDays: "14"
+    # Path to use to authenticate to OpenBao
+    # preferably use the kubernetes auth method
+    baoAuthPath: "kubernetes"
+    # Role to use to authenticate to OpenBao
+    baoRole: "snapshot"
+```
+
+The role being used needs to have the specific privileges in order to create snapshots.
+Below is an example policy that can be used:
+
+```hcl
+path "sys/storage/raft/snapshot" {
+  capabilities = ["read"]
+}
+```
+
+Make sure the policy is attached to the role being used by the snapshot agent.
+
+```shell-session
+$ bao write auth/kubernetes/role/snapshot \
+    bound_service_account_names=<SERVICE_ACCOUNT_NAME> \
+    bound_service_account_namespaces=<NAMESPACE> \
+    policies=snapshot \
+    ttl=1h
+```
+
+After OpenBao has been deployed, initialized and unsealed, the snapshot will run as jobs according to the defined schedule.
+You can verify it's working correctly by checking the logs of the CronJob pods.
+
+```shell-session
+$ kubectl logs <POD NAME>
+```

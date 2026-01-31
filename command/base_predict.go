@@ -255,19 +255,26 @@ func (p *Predict) vaultPaths(includeFiles bool) complete.PredictFunc {
 		// Trim path with potential mount
 		var relativePath string
 		mountInfos, err := p.mountInfos()
-		if err != nil {
-			return nil
-		}
 
 		var mountType, mountVersion string
-		for mount, mountInfo := range mountInfos {
-			if strings.HasPrefix(path, mount) {
-				relativePath = strings.TrimPrefix(path, mount+"/")
-				mountType = mountInfo.Type
-				if mountInfo.Options != nil {
-					mountVersion = mountInfo.Options["version"]
+		if err == nil {
+			// We have mount info, use it to determine mount type/version
+			for mount, mountInfo := range mountInfos {
+				if strings.HasPrefix(path, mount) {
+					relativePath = strings.TrimPrefix(path, mount+"/")
+					mountType = mountInfo.Type
+					if mountInfo.Options != nil {
+						mountVersion = mountInfo.Options["version"]
+					}
+					break
 				}
-				break
+			}
+		} else {
+			// Non-root users may not have permission to list mounts.
+			// Fall back to inferring the relative path from the input and
+			// try both KVv2 and KVv1 paths.
+			if idx := strings.Index(path, "/"); idx > 0 {
+				relativePath = path[idx+1:]
 			}
 		}
 
@@ -275,6 +282,11 @@ func (p *Predict) vaultPaths(includeFiles bool) complete.PredictFunc {
 		var predictions []string
 		if strings.Contains(relativePath, "/") {
 			predictions = p.paths(mountType, mountVersion, path, includeFiles)
+			// If we couldn't get mount info and got no results, try KVv2 style
+			// (metadata/ prefix) as a fallback since it's common.
+			if len(predictions) == 0 && err != nil && mountType == "" {
+				predictions = p.paths("kv", "2", path, includeFiles)
+			}
 		} else {
 			predictions = p.filter(p.mounts(), path)
 		}

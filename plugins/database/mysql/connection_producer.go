@@ -10,12 +10,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/database/helper/connutil"
@@ -38,6 +42,9 @@ type mySQLConnectionProducer struct {
 
 	// tlsConfigName is a globally unique name that references the TLS config for this instance in the mysql driver
 	tlsConfigName string
+
+	// hosts holds parsed host:port pairs for multi-host failover
+	hosts []string
 
 	RawConfig             map[string]interface{}
 	maxConnectionLifetime time.Duration
@@ -75,6 +82,11 @@ func (c *mySQLConnectionProducer) Init(ctx context.Context, conf map[string]inte
 		"username": url.PathEscape(c.Username),
 		"password": password,
 	})
+
+	// Parse multi-host DSN for failover support
+	if err := c.parseMultiHostDSN(); err != nil {
+		return nil, fmt.Errorf("error parsing multi-host DSN: %w", err)
+	}
 
 	if c.MaxOpenConnections == 0 {
 		c.MaxOpenConnections = 4
@@ -143,15 +155,29 @@ func (c *mySQLConnectionProducer) Connection(ctx context.Context) (interface{}, 
 		c.db.Close()
 	}
 
-	connURL, err := c.addTLStoDSN()
+	// Parse the DSN into a Config struct
+	config, err := mysql.ParseDSN(c.ConnectionURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to parse connectionURL: %w", err)
 	}
 
-	c.db, err = sql.Open("mysql", connURL)
-	if err != nil {
-		return nil, err
+	// Set TLS config if configured
+	if c.tlsConfigName != "" {
+		config.TLSConfig = c.tlsConfigName
 	}
+
+	// Enable multi-host failover if multiple hosts are configured
+	if len(c.hosts) > 1 {
+		config.DialFunc = c.dialWithFailover
+	}
+
+	// Create connector and open DB using the connector-based approach
+	connector, err := mysql.NewConnector(config)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create mysql connector: %w", err)
+	}
+
+	c.db = sql.OpenDB(connector)
 
 	// Set some connection pool settings. We don't need much of this,
 	// since the request rate shouldn't be high.
@@ -218,16 +244,75 @@ func (c *mySQLConnectionProducer) getTLSAuth() (tlsConfig *tls.Config, err error
 	return tlsConfig, nil
 }
 
-func (c *mySQLConnectionProducer) addTLStoDSN() (connURL string, err error) {
-	config, err := mysql.ParseDSN(c.ConnectionURL)
-	if err != nil {
-		return "", fmt.Errorf("unable to parse connectionURL: %s", err)
+// parseMultiHostDSN extracts multiple hosts from connection URL for failover.
+func (c *mySQLConnectionProducer) parseMultiHostDSN() error {
+	// Match tcp(...) in the connection URL
+	re := regexp.MustCompile(`tcp\(([^)]+)\)`)
+	match := re.FindStringSubmatch(c.ConnectionURL)
+
+	if match == nil {
+		// No tcp() found - could be unix socket or other format
+		// Leave hosts empty, single-host behavior will be used
+		return nil
 	}
 
-	if len(c.tlsConfigName) > 0 {
-		config.TLSConfig = c.tlsConfigName
+	hostsPart := match[1]
+
+	// Check if there are multiple hosts (comma-separated)
+	if !strings.Contains(hostsPart, ",") {
+		// Single host - ensure it has a port, store it, and return
+		host := strings.TrimSpace(hostsPart)
+		if !strings.Contains(host, ":") {
+			host += ":3306"
+		}
+		c.hosts = []string{host}
+		return nil
 	}
 
-	connURL = config.FormatDSN()
-	return connURL, nil
+	// Multiple hosts found - parse each one
+	hostList := strings.Split(hostsPart, ",")
+	c.hosts = make([]string, 0, len(hostList))
+
+	for _, h := range hostList {
+		h = strings.TrimSpace(h)
+		if h == "" {
+			continue
+		}
+		// Ensure each host has a port
+		if !strings.Contains(h, ":") {
+			h += ":3306"
+		}
+		c.hosts = append(c.hosts, h)
+	}
+
+	if len(c.hosts) == 0 {
+		return errors.New("no valid hosts found in connection URL")
+	}
+
+	// Normalize the ConnectionURL to use only the first host
+	// This is required because mysql.ParseDSN() doesn't support multiple hosts
+	c.ConnectionURL = re.ReplaceAllString(c.ConnectionURL, fmt.Sprintf("tcp(%s)", c.hosts[0]))
+
+	return nil
+}
+
+// dialWithFailover tries each host in sequence until one succeeds.
+func (c *mySQLConnectionProducer) dialWithFailover(ctx context.Context, network, _ string) (conn net.Conn, err error) {
+	var merr *multierror.Error
+
+	for _, host := range c.hosts {
+		var d net.Dialer
+
+		conn, err := d.DialContext(ctx, network, host)
+		if err == nil {
+			return conn, nil
+		}
+		merr = multierror.Append(merr, fmt.Errorf("failed to connect to %s: %w", host, err))
+	}
+
+	if merr != nil {
+		return nil, merr.ErrorOrNil()
+	}
+
+	return nil, errors.New("no hosts configured")
 }

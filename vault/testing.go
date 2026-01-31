@@ -240,7 +240,9 @@ func testCoreConfig(t testing.T, physicalBackend physical.Backend, logger log.Lo
 	noopBackends := make(map[string]logical.Factory)
 	noopBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		b := new(framework.Backend)
-		b.Setup(ctx, config)
+		if err := b.Setup(ctx, config); err != nil {
+			return nil, err
+		}
 		b.BackendType = logical.TypeCredential
 		return b, nil
 	}

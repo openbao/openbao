@@ -620,7 +620,11 @@ func (c *ServerCommand) runRecoveryMode() int {
 			ErrorLog:          c.logger.StandardLogger(nil),
 		}
 
-		go server.Serve(ln.Listener)
+		go func(ln net.Listener) {
+			if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				c.UI.Error(fmt.Sprintf("HTTP server (listening on %s) exited with error: %v", ln.Addr().String(), err))
+			}
+		}(ln.Listener)
 	}
 
 	if sealConfigError != nil {
@@ -1538,7 +1542,7 @@ func (c *ServerCommand) Run(args []string) int {
 
 		case <-c.SigUSR2Ch:
 			logWriter := c.logger.StandardWriter(&hclog.StandardLoggerOptions{})
-			pprof.Lookup("goroutine").WriteTo(logWriter, 2)
+			_ = pprof.Lookup("goroutine").WriteTo(logWriter, 2)
 
 			if api.ReadBaoVariable("BAO_STACKTRACE_WRITE_TO_FILE") != "" {
 				c.logger.Info("Writing stacktrace to file")
@@ -1566,13 +1570,15 @@ func (c *ServerCommand) Run(args []string) int {
 				}
 
 				if err := pprof.Lookup("goroutine").WriteTo(f, 2); err != nil {
-					f.Close()
+					err = errors.Join(err, f.Close())
 					c.logger.Error("Could not write stacktrace to file", "error", err)
 					continue
 				}
 
 				c.logger.Info(fmt.Sprintf("Wrote stacktrace to: %s", f.Name()))
-				f.Close()
+				if err := f.Close(); err != nil {
+					c.logger.Error("Could not close stacktrace file", "error", err)
+				}
 			}
 
 			// We can only get pprof outputs via the API but sometimes OpenBao can get
@@ -1605,11 +1611,14 @@ func (c *ServerCommand) Run(args []string) int {
 
 					err = pprof.Lookup(dump).WriteTo(pFile, 0)
 					if err != nil {
+						err = errors.Join(err, pFile.Close())
 						c.logger.Error("error generating pprof data", "name", dump, "error", err)
-						pFile.Close()
 						break
 					}
-					pFile.Close()
+
+					if err := pFile.Close(); err != nil {
+						c.logger.Error("error closing pprof file", "name", dump, "error", err)
+					}
 				}
 
 				c.logger.Info(fmt.Sprintf("Wrote pprof files to: %s", dir))
@@ -2334,7 +2343,7 @@ func (c *ServerCommand) Reload(lock *sync.RWMutex, reloadFuncs *map[string][]rel
 }
 
 // storePidFile is used to write out our PID to a file if necessary
-func (c *ServerCommand) storePidFile(pidPath string) error {
+func (c *ServerCommand) storePidFile(pidPath string) (err error) {
 	// Quit fast if no pidfile
 	if pidPath == "" {
 		return nil
@@ -2345,7 +2354,9 @@ func (c *ServerCommand) storePidFile(pidPath string) error {
 	if err != nil {
 		return fmt.Errorf("could not open pid file: %w", err)
 	}
-	defer pidFile.Close()
+	defer func() {
+		err = errors.Join(err, pidFile.Close())
+	}()
 
 	// Write out the PID
 	pid := os.Getpid()
@@ -2783,13 +2794,13 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 
 			f, err := os.Open(c.flagDevPluginDir)
 			if err != nil {
-				return fmt.Errorf("Error reading plugin dir: %s", err)
+				return fmt.Errorf("Error reading plugin dir: %w", err)
 			}
 
 			list, err := f.Readdirnames(0)
-			f.Close()
+			err = errors.Join(err, f.Close())
 			if err != nil {
-				return fmt.Errorf("Error listing plugins: %s", err)
+				return fmt.Errorf("Error listing plugins: %w", err)
 			}
 
 			for _, name := range list {
@@ -2953,7 +2964,11 @@ func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config,
 			continue
 		}
 
-		go server.Serve(ln.Listener)
+		go func(ln net.Listener) {
+			if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				c.UI.Error(fmt.Sprintf("HTTP server (listening on %s) exited with error: %v", ln.Addr().String(), err))
+			}
+		}(ln.Listener)
 	}
 	return nil
 }

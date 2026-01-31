@@ -4,6 +4,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -85,14 +86,14 @@ func (c *OperatorRaftSnapshotSaveCommand) Run(args []string) int {
 
 	client, err := c.Client()
 	if err != nil {
-		w.Close()
+		err = errors.Join(err, w.Close())
 		c.UI.Error(err.Error())
 		return 2
 	}
 
 	err = client.Sys().RaftSnapshot(w)
 	if err != nil {
-		w.Close()
+		err = errors.Join(err, w.Close())
 		c.UI.Error(fmt.Sprintf("Error taking the snapshot: %s", err))
 		return 2
 	}

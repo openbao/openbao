@@ -9,10 +9,36 @@ import { inject as service } from '@ember/service';
 import Controller from '@ember/controller';
 import utils from 'vault/lib/key-utils';
 import BackendCrumbMixin from 'vault/mixins/backend-crumb';
-import WithNavToNearestAncestor from 'vault/mixins/with-nav-to-nearest-ancestor';
+import { task } from 'ember-concurrency';
 import ListController from 'core/mixins/list-controller';
 
-export default Controller.extend(ListController, BackendCrumbMixin, WithNavToNearestAncestor, {
+export default Controller.extend(ListController, BackendCrumbMixin, {
+  navToNearestAncestor: task(function* (key) {
+    const ancestors = utils.ancestorKeysForKey(key);
+    let errored = false;
+    let nearest = ancestors.pop();
+    while (nearest) {
+      try {
+        const transition = this.transitionToRoute('vault.cluster.secrets.backend.list', nearest);
+        transition.data.isDeletion = true;
+        yield transition.promise;
+      } catch {
+        // in the route error event handler, we're only throwing when it's a 404,
+        // other errors will be in the route and will not be caught, so the task will complete
+        errored = true;
+        nearest = ancestors.pop();
+      } finally {
+        if (!errored) {
+          nearest = null;
+          // eslint-disable-next-line
+          return;
+        }
+        errored = false;
+      }
+    }
+    yield this.transitionToRoute('vault.cluster.secrets.backend.list-root');
+  }),
+
   flashMessages: service(),
   queryParams: ['page', 'pageFilter', 'tab'],
 

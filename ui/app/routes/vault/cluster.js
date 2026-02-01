@@ -12,7 +12,6 @@ import Ember from 'ember';
 import getStorage from '../../lib/token-storage';
 import localStorage from 'vault/lib/local-storage';
 import ClusterRoute from 'vault/mixins/cluster-route';
-import ModelBoundaryRoute from 'vault/mixins/model-boundary-route';
 
 const POLL_INTERVAL_MS = 10000;
 
@@ -26,7 +25,7 @@ export const getManagedNamespace = (nsParam, root) => {
   return `${root}/${nsParam}`;
 };
 
-export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
+export default Route.extend(ClusterRoute, {
   namespaceService: service('namespace'),
   version: service(),
   permissions: service(),
@@ -114,6 +113,13 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
   setupController() {
     this._super(...arguments);
     this.poll.perform();
+  },
+
+  deactivate() {
+    this._super(...arguments);
+    this.modelTypes.forEach((type) => {
+      this.store.unloadAll(type);
+    });
   },
 
   actions: {

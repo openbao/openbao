@@ -26,21 +26,21 @@ The default status codes are:
 
 ### Parameters
 
-- `standbyok` `(bool: false)` – Specifies if being a standby should still return
+- `standbyok` `(bool: false)` - Specifies if being a standby should still return
   the active status code instead of the standby status code. This is useful when
   OpenBao is behind a non-configurable load balancer that just wants a 200-level
   response.
 
-- `activecode` `(int: 200)` – Specifies the status code that should be returned
+- `activecode` `(int: 200)` - Specifies the status code that should be returned
   for an active node.
 
-- `standbycode` `(int: 429)` – Specifies the status code that should be returned
+- `standbycode` `(int: 429)` - Specifies the status code that should be returned
   for a standby node.
 
-- `sealedcode` `(int: 503)` – Specifies the status code that should be returned
+- `sealedcode` `(int: 503)` - Specifies the status code that should be returned
   for a sealed node.
 
-- `uninitcode` `(int: 501)` – Specifies the status code that should be returned
+- `uninitcode` `(int: 501)` - Specifies the status code that should be returned
   for a uninitialized node.
 
 ### Sample request
@@ -59,7 +59,6 @@ This response is only returned for a `GET` request.
   "initialized": true,
   "sealed": false,
   "standby": false,
-  "performance_standby": false,
   "replication_performance_mode": "disabled",
   "replication_dr_mode": "disabled",
   "server_time_utc": 1516639589,
@@ -91,7 +90,6 @@ This response is only returned for a `GET` request.
   "initialized": true,
   "sealed": false,
   "standby": false,
-  "performance_standby": false,
   "replication_performance_mode": "disabled",
   "replication_dr_mode": "disabled",
   "server_time_utc": 1706217694,

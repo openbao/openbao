@@ -1278,41 +1278,22 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 									Required: true,
 								},
 								"is_self": {
-									Type:     framework.TypeBool,
-									Required: true,
+									Type: framework.TypeBool,
 								},
 								"active_time": {
 									Type: framework.TypeTime,
-									// active_time has 'omitempty' tag, but its not a pointer so never "empty"
-									Required: true,
 								},
 								"leader_address": {
-									Type:     framework.TypeString,
-									Required: true,
+									Type: framework.TypeString,
 								},
 								"leader_cluster_address": {
-									Type:     framework.TypeString,
-									Required: true,
-								},
-								"performance_standby": {
-									Type:     framework.TypeBool,
-									Required: true,
-								},
-								"performance_standby_last_remote_wal": {
-									Type:     framework.TypeInt64,
-									Required: true,
-								},
-								"last_wal": {
-									Type:     framework.TypeInt64,
-									Required: false,
+									Type: framework.TypeString,
 								},
 								"raft_committed_index": {
-									Type:     framework.TypeInt64,
-									Required: false,
+									Type: framework.TypeInt64,
 								},
 								"raft_applied_index": {
-									Type:     framework.TypeInt64,
-									Required: false,
+									Type: framework.TypeInt64,
 								},
 							},
 						}},
@@ -1351,20 +1332,35 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 									Required: true,
 								},
 								"t": {
-									Type:     framework.TypeInt,
-									Required: true,
+									Type: framework.TypeInt,
 								},
 								"n": {
-									Type:     framework.TypeInt,
-									Required: true,
+									Type: framework.TypeInt,
 								},
 								"progress": {
-									Type:     framework.TypeInt,
-									Required: true,
+									Type: framework.TypeInt,
 								},
 								"nonce": {
-									Type:     framework.TypeString,
+									Type: framework.TypeString,
+								},
+								"migration": {
+									Type: framework.TypeBool,
+								},
+								"cluster_name": {
+									Type: framework.TypeString,
+								},
+								"cluster_id": {
+									Type: framework.TypeString,
+								},
+								"recovery_seal": {
+									Type:     framework.TypeBool,
 									Required: true,
+								},
+								"recovery_seal_type": {
+									Type: framework.TypeString,
+								},
+								"storage_type": {
+									Type: framework.TypeString,
 								},
 								"version": {
 									Type:     framework.TypeString,
@@ -1373,26 +1369,6 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 								"build_date": {
 									Type:     framework.TypeString,
 									Required: true,
-								},
-								"migration": {
-									Type:     framework.TypeBool,
-									Required: true,
-								},
-								"cluster_name": {
-									Type:     framework.TypeString,
-									Required: false,
-								},
-								"cluster_id": {
-									Type:     framework.TypeString,
-									Required: false,
-								},
-								"recovery_seal": {
-									Type:     framework.TypeBool,
-									Required: true,
-								},
-								"storage_type": {
-									Type:     framework.TypeString,
-									Required: false,
 								},
 							},
 						}},

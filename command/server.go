@@ -1738,14 +1738,25 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	if err != nil {
 		return fmt.Errorf("unable to check core initialization status: %w", err)
 	}
+
+	// [FIX 2190 START] - Zombie Prevention
 	if inited {
-		// We refuse to rerun self-initialization as it is a highly privileged
-		// way of sidestepping authentication. At first startup there is no
-		// other authentication information but on subsequent startups
-		// presumably the admin has created an alternative mechanism we should
-		// defer to.
+		// We refuse to rerun self-initialization.
+		// HOWEVER, we must verify that the previous initialization actually finished.
+		// If barrier exists but self-init marker is missing, we are in a broken state.
+
+		complete, err := core.IsSelfInitComplete()
+		if err != nil {
+			return fmt.Errorf("failed to verify self-init consistency: %w", err)
+		}
+
+		if !complete {
+			return fmt.Errorf("FATAL: Storage inconsistency detected. OpenBao is initialized (barrier exists) but Self-Initialization failed or was interrupted. Manual storage wipe required.")
+		}
+
 		return nil
 	}
+	// [FIX 2190 END]
 
 	// Initialize the cluster without recovery keys; a root token can be
 	// used to create recovery keys in the future.
@@ -1779,7 +1790,18 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	}
 
 	// Now perform the component requests of self-initialization.
-	return c.doSelfInit(core, config, init.RootToken)
+	if err := c.doSelfInit(core, config, init.RootToken); err != nil {
+		return err // Original patch: Fail fast on config error
+	}
+
+	// [FIX 2190 START] - Success Marker
+	// Self-init completed successfully. Persist the state to allow future restarts.
+	if err := core.MarkSelfInitComplete(); err != nil {
+		return fmt.Errorf("failed to persist self-init success marker: %w", err)
+	}
+	// [FIX 2190  END]
+
+	return nil
 }
 
 // doSelfInit is the internal helper that uses the profile system with this

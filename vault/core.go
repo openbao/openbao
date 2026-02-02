@@ -3955,3 +3955,35 @@ func (c *Core) DetectStateLockDeadlocks() bool {
 	}
 	return false
 }
+
+// PATCH FOR 2190
+// In vault/core.go
+
+const (
+	// coreStatusNamespace is the reserved area for unsealed status metadata
+	coreStatusSelfInit = "core/status/self-init-completed"
+)
+
+// MarkSelfInitComplete persists the success state.
+func (c *Core) MarkSelfInitComplete() error {
+	if c.physical == nil {
+		return fmt.Errorf("physical backend missing")
+	}
+	// Direct write to physical storage. Bypass barrier.
+	return c.physical.Put(context.Background(), &physical.Entry{
+		Key:   coreStatusSelfInit,
+		Value: []byte("true"),
+	})
+}
+
+// IsSelfInitComplete checks if we actually finished provisioning previously.
+func (c *Core) IsSelfInitComplete() (bool, error) {
+	if c.physical == nil {
+		return false, fmt.Errorf("physical backend missing")
+	}
+	entry, err := c.physical.Get(context.Background(), coreStatusSelfInit)
+	if err != nil {
+		return false, err
+	}
+	return entry != nil, nil
+}

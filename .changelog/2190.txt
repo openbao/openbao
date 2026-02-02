@@ -1,0 +1,1 @@
+core: fix inconsistent self-init state via persistent marker (Fixes #2190)

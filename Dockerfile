@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 #### DOCKERHUB DOCKERFILE ####
-FROM alpine:3.22 as default
+FROM alpine:3.23 AS default
 
 ARG BIN_NAME
 # NAME and PRODUCT_VERSION are the name of the software in releases.hashicorp.com
@@ -74,7 +74,7 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 
 #### UBI DOCKERFILE ####
-FROM registry.access.redhat.com/ubi9-minimal:9.7 as ubi
+FROM registry.access.redhat.com/ubi10-minimal:10.1 AS ubi
 
 ARG BIN_NAME
 # PRODUCT_VERSION is the version built dist/$TARGETOS/$TARGETARCH/$BIN_NAME,

@@ -85,6 +85,15 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 		return err
 	}
 
+	// Check if the plugin is in the plugin catalog
+	pluginFound, err := c.pluginCatalog.HasPlugin(ctx, pluginName)
+	if err != nil {
+		return err
+	}
+	if !pluginFound {
+		return fmt.Errorf("%w: %q", ErrPluginNotFound, pluginName)
+	}
+
 	// Filter mount entries that only matches the plugin name
 	for _, entry := range c.mounts.Entries {
 		// We dont reload mounts that are not in the same namespace

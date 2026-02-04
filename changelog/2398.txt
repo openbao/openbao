@@ -1,0 +1,3 @@
+```release-note:bug
+vault/plugin: Fix plugin reload returning success for non-existent plugin
+```

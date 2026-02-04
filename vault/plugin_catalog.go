@@ -1037,6 +1037,80 @@ func (c *PluginCatalog) get(ctx context.Context, name string, pluginType consts.
 	return nil, nil
 }
 
+// Check if a plugin of a specific name is available in the plugin catalog.
+func (c *PluginCatalog) HasPlugin(ctx context.Context, name string) (bool, error) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.hasPluginLocked(ctx, name)
+}
+
+// Check if a plugin of a specific name is available in the plugin catalog.
+// Caller must have a read lock on c.lock
+func (c *PluginCatalog) hasPluginLocked(ctx context.Context, name string) (bool, error) {
+	if c.directory != "" {
+		// Check for matching external untyped unversioned plugin (registered before plugin types existed)
+		// we check this first because these storage entries are not under a plugin type directory
+		out, err := c.catalogView.Get(ctx, name)
+		if err != nil {
+			return false, err
+		}
+		if out != nil {
+			return true, nil
+		}
+	}
+
+	for _, pluginType := range consts.PluginTypes {
+		// Skip type unknown
+		if pluginType == consts.PluginTypeUnknown {
+			continue
+		}
+
+		// Check for plugin existence across plugin types.
+		// If a matching plugin is found or if there is an error, return immediately
+		hasPlugin, err := c.hasPluginWithTypeLocked(ctx, name, pluginType)
+		if err != nil {
+			return false, err
+		}
+		if hasPlugin {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// Check if a plugin of a specific type and name is available in the plugin catalog.
+// Caller must have a read lock on c.lock
+func (c *PluginCatalog) hasPluginWithTypeLocked(ctx context.Context, name string, pluginType consts.PluginType) (bool, error) {
+	// If the directory isn't set only look for builtin plugins.
+	if c.directory != "" {
+		storagePath := path.Join(pluginType.String(), name)
+
+		// Check for matching unversioned plugin
+		out, err := c.catalogView.Get(ctx, storagePath)
+		if err != nil {
+			return false, err
+		}
+		if out != nil {
+			return true, nil
+		}
+
+		// Check if there is at least one matching versioned plugin
+		entries, err := c.catalogView.List(ctx, storagePath+"/")
+		if err != nil {
+			return false, err
+		}
+		if len(entries) > 0 {
+			return true, nil
+		}
+	}
+
+	// Finally, check for matching builtin plugins
+	if _, ok := c.builtinRegistry.Get(name, pluginType); ok {
+		return true, nil
+	}
+	return false, nil
+}
+
 // Set registers a new external plugin with the catalog, or updates an existing
 // external plugin. It takes the name, command and SHA256 of the plugin.
 func (c *PluginCatalog) Set(ctx context.Context, name string, pluginType consts.PluginType, version string, command string, args []string, env []string, sha256 []byte, oci bool) error {

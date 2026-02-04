@@ -73,7 +73,7 @@ func (c *Core) enableCredential(ctx context.Context, entry *MountEntry) error {
 }
 
 // enableCredential is used to enable a new credential backend
-func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, updateStorage bool) (err error) {
+func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, updateStorage bool) error {
 	// Ensure we end the path in a slash
 	if !strings.HasSuffix(entry.Path, "/") {
 		entry.Path += "/"
@@ -167,8 +167,11 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *Moun
 	if backend == nil {
 		return fmt.Errorf("nil backend returned from %q factory", entry.Type)
 	}
+
+	// Discard the backend if any remaining steps below fail.
+	var success bool
 	defer func() {
-		if err != nil {
+		if !success {
 			backend.Cleanup(ctx)
 		}
 	}()
@@ -212,9 +215,11 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *Moun
 		return err
 	}
 
+	success = true
 	if c.logger.IsInfo() {
 		c.logger.Info("enabled credential backend", "namespace", entry.Namespace().Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
 	}
+
 	return nil
 }
 

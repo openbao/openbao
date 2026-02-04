@@ -674,7 +674,7 @@ func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 	return nil
 }
 
-func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStorage bool) (err error) {
+func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStorage bool) error {
 	c.mountsLock.Lock()
 	c.authLock.Lock()
 	defer c.authLock.Unlock()
@@ -752,8 +752,8 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *MountEntry, upd
 	defer view.SetReadOnlyErr(origReadOnlyErr)
 
 	var backend logical.Backend
+	// Create the new backend
 	sysView := c.mountEntrySysView(entry)
-
 	backend, entry.RunningSha256, err = c.newLogicalBackend(ctx, entry, sysView, view)
 	if err != nil {
 		return err
@@ -762,8 +762,10 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *MountEntry, upd
 		return fmt.Errorf("nil backend of type %q returned from creation function", entry.Type)
 	}
 
+	// Discard the backend if any remaining steps below fail.
+	var success bool
 	defer func() {
-		if err != nil {
+		if !success {
 			backend.Cleanup(ctx)
 		}
 	}()
@@ -814,9 +816,11 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *MountEntry, upd
 		return err
 	}
 
+	success = true
 	if c.logger.IsInfo() {
 		c.logger.Info("successful mount", "namespace", entry.Namespace().Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
 	}
+
 	return nil
 }
 

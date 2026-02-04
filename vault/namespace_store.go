@@ -120,14 +120,12 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	return ns, nil
 }
 
-// NamespaceView returns passed barrier scoped to the barrierView
-// of provided namespace.
+// NamespaceView scopes the passed storage down to the passed namespace.
 func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView {
 	return NewBarrierView(barrier, NamespaceBarrierPrefix(ns))
 }
 
-// namespaceBarrierPrefix uses given namespace to return back the
-// common prefix used for all keys that belong to that namespace.
+// NamespaceBarrierPrefix returns the namespace's storage prefix.
 func NamespaceBarrierPrefix(ns *namespace.Namespace) string {
 	if ns == nil || ns.ID == namespace.RootNamespaceID {
 		return ""

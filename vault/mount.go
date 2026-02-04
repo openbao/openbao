@@ -2356,11 +2356,11 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 
 	switch me.Table {
 	case mountTableType:
-		return NamespaceView(c.barrier, me.Namespace()).SubView(backendBarrierPrefix + me.UUID + "/"), nil
+		return NamespaceView(c.barrier, me.Namespace()).SubView(path.Join(backendBarrierPrefix, me.UUID) + "/"), nil
 	case credentialTableType:
-		return NamespaceView(c.barrier, me.Namespace()).SubView(credentialBarrierPrefix + me.UUID + "/"), nil
+		return NamespaceView(c.barrier, me.Namespace()).SubView(path.Join(credentialBarrierPrefix, me.UUID) + "/"), nil
 	case auditTableType, configAuditTableType:
-		return NamespaceView(c.barrier, me.Namespace()).SubView(auditBarrierPrefix + me.UUID + "/"), nil
+		return NamespaceView(c.barrier, me.Namespace()).SubView(path.Join(auditBarrierPrefix, me.UUID) + "/"), nil
 	}
 
 	return nil, errors.New("invalid mount entry")

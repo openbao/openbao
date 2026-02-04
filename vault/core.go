@@ -3284,7 +3284,7 @@ func (c *Core) isPrimary() bool {
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {
 	eConfigs := make([]*mfa.MFAEnforcementConfig, 0)
-	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true, false)
+	allNamespaces, err := c.ListNamespaces(ctx)
 	if err != nil {
 		return err
 	}
@@ -3392,7 +3392,7 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 	}
 
 	// get all namespaces
-	nsList, err := c.namespaceStore.ListAllNamespaces(ctx, true, false)
+	nsList, err := c.ListNamespaces(ctx)
 	if err != nil {
 		return err
 	}

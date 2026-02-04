@@ -13,6 +13,7 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestACL_NewACL(t *testing.T) {
@@ -153,100 +154,38 @@ func testACLCapabilities(t *testing.T, ns *namespace.Namespace) {
 }
 
 func TestACL_Root(t *testing.T) {
-	t.Run("root-ns", func(t *testing.T) {
+	t.Run("root namespace", func(t *testing.T) {
 		t.Parallel()
 		testACLRoot(t, namespace.RootNamespace)
+	})
+
+	t.Run("child namespace", func(t *testing.T) {
+		t.Parallel()
+		testACLRoot(t, &namespace.Namespace{Path: "ns1"})
 	})
 }
 
 func testACLRoot(t *testing.T, ns *namespace.Namespace) {
 	// Create the root policy ACL. Always create on root namespace regardless of
 	// which namespace to ACL check on.
-	policy := []*Policy{{Name: "root"}}
-	acl, err := NewACL(namespace.RootContext(context.Background()), policy)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	request := new(logical.Request)
-	request.Operation = logical.UpdateOperation
-	request.Path = "sys/mount/foo"
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-
-	authResults := acl.AllowOperation(ctx, request, false)
-	if !authResults.RootPrivs {
-		t.Fatal("expected root")
-	}
-	if !authResults.Allowed {
-		t.Fatal("expected permissions")
-	}
-}
-
-func TestACL_Namespace_Root(t *testing.T) {
-	t.Run("root-ns", func(t *testing.T) {
-		t.Parallel()
-		c, _, _ := TestCoreUnsealed(t)
-		rootCtx := namespace.RootContext(t.Context())
-		ns1 := &namespace.Namespace{Path: "ns1"}
-		TestCoreCreateNamespaces(t, c, ns1)
-		ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
-		testACLNamespaceRoot(t, ns1Ctx, ns1)
-	})
-}
-
-func testACLNamespaceRoot(t *testing.T, ctx context.Context, ns *namespace.Namespace) {
-	// Create the root policy ACL. Always create on root namespace regardless of
-	// which namespace to ACL check on.
+	ctx := namespace.ContextWithNamespace(t.Context(), ns)
 	policy := []*Policy{{Name: "root"}}
 	acl, err := NewACL(ctx, policy)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	require.NoError(t, err)
 
-	request := new(logical.Request)
-	request.Operation = logical.UpdateOperation
-	request.Path = ns.Path
+	request := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "sys/mount/foo",
+	}
 
 	authResults := acl.AllowOperation(ctx, request, false)
-	if !authResults.RootPrivs {
-		t.Fatal("expected root")
-	}
-	if !authResults.Allowed {
-		t.Fatal("expected permissions")
-	}
-}
+	require.True(t, authResults.RootPrivs)
+	require.True(t, authResults.Allowed)
 
-func TestACL_Namespace_Root_Fail(t *testing.T) {
-	t.Run("root-ns", func(t *testing.T) {
-		t.Parallel()
-		c, _, _ := TestCoreUnsealed(t)
-		rootCtx := namespace.RootContext(t.Context())
-		ns1 := &namespace.Namespace{Path: "ns1"}
-		TestCoreCreateNamespaces(t, c, ns1)
-		ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
-		testACLNamespaceRootFail(t, ns1Ctx)
-	})
-}
-
-func testACLNamespaceRootFail(t *testing.T, ctx context.Context) {
-	// Create the root policy ACL. Always create on root namespace regardless of
-	// which namespace to ACL check on.
-	policy := []*Policy{{Name: "root"}}
-	acl, err := NewACL(ctx, policy)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	request := new(logical.Request)
-	request.Operation = logical.UpdateOperation
-	request.Path = "sys/mount/foo"
-
-	authResults := acl.AllowOperation(namespace.RootContext(ctx), request, false)
-	if authResults.RootPrivs {
-		t.Fatal("didn't expected root")
-	}
-	if authResults.Allowed {
-		t.Fatal("didn't expected permissions")
+	if ns.ID != namespace.RootNamespaceID {
+		authResults := acl.AllowOperation(namespace.RootContext(ctx), request, false)
+		require.False(t, authResults.RootPrivs)
+		require.False(t, authResults.Allowed)
 	}
 }
 

@@ -12,11 +12,13 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"strings"
 	"syscall"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/cli"
+	"github.com/mitchellh/go-homedir"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/logical/ssh"
 	"github.com/posener/complete"
@@ -156,20 +158,20 @@ func (c *SSHCommand) Flags() *FlagSets {
 	f.StringVar(&StringVar{
 		Name:       "public-key-path",
 		Target:     &c.flagPublicKeyPath,
-		Default:    "~/.ssh/id_rsa.pub",
+		Default:    "",
 		EnvVar:     "",
 		Completion: complete.PredictFiles("*"),
-		Usage:      "Path to the SSH public key to send to OpenBao for signing.",
+		Usage:      "Path to the SSH public key to send to OpenBao for signing. If not set, ~/.ssh/id_ed25519.pub, ~/.ssh/id_ecdsa.pub and ~/.ssh/id_rsa.pub will be searched in order.",
 	})
 
 	f.StringVar(&StringVar{
 		Name:       "private-key-path",
 		Target:     &c.flagPrivateKeyPath,
-		Default:    "~/.ssh/id_rsa",
+		Default:    "",
 		EnvVar:     "",
 		Completion: complete.PredictFiles("*"),
 		Usage: "Path to the SSH private key to use for authentication. This must " +
-			"be the corresponding private key to -public-key-path.",
+			"be the corresponding private key to -public-key-path. If not set, ~/.ssh/id_ed25519, ~/.ssh/id_ecdsa and ~/.ssh/id_rsa will be searched in order.",
 	})
 
 	f.StringVar(&StringVar{
@@ -244,6 +246,40 @@ func (c *SSHCommand) Run(args []string) int {
 	if err := f.Parse(args, DisableDisplayFlagWarning(true)); err != nil {
 		c.UI.Error(err.Error())
 		return 1
+	}
+
+	// Try to find SSH keys
+	if strings.ToLower(c.flagMode) == ssh.KeyTypeCA {
+		home, _ := homedir.Dir()
+		if home != "" && c.flagPublicKeyPath == "" && c.flagPrivateKeyPath == "" {
+			for _, p := range []string{"id_ed25519", "id_ecdsa", "id_rsa"} {
+				keyPath := filepath.Join(home, ".ssh", p)
+				_, keyErr := os.Stat(keyPath)
+				_, pubErr := os.Stat(keyPath + ".pub")
+				if keyErr == nil && pubErr == nil {
+					c.flagPrivateKeyPath = keyPath
+					c.flagPublicKeyPath = keyPath + ".pub"
+					break
+				}
+			}
+		} else if c.flagPrivateKeyPath != "" && c.flagPublicKeyPath == "" {
+			if _, err := os.Stat(c.flagPrivateKeyPath + ".pub"); err == nil {
+				c.flagPublicKeyPath = c.flagPrivateKeyPath + ".pub"
+			}
+		} else if c.flagPublicKeyPath != "" && c.flagPrivateKeyPath == "" {
+			privPath := strings.TrimSuffix(c.flagPublicKeyPath, ".pub")
+			if _, err := os.Stat(privPath); err == nil && privPath != c.flagPublicKeyPath {
+				c.flagPrivateKeyPath = privPath
+			}
+		}
+		if c.flagPublicKeyPath == "" {
+			c.UI.Error("Could not find an SSH public key. Specify with -public-key-path.")
+			return 1
+		}
+		if c.flagPrivateKeyPath == "" {
+			c.UI.Error("Could not find an SSH private key. Specify with -private-key-path.")
+			return 1
+		}
 	}
 
 	// Use homedir to expand any relative paths such as ~/.ssh

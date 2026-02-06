@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -70,7 +71,7 @@ func (k *KubernetesProvider) Initialize(_ context.Context, jc *jwtConfig) error 
 
 	// For security, the OIDC discovery URL is derived from Kubernetes-provided environment variables in the pod,
 	// rather than accepting a user-supplied URL.
-	k.oidcDiscoveryURL = fmt.Sprintf("https://%s:%s", os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT"))
+	k.oidcDiscoveryURL = "https://" + net.JoinHostPort(os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT"))
 
 	return nil
 }
@@ -106,7 +107,7 @@ func (k *KubernetesProvider) NewKeySet(ctx context.Context) (jwt.KeySet, error) 
 
 	ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)
 
-	jwksURL, err := retrieveJWKSURL(k.oidcDiscoveryURL+"/.well-known/openid-configuration", ctx, httpClient)
+	jwksURL, err := retrieveJWKSURL(ctx, k.oidcDiscoveryURL+"/.well-known/openid-configuration", httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +120,7 @@ func (k *KubernetesProvider) NewKeySet(ctx context.Context) (jwt.KeySet, error) 
 // This function is similar to jwt.NewOIDCDiscoveryKeySet(), but it skips validating the "issuer" field:
 // this provider relies on Service IP address from KUBERNETES_SERVICE_HOST environment variable on connecting
 // the API server, which does not match the issuer field in the discovery document.
-func retrieveJWKSURL(wellKnown string, ctx context.Context, client *http.Client) (string, error) {
+func retrieveJWKSURL(ctx context.Context, wellKnown string, client *http.Client) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, wellKnown, nil)
 	if err != nil {
 		return "", err
@@ -145,6 +146,10 @@ func retrieveJWKSURL(wellKnown string, ctx context.Context, client *http.Client)
 	}
 	if err := json.Unmarshal(body, &p); err != nil {
 		return "", err
+	}
+
+	if p.JWKSURL == "" {
+		return "", errors.New("jwks_uri not found in OIDC discovery document")
 	}
 
 	return p.JWKSURL, nil

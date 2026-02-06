@@ -227,8 +227,8 @@ func mockKubernetesAPIServer(t *testing.T) (*oidcProvider, string) {
 	localJWTPath = tokenFile
 
 	parsedURL, _ := url.Parse(server.server.URL)
-	os.Setenv("KUBERNETES_SERVICE_HOST", parsedURL.Hostname()) //nolint:errcheck
-	os.Setenv("KUBERNETES_SERVICE_PORT", parsedURL.Port())     //nolint:errcheck
+	t.Setenv("KUBERNETES_SERVICE_HOST", parsedURL.Hostname())
+	t.Setenv("KUBERNETES_SERVICE_PORT", parsedURL.Port())
 
 	return server, token
 }

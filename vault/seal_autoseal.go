@@ -42,6 +42,7 @@ type autoSeal struct {
 	barrierType wrapping.WrapperType
 	core        *Core
 	logger      log.Logger
+	metaPrefix  string
 
 	barrierConfig  atomic.Pointer[SealConfig]
 	recoveryConfig atomic.Pointer[SealConfig]
@@ -103,6 +104,10 @@ func (d *autoSeal) Init(ctx context.Context) error {
 	return d.Access.Init(ctx)
 }
 
+func (d *autoSeal) SetMetaPrefix(metaPrefix string) {
+	d.metaPrefix = metaPrefix
+}
+
 func (d *autoSeal) Finalize(ctx context.Context) error {
 	return d.Access.Finalize(ctx)
 }
@@ -123,16 +128,16 @@ func (d *autoSeal) RecoveryKeySupported() bool {
 	return true
 }
 
-// SetStoredKeys uses the autoSeal.Access.Encrypts method to wrap the keys. The stored entry
-// does not need to be seal wrapped in this case.
+// SetStoredKeys uses the autoSeal.Access.Encrypts method to wrap the keys.
+// The stored entry does not need to be seal wrapped in this case.
 func (d *autoSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.Access, keys)
+	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access, keys)
 }
 
-// GetStoredKeys retrieves the key shares by unwrapping the encrypted key using the
-// autoseal.
+// GetStoredKeys retrieves the key shares by unwrapping the encrypted key
+// using the autoseal.
 func (d *autoSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical, d.Access)
+	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access)
 }
 
 func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {
@@ -204,7 +209,7 @@ func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	}
 
 	sealType := "barrier"
-	valueBytes, err := d.configAccess.Get(ctx, barrierSealConfigPath)
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+barrierSealConfigPath)
 	if err != nil {
 		d.logger.Error("failed to read seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("failed to read %q seal configuration: %w", sealType, err)
@@ -258,7 +263,7 @@ func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig) error
 		return fmt.Errorf("failed to encode barrier seal configuration: %w", err)
 	}
 
-	if err := d.configAccess.Put(ctx, barrierSealConfigPath, buf); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+barrierSealConfigPath, buf); err != nil {
 		d.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
@@ -291,7 +296,7 @@ func (d *autoSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
 	}
 
 	sealType := "recovery"
-	valueBytes, err := d.configAccess.Get(ctx, recoverySealConfigPath)
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+recoverySealConfigPath)
 	if err != nil {
 		d.logger.Error("failed to read seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("failed to read %q seal configuration: %w", sealType, err)
@@ -344,7 +349,7 @@ func (d *autoSeal) SetRecoveryConfig(ctx context.Context, conf *SealConfig) erro
 		return fmt.Errorf("failed to encode recovery seal configuration: %w", err)
 	}
 
-	if err := d.configAccess.Put(ctx, recoverySealConfigPath, buf); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+recoverySealConfigPath, buf); err != nil {
 		d.logger.Error("failed to write recovery seal configuration", "error", err)
 		return fmt.Errorf("failed to write recovery seal configuration: %w", err)
 	}
@@ -396,7 +401,7 @@ func (d *autoSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
 	}
 
 	be := &physical.Entry{
-		Key:   recoveryKeyPath,
+		Key:   d.metaPrefix + recoveryKeyPath,
 		Value: value,
 	}
 
@@ -413,7 +418,7 @@ func (d *autoSeal) RecoveryKey(ctx context.Context) ([]byte, error) {
 }
 
 func (d *autoSeal) getRecoveryKeyInternal(ctx context.Context) ([]byte, error) {
-	pe, err := d.core.physical.Get(ctx, recoveryKeyPath)
+	pe, err := d.core.physical.Get(ctx, d.metaPrefix+recoveryKeyPath)
 	if err != nil {
 		d.logger.Error("failed to read recovery key", "error", err)
 		return nil, fmt.Errorf("failed to read recovery key: %w", err)
@@ -437,7 +442,7 @@ func (d *autoSeal) getRecoveryKeyInternal(ctx context.Context) ([]byte, error) {
 }
 
 func (d *autoSeal) upgradeRecoveryKey(ctx context.Context) error {
-	pe, err := d.core.physical.Get(ctx, recoveryKeyPath)
+	pe, err := d.core.physical.Get(ctx, d.metaPrefix+recoveryKeyPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch recovery key: %w", err)
 	}

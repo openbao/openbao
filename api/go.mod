@@ -13,7 +13,7 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/go-jose/go-jose/v4 v4.1.3
 	github.com/go-test/deep v1.1.1
-	github.com/go-viper/mapstructure/v2 v2.4.0
+	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-multierror v1.1.1
@@ -21,7 +21,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0
 	github.com/hashicorp/hcl v1.0.1-vault-7
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/net v0.48.0
+	golang.org/x/net v0.49.0
 	golang.org/x/time v0.14.0
 )
 

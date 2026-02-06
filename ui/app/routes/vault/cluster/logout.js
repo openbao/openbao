@@ -11,7 +11,6 @@ import ModelBoundaryRoute from 'vault/mixins/model-boundary-route';
 
 export default Route.extend(ModelBoundaryRoute, {
   auth: service(),
-  controlGroup: service(),
   flashMessages: service(),
   console: service(),
   permissions: service(),
@@ -26,7 +25,6 @@ export default Route.extend(ModelBoundaryRoute, {
     const authType = this.auth.getAuthType();
     const ns = this.namespaceService.path;
     this.auth.deleteCurrentToken();
-    this.controlGroup.deleteTokens();
     this.namespaceService.reset();
     this.console.set('isOpen', false);
     this.console.clearLog(true);

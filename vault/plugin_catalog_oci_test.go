@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -152,6 +153,12 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	// Skip this test in short mode as it requires network access
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
+	}
+
+	// Skip if we're not on linux/amd64, this just avoids maintaining additional
+	// hashes for plugin binaries down below.
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		t.Skip("system is not linux/amd64")
 	}
 
 	// Create a temporary directory for plugins

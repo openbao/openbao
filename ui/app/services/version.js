@@ -11,10 +11,6 @@ export default class VersionService extends Service {
   @service store;
   @tracked version = null;
 
-  get hasControlGroups() {
-    return false;
-  }
-
   @task
   *getVersion() {
     if (this.version) return;

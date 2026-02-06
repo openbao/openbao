@@ -1,3 +1,76 @@
+## 2.5.0
+## Feburary 4, 2026
+
+SECURITY:
+
+* core/sys: BREAKING: default value of `disable_unauthed_rekey_endpoints` is `true`, to continue using unauthed rekey endpoints, set `disable_unauthed_rekey_endpoints=false` in listeners explicitly. [[GH-2125](https://github.com/openbao/openbao/pull/2125)]
+
+CHANGES:
+
+* Remove the deprecated `creation_statements`, `revocation_statements`, `rollback_statements`, and `renew_statements` fields from the dbplugin `Statements` protobuf message [[GH-1962](https://github.com/openbao/openbao/pull/1962)]
+* api: The deprecated api.MountConfigOutput.PluginName field was removed. This was already always empty. [[GH-2036](https://github.com/openbao/openbao/pull/2036)]
+* auth/jwt: Return error msg on `OIDCDiscoveryURL` including `.well-known/openid-configuration` component. [[GH-2066](https://github.com/openbao/openbao/pull/2066)]
+* core/audit: removed `jsonx` as a output format option for audit mounts [[GH-2047](https://github.com/openbao/openbao/pull/2047)]
+* sys/host-info: This endpoint may start reporting slightly higher memory usage than before (On Linux only). See https://github.com/shirou/gopsutil/releases/tag/v4.25.8 for more information. [[GH-1887](https://github.com/openbao/openbao/pull/1887)]
+
+FEATURES:
+
+* Add **declarative plugin distribution via OCI images**: using the `plugin` configuration keyword.
+  - Plugins can be automatically downloaded via the `plugin_auto_download=true` option.
+  - Plugins can be manually downloaded via the `bao plugin init` command.
+  - Plugins can be automatically registered via the `plugin_auto_register=true` option, regardless if they were manually provisioned or from OCI images. [[GH-1824](https://github.com/openbao/openbao/pull/1824)]
+* Support **Horizontal Read Scalability**: all existing HA standby nodes are automatically upgraded with read support.
+  - Requests which only perform storage read operations will be handled locally on the standby node.
+  - Requests which perform a storage write operation (or as indicated by plugins) are forwarded to the active leader.
+  - Results are eventually consistent: a write may not be immediately visible on the standby.
+  - To disable, set `disable_standby_reads=true` in the config file before startup. [[GH-1986](https://github.com/openbao/openbao/pull/1986)]
+* **OIDC Provider**: Add Client Credentials flow to OIDC Provider. [[GH-1732](https://github.com/openbao/openbao/pull/1732)]
+* **sdk/framework**: add `Response.SchemaName` to allow custom response schema names in the generated OpenAPI spec. [[GH-1714](https://github.com/openbao/openbao/pull/1714)]
+
+IMPROVEMENTS:
+
+* audit: Add http audit device for low-volume, webhook-based audit event reporting. [[GH-1709](https://github.com/openbao/openbao/pull/1709)]
+* auth/jwt: Add type checking to role. [[GH-1854](https://github.com/openbao/openbao/pull/1854)]
+* command: Add environment variables to provide configuration for Proxy, Agent, and `bao operator migrate` via `BAO_PROXY_CONFIG_PATH`, `BAO_AGENT_CONFIG_PATH`, and `BAO_MIGRATE_CONFIG_PATH`. [[GH-2153](https://github.com/openbao/openbao/pull/2153)]
+* command: Support `BAO_CONFIG_PATH` in `plugin init`, just like `server` &c do. [[GH-2164](https://github.com/openbao/openbao/pull/2164)]
+* command: `server`, `operator diagnose` and 'operator validate-config` now support the environment variable BAO_CONFIG_FILE for the -config command option. [[GH-2115](https://github.com/openbao/openbao/pull/2115)]
+* core/metrics: Support custom path for metrics on metrics-only listeners. [[GH-1853](https://github.com/openbao/openbao/pull/1853)]
+* core/namespaces: Use JobManager for namespace deletion, decreasing lock contention. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
+* core/policies: Add endpoint to allow detailed listing of a subset of policies. [[GH-1965](https://github.com/openbao/openbao/pull/1965)]
+* core/policies: Use per-namespace write lock, improving parallelism. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
+* core: Added `metrics_only` and `disallow_metrics` options to control metrics endpoint exposure on a per-listener basis. [[GH-1834](https://github.com/openbao/openbao/pull/1834)]
+* database/valkey: Adds the ability to configure the Valkey database connection using a single connection_url parameter. [[GH-1923](https://github.com/openbao/openbao/pull/1923)]
+* database: all database plugins now ignore "not found" errors on revoke by default. See [Plugin Author Guide](https://openbao.org/docs/plugins/plugin-authors-guide/#revoke-operations-should-ignore-not-found-errors) for rationale. [[GH-2101](https://github.com/openbao/openbao/pull/2101)]
+* openapi: Add response schemas for token store operations and update operation suffixes. [[GH-1840](https://github.com/openbao/openbao/pull/1840)]
+* pki: add `allowed_ip_sans_cidr` parameter to PKI role system, to provide additional checks for IP SANs. [[GH-1833](https://github.com/openbao/openbao/pull/1833)]
+* storage/postgresql: implement `physical.FencingHABackend` to minimize chances that writes on secondary nodes occur. [[GH-1571](https://github.com/openbao/openbao/pull/1571)]
+* transit: Add associated_data parameter to generate data key. [[GH-1828](https://github.com/openbao/openbao/pull/1828)]
+* website: Add an example of current role statement from Valkey. [[GH-1811](https://github.com/openbao/openbao/pull/1811)]
+
+DEPRECATIONS:
+
+* core/seal: Remove the undocumented "aead" seal mechanism. Consider switching to the static seal instead as a replacement. [[GH-1910](https://github.com/openbao/openbao/pull/1910)]
+* core: Removed `FeatureFlags` parsing and related code. [[GH-2045](https://github.com/openbao/openbao/pull/2045)]
+* sdk: Removed `sdk/v2/helper/license` package. [[GH-2045](https://github.com/openbao/openbao/pull/2045)]
+* ui: Removed `internal/ui/feature-flags` endpoint and all its usage. [[GH-2045](https://github.com/openbao/openbao/pull/2045)]
+
+BUG FIXES:
+
+* agent/auth: Fix token reissue error with kerberos method. [[GH-2373](https://github.com/openbao/openbao/pull/2373)]
+* auth/jwt: Fix ordering of variable declarations in CEL program roles. [[GH-1854](https://github.com/openbao/openbao/pull/1854)]
+* core/identity: Ensure periodic func only operates on a single namespace at a time, decreasing storage contention. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
+* core/identity: fix corrupt data being stored when referencing `member_group_ids` across namespaces (requires `unsafe_cross_namespace_identity=true`) [[GH-2321](https://github.com/openbao/openbao/pull/2321)]
+* core/namespaces: Ensure namespace creation is interruptable, allowing namespace deletion for cleanup. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
+* core/namespaces: Fix deadlock on namespace creation, deletion due to transaction/lock ordering. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
+* core/namespaces: Fix storage failures in namespace creation leading to a total system deadlock. [[GH-2166](https://github.com/openbao/openbao/pull/2166)]
+* core/namespaces: improve recovery from partial deletion of namespaces, preventing server startup failure. [[GH-2188](https://github.com/openbao/openbao/pull/2188)]
+* database/valkey: The creation_statements parameter now correctly accepts a standard array of strings for ACL rules (e.g., `["+@read", "~*"]`). Previously, it incorrectly required a stringified JSON array. The old format is still supported for backward compatibility. [[GH-1959](https://github.com/openbao/openbao/pull/1959)]
+* helper/jobmanager: Fix queue length metrics to report as gauges. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
+* physical/postgresql: ensure underlying HA lock removal from database causes lock loss, write failures. [[GH-2100](https://github.com/openbao/openbao/pull/2100)]
+* raft: return correct raft leader id from read replica nodes when using `bao operator raft list-peers`. [[GH-2331](https://github.com/openbao/openbao/pull/2331)]
+* sdk/logical: Use created transaction for `WithTransaction` callback. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
+* secrets/pki: Fix ordering of variable declarations in CEL program roles. [[GH-1854](https://github.com/openbao/openbao/pull/1854)]
+
 ## 2.5.0-beta20251125
 ## November 25, 2025
 

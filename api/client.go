@@ -1166,24 +1166,29 @@ func (c *Client) CloneToken() bool {
 // the api.Config struct, such as policy override and wrapping function
 // behavior, must currently then be set as desired on the new client.
 func (c *Client) Clone() (*Client, error) {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+	c.config.modifyLock.RLock()
+	defer c.config.modifyLock.RUnlock()
+
 	return c.clone(c.config.CloneHeaders)
 }
 
 // CloneWithHeaders creates a new client similar to Clone, with the difference
 // being that the  headers are always cloned
 func (c *Client) CloneWithHeaders() (*Client, error) {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+	c.config.modifyLock.RLock()
+	defer c.config.modifyLock.RUnlock()
+
 	return c.clone(true)
 }
 
 // clone creates a new client, with the headers being cloned based on the
 // passed in cloneheaders boolean
 func (c *Client) clone(cloneHeaders bool) (*Client, error) {
-	c.modifyLock.RLock()
-	defer c.modifyLock.RUnlock()
-
 	config := c.config
-	config.modifyLock.RLock()
-	defer config.modifyLock.RUnlock()
 
 	newConfig := &Config{
 		Address:      config.Address,

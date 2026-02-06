@@ -229,6 +229,8 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
 	}
 
+	jwtGoodDataToken := jwtGoodDataToken()
+
 	// Test success TokenReviewer
 	data = map[string]interface{}{
 		"kubernetes_host":    "host",
@@ -411,6 +413,8 @@ func TestConfig(t *testing.T) {
 }
 
 func TestConfig_LocalCaJWT(t *testing.T) {
+	jwtGoodDataToken := jwtGoodDataToken()
+
 	testCases := map[string]struct {
 		config              map[string]interface{}
 		setupInClusterFiles bool

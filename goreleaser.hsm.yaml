@@ -52,7 +52,7 @@ report_sizes: true
 
 nfpms:
   - vendor: OpenBao
-    package_name: bao-hsm
+    package_name: openbao-hsm
     homepage: https://openbao.org
     maintainer: OpenBao <openbao@lists.openssf.org>
     description: |
@@ -66,7 +66,13 @@ nfpms:
     dependencies:
       - openssl
     provides:
+      - openbao
+    conflicts:
+      - openbao
       - bao
+      - bao-hsm
+    replaces:
+      - bao-hsm
     bindir: /usr/bin
     section: default
     contents:
@@ -451,7 +457,7 @@ docker_signs:
 
 release:
   github:
-    owner: openbao
+    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
     name: openbao{{ .Env.NIGHTLY_RELEASE }}
 
   prerelease: auto

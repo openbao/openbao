@@ -15,7 +15,6 @@ const API_PATHS = {
     groups: 'identity/group/id',
     leases: 'sys/leases/lookup',
     namespaces: 'sys/namespaces',
-    'control-groups': 'sys/control-group/',
   },
   policies: {
     acl: 'sys/policies/acl',
@@ -44,7 +43,6 @@ const API_PATHS_TO_ROUTE_PARAMS = {
   'identity/group/id': { route: 'vault.cluster.access.identity', models: ['groups'] },
   'sys/leases/lookup': { route: 'vault.cluster.access.leases', models: [] },
   'sys/namespaces': { route: 'vault.cluster.access.namespaces', models: [] },
-  'sys/control-group/': { route: 'vault.cluster.access.control-groups', models: [] },
   'identity/mfa/method': { route: 'vault.cluster.access.mfa', models: [] },
   'identity/oidc/client': { route: 'vault.cluster.access.oidc', models: [] },
 };

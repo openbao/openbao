@@ -24,7 +24,7 @@ Namespaces enable secure multi-tenancy. Each tenant (e.g., team, organisation, o
 
 Furthermore, namespaces enable the delegation of administration and promote self-service. Namespace admins can manage their own policies, secret engines, auth modes, or even quotas, without impacting other tenants, reducing the burden on cluster-level operators.
 
-Finally, namespaces are one of a few planned stepping stones towards OpenBao's [horizontal scalability](https://openbao.org/blog/vision-for-namespaces/) journey. OpenBao aims to allow support for large deployments with many infrequently accessed mounts, without overloading cluster nodes, while keeping a simpler cluster topology.
+Finally, namespaces are one of a few planned stepping stones towards OpenBao's [horizontal scalability](/blog/vision-for-namespaces/) journey. OpenBao aims to allow support for large deployments with many infrequently accessed mounts, without overloading cluster nodes, while keeping a simpler cluster topology.
 
 ## How to use Namespaces
 
@@ -149,7 +149,7 @@ While we have many plans on extending namespace capabilities in the future to ma
 
 Namespaces will give organisations the possibility to better structure and isolate secret information. However, the introduction of namespaces is just the first step. Our vision includes supporting _lazy loading_ of namespaces and mounts, allowing OpenBao clusters to efficiently serve workloads with many infrequently accessed resources. This will enable even greater scalability and resilience, as nodes will no longer need to load the entire system state at once. 
 
-[Here](https://openbao.org/blog/vision-for-namespaces/) is another article that you can read more about OpenBaos' scalability efforts. Sounds interesting? Reach out to the project via [Github](https://github.com/orgs/openbao/discussions), [Zulip](https://github.com/openbao#contact), or [Mailinglist](https://lists.openssf.org/g/openbao) if you want to support our work in the areas of namespaces or scalability.
+[Here](/blog/vision-for-namespaces/) is another article that you can read more about OpenBaos' scalability efforts. Sounds interesting? Reach out to the project via [Github](https://github.com/orgs/openbao/discussions), [Zulip](https://github.com/openbao#contact), or [Mailinglist](https://lists.openssf.org/g/openbao) if you want to support our work in the areas of namespaces or scalability.
 
 ## Get Started
 

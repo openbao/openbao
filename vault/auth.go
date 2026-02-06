@@ -86,16 +86,13 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 
 	c.mountsLock.Lock()
 	c.authLock.Lock()
-	locked := true
-	unlock := func() {
-		if locked {
-			c.authLock.Unlock()
-			c.mountsLock.Unlock()
-			locked = false
-		}
-	}
-	defer unlock()
+	defer c.authLock.Unlock()
+	defer c.mountsLock.Unlock()
 
+	return c.enableCredentialInternalWithLock(ctx, entry, updateStorage)
+}
+
+func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *MountEntry, updateStorage bool) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -171,6 +168,14 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 		return fmt.Errorf("nil backend returned from %q factory", entry.Type)
 	}
 
+	// Discard the backend if any remaining steps below fail.
+	var success bool
+	defer func() {
+		if !success {
+			backend.Cleanup(ctx)
+		}
+	}()
+
 	// Check for the correct backend type
 	backendType := backend.Type()
 	if backendType != logical.TypeCredential {
@@ -210,9 +215,11 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 		return err
 	}
 
+	success = true
 	if c.logger.IsInfo() {
 		c.logger.Info("enabled credential backend", "namespace", entry.Namespace().Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
 	}
+
 	return nil
 }
 
@@ -326,6 +333,10 @@ func (c *Core) removeCredEntry(ctx context.Context, path string, updateStorage b
 	c.authLock.Lock()
 	defer c.authLock.Unlock()
 
+	return c.removeCredEntryWithLock(ctx, path, updateStorage)
+}
+
+func (c *Core) removeCredEntryWithLock(ctx context.Context, path string, updateStorage bool) error {
 	// Taint the entry from the auth table
 	newTable := c.auth.shallowClone()
 	entry, err := newTable.remove(ctx, path)

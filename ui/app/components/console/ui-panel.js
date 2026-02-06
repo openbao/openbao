@@ -10,7 +10,6 @@ import { getOwner } from '@ember/application';
 import { schedule } from '@ember/runloop';
 import { camelize } from '@ember/string';
 import { task } from 'ember-concurrency';
-import ControlGroupError from 'vault/lib/control-group-error';
 import {
   parseCommand,
   logFromResponse,
@@ -24,7 +23,6 @@ import {
 export default Component.extend({
   console: service(),
   router: service(),
-  controlGroup: service(),
   store: service(),
   'data-test-component': 'console/ui-panel',
   attributeBindings: ['data-test-component'],
@@ -87,9 +85,6 @@ export default Component.extend({
       const resp = yield service[camelize(method)].call(service, path, data, flags);
       this.logAndOutput(command, logFromResponse(resp, path, method, flags));
     } catch (error) {
-      if (error instanceof ControlGroupError) {
-        return this.logAndOutput(command, this.controlGroup.logFromError(error));
-      }
       this.logAndOutput(command, logFromError(error, path, method));
     }
   }),

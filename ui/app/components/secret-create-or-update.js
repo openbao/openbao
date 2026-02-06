@@ -31,7 +31,6 @@
  */
 
 import Component from '@glimmer/component';
-import ControlGroupError from 'vault/lib/control-group-error';
 import Ember from 'ember';
 import keys from 'vault/lib/keycodes';
 import { action, set } from '@ember/object';
@@ -52,7 +51,6 @@ export default class SecretCreateOrUpdate extends Component {
   @tracked validationErrorCount = 0;
   @tracked validationMessages = null;
 
-  @service controlGroup;
   @service flashMessages;
   @service router;
   @service store;
@@ -163,11 +161,6 @@ export default class SecretCreateOrUpdate extends Component {
         }
       })
       .catch((error) => {
-        if (error instanceof ControlGroupError) {
-          const errorMessage = this.controlGroup.logFromError(error);
-          this.error = errorMessage.content;
-          this.controlGroup.saveTokenFromError(error);
-        }
         throw error;
       });
   }
@@ -239,7 +232,6 @@ export default class SecretCreateOrUpdate extends Component {
 
     const secretPath = type === 'create' ? this.args.modelForData.path : this.args.model.id;
     this.persistKey(() => {
-      // Show flash message in case there's a control group on read
       this.flashMessages.success(
         `Secret ${secretPath} ${type === 'create' ? 'created' : 'updated'} successfully.`
       );

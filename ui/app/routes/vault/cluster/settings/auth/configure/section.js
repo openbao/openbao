@@ -8,9 +8,8 @@ import { inject as service } from '@ember/service';
 import { set } from '@ember/object';
 import Route from '@ember/routing/route';
 import RSVP from 'rsvp';
-import UnloadModelRoute from 'vault/mixins/unload-model-route';
 
-export default Route.extend(UnloadModelRoute, {
+export default Route.extend({
   modelPath: 'model.model',
   pathHelp: service('path-help'),
   store: service(),
@@ -93,12 +92,15 @@ export default Route.extend(UnloadModelRoute, {
       });
   },
 
-  actions: {
-    willTransition() {
-      if (this.currentModel.model.constructor.modelName !== 'auth-method') {
-        this.unloadModel();
-        return true;
-      }
-    },
+  resetController(controller, isExiting) {
+    this._super(...arguments);
+
+    if (controller.model.constructor.modelName === 'auth-method') {
+      return;
+    }
+
+    if (isExiting) {
+      controller.cleanupModel?.();
+    }
   },
 });

@@ -5,10 +5,9 @@
 
 import { inject as service } from '@ember/service';
 import Route from '@ember/routing/route';
-import UnloadModelRoute from 'vault/mixins/unload-model-route';
 import UnsavedModelRoute from 'vault/mixins/unsaved-model-route';
 
-export default Route.extend(UnloadModelRoute, UnsavedModelRoute, {
+export default Route.extend(UnsavedModelRoute, {
   store: service(),
   version: service(),
 
@@ -27,5 +26,13 @@ export default Route.extend(UnloadModelRoute, UnsavedModelRoute, {
 
   policyType() {
     return this.paramsFor('vault.cluster.policies').type;
+  },
+
+  resetController(controller, isExiting) {
+    this._super(...arguments);
+
+    if (isExiting) {
+      controller.cleanupModel?.();
+    }
   },
 });

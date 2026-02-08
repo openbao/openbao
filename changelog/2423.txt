@@ -1,3 +1,0 @@
-```release-note:improvement
-build: Add cyclop linter to verify cyclomatic complexity
-```

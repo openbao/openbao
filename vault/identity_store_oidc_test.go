@@ -1429,8 +1429,10 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 	}
 	txn.Commit()
 
-	for _, alg := range []string{string(jose.RS256), string(jose.RS384), string(jose.RS512),
-		string(jose.ES256), string(jose.ES384), string(jose.ES512), string(jose.EdDSA)} {
+	for _, alg := range []string{
+		string(jose.RS256), string(jose.RS384), string(jose.RS512),
+		string(jose.ES256), string(jose.ES384), string(jose.ES512), string(jose.EdDSA),
+	} {
 		key := "test-key-" + alg
 		role := "test-role-" + alg
 

@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/openbao/openbao/helper/homedir"
 )
 
 var _ TokenHelper = (*InternalTokenHelper)(nil)
@@ -22,9 +24,9 @@ type InternalTokenHelper struct {
 }
 
 func NewInternalTokenHelper() (*InternalTokenHelper, error) {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := homedir.Dir()
 	if err != nil {
-		panic(fmt.Sprintf("error getting user's home directory: %v", err))
+		return nil, fmt.Errorf("error getting user's home directory: %w", err)
 	}
 	return &InternalTokenHelper{homeDir: homeDir}, err
 }

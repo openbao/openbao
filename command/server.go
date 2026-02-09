@@ -2990,53 +2990,101 @@ type grpclogFaker struct {
 }
 
 func (g *grpclogFaker) Info(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Info(fmt.Sprint(args...))
 }
 
 func (g *grpclogFaker) Infof(format string, args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Info(fmt.Sprintf(format, args...))
 }
 
 func (g *grpclogFaker) Infoln(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Info(fmt.Sprintln(args...))
 }
 
 func (g *grpclogFaker) Warning(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Warn(fmt.Sprint(args...))
 }
 
 func (g *grpclogFaker) Warningf(format string, args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Warn(fmt.Sprintf(format, args...))
 }
 
 func (g *grpclogFaker) Warningln(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Warn(fmt.Sprintln(args...))
 }
 
 func (g *grpclogFaker) Error(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Error(fmt.Sprint(args...))
 }
 
 func (g *grpclogFaker) Errorf(format string, args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Error(fmt.Sprintf(format, args...))
 }
 
 func (g *grpclogFaker) Errorln(args ...any) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Error(fmt.Sprintln(args...))
 }
 
 func (g *grpclogFaker) Fatal(args ...interface{}) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Error(fmt.Sprint(args...))
 	os.Exit(1)
 }
 
 func (g *grpclogFaker) Fatalf(format string, args ...interface{}) {
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
 	g.logger.Error(fmt.Sprintf(format, args...))
 	os.Exit(1)
 }
 
 func (g *grpclogFaker) Fatalln(args ...interface{}) {
-	g.logger.Error(fmt.Sprintln(args...))
+	if !g.log || !g.logger.IsDebug() {
+		return
+	}
+
+	g.logger.Error(fmt.Sprintln(args...) + "\n")
 	os.Exit(1)
 }
 

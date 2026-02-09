@@ -15,10 +15,6 @@ SED?=$(shell command -v gsed || command -v sed)
 GO_VERSION_MIN=$$(cat $(CURDIR)/.go-version)
 PROTOC_VERSION=32.1
 CGO_ENABLED?=0
-ifneq ($(FDB_ENABLED), )
-	CGO_ENABLED=1
-	BUILD_TAGS+=foundationdb
-endif
 
 default: dev
 
@@ -31,13 +27,10 @@ bin-plugin: prep
 
 # dev creates binaries for testing OpenBao locally. These are put
 # into ./bin/ as well as $GOPATH/bin
-dev: BUILD_TAGS+=testonly
 dev: prep
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' OPENBAO_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
-dev-ui: BUILD_TAGS+=testonly
 dev-ui: assetcheck prep
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS) ui' OPENBAO_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
-dev-dynamic: BUILD_TAGS+=testonly
 dev-dynamic: prep
 	@CGO_ENABLED=1 BUILD_TAGS='$(BUILD_TAGS)' OPENBAO_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
@@ -56,16 +49,13 @@ dev-tlsdebug: dev
 
 # Creates a Docker image by adding the compiled linux/amd64 binary found in ./bin.
 # The resulting image is tagged "openbao:dev".
-docker-dev: BUILD_TAGS+=testonly
 docker-dev: prep
 	$(DOCKER_CMD) build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile -t openbao:dev .
 
-docker-dev-ui: BUILD_TAGS+=testonly
 docker-dev-ui: prep
 	$(DOCKER_CMD) build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile.ui -t openbao:dev-ui .
 
 # test runs the unit tests and vets the code
-test: BUILD_TAGS+=testonly
 test: prep
 	@CGO_ENABLED=$(CGO_ENABLED) \
 	BAO_ADDR= \
@@ -74,14 +64,12 @@ test: prep
 	BAO_ACC= \
 	$(GO_CMD) test -tags='$(BUILD_TAGS)' $(TEST) $(TESTARGS) -timeout=$(TEST_TIMEOUT) -parallel=20
 
-testcompile: BUILD_TAGS+=testonly
 testcompile: prep
 	@for pkg in $(TEST) ; do \
 		$(GO_CMD) test -v -c -tags='$(BUILD_TAGS)' $$pkg -parallel=4 ; \
 	done
 
 # testacc runs acceptance tests
-testacc: BUILD_TAGS+=testonly
 testacc: prep
 	@if [ "$(TEST)" = "./..." ]; then \
 		echo "ERROR: Set TEST to a specific package"; \
@@ -90,7 +78,6 @@ testacc: prep
 	BAO_ACC=1 $(GO_CMD) test -tags='$(BUILD_TAGS)' $(TEST) -v $(TESTARGS) -timeout=$(EXTENDED_TEST_TIMEOUT)
 
 # testrace runs the race checker
-testrace: BUILD_TAGS+=testonly
 testrace: prep
 	@CGO_ENABLED=1 \
 	BAO_ADDR= \

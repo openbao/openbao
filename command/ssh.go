@@ -18,9 +18,9 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/cli"
-	"github.com/mitchellh/go-homedir"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/logical/ssh"
+	"github.com/openbao/openbao/helper/homedir"
 	"github.com/posener/complete"
 )
 

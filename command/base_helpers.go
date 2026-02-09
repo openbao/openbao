@@ -15,8 +15,8 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	kvbuilder "github.com/hashicorp/go-secure-stdlib/kv-builder"
 	"github.com/kr/text"
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/homedir"
 	"github.com/ryanuber/columnize"
 )
 

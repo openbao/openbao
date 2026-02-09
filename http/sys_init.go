@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -28,7 +29,7 @@ func handleSysInit(core *vault.Core) http.Handler {
 }
 
 func handleSysInitGet(core *vault.Core, w http.ResponseWriter, r *http.Request) {
-	init, err := core.Initialized(context.Background())
+	init, err := core.Initialized(namespace.RootContext(context.Background()))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)
 		return
@@ -40,7 +41,7 @@ func handleSysInitGet(core *vault.Core, w http.ResponseWriter, r *http.Request) 
 }
 
 func handleSysInitPut(core *vault.Core, w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := namespace.RootContext(context.Background())
 
 	// Parse the request
 	var req InitRequest

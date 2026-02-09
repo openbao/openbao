@@ -100,10 +100,9 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 		return totalCounts, lockedUsersResponse, nil
 	}
 
-	// no mount_accessor is provided in request, get information for current namespace and its child namespaces
-
-	// get all the namespaces
-	nsList, err := b.Core.namespaceStore.ListNamespaces(ctx, true, true)
+	// no mount_accessor is provided in request, get information
+	// for current namespace and all unsealed child namespaces
+	nsList, err := b.Core.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -129,7 +128,6 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 			Counts:         totalCountForNS,
 			MountAccessors: mountAccessorsResponse,
 		})
-
 	}
 
 	// sort namespaces in response by decreasing order of counts

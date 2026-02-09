@@ -48,11 +48,6 @@ on:
         required: false
         default: 60
         type: number
-      testonly:
-        description: Whether to run the tests tagged with testonly.
-        required: false
-        default: false
-        type: boolean
       checkout-ref:
         description: The ref to use for checkout.
         required: false
@@ -72,38 +67,16 @@ jobs:
       - uses: ./.github/actions/set-up-go
         name: Setup Git configuration (public)
       - run: mkdir -p test-results/go-test
-      - name: Build matrix excluding binary, integration, and testonly tests
+      - name: Build matrix excluding binary & integration tests
         id: build-non-binary
         env:
           INPUTS_TOTAL_RUNNERS: ${{ inputs.total-runners }}
-        if: ${{ !inputs.testonly }}
         run: |
-          # testonly tests need additional build tag though let's exclude them anyway for clarity
-          (
-            go list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... \
-              | grep -v "_binary" | grep -v "vault/integ" | grep -v "testonly" \
-              | go run gotest.tools/gotestsum@latest tool ci-matrix --debug \
-                --partitions "$INPUTS_TOTAL_RUNNERS" \
-                --timing-files 'test-results/go-test/*.json' > matrix.json
-          )
-      - name: Build matrix for tests tagged with testonly
-        env:
-          INPUTS_TOTAL_RUNNERS: ${{ inputs.total-runners }}
-        if: ${{ inputs.testonly }}
-        run: |
-          set -exo pipefail
-          # enable glob expansion
-          shopt -s nullglob
-          # testonly tagged tests need an additional tag to be included
-          # also running some extra tests for sanity checking with the testonly build tag
-          (
-            go list -tags=testonly ./vault/external_tests/{kv,token,*replication-perf*,*testonly*} ./vault/ \
-              | go run gotest.tools/gotestsum@latest tool ci-matrix --debug \
-                --partitions "$INPUTS_TOTAL_RUNNERS" \
-                --timing-files 'test-results/go-test/*.json' > matrix.json
-          )
-          # disable glob expansion
-          shopt -u nullglob
+          go list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... \
+            | grep -v "_binary" \
+            | go run gotest.tools/gotestsum@latest tool ci-matrix --debug \
+              --partitions "$INPUTS_TOTAL_RUNNERS" \
+              --timing-files 'test-results/go-test/*.json' > matrix.json
       - name: Capture list of binary tests
         if: inputs.binary-tests
         id: list-binary-tests

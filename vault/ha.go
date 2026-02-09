@@ -52,9 +52,8 @@ func (c *Core) Standby() bool {
 
 func (c *Core) ActiveTime() time.Time {
 	c.stateLock.RLock()
-	activeTime := c.activeTime
-	c.stateLock.RUnlock()
-	return activeTime
+	defer c.stateLock.RUnlock()
+	return c.activeTime
 }
 
 // getHAMembers retrieves cluster membership that doesn't depend on raft. This should only ever be called by the

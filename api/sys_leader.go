@@ -32,10 +32,10 @@ func (c *Sys) LeaderWithContext(ctx context.Context) (*LeaderResponse, error) {
 
 type LeaderResponse struct {
 	HAEnabled            bool      `json:"ha_enabled"`
-	IsSelf               bool      `json:"is_self"`
-	ActiveTime           time.Time `json:"active_time"`
-	LeaderAddress        string    `json:"leader_address"`
-	LeaderClusterAddress string    `json:"leader_cluster_address"`
+	IsSelf               bool      `json:"is_self,omitempty"`
+	ActiveTime           time.Time `json:"active_time,omitzero"`
+	LeaderAddress        string    `json:"leader_address,omitempty"`
+	LeaderClusterAddress string    `json:"leader_cluster_address,omitempty"`
 	RaftCommittedIndex   uint64    `json:"raft_committed_index,omitempty"`
 	RaftAppliedIndex     uint64    `json:"raft_applied_index,omitempty"`
 }

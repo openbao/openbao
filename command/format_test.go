@@ -124,9 +124,7 @@ Cluster Name                  cluster name
 Cluster ID                    cluster id
 HA Enabled                    true
 Raft Committed Index          3
-Raft Applied Index            4
-Last WAL                      2
-Warnings                      [warning]`
+Raft Applied Index            4`
 
 	if expectedOutputString != output {
 		fmt.Printf("%s\n%+v\n %s\n%+v\n", "output found was: ", output, "versus", expectedOutputString)
@@ -152,7 +150,7 @@ Unseal Nonce                  nonce
 Seal Migration in Progress    true
 Version                       version
 Build Date                    build date
-Storage Type                  n/a
+Storage Type                  type
 HA Enabled                    false`
 
 	if expectedOutputString != output {
@@ -184,7 +182,6 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			ClusterID:        "cluster id",
 			RecoverySeal:     true,
 			StorageType:      "storage type",
-			Warnings:         []string{"warning"},
 		}
 
 		// must initialize this struct without explicit field names due to embedding
@@ -195,9 +192,6 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			time.Time{}.UTC(),        // ActiveTime
 			"leader address",         // LeaderAddress
 			"leader cluster address", // LeaderClusterAddress
-			true,                     // PerfStandby
-			1,                        // PerfStandbyLastRemoteWAL
-			2,                        // LastWAL
 			3,                        // RaftCommittedIndex
 			4,                        // RaftAppliedIndex
 		}
@@ -217,7 +211,7 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			ClusterName:      "",
 			ClusterID:        "",
 			RecoverySeal:     true,
-			StorageType:      "",
+			StorageType:      "type",
 		}
 
 		// must initialize this struct without explicit field names due to embedding
@@ -228,9 +222,6 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			time.Time{}.UTC(), // ActiveTime
 			"",                // LeaderAddress
 			"",                // LeaderClusterAddress
-			false,             // PerfStandby
-			0,                 // PerfStandbyLastRemoteWAL
-			0,                 // LastWAL
 			0,                 // RaftCommittedIndex
 			0,                 // RaftAppliedIndex
 		}

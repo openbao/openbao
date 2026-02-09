@@ -4304,22 +4304,21 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 }
 
 type SealStatusResponse struct {
-	Type             string   `json:"type"`
-	Initialized      bool     `json:"initialized"`
-	Sealed           bool     `json:"sealed"`
-	T                int      `json:"t"`
-	N                int      `json:"n"`
-	Progress         int      `json:"progress"`
-	Nonce            string   `json:"nonce"`
-	Version          string   `json:"version"`
-	BuildDate        string   `json:"build_date"`
-	Migration        bool     `json:"migration"`
-	ClusterName      string   `json:"cluster_name,omitempty"`
-	ClusterID        string   `json:"cluster_id,omitempty"`
-	RecoverySeal     bool     `json:"recovery_seal"`
-	RecoverySealType string   `json:"recovery_seal_type,omitempty"`
-	StorageType      string   `json:"storage_type,omitempty"`
-	Warnings         []string `json:"warnings,omitempty"`
+	Type             string `json:"type"`
+	Initialized      bool   `json:"initialized"`
+	Sealed           bool   `json:"sealed"`
+	T                int    `json:"t"`
+	N                int    `json:"n"`
+	Progress         int    `json:"progress"`
+	Nonce            string `json:"nonce"`
+	Version          string `json:"version"`
+	BuildDate        string `json:"build_date"`
+	Migration        bool   `json:"migration"`
+	ClusterName      string `json:"cluster_name,omitempty"`
+	ClusterID        string `json:"cluster_id,omitempty"`
+	RecoverySeal     bool   `json:"recovery_seal"`
+	RecoverySealType string `json:"recovery_seal_type,omitempty"`
+	StorageType      string `json:"storage_type,omitempty"`
 }
 
 func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResponse, error) {
@@ -4342,64 +4341,49 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 		return nil, err
 	}
 
-	if sealConfig == nil {
-		s := &SealStatusResponse{
-			Type:             core.SealAccess().BarrierType().String(),
-			Initialized:      initialized,
-			Sealed:           true,
-			RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
-			RecoverySealType: recoveryType,
-			StorageType:      core.StorageType(),
-			Version:          version.GetVersion().VersionNumber(),
-			BuildDate:        version.BuildDate,
-		}
+	ssr := &SealStatusResponse{
+		Type:             core.SealAccess().BarrierType().String(),
+		Initialized:      initialized,
+		Sealed:           sealed,
+		RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
+		RecoverySealType: recoveryType,
+		StorageType:      core.StorageType(),
+		Version:          version.GetVersion().VersionNumber(),
+		BuildDate:        version.BuildDate,
+	}
 
-		return s, nil
+	if sealConfig == nil {
+		return ssr, nil
 	}
 
 	// Fetch the local cluster name and identifier
-	var clusterName, clusterID string
 	if !sealed {
 		cluster, err := core.Cluster(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if cluster == nil {
-			return nil, errors.New("failed to fetch cluster details")
-		}
-		clusterName = cluster.Name
-		clusterID = cluster.ID
+
+		ssr.ClusterName = cluster.Name
+		ssr.ClusterID = cluster.ID
 	}
 
 	progress, nonce := core.SecretProgress(lock)
 
-	s := &SealStatusResponse{
-		Type:             core.SealAccess().BarrierType().String(),
-		Initialized:      initialized,
-		Sealed:           sealed,
-		T:                sealConfig.SecretThreshold,
-		N:                sealConfig.SecretShares,
-		Progress:         progress,
-		Nonce:            nonce,
-		Version:          version.GetVersion().VersionNumber(),
-		BuildDate:        version.BuildDate,
-		Migration:        core.IsInSealMigrationMode(lock) && !core.IsSealMigrated(lock),
-		ClusterName:      clusterName,
-		ClusterID:        clusterID,
-		RecoverySeal:     core.SealAccess().RecoveryKeySupported(),
-		RecoverySealType: recoveryType,
-		StorageType:      core.StorageType(),
-	}
+	ssr.T = sealConfig.SecretThreshold
+	ssr.N = sealConfig.SecretShares
+	ssr.Progress = progress
+	ssr.Nonce = nonce
+	ssr.Migration = core.IsInSealMigrationMode(lock) && !core.IsSealMigrated(lock)
 
-	return s, nil
+	return ssr, nil
 }
 
 type LeaderResponse struct {
 	HAEnabled            bool      `json:"ha_enabled"`
-	IsSelf               bool      `json:"is_self"`
-	ActiveTime           time.Time `json:"active_time,omitempty"`
-	LeaderAddress        string    `json:"leader_address"`
-	LeaderClusterAddress string    `json:"leader_cluster_address"`
+	IsSelf               bool      `json:"is_self,omitempty"`
+	ActiveTime           time.Time `json:"active_time,omitzero"`
+	LeaderAddress        string    `json:"leader_address,omitempty"`
+	LeaderClusterAddress string    `json:"leader_cluster_address,omitempty"`
 
 	// Raft Indexes for this node
 	RaftCommittedIndex uint64 `json:"raft_committed_index,omitempty"`
@@ -4409,29 +4393,27 @@ type LeaderResponse struct {
 func (core *Core) GetLeaderStatus() (*LeaderResponse, error) {
 	core.stateLock.RLock()
 	defer core.stateLock.RUnlock()
-
 	return core.GetLeaderStatusLocked()
 }
 
 func (core *Core) GetLeaderStatusLocked() (*LeaderResponse, error) {
-	haEnabled := true
 	isLeader, address, clusterAddr, err := core.LeaderLocked()
 	if errwrap.Contains(err, ErrHANotEnabled.Error()) {
-		haEnabled = false
-		err = nil
+		return &LeaderResponse{
+			HAEnabled: false,
+		}, nil
 	}
+
 	if err != nil {
 		return nil, err
 	}
 
 	resp := &LeaderResponse{
-		HAEnabled:            haEnabled,
+		HAEnabled:            true,
 		IsSelf:               isLeader,
 		LeaderAddress:        address,
 		LeaderClusterAddress: clusterAddr,
-	}
-	if isLeader {
-		resp.ActiveTime = core.activeTime
+		ActiveTime:           core.activeTime,
 	}
 
 	resp.RaftCommittedIndex, resp.RaftAppliedIndex = core.GetRaftIndexesLocked()

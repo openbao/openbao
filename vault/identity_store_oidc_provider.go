@@ -2649,7 +2649,7 @@ func defaultOIDCProvider() provider {
 
 func defaultOIDCKey() namedKey {
 	return namedKey{
-		Algorithm:        "RS256",
+		Algorithm:        string(jose.ES256),
 		VerificationTTL:  24 * time.Hour,
 		RotationPeriod:   24 * time.Hour,
 		NextRotation:     time.Now().Add(24 * time.Hour),

@@ -1099,20 +1099,20 @@ func TestLogin_JWTSupportedAlgs(t *testing.T) {
 		},
 		{
 			name:             "JWT auth with valid signing algorithm",
-			jwtSupportedAlgs: []string{string(jwt.ES256)},
+			jwtSupportedAlgs: []string{string(jose.ES256)},
 		},
 		{
 			name:             "JWT auth with valid signing algorithms",
-			jwtSupportedAlgs: []string{string(jwt.RS256), string(jwt.ES256), string(jwt.EdDSA)},
+			jwtSupportedAlgs: []string{string(jose.RS256), string(jose.ES256), string(jose.EdDSA)},
 		},
 		{
 			name:             "JWT auth with invalid signing algorithm",
-			jwtSupportedAlgs: []string{string(jwt.RS256)},
+			jwtSupportedAlgs: []string{string(jose.RS256)},
 			wantErr:          true,
 		},
 		{
 			name:             "JWT auth with invalid signing algorithms",
-			jwtSupportedAlgs: []string{string(jwt.RS256), string(jwt.ES512), string(jwt.EdDSA)},
+			jwtSupportedAlgs: []string{string(jose.RS256), string(jose.ES512), string(jose.EdDSA)},
 			wantErr:          true,
 		},
 	}

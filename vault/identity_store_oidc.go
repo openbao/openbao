@@ -210,7 +210,7 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 				"algorithm": {
 					Type:        framework.TypeString,
 					Description: "Signing algorithm to use. This will default to RS256.",
-					Default:     "RS256",
+					Default:     string(jose.RS256),
 				},
 
 				"allowed_client_ids": {
@@ -1696,27 +1696,27 @@ func generateKeys(algorithm string) (*jose.JSONWebKey, error) {
 	var err error
 
 	switch algorithm {
-	case "RS256", "RS384", "RS512":
+	case string(jose.RS256), string(jose.RS384), string(jose.RS512):
 		// 2048 bits is recommended by RSA Laboratories as a minimum post 2015
 		if key, err = rsa.GenerateKey(rand.Reader, 2048); err != nil {
 			return nil, err
 		}
-	case "ES256", "ES384", "ES512":
+	case string(jose.ES256), string(jose.ES384), string(jose.ES512):
 		var curve elliptic.Curve
 
 		switch algorithm {
-		case "ES256":
+		case string(jose.ES256):
 			curve = elliptic.P256()
-		case "ES384":
+		case string(jose.ES384):
 			curve = elliptic.P384()
-		case "ES512":
+		case string(jose.ES512):
 			curve = elliptic.P521()
 		}
 
 		if key, err = ecdsa.GenerateKey(curve, rand.Reader); err != nil {
 			return nil, err
 		}
-	case "EdDSA":
+	case string(jose.EdDSA):
 		_, key, err = ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			return nil, err

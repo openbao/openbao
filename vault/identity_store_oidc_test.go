@@ -411,7 +411,7 @@ func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 	expected := map[string]interface{}{
 		"rotation_period":    int64(86400),
 		"verification_ttl":   int64(86400),
-		"algorithm":          "RS256",
+		"algorithm":          string(jose.RS256),
 		"allowed_client_ids": []string{},
 	}
 	if diff := deep.Equal(expected, resp.Data); diff != nil {
@@ -441,7 +441,7 @@ func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 	expected = map[string]interface{}{
 		"rotation_period":    int64(600),
 		"verification_ttl":   int64(3600),
-		"algorithm":          "RS256",
+		"algorithm":          string(jose.RS256),
 		"allowed_client_ids": []string{"allowed-test-role"},
 	}
 	if diff := deep.Equal(expected, resp.Data); diff != nil {
@@ -976,7 +976,7 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 	namedKey := &namedKey{
 		name:             "test-key",
 		AllowedClientIDs: []string{"*"},
-		Algorithm:        "RS256",
+		Algorithm:        string(jose.RS256),
 		VerificationTTL:  60 * time.Second,
 		RotationPeriod:   60 * time.Second,
 		KeyRing:          nil,
@@ -1027,7 +1027,7 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 func testNamedKey(name string) *namedKey {
 	return &namedKey{
 		name:            name,
-		Algorithm:       "RS256",
+		Algorithm:       string(jose.RS256),
 		VerificationTTL: 1 * time.Second,
 		RotationPeriod:  2 * time.Second,
 		KeyRing:         nil,
@@ -1429,7 +1429,8 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 	}
 	txn.Commit()
 
-	for _, alg := range []string{"RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"} {
+	for _, alg := range []string{string(jose.RS256), string(jose.RS384), string(jose.RS512),
+		string(jose.ES256), string(jose.ES384), string(jose.ES512), string(jose.EdDSA)} {
 		key := "test-key-" + alg
 		role := "test-role-" + alg
 

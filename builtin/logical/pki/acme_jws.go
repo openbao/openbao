@@ -16,22 +16,22 @@ import (
 )
 
 var AllowedOuterJWSTypes = map[string]interface{}{
-	"RS256":  true,
-	"RS384":  true,
-	"RS512":  true,
-	"PS256":  true,
-	"PS384":  true,
-	"PS512":  true,
-	"ES256":  true,
-	"ES384":  true,
-	"ES512":  true,
-	"EdDSA2": true,
+	string(jose.RS256): true,
+	string(jose.RS384): true,
+	string(jose.RS512): true,
+	string(jose.PS256): true,
+	string(jose.PS384): true,
+	string(jose.PS512): true,
+	string(jose.ES256): true,
+	string(jose.ES384): true,
+	string(jose.ES512): true,
+	string(jose.EdDSA): true, // changed from "EdDSA2" (typo)
 }
 
 var AllowedEabJWSTypes = map[string]interface{}{
-	"HS256": true,
-	"HS384": true,
-	"HS512": true,
+	string(jose.HS256): true,
+	string(jose.HS384): true,
+	string(jose.HS512): true,
 }
 
 // This wraps a JWS message structure.

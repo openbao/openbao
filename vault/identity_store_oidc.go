@@ -136,14 +136,14 @@ var (
 		"sub", "namespace", "nonce",
 		"auth_time", "at_hash", "c_hash",
 	}
-	supportedAlgs = []string{
-		string(jose.RS256),
-		string(jose.RS384),
-		string(jose.RS512),
-		string(jose.ES256),
-		string(jose.ES384),
-		string(jose.ES512),
-		string(jose.EdDSA),
+	supportedAlgs = []jose.SignatureAlgorithm{
+		jose.RS256,
+		jose.RS384,
+		jose.RS512,
+		jose.ES256,
+		jose.ES384,
+		jose.ES512,
+		jose.EdDSA,
 	}
 )
 
@@ -638,7 +638,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateKey(ctx context.Context, req *logica
 		key.Algorithm = d.Get("algorithm").(string)
 	}
 
-	if !slices.Contains(supportedAlgs, key.Algorithm) {
+	if !slices.Contains(toStrings(supportedAlgs), key.Algorithm) {
 		return logical.ErrorResponse("unknown signing algorithm %q", key.Algorithm), nil
 	}
 
@@ -1425,7 +1425,7 @@ func (i *IdentityStore) pathOIDCDiscovery(ctx context.Context, req *logical.Requ
 			Keys:          c.effectiveIssuer + "/.well-known/keys",
 			ResponseTypes: []string{"id_token"},
 			Subjects:      []string{"public"},
-			IDTokenAlgs:   supportedAlgs,
+			IDTokenAlgs:   toStrings(supportedAlgs),
 		}
 
 		data, err = json.Marshal(disc)
@@ -1448,6 +1448,14 @@ func (i *IdentityStore) pathOIDCDiscovery(ctx context.Context, req *logical.Requ
 	}
 
 	return resp, nil
+}
+
+func toStrings(a []jose.SignatureAlgorithm) []string {
+	str := make([]string, len(a))
+	for i, e := range a {
+		str[i] = string(e)
+	}
+	return str
 }
 
 // getKeysCacheControlHeader returns the cache control header for all public
@@ -1695,28 +1703,28 @@ func generateKeys(algorithm string) (*jose.JSONWebKey, error) {
 	var key interface{}
 	var err error
 
-	switch algorithm {
-	case string(jose.RS256), string(jose.RS384), string(jose.RS512):
+	switch jose.SignatureAlgorithm(algorithm) {
+	case jose.RS256, jose.RS384, jose.RS512:
 		// 2048 bits is recommended by RSA Laboratories as a minimum post 2015
 		if key, err = rsa.GenerateKey(rand.Reader, 2048); err != nil {
 			return nil, err
 		}
-	case string(jose.ES256), string(jose.ES384), string(jose.ES512):
+	case jose.ES256, jose.ES384, jose.ES512:
 		var curve elliptic.Curve
 
-		switch algorithm {
-		case string(jose.ES256):
+		switch jose.SignatureAlgorithm(algorithm) {
+		case jose.ES256:
 			curve = elliptic.P256()
-		case string(jose.ES384):
+		case jose.ES384:
 			curve = elliptic.P384()
-		case string(jose.ES512):
+		case jose.ES512:
 			curve = elliptic.P521()
 		}
 
 		if key, err = ecdsa.GenerateKey(curve, rand.Reader); err != nil {
 			return nil, err
 		}
-	case string(jose.EdDSA):
+	case jose.EdDSA:
 		_, key, err = ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			return nil, err

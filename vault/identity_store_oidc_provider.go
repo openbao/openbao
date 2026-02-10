@@ -1631,7 +1631,7 @@ func (i *IdentityStore) pathOIDCProviderDiscovery(ctx context.Context, req *logi
 		AuthorizationEndpoint: strings.Replace(p.effectiveIssuer, "/v1/", "/ui/vault/", 1) + "/authorize",
 		TokenEndpoint:         p.effectiveIssuer + "/token",
 		UserinfoEndpoint:      p.effectiveIssuer + "/userinfo",
-		IDTokenAlgs:           supportedAlgs,
+		IDTokenAlgs:           toStrings(supportedAlgs),
 		Scopes:                scopes,
 		Claims:                []string{},
 		RequestParameter:      false,

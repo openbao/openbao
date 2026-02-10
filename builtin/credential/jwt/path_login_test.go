@@ -20,7 +20,6 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	sqjwt "github.com/go-jose/go-jose/v4/jwt"
 	"github.com/go-test/deep"
-	"github.com/hashicorp/cap/jwt"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -1091,7 +1090,7 @@ func testLogin_NotBeforeClaims(t *testing.T, jwks bool) {
 func TestLogin_JWTSupportedAlgs(t *testing.T) {
 	tests := []struct {
 		name             string
-		jwtSupportedAlgs []string
+		jwtSupportedAlgs []jose.SignatureAlgorithm
 		wantErr          bool
 	}{
 		{
@@ -1099,20 +1098,20 @@ func TestLogin_JWTSupportedAlgs(t *testing.T) {
 		},
 		{
 			name:             "JWT auth with valid signing algorithm",
-			jwtSupportedAlgs: []string{string(jose.ES256)},
+			jwtSupportedAlgs: []jose.SignatureAlgorithm{jose.ES256},
 		},
 		{
 			name:             "JWT auth with valid signing algorithms",
-			jwtSupportedAlgs: []string{string(jose.RS256), string(jose.ES256), string(jose.EdDSA)},
+			jwtSupportedAlgs: []jose.SignatureAlgorithm{jose.RS256, jose.ES256, jose.EdDSA},
 		},
 		{
 			name:             "JWT auth with invalid signing algorithm",
-			jwtSupportedAlgs: []string{string(jose.RS256)},
+			jwtSupportedAlgs: []jose.SignatureAlgorithm{jose.RS256},
 			wantErr:          true,
 		},
 		{
 			name:             "JWT auth with invalid signing algorithms",
-			jwtSupportedAlgs: []string{string(jose.RS256), string(jose.ES512), string(jose.EdDSA)},
+			jwtSupportedAlgs: []jose.SignatureAlgorithm{jose.RS256, jose.ES512, jose.EdDSA},
 			wantErr:          true,
 		},
 	}
@@ -1124,7 +1123,7 @@ func TestLogin_JWTSupportedAlgs(t *testing.T) {
 			// Configure the backend with an ES256 public key
 			data := map[string]interface{}{
 				"jwt_validation_pubkeys": ecdsaPubKey,
-				"jwt_supported_algs":     tt.jwtSupportedAlgs,
+				"jwt_supported_algs":     toStr(tt.jwtSupportedAlgs),
 			}
 			req := &logical.Request{
 				Operation: logical.UpdateOperation,
@@ -1292,7 +1291,7 @@ func TestLogin_NestedGroups(t *testing.T) {
 	data := map[string]interface{}{
 		"bound_issuer":           "https://team-vault.auth0.com/",
 		"jwt_validation_pubkeys": ecdsaPubKey,
-		"jwt_supported_algs":     string(jwt.ES256),
+		"jwt_supported_algs":     string(jose.ES256),
 	}
 
 	req := &logical.Request{

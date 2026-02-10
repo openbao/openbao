@@ -1429,12 +1429,12 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 	}
 	txn.Commit()
 
-	for _, alg := range []string{
-		string(jose.RS256), string(jose.RS384), string(jose.RS512),
-		string(jose.ES256), string(jose.ES384), string(jose.ES512), string(jose.EdDSA),
+	for _, alg := range []jose.SignatureAlgorithm{
+		jose.RS256, jose.RS384, jose.RS512,
+		jose.ES256, jose.ES384, jose.ES512, jose.EdDSA,
 	} {
-		key := "test-key-" + alg
-		role := "test-role-" + alg
+		key := "test-key-" + string(alg)
+		role := "test-role-" + string(alg)
 
 		// Create a test key "test-key"
 		resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -1442,7 +1442,7 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 			Operation: logical.CreateOperation,
 			Storage:   storage,
 			Data: map[string]interface{}{
-				"algorithm":          alg,
+				"algorithm":          string(alg),
 				"allowed_client_ids": "*",
 			},
 		})

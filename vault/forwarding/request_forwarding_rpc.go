@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package forwarding
 
 import (
 	"context"
@@ -19,9 +19,10 @@ import (
 type forwardedRequestRPCServer struct {
 	UnimplementedRequestForwardingServer
 
-	core               *Core
-	handler            http.Handler
-	raftFollowerStates *raft.FollowerStates
+	core                         core
+	handler                      http.Handler
+	raftFollowerStates           *raft.FollowerStates
+	clusterPeerClusterAddrsCache clusterPeerClusterAddrsCache
 }
 
 func (s *forwardedRequestRPCServer) ForwardRequest(ctx context.Context, freq *forwarding.Request) (*forwarding.Response, error) {
@@ -41,7 +42,7 @@ func (s *forwardedRequestRPCServer) ForwardRequest(ctx context.Context, freq *fo
 	runRequest := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				s.core.logger.Error("panic serving forwarded request", "path", req.URL.Path, "error", err, "stacktrace", string(debug.Stack()))
+				s.core.Logger().Error("panic serving forwarded request", "path", req.URL.Path, "error", err, "stacktrace", string(debug.Stack()))
 			}
 		}()
 		s.handler.ServeHTTP(w, req)
@@ -63,22 +64,22 @@ func (s *forwardedRequestRPCServer) ForwardRequest(ctx context.Context, freq *fo
 	return resp, nil
 }
 
-type nodeHAConnectionInfo struct {
-	nodeInfo       *NodeInformation
-	lastHeartbeat  time.Time
-	version        string
-	upgradeVersion string
+type NodeHAConnectionInfo struct {
+	NodeInfo       *NodeInformation
+	LastHeartbeat  time.Time
+	Version        string
+	UpgradeVersion string
 }
 
 func (s *forwardedRequestRPCServer) Echo(ctx context.Context, in *EchoRequest) (*EchoReply, error) {
-	incomingNodeConnectionInfo := nodeHAConnectionInfo{
-		nodeInfo:       in.NodeInfo,
-		lastHeartbeat:  time.Now(),
-		version:        in.SdkVersion,
-		upgradeVersion: in.RaftUpgradeVersion,
+	incomingNodeConnectionInfo := NodeHAConnectionInfo{
+		NodeInfo:       in.NodeInfo,
+		LastHeartbeat:  time.Now(),
+		Version:        in.SdkVersion,
+		UpgradeVersion: in.RaftUpgradeVersion,
 	}
 	if in.ClusterAddr != "" {
-		s.core.clusterPeerClusterAddrsCache.Set(in.ClusterAddr, incomingNodeConnectionInfo)
+		s.clusterPeerClusterAddrsCache.Set(in.ClusterAddr, incomingNodeConnectionInfo)
 	}
 
 	if in.RaftAppliedIndex > 0 && len(in.RaftNodeID) > 0 && s.raftFollowerStates != nil {
@@ -97,7 +98,7 @@ func (s *forwardedRequestRPCServer) Echo(ctx context.Context, in *EchoRequest) (
 		ReplicationState: uint32(s.core.ReplicationState()),
 	}
 
-	if raftBackend := s.core.getRaftBackend(); raftBackend != nil {
+	if raftBackend := s.core.GetRaftBackend(); raftBackend != nil {
 		reply.RaftAppliedIndex = raftBackend.AppliedIndex()
 		reply.RaftNodeID = raftBackend.NodeID()
 	}
@@ -105,21 +106,30 @@ func (s *forwardedRequestRPCServer) Echo(ctx context.Context, in *EchoRequest) (
 	return reply, nil
 }
 
-type forwardingClient struct {
+type Client struct {
 	RequestForwardingClient
-	core        *Core
+	core        core
 	echoTicker  *time.Ticker
 	echoContext context.Context
 }
 
+func NewClient(core core, requestForwardingClient RequestForwardingClient, echoTicker *time.Ticker, echoContext context.Context) *Client {
+	return &Client{
+		RequestForwardingClient: requestForwardingClient,
+		core:                    core,
+		echoTicker:              echoTicker,
+		echoContext:             echoContext,
+	}
+}
+
 // NOTE: we also take advantage of gRPC's keepalive bits, but as we send data
 // with these requests it's useful to keep this as well
-func (c *forwardingClient) startHeartbeat() {
+func (c *Client) StartHeartbeat() {
 	go func() {
 		clusterAddr := c.core.ClusterAddr()
 		hostname, _ := os.Hostname()
 		ni := NodeInformation{
-			ApiAddr:  c.core.redirectAddr,
+			ApiAddr:  c.core.RedirectAddr(),
 			Hostname: hostname,
 			Mode:     "standby",
 		}
@@ -131,10 +141,10 @@ func (c *forwardingClient) startHeartbeat() {
 				Message:     "ping",
 				ClusterAddr: clusterAddr,
 				NodeInfo:    &ni,
-				SdkVersion:  c.core.effectiveSDKVersion,
+				SdkVersion:  c.core.EffectiveSDKVersion(),
 			}
 
-			if raftBackend := c.core.getRaftBackend(); raftBackend != nil {
+			if raftBackend := c.core.GetRaftBackend(); raftBackend != nil {
 				req.RaftAppliedIndex = raftBackend.AppliedIndex()
 				req.RaftNodeID = raftBackend.NodeID()
 				req.RaftTerm = raftBackend.Term()
@@ -149,20 +159,20 @@ func (c *forwardingClient) startHeartbeat() {
 			cancel()
 			if err != nil {
 				metrics.IncrCounter([]string{"ha", "rpc", "client", "echo", "errors"}, 1)
-				c.core.logger.Debug("forwarding: error sending echo request to active node", "error", err)
+				c.core.Logger().Debug("forwarding: error sending echo request to active node", "error", err)
 				return
 			}
 			if resp == nil {
-				c.core.logger.Debug("forwarding: empty echo response from active node")
+				c.core.Logger().Debug("forwarding: empty echo response from active node")
 				return
 			}
 			if resp.Message != "pong" {
-				c.core.logger.Debug("forwarding: unexpected echo response from active node", "message", resp.Message)
+				c.core.Logger().Debug("forwarding: unexpected echo response from active node", "message", resp.Message)
 				return
 			}
 			// Store the active node's replication state to display in
 			// sys/health calls
-			c.core.activeNodeReplicationState.Store(resp.ReplicationState)
+			c.core.SetActiveNodeReplicationState(consts.ReplicationState(resp.ReplicationState))
 		}
 
 		tick()
@@ -171,8 +181,8 @@ func (c *forwardingClient) startHeartbeat() {
 			select {
 			case <-c.echoContext.Done():
 				c.echoTicker.Stop()
-				c.core.logger.Debug("forwarding: stopping heartbeating")
-				c.core.activeNodeReplicationState.Store(uint32(consts.ReplicationUnknown))
+				c.core.Logger().Debug("forwarding: stopping heartbeating")
+				c.core.SetActiveNodeReplicationState(consts.ReplicationUnknown)
 				return
 			case <-c.echoTicker.C:
 				tick()

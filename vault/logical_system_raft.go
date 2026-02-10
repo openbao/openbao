@@ -244,7 +244,7 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 func (b *SystemBackend) handleRaftConfigurationGet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -269,7 +269,7 @@ func (b *SystemBackend) handleRaftRemovePeerUpdate() framework.OperationFunc {
 			return logical.ErrorResponse("no server id provided"), logical.ErrInvalidRequest
 		}
 
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -291,7 +291,7 @@ func (b *SystemBackend) handleRaftPromoteUpdate() framework.OperationFunc {
 			return logical.ErrorResponse("no server id provided"), logical.ErrInvalidRequest
 		}
 
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -311,7 +311,7 @@ func (b *SystemBackend) handleRaftDemoteUpdate() framework.OperationFunc {
 			return logical.ErrorResponse("no server id provided"), logical.ErrInvalidRequest
 		}
 
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -394,7 +394,7 @@ func (b *SystemBackend) handleRaftBootstrapChallengeWrite() framework.OperationF
 
 func (b *SystemBackend) handleRaftBootstrapAnswerWrite() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -502,7 +502,7 @@ func (b *SystemBackend) handleStorageRaftSnapshotRead() framework.OperationFunc 
 
 func (b *SystemBackend) handleStorageRaftAutopilotState() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -530,7 +530,7 @@ func (b *SystemBackend) handleStorageRaftAutopilotState() framework.OperationFun
 
 func (b *SystemBackend) handleStorageRaftAutopilotConfigRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}
@@ -555,7 +555,7 @@ func (b *SystemBackend) handleStorageRaftAutopilotConfigRead() framework.Operati
 
 func (b *SystemBackend) handleStorageRaftAutopilotConfigUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-		raftBackend := b.Core.getRaftBackend()
+		raftBackend := b.Core.GetRaftBackend()
 		if raftBackend == nil {
 			return logical.ErrorResponse("raft storage is not in use"), logical.ErrInvalidRequest
 		}

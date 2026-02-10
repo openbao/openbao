@@ -73,7 +73,7 @@ func (c *Core) getHAMembers() ([]HAStatusNode, error) {
 		Version:        c.effectiveSDKVersion,
 	}
 
-	if rb := c.getRaftBackend(); rb != nil {
+	if rb := c.GetRaftBackend(); rb != nil {
 		leader.UpgradeVersion = rb.EffectiveVersion()
 	}
 
@@ -212,7 +212,7 @@ func (c *Core) LeaderLocked() (isLeader bool, leaderAddr, clusterAddr string, er
 	// to ourself, there's no point in paying any attention to it.  And by
 	// disregarding it, we can avoid a panic in raft tests using the Inmem network
 	// layer when we try to connect back to ourself.
-	if adv.ClusterAddr == c.ClusterAddr() && adv.RedirectAddr == c.redirectAddr && c.getRaftBackend() != nil {
+	if adv.ClusterAddr == c.ClusterAddr() && adv.RedirectAddr == c.redirectAddr && c.GetRaftBackend() != nil {
 		return false, "", "", nil
 	}
 
@@ -1005,7 +1005,7 @@ func (c *Core) periodicLeaderRefresh(stopCh chan struct{}) {
 
 // periodicCheckKeyUpgrade is used to watch for key rotation events as a standby
 func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{}) {
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	isRaft := raftBackend != nil
 
 	opCount := atomic.Int32{}

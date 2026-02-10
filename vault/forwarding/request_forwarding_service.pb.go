@@ -5,9 +5,9 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.0
-// source: vault/request_forwarding_service.proto
+// source: vault/forwarding/request_forwarding_service.proto
 
-package vault
+package forwarding
 
 import (
 	forwarding "github.com/openbao/openbao/helper/forwarding"
@@ -47,7 +47,7 @@ type EchoRequest struct {
 
 func (x *EchoRequest) Reset() {
 	*x = EchoRequest{}
-	mi := &file_vault_request_forwarding_service_proto_msgTypes[0]
+	mi := &file_vault_forwarding_request_forwarding_service_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -59,7 +59,7 @@ func (x *EchoRequest) String() string {
 func (*EchoRequest) ProtoMessage() {}
 
 func (x *EchoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_vault_request_forwarding_service_proto_msgTypes[0]
+	mi := &file_vault_forwarding_request_forwarding_service_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -72,7 +72,7 @@ func (x *EchoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EchoRequest.ProtoReflect.Descriptor instead.
 func (*EchoRequest) Descriptor() ([]byte, []int) {
-	return file_vault_request_forwarding_service_proto_rawDescGZIP(), []int{0}
+	return file_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *EchoRequest) GetMessage() string {
@@ -159,7 +159,7 @@ type EchoReply struct {
 
 func (x *EchoReply) Reset() {
 	*x = EchoReply{}
-	mi := &file_vault_request_forwarding_service_proto_msgTypes[1]
+	mi := &file_vault_forwarding_request_forwarding_service_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -171,7 +171,7 @@ func (x *EchoReply) String() string {
 func (*EchoReply) ProtoMessage() {}
 
 func (x *EchoReply) ProtoReflect() protoreflect.Message {
-	mi := &file_vault_request_forwarding_service_proto_msgTypes[1]
+	mi := &file_vault_forwarding_request_forwarding_service_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -184,7 +184,7 @@ func (x *EchoReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EchoReply.ProtoReflect.Descriptor instead.
 func (*EchoReply) Descriptor() ([]byte, []int) {
-	return file_vault_request_forwarding_service_proto_rawDescGZIP(), []int{1}
+	return file_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *EchoReply) GetMessage() string {
@@ -243,7 +243,7 @@ type NodeInformation struct {
 
 func (x *NodeInformation) Reset() {
 	*x = NodeInformation{}
-	mi := &file_vault_request_forwarding_service_proto_msgTypes[2]
+	mi := &file_vault_forwarding_request_forwarding_service_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -255,7 +255,7 @@ func (x *NodeInformation) String() string {
 func (*NodeInformation) ProtoMessage() {}
 
 func (x *NodeInformation) ProtoReflect() protoreflect.Message {
-	mi := &file_vault_request_forwarding_service_proto_msgTypes[2]
+	mi := &file_vault_forwarding_request_forwarding_service_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -268,7 +268,7 @@ func (x *NodeInformation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeInformation.ProtoReflect.Descriptor instead.
 func (*NodeInformation) Descriptor() ([]byte, []int) {
-	return file_vault_request_forwarding_service_proto_rawDescGZIP(), []int{2}
+	return file_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *NodeInformation) GetClusterAddr() string {
@@ -325,7 +325,7 @@ type ClientKey struct {
 
 func (x *ClientKey) Reset() {
 	*x = ClientKey{}
-	mi := &file_vault_request_forwarding_service_proto_msgTypes[3]
+	mi := &file_vault_forwarding_request_forwarding_service_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -337,7 +337,7 @@ func (x *ClientKey) String() string {
 func (*ClientKey) ProtoMessage() {}
 
 func (x *ClientKey) ProtoReflect() protoreflect.Message {
-	mi := &file_vault_request_forwarding_service_proto_msgTypes[3]
+	mi := &file_vault_forwarding_request_forwarding_service_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -350,7 +350,7 @@ func (x *ClientKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientKey.ProtoReflect.Descriptor instead.
 func (*ClientKey) Descriptor() ([]byte, []int) {
-	return file_vault_request_forwarding_service_proto_rawDescGZIP(), []int{3}
+	return file_vault_forwarding_request_forwarding_service_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ClientKey) GetType() string {
@@ -381,32 +381,33 @@ func (x *ClientKey) GetD() []byte {
 	return nil
 }
 
-var File_vault_request_forwarding_service_proto protoreflect.FileDescriptor
+var File_vault_forwarding_request_forwarding_service_proto protoreflect.FileDescriptor
 
-const file_vault_request_forwarding_service_proto_rawDesc = "" +
+const file_vault_forwarding_request_forwarding_service_proto_rawDesc = "" +
 	"\n" +
-	"&vault/request_forwarding_service.proto\x12\x05vault\x1a\x1dhelper/forwarding/types.proto\"\x98\x03\n" +
+	"1vault/forwarding/request_forwarding_service.proto\x12\n" +
+	"forwarding\x1a\x1dhelper/forwarding/types.proto\"\x9d\x03\n" +
 	"\vEchoRequest\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12!\n" +
 	"\fcluster_addr\x18\x02 \x01(\tR\vclusterAddr\x12#\n" +
 	"\rcluster_addrs\x18\x03 \x03(\tR\fclusterAddrs\x12,\n" +
 	"\x12raft_applied_index\x18\x04 \x01(\x04R\x10raftAppliedIndex\x12 \n" +
 	"\fraft_node_id\x18\x05 \x01(\tR\n" +
-	"raftNodeID\x123\n" +
-	"\tnode_info\x18\x06 \x01(\v2\x16.vault.NodeInformationR\bnodeInfo\x12\x1b\n" +
+	"raftNodeID\x128\n" +
+	"\tnode_info\x18\x06 \x01(\v2\x1b.forwarding.NodeInformationR\bnodeInfo\x12\x1b\n" +
 	"\traft_term\x18\a \x01(\x04R\braftTerm\x122\n" +
 	"\x15raft_desired_suffrage\x18\b \x01(\tR\x13raftDesiredSuffrage\x120\n" +
 	"\x14raft_upgrade_version\x18\t \x01(\tR\x12raftUpgradeVersion\x12\x1f\n" +
 	"\vsdk_version\x18\v \x01(\tR\n" +
-	"sdkVersion\"\xfc\x01\n" +
+	"sdkVersion\"\x81\x02\n" +
 	"\tEchoReply\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12#\n" +
 	"\rcluster_addrs\x18\x02 \x03(\tR\fclusterAddrs\x12+\n" +
 	"\x11replication_state\x18\x03 \x01(\rR\x10replicationState\x12,\n" +
 	"\x12raft_applied_index\x18\x04 \x01(\x04R\x10raftAppliedIndex\x12 \n" +
 	"\fraft_node_id\x18\x05 \x01(\tR\n" +
-	"raftNodeID\x123\n" +
-	"\tnode_info\x18\x06 \x01(\v2\x16.vault.NodeInformationR\bnodeInfo\"\xc5\x01\n" +
+	"raftNodeID\x128\n" +
+	"\tnode_info\x18\x06 \x01(\v2\x1b.forwarding.NodeInformationR\bnodeInfo\"\xc5\x01\n" +
 	"\x0fNodeInformation\x12!\n" +
 	"\fcluster_addr\x18\x01 \x01(\tR\vclusterAddr\x12\x19\n" +
 	"\bapi_addr\x18\x02 \x01(\tR\aapiAddr\x12\x12\n" +
@@ -418,39 +419,39 @@ const file_vault_request_forwarding_service_proto_rawDesc = "" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\f\n" +
 	"\x01x\x18\x02 \x01(\fR\x01x\x12\f\n" +
 	"\x01y\x18\x03 \x01(\fR\x01y\x12\f\n" +
-	"\x01d\x18\x04 \x01(\fR\x01d2\x82\x01\n" +
+	"\x01d\x18\x04 \x01(\fR\x01d2\x8c\x01\n" +
 	"\x11RequestForwarding\x12=\n" +
-	"\x0eForwardRequest\x12\x13.forwarding.Request\x1a\x14.forwarding.Response\"\x00\x12.\n" +
-	"\x04Echo\x12\x12.vault.EchoRequest\x1a\x10.vault.EchoReply\"\x00B\"Z github.com/openbao/openbao/vaultb\x06proto3"
+	"\x0eForwardRequest\x12\x13.forwarding.Request\x1a\x14.forwarding.Response\"\x00\x128\n" +
+	"\x04Echo\x12\x17.forwarding.EchoRequest\x1a\x15.forwarding.EchoReply\"\x00B-Z+github.com/openbao/openbao/vault/forwardingb\x06proto3"
 
 var (
-	file_vault_request_forwarding_service_proto_rawDescOnce sync.Once
-	file_vault_request_forwarding_service_proto_rawDescData []byte
+	file_vault_forwarding_request_forwarding_service_proto_rawDescOnce sync.Once
+	file_vault_forwarding_request_forwarding_service_proto_rawDescData []byte
 )
 
-func file_vault_request_forwarding_service_proto_rawDescGZIP() []byte {
-	file_vault_request_forwarding_service_proto_rawDescOnce.Do(func() {
-		file_vault_request_forwarding_service_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_vault_request_forwarding_service_proto_rawDesc), len(file_vault_request_forwarding_service_proto_rawDesc)))
+func file_vault_forwarding_request_forwarding_service_proto_rawDescGZIP() []byte {
+	file_vault_forwarding_request_forwarding_service_proto_rawDescOnce.Do(func() {
+		file_vault_forwarding_request_forwarding_service_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_vault_forwarding_request_forwarding_service_proto_rawDesc), len(file_vault_forwarding_request_forwarding_service_proto_rawDesc)))
 	})
-	return file_vault_request_forwarding_service_proto_rawDescData
+	return file_vault_forwarding_request_forwarding_service_proto_rawDescData
 }
 
-var file_vault_request_forwarding_service_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-var file_vault_request_forwarding_service_proto_goTypes = []any{
-	(*EchoRequest)(nil),         // 0: vault.EchoRequest
-	(*EchoReply)(nil),           // 1: vault.EchoReply
-	(*NodeInformation)(nil),     // 2: vault.NodeInformation
-	(*ClientKey)(nil),           // 3: vault.ClientKey
+var file_vault_forwarding_request_forwarding_service_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_vault_forwarding_request_forwarding_service_proto_goTypes = []any{
+	(*EchoRequest)(nil),         // 0: forwarding.EchoRequest
+	(*EchoReply)(nil),           // 1: forwarding.EchoReply
+	(*NodeInformation)(nil),     // 2: forwarding.NodeInformation
+	(*ClientKey)(nil),           // 3: forwarding.ClientKey
 	(*forwarding.Request)(nil),  // 4: forwarding.Request
 	(*forwarding.Response)(nil), // 5: forwarding.Response
 }
-var file_vault_request_forwarding_service_proto_depIDxs = []int32{
-	2, // 0: vault.EchoRequest.node_info:type_name -> vault.NodeInformation
-	2, // 1: vault.EchoReply.node_info:type_name -> vault.NodeInformation
-	4, // 2: vault.RequestForwarding.ForwardRequest:input_type -> forwarding.Request
-	0, // 3: vault.RequestForwarding.Echo:input_type -> vault.EchoRequest
-	5, // 4: vault.RequestForwarding.ForwardRequest:output_type -> forwarding.Response
-	1, // 5: vault.RequestForwarding.Echo:output_type -> vault.EchoReply
+var file_vault_forwarding_request_forwarding_service_proto_depIDxs = []int32{
+	2, // 0: forwarding.EchoRequest.node_info:type_name -> forwarding.NodeInformation
+	2, // 1: forwarding.EchoReply.node_info:type_name -> forwarding.NodeInformation
+	4, // 2: forwarding.RequestForwarding.ForwardRequest:input_type -> forwarding.Request
+	0, // 3: forwarding.RequestForwarding.Echo:input_type -> forwarding.EchoRequest
+	5, // 4: forwarding.RequestForwarding.ForwardRequest:output_type -> forwarding.Response
+	1, // 5: forwarding.RequestForwarding.Echo:output_type -> forwarding.EchoReply
 	4, // [4:6] is the sub-list for method output_type
 	2, // [2:4] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
@@ -458,26 +459,26 @@ var file_vault_request_forwarding_service_proto_depIDxs = []int32{
 	0, // [0:2] is the sub-list for field type_name
 }
 
-func init() { file_vault_request_forwarding_service_proto_init() }
-func file_vault_request_forwarding_service_proto_init() {
-	if File_vault_request_forwarding_service_proto != nil {
+func init() { file_vault_forwarding_request_forwarding_service_proto_init() }
+func file_vault_forwarding_request_forwarding_service_proto_init() {
+	if File_vault_forwarding_request_forwarding_service_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vault_request_forwarding_service_proto_rawDesc), len(file_vault_request_forwarding_service_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_vault_forwarding_request_forwarding_service_proto_rawDesc), len(file_vault_forwarding_request_forwarding_service_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_vault_request_forwarding_service_proto_goTypes,
-		DependencyIndexes: file_vault_request_forwarding_service_proto_depIDxs,
-		MessageInfos:      file_vault_request_forwarding_service_proto_msgTypes,
+		GoTypes:           file_vault_forwarding_request_forwarding_service_proto_goTypes,
+		DependencyIndexes: file_vault_forwarding_request_forwarding_service_proto_depIDxs,
+		MessageInfos:      file_vault_forwarding_request_forwarding_service_proto_msgTypes,
 	}.Build()
-	File_vault_request_forwarding_service_proto = out.File
-	file_vault_request_forwarding_service_proto_goTypes = nil
-	file_vault_request_forwarding_service_proto_depIDxs = nil
+	File_vault_forwarding_request_forwarding_service_proto = out.File
+	file_vault_forwarding_request_forwarding_service_proto_goTypes = nil
+	file_vault_forwarding_request_forwarding_service_proto_depIDxs = nil
 }

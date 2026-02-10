@@ -13,6 +13,7 @@ import (
 
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -561,7 +562,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 	}
 
 	if causeFailure {
-		view.(BarrierView).SetReadOnlyErr(logical.ErrSetupReadOnly)
+		view.(barrier.View).SetReadOnlyErr(logical.ErrSetupReadOnly)
 	}
 
 	// Unmount, this should cleanup

@@ -21,6 +21,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -277,7 +278,7 @@ func (d *autoSeal) SetCachedBarrierConfig(config *SealConfig) {
 	d.barrierConfig.Store(config)
 }
 
-func (d *autoSeal) SetConfigAccess(barrier SecurityBarrier) {
+func (d *autoSeal) SetConfigAccess(barrier barrier.SecurityBarrier) {
 	d.configAccess = &secureStorageAccess{barrier: barrier}
 }
 

@@ -23,6 +23,7 @@ import (
 	"github.com/openbao/openbao/helper/fairshare"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 // Namespace id length; upstream uses 5 characters so we use one more to
@@ -121,8 +122,8 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 }
 
 // NamespaceView scopes the passed storage down to the passed namespace.
-func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView {
-	return NewBarrierView(barrier, NamespaceBarrierPrefix(ns))
+func NamespaceView(barr logical.Storage, ns *namespace.Namespace) barrier.View {
+	return barrier.NewView(barr, NamespaceBarrierPrefix(ns))
 }
 
 // NamespaceBarrierPrefix returns the namespace's storage prefix.
@@ -241,7 +242,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	}
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		rootStoreView := NewBarrierView(s, namespaceStoreSubPath)
+		rootStoreView := barrier.NewView(s, namespaceStoreSubPath)
 		return ns.loadNamespacesRecursive(ctx, s, rootStoreView, loadingCallback)
 	}); err != nil {
 		return err

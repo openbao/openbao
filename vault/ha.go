@@ -25,6 +25,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -1103,7 +1104,7 @@ func (c *Core) reloadShamirKey(ctx context.Context) error {
 	case seal.StoredKeysSupportedGeneric:
 		return nil
 	case seal.StoredKeysSupportedShamirRoot:
-		entry, err := c.barrier.Get(ctx, shamirKekPath)
+		entry, err := c.barrier.Get(ctx, barrier.ShamirKekPath)
 		if err != nil {
 			return err
 		}
@@ -1149,7 +1150,7 @@ func (c *Core) performKeyUpgrades(ctx context.Context) error {
 // are cleaned up in a timely manner if a leader failover takes place
 func (c *Core) scheduleUpgradeCleanup(ctx context.Context) error {
 	// List the upgrades
-	upgrades, err := c.barrier.List(ctx, keyringUpgradePrefix)
+	upgrades, err := c.barrier.List(ctx, barrier.KeyringUpgradePrefix)
 	if err != nil {
 		return fmt.Errorf("failed to list upgrades: %w", err)
 	}
@@ -1166,7 +1167,7 @@ func (c *Core) scheduleUpgradeCleanup(ctx context.Context) error {
 			return
 		}
 		for _, upgrade := range upgrades {
-			path := fmt.Sprintf("%s%s", keyringUpgradePrefix, upgrade)
+			path := fmt.Sprintf("%s%s", barrier.KeyringUpgradePrefix, upgrade)
 			if err := c.barrier.Delete(ctx, path); err != nil {
 				c.logger.Error("failed to cleanup upgrade", "path", path, "error", err)
 			}

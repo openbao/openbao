@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package barrier
 
 import (
 	"context"
@@ -13,14 +13,14 @@ import (
 )
 
 func TestBarrierView_spec(t *testing.T) {
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "foo/")
+	_, barrier, _ := MockBarrier(t, logger)
+	view := NewView(barrier, "foo/")
 	logical.TestStorage(t, view)
 }
 
 func TestBarrierView_BadKeysKeys(t *testing.T) {
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "foo/")
+	_, barrier, _ := MockBarrier(t, logger)
+	view := NewView(barrier, "foo/")
 
 	_, err := view.List(context.Background(), "../")
 	if err == nil {
@@ -48,8 +48,8 @@ func TestBarrierView_BadKeysKeys(t *testing.T) {
 }
 
 func TestBarrierView(t *testing.T) {
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "foo/")
+	_, barrier, _ := MockBarrier(t, logger)
+	view := NewView(barrier, "foo/")
 
 	// Write a key outside of foo/
 	entry := &logical.StorageEntry{Key: "test", Value: []byte("test")}
@@ -114,8 +114,8 @@ func TestBarrierView(t *testing.T) {
 }
 
 func TestBarrierView_SubView(t *testing.T) {
-	_, barrier, _ := mockBarrier(t)
-	root := NewBarrierView(barrier, "foo/")
+	_, barrier, _ := MockBarrier(t, logger)
+	root := NewView(barrier, "foo/")
 	view := root.SubView("bar/")
 
 	// List should have no visibility
@@ -176,8 +176,8 @@ func TestBarrierView_SubView(t *testing.T) {
 }
 
 func TestBarrierView_Scan(t *testing.T) {
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "view/")
+	_, barrier, _ := MockBarrier(t, logger)
+	view := NewView(barrier, "view/")
 
 	expect := []string{}
 	ent := []*logical.StorageEntry{
@@ -214,8 +214,8 @@ func TestBarrierView_Scan(t *testing.T) {
 }
 
 func TestBarrierView_CollectKeys(t *testing.T) {
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "view/")
+	_, barrier, _ := MockBarrier(t, logger)
+	view := NewView(barrier, "view/")
 
 	expect := []string{}
 	ent := []*logical.StorageEntry{
@@ -248,8 +248,8 @@ func TestBarrierView_CollectKeys(t *testing.T) {
 }
 
 func TestBarrierView_ClearView(t *testing.T) {
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "view/")
+	_, barrier, _ := MockBarrier(t, logger)
+	view := NewView(barrier, "view/")
 
 	expect := []string{}
 	ent := []*logical.StorageEntry{
@@ -284,8 +284,8 @@ func TestBarrierView_ClearView(t *testing.T) {
 }
 
 func TestBarrierView_Readonly(t *testing.T) {
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "foo/")
+	_, barrier, _ := MockBarrier(t, logger)
+	view := NewView(barrier, "foo/")
 
 	// Add a key before enabling read-only
 	entry := &logical.StorageEntry{Key: "test", Value: []byte("test")}

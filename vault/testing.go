@@ -55,6 +55,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
@@ -1117,7 +1118,7 @@ type TestClusterCore struct {
 	tlsConfig            *tls.Config
 	UnderlyingRawStorage physical.Backend
 	UnderlyingHAStorage  physical.HABackend
-	Barrier              SecurityBarrier
+	Barrier              barrier.SecurityBarrier
 	NodeID               string
 }
 

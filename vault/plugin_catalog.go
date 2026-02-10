@@ -31,6 +31,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/version"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -49,7 +50,7 @@ var (
 // plugins are automatically detected and included in the catalog.
 type PluginCatalog struct {
 	builtinRegistry BuiltinRegistry
-	catalogView     BarrierView
+	catalogView     barrier.View
 	directory       string
 	logger          log.Logger
 
@@ -173,7 +174,7 @@ func wrapFactoryCheckPerms(core *Core, f logical.Factory) logical.Factory {
 func (c *Core) setupPluginCatalog(ctx context.Context) error {
 	c.pluginCatalog = &PluginCatalog{
 		builtinRegistry: c.builtinRegistry,
-		catalogView:     NewBarrierView(c.barrier, pluginCatalogPath),
+		catalogView:     barrier.NewView(c.barrier, pluginCatalogPath),
 		directory:       c.pluginDirectory,
 		logger:          c.logger,
 		// mlock is not currently used in OpenBao, but this setting is retained for Vault compat

@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package barrier
 
 import (
 	"context"
@@ -42,11 +42,11 @@ var (
 )
 
 const (
-	// keyringPath is the location of the keyring data. This is encrypted
+	// KeyringPath is the location of the keyring data. This is encrypted
 	// by the root key.
-	keyringPath = "core/keyring"
+	KeyringPath = "core/keyring"
 
-	// keyringUpgradePrefix is the path used to store keyring update entries.
+	// KeyringUpgradePrefix is the path used to store keyring update entries.
 	// When running in HA mode, the active instance will install the new key
 	// and re-write the keyring. Standby instances need an upgrade path from
 	// key N to N+1. They cannot just use the root key because in the event
@@ -56,26 +56,26 @@ const (
 	// for this periodically and refresh their keyring. The upgrade keys
 	// are deleted after a few minutes, but this provides enough time for the
 	// standby instances to upgrade without causing any disruption.
-	keyringUpgradePrefix = "core/upgrade/"
+	KeyringUpgradePrefix = "core/upgrade/"
 
-	// rootKeyPath is the location of the root key. This is encrypted
+	// RootKeyPath is the location of the root key. This is encrypted
 	// by the latest key in the keyring. This is only used by standby instances
 	// to handle the case of a rotation. If the active instance does a rotation,
 	// the standby instances can no longer reload the keyring since they
 	// have the old root key. This key can be decrypted if you have the
 	// keyring to discover the new root key. The new root key is then
 	// used to reload the keyring itself.
-	rootKeyPath = "core/root-key"
+	RootKeyPath = "core/root-key"
 
-	// legacyRootKeyPath is the former value of rootKeyPath and is replaced
+	// LegacyRootKeyPath is the former value of rootKeyPath and is replaced
 	// on initialization or rotation.
-	legacyRootKeyPath = "core/master"
+	LegacyRootKeyPath = "core/master"
 
-	// shamirKekPath is used with Shamir in v1.3+ to store a copy of the
+	// ShamirKekPath is used with Shamir in v1.3+ to store a copy of the
 	// unseal key behind the barrier. As with rootKeyPath this is primarily
 	// used by standbys to handle rotations. It also comes into play when
 	// restoring raft snapshots.
-	shamirKekPath = "core/shamir-kek"
+	ShamirKekPath = "core/shamir-kek"
 )
 
 type SecurityBarrierCore interface {
@@ -164,7 +164,7 @@ type SecurityBarrierCore interface {
 	CheckBarrierAutoRotate(ctx context.Context) (string, error)
 
 	// SecurityBarrier must provide the encryption APIs
-	BarrierEncryptor
+	Encryptor
 
 	// SetReadOnly allows marking storage as read-only; this is useful for
 	// HA mode but could be more broadly useful.
@@ -204,10 +204,10 @@ type SecurityBarrierTransaction interface {
 	logical.Transaction
 }
 
-// BarrierEncryptor is the in memory only interface that does not actually
+// Encryptor is the in memory only interface that does not actually
 // use the underlying barrier. It is used for lower level modules like the
 // Write-Ahead-Log and Merkle index to allow them to use the barrier.
-type BarrierEncryptor interface {
+type Encryptor interface {
 	Encrypt(ctx context.Context, key string, plaintext []byte) ([]byte, error)
 	Decrypt(ctx context.Context, key string, ciphertext []byte) ([]byte, error)
 }

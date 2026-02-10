@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package barrier
 
 import (
 	"bytes"
@@ -14,27 +14,11 @@ import (
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/stretchr/testify/require"
 )
 
 var logger = logging.NewVaultLogger(log.Trace)
-
-// mockBarrier returns a physical backend, security barrier, and root key
-func mockBarrier(t testing.TB) (physical.Backend, SecurityBarrier, []byte) {
-	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	b := NewAESGCMBarrier(inm, "")
-
-	// Initialize and unseal
-	key, _ := b.GenerateKey(rand.Reader)
-	b.Initialize(context.Background(), key, nil, rand.Reader)
-	b.Unseal(context.Background(), key)
-	return inm, b, key
-}
 
 func TestAESGCMBarrier_Basic(t *testing.T) {
 	inm, err := inmem.NewInmem(nil, logger)
@@ -100,27 +84,27 @@ func TestAESGCMBarrier_Upgrade_RotateRootKey(t *testing.T) {
 
 	// Test migration from legacy to new root key path. Move the existing
 	// root key over to the legacy path.
-	entry, err := b1.Get(context.Background(), rootKeyPath)
+	entry, err := b1.Get(context.Background(), RootKeyPath)
 	require.NoError(t, err)
 	require.NotNil(t, entry)
-	require.Equal(t, entry.Key, rootKeyPath)
+	require.Equal(t, entry.Key, RootKeyPath)
 
-	entry.Key = legacyRootKeyPath
+	entry.Key = LegacyRootKeyPath
 	err = b1.Put(context.Background(), entry)
 	require.NoError(t, err)
-	err = b1.Delete(context.Background(), rootKeyPath)
+	err = b1.Delete(context.Background(), RootKeyPath)
 	require.NoError(t, err)
 
 	// Now reload b1; this should succeed but not migrate the key.
 	err = b1.ReloadRootKey(context.Background())
 	require.NoError(t, err)
 
-	oldEntry, err := b1.Get(context.Background(), legacyRootKeyPath)
+	oldEntry, err := b1.Get(context.Background(), LegacyRootKeyPath)
 	require.NoError(t, err)
 	require.NotNil(t, oldEntry)
 	require.Equal(t, entry.Value, oldEntry.Value)
 
-	newEntry, err := b1.Get(context.Background(), rootKeyPath)
+	newEntry, err := b1.Get(context.Background(), RootKeyPath)
 	require.NoError(t, err)
 	require.Nil(t, newEntry)
 
@@ -128,11 +112,11 @@ func TestAESGCMBarrier_Upgrade_RotateRootKey(t *testing.T) {
 	err = b1.persistKeyring(context.Background(), b1.keyring)
 	require.NoError(t, err)
 
-	oldEntry, err = b1.Get(context.Background(), legacyRootKeyPath)
+	oldEntry, err = b1.Get(context.Background(), LegacyRootKeyPath)
 	require.NoError(t, err)
 	require.Nil(t, oldEntry)
 
-	newEntry, err = b1.Get(context.Background(), rootKeyPath)
+	newEntry, err = b1.Get(context.Background(), RootKeyPath)
 	require.NoError(t, err)
 	require.NotNil(t, newEntry)
 	require.Equal(t, entry.Value, newEntry.Value)
@@ -489,7 +473,7 @@ func TestAESGCMBarrier_ReloadKeyring(t *testing.T) {
 	b.Initialize(context.Background(), key, nil, rand.Reader)
 	b.Unseal(context.Background(), key)
 
-	keyringRaw, err := inm.Get(context.Background(), keyringPath)
+	keyringRaw, err := inm.Get(context.Background(), KeyringPath)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

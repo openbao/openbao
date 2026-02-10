@@ -1,13 +1,14 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package barrier
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -16,13 +17,13 @@ import (
 const (
 	// 10% shy of the NIST recommended maximum, leaving a buffer to account for
 	// tracking losses.
-	absoluteOperationMaximum = int64(3_865_470_566)
-	absoluteOperationMinimum = int64(1_000_000)
-	minimumRotationInterval  = 24 * time.Hour
+	AbsoluteOperationMaximum = int64(3_865_470_566)
+	AbsoluteOperationMinimum = int64(1_000_000)
+	MinimumRotationInterval  = 24 * time.Hour
 )
 
 var defaultRotationConfig = KeyRotationConfig{
-	MaxOperations: absoluteOperationMaximum,
+	MaxOperations: AbsoluteOperationMaximum,
 }
 
 // Keyring is used to manage multiple encryption keys used by
@@ -94,9 +95,7 @@ func (k *Keyring) Clone() *Keyring {
 		activeTerm:     k.activeTerm,
 		rotationConfig: k.rotationConfig,
 	}
-	for idx, key := range k.keys {
-		clone.keys[idx] = key
-	}
+	maps.Copy(clone.keys, k.keys)
 	return clone
 }
 
@@ -250,14 +249,14 @@ func (c KeyRotationConfig) Clone() KeyRotationConfig {
 }
 
 func (c *KeyRotationConfig) Sanitize() {
-	if c.MaxOperations == 0 || c.MaxOperations > absoluteOperationMaximum {
-		c.MaxOperations = absoluteOperationMaximum
+	if c.MaxOperations == 0 || c.MaxOperations > AbsoluteOperationMaximum {
+		c.MaxOperations = AbsoluteOperationMaximum
 	}
-	if c.MaxOperations < absoluteOperationMinimum {
-		c.MaxOperations = absoluteOperationMinimum
+	if c.MaxOperations < AbsoluteOperationMinimum {
+		c.MaxOperations = AbsoluteOperationMinimum
 	}
-	if c.Interval > 0 && c.Interval < minimumRotationInterval {
-		c.Interval = minimumRotationInterval
+	if c.Interval > 0 && c.Interval < MinimumRotationInterval {
+		c.Interval = MinimumRotationInterval
 	}
 }
 

@@ -37,6 +37,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/tokens"
 	"google.golang.org/protobuf/proto"
 )
@@ -121,7 +122,7 @@ var (
 		if storage == nil {
 			return errors.New("no cubby mount entry")
 		}
-		view := storage.(BarrierView)
+		view := storage.(barrier.View)
 
 		switch {
 		case te.NamespaceID == namespace.RootNamespaceID && !IsServiceToken(te.ID):
@@ -785,7 +786,7 @@ type TokenStore struct {
 
 	core *Core
 
-	batchTokenEncryptor BarrierEncryptor
+	batchTokenEncryptor barrier.Encryptor
 
 	expiration *ExpirationManager
 
@@ -877,23 +878,23 @@ func (ts *TokenStore) teardown() {
 	ts.tidyLock.Lock()
 }
 
-func (ts *TokenStore) baseView(ns *namespace.Namespace) BarrierView {
+func (ts *TokenStore) baseView(ns *namespace.Namespace) barrier.View {
 	return NamespaceView(ts.core.barrier, ns).SubView(systemBarrierPrefix + tokenSubPath)
 }
 
-func (ts *TokenStore) idView(ns *namespace.Namespace) BarrierView {
+func (ts *TokenStore) idView(ns *namespace.Namespace) barrier.View {
 	return ts.baseView(ns).SubView(idPrefix)
 }
 
-func (ts *TokenStore) accessorView(ns *namespace.Namespace) BarrierView {
+func (ts *TokenStore) accessorView(ns *namespace.Namespace) barrier.View {
 	return ts.baseView(ns).SubView(accessorPrefix)
 }
 
-func (ts *TokenStore) parentView(ns *namespace.Namespace) BarrierView {
+func (ts *TokenStore) parentView(ns *namespace.Namespace) barrier.View {
 	return ts.baseView(ns).SubView(parentPrefix)
 }
 
-func (ts *TokenStore) rolesView(ns *namespace.Namespace) BarrierView {
+func (ts *TokenStore) rolesView(ns *namespace.Namespace) barrier.View {
 	return ts.baseView(ns).SubView(rolesPrefix)
 }
 
@@ -2440,7 +2441,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 			if view == nil {
 				return errors.New("no cubby mount entry")
 			}
-			bview := view.(BarrierView)
+			bview := view.(barrier.View)
 
 			cubbyholeKeys, err := bview.List(quitCtx, "")
 			if err != nil {

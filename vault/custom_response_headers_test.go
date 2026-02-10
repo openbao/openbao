@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 var defaultCustomHeaders = map[string]string{
@@ -102,8 +103,8 @@ func TestConfigCustomHeaders(t *testing.T) {
 func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	b := testSystemBackend(t)
 	paths := b.(*SystemBackend).configPaths()
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "")
+	_, barr, _ := barrier.MockBarrier(t, logger)
+	view := barrier.NewView(barr, "")
 	b.(*SystemBackend).Core.systemBarrierView = view
 
 	logger := logging.NewVaultLogger(log.Trace)

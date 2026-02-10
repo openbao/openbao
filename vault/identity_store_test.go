@@ -27,6 +27,7 @@ import (
 	"github.com/openbao/openbao/helper/storagepacker"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
@@ -229,8 +230,8 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 	}
 
 	// Mount the noop backend
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "logical/")
+	_, barr, _ := barrier.MockBarrier(t, logger)
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)

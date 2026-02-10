@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/helper/fairshare"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/quotas"
 )
 
@@ -240,14 +241,14 @@ func isTransactionalMountPath(key string) bool {
 func isKeyringPath(key string) bool {
 	return key == barrierSealConfigPath ||
 		key == coreKeyringCanaryPath ||
-		key == keyringPath ||
-		key == legacyRootKeyPath ||
+		key == barrier.KeyringPath ||
+		key == barrier.LegacyRootKeyPath ||
 		key == recoverySealConfigPath ||
 		key == recoveryKeyPath ||
-		key == rootKeyPath ||
-		key == shamirKekPath ||
+		key == barrier.RootKeyPath ||
+		key == barrier.ShamirKekPath ||
 		key == StoredBarrierKeysPath ||
-		strings.HasPrefix(key, keyringUpgradePrefix)
+		strings.HasPrefix(key, barrier.KeyringUpgradePrefix)
 }
 
 func isMissedMountKey(key string) bool {

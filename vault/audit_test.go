@@ -22,6 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 func TestAudit_ReadOnlyViewDuringMount(t *testing.T) {
@@ -545,8 +546,8 @@ func TestAuditBroker_LogResponse(t *testing.T) {
 func TestAuditBroker_AuditHeaders(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Trace)
 	b := NewAuditBroker(logger)
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "headers/")
+	_, barr, _ := barrier.MockBarrier(t, logger)
+	view := barrier.NewView(barr, "headers/")
 	a1 := corehelpers.TestNoopAudit(t, nil)
 	a2 := corehelpers.TestNoopAudit(t, nil)
 	b.Register("foo", a1, nil, false)

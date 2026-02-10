@@ -38,6 +38,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1475,7 +1476,7 @@ func TestTokenStore_Revoke_Leases(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ts := c.tokenStore
 
-	view := NewBarrierView(c.barrier, "noop/")
+	view := barrier.NewView(c.barrier, "noop/")
 
 	// Mount a noop backend
 	noop := &NoopBackend{}
@@ -5949,8 +5950,8 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	ts := exp.tokenStore
 
 	noop := &NoopBackend{}
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "logical/")
+	_, barr, _ := barrier.MockBarrier(t, logger)
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)

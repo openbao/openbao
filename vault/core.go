@@ -54,6 +54,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/quotas"
 	vaultseal "github.com/openbao/openbao/vault/seal"
@@ -149,6 +150,8 @@ var (
 	// It's var not const so that tests can manipulate it.
 	manualStepDownSleepPeriod = 10 * time.Second
 )
+
+var logger = logging.NewVaultLogger(log.Trace)
 
 // NonFatalError is an error that can be returned during NewCore that should be
 // displayed but not cause a program exit
@@ -280,7 +283,7 @@ type Core struct {
 	sealMigrationDone atomic.Bool
 
 	// barrier is the security barrier wrapping the physical backend
-	barrier SecurityBarrier
+	barrier barrier.SecurityBarrier
 
 	// router is responsible for managing the mount points for logical backends.
 	router *Router
@@ -372,7 +375,7 @@ type Core struct {
 	cubbyholeBackend *CubbyholeBackend
 
 	// systemBarrierView is the barrier view for the system backend
-	systemBarrierView BarrierView
+	systemBarrierView barrier.View
 
 	// expiration manager is used for managing LeaseIDs,
 	// renewal, expiration and revocation
@@ -1072,7 +1075,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// Construct a new AES-GCM barrier
-	c.barrier = NewAESGCMBarrier(c.physical, "")
+	c.barrier = barrier.NewAESGCMBarrier(c.physical, "")
 
 	// We create the funcs here, then populate the given config with it so that
 	// the caller can share state
@@ -1128,7 +1131,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 	// UI
 	uiStoragePrefix := systemBarrierPrefix + "ui"
-	c.uiConfig = NewUIConfig(conf.EnableUI, physical.NewView(c.physical, uiStoragePrefix), NewBarrierView(c.barrier, uiStoragePrefix))
+	c.uiConfig = NewUIConfig(conf.EnableUI, physical.NewView(c.physical, uiStoragePrefix), barrier.NewView(c.barrier, uiStoragePrefix))
 
 	// Listeners
 	err = c.configureListeners(conf)
@@ -1584,7 +1587,7 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 		// unseal the node.
 		for {
 			if !keyringFound {
-				entry, err := c.underlyingPhysical.Get(ctx, keyringPath)
+				entry, err := c.underlyingPhysical.Get(ctx, barrier.KeyringPath)
 				if err != nil {
 					c.logger.Error("failed to list physical keys", "error", err)
 					return
@@ -2938,10 +2941,6 @@ func (c *Core) IsSealMigrated(lock bool) bool {
 	return done
 }
 
-func (c *Core) BarrierEncryptorAccess() *BarrierEncryptorAccess {
-	return NewBarrierEncryptorAccess(c.barrier)
-}
-
 func (c *Core) PhysicalAccess() *physical.PhysicalAccess {
 	return physical.NewPhysicalAccess(c.physical)
 }
@@ -3235,7 +3234,7 @@ func (c *Core) SetKeyRotateGracePeriod(t time.Duration) {
 
 // Periodically test whether to automatically rotate the barrier key
 func (c *Core) autoRotateBarrierLoop(ctx context.Context) {
-	t := time.NewTicker(autoRotateCheckInterval)
+	t := time.NewTicker(barrier.AutoRotateCheckInterval)
 	for {
 		select {
 		case <-t.C:
@@ -3273,7 +3272,7 @@ func (c *Core) checkBarrierAutoRotate(ctx context.Context) {
 		if err := c.systemBackend.rotateBarrierKey(ctx); err != nil {
 			c.logger.Error("error automatically rotating barrier key", "error", err)
 		} else {
-			metrics.IncrCounter(barrierRotationsMetric, 1)
+			metrics.IncrCounter(barrier.BarrierRotationsMetric, 1)
 		}
 	}
 }

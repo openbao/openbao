@@ -21,6 +21,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 var deniedPassthroughRequestHeaders = []string{
@@ -167,7 +168,7 @@ func (re *routeEntry) SaltID(id string) string {
 
 // Mount is used to expose a logical backend at a given prefix, using a unique salt,
 // and the barrier view for that path.
-func (r *Router) Mount(backend logical.Backend, prefix string, mountEntry *MountEntry, storageView BarrierView) error {
+func (r *Router) Mount(backend logical.Backend, prefix string, mountEntry *MountEntry, storageView barrier.View) error {
 	r.l.Lock()
 	defer r.l.Unlock()
 

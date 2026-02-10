@@ -14,6 +14,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 func handleSysSeal(core *vault.Core) http.Handler {
@@ -135,9 +136,9 @@ func handleSysUnseal(core *vault.Core) http.Handler {
 		if err != nil {
 			switch {
 			case errwrap.ContainsType(err, new(vault.ErrInvalidKey)):
-			case errwrap.Contains(err, vault.ErrBarrierInvalidKey.Error()):
-			case errwrap.Contains(err, vault.ErrBarrierNotInit.Error()):
-			case errwrap.Contains(err, vault.ErrBarrierSealed.Error()):
+			case errwrap.Contains(err, barrier.ErrBarrierInvalidKey.Error()):
+			case errwrap.Contains(err, barrier.ErrBarrierNotInit.Error()):
+			case errwrap.Contains(err, barrier.ErrBarrierSealed.Error()):
 			case errwrap.Contains(err, consts.ErrStandby.Error()):
 			default:
 				respondError(w, http.StatusInternalServerError, err)

@@ -1291,7 +1291,7 @@ func TestLogin_NestedGroups(t *testing.T) {
 	data := map[string]interface{}{
 		"bound_issuer":           "https://team-vault.auth0.com/",
 		"jwt_validation_pubkeys": ecdsaPubKey,
-		"jwt_supported_algs":     jose.ES256,
+		"jwt_supported_algs":     string(jose.ES256),
 	}
 
 	req := &logical.Request{

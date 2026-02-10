@@ -462,7 +462,11 @@ func (c *AgentCommand) Run(args []string) int {
 			}
 			previousToken = oldToken
 			if deferFunc != nil {
-				defer deferFunc()
+				defer func() {
+					if err := deferFunc(); err != nil {
+						c.UI.Error(fmt.Sprintf("Error running close function: %v", err))
+					}
+				}()
 			}
 		}
 	}
@@ -569,7 +573,11 @@ func (c *AgentCommand) Run(args []string) int {
 			ErrorLog:          apiProxyLogger.StandardLogger(nil),
 		}
 
-		go server.Serve(ln)
+		go func(ln net.Listener) {
+			if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				c.UI.Error(fmt.Sprintf("HTTP server (listening on %s) exited with error: %v", ln.Addr().String(), err))
+			}
+		}(ln)
 	}
 
 	c.tlsReloadFuncsLock.Unlock()
@@ -577,7 +585,9 @@ func (c *AgentCommand) Run(args []string) int {
 	// Ensure that listeners are closed at all the exits
 	listenerCloseFunc := func() {
 		for _, ln := range listeners {
-			ln.Close()
+			if err := ln.Close(); err != nil {
+				c.UI.Error(fmt.Sprintf("Could not close listener (listening on %s): %v", ln.Addr().String(), err))
+			}
 		}
 	}
 	defer c.cleanupGuard.Do(listenerCloseFunc)
@@ -956,7 +966,7 @@ func (c *AgentCommand) setBoolFlag(f *FlagSets, configVal bool, fVar *BoolVar) {
 }
 
 // storePidFile is used to write out our PID to a file if necessary
-func (c *AgentCommand) storePidFile(pidPath string) error {
+func (c *AgentCommand) storePidFile(pidPath string) (err error) {
 	// Quit fast if no pidfile
 	if pidPath == "" {
 		return nil
@@ -967,7 +977,9 @@ func (c *AgentCommand) storePidFile(pidPath string) error {
 	if err != nil {
 		return fmt.Errorf("could not open pid file: %w", err)
 	}
-	defer pidFile.Close()
+	defer func() {
+		err = errors.Join(err, pidFile.Close())
+	}()
 
 	// Write out the PID
 	pid := os.Getpid()
@@ -1012,10 +1024,10 @@ func (c *AgentCommand) handleMetrics() http.Handler {
 		switch v := resp.Data[logical.HTTPRawBody].(type) {
 		case string:
 			w.WriteHeader(status)
-			w.Write([]byte(v))
+			_, _ = fmt.Fprint(w, v)
 		case []byte:
 			w.WriteHeader(status)
-			w.Write(v)
+			_, _ = w.Write(v)
 		default:
 			logical.RespondError(w, http.StatusInternalServerError, errors.New("wrong response returned"))
 		}

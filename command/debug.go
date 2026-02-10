@@ -8,6 +8,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -971,24 +972,30 @@ func (c *DebugCommand) compress(dst string) error {
 
 	// Do this in a sub-function so we validate close works prior to
 	// removing the output, while letting us keep using defer.
-	if err := func() error {
+	if err := func() (err error) {
 		output, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 		if err != nil {
 			return fmt.Errorf("failed to open output archive for writing: %w", err)
 		}
-		defer output.Close()
+		defer func() {
+			err = errors.Join(err, output.Close())
+		}()
 
 		gzipped := gzip.NewWriter(output)
-		defer gzipped.Close()
+		defer func() {
+			err = errors.Join(err, gzipped.Close())
+		}()
 
 		archive := tar.NewWriter(gzipped)
-		defer archive.Close()
+		defer func() {
+			err = errors.Join(err, archive.Close())
+		}()
 
 		parent := filepath.Dir(c.flagOutput)
 		child := filepath.Base(c.flagOutput)
 
 		ofs := os.DirFS(parent)
-		if err := fs.WalkDir(ofs, child, func(path string, d fs.DirEntry, err error) error {
+		if err := fs.WalkDir(ofs, child, func(path string, d fs.DirEntry, _ error) error {
 			var fileType byte = tar.TypeReg
 			tarPath := path
 			if d.IsDir() {
@@ -1119,7 +1126,11 @@ func (c *DebugCommand) writeLogs(ctx context.Context) {
 		c.captureError("log", err)
 		return
 	}
-	defer out.Close()
+	defer func() {
+		if err := out.Close(); err != nil {
+			c.captureError("log", err)
+		}
+	}()
 
 	// Create Monitor specific client based on the cached client
 	mClient, err := c.cachedClient.Clone()

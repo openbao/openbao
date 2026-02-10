@@ -1123,7 +1123,7 @@ func TestLogin_JWTSupportedAlgs(t *testing.T) {
 			// Configure the backend with an ES256 public key
 			data := map[string]interface{}{
 				"jwt_validation_pubkeys": ecdsaPubKey,
-				"jwt_supported_algs":     toStr(tt.jwtSupportedAlgs),
+				"jwt_supported_algs":     tt.jwtSupportedAlgs,
 			}
 			req := &logical.Request{
 				Operation: logical.UpdateOperation,

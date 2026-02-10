@@ -714,6 +714,9 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	if opts.Root {
 		env = append(env, "BAO_SKIP_DROP_ROOT=true")
 	}
+	if len(opts.ExtraEnv) > 0 {
+		env = append(env, opts.ExtraEnv...)
+	}
 
 	r, err := dockhelper.NewServiceRunner(dockhelper.RunOptions{
 		ImageRepo: n.ImageRepo,
@@ -950,6 +953,7 @@ type DockerClusterOptions struct {
 	Root        bool
 	Entrypoint  string
 	HADisabled  bool
+	ExtraEnv    []string
 }
 
 func DefaultOptions(t *testing.T) *DockerClusterOptions {

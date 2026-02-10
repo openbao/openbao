@@ -137,7 +137,7 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	require.Nil(t, resp)
 }
 
-func TestPSQLParallelInit(t *testing.T) {
+func TestPostgreSQL_ParallelInit(t *testing.T) {
 	t.Parallel()
 
 	binary := api.ReadBaoVariable("BAO_BINARY")
@@ -165,30 +165,25 @@ func TestPSQLParallelInit(t *testing.T) {
 		}
 	}
 
+	delete(config, "listener")
+	delete(config, "api_addr")
+	delete(config, "cluster_addr")
+
 	configBytes, err := json.MarshalIndent(config, "", "  ")
 	require.NoError(t, err, "marshal config")
-
-	tmpConfig, err := os.CreateTemp("", "openbao-config-*.hcl")
-	require.NoError(t, err, "create temp config")
-	configFile := tmpConfig.Name()
-
-	_, err = tmpConfig.Write(configBytes)
-	require.NoError(t, err, "write config")
-	err = tmpConfig.Close()
-	require.NoError(t, err, "close config")
-	defer func() {
-		if err := os.Remove(configFile); err != nil {
-			t.Logf("failed to remove tmp config file: %v", err)
-		}
-	}()
 
 	opts := &docker.DockerClusterOptions{
 		ImageRepo:   "quay.io/openbao/openbao",
 		ImageTag:    "latest",
 		VaultBinary: binary,
-		Args:        []string{"server", "-config", configFile},
-		Storage:     psql,
+		Args:        []string{"-config", "/dev/null"},
+		ExtraEnv: []string{
+			"BAO_LOCAL_CONFIG=" + string(configBytes),
+			"INITIAL_ADMIN_PASSWORD=password",
+		},
+		Storage: psql,
 		ClusterOptions: testcluster.ClusterOptions{
+			SkipInit: true,
 			VaultNodeConfig: &testcluster.VaultNodeConfig{
 				LogLevel: "TRACE",
 			},
@@ -207,7 +202,17 @@ func TestPSQLParallelInit(t *testing.T) {
 			t.Logf("Ready after %ds", i)
 			break
 		}
+		time.Sleep(time.Second)
 	}
+
+	client := nodes[0].APIClient()
+	secret, err := client.Logical().Write("auth/userpass/login/admin", map[string]interface{}{
+		"password": "password",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, secret)
+	require.NotNil(t, secret.Auth)
+	cluster.SetRootToken(secret.Auth.ClientToken)
 
 	var active, sealed int
 	for i, node := range nodes {

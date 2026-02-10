@@ -3962,3 +3962,74 @@ func (c *Core) DetectStateLockDeadlocks() bool {
 	}
 	return false
 }
+
+const (
+	// coreStatusSelfInitStatus is the key for the initialization state machine.
+	// Values:
+	// - (missing): Legacy cluster or Manual Init (Success assumed)
+	// - "started": Auto-init attempted but not finished (Partial Failure)
+	// - "completed": Auto-init finished successfully
+	coreStatusSelfInitStatus = "core/status/self-init-status"
+)
+
+// MarkSelfInitStarted writes "started" to the physical backend.
+// This indicates we are attempting auto-init.
+func (c *Core) MarkSelfInitStarted(ctx context.Context) error {
+	if c.physical == nil {
+		return fmt.Errorf("physical backend missing")
+	}
+	return c.physical.Put(ctx, &physical.Entry{
+		Key:   coreStatusSelfInitStatus,
+		Value: []byte("started"),
+	})
+}
+
+// MarkSelfInitComplete updates the status to "completed".
+// This overwrites the "started" state, signaling success.
+func (c *Core) MarkSelfInitComplete(ctx context.Context) error {
+	if c.physical == nil {
+		return fmt.Errorf("physical backend missing")
+	}
+	return c.physical.Put(ctx, &physical.Entry{
+		Key:   coreStatusSelfInitStatus,
+		Value: []byte("completed"),
+	})
+}
+
+// IsSelfInitComplete checks the state machine.
+func (c *Core) IsSelfInitComplete(ctx context.Context) (bool, error) {
+	if c.physical == nil {
+		return false, fmt.Errorf("physical backend missing")
+	}
+
+	entry, err := c.physical.Get(ctx, coreStatusSelfInitStatus)
+	if err != nil {
+		return false, err
+	}
+
+	// STATE 1: Missing Marker
+	// Meaning: Old OpenBao version OR Manual Init.
+	// Action: Assume Success (Backward Compatibility).
+	if entry == nil {
+		return true, nil
+	}
+
+	val := string(entry.Value)
+
+	// STATE 2: "completed"
+	// Meaning: New version, auto-init succeeded.
+	// Action: Success.
+	if val == "completed" {
+		return true, nil
+	}
+
+	// STATE 3: "started" (or anything else)
+	// Meaning: We started auto-init but never reached the "completed" line.
+	// Action: Fail/Panic implies corrupt state.
+	if val == "started" {
+		return false, fmt.Errorf("auto-init detected as 'started' but not 'completed' ")
+	}
+
+	// Fallback for unknown garbage data
+	return false, fmt.Errorf("unknown self-init state: %s", val)
+}

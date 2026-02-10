@@ -1747,12 +1747,21 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	if err != nil {
 		return fmt.Errorf("unable to check core initialization status: %w", err)
 	}
+
 	if inited {
-		// We refuse to rerun self-initialization as it is a highly privileged
-		// way of sidestepping authentication. At first startup there is no
-		// other authentication information but on subsequent startups
-		// presumably the admin has created an alternative mechanism we should
-		// defer to.
+		// We refuse to rerun self-initialization.
+		// HOWEVER, we must verify that the previous initialization actually finished.
+		// If barrier exists but self-init marker is missing, we are in a broken state.
+
+		complete, err := core.IsSelfInitComplete(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to verify self-init consistency: %w", err)
+		}
+
+		if !complete {
+			return fmt.Errorf("FATAL: Storage inconsistency detected. OpenBao is initialized (barrier exists) but Self-Initialization failed or was interrupted. Manual storage wipe required")
+		}
+
 		return nil
 	}
 
@@ -1762,17 +1771,27 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	barrierConfig := &vault.SealConfig{}
 	recoveryConfig = &vault.SealConfig{}
 
+	// 1. Mark that we are STARTING self-initialization.
+	// This creates the "started" marker on physical storage.
+	if err := core.MarkSelfInitStarted(ctx); err != nil {
+		return fmt.Errorf("failed to mark self-init started: %v", err)
+	}
+
 	init, err := core.Initialize(ctx, &vault.InitParams{
 		BarrierConfig:  barrierConfig,
 		RecoveryConfig: recoveryConfig,
 	})
 	if err != nil {
-		core.Logger().Error("failed to initialize", "error", err)
 		if errors.Is(err, vault.ErrParallelInit) || errors.Is(err, vault.ErrAlreadyInit) {
 			return nil
 		}
-
+		core.Logger().Error("failed to initialize: unexpected error occurred")
 		return fmt.Errorf("self-initialization failed: %w", err)
+	}
+
+	// We decide init worked
+	if err := core.MarkSelfInitComplete(ctx); err != nil {
+		return fmt.Errorf("failed to mark self-init completed: %v", err)
 	}
 
 	// Wait for leadership; if we don't get the leadership status, it means
@@ -1788,7 +1807,16 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	}
 
 	// Now perform the component requests of self-initialization.
-	return c.doSelfInit(core, config, init.RootToken)
+	if err := c.doSelfInit(core, config, init.RootToken); err != nil {
+		return err // Original patch: Fail fast on config error
+	}
+
+	// Self-init completed successfully. Persist the state to allow future restarts.
+	if err := core.MarkSelfInitComplete(ctx); err != nil {
+		return fmt.Errorf("failed to persist self-init success marker: %w", err)
+	}
+
+	return nil
 }
 
 // doSelfInit is the internal helper that uses the profile system with this

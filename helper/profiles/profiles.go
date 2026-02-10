@@ -276,14 +276,26 @@ func (p *ProfileEngine) evaluateRequest(ctx context.Context, history *Evaluation
 
 	// 2. Call the request handler.
 	resp, err := p.requestHandler(ctx, req)
-	isFailure := err != nil || resp.IsError()
-	if err == nil && resp.IsError() {
+
+	// Determine if the request failed.
+	// We explicitly check resp != nil before calling IsError().
+	isFailure := err != nil || (resp != nil && resp.IsError())
+
+	// If there is no Go-level error but the logical response indicates an error,
+	// extract the error details from the response.
+	if err == nil && resp != nil && resp.IsError() {
 		err = resp.Error()
 	}
+
+	// If failure is NOT allowed and we detected a failure, we MUST return an error
+	// to stop the initialization process.
 	if !allowFailure && isFailure {
 		if err != nil {
 			return fmt.Errorf("failed to evaluate request: %w", err)
 		}
+		// Defensive fallback: If resp.IsError() is true but we couldn't extract an error object,
+		// we still return a generic error to ensure the process terminates fatally.
+		return fmt.Errorf("failed to evaluate request: operation returned failure status")
 	}
 
 	// 3. Stash request & response for future use.

@@ -657,3 +657,45 @@ func TestConvertToType_ObjTypeEmpty_ReturnsOriginal(t *testing.T) {
 		t.Errorf("got %v; want original %v", gotInt, valInt)
 	}
 }
+
+// TestEvaluate_PropagatesRequestError verifies that if a request execution fails,
+// the error is strictly propagated instead of being swallowed.
+func TestEvaluate_PropagatesRequestError(t *testing.T) {
+	// 1. Setup Mock Handler
+	expectedErr := errors.New("simulated network failure")
+	failHandler := RequestHandlerFunc(func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
+		return nil, expectedErr
+	})
+
+	// 2. Configure Engine
+	engine, err := NewEngine(func(e *ProfileEngine) {
+		e.profile = []*OuterConfig{
+			{
+				Type: "setup",
+				Requests: []*RequestConfig{
+					{
+						Type:      "req-fail",
+						Operation: "read",
+						Path:      "sys/fail",
+					},
+				},
+			},
+		}
+		e.requestHandler = failHandler
+		e.outerBlockName = "setup"
+	})
+	if err != nil {
+		t.Fatalf("Setup error: %v", err)
+	}
+
+	// 3. Execution (Using Evaluate instead of Run)
+	err = engine.Evaluate(context.Background())
+
+	// 4. Verification
+	if err == nil {
+		t.Fatal("SAFETY VIOLATION: Evaluate() swallowed the error. Expected failure propagation")
+	}
+	if !strings.Contains(err.Error(), "simulated network failure") {
+		t.Fatalf("Unexpected error: got '%v', want substring 'simulated network failure'", err)
+	}
+}

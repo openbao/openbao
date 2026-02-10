@@ -6,12 +6,9 @@ package server
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
-	"math/rand"
 	"net"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-sockaddr"
@@ -39,12 +36,6 @@ func TestTCPListener(t *testing.T) {
 func TestTCPListener_tls(t *testing.T) {
 	wd, _ := os.Getwd()
 	wd += "/test-fixtures/reload/"
-
-	td, err := os.MkdirTemp("", fmt.Sprintf("vault-test-%d", rand.New(rand.NewSource(time.Now().Unix())).Int63()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(td)
 
 	// Setup initial certs
 	inBytes, _ := os.ReadFile(wd + "reload_ca.pem")
@@ -120,12 +111,6 @@ func TestTCPListener_tls(t *testing.T) {
 func TestTCPListener_tls13(t *testing.T) {
 	wd, _ := os.Getwd()
 	wd += "/test-fixtures/reload/"
-
-	td, err := os.MkdirTemp("", fmt.Sprintf("vault-test-%d", rand.New(rand.NewSource(time.Now().Unix())).Int63()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(td)
 
 	// Setup initial certs
 	inBytes, _ := os.ReadFile(wd + "reload_ca.pem")

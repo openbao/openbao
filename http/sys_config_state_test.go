@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/vault"
 )
 

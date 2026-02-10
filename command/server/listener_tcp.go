@@ -15,8 +15,8 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/internalshared/listenerutil"
+	"github.com/openbao/openbao/helper/configutil"
+	"github.com/openbao/openbao/helper/listenerutil"
 )
 
 func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, _ io.Writer, ui cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error) {

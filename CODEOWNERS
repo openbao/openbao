@@ -17,7 +17,6 @@ go.mod @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 go.sum @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 helper/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 http/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
-internalshared/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 Makefile @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 physical/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers
 sdk/ @openbao/openbao-org-maintainers @openbao/openbao-core-committers

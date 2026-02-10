@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/cli"
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 )
 
 func TestUnixListener(t *testing.T) {

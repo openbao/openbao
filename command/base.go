@@ -19,8 +19,8 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/command/token"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/posener/complete"
 )
 

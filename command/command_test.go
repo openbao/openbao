@@ -22,7 +22,7 @@ import (
 	"github.com/openbao/openbao/builtin/logical/transit"
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/builtinplugins"
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"

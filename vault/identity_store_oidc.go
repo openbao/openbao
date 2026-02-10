@@ -106,11 +106,11 @@ type accessToken struct {
 //
 // https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
 type discovery struct {
-	Issuer        string   `json:"issuer"`
-	Keys          string   `json:"jwks_uri"`
-	ResponseTypes []string `json:"response_types_supported"`
-	Subjects      []string `json:"subject_types_supported"`
-	IDTokenAlgs   []string `json:"id_token_signing_alg_values_supported"`
+	Issuer        string                    `json:"issuer"`
+	Keys          string                    `json:"jwks_uri"`
+	ResponseTypes []string                  `json:"response_types_supported"`
+	Subjects      []string                  `json:"subject_types_supported"`
+	IDTokenAlgs   []jose.SignatureAlgorithm `json:"id_token_signing_alg_values_supported"`
 }
 
 // oidcCache is a thin wrapper around zcache to partition by namespace
@@ -638,7 +638,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateKey(ctx context.Context, req *logica
 		key.Algorithm = d.Get("algorithm").(string)
 	}
 
-	if !slices.Contains(toStrings(supportedAlgs), key.Algorithm) {
+	if !slices.Contains(supportedAlgs, jose.SignatureAlgorithm(key.Algorithm)) {
 		return logical.ErrorResponse("unknown signing algorithm %q", key.Algorithm), nil
 	}
 
@@ -1425,7 +1425,7 @@ func (i *IdentityStore) pathOIDCDiscovery(ctx context.Context, req *logical.Requ
 			Keys:          c.effectiveIssuer + "/.well-known/keys",
 			ResponseTypes: []string{"id_token"},
 			Subjects:      []string{"public"},
-			IDTokenAlgs:   toStrings(supportedAlgs),
+			IDTokenAlgs:   supportedAlgs,
 		}
 
 		data, err = json.Marshal(disc)
@@ -1448,14 +1448,6 @@ func (i *IdentityStore) pathOIDCDiscovery(ctx context.Context, req *logical.Requ
 	}
 
 	return resp, nil
-}
-
-func toStrings(a []jose.SignatureAlgorithm) []string {
-	str := make([]string, len(a))
-	for i, e := range a {
-		str[i] = string(e)
-	}
-	return str
 }
 
 // getKeysCacheControlHeader returns the cache control header for all public

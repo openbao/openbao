@@ -25,7 +25,7 @@ var AllowedOuterJWSTypes = map[string]interface{}{
 	string(jose.ES256): true,
 	string(jose.ES384): true,
 	string(jose.ES512): true,
-	string(jose.EdDSA): true, // changed from "EdDSA2" (typo)
+	string(jose.EdDSA): true,
 }
 
 var AllowedEabJWSTypes = map[string]interface{}{

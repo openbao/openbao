@@ -13,12 +13,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
-const (
-	// CredentialBarrierPrefix is the prefix to the UUID used in the
-	// barrier view for the credential backends.
-	CredentialBarrierPrefix = "auth/"
-)
-
 // MountEntry is used to represent a mount table entry
 type MountEntry struct {
 	Table                 string            `json:"table"`                             // The table it belongs to

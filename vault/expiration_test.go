@@ -1741,7 +1741,7 @@ func TestExpiration_RenewToken_period_backend(t *testing.T) {
 	}
 
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewView(barr, credentialBarrierPrefix)
+	view := barrier.NewView(barr, barrier.CredentialBarrierPrefix)
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)

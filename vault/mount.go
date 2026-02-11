@@ -2213,7 +2213,7 @@ func (c *Core) mountEntryView(me *routing.MountEntry) (barrier.View, error) {
 	case routing.MountTableType:
 		return NamespaceView(c.barrier, me.Namespace).SubView(path.Join(backendBarrierPrefix, me.UUID) + "/"), nil
 	case routing.CredentialTableType:
-		return NamespaceView(c.barrier, me.Namespace).SubView(path.Join(credentialBarrierPrefix, me.UUID) + "/"), nil
+		return NamespaceView(c.barrier, me.Namespace).SubView(path.Join(barrier.CredentialBarrierPrefix, me.UUID) + "/"), nil
 	case auditTableType, configAuditTableType:
 		return NamespaceView(c.barrier, me.Namespace).SubView(path.Join(auditBarrierPrefix, me.UUID) + "/"), nil
 	}

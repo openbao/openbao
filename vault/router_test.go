@@ -12,9 +12,9 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/routing"
-	be "github.com/openbao/openbao/vault/backend"
 )
 
 func TestRouter_Mount(t *testing.T) {
@@ -132,7 +132,7 @@ func TestRouter_Mount(t *testing.T) {
 func TestRouter_MountCredential(t *testing.T) {
 	r := NewRouter()
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewView(barr, credentialBarrierPrefix)
+	view := barrier.NewView(barr, barrier.CredentialBarrierPrefix)
 
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
@@ -188,7 +188,7 @@ func TestRouter_MountCredential(t *testing.T) {
 	if !ok {
 		t.Fatal("missing storage prefix")
 	}
-	if mount != "auth/aws" || prefix != credentialBarrierPrefix {
+	if mount != "auth/aws" || prefix != barrier.CredentialBarrierPrefix {
 		t.Fatalf("Bad: %v - %v", mount, prefix)
 	}
 

@@ -1309,7 +1309,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Table: routing.CredentialTableType,
 			},
 
-			wantViewPrefix: credentialBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'audit' table type",
@@ -1399,7 +1399,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Namespace:   testNamespace1,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'auth' table, and 'userpass' type with nested namespace present",
@@ -1411,7 +1411,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Namespace:   testNamespace2,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'auth' table, and 'userpass' type without namespace present",
@@ -1421,7 +1421,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Type:  "userpass",
 			},
 
-			wantViewPrefix: credentialBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: barrier.CredentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 	}
 

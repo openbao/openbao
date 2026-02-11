@@ -691,7 +691,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	meGH.Accessor = approleAccessor
 
 	// Storage view for approle auth
-	ghView := barrier.NewView(c.barrier, credentialBarrierPrefix+meGH.UUID+"/")
+	ghView := barrier.NewView(c.barrier, barrier.CredentialBarrierPrefix+meGH.UUID+"/")
 
 	// Sysview for approle auth
 	ghSysview := c.mountEntrySysView(meGH)

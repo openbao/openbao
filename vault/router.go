@@ -600,7 +600,7 @@ func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string
 
 	mountPath := re.mountEntry.Path
 	// Add back the prefix for credential backends
-	if strings.HasPrefix(path, credentialBarrierPrefix) {
+	if strings.HasPrefix(path, barrier.CredentialBarrierPrefix) {
 		mountPath = routing.CredentialRoutePrefix + mountPath
 	}
 

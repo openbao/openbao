@@ -31,10 +31,6 @@ const (
 	// coreLocalAuthConfigPath is used to store credential configuration for
 	// local (non-replicated) mounts
 	coreLocalAuthConfigPath = "core/local-auth"
-
-	// credentialBarrierPrefix is the prefix to the UUID used in the
-	// barrier view for the credential backends.
-	credentialBarrierPrefix = "auth/"
 )
 
 var (

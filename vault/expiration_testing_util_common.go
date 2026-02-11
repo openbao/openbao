@@ -13,6 +13,7 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/routing"
 )
 
@@ -102,7 +103,7 @@ type backend struct {
 func mountNoopBackends(c *Core, backends []*backend) (map[string]string, error) {
 	// enable the noop backend
 	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{}, nil
+		return &be.Noop{}, nil
 	}
 
 	pathToMount := make(map[string]string)

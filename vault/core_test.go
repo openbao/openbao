@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/command/server"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/routing"
 
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
@@ -1283,7 +1284,7 @@ func TestCore_HandleRequest_PermissionAllowed(t *testing.T) {
 }
 
 func TestCore_HandleRequest_NoClientToken(t *testing.T) {
-	noop := &NoopBackend{
+	noop := &be.Noop{
 		Response: &logical.Response{},
 	}
 	c, _, root := TestCoreUnsealed(t)
@@ -1317,7 +1318,7 @@ func TestCore_HandleRequest_NoClientToken(t *testing.T) {
 }
 
 func TestCore_HandleRequest_ConnOnLogin(t *testing.T) {
-	noop := &NoopBackend{
+	noop := &be.Noop{
 		Login:       []string{"login"},
 		Response:    &logical.Response{},
 		BackendType: logical.TypeCredential,
@@ -1351,7 +1352,7 @@ func TestCore_HandleRequest_ConnOnLogin(t *testing.T) {
 
 // Ensure we get a client token
 func TestCore_HandleLogin_Token(t *testing.T) {
-	noop := &NoopBackend{
+	noop := &be.Noop{
 		Login: []string{"login"},
 		Response: &logical.Response{
 			Auth: &logical.Auth{
@@ -1609,7 +1610,7 @@ func TestCore_HandleRequest_AuditTrail_noHMACKeys(t *testing.T) {
 func TestCore_HandleLogin_AuditTrail(t *testing.T) {
 	// Create a badass credential backend that always logs in as armon
 	noop := &corehelpers.NoopAudit{}
-	noopBack := &NoopBackend{
+	noopBack := &be.Noop{
 		Login: []string{"login"},
 		Response: &logical.Response{
 			Auth: &logical.Auth{
@@ -2546,7 +2547,7 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 
 // Ensure that InternalData is never returned
 func TestCore_HandleRequest_Login_InternalData(t *testing.T) {
-	noop := &NoopBackend{
+	noop := &be.Noop{
 		Login: []string{"login"},
 		Response: &logical.Response{
 			Auth: &logical.Auth{
@@ -2590,7 +2591,7 @@ func TestCore_HandleRequest_Login_InternalData(t *testing.T) {
 
 // Ensure that InternalData is never returned
 func TestCore_HandleRequest_InternalData(t *testing.T) {
-	noop := &NoopBackend{
+	noop := &be.Noop{
 		Response: &logical.Response{
 			Secret: &logical.Secret{
 				InternalData: map[string]interface{}{
@@ -2638,7 +2639,7 @@ func TestCore_HandleRequest_InternalData(t *testing.T) {
 // Ensure login does not return a secret
 func TestCore_HandleLogin_ReturnSecret(t *testing.T) {
 	// Create a badass credential backend that always logs in as armon
-	noopBack := &NoopBackend{
+	noopBack := &be.Noop{
 		Login: []string{"login"},
 		Response: &logical.Response{
 			Secret: &logical.Secret{},
@@ -2795,7 +2796,7 @@ func TestCore_RenewToken_SingleRegister(t *testing.T) {
 
 // Based on bug GH-203, attempt to disable a credential backend with leased secrets
 func TestCore_EnableDisableCred_WithLease(t *testing.T) {
-	noopBack := &NoopBackend{
+	noopBack := &be.Noop{
 		Login: []string{"login"},
 		Response: &logical.Response{
 			Auth: &logical.Auth{
@@ -2905,7 +2906,7 @@ path "secret/*" {
 }
 
 func TestCore_HandleRequest_MountPointType(t *testing.T) {
-	noop := &NoopBackend{
+	noop := &be.Noop{
 		Response: &logical.Response{},
 	}
 	c, _, root := TestCoreUnsealed(t)
@@ -3034,7 +3035,7 @@ func TestCore_Standby_Rotate(t *testing.T) {
 }
 
 func TestCore_HandleRequest_Headers(t *testing.T) {
-	noop := &NoopBackend{
+	noop := &be.Noop{
 		Response: &logical.Response{
 			Data: map[string]interface{}{},
 		},
@@ -3112,7 +3113,7 @@ func TestCore_HandleRequest_Headers(t *testing.T) {
 }
 
 func TestCore_HandleRequest_Headers_denyList(t *testing.T) {
-	noop := &NoopBackend{
+	noop := &be.Noop{
 		Response: &logical.Response{
 			Data: map[string]interface{}{},
 		},

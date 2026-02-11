@@ -27,6 +27,7 @@ import (
 	"github.com/openbao/openbao/helper/storagepacker"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/routing"
 )
@@ -226,7 +227,7 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 		}, nil
 	}
 
-	noop := &NoopBackend{
+	noop := &be.Noop{
 		RequestHandler: requestHandler,
 	}
 

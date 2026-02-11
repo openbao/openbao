@@ -13,6 +13,7 @@ import (
 
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +39,7 @@ func TestMount_ReadOnlyViewDuringMount(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), logical.ErrSetupReadOnly.Error()) {
 			t.Fatal("expected a read-only error")
 		}
-		return &NoopBackend{}, nil
+		return &be.Noop{}, nil
 	}
 
 	me := &routing.MountEntry{
@@ -55,7 +56,7 @@ func TestMount_ReadOnlyViewDuringMount(t *testing.T) {
 func TestLogicalMountMetrics(t *testing.T) {
 	c, _, _, _ := TestCoreUnsealedWithMetrics(t)
 	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{
+		return &be.Noop{
 			BackendType: logical.TypeLogical,
 		}, nil
 	}
@@ -506,7 +507,7 @@ func TestCore_Unmount_Cleanup(t *testing.T) {
 }
 
 func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
-	noop := &NoopBackend{}
+	noop := &be.Noop{}
 	c, _, root := TestCoreUnsealed(t)
 	c.logicalBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
 		return noop, nil
@@ -644,7 +645,7 @@ func TestCore_Remount(t *testing.T) {
 }
 
 func TestCore_Remount_Cleanup(t *testing.T) {
-	noop := &NoopBackend{}
+	noop := &be.Noop{}
 	c, _, root := TestCoreUnsealed(t)
 	c.logicalBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
 		return noop, nil
@@ -897,7 +898,7 @@ func TestCore_MountTable_UpgradeToTyped(t *testing.T) {
 	}
 
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{
+		return &be.Noop{
 			BackendType: logical.TypeCredential,
 		}, nil
 	}
@@ -1190,10 +1191,10 @@ func TestSingletonMountTableFunc(t *testing.T) {
 
 func TestCore_MountInitialize(t *testing.T) {
 	{
-		backend := &InitializableBackend{
-			&NoopBackend{
+		backend := &be.InitializableBackend{
+			Noop: &be.Noop{
 				BackendType: logical.TypeLogical,
-			}, false,
+			}, IsInitialized: false,
 		}
 
 		c, _, _ := TestCoreUnsealed(t)
@@ -1211,15 +1212,15 @@ func TestCore_MountInitialize(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 
-		if !backend.isInitialized {
+		if !backend.IsInitialized {
 			t.Fatal("backend is not initialized")
 		}
 	}
 	{
-		backend := &InitializableBackend{
-			&NoopBackend{
+		backend := &be.InitializableBackend{
+			Noop: &be.Noop{
 				BackendType: logical.TypeLogical,
-			}, false,
+			}, IsInitialized: false,
 		}
 
 		c, _, _ := TestCoreUnsealed(t)
@@ -1253,7 +1254,7 @@ func TestCore_MountInitialize(t *testing.T) {
 			f()
 		}
 
-		if !backend.isInitialized {
+		if !backend.IsInitialized {
 			t.Fatal("backend is not initialized")
 		}
 	}
@@ -1439,7 +1440,7 @@ func TestCore_MountEntryView(t *testing.T) {
 func TestNamespaceMount_Exclusion(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{}, nil
+		return &be.Noop{}, nil
 	}
 
 	// Creating a mount and then a namespace with the same name should fail.

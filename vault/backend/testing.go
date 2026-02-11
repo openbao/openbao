@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package backend
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 
 type RouterTestHandlerFunc func(context.Context, *logical.Request) (*logical.Response, error)
 
-type NoopBackend struct {
+type Noop struct {
 	sync.Mutex
 
 	Root            []string
@@ -33,14 +33,14 @@ type NoopBackend struct {
 }
 
 func NoopBackendFactory(_ context.Context, _ *logical.BackendConfig) (logical.Backend, error) {
-	return &NoopBackend{}, nil
+	return &Noop{}, nil
 }
 
 func NoopBackendRollbackErrFactory(_ context.Context, _ *logical.BackendConfig) (logical.Backend, error) {
-	return &NoopBackend{RollbackErrs: true}, nil
+	return &Noop{RollbackErrs: true}, nil
 }
 
-func (n *NoopBackend) HandleRequest(ctx context.Context, req *logical.Request) (*logical.Response, error) {
+func (n *Noop) HandleRequest(ctx context.Context, req *logical.Request) (*logical.Response, error) {
 	if req.TokenEntry() != nil {
 		panic("got a non-nil TokenEntry")
 	}
@@ -72,18 +72,18 @@ func (n *NoopBackend) HandleRequest(ctx context.Context, req *logical.Request) (
 	return resp, err
 }
 
-func (n *NoopBackend) HandleExistenceCheck(ctx context.Context, req *logical.Request) (bool, bool, error) {
+func (n *Noop) HandleExistenceCheck(ctx context.Context, req *logical.Request) (bool, bool, error) {
 	return false, false, nil
 }
 
-func (n *NoopBackend) SpecialPaths() *logical.Paths {
+func (n *Noop) SpecialPaths() *logical.Paths {
 	return &logical.Paths{
 		Root:            n.Root,
 		Unauthenticated: n.Login,
 	}
 }
 
-func (n *NoopBackend) System() logical.SystemView {
+func (n *Noop) System() logical.SystemView {
 	defaultLeaseTTLVal := time.Hour * 24
 	maxLeaseTTLVal := time.Hour * 24 * 32
 	if n.DefaultLeaseTTL > 0 {
@@ -100,27 +100,27 @@ func (n *NoopBackend) System() logical.SystemView {
 	}
 }
 
-func (n *NoopBackend) Cleanup(ctx context.Context) {
+func (n *Noop) Cleanup(ctx context.Context) {
 	// noop
 }
 
-func (n *NoopBackend) InvalidateKey(ctx context.Context, k string) {
+func (n *Noop) InvalidateKey(ctx context.Context, k string) {
 	n.Invalidations = append(n.Invalidations, k)
 }
 
-func (n *NoopBackend) Setup(ctx context.Context, config *logical.BackendConfig) error {
+func (n *Noop) Setup(ctx context.Context, config *logical.BackendConfig) error {
 	return nil
 }
 
-func (n *NoopBackend) Logger() log.Logger {
+func (n *Noop) Logger() log.Logger {
 	return log.NewNullLogger()
 }
 
-func (n *NoopBackend) Initialize(ctx context.Context, req *logical.InitializationRequest) error {
+func (n *Noop) Initialize(ctx context.Context, req *logical.InitializationRequest) error {
 	return nil
 }
 
-func (n *NoopBackend) Type() logical.BackendType {
+func (n *Noop) Type() logical.BackendType {
 	if n.BackendType == logical.TypeUnknown {
 		return logical.TypeLogical
 	}
@@ -130,12 +130,12 @@ func (n *NoopBackend) Type() logical.BackendType {
 // InitializableBackend is a backend that knows whether it has been initialized
 // properly.
 type InitializableBackend struct {
-	*NoopBackend
-	isInitialized bool
+	*Noop
+	IsInitialized bool
 }
 
 func (b *InitializableBackend) Initialize(ctx context.Context, req *logical.InitializationRequest) error {
-	if b.isInitialized {
+	if b.IsInitialized {
 		return errors.New("already initialized")
 	}
 
@@ -149,6 +149,6 @@ func (b *InitializableBackend) Initialize(ctx context.Context, req *logical.Init
 		return err
 	}
 
-	b.isInitialized = true
+	b.IsInitialized = true
 	return nil
 }

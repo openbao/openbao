@@ -14,6 +14,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/routing"
+	be "github.com/openbao/openbao/vault/backend"
 )
 
 func TestRouter_Mount(t *testing.T) {
@@ -34,7 +35,7 @@ func TestRouter_Mount(t *testing.T) {
 		Namespace:   namespace.RootNamespace,
 	}
 
-	n := &NoopBackend{}
+	n := &be.Noop{}
 	err = r.Mount(n, "prod/aws/", mountEntry, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -146,7 +147,7 @@ func TestRouter_MountCredential(t *testing.T) {
 		Namespace:   namespace.RootNamespace,
 	}
 
-	n := &NoopBackend{}
+	n := &be.Noop{}
 	err = r.Mount(n, "auth/aws/", mountEntry, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -217,7 +218,7 @@ func TestRouter_Unmount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &NoopBackend{}
+	n := &be.Noop{}
 	err = r.Mount(n, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -250,7 +251,7 @@ func TestRouter_Remount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &NoopBackend{}
+	n := &be.Noop{}
 	me := &routing.MountEntry{Path: "prod/aws/", UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}
 	err = r.Mount(n, "prod/aws/", me, view)
 	if err != nil {
@@ -312,7 +313,7 @@ func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &NoopBackend{}
+	n := &be.Noop{}
 	// Router.Mount will prepend the namespace path; pass a namespace-relative prefix
 	err = r.Mount(n, "sys/", &routing.MountEntry{UUID: meUUID, Accessor: "sysaccessor", NamespaceID: nsTeam.ID, Namespace: nsTeam}, view)
 	if err != nil {
@@ -352,7 +353,7 @@ func TestRouter_RootPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &NoopBackend{
+	n := &be.Noop{
 		Root: []string{
 			"root",
 			"policy/*",
@@ -394,7 +395,7 @@ func TestRouter_LoginPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &NoopBackend{
+	n := &be.Noop{
 		Login: []string{
 			"login",
 			"oauth/*",
@@ -506,7 +507,7 @@ func TestRouter_Taint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &NoopBackend{}
+	n := &be.Noop{}
 	err = r.Mount(n, "prod/aws/", &routing.MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -549,7 +550,7 @@ func TestRouter_Untaint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &NoopBackend{}
+	n := &be.Noop{}
 	err = r.Mount(n, "prod/aws/", &routing.MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)

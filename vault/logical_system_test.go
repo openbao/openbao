@@ -40,6 +40,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
@@ -2083,7 +2084,7 @@ func TestSystemBackend_authTable(t *testing.T) {
 func TestSystemBackend_enableAuth(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{BackendType: logical.TypeCredential}, nil
+		return &be.Noop{BackendType: logical.TypeCredential}, nil
 	}
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "auth/foo")
@@ -2185,7 +2186,7 @@ func TestSystemBackend_enableAuth_invalid(t *testing.T) {
 func TestSystemBackend_disableAuth(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{}, nil
+		return &be.Noop{}, nil
 	}
 
 	// Register the backend
@@ -2213,7 +2214,7 @@ func TestSystemBackend_disableAuth(t *testing.T) {
 func TestSystemBackend_tuneAuth(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{BackendType: logical.TypeCredential}, nil
+		return &be.Noop{BackendType: logical.TypeCredential}, nil
 	}
 
 	req := logical.TestRequest(t, logical.ReadOperation, "auth/token/tune")

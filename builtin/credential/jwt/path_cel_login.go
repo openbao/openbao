@@ -137,7 +137,7 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 	// ensure that the signing algorithm is a member of the supported set.
 	signingAlgorithms := toAlg(config.JWTSupportedAlgs)
 	if len(signingAlgorithms) == 0 {
-		signingAlgorithms = toAlg(toStr(consts.AllowedJWTSignatureAlgorithmsBao))
+		signingAlgorithms = toAlg(consts.AllowedJWTSignatureAlgorithmsBao)
 	}
 
 	// Set expected claims values to assert on the JWT

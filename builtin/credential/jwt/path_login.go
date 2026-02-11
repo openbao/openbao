@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/hashicorp/cap/jwt"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
@@ -133,7 +132,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 	// ensure that the signing algorithm is a member of the supported set.
 	signingAlgorithms := toAlg(config.JWTSupportedAlgs)
 	if len(signingAlgorithms) == 0 {
-		signingAlgorithms = toAlg(toStr(consts.AllowedJWTSignatureAlgorithmsBao))
+		signingAlgorithms = toAlg(consts.AllowedJWTSignatureAlgorithmsBao)
 	}
 
 	// Set expected claims values to assert on the JWT
@@ -359,20 +358,12 @@ func (b *jwtAuthBackend) fetchGroups(ctx context.Context, pConfig CustomProvider
 	return groupsClaimRaw, nil
 }
 
-func toAlg(a []string) []jwt.Alg {
+func toAlg[T ~string](a []T) []jwt.Alg {
 	alg := make([]jwt.Alg, len(a))
 	for i, e := range a {
-		alg[i] = jwt.Alg(e)
+		alg[i] = jwt.Alg(string(e))
 	}
 	return alg
-}
-
-func toStr(a []jose.SignatureAlgorithm) []string {
-	str := make([]string, len(a))
-	for i, e := range a {
-		str[i] = string(e)
-	}
-	return str
 }
 
 const (

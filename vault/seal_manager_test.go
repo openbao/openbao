@@ -262,3 +262,42 @@ func TestSealManager_SealStatus(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, sealStatus.Progress)
 }
+
+func TestSealManager_UnsealBarrier(t *testing.T) {
+	t.Parallel()
+	c, _, _ := TestCoreUnsealed(t)
+	// TODO(wslabosz): with seal manager running on unseal,
+	// no need to do it manually
+	c.SetupSealManager()
+	ctx := namespace.RootContext(t.Context())
+
+	sealConfig := &SealConfig{
+		Type:            "shamir",
+		SecretShares:    3,
+		SecretThreshold: 2,
+	}
+
+	ns := &namespace.Namespace{UUID: "ns1", Path: "ns1/"}
+	err := c.sealManager.SetSeal(ctx, sealConfig, ns, true)
+	require.NoError(t, err)
+
+	keyShares, err := c.sealManager.InitializeBarrier(ctx, ns)
+	require.NoError(t, err)
+
+	b := c.sealManager.NamespaceBarrier(ns.Path)
+	require.NotNil(t, b)
+	require.False(t, b.Sealed())
+
+	err = b.Seal()
+	require.NoError(t, err)
+	require.True(t, b.Sealed())
+
+	unsealed, err := c.sealManager.unsealFragment(ctx, ns, b, keyShares[0])
+	require.NoError(t, err)
+	require.False(t, unsealed)
+
+	unsealed, err = c.sealManager.unsealFragment(ctx, ns, b, keyShares[1])
+	require.NoError(t, err)
+	require.True(t, unsealed)
+	require.False(t, b.Sealed())
+}

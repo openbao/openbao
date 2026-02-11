@@ -107,7 +107,7 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 		return nil, errors.New("failing enabling")
 	}
 
-	if err := c.persistAudit(context.Background(), &MountTable{
+	if err := c.persistAudit(context.Background(), &routing.MountTable{
 		Type: auditTableType,
 		Entries: []*routing.MountEntry{
 			{
@@ -170,7 +170,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 		return nil, errors.New("failing enabling")
 	}
 
-	if err := c.persistAudit(context.Background(), &MountTable{
+	if err := c.persistAudit(context.Background(), &routing.MountTable{
 		Type: auditTableType,
 		Entries: []*routing.MountEntry{
 			{
@@ -209,7 +209,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 	if rawLocal == nil {
 		t.Fatal("expected non-nil local audit")
 	}
-	localAuditTable := &MountTable{}
+	localAuditTable := &routing.MountTable{}
 	if err := jsonutil.DecodeJSON(rawLocal.Value, localAuditTable); err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 	if rawLocal == nil {
 		t.Fatal("expected non-nil local audit")
 	}
-	localAuditTable = &MountTable{}
+	localAuditTable = &routing.MountTable{}
 	if err := jsonutil.DecodeJSON(rawLocal.Value, localAuditTable); err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +343,7 @@ func TestDefaultAuditTable(t *testing.T) {
 	verifyDefaultAuditTable(t, table)
 }
 
-func verifyDefaultAuditTable(t *testing.T, table *MountTable) {
+func verifyDefaultAuditTable(t *testing.T, table *routing.MountTable) {
 	if len(table.Entries) != 0 {
 		t.Fatalf("bad: %v", table.Entries)
 	}

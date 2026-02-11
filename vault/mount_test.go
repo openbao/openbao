@@ -145,7 +145,7 @@ func TestCore_DefaultMountTable(t *testing.T) {
 		}
 	}
 
-	if diff := deep.Equal(c.mounts.sortEntriesByPath(), c2.mounts.sortEntriesByPath()); len(diff) > 0 {
+	if diff := deep.Equal(c.mounts.SortEntriesByPath(), c2.mounts.SortEntriesByPath()); len(diff) > 0 {
 		t.Fatalf("mismatch: %v", diff)
 	}
 }
@@ -190,7 +190,7 @@ func TestCore_Mount(t *testing.T) {
 	}
 
 	// Verify matching mount tables
-	if diff := deep.Equal(c.mounts.sortEntriesByPath(), c2.mounts.sortEntriesByPath()); len(diff) > 0 {
+	if diff := deep.Equal(c.mounts.SortEntriesByPath(), c2.mounts.SortEntriesByPath()); len(diff) > 0 {
 		t.Fatalf("mismatch: %v", diff)
 	}
 }
@@ -261,7 +261,7 @@ func TestCore_Mount_kv_generic(t *testing.T) {
 	}
 
 	// Verify matching mount tables
-	if diff := deep.Equal(c.mounts.sortEntriesByPath(), c2.mounts.sortEntriesByPath()); len(diff) > 0 {
+	if diff := deep.Equal(c.mounts.SortEntriesByPath(), c2.mounts.SortEntriesByPath()); len(diff) > 0 {
 		t.Fatalf("mismatch: %v", diff)
 	}
 }
@@ -272,7 +272,7 @@ func TestCore_Mount_kv_generic(t *testing.T) {
 func TestCore_Mount_Local(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 
-	c.mounts = &MountTable{
+	c.mounts = &routing.MountTable{
 		Type: routing.MountTableType,
 		Entries: []*routing.MountEntry{
 			{
@@ -396,7 +396,7 @@ func TestCore_FindOps(t *testing.T) {
 	path1 := "kv1"
 	path2 := "kv2"
 
-	c.mounts = &MountTable{
+	c.mounts = &routing.MountTable{
 		Type: routing.MountTableType,
 		Entries: []*routing.MountEntry{
 			{
@@ -432,17 +432,17 @@ func TestCore_FindOps(t *testing.T) {
 	}
 
 	// Unknown uuids/paths should return nil, nil
-	entry, err := c.mounts.findByBackendUUID(namespace.RootContext(nil), "unknown")
+	entry, err := c.mounts.FindByBackendUUID(namespace.RootContext(t.Context()), "unknown")
 	if err != nil || entry != nil {
 		t.Fatalf("expected no errors nor matches got, error: %#v entry: %#v", err, entry)
 	}
-	entry, err = c.mounts.findByPath(namespace.RootContext(nil), "unknown")
+	entry, err = c.mounts.FindByPath(namespace.RootContext(t.Context()), "unknown")
 	if err != nil || entry != nil {
 		t.Fatalf("expected no errors nor matches got, error: %#v entry: %#v", err, entry)
 	}
 
 	// Find our entry by its uuid
-	entry, err = c.mounts.findByBackendUUID(namespace.RootContext(nil), uuid1)
+	entry, err = c.mounts.FindByBackendUUID(namespace.RootContext(t.Context()), uuid1)
 	if err != nil || entry == nil {
 		t.Fatalf("failed finding entry by uuid error: %#v entry: %#v", err, entry)
 	}
@@ -451,7 +451,7 @@ func TestCore_FindOps(t *testing.T) {
 	}
 
 	// Find another entry by its path
-	entry, err = c.mounts.findByPath(namespace.RootContext(nil), path2)
+	entry, err = c.mounts.FindByPath(namespace.RootContext(t.Context()), path2)
 	if err != nil || entry == nil {
 		t.Fatalf("failed finding entry by path error: %#v entry: %#v", err, entry)
 	}
@@ -923,7 +923,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	testType string,
 ) {
 	var path string
-	var mt *MountTable
+	var mt *routing.MountTable
 	switch testType {
 	case "mounts":
 		path = coreMountConfigPath
@@ -993,7 +993,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		t.Fatal(err)
 	}
 
-	var persistFunc func(context.Context, logical.Storage, *MountTable, *bool, string) error
+	var persistFunc func(context.Context, logical.Storage, *routing.MountTable, *bool, string) error
 
 	// It should load successfully and be upgraded and persisted
 	switch testType {
@@ -1007,7 +1007,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		mt = c.auth
 	case "audits":
 		err = c.loadAudits(context.Background(), false)
-		persistFunc = func(ctx context.Context, barrier logical.Storage, mt *MountTable, b *bool, mount string) error {
+		persistFunc = func(ctx context.Context, barrier logical.Storage, mt *routing.MountTable, b *bool, mount string) error {
 			if b == nil {
 				b = new(bool)
 				*b = false
@@ -1122,11 +1122,11 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	}
 }
 
-func verifyDefaultTable(t *testing.T, table *MountTable, expected int) {
+func verifyDefaultTable(t *testing.T, table *routing.MountTable, expected int) {
 	if len(table.Entries) != expected {
 		t.Fatalf("bad: %v", table.Entries)
 	}
-	table.sortEntriesByPath()
+	table.SortEntriesByPath()
 	for _, entry := range table.Entries {
 		switch entry.Path {
 		case "cubbyhole/":
@@ -1227,7 +1227,7 @@ func TestCore_MountInitialize(t *testing.T) {
 			return backend, nil
 		}
 
-		c.mounts = &MountTable{
+		c.mounts = &routing.MountTable{
 			Type: routing.MountTableType,
 			Entries: []*routing.MountEntry{
 				{
@@ -1555,7 +1555,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 }
 
 func TestMount_Delta(t *testing.T) {
-	old := MountTable{
+	old := routing.MountTable{
 		Entries: []*routing.MountEntry{{
 			Accessor: "f",
 		}, {
@@ -1569,7 +1569,7 @@ func TestMount_Delta(t *testing.T) {
 		}},
 	}
 
-	new := MountTable{
+	new := routing.MountTable{
 		Entries: []*routing.MountEntry{{
 			Accessor: "a",
 		}, {
@@ -1585,7 +1585,7 @@ func TestMount_Delta(t *testing.T) {
 		}},
 	}
 
-	additions, deletions := old.delta(&new)
+	additions, deletions := old.Delta(&new)
 	require.Len(t, additions, 2)
 	require.Len(t, deletions, 1)
 

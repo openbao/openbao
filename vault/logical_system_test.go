@@ -6249,9 +6249,9 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		const nonExistentBuiltinVersion = "v1.0.0+builtin"
 		var mountEntry *routing.MountEntry
 		if tc.mountTable == "mounts" {
-			mountEntry, err = core.mounts.findByPath(ctx, tc.pluginName+"/")
+			mountEntry, err = core.mounts.FindByPath(ctx, tc.pluginName+"/")
 		} else {
-			mountEntry, err = core.auth.findByPath(ctx, tc.pluginName+"/")
+			mountEntry, err = core.auth.FindByPath(ctx, tc.pluginName+"/")
 		}
 		if err != nil {
 			t.Fatal(err)

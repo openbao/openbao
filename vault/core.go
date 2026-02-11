@@ -334,7 +334,7 @@ type Core struct {
 
 	// mounts is loaded after unseal since it is a protected
 	// configuration
-	mounts *MountTable
+	mounts *routing.MountTable
 
 	// mountsLock is used to ensure that the mounts table does not
 	// change underneath a calling function
@@ -346,7 +346,7 @@ type Core struct {
 
 	// auth is loaded after unseal since it is a protected
 	// configuration
-	auth *MountTable
+	auth *routing.MountTable
 
 	// authLock is used to ensure that the auth table does not
 	// change underneath a calling function
@@ -354,7 +354,7 @@ type Core struct {
 
 	// audit is loaded after unseal since it is a protected
 	// configuration
-	audit *MountTable
+	audit *routing.MountTable
 
 	// auditLock is used to ensure that the audit table does not
 	// change underneath a calling function

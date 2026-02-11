@@ -151,7 +151,7 @@ func (c *Core) enableAudit(ctx context.Context, entry *routing.MountEntry, updat
 		}
 	}
 
-	newTable := c.audit.shallowClone()
+	newTable := c.audit.ShallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 
 	ns, err := namespace.FromContext(ctx)
@@ -194,8 +194,8 @@ func (c *Core) disableAudit(ctx context.Context, path string, updateStorage bool
 	c.auditLock.Lock()
 	defer c.auditLock.Unlock()
 
-	newTable := c.audit.shallowClone()
-	entry, err := newTable.remove(ctx, path)
+	newTable := c.audit.ShallowClone()
+	entry, err := newTable.Remove(ctx, path)
 	if err != nil {
 		return false, err
 	}
@@ -233,8 +233,8 @@ func (c *Core) disableAudit(ctx context.Context, path string, updateStorage bool
 
 // loadAudits is invoked as part of reconcileAudits (which holds the lock) to load the audit table
 func (c *Core) loadAudits(ctx context.Context, readonly bool) error {
-	auditTable := &MountTable{}
-	localAuditTable := &MountTable{}
+	auditTable := &routing.MountTable{}
+	localAuditTable := &routing.MountTable{}
 
 	// Load the existing audit table
 	raw, err := c.barrier.Get(ctx, coreAuditConfigPath)
@@ -324,17 +324,17 @@ func (c *Core) loadAudits(ctx context.Context, readonly bool) error {
 }
 
 // persistAudit is used to persist the audit table after modification
-func (c *Core) persistAudit(ctx context.Context, table *MountTable, localOnly bool) error {
+func (c *Core) persistAudit(ctx context.Context, table *routing.MountTable, localOnly bool) error {
 	if table.Type != auditTableType {
 		c.logger.Error("given table to persist has wrong type", "actual_type", table.Type, "expected_type", auditTableType)
 		return errors.New("invalid table type given, not persisting")
 	}
 
-	nonLocalAudit := &MountTable{
+	nonLocalAudit := &routing.MountTable{
 		Type: auditTableType,
 	}
 
-	localAudit := &MountTable{
+	localAudit := &routing.MountTable{
 		Type: auditTableType,
 	}
 
@@ -439,9 +439,9 @@ func (c *Core) reconcileAudits(req reconcileAuditsRequests) error {
 	c.auditLock.Lock()
 	defer c.auditLock.Unlock()
 
-	var oldTable *MountTable
+	var oldTable *routing.MountTable
 	if c.audit != nil {
-		oldTable = c.audit.shallowClone()
+		oldTable = c.audit.ShallowClone()
 	}
 
 	if err := c.loadAudits(req.ctx, req.readonly); err != nil {
@@ -449,7 +449,7 @@ func (c *Core) reconcileAudits(req reconcileAuditsRequests) error {
 		return err
 	}
 
-	additions, deletions := oldTable.delta(c.audit)
+	additions, deletions := oldTable.Delta(c.audit)
 
 	var multiErr *multierror.Error
 
@@ -604,8 +604,8 @@ func (c *Core) newAuditBackend(ctx context.Context, entry *routing.MountEntry, v
 }
 
 // defaultAuditTable creates a default audit table
-func defaultAuditTable() *MountTable {
-	table := &MountTable{
+func defaultAuditTable() *routing.MountTable {
+	table := &routing.MountTable{
 		Type: auditTableType,
 	}
 	return table
@@ -675,7 +675,7 @@ func (c *Core) handleAuditLogSetup(ctx context.Context, standby bool) error {
 	}
 
 	c.auditLock.RLock()
-	table := c.audit.shallowClone()
+	table := c.audit.ShallowClone()
 	c.auditLock.RUnlock()
 
 	auditDevicePaths := make(map[string]struct{}, len(conf.Audits))
@@ -701,7 +701,7 @@ func (c *Core) handleAuditLogSetup(ctx context.Context, standby bool) error {
 		// If the device exists in our table, validate it.
 		auditDevicePaths[auditConfig.Path] = struct{}{}
 
-		entry, err := table.findByPath(ctx, auditConfig.Path)
+		entry, err := table.FindByPath(ctx, auditConfig.Path)
 		if err != nil {
 			return fmt.Errorf("while processing audit %v: %w", auditConfig.Path, err)
 		}

@@ -185,7 +185,7 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *rout
 	}
 
 	// Update the auth table
-	newTable := c.auth.shallowClone()
+	newTable := c.auth.ShallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
 		if err := c.persistAuth(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
@@ -332,8 +332,8 @@ func (c *Core) removeCredEntry(ctx context.Context, path string, updateStorage b
 
 func (c *Core) removeCredEntryWithLock(ctx context.Context, path string, updateStorage bool) error {
 	// Taint the entry from the auth table
-	newTable := c.auth.shallowClone()
-	entry, err := newTable.remove(ctx, path)
+	newTable := c.auth.ShallowClone()
+	entry, err := newTable.Remove(ctx, path)
 	if err != nil {
 		return err
 	}
@@ -479,7 +479,7 @@ func (c *Core) taintCredEntry(ctx context.Context, nsID, path string, updateStor
 	// Taint the entry from the auth table
 	// We do this on the original since setting the taint operates
 	// on the entries which a shallow clone shares anyways
-	entry := c.auth.setTaint(nsID, strings.TrimPrefix(path, routing.CredentialRoutePrefix))
+	entry := c.auth.SetTaint(nsID, strings.TrimPrefix(path, routing.CredentialRoutePrefix))
 
 	// Ensure there was a match
 	if entry == nil {
@@ -604,7 +604,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 		}
 		needPersist = true
 	} else {
-		c.auth = &MountTable{
+		c.auth = &routing.MountTable{
 			Type: routing.CredentialTableType,
 		}
 
@@ -815,7 +815,7 @@ func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage
 }
 
 // persistAuth is used to persist the auth table after modification
-func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *MountTable, local *bool, mount string) error {
+func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *routing.MountTable, local *bool, mount string) error {
 	// Sometimes we may not want to explicitly pass barrier; fetch it if
 	// necessary.
 	if barrier == nil {
@@ -845,11 +845,11 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 		return errors.New("invalid table type given, not persisting")
 	}
 
-	nonLocalAuth := &MountTable{
+	nonLocalAuth := &routing.MountTable{
 		Type: routing.CredentialTableType,
 	}
 
-	localAuth := &MountTable{
+	localAuth := &routing.MountTable{
 		Type: routing.CredentialTableType,
 	}
 
@@ -871,7 +871,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 	}
 
 	// Handle writing the legacy auth mount table by default.
-	writeTable := func(mt *MountTable, path string) (int, error) {
+	writeTable := func(mt *routing.MountTable, path string) (int, error) {
 		// Encode the auth mount table into JSON and compress it (Gzip).
 		compressedBytes, err := jsonutil.EncodeJSONAndCompress(mt, nil)
 		if err != nil {
@@ -895,7 +895,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 
 	if _, ok := barrier.(logical.Transaction); ok {
 		// Write a transactional-aware mount table series instead.
-		writeTable = func(mt *MountTable, prefix string) (int, error) {
+		writeTable = func(mt *routing.MountTable, prefix string) (int, error) {
 			var size int
 			var found bool
 			currentEntries := make(map[string]struct{}, len(mt.Entries))
@@ -1033,7 +1033,7 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 	c.authLock.Lock()
 	defer c.authLock.Unlock()
 
-	for _, entry := range c.auth.sortEntriesByPathDepth().Entries {
+	for _, entry := range c.auth.SortEntriesByPathDepth().Entries {
 		view, err := c.mountEntryView(entry)
 		if err != nil {
 			return err
@@ -1165,7 +1165,7 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 	defer c.authLock.Unlock()
 
 	if c.auth != nil {
-		authTable := c.auth.shallowClone()
+		authTable := c.auth.ShallowClone()
 		for _, e := range authTable.Entries {
 			backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.Namespace), routing.CredentialRoutePrefix+e.Path)
 			if backend != nil {
@@ -1251,7 +1251,7 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *routing.MountEnt
 }
 
 // defaultAuthTable creates a default auth table
-func (c *Core) defaultAuthTable(ctx context.Context) (*MountTable, error) {
+func (c *Core) defaultAuthTable(ctx context.Context) (*routing.MountTable, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil && !errors.Is(err, namespace.ErrNoNamespace) {
 		return nil, err
@@ -1260,7 +1260,7 @@ func (c *Core) defaultAuthTable(ctx context.Context) (*MountTable, error) {
 		ns = namespace.RootNamespace
 	}
 
-	table := &MountTable{
+	table := &routing.MountTable{
 		Type: routing.CredentialTableType,
 	}
 	tokenUUID, err := uuid.GenerateUUID()

@@ -211,7 +211,7 @@ func TestCore_Invalidate_Namespaces_NonTransactional(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, storageEntry, "expected mount table to be written at %s", storagePath)
 
-	mountTable := new(MountTable)
+	mountTable := new(routing.MountTable)
 	require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountTable))
 
 	mountTable.Entries = append(mountTable.Entries, &routing.MountEntry{
@@ -472,7 +472,7 @@ func TestCore_Invalidate_Audit(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, entry, "expected audit table to be written")
 
-	auditTable := &MountTable{}
+	auditTable := &routing.MountTable{}
 	require.NoError(t, jsonutil.DecodeJSON(entry.Value, auditTable), "failed to decode audit table")
 
 	auditTable.Entries = make([]*routing.MountEntry, 0)
@@ -793,7 +793,7 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, storageEntry, "expected mount table to be written at %s", storagePath)
 
-			mountTable := new(MountTable)
+			mountTable := new(routing.MountTable)
 			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountTable))
 
 			require.Equal(t, "my-kv-mount/", mountTable.Entries[len(mountTable.Entries)-1].Path)
@@ -1069,7 +1069,7 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, storageEntry, "expected mount table to be written at %s", storagePath)
 
-			mountTable := new(MountTable)
+			mountTable := new(routing.MountTable)
 			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountTable))
 
 			require.Equal(t, "my-auth/", mountTable.Entries[len(mountTable.Entries)-1].Path)

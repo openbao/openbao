@@ -2958,8 +2958,8 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 	}
 
 	b.Core.auditLock.RLock()
-	table := b.Core.audit.shallowClone()
-	entry, err := table.findByPath(ctx, path)
+	table := b.Core.audit.ShallowClone()
+	entry, err := table.FindByPath(ctx, path)
 	b.Core.auditLock.RUnlock()
 
 	if err != nil {

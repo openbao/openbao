@@ -13,9 +13,11 @@ import (
 	"slices"
 	"strings"
 
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/plugin"
+	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -116,13 +118,13 @@ func (c *Core) generateMountAccessor(entryType string) (string, error) {
 }
 
 // DecodeMountTable is used for testing
-func (c *Core) DecodeMountTable(ctx context.Context, raw []byte) (*MountTable, error) {
+func (c *Core) DecodeMountTable(ctx context.Context, raw []byte) (*routing.MountTable, error) {
 	return c.decodeMountTable(ctx, raw)
 }
 
-func (c *Core) decodeMountTable(ctx context.Context, raw []byte) (*MountTable, error) {
+func (c *Core) decodeMountTable(ctx context.Context, raw []byte) (*routing.MountTable, error) {
 	// Decode into mount table
-	mountTable := new(MountTable)
+	mountTable := new(routing.MountTable)
 	if err := jsonutil.DecodeJSON(raw, mountTable); err != nil {
 		return nil, err
 	}
@@ -146,7 +148,7 @@ func (c *Core) decodeMountTable(ctx context.Context, raw []byte) (*MountTable, e
 		mountEntries = append(mountEntries, entry)
 	}
 
-	return &MountTable{
+	return &routing.MountTable{
 		Type:    mountTable.Type,
 		Entries: mountEntries,
 	}, nil
@@ -334,7 +336,7 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEn
 
 	c.setCoreBackend(entry, backend, view)
 
-	newTable := c.mounts.shallowClone()
+	newTable := c.mounts.ShallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
 		if err := c.persistMounts(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
@@ -536,8 +538,8 @@ func (c *Core) removeMountEntry(ctx context.Context, path string, updateStorage 
 
 func (c *Core) removeMountEntryWithLock(ctx context.Context, path string, updateStorage bool) error {
 	// Remove the entry from the mount table
-	newTable := c.mounts.shallowClone()
-	entry, err := newTable.remove(ctx, path)
+	newTable := c.mounts.ShallowClone()
+	entry, err := newTable.Remove(ctx, path)
 	if err != nil {
 		return err
 	}
@@ -571,7 +573,7 @@ func (c *Core) taintMountEntry(ctx context.Context, nsID, mountPath string, upda
 
 	// As modifying the taint of an entry affects shallow clones,
 	// we simply use the original
-	entry := c.mounts.setTaint(nsID, mountPath)
+	entry := c.mounts.SetTaint(nsID, mountPath)
 	if entry == nil {
 		c.logger.Error("nil entry found tainting entry in mounts table", "path", mountPath)
 		return logical.CodedError(500, "failed to taint entry in mounts table")
@@ -970,7 +972,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 		c.mounts = c.defaultMountTable(ctx)
 		needPersist = true
 	} else {
-		c.mounts = &MountTable{
+		c.mounts = &routing.MountTable{
 			Type: routing.MountTableType,
 		}
 
@@ -1219,7 +1221,7 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 }
 
 // persistMounts is used to persist the mount table after modification.
-func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table *MountTable, local *bool, mount string) error {
+func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table *routing.MountTable, local *bool, mount string) error {
 	// Sometimes we may not want to explicitly pass barrier; fetch it if
 	// necessary.
 	if barrier == nil {
@@ -1249,11 +1251,11 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 		return errors.New("invalid table type given, not persisting")
 	}
 
-	nonLocalMounts := &MountTable{
+	nonLocalMounts := &routing.MountTable{
 		Type: routing.MountTableType,
 	}
 
-	localMounts := &MountTable{
+	localMounts := &routing.MountTable{
 		Type: routing.MountTableType,
 	}
 
@@ -1275,7 +1277,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 	}
 
 	// Handle writing the legacy mount table by default.
-	writeTable := func(mt *MountTable, path string) (int, error) {
+	writeTable := func(mt *routing.MountTable, path string) (int, error) {
 		// Encode the mount table into JSON and compress it (Gzip).
 		compressedBytes, err := jsonutil.EncodeJSONAndCompress(mt, nil)
 		if err != nil {
@@ -1299,7 +1301,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 
 	if _, ok := barrier.(logical.Transaction); ok {
 		// Write a transactional-aware mount table series instead.
-		writeTable = func(mt *MountTable, prefix string) (int, error) {
+		writeTable = func(mt *routing.MountTable, prefix string) (int, error) {
 			var size int
 			var found bool
 			currentEntries := make(map[string]struct{}, len(mt.Entries))
@@ -1440,7 +1442,7 @@ func (c *Core) setupMounts(ctx context.Context) error {
 	c.mountsLock.Lock()
 	defer c.mountsLock.Unlock()
 
-	for _, entry := range c.mounts.sortEntriesByPathDepth().Entries {
+	for _, entry := range c.mounts.SortEntriesByPathDepth().Entries {
 		// Initialize the backend, special casing for system
 		view, err := c.mountEntryView(entry)
 		if err != nil {
@@ -1561,7 +1563,7 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 	defer c.mountsLock.Unlock()
 
 	if c.mounts != nil {
-		mountTable := c.mounts.shallowClone()
+		mountTable := c.mounts.ShallowClone()
 		for _, e := range mountTable.Entries {
 			backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.Namespace), e.Path)
 			if backend != nil {
@@ -1648,8 +1650,8 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *routing.MountEntry,
 }
 
 // defaultMountTable creates a default mount table
-func (c *Core) defaultMountTable(ctx context.Context) *MountTable {
-	table := &MountTable{
+func (c *Core) defaultMountTable(ctx context.Context) *routing.MountTable {
+	table := &routing.MountTable{
 		Type: routing.MountTableType,
 	}
 
@@ -1694,7 +1696,7 @@ func (c *Core) defaultMountTable(ctx context.Context) *MountTable {
 
 // requiredMountTable() creates a mount table with entries required
 // to be available
-func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
+func (c *Core) requiredMountTable(ctx context.Context) (*routing.MountTable, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil && !errors.Is(err, namespace.ErrNoNamespace) {
 		return nil, err
@@ -1703,7 +1705,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 		ns = namespace.RootNamespace
 	}
 
-	table := &MountTable{
+	table := &routing.MountTable{
 		Type: routing.MountTableType,
 	}
 	cubbyholeUUID, err := uuid.GenerateUUID()
@@ -1810,9 +1812,9 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 // handled normally. After saving these values on the secondary, we let normal
 // sync invalidation do its thing. Because of its use for replication, we
 // exclude local mounts.
-func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
-	mounts = &MountTable{}
-	auth = &MountTable{}
+func (c *Core) singletonMountTables() (mounts, auth *routing.MountTable) {
+	mounts = &routing.MountTable{}
+	auth = &routing.MountTable{}
 
 	c.mountsLock.RLock()
 	for _, entry := range c.mounts.Entries {
@@ -1989,7 +1991,7 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 	// Loop over all mounts in memory, this is required to find mount deletions
 	c.mountsLock.RLock()
 	c.authLock.RLock()
-	for _, table := range []*MountTable{c.mounts, c.auth} {
+	for _, table := range []*routing.MountTable{c.mounts, c.auth} {
 		if table == nil {
 			continue
 		}
@@ -2217,4 +2219,118 @@ func (c *Core) mountEntryView(me *routing.MountEntry) (barrier.View, error) {
 	}
 
 	return nil, errors.New("invalid mount entry")
+}
+
+// tableMetrics is responsible for setting gauge metrics for
+// mount table storage sizes (in bytes) and mount table num
+// entries. It does this via setGaugeWithLabels. It then
+// saves these metrics in a cache for regular reporting in
+// a loop, via AddGaugeLoopMetric.
+
+// Note that the reported storage sizes are pre-encryption
+// sizes. Currently barrier uses aes-gcm for encryption, which
+// preserves plaintext size, adding a constant of 30 bytes of
+// padding, which is negligible and subject to change, and thus
+// not accounted for.
+func (c *Core) tableMetrics(tableType string, isLocal bool, entryCount, compressedTableLen int) {
+	if c.metricsHelper == nil {
+		// do nothing if metrics are not initialized
+		return
+	}
+
+	mountTableTypeLabelMap := map[string]metrics.Label{
+		routing.MountTableType:      {Name: "type", Value: "logical"},
+		routing.CredentialTableType: {Name: "type", Value: "auth"},
+		// we don't report number of audit mounts, but it is here for consistency
+		auditTableType: {Name: "type", Value: "audit"},
+	}
+
+	localLabelMap := map[bool]metrics.Label{
+		true:  {Name: "local", Value: "true"},
+		false: {Name: "local", Value: "false"},
+	}
+
+	c.metricSink.SetGaugeWithLabels(metricsutil.LogicalTableSizeName,
+		float32(entryCount), []metrics.Label{
+			mountTableTypeLabelMap[tableType],
+			localLabelMap[isLocal],
+		})
+
+	c.metricsHelper.AddGaugeLoopMetric(metricsutil.LogicalTableSizeName,
+		float32(entryCount), []metrics.Label{
+			mountTableTypeLabelMap[tableType],
+			localLabelMap[isLocal],
+		})
+
+	c.metricSink.SetGaugeWithLabels(metricsutil.PhysicalTableSizeName,
+		float32(compressedTableLen), []metrics.Label{
+			mountTableTypeLabelMap[tableType],
+			localLabelMap[isLocal],
+		})
+
+	c.metricsHelper.AddGaugeLoopMetric(metricsutil.PhysicalTableSizeName,
+		float32(compressedTableLen), []metrics.Label{
+			mountTableTypeLabelMap[tableType],
+			localLabelMap[isLocal],
+		})
+}
+
+func (c *Core) createMigrationStatus(from, to namespace.MountPathDetails) (string, error) {
+	migrationID, err := uuid.GenerateUUID()
+	if err != nil {
+		return "", fmt.Errorf("error generating uuid for mount move invocation: %w", err)
+	}
+	migrationInfo := MountMigrationInfo{
+		SourceMount:     from.Namespace.Path + from.MountPath,
+		TargetMount:     to.Namespace.Path + to.MountPath,
+		MigrationStatus: MigrationInProgressStatus.String(),
+	}
+	c.mountMigrationTracker.Store(migrationID, migrationInfo)
+	return migrationID, nil
+}
+
+func (c *Core) setMigrationStatus(migrationID string, migrationStatus MountMigrationStatus) error {
+	migrationInfoRaw, ok := c.mountMigrationTracker.Load(migrationID)
+	if !ok {
+		return fmt.Errorf("migration Tracker entry missing for ID %s", migrationID)
+	}
+	migrationInfo := migrationInfoRaw.(MountMigrationInfo)
+	migrationInfo.MigrationStatus = migrationStatus.String()
+	c.mountMigrationTracker.Store(migrationID, migrationInfo)
+	return nil
+}
+
+func (c *Core) readMigrationStatus(migrationID string) *MountMigrationInfo {
+	migrationInfoRaw, ok := c.mountMigrationTracker.Load(migrationID)
+	if !ok {
+		return nil
+	}
+	migrationInfo := migrationInfoRaw.(MountMigrationInfo)
+	return &migrationInfo
+}
+
+type MountMigrationStatus int
+
+const (
+	MigrationInProgressStatus MountMigrationStatus = iota
+	MigrationSuccessStatus
+	MigrationFailureStatus
+)
+
+func (m MountMigrationStatus) String() string {
+	switch m {
+	case MigrationInProgressStatus:
+		return "in-progress"
+	case MigrationSuccessStatus:
+		return "success"
+	case MigrationFailureStatus:
+		return "failure"
+	}
+	return "unknown"
+}
+
+type MountMigrationInfo struct {
+	SourceMount     string `json:"source_mount"`
+	TargetMount     string `json:"target_mount"`
+	MigrationStatus string `json:"status"`
 }

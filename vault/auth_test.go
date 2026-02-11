@@ -324,7 +324,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		}, nil
 	}
 
-	c.auth = &MountTable{
+	c.auth = &routing.MountTable{
 		Type: routing.CredentialTableType,
 		Entries: []*routing.MountEntry{
 			{
@@ -605,7 +605,7 @@ func TestDefaultAuthTable(t *testing.T) {
 	verifyDefaultAuthTable(t, table)
 }
 
-func verifyDefaultAuthTable(t *testing.T, table *MountTable) {
+func verifyDefaultAuthTable(t *testing.T, table *routing.MountTable) {
 	if len(table.Entries) != 1 {
 		t.Fatalf("bad: %v", table.Entries)
 	}
@@ -670,7 +670,7 @@ func TestCore_CredentialInitialize(t *testing.T) {
 			return backend, nil
 		}
 
-		c.auth = &MountTable{
+		c.auth = &routing.MountTable{
 			Type: routing.CredentialTableType,
 			Entries: []*routing.MountEntry{
 				{

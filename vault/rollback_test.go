@@ -119,7 +119,7 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 		func() {
 			core.mountsLock.Lock()
 			defer core.mountsLock.Unlock()
-			newTable := core.mounts.shallowClone()
+			newTable := core.mounts.ShallowClone()
 			newTable.Entries = append(newTable.Entries, mountEntry)
 			core.mounts = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)
@@ -202,7 +202,7 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 		func() {
 			core.mountsLock.Lock()
 			defer core.mountsLock.Unlock()
-			newTable := core.mounts.shallowClone()
+			newTable := core.mounts.ShallowClone()
 			newTable.Entries = append(newTable.Entries, mountEntry)
 			core.mounts = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)

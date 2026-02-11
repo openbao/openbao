@@ -13,6 +13,7 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 type basicLeaseTestInfo struct {
@@ -107,7 +108,7 @@ func mountNoopBackends(c *Core, backends []*backend) (map[string]string, error) 
 	pathToMount := make(map[string]string)
 	for _, backend := range backends {
 		me := &MountEntry{
-			Table: mountTableType,
+			Table: routing.MountTableType,
 			Path:  backend.path,
 			Type:  "noop",
 		}

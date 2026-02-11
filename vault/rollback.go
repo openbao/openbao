@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/helper/fairshare"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 const (
@@ -198,8 +199,8 @@ func (m *RollbackManager) triggerRollbacks() {
 
 	for _, e := range backends {
 		path := e.Path
-		if e.Table == credentialTableType {
-			path = credentialRoutePrefix + path
+		if e.Table == routing.CredentialTableType {
+			path = routing.CredentialRoutePrefix + path
 		}
 
 		// When the mount is filtered, the backend will be nil

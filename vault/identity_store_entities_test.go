@@ -668,7 +668,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	}
 
 	meGH := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "approle/",
 		Type:        "approle",
 		Description: "approle auth",

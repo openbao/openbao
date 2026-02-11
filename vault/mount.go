@@ -22,6 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 const (
@@ -41,40 +42,6 @@ const (
 	// systemBarrierPrefix is the prefix used for the
 	// system logical backend.
 	systemBarrierPrefix = "sys/"
-
-	// mountTableType is the value we expect to find for the mount table and
-	// corresponding entries
-	mountTableType = "mounts"
-)
-
-// ListingVisibilityType represents the types for listing visibility
-type ListingVisibilityType string
-
-const (
-	// ListingVisibilityDefault is the default value for listing visibility
-	ListingVisibilityDefault ListingVisibilityType = ""
-	// ListingVisibilityHidden is the hidden type for listing visibility
-	ListingVisibilityHidden ListingVisibilityType = "hidden"
-	// ListingVisibilityUnauth is the unauth type for listing visibility
-	ListingVisibilityUnauth ListingVisibilityType = "unauth"
-
-	mountPathSystem    = "sys/"
-	mountPathIdentity  = "identity/"
-	mountPathCubbyhole = "cubbyhole/"
-
-	mountTypeSystem      = "system"
-	mountTypeNSSystem    = "ns_system"
-	mountTypeIdentity    = "identity"
-	mountTypeNSIdentity  = "ns_identity"
-	mountTypeCubbyhole   = "cubbyhole"
-	mountTypePlugin      = "plugin"
-	mountTypeKV          = "kv"
-	mountTypeNSCubbyhole = "ns_cubbyhole"
-	mountTypeToken       = "token"
-	mountTypeNSToken     = "ns_token"
-
-	MountTableUpdateStorage   = true
-	MountTableNoUpdateStorage = false
 )
 
 // DeprecationStatus errors
@@ -92,29 +59,29 @@ var (
 	protectedMounts = []string{
 		"audit/",
 		"auth/",
-		mountPathSystem,
-		mountPathCubbyhole,
-		mountPathIdentity,
+		routing.MountPathSystem,
+		routing.MountPathCubbyhole,
+		routing.MountPathIdentity,
 	}
 
 	untunableMounts = []string{
-		mountPathCubbyhole,
-		mountPathSystem,
+		routing.MountPathCubbyhole,
+		routing.MountPathSystem,
 		"audit/",
-		mountPathIdentity,
+		routing.MountPathIdentity,
 	}
 
 	// singletonMounts can only exist in one location and are
 	// loaded by default. These are types, not paths.
 	singletonMounts = []string{
-		mountTypeCubbyhole,
-		mountTypeNSCubbyhole,
-		mountTypeSystem,
-		mountTypeNSSystem,
-		mountTypeToken,
-		mountTypeNSToken,
-		mountTypeIdentity,
-		mountTypeNSIdentity,
+		routing.MountTypeCubbyhole,
+		routing.MountTypeNSCubbyhole,
+		routing.MountTypeSystem,
+		routing.MountTypeNSSystem,
+		routing.MountTypeToken,
+		routing.MountTypeNSToken,
+		routing.MountTypeIdentity,
+		routing.MountTypeNSIdentity,
 	}
 
 	// mountAliases maps old backend names to new backend names, allowing us
@@ -124,7 +91,7 @@ var (
 
 func knownMountType(entryType string) error {
 	switch entryType {
-	case mountTypeKV, mountTypeSystem, mountTypeCubbyhole, mountTypeNSSystem, mountTypeNSCubbyhole:
+	case routing.MountTypeKV, routing.MountTypeSystem, routing.MountTypeCubbyhole, routing.MountTypeNSSystem, routing.MountTypeNSCubbyhole:
 	default:
 		return fmt.Errorf(`unknown backend type: "%s"`, entryType)
 	}
@@ -245,7 +212,7 @@ func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 	}
 
 	// Mount internally
-	if err := c.mountInternal(ctx, entry, MountTableUpdateStorage); err != nil {
+	if err := c.mountInternal(ctx, entry, true); err != nil {
 		return err
 	}
 
@@ -459,7 +426,7 @@ func (c *Core) unmount(ctx context.Context, path string) error {
 	}
 
 	// Unmount mount internally
-	if err := c.unmountInternal(ctx, path, MountTableUpdateStorage); err != nil {
+	if err := c.unmountInternal(ctx, path, true); err != nil {
 		return err
 	}
 
@@ -862,10 +829,10 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 	var coreLocalPath, corePath string
 
 	switch me.Table {
-	case mountTableType:
+	case routing.MountTableType:
 		coreLocalPath = coreLocalMountConfigPath
 		corePath = coreMountConfigPath
-	case credentialTableType:
+	case routing.CredentialTableType:
 		coreLocalPath = coreLocalAuthConfigPath
 		corePath = coreAuthConfigPath
 	default:
@@ -1004,7 +971,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 		needPersist = true
 	} else {
 		c.mounts = &MountTable{
-			Type: mountTableType,
+			Type: routing.MountTableType,
 		}
 
 		for nsIndex, ns := range allNamespaces {
@@ -1083,7 +1050,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, st
 			c.logger.Error("failed to decompress and/or decode the legacy mount table", "error", err)
 			return false, err
 		}
-		c.tableMetrics(mountTableType, false, len(mountTable.Entries), len(raw.Value))
+		c.tableMetrics(routing.MountTableType, false, len(mountTable.Entries), len(raw.Value))
 		c.mounts = mountTable
 	}
 
@@ -1103,7 +1070,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, st
 			c.logger.Info("migrating legacy mount table to transactional layout")
 			needPersist = true
 		}
-		c.tableMetrics(mountTableType, false, len(c.mounts.Entries), len(raw.Value))
+		c.tableMetrics(routing.MountTableType, false, len(c.mounts.Entries), len(raw.Value))
 	}
 
 	if rawLocal != nil {
@@ -1113,7 +1080,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, st
 			return false, err
 		}
 		if localMountTable != nil && len(localMountTable.Entries) > 0 {
-			c.tableMetrics(mountTableType, true, len(localMountTable.Entries), len(rawLocal.Value))
+			c.tableMetrics(routing.MountTableType, true, len(localMountTable.Entries), len(rawLocal.Value))
 			c.mounts.Entries = append(c.mounts.Entries, localMountTable.Entries...)
 		}
 	}
@@ -1141,7 +1108,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, st
 func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, needPersist, standby bool) error {
 	// Upgrade to typed mount table
 	if c.mounts.Type == "" {
-		c.mounts.Type = mountTableType
+		c.mounts.Type = routing.MountTableType
 		needPersist = true
 	}
 
@@ -1178,11 +1145,11 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 
 	// Upgrade to table-scoped entries
 	for _, entry := range c.mounts.Entries {
-		if entry.Type == mountTypeNSCubbyhole && !entry.Local {
+		if entry.Type == routing.MountTypeNSCubbyhole && !entry.Local {
 			entry.Local = true
 			needPersist = true
 		}
-		if entry.Type == mountTypeCubbyhole && !entry.Local {
+		if entry.Type == routing.MountTypeCubbyhole && !entry.Local {
 			entry.Local = true
 			needPersist = true
 		}
@@ -1277,17 +1244,17 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 		defer barrier.(logical.Transaction).Rollback(ctx) //nolint:errcheck
 	}
 
-	if table.Type != mountTableType {
-		c.logger.Error("given table to persist has wrong type", "actual_type", table.Type, "expected_type", mountTableType)
+	if table.Type != routing.MountTableType {
+		c.logger.Error("given table to persist has wrong type", "actual_type", table.Type, "expected_type", routing.MountTableType)
 		return errors.New("invalid table type given, not persisting")
 	}
 
 	nonLocalMounts := &MountTable{
-		Type: mountTableType,
+		Type: routing.MountTableType,
 	}
 
 	localMounts := &MountTable{
-		Type: mountTableType,
+		Type: routing.MountTableType,
 	}
 
 	for _, entry := range table.Entries {
@@ -1433,14 +1400,14 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(mountTableType, false, len(nonLocalMounts.Entries), compressedBytesLen)
+		c.tableMetrics(routing.MountTableType, false, len(nonLocalMounts.Entries), compressedBytesLen)
 
 		// Write local mounts
 		compressedBytesLen, err = writeTable(localMounts, coreLocalMountConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(mountTableType, true, len(localMounts.Entries), compressedBytesLen)
+		c.tableMetrics(routing.MountTableType, true, len(localMounts.Entries), compressedBytesLen)
 
 	case *local:
 		// Write local mounts
@@ -1448,14 +1415,14 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(mountTableType, true, len(localMounts.Entries), compressedBytesLen)
+		c.tableMetrics(routing.MountTableType, true, len(localMounts.Entries), compressedBytesLen)
 	default:
 		// Write non-local mounts
 		compressedBytesLen, err = writeTable(nonLocalMounts, coreMountConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(mountTableType, false, len(nonLocalMounts.Entries), compressedBytesLen)
+		c.tableMetrics(routing.MountTableType, false, len(nonLocalMounts.Entries), compressedBytesLen)
 	}
 
 	if needTxnCommit {
@@ -1647,7 +1614,7 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *MountEntry, sysView
 	}
 
 	switch entry.Type {
-	case mountTypePlugin:
+	case routing.MountTypePlugin:
 		conf["plugin_name"] = entry.Config.PluginName
 	default:
 		conf["plugin_name"] = t
@@ -1683,7 +1650,7 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *MountEntry, sysView
 // defaultMountTable creates a default mount table
 func (c *Core) defaultMountTable(ctx context.Context) *MountTable {
 	table := &MountTable{
-		Type: mountTableType,
+		Type: routing.MountTableType,
 	}
 
 	requiredMounts, err := c.requiredMountTable(ctx)
@@ -1697,7 +1664,7 @@ func (c *Core) defaultMountTable(ctx context.Context) *MountTable {
 		if err != nil {
 			panic(fmt.Sprintf("could not create default secret mount UUID: %v", err))
 		}
-		mountAccessor, err := c.generateMountAccessor(mountTypeKV)
+		mountAccessor, err := c.generateMountAccessor(routing.MountTypeKV)
 		if err != nil {
 			panic(fmt.Sprintf("could not generate default secret mount accessor: %v", err))
 		}
@@ -1707,9 +1674,9 @@ func (c *Core) defaultMountTable(ctx context.Context) *MountTable {
 		}
 
 		kvMount := &MountEntry{
-			Table:            mountTableType,
+			Table:            routing.MountTableType,
 			Path:             "secret/",
-			Type:             mountTypeKV,
+			Type:             routing.MountTypeKV,
 			Description:      "key/value secret storage",
 			UUID:             mountUUID,
 			Accessor:         mountAccessor,
@@ -1737,7 +1704,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 	}
 
 	table := &MountTable{
-		Type: mountTableType,
+		Type: routing.MountTableType,
 	}
 	cubbyholeUUID, err := uuid.GenerateUUID()
 	if err != nil {
@@ -1752,9 +1719,9 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 		return nil, fmt.Errorf("could not create cubbyhole backend UUID: %w", err)
 	}
 	cubbyholeMount := &MountEntry{
-		Table:            mountTableType,
-		Path:             mountPathCubbyhole,
-		Type:             mountTypeCubbyhole,
+		Table:            routing.MountTableType,
+		Path:             routing.MountPathCubbyhole,
+		Type:             routing.MountTypeCubbyhole,
 		Description:      "per-token private secret storage",
 		UUID:             cubbyholeUUID,
 		Accessor:         cubbyholeAccessor,
@@ -1779,9 +1746,9 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 		return nil, fmt.Errorf("could not create sys backend UUID: %w", err)
 	}
 	sysMount := &MountEntry{
-		Table:            mountTableType,
+		Table:            routing.MountTableType,
 		Path:             "sys/",
-		Type:             mountTypeSystem,
+		Type:             routing.MountTypeSystem,
 		Description:      "system endpoints used for control, policy and debugging",
 		UUID:             sysUUID,
 		Accessor:         sysAccessor,
@@ -1809,7 +1776,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 		return nil, fmt.Errorf("could not create identity backend UUID: %w", err)
 	}
 	identityMount := &MountEntry{
-		Table:            mountTableType,
+		Table:            routing.MountTableType,
 		Path:             "identity/",
 		Type:             "identity",
 		Description:      "identity store",
@@ -1825,9 +1792,9 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 	}
 
 	if ns.ID != namespace.RootNamespaceID {
-		cubbyholeMount.Type = mountTypeNSCubbyhole
-		identityMount.Type = mountTypeNSIdentity
-		sysMount.Type = mountTypeNSSystem
+		cubbyholeMount.Type = routing.MountTypeNSCubbyhole
+		identityMount.Type = routing.MountTypeNSIdentity
+		sysMount.Type = routing.MountTypeNSSystem
 	}
 
 	table.Entries = append(table.Entries, cubbyholeMount)
@@ -1873,13 +1840,13 @@ func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view b
 	}
 
 	switch entry.Type {
-	case mountTypeSystem:
+	case routing.MountTypeSystem:
 		c.systemBackend = backend.(*SystemBackend)
 		c.systemBarrierView = view
-	case mountTypeCubbyhole:
+	case routing.MountTypeCubbyhole:
 		c.cubbyholeBackend = backend.(*CubbyholeBackend)
 		c.cubbyholeBackend.saltUUID = entry.UUID
-	case mountTypeIdentity:
+	case routing.MountTypeIdentity:
 		c.identityStore = backend.(*IdentityStore)
 	}
 }
@@ -1989,9 +1956,9 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 	invalidations := map[string]invalidation{}
 
 	for _, path := range keys {
-		table := mountTableType
+		table := routing.MountTableType
 		if path == coreAuthConfigPath && path != coreLocalAuthConfigPath {
-			table = credentialTableType
+			table = routing.CredentialTableType
 		}
 
 		raw, err := c.barrier.Get(ctx, path)
@@ -2066,12 +2033,12 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 	prefix, uuid := path.Split(key)
 	prefix = path.Clean(prefix)
 
-	table := mountTableType
+	table := routing.MountTableType
 	if prefix != coreLocalMountConfigPath && prefix != coreMountConfigPath {
 		if prefix != coreAuthConfigPath && prefix != coreLocalAuthConfigPath {
 			return fmt.Errorf("invalid path prefix %q", prefix)
 		}
-		table = credentialTableType
+		table = routing.CredentialTableType
 	}
 
 	ns, err := namespace.FromContext(ctx)
@@ -2110,7 +2077,7 @@ func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desi
 
 func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid string, desiredMountEntry *MountEntry) error {
 	switch table {
-	case credentialTableType, mountTableType:
+	case routing.CredentialTableType, routing.MountTableType:
 	default:
 		return fmt.Errorf("invalid mount table type passed: %q", table)
 	}
@@ -2126,7 +2093,7 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 	case desiredMountEntry == nil && actualMountEntry != nil: // mount was deleted
 		c.logger.Debug("cache invalidation: mount was deleted", "type", table, "uuid", uuid)
 
-		if table == credentialTableType {
+		if table == routing.CredentialTableType {
 			err = c.removeCredEntryWithLock(ctx, actualMountEntry.Path, false)
 		} else {
 			err = c.removeMountEntryWithLock(ctx, actualMountEntry.Path, false)
@@ -2136,8 +2103,8 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 		}
 
 		routerPath := actualMountEntry.Path
-		if table == credentialTableType {
-			routerPath = path.Join(credentialRoutePrefix, routerPath) + "/"
+		if table == routing.CredentialTableType {
+			routerPath = path.Join(routing.CredentialRoutePrefix, routerPath) + "/"
 		}
 		if err := c.router.Unmount(ctx, routerPath); err != nil {
 			return err
@@ -2153,7 +2120,7 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 	case desiredMountEntry != nil && actualMountEntry == nil: // mount was created
 		c.logger.Debug("cache invalidation: mount was created", "type", table, "uuid", uuid)
 
-		if table == credentialTableType {
+		if table == routing.CredentialTableType {
 			err = c.enableCredentialInternalWithLock(ctx, desiredMountEntry, false)
 			if err != nil {
 				return err
@@ -2169,8 +2136,8 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 	case desiredMountEntry != nil && actualMountEntry != nil: // mount was modified (e.g. tuned or tainted)
 		c.logger.Debug("cache invalidation: mount was modified", "type", table, "uuid", uuid)
 		routerPath := actualMountEntry.Path
-		if table == credentialTableType {
-			routerPath = path.Join(credentialRoutePrefix, routerPath) + "/"
+		if table == routing.CredentialTableType {
+			routerPath = path.Join(routing.CredentialRoutePrefix, routerPath) + "/"
 		}
 
 		if desiredMountEntry.Tainted != actualMountEntry.Tainted {
@@ -2195,7 +2162,7 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 		}
 
 		if desiredMountEntry.Options["version"] != actualMountEntry.Options["version"] {
-			err = c.reloadBackendCommon(ctx, desiredMountEntry, table == credentialTableType)
+			err = c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
 			if err != nil {
 				return err
 			}

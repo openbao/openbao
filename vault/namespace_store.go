@@ -617,13 +617,13 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Stor
 	defer ns.core.mountsLock.Unlock()
 
 	for _, mount := range mounts.Entries {
-		if err := ns.core.mountInternalWithLock(ctx, mount, MountTableNoUpdateStorage); err != nil {
+		if err := ns.core.mountInternalWithLock(ctx, mount, false); err != nil {
 			return err
 		}
 	}
 
 	for _, credential := range credentials.Entries {
-		if err := ns.core.enableCredentialInternalWithLock(ctx, credential, MountTableNoUpdateStorage); err != nil {
+		if err := ns.core.enableCredentialInternalWithLock(ctx, credential, false); err != nil {
 			return err
 		}
 	}

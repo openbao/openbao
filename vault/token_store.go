@@ -38,6 +38,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/vault/tokens"
 	"google.golang.org/protobuf/proto"
 )
@@ -118,7 +119,7 @@ var (
 			return errors.New("nil token entry")
 		}
 
-		storage := ts.core.router.MatchingStorageByAPIPath(ctx, mountPathCubbyhole)
+		storage := ts.core.router.MatchingStorageByAPIPath(ctx, routing.MountPathCubbyhole)
 		if storage == nil {
 			return errors.New("no cubby mount entry")
 		}
@@ -2437,7 +2438,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 			}
 
 			// List all the cubbyhole storage keys
-			view := ts.core.router.MatchingStorageByAPIPath(ctx, mountPathCubbyhole)
+			view := ts.core.router.MatchingStorageByAPIPath(ctx, routing.MountPathCubbyhole)
 			if view == nil {
 				return errors.New("no cubby mount entry")
 			}

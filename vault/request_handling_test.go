@@ -16,6 +16,7 @@ import (
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +27,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 
 	meUUID, _ := uuid.GenerateUUID()
 	err := core.mount(namespace.RootContext(t.Context()), &MountEntry{
-		Table: mountTableType,
+		Table: routing.MountTableType,
 		UUID:  meUUID,
 		Path:  "wraptest",
 		Type:  "kv",

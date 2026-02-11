@@ -29,6 +29,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 // mockExpiration returns a mock expiration manager
@@ -2645,7 +2646,7 @@ func TestExpiration_RevokeForce(t *testing.T) {
 
 	core.logicalBackends["badrenew"] = badRenewFactory
 	me := &MountEntry{
-		Table:    mountTableType,
+		Table:    routing.MountTableType,
 		Path:     "badrenew/",
 		Type:     "badrenew",
 		Accessor: "badrenewaccessor",
@@ -2696,7 +2697,7 @@ func TestExpiration_RevokeForceSingle(t *testing.T) {
 
 	core.logicalBackends["badrenew"] = badRenewFactory
 	me := &MountEntry{
-		Table:    mountTableType,
+		Table:    routing.MountTableType,
 		Path:     "badrenew/",
 		Type:     "badrenew",
 		Accessor: "badrenewaccessor",

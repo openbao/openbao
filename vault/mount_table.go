@@ -14,6 +14,7 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 // MountTable is used to represent the internal mount table
@@ -181,8 +182,8 @@ func (c *Core) tableMetrics(tableType string, isLocal bool, entryCount, compress
 	}
 
 	mountTableTypeLabelMap := map[string]metrics.Label{
-		mountTableType:      {Name: "type", Value: "logical"},
-		credentialTableType: {Name: "type", Value: "auth"},
+		routing.MountTableType:      {Name: "type", Value: "logical"},
+		routing.CredentialTableType: {Name: "type", Value: "auth"},
 		// we don't report number of audit mounts, but it is here for consistency
 		auditTableType: {Name: "type", Value: "audit"},
 	}

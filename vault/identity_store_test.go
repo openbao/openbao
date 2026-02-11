@@ -97,7 +97,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	ctx := namespace.RootContext(nil)
 
 	meGH := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "approle/",
 		Type:        "approle",
 		Description: "approle auth",
@@ -567,7 +567,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	ctx := namespace.RootContext(nil)
 
 	meGH := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "approle/",
 		Type:        "approle",
 		Description: "approle auth",
@@ -683,7 +683,7 @@ func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*I
 	c, _, root := TestCoreUnsealed(t)
 
 	meGH := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "approle/",
 		Type:        "approle",
 		Description: "approle auth",
@@ -721,7 +721,7 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T,
 	c, _, _ := TestCoreUnsealedWithConfig(t, conf)
 
 	githubMe := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "approle/",
 		Type:        "approle",
 		Description: "approle auth",
@@ -733,7 +733,7 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T,
 	}
 
 	userpassMe := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass",
@@ -801,7 +801,7 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 	c, _, _, sink := TestCoreUnsealedWithMetrics(t)
 
 	meGH := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "approle/",
 		Type:        "approle",
 		Description: "approle auth",
@@ -963,7 +963,7 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 
 	// Enable userpass auth in root namespace
 	rootMount := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass auth in root",
@@ -974,7 +974,7 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 
 	// Enable userpass auth in namespace 1
 	ns1Mount := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass auth in ns1",
@@ -985,7 +985,7 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 
 	// Enable userpass auth in namespace 2
 	ns2Mount := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass auth in ns2",
@@ -1229,7 +1229,7 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 
 		// Enable userpass auth in child namespace
 		childMount := &MountEntry{
-			Table:       credentialTableType,
+			Table:       routing.CredentialTableType,
 			Path:        "userpass/",
 			Type:        "userpass",
 			Description: "userpass auth in child",
@@ -1294,7 +1294,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 
 	// Enable auth methods in different namespaces
 	rootMount := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass auth in root",
@@ -1304,7 +1304,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 	rootAccessor := rootMount.Accessor
 
 	ns1Mount := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass auth in ns1",
@@ -1314,7 +1314,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 	ns1Accessor := ns1Mount.Accessor
 
 	ns2Mount := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass auth in ns2",
@@ -1592,7 +1592,7 @@ func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *
 
 	// Enable auth methods in all namespaces
 	rootMount := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass auth in root",
@@ -1602,7 +1602,7 @@ func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *
 	rootAccessor = rootMount.Accessor
 
 	ns1Mount := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass auth in ns1",
@@ -1612,7 +1612,7 @@ func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *
 	ns1Accessor = ns1Mount.Accessor
 
 	ns2Mount := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass auth in ns2",

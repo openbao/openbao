@@ -11,6 +11,7 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
+	"github.com/openbao/openbao/vault/routing"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -39,11 +40,11 @@ func (c *Core) reloadMatchingPluginMounts(ctx context.Context, mounts []string) 
 		//   - sys/auth/foo
 		//   - auth/foo/
 		//   - auth/foo
-		if strings.HasPrefix(mount, credentialRoutePrefix) {
+		if strings.HasPrefix(mount, routing.CredentialRoutePrefix) {
 			isAuth = true
-		} else if strings.HasPrefix(mount, mountPathSystem+credentialRoutePrefix) {
+		} else if strings.HasPrefix(mount, routing.MountPathSystem+routing.CredentialRoutePrefix) {
 			isAuth = true
-			mount = strings.TrimPrefix(mount, mountPathSystem)
+			mount = strings.TrimPrefix(mount, routing.MountPathSystem)
 		}
 		if !strings.HasSuffix(mount, "/") {
 			mount += "/"
@@ -135,7 +136,7 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	path := entry.Path
 
 	if isAuth {
-		path = credentialRoutePrefix + path
+		path = routing.CredentialRoutePrefix + path
 	}
 
 	// Fast-path out if the backend doesn't exist
@@ -193,7 +194,7 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	}
 
 	// update the mount table since we changed the runningSha
-	if oldSha != entry.RunningSha256 && MountTableUpdateStorage {
+	if oldSha != entry.RunningSha256 {
 		if isAuth {
 			err = c.persistAuth(ctx, nil, c.auth, &entry.Local, entry.UUID)
 			if err != nil {

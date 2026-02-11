@@ -20,6 +20,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 func TestAuth_ReadOnlyViewDuringMount(t *testing.T) {
@@ -38,7 +39,7 @@ func TestAuth_ReadOnlyViewDuringMount(t *testing.T) {
 	}
 
 	me := &MountEntry{
-		Table: credentialTableType,
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
@@ -66,7 +67,7 @@ func TestAuthMountMetrics(t *testing.T) {
 	}
 
 	me := &MountEntry{
-		Table: credentialTableType,
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
@@ -160,12 +161,12 @@ func TestCore_BuiltinRegistry(t *testing.T) {
 
 	for _, me := range []*MountEntry{
 		{
-			Table: credentialTableType,
+			Table: routing.CredentialTableType,
 			Path:  "approle/",
 			Type:  "approle",
 		},
 		{
-			Table:   credentialTableType,
+			Table:   routing.CredentialTableType,
 			Path:    "approle2/",
 			Type:    "approle",
 			Version: versions.GetBuiltinVersion(consts.PluginTypeCredential, "approle"),
@@ -187,7 +188,7 @@ func TestCore_EnableCredential(t *testing.T) {
 	}
 
 	me := &MountEntry{
-		Table: credentialTableType,
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
@@ -255,7 +256,7 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 	}
 
 	me := &MountEntry{
-		Table: credentialTableType,
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "aws-ec2",
 	}
@@ -324,10 +325,10 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	c.auth = &MountTable{
-		Type: credentialTableType,
+		Type: routing.CredentialTableType,
 		Entries: []*MountEntry{
 			{
-				Table:            credentialTableType,
+				Table:            routing.CredentialTableType,
 				Path:             "noop/",
 				Type:             "noop",
 				UUID:             "abcd",
@@ -337,7 +338,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 				namespace:        namespace.RootNamespace,
 			},
 			{
-				Table:            credentialTableType,
+				Table:            routing.CredentialTableType,
 				Path:             "noop2/",
 				Type:             "noop",
 				UUID:             "bcde",
@@ -419,7 +420,7 @@ func TestCore_EnableCredential_twice_409(t *testing.T) {
 	}
 
 	me := &MountEntry{
-		Table: credentialTableType,
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
@@ -443,7 +444,7 @@ func TestCore_EnableCredential_twice_409(t *testing.T) {
 func TestCore_EnableCredential_Token(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	me := &MountEntry{
-		Table: credentialTableType,
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "token",
 	}
@@ -467,7 +468,7 @@ func TestCore_DisableCredential(t *testing.T) {
 	}
 
 	me := &MountEntry{
-		Table: credentialTableType,
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
@@ -533,7 +534,7 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 	}
 
 	me := &MountEntry{
-		Table: credentialTableType,
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
@@ -608,7 +609,7 @@ func verifyDefaultAuthTable(t *testing.T, table *MountTable) {
 	if len(table.Entries) != 1 {
 		t.Fatalf("bad: %v", table.Entries)
 	}
-	if table.Type != credentialTableType {
+	if table.Type != routing.CredentialTableType {
 		t.Fatalf("bad: %v", *table)
 	}
 	for idx, entry := range table.Entries {
@@ -644,7 +645,7 @@ func TestCore_CredentialInitialize(t *testing.T) {
 		}
 
 		me := &MountEntry{
-			Table: credentialTableType,
+			Table: routing.CredentialTableType,
 			Path:  "foo/",
 			Type:  "initable",
 		}
@@ -670,10 +671,10 @@ func TestCore_CredentialInitialize(t *testing.T) {
 		}
 
 		c.auth = &MountTable{
-			Type: credentialTableType,
+			Type: routing.CredentialTableType,
 			Entries: []*MountEntry{
 				{
-					Table:            credentialTableType,
+					Table:            routing.CredentialTableType,
 					Path:             "foo/",
 					Type:             "initable",
 					UUID:             "abcd",
@@ -716,7 +717,7 @@ func TestCore_RemountCredential(t *testing.T) {
 	}
 
 	me := &MountEntry{
-		Table: credentialTableType,
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
@@ -768,7 +769,7 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 	}
 
 	me := &MountEntry{
-		Table: credentialTableType,
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}
@@ -843,7 +844,7 @@ func TestCore_RemountCredential_Namespaces(t *testing.T) {
 	ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
 
 	me := &MountEntry{
-		Table: credentialTableType,
+		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
 	}

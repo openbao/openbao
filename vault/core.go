@@ -57,6 +57,7 @@ import (
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/quotas"
+	"github.com/openbao/openbao/vault/routing"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
 	"google.golang.org/grpc"
@@ -1224,12 +1225,12 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 		credentialBackends[k] = f
 	}
 
-	credentialBackends[mountTypeToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	credentialBackends[routing.MountTypeToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		tsLogger := logger.Named("token")
 		c.AddLogger(tsLogger)
 		return NewTokenStore(ctx, tsLogger, c, config)
 	}
-	credentialBackends[mountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	credentialBackends[routing.MountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		if c.tokenStore != nil {
 			return c.tokenStore, nil
 		}
@@ -1249,14 +1250,14 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 	}
 
 	// KV
-	_, ok := logicalBackends[mountTypeKV]
+	_, ok := logicalBackends[routing.MountTypeKV]
 	if !ok {
-		logicalBackends[mountTypeKV] = PassthroughBackendFactory
+		logicalBackends[routing.MountTypeKV] = PassthroughBackendFactory
 	}
 
 	// Cubbyhole
-	logicalBackends[mountTypeCubbyhole] = CubbyholeBackendFactory
-	logicalBackends[mountTypeNSCubbyhole] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	logicalBackends[routing.MountTypeCubbyhole] = CubbyholeBackendFactory
+	logicalBackends[routing.MountTypeNSCubbyhole] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		if c.cubbyholeBackend != nil {
 			return c.cubbyholeBackend, nil
 		}
@@ -1264,21 +1265,21 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 	}
 
 	// System
-	logicalBackends[mountTypeSystem] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	logicalBackends[routing.MountTypeSystem] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		sysBackendLogger := logger.Named("system")
 		c.AddLogger(sysBackendLogger)
 		b := NewSystemBackend(c, sysBackendLogger)
 		return b, b.Setup(ctx, config)
 	}
-	logicalBackends[mountTypeNSSystem] = logicalBackends[mountTypeSystem]
+	logicalBackends[routing.MountTypeNSSystem] = logicalBackends[routing.MountTypeSystem]
 
 	// Identity
-	logicalBackends[mountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	logicalBackends[routing.MountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		identityLogger := logger.Named("identity")
 		c.AddLogger(identityLogger)
 		return NewIdentityStore(ctx, c, config, identityLogger)
 	}
-	logicalBackends[mountTypeNSIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	logicalBackends[routing.MountTypeNSIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		if c.identityStore != nil {
 			ns, err := namespace.FromContext(ctx)
 			if err != nil {

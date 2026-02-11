@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -108,7 +109,7 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 		meUUID, err := uuid.GenerateUUID()
 		require.NoError(t, err)
 		mountEntry := &MountEntry{
-			Table:       mountTableType,
+			Table:       routing.MountTableType,
 			UUID:        meUUID,
 			Accessor:    fmt.Sprintf("accessor-%d", i),
 			NamespaceID: namespace.RootNamespaceID,
@@ -191,7 +192,7 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 		meUUID, err := uuid.GenerateUUID()
 		require.NoError(t, err)
 		mountEntry := &MountEntry{
-			Table:       mountTableType,
+			Table:       routing.MountTableType,
 			UUID:        meUUID,
 			Accessor:    fmt.Sprintf("accessor-%d", i),
 			NamespaceID: namespace.RootNamespaceID,

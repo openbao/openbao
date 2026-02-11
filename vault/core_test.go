@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/vault/routing"
 
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
@@ -185,10 +186,10 @@ func TestNewCore_configureLogicalBackends(t *testing.T) {
 			require.Len(t, core.logicalBackends, 0)
 			core.configureLogicalBackends(tc.backends, corehelpers.NewTestLogger(t))
 			require.GreaterOrEqual(t, len(core.logicalBackends), tc.expectedNonEntBackends)
-			require.Contains(t, core.logicalBackends, mountTypeKV)
-			require.Contains(t, core.logicalBackends, mountTypeCubbyhole)
-			require.Contains(t, core.logicalBackends, mountTypeSystem)
-			require.Contains(t, core.logicalBackends, mountTypeIdentity)
+			require.Contains(t, core.logicalBackends, routing.MountTypeKV)
+			require.Contains(t, core.logicalBackends, routing.MountTypeCubbyhole)
+			require.Contains(t, core.logicalBackends, routing.MountTypeSystem)
+			require.Contains(t, core.logicalBackends, routing.MountTypeIdentity)
 			for k := range tc.backends {
 				require.Contains(t, core.logicalBackends, k)
 			}

@@ -40,6 +40,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/vault/tokens"
 )
 
@@ -1872,7 +1873,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 // after successful MFA validation to generate the token.
 func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, reqPath, mountPoint, role string, resp *logical.Response, isInlineAuth bool, userLockoutInfo *FailedLoginUser) (bool, *logical.Response, error) {
 	auth := resp.Auth
-	source := strings.TrimPrefix(mountPoint, credentialRoutePrefix)
+	source := strings.TrimPrefix(mountPoint, routing.CredentialRoutePrefix)
 	source = strings.ReplaceAll(source, "/", "-")
 
 	// Prepend the source to the display name

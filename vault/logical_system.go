@@ -46,6 +46,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
 	"golang.org/x/crypto/sha3"
 )
@@ -900,7 +901,7 @@ func (b *SystemBackend) mountInfo(ctx context.Context, entry *MountEntry) map[st
 	if rawVal, ok := entry.synthesizedConfigCache.Load("allowed_response_headers"); ok {
 		entryConfig["allowed_response_headers"] = rawVal.([]string)
 	}
-	if entry.Table == credentialTableType {
+	if entry.Table == routing.CredentialTableType {
 		entryConfig["token_type"] = entry.Config.TokenType.String()
 	}
 	if entry.Config.UserLockoutConfig != nil {
@@ -1097,7 +1098,7 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 
 	// Create the mount entry
 	me := &MountEntry{
-		Table:                 mountTableType,
+		Table:                 routing.MountTableType,
 		Path:                  path,
 		Type:                  logicalType,
 		Description:           description,
@@ -1295,8 +1296,8 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 	}
 
 	// Check that target is a valid auth mount, if source is an auth mount
-	if strings.HasPrefix(fromPathDetails.MountPath, credentialRoutePrefix) {
-		if !strings.HasPrefix(toPathDetails.MountPath, credentialRoutePrefix) {
+	if strings.HasPrefix(fromPathDetails.MountPath, routing.CredentialRoutePrefix) {
+		if !strings.HasPrefix(toPathDetails.MountPath, routing.CredentialRoutePrefix) {
 			return handleError(fmt.Errorf("cannot remount auth mount to non-auth mount %q", toPathDetails.MountPath))
 		}
 		// Prevent target and source auth mounts from being in a protected path
@@ -1373,9 +1374,9 @@ func (b *SystemBackend) moveMount(ns *namespace.Namespace, logger log.Logger, mi
 	var err error
 	// Attempt remount
 	switch entry.Table {
-	case credentialTableType:
+	case routing.CredentialTableType:
 		err = b.Core.remountCredential(revokeCtx, fromPathDetails, toPathDetails, true)
-	case mountTableType:
+	case routing.MountTableType:
 		err = b.Core.remountSecretsEngine(revokeCtx, fromPathDetails, toPathDetails, true)
 	default:
 		return fmt.Errorf("cannot remount mount of table %q", entry.Table)
@@ -1479,7 +1480,7 @@ func (b *SystemBackend) handleTuneReadCommon(ctx context.Context, path string) (
 		resp.Data["external_entropy_access"] = true
 	}
 
-	if mountEntry.Table == credentialTableType {
+	if mountEntry.Table == routing.CredentialTableType {
 		resp.Data["token_type"] = mountEntry.Config.TokenType.String()
 	}
 
@@ -1758,7 +1759,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	}
 
 	if rawVal, ok := data.GetOk("listing_visibility"); ok {
-		listingVisibility := ListingVisibilityType(rawVal.(string))
+		listingVisibility := routing.ListingVisibilityType(rawVal.(string))
 
 		if err := checkListingVisibility(listingVisibility); err != nil {
 			return logical.ErrorResponse("invalid listing_visibility %s", listingVisibility), nil
@@ -1771,7 +1772,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		if !isAuth {
 			return logical.ErrorResponse("'token_type' can only be modified on auth mounts"), logical.ErrInvalidRequest
 		}
-		if mountEntry.Type == mountTypeToken || mountEntry.Type == mountTypeNSToken {
+		if mountEntry.Type == routing.MountTypeToken || mountEntry.Type == routing.MountTypeNSToken {
 			return logical.ErrorResponse("'token_type' cannot be set for 'token' or 'ns_token' auth mounts"), logical.ErrInvalidRequest
 		}
 
@@ -2310,7 +2311,7 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 
 	// Create the mount entry
 	me := &MountEntry{
-		Table:                 credentialTableType,
+		Table:                 routing.CredentialTableType,
 		Path:                  path,
 		Type:                  logicalType,
 		Description:           description,
@@ -2412,7 +2413,7 @@ func (b *SystemBackend) handleDisableAuth(ctx context.Context, req *logical.Requ
 	if err != nil {
 		return nil, err
 	}
-	fullPath := credentialRoutePrefix + path
+	fullPath := routing.CredentialRoutePrefix + path
 
 	// We return success when the mount does not exist to not expose if the
 	// mount existed or not
@@ -3790,7 +3791,7 @@ func (b *SystemBackend) pathInternalUIMountsRead(ctx context.Context, req *logic
 	}
 
 	hasAccess := func(ctx context.Context, me *MountEntry) bool {
-		if me.Config.ListingVisibility == ListingVisibilityUnauth {
+		if me.Config.ListingVisibility == routing.ListingVisibilityUnauth {
 			return true
 		}
 
@@ -4740,11 +4741,11 @@ func sanitizePath(path string) string {
 	return path
 }
 
-func checkListingVisibility(visibility ListingVisibilityType) error {
+func checkListingVisibility(visibility routing.ListingVisibilityType) error {
 	switch visibility {
-	case ListingVisibilityDefault:
-	case ListingVisibilityHidden:
-	case ListingVisibilityUnauth:
+	case routing.ListingVisibilityDefault:
+	case routing.ListingVisibilityHidden:
+	case routing.ListingVisibilityUnauth:
 	default:
 		return errors.New("invalid listing visibility type")
 	}

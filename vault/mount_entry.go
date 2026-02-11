@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 // MountEntry is used to represent a mount table entry
@@ -52,16 +53,16 @@ type MountEntry struct {
 
 // MountConfig is used to hold settable options
 type MountConfig struct {
-	DefaultLeaseTTL           time.Duration         `json:"default_lease_ttl,omitempty" structs:"default_lease_ttl" mapstructure:"default_lease_ttl"` // Override for global default
-	MaxLeaseTTL               time.Duration         `json:"max_lease_ttl,omitempty" structs:"max_lease_ttl" mapstructure:"max_lease_ttl"`             // Override for global default
-	ForceNoCache              bool                  `json:"force_no_cache,omitempty" structs:"force_no_cache" mapstructure:"force_no_cache"`          // Override for global default
-	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" structs:"audit_non_hmac_request_keys" mapstructure:"audit_non_hmac_request_keys"`
-	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" structs:"audit_non_hmac_response_keys" mapstructure:"audit_non_hmac_response_keys"`
-	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" structs:"listing_visibility" mapstructure:"listing_visibility"`
-	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" structs:"passthrough_request_headers" mapstructure:"passthrough_request_headers"`
-	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
-	TokenType                 logical.TokenType     `json:"token_type,omitempty" structs:"token_type" mapstructure:"token_type"`
-	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
+	DefaultLeaseTTL           time.Duration                 `json:"default_lease_ttl,omitempty" structs:"default_lease_ttl" mapstructure:"default_lease_ttl"` // Override for global default
+	MaxLeaseTTL               time.Duration                 `json:"max_lease_ttl,omitempty" structs:"max_lease_ttl" mapstructure:"max_lease_ttl"`             // Override for global default
+	ForceNoCache              bool                          `json:"force_no_cache,omitempty" structs:"force_no_cache" mapstructure:"force_no_cache"`          // Override for global default
+	AuditNonHMACRequestKeys   []string                      `json:"audit_non_hmac_request_keys,omitempty" structs:"audit_non_hmac_request_keys" mapstructure:"audit_non_hmac_request_keys"`
+	AuditNonHMACResponseKeys  []string                      `json:"audit_non_hmac_response_keys,omitempty" structs:"audit_non_hmac_response_keys" mapstructure:"audit_non_hmac_response_keys"`
+	ListingVisibility         routing.ListingVisibilityType `json:"listing_visibility,omitempty" structs:"listing_visibility" mapstructure:"listing_visibility"`
+	PassthroughRequestHeaders []string                      `json:"passthrough_request_headers,omitempty" structs:"passthrough_request_headers" mapstructure:"passthrough_request_headers"`
+	AllowedResponseHeaders    []string                      `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
+	TokenType                 logical.TokenType             `json:"token_type,omitempty" structs:"token_type" mapstructure:"token_type"`
+	UserLockoutConfig         *UserLockoutConfig            `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
 
 	// PluginName is the name of the plugin registered in the catalog.
 	//
@@ -71,17 +72,17 @@ type MountConfig struct {
 
 // APIMountConfig is an embedded struct of api.MountConfigInput
 type APIMountConfig struct {
-	DefaultLeaseTTL           string                `json:"default_lease_ttl" structs:"default_lease_ttl" mapstructure:"default_lease_ttl"`
-	MaxLeaseTTL               string                `json:"max_lease_ttl" structs:"max_lease_ttl" mapstructure:"max_lease_ttl"`
-	ForceNoCache              bool                  `json:"force_no_cache" structs:"force_no_cache" mapstructure:"force_no_cache"`
-	AuditNonHMACRequestKeys   []string              `json:"audit_non_hmac_request_keys,omitempty" structs:"audit_non_hmac_request_keys" mapstructure:"audit_non_hmac_request_keys"`
-	AuditNonHMACResponseKeys  []string              `json:"audit_non_hmac_response_keys,omitempty" structs:"audit_non_hmac_response_keys" mapstructure:"audit_non_hmac_response_keys"`
-	ListingVisibility         ListingVisibilityType `json:"listing_visibility,omitempty" structs:"listing_visibility" mapstructure:"listing_visibility"`
-	PassthroughRequestHeaders []string              `json:"passthrough_request_headers,omitempty" structs:"passthrough_request_headers" mapstructure:"passthrough_request_headers"`
-	AllowedResponseHeaders    []string              `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
-	TokenType                 string                `json:"token_type" structs:"token_type" mapstructure:"token_type"`
-	UserLockoutConfig         *UserLockoutConfig    `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
-	PluginVersion             string                `json:"plugin_version,omitempty" mapstructure:"plugin_version"`
+	DefaultLeaseTTL           string                        `json:"default_lease_ttl" structs:"default_lease_ttl" mapstructure:"default_lease_ttl"`
+	MaxLeaseTTL               string                        `json:"max_lease_ttl" structs:"max_lease_ttl" mapstructure:"max_lease_ttl"`
+	ForceNoCache              bool                          `json:"force_no_cache" structs:"force_no_cache" mapstructure:"force_no_cache"`
+	AuditNonHMACRequestKeys   []string                      `json:"audit_non_hmac_request_keys,omitempty" structs:"audit_non_hmac_request_keys" mapstructure:"audit_non_hmac_request_keys"`
+	AuditNonHMACResponseKeys  []string                      `json:"audit_non_hmac_response_keys,omitempty" structs:"audit_non_hmac_response_keys" mapstructure:"audit_non_hmac_response_keys"`
+	ListingVisibility         routing.ListingVisibilityType `json:"listing_visibility,omitempty" structs:"listing_visibility" mapstructure:"listing_visibility"`
+	PassthroughRequestHeaders []string                      `json:"passthrough_request_headers,omitempty" structs:"passthrough_request_headers" mapstructure:"passthrough_request_headers"`
+	AllowedResponseHeaders    []string                      `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
+	TokenType                 string                        `json:"token_type" structs:"token_type" mapstructure:"token_type"`
+	UserLockoutConfig         *UserLockoutConfig            `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
+	PluginVersion             string                        `json:"plugin_version,omitempty" mapstructure:"plugin_version"`
 
 	// PluginName is the name of the plugin registered in the catalog.
 	//
@@ -130,11 +131,11 @@ func (e *MountEntry) IsExternalPlugin() bool {
 
 // MountClass returns the mount class based on Accessor and Path
 func (e *MountEntry) MountClass() string {
-	if e.Accessor == "" || strings.HasPrefix(e.Path, fmt.Sprintf("%s/", mountPathSystem)) {
+	if e.Accessor == "" || strings.HasPrefix(e.Path, fmt.Sprintf("%s/", routing.MountPathSystem)) {
 		return ""
 	}
 
-	if e.Table == credentialTableType {
+	if e.Table == routing.CredentialTableType {
 		return consts.PluginTypeCredential.String()
 	}
 
@@ -149,8 +150,8 @@ func (e *MountEntry) Namespace() *namespace.Namespace {
 // APIPath returns the full API Path for the given mount entry
 func (e *MountEntry) APIPath() string {
 	path := e.Path
-	if e.Table == credentialTableType {
-		path = credentialRoutePrefix + path
+	if e.Table == routing.CredentialTableType {
+		path = routing.CredentialRoutePrefix + path
 	}
 	return e.namespace.Path + path
 }
@@ -158,8 +159,8 @@ func (e *MountEntry) APIPath() string {
 // APIPathNoNamespace returns the API Path without the namespace for the given mount entry
 func (e *MountEntry) APIPathNoNamespace() string {
 	path := e.Path
-	if e.Table == credentialTableType {
-		path = credentialRoutePrefix + path
+	if e.Table == routing.CredentialTableType {
+		path = routing.CredentialRoutePrefix + path
 	}
 	return path
 }
@@ -222,16 +223,16 @@ func (c *Core) mountEntryView(me *MountEntry) (barrier.View, error) {
 	}
 
 	switch me.Type {
-	case mountTypeSystem, mountTypeNSSystem:
+	case routing.MountTypeSystem, routing.MountTypeNSSystem:
 		return NamespaceView(c.barrier, me.Namespace()).SubView(systemBarrierPrefix), nil
-	case mountTypeToken:
+	case routing.MountTypeToken:
 		return NamespaceView(c.barrier, me.Namespace()).SubView(systemBarrierPrefix + tokenSubPath), nil
 	}
 
 	switch me.Table {
-	case mountTableType:
+	case routing.MountTableType:
 		return NamespaceView(c.barrier, me.Namespace()).SubView(path.Join(backendBarrierPrefix, me.UUID) + "/"), nil
-	case credentialTableType:
+	case routing.CredentialTableType:
 		return NamespaceView(c.barrier, me.Namespace()).SubView(path.Join(credentialBarrierPrefix, me.UUID) + "/"), nil
 	case auditTableType, configAuditTableType:
 		return NamespaceView(c.barrier, me.Namespace()).SubView(path.Join(auditBarrierPrefix, me.UUID) + "/"), nil

@@ -41,6 +41,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
 	"github.com/stretchr/testify/require"
 )
@@ -856,7 +857,7 @@ func TestSystemBackend_remount_auth(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 
 	userpassMe := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass1/",
 		Type:        "userpass",
 		Description: "userpass",
@@ -967,7 +968,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 
 	userpassMe := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass1/",
 		Type:        "userpass",
 		Description: "userpass",
@@ -978,7 +979,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 	}
 
 	userpassMe2 := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass2/",
 		Type:        "userpass",
 		Description: "userpass",
@@ -1012,7 +1013,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 	}
 
 	userpassMe3 := &MountEntry{
-		Table:       credentialTableType,
+		Table:       routing.CredentialTableType,
 		Path:        "userpass3/mypass/",
 		Type:        "userpass",
 		Description: "userpass",
@@ -1059,7 +1060,7 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 
 	me := &MountEntry{
-		Table: mountTableType,
+		Table: routing.MountTableType,
 		Path:  "foo/",
 		Type:  "generic",
 	}
@@ -1092,7 +1093,7 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 	}
 
 	me2 := &MountEntry{
-		Table: mountTableType,
+		Table: routing.MountTableType,
 		Path:  "foo2/foo3/",
 		Type:  "generic",
 	}
@@ -4514,7 +4515,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 
 	// Add another mount
 	me := &MountEntry{
-		Table:   mountTableType,
+		Table:   routing.MountTableType,
 		Path:    sanitizePath("kv-v1"),
 		Type:    "kv",
 		Options: map[string]string{"version": "1"},

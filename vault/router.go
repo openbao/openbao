@@ -22,6 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/salt"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 var deniedPassthroughRequestHeaders = []string{
@@ -149,8 +150,8 @@ func (r *Router) ValidateMountByAccessor(accessor string) *ValidateMountResponse
 	}
 
 	mountPath := mountEntry.Path
-	if mountEntry.Table == credentialTableType {
-		mountPath = credentialRoutePrefix + mountPath
+	if mountEntry.Table == routing.CredentialTableType {
+		mountPath = routing.CredentialRoutePrefix + mountPath
 	}
 
 	return &ValidateMountResponse{
@@ -600,7 +601,7 @@ func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string
 	mountPath := re.mountEntry.Path
 	// Add back the prefix for credential backends
 	if strings.HasPrefix(path, credentialBarrierPrefix) {
-		mountPath = credentialRoutePrefix + mountPath
+		mountPath = routing.CredentialRoutePrefix + mountPath
 	}
 
 	return re.mountEntry.Namespace(), mountPath, re.storagePrefix, found
@@ -715,9 +716,9 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 	clientToken := req.ClientToken
 	switch {
 	case strings.HasPrefix(originalPath, "auth/token/"):
-	case strings.HasPrefix(originalPath, mountPathSystem):
-	case strings.HasPrefix(originalPath, mountPathIdentity):
-	case strings.HasPrefix(originalPath, mountPathCubbyhole):
+	case strings.HasPrefix(originalPath, routing.MountPathSystem):
+	case strings.HasPrefix(originalPath, routing.MountPathIdentity):
+	case strings.HasPrefix(originalPath, routing.MountPathCubbyhole):
 		if req.Operation == logical.RollbackOperation {
 			// Backend doesn't support this and it can't properly look up a
 			// cubbyhole ID so just return here
@@ -880,7 +881,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 				}
 
 				switch re.mountEntry.Type {
-				case mountTypeToken, mountTypeNSToken:
+				case routing.MountTypeToken, routing.MountTypeNSToken:
 					// Nothing; we respect what the token store is telling us and
 					// we don't allow tuning
 				default:

@@ -39,6 +39,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -74,7 +75,7 @@ func TestTokenStore_CubbyholeDeletion(t *testing.T) {
 func testTokenStore_CubbyholeDeletion(t *testing.T, c *Core, rootToken string) {
 	ts := c.tokenStore
 	ctx := namespace.RootContext(context.Background())
-	view := c.router.MatchingStorageByAPIPath(ctx, mountPathCubbyhole)
+	view := c.router.MatchingStorageByAPIPath(ctx, routing.MountPathCubbyhole)
 
 	for range 10 {
 		// Create a token
@@ -161,8 +162,8 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, ns *namesp
 	ts := c.tokenStore
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
 
-	backend := c.router.MatchingBackend(ctx, mountPathCubbyhole)
-	view := c.router.MatchingStorageByAPIPath(ctx, mountPathCubbyhole)
+	backend := c.router.MatchingBackend(ctx, routing.MountPathCubbyhole)
+	view := c.router.MatchingStorageByAPIPath(ctx, routing.MountPathCubbyhole)
 
 	for i := 1; i <= 20; i++ {
 		// Create 20 tokens
@@ -242,7 +243,7 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, ns *namesp
 	// root namespace context is passed
 	if ns.ID != namespace.RootNamespaceID {
 		rootCtx := namespace.RootContext(context.Background())
-		rootView := c.router.MatchingStorageByAPIPath(rootCtx, mountPathCubbyhole)
+		rootView := c.router.MatchingStorageByAPIPath(rootCtx, routing.MountPathCubbyhole)
 		cubbyholeKeysOnRootLevel, err := rootView.List(rootCtx, "")
 		if err != nil {
 			t.Fatal(err)

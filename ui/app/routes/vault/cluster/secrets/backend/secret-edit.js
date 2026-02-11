@@ -3,18 +3,16 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-// TODO(@JanMa): figure out how to get rid of UnloadModelRoute here
-
 import AdapterError from '@ember-data/adapter/error';
 import { set } from '@ember/object';
 import { resolve } from 'rsvp';
 import { inject as service } from '@ember/service';
 import Route from '@ember/routing/route';
 import utils from 'vault/lib/key-utils';
-import UnloadModelRoute from 'vault/mixins/unload-model-route';
 import { encodePath, normalizePath } from 'vault/utils/path-encoding-helpers';
+import removeRecord from 'vault/utils/remove-record';
 
-export default Route.extend(UnloadModelRoute, {
+export default Route.extend({
   store: service(),
   pathHelp: service('path-help'),
   wizard: service(),
@@ -299,9 +297,23 @@ export default Route.extend(UnloadModelRoute, {
   },
 
   resetController(controller) {
+    this._super(...arguments);
+
     if (controller.reset && typeof controller.reset === 'function') {
       controller.reset();
     }
+  },
+
+  unloadModel() {
+    /* eslint-disable-next-line ember/no-controller-access-in-routes */
+    const model = this.controller.get('model');
+    if (!model || !model.unloadRecord || model.isSaving) {
+      return;
+    }
+    removeRecord(this.store, model);
+    model.destroy();
+    /* eslint-disable-next-line ember/no-controller-access-in-routes */
+    this.controller.set('model', null);
   },
 
   actions: {
@@ -329,6 +341,7 @@ export default Route.extend(UnloadModelRoute, {
       // here we are specifically ignoring it.
       if (mode === 'edit' && changedKeys.length && changedKeys[0] === 'currentVersion') {
         version && version.rollbackAttributes();
+        this.unloadModel();
         return true;
       }
       // until we have time to move `backend` on a v1 model to a relationship,
@@ -352,7 +365,8 @@ export default Route.extend(UnloadModelRoute, {
           return false;
         }
       }
-      return this._super(...arguments);
+      this.unloadModel();
+      return true;
     },
   },
 });

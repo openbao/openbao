@@ -448,9 +448,9 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 	}
 
 	// Remount the backend
-	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath, func(re *routeEntry) error {
-		re.storageView = dstBarrierView
-		re.storagePrefix = dstBarrierView.Prefix()
+	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath, func(re *routing.RouteEntry) error {
+		re.StorageView = dstBarrierView
+		re.StoragePrefix = dstBarrierView.Prefix()
 
 		return nil
 	}); err != nil {
@@ -1127,7 +1127,7 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 			entry.Config.TokenType = logical.TokenTypeDefaultService
 
 			// this is loaded *after* the normal mounts, including cubbyhole
-			c.router.tokenStoreSaltFunc = c.tokenStore.Salt
+			c.router.SetTokenStoreSaltFunc(c.tokenStore.Salt)
 			c.tokenStore.cubbyholeBackend = c.router.MatchingBackend(ctx, routing.MountPathCubbyhole).(*CubbyholeBackend)
 		}
 

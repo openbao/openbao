@@ -22,10 +22,12 @@ import (
 )
 
 // mockRollback returns a mock rollback manager
-	mounts := new(MountTable)
-	router := NewRouter()
 func mockRollback(t *testing.T) (*RollbackManager, *be.Noop) {
+	logger := logging.NewVaultLogger(log.Trace)
+
 	backend := new(be.Noop)
+	mounts := new(routing.MountTable)
+	router := routing.NewRouter(logger)
 	core, _, _ := TestCoreUnsealed(t)
 
 	_, barr, _ := barrier.MockBarrier(t, logger)
@@ -50,8 +52,6 @@ func mockRollback(t *testing.T) (*RollbackManager, *be.Noop) {
 	mountsFunc := func() []*routing.MountEntry {
 		return mounts.Entries
 	}
-
-	logger := logging.NewVaultLogger(log.Trace)
 
 	rb := NewRollbackManager(context.Background(), logger, mountsFunc, router, core)
 	rb.period = 10 * time.Millisecond

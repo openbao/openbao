@@ -287,7 +287,7 @@ type Core struct {
 	barrier barrier.SecurityBarrier
 
 	// router is responsible for managing the mount points for logical backends.
-	router *Router
+	router *routing.Router
 
 	// logicalBackends is the mapping of backends to use for this core
 	logicalBackends map[string]logical.Factory
@@ -912,6 +912,9 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		}
 	}
 
+	coreLogger := conf.Logger.Named("core")
+	routerLogger := coreLogger.Named("router")
+
 	// Setup the core
 	c := &Core{
 		devToken:            conf.DevToken,
@@ -922,9 +925,9 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		redirectAddr:        conf.RedirectAddr,
 		seal:                conf.Seal,
 		stateLock:           stateLock,
-		router:              NewRouter(),
+		router:              routing.NewRouter(routerLogger),
 		baseLogger:          conf.Logger,
-		logger:              conf.Logger.Named("core"),
+		logger:              coreLogger,
 		logLevel:            conf.LogLevel,
 
 		defaultLeaseTTL:                conf.DefaultLeaseTTL,
@@ -971,10 +974,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	c.shutdownDoneCh.Store(make(chan struct{}))
 
-	c.allLoggers = append(c.allLoggers, c.logger)
-
-	c.router.logger = c.logger.Named("router")
-	c.allLoggers = append(c.allLoggers, c.router.logger)
+	c.allLoggers = append(c.allLoggers, c.logger, routerLogger)
 
 	c.inFlightReqData = &InFlightRequests{
 		InFlightReqMap:   &sync.Map{},

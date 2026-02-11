@@ -746,9 +746,9 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	}
 
 	// Remount the backend
-	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath, func(re *routeEntry) error {
-		re.storageView = dstBarrierView
-		re.storagePrefix = dstBarrierView.Prefix()
+	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath, func(re *routing.RouteEntry) error {
+		re.StorageView = dstBarrierView
+		re.StoragePrefix = dstBarrierView.Prefix()
 
 		return nil
 	}); err != nil {
@@ -1573,7 +1573,7 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 	}
 
 	c.mounts = nil
-	c.router.reset()
+	c.router.Reset()
 	c.systemBarrierView = nil
 	return nil
 }

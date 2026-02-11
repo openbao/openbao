@@ -26,7 +26,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 	core.logicalBackends["kv"] = PassthroughBackendFactory
 
 	meUUID, _ := uuid.GenerateUUID()
-	err := core.mount(namespace.RootContext(t.Context()), &MountEntry{
+	err := core.mount(namespace.RootContext(t.Context()), &routing.MountEntry{
 		Table: routing.MountTableType,
 		UUID:  meUUID,
 		Path:  "wraptest",

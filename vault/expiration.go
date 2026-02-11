@@ -33,6 +33,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 const (
@@ -98,7 +99,7 @@ type pendingInfo struct {
 // the ExpirationManager will handle doing automatic revocation.
 type ExpirationManager struct {
 	core       *Core
-	router     *Router
+	router     *routing.Router
 	tokenStore *TokenStore
 	logger     log.Logger
 

@@ -46,7 +46,7 @@ type RollbackManager struct {
 	// it when done with the mount table.
 	backends func() []*routing.MountEntry
 
-	router *Router
+	router *routing.Router
 	period time.Duration
 
 	inflightAll  sync.WaitGroup
@@ -102,7 +102,7 @@ func (r *rollbackJob) OnFailure(err error) {
 }
 
 // NewRollbackManager is used to create a new rollback manager
-func NewRollbackManager(ctx context.Context, logger log.Logger, backendsFunc func() []*routing.MountEntry, router *Router, core *Core) *RollbackManager {
+func NewRollbackManager(ctx context.Context, logger log.Logger, backendsFunc func() []*routing.MountEntry, router *routing.Router, core *Core) *RollbackManager {
 	r := &RollbackManager{
 		logger:      logger,
 		backends:    backendsFunc,

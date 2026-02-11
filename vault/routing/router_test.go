@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package routing
 
 import (
 	"context"
@@ -9,16 +9,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	be "github.com/openbao/openbao/vault/backend"
+	"github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
-	"github.com/openbao/openbao/vault/routing"
 )
 
+var logger = logging.NewVaultLogger(hclog.Trace)
+
 func TestRouter_Mount(t *testing.T) {
-	r := NewRouter()
+	r := NewRouter(nil)
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 
@@ -27,7 +30,7 @@ func TestRouter_Mount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mountEntry := &routing.MountEntry{
+	mountEntry := &MountEntry{
 		Path:        "prod/aws/",
 		UUID:        meUUID,
 		Accessor:    "awsaccessor",
@@ -35,7 +38,7 @@ func TestRouter_Mount(t *testing.T) {
 		Namespace:   namespace.RootNamespace,
 	}
 
-	n := &be.Noop{}
+	n := &backend.Noop{}
 	err = r.Mount(n, "prod/aws/", mountEntry, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -46,7 +49,7 @@ func TestRouter_Mount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = r.Mount(n, "prod/aws/", &routing.MountEntry{UUID: meUUID, NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
+	err = r.Mount(n, "prod/aws/", &MountEntry{UUID: meUUID, NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if !strings.Contains(err.Error(), "cannot mount under existing mount") {
 		t.Fatalf("err: %v", err)
 	}
@@ -107,7 +110,7 @@ func TestRouter_Mount(t *testing.T) {
 		t.Fatalf("bad: %v", n.Paths)
 	}
 
-	subMountEntry := &routing.MountEntry{
+	subMountEntry := &MountEntry{
 		Path:        "prod/",
 		UUID:        meUUID,
 		Accessor:    "prodaccessor",
@@ -130,7 +133,7 @@ func TestRouter_Mount(t *testing.T) {
 }
 
 func TestRouter_MountCredential(t *testing.T) {
-	r := NewRouter()
+	r := NewRouter(nil)
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, barrier.CredentialBarrierPrefix)
 
@@ -139,7 +142,7 @@ func TestRouter_MountCredential(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mountEntry := &routing.MountEntry{
+	mountEntry := &MountEntry{
 		Path:        "aws",
 		UUID:        meUUID,
 		Accessor:    "awsaccessor",
@@ -147,7 +150,7 @@ func TestRouter_MountCredential(t *testing.T) {
 		Namespace:   namespace.RootNamespace,
 	}
 
-	n := &be.Noop{}
+	n := &backend.Noop{}
 	err = r.Mount(n, "auth/aws/", mountEntry, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -158,7 +161,7 @@ func TestRouter_MountCredential(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = r.Mount(n, "auth/aws/", &routing.MountEntry{UUID: meUUID, NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
+	err = r.Mount(n, "auth/aws/", &MountEntry{UUID: meUUID, NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if !strings.Contains(err.Error(), "cannot mount under existing mount") {
 		t.Fatalf("err: %v", err)
 	}
@@ -184,7 +187,7 @@ func TestRouter_MountCredential(t *testing.T) {
 		t.Fatalf("failed to fetch mount entry using its ID; expected: %#v\n actual: %#v\n", mountEntry, mountEntryFetched)
 	}
 
-	_, mount, prefix, ok := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(nil), "auth/foo")
+	_, mount, prefix, ok := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(t.Context()), "auth/foo")
 	if !ok {
 		t.Fatal("missing storage prefix")
 	}
@@ -210,7 +213,7 @@ func TestRouter_MountCredential(t *testing.T) {
 }
 
 func TestRouter_Unmount(t *testing.T) {
-	r := NewRouter()
+	r := NewRouter(nil)
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 
@@ -218,13 +221,13 @@ func TestRouter_Unmount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &be.Noop{}
-	err = r.Mount(n, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
+	n := &backend.Noop{}
+	err = r.Mount(n, "prod/aws/", &MountEntry{Path: "prod/aws/", UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	err = r.Unmount(namespace.RootContext(nil), "prod/aws/")
+	err = r.Unmount(namespace.RootContext(t.Context()), "prod/aws/")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -232,18 +235,18 @@ func TestRouter_Unmount(t *testing.T) {
 	req := &logical.Request{
 		Path: "prod/aws/foo",
 	}
-	_, err = r.Route(namespace.RootContext(nil), req)
+	_, err = r.Route(namespace.RootContext(t.Context()), req)
 	if !strings.Contains(err.Error(), "unsupported path") {
 		t.Fatalf("err: %v", err)
 	}
 
-	if _, _, _, ok := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(nil), "logical/foo"); ok {
+	if _, _, _, ok := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(t.Context()), "logical/foo"); ok {
 		t.Fatal("should not have matching storage prefix")
 	}
 }
 
 func TestRouter_Remount(t *testing.T) {
-	r := NewRouter()
+	r := NewRouter(nil)
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 
@@ -251,20 +254,20 @@ func TestRouter_Remount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &be.Noop{}
-	me := &routing.MountEntry{Path: "prod/aws/", UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}
+	n := &backend.Noop{}
+	me := &MountEntry{Path: "prod/aws/", UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}
 	err = r.Mount(n, "prod/aws/", me, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	me.Path = "stage/aws/"
-	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/", nil)
+	err = r.Remount(namespace.RootContext(t.Context()), "prod/aws/", "stage/aws/", nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/", nil)
+	err = r.Remount(namespace.RootContext(t.Context()), "prod/aws/", "stage/aws/", nil)
 	if !strings.Contains(err.Error(), "no mount at") {
 		t.Fatalf("err: %v", err)
 	}
@@ -272,7 +275,7 @@ func TestRouter_Remount(t *testing.T) {
 	req := &logical.Request{
 		Path: "prod/aws/foo",
 	}
-	_, err = r.Route(namespace.RootContext(nil), req)
+	_, err = r.Route(namespace.RootContext(t.Context()), req)
 	if !strings.Contains(err.Error(), "unsupported path") {
 		t.Fatalf("err: %v", err)
 	}
@@ -280,7 +283,7 @@ func TestRouter_Remount(t *testing.T) {
 	req = &logical.Request{
 		Path: "stage/aws/foo",
 	}
-	_, err = r.Route(namespace.RootContext(nil), req)
+	_, err = r.Route(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -291,7 +294,7 @@ func TestRouter_Remount(t *testing.T) {
 	}
 
 	// Check the resolve from storage still works
-	_, mount, prefix, _ := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(nil), "logical/foobar")
+	_, mount, prefix, _ := r.MatchingAPIPrefixByStoragePath(namespace.RootContext(t.Context()), "logical/foobar")
 	if mount != "stage/aws/" {
 		t.Fatalf("bad mount: %s", mount)
 	}
@@ -301,7 +304,7 @@ func TestRouter_Remount(t *testing.T) {
 }
 
 func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
-	r := NewRouter()
+	r := NewRouter(nil)
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 
@@ -313,9 +316,9 @@ func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &be.Noop{}
+	n := &backend.Noop{}
 	// Router.Mount will prepend the namespace path; pass a namespace-relative prefix
-	err = r.Mount(n, "sys/", &routing.MountEntry{UUID: meUUID, Accessor: "sysaccessor", NamespaceID: nsTeam.ID, Namespace: nsTeam}, view)
+	err = r.Mount(n, "sys/", &MountEntry{UUID: meUUID, Accessor: "sysaccessor", NamespaceID: nsTeam.ID, Namespace: nsTeam}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -335,7 +338,7 @@ func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = r.Mount(n, "sys/", &routing.MountEntry{UUID: meUUID2, Accessor: "syschild", NamespaceID: child.ID, Namespace: child}, view)
+	err = r.Mount(n, "sys/", &MountEntry{UUID: meUUID2, Accessor: "syschild", NamespaceID: child.ID, Namespace: child}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -345,7 +348,7 @@ func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 }
 
 func TestRouter_RootPath(t *testing.T) {
-	r := NewRouter()
+	r := NewRouter(nil)
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 
@@ -353,13 +356,13 @@ func TestRouter_RootPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &be.Noop{
+	n := &backend.Noop{
 		Root: []string{
 			"root",
 			"policy/*",
 		},
 	}
-	err = r.Mount(n, "prod/aws/", &routing.MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
+	err = r.Mount(n, "prod/aws/", &MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -379,7 +382,7 @@ func TestRouter_RootPath(t *testing.T) {
 	}
 
 	for _, tc := range tcases {
-		out := r.RootPath(namespace.RootContext(nil), tc.path)
+		out := r.RootPath(namespace.RootContext(t.Context()), tc.path)
 		if out != tc.expect {
 			t.Fatalf("bad: path: %s expect: %v got %v", tc.path, tc.expect, out)
 		}
@@ -387,7 +390,7 @@ func TestRouter_RootPath(t *testing.T) {
 }
 
 func TestRouter_LoginPath(t *testing.T) {
-	r := NewRouter()
+	r := NewRouter(nil)
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "auth/")
 
@@ -395,7 +398,7 @@ func TestRouter_LoginPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &be.Noop{
+	n := &backend.Noop{
 		Login: []string{
 			"login",
 			"oauth/*",
@@ -410,7 +413,7 @@ func TestRouter_LoginPath(t *testing.T) {
 			"+/around/+/",
 		},
 	}
-	err = r.Mount(n, "auth/foo/", &routing.MountEntry{UUID: meUUID, Accessor: "authfooaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
+	err = r.Mount(n, "auth/foo/", &MountEntry{UUID: meUUID, Accessor: "authfooaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -491,7 +494,7 @@ func TestRouter_LoginPath(t *testing.T) {
 	}
 
 	for _, tc := range tcases {
-		out := r.LoginPath(namespace.RootContext(nil), tc.path)
+		out := r.LoginPath(namespace.RootContext(t.Context()), tc.path)
 		if out != tc.expect {
 			t.Fatalf("bad: path: %s expect: %v got %v", tc.path, tc.expect, out)
 		}
@@ -499,7 +502,7 @@ func TestRouter_LoginPath(t *testing.T) {
 }
 
 func TestRouter_Taint(t *testing.T) {
-	r := NewRouter()
+	r := NewRouter(nil)
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 
@@ -507,13 +510,13 @@ func TestRouter_Taint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &be.Noop{}
-	err = r.Mount(n, "prod/aws/", &routing.MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
+	n := &backend.Noop{}
+	err = r.Mount(n, "prod/aws/", &MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	err = r.Taint(namespace.RootContext(nil), "prod/aws/")
+	err = r.Taint(namespace.RootContext(t.Context()), "prod/aws/")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -522,27 +525,27 @@ func TestRouter_Taint(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "prod/aws/foo",
 	}
-	_, err = r.Route(namespace.RootContext(nil), req)
+	_, err = r.Route(namespace.RootContext(t.Context()), req)
 	if err.Error() != "unsupported path" {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Rollback and Revoke should work
 	req.Operation = logical.RollbackOperation
-	_, err = r.Route(namespace.RootContext(nil), req)
+	_, err = r.Route(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	req.Operation = logical.RevokeOperation
-	_, err = r.Route(namespace.RootContext(nil), req)
+	_, err = r.Route(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 }
 
 func TestRouter_Untaint(t *testing.T) {
-	r := NewRouter()
+	r := NewRouter(nil)
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 
@@ -550,18 +553,18 @@ func TestRouter_Untaint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &be.Noop{}
-	err = r.Mount(n, "prod/aws/", &routing.MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
+	n := &backend.Noop{}
+	err = r.Mount(n, "prod/aws/", &MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	err = r.Taint(namespace.RootContext(nil), "prod/aws/")
+	err = r.Taint(namespace.RootContext(t.Context()), "prod/aws/")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	err = r.Untaint(namespace.RootContext(nil), "prod/aws/")
+	err = r.Untaint(namespace.RootContext(t.Context()), "prod/aws/")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -570,7 +573,7 @@ func TestRouter_Untaint(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "prod/aws/foo",
 	}
-	_, err = r.Route(namespace.RootContext(nil), req)
+	_, err = r.Route(namespace.RootContext(t.Context()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -583,7 +586,7 @@ func TestPathsToRadix(t *testing.T) {
 		"foo/*",
 		"sub/bar*",
 	}
-	r := pathsToRadix(paths)
+	r := PathsToRadix(paths)
 
 	raw, ok := r.Get("foo")
 	if !ok || raw.(bool) != false {
@@ -615,7 +618,7 @@ func TestParseUnauthenticatedPaths(t *testing.T) {
 	}
 	allPaths := append(paths, wildcardPaths...)
 
-	p, err := parseUnauthenticatedPaths(allPaths)
+	p, err := ParseUnauthenticatedPaths(allPaths)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -627,7 +630,7 @@ func TestParseUnauthenticatedPaths(t *testing.T) {
 		{segments: []string{"middle", "+", "bar"}, isPrefix: true},
 	}
 	expected := &loginPathsEntry{
-		paths:         pathsToRadix(paths),
+		paths:         PathsToRadix(paths),
 		wildcardPaths: wildcardPathsEntry,
 	}
 
@@ -673,7 +676,7 @@ func TestParseUnauthenticatedPaths_Error(t *testing.T) {
 	}
 
 	for _, tc := range tcases {
-		_, err := parseUnauthenticatedPaths(tc.paths)
+		_, err := ParseUnauthenticatedPaths(tc.paths)
 		if err == nil || !strings.Contains(err.Error(), tc.err) {
 			t.Fatalf("bad: path: %s expect: %v got %v", tc.paths, tc.err, err)
 		}

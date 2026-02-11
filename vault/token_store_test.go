@@ -1481,8 +1481,8 @@ func TestTokenStore_Revoke_Leases(t *testing.T) {
 	view := barrier.NewView(c.barrier, "noop/")
 
 	// Mount a noop backend
-	err := ts.expiration.router.Mount(noop, "noop/", &routing.MountEntry{UUID: "noopuuid", Accessor: "noopaccessor", namespace: namespace.RootNamespace}, view)
 	noop := &be.Noop{}
+	err := ts.expiration.router.Mount(noop, "noop/", &routing.MountEntry{UUID: "noopuuid", Accessor: "noopaccessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -5958,7 +5958,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{UUID: meUUID, Accessor: "awsaccessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{UUID: meUUID, Accessor: "awsaccessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}

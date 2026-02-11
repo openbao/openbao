@@ -140,28 +140,26 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 	}
 
 	// Fast-path out if the backend doesn't exist
-	raw, ok := c.router.root.Get(entry.Namespace.Path + path)
+	re, ok := c.router.Get(entry.Namespace.Path + path)
 	if !ok {
 		return nil
 	}
 
-	re := raw.(*routeEntry)
-
 	// Grab the lock, this allows requests to drain before we cleanup the
 	// client.
-	re.l.Lock()
-	defer re.l.Unlock()
+	re.Lock()
+	defer re.Unlock()
 
 	// Only call Cleanup if backend is initialized
-	if re.backend != nil {
+	if re.Backend != nil {
 		// Pass a context value so that the plugin client will call the
 		// appropriate cleanup method for reloading
 		reloadCtx := context.WithValue(ctx, plugin.ContextKeyPluginReload, "reload")
 		// Call backend's Cleanup routine
-		re.backend.Cleanup(reloadCtx)
+		re.Backend.Cleanup(reloadCtx)
 	}
 
-	view := re.storageView
+	view := re.StorageView
 	sysView := c.mountEntrySysView(entry)
 
 	var backend logical.Backend
@@ -209,7 +207,7 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 	}
 
 	// Set the backend back
-	re.backend = backend
+	re.Backend = backend
 
 	// Initialize the backend after reload. This is a no-op for backends < v5 which
 	// rely on lazy loading for initialization. v5 backends do not rely on lazy loading
@@ -223,12 +221,12 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntr
 	// Set paths as well
 	paths := backend.SpecialPaths()
 	if paths != nil {
-		re.rootPaths.Store(pathsToRadix(paths.Root))
-		loginPathsEntry, err := parseUnauthenticatedPaths(paths.Unauthenticated)
+		re.SetRootPaths(routing.PathsToRadix(paths.Root))
+		loginPathsEntry, err := routing.ParseUnauthenticatedPaths(paths.Unauthenticated)
 		if err != nil {
 			return err
 		}
-		re.loginPaths.Store(loginPathsEntry)
+		re.SetLoginPaths(loginPathsEntry)
 	}
 
 	return nil

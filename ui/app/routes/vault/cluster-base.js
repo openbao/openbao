@@ -4,7 +4,7 @@
  */
 
 import { inject as service } from '@ember/service';
-import Mixin from '@ember/object/mixin';
+import Route from '@ember/routing/route';
 import RSVP from 'rsvp';
 import {
   INIT,
@@ -19,7 +19,7 @@ import {
   REDIRECT,
 } from 'vault/lib/route-paths';
 
-export default Mixin.create({
+export default Route.extend({
   auth: service(),
   store: service(),
   router: service(),
@@ -61,6 +61,7 @@ export default Mixin.create({
   },
 
   hasKeyData() {
+    /* eslint-disable-next-line ember/no-controller-access-in-routes */
     return !!this.controllerFor(INIT).keyData;
   },
 

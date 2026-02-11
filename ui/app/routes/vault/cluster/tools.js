@@ -3,10 +3,9 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import Route from '@ember/routing/route';
-import ClusterRoute from 'vault/mixins/cluster-route';
+import ClusterBaseRoute from '../cluster-base';
 
-export default Route.extend(ClusterRoute, {
+export default ClusterBaseRoute.extend({
   model() {
     return this.modelFor('vault.cluster');
   },

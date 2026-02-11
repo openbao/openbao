@@ -52,7 +52,7 @@ var (
 )
 
 // enableCredential is used to enable a new credential backend
-func (c *Core) enableCredential(ctx context.Context, entry *MountEntry) error {
+func (c *Core) enableCredential(ctx context.Context, entry *routing.MountEntry) error {
 	// Ensure the token backend is a singleton
 	if entry.Type == routing.MountTypeToken || entry.Type == routing.MountTypeNSToken {
 		return errors.New("token credential backend cannot be instantiated")
@@ -67,7 +67,7 @@ func (c *Core) enableCredential(ctx context.Context, entry *MountEntry) error {
 }
 
 // enableCredential is used to enable a new credential backend
-func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, updateStorage bool) error {
+func (c *Core) enableCredentialInternal(ctx context.Context, entry *routing.MountEntry, updateStorage bool) error {
 	// Ensure we end the path in a slash
 	if !strings.HasSuffix(entry.Path, "/") {
 		entry.Path += "/"
@@ -86,13 +86,13 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	return c.enableCredentialInternalWithLock(ctx, entry, updateStorage)
 }
 
-func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *MountEntry, updateStorage bool) error {
+func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *routing.MountEntry, updateStorage bool) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
 	}
 	entry.NamespaceID = ns.ID
-	entry.namespace = ns
+	entry.Namespace = ns
 
 	// Basic check for matching names
 	for _, ent := range c.auth.Entries {
@@ -211,7 +211,7 @@ func (c *Core) enableCredentialInternalWithLock(ctx context.Context, entry *Moun
 
 	success = true
 	if c.logger.IsInfo() {
-		c.logger.Info("enabled credential backend", "namespace", entry.Namespace().Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
+		c.logger.Info("enabled credential backend", "namespace", entry.Namespace.Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
 	}
 
 	return nil
@@ -424,7 +424,7 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 
 	mountEntry.Tainted = false
 	mountEntry.NamespaceID = dst.Namespace.ID
-	mountEntry.namespace = dst.Namespace
+	mountEntry.Namespace = dst.Namespace
 	srcPath := mountEntry.Path
 	mountEntry.Path = strings.TrimPrefix(dst.MountPath, routing.CredentialRoutePrefix)
 
@@ -435,7 +435,7 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 
 	// Update the mount table
 	if err := c.persistAuth(ctx, nil, c.auth, &mountEntry.Local, mountEntry.UUID); err != nil {
-		mountEntry.namespace = src.Namespace
+		mountEntry.Namespace = src.Namespace
 		mountEntry.NamespaceID = src.Namespace.ID
 		mountEntry.Path = srcPath
 		mountEntry.Tainted = true
@@ -789,7 +789,7 @@ func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage
 		if ns == nil {
 			return namespace.ErrNoNamespace
 		}
-		entry.namespace = ns
+		entry.Namespace = ns
 
 		// Sync values to the cache
 		entry.SyncCache()
@@ -904,7 +904,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 					continue
 				}
 
-				view := NamespaceView(barrier, mtEntry.Namespace())
+				view := NamespaceView(barrier, mtEntry.Namespace)
 
 				found = true
 				currentEntries[mtEntry.UUID] = struct{}{}
@@ -1105,20 +1105,20 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 		path := routing.CredentialRoutePrefix + entry.Path
 		err = c.router.Mount(backend, path, entry, view)
 		if err != nil {
-			c.logger.Error("failed to mount auth entry", "path", entry.Path, "namespace", entry.Namespace(), "error", err)
+			c.logger.Error("failed to mount auth entry", "path", entry.Path, "namespace", entry.Namespace, "error", err)
 			return errLoadAuthFailed
 		}
 
 		if c.logger.IsInfo() {
-			c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace())
+			c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace)
 		}
 
 		// Ensure the path is tainted if set in the mount table
 		if entry.Tainted {
 			// Calculate any namespace prefixes here, because when Taint() is called, there won't be
 			// a namespace to pull from the context. This is similar to what we do above in c.router.Mount().
-			path = entry.Namespace().Path + path
-			c.logger.Debug("tainting a mount due to it being marked as tainted in mount table", "entry.path", entry.Path, "entry.namespace.path", entry.Namespace().Path, "full_path", path)
+			path = entry.Namespace.Path + path
+			c.logger.Debug("tainting a mount due to it being marked as tainted in mount table", "entry.path", entry.Path, "entry.namespace.path", entry.Namespace.Path, "full_path", path)
 			c.router.Taint(ctx, path)
 		}
 
@@ -1167,7 +1167,7 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 	if c.auth != nil {
 		authTable := c.auth.shallowClone()
 		for _, e := range authTable.Entries {
-			backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.namespace), routing.CredentialRoutePrefix+e.Path)
+			backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.Namespace), routing.CredentialRoutePrefix+e.Path)
 			if backend != nil {
 				backend.Cleanup(ctx)
 			}
@@ -1186,7 +1186,7 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 
 // newCredentialBackend is used to create and configure a new credential backend by name.
 // It also returns the SHA256 of the plugin, if available.
-func (c *Core) newCredentialBackend(ctx context.Context, entry *MountEntry, sysView logical.SystemView, view logical.Storage) (logical.Backend, string, error) {
+func (c *Core) newCredentialBackend(ctx context.Context, entry *routing.MountEntry, sysView logical.SystemView, view logical.Storage) (logical.Backend, string, error) {
 	t := entry.Type
 	if alias, ok := credentialAliases[t]; ok {
 		t = alias
@@ -1275,7 +1275,7 @@ func (c *Core) defaultAuthTable(ctx context.Context) (*MountTable, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not create identity backend UUID: %w", err)
 	}
-	tokenAuth := &MountEntry{
+	tokenAuth := &routing.MountEntry{
 		Table:            routing.CredentialTableType,
 		Path:             "token/",
 		Type:             routing.MountTypeToken,
@@ -1284,7 +1284,7 @@ func (c *Core) defaultAuthTable(ctx context.Context) (*MountTable, error) {
 		Accessor:         tokenAccessor,
 		BackendAwareUUID: tokenBackendUUID,
 		NamespaceID:      ns.ID,
-		namespace:        ns,
+		Namespace:        ns,
 	}
 
 	if ns.ID != namespace.RootNamespaceID {

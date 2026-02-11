@@ -30,11 +30,11 @@ func mockRollback(t *testing.T) (*RollbackManager, *NoopBackend) {
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 
-	mounts.Entries = []*MountEntry{
+	mounts.Entries = []*routing.MountEntry{
 		{
 			Path:        "foo",
 			NamespaceID: namespace.RootNamespaceID,
-			namespace:   namespace.RootNamespace,
+			Namespace:   namespace.RootNamespace,
 		},
 	}
 	meUUID, err := uuid.GenerateUUID()
@@ -42,11 +42,11 @@ func mockRollback(t *testing.T) (*RollbackManager, *NoopBackend) {
 		t.Fatal(err)
 	}
 
-	if err := router.Mount(backend, "foo", &MountEntry{UUID: meUUID, Accessor: "noopaccessor", NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}, view); err != nil {
+	if err := router.Mount(backend, "foo", &routing.MountEntry{UUID: meUUID, Accessor: "noopaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	mountsFunc := func() []*MountEntry {
+	mountsFunc := func() []*routing.MountEntry {
 		return mounts.Entries
 	}
 
@@ -108,12 +108,12 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 		b.Root = []string{fmt.Sprintf("foo/%d", i)}
 		meUUID, err := uuid.GenerateUUID()
 		require.NoError(t, err)
-		mountEntry := &MountEntry{
+		mountEntry := &routing.MountEntry{
 			Table:       routing.MountTableType,
 			UUID:        meUUID,
 			Accessor:    fmt.Sprintf("accessor-%d", i),
 			NamespaceID: namespace.RootNamespaceID,
-			namespace:   namespace.RootNamespace,
+			Namespace:   namespace.RootNamespace,
 			Path:        fmt.Sprintf("logical/foo/%d", i),
 		}
 		func() {
@@ -191,12 +191,12 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 		b.Root = []string{fmt.Sprintf("foo/%d", i)}
 		meUUID, err := uuid.GenerateUUID()
 		require.NoError(t, err)
-		mountEntry := &MountEntry{
+		mountEntry := &routing.MountEntry{
 			Table:       routing.MountTableType,
 			UUID:        meUUID,
 			Accessor:    fmt.Sprintf("accessor-%d", i),
 			NamespaceID: namespace.RootNamespaceID,
-			namespace:   namespace.RootNamespace,
+			Namespace:   namespace.RootNamespace,
 			Path:        fmt.Sprintf("logical/foo/%d", i),
 		}
 		func() {

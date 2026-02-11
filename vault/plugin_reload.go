@@ -57,7 +57,7 @@ func (c *Core) reloadMatchingPluginMounts(ctx context.Context, mounts []string) 
 		}
 
 		// We dont reload mounts that are not in the same namespace
-		if ns.ID != entry.Namespace().ID {
+		if ns.ID != entry.Namespace.ID {
 			continue
 		}
 
@@ -88,7 +88,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 	// Filter mount entries that only matches the plugin name
 	for _, entry := range c.mounts.Entries {
 		// We dont reload mounts that are not in the same namespace
-		if ns.ID != entry.Namespace().ID {
+		if ns.ID != entry.Namespace.ID {
 			continue
 		}
 		if entry.Type == pluginName || (entry.Type == "plugin" && entry.Config.PluginName == pluginName) {
@@ -103,7 +103,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 	// Filter auth mount entries that ony matches the plugin name
 	for _, entry := range c.auth.Entries {
 		// We dont reload mounts that are not in the same namespace
-		if ns.ID != entry.Namespace().ID {
+		if ns.ID != entry.Namespace.ID {
 			continue
 		}
 
@@ -121,7 +121,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 
 // reloadBackendCommon is a generic method to reload a backend provided a
 // MountEntry.
-func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAuth bool) error {
+func (c *Core) reloadBackendCommon(ctx context.Context, entry *routing.MountEntry, isAuth bool) error {
 	// Make sure our cache is up-to-date. Since some singleton mounts can be
 	// tuned, we do this before the below check.
 	entry.SyncCache()
@@ -140,7 +140,7 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	}
 
 	// Fast-path out if the backend doesn't exist
-	raw, ok := c.router.root.Get(entry.Namespace().Path + path)
+	raw, ok := c.router.root.Get(entry.Namespace.Path + path)
 	if !ok {
 		return nil
 	}

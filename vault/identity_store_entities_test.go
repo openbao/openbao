@@ -19,6 +19,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -667,12 +668,12 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 		t.Fatal("should not be sealed")
 	}
 
-	meGH := &MountEntry{
+	meGH := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
 		Path:        "approle/",
 		Type:        "approle",
 		Description: "approle auth",
-		namespace:   namespace.RootNamespace,
+		Namespace:   namespace.RootNamespace,
 	}
 
 	// Mount UUID for approle auth

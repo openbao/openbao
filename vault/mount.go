@@ -128,7 +128,7 @@ func (c *Core) decodeMountTable(ctx context.Context, raw []byte) (*MountTable, e
 	}
 
 	// Populate the namespace in memory
-	var mountEntries []*MountEntry
+	var mountEntries []*routing.MountEntry
 	for _, entry := range mountTable.Entries {
 		if entry.NamespaceID == "" {
 			entry.NamespaceID = namespace.RootNamespaceID
@@ -142,7 +142,7 @@ func (c *Core) decodeMountTable(ctx context.Context, raw []byte) (*MountTable, e
 			continue
 		}
 
-		entry.namespace = ns
+		entry.Namespace = ns
 		mountEntries = append(mountEntries, entry)
 	}
 
@@ -152,7 +152,7 @@ func (c *Core) decodeMountTable(ctx context.Context, raw []byte) (*MountTable, e
 	}, nil
 }
 
-func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logical.Storage, prefix string, uuid string) (*MountEntry, error) {
+func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logical.Storage, prefix string, uuid string) (*routing.MountEntry, error) {
 	path := path.Join(prefix, uuid)
 	sEntry, err := barrier.Get(ctx, path)
 	if err != nil {
@@ -162,7 +162,7 @@ func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logica
 		return nil, errors.New("unexpected empty storage entry for mount")
 	}
 
-	entry := new(MountEntry)
+	entry := new(routing.MountEntry)
 	if err := jsonutil.DecodeJSON(sEntry.Value, entry); err != nil {
 		return nil, err
 	}
@@ -185,13 +185,13 @@ func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logica
 		return nil, nil
 	}
 
-	entry.namespace = ns
+	entry.Namespace = ns
 
 	return entry, nil
 }
 
 // Mount is used to mount a new backend to the mount table.
-func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
+func (c *Core) mount(ctx context.Context, entry *routing.MountEntry) error {
 	// Ensure we end the path in a slash
 	if !strings.HasSuffix(entry.Path, "/") {
 		entry.Path += "/"
@@ -199,7 +199,7 @@ func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 
 	// Prevent protected paths from being mounted
 	for _, p := range protectedMounts {
-		if strings.HasPrefix(entry.Path, p) && entry.namespace == nil {
+		if strings.HasPrefix(entry.Path, p) && entry.Namespace == nil {
 			return logical.CodedError(403, "cannot mount %q", entry.Path)
 		}
 	}
@@ -219,7 +219,7 @@ func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 	return nil
 }
 
-func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStorage bool) error {
+func (c *Core) mountInternal(ctx context.Context, entry *routing.MountEntry, updateStorage bool) error {
 	c.mountsLock.Lock()
 	c.authLock.Lock()
 	defer c.authLock.Unlock()
@@ -228,14 +228,14 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	return c.mountInternalWithLock(ctx, entry, updateStorage)
 }
 
-func (c *Core) mountInternalWithLock(ctx context.Context, entry *MountEntry, updateStorage bool) error {
+func (c *Core) mountInternalWithLock(ctx context.Context, entry *routing.MountEntry, updateStorage bool) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
 	}
 
 	entry.NamespaceID = ns.ID
-	entry.namespace = ns
+	entry.Namespace = ns
 
 	// Basic check for matching names
 	for _, ent := range c.mounts.Entries {
@@ -363,7 +363,7 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *MountEntry, upd
 
 	success = true
 	if c.logger.IsInfo() {
-		c.logger.Info("successful mount", "namespace", entry.Namespace().Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
+		c.logger.Info("successful mount", "namespace", entry.Namespace.Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
 	}
 
 	return nil
@@ -371,7 +371,7 @@ func (c *Core) mountInternalWithLock(ctx context.Context, entry *MountEntry, upd
 
 // builtinTypeFromMountEntry attempts to find a builtin PluginType associated
 // with the specified MountEntry. Returns consts.PluginTypeUnknown if not found.
-func (c *Core) builtinTypeFromMountEntry(ctx context.Context, entry *MountEntry) consts.PluginType {
+func (c *Core) builtinTypeFromMountEntry(ctx context.Context, entry *routing.MountEntry) consts.PluginType {
 	if c.builtinRegistry == nil || entry == nil {
 		return consts.PluginTypeUnknown
 	}
@@ -592,7 +592,7 @@ func (c *Core) taintMountEntry(ctx context.Context, nsID, mountPath string, upda
 // mount entry's builtin engine. Warnings are appended to the returned response
 // and logged. Errors are returned with a nil response to be processed by the
 // caller.
-func (c *Core) handleDeprecatedMountEntry(ctx context.Context, entry *MountEntry, pluginType consts.PluginType) (*logical.Response, error) {
+func (c *Core) handleDeprecatedMountEntry(ctx context.Context, entry *routing.MountEntry, pluginType consts.PluginType) (*logical.Response, error) {
 	resp := &logical.Response{}
 
 	if c.builtinRegistry == nil || entry == nil {
@@ -716,7 +716,7 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 
 	mountEntry.Tainted = false
 	mountEntry.NamespaceID = dst.Namespace.ID
-	mountEntry.namespace = dst.Namespace
+	mountEntry.Namespace = dst.Namespace
 	srcPath := mountEntry.Path
 	mountEntry.Path = dst.MountPath
 
@@ -727,7 +727,7 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 
 	// Update the mount table
 	if err := c.persistMounts(ctx, nil, c.mounts, &mountEntry.Local, mountEntry.UUID); err != nil {
-		mountEntry.namespace = src.Namespace
+		mountEntry.Namespace = src.Namespace
 		mountEntry.NamespaceID = src.Namespace.ID
 		mountEntry.Path = srcPath
 		mountEntry.Tainted = true
@@ -764,18 +764,18 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 }
 
 // moveMountStorage moves storage entries of a mount mountEntry to its new destination
-func (c *Core) moveMountStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView barrier.View) error {
+func (c *Core) moveMountStorage(ctx context.Context, src namespace.MountPathDetails, me *routing.MountEntry, srcBarrierView, dstBarrierView barrier.View) error {
 	return c.moveStorage(ctx, src, me, srcBarrierView, dstBarrierView)
 }
 
 // moveAuthStorage moves storage entries of an auth mountEntry to its new destination
-func (c *Core) moveAuthStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView barrier.View) error {
+func (c *Core) moveAuthStorage(ctx context.Context, src namespace.MountPathDetails, me *routing.MountEntry, srcBarrierView, dstBarrierView barrier.View) error {
 	return c.moveStorage(ctx, src, me, srcBarrierView, dstBarrierView)
 }
 
 // moveStorage moves storage entries of a mountEntry to its new destination
 // It detects the mountEntry type
-func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView barrier.View) error {
+func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, me *routing.MountEntry, srcBarrierView, dstBarrierView barrier.View) error {
 	srcPrefix := srcBarrierView.Prefix()
 	dstPrefix := dstBarrierView.Prefix()
 
@@ -1186,7 +1186,7 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 		if ns == nil {
 			return namespace.ErrNoNamespace
 		}
-		entry.namespace = ns
+		entry.Namespace = ns
 
 		// Don't store built-in version in the mount table, to make upgrades smoother.
 		if versions.IsBuiltinVersion(entry.Version) {
@@ -1308,7 +1308,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 					continue
 				}
 
-				view := NamespaceView(barrier, mtEntry.Namespace())
+				view := NamespaceView(barrier, mtEntry.Namespace)
 
 				found = true
 				currentEntries[mtEntry.UUID] = struct{}{}
@@ -1539,15 +1539,15 @@ func (c *Core) setupMounts(ctx context.Context) error {
 		})
 
 		if c.logger.IsInfo() {
-			c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace())
+			c.logger.Info("successfully mounted", "type", entry.Type, "version", entry.RunningVersion, "path", entry.Path, "namespace", entry.Namespace)
 		}
 
 		// Ensure the path is tainted if set in the mount table
 		if entry.Tainted {
 			// Calculate any namespace prefixes here, because when Taint() is called, there won't be
 			// a namespace to pull from the context. This is similar to what we do above in c.router.Mount().
-			path := entry.Namespace().Path + entry.Path
-			c.logger.Debug("tainting a mount due to it being marked as tainted in mount table", "entry.path", entry.Path, "entry.namespace.path", entry.Namespace().Path, "full_path", path)
+			path := entry.Namespace.Path + entry.Path
+			c.logger.Debug("tainting a mount due to it being marked as tainted in mount table", "entry.path", entry.Path, "entry.namespace.path", entry.Namespace.Path, "full_path", path)
 			c.router.Taint(ctx, path)
 		}
 	}
@@ -1563,7 +1563,7 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 	if c.mounts != nil {
 		mountTable := c.mounts.shallowClone()
 		for _, e := range mountTable.Entries {
-			backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.namespace), e.Path)
+			backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.Namespace), e.Path)
 			if backend != nil {
 				backend.Cleanup(ctx)
 			}
@@ -1578,7 +1578,7 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 
 // newLogicalBackend is used to create and configure a new logical backend by name.
 // It also returns the SHA256 of the plugin, if available.
-func (c *Core) newLogicalBackend(ctx context.Context, entry *MountEntry, sysView logical.SystemView, view logical.Storage) (logical.Backend, string, error) {
+func (c *Core) newLogicalBackend(ctx context.Context, entry *routing.MountEntry, sysView logical.SystemView, view logical.Storage) (logical.Backend, string, error) {
 	t := entry.Type
 	if alias, ok := mountAliases[t]; ok {
 		t = alias
@@ -1634,7 +1634,7 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *MountEntry, sysView
 		BackendUUID: entry.BackendAwareUUID,
 	}
 
-	ctx = namespace.ContextWithNamespace(ctx, entry.namespace)
+	ctx = namespace.ContextWithNamespace(ctx, entry.Namespace)
 	ctx = context.WithValue(ctx, "core_number", c.coreNumber)
 	b, err := f(ctx, config)
 	if err != nil {
@@ -1673,7 +1673,7 @@ func (c *Core) defaultMountTable(ctx context.Context) *MountTable {
 			panic(fmt.Sprintf("could not create default secret mount backend UUID: %v", err))
 		}
 
-		kvMount := &MountEntry{
+		kvMount := &routing.MountEntry{
 			Table:            routing.MountTableType,
 			Path:             "secret/",
 			Type:             routing.MountTypeKV,
@@ -1718,7 +1718,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not create cubbyhole backend UUID: %w", err)
 	}
-	cubbyholeMount := &MountEntry{
+	cubbyholeMount := &routing.MountEntry{
 		Table:            routing.MountTableType,
 		Path:             routing.MountPathCubbyhole,
 		Type:             routing.MountTypeCubbyhole,
@@ -1730,7 +1730,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 		RunningVersion:   versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
 
 		NamespaceID: ns.ID,
-		namespace:   ns,
+		Namespace:   ns,
 	}
 
 	sysUUID, err := uuid.GenerateUUID()
@@ -1745,7 +1745,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not create sys backend UUID: %w", err)
 	}
-	sysMount := &MountEntry{
+	sysMount := &routing.MountEntry{
 		Table:            routing.MountTableType,
 		Path:             "sys/",
 		Type:             routing.MountTypeSystem,
@@ -1760,7 +1760,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 		RunningVersion: versions.DefaultBuiltinVersion,
 
 		NamespaceID: ns.ID,
-		namespace:   ns,
+		Namespace:   ns,
 	}
 
 	identityUUID, err := uuid.GenerateUUID()
@@ -1775,7 +1775,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not create identity backend UUID: %w", err)
 	}
-	identityMount := &MountEntry{
+	identityMount := &routing.MountEntry{
 		Table:            routing.MountTableType,
 		Path:             "identity/",
 		Type:             "identity",
@@ -1788,7 +1788,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 		},
 		RunningVersion: versions.DefaultBuiltinVersion,
 		NamespaceID:    ns.ID,
-		namespace:      ns,
+		Namespace:      ns,
 	}
 
 	if ns.ID != namespace.RootNamespaceID {
@@ -1816,7 +1816,7 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 
 	c.mountsLock.RLock()
 	for _, entry := range c.mounts.Entries {
-		if slices.Contains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace().ID == namespace.RootNamespaceID {
+		if slices.Contains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace.ID == namespace.RootNamespaceID {
 			mounts.Entries = append(mounts.Entries, entry)
 		}
 	}
@@ -1824,7 +1824,7 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 
 	c.authLock.RLock()
 	for _, entry := range c.auth.Entries {
-		if slices.Contains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace().ID == namespace.RootNamespaceID {
+		if slices.Contains(singletonMounts, entry.Type) && !entry.Local && entry.Namespace.ID == namespace.RootNamespaceID {
 			auth.Entries = append(auth.Entries, entry)
 		}
 	}
@@ -1833,7 +1833,7 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 	return mounts, auth
 }
 
-func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view barrier.View) {
+func (c *Core) setCoreBackend(entry *routing.MountEntry, backend logical.Backend, view barrier.View) {
 	// bail for non-root namespace
 	if entry.NamespaceID != namespace.RootNamespaceID {
 		return
@@ -1861,7 +1861,7 @@ func (c *Core) reloadNamespaceMounts(childCtx context.Context, uuid string, dele
 	if deleted {
 		c.mountsLock.RLock()
 		for _, entry := range c.mounts.Entries {
-			if entry.Namespace().UUID == uuid {
+			if entry.Namespace.UUID == uuid {
 				key := path.Join(coreMountConfigPath, entry.UUID)
 				if entry.Local {
 					key = path.Join(coreLocalMountConfigPath, entry.UUID)
@@ -1873,7 +1873,7 @@ func (c *Core) reloadNamespaceMounts(childCtx context.Context, uuid string, dele
 
 		c.authLock.RLock()
 		for _, entry := range c.auth.Entries {
-			if entry.Namespace().UUID == uuid {
+			if entry.Namespace.UUID == uuid {
 				key := path.Join(coreAuthConfigPath, entry.UUID)
 				if entry.Local {
 					key = path.Join(coreLocalAuthConfigPath, entry.UUID)
@@ -1950,7 +1950,7 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 
 	type invalidation struct {
 		Table             string
-		DesiredMountEntry *MountEntry
+		DesiredMountEntry *routing.MountEntry
 		Namespace         *namespace.Namespace
 	}
 	invalidations := map[string]invalidation{}
@@ -1980,7 +1980,7 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 				invalidations[mount.UUID] = invalidation{
 					Table:             table,
 					DesiredMountEntry: mount,
-					Namespace:         mount.Namespace(),
+					Namespace:         mount.Namespace,
 				}
 			}
 		}
@@ -2011,7 +2011,7 @@ func (c *Core) reloadLegacyMounts(ctx context.Context, keys ...string) error {
 				invalidations[entry.UUID] = invalidation{
 					Table:             entry.Table,
 					DesiredMountEntry: nil,
-					Namespace:         entry.Namespace(),
+					Namespace:         entry.Namespace,
 				}
 			}
 		}
@@ -2066,7 +2066,7 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 	return c.reloadMountInternalWithLock(ctx, table, uuid, desiredMountEntry)
 }
 
-func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desiredMountEntry *MountEntry) error {
+func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desiredMountEntry *routing.MountEntry) error {
 	c.mountsLock.Lock()
 	c.authLock.Lock()
 	defer c.mountsLock.Unlock()
@@ -2075,7 +2075,7 @@ func (c *Core) reloadMountInternal(ctx context.Context, table, uuid string, desi
 	return c.reloadMountInternalWithLock(ctx, table, uuid, desiredMountEntry)
 }
 
-func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid string, desiredMountEntry *MountEntry) error {
+func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid string, desiredMountEntry *routing.MountEntry) error {
 	switch table {
 	case routing.CredentialTableType, routing.MountTableType:
 	default:
@@ -2170,4 +2170,51 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 	}
 
 	return nil
+}
+
+type FailedLoginUser struct {
+	aliasName     string
+	mountAccessor string
+}
+
+type FailedLoginInfo struct {
+	count               uint
+	lastFailedLoginTime int
+}
+
+// mountEntrySysView creates a logical.SystemView from global and
+// mount-specific entries; because this should be called when setting
+// up a mountEntry, it doesn't check to ensure that me is not nil
+func (c *Core) mountEntrySysView(entry *routing.MountEntry) extendedSystemView {
+	return extendedSystemViewImpl{
+		dynamicSystemView{
+			core:       c,
+			mountEntry: entry,
+		},
+	}
+}
+
+// mountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace
+func (c *Core) mountEntryView(me *routing.MountEntry) (barrier.View, error) {
+	if me.Namespace != nil && me.Namespace.ID != me.NamespaceID {
+		return nil, errors.New("invalid namespace")
+	}
+
+	switch me.Type {
+	case routing.MountTypeSystem, routing.MountTypeNSSystem:
+		return NamespaceView(c.barrier, me.Namespace).SubView(systemBarrierPrefix), nil
+	case routing.MountTypeToken:
+		return NamespaceView(c.barrier, me.Namespace).SubView(systemBarrierPrefix + tokenSubPath), nil
+	}
+
+	switch me.Table {
+	case routing.MountTableType:
+		return NamespaceView(c.barrier, me.Namespace).SubView(path.Join(backendBarrierPrefix, me.UUID) + "/"), nil
+	case routing.CredentialTableType:
+		return NamespaceView(c.barrier, me.Namespace).SubView(path.Join(credentialBarrierPrefix, me.UUID) + "/"), nil
+	case auditTableType, configAuditTableType:
+		return NamespaceView(c.barrier, me.Namespace).SubView(path.Join(auditBarrierPrefix, me.UUID) + "/"), nil
+	}
+
+	return nil, errors.New("invalid mount entry")
 }

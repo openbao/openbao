@@ -710,7 +710,7 @@ func benchmarkExpirationBackend(b *testing.B, physicalBackend physical.Backend, 
 	if err != nil {
 		b.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -779,7 +779,7 @@ func BenchmarkExpiration_Create_Leases(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -820,7 +820,7 @@ func TestExpiration_Restore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -994,7 +994,7 @@ func TestExpiration_Register_BatchToken(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+		err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1261,7 +1261,7 @@ func TestExpiration_Revoke(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1308,7 +1308,7 @@ func TestExpiration_RevokeOnExpire(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1366,7 +1366,7 @@ func TestExpiration_RevokePrefix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1435,7 +1435,7 @@ func TestExpiration_RevokeByToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1532,7 +1532,7 @@ func TestExpiration_RevokeByToken_Blocking(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1745,7 +1745,7 @@ func TestExpiration_RenewToken_period_backend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "auth/foo/", &MountEntry{Path: "auth/foo/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "auth/foo/", &routing.MountEntry{Path: "auth/foo/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1852,7 +1852,7 @@ func TestExpiration_Renew(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1923,7 +1923,7 @@ func TestExpiration_Renew_NotRenewable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1974,7 +1974,7 @@ func TestExpiration_Renew_RevokeOnExpire(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2050,7 +2050,7 @@ func TestExpiration_Renew_FinalSecond(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2124,7 +2124,7 @@ func TestExpiration_Renew_FinalSecond_Lease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2187,7 +2187,7 @@ func TestExpiration_revokeEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "foo/bar/", &MountEntry{Path: "foo/bar/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "foo/bar/", &routing.MountEntry{Path: "foo/bar/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2330,7 +2330,7 @@ func TestExpiration_renewEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "foo/bar/", &MountEntry{Path: "foo/bar/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "foo/bar/", &routing.MountEntry{Path: "foo/bar/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2395,7 +2395,7 @@ func TestExpiration_revokeEntry_rejected_fairsharing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "foo/bar/", &MountEntry{Path: "foo/bar/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "foo/bar/", &routing.MountEntry{Path: "foo/bar/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2479,7 +2479,7 @@ func TestExpiration_renewAuthEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "auth/foo/", &MountEntry{Path: "auth/foo/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "auth/foo/", &routing.MountEntry{Path: "auth/foo/", Type: "noop", UUID: meUUID, Accessor: "noop-accessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2645,7 +2645,7 @@ func TestExpiration_RevokeForce(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 
 	core.logicalBackends["badrenew"] = badRenewFactory
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table:    routing.MountTableType,
 		Path:     "badrenew/",
 		Type:     "badrenew",
@@ -2696,7 +2696,7 @@ func TestExpiration_RevokeForceSingle(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 
 	core.logicalBackends["badrenew"] = badRenewFactory
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table:    routing.MountTableType,
 		Path:     "badrenew/",
 		Type:     "badrenew",

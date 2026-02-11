@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 func TestRouter_Mount(t *testing.T) {
@@ -25,12 +26,12 @@ func TestRouter_Mount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mountEntry := &MountEntry{
+	mountEntry := &routing.MountEntry{
 		Path:        "prod/aws/",
 		UUID:        meUUID,
 		Accessor:    "awsaccessor",
 		NamespaceID: namespace.RootNamespaceID,
-		namespace:   namespace.RootNamespace,
+		Namespace:   namespace.RootNamespace,
 	}
 
 	n := &NoopBackend{}
@@ -44,7 +45,7 @@ func TestRouter_Mount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = r.Mount(n, "prod/aws/", &MountEntry{UUID: meUUID, NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}, view)
+	err = r.Mount(n, "prod/aws/", &routing.MountEntry{UUID: meUUID, NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if !strings.Contains(err.Error(), "cannot mount under existing mount") {
 		t.Fatalf("err: %v", err)
 	}
@@ -105,12 +106,12 @@ func TestRouter_Mount(t *testing.T) {
 		t.Fatalf("bad: %v", n.Paths)
 	}
 
-	subMountEntry := &MountEntry{
+	subMountEntry := &routing.MountEntry{
 		Path:        "prod/",
 		UUID:        meUUID,
 		Accessor:    "prodaccessor",
 		NamespaceID: namespace.RootNamespaceID,
-		namespace:   namespace.RootNamespace,
+		Namespace:   namespace.RootNamespace,
 	}
 
 	if r.MountConflict(namespace.RootContext(t.Context()), "prod/aws/") == "" {
@@ -137,12 +138,12 @@ func TestRouter_MountCredential(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mountEntry := &MountEntry{
+	mountEntry := &routing.MountEntry{
 		Path:        "aws",
 		UUID:        meUUID,
 		Accessor:    "awsaccessor",
 		NamespaceID: namespace.RootNamespaceID,
-		namespace:   namespace.RootNamespace,
+		Namespace:   namespace.RootNamespace,
 	}
 
 	n := &NoopBackend{}
@@ -156,7 +157,7 @@ func TestRouter_MountCredential(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = r.Mount(n, "auth/aws/", &MountEntry{UUID: meUUID, NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}, view)
+	err = r.Mount(n, "auth/aws/", &routing.MountEntry{UUID: meUUID, NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if !strings.Contains(err.Error(), "cannot mount under existing mount") {
 		t.Fatalf("err: %v", err)
 	}
@@ -217,7 +218,7 @@ func TestRouter_Unmount(t *testing.T) {
 		t.Fatal(err)
 	}
 	n := &NoopBackend{}
-	err = r.Mount(n, "prod/aws/", &MountEntry{Path: "prod/aws/", UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}, view)
+	err = r.Mount(n, "prod/aws/", &routing.MountEntry{Path: "prod/aws/", UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -250,7 +251,7 @@ func TestRouter_Remount(t *testing.T) {
 		t.Fatal(err)
 	}
 	n := &NoopBackend{}
-	me := &MountEntry{Path: "prod/aws/", UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}
+	me := &routing.MountEntry{Path: "prod/aws/", UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}
 	err = r.Mount(n, "prod/aws/", me, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -313,7 +314,7 @@ func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 	}
 	n := &NoopBackend{}
 	// Router.Mount will prepend the namespace path; pass a namespace-relative prefix
-	err = r.Mount(n, "sys/", &MountEntry{UUID: meUUID, Accessor: "sysaccessor", NamespaceID: nsTeam.ID, namespace: nsTeam}, view)
+	err = r.Mount(n, "sys/", &routing.MountEntry{UUID: meUUID, Accessor: "sysaccessor", NamespaceID: nsTeam.ID, Namespace: nsTeam}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -333,7 +334,7 @@ func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = r.Mount(n, "sys/", &MountEntry{UUID: meUUID2, Accessor: "syschild", NamespaceID: child.ID, namespace: child}, view)
+	err = r.Mount(n, "sys/", &routing.MountEntry{UUID: meUUID2, Accessor: "syschild", NamespaceID: child.ID, Namespace: child}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -357,7 +358,7 @@ func TestRouter_RootPath(t *testing.T) {
 			"policy/*",
 		},
 	}
-	err = r.Mount(n, "prod/aws/", &MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}, view)
+	err = r.Mount(n, "prod/aws/", &routing.MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -408,7 +409,7 @@ func TestRouter_LoginPath(t *testing.T) {
 			"+/around/+/",
 		},
 	}
-	err = r.Mount(n, "auth/foo/", &MountEntry{UUID: meUUID, Accessor: "authfooaccessor", NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}, view)
+	err = r.Mount(n, "auth/foo/", &routing.MountEntry{UUID: meUUID, Accessor: "authfooaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -506,7 +507,7 @@ func TestRouter_Taint(t *testing.T) {
 		t.Fatal(err)
 	}
 	n := &NoopBackend{}
-	err = r.Mount(n, "prod/aws/", &MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}, view)
+	err = r.Mount(n, "prod/aws/", &routing.MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -549,7 +550,7 @@ func TestRouter_Untaint(t *testing.T) {
 		t.Fatal(err)
 	}
 	n := &NoopBackend{}
-	err = r.Mount(n, "prod/aws/", &MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}, view)
+	err = r.Mount(n, "prod/aws/", &routing.MountEntry{UUID: meUUID, Accessor: "awsaccessor", NamespaceID: namespace.RootNamespaceID, Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

@@ -509,18 +509,18 @@ func TestKeyCopy(key []byte) []byte {
 }
 
 func TestDynamicSystemView(c *Core, ns *namespace.Namespace) *dynamicSystemView {
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Config: routing.MountConfig{
 			DefaultLeaseTTL: 24 * time.Hour,
 			MaxLeaseTTL:     2 * 24 * time.Hour,
 		},
 		NamespaceID: namespace.RootNamespace.ID,
-		namespace:   namespace.RootNamespace,
+		Namespace:   namespace.RootNamespace,
 	}
 
 	if ns != nil {
 		me.NamespaceID = ns.ID
-		me.namespace = ns
+		me.Namespace = ns
 	}
 
 	return &dynamicSystemView{c, me}

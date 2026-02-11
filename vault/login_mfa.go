@@ -38,6 +38,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"
 	"google.golang.org/protobuf/proto"
@@ -946,7 +947,7 @@ func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req
 	authMethodAccessors, ok := d.GetOk("auth_method_accessors")
 	if ok {
 		for _, accessor := range authMethodAccessors.([]string) {
-			found, err := b.validateAuthEntriesForAccessorOrType(ctx, ns, func(entry *MountEntry) bool {
+			found, err := b.validateAuthEntriesForAccessorOrType(ctx, ns, func(entry *routing.MountEntry) bool {
 				return accessor == entry.Accessor
 			})
 			if err != nil {
@@ -963,7 +964,7 @@ func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req
 	authMethodTypes, ok := d.GetOk("auth_method_types")
 	if ok {
 		for _, authType := range authMethodTypes.([]string) {
-			found, err := b.validateAuthEntriesForAccessorOrType(ctx, ns, func(entry *MountEntry) bool {
+			found, err := b.validateAuthEntriesForAccessorOrType(ctx, ns, func(entry *routing.MountEntry) bool {
 				return authType == entry.Type
 			})
 			if err != nil {
@@ -1030,13 +1031,13 @@ func (i *IdentityStore) handleMFALoginEnforcementDelete(ctx context.Context, req
 	return nil, i.mfaBackend.deleteMFALoginEnforcementConfigByNameAndNamespace(ctx, name, ns.ID)
 }
 
-func (b *LoginMFABackend) validateAuthEntriesForAccessorOrType(ctx context.Context, ns *namespace.Namespace, validFunc func(entry *MountEntry) bool) (bool, error) {
+func (b *LoginMFABackend) validateAuthEntriesForAccessorOrType(ctx context.Context, ns *namespace.Namespace, validFunc func(entry *routing.MountEntry) bool) (bool, error) {
 	b.Core.authLock.RLock()
 	defer b.Core.authLock.RUnlock()
 
 	for _, entry := range b.Core.auth.Entries {
 		// only check auth methods in the current namespace
-		if entry.Namespace().ID != ns.ID {
+		if entry.Namespace.ID != ns.ID {
 			continue
 		}
 

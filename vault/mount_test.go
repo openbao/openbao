@@ -41,7 +41,7 @@ func TestMount_ReadOnlyViewDuringMount(t *testing.T) {
 		return &NoopBackend{}, nil
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.MountTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -68,7 +68,7 @@ func TestLogicalMountMetrics(t *testing.T) {
 	if !ok || numEntriesMetric.Value != 3 {
 		t.Fatalf("Auth values should be: %+v", numEntriesMetric)
 	}
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.MountTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -152,7 +152,7 @@ func TestCore_DefaultMountTable(t *testing.T) {
 
 func TestCore_Mount(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.MountTableType,
 		Path:  "foo",
 		Type:  "kv",
@@ -197,7 +197,7 @@ func TestCore_Mount(t *testing.T) {
 
 func TestCore_Mount_secrets_builtin_RunningVersion(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.MountTableType,
 		Path:  "foo",
 		Type:  "generic",
@@ -223,7 +223,7 @@ func TestCore_Mount_secrets_builtin_RunningVersion(t *testing.T) {
 // kv alias "generic"
 func TestCore_Mount_kv_generic(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.MountTableType,
 		Path:  "foo",
 		Type:  "generic",
@@ -274,7 +274,7 @@ func TestCore_Mount_Local(t *testing.T) {
 
 	c.mounts = &MountTable{
 		Type: routing.MountTableType,
-		Entries: []*MountEntry{
+		Entries: []*routing.MountEntry{
 			{
 				Table:            routing.MountTableType,
 				Path:             "noop/",
@@ -283,7 +283,7 @@ func TestCore_Mount_Local(t *testing.T) {
 				Accessor:         "kv-abcd",
 				BackendAwareUUID: "abcde",
 				NamespaceID:      namespace.RootNamespaceID,
-				namespace:        namespace.RootNamespace,
+				Namespace:        namespace.RootNamespace,
 			},
 			{
 				Table:            routing.MountTableType,
@@ -293,7 +293,7 @@ func TestCore_Mount_Local(t *testing.T) {
 				Accessor:         "kv-bcde",
 				BackendAwareUUID: "bcdea",
 				NamespaceID:      namespace.RootNamespaceID,
-				namespace:        namespace.RootNamespace,
+				Namespace:        namespace.RootNamespace,
 			},
 		},
 	}
@@ -323,7 +323,7 @@ func TestCore_Mount_Local(t *testing.T) {
 			t.Fatal("expected non-nil local mounts")
 		}
 
-		localMountEntry := &MountEntry{}
+		localMountEntry := &routing.MountEntry{}
 		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
 			t.Fatal(err)
 		}
@@ -358,7 +358,7 @@ func TestCore_Mount_Local(t *testing.T) {
 			t.Fatal("expected non-nil local mounts")
 		}
 
-		localMountEntry := &MountEntry{}
+		localMountEntry := &routing.MountEntry{}
 		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
 			t.Fatal(err)
 		}
@@ -398,7 +398,7 @@ func TestCore_FindOps(t *testing.T) {
 
 	c.mounts = &MountTable{
 		Type: routing.MountTableType,
-		Entries: []*MountEntry{
+		Entries: []*routing.MountEntry{
 			{
 				Table:            routing.MountTableType,
 				Path:             path1,
@@ -407,7 +407,7 @@ func TestCore_FindOps(t *testing.T) {
 				Accessor:         "kv-abcd",
 				BackendAwareUUID: uuid1,
 				NamespaceID:      namespace.RootNamespaceID,
-				namespace:        namespace.RootNamespace,
+				Namespace:        namespace.RootNamespace,
 			},
 			{
 				Table:            routing.MountTableType,
@@ -417,7 +417,7 @@ func TestCore_FindOps(t *testing.T) {
 				Accessor:         "kv-bcde",
 				BackendAwareUUID: uuid2,
 				NamespaceID:      namespace.RootNamespaceID,
-				namespace:        namespace.RootNamespace,
+				Namespace:        namespace.RootNamespace,
 			},
 		},
 	}
@@ -513,7 +513,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 	}
 
 	// Mount the noop backend
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.MountTableType,
 		Path:  "test/",
 		Type:  "noop",
@@ -651,7 +651,7 @@ func TestCore_Remount_Cleanup(t *testing.T) {
 	}
 
 	// Mount the noop backend
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.MountTableType,
 		Path:  "test/",
 		Type:  "noop",
@@ -886,7 +886,7 @@ func TestCore_MountTable_UpgradeToTyped(t *testing.T) {
 		}, nil
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: auditTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -902,7 +902,7 @@ func TestCore_MountTable_UpgradeToTyped(t *testing.T) {
 		}, nil
 	}
 
-	me = &MountEntry{
+	me = &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -1202,7 +1202,7 @@ func TestCore_MountInitialize(t *testing.T) {
 		}
 
 		// Mount the noop backend
-		me := &MountEntry{
+		me := &routing.MountEntry{
 			Table: routing.MountTableType,
 			Path:  "foo/",
 			Type:  "initable",
@@ -1229,7 +1229,7 @@ func TestCore_MountInitialize(t *testing.T) {
 
 		c.mounts = &MountTable{
 			Type: routing.MountTableType,
-			Entries: []*MountEntry{
+			Entries: []*routing.MountEntry{
 				{
 					Table:            routing.MountTableType,
 					Path:             "foo/",
@@ -1238,7 +1238,7 @@ func TestCore_MountInitialize(t *testing.T) {
 					Accessor:         "initable-abcd",
 					BackendAwareUUID: "abcde",
 					NamespaceID:      namespace.RootNamespaceID,
-					namespace:        namespace.RootNamespace,
+					Namespace:        namespace.RootNamespace,
 				},
 			},
 		}
@@ -1269,14 +1269,14 @@ func TestCore_MountEntryView(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		mountEntry *MountEntry
+		mountEntry *routing.MountEntry
 
 		wantViewPrefix string
 		wantError      bool
 	}{
 		{
 			name: "entry without type nor table type leading to error",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID: testMountEntryUUID,
 			},
 
@@ -1284,7 +1284,7 @@ func TestCore_MountEntryView(t *testing.T) {
 		},
 		{
 			name: "entry of 'system' mount type",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID: testMountEntryUUID,
 				Type: routing.MountTypeSystem,
 			},
@@ -1293,7 +1293,7 @@ func TestCore_MountEntryView(t *testing.T) {
 		},
 		{
 			name: "entry of 'token' mount type",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID: testMountEntryUUID,
 				Type: routing.MountTypeToken,
 			},
@@ -1302,7 +1302,7 @@ func TestCore_MountEntryView(t *testing.T) {
 		},
 		{
 			name: "entry of 'credential' table type",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:  testMountEntryUUID,
 				Type:  "approle",
 				Table: routing.CredentialTableType,
@@ -1312,7 +1312,7 @@ func TestCore_MountEntryView(t *testing.T) {
 		},
 		{
 			name: "entry of 'audit' table type",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:  testMountEntryUUID,
 				Table: auditTableType,
 			},
@@ -1321,7 +1321,7 @@ func TestCore_MountEntryView(t *testing.T) {
 		},
 		{
 			name: "entry of 'mount' table type and 'identity' type",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:  testMountEntryUUID,
 				Table: routing.MountTableType,
 				Type:  routing.MountTypeIdentity,
@@ -1331,56 +1331,56 @@ func TestCore_MountEntryView(t *testing.T) {
 		},
 		{
 			name: "entry of 'mount' table type, and 'cubbyholeNS' type",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
 				Table:       routing.MountTableType,
 				Type:        routing.MountTypeNSCubbyhole,
 				NamespaceID: testNamespace1.ID,
-				namespace:   testNamespace1,
+				Namespace:   testNamespace1,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table type, and 'cubbyholeNS' type with namespace not present in store",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:  testMountEntryUUID,
 				Table: routing.MountTableType,
 				Type:  routing.MountTypeNSCubbyhole,
 				// does not exist in store
 				NamespaceID: "ns-2",
-				namespace:   testNamespace1,
+				Namespace:   testNamespace1,
 			},
 
 			wantError: true,
 		},
 		{
 			name: "entry of 'mount' table, and 'kv' type with namespace present",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
 				Table:       routing.MountTableType,
 				Type:        routing.MountTypeKV,
 				NamespaceID: testNamespace1.ID,
-				namespace:   testNamespace1,
+				Namespace:   testNamespace1,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table, and 'kv' type with nested namespace present",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
 				Table:       routing.MountTableType,
 				Type:        routing.MountTypeKV,
 				NamespaceID: testNamespace2.ID,
-				namespace:   testNamespace2,
+				Namespace:   testNamespace2,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table, and 'kv' type without namespace present",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:  testMountEntryUUID,
 				Table: routing.MountTableType,
 				Type:  routing.MountTypeKV,
@@ -1390,31 +1390,31 @@ func TestCore_MountEntryView(t *testing.T) {
 		},
 		{
 			name: "entry of 'auth' table, and 'userpass' type with namespace present",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
 				Table:       routing.CredentialTableType,
 				Type:        "userpass",
 				NamespaceID: testNamespace1.ID,
-				namespace:   testNamespace1,
+				Namespace:   testNamespace1,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'auth' table, and 'userpass' type with nested namespace present",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:        testMountEntryUUID,
 				Table:       routing.CredentialTableType,
 				Type:        "userpass",
 				NamespaceID: testNamespace2.ID,
-				namespace:   testNamespace2,
+				Namespace:   testNamespace2,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'auth' table, and 'userpass' type without namespace present",
-			mountEntry: &MountEntry{
+			mountEntry: &routing.MountEntry{
 				UUID:  testMountEntryUUID,
 				Table: routing.CredentialTableType,
 				Type:  "userpass",
@@ -1443,7 +1443,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	}
 
 	// Creating a mount and then a namespace with the same name should fail.
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table:       routing.MountTableType,
 		Path:        "foo/",
 		Type:        "noop",
@@ -1465,7 +1465,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	require.Nil(t, ns)
 
 	// Creating a deeply nested mount should also cause failures.
-	me = &MountEntry{
+	me = &routing.MountEntry{
 		Table:       routing.MountTableType,
 		Path:        "fud/bar/baz/foo/",
 		Type:        "noop",
@@ -1490,7 +1490,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	barCtx := namespace.ContextWithNamespace(context.Background(), nsBar)
 
 	// Doing the above inside bar should behave the same.
-	me = &MountEntry{
+	me = &routing.MountEntry{
 		Table:       routing.MountTableType,
 		Path:        "foo/",
 		Type:        "noop",
@@ -1507,7 +1507,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, ns)
 
-	me = &MountEntry{
+	me = &routing.MountEntry{
 		Table:       routing.MountTableType,
 		Path:        "fud/bar/baz/foo/",
 		Type:        "noop",
@@ -1525,7 +1525,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	require.Nil(t, ns)
 
 	// Creating a mount at the root level that conflicts with bar/ should fail.
-	me = &MountEntry{
+	me = &routing.MountEntry{
 		Table:       routing.MountTableType,
 		Path:        "bar/",
 		Type:        "noop",
@@ -1534,7 +1534,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	err = c.mount(namespace.RootContext(nil), me)
 	require.Error(t, err)
 
-	me = &MountEntry{
+	me = &routing.MountEntry{
 		Table:       routing.MountTableType,
 		Path:        "bar/baz/",
 		Type:        "noop",
@@ -1544,7 +1544,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	require.Error(t, err)
 
 	// Ensure creating sibling mounts still works.
-	me = &MountEntry{
+	me = &routing.MountEntry{
 		Table:       routing.MountTableType,
 		Path:        "fud/bar/baz/qux/",
 		Type:        "noop",
@@ -1556,7 +1556,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 
 func TestMount_Delta(t *testing.T) {
 	old := MountTable{
-		Entries: []*MountEntry{{
+		Entries: []*routing.MountEntry{{
 			Accessor: "f",
 		}, {
 			Accessor: "a",
@@ -1570,7 +1570,7 @@ func TestMount_Delta(t *testing.T) {
 	}
 
 	new := MountTable{
-		Entries: []*MountEntry{{
+		Entries: []*routing.MountEntry{{
 			Accessor: "a",
 		}, {
 			Accessor: "b",

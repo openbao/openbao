@@ -1056,13 +1056,13 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	entry := c.router.MatchingMountEntry(ctx, req.Path)
 	if entry != nil {
 		// Get and set ignored HMAC'd value. Reset those back to empty afterwards.
-		if rawVals, ok := entry.synthesizedConfigCache.Load("audit_non_hmac_request_keys"); ok {
+		if rawVals, ok := entry.SynthesizedConfigCache.Load("audit_non_hmac_request_keys"); ok {
 			nonHMACReqDataKeys = rawVals.([]string)
 		}
 
 		// Get and set ignored HMAC'd value. Reset those back to empty afterwards.
 		if auditResp != nil {
-			if rawVals, ok := entry.synthesizedConfigCache.Load("audit_non_hmac_response_keys"); ok {
+			if rawVals, ok := entry.SynthesizedConfigCache.Load("audit_non_hmac_response_keys"); ok {
 				nonHMACRespDataKeys = rawVals.([]string)
 			}
 		}
@@ -1108,7 +1108,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 		req.SetMountClass(entry.MountClass())
 
 		// Get and set ignored HMAC'd value.
-		if rawVals, ok := entry.synthesizedConfigCache.Load("audit_non_hmac_request_keys"); ok {
+		if rawVals, ok := entry.SynthesizedConfigCache.Load("audit_non_hmac_request_keys"); ok {
 			nonHMACReqDataKeys = rawVals.([]string)
 		}
 	}
@@ -1494,7 +1494,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 		req.SetMountClass(entry.MountClass())
 
 		// Get and set ignored HMAC'd value.
-		if rawVals, ok := entry.synthesizedConfigCache.Load("audit_non_hmac_request_keys"); ok {
+		if rawVals, ok := entry.SynthesizedConfigCache.Load("audit_non_hmac_request_keys"); ok {
 			nonHMACReqDataKeys = rawVals.([]string)
 		}
 	}
@@ -1963,7 +1963,7 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 // failedUserLoginProcess updates the userFailedLoginMap with login count
 // and last failed login time for users with failed login attempt.
 // If the user gets locked for current login attempt, it updates the storage entry too
-func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntry, userLockoutInfo *FailedLoginUser) error {
+func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *routing.MountEntry, userLockoutInfo *FailedLoginUser) error {
 	// get the user lockout configuration for the user
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
 
@@ -1995,7 +1995,7 @@ func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntr
 }
 
 // getLoginUserInfoKey gets failedUserLoginInfo map key for login user
-func (c *Core) getLoginUserInfoKey(ctx context.Context, mountEntry *MountEntry, req *logical.Request) (*FailedLoginUser, error) {
+func (c *Core) getLoginUserInfoKey(ctx context.Context, mountEntry *routing.MountEntry, req *logical.Request) (*FailedLoginUser, error) {
 	aliasName, err := c.aliasNameFromLoginRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -2013,7 +2013,7 @@ func (c *Core) getLoginUserInfoKey(ctx context.Context, mountEntry *MountEntry, 
 // isUserLockoutDisabled checks if user lockout feature to prevent brute forcing is disabled
 // Auth types userpass, ldap and approle support this feature
 // precedence: environment var setting >> auth tune setting >> config file setting >> default (enabled)
-func (c *Core) isUserLockoutDisabled(mountEntry *MountEntry) (bool, error) {
+func (c *Core) isUserLockoutDisabled(mountEntry *routing.MountEntry) (bool, error) {
 	if !slices.Contains(configutil.GetSupportedUserLockoutsAuthMethods(), mountEntry.Type) {
 		return true, nil
 	}
@@ -2048,7 +2048,7 @@ func (c *Core) isUserLockoutDisabled(mountEntry *MountEntry) (bool, error) {
 }
 
 // isUserLocked determines if the user used in login request is locked
-func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *logical.Request) (loginUser *FailedLoginUser, locked bool, err error) {
+func (c *Core) isUserLocked(ctx context.Context, mountEntry *routing.MountEntry, req *logical.Request) (loginUser *FailedLoginUser, locked bool, err error) {
 	// get userFailedLoginInfo map key for login user
 	loginUserInfoKey, err := c.getLoginUserInfoKey(ctx, mountEntry, req)
 	if err != nil {
@@ -2115,7 +2115,7 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 //  4. default user lockout values
 //
 // getUserLockoutFromConfig call in this function takes care of config file precedence
-func (c *Core) getUserLockoutConfiguration(mountEntry *MountEntry) (userLockoutConfig routing.UserLockoutConfig) {
+func (c *Core) getUserLockoutConfiguration(mountEntry *routing.MountEntry) (userLockoutConfig routing.UserLockoutConfig) {
 	// get user configuration values from config file
 	userLockoutConfig = c.getUserLockoutFromConfig(mountEntry.Type)
 
@@ -2325,7 +2325,7 @@ func (c *Core) LocalUpdateUserFailedLoginInfo(ctx context.Context, userKey Faile
 	// get the user lockout configuration for the user
 	mountEntry := c.router.MatchingMountByAccessor(userKey.mountAccessor)
 	if mountEntry == nil {
-		mountEntry = &MountEntry{namespace: namespace.RootNamespace}
+		mountEntry = &routing.MountEntry{Namespace: namespace.RootNamespace}
 	}
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
 
@@ -2334,7 +2334,7 @@ func (c *Core) LocalUpdateUserFailedLoginInfo(ctx context.Context, userKey Faile
 		// user locked
 		compressedBytes, err := jsonutil.EncodeJSONAndCompress(failedLoginInfo.lastFailedLoginTime, nil)
 		if err != nil {
-			c.logger.Error("failed to encode or compress failed login user entry", "namespace", mountEntry.namespace.Path, "error", err)
+			c.logger.Error("failed to encode or compress failed login user entry", "namespace", mountEntry.Namespace.Path, "error", err)
 			return err
 		}
 
@@ -2345,9 +2345,9 @@ func (c *Core) LocalUpdateUserFailedLoginInfo(ctx context.Context, userKey Faile
 		}
 
 		// Write to the physical backend
-		view := NamespaceView(c.barrier, mountEntry.namespace).SubView(coreLockedUsersPath).SubView(userKey.mountAccessor + "/")
+		view := NamespaceView(c.barrier, mountEntry.Namespace).SubView(coreLockedUsersPath).SubView(userKey.mountAccessor + "/")
 		if err := view.Put(ctx, entry); err != nil {
-			c.logger.Error("failed to persist failed login user entry", "namespace", mountEntry.namespace.Path, "error", err)
+			c.logger.Error("failed to persist failed login user entry", "namespace", mountEntry.Namespace.Path, "error", err)
 			return err
 		}
 

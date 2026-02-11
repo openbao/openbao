@@ -19,8 +19,8 @@ import (
 
 // MountTable is used to represent the internal mount table
 type MountTable struct {
-	Type    string        `json:"type"`
-	Entries []*MountEntry `json:"entries"`
+	Type    string                `json:"type"`
+	Entries []*routing.MountEntry `json:"entries"`
 }
 
 // shallowClone returns a copy of the mount table that
@@ -34,7 +34,7 @@ func (t *MountTable) shallowClone() *MountTable {
 	}
 }
 
-func (old *MountTable) delta(new *MountTable) (additions []*MountEntry, deletions []*MountEntry) {
+func (old *MountTable) delta(new *MountTable) (additions []*routing.MountEntry, deletions []*routing.MountEntry) {
 	if old == nil {
 		additions = new.Entries
 		return additions, deletions
@@ -43,11 +43,11 @@ func (old *MountTable) delta(new *MountTable) (additions []*MountEntry, deletion
 	additions = slices.Clone(new.Entries)
 	deletions = slices.Clone(old.Entries)
 
-	slices.SortFunc(additions, func(a, b *MountEntry) int {
+	slices.SortFunc(additions, func(a, b *routing.MountEntry) int {
 		return strings.Compare(a.Accessor, b.Accessor)
 	})
 
-	slices.SortFunc(deletions, func(a, b *MountEntry) int {
+	slices.SortFunc(deletions, func(a, b *routing.MountEntry) int {
 		return strings.Compare(a.Accessor, b.Accessor)
 	})
 
@@ -73,9 +73,9 @@ func (old *MountTable) delta(new *MountTable) (additions []*MountEntry, deletion
 // setTaint is used to set the taint on given mount entry
 // using provided path and nsID. Returns back tainted
 // entry or nil if not found.
-func (t *MountTable) setTaint(nsID, path string) *MountEntry {
+func (t *MountTable) setTaint(nsID, path string) *routing.MountEntry {
 	for _, entry := range t.Entries {
-		if entry.Path == path && entry.Namespace().ID == nsID {
+		if entry.Path == path && entry.Namespace.ID == nsID {
 			entry.Tainted = true
 			return entry
 		}
@@ -85,15 +85,15 @@ func (t *MountTable) setTaint(nsID, path string) *MountEntry {
 }
 
 // remove removes a given path entry; returns removed entry
-func (t *MountTable) remove(ctx context.Context, path string) (*MountEntry, error) {
+func (t *MountTable) remove(ctx context.Context, path string) (*routing.MountEntry, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var removed *MountEntry
-	t.Entries = slices.DeleteFunc(t.Entries, func(me *MountEntry) bool {
-		if me.Path == path && me.Namespace().ID == ns.ID {
+	var removed *routing.MountEntry
+	t.Entries = slices.DeleteFunc(t.Entries, func(me *routing.MountEntry) bool {
+		if me.Path == path && me.Namespace.ID == ns.ID {
 			removed = me
 			return true
 		}
@@ -103,23 +103,23 @@ func (t *MountTable) remove(ctx context.Context, path string) (*MountEntry, erro
 	return removed, nil
 }
 
-func (t *MountTable) findByPath(ctx context.Context, path string) (*MountEntry, error) {
-	return t.find(ctx, func(me *MountEntry) bool { return me.Path == path })
+func (t *MountTable) findByPath(ctx context.Context, path string) (*routing.MountEntry, error) {
+	return t.find(ctx, func(me *routing.MountEntry) bool { return me.Path == path })
 }
 
-func (t *MountTable) findByBackendUUID(ctx context.Context, backendUUID string) (*MountEntry, error) {
-	return t.find(ctx, func(me *MountEntry) bool { return me.BackendAwareUUID == backendUUID })
+func (t *MountTable) findByBackendUUID(ctx context.Context, backendUUID string) (*routing.MountEntry, error) {
+	return t.find(ctx, func(me *routing.MountEntry) bool { return me.BackendAwareUUID == backendUUID })
 }
 
-func (t *MountTable) findAllNamespaceMounts(ctx context.Context) ([]*MountEntry, error) {
+func (t *MountTable) findAllNamespaceMounts(ctx context.Context) ([]*routing.MountEntry, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var mounts []*MountEntry
+	var mounts []*routing.MountEntry
 	for _, entry := range t.Entries {
-		if entry.Namespace().ID == ns.ID {
+		if entry.Namespace.ID == ns.ID {
 			mounts = append(mounts, entry)
 		}
 	}
@@ -129,14 +129,14 @@ func (t *MountTable) findAllNamespaceMounts(ctx context.Context) ([]*MountEntry,
 
 // find returns back a mount entry using provided predicate
 // also matching on the namespace provided in the context
-func (t *MountTable) find(ctx context.Context, predicate func(*MountEntry) bool) (*MountEntry, error) {
+func (t *MountTable) find(ctx context.Context, predicate func(*routing.MountEntry) bool) (*routing.MountEntry, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, entry := range t.Entries {
-		if predicate(entry) && entry.Namespace().ID == ns.ID {
+		if predicate(entry) && entry.Namespace.ID == ns.ID {
 			return entry, nil
 		}
 	}
@@ -159,7 +159,7 @@ func (t *MountTable) sortEntriesByPath() *MountTable {
 // this is useful for tests
 func (t *MountTable) sortEntriesByPathDepth() *MountTable {
 	sort.Slice(t.Entries, func(i, j int) bool {
-		return len(strings.Split(t.Entries[i].Namespace().Path+t.Entries[i].Path, "/")) < len(strings.Split(t.Entries[j].Namespace().Path+t.Entries[j].Path, "/"))
+		return len(strings.Split(t.Entries[i].Namespace.Path+t.Entries[i].Path, "/")) < len(strings.Split(t.Entries[j].Namespace.Path+t.Entries[j].Path, "/"))
 	})
 	return t
 }

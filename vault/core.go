@@ -3124,13 +3124,13 @@ func (c *Core) AuditLogger() AuditLogger {
 // misconfigured. This allows users to recover from errors when starting Vault
 // with misconfigured plugins. It should not be possible for existing builtins
 // to be misconfigured, so that is a fatal error.
-func (c *Core) isMountable(ctx context.Context, entry *MountEntry, pluginType consts.PluginType) bool {
+func (c *Core) isMountable(ctx context.Context, entry *routing.MountEntry, pluginType consts.PluginType) bool {
 	return !c.isMountEntryBuiltin(ctx, entry, pluginType)
 }
 
 // isMountEntryBuiltin determines whether a mount entry is associated with a
 // builtin of the specified plugin type.
-func (c *Core) isMountEntryBuiltin(ctx context.Context, entry *MountEntry, pluginType consts.PluginType) bool {
+func (c *Core) isMountEntryBuiltin(ctx context.Context, entry *routing.MountEntry, pluginType consts.PluginType) bool {
 	// Prevent a panic early on
 	if entry == nil || c.pluginCatalog == nil {
 		return false
@@ -3449,7 +3449,7 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, vi
 	mountAccessor = strings.TrimSuffix(mountAccessor, "/")
 	mountEntry := c.router.MatchingMountByAccessor(mountAccessor)
 	if mountEntry == nil {
-		mountEntry = &MountEntry{}
+		mountEntry = &routing.MountEntry{}
 	}
 	// get configuration for mount entry
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
@@ -3818,7 +3818,7 @@ func (c *Core) aliasNameFromLoginRequest(ctx context.Context, req *logical.Reque
 }
 
 // ListMounts will provide a slice containing a deep copy each mount entry
-func (c *Core) ListMounts() ([]*MountEntry, error) {
+func (c *Core) ListMounts() ([]*routing.MountEntry, error) {
 	if c.Sealed() {
 		return nil, errors.New("vault is sealed")
 	}
@@ -3826,7 +3826,7 @@ func (c *Core) ListMounts() ([]*MountEntry, error) {
 	c.mountsLock.RLock()
 	defer c.mountsLock.RUnlock()
 
-	var entries []*MountEntry
+	var entries []*routing.MountEntry
 
 	for _, entry := range c.mounts.Entries {
 		clone, err := entry.Clone()
@@ -3841,7 +3841,7 @@ func (c *Core) ListMounts() ([]*MountEntry, error) {
 }
 
 // ListAuths will provide a slice containing a deep copy each auth entry
-func (c *Core) ListAuths() ([]*MountEntry, error) {
+func (c *Core) ListAuths() ([]*routing.MountEntry, error) {
 	if c.Sealed() {
 		return nil, errors.New("vault is sealed")
 	}
@@ -3849,7 +3849,7 @@ func (c *Core) ListAuths() ([]*MountEntry, error) {
 	c.authLock.RLock()
 	defer c.authLock.RUnlock()
 
-	var entries []*MountEntry
+	var entries []*routing.MountEntry
 
 	for _, entry := range c.auth.Entries {
 		clone, err := entry.Clone()

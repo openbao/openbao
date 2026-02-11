@@ -856,7 +856,7 @@ func TestSystemBackend_remount_auth(t *testing.T) {
 
 	c, b, _ := testCoreSystemBackend(t)
 
-	userpassMe := &MountEntry{
+	userpassMe := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
 		Path:        "userpass1/",
 		Type:        "userpass",
@@ -967,7 +967,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 
 	c, b, _ := testCoreSystemBackend(t)
 
-	userpassMe := &MountEntry{
+	userpassMe := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
 		Path:        "userpass1/",
 		Type:        "userpass",
@@ -978,7 +978,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	userpassMe2 := &MountEntry{
+	userpassMe2 := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
 		Path:        "userpass2/",
 		Type:        "userpass",
@@ -1012,7 +1012,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 		t.Fatalf("Found unexpected error %q", resp.Data["error"].(string))
 	}
 
-	userpassMe3 := &MountEntry{
+	userpassMe3 := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
 		Path:        "userpass3/mypass/",
 		Type:        "userpass",
@@ -1059,7 +1059,7 @@ func TestSystemBackend_remount(t *testing.T) {
 func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.MountTableType,
 		Path:  "foo/",
 		Type:  "generic",
@@ -1092,7 +1092,7 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 		t.Fatalf("Found unexpected error %q", resp.Data["error"].(string))
 	}
 
-	me2 := &MountEntry{
+	me2 := &routing.MountEntry{
 		Table: routing.MountTableType,
 		Path:  "foo2/foo3/",
 		Type:  "generic",
@@ -4514,7 +4514,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 	ctx := namespace.RootContext(nil)
 
 	// Add another mount
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table:   routing.MountTableType,
 		Path:    sanitizePath("kv-v1"),
 		Type:    "kv",
@@ -6247,7 +6247,7 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		// Directly store plugin version in mount entry, so we can then simulate
 		// an upgrade from 1.12.1 to 1.12.2 by sealing and unsealing.
 		const nonExistentBuiltinVersion = "v1.0.0+builtin"
-		var mountEntry *MountEntry
+		var mountEntry *routing.MountEntry
 		if tc.mountTable == "mounts" {
 			mountEntry, err = core.mounts.findByPath(ctx, tc.pluginName+"/")
 		} else {

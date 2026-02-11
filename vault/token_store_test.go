@@ -1480,8 +1480,8 @@ func TestTokenStore_Revoke_Leases(t *testing.T) {
 	view := barrier.NewView(c.barrier, "noop/")
 
 	// Mount a noop backend
-	noop := &NoopBackend{}
-	err := ts.expiration.router.Mount(noop, "noop/", &MountEntry{UUID: "noopuuid", Accessor: "noopaccessor", namespace: namespace.RootNamespace}, view)
+	noop := &backend.Noop{}
+	err := ts.expiration.router.Mount(noop, "noop/", &routing.MountEntry{UUID: "noopuuid", Accessor: "noopaccessor", namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -5950,7 +5950,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	exp := mockExpiration(t)
 	ts := exp.tokenStore
 
-	noop := &NoopBackend{}
+	noop := &backend.Noop{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()

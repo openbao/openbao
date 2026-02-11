@@ -63,7 +63,7 @@ func NewRouter() *Router {
 type routeEntry struct {
 	tainted       bool
 	backend       logical.Backend
-	mountEntry    *MountEntry
+	mountEntry    *routing.MountEntry
 	storageView   logical.Storage
 	storagePrefix string
 	rootPaths     atomic.Pointer[radix.Tree]
@@ -169,12 +169,12 @@ func (re *routeEntry) SaltID(id string) string {
 
 // Mount is used to expose a logical backend at a given prefix, using a unique salt,
 // and the barrier view for that path.
-func (r *Router) Mount(backend logical.Backend, prefix string, mountEntry *MountEntry, storageView barrier.View) error {
+func (r *Router) Mount(backend logical.Backend, prefix string, mountEntry *routing.MountEntry, storageView barrier.View) error {
 	r.l.Lock()
 	defer r.l.Unlock()
 
 	// prepend namespace
-	prefix = mountEntry.Namespace().Path + prefix
+	prefix = mountEntry.Namespace.Path + prefix
 
 	// Check if this is a nested mount
 	if existing, _, ok := r.root.LongestPrefix(prefix); ok && existing != "" {
@@ -331,7 +331,7 @@ func (r *Router) Untaint(ctx context.Context, path string) error {
 	return nil
 }
 
-func (r *Router) MatchingMountByUUID(mountID string) *MountEntry {
+func (r *Router) MatchingMountByUUID(mountID string) *routing.MountEntry {
 	if mountID == "" {
 		return nil
 	}
@@ -345,11 +345,11 @@ func (r *Router) MatchingMountByUUID(mountID string) *MountEntry {
 	}
 
 	r.l.RUnlock()
-	return raw.(*MountEntry)
+	return raw.(*routing.MountEntry)
 }
 
 // MatchingMountByAccessor returns the MountEntry by accessor lookup
-func (r *Router) MatchingMountByAccessor(mountAccessor string) *MountEntry {
+func (r *Router) MatchingMountByAccessor(mountAccessor string) *routing.MountEntry {
 	if mountAccessor == "" {
 		return nil
 	}
@@ -363,7 +363,7 @@ func (r *Router) MatchingMountByAccessor(mountAccessor string) *MountEntry {
 	}
 
 	r.l.RUnlock()
-	return raw.(*MountEntry)
+	return raw.(*routing.MountEntry)
 }
 
 // MatchingMount returns the mount prefix that would be used for a path
@@ -502,7 +502,7 @@ func (r *Router) matchingStorage(ctx context.Context, path string, apiPath bool)
 }
 
 // MatchingMountEntry returns the MountEntry used for a path
-func (r *Router) MatchingMountEntry(ctx context.Context, path string) *MountEntry {
+func (r *Router) MatchingMountEntry(ctx context.Context, path string) *routing.MountEntry {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil
@@ -604,7 +604,7 @@ func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string
 		mountPath = routing.CredentialRoutePrefix + mountPath
 	}
 
-	return re.mountEntry.Namespace(), mountPath, re.storagePrefix, found
+	return re.mountEntry.Namespace, mountPath, re.storagePrefix, found
 }
 
 func (r *Router) matchingRouteEntryByPath(ctx context.Context, path string, apiPath bool) (*routeEntry, bool) {
@@ -783,11 +783,11 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 
 	// Filter and add passthrough headers to the backend
 	var passthroughRequestHeaders []string
-	if rawVal, ok := re.mountEntry.synthesizedConfigCache.Load("passthrough_request_headers"); ok {
+	if rawVal, ok := re.mountEntry.SynthesizedConfigCache.Load("passthrough_request_headers"); ok {
 		passthroughRequestHeaders = rawVal.([]string)
 	}
 	var allowedResponseHeaders []string
-	if rawVal, ok := re.mountEntry.synthesizedConfigCache.Load("allowed_response_headers"); ok {
+	if rawVal, ok := re.mountEntry.SynthesizedConfigCache.Load("allowed_response_headers"); ok {
 		allowedResponseHeaders = rawVal.([]string)
 	}
 

@@ -38,7 +38,7 @@ func TestAuth_ReadOnlyViewDuringMount(t *testing.T) {
 		}, nil
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -66,7 +66,7 @@ func TestAuthMountMetrics(t *testing.T) {
 		t.Fatalf("Auth values should be: %+v", numEntriesMetric)
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -159,7 +159,7 @@ func TestCore_BuiltinRegistry(t *testing.T) {
 	}
 	c, _, _ := TestCoreUnsealedWithConfig(t, conf)
 
-	for _, me := range []*MountEntry{
+	for _, me := range []*routing.MountEntry{
 		{
 			Table: routing.CredentialTableType,
 			Path:  "approle/",
@@ -187,7 +187,7 @@ func TestCore_EnableCredential(t *testing.T) {
 		}, nil
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -230,12 +230,12 @@ func TestCore_EnableCredential(t *testing.T) {
 	}
 
 	// Verify matching auth tables, up to order.
-	cAuth := make(map[string]*MountEntry, len(c.auth.Entries))
+	cAuth := make(map[string]*routing.MountEntry, len(c.auth.Entries))
 	for _, entry := range c.auth.Entries {
 		cAuth[entry.UUID] = entry
 	}
 
-	c2Auth := make(map[string]*MountEntry, len(c2.auth.Entries))
+	c2Auth := make(map[string]*routing.MountEntry, len(c2.auth.Entries))
 	for _, entry := range c2.auth.Entries {
 		c2Auth[entry.UUID] = entry
 	}
@@ -255,7 +255,7 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 		}, nil
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "aws-ec2",
@@ -298,12 +298,12 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 	}
 
 	// Verify matching auth tables, up to order.
-	cAuth := make(map[string]*MountEntry, len(c.auth.Entries))
+	cAuth := make(map[string]*routing.MountEntry, len(c.auth.Entries))
 	for _, entry := range c.auth.Entries {
 		cAuth[entry.UUID] = entry
 	}
 
-	c2Auth := make(map[string]*MountEntry, len(c2.auth.Entries))
+	c2Auth := make(map[string]*routing.MountEntry, len(c2.auth.Entries))
 	for _, entry := range c2.auth.Entries {
 		c2Auth[entry.UUID] = entry
 	}
@@ -326,7 +326,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 
 	c.auth = &MountTable{
 		Type: routing.CredentialTableType,
-		Entries: []*MountEntry{
+		Entries: []*routing.MountEntry{
 			{
 				Table:            routing.CredentialTableType,
 				Path:             "noop/",
@@ -335,7 +335,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 				Accessor:         "noop-abcd",
 				BackendAwareUUID: "abcde",
 				NamespaceID:      namespace.RootNamespaceID,
-				namespace:        namespace.RootNamespace,
+				Namespace:        namespace.RootNamespace,
 			},
 			{
 				Table:            routing.CredentialTableType,
@@ -345,7 +345,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 				Accessor:         "noop-bcde",
 				BackendAwareUUID: "bcdea",
 				NamespaceID:      namespace.RootNamespaceID,
-				namespace:        namespace.RootNamespace,
+				Namespace:        namespace.RootNamespace,
 			},
 		},
 	}
@@ -388,7 +388,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 			t.Fatal("expected non-nil local auth")
 		}
 
-		localMountEntry := &MountEntry{}
+		localMountEntry := &routing.MountEntry{}
 		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
 			t.Fatal(err)
 		}
@@ -419,7 +419,7 @@ func TestCore_EnableCredential_twice_409(t *testing.T) {
 		}, nil
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -443,7 +443,7 @@ func TestCore_EnableCredential_twice_409(t *testing.T) {
 
 func TestCore_EnableCredential_Token(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "token",
@@ -467,7 +467,7 @@ func TestCore_DisableCredential(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -533,7 +533,7 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 		return noop, nil
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -644,7 +644,7 @@ func TestCore_CredentialInitialize(t *testing.T) {
 			return backend, nil
 		}
 
-		me := &MountEntry{
+		me := &routing.MountEntry{
 			Table: routing.CredentialTableType,
 			Path:  "foo/",
 			Type:  "initable",
@@ -672,7 +672,7 @@ func TestCore_CredentialInitialize(t *testing.T) {
 
 		c.auth = &MountTable{
 			Type: routing.CredentialTableType,
-			Entries: []*MountEntry{
+			Entries: []*routing.MountEntry{
 				{
 					Table:            routing.CredentialTableType,
 					Path:             "foo/",
@@ -681,7 +681,7 @@ func TestCore_CredentialInitialize(t *testing.T) {
 					Accessor:         "initable-abcd",
 					BackendAwareUUID: "abcde",
 					NamespaceID:      namespace.RootNamespaceID,
-					namespace:        namespace.RootNamespace,
+					Namespace:        namespace.RootNamespace,
 				},
 			},
 		}
@@ -716,7 +716,7 @@ func TestCore_RemountCredential(t *testing.T) {
 		}, nil
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -768,7 +768,7 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 		return noop, nil
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -843,7 +843,7 @@ func TestCore_RemountCredential_Namespaces(t *testing.T) {
 	ns3 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
 	ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: routing.CredentialTableType,
 		Path:  "foo",
 		Type:  "noop",

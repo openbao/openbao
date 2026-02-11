@@ -107,7 +107,7 @@ func mountNoopBackends(c *Core, backends []*backend) (map[string]string, error) 
 
 	pathToMount := make(map[string]string)
 	for _, backend := range backends {
-		me := &MountEntry{
+		me := &routing.MountEntry{
 			Table: routing.MountTableType,
 			Path:  backend.path,
 			Type:  "noop",

@@ -45,7 +45,7 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 
 	// skip 0, secret/ is already mounted
 	for _, tm := range testMounts[1:] {
-		me := &MountEntry{
+		me := &routing.MountEntry{
 			Table:   routing.MountTableType,
 			Path:    sanitizePath(tm.Path),
 			Type:    tm.Type,
@@ -161,7 +161,7 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 	}()
 	core, _, _ := TestCoreUnsealed(t)
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table:   routing.MountTableType,
 		Path:    sanitizePath("kv1"),
 		Type:    "kv",

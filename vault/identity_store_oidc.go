@@ -106,11 +106,11 @@ type accessToken struct {
 //
 // https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
 type discovery struct {
-	Issuer        string   `json:"issuer"`
-	Keys          string   `json:"jwks_uri"`
-	ResponseTypes []string `json:"response_types_supported"`
-	Subjects      []string `json:"subject_types_supported"`
-	IDTokenAlgs   []string `json:"id_token_signing_alg_values_supported"`
+	Issuer        string                    `json:"issuer"`
+	Keys          string                    `json:"jwks_uri"`
+	ResponseTypes []string                  `json:"response_types_supported"`
+	Subjects      []string                  `json:"subject_types_supported"`
+	IDTokenAlgs   []jose.SignatureAlgorithm `json:"id_token_signing_alg_values_supported"`
 }
 
 // oidcCache is a thin wrapper around zcache to partition by namespace
@@ -136,14 +136,14 @@ var (
 		"sub", "namespace", "nonce",
 		"auth_time", "at_hash", "c_hash",
 	}
-	supportedAlgs = []string{
-		string(jose.RS256),
-		string(jose.RS384),
-		string(jose.RS512),
-		string(jose.ES256),
-		string(jose.ES384),
-		string(jose.ES512),
-		string(jose.EdDSA),
+	supportedAlgs = []jose.SignatureAlgorithm{
+		jose.RS256,
+		jose.RS384,
+		jose.RS512,
+		jose.ES256,
+		jose.ES384,
+		jose.ES512,
+		jose.EdDSA,
 	}
 )
 
@@ -210,7 +210,7 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 				"algorithm": {
 					Type:        framework.TypeString,
 					Description: "Signing algorithm to use. This will default to RS256.",
-					Default:     "RS256",
+					Default:     string(jose.RS256),
 				},
 
 				"allowed_client_ids": {
@@ -638,7 +638,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateKey(ctx context.Context, req *logica
 		key.Algorithm = d.Get("algorithm").(string)
 	}
 
-	if !slices.Contains(supportedAlgs, key.Algorithm) {
+	if !slices.Contains(supportedAlgs, jose.SignatureAlgorithm(key.Algorithm)) {
 		return logical.ErrorResponse("unknown signing algorithm %q", key.Algorithm), nil
 	}
 
@@ -1695,28 +1695,28 @@ func generateKeys(algorithm string) (*jose.JSONWebKey, error) {
 	var key interface{}
 	var err error
 
-	switch algorithm {
-	case "RS256", "RS384", "RS512":
+	switch jose.SignatureAlgorithm(algorithm) {
+	case jose.RS256, jose.RS384, jose.RS512:
 		// 2048 bits is recommended by RSA Laboratories as a minimum post 2015
 		if key, err = rsa.GenerateKey(rand.Reader, 2048); err != nil {
 			return nil, err
 		}
-	case "ES256", "ES384", "ES512":
+	case jose.ES256, jose.ES384, jose.ES512:
 		var curve elliptic.Curve
 
-		switch algorithm {
-		case "ES256":
+		switch jose.SignatureAlgorithm(algorithm) {
+		case jose.ES256:
 			curve = elliptic.P256()
-		case "ES384":
+		case jose.ES384:
 			curve = elliptic.P384()
-		case "ES512":
+		case jose.ES512:
 			curve = elliptic.P521()
 		}
 
 		if key, err = ecdsa.GenerateKey(curve, rand.Reader); err != nil {
 			return nil, err
 		}
-	case "EdDSA":
+	case jose.EdDSA:
 		_, key, err = ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			return nil, err

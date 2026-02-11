@@ -156,7 +156,7 @@ func TestSealManager_InitializeBarrier(t *testing.T) {
 	_, err = c.sealManager.InitializeBarrier(ctx, flawedNS)
 	require.ErrorIs(t, err, ErrNotSealable)
 
-	c.sealManager.barrierByNamespace.Insert(flawedNS.Path, barrier.NewAESGCMBarrier(c.physical, NamespaceBarrierPrefix(flawedNS)))
+	c.sealManager.barrierByNamespace.Insert(flawedNS.Path, barrier.NewAESGCMBarrier(c.physical, NamespaceStoragePathPrefix(flawedNS)))
 
 	// check seal config presence in storage
 	_, err = c.sealManager.InitializeBarrier(ctx, flawedNS)

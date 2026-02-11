@@ -122,7 +122,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		return fmt.Errorf("invalid seal configuration: %w", err)
 	}
 
-	metaPrefix := NamespaceBarrierPrefix(ns)
+	metaPrefix := NamespaceStoragePathPrefix(ns)
 
 	// Seal type would depend on the provided arguments
 	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
@@ -175,7 +175,7 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 // likely wrong to call within the context of a transaction.
 func (c *Core) NamespaceView(ns *namespace.Namespace) barrier.View {
 	b := c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)
-	return NamespaceView(b, ns)
+	return NamespaceScopedView(b, ns)
 }
 
 // NamespaceBarrierByLongestPrefix acquires a read lock, and returns barrier of
@@ -645,7 +645,7 @@ func (sm *SealManager) RotateBarrierKey(ctx context.Context, ns *namespace.Names
 	// Write to the canary path, which will force a synchronous truing
 	// during replication
 	keyringCanaryEntry := &logical.StorageEntry{
-		Key:   path.Join(NamespaceBarrierPrefix(ns), coreKeyringCanaryPath),
+		Key:   path.Join(NamespaceStoragePathPrefix(ns), coreKeyringCanaryPath),
 		Value: fmt.Appendf(nil, "new-rotation-term-%d", newTerm),
 	}
 

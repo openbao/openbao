@@ -880,7 +880,7 @@ func (ts *TokenStore) teardown() {
 }
 
 func (ts *TokenStore) baseView(ns *namespace.Namespace) barrier.View {
-	return NamespaceView(ts.core.barrier, ns).SubView(systemBarrierPrefix + tokenSubPath)
+	return NamespaceScopedView(ts.core.barrier, ns).SubView(systemBarrierPrefix + tokenSubPath)
 }
 
 func (ts *TokenStore) idView(ns *namespace.Namespace) barrier.View {
@@ -1143,7 +1143,7 @@ func (ts *TokenStore) rootToken(ctx context.Context) (*logical.TokenEntry, error
 
 	te := &logical.TokenEntry{
 		Policies:     []string{"root"},
-		Path:         NamespaceBarrierPrefix(ns) + "auth/token/root",
+		Path:         NamespaceStoragePathPrefix(ns) + "auth/token/root",
 		DisplayName:  "root",
 		CreationTime: time.Now().Unix(),
 		NamespaceID:  ns.ID,

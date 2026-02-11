@@ -1038,24 +1038,33 @@ func (c *PluginCatalog) get(ctx context.Context, name string, pluginType consts.
 }
 
 // Check if a plugin of a specific name is available in the plugin catalog.
-func (c *PluginCatalog) HasPlugin(ctx context.Context, name string) (bool, error) {
+func (c *PluginCatalog) TypesFromName(ctx context.Context, name string) ([]consts.PluginType, error) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	return c.hasPluginLocked(ctx, name)
+	return c.typesFromNameLocked(ctx, name)
 }
 
 // Check if a plugin of a specific name is available in the plugin catalog.
 // Caller must have a read lock on c.lock
-func (c *PluginCatalog) hasPluginLocked(ctx context.Context, name string) (bool, error) {
+func (c *PluginCatalog) typesFromNameLocked(ctx context.Context, name string) ([]consts.PluginType, error) {
+	typeSet := make(map[consts.PluginType]struct{})
+
 	if c.directory != "" {
 		// Check for matching external untyped unversioned plugin (registered before plugin types existed)
 		// we check this first because these storage entries are not under a plugin type directory
 		out, err := c.catalogView.Get(ctx, name)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 		if out != nil {
-			return true, nil
+			// Parse the entry to figure out the type
+			entry := new(pluginutil.PluginRunner)
+			if err := jsonutil.DecodeJSON(out.Value, entry); err != nil {
+				return nil, fmt.Errorf("failed to decode plugin entry: %w", err)
+			}
+			if entry.Type != consts.PluginTypeUnknown {
+				typeSet[entry.Type] = struct{}{}
+			}
 		}
 	}
 
@@ -1069,13 +1078,19 @@ func (c *PluginCatalog) hasPluginLocked(ctx context.Context, name string) (bool,
 		// If a matching plugin is found or if there is an error, return immediately
 		hasPlugin, err := c.hasPluginWithTypeLocked(ctx, name, pluginType)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 		if hasPlugin {
-			return true, nil
+			typeSet[pluginType] = struct{}{}
 		}
 	}
-	return false, nil
+
+	var pluginTypes []consts.PluginType
+	for k := range typeSet {
+		pluginTypes = append(pluginTypes, k)
+	}
+
+	return pluginTypes, nil
 }
 
 // Check if a plugin of a specific type and name is available in the plugin catalog.

@@ -85,13 +85,22 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 		return err
 	}
 
-	// Check if the plugin is in the plugin catalog
-	pluginFound, err := c.pluginCatalog.HasPlugin(ctx, pluginName)
+	// Fail early if the plugin is a singleton plugin
+	if slices.Contains(singletonMounts, pluginName) {
+		return fmt.Errorf("cannot reload singleton plugin %q", pluginName)
+	}
+
+	// Check if the plugin is in the plugin catalog and is of a reloadable type
+	types, err := c.pluginCatalog.TypesFromName(ctx, pluginName)
 	if err != nil {
 		return err
 	}
-	if !pluginFound {
+	if len(types) == 0 {
 		return fmt.Errorf("%w: %q", ErrPluginNotFound, pluginName)
+	}
+	// Only plugin of types auth and secret and secrets can be reloaded
+	if !slices.Contains(types, consts.PluginTypeCredential) && !slices.Contains(types, consts.PluginTypeSecrets) {
+		return fmt.Errorf("plugin %q cannot be reloaded, only plugins of type auth and secret can be reloaded", pluginName)
 	}
 
 	// Filter mount entries that only matches the plugin name

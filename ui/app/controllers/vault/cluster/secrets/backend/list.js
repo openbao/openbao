@@ -8,12 +8,11 @@ import { computed } from '@ember/object';
 import { inject as service } from '@ember/service';
 import Controller from '@ember/controller';
 import utils from 'vault/lib/key-utils';
-import BackendCrumbMixin from 'vault/mixins/backend-crumb';
 import { task } from 'ember-concurrency';
 import escapeStringRegexp from 'escape-string-regexp';
 import commonPrefix from 'core/utils/common-prefix';
 
-export default Controller.extend(BackendCrumbMixin, {
+export default Controller.extend({
   navToNearestAncestor: task(function* (key) {
     const ancestors = utils.ancestorKeysForKey(key);
     let errored = false;
@@ -80,6 +79,17 @@ export default Controller.extend(BackendCrumbMixin, {
   }),
 
   isConfigurableTab: or('isCertTab', 'isConfigure'),
+
+  backendCrumb: computed('backend', function () {
+    const backend = this.backend;
+
+    return {
+      label: backend,
+      text: backend,
+      path: 'vault.cluster.secrets.backend.list-root',
+      model: backend,
+    };
+  }),
 
   actions: {
     setFilter(val) {

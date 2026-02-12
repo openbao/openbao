@@ -40,10 +40,11 @@ import (
 const pluginCatalogPath = "core/plugin-catalog/"
 
 var (
-	ErrDirectoryNotConfigured   = errors.New("could not set plugin, plugin directory is not configured")
-	ErrPluginNotFound           = errors.New("plugin not found in the catalog")
-	ErrPluginConnectionNotFound = errors.New("plugin connection not found for client")
-	ErrPluginBadType            = errors.New("unable to determine plugin type")
+	ErrDirectoryNotConfigured       = errors.New("could not set plugin, plugin directory is not configured")
+	ErrPluginNotFound               = errors.New("plugin not found in the catalog")
+	ErrPluginConnectionNotFound     = errors.New("plugin connection not found for client")
+	ErrPluginBadType                = errors.New("unable to determine plugin type")
+	ErrSingletonPluginNotReloadable = errors.New("singleton plugin cannot be reloaded")
 
 	// pluginTypes is the subset of consts.PluginTypes that is handled by the
 	// plugin catalog.
@@ -1075,7 +1076,6 @@ func (c *PluginCatalog) typesFromNameLocked(ctx context.Context, name string) ([
 		}
 
 		// Check for plugin existence across plugin types.
-		// If a matching plugin is found or if there is an error, return immediately
 		hasPlugin, err := c.hasPluginWithTypeLocked(ctx, name, pluginType)
 		if err != nil {
 			return nil, err

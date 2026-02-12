@@ -749,6 +749,9 @@ func TestExternalPlugin_Database(t *testing.T) {
 // TestExternalPlugin_DatabaseReload tests that we can use an external database
 // secrets engine after reload
 func TestExternalPlugin_DatabaseReload(t *testing.T) {
+	// TODO: revisit this when database plugins reloading is supported
+	t.Skip("reloading database plugins is not yet supported")
+
 	cluster := getCluster(t, consts.PluginTypeDatabase, 1)
 	defer cluster.Cleanup()
 

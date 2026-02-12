@@ -1037,14 +1037,14 @@ func (c *PluginCatalog) get(ctx context.Context, name string, pluginType consts.
 	return nil, nil
 }
 
-// Check if a plugin of a specific name is available in the plugin catalog.
+// Get the plugin types associated with a plugin name
 func (c *PluginCatalog) TypesFromName(ctx context.Context, name string) ([]consts.PluginType, error) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.typesFromNameLocked(ctx, name)
 }
 
-// Check if a plugin of a specific name is available in the plugin catalog.
+// Get the plugin types associated with a plugin name
 // Caller must have a read lock on c.lock
 func (c *PluginCatalog) typesFromNameLocked(ctx context.Context, name string) ([]consts.PluginType, error) {
 	typeSet := make(map[consts.PluginType]struct{})

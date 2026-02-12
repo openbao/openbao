@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-sockaddr"
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/pires/go-proxyproto"
 )
 

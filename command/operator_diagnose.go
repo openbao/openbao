@@ -23,9 +23,9 @@ import (
 
 	bApi "github.com/openbao/openbao/api/v2"
 	cserver "github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/helper/configutil"
+	"github.com/openbao/openbao/helper/listenerutil"
 	"github.com/openbao/openbao/helper/metricsutil"
-	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	sr "github.com/openbao/openbao/serviceregistration"

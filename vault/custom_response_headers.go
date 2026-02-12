@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 

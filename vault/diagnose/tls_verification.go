@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 )
 
 const (

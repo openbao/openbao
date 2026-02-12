@@ -1,22 +1,4 @@
 {
-  "ui": true,
-  "cluster_addr": "https://127.0.0.1:8201",
-  "api_addr": "https://127.0.0.1:8200",
-  "storage": {
-    "postgresql": {
-      "connection_url": "postgres://username:password@127.0.0.1:5432/postgres",
-      "max_connect_retries": 0,
-      "ha_enabled": true
-    }
-  },
-  "listener": [
-    {
-      "tcp": {
-        "address": "127.0.0.1:8200",
-        "tls_disable": true
-      }
-    }
-  ],
   "seal": {
     "static": {
       "current_key_id": "20250630",
@@ -43,11 +25,7 @@
               "operation": "update",
               "path": "auth/userpass/users/admin",
               "data": {
-                "password": {
-                  "eval_type": "string",
-                  "eval_source": "env",
-                  "env_var": "INITIAL_ADMIN_PASSWORD"
-                },
+                "password": "password",
                 "token_policies": ["superuser"]
               }
             }

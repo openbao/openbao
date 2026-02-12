@@ -12,9 +12,11 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -148,26 +150,12 @@ func TestPostgreSQL_ParallelInit(t *testing.T) {
 	configData, err := os.ReadFile("config-postgresql.json")
 	require.NoError(t, err, "read config")
 
-	var config map[string]interface{}
+	var config map[string]any
 	err = json.Unmarshal(configData, &config)
 	require.NoError(t, err, "parse config")
 
 	psql := docker.NewPostgreSQLStorage(t, "")
-	defer func() {
-		if err := psql.Cleanup(); err != nil {
-			t.Errorf("postgres cleanup: %v", err)
-		}
-	}()
-
-	if storage, ok := config["storage"].(map[string]interface{}); ok {
-		if postgresql, ok := storage["postgresql"].(map[string]interface{}); ok {
-			postgresql["connection_url"] = psql.InternalUrl
-		}
-	}
-
-	delete(config, "listener")
-	delete(config, "api_addr")
-	delete(config, "cluster_addr")
+	defer func() { require.NoError(t, psql.Cleanup()) }()
 
 	configBytes, err := json.MarshalIndent(config, "", "  ")
 	require.NoError(t, err, "marshal config")
@@ -176,17 +164,10 @@ func TestPostgreSQL_ParallelInit(t *testing.T) {
 		ImageRepo:   "quay.io/openbao/openbao",
 		ImageTag:    "latest",
 		VaultBinary: binary,
-		Args:        []string{"-config", "/dev/null"},
-		ExtraEnv: []string{
-			"BAO_LOCAL_CONFIG=" + string(configBytes),
-			"INITIAL_ADMIN_PASSWORD=password",
-		},
-		Storage: psql,
+		ExtraEnv:    []string{"BAO_LOCAL_CONFIG=" + string(configBytes)},
+		Storage:     psql,
 		ClusterOptions: testcluster.ClusterOptions{
 			SkipInit: true,
-			VaultNodeConfig: &testcluster.VaultNodeConfig{
-				LogLevel: "TRACE",
-			},
 		},
 	}
 
@@ -194,21 +175,18 @@ func TestPostgreSQL_ParallelInit(t *testing.T) {
 	defer cluster.Cleanup()
 
 	nodes := cluster.Nodes()
-	require.Greater(t, len(nodes), 0, "nodes error")
-
-	for i := 0; i < 60; i++ {
-		status, err := nodes[0].APIClient().Sys().SealStatus()
-		if err == nil && status.Initialized && !status.Sealed {
-			t.Logf("Ready after %ds", i)
-			break
-		}
-		time.Sleep(time.Second)
-	}
-
 	client := nodes[0].APIClient()
-	secret, err := client.Logical().Write("auth/userpass/login/admin", map[string]interface{}{
-		"password": "password",
-	})
+
+	require.EventuallyWithT(t, func(t *assert.CollectT) {
+		status, err := client.Sys().SealStatus()
+		require.NoError(t, err)
+		require.True(t, status.Initialized)
+		require.False(t, status.Sealed)
+	}, time.Minute, 100*time.Millisecond)
+
+	creds := map[string]any{"password": "password"}
+	secret, err := client.Logical().Write("auth/userpass/login/admin", creds)
+
 	require.NoError(t, err)
 	require.NotNil(t, secret)
 	require.NotNil(t, secret.Auth)
@@ -216,20 +194,21 @@ func TestPostgreSQL_ParallelInit(t *testing.T) {
 
 	var active, sealed int
 	for i, node := range nodes {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		_, err := node.APIClient().Logical().ListWithContext(ctx, "sys/policies/acl")
-		cancel()
-
-		if err == nil {
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+		defer cancel()
+		_, err := node.APIClient().Sys().ListPoliciesWithContext(ctx)
+		switch {
+		case err == nil:
 			active++
 			t.Logf("node %d: ACTIVE", i)
-		} else if strings.Contains(err.Error(), "Vault is sealed") {
+		case strings.Contains(err.Error(), consts.ErrSealed.Error()):
 			sealed++
 			t.Logf("node %d: SEALED", i)
-		} else {
-			t.Logf("node %d: ERROR: %v", i, err)
+		default:
+			t.Logf("node %d: ERROR: %s", i, err)
 		}
 	}
-	t.Logf("State: active=%d sealed=%d total=%d", active, sealed, len(nodes))
-	require.Equal(t, len(nodes), active, "all nodes accessible")
+
+	t.Logf("State: total=%d active=%d sealed=%d", len(nodes), active, sealed)
+	require.Equal(t, len(nodes), active, "all nodes active")
 }

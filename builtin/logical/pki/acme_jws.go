@@ -16,10 +16,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
-var AllowedOuterJWSTypes = consts.AllowedJWTSignatureAlgorithmsBao
-
-var AllowedEabJWSTypes = consts.AllowedJWTSignatureAlgorithmsEAB
-
 // This wraps a JWS message structure.
 type jwsCtx struct {
 	Algo     string          `json:"alg"`
@@ -50,7 +46,7 @@ func UnmarshalEabJwsJson(eabBytes []byte) (*jwsCtx, error) {
 		return nil, fmt.Errorf("invalid header: got missing required field 'kid': %w", ErrMalformed)
 	}
 
-	if !slices.Contains(AllowedEabJWSTypes, jose.SignatureAlgorithm(eabJws.Algo)) {
+	if !slices.Contains(consts.AllowedJWTSignatureAlgorithmsEAB, jose.SignatureAlgorithm(eabJws.Algo)) {
 		return nil, fmt.Errorf("invalid header: unexpected value for 'algo': %w", ErrMalformed)
 	}
 
@@ -79,7 +75,7 @@ func (c *jwsCtx) UnmarshalOuterJwsJson(a *acmeState, ac *acmeContext, jws []byte
 		return fmt.Errorf("invalid header: got neither required fields of 'kid' nor 'jwk': %w", ErrMalformed)
 	}
 
-	if !slices.Contains(AllowedOuterJWSTypes, jose.SignatureAlgorithm(c.Algo)) {
+	if !slices.Contains(consts.AllowedJWTSignatureAlgorithmsBao, jose.SignatureAlgorithm(c.Algo)) {
 		// See RFC 8555 Section 6.2. Request Authentication:
 		//
 		// > The JWS Protected Header MUST include the following fields:

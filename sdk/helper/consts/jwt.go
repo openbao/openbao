@@ -26,7 +26,7 @@ var (
 	}
 
 	// AllowedJWTSignatureAlgorithmsEAB defines the JWT signature algorithms
-	// allowed for ACME External Account Binding
+	// allowed for ACME External Account Binding.
 	AllowedJWTSignatureAlgorithmsEAB = []jose.SignatureAlgorithm{
 		jose.HS256,
 		jose.HS384,

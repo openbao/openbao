@@ -2341,7 +2341,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
-	if err := c.loadMounts(ctx); err != nil {
+	if err := c.loadMounts(ctx, standby); err != nil {
 		return err
 	}
 	if err := c.setupMounts(ctx); err != nil {
@@ -2353,7 +2353,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.loadCORSConfig(ctx); err != nil {
 		return err
 	}
-	if err := c.loadCredentials(ctx); err != nil {
+	if err := c.loadCredentials(ctx, standby); err != nil {
 		return err
 	}
 	if err := c.setupCredentials(ctx); err != nil {

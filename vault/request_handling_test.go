@@ -75,7 +75,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 func TestRequestHandling_LoginWrapping(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.loadMounts(namespace.RootContext(nil), false); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -157,7 +157,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.loadMounts(namespace.RootContext(nil), false); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -354,7 +354,7 @@ func checkCounter(t *testing.T, inmemSink *metrics.InmemSink, keyPrefix string, 
 func TestRequestHandling_LoginMetric(t *testing.T) {
 	core, _, root, sink := TestCoreUnsealedWithMetrics(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.loadMounts(namespace.RootContext(nil), false); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -483,7 +483,7 @@ func TestRequestHandling_ListFiltering(t *testing.T) {
 
 	core, _, root := TestCoreUnsealed(t)
 
-	if err := core.loadMounts(namespace.RootContext(nil)); err != nil {
+	if err := core.loadMounts(namespace.RootContext(nil), false); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 

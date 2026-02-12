@@ -18,11 +18,7 @@ import (
 
 var AllowedOuterJWSTypes = consts.AllowedJWTSignatureAlgorithmsBao
 
-var AllowedEabJWSTypes = []jose.SignatureAlgorithm{
-	jose.HS256,
-	jose.HS384,
-	jose.HS512,
-}
+var AllowedEabJWSTypes = consts.AllowedJWTSignatureAlgorithmsEAB
 
 // This wraps a JWS message structure.
 type jwsCtx struct {

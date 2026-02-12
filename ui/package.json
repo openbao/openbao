@@ -240,7 +240,7 @@
     "node-notifier": "^8.0.1",
     "uuid": "^11.1.0"
   },
-  "packageManager": "yarn@3.5.0",
+  "packageManager": "yarn@4.12.0",
   "scarfSettings": {
     "enabled": false
   }

@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math/big"
 	mathrand "math/rand"
 	"net"
@@ -682,11 +683,13 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 
 	caDir := filepath.Join(n.Cluster.tmpDir, "ca")
 
-	// setup plugin bin copy if needed
+	// Copy certificates and generated configs.
 	copyFromTo := map[string]string{
 		n.WorkDir: "/openbao/config",
 		caDir:     "/usr/local/share/ca-certificates/",
 	}
+	// Copy any additional files.
+	maps.Copy(copyFromTo, opts.CopyFromTo)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -713,9 +716,6 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	}
 	if opts.Root {
 		env = append(env, "BAO_SKIP_DROP_ROOT=true")
-	}
-	if len(opts.ExtraEnv) > 0 {
-		env = append(env, opts.ExtraEnv...)
 	}
 
 	r, err := dockhelper.NewServiceRunner(dockhelper.RunOptions{
@@ -947,13 +947,13 @@ type DockerClusterOptions struct {
 	CA          *testcluster.CA
 	VaultBinary string
 	Args        []string
+	CopyFromTo  map[string]string
 	StartProbe  func(*api.Client) error
 	Storage     testcluster.ClusterStorage
 	StorageType string
 	Root        bool
 	Entrypoint  string
 	HADisabled  bool
-	ExtraEnv    []string
 }
 
 func DefaultOptions(t *testing.T) *DockerClusterOptions {

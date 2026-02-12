@@ -2,9 +2,7 @@ package raft_binary
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -147,25 +145,18 @@ func TestPostgreSQL_ParallelInit(t *testing.T) {
 		t.Skip("missing $BAO_BINARY")
 	}
 
-	configData, err := os.ReadFile("config-postgresql.json")
-	require.NoError(t, err, "read config")
-
-	var config map[string]any
-	err = json.Unmarshal(configData, &config)
-	require.NoError(t, err, "parse config")
-
 	psql := docker.NewPostgreSQLStorage(t, "")
 	defer func() { require.NoError(t, psql.Cleanup()) }()
-
-	configBytes, err := json.MarshalIndent(config, "", "  ")
-	require.NoError(t, err, "marshal config")
 
 	opts := &docker.DockerClusterOptions{
 		ImageRepo:   "quay.io/openbao/openbao",
 		ImageTag:    "latest",
 		VaultBinary: binary,
-		ExtraEnv:    []string{"BAO_LOCAL_CONFIG=" + string(configBytes)},
-		Storage:     psql,
+		CopyFromTo: map[string]string{
+			"../../../command/server/test-fixtures/self-init.hcl":   "/openbao/config/self-init.hcl",
+			"../../../command/server/test-fixtures/static-seal.hcl": "/openbao/config/static-seal.hcl",
+		},
+		Storage: psql,
 		ClusterOptions: testcluster.ClusterOptions{
 			SkipInit: true,
 		},

@@ -162,9 +162,9 @@ func AdjustErrorStatusCode(status *int, err error) {
 	// Allow HTTPCoded error passthrough to specify a code
 	var hce HTTPCodedError = &codedError{}
 	switch {
-	case errwrap.Contains(err, consts.ErrSealed.Error()), errwrap.Contains(err, consts.ErrNamespaceSealed.Error()):
-		*status = http.StatusServiceUnavailable
-	case errwrap.Contains(err, consts.ErrAPILocked.Error()):
+	case errwrap.Contains(err, consts.ErrSealed.Error()),
+		errwrap.Contains(err, consts.ErrNamespaceSealed.Error()),
+		errwrap.Contains(err, consts.ErrAPILocked.Error()):
 		*status = http.StatusServiceUnavailable
 	case errwrap.Contains(err, "http: request body too large"):
 		*status = http.StatusRequestEntityTooLarge

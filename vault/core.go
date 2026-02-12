@@ -1043,8 +1043,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 	// Construct a new AES-GCM barrier
 	c.barrier = barrier.NewAESGCMBarrier(c.physical, "")
-	// TODO(wslabosz): setup seal manager
-	// c.SetupSealManager()
+	c.SetupSealManager()
 
 	// We create the funcs here, then populate the given config with it so that
 	// the caller can share state
@@ -1383,8 +1382,7 @@ func (c *Core) Sealed() bool {
 // NamespaceSealed checks if there's a namespace
 // (in direct ancestry line) that is currently sealed.
 func (c *Core) NamespaceSealed(ns *namespace.Namespace) bool {
-	// TODO(wslabosz): implement with seal manager
-	return false
+	return c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path).Sealed()
 }
 
 // SecretProgress returns the number of keys provided so far. Lock
@@ -2109,10 +2107,10 @@ func (c *Core) UIHeaders() (http.Header, error) {
 // sealInternal is an internal method used to seal the vault.  It does not do
 // any authorization checking.
 func (c *Core) sealInternal() error {
-	return c.sealInternalWithOptions(true, false, true)
+	return c.sealInternalWithOptions(true)
 }
 
-func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup bool) error {
+func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 	// Mark sealed, and if already marked return
 	if swapped := c.sealed.CompareAndSwap(false, true); !swapped {
 		return nil
@@ -2172,9 +2170,6 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 		// If we are keeping the lock we already have the state write lock
 		// held. Otherwise grab it here so that when stopCh is triggered we are
 		// locked.
-		if keepHALock {
-			c.keepHALockOnStepDown.Store(true)
-		}
 		if grabStateLock {
 			cancelCtxAndLock()
 			defer c.stateLock.Unlock()
@@ -2190,7 +2185,6 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 
 		// Wait for runStandby to stop
 		<-c.standbyDoneCh
-		c.keepHALockOnStepDown.Store(false)
 		c.logger.Debug("runStandby done")
 	}
 
@@ -2201,21 +2195,19 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 	}
 
 	// Perform additional cleanup upon sealing.
-	if performCleanup {
-		if raftBackend := c.GetRaftBackend(); raftBackend != nil {
-			if err := raftBackend.TeardownCluster(c.getClusterListener()); err != nil {
-				c.logger.Error("error stopping storage cluster", "error", err)
-				return err
-			}
+	if raftBackend := c.GetRaftBackend(); raftBackend != nil {
+		if err := raftBackend.TeardownCluster(c.getClusterListener()); err != nil {
+			c.logger.Error("error stopping storage cluster", "error", err)
+			return err
 		}
-
-		// Stop the cluster listener
-		c.stopClusterListener()
 	}
 
-	c.logger.Debug("sealing barrier")
-	if err := c.barrier.Seal(); err != nil {
-		c.logger.Error("error sealing barrier", "error", err)
+	// Stop the cluster listener
+	c.stopClusterListener()
+
+	c.logger.Debug("sealing all barriers")
+	if err := c.sealManager.sealAll(); err != nil {
+		c.logger.Error("error sealing barriers", "error", err)
 		return err
 	}
 

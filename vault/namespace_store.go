@@ -922,6 +922,40 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool
 	return ns.namespacesByPath.List(parent.Path, includeParent, recursive, ns.creationDeletionMap)
 }
 
+// sealNamespaceLocked assumes the read lock is hold, and seals provided namespace,
+// cleaning up namespace resources.
+func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
+	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
+
+	var errs error
+	ns.namespacesByPath.PostOrderTraversal(namespaceToSeal.Path, func(entry *namespace.Namespace) {
+		if entry.ID == namespace.RootNamespaceID || ns.core.NamespaceSealed(entry) {
+			return
+		}
+
+		barrier := ns.core.sealManager.NamespaceBarrier(entry.Path)
+		if barrier != nil && barrier.Sealed() {
+			return
+		}
+
+		parentPath, _ := entry.ParentPath()
+		parent := ns.namespacesByPath.Get(parentPath)
+		if parent == nil {
+			return
+		}
+
+		errs = ns.clearNamespaceResources(namespace.ContextWithNamespace(ctx, entry), parent, entry, false)
+
+		if barrier != nil {
+			if err := barrier.Seal(); err != nil {
+				errs = errors.Join(errs, err)
+			}
+		}
+	})
+
+	return errs
+}
+
 // taintNamespace is used to taint the namespace designated to be deleted
 func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *namespace.Namespace) error {
 	// to be extra safe
@@ -1003,18 +1037,10 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 	return "in-progress", nil
 }
 
-func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent *namespace.Namespace, namespaceToDelete *namespace.Namespace) error {
+func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent, entry *namespace.Namespace, updateStorage bool) error {
 	// clear ACL policies
-	policiesToClear, err := ns.core.policyStore.ListPolicies(nsCtx, PolicyTypeACL, false)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve namespace policies: %w", err)
-	}
-
-	for _, policy := range policiesToClear {
-		err := ns.core.policyStore.deletePolicyForce(nsCtx, policy, PolicyTypeACL)
-		if err != nil {
-			return fmt.Errorf("failed to delete policy: %w", err)
-		}
+	if err := ns.clearNamespacePolicies(nsCtx, entry, updateStorage); err != nil {
+		return err
 	}
 
 	// clear auth mounts
@@ -1022,17 +1048,17 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 	authMountEntries, err := ns.core.auth.FindAllNamespaceMounts(nsCtx)
 	ns.core.authLock.Unlock()
 	if err != nil {
-		return fmt.Errorf("failed to retrieve namespace credentials: %w", err)
+		return fmt.Errorf("failed to retrieve namespace auth mounts: %w", err)
 	}
 
 	for _, me := range authMountEntries {
-		err := ns.core.disableCredentialInternal(nsCtx, me.Path, true)
+		err := ns.core.disableCredentialInternal(nsCtx, me.Path, updateStorage)
 		if err != nil {
 			if errors.Is(err, errNoMatchingMount) {
 				continue
 			}
 
-			return fmt.Errorf("failed to disable namespace credential mount (%v): %w", me.Path, err)
+			return fmt.Errorf("failed to unmount namespace auth mount (%v): %w", me.Path, err)
 		}
 	}
 
@@ -1041,37 +1067,60 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 	mountEntries, err := ns.core.mounts.FindAllNamespaceMounts(nsCtx)
 	ns.core.mountsLock.Unlock()
 	if err != nil {
-		return fmt.Errorf("failed to retrieve namespace mounts: %w", err)
+		return fmt.Errorf("failed to retrieve namespace secret mounts: %w", err)
 	}
 
 	for _, me := range mountEntries {
-		err := ns.core.unmountInternal(nsCtx, me.Path, true)
+		err := ns.core.unmountInternal(nsCtx, me.Path, updateStorage)
 		if err != nil {
 			if errors.Is(err, errNoMatchingMount) {
 				continue
 			}
 
-			return fmt.Errorf("failed to disable namespace secret mount (%v): %w", me.Path, err)
+			return fmt.Errorf("failed to unmount namespace secret mount (%v): %w", me.Path, err)
 		}
 	}
 
 	// clear identity store
-	if err := ns.core.identityStore.RemoveNamespaceView(namespaceToDelete); err != nil {
+	if err := ns.core.identityStore.RemoveNamespaceView(entry); err != nil {
 		return fmt.Errorf("failed to clean identity store: %w", err)
 	}
 
 	// clear quotas
-	err = ns.core.quotaManager.HandleNamespaceDeletion(nsCtx, namespaceToDelete.Path)
-	if err != nil {
-		return fmt.Errorf("failed to update quotas after deleting namespace: %w", err)
+	if updateStorage {
+		if err := ns.core.quotaManager.HandleNamespaceDeletion(nsCtx, entry.Path); err != nil {
+			return fmt.Errorf("failed to update quotas after deleting namespace: %w", err)
+		}
+
+		// clear locked users entries
+		if _, err := ns.core.runLockedUserEntryUpdatesForNamespace(nsCtx, entry, true); err != nil {
+			return fmt.Errorf("failed to clean up locked user entries: %w", err)
+		}
 	}
 
-	// clear locked users entries
-	_, err = ns.core.runLockedUserEntryUpdatesForNamespace(nsCtx, namespaceToDelete, true)
+	return nil
+}
+
+func (ns *NamespaceStore) clearNamespacePolicies(ctx context.Context, namespace *namespace.Namespace, physicalDeletion bool) error {
+	policiesToClear, err := ns.core.policyStore.ListPolicies(ctx, PolicyTypeACL, false)
 	if err != nil {
-		return fmt.Errorf("failed to clean up locked user entries: %w", err)
+		ns.logger.Error("failed to retrieve namespace policies", "namespace", namespace.Path, "error", err.Error())
+		return err
 	}
 
+	for _, policy := range policiesToClear {
+		if physicalDeletion {
+			if err := ns.core.policyStore.deletePolicyForce(ctx, policy, PolicyTypeACL); err != nil {
+				ns.logger.Error(fmt.Sprintf("failed to delete policy %q", policy), "namespace", namespace.Path, "error", err.Error())
+				return err
+			}
+		} else {
+			if err := ns.core.policyStore.invalidate(ctx, policy, PolicyTypeACL); err != nil {
+				ns.logger.Error(fmt.Sprintf("failed to invalidate policy %q", policy), "namespace", namespace.Path, "error", err.Error())
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -1282,7 +1331,7 @@ func (ns *NamespaceStore) newNamespaceDeletionJob(parent *namespace.Namespace, t
 func (j *namespaceDeletionJob) Execute() error {
 	// Clearing needs to happen without holding the namespace lock.
 	ctx := namespace.ContextWithNamespace(j.store.creationDeletionJobContext, j.target)
-	err := j.store.clearNamespaceResources(ctx, j.parent, j.target)
+	err := j.store.clearNamespaceResources(ctx, j.parent, j.target, true)
 
 	j.store.lock.Lock()
 	defer j.store.lock.Unlock()

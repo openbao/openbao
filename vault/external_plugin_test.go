@@ -327,8 +327,8 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 	for i, key := range keys {
 		unseal, err := TestCoreUnseal(c, key)
 		if i+1 == len(keys) {
-			if !errors.Is(err, errLoadAuthFailed) {
-				t.Fatalf("expected error: %q, got: %q", errLoadAuthFailed, err)
+			if !errors.Is(err, errLoadMountsFailed) {
+				t.Fatalf("expected error: %q, got: %q", errLoadMountsFailed, err)
 			}
 
 			if unseal {

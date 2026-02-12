@@ -139,6 +139,7 @@ func TestRouter_MountCredential(t *testing.T) {
 
 	mountEntry := &MountEntry{
 		Path:        "aws",
+		Table:       credentialTableType,
 		UUID:        meUUID,
 		Accessor:    "awsaccessor",
 		NamespaceID: namespace.RootNamespaceID,

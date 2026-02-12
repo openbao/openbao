@@ -113,7 +113,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		Type:        "userpass",
 		Description: "userpass",
 	}
-	err = c.enableCredential(ctx, userpassMe)
+	err = c.authMounts.mount(ctx, userpassMe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		Type:        "ldap",
 		Description: "ldap",
 	}
-	err = c.enableCredential(ctx, ldapMe)
+	err = c.authMounts.mount(ctx, ldapMe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,7 +450,7 @@ func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 		Description: "approle auth",
 	}
 
-	err := c.enableCredential(ctx, ghme2)
+	err := c.authMounts.mount(ctx, ghme2)
 	if err != nil {
 		t.Fatal(err)
 	}

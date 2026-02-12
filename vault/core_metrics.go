@@ -271,17 +271,17 @@ type kvMount struct {
 func (c *Core) findKvMounts() []*kvMount {
 	mounts := make([]*kvMount, 0)
 
-	c.mountsLock.RLock()
-	defer c.mountsLock.RUnlock()
-
 	// we don't grab the statelock, so this code might run during or after the seal process.
 	// Therefore, we need to check if c.mounts is nil. If we do not, this will panic when
 	// run after seal.
-	if c.mounts == nil {
+	if c.secretMounts == nil {
 		return mounts
 	}
 
-	for _, entry := range c.mounts.Entries {
+	c.secretMounts.lock.RLock()
+	defer c.secretMounts.lock.RUnlock()
+
+	for _, entry := range c.secretMounts.table.Entries {
 		if entry.Type == "kv" || entry.Type == "generic" {
 			version, ok := entry.Options["version"]
 			if !ok {

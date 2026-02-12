@@ -115,6 +115,7 @@ func (i *IdentityStore) AddNamespaceView(core *Core, ns *namespace.Namespace, vi
 		view: view,
 	}
 
+	// TODO: for every single namespace the loggers are named the same
 	// Create loggers for packers
 	entitiesPackerLogger := i.logger.Named("storagepacker").Named("entities")
 	core.AddLogger(entitiesPackerLogger)

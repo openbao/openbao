@@ -113,7 +113,7 @@ func mountNoopBackends(c *Core, backends []*backend) (map[string]string, error) 
 		}
 
 		nsCtx := namespace.ContextWithNamespace(context.Background(), backend.ns)
-		if err := c.mount(nsCtx, me); err != nil {
+		if err := c.secretMounts.mount(nsCtx, me); err != nil {
 			return nil, fmt.Errorf("error mounting backend %s: %w", backend.path, err)
 		}
 

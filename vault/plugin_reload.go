@@ -21,10 +21,10 @@ import (
 // reloadMatchingPluginMounts reloads provided mounts, regardless of
 // plugin name, as long as the backend type is plugin.
 func (c *Core) reloadMatchingPluginMounts(ctx context.Context, mounts []string) error {
-	c.mountsLock.RLock()
-	defer c.mountsLock.RUnlock()
-	c.authLock.RLock()
-	defer c.authLock.RUnlock()
+	c.secretMounts.lock.RLock()
+	defer c.secretMounts.lock.RUnlock()
+	c.authMounts.lock.RLock()
+	defer c.authMounts.lock.RUnlock()
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -74,10 +74,10 @@ func (c *Core) reloadMatchingPluginMounts(ctx context.Context, mounts []string) 
 // plugin pluginName (name of the plugin as registered in
 // the plugin catalog).
 func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) error {
-	c.mountsLock.RLock()
-	defer c.mountsLock.RUnlock()
-	c.authLock.RLock()
-	defer c.authLock.RUnlock()
+	c.secretMounts.lock.RLock()
+	defer c.secretMounts.lock.RUnlock()
+	c.authMounts.lock.RLock()
+	defer c.authMounts.lock.RUnlock()
 
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -85,7 +85,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 	}
 
 	// Filter mount entries that only matches the plugin name
-	for _, entry := range c.mounts.Entries {
+	for _, entry := range c.secretMounts.table.Entries {
 		// We dont reload mounts that are not in the same namespace
 		if ns.ID != entry.Namespace().ID {
 			continue
@@ -100,7 +100,7 @@ func (c *Core) reloadMatchingPlugin(ctx context.Context, pluginName string) erro
 	}
 
 	// Filter auth mount entries that ony matches the plugin name
-	for _, entry := range c.auth.Entries {
+	for _, entry := range c.authMounts.table.Entries {
 		// We dont reload mounts that are not in the same namespace
 		if ns.ID != entry.Namespace().ID {
 			continue
@@ -132,14 +132,8 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 		return nil
 	}
 
-	path := entry.Path
-
-	if isAuth {
-		path = credentialRoutePrefix + path
-	}
-
 	// Fast-path out if the backend doesn't exist
-	raw, ok := c.router.root.Get(entry.Namespace().Path + path)
+	raw, ok := c.router.root.Get(entry.APIPath())
 	if !ok {
 		return nil
 	}
@@ -193,17 +187,14 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	}
 
 	// update the mount table since we changed the runningSha
-	if oldSha != entry.RunningSha256 && MountTableUpdateStorage {
+	if oldSha != entry.RunningSha256 {
 		if isAuth {
-			err = c.persistAuth(ctx, nil, c.auth, &entry.Local, entry.UUID)
-			if err != nil {
-				return err
-			}
+			err = c.authMounts.persistMount(ctx, c.barrier, c.authMounts.table, entry)
 		} else {
-			err = c.persistMounts(ctx, nil, c.mounts, &entry.Local, entry.UUID)
-			if err != nil {
-				return err
-			}
+			err = c.secretMounts.persistMount(ctx, c.barrier, c.secretMounts.table, entry)
+		}
+		if err != nil {
+			return err
 		}
 	}
 

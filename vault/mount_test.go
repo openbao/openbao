@@ -13,6 +13,7 @@ import (
 
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -561,7 +562,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 	}
 
 	if causeFailure {
-		view.(BarrierView).SetReadOnlyErr(logical.ErrSetupReadOnly)
+		view.(barrier.View).SetReadOnlyErr(logical.ErrSetupReadOnly)
 	}
 
 	// Unmount, this should cleanup
@@ -1259,19 +1260,11 @@ func TestCore_MountInitialize(t *testing.T) {
 
 func TestCore_MountEntryView(t *testing.T) {
 	t.Parallel()
-	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
-
 	c, _, _ := TestCoreUnsealed(t)
-	s := c.namespaceStore
-
 	testMountEntryUUID := "mount-entry-uuid"
 	testNamespace1 := &namespace.Namespace{Path: "ns1/"}
 	testNamespace2 := &namespace.Namespace{Path: "ns1/ns2/"}
-
-	err := s.SetNamespace(ctx, testNamespace1)
-	require.NoError(t, err)
-	err = s.SetNamespace(ctx, testNamespace2)
-	require.NoError(t, err)
+	TestCoreCreateNamespaces(t, c, testNamespace1, testNamespace2)
 
 	tests := []struct {
 		name       string
@@ -1433,9 +1426,7 @@ func TestCore_MountEntryView(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			gotView, err := c.mountEntryView(tt.mountEntry)
-
 			require.Equalf(t, tt.wantError, (err != nil), "(*Core).mountEntryView() got unexpected error: %v", err)
 			if err == nil {
 				require.Equalf(t, tt.wantViewPrefix, gotView.Prefix(), "(*Core).mountEntryView() gotViewPrefix: %v, want: %v", gotView.Prefix(), tt.wantViewPrefix)

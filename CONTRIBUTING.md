@@ -151,7 +151,8 @@ quickly merge or address your contributions.
 ## Pull requests
 
 When submitting a PR you should reference an existing issue. If no issue already exists,
-please create one. This can be skipped for trivial PRs like fixing typos.
+please create one. This can be skipped for trivial PRs like fixing typos or
+for backports.
 
 Creating an issue in advance of working on the PR can help to avoid duplication of effort,
 e.g. maybe we know of existing related work. Or it may be that we can provide guidance
@@ -166,7 +167,29 @@ Someone will do a first pass review on your PR making sure it follows the guidel
 in this document. If it doesn't we'll mark the PR incomplete and ask you to follow
 up on the missing requirements.
 
+### Backports
+
+For original PRs slated for backport, ask or apply for the following labels:
+
+- `backport-<version>` targeting the desired backport branch; and
+- `needs-backport`, to indicate the backport has not yet been performed.
+
+In the backport PR, please link the original pull request in the commit
+title, which will in turn let us find the original issue. When possible,
+backport the merged (squashed) commit rather than the source PR's
+commits. This will automatically link it to the original pull request.
+When all backport PRs are opened, remove the `needs-backport` label from
+the original PR. Do not open backports before the original PR is merged.
+The backport PRs should have all the other non-backport-related labels of
+the original PR.
+
+The milestone on the original PR should target the current `main` branch
+milestone. The milestone on the backport PR should target the backport
+branch's next milestone. The milestone on the issue (if applicable) should
+target the oldest series's milestone.
+
 ### Changelog Entries
+
 Please include a file within your PR named `changelog/#.txt`, where `#` is your
 pull request ID.  There are many examples under [changelog](changelog/), but
 the general format is

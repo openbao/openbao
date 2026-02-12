@@ -173,7 +173,7 @@ func migrateFromV1ToV2Schema(tx *bolt.Tx) error {
 
 	for _, v1BucketType := range []string{authLeaseType, secretLeaseType} {
 		if bucket := tx.Bucket([]byte(v1BucketType)); bucket != nil {
-			bucket.ForEach(func(key, value []byte) error {
+			err := bucket.ForEach(func(key, value []byte) error {
 				autoIncKey, err := autoIncrementedLeaseKey(tx, string(key))
 				if err != nil {
 					return fmt.Errorf("error migrating %s %q key to auto incremented key: %w", v1BucketType, string(key), err)
@@ -183,6 +183,9 @@ func migrateFromV1ToV2Schema(tx *bolt.Tx) error {
 				}
 				return nil
 			})
+			if err != nil {
+				return err
+			}
 
 			if err := tx.DeleteBucket([]byte(v1BucketType)); err != nil {
 				return fmt.Errorf("failed to clean up %s bucket during v1 to v2 schema migration: %w", v1BucketType, err)
@@ -318,6 +321,7 @@ func (b *BoltStorage) GetByType(ctx context.Context, indexType string) ([][]byte
 		if bucket == nil {
 			return fmt.Errorf("bucket %q not found", indexType)
 		}
+		//nolint:errcheck // passed function never directly returns error
 		bucket.ForEach(func(key, ciphertext []byte) error {
 			plaintext, err := b.decrypt(ctx, ciphertext)
 			if err != nil {
@@ -426,8 +430,8 @@ func DBFileExists(path string) (bool, error) {
 	checkFile, err := os.OpenFile(filepath.Join(path, DatabaseFileName), os.O_RDWR, 0o600)
 	switch {
 	case err == nil:
-		checkFile.Close()
-		return true, nil
+		err := checkFile.Close()
+		return true, err
 	case os.IsNotExist(err):
 		return false, nil
 	default:

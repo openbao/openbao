@@ -6,13 +6,13 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/version"
@@ -114,8 +114,6 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		activeCode = code
 	}
 
-	ctx := context.Background()
-
 	// Check system status
 	sealed := core.Sealed()
 	standby := core.Standby()
@@ -126,6 +124,7 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		replicationState = core.ReplicationState()
 	}
 
+	ctx := namespace.RootContext(context.Background())
 	init, err := core.Initialized(ctx)
 	if err != nil {
 		return http.StatusInternalServerError, nil, err
@@ -144,22 +143,7 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		}
 	}
 
-	// Fetch the local cluster name and identifier
-	var clusterName, clusterID string
-	if !sealed {
-		cluster, err := core.Cluster(ctx)
-		if err != nil {
-			return http.StatusInternalServerError, nil, err
-		}
-		if cluster == nil {
-			return http.StatusInternalServerError, nil, errors.New("failed to fetch cluster details")
-		}
-		clusterName = cluster.Name
-		clusterID = cluster.ID
-	}
-
-	// Format the body
-	body := &HealthResponse{
+	hr := &HealthResponse{
 		Initialized:                init,
 		Sealed:                     sealed,
 		Standby:                    standby,
@@ -167,23 +151,30 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		ReplicationDRMode:          replicationState.GetDRString(),
 		ServerTimeUTC:              time.Now().UTC().Unix(),
 		Version:                    version.GetVersion().VersionNumber(),
-		ClusterName:                clusterName,
-		ClusterID:                  clusterID,
 	}
 
-	return code, body, nil
+	// Fetch the local cluster name and identifier
+	if !sealed {
+		cluster, err := core.Cluster(ctx)
+		if err != nil {
+			return http.StatusInternalServerError, nil, err
+		}
+
+		hr.ClusterName = cluster.Name
+		hr.ClusterID = cluster.ID
+	}
+
+	return code, hr, nil
 }
 
 type HealthResponse struct {
 	Initialized                bool   `json:"initialized"`
 	Sealed                     bool   `json:"sealed"`
 	Standby                    bool   `json:"standby"`
-	PerformanceStandby         bool   `json:"performance_standby"`
 	ReplicationPerformanceMode string `json:"replication_performance_mode"`
 	ReplicationDRMode          string `json:"replication_dr_mode"`
 	ServerTimeUTC              int64  `json:"server_time_utc"`
 	Version                    string `json:"version"`
 	ClusterName                string `json:"cluster_name,omitempty"`
 	ClusterID                  string `json:"cluster_id,omitempty"`
-	LastWAL                    uint64 `json:"last_wal,omitempty"`
 }

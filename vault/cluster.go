@@ -38,8 +38,9 @@ const (
 )
 
 var (
-	ErrCannotForward          = errors.New("cannot forward request; no connection or address not known")
-	ErrCannotForwardLocalOnly = errors.New("cannot forward local-only request")
+	ErrCannotForward                = errors.New("cannot forward request; no connection or address not known")
+	ErrCannotForwardLocalOnly       = errors.New("cannot forward local-only request")
+	ErrClusterInformationNotPresent = errors.New("cluster information not present in storage")
 )
 
 type ClusterLeaderParams struct {
@@ -60,18 +61,17 @@ type Cluster struct {
 // Cluster fetches the details of the local cluster. This method errors out
 // when Vault is sealed.
 func (c *Core) Cluster(ctx context.Context) (*Cluster, error) {
-	var cluster Cluster
-
 	// Fetch the storage entry. This call fails when Vault is sealed.
 	entry, err := c.barrier.Get(ctx, coreLocalClusterInfoPath)
 	if err != nil {
 		return nil, err
 	}
 	if entry == nil {
-		return &cluster, nil
+		return nil, ErrClusterInformationNotPresent
 	}
 
 	// Decode the cluster information
+	var cluster Cluster
 	if err = jsonutil.DecodeJSON(entry.Value, &cluster); err != nil {
 		return nil, fmt.Errorf("failed to decode cluster details: %w", err)
 	}
@@ -156,7 +156,7 @@ func (c *Core) setupCluster(ctx context.Context) error {
 
 	// Check if storage index is already present or not
 	cluster, err := c.Cluster(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrClusterInformationNotPresent) {
 		c.logger.Error("failed to get cluster details", "error", err)
 		return err
 	}

@@ -430,10 +430,10 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 		}
 
 		w := getWriterFromUI(c.UI)
-		fmt.Fprintf(w, "Operation nonce: %s\n", nonce)
-		fmt.Fprintf(w, "Unseal Key (will be hidden): ")
+		_, _ = fmt.Fprintf(w, "Operation nonce: %s\n", nonce)
+		_, _ = fmt.Fprint(w, "Unseal Key (will be hidden): ")
 		key, err = password.Read(os.Stdin)
-		fmt.Fprintf(w, "\n")
+		_, _ = fmt.Fprint(w, "\n")
 		if err != nil {
 			if err == password.ErrInterrupted {
 				c.UI.Error("user canceled")

@@ -16,12 +16,13 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 // protectedPaths cannot be accessed via the raw APIs.
 // This is both for security and to prevent disrupting Vault.
 var protectedPaths = []string{
-	keyringPath,
+	barrier.KeyringPath,
 	// Changing the cluster info path can change the cluster ID which can be disruptive
 	coreLocalClusterInfoPath,
 }

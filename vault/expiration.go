@@ -32,6 +32,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 const (
@@ -447,18 +448,12 @@ func (c *Core) stopExpiration() error {
 	return nil
 }
 
-func (m *ExpirationManager) leaseView(ns *namespace.Namespace) BarrierView {
-	if ns.ID == namespace.RootNamespaceID {
-		return m.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
-	}
-	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+leaseViewPrefix)
+func (m *ExpirationManager) leaseView(ns *namespace.Namespace) barrier.View {
+	return NamespaceView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + leaseViewPrefix)
 }
 
-func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) BarrierView {
-	if ns.ID == namespace.RootNamespaceID {
-		return m.core.systemBarrierView.SubView(expirationSubPath + tokenViewPrefix)
-	}
-	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+tokenViewPrefix)
+func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) barrier.View {
+	return NamespaceView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + tokenViewPrefix)
 }
 
 func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, int, error) {
@@ -703,7 +698,7 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 			// Don't run error func because we lost leadership
 			m.logger.Warn("context canceled while restoring leases, stopping lease loading")
 			retErr = nil
-		case errwrap.Contains(retErr, ErrBarrierSealed.Error()):
+		case errwrap.Contains(retErr, barrier.ErrBarrierSealed.Error()):
 			// Don't run error func because we're likely already shutting down
 			m.logger.Warn("barrier sealed while restoring leases, stopping lease loading")
 			retErr = nil
@@ -1706,23 +1701,22 @@ func (m *ExpirationManager) FetchLeaseTimesByToken(ctx context.Context, te *logi
 		leaseID = fmt.Sprintf("%s.%s", leaseID, tokenNS.ID)
 	}
 
-	return m.FetchLeaseTimes(ctx, leaseID)
+	return m.FetchLeaseInfo(ctx, leaseID)
 }
 
-// FetchLeaseTimes is used to fetch the issue time, expiration time, and last
-// renewed time of a lease entry. It returns a leaseEntry itself, but with only
-// those values copied over.
-func (m *ExpirationManager) FetchLeaseTimes(ctx context.Context, leaseID string) (*leaseEntry, error) {
+// FetchLeaseInfo is used to fetch non sensitive information of a lease entry.
+// It returns a leaseEntry itself, but with only those values copied over.
+func (m *ExpirationManager) FetchLeaseInfo(ctx context.Context, leaseID string) (*leaseEntry, error) {
 	defer metrics.MeasureSince([]string{"expire", "fetch-lease-times"}, time.Now())
 
 	info, ok := m.pending.Load(leaseID)
 	if ok && info.(pendingInfo).cachedLeaseInfo != nil {
-		return m.leaseTimesForExport(info.(pendingInfo).cachedLeaseInfo), nil
+		return m.leaseInfoForExport(info.(pendingInfo).cachedLeaseInfo), nil
 	}
 
 	info, ok = m.irrevocable.Load(leaseID)
 	if ok && info.(*leaseEntry) != nil {
-		return m.leaseTimesForExport(info.(*leaseEntry)), nil
+		return m.leaseInfoForExport(info.(*leaseEntry)), nil
 	}
 
 	// Load the entry
@@ -1734,15 +1728,18 @@ func (m *ExpirationManager) FetchLeaseTimes(ctx context.Context, leaseID string)
 		return nil, nil
 	}
 
-	return m.leaseTimesForExport(le), nil
+	return m.leaseInfoForExport(le), nil
 }
 
-// Returns lease times for outside callers based on the full leaseEntry passed in
-func (m *ExpirationManager) leaseTimesForExport(le *leaseEntry) *leaseEntry {
+// Returns redacted leaseEntry for outside callers based on the full leaseEntry passed in
+func (m *ExpirationManager) leaseInfoForExport(le *leaseEntry) *leaseEntry {
 	ret := &leaseEntry{
 		IssueTime:       le.IssueTime,
 		ExpireTime:      le.ExpireTime,
 		LastRenewalTime: le.LastRenewalTime,
+		Path:            le.Path,
+		RevokeErr:       le.RevokeErr,
+		namespace:       le.namespace,
 	}
 	if le.Secret != nil {
 		ret.Secret = &logical.Secret{}
@@ -1761,7 +1758,7 @@ func (m *ExpirationManager) leaseTimesForExport(le *leaseEntry) *leaseEntry {
 // Restricts lease entry stored in pendingInfo to a low-cost subset of the
 // information.
 func (m *ExpirationManager) inMemoryLeaseInfo(le *leaseEntry) *leaseEntry {
-	ret := m.leaseTimesForExport(le)
+	ret := m.leaseInfoForExport(le)
 	// Need to index:
 	//   namespace -- derived from lease ID
 	//   policies -- stored in Auth object

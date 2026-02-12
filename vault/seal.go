@@ -22,6 +22,7 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -61,7 +62,7 @@ type Seal interface {
 	BarrierConfig(context.Context) (*SealConfig, error) // SealAccess
 	SetBarrierConfig(context.Context, *SealConfig) error
 	SetCachedBarrierConfig(*SealConfig)
-	SetConfigAccess(SecurityBarrier)
+	SetConfigAccess(barrier.SecurityBarrier)
 	RecoveryKeySupported() bool // SealAccess
 	RecoveryType() string
 	RecoveryConfig(context.Context) (*SealConfig, error) // SealAccess
@@ -241,7 +242,7 @@ func (d *defaultSeal) SetCachedBarrierConfig(config *SealConfig) {
 	d.config.Store(config)
 }
 
-func (d *defaultSeal) SetConfigAccess(barrier SecurityBarrier) {
+func (d *defaultSeal) SetConfigAccess(barrier barrier.SecurityBarrier) {
 	d.configAccess = &secureStorageAccess{barrier: barrier}
 }
 

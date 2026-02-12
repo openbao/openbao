@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 func (b *SystemBackend) rotatePaths() []*framework.Path {
@@ -473,12 +474,12 @@ func (b *SystemBackend) handleKeyRotationConfigUpdate() framework.OperationFunc 
 		}
 
 		// Reject out of range settings
-		if rotateConf.Interval < minimumRotationInterval && rotateConf.Interval != 0 {
-			return logical.ErrorResponse("interval must be greater or equal to %s", minimumRotationInterval.String()), logical.ErrInvalidRequest
+		if rotateConf.Interval < barrier.MinimumRotationInterval && rotateConf.Interval != 0 {
+			return logical.ErrorResponse("interval must be greater or equal to %s", barrier.MinimumRotationInterval.String()), logical.ErrInvalidRequest
 		}
 
-		if rotateConf.MaxOperations < absoluteOperationMinimum || rotateConf.MaxOperations > absoluteOperationMaximum {
-			return logical.ErrorResponse("max_operations must be in the range [%d,%d]", absoluteOperationMinimum, absoluteOperationMaximum), logical.ErrInvalidRequest
+		if rotateConf.MaxOperations < barrier.AbsoluteOperationMinimum || rotateConf.MaxOperations > barrier.AbsoluteOperationMaximum {
+			return logical.ErrorResponse("max_operations must be in the range [%d,%d]", barrier.AbsoluteOperationMinimum, barrier.AbsoluteOperationMaximum), logical.ErrInvalidRequest
 		}
 
 		// Store the rotation config

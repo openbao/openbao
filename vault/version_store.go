@@ -193,7 +193,7 @@ func IsJWT(token string) bool {
 }
 
 func IsSSCToken(token string) bool {
-	return len(token) > MaxNsIdLength+TokenLength+TokenPrefixLength &&
+	return len(token) > NSTokenLength+TokenPrefixLength &&
 		strings.HasPrefix(token, consts.ServiceTokenPrefix)
 }
 

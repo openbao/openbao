@@ -175,7 +175,9 @@ type requestCounts struct {
 
 func TestStepwise_makeRequest(t *testing.T) {
 	me := new(mockEnvironment)
-	me.Setup()
+	if err := me.Setup(); err != nil {
+		t.Fatal(err)
+	}
 	testT := new(mockT)
 
 	type testRequest struct {

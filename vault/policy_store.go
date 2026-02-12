@@ -19,6 +19,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 const (
@@ -177,7 +178,7 @@ type PolicyEntry struct {
 
 // NewPolicyStore creates a new PolicyStore that is backed
 // using a given view. It used used to durable store and manage named policy.
-func NewPolicyStore(ctx context.Context, core *Core, baseView BarrierView, system logical.SystemView, logger log.Logger) (*PolicyStore, error) {
+func NewPolicyStore(ctx context.Context, core *Core, baseView barrier.View, system logical.SystemView, logger log.Logger) (*PolicyStore, error) {
 	ps := &PolicyStore{
 		modifyLocks: locksutil.CreateLocks(),
 		logger:      logger,
@@ -388,17 +389,13 @@ func (ps *PolicyStore) GetNonEGPPolicyType(ctx context.Context, name string) (*P
 }
 
 // getACLView returns the ACL view for the given namespace
-func (ps *PolicyStore) getACLView(ns *namespace.Namespace) BarrierView {
-	if ns.ID == namespace.RootNamespaceID {
-		return ps.core.systemBarrierView.SubView(policyACLSubPath)
-	}
-
-	return ps.core.namespaceMountEntryView(ns, systemBarrierPrefix+policyACLSubPath)
+func (ps *PolicyStore) getACLView(ns *namespace.Namespace) barrier.View {
+	return NamespaceView(ps.core.barrier, ns).SubView(systemBarrierPrefix + policyACLSubPath)
 }
 
 // getBarrierView returns the appropriate barrier view for the given namespace and policy type.
 // Currently, this only supports ACL policies, so it delegates to getACLView.
-func (ps *PolicyStore) getBarrierView(ns *namespace.Namespace, _ PolicyType) BarrierView {
+func (ps *PolicyStore) getBarrierView(ns *namespace.Namespace, _ PolicyType) barrier.View {
 	return ps.getACLView(ns)
 }
 
@@ -420,7 +417,7 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	index := ps.cacheKey(ns, name)
 
 	var cache *lru.TwoQueueCache[string, *Policy]
-	var view BarrierView
+	var view barrier.View
 
 	switch policyType {
 	case PolicyTypeACL, PolicyTypeToken:
@@ -448,10 +445,10 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	}
 
 	// Special case the root policy
-	if policyType == PolicyTypeACL && name == "root" && ns.ID == namespace.RootNamespaceID {
+	if policyType == PolicyTypeACL && name == "root" {
 		p := &Policy{
 			Name:      "root",
-			namespace: namespace.RootNamespace,
+			namespace: ns,
 			Type:      PolicyTypeACL,
 		}
 		if cache != nil {

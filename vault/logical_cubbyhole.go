@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 // CubbyholeBackendFactory constructs a new cubbyhole backend
@@ -105,7 +106,7 @@ func (b *CubbyholeBackend) paths() []*framework.Path {
 	}
 }
 
-func (b *CubbyholeBackend) revoke(ctx context.Context, view BarrierView, saltedToken string) error {
+func (b *CubbyholeBackend) revoke(ctx context.Context, view barrier.View, saltedToken string) error {
 	if saltedToken == "" {
 		return errors.New("client token empty during revocation")
 	}

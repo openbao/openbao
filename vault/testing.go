@@ -40,11 +40,11 @@ import (
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	"github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/testhelpers/pluginhelpers"
-	"github.com/openbao/openbao/internalshared/configutil"
 	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -55,6 +55,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
@@ -240,7 +241,9 @@ func testCoreConfig(t testing.T, physicalBackend physical.Backend, logger log.Lo
 	noopBackends := make(map[string]logical.Factory)
 	noopBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		b := new(framework.Backend)
-		b.Setup(ctx, config)
+		if err := b.Setup(ctx, config); err != nil {
+			return nil, err
+		}
 		b.BackendType = logical.TypeCredential
 		return b, nil
 	}
@@ -294,9 +297,8 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 	barrierConfig := &SealConfig{
 		SecretShares:    3,
 		SecretThreshold: 3,
+		StoredShares:    1,
 	}
-
-	barrierConfig.StoredShares = 1
 
 	recoveryConfig := &SealConfig{
 		SecretShares:    3,
@@ -307,7 +309,7 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 		BarrierConfig:  barrierConfig,
 		RecoveryConfig: recoveryConfig,
 	}
-	result, err := core.Initialize(context.Background(), initParams)
+	result, err := core.Initialize(namespace.RootContext(context.Background()), initParams)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -845,7 +847,7 @@ func (c *TestCluster) start(t testing.T) {
 
 	activeCore := -1
 WAITACTIVE:
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		for i, core := range c.Cores {
 			if standby := core.Standby(); !standby {
 				activeCore = i
@@ -1066,7 +1068,10 @@ func (c *TestCluster) Cleanup() {
 
 	// Remove any temp dir that exists
 	if c.TempDir != "" {
-		os.RemoveAll(c.TempDir)
+		err := os.RemoveAll(c.TempDir)
+		if err != nil {
+			c.Logger.Error("error deleting temp dir", "error", err)
+		}
 	}
 
 	// Give time to actually shut down/clean up before the next test
@@ -1118,7 +1123,7 @@ type TestClusterCore struct {
 	tlsConfig            *tls.Config
 	UnderlyingRawStorage physical.Backend
 	UnderlyingHAStorage  physical.HABackend
-	Barrier              SecurityBarrier
+	Barrier              barrier.SecurityBarrier
 	NodeID               string
 }
 

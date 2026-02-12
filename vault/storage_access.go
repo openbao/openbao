@@ -8,6 +8,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 // StorageAccess dispatches storage operations to either encrypted storage
@@ -60,7 +61,7 @@ func (p *directStorageAccess) ListPage(ctx context.Context, prefix string, after
 }
 
 type secureStorageAccess struct {
-	barrier SecurityBarrier
+	barrier barrier.SecurityBarrier
 }
 
 func (b *secureStorageAccess) Put(ctx context.Context, path string, value []byte) error {

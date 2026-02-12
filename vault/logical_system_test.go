@@ -40,6 +40,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/version"
 	"github.com/stretchr/testify/require"
 )
@@ -78,8 +79,8 @@ func TestSystemBackend_RootPaths(t *testing.T) {
 func TestSystemConfigCORS(t *testing.T) {
 	b := testSystemBackend(t)
 	paths := b.(*SystemBackend).configPaths()
-	_, barrier, _ := mockBarrier(t)
-	view := NewBarrierView(barrier, "")
+	_, barr, _ := barrier.MockBarrier(t, logger)
+	view := barrier.NewView(barr, "")
 	b.(*SystemBackend).Core.systemBarrierView = view
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "config/cors")
@@ -1258,6 +1259,10 @@ func TestSystemBackend_leases(t *testing.T) {
 
 	if resp.Data["renewable"] == nil || resp.Data["renewable"].(bool) {
 		t.Fatal("kv leases are not renewable")
+	}
+
+	if path := resp.Data["path"]; path != "secret/foo" {
+		t.Fatalf("unexpected path %s", path)
 	}
 
 	// Invalid lease
@@ -3001,7 +3006,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 func TestSystemBackend_rawRead_Protected(t *testing.T) {
 	b := testSystemBackendRaw(t)
 
-	req := logical.TestRequest(t, logical.ReadOperation, "raw/"+keyringPath)
+	req := logical.TestRequest(t, logical.ReadOperation, "raw/"+barrier.KeyringPath)
 	_, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -3011,7 +3016,7 @@ func TestSystemBackend_rawRead_Protected(t *testing.T) {
 func TestSystemBackend_rawWrite_Protected(t *testing.T) {
 	b := testSystemBackendRaw(t)
 
-	req := logical.TestRequest(t, logical.UpdateOperation, "raw/"+keyringPath)
+	req := logical.TestRequest(t, logical.UpdateOperation, "raw/"+barrier.KeyringPath)
 	_, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -3378,7 +3383,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 func TestSystemBackend_rawDelete_Protected(t *testing.T) {
 	b := testSystemBackendRaw(t)
 
-	req := logical.TestRequest(t, logical.DeleteOperation, "raw/"+keyringPath)
+	req := logical.TestRequest(t, logical.DeleteOperation, "raw/"+barrier.KeyringPath)
 	_, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -3461,7 +3466,7 @@ func TestSystemBackend_deprecatedRotateConfig(t *testing.T) {
 	)
 
 	exp := map[string]interface{}{
-		"max_operations": absoluteOperationMaximum,
+		"max_operations": barrier.AbsoluteOperationMaximum,
 		"interval":       0,
 		"enabled":        true,
 	}
@@ -3520,7 +3525,7 @@ func TestSystemBackend_rotateConfig(t *testing.T) {
 	)
 
 	exp := map[string]interface{}{
-		"max_operations": absoluteOperationMaximum,
+		"max_operations": barrier.AbsoluteOperationMaximum,
 		"interval":       0,
 		"enabled":        true,
 	}

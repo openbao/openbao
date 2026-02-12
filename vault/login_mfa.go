@@ -37,6 +37,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"
 	"google.golang.org/protobuf/proto"
@@ -2891,7 +2892,7 @@ func (b *LoginMFABackend) putMFAConfigByID(ctx context.Context, mConfig *mfa.Con
 	})
 }
 
-func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView BarrierView) (*mfa.Config, error) {
+func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView barrier.View) (*mfa.Config, error) {
 	entry, err := barrierView.Get(ctx, path)
 	if err != nil {
 		return nil, err
@@ -2910,7 +2911,7 @@ func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView 
 	return &mConfig, nil
 }
 
-func (b *LoginMFABackend) getMFALoginEnforcementConfig(ctx context.Context, path string, barrierView BarrierView) (*mfa.MFAEnforcementConfig, error) {
+func (b *LoginMFABackend) getMFALoginEnforcementConfig(ctx context.Context, path string, barrierView barrier.View) (*mfa.MFAEnforcementConfig, error) {
 	entry, err := barrierView.Get(ctx, path)
 	if err != nil {
 		return nil, err

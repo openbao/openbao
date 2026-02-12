@@ -16,11 +16,12 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 type backendEntry struct {
 	backend audit.Backend
-	view    BarrierView
+	view    barrier.View
 	local   bool
 }
 
@@ -42,7 +43,7 @@ func NewAuditBroker(log log.Logger) *AuditBroker {
 }
 
 // Register is used to add new audit backend to the broker
-func (a *AuditBroker) Register(name string, b audit.Backend, v BarrierView, local bool) {
+func (a *AuditBroker) Register(name string, b audit.Backend, v barrier.View, local bool) {
 	a.Lock()
 	defer a.Unlock()
 	a.backends[name] = backendEntry{

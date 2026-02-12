@@ -40,6 +40,7 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/builtin/logical/pki"
+	"github.com/openbao/openbao/helper/namespace"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -66,10 +67,8 @@ const (
 
 func generateTestCertAndConnState(t *testing.T, template *x509.Certificate) (string, tls.ConnectionState, error) {
 	t.Helper()
-	tempDir, err := os.MkdirTemp("", "vault-cert-auth-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tempDir := t.TempDir()
+
 	t.Logf("test %s, temp dir %s", t.Name(), tempDir)
 	caCertTemplate := &x509.Certificate{
 		Subject: pkix.Name{
@@ -1106,7 +1105,8 @@ func TestBackend_CRLs(t *testing.T) {
 
 func testFactory(t *testing.T) logical.Backend {
 	storage := &logical.InmemStorage{}
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	ctx := namespace.RootContext(t.Context())
+	b, err := Factory(ctx, &logical.BackendConfig{
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: 1000 * time.Second,
 			MaxLeaseTTLVal:     1800 * time.Second,
@@ -1116,7 +1116,7 @@ func testFactory(t *testing.T) logical.Backend {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
-	if err := b.Initialize(context.Background(), &logical.InitializationRequest{
+	if err := b.Initialize(ctx, &logical.InitializationRequest{
 		Storage: storage,
 	}); err != nil {
 		t.Fatalf("error: %s", err)
@@ -1350,9 +1350,6 @@ func TestBackend_dns_singleCert(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -1397,9 +1394,6 @@ func TestBackend_email_singleCert(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -1478,9 +1472,6 @@ func TestBackend_uri_singleCert(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}

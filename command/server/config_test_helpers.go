@@ -15,7 +15,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/hashicorp/hcl/hcl/token"
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 )

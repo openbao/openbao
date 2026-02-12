@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/stretchr/testify/require"
 )
 
@@ -689,7 +690,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	meGH.Accessor = approleAccessor
 
 	// Storage view for approle auth
-	ghView := NewBarrierView(c.barrier, credentialBarrierPrefix+meGH.UUID+"/")
+	ghView := barrier.NewView(c.barrier, credentialBarrierPrefix+meGH.UUID+"/")
 
 	// Sysview for approle auth
 	ghSysview := c.mountEntrySysView(meGH)

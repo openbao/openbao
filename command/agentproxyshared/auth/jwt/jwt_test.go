@@ -23,11 +23,7 @@ func TestIngressToken(t *testing.T) {
 		symlinked = "symlinked"
 	)
 
-	rootDir, err := os.MkdirTemp("", "vault-agent-jwt-auth-test")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %s", err)
-	}
-	defer os.RemoveAll(rootDir)
+	rootDir := t.TempDir()
 
 	setupTestDir := func() string {
 		testDir, err := os.MkdirTemp(rootDir, "")
@@ -126,13 +122,9 @@ func TestDeleteAfterReading(t *testing.T) {
 			false,
 		},
 	} {
-		rootDir, err := os.MkdirTemp("", "vault-agent-jwt-auth-test")
-		if err != nil {
-			t.Fatalf("failed to create temp dir: %s", err)
-		}
-		defer os.RemoveAll(rootDir)
+		rootDir := t.TempDir()
 		tokenPath := path.Join(rootDir, "token")
-		err = os.WriteFile(tokenPath, []byte("test"), 0o644)
+		err := os.WriteFile(tokenPath, []byte("test"), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -204,13 +196,9 @@ func TestDeleteAfterReadingSymlink(t *testing.T) {
 			true,
 		},
 	} {
-		rootDir, err := os.MkdirTemp("", "vault-agent-jwt-auth-test")
-		if err != nil {
-			t.Fatalf("failed to create temp dir: %s", err)
-		}
-		defer os.RemoveAll(rootDir)
+		rootDir := t.TempDir()
 		tokenPath := path.Join(rootDir, "token")
-		err = os.WriteFile(tokenPath, []byte("test"), 0o644)
+		err := os.WriteFile(tokenPath, []byte("test"), 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -5,6 +5,7 @@ package server
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -14,8 +15,8 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/internalshared/listenerutil"
+	"github.com/openbao/openbao/helper/configutil"
+	"github.com/openbao/openbao/helper/listenerutil"
 )
 
 func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, _ io.Writer, ui cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error) {
@@ -92,7 +93,6 @@ func (ln TCPKeepAliveListener) Accept() (c net.Conn, err error) {
 	if err != nil {
 		return c, err
 	}
-	tc.SetKeepAlive(true)
-	tc.SetKeepAlivePeriod(3 * time.Minute)
-	return tc, nil
+	err = errors.Join(err, tc.SetKeepAlive(true), tc.SetKeepAlivePeriod(3*time.Minute))
+	return tc, err
 }

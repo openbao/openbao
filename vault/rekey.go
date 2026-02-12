@@ -20,6 +20,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -544,7 +545,7 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 
 	if len(newSealKey) > 0 {
 		err := c.barrier.Put(ctx, &logical.StorageEntry{
-			Key:   shamirKekPath,
+			Key:   barrier.ShamirKekPath,
 			Value: newSealKey,
 		})
 		if err != nil {

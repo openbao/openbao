@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/openbao/openbao/api/v2"
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 	"github.com/posener/complete"
 )
 

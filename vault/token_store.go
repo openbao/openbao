@@ -37,6 +37,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/tokens"
 	"google.golang.org/protobuf/proto"
 )
@@ -76,8 +77,9 @@ const (
 	// any namespace information
 	TokenLength = 24
 
-	// MaxNsIdLength is the maximum namespace ID length (5 characters prepended by a ".")
-	MaxNsIdLength = 6
+	// NSTokenLength is the size of tokens we are currently generating for namespaces.
+	// (TokenLen + "."[1] + nsID)
+	NSTokenLength = TokenLength + namespaceIdLength + 1
 
 	// TokenPrefixLength is the length of the new token prefixes ("hvs.", "hvb.",
 	// and "hvr.")
@@ -120,7 +122,7 @@ var (
 		if storage == nil {
 			return errors.New("no cubby mount entry")
 		}
-		view := storage.(BarrierView)
+		view := storage.(barrier.View)
 
 		switch {
 		case te.NamespaceID == namespace.RootNamespaceID && !IsServiceToken(te.ID):
@@ -784,7 +786,7 @@ type TokenStore struct {
 
 	core *Core
 
-	batchTokenEncryptor BarrierEncryptor
+	batchTokenEncryptor barrier.Encryptor
 
 	expiration *ExpirationManager
 
@@ -876,23 +878,23 @@ func (ts *TokenStore) teardown() {
 	ts.tidyLock.Lock()
 }
 
-func (ts *TokenStore) baseView(ns *namespace.Namespace) BarrierView {
-	return ts.core.namespaceMountEntryView(ns, systemBarrierPrefix+tokenSubPath)
+func (ts *TokenStore) baseView(ns *namespace.Namespace) barrier.View {
+	return NamespaceView(ts.core.barrier, ns).SubView(systemBarrierPrefix + tokenSubPath)
 }
 
-func (ts *TokenStore) idView(ns *namespace.Namespace) BarrierView {
+func (ts *TokenStore) idView(ns *namespace.Namespace) barrier.View {
 	return ts.baseView(ns).SubView(idPrefix)
 }
 
-func (ts *TokenStore) accessorView(ns *namespace.Namespace) BarrierView {
+func (ts *TokenStore) accessorView(ns *namespace.Namespace) barrier.View {
 	return ts.baseView(ns).SubView(accessorPrefix)
 }
 
-func (ts *TokenStore) parentView(ns *namespace.Namespace) BarrierView {
+func (ts *TokenStore) parentView(ns *namespace.Namespace) barrier.View {
 	return ts.baseView(ns).SubView(parentPrefix)
 }
 
-func (ts *TokenStore) rolesView(ns *namespace.Namespace) BarrierView {
+func (ts *TokenStore) rolesView(ns *namespace.Namespace) barrier.View {
 	return ts.baseView(ns).SubView(rolesPrefix)
 }
 
@@ -1133,15 +1135,24 @@ func (ts *TokenStore) SaltID(ctx context.Context, id string) (string, error) {
 
 // rootToken is used to generate a new token with root privileges and no parent
 func (ts *TokenStore) rootToken(ctx context.Context) (*logical.TokenEntry, error) {
-	ctx = namespace.ContextWithNamespace(ctx, namespace.RootNamespace)
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	te := &logical.TokenEntry{
 		Policies:     []string{"root"},
-		Path:         "auth/token/root",
+		Path:         NamespaceBarrierPrefix(ns) + "auth/token/root",
 		DisplayName:  "root",
 		CreationTime: time.Now().Unix(),
-		NamespaceID:  namespace.RootNamespaceID,
+		NamespaceID:  ns.ID,
 		Type:         logical.TokenTypeService,
 	}
+
+	if ns.UUID != namespace.RootNamespaceUUID {
+		te.DisplayName = fmt.Sprintf("%s_%s", ns.ID, te.DisplayName)
+	}
+
 	if err := ts.create(ctx, te, true /* persist */); err != nil {
 		return nil, err
 	}
@@ -2430,7 +2441,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 			if view == nil {
 				return errors.New("no cubby mount entry")
 			}
-			bview := view.(BarrierView)
+			bview := view.(barrier.View)
 
 			cubbyholeKeys, err := bview.List(quitCtx, "")
 			if err != nil {
@@ -4102,7 +4113,7 @@ func (ts *TokenStore) gaugeCollector(ctx context.Context) ([]metricsutil.GaugeLa
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -4161,7 +4172,7 @@ func (ts *TokenStore) gaugeCollectorByPolicy(ctx context.Context) ([]metricsutil
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -4223,7 +4234,7 @@ func (ts *TokenStore) gaugeCollectorByTtl(ctx context.Context) ([]metricsutil.Ga
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -4295,7 +4306,7 @@ func (ts *TokenStore) gaugeCollectorByMethod(ctx context.Context) ([]metricsutil
 	}
 
 	rootContext := namespace.RootContext(ctx)
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, true)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}

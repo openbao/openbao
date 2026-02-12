@@ -17,8 +17,8 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/mitchellh/go-homedir"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/homedir"
 	"github.com/posener/complete"
 )
 

@@ -14,9 +14,9 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/helper/configutil"
+	"github.com/openbao/openbao/helper/listenerutil"
 	"github.com/openbao/openbao/helper/proxyutil"
-	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/internalshared/listenerutil"
 )
 
 // ListenerFactory is the factory function to create a listener.

@@ -59,7 +59,30 @@ const config: Config = {
   markdown: {
     mermaid: true,
   },
-  themes: ["@docusaurus/theme-mermaid"],
+  themes: [
+    "@docusaurus/theme-mermaid",
+    [
+      require.resolve("@easyops-cn/docusaurus-search-local"),
+      {
+        hashed: true,
+        indexDocs: true,
+        indexBlog: true,
+        indexPages: true,
+        docsRouteBasePath: ["docs", "api-docs"],
+        docsDir: ["content/docs", "content/api-docs"],
+        blogDir: "content/blog",
+        removeDefaultStemmer: true,
+        removeDefaultStopWordFilter: true,
+        explicitSearchResultPath: true,
+        searchContextByPaths: [
+          { label: "Docs", path: "docs" },
+          { label: "API Reference", path: "api-docs" },
+          { label: "Blog", path: "blog" },
+        ],
+        useAllContextsWithNoSearchContext: true,
+      },
+    ],
+  ],
   presets: [
     [
       "classic",
@@ -153,7 +176,6 @@ const config: Config = {
         ],
       },
     ],
-    require.resolve("docusaurus-lunr-search"),
     pluginSidebarJson,
   ],
 

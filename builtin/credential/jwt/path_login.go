@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/cap/jwt"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/oauth2"
 )
@@ -131,10 +132,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 	// ensure that the signing algorithm is a member of the supported set.
 	signingAlgorithms := toAlg(config.JWTSupportedAlgs)
 	if len(signingAlgorithms) == 0 {
-		signingAlgorithms = []jwt.Alg{
-			jwt.RS256, jwt.RS384, jwt.RS512, jwt.ES256, jwt.ES384,
-			jwt.ES512, jwt.PS256, jwt.PS384, jwt.PS512, jwt.EdDSA,
-		}
+		signingAlgorithms = toAlg(consts.AllowedJWTSignatureAlgorithmsBao)
 	}
 
 	// Set expected claims values to assert on the JWT
@@ -360,10 +358,10 @@ func (b *jwtAuthBackend) fetchGroups(ctx context.Context, pConfig CustomProvider
 	return groupsClaimRaw, nil
 }
 
-func toAlg(a []string) []jwt.Alg {
+func toAlg[T ~string](a []T) []jwt.Alg {
 	alg := make([]jwt.Alg, len(a))
 	for i, e := range a {
-		alg[i] = jwt.Alg(e)
+		alg[i] = jwt.Alg(string(e))
 	}
 	return alg
 }

@@ -147,9 +147,6 @@ At a high level, these directories are:
  - [`http/`](https://github.com/openbao/openbao/tree/main/http/) contains
    the main server code [creating](https://github.com/openbao/openbao/blob/42e77de61c145aa768ada9c1883f570e76e8708e/http/handler.go#L130-L132)
    the [http.ServeMux](https://pkg.go.dev/net/http#ServeMux).
- - [`internalshared/`](https://github.com/openbao/openbao/tree/main/internalshared/)
-   contains shared configuration objects used by Agent, Proxy, and Server,
-   accessible to `vault.Core` as well.
  - [`physical/`](https://github.com/openbao/openbao/tree/main/physical/)
    contains production quality physical storage backend implementations.
    This currently only includes Raft.

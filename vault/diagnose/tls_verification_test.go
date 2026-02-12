@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/helper/configutil"
 )
 
 // TestTLSValidCert is the positive test case to show that specifying a valid cert and key

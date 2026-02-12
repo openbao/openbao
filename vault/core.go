@@ -1550,9 +1550,9 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 	if c.seal.BarrierType() == wrapping.WrapperTypeShamir {
 		shamirWrapper, err := c.seal.GetShamirWrapper()
 		if err == nil {
-			err = shamirWrapper.SetAesGcmKeyBytes(combinedKey)
-		} else {
-			return err
+			if err = shamirWrapper.SetAesGcmKeyBytes(combinedKey); err != nil {
+				return err
+			}
 		}
 	}
 

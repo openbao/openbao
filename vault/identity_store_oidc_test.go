@@ -1429,10 +1429,7 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 	}
 	txn.Commit()
 
-	for _, alg := range []jose.SignatureAlgorithm{
-		jose.RS256, jose.RS384, jose.RS512,
-		jose.ES256, jose.ES384, jose.ES512, jose.EdDSA,
-	} {
+	for _, alg := range supportedAlgs {
 		key := "test-key-" + string(alg)
 		role := "test-role-" + string(alg)
 

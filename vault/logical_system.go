@@ -4311,20 +4311,8 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 	return resp, nil
 }
 
-// CoreSealStatusResponse encapsulates both SealStatusResponse of a Seal
-// and Server/Cluster information
-type CoreSealStatusResponse struct {
-	*SealStatusResponse
-	Version     string   `json:"version"`
-	BuildDate   string   `json:"build_date"`
-	Migration   bool     `json:"migration"`
-	ClusterName string   `json:"cluster_name,omitempty"`
-	ClusterID   string   `json:"cluster_id,omitempty"`
-	StorageType string   `json:"storage_type,omitempty"`
-	Warnings    []string `json:"warnings,omitempty"`
-}
-
-// SealStatusResponse is a struct encapsulating any possible seal information.
+// SealStatusResponse holds generic seal status information that
+// applies both to the core seal and namespace seals.
 type SealStatusResponse struct {
 	Type             string `json:"type"`
 	Initialized      bool   `json:"initialized"`
@@ -4335,6 +4323,19 @@ type SealStatusResponse struct {
 	Nonce            string `json:"nonce"`
 	RecoverySeal     bool   `json:"recovery_seal"`
 	RecoverySealType string `json:"recovery_seal_type,omitempty"`
+}
+
+// CoreSealStatusResponse supersets SealStatusResponse and adds
+// server/cluster-level information.
+type CoreSealStatusResponse struct {
+	SealStatusResponse
+	Version     string   `json:"version"`
+	BuildDate   string   `json:"build_date"`
+	Migration   bool     `json:"migration"`
+	ClusterName string   `json:"cluster_name,omitempty"`
+	ClusterID   string   `json:"cluster_id,omitempty"`
+	StorageType string   `json:"storage_type,omitempty"`
+	Warnings    []string `json:"warnings,omitempty"`
 }
 
 func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatusResponse, error) {
@@ -4358,7 +4359,7 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatus
 	}
 
 	cssr := &CoreSealStatusResponse{
-		SealStatusResponse: &SealStatusResponse{
+		SealStatusResponse: SealStatusResponse{
 			Type:             core.SealAccess().BarrierType().String(),
 			Initialized:      initialized,
 			Sealed:           sealed,

@@ -51,9 +51,8 @@ type unlockInformation struct {
 	Nonce string
 }
 
-// SealManager is used to provide storage for the seals, it's a
-// singleton that associates seal (configs) to the namespaces,
-// also responsible for managing the seal states.
+// SealManager couples namespaces to storage barriers and their seals, managing
+// barrier/seal/rotation/config state for all namespaces, including root.
 type SealManager struct {
 	core *Core
 
@@ -80,8 +79,7 @@ func NewSealManager(core *Core, logger hclog.Logger) *SealManager {
 	}
 }
 
-// SetupSealManager is used to initialize the seal manager
-// on vault core creation.
+// SetupSealManager is called on core creation to initialize the seal manager.
 func (c *Core) SetupSealManager() {
 	sealLogger := c.baseLogger.Named("seals")
 	c.AddLogger(sealLogger)
@@ -104,10 +102,7 @@ func (sm *SealManager) Reset() {
 	}
 
 	sm.rotationConfigByNamespace = map[string]*rotationConfig{
-		namespace.RootNamespaceUUID: {
-			rootConfig:     nil,
-			recoveryConfig: nil,
-		},
+		namespace.RootNamespaceUUID: {},
 	}
 }
 
@@ -117,6 +112,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
+	// TODO(wslabosz):should we always enforce stored shares?
 	sealConfig.StoredShares = 1
 	if err := sealConfig.Validate(); err != nil {
 		return fmt.Errorf("invalid seal configuration: %w", err)
@@ -160,7 +156,7 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	if seal := sm.sealByNamespace[ns.UUID]; seal == nil {
+	if _, ok := sm.sealByNamespace[ns.UUID]; !ok {
 		return
 	}
 
@@ -178,9 +174,9 @@ func (c *Core) NamespaceView(ns *namespace.Namespace) barrier.View {
 	return NamespaceScopedView(b, ns)
 }
 
-// NamespaceBarrierByLongestPrefix acquires a read lock, and returns barrier of
-// a namespace matching the longest prefix of the provided path, going up to root
-// namespace.
+// NamespaceBarrierByLongestPrefix acquires a read lock, and returns the barrier
+// of a namespace matching the longest prefix of the provided path, going up to
+// the root namespace.
 func (sm *SealManager) NamespaceBarrierByLongestPrefix(nsPath string) barrier.SecurityBarrier {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
@@ -188,8 +184,8 @@ func (sm *SealManager) NamespaceBarrierByLongestPrefix(nsPath string) barrier.Se
 	return sm.namespaceBarrierByLongestPrefix(nsPath)
 }
 
-// namespaceBarrierByLongestPrefix returns barrier of a namespace matching the
-// longest prefix of the provided path, going up to root namespace.
+// namespaceBarrierByLongestPrefix returns the barrier of a namespace matching
+// the longest prefix of the provided path, going up to the root namespace.
 func (sm *SealManager) namespaceBarrierByLongestPrefix(nsPath string) barrier.SecurityBarrier {
 	_, v, exists := sm.barrierByNamespace.LongestPrefix(nsPath)
 	if !exists {
@@ -207,7 +203,7 @@ func (sm *SealManager) NamespaceBarrier(nsPath string) barrier.SecurityBarrier {
 	return sm.namespaceBarrier(nsPath)
 }
 
-// namespaceBarrier returns a barrier of a namespace with provided path.
+// namespaceBarrier returns a namespace's barrier by namespace path.
 func (sm *SealManager) namespaceBarrier(nsPath string) barrier.SecurityBarrier {
 	v, exists := sm.barrierByNamespace.Get(nsPath)
 	if !exists {
@@ -217,8 +213,7 @@ func (sm *SealManager) namespaceBarrier(nsPath string) barrier.SecurityBarrier {
 	return v.(barrier.SecurityBarrier)
 }
 
-// NamespaceSeal acquires a read lock and returns a seal of a namespace with
-// provided uuid.
+// NamespaceSeal returns a namespace's seal by namespace UUID.
 func (sm *SealManager) NamespaceSeal(nsUUID string) Seal {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
@@ -235,8 +230,8 @@ func (sm *SealManager) ResetUnsealProcess(nsUUID string) {
 	delete(sm.unlockInformationByNamespace, nsUUID)
 }
 
-// NamespaceUnlockInformation acquires a read lock and returns the
-// number of keys provided so far of a namespace with provided uuid.
+// NamespaceUnlockInformation returns the unlock information
+// of a namespace with the given UUID.
 func (sm *SealManager) NamespaceUnlockInformation(nsUUID string) *unlockInformation {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
@@ -244,8 +239,8 @@ func (sm *SealManager) NamespaceUnlockInformation(nsUUID string) *unlockInformat
 	return sm.unlockInformationByNamespace[nsUUID]
 }
 
-// NamespaceRotationConfig returns rotation config of a namespace with
-// provided uuid.
+// NamespaceRotationConfig returns the rotation config of the namespace
+// with the given UUID.
 func (sm *SealManager) NamespaceRotationConfig(nsUUID string) *rotationConfig {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
@@ -253,7 +248,8 @@ func (sm *SealManager) NamespaceRotationConfig(nsUUID string) *rotationConfig {
 	return sm.rotationConfigByNamespace[nsUUID]
 }
 
-// SealStatus returns back seal status of a namespace with unlock progress information.
+// SealStatus returns the seal status of a namespace, including its unlock
+// progress.
 func (sm *SealManager) SealStatus(ctx context.Context, ns *namespace.Namespace) (*SealStatusResponse, error) {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
@@ -310,7 +306,7 @@ func (sm *SealManager) SealStatus(ctx context.Context, ns *namespace.Namespace) 
 }
 
 // unsealFragment verifies and records one part of the unseal shares,
-// and attempts to unseal the namespace
+// and attempts to unseal the namespace.
 func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespace, b barrier.SecurityBarrier, key []byte) (bool, error) {
 	sm.logger.Debug("namespace unseal key supplied")
 	sm.lock.Lock()
@@ -513,8 +509,8 @@ func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combin
 	return storedKeys[0], nil
 }
 
-// AuthenticateRootKey verifies root key (retrieved through use of unseal key),
-// using namespace barrier.
+// AuthenticateRootKey verifies the root key retrieved from a combined unseal
+// key against the namespace's barrier.
 func (sm *SealManager) AuthenticateRootKey(ctx context.Context, ns *namespace.Namespace, combinedKey []byte) error {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()

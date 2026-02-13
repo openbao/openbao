@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -112,7 +111,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	// TODO(wslabosz):should we always enforce stored shares?
+	// TODO(wslabosz): should we always enforce stored shares?
 	sealConfig.StoredShares = 1
 	if err := sealConfig.Validate(); err != nil {
 		return fmt.Errorf("invalid seal configuration: %w", err)
@@ -121,7 +120,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	metaPrefix := NamespaceStoragePathPrefix(ns)
 
 	// Seal type would depend on the provided arguments
-	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
+	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	defaultSeal.SetCore(sm.core)
 	defaultSeal.SetMetaPrefix(metaPrefix)
 
@@ -468,7 +467,7 @@ func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combin
 		}
 	case vaultseal.StoredKeysSupportedShamirRoot:
 		if useTestSeal {
-			testseal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
+			testseal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 			testseal.SetCore(sm.core)
 			cfg, err := seal.BarrierConfig(ctx)
 			if err != nil {

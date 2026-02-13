@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	aeadwrapper "github.com/openbao/go-kms-wrapping/v2/aead"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"

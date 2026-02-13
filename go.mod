@@ -101,7 +101,6 @@ require (
 	github.com/oklog/run v1.2.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
 	github.com/openbao/go-kms-wrapping/v2 v2.6.0
-	github.com/openbao/go-kms-wrapping/wrappers/aead/v2 v2.3.0
 	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.3.0
 	github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.2.0

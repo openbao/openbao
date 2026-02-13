@@ -34,7 +34,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	aeadwrapper "github.com/openbao/go-kms-wrapping/v2/aead"
 	"github.com/openbao/go-kms-wrapping/wrappers/awskms/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"

@@ -5,6 +5,7 @@ package pki
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -250,6 +251,7 @@ func Backend(conf *logical.BackendConfig) *backend {
 	b.tidyStatus = &tidyStatus{state: tidyStatusInactive}
 	b.storage = conf.StorageView
 	b.backendUUID = conf.BackendUUID
+	b.backgroundCtx, b.backgroundCtxCancel = context.WithCancelCause(context.Background())
 
 	// b isn't yet initialized with SystemView state; calling b.System() will
 	// result in a nil pointer dereference. Instead query BackendConfig's
@@ -273,11 +275,13 @@ func Backend(conf *logical.BackendConfig) *backend {
 type backend struct {
 	*framework.Backend
 
-	backendUUID       string
-	storage           logical.Storage
-	revokeStorageLock sync.RWMutex
-	tidyCASGuard      atomic.Bool
-	tidyCancelCAS     atomic.Bool
+	backendUUID         string
+	storage             logical.Storage
+	revokeStorageLock   sync.RWMutex
+	tidyCASGuard        atomic.Bool
+	tidyCancelCAS       atomic.Bool
+	backgroundCtx       context.Context
+	backgroundCtxCancel context.CancelCauseFunc
 
 	tidyStatusLock sync.RWMutex
 	tidyStatus     *tidyStatus
@@ -399,6 +403,7 @@ func (b *backend) initialize(ctx context.Context, _ *logical.InitializationReque
 }
 
 func (b *backend) cleanup(_ context.Context) {
+	b.backgroundCtxCancel(errors.New("plugin unloading"))
 	b.acmeState.Shutdown(b)
 }
 
@@ -470,7 +475,7 @@ func (b *backend) invalidate(ctx context.Context, key string) {
 		// within updatePkiStorageVersion.
 		go func() {
 			b.Logger().Info("Detected a migration completed, resetting pki storage version")
-			b.updatePkiStorageVersion(ctx, true)
+			b.updatePkiStorageVersion(b.backgroundCtx, true)
 			b.crlBuilder.requestRebuildIfActiveNode(b)
 		}()
 	case strings.HasPrefix(key, issuerPrefix):

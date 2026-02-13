@@ -1,0 +1,3 @@
+```release-note:bug
+pki: fix "context canceled" issue when processing cache invalidation (leading to pki returing 500 until reload)
+```

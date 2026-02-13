@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	aeadwrapper "github.com/openbao/go-kms-wrapping/v2/aead"
 	"google.golang.org/protobuf/proto"
 
 	log "github.com/hashicorp/go-hclog"

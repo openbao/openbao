@@ -42,7 +42,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/gocql/gocql v1.7.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
-	github.com/google/cel-go v0.26.1
+	github.com/google/cel-go v0.27.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.7
 	github.com/google/go-metrics-stackdriver v0.2.0
@@ -158,7 +158,7 @@ require (
 )
 
 require (
-	cel.dev/expr v0.24.0 // indirect
+	cel.dev/expr v0.25.1 // indirect
 	cloud.google.com/go v0.121.6 // indirect
 	cloud.google.com/go/auth v0.18.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
@@ -196,7 +196,7 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v1.62.301 // indirect
-	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-sdk-go v1.55.6 // indirect
@@ -342,7 +342,6 @@ require (
 	github.com/sony/gobreaker v0.5.0 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.480 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cvm v1.0.480 // indirect

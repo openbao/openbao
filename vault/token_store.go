@@ -2955,6 +2955,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
+	resp := &logical.Response{}
+
 	// GetOk is used here solely to preserve the distinction between an absent/nil map and an empty map, to match the
 	// behaviour of previous Vault versions - rather than introducing a potential slight compatibility issue for users.
 	meta, ok := d.GetOk("meta")

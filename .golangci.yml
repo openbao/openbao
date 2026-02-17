@@ -7,8 +7,7 @@ linters:
   settings:
     cyclop:
       # Lower cyclomatic complexity threshold after the max complexity is lowered
-      # Highest: (*TokenStore).handleCreateCommon (135) in vault/token_store.go
-      max-complexity: 135
+      max-complexity: 120
 formatters:
   enable:
     - gofumpt

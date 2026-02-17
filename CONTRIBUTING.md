@@ -261,6 +261,9 @@ component-a/subcomponent-alpha  @alpha-team
 In a PR that only changes `component-a/subcomponent-alpha/`, you will need a
 review from the `alpha-team`, but not from the `a-team`.
 
+This rules should reflect the [documented bahaviour of
+GitHub][github-about-code-owners].
+
 ### OpenBao UI
 
 How you contribute to the UI depends on what you want to contribute. If that is
@@ -290,3 +293,4 @@ following steps listed in the README, under the section [Developing OpenBao][1].
 
 [1]: https://github.com/openbao/openbao#developing-openbao
 [2]: https://github.com/openbao/openbao/discussions
+[github-about-code-owners]: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners#codeowners-and-branch-protection

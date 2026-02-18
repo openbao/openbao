@@ -503,7 +503,7 @@ func (c *Core) taintCredEntry(ctx context.Context, nsID, path string, updateStor
 }
 
 // loadCredentials is invoked as part of postUnseal to load the auth table
-func (c *Core) loadCredentials(ctx context.Context) error {
+func (c *Core) loadCredentials(ctx context.Context, standby bool) error {
 	// Previously, this lock would be held after attempting to read the
 	// storage entries. While we could never read corrupted entries,
 	// we now need to ensure we can gracefully failover from legacy to
@@ -529,7 +529,7 @@ func (c *Core) loadCredentials(ctx context.Context) error {
 	// to not) is not possible without manual reconstruction.
 	txnableBarrier, ok := c.barrier.(logical.TransactionalStorage)
 	if !ok {
-		_, err := c.loadLegacyCredentials(ctx, c.barrier)
+		_, err := c.loadLegacyCredentials(ctx, c.barrier, standby)
 		return err
 	}
 
@@ -545,7 +545,7 @@ func (c *Core) loadCredentials(ctx context.Context) error {
 	// error.
 	defer txn.Rollback(ctx) //nolint:errcheck
 
-	legacy, err := c.loadLegacyCredentials(ctx, txn)
+	legacy, err := c.loadLegacyCredentials(ctx, txn, standby)
 	if err != nil {
 		return fmt.Errorf("failed to load legacy auth mounts in transaction: %w", err)
 	}
@@ -554,7 +554,7 @@ func (c *Core) loadCredentials(ctx context.Context) error {
 	// we need to fetch the new auth mount table.
 	if !legacy {
 		c.logger.Info("reading transactional auth mount table")
-		if err := c.loadTransactionalCredentials(ctx, txn); err != nil {
+		if err := c.loadTransactionalCredentials(ctx, txn, standby); err != nil {
 			return fmt.Errorf("failed to load transactional auth mount table: %w", err)
 		}
 	}
@@ -568,7 +568,7 @@ func (c *Core) loadCredentials(ctx context.Context) error {
 }
 
 // This function reads the transactional split auth (credential) table.
-func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical.Storage) error {
+func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical.Storage, standby bool) error {
 	allNamespaces, err := c.ListNamespaces(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list namespaces: %w", err)
@@ -647,7 +647,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 		}
 	}
 
-	err = c.runCredentialUpdates(ctx, barrier, needPersist)
+	err = c.runCredentialUpdates(ctx, barrier, needPersist, standby)
 	if err != nil {
 		c.logger.Error("failed to run legacy auth mount table upgrades", "error", err)
 		return err
@@ -673,7 +673,7 @@ func (c *Core) listTransactionalCredentialsForNamespace(ctx context.Context, bar
 // This function reads the legacy, single-entry combined auth mount table,
 // returning true if it was used. This will let us know (if we're inside
 // a transaction) if we need to do an upgrade.
-func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storage) (bool, error) {
+func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storage, standby bool) (bool, error) {
 	// Load the existing auth mount table
 	raw, err := barrier.Get(ctx, coreAuthConfigPath)
 	if err != nil {
@@ -735,7 +735,7 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 	//    backend.
 	// 2. We may have had a legacy auth mount table and need to upgrade into the
 	//    new format. runCredentialUpdates will handle this for us.
-	err = c.runCredentialUpdates(ctx, barrier, needPersist)
+	err = c.runCredentialUpdates(ctx, barrier, needPersist, standby)
 	if err != nil {
 		c.logger.Error("failed to run legacy auth mount table upgrades", "error", err)
 		return false, err
@@ -748,7 +748,7 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 
 // Note that this is only designed to work with singletons, as it checks by
 // type only.
-func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage, needPersist bool) error {
+func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage, needPersist, standby bool) error {
 	// Upgrade to typed auth table
 	if c.auth.Type == "" {
 		c.auth.Type = credentialTableType
@@ -802,6 +802,13 @@ func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage
 	}
 
 	if !needPersist {
+		return nil
+	}
+
+	// Ignore the intent to persist the mount table if this is a standby node;
+	// this can happen when upgrading from a legacy mount table but the cluster
+	// hasn't unsealed as primary yet.
+	if standby {
 		return nil
 	}
 

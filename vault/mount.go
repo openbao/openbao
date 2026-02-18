@@ -900,7 +900,7 @@ func (c *Core) splitNamespaceAndMountFromPath(currNs, path string) namespace.Mou
 }
 
 // loadMounts is invoked as part of postUnseal to load the mount table
-func (c *Core) loadMounts(ctx context.Context) error {
+func (c *Core) loadMounts(ctx context.Context, standby bool) error {
 	// Previously, this lock would be held after attempting to read the
 	// storage entries. While we could never read corrupted entries,
 	// we now need to ensure we can gracefully failover from legacy to
@@ -926,7 +926,7 @@ func (c *Core) loadMounts(ctx context.Context) error {
 	// to not) is not possible without manual reconstruction.
 	txnableBarrier, ok := c.barrier.(logical.TransactionalStorage)
 	if !ok {
-		_, err := c.loadLegacyMounts(ctx, c.barrier)
+		_, err := c.loadLegacyMounts(ctx, c.barrier, standby)
 		return err
 	}
 
@@ -942,7 +942,7 @@ func (c *Core) loadMounts(ctx context.Context) error {
 	// error.
 	defer txn.Rollback(ctx) //nolint:errcheck
 
-	legacy, err := c.loadLegacyMounts(ctx, txn)
+	legacy, err := c.loadLegacyMounts(ctx, txn, standby)
 	if err != nil {
 		return fmt.Errorf("failed to load legacy mounts in transaction: %w", err)
 	}
@@ -951,7 +951,7 @@ func (c *Core) loadMounts(ctx context.Context) error {
 	// we need to fetch the new mount table.
 	if !legacy {
 		c.logger.Info("reading transactional mount table")
-		if err := c.loadTransactionalMounts(ctx, txn); err != nil {
+		if err := c.loadTransactionalMounts(ctx, txn, standby); err != nil {
 			return fmt.Errorf("failed to load transactional mount table: %w", err)
 		}
 	}
@@ -965,7 +965,7 @@ func (c *Core) loadMounts(ctx context.Context) error {
 }
 
 // This function reads the transactional split mount table.
-func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Storage) error {
+func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Storage, standby bool) error {
 	allNamespaces, err := c.ListNamespaces(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list namespaces: %w", err)
@@ -1038,7 +1038,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 		}
 	}
 
-	err = c.runMountUpdates(ctx, barrier, needPersist)
+	err = c.runMountUpdates(ctx, barrier, needPersist, standby)
 	if err != nil {
 		c.logger.Error("failed to run legacy mount table upgrades", "error", err)
 		return err
@@ -1064,7 +1064,7 @@ func listTransactionalMountsForNamespace(ctx context.Context, barrier logical.St
 // This function reads the legacy, single-entry combined mount table,
 // returning true if it was used. This will let us know (if we're inside
 // a transaction) if we need to do an upgrade.
-func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (bool, error) {
+func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage, standby bool) (bool, error) {
 	// Load the existing mount table
 	raw, err := barrier.Get(ctx, coreMountConfigPath)
 	if err != nil {
@@ -1125,7 +1125,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (b
 	//    backend.
 	// 2. We may have had a legacy mount table and need to upgrade into the
 	//    new format. runMountUpdates will handle this for us.
-	err = c.runMountUpdates(ctx, barrier, needPersist)
+	err = c.runMountUpdates(ctx, barrier, needPersist, standby)
 	if err != nil {
 		c.logger.Error("failed to run legacy mount table upgrades", "error", err)
 		return false, err
@@ -1138,7 +1138,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (b
 
 // Note that this is only designed to work with singletons, as it checks by
 // type only.
-func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, needPersist bool) error {
+func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, needPersist, standby bool) error {
 	// Upgrade to typed mount table
 	if c.mounts.Type == "" {
 		c.mounts.Type = mountTableType
@@ -1233,6 +1233,13 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 	// Done if we have restored the mount table and we don't need
 	// to persist
 	if !needPersist {
+		return nil
+	}
+
+	// Ignore the intent to persist the mount table if this is a standby node;
+	// this can happen when upgrading from a legacy mount table but the cluster
+	// hasn't unsealed as primary yet.
+	if standby {
 		return nil
 	}
 

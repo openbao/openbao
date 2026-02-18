@@ -3178,6 +3178,68 @@ func TestExpiration_StopClearsIrrevocableCache(t *testing.T) {
 	}
 }
 
+func TestExpiration_RevokeIrrevocable_LeaseCountDecremented(t *testing.T) {
+	exp := mockExpiration(t)
+	ctx := namespace.RootContext(context.Background())
+
+	// Register a lease
+	leaseID := registerOneLease(t, ctx, exp)
+	// register one more lease
+	_ = registerOneLease(t, ctx, exp)
+
+	// Get initial counts
+	exp.pendingLock.RLock()
+	initialLeaseCount := exp.leaseCount
+	initialIrrevocableCount := exp.irrevocableLeaseCount
+	exp.pendingLock.RUnlock()
+
+	// Load the lease and mark it as irrevocable
+	le, err := exp.loadEntry(ctx, leaseID)
+	if err != nil {
+		t.Fatalf("error loading lease: %v", err)
+	}
+
+	exp.pendingLock.Lock()
+	exp.markLeaseIrrevocable(ctx, le, errors.New("test error"))
+	exp.pendingLock.Unlock()
+
+	// Verify counts after marking irrevocable
+	exp.pendingLock.RLock()
+	afterMarkLeaseCount := exp.leaseCount
+	afterMarkIrrevocableCount := exp.irrevocableLeaseCount
+	exp.pendingLock.RUnlock()
+
+	if initialLeaseCount != afterMarkLeaseCount {
+		t.Errorf("leaseCount should not change when marking irrevocable: expected %d, got %d",
+			initialLeaseCount, afterMarkLeaseCount)
+	}
+	if initialIrrevocableCount+1 != afterMarkIrrevocableCount {
+		t.Errorf("irrevocableLeaseCount should increment when marking irrevocable: expected %d, got %d",
+			initialIrrevocableCount+1, afterMarkIrrevocableCount)
+	}
+
+	// Force revoke the irrevocable lease
+	err = exp.revokeCommon(ctx, leaseID, true, false)
+	if err != nil {
+		t.Fatalf("error revoking irrevocable lease: %v", err)
+	}
+
+	// Verify counts after revocation
+	exp.pendingLock.RLock()
+	finalLeaseCount := exp.leaseCount
+	finalIrrevocableCount := exp.irrevocableLeaseCount
+	exp.pendingLock.RUnlock()
+
+	if initialLeaseCount-1 != finalLeaseCount {
+		t.Errorf("leaseCount should be decremented when irrevocable lease is revoked: expected %d, got %d",
+			initialLeaseCount-1, finalLeaseCount)
+	}
+	if initialIrrevocableCount != finalIrrevocableCount {
+		t.Errorf("irrevocableLeaseCount should return to initial value: expected %d, got %d",
+			initialIrrevocableCount, finalIrrevocableCount)
+	}
+}
+
 func TestExpiration_errorIsUnrecoverable(t *testing.T) {
 	testCases := []struct {
 		err             error

@@ -9,32 +9,30 @@ import (
 	"path"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
-	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/routing"
 )
 
 // MountEntry is used to represent a mount table entry
 type MountEntry struct {
-	Table                 string            `json:"table"`                             // The table it belongs to
-	Path                  string            `json:"path"`                              // Mount Path
-	Type                  string            `json:"type"`                              // Logical backend Type. NB: This is the plugin name, e.g. my-vault-plugin, NOT plugin type (e.g. auth).
-	Description           string            `json:"description"`                       // User-provided description
-	UUID                  string            `json:"uuid"`                              // Barrier view UUID
-	BackendAwareUUID      string            `json:"backend_aware_uuid"`                // UUID that can be used by the backend as a helper when a consistent value is needed outside of storage.
-	Accessor              string            `json:"accessor"`                          // Unique but more human-friendly ID. Does not change, not used for any sensitive things (like as a salt, which the UUID sometimes is).
-	Config                MountConfig       `json:"config"`                            // Configuration related to this mount (but not backend-derived)
-	Options               map[string]string `json:"options"`                           // Backend options
-	Local                 bool              `json:"local"`                             // Local mounts are not replicated or affected by replication
-	SealWrap              bool              `json:"seal_wrap"`                         // Whether to wrap CSPs
-	ExternalEntropyAccess bool              `json:"external_entropy_access,omitempty"` // Whether to allow external entropy source access
-	Tainted               bool              `json:"tainted,omitempty"`                 // Set as a Write-Ahead flag for unmount/remount
-	NamespaceID           string            `json:"namespace_id"`
+	Table                 string              `json:"table"`                             // The table it belongs to
+	Path                  string              `json:"path"`                              // Mount Path
+	Type                  string              `json:"type"`                              // Logical backend Type. NB: This is the plugin name, e.g. my-vault-plugin, NOT plugin type (e.g. auth).
+	Description           string              `json:"description"`                       // User-provided description
+	UUID                  string              `json:"uuid"`                              // Barrier view UUID
+	BackendAwareUUID      string              `json:"backend_aware_uuid"`                // UUID that can be used by the backend as a helper when a consistent value is needed outside of storage.
+	Accessor              string              `json:"accessor"`                          // Unique but more human-friendly ID. Does not change, not used for any sensitive things (like as a salt, which the UUID sometimes is).
+	Config                routing.MountConfig `json:"config"`                            // Configuration related to this mount (but not backend-derived)
+	Options               map[string]string   `json:"options"`                           // Backend options
+	Local                 bool                `json:"local"`                             // Local mounts are not replicated or affected by replication
+	SealWrap              bool                `json:"seal_wrap"`                         // Whether to wrap CSPs
+	ExternalEntropyAccess bool                `json:"external_entropy_access,omitempty"` // Whether to allow external entropy source access
+	Tainted               bool                `json:"tainted,omitempty"`                 // Set as a Write-Ahead flag for unmount/remount
+	NamespaceID           string              `json:"namespace_id"`
 
 	// namespace contains the populated namespace
 	namespace *namespace.Namespace
@@ -51,45 +49,6 @@ type MountEntry struct {
 	RunningSha256  string `json:"running_sha256,omitempty"`
 }
 
-// MountConfig is used to hold settable options
-type MountConfig struct {
-	DefaultLeaseTTL           time.Duration                 `json:"default_lease_ttl,omitempty" structs:"default_lease_ttl" mapstructure:"default_lease_ttl"` // Override for global default
-	MaxLeaseTTL               time.Duration                 `json:"max_lease_ttl,omitempty" structs:"max_lease_ttl" mapstructure:"max_lease_ttl"`             // Override for global default
-	ForceNoCache              bool                          `json:"force_no_cache,omitempty" structs:"force_no_cache" mapstructure:"force_no_cache"`          // Override for global default
-	AuditNonHMACRequestKeys   []string                      `json:"audit_non_hmac_request_keys,omitempty" structs:"audit_non_hmac_request_keys" mapstructure:"audit_non_hmac_request_keys"`
-	AuditNonHMACResponseKeys  []string                      `json:"audit_non_hmac_response_keys,omitempty" structs:"audit_non_hmac_response_keys" mapstructure:"audit_non_hmac_response_keys"`
-	ListingVisibility         routing.ListingVisibilityType `json:"listing_visibility,omitempty" structs:"listing_visibility" mapstructure:"listing_visibility"`
-	PassthroughRequestHeaders []string                      `json:"passthrough_request_headers,omitempty" structs:"passthrough_request_headers" mapstructure:"passthrough_request_headers"`
-	AllowedResponseHeaders    []string                      `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
-	TokenType                 logical.TokenType             `json:"token_type,omitempty" structs:"token_type" mapstructure:"token_type"`
-	UserLockoutConfig         *UserLockoutConfig            `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
-
-	// PluginName is the name of the plugin registered in the catalog.
-	//
-	// Deprecated: MountEntry.Type should be used instead for Vault 1.0.0 and beyond.
-	PluginName string `json:"plugin_name,omitempty" structs:"plugin_name,omitempty" mapstructure:"plugin_name"`
-}
-
-// APIMountConfig is an embedded struct of api.MountConfigInput
-type APIMountConfig struct {
-	DefaultLeaseTTL           string                        `json:"default_lease_ttl" structs:"default_lease_ttl" mapstructure:"default_lease_ttl"`
-	MaxLeaseTTL               string                        `json:"max_lease_ttl" structs:"max_lease_ttl" mapstructure:"max_lease_ttl"`
-	ForceNoCache              bool                          `json:"force_no_cache" structs:"force_no_cache" mapstructure:"force_no_cache"`
-	AuditNonHMACRequestKeys   []string                      `json:"audit_non_hmac_request_keys,omitempty" structs:"audit_non_hmac_request_keys" mapstructure:"audit_non_hmac_request_keys"`
-	AuditNonHMACResponseKeys  []string                      `json:"audit_non_hmac_response_keys,omitempty" structs:"audit_non_hmac_response_keys" mapstructure:"audit_non_hmac_response_keys"`
-	ListingVisibility         routing.ListingVisibilityType `json:"listing_visibility,omitempty" structs:"listing_visibility" mapstructure:"listing_visibility"`
-	PassthroughRequestHeaders []string                      `json:"passthrough_request_headers,omitempty" structs:"passthrough_request_headers" mapstructure:"passthrough_request_headers"`
-	AllowedResponseHeaders    []string                      `json:"allowed_response_headers,omitempty" structs:"allowed_response_headers" mapstructure:"allowed_response_headers"`
-	TokenType                 string                        `json:"token_type" structs:"token_type" mapstructure:"token_type"`
-	UserLockoutConfig         *UserLockoutConfig            `json:"user_lockout_config,omitempty" mapstructure:"user_lockout_config"`
-	PluginVersion             string                        `json:"plugin_version,omitempty" mapstructure:"plugin_version"`
-
-	// PluginName is the name of the plugin registered in the catalog.
-	//
-	// Deprecated: MountEntry.Type should be used instead for Vault 1.0.0 and beyond.
-	PluginName string `json:"plugin_name,omitempty" structs:"plugin_name,omitempty" mapstructure:"plugin_name"`
-}
-
 type FailedLoginUser struct {
 	aliasName     string
 	mountAccessor string
@@ -98,13 +57,6 @@ type FailedLoginUser struct {
 type FailedLoginInfo struct {
 	count               uint
 	lastFailedLoginTime int
-}
-
-type UserLockoutConfig struct {
-	LockoutThreshold    uint64        `json:"lockout_threshold,omitempty" structs:"lockout_threshold" mapstructure:"lockout_threshold"`
-	LockoutDuration     time.Duration `json:"lockout_duration,omitempty" structs:"lockout_duration" mapstructure:"lockout_duration"`
-	LockoutCounterReset time.Duration `json:"lockout_counter_reset,omitempty" structs:"lockout_counter_reset" mapstructure:"lockout_counter_reset"`
-	DisableLockout      bool          `json:"disable_lockout,omitempty" structs:"disable_lockout" mapstructure:"disable_lockout"`
 }
 
 type APIUserLockoutConfig struct {

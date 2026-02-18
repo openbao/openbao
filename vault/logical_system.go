@@ -968,8 +968,8 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	externalEntropyAccess := data.Get("external_entropy_access").(bool)
 	options := data.Get("options").(map[string]string)
 
-	var config MountConfig
-	var apiConfig APIMountConfig
+	var config routing.MountConfig
+	var apiConfig routing.APIMountConfig
 
 	configMap := data.Get("config").(map[string]interface{})
 	// Augmenting configMap for some config options to treat them as comma separated entries
@@ -1683,7 +1683,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 
 		if len(userLockoutConfigMap) > 0 && mountEntry.Config.UserLockoutConfig == nil {
-			defer rollback(&mountEntry.Config.UserLockoutConfig, &UserLockoutConfig{}, &success)()
+			defer rollback(&mountEntry.Config.UserLockoutConfig, &routing.UserLockoutConfig{}, &success)()
 		}
 
 		if apiUserLockoutConfig.LockoutThreshold != "" {
@@ -2193,8 +2193,8 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	externalEntropyAccess := data.Get("external_entropy_access").(bool)
 	options := data.Get("options").(map[string]string)
 
-	var config MountConfig
-	var apiConfig APIMountConfig
+	var config routing.MountConfig
+	var apiConfig routing.APIMountConfig
 
 	configMap := data.Get("config").(map[string]interface{})
 	// Augmenting configMap for some config options to treat them as comma separated entries

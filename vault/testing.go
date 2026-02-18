@@ -57,6 +57,7 @@ import (
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 )
@@ -509,7 +510,7 @@ func TestKeyCopy(key []byte) []byte {
 
 func TestDynamicSystemView(c *Core, ns *namespace.Namespace) *dynamicSystemView {
 	me := &MountEntry{
-		Config: MountConfig{
+		Config: routing.MountConfig{
 			DefaultLeaseTTL: 24 * time.Hour,
 			MaxLeaseTTL:     2 * 24 * time.Hour,
 		},

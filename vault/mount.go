@@ -1754,7 +1754,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 		Accessor:         sysAccessor,
 		BackendAwareUUID: sysBackendUUID,
 		SealWrap:         true, // Enable SealWrap since SystemBackend utilizes SealWrapStorage, see factory in addExtraLogicalBackends().
-		Config: MountConfig{
+		Config: routing.MountConfig{
 			PassthroughRequestHeaders: []string{"Accept"},
 		},
 		RunningVersion: versions.DefaultBuiltinVersion,
@@ -1783,7 +1783,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 		UUID:             identityUUID,
 		Accessor:         identityAccessor,
 		BackendAwareUUID: identityBackendUUID,
-		Config: MountConfig{
+		Config: routing.MountConfig{
 			PassthroughRequestHeaders: []string{"Authorization"},
 		},
 		RunningVersion: versions.DefaultBuiltinVersion,

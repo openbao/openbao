@@ -870,7 +870,7 @@ func TestSystemBackend_remount_auth(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/userpass1"
 	req.Data["to"] = "auth/userpass2"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	// validate the response structure for remount named read
@@ -910,7 +910,7 @@ func TestSystemBackend_remount_auth_invalid(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/unknown"
 	req.Data["to"] = "auth/foo"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -937,7 +937,7 @@ func TestSystemBackend_remount_auth_protected(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/token"
 	req.Data["to"] = "auth/foo"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -992,7 +992,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/userpass1"
 	req.Data["to"] = "auth/userpass2"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -1040,7 +1040,7 @@ func TestSystemBackend_remount(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "secret"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	corehelpers.RetryUntil(t, 5*time.Second, func() error {
 		req = logical.TestRequest(t, logical.ReadOperation, fmt.Sprintf("remount/status/%s", resp.Data["migration_id"]))
@@ -1072,7 +1072,7 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "secret"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -1119,7 +1119,7 @@ func TestSystemBackend_remount_invalid(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "unknown"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1150,7 +1150,7 @@ func TestSystemBackend_remount_clean(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = "foo//bar"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1166,7 +1166,7 @@ func TestSystemBackend_remount_nonPrintable(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = "foo\nbar"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1184,7 +1184,7 @@ func TestSystemBackend_remount_trailingSpacesInFromPath(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = " foo/ "
 	req.Data["to"] = "bar"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1202,7 +1202,7 @@ func TestSystemBackend_remount_trailingSpacesInToPath(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = " bar/ "
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)

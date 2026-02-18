@@ -2115,7 +2115,7 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 //  4. default user lockout values
 //
 // getUserLockoutFromConfig call in this function takes care of config file precedence
-func (c *Core) getUserLockoutConfiguration(mountEntry *MountEntry) (userLockoutConfig UserLockoutConfig) {
+func (c *Core) getUserLockoutConfiguration(mountEntry *MountEntry) (userLockoutConfig routing.UserLockoutConfig) {
 	// get user configuration values from config file
 	userLockoutConfig = c.getUserLockoutFromConfig(mountEntry.Type)
 
@@ -2150,8 +2150,8 @@ func (c *Core) getUserLockoutConfiguration(mountEntry *MountEntry) (userLockoutC
 // similarly missing values for a given mount type in config file are updated with "all" type
 // default values
 // If user_lockout configuration is not configured using config file at all, defaults are returned
-func (c *Core) getUserLockoutFromConfig(mountType string) UserLockoutConfig {
-	defaultUserLockoutConfig := UserLockoutConfig{
+func (c *Core) getUserLockoutFromConfig(mountType string) routing.UserLockoutConfig {
+	defaultUserLockoutConfig := routing.UserLockoutConfig{
 		LockoutThreshold:    configutil.UserLockoutThresholdDefault,
 		LockoutDuration:     configutil.UserLockoutDurationDefault,
 		LockoutCounterReset: configutil.UserLockoutCounterResetDefault,
@@ -2168,14 +2168,14 @@ func (c *Core) getUserLockoutFromConfig(mountType string) UserLockoutConfig {
 	for _, userLockoutConfig := range userlockouts {
 		switch userLockoutConfig.Type {
 		case "all":
-			defaultUserLockoutConfig = UserLockoutConfig{
+			defaultUserLockoutConfig = routing.UserLockoutConfig{
 				LockoutThreshold:    userLockoutConfig.LockoutThreshold,
 				LockoutDuration:     userLockoutConfig.LockoutDuration,
 				LockoutCounterReset: userLockoutConfig.LockoutCounterReset,
 				DisableLockout:      userLockoutConfig.DisableLockout,
 			}
 		case mountType:
-			return UserLockoutConfig{
+			return routing.UserLockoutConfig{
 				LockoutThreshold:    userLockoutConfig.LockoutThreshold,
 				LockoutDuration:     userLockoutConfig.LockoutDuration,
 				LockoutCounterReset: userLockoutConfig.LockoutCounterReset,

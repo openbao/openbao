@@ -5,6 +5,7 @@ package pki
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -252,6 +253,7 @@ func Backend(conf *logical.BackendConfig) *backend {
 	b.tidyStatus = &tidyStatus{state: tidyStatusInactive}
 	b.storage = conf.StorageView
 	b.backendUUID = conf.BackendUUID
+	b.backgroundCtx, b.backgroundCtxCancel = context.WithCancelCause(context.Background())
 
 	b.pkiStorageVersion.Store(0)
 
@@ -282,11 +284,13 @@ func Backend(conf *logical.BackendConfig) *backend {
 type backend struct {
 	*framework.Backend
 
-	backendUUID       string
-	storage           logical.Storage
-	revokeStorageLock sync.RWMutex
-	tidyCASGuard      *uint32
-	tidyCancelCAS     *uint32
+	backendUUID         string
+	storage             logical.Storage
+	revokeStorageLock   sync.RWMutex
+	tidyCASGuard        *uint32
+	tidyCancelCAS       *uint32
+	backgroundCtx       context.Context
+	backgroundCtxCancel context.CancelCauseFunc
 
 	tidyStatusLock sync.RWMutex
 	tidyStatus     *tidyStatus
@@ -408,6 +412,7 @@ func (b *backend) initialize(ctx context.Context, _ *logical.InitializationReque
 }
 
 func (b *backend) cleanup(_ context.Context) {
+	b.backgroundCtxCancel(errors.New("plugin unloading"))
 	b.acmeState.Shutdown(b)
 }
 
@@ -484,7 +489,7 @@ func (b *backend) invalidate(ctx context.Context, key string) {
 		// within updatePkiStorageVersion.
 		go func() {
 			b.Logger().Info("Detected a migration completed, resetting pki storage version")
-			b.updatePkiStorageVersion(ctx, true)
+			b.updatePkiStorageVersion(b.backgroundCtx, true)
 			b.crlBuilder.requestRebuildIfActiveNode(b)
 		}()
 	case strings.HasPrefix(key, issuerPrefix):

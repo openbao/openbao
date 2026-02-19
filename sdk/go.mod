@@ -44,7 +44,7 @@ require (
 	github.com/moby/go-archive v0.1.0
 	github.com/moby/moby/api v1.53.0
 	github.com/moby/moby/client v0.2.2
-	github.com/openbao/go-kms-wrapping/v2 v2.6.0
+	github.com/openbao/go-kms-wrapping/v2 v2.7.0
 	github.com/openbao/openbao/api/v2 v2.5.0
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.11.1

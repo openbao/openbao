@@ -1,0 +1,4 @@
+```release-note:bug
+seal: Fix Auto Unseal failing when upgrading to v2.5.0 or downgrading from v2.5.0 to an earlier version.
+This affected the following providers: AliCloud KMS, AWS KMS, Azure Key Vault, GCP Cloud KMS & OCI KMS.
+```

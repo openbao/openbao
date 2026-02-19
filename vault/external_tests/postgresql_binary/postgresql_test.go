@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -133,4 +135,71 @@ func TestPostgreSQL_FencedWrites(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Nil(t, resp)
+}
+
+func TestPostgreSQL_ParallelInit(t *testing.T) {
+	t.Parallel()
+
+	binary := api.ReadBaoVariable("BAO_BINARY")
+	if binary == "" {
+		t.Skip("missing $BAO_BINARY")
+	}
+
+	psql := docker.NewPostgreSQLStorage(t, "")
+	defer func() { require.NoError(t, psql.Cleanup()) }()
+
+	opts := &docker.DockerClusterOptions{
+		ImageRepo:   "quay.io/openbao/openbao",
+		ImageTag:    "latest",
+		VaultBinary: binary,
+		CopyFromTo: map[string]string{
+			"../../../command/server/test-fixtures/self-init.hcl":   "/openbao/config/self-init.hcl",
+			"../../../command/server/test-fixtures/static-seal.hcl": "/openbao/config/static-seal.hcl",
+		},
+		Storage: psql,
+		ClusterOptions: testcluster.ClusterOptions{
+			SkipInit: true,
+		},
+	}
+
+	cluster := docker.NewTestDockerCluster(t, opts)
+	defer cluster.Cleanup()
+
+	nodes := cluster.Nodes()
+	client := nodes[0].APIClient()
+
+	require.EventuallyWithT(t, func(t *assert.CollectT) {
+		status, err := client.Sys().SealStatus()
+		require.NoError(t, err)
+		require.True(t, status.Initialized)
+		require.False(t, status.Sealed)
+	}, time.Minute, 100*time.Millisecond)
+
+	creds := map[string]any{"password": "password"}
+	secret, err := client.Logical().Write("auth/userpass/login/admin", creds)
+
+	require.NoError(t, err)
+	require.NotNil(t, secret)
+	require.NotNil(t, secret.Auth)
+	cluster.SetRootToken(secret.Auth.ClientToken)
+
+	var active, sealed int
+	for i, node := range nodes {
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+		defer cancel()
+		_, err := node.APIClient().Sys().ListPoliciesWithContext(ctx)
+		switch {
+		case err == nil:
+			active++
+			t.Logf("node %d: ACTIVE", i)
+		case strings.Contains(err.Error(), consts.ErrSealed.Error()):
+			sealed++
+			t.Logf("node %d: SEALED", i)
+		default:
+			t.Logf("node %d: ERROR: %s", i, err)
+		}
+	}
+
+	t.Logf("State: total=%d active=%d sealed=%d", len(nodes), active, sealed)
+	require.Equal(t, len(nodes), active, "all nodes active")
 }

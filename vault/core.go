@@ -2946,10 +2946,6 @@ func (c *Core) PhysicalAccess() *physical.PhysicalAccess {
 	return physical.NewPhysicalAccess(c.physical)
 }
 
-func (c *Core) RouterAccess() *RouterAccess {
-	return NewRouterAccess(c)
-}
-
 func (c *Core) AddLogger(logger log.Logger) {
 	c.allLoggersLock.Lock()
 	defer c.allLoggersLock.Unlock()

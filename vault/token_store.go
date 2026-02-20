@@ -4442,7 +4442,7 @@ func (ts *TokenStore) resolveTokenPolicies(ctx context.Context, req *logical.Req
 	// Prevent internal policies from being assigned to tokens
 	for _, policy := range finalPolicies {
 		if slices.Contains(nonAssignablePolicies, policy) {
-			return logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", policy)), nil, logical.ErrInvalidRequest
+			return logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", policy)), nil, nil
 		}
 	}
 
@@ -4496,7 +4496,7 @@ func (ts *TokenStore) resolveEntityAlias(ctx context.Context, req *logical.Reque
 
 		// Validate that the entity is not disabled
 		if entity.Disabled {
-			return logical.ErrorResponse("entity from given entity alias is disabled"), "", logical.ErrInvalidRequest
+			return logical.ErrorResponse("entity from given entity alias is disabled"), "", logical.ErrPermissionDenied
 		}
 
 		// Set new entity id

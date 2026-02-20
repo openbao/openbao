@@ -2858,6 +2858,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	// Check if the client token has sudo/root privileges for the requested path
 	isSudo := ts.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken)
 
+	policies := d.Get("policies").([]string)
+
 	// If the context's namespace is different from the parent and this is an
 	// orphan token creation request, then this is an admin token generation for
 	// the namespace
@@ -2880,7 +2882,6 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 			return logical.ErrorResponse("root or sudo privileges required to directly generate a token in a child namespace"), logical.ErrInvalidRequest
 		}
 
-		policies := d.Get("policies").([]string)
 		if slices.Contains(policies, "root") {
 			return logical.ErrorResponse("root tokens may not be created from a parent namespace"), logical.ErrInvalidRequest
 		}
@@ -2950,12 +2951,58 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	}
 
 	// Verify the entity alias
-	explicitEntityID, err := ts.resolveEntityAlias(ctx, req, d, role)
-	if err != nil {
-		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-	}
+	var explicitEntityID string
+	if entityAliasRaw := d.Get("entity_alias").(string); entityAliasRaw != "" {
+		// Parameter is only allowed in combination with token role
+		if role == nil {
+			return logical.ErrorResponse("'entity_alias' is only allowed in combination with token role"), logical.ErrInvalidRequest
+		}
 
-	resp := &logical.Response{}
+		// Convert entity alias to lowercase to match the fact that role.AllowedEntityAliases
+		// has also been lowercased. An entity alias will keep its case formatting, but be
+		// treated as lowercase during any value check anywhere.
+		entityAlias := strings.ToLower(entityAliasRaw)
+
+		// Check if there is a concrete match
+		if !slices.Contains(role.AllowedEntityAliases, entityAlias) &&
+			!strutil.StrListContainsGlob(role.AllowedEntityAliases, entityAlias) {
+			return logical.ErrorResponse("invalid 'entity_alias' value"), logical.ErrInvalidRequest
+		}
+
+		// Get mount accessor which is required to lookup entity alias
+		mountValidationResp := ts.core.router.MatchingMountByAccessor(req.MountAccessor)
+		if mountValidationResp == nil {
+			return logical.ErrorResponse("auth token mount accessor not found"), nil
+		}
+
+		// Create alias for later processing
+		alias := &logical.Alias{
+			Name:          entityAliasRaw,
+			MountAccessor: mountValidationResp.Accessor,
+			MountType:     mountValidationResp.Type,
+		}
+
+		// Create or fetch entity from entity alias. Note that we might be on a perf
+		// standby so a create would return a ReadOnly error which would cause an
+		// RPC-based redirect. That path doesn't register leases since the code that
+		// calls RegisterAuth is in the http layer... So be careful to catch and
+		// handle readonly ourselves.
+		entity, _, err := ts.core.identityStore.CreateOrFetchEntity(ctx, alias)
+		if err != nil {
+			return nil, err
+		}
+		if entity == nil {
+			return nil, errors.New("failed to create or fetch entity from given entity alias")
+		}
+
+		// Validate that the entity is not disabled
+		if entity.Disabled {
+			return logical.ErrorResponse("entity from given entity alias is disabled"), logical.ErrPermissionDenied
+		}
+
+		// Set new entity id
+		explicitEntityID = entity.ID
+	}
 
 	// GetOk is used here solely to preserve the distinction between an absent/nil map and an empty map, to match the
 	// behaviour of previous Vault versions - rather than introducing a potential slight compatibility issue for users.
@@ -3032,26 +3079,136 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		te.ID = id
 	}
 
-	// Resolve policies
-	policies, err := ts.resolveTokenPolicies(ctx, req, d, role, parent, isSudo, ns)
-	if err != nil {
-		return nil, err
-	}
-	te.Policies = policies
+	resp := &logical.Response{}
 
-	if slices.Contains(te.Policies, "root") {
-		// Prevent attempts to create a root token without an actual root token as parent.
-		// This is to thwart privilege escalation by tokens having 'sudo' privileges.
-		if !slices.Contains(parent.Policies, "root") {
-			return logical.ErrorResponse("root tokens may not be created without parent token being root"), logical.ErrInvalidRequest
+	var addDefault bool
+
+	// N.B.: The logic here uses various calculations as to whether default
+	// should be added. In the end we decided that if NoDefaultPolicy is set it
+	// should be stripped out regardless, *but*, the logic of when it should
+	// and shouldn't be added is kept because we want to do subset comparisons
+	// based on adding default when it's correct to do so.
+	noDefaultPolicy := d.Get("no_default_policy").(bool)
+	switch {
+	case role != nil && (len(role.AllowedPolicies) > 0 || len(role.DisallowedPolicies) > 0 ||
+		len(role.AllowedPoliciesGlob) > 0 || len(role.DisallowedPoliciesGlob) > 0):
+		// Holds the final set of policies as they get munged
+		var finalPolicies []string
+
+		// We don't make use of the global one because roles with allowed or
+		// disallowed set do their own policy rules
+		var localAddDefault bool
+
+		// If the request doesn't say not to add "default" and if "default"
+		// isn't in the disallowed list, add it. This is in line with the idea
+		// that roles, when allowed/disallowed ar set, allow a subset of
+		// policies to be set disjoint from the parent token's policies.
+		if !noDefaultPolicy && !role.TokenNoDefaultPolicy &&
+			!slices.Contains(role.DisallowedPolicies, "default") &&
+			!strutil.StrListContainsGlob(role.DisallowedPoliciesGlob, "default") {
+			localAddDefault = true
 		}
 
-		if te.Type == logical.TokenTypeBatch {
-			// Batch tokens cannot be revoked so we should never have root batch tokens
-			return logical.ErrorResponse("batch tokens cannot be root tokens"), nil
+		// Start with passed-in policies as a baseline, if they exist
+		if len(policies) > 0 {
+			finalPolicies = policyutil.SanitizePolicies(policies, localAddDefault)
 		}
+
+		var sanitizedRolePolicies, sanitizedRolePoliciesGlob []string
+
+		// First check allowed policies; if policies are specified they will be
+		// checked, otherwise if an allowed set exists that will be the set
+		// that is used
+		if len(role.AllowedPolicies) > 0 || len(role.AllowedPoliciesGlob) > 0 {
+			// Note that if "default" is already in allowed, and also in
+			// disallowed, this will still result in an error later since this
+			// doesn't strip out default
+			sanitizedRolePolicies = policyutil.SanitizePolicies(role.AllowedPolicies, localAddDefault)
+
+			if len(finalPolicies) == 0 {
+				finalPolicies = sanitizedRolePolicies
+			} else {
+				sanitizedRolePoliciesGlob = policyutil.SanitizePolicies(role.AllowedPoliciesGlob, false)
+
+				for _, finalPolicy := range finalPolicies {
+					if !slices.Contains(sanitizedRolePolicies, finalPolicy) &&
+						!strutil.StrListContainsGlob(sanitizedRolePoliciesGlob, finalPolicy) {
+						return logical.ErrorResponse("token policies (%q) must be subset of the role's allowed policies (%q) or glob policies (%q)", finalPolicies, sanitizedRolePolicies, sanitizedRolePoliciesGlob), logical.ErrInvalidRequest
+					}
+				}
+			}
+		} else {
+			// Assign parent policies if none have been requested. As this is a
+			// role, add default unless explicitly disabled.
+			if len(finalPolicies) == 0 {
+				finalPolicies = policyutil.SanitizePolicies(parent.Policies, localAddDefault)
+			}
+		}
+
+		if len(role.DisallowedPolicies) > 0 || len(role.DisallowedPoliciesGlob) > 0 {
+			// We don't add the default here because we only want to disallow it if it's explicitly set
+			sanitizedRolePolicies = strutil.RemoveDuplicates(role.DisallowedPolicies, true)
+			sanitizedRolePoliciesGlob = strutil.RemoveDuplicates(role.DisallowedPoliciesGlob, true)
+
+			for _, finalPolicy := range finalPolicies {
+				if slices.Contains(sanitizedRolePolicies, finalPolicy) ||
+					strutil.StrListContainsGlob(sanitizedRolePoliciesGlob, finalPolicy) {
+					return logical.ErrorResponse("token policy %q is disallowed by this role", finalPolicy), logical.ErrInvalidRequest
+				}
+			}
+		}
+
+		policies = finalPolicies
+
+	// We are creating a token from a parent namespace. We should only use the input
+	// policies.
+	case ns.ID != parent.NamespaceID:
+		addDefault = !noDefaultPolicy
+
+	// No policies specified, inherit parent
+	case len(policies) == 0:
+		// Only inherit "default" if the parent already has it, so don't touch addDefault here
+		policies = policyutil.SanitizePolicies(parent.Policies, policyutil.DoNotAddDefaultPolicy)
+
+	// When a role is not in use or does not specify allowed/disallowed, only
+	// permit policies to be a subset unless the client has root or sudo
+	// privileges. Default is added in this case if the parent has it, unless
+	// the client specified for it not to be added.
+	case !isSudo:
+		// Sanitize passed-in and parent policies before comparison
+		sanitizedInputPolicies := policyutil.SanitizePolicies(policies, policyutil.DoNotAddDefaultPolicy)
+		sanitizedParentPolicies := policyutil.SanitizePolicies(parent.Policies, policyutil.DoNotAddDefaultPolicy)
+
+		if !strutil.StrListSubset(sanitizedParentPolicies, sanitizedInputPolicies) {
+			return logical.ErrorResponse("child policies must be subset of parent"), logical.ErrInvalidRequest
+		}
+
+		// If the parent has default, and they haven't requested not to get it,
+		// add it. Note that if they have explicitly put "default" in
+		// data.Policies it will still be added because NoDefaultPolicy
+		// controls *automatic* adding.
+		if !noDefaultPolicy && slices.Contains(parent.Policies, "default") {
+			addDefault = true
+		}
+
+	// Add default by default in this case unless requested not to
+	case isSudo:
+		addDefault = !noDefaultPolicy
 	}
 
+	te.Policies = policyutil.SanitizePolicies(policies, addDefault)
+
+	// Yes, this is a little inefficient to do it like this, but meh
+	if noDefaultPolicy {
+		te.Policies = strutil.StrListDelete(te.Policies, "default")
+	}
+
+	// Prevent internal policies from being assigned to tokens
+	for _, policy := range te.Policies {
+		if slices.Contains(nonAssignablePolicies, policy) {
+			return logical.ErrorResponse("cannot assign policy %q", policy), nil
+		}
+	}
 
 	if slices.Contains(te.Policies, "root") {
 		// Prevent attempts to create a root token without an actual root token as parent.
@@ -4317,188 +4474,3 @@ cause a denial of service, this endpoint
 requires 'sudo' capability in addition to
 'list'.`
 )
-
-func (ts *TokenStore) resolveTokenPolicies(ctx context.Context, req *logical.Request, d *framework.FieldData, role *tsRoleEntry, parent *logical.TokenEntry, isSudo bool, ns *namespace.Namespace) ([]string, error) {
-	policies := d.Get("policies").([]string)
-
-	noDefaultPolicy := d.Get("no_default_policy").(bool)
-	var addDefault bool
-	switch {
-	case role != nil && (len(role.AllowedPolicies) > 0 || len(role.DisallowedPolicies) > 0 ||
-		len(role.AllowedPoliciesGlob) > 0 || len(role.DisallowedPoliciesGlob) > 0):
-		// Holds the final set of policies as they get munged
-		var finalPolicies []string
-
-		// We don't make use of the global one because roles with allowed or
-		// disallowed set do their own policy rules
-		var localAddDefault bool
-
-		// If the request doesn't say not to add "default" and if "default"
-		// isn't in the disallowed list, add it. This is in line with the idea
-		// that roles, when allowed/disallowed ar set, allow a subset of
-		// policies to be set disjoint from the parent token's policies.
-		if !noDefaultPolicy && !role.TokenNoDefaultPolicy &&
-			!slices.Contains(role.DisallowedPolicies, "default") &&
-			!strutil.StrListContainsGlob(role.DisallowedPoliciesGlob, "default") {
-			localAddDefault = true
-		}
-
-		// Start with passed-in policies as a baseline, if they exist
-		if len(policies) > 0 {
-			finalPolicies = policyutil.SanitizePolicies(policies, localAddDefault)
-		}
-
-		var sanitizedRolePolicies, sanitizedRolePoliciesGlob []string
-
-		// First check allowed policies; if policies are specified they will be
-		// checked, otherwise if an allowed set exists that will be the set
-		// that is used
-		if len(role.AllowedPolicies) > 0 || len(role.AllowedPoliciesGlob) > 0 {
-			// Note that if "default" is already in allowed, and also in
-			// disallowed, this will still result in an error later since this
-			// doesn't strip out default
-			sanitizedRolePolicies = policyutil.SanitizePolicies(role.AllowedPolicies, localAddDefault)
-
-			if len(finalPolicies) == 0 {
-				finalPolicies = sanitizedRolePolicies
-			} else {
-				sanitizedRolePoliciesGlob = policyutil.SanitizePolicies(role.AllowedPoliciesGlob, false)
-
-				for _, finalPolicy := range finalPolicies {
-					if !slices.Contains(sanitizedRolePolicies, finalPolicy) &&
-						!strutil.StrListContainsGlob(sanitizedRolePoliciesGlob, finalPolicy) {
-						return nil, fmt.Errorf("token policies (%q) must be subset of the role's allowed policies (%q) or glob policies (%q)", finalPolicies, sanitizedRolePolicies, sanitizedRolePoliciesGlob)
-					}
-				}
-			}
-		} else {
-			// Assign parent policies if none have been requested. As this is a
-			// role, add default unless explicitly disabled.
-			if len(finalPolicies) == 0 {
-				finalPolicies = policyutil.SanitizePolicies(parent.Policies, localAddDefault)
-			}
-		}
-
-		if len(role.DisallowedPolicies) > 0 || len(role.DisallowedPoliciesGlob) > 0 {
-			// We don't add the default here because we only want to disallow it if it's explicitly set
-			sanitizedRolePolicies = strutil.RemoveDuplicates(role.DisallowedPolicies, true)
-			sanitizedRolePoliciesGlob = strutil.RemoveDuplicates(role.DisallowedPoliciesGlob, true)
-
-			for _, finalPolicy := range finalPolicies {
-				if slices.Contains(sanitizedRolePolicies, finalPolicy) ||
-					strutil.StrListContainsGlob(sanitizedRolePoliciesGlob, finalPolicy) {
-					return nil, fmt.Errorf("token policy %q is disallowed by this role", finalPolicy)
-				}
-			}
-		}
-
-		policies = finalPolicies
-
-	// We are creating a token from a parent namespace. We should only use the input
-	// policies.
-	case ns.ID != parent.NamespaceID:
-		addDefault = !noDefaultPolicy
-
-	// No policies specified, inherit parent
-	case len(policies) == 0:
-		// Only inherit "default" if the parent already has it, so don't touch addDefault here
-		policies = policyutil.SanitizePolicies(parent.Policies, policyutil.DoNotAddDefaultPolicy)
-
-	// When a role is not in use or does not specify allowed/disallowed, only
-	// permit policies to be a subset unless the client has root or sudo
-	// privileges. Default is added in this case if the parent has it, unless
-	// the client specified for it not to be added.
-	case !isSudo:
-		// Sanitize passed-in and parent policies before comparison
-		sanitizedInputPolicies := policyutil.SanitizePolicies(policies, policyutil.DoNotAddDefaultPolicy)
-		sanitizedParentPolicies := policyutil.SanitizePolicies(parent.Policies, policyutil.DoNotAddDefaultPolicy)
-
-		if !strutil.StrListSubset(sanitizedParentPolicies, sanitizedInputPolicies) {
-			return nil, errors.New("child policies must be subset of parent")
-		}
-
-		// If the parent has default, and they haven't requested not to get it,
-		// add it. Note that if they have explicitly put "default" in
-		// data.Policies it will still be added because NoDefaultPolicy
-		// controls *automatic* adding.
-		if !noDefaultPolicy && slices.Contains(parent.Policies, "default") {
-			addDefault = true
-		}
-
-	// Add default by default in this case unless requested not to
-	case isSudo:
-		addDefault = !noDefaultPolicy
-	}
-
-	finalPolicies := policyutil.SanitizePolicies(policies, addDefault)
-
-	// Yes, this is a little inefficient to do it like this, but meh
-	if noDefaultPolicy {
-		finalPolicies = strutil.StrListDelete(finalPolicies, "default")
-	}
-
-	// Prevent internal policies from being assigned to tokens
-	for _, policy := range finalPolicies {
-		if slices.Contains(nonAssignablePolicies, policy) {
-			return nil, fmt.Errorf("cannot assign policy %q", policy)
-		}
-	}
-
-	return finalPolicies, nil
-}
-
-func (ts *TokenStore) resolveEntityAlias(ctx context.Context, req *logical.Request, d *framework.FieldData, role *tsRoleEntry) (string, error) {
-	var explicitEntityID string
-	if entityAliasRaw := d.Get("entity_alias").(string); entityAliasRaw != "" {
-		// Parameter is only allowed in combination with token role
-		if role == nil {
-			return "", errors.New("'entity_alias' is only allowed in combination with token role")
-		}
-
-		// Convert entity alias to lowercase to match the fact that role.AllowedEntityAliases
-		// has also been lowercased. An entity alias will keep its case formatting, but be
-		// treated as lowercase during any value check anywhere.
-		entityAlias := strings.ToLower(entityAliasRaw)
-
-		// Check if there is a concrete match
-		if !slices.Contains(role.AllowedEntityAliases, entityAlias) &&
-			!strutil.StrListContainsGlob(role.AllowedEntityAliases, entityAlias) {
-			return "", errors.New("invalid 'entity_alias' value")
-		}
-
-		// Get mount accessor which is required to lookup entity alias
-		mountValidationResp := ts.core.router.MatchingMountByAccessor(req.MountAccessor)
-		if mountValidationResp == nil {
-			return "", errors.New("auth token mount accessor not found")
-		}
-
-		// Create alias for later processing
-		alias := &logical.Alias{
-			Name:          entityAliasRaw,
-			MountAccessor: mountValidationResp.Accessor,
-			MountType:     mountValidationResp.Type,
-		}
-
-		// Create or fetch entity from entity alias. Note that we might be on a perf
-		// standby so a create would return a ReadOnly error which would cause an
-		// RPC-based redirect. That path doesn't register leases since the code that
-		// calls RegisterAuth is in the http layer... So be careful to catch and
-		// handle readonly ourselves.
-		entity, _, err := ts.core.identityStore.CreateOrFetchEntity(ctx, alias)
-		if err != nil {
-			return "", err
-		}
-		if entity == nil {
-			return "", errors.New("failed to create or fetch entity from given entity alias")
-		}
-
-		// Validate that the entity is not disabled
-		if entity.Disabled {
-			return "", errors.New("entity from given entity alias is disabled")
-		}
-
-		// Set new entity id
-		explicitEntityID = entity.ID
-	}
-	return explicitEntityID, nil
-}

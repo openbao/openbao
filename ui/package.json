@@ -135,7 +135,7 @@
     "ember-concurrency": "2.3.4",
     "ember-copy": "2.0.1",
     "ember-d3": "^0.5.1",
-    "ember-data": "~4.6.4",
+    "ember-data": "4.7",
     "ember-engines": "0.8.23",
     "ember-fetch": "^8.1.2",
     "ember-inflector": "4.0.2",

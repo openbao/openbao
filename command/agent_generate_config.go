@@ -36,18 +36,18 @@ type AgentGenerateConfigCommand struct {
 }
 
 func (c *AgentGenerateConfigCommand) Synopsis() string {
-	return "Generate a Vault Agent configuration file."
+	return "Generate a OpenBao Agent configuration file."
 }
 
 func (c *AgentGenerateConfigCommand) Help() string {
 	helpText := `
 Usage: bao agent generate-config [options] [path/to/config.hcl]
 
-  Generates a simple Vault Agent configuration file from the given parameters.
+  Generates a simple OpenBao Agent configuration file from the given parameters.
 
   Currently, the only supported configuration type is 'env-template', which
   helps you generate a configuration file with environment variable templates
-  for running Vault Agent in process supervisor mode.
+  for running OpenBao Agent in process supervisor mode.
 
   For every specified secret -path, the command will attempt to generate one or
   multiple 'env_template' entries based on the JSON key(s) stored in the
@@ -57,13 +57,13 @@ Usage: bao agent generate-config [options] [path/to/config.hcl]
   only kv-v1 and kv-v2 paths are supported.
 
   The command specified in the '-exec' option will be used to generate an
-  'exec' entry, which will tell Vault Agent which child process to run.
+  'exec' entry, which will tell OpenBao Agent which child process to run.
 
   In addition to env_template entries, the command generates an 'auto_auth'
   section with 'token_file' authentication method. While this method is very
   convenient for local testing, it should NOT be used in production. Please
-  see https://developer.hashicorp.com/vault/docs/agent-and-proxy/autoauth/methods
-  for a list of production-ready auto_auth methods that you can use instead.
+  see https://openbao.org/docs/agent-and-proxy/autoauth/methods/ for a list of
+  production-ready auto_auth methods that you can use instead.
 
   By default, the file will be generated in the local directory as 'agent.hcl'
   unless a path is specified as an argument.

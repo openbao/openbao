@@ -85,8 +85,8 @@ func (c *TokenRevokeCommand) Flags() *FlagSets {
 		Default:    "",
 		EnvVar:     "",
 		Completion: complete.PredictSet("orphan", "path"),
-		Usage: "Type of revocation to perform. If unspecified, Vault will revoke " +
-			"the token and all of the token's children. If \"orphan\", Vault will " +
+		Usage: "Type of revocation to perform. If unspecified, OpenBao will revoke " +
+			"the token and all of the token's children. If \"orphan\", OpenBao will " +
 			"revoke only the token, leaving the children as orphans. If \"path\", " +
 			"tokens created from the given authentication path prefix are deleted " +
 			"along with their children.",

@@ -28,7 +28,7 @@ func (c *PolicyDeleteCommand) Help() string {
 	helpText := `
 Usage: bao policy delete [options] NAME
 
-  Deletes the policy named NAME in the Vault server. Once the policy is deleted,
+  Deletes the policy named NAME in the OpenBao server. Once the policy is deleted,
   all tokens associated with the policy are affected immediately.
 
   Delete the policy named "my-policy":

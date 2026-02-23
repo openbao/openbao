@@ -6,7 +6,7 @@ BUG FIXES:
 * seal: Fix Auto Unseal failing when upgrading to v2.5.0 or downgrading from v2.5.0 to an earlier version. This affected the following providers: AliCloud KMS, AWS KMS, Azure Key Vault, GCP Cloud KMS & OCI KMS. [[GH-2505](https://github.com/openbao/openbao/pull/2505)]
 * core/mounts: Don't attempt to upgrade legacy mount tables when in read-only standby mode. [[GH-2467](https://github.com/openbao/openbao/pull/2467)]
 * core/expiration: Fix total lease count not being decremented when revoking irrevocable leases. [[GH-2414](https://github.com/openbao/openbao/pull/2414)]
-* pki: Fix "context canceled" issue when processing cache invalidation, leading to pki returing 500 until reload. [[GH-2472](https://github.com/openbao/openbao/pull/2472)]
+* pki: Fix "context canceled" issue when processing cache invalidation, leading to pki returning 500 until reload. [[GH-2472](https://github.com/openbao/openbao/pull/2472)]
 * command: Fix panic when the home directory cannot be trivially deduced via environment variables. [[GH-2446](https://github.com/openbao/openbao/pull/2446)]
 
 ## 2.5.0

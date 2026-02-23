@@ -697,8 +697,8 @@ github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0 h1:evwGV3ojzXh
 github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0/go.mod h1:wiZapI8HCPoK5UMKITxBzdboKGvZAJiZUW7ZVsgtEgc=
 github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.3.0 h1:Zccqnf/5zjtptBU8OliC3iCbBfwrXvBlcP/Pw9UDAh4=
 github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.3.0/go.mod h1:bWPOh7C2qmOLMm5Kj0fiP3dBfY7kAOPqEi033iEg448=
-github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.2.0 h1:BGnQK/3HvW5Fi8vB/gegJYvemJARbYHsymUcWeP4G7o=
-github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.2.0/go.mod h1:aqTANysogAQjWjREk43w3yz3MH5pIc7iVB33hD77egg=
+github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.3.0 h1:IdH7q4U38Gj+E0sY9akQg6WC/ikffng6RYVo9POMER0=
+github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.3.0/go.mod h1:/9svBFAZFOmgI3soK7c7iO9L508oPHnviWJimUhOGT8=
 github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.2.0 h1:Q8shXcENlsM0NCCFFt1PodCe6iWLMocXBbaS6/F5tCQ=
 github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.2.0/go.mod h1:asjS7T508BGJhghdSyFPjCJ6Ml7DI5IDLDXPryt97tE=
 github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.1.0 h1:lt2foQyENwTWQ0J3zAm1Lm6HbH3l2DJ/NBMBMJZqVSE=

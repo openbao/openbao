@@ -255,7 +255,7 @@ func TestIdentityStore_PurgeCorruptedGroups(t *testing.T) {
 	require.NotNil(t, item)
 
 	// loadGroups should purge corrupt entries
-	require.NoError(t, c.identityStore.loadGroups(ctx))
+	require.NoError(t, c.identityStore.loadGroups(ctx, false /* readOnly */))
 
 	// enure it was removed
 	item, err = packer.GetItem(group.ID)

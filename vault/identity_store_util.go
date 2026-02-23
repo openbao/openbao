@@ -33,7 +33,7 @@ var (
 	tmpSuffix                = ".tmp"
 )
 
-func (c *Core) loadIdentityStoreArtifacts(ctx context.Context) error {
+func (c *Core) loadIdentityStoreArtifacts(ctx context.Context, readOnly bool) error {
 	if c.identityStore == nil {
 		c.logger.Warn("identity store is not setup, skipping loading")
 		return nil
@@ -53,10 +53,10 @@ func (c *Core) loadIdentityStoreArtifacts(ctx context.Context) error {
 
 			nsCtx := namespace.ContextWithNamespace(ctx, ns)
 
-			if err := c.identityStore.loadEntities(nsCtx); err != nil {
+			if err := c.identityStore.loadEntities(nsCtx, readOnly); err != nil {
 				return err
 			}
-			if err := c.identityStore.loadGroups(nsCtx); err != nil {
+			if err := c.identityStore.loadGroups(nsCtx, readOnly); err != nil {
 				return err
 			}
 			if err := c.identityStore.loadOIDCClients(nsCtx); err != nil {
@@ -101,7 +101,7 @@ func (i *IdentityStore) sanitizeName(name string) string {
 	return strings.ToLower(name)
 }
 
-func (i *IdentityStore) loadGroups(ctx context.Context) error {
+func (i *IdentityStore) loadGroups(ctx context.Context, readOnly bool) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -134,6 +134,11 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 			}
 
 			if ns.ID != group.NamespaceID {
+				if readOnly {
+					// Skip loading this group on standby nodes.
+					continue
+				}
+
 				// Remove groups that have the wrong namespace
 				// These should only exist when upgrading from an older version
 				// See https://github.com/openbao/openbao/issues/2319
@@ -197,7 +202,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 	return nil
 }
 
-func (i *IdentityStore) loadEntities(ctx context.Context) error {
+func (i *IdentityStore) loadEntities(ctx context.Context, readOnly bool) error {
 	// Accumulate existing entities
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -305,6 +310,11 @@ LOOP:
 					return err
 				}
 				if ns == nil {
+					if readOnly {
+						// Skip loading this entity on standby nodes.
+						continue
+					}
+
 					// Remove dangling entities
 					// Entity's namespace doesn't exist anymore but the
 					// entity from the namespace still exists.

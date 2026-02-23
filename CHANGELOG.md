@@ -14,6 +14,10 @@ BUG FIXES:
 * pki: Fix "context canceled" issue when processing cache invalidation, leading to pki returning 500 until reload. [[GH-2472](https://github.com/openbao/openbao/pull/2472)]
 * command: Fix panic when the home directory cannot be trivially deduced via environment variables. [[GH-2446](https://github.com/openbao/openbao/pull/2446)]
 
+CHANGES:
+
+* core/identity: Remove pre-v2.5.0 corrupt namespace identity groups during unseal; corrupt groups need to be recreated by an admin. Check for `deleting corrupt group` in server startup logs. [[GH-2454](https://github.com/openbao/openbao/pull/2454)]
+
 ## 2.5.0
 ## Feburary 4, 2026
 

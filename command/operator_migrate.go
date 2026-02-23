@@ -56,7 +56,7 @@ type migratorConfig struct {
 }
 
 func (c *OperatorMigrateCommand) Synopsis() string {
-	return "Migrates Vault data between storage backends"
+	return "Migrates OpenBao data between storage backends"
 }
 
 func (c *OperatorMigrateCommand) Help() string {
@@ -65,7 +65,7 @@ Usage: bao operator migrate [options]
 
   This command starts a storage backend migration process to copy all data
   from one backend to another. This operates directly on encrypted data and
-  does not require a Vault server, nor any unsealing.
+  does not require an OpenBao server, nor any unsealing.
 
   Start a migration with a configuration file:
 

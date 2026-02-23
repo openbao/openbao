@@ -83,7 +83,7 @@ func (c *SecretsTuneCommand) Flags() *FlagSets {
 		EnvVar:     "",
 		Completion: complete.PredictAnything,
 		Usage: "The default lease TTL for this secrets engine. If unspecified, " +
-			"this defaults to the Vault server's globally configured default lease " +
+			"this defaults to the OpenBao server's globally configured default lease " +
 			"TTL, or a previously configured value for the secrets engine.",
 	})
 
@@ -108,7 +108,7 @@ func (c *SecretsTuneCommand) Flags() *FlagSets {
 		EnvVar:     "",
 		Completion: complete.PredictAnything,
 		Usage: "The maximum lease TTL for this secrets engine. If unspecified, " +
-			"this defaults to the Vault server's globally configured maximum lease " +
+			"this defaults to the OpenBao server's globally configured maximum lease " +
 			"TTL, or a previously configured value for the secrets engine.",
 	})
 

@@ -32,9 +32,9 @@ func (c *LeaseRenewCommand) Help() string {
 Usage: bao lease renew [options] ID
 
   Renews the lease on a secret, extending the time that it can be used before
-  it is revoked by Vault.
+  it is revoked by OpenBao.
 
-  Every secret in Vault has a lease associated with it. If the owner of the
+  Every secret in OpenBao has a lease associated with it. If the owner of the
   secret wants to use it longer than the lease, then it must be renewed.
   Renewing the lease does not change the contents of the secret. The ID is the
   full path lease ID.
@@ -63,7 +63,7 @@ func (c *LeaseRenewCommand) Flags() *FlagSets {
 		Default:    0,
 		EnvVar:     "",
 		Completion: complete.PredictAnything,
-		Usage: "Request a specific increment in seconds. Vault is not required " +
+		Usage: "Request a specific increment in seconds. OpenBao is not required " +
 			"to honor this request.",
 	})
 

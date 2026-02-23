@@ -1,3 +1,23 @@
+## 2.5.1
+## February 23, 2026
+
+SECURITY:
+
+* Build with Go 1.25.7 to resolve CVE-2025-68121 / GO-2026-4337. [[GH-2426](https://github.com/openbao/openbao/pull/2426)]
+* Bump go.opentelemetry.io/otel/sdk to 1.40.0 to resolve CVE-2026-24051 / GO-2026-4394 / GHSA-9h8m-3fm2-qjrq. [[GH-2518](https://github.com/openbao/openbao/pull/2518)]
+
+BUG FIXES:
+
+* seal: Fix Auto Unseal failing when upgrading to v2.5.0 or downgrading from v2.5.0 to an earlier version. This affected the following providers: AliCloud KMS, AWS KMS, Azure Key Vault, GCP Cloud KMS & OCI KMS. [[GH-2505](https://github.com/openbao/openbao/pull/2505)]
+* core/mounts: Don't attempt to upgrade legacy mount tables when in read-only standby mode. [[GH-2467](https://github.com/openbao/openbao/pull/2467)]
+* core/expiration: Fix total lease count not being decremented when revoking irrevocable leases. [[GH-2414](https://github.com/openbao/openbao/pull/2414)]
+* pki: Fix "context canceled" issue when processing cache invalidation, leading to pki returning 500 until reload. [[GH-2472](https://github.com/openbao/openbao/pull/2472)]
+* command: Fix panic when the home directory cannot be trivially deduced via environment variables. [[GH-2446](https://github.com/openbao/openbao/pull/2446)]
+
+CHANGES:
+
+* core/identity: Remove pre-v2.5.0 corrupt namespace identity groups during unseal; corrupt groups need to be recreated by an admin. Check for `deleting corrupt group` in server startup logs. [[GH-2454](https://github.com/openbao/openbao/pull/2454)]
+
 ## 2.5.0
 ## Feburary 4, 2026
 
@@ -479,7 +499,6 @@ BUG FIXES:
 * raft: Fix noisy warn on follower-less keyring rotation. [[GH-937](https://github.com/openbao/openbao/pull/937)]
 * secrets/pki: Fix bao pki health-check detection on non-pki mounts. [[GH-935](https://github.com/openbao/openbao/pull/935)]
 * ui: fix missing checkmarks in all checkboxes, due to invalid use of sass-svg-uri package [[GH-1042](https://github.com/openbao/openbao/pull/1042)]
-
 
 ## 2.2.0-beta20250213
 ## February 13, 2025

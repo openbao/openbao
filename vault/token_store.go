@@ -4449,7 +4449,6 @@ func (ts *TokenStore) resolveTokenPolicies(ctx context.Context, req *logical.Req
 }
 
 func (ts *TokenStore) resolveEntityAlias(ctx context.Context, req *logical.Request, d *framework.FieldData, role *tsRoleEntry) (*logical.Response, string, error) {
-	var explicitEntityID string
 	if entityAliasRaw := d.Get("entity_alias").(string); entityAliasRaw != "" {
 		// Parameter is only allowed in combination with token role
 		if role == nil {
@@ -4498,8 +4497,7 @@ func (ts *TokenStore) resolveEntityAlias(ctx context.Context, req *logical.Reque
 			return logical.ErrorResponse("entity from given entity alias is disabled"), "", logical.ErrPermissionDenied
 		}
 
-		// Set new entity id
-		explicitEntityID = entity.ID
+		return nil, entity.ID, nil
 	}
-	return nil, explicitEntityID, nil
+	return nil, "", nil
 }

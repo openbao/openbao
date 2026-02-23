@@ -2383,7 +2383,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.handleAuditLogSetup(ctx, standby); err != nil {
 		return err
 	}
-	if err := c.loadIdentityStoreArtifacts(ctx); err != nil {
+	if err := c.loadIdentityStoreArtifacts(ctx, standby); err != nil {
 		return err
 	}
 	c.setupCachedMFAResponseAuth()

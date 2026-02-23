@@ -85,8 +85,9 @@ func pathOIDC(b *jwtAuthBackend) []*framework.Path {
 					Type:  framework.TypeString,
 					Query: true,
 				},
-				"error_description": {
-					Type: framework.TypeString,
+				"error": {
+					Type:  framework.TypeString,
+					Query: true,
 				},
 			},
 
@@ -266,9 +267,11 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		deleteRequest = false
 	}
 
-	errorDescription := d.Get("error_description").(string)
-	if errorDescription != "" {
-		return loginFailedResponse(useHttp, errorDescription), nil
+	// error parameter per OpenID Connect Core 1.0 spec
+	// If present, the login has failed
+	oidcError := d.Get("error").(string)
+	if oidcError != "" {
+		return loginFailedResponse(useHttp, "An unknown error occurred during OIDC authentication."), nil
 	}
 
 	clientNonce := d.Get("client_nonce").(string)

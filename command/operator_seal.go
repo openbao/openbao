@@ -33,7 +33,7 @@ Usage: bao operator seal [options]
   discards its in-memory root key to unlock the data, so it is physically
   blocked from responding to operations unsealed.
 
-  If an unseal is in progress, sealing the OpenBao will reset the unsealing
+  If an unseal is in progress, sealing OpenBao will reset the unsealing
   process. Users will have to re-enter their portions of the root key again.
 
   This command does nothing if the OpenBao server is already sealed.

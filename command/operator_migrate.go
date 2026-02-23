@@ -65,7 +65,7 @@ Usage: bao operator migrate [options]
 
   This command starts a storage backend migration process to copy all data
   from one backend to another. This operates directly on encrypted data and
-  does not require a OpenBao server, nor any unsealing.
+  does not require an OpenBao server, nor any unsealing.
 
   Start a migration with a configuration file:
 

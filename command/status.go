@@ -29,8 +29,7 @@ func (c *StatusCommand) Help() string {
 Usage: bao status [options]
 
   Prints the current state of OpenBao including whether it is sealed and if HA
-  mode is enabled. This command prints regardless of whether the OpenBao is
-  sealed.
+  mode is enabled. This command prints regardless of whether OpenBao is sealed.
 
   The exit code reflects the seal status:
 

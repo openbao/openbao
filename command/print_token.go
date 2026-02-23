@@ -20,7 +20,7 @@ type PrintTokenCommand struct {
 }
 
 func (c *PrintTokenCommand) Synopsis() string {
-	return "Prints the bao token currently in use"
+	return "Prints the OpenBao token currently in use"
 }
 
 func (c *PrintTokenCommand) Help() string {

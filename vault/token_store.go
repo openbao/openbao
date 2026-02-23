@@ -3034,9 +3034,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 
 	// Resolve policies
 	errResp, policies, err := ts.resolveTokenPolicies(ctx, req, d, role, parent, isSudo, ns)
-	if errResp != nil || err != nil {
-		if errResp != nil {
-			return errResp, err
+	if errResp != nil {
+		return errResp, err
 		}
 		return nil, err
 	}

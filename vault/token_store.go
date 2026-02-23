@@ -3034,25 +3034,10 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 
 	// Resolve policies
 	errResp, policies, err := ts.resolveTokenPolicies(ctx, req, d, role, parent, isSudo, ns)
-	if errResp != nil {
+	if errResp != nil || err != nil {
 		return errResp, err
-		}
-		return nil, err
 	}
 	te.Policies = policies
-
-	if slices.Contains(te.Policies, "root") {
-		// Prevent attempts to create a root token without an actual root token as parent.
-		// This is to thwart privilege escalation by tokens having 'sudo' privileges.
-		if !slices.Contains(parent.Policies, "root") {
-			return logical.ErrorResponse("root tokens may not be created without parent token being root"), logical.ErrInvalidRequest
-		}
-
-		if te.Type == logical.TokenTypeBatch {
-			// Batch tokens cannot be revoked so we should never have root batch tokens
-			return logical.ErrorResponse("batch tokens cannot be root tokens"), nil
-		}
-	}
 
 	if slices.Contains(te.Policies, "root") {
 		// Prevent attempts to create a root token without an actual root token as parent.
@@ -3118,88 +3103,9 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		}
 	}
 
-	var explicitMaxTTLToUse time.Duration
-	if explicitMaxTTL != "" {
-		dur, err := parseutil.ParseDurationSecond(explicitMaxTTL)
-		if err != nil {
-			return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-		}
-		if dur < 0 {
-			return logical.ErrorResponse("explicit_max_ttl must be positive"), logical.ErrInvalidRequest
-		}
-		te.ExplicitMaxTTL = dur
-		explicitMaxTTLToUse = dur
-	}
-
-	var periodToUse time.Duration
-	if period != "" {
-		dur, err := parseutil.ParseDurationSecond(period)
-		if err != nil {
-			return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-		}
-
-		switch {
-		case dur < 0:
-			return logical.ErrorResponse("period must be positive"), logical.ErrInvalidRequest
-		case dur == 0:
-		default:
-			if !isSudo {
-				return logical.ErrorResponse("root or sudo privileges required to create periodic token"),
-					logical.ErrInvalidRequest
-			}
-			te.Period = dur
-			periodToUse = dur
-		}
-	}
-
-	// Parse the TTL/lease if any
-	if ttl := d.Get("ttl").(string); ttl != "" {
-		dur, err := parseutil.ParseDurationSecond(ttl)
-		if err != nil {
-			return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-		}
-		if dur < 0 {
-			return logical.ErrorResponse("ttl must be positive"), logical.ErrInvalidRequest
-		}
-		te.TTL = dur
-	} else if lease := d.Get("lease").(string); lease != "" {
-		// This block is compatibility
-		dur, err := parseutil.ParseDurationSecond(lease)
-		if err != nil {
-			return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-		}
-		if dur < 0 {
-			return logical.ErrorResponse("lease must be positive"), logical.ErrInvalidRequest
-		}
-		te.TTL = dur
-	}
-
-	// Set the lesser period/explicit max TTL if defined both in arguments and
-	// in role. Batch tokens will error out if not set via role, but here we
-	// need to explicitly check
-	if role != nil && te.Type != logical.TokenTypeBatch {
-		if role.TokenExplicitMaxTTL != 0 {
-			switch explicitMaxTTLToUse {
-			case 0:
-				explicitMaxTTLToUse = role.TokenExplicitMaxTTL
-			default:
-				if role.TokenExplicitMaxTTL < explicitMaxTTLToUse {
-					explicitMaxTTLToUse = role.TokenExplicitMaxTTL
-				}
-				resp.AddWarning(fmt.Sprintf("Explicit max TTL specified both during creation call and in role; using the lesser value of %d seconds", int64(explicitMaxTTLToUse.Seconds())))
-			}
-		}
-		if role.TokenPeriod != 0 {
-			switch periodToUse {
-			case 0:
-				periodToUse = role.TokenPeriod
-			default:
-				if role.TokenPeriod < periodToUse {
-					periodToUse = role.TokenPeriod
-				}
-				resp.AddWarning(fmt.Sprintf("Period specified both during creation call and in role; using the lesser value of %d seconds", int64(periodToUse.Seconds())))
-			}
-		}
+	explicitMaxTTLToUse, periodToUse, errResp, err := ts.parseAndMergeTTLPeriod(d, role, &te, isSudo, explicitMaxTTL, period, resp)
+	if errResp != nil || err != nil {
+		return errResp, err
 	}
 
 	sysView := ts.System().(extendedSystemView)
@@ -4500,4 +4406,100 @@ func (ts *TokenStore) resolveEntityAlias(ctx context.Context, req *logical.Reque
 		return nil, entity.ID, nil
 	}
 	return nil, "", nil
+}
+
+func (ts *TokenStore) parseAndMergeTTLPeriod(
+	d *framework.FieldData,
+	role *tsRoleEntry,
+	te *logical.TokenEntry,
+	isSudo bool,
+	explicitMaxTTL string,
+	period string,
+	resp *logical.Response,
+) (time.Duration, time.Duration, *logical.Response, error) {
+	var explicitMaxTTLToUse time.Duration
+	if explicitMaxTTL != "" {
+		dur, err := parseutil.ParseDurationSecond(explicitMaxTTL)
+		if err != nil {
+			return 0, 0, logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+		}
+		if dur < 0 {
+			return 0, 0, logical.ErrorResponse("explicit_max_ttl must be positive"), logical.ErrInvalidRequest
+		}
+		te.ExplicitMaxTTL = dur
+		explicitMaxTTLToUse = dur
+	}
+
+	var periodToUse time.Duration
+	if period != "" {
+		dur, err := parseutil.ParseDurationSecond(period)
+		if err != nil {
+			return 0, 0, logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+		}
+
+		switch {
+		case dur < 0:
+			return 0, 0, logical.ErrorResponse("period must be positive"), logical.ErrInvalidRequest
+		case dur == 0:
+		default:
+			if !isSudo {
+				return 0, 0, logical.ErrorResponse("root or sudo privileges required to create periodic token"),
+					logical.ErrInvalidRequest
+			}
+			te.Period = dur
+			periodToUse = dur
+		}
+	}
+
+	// Parse the TTL/lease if any
+	if ttl := d.Get("ttl").(string); ttl != "" {
+		dur, err := parseutil.ParseDurationSecond(ttl)
+		if err != nil {
+			return 0, 0, logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+		}
+		if dur < 0 {
+			return 0, 0, logical.ErrorResponse("ttl must be positive"), logical.ErrInvalidRequest
+		}
+		te.TTL = dur
+	} else if lease := d.Get("lease").(string); lease != "" {
+		// This block is compatibility
+		dur, err := parseutil.ParseDurationSecond(lease)
+		if err != nil {
+			return 0, 0, logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+		}
+		if dur < 0 {
+			return 0, 0, logical.ErrorResponse("lease must be positive"), logical.ErrInvalidRequest
+		}
+		te.TTL = dur
+	}
+
+	// Set the lesser period/explicit max TTL if defined both in arguments and
+	// in role. Batch tokens will error out if not set via role, but here we
+	// need to explicitly check
+	if role != nil && te.Type != logical.TokenTypeBatch {
+		if role.TokenExplicitMaxTTL != 0 {
+			switch explicitMaxTTLToUse {
+			case 0:
+				explicitMaxTTLToUse = role.TokenExplicitMaxTTL
+			default:
+				if role.TokenExplicitMaxTTL < explicitMaxTTLToUse {
+					explicitMaxTTLToUse = role.TokenExplicitMaxTTL
+				}
+				resp.AddWarning(fmt.Sprintf("Explicit max TTL specified both during creation call and in role; using the lesser value of %d seconds", int64(explicitMaxTTLToUse.Seconds())))
+			}
+		}
+		if role.TokenPeriod != 0 {
+			switch periodToUse {
+			case 0:
+				periodToUse = role.TokenPeriod
+			default:
+				if role.TokenPeriod < periodToUse {
+					periodToUse = role.TokenPeriod
+				}
+				resp.AddWarning(fmt.Sprintf("Period specified both during creation call and in role; using the lesser value of %d seconds", int64(periodToUse.Seconds())))
+			}
+		}
+	}
+
+	return explicitMaxTTLToUse, periodToUse, nil, nil
 }

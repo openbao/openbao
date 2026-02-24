@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -115,8 +116,11 @@ func (c *Logical) ReadRawWithDataWithContext(ctx context.Context, path string, d
 func (c *Logical) ParseRawResponseAndCloseBody(resp *Response, err error) (*Secret, error) {
 	if resp != nil {
 		defer resp.Body.Close()
+	} else {
+		return nil, errors.New("resp is nil so far")
 	}
-	if resp != nil && resp.StatusCode == 404 {
+
+	if resp.StatusCode == 404 {
 		secret, parseErr := ParseSecret(resp.Body)
 		switch parseErr {
 		case nil:

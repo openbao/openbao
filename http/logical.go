@@ -451,7 +451,9 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 			}
 		} else {
 			httpResp = logical.LogicalResponseToHTTPResponse(resp)
-			httpResp.RequestID = req.ID
+			if httpResp != nil {
+				httpResp.RequestID = req.ID
+			}
 		}
 
 		ret = httpResp

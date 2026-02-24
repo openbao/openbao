@@ -557,7 +557,7 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 
 		// Split comma separated ones, which are common. This brings it in line
 		// to the multiple-header case.
-		var acc []string
+		acc := []string{}
 		for _, header := range headers {
 			vals := strings.Split(header, ",")
 			for _, v := range vals {

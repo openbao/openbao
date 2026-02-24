@@ -79,7 +79,7 @@ func NewConfig(mc ManagerConfig, templates ctconfig.TemplateConfigs) (*ctconfig.
 		// setting it here to override the setting at the top of this function,
 		// and to prevent the vault/http client from defaulting to https.
 		conf.Vault.Address = pointerutil.StringPtr("http://127.0.0.1:8200")
-	} else if strings.HasPrefix(mc.AgentConfig.Vault.Address, "https") || mc.AgentConfig.Vault.CACert != "" {
+	} else if mc.AgentConfig.Vault != nil && strings.HasPrefix(mc.AgentConfig.Vault.Address, "https") || mc.AgentConfig.Vault.CACert != "" {
 		skipVerify := mc.AgentConfig.Vault.TLSSkipVerify
 		verify := !skipVerify
 		conf.Vault.SSL = &ctconfig.SSLConfig{

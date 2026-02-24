@@ -471,7 +471,7 @@ func (c *Config) Merge(c2 *Config) *Config {
 	}
 
 	result.AdministrativeNamespacePath = c.AdministrativeNamespacePath
-	if c2.AdministrativeNamespacePath != "" {
+	if c2.SharedConfig != nil && c2.AdministrativeNamespacePath != "" {
 		result.AdministrativeNamespacePath = c2.AdministrativeNamespacePath
 	}
 

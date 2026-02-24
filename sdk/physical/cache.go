@@ -5,6 +5,7 @@ package physical
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -186,7 +187,10 @@ func (c *cache) Purge(ctx context.Context) {
 
 // modifications to this function should also be applied to cacheTransaction.
 func (c *cache) Put(ctx context.Context, entry *Entry) error {
-	if entry != nil && !c.ShouldCache(entry.Key) {
+	if entry == nil {
+		return errors.New("entry is nil")
+	}
+	if !c.ShouldCache(entry.Key) {
 		return c.backend.Put(ctx, entry)
 	}
 
@@ -322,7 +326,10 @@ func (c *transactionalCache) BeginTx(ctx context.Context) (Transaction, error) {
 }
 
 func (c *cacheTransaction) Put(ctx context.Context, entry *Entry) error {
-	if entry != nil && !c.ShouldCache(entry.Key) {
+	if entry == nil {
+		return errors.New("entry is nil")
+	}
+	if !c.ShouldCache(entry.Key) {
 		return c.backend.Put(ctx, entry)
 	}
 

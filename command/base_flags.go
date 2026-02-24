@@ -816,8 +816,8 @@ func (f *FlagSet) VarFlag(i *VarFlag) {
 
 	if len(i.Aliases) > 0 {
 		sentence := make([]string, len(i.Aliases))
-		for i, a := range i.Aliases {
-			sentence[i] = fmt.Sprintf(`"-%s"`, a)
+		for idx, a := range i.Aliases {
+			sentence[idx] = fmt.Sprintf(`"-%s"`, a)
 		}
 
 		aliases := ""

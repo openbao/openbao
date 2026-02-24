@@ -2007,6 +2007,10 @@ func (c *Core) getLoginUserInfoKey(ctx context.Context, mountEntry *MountEntry, 
 // Auth types userpass, ldap and approle support this feature
 // precedence: environment var setting >> auth tune setting >> config file setting >> default (enabled)
 func (c *Core) isUserLockoutDisabled(mountEntry *MountEntry) (bool, error) {
+	if mountEntry == nil {
+		return false, errors.New("mountEntry is nil so far")
+	}
+
 	if !slices.Contains(configutil.GetSupportedUserLockoutsAuthMethods(), mountEntry.Type) {
 		return true, nil
 	}

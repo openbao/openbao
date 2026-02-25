@@ -1774,7 +1774,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	// 1. Mark that we are STARTING self-initialization.
 	// This creates the "started" marker on physical storage.
 	if err := core.MarkSelfInitStarted(ctx); err != nil {
-		return fmt.Errorf("failed to mark self-init started: %v", err)
+		return fmt.Errorf("failed to mark self-init started: %w", err)
 	}
 
 	init, err := core.Initialize(ctx, &vault.InitParams{
@@ -1787,11 +1787,6 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		}
 		core.Logger().Error("failed to initialize: unexpected error occurred")
 		return fmt.Errorf("self-initialization failed: %w", err)
-	}
-
-	// We decide init worked
-	if err := core.MarkSelfInitComplete(ctx); err != nil {
-		return fmt.Errorf("failed to mark self-init completed: %v", err)
 	}
 
 	// Wait for leadership; if we don't get the leadership status, it means
@@ -1811,7 +1806,8 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		return err // Original patch: Fail fast on config error
 	}
 
-	// Self-init completed successfully. Persist the state to allow future restarts.
+	// Mark self-init as fully complete only after doSelfInit succeeds.
+	// This is the single authoritative point of completion.
 	if err := core.MarkSelfInitComplete(ctx); err != nil {
 		return fmt.Errorf("failed to persist self-init success marker: %w", err)
 	}

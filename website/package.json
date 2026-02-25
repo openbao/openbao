@@ -26,7 +26,7 @@
     "@hashicorp/remark-plugins": "^4.1.1",
     "@mdx-js/react": "^3.1.1",
     "clsx": "^2.1.1",
-    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#552b4d05cb68d658027bb296d4d8b550011550c6",
+    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#b376f91f29fd50840dbfbdf78ed3c3182b7cd143",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"

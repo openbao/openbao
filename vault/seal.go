@@ -13,7 +13,6 @@ import (
 	"strings"
 	"sync/atomic"
 
-	aeadwrapper "github.com/openbao/go-kms-wrapping/v2/aead"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -72,7 +71,7 @@ type Seal interface {
 	SetRecoveryKey(context.Context, []byte) error
 	VerifyRecoveryKey(context.Context, []byte) error // SealAccess
 	GetAccess() seal.Access                          // SealAccess
-	GetShamirWrapper() (*aeadwrapper.ShamirWrapper, error)
+	GetShamirWrapper() (*seal.ShamirWrapper, error)
 }
 
 type defaultSeal struct {
@@ -273,10 +272,10 @@ func (d *defaultSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
 	return errors.New("recovery not supported")
 }
 
-func (d *defaultSeal) GetShamirWrapper() (*aeadwrapper.ShamirWrapper, error) {
+func (d *defaultSeal) GetShamirWrapper() (*seal.ShamirWrapper, error) {
 	// defaultSeal is meant to be for Shamir seals, so it should always have a ShamirWrapper.
 	// Nonetheless, NewDefaultSeal does not check, so let's play it safe.
-	w, ok := d.GetAccess().GetWrapper().(*aeadwrapper.ShamirWrapper)
+	w, ok := d.GetAccess().GetWrapper().(*seal.ShamirWrapper)
 	if !ok {
 		return nil, fmt.Errorf("expected defaultSeal to have a ShamirWrapper, but found a %T instead", d.GetAccess().GetWrapper())
 	}

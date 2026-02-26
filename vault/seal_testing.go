@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	testing "github.com/mitchellh/go-testing-interface"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/v2/aead"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/vault/seal"
@@ -25,7 +24,7 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 
 	switch opts.StoredKeys {
 	case seal.StoredKeysSupportedShamirRoot:
-		newSeal := NewDefaultSeal(seal.NewAccess(aeadwrapper.NewShamirWrapper()))
+		newSeal := NewDefaultSeal(seal.NewAccess(seal.NewShamirWrapper()))
 		// Need StoredShares set or this will look like a legacy shamir seal.
 		newSeal.SetCachedBarrierConfig(&SealConfig{
 			StoredShares:    1,

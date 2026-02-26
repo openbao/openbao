@@ -15,7 +15,6 @@ import (
 
 	uuid "github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/v2/aead"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
@@ -354,13 +353,13 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 		}
 	case c.seal.BarrierType() == wrapping.WrapperTypeShamir:
 		if c.seal.StoredKeysSupported() == seal.StoredKeysSupportedShamirRoot {
-			shamirWrapper := aeadwrapper.NewShamirWrapper()
-			testseal := NewDefaultSeal(seal.NewAccess(shamirWrapper))
-			testseal.SetCore(c)
-			err := shamirWrapper.SetAesGcmKeyBytes(recoveredKey)
-			if err != nil {
+			shamirWrapper := seal.NewShamirWrapper()
+			if err := shamirWrapper.SetAesGcmKeyBytes(recoveredKey); err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup unseal key: %v", err)
 			}
+
+			testseal := NewDefaultSeal(seal.NewAccess(shamirWrapper))
+			testseal.SetCore(c)
 
 			cfg, err := c.seal.BarrierConfig(ctx)
 			if err != nil {

@@ -34,7 +34,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/go-testing-interface"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/v2/aead"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	config2 "github.com/openbao/openbao/command/config"
@@ -476,7 +475,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	info["Seal Type"] = sealType
 
 	var seal vault.Seal
-	defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
+	defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	sealLogger := c.logger.ResetNamed(fmt.Sprintf("seal.%s", sealType))
 	wrapper, sealConfigError = configutil.ConfigureWrapper(configSeal, &infoKeys, &info, sealLogger)
 	if sealConfigError != nil {
@@ -2474,7 +2473,7 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 		var seal vault.Seal
 		sealLogger := c.logger.ResetNamed(fmt.Sprintf("seal.%s", sealType))
 		c.allLoggers = append(c.allLoggers, sealLogger)
-		defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
+		defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 		var sealInfoKeys []string
 		sealInfoMap := map[string]string{}
 		wrapper, sealConfigError = configutil.ConfigureWrapper(configSeal, &sealInfoKeys, &sealInfoMap, sealLogger)

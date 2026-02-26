@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/rand"
 	"path"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -384,7 +385,7 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 
 // setupExpiration is invoked after we've loaded the mount table to
 // initialize the expiration manager
-func (c *Core) setupExpiration(e ExpireLeaseStrategy) error {
+func (c *Core) setupExpiration(e ExpireLeaseStrategy, standby bool) error {
 	c.metricsMutex.Lock()
 	defer c.metricsMutex.Unlock()
 
@@ -392,18 +393,18 @@ func (c *Core) setupExpiration(e ExpireLeaseStrategy) error {
 	expLogger := c.baseLogger.Named("expiration")
 	c.AddLogger(expLogger)
 
-	detectDeadlocks := false
-	for _, v := range c.detectDeadlocks {
-		if v == "expiration" {
-			detectDeadlocks = true
-		}
-	}
-
-	expMgr := NewExpirationManager(c, e, expLogger, detectDeadlocks)
+	expMgr := NewExpirationManager(c, e, expLogger, slices.Contains(c.detectDeadlocks, "expiration"))
 	c.expiration = expMgr
 
 	// Link the token store to this
 	c.tokenStore.SetExpirationManager(expMgr)
+
+	if standby {
+		c.logger.Info("skipping lease restoration - standby")
+		expMgr.restoreMode.Store(false)
+		expMgr.restoreLocks = nil
+		return nil
+	}
 
 	// Restore the existing state
 	c.logger.Info("restoring leases")
@@ -733,11 +734,8 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 	wg := &sync.WaitGroup{}
 
 	// Create 64 workers to distribute work to
-	for i := 0; i < consts.ExpirationRestoreWorkerCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+	for range consts.ExpirationRestoreWorkerCount {
+		wg.Go(func() {
 			for {
 				select {
 				case lease, ok := <-broker:
@@ -764,13 +762,11 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 					return
 				}
 			}
-		}()
+		})
 	}
 
 	// Distribute the collected keys to the workers in a go routine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		i := 0
 		for ns := range existing {
 			for _, leaseID := range existing[ns] {
@@ -797,11 +793,11 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 
 		// Close the broker, causing worker routines to exit
 		close(broker)
-	}()
+	})
 
 	// Ensure all keys on the chan are processed
 LOOP:
-	for i := 0; i < leaseCount; i++ {
+	for range leaseCount {
 		select {
 		case err = <-errs:
 			// Close all go routines

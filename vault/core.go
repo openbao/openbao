@@ -2371,7 +2371,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.startRollback(); err != nil {
 		return err
 	}
-	if err := c.setupExpiration(expireLeaseStrategyFairsharing); err != nil {
+	if err := c.setupExpiration(expireLeaseStrategyFairsharing, standby); err != nil {
 		return err
 	}
 	if err := c.setupAudits(ctx); err != nil {

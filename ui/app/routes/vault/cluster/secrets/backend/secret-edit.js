@@ -311,7 +311,6 @@ export default Route.extend({
       return;
     }
     removeRecord(this.store, model);
-    model.destroy();
     /* eslint-disable-next-line ember/no-controller-access-in-routes */
     this.controller.set('model', null);
   },

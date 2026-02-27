@@ -254,6 +254,10 @@ const confirmationHTML = `
       color: var(--accent);
       cursor: pointer;
     }
+    .requestor-info {
+    	display: block;
+    	margin: 10px 0px;
+    }
     a {
       display: block;
       margin: 8px 0;
@@ -329,6 +333,9 @@ const confirmationHTML = `
           </div>
           <p class="message-body">
           	By accepting this sign-in request started via the CLI, you are granting the requestor to act on your behalf.
+          	<span class="requestor-info"><b>Source IP:</b> 255.255.255.255</span>
+          	<span class="requestor-info"><b>Role:</b> default (CHANGEME)</span>
+          	<span class="requestor-info"><b>Callback mode:</b> direct (CHANGEME)</span>
             <button id="confirm-button" class="message-button">Continue</button>
           </p>
         </div>
@@ -356,7 +363,6 @@ const confirmationHTML = `
 </body>
 </html>
 `
-
 
 func errorHTML(summary, detail string) string {
 	const htmlTmpl = `

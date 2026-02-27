@@ -173,7 +173,7 @@ func TestCRLFetch(t *testing.T) {
 	b.crlUpdateMutex.Unlock()
 
 	// Add a cert to the CRL, then wait to see if it gets automatically picked up
-	revocationListTemplate.RevokedCertificates = []pkix.RevokedCertificate{
+	revocationListTemplate.RevokedCertificateEntries = []x509.RevocationListEntry{
 		{
 			SerialNumber:   big.NewInt(1),
 			RevocationTime: revocationListTemplate.RevokedCertificates[0].RevocationTime,

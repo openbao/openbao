@@ -109,6 +109,10 @@ func pathOIDC(b *jwtAuthBackend) []*framework.Path {
 					Type:  framework.TypeString,
 					Query: true,
 				},
+				"confirmation": {
+					Type:  framework.TypeString,
+					Query: true,
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -278,6 +282,22 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 	}
 	if role == nil {
 		return logical.ErrorResponse(errLoginFailed + " Role could not be found"), nil
+	}
+
+	// For direct callback mode, require explicit user confirmation to reduce
+	// attack surface before processing the authorization code.
+	if role.CallbackMode == callbackModeDirect {
+		confirmation := d.Get("confirmation").(string)
+		if confirmation == "" {
+			deleteRequest = false // preserve state for the confirmed follow-up request
+			resp := &logical.Response{}
+			resp.Data = map[string]interface{}{
+				logical.HTTPContentType: "text/html",
+				logical.HTTPStatusCode:  http.StatusOK,
+				logical.HTTPRawBody:     []byte(confirmationHTML),
+			}
+			return resp, nil
+		}
 	}
 
 	useHttp := false

@@ -318,11 +318,11 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	// This is used to configure TLS in the api client.
 	tempDir := t.TempDir()
 	caCertFile := filepath.Join(tempDir, "ca.pem")
-	os.WriteFile(caCertFile, []byte(cluster.CACertPEM), 0o600)
+	require.NoError(t, os.WriteFile(caCertFile, []byte(cluster.CACertPEM), 0o600))
 	leafCertFile := filepath.Join(tempDir, "leaf.pem")
-	os.WriteFile(leafCertFile, []byte(leafCertPEM), 0o600)
+	require.NoError(t, os.WriteFile(leafCertFile, []byte(leafCertPEM), 0o600))
 	leafCertKeyFile := filepath.Join(tempDir, "leaf-key.pem")
-	os.WriteFile(leafCertKeyFile, []byte(leafCertKeyPEM), 0o600)
+	require.NoError(t, os.WriteFile(leafCertKeyFile, []byte(leafCertKeyPEM), 0o600))
 
 	// This function is a copy-pasta from the NewTestCluster, with the
 	// modification to reconfigure the TLS on the api client with the leaf
@@ -411,7 +411,7 @@ func TestBackend_MetadataBasedACLPolicy(t *testing.T) {
 	tempDir := t.TempDir()
 	exCertFile := filepath.Join(tempDir, "extcert.pem")
 	exCertKeyFile := filepath.Join(tempDir, "extcert-key.pem")
-	extCert.WritePEM(exCertFile, exCertKeyFile)
+	require.NoError(t, extCert.WritePEM(exCertFile, exCertKeyFile))
 
 	// Start cluster with cert auth method enabled
 	coreConfig := &vault.CoreConfig{
@@ -2149,11 +2149,11 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	tamperedACertFile := filepath.Join(tempDir, "tamperedA.pem")
 	tamperedBCertFile := filepath.Join(tempDir, "tamperedB.pem")
 
-	os.WriteFile(caCertFile, []byte(cluster.CACertPEM), 0o600)
-	leafA.WritePEM(leafACertFile, leafAKeyFile)
-	leafB.WritePEM(leafBCertFile, leafBKeyFile)
-	os.WriteFile(tamperedACertFile, regTamperedLeafCertA, 0o600)
-	os.WriteFile(tamperedBCertFile, regTamperedLeafCertB, 0o600)
+	require.NoError(t, os.WriteFile(caCertFile, []byte(cluster.CACertPEM), 0o600))
+	require.NoError(t, leafA.WritePEM(leafACertFile, leafAKeyFile))
+	require.NoError(t, leafB.WritePEM(leafBCertFile, leafBKeyFile))
+	require.NoError(t, os.WriteFile(tamperedACertFile, regTamperedLeafCertA, 0o600))
+	require.NoError(t, os.WriteFile(tamperedBCertFile, regTamperedLeafCertB, 0o600))
 
 	// This function is a copy-pasta from the NewTestCluster, with the
 	// modification to reconfigure the TLS on the api client with the leaf

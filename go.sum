@@ -884,6 +884,10 @@ github.com/tklauser/go-sysconf v0.3.16/go.mod h1:/qNL9xxDhc7tx3HSRsLWNnuzbVfh3e7
 github.com/tklauser/numcpus v0.11.0 h1:nSTwhKH5e1dMNsCdVBukSZrURJRoHbSEQjdEbY+9RXw=
 github.com/tklauser/numcpus v0.11.0/go.mod h1:z+LwcLq54uWZTX0u/bGobaV34u6V7KNlTZejzM6/3MQ=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
+github.com/tsaarni/certyaml v0.11.0 h1:qpiXKPCGZvQaYf3ParnvLcxMZmWqBIeU4XDAywfQUHw=
+github.com/tsaarni/certyaml v0.11.0/go.mod h1:AiWJjkISlmC8shtMWPxsY9vMFpu+VYB8arwWr8079f4=
+github.com/tsaarni/x500dn v1.1.0 h1:+rgqGj7LQEkdIIRLsYJm5S6M2dDBscb6/xiEcGW678s=
+github.com/tsaarni/x500dn v1.1.0/go.mod h1:vzfi5pu5wr1eeFf9/0rIr5Bc1kxeyes4jFMCcp0wfCk=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
 github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c h1:u6SKchux2yDvFQnDHS3lPnIRmfVJ5Sxy3ao2SIdysLQ=
 github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c/go.mod h1:hzIxponao9Kjc7aWznkXaL4U4TWaDSs8zcsY4Ka08nM=

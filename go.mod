@@ -129,6 +129,7 @@ require (
 	github.com/shirou/gopsutil/v4 v4.26.1
 	github.com/stretchr/testify v1.11.1
 	github.com/tink-crypto/tink-go/v2 v2.6.0
+	github.com/tsaarni/certyaml v0.11.0
 	github.com/yeqown/go-qrcode/v2 v2.2.5
 	go.etcd.io/bbolt v1.4.3
 	go.opentelemetry.io/otel v1.40.0
@@ -348,6 +349,7 @@ require (
 	github.com/tilinna/clock v1.0.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
+	github.com/tsaarni/x500dn v1.1.0 // indirect
 	github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c // indirect
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	github.com/vmware/govmomi v0.18.0 // indirect

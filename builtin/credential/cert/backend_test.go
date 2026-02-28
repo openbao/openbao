@@ -5,22 +5,16 @@ package cert
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
-	mathrand "math/rand"
-	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -30,6 +24,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/stretchr/testify/require"
+	"github.com/tsaarni/certyaml"
 
 	"golang.org/x/net/http2"
 
@@ -49,103 +44,51 @@ import (
 	"github.com/openbao/openbao/vault"
 )
 
-const (
-	serverCertPath = "test-fixtures/cacert.pem"
-	serverKeyPath  = "test-fixtures/cakey.pem"
-	serverCAPath   = serverCertPath
+type testCerts struct {
+	exampleCA   *certyaml.Certificate
+	exampleCert *certyaml.Certificate
+	clientCA    *certyaml.Certificate
+	clientCert  *certyaml.Certificate
+	client2CA   *certyaml.Certificate
+	client2Cert *certyaml.Certificate
+}
 
-	testRootCACertPath1 = "test-fixtures/testcacert1.pem"
-	testRootCAKeyPath1  = "test-fixtures/testcakey1.pem"
-	testCertPath1       = "test-fixtures/testissuedcert4.pem"
-	testKeyPath1        = "test-fixtures/testissuedkey4.pem"
-	testIssuedCertCRL   = "test-fixtures/issuedcertcrl"
-
-	testRootCACertPath2 = "test-fixtures/testcacert2.pem"
-	testRootCAKeyPath2  = "test-fixtures/testcakey2.pem"
-	testRootCertCRL     = "test-fixtures/cacert2crl"
-)
-
-func generateTestCertAndConnState(t *testing.T, template *x509.Certificate) (string, tls.ConnectionState, error) {
+func setupTestCerts(t *testing.T) *testCerts {
 	t.Helper()
-	tempDir := t.TempDir()
 
-	t.Logf("test %s, temp dir %s", t.Name(), tempDir)
-	caCertTemplate := &x509.Certificate{
-		Subject: pkix.Name{
-			CommonName: "localhost",
-		},
-		DNSNames:              []string{"localhost"},
-		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
-		KeyUsage:              x509.KeyUsage(x509.KeyUsageCertSign | x509.KeyUsageCRLSign),
-		SerialNumber:          big.NewInt(mathrand.Int63()),
-		NotBefore:             time.Now().Add(-30 * time.Second),
-		NotAfter:              time.Now().Add(262980 * time.Hour),
-		BasicConstraintsValid: true,
-		IsCA:                  true,
+	tc := &testCerts{}
+
+	tc.exampleCA = &certyaml.Certificate{
+		Subject:         "cn=ca.example.com",
+		SubjectAltNames: []string{"DNS:ca.example.com", "IP:127.0.0.1"},
 	}
-	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	caBytes, err := x509.CreateCertificate(rand.Reader, caCertTemplate, caCertTemplate, caKey.Public(), caKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	caCert, err := x509.ParseCertificate(caBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	caCertPEMBlock := &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: caBytes,
-	}
-	err = os.WriteFile(filepath.Join(tempDir, "ca_cert.pem"), pem.EncodeToMemory(caCertPEMBlock), 0o755)
-	if err != nil {
-		t.Fatal(err)
-	}
-	marshaledCAKey, err := x509.MarshalECPrivateKey(caKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	caKeyPEMBlock := &pem.Block{
-		Type:  "EC PRIVATE KEY",
-		Bytes: marshaledCAKey,
-	}
-	err = os.WriteFile(filepath.Join(tempDir, "ca_key.pem"), pem.EncodeToMemory(caKeyPEMBlock), 0o755)
-	if err != nil {
-		t.Fatal(err)
+	tc.exampleCert = &certyaml.Certificate{
+		Subject:         "cn=cert.example.com",
+		SubjectAltNames: []string{"DNS:cert.example.com", "IP:127.0.0.1"},
+		Issuer:          tc.exampleCA,
 	}
 
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
+	tc.clientCA = &certyaml.Certificate{
+		Subject:         "cn=ca1.openbao.org",
+		SubjectAltNames: []string{"DNS:ca1.openbao.org"},
 	}
-	certBytes, err := x509.CreateCertificate(rand.Reader, template, caCert, key.Public(), caKey)
-	if err != nil {
-		t.Fatal(err)
+	tc.clientCert = &certyaml.Certificate{
+		Subject:         "cn=client.ca1.openbao.org",
+		SubjectAltNames: []string{"DNS:client.ca1.openbao.org"},
+		Issuer:          tc.clientCA,
 	}
-	certPEMBlock := &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certBytes,
+
+	tc.client2CA = &certyaml.Certificate{
+		Subject:         "cn=ca2.openbao.org",
+		SubjectAltNames: []string{"DNS:ca2.openbao.org"},
 	}
-	err = os.WriteFile(filepath.Join(tempDir, "cert.pem"), pem.EncodeToMemory(certPEMBlock), 0o755)
-	if err != nil {
-		t.Fatal(err)
+	tc.client2Cert = &certyaml.Certificate{
+		Subject:         "cn=client.ca2.openbao.org",
+		SubjectAltNames: []string{"DNS:client.ca2.openbao.org"},
+		Issuer:          tc.client2CA,
 	}
-	marshaledKey, err := x509.MarshalECPrivateKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	keyPEMBlock := &pem.Block{
-		Type:  "EC PRIVATE KEY",
-		Bytes: marshaledKey,
-	}
-	err = os.WriteFile(filepath.Join(tempDir, "key.pem"), pem.EncodeToMemory(keyPEMBlock), 0o755)
-	if err != nil {
-		t.Fatal(err)
-	}
-	connInfo, err := testConnState(filepath.Join(tempDir, "cert.pem"), filepath.Join(tempDir, "key.pem"), filepath.Join(tempDir, "ca_cert.pem"))
-	return tempDir, connInfo, err
+
+	return tc
 }
 
 // Unlike testConnState, this method does not use the same 'tls.Config' objects for
@@ -153,8 +96,8 @@ func generateTestCertAndConnState(t *testing.T, template *x509.Certificate) (str
 // But the client, presents the CA cert of the server to trust the server.
 // The client can present a cert and key which is completely independent of server's CA.
 // The connection state returned will contain the certificate presented by the client.
-func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath, clientKeyPath string) (tls.ConnectionState, error) {
-	serverKeyPair, err := tls.LoadX509KeyPair(serverCertPath, serverKeyPath)
+func connectionState(serverCA, serverCert, clientCert *certyaml.Certificate) (tls.ConnectionState, error) {
+	serverKeyPair, err := serverCert.TLSCertificate()
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
@@ -164,24 +107,19 @@ func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath
 		ClientAuth:   tls.RequestClientCert,
 	}
 
-	clientKeyPair, err := tls.LoadX509KeyPair(clientCertPath, clientKeyPath)
+	clientKeyPair, err := clientCert.TLSCertificate()
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
-	// Load the CA cert required by the client to authenticate the server.
-	pem, err := os.ReadFile(serverCAPath)
+	serverCACert, err := serverCA.X509Certificate()
 	if err != nil {
-		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: %w", err)
+		return tls.ConnectionState{}, err
 	}
 
 	// Initialize the cert pool.
 	serverCAs := x509.NewCertPool()
+	serverCAs.AddCert(&serverCACert)
 
-	// Append the CA certificates from the PEM file to the cert pool.
-	ok := serverCAs.AppendCertsFromPEM(pem)
-	if !ok {
-		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: Couldn't parse PEM in: %s", serverCAPath)
-	}
 	// Prepare the dial configuration that the client uses to establish the connection.
 	dialConf := &tls.Config{
 		Certificates: []tls.Certificate{clientKeyPair},
@@ -337,7 +275,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	}
 
 	// Create a role on the intermediate CA mount
-	_, err = client.Logical().Write("pki2/roles/myvault-dot-com", map[string]interface{}{
+	_, err = client.Logical().Write("pki2/roles/openbao-cert", map[string]interface{}{
 		"allowed_domains":  "example.com",
 		"allow_subdomains": "true",
 		"max_ttl":          "5m",
@@ -347,7 +285,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	}
 
 	// Issue a leaf cert using the intermediate CA
-	secret, err = client.Logical().Write("pki2/issue/myvault-dot-com", map[string]interface{}{
+	secret, err = client.Logical().Write("pki2/issue/openbao-cert", map[string]interface{}{
 		"common_name": "cert.example.com",
 		"format":      "pem",
 		"ip_sans":     "127.0.0.1",
@@ -367,7 +305,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	}
 
 	// Set the intermediate CA cert as a trusted certificate in the backend
-	_, err = client.Logical().Write("auth/cert/certs/myvault-dot-com", map[string]interface{}{
+	_, err = client.Logical().Write("auth/cert/certs/openbao-cert", map[string]interface{}{
 		"display_name": "example.com",
 		"policies":     "default",
 		"certificate":  intermediateCertPEM,
@@ -378,41 +316,13 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 
 	// Create temporary files for CA cert, client cert and client cert key.
 	// This is used to configure TLS in the api client.
-	caCertFile, err := os.CreateTemp("", "caCert")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(caCertFile.Name())
-	if _, err := caCertFile.Write([]byte(cluster.CACertPEM)); err != nil {
-		t.Fatal(err)
-	}
-	if err := caCertFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	leafCertFile, err := os.CreateTemp("", "leafCert")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(leafCertFile.Name())
-	if _, err := leafCertFile.Write([]byte(leafCertPEM)); err != nil {
-		t.Fatal(err)
-	}
-	if err := leafCertFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	leafCertKeyFile, err := os.CreateTemp("", "leafCertKey")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(leafCertKeyFile.Name())
-	if _, err := leafCertKeyFile.Write([]byte(leafCertKeyPEM)); err != nil {
-		t.Fatal(err)
-	}
-	if err := leafCertKeyFile.Close(); err != nil {
-		t.Fatal(err)
-	}
+	tempDir := t.TempDir()
+	caCertFile := filepath.Join(tempDir, "ca.pem")
+	os.WriteFile(caCertFile, []byte(cluster.CACertPEM), 0o600)
+	leafCertFile := filepath.Join(tempDir, "leaf.pem")
+	os.WriteFile(leafCertFile, []byte(leafCertPEM), 0o600)
+	leafCertKeyFile := filepath.Join(tempDir, "leaf-key.pem")
+	os.WriteFile(leafCertKeyFile, []byte(leafCertKeyPEM), 0o600)
 
 	// This function is a copy-pasta from the NewTestCluster, with the
 	// modification to reconfigure the TLS on the api client with the leaf
@@ -439,9 +349,9 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 
 		// Set the above issued certificates as the client certificates
 		err := config.ConfigureTLS(&api.TLSConfig{
-			CACert:     caCertFile.Name(),
-			ClientCert: leafCertFile.Name(),
-			ClientKey:  leafCertKeyFile.Name(),
+			CACert:     caCertFile,
+			ClientCert: leafCertFile,
+			ClientKey:  leafCertKeyFile,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -458,7 +368,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	newClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig())
 
 	secret, err = newClient.Logical().Write("auth/cert/login", map[string]interface{}{
-		"name": "myvault-dot-com",
+		"name": "openbao-cert",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -484,6 +394,25 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 }
 
 func TestBackend_MetadataBasedACLPolicy(t *testing.T) {
+	tc := setupTestCerts(t)
+
+	extValue1, _ := asn1.Marshal("A UTF8String Extension")
+	extCert := &certyaml.Certificate{
+		Subject:         "cn=example.com",
+		SubjectAltNames: []string{"IP:127.0.0.1", "email:valid@example.com"},
+		Issuer:          tc.exampleCA,
+		ExtraExtensions: []pkix.Extension{
+			{
+				Id:    asn1.ObjectIdentifier{2, 1, 1, 1},
+				Value: extValue1,
+			},
+		},
+	}
+	tempDir := t.TempDir()
+	exCertFile := filepath.Join(tempDir, "extcert.pem")
+	exCertKeyFile := filepath.Join(tempDir, "extcert-key.pem")
+	extCert.WritePEM(exCertFile, exCertKeyFile)
+
 	// Start cluster with cert auth method enabled
 	coreConfig := &vault.CoreConfig{
 		DisableCache: true,
@@ -550,16 +479,11 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 		t.Fatalf("err: %v", err)
 	}
 
-	ca, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
 	// Set the trusted certificate in the backend
 	_, err = client.Logical().Write("auth/cert/certs/test", map[string]interface{}{
 		"display_name":                "test",
 		"policies":                    "metadata-based",
-		"certificate":                 string(ca),
+		"certificate":                 string(tc.exampleCA.CertPEM()),
 		"allowed_metadata_extensions": "2.1.1.1,1.2.3.45",
 	})
 	if err != nil {
@@ -592,8 +516,8 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 		// Set the client certificates
 		err := config.ConfigureTLS(&api.TLSConfig{
 			CACertBytes: cluster.CACertPEM,
-			ClientCert:  "test-fixtures/root/rootcawextcert.pem",
-			ClientKey:   "test-fixtures/root/rootcawextkey.pem",
+			ClientCert:  exCertFile,
+			ClientKey:   exCertKeyFile,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -646,163 +570,16 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 }
 
 func TestBackend_NonCAExpiry(t *testing.T) {
-	var resp *logical.Response
-	var err error
-
-	// Create a self-signed certificate and issue a leaf certificate using the
-	// CA cert
-	template := &x509.Certificate{
-		SerialNumber: big.NewInt(1234),
-		Subject: pkix.Name{
-			CommonName:         "localhost",
-			Organization:       []string{"hashicorp"},
-			OrganizationalUnit: []string{"vault"},
-		},
-		BasicConstraintsValid: true,
-		NotBefore:             time.Now().Add(-30 * time.Second),
-		NotAfter:              time.Now().Add(50 * time.Second),
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:              x509.KeyUsage(x509.KeyUsageCertSign | x509.KeyUsageCRLSign),
+	// Create CA and issue a short-lived leaf certificate.
+	shortExpiry := 3 * time.Second
+	ca := &certyaml.Certificate{
+		Subject:         "cn=localhost",
+		SubjectAltNames: []string{"IP:127.0.0.1"},
 	}
-
-	// Set IP SAN
-	parsedIP := net.ParseIP("127.0.0.1")
-	if parsedIP == nil {
-		t.Fatal("failed to create parsed IP")
-	}
-	template.IPAddresses = []net.IP{parsedIP}
-
-	// Private key for CA cert
-	caPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Marshalling to be able to create PEM file
-	caPrivateKeyBytes := x509.MarshalPKCS1PrivateKey(caPrivateKey)
-
-	caPublicKey := &caPrivateKey.PublicKey
-
-	template.IsCA = true
-
-	caCertBytes, err := x509.CreateCertificate(rand.Reader, template, template, caPublicKey, caPrivateKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	caCert, err := x509.ParseCertificate(caCertBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	parsedCaBundle := &certutil.ParsedCertBundle{
-		Certificate:      caCert,
-		CertificateBytes: caCertBytes,
-		PrivateKeyBytes:  caPrivateKeyBytes,
-		PrivateKeyType:   certutil.RSAPrivateKey,
-	}
-
-	caCertBundle, err := parsedCaBundle.ToCertBundle()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	caCertFile, err := os.CreateTemp("", "caCert")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer os.Remove(caCertFile.Name())
-
-	if _, err := caCertFile.Write([]byte(caCertBundle.Certificate)); err != nil {
-		t.Fatal(err)
-	}
-	if err := caCertFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	caKeyFile, err := os.CreateTemp("", "caKey")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer os.Remove(caKeyFile.Name())
-
-	if _, err := caKeyFile.Write([]byte(caCertBundle.PrivateKey)); err != nil {
-		t.Fatal(err)
-	}
-	if err := caKeyFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	// Prepare template for non-CA cert
-
-	template.IsCA = false
-	template.SerialNumber = big.NewInt(5678)
-
-	template.KeyUsage = x509.KeyUsage(x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign)
-	issuedPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	issuedPrivateKeyBytes := x509.MarshalPKCS1PrivateKey(issuedPrivateKey)
-
-	issuedPublicKey := &issuedPrivateKey.PublicKey
-
-	// Keep a short certificate lifetime so logins can be tested both when
-	// cert is valid and when it gets expired
-	template.NotBefore = time.Now().Add(-2 * time.Second)
-	template.NotAfter = time.Now().Add(3 * time.Second)
-
-	issuedCertBytes, err := x509.CreateCertificate(rand.Reader, template, caCert, issuedPublicKey, caPrivateKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	issuedCert, err := x509.ParseCertificate(issuedCertBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	parsedIssuedBundle := &certutil.ParsedCertBundle{
-		Certificate:      issuedCert,
-		CertificateBytes: issuedCertBytes,
-		PrivateKeyBytes:  issuedPrivateKeyBytes,
-		PrivateKeyType:   certutil.RSAPrivateKey,
-	}
-
-	issuedCertBundle, err := parsedIssuedBundle.ToCertBundle()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	issuedCertFile, err := os.CreateTemp("", "issuedCert")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer os.Remove(issuedCertFile.Name())
-
-	if _, err := issuedCertFile.Write([]byte(issuedCertBundle.Certificate)); err != nil {
-		t.Fatal(err)
-	}
-	if err := issuedCertFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	issuedKeyFile, err := os.CreateTemp("", "issuedKey")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer os.Remove(issuedKeyFile.Name())
-
-	if _, err := issuedKeyFile.Write([]byte(issuedCertBundle.PrivateKey)); err != nil {
-		t.Fatal(err)
-	}
-	if err := issuedKeyFile.Close(); err != nil {
-		t.Fatal(err)
+	issuedCert := &certyaml.Certificate{
+		Subject: "cn=localhost",
+		Issuer:  ca,
+		Expires: &shortExpiry,
 	}
 
 	config := logical.TestBackendConfig()
@@ -816,7 +593,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 
 	// Register the Non-CA certificate of the client key pair
 	certData := map[string]interface{}{
-		"certificate":  issuedCertBundle.Certificate,
+		"certificate":  issuedCert.CertPEM(),
 		"policies":     "abc",
 		"display_name": "cert1",
 		"ttl":          10000,
@@ -828,13 +605,13 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 		Data:      certData,
 	}
 
-	resp, err = b.HandleRequest(context.Background(), certReq)
+	resp, err := b.HandleRequest(context.Background(), certReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
 	// Create connection state using the certificates generated
-	connState, err := connectionState(caCertFile.Name(), caCertFile.Name(), caKeyFile.Name(), issuedCertFile.Name(), issuedKeyFile.Name())
+	connState, err := connectionState(ca, ca, issuedCert)
 	if err != nil {
 		t.Fatalf("error testing connection state:%v", err)
 	}
@@ -865,6 +642,8 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 }
 
 func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
+	tc := setupTestCerts(t)
+
 	config := logical.TestBackendConfig()
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
@@ -874,14 +653,9 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nonCACert, err := os.ReadFile(testCertPath1)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// Register the Non-CA certificate of the client key pair
 	certData := map[string]interface{}{
-		"certificate":  nonCACert,
+		"certificate":  tc.clientCert.CertPEM(),
 		"policies":     "abc",
 		"display_name": "cert1",
 		"ttl":          10000,
@@ -900,7 +674,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 
 	// Connection state is presenting the client Non-CA cert and its key.
 	// This is exactly what is registered at the backend.
-	connState, err := connectionState(serverCAPath, serverCertPath, serverKeyPath, testCertPath1, testKeyPath1)
+	connState, err := connectionState(tc.exampleCA, tc.exampleCert, tc.clientCert)
 	if err != nil {
 		t.Fatalf("error testing connection state:%v", err)
 	}
@@ -919,10 +693,12 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 	}
 
 	// Register a CRL containing the issued client certificate used above.
-	issuedCRL, err := os.ReadFile(testIssuedCertCRL)
-	if err != nil {
-		t.Fatal(err)
+	crl := &certyaml.CRL{
+		Issuer:  tc.clientCA,
+		Revoked: []*certyaml.Certificate{tc.clientCert},
 	}
+	issuedCRL, _ := crl.PEM()
+
 	crlData := map[string]interface{}{
 		"crl": issuedCRL,
 	}
@@ -963,6 +739,8 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 }
 
 func TestBackend_CRLs(t *testing.T) {
+	tc := setupTestCerts(t)
+
 	config := logical.TestBackendConfig()
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
@@ -972,13 +750,9 @@ func TestBackend_CRLs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	clientCA1, err := os.ReadFile(testRootCACertPath1)
-	if err != nil {
-		t.Fatal(err)
-	}
 	// Register the CA certificate of the client key pair
 	certData := map[string]interface{}{
-		"certificate":  clientCA1,
+		"certificate":  tc.clientCA.CertPEM(),
 		"policies":     "abc",
 		"display_name": "cert1",
 		"ttl":          10000,
@@ -998,7 +772,7 @@ func TestBackend_CRLs(t *testing.T) {
 
 	// Connection state is presenting the client CA cert and its key.
 	// This is exactly what is registered at the backend.
-	connState, err := connectionState(serverCAPath, serverCertPath, serverKeyPath, testRootCACertPath1, testRootCAKeyPath1)
+	connState, err := connectionState(tc.exampleCA, tc.exampleCert, tc.clientCA)
 	if err != nil {
 		t.Fatalf("error testing connection state:%v", err)
 	}
@@ -1017,7 +791,7 @@ func TestBackend_CRLs(t *testing.T) {
 
 	// Now, without changing the registered client CA cert, present from
 	// the client side, a cert issued using the registered CA.
-	connState, err = connectionState(serverCAPath, serverCertPath, serverKeyPath, testCertPath1, testKeyPath1)
+	connState, err = connectionState(tc.exampleCA, tc.exampleCert, tc.clientCert)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -1030,10 +804,12 @@ func TestBackend_CRLs(t *testing.T) {
 	}
 
 	// Register a CRL containing the issued client certificate used above.
-	issuedCRL, err := os.ReadFile(testIssuedCertCRL)
-	if err != nil {
-		t.Fatal(err)
+	crl := &certyaml.CRL{
+		Issuer:  tc.clientCA,
+		Revoked: []*certyaml.Certificate{tc.clientCert},
 	}
+	issuedCRL, _ := crl.PEM()
+
 	crlData := map[string]interface{}{
 		"crl": issuedCRL,
 	}
@@ -1059,18 +835,14 @@ func TestBackend_CRLs(t *testing.T) {
 	}
 
 	// Register a different client CA certificate.
-	clientCA2, err := os.ReadFile(testRootCACertPath2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	certData["certificate"] = clientCA2
+	certData["certificate"] = tc.client2CA.CertPEM()
 	resp, err = b.HandleRequest(context.Background(), certReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
 	// Test login using a different client CA cert pair.
-	connState, err = connectionState(serverCAPath, serverCertPath, serverKeyPath, testRootCACertPath2, testRootCAKeyPath2)
+	connState, err = connectionState(tc.exampleCA, tc.exampleCert, tc.client2Cert)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -1082,12 +854,13 @@ func TestBackend_CRLs(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	// Register a CRL containing the root CA certificate used above.
-	rootCRL, err := os.ReadFile(testRootCertCRL)
-	if err != nil {
-		t.Fatal(err)
+	// Register a CRL containing the client certificate used above.
+	rootCRL := &certyaml.CRL{
+		Issuer:  tc.client2CA,
+		Revoked: []*certyaml.Certificate{tc.client2Cert},
 	}
-	crlData["crl"] = rootCRL
+	rootCRLPEM, _ := rootCRL.PEM()
+	crlData["crl"] = rootCRLPEM
 	resp, err = b.HandleRequest(context.Background(), crlReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
@@ -1126,60 +899,52 @@ func testFactory(t *testing.T) logical.Backend {
 
 // Test the certificates being registered to the backend
 func TestBackend_CertWrites(t *testing.T) {
-	// CA cert
-	ca1, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	// Non CA Cert
-	ca2, err := os.ReadFile("test-fixtures/keys/cert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	tc := setupTestCerts(t)
+
 	// Non CA cert without TLS web client authentication
-	ca3, err := os.ReadFile("test-fixtures/noclientauthcert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
+	noClientAuthCert := &certyaml.Certificate{
+		Subject:         "cn=noclientauth",
+		SubjectAltNames: []string{"IP:127.0.0.1"},
+		Issuer:          tc.exampleCA,
+		ExtKeyUsage:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
 
-	tc := logicaltest.TestCase{
+	testCase := logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "aaa", ca1, "foo", allowed{}, false),
-			testAccStepCert(t, "bbb", ca2, "foo", allowed{}, false),
-			testAccStepCert(t, "ccc", ca3, "foo", allowed{}, true),
+			testAccStepCert(t, "aaa", tc.exampleCA.CertPEM(), "foo", allowed{}, false),
+			testAccStepCert(t, "bbb", tc.exampleCert.CertPEM(), "foo", allowed{}, false),
+			testAccStepCert(t, "ccc", noClientAuthCert.CertPEM(), "foo", allowed{}, true),
 		},
 	}
-	tc.Steps = append(tc.Steps, testAccStepListCerts(t, []string{"aaa", "bbb"})...)
-	logicaltest.Test(t, tc)
+	testCase.Steps = append(testCase.Steps, testAccStepListCerts(t, []string{"aaa", "bbb"})...)
+	logicaltest.Test(t, testCase)
 }
 
 // Test a client trusted by a CA
 func TestBackend_basic_CA(t *testing.T) {
-	connState, err := testConnState("test-fixtures/keys/cert.pem",
-		"test-fixtures/keys/key.pem", "test-fixtures/root/rootcacert.pem")
+	tc := setupTestCerts(t)
+
+	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	ca, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "web", ca, "foo", allowed{}, false),
+			testAccStepCert(t, "web", tc.exampleCA.CertPEM(), "foo", allowed{}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCertLease(t, "web", ca, "foo"),
-			testAccStepCertTTL(t, "web", ca, "foo"),
+			testAccStepCertLease(t, "web", tc.exampleCA.CertPEM(), "foo"),
+			testAccStepCertTTL(t, "web", tc.exampleCA.CertPEM(), "foo"),
 			testAccStepLogin(t, connState),
-			testAccStepCertMaxTTL(t, "web", ca, "foo"),
+			testAccStepCertMaxTTL(t, "web", tc.exampleCA.CertPEM(), "foo"),
 			testAccStepLogin(t, connState),
-			testAccStepCertNoLease(t, "web", ca, "foo"),
+			testAccStepCertNoLease(t, "web", tc.exampleCA.CertPEM(), "foo"),
 			testAccStepLoginDefaultLease(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{names: "*.example.com"}, false),
+			testAccStepCert(t, "web", tc.exampleCA.CertPEM(), "foo", allowed{names: "*.example.com"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{names: "*.invalid.com"}, false),
+			testAccStepCert(t, "web", tc.exampleCA.CertPEM(), "foo", allowed{names: "*.invalid.com"}, false),
 			testAccStepLoginInvalid(t, connState),
 		},
 	})
@@ -1187,26 +952,28 @@ func TestBackend_basic_CA(t *testing.T) {
 
 // Test CRL behavior
 func TestBackend_Basic_CRLs(t *testing.T) {
-	connState, err := testConnState("test-fixtures/keys/cert.pem",
-		"test-fixtures/keys/key.pem", "test-fixtures/root/rootcacert.pem")
+	tc := setupTestCerts(t)
+
+	crl := &certyaml.CRL{
+		Issuer:  tc.exampleCA,
+		Revoked: []*certyaml.Certificate{tc.exampleCert},
+	}
+	crlPEM, _ := crl.PEM()
+
+	cert, _ := tc.exampleCert.X509Certificate()
+
+	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	ca, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	crl, err := os.ReadFile("test-fixtures/root/root.crl")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCertNoLease(t, "web", ca, "foo"),
+			testAccStepCertNoLease(t, "web", tc.exampleCA.CertPEM(), "foo"),
 			testAccStepLoginDefaultLease(t, connState),
-			testAccStepAddCRL(t, crl, connState),
-			testAccStepReadCRL(t, connState),
+			testAccStepAddCRL(t, crlPEM, connState),
+			testAccStepReadCRL(t, connState, cert.SerialNumber.String()),
 			testAccStepLoginInvalid(t, connState),
 			testAccStepDeleteCRL(t, connState),
 			testAccStepLoginDefaultLease(t, connState),
@@ -1216,50 +983,42 @@ func TestBackend_Basic_CRLs(t *testing.T) {
 
 // Test a self-signed client (root CA) that is trusted
 func TestBackend_basic_singleCert(t *testing.T) {
-	connState, err := testConnState("test-fixtures/root/rootcacert.pem",
-		"test-fixtures/root/rootcakey.pem", "test-fixtures/root/rootcacert.pem")
+	tc := setupTestCerts(t)
+	connState, err := testConnState(tc.exampleCA, tc.exampleCA)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
-	}
-	ca, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
 	}
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "web", ca, "foo", allowed{}, false),
+			testAccStepCert(t, "web", tc.exampleCA.CertPEM(), "foo", allowed{}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{names: "example.com"}, false),
+			testAccStepCert(t, "web", tc.exampleCA.CertPEM(), "foo", allowed{names: "ca.example.com"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{names: "invalid"}, false),
+			testAccStepCert(t, "web", tc.exampleCA.CertPEM(), "foo", allowed{names: "invalid"}, false),
 			testAccStepLoginInvalid(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{ext: "1.2.3.4:invalid"}, false),
+			testAccStepCert(t, "web", tc.exampleCA.CertPEM(), "foo", allowed{ext: "1.2.3.4:invalid"}, false),
 			testAccStepLoginInvalid(t, connState),
 		},
 	})
 }
 
 func TestBackend_common_name_singleCert(t *testing.T) {
-	connState, err := testConnState("test-fixtures/root/rootcacert.pem",
-		"test-fixtures/root/rootcakey.pem", "test-fixtures/root/rootcacert.pem")
+	tc := setupTestCerts(t)
+	connState, err := testConnState(tc.exampleCA, tc.exampleCA)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
-	}
-	ca, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
 	}
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "web", ca, "foo", allowed{}, false),
+			testAccStepCert(t, "web", tc.exampleCA.CertPEM(), "foo", allowed{}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{common_names: "example.com"}, false),
+			testAccStepCert(t, "web", tc.exampleCA.CertPEM(), "foo", allowed{common_names: "ca.example.com"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{common_names: "invalid"}, false),
+			testAccStepCert(t, "web", tc.exampleCA.CertPEM(), "foo", allowed{common_names: "invalid"}, false),
 			testAccStepLoginInvalid(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{ext: "1.2.3.4:invalid"}, false),
+			testAccStepCert(t, "web", tc.exampleCA.CertPEM(), "foo", allowed{ext: "1.2.3.4:invalid"}, false),
 			testAccStepLoginInvalid(t, connState),
 		},
 	})
@@ -1267,18 +1026,31 @@ func TestBackend_common_name_singleCert(t *testing.T) {
 
 // Test a self-signed client with custom ext (root CA) that is trusted
 func TestBackend_ext_singleCert(t *testing.T) {
-	connState, err := testConnState(
-		"test-fixtures/root/rootcawextcert.pem",
-		"test-fixtures/root/rootcawextkey.pem",
-		"test-fixtures/root/rootcacert.pem",
-	)
+	tc := setupTestCerts(t)
+
+	// Create certificate with custom extensions.
+	extValue1, _ := asn1.Marshal("A UTF8String Extension")
+	extValue2, _ := asn1.Marshal("A UTF8String Extension 2")
+	extCert := &certyaml.Certificate{
+		Subject:         "cn=example.com",
+		SubjectAltNames: []string{"IP:127.0.0.1"},
+		Issuer:          tc.exampleCA,
+		ExtraExtensions: []pkix.Extension{
+			{
+				Id:    asn1.ObjectIdentifier{2, 1, 1, 1},
+				Value: extValue1,
+			},
+			{
+				Id:    asn1.ObjectIdentifier{2, 1, 1, 2},
+				Value: extValue2,
+			},
+		},
+	}
+	connState, err := testConnState(extCert, tc.exampleCA)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	ca, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+	ca := tc.exampleCA.CertPEM()
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
@@ -1333,43 +1105,33 @@ func TestBackend_ext_singleCert(t *testing.T) {
 
 // Test a self-signed client with URI alt names (root CA) that is trusted
 func TestBackend_dns_singleCert(t *testing.T) {
-	certTemplate := &x509.Certificate{
-		Subject: pkix.Name{
-			CommonName: "example.com",
-		},
-		DNSNames:    []string{"example.com"},
-		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")},
-		ExtKeyUsage: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageServerAuth,
-			x509.ExtKeyUsageClientAuth,
-		},
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement,
-		SerialNumber: big.NewInt(mathrand.Int63()),
-		NotBefore:    time.Now().Add(-30 * time.Second),
-		NotAfter:     time.Now().Add(262980 * time.Hour),
+	ca := &certyaml.Certificate{
+		Subject: "cn=ca",
 	}
 
-	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
+	cert := &certyaml.Certificate{
+		Subject:         "cn=example.com",
+		SubjectAltNames: []string{"DNS:example.com", "IP:127.0.0.1"},
+		Issuer:          ca,
+	}
+
+	connState, err := testConnState(cert, ca)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
-	}
-	ca, err := os.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
-	if err != nil {
-		t.Fatalf("err: %v", err)
 	}
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "web", ca, "foo", allowed{dns: "example.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{dns: "example.com"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{dns: "*ample.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{dns: "*ample.com"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{dns: "notincert.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{dns: "notincert.com"}, false),
 			testAccStepLoginInvalid(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{dns: "abc"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{dns: "abc"}, false),
 			testAccStepLoginInvalid(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{dns: "*.example.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{dns: "*.example.com"}, false),
 			testAccStepLoginInvalid(t, connState),
 		},
 	})
@@ -1377,43 +1139,35 @@ func TestBackend_dns_singleCert(t *testing.T) {
 
 // Test a self-signed client with URI alt names (root CA) that is trusted
 func TestBackend_email_singleCert(t *testing.T) {
-	certTemplate := &x509.Certificate{
-		Subject: pkix.Name{
-			CommonName: "example.com",
-		},
-		EmailAddresses: []string{"valid@example.com"},
-		IPAddresses:    []net.IP{net.ParseIP("127.0.0.1")},
-		ExtKeyUsage: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageServerAuth,
-			x509.ExtKeyUsageClientAuth,
-		},
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement,
-		SerialNumber: big.NewInt(mathrand.Int63()),
-		NotBefore:    time.Now().Add(-30 * time.Second),
-		NotAfter:     time.Now().Add(262980 * time.Hour),
+	ca := &certyaml.Certificate{
+		Subject: "cn=ca",
 	}
 
-	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
+	cert := &certyaml.Certificate{
+		Subject:         "cn=example.com",
+		SubjectAltNames: []string{"email:valid@example.com", "IP:127.0.0.1"},
+		Issuer:          ca,
+		ExtKeyUsage:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		KeyUsage:        x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement,
+	}
+
+	connState, err := testConnState(cert, ca)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
-	}
-	ca, err := os.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
-	if err != nil {
-		t.Fatalf("err: %v", err)
 	}
 
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "web", ca, "foo", allowed{emails: "valid@example.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{emails: "valid@example.com"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{emails: "*@example.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{emails: "*@example.com"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{emails: "invalid@notincert.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{emails: "invalid@notincert.com"}, false),
 			testAccStepLoginInvalid(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{emails: "abc"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{emails: "abc"}, false),
 			testAccStepLoginInvalid(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{emails: "*.example.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{emails: "*.example.com"}, false),
 			testAccStepLoginInvalid(t, connState),
 		},
 	})
@@ -1421,28 +1175,25 @@ func TestBackend_email_singleCert(t *testing.T) {
 
 // Test a self-signed client with OU (root CA) that is trusted
 func TestBackend_organizationalUnit_singleCert(t *testing.T) {
-	connState, err := testConnState(
-		"test-fixtures/root/rootcawoucert.pem",
-		"test-fixtures/root/rootcawoukey.pem",
-		"test-fixtures/root/rootcawoucert.pem",
-	)
+	cert := &certyaml.Certificate{
+		Subject:         "cn=example.com,ou=engineering",
+		SubjectAltNames: []string{"IP:127.0.0.1"},
+	}
+	connState, err := testConnState(cert, cert)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	ca, err := os.ReadFile("test-fixtures/root/rootcawoucert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "web", ca, "foo", allowed{organizational_units: "engineering"}, false),
+			testAccStepCert(t, "web", cert.CertPEM(), "foo", allowed{organizational_units: "engineering"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{organizational_units: "eng*"}, false),
+			testAccStepCert(t, "web", cert.CertPEM(), "foo", allowed{organizational_units: "eng*"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{organizational_units: "engineering,finance"}, false),
+			testAccStepCert(t, "web", cert.CertPEM(), "foo", allowed{organizational_units: "engineering,finance"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{organizational_units: "foo"}, false),
+			testAccStepCert(t, "web", cert.CertPEM(), "foo", allowed{organizational_units: "foo"}, false),
 			testAccStepLoginInvalid(t, connState),
 		},
 	})
@@ -1450,47 +1201,33 @@ func TestBackend_organizationalUnit_singleCert(t *testing.T) {
 
 // Test a self-signed client with URI alt names (root CA) that is trusted
 func TestBackend_uri_singleCert(t *testing.T) {
-	u, err := url.Parse("spiffe://example.com/host")
-	if err != nil {
-		t.Fatal(err)
-	}
-	certTemplate := &x509.Certificate{
-		Subject: pkix.Name{
-			CommonName: "example.com",
-		},
-		DNSNames:    []string{"example.com"},
-		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")},
-		URIs:        []*url.URL{u},
-		ExtKeyUsage: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageServerAuth,
-			x509.ExtKeyUsageClientAuth,
-		},
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement,
-		SerialNumber: big.NewInt(mathrand.Int63()),
-		NotBefore:    time.Now().Add(-30 * time.Second),
-		NotAfter:     time.Now().Add(262980 * time.Hour),
+	ca := &certyaml.Certificate{
+		Subject: "cn=ca",
 	}
 
-	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
+	cert := &certyaml.Certificate{
+		Subject:         "cn=example.com",
+		SubjectAltNames: []string{"IP:127.0.0.1", "URI:spiffe://example.com/host"},
+		Issuer:          ca,
+	}
+
+	connState, err := testConnState(cert, ca)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	ca, err := os.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
+
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "web", ca, "foo", allowed{uris: "spiffe://example.com/*"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{uris: "spiffe://example.com/*"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{uris: "spiffe://example.com/host"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{uris: "spiffe://example.com/host"}, false),
 			testAccStepLogin(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{uris: "spiffe://example.com/invalid"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{uris: "spiffe://example.com/invalid"}, false),
 			testAccStepLoginInvalid(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{uris: "abc"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{uris: "abc"}, false),
 			testAccStepLoginInvalid(t, connState),
-			testAccStepCert(t, "web", ca, "foo", allowed{uris: "http://www.google.com"}, false),
+			testAccStepCert(t, "web", ca.CertPEM(), "foo", allowed{uris: "http://www.google.com"}, false),
 			testAccStepLoginInvalid(t, connState),
 		},
 	})
@@ -1498,21 +1235,17 @@ func TestBackend_uri_singleCert(t *testing.T) {
 
 // Test against a collection of matching and non-matching rules
 func TestBackend_mixed_constraints(t *testing.T) {
-	connState, err := testConnState("test-fixtures/keys/cert.pem",
-		"test-fixtures/keys/key.pem", "test-fixtures/root/rootcacert.pem")
+	tc := setupTestCerts(t)
+	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
-	}
-	ca, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
 	}
 	logicaltest.Test(t, logicaltest.TestCase{
 		CredentialBackend: testFactory(t),
 		Steps: []logicaltest.TestStep{
-			testAccStepCert(t, "1unconstrained", ca, "foo", allowed{}, false),
-			testAccStepCert(t, "2matching", ca, "foo", allowed{names: "*.example.com,whatever"}, false),
-			testAccStepCert(t, "3invalid", ca, "foo", allowed{names: "invalid"}, false),
+			testAccStepCert(t, "1unconstrained", tc.exampleCA.CertPEM(), "foo", allowed{}, false),
+			testAccStepCert(t, "2matching", tc.exampleCA.CertPEM(), "foo", allowed{names: "*.example.com,whatever"}, false),
+			testAccStepCert(t, "3invalid", tc.exampleCA.CertPEM(), "foo", allowed{names: "invalid"}, false),
 			testAccStepLogin(t, connState),
 			// Assumes CertEntries are processed in alphabetical order (due to store.List), so we only match 2matching if 1unconstrained doesn't match
 			testAccStepLoginWithName(t, connState, "2matching"),
@@ -1523,8 +1256,8 @@ func TestBackend_mixed_constraints(t *testing.T) {
 
 // Test an untrusted client
 func TestBackend_untrusted(t *testing.T) {
-	connState, err := testConnState("test-fixtures/keys/cert.pem",
-		"test-fixtures/keys/key.pem", "test-fixtures/root/rootcacert.pem")
+	tc := setupTestCerts(t)
+	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -1537,6 +1270,7 @@ func TestBackend_untrusted(t *testing.T) {
 }
 
 func TestBackend_validCIDR(t *testing.T) {
+	tc := setupTestCerts(t)
 	config := logical.TestBackendConfig()
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
@@ -1546,14 +1280,9 @@ func TestBackend_validCIDR(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	connState, err := testConnState("test-fixtures/keys/cert.pem",
-		"test-fixtures/keys/key.pem", "test-fixtures/root/rootcacert.pem")
+	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
-	}
-	ca, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
 	}
 
 	name := "web"
@@ -1563,7 +1292,7 @@ func TestBackend_validCIDR(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "certs/" + name,
 		Data: map[string]interface{}{
-			"certificate":         string(ca),
+			"certificate":         tc.exampleCA.CertPEM(),
 			"policies":            "foo",
 			"display_name":        name,
 			"allowed_names":       "",
@@ -1619,6 +1348,7 @@ func TestBackend_validCIDR(t *testing.T) {
 }
 
 func TestBackend_invalidCIDR(t *testing.T) {
+	tc := setupTestCerts(t)
 	config := logical.TestBackendConfig()
 	storage := &logical.InmemStorage{}
 	config.StorageView = storage
@@ -1628,14 +1358,9 @@ func TestBackend_invalidCIDR(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	connState, err := testConnState("test-fixtures/keys/cert.pem",
-		"test-fixtures/keys/key.pem", "test-fixtures/root/rootcacert.pem")
+	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
-	}
-	ca, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	if err != nil {
-		t.Fatalf("err: %v", err)
 	}
 
 	name := "web"
@@ -1644,7 +1369,7 @@ func TestBackend_invalidCIDR(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "certs/" + name,
 		Data: map[string]interface{}{
-			"certificate":         string(ca),
+			"certificate":         tc.exampleCA.CertPEM(),
 			"policies":            "foo",
 			"display_name":        name,
 			"allowed_names":       "",
@@ -1692,7 +1417,7 @@ func testAccStepAddCRL(t *testing.T, crl []byte, connState tls.ConnectionState) 
 	}
 }
 
-func testAccStepReadCRL(t *testing.T, connState tls.ConnectionState) logicaltest.TestStep {
+func testAccStepReadCRL(t *testing.T, connState tls.ConnectionState, expectedSerial string) logicaltest.TestStep {
 	return logicaltest.TestStep{
 		Operation: logical.ReadOperation,
 		Path:      "crls/test",
@@ -1706,7 +1431,7 @@ func testAccStepReadCRL(t *testing.T, connState tls.ConnectionState) logicaltest
 			if len(crlInfo.Serials) != 1 {
 				t.Fatalf("bad: expected CRL with length 1, got %d", len(crlInfo.Serials))
 			}
-			if _, ok := crlInfo.Serials["665196038707549495932848523564088297973957177406"]; !ok {
+			if _, ok := crlInfo.Serials[expectedSerial]; !ok {
 				t.Fatal("bad: expected serial number not found in CRL")
 			}
 			return nil
@@ -2050,26 +1775,20 @@ func testAccStepCertNoLease(
 	}
 }
 
-func testConnState(certPath, keyPath, rootCertPath string) (tls.ConnectionState, error) {
-	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+func testConnState(cert, ca *certyaml.Certificate) (tls.ConnectionState, error) {
+	tlsCert, err := cert.TLSCertificate()
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
-	// Load the CA cert required by the client to authenticate the server
-	pem, err := os.ReadFile(rootCertPath)
+	caCert, err := ca.X509Certificate()
 	if err != nil {
-		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: %w", err)
+		return tls.ConnectionState{}, err
 	}
 	rootCAs := x509.NewCertPool()
-
-	// Append the CA certificates from the PEM file to the cert pool
-	ok := rootCAs.AppendCertsFromPEM(pem)
-	if !ok {
-		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: Couldn't parse PEM in: %s", rootCertPath)
-	}
+	rootCAs.AddCert(&caCert)
 
 	listenConf := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
+		Certificates:       []tls.Certificate{tlsCert},
 		ClientAuth:         tls.RequestClientCert,
 		InsecureSkipVerify: false,
 		RootCAs:            rootCAs,
@@ -2144,6 +1863,7 @@ func testConnState(certPath, keyPath, rootCertPath string) (tls.ConnectionState,
 }
 
 func Test_Renew(t *testing.T) {
+	tc := setupTestCerts(t)
 	storage := &logical.InmemStorage{}
 
 	lb, err := Factory(context.Background(), &logical.BackendConfig{
@@ -2158,14 +1878,9 @@ func Test_Renew(t *testing.T) {
 	}
 
 	b := lb.(*backend)
-	connState, err := testConnState("test-fixtures/keys/cert.pem",
-		"test-fixtures/keys/key.pem", "test-fixtures/root/rootcacert.pem")
+	connState, err := testConnState(tc.exampleCert, tc.exampleCA)
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
-	}
-	ca, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
-	if err != nil {
-		t.Fatal(err)
 	}
 
 	req := &logical.Request{
@@ -2179,7 +1894,7 @@ func Test_Renew(t *testing.T) {
 	fd := &framework.FieldData{
 		Raw: map[string]interface{}{
 			"name":        "test",
-			"certificate": ca,
+			"certificate": tc.exampleCA.CertPEM(),
 			"policies":    "foo,bar",
 		},
 		Schema: pathCerts(b).Fields,
@@ -2348,182 +2063,10 @@ func TestBackend_CertUpgrade(t *testing.T) {
 	}
 }
 
-const (
-	RegTrustedLeafCertA = `-----BEGIN CERTIFICATE-----
-MIIFcTCCA1mgAwIBAgICBAAwDQYJKoZIhvcNAQELBQAwRzESMBAGA1UEChMJQ0lQ
-SEVSQk9ZMRMwEQYDVQQLEwpwa2ktdG9tY2F0MRwwGgYDVQQDExNDQSBSb290IENl
-cnRpZmljYXRlMCAXDTI0MDMwNDE0MDMxOVoYDzIxMjQwMzA0MTQwMzE5WjAuMRIw
-EAYDVQQKEwlDSVBIRVJCT1kxGDAWBgNVBAMTD2EuY2lwaGVyYm95LmNvbTCCAiIw
-DQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBALy9sQmv3OBXiIJD+CYZ8UNx6Tix
-AKmpXwBwvHsM/GzbIHW5DbJtCdmM2RPN6qmRRiBwc+8Sogj7Lm4h2vY0+AWOldfe
-g533cMI1uAWMtJEdcrRO7V7HdHPiO0bbBX3F3ZRIqYEWlYLWWqYEPQrPv5UtbDyv
-Gg7+OXqmd+qMk76+klOAZ0CCxJf/AHGdYGaBsh/+Z8dEi1L6VDSAXhmdNfSlAsZt
-zZAUk0FiNQpxqZjI38MOvVYKAUGnqIkJatoqMPH+krYQxCA+HhKGepsCWfchAcFG
-Fa2FoLM/+akLId5QKJ5jLLoZ0BMScjmRgp9VCmPmt5hoVvgMiOwABz5SnGpgqgLJ
-uOxkOtm+VFoyD3qKH72KQZOTwU4mzqrWHIiYCThYzJwWvwmSQ4u2QNSF5pXU2Mct
-sT8sJzDPu02fMGR+cZzcVSdYSJWiDgHc/IlfREeBiNO2HayPkgpiETv1UX/mNBbf
-CYLJnGnYrtLyWb4tX898cfKWFt0LMdOYcKIjvc/78F45O9LD4oqKR8QTv9LkRdF6
-cNfPECieBhR7gITmqMew85LmF87yscEEPUGYF7LPPz2B2Gfrs5bIuIlhiCOR7xso
-xOQDGToIHw6cLdYW9aPAOkUJwBtp6TL5nrgX1EAaUutPluhHqC60JJxITTEtfqcQ
-aFcvHfgRxDxUC6nPAgMBAAGjfjB8MEAGCCsGAQUFBwEBBDQwMjAwBggrBgEFBQcw
-AYYkaHR0cDovL2NhLmNpcGhlcmJveS5jb206ODA4MC9jYS9vY3NwMAkGA1UdIwQC
-MAAwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMBMA4GA1UdDwEB/wQEAwIE
-sDANBgkqhkiG9w0BAQsFAAOCAgEAj/kfWWOfvokxk0cN0vngml61uEw6HkMs2D9C
-68vuH3L+EBnU+RjUngVbeZ08H/dxQHwymW25CwdnfAXMn7PzSrUwjD1Qd/K0mWFg
-CexGKpXnepyo2mL3ZEzRfdQ87DCfyIX6C1SVlGkU5/kLYd20nbJaqNe1OVHj1Vrr
-aZpdbO2v2gMhbUP4EqEtfFNa41jnSZE845nE+2N/avbfLlq//v4FwU1JZVdeyP1Q
-o4rGNaGpWLveRrtqhNLEyq35gN4uRElE0SxYuYzXInfJC5h1gB1yBtvi7Wson8S8
-Hn/Sf95SBHJwSPs49WwWBtIaQyfvqnYrjX2mwp/TCbUuhIB8edlOWD8BTZ7+AKFH
-7qji8Qj+rHauEMryR30x6wqrSQyh30Xv0azaVIpK/kT/XsvRCowgCRhgaejHAN5a
-zKtj41B6VfVCRxGYC5wr8tWOWpJysBej1OtmQwEP7XhZFQh/ME3OPwqXXAXOUUnv
-0Up84wvWFHBkDPJeTSiS2qefZk/HDeEL5xgFp0A4PLjrSO43KTc6nyPxl5+xFJ7b
-/zY+XAR1YD5SzsgI7rkdx538u89vR+sKKJ+XPAJUa5JhPQjTVL9Exr3cqc5kazwT
-Rp+Yy6n6wYsGA9916PqKVfC3dqSbNyO5Gdw8V5bMdp/E0j9f+D6sgsJFFFVKCB2t
-arXtCcc=
------END CERTIFICATE-----
-`
-	RegTrustedLeafKeyA = `-----BEGIN PRIVATE KEY-----
-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
-Qy9lVAuKDEh15921mPxb074a6ByNMg==
------END PRIVATE KEY-----
-`
-	RegTrustedLeafCertB = `-----BEGIN CERTIFICATE-----
-MIIFcDCCA1igAwIBAgICBAAwDQYJKoZIhvcNAQELBQAwRjESMBAGA1UEChMJQ0lQ
-SEVSQk9ZMRMwEQYDVQQLEwpwa2ktdG9tY2F0MRswGQYDVQQDExJDQSBTdWIgQ2Vy
-dGlmaWNhdGUwIBcNMjQwMzA0MTQwMzIwWhgPMjEyNDAzMDQxNDAzMjBaMC4xEjAQ
-BgNVBAoTCUNJUEhFUkJPWTEYMBYGA1UEAxMPYi5jaXBoZXJib3kuY29tMIICIjAN
-BgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAztMFwBX8R7lsWz9WpFtEK5ZXXBjk
-IZ5GkdY9gPXRyKPdBj0gckjNOWy74xJ+TYxT2+EPPDwe4KD7IGDM0PG9JGATzG9O
-OQ7kJuNycG4zFu+BSzMGcfRc1y88j/GBubfy2R4tNpUb4KJ4C8JaWo2BIjjmywJS
-ywq4CwaDUVgJOGIr57y2iljCuCVGfTpB6g5AHlJ6eMX6Yl254dHmcUA9JlP49C5H
-XmJbAB9vn4EHEBN8zIjWLUIckwAxKjDdfjrwNfheHSGVs+uP8u8PC09pAs7y6jnT
-3QEwqg9wIoK4L4bxy4Gj0D4ZxDpEgYlZNIFRcHrabm+IjKSy2eB01Vpkc2tgZmfs
-uYEzuxg/HfujosJYrfeYD3lZGU8xnoJzE0MXbfGCEQLyCm3XShqNIh/D4st/gptJ
-5IxknNfIKtQ8n5KIbVvCasPxyy0hHN6NE2Z4pzA59JoWQa8gBC7pHCJ/kLLbgLf1
-5dHwJcf444oh54hddQOgzhVxiMxwcJDEh/jKiqAYw4cF559QYBlrHx3U8VMJNi0M
-ai9jWVsz7/KRrjuO1bvV/M6BrAVfmeywrmcFaZF6r3q5JThdPoao24ba9j5m8brx
-F1vN2tSxml/xNCNrgdjPUTw8rBexoCmt9NRF4SGZyhL3EjYSNvECncqRRTIkdgP+
-x0FEbsI7NxrpMokCAwEAAaN+MHwwQAYIKwYBBQUHAQEENDAyMDAGCCsGAQUFBzAB
-hiRodHRwOi8vY2EuY2lwaGVyYm95LmNvbTo4MDgwL2NhL29jc3AwCQYDVR0jBAIw
-ADAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUHAwEwDgYDVR0PAQH/BAQDAgSw
-MA0GCSqGSIb3DQEBCwUAA4ICAQC7JJ3kIB0hW5wRTUZKKWL2cfJ3To7YStXh78P3
-h2nby4cD6UbPkQW9Yn3Av0sMqBHr6Pk3mHKL+3sE895/PyGMTqQbLyVDMi4HOd2i
-sUf3snhNjRRRvM7IeHNhjvI004XKlGIqo9rfn3CFnWo663za3He8jsc4i+hxTnya
-KaW8D8gJkTJRW3fg1ACsESEG4ITY83PkERrzBJvPLcza75tjtrPUrHy4qEwVnQcD
-XWZN0Y6pTD4M4mtBXfaoKKeujxf+kT/XvnPgAR1OL0vs3ttotZSAQe35hn5hlNX3
-Aa4ZzxIhNGihyNHPKD1I/F3izCkUeDHtk/aLAgv9F7CfJux80cbnkzAqE0S/bdbR
-PQlPKDp0REy6nOXbJ35R5Agadn6i4r8fFDKzR8aGylymGcsF4YOlowo+PaS51SFc
-lBOM/sQdZVs3K7HEIzUkAudwVE2/sj5cZlNykW741LkB+Ezk2QMAVwkyCsaC9Tu/
-GTdMC0+AtueG9NvJ7fv36hBeXAFuS728K5mPPtzhCmmHcplNaf23NiTob++sb96k
-EJy3f0IRpQji0cgIfrqcgbm4BNwepGAq46c+gyGWD7HOTaNVe0hNOgmBAZRDfIJ8
-Mt/hEsvQYDL/Y4OSv+fQD/KVy9nx7zbXPMqcko+9w+TT/2AVfqX2uRo3DPoVwJy7
-mLG5gA==
------END CERTIFICATE-----
-`
-	RegTrustedLeafKeyB = `-----BEGIN PRIVATE KEY-----
-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
-mr2dJsMn54TXDOZYRQd5WVKDDu8xoJI=
------END PRIVATE KEY-----
-`
-)
-
 func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
+	leafA := &certyaml.Certificate{Subject: "cn=a.openbao.org"}
+	leafB := &certyaml.Certificate{Subject: "cn=b.openbao.org"}
+
 	// Cert auth method
 	coreConfig := &vault.CoreConfig{
 		DisableCache: true,
@@ -2555,7 +2098,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	_, err = client.Logical().Write("auth/cert/certs/trusted-leaf", map[string]interface{}{
 		"display_name": "trusted-cert",
 		"policies":     "default",
-		"certificate":  RegTrustedLeafCertA,
+		"certificate":  string(leafA.CertPEM()),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -2563,17 +2106,16 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 
 	// Parse the leaf and create a cloned copy of it with a different subject
 	// name to validate against HCSEC-2025-18 (CVE-2025-6037).
-	bundle, err := certutil.ParsePEMBundle(RegTrustedLeafCertA + "\n" + RegTrustedLeafKeyA)
+	tamperedLeafA, _ := leafA.X509Certificate()
+	tamperedLeafA.Subject.CommonName = "a-fake.openbao.org"
+	tamperedLeafA.Raw = nil
+	tamperedLeafA.RawIssuer = nil
+	tamperedLeafA.RawSubject = nil
+	tamperedLeafA.RawSubjectPublicKeyInfo = nil
+	tamperedLeafA.RawTBSCertificate = nil
+	leafAKey, _ := leafA.PrivateKey()
+	certATampered, err := x509.CreateCertificate(rand.Reader, &tamperedLeafA, &tamperedLeafA, tamperedLeafA.PublicKey, leafAKey)
 	require.NoError(t, err)
-	bundle.Certificate.Subject.CommonName = "a-fake.cipherboy.com"
-	bundle.Certificate.Raw = nil
-	bundle.Certificate.RawIssuer = nil
-	bundle.Certificate.RawSubject = nil
-	bundle.Certificate.RawSubjectPublicKeyInfo = nil
-	bundle.Certificate.RawTBSCertificate = nil
-	certATampered, err := x509.CreateCertificate(rand.Reader, bundle.Certificate, bundle.Certificate, bundle.Certificate.PublicKey, bundle.PrivateKey)
-	require.NoError(t, err)
-
 	regTamperedLeafCertA := pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: certATampered,
@@ -2581,17 +2123,16 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 
 	// Also create a variant of key B with the same subject as key A to detect
 	// attempted reuse that way.
-	bundle, err = certutil.ParsePEMBundle(RegTrustedLeafCertB + "\n" + RegTrustedLeafKeyB)
+	tamperedLeafB, _ := leafB.X509Certificate()
+	tamperedLeafB.Subject.CommonName = "a.openbao.org"
+	tamperedLeafB.Raw = nil
+	tamperedLeafB.RawIssuer = nil
+	tamperedLeafB.RawSubject = nil
+	tamperedLeafB.RawSubjectPublicKeyInfo = nil
+	tamperedLeafB.RawTBSCertificate = nil
+	leafBKey, _ := leafB.PrivateKey()
+	certBTampered, err := x509.CreateCertificate(rand.Reader, &tamperedLeafB, &tamperedLeafB, tamperedLeafB.PublicKey, leafBKey)
 	require.NoError(t, err)
-	bundle.Certificate.Subject.CommonName = "a.cipherboy.com"
-	bundle.Certificate.Raw = nil
-	bundle.Certificate.RawIssuer = nil
-	bundle.Certificate.RawSubject = nil
-	bundle.Certificate.RawSubjectPublicKeyInfo = nil
-	bundle.Certificate.RawTBSCertificate = nil
-	certBTampered, err := x509.CreateCertificate(rand.Reader, bundle.Certificate, bundle.Certificate, bundle.Certificate.PublicKey, bundle.PrivateKey)
-	require.NoError(t, err)
-
 	regTamperedLeafCertB := pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: certBTampered,
@@ -2599,95 +2140,20 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 
 	// Create temporary files for CA cert, client cert and client cert key.
 	// This is used to configure TLS in the api client.
-	caCertFile, err := os.CreateTemp("", "caCert")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(caCertFile.Name())
-	if _, err := caCertFile.Write([]byte(cluster.CACertPEM)); err != nil {
-		t.Fatal(err)
-	}
-	if err := caCertFile.Close(); err != nil {
-		t.Fatal(err)
-	}
+	tempDir := t.TempDir()
+	caCertFile := filepath.Join(tempDir, "ca.pem")
+	leafACertFile := filepath.Join(tempDir, "leafA.pem")
+	leafAKeyFile := filepath.Join(tempDir, "leafA-key.pem")
+	leafBCertFile := filepath.Join(tempDir, "leafB.pem")
+	leafBKeyFile := filepath.Join(tempDir, "leafB-key.pem")
+	tamperedACertFile := filepath.Join(tempDir, "tamperedA.pem")
+	tamperedBCertFile := filepath.Join(tempDir, "tamperedB.pem")
 
-	leafCertAFile, err := os.CreateTemp("", "leafCertA")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(leafCertAFile.Name())
-	if _, err := leafCertAFile.Write([]byte(RegTrustedLeafCertA)); err != nil {
-		t.Fatal(err)
-	}
-	if err := leafCertAFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	leafCertATamperedFile, err := os.CreateTemp("", "leafCertATampered")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(leafCertATamperedFile.Name()) //nolint:errcheck
-	if _, err := leafCertATamperedFile.Write(regTamperedLeafCertA); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := leafCertATamperedFile.Write([]byte("\n")); err != nil {
-		t.Fatal(err)
-	}
-	if err := leafCertATamperedFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	leafCertBTamperedFile, err := os.CreateTemp("", "leafCertBTampered")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(leafCertBTamperedFile.Name()) //nolint:errcheck
-	if _, err := leafCertBTamperedFile.Write(regTamperedLeafCertB); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := leafCertBTamperedFile.Write([]byte("\n")); err != nil {
-		t.Fatal(err)
-	}
-	if err := leafCertBTamperedFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	leafCertAKeyFile, err := os.CreateTemp("", "leafCertAKey")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(leafCertAKeyFile.Name())
-	if _, err := leafCertAKeyFile.Write([]byte(RegTrustedLeafKeyA)); err != nil {
-		t.Fatal(err)
-	}
-	if err := leafCertAKeyFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	leafCertBFile, err := os.CreateTemp("", "leafCertB")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(leafCertBFile.Name())
-	if _, err := leafCertBFile.Write([]byte(RegTrustedLeafCertB)); err != nil {
-		t.Fatal(err)
-	}
-	if err := leafCertBFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	leafCertBKeyFile, err := os.CreateTemp("", "leafCertBKey")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(leafCertBKeyFile.Name())
-	if _, err := leafCertBKeyFile.Write([]byte(RegTrustedLeafKeyB)); err != nil {
-		t.Fatal(err)
-	}
-	if err := leafCertBKeyFile.Close(); err != nil {
-		t.Fatal(err)
-	}
+	os.WriteFile(caCertFile, []byte(cluster.CACertPEM), 0o600)
+	leafA.WritePEM(leafACertFile, leafAKeyFile)
+	leafB.WritePEM(leafBCertFile, leafBKeyFile)
+	os.WriteFile(tamperedACertFile, regTamperedLeafCertA, 0o600)
+	os.WriteFile(tamperedBCertFile, regTamperedLeafCertB, 0o600)
 
 	// This function is a copy-pasta from the NewTestCluster, with the
 	// modification to reconfigure the TLS on the api client with the leaf
@@ -2714,7 +2180,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 
 		// Set the above issued certificates as the client certificates
 		err := config.ConfigureTLS(&api.TLSConfig{
-			CACert:     caCertFile.Name(),
+			CACert:     caCertFile,
 			ClientCert: leafCert,
 			ClientKey:  leafKey,
 		})
@@ -2730,7 +2196,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	}
 
 	// Create a new api client with the incorrect leaf; it should fail.
-	newBClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafCertBFile.Name(), leafCertBKeyFile.Name())
+	newBClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafBCertFile, leafBKeyFile)
 
 	secret, err := newBClient.Logical().Write("auth/cert/login", map[string]interface{}{
 		"name": "trusted-leaf",
@@ -2743,7 +2209,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	}
 
 	// Create a new API client with the correct leaf; it should succeed.
-	newAClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafCertAFile.Name(), leafCertAKeyFile.Name())
+	newAClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafACertFile, leafAKeyFile)
 
 	secret, err = newAClient.Logical().Write("auth/cert/login", map[string]interface{}{
 		"name": "trusted-leaf",
@@ -2756,7 +2222,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	}
 
 	// Create a new API client with the tampered leaves; it should fail.
-	tamperedAClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafCertATamperedFile.Name(), leafCertAKeyFile.Name())
+	tamperedAClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), tamperedACertFile, leafAKeyFile)
 
 	secret, err = tamperedAClient.Logical().Write("auth/cert/login", map[string]interface{}{
 		"name": "trusted-leaf",
@@ -2768,7 +2234,7 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 		t.Fatalf("when logging in with different leaf from trusted, expected empty secret but got %v", secret)
 	}
 
-	tamperedBClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafCertBTamperedFile.Name(), leafCertBKeyFile.Name())
+	tamperedBClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), tamperedBCertFile, leafBKeyFile)
 
 	secret, err = tamperedBClient.Logical().Write("auth/cert/login", map[string]interface{}{
 		"name": "trusted-leaf",

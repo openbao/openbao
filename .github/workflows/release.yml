@@ -382,7 +382,7 @@ jobs:
           gh release create -t $TAGNAME --verify-tag $TAGNAME || true
 
       - name: Download dist-tarball artifact
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: dist-tarball
 
@@ -408,7 +408,7 @@ jobs:
           aws s3 sync s3://${BUCKET}/deb/dists build/deb/dists
 
       - name: Download deb-packages artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           pattern: deb-packages-*
           merge-multiple: true
@@ -468,7 +468,7 @@ jobs:
           aws s3 sync s3://${BUCKET}/rpm build/rpm --exclude \*.rpm
 
       - name: Download rpm-packages artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           pattern: rpm-packages-*
           merge-multiple: true

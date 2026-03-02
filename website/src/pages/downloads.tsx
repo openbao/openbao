@@ -9,8 +9,9 @@ import {
   GetReleases,
   AssetArchitecture,
   OsPrettyPrint,
-  ArchPackageMapApply,
+  ArchPackageMapApply
 } from "@site/src/components/Releases";
+import CodeBlockWrap from "@site/src/components/CodeBlockWrap";
 
 // Create a context
 const OptionsContext = createContext(null);
@@ -229,7 +230,7 @@ const DebRepo = ({ gpgKeyName }) => {
       Simply add this repository configuration to your DEB-sources. APT then
       verifies that the packages have been created and signed by the official
       pipeline and have not been tampered with.
-      <CodeBlock
+      <CodeBlockWrap
         language="shell"
         title="/etc/apt/sources.list.d/openbao.sources"
         showLineNumbers
@@ -240,7 +241,7 @@ Suites: stable
 Components: main
 Signed-By:
 ` + gpgKey.replaceAll(/^(?!$)/gm, " ")}
-      </CodeBlock>
+      </CodeBlockWrap>
       <h6>Install OpenBao</h6>
       <CodeBlock language="shell">
         {`sudo apt update && sudo apt install openbao`}

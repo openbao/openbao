@@ -460,8 +460,8 @@ github.com/hashicorp/go-secure-stdlib/nonceutil v0.1.0 h1:iJG9Q3iUme12yH+wzBMGYr
 github.com/hashicorp/go-secure-stdlib/nonceutil v0.1.0/go.mod h1:s28ohJ0kU6tersf0it/WsBCyZSdziPlP+G1FRA3ar28=
 github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0 h1:U+kC2dOhMFQctRfhK0gRctKAPTloZdMU5ZJxaesJ/VM=
 github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0/go.mod h1:Ll013mhdmsVDuoIXVfBtvgGJsXDYkTw1kooNcoCXuE0=
-github.com/hashicorp/go-secure-stdlib/password v0.1.4 h1:h8gOB6qDRlOMvoMHOqtf4oTdB+goC/hWX0+TXA+VltI=
-github.com/hashicorp/go-secure-stdlib/password v0.1.4/go.mod h1:DeLx56RZZdmwX8Q94fVQUetkXv6zVBfDtGAPJDh69AU=
+github.com/hashicorp/go-secure-stdlib/password v0.1.5 h1:OapsB66UrtESgRlsw+eYqIo7fwX6J2VinHL4K0q6Nfk=
+github.com/hashicorp/go-secure-stdlib/password v0.1.5/go.mod h1:fMvUoz4r6gRGSMpuHS4U1sUlkR0UxDDHLW2b9Ufbd6E=
 github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1 h1:SMGUnbpAcat8rIKHkBPjfv81yC46a8eCNZ2hsR2l1EI=
 github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1/go.mod h1:Ch/bf00Qnx77MZd49JRgHYqHQjtEmTgGU2faufpVZb0=
 github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 h1:kes8mmyCpxJsI7FTwtzRqEy9CdjCtrXrXGuOpxEA7Ts=

@@ -25,7 +25,7 @@ replace github.com/boltdb/bolt => ./helper/stubbolt
 
 require (
 	cloud.google.com/go/monitoring v1.24.3
-	github.com/ProtonMail/go-crypto v1.3.0
+	github.com/ProtonMail/go-crypto v1.4.0
 	github.com/armon/go-radix v1.0.0
 	github.com/caddyserver/certmagic v0.25.1
 	github.com/cenkalti/backoff/v5 v5.0.3
@@ -224,7 +224,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/circonus-labs/circonus-gometrics v2.3.1+incompatible // indirect
 	github.com/circonus-labs/circonusllhist v0.1.3 // indirect
-	github.com/cloudflare/circl v1.6.1 // indirect
+	github.com/cloudflare/circl v1.6.2 // indirect
 	github.com/containerd/continuity v0.4.5 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect

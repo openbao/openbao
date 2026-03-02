@@ -75,35 +75,26 @@ div.package-repo {
   margin-bottom: var(--ifm-spacing-horizontal);
 }
 
-/*
- * CSS overrides to make downloads page responsive
- */
-@media (max-width: 768px) {
-  div.all-downloads nav.pagination-nav {
-    grid-template-columns: 1fr;
-  }
-
-  div.all-downloads nav.pagination-nav div.download-card {
-    max-width: 100%;
-    width: 100%;
-    margin: 0;
-  }
-}
 
 /* 
  * Custom CSS for downloads page
  */
+
+
+/* Bigger font size for the architecture*/
 .download-card__header-title {
   margin: 0;
   font-size: 1.5rem;
 }
 
+/* Version is secondary */
 .download-card__version {
   margin-bottom: 1rem;
   color: var(--ifm-color-emphasis-600);
   font-size: 0.9rem;
 }
 
+/* Flexbox for card contents*/
 .download-card__content-wrapper {
   display: flex;
   justify-content: space-between;
@@ -140,7 +131,7 @@ div.package-repo {
 }
 
 /*
- * Make the downloads page title selection responsive
+ * Make the downloads page responsive
  */
 @media (max-width: 768px) {
   .version-select {
@@ -160,12 +151,17 @@ div.package-repo {
   .downloads-header h1 {
     margin-bottom: 0 !important;
   }
-}
 
-/*
- * Make sure the cards wrap on mobile
- */
-@media (max-width: 768px) {
+  div.all-downloads nav.pagination-nav {
+    grid-template-columns: 1fr;
+  }
+
+  div.all-downloads nav.pagination-nav div.download-card {
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+  }
+
   .download-card__content-wrapper {
     flex-direction: column;
     align-items: stretch;

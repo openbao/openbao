@@ -1,0 +1,51 @@
+.codeBlockWrap {
+  position: relative;
+  margin-bottom: var(--ifm-pre-padding);
+
+  & > .codeBlock {
+    max-height: 200px;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    width: 100%;
+    border-radius: var(--ifm-code-border-radius);
+    position: relative;
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 80px), transparent 100%);
+    mask-image: linear-gradient(to bottom, black calc(100% - 80px), transparent 100%);
+  }
+}
+
+.codeBlockCheck {
+  display: none;
+
+  &:checked ~ .codeBlock {
+    max-height: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  &:checked ~ .codeBlockLabel {
+    display: none;
+  }
+}
+
+.codeBlockLabel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  cursor: pointer;
+  padding: 0 0 10px;
+  z-index: 1;
+
+  &:after {
+    content: "show more ›";
+    display: inline-block;
+    padding: 4px 12px;
+    background: var(--ifm-code-background);
+    border-radius: var(--ifm-code-border-radius);
+    color: inherit;
+    text-decoration: none;
+    font-size: 0.85rem;
+  }
+}

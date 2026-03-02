@@ -2288,7 +2288,7 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		return err
 	}
 
-	if err := s.unsealShared(ctx, logger, c, false /* active */); err != nil {
+	if err := s.unsealShared(ctx, c, false /* active */); err != nil {
 		return err
 	}
 
@@ -2299,7 +2299,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		if err := c.startForwarding(ctx); err != nil {
 			return err
 		}
-
 	}
 
 	c.clusterParamsLock.Lock()
@@ -2309,11 +2308,7 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	go c.emitMetricsActiveNode(c.metricsCh)
 
 	// Establish version timestamps at the end of unseal on active nodes only.
-	if err := c.handleVersionTimeStamps(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return c.handleVersionTimeStamps(ctx)
 }
 
 // readonlyUnsealStrategy is called directly on standby nodes and indirectly
@@ -2323,15 +2318,23 @@ type readonlyUnsealStrategy struct{}
 
 func (s readonlyUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c *Core) error {
 	c.logger.Debug("read-only unseal starting")
-	return s.unsealShared(ctx, logger, c, true /* standby */)
-}
 
-func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logger, c *Core, standby bool) error {
-	if standby {
-		// Start tracking invalidations.
-		c.invalidations.Track()
+	// Start tracking invalidations.
+	c.invalidations.Track()
+
+	if err := s.unsealShared(ctx, c, true /* standby */); err != nil {
+		return err
 	}
 
+	// Finally, start processing invalidations. We'll have cleared the queue
+	// when we started this, but any invalidations that occurred during
+	// startup will now be processed.
+	c.invalidations.Start(ctx)
+
+	return nil
+}
+
+func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby bool) error {
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
@@ -2386,6 +2389,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.loadIdentityStoreArtifacts(ctx, standby); err != nil {
 		return err
 	}
+
 	c.setupCachedMFAResponseAuth()
 	if err := c.loadLoginMFAConfigs(ctx); err != nil {
 		return err
@@ -2393,13 +2397,6 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 
 	if err := c.setupAuditedHeadersConfig(ctx); err != nil {
 		return err
-	}
-
-	// Finally, start processing invalidations. We'll have cleared the queue
-	// when we started this, but any invalidations that occurred during
-	// startup will now be processed.
-	if standby {
-		c.invalidations.Start(ctx)
 	}
 
 	return nil

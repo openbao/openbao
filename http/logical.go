@@ -323,7 +323,7 @@ func handleLogicalWithInjector(core *vault.Core) http.Handler {
 }
 
 // handleLogicalNoForward returns a handler for processing logical local-only
-// requests. These types of requests never forwarded, and return an
+// requests. These types of requests are never forwarded, and return an
 // `vault.ErrCannotForwardLocalOnly` error if attempted to do so.
 func handleLogicalNoForward(core *vault.Core) http.Handler {
 	return handleLogicalInternal(core, false, true)
@@ -359,14 +359,11 @@ func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.Value) http.Hand
 // handleLogicalInternal is a common helper that returns a handler for
 // processing logical requests. The behavior depends on the various boolean
 // toggles. Refer to usage on functions for possible behaviors.
-func handleLogicalInternal(core *vault.Core, injectDataIntoTopLevel bool, noForward bool) http.Handler {
+func handleLogicalInternal(core *vault.Core, injectDataIntoTopLevel, noForward bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if core.HAEnabled() && !core.StandbyReadsEnabled() {
-			standby := core.Standby()
-			if standby {
-				forwardRequest(core, w, r)
-				return
-			}
+		if core.HAEnabled() && core.Standby() && !core.StandbyReadsEnabled() {
+			forwardRequest(core, w, r)
+			return
 		}
 
 		req, statusCode, err := buildLogicalRequest(core, w, r)

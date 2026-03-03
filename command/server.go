@@ -1732,7 +1732,8 @@ func (c *ServerCommand) waitForLeader(core *vault.Core) (bool, error) {
 // OpenBao core. This will exit early if there is no configuration for this
 // or if the core is already initialized.
 func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) error {
-	if len(config.Initialization) == 0 || !c.flagDev {
+	// Skip initialize for dev server as it is handled in initDevCore
+	if len(config.Initialization) == 0 || c.flagDev {
 		return nil
 	}
 
@@ -2819,7 +2820,7 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 		}
 
 		// Self-init to setup configured initialize blocks
-		c.doSelfInit(core, config, init.RootToken)
+		err = c.doSelfInit(core, config, init.RootToken)
 		if err != nil {
 			return fmt.Errorf("Error during self-initialization: %w", err)
 		}

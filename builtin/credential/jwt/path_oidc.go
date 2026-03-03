@@ -67,6 +67,10 @@ type oidcRequest struct {
 
 	// the device flow code
 	deviceCode string
+
+	// requesterIP is the remote address of the client that called authURL, so that it can be displayed
+	// on the confirmation page (RFC 8628 5.4)
+	requesterIP string
 }
 
 func pathOIDC(b *jwtAuthBackend) []*framework.Path {
@@ -286,7 +290,7 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 
 	// For direct callback mode, require explicit user confirmation to reduce
 	// attack surface before processing the authorization code.
-	if role.CallbackMode == callbackModeDirect {
+	if role.CallbackMode == callbackModeDirect && !role.OIDCDisableConfirmation {
 		confirmation := d.Get("confirmation").(string)
 		if confirmation == "" {
 			deleteRequest = false // preserve state for the confirmed follow-up request
@@ -294,7 +298,7 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 			resp.Data = map[string]interface{}{
 				logical.HTTPContentType: "text/html",
 				logical.HTTPStatusCode:  http.StatusOK,
-				logical.HTTPRawBody:     []byte(confirmationHTML),
+				logical.HTTPRawBody:     []byte(confirmHTML(oidcReq.requesterIP, oidcReq.rolename)),
 			}
 			return resp, nil
 		}
@@ -698,6 +702,11 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 		return logical.ErrorResponse("missing client_nonce"), nil
 	}
 
+	var requesterIP string
+	if req.Connection != nil {
+		requesterIP = req.Connection.RemoteAddr
+	}
+
 	if role.CallbackMode == callbackModeDevice {
 		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM, config.OverrideAllowedServerNames)
 		if err != nil {
@@ -740,7 +749,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 		}
 		// currently hashicorp/cap/oidc.NewRequest requires
 		//  redirectURL to be non-empty so throw in place holder
-		oidcReq, err := b.createOIDCRequest(config, role, roleName, "-", deviceCode.DeviceCode, clientNonce)
+		oidcReq, err := b.createOIDCRequest(config, role, roleName, "-", deviceCode.DeviceCode, clientNonce, requesterIP)
 		if err != nil {
 			logger.Warn("error generating OAuth state", "error", err)
 			return resp, nil
@@ -811,7 +820,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 		return resp, nil
 	}
 
-	oidcReq, err := b.createOIDCRequest(config, role, roleName, redirectURI, "", clientNonce)
+	oidcReq, err := b.createOIDCRequest(config, role, roleName, redirectURI, "", clientNonce, requesterIP)
 	if err != nil {
 		logger.Warn("error generating OAuth state", "error", err)
 		return resp, nil
@@ -844,7 +853,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 
 // createOIDCRequest makes an expiring request object, associated with a random state ID
 // that is passed throughout the OAuth process. A nonce is also included in the auth process.
-func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rolename, redirectURI, deviceCode string, clientNonce string) (*oidcRequest, error) {
+func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rolename, redirectURI, deviceCode string, clientNonce string, requesterIP string) (*oidcRequest, error) {
 	options := []oidc.Option{
 		oidc.WithAudiences(role.BoundAudiences...),
 		oidc.WithScopes(role.OIDCScopes...),
@@ -875,6 +884,7 @@ func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rol
 		rolename:    rolename,
 		clientNonce: clientNonce,
 		deviceCode:  deviceCode,
+		requesterIP: requesterIP,
 	}
 	b.oidcRequests.Set(request.State(), oidcReq)
 

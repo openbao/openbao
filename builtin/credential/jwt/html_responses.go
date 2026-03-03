@@ -173,7 +173,15 @@ const successHTML = `
 </html>
 `
 
-const confirmationHTML = `
+func confirmHTML(requestorIP, roleName string) string {
+	if requestorIP == "" {
+		requestorIP = "unknown"
+	}
+	if roleName == "" {
+		roleName = "unknown"
+	}
+
+	const confirmationHTML = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -320,6 +328,7 @@ const confirmationHTML = `
           </g>
         </g>
       </svg>
+
       <div class="message is-success">
         <svg id="checkbox" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
           viewBox="0 0 512 512">
@@ -329,17 +338,20 @@ const confirmationHTML = `
         </svg>
         <div class="message-content">
           <div class="message-title">
-            You're about to sign in to OpenBao
+            Sign in confirmation required
           </div>
           <p class="message-body">
-          	By accepting this sign-in request started via the CLI, you are granting the requestor to act on your behalf.
-          	<span class="requestor-info"><b>Source IP:</b> 255.255.255.255</span>
-          	<span class="requestor-info"><b>Role:</b> default (CHANGEME)</span>
-          	<span class="requestor-info"><b>Callback mode:</b> direct (CHANGEME)</span>
-            <button id="confirm-button" class="message-button">Continue</button>
+         	A sign-in request to OpenBao was initiated from the source IP address shown below. This step protects against unauthorized access.
+          	<br><br>
+            <strong>Only confirm if you initiated this request yourself.</strong>
+            If you didn't, close this page immediately to prevent unauthorized access to your account.
+          	<span class="requestor-info"><b>Source IP:</b> %s</span>
+          	<span class="requestor-info"><b>Role:</b> %s</span>
+            <button id="confirm-button" class="message-button">Confirm sign-in</button>
           </p>
         </div>
       </div>
+
       <hr />
       <h1>Not sure how to get started?</h1>
       <a href="https://openbao.org/docs" rel="noreferrer noopener">
@@ -363,6 +375,9 @@ const confirmationHTML = `
 </body>
 </html>
 `
+
+	return fmt.Sprintf(confirmationHTML, html.EscapeString(requestorIP), html.EscapeString(roleName))
+}
 
 func errorHTML(summary, detail string) string {
 	const htmlTmpl = `

@@ -331,9 +331,20 @@ export default Route.extend({
     willTransition(transition) {
       /* eslint-disable-next-line ember/no-controller-access-in-routes */
       const { mode, model } = this.controller;
-      const version = model.get('selectedVersion');
-      const changed = model.changedAttributes();
-      const changedKeys = Object.keys(changed);
+      if (!model || model.isDestroyed || model.isDestroying) {
+        return true;
+      }
+
+      let version, changed, changedKeys;
+      try {
+        version = model.get('selectedVersion');
+        changed = model.changedAttributes();
+        changedKeys = Object.keys(changed);
+      } catch {
+        // Model may be in an invalid state (e.g. unloaded from store)
+        this.unloadModel();
+        return true;
+      }
 
       // when you don't have read access on metadata we add currentVersion to the model
       // this makes it look like you have unsaved changes and prompts a browser warning

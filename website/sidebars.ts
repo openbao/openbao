@@ -544,6 +544,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/cel-jwt",
                 "rfcs/filtering-list",
                 "rfcs/static-auto-unseal",
+                "rfcs/auto-unseal-plugins",
                 "rfcs/inline-auth",
                 "rfcs/authenticated-rekey",
                 "rfcs/self-init",

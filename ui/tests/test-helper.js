@@ -21,3 +21,9 @@ preloadAssets(manifest).then(() => {
     setupTestIsolationValidation: true,
   });
 });
+
+// Stub window.confirm for tests to prevent Testem browser disconnect errors
+if (window.confirm.isSinonProxy !== true) {
+  window._originalConfirm = window.confirm;
+  window.confirm = () => true; // Default to accepting all confirms in tests
+}

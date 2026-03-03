@@ -9,7 +9,7 @@ module github.com/openbao/openbao
 // updated. If we choose not to do so at some point (e.g. because we don't want some new
 // semantic related to Go module handling), this comment should be updated to explain that.
 
-go 1.25.0
+go 1.25.6
 
 replace github.com/openbao/openbao/api/v2 => ./api
 
@@ -44,7 +44,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/cel-go v0.27.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-containerregistry v0.20.7
+	github.com/google/go-containerregistry v0.20.8
 	github.com/google/go-metrics-stackdriver v0.2.0
 	github.com/hashicorp/cap v0.12.0
 	github.com/hashicorp/cli v1.1.7
@@ -229,14 +229,14 @@ require (
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/containerd/stargz-snapshotter/estargz v0.18.1 // indirect
+	github.com/containerd/stargz-snapshotter/estargz v0.18.2 // indirect
 	github.com/coreos/go-oidc/v3 v3.11.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba // indirect
 	github.com/digitalocean/godo v1.7.5 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/docker/cli v29.0.3+incompatible // indirect
+	github.com/docker/cli v29.2.1+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
 	github.com/docker/go-connections v0.6.0 // indirect

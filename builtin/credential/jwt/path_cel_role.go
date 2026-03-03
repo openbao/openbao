@@ -385,6 +385,7 @@ func (b *jwtAuthBackend) celEvalConfig() *celhelper.EvalConfig {
 			cel.Variable("operation", types.StringType),
 			cel.Types(
 				&pb.Auth{},
+				&logical.Alias{},
 			),
 		},
 	}

@@ -165,6 +165,51 @@ func Test_runCelProgram(t *testing.T) {
 				require.Contains(t, err.Error(), "no such field")
 			},
 		},
+		{
+			name: "pb.Auth with logical.Alias metadata from SPIFFE ID",
+			celRole: celRoleEntry{
+				Name: "spiffe-role",
+				Program: &celhelper.Program{
+					Variables: []celhelper.Variable{
+						{Name: "spiffe_path", Expression: "claims.sub.startsWith('spiffe://') ? claims.sub.substring(9) : claims.sub"},
+						{Name: "trust_domain", Expression: "spiffe_path.contains('/') ? spiffe_path.split('/')[0] : ''"},
+						{Name: "ns_parts", Expression: "spiffe_path.contains('/ns/') ? spiffe_path.split('/ns/') : []"},
+						{Name: "sa_parts", Expression: "size(ns_parts) > 1 && ns_parts[1].contains('/sa/') ? ns_parts[1].split('/sa/') : []"},
+						{Name: "workload_ns", Expression: "size(sa_parts) > 0 ? sa_parts[0] : ''"},
+						{Name: "workload_sa", Expression: "size(sa_parts) > 1 ? sa_parts[1] : ''"},
+					},
+					Expression: `trust_domain != '' && workload_ns != '' && workload_sa != ''
+					? pb.Auth{
+						policies: ['workload-policy'],
+						display_name: trust_domain + '.' + workload_ns + '.' + workload_sa,
+						alias: logical.Alias{
+							name: claims.sub,
+							metadata: {
+								'trust_domain': trust_domain,
+								'namespace': workload_ns,
+								'service_account': workload_sa
+							}
+						}
+					}
+					: false`,
+				},
+			},
+			claims: map[string]interface{}{
+				"sub": "spiffe://test-domain/ns/default/sa/my-service",
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *pb.Auth) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, []string{"workload-policy"}, rslt.Policies)
+				require.Equal(t, "test-domain.default.my-service", rslt.DisplayName)
+				require.NotNil(t, rslt.Alias)
+				require.Equal(t, "spiffe://test-domain/ns/default/sa/my-service", rslt.Alias.Name)
+				require.Equal(t, "test-domain", rslt.Alias.Metadata["trust_domain"])
+				require.Equal(t, "default", rslt.Alias.Metadata["namespace"])
+				require.Equal(t, "my-service", rslt.Alias.Metadata["service_account"])
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

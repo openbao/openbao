@@ -155,6 +155,10 @@ module('Acceptance | tools', function (hooks) {
       this.post('/v1/sys/wrapping/unwrap', (response) => {
         return [response, { 'Content-Type': 'application/json' }, JSON.stringify(AUTH_RESPONSE)];
       });
+      this.get('/v1/**', this.passthrough);
+      this.post('/v1/**', this.passthrough);
+      this.put('/v1/**', this.passthrough);
+      this.delete('/v1/**', this.passthrough);
     });
     await visit('/vault/tools');
 

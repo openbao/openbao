@@ -38,20 +38,20 @@ const (
 	scopesDelimiter          = " "
 	accessTokenScopesMeta    = "scopes"
 	accessTokenClientIDMeta  = "client_id"
-	clientIDLength           = 32
-	clientSecretLength       = 64
-	clientSecretPrefix       = "hvo_secret_"
+	ClientIDLength           = 32
+	ClientSecretLength       = 64
+	ClientSecretPrefix       = "hvo_secret_"
 	codeChallengeMethodPlain = "plain"
 	codeChallengeMethodS256  = "S256"
 	defaultProviderName      = "default"
-	defaultKeyName           = "default"
-	allowAllAssignmentName   = "allow_all"
+	DefaultKeyName           = "default"
+	AllowAllAssignmentName   = "allow_all"
 
 	// Storage path constants
 	oidcProviderPrefix = "oidc_provider/"
-	assignmentPath     = oidcProviderPrefix + "assignment/"
-	scopePath          = oidcProviderPrefix + "scope/"
-	clientPath         = oidcProviderPrefix + "client/"
+	AssignmentPath     = oidcProviderPrefix + "assignment/"
+	ScopePath          = oidcProviderPrefix + "scope/"
+	ClientPath         = oidcProviderPrefix + "client/"
 	providerPath       = oidcProviderPrefix + "provider/"
 
 	// Error constants used in the Authorization Endpoint. See details at
@@ -87,12 +87,12 @@ const (
 	ErrAuthMaxAgeReAuthenticate = "max_age_violation"
 )
 
-type assignment struct {
+type Assignment struct {
 	GroupIDs  []string `json:"group_ids"`
 	EntityIDs []string `json:"entity_ids"`
 }
 
-type scope struct {
+type Scope struct {
 	Template    string `json:"template"`
 	Description string `json:"description"`
 }
@@ -115,7 +115,7 @@ func parseGrantType(s string) (GrantType, error) {
 	}
 }
 
-type client struct {
+type Client struct {
 	// Used for indexing in memdb
 	Name        string `json:"name"`
 	NamespaceID string `json:"namespace_id"`
@@ -126,7 +126,7 @@ type client struct {
 	Key            string        `json:"key"`
 	IDTokenTTL     time.Duration `json:"id_token_ttl"`
 	AccessTokenTTL time.Duration `json:"access_token_ttl"`
-	Type           clientType    `json:"type"`
+	Type           ClientType    `json:"type"`
 	// We want AuthorizationCode to be true by default if it is not set already.
 	AuthorizationCode *bool `json:"authorization_code"`
 	ClientCredentials bool  `json:"client_credentials"`
@@ -136,7 +136,7 @@ type client struct {
 	ClientSecret string `json:"client_secret"`
 }
 
-func (c *client) isAuthorizationCodeFlow() bool {
+func (c *Client) isAuthorizationCodeFlow() bool {
 	if c.AuthorizationCode == nil {
 		return true
 	} else {
@@ -145,7 +145,7 @@ func (c *client) isAuthorizationCodeFlow() bool {
 }
 
 // isFlowAllowed returns true if the given client ID is allowed to use the client flow
-func (c *client) isFlowAllowed(credentials GrantType) bool {
+func (c *Client) isFlowAllowed(credentials GrantType) bool {
 	switch credentials {
 	case AuthorizationCode:
 		return c.isAuthorizationCodeFlow()
@@ -156,18 +156,18 @@ func (c *client) isFlowAllowed(credentials GrantType) bool {
 	}
 }
 
-type clientType int
+type ClientType int
 
 const (
-	confidential clientType = iota
-	public
+	Confidential ClientType = iota
+	Public
 )
 
-func (k clientType) String() string {
+func (k ClientType) String() string {
 	switch k {
-	case confidential:
+	case Confidential:
 		return "confidential"
-	case public:
+	case Public:
 		return "public"
 	default:
 		return "unknown"
@@ -197,7 +197,7 @@ func (p *provider) allowedClientID(clientID string) bool {
 	return false
 }
 
-type providerDiscovery struct {
+type ProviderDiscovery struct {
 	Issuer                string                    `json:"issuer"`
 	Keys                  string                    `json:"jwks_uri"`
 	AuthorizationEndpoint string                    `json:"authorization_endpoint"`
@@ -262,7 +262,7 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 					Callback: i.pathOIDCDeleteAssignment,
 				},
 			},
-			ExistenceCheck:  i.pathOIDCAssignmentExistenceCheck,
+			ExistenceCheck:  i.PathOIDCAssignmentExistenceCheck,
 			HelpSynopsis:    "CRUD operations for OIDC assignments.",
 			HelpDescription: "Create, Read, Update, and Delete OIDC assignments.",
 		},
@@ -314,7 +314,7 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 					Callback: i.pathOIDCDeleteScope,
 				},
 			},
-			ExistenceCheck:  i.pathOIDCScopeExistenceCheck,
+			ExistenceCheck:  i.PathOIDCScopeExistenceCheck,
 			HelpSynopsis:    "CRUD operations for OIDC scopes.",
 			HelpDescription: "Create, Read, Update, and Delete OIDC scopes.",
 		},
@@ -396,7 +396,7 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 					Callback: i.pathOIDCDeleteClient,
 				},
 			},
-			ExistenceCheck:  i.pathOIDCClientExistenceCheck,
+			ExistenceCheck:  i.PathOIDCClientExistenceCheck,
 			HelpSynopsis:    "CRUD operations for OIDC clients.",
 			HelpDescription: "Create, Read, Update, and Delete OIDC clients.",
 		},
@@ -452,7 +452,7 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 					Callback: i.pathOIDCDeleteProvider,
 				},
 			},
-			ExistenceCheck:  i.pathOIDCProviderExistenceCheck,
+			ExistenceCheck:  i.PathOIDCProviderExistenceCheck,
 			HelpSynopsis:    "CRUD operations for OIDC providers.",
 			HelpDescription: "Create, Read, Update, and Delete OIDC named providers.",
 		},
@@ -689,16 +689,16 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 
 // clientsReferencingTargetAssignmentName returns a map of client names to
 // clients referencing targetAssignmentName.
-func (i *IdentityStore) clientsReferencingTargetAssignmentName(ctx context.Context, req *logical.Request, targetAssignmentName string) (map[string]client, error) {
-	clientNames, err := req.Storage.List(ctx, clientPath)
+func (i *IdentityStore) clientsReferencingTargetAssignmentName(ctx context.Context, req *logical.Request, targetAssignmentName string) (map[string]Client, error) {
+	clientNames, err := req.Storage.List(ctx, ClientPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var tempClient client
-	clients := make(map[string]client)
+	var tempClient Client
+	clients := make(map[string]Client)
 	for _, clientName := range clientNames {
-		entry, err := req.Storage.Get(ctx, clientPath+clientName)
+		entry, err := req.Storage.Get(ctx, ClientPath+clientName)
 		if err != nil {
 			return nil, err
 		}
@@ -735,16 +735,16 @@ func (i *IdentityStore) clientNamesReferencingTargetAssignmentName(ctx context.C
 
 // clientsReferencingTargetKeyName returns a map of client names to
 // clients referencing targetKeyName.
-func (i *IdentityStore) clientsReferencingTargetKeyName(ctx context.Context, req *logical.Request, targetKeyName string) (map[string]client, error) {
-	clientNames, err := req.Storage.List(ctx, clientPath)
+func (i *IdentityStore) clientsReferencingTargetKeyName(ctx context.Context, req *logical.Request, targetKeyName string) (map[string]Client, error) {
+	clientNames, err := req.Storage.List(ctx, ClientPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var tempClient client
-	clients := make(map[string]client)
+	var tempClient Client
+	clients := make(map[string]Client)
 	for _, clientName := range clientNames {
-		entry, err := req.Storage.Get(ctx, clientPath+clientName)
+		entry, err := req.Storage.Get(ctx, ClientPath+clientName)
 		if err != nil {
 			return nil, err
 		}
@@ -811,17 +811,17 @@ func (i *IdentityStore) providersReferencingTargetScopeName(ctx context.Context,
 func (i *IdentityStore) pathOIDCCreateUpdateAssignment(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := d.Get("name").(string)
 
-	if name == allowAllAssignmentName {
+	if name == AllowAllAssignmentName {
 		return logical.ErrorResponse("modification of assignment %q not allowed",
-			allowAllAssignmentName), nil
+			AllowAllAssignmentName), nil
 	}
 
 	i.oidcLock.Lock()
 	defer i.oidcLock.Unlock()
 
-	var assignment assignment
+	var assignment Assignment
 	if req.Operation == logical.UpdateOperation {
-		entry, err := req.Storage.Get(ctx, assignmentPath+name)
+		entry, err := req.Storage.Get(ctx, AssignmentPath+name)
 		if err != nil {
 			return nil, err
 		}
@@ -845,15 +845,15 @@ func (i *IdentityStore) pathOIDCCreateUpdateAssignment(ctx context.Context, req 
 	}
 
 	// lowercase UUID segments
-	assignment.EntityIDs = lowercaseIdentityIDs(assignment.EntityIDs)
-	assignment.GroupIDs = lowercaseIdentityIDs(assignment.GroupIDs)
+	assignment.EntityIDs = LowercaseIdentityIDs(assignment.EntityIDs)
+	assignment.GroupIDs = LowercaseIdentityIDs(assignment.GroupIDs)
 
 	// remove duplicates
 	assignment.EntityIDs = strutil.RemoveDuplicates(assignment.EntityIDs, false)
 	assignment.GroupIDs = strutil.RemoveDuplicates(assignment.GroupIDs, false)
 
 	// store assignment
-	entry, err := logical.StorageEntryJSON(assignmentPath+name, assignment)
+	entry, err := logical.StorageEntryJSON(AssignmentPath+name, assignment)
 	if err != nil {
 		return nil, err
 	}
@@ -867,7 +867,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateAssignment(ctx context.Context, req 
 
 // pathOIDCListAssignment is used to list assignments
 func (i *IdentityStore) pathOIDCListAssignment(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	assignments, err := req.Storage.List(ctx, assignmentPath)
+	assignments, err := req.Storage.List(ctx, AssignmentPath)
 	if err != nil {
 		return nil, err
 	}
@@ -894,8 +894,8 @@ func (i *IdentityStore) pathOIDCReadAssignment(ctx context.Context, req *logical
 	}, nil
 }
 
-func (i *IdentityStore) getOIDCAssignment(ctx context.Context, s logical.Storage, name string) (*assignment, error) {
-	entry, err := s.Get(ctx, assignmentPath+name)
+func (i *IdentityStore) getOIDCAssignment(ctx context.Context, s logical.Storage, name string) (*Assignment, error) {
+	entry, err := s.Get(ctx, AssignmentPath+name)
 	if err != nil {
 		return nil, err
 	}
@@ -903,7 +903,7 @@ func (i *IdentityStore) getOIDCAssignment(ctx context.Context, s logical.Storage
 		return nil, nil
 	}
 
-	var assignment assignment
+	var assignment Assignment
 	if err := entry.DecodeJSON(&assignment); err != nil {
 		return nil, err
 	}
@@ -915,9 +915,9 @@ func (i *IdentityStore) getOIDCAssignment(ctx context.Context, s logical.Storage
 func (i *IdentityStore) pathOIDCDeleteAssignment(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name := d.Get("name").(string)
 
-	if name == allowAllAssignmentName {
+	if name == AllowAllAssignmentName {
 		return logical.ErrorResponse("deletion of assignment %q not allowed",
-			allowAllAssignmentName), nil
+			AllowAllAssignmentName), nil
 	}
 
 	i.oidcLock.Lock()
@@ -934,17 +934,17 @@ func (i *IdentityStore) pathOIDCDeleteAssignment(ctx context.Context, req *logic
 		return logical.ErrorResponse(errorMessage), logical.ErrInvalidRequest
 	}
 
-	err = req.Storage.Delete(ctx, assignmentPath+name)
+	err = req.Storage.Delete(ctx, AssignmentPath+name)
 	if err != nil {
 		return nil, err
 	}
 	return nil, nil
 }
 
-func (i *IdentityStore) pathOIDCAssignmentExistenceCheck(ctx context.Context, req *logical.Request, d *framework.FieldData) (bool, error) {
+func (i *IdentityStore) PathOIDCAssignmentExistenceCheck(ctx context.Context, req *logical.Request, d *framework.FieldData) (bool, error) {
 	name := d.Get("name").(string)
 
-	entry, err := req.Storage.Get(ctx, assignmentPath+name)
+	entry, err := req.Storage.Get(ctx, AssignmentPath+name)
 	if err != nil {
 		return false, err
 	}
@@ -962,9 +962,9 @@ func (i *IdentityStore) pathOIDCCreateUpdateScope(ctx context.Context, req *logi
 	i.oidcLock.Lock()
 	defer i.oidcLock.Unlock()
 
-	var scope scope
+	var scope Scope
 	if req.Operation == logical.UpdateOperation {
-		entry, err := req.Storage.Get(ctx, scopePath+name)
+		entry, err := req.Storage.Get(ctx, ScopePath+name)
 		if err != nil {
 			return nil, err
 		}
@@ -1010,14 +1010,14 @@ func (i *IdentityStore) pathOIDCCreateUpdateScope(ctx context.Context, req *logi
 		}
 
 		for key := range tmp {
-			if slices.Contains(reservedClaims, key) {
+			if slices.Contains(ReservedClaims, key) {
 				return logical.ErrorResponse("top level key %q not allowed. Restricted keys: %s",
-					key, strings.Join(reservedClaims, ", ")), nil
+					key, strings.Join(ReservedClaims, ", ")), nil
 			}
 		}
 	}
 	// store scope
-	entry, err := logical.StorageEntryJSON(scopePath+name, scope)
+	entry, err := logical.StorageEntryJSON(ScopePath+name, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -1031,7 +1031,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateScope(ctx context.Context, req *logi
 
 // pathOIDCListScope is used to list scopes
 func (i *IdentityStore) pathOIDCListScope(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	scopes, err := req.Storage.List(ctx, scopePath)
+	scopes, err := req.Storage.List(ctx, ScopePath)
 	if err != nil {
 		return nil, err
 	}
@@ -1058,8 +1058,8 @@ func (i *IdentityStore) pathOIDCReadScope(ctx context.Context, req *logical.Requ
 	}, nil
 }
 
-func (i *IdentityStore) getOIDCScope(ctx context.Context, s logical.Storage, name string) (*scope, error) {
-	entry, err := s.Get(ctx, scopePath+name)
+func (i *IdentityStore) getOIDCScope(ctx context.Context, s logical.Storage, name string) (*Scope, error) {
+	entry, err := s.Get(ctx, ScopePath+name)
 	if err != nil {
 		return nil, err
 	}
@@ -1067,7 +1067,7 @@ func (i *IdentityStore) getOIDCScope(ctx context.Context, s logical.Storage, nam
 		return nil, nil
 	}
 
-	var scope scope
+	var scope Scope
 	if err := entry.DecodeJSON(&scope); err != nil {
 		return nil, err
 	}
@@ -1092,7 +1092,7 @@ func (i *IdentityStore) pathOIDCDeleteScope(ctx context.Context, req *logical.Re
 			name, strings.Join(providerNames, ", "))
 		return logical.ErrorResponse(errorMessage), logical.ErrInvalidRequest
 	}
-	err = req.Storage.Delete(ctx, scopePath+name)
+	err = req.Storage.Delete(ctx, ScopePath+name)
 	if err != nil {
 		return nil, err
 	}
@@ -1100,10 +1100,10 @@ func (i *IdentityStore) pathOIDCDeleteScope(ctx context.Context, req *logical.Re
 	return nil, nil
 }
 
-func (i *IdentityStore) pathOIDCScopeExistenceCheck(ctx context.Context, req *logical.Request, d *framework.FieldData) (bool, error) {
+func (i *IdentityStore) PathOIDCScopeExistenceCheck(ctx context.Context, req *logical.Request, d *framework.FieldData) (bool, error) {
 	name := d.Get("name").(string)
 
-	entry, err := req.Storage.Get(ctx, scopePath+name)
+	entry, err := req.Storage.Get(ctx, ScopePath+name)
 	if err != nil {
 		return false, err
 	}
@@ -1123,12 +1123,12 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 	i.oidcLock.Lock()
 	defer i.oidcLock.Unlock()
 
-	client := client{
+	client := Client{
 		Name:        name,
 		NamespaceID: ns.ID,
 	}
 	if req.Operation == logical.UpdateOperation {
-		entry, err := req.Storage.Get(ctx, clientPath+name)
+		entry, err := req.Storage.Get(ctx, ClientPath+name)
 		if err != nil {
 			return nil, err
 		}
@@ -1157,7 +1157,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 
 	// enforce assignment existence
 	for _, assignment := range client.Assignments {
-		entry, err := req.Storage.Get(ctx, assignmentPath+assignment)
+		entry, err := req.Storage.Get(ctx, AssignmentPath+assignment)
 		if err != nil {
 			return nil, err
 		}
@@ -1185,7 +1185,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 		return logical.ErrorResponse("key %q does not exist", client.Key), nil
 	}
 
-	if client.Key == defaultKeyName {
+	if client.Key == DefaultKeyName {
 		if err := i.lazyGenerateDefaultKey(ctx, req.Storage); err != nil {
 			return nil, fmt.Errorf("failed to generate default key: %w", err)
 		}
@@ -1228,10 +1228,10 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 		}
 
 		switch clientType {
-		case confidential.String():
-			client.Type = confidential
-		case public.String():
-			client.Type = public
+		case Confidential.String():
+			client.Type = Confidential
+		case Public.String():
+			client.Type = Public
 		default:
 			return logical.ErrorResponse("invalid client_type %q", clientType), nil
 		}
@@ -1239,20 +1239,20 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 
 	if client.ClientID == "" {
 		// generate client_id
-		clientID, err := base62.Random(clientIDLength)
+		clientID, err := base62.Random(ClientIDLength)
 		if err != nil {
 			return nil, err
 		}
 		client.ClientID = clientID
 	}
 	// client secrets are only generated for confidential clients
-	if client.Type == confidential && client.ClientSecret == "" {
+	if client.Type == Confidential && client.ClientSecret == "" {
 		// generate client_secret
-		clientSecret, err := base62.Random(clientSecretLength)
+		clientSecret, err := base62.Random(ClientSecretLength)
 		if err != nil {
 			return nil, err
 		}
-		client.ClientSecret = clientSecretPrefix + clientSecret
+		client.ClientSecret = ClientSecretPrefix + clientSecret
 	}
 
 	// invalidate the cached client in memdb
@@ -1261,7 +1261,7 @@ func (i *IdentityStore) pathOIDCCreateUpdateClient(ctx context.Context, req *log
 	}
 
 	// store client
-	entry, err := logical.StorageEntryJSON(clientPath+name, client)
+	entry, err := logical.StorageEntryJSON(ClientPath+name, client)
 	if err != nil {
 		return nil, err
 	}
@@ -1326,7 +1326,7 @@ func (i *IdentityStore) pathOIDCReadClient(ctx context.Context, req *logical.Req
 		},
 	}
 
-	if client.Type == confidential {
+	if client.Type == Confidential {
 		resp.Data["client_secret"] = client.ClientSecret
 	}
 
@@ -1346,17 +1346,17 @@ func (i *IdentityStore) pathOIDCDeleteClient(ctx context.Context, req *logical.R
 	}
 
 	// Delete the client from storage
-	if err := req.Storage.Delete(ctx, clientPath+name); err != nil {
+	if err := req.Storage.Delete(ctx, ClientPath+name); err != nil {
 		return nil, err
 	}
 
 	return nil, nil
 }
 
-func (i *IdentityStore) pathOIDCClientExistenceCheck(ctx context.Context, req *logical.Request, d *framework.FieldData) (bool, error) {
+func (i *IdentityStore) PathOIDCClientExistenceCheck(ctx context.Context, req *logical.Request, d *framework.FieldData) (bool, error) {
 	name := d.Get("name").(string)
 
-	entry, err := req.Storage.Get(ctx, clientPath+name)
+	entry, err := req.Storage.Get(ctx, ClientPath+name)
 	if err != nil {
 		return false, err
 	}
@@ -1600,7 +1600,7 @@ func (i *IdentityStore) pathOIDCDeleteProvider(ctx context.Context, req *logical
 	return nil, req.Storage.Delete(ctx, providerPath+name)
 }
 
-func (i *IdentityStore) pathOIDCProviderExistenceCheck(ctx context.Context, req *logical.Request, d *framework.FieldData) (bool, error) {
+func (i *IdentityStore) PathOIDCProviderExistenceCheck(ctx context.Context, req *logical.Request, d *framework.FieldData) (bool, error) {
 	name := d.Get("name").(string)
 
 	entry, err := req.Storage.Get(ctx, providerPath+name)
@@ -1625,13 +1625,13 @@ func (i *IdentityStore) pathOIDCProviderDiscovery(ctx context.Context, req *logi
 	// the "openid" scope is reserved and is included for every provider
 	scopes := append(p.ScopesSupported, openIDScope)
 
-	disc := providerDiscovery{
+	disc := ProviderDiscovery{
 		Issuer:                p.effectiveIssuer,
 		Keys:                  p.effectiveIssuer + "/.well-known/keys",
 		AuthorizationEndpoint: strings.Replace(p.effectiveIssuer, "/v1/", "/ui/vault/", 1) + "/authorize",
 		TokenEndpoint:         p.effectiveIssuer + "/token",
 		UserinfoEndpoint:      p.effectiveIssuer + "/userinfo",
-		IDTokenAlgs:           supportedAlgs,
+		IDTokenAlgs:           SupportedAlgs,
 		Scopes:                scopes,
 		Claims:                []string{},
 		RequestParameter:      false,
@@ -1750,7 +1750,7 @@ func (i *IdentityStore) keyIDsReferencedByTargetClientIDs(ctx context.Context, s
 	// Collect the key IDs
 	var keyIDs []string
 	for name := range keyNames {
-		entry, err := s.Get(ctx, namedKeyConfigPath+name)
+		entry, err := s.Get(ctx, NamedKeyConfigPath+name)
 		if err != nil {
 			return nil, err
 		}
@@ -1759,7 +1759,7 @@ func (i *IdentityStore) keyIDsReferencedByTargetClientIDs(ctx context.Context, s
 			continue
 		}
 
-		var key namedKey
+		var key NamedKey
 		if err := entry.DecodeJSON(&key); err != nil {
 			return nil, err
 		}
@@ -1876,7 +1876,7 @@ func (i *IdentityStore) pathOIDCAuthorize(ctx context.Context, req *logical.Requ
 	// method. PKCE is required for public clients and optional for confidential clients.
 	// See details at https://datatracker.ietf.org/doc/html/rfc7636.
 	codeChallengeRaw, okCodeChallenge := d.GetOk("code_challenge")
-	if !okCodeChallenge && client.Type == public {
+	if !okCodeChallenge && client.Type == Public {
 		return authResponse("", state, ErrAuthInvalidRequest, "PKCE is required for public clients")
 	}
 	if okCodeChallenge {
@@ -2031,7 +2031,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 
 	// Authenticate the client if it's a confidential client type.
 	// Details at https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication
-	if client.Type == confidential &&
+	if client.Type == Confidential &&
 		subtle.ConstantTimeCompare([]byte(client.ClientSecret), []byte(clientSecret)) == 0 {
 		i.Logger().Debug("client failed to authenticate with invalid client secret", "client_id", clientID)
 		return tokenResponse(nil, ErrTokenInvalidClient, "client failed to authenticate")
@@ -2076,7 +2076,7 @@ func (i *IdentityStore) pathOIDCToken(ctx context.Context, req *logical.Request,
 	}
 }
 
-func (i *IdentityStore) clientCredentialsFlow(ctx context.Context, req *logical.Request, d *framework.FieldData, ns *namespace.Namespace, client *client, key *namedKey, provider *provider) (*logical.Response, error) {
+func (i *IdentityStore) clientCredentialsFlow(ctx context.Context, req *logical.Request, d *framework.FieldData, ns *namespace.Namespace, client *Client, key *NamedKey, provider *provider) (*logical.Response, error) {
 	scopes := validateScopes(d, provider)
 	if scopes == nil {
 		return tokenResponse(nil, ErrAuthInvalidRequest, fmt.Sprintf("scope parameter must contain the %q value", openIDScope))
@@ -2125,7 +2125,7 @@ func (i *IdentityStore) clientCredentialsFlow(ctx context.Context, req *logical.
 	}, "", "")
 }
 
-func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.Request, d *framework.FieldData, ns *namespace.Namespace, name string, client *client, key *namedKey, provider *provider) (*logical.Response, error) {
+func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.Request, d *framework.FieldData, ns *namespace.Namespace, name string, client *Client, key *NamedKey, provider *provider) (*logical.Response, error) {
 	// Validate the authorization code
 	code := d.Get("code").(string)
 	if code == "" {
@@ -2190,7 +2190,7 @@ func (i *IdentityStore) authorizationCodeFlow(ctx context.Context, req *logical.
 	usedPKCE := authCodeUsedPKCE(authCodeEntry)
 	codeVerifier := d.Get("code_verifier").(string)
 	switch {
-	case !usedPKCE && client.Type == public:
+	case !usedPKCE && client.Type == Public:
 		return tokenResponse(nil, ErrTokenInvalidRequest, "PKCE is required for public clients")
 	case !usedPKCE && codeVerifier != "":
 		return tokenResponse(nil, ErrTokenInvalidRequest, "unexpected code_verifier for token exchange")
@@ -2559,7 +2559,7 @@ func (i *IdentityStore) populateScopeTemplates(ctx context.Context, grantType Gr
 			input.Entity = identity.ToSDKEntity(entity)
 
 			// Get the groups for the entity
-			groups, inheritedGroups, err := i.groupsByEntityID(ctx, entity.ID)
+			groups, inheritedGroups, err := i.GroupsByEntityID(ctx, entity.ID)
 			if err != nil {
 				return nil, false, err
 			}
@@ -2601,12 +2601,12 @@ func (i *IdentityStore) entityHasAssignment(ctx context.Context, s logical.Stora
 		return false, nil
 	}
 
-	if slices.Contains(assignments, allowAllAssignmentName) {
+	if slices.Contains(assignments, AllowAllAssignmentName) {
 		return true, nil
 	}
 
 	// Get the group IDs that the entity is a member of
-	groups, inheritedGroups, err := i.groupsByEntityID(ctx, entity.GetID())
+	groups, inheritedGroups, err := i.GroupsByEntityID(ctx, entity.GetID())
 	if err != nil {
 		return false, err
 	}
@@ -2647,8 +2647,8 @@ func defaultOIDCProvider() provider {
 	}
 }
 
-func defaultOIDCKey() namedKey {
-	return namedKey{
+func defaultOIDCKey() NamedKey {
+	return NamedKey{
 		Algorithm:        string(jose.RS256),
 		VerificationTTL:  24 * time.Hour,
 		RotationPeriod:   24 * time.Hour,
@@ -2657,14 +2657,14 @@ func defaultOIDCKey() namedKey {
 	}
 }
 
-func allowAllAssignment() assignment {
-	return assignment{
+func allowAllAssignment() Assignment {
+	return Assignment{
 		EntityIDs: []string{"*"},
 		GroupIDs:  []string{"*"},
 	}
 }
 
-func (i *IdentityStore) storeOIDCDefaultResources(ctx context.Context, view logical.Storage) error {
+func (i *IdentityStore) StoreOIDCDefaultResources(ctx context.Context, view logical.Storage) error {
 	// Store the default provider
 	storageKey := providerPath + defaultProviderName
 	entry, err := view.Get(ctx, storageKey)
@@ -2687,7 +2687,7 @@ func (i *IdentityStore) storeOIDCDefaultResources(ctx context.Context, view logi
 	}
 
 	// Store the allow all assignment
-	storageKey = assignmentPath + allowAllAssignmentName
+	storageKey = AssignmentPath + AllowAllAssignmentName
 	entry, err = view.Get(ctx, storageKey)
 	if err != nil {
 		return err
@@ -2710,8 +2710,8 @@ func (i *IdentityStore) storeOIDCDefaultResources(ctx context.Context, view logi
 // error is returned, callers can be sure that it exists in storage. Note that it
 // only writes the key's configuration to storage and does not generate key material
 // for its current and next keys.
-func (i *IdentityStore) ensureDefaultKey(ctx context.Context, storage logical.Storage) (*namedKey, error) {
-	key, err := i.getNamedKey(ctx, storage, defaultKeyName)
+func (i *IdentityStore) ensureDefaultKey(ctx context.Context, storage logical.Storage) (*NamedKey, error) {
+	key, err := i.getNamedKey(ctx, storage, DefaultKeyName)
 	if err != nil {
 		return nil, err
 	}
@@ -2721,7 +2721,7 @@ func (i *IdentityStore) ensureDefaultKey(ctx context.Context, storage logical.St
 
 	// The default key doesn't exist. Write it to storage.
 	defaultKey := defaultOIDCKey()
-	entry, err := logical.StorageEntryJSON(namedKeyConfigPath+defaultKeyName, defaultKey)
+	entry, err := logical.StorageEntryJSON(NamedKeyConfigPath+DefaultKeyName, defaultKey)
 	if err != nil {
 		return nil, err
 	}
@@ -2748,18 +2748,18 @@ func (i *IdentityStore) lazyGenerateDefaultKey(ctx context.Context, storage logi
 	}
 
 	if defaultKey.SigningKey == nil {
-		if err := defaultKey.generateAndSetKey(ctx, i.Logger(), storage); err != nil {
+		if err := defaultKey.GenerateAndSetKey(ctx, i.Logger(), storage); err != nil {
 			return err
 		}
-		if err := defaultKey.generateAndSetNextKey(ctx, i.Logger(), storage); err != nil {
-			return err
-		}
-
-		if err := i.oidcCache.Delete(ns, namedKeyCachePrefix+defaultKeyName); err != nil {
+		if err := defaultKey.GenerateAndSetNextKey(ctx, i.Logger(), storage); err != nil {
 			return err
 		}
 
-		entry, err := logical.StorageEntryJSON(namedKeyConfigPath+defaultKeyName, defaultKey)
+		if err := i.OidcCache.Delete(ns, namedKeyCachePrefix+DefaultKeyName); err != nil {
+			return err
+		}
+
+		entry, err := logical.StorageEntryJSON(NamedKeyConfigPath+DefaultKeyName, defaultKey)
 		if err != nil {
 			return err
 		}
@@ -2771,7 +2771,7 @@ func (i *IdentityStore) lazyGenerateDefaultKey(ctx context.Context, storage logi
 	return nil
 }
 
-func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
+func (i *IdentityStore) LoadOIDCClients(ctx context.Context) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -2783,7 +2783,7 @@ func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
 		return err
 	}
 
-	clients, err := i.view(ctx).List(ctx, clientPath)
+	clients, err := i.View(ctx).List(ctx, ClientPath)
 	if err != nil {
 		return err
 	}
@@ -2791,7 +2791,7 @@ func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
 	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 	for _, name := range clients {
-		entry, err := i.view(ctx).Get(ctx, clientPath+name)
+		entry, err := i.View(ctx).Get(ctx, ClientPath+name)
 		if err != nil {
 			return err
 		}
@@ -2799,7 +2799,7 @@ func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
 			continue
 		}
 
-		var client client
+		var client Client
 		if err := entry.DecodeJSON(&client); err != nil {
 			return err
 		}
@@ -2814,7 +2814,7 @@ func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
 }
 
 // clientByID returns the client with the given ID.
-func (i *IdentityStore) clientByID(ctx context.Context, s logical.Storage, id string) (*client, error) {
+func (i *IdentityStore) clientByID(ctx context.Context, s logical.Storage, id string) (*Client, error) {
 	// Read the client from memdb
 	client, err := i.memDBClientByID(ctx, id)
 	if err != nil {
@@ -2846,7 +2846,7 @@ func (i *IdentityStore) clientByID(ctx context.Context, s logical.Storage, id st
 }
 
 // clientByName returns the client with the given name.
-func (i *IdentityStore) clientByName(ctx context.Context, s logical.Storage, name string) (*client, error) {
+func (i *IdentityStore) clientByName(ctx context.Context, s logical.Storage, name string) (*Client, error) {
 	// Read the client from memdb
 	client, err := i.memDBClientByName(ctx, name)
 	if err != nil {
@@ -2878,7 +2878,7 @@ func (i *IdentityStore) clientByName(ctx context.Context, s logical.Storage, nam
 }
 
 // memDBClientByID returns the client with the given ID from memdb.
-func (i *IdentityStore) memDBClientByID(ctx context.Context, id string) (*client, error) {
+func (i *IdentityStore) memDBClientByID(ctx context.Context, id string) (*Client, error) {
 	if id == "" {
 		return nil, errors.New("missing client ID")
 	}
@@ -2893,7 +2893,7 @@ func (i *IdentityStore) memDBClientByID(ctx context.Context, id string) (*client
 }
 
 // memDBClientByIDInTxn returns the client with the given ID from memdb using the given txn.
-func (i *IdentityStore) memDBClientByIDInTxn(txn *memdb.Txn, id string) (*client, error) {
+func (i *IdentityStore) memDBClientByIDInTxn(txn *memdb.Txn, id string) (*Client, error) {
 	if id == "" {
 		return nil, errors.New("missing client ID")
 	}
@@ -2910,7 +2910,7 @@ func (i *IdentityStore) memDBClientByIDInTxn(txn *memdb.Txn, id string) (*client
 		return nil, nil
 	}
 
-	client, ok := clientRaw.(*client)
+	client, ok := clientRaw.(*Client)
 	if !ok {
 		return nil, errors.New("unexpected client type")
 	}
@@ -2919,7 +2919,7 @@ func (i *IdentityStore) memDBClientByIDInTxn(txn *memdb.Txn, id string) (*client
 }
 
 // memDBClientByName returns the client with the given name from memdb.
-func (i *IdentityStore) memDBClientByName(ctx context.Context, name string) (*client, error) {
+func (i *IdentityStore) memDBClientByName(ctx context.Context, name string) (*Client, error) {
 	if name == "" {
 		return nil, errors.New("missing client name")
 	}
@@ -2930,7 +2930,7 @@ func (i *IdentityStore) memDBClientByName(ctx context.Context, name string) (*cl
 }
 
 // memDBClientByNameInTxn returns the client with the given ID from memdb using the given txn.
-func (i *IdentityStore) memDBClientByNameInTxn(ctx context.Context, txn *memdb.Txn, name string) (*client, error) {
+func (i *IdentityStore) memDBClientByNameInTxn(ctx context.Context, txn *memdb.Txn, name string) (*Client, error) {
 	if name == "" {
 		return nil, errors.New("missing client name")
 	}
@@ -2952,7 +2952,7 @@ func (i *IdentityStore) memDBClientByNameInTxn(ctx context.Context, txn *memdb.T
 		return nil, nil
 	}
 
-	client, ok := clientRaw.(*client)
+	client, ok := clientRaw.(*Client)
 	if !ok {
 		return nil, errors.New("unexpected client type")
 	}
@@ -3008,7 +3008,7 @@ func (i *IdentityStore) memDBDeleteClientByNameInTxn(ctx context.Context, txn *m
 }
 
 // memDBUpsertClientInTxn creates or updates the given client in memdb using the given txn.
-func (i *IdentityStore) memDBUpsertClientInTxn(txn *memdb.Txn, client *client) error {
+func (i *IdentityStore) memDBUpsertClientInTxn(txn *memdb.Txn, client *Client) error {
 	if client == nil {
 		return errors.New("client is nil")
 	}
@@ -3037,8 +3037,8 @@ func (i *IdentityStore) memDBUpsertClientInTxn(txn *memdb.Txn, client *client) e
 }
 
 // storageClientByName returns the client with name from the given logical storage.
-func (i *IdentityStore) storageClientByName(ctx context.Context, s logical.Storage, name string) (*client, error) {
-	entry, err := s.Get(ctx, clientPath+name)
+func (i *IdentityStore) storageClientByName(ctx context.Context, s logical.Storage, name string) (*Client, error) {
+	entry, err := s.Get(ctx, ClientPath+name)
 	if err != nil {
 		return nil, err
 	}
@@ -3046,7 +3046,7 @@ func (i *IdentityStore) storageClientByName(ctx context.Context, s logical.Stora
 		return nil, nil
 	}
 
-	var client client
+	var client Client
 	if err := entry.DecodeJSON(&client); err != nil {
 		return nil, err
 	}
@@ -3055,8 +3055,8 @@ func (i *IdentityStore) storageClientByName(ctx context.Context, s logical.Stora
 }
 
 // storageClientByID returns the client with ID from the given logical storage.
-func (i *IdentityStore) storageClientByID(ctx context.Context, s logical.Storage, id string) (*client, error) {
-	clients, err := s.List(ctx, clientPath)
+func (i *IdentityStore) storageClientByID(ctx context.Context, s logical.Storage, id string) (*Client, error) {
+	clients, err := s.List(ctx, ClientPath)
 	if err != nil {
 		return nil, err
 	}
@@ -3078,15 +3078,15 @@ func (i *IdentityStore) storageClientByID(ctx context.Context, s logical.Storage
 	return nil, nil
 }
 
-func (i *IdentityStore) listClients(ctx context.Context, s logical.Storage) ([]*client, error) {
-	clientNames, err := s.List(ctx, clientPath)
+func (i *IdentityStore) listClients(ctx context.Context, s logical.Storage) ([]*Client, error) {
+	clientNames, err := s.List(ctx, ClientPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var clients []*client
+	var clients []*Client
 	for _, name := range clientNames {
-		entry, err := s.Get(ctx, clientPath+name)
+		entry, err := s.Get(ctx, ClientPath+name)
 		if err != nil {
 			return nil, err
 		}
@@ -3094,7 +3094,7 @@ func (i *IdentityStore) listClients(ctx context.Context, s logical.Storage) ([]*
 			continue
 		}
 
-		var client client
+		var client Client
 		if err := entry.DecodeJSON(&client); err != nil {
 			return nil, err
 		}
@@ -3196,9 +3196,9 @@ func basicAuth(req *logical.Request) (string, string, bool) {
 	return headerReq.BasicAuth()
 }
 
-// lowercaseIdentityIDs lowercases the UUID segments of given entity IDs
+// LowercaseIdentityIDs lowercases the UUID segments of given entity IDs
 // without affecting namespace accessor.
-func lowercaseIdentityIDs(identities []string) []string {
+func LowercaseIdentityIDs(identities []string) []string {
 	out := make([]string, len(identities))
 
 	for i, identityID := range identities {

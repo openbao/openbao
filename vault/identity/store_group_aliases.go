@@ -294,7 +294,7 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 	}
 
 	newGroup.Alias = groupAlias
-	err = i.sanitizeAndUpsertGroup(ctx, newGroup, previousGroup, nil)
+	err = i.SanitizeAndUpsertGroup(ctx, newGroup, previousGroup, nil)
 	if err != nil {
 		return nil, err
 	}

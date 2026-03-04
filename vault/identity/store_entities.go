@@ -269,8 +269,8 @@ func (i *IdentityStore) pathEntityMergeID() framework.OperationFunc {
 		}
 
 		// Create a MemDB transaction to merge entities
-		i.lock.Lock()
-		defer i.lock.Unlock()
+		i.Lock()
+		defer i.Unlock()
 
 		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
@@ -311,8 +311,8 @@ func (i *IdentityStore) pathEntityMergeID() framework.OperationFunc {
 // handleEntityUpdateCommon is used to update an entity
 func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-		i.lock.Lock()
-		defer i.lock.Unlock()
+		i.Lock()
+		defer i.Unlock()
 
 		entity := new(identity.Entity)
 		var err error
@@ -382,12 +382,12 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 		newEntity := entity.ID == ""
 
 		// ID creation and some validations
-		err = i.sanitizeEntity(ctx, entity)
+		err = i.SanitizeEntity(ctx, entity)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := i.upsertEntity(ctx, entity, nil, true); err != nil {
+		if err := i.UpsertEntity(ctx, entity, nil, true); err != nil {
 			return nil, err
 		}
 
@@ -509,7 +509,7 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 	addExtraEntityDataToResponse(entity, respData)
 
 	// Fetch the groups this entity belongs to and return their identifiers
-	groups, inheritedGroups, err := i.groupsByEntityID(ctx, entity.ID)
+	groups, inheritedGroups, err := i.GroupsByEntityID(ctx, entity.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -539,8 +539,8 @@ func (i *IdentityStore) pathEntityIDDelete() framework.OperationFunc {
 			return logical.ErrorResponse("missing entity id"), nil
 		}
 
-		i.lock.Lock()
-		defer i.lock.Unlock()
+		i.Lock()
+		defer i.Unlock()
 
 		// Create a MemDB transaction to delete entity
 		txn := i.db(ctx).Txn(true)
@@ -574,8 +574,8 @@ func (i *IdentityStore) pathEntityNameDelete() framework.OperationFunc {
 			return logical.ErrorResponse("missing entity name"), nil
 		}
 
-		i.lock.Lock()
-		defer i.lock.Unlock()
+		i.Lock()
+		defer i.Unlock()
 
 		// Create a MemDB transaction to delete entity
 		txn := i.db(ctx).Txn(true)
@@ -621,7 +621,7 @@ func (i *IdentityStore) handleEntityBatchDelete() framework.OperationFunc {
 		// Sort the ids by the bucket they will be deleted from
 		byBucket := make(map[string]map[string]struct{})
 		for _, id := range entityIDs {
-			bucketKey := i.entityPacker(ctx).BucketKey(id)
+			bucketKey := i.EntityPacker(ctx).BucketKey(id)
 
 			bucket, ok := byBucket[bucketKey]
 			if !ok {
@@ -633,8 +633,8 @@ func (i *IdentityStore) handleEntityBatchDelete() framework.OperationFunc {
 		}
 
 		deleteIdsForBucket := func(entityIDs []string) error {
-			i.lock.Lock()
-			defer i.lock.Unlock()
+			i.Lock()
+			defer i.Unlock()
 
 			// Create a MemDB transaction to delete entities from the inmem database
 			// without altering storage. Batch deletion on storage bucket items is
@@ -659,7 +659,7 @@ func (i *IdentityStore) handleEntityBatchDelete() framework.OperationFunc {
 			}
 
 			// Write all updates for this bucket.
-			err := i.entityPacker(ctx).DeleteMultipleItems(ctx, i.logger, entityIDs)
+			err := i.EntityPacker(ctx).DeleteMultipleItems(ctx, i.logger, entityIDs)
 			if err != nil {
 				return err
 			}
@@ -713,7 +713,7 @@ func (i *IdentityStore) handleEntityDeleteCommon(ctx context.Context, txn *memdb
 	}
 
 	// Delete all the aliases in the entity and the respective indexes
-	err = i.deleteAliasesInEntityInTxn(txn, entity, entity.Aliases)
+	err = i.DeleteAliasesInEntityInTxn(txn, entity, entity.Aliases)
 	if err != nil {
 		return err
 	}
@@ -726,7 +726,7 @@ func (i *IdentityStore) handleEntityDeleteCommon(ctx context.Context, txn *memdb
 
 	if update {
 		// Delete the entity from storage
-		err = i.entityPacker(ctx).DeleteItem(ctx, entity.ID)
+		err = i.EntityPacker(ctx).DeleteItem(ctx, entity.ID)
 		if err != nil {
 			return err
 		}
@@ -870,8 +870,8 @@ func newUserError(err error) error {
 
 func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntity *identity.Entity, fromEntityIDs, conflictingAliasIDsToKeep []string, force, grabLock, mergePolicies, persist, forceMergeAliases bool) ([]aliasClashInformation, error) {
 	if grabLock {
-		i.lock.Lock()
-		defer i.lock.Unlock()
+		i.Lock()
+		defer i.Unlock()
 	}
 
 	if toEntity == nil {
@@ -1117,7 +1117,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 		if persist {
 			// Delete the entity which we are merging from in storage
-			err = i.entityPacker(ctx).DeleteItem(ctx, fromEntity.ID)
+			err = i.EntityPacker(ctx).DeleteItem(ctx, fromEntity.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -1149,7 +1149,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 			Message: toEntityAsAny,
 		}
 
-		err = i.entityPacker(ctx).PutItem(ctx, item)
+		err = i.EntityPacker(ctx).PutItem(ctx, item)
 		if err != nil {
 			return nil, err
 		}

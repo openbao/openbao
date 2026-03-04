@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/routing"
 )
 
@@ -1846,7 +1847,7 @@ func (c *Core) setCoreBackend(entry *routing.MountEntry, backend logical.Backend
 		c.cubbyholeBackend = backend.(*CubbyholeBackend)
 		c.cubbyholeBackend.saltUUID = entry.UUID
 	case routing.MountTypeIdentity:
-		c.identityStore = backend.(*IdentityStore)
+		c.identityStore = backend.(*ident.IdentityStore)
 	}
 }
 

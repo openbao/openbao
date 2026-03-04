@@ -29,13 +29,14 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
+	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/routing"
 )
 
 func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(nil)
-	txn := c.identityStore.db(ctx).Txn(true)
+	txn := c.identityStore.Txn(ctx, true)
 	defer txn.Abort()
 
 	alias := &identity.Alias{
@@ -44,7 +45,7 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 		MountType:      "testMountType",
 		MountAccessor:  "testMountAccessor",
 		Name:           "testAliasName",
-		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("testEntityID"),
+		LocalBucketKey: c.identityStore.LocalAliasPacker(ctx).BucketKey("testEntityID"),
 	}
 	alias2 := &identity.Alias{
 		ID:             "testAliasID2",
@@ -52,7 +53,7 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 		MountType:      "testMountType",
 		MountAccessor:  "testMountAccessor2",
 		Name:           "testAliasName2",
-		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("testEntityID"),
+		LocalBucketKey: c.identityStore.LocalAliasPacker(ctx).BucketKey("testEntityID"),
 	}
 	entity := &identity.Entity{
 		ID:       "testEntityID",
@@ -63,13 +64,13 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 			alias2,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("testEntityID"),
+		BucketKey:   c.identityStore.EntityPacker(ctx).BucketKey("testEntityID"),
 	}
 
-	err := c.identityStore.upsertEntityInTxn(ctx, txn, entity, nil, false)
+	err := c.identityStore.UpsertEntityInTxn(ctx, txn, entity, nil, false)
 	require.NoError(t, err)
 
-	err = c.identityStore.deleteAliasesInEntityInTxn(txn, entity, []*identity.Alias{alias, alias2})
+	err = c.identityStore.DeleteAliasesInEntityInTxn(txn, entity, []*identity.Alias{alias, alias2})
 	require.NoError(t, err)
 
 	txn.Commit()
@@ -89,11 +90,11 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 }
 
 func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
-	err := AddTestCredentialBackend("approle", credAppRole.Factory)
+	err := be.AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	c, unsealKey, root := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(nil)
@@ -116,7 +117,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "approleuser",
-		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity1"),
+		LocalBucketKey: c.identityStore.LocalAliasPacker(ctx).BucketKey("entity1"),
 	}
 	entity := &identity.Entity{
 		ID:       "entity1",
@@ -126,10 +127,10 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 			alias,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity1"),
+		BucketKey:   c.identityStore.EntityPacker(ctx).BucketKey("entity1"),
 	}
 
-	err = c.identityStore.upsertEntity(namespace.RootContext(nil), entity, nil, true)
+	err = c.identityStore.UpsertEntity(namespace.RootContext(nil), entity, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +141,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "APPROLEUSER",
-		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity2"),
+		LocalBucketKey: c.identityStore.LocalAliasPacker(ctx).BucketKey("entity2"),
 	}
 	entity2 := &identity.Entity{
 		ID:       "entity2",
@@ -150,7 +151,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 			alias2,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity2"),
+		BucketKey:   c.identityStore.EntityPacker(ctx).BucketKey("entity2"),
 	}
 
 	// Persist the second entity directly without the regular flow. This will skip
@@ -164,7 +165,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		Message: entity2Any,
 	}
 
-	if err = c.identityStore.entityPacker(ctx).PutItem(ctx, item); err != nil {
+	if err = c.identityStore.EntityPacker(ctx).PutItem(ctx, item); err != nil {
 		t.Fatal(err)
 	}
 
@@ -271,7 +272,7 @@ func TestIdentityStore_CreateOrFetchEntity_UnsafeShared(t *testing.T) {
 	testIdentityStoreCreateOrFetchEntity(t, ctx, is, approleAccessor, upAccessor, core)
 }
 
-func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is *IdentityStore, approleAccessor string, upAccessor string, core *Core) {
+func testIdentityStoreCreateOrFetchEntity(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string, core *Core) {
 	alias := &logical.Alias{
 		MountType:     "approle",
 		MountAccessor: approleAccessor,
@@ -431,7 +432,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 		t.Fatal("expected a non-nil response")
 	}
 
-	entity, err := is.entityByAliasFactors(ctx, approleAccessor, "alias_name", false)
+	entity, err := is.EntityByAliasFactors(ctx, approleAccessor, "alias_name", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -559,11 +560,11 @@ func TestIdentityStore_TokenEntityInheritance(t *testing.T) {
 }
 
 func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
-	err := AddTestCredentialBackend("approle", credAppRole.Factory)
+	err := be.AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	c, _, _ := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(nil)
@@ -586,7 +587,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "approleuser",
-		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity1"),
+		LocalBucketKey: c.identityStore.LocalAliasPacker(ctx).BucketKey("entity1"),
 	}
 	entity := &identity.Entity{
 		ID:       "entity1",
@@ -596,9 +597,9 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 			alias,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity1"),
+		BucketKey:   c.identityStore.EntityPacker(ctx).BucketKey("entity1"),
 	}
-	err = c.identityStore.upsertEntity(namespace.RootContext(nil), entity, nil, true)
+	err = c.identityStore.UpsertEntity(namespace.RootContext(nil), entity, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +610,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "approleuser",
-		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity2"),
+		LocalBucketKey: c.identityStore.LocalAliasPacker(ctx).BucketKey("entity2"),
 	}
 	entity2 := &identity.Entity{
 		ID:       "entity2",
@@ -619,10 +620,10 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 			alias2,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity2"),
+		BucketKey:   c.identityStore.EntityPacker(ctx).BucketKey("entity2"),
 	}
 
-	err = c.identityStore.upsertEntity(namespace.RootContext(nil), entity2, nil, true)
+	err = c.identityStore.UpsertEntity(namespace.RootContext(nil), entity2, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -659,12 +660,12 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	}
 }
 
-func testCoreWithIdentityTokenAppRole(ctx context.Context, t *testing.T) (*Core, *IdentityStore, *TokenStore, string) {
+func testCoreWithIdentityTokenAppRole(ctx context.Context, t *testing.T) (*Core, *ident.IdentityStore, *TokenStore, string) {
 	is, approleAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
 	return core, is, core.tokenStore, approleAccessor
 }
 
-func testIdentityStoreWithAppRoleAuth(ctx context.Context, t *testing.T) (*IdentityStore, string, *Core) {
+func testIdentityStoreWithAppRoleAuth(ctx context.Context, t *testing.T) (*ident.IdentityStore, string, *Core) {
 	is, ghA, c, _ := testIdentityStoreWithAppRoleAuthRoot(ctx, t)
 	return is, ghA, c
 }
@@ -673,14 +674,14 @@ func testIdentityStoreWithAppRoleAuth(ctx context.Context, t *testing.T) (*Ident
 // which is mounted by default. This function also enables the approle auth
 // backend to assist with testing aliases and entities that require an valid
 // mount accessor of an auth backend.
-func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*IdentityStore, string, *Core, string) {
+func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*ident.IdentityStore, string, *Core, string) {
 	// Add github credential factory to core config
-	err := AddTestCredentialBackend("approle", credAppRole.Factory)
+	err := be.AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	c, _, root := TestCoreUnsealed(t)
 
@@ -699,19 +700,19 @@ func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*I
 	return c.identityStore, meGH.Accessor, c, root
 }
 
-func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T, unsafeShared bool) (*IdentityStore, string, string, *Core) {
+func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T, unsafeShared bool) (*ident.IdentityStore, string, string, *Core) {
 	// Setup 2 auth backends, github and userpass
-	err := AddTestCredentialBackend("approle", credAppRole.Factory)
+	err := be.AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	err = AddTestCredentialBackend("userpass", credUserpass.Factory)
+	err = be.AddTestCredentialBackend("userpass", credUserpass.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	conf := &CoreConfig{
 		BuiltinRegistry:              corehelpers.NewMockBuiltinRegistry(),
@@ -752,12 +753,12 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T,
 func TestIdentityStore_MetadataKeyRegex(t *testing.T) {
 	key := "validVALID012_-=+/"
 
-	if !metaKeyFormatRegEx(key) {
+	if !ident.MetaKeyFormatRegEx(key) {
 		t.Fatal("failed to accept valid metadata key")
 	}
 
 	key = "a:b"
-	if metaKeyFormatRegEx(key) {
+	if ident.MetaKeyFormatRegEx(key) {
 		t.Fatal("accepted invalid metadata key")
 	}
 }
@@ -794,11 +795,11 @@ func expectSingleCount(t *testing.T, sink *metrics.InmemSink, keyPrefix string) 
 
 func TestIdentityStore_NewEntityCounter(t *testing.T) {
 	// Add github credential factory to core config
-	err := AddTestCredentialBackend("approle", credAppRole.Factory)
+	err := be.AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	c, _, _, sink := TestCoreUnsealedWithMetrics(t)
 
@@ -874,7 +875,7 @@ func TestIdentityStore_UpdateAliasMetadataPerAccessor(t *testing.T) {
 		Metadata:      map[string]string{"foo": "bar"},
 	}
 
-	if i := changedAliasIndex(entity, login); i != 0 {
+	if i := ident.ChangedAliasIndex(entity, login); i != 0 {
 		t.Fatalf("wrong alias index changed. Expected 0, got %d", i)
 	}
 
@@ -886,7 +887,7 @@ func TestIdentityStore_UpdateAliasMetadataPerAccessor(t *testing.T) {
 		Metadata:      map[string]string{"bar": "foo"},
 	}
 
-	if i := changedAliasIndex(entity, login2); i != 1 {
+	if i := ident.ChangedAliasIndex(entity, login2); i != 1 {
 		t.Fatalf("wrong alias index changed. Expected 1, got %d", i)
 	}
 }
@@ -899,19 +900,19 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
 
 	// add caseSensitivityKey to storage
-	entry, err := logical.StorageEntryJSON(caseSensitivityKey, &casesensitivity{
+	entry, err := logical.StorageEntryJSON(ident.CaseSensitivityKey, &ident.CaseSensitivity{
 		DisableLowerCasedNames: true,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = c.identityStore.view(ctx).Put(ctx, entry)
+	err = c.identityStore.View(ctx).Put(ctx, entry)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// check if the value is stored in storage
-	storageEntry, err := c.identityStore.view(ctx).Get(ctx, caseSensitivityKey)
+	storageEntry, err := c.identityStore.View(ctx).Get(ctx, ident.CaseSensitivityKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -937,7 +938,7 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	}
 
 	// check if caseSensitivityKey exists after initialize
-	storageEntry, err = c.identityStore.view(ctx).Get(ctx, caseSensitivityKey)
+	storageEntry, err = c.identityStore.View(ctx).Get(ctx, ident.CaseSensitivityKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -949,9 +950,9 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 
 func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 	// Register the userpass auth method
-	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
 	require.NoError(t, err)
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	// Setup core and namespaces
 	c, _, _ := TestCoreUnsealed(t)
@@ -1094,17 +1095,17 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		require.NotEqual(t, ns1Entity.ID, ns2Entity.ID, "NS1 and NS2 entities should be different")
 
 		// Verify entity lookup by alias works correctly in each namespace
-		fetchedRoot, err := is.entityByAliasFactors(rootCtx, rootAccessor, commonUserName, false)
+		fetchedRoot, err := is.EntityByAliasFactors(rootCtx, rootAccessor, commonUserName, false)
 		require.NoError(t, err)
 		require.NotNil(t, fetchedRoot)
 		require.Equal(t, rootEntity.ID, fetchedRoot.ID)
 
-		fetchedNS1, err := is.entityByAliasFactors(ns1Ctx, ns1Accessor, commonUserName, false)
+		fetchedNS1, err := is.EntityByAliasFactors(ns1Ctx, ns1Accessor, commonUserName, false)
 		require.NoError(t, err)
 		require.NotNil(t, fetchedNS1)
 		require.Equal(t, ns1Entity.ID, fetchedNS1.ID)
 
-		fetchedNS2, err := is.entityByAliasFactors(ns2Ctx, ns2Accessor, commonUserName, false)
+		fetchedNS2, err := is.EntityByAliasFactors(ns2Ctx, ns2Accessor, commonUserName, false)
 		require.NoError(t, err)
 		require.NotNil(t, fetchedNS2)
 		require.Equal(t, ns2Entity.ID, fetchedNS2.ID)
@@ -1136,11 +1137,11 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		require.Len(t, ns1Entity.Aliases, 1, "NS1 entity should have 1 alias")
 
 		// Cross-namespace lookups should return nil, not error
-		crossEntity, err := is.entityByAliasFactors(rootCtx, ns1Accessor, userName, false)
+		crossEntity, err := is.EntityByAliasFactors(rootCtx, ns1Accessor, userName, false)
 		require.NoError(t, err)
 		require.Nil(t, crossEntity, "Should not find NS1 entity from root context")
 
-		crossEntity, err = is.entityByAliasFactors(ns1Ctx, rootAccessor, userName, false)
+		crossEntity, err = is.EntityByAliasFactors(ns1Ctx, rootAccessor, userName, false)
 		require.NoError(t, err)
 		require.Nil(t, crossEntity, "Should not find root entity from NS1 context")
 
@@ -1208,13 +1209,13 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		require.Equal(t, "ns1-new", updatedNs1Entity.Aliases[0].Metadata["added"])
 
 		// Verify updates didn't cross namespaces
-		fetchedRootEntity, err := is.entityByAliasFactors(rootCtx, rootAccessor, metadataUser, false)
+		fetchedRootEntity, err := is.EntityByAliasFactors(rootCtx, rootAccessor, metadataUser, false)
 		require.NoError(t, err)
 		require.Equal(t, "root-updated", fetchedRootEntity.Aliases[0].Metadata["initial"])
 		require.Equal(t, "root-new", fetchedRootEntity.Aliases[0].Metadata["added"])
 		require.NotEqual(t, "ns1-updated", fetchedRootEntity.Aliases[0].Metadata["initial"])
 
-		fetchedNs1Entity, err := is.entityByAliasFactors(ns1Ctx, ns1Accessor, metadataUser, false)
+		fetchedNs1Entity, err := is.EntityByAliasFactors(ns1Ctx, ns1Accessor, metadataUser, false)
 		require.NoError(t, err)
 		require.Equal(t, "ns1-updated", fetchedNs1Entity.Aliases[0].Metadata["initial"])
 		require.Equal(t, "ns1-new", fetchedNs1Entity.Aliases[0].Metadata["added"])
@@ -1267,12 +1268,12 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		require.NotEqual(t, parentEntity.ID, childEntity.ID)
 
 		// Child namespace should not see parent's entity
-		fetchedInChild, err := is.entityByAliasFactors(childCtx, ns1Accessor, hierarchyUser, false)
+		fetchedInChild, err := is.EntityByAliasFactors(childCtx, ns1Accessor, hierarchyUser, false)
 		require.NoError(t, err)
 		require.Nil(t, fetchedInChild, "Child namespace should not see parent's entity")
 
 		// Parent namespace should not see child's entity
-		fetchedInParent, err := is.entityByAliasFactors(ns1Ctx, childAccessor, hierarchyUser, false)
+		fetchedInParent, err := is.EntityByAliasFactors(ns1Ctx, childAccessor, hierarchyUser, false)
 		require.NoError(t, err)
 		require.Nil(t, fetchedInParent, "Parent namespace should not see child's entity")
 	})
@@ -1280,9 +1281,9 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 
 func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 	// Register auth backend
-	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
 	require.NoError(t, err)
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	// Setup core and namespaces
 	c, _, _ := TestCoreUnsealed(t)
@@ -1399,12 +1400,12 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		require.Nil(t, deletedEntity, "Entity should be deleted")
 
 		// Try to fetch by the alias - should return nil not error
-		orphanedEntity, err := is.entityByAliasFactors(ns1Ctx, ns1Accessor, aliasName, false)
+		orphanedEntity, err := is.EntityByAliasFactors(ns1Ctx, ns1Accessor, aliasName, false)
 		require.NoError(t, err, "Should not error when alias points to deleted entity")
 		require.Nil(t, orphanedEntity, "Should not return entity for orphaned alias")
 
 		// Verify the ns2 entity is still intact
-		ns2Lookup, err := is.entityByAliasFactors(ns2Ctx, ns2Accessor, aliasName, false)
+		ns2Lookup, err := is.EntityByAliasFactors(ns2Ctx, ns2Accessor, aliasName, false)
 		require.NoError(t, err)
 		require.NotNil(t, ns2Lookup, "NS2 entity should still exist")
 		require.Equal(t, ns2Entity.ID, ns2Lookup.ID)
@@ -1465,7 +1466,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		}
 
 		// Use root context but the entity lacks a namespace ID
-		err := is.sanitizeEntity(rootCtx, entity)
+		err := is.SanitizeEntity(rootCtx, entity)
 		require.NoError(t, err)
 		require.Equal(t, namespace.RootNamespaceID, entity.NamespaceID, "Entity should get root namespace ID")
 	})
@@ -1481,7 +1482,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		}
 
 		// Sanitize should add the namespace from context
-		err := is.sanitizeAlias(ns1Ctx, alias)
+		err := is.SanitizeAlias(ns1Ctx, alias)
 		require.NoError(t, err)
 		require.Equal(t, ns1.ID, alias.NamespaceID, "Alias should get namespace ID from context")
 	})
@@ -1495,7 +1496,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		}
 
 		// Try to use this entity in ns2 context
-		err := is.sanitizeEntity(ns2Ctx, entity)
+		err := is.SanitizeEntity(ns2Ctx, entity)
 		require.Error(t, err, "Should error when entity namespace doesn't match context namespace")
 		require.Contains(t, err.Error(), "not belong to this namespace", "Error should mention namespace mismatch")
 	})
@@ -1673,13 +1674,13 @@ func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *
 		Name: groupName,
 	}
 
-	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
+	err = is.SanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
+	err = is.SanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(ns2Ctx, ns2Group, nil, nil)
+	err = is.SanitizeAndUpsertGroup(ns2Ctx, ns2Group, nil, nil)
 	require.NoError(t, err)
 
 	require.NotEqual(t, rootGroup.ID, ns1Group.ID)
@@ -1694,9 +1695,9 @@ func setupIdentityTestEnv(t *testing.T, c *Core) (rootCtx context.Context, ns1 *
 // Test cross-namespace isolation with comprehensive matrix of lookup attempts
 func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 	// Register auth backend
-	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
 	require.NoError(t, err)
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	// Setup core and namespaces
 	c, _, _ := TestCoreUnsealed(t)
@@ -1725,7 +1726,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 
 	for _, test := range crossLookups {
 		t.Run(test.name, func(t *testing.T) {
-			entity, err := is.entityByAliasFactors(test.ctx, test.accessor, commonUser, false)
+			entity, err := is.EntityByAliasFactors(test.ctx, test.accessor, commonUser, false)
 			require.NoError(t, err)
 
 			if test.expectNil {
@@ -1905,7 +1906,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 		for _, test := range validLookups {
 			t.Run(test.name, func(t *testing.T) {
 				aliasLookup, err := is.MemDBAliasByFactorsInTxn(
-					is.db(test.ctx).Txn(false),
+					is.Txn(test.ctx, false),
 					test.accessor,
 					commonAliasName,
 					false,
@@ -1943,7 +1944,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 		for _, test := range crossLookups {
 			t.Run(test.name, func(t *testing.T) {
 				aliasLookup, err := is.MemDBAliasByFactorsInTxn(
-					is.db(test.ctx).Txn(false),
+					is.Txn(test.ctx, false),
 					test.accessor,
 					commonAliasName,
 					false,
@@ -1959,9 +1960,9 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 
 func TestIdentityStore_StrictGroupIsloation(t *testing.T) {
 	// Register auth backend
-	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
 	require.NoError(t, err)
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	// Setup core and namespaces
 	c, _, _ := TestCoreUnsealed(t)
@@ -1969,36 +1970,36 @@ func TestIdentityStore_StrictGroupIsloation(t *testing.T) {
 
 	rootCtx, _, ns1Ctx, _, _, _, _, _, _, _, _, _, _, _, _, _, rootGroup, ns1Group, ns2Group := setupIdentityTestEnv(t, c)
 
-	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
+	err = is.SanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns1Group.ID})
+	err = is.SanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns1Group.ID})
 	require.Error(t, err)
 
-	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns2Group.ID})
+	err = is.SanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns2Group.ID})
 	require.Error(t, err)
 
-	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
+	err = is.SanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
+	err = is.SanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{rootGroup.ID})
+	err = is.SanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{rootGroup.ID})
 	require.Error(t, err)
 
-	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{ns2Group.ID})
+	err = is.SanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{ns2Group.ID})
 	require.Error(t, err)
 
-	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
+	err = is.SanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
 	require.NoError(t, err)
 }
 
 func TestIdentityStore_UnsafeCrossNamespace(t *testing.T) {
 	// Register auth backend
-	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
 	require.NoError(t, err)
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	// Setup core and namespaces
 	c := TestCoreWithConfig(t, &CoreConfig{
@@ -2017,27 +2018,27 @@ func TestIdentityStore_UnsafeCrossNamespace(t *testing.T) {
 
 	rootCtx, _, ns1Ctx, _, _, _, _, _, _, _, _, _, _, _, _, _, rootGroup, ns1Group, ns2Group := setupIdentityTestEnv(t, c)
 
-	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
+	err = is.SanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns1Group.ID})
+	err = is.SanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns1Group.ID})
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns2Group.ID})
+	err = is.SanitizeAndUpsertGroup(rootCtx, rootGroup, nil, []string{ns2Group.ID})
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
+	err = is.SanitizeAndUpsertGroup(rootCtx, rootGroup, nil, nil)
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
+	err = is.SanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{rootGroup.ID})
+	err = is.SanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{rootGroup.ID})
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{ns2Group.ID})
+	err = is.SanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, []string{ns2Group.ID})
 	require.NoError(t, err)
 
-	err = is.sanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
+	err = is.SanitizeAndUpsertGroup(ns1Ctx, ns1Group, nil, nil)
 	require.NoError(t, err)
 }

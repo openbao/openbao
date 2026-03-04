@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/go-hclog"
 	memdb "github.com/hashicorp/go-memdb"
 	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -28,71 +28,10 @@ import (
 )
 
 var (
-	errDuplicateIdentityName = errors.New("duplicate identity name")
-	errCycleDetectedPrefix   = "cyclic relationship detected for member group ID"
+	ErrDuplicateIdentityName = errors.New("duplicate identity name")
+	ErrCycleDetectedPrefix   = "cyclic relationship detected for member group ID"
 	tmpSuffix                = ".tmp"
 )
-
-func (c *Core) loadIdentityStoreArtifacts(ctx context.Context, readOnly bool) error {
-	if c.identityStore == nil {
-		c.logger.Warn("identity store is not setup, skipping loading")
-		return nil
-	}
-
-	loadFunc := func(context.Context) error {
-		allNs, err := c.ListNamespaces(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to list namespaces: %w", err)
-		}
-
-		for _, ns := range allNs {
-			if ns.Tainted {
-				c.logger.Info("skipping loading entities for tainted namespace", "ns", ns.ID)
-				continue
-			}
-
-			nsCtx := namespace.ContextWithNamespace(ctx, ns)
-
-			if err := c.identityStore.loadEntities(nsCtx, readOnly); err != nil {
-				return err
-			}
-			if err := c.identityStore.loadGroups(nsCtx, readOnly); err != nil {
-				return err
-			}
-			if err := c.identityStore.loadOIDCClients(nsCtx); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-
-	// Load everything when memdb is set to operate on lower cased names
-	err := loadFunc(ctx)
-	switch {
-	case err == nil:
-		// If it succeeds, all is well
-		return nil
-	case !errwrap.Contains(err, errDuplicateIdentityName.Error()):
-		return err
-	}
-
-	c.identityStore.logger.Warn("enabling case sensitive identity names")
-
-	// Set identity store to operate on case sensitive identity names
-	c.identityStore.disableLowerCasedNames = true
-
-	// Swap the memdb instance by the one which operates on case sensitive
-	// names, hence obviating the need to unload anything that's already
-	// loaded.
-	if err := c.identityStore.resetDB(ctx); err != nil {
-		return err
-	}
-
-	// Attempt to load identity artifacts once more after memdb is reset to
-	// accept case sensitive names
-	return loadFunc(ctx)
-}
 
 func (i *IdentityStore) sanitizeName(name string) string {
 	if i.disableLowerCasedNames {
@@ -101,21 +40,25 @@ func (i *IdentityStore) sanitizeName(name string) string {
 	return strings.ToLower(name)
 }
 
-func (i *IdentityStore) loadGroups(ctx context.Context, readOnly bool) error {
+func (i *IdentityStore) DisableLowerCasedNames(b bool) {
+	i.disableLowerCasedNames = b
+}
+
+func (i *IdentityStore) LoadGroups(ctx context.Context, readOnly bool) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
 	}
 
 	i.logger.Debug("identity loading groups", "namespace", ns.Path)
-	existing, err := i.groupPacker(ctx).View().List(ctx, groupBucketsPrefix)
+	existing, err := i.GroupPacker(ctx).View().List(ctx, groupBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for groups: %w", err)
 	}
 	i.logger.Debug("groups collected", "num_existing", len(existing))
 
 	for _, key := range existing {
-		bucket, err := i.groupPacker(ctx).GetBucket(ctx, groupBucketsPrefix+key)
+		bucket, err := i.GroupPacker(ctx).GetBucket(ctx, groupBucketsPrefix+key)
 		if err != nil {
 			return err
 		}
@@ -143,7 +86,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context, readOnly bool) error {
 				// These should only exist when upgrading from an older version
 				// See https://github.com/openbao/openbao/issues/2319
 				i.logger.Warn("deleting corrupt group. See https://github.com/openbao/openbao/issues/2319", "name", group.Name, "expected_namespace_id", ns.ID, "actual_namespace_id", group.NamespaceID)
-				err = i.groupPacker(ctx).DeleteItem(ctx, group.ID)
+				err = i.GroupPacker(ctx).DeleteItem(ctx, group.ID)
 				if err != nil {
 					return err
 				}
@@ -156,9 +99,10 @@ func (i *IdentityStore) loadGroups(ctx context.Context, readOnly bool) error {
 				return err
 			}
 			if groupByName != nil {
-				i.logger.Warn(errDuplicateIdentityName.Error(), "group_name", group.Name, "conflicting_group_name", groupByName.Name, "action", "merge the contents of duplicated groups into one and delete the other")
+				i.logger.Warn(
+					ErrDuplicateIdentityName.Error(), "group_name", group.Name, "conflicting_group_name", groupByName.Name, "action", "merge the contents of duplicated groups into one and delete the other")
 				if !i.disableLowerCasedNames {
-					return errDuplicateIdentityName
+					return ErrDuplicateIdentityName
 				}
 			}
 
@@ -202,7 +146,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context, readOnly bool) error {
 	return nil
 }
 
-func (i *IdentityStore) loadEntities(ctx context.Context, readOnly bool) error {
+func (i *IdentityStore) LoadEntities(ctx context.Context, readOnly bool) error {
 	// Accumulate existing entities
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -210,7 +154,7 @@ func (i *IdentityStore) loadEntities(ctx context.Context, readOnly bool) error {
 	}
 
 	i.logger.Debug("loading entities", "namespace", ns.Path)
-	existing, err := i.entityPacker(ctx).View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
+	existing, err := i.EntityPacker(ctx).View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for entities: %w", err)
 	}
@@ -242,7 +186,7 @@ func (i *IdentityStore) loadEntities(ctx context.Context, readOnly bool) error {
 						return
 					}
 
-					bucket, err := i.entityPacker(ctx).GetBucket(ctx, storagepacker.StoragePackerBucketsPrefix+key)
+					bucket, err := i.EntityPacker(ctx).GetBucket(ctx, storagepacker.StoragePackerBucketsPrefix+key)
 					if err != nil {
 						errs <- err
 						continue
@@ -319,7 +263,7 @@ LOOP:
 					// Entity's namespace doesn't exist anymore but the
 					// entity from the namespace still exists.
 					i.logger.Warn("deleting entity and its any existing aliases", "name", entity.Name, "namespace_id", entity.NamespaceID)
-					err = i.entityPacker(ctx).DeleteItem(ctx, entity.ID)
+					err = i.EntityPacker(ctx).DeleteItem(ctx, entity.ID)
 					if err != nil {
 						return err
 					}
@@ -333,9 +277,9 @@ LOOP:
 					return nil
 				}
 				if entityByName != nil {
-					i.logger.Warn(errDuplicateIdentityName.Error(), "entity_name", entity.Name, "conflicting_entity_name", entityByName.Name, "action", "merge the duplicate entities into one")
+					i.logger.Warn(ErrDuplicateIdentityName.Error(), "entity_name", entity.Name, "conflicting_entity_name", entityByName.Name, "action", "merge the duplicate entities into one")
 					if !i.disableLowerCasedNames {
-						return errDuplicateIdentityName
+						return ErrDuplicateIdentityName
 					}
 				}
 
@@ -358,7 +302,7 @@ LOOP:
 				}
 
 				// Only update MemDB and don't hit the storage again
-				err = i.upsertEntity(nsCtx, entity, nil, false)
+				err = i.UpsertEntity(nsCtx, entity, nil, false)
 				if err != nil {
 					return fmt.Errorf("failed to update entity in MemDB: %w", err)
 				}
@@ -391,6 +335,10 @@ LOOP:
 	return nil
 }
 
+func (i *IdentityStore) Logger() hclog.Logger {
+	return i.logger
+}
+
 // getAccessorsOnDuplicateAliases returns a list of accessors by checking aliases in
 // the passed in list which belong to the same accessor(s)
 func getAccessorsOnDuplicateAliases(aliases []*identity.Alias) []string {
@@ -410,13 +358,13 @@ func getAccessorsOnDuplicateAliases(aliases []*identity.Alias) []string {
 	return mountAccessors
 }
 
-// upsertEntityInTxn either creates or updates an existing entity. The
+// UpsertEntityInTxn either creates or updates an existing entity. The
 // operations will be updated in both MemDB and storage. If 'persist' is set to
 // false, then storage will not be updated. When an alias is transferred from
 // one entity to another, both the source and destination entities should get
 // updated, in which case, callers should send in both entity and
 // previousEntity.
-func (i *IdentityStore) upsertEntityInTxn(ctx context.Context, txn *memdb.Txn, entity *identity.Entity, previousEntity *identity.Entity, persist bool) error {
+func (i *IdentityStore) UpsertEntityInTxn(ctx context.Context, txn *memdb.Txn, entity *identity.Entity, previousEntity *identity.Entity, persist bool) error {
 	defer metrics.MeasureSince([]string{"identity", "upsert_entity_txn"}, time.Now())
 	var err error
 
@@ -492,9 +440,9 @@ func (i *IdentityStore) upsertEntityInTxn(ctx context.Context, txn *memdb.Txn, e
 		}
 
 		if slices.Contains(aliasFactors, i.sanitizeName(alias.Name)+alias.MountAccessor) {
-			i.logger.Warn(errDuplicateIdentityName.Error(), "alias_name", alias.Name, "mount_accessor", alias.MountAccessor, "local", alias.Local, "entity_name", entity.Name, "action", "delete one of the duplicate aliases")
+			i.logger.Warn(ErrDuplicateIdentityName.Error(), "alias_name", alias.Name, "mount_accessor", alias.MountAccessor, "local", alias.Local, "entity_name", entity.Name, "action", "delete one of the duplicate aliases")
 			if !i.disableLowerCasedNames {
-				return errDuplicateIdentityName
+				return ErrDuplicateIdentityName
 			}
 		}
 
@@ -573,7 +521,7 @@ func (i *IdentityStore) processLocalAlias(ctx context.Context, lAlias *logical.A
 	alias.Local = lAlias.Local
 	alias.CustomMetadata = lAlias.CustomMetadata
 
-	if err := i.sanitizeAlias(ctx, alias); err != nil {
+	if err := i.SanitizeAlias(ctx, alias); err != nil {
 		return nil, err
 	}
 
@@ -604,7 +552,7 @@ func (i *IdentityStore) processLocalAlias(ctx context.Context, lAlias *logical.A
 	if err != nil {
 		return nil, err
 	}
-	if err := i.localAliasPacker(ctx).PutItem(ctx, &storagepacker.Item{
+	if err := i.LocalAliasPacker(ctx).PutItem(ctx, &storagepacker.Item{
 		ID:      entity.ID,
 		Message: marshaledAliases,
 	}); err != nil {
@@ -617,7 +565,7 @@ func (i *IdentityStore) processLocalAlias(ctx context.Context, lAlias *logical.A
 		if err := i.MemDBUpsertAliasInTxn(txn, alias, false); err != nil {
 			return nil, err
 		}
-		if err := i.upsertEntityInTxn(ctx, txn, entity, nil, false); err != nil {
+		if err := i.UpsertEntityInTxn(ctx, txn, entity, nil, false); err != nil {
 			return nil, err
 		}
 		txn.Commit()
@@ -655,7 +603,7 @@ func (i *IdentityStore) persistEntity(ctx context.Context, entity *identity.Enti
 	if err != nil {
 		return err
 	}
-	if err := i.entityPacker(ctx).PutItem(ctx, &storagepacker.Item{
+	if err := i.EntityPacker(ctx).PutItem(ctx, &storagepacker.Item{
 		ID:      entity.ID,
 		Message: marshaledEntity,
 	}); err != nil {
@@ -675,7 +623,7 @@ func (i *IdentityStore) persistEntity(ctx context.Context, entity *identity.Enti
 	if err != nil {
 		return err
 	}
-	if err := i.localAliasPacker(ctx).PutItem(ctx, &storagepacker.Item{
+	if err := i.LocalAliasPacker(ctx).PutItem(ctx, &storagepacker.Item{
 		ID:      entity.ID,
 		Message: marshaledAliases,
 	}); err != nil {
@@ -685,13 +633,13 @@ func (i *IdentityStore) persistEntity(ctx context.Context, entity *identity.Enti
 	return nil
 }
 
-// upsertEntity either creates or updates an existing entity. The operations
+// UpsertEntity either creates or updates an existing entity. The operations
 // will be updated in both MemDB and storage. If 'persist' is set to false,
 // then storage will not be updated. When an alias is transferred from one
 // entity to another, both the source and destination entities should get
 // updated, in which case, callers should send in both entity and
 // previousEntity.
-func (i *IdentityStore) upsertEntity(ctx context.Context, entity *identity.Entity, previousEntity *identity.Entity, persist bool) error {
+func (i *IdentityStore) UpsertEntity(ctx context.Context, entity *identity.Entity, previousEntity *identity.Entity, persist bool) error {
 	defer metrics.MeasureSince([]string{"identity", "upsert_entity"}, time.Now())
 
 	if err := i.validateCtx(ctx); err != nil {
@@ -702,7 +650,7 @@ func (i *IdentityStore) upsertEntity(ctx context.Context, entity *identity.Entit
 	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 
-	err := i.upsertEntityInTxn(ctx, txn, entity, previousEntity, persist)
+	err := i.UpsertEntityInTxn(ctx, txn, entity, previousEntity, persist)
 	if err != nil {
 		return err
 	}
@@ -1195,7 +1143,7 @@ func (i *IdentityStore) MemDBDeleteEntityByIDInTxn(txn *memdb.Txn, entityID stri
 	return nil
 }
 
-func (i *IdentityStore) sanitizeAlias(ctx context.Context, alias *identity.Alias) error {
+func (i *IdentityStore) SanitizeAlias(ctx context.Context, alias *identity.Alias) error {
 	var err error
 
 	if alias == nil {
@@ -1230,7 +1178,7 @@ func (i *IdentityStore) sanitizeAlias(ctx context.Context, alias *identity.Alias
 			return errors.New("failed to generate alias ID")
 		}
 
-		alias.LocalBucketKey = i.localAliasPacker(ctx).BucketKey(alias.CanonicalID)
+		alias.LocalBucketKey = i.LocalAliasPacker(ctx).BucketKey(alias.CanonicalID)
 	}
 
 	if alias.NamespaceID == "" {
@@ -1256,7 +1204,7 @@ func (i *IdentityStore) sanitizeAlias(ctx context.Context, alias *identity.Alias
 	return nil
 }
 
-func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Entity) error {
+func (i *IdentityStore) SanitizeEntity(ctx context.Context, entity *identity.Entity) error {
 	var err error
 
 	if entity == nil {
@@ -1276,7 +1224,7 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 		}
 
 		// Set the storage bucket key in entity
-		entity.BucketKey = i.entityPacker(ctx).BucketKey(entity.ID)
+		entity.BucketKey = i.EntityPacker(ctx).BucketKey(entity.ID)
 	}
 
 	if entity.NamespaceID == "" {
@@ -1321,7 +1269,7 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 	return nil
 }
 
-func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *identity.Group, previousGroup *identity.Group, memberGroupIDs []string) error {
+func (i *IdentityStore) SanitizeAndUpsertGroup(ctx context.Context, group *identity.Group, previousGroup *identity.Group, memberGroupIDs []string) error {
 	var err error
 
 	if group == nil {
@@ -1341,7 +1289,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 		}
 
 		// Set the hash value of the storage bucket key in group
-		group.BucketKey = i.groupPacker(ctx).BucketKey(group.ID)
+		group.BucketKey = i.GroupPacker(ctx).BucketKey(group.ID)
 	}
 
 	if group.NamespaceID == "" {
@@ -1497,7 +1445,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 				return fmt.Errorf("failed to perform cyclic relationship detection for member group ID %q", memberGroupID)
 			}
 			if cycleDetected {
-				return fmt.Errorf("%s %q", errCycleDetectedPrefix, memberGroupID)
+				return fmt.Errorf("%s %q", ErrCycleDetectedPrefix, memberGroupID)
 			}
 		}
 
@@ -1528,7 +1476,7 @@ ALIAS:
 	// Sanitize the group alias
 	if group.Alias != nil {
 		group.Alias.CanonicalID = group.ID
-		err = i.sanitizeAlias(ctx, group.Alias)
+		err = i.SanitizeAlias(ctx, group.Alias)
 		if err != nil {
 			return err
 		}
@@ -1554,7 +1502,7 @@ ALIAS:
 	return nil
 }
 
-func (i *IdentityStore) deleteAliasesInEntityInTxn(txn *memdb.Txn, entity *identity.Entity, aliases []*identity.Alias) error {
+func (i *IdentityStore) DeleteAliasesInEntityInTxn(txn *memdb.Txn, entity *identity.Entity, aliases []*identity.Alias) error {
 	if entity == nil {
 		return errors.New("entity is nil")
 	}
@@ -1614,7 +1562,7 @@ func validateMetaPair(key, value string) error {
 	if key == "" {
 		return errors.New("key cannot be blank")
 	}
-	if !metaKeyFormatRegEx(key) {
+	if !MetaKeyFormatRegEx(key) {
 		return errors.New("key contains invalid characters")
 	}
 	if len(key) > metaKeyMaxLength {
@@ -1761,7 +1709,7 @@ func (i *IdentityStore) UpsertGroupInTxn(ctx context.Context, txn *memdb.Txn, gr
 			Message: groupAsAny,
 		}
 
-		if err := i.groupPacker(ctx).PutItem(ctx, item); err != nil {
+		if err := i.GroupPacker(ctx).PutItem(ctx, item); err != nil {
 			return err
 		}
 	}
@@ -1949,7 +1897,7 @@ func (i *IdentityStore) MemDBGroupsByMemberEntityIDInTxn(txn *memdb.Txn, entityI
 	return groups, nil
 }
 
-func (i *IdentityStore) groupPoliciesByEntityID(ctx context.Context, entityID string) (map[string][]string, error) {
+func (i *IdentityStore) GroupPoliciesByEntityID(ctx context.Context, entityID string) (map[string][]string, error) {
 	if entityID == "" {
 		return nil, errors.New("empty entity ID")
 	}
@@ -1971,7 +1919,7 @@ func (i *IdentityStore) groupPoliciesByEntityID(ctx context.Context, entityID st
 	return policies, nil
 }
 
-func (i *IdentityStore) groupsByEntityID(ctx context.Context, entityID string) ([]*identity.Group, []*identity.Group, error) {
+func (i *IdentityStore) GroupsByEntityID(ctx context.Context, entityID string) ([]*identity.Group, []*identity.Group, error) {
 	if entityID == "" {
 		return nil, nil, errors.New("empty entity ID")
 	}
@@ -2116,7 +2064,7 @@ func (i *IdentityStore) detectCycleDFS(ctx context.Context, visited map[string]b
 	return false, nil
 }
 
-func (i *IdentityStore) memberGroupIDsByID(ctx context.Context, groupID string) ([]string, error) {
+func (i *IdentityStore) MemberGroupIDsByID(ctx context.Context, groupID string) ([]string, error) {
 	var memberGroupIDs []string
 	memberGroups, err := i.MemDBGroupsByParentGroupID(ctx, groupID, false)
 	if err != nil {
@@ -2224,7 +2172,7 @@ func (i *IdentityStore) MemDBGroupByAliasID(ctx context.Context, aliasID string,
 	return i.MemDBGroupByAliasIDInTxn(txn, aliasID, clone)
 }
 
-func (i *IdentityStore) refreshExternalGroupMembershipsByEntityID(ctx context.Context, entityID string, groupAliases []*logical.Alias, mountAccessor string) ([]*logical.Alias, error) {
+func (i *IdentityStore) RefreshExternalGroupMembershipsByEntityID(ctx context.Context, entityID string, groupAliases []*logical.Alias, mountAccessor string) ([]*logical.Alias, error) {
 	defer metrics.MeasureSince([]string{"identity", "refresh_external_groups"}, time.Now())
 
 	if entityID == "" {
@@ -2453,8 +2401,8 @@ func (i *IdentityStore) handleAliasListCommon(ctx context.Context, groupAlias bo
 	return logical.ListResponseWithInfo(aliasIDs, aliasInfo), nil
 }
 
-// countEntities returns the sum of all entities across all namespaces.
-func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
+// CountEntities returns the sum of all entities across all namespaces.
+func (i *IdentityStore) CountEntities(ctx context.Context) (int, error) {
 	var count int
 	var outErr error
 
@@ -2497,7 +2445,7 @@ func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 }
 
 // Sum up the number of entities belonging to each namespace (keyed by ID)
-func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[string]int, error) {
+func (i *IdentityStore) CountEntitiesByNamespace(ctx context.Context) (map[string]int, error) {
 	byNamespace := make(map[string]int)
 
 	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)
@@ -2550,7 +2498,7 @@ func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[strin
 }
 
 // Sum up the number of entities belonging to each mount point (keyed by accessor)
-func (i *IdentityStore) countEntitiesByMountAccessor(ctx context.Context) (map[string]int, error) {
+func (i *IdentityStore) CountEntitiesByMountAccessor(ctx context.Context) (map[string]int, error) {
 	byMountAccessor := make(map[string]int)
 
 	rootViewRaw, ok := i.views.Load(namespace.RootNamespaceUUID)

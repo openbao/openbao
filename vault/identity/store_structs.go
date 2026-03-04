@@ -20,8 +20,8 @@ import (
 	"github.com/openbao/openbao/vault/routing"
 )
 
-// metaKeyFormatRegEx checks if a metadata key string is valid
-var metaKeyFormatRegEx = regexp.MustCompile(`^[a-zA-Z0-9=/+_-]+$`).MatchString
+// MetaKeyFormatRegEx checks if a metadata key string is valid
+var MetaKeyFormatRegEx = regexp.MustCompile(`^[a-zA-Z0-9=/+_-]+$`).MatchString
 
 const (
 	// The meta key prefix reserved for Vault's internal use
@@ -65,6 +65,7 @@ type identityStoreNamespaceView struct {
 // maintains active in-memory replicas of the storage contents indexed by
 // multiple fields.
 type IdentityStore struct {
+	sync.RWMutex
 	// IdentityStore is a secret backend in Vault
 	*framework.Backend
 
@@ -73,16 +74,15 @@ type IdentityStore struct {
 	views sync.Map
 
 	// locks to make sure things are consistent
-	lock     sync.RWMutex
 	oidcLock sync.RWMutex
 
 	// groupLock is used to protect modifications to group entries
 	groupLock sync.RWMutex
 
-	// oidcCache stores common response data as well as when the periodic func needs
+	// OidcCache stores common response data as well as when the periodic func needs
 	// to run. This is conservatively managed, and most writes to the OIDC endpoints
 	// will invalidate the cache.
-	oidcCache *oidcCache
+	OidcCache *oidcCache
 
 	// oidcAuthCodeCache stores OIDC authorization codes to be exchanged
 	// for an ID token during an authorization code flow.
@@ -102,7 +102,7 @@ type IdentityStore struct {
 	metrics       metricsutil.Metrics
 	totpPersister TOTPPersister
 	tokenStorer   TokenStorer
-	mfaBackend    *LoginMFABackend
+	mfaBackend    MFABackend
 }
 
 type groupDiff struct {
@@ -111,7 +111,7 @@ type groupDiff struct {
 	Unmodified []*identity.Group
 }
 
-type casesensitivity struct {
+type CaseSensitivity struct {
 	DisableLowerCasedNames bool `json:"disable_lower_cased_names"`
 }
 
@@ -120,24 +120,16 @@ type LocalNode interface {
 	HAState() consts.HAState
 }
 
-var _ LocalNode = &Core{}
-
 type Namespacer interface {
 	NamespaceByID(context.Context, string) (*namespace.Namespace, error)
 	ListNamespaces(context.Context) ([]*namespace.Namespace, error)
 }
 
-var _ Namespacer = &Core{}
-
 type TOTPPersister interface {
 	PersistTOTPKey(ctx context.Context, configID string, entityID string, key string) error
 }
-
-var _ TOTPPersister = &Core{}
 
 type TokenStorer interface {
 	LookupToken(context.Context, string) (*logical.TokenEntry, error)
 	CreateToken(context.Context, *logical.TokenEntry, bool) error
 }
-
-var _ TokenStorer = &Core{}

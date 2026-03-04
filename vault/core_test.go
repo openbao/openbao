@@ -14,6 +14,7 @@ import (
 
 	"github.com/openbao/openbao/command/server"
 	be "github.com/openbao/openbao/vault/backend"
+	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/routing"
 
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
@@ -678,12 +679,12 @@ func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 	require.Empty(t, mfaEnforcementConfigKeys)
 
 	// store configs
-	mConfig := &mfa.Config{Name: "mConfig", NamespaceID: ns1.ID, ID: "mConfigID", Type: mfaMethodTypeTOTP}
-	err = c.loginMFABackend.putMFAConfigByID(namespace.ContextWithNamespace(ctx, ns1), mConfig)
+	mConfig := &mfa.Config{Name: "mConfig", NamespaceID: ns1.ID, ID: "mConfigID", Type: ident.MfaMethodTypeTOTP}
+	err = c.loginMFABackend.PutMFAConfigByID(namespace.ContextWithNamespace(ctx, ns1), mConfig)
 	require.NoError(t, err)
 
 	eConfig := &mfa.MFAEnforcementConfig{Name: "eConfig", NamespaceID: ns1.ID, ID: "eConfigID"}
-	err = c.loginMFABackend.putMFALoginEnforcementConfig(ctx, eConfig)
+	err = c.loginMFABackend.PutMFALoginEnforcementConfig(ctx, eConfig)
 	require.NoError(t, err)
 
 	// check for errors when loading

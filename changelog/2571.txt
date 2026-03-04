@@ -1,0 +1,3 @@
+```release-note:improvement
+command: Allow initalization blocks in config for devlopment server.
+```

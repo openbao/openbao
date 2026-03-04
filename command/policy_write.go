@@ -43,7 +43,7 @@ Usage: bao policy write [options] NAME PATH
 
   Upload a policy from stdin:
 
-      $ cat my-policy.hcl | vault policy write my-policy -
+      $ cat my-policy.hcl | bao policy write my-policy -
 
 ` + c.Flags().Help()
 

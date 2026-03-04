@@ -82,7 +82,7 @@ func (c *TokenRenewCommand) Flags() *FlagSets {
 		Completion: complete.PredictAnything,
 		Usage: "Request a specific increment for renewal. This increment may " +
 			"not be honored, for instance in the case of periodic tokens. If not " +
-			"supplied, Vault will use the default TTL. This is specified as a " +
+			"supplied, OpenBao will use the default TTL. This is specified as a " +
 			"numeric string with suffix like \"30s\" or \"5m\".",
 	})
 

@@ -13,8 +13,10 @@ import (
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/storagepacker"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func TestIdentityStore_Groups_AddByNameEntityUpdate(t *testing.T) {
@@ -219,6 +221,46 @@ func TestIdentityStore_UpsertGroupInTxn(t *testing.T) {
 	group.NamespaceID = "fake-namespace"
 	err = c.identityStore.UpsertGroupInTxn(ctx, txn, group, true)
 	require.ErrorContains(t, err, `group namespace id "fake-namespace" does not match context namespace "root"`)
+}
+
+func TestIdentityStore_PurgeCorruptedGroups(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(t.Context())
+
+	packer := c.identityStore.groupPacker(ctx)
+
+	// store a corrupt group (as https://github.com/openbao/openbao/issues/2319 would have)
+	// by directly calling the groupPacker, circumventing validation
+	group := &identity.Group{
+		ID:          "fake-id",
+		NamespaceID: "fake-namespace",
+		Name:        "fake-group",
+	}
+	group.BucketKey = packer.BucketKey(group.ID)
+	groupAsAny, err := anypb.New(group)
+	if err != nil {
+		require.NoError(t, err)
+	}
+
+	item := &storagepacker.Item{
+		ID:      group.ID,
+		Message: groupAsAny,
+	}
+
+	require.NoError(t, packer.PutItem(ctx, item))
+
+	// ensure it was written
+	item, err = packer.GetItem(group.ID)
+	require.NoError(t, err)
+	require.NotNil(t, item)
+
+	// loadGroups should purge corrupt entries
+	require.NoError(t, c.identityStore.loadGroups(ctx, false /* readOnly */))
+
+	// enure it was removed
+	item, err = packer.GetItem(group.ID)
+	require.NoError(t, err)
+	require.Nil(t, item)
 }
 
 func TestIdentityStore_MemberGroupIDDelete(t *testing.T) {

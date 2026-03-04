@@ -21,13 +21,14 @@ See the information about community membership roles to learn about the role of 
 | Geoffrey Wilson  | [@suprjinx](https://github.com/suprjinx)             | [`vault/`]                                                                                        |
 | Jonas Köhnen     | [@satoqz](https://github.com/satoqz)                 | [`vault/`]                                                                                        |
 | Pascal Reeb      | [@pree](https://github.com/pree)                     | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
-| Philipp Stehle   | [@phil9909](https://github.com/phil9909)             | [openbao-plugins `secrets/consul/`]                                                               |
+| Philipp Stehle   | [@phil9909](https://github.com/phil9909)             | [`vault/`], and [openbao-plugins]                                                                 |
 | Tom Gehrke       | [@phyrog](https://github.com/phyrog)                 | [`vault/`]                                                                                        |
 | Toni Tauro       | [@eyenx](https://github.com/eyenx)                   | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
 | Wojciech Slabosz | [@wslabosz-reply](https://github.com/wslabosz-reply) | [`vault/`]                                                                                        |
 | Yannis           | [@Nerkho](https://github.com/Nerkho)                 | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
 
 [`vault/`]: https://github.com/openbao/openbao/tree/main/vault
+[openbao-plugins]: https://github.com/openbao/openbao-plugins
 [openbao-plugins `secrets/consul/`]: https://github.com/openbao/openbao-plugins/tree/main/secrets/consul
 [helm]: https://github.com/openbao/openbao-helm
 [csi-provider]: https://github.com/openbao/openbao-csi-provider
@@ -41,7 +42,6 @@ See the information about community membership roles to learn about the role of 
 | Fatima Patel    | [@fatima2003](https://github.com/fatima2003)             |
 | Gabriel Santos  | [@Gabrielopesantos](https://github.com/Gabrielopesantos) |
 | Michael Hofer   | [@karras](https://github.com/karras)                     |
-| Philipp Stehle  | [@phil9909](https://github.com/phil9909)                 |
 | Klaus Kiefer    | [@klaus-sap](https://klaus-sap)                          |
 
 # OpenBao Community Roles

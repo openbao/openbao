@@ -246,7 +246,7 @@ jobs:
           key: ${{ github.ref }}-ui
 
       # Supports syft/sbom generation
-      - uses: anchore/sbom-action/download-syft@deef08a0db64bfad603422135db61477b16cef56 # v0.22.1
+      - uses: anchore/sbom-action/download-syft@17ae1740179002c89186b61233e0f892c3118b11 # v0.23.0
         if: inputs.dogorelease
 
         # Supports Buildx
@@ -305,7 +305,7 @@ jobs:
 
       - name: Install GoReleaser
         if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
-        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
+        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
         with:
           install-only: true
           # TODO: remove version pinning when Goreleaser 2.8 is released
@@ -382,7 +382,7 @@ jobs:
           gh release create -t $TAGNAME --verify-tag $TAGNAME || true
 
       - name: Download dist-tarball artifact
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: dist-tarball
 
@@ -408,7 +408,7 @@ jobs:
           aws s3 sync s3://${BUCKET}/deb/dists build/deb/dists
 
       - name: Download deb-packages artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           pattern: deb-packages-*
           merge-multiple: true
@@ -468,7 +468,7 @@ jobs:
           aws s3 sync s3://${BUCKET}/rpm build/rpm --exclude \*.rpm
 
       - name: Download rpm-packages artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           pattern: rpm-packages-*
           merge-multiple: true

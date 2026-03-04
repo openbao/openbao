@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	"github.com/openbao/go-kms-wrapping/v2/aead"
 )
 
 var _ KeyManager = (*PassthroughKeyManager)(nil)

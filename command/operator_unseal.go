@@ -37,7 +37,7 @@ func (c *OperatorUnsealCommand) Help() string {
 	helpText := `
 Usage: bao operator unseal [options] [KEY]
 
-  Provide a portion of the root key to unseal a Vault server. Vault starts
+  Provide a portion of the root key to unseal an OpenBao server. OpenBao starts
   in a sealed state. It cannot perform operations until it is unsealed. This
   command accepts a portion of the root key (an "unseal key").
 

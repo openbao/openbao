@@ -33,7 +33,7 @@ var (
 	tmpSuffix                = ".tmp"
 )
 
-func (c *Core) loadIdentityStoreArtifacts(ctx context.Context) error {
+func (c *Core) loadIdentityStoreArtifacts(ctx context.Context, readOnly bool) error {
 	if c.identityStore == nil {
 		c.logger.Warn("identity store is not setup, skipping loading")
 		return nil
@@ -53,10 +53,10 @@ func (c *Core) loadIdentityStoreArtifacts(ctx context.Context) error {
 
 			nsCtx := namespace.ContextWithNamespace(ctx, ns)
 
-			if err := c.identityStore.loadEntities(nsCtx); err != nil {
+			if err := c.identityStore.loadEntities(nsCtx, readOnly); err != nil {
 				return err
 			}
-			if err := c.identityStore.loadGroups(nsCtx); err != nil {
+			if err := c.identityStore.loadGroups(nsCtx, readOnly); err != nil {
 				return err
 			}
 			if err := c.identityStore.loadOIDCClients(nsCtx); err != nil {
@@ -101,7 +101,7 @@ func (i *IdentityStore) sanitizeName(name string) string {
 	return strings.ToLower(name)
 }
 
-func (i *IdentityStore) loadGroups(ctx context.Context) error {
+func (i *IdentityStore) loadGroups(ctx context.Context, readOnly bool) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -133,25 +133,25 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 				continue
 			}
 
-			ns, err := i.namespacer.NamespaceByID(ctx, group.NamespaceID)
-			if err != nil {
-				return err
-			}
-			if ns == nil {
-				// Remove dangling groups
-				// Group's namespace doesn't exist anymore but the group
-				// from the namespace still exists.
-				i.logger.Warn("deleting group and its any existing aliases", "name", group.Name, "namespace_id", group.NamespaceID)
+			if ns.ID != group.NamespaceID {
+				if readOnly {
+					// Skip loading this group on standby nodes.
+					continue
+				}
+
+				// Remove groups that have the wrong namespace
+				// These should only exist when upgrading from an older version
+				// See https://github.com/openbao/openbao/issues/2319
+				i.logger.Warn("deleting corrupt group. See https://github.com/openbao/openbao/issues/2319", "name", group.Name, "expected_namespace_id", ns.ID, "actual_namespace_id", group.NamespaceID)
 				err = i.groupPacker(ctx).DeleteItem(ctx, group.ID)
 				if err != nil {
 					return err
 				}
 				continue
 			}
-			nsCtx := namespace.ContextWithNamespace(ctx, ns)
 
 			// Ensure that there are no groups with duplicate names
-			groupByName, err := i.MemDBGroupByName(nsCtx, group.Name, false)
+			groupByName, err := i.MemDBGroupByName(ctx, group.Name, false)
 			if err != nil {
 				return err
 			}
@@ -166,7 +166,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 				i.logger.Debug("loading group", "name", group.Name, "id", group.ID)
 			}
 
-			txn := i.db(nsCtx).Txn(true)
+			txn := i.db(ctx).Txn(true)
 
 			// Before pull#5786, entity memberships in groups were not getting
 			// updated when respective entities were deleted. This is here to
@@ -174,7 +174,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 			// not remove them.
 			persist := false
 			for _, memberEntityID := range group.MemberEntityIDs {
-				entity, err := i.MemDBEntityByID(nsCtx, memberEntityID, false)
+				entity, err := i.MemDBEntityByID(ctx, memberEntityID, false)
 				if err != nil {
 					txn.Abort()
 					return err
@@ -202,7 +202,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 	return nil
 }
 
-func (i *IdentityStore) loadEntities(ctx context.Context) error {
+func (i *IdentityStore) loadEntities(ctx context.Context, readOnly bool) error {
 	// Accumulate existing entities
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -310,6 +310,11 @@ LOOP:
 					return err
 				}
 				if ns == nil {
+					if readOnly {
+						// Skip loading this entity on standby nodes.
+						continue
+					}
+
 					// Remove dangling entities
 					// Entity's namespace doesn't exist anymore but the
 					// entity from the namespace still exists.

@@ -34,7 +34,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/go-testing-interface"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	config2 "github.com/openbao/openbao/command/config"
@@ -476,7 +475,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	info["Seal Type"] = sealType
 
 	var seal vault.Seal
-	defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
+	defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	sealLogger := c.logger.ResetNamed(fmt.Sprintf("seal.%s", sealType))
 	wrapper, sealConfigError = configutil.ConfigureWrapper(configSeal, &infoKeys, &info, sealLogger)
 	if sealConfigError != nil {
@@ -1732,7 +1731,8 @@ func (c *ServerCommand) waitForLeader(core *vault.Core) (bool, error) {
 // OpenBao core. This will exit early if there is no configuration for this
 // or if the core is already initialized.
 func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) error {
-	if len(config.Initialization) == 0 {
+	// Skip initialize for dev server as it is handled in initDevCore
+	if len(config.Initialization) == 0 || c.flagDev {
 		return nil
 	}
 
@@ -2474,7 +2474,7 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 		var seal vault.Seal
 		sealLogger := c.logger.ResetNamed(fmt.Sprintf("seal.%s", sealType))
 		c.allLoggers = append(c.allLoggers, sealLogger)
-		defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
+		defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 		var sealInfoKeys []string
 		sealInfoMap := map[string]string{}
 		wrapper, sealConfigError = configutil.ConfigureWrapper(configSeal, &sealInfoKeys, &sealInfoMap, sealLogger)
@@ -2816,6 +2816,12 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 			}
 
 			sort.Strings(plugins)
+		}
+
+		// Self-init to setup configured initialize blocks
+		err = c.doSelfInit(core, config, init.RootToken)
+		if err != nil {
+			return fmt.Errorf("Error during self-initialization: %w", err)
 		}
 
 		var qw *quiescenceSink

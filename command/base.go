@@ -75,7 +75,7 @@ type BaseCommand struct {
 
 // Construct the HTTP API client, but do not set the token on it yet. This is to
 // avoid invoking the token helper for calls that do not need a token, such as
-// `vault login`.
+// `bao login`.
 func (c *BaseCommand) ClientWithoutToken() (*api.Client, error) {
 	// Read the test client if present
 	if c.client != nil {

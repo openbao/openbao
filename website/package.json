@@ -22,11 +22,11 @@
     "@docusaurus/plugin-sitemap": "^3.9.2",
     "@docusaurus/preset-classic": "^3.9.2",
     "@docusaurus/theme-mermaid": "^3.9.2",
-    "@easyops-cn/docusaurus-search-local": "^0.53.0",
+    "@easyops-cn/docusaurus-search-local": "^0.55.0",
     "@hashicorp/remark-plugins": "^4.1.1",
     "@mdx-js/react": "^3.1.1",
     "clsx": "^2.1.1",
-    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#552b4d05cb68d658027bb296d4d8b550011550c6",
+    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#b376f91f29fd50840dbfbdf78ed3c3182b7cd143",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
@@ -36,7 +36,7 @@
     "@docusaurus/tsconfig": "^3.9.2",
     "@docusaurus/types": "^3.8.0",
     "markdownlint": "^0.40.0",
-    "markdownlint-cli2": "^0.20.0",
+    "markdownlint-cli2": "^0.21.0",
     "typescript": "^5.9.3"
   },
   "browserslist": {

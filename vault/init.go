@@ -90,11 +90,12 @@ func (c *Core) Initialized(ctx context.Context) (bool, error) {
 }
 
 // InitializedLocally checks if the Vault is already initialized from the
-// local node's perspective.  This is the same thing as Initialized, unless
+// local node's perspective. This is the same thing as Initialized, unless
 // using Raft, in which case Initialized may return true (because a peer
 // we're joining to has been initialized) while InitializedLocally returns
 // false (because we're not done bootstrapping raft on the local node).
 func (c *Core) InitializedLocally(ctx context.Context) (bool, error) {
+	ctx = namespace.RootContext(ctx)
 	// Check the barrier first
 	init, err := c.barrier.Initialized(ctx)
 	if err != nil {
@@ -312,15 +313,14 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		}()
 	}
 
-	err = c.seal.Init(ctx)
-	if err != nil {
+	if err = c.seal.Init(ctx); err != nil {
 		c.logger.Error("failed to initialize seal", "error", err)
 		return nil, fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	barrierKey, barrierKeyShares, err := c.generateShares(barrierConfig)
+	barrierKey, err := c.barrier.GenerateKey(c.secureRandomReader)
 	if err != nil {
-		c.logger.Error("error generating shares", "error", err)
+		c.logger.Error("error generating barrier root key", "error", err)
 		return nil, err
 	}
 
@@ -395,9 +395,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 			return nil, fmt.Errorf("failed to store keys: %w", err)
 		}
 	default:
-		// We don't support initializing an old-style Shamir seal anymore, so
-		// this case is only reachable by tests.
-		results.SecretShares = barrierKeyShares
+		return nil, errors.New("unsupported seal type")
 	}
 
 	// Perform initial setup
@@ -406,7 +404,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		return nil, err
 	}
 
-	activeCtx, ctxCancel := context.WithCancel(namespace.RootContext(nil))
+	activeCtx, ctxCancel := context.WithCancel(namespace.RootContext(ctx))
 	if err := c.postUnseal(activeCtx, ctxCancel, standardUnsealStrategy{}); err != nil {
 		c.logger.Error("post-unseal setup failed during init", "error", err)
 		return nil, err

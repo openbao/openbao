@@ -9,30 +9,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
-
-var AllowedOuterJWSTypes = map[jose.SignatureAlgorithm]interface{}{
-	jose.RS256: true,
-	jose.RS384: true,
-	jose.RS512: true,
-	jose.PS256: true,
-	jose.PS384: true,
-	jose.PS512: true,
-	jose.ES256: true,
-	jose.ES384: true,
-	jose.ES512: true,
-	jose.EdDSA: true,
-}
-
-var AllowedEabJWSTypes = map[jose.SignatureAlgorithm]interface{}{
-	jose.HS256: true,
-	jose.HS384: true,
-	jose.HS512: true,
-}
 
 // This wraps a JWS message structure.
 type jwsCtx struct {
@@ -64,7 +46,7 @@ func UnmarshalEabJwsJson(eabBytes []byte) (*jwsCtx, error) {
 		return nil, fmt.Errorf("invalid header: got missing required field 'kid': %w", ErrMalformed)
 	}
 
-	if _, present := AllowedEabJWSTypes[jose.SignatureAlgorithm(eabJws.Algo)]; !present {
+	if !slices.Contains(consts.AllowedJWTSignatureAlgorithmsEAB, jose.SignatureAlgorithm(eabJws.Algo)) {
 		return nil, fmt.Errorf("invalid header: unexpected value for 'algo': %w", ErrMalformed)
 	}
 
@@ -93,7 +75,7 @@ func (c *jwsCtx) UnmarshalOuterJwsJson(a *acmeState, ac *acmeContext, jws []byte
 		return fmt.Errorf("invalid header: got neither required fields of 'kid' nor 'jwk': %w", ErrMalformed)
 	}
 
-	if _, present := AllowedOuterJWSTypes[jose.SignatureAlgorithm(c.Algo)]; !present {
+	if !slices.Contains(consts.AllowedJWTSignatureAlgorithmsBao, jose.SignatureAlgorithm(c.Algo)) {
 		// See RFC 8555 Section 6.2. Request Authentication:
 		//
 		// > The JWS Protected Header MUST include the following fields:

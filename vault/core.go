@@ -34,7 +34,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/awskms/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
@@ -1028,7 +1027,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	// Load seal information.
 	if c.seal == nil {
-		wrapper := aeadwrapper.NewShamirWrapper()
+		wrapper := vaultseal.NewShamirWrapper()
 		wrapper.SetConfig(context.Background(), awskms.WithLogger(c.logger.Named("shamir")))
 		c.seal = NewDefaultSeal(vaultseal.NewAccess(wrapper))
 	}
@@ -2341,7 +2340,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
-	if err := c.loadMounts(ctx); err != nil {
+	if err := c.loadMounts(ctx, standby); err != nil {
 		return err
 	}
 	if err := c.setupMounts(ctx); err != nil {
@@ -2353,7 +2352,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.loadCORSConfig(ctx); err != nil {
 		return err
 	}
-	if err := c.loadCredentials(ctx); err != nil {
+	if err := c.loadCredentials(ctx, standby); err != nil {
 		return err
 	}
 	if err := c.setupCredentials(ctx); err != nil {
@@ -2371,7 +2370,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.startRollback(); err != nil {
 		return err
 	}
-	if err := c.setupExpiration(expireLeaseStrategyFairsharing); err != nil {
+	if err := c.setupExpiration(expireLeaseStrategyFairsharing, standby); err != nil {
 		return err
 	}
 	if err := c.setupAudits(ctx); err != nil {
@@ -2383,7 +2382,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.handleAuditLogSetup(ctx, standby); err != nil {
 		return err
 	}
-	if err := c.loadIdentityStoreArtifacts(ctx); err != nil {
+	if err := c.loadIdentityStoreArtifacts(ctx, standby); err != nil {
 		return err
 	}
 	c.setupCachedMFAResponseAuth()
@@ -2720,7 +2719,7 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 		case existBarrierSealConfig.Type == wrapping.WrapperTypeShamir.String():
 			// The configured seal is not Shamir, the stored seal config is Shamir.
 			// This is a migration away from Shamir.
-			unwrapSeal = NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
+			unwrapSeal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 		default:
 			// We know at this point that there is a configured non-Shamir seal,
 			// that it does not match the stored non-Shamir seal config, and that
@@ -2875,7 +2874,7 @@ func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []
 
 	case vaultseal.StoredKeysSupportedShamirRoot:
 		if useTestSeal {
-			testseal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
+			testseal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 			testseal.SetCore(c)
 			cfg, err := seal.BarrierConfig(ctx)
 			if err != nil {

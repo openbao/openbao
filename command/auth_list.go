@@ -33,7 +33,7 @@ func (c *AuthListCommand) Help() string {
 	helpText := `
 Usage: bao auth list [options]
 
-  Lists the enabled auth methods on the Vault server. This command also outputs
+  Lists the enabled auth methods on the OpenBao server. This command also outputs
   information about the method including configuration and human-friendly
   descriptions. A TTL of "system" indicates that the system default is in use.
 

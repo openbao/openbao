@@ -397,7 +397,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	oldCredential := c.auth
-	if err := c.loadCredentials(context.Background()); err != nil {
+	if err := c.loadCredentials(context.Background(), false); err != nil {
 		t.Fatal(err)
 	}
 

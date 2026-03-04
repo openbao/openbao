@@ -2437,7 +2437,7 @@ func TestExpiration_revokeEntry_rejected_fairsharing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = core.setupExpiration(expireLeaseStrategyFairsharing)
+	err = core.setupExpiration(expireLeaseStrategyFairsharing, false)
 	if err != nil {
 		t.Fatal(err)
 	}

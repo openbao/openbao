@@ -153,9 +153,7 @@ export default Store.extend({
   // pushes records into the store and returns the result
   fetchPage(modelName, query) {
     const response = this.constructResponse(modelName, query);
-    this.peekAll(modelName).forEach((record) => {
-      record.unloadRecord();
-    });
+    this.unloadAll(modelName);
     return new Promise((resolve) => {
       schedule('destroy', () => {
         this.push(
@@ -167,8 +165,8 @@ export default Store.extend({
             'query'
           )
         );
-        const model = this.peekAll(modelName).toArray();
-        model.set('meta', response.meta);
+        const model = [...this.peekAll(modelName)];
+        model.meta = response.meta;
         resolve(model);
       });
     });

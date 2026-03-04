@@ -1,0 +1,3 @@
+```release-note:improvement
+command/server: Allow self-initialization stanzas in development server mode.
+```

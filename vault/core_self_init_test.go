@@ -6,14 +6,18 @@ package vault
 // Tests for the self-init state machine in core_self_init.go.
 //
 // Design rationale:
-//   - All tests use TestCore(t) which builds a real *Core with physInmem backend.
-//     No mocks, no manual physical.NewInmem calls: the inMem backend is the
-//     same one that production code uses during `bao server -dev`.
-//   - Tests live in package vault (white-box) because the state machine operates
-//     on c.physical, which is unexported.
+//   - All tests use TestCoreNewSeal(t) + TestCoreInit + unseal to get a Core
+//     with an open security barrier, since the state machine now writes to
+//     c.barrier (not c.physical). A sealed or uninitialized barrier returns
+//     ErrBarrierSealed on any Get/Put.
+//   - Tests live in package vault (white-box) because the state machine
+//     operates on c.barrier, which is unexported.
 //   - Each test exercises exactly one observable behaviour.
-//   - Accuracy level 5+: every assertion has an accompanying comment explaining
-//     what the invariant is and why it matters.
+//   - Accuracy level 5+: every assertion has a comment explaining the invariant.
+//
+// NOTE: TestInitialize_SetsCompletedMarker was removed from this file.
+// Its coverage is provided by command/server_initialize_test.go which exercises
+// the full command.Initialize() path including MarkSelfInitStarted/Complete.
 //
 // Pattern matches: vault/core_self_init.go (OpenBao MPLv2)
 // Test helpers from: vault/testing.go (OpenBao MPLv2)
@@ -22,7 +26,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,10 +35,26 @@ import (
 // ---------------------------------------------------------------------------
 
 // rootCtx returns the context used throughout the OpenBao core for root-namespace
-// operations. Using context.Background() directly (as TestCoreInitClusterWrapperSetup
-// does) is also correct at this layer; we alias it for clarity.
+// operations.
 func rootCtx() context.Context {
 	return context.Background()
+}
+
+// openCore returns a *Core with an initialized, unsealed security barrier.
+// All state machine methods require the barrier to be open.
+//
+// Uses TestCoreNewSeal (auto-unseal capable) + TestCoreInit + UnsealWithStoredKeys.
+// TestCoreUnseal is NOT used here because it uses the Shamir path; auto-unseal
+// cores must be unsealed via UnsealWithStoredKeys which reads the stored keys
+// written by core.Initialize.
+func openCore(t *testing.T) *Core {
+	t.Helper()
+	c := TestCoreNewSeal(t)
+	TestCoreInit(t, c)
+	err := c.UnsealWithStoredKeys(context.Background())
+	require.NoError(t, err, "UnsealWithStoredKeys must not fail after TestCoreInit")
+	require.False(t, c.Sealed(), "precondition: core must be unsealed")
+	return c
 }
 
 // ---------------------------------------------------------------------------
@@ -42,48 +62,39 @@ func rootCtx() context.Context {
 // ---------------------------------------------------------------------------
 
 // TestMarkSelfInitStarted_WritesStartedMarker verifies that after calling
-// MarkSelfInitStarted the physical backend contains the key
-// coreStatusSelfInitKey with value "started".
+// MarkSelfInitStarted the barrier contains coreStatusSelfInitKey = "started".
 //
 // This is the first transition in the state machine (∅ → started).
-// If this write is missing or wrong, IsSelfInitComplete would misread the
-// state on a subsequent boot.
 func TestMarkSelfInitStarted_WritesStartedMarker(t *testing.T) {
 	t.Parallel()
 
-	// TestCore builds an uninitialised core backed by physInmem.
-	// Pattern matches: vault/testing.go TestCore()
-	c := TestCore(t)
+	c := openCore(t)
 	ctx := rootCtx()
 
 	err := c.MarkSelfInitStarted(ctx)
-	require.NoError(t, err, "MarkSelfInitStarted must not return an error on a healthy inMem backend")
+	require.NoError(t, err, "MarkSelfInitStarted must not return an error on an open barrier")
 
-	// Read directly from physical to confirm the raw write, bypassing any
-	// higher-level cache or barrier. This validates the exact key/value
-	// contract that IsSelfInitComplete depends on.
-	entry, err := c.physical.Get(ctx, coreStatusSelfInitKey)
-	require.NoError(t, err, "physical.Get after MarkSelfInitStarted must not fail")
-	require.NotNil(t, entry, "physical entry must exist after MarkSelfInitStarted")
+	// Read directly from barrier to confirm the exact key/value contract
+	// that IsSelfInitComplete depends on.
+	entry, err := c.barrier.Get(ctx, coreStatusSelfInitKey)
+	require.NoError(t, err, "barrier.Get after MarkSelfInitStarted must not fail")
+	require.NotNil(t, entry, "barrier entry must exist after MarkSelfInitStarted")
 	require.Equal(t, coreStatusSelfInitStarted, string(entry.Value),
 		"stored value must be the const coreStatusSelfInitStarted, not a magic string")
 }
 
 // TestMarkSelfInitStarted_Idempotent verifies that calling MarkSelfInitStarted
 // twice does not fail and leaves the marker at "started".
-//
-// Idempotency matters because a crash between two calls to MarkSelfInitStarted
-// (e.g. during a retry loop) must not leave the backend in an error state.
 func TestMarkSelfInitStarted_Idempotent(t *testing.T) {
 	t.Parallel()
 
-	c := TestCore(t)
+	c := openCore(t)
 	ctx := rootCtx()
 
 	require.NoError(t, c.MarkSelfInitStarted(ctx))
-	require.NoError(t, c.MarkSelfInitStarted(ctx), "second call must not fail (Put is idempotent on inMem)")
+	require.NoError(t, c.MarkSelfInitStarted(ctx), "second call must not fail (Put is idempotent)")
 
-	entry, err := c.physical.Get(ctx, coreStatusSelfInitKey)
+	entry, err := c.barrier.Get(ctx, coreStatusSelfInitKey)
 	require.NoError(t, err)
 	require.Equal(t, coreStatusSelfInitStarted, string(entry.Value))
 }
@@ -94,43 +105,34 @@ func TestMarkSelfInitStarted_Idempotent(t *testing.T) {
 
 // TestMarkSelfInitComplete_WritesCompletedMarker verifies the transition
 // started → completed.
-//
-// This is the terminal success transition. If MarkSelfInitComplete never
-// writes "completed", IsSelfInitComplete would always return (false, error)
-// on subsequent boots, making the cluster permanently unbootable.
 func TestMarkSelfInitComplete_WritesCompletedMarker(t *testing.T) {
 	t.Parallel()
 
-	c := TestCore(t)
+	c := openCore(t)
 	ctx := rootCtx()
 
-	// Simulate the normal sequence: started → completed.
 	require.NoError(t, c.MarkSelfInitStarted(ctx))
 	require.NoError(t, c.MarkSelfInitComplete(ctx))
 
-	entry, err := c.physical.Get(ctx, coreStatusSelfInitKey)
+	entry, err := c.barrier.Get(ctx, coreStatusSelfInitKey)
 	require.NoError(t, err)
 	require.NotNil(t, entry)
 	require.Equal(t, coreStatusSelfInitCompleted, string(entry.Value),
-		"value must be the const coreStatusSelfInitCompleted after a successful init")
+		"value must be coreStatusSelfInitCompleted after a successful init")
 }
 
 // TestMarkSelfInitComplete_WithoutStarted verifies that MarkSelfInitComplete
 // can write "completed" even when MarkSelfInitStarted was never called.
-//
-// This covers the edge case of a code path that calls Complete without first
-// calling Started (e.g. a future refactoring). The state machine only reads
-// the final value, so the intermediate "started" is not required to be present.
 func TestMarkSelfInitComplete_WithoutStarted(t *testing.T) {
 	t.Parallel()
 
-	c := TestCore(t)
+	c := openCore(t)
 	ctx := rootCtx()
 
 	require.NoError(t, c.MarkSelfInitComplete(ctx),
 		"MarkSelfInitComplete must succeed even without a prior MarkSelfInitStarted")
 
-	entry, err := c.physical.Get(ctx, coreStatusSelfInitKey)
+	entry, err := c.barrier.Get(ctx, coreStatusSelfInitKey)
 	require.NoError(t, err)
 	require.Equal(t, coreStatusSelfInitCompleted, string(entry.Value))
 }
@@ -140,18 +142,18 @@ func TestMarkSelfInitComplete_WithoutStarted(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // TestIsSelfInitComplete_MissingEntry_BackwardCompat verifies that a Core with
-// no self-init marker in physical storage is treated as successfully initialised.
+// no self-init marker in the barrier is treated as successfully initialised.
 //
 // This is the backward-compatibility rule: clusters initialised before this
 // feature existed have no marker, so we must assume they succeeded.
-// Violating this invariant would make every pre-existing cluster fail to boot.
 func TestIsSelfInitComplete_MissingEntry_BackwardCompat(t *testing.T) {
 	t.Parallel()
 
-	c := TestCore(t)
+	// Initialized and unsealed core, but no marker written — simulates a
+	// cluster that was initialized before this feature existed.
+	c := openCore(t)
 	ctx := rootCtx()
 
-	// Fresh core: no marker written at all.
 	ok, err := c.IsSelfInitComplete(ctx)
 	require.NoError(t, err, "missing marker must not produce an error")
 	require.True(t, ok, "missing marker must return true (backward-compat: assume success)")
@@ -162,7 +164,7 @@ func TestIsSelfInitComplete_MissingEntry_BackwardCompat(t *testing.T) {
 func TestIsSelfInitComplete_CompletedEntry_ReturnsTrue(t *testing.T) {
 	t.Parallel()
 
-	c := TestCore(t)
+	c := openCore(t)
 	ctx := rootCtx()
 
 	require.NoError(t, c.MarkSelfInitStarted(ctx))
@@ -176,17 +178,12 @@ func TestIsSelfInitComplete_CompletedEntry_ReturnsTrue(t *testing.T) {
 // TestIsSelfInitComplete_StartedEntry_ReturnsCrashError verifies the crash-
 // detection logic: a "started" marker without a subsequent "completed" means
 // the process was killed during auto-init.
-//
-// The function must return (false, non-nil error). The caller (command/server.go
-// Initialize) will use this to print a fatal message and refuse to start,
-// preventing silent data corruption.
 func TestIsSelfInitComplete_StartedEntry_ReturnsCrashError(t *testing.T) {
 	t.Parallel()
 
-	c := TestCore(t)
+	c := openCore(t)
 	ctx := rootCtx()
 
-	// Simulate a crash: started written, complete never reached.
 	require.NoError(t, c.MarkSelfInitStarted(ctx))
 
 	ok, err := c.IsSelfInitComplete(ctx)
@@ -196,22 +193,19 @@ func TestIsSelfInitComplete_StartedEntry_ReturnsCrashError(t *testing.T) {
 
 // TestIsSelfInitComplete_CorruptEntry_ReturnsError verifies that an unknown
 // value in the marker key is treated as an error rather than silently accepted.
-//
-// Storage corruption or manual tampering must not silently pass as "completed":
-// that would hide real problems. The function must return (false, error).
 func TestIsSelfInitComplete_CorruptEntry_ReturnsError(t *testing.T) {
 	t.Parallel()
 
-	c := TestCore(t)
+	c := openCore(t)
 	ctx := rootCtx()
 
-	// Write an arbitrary garbage value directly to physical, bypassing the
-	// public API, to simulate storage corruption or a future schema conflict.
-	err := c.physical.Put(ctx, &physical.Entry{
+	// Write a garbage value directly to the barrier, bypassing the public API,
+	// to simulate storage corruption or a future schema conflict.
+	err := c.barrier.Put(ctx, &logical.StorageEntry{
 		Key:   coreStatusSelfInitKey,
 		Value: []byte("GARBAGE_VALUE"),
 	})
-	require.NoError(t, err, "precondition: direct physical write must not fail")
+	require.NoError(t, err, "precondition: direct barrier write must not fail")
 
 	ok, err := c.IsSelfInitComplete(ctx)
 	require.Error(t, err, "unknown marker value must produce an error")
@@ -229,16 +223,14 @@ func TestIsSelfInitComplete_CorruptEntry_ReturnsError(t *testing.T) {
 //	∅ (no marker)        → IsSelfInitComplete = true  (backward-compat)
 //	MarkSelfInitStarted  → IsSelfInitComplete = false (crash would be detected)
 //	MarkSelfInitComplete → IsSelfInitComplete = true  (success)
-//
-// This test documents the intended lifecycle in a single readable sequence,
-// which doubles as integration-level documentation for reviewers.
 func TestSelfInitStateMachine_FullSequence(t *testing.T) {
 	t.Parallel()
 
-	c := TestCore(t)
+	// Core must be initialized and unsealed for all barrier operations.
+	c := openCore(t)
 	ctx := rootCtx()
 
-	// Step 0: fresh core, no marker → backward-compatible success.
+	// Step 0: initialized core, no marker written → backward-compat success.
 	ok, err := c.IsSelfInitComplete(ctx)
 	require.NoError(t, err)
 	require.True(t, ok, "step 0: no marker → backward-compat true")
@@ -254,44 +246,4 @@ func TestSelfInitStateMachine_FullSequence(t *testing.T) {
 	ok, err = c.IsSelfInitComplete(ctx)
 	require.NoError(t, err)
 	require.True(t, ok, "step 2: after MarkSelfInitComplete → success")
-}
-
-// ---------------------------------------------------------------------------
-// Integration: Initialize sets the markers correctly
-// ---------------------------------------------------------------------------
-
-// TestInitialize_SetsCompletedMarker verifies that the OpenBao Core.Initialize
-// path (as called by command/server.go) correctly transitions the state machine
-// from ∅ to "completed" when initialization succeeds.
-//
-// We use TestCoreInit (which wraps core.Initialize + unseal) to exercise the
-// full path. After a successful init+unseal the marker must be "completed".
-//
-// NOTE: This test depends on the integration work in command/server.go where
-// MarkSelfInitStarted is called before core.Initialize and MarkSelfInitComplete
-// is called after doSelfInit returns.  If those calls are missing, this test
-// will catch the regression.
-func TestInitialize_SetsCompletedMarker(t *testing.T) {
-	t.Parallel()
-
-	c := TestCore(t)
-	ctx := rootCtx()
-
-	// TestCoreInit calls core.Initialize then unseals.
-	// Pattern matches: vault/testing.go TestCoreInit()
-	keys, _ := TestCoreInit(t, c)
-	for _, key := range keys {
-		_, err := TestCoreUnseal(c, TestKeyCopy(key))
-		require.NoError(t, err)
-	}
-	require.False(t, c.Sealed(), "core must be unsealed after TestCoreInit + Unseal")
-
-	// After a complete init+unseal cycle, IsSelfInitComplete must return true.
-	// If it returns false or error, the state machine was not wired into
-	// core.Initialize correctly.
-	ok, err := c.IsSelfInitComplete(ctx)
-	require.NoError(t, err,
-		"after successful Initialize, IsSelfInitComplete must not return an error")
-	require.True(t, ok,
-		"after successful Initialize, IsSelfInitComplete must return true")
 }

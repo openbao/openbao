@@ -1,3 +1,6 @@
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
+// SPDX-License-Identifier: MPL-2.0
+
 //go:build !race && !hsm
 
 package command
@@ -151,11 +154,8 @@ func TestInitialize_AlreadyInitialized_Completed(t *testing.T) {
 
 	// Simulate a previously successful self-init: initialize the core and
 	// write the completed marker.
-	keys, _ := vault.TestCoreInit(t, core)
-	for _, key := range keys {
-		_, err := vault.TestCoreUnseal(core, vault.TestKeyCopy(key))
-		require.NoError(t, err)
-	}
+	vault.TestCoreInit(t, core)
+	require.NoError(t, core.UnsealWithStoredKeys(ctx))
 	require.NoError(t, core.MarkSelfInitComplete(ctx))
 
 	err := cmd.Initialize(core, emptyInitConfig())
@@ -182,11 +182,8 @@ func TestInitialize_AlreadyInitialized_CrashDetected(t *testing.T) {
 	ctx := rootCtxCmd()
 
 	// Simulate a crashed self-init: barrier exists but marker is "started".
-	keys, _ := vault.TestCoreInit(t, core)
-	for _, key := range keys {
-		_, err := vault.TestCoreUnseal(core, vault.TestKeyCopy(key))
-		require.NoError(t, err)
-	}
+	vault.TestCoreInit(t, core)
+	require.NoError(t, core.UnsealWithStoredKeys(ctx))
 	require.NoError(t, core.MarkSelfInitStarted(ctx))
 	// Intentionally do NOT call MarkSelfInitComplete — simulating a crash.
 
@@ -214,11 +211,8 @@ func TestInitialize_AlreadyInitialized_NoMarker_BackwardCompat(t *testing.T) {
 	core := vault.TestCoreNewSeal(t)
 
 	// Initialize the core but write NO self-init marker.
-	keys, _ := vault.TestCoreInit(t, core)
-	for _, key := range keys {
-		_, err := vault.TestCoreUnseal(core, vault.TestKeyCopy(key))
-		require.NoError(t, err)
-	}
+	vault.TestCoreInit(t, core)
+	require.NoError(t, core.UnsealWithStoredKeys(rootCtxCmd()))
 
 	err := cmd.Initialize(core, emptyInitConfig())
 	require.NoError(t, err,

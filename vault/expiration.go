@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/rand"
 	"path"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -325,47 +326,44 @@ func getNumExpirationWorkers(c *Core, l log.Logger) int {
 }
 
 // NewExpirationManager creates a new ExpirationManager that uses the provided router for revocation.
-func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, detectDeadlocks bool) *ExpirationManager {
-	managerLogger := logger.Named("job-manager")
-	jobManager := fairshare.NewJobManager("expire", getNumExpirationWorkers(c, logger), managerLogger, c.metricSink)
-	jobManager.Start()
-
-	c.AddLogger(managerLogger)
-
+func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, detectDeadlocks, shouldProcessExp bool) *ExpirationManager {
 	exp := &ExpirationManager{
 		core:        c,
 		router:      c.router,
 		tokenStore:  c.tokenStore,
 		logger:      logger,
-		pending:     sync.Map{},
 		pendingLock: &locking.SyncRWMutex{},
-		nonexpiring: sync.Map{},
-		leaseCount:  0,
-
-		lockPerLease: sync.Map{},
 
 		uniquePolicies:      make(map[string][]string),
 		emptyUniquePolicies: time.NewTicker(7 * 24 * time.Hour),
 
-		restoreLocks: locksutil.CreateLocks(),
-		quitCh:       make(chan struct{}),
+		quitCh: make(chan struct{}),
 
 		coreStateLock: c.stateLock,
 		quitContext:   c.activeContext,
 
 		logLeaseExpirations: api.ReadBaoVariable("BAO_SKIP_LOGGING_LEASE_EXPIRATIONS") == "",
 
-		jobManager:      jobManager,
 		revokeRetryBase: c.expirationRevokeRetryBase,
 	}
+
+	managerLogger := logger.Named("job-manager")
+	c.AddLogger(managerLogger)
+
+	exp.jobManager = fairshare.NewJobManager("expire", getNumExpirationWorkers(c, logger), managerLogger, c.metricSink)
+	exp.jobManager.Start()
+
+	// active node
+	if shouldProcessExp {
+		// active nodes start by running in restore mode by default
+		exp.restoreMode.Store(true)
+		exp.restoreLocks = locksutil.CreateLocks()
+	}
+
 	exp.expireFunc.Store(&e)
 	if exp.revokeRetryBase == 0 {
 		exp.revokeRetryBase = revokeRetryBase
 	}
-
-	// new instances of the expiration manager will go
-	// immediately into restore mode
-	exp.restoreMode.Store(true)
 
 	if exp.logger == nil {
 		opts := log.LoggerOptions{Name: "expiration_manager"}
@@ -383,27 +381,24 @@ func NewExpirationManager(c *Core, e ExpireLeaseStrategy, logger log.Logger, det
 }
 
 // setupExpiration is invoked after we've loaded the mount table to
-// initialize the expiration manager
-func (c *Core) setupExpiration(e ExpireLeaseStrategy) error {
+// initialize the expiration manager.
+func (c *Core) setupExpiration(e ExpireLeaseStrategy, standby bool) error {
 	c.metricsMutex.Lock()
 	defer c.metricsMutex.Unlock()
 
-	// Create the manager
 	expLogger := c.baseLogger.Named("expiration")
 	c.AddLogger(expLogger)
 
-	detectDeadlocks := false
-	for _, v := range c.detectDeadlocks {
-		if v == "expiration" {
-			detectDeadlocks = true
-		}
+	// Create the manager
+	c.expiration = NewExpirationManager(c, e, expLogger, slices.Contains(c.detectDeadlocks, "expiration"), !standby)
+
+	// Link expiration mgr to token store
+	c.tokenStore.SetExpirationManager(c.expiration)
+
+	if standby {
+		c.logger.Info("skipping lease restoration - standby")
+		return nil
 	}
-
-	expMgr := NewExpirationManager(c, e, expLogger, detectDeadlocks)
-	c.expiration = expMgr
-
-	// Link the token store to this
-	c.tokenStore.SetExpirationManager(expMgr)
 
 	// Restore the existing state
 	c.logger.Info("restoring leases")
@@ -733,11 +728,8 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 	wg := &sync.WaitGroup{}
 
 	// Create 64 workers to distribute work to
-	for i := 0; i < consts.ExpirationRestoreWorkerCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+	for range consts.ExpirationRestoreWorkerCount {
+		wg.Go(func() {
 			for {
 				select {
 				case lease, ok := <-broker:
@@ -764,13 +756,11 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 					return
 				}
 			}
-		}()
+		})
 	}
 
 	// Distribute the collected keys to the workers in a go routine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		i := 0
 		for ns := range existing {
 			for _, leaseID := range existing[ns] {
@@ -797,11 +787,11 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 
 		// Close the broker, causing worker routines to exit
 		close(broker)
-	}()
+	})
 
 	// Ensure all keys on the chan are processed
 LOOP:
-	for i := 0; i < leaseCount; i++ {
+	for range leaseCount {
 		select {
 		case err = <-errs:
 			// Close all go routines
@@ -2779,7 +2769,7 @@ func (le *leaseEntry) nonexpiringToken() bool {
 		le.namespace.ID == namespace.RootNamespaceID
 }
 
-// TODO maybe lock RevokeErr once this goes in: https://github.com/openbao/openbao/pull/11122
+// TODO: maybe lock RevokeErr once this goes in: https://github.com/hashicorp/vault/pull/11122
 func (le *leaseEntry) isIrrevocable() bool {
 	return le.RevokeErr != ""
 }

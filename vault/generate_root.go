@@ -17,9 +17,13 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 )
 
-// GenerateStandardRootTokenStrategy is the strategy used to generate a
-// typical root token
+// GenerateStandardRootTokenStrategy is the strategy used to
+// generate a typical root token.
 var GenerateStandardRootTokenStrategy GenerateRootStrategy = generateStandardRootToken{}
+
+// ErrNoRootGeneration is returned when no root token generation
+// is currently in progress.
+var ErrNoRootGeneration = errors.New("no root generation in progress")
 
 // GenerateRootStrategy allows us to swap out the strategy we want to use to
 // create a token upon completion of the generate root process.
@@ -113,15 +117,15 @@ func (c *Core) GenerateRootConfiguration() (*GenerateRootConfig, error) {
 	c.generateRootLock.Lock()
 	defer c.generateRootLock.Unlock()
 
-	// Copy the config if any
-	var conf *GenerateRootConfig
-	if c.generateRootConfig != nil {
-		conf = new(GenerateRootConfig)
-		*conf = *c.generateRootConfig
-		conf.OTP = ""
-		conf.Strategy = nil
+	if c.generateRootConfig == nil {
+		return nil, ErrNoRootGeneration
 	}
-	return conf, nil
+
+	config := *c.generateRootConfig
+	config.OTP = ""
+	config.Strategy = nil
+
+	return &config, nil
 }
 
 // GenerateRootInit is used to initialize the root generation settings
@@ -129,9 +133,15 @@ func (c *Core) GenerateRootInit(otp, pgpKey string, strategy GenerateRootStrateg
 	var fingerprint string
 	switch {
 	case len(otp) > 0:
-		if (len(otp) != TokenLength+TokenPrefixLength && !c.DisableSSCTokens()) ||
-			(len(otp) != TokenLength+OldTokenPrefixLength && c.DisableSSCTokens()) {
-			return errors.New("OTP string is wrong length")
+		expectedLength := TokenLength
+		if c.DisableSSCTokens() {
+			expectedLength += OldTokenPrefixLength
+		} else {
+			expectedLength += TokenPrefixLength
+		}
+
+		if len(otp) != expectedLength {
+			return errors.New("OTP string has incorrect length")
 		}
 
 	case len(pgpKey) > 0:
@@ -214,14 +224,12 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	var err error
 	if c.seal.RecoveryKeySupported() {
 		config, err = c.seal.RecoveryConfig(ctx)
-		if err != nil {
-			return nil, err
-		}
 	} else {
 		config, err = c.seal.BarrierConfig(ctx)
-		if err != nil {
-			return nil, err
-		}
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	// Ensure the barrier is initialized
@@ -249,7 +257,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 
 	// Ensure a generateRoot is in progress
 	if c.generateRootConfig == nil {
-		return nil, errors.New("no root generation in progress")
+		return nil, ErrNoRootGeneration
 	}
 
 	if nonce != c.generateRootConfig.Nonce {
@@ -272,7 +280,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	progress := len(c.generateRootProgress)
 
 	// Check if we don't have enough keys to unlock
-	if len(c.generateRootProgress) < config.SecretThreshold {
+	if progress < config.SecretThreshold {
 		if c.logger.IsDebug() {
 			c.logger.Debug("cannot generate root, not enough keys", "keys", progress, "threshold", config.SecretThreshold)
 		}

@@ -25,7 +25,7 @@ func TestCore_Init(t *testing.T) {
 	testCoreInitCommon(t, autoSeal, &SealConfig{SecretShares: 1, SecretThreshold: 1}, &SealConfig{SecretShares: 0, SecretThreshold: 0})
 }
 
-func testCoreNewTestCoreLicensing(t *testing.T, seal Seal) (*Core, *CoreConfig) {
+func testCoreNewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {
 	logger := logging.NewVaultLogger(log.Trace)
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
@@ -52,7 +52,7 @@ func testCoreNewTestCoreLicensing(t *testing.T, seal Seal) (*Core, *CoreConfig) 
 }
 
 func testCoreInitCommon(t *testing.T, seal Seal, barrierConf, recoveryConf *SealConfig) {
-	c, conf := testCoreNewTestCoreLicensing(t, seal)
+	c, conf := testCoreNewTestCore(t, seal)
 	ctx := namespace.RootContext(t.Context())
 	init, err := c.Initialized(ctx)
 	require.NoError(t, err)

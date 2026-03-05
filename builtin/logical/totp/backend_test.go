@@ -19,6 +19,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"
+	"github.com/stretchr/testify/require"
 )
 
 func createKey() (string, error) {
@@ -27,20 +28,15 @@ func createKey() (string, error) {
 		AccountName: "Test",
 	})
 
-	key := keyUrl.Secret()
-
-	return strings.ToLower(key), err
+	return strings.ToLower(keyUrl.Secret()), err
 }
 
 func generateCode(key string, period uint, digits otplib.Digits, algorithm otplib.Algorithm) (string, error) {
-	// Generate password using totp library
-	totpToken, err := totplib.GenerateCodeCustom(key, time.Now(), totplib.ValidateOpts{
+	return totplib.GenerateCodeCustom(key, time.Now(), totplib.ValidateOpts{
 		Period:    period,
 		Digits:    digits,
 		Algorithm: algorithm,
 	})
-
-	return totpToken, err
 }
 
 func TestBackend_KeyName(t *testing.T) {
@@ -82,9 +78,9 @@ func TestBackend_KeyName(t *testing.T) {
 			false,
 		},
 	}
-	var resp *logical.Response
+
 	for _, tc := range tests {
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
+		resp, err := b.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 			Path:      "keys/" + tc.KeyName,
 			Operation: logical.UpdateOperation,
 			Storage:   config.StorageView,
@@ -102,7 +98,8 @@ func TestBackend_KeyName(t *testing.T) {
 		} else if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("bad: test name: %q\nresp: %#v\nerr: %v", tc.Name, resp, err)
 		}
-		resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
+
+		resp, err = b.HandleRequest(namespace.RootContext(t.Context()), &logical.Request{
 			Path:      "code/" + tc.KeyName,
 			Operation: logical.ReadOperation,
 			Storage:   config.StorageView,
@@ -110,9 +107,11 @@ func TestBackend_KeyName(t *testing.T) {
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("bad: test name: %q\nresp: %#v\nerr: %v", tc.Name, resp, err)
 		}
-		if resp.Data["code"].(string) == "" {
-			t.Fatalf("failed to generate code for test %q", tc.Name)
-		}
+
+		require.NotEmpty(t, resp.Data["code"].(string))
+		require.NotEmpty(t, resp.Data["generated"].(int64))
+		require.NotEmpty(t, resp.Data["expire_time"].(int64))
+		require.NotEmpty(t, resp.Data["period"].(string))
 	}
 }
 
@@ -1133,7 +1132,10 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, s logical.Storage, na
 		Path:      path.Join("code", name),
 		Check: func(resp *logical.Response) error {
 			var d struct {
-				Code string `mapstructure:"code"`
+				Code       string `mapstructure:"code"`
+				Generated  int64  `mapstructure:"generated"`
+				ExpireTime int64  `mapstructure:"expire_time"`
+				Period     string `mapstructure:"period"`
 			}
 
 			if err := mapstructure.Decode(resp.Data, &d); err != nil {
@@ -1216,7 +1218,7 @@ func testAccStepReadKey(t *testing.T, name string, expected map[string]interface
 	}
 }
 
-func testAccStepValidateCode(t *testing.T, name string, code string, valid, expectError bool) logicaltest.TestStep {
+func testAccStepValidateCode(t *testing.T, name, code string, valid, expectError bool) logicaltest.TestStep {
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "code/" + name,

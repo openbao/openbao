@@ -206,7 +206,7 @@ based upon claims in the JWT or OIDC ID token. Empty policies are ignored.`,
 				Type: framework.TypeBool,
 				Description: `If set to true, disables the interactive confirmation page shown
 during OIDC direct callback mode login. The confirmation step is enabled by default, as a security
-mesasure against token-hijacking attacks (see RFC 8628 5.4).`,
+measure against token-hijacking attacks (see RFC 8628 5.4).`,
 			},
 		},
 		ExistenceCheck: b.pathRoleExistenceCheck,

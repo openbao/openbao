@@ -720,7 +720,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 }
 
 func TestOIDC_Callback(t *testing.T) {
-	t.Run("successful login", func(t *testing.T) {
+	t.Run("successful login with confirmation", func(t *testing.T) {
 		// run test with and without bound_cidrs configured
 		//   and with and without direct callback mode
 		for i := 1; i <= 4; i++ {
@@ -794,6 +794,27 @@ func TestOIDC_Callback(t *testing.T) {
 					},
 				}
 
+				resp, err = b.HandleRequest(context.Background(), req)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			if callbackMode == "direct" {
+				req = &logical.Request{
+					Operation: logical.ReadOperation,
+					Path:      "oidc/callback",
+					Storage:   storage,
+					Data: map[string]interface{}{
+						"state":        state,
+						"code":         "abc",
+						"client_nonce": clientNonce,
+						"confirmation": "true",
+					},
+					Connection: &logical.Connection{
+						RemoteAddr: "127.0.0.1",
+					},
+				}
 				resp, err = b.HandleRequest(context.Background(), req)
 				if err != nil {
 					t.Fatal(err)

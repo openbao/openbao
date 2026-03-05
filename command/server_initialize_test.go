@@ -24,44 +24,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/cli"
-	hclog "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/profiles"
-	"github.com/openbao/openbao/sdk/v2/physical"
-	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	vault "github.com/openbao/openbao/vault"
 	"github.com/stretchr/testify/require"
 )
-
-// newTestServerCommand returns a minimal *ServerCommand suitable for calling
-// Initialize. Mirrors testServerCommand in server_test.go and adds a logger
-// to avoid nil panic in doSelfInit → profiles.WithLogger(c.logger.Named(...)).
-func newTestServerCommand(tb testing.TB) *ServerCommand {
-	tb.Helper()
-	ui := cli.NewMockUi()
-	logger := hclog.NewInterceptLogger(&hclog.LoggerOptions{
-		Name:   tb.Name(),
-		Level:  hclog.Trace,
-		Output: hclog.DefaultOutput,
-	})
-	return &ServerCommand{
-		BaseCommand: &BaseCommand{
-			UI: ui,
-		},
-		logger:     logger,
-		ShutdownCh: MakeShutdownCh(),
-		SighupCh:   MakeSighupCh(),
-		SigUSR2Ch:  MakeSigUSR2Ch(),
-		PhysicalBackends: map[string]physical.Factory{
-			"inmem":    physInmem.NewInmem,
-			"inmem_ha": physInmem.NewInmemHA,
-		},
-		startedCh:  make(chan struct{}, 5),
-		reloadedCh: make(chan struct{}, 5),
-	}
-}
 
 // emptyInitConfig returns a server.Config with a non-nil but non-empty
 // Initialization slice containing one empty OuterConfig.
@@ -95,7 +63,7 @@ func rootCtxCmd() context.Context {
 func TestInitialize_EmptyInitialization(t *testing.T) {
 	t.Parallel()
 
-	cmd := newTestServerCommand(t)
+	_, cmd := testServerCommand(t)
 	core := vault.TestCoreNewSeal(t)
 
 	cfg := &server.Config{
@@ -124,7 +92,7 @@ func TestInitialize_EmptyInitialization(t *testing.T) {
 func TestInitialize_RequiresAutoUnseal(t *testing.T) {
 	t.Parallel()
 
-	cmd := newTestServerCommand(t)
+	_, cmd := testServerCommand(t)
 
 	// TestCore uses Shamir — RecoveryKeySupported() returns false.
 	core := vault.TestCore(t)
@@ -148,7 +116,7 @@ func TestInitialize_RequiresAutoUnseal(t *testing.T) {
 func TestInitialize_AlreadyInitialized_Completed(t *testing.T) {
 	t.Parallel()
 
-	cmd := newTestServerCommand(t)
+	_, cmd := testServerCommand(t)
 	core := vault.TestCoreNewSeal(t)
 	ctx := rootCtxCmd()
 
@@ -177,7 +145,7 @@ func TestInitialize_AlreadyInitialized_Completed(t *testing.T) {
 func TestInitialize_AlreadyInitialized_CrashDetected(t *testing.T) {
 	t.Parallel()
 
-	cmd := newTestServerCommand(t)
+	_, cmd := testServerCommand(t)
 	core := vault.TestCoreNewSeal(t)
 	ctx := rootCtxCmd()
 
@@ -207,7 +175,7 @@ func TestInitialize_AlreadyInitialized_CrashDetected(t *testing.T) {
 func TestInitialize_AlreadyInitialized_NoMarker_BackwardCompat(t *testing.T) {
 	t.Parallel()
 
-	cmd := newTestServerCommand(t)
+	_, cmd := testServerCommand(t)
 	core := vault.TestCoreNewSeal(t)
 
 	// Initialize the core but write NO self-init marker.
@@ -236,7 +204,7 @@ func TestInitialize_AlreadyInitialized_NoMarker_BackwardCompat(t *testing.T) {
 func TestInitialize_FirstBoot_RealRequest(t *testing.T) {
 	t.Parallel()
 
-	cmd := newTestServerCommand(t)
+	_, cmd := testServerCommand(t)
 	core := vault.TestCoreNewSeal(t)
 	ctx := rootCtxCmd()
 
@@ -294,7 +262,7 @@ func TestInitialize_FirstBoot_RealRequest(t *testing.T) {
 func TestInitialize_FirstBoot_EmptyProfile(t *testing.T) {
 	t.Parallel()
 
-	cmd := newTestServerCommand(t)
+	_, cmd := testServerCommand(t)
 	core := vault.TestCoreNewSeal(t)
 	ctx := rootCtxCmd()
 

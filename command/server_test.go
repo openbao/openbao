@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/cli"
+	hclog "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/stretchr/testify/require"
@@ -96,10 +97,16 @@ func testServerCommand(tb testing.TB) (*cli.MockUi, *ServerCommand) {
 	tb.Helper()
 
 	ui := cli.NewMockUi()
+	logger := hclog.NewInterceptLogger(&hclog.LoggerOptions{
+		Name:   tb.Name(),
+		Level:  hclog.Trace,
+		Output: hclog.DefaultOutput,
+	})
 	return ui, &ServerCommand{
 		BaseCommand: &BaseCommand{
 			UI: ui,
 		},
+		logger:     logger,
 		ShutdownCh: MakeShutdownCh(),
 		SighupCh:   MakeSighupCh(),
 		SigUSR2Ch:  MakeSigUSR2Ch(),

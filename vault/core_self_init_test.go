@@ -15,9 +15,6 @@ package vault
 //   - Each test exercises exactly one observable behaviour.
 //   - Accuracy level 5+: every assertion has a comment explaining the invariant.
 //
-// NOTE: TestInitialize_SetsCompletedMarker was removed from this file.
-// Its coverage is provided by command/server_initialize_test.go which exercises
-// the full command.Initialize() path including MarkSelfInitStarted/Complete.
 //
 // Pattern matches: vault/core_self_init.go (OpenBao MPLv2)
 // Test helpers from: vault/testing.go (OpenBao MPLv2)
@@ -31,33 +28,6 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-// rootCtx returns the context used throughout the OpenBao core for root-namespace
-// operations.
-func rootCtx() context.Context {
-	return context.Background()
-}
-
-// openCore returns a *Core with an initialized, unsealed security barrier.
-// All state machine methods require the barrier to be open.
-//
-// Uses TestCoreNewSeal (auto-unseal capable) + TestCoreInit + UnsealWithStoredKeys.
-// TestCoreUnseal is NOT used here because it uses the Shamir path; auto-unseal
-// cores must be unsealed via UnsealWithStoredKeys which reads the stored keys
-// written by core.Initialize.
-func openCore(t *testing.T) *Core {
-	t.Helper()
-	c := TestCoreNewSeal(t)
-	TestCoreInit(t, c)
-	err := c.UnsealWithStoredKeys(context.Background())
-	require.NoError(t, err, "UnsealWithStoredKeys must not fail after TestCoreInit")
-	require.False(t, c.Sealed(), "precondition: core must be unsealed")
-	return c
-}
-
-// ---------------------------------------------------------------------------
 // MarkSelfInitStarted
 // ---------------------------------------------------------------------------
 
@@ -68,8 +38,8 @@ func openCore(t *testing.T) *Core {
 func TestMarkSelfInitStarted_WritesStartedMarker(t *testing.T) {
 	t.Parallel()
 
-	c := openCore(t)
-	ctx := rootCtx()
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := context.Background()
 
 	err := c.MarkSelfInitStarted(ctx)
 	require.NoError(t, err, "MarkSelfInitStarted must not return an error on an open barrier")
@@ -88,8 +58,8 @@ func TestMarkSelfInitStarted_WritesStartedMarker(t *testing.T) {
 func TestMarkSelfInitStarted_Idempotent(t *testing.T) {
 	t.Parallel()
 
-	c := openCore(t)
-	ctx := rootCtx()
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := context.Background()
 
 	require.NoError(t, c.MarkSelfInitStarted(ctx))
 	require.NoError(t, c.MarkSelfInitStarted(ctx), "second call must not fail (Put is idempotent)")
@@ -108,8 +78,8 @@ func TestMarkSelfInitStarted_Idempotent(t *testing.T) {
 func TestMarkSelfInitComplete_WritesCompletedMarker(t *testing.T) {
 	t.Parallel()
 
-	c := openCore(t)
-	ctx := rootCtx()
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := context.Background()
 
 	require.NoError(t, c.MarkSelfInitStarted(ctx))
 	require.NoError(t, c.MarkSelfInitComplete(ctx))
@@ -126,8 +96,8 @@ func TestMarkSelfInitComplete_WritesCompletedMarker(t *testing.T) {
 func TestMarkSelfInitComplete_WithoutStarted(t *testing.T) {
 	t.Parallel()
 
-	c := openCore(t)
-	ctx := rootCtx()
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := context.Background()
 
 	require.NoError(t, c.MarkSelfInitComplete(ctx),
 		"MarkSelfInitComplete must succeed even without a prior MarkSelfInitStarted")
@@ -151,8 +121,8 @@ func TestIsSelfInitComplete_MissingEntry_BackwardCompat(t *testing.T) {
 
 	// Initialized and unsealed core, but no marker written — simulates a
 	// cluster that was initialized before this feature existed.
-	c := openCore(t)
-	ctx := rootCtx()
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := context.Background()
 
 	ok, err := c.IsSelfInitComplete(ctx)
 	require.NoError(t, err, "missing marker must not produce an error")
@@ -164,8 +134,8 @@ func TestIsSelfInitComplete_MissingEntry_BackwardCompat(t *testing.T) {
 func TestIsSelfInitComplete_CompletedEntry_ReturnsTrue(t *testing.T) {
 	t.Parallel()
 
-	c := openCore(t)
-	ctx := rootCtx()
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := context.Background()
 
 	require.NoError(t, c.MarkSelfInitStarted(ctx))
 	require.NoError(t, c.MarkSelfInitComplete(ctx))
@@ -181,8 +151,8 @@ func TestIsSelfInitComplete_CompletedEntry_ReturnsTrue(t *testing.T) {
 func TestIsSelfInitComplete_StartedEntry_ReturnsCrashError(t *testing.T) {
 	t.Parallel()
 
-	c := openCore(t)
-	ctx := rootCtx()
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := context.Background()
 
 	require.NoError(t, c.MarkSelfInitStarted(ctx))
 
@@ -196,8 +166,8 @@ func TestIsSelfInitComplete_StartedEntry_ReturnsCrashError(t *testing.T) {
 func TestIsSelfInitComplete_CorruptEntry_ReturnsError(t *testing.T) {
 	t.Parallel()
 
-	c := openCore(t)
-	ctx := rootCtx()
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := context.Background()
 
 	// Write a garbage value directly to the barrier, bypassing the public API,
 	// to simulate storage corruption or a future schema conflict.
@@ -227,8 +197,8 @@ func TestSelfInitStateMachine_FullSequence(t *testing.T) {
 	t.Parallel()
 
 	// Core must be initialized and unsealed for all barrier operations.
-	c := openCore(t)
-	ctx := rootCtx()
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := context.Background()
 
 	// Step 0: initialized core, no marker written → backward-compat success.
 	ok, err := c.IsSelfInitComplete(ctx)

@@ -281,3 +281,35 @@ func TestInitialize_FirstBoot_EmptyProfile(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, inited, "core must be initialized after successful Initialize")
 }
+
+// ---------------------------------------------------------------------------
+// Already initialized: sealed (follower/standby node)
+// ---------------------------------------------------------------------------
+
+// TestInitialize_AlreadyInitialized_Sealed verifies that when the Core is
+// already initialized but still sealed, Initialize returns nil without
+// attempting to read the self-init marker through the barrier.
+//
+// This is the parallel-node path: a follower or standby comes up after
+// another node already ran initialization. The barrier exists in shared
+// storage (inited == true) but this node has not yet fetched stored keys.
+// IsSelfInitComplete would fail with "Vault is sealed"; the guard introduced
+// by the ParallelInit fix must short-circuit before reaching that call.
+func TestInitialize_AlreadyInitialized_Sealed(t *testing.T) {
+	t.Parallel()
+
+	_, cmd := testServerCommand(t)
+	core := vault.TestCoreNewSeal(t)
+
+	// Barrier exists in storage but this node is still sealed:
+	// do NOT call UnsealWithStoredKeys — simulating a follower coming up.
+	vault.TestCoreInit(t, core)
+
+	err := cmd.Initialize(core, emptyInitConfig())
+	require.NoError(t, err,
+		"initialized but sealed core must return nil: follower nodes must not attempt barrier reads")
+
+	// Sealed state must be unchanged: Initialize must not have touched it.
+	require.True(t, core.Sealed(),
+		"core must remain sealed after Initialize returns: unseal is not Initialize's responsibility")
+}

@@ -47,7 +47,7 @@ module('Acceptance | auth-methods list view', function (hooks) {
     // filter by auth type
 
     await clickTrigger('#filter-by-auth-type');
-    await searchSelect.options.objectAt(0).click();
+    await searchSelect.options.objectAt(1).click();
 
     const rows = document.querySelectorAll('[data-test-auth-backend-link]');
     const rowsUserpass = Array.from(rows).filter((row) => row.innerText.includes('userpass'));

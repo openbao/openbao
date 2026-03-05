@@ -19,8 +19,9 @@ module('Acceptance | tools', function (hooks) {
     return authPage.login();
   });
 
-  hooks.afterEach(function () {
-    return logout.visit();
+  hooks.afterEach(async function () {
+    await logout.visit();
+    await settled();
   });
 
   const DATA_TO_WRAP = JSON.stringify({ tools: 'tests' });

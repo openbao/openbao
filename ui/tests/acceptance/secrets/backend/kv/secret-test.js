@@ -39,6 +39,7 @@ const writeSecret = async function (backend, path, key, val) {
 
 const deleteEngine = async function (enginePath, assert) {
   await logout.visit();
+  await settled();
   await authPage.login();
   await consoleComponent.runCommands([`delete sys/mounts/${enginePath}`]);
   const response = consoleComponent.lastLogOutput;
@@ -75,6 +76,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
   hooks.afterEach(async function () {
     this.server.shutdown();
     await logout.visit();
+    await settled();
   });
 
   test('it creates a secret and redirects', async function (assert) {
@@ -642,6 +644,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     `;
     const userToken = await mountEngineGeneratePolicyToken(enginePath, secretPath, V2_POLICY);
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
 
     await writeSecret(enginePath, secretPath, 'foo', 'bar');
@@ -669,6 +672,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     const userToken = await mountEngineGeneratePolicyToken(enginePath, secretPath, V2_POLICY);
     await writeSecret(enginePath, secretPath, 'foo', 'bar');
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
     await settled();
     await visit(`/vault/secrets/${enginePath}/show/${secretPath}`);
@@ -782,6 +786,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     `;
     const userToken = await mountEngineGeneratePolicyToken(enginePath, secretPath, V2_POLICY);
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
 
     await writeSecret(enginePath, secretPath, 'foo', 'bar');
@@ -827,6 +832,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     `;
     const userToken = await mountEngineGeneratePolicyToken(enginePath, secretPath, V2_POLICY);
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
     await writeSecret(enginePath, secretPath, 'foo', 'bar');
     assert.dom('[data-test-delete-open-modal]').doesNotExist('delete version does not show');
@@ -854,6 +860,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     `;
     const userToken = await mountEngineGeneratePolicyToken(enginePath, secretPath, policy);
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
     await writeSecret(enginePath, secretPath, 'foo', 'bar');
     // create multiple versions
@@ -894,6 +901,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     `;
     const userToken = await mountEngineGeneratePolicyToken(enginePath, secretPath, policy);
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
     await writeSecret(enginePath, secretPath, 'foo', 'bar');
     // create multiple versions
@@ -942,6 +950,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     `;
     const userToken = await mountEngineGeneratePolicyToken(enginePath, secretPath, V2_POLICY);
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
     await writeSecret(enginePath, secretPath, 'foo', 'bar');
     assert.dom('[data-test-secret-v2-delete="true"]').exists('drop down delete shows');
@@ -965,6 +974,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     `;
     const userToken = await mountEngineGeneratePolicyToken(enginePath, secretPath, V2_POLICY);
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
     await writeSecret(enginePath, secretPath, 'foo', 'bar');
     assert.dom('[data-test-secret-v2-delete="true"]').exists('drop down delete shows');
@@ -1016,6 +1026,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     const userToken = await setupNoRead(backend);
     await writeSecret(backend, 'secret', 'foo', 'bar');
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
 
     await showPage.visit({ backend, id: 'secret' });
@@ -1040,6 +1051,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     const userToken = await setupNoRead(backend, true);
     await writeSecret(backend, 'secret', 'foo', 'bar');
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
 
     await showPage.visit({ backend, id: 'secret' });
@@ -1066,6 +1078,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     const userToken = await setupNoRead(backend);
     await writeSecret(backend, 'secret', 'foo', 'bar');
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
 
     await showPage.visit({ backend, id: 'secret' });

@@ -57,7 +57,7 @@ backend cannot be declared.
 
 ## `raft` parameters
 
-- `path` `(string: "")` – The file system path where all the OpenBao data gets
+- `path` `(string: "")` <a name="path"></a> – The file system path where all the OpenBao data gets
   stored.
   This value can be overridden by setting the `VAULT_RAFT_PATH` environment variable.
 
@@ -105,7 +105,7 @@ backend cannot be declared.
    from performing a snapshot at once. The default snapshot interval is
    120 seconds.
 
-- `retry_join` `(list: [])` - A set of connection details for another node in the
+- `retry_join` `(list: [])` <a name="retry_join"></a> - A set of connection details for another node in the
   cluster, which is used to help nodes locate a leader in order to join a cluster.
   There can be one or more [`retry_join`](#retry_join-stanza) stanzas.
 
@@ -118,17 +118,17 @@ backend cannot be declared.
   See [the section below](#retry_join-stanza) for the parameters accepted by the
   [`retry_join`](#retry_join-stanza) stanza.
 
-- `retry_join_as_non_voter` `(boolean: false)` - If set, causes any `retry_join`
+- `retry_join_as_non_voter` `(boolean: false)` <a name="retry_join_as_non_voter"></a> - If set, causes any `retry_join`
   config to join the Raft cluster as a non-voter. The node will not participate
   in the Raft quorum but will still receive the data replication stream, adding
   read scalability to a cluster. This option has the same effect as the
-  [`-non-voter`](../../commands/operator/raft.mdx#non-voter) flag for the
+  [`-non-voter`](../../commands/operator/raft.mdx#_non_voter) flag for the
   `bao operator raft join` command, but only affects voting status when joining
   via `retry_join` config. This setting can be overridden to true by setting the
   `VAULT_RAFT_RETRY_JOIN_AS_NON_VOTER` environment variable to any non-empty value.
   Only valid if there is at least one `retry_join` stanza.
 
-- `max_entry_size` `(integer: 1048576)` - This configures the maximum number of
+- `max_entry_size` `(integer: 1048576)` <a name="max_entry_size"></a> - This configures the maximum number of
   bytes for a Raft entry. It applies to Put operations: Any put operation exceeding
   this configuration value will cause the respective operation to fail. Raft has a
   suggested max size of data in a Raft log entry. This is based on current
@@ -173,7 +173,7 @@ backend cannot be declared.
 - `auto_join_port` `(uint: "")` <a name="auto_join_port"></a> - The optional
   port used for addressed discovered via auto-join.
 
-- `leader_tls_servername` `(string: "")` - The TLS server name to use when
+- `leader_tls_servername` `(string: "")` <a name="leader_tls_servername"></a> - The TLS server name to use when
   connecting with HTTPS.
   Should match one of the names in the [DNS
   SANs](https://en.wikipedia.org/wiki/Subject_Alternative_Name) of the remote

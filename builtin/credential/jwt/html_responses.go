@@ -4,6 +4,7 @@
 package jwtauth
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 )
@@ -361,7 +362,7 @@ h1 + p {
 }
 
 func formpostHTML(path, code, state string) string {
-	const html = `
+	const htmlTmpl = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -519,10 +520,18 @@ func formpostHTML(path, code, state string) string {
       </div>
     </div>
 	<script>
-		window.opener.postMessage({ source: 'oidc-callback', path: "%s", code: "%s", state: "%s"}, window.origin);
+		window.opener.postMessage({ source: 'oidc-callback', path: %s, code: %s, state: %s}, window.origin);
 	</script>
   </body>
 </html>
 `
-	return fmt.Sprintf(html, path, code, state)
+	return fmt.Sprintf(htmlTmpl, jsStr(path), jsStr(code), jsStr(state))
+}
+
+// jsStr returns JSON-encoded string literal, safe to embed directly in a <script> block
+// adds surrounding quotes
+func jsStr(s string) string {
+	// json.Marshal on a string returns no errors
+	b, _ := json.Marshal(s)
+	return string(b)
 }

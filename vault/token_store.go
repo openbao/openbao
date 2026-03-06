@@ -2955,7 +2955,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	var errResp *logical.Response
 	var explicitEntityID string
 	errResp, explicitEntityID, err = ts.resolveEntityAlias(ctx, req, d, role)
-	if errResp != nil {
+	if errResp != nil || err != nil {
 		return errResp, err
 	}
 

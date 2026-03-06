@@ -1,52 +1,44 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
 
-#### DOCKERHUB DOCKERFILE ####
+# This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}.
 FROM alpine:3.23 AS default
 
-ARG BIN_NAME
-# NAME and PRODUCT_VERSION are the name of the software in releases.hashicorp.com
-# and the version to download. Example: NAME=openbao PRODUCT_VERSION=1.2.3.
-ARG NAME=openbao
-ARG PRODUCT_VERSION
-ARG PRODUCT_REVISION
+ARG VERSION
+ARG REVISION
 
-# Additional metadata labels used by container registries, platforms
-# and certification scanners.
+# Additional metadata labels used by container registries, platforms and
+# certification scanners.
 LABEL name="OpenBao" \
       maintainer="OpenBao <openbao@lists.openssf.org>" \
       vendor="OpenBao" \
-      version=${PRODUCT_VERSION} \
-      release=${PRODUCT_REVISION} \
-      revision=${PRODUCT_REVISION} \
       summary="OpenBao is a tool for securely accessing secrets." \
-      description="OpenBao is a tool for securely accessing secrets. A secret is anything that you want to tightly control access to, such as API keys, passwords, certificates, and more. OpenBao provides a unified interface to any secret, while providing tight access control and recording a detailed audit log."
+      description="OpenBao is a tool for securely accessing secrets. A secret is anything that you want to tightly control access to, such as API keys, passwords, certificates, and more. OpenBao provides a unified interface to any secret, while providing tight access control and recording a detailed audit log." \
+      version=${VERSION} release=${REVISION} revision=${REVISION}
 
 COPY LICENSE /licenses/mozilla.txt
 
-# Set ARGs as ENV so that they can be used in ENTRYPOINT/CMD
-ENV NAME=$NAME
-ENV VERSION=$VERSION
-
 # Create a non-root user to run the software.
-RUN addgroup ${NAME} && adduser -S -G ${NAME} ${NAME}
+RUN addgroup openbao && adduser -S -G openbao openbao
 
 ARG EXTRA_PACKAGES
-RUN apk add --no-cache libcap su-exec dumb-init tzdata ${EXTRA_PACKAGES}
+RUN apk add --no-cache ca-certificates libcap su-exec dumb-init tzdata ${EXTRA_PACKAGES}
 
-COPY $BIN_NAME /bin/
-
+# The OpenBao binary is built externally in CI and copied into the container
+# build.
+ARG BIN_NAME
+COPY ${BIN_NAME} /bin/
 RUN ln -s /bin/${BIN_NAME} /bin/vault
 
-# /vault/logs is made available to use as a location to store audit logs, if
-# desired; /vault/file is made available to use as a location with the file
-# storage backend, if desired; the server will be started with /vault/config as
-# the configuration directory so you can add additional config files in that
+# /openbao/logs is made available to use as a location to store audit logs, if
+# desired; /openbao/file is made available to use as a location with the file
+# storage backend, if desired; the server will be started with /openbao/config
+# as the configuration directory so you can add additional config files in that
 # location.
 RUN mkdir -p /openbao/logs && \
     mkdir -p /openbao/file && \
     mkdir -p /openbao/config && \
-    chown -R ${NAME}:${NAME} /openbao
+    chown -R openbao:openbao /openbao
 
 # Expose the logs directory as a volume since there's potentially long-running
 # state in there
@@ -60,48 +52,37 @@ VOLUME /openbao/file
 # OpenBao.
 EXPOSE 8200
 
+# Use the OpenBao user as the default user for starting this container.
+USER openbao
+
 # The entry point script uses dumb-init as the top-level process to reap any
 # zombie processes created by OpenBao sub-processes.
 COPY .release/docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 
-
-# # By default you'll get a single-node development server that stores everything
-# # in RAM and bootstraps itself. Don't use this configuration for production.
+# By default you'll get a single-node development server that stores everything
+# in RAM and bootstraps itself. Don't use this configuration for production.
 CMD ["server", "-dev", "-dev-no-store-token"]
 
 
-
-
-#### UBI DOCKERFILE ####
+# This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}-ubi.
 FROM registry.access.redhat.com/ubi10-minimal:10.1 AS ubi
 
-ARG BIN_NAME
-# PRODUCT_VERSION is the version built dist/$TARGETOS/$TARGETARCH/$BIN_NAME,
-# which we COPY in later. Example: PRODUCT_VERSION=1.2.3.
-ARG PRODUCT_VERSION
-ARG PRODUCT_REVISION
+ARG VERSION
+ARG REVISION
 
-# Additional metadata labels used by container registries, platforms
-# and certification scanners.
+# Additional metadata labels used by container registries, platforms and
+# certification scanners.
 LABEL name="OpenBao" \
       maintainer="OpenBao <openbao@lists.openssf.org>" \
       vendor="OpenBao" \
-      version=${PRODUCT_VERSION} \
-      release=${PRODUCT_REVISION} \
-      revision=${PRODUCT_REVISION} \
       summary="OpenBao is a tool for securely accessing secrets." \
-      description="OpenBao is a tool for securely accessing secrets. A secret is anything that you want to tightly control access to, such as API keys, passwords, certificates, and more. OpenBao provides a unified interface to any secret, while providing tight access control and recording a detailed audit log."
+      description="OpenBao is a tool for securely accessing secrets. A secret is anything that you want to tightly control access to, such as API keys, passwords, certificates, and more. OpenBao provides a unified interface to any secret, while providing tight access control and recording a detailed audit log." \
+      version=${VERSION} release=${REVISION} revision=${REVISION}
 
 COPY LICENSE /licenses/mozilla.txt
 
-# Set ARGs as ENV so that they can be used in ENTRYPOINT/CMD
-ENV NAME=$NAME
-ENV VERSION=$VERSION
-
-# Set up certificates, our base tools, and OpenBao. Unlike the other version of
-# this (https://github.com/hashicorp/docker-vault/blob/master/ubi/Dockerfile),
-# we copy in the OpenBao binary from CRT.
+# Set up ca-certificates & base tooling.
 RUN set -eux; \
     microdnf install -y ca-certificates gnupg openssl libcap tzdata procps shadow-utils util-linux
 
@@ -110,18 +91,18 @@ RUN groupadd --gid 1000 openbao && \
     adduser --uid 100 --system -g openbao openbao && \
     usermod -a -G root openbao
 
-# Copy in the new OpenBao from CRT pipeline, rather than fetching it from our
-# public releases.
-COPY $BIN_NAME /bin/
-
+# The OpenBao binary is built externally in CI and copied into the container
+# build.
+ARG BIN_NAME
+COPY ${BIN_NAME} /bin/
 RUN ln -s /bin/${BIN_NAME} /bin/vault
 
-# /vault/logs is made available to use as a location to store audit logs, if
-# desired; /vault/file is made available to use as a location with the file
-# storage backend, if desired; the server will be started with /vault/config as
-# the configuration directory so you can add additional config files in that
+# /openbao/logs is made available to use as a location to store audit logs, if
+# desired; /openbao/file is made available to use as a location with the file
+# storage backend, if desired; the server will be started with /openbao/config
+# as the configuration directory so you can add additional config files in that
 # location.
-ENV HOME /home/openbao
+ENV HOME=/home/openbao
 RUN mkdir -p /openbao/logs && \
     mkdir -p /openbao/file && \
     mkdir -p /openbao/config && \
@@ -142,14 +123,14 @@ VOLUME /openbao/file
 # OpenBao.
 EXPOSE 8200
 
+# Use the OpenBao user as the default user for starting this container.
+USER openbao
+
 # The entry point script uses dumb-init as the top-level process to reap any
 # zombie processes created by OpenBao sub-processes.
 COPY .release/docker/ubi-docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 
-# Use the OpenBao user as the default user for starting this container.
-USER openbao
-
-# # By default you'll get a single-node development server that stores everything
-# # in RAM and bootstraps itself. Don't use this configuration for production.
+# By default you'll get a single-node development server that stores everything
+# in RAM and bootstraps itself. Don't use this configuration for production.
 CMD ["server", "-dev", "-dev-no-store-token"]

@@ -1,0 +1,12 @@
+```release-note:change
+packaging/container: The openbao & openbao-hsm container images now run under
+the `openbao` user rather than the `root` user by default, matching the default
+behavior of openbao-ubi variants:
+- Note that the container entrypoint will always drop down to the `openbao` user
+  before starting OpenBao even if started as `root`. The additional capabilities
+  are only used pre-startup to automatically fix up permissions of files
+  accessed by OpenBao.
+- If you rely on the container initially running as `root` by default, you can
+  revert to this behavior by manually specifying the user in your container
+  engine.
+```

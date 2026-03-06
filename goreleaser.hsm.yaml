@@ -130,9 +130,9 @@ dockers:
       - builds-hsm
     build_flag_templates:
       - "--pull"
-      - "--build-arg=BIN_NAME={{.ProjectName}}"
-      - "--build-arg=REVISION={{.FullCommit}}"
-      - "--build-arg=VERSION={{.Version}}"
+      - "--build-arg=BIN_NAME={{ .ProjectName}}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=VERSION={{ .Version }}"
       - "--build-arg=EXTRA_PACKAGES=gcompat"
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
@@ -145,9 +145,6 @@ dockers:
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
       - "--target=default"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
@@ -182,9 +179,6 @@ dockers:
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
       - "--target=default"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
@@ -217,9 +211,6 @@ dockers:
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
       - "--target=ubi"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
@@ -253,9 +244,6 @@ dockers:
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
       - "--target=ubi"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"

@@ -23,8 +23,8 @@
     mask-image: none;
   }
 
-  &:checked ~ .codeBlockLabel {
-    display: none;
+  &:checked ~ .codeBlockLabel:after {
+    content: "show less ‹";
   }
 }
 

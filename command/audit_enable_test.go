@@ -208,6 +208,7 @@ func TestAuditEnableCommand_Run(t *testing.T) {
 				args = append(args, "address=127.0.0.1:8888",
 					"skip_test=true")
 			case "syslog":
+				// known to be flaky with 'Unix syslog delivery error'
 				if _, exists := os.LookupEnv("WSLENV"); exists {
 					t.Log("skipping syslog test on WSL")
 					continue

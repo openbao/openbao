@@ -13,6 +13,8 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func testKVPutCommand(tb testing.TB) (*cli.MockUi, *KVPutCommand) {
@@ -1014,13 +1016,18 @@ func TestKVPatchCommand_StdinValue(t *testing.T) {
 		t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
 	}
 
-	if _, err := client.Logical().Write("kv/data/patch/foo", map[string]interface{}{
-		"data": map[string]interface{}{
-			"foo": "a",
-		},
-	}); err != nil {
-		t.Fatalf("write failed, err: %#v\n", err)
-	}
+	// because of the upgrade to v2 path, this can initially fail with
+	// "Upgrading from non-versioned to versioned data. \
+	// This backend will be unavailable for a brief period and will resume service shortly"
+	// This should pass within next 16(15+1)ms
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		_, err := client.Logical().Write("kv/data/patch/foo", map[string]interface{}{
+			"data": map[string]interface{}{
+				"foo": "a",
+			},
+		})
+		require.NoErrorf(collect, err, "write failed, err: %#v\n", err)
+	}, 2*time.Second, 15*time.Millisecond)
 
 	cases := [][]string{
 		{"kv/patch/foo", "foo=-"},

@@ -59,8 +59,7 @@ FROM registry.access.redhat.com/ubi10-minimal:10.1 AS ubi
 COPY LICENSE /licenses/mozilla.txt
 
 # Set up ca-certificates & base tooling.
-RUN set -eux; \
-    microdnf install -y ca-certificates gnupg openssl libcap tzdata procps shadow-utils util-linux
+RUN microdnf install -y ca-certificates gnupg openssl libcap tzdata procps shadow-utils util-linux
 
 # Create a non-root user to run the software.
 RUN groupadd --gid 1000 openbao && \
@@ -109,4 +108,24 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 
 # By default you'll get a single-node development server that stores everything
 # in RAM and bootstraps itself. Don't use this configuration for production.
+CMD ["server", "-dev", "-dev-no-store-token"]
+
+
+# This is {docker.io,quay.io,ghcr.io}/openbao/openbao-distroless.
+FROM gcr.io/distroless/static:nonroot@sha256:f512d819b8f109f2375e8b51d8cfd8aafe81034bc3e319740128b7d7f70d5036 AS distroless
+
+COPY LICENSE /licenses/mozilla.txt
+
+# The OpenBao binary is built externally in CI and copied into the container
+# build.
+ARG BIN_NAME
+COPY ${BIN_NAME} /bin/
+
+# 8200/tcp is the primary interface that applications use to interact with
+# OpenBao.
+EXPOSE 8200
+
+# By default you'll get a single-node development server that stores everything
+# in RAM and bootstraps itself. Don't use this configuration for production.
+ENTRYPOINT ["/bin/bao"]
 CMD ["server", "-dev", "-dev-no-store-token"]

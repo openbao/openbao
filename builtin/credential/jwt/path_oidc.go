@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -271,7 +272,9 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 	// If present, the login has failed
 	oidcError := d.Get("error").(string)
 	if oidcError != "" {
-		return loginFailedResponse(useHttp, "An unknown error occurred during OIDC authentication."), nil
+		// strconv.Quote - for log-safe string output.
+		b.Logger().Warn("OIDC callback received error from provider", "error", strconv.Quote(oidcError))
+		return loginFailedResponse(useHttp, "An unknown error occurred during OIDC authentication. Check server logs for details"), nil
 	}
 
 	clientNonce := d.Get("client_nonce").(string)

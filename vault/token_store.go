@@ -3103,7 +3103,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		}
 	}
 
-	explicitMaxTTLToUse, periodToUse, errResp, err := ts.parseAndMergeTTLPeriod(d, role, &te, isSudo, explicitMaxTTL, period, resp)
+	var explicitMaxTTLToUse, periodToUse time.Duration
+	explicitMaxTTLToUse, periodToUse, errResp, err = ts.parseAndMergeTTLPeriod(d, role, &te, isSudo, explicitMaxTTL, period, resp)
 	if errResp != nil || err != nil {
 		return errResp, err
 	}

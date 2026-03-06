@@ -180,7 +180,7 @@ const Asset = ({ urls }) => {
     <div className="card download-card">
       <div className="card__header">
         <h3 className="download-card__header-title">
-          {AssetArchitecture(asset).toUpperCase()}
+          {AssetArchitecture(asset)}
         </h3>
       </div>
       <div className="card__body">

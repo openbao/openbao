@@ -2953,7 +2953,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 
 	// Verify the entity alias
 	errResp, explicitEntityID, err := ts.resolveEntityAlias(ctx, req, d, role)
-	if errResp != nil || err != nil {
+	if errResp != nil {
 		return errResp, err
 	}
 

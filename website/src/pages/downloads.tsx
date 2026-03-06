@@ -300,8 +300,9 @@ const DockerList = ({ version, registry }) => {
   const dockerVersion = version.slice(1);
   const dockerDistros = {
     "Alpine Image Distribution": "openbao/openbao",
+    "Alpine Image Distribution with HSM Support": "openbao/openbao-hsm",
     "Red Hat Universal Base Image (UBI) Distribution": "openbao/openbao-ubi",
-    "HSM Distribution": "openbao/openbao-hsm-ubi"
+    "Red Hat Universal Base Image (UBI) Distribution with HSM support": "openbao/openbao-hsm-ubi",
   }
   return (
       <>

@@ -560,7 +560,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 		"username":            dbUser,
 		// Low value here, to make sure the backend rotates this password at least
 		// once before we compare it to the WAL
-		"rotation_period": "5s",
+		"rotation_period": "10s",
 	}
 
 	req = &logical.Request{
@@ -576,14 +576,14 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 	}
 
 	// Allow the first rotation to occur, setting LastVaultRotation
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 11)
 
 	// Cleanup the backend, then create a WAL for the role with a
 	// LastVaultRotation of 1 hour ago, so that when we recreate the backend the
 	// WAL will be read but discarded
 	b.Cleanup(ctx)
 	b = nil
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second)
 
 	// Make a fake WAL entry with an older time
 	oldRotationTime := roleTime.Add(time.Hour * -1)
@@ -612,7 +612,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 	defer b.Cleanup(ctx)
 
 	// Allow enough time for populateQueue to work after boot
-	time.Sleep(time.Second * 6)
+	time.Sleep(time.Second * 10)
 
 	// PopulateQueue should have processed the entry
 	assertWALCount(t, config.StorageView, 0, staticWALKey)

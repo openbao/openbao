@@ -1361,8 +1361,6 @@ func TestKVPatchCommand_403Fallback(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			client, closer := testVaultServer(t)
@@ -1389,10 +1387,10 @@ func TestKVPatchCommand_403Fallback(t *testing.T) {
 			kvClient.SetToken(secretAuth.ClientToken)
 
 			// Write a value then attempt to patch it
-			_, err = kvClient.Logical().Write("kv/data/foo", map[string]interface{}{"data": map[string]interface{}{"bar": "baz"}})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				_, err := kvClient.Logical().Write("kv/data/foo", map[string]interface{}{"data": map[string]interface{}{"bar": "baz"}})
+				require.NoErrorf(collect, err, "write failed, err: %#v\n", err)
+			}, 2*time.Second, 15*time.Millisecond)
 
 			code, combined := kvPatchWithRetry(t, kvClient, tc.args, nil)
 

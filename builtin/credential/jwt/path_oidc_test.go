@@ -969,8 +969,8 @@ func TestOIDC_Callback(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
 		// poll for the result

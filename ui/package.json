@@ -219,7 +219,8 @@
     "underscore": "^1.12.1",
     "trim": "^0.0.3",
     "xmlhttprequest-ssl": "^1.6.2",
-    "cheerio": "1.0.0-rc.12"
+    "cheerio": "1.0.0-rc.12",
+    "get-intrinsic": "1.2.7"
   },
   "engines": {
     "node": "20"

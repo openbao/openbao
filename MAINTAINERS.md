@@ -10,6 +10,7 @@ See the information about community membership roles to learn about the role of 
 | Dan Ghita     | dghita@wallix.com            | [@DanGhita](https://github.com/DanGhita)   |
 | Jan Martens   | jan@martens.eu.org           | [@JanMa](https://github.com/JanMa)         |
 | Nathan Phelps | naphelps@us.ibm.com          | [@naphelps](https://github.com/naphelps)   |
+| Jonas Köhnen  | jonas@satoqz.net             | [@satoqz](https://github.com/satoqz)       |
 
 ## Repository-Level Committers
 
@@ -19,7 +20,6 @@ See the information about community membership roles to learn about the role of 
 | Christoph Voigt  | [@voigt](https://github.com/voigt)                   | [`vault/`]                                                                                        |
 | Dave Dykstra     | [@DrDaveD](https://github.com/DrDaveD)               | [`auth/jwt` and `auth/oidc`](https://github.com/openbao/openbao/tree/main/builtin/credential/jwt) |
 | Geoffrey Wilson  | [@suprjinx](https://github.com/suprjinx)             | [`vault/`]                                                                                        |
-| Jonas Köhnen     | [@satoqz](https://github.com/satoqz)                 | [`vault/`]                                                                                        |
 | Pascal Reeb      | [@pree](https://github.com/pree)                     | [helm], [csi-provider], [k8s], [secrets-operator], and [openbao-plugins `secrets/consul/`]        |
 | Philipp Stehle   | [@phil9909](https://github.com/phil9909)             | [`vault/`], and [openbao-plugins]                                                                 |
 | Tom Gehrke       | [@phyrog](https://github.com/phyrog)                 | [`vault/`]                                                                                        |

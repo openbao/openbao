@@ -198,12 +198,11 @@ func TestReconcileOCIPlugins(t *testing.T) {
 	// Store the config
 	core.rawConfig.Store(config)
 
-	// Test the OCI plugin reconciliation
-	ctx := context.Background()
-	err = core.reconcileOCIPlugins(ctx, false /* standby */)
-	// Verify the download worked
-	if err != nil {
-		t.Fatalf("OCI plugin reconciliation failed: %v", err)
+	ctx := t.Context()
+
+	// Download plugins.
+	if err := oci.NewPluginDownloader(tempDir, config, core.logger).ReconcilePlugins(ctx); err != nil {
+		t.Fatalf("OCI plugin download failed: %v", err)
 	}
 
 	// Verify the plugin was downloaded and symlinked correctly
@@ -255,7 +254,12 @@ func TestReconcileOCIPlugins(t *testing.T) {
 		t.Errorf("SHA256 mismatch: expected %s, got %s", nomadPluginSHA256, actualSHA256)
 	}
 
-	// Try to register downloaded plugin
+	// Register plugins automatically based on config.
+	if err := core.registerDeclarativePlugins(ctx, false /* standby */); err != nil {
+		t.Errorf("failed to register plugins: %v", err)
+	}
+
+	// Register plugins manually via plugin catalog.
 	pluginType, _ := consts.ParsePluginType(config.Plugins[0].Type)
 	pluginSha, _ := hex.DecodeString(config.Plugins[0].SHA256Sum)
 
@@ -301,6 +305,11 @@ func TestReconcileOCIPlugins(t *testing.T) {
 		PluginAutoRegister:     true,
 	}
 	core.rawConfig.Store(config)
+
+	// Re-download.
+	if err := oci.NewPluginDownloader(tempDir, config, core.logger).ReconcilePlugins(ctx); err != nil {
+		t.Fatalf("OCI plugin reconciliation failed: %v", err)
+	}
 
 	// Reconcile, but this time use the SIGHUP handler.
 	core.ReloadPlugins()

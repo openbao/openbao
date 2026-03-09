@@ -348,7 +348,7 @@ func (b *SystemBackend) handlePluginCatalogTypedList(ctx context.Context, req *l
 func (b *SystemBackend) handlePluginCatalogUntypedList(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 	data := make(map[string]interface{})
 	var versionedPlugins []pluginutil.VersionedPlugin
-	for _, pluginType := range consts.PluginTypes {
+	for _, pluginType := range pluginTypes {
 		plugins, err := b.Core.pluginCatalog.List(ctx, pluginType)
 		if err != nil {
 			return nil, err

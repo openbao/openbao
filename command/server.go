@@ -5,6 +5,7 @@ package command
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -40,11 +41,13 @@ import (
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/configutil"
+	"github.com/openbao/openbao/helper/kmsplugin"
 	"github.com/openbao/openbao/helper/listenerutil"
 	loghelper "github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/osutil"
+	"github.com/openbao/openbao/helper/pluginutil/oci"
 	"github.com/openbao/openbao/helper/profiles"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/helper/useragent"
@@ -422,6 +425,17 @@ func (c *ServerCommand) runRecoveryMode() int {
 
 	logProxyEnvironmentVariables(c.logger)
 
+	if err := c.downloadOCIPlugins(context.Background(), config); err != nil {
+		c.UI.Error(fmt.Sprintf("Error downloading plugins: %s", err))
+		return 1
+	}
+
+	kmsCatalog, err := kmsplugin.NewCatalog(c.logger, config)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error creating KMS plugin catalog: %s", err))
+		return 1
+	}
+
 	// Initialize the storage backend
 	factory, exists := c.PhysicalBackends[config.Storage.Type]
 	if !exists {
@@ -451,10 +465,6 @@ func (c *ServerCommand) runRecoveryMode() int {
 	info["log level"] = config.LogLevel
 	infoKeys = append(infoKeys, "log level")
 
-	var barrierSeal vault.Seal
-	var sealConfigError error
-	var wrapper wrapping.Wrapper
-
 	if len(config.Seals) == 0 {
 		config.Seals = append(config.Seals, &configutil.KMS{Type: wrapping.WrapperTypeShamir.String()})
 	}
@@ -471,29 +481,33 @@ func (c *ServerCommand) runRecoveryMode() int {
 		configSeal.Type = sealType
 	}
 
-	infoKeys = append(infoKeys, "Seal Type")
-	info["Seal Type"] = sealType
-
 	var seal vault.Seal
-	defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
-	sealLogger := c.logger.ResetNamed(fmt.Sprintf("seal.%s", sealType))
-	wrapper, sealConfigError = configutil.ConfigureWrapper(configSeal, &infoKeys, &info, sealLogger)
-	if sealConfigError != nil {
-		if !errwrap.ContainsType(sealConfigError, new(logical.KeyNotFoundError)) {
-			c.UI.Error(fmt.Sprintf(
-				"Error parsing Seal configuration: %s", sealConfigError))
+	switch configSeal.Type {
+	case string(wrapping.WrapperTypeShamir):
+		seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+	default:
+		wrapper, config, err := kmsCatalog.ConfigureWrapper(
+			context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config))
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error configuring seal %q: %s", configSeal.Type, err))
 			return 1
 		}
-	}
-	if wrapper == nil {
-		seal = defaultSeal
-	} else {
+
 		seal, err = vault.NewAutoSeal(vaultseal.NewAccess(wrapper))
 		if err != nil {
-			c.UI.Error(fmt.Sprintf("error creating auto seal: %v", err))
+			c.UI.Error(fmt.Sprintf("Error creating auto seal: %s", err))
+			return 1
 		}
+
+		props := make([]string, 0, len(config.Metadata))
+		for k, v := range config.Metadata {
+			props = append(props, fmt.Sprintf("%s: %q", k, v))
+		}
+		sort.Strings(props)
+
+		info["seal metadata"] = fmt.Sprintf("%s (%s)", configSeal.Type, strings.Join(props, ", "))
+		infoKeys = append(infoKeys, "seal metadata")
 	}
-	barrierSeal = seal
 
 	// Ensure that the seal finalizer is called, even if using verify-only
 	defer func() {
@@ -506,7 +520,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	coreConfig := &vault.CoreConfig{
 		Physical:     backend,
 		StorageType:  config.Storage.Type,
-		Seal:         barrierSeal,
+		Seal:         seal,
 		LogLevel:     config.LogLevel,
 		Logger:       c.logger,
 		RecoveryMode: c.flagRecovery,
@@ -624,18 +638,6 @@ func (c *ServerCommand) runRecoveryMode() int {
 				c.UI.Error(fmt.Sprintf("HTTP server (listening on %s) exited with error: %v", ln.Addr().String(), err))
 			}
 		}(ln.Listener)
-	}
-
-	if sealConfigError != nil {
-		init, err := core.InitializedLocally(context.Background())
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error checking if core is initialized: %v", err))
-			return 1
-		}
-		if init {
-			c.UI.Error("Vault is initialized but no Seal key could be loaded")
-			return 1
-		}
 	}
 
 	if newCoreError != nil {
@@ -1049,6 +1051,17 @@ func (c *ServerCommand) Run(args []string) int {
 
 	logProxyEnvironmentVariables(c.logger)
 
+	if err := c.downloadOCIPlugins(context.Background(), config); err != nil {
+		c.UI.Error(fmt.Sprintf("Error downloading plugins: %s", err))
+		return 1
+	}
+
+	kms, err := kmsplugin.NewCatalog(c.logger, config)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error creating KMS plugin catalog: %s", err))
+		return 1
+	}
+
 	inmemMetrics, metricSink, prometheusEnabled, err := configutil.SetupTelemetry(&configutil.SetupTelemetryOpts{
 		Config:      config.Telemetry,
 		Ui:          c.UI,
@@ -1107,7 +1120,7 @@ func (c *ServerCommand) Run(args []string) int {
 	info[key] = strings.Join(envVarKeys, ", ")
 	infoKeys = append(infoKeys, key)
 
-	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err := setSeal(c, config, &infoKeys, info)
+	barrierSeal, _, unwrapSeal, seals, sealConfigError, err := setSeal(c, config, kms, &infoKeys, info)
 	// Check error here
 	if err != nil {
 		c.UI.Error(err.Error())
@@ -1135,14 +1148,7 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
-	// prepare a secure random reader for core
-	secureRandomReader, err := configutil.CreateSecureRandomReaderFunc(config.SharedConfig, barrierWrapper)
-	if err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
-
-	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink, secureRandomReader)
+	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink, rand.Reader)
 	if c.flagDevThreeNode {
 		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, c.flagDevListenAddr, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
@@ -1518,8 +1524,12 @@ func (c *ServerCommand) Run(args []string) int {
 			// c.Reload as it needs the reloadFuncsLock.
 			core.ReloadAuditLogs()
 
-			// Update plugins as necessary.
-			core.ReloadPlugins()
+			if err := c.downloadOCIPlugins(context.Background(), config); err != nil {
+				c.logger.Error("failed to re-download plugins", "error", err.Error())
+			} else {
+				// Update plugins as necessary.
+				core.ReloadPlugins()
+			}
 
 			// Reload log level for loggers
 			if config.LogLevel != "" {
@@ -2375,6 +2385,18 @@ func (c *ServerCommand) removePidFile(pidPath string) error {
 	return os.Remove(pidPath)
 }
 
+func (c *ServerCommand) downloadOCIPlugins(ctx context.Context, config *server.Config) error {
+	if !config.PluginAutoDownload || len(config.Plugins) == 0 || config.PluginDirectory == "" {
+		return nil
+	}
+
+	logger := c.logger.Named("plugins")
+	logger.Info("starting OCI plugin downloading")
+	defer logger.Info("OCI plugin downloading completed")
+
+	return oci.NewPluginDownloader(config.PluginDirectory, config, logger).ReconcilePlugins(ctx)
+}
+
 // storageMigrationActive checks and warns against in-progress storage migrations.
 // This function will block until storage is available.
 func (c *ServerCommand) storageMigrationActive(backend physical.Backend) bool {
@@ -2435,13 +2457,11 @@ func CheckStorageMigration(b physical.Backend) (*StorageMigrationStatus, error) 
 
 // setSeal return barrierSeal, barrierWrapper, unwrapSeal, and all the created seals from the configs so we can close them in Run
 // The two errors are the sealConfigError and the regular error
-func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, []vault.Seal, error, error) {
+func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, infoKeys *[]string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, []vault.Seal, error, error) {
 	var barrierSeal vault.Seal
+	var barrierWrapper wrapping.Wrapper
 	var unwrapSeal vault.Seal
 
-	var sealConfigError error
-	var wrapper wrapping.Wrapper
-	var barrierWrapper wrapping.Wrapper
 	if c.flagDevAutoSeal {
 		var err error
 		access, _ := vaultseal.NewTestSeal(nil)
@@ -2472,42 +2492,48 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 		}
 
 		var seal vault.Seal
-		sealLogger := c.logger.ResetNamed(fmt.Sprintf("seal.%s", sealType))
-		c.allLoggers = append(c.allLoggers, sealLogger)
-		defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
-		var sealInfoKeys []string
-		sealInfoMap := map[string]string{}
-		wrapper, sealConfigError = configutil.ConfigureWrapper(configSeal, &sealInfoKeys, &sealInfoMap, sealLogger)
-		if sealConfigError != nil {
-			if !errwrap.ContainsType(sealConfigError, new(logical.KeyNotFoundError)) {
-				return barrierSeal, barrierWrapper, unwrapSeal, createdSeals, sealConfigError, fmt.Errorf(
-					"Error parsing Seal configuration: %s", sealConfigError)
+		switch configSeal.Type {
+		case string(wrapping.WrapperTypeShamir):
+			seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+		default:
+			wrapper, config, err := kms.ConfigureWrapper(
+				context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config))
+			if err != nil {
+				//nolint:staticcheck // User-facing error.
+				return nil, nil, nil, nil, nil, fmt.Errorf("Error configuring seal %q: %w", configSeal.Type, err)
 			}
-		}
-		if wrapper == nil {
-			seal = defaultSeal
-		} else {
-			var err error
+
 			seal, err = vault.NewAutoSeal(vaultseal.NewAccess(wrapper))
 			if err != nil {
-				return nil, nil, nil, nil, nil, err
+				//nolint:staticcheck // User-facing error.
+				return nil, nil, nil, nil, nil, fmt.Errorf("Error creating auto seal: %w", err)
 			}
+
+			infoKey := "seal metadata"
+			if configSeal.Disabled {
+				infoKey = "old seal metadata"
+			}
+
+			// Auto seals emit metadata that we can print at server startup.
+			props := make([]string, 0, len(config.Metadata))
+			for k, v := range config.Metadata {
+				props = append(props, fmt.Sprintf("%s: %q", k, v))
+			}
+			sort.Strings(props)
+
+			info[infoKey] = fmt.Sprintf("%s (%s)", configSeal.Type, strings.Join(props, ", "))
+			*infoKeys = append(*infoKeys, infoKey)
 		}
-		infoPrefix := ""
+
 		if configSeal.Disabled {
 			unwrapSeal = seal
-			infoPrefix = "Old "
 		} else {
 			barrierSeal = seal
-			barrierWrapper = wrapper
 		}
-		for _, k := range sealInfoKeys {
-			*infoKeys = append(*infoKeys, infoPrefix+k)
-			info[infoPrefix+k] = sealInfoMap[k]
-		}
+
 		createdSeals = append(createdSeals, seal)
 	}
-	return barrierSeal, barrierWrapper, unwrapSeal, createdSeals, sealConfigError, nil
+	return barrierSeal, barrierWrapper, unwrapSeal, createdSeals, nil, nil
 }
 
 func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.CoreConfig, backend physical.Backend) (bool, error) {

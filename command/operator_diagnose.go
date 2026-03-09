@@ -5,6 +5,7 @@ package command
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,16 +15,15 @@ import (
 	"sync"
 	"time"
 
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
-
 	"github.com/hashicorp/cli"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	uuid "github.com/hashicorp/go-uuid"
-
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	bApi "github.com/openbao/openbao/api/v2"
 	cserver "github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/configutil"
+	"github.com/openbao/openbao/helper/kmsplugin"
 	"github.com/openbao/openbao/helper/listenerutil"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/physical/raft"
@@ -276,6 +276,12 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		return nil
 	})
 
+	var kms *kmsplugin.Catalog
+	_ = diagnose.Test(ctx, "Check KMS Plugin Catalog", func(context.Context) (err error) {
+		kms, err = kmsplugin.NewCatalog(server.logger, config)
+		return err
+	})
+
 	var metricSink *metricsutil.ClusterMetricSink
 	var metricsHelper *metricsutil.MetricsHelper
 
@@ -381,7 +387,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 	var sealConfigError error
 
 	infoKeys := make([]string, 0)
-	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err := setSeal(server, config, &infoKeys, make(map[string]string))
+	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err := setSeal(server, config, kms, &infoKeys, make(map[string]string))
 	// Check error here
 	if err != nil {
 		diagnose.Advise(ctx, "For assistance with the seal stanza, see the Vault configuration documentation.")
@@ -474,20 +480,7 @@ SEALFAIL:
 		return nil
 	})
 
-	var coreConfig vault.CoreConfig
-	_ = diagnose.Test(ctx, "Create Core Configuration", func(ctx context.Context) error {
-		var secureRandomReader io.Reader
-		// prepare a secure random reader for core
-		randReaderTestName := "Initialize Randomness for Core"
-		secureRandomReader, err = configutil.CreateSecureRandomReaderFunc(config.SharedConfig, barrierWrapper)
-		if err != nil {
-			//nolint:staticcheck // user-facing error
-			return diagnose.SpotError(ctx, randReaderTestName, fmt.Errorf("Could not initialize randomness for core: %w.", err))
-		}
-		diagnose.SpotOk(ctx, randReaderTestName, "")
-		coreConfig = createCoreConfig(server, config, *backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink, secureRandomReader)
-		return nil
-	})
+	coreConfig := createCoreConfig(server, config, *backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink, rand.Reader)
 
 	var disableClustering bool
 	_ = diagnose.Test(ctx, "HA Storage", func(ctx context.Context) error {

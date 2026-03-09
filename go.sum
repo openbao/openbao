@@ -76,6 +76,8 @@ github.com/BurntSushi/toml v1.5.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2
 github.com/DataDog/datadog-go v2.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/DataDog/datadog-go v3.2.0+incompatible h1:qSG2N4FghB1He/r2mFrWKCaL7dXCilEuNEeAn20fdD4=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
+github.com/Ki-Reply-GmbH/go-kms-wrapping/plugin/v2 v2.1.0-development20240408.0.20260309151306-c1801988409b h1:J/QzV2elZddOyqqykrn6UFWr8kQ9mycSJ2XMr6V2W5w=
+github.com/Ki-Reply-GmbH/go-kms-wrapping/plugin/v2 v2.1.0-development20240408.0.20260309151306-c1801988409b/go.mod h1:E9m3iOkTDWYqru2ueyrP35cTPqZ10dKlhEoclk3CjaQ=
 github.com/Masterminds/goutils v1.1.1 h1:5nUrii3FMTL5diU80unEVvNevw1nH4+ZV4DSLVJLSYI=
 github.com/Masterminds/goutils v1.1.1/go.mod h1:8cTjp+g8YejhMuvIA5y2vz3BpJxksy863GQaJW2MFNU=
 github.com/Masterminds/semver/v3 v3.2.0/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=

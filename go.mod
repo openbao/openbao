@@ -23,6 +23,8 @@ replace github.com/openbao/openbao/sdk/v2 => ./sdk
 
 replace github.com/boltdb/bolt => ./helper/stubbolt
 
+replace github.com/openbao/go-kms-wrapping/plugin/v2 => github.com/Ki-Reply-GmbH/go-kms-wrapping/plugin/v2 v2.1.0-development20240408.0.20260309151306-c1801988409b
+
 require (
 	cloud.google.com/go/monitoring v1.24.3
 	github.com/ProtonMail/go-crypto v1.4.0
@@ -100,6 +102,7 @@ require (
 	github.com/moby/moby/client v0.2.2
 	github.com/oklog/run v1.2.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
+	github.com/openbao/go-kms-wrapping/plugin/v2 v2.0.0-00010101000000-000000000000
 	github.com/openbao/go-kms-wrapping/v2 v2.7.0
 	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.3.0

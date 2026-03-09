@@ -1026,7 +1026,7 @@ func TestKVPatchCommand_StdinValue(t *testing.T) {
 				"foo": "a",
 			},
 		})
-		require.NoErrorf(collect, err, "write failed, err: %#v\n", err)
+		require.NoError(collect, err)
 	}, 2*time.Second, 15*time.Millisecond)
 
 	cases := [][]string{
@@ -1389,7 +1389,7 @@ func TestKVPatchCommand_403Fallback(t *testing.T) {
 			// Write a value then attempt to patch it
 			require.EventuallyWithT(t, func(collect *assert.CollectT) {
 				_, err := kvClient.Logical().Write("kv/data/foo", map[string]interface{}{"data": map[string]interface{}{"bar": "baz"}})
-				require.NoErrorf(collect, err, "write failed, err: %#v\n", err)
+				require.NoError(collect, err)
 			}, 2*time.Second, 15*time.Millisecond)
 
 			code, combined := kvPatchWithRetry(t, kvClient, tc.args, nil)

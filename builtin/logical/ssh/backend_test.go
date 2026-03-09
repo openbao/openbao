@@ -195,7 +195,7 @@ func prepareTestContainer(t *testing.T, tag, caPublicKeyPEM string) (func(), str
 		}
 
 		// Install util-linux for non-busybox flock that supports timeout option
-		err = testSSH("vaultssh", sshAddress, ssh.PublicKeys(signer), fmt.Sprintf(`
+		err = testSSH(testUserName, sshAddress, ssh.PublicKeys(signer), fmt.Sprintf(`
 			set -e;
 			sudo ln -s /config /home/vaultssh
 			sudo apk add util-linux;
@@ -648,11 +648,7 @@ func TestSSHBackend_OTPRoleCrud(t *testing.T) {
 
 func TestSSHBackend_OTPCreate(t *testing.T) {
 	cleanup, sshAddress := prepareTestContainer(t, "", "")
-	defer func() {
-		if !t.Failed() {
-			cleanup()
-		}
-	}()
+	defer cleanup()
 
 	host, port, err := net.SplitHostPort(sshAddress)
 	if err != nil {

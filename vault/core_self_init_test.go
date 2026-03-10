@@ -42,7 +42,7 @@ func TestMarkSelfInitStarted_WritesStartedMarker(t *testing.T) {
 	ctx := context.Background()
 
 	err := c.MarkSelfInitStarted(ctx)
-	require.NoError(t, err, "MarkSelfInitStarted must not return an error on an open barrier")
+	require.NoError(t, err, "MarkSelfInitStarted must not return an error when unsealed")
 
 	// Read directly from barrier to confirm the exact key/value contract
 	// that IsSelfInitComplete depends on.

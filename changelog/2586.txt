@@ -1,7 +1,8 @@
 ```release-note:feature
 **Auto Unseal plugins**: Add a new `kms` plugin type that enables pluggable Auto
 Unseal mechanisms.
-  - Declaratively register KMS plugins using the `plugin` configuration keyword.
+  - Declaratively register KMS plugins using `plugin "kms" "<name>" { ... }`
+    configuration stanzas, making `<name>` available as `seal "<name>" { ... }`.
   - Automatically restart and recover from crashes, avoiding a full instance
     restart when a seal reaches a bad state (e.g., via a misbehaving PKCS#11
     library).

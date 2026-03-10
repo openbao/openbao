@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	// coreStatusSelfInitKey is the barrier key for the auto-init state machine.
+	// coreStatusSelfInitKey is the entry key for the auto-init state machine.
 	//
 	// State machine values:
 	//   (missing)   : legacy cluster or manual init — success assumed (backward compat)

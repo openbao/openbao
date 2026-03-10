@@ -1804,7 +1804,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	}
 	// Now perform the component requests of self-initialization.
 	if err := c.doSelfInit(core, config, init.RootToken); err != nil {
-		return err // Original patch: Fail fast on config error
+		return err // Fail fast on config error
 	}
 	// Mark self-init as fully complete only after doSelfInit succeeds.
 	// This is the single authoritative point of completion.

@@ -117,13 +117,12 @@ func TestInitialize_AlreadyInitialized_Completed(t *testing.T) {
 
 	_, cmd := testServerCommand(t)
 	core := vault.TestCoreNewSeal(t)
-	ctx := rootCtxCmd()
 
 	// Simulate a previously successful self-init: initialize the core and
 	// write the completed marker.
 	vault.TestCoreInit(t, core)
-	require.NoError(t, core.UnsealWithStoredKeys(ctx))
-	require.NoError(t, core.MarkSelfInitComplete(ctx))
+	require.NoError(t, core.UnsealWithStoredKeys(rootCtxCmd()))
+	require.NoError(t, core.MarkSelfInitComplete(rootCtxCmd()))
 
 	err := cmd.Initialize(core, emptyInitConfig())
 	require.NoError(t, err,

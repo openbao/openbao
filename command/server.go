@@ -1755,13 +1755,13 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		// HOWEVER, we must verify that the previous initialization actually finished.
 		// If barrier exists but self-init marker is missing, we are in a broken state.
 		//
-		// Skip the consistency check if the core is still sealed: we are a
-		// follower/standby coming up after another node ran initialization.
-		// IsSelfInitComplete reads through the barrier and would fail with
-		// "Vault is sealed". The normal unseal flow will handle this node.
+		// IsSelfInitComplete would fail at reading as barrier is sealed, skip the consistency check; we are a
+		// standby coming up after another node ran initialization.
+
 		if core.Sealed() {
 			return nil
 		}
+		
 		complete, err := core.IsSelfInitComplete(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to verify self-init consistency: %w", err)

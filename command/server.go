@@ -1787,9 +1787,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		core.Logger().Error("failed to initialize: unexpected error occurred")
 		return fmt.Errorf("self-initialization failed: %w", err)
 	}
-	// 1. Mark that we are STARTING self-initialization.
-	// This creates the "started" marker on physical storage.
-	// We know we have barriers 'cause we just initialized
+	// Write "started" marker to storage (self-init started).
 	if err := core.MarkSelfInitStarted(ctx); err != nil {
 		return fmt.Errorf("failed to mark self-init started: %w", err)
 	}

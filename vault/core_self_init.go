@@ -60,8 +60,8 @@ func (c *Core) MarkSelfInitComplete(ctx context.Context) error {
 	})
 }
 
-// IsSelfInitComplete reads the auto-init state machine from the security barrier
-// and returns whether initialization can be considered complete.
+// IsSelfInitComplete reads the auto-init state machine from the storage
+// used for self-init completion reporting.
 //
 // Precondition: the barrier must be unsealed (guaranteed by the "if inited"
 // branch in command.Initialize — auto-unseal has already run at that point).

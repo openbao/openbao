@@ -36,10 +36,8 @@ const (
 	coreStatusSelfInitCompleted = "completed"
 )
 
-// MarkSelfInitStarted writes the "started" marker to the security barrier.
-// This must be called after core.Initialize() so the barrier exists and is open.
-// Its purpose is crash detection: if the process dies before MarkSelfInitComplete
-// is called, the next startup will find "started" and refuse to proceed.
+// MarkSelfInitStarted is used to detect a self-init failure by writing the `coreStatusSelfInitStarted` marker to the storage. 
+// Must be called after core.Initialize() as the barrier has to be unsealed.
 func (c *Core) MarkSelfInitStarted(ctx context.Context) error {
 	if c.barrier == nil {
 		return fmt.Errorf("security barrier not available")

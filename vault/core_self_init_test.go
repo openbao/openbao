@@ -32,7 +32,7 @@ import (
 // ---------------------------------------------------------------------------
 
 // TestMarkSelfInitStarted_WritesStartedMarker verifies that after calling
-// MarkSelfInitStarted the barrier contains coreStatusSelfInitKey = "started".
+// MarkSelfInitStarted the barrier contains `coreStatusSelfInitKey`.
 //
 // This is the first transition in the state machine (∅ → started).
 func TestMarkSelfInitStarted_WritesStartedMarker(t *testing.T) {

@@ -48,9 +48,8 @@ func (c *Core) MarkSelfInitStarted(ctx context.Context) error {
 	})
 }
 
-// MarkSelfInitComplete overwrites the "started" marker with "completed".
-// This must be called after auto-initialization finishes successfully.
-// The barrier must be open at this point.
+// MarkSelfInitComplete overwrites the `coreStatusSelfInitStarted` marker with `coreStatusSelfInitCompleted`.
+// Must be called after auto-initialization finishes successfully.
 func (c *Core) MarkSelfInitComplete(ctx context.Context) error {
 	if c.barrier == nil {
 		return fmt.Errorf("security barrier not available")

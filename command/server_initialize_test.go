@@ -8,8 +8,7 @@ package command
 // Tests for (*ServerCommand).Initialize in command/server.go.
 //
 // Design rationale:
-//   - Uses vault.TestCoreNewSeal(t) to get a Core with RecoveryKeySupported()==true,
-//     which is the precondition enforced by Initialize.
+//   - Requires `Core` with an auto-unseal method setup, as self-init doesn't work with shamir seal.
 //   - Uses physInmem backend (embedded in TestCoreNewSeal via TestCoreWithSeal).
 //   - Does NOT test doSelfInit internals (profile engine): that is out of scope here.
 //     We use an empty Initialization slice for happy-path tests so doSelfInit

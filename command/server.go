@@ -1806,9 +1806,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	if err := c.doSelfInit(core, config, init.RootToken); err != nil {
 		return err // Fail fast on config error
 	}
-	// Mark self-init as fully complete only after doSelfInit succeeds.
-	// This is the single authoritative point of completion.
-	// We are 100% sure we are initialized
+    // Write "completed" marker to storage (self-init complete).
 	if err := core.MarkSelfInitComplete(ctx); err != nil {
 		return fmt.Errorf("failed to persist self-init success marker: %w", err)
 	}

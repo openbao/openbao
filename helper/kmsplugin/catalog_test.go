@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const TestPluginServerEnv = "OPENBAO_TEST_PLUGIN_SERVER"
+const TestPluginServerEnv = "BAO_TEST_PLUGIN_SERVER"
 
 // TestPluginServer is not an actual test but a hack to reuse the test binary
 // as a plugin binary that is called into by the same test binary from the main

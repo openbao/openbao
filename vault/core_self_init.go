@@ -36,7 +36,7 @@ const (
 	coreStatusSelfInitCompleted = "completed"
 )
 
-// MarkSelfInitStarted is used to detect a self-init failure by writing the `coreStatusSelfInitStarted` marker to the storage. 
+// MarkSelfInitStarted is used to detect a self-init failure by writing the `coreStatusSelfInitStarted` marker to the storage.
 // Must be called after core.Initialize() as the barrier has to be unsealed.
 func (c *Core) MarkSelfInitStarted(ctx context.Context) error {
 	if c.barrier == nil {

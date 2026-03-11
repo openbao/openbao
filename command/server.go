@@ -1736,11 +1736,6 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		return nil
 	}
 
-	// Skip the consistency check if the core is still sealed: we are a
-	// follower or standby node coming up after another node already ran
-	// initialization. IsSelfInitComplete reads through the barrier and
-	// would return "Vault is sealed"; the normal unseal flow handles this.
-
 	if !core.SealAccess().RecoveryKeySupported() {
 		return errors.New("self-initialization requires auto-unseal as there is no way to persist the Shamir's keys")
 	}
@@ -1761,7 +1756,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		if core.Sealed() {
 			return nil
 		}
-		
+
 		complete, err := core.IsSelfInitComplete(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to verify self-init consistency: %w", err)
@@ -1806,7 +1801,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 	if err := c.doSelfInit(core, config, init.RootToken); err != nil {
 		return err // Fail fast on config error
 	}
-    // Write "completed" marker to storage (self-init complete).
+	// Write "completed" marker to storage (self-init complete).
 	if err := core.MarkSelfInitComplete(ctx); err != nil {
 		return fmt.Errorf("failed to persist self-init success marker: %w", err)
 	}

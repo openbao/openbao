@@ -4,20 +4,8 @@
 package vault
 
 // Tests for the self-init state machine in core_self_init.go.
-//
-// Design rationale:
-//   - All tests use TestCoreNewSeal(t) + TestCoreInit + unseal to get a Core
-//     with an open security barrier, since the state machine now writes to
-//     c.barrier (not c.physical). A sealed or uninitialized barrier returns
-//     ErrBarrierSealed on any Get/Put.
-//   - Tests live in package vault (white-box) because the state machine
-//     operates on c.barrier, which is unexported.
-//   - Each test exercises exactly one observable behaviour.
-//   - Accuracy level 5+: every assertion has a comment explaining the invariant.
-//
-//
-// Pattern matches: vault/core_self_init.go (OpenBao MPLv2)
-// Test helpers from: vault/testing.go (OpenBao MPLv2)
+// Requires an unsealed Core: the state machine writes to c.barrier, which rejects reads on a sealed node.
+// Tests live in package vault (white-box) because c.barrier is unexported.
 
 import (
 	"context"

@@ -1,23 +1,11 @@
 // Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
-//go:build !race && !hsm
-
 package command
 
 // Tests for (*ServerCommand).Initialize in command/server.go.
-//
-// Design rationale:
-//   - Requires `Core` with an auto-unseal method setup, as self-init doesn't work with shamir seal.
-//   - Uses physInmem backend (embedded in TestCoreNewSeal via TestCoreWithSeal).
-//   - Does NOT test doSelfInit internals (profile engine): that is out of scope here.
-//     We use an empty Initialization slice for happy-path tests so doSelfInit
-//     short-circuits via profiles.NewEngine with zero requests.
-//   - Each test exercises exactly one observable behaviour of Initialize.
-//   - Build tags match server_test.go: !race !hsm.
-//
-// Pattern matches: command/server_test.go (testServerCommand helper)
-// Core construction: vault/testing.go TestCoreNewSeal()
+// Requires a Core with auto-unseal: self-init does not support Shamir seal.
+// Does not test doSelfInit internals (profile engine): that is out of scope.
 
 import (
 	"context"

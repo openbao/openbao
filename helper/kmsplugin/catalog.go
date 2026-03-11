@@ -56,13 +56,18 @@ func NewCatalog(logger hclog.Logger, config *server.Config) (*Catalog, error) {
 		}
 	}
 
+	// Index plugin configs by name for easy lookup and to ensure there are no
+	// naming conflicts.
 	plugins := make(map[string]*server.PluginConfig)
 	for _, plugin := range config.Plugins {
 		// Ignore plugins that aren't type KMS.
 		if typ, _ := consts.ParsePluginType(plugin.Type); typ != consts.PluginTypeKMS {
 			continue
 		}
-		// Index these by name for easy lookup.
+		// For now, KMS plugins only support one version at a time.
+		if _, ok := plugins[plugin.Name]; ok {
+			return nil, fmt.Errorf("cannot register several versions of plugin %q", plugin.Name)
+		}
 		plugins[plugin.Name] = plugin
 	}
 

@@ -352,22 +352,6 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 		})
 	}
 
-	switch typ {
-	case consts.PluginTypeKMS:
-		// KMS plugins are unversioned.
-		if p.Version != "" {
-			results = append(results, configutil.ConfigError{
-				Problem: fmt.Sprintf("plugin %q: version of KMS plugins must be unset", p.Slug()),
-			})
-		}
-	default:
-		// Validate Version is not empty for other plugin types.
-		if p.Version == "" {
-			results = append(results, configutil.ConfigError{
-				Problem: fmt.Sprintf("plugin %q: version cannot be empty", p.Slug()),
-			})
-		}
-	}
 	// Validate Image is not empty
 	if p.Image == "" && p.Command == "" {
 		results = append(results, configutil.ConfigError{
@@ -393,6 +377,17 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 		results = append(results, configutil.ConfigError{
 			Problem: fmt.Sprintf("plugin %q: binary_name cannot be empty when image specified", p.Slug()),
 		})
+	}
+
+	if typ != consts.PluginTypeKMS || p.Image != "" {
+		// Validate version is not empty. KMS plugins do not require or enforce
+		// that a version is set. OCI-based plugins however require a version be
+		// set at all times.
+		if p.Version == "" {
+			results = append(results, configutil.ConfigError{
+				Problem: fmt.Sprintf("plugin %q: version cannot be empty", p.Slug()),
+			})
+		}
 	}
 
 	// Validate sha256sum is exactly 64 hex characters

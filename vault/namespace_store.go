@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/policy"
 )
 
 // Namespace id length; upstream uses 5 characters so we use one more to
@@ -1137,21 +1138,21 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent,
 }
 
 func (ns *NamespaceStore) clearNamespacePolicies(ctx context.Context, namespace *namespace.Namespace, physicalDeletion bool) error {
-	policiesToClear, err := ns.core.policyStore.ListPolicies(ctx, PolicyTypeACL, false)
+	policiesToClear, err := ns.core.policyStore.ListPolicies(ctx, policy.PolicyTypeACL, false)
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace policies", "namespace", namespace.Path, "error", err.Error())
 		return err
 	}
 
-	for _, policy := range policiesToClear {
+	for _, pol := range policiesToClear {
 		if physicalDeletion {
-			if err := ns.core.policyStore.deletePolicyForce(ctx, policy, PolicyTypeACL); err != nil {
-				ns.logger.Error(fmt.Sprintf("failed to delete policy %q", policy), "namespace", namespace.Path, "error", err.Error())
+			if err := ns.core.policyStore.deletePolicyForce(ctx, pol, policy.PolicyTypeACL); err != nil {
+				ns.logger.Error(fmt.Sprintf("failed to delete policy %q", pol), "namespace", namespace.Path, "error", err.Error())
 				return err
 			}
 		} else {
-			if err := ns.core.policyStore.invalidate(ctx, policy, PolicyTypeACL); err != nil {
-				ns.logger.Error(fmt.Sprintf("failed to invalidate policy %q", policy), "namespace", namespace.Path, "error", err.Error())
+			if err := ns.core.policyStore.invalidate(ctx, pol, policy.PolicyTypeACL); err != nil {
+				ns.logger.Error(fmt.Sprintf("failed to invalidate policy %q", pol), "namespace", namespace.Path, "error", err.Error())
 				return err
 			}
 		}

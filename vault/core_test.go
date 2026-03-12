@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/command/server"
 	be "github.com/openbao/openbao/vault/backend"
 	ident "github.com/openbao/openbao/vault/identity"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
@@ -2823,7 +2824,7 @@ path "secret/*" {
 `
 
 	ps := c.policyStore
-	policy, _ := ParseACLPolicy(namespace.RootNamespace, secretWritingPolicy)
+	policy, _ := policy.ParseACLPolicy(namespace.RootNamespace, secretWritingPolicy)
 	if err := ps.SetPolicy(namespace.RootContext(t.Context()), policy, nil); err != nil {
 		t.Fatal(err)
 	}

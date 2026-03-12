@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/quotas"
 )
 
@@ -462,7 +463,7 @@ func (ij *invalidationJob) namespaceInvalidation(ctx context.Context) error {
 
 func (ij *invalidationJob) policyInvalidation(ctx context.Context) error {
 	policyPath := strings.TrimPrefix(ij.nsKey, systemBarrierPrefix+policyACLSubPath)
-	return ij.im.core.policyStore.invalidate(ctx, policyPath, PolicyTypeACL)
+	return ij.im.core.policyStore.invalidate(ctx, policyPath, policy.PolicyTypeACL)
 }
 
 func (ij *invalidationJob) quotaInvalidation(ctx context.Context) error {

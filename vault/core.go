@@ -41,6 +41,7 @@ import (
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/command/server"
 	fwd "github.com/openbao/openbao/helper/forwarding"
+	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/locking"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -60,6 +61,7 @@ import (
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/forwarding"
 	ident "github.com/openbao/openbao/vault/identity"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/quotas"
 	"github.com/openbao/openbao/vault/routing"
 	vaultseal "github.com/openbao/openbao/vault/seal"
@@ -2062,7 +2064,7 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 	}
 
 	// Verify that this operation is allowed
-	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &PolicyCheckOpts{
+	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.PolicyCheckOpts{
 		RootPrivsRequired: true,
 	})
 	if !authResults.Allowed {
@@ -4139,4 +4141,34 @@ func (c *Core) RedirectAddr() string {
 
 func (c *Core) UnsafeCrossNamespaceIdentity() bool {
 	return c.unsafeCrossNamespaceIdentity
+}
+
+func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *logical.TokenEntry, req *logical.Request, inEntity *identity.Entity, opts *policy.PolicyCheckOpts) *policy.AuthResults {
+	ret := new(policy.AuthResults)
+
+	// First, perform normal ACL checks if requested. The only time no ACL
+	// should be applied is if we are only processing EGPs against a login
+	// path in which case opts.Unauth will be set.
+	if acl != nil && !opts.Unauth {
+		ret.ACLResults = acl.AllowOperation(ctx, req, false)
+		ret.RootPrivs = ret.ACLResults.RootPrivs
+		// Root is always allowed; skip Sentinel/MFA checks
+		if ret.ACLResults.IsRoot {
+			// logger.Warn("token is root, skipping checks")
+			ret.Allowed = true
+			return ret
+		}
+		if !ret.ACLResults.Allowed {
+			return ret
+		}
+		// Since HelpOperation was fast-pathed inside AllowOperation, RootPrivs will not have been populated in this
+		// case, so we need to special-case that here as well, or we'll block HelpOperation on all sudo-protected paths.
+		if !ret.RootPrivs && opts.RootPrivsRequired && req.Operation != logical.HelpOperation {
+			return ret
+		}
+	}
+
+	ret.Allowed = true
+
+	return ret
 }

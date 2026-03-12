@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
 )
@@ -97,9 +98,9 @@ func (e extendedSystemViewImpl) SudoPrivilege(ctx context.Context, path string, 
 	tokenCtx := namespace.ContextWithNamespace(ctx, tokenNS)
 
 	// Add the inline policy if it's set
-	policies := make([]*Policy, 0)
+	policies := make([]*policy.Policy, 0)
 	if te.InlinePolicy != "" {
-		inlinePolicy, err := ParseACLPolicy(tokenNS, te.InlinePolicy)
+		inlinePolicy, err := policy.ParseACLPolicy(tokenNS, te.InlinePolicy)
 		if err != nil {
 			e.core.logger.Error("failed to parse the token's inline policy", "error", err)
 			return false

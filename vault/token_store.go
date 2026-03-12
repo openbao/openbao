@@ -39,6 +39,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/vault/tokens"
 	"google.golang.org/protobuf/proto"
@@ -1272,7 +1273,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry, per
 
 	// Validate the inline policy if it's set
 	if entry.InlinePolicy != "" {
-		if _, err := ParseACLPolicy(tokenNS, entry.InlinePolicy); err != nil {
+		if _, err := policy.ParseACLPolicy(tokenNS, entry.InlinePolicy); err != nil {
 			return fmt.Errorf("failed to parse inline policy for token entry: %v", err)
 		}
 	}
@@ -3184,7 +3185,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	}
 
 	for _, p := range te.Policies {
-		policy, err := ts.core.policyStore.GetPolicy(ctx, p, PolicyTypeToken)
+		policy, err := ts.core.policyStore.GetPolicy(ctx, p, policy.PolicyTypeToken)
 		if err != nil {
 			return logical.ErrorResponse("could not look up policy %s", p), nil
 		}

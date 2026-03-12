@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package policy
 
 import (
 	"fmt"
@@ -47,19 +47,19 @@ func TestACL_MFAMethods(t *testing.T) {
 
 func testACLMFAMethods(t *testing.T, ns *namespace.Namespace) {
 	mfaRules := `
-path "secret/foo/*" {
-	mfa_methods = ["mfa_method_1", "mfa_method_2", "mfa_method_3"]
-}
-path "secret/exact/path" {
-	mfa_methods = ["mfa_method_4", "mfa_method_5"]
-}
-path "secret/split/definition" {
-	mfa_methods = ["mfa_method_6", "mfa_method_7"]
-}
-path "secret/split/definition" {
-	mfa_methods = ["mfa_method_7", "mfa_method_8", "mfa_method_9"]
-}
-	`
+ path "secret/foo/*" {
+ 	mfa_methods = ["mfa_method_1", "mfa_method_2", "mfa_method_3"]
+ }
+ path "secret/exact/path" {
+ 	mfa_methods = ["mfa_method_4", "mfa_method_5"]
+ }
+ path "secret/split/definition" {
+ 	mfa_methods = ["mfa_method_6", "mfa_method_7"]
+ }
+ path "secret/split/definition" {
+ 	mfa_methods = ["mfa_method_7", "mfa_method_8", "mfa_method_9"]
+ }
+ 	`
 
 	policy, err := ParseACLPolicy(ns, mfaRules)
 	if err != nil {
@@ -651,43 +651,43 @@ func TestACL_SegmentWildcardPriority(t *testing.T) {
 			// Verify edge conditions.  Here '*' is more specific both because
 			// of first wildcard position (0 vs -1/infinity) and #wildcards.
 			`
-path "+/*" { capabilities = ["read"] }
-path "*" { capabilities = ["update"] }
-`,
+ path "+/*" { capabilities = ["read"] }
+ path "*" { capabilities = ["update"] }
+ `,
 			"foo/bar/bar/baz",
 		},
 		{
 			// Verify edge conditions.  Here '+/*' is less specific because of
 			// first wildcard position.
 			`
-path "+/*" { capabilities = ["read"] }
-path "foo/+/*" { capabilities = ["update"] }
-`,
+ path "+/*" { capabilities = ["read"] }
+ path "foo/+/*" { capabilities = ["update"] }
+ `,
 			"foo/bar/bar/baz",
 		},
 		{
 			// Verify that more wildcard segments is lower priority.
 			`
-path "foo/+/+/*" { capabilities = ["read"] }
-path "foo/+/bar/baz" { capabilities = ["update"] }
-`,
+ path "foo/+/+/*" { capabilities = ["read"] }
+ path "foo/+/bar/baz" { capabilities = ["update"] }
+ `,
 			"foo/bar/bar/baz",
 		},
 		{
 			// Verify that more wildcard segments is lower priority.
 			`
-path "foo/+/+/baz" { capabilities = ["read"] }
-path "foo/+/bar/baz" { capabilities = ["update"] }
-`,
+ path "foo/+/+/baz" { capabilities = ["read"] }
+ path "foo/+/bar/baz" { capabilities = ["update"] }
+ `,
 			"foo/bar/bar/baz",
 		},
 		{
 			// Verify that first wildcard position is lower priority.
 			// '(' is used here because it is lexicographically smaller than "+"
 			`
-path "foo/+/(ar/baz" { capabilities = ["read"] }
-path "foo/(ar/+/baz" { capabilities = ["update"] }
-`,
+ path "foo/+/(ar/baz" { capabilities = ["read"] }
+ path "foo/(ar/+/baz" { capabilities = ["update"] }
+ `,
 			"foo/(ar/(ar/baz",
 		},
 
@@ -695,17 +695,17 @@ path "foo/(ar/+/baz" { capabilities = ["update"] }
 			// Verify that a glob has lower priority, even if the prefix is the
 			// same otherwise.
 			`
-path "foo/bar/+/baz*" { capabilities = ["read"] }
-path "foo/bar/+/baz" { capabilities = ["update"] }
-`,
+ path "foo/bar/+/baz*" { capabilities = ["read"] }
+ path "foo/bar/+/baz" { capabilities = ["update"] }
+ `,
 			"foo/bar/bar/baz",
 		},
 		{
 			// Verify that a shorter prefix has lower priority.
 			`
-path "foo/bar/+/b*" { capabilities = ["read"] }
-path "foo/bar/+/ba*" { capabilities = ["update"] }
-`,
+ path "foo/bar/+/b*" { capabilities = ["read"] }
+ path "foo/bar/+/ba*" { capabilities = ["update"] }
+ `,
 			"foo/bar/bar/baz",
 		},
 	}
@@ -933,415 +933,408 @@ func TestACLGrantingPolicies(t *testing.T) {
 }
 
 var grantingTestPolicy = `
-name = "granting_policy"
-path "kv/foo" {
-	capabilities = ["update", "read"]
-}
-
-path "kv/path/*" {
-	capabilities = ["read"]
-}
-
-path "kv/path/longer" {
-	capabilities = ["update", "read"]
-}
-
-path "kv/path/longer2" {
-	capabilities = ["update"]
-}
-
-path "kv/deny" {
-	capabilities = ["deny"]
-}
-
-path "ns1/kv/foo" {
-	capabilities = ["update", "read"]
-}
-`
+ name = "granting_policy"
+ path "kv/foo" {
+ 	capabilities = ["update", "read"]
+ }
+ 
+ path "kv/path/*" {
+ 	capabilities = ["read"]
+ }
+ 
+ path "kv/path/longer" {
+ 	capabilities = ["update", "read"]
+ }
+ 
+ path "kv/path/longer2" {
+ 	capabilities = ["update"]
+ }
+ 
+ path "kv/deny" {
+ 	capabilities = ["deny"]
+ }
+ 
+ path "ns1/kv/foo" {
+ 	capabilities = ["update", "read"]
+ }
+ `
 
 var grantingTestPolicyMerged = `
-name = "granting_policy_merged"
-path "kv/foo" {
-	capabilities = ["update", "read"]
-}
-
-path "kv/bar" {
-	capabilities = ["update", "read"]
-}
-
-path "kv/path/*" {
-	capabilities = ["read"]
-}
-
-path "kv/path/longer" {
-	capabilities = ["read"]
-}
-
-path "kv/path/longer3" {
-	capabilities = ["read"]
-}
-
-path "kv/deny" {
-	capabilities = ["update"]
-}
-`
-
-var tokenCreationPolicy = `
-name = "tokenCreation"
-path "auth/token/create*" {
-	capabilities = ["update", "create", "sudo"]
-}
-`
+ name = "granting_policy_merged"
+ path "kv/foo" {
+ 	capabilities = ["update", "read"]
+ }
+ 
+ path "kv/bar" {
+ 	capabilities = ["update", "read"]
+ }
+ 
+ path "kv/path/*" {
+ 	capabilities = ["read"]
+ }
+ 
+ path "kv/path/longer" {
+ 	capabilities = ["read"]
+ }
+ 
+ path "kv/path/longer3" {
+ 	capabilities = ["read"]
+ }
+ 
+ path "kv/deny" {
+ 	capabilities = ["update"]
+ }
+ `
 
 var aclPolicy = `
-name = "DeV"
-path "dev/*" {
-	policy = "sudo"
-}
-path "stage/*" {
-	policy = "write"
-}
-path "stage/aws/*" {
-	policy = "read"
-	capabilities = ["update", "sudo"]
-}
-path "stage/aws/policy/*" {
-	policy = "sudo"
-}
-path "prod/*" {
-	policy = "read"
-}
-path "prod/aws/*" {
-	policy = "deny"
-}
-path "sys/*" {
-	policy = "deny"
-}
-path "foo/bar" {
-	capabilities = ["read", "create", "sudo"]
-}
-path "baz/quux" {
-	capabilities = ["read", "create", "patch"]
-}
-path "test/+/segment" {
-	capabilities = ["read"]
-}
-path "+/segment/at/front" {
-	capabilities = ["read"]
-}
-path "test/segment/at/end/+" {
-	capabilities = ["read"]
-}
-path "test/segment/at/end/v2/+/" {
-	capabilities = ["read"]
-}
-path "test/+/wildcard/+/*" {
-	capabilities = ["read"]
-}
-path "test/+/wildcardglob/+/end*" {
-	capabilities = ["read"]
-}
-path "1/2/*" {
-	capabilities = ["create"]
-}
-path "1/2/+" {
-	capabilities = ["read"]
-}
-path "1/2/+/+" {
-	capabilities = ["update"]
-}
-path "asdf/fdsa" {
-	capabilities = ["scan"]
-}
-`
+ name = "DeV"
+ path "dev/*" {
+ 	policy = "sudo"
+ }
+ path "stage/*" {
+ 	policy = "write"
+ }
+ path "stage/aws/*" {
+ 	policy = "read"
+ 	capabilities = ["update", "sudo"]
+ }
+ path "stage/aws/policy/*" {
+ 	policy = "sudo"
+ }
+ path "prod/*" {
+ 	policy = "read"
+ }
+ path "prod/aws/*" {
+ 	policy = "deny"
+ }
+ path "sys/*" {
+ 	policy = "deny"
+ }
+ path "foo/bar" {
+ 	capabilities = ["read", "create", "sudo"]
+ }
+ path "baz/quux" {
+ 	capabilities = ["read", "create", "patch"]
+ }
+ path "test/+/segment" {
+ 	capabilities = ["read"]
+ }
+ path "+/segment/at/front" {
+ 	capabilities = ["read"]
+ }
+ path "test/segment/at/end/+" {
+ 	capabilities = ["read"]
+ }
+ path "test/segment/at/end/v2/+/" {
+ 	capabilities = ["read"]
+ }
+ path "test/+/wildcard/+/*" {
+ 	capabilities = ["read"]
+ }
+ path "test/+/wildcardglob/+/end*" {
+ 	capabilities = ["read"]
+ }
+ path "1/2/*" {
+ 	capabilities = ["create"]
+ }
+ path "1/2/+" {
+ 	capabilities = ["read"]
+ }
+ path "1/2/+/+" {
+ 	capabilities = ["update"]
+ }
+ path "asdf/fdsa" {
+ 	capabilities = ["scan"]
+ }
+ `
 
 var aclPolicy2 = `
-name = "OpS"
-path "dev/hide/*" {
-	policy = "deny"
-}
-path "stage/aws/policy/*" {
-	policy = "deny"
-	# This should have no effect
-	capabilities = ["read", "update", "sudo"]
-}
-path "prod/*" {
-	policy = "write"
-}
-path "sys/seal" {
-	policy = "sudo"
-}
-path "foo/bar" {
-	capabilities = ["deny"]
-}
-path "baz/quux" {
-	capabilities = ["deny"]
-}
-`
+ name = "OpS"
+ path "dev/hide/*" {
+ 	policy = "deny"
+ }
+ path "stage/aws/policy/*" {
+ 	policy = "deny"
+ 	# This should have no effect
+ 	capabilities = ["read", "update", "sudo"]
+ }
+ path "prod/*" {
+ 	policy = "write"
+ }
+ path "sys/seal" {
+ 	policy = "sudo"
+ }
+ path "foo/bar" {
+ 	capabilities = ["deny"]
+ }
+ path "baz/quux" {
+ 	capabilities = ["deny"]
+ }
+ `
 
 // test merging
 var mergingPolicies = `
-name = "ops"
-path "foo/bar" {
-	policy = "write"
-	denied_parameters = {
-		"baz" = []
-	}
-	required_parameters = ["baz"]
-}
-path "foo/bar" {
-	policy = "write"
-	denied_parameters = {
-		"zip" = []
-	}
-}
-path "hello/universe" {
-	policy = "write"
-	allowed_parameters = {
-		"foo" = []
-	}
-	required_parameters = ["foo"]
-	max_wrapping_ttl = 300
-	min_wrapping_ttl = 100
-}
-path "hello/universe" {
-	policy = "write"
-	allowed_parameters = {
-		"bar" = []
-	}
-	required_parameters = ["bar"]
-	max_wrapping_ttl = 200
-	min_wrapping_ttl = 50
-}
-path "allow/all" {
-	policy = "write"
-	allowed_parameters = {
-		"test" = []
-		"test1" = ["foo"]
-	}
-}
-path "allow/all" {
-	policy = "write"
-	allowed_parameters = {
-		"*" = []
-	}
-}
-path "allow/all1" {
-	policy = "write"
-	allowed_parameters = {
-		"*" = []
-	}
-}
-path "allow/all1" {
-	policy = "write"
-	allowed_parameters = {
-		"test" = []
-		"test1" = ["foo"]
-	}
-}
-path "deny/all" {
-	policy = "write"
-	denied_parameters = {
-		"test" = []
-	}
-}
-path "deny/all" {
-	policy = "write"
-	denied_parameters = {
-		"*" = []
-	}
-}
-path "deny/all1" {
-	policy = "write"
-	denied_parameters = {
-		"*" = []
-	}
-}
-path "deny/all1" {
-	policy = "write"
-	denied_parameters = {
-		"test" = []
-	}
-}
-path "value/merge" {
-	policy = "write"
-	allowed_parameters = {
-		"test" = [1, 2]
-	}
-	denied_parameters = {
-		"test" = [1, 2]
-	}
-}
-path "value/merge" {
-	policy = "write"
-	allowed_parameters = {
-		"test" = [3, 4]
-	}
-	denied_parameters = {
-		"test" = [3, 4]
-	}
-}
-path "value/empty" {
-	policy = "write"
-	allowed_parameters = {
-		"empty" = []
-	}
-	denied_parameters = {
-		"empty" = [1]
-	}
-}
-path "value/empty" {
-	policy = "write"
-	allowed_parameters = {
-		"empty" = [1]
-	}
-	denied_parameters = {
-		"empty" = []
-	}
-}
-`
+ name = "ops"
+ path "foo/bar" {
+ 	policy = "write"
+ 	denied_parameters = {
+ 		"baz" = []
+ 	}
+ 	required_parameters = ["baz"]
+ }
+ path "foo/bar" {
+ 	policy = "write"
+ 	denied_parameters = {
+ 		"zip" = []
+ 	}
+ }
+ path "hello/universe" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"foo" = []
+ 	}
+ 	required_parameters = ["foo"]
+ 	max_wrapping_ttl = 300
+ 	min_wrapping_ttl = 100
+ }
+ path "hello/universe" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"bar" = []
+ 	}
+ 	required_parameters = ["bar"]
+ 	max_wrapping_ttl = 200
+ 	min_wrapping_ttl = 50
+ }
+ path "allow/all" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"test" = []
+ 		"test1" = ["foo"]
+ 	}
+ }
+ path "allow/all" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"*" = []
+ 	}
+ }
+ path "allow/all1" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"*" = []
+ 	}
+ }
+ path "allow/all1" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"test" = []
+ 		"test1" = ["foo"]
+ 	}
+ }
+ path "deny/all" {
+ 	policy = "write"
+ 	denied_parameters = {
+ 		"test" = []
+ 	}
+ }
+ path "deny/all" {
+ 	policy = "write"
+ 	denied_parameters = {
+ 		"*" = []
+ 	}
+ }
+ path "deny/all1" {
+ 	policy = "write"
+ 	denied_parameters = {
+ 		"*" = []
+ 	}
+ }
+ path "deny/all1" {
+ 	policy = "write"
+ 	denied_parameters = {
+ 		"test" = []
+ 	}
+ }
+ path "value/merge" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"test" = [1, 2]
+ 	}
+ 	denied_parameters = {
+ 		"test" = [1, 2]
+ 	}
+ }
+ path "value/merge" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"test" = [3, 4]
+ 	}
+ 	denied_parameters = {
+ 		"test" = [3, 4]
+ 	}
+ }
+ path "value/empty" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"empty" = []
+ 	}
+ 	denied_parameters = {
+ 		"empty" = [1]
+ 	}
+ }
+ path "value/empty" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"empty" = [1]
+ 	}
+ 	denied_parameters = {
+ 		"empty" = []
+ 	}
+ }
+ `
 
 // allow operation testing
 var permissionsPolicy = `
-name = "dev"
-path "dev/*" {
-	policy = "write"
-	allowed_parameters = {
-		"zip" = []
-	}
-}
-path "foo/bar" {
-	policy = "write"
-	denied_parameters = {
-		"zap" = []
-	}
-	min_wrapping_ttl = 300
-	max_wrapping_ttl = 400
-}
-path "foo/baz" {
-	policy = "write"
-	allowed_parameters = {
-		"hello" = []
-	}
-	denied_parameters = {
-		"zap" = []
-	}
-	min_wrapping_ttl = 300
-}
-path "working/phone" {
-	policy = "write"
-	max_wrapping_ttl = 400
-}
-path "broken/phone" {
-	policy = "write"
-	allowed_parameters = {
-	  "steve" = []
-	}
-	denied_parameters = {
-	  "steve" = []
-	}
-}
-path "hello/world" {
-	policy = "write"
-	allowed_parameters = {
-		"*" = []
-	}
-	denied_parameters = {
-		"*" = []
-	}
-}
-path "tree/fort" {
-	policy = "write"
-	allowed_parameters = {
-		"*" = []
-	}
-	denied_parameters = {
-		"foo" = []
-	}
-}
-path "fruit/apple" {
-	policy = "write"
-	allowed_parameters = {
-		"pear" = []
-	}
-	denied_parameters = {
-		"*" = []
-	}
-}
-path "cold/weather" {
-	policy = "write"
-	allowed_parameters = {}
-	denied_parameters = {}
-}
-path "var/aws" {
-	policy = "write"
-	allowed_parameters = {
-		"*" = []
-	}
-	denied_parameters = {
-		"soft" = []
-		"warm" = []
-		"kitty" = []
-	}
-}
-path "var/req" {
-	policy = "write"
-	required_parameters = ["foo"]
-}
-`
+ name = "dev"
+ path "dev/*" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"zip" = []
+ 	}
+ }
+ path "foo/bar" {
+ 	policy = "write"
+ 	denied_parameters = {
+ 		"zap" = []
+ 	}
+ 	min_wrapping_ttl = 300
+ 	max_wrapping_ttl = 400
+ }
+ path "foo/baz" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"hello" = []
+ 	}
+ 	denied_parameters = {
+ 		"zap" = []
+ 	}
+ 	min_wrapping_ttl = 300
+ }
+ path "working/phone" {
+ 	policy = "write"
+ 	max_wrapping_ttl = 400
+ }
+ path "broken/phone" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 	  "steve" = []
+ 	}
+ 	denied_parameters = {
+ 	  "steve" = []
+ 	}
+ }
+ path "hello/world" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"*" = []
+ 	}
+ 	denied_parameters = {
+ 		"*" = []
+ 	}
+ }
+ path "tree/fort" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"*" = []
+ 	}
+ 	denied_parameters = {
+ 		"foo" = []
+ 	}
+ }
+ path "fruit/apple" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"pear" = []
+ 	}
+ 	denied_parameters = {
+ 		"*" = []
+ 	}
+ }
+ path "cold/weather" {
+ 	policy = "write"
+ 	allowed_parameters = {}
+ 	denied_parameters = {}
+ }
+ path "var/aws" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"*" = []
+ 	}
+ 	denied_parameters = {
+ 		"soft" = []
+ 		"warm" = []
+ 		"kitty" = []
+ 	}
+ }
+ path "var/req" {
+ 	policy = "write"
+ 	required_parameters = ["foo"]
+ }
+ `
 
 // allow operation testing
 var valuePermissionsPolicy = `
-name = "op"
-path "dev/*" {
-	policy = "write"
-	allowed_parameters = {
-		"allow" = ["good"]
-	}
-}
-path "foo/bar" {
-	policy = "write"
-	denied_parameters = {
-		"deny" = ["bad*"]
-	}
-}
-path "foo/baz" {
-	policy = "write"
-	allowed_parameters = {
-		"ALLOW" = ["good"]
-	}
-	denied_parameters = {
-		"dEny" = ["bad"]
-	}
-}
-path "fizz/buzz" {
-	policy = "write"
-	allowed_parameters = {
-		"allow_multi" = ["good", "good1", "good2", "*good3"]
-		"allow" = ["good"]
-	}
-	denied_parameters = {
-		"deny_multi" = ["bad", "bad1", "bad2"]
-	}
-}
-path "test/types" {
-	policy = "write"
-	allowed_parameters = {
-		"map" = [{"good" = "one"}]
-		"int" = [1, 2]
-		"bool" = [false]
-	}
-	denied_parameters = {
-	}
-}
-path "test/star" {
-	policy = "write"
-	allowed_parameters = {
-		"*" = []
-		"foo" = []
-		"bar" = [false]
-	}
-	denied_parameters = {
-	}
-}
-`
+ name = "op"
+ path "dev/*" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"allow" = ["good"]
+ 	}
+ }
+ path "foo/bar" {
+ 	policy = "write"
+ 	denied_parameters = {
+ 		"deny" = ["bad*"]
+ 	}
+ }
+ path "foo/baz" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"ALLOW" = ["good"]
+ 	}
+ 	denied_parameters = {
+ 		"dEny" = ["bad"]
+ 	}
+ }
+ path "fizz/buzz" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"allow_multi" = ["good", "good1", "good2", "*good3"]
+ 		"allow" = ["good"]
+ 	}
+ 	denied_parameters = {
+ 		"deny_multi" = ["bad", "bad1", "bad2"]
+ 	}
+ }
+ path "test/types" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"map" = [{"good" = "one"}]
+ 		"int" = [1, 2]
+ 		"bool" = [false]
+ 	}
+ 	denied_parameters = {
+ 	}
+ }
+ path "test/star" {
+ 	policy = "write"
+ 	allowed_parameters = {
+ 		"*" = []
+ 		"foo" = []
+ 		"bar" = [false]
+ 	}
+ 	denied_parameters = {
+ 	}
+ }
+ `

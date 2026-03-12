@@ -178,7 +178,7 @@ func TestIsSelfInitComplete_CorruptEntry_ReturnsError(t *testing.T) {
 
 // TestSelfInitStateMachine_FullSequence exercises the complete happy path:
 //
-//	∅ (no marker)        → IsSelfInitComplete = true  (backward-compat)
+//	(no marker)          → IsSelfInitComplete = true  (backward-compat)
 //	MarkSelfInitStarted  → IsSelfInitComplete = false (crash would be detected)
 //	MarkSelfInitComplete → IsSelfInitComplete = true  (success)
 func TestSelfInitStateMachine_FullSequence(t *testing.T) {

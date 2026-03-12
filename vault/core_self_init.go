@@ -2,15 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 package vault
 
-// Auto-init state machine persisted to the security barrier.
+// testing that auto-init state machine persisted to the security barrier.
 // Tracks whether auto-initialization was attempted and completed successfully.
-//
-// All three methods require the barrier to be initialized and unsealed:
-//   - MarkSelfInitStarted  : called after core.Initialize(), barrier just created and open
-//   - MarkSelfInitComplete : called after doSelfInit(), barrier open
-//   - IsSelfInitComplete   : called in the "if inited" branch, auto-unseal already done
-//
-// Pattern matches: vault/core.go (c.barrier.Get/Put with logical.StorageEntry)
+// All three methods require the barrier to be initialized and unsealed.
 
 import (
 	"context"

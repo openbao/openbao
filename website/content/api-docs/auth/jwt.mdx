@@ -469,8 +469,12 @@ or direct callback modes, and is not used in device callback mode.
   match the `client_nonce` value provided during the prior request to the
   [auth_url](jwt.mdx#oidc-authorization-url-request) API.
 - `error` `(string: <optional>)` - Error code from the OIDC provider per OpenID Connect Core 1.0 spec.
-  If present, indicates the authorization failed. The error is logged server-side, static failure message
-  is returned to the user.
+  If present, indicates the authorization failed. Known RFC 6749 error codes are returned to the
+  requester; unrecognized codes result in a static failure message. The raw value is always logged server-side.
+- `error_description` `(string: <optional>)` - Human-readable error description from OIDC provider.
+  Logged server-side only.
+- `error_uri` `(string: <optional>)` - URI of a human-readable error page from the OIDC provider.
+  Logged server-side only.
 
 ### Sample request
 

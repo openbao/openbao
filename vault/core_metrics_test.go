@@ -15,6 +15,7 @@ import (
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 func TestCoreMetrics_KvSecretGauge(t *testing.T) {
@@ -44,8 +45,8 @@ func TestCoreMetrics_KvSecretGauge(t *testing.T) {
 
 	// skip 0, secret/ is already mounted
 	for _, tm := range testMounts[1:] {
-		me := &MountEntry{
-			Table:   mountTableType,
+		me := &routing.MountEntry{
+			Table:   routing.MountTableType,
 			Path:    sanitizePath(tm.Path),
 			Type:    tm.Type,
 			Options: map[string]string{"version": tm.Version},
@@ -160,8 +161,8 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 	}()
 	core, _, _ := TestCoreUnsealed(t)
 
-	me := &MountEntry{
-		Table:   mountTableType,
+	me := &routing.MountEntry{
+		Table:   routing.MountTableType,
 		Path:    sanitizePath("kv1"),
 		Type:    "kv",
 		Options: map[string]string{"version": "1"},

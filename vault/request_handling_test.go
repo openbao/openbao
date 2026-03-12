@@ -16,6 +16,7 @@ import (
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,8 +26,8 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 	core.logicalBackends["kv"] = PassthroughBackendFactory
 
 	meUUID, _ := uuid.GenerateUUID()
-	err := core.mount(namespace.RootContext(t.Context()), &MountEntry{
-		Table: mountTableType,
+	err := core.mount(namespace.RootContext(t.Context()), &routing.MountEntry{
+		Table: routing.MountTableType,
 		UUID:  meUUID,
 		Path:  "wraptest",
 		Type:  "kv",

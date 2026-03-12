@@ -56,6 +56,7 @@ import (
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/quotas"
+	"github.com/openbao/openbao/vault/routing"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
 	"google.golang.org/grpc"
@@ -285,7 +286,7 @@ type Core struct {
 	barrier barrier.SecurityBarrier
 
 	// router is responsible for managing the mount points for logical backends.
-	router *Router
+	router *routing.Router
 
 	// logicalBackends is the mapping of backends to use for this core
 	logicalBackends map[string]logical.Factory
@@ -332,7 +333,7 @@ type Core struct {
 
 	// mounts is loaded after unseal since it is a protected
 	// configuration
-	mounts *MountTable
+	mounts *routing.MountTable
 
 	// mountsLock is used to ensure that the mounts table does not
 	// change underneath a calling function
@@ -344,7 +345,7 @@ type Core struct {
 
 	// auth is loaded after unseal since it is a protected
 	// configuration
-	auth *MountTable
+	auth *routing.MountTable
 
 	// authLock is used to ensure that the auth table does not
 	// change underneath a calling function
@@ -352,7 +353,7 @@ type Core struct {
 
 	// audit is loaded after unseal since it is a protected
 	// configuration
-	audit *MountTable
+	audit *routing.MountTable
 
 	// auditLock is used to ensure that the audit table does not
 	// change underneath a calling function
@@ -910,6 +911,9 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		}
 	}
 
+	coreLogger := conf.Logger.Named("core")
+	routerLogger := coreLogger.Named("router")
+
 	// Setup the core
 	c := &Core{
 		devToken:            conf.DevToken,
@@ -920,9 +924,9 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		redirectAddr:        conf.RedirectAddr,
 		seal:                conf.Seal,
 		stateLock:           stateLock,
-		router:              NewRouter(),
+		router:              routing.NewRouter(routerLogger),
 		baseLogger:          conf.Logger,
-		logger:              conf.Logger.Named("core"),
+		logger:              coreLogger,
 		logLevel:            conf.LogLevel,
 
 		defaultLeaseTTL:                conf.DefaultLeaseTTL,
@@ -969,10 +973,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	c.shutdownDoneCh.Store(make(chan struct{}))
 
-	c.allLoggers = append(c.allLoggers, c.logger)
-
-	c.router.logger = c.logger.Named("router")
-	c.allLoggers = append(c.allLoggers, c.router.logger)
+	c.allLoggers = append(c.allLoggers, c.logger, routerLogger)
 
 	c.inFlightReqData = &InFlightRequests{
 		InFlightReqMap:   &sync.Map{},
@@ -1223,12 +1224,12 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 		credentialBackends[k] = f
 	}
 
-	credentialBackends[mountTypeToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	credentialBackends[routing.MountTypeToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		tsLogger := logger.Named("token")
 		c.AddLogger(tsLogger)
 		return NewTokenStore(ctx, tsLogger, c, config)
 	}
-	credentialBackends[mountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	credentialBackends[routing.MountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		if c.tokenStore != nil {
 			return c.tokenStore, nil
 		}
@@ -1248,14 +1249,14 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 	}
 
 	// KV
-	_, ok := logicalBackends[mountTypeKV]
+	_, ok := logicalBackends[routing.MountTypeKV]
 	if !ok {
-		logicalBackends[mountTypeKV] = PassthroughBackendFactory
+		logicalBackends[routing.MountTypeKV] = PassthroughBackendFactory
 	}
 
 	// Cubbyhole
-	logicalBackends[mountTypeCubbyhole] = CubbyholeBackendFactory
-	logicalBackends[mountTypeNSCubbyhole] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	logicalBackends[routing.MountTypeCubbyhole] = CubbyholeBackendFactory
+	logicalBackends[routing.MountTypeNSCubbyhole] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		if c.cubbyholeBackend != nil {
 			return c.cubbyholeBackend, nil
 		}
@@ -1263,21 +1264,21 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 	}
 
 	// System
-	logicalBackends[mountTypeSystem] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	logicalBackends[routing.MountTypeSystem] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		sysBackendLogger := logger.Named("system")
 		c.AddLogger(sysBackendLogger)
 		b := NewSystemBackend(c, sysBackendLogger)
 		return b, b.Setup(ctx, config)
 	}
-	logicalBackends[mountTypeNSSystem] = logicalBackends[mountTypeSystem]
+	logicalBackends[routing.MountTypeNSSystem] = logicalBackends[routing.MountTypeSystem]
 
 	// Identity
-	logicalBackends[mountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	logicalBackends[routing.MountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		identityLogger := logger.Named("identity")
 		c.AddLogger(identityLogger)
 		return NewIdentityStore(ctx, c, config, identityLogger)
 	}
-	logicalBackends[mountTypeNSIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+	logicalBackends[routing.MountTypeNSIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		if c.identityStore != nil {
 			ns, err := namespace.FromContext(ctx)
 			if err != nil {
@@ -2944,10 +2945,6 @@ func (c *Core) PhysicalAccess() *physical.PhysicalAccess {
 	return physical.NewPhysicalAccess(c.physical)
 }
 
-func (c *Core) RouterAccess() *RouterAccess {
-	return NewRouterAccess(c)
-}
-
 func (c *Core) AddLogger(logger log.Logger) {
 	c.allLoggersLock.Lock()
 	defer c.allLoggersLock.Unlock()
@@ -3122,13 +3119,13 @@ func (c *Core) AuditLogger() AuditLogger {
 // misconfigured. This allows users to recover from errors when starting Vault
 // with misconfigured plugins. It should not be possible for existing builtins
 // to be misconfigured, so that is a fatal error.
-func (c *Core) isMountable(ctx context.Context, entry *MountEntry, pluginType consts.PluginType) bool {
+func (c *Core) isMountable(ctx context.Context, entry *routing.MountEntry, pluginType consts.PluginType) bool {
 	return !c.isMountEntryBuiltin(ctx, entry, pluginType)
 }
 
 // isMountEntryBuiltin determines whether a mount entry is associated with a
 // builtin of the specified plugin type.
-func (c *Core) isMountEntryBuiltin(ctx context.Context, entry *MountEntry, pluginType consts.PluginType) bool {
+func (c *Core) isMountEntryBuiltin(ctx context.Context, entry *routing.MountEntry, pluginType consts.PluginType) bool {
 	// Prevent a panic early on
 	if entry == nil || c.pluginCatalog == nil {
 		return false
@@ -3447,7 +3444,7 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, vi
 	mountAccessor = strings.TrimSuffix(mountAccessor, "/")
 	mountEntry := c.router.MatchingMountByAccessor(mountAccessor)
 	if mountEntry == nil {
-		mountEntry = &MountEntry{}
+		mountEntry = &routing.MountEntry{}
 	}
 	// get configuration for mount entry
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
@@ -3816,7 +3813,7 @@ func (c *Core) aliasNameFromLoginRequest(ctx context.Context, req *logical.Reque
 }
 
 // ListMounts will provide a slice containing a deep copy each mount entry
-func (c *Core) ListMounts() ([]*MountEntry, error) {
+func (c *Core) ListMounts() ([]*routing.MountEntry, error) {
 	if c.Sealed() {
 		return nil, errors.New("vault is sealed")
 	}
@@ -3824,7 +3821,7 @@ func (c *Core) ListMounts() ([]*MountEntry, error) {
 	c.mountsLock.RLock()
 	defer c.mountsLock.RUnlock()
 
-	var entries []*MountEntry
+	var entries []*routing.MountEntry
 
 	for _, entry := range c.mounts.Entries {
 		clone, err := entry.Clone()
@@ -3839,7 +3836,7 @@ func (c *Core) ListMounts() ([]*MountEntry, error) {
 }
 
 // ListAuths will provide a slice containing a deep copy each auth entry
-func (c *Core) ListAuths() ([]*MountEntry, error) {
+func (c *Core) ListAuths() ([]*routing.MountEntry, error) {
 	if c.Sealed() {
 		return nil, errors.New("vault is sealed")
 	}
@@ -3847,7 +3844,7 @@ func (c *Core) ListAuths() ([]*MountEntry, error) {
 	c.authLock.RLock()
 	defer c.authLock.RUnlock()
 
-	var entries []*MountEntry
+	var entries []*routing.MountEntry
 
 	for _, entry := range c.auth.Entries {
 		clone, err := entry.Clone()

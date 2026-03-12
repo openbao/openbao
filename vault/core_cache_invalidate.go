@@ -252,7 +252,7 @@ func isKeyringPath(key string) bool {
 }
 
 func isMissedMountKey(key string) bool {
-	return strings.HasPrefix(key, credentialBarrierPrefix) ||
+	return strings.HasPrefix(key, barrier.CredentialBarrierPrefix) ||
 		strings.HasPrefix(key, backendBarrierPrefix) ||
 		strings.HasPrefix(key, auditBarrierPrefix)
 }

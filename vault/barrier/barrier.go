@@ -78,6 +78,12 @@ const (
 	ShamirKekPath = "core/shamir-kek"
 )
 
+const (
+	// CredentialBarrierPrefix is the prefix to the UUID used in the
+	// barrier view for the credential backends.
+	CredentialBarrierPrefix = "auth/"
+)
+
 type SecurityBarrierCore interface {
 	// Initialized checks if the barrier has been initialized
 	// and has a root key set.

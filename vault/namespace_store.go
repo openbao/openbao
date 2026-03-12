@@ -417,9 +417,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 			path = namespace.Canonicalize(parent.TrimmedPath(entry.Path))
 		}
 
-		ns.core.router.l.RLock()
-		conflict := ns.core.router.matchingPrefixInternal(ctx, path)
-		ns.core.router.l.RUnlock()
+		conflict := ns.core.router.MatchingPrefixInternal(ctx, path)
 		if conflict != "" {
 			return fmt.Errorf("new namespace conflicts with existing mount: %v", conflict)
 		}
@@ -617,13 +615,13 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Stor
 	defer ns.core.mountsLock.Unlock()
 
 	for _, mount := range mounts.Entries {
-		if err := ns.core.mountInternalWithLock(ctx, mount, MountTableNoUpdateStorage); err != nil {
+		if err := ns.core.mountInternalWithLock(ctx, mount, false); err != nil {
 			return err
 		}
 	}
 
 	for _, credential := range credentials.Entries {
-		if err := ns.core.enableCredentialInternalWithLock(ctx, credential, MountTableNoUpdateStorage); err != nil {
+		if err := ns.core.enableCredentialInternalWithLock(ctx, credential, false); err != nil {
 			return err
 		}
 	}
@@ -654,7 +652,7 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 
 	// clear auth mounts
 	ns.core.authLock.Lock()
-	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
+	authMountEntries, err := ns.core.auth.FindAllNamespaceMounts(nsCtx)
 	ns.core.authLock.Unlock()
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace credentials", "namespace", namespaceToDelete.Path, "error", err.Error())
@@ -676,7 +674,7 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 
 	// clear mounts
 	ns.core.mountsLock.Lock()
-	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
+	mountEntries, err := ns.core.mounts.FindAllNamespaceMounts(nsCtx)
 	ns.core.mountsLock.Unlock()
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace mounts", "namespace", namespaceToDelete.Path, "error", err.Error())
@@ -711,7 +709,7 @@ func (ns *NamespaceStore) pushToMounts(ctx context.Context, entry *namespace.Nam
 			continue
 		}
 
-		mount.namespace = entry
+		mount.Namespace = entry
 	}
 
 	for _, mount := range ns.core.mounts.Entries {
@@ -719,7 +717,7 @@ func (ns *NamespaceStore) pushToMounts(ctx context.Context, entry *namespace.Nam
 			continue
 		}
 
-		mount.namespace = entry
+		mount.Namespace = entry
 	}
 
 	return nil
@@ -1016,7 +1014,7 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 
 	// clear auth mounts
 	ns.core.authLock.Lock()
-	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
+	authMountEntries, err := ns.core.auth.FindAllNamespaceMounts(nsCtx)
 	ns.core.authLock.Unlock()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve namespace credentials: %w", err)
@@ -1035,7 +1033,7 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 
 	// clear mounts
 	ns.core.mountsLock.Lock()
-	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
+	mountEntries, err := ns.core.mounts.FindAllNamespaceMounts(nsCtx)
 	ns.core.mountsLock.Unlock()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve namespace mounts: %w", err)

@@ -40,7 +40,9 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
 	"github.com/stretchr/testify/require"
 )
@@ -855,8 +857,8 @@ func TestSystemBackend_remount_auth(t *testing.T) {
 
 	c, b, _ := testCoreSystemBackend(t)
 
-	userpassMe := &MountEntry{
-		Table:       credentialTableType,
+	userpassMe := &routing.MountEntry{
+		Table:       routing.CredentialTableType,
 		Path:        "userpass1/",
 		Type:        "userpass",
 		Description: "userpass",
@@ -869,7 +871,7 @@ func TestSystemBackend_remount_auth(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/userpass1"
 	req.Data["to"] = "auth/userpass2"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	// validate the response structure for remount named read
@@ -909,7 +911,7 @@ func TestSystemBackend_remount_auth_invalid(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/unknown"
 	req.Data["to"] = "auth/foo"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -936,7 +938,7 @@ func TestSystemBackend_remount_auth_protected(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/token"
 	req.Data["to"] = "auth/foo"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -966,8 +968,8 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 
 	c, b, _ := testCoreSystemBackend(t)
 
-	userpassMe := &MountEntry{
-		Table:       credentialTableType,
+	userpassMe := &routing.MountEntry{
+		Table:       routing.CredentialTableType,
 		Path:        "userpass1/",
 		Type:        "userpass",
 		Description: "userpass",
@@ -977,8 +979,8 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	userpassMe2 := &MountEntry{
-		Table:       credentialTableType,
+	userpassMe2 := &routing.MountEntry{
+		Table:       routing.CredentialTableType,
 		Path:        "userpass2/",
 		Type:        "userpass",
 		Description: "userpass",
@@ -991,7 +993,7 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "auth/userpass1"
 	req.Data["to"] = "auth/userpass2"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -1011,8 +1013,8 @@ func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
 		t.Fatalf("Found unexpected error %q", resp.Data["error"].(string))
 	}
 
-	userpassMe3 := &MountEntry{
-		Table:       credentialTableType,
+	userpassMe3 := &routing.MountEntry{
+		Table:       routing.CredentialTableType,
 		Path:        "userpass3/mypass/",
 		Type:        "userpass",
 		Description: "userpass",
@@ -1039,7 +1041,7 @@ func TestSystemBackend_remount(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "secret"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	corehelpers.RetryUntil(t, 5*time.Second, func() error {
 		req = logical.TestRequest(t, logical.ReadOperation, fmt.Sprintf("remount/status/%s", resp.Data["migration_id"]))
@@ -1058,8 +1060,8 @@ func TestSystemBackend_remount(t *testing.T) {
 func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 
-	me := &MountEntry{
-		Table: mountTableType,
+	me := &routing.MountEntry{
+		Table: routing.MountTableType,
 		Path:  "foo/",
 		Type:  "generic",
 	}
@@ -1071,7 +1073,7 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "secret"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 
 	if err != logical.ErrInvalidRequest {
@@ -1091,8 +1093,8 @@ func TestSystemBackend_remount_destinationInUse(t *testing.T) {
 		t.Fatalf("Found unexpected error %q", resp.Data["error"].(string))
 	}
 
-	me2 := &MountEntry{
-		Table: mountTableType,
+	me2 := &routing.MountEntry{
+		Table: routing.MountTableType,
 		Path:  "foo2/foo3/",
 		Type:  "generic",
 	}
@@ -1118,7 +1120,7 @@ func TestSystemBackend_remount_invalid(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "unknown"
 	req.Data["to"] = "foo"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1149,7 +1151,7 @@ func TestSystemBackend_remount_clean(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = "foo//bar"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1165,7 +1167,7 @@ func TestSystemBackend_remount_nonPrintable(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = "foo\nbar"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1183,7 +1185,7 @@ func TestSystemBackend_remount_trailingSpacesInFromPath(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = " foo/ "
 	req.Data["to"] = "bar"
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -1201,7 +1203,7 @@ func TestSystemBackend_remount_trailingSpacesInToPath(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "remount")
 	req.Data["from"] = "foo"
 	req.Data["to"] = " bar/ "
-	req.Data["config"] = structtomap.Map(MountConfig{})
+	req.Data["config"] = structtomap.Map(routing.MountConfig{})
 	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -2082,7 +2084,7 @@ func TestSystemBackend_authTable(t *testing.T) {
 func TestSystemBackend_enableAuth(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{BackendType: logical.TypeCredential}, nil
+		return &be.Noop{BackendType: logical.TypeCredential}, nil
 	}
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "auth/foo")
@@ -2184,7 +2186,7 @@ func TestSystemBackend_enableAuth_invalid(t *testing.T) {
 func TestSystemBackend_disableAuth(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{}, nil
+		return &be.Noop{}, nil
 	}
 
 	// Register the backend
@@ -2212,7 +2214,7 @@ func TestSystemBackend_disableAuth(t *testing.T) {
 func TestSystemBackend_tuneAuth(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
-		return &NoopBackend{BackendType: logical.TypeCredential}, nil
+		return &be.Noop{BackendType: logical.TypeCredential}, nil
 	}
 
 	req := logical.TestRequest(t, logical.ReadOperation, "auth/token/tune")
@@ -4513,8 +4515,8 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 	ctx := namespace.RootContext(nil)
 
 	// Add another mount
-	me := &MountEntry{
-		Table:   mountTableType,
+	me := &routing.MountEntry{
+		Table:   routing.MountTableType,
 		Path:    sanitizePath("kv-v1"),
 		Type:    "kv",
 		Options: map[string]string{"version": "1"},
@@ -6246,11 +6248,11 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		// Directly store plugin version in mount entry, so we can then simulate
 		// an upgrade from 1.12.1 to 1.12.2 by sealing and unsealing.
 		const nonExistentBuiltinVersion = "v1.0.0+builtin"
-		var mountEntry *MountEntry
+		var mountEntry *routing.MountEntry
 		if tc.mountTable == "mounts" {
-			mountEntry, err = core.mounts.findByPath(ctx, tc.pluginName+"/")
+			mountEntry, err = core.mounts.FindByPath(ctx, tc.pluginName+"/")
 		} else {
-			mountEntry, err = core.auth.findByPath(ctx, tc.pluginName+"/")
+			mountEntry, err = core.auth.FindByPath(ctx, tc.pluginName+"/")
 		}
 		if err != nil {
 			t.Fatal(err)

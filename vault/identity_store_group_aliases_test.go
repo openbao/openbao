@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {
@@ -107,8 +108,8 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 
 	ctx := namespace.RootContext(nil)
 
-	userpassMe := &MountEntry{
-		Table:       credentialTableType,
+	userpassMe := &routing.MountEntry{
+		Table:       routing.CredentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
 		Description: "userpass",
@@ -118,8 +119,8 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ldapMe := &MountEntry{
-		Table:       credentialTableType,
+	ldapMe := &routing.MountEntry{
+		Table:       routing.CredentialTableType,
 		Path:        "ldap/",
 		Type:        "ldap",
 		Description: "ldap",
@@ -443,8 +444,8 @@ func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 	ctx := namespace.RootContext(nil)
 	i, accessor1, c := testIdentityStoreWithAppRoleAuth(ctx, t)
 
-	ghme2 := &MountEntry{
-		Table:       credentialTableType,
+	ghme2 := &routing.MountEntry{
+		Table:       routing.CredentialTableType,
 		Path:        "approle2/",
 		Type:        "approle",
 		Description: "approle auth",

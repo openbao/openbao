@@ -12,6 +12,7 @@ import (
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/backend"
 )
 
 func TestRouter_MountSubpath_Checks(t *testing.T) {
@@ -72,7 +73,7 @@ func testRouter_MountSubpath(t *testing.T, mountPoints []string) {
 func TestRouter_UnmountRollbackIsntFatal(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		LogicalBackends: map[string]logical.Factory{
-			"noop": vault.NoopBackendRollbackErrFactory,
+			"noop": backend.NoopBackendRollbackErrFactory,
 		},
 	}
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{

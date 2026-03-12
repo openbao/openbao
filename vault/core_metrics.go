@@ -288,7 +288,7 @@ func (c *Core) findKvMounts() []*kvMount {
 				version = "1"
 			}
 			mounts = append(mounts, &kvMount{
-				Namespace:  entry.namespace,
+				Namespace:  entry.Namespace,
 				MountPoint: entry.Path,
 				Version:    version,
 				NumSecrets: 0,
@@ -459,7 +459,7 @@ func (c *Core) entityGaugeCollectorByMount(ctx context.Context) ([]metricsutil.G
 		}
 		values = append(values, metricsutil.GaugeLabelValues{
 			Labels: []metrics.Label{
-				metricsutil.NamespaceLabel(mountEntry.namespace),
+				metricsutil.NamespaceLabel(mountEntry.Namespace),
 				{Name: "auth_method", Value: mountEntry.Type},
 				{Name: "mount_point", Value: "auth/" + mountEntry.Path},
 			},

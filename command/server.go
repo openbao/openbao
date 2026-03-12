@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/go-testing-interface"
@@ -99,7 +98,6 @@ type ServerCommand struct {
 	WaitGroup *sync.WaitGroup
 
 	logWriter io.Writer
-	logGate   *gatedwriter.Writer
 	logger    hclog.InterceptLogger
 
 	cleanupGuard sync.Once
@@ -363,12 +361,6 @@ func (c *ServerCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *ServerCommand) flushLog() {
-	c.logger.(hclog.OutputResettable).ResetOutputWithFlush(&hclog.LoggerOptions{
-		Output: c.logWriter,
-	}, c.logGate)
-}
-
 func (c *ServerCommand) runRecoveryMode() int {
 	config, configErrors, err := c.ParseServerConfig(c.flagConfigs)
 	if err != nil {
@@ -400,9 +392,6 @@ func (c *ServerCommand) runRecoveryMode() int {
 	for _, cErr := range configErrors {
 		c.logger.Warn(cErr.String())
 	}
-
-	// Ensure logging is flushed if initialization fails
-	defer c.flushLog()
 
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
@@ -538,7 +527,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	// Initialize the listeners
 	lns := make([]listenerutil.Listener, 0, len(config.Listeners))
 	for _, lnConfig := range config.Listeners {
-		ln, _, _, err := server.NewListener(lnConfig, c.logger, c.logGate, c.UI)
+		ln, _, _, err := server.NewListener(lnConfig, c.logger, c.UI)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error initializing listener of type %s: %s", lnConfig.Type, err))
 			return 1
@@ -581,7 +570,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	padding := 24
 
 	sort.Strings(infoKeys)
-	c.UI.Output("==> OpenBao server configuration:\n")
+	c.UI.Output("\n==> OpenBao server configuration:\n")
 
 	titleCaser := cases.Title(language.English, cases.NoLower)
 
@@ -646,10 +635,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao server started!")
 	}
-
-	c.flushLog()
 
 	for {
 		select {
@@ -778,7 +765,7 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 
 	var errMsg error
 	for i, lnConfig := range config.Listeners {
-		ln, props, cg, err := server.NewListener(lnConfig, c.logger, c.logGate, c.UI)
+		ln, props, cg, err := server.NewListener(lnConfig, c.logger, c.UI)
 		if err != nil {
 			errMsg = fmt.Errorf("Error initializing listener of type %s: %s", lnConfig.Type, err)
 			return 1, nil, nil, errMsg
@@ -929,9 +916,7 @@ func (c *ServerCommand) Run(args []string) int {
 	// Don't exit just because we saw a potential deadlock.
 	deadlock.Opts.OnPotentialDeadlock = func() {}
 
-	c.logGate = gatedwriter.NewWriter(os.Stderr)
-	c.logWriter = c.logGate
-
+	c.logWriter = os.Stderr
 	if c.logFlags.flagCombineLogs {
 		c.logWriter = os.Stdout
 	}
@@ -1018,18 +1003,10 @@ func (c *ServerCommand) Run(args []string) int {
 	c.logger = l
 	c.allLoggers = append(c.allLoggers, l)
 
-	// flush logs right away if the server is started with the disable-gated-logs flag
-	if c.logFlags.flagDisableGatedLogs {
-		c.flushLog()
-	}
-
 	// reporting Errors found in the config
 	for _, cErr := range configErrors {
 		c.logger.Warn(cErr.String())
 	}
-
-	// Ensure logging is flushed if initialization fails
-	defer c.flushLog()
 
 	// create GRPC logger
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
@@ -1294,7 +1271,7 @@ func (c *ServerCommand) Run(args []string) int {
 	info["go version"] = runtime.Version()
 
 	sort.Strings(infoKeys)
-	c.UI.Output("==> OpenBao server configuration:\n")
+	c.UI.Output("\n==> OpenBao server configuration:\n")
 
 	titleCaser := cases.Title(language.English, cases.NoLower)
 
@@ -1388,19 +1365,11 @@ func (c *ServerCommand) Run(args []string) int {
 		}
 	}
 
-	// Output the header that the server has started
-	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
-	}
-
 	// Inform any tests that the server is ready
 	select {
 	case c.startedCh <- struct{}{}:
 	default:
 	}
-
-	// Release the log gate.
-	c.flushLog()
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.storePidFile(config.PidFile); err != nil {
@@ -1410,6 +1379,11 @@ func (c *ServerCommand) Run(args []string) int {
 
 	// Notify systemd that the server is ready (if applicable)
 	c.notifySystemd(systemd.SdNotifyReady)
+
+	// Output the header that the server has started
+	if !c.logFlags.flagCombineLogs {
+		c.UI.Output("==> OpenBao server started!")
+	}
 
 	if c.flagDev {
 		protocol := "http://"
@@ -1795,7 +1769,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 // freshly initialized core to perform the component requests of the
 // self-initialization process.
 func (c *ServerCommand) doSelfInit(core *vault.Core, config *server.Config, rootToken string) error {
-	c.UI.Warn("Beginning post-unseal configuration")
+	c.logger.Info("beginning post-unseal configuration")
 	p, err := profiles.NewEngine(
 		// Set up the profile system with relevant parameter sources:
 		// - Environment variables
@@ -2030,7 +2004,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	padding := 24
 
 	sort.Strings(infoKeys)
-	c.UI.Output("==> OpenBao server configuration:\n")
+	c.UI.Output("\n==> OpenBao server configuration:\n")
 
 	titleCaser := cases.Title(language.English, cases.NoLower)
 
@@ -2161,16 +2135,13 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	}
 
 	// Output the header that the server has started
-	c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
+	c.UI.Output("==> OpenBao server started!")
 
 	// Inform any tests that the server is ready
 	select {
 	case c.startedCh <- struct{}{}:
 	default:
 	}
-
-	// Release the log gate.
-	c.flushLog()
 
 	// Wait for shutdown
 	shutdownTriggered := false
@@ -2395,9 +2366,6 @@ func (c *ServerCommand) storageMigrationActive(backend physical.Backend) bool {
 		if first {
 			first = false
 			c.UI.Warn("\nWARNING! Unable to read storage migration status.")
-
-			// unexpected state, so stop buffering log messages
-			c.flushLog()
 		}
 		c.logger.Warn("storage migration check error", "error", err.Error())
 
@@ -2832,6 +2800,7 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 					c.logger.DeregisterSink(qw)
 
 					// Print the big dev mode warning!
+					c.UI.Warn("")
 					c.UI.Warn(wrapAtLength(
 						"WARNING! dev mode is enabled! In this mode, OpenBao runs entirely " +
 							"in-memory and starts unsealed with a single unseal key. The root " +

@@ -24,7 +24,6 @@ import (
 
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/oklog/run"
 	"github.com/openbao/openbao/api/v2"
@@ -248,10 +247,8 @@ func (c *DebugCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Initialize the logger for debug output
-	gatedWriter := gatedwriter.NewWriter(os.Stderr)
 	if c.logger == nil {
-		c.logger = logging.NewVaultLoggerWithWriter(gatedWriter, hclog.Trace)
+		c.logger = logging.NewVaultLoggerWithWriter(os.Stderr, hclog.Trace)
 	}
 
 	dstOutputFile, err := c.preflight(args)
@@ -270,29 +267,24 @@ func (c *DebugCommand) Run(args []string) int {
 	c.UI.Info(fmt.Sprintf("      Metrics Interval: %s", c.flagMetricsInterval))
 	c.UI.Info(fmt.Sprintf("               Targets: %s", strings.Join(c.flagTargets, ", ")))
 	c.UI.Info(fmt.Sprintf("                Output: %s", dstOutputFile))
-	c.UI.Output("")
-
-	// Release the log gate.
-	c.logger.(hclog.OutputResettable).ResetOutputWithFlush(&hclog.LoggerOptions{
-		Output: os.Stderr,
-	}, gatedWriter)
 
 	// Capture static information
+	c.UI.Output("")
 	c.UI.Info("==> Capturing static information...")
 	if err := c.captureStaticTargets(); err != nil {
 		c.UI.Error(fmt.Sprintf("Error capturing static information: %s", err))
 		return 2
 	}
 
-	c.UI.Output("")
-
 	// Capture polling information
+	c.UI.Output("")
 	c.UI.Info("==> Capturing dynamic information...")
 	if err := c.capturePollingTargets(); err != nil {
 		c.UI.Error(fmt.Sprintf("Error capturing dynamic information: %s", err))
 		return 2
 	}
 
+	c.UI.Output("")
 	c.UI.Output("Finished capturing information, bundling files...")
 
 	// Generate index file

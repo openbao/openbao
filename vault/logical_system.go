@@ -4490,16 +4490,6 @@ func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
 		})
 	}
 
-	// Write to the canary path, which will force a synchronous truing during
-	// replication
-	if err := b.Core.barrier.Put(ctx, &logical.StorageEntry{
-		Key:   coreKeyringCanaryPath,
-		Value: fmt.Appendf(nil, "new-rotation-term-%d", newTerm),
-	}); err != nil {
-		b.Core.logger.Error("error saving keyring canary", "error", err)
-		return fmt.Errorf("failed to save keyring canary: %w", err)
-	}
-
 	return nil
 }
 

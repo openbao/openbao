@@ -72,18 +72,9 @@ const (
 	// for a highly-available deployment which is undergoing initialization.
 	CoreInitLockPath = "core/initialize-lock"
 
-	// The poison pill is used as a check during certain scenarios to indicate
-	// to standby nodes that they should seal
-	poisonPillPath = "core/poison-pill"
-
 	// coreLeaderPrefix is the prefix used for the UUID that contains
 	// the currently elected leader.
 	coreLeaderPrefix = "core/leader/"
-
-	// coreKeyringCanaryPath is used as a canary to indicate to replicated
-	// clusters that they need to perform a rotation synchronously;
-	// this isn't keyring-canary to avoid ignoring it when ignoring core/keyring
-	coreKeyringCanaryPath = "core/canary-keyring"
 
 	// coreGroupPolicyApplicationPath is used to store the behaviour for
 	// how policies should be applied

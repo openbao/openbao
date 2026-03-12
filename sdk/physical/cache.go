@@ -31,15 +31,8 @@ const (
 // These paths don't need to be cached by the LRU cache. This should
 // particularly help memory pressure when unsealing.
 var cacheExceptionsPaths = []string{
-	"wal/logs/",
-	"index/pages/",
-	"index-dr/pages/",
 	"sys/expire/",
-	"core/poison-pill",
 	"core/raft/tls",
-
-	// Add barrierSealConfigPath and recoverySealConfigPlaintextPath to the cache
-	// exceptions to avoid unseal errors. See VAULT-17227
 	"core/seal-config",
 	"core/recovery-config",
 }

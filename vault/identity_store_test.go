@@ -35,7 +35,7 @@ import (
 
 func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 	txn := c.identityStore.Txn(ctx, true)
 	defer txn.Abort()
 
@@ -97,7 +97,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	defer be.ClearTestCredentialBackends()
 
 	c, unsealKey, root := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 
 	meGH := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
@@ -106,7 +106,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		Description: "approle auth",
 	}
 
-	err = c.enableCredential(namespace.RootContext(nil), meGH)
+	err = c.enableCredential(namespace.RootContext(t.Context()), meGH)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		BucketKey:   c.identityStore.EntityPacker(ctx).BucketKey("entity1"),
 	}
 
-	err = c.identityStore.UpsertEntity(namespace.RootContext(nil), entity, nil, true)
+	err = c.identityStore.UpsertEntity(namespace.RootContext(t.Context()), entity, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 
 func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 	// Enable AppRole auth and initialize
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 	is, approleAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
 	alias := &logical.Alias{
 		MountType:     "approle",
@@ -384,7 +384,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	registerData := map[string]interface{}{
@@ -451,7 +451,7 @@ func TestIdentityStore_WrapInfoInheritance(t *testing.T) {
 	var err error
 	var resp *logical.Response
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 	core, is, ts, _ := testCoreWithIdentityTokenAppRole(ctx, t)
 
 	registerData := map[string]interface{}{
@@ -528,7 +528,7 @@ func TestIdentityStore_TokenEntityInheritance(t *testing.T) {
 		EntityID: "testentityid",
 		TTL:      time.Hour,
 	}
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 	testMakeTokenDirectly(t, ctx, ts, te)
 
 	// Create a child token; this should inherit the EntityID
@@ -567,7 +567,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	defer be.ClearTestCredentialBackends()
 
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 
 	meGH := &routing.MountEntry{
 		Table:       routing.CredentialTableType,
@@ -576,7 +576,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		Description: "approle auth",
 	}
 
-	err = c.enableCredential(namespace.RootContext(nil), meGH)
+	err = c.enableCredential(namespace.RootContext(t.Context()), meGH)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -599,7 +599,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		NamespaceID: namespace.RootNamespaceID,
 		BucketKey:   c.identityStore.EntityPacker(ctx).BucketKey("entity1"),
 	}
-	err = c.identityStore.UpsertEntity(namespace.RootContext(nil), entity, nil, true)
+	err = c.identityStore.UpsertEntity(namespace.RootContext(t.Context()), entity, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -623,12 +623,12 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		BucketKey:   c.identityStore.EntityPacker(ctx).BucketKey("entity2"),
 	}
 
-	err = c.identityStore.UpsertEntity(namespace.RootContext(nil), entity2, nil, true)
+	err = c.identityStore.UpsertEntity(namespace.RootContext(t.Context()), entity2, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	newEntity, _, err := c.identityStore.CreateOrFetchEntity(namespace.RootContext(nil), &logical.Alias{
+	newEntity, _, err := c.identityStore.CreateOrFetchEntity(namespace.RootContext(t.Context()), &logical.Alias{
 		MountAccessor: meGH.Accessor,
 		MountType:     "approle",
 		Name:          "approleuser",
@@ -810,7 +810,7 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 		Description: "approle auth",
 	}
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(t.Context())
 	err = c.enableCredential(ctx, meGH)
 	if err != nil {
 		t.Fatal(err)

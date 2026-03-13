@@ -104,6 +104,7 @@ func (i *IdentityStore) handleMFAMethodReadCommon(ctx context.Context, req *logi
 	}
 
 	if respData == nil {
+		//nolint:nilnil
 		return nil, nil
 	}
 
@@ -169,6 +170,7 @@ func (i *IdentityStore) handleMFAMethodUpdateCommon(ctx context.Context, req *lo
 
 		// If methodID is specified, but we didn't find anything, return a 404
 		if mConfig == nil {
+			//nolint:nilnil
 			return nil, nil
 		}
 	}
@@ -273,6 +275,7 @@ func (i *IdentityStore) handleMFAMethodUpdateCommon(ctx context.Context, req *lo
 			},
 		}, nil
 	} else {
+		//nolint:nilnil
 		return nil, nil
 	}
 }
@@ -457,6 +460,7 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 		return nil, fmt.Errorf("failed to persist MFA secret in entity, error: %w", err)
 	}
 
+	//nolint:nilnil
 	return nil, nil
 }
 
@@ -481,6 +485,7 @@ func (i *IdentityStore) handleMFALoginEnforcementRead(ctx context.Context, req *
 	}
 
 	if respData == nil {
+		//nolint:nilnil
 		return nil, nil
 	}
 

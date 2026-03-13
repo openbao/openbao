@@ -430,7 +430,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 		return 1
 	}
 
-	kmsCatalog, err := kmsplugin.NewCatalog(c.logger, config)
+	kms, err := kmsplugin.NewCatalog(c.logger, config)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error creating KMS plugin catalog: %s", err))
 		return 1
@@ -486,7 +486,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	case string(wrapping.WrapperTypeShamir):
 		seal = vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	default:
-		wrapper, config, err := kmsCatalog.ConfigureWrapper(
+		wrapper, config, err := kms.ConfigureWrapper(
 			context.Background(), configSeal.Type, wrapping.WithConfigMap(configSeal.Config))
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error configuring seal %q: %s", configSeal.Type, err))

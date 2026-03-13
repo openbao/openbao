@@ -11,10 +11,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/mitchellh/go-testing-interface"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	transitwrapper "github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/logical/transit"
-	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/kmsplugin"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
 	"github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
@@ -64,19 +63,12 @@ func (tss *TransitSealServer) MakeKey(t testing.T, key string) {
 }
 
 func (tss *TransitSealServer) MakeSeal(t testing.T, key string) (vault.Seal, error) {
-	client := tss.Cores[0].Client
-
-	kms, err := kmsplugin.NewCatalog(hclog.NewNullLogger(), new(server.Config))
-	if err != nil {
-		t.Fatalf("error creating kms catalog: %v", err)
-	}
-
-	wrapper, _, err := kms.ConfigureWrapper(
+	wrapper := transitwrapper.NewWrapper()
+	_, err := wrapper.SetConfig(
 		context.Background(),
-		"transit",
 		wrapping.WithConfigMap(map[string]string{
-			"address":     client.Address(),
-			"token":       client.Token(),
+			"address":     tss.Cores[0].Client.Address(),
+			"token":       tss.Cores[0].Client.Token(),
 			"mount_path":  "transit",
 			"key_name":    key,
 			"tls_ca_cert": tss.CACertPEMFile,
@@ -85,6 +77,5 @@ func (tss *TransitSealServer) MakeSeal(t testing.T, key string) (vault.Seal, err
 	if err != nil {
 		t.Fatalf("error setting wrapper config: %v", err)
 	}
-
 	return vault.NewAutoSeal(seal.NewAccess(wrapper))
 }

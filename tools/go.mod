@@ -3,7 +3,6 @@ module github.com/openbao/openbao/tools
 go 1.24.4
 
 require (
-	github.com/favadi/protoc-go-inject-tag v1.4.0
 	github.com/golangci/golangci-lint/v2 v2.5.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1
 	google.golang.org/protobuf v1.36.11

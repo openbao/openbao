@@ -1,0 +1,3 @@
+```release-note:bug
+core: fix potential deadlock in JobManager, which can cause mount deletion timeouts
+```

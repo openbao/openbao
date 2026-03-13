@@ -61,11 +61,5 @@ these device-specific options:
   shape `map[string][]string`, i.e., an object of headers, with each having
   one or more values. Headers without values will be ignored.
 
-- `skip_test` `(string: "")` When set to `"true"`, OpenBao will not send an
-initial test probe request to the audit log destination when enabling the
-audit device. By default, OpenBao tests the connection to the destination server on
-mount, and if the destination is unreachable, the audit device fails to
-enable which can block unsealing.
-
 Both `uri` and any header values are passed through [`parseutil.ParsePath(...)`](https://pkg.go.dev/github.com/hashicorp/go-secure-stdlib/parseutil),
 allowing environment variables or files to be referenced.

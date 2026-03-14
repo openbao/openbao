@@ -1821,20 +1821,17 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 			}
 
 			if mount != "" && !found {
-				// Delete this component if it exists. This signifies that
-				// we're removing this mount. We don't know which namespace
-				// this entry could belong to, so remove it from all.
-				allNamespaces, err := c.ListNamespaces(ctx)
+				// Remove this mount from storage if it is not in the mount
+				// table passed to this function anymore.
+				ns, err := namespace.FromContext(ctx)
 				if err != nil {
-					return -1, fmt.Errorf("failed to list namespaces: %w", err)
+					return -1, err
 				}
 
-				for nsIndex, ns := range allNamespaces {
-					view := NamespaceView(barrier, ns)
-					path := path.Join(prefix, mount)
-					if err := view.Delete(ctx, path); err != nil {
-						return -1, fmt.Errorf("requested removal of auth mount from namespace %v (%v) but failed: %w", ns.ID, nsIndex, err)
-					}
+				view := NamespaceView(barrier, ns)
+				if err := view.Delete(ctx, path.Join(prefix, mount)); err != nil {
+					c.logger.Error("failed to persist removal of secrets mount table entry", "namespace", ns.Path, "uuid", mount, "error", err)
+					return -1, fmt.Errorf("failed to remove mount from storage: %w", err)
 				}
 			}
 

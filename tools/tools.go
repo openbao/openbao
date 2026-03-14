@@ -13,19 +13,13 @@
 
 package tools
 
-//go:generate go install google.golang.org/protobuf/cmd/protoc-gen-go
-//go:generate go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
-//go:generate go install github.com/favadi/protoc-go-inject-tag
-//go:generate go install gotest.tools/gotestsum
 //go:generate go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+//go:generate go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
+//go:generate go install google.golang.org/protobuf/cmd/protoc-gen-go
+//go:generate go install gotest.tools/gotestsum
 import (
-	_ "google.golang.org/protobuf/cmd/protoc-gen-go"
-
-	_ "google.golang.org/grpc/cmd/protoc-gen-go-grpc"
-
-	_ "github.com/favadi/protoc-go-inject-tag"
-
-	_ "gotest.tools/gotestsum"
-
 	_ "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
+	_ "google.golang.org/grpc/cmd/protoc-gen-go-grpc"
+	_ "google.golang.org/protobuf/cmd/protoc-gen-go"
+	_ "gotest.tools/gotestsum"
 )

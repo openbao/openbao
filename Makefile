@@ -1,4 +1,4 @@
-# Determine this makefile's path.
+# Determine this Makefile's path.
 # Be sure to place this BEFORE `include` directives, if any.
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
@@ -13,7 +13,7 @@ GO_MODS?=$$(find . -name 'go.mod' | xargs -L 1 dirname)
 SED?=$(shell command -v gsed || command -v sed)
 
 GO_VERSION_MIN=$$(cat $(CURDIR)/.go-version)
-PROTOC_VERSION=32.1
+PROTOC_VERSION=34.0
 CGO_ENABLED?=0
 
 default: dev
@@ -206,10 +206,6 @@ proto: bootstrap
 	$(SED) -i -e 's/Id/ID/' -e 's/SPDX-License-IDentifier/SPDX-License-Identifier/' vault/request_forwarding_service.pb.go
 	$(SED) -i -e 's/Idp/IDP/' -e 's/Url/URL/' -e 's/Id/ID/' -e 's/IDentity/Identity/' -e 's/EntityId/EntityID/' -e 's/Api/API/' -e 's/Qr/QR/' -e 's/Totp/TOTP/' -e 's/Mfa/MFA/' -e 's/Pingid/PingID/' -e 's/namespaceId/namespaceID/' -e 's/Ttl/TTL/' -e 's/BoundCidrs/BoundCIDRs/' -e 's/SPDX-License-IDentifier/SPDX-License-Identifier/' helper/identity/types.pb.go helper/identity/mfa/types.pb.go helper/storagepacker/types.pb.go sdk/plugin/pb/backend.pb.go sdk/logical/identity.pb.go
 
-	# This will inject the sentinel struct tags as decorated in the proto files.
-	protoc-go-inject-tag -input=./helper/identity/types.pb.go
-	protoc-go-inject-tag -input=./helper/identity/mfa/types.pb.go
-
 .PHONY: fmtcheck
 fmtcheck: LINT_FLAGS+="-c=$(CURDIR)/.golangci.fmt.yml"
 fmtcheck: lint
@@ -255,16 +251,7 @@ influxdb-database-plugin:
 postgresql-database-plugin:
 	@CGO_ENABLED=0 $(GO_CMD) build -o bin/postgresql-database-plugin ./plugins/database/postgresql/postgresql-database-plugin
 
-mssql-database-plugin:
-	@CGO_ENABLED=0 $(GO_CMD) build -o bin/mssql-database-plugin ./plugins/database/mssql/mssql-database-plugin
-
-hana-database-plugin:
-	@CGO_ENABLED=0 $(GO_CMD) build -o bin/hana-database-plugin ./plugins/database/hana/hana-database-plugin
-
-mongodb-database-plugin:
-	@CGO_ENABLED=0 $(GO_CMD) build -o bin/mongodb-database-plugin ./plugins/database/mongodb/mongodb-database-plugin
-
-.PHONY: bin default prep test vet bootstrap ci-bootstrap fmt fmtcheck mysql-database-plugin mysql-legacy-database-plugin cassandra-database-plugin influxdb-database-plugin postgresql-database-plugin mssql-database-plugin hana-database-plugin mongodb-database-plugin ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-openbao-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
+.PHONY: bin default prep test vet bootstrap ci-bootstrap fmt fmtcheck mysql-database-plugin mysql-legacy-database-plugin cassandra-database-plugin influxdb-database-plugin postgresql-database-plugin ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-openbao-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
 
 .NOTPARALLEL: ember-dist ember-dist-dev
 
@@ -360,7 +347,6 @@ tag-api:
 sync-deps-gkw:
 	@:$(if $(GO_KMS_WRAPPING),,$(error please set the GO_KMS_WRAPPING environment variable to the go-kms-wrapping repository to update))
 	sh -c "'$(CURDIR)/scripts/sync-deps-gkw.sh'"
-
 
 .PHONY: tag-sdk
 tag-sdk:

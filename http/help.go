@@ -29,7 +29,12 @@ func wrapHelpHandler(h http.Handler, core *vault.Core) http.Handler {
 func handleHelp(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.URL.Path, "/v1/") {
 		//nolint:staticcheck // User facing error
-		respondError(w, http.StatusNotFound, errors.New("Missing /v1/ prefix in path. Use vault path-help command to retrieve API help for paths"))
+		respondError(w, http.StatusNotFound, errors.New("Missing /v1/ prefix in path. Use the bao path-help command to retrieve API help for paths"))
+		return
+	}
+
+	if core.HAEnabled() && core.Standby() && !core.StandbyReadsEnabled() {
+		forwardRequest(core, w, r)
 		return
 	}
 

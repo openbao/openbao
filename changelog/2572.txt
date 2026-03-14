@@ -1,0 +1,3 @@
+```release-note:bug
+http: Forward help requests to active node when unable to handle them on standby with read requests handling disabled.
+```

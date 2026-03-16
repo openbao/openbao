@@ -555,6 +555,25 @@ func (c *Core) requireVerification(rotationConfig *SealConfig, rotationResult *R
 	return rotationResult, nil
 }
 
+// RotateBarrierRootKey rotates the barrier root key, doesn't require reconstruction
+// of the unseal key to perform rotation, rotates root key independent from recovery
+// key shares or Shamir (KEK).
+func (c *Core) RotateBarrierRootKey(ctx context.Context) error {
+	c.rotationLock.Lock()
+	defer c.rotationLock.Unlock()
+
+	newRootKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+	if err != nil {
+		return fmt.Errorf("failed to generate new root key: %v", err)
+	}
+
+	if err := c.seal.SetStoredKeys(ctx, [][]byte{newRootKey}); err != nil {
+		return fmt.Errorf("failed to store keys: %v", err)
+	}
+
+	return c.barrier.RotateRootKey(ctx, newRootKey)
+}
+
 // VerifyRotation verifies the progress of the verification of the rotation.
 func (c *Core) VerifyRotation(ctx context.Context, key []byte, nonce string, recovery bool) (ret *RekeyVerifyResult, retErr logical.HTTPCodedError) {
 	c.rotationLock.Lock()

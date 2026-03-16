@@ -4,14 +4,22 @@
  */
 
 import { computed } from '@ember/object';
-import Route from '@ember/routing/route';
-import ClusterRoute from 'vault/mixins/cluster-route';
-import ModelBoundaryRoute from 'vault/mixins/model-boundary-route';
+import ClusterBaseRoute from '../cluster-base';
+import { inject as service } from '@ember/service';
 
-export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
+export default ClusterBaseRoute.extend({
+  store: service(),
   modelTypes: computed(function () {
     return ['capabilities', 'identity/group', 'identity/group-alias', 'identity/alias'];
   }),
+
+  deactivate() {
+    this._super(...arguments);
+    this.modelTypes.forEach((type) => {
+      this.store.unloadAll(type);
+    });
+  },
+
   model() {
     return {};
   },

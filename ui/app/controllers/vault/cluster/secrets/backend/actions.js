@@ -4,12 +4,23 @@
  */
 
 import Controller from '@ember/controller';
-import BackendCrumbMixin from 'vault/mixins/backend-crumb';
+import { computed } from '@ember/object';
 
-export default Controller.extend(BackendCrumbMixin, {
+export default Controller.extend({
   queryParams: {
     selectedAction: 'action',
   },
+
+  backendCrumb: computed('backend', function () {
+    const backend = this.backend;
+
+    return {
+      label: backend,
+      text: backend,
+      path: 'vault.cluster.secrets.backend.list-root',
+      model: backend,
+    };
+  }),
 
   actions: {
     refresh: function () {

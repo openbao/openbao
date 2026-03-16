@@ -1,0 +1,6 @@
+```release-note:bug
+core/seal: Fix barrier root key rotation indicating unseal key rotation while also unnecessary overwriting `core/seal-config` entry when running Auto Seal.
+```
+```release-note:bug
+command: Fix `bao rotate-keys` command returning unseal keys rotation information when running Auto Seal.
+```

@@ -561,16 +561,6 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 		return logical.CodedError(http.StatusInternalServerError, "failed to save rekey seal configuration: %v", err)
 	}
 
-	// Write to the canary path, which will force a synchronous truing during
-	// replication
-	if err := c.barrier.Put(ctx, &logical.StorageEntry{
-		Key:   coreKeyringCanaryPath,
-		Value: []byte(c.rootRotationConfig.Nonce),
-	}); err != nil {
-		c.logger.Error("error saving keyring canary", "error", err)
-		return logical.CodedError(http.StatusInternalServerError, "failed to save keyring canary: %v", err)
-	}
-
 	c.rootRotationConfig.RotationProgress = nil
 
 	return nil
@@ -761,16 +751,6 @@ func (c *Core) performRecoveryRekey(ctx context.Context, newRootKey []byte) logi
 	if err := c.seal.SetRecoveryConfig(ctx, c.recoveryRotationConfig); err != nil {
 		c.logger.Error("error saving rekey seal configuration", "error", err)
 		return logical.CodedError(http.StatusInternalServerError, "failed to save rekey seal configuration: %v", err)
-	}
-
-	// Write to the canary path, which will force a synchronous truing during
-	// replication
-	if err := c.barrier.Put(ctx, &logical.StorageEntry{
-		Key:   coreKeyringCanaryPath,
-		Value: []byte(c.recoveryRotationConfig.Nonce),
-	}); err != nil {
-		c.logger.Error("error saving keyring canary", "error", err)
-		return logical.CodedError(http.StatusInternalServerError, "failed to save keyring canary: %v", err)
 	}
 
 	c.recoveryRotationConfig.RotationProgress = nil

@@ -5,9 +5,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.1
 // - protoc             v7.34.0
-// source: vault/request_forwarding_service.proto
+// source: vault/forwarding/request_forwarding_service.proto
 
-package vault
+package forwarding
 
 import (
 	context "context"
@@ -23,8 +23,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RequestForwarding_ForwardRequest_FullMethodName = "/vault.RequestForwarding/ForwardRequest"
-	RequestForwarding_Echo_FullMethodName           = "/vault.RequestForwarding/Echo"
+	RequestForwarding_ForwardRequest_FullMethodName = "/forwarding.RequestForwarding/ForwardRequest"
+	RequestForwarding_Echo_FullMethodName           = "/forwarding.RequestForwarding/Echo"
 )
 
 // RequestForwardingClient is the client API for RequestForwarding service.
@@ -146,7 +146,7 @@ func _RequestForwarding_Echo_Handler(srv interface{}, ctx context.Context, dec f
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var RequestForwarding_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "vault.RequestForwarding",
+	ServiceName: "forwarding.RequestForwarding",
 	HandlerType: (*RequestForwardingServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -159,5 +159,5 @@ var RequestForwarding_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "vault/request_forwarding_service.proto",
+	Metadata: "vault/forwarding/request_forwarding_service.proto",
 }

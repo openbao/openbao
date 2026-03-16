@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -38,6 +39,7 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/command/server"
+	fwd "github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/locking"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -55,11 +57,14 @@ import (
 	sr "github.com/openbao/openbao/serviceregistration"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
+	"github.com/openbao/openbao/vault/forwarding"
 	"github.com/openbao/openbao/vault/quotas"
 	"github.com/openbao/openbao/vault/routing"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	"zgo.at/zcache/v2"
 )
 
@@ -478,7 +483,7 @@ type Core struct {
 	// Current cluster leader values
 	clusterLeaderParams atomic.Pointer[ClusterLeaderParams]
 	// Info on cluster members
-	clusterPeerClusterAddrsCache *zcache.Cache[string, nodeHAConnectionInfo]
+	clusterPeerClusterAddrsCache *zcache.Cache[string, forwarding.NodeHAConnectionInfo]
 	// The context for the client
 	rpcClientConnContext context.Context
 	// The function for canceling the client connection
@@ -486,7 +491,7 @@ type Core struct {
 	// The grpc ClientConn for RPC calls
 	rpcClientConn *grpc.ClientConn
 	// The grpc forwarding client
-	rpcForwardingClient *forwardingClient
+	rpcForwardingClient *forwarding.Client
 	// The UUID used to hold the leader lock. Only set on active node
 	leaderUUID string
 
@@ -935,7 +940,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		cachingDisabled:                conf.DisableCache,
 		clusterName:                    conf.ClusterName,
 		clusterNetworkLayer:            conf.ClusterNetworkLayer,
-		clusterPeerClusterAddrsCache:   zcache.New[string, nodeHAConnectionInfo](3*clusterHeartbeatInterval, time.Second),
+		clusterPeerClusterAddrsCache:   zcache.New[string, forwarding.NodeHAConnectionInfo](3*clusterHeartbeatInterval, time.Second),
 		rawEnabled:                     conf.EnableRaw,
 		introspectionEnabled:           conf.EnableIntrospection,
 		shutdownDoneCh:                 new(atomic.Value),
@@ -2221,7 +2226,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 
 	// Perform additional cleanup upon sealing.
 	if performCleanup {
-		if raftBackend := c.getRaftBackend(); raftBackend != nil {
+		if raftBackend := c.GetRaftBackend(); raftBackend != nil {
 			if err := raftBackend.TeardownCluster(c.getClusterListener()); err != nil {
 				c.logger.Error("error stopping storage cluster", "error", err)
 				return err
@@ -2597,6 +2602,10 @@ func (c *Core) ReplicationState() consts.ReplicationState {
 
 func (c *Core) ActiveNodeReplicationState() consts.ReplicationState {
 	return consts.ReplicationState(c.activeNodeReplicationState.Load())
+}
+
+func (c *Core) SetActiveNodeReplicationState(val consts.ReplicationState) {
+	c.activeNodeReplicationState.Store(uint32(val))
 }
 
 func (c *Core) SealAccess() *SealAccess {
@@ -3661,12 +3670,12 @@ func (c *Core) GetHAPeerNodesCached() []PeerNode {
 	for itemClusterAddr, item := range c.clusterPeerClusterAddrsCache.Items() {
 		info := item.Object
 		nodes = append(nodes, PeerNode{
-			Hostname:       info.nodeInfo.Hostname,
-			APIAddress:     info.nodeInfo.ApiAddr,
+			Hostname:       info.NodeInfo.Hostname,
+			APIAddress:     info.NodeInfo.ApiAddr,
 			ClusterAddress: itemClusterAddr,
-			LastEcho:       info.lastHeartbeat,
-			Version:        info.version,
-			UpgradeVersion: info.upgradeVersion,
+			LastEcho:       info.LastHeartbeat,
+			Version:        info.Version,
+			UpgradeVersion: info.UpgradeVersion,
 		})
 	}
 	return nodes
@@ -3934,7 +3943,7 @@ func (c *Core) HAEnabled() bool {
 }
 
 func (c *Core) GetRaftConfiguration(ctx context.Context) (*raft.RaftConfigurationResponse, error) {
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 
 	if raftBackend == nil {
 		return nil, nil
@@ -3944,7 +3953,7 @@ func (c *Core) GetRaftConfiguration(ctx context.Context) (*raft.RaftConfiguratio
 }
 
 func (c *Core) GetRaftAutopilotState(ctx context.Context) (*raft.AutopilotState, error) {
-	raftBackend := c.getRaftBackend()
+	raftBackend := c.GetRaftBackend()
 	if raftBackend == nil {
 		return nil, nil
 	}
@@ -3957,4 +3966,209 @@ func (c *Core) DetectStateLockDeadlocks() bool {
 		return true
 	}
 	return false
+}
+
+// Starts the listeners and servers necessary to handle forwarded requests
+func (c *Core) startForwarding(ctx context.Context) error {
+	c.logger.Debug("request forwarding setup function")
+	defer c.logger.Debug("leaving request forwarding setup function")
+
+	// Clean up in case we have transitioned from a client to a server
+	c.requestForwardingConnectionLock.Lock()
+	c.clearForwardingClients()
+	c.requestForwardingConnectionLock.Unlock()
+
+	clusterListener := c.getClusterListener()
+	if c.ha == nil || clusterListener == nil {
+		c.logger.Debug("request forwarding not setup")
+		return nil
+	}
+
+	fwdCfg := forwarding.ForwardingConfig{
+		HA:                           c.ha,
+		ClusterHandler:               c.clusterHandler,
+		ClusterHeartbeatInterval:     c.clusterHeartbeatInterval,
+		RaftFollowerStates:           c.raftFollowerStates,
+		ClusterPeerClusterAddrsCache: c.clusterPeerClusterAddrsCache,
+	}
+
+	handler, err := forwarding.NewRequestForwardingHandler(c, fwdCfg, clusterListener.Server())
+	if err != nil {
+		return err
+	}
+
+	clusterListener.AddHandler(consts.RequestForwardingALPN, handler)
+
+	return nil
+}
+
+func (c *Core) stopForwarding() {
+	clusterListener := c.getClusterListener()
+	if clusterListener != nil {
+		clusterListener.StopHandler(consts.RequestForwardingALPN)
+	}
+}
+
+// refreshRequestForwardingConnection ensures that the client/transport are
+// alive and that the current active address value matches the most
+// recently-known address.
+func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAddr string) error {
+	c.logger.Debug("refreshing forwarding connection", "clusterAddr", clusterAddr)
+	defer c.logger.Debug("done refreshing forwarding connection", "clusterAddr", clusterAddr)
+
+	c.requestForwardingConnectionLock.Lock()
+	defer c.requestForwardingConnectionLock.Unlock()
+
+	// Clean things up first
+	c.clearForwardingClients()
+
+	// If we don't have anything to connect to, just return
+	if clusterAddr == "" {
+		return nil
+	}
+
+	clusterURL, err := url.Parse(clusterAddr)
+	if err != nil {
+		c.logger.Error("error parsing cluster address attempting to refresh forwarding connection", "error", err)
+		return err
+	}
+
+	parsedCert := c.localClusterParsedCert.Load()
+	if parsedCert == nil {
+		c.logger.Error("no request forwarding cluster certificate found")
+		return errors.New("no request forwarding cluster certificate found")
+	}
+
+	clusterListener := c.getClusterListener()
+	if clusterListener == nil {
+		c.logger.Error("no cluster listener configured")
+		return nil
+	}
+
+	clusterListener.AddClient(consts.RequestForwardingALPN, forwarding.NewRequestForwardingClusterClient(c))
+
+	// Set up grpc forwarding handling
+	// It's not really insecure, but we have to dial manually to get the
+	// ALPN header right. It's just "insecure" because GRPC isn't managing
+	// the TLS state.
+	dctx, cancelFunc := context.WithCancel(ctx)
+	c.rpcClientConn, err = grpc.NewClient(fmt.Sprintf("passthrough:///%s", clusterURL.Host),
+		grpc.WithContextDialer(clusterListener.GetContextDialerFunc(ctx, consts.RequestForwardingALPN)),
+		grpc.WithTransportCredentials(
+			insecure.NewCredentials(), // it's not, we handle it in the dialer
+		),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time: 2 * c.clusterHeartbeatInterval,
+		}),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(math.MaxInt32),
+			grpc.MaxCallSendMsgSize(math.MaxInt32),
+		))
+	if err != nil {
+		cancelFunc()
+		c.logger.Error("err setting up forwarding rpc client", "error", err)
+		return err
+	}
+	c.rpcClientConnContext = dctx
+	c.rpcClientConnCancelFunc = cancelFunc
+	c.rpcForwardingClient = forwarding.NewClient(
+		c,
+		forwarding.NewRequestForwardingClient(c.rpcClientConn),
+		time.NewTicker(c.clusterHeartbeatInterval),
+		dctx,
+	)
+	c.rpcForwardingClient.StartHeartbeat()
+
+	return nil
+}
+
+func (c *Core) clearForwardingClients() {
+	c.logger.Debug("clearing forwarding clients")
+	defer c.logger.Debug("done clearing forwarding clients")
+
+	if c.rpcClientConnCancelFunc != nil {
+		c.rpcClientConnCancelFunc()
+		c.rpcClientConnCancelFunc = nil
+	}
+	if c.rpcClientConn != nil {
+		if err := c.rpcClientConn.Close(); err != nil {
+			c.logger.Warn("error closing rpc client connection", "error", err)
+		}
+		c.rpcClientConn = nil
+	}
+
+	c.rpcClientConnContext = nil
+	c.rpcForwardingClient = nil
+
+	clusterListener := c.getClusterListener()
+	if clusterListener != nil {
+		clusterListener.RemoveClient(consts.RequestForwardingALPN)
+	}
+	c.clusterLeaderParams.Store(nil)
+}
+
+// ForwardRequest forwards a given request to the active node and returns the
+// response.
+func (c *Core) ForwardRequest(req *http.Request) (int, http.Header, []byte, error) {
+	c.requestForwardingConnectionLock.RLock()
+	defer c.requestForwardingConnectionLock.RUnlock()
+
+	if c.rpcForwardingClient == nil {
+		return 0, nil, nil, ErrCannotForward
+	}
+
+	defer metrics.MeasureSince([]string{"ha", "rpc", "client", "forward"}, time.Now())
+
+	origPath := req.URL.Path
+	defer func() {
+		req.URL.Path = origPath
+	}()
+
+	req.URL.Path = req.Context().Value("original_request_path").(string)
+
+	freq, err := fwd.GenerateForwardedRequest(req)
+	if err != nil {
+		c.logger.Error("error creating forwarding RPC request", "error", err)
+		return 0, nil, nil, errors.New("error creating forwarding RPC request")
+	}
+	if freq == nil {
+		c.logger.Error("got nil forwarding RPC request")
+		return 0, nil, nil, errors.New("got nil forwarding RPC request")
+	}
+	resp, err := c.rpcForwardingClient.ForwardRequest(req.Context(), freq)
+	if err != nil {
+		metrics.IncrCounter([]string{"ha", "rpc", "client", "forward", "errors"}, 1)
+		c.logger.Error("error during forwarded RPC request", "error", err)
+		return 0, nil, nil, errors.New("error during forwarding RPC request")
+	}
+
+	var header http.Header
+	if resp.HeaderEntries != nil {
+		header = make(http.Header)
+		for k, v := range resp.HeaderEntries {
+			header[k] = v.Values
+		}
+	}
+
+	return int(resp.StatusCode), header, resp.Body, nil
+}
+
+func (c *Core) EffectiveSDKVersion() string {
+	return c.effectiveSDKVersion
+}
+
+func (c *Core) LocalClusterCert() *[]byte {
+	return c.localClusterCert.Load()
+}
+
+func (c *Core) LocalClusterPrivateKey() *ecdsa.PrivateKey {
+	return c.localClusterPrivateKey.Load()
+}
+
+func (c *Core) LocalClusterParsedCert() *x509.Certificate {
+	return c.localClusterParsedCert.Load()
+}
+
+func (c *Core) RedirectAddr() string {
+	return c.redirectAddr
 }

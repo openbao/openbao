@@ -3,11 +3,11 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/openbao/openbao/vault";
+option go_package = "github.com/openbao/openbao/vault/forwarding";
 
 import "helper/forwarding/types.proto";
 
-package vault;
+package forwarding;
 
 message EchoRequest {
 	string message = 1;

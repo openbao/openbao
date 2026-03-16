@@ -4,12 +4,19 @@
  */
 
 import { inject as service } from '@ember/service';
-import Route from '@ember/routing/route';
-import ClusterRoute from 'vault/mixins/cluster-route';
-import ListRoute from 'core/mixins/list-route';
+import ClusterBaseRoute from '../../cluster-base';
 
-export default Route.extend(ClusterRoute, ListRoute, {
+export default ClusterBaseRoute.extend({
   store: service(),
+
+  queryParams: {
+    page: {
+      refreshModel: true,
+    },
+    pageFilter: {
+      refreshModel: true,
+    },
+  },
 
   shouldReturnEmptyModel(policyType) {
     return policyType !== 'acl';
@@ -56,6 +63,7 @@ export default Route.extend(ClusterRoute, ListRoute, {
   resetController(controller, isExiting) {
     this._super(...arguments);
     if (isExiting) {
+      controller.set('pageFilter', null);
       controller.set('filter', '');
     }
   },

@@ -1,14 +1,13 @@
 /**
- * Copyright (c) HashiCorp, Inc.
+ * Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { inject as service } from '@ember/service';
 import Controller from '@ember/controller';
+import { inject as service } from '@ember/service';
 import removeRecord from 'vault/utils/remove-record';
 
 export default Controller.extend({
-  namespaceService: service('namespace'),
   store: service(),
 
   cleanupModel() {
@@ -29,15 +28,5 @@ export default Controller.extend({
       removeRecord(this.store, model);
       model.destroy();
     }
-  },
-
-  actions: {
-    onSave({ saveType }) {
-      if (saveType === 'save') {
-        // fetch new namespaces for the namespace picker
-        this.namespaceService.findNamespacesForUser.perform();
-        return this.transitionToRoute('vault.cluster.access.namespaces.index');
-      }
-    },
   },
 });

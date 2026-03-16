@@ -4,12 +4,11 @@
  */
 
 import { inject as service } from '@ember/service';
-import Route from '@ember/routing/route';
-import ClusterRoute from 'vault/mixins/cluster-route';
+import ClusterBaseRoute from '../cluster-base';
 
 const ALLOWED_TYPES = ['acl', 'egp', 'rgp'];
 
-export default Route.extend(ClusterRoute, {
+export default ClusterBaseRoute.extend({
   version: service(),
 
   model(params) {

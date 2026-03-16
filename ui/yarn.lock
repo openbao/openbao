@@ -10818,16 +10818,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"broccoli-sri-hash@meirish/broccoli-sri-hash#rooturl, broccoli-sri-hash@npm:^2.1.0":
+"broccoli-sri-hash@npm:2.1.2, broccoli-sri-hash@npm:^2.1.0":
   version: 2.1.2
-  resolution: "broccoli-sri-hash@https://github.com/meirish/broccoli-sri-hash.git#commit=5ebad6f345c38d45461676c7a298a0b61be4a39d"
+  resolution: "broccoli-sri-hash@npm:2.1.2"
   dependencies:
     broccoli-caching-writer: "npm:^2.2.0"
     mkdirp: "npm:^0.5.1"
     rsvp: "npm:^3.1.0"
     sri-toolbox: "npm:^0.2.0"
     symlink-or-copy: "npm:^1.0.1"
-  checksum: 10c0/a17d6e3d79ed6becc1cae2306a108a71d07048cd64d9cb800837a27066b180418fd682181149bd281f0f43154820cb1aac164d970918ba5653ba459b5fa9a898
+  checksum: 10c0/b957e96ef14f9fa7f7d28349bdc2af2123e6dac88fb3c7b7bcc85fc6567128c377587a821bed0e690f078aa8cbd8022905c335ae16b0d64bf372b191b8fe03e4
   languageName: node
   linkType: hard
 
@@ -14633,12 +14633,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-cli-sri@meirish/ember-cli-sri#rooturl":
+"ember-cli-sri@npm:2.1.0":
   version: 2.1.0
-  resolution: "ember-cli-sri@https://github.com/meirish/ember-cli-sri.git#commit=1c0ff776a61f09121d1ea69ce16e4653da5e1efa"
+  resolution: "ember-cli-sri@npm:2.1.0"
   dependencies:
     broccoli-sri-hash: "npm:^2.1.0"
-  checksum: 10c0/4d99021bd958f9fb1458f9253cf7e3febf633acfee87f223ba9ce8d9709458c0f0b07b14794eb8ba3991063cebab72e1c52d94c0e561c0c040a1fc2a556e12ed
+  checksum: 10c0/dfa5163d0fb733a63e6d5269f9c3efeb31c486993e847d317636f6c0f49fab46991fd985b0ecc5fa24ec1d2dd99c6e69984ff52d14d5930b5c553e4d78fe9ce9
   languageName: node
   linkType: hard
 
@@ -28100,7 +28100,7 @@ __metadata:
     babel-plugin-inline-json-import: "npm:^0.3.2"
     base64-js: "npm:^1.3.1"
     broccoli-asset-rev: "npm:^3.0.0"
-    broccoli-sri-hash: "meirish/broccoli-sri-hash#rooturl"
+    broccoli-sri-hash: "npm:2.1.2"
     codemirror: "npm:^5.58.2"
     columnify: "npm:^1.5.4"
     d3-axis: "npm:^1.0.8"
@@ -28130,7 +28130,7 @@ __metadata:
     ember-cli-mirage: "npm:2.4.0"
     ember-cli-page-object: "npm:1.17.10"
     ember-cli-sass: "npm:11.0.1"
-    ember-cli-sri: "meirish/ember-cli-sri#rooturl"
+    ember-cli-sri: "npm:2.1.0"
     ember-cli-string-helpers: "npm:6.1.0"
     ember-cli-terser: "npm:^4.0.2"
     ember-cli-typescript: "npm:^5.2.1"

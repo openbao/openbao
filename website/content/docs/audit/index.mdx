@@ -171,6 +171,12 @@ docs](/api-docs/system/audit) for more details.
 - `prefix` `(string: "")` - A customizable string prefix to write before the
   actual log line.
 
+- `skip_test` `(string: "")` When set to `"true"`, OpenBao will not send an
+  initial test probe request to the audit log destination when enabling the
+  audit device. By default, OpenBao tests the connection to the destination
+  server on mount, and if the destination is unreachable, the audit device fails
+  to enable which can block unsealing.
+
   :::warning
 
   Note: The `prefix` option lets operators write semi-arbitrary content to the

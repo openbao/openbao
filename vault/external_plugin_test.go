@@ -171,17 +171,17 @@ func TestCore_EnableExternalPlugin_MultipleVersions(t *testing.T) {
 				t.Fatalf("missing mount, match: %q", match)
 			}
 
-			raw, _ := c.router.root.Get(match)
-			if raw.(*routeEntry).mountEntry.Version != tc.expectedVersion {
-				t.Errorf("Expected mount to be version %s but got %s", tc.expectedVersion, raw.(*routeEntry).mountEntry.Version)
+			re, _ := c.router.Get(match)
+			if re.MountEntry.Version != tc.expectedVersion {
+				t.Errorf("Expected mount to be version %s but got %s", tc.expectedVersion, re.MountEntry.Version)
 			}
 
-			if raw.(*routeEntry).mountEntry.RunningVersion != tc.expectedVersion {
-				t.Errorf("Expected mount running version to be %s but got %s", tc.expectedVersion, raw.(*routeEntry).mountEntry.RunningVersion)
+			if re.MountEntry.RunningVersion != tc.expectedVersion {
+				t.Errorf("Expected mount running version to be %s but got %s", tc.expectedVersion, re.MountEntry.RunningVersion)
 			}
 
-			if raw.(*routeEntry).mountEntry.RunningSha256 == "" {
-				t.Errorf("Expected RunningSha256 to be present: %+v", raw.(*routeEntry).mountEntry.RunningSha256)
+			if re.MountEntry.RunningSha256 == "" {
+				t.Errorf("Expected RunningSha256 to be present: %+v", re.MountEntry.RunningSha256)
 			}
 		})
 	}
@@ -591,9 +591,9 @@ func TestCore_EnableExternalPlugin_NoVersionsOkay(t *testing.T) {
 				t.Fatalf("missing mount, match: %q", match)
 			}
 
-			raw, _ := c.router.root.Get(match)
-			if raw.(*routeEntry).mountEntry.Version != "" {
-				t.Errorf("Expected mount to be empty version but got %s", raw.(*routeEntry).mountEntry.Version)
+			re, _ := c.router.Get(match)
+			if re.MountEntry.Version != "" {
+				t.Errorf("Expected mount to be empty version but got %s", re.MountEntry.Version)
 			}
 		})
 	}

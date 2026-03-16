@@ -22,6 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault/quotas"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -114,7 +115,7 @@ func TestCore_Invalidate_Namespaces(t *testing.T) {
 	testCore_Invalidate_sneakValueAroundCache(t, c, newEntry)
 
 	// 2.2 add mount to namespace
-	newEntry, err = logical.StorageEntryJSON("namespaces/"+ns.UUID+"/core/mounts/666666666-6666-6666-6666-6666666666666", MountEntry{
+	newEntry, err = logical.StorageEntryJSON("namespaces/"+ns.UUID+"/core/mounts/666666666-6666-6666-6666-6666666666666", routing.MountEntry{
 		Table:       "mounts",
 		Type:        "kv",
 		Path:        "my-path",
@@ -210,10 +211,10 @@ func TestCore_Invalidate_Namespaces_NonTransactional(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, storageEntry, "expected mount table to be written at %s", storagePath)
 
-	mountTable := new(MountTable)
+	mountTable := new(routing.MountTable)
 	require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountTable))
 
-	mountTable.Entries = append(mountTable.Entries, &MountEntry{
+	mountTable.Entries = append(mountTable.Entries, &routing.MountEntry{
 		Table:       "mounts",
 		Type:        "kv",
 		Path:        "my-path",
@@ -471,10 +472,10 @@ func TestCore_Invalidate_Audit(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, entry, "expected audit table to be written")
 
-	auditTable := &MountTable{}
+	auditTable := &routing.MountTable{}
 	require.NoError(t, jsonutil.DecodeJSON(entry.Value, auditTable), "failed to decode audit table")
 
-	auditTable.Entries = make([]*MountEntry, 0)
+	auditTable.Entries = make([]*routing.MountEntry, 0)
 
 	data, err := jsonutil.EncodeJSON(auditTable)
 	require.NoError(t, err)
@@ -638,7 +639,7 @@ func TestCore_Invalidate_SecretMount(t *testing.T) {
 			require.EqualValues(t, 2, readCallCount.Load(), "expected two read calls")
 
 			// 9. Manipulate mount table in storage: taint mount
-			mountEntry := new(MountEntry)
+			mountEntry := new(routing.MountEntry)
 			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountEntry))
 			mountEntry.Tainted = true
 
@@ -792,7 +793,7 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, storageEntry, "expected mount table to be written at %s", storagePath)
 
-			mountTable := new(MountTable)
+			mountTable := new(routing.MountTable)
 			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountTable))
 
 			require.Equal(t, "my-kv-mount/", mountTable.Entries[len(mountTable.Entries)-1].Path)
@@ -960,7 +961,7 @@ func TestCore_Invalidate_AuthMount(t *testing.T) {
 			require.EqualValues(t, 2, readCallCount.Load(), "expected two read calls")
 
 			// 9. Manipulate mount table in storage: taint mount
-			mountEntry := new(MountEntry)
+			mountEntry := new(routing.MountEntry)
 			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountEntry))
 			mountEntry.Tainted = true
 
@@ -1068,7 +1069,7 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, storageEntry, "expected mount table to be written at %s", storagePath)
 
-			mountTable := new(MountTable)
+			mountTable := new(routing.MountTable)
 			require.NoError(t, jsonutil.DecodeJSON(storageEntry.Value, mountTable))
 
 			require.Equal(t, "my-auth/", mountTable.Entries[len(mountTable.Entries)-1].Path)

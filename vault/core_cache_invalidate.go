@@ -240,7 +240,6 @@ func isTransactionalMountPath(key string) bool {
 
 func isKeyringPath(key string) bool {
 	return key == barrierSealConfigPath ||
-		key == coreKeyringCanaryPath ||
 		key == barrier.KeyringPath ||
 		key == barrier.LegacyRootKeyPath ||
 		key == recoverySealConfigPath ||
@@ -252,7 +251,7 @@ func isKeyringPath(key string) bool {
 }
 
 func isMissedMountKey(key string) bool {
-	return strings.HasPrefix(key, credentialBarrierPrefix) ||
+	return strings.HasPrefix(key, barrier.CredentialBarrierPrefix) ||
 		strings.HasPrefix(key, backendBarrierPrefix) ||
 		strings.HasPrefix(key, auditBarrierPrefix)
 }

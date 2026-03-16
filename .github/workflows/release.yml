@@ -89,7 +89,7 @@ jobs:
           git tag "$nightly_tag"
 
       - name: Node setup
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version-file: "./ui/package.json"
 
@@ -168,7 +168,7 @@ jobs:
 
       - name: Upload distribution source tarball artifact
         if: inputs.dodistrelease
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: dist-tarball
           path: '*.xz'
@@ -246,33 +246,33 @@ jobs:
           key: ${{ github.ref }}-ui
 
       # Supports syft/sbom generation
-      - uses: anchore/sbom-action/download-syft@17ae1740179002c89186b61233e0f892c3118b11 # v0.23.0
+      - uses: anchore/sbom-action/download-syft@57aae528053a48a3f6235f2d9461b05fbcb7366d # v0.23.1
         if: inputs.dogorelease
 
         # Supports Buildx
       - name: Qemu Setup
         if: inputs.dogorelease
-        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 
       - name: Buildx Setup
         if: inputs.dogorelease
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Cosign Install
         if: inputs.dogorelease
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
 
       - name: GPG Import
         if: inputs.dogorelease
         id: gpg-import
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}
 
       - name: "Docker Login: ghcr.io"
         if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -280,14 +280,14 @@ jobs:
 
       - name: "Docker Login: docker.io"
         if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: "Docker Login: quay.io"
         if: inputs.dogorelease && (startsWith(github.ref, 'refs/tags/') || inputs.nightly)
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
@@ -335,7 +335,7 @@ jobs:
 
       - name: Upload deb packages artifact
         if: inputs.dodebrelease
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: deb-packages-${{ matrix.release_os }}
           path: 'dist/*.deb'
@@ -344,7 +344,7 @@ jobs:
       
       - name: Upload rpm packages artifact
         if: inputs.dorpmrelease
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: rpm-packages-${{ matrix.release_os }}
           path: 'dist/*.rpm'
@@ -415,7 +415,7 @@ jobs:
 
       - name: GPG Import
         id: gpg-import
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}

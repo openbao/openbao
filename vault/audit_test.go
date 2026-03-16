@@ -23,6 +23,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 func TestAudit_ReadOnlyViewDuringMount(t *testing.T) {
@@ -39,7 +40,7 @@ func TestAudit_ReadOnlyViewDuringMount(t *testing.T) {
 		return factory(ctx, config)
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: auditTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -54,7 +55,7 @@ func TestCore_EnableAudit(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
 	c.auditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: auditTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -106,9 +107,9 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 		return nil, errors.New("failing enabling")
 	}
 
-	if err := c.persistAudit(context.Background(), &MountTable{
+	if err := c.persistAudit(context.Background(), &routing.MountTable{
 		Type: auditTableType,
-		Entries: []*MountEntry{
+		Entries: []*routing.MountEntry{
 			{
 				Table: auditTableType,
 				Path:  "noop/",
@@ -169,9 +170,9 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 		return nil, errors.New("failing enabling")
 	}
 
-	if err := c.persistAudit(context.Background(), &MountTable{
+	if err := c.persistAudit(context.Background(), &routing.MountTable{
 		Type: auditTableType,
-		Entries: []*MountEntry{
+		Entries: []*routing.MountEntry{
 			{
 				Table:       auditTableType,
 				Path:        "noop/",
@@ -179,7 +180,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 				UUID:        "abcd",
 				Accessor:    "noop-abcd",
 				NamespaceID: namespace.RootNamespaceID,
-				namespace:   namespace.RootNamespace,
+				Namespace:   namespace.RootNamespace,
 			},
 			{
 				Table:       auditTableType,
@@ -188,7 +189,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 				UUID:        "bcde",
 				Accessor:    "noop-bcde",
 				NamespaceID: namespace.RootNamespaceID,
-				namespace:   namespace.RootNamespace,
+				Namespace:   namespace.RootNamespace,
 			},
 		},
 	}, false); err != nil {
@@ -208,7 +209,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 	if rawLocal == nil {
 		t.Fatal("expected non-nil local audit")
 	}
-	localAuditTable := &MountTable{}
+	localAuditTable := &routing.MountTable{}
 	if err := jsonutil.DecodeJSON(rawLocal.Value, localAuditTable); err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +229,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 	if rawLocal == nil {
 		t.Fatal("expected non-nil local audit")
 	}
-	localAuditTable = &MountTable{}
+	localAuditTable = &routing.MountTable{}
 	if err := jsonutil.DecodeJSON(rawLocal.Value, localAuditTable); err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +260,7 @@ func TestCore_DisableAudit(t *testing.T) {
 		t.Fatalf("existed: %v; err: %v", existed, err)
 	}
 
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		Table: auditTableType,
 		Path:  "foo",
 		Type:  "noop",
@@ -342,7 +343,7 @@ func TestDefaultAuditTable(t *testing.T) {
 	verifyDefaultAuditTable(t, table)
 }
 
-func verifyDefaultAuditTable(t *testing.T, table *MountTable) {
+func verifyDefaultAuditTable(t *testing.T, table *routing.MountTable) {
 	if len(table.Entries) != 0 {
 		t.Fatalf("bad: %v", table.Entries)
 	}

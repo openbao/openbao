@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/kr/pretty"
@@ -79,7 +78,6 @@ type AgentCommand struct {
 	tlsReloadFuncs     []reloadutil.ReloadFunc
 
 	logWriter io.Writer
-	logGate   *gatedwriter.Writer
 	logger    hclog.Logger
 
 	// Telemetry object
@@ -180,11 +178,7 @@ func (c *AgentCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Create a logger. We wrap it in a gated writer so that it doesn't
-	// start logging too early.
-	c.logGate = gatedwriter.NewWriter(os.Stderr)
-	c.logWriter = c.logGate
-
+	c.logWriter = os.Stderr
 	if c.logFlags.flagCombineLogs {
 		c.logWriter = os.Stdout
 	}
@@ -223,11 +217,6 @@ func (c *AgentCommand) Run(args []string) int {
 		InferLevels:              true,
 		InferLevelsWithTimestamp: true,
 	})
-
-	// release log gate if the disable-gated-logs flag is set
-	if c.logFlags.flagDisableGatedLogs {
-		c.logGate.Flush()
-	}
 
 	infoKeys := make([]string, 0, 10)
 	info := make(map[string]string)
@@ -402,7 +391,7 @@ func (c *AgentCommand) Run(args []string) int {
 
 	// Output the header that the agent has started
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> OpenBao Agent started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao Agent started!")
 	}
 
 	var leaseCache *cache.LeaseCache
@@ -773,7 +762,7 @@ func (c *AgentCommand) Run(args []string) int {
 	padding := 24
 	sort.Strings(infoKeys)
 	caser := cases.Title(language.English, cases.NoLower)
-	c.UI.Output("==> OpenBao Agent configuration:\n")
+	c.UI.Output("\n==> OpenBao Agent configuration:\n")
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
 			"%s%s: %s",
@@ -782,9 +771,6 @@ func (c *AgentCommand) Run(args []string) int {
 			info[k]))
 	}
 	c.UI.Output("")
-
-	// Release the log gate.
-	c.logGate.Flush()
 
 	// Write out the PID to the file now that server has successfully started
 	if err := c.storePidFile(config.PidFile); err != nil {

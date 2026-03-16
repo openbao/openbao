@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 // metaKeyFormatRegEx checks if a metadata key string is valid
@@ -94,7 +95,7 @@ type IdentityStore struct {
 	// operated case insensitively
 	disableLowerCasedNames bool
 
-	router        *Router
+	router        *routing.Router
 	redirectAddr  string
 	localNode     LocalNode
 	namespacer    Namespacer

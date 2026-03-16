@@ -21,6 +21,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault/cluster"
+	"github.com/openbao/openbao/vault/forwarding"
 )
 
 var clusterTestPausePeriod = 2 * time.Second
@@ -105,7 +106,7 @@ func TestCluster_ListenForRequests(t *testing.T) {
 	TestWaitActive(t, cores[0].Core)
 
 	clusterListener := cores[0].getClusterListener()
-	clusterListener.AddClient(consts.RequestForwardingALPN, &requestForwardingClusterClient{cores[0].Core})
+	clusterListener.AddClient(consts.RequestForwardingALPN, forwarding.NewRequestForwardingClusterClient(cores[0].Core))
 	addrs := cores[0].getClusterListener().Addrs()
 
 	// Use this to have a valid config after sealing since ClusterTLSConfig returns nil
@@ -160,7 +161,7 @@ func TestCluster_ListenForRequests(t *testing.T) {
 
 	// After this period it should be active again
 	TestWaitActive(t, cores[0].Core)
-	cores[0].getClusterListener().AddClient(consts.RequestForwardingALPN, &requestForwardingClusterClient{cores[0].Core})
+	cores[0].getClusterListener().AddClient(consts.RequestForwardingALPN, forwarding.NewRequestForwardingClusterClient(cores[0].Core))
 	checkListenersFunc(false, "back on active")
 
 	err = cores[0].Core.Seal(cluster.RootToken)

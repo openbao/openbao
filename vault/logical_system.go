@@ -46,6 +46,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
 	"golang.org/x/crypto/sha3"
 )
@@ -157,7 +158,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	if core.rawEnabled {
 		b.Paths = append(b.Paths, b.rawPaths()...)
 	}
-	if backend := core.getRaftBackend(); backend != nil {
+	if backend := core.GetRaftBackend(); backend != nil {
 		b.Paths = append(b.Paths, b.raftStoragePaths()...)
 	}
 
@@ -862,7 +863,7 @@ func (b *SystemBackend) handleGenerateRootDecodeTokenUpdate(ctx context.Context,
 	return &logical.Response{Data: map[string]interface{}{"token": token}}, nil
 }
 
-func (b *SystemBackend) mountInfo(ctx context.Context, entry *MountEntry) map[string]interface{} {
+func (b *SystemBackend) mountInfo(ctx context.Context, entry *routing.MountEntry) map[string]interface{} {
 	info := map[string]interface{}{
 		"type":                    entry.Type,
 		"description":             entry.Description,
@@ -881,10 +882,10 @@ func (b *SystemBackend) mountInfo(ctx context.Context, entry *MountEntry) map[st
 		"max_lease_ttl":     int64(entry.Config.MaxLeaseTTL.Seconds()),
 		"force_no_cache":    entry.Config.ForceNoCache,
 	}
-	if rawVal, ok := entry.synthesizedConfigCache.Load("audit_non_hmac_request_keys"); ok {
+	if rawVal, ok := entry.SynthesizedConfigCache.Load("audit_non_hmac_request_keys"); ok {
 		entryConfig["audit_non_hmac_request_keys"] = rawVal.([]string)
 	}
-	if rawVal, ok := entry.synthesizedConfigCache.Load("audit_non_hmac_response_keys"); ok {
+	if rawVal, ok := entry.SynthesizedConfigCache.Load("audit_non_hmac_response_keys"); ok {
 		entryConfig["audit_non_hmac_response_keys"] = rawVal.([]string)
 	}
 	// Even though empty value is valid for ListingVisibility, we can ignore
@@ -892,13 +893,13 @@ func (b *SystemBackend) mountInfo(ctx context.Context, entry *MountEntry) map[st
 	if len(entry.Config.ListingVisibility) > 0 {
 		entryConfig["listing_visibility"] = entry.Config.ListingVisibility
 	}
-	if rawVal, ok := entry.synthesizedConfigCache.Load("passthrough_request_headers"); ok {
+	if rawVal, ok := entry.SynthesizedConfigCache.Load("passthrough_request_headers"); ok {
 		entryConfig["passthrough_request_headers"] = rawVal.([]string)
 	}
-	if rawVal, ok := entry.synthesizedConfigCache.Load("allowed_response_headers"); ok {
+	if rawVal, ok := entry.SynthesizedConfigCache.Load("allowed_response_headers"); ok {
 		entryConfig["allowed_response_headers"] = rawVal.([]string)
 	}
-	if entry.Table == credentialTableType {
+	if entry.Table == routing.CredentialTableType {
 		entryConfig["token_type"] = entry.Config.TokenType.String()
 	}
 	if entry.Config.UserLockoutConfig != nil {
@@ -937,7 +938,7 @@ func (b *SystemBackend) handleMountTable(ctx context.Context, req *logical.Reque
 
 	for _, entry := range b.Core.mounts.Entries {
 		// Only show entries for current namespace
-		if entry.Namespace().Path != ns.Path {
+		if entry.Namespace.Path != ns.Path {
 			continue
 		}
 
@@ -965,8 +966,8 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	externalEntropyAccess := data.Get("external_entropy_access").(bool)
 	options := data.Get("options").(map[string]string)
 
-	var config MountConfig
-	var apiConfig APIMountConfig
+	var config routing.MountConfig
+	var apiConfig routing.APIMountConfig
 
 	configMap := data.Get("config").(map[string]interface{})
 	// Augmenting configMap for some config options to treat them as comma separated entries
@@ -1094,8 +1095,8 @@ func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, d
 	}
 
 	// Create the mount entry
-	me := &MountEntry{
-		Table:                 mountTableType,
+	me := &routing.MountEntry{
+		Table:                 routing.MountTableType,
 		Path:                  path,
 		Type:                  logicalType,
 		Description:           description,
@@ -1293,8 +1294,8 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 	}
 
 	// Check that target is a valid auth mount, if source is an auth mount
-	if strings.HasPrefix(fromPathDetails.MountPath, credentialRoutePrefix) {
-		if !strings.HasPrefix(toPathDetails.MountPath, credentialRoutePrefix) {
+	if strings.HasPrefix(fromPathDetails.MountPath, routing.CredentialRoutePrefix) {
+		if !strings.HasPrefix(toPathDetails.MountPath, routing.CredentialRoutePrefix) {
 			return handleError(fmt.Errorf("cannot remount auth mount to non-auth mount %q", toPathDetails.MountPath))
 		}
 		// Prevent target and source auth mounts from being in a protected path
@@ -1364,16 +1365,16 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 // moveMount carries out a remount operation on the secrets engine or auth method, updating the migration status as required
 // It is expected to be called asynchronously outside of a request context, hence it creates a context derived from the active one
 // and intermittently checks to see if it is still open.
-func (b *SystemBackend) moveMount(ns *namespace.Namespace, logger log.Logger, migrationID string, entry *MountEntry, fromPathDetails, toPathDetails namespace.MountPathDetails) error {
+func (b *SystemBackend) moveMount(ns *namespace.Namespace, logger log.Logger, migrationID string, entry *routing.MountEntry, fromPathDetails, toPathDetails namespace.MountPathDetails) error {
 	logger.Info("Starting to update the mount table and revoke leases")
 	revokeCtx := namespace.ContextWithNamespace(b.Core.activeContext, ns)
 
 	var err error
 	// Attempt remount
 	switch entry.Table {
-	case credentialTableType:
+	case routing.CredentialTableType:
 		err = b.Core.remountCredential(revokeCtx, fromPathDetails, toPathDetails, true)
-	case mountTableType:
+	case routing.MountTableType:
 		err = b.Core.remountSecretsEngine(revokeCtx, fromPathDetails, toPathDetails, true)
 	default:
 		return fmt.Errorf("cannot remount mount of table %q", entry.Table)
@@ -1477,15 +1478,15 @@ func (b *SystemBackend) handleTuneReadCommon(ctx context.Context, path string) (
 		resp.Data["external_entropy_access"] = true
 	}
 
-	if mountEntry.Table == credentialTableType {
+	if mountEntry.Table == routing.CredentialTableType {
 		resp.Data["token_type"] = mountEntry.Config.TokenType.String()
 	}
 
-	if rawVal, ok := mountEntry.synthesizedConfigCache.Load("audit_non_hmac_request_keys"); ok {
+	if rawVal, ok := mountEntry.SynthesizedConfigCache.Load("audit_non_hmac_request_keys"); ok {
 		resp.Data["audit_non_hmac_request_keys"] = rawVal.([]string)
 	}
 
-	if rawVal, ok := mountEntry.synthesizedConfigCache.Load("audit_non_hmac_response_keys"); ok {
+	if rawVal, ok := mountEntry.SynthesizedConfigCache.Load("audit_non_hmac_response_keys"); ok {
 		resp.Data["audit_non_hmac_response_keys"] = rawVal.([]string)
 	}
 
@@ -1493,11 +1494,11 @@ func (b *SystemBackend) handleTuneReadCommon(ctx context.Context, path string) (
 		resp.Data["listing_visibility"] = mountEntry.Config.ListingVisibility
 	}
 
-	if rawVal, ok := mountEntry.synthesizedConfigCache.Load("passthrough_request_headers"); ok {
+	if rawVal, ok := mountEntry.SynthesizedConfigCache.Load("passthrough_request_headers"); ok {
 		resp.Data["passthrough_request_headers"] = rawVal.([]string)
 	}
 
-	if rawVal, ok := mountEntry.synthesizedConfigCache.Load("allowed_response_headers"); ok {
+	if rawVal, ok := mountEntry.SynthesizedConfigCache.Load("allowed_response_headers"); ok {
 		resp.Data["allowed_response_headers"] = rawVal.([]string)
 	}
 
@@ -1659,7 +1660,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 
 		// user-lockout config
-		var apiUserLockoutConfig APIUserLockoutConfig
+		var apiUserLockoutConfig routing.APIUserLockoutConfig
 		userLockoutConfigMap := data.Get("user_lockout_config").(map[string]interface{})
 		if len(userLockoutConfigMap) != 0 {
 			err := mapstructure.Decode(userLockoutConfigMap, &apiUserLockoutConfig)
@@ -1680,7 +1681,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		}
 
 		if len(userLockoutConfigMap) > 0 && mountEntry.Config.UserLockoutConfig == nil {
-			defer rollback(&mountEntry.Config.UserLockoutConfig, &UserLockoutConfig{}, &success)()
+			defer rollback(&mountEntry.Config.UserLockoutConfig, &routing.UserLockoutConfig{}, &success)()
 		}
 
 		if apiUserLockoutConfig.LockoutThreshold != "" {
@@ -1756,7 +1757,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	}
 
 	if rawVal, ok := data.GetOk("listing_visibility"); ok {
-		listingVisibility := ListingVisibilityType(rawVal.(string))
+		listingVisibility := routing.ListingVisibilityType(rawVal.(string))
 
 		if err := checkListingVisibility(listingVisibility); err != nil {
 			return logical.ErrorResponse("invalid listing_visibility %s", listingVisibility), nil
@@ -1769,7 +1770,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 		if !isAuth {
 			return logical.ErrorResponse("'token_type' can only be modified on auth mounts"), logical.ErrInvalidRequest
 		}
-		if mountEntry.Type == mountTypeToken || mountEntry.Type == mountTypeNSToken {
+		if mountEntry.Type == routing.MountTypeToken || mountEntry.Type == routing.MountTypeNSToken {
 			return logical.ErrorResponse("'token_type' cannot be set for 'token' or 'ns_token' auth mounts"), logical.ErrInvalidRequest
 		}
 
@@ -2114,7 +2115,7 @@ func (b *SystemBackend) handleAuthTable(ctx context.Context, req *logical.Reques
 
 	for _, entry := range b.Core.auth.Entries {
 		// Only show entries for current namespace
-		if entry.Namespace().Path != ns.Path {
+		if entry.Namespace.Path != ns.Path {
 			continue
 		}
 
@@ -2139,7 +2140,7 @@ func (b *SystemBackend) handleReadAuth(ctx context.Context, req *logical.Request
 
 	for _, entry := range b.Core.auth.Entries {
 		// Only show entry for current namespace
-		if entry.Namespace().Path != ns.Path || entry.Path != path {
+		if entry.Namespace.Path != ns.Path || entry.Path != path {
 			continue
 		}
 
@@ -2190,8 +2191,8 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	externalEntropyAccess := data.Get("external_entropy_access").(bool)
 	options := data.Get("options").(map[string]string)
 
-	var config MountConfig
-	var apiConfig APIMountConfig
+	var config routing.MountConfig
+	var apiConfig routing.APIMountConfig
 
 	configMap := data.Get("config").(map[string]interface{})
 	// Augmenting configMap for some config options to treat them as comma separated entries
@@ -2307,8 +2308,8 @@ func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Reque
 	}
 
 	// Create the mount entry
-	me := &MountEntry{
-		Table:                 credentialTableType,
+	me := &routing.MountEntry{
+		Table:                 routing.CredentialTableType,
 		Path:                  path,
 		Type:                  logicalType,
 		Description:           description,
@@ -2410,7 +2411,7 @@ func (b *SystemBackend) handleDisableAuth(ctx context.Context, req *logical.Requ
 	if err != nil {
 		return nil, err
 	}
-	fullPath := credentialRoutePrefix + path
+	fullPath := routing.CredentialRoutePrefix + path
 
 	// We return success when the mount does not exist to not expose if the
 	// mount existed or not
@@ -2924,7 +2925,7 @@ func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Requ
 	}
 
 	// Create the mount entry
-	me := &MountEntry{
+	me := &routing.MountEntry{
 		// API-created
 		Table:       auditTableType,
 		Path:        path,
@@ -2955,8 +2956,8 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 	}
 
 	b.Core.auditLock.RLock()
-	table := b.Core.audit.shallowClone()
-	entry, err := table.findByPath(ctx, path)
+	table := b.Core.audit.ShallowClone()
+	entry, err := table.FindByPath(ctx, path)
 	b.Core.auditLock.RUnlock()
 
 	if err != nil {
@@ -3787,16 +3788,16 @@ func (b *SystemBackend) pathInternalUIMountsRead(ctx context.Context, req *logic
 		}
 	}
 
-	hasAccess := func(ctx context.Context, me *MountEntry) bool {
-		if me.Config.ListingVisibility == ListingVisibilityUnauth {
+	hasAccess := func(ctx context.Context, me *routing.MountEntry) bool {
+		if me.Config.ListingVisibility == routing.ListingVisibilityUnauth {
 			return true
 		}
 
 		if isAuthed {
 			if me.Table == "auth" {
-				return hasMountAccess(ctx, acl, me.Namespace().Path+me.Table+"/"+me.Path)
+				return hasMountAccess(ctx, acl, me.Namespace.Path+me.Table+"/"+me.Path)
 			} else {
-				return hasMountAccess(ctx, acl, me.Namespace().Path+me.Path)
+				return hasMountAccess(ctx, acl, me.Namespace.Path+me.Path)
 			}
 		}
 
@@ -3889,9 +3890,9 @@ func (b *SystemBackend) pathInternalUIMountRead(ctx context.Context, req *logica
 	}
 
 	fullMountPath := ns.Path + pathWithTable
-	if ns.ID != me.Namespace().ID {
-		resp.Data["path"] = me.Namespace().Path + pathWithTable
-		fullMountPath = ns.Path + me.Namespace().Path + pathWithTable
+	if ns.ID != me.Namespace.ID {
+		resp.Data["path"] = me.Namespace.Path + pathWithTable
+		fullMountPath = ns.Path + me.Namespace.Path + pathWithTable
 	}
 
 	if !hasMountAccess(ctx, acl, fullMountPath) {
@@ -4489,16 +4490,6 @@ func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
 		})
 	}
 
-	// Write to the canary path, which will force a synchronous truing during
-	// replication
-	if err := b.Core.barrier.Put(ctx, &logical.StorageEntry{
-		Key:   coreKeyringCanaryPath,
-		Value: fmt.Appendf(nil, "new-rotation-term-%d", newTerm),
-	}); err != nil {
-		b.Core.logger.Error("error saving keyring canary", "error", err)
-		return fmt.Errorf("failed to save keyring canary: %w", err)
-	}
-
 	return nil
 }
 
@@ -4738,11 +4729,11 @@ func sanitizePath(path string) string {
 	return path
 }
 
-func checkListingVisibility(visibility ListingVisibilityType) error {
+func checkListingVisibility(visibility routing.ListingVisibilityType) error {
 	switch visibility {
-	case ListingVisibilityDefault:
-	case ListingVisibilityHidden:
-	case ListingVisibilityUnauth:
+	case routing.ListingVisibilityDefault:
+	case routing.ListingVisibilityHidden:
+	case routing.ListingVisibilityUnauth:
 	default:
 		return errors.New("invalid listing visibility type")
 	}

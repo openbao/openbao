@@ -22,11 +22,11 @@
     "@docusaurus/plugin-sitemap": "^3.9.2",
     "@docusaurus/preset-classic": "^3.9.2",
     "@docusaurus/theme-mermaid": "^3.9.2",
-    "@easyops-cn/docusaurus-search-local": "^0.55.0",
+    "@easyops-cn/docusaurus-search-local": "^0.55.1",
     "@hashicorp/remark-plugins": "^4.1.1",
     "@mdx-js/react": "^3.1.1",
     "clsx": "^2.1.1",
-    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#b376f91f29fd50840dbfbdf78ed3c3182b7cd143",
+    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#baaac46c0972944b0adb5a062768c768565fcaa5",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"

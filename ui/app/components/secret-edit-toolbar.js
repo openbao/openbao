@@ -42,7 +42,6 @@
 /* eslint ember/no-computed-properties-in-native-classes: 'warn' */
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
-import { not } from '@ember/object/computed';
 import { inject as service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 
@@ -52,7 +51,10 @@ export default class SecretEditToolbar extends Component {
 
   @tracked wrappedData = null;
   @tracked isWrapping = false;
-  @not('wrappedData') showWrapButton;
+
+  get showWrapButton() {
+    return !this.wrappedData;
+  }
 
   @action
   clearWrappedData() {

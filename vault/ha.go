@@ -1026,20 +1026,6 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 					return
 				}
 
-				// Check for a poison pill. If we can read it, it means we have stale
-				// keys (e.g. from replication being activated) and we need to seal to
-				// be unsealed again.
-				entry, _ := c.barrier.Get(ctx, poisonPillPath)
-				if entry != nil && len(entry.Value) > 0 {
-					c.logger.Warn("encryption keys have changed out from underneath us (possibly due to replication enabling), must be unsealed again")
-					// If we are using raft storage we do not want to shut down
-					// raft during replication secondary enablement. This will
-					// allow us to keep making progress on the raft log.
-					go c.sealInternalWithOptions(true, false, !isRaft)
-					opCount.Add(-1)
-					return
-				}
-
 				if err := c.checkKeyUpgrades(ctx); err != nil {
 					c.logger.Error("key rotation periodic upgrade check failed", "error", err)
 				}

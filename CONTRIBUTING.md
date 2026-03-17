@@ -261,7 +261,7 @@ component-a/subcomponent-alpha  @alpha-team
 In a PR that only changes `component-a/subcomponent-alpha/`, you will need a
 review from the `alpha-team`, but not from the `a-team`.
 
-This rules should reflect the [documented bahaviour of
+This rules should reflect the [documented behavior of
 GitHub][github-about-code-owners].
 
 ### OpenBao UI

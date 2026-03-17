@@ -89,7 +89,7 @@ For standby nodes to serve read requests effectively, they should perform **post
 - All components initialized and ready
 - No additional setup needed when becoming leader
 
-**PostUnseal for enchanced Standby Nodes**
+**PostUnseal for enhanced Standby Nodes**
 Needs modification:
 ```
 func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
@@ -116,7 +116,7 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 }
 ```
 
-Function - `Core.runStandby` starts `Core.waitForLeadership` - Attemp post-unseal process in case of promoting to Leader.
+Function - `Core.runStandby` starts `Core.waitForLeadership` - Attempt post-unseal process in case of promoting to Leader.
 
 The storage write protection mechanism ensures that any attempt to write from standby nodes gets blocked at the storage layer and properly forwarded to the leader - return `ErrReadOnly` -> `ErrStandbyPleaseForward`.
 

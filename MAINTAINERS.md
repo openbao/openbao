@@ -140,7 +140,7 @@ The following groups of people are eligible to be committers:
    integration, or a new plugin. See [TSC decision](https://docs.google.com/document/d/1oNqm4GXCsIZbcNHsIqft4kgciRcuwS9rrIRGXlMz1yg/edit?tab=t.0#heading=h.52zbex718qh5).
 
 Repository committers should demonstrate expertise in the requested project
-and show a committment to making meaningful changes and maintaining security.
+and show a commitment to making meaningful changes and maintaining security.
 
 Eligibility requirements may be waived by simple majority TSC vote.
 

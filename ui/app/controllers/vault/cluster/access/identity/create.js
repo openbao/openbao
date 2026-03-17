@@ -45,7 +45,6 @@ export default Controller.extend({
 
     if (typeof model.unloadRecord === 'function') {
       removeRecord(this.store, model);
-      model.destroy();
     }
   },
 });

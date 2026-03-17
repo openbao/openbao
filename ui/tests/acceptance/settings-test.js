@@ -21,8 +21,9 @@ module('Acceptance | settings', function (hooks) {
     return authPage.login();
   });
 
-  hooks.afterEach(function () {
-    return logout.visit();
+  hooks.afterEach(async function () {
+    await logout.visit();
+    await settled();
   });
 
   test('settings', async function (assert) {

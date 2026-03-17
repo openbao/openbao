@@ -160,6 +160,7 @@ module('Acceptance | settings/mount-secret-backend', function (hooks) {
     await settled();
     const userToken = consoleComponent.lastLogOutput;
     await logout.visit();
+    await settled();
     await authPage.login(userToken);
     // create the engine
     await mountSecrets.visit();

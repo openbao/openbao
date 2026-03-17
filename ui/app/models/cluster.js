@@ -11,7 +11,7 @@ import { computed } from '@ember/object';
 export default Model.extend({
   version: service(),
 
-  nodes: hasMany('nodes', { async: false }),
+  nodes: hasMany('nodes', { async: false, inverse: null }),
   name: attr('string'),
   status: attr('string'),
   standby: attr('boolean'),

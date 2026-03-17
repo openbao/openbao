@@ -5,7 +5,7 @@
 
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
-import { click, currentRouteName, currentURL, fillIn, visit } from '@ember/test-helpers';
+import { click, currentRouteName, currentURL, fillIn, visit, settled } from '@ember/test-helpers';
 import authPage from 'vault/tests/pages/auth';
 import logout from 'vault/tests/pages/logout';
 import { setupMirage } from 'ember-cli-mirage/test-support';
@@ -28,6 +28,7 @@ module('Acceptance | mfa-method', function (hooks) {
         return methods;
       }, []);
     await logout.visit();
+    await settled();
     return authPage.login();
   });
   hooks.after(function () {

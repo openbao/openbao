@@ -25,7 +25,7 @@ would take to configure OpenBao to authenticate using a corporate LDAP or
 ActiveDirectory installation. Even though this example uses LDAP, the concept
 applies to all auth methods.
 
-[![OpenBao Auth Workflow](/img/openbao-policy-workflow.png)](/img/openbao-policy-workflow.png)
+![OpenBao Auth Workflow](/img/openbao-policy-workflow.png)
 
 1. The security team configures OpenBao to connect to an auth method.
    This configuration varies by auth method. In the case of LDAP, OpenBao
@@ -53,20 +53,20 @@ Now OpenBao has an internal mapping between a backend authentication system and
 internal policy. When a user authenticates to OpenBao, the actual authentication
 is delegated to the auth method. As a user, the flow looks like:
 
-[![OpenBao Auth Workflow](/img/openbao-auth-workflow.png)](/img/openbao-auth-workflow.png)
+![OpenBao Auth Workflow](/img/openbao-auth-workflow.png)
 
 1. A user attempts to authenticate to OpenBao using their LDAP credentials,
    providing OpenBao with their LDAP username and password.
 
-1. OpenBao establishes a connection to LDAP and asks the LDAP server to verify the
+2. OpenBao establishes a connection to LDAP and asks the LDAP server to verify the
    given credentials. Assuming this is successful, the LDAP server returns the
    information about the user, including the OU groups.
 
-1. OpenBao maps the result from the LDAP server to policies inside OpenBao using the
+3. OpenBao maps the result from the LDAP server to policies inside OpenBao using the
    mapping configured by the security team in the previous section. OpenBao then
    generates a token and attaches the matching policies.
 
-1. OpenBao returns the token to the user. This token has the correct policies
+4. OpenBao returns the token to the user. This token has the correct policies
    assigned, as dictated by the mapping configuration that was setup by the
    security team in advance.
 
@@ -270,7 +270,7 @@ similarly matched.
 In addition to the standard set, there are some capabilities that do not map to
 HTTP verbs.
 
-- `sudo` - Allows access to paths that are _root-protected_. Tokens are not
+- `sudo` <a name="sudo"></a> - Allows access to paths that are _root-protected_. Tokens are not
   permitted to interact with these paths unless they have the `sudo`
   capability (in addition to the other necessary capabilities for performing
   an operation against that path, such as `read` or `delete`).

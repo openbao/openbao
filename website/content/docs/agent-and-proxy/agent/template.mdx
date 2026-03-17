@@ -101,7 +101,7 @@ all templates:
 to exit after it has exhausted its number of template retry attempts due to
 failures.
 
-- `static_secret_render_interval` `(string or integer: 5m)` - If specified, configures
+- `static_secret_render_interval` `(string or integer: 5m)` <a name="static_secret_render_interval"></a> - If specified, configures
   how often OpenBao Agent Template should render non-leased secrets such as KV v2.
   This setting will not change how often OpenBao Agent Templating renders leased
   secrets. Uses [duration format strings](../../concepts/duration-format.mdx).
@@ -115,7 +115,7 @@ template_config {
 }
 ```
 
-In another example `template_config` with [`error_on_missing_key` parameter in the template stanza](template.mdx#error_on_missing_key)
+In another example `template_config` with [`error_on_missing_key` parameter in the template stanza](#error_on_missing_key)
 as well as `exit_on_retry_failure` result in the agent exiting in case of no key
 / value issues instead of the default retry behavior.
 
@@ -135,7 +135,7 @@ template {
 ### Interaction between `exit_on_retry_failure` and `error_on_missing_key`
 
 The parameter
-[`error_on_missing_key`](template.mdx#error_on_missing_key) can be
+[`error_on_missing_key`](#error_on_missing_key) can be
 specified within the `template` stanza which determines if a template should
 error when a key is missing in the secret. When `error_on_missing_key` is not
 specified or set to `false` and the key to render is not in the secret's
@@ -188,7 +188,7 @@ cannot be used with `env_template` entries in process supervisor mode.
 - `command_timeout`Δ `(duration: 30s)` - This is the maximum amount of time to
   wait for the optional command to return. This is deprecated in favor of the
   `exec` option.
-- `error_on_missing_key` `(bool: false)` - Exit with an error when accessing
+- `error_on_missing_key` `(bool: false)` <a name="error_on_missing_key"></a> - Exit with an error when accessing
   a struct or map field/key that does notexist. The default behavior will print `<no value>`
   when accessing a field that does not exist. It is highly recommended you set this
   to "true". Also see [`exit_on_retry_failure` in global OpenBao Agent Template Config](template.mdx#interaction-between-exit_on_retry_failure-and-error_on_missing_key).

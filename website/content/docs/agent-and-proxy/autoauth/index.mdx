@@ -119,7 +119,7 @@ Auto-auth does not support using tokens with a limited number of uses. Auto-auth
 does not track the number of uses remaining, and may allow the token to
 expire before attempting to renew it. For example, if using AppRole auto-auth,
 you must use 0 (meaning unlimited) as the value for
-[`token_num_uses`](/api-docs/auth/approle#token_num_uses).
+[`token_num_uses`](/api-docs/auth/approle#parameters-1).
 
 :::
 
@@ -140,7 +140,7 @@ These are common configuration values that live within the `method` block:
   Note that because sink response wrapping and templating are also based
   on the client created by auto-auth, they use the same namespace.
 
-- `wrap_ttl` `(string or integer: optional)` - If specified, the written token
+- `wrap_ttl` `(string or integer: optional)` <a name="wrap_ttl"></a> - If specified, the written token
   will be response-wrapped by auto-auth. This is more secure than wrapping by
   sinks, but does not allow the auto-auth to keep the token renewed or
   automatically reauthenticate when it expires. Rather than a simple string,

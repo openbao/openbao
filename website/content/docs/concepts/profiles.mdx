@@ -1,6 +1,6 @@
 ---
 sidebar_label: Profile System
-description: >- 
+description: >-
     This is a reference for OpenBao’s profile system and declarative self-initialization. It describes the four supported source types and the initialize_name mechanism.
 ---
 
@@ -18,17 +18,17 @@ unauthenticated rotation and audit device creation) still apply.
 
 ## Profiles end to end workflow
 
-1. Profile Selection 
+1. Profile Selection
 
 A caller invokes and passes any required parameters.
 
-2. Input Validation 
+2. Input Validation
 Before any OpenBao operation is attempted, the engine:
 - Ensures every declared parameter is present and of the correct type, e.g., string, int, bool.
 - Confirms that each referenced source (environment variable, file path, earlier request, earlier response) is available.
 - Rejects a run immediately if required inputs are missing, preventing half-configured states
 
-3. Source Evaluation 
+3. Source Evaluation
 
 Profiles support four dynamic input sources (env, file, request, response)
 

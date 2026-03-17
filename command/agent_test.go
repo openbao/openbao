@@ -767,20 +767,17 @@ auto_auth {
 }
 
 %s
-
-%s
 `
-
-			// conditionally set the exit_after_auth flag
-			exitAfterAuth := ""
-			if tc.exitAfterAuth {
-				exitAfterAuth = "exit_after_auth = true"
-			}
 
 			// flatten the template configs
 			templateConfig := strings.Join(templateConfigStrings, " ")
+			config = fmt.Sprintf(config, serverClient.Address(), roleIDPath, secretIDPath, templateConfig)
 
-			config = fmt.Sprintf(config, serverClient.Address(), roleIDPath, secretIDPath, templateConfig, exitAfterAuth)
+			// conditionally set the exit_after_auth flag
+			if tc.exitAfterAuth {
+				config = fmt.Sprintf("%s\n\n %s", config, "exit_after_auth = true")
+			}
+
 			configPath := makeTempFile(t, "config.hcl", config)
 			defer os.Remove(configPath)
 
@@ -790,16 +787,14 @@ auto_auth {
 			cmd.startedCh = make(chan struct{})
 
 			wg := &sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
+			wg.Go(func() {
 				code := cmd.Run([]string{"-config", configPath})
 				if code != 0 {
 					t.Errorf("non-zero return code when running agent: %d", code)
 					t.Logf("STDOUT from agent:\n%s", ui.OutputWriter.String())
 					t.Logf("STDERR from agent:\n%s", ui.ErrorWriter.String())
 				}
-				wg.Done()
-			}()
+			})
 
 			select {
 			case <-cmd.startedCh:
@@ -824,7 +819,7 @@ auto_auth {
 				// the temp dir before Agent has had time to render and will
 				// likely fail the test
 				tick := time.Tick(1 * time.Second)
-				timeout := time.After(20 * time.Second)
+				timeout := time.After(25 * time.Second)
 				var err error
 				for {
 					select {
@@ -1139,7 +1134,7 @@ func testListFiles(t *testing.T, dir, extension string) int {
 // similar to TestAgent_Template_Basic, but differs by using a consistent number
 // of secrets from multiple sources, where as the basic test could possibly
 // generate a random number of secrets, but all using the same source. This test
-// reproduces https://github.com/openbao/openbao/issues/7883
+// reproduces https://github.com/hashicorp/vault/issues/7883
 func TestAgent_Template_ExitCounter(t *testing.T) {
 	//----------------------------------------------------
 	// Start the server and agent

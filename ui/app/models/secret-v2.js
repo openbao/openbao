@@ -22,7 +22,7 @@ const validations = {
 class SecretV2Model extends Model {}
 export default SecretV2Model.extend({
   failedServerRead: attr('boolean'),
-  engine: belongsTo('secret-engine', { async: false }),
+  engine: belongsTo('secret-engine', { async: false, inverse: null }),
   engineId: attr('string'),
   versions: hasMany('secret-v2-version', { async: false, inverse: null }),
   selectedVersion: belongsTo('secret-v2-version', { async: false, inverse: 'secret' }),

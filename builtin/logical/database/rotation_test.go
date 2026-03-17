@@ -507,14 +507,13 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 	cluster, sys := getCluster(t)
 	defer cluster.Cleanup()
 
-	ctx := context.Background()
-
 	config := logical.TestBackendConfig()
 	config.StorageView = &logical.InmemStorage{}
 	config.System = sys
 
+	ctx := namespace.RootContext(t.Context())
 	roleName := "test-discard-by-date"
-	lb, err := Factory(context.Background(), config)
+	lb, err := Factory(ctx, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -544,7 +543,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -571,20 +570,20 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
 	// Allow the first rotation to occur, setting LastVaultRotation
-	time.Sleep(time.Second * 12)
+	time.Sleep(time.Second * 11)
 
 	// Cleanup the backend, then create a WAL for the role with a
 	// LastVaultRotation of 1 hour ago, so that when we recreate the backend the
 	// WAL will be read but discarded
 	b.Cleanup(ctx)
 	b = nil
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second)
 
 	// Make a fake WAL entry with an older time
 	oldRotationTime := roleTime.Add(time.Hour * -1)
@@ -602,7 +601,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 	assertWALCount(t, config.StorageView, 1, staticWALKey)
 
 	// Reload backend
-	lb, err = Factory(context.Background(), config)
+	lb, err = Factory(ctx, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -613,7 +612,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 	defer b.Cleanup(ctx)
 
 	// Allow enough time for populateQueue to work after boot
-	time.Sleep(time.Second * 12)
+	time.Sleep(time.Second * 10)
 
 	// PopulateQueue should have processed the entry
 	assertWALCount(t, config.StorageView, 0, staticWALKey)
@@ -626,7 +625,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 		Storage:   config.StorageView,
 		Data:      data,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -646,7 +645,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 		Path:      "static-creds/" + roleName,
 		Storage:   config.StorageView,
 	}
-	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = b.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}

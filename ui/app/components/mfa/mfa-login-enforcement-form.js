@@ -94,7 +94,7 @@ export default class MfaLoginEnforcementForm extends Component {
   }
 
   get selectedTarget() {
-    return this.targetTypes.findBy('type', this.selectedTargetType);
+    return this.targetTypes.find((x) => x.type === this.selectedTargetType);
   }
   get errors() {
     return this.args.modelErrors || this.modelErrors;

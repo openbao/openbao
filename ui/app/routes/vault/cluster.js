@@ -43,7 +43,7 @@ export default ClusterBaseRoute.extend({
 
   getClusterId(params) {
     const { cluster_name } = params;
-    const cluster = this.modelFor('vault').findBy('name', cluster_name);
+    const cluster = this.modelFor('vault').find((x) => x.name === cluster_name);
     return cluster ? cluster.get('id') : null;
   },
 

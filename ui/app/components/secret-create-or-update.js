@@ -201,7 +201,7 @@ export default class SecretCreateOrUpdate extends Component {
   addRow() {
     const data = this.args.secretData;
     // fired off on init
-    if (isNone(data.findBy('name', ''))) {
+    if (isNone(data.find((x) => x.name === ''))) {
       data.pushObject({ name: '', value: '' });
       this.handleChange();
     }
@@ -241,7 +241,7 @@ export default class SecretCreateOrUpdate extends Component {
   @action
   deleteRow(name) {
     const data = this.args.secretData;
-    const item = data.findBy('name', name);
+    const item = data.find((x) => x.name === name);
     if (isBlank(item.name)) {
       return;
     }

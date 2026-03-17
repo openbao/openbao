@@ -203,11 +203,11 @@ export default class SearchSelect extends Component {
 
   shouldShowCreate(id, searchResults) {
     if (searchResults && searchResults.length && searchResults.firstObject.groupName) {
-      return !searchResults.some((group) => group.options.findBy('id', id));
+      return !searchResults.some((group) => group.options.find((x) => x.id === id));
     }
     const existingOption =
       this.dropdownOptions &&
-      (this.dropdownOptions.findBy('id', id) || this.dropdownOptions.findBy('name', id));
+      (this.dropdownOptions.find((x) => x.id === id) || this.dropdownOptions.find((x) => x.name === id));
     if (this.args.disallowNewItems && !existingOption) {
       return false;
     }

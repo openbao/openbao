@@ -108,7 +108,7 @@ export default class MfaLoginEnforcementModel extends Model {
 
   iconForMount(type) {
     const mountableMethods = methods();
-    const mount = mountableMethods.findBy('type', type);
+    const mount = mountableMethods.find((x) => x.type === type);
     return mount ? mount.glyph || mount.type : 'token';
   }
 }

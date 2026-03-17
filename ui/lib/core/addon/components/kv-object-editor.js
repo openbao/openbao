@@ -56,7 +56,7 @@ export default class KvObjectEditor extends Component {
   }
   @action
   addRow() {
-    if (!isNone(this.kvData.findBy('name', ''))) {
+    if (!isNone(this.kvData.find((x) => x.name === ''))) {
       return;
     }
     const newObj = { name: '', value: '' };

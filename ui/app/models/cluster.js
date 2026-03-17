@@ -25,7 +25,7 @@ export default Model.extend({
 
   unsealed: computed('nodes', 'nodes.{[],@each.sealed}', function () {
     // unsealed if there's at least one unsealed node
-    return !!this.nodes.findBy('sealed', false);
+    return !!this.nodes.find((x) => x.sealed === false);
   }),
 
   sealed: not('unsealed'),
@@ -35,7 +35,7 @@ export default Model.extend({
     if (nodes.get('length') === 1) {
       return nodes.get('firstObject');
     } else {
-      return nodes.findBy('isLeader');
+      return nodes.find((x) => x.isLeader);
     }
   }),
 

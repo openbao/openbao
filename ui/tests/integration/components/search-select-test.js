@@ -80,8 +80,8 @@ module('Integration | Component | search select', function (hooks) {
   hooks.beforeEach(function () {
     const mockFunctionFromParent = (selection, dropdownOptions) => {
       const modelExists =
-        !!dropdownOptions.findBy('id', selection) ||
-        !!dropdownOptions.findBy('uuid', selection) ||
+        !!dropdownOptions.find((x) => x.id === selection) ||
+        !!dropdownOptions.find((x) => x.uuid === selection) ||
         isWildcardString([selection]);
       return !modelExists ? 'The model associated with this id no longer exists' : false;
     };

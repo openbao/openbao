@@ -135,7 +135,7 @@ export default Route.extend({
     const targetVersion = this.getTargetVersion(secretModel.currentVersion, params.version);
 
     // if we have the metadata, a list of versions are part of the payload
-    const version = secretModel.versions && secretModel.versions.findBy('version', targetVersion);
+    const version = secretModel.versions && secretModel.versions.find((x) => x.version === targetVersion);
     // if it didn't fail the server read, and the version is not attached to the metadata,
     // this should 404
     if (!version && secretModel.failedServerRead !== true) {

@@ -694,16 +694,21 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	wg.Add(1)
 	var seenLogs atomic.Bool
 	logConsumer := func(s string) {
+		n.Logger.Trace(s)
+	}
+	logStdout := &LogConsumerWriter{func(s string) {
+		// HACK: The first message printed to stdout implies that listeners are
+		// ready, or that startup failed. We use this to time the rotation of
+		// the initial certificate, such that:
+		// 1. SIGHUP is not sent too early.
+		// 2. We don't cause a race condition on the file system where OpenBao
+		//    will see either no cert or a mismatched cert/key.
 		if seenLogs.CompareAndSwap(false, true) {
 			wg.Done()
 		}
 		n.Logger.Trace(s)
-	}
-	logStdout := &LogConsumerWriter{logConsumer}
+	}}
 	logStderr := &LogConsumerWriter{func(s string) {
-		if seenLogs.CompareAndSwap(false, true) {
-			wg.Done()
-		}
 		testcluster.JSONLogNoTimestamp(n.Logger, s)
 	}}
 

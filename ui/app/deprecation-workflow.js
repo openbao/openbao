@@ -5,8 +5,10 @@
 
 import setupDeprecationWorkflow from 'ember-cli-deprecation-workflow';
 
-setupDeprecationWorkflow({
+export const deprecationWorkflowConfig = {
   // current output from deprecationWorkflow.flushDeprecations();
   // deprecations that will not be removed until 5.0.0 are filtered by deprecation-filter initializer rather than silencing below
-  workflow: [],
-});
+  workflow: [{ handler: 'log', matchId: 'ember-data:deprecate-array-like' }],
+};
+
+setupDeprecationWorkflow(deprecationWorkflowConfig);

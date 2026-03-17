@@ -20,7 +20,7 @@ export default Model.extend({
 
   needsInit: computed('nodes', 'nodes.@each.initialized', function () {
     // needs init if no nodes are initialized
-    return this.nodes.isEvery('initialized', false);
+    return this.nodes.every((x) => x.initialized === false);
   }),
 
   unsealed: computed('nodes', 'nodes.{[],@each.sealed}', function () {

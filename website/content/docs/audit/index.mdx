@@ -142,7 +142,7 @@ Audit device logs are critically important and ignoring auditing failures opens 
 
 OpenBao can distinguish between two types of audit device failures.
 
-- A blocking failure is one where an attempt to write to the audit device never completes. This is unlikely with a local disk device, but could occure with a network-based audit device.
+- A blocking failure is one where an attempt to write to the audit device never completes. This is unlikely with a local disk device, but could occur with a network-based audit device.
 
 - When multiple audit devices are enabled, if any of them fail in a non-blocking fashion, OpenBao requests can still complete successfully provided at least one audit device successfully writes the audit record. If any of the audit devices fail in a blocking fashion however, OpenBao requests will hang until the blocking is resolved.
 

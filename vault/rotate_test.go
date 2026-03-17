@@ -4,8 +4,9 @@
 package vault
 
 import (
-	"context"
+	"crypto/rand"
 	"fmt"
+	"io"
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
@@ -32,7 +33,7 @@ func TestCoreRotateLifecycle(t *testing.T) {
 func testCoreRotateLifecycleCommon(t *testing.T, c *Core, recovery bool) {
 	min, _ := c.barrier.KeyLength()
 	// Verify update not allowed
-	_, err := c.UpdateRotation(context.Background(), make([]byte, min), "", recovery)
+	_, err := c.UpdateRotation(t.Context(), make([]byte, min), "", recovery)
 	expected := "no barrier rotation in progress"
 	if recovery {
 		expected = "no recovery rotation in progress"
@@ -58,7 +59,7 @@ func testCoreRotateLifecycleCommon(t *testing.T, c *Core, recovery bool) {
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	rotationResult, err := c.InitRotation(context.Background(), newConf, recovery)
+	rotationResult, err := c.InitRotation(t.Context(), newConf, recovery)
 	require.NoError(t, err)
 	require.Empty(t, rotationResult)
 
@@ -89,7 +90,7 @@ func testCoreInitRotationCommon(t *testing.T, c *Core, recovery bool) {
 		SecretThreshold: 5,
 		SecretShares:    1,
 	}
-	rotationResult, err := c.InitRotation(context.Background(), badConf, recovery)
+	rotationResult, err := c.InitRotation(t.Context(), badConf, recovery)
 	require.Error(t, err)
 	require.Empty(t, rotationResult)
 
@@ -104,12 +105,12 @@ func testCoreInitRotationCommon(t *testing.T, c *Core, recovery bool) {
 		newConf.Type = c.seal.RecoveryType()
 	}
 
-	rotationResult, err = c.InitRotation(context.Background(), newConf, recovery)
+	rotationResult, err = c.InitRotation(t.Context(), newConf, recovery)
 	require.NoError(t, err)
 	require.Empty(t, rotationResult)
 
 	// Second should fail
-	rotationResult, err = c.InitRotation(context.Background(), newConf, recovery)
+	rotationResult, err = c.InitRotation(t.Context(), newConf, recovery)
 	require.Error(t, err)
 	require.Empty(t, rotationResult)
 }
@@ -138,7 +139,7 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
-	rotationResult, hErr := c.InitRotation(context.Background(), newConf, recovery)
+	rotationResult, hErr := c.InitRotation(t.Context(), newConf, recovery)
 	require.NoError(t, hErr)
 	require.Empty(t, rotationResult)
 
@@ -149,7 +150,7 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 	// Provide the root/recovery keys
 	var result *RekeyResult
 	for _, key := range keys {
-		result, err = c.UpdateRotation(context.Background(), key, rotConfig.Nonce, recovery)
+		result, err = c.UpdateRotation(t.Context(), key, rotConfig.Nonce, recovery)
 		require.NoError(t, err)
 		if result != nil {
 			break
@@ -168,9 +169,9 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 	// SealConfig should update
 	var sealConf *SealConfig
 	if recovery {
-		sealConf, err = c.seal.RecoveryConfig(context.Background())
+		sealConf, err = c.seal.RecoveryConfig(t.Context())
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background())
+		sealConf, err = c.seal.BarrierConfig(t.Context())
 	}
 	require.NoError(t, err)
 	require.NotNil(t, sealConf)
@@ -202,7 +203,7 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 		SecretThreshold: 1,
 		SecretShares:    1,
 	}
-	rotationResult, err = c.InitRotation(context.Background(), newConf, recovery)
+	rotationResult, err = c.InitRotation(t.Context(), newConf, recovery)
 	require.NoError(t, err)
 	require.Empty(t, rotationResult)
 
@@ -213,7 +214,7 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 	// Provide the parts root
 	oldResult := result
 	for i := range 3 {
-		result, err = c.UpdateRotation(context.Background(), TestKeyCopy(oldResult.SecretShares[i]), rotConfig.Nonce, recovery)
+		result, err = c.UpdateRotation(t.Context(), TestKeyCopy(oldResult.SecretShares[i]), rotConfig.Nonce, recovery)
 		require.NoError(t, err)
 
 		// Should be progress
@@ -239,9 +240,9 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 
 	// SealConfig should update
 	if recovery {
-		sealConf, err = c.seal.RecoveryConfig(context.Background())
+		sealConf, err = c.seal.RecoveryConfig(t.Context())
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background())
+		sealConf, err = c.seal.BarrierConfig(t.Context())
 	}
 	require.NoError(t, err)
 
@@ -265,7 +266,7 @@ func testCoreRotateInvalidCommon(t *testing.T, c *Core, keys [][]byte, recovery 
 		SecretShares:    5,
 	}
 	// Start rotation
-	rotationResult, err := c.InitRotation(context.Background(), newConf, recovery)
+	rotationResult, err := c.InitRotation(t.Context(), newConf, recovery)
 	require.NoError(t, err)
 	require.Empty(t, rotationResult)
 
@@ -274,7 +275,7 @@ func testCoreRotateInvalidCommon(t *testing.T, c *Core, keys [][]byte, recovery 
 	require.NotNil(t, rotConfig)
 
 	// Provide invalid nonce
-	_, err = c.UpdateRotation(context.Background(), keys[0], "abcd", recovery)
+	_, err = c.UpdateRotation(t.Context(), keys[0], "abcd", recovery)
 	require.Error(t, err)
 
 	// Provide the invalid key
@@ -283,7 +284,7 @@ func testCoreRotateInvalidCommon(t *testing.T, c *Core, keys [][]byte, recovery 
 	key[0]++
 	newkeystr := fmt.Sprintf("%#v", key)
 
-	ret, err := c.UpdateRotation(context.Background(), key, rotConfig.Nonce, recovery)
+	ret, err := c.UpdateRotation(t.Context(), key, rotConfig.Nonce, recovery)
 	require.Nil(t, ret)
 	require.Errorf(t, err, "expected error, oldkeystr: %s\nnewkeystr: %s", oldkeystr, newkeystr)
 
@@ -341,7 +342,7 @@ func TestCoreRotationStandby(t *testing.T) {
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
-	_, err = core.InitRotation(context.Background(), newConf, false)
+	_, err = core.InitRotation(t.Context(), newConf, false)
 	require.NoError(t, err)
 
 	// Fetch new config with generated nonce
@@ -350,7 +351,7 @@ func TestCoreRotationStandby(t *testing.T) {
 
 	var rotationResult *RekeyResult
 	for _, key := range keys {
-		rotationResult, err = core.UpdateRotation(context.Background(), key, rotConfig.Nonce, false)
+		rotationResult, err = core.UpdateRotation(t.Context(), key, rotConfig.Nonce, false)
 		require.NoError(t, err)
 	}
 	require.NotNil(t, rotationResult)
@@ -363,7 +364,7 @@ func TestCoreRotationStandby(t *testing.T) {
 	TestWaitActive(t, core2)
 
 	// Rotate the root key again
-	_, err = core2.InitRotation(context.Background(), newConf, false)
+	_, err = core2.InitRotation(t.Context(), newConf, false)
 	require.NoError(t, err)
 
 	// Fetch new config with generated nonce
@@ -372,7 +373,7 @@ func TestCoreRotationStandby(t *testing.T) {
 
 	var rotationResult2 *RekeyResult
 	for _, key := range rotationResult.SecretShares {
-		rotationResult2, err = core2.UpdateRotation(context.Background(), key, rotConfig.Nonce, false)
+		rotationResult2, err = core2.UpdateRotation(t.Context(), key, rotConfig.Nonce, false)
 		require.NoError(t, err)
 	}
 	require.NotNil(t, rotationResult2)
@@ -408,8 +409,73 @@ func TestRotationGenerateRecoveryKey(t *testing.T) {
 		SecretThreshold: 3,
 	}
 
-	result, err := core.InitRotation(context.Background(), rotConfig, true)
+	result, err := core.InitRotation(t.Context(), rotConfig, true)
 	require.NoError(t, err)
 	require.Len(t, result.SecretShares, 5)
 	require.Empty(t, result.PGPFingerprints)
+}
+
+func TestRotateBarrierRootKey(t *testing.T) {
+	t.Parallel()
+	c1, unsealShares, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
+		&SealConfig{StoredShares: 1, SecretShares: 3, SecretThreshold: 2},
+		nil,
+		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedShamirRoot})
+	c2, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
+		&SealConfig{},
+		&SealConfig{StoredShares: 1, SecretShares: 3, SecretThreshold: 2},
+		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
+
+	testRotateBarrierRootKey(t, c1, unsealShares)
+	testRotateBarrierRootKey(t, c2, unsealShares)
+}
+
+func testRotateBarrierRootKey(t *testing.T, c *Core, unsealShares [][]byte) {
+	// read stored root key
+	storedRootKeyBefore, err := c.seal.GetStoredKeys(t.Context())
+	require.NoError(t, err)
+
+	// rotate root key
+	require.NoError(t, c.RotateBarrierRootKey(t.Context()))
+
+	// read stored root key
+	storedRootKeyAfter, err := c.seal.GetStoredKeys(t.Context())
+	require.NoError(t, err)
+	require.NotEqual(t, storedRootKeyBefore, storedRootKeyAfter, "should rotate stored root key")
+
+	// simulate root key generation failure
+	c.secureRandomReader = io.LimitReader(c.secureRandomReader, 0)
+	require.Error(t, c.RotateBarrierRootKey(t.Context()))
+	storedRootKey, err := c.seal.GetStoredKeys(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, storedRootKeyAfter, storedRootKey, "should not rotate stored root key")
+
+	// go back to original reader
+	c.secureRandomReader = rand.Reader
+
+	// seal
+	require.NoError(t, c.sealInternal())
+	require.True(t, c.Sealed())
+
+	switch c.seal.StoredKeysSupported() {
+	case seal.StoredKeysSupportedShamirRoot:
+		// verify you can unseal using the same
+		// unseal key as before rotation
+		for _, key := range unsealShares {
+			unsealed, err := c.Unseal(TestKeyCopy(key))
+			require.NoError(t, err)
+			if !unsealed {
+				continue
+			} else {
+				break
+			}
+		}
+		require.False(t, c.Sealed())
+	case seal.StoredKeysSupportedGeneric:
+		// unseal with stored keys
+		require.NoError(t, c.UnsealWithStoredKeys(t.Context()))
+		require.False(t, c.Sealed())
+	default:
+		t.FailNow()
+	}
 }

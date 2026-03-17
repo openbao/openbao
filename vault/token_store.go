@@ -2954,6 +2954,11 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	// Verify the entity alias
 	var errResp *logical.Response
 	var explicitEntityID string
+	// Create or fetch entity from entity alias. Note that we might be on a perf
+	// standby so a create would return a ReadOnly error which would cause an
+	// RPC-based redirect. That path doesn't register leases since the code that
+	// calls RegisterAuth is in the http layer... So be careful to catch and
+	// handle readonly ourselves.
 	errResp, explicitEntityID, err = ts.resolveEntityAlias(ctx, req, d, role)
 	if errResp != nil || err != nil {
 		return errResp, err

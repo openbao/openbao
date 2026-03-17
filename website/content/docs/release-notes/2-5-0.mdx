@@ -7,7 +7,7 @@ description: Release notes for OpenBao 2.5.x
 
 ## v2.5.1
 
-**Release date:** Feburary 23, 2026
+**Release date:** February 23, 2026
 
 ### SECURITY
 
@@ -28,7 +28,7 @@ description: Release notes for OpenBao 2.5.x
 
 ## v2.5.0
 
-**Release date:** Feburary 4, 2026
+**Release date:** February 4, 2026
 
 ### SECURITY
 
@@ -89,7 +89,7 @@ description: Release notes for OpenBao 2.5.x
 * auth/jwt: Fix ordering of variable declarations in CEL program roles. [[GH-1854](https://github.com/openbao/openbao/pull/1854)]
 * core/identity: Ensure periodic func only operates on a single namespace at a time, decreasing storage contention. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
 * core/identity: fix corrupt data being stored when referencing `member_group_ids` across namespaces (requires `unsafe_cross_namespace_identity=true`) [[GH-2321](https://github.com/openbao/openbao/pull/2321)]
-* core/namespaces: Ensure namespace creation is interruptable, allowing namespace deletion for cleanup. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
+* core/namespaces: Ensure namespace creation is interruptible, allowing namespace deletion for cleanup. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
 * core/namespaces: Fix deadlock on namespace creation, deletion due to transaction/lock ordering. [[GH-2226](https://github.com/openbao/openbao/pull/2226)]
 * core/namespaces: Fix storage failures in namespace creation leading to a total system deadlock. [[GH-2166](https://github.com/openbao/openbao/pull/2166)]
 * core/namespaces: improve recovery from partial deletion of namespaces, preventing server startup failure. [[GH-2188](https://github.com/openbao/openbao/pull/2188)]

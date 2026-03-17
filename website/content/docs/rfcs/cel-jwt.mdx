@@ -18,7 +18,7 @@ OpenBao's jwt-based auth engines (OIDC and JWT) currently assemble token policie
 
 **_Administrators_** can define CEL roles under a new endpoint, `auth/{oidc|jwt}/cel/roles/:name`, to be executed during authentication. CEL roles should evaluate all incoming claims and generate `logical.Auth{}` instances having appropriate token policies.
 
-**_Users_** authenticating with JWT or OIDC tokens will have their claims validated through the CEL inidicated role. If successful, they receive a token with policies and other attributes. 
+**_Users_** authenticating with JWT or OIDC tokens will have their claims validated through the CEL indicated role. If successful, they receive a token with policies and other attributes. 
 
 For example:
 

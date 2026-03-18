@@ -120,7 +120,7 @@ Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
 			},
 			"not_before_leeway": {
 				Type: framework.TypeSignedDurationSecond,
-				Description: `Duration in seconds of leeway when validating not before values of a token to account for clock skew.
+				Description: `Duration in seconds of leeway when validating not before values of a token to account for clock skew. 
 Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
 				Default: claimDefaultLeeway,
 			},

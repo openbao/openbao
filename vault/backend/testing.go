@@ -152,3 +152,25 @@ func (b *InitializableBackend) Initialize(ctx context.Context, req *logical.Init
 	b.IsInitialized = true
 	return nil
 }
+
+var (
+	TestLogicalBackends    = map[string]logical.Factory{}
+	TestCredentialBackends = map[string]logical.Factory{}
+)
+
+// This adds a credential backend for the test core. This needs to be
+// invoked before the test core is created.
+func AddTestCredentialBackend(name string, factory logical.Factory) error {
+	if name == "" {
+		return errors.New("missing backend name")
+	}
+	if factory == nil {
+		return errors.New("missing backend factory function")
+	}
+	TestCredentialBackends[name] = factory
+	return nil
+}
+
+func ClearTestCredentialBackends() {
+	TestCredentialBackends = map[string]logical.Factory{}
+}

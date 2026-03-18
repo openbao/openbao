@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package identity
 
 import (
 	"context"
@@ -195,8 +195,8 @@ func (i *IdentityStore) handleAliasCreateUpdate() framework.OperationFunc {
 			}
 		}
 
-		i.lock.Lock()
-		defer i.lock.Unlock()
+		i.Lock()
+		defer i.Unlock()
 
 		// This block is run if they provided an ID
 		{
@@ -293,7 +293,7 @@ func (i *IdentityStore) handleAliasCreate(ctx context.Context, canonicalID, name
 	if entity == nil {
 		persist = true
 		entity = new(identity.Entity)
-		err = i.sanitizeEntity(ctx, entity)
+		err = i.SanitizeEntity(ctx, entity)
 		if err != nil {
 			return nil, err
 		}
@@ -324,7 +324,7 @@ func (i *IdentityStore) handleAliasCreate(ctx context.Context, canonicalID, name
 			CustomMetadata: customMetadata,
 			CanonicalID:    entity.ID,
 		}
-		err = i.sanitizeAlias(ctx, alias)
+		err = i.SanitizeAlias(ctx, alias)
 		if err != nil {
 			return nil, err
 		}
@@ -334,7 +334,7 @@ func (i *IdentityStore) handleAliasCreate(ctx context.Context, canonicalID, name
 
 	// Index entity and its aliases in MemDB and persist entity along with
 	// aliases in storage.
-	if err := i.upsertEntity(ctx, entity, nil, persist); err != nil {
+	if err := i.UpsertEntity(ctx, entity, nil, persist); err != nil {
 		return nil, err
 	}
 
@@ -486,7 +486,7 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
 	// aliases in storage. If the alias is being transferred over from
 	// one entity to another, previous entity needs to get refreshed in MemDB
 	// and persisted in storage as well.
-	if err := i.upsertEntity(ctx, newEntity, currentEntity, true); err != nil {
+	if err := i.UpsertEntity(ctx, newEntity, currentEntity, true); err != nil {
 		return nil, err
 	}
 
@@ -561,8 +561,8 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 			return logical.ErrorResponse("missing alias ID"), nil
 		}
 
-		i.lock.Lock()
-		defer i.lock.Unlock()
+		i.Lock()
+		defer i.Unlock()
 
 		// Create a MemDB transaction to delete entity
 		txn := i.db(ctx).Txn(true)
@@ -603,7 +603,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 		}
 
 		// Delete alias from the entity object
-		err = i.deleteAliasesInEntityInTxn(txn, entity, aliases)
+		err = i.DeleteAliasesInEntityInTxn(txn, entity, aliases)
 		if err != nil {
 			return nil, err
 		}
@@ -637,7 +637,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 				return nil, err
 			}
 
-			if err := i.localAliasPacker(ctx).PutItem(ctx, &storagepacker.Item{
+			if err := i.LocalAliasPacker(ctx).PutItem(ctx, &storagepacker.Item{
 				ID:      entity.ID,
 				Message: marshaledAliases,
 			}); err != nil {

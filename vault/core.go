@@ -58,6 +58,7 @@ import (
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/forwarding"
+	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/quotas"
 	"github.com/openbao/openbao/vault/routing"
 	vaultseal "github.com/openbao/openbao/vault/seal"
@@ -94,12 +95,6 @@ const (
 	// defaultMFAAuthResponseTTL is the default duration that Vault caches the
 	// MfaAuthResponse when the value is not specified in the server config
 	defaultMFAAuthResponseTTL = 300 * time.Second
-
-	// defaultMaxTOTPValidateAttempts is the default value for the number
-	// of failed attempts to validate a request subject to TOTP MFA. If the
-	// number of failed totp passcode validations exceeds this max value, the
-	// user needs to wait until a fresh totp passcode is generated.
-	defaultMaxTOTPValidateAttempts = 5
 
 	// ForwardSSCTokenToActive is the value that must be set in the
 	// forwardToActive to trigger forwarding if a perf standby encounters
@@ -390,7 +385,7 @@ type Core struct {
 	namespaceStore *NamespaceStore
 
 	// identityStore is used to manage client entities
-	identityStore *IdentityStore
+	identityStore *ident.IdentityStore
 
 	// metricsCh is used to stop the metrics streaming
 	metricsCh chan struct{}
@@ -1272,7 +1267,19 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 	logicalBackends[routing.MountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		identityLogger := logger.Named("identity")
 		c.AddLogger(identityLogger)
-		return NewIdentityStore(ctx, c, config, identityLogger)
+		identityStoreConfig := &ident.IdentityStoreConfig{
+			Logger:        c.Logger(),
+			Router:        c.router,
+			RedirectAddr:  c.redirectAddr,
+			LocalNode:     c,
+			Namespacer:    c,
+			MetricsSink:   c.metricSink,
+			TOTPPersister: c,
+			TokenStorer:   c,
+			MFABackend:    c.loginMFABackend,
+			LoggerAdder:   c,
+		}
+		return ident.NewIdentityStore(ctx, identityStoreConfig, config, identityLogger)
 	}
 	logicalBackends[routing.MountTypeNSIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		if c.identityStore != nil {
@@ -4162,4 +4169,8 @@ func (c *Core) LocalClusterParsedCert() *x509.Certificate {
 
 func (c *Core) RedirectAddr() string {
 	return c.redirectAddr
+}
+
+func (c *Core) UnsafeCrossNamespaceIdentity() bool {
+	return c.unsafeCrossNamespaceIdentity
 }

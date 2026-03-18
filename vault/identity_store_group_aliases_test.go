@@ -13,6 +13,7 @@ import (
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/routing"
 )
 
@@ -92,17 +93,17 @@ func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {
 }
 
 func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
-	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = AddTestCredentialBackend("ldap", credLdap.Factory)
+	err = be.AddTestCredentialBackend("ldap", credLdap.Factory)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer ClearTestCredentialBackends()
+	defer be.ClearTestCredentialBackends()
 
 	c, _, _ := TestCoreUnsealed(t)
 
@@ -365,10 +366,10 @@ func TestIdentityStore_GroupAliases_MemDBIndexes(t *testing.T) {
 		ParentGroupIDs:  []string{"testparentgroupid1", "testparentgroupid2"},
 		MemberEntityIDs: []string{"testentityid1", "testentityid2"},
 		Policies:        []string{"testpolicy1", "testpolicy2"},
-		BucketKey:       i.groupPacker(ctx).BucketKey("testgroupid"),
+		BucketKey:       i.GroupPacker(ctx).BucketKey("testgroupid"),
 	}
 
-	txn := i.db(ctx).Txn(true)
+	txn := i.Txn(ctx, true)
 	defer txn.Abort()
 	err = i.MemDBUpsertAliasInTxn(txn, group.Alias, true)
 	if err != nil {

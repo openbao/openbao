@@ -564,10 +564,6 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 					Type:        framework.TypeInt,
 					Description: "Specifies the number of shares required to reconstruct the unseal key. This must be less than or equal secret_shares. If using OpenBao HSM with auto-unsealing, this value must be the same as `secret_shares`.",
 				},
-				"stored_shares": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the number of shares that should be encrypted by the HSM and stored for auto-unsealing. Currently must be the same as `secret_shares`.",
-				},
 				"recovery_shares": {
 					Type:        framework.TypeInt,
 					Description: "Specifies the number of shares to split the recovery key into.",

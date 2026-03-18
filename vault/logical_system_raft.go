@@ -57,7 +57,7 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleRaftBootstrapAnswerWrite(),
-					Summary:  "Accepts an answer from the peer to be joined to the fact cluster.",
+					Summary:  "Accepts an answer from the peer to be joined to the raft cluster.",
 				},
 			},
 
@@ -94,8 +94,9 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRaftRemovePeerUpdate(),
-					Summary:  "Remove a peer from the raft cluster.",
+					Callback:                  b.handleRaftRemovePeerUpdate(),
+					Summary:                   "Remove a peer from the raft cluster.",
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -113,8 +114,9 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRaftPromoteUpdate(),
-					Summary:  "Promotes a permanent non-voter to a voter.",
+					Callback:                  b.handleRaftPromoteUpdate(),
+					Summary:                   "Promotes a permanent non-voter to a voter.",
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -132,8 +134,9 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleRaftDemoteUpdate(),
-					Summary:  "Demotes a voter to a permanent non-voter.",
+					Callback:                  b.handleRaftDemoteUpdate(),
+					Summary:                   "Demotes a voter to a permanent non-voter.",
+					ForwardPerformanceStandby: true,
 				},
 			},
 
@@ -158,7 +161,7 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleStorageRaftSnapshotRead(),
-					Summary:  "Returns a snapshot of the current state of vault.",
+					Summary:  "Returns a snapshot of the current state of OpenBao.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleStorageRaftSnapshotWrite(false),
@@ -229,10 +232,12 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleStorageRaftAutopilotConfigRead(),
+					Callback:                  b.handleStorageRaftAutopilotConfigRead(),
+					ForwardPerformanceStandby: true,
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.handleStorageRaftAutopilotConfigUpdate(),
+					Callback:                  b.handleStorageRaftAutopilotConfigUpdate(),
+					ForwardPerformanceStandby: true,
 				},
 			},
 

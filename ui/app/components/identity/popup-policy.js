@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { alias } from '@ember/object/computed';
 import { computed } from '@ember/object';
 import Base from './_popup-base';
 
 export default Base.extend({
-  model: alias('params.firstObject'),
+  model: computed('params', function () {
+    return this.params[0];
+  }),
+
   policyName: computed('params', function () {
     return this.params.objectAt(1);
   }),

@@ -5,10 +5,12 @@
 
 import Base from './_popup-base';
 import { computed } from '@ember/object';
-import { alias } from '@ember/object/computed';
 
 export default Base.extend({
-  model: alias('params.firstObject'),
+  model: computed('params', function () {
+    return this.params[0];
+  }),
+
   key: computed('params', function () {
     return this.params.objectAt(1);
   }),

@@ -75,7 +75,7 @@ export default Component.extend(TRANSIT_PARAMS, {
       return;
     }
     // eslint-disable-next-line ember/no-get
-    set(this, 'selectedAction', get(this, 'key.supportedActions.firstObject'));
+    set(this, 'selectedAction', get(this, 'key.supportedActions[0]'));
     assert('`key` is required for `' + this.toString() + '`.', this.getModelInfo());
   },
 
@@ -88,7 +88,7 @@ export default Component.extend(TRANSIT_PARAMS, {
   },
 
   setExportKeyDefaults() {
-    const exportKeyType = this.key.exportKeyTypes.firstObject;
+    const exportKeyType = this.key.exportKeyTypes[0];
     const exportKeyVersion = this.key.validKeyVersions.lastObject;
     this.setProperties({
       exportKeyType,

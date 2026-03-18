@@ -130,9 +130,9 @@ module('Integration | Component | mfa-login-enforcement-form', function (hooks) 
     await click('[data-test-mlef-save]');
     assert.true(this.didSave, 'onSave callback triggered');
     assert.strictEqual(this.model.name, 'bar', 'Name property set on model');
-    assert.strictEqual(this.model.mfa_methods.firstObject.id, '123456', 'Mfa method added to model');
+    assert.strictEqual(this.model.mfa_methods[0].id, '123456', 'Mfa method added to model');
     assert.strictEqual(
-      this.model.auth_method_accessors.firstObject,
+      this.model.auth_method_accessors[0],
       'auth_userpass_1234',
       'Target saved to correct model property'
     );

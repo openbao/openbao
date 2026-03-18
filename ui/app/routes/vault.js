@@ -40,7 +40,7 @@ export default Route.extend({
 
   redirect(model, transition) {
     if (model.get('length') === 1 && transition.targetName === 'vault.index') {
-      return this.transitionTo('vault.cluster', model.get('firstObject.name'));
+      return this.transitionTo('vault.cluster', model[0].name);
     }
   },
 });

@@ -6,7 +6,7 @@
 import Ember from 'ember';
 import { next } from '@ember/runloop';
 import { inject as service } from '@ember/service';
-import { match, alias, or } from '@ember/object/computed';
+import { match, or } from '@ember/object/computed';
 import { dasherize } from '@ember/string';
 import Component from '@ember/component';
 import { computed } from '@ember/object';
@@ -118,7 +118,7 @@ export default Component.extend(DEFAULTS, {
   },
 
   firstMethod() {
-    const firstMethod = this.methodsToShow.firstObject;
+    const firstMethod = this.methodsToShow[0];
     if (!firstMethod) return;
     // prefer backends with a path over those with a type
     return firstMethod.path || firstMethod.type;
@@ -163,7 +163,9 @@ export default Component.extend(DEFAULTS, {
     return templateName;
   }),
 
-  hasCSPError: alias('csp.connectionViolations.firstObject'),
+  hasCSPError: computed('csp.connectionViolations.[]', function () {
+    return this.csp.connectionViolations[0];
+  }),
 
   cspErrorText: `This is a standby OpenBao node but can't communicate with the active node via request forwarding. Sign in at the active node to use the OpenBao UI.`,
 

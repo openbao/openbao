@@ -33,7 +33,7 @@ export default Model.extend({
   leaderNode: computed('nodes', 'nodes.[]', function () {
     const nodes = this.nodes;
     if (nodes.get('length') === 1) {
-      return nodes.get('firstObject');
+      return nodes[0];
     } else {
       return nodes.find((x) => x.isLeader);
     }

@@ -573,7 +573,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 			continue
 		}
 
-		view := NamespaceView(barrier, ns)
+		view := NamespaceScopedView(barrier, ns)
 
 		nsGlobal, nsLocal, err := c.listTransactionalCredentialsForNamespace(ctx, view)
 		if err != nil {
@@ -605,7 +605,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 		}
 
 		for nsIndex, ns := range allNamespaces {
-			view := NamespaceView(barrier, ns)
+			view := NamespaceScopedView(barrier, ns)
 			for index, uuid := range globalEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreAuthConfigPath, uuid)
 				if err != nil {
@@ -622,7 +622,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 
 	if len(localEntries) > 0 {
 		for nsIndex, ns := range allNamespaces {
-			view := NamespaceView(barrier, ns)
+			view := NamespaceScopedView(barrier, ns)
 
 			for index, uuid := range localEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalAuthConfigPath, uuid)
@@ -900,8 +900,6 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 					continue
 				}
 
-				view := NamespaceView(barrier, mtEntry.Namespace)
-
 				found = true
 				currentEntries[mtEntry.UUID] = struct{}{}
 
@@ -921,6 +919,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 				}
 
 				// Write to the backend.
+				view := NamespaceScopedView(barrier, mtEntry.Namespace)
 				if err := view.Put(ctx, sEntry); err != nil {
 					c.logger.Error("failed to persist auth mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
 					return -1, err
@@ -937,7 +936,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 					return -1, err
 				}
 
-				view := NamespaceView(barrier, ns)
+				view := NamespaceScopedView(barrier, ns)
 				if err := view.Delete(ctx, path.Join(prefix, mount)); err != nil {
 					c.logger.Error("failed to persist removal of auth mount table entry", "namespace", ns.Path, "uuid", mount, "error", err)
 					return -1, fmt.Errorf("failed to remove auth mount from storage: %w", err)
@@ -951,7 +950,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := NamespaceView(barrier, ns)
+					view := NamespaceScopedView(barrier, ns)
 
 					// List all entries and remove any deleted ones.
 					presentEntries, err := view.List(ctx, prefix+"/")

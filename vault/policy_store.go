@@ -390,7 +390,7 @@ func (ps *PolicyStore) GetNonEGPPolicyType(ctx context.Context, name string) (*P
 
 // getACLView returns the ACL view for the given namespace
 func (ps *PolicyStore) getACLView(ns *namespace.Namespace) barrier.View {
-	return NamespaceView(ps.core.barrier, ns).SubView(systemBarrierPrefix + policyACLSubPath)
+	return NamespaceScopedView(ps.core.barrier, ns).SubView(systemBarrierPrefix + policyACLSubPath)
 }
 
 // getBarrierView returns the appropriate barrier view for the given namespace and policy type.

@@ -12,6 +12,7 @@ import (
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	ident "github.com/openbao/openbao/vault/identity"
 )
 
 // Issue 5729
@@ -209,12 +210,12 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	var err error
 
 	ctx := namespace.RootContext(nil)
-	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
+	is, approleAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
 	if is == nil {
 		t.Fatal("failed to create test identity store")
 	}
 
-	validateMountResp := is.router.ValidateMountByAccessor(approleAccessor)
+	validateMountResp := core.router.ValidateMountByAccessor(approleAccessor)
 	if validateMountResp == nil {
 		t.Fatal("failed to validate github auth mount")
 	}
@@ -224,9 +225,9 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 		Name: "testentityname",
 	}
 
-	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
+	entity.BucketKey = is.EntityPacker(ctx).BucketKey(entity.ID)
 
-	txn := is.db(ctx).Txn(true)
+	txn := is.Txn(ctx, true)
 	defer txn.Abort()
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
 	if err != nil {
@@ -244,10 +245,10 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 			"testkey1": "testmetadatavalue1",
 			"testkey2": "testmetadatavalue2",
 		},
-		LocalBucketKey: is.localAliasPacker(ctx).BucketKey(entity.ID),
+		LocalBucketKey: is.LocalAliasPacker(ctx).BucketKey(entity.ID),
 	}
 
-	txn = is.db(ctx).Txn(true)
+	txn = is.Txn(ctx, true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias, false)
 	if err != nil {
@@ -283,10 +284,10 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 			"testkey1": "testmetadatavalue1",
 			"testkey3": "testmetadatavalue3",
 		},
-		LocalBucketKey: is.localAliasPacker(ctx).BucketKey(entity.ID),
+		LocalBucketKey: is.LocalAliasPacker(ctx).BucketKey(entity.ID),
 	}
 
-	txn = is.db(ctx).Txn(true)
+	txn = is.Txn(ctx, true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias2, false)
 	if err != nil {
@@ -657,20 +658,20 @@ func TestIdentityStore_AliasMove_DuplicateAccessor(t *testing.T) {
 func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
 	ctx := namespace.RootContext(context.Background())
 
-	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
+	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, false)
 
-	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor, core)
+	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor)
 }
 
 func TestIdentityStore_AliasUpdate_DuplicateAccessor_UnsafeShared(t *testing.T) {
 	ctx := namespace.RootContext(context.Background())
 
-	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
+	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t, true)
 
-	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor, core)
+	testIdentityStoreAliasUpdateDuplicateAccessor(t, ctx, is, approleAccessor, upAccessor)
 }
 
-func testIdentityStoreAliasUpdateDuplicateAccessor(t *testing.T, ctx context.Context, is *IdentityStore, approleAccessor string, upAccessor string, core *Core) {
+func testIdentityStoreAliasUpdateDuplicateAccessor(t *testing.T, ctx context.Context, is *ident.IdentityStore, approleAccessor string, upAccessor string) {
 	var err error
 	var resp *logical.Response
 

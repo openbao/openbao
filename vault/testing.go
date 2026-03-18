@@ -55,6 +55,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/routing"
@@ -256,7 +257,7 @@ func testCoreConfig(t testing.T, physicalBackend physical.Backend, logger log.Lo
 	for backendName, backendFactory := range noopBackends {
 		credentialBackends[backendName] = backendFactory
 	}
-	for backendName, backendFactory := range testCredentialBackends {
+	for backendName, backendFactory := range be.TestCredentialBackends {
 		credentialBackends[backendName] = backendFactory
 	}
 
@@ -266,7 +267,7 @@ func testCoreConfig(t testing.T, physicalBackend physical.Backend, logger log.Lo
 	}
 
 	logicalBackends["kv"] = LeasedPassthroughBackendFactory
-	for backendName, backendFactory := range testLogicalBackends {
+	for backendName, backendFactory := range be.TestLogicalBackends {
 		logicalBackends[backendName] = backendFactory
 	}
 
@@ -650,28 +651,6 @@ func TestPluginClientConfig(c *Core, pluginType consts.PluginType, pluginName st
 	return pluginutil.PluginClientConfig{}
 }
 
-var (
-	testLogicalBackends    = map[string]logical.Factory{}
-	testCredentialBackends = map[string]logical.Factory{}
-)
-
-// This adds a credential backend for the test core. This needs to be
-// invoked before the test core is created.
-func AddTestCredentialBackend(name string, factory logical.Factory) error {
-	if name == "" {
-		return errors.New("missing backend name")
-	}
-	if factory == nil {
-		return errors.New("missing backend factory function")
-	}
-	testCredentialBackends[name] = factory
-	return nil
-}
-
-func ClearTestCredentialBackends() {
-	testCredentialBackends = map[string]logical.Factory{}
-}
-
 // This adds a logical backend for the test core. This needs to be
 // invoked before the test core is created.
 func AddTestLogicalBackend(name string, factory logical.Factory) error {
@@ -681,7 +660,7 @@ func AddTestLogicalBackend(name string, factory logical.Factory) error {
 	if factory == nil {
 		return errors.New("missing backend factory function")
 	}
-	testLogicalBackends[name] = factory
+	be.TestLogicalBackends[name] = factory
 	return nil
 }
 

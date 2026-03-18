@@ -850,7 +850,7 @@ func TestSystemBackend_CapabilitiesAccessor_BC(t *testing.T) {
 }
 
 func TestSystemBackend_remount_auth(t *testing.T) {
-	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -961,7 +961,7 @@ func TestSystemBackend_remount_auth_protected(t *testing.T) {
 }
 
 func TestSystemBackend_remount_auth_destinationInUse(t *testing.T) {
-	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	err := be.AddTestCredentialBackend("userpass", credUserpass.Factory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -4537,7 +4537,7 @@ func TestSystemBackend_PathWildcardPreflight(t *testing.T) {
 		t.Fatalf("bad: %#v", resp)
 	}
 
-	if err := core.identityStore.upsertEntity(ctx, &identity.Entity{
+	if err := core.identityStore.UpsertEntity(ctx, &identity.Entity{
 		ID:        "abcd",
 		Name:      "abcd",
 		BucketKey: "abcd",

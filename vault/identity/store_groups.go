@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package identity
 
 import (
 	"context"
@@ -326,9 +326,9 @@ func (i *IdentityStore) handleGroupUpdateCommon(ctx context.Context, req *logica
 		memberGroupIDs = memberGroupIDsRaw.([]string)
 	}
 
-	err = i.sanitizeAndUpsertGroup(ctx, group, nil, memberGroupIDs)
+	err = i.SanitizeAndUpsertGroup(ctx, group, nil, memberGroupIDs)
 	if err != nil {
-		if errStr := err.Error(); strings.HasPrefix(errStr, errCycleDetectedPrefix) {
+		if errStr := err.Error(); strings.HasPrefix(errStr, ErrCycleDetectedPrefix) {
 			return logical.ErrorResponse(errStr), nil
 		}
 
@@ -517,7 +517,7 @@ func (i *IdentityStore) handleGroupDeleteCommon(ctx context.Context, key string,
 	}
 
 	// Delete the group from storage
-	err = i.groupPacker(ctx).DeleteItem(ctx, group.ID)
+	err = i.GroupPacker(ctx).DeleteItem(ctx, group.ID)
 	if err != nil {
 		return nil, err
 	}

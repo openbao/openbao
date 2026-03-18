@@ -76,8 +76,6 @@ github.com/BurntSushi/toml v1.5.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2
 github.com/DataDog/datadog-go v2.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/DataDog/datadog-go v3.2.0+incompatible h1:qSG2N4FghB1He/r2mFrWKCaL7dXCilEuNEeAn20fdD4=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
-github.com/Ki-Reply-GmbH/go-kms-wrapping/plugin/v2 v2.1.0-development20240408.0.20260309151306-c1801988409b h1:J/QzV2elZddOyqqykrn6UFWr8kQ9mycSJ2XMr6V2W5w=
-github.com/Ki-Reply-GmbH/go-kms-wrapping/plugin/v2 v2.1.0-development20240408.0.20260309151306-c1801988409b/go.mod h1:E9m3iOkTDWYqru2ueyrP35cTPqZ10dKlhEoclk3CjaQ=
 github.com/Masterminds/goutils v1.1.1 h1:5nUrii3FMTL5diU80unEVvNevw1nH4+ZV4DSLVJLSYI=
 github.com/Masterminds/goutils v1.1.1/go.mod h1:8cTjp+g8YejhMuvIA5y2vz3BpJxksy863GQaJW2MFNU=
 github.com/Masterminds/semver/v3 v3.2.0/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
@@ -699,6 +697,8 @@ github.com/onsi/ginkgo/v2 v2.27.2 h1:LzwLj0b89qtIy6SSASkzlNvX6WktqurSHwkk2ipF/Ns
 github.com/onsi/ginkgo/v2 v2.27.2/go.mod h1:ArE1D/XhNXBXCBkKOLkbsb2c81dQHCRcF5zwn/ykDRo=
 github.com/onsi/gomega v1.38.2 h1:eZCjf2xjZAqe+LeWvKb5weQ+NcPwX84kqJ0cZNxok2A=
 github.com/onsi/gomega v1.38.2/go.mod h1:W2MJcYxRGV63b418Ai34Ud0hEdTVXq9NW9+Sx6uXf3k=
+github.com/openbao/go-kms-wrapping/plugin/v2 v2.2.1-0.20260318145607-5d6196b11a58 h1:b8HxBAhwmf2AlSdCuKpwkuRXsa+KsuyaJ59RZJDMEIY=
+github.com/openbao/go-kms-wrapping/plugin/v2 v2.2.1-0.20260318145607-5d6196b11a58/go.mod h1:E9m3iOkTDWYqru2ueyrP35cTPqZ10dKlhEoclk3CjaQ=
 github.com/openbao/go-kms-wrapping/v2 v2.7.0 h1:/Vm3UF0bMLdeU2U1fXI0hLVuJbqBlqpAwXlmn88IJ2Q=
 github.com/openbao/go-kms-wrapping/v2 v2.7.0/go.mod h1:xoUdq1btm4MNgwBpMkVLvXxuvnH4gGzODozWGFpft8w=
 github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0 h1:evwGV3ojzXhno2AnCYzyj10HxGHujq6R93zSlaGRRNk=

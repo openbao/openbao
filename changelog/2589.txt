@@ -10,3 +10,11 @@ behavior of openbao-ubi variants:
   revert to this behavior by manually specifying the user in your container
   engine.
 ```
+```release-note:change
+packaging/container: Removed `name`, `maintainer`, `vendor`, `version`,
+`release`, `revision`, `summary`, and `description` labels from
+container images in favor of the already attached [OpenContainers
+labels](https://github.com/opencontainers/image-spec/blob/main/annotations.md).
+If you have tooling that relies on these labels, instruct it to use the
+OpenContainers labels instead.
+```

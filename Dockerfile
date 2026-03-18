@@ -4,18 +4,6 @@
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}.
 FROM alpine:3.23 AS default
 
-ARG VERSION
-ARG REVISION
-
-# Additional metadata labels used by container registries, platforms and
-# certification scanners.
-LABEL name="OpenBao" \
-      maintainer="OpenBao <openbao@lists.openssf.org>" \
-      vendor="OpenBao" \
-      summary="OpenBao is a tool for securely accessing secrets." \
-      description="OpenBao is a tool for securely accessing secrets. A secret is anything that you want to tightly control access to, such as API keys, passwords, certificates, and more. OpenBao provides a unified interface to any secret, while providing tight access control and recording a detailed audit log." \
-      version=${VERSION} release=${REVISION} revision=${REVISION}
-
 COPY LICENSE /licenses/mozilla.txt
 
 # Create a non-root user to run the software.
@@ -67,18 +55,6 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}-ubi.
 FROM registry.access.redhat.com/ubi10-minimal:10.1 AS ubi
-
-ARG VERSION
-ARG REVISION
-
-# Additional metadata labels used by container registries, platforms and
-# certification scanners.
-LABEL name="OpenBao" \
-      maintainer="OpenBao <openbao@lists.openssf.org>" \
-      vendor="OpenBao" \
-      summary="OpenBao is a tool for securely accessing secrets." \
-      description="OpenBao is a tool for securely accessing secrets. A secret is anything that you want to tightly control access to, such as API keys, passwords, certificates, and more. OpenBao provides a unified interface to any secret, while providing tight access control and recording a detailed audit log." \
-      version=${VERSION} release=${REVISION} revision=${REVISION}
 
 COPY LICENSE /licenses/mozilla.txt
 

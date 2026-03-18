@@ -168,17 +168,6 @@ func IsFatalError(err error) bool {
 	return !errwrap.ContainsType(err, new(NonFatalError))
 }
 
-// ErrInvalidKey is returned if there is a user-based error with a provided
-// unseal key. This will be shown to the user, so should not contain
-// information that is sensitive.
-type ErrInvalidKey struct {
-	Reason string
-}
-
-func (e *ErrInvalidKey) Error() string {
-	return fmt.Sprintf("invalid key: %v", e.Reason)
-}
-
 type RegisterAuthFunc func(context.Context, time.Duration, string, *logical.Auth, string) error
 
 type activeAdvertisement struct {
@@ -186,11 +175,6 @@ type activeAdvertisement struct {
 	ClusterAddr      string                     `json:"cluster_addr,omitempty"`
 	ClusterCert      []byte                     `json:"cluster_cert,omitempty"`
 	ClusterKeyParams *certutil.ClusterKeyParams `json:"cluster_key_params,omitempty"`
-}
-
-type unlockInformation struct {
-	Parts [][]byte
-	Nonce string
 }
 
 type raftInformation struct {
@@ -383,6 +367,9 @@ type Core struct {
 
 	// namespace Store is used to manage namespaces
 	namespaceStore *NamespaceStore
+
+	// sealManager is used to manage seals per namespace
+	sealManager *SealManager
 
 	// identityStore is used to manage client entities
 	identityStore *ident.IdentityStore
@@ -1067,6 +1054,8 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 	// Construct a new AES-GCM barrier
 	c.barrier = barrier.NewAESGCMBarrier(c.physical, "")
+	// TODO(wslabosz): setup seal manager
+	// c.SetupSealManager()
 
 	// We create the funcs here, then populate the given config with it so that
 	// the caller can share state
@@ -3414,7 +3403,7 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 // for a single namespace. If a forceDelete flag is passed all login entries are deleted.
 func (c *Core) runLockedUserEntryUpdatesForNamespace(ctx context.Context, namespace *namespace.Namespace, forceDelete bool) (int, error) {
 	// get the list of mount accessors of locked users of a namespace
-	view := NamespaceView(c.barrier, namespace).SubView(coreLockedUsersPath)
+	view := NamespaceScopedView(c.barrier, namespace).SubView(coreLockedUsersPath)
 	mountAccessors, err := view.List(ctx, "")
 	if err != nil {
 		return 0, err

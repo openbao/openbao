@@ -445,11 +445,11 @@ func (c *Core) stopExpiration() error {
 }
 
 func (m *ExpirationManager) leaseView(ns *namespace.Namespace) barrier.View {
-	return NamespaceView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + leaseViewPrefix)
+	return NamespaceScopedView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + leaseViewPrefix)
 }
 
 func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) barrier.View {
-	return NamespaceView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + tokenViewPrefix)
+	return NamespaceScopedView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + tokenViewPrefix)
 }
 
 func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, int, error) {

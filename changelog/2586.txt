@@ -8,10 +8,10 @@ Unseal mechanisms.
     library).
   - Pre-built plugins for many of the seals currently built into OpenBao are
     available at https://github.com/openbao/openbao-plugins. We expect to phase
-    many of the built-in seals out of the `bao` binary by v2.7; the v2.6 series
-    retains all previously built-in seals to enable testing the migration from a
-    built-in seal to a pluginized seal. A pluginized seal takes priority over a
-    built-in seal if installed.
+    many of the vendor-specific built-in seals out of the `bao` binary by v2.7;
+    the v2.6 series retains all previously built-in seals to enable testing the
+    migration from a built-in seal to a pluginized seal. A pluginized seal takes
+    priority over a built-in seal if a matching plugin is installed.
   - Develop custom Auto Unseal mechanisms tailored to your use case using the
     [SDK](https://github.com/openbao/go-kms-wrapping/tree/main/plugin).
 ```

@@ -8,7 +8,6 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"path"
 	"sync"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
-	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 )
@@ -105,13 +103,13 @@ func (sm *SealManager) Reset() {
 	}
 }
 
-// SetSeal creates a seal using provided config and sets and initializes it
-// as a seal of a provided namespace, creating the barrier and persisting config.
+// SetSeal creates a seal with provided config and sets it as provided namespace seal;
+// Initializes seal, creating security barrier and persisting seal config.
 func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	// TODO(wslabosz): should we always enforce stored shares?
+	// TODO(wslabosz): Refactor stored shares into baseline seal property.
 	sealConfig.StoredShares = 1
 	if err := sealConfig.Validate(); err != nil {
 		return fmt.Errorf("invalid seal configuration: %w", err)
@@ -362,10 +360,13 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bool, error) {
 	info, exists := sm.unlockInformationByNamespace[ns.UUID]
 	if exists {
+		found := false
 		for _, existing := range info.Parts {
-			if subtle.ConstantTimeCompare(existing, key) == 1 {
-				return false, nil
-			}
+			found = found || subtle.ConstantTimeCompare(existing, key) == 1
+		}
+
+		if found {
+			return false, nil
 		}
 	} else {
 		uuid, err := uuid.GenerateUUID()
@@ -635,18 +636,6 @@ func (sm *SealManager) RotateBarrierKey(ctx context.Context, ns *namespace.Names
 				sm.logger.Error("failed to destroy upgrade", "term", newTerm, "error", err, "namespace", ns.Path)
 			}
 		})
-	}
-
-	// Write to the canary path, which will force a synchronous truing
-	// during replication
-	keyringCanaryEntry := &logical.StorageEntry{
-		Key:   path.Join(NamespaceStoragePathPrefix(ns), coreKeyringCanaryPath),
-		Value: fmt.Appendf(nil, "new-rotation-term-%d", newTerm),
-	}
-
-	if err := b.Put(ctx, keyringCanaryEntry); err != nil {
-		sm.logger.Error("error saving keyring canary", "error", err, "namespace", ns.Path)
-		return fmt.Errorf("failed to save keyring canary: %w", err)
 	}
 
 	return nil

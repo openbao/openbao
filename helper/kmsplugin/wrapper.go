@@ -60,7 +60,7 @@ func toWrapper[T wrapping.Wrapper](f func() T) wrapperFactory {
 // the provided options. This may dispatch to either a builtin wrapper or an
 // external pluginized wrapper.
 func (c *Catalog) ConfigureWrapper(ctx context.Context, name string, opts ...wrapping.Option) (wrapping.Wrapper, *wrapping.WrapperConfig, error) {
-	w, err := c.getWrapper(name)
+	w, builtin, err := c.getWrapper(name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -72,39 +72,50 @@ func (c *Catalog) ConfigureWrapper(ctx context.Context, name string, opts ...wra
 		if w, ok := w.(*wrapper); ok {
 			w.client.close()
 		}
-
 		return nil, nil, err
+	}
+
+	// Enrich metadata by marking builtin vs externally provided wrappers.
+	if config.Metadata == nil {
+		config.Metadata = make(map[string]string, 1)
+	}
+	if builtin {
+		config.Metadata["builtin"] = "true"
+	} else {
+		config.Metadata["builtin"] = "false"
 	}
 
 	return w, config, nil
 }
 
 // getWrapper returns a new wrapping.Wrapper that is either builtin or
-// pluginized, in which case a new plugin process may be spawned.
-func (c *Catalog) getWrapper(name string) (wrapping.Wrapper, error) {
+// pluginized, in which case a new plugin process may be spawned. The
+// additionally returned bool is true if the returned wrapper is built-in.
+func (c *Catalog) getWrapper(name string) (wrapping.Wrapper, bool, error) {
 	client, ok, err := c.getClient(name)
 	switch {
 	case err != nil:
-		return nil, err
+		return nil, false, err
 	case !ok:
 		// Try builtin wrappers.
 		if factory, ok := builtinWrappers[wrapping.WrapperType(name)]; ok {
-			return factory()
+			w, err := factory()
+			return w, true, err
 		}
-		return nil, fmt.Errorf("unknown wrapper: %s", name)
+		return nil, false, fmt.Errorf("unknown wrapper: %s", name)
 	}
 
 	// Each call to Dispense creates a new wrapper instance on the remote.
 	raw, err := client.Dispense("wrapper")
 	if err != nil {
 		client.close()
-		return nil, err
+		return nil, false, err
 	}
 
 	return &wrapper{
 		client:  client,
 		wrapper: raw.(wrapperInitFinalizer),
-	}, nil
+	}, false, nil
 }
 
 // wrapper adds plugin reloading & finalization hooks on top of a pluginized

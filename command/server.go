@@ -499,14 +499,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 			return 1
 		}
 
-		props := make([]string, 0, len(config.Metadata))
-		for k, v := range config.Metadata {
-			props = append(props, fmt.Sprintf("%s: %q", k, v))
-		}
-		sort.Strings(props)
-
-		info["seal metadata"] = fmt.Sprintf("%s (%s)", configSeal.Type, strings.Join(props, ", "))
-		infoKeys = append(infoKeys, "seal metadata")
+		info["auto seal"] = formatProps(configSeal.Type, config.Metadata)
+		infoKeys = append(infoKeys, "auto seal")
 	}
 
 	// Ensure that the seal finalizer is called, even if using verify-only
@@ -844,15 +838,8 @@ func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config
 
 		// Store the listener props for output later
 		key := fmt.Sprintf("listener %d", i+1)
-		propsList := make([]string, 0, len(props))
-		for k, v := range props {
-			propsList = append(propsList, fmt.Sprintf(
-				"%s: %q", k, v))
-		}
-		sort.Strings(propsList)
 		*infoKeys = append(*infoKeys, key)
-		(*info)[key] = fmt.Sprintf(
-			"%s (%s)", lnConfig.Type, strings.Join(propsList, ", "))
+		(*info)[key] = formatProps(lnConfig.Type, props)
 
 	}
 	if !disableClustering {
@@ -2509,19 +2496,12 @@ func setSeal(c *ServerCommand, config *server.Config, kms *kmsplugin.Catalog, in
 				return nil, nil, nil, nil, nil, fmt.Errorf("Error creating auto seal: %w", err)
 			}
 
-			infoKey := "seal metadata"
+			infoKey := "auto seal"
 			if configSeal.Disabled {
-				infoKey = "old seal metadata"
+				infoKey = "old auto seal"
 			}
 
-			// Auto seals emit metadata that we can print at server startup.
-			props := make([]string, 0, len(config.Metadata))
-			for k, v := range config.Metadata {
-				props = append(props, fmt.Sprintf("%s: %q", k, v))
-			}
-			sort.Strings(props)
-
-			info[infoKey] = fmt.Sprintf("%s (%s)", configSeal.Type, strings.Join(props, ", "))
+			info[infoKey] = formatProps(configSeal.Type, config.Metadata)
 			*infoKeys = append(*infoKeys, infoKey)
 		}
 
@@ -3003,6 +2983,31 @@ func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config,
 		}(ln.Listener)
 	}
 	return nil
+}
+
+// formatPropts returns a formatted info key/value such as:
+// Listener 1: tcp (addr: "127.0.0.1:8200", cluster address: "127.0.0.1:8201", ...)
+func formatProps(title string, m map[string]string) string {
+	if len(m) == 0 {
+		return title
+	}
+
+	props := make([]string, 0, len(m))
+	for k, v := range m {
+		if k == "" || v == "" {
+			continue
+		}
+		// Poor man's pretty-printer.
+		switch v {
+		case "true", "false":
+		default:
+			v = fmt.Sprintf("%q", v)
+		}
+		props = append(props, fmt.Sprintf("%s: %s", k, v))
+	}
+
+	sort.Strings(props)
+	return fmt.Sprintf("%s (%s)", title, strings.Join(props, ", "))
 }
 
 func SetStorageMigration(b physical.Backend, active bool) error {

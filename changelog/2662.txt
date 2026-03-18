@@ -1,0 +1,10 @@
+```release-note:change
+core/seal: Removed `StoredShares` property from `SealConfig` and its references.
+```
+```release-note:change
+api: Removed `StoredShares` property from `InitRequest` and `RotateInitRequest`.
+```
+```release-note:change
+http: Removed `StoredShares` property from `InitRequest` and `RekeyRequest`.
+```
+

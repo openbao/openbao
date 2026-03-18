@@ -1824,8 +1824,6 @@ func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig
 		}
 	}
 
-	barrierConfig.StoredShares = 1
-
 	// Initialize it with a basic single key
 	init, err := core.Initialize(ctx, &vault.InitParams{
 		BarrierConfig:  barrierConfig,
@@ -1835,8 +1833,8 @@ func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig
 		return nil, err
 	}
 
-	// Handle unseal with stored keys
-	if core.SealAccess().StoredKeysSupported() == vaultseal.StoredKeysSupportedGeneric {
+	// Handle unseal with stored keys.
+	if core.SealAccess().BarrierType() != vaultseal.WrapperTypeShamir {
 		err := core.UnsealWithStoredKeys(ctx)
 		if err != nil {
 			return nil, err
@@ -2843,7 +2841,6 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 						c.UI.Warn("")
 					}
 
-					// Unseal key is not returned if stored shares is supported
 					if len(init.SecretShares) > 0 {
 						c.UI.Warn("")
 						c.UI.Warn(wrapAtLength(

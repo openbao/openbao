@@ -108,8 +108,6 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	// TODO(wslabosz): Refactor stored shares into baseline seal property.
-	sealConfig.StoredShares = 1
 	if err := sealConfig.Validate(); err != nil {
 		return fmt.Errorf("invalid seal configuration: %w", err)
 	}
@@ -460,12 +458,8 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 // If allowMissing is true, a failure to find the root key in storage results
 // in a nil error and a nil root key being returned.
 func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
-	switch seal.StoredKeysSupported() {
-	case vaultseal.StoredKeysSupportedGeneric:
-		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
-			return nil, fmt.Errorf("recovery key verification failed: %w", err)
-		}
-	case vaultseal.StoredKeysSupportedShamirRoot:
+	switch seal.BarrierType() {
+	case vaultseal.WrapperTypeShamir:
 		if useTestSeal {
 			testseal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 			testseal.SetCore(sm.core)
@@ -489,7 +483,9 @@ func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combin
 			return nil, &ErrInvalidKey{fmt.Sprintf("failed to setup unseal key: %v", err)}
 		}
 	default:
-		return nil, errors.New("invalid seal")
+		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
+			return nil, fmt.Errorf("recovery key verification failed: %w", err)
+		}
 	}
 
 	storedKeys, err := seal.GetStoredKeys(ctx)
@@ -561,7 +557,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	var sealKey []byte
 	var sealKeyShares [][]byte
 
-	if sealConfig.StoredShares == 1 && seal.BarrierType() == vaultseal.WrapperTypeShamir {
+	if seal.BarrierType() == vaultseal.WrapperTypeShamir {
 		sealKey, sealKeyShares, err = sm.core.generateShares(sealConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate namespace seal key: %w", err)
@@ -582,8 +578,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		return nil, fmt.Errorf("failed to unseal namespace barrier: %w", err)
 	}
 
-	switch seal.StoredKeysSupported() {
-	case vaultseal.StoredKeysSupportedShamirRoot:
+	if seal.BarrierType() == vaultseal.WrapperTypeShamir {
 		shamirWrapper, err := seal.GetShamirWrapper()
 		if err != nil {
 			return nil, fmt.Errorf("unable to get shamir wrapper: %w", err)
@@ -591,9 +586,6 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		if err := shamirWrapper.SetAesGcmKeyBytes(sealKey); err != nil {
 			return nil, fmt.Errorf("failed to set seal key: %w", err)
 		}
-	case vaultseal.StoredKeysSupportedGeneric:
-	default:
-		return nil, fmt.Errorf("unsupported stored keys type encountered: %w", err)
 	}
 
 	if err := seal.SetStoredKeys(ctx, [][]byte{barrierKey}); err != nil {

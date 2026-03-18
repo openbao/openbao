@@ -314,7 +314,7 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 					"recovery. Consider canceling this operation and re-initializing "+
 					"with the -pgp-keys flag to protect the returned %s keys along "+
 					"with -backup to allow recovery of the encrypted keys in case of "+
-					"emergency. You can delete the stored keys later using the -delete "+
+					"emergency. You can delete the backed up keys later using the -delete "+
 					"flag.", strings.ToLower(keyTypeRequired))))
 			c.UI.Output("")
 		}
@@ -328,7 +328,7 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 					"returned, you will not be able to recover them. Consider canceling "+
 					"this operation and re-running with -backup to allow recovery of the "+
 					"encrypted unseal keys in case of emergency. You can delete the "+
-					"stored keys later using the -delete flag.", strings.ToLower(keyTypeRequired))))
+					"backed up keys later using the -delete flag.", strings.ToLower(keyTypeRequired))))
 			c.UI.Output("")
 		}
 	}
@@ -610,7 +610,7 @@ func (c *OperatorRekeyCommand) backupRetrieve(client *api.Client) int {
 	// Make the request
 	storedKeys, err := fn()
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error retrieving rekey stored keys: %s", err))
+		c.UI.Error(fmt.Sprintf("Error retrieving rekey backed up keys: %s", err))
 		return 2
 	}
 
@@ -639,11 +639,11 @@ func (c *OperatorRekeyCommand) backupDelete(client *api.Client) int {
 
 	// Make the request
 	if err := fn(); err != nil {
-		c.UI.Error(fmt.Sprintf("Error deleting rekey stored keys: %s", err))
+		c.UI.Error(fmt.Sprintf("Error deleting rekey backed up keys: %s", err))
 		return 2
 	}
 
-	c.UI.Output("Success! Delete stored keys (if they existed)")
+	c.UI.Output("Success! Delete backed up keys (if they existed)")
 	return 0
 }
 

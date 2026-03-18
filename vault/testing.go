@@ -299,7 +299,6 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 	barrierConfig := &SealConfig{
 		SecretShares:    3,
 		SecretThreshold: 3,
-		StoredShares:    1,
 	}
 
 	recoveryConfig := &SealConfig{

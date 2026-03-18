@@ -60,7 +60,6 @@ func handleSysInitPut(core *vault.Core, w http.ResponseWriter, r *http.Request) 
 	barrierConfig := &vault.SealConfig{
 		SecretShares:    req.SecretShares,
 		SecretThreshold: req.SecretThreshold,
-		StoredShares:    req.StoredShares,
 		PGPKeys:         req.PGPKeys,
 	}
 

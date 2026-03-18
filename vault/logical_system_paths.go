@@ -595,7 +595,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationSuffix: "system",
 					},
 					Summary:     "Initialize a new OpenBao instance.",
-					Description: "The OpenBao instance must not have been previously initialized. The recovery options, as well as the stored shares option, are only available when using OpenBao HSM.",
+					Description: "The OpenBao instance must not have been previously initialized. The recovery option is only available when using auto unseal.",
 				},
 			},
 

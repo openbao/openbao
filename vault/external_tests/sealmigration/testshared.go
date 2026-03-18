@@ -567,9 +567,6 @@ func verifyBarrierConfig(t *testing.T, cfg *vault.SealConfig, sealType string, s
 	if cfg.SecretThreshold != threshold {
 		t.Fatalf("bad seal config: %#v, expected SecretThreshold=%d", cfg, threshold)
 	}
-	if cfg.StoredShares != stored {
-		t.Fatalf("bad seal config: %#v, expected StoredShares=%d", cfg, stored)
-	}
 }
 
 // initializeShamir initializes a brand new backend storage with Shamir.

@@ -2763,26 +2763,21 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 
 	switch {
 	case c.migrationInfo.seal.RecoveryKeySupported() && c.seal.RecoveryKeySupported():
-		// Migrating from auto->auto, copy the configs over
+		// Migrating from auto->auto, copy the configs over.
 		bc, rc = existBarrierSealConfig, existRecoverySealConfig
 	case c.migrationInfo.seal.RecoveryKeySupported():
-		// Migrating from auto->shamir, clone auto's recovery config and set
-		// stored keys to 1.
+		// Migrating from auto->shamir, clone auto's recovery config.
 		bc = existRecoverySealConfig.Clone()
-		bc.StoredShares = 1
 	case c.seal.RecoveryKeySupported():
 		// Migrating from shamir->auto, set a new barrier config and set
-		// recovery config to a clone of shamir's barrier config with stored
-		// keys set to 0.
+		// recovery config to a clone of shamir's barrier config.
 		bc = &SealConfig{
 			Type:            c.seal.BarrierType().String(),
 			SecretShares:    1,
 			SecretThreshold: 1,
-			StoredShares:    1,
 		}
 
 		rc = existBarrierSealConfig.Clone()
-		rc.StoredShares = 0
 	}
 
 	if err := c.seal.SetBarrierConfig(ctx, bc); err != nil {
@@ -2803,26 +2798,22 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 func (c *Core) adjustSealConfigDuringMigration(existBarrierSealConfig, existRecoverySealConfig *SealConfig) {
 	switch {
 	case c.migrationInfo.seal.RecoveryKeySupported() && existRecoverySealConfig != nil:
-		// Migrating from auto->shamir, clone auto's recovery config and set
-		// stored keys to 1.  Unless the recover config doesn't exist, in which
+		// Migrating from auto->shamir, clone auto's recovery config;
+		// unless the recover config doesn't exist, in which
 		// case the migration is assumed to already have been performed.
 		newSealConfig := existRecoverySealConfig.Clone()
-		newSealConfig.StoredShares = 1
 		c.seal.SetCachedBarrierConfig(newSealConfig)
 	case !c.migrationInfo.seal.RecoveryKeySupported() && c.seal.RecoveryKeySupported():
 		// Migrating from shamir->auto, set a new barrier config and set
-		// recovery config to a clone of shamir's barrier config with stored
-		// keys set to 0.
+		// recovery config to a clone of shamir's barrier config.
 		newBarrierSealConfig := &SealConfig{
 			Type:            c.seal.BarrierType().String(),
 			SecretShares:    1,
 			SecretThreshold: 1,
-			StoredShares:    1,
 		}
 		c.seal.SetCachedBarrierConfig(newBarrierSealConfig)
 
 		newRecoveryConfig := existBarrierSealConfig.Clone()
-		newRecoveryConfig.StoredShares = 0
 		c.seal.SetCachedRecoveryConfig(newRecoveryConfig)
 	}
 }
@@ -2836,37 +2827,18 @@ func (c *Core) unsealKeyToRootKeyPreUnseal(ctx context.Context, seal Seal, combi
 }
 
 // unsealKeyToRootKey takes a key provided by the user, either a recovery key
-// if using an autoseal or an unseal key with Shamir.  It returns a nil error
+// if using an autoseal or an unseal key with Shamir. It returns a nil error
 // if the key is valid and an error otherwise. It also returns the root key
 // that can be used to unseal the barrier.
 // If useTestSeal is true, seal will not be modified; this is used when not
-// invoked as part of an unseal process.  Otherwise in the non-legacy shamir
-// case the combinedKey will be set in the seal, which means subsequent attempts
-// to use the seal to read the root key will succeed, assuming combinedKey is
-// valid.
+// invoked as part of an unseal process; In shamir case the combinedKey
+// will be set in the seal, which means subsequent attempts to use the seal
+// to read the root key will succeed, assuming combinedKey is valid.
 // If allowMissing is true, a failure to find the root key in storage results
 // in a nil error and a nil root key being returned.
 func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
-	switch seal.StoredKeysSupported() {
-	case vaultseal.StoredKeysSupportedGeneric:
-		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
-			return nil, fmt.Errorf("recovery key verification failed: %w", err)
-		}
-
-		storedKeys, err := seal.GetStoredKeys(ctx)
-		if storedKeys == nil && err == nil && allowMissing {
-			return nil, nil
-		}
-
-		if err == nil && len(storedKeys) != 1 {
-			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
-		}
-		return storedKeys[0], nil
-
-	case vaultseal.StoredKeysSupportedShamirRoot:
+	switch seal.BarrierType() {
+	case vaultseal.WrapperTypeShamir:
 		if useTestSeal {
 			testseal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 			testseal.SetCore(c)
@@ -2897,8 +2869,24 @@ func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []
 			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
 		}
 		return storedKeys[0], nil
+	default:
+		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
+			return nil, fmt.Errorf("recovery key verification failed: %w", err)
+		}
+
+		storedKeys, err := seal.GetStoredKeys(ctx)
+		if storedKeys == nil && err == nil && allowMissing {
+			return nil, nil
+		}
+
+		if err == nil && len(storedKeys) != 1 {
+			err = fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
+		}
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
+		}
+		return storedKeys[0], nil
 	}
-	return nil, errors.New("invalid seal")
 }
 
 // IsInSealMigrationMode returns true if we're configured to perform a seal migration,

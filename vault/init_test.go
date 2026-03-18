@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -18,7 +19,7 @@ import (
 func TestCore_Init(t *testing.T) {
 	testCoreInitCommon(t, nil, &SealConfig{SecretShares: 5, SecretThreshold: 3}, nil)
 
-	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Name: "transit"})
+	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Wrapper: wrapping.WrapperTypeTest})
 	autoSeal, err := NewAutoSeal(testSeal)
 	require.NoError(t, err)
 	testCoreInitCommon(t, autoSeal, &SealConfig{SecretShares: 1, SecretThreshold: 1}, &SealConfig{SecretShares: 0, SecretThreshold: 0})

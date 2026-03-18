@@ -32,6 +32,18 @@ func pathUserPassword(b *backend) *framework.Path {
 			"password": {
 				Type:        framework.TypeString,
 				Description: "Password for this user.",
+				DisplayAttrs: &framework.DisplayAttributes{
+					Sensitive: true,
+				},
+			},
+
+			"password_hash": {
+				Type:        framework.TypeString,
+				Description: "Pre-hashed bcrypt password for this user. Mutually exclusive with password.",
+				Deprecated:  true,
+				DisplayAttrs: &framework.DisplayAttributes{
+					Sensitive: true,
+				},
 			},
 		},
 
@@ -54,7 +66,6 @@ func (b *backend) pathUserPasswordUpdate(ctx context.Context, req *logical.Reque
 	defer txRollback()
 
 	username := d.Get("username").(string)
-
 	userEntry, err := b.user(ctx, req.Storage, username)
 	if err != nil {
 		return nil, err
@@ -70,6 +81,7 @@ func (b *backend) pathUserPasswordUpdate(ctx context.Context, req *logical.Reque
 	if userErr != nil {
 		return logical.ErrorResponse(userErr.Error()), logical.ErrInvalidRequest
 	}
+
 	if err := b.setUser(ctx, req.Storage, username, userEntry); err != nil {
 		return nil, err
 	}
@@ -81,18 +93,27 @@ func (b *backend) pathUserPasswordUpdate(ctx context.Context, req *logical.Reque
 	return nil, nil
 }
 
+// updateUserPassword sets PasswordHash on userEntry from either a plaintext
+// password hashed with bcrypt, or a pre-hashed bcrypt string stored directly.
 func (b *backend) updateUserPassword(req *logical.Request, d *framework.FieldData, userEntry *UserEntry) (error, error) {
-	password := d.Get("password").(string)
-	if password == "" {
-		return errors.New("missing password"), nil
+	if err := validatePasswordInput(d); err != nil {
+		return err, nil
 	}
-	// Generate a hash of the password
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, err
-	}
-	userEntry.PasswordHash = hash
 
+	if password, ok := d.GetOk("password"); ok {
+		hash, err := bcrypt.GenerateFromPassword([]byte(password.(string)), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		userEntry.PasswordHash = hash
+		return nil, nil
+	}
+
+	passwordHash := d.Get("password_hash").(string)
+	if _, err := bcrypt.Cost([]byte(passwordHash)); err != nil {
+		return errors.New("password_hash is not a valid bcrypt hash"), nil
+	}
+	userEntry.PasswordHash = []byte(passwordHash)
 	return nil, nil
 }
 
@@ -101,5 +122,7 @@ Reset user's password.
 `
 
 const pathUserPasswordHelpDesc = `
-This endpoint allows resetting the user's password.
+This endpoint allows resetting the user's password by providing either
+a plaintext password (which will be hashed with bcrypt) or a pre-hashed
+bcrypt string via password_hash. One of two must be provided, but not both.
 `

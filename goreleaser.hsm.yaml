@@ -17,7 +17,7 @@ builds:
       - ui
       - hsm
     ldflags:
-      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.CommitDate={{ .Date }} -X github.com/openbao/openbao/version.VersionMetadata=hsm
+      - -X github.com/openbao/openbao/version.fullVersion={{ .Version }} -X github.com/openbao/openbao/version.GitCommit={{ .Commit }} -X github.com/openbao/openbao/version.CommitDate={{ .Date }} -X github.com/openbao/openbao/version.VersionMetadata=hsm
     env:
       - CGO_ENABLED=1
       - >-
@@ -130,7 +130,7 @@ dockers:
       - builds-hsm
     build_flag_templates:
       - "--pull"
-      - "--build-arg=BIN_NAME={{ .ProjectName}}"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
       - "--build-arg=EXTRA_PACKAGES=gcompat"
       - "--platform=linux/amd64"
       - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'

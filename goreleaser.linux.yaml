@@ -16,7 +16,7 @@ builds:
     tags:
       - ui
     ldflags:
-      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.CommitDate={{ .Date }}
+      - -X github.com/openbao/openbao/version.fullVersion={{ .Version }} -X github.com/openbao/openbao/version.GitCommit={{ .Commit }} -X github.com/openbao/openbao/version.CommitDate={{ .Date }}
     env:
       - CGO_ENABLED=0
     goos:
@@ -215,7 +215,7 @@ dockers:
       - builds-linux
     build_flag_templates:
       - "--pull"
-      - "--build-arg=BIN_NAME={{.ProjectName}}"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
       - "--platform=linux/ppc64le"
       - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
       - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"

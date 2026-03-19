@@ -541,7 +541,6 @@ func (b *MFABackend) HandleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 		Digits:      otplib.Digits(totpConfig.Digits),
 		Algorithm:   otplib.Algorithm(totpConfig.Algorithm),
 		SecretSize:  uint(totpConfig.KeySize),
-		Rand:        b.Core.secureRandomReader,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate TOTP key for method name %q: %w", mConfig.Name, err)

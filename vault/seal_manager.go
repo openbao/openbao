@@ -569,13 +569,12 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		}
 	}
 
-	// TODO(wslabosz): should we declare separate random readers per namespace?
-	barrierKey, err := b.GenerateKey(sm.core.secureRandomReader)
+	barrierKey, err := b.GenerateKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate namespace barrier key: %w", err)
 	}
 
-	if err := b.Initialize(ctx, barrierKey, sealKey, sm.core.secureRandomReader); err != nil {
+	if err := b.Initialize(ctx, barrierKey, sealKey); err != nil {
 		return nil, fmt.Errorf("failed to initialize namespace barrier: %w", err)
 	}
 
@@ -615,7 +614,7 @@ func (sm *SealManager) RotateBarrierKey(ctx context.Context, ns *namespace.Names
 		return ErrNotSealable
 	}
 
-	newTerm, err := b.Rotate(ctx, sm.core.secureRandomReader)
+	newTerm, err := b.Rotate(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create new encryption key: %w", err)
 	}

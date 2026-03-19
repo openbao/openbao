@@ -210,7 +210,7 @@ func (c *Core) setupCluster(ctx context.Context) error {
 		// Create a private key
 		if c.localClusterPrivateKey.Load() == nil {
 			c.logger.Debug("generating cluster private key")
-			key, err := ecdsa.GenerateKey(elliptic.P521(), c.secureRandomReader)
+			key, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 			if err != nil {
 				c.logger.Error("failed to generate local cluster key", "error", err)
 				return err

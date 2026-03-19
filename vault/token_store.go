@@ -1267,9 +1267,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry, per
 	}
 
 	entry.Policies = policyutil.SanitizePolicies(entry.Policies, policyutil.DoNotAddDefaultPolicy)
-	var createRootTokenFlag bool
 	if len(entry.Policies) == 1 && entry.Policies[0] == "root" {
-		createRootTokenFlag = true
 		metrics.IncrCounter([]string{"token", "create_root"}, 1)
 	}
 
@@ -1290,11 +1288,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry, per
 		if entry.ID == "" {
 			userSelectedID = false
 			var err error
-			if createRootTokenFlag {
-				entry.ID, err = base62.RandomWithReader(TokenLength, ts.core.secureRandomReader)
-			} else {
-				entry.ID, err = base62.Random(TokenLength)
-			}
+			entry.ID, err = base62.Random(TokenLength)
 			if err != nil {
 				return err
 			}

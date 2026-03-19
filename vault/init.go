@@ -121,7 +121,7 @@ func (c *Core) InitializedLocally(ctx context.Context) (bool, error) {
 
 func (c *Core) generateShares(sc *SealConfig) ([]byte, [][]byte, error) {
 	// Generate a root key
-	rootKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+	rootKey, err := c.barrier.GenerateKey()
 	if err != nil {
 		return nil, nil, fmt.Errorf("key generation failed: %w", err)
 	}
@@ -318,7 +318,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		return nil, fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	barrierKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+	barrierKey, err := c.barrier.GenerateKey()
 	if err != nil {
 		c.logger.Error("error generating barrier root key", "error", err)
 		return nil, err
@@ -336,7 +336,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 	}
 
 	// Initialize the barrier
-	if err := c.barrier.Initialize(ctx, barrierKey, sealKey, c.secureRandomReader); err != nil {
+	if err := c.barrier.Initialize(ctx, barrierKey, sealKey); err != nil {
 		c.logger.Error("failed to initialize barrier", "error", err)
 		return nil, fmt.Errorf("failed to initialize barrier: %w", err)
 	}

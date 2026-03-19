@@ -5,7 +5,6 @@ package raft
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/tls"
 	"net"
 	"testing"
@@ -37,7 +36,7 @@ func TestStreamLayer_UnspecifiedIP(t *testing.T) {
 		},
 	}
 
-	raftTLSKey, err := GenerateTLSKey(rand.Reader)
+	raftTLSKey, err := GenerateTLSKey()
 	if err != nil {
 		t.Fatal(err)
 	}

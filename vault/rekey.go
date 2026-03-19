@@ -423,7 +423,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 	// Generate a new key: for AutoUnseal, this is a new root key; for Shamir,
 	// this is a new unseal key, and performBarrierRekey will also generate a
 	// new root key.
-	newKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+	newKey, err := c.barrier.GenerateKey()
 	if err != nil {
 		c.logger.Error("failed to generate root key", "error", err)
 		return nil, logical.CodedError(http.StatusInternalServerError, "root key generation failed: %v", err)
@@ -525,7 +525,7 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 		}
 	}
 
-	newRootKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+	newRootKey, err := c.barrier.GenerateKey()
 	if err != nil {
 		return logical.CodedError(http.StatusInternalServerError, "failed to perform rekey: %v", err)
 	}
@@ -652,7 +652,7 @@ func (c *Core) RecoveryRekeyUpdate(ctx context.Context, key []byte, nonce string
 	}
 
 	// Generate a new root key
-	newRecoveryKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+	newRecoveryKey, err := c.barrier.GenerateKey()
 	if err != nil {
 		c.logger.Error("failed to generate recovery key", "error", err)
 		return nil, logical.CodedError(http.StatusInternalServerError, "recovery key generation failed: %v", err)

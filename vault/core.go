@@ -550,9 +550,6 @@ type Core struct {
 
 	coreNumber int
 
-	// secureRandomReader is the reader used for CSP operations
-	secureRandomReader io.Reader
-
 	recoveryMode bool
 
 	clusterNetworkLayer cluster.NetworkLayer
@@ -679,8 +676,6 @@ type CoreConfig struct {
 	// Unwrap seal is the optional seal marked "disabled"; this is the old
 	// seal in migration scenarios.
 	UnwrapSeal Seal
-
-	SecureRandomReader io.Reader
 
 	LogLevel string
 
@@ -848,11 +843,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		conf.RawConfig = new(server.Config)
 	}
 
-	// secureRandomReader cannot be nil
-	if conf.SecureRandomReader == nil {
-		conf.SecureRandomReader = rand.Reader
-	}
-
 	clusterHeartbeatInterval := conf.ClusterHeartbeatInterval
 	if clusterHeartbeatInterval == 0 {
 		clusterHeartbeatInterval = 5 * time.Second
@@ -921,7 +911,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		builtinRegistry:                conf.BuiltinRegistry,
 		metricsHelper:                  conf.MetricsHelper,
 		metricSink:                     conf.MetricSink,
-		secureRandomReader:             conf.SecureRandomReader,
 		recoveryMode:                   conf.RecoveryMode,
 		raftJoinDoneCh:                 make(chan struct{}),
 		pendingRaftPeerChallengeKey:    make([]byte, 32),
@@ -1815,7 +1804,7 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 		}
 
 		// Generate a new root key
-		newRootKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+		newRootKey, err := c.barrier.GenerateKey()
 		if err != nil {
 			return fmt.Errorf("error generating new root key: %w", err)
 		}

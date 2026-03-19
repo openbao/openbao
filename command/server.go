@@ -547,7 +547,11 @@ func (c *ServerCommand) runRecoveryMode() int {
 		})
 	}
 
+	var servers []*http.Server
 	listenerCloseFunc := func() {
+		for _, srv := range servers {
+			srv.Close()
+		}
 		var errs error
 		for _, ln := range lns {
 			errs = errors.Join(errs, ln.Close())
@@ -615,6 +619,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 			IdleTimeout:       5 * time.Minute,
 			ErrorLog:          c.logger.StandardLogger(nil),
 		}
+
+		servers = append(servers, server)
 
 		go func(ln net.Listener) {
 			if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -1231,7 +1237,11 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Make sure we close all listeners from this point on
+	var servers []*http.Server
 	listenerCloseFunc := func() {
+		for _, srv := range servers {
+			srv.Close()
+		}
 		var errs error
 		for _, ln := range lns {
 			errs = errors.Join(errs, ln.Close())
@@ -2944,6 +2954,8 @@ func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config,
 		if c.flagTestServerConfig {
 			continue
 		}
+
+		servers = append(servers, server)
 
 		go func(ln net.Listener) {
 			if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {

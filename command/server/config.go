@@ -40,10 +40,6 @@ const (
 	PluginDownloadContinue = "continue"
 )
 
-var entConfigValidate = func(_ *Config, _ string) []configutil.ConfigError {
-	return nil
-}
-
 // Config is the configuration for the vault server.
 type Config struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
@@ -173,12 +169,7 @@ func (c *Config) Validate(sourceFilePath string) []configutil.ConfigError {
 		}
 	}
 
-	results = append(results, c.validateEnt(sourceFilePath)...)
 	return results
-}
-
-func (c *Config) validateEnt(sourceFilePath string) []configutil.ConfigError {
-	return entConfigValidate(c, sourceFilePath)
 }
 
 // DevConfig is a Config that is used for dev mode of OpenBao.
@@ -354,7 +345,7 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 	}
 
 	// Validate Type is valid
-	_, err := consts.ParsePluginType(p.Type)
+	typ, err := consts.ParsePluginType(p.Type)
 	if err != nil {
 		results = append(results, configutil.ConfigError{
 			Problem: fmt.Sprintf("plugin %q: %s", p.Name, err.Error()),
@@ -372,18 +363,13 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 		})
 	}
 
-	// Validate Version is not empty
-	if p.Version == "" {
-		results = append(results, configutil.ConfigError{
-			Problem: fmt.Sprintf("plugin %q: version cannot be empty", p.Slug()),
-		})
-	}
-
-	// Ensure Image:Version is a valid image reference
-	if _, err := name.ParseReference(p.URL()); err != nil {
-		results = append(results, configutil.ConfigError{
-			Problem: fmt.Sprintf("plugin %q: image and version do not form a valid image reference. %v", p.Slug(), err),
-		})
+	if p.Image != "" {
+		// Ensure Image:Version is a valid image reference
+		if _, err := name.ParseReference(p.URL()); err != nil {
+			results = append(results, configutil.ConfigError{
+				Problem: fmt.Sprintf("plugin %q: image and version do not form a valid image reference. %v", p.Slug(), err),
+			})
+		}
 	}
 
 	// Validate binary_name is not empty
@@ -391,6 +377,17 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 		results = append(results, configutil.ConfigError{
 			Problem: fmt.Sprintf("plugin %q: binary_name cannot be empty when image specified", p.Slug()),
 		})
+	}
+
+	if typ != consts.PluginTypeKMS || p.Image != "" {
+		// Validate version is not empty. KMS plugins do not require or enforce
+		// that a version is set. OCI-based plugins however require a version be
+		// set at all times.
+		if p.Version == "" {
+			results = append(results, configutil.ConfigError{
+				Problem: fmt.Sprintf("plugin %q: version cannot be empty", p.Slug()),
+			})
+		}
 	}
 
 	// Validate sha256sum is exactly 64 hex characters
@@ -708,7 +705,7 @@ func LoadConfig(path string, allPaths []string) (cfg *Config, err error) {
 			var err error
 			enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 			if err != nil {
-				return nil, errors.New("error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
+				return nil, fmt.Errorf("failed to parse environment variable %s", consts.VaultEnableFilePermissionsCheckEnv)
 			}
 		}
 		f, err := os.Open(path)
@@ -783,7 +780,7 @@ func LoadConfigFile(path string, allPaths []string) (cfg *Config, err error) {
 		var err error
 		enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 		if err != nil {
-			return nil, errors.New("error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
+			return nil, fmt.Errorf("failed to parse environment variable %s", consts.VaultEnableFilePermissionsCheckEnv)
 		}
 	}
 
@@ -795,7 +792,6 @@ func LoadConfigFile(path string, allPaths []string) (cfg *Config, err error) {
 		}
 		// check permissions of the plugin directory
 		if conf.PluginDirectory != "" {
-
 			err = osutil.OwnerPermissionsMatch(conf.PluginDirectory, conf.PluginFileUid, conf.PluginFilePermissions)
 			if err != nil {
 				return nil, err

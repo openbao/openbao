@@ -67,7 +67,7 @@ func testConfigRaftRetryJoin(t *testing.T) {
 	}
 }
 
-func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
+func testLoadConfigFile_topLevel(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config2.hcl", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -177,7 +177,7 @@ func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
 	}
 }
 
-func testLoadConfigFile_json2(t *testing.T, entropy *configutil.Entropy) {
+func testLoadConfigFile_json2(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config2.hcl.json", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)

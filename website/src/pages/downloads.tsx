@@ -297,10 +297,12 @@ const PackageRepo = ({ type }) => {
   );
 };
 const DockerList = ({ version, registry }) => {
+  const dockerVersion = version.slice(1);
+
   // For example: v2.6.0, v2.5.0-beta20251125.
   // Consider replacing with a more complete semver parser once required.
-  const [major, minor, _patch] = version
-    .match(/^v(\d+)\.(\d+)\.(\d+)/).slice(1).map(v => parseInt(v));
+  const [major, minor, _patch] = dockerVersion
+    .match(/^(\d+)\.(\d+)\.(\d+)/).slice(1).map(v => parseInt(v));
 
   const dockerDistros = {
     "Alpine Image Distribution": "openbao/openbao",
@@ -317,7 +319,7 @@ const DockerList = ({ version, registry }) => {
           <div key={label}>
             <p>{label}</p>
             <CodeBlock language="shell">
-              {`docker pull ${registry}/${image}:${version}`}
+              {`docker pull ${registry}/${image}:${dockerVersion}`}
             </CodeBlock>
           </div>
         ))}

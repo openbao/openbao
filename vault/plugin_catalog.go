@@ -37,12 +37,22 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+const pluginCatalogPath = "core/plugin-catalog/"
+
 var (
-	pluginCatalogPath           = "core/plugin-catalog/"
 	ErrDirectoryNotConfigured   = errors.New("could not set plugin, plugin directory is not configured")
 	ErrPluginNotFound           = errors.New("plugin not found in the catalog")
 	ErrPluginConnectionNotFound = errors.New("plugin connection not found for client")
 	ErrPluginBadType            = errors.New("unable to determine plugin type")
+
+	// pluginTypes is the subset of consts.PluginTypes that is handled by the
+	// plugin catalog.
+	pluginTypes = []consts.PluginType{
+		consts.PluginTypeUnknown,
+		consts.PluginTypeCredential,
+		consts.PluginTypeDatabase,
+		consts.PluginTypeSecrets,
+	}
 )
 
 // PluginCatalog keeps a record of plugins known to vault. External plugins need
@@ -205,65 +215,34 @@ func (c *Core) ReloadPlugins() {
 		return
 	}
 
-	c.pluginCatalog.lock.Lock()
-	defer c.pluginCatalog.lock.Unlock()
-
-	if err := c.reconcileOCIPlugins(c.activeContext, c.Standby()); err != nil {
+	if err := c.registerDeclarativePlugins(c.activeContext, c.Standby()); err != nil {
 		c.logger.Error("failed to set up plugins on reload", "error", err)
 	}
 }
 
-// reconcileOCIPlugins handles downloading and validating OCI-based plugins configured in the server
-func (c *Core) reconcileOCIPlugins(ctx context.Context, standby bool) error {
-	logger := c.logger.Named("oci-plugins")
-
-	// Load the current configuration
-	conf := c.rawConfig.Load()
-	if conf == nil {
-		logger.Error("nil config")
+func (c *Core) registerDeclarativePlugins(ctx context.Context, standby bool) error {
+	config := c.rawConfig.Load()
+	if config == nil {
 		return nil
 	}
 
-	if err := c.downloadOCIPlugins(ctx, logger, conf); err != nil {
-		return fmt.Errorf("failed to download OCI plugins: %w", err)
-	}
-
-	if err := c.registerOCIPlugins(ctx, logger, conf, standby); err != nil {
-		return fmt.Errorf("failed to register OCI plugins: %w", err)
-	}
-
-	return nil
-}
-
-func (c *Core) downloadOCIPlugins(ctx context.Context, logger log.Logger, config *server.Config) error {
-	if !config.PluginAutoDownload {
-		logger.Info("skipping OCI plugin downloading")
-		return nil
-	}
-
-	// Create OCI plugin downloader
-	logger.Info("starting OCI plugin downloading")
-	downloader := oci.NewPluginDownloader(c.pluginDirectory, config, logger)
-	err := downloader.ReconcilePlugins(ctx)
-	if err != nil {
-		return err
-	}
-
-	logger.Info("OCI plugin downloading completed")
-	return nil
-}
-
-func (c *Core) registerOCIPlugins(ctx context.Context, logger log.Logger, config *server.Config, standby bool) error {
 	if !config.PluginAutoRegister {
-		logger.Info("skipping OCI plugin registration")
 		return nil
 	}
 
-	// Register declarative plugins
-	logger.Info("starting OCI plugin registration")
-	defer logger.Info("OCI plugin registration completed")
+	logger := c.logger.Named("plugins")
 
-	return c.pluginCatalog.registerOCIPlugins(ctx, config.Plugins, standby)
+	logger.Info("starting declarative plugin registration")
+	defer logger.Info("declarative plugin registration completed")
+
+	c.pluginCatalog.lock.Lock()
+	defer c.pluginCatalog.lock.Unlock()
+
+	if err := c.pluginCatalog.registerDeclarativePlugins(ctx, config.Plugins, standby); err != nil {
+		return fmt.Errorf("failed to set up declarative plugins: %w", err)
+	}
+
+	return nil
 }
 
 type pluginClientConn struct {
@@ -325,13 +304,19 @@ func (c *PluginCatalog) reloadExternalPlugin(key externalPluginsKey, id, path st
 	return nil
 }
 
-func (c *PluginCatalog) registerOCIPlugins(ctx context.Context, plugins []*server.PluginConfig, standby bool) error {
+func (c *PluginCatalog) registerDeclarativePlugins(ctx context.Context, plugins []*server.PluginConfig, standby bool) error {
 	// Register any missing plugins and update existing ones.
 	for index, plugin := range plugins {
 		if err := func() error {
 			pluginType, err := consts.ParsePluginType(plugin.Type)
 			if err != nil {
 				return err
+			}
+
+			if !slices.Contains(pluginTypes, pluginType) {
+				// Skip registering plugins that are not handled by the plugin
+				// catalog, such as KMS plugins.
+				return nil
 			}
 
 			sha256, err := hex.DecodeString(plugin.SHA256Sum)
@@ -384,7 +369,7 @@ func (c *PluginCatalog) registerOCIPlugins(ctx context.Context, plugins []*serve
 	}
 
 	// Check if we need to remove any plugins.
-	for _, pluginType := range consts.PluginTypes {
+	for _, pluginType := range pluginTypes {
 		if err := func() error {
 			storedPlugins, err := c.listInternal(ctx, pluginType, true /* versioned */)
 			if err != nil {
@@ -1135,6 +1120,8 @@ func (c *PluginCatalog) setInternal(ctx context.Context, name string, pluginType
 		runningVersion, versionErr = c.getBackendRunningVersion(ctx, entryTmp)
 	case consts.PluginTypeDatabase:
 		runningVersion, versionErr = c.getDatabaseRunningVersion(ctx, entryTmp)
+	case consts.PluginTypeKMS:
+		return nil, fmt.Errorf("KMS plugins cannot be registered via the plugin catalog")
 	default:
 		return nil, fmt.Errorf("unknown plugin type: %v", pluginType)
 	}

@@ -1076,12 +1076,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 		return c, nil
 	}
 
-	if conf.PluginDirectory != "" {
-		c.pluginDirectory, err = filepath.Abs(conf.PluginDirectory)
-		if err != nil {
-			return nil, fmt.Errorf("core setup failed, could not verify plugin directory: %w", err)
-		}
-	}
+	c.pluginDirectory = conf.PluginDirectory
 
 	if conf.PluginFileUid != 0 {
 		c.pluginFileUid = conf.PluginFileUid
@@ -2330,7 +2325,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
-	if err := c.reconcileOCIPlugins(ctx, standby); err != nil {
+	if err := c.registerDeclarativePlugins(ctx, standby); err != nil {
 		return err
 	}
 	if err := c.setupNamespaceStore(ctx); err != nil {
@@ -3671,7 +3666,7 @@ func (c *Core) CheckPluginPerms(pluginName string) (err error) {
 		var err error
 		enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 		if err != nil {
-			return errors.New("Error parsing the environment variable VAULT_ENABLE_FILE_PERMISSIONS_CHECK")
+			return fmt.Errorf("failed to parse environment variable %s", consts.VaultEnableFilePermissionsCheckEnv)
 		}
 	}
 

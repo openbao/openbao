@@ -55,7 +55,7 @@ export default ClusterBaseRoute.extend({
     controller.setProperties({
       model,
       filter: params.pageFilter || '',
-      page: model.get('meta.currentPage') || 1,
+      page: model.meta.currentPage || 1,
       policyType: this.policyType(),
     });
   },

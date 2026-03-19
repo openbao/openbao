@@ -19,7 +19,7 @@ module('Unit | Model | secret-v2-version', function (hooks) {
           deletionTime: '2000-10-14T00:00:00.000000Z',
         })
       );
-      assert.true(model.get('deleted'));
+      assert.true(model.deleted);
     });
   });
 
@@ -32,7 +32,7 @@ module('Unit | Model | secret-v2-version', function (hooks) {
           deletionTime: '2999-10-14T00:00:00.000000Z',
         })
       );
-      assert.false(model.get('deleted'));
+      assert.false(model.deleted);
     });
   });
 });

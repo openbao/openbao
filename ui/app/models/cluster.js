@@ -32,7 +32,7 @@ export default Model.extend({
 
   leaderNode: computed('nodes', 'nodes.[]', function () {
     const nodes = this.nodes;
-    if (nodes.get('length') === 1) {
+    if (nodes.length === 1) {
       return nodes[0];
     } else {
       return nodes.find((x) => x.isLeader);

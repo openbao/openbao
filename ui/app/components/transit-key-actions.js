@@ -8,7 +8,7 @@ import { copy } from 'ember-copy';
 import { assert } from '@ember/debug';
 import { inject as service } from '@ember/service';
 import Component from '@ember/component';
-import { set, get, computed } from '@ember/object';
+import { set, computed } from '@ember/object';
 import { encodeString } from 'vault/utils/b64';
 
 const TRANSIT_PARAMS = {
@@ -75,7 +75,7 @@ export default Component.extend(TRANSIT_PARAMS, {
       return;
     }
     // eslint-disable-next-line ember/no-get
-    set(this, 'selectedAction', get(this, 'key.supportedActions[0]'));
+    set(this, 'selectedAction', this.key.supportedActions[0]);
     assert('`key` is required for `' + this.toString() + '`.', this.getModelInfo());
   },
 

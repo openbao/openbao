@@ -29,7 +29,7 @@ export default Base.extend({
   },
 
   transaction(model, policyName) {
-    const policies = model.get('policies');
+    const policies = model.policies;
     model.set('policies', policies.without(policyName));
     return model.save();
   },

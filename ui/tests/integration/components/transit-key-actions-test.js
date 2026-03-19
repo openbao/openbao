@@ -24,12 +24,12 @@ const storeStub = Service.extend({
       keyAction(action, { backend, id, payload }, options) {
         self.set('callArgs', { action, backend, id, payload });
         self.set('callArgsOptions', options);
-        const rootResp = assign({}, self.get('rootKeyActionReturnVal'));
+        const rootResp = assign({}, self.rootKeyActionReturnVal);
         const resp =
           Object.keys(rootResp).length > 0
             ? rootResp
             : {
-                data: assign({}, self.get('keyActionReturnVal')),
+                data: assign({}, self.keyActionReturnVal),
               };
         return resolve(resp);
       },

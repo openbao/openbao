@@ -102,7 +102,7 @@ export default class StringList extends Component {
   @action
   addInput() {
     const inputList = this.inputList;
-    if (inputList.get('lastObject.value') !== '') {
+    if (inputList.objectAt(inputList.length - 1)?.value !== '') {
       inputList.pushObject({ value: '' });
     }
   }

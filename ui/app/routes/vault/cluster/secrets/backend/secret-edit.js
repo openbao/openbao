@@ -71,7 +71,7 @@ export default Route.extend({
   },
 
   backendType() {
-    return this.modelFor('vault.cluster.secrets.backend').get('engineType');
+    return this.modelFor('vault.cluster.secrets.backend').engineType;
   },
 
   templateName: 'vault/cluster/secrets/backend/secretEditLayout',
@@ -102,7 +102,7 @@ export default Route.extend({
 
   modelType(backend, secret, options = {}) {
     const backendModel = this.modelFor('vault.cluster.secrets.backend', backend);
-    const type = backendModel.get('engineType');
+    const type = backendModel.engineType;
     const types = {
       database: secret && secret.startsWith('role/') ? 'database/role' : 'database/connection',
       transit: 'transit-key',
@@ -204,7 +204,7 @@ export default Route.extend({
 
   handleSecretModelError(capabilities, secretId, modelType, error) {
     // can't read the path and don't have update capability, so re-throw
-    if (!capabilities.get('canUpdate') && modelType === 'secret') {
+    if (!capabilities.canUpdate && modelType === 'secret') {
       throw error;
     }
     // don't have access to the metadata for v2 or the secret for v1,
@@ -281,7 +281,7 @@ export default Route.extend({
     const backend = this.enginePathParam();
     const preferAdvancedEdit =
       /* eslint-disable-next-line ember/no-controller-access-in-routes */
-      this.controllerFor('vault.cluster.secrets.backend').get('preferAdvancedEdit') || false;
+      this.controllerFor('vault.cluster.secrets.backend').preferAdvancedEdit || false;
     const backendType = this.backendType();
     model.secret.setProperties({ backend });
     controller.setProperties({
@@ -306,7 +306,7 @@ export default Route.extend({
 
   unloadModel() {
     /* eslint-disable-next-line ember/no-controller-access-in-routes */
-    const model = this.controller.get('model');
+    const model = this.controller.model;
     if (!model || !model.unloadRecord || model.isSaving) {
       return;
     }
@@ -337,7 +337,7 @@ export default Route.extend({
 
       let version, changed, changedKeys;
       try {
-        version = model.get('selectedVersion');
+        version = model.selectedVersion;
         changed = model.changedAttributes();
         changedKeys = Object.keys(changed);
       } catch {

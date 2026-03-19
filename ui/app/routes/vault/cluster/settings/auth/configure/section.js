@@ -52,7 +52,7 @@ export default Route.extend({
         section,
       });
     }
-    const modelType = this.modelType(backend.get('type'), section);
+    const modelType = this.modelType(backend.type, section);
     if (!modelType) {
       const error = new AdapterError();
       set(error, 'httpStatus', 404);

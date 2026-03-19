@@ -52,7 +52,7 @@ module('Integration | Component | form field', function (hooks) {
     assert.ok(component.hasInput, 'renders input for string');
     await component.fields.objectAt(0).input('bar').change();
 
-    assert.strictEqual(model.get('foo'), 'bar');
+    assert.strictEqual(model.foo, 'bar');
     assert.ok(spy.calledWith('foo', 'bar'), 'onChange called with correct args');
   });
 
@@ -63,7 +63,7 @@ module('Integration | Component | form field', function (hooks) {
     assert.ok(component.hasCheckbox, 'renders a checkbox for boolean');
     await component.fields.objectAt(0).clickLabel();
 
-    assert.true(model.get('foo'));
+    assert.true(model.foo);
     assert.ok(spy.calledWith('foo', true), 'onChange called with correct args');
   });
 
@@ -74,7 +74,7 @@ module('Integration | Component | form field', function (hooks) {
     assert.ok(component.hasInput, 'renders input for number');
     await component.fields.objectAt(0).input(8).change();
 
-    assert.strictEqual(model.get('foo'), '8');
+    assert.strictEqual(model.foo, '8');
     assert.ok(spy.calledWith('foo', '8'), 'onChange called with correct args');
   });
 
@@ -101,7 +101,7 @@ module('Integration | Component | form field', function (hooks) {
     assert.strictEqual(component.fields.objectAt(0).textareaValue, 'goodbye', 'renders default value');
     await component.fields.objectAt(0).textarea('hello');
 
-    assert.strictEqual(model.get('foo'), 'hello');
+    assert.strictEqual(model.foo, 'hello');
     assert.ok(spy.calledWith('foo', 'hello'), 'onChange called with correct args');
   });
 
@@ -122,7 +122,7 @@ module('Integration | Component | form field', function (hooks) {
     await component.fields.objectAt(0).select('h').change();
     await component.fields.objectAt(0).ttlTime('3');
     const expectedSeconds = `${3 * 3600}s`;
-    assert.strictEqual(model.get('foo'), expectedSeconds);
+    assert.strictEqual(model.foo, expectedSeconds);
     assert.ok(spy.calledWith('foo', expectedSeconds), 'onChange called with correct args');
   });
 
@@ -134,7 +134,7 @@ module('Integration | Component | form field', function (hooks) {
     await component.fields.objectAt(0).select('h').change();
     await component.fields.objectAt(0).ttlTime('3');
     const expectedSeconds = `${3 * 3600}s`;
-    assert.strictEqual(model.get('foo'), expectedSeconds);
+    assert.strictEqual(model.foo, expectedSeconds);
     assert.ok(spy.calledWith('foo', expectedSeconds), 'onChange called with correct args');
   });
 
@@ -146,7 +146,7 @@ module('Integration | Component | form field', function (hooks) {
     assert.ok(component.hasRadio, 'renders radio buttons');
     const selectedValue = 'SHA256';
     await component.selectRadioInput(selectedValue);
-    assert.strictEqual(model.get('foo'), selectedValue);
+    assert.strictEqual(model.foo, selectedValue);
     assert.ok(spy.calledWith('foo', selectedValue), 'onChange called with correct args');
   });
 
@@ -155,7 +155,7 @@ module('Integration | Component | form field', function (hooks) {
     assert.ok(component.hasStringList, 'renders the string-list component');
 
     await component.fields.objectAt(0).textarea('array').change();
-    assert.deepEqual(model.get('foo'), ['array'], 'sets the value on the model');
+    assert.deepEqual(model.foo, ['array'], 'sets the value on the model');
     assert.deepEqual(spy.args[0], ['foo', ['array']], 'onChange called with correct args');
   });
 
@@ -163,7 +163,7 @@ module('Integration | Component | form field', function (hooks) {
     const [model, spy] = await setup.call(this, createAttr('password', 'string', { sensitive: true }));
     assert.ok(component.hasMaskedInput, 'renders the masked-input component');
     await component.fields.objectAt(0).textarea('secret');
-    assert.strictEqual(model.get('password'), 'secret');
+    assert.strictEqual(model.password, 'secret');
     assert.ok(spy.calledWith('password', 'secret'), 'onChange called with correct args');
   });
 

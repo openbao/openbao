@@ -47,7 +47,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	b, storage := createBackendWithStorage(t)
 
 	// Create group "testgroup"
-	resp, err := b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err := b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "groups/testgroup",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -60,7 +60,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	}
 
 	// Create group "nested/testgroup"
-	resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "groups/nested/testgroup",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -73,7 +73,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	}
 
 	// Create user "testuser"
-	resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "users/testuser",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -87,7 +87,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	}
 
 	// Create user "nested/testuser"
-	resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "users/nested/testuser",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
@@ -101,7 +101,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	}
 
 	// List users
-	resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "users/",
 		Operation: logical.ListOperation,
 		Storage:   storage,
@@ -115,7 +115,7 @@ func TestLdapAuthBackend_Listing(t *testing.T) {
 	}
 
 	// List groups
-	resp, err = b.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err = b.HandleRequest(namespace.RootContext(context.TODO()), &logical.Request{
 		Path:      "groups/",
 		Operation: logical.ListOperation,
 		Storage:   storage,

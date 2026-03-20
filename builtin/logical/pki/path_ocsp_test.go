@@ -404,6 +404,7 @@ func TestOcsp_HigherLevel(t *testing.T) {
 		"key_type":         "ec",
 	})
 	require.NoError(t, err, "error setting up pki role: %v", err)
+	require.NotNil(t, resp)
 
 	resp, err = client.Logical().Write("pki/issue/example", map[string]interface{}{
 		"common_name": "test.example.com",

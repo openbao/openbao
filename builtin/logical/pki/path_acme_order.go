@@ -745,14 +745,12 @@ func (b *backend) acmeNewOrderHandler(ac *acmeContext, _ *logical.Request, _ *fr
 	// Since we are generating all authorizations here, there is no need to filter them out
 	// IF/WHEN we support pre-authz workflows and associate existing authorizations to this
 	// order they will need filtering.
-	var authorizations []*ACMEAuthorization
 	var authorizationIds []string
 	for _, identifier := range identifiers {
 		authz, err := generateAuthorization(account, identifier)
 		if err != nil {
 			return nil, fmt.Errorf("error generating authorizations: %w", err)
 		}
-		authorizations = append(authorizations, authz)
 
 		err = b.acmeState.SaveAuthorization(ac, authz)
 		if err != nil {

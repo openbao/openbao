@@ -787,7 +787,7 @@ func TestRandomRunes_Bias(t *testing.T) {
 
 			generations := 50000
 			length := 100
-			for i := 0; i < generations; i++ {
+			for range generations {
 				str, err := randomRunes(nil, test.charset, length)
 				if err != nil {
 					t.Fatal(err)
@@ -797,11 +797,8 @@ func TestRandomRunes_Bias(t *testing.T) {
 				}
 			}
 
-			chars := charCounts{}
-
 			var sum float64
-			for r, count := range runeCounts {
-				chars = append(chars, charCount{r, count})
+			for _, count := range runeCounts {
 				sum += float64(count)
 			}
 
@@ -820,14 +817,3 @@ func TestRandomRunes_Bias(t *testing.T) {
 		})
 	}
 }
-
-type charCount struct {
-	r     rune
-	count int
-}
-
-type charCounts []charCount
-
-func (s charCounts) Len() int           { return len(s) }
-func (s charCounts) Less(i, j int) bool { return s[i].r < s[j].r }
-func (s charCounts) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }

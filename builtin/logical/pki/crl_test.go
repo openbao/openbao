@@ -815,7 +815,7 @@ func TestIssuerRevocation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Issue a leaf cert and ensure it fails (because the issuer is revoked).
-	resp, err = CBWrite(b, s, "issuer/root2/issue/local-testing", map[string]interface{}{
+	_, err = CBWrite(b, s, "issuer/root2/issue/local-testing", map[string]interface{}{
 		"common_name": "testing",
 	})
 	require.Error(t, err)
@@ -1568,7 +1568,7 @@ func TestRevokeExpiredCert(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Revoke the expired certificate.
-	resp, err = CBWrite(b, s, "revoke", map[string]interface{}{
+	_, err = CBWrite(b, s, "revoke", map[string]interface{}{
 		"serial_number": newLeafSerial,
 	})
 	require.NoError(t, err)

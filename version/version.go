@@ -9,11 +9,11 @@ import (
 )
 
 type VersionInfo struct {
-	Revision          string `json:"revision,omitempty"`
-	Version           string `json:"version,omitempty"`
-	VersionPrerelease string `json:"version_prerelease,omitempty"`
-	VersionMetadata   string `json:"version_metadata,omitempty"`
-	CommitDate        string `json:"commit_date,omitempty"`
+	Revision          string
+	Version           string
+	VersionPrerelease string
+	VersionMetadata   string
+	CommitDate        string
 }
 
 func GetVersion() *VersionInfo {

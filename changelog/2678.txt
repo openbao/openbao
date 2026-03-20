@@ -3,5 +3,9 @@ packaging: Renamed misleading ldflags definition `BuildDate` to `CommitDate`. Bu
 ```
 
 ```release-note:change
-sys/seal-status: Renamed misleading schema attribute `BuildDate` to `CommitDate`
+sys/seal-status: Renamed misleading `build_date` response field to `commit_date`.
+```
+
+```release-note:change
+sys/version-history: Renamed misleading `build_date` response field to `commit_date`.
 ```

@@ -10,10 +10,14 @@ import (
 )
 
 // validatePasswordInput checks that exactly one of password or password_hash
-// is provided. Both present or both absent are rejected as invalid input.
+// is provided and non-empty. Both present or both absent are rejected as invalid input.
 func validatePasswordInput(d *framework.FieldData) error {
-	_, hasPassword := d.GetOk("password")
-	_, hasPasswordHash := d.GetOk("password_hash")
+	password, hasPassword := d.GetOk("password")
+	passwordHash, hasPasswordHash := d.GetOk("password_hash")
+	// checking the password exists but is empty
+	// so we can reject empty strings
+	hasPassword = hasPassword && password.(string) != ""
+	hasPasswordHash = hasPasswordHash && passwordHash.(string) != ""
 
 	switch {
 	case hasPassword && hasPasswordHash:

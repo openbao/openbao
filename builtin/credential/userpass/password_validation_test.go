@@ -53,7 +53,6 @@ func TestValidatePasswordInput_OnlyPassword(t *testing.T) {
 
 // TestValidatePasswordInput_OnlyPasswordHash verifies that providing only the
 // pre-hashed password field is accepted as valid input.
-
 func TestValidatePasswordInput_OnlyPasswordHash(t *testing.T) {
 	t.Parallel()
 
@@ -72,7 +71,6 @@ func TestValidatePasswordInput_OnlyPasswordHash(t *testing.T) {
 
 // TestValidatePasswordInput_BothFields verifies that providing both password
 // and password_hash in the same request is rejected.
-
 func TestValidatePasswordInput_BothFields(t *testing.T) {
 	t.Parallel()
 
@@ -94,7 +92,6 @@ func TestValidatePasswordInput_BothFields(t *testing.T) {
 
 // TestValidatePasswordInput_NeitherField verifies that providing neither
 // password nor password_hash is rejected.
-
 func TestValidatePasswordInput_NeitherField(t *testing.T) {
 	t.Parallel()
 
@@ -108,9 +105,82 @@ func TestValidatePasswordInput_NeitherField(t *testing.T) {
 		"error message must indicate that one field is required")
 }
 
+// TestValidatePasswordInput_EmptyPassword verifies that providing an empty
+// string for password is treated as absent and rejected.
+
+func TestValidatePasswordInput_EmptyPassword(t *testing.T) {
+	t.Parallel()
+
+	d := makeFieldData(map[string]interface{}{
+		"password": "",
+	})
+
+	err := validatePasswordInput(d)
+
+	require.Error(t, err,
+		"empty password string must be rejected as absent")
+	require.Contains(t, err.Error(), "must provide either",
+		"error message must indicate that a non-empty credential is required")
+}
+
+// TestValidatePasswordInput_EmptyPasswordHash verifies that providing an empty
+// string for password_hash is treated as absent and rejected.
+
+func TestValidatePasswordInput_EmptyPasswordHash(t *testing.T) {
+	t.Parallel()
+
+	d := makeFieldData(map[string]interface{}{
+		"password_hash": "",
+	})
+
+	err := validatePasswordInput(d)
+
+	require.Error(t, err,
+		"empty password_hash string must be rejected as absent")
+	require.Contains(t, err.Error(), "must provide either",
+		"error message must indicate that a non-empty credential is required")
+}
+
+// TestValidatePasswordInput_EmptyPasswordWithValidHash verifies that providing
+// an empty password alongside a valid password_hash accepts the hash as the
+// sole credential.
+
+func TestValidatePasswordInput_EmptyPasswordWithValidHash(t *testing.T) {
+	t.Parallel()
+
+	hash, err := bcrypt.GenerateFromPassword([]byte("plaintextpassword"), bcrypt.DefaultCost)
+	require.NoError(t, err, "bcrypt must not fail during test setup")
+
+	d := makeFieldData(map[string]interface{}{
+		"password":      "",
+		"password_hash": string(hash),
+	})
+
+	err = validatePasswordInput(d)
+
+	require.NoError(t, err,
+		"empty password with valid password_hash must be accepted as password_hash only")
+}
+
+// TestValidatePasswordInput_ValidPasswordWithEmptyHash verifies that providing
+// a valid password alongside an empty password_hash accepts the password as the
+// sole credential.
+func TestValidatePasswordInput_ValidPasswordWithEmptyHash(t *testing.T) {
+	t.Parallel()
+
+	d := makeFieldData(map[string]interface{}{
+		"password":      "plaintextpassword",
+		"password_hash": "",
+	})
+
+	err := validatePasswordInput(d)
+
+	require.NoError(t, err,
+		"valid password with empty password_hash must be accepted as password only")
+}
+
 // TestUpdateUserPassword_PlaintextPassword verifies that providing a plaintext
 // password causes updateUserPassword to store a valid bcrypt hash on the entry.
-
 func TestUpdateUserPassword_PlaintextPassword(t *testing.T) {
 	t.Parallel()
 
@@ -139,7 +209,6 @@ func TestUpdateUserPassword_PlaintextPassword(t *testing.T) {
 
 // TestUpdateUserPassword_ValidBcryptHash verifies that providing a valid pre-hashed
 // bcrypt string causes updateUserPassword to store it directly on the entry.
-
 func TestUpdateUserPassword_ValidBcryptHash(t *testing.T) {
 	t.Parallel()
 
@@ -171,7 +240,6 @@ func TestUpdateUserPassword_ValidBcryptHash(t *testing.T) {
 
 // TestUpdateUserPassword_InvalidBcryptHash verifies that providing a string that
 // is not a valid bcrypt hash is rejected with a user-facing error.
-
 func TestUpdateUserPassword_InvalidBcryptHash(t *testing.T) {
 	t.Parallel()
 
@@ -196,7 +264,6 @@ func TestUpdateUserPassword_InvalidBcryptHash(t *testing.T) {
 
 // TestUpdateUserPassword_BothFields verifies that providing both password and
 // password_hash in the same request is rejected before any hash is stored.
-
 func TestUpdateUserPassword_BothFields(t *testing.T) {
 	t.Parallel()
 
@@ -225,7 +292,6 @@ func TestUpdateUserPassword_BothFields(t *testing.T) {
 
 // TestUpdateUserPassword_NeitherField verifies that providing neither password
 // nor password_hash is rejected before any hash is stored.
-
 func TestUpdateUserPassword_NeitherField(t *testing.T) {
 	t.Parallel()
 

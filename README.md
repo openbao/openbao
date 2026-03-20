@@ -61,7 +61,7 @@ The key features of OpenBao are:
   Revocation assists in key rolling as well as locking down systems in the
   case of an intrusion.
 
-Documentation, Getting Started, and Certification Exams
+Documentation and Getting Started
 -------------------------------
 
 Documentation is available on the [OpenBao website](https://www.openbao.org/docs/).

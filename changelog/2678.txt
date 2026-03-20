@@ -1,3 +1,7 @@
 ```release-note:change
-Renamed misleading ldflags definition `BuildDate` to `CommitDate`. Build systems need to adjust their pipelines to reflect this change.
+packaging: Renamed misleading ldflags definition `BuildDate` to `CommitDate`. Build systems need to adjust their pipelines to reflect this change.
+```
+
+```release-note:change
+sys/seal-status: Renamed misleading schema attribute `BuildDate` to `CommitDate`
 ```

@@ -1,0 +1,3 @@
+```release-note:change
+Renamed misleading ldflags definition `BuildDate` to `CommitDate`. Build systems need to adjust their pipelines to reflect this change.
+```

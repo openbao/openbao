@@ -16,7 +16,7 @@ builds:
     tags:
       - ui
     ldflags:
-      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.CommitDate={{ .Date }}
+      - -X github.com/openbao/openbao/version.fullVersion={{ .Version }} -X github.com/openbao/openbao/version.GitCommit={{ .Commit }} -X github.com/openbao/openbao/version.CommitDate={{ .Date }}
     env:
       - CGO_ENABLED=0
     goos:
@@ -120,23 +120,19 @@ dockers:
       - builds-linux
     build_flag_templates:
       - "--pull"
-      - "--build-arg=BIN_NAME={{.ProjectName}}"
-      - "--build-arg=REVISION={{.FullCommit}}"
-      - "--build-arg=VERSION={{.Version}}"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
       - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.vendor=OpenBao"
-      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
       - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
       - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
       - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
-      - "--label=org.opencontainers.image.licenses=MPL-2.0"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
       - "--target=default"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
@@ -157,22 +153,18 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--build-arg=BIN_NAME={{ .ProjectName }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/arm"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.vendor=OpenBao"
-      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
       - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
       - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
       - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
-      - "--label=org.opencontainers.image.licenses=MPL-2.0"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
       - "--target=default"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm"
@@ -193,22 +185,18 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--build-arg=BIN_NAME={{ .ProjectName }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.vendor=OpenBao"
-      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
       - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
       - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
       - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
-      - "--label=org.opencontainers.image.licenses=MPL-2.0"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
       - "--target=default"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
@@ -227,23 +215,19 @@ dockers:
       - builds-linux
     build_flag_templates:
       - "--pull"
-      - "--build-arg=BIN_NAME={{.ProjectName}}"
-      - "--build-arg=REVISION={{.FullCommit}}"
-      - "--build-arg=VERSION={{.Version}}"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
       - "--platform=linux/ppc64le"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.vendor=OpenBao"
-      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
       - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
       - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
       - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
-      - "--label=org.opencontainers.image.licenses=MPL-2.0"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
       - "--target=default"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le"
@@ -263,22 +247,18 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--build-arg=BIN_NAME={{ .ProjectName }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/riscv64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.vendor=OpenBao"
-      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
       - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
       - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
       - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
-      - "--label=org.opencontainers.image.licenses=MPL-2.0"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
       - "--target=default"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64"
@@ -298,22 +278,18 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--build-arg=BIN_NAME={{ .ProjectName }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/s390x"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.vendor=OpenBao"
-      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
       - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
       - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
       - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
-      - "--label=org.opencontainers.image.licenses=MPL-2.0"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
       - "--target=default"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x"
@@ -333,22 +309,18 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--build-arg=BIN_NAME={{ .ProjectName }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.vendor=OpenBao"
-      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
       - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
       - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
       - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
-      - "--label=org.opencontainers.image.licenses=MPL-2.0"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
       - "--target=ubi"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
@@ -369,22 +341,18 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--build-arg=BIN_NAME={{ .ProjectName }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.vendor=OpenBao"
-      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
       - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
       - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
       - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
-      - "--label=org.opencontainers.image.licenses=MPL-2.0"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
       - "--target=ubi"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64"
@@ -404,22 +372,18 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--build-arg=BIN_NAME={{ .ProjectName }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/ppc64le"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.vendor=OpenBao"
-      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
       - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
       - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
       - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
-      - "--label=org.opencontainers.image.licenses=MPL-2.0"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
       - "--target=ubi"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le"
@@ -439,22 +403,18 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--build-arg=BIN_NAME={{ .ProjectName }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/s390x"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.vendor=OpenBao"
-      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>"
       - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
       - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
       - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
-      - "--label=org.opencontainers.image.licenses=MPL-2.0"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
-      - "--label=release={{ .Version }}"
-      - "--label=revision={{ .FullCommit }}"
-      - "--label=version={{ .Version }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.title=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao is a tool for securely accessing secrets"
       - "--target=ubi"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x"

@@ -4108,7 +4108,11 @@ func (c *Core) ForwardRequest(req *http.Request) (int, http.Header, []byte, erro
 		req.URL.Path = origPath
 	}()
 
-	req.URL.Path = req.Context().Value("original_request_path").(string)
+	var ok bool
+	req.URL.Path, ok = OriginalRequestPathFromContext(req.Context())
+	if !ok {
+		return 0, nil, nil, errors.New("no original request path from context")
+	}
 
 	freq, err := fwd.GenerateForwardedRequest(req)
 	if err != nil {

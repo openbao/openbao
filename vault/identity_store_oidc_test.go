@@ -1160,7 +1160,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 // for non root namespaces.
 func TestOIDC_PeriodicFunc_NonRootNamespace(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	rootCtx := namespace.RootContext(context.TODO())
+	rootCtx := namespace.RootContext(t.Context())
 
 	ns := testCreateNamespace(t, rootCtx, c.systemBackend, "ns", nil)
 	nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
@@ -1175,16 +1175,13 @@ func TestOIDC_PeriodicFunc_NonRootNamespace(t *testing.T) {
 		t.Fatal("failed to set next signing key")
 	}
 
-	key.NextRotation = time.Now().Add(key.RotationPeriod)
+	key.NextRotation = time.Now().Add(-time.Second) // past time
 
 	// Store namedKey
 	entry, _ := logical.StorageEntryJSON(ident.NamedKeyConfigPath+key.Name, key)
 	if err := storage.Put(nsCtx, entry); err != nil {
 		t.Fatal("writing to in mem storage failed")
 	}
-
-	// sleep for the rotation period
-	time.Sleep(key.RotationPeriod + 100*time.Millisecond)
 
 	// run periodicFunc
 	c.identityStore.OidcPeriodicFunc(nsCtx)

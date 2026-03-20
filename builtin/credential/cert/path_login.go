@@ -13,9 +13,13 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
+	celgo "github.com/google/cel-go/cel"
+	"github.com/google/cel-go/ext"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/v2/helper/ocsp"
@@ -179,6 +183,12 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 	if err := matched.Entry.PopulateTokenAuth(auth, req); err != nil {
 		return nil, fmt.Errorf("failed to populate auth information: %w", err)
 	}
+
+	groupAliases, err := b.getGroupAliases(ctx, clientCerts[0], matched)
+	if err != nil {
+		return nil, fmt.Errorf("error evaluating getGroupAliases: %w", err)
+	}
+	auth.GroupAliases = groupAliases
 
 	return &logical.Response{
 		Auth: auth,
@@ -566,6 +576,68 @@ func (b *backend) certificateExtensionsMetadata(clientCert *x509.Certificate, co
 	}
 
 	return metadata
+}
+
+func (b *backend) getGroupAliases(ctx context.Context, clientCert *x509.Certificate, config *ParsedCert) ([]*logical.Alias, error) {
+	groupAliases := []*logical.Alias{}
+
+	if config.Entry.GroupAliasCelProgram == "" {
+		return groupAliases, nil
+	}
+
+	evaluationData := map[string]any{
+		"client_cert": clientCert,
+	}
+
+	aliasesProgram := celhelper.Program{
+		Expression: config.Entry.GroupAliasCelProgram,
+	}
+
+	evalConfig := b.getGroupAliasesEvalConfig()
+	result, err := aliasesProgram.Evaluate(ctx, &evalConfig, evaluationData)
+	if err != nil {
+		return nil, err
+	}
+
+	switch value := result.Value().(type) {
+	case []string:
+		// The CEL program succeeded.
+		for _, name := range value {
+			if name == "" {
+				continue
+			}
+			groupAliases = append(groupAliases, &logical.Alias{
+				Name: name,
+			})
+		}
+		return groupAliases, nil
+
+	case string:
+		// The CEL program decided the request is invalid and returned a human-readable error string.
+		return nil, errors.New(value)
+
+	case bool:
+		// The CEL program decided the request is invalid and returned a bool.
+		return nil, errors.New("request denied")
+
+	default:
+		// Any other type is unexpected and indicates an error in MainProgram's policy.
+		return nil, fmt.Errorf("unexpected getGroupAliases result type %T", value)
+	}
+}
+
+func (b *backend) getGroupAliasesEvalConfig() celhelper.EvalConfig {
+	envOptions := []celgo.EnvOption{
+		ext.NativeTypes(reflect.TypeFor[*x509.Certificate]()),
+		celgo.Variable("client_cert", celgo.ObjectType("x509.Certificate")),
+	}
+	return celhelper.EvalConfig{
+		WithExtLib:    true,
+		WithEmail:     true,
+		WithIdentity:  true,
+		WithJSON:      true,
+		CustomOptions: envOptions,
+	}
 }
 
 // loadTrustedCerts is used to load all the trusted certificates from the backend

@@ -24,7 +24,7 @@ const (
 type VaultVersion struct {
 	TimestampInstalled time.Time
 	Version            string
-	CommitDate         string
+	CommitDate         string `json:"BuildDate"` // Pinned to BuildDate to remain backwards-compatible
 }
 
 // storeVersionEntry will store the version, timestamp, and commit date to storage

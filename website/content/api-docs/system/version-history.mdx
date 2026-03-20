@@ -12,7 +12,7 @@ This endpoint returns the version history of the OpenBao. The response will cont
 
 - `keys`: a list of installed versions in chronological order based on the time installed
 - `key_info`: a map indexed by the versions found in the `keys` list containing the following subkeys:
-  - `commit_date`: the time (in UTC) of the commit which the OpenBao binary used to run the OpenBao server was built with
+  - `commit_date`: the time (in UTC) of the commit which the OpenBao binary used to run the OpenBao server was built at
   - `previous_version`: the version installed prior to this version or `null` if no prior version exists
   - `timestamp_installed`: the time (in UTC) at which the version was installed
 

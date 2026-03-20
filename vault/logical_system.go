@@ -621,12 +621,12 @@ func (b *SystemBackend) handlePluginReloadUpdate(ctx context.Context, req *logic
 	if pluginName != "" {
 		err := b.Core.reloadMatchingPlugin(ctx, pluginName)
 		if err != nil {
-			return nil, err
+			return handleError(err)
 		}
 	} else if len(pluginMounts) > 0 {
 		err := b.Core.reloadMatchingPluginMounts(ctx, pluginMounts)
 		if err != nil {
-			return nil, err
+			return handleError(err)
 		}
 	}
 

@@ -4330,7 +4330,7 @@ type SealStatusResponse struct {
 type CoreSealStatusResponse struct {
 	SealStatusResponse
 	Version     string   `json:"version"`
-	BuildDate   string   `json:"build_date"`
+	CommitDate  string   `json:"commit_date"`
 	Migration   bool     `json:"migration"`
 	ClusterName string   `json:"cluster_name,omitempty"`
 	ClusterID   string   `json:"cluster_id,omitempty"`
@@ -4368,7 +4368,7 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatus
 		},
 		StorageType: core.StorageType(),
 		Version:     version.GetVersion().VersionNumber(),
-		BuildDate:   version.BuildDate,
+		CommitDate:  version.CommitDate,
 	}
 
 	if sealConfig == nil {
@@ -4547,7 +4547,7 @@ func (b *SystemBackend) handleVersionHistoryList(ctx context.Context, req *logic
 
 		entry := map[string]interface{}{
 			"timestamp_installed": v.TimestampInstalled.Format(time.RFC3339),
-			"build_date":          v.BuildDate,
+			"commit_date":         v.CommitDate,
 			"previous_version":    nil,
 		}
 

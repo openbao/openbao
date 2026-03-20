@@ -1296,7 +1296,7 @@ func (c *Core) handleVersionTimeStamps(ctx context.Context) error {
 	vaultVersion := &VaultVersion{
 		TimestampInstalled: currentTime,
 		Version:            version.Version,
-		BuildDate:          version.BuildDate,
+		CommitDate:         version.CommitDate,
 	}
 
 	isUpdated, err := c.storeVersionEntry(ctx, vaultVersion, false)
@@ -1304,7 +1304,7 @@ func (c *Core) handleVersionTimeStamps(ctx context.Context) error {
 		return fmt.Errorf("error storing vault version: %w", err)
 	}
 	if isUpdated {
-		c.logger.Info("Recorded vault version", "vault version", version.Version, "upgrade time", currentTime, "build date", version.BuildDate)
+		c.logger.Info("Recorded vault version", "vault version", version.Version, "upgrade time", currentTime, "commit date", version.CommitDate)
 	}
 
 	// Finally, repopulate the version history cache

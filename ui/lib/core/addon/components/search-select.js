@@ -94,7 +94,7 @@ export default class SearchSelect extends Component {
 
   addSearchText(optionsToFormat) {
     // maps over array of objects or response from query
-    return optionsToFormat.toArray().map((option) => {
+    return [...optionsToFormat].map((option) => {
       const id = option[this.idKey] ? option[this.idKey] : option.id;
       option.searchText = `${option[this.nameKey]} ${id}`;
       return option;
@@ -273,8 +273,8 @@ export default class SearchSelect extends Component {
     }
     if (this.args.search) {
       return resolve(this.args.search(term, select)).then((results) => {
-        if (results.toArray) {
-          results = results.toArray();
+        if (results && !Array.isArray(results)) {
+          results = Array.from(results);
         }
         this.addCreateOption(term, results);
         return results;

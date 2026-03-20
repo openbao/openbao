@@ -140,7 +140,8 @@ module('Integration | Component | mfa-login-enforcement-form', function (hooks) 
 
   test('it should populate fields with model data', async function (assert) {
     this.model.name = 'foo';
-    const [method] = (await this.store.query('mfa-method', {})).toArray();
+    const query = await this.store.query('mfa-method', {});
+    const [method] = [...query];
     this.model.mfa_methods.addObject(method);
     this.model.auth_method_accessors.addObject('auth_userpass_1234');
 
@@ -197,9 +198,11 @@ module('Integration | Component | mfa-login-enforcement-form', function (hooks) 
     }));
     this.model.auth_method_accessors.addObject('auth_userpass_1234');
     this.model.auth_method_types.addObject('userpass');
-    const [entity] = (await this.store.query('identity/entity', {})).toArray();
+    const queryEntity = await this.store.query('identity/entity', {});
+    const [entity] = [...queryEntity];
     this.model.identity_entities.addObject(entity);
-    const [group] = (await this.store.query('identity/group', {})).toArray();
+    const queryGroup = await this.store.query('identity/group', {});
+    const [group] = [...queryGroup];
     this.model.identity_groups.addObject(group);
 
     await render(hbs`

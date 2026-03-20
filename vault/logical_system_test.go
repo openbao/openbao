@@ -2186,7 +2186,7 @@ func TestSystemBackend_enableAuth_invalid(t *testing.T) {
 func TestSystemBackend_disableAuth(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 	c.credentialBackends["noop"] = func(context.Context, *logical.BackendConfig) (logical.Backend, error) {
-		return &be.Noop{}, nil
+		return &be.Noop{BackendType: logical.TypeCredential}, nil
 	}
 
 	// Register the backend

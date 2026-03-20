@@ -38,9 +38,6 @@ func makeFieldData(raw map[string]interface{}) *framework.FieldData {
 
 // TestValidatePasswordInput_OnlyPassword verifies that providing only the
 // plaintext password field is accepted as valid input.
-// Precondition: password is non-empty, password_hash is absent.
-// Postcondition: validatePasswordInput returns nil.
-// Invariant: exactly one credential field present must never produce an error.
 func TestValidatePasswordInput_OnlyPassword(t *testing.T) {
 	t.Parallel()
 
@@ -56,9 +53,7 @@ func TestValidatePasswordInput_OnlyPassword(t *testing.T) {
 
 // TestValidatePasswordInput_OnlyPasswordHash verifies that providing only the
 // pre-hashed password field is accepted as valid input.
-// Precondition: password_hash is non-empty, password is absent.
-// Postcondition: validatePasswordInput returns nil.
-// Invariant: exactly one credential field present must never produce an error.
+
 func TestValidatePasswordInput_OnlyPasswordHash(t *testing.T) {
 	t.Parallel()
 
@@ -77,9 +72,7 @@ func TestValidatePasswordInput_OnlyPasswordHash(t *testing.T) {
 
 // TestValidatePasswordInput_BothFields verifies that providing both password
 // and password_hash in the same request is rejected.
-// Precondition: both password and password_hash are non-empty.
-// Postcondition: validatePasswordInput returns a non-nil error.
-// Invariant: mutually exclusive fields must never both be accepted.
+
 func TestValidatePasswordInput_BothFields(t *testing.T) {
 	t.Parallel()
 
@@ -101,9 +94,7 @@ func TestValidatePasswordInput_BothFields(t *testing.T) {
 
 // TestValidatePasswordInput_NeitherField verifies that providing neither
 // password nor password_hash is rejected.
-// Precondition: both password and password_hash are absent from the request.
-// Postcondition: validatePasswordInput returns a non-nil error.
-// Invariant: at least one credential field must always be required.
+
 func TestValidatePasswordInput_NeitherField(t *testing.T) {
 	t.Parallel()
 
@@ -119,9 +110,7 @@ func TestValidatePasswordInput_NeitherField(t *testing.T) {
 
 // TestUpdateUserPassword_PlaintextPassword verifies that providing a plaintext
 // password causes updateUserPassword to store a valid bcrypt hash on the entry.
-// Precondition: password is non-empty, password_hash is absent, userEntry is initialized.
-// Postcondition: userEntry.PasswordHash is a valid bcrypt hash of the plaintext password.
-// Invariant: bcrypt.CompareHashAndPassword must succeed with the original password.
+
 func TestUpdateUserPassword_PlaintextPassword(t *testing.T) {
 	t.Parallel()
 
@@ -150,9 +139,7 @@ func TestUpdateUserPassword_PlaintextPassword(t *testing.T) {
 
 // TestUpdateUserPassword_ValidBcryptHash verifies that providing a valid pre-hashed
 // bcrypt string causes updateUserPassword to store it directly on the entry.
-// Precondition: password_hash is a valid bcrypt hash, password is absent, userEntry is initialized.
-// Postcondition: userEntry.PasswordHash equals the provided hash bytes.
-// Invariant: bcrypt.CompareHashAndPassword must succeed with the original plaintext.
+
 func TestUpdateUserPassword_ValidBcryptHash(t *testing.T) {
 	t.Parallel()
 
@@ -184,9 +171,7 @@ func TestUpdateUserPassword_ValidBcryptHash(t *testing.T) {
 
 // TestUpdateUserPassword_InvalidBcryptHash verifies that providing a string that
 // is not a valid bcrypt hash is rejected with a user-facing error.
-// Precondition: password_hash contains an arbitrary non-bcrypt string.
-// Postcondition: updateUserPassword returns a non-nil user error and nil internal error.
-// Invariant: invalid hashes must never be stored; PasswordHash must remain unchanged.
+
 func TestUpdateUserPassword_InvalidBcryptHash(t *testing.T) {
 	t.Parallel()
 
@@ -211,9 +196,7 @@ func TestUpdateUserPassword_InvalidBcryptHash(t *testing.T) {
 
 // TestUpdateUserPassword_BothFields verifies that providing both password and
 // password_hash in the same request is rejected before any hash is stored.
-// Precondition: both password and password_hash are non-empty, userEntry is initialized.
-// Postcondition: updateUserPassword returns a non-nil user error and nil internal error.
-// Invariant: PasswordHash must remain unchanged when input validation fails.
+
 func TestUpdateUserPassword_BothFields(t *testing.T) {
 	t.Parallel()
 
@@ -242,9 +225,7 @@ func TestUpdateUserPassword_BothFields(t *testing.T) {
 
 // TestUpdateUserPassword_NeitherField verifies that providing neither password
 // nor password_hash is rejected before any hash is stored.
-// Precondition: both password and password_hash are absent, userEntry is initialized.
-// Postcondition: updateUserPassword returns a non-nil user error and nil internal error.
-// Invariant: PasswordHash must remain unchanged when input validation fails.
+
 func TestUpdateUserPassword_NeitherField(t *testing.T) {
 	t.Parallel()
 

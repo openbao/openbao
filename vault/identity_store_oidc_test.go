@@ -20,6 +20,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	ident "github.com/openbao/openbao/vault/identity"
 	"zgo.at/zcache/v2"
 )
 
@@ -27,7 +28,7 @@ import (
 // without a key parameter
 func TestOIDC_Path_OIDC_RoleNoKeyParameter(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test role "test-role1" without a key param -- should fail
@@ -48,7 +49,7 @@ func TestOIDC_Path_OIDC_RoleNoKeyParameter(t *testing.T) {
 // a key parameter is provided but the key does not exist
 func TestOIDC_Path_OIDC_RoleNilKeyEntry(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test role "test-role1" with a non-existent key -- should fail
@@ -72,7 +73,7 @@ func TestOIDC_Path_OIDC_RoleNilKeyEntry(t *testing.T) {
 // prividing a key param
 func TestOIDC_Path_OIDCRole_UpdateNoKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -131,7 +132,7 @@ func TestOIDC_Path_OIDCRole_UpdateNoKey(t *testing.T) {
 // empty key
 func TestOIDC_Path_OIDCRole_UpdateEmptyKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -184,7 +185,7 @@ func TestOIDC_Path_OIDCRole_UpdateEmptyKey(t *testing.T) {
 // TestOIDC_Path_OIDCRoleRole tests CRUD operations for roles
 func TestOIDC_Path_OIDCRoleRole(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -279,7 +280,7 @@ func TestOIDC_Path_OIDCRoleRole(t *testing.T) {
 // TestOIDC_Path_OIDCRole_InvalidTokenTTL tests the TokenTTL validation
 func TestOIDC_Path_OIDCRole_InvalidTokenTTL(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -321,7 +322,7 @@ func TestOIDC_Path_OIDCRole_InvalidTokenTTL(t *testing.T) {
 // TestOIDC_Path_OIDCRole tests the List operation for roles
 func TestOIDC_Path_OIDCRole(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Prepare two roles, test-role1 and test-role2
@@ -390,7 +391,7 @@ func TestOIDC_Path_OIDCRole(t *testing.T) {
 // TestOIDC_Path_OIDCKeyKey tests CRUD operations for keys
 func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key" -- should succeed
@@ -411,7 +412,7 @@ func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 	expected := map[string]interface{}{
 		"rotation_period":    int64(86400),
 		"verification_ttl":   int64(86400),
-		"algorithm":          "RS256",
+		"algorithm":          string(jose.RS256),
 		"allowed_client_ids": []string{},
 	}
 	if diff := deep.Equal(expected, resp.Data); diff != nil {
@@ -441,7 +442,7 @@ func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 	expected = map[string]interface{}{
 		"rotation_period":    int64(600),
 		"verification_ttl":   int64(3600),
-		"algorithm":          "RS256",
+		"algorithm":          string(jose.RS256),
 		"allowed_client_ids": []string{"allowed-test-role"},
 	}
 	if diff := deep.Equal(expected, resp.Data); diff != nil {
@@ -492,7 +493,7 @@ func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 // TestOIDC_Path_OIDCKey_InvalidTokenTTL tests the TokenTTL validation
 func TestOIDC_Path_OIDCKey_InvalidTokenTTL(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key" -- should succeed
@@ -558,7 +559,7 @@ func TestOIDC_Path_OIDCKey_InvalidTokenTTL(t *testing.T) {
 // TestOIDC_Path_OIDCKey tests the List operation for keys
 func TestOIDC_Path_OIDCKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Prepare two keys, test-key1 and test-key2
@@ -610,7 +611,7 @@ func TestOIDC_Path_OIDCKey(t *testing.T) {
 // deleted if it is referenced by an existing client
 func TestOIDC_Path_OIDCKey_DeleteWithExistingClient(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Prepare test key test-key
@@ -644,7 +645,7 @@ func TestOIDC_Path_OIDCKey_DeleteWithExistingClient(t *testing.T) {
 // oidc/.well-known/keys endpoint when they are not associated with a role
 func TestOIDC_PublicKeys_NoRole(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	s := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -688,7 +689,7 @@ func assertRespPublicKeyCount(t *testing.T, resp *logical.Response, keyCount int
 // key creation, rotation, and deletion
 func TestOIDC_PublicKeys(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -774,7 +775,7 @@ func TestOIDC_PublicKeys(t *testing.T) {
 // key creation, rotation, and deletion
 func TestOIDC_SharedPublicKeysByRoles(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create a test key "test-key"
@@ -822,7 +823,7 @@ func TestOIDC_SharedPublicKeysByRoles(t *testing.T) {
 // of the signing key
 func TestOIDC_SignIDToken(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Create and load an entity, an entity is required to generate an ID token
@@ -832,9 +833,9 @@ func TestOIDC_SignIDToken(t *testing.T) {
 		BucketKey: "test-entity-bucket-key",
 	}
 
-	txn := c.identityStore.db(ctx).Txn(true)
+	txn := c.identityStore.Txn(ctx, true)
 	defer txn.Abort()
-	err := c.identityStore.upsertEntityInTxn(ctx, txn, testEntity, nil, true)
+	err := c.identityStore.UpsertEntityInTxn(ctx, txn, testEntity, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -955,7 +956,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 // attempting to sign an ID token with a nil signing key
 func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	// Create and load an entity, an entity is required to generate an ID token
 	testEntity := &identity.Entity{
@@ -964,19 +965,19 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 		BucketKey: "test-entity-bucket-key",
 	}
 
-	txn := c.identityStore.db(ctx).Txn(true)
+	txn := c.identityStore.Txn(ctx, true)
 	defer txn.Abort()
-	err := c.identityStore.upsertEntityInTxn(ctx, txn, testEntity, nil, true)
+	err := c.identityStore.UpsertEntityInTxn(ctx, txn, testEntity, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	txn.Commit()
 
 	// Create a test key "test-key" with a nil SigningKey
-	namedKey := &namedKey{
-		name:             "test-key",
+	namedKey := &ident.NamedKey{
+		Name:             "test-key",
 		AllowedClientIDs: []string{"*"},
-		Algorithm:        "RS256",
+		Algorithm:        string(jose.RS256),
 		VerificationTTL:  60 * time.Second,
 		RotationPeriod:   60 * time.Second,
 		KeyRing:          nil,
@@ -985,11 +986,11 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 		NextRotation:     time.Now(),
 	}
 	s := c.router.MatchingStorageByAPIPath(ctx, "identity/oidc")
-	if err := namedKey.generateAndSetNextKey(ctx, hclog.NewNullLogger(), s); err != nil {
+	if err := namedKey.GenerateAndSetNextKey(ctx, hclog.NewNullLogger(), s); err != nil {
 		t.Fatal("failed to set next signing key")
 	}
 	// Store namedKey
-	entry, _ := logical.StorageEntryJSON(namedKeyConfigPath+namedKey.name, namedKey)
+	entry, _ := logical.StorageEntryJSON(ident.NamedKeyConfigPath+namedKey.Name, namedKey)
 	if err := s.Put(ctx, entry); err != nil {
 		t.Fatal("writing to in mem storage failed")
 	}
@@ -1024,10 +1025,10 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 	expectStrings(t, []string{err.Error()}, expectedStrings)
 }
 
-func testNamedKey(name string) *namedKey {
-	return &namedKey{
-		name:            name,
-		Algorithm:       "RS256",
+func testNamedKey(name string) *ident.NamedKey {
+	return &ident.NamedKey{
+		Name:            name,
+		Algorithm:       string(jose.RS256),
 		VerificationTTL: 1 * time.Second,
 		RotationPeriod:  2 * time.Second,
 		KeyRing:         nil,
@@ -1043,7 +1044,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 	t.Skip("this test is flaky in CI")
 
 	testSets := []struct {
-		namedKey          *namedKey
+		namedKey          *ident.NamedKey
 		setSigningKey     bool
 		setNextSigningKey bool
 		expectedKeyCounts []int
@@ -1085,28 +1086,28 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 
 	for _, testSet := range testSets {
 		testSet := testSet
-		t.Run(testSet.namedKey.name, func(t *testing.T) {
+		t.Run(testSet.namedKey.Name, func(t *testing.T) {
 			t.Parallel()
 
 			// Prepare a storage to run through periodicFunc
 			c, _, _ := TestCoreUnsealed(t)
-			ctx := namespace.RootContext(nil)
+			ctx := namespace.RootContext(context.TODO())
 			storage := c.router.MatchingStorageByAPIPath(ctx, "identity/oidc")
 
 			if testSet.setSigningKey {
-				if err := testSet.namedKey.generateAndSetKey(ctx, hclog.NewNullLogger(), storage); err != nil {
+				if err := testSet.namedKey.GenerateAndSetKey(ctx, hclog.NewNullLogger(), storage); err != nil {
 					t.Fatal("failed to set signing key")
 				}
 			}
 			if testSet.setNextSigningKey {
-				if err := testSet.namedKey.generateAndSetNextKey(ctx, hclog.NewNullLogger(), storage); err != nil {
+				if err := testSet.namedKey.GenerateAndSetNextKey(ctx, hclog.NewNullLogger(), storage); err != nil {
 					t.Fatal("failed to set next signing key")
 				}
 			}
 			testSet.namedKey.NextRotation = time.Now().Add(testSet.namedKey.RotationPeriod)
 
 			// Store namedKey
-			entry, _ := logical.StorageEntryJSON(namedKeyConfigPath+testSet.namedKey.name, testSet.namedKey)
+			entry, _ := logical.StorageEntryJSON(ident.NamedKeyConfigPath+testSet.namedKey.Name, testSet.namedKey)
 			if err := storage.Put(ctx, entry); err != nil {
 				t.Fatal("writing to in mem storage failed")
 			}
@@ -1115,20 +1116,20 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 				// sleep for the rotation period
 				time.Sleep(testSet.namedKey.RotationPeriod + 100*time.Millisecond)
 				// run periodicFunc
-				c.identityStore.oidcPeriodicFunc(ctx)
+				c.identityStore.OidcPeriodicFunc(ctx)
 				// collect entries
-				namedKeyEntry, _ := storage.Get(ctx, namedKeyConfigPath+testSet.namedKey.name)
-				publicKeysEntry, _ := storage.List(ctx, publicKeysConfigPath)
+				namedKeyEntry, _ := storage.Get(ctx, ident.NamedKeyConfigPath+testSet.namedKey.Name)
+				publicKeysEntry, _ := storage.List(ctx, ident.PublicKeysConfigPath)
 
 				// verify the number of keys
-				var namedKey namedKey
+				var namedKey ident.NamedKey
 				namedKeyEntry.DecodeJSON(&namedKey)
 				expectedKeyCount := testSet.expectedKeyCounts[i]
 				actualKeyRingLen := len(namedKey.KeyRing)
 				if actualKeyRingLen < expectedKeyCount {
 					t.Errorf(
 						"For key: %s at cycle: %d expected namedKey's KeyRing to be at least of length %d but was: %d",
-						testSet.namedKey.name,
+						testSet.namedKey.Name,
 						i,
 						expectedKeyCount,
 						actualKeyRingLen,
@@ -1139,7 +1140,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 				if actualPubKeysLen < expectedPublicKeyCount {
 					t.Errorf(
 						"For key: %s at cycle: %d expected public keys to be at least of length %d but was: %d",
-						testSet.namedKey.name,
+						testSet.namedKey.Name,
 						i,
 						expectedPublicKeyCount,
 						actualPubKeysLen,
@@ -1147,17 +1148,83 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 				}
 			}
 
-			if err := storage.Delete(ctx, namedKeyConfigPath+testSet.namedKey.name); err != nil {
+			if err := storage.Delete(ctx, ident.NamedKeyConfigPath+testSet.namedKey.Name); err != nil {
 				t.Fatal("deleting from in mem storage failed")
 			}
 		})
 	}
 }
 
+// TestOIDC_PeriodicFunc_NonRootNamespace tests that oidcPeriodicFunc rotates
+// OIDC named keys in non-root namespaces. This is a test for a regression that happened
+// for non root namespaces.
+func TestOIDC_PeriodicFunc_NonRootNamespace(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	rootCtx := namespace.RootContext(t.Context())
+
+	ns := testCreateNamespace(t, rootCtx, c.systemBackend, "ns", nil)
+	nsCtx := namespace.ContextWithNamespace(rootCtx, ns)
+
+	storage := c.router.MatchingStorageByAPIPath(nsCtx, "identity/oidc")
+
+	key := testNamedKey("test-key-ns")
+	if err := key.GenerateAndSetKey(nsCtx, hclog.NewNullLogger(), storage); err != nil {
+		t.Fatal("failed to set signing key")
+	}
+	if err := key.GenerateAndSetNextKey(nsCtx, hclog.NewNullLogger(), storage); err != nil {
+		t.Fatal("failed to set next signing key")
+	}
+
+	key.NextRotation = time.Now().Add(-time.Second) // past time
+
+	// Store namedKey
+	entry, _ := logical.StorageEntryJSON(ident.NamedKeyConfigPath+key.Name, key)
+	if err := storage.Put(nsCtx, entry); err != nil {
+		t.Fatal("writing to in mem storage failed")
+	}
+
+	// run periodicFunc
+	c.identityStore.OidcPeriodicFunc(nsCtx)
+
+	// collect entries
+	namedKeyEntry, _ := storage.Get(nsCtx, ident.NamedKeyConfigPath+key.Name)
+	publicKeysEntry, _ := storage.List(nsCtx, ident.PublicKeysConfigPath)
+
+	// verify the number of keys
+	var namedKey ident.NamedKey
+	if err := namedKeyEntry.DecodeJSON(&namedKey); err != nil {
+		t.Fatal("failed to decode named key entry")
+	}
+
+	expectedKeyCount := 3 // existing 2 + newly created on rotation
+	actualKeyRingLen := len(namedKey.KeyRing)
+
+	if actualKeyRingLen < expectedKeyCount {
+		t.Errorf(
+			"For key: %s expected namedKey's KeyRing to be at least of length %d but was: %d",
+			key.Name,
+			expectedKeyCount,
+			actualKeyRingLen,
+		)
+	}
+
+	expectedPublicKeyCount := 3 // existing 2 + newly created on rotation
+	actualPubKeysLen := len(publicKeysEntry)
+
+	if actualPubKeysLen < expectedPublicKeyCount {
+		t.Errorf(
+			"For key: %s expected public keys to be at least of length %d but was: %d",
+			key.Name,
+			expectedPublicKeyCount,
+			actualPubKeysLen,
+		)
+	}
+}
+
 // TestOIDC_Config tests CRUD operations for configuring the OIDC backend
 func TestOIDC_Config(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	testIssuer := "https://example.com:1234"
@@ -1220,13 +1287,13 @@ func TestOIDC_Config(t *testing.T) {
 // TestOIDC_pathOIDCKeyExistenceCheck tests pathOIDCKeyExistenceCheck
 func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	keyName := "test"
 
 	// Expect nil with empty storage
-	exists, err := c.identityStore.pathOIDCKeyExistenceCheck(
+	exists, err := c.identityStore.PathOIDCKeyExistenceCheck(
 		ctx,
 		&logical.Request{
 			Storage: storage,
@@ -1248,14 +1315,14 @@ func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 	}
 
 	// Populte storage with a namedKey
-	namedKey := &namedKey{}
-	entry, _ := logical.StorageEntryJSON(namedKeyConfigPath+keyName, namedKey)
+	namedKey := &ident.NamedKey{}
+	entry, _ := logical.StorageEntryJSON(ident.NamedKeyConfigPath+keyName, namedKey)
 	if err := storage.Put(ctx, entry); err != nil {
 		t.Fatal("writing to in mem storage failed")
 	}
 
 	// Expect true with a populated storage
-	exists, err = c.identityStore.pathOIDCKeyExistenceCheck(
+	exists, err = c.identityStore.PathOIDCKeyExistenceCheck(
 		ctx,
 		&logical.Request{
 			Storage: storage,
@@ -1280,13 +1347,13 @@ func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 // TestOIDC_pathOIDCRoleExistenceCheck tests pathOIDCRoleExistenceCheck
 func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	roleName := "test"
 
 	// Expect nil with empty storage
-	exists, err := c.identityStore.pathOIDCRoleExistenceCheck(
+	exists, err := c.identityStore.PathOIDCRoleExistenceCheck(
 		ctx,
 		&logical.Request{
 			Storage: storage,
@@ -1308,14 +1375,14 @@ func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 	}
 
 	// Populate storage with a role
-	role := &role{}
-	entry, _ := logical.StorageEntryJSON(roleConfigPath+roleName, role)
+	role := &ident.Role{}
+	entry, _ := logical.StorageEntryJSON(ident.RoleConfigPath+roleName, role)
 	if err := storage.Put(ctx, entry); err != nil {
 		t.Fatal("writing to in mem storage failed")
 	}
 
 	// Expect true with a populated storage
-	exists, err = c.identityStore.pathOIDCRoleExistenceCheck(
+	exists, err = c.identityStore.PathOIDCRoleExistenceCheck(
 		ctx,
 		&logical.Request{
 			Storage: storage,
@@ -1340,7 +1407,7 @@ func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 // TestOIDC_Path_OpenIDConfig tests read operations for the openid-configuration path
 func TestOIDC_Path_OpenIDConfig(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Expect defaults from .well-known/openid-configuration
@@ -1351,7 +1418,7 @@ func TestOIDC_Path_OpenIDConfig(t *testing.T) {
 	})
 	expectSuccess(t, resp, err)
 	// Validate configurable parts - for now just issuer
-	discoveryResp := &discovery{}
+	discoveryResp := &ident.Discovery{}
 	json.Unmarshal(resp.Data["http_raw_body"].([]byte), discoveryResp)
 	expected := "/v1/identity/oidc"
 	if discoveryResp.Issuer != expected {
@@ -1387,7 +1454,7 @@ func TestOIDC_Path_OpenIDConfig(t *testing.T) {
 // TestOIDC_Path_Introspect tests update operations on the introspect path
 func TestOIDC_Path_Introspect(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 	storage := &logical.InmemStorage{}
 
 	// Expect active false and an error from a malformed token
@@ -1421,17 +1488,17 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 		BucketKey: "test-entity-bucket-key",
 	}
 
-	txn := c.identityStore.db(ctx).Txn(true)
+	txn := c.identityStore.Txn(ctx, true)
 	defer txn.Abort()
-	err = c.identityStore.upsertEntityInTxn(ctx, txn, testEntity, nil, true)
+	err = c.identityStore.UpsertEntityInTxn(ctx, txn, testEntity, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	txn.Commit()
 
-	for _, alg := range []string{"RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"} {
-		key := "test-key-" + alg
-		role := "test-role-" + alg
+	for _, alg := range ident.SupportedAlgs {
+		key := "test-key-" + string(alg)
+		role := "test-role-" + string(alg)
 
 		// Create a test key "test-key"
 		resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -1439,7 +1506,7 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 			Operation: logical.CreateOperation,
 			Storage:   storage,
 			Data: map[string]interface{}{
-				"algorithm":          alg,
+				"algorithm":          string(alg),
 				"allowed_client_ids": "*",
 			},
 		})
@@ -1509,26 +1576,30 @@ func TestOIDC_isTargetNamespacedKey(t *testing.T) {
 		{[]string{"nsid1"}, "nsid0:nsid1:nsid0:nsid1:nsid0:nsid1", true},
 		{[]string{"nsid0"}, "nsid0:nsid1:nsid0:nsid1:nsid0:nsid1", false},
 		{[]string{"nsid0", "nsid1"}, "v0:nsid2:key", false},
-		{[]string{"nsid0", "nsid1", "nsid2", "nsid3", "nsid4"}, "v0:nsid3:key", true},
-		{[]string{"nsid0", "nsid1", "nsid2", "nsid3", "nsid4"}, "nsid0:nsid1:nsid2:nsid3:nsid4:nsid5", true},
+		{[]string{"nsid3"}, "v0:nsid3:key", true},
+		{[]string{"nsid0", "nsid1", "nsid2", "nsid4"}, "v0:nsid3:key", false},
+		{[]string{"nsid1"}, "nsid0:nsid1:nsid2:nsid3:nsid4:nsid5", true},
+		{[]string{"nsid0", "nsid2", "nsid3", "nsid4"}, "nsid0:nsid1:nsid2:nsid3:nsid4:nsid5", false},
 		{[]string{"nsid0", "nsid1", "nsid2", "nsid3", "nsid4"}, "nsid4:nsid5:nsid6:nsid7:nsid8:nsid9", false},
-		{[]string{"nsid0", "nsid0", "nsid0", "nsid0", "nsid0"}, "nsid0:nsid0:nsid0:nsid0:nsid0:nsid0", true},
+		{[]string{"nsid0"}, "nsid0:nsid0:nsid0:nsid0:nsid0:nsid0", true},
 		{[]string{"nsid1", "nsid1", "nsid2", "nsid2"}, "nsid0:nsid0:nsid0:nsid0:nsid0:nsid0", false},
 		{[]string{"nsid1", "nsid1", "nsid2", "nsid2"}, "nsid0:nsid0:nsid0:nsid0:nsid0:nsid0", false},
 	}
 
 	for _, test := range tests {
-		actual := isTargetNamespacedKey(test.nskey, test.nsTargets)
-		if test.expected != actual {
-			t.Fatalf("expected %t but got %t for nstargets: %q and nskey: %q", test.expected, actual, test.nsTargets, test.nskey)
+		for _, target := range test.nsTargets {
+			actual := ident.IsTargetNamespacedKey(test.nskey, target)
+			if test.expected != actual {
+				t.Fatalf("expected %t but got %t for nstargets: %q (target %v) and nskey: %q", test.expected, actual, test.nsTargets, target, test.nskey)
+			}
 		}
 	}
 }
 
 func TestOIDC_Flush(t *testing.T) {
-	c := newOIDCCache(zcache.NoExpiration, zcache.NoExpiration)
+	c := ident.NewOIDCCache(zcache.NoExpiration, zcache.NoExpiration)
 	ns := []*namespace.Namespace{
-		noNamespace, // ns[0] is nilNamespace
+		namespace.RootNamespace, // ns[0] is root namespace
 		{ID: "ns1"},
 		{ID: "ns2"},
 	}
@@ -1549,7 +1620,7 @@ func TestOIDC_Flush(t *testing.T) {
 		for _, expectNs := range expect {
 			found := false
 			for i := range items {
-				if isTargetNamespacedKey(i, []string{expectNs.ID}) {
+				if ident.IsTargetNamespacedKey(i, expectNs.ID) {
 					found = true
 					break
 				}
@@ -1561,7 +1632,7 @@ func TestOIDC_Flush(t *testing.T) {
 
 		for _, doNotExpectNs := range doNotExpect {
 			for i := range items {
-				if isTargetNamespacedKey(i, []string{doNotExpectNs.ID}) {
+				if ident.IsTargetNamespacedKey(i, doNotExpectNs.ID) {
 					t.Fatalf("Did not expect cache to contain an entry with a namespaced key for namespace: %q but found the key: %q", doNotExpectNs.ID, i)
 				}
 			}
@@ -1573,20 +1644,20 @@ func TestOIDC_Flush(t *testing.T) {
 	if err := c.Flush(ns[1]); err != nil {
 		t.Fatal(err)
 	}
-	items := c.c.Items()
-	verify(items, []*namespace.Namespace{ns[2]}, []*namespace.Namespace{ns[0], ns[1]})
+	items := c.Items()
+	verify(items, []*namespace.Namespace{ns[0], ns[2]}, []*namespace.Namespace{ns[1]})
 
 	// flushing nilNamespace should flush nilNamespace but not ns1 or ns2
 	populateNs()
 	if err := c.Flush(ns[0]); err != nil {
 		t.Fatal(err)
 	}
-	items = c.c.Items()
+	items = c.Items()
 	verify(items, []*namespace.Namespace{ns[1], ns[2]}, []*namespace.Namespace{ns[0]})
 }
 
 func TestOIDC_CacheNamespaceNilCheck(t *testing.T) {
-	cache := newOIDCCache(zcache.NoExpiration, zcache.NoExpiration)
+	cache := ident.NewOIDCCache(zcache.NoExpiration, zcache.NoExpiration)
 
 	if _, _, err := cache.Get(nil, "foo"); err == nil {
 		t.Fatal("expected error, got nil")
@@ -1605,7 +1676,7 @@ func TestOIDC_GetKeysCacheControlHeader(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 
 	// get default value
-	header, err := c.identityStore.getKeysCacheControlHeader()
+	header, err := c.identityStore.GetKeysCacheControlHeader(namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("expected success, got error:\n%v", err)
 	}
@@ -1617,11 +1688,11 @@ func TestOIDC_GetKeysCacheControlHeader(t *testing.T) {
 
 	// set nextRun
 	nextRun := time.Now().Add(24 * time.Hour)
-	if err = c.identityStore.oidcCache.Set(noNamespace, "nextRun", nextRun); err != nil {
+	if err = c.identityStore.OidcCache.Set(namespace.RootNamespace, "nextRun", nextRun); err != nil {
 		t.Fatal(err)
 	}
 
-	header, err = c.identityStore.getKeysCacheControlHeader()
+	header, err = c.identityStore.GetKeysCacheControlHeader(namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("expected success, got error:\n%v", err)
 	}
@@ -1634,11 +1705,11 @@ func TestOIDC_GetKeysCacheControlHeader(t *testing.T) {
 	// set jwksCacheControlMaxAge
 	durationSeconds := 60
 	jwksCacheControlMaxAge := time.Duration(durationSeconds) * time.Second
-	if err = c.identityStore.oidcCache.Set(noNamespace, "jwksCacheControlMaxAge", jwksCacheControlMaxAge); err != nil {
+	if err = c.identityStore.OidcCache.Set(namespace.RootNamespace, "jwksCacheControlMaxAge", jwksCacheControlMaxAge); err != nil {
 		t.Fatal(err)
 	}
 
-	header, err = c.identityStore.getKeysCacheControlHeader()
+	header, err = c.identityStore.GetKeysCacheControlHeader(namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("expected success, got error:\n%v", err)
 	}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 )
 
@@ -174,7 +175,9 @@ type requestCounts struct {
 
 func TestStepwise_makeRequest(t *testing.T) {
 	me := new(mockEnvironment)
-	me.Setup()
+	if err := me.Setup(); err != nil {
+		t.Fatal(err)
+	}
 	testT := new(mockT)
 
 	type testRequest struct {
@@ -438,7 +441,7 @@ func (t *mockT) Helper() {}
 
 // validates that X-Vault-Token is set on the requets to the mock endpoints
 func checkAuth(w http.ResponseWriter, r *http.Request) {
-	if token := r.Header.Get("X-Vault-Token"); token == "" {
+	if token := r.Header.Get(consts.AuthHeaderName); token == "" {
 		// not authenticated
 		w.WriteHeader(http.StatusForbidden)
 	}

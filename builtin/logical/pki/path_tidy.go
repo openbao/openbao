@@ -9,18 +9,17 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-var tidyCancelledError = errors.New("tidy operation cancelled")
+var errTidyCancelled = errors.New("tidy operation cancelled")
 
 type tidyStatusState int
 
@@ -805,7 +804,7 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 		AcmeAccountSafetyBuffer: acmeAccountSafetyBufferDuration,
 	}
 
-	if !atomic.CompareAndSwapUint32(b.tidyCASGuard, 0, 1) {
+	if !b.tidyCASGuard.CompareAndSwap(false, true) {
 		resp := &logical.Response{}
 		resp.AddWarning("Tidy operation already in progress.")
 		return resp, nil
@@ -838,8 +837,8 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 
 func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 	go func() {
-		atomic.StoreUint32(b.tidyCancelCAS, 0)
-		defer atomic.StoreUint32(b.tidyCASGuard, 0)
+		b.tidyCancelCAS.Store(false)
+		defer b.tidyCASGuard.Store(false)
 
 		b.tidyStatusStart(config)
 
@@ -862,8 +861,8 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
+				return errTidyCancelled
 			}
 
 			if config.RevokedCerts || config.IssuerAssocs || config.InvalidCerts {
@@ -875,8 +874,8 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
+				return errTidyCancelled
 			}
 
 			if rebuildCRL {
@@ -886,8 +885,8 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
+				return errTidyCancelled
 			}
 
 			if config.ExpiredIssuers {
@@ -897,8 +896,8 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
+				return errTidyCancelled
 			}
 
 			if config.BackupBundle {
@@ -908,8 +907,8 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
+				return errTidyCancelled
 			}
 
 			if config.TidyAcme {
@@ -955,8 +954,8 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 		metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_current_entry"}, float32(totalSerialCount+index))
 
 		// Check for cancel before continuing
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+		if b.tidyCancelCAS.CompareAndSwap(true, false) {
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption
@@ -1091,9 +1090,9 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 	// Number of certificates on current page. This value is <= PageSize.
 	var lenSerials int
 	// Total number of revoked certificates in storage
-	var totalRevokedSerialCount int = 0
+	totalRevokedSerialCount := 0
 	// Total number of deleted revoked certificates in this tidy call
-	var revokedDeletedCount int = 0
+	revokedDeletedCount := 0
 
 	var revInfo revocationInfo
 	haveWarned := false
@@ -1106,8 +1105,8 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 		metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_current_entry"}, float32(int(totalRevokedSerialCount)+index))
 
 		// Check for cancel before continuing.
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+		if b.tidyCancelCAS.CompareAndSwap(true, false) {
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption.
@@ -1183,7 +1182,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 		// Tidy operations over revoked certs should execute prior to
 		// tidyRevokedCerts as that may remove the entry. If that happens,
 		// we won't persist the revInfo changes (as it was deleted instead).
-		var storeCert bool = false
+		storeCert := false
 		if config.IssuerAssocs {
 			if !isRevInfoIssuerValid(&revInfo, issuerIDCertMap) {
 				b.tidyStatusIncMissingIssuerCertCount()
@@ -1473,8 +1472,8 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 		}
 
 		// Check for cancel before continuing.
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
+		if b.tidyCancelCAS.CompareAndSwap(true, false) {
+			return false, errTidyCancelled
 		}
 
 		// Check for pause duration to reduce resource consumption.
@@ -1540,8 +1539,8 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 			}
 
 			// Check for cancel before continuing.
-			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-				return tidyCancelledError
+			if b.tidyCancelCAS.CompareAndSwap(true, false) {
+				return errTidyCancelled
 			}
 
 			// Check for pause duration to reduce resource consumption.
@@ -1558,7 +1557,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 }
 
 func (b *backend) pathTidyCancelWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if atomic.LoadUint32(b.tidyCASGuard) == 0 {
+	if !b.tidyCASGuard.Load() {
 		resp := &logical.Response{}
 		resp.AddWarning("Tidy operation cannot be cancelled as none is currently running.")
 		return resp, nil
@@ -1570,8 +1569,8 @@ func (b *backend) pathTidyCancelWrite(ctx context.Context, req *logical.Request,
 	//
 	// Unlock needs to occur prior to calling read.
 	b.tidyStatusLock.Lock()
-	if b.tidyStatus.state == tidyStatusStarted || atomic.LoadUint32(b.tidyCASGuard) == 1 {
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 0, 1) {
+	if b.tidyStatus.state == tidyStatusStarted || b.tidyCASGuard.Load() {
+		if b.tidyCancelCAS.CompareAndSwap(false, true) {
 			b.tidyStatus.state = tidyStatusCancelling
 		}
 	}
@@ -1848,11 +1847,12 @@ func (b *backend) tidyStatusStop(err error) {
 
 	b.tidyStatus.timeFinished = time.Now()
 	b.tidyStatus.err = err
-	if err == nil {
+	switch err {
+	case nil:
 		b.tidyStatus.state = tidyStatusFinished
-	} else if err == tidyCancelledError {
+	case errTidyCancelled:
 		b.tidyStatus.state = tidyStatusCancelled
-	} else {
+	default:
 		b.tidyStatus.state = tidyStatusError
 	}
 

@@ -12,7 +12,7 @@ description: >-
 **Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
    Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
    usable without a workaround. See the
-   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
+   [deprecation FAQ](../../deprecation/faq.mdx#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
    for more information.
 
 :::
@@ -35,7 +35,7 @@ examples of OIDC and JWT usage.
 ## OIDC authentication
 
 This section covers the setup and use of OIDC roles. If a JWT is to be provided directly,
-refer to the [JWT Authentication](/docs/auth/jwt#jwt-authentication) section below. Basic
+refer to the [JWT Authentication](index.mdx#jwt-authentication) section below. Basic
 familiarity with [OIDC concepts](https://developer.okta.com/blog/2017/07/25/oidc-primer-part-1)
 is assumed. The Authorization Code flow makes use of the Proof Key for Code
 Exchange (PKCE) extension.
@@ -132,7 +132,7 @@ not required to be set:
 The OIDC authentication flow has been successfully tested with a number of providers. A full
 guide to configuring OAuth/OIDC applications is beyond the scope of OpenBao documentation, but a
 collection of provider configuration steps has been collected to help get started:
-[OIDC Provider Setup](/docs/auth/jwt/oidc-providers)
+[OIDC Provider Setup](oidc-providers/index.mdx)
 
 ### OIDC configuration troubleshooting
 
@@ -186,7 +186,7 @@ EOF
 
 - Azure requires some additional configuration when a user is a member of more
   than 200 groups, described in [Azure-specific handling
-  configuration](/docs/auth/jwt/oidc-providers/azuread#optional-azure-specific-configuration)
+  configuration](oidc-providers/azuread.mdx#optional-azure-specific-configuration)
 
 ## JWT authentication
 
@@ -348,8 +348,24 @@ parameter is a map of items to copy. The map elements are of the form: `"<JWT cl
 ```
 
 This specifies that the value in the JWT claim "division" should be copied to the metadata key "organization". The JWT
-"department" claim value will also be copied into metadata but will retain the key name. If a claim is configured in `claim_mappings`,
-it must existing in the JWT or else the authentication will fail.
+"department" claim value will also be copied into metadata but will retain the key name.
+
+If a claim is configured in `claim_mappings`, it must exist in the JWT when
+using JSON pointer syntax (beginning with a `/`) or else the authentication
+will fail. Claim mappings which do not begin with a `/` are optional. For
+example, in the configuration:
+
+```json
+{
+    "optional_jwt_claim": "optional_metadata_key",
+    "/required_jwt_claim": "required_metadata_key",
+}
+```
+
+the claim `optional_jwt_claim` may or may not be present, and when elided,
+`optional_metadata_key` will be skipped as a metadata value. However, the
+claim `required_jwt_claim` must always be present on the JWT or authentication
+will fail otherwise.
 
 Note: the metadata key name "role" is reserved and may not be used for claim mappings.
 

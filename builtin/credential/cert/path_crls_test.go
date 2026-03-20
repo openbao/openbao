@@ -117,7 +117,7 @@ func TestCRLFetch(t *testing.T) {
 		Schema: pathCerts(b).Fields,
 	}
 
-	resp, err := b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestCRLFetch(t *testing.T) {
 		Raw:    map[string]interface{}{},
 		Schema: pathLogin(b).Fields,
 	}
-	resp, err = b.pathLogin(context.Background(), req, empty_login_fd)
+	resp, err := b.pathLogin(context.Background(), req, empty_login_fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestCRLFetch(t *testing.T) {
 	b.crlUpdateMutex.Unlock()
 
 	// Add a cert to the CRL, then wait to see if it gets automatically picked up
-	revocationListTemplate.RevokedCertificates = []pkix.RevokedCertificate{
+	revocationListTemplate.RevokedCertificateEntries = []x509.RevocationListEntry{
 		{
 			SerialNumber:   big.NewInt(1),
 			RevocationTime: revocationListTemplate.RevokedCertificates[0].RevocationTime,

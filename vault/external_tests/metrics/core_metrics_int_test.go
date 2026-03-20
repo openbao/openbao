@@ -4,7 +4,6 @@
 package metrics
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/testhelpers"
@@ -91,12 +91,13 @@ func gaugeSearchHelper(data *testhelpers.SysMetricsJSON, expectedValue int) (int
 		labels := gauge.Labels
 		if loc, ok := labels["local"]; ok && loc.(string) == "false" {
 			if tp, ok := labels["type"]; ok && tp.(string) == "logical" {
-				if gauge.Name == "core.mount_table.num_entries" {
+				switch gauge.Name {
+				case "core.mount_table.num_entries":
 					foundFlag = true
 					if err := gaugeConditionCheck("eq", expectedValue, gauge.Value); err != nil {
 						return int(^uint(0) >> 1), err
 					}
-				} else if gauge.Name == "core.mount_table.size" {
+				case "core.mount_table.size":
 					tablesize = gauge.Value
 				}
 			}
@@ -139,23 +140,21 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	standbyClient := cores[1].Client
 
 	r := client.NewRequest("GET", "/v1/sys/metrics")
-	r2 := standbyClient.NewRequest("GET", "/v1/sys/metrics")
-	r.Headers.Set("X-Vault-Token", cluster.RootToken)
-	r2.Headers.Set("X-Vault-Token", cluster.RootToken)
-	respo, err := client.RawRequestWithContext(context.Background(), r)
+	r.Headers.Set(consts.AuthHeaderName, cluster.RootToken)
+	respo, err := client.RawRequest(r)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bodyBytes, err := io.ReadAll(respo.Response.Body)
+	bodyBytes, err := io.ReadAll(respo.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if respo != nil {
-		defer respo.Body.Close()
+		defer respo.Body.Close() //nolint:errcheck
 	}
 	var data testhelpers.SysMetricsJSON
-	var coreLeaderMetric bool = false
-	var coreUnsealMetric bool = false
+	coreLeaderMetric := false
+	coreUnsealMetric := false
 	if err := json.Unmarshal(bodyBytes, &data); err != nil {
 		t.Fatal("failed to unmarshal:", err)
 	}
@@ -185,12 +184,12 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	vault.TestWaitActive(t, cores[1].Core)
 
 	r = standbyClient.NewRequest("GET", "/v1/sys/metrics")
-	r.Headers.Set("X-Vault-Token", cluster.RootToken)
-	respo, err = standbyClient.RawRequestWithContext(context.Background(), r)
+	r.Headers.Set(consts.AuthHeaderName, cluster.RootToken)
+	respo, err = standbyClient.RawRequest(r)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bodyBytes, err = io.ReadAll(respo.Response.Body)
+	bodyBytes, err = io.ReadAll(respo.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,6 +217,6 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 		}
 	}
 	if respo != nil {
-		defer respo.Body.Close()
+		defer respo.Body.Close() //nolint:errcheck
 	}
 }

@@ -13,13 +13,13 @@ import (
 
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -68,7 +68,7 @@ func (c *Core) RekeyThreshold(ctx context.Context, recovery bool) (int, logical.
 	if c.Sealed() {
 		return 0, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return 0, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -102,7 +102,7 @@ func (c *Core) RekeyProgress(recovery, verification bool) (bool, int, logical.HT
 	if c.Sealed() {
 		return false, 0, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return false, 0, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -133,7 +133,7 @@ func (c *Core) RekeyConfig(recovery bool) (*SealConfig, logical.HTTPCodedError) 
 	if c.Sealed() {
 		return nil, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return nil, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -207,7 +207,7 @@ func (c *Core) BarrierRekeyInit(config *SealConfig) logical.HTTPCodedError {
 	if c.Sealed() {
 		return logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -259,7 +259,7 @@ func (c *Core) RecoveryRekeyInit(config *SealConfig) logical.HTTPCodedError {
 	if c.Sealed() {
 		return logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -308,7 +308,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 	if c.Sealed() {
 		return nil, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return nil, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -395,13 +395,14 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 		}
 	case c.seal.BarrierType() == wrapping.WrapperTypeShamir:
 		if c.seal.StoredKeysSupported() == seal.StoredKeysSupportedShamirRoot {
-			shamirWrapper := aeadwrapper.NewShamirWrapper()
-			testseal := NewDefaultSeal(seal.NewAccess(shamirWrapper))
-			testseal.SetCore(c)
-			err = shamirWrapper.SetAesGcmKeyBytes(recoveredKey)
-			if err != nil {
+			shamirWrapper := seal.NewShamirWrapper()
+			if err = shamirWrapper.SetAesGcmKeyBytes(recoveredKey); err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup unseal key: %v", err)
 			}
+
+			testseal := NewDefaultSeal(seal.NewAccess(shamirWrapper))
+			testseal.SetCore(c)
+
 			cfg, err := c.seal.BarrierConfig(ctx)
 			if err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup test barrier config: %v", err)
@@ -544,7 +545,7 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 
 	if len(newSealKey) > 0 {
 		err := c.barrier.Put(ctx, &logical.StorageEntry{
-			Key:   shamirKekPath,
+			Key:   barrier.ShamirKekPath,
 			Value: newSealKey,
 		})
 		if err != nil {
@@ -560,16 +561,6 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 		return logical.CodedError(http.StatusInternalServerError, "failed to save rekey seal configuration: %v", err)
 	}
 
-	// Write to the canary path, which will force a synchronous truing during
-	// replication
-	if err := c.barrier.Put(ctx, &logical.StorageEntry{
-		Key:   coreKeyringCanaryPath,
-		Value: []byte(c.rootRotationConfig.Nonce),
-	}); err != nil {
-		c.logger.Error("error saving keyring canary", "error", err)
-		return logical.CodedError(http.StatusInternalServerError, "failed to save keyring canary: %v", err)
-	}
-
 	c.rootRotationConfig.RotationProgress = nil
 
 	return nil
@@ -583,7 +574,7 @@ func (c *Core) RecoveryRekeyUpdate(ctx context.Context, key []byte, nonce string
 	if c.Sealed() {
 		return nil, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return nil, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -762,16 +753,6 @@ func (c *Core) performRecoveryRekey(ctx context.Context, newRootKey []byte) logi
 		return logical.CodedError(http.StatusInternalServerError, "failed to save rekey seal configuration: %v", err)
 	}
 
-	// Write to the canary path, which will force a synchronous truing during
-	// replication
-	if err := c.barrier.Put(ctx, &logical.StorageEntry{
-		Key:   coreKeyringCanaryPath,
-		Value: []byte(c.recoveryRotationConfig.Nonce),
-	}); err != nil {
-		c.logger.Error("error saving keyring canary", "error", err)
-		return logical.CodedError(http.StatusInternalServerError, "failed to save keyring canary: %v", err)
-	}
-
 	c.recoveryRotationConfig.RotationProgress = nil
 
 	return nil
@@ -784,7 +765,7 @@ func (c *Core) RekeyVerify(ctx context.Context, key []byte, nonce string, recove
 	if c.Sealed() {
 		return nil, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return nil, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -898,7 +879,7 @@ func (c *Core) RekeyCancel(recovery bool) logical.HTTPCodedError {
 	if c.Sealed() {
 		return logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -921,7 +902,7 @@ func (c *Core) RekeyVerifyRestart(recovery bool) logical.HTTPCodedError {
 	if c.Sealed() {
 		return logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -958,7 +939,7 @@ func (c *Core) RekeyRetrieveBackup(ctx context.Context, recovery bool) (*RekeyBa
 	if c.Sealed() {
 		return nil, logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return nil, logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 
@@ -993,7 +974,7 @@ func (c *Core) RekeyDeleteBackup(ctx context.Context, recovery bool) logical.HTT
 	if c.Sealed() {
 		return logical.CodedError(http.StatusServiceUnavailable, consts.ErrSealed.Error())
 	}
-	if c.standby {
+	if c.standby.Load() {
 		return logical.CodedError(http.StatusBadRequest, consts.ErrStandby.Error())
 	}
 

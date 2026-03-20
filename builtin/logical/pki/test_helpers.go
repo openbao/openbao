@@ -40,7 +40,7 @@ func CreateBackendWithStorage(t testing.TB) (*backend, logical.Storage) {
 		t.Fatal(err)
 	}
 	// Assume for our tests we have performed the migration already.
-	b.pkiStorageVersion.Store(1)
+	b.pkiStorageVersion.Store(true)
 	return b, config.StorageView
 }
 
@@ -114,7 +114,7 @@ func getSelfSigned(t *testing.T, subject, issuer *x509.Certificate, key *rsa.Pri
 func getCrlCertificateList(t *testing.T, client *api.Client, mountPoint string) *x509.RevocationList {
 	t.Helper()
 
-	path := fmt.Sprintf("/v1/%s/crl", mountPoint)
+	path := fmt.Sprintf("%s/crl", mountPoint)
 	return getParsedCrlAtPath(t, client, path)
 }
 
@@ -155,19 +155,18 @@ func requireSerialNumberInCRL(t *testing.T, revokeList *x509.RevocationList, ser
 func getParsedCrl(t *testing.T, client *api.Client, mountPoint string) *x509.RevocationList {
 	t.Helper()
 
-	path := fmt.Sprintf("/v1/%s/crl", mountPoint)
+	path := fmt.Sprintf("%s/crl", mountPoint)
 	return getParsedCrlAtPath(t, client, path)
 }
 
 func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *x509.RevocationList {
 	t.Helper()
 
-	req := client.NewRequest("GET", path)
-	resp, err := client.RawRequest(req)
+	resp, err := client.Logical().ReadRaw(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	crlBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -352,7 +351,7 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 
 		if time.Since(start) > maxWait {
 			t.Logf("Timed out waiting for new CRL on path %s after iteration %d, delay: %v",
-				crlPath, iteration, time.Now().Sub(start))
+				crlPath, iteration, time.Since(start))
 			return crl, true
 		}
 
@@ -360,7 +359,7 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 		newCrlRevision := getCRLNumber(t, crl)
 		if newCrlRevision > initialCrlRevision {
 			t.Logf("Got new revision of CRL %s from %d to %d after iteration %d, delay %v",
-				crlPath, initialCrlRevision, newCrlRevision, iteration, time.Now().Sub(start))
+				crlPath, initialCrlRevision, newCrlRevision, iteration, time.Since(start))
 			return crl, false
 		}
 

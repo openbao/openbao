@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	paths "path"
 	"sort"
 	"strings"
@@ -18,13 +19,13 @@ import (
 )
 
 func kvReadRequest(client *api.Client, path string, params map[string]string) (*api.Secret, error) {
-	r := client.NewRequest("GET", "/v1/"+path)
+	readParams := make(url.Values, len(params))
 	for k, v := range params {
-		r.Params.Set(k, v)
+		readParams.Set(k, v)
 	}
-	resp, err := client.RawRequest(r)
+	resp, err := client.Logical().ReadRawWithData(path, readParams)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if resp != nil && resp.StatusCode == 404 {
 		secret, parseErr := api.ParseSecret(resp.Body)
@@ -60,10 +61,9 @@ func kvPreflightVersionRequest(client *api.Client, path string) (string, int, er
 	client.SetOutputPolicy(false)
 	defer client.SetOutputPolicy(currentOutputPolicy)
 
-	r := client.NewRequest("GET", "/v1/sys/internal/ui/mounts/"+path)
-	resp, err := client.RawRequest(r)
+	resp, err := client.Logical().ReadRaw("sys/internal/ui/mounts/" + path)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 	}
 	if err != nil {
 		// If we get a 404 we are using an older version of vault, default to
@@ -77,6 +77,7 @@ func kvPreflightVersionRequest(client *api.Client, path string) (string, int, er
 			if (currentOutputCurlString || currentOutputPolicy) && resp.StatusCode == 403 {
 				// we provide a more helpful error for the user,
 				// who may not understand why the flag isn't working.
+				//nolint:staticcheck // user-facing error
 				err = fmt.Errorf(
 					`This output flag requires the success of a preflight request 
 to determine the version of a KV secrets engine. Please 
@@ -134,11 +135,7 @@ func addPrefixToKVPath(path, mountPath, apiPrefix string, skipIfExists bool) str
 	}
 
 	pathSuffix := strings.TrimPrefix(path, mountPath)
-	for {
-		// If the entire mountPath is included in the path, we are done
-		if pathSuffix != path {
-			break
-		}
+	for pathSuffix == path {
 		// Trim the parts of the mountPath that are not included in the
 		// path, for example, in cases where the mountPath contains
 		// namespaces which are not included in the path.

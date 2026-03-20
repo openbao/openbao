@@ -15,7 +15,6 @@ import (
 
 	uuid "github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
@@ -110,8 +109,7 @@ func (c *Core) InitRotation(ctx context.Context, config *SealConfig, recovery bo
 			return nil, logical.CodedError(http.StatusBadRequest, "rotation already in progress")
 		}
 
-		var initErr logical.HTTPCodedError
-		initErr = c.initRecoveryRotation(config, nonce)
+		initErr := c.initRecoveryRotation(config, nonce)
 		if initErr != nil {
 			return nil, initErr
 		}
@@ -355,13 +353,13 @@ func (c *Core) updateBarrierRotation(ctx context.Context, config *SealConfig, ke
 		}
 	case c.seal.BarrierType() == wrapping.WrapperTypeShamir:
 		if c.seal.StoredKeysSupported() == seal.StoredKeysSupportedShamirRoot {
-			shamirWrapper := aeadwrapper.NewShamirWrapper()
-			testseal := NewDefaultSeal(seal.NewAccess(shamirWrapper))
-			testseal.SetCore(c)
-			err := shamirWrapper.SetAesGcmKeyBytes(recoveredKey)
-			if err != nil {
+			shamirWrapper := seal.NewShamirWrapper()
+			if err := shamirWrapper.SetAesGcmKeyBytes(recoveredKey); err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup unseal key: %v", err)
 			}
+
+			testseal := NewDefaultSeal(seal.NewAccess(shamirWrapper))
+			testseal.SetCore(c)
 
 			cfg, err := c.seal.BarrierConfig(ctx)
 			if err != nil {
@@ -554,6 +552,25 @@ func (c *Core) requireVerification(rotationConfig *SealConfig, rotationResult *R
 	rotationResult.VerificationRequired = true
 	rotationResult.VerificationNonce = nonce
 	return rotationResult, nil
+}
+
+// RotateBarrierRootKey rotates the barrier root key, doesn't require reconstruction
+// of the unseal key to perform rotation, rotates root key independent from recovery
+// key shares or Shamir (KEK).
+func (c *Core) RotateBarrierRootKey(ctx context.Context) error {
+	c.rotationLock.Lock()
+	defer c.rotationLock.Unlock()
+
+	newRootKey, err := c.barrier.GenerateKey(c.secureRandomReader)
+	if err != nil {
+		return fmt.Errorf("failed to generate new root key: %v", err)
+	}
+
+	if err := c.seal.SetStoredKeys(ctx, [][]byte{newRootKey}); err != nil {
+		return fmt.Errorf("failed to store keys: %v", err)
+	}
+
+	return c.barrier.RotateRootKey(ctx, newRootKey)
 }
 
 // VerifyRotation verifies the progress of the verification of the rotation.

@@ -9,7 +9,7 @@ an auto-unseal mechanism, it is possible to initialize OpenBao (since `v2.4.0`)
 with `recovery_shares` config parameter set as `0`, resulting in the recovery keys
 not being generated at initialization time, and thus will not be returned back to
 the operator. The system will function as if it has no recovery keys. To create
-recovery keys the operator is required to to manually call [init](/api-docs/system/rotate/init)
+recovery keys the operator is required to to manually call [init](rotate/init.mdx)
 endpoint, which will return working keys immediately. This is not applicable for
 Shamir's based unsealing. Recovery mode will not function until such keys are
 created, and the operator will be unable to use the API to unseal a manually sealed

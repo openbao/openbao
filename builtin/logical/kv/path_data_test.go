@@ -210,7 +210,7 @@ func TestVersionedKV_Data_Put_ZeroCas(t *testing.T) {
 
 	expectedSubStr := "check-and-set parameter did not match"
 
-	if errorMsg, ok := resp.Data["error"]; !(ok && strings.Contains(errorMsg.(string), expectedSubStr)) {
+	if errorMsg, ok := resp.Data["error"]; !ok || !strings.Contains(errorMsg.(string), expectedSubStr) {
 		t.Fatalf("expected check-and-set validation error, resp: %#v\n", resp)
 	}
 }
@@ -745,7 +745,7 @@ func TestVersionedKV_Patch_CASValidation(t *testing.T) {
 
 	expectedSubStr := "check-and-set parameter required for this call"
 
-	if errorMsg, ok := resp.Data["error"]; !(ok && strings.Contains(errorMsg.(string), expectedSubStr)) {
+	if errorMsg, ok := resp.Data["error"]; !ok || !strings.Contains(errorMsg.(string), expectedSubStr) {
 		t.Fatalf("expected check-and-set validation error, resp: %#v\n", resp)
 	}
 
@@ -774,7 +774,7 @@ func TestVersionedKV_Patch_CASValidation(t *testing.T) {
 
 	expectedSubStr = "check-and-set parameter did not match"
 
-	if errorMsg, ok := resp.Data["error"]; !(ok && strings.Contains(errorMsg.(string), expectedSubStr)) {
+	if errorMsg, ok := resp.Data["error"]; !ok || !strings.Contains(errorMsg.(string), expectedSubStr) {
 		t.Fatalf("expected check-and-set validation error, resp: %#v\n", resp)
 	}
 }

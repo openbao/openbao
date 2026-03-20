@@ -5,6 +5,61 @@ description: Release notes for OpenBao 2.4.x
 
 # OpenBao 2.4.x release notes
 
+## v2.4.4
+
+**Release date**: November 24, 2025
+
+### SECURITY
+
+* core/identity: Correctly lowercase policy names on identity groups to prevent root policy assignment. CVE-2025-64761 / GHSA-7ff4-jw48-3436. Second part of upstream's HCSEC-2025-13 / CVE-2025-5999. [[GH-2143](https://github.com/openbao/openbao/pull/2143)]
+
+### IMPROVEMENTS
+
+* command: `operator diagnose` certificate expiration warnings are now raised if less than 15% of the certificate's validity period remains. Previously, any certificate that was set to expire in the next 30 days would be flagged. This made little sense for short-lived certificates. [[GH-2062](https://github.com/openbao/openbao/pull/2062)]
+
+### BUG FIXES
+
+* auth/cert: allow use of always-fresh OCSP servers which elide NextUpdate [[GH-2079](https://github.com/openbao/openbao/pull/2079)]
+* auth/jwt: Fix token renewal of pre-v2.3.x JWT tokens and all OIDC tokens after CEL support was introduced. [[GH-2148](https://github.com/openbao/openbao/pull/2148)]
+* command: `operator diagnose` certificate expiration warnings now contain the correct time to expiration. [[GH-2062](https://github.com/openbao/openbao/pull/2062)]
+* command: `operator diagnose` now correctly ignores trailing data in certificate files. [[GH-2065](https://github.com/openbao/openbao/pull/2065)]
+* command: `operator diagnose` now correctly verifies intermediate certs if no root certs are supplied. [[GH-2065](https://github.com/openbao/openbao/pull/2065)]
+* command: pki health check error now contains actual mount path instead of a template placeholder. [[GH-2061](https://github.com/openbao/openbao/pull/2061)]
+* core: fix nil panic in the rare case were an expiration retry is running during shutdown [[GH-2019](https://github.com/openbao/openbao/pull/2019)]
+* raft: fix memory leak when using only non-transactional operations. This was a regression introduced in release 2.4.2 with #1889. [[GH-2067](https://github.com/openbao/openbao/pull/2067)]
+* sdk/helper/ocsp: allow use of always-fresh OCSP servers which elide NextUpdate [[GH-2079](https://github.com/openbao/openbao/pull/2079)]
+
+## v2.4.3
+
+**Release date**: October 22, 2025
+
+:::info
+
+OpenBao v2.4.2 is unreleased due to release pipelines running out of space,
+requiring a new tag to be pushed. The release notes are otherwise equivalent
+and either tag will fix the relevant issues below.
+
+:::
+
+### SECURITY
+
+* audit: redact `HTTPRawBody` response parameter in audit logs; CVE-2025-62513 / GHSA-ghfh-fmx4-26h8. [[GH-2002](https://github.com/openbao/openbao/pull/2002)]
+* audit: redact `[]byte` type response parameters in audit logs; CVE-2025-62705 / GHSA-rc54-2g2c-g36g. [[GH-2002](https://github.com/openbao/openbao/pull/2002)]
+
+### IMPROVEMENTS
+
+* core/namespaces: Setting the `X-Vault-Namespace` Header (or the `BAO_NAMESPACE` environment variable when using the cli) to "root" now maps to the root namespace. [[GH-1918](https://github.com/openbao/openbao/pull/1918)]
+
+### BUG FIXES
+
+* core/identity: Entities timestamps are now correctly formatted in `RFC3339Nano`, as previously done so. [[GH-1873](https://github.com/openbao/openbao/pull/1873)]
+* core/namespaces: Fix mount creation failing if mount name is equal to the name of the containing namespace [[GH-1958](https://github.com/openbao/openbao/pull/1958)]
+* core/namespaces: ensure interrupted namespace creation fails gracefully; prevents identity store panic and partial memory-only namespaces [[GH-1990](https://github.com/openbao/openbao/pull/1990)]
+* core/namespaces: only report namespaces which the provided token has access to from `sys/internal/ui/namespaces` [[GH-1982](https://github.com/openbao/openbao/pull/1982)]
+* raft: fix memory leak on standby nodes [[GH-1889](https://github.com/openbao/openbao/pull/1889)]
+* sdk/framework: Reduce memory usage of repeated mounts through singleton pattern regex cache [[GH-1893](https://github.com/openbao/openbao/pull/1893)]
+* secrets/kv: KV entries timestamps are now correctly formatted in `RFC3339Nano`, as previously done so. [[GH-1872](https://github.com/openbao/openbao/pull/1872)]
+
 ## v2.4.1
 
 **Release date**: September 11, 2025

@@ -10,11 +10,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,7 +53,7 @@ const (
 	EnvVaultDisableRedirects = "BAO_DISABLE_REDIRECTS"
 
 	// NamespaceHeaderName is the header set to specify which namespace the
-	// request is indented for.
+	// request is intended for.
 	NamespaceHeaderName = "X-Vault-Namespace"
 
 	// AuthHeaderName is the name of the header containing the token.
@@ -60,6 +62,37 @@ const (
 	// RequestHeaderName is the name of the header used by the Agent for
 	// SSRF protection.
 	RequestHeaderName = "X-Vault-Request"
+
+	// NoRequestForwardingHeaderName is the name of the header telling Vault not
+	// to use request forwarding.
+	NoRequestForwardingHeaderName = "X-Vault-No-Request-Forwarding"
+
+	// MFAHeaderName represents the HTTP header which carries the credentials
+	// required to perform MFA on any path.
+	MFAHeaderName = "X-Vault-MFA"
+
+	// WrapTTLHeaderName is the name of the header containing a directive to
+	// wrap the response.
+	WrapTTLHeaderName = "X-Vault-Wrap-TTL"
+
+	// WrapFormatHeaderName is the name of the header containing the format to
+	// wrap in; has no effect if the wrap TTL is not set.
+	WrapFormatHeaderName = "X-Vault-Wrap-Format"
+
+	// RawErrorHeaderName is the name of the header that holds any errors that
+	// occurred responding to requests to special endpoints that return raw
+	// response bodies.
+	RawErrorHeaderName = "X-Vault-Raw-Error"
+
+	// HostnameHeaderName is the name of the header that holds the responding
+	// node's hostname when enable_response_header_hostname is set in the server
+	// configuration.
+	HostnameHeaderName = "X-Vault-Hostname"
+
+	// RaftNodeIDHeaderName is the name of the header that holds the responding
+	// node's Raft node ID if enable_response_header_raft_node_id is set in the
+	// server configuration and the node is participating in a Raft cluster.
+	RaftNodeIDHeaderName = "X-Vault-Raft-Node-ID"
 
 	// Path to perform inline authentication against. Any authentication
 	// performed must be single-request.
@@ -73,6 +106,12 @@ const (
 	// the value of X-Vault-Namespace; can be combined with any potential
 	// namespace in X-Vault-Inline-Auth-Path.
 	InlineAuthNamespaceHeaderName = "X-Vault-Inline-Auth-Namespace"
+
+	// Whether the response object is from the underlying auth method. This
+	// is sometimes not a sufficient check as a 404s and server errors are
+	// often returned without response bodies. But when a non-empty response
+	// is given, this disambiguates inline auth from subsequent call responses.
+	InlineAuthErrorResponseHeader = "X-Vault-Inline-Auth-Failed"
 
 	// Prefix of user-specified parameters sent to the endpoint specified
 	// in InlineAuthPathHeaderName. Each parameter is a base64 url-safe
@@ -532,11 +571,9 @@ func (c *Config) ParseAddress(address string) (*url.URL, error) {
 
 	c.Address = address
 
-	if strings.HasPrefix(address, "unix://") {
+	if socket, ok := strings.CutPrefix(address, "unix://"); ok {
 		// When the address begins with unix://, always change the transport's
 		// DialContext (to match previous behaviour)
-		socket := strings.TrimPrefix(address, "unix://")
-
 		if transport, ok := c.HttpClient.Transport.(*http.Transport); ok {
 			transport.DialContext = func(context.Context, string, string) (net.Conn, error) {
 				return net.Dial("unix", socket)
@@ -1038,9 +1075,7 @@ func (c *Client) Headers() http.Header {
 
 	ret := make(http.Header)
 	for k, v := range c.headers {
-		for _, val := range v {
-			ret[k] = append(ret[k], val)
-		}
+		ret[k] = slices.Clone(v)
 	}
 
 	return ret
@@ -1131,24 +1166,29 @@ func (c *Client) CloneToken() bool {
 // the api.Config struct, such as policy override and wrapping function
 // behavior, must currently then be set as desired on the new client.
 func (c *Client) Clone() (*Client, error) {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+	c.config.modifyLock.RLock()
+	defer c.config.modifyLock.RUnlock()
+
 	return c.clone(c.config.CloneHeaders)
 }
 
 // CloneWithHeaders creates a new client similar to Clone, with the difference
 // being that the  headers are always cloned
 func (c *Client) CloneWithHeaders() (*Client, error) {
+	c.modifyLock.RLock()
+	defer c.modifyLock.RUnlock()
+	c.config.modifyLock.RLock()
+	defer c.config.modifyLock.RUnlock()
+
 	return c.clone(true)
 }
 
 // clone creates a new client, with the headers being cloned based on the
 // passed in cloneheaders boolean
 func (c *Client) clone(cloneHeaders bool) (*Client, error) {
-	c.modifyLock.RLock()
-	defer c.modifyLock.RUnlock()
-
 	config := c.config
-	config.modifyLock.RLock()
-	defer config.modifyLock.RUnlock()
 
 	newConfig := &Config{
 		Address:      config.Address,
@@ -1255,9 +1295,9 @@ func (c *Client) NewRequest(method, requestPath string) *Request {
 // a Vault server not configured with this client. This is an advanced operation
 // that generally won't need to be called externally.
 //
-// Deprecated: RawRequest exists for historical compatibility and should not be
-// used directly. Use client.Logical().ReadRaw(...) or higher level methods
-// instead.
+// RawRequest exists for historical compatibility and should not be used
+// directly. Use client.Logical().ReadRaw(...) or higher level methods instead
+// if possible.
 func (c *Client) RawRequest(r *Request) (*Response, error) {
 	return c.RawRequestWithContext(context.Background(), r)
 }
@@ -1266,9 +1306,9 @@ func (c *Client) RawRequest(r *Request) (*Response, error) {
 // a Vault server not configured with this client. This is an advanced operation
 // that generally won't need to be called externally.
 //
-// Deprecated: RawRequestWithContext exists for historical compatibility and
-// should not be used directly. Use client.Logical().ReadRawWithContext(...)
-// or higher level methods instead.
+// RawRequestWithContext exists for historical compatibility and should not be
+// used directly. Use client.Logical().ReadRawWithContext(...) or higher level
+// methods instead if possible.
 func (c *Client) RawRequestWithContext(ctx context.Context, r *Request) (*Response, error) {
 	// Note: we purposefully do not call cancel manually. The reason is
 	// when canceled, the request.Body will EOF when reading due to the way
@@ -1380,7 +1420,7 @@ START:
 	}
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
-			err = fmt.Errorf("%w\n\n"+TLSErrorString, err)
+			err = fmt.Errorf("%w\n\n"+TLSErrorString, err) //nolint:staticcheck // user-facing error
 		}
 		return result, err
 	}
@@ -1477,12 +1517,12 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 	}
 
 	if len(r.WrapTTL) != 0 {
-		req.Header.Set("X-Vault-Wrap-TTL", r.WrapTTL)
+		req.Header.Set(WrapTTLHeaderName, r.WrapTTL)
 	}
 
 	if len(r.MFAHeaderVals) != 0 {
 		for _, mfaHeaderVal := range r.MFAHeaderVals {
-			req.Header.Add("X-Vault-MFA", mfaHeaderVal)
+			req.Header.Add(MFAHeaderName, mfaHeaderVal)
 		}
 	}
 
@@ -1509,7 +1549,7 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 
 	if err != nil {
 		if strings.Contains(err.Error(), "tls: oversized") {
-			err = fmt.Errorf("%w\n\n"+TLSErrorString, err)
+			err = fmt.Errorf("%w\n\n"+TLSErrorString, err) //nolint:staticcheck // user-facing error
 		}
 		return result, err
 	}
@@ -1536,7 +1576,7 @@ func (c *Client) httpRequestWithContext(ctx context.Context, r *Request) (*Respo
 		}
 
 		// Retry the request
-		resp, err = httpClient.Do(req)
+		_, err = httpClient.Do(req)
 		if err != nil {
 			return result, fmt.Errorf("redirect failed: %s", err)
 		}
@@ -1624,10 +1664,7 @@ func (c *Client) WithInlineAuth(path string, data map[string]interface{}, opts .
 	headers[InlineAuthPathHeaderName] = []string{path}
 
 	for _, opt := range opts {
-		oHeader := opt()
-		for name, value := range oHeader {
-			headers[name] = value
-		}
+		maps.Copy(headers, opt())
 	}
 
 	for key, value := range data {

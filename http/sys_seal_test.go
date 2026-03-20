@@ -16,10 +16,12 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSysSealStatus(t *testing.T) {
@@ -44,7 +46,7 @@ func TestSysSealStatus(t *testing.T) {
 		"recovery_seal": false,
 		"initialized":   true,
 		"migration":     false,
-		"build_date":    version.BuildDate,
+		"commit_date":   version.CommitDate,
 	}
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
@@ -129,7 +131,7 @@ func TestSysUnseal(t *testing.T) {
 			"recovery_seal": false,
 			"initialized":   true,
 			"migration":     false,
-			"build_date":    version.BuildDate,
+			"commit_date":   version.CommitDate,
 		}
 		if i == len(keys)-1 {
 			expected["sealed"] = false
@@ -164,7 +166,7 @@ func TestSysUnseal(t *testing.T) {
 
 func subtestBadSingleKey(t *testing.T, seal vault.Seal) {
 	core := vault.TestCoreWithSeal(t, seal, false)
-	_, err := core.Initialize(context.Background(), &vault.InitParams{
+	_, err := core.Initialize(namespace.RootContext(t.Context()), &vault.InitParams{
 		BarrierConfig: &vault.SealConfig{
 			SecretShares:    1,
 			SecretThreshold: 1,
@@ -249,7 +251,7 @@ func subtestBadMultiKey(t *testing.T, seal vault.Seal) {
 	numKeys := 3
 
 	core := vault.TestCoreWithSeal(t, seal, false)
-	_, err := core.Initialize(context.Background(), &vault.InitParams{
+	_, err := core.Initialize(namespace.RootContext(t.Context()), &vault.InitParams{
 		BarrierConfig: &vault.SealConfig{
 			SecretShares:    numKeys,
 			SecretThreshold: numKeys,
@@ -368,7 +370,7 @@ func TestSysUnseal_Reset(t *testing.T) {
 			"recovery_seal": false,
 			"initialized":   true,
 			"migration":     false,
-			"build_date":    version.BuildDate,
+			"commit_date":   version.CommitDate,
 		}
 		testResponseStatus(t, resp, 200)
 		testResponseBody(t, resp, &actual)
@@ -408,7 +410,7 @@ func TestSysUnseal_Reset(t *testing.T) {
 		"type":          "shamir",
 		"recovery_seal": false,
 		"initialized":   true,
-		"build_date":    version.BuildDate,
+		"commit_date":   version.CommitDate,
 		"migration":     false,
 	}
 	testResponseStatus(t, resp, 200)
@@ -454,7 +456,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -469,7 +471,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		"policies": []string{"test"},
 	}
 
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v %v", err, resp)
 	}
@@ -492,7 +494,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -513,7 +515,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -534,7 +536,7 @@ func TestSysSeal_Permissions(t *testing.T) {
 		},
 		ClientToken: root,
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -555,4 +557,48 @@ func TestSysStepDown(t *testing.T) {
 
 	resp := testHttpPut(t, token, addr+"/v1/sys/step-down", nil)
 	testResponseStatus(t, resp, 204)
+}
+
+func TestHA_UnsealLeaderThenStandbys_SharedKeys(t *testing.T) {
+	t.Parallel()
+
+	conf := &vault.CoreConfig{}
+	opts := &vault.TestClusterOptions{
+		NumCores: 3,
+		SkipInit: true,
+	}
+	cluster := vault.NewTestCluster(t, conf, opts)
+	defer cluster.Cleanup()
+
+	// Initialize on core[0]
+	initCore := cluster.Cores[0]
+	keys, _ := vault.TestCoreInit(t, initCore.Core)
+
+	// Unseal leader
+	for _, share := range keys {
+		_, err := initCore.Unseal(share)
+		require.NoError(t, err)
+	}
+	require.False(t, initCore.Sealed(), "initCore should be unsealed")
+
+	testhelpers.WaitForActiveNode(t, cluster)
+	isLeader, _, _, _ := initCore.Leader()
+	require.True(t, isLeader, "initCore should be leader")
+
+	// Unseal remaining cores (they should join as standbys)
+	for _, coreIndex := range []int{1, 2} {
+		c := cluster.Cores[coreIndex]
+		testhelpers.WaitForStandbyNode(t, c)
+
+		isStandby := c.Standby()
+		if !isStandby {
+			t.Fatalf("core[%d] should not be leader", coreIndex)
+		}
+
+		for _, k := range keys {
+			_, err := c.Unseal(k)
+			require.NoError(t, err)
+		}
+		require.False(t, c.Sealed(), "standby core should be unsealed")
+	}
 }

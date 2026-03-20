@@ -42,7 +42,7 @@ func (r *Response) Error() error {
 		return err
 	}
 
-	r.Body.Close()
+	r.Body.Close() //nolint:errcheck
 	r.Body = io.NopCloser(bodyBuf)
 	ns := r.Header.Get(NamespaceHeaderName)
 

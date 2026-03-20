@@ -39,7 +39,7 @@ func newK8sClient(t *testing.T, token string) kubernetes.Interface {
 		Host:        os.Getenv("KUBE_HOST"),
 		BearerToken: token,
 	}
-	config.TLSClientConfig.CAData = append(config.TLSClientConfig.CAData, []byte(os.Getenv("KUBERNETES_CA"))...)
+	config.CAData = append(config.CAData, []byte(os.Getenv("KUBERNETES_CA"))...)
 
 	client, err := kubernetes.NewForConfig(&config)
 	if err != nil {

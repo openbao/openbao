@@ -64,7 +64,7 @@ export default class MfaLoginEnforcementForm extends Component {
     for (const { label, key } of this.targetTypes) {
       const targetArray = await this.args.model[key];
       const targets = targetArray.map((value) => ({ label, key, value }));
-      this.targets.addObjects(targets);
+      this.targets = [...this.targets, ...targets];
     }
   }
   async resetTargetState() {

@@ -15,8 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
 	"github.com/go-viper/mapstructure/v2"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/raft"
 	autopilot "github.com/hashicorp/raft-autopilot"
@@ -33,6 +33,10 @@ const (
 	// NonVoterPath is the path to the non-voters in the storage.
 	NonVoterPath = "autopilot/non-voters"
 )
+
+// ErrRaftAutopilotNotInitialized is returned when an autopilot is not initialized
+// (configuration mismatch or standby node)
+var ErrRaftAutopilotNotInitialized = errors.New("raft storage autopilot is not initialized")
 
 func (c CleanupDeadServersValue) Value() bool {
 	switch c {
@@ -437,7 +441,7 @@ func (d *ReadableDuration) Duration() time.Duration {
 }
 
 func (d *ReadableDuration) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`"%s"`, d.Duration().String())), nil
+	return fmt.Appendf(nil, `"%s"`, d.Duration().String()), nil
 }
 
 func (d *ReadableDuration) UnmarshalJSON(raw []byte) (err error) {

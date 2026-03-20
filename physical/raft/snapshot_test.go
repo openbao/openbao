@@ -51,14 +51,14 @@ func addPeer(t *testing.T, leader, follower *RaftBackend) {
 }
 
 func TestRaft_Snapshot_Loading(t *testing.T) {
-	raft, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
+	t.Parallel()
+	raft := GetRaft(t, true, false)
 
 	// Write some data
 	for i := 0; i < 1000; i++ {
 		err := raft.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -135,8 +135,8 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 }
 
 func TestRaft_Snapshot_Index(t *testing.T) {
-	raft, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
+	t.Parallel()
+	raft := GetRaft(t, true, false)
 
 	err := raft.Put(context.Background(), &physical.Entry{
 		Key:   "key",
@@ -159,7 +159,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		err := raft.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -198,7 +198,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		err := raft.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -222,18 +222,16 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 }
 
 func TestRaft_Snapshot_Peers(t *testing.T) {
-	raft1, dir := GetRaft(t, true, false)
-	raft2, dir2 := GetRaft(t, false, false)
-	raft3, dir3 := GetRaft(t, false, false)
-	defer os.RemoveAll(dir)
-	defer os.RemoveAll(dir2)
-	defer os.RemoveAll(dir3)
+	t.Parallel()
+	raft1 := GetRaft(t, true, false)
+	raft2 := GetRaft(t, false, false)
+	raft3 := GetRaft(t, false, false)
 
 	// Write some data
 	for i := 0; i < 1000; i++ {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -262,7 +260,7 @@ func TestRaft_Snapshot_Peers(t *testing.T) {
 	for i := 1000; i < 2000; i++ {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -305,16 +303,15 @@ func ensureCommitApplied(t *testing.T, leaderCommitIdx uint64, backend *RaftBack
 }
 
 func TestRaft_Snapshot_Restart(t *testing.T) {
-	raft1, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
-	raft2, dir2 := GetRaft(t, false, false)
-	defer os.RemoveAll(dir2)
+	t.Parallel()
+	raft1 := GetRaft(t, true, false)
+	raft2 := GetRaft(t, false, false)
 
 	// Write some data
 	for i := 0; i < 100; i++ {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -372,9 +369,6 @@ func TestRaft_Snapshot_ErrorRecovery(t *testing.T) {
 	raft1, dir := GetRaft(t, true, false)
 	raft2, dir2 := GetRaft(t, false, false)
 	raft3, dir3 := GetRaft(t, false, false)
-	defer os.RemoveAll(dir)
-	defer os.RemoveAll(dir2)
-	defer os.RemoveAll(dir3)
 
 	// Add raft2 to the cluster
 	addPeer(t, raft1, raft2)
@@ -451,18 +445,17 @@ func TestRaft_Snapshot_ErrorRecovery(t *testing.T) {
 }*/
 
 func TestRaft_Snapshot_Take_Restore(t *testing.T) {
-	raft1, dir := GetRaft(t, true, false)
-	defer os.RemoveAll(dir)
-	raft2, dir2 := GetRaft(t, false, false)
-	defer os.RemoveAll(dir2)
+	t.Parallel()
+	raft1 := GetRaft(t, true, false)
+	raft2 := GetRaft(t, false, false)
 
 	addPeer(t, raft1, raft2)
 
 	// Write some data
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -481,7 +474,7 @@ func TestRaft_Snapshot_Take_Restore(t *testing.T) {
 	for i := 100; i < 200; i++ {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -526,11 +519,8 @@ func TestRaft_Snapshot_Take_Restore(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_CreateSnapshotMissingParentDir(t *testing.T) {
-	parent, err := os.MkdirTemp("", "raft")
-	if err != nil {
-		t.Fatalf("err: %v ", err)
-	}
-	defer os.RemoveAll(parent)
+	t.Parallel()
+	parent := t.TempDir()
 
 	dir, err := os.MkdirTemp(parent, "raft")
 	if err != nil {
@@ -547,7 +537,10 @@ func TestBoltSnapshotStore_CreateSnapshotMissingParentDir(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	os.RemoveAll(parent)
+	err = os.RemoveAll(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, trans := raft.NewInmemTransport(raft.NewInmemAddr())
 	sink, err := snap.Create(raft.SnapshotVersionMax, 10, 3, raft.Configuration{}, 0, trans)
 	if err != nil {
@@ -568,12 +561,9 @@ func TestBoltSnapshotStore_CreateSnapshotMissingParentDir(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_Listing(t *testing.T) {
+	t.Parallel()
 	// Create a test dir
-	parent, err := os.MkdirTemp("", "raft")
-	if err != nil {
-		t.Fatalf("err: %v ", err)
-	}
-	defer os.RemoveAll(parent)
+	parent := t.TempDir()
 
 	dir, err := os.MkdirTemp(parent, "raft")
 	if err != nil {
@@ -633,12 +623,9 @@ func TestBoltSnapshotStore_Listing(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
+	t.Parallel()
 	// Create a test dir
-	parent, err := os.MkdirTemp("", "raft")
-	if err != nil {
-		t.Fatalf("err: %v ", err)
-	}
-	defer os.RemoveAll(parent)
+	parent := t.TempDir()
 
 	dir, err := os.MkdirTemp(parent, "raft")
 	if err != nil {
@@ -773,7 +760,7 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		latestIndex, latestConfigRaw := fsm.LatestState()
 		latestConfigIndex, latestConfig := protoConfigurationToRaftConfiguration(latestConfigRaw)
 		if latestIndex.Index != 10 {
@@ -815,12 +802,9 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_CancelSnapshot(t *testing.T) {
+	t.Parallel()
 	// Create a test dir
-	dir, err := os.MkdirTemp("", "raft")
-	if err != nil {
-		t.Fatalf("err: %v ", err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:  "raft",
@@ -868,18 +852,14 @@ func TestBoltSnapshotStore_CancelSnapshot(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_BadPerm(t *testing.T) {
+	t.Parallel()
 	var err error
 	if runtime.GOOS == "windows" {
 		t.Skip("skipping file permission test on windows")
 	}
 
 	// Create a temp dir
-	var dir1 string
-	dir1, err = os.MkdirTemp("", "raft")
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-	defer os.RemoveAll(dir1)
+	dir1 := t.TempDir()
 
 	// Create a sub dir and remove all permissions
 	var dir2 string
@@ -904,12 +884,9 @@ func TestBoltSnapshotStore_BadPerm(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_CloseFailure(t *testing.T) {
+	t.Parallel()
 	// Create a test dir
-	dir, err := os.MkdirTemp("", "raft")
-	if err != nil {
-		t.Fatalf("err: %v ", err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:  "raft",

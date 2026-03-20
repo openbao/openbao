@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import authPage from 'vault/tests/pages/auth';
 import logout from 'vault/tests/pages/logout';
 import enablePage from 'vault/tests/pages/settings/mount-secret-backend';
-import { click, currentURL, fillIn, visit } from '@ember/test-helpers';
+import { click, currentURL, fillIn, settled, visit } from '@ember/test-helpers';
 import { runCommands } from 'vault/tests/helpers/pki/pki-run-commands';
 import { SELECTORS } from 'vault/tests/helpers/pki/workflow';
 
@@ -28,14 +28,17 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
     await enablePage.enable('pki', mountPath);
     this.mountPath = mountPath;
     await logout.visit();
+    await settled();
   });
 
   hooks.afterEach(async function () {
     await logout.visit();
+    await settled();
     await authPage.login();
     // Cleanup engine
     await runCommands([`delete sys/mounts/${this.mountPath}`]);
     await logout.visit();
+    await settled();
   });
 
   module('configuration', function () {
@@ -86,6 +89,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await fillIn(SELECTORS.configuration.inputByName('commonName'), 'my-root-cert');
       await click(SELECTORS.configuration.generateRootSave);
       await logout.visit();
+      await settled();
     });
 
     test('create role exit via cancel', async function (assert) {
@@ -328,6 +332,7 @@ module('Acceptance | pki engine route cleanup test', function (hooks) {
       await fillIn(SELECTORS.configuration.inputByName('commonName'), 'my-root-cert');
       await click(SELECTORS.configuration.generateRootSave);
       await logout.visit();
+      await settled();
     });
     test('create key exit', async function (assert) {
       let keys, key;

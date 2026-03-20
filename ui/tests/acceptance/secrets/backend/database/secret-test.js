@@ -347,6 +347,7 @@ module('Acceptance | secrets/database/*', function (hooks) {
     ]);
     const token = consoleComponent.lastTextOutput;
     await logout.visit();
+    await settled();
     await authPage.login(token);
     await connectionPage.visitShow({ backend, id: connection });
     assert.strictEqual(
@@ -444,6 +445,7 @@ module('Acceptance | secrets/database/*', function (hooks) {
 
     // Login with restricted policy
     await logout.visit();
+    await settled();
     await authPage.login(token);
     await settled();
     // skipping the click because occasionally is shows up on the second page and cannot be found

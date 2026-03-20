@@ -16,7 +16,7 @@ builds:
     tags:
       - ui
     ldflags:
-      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.BuildDate={{ .Date }}
+      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.CommitDate={{ .Date }}
     env:
       - CGO_ENABLED=0
     goos:
@@ -44,6 +44,7 @@ report_sizes: true
 
 nfpms:
   - vendor: OpenBao
+    package_name: openbao
     homepage: https://openbao.org
     maintainer: OpenBao <openbao@lists.openssf.org>
     description: |
@@ -57,6 +58,11 @@ nfpms:
     dependencies:
       - openssl
     provides:
+      - openbao
+    conflicts:
+      - bao
+      - bao-hsm
+    replaces:
       - bao
     bindir: /usr/bin
     section: default
@@ -693,12 +699,10 @@ signs:
   - id: cosign
     artifacts: all
     cmd: cosign
-    certificate: "${artifact}.pem"
+    signature: "${artifact}.sigstore.json"
     args:
       - "sign-blob"
-      - "--oidc-issuer=https://token.actions.githubusercontent.com"
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
+      - "--bundle=${signature}" # needed on cosign 3.0.0+
       - "${artifact}"
       - "--yes" # needed on cosign 2.0.0+
   - id: gpg
@@ -717,13 +721,12 @@ docker_signs:
   - artifacts: all
     args:
       - "sign"
-      - "--oidc-issuer=https://token.actions.githubusercontent.com"
       - "${artifact}@${digest}"
       - "--yes" # needed on cosign 2.0.0+
 
 release:
   github:
-    owner: openbao
+    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
     name: openbao{{ .Env.NIGHTLY_RELEASE }}
 
   prerelease: auto

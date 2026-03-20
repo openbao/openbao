@@ -395,7 +395,7 @@ func CheckWithGo(t *testing.T, rootCert string, clientCert string, clientChain [
 		return
 	}
 
-	defer clientResp.Body.Close()
+	defer clientResp.Body.Close() //nolint:errcheck
 	body, err := io.ReadAll(clientResp.Body)
 	if err != nil {
 		t.Fatalf("failed to get read response body: %v", err)

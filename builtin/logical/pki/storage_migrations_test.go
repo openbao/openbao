@@ -22,7 +22,7 @@ func Test_migrateStorageEmptyStorage(t *testing.T) {
 	sc := b.makeStorageContext(ctx, s)
 
 	// Reset the version the helper above set to 1.
-	b.pkiStorageVersion.Store(0)
+	b.pkiStorageVersion.Store(false)
 	require.True(t, b.useLegacyBundleCaStorage(), "pre migration we should have been told to use legacy storage.")
 
 	request := &logical.InitializationRequest{Storage: s}
@@ -71,7 +71,7 @@ func Test_migrateStorageOnlyKey(t *testing.T) {
 	sc := b.makeStorageContext(ctx, s)
 
 	// Reset the version the helper above set to 1.
-	b.pkiStorageVersion.Store(0)
+	b.pkiStorageVersion.Store(false)
 	require.True(t, b.useLegacyBundleCaStorage(), "pre migration we should have been told to use legacy storage.")
 
 	bundle := genCertBundle(t, b, s)
@@ -153,7 +153,7 @@ func Test_migrateStorageSimpleBundle(t *testing.T) {
 	sc := b.makeStorageContext(ctx, s)
 
 	// Reset the version the helper above set to 1.
-	b.pkiStorageVersion.Store(0)
+	b.pkiStorageVersion.Store(false)
 	require.True(t, b.useLegacyBundleCaStorage(), "pre migration we should have been told to use legacy storage.")
 
 	bundle := genCertBundle(t, b, s)
@@ -324,7 +324,7 @@ func TestMigration_OnceChainRebuild(t *testing.T) {
 	logEntry.MigrationVersion = 1
 	err = setLegacyBundleMigrationLog(ctx, s, logEntry)
 	require.NoError(t, err)
-	b.pkiStorageVersion.Store(1)
+	b.pkiStorageVersion.Store(true)
 
 	// Re-attempt the migration by reinitializing the mount.
 	err = b.initialize(ctx, request)
@@ -367,7 +367,7 @@ func TestExpectedOpsWork_PreMigration(t *testing.T) {
 	ctx := context.Background()
 	b, s := CreateBackendWithStorage(t)
 	// Reset the version the helper above set to 1.
-	b.pkiStorageVersion.Store(0)
+	b.pkiStorageVersion.Store(false)
 	require.True(t, b.useLegacyBundleCaStorage(), "pre migration we should have been told to use legacy storage.")
 
 	bundle := genCertBundle(t, b, s)
@@ -600,7 +600,7 @@ func TestBackupBundle(t *testing.T) {
 	sc := b.makeStorageContext(ctx, s)
 
 	// Reset the version the helper above set to 1.
-	b.pkiStorageVersion.Store(0)
+	b.pkiStorageVersion.Store(false)
 	require.True(t, b.useLegacyBundleCaStorage(), "pre migration we should have been told to use legacy storage.")
 
 	// Create an empty request and tidy configuration for us.
@@ -792,7 +792,7 @@ func TestDeletedIssuersPostMigration(t *testing.T) {
 	sc := b.makeStorageContext(ctx, s)
 
 	// Reset the version the helper above set to 1.
-	b.pkiStorageVersion.Store(0)
+	b.pkiStorageVersion.Store(false)
 	require.True(t, b.useLegacyBundleCaStorage(), "pre migration we should have been told to use legacy storage.")
 
 	// Create a legacy CA bundle and write it out.

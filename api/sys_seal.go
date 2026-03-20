@@ -31,7 +31,7 @@ func (c *Sys) SealWithContext(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return nil
 }
@@ -88,7 +88,7 @@ func sealStatusRequestWithContext(ctx context.Context, c *Sys, r *Request) (*Sea
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var result SealStatusResponse
 	err = resp.DecodeJSON(&result)
@@ -96,22 +96,26 @@ func sealStatusRequestWithContext(ctx context.Context, c *Sys, r *Request) (*Sea
 }
 
 type SealStatusResponse struct {
-	Type             string   `json:"type"`
-	Initialized      bool     `json:"initialized"`
-	Sealed           bool     `json:"sealed"`
-	T                int      `json:"t"`
-	N                int      `json:"n"`
-	Progress         int      `json:"progress"`
-	Nonce            string   `json:"nonce"`
-	Version          string   `json:"version"`
-	BuildDate        string   `json:"build_date"`
-	Migration        bool     `json:"migration"`
-	ClusterName      string   `json:"cluster_name,omitempty"`
-	ClusterID        string   `json:"cluster_id,omitempty"`
-	RecoverySeal     bool     `json:"recovery_seal"`
-	RecoverySealType string   `json:"recovery_seal_type,omitempty"`
-	StorageType      string   `json:"storage_type,omitempty"`
-	Warnings         []string `json:"warnings,omitempty"`
+	Type             string `json:"type"`
+	Initialized      bool   `json:"initialized"`
+	Sealed           bool   `json:"sealed"`
+	T                int    `json:"t"`
+	N                int    `json:"n"`
+	Progress         int    `json:"progress"`
+	Nonce            string `json:"nonce"`
+	Version          string `json:"version"`
+	CommitDate       string `json:"commit_date"`
+	Migration        bool   `json:"migration"`
+	ClusterName      string `json:"cluster_name,omitempty"`
+	ClusterID        string `json:"cluster_id,omitempty"`
+	RecoverySeal     bool   `json:"recovery_seal"`
+	RecoverySealType string `json:"recovery_seal_type,omitempty"`
+	StorageType      string `json:"storage_type,omitempty"`
+	// unused in OpenBao, but present for compatibility
+	Warnings []string `json:"warnings,omitempty"`
+	// Deprecated: Use CommitDate instead.
+	// This field remains for backwards-compatibility with OpenBao < v2.6.0.
+	BuildDate string `json:"build_date"`
 }
 
 type UnsealOpts struct {

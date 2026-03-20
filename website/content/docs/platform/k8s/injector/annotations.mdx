@@ -94,11 +94,11 @@ them, optional commands to run, etc.
 - `openbao.openbao.org/template-config-exit-on-retry-failure` - controls whether
   OpenBao Agent exits after it has exhausted its number of template retry attempts
   due to failures. Defaults to `true`. See [OpenBao Agent Template
-  Config](/docs/agent-and-proxy/agent/template#template-configurations) for more details.
+  Config](../../../agent-and-proxy/agent/template.mdx#template-configurations) for more details.
 
 - `openbao.openbao.org/template-static-secret-render-interval` - If specified,
   configures how often OpenBao Agent Template should render non-leased secrets such as KV v2.
-  See [OpenBao Agent Template Config](/docs/agent-and-proxy/agent/template#template-configurations) for more details.
+  See [OpenBao Agent Template Config](../../../agent-and-proxy/agent/template.mdx#template-configurations) for more details.
 
 - `openbao.openbao.org/agent-extra-secret` - mounts Kubernetes secret as a volume at
   `/openbao/custom` in the sidecar/init containers. Useful for custom Agent configs with
@@ -200,7 +200,7 @@ them, optional commands to run, etc.
   Defaults to `false`.
 
 - `openbao.openbao.org/agent-cache-enable` - configures OpenBao Agent to enable
-  [caching](/docs/agent-and-proxy/agent/caching). In OpenBao 1.7+ this annotation will also enable
+  [caching](../../../agent-and-proxy/agent/caching/index.mdx). In OpenBao 1.7+ this annotation will also enable
   a OpenBao Agent persistent cache. This persistent cache will be shared between the init
   and sidecar container to reuse tokens and leases retrieved by the init container.
   Defaults to `false`.
@@ -218,9 +218,9 @@ them, optional commands to run, etc.
 
 - `openbao.openbao.org/agent-service-account-token-volume-name` - the optional name of a projected volume containing a service account token for use with auto-auth against OpenBao's Kubernetes auth method. If the volume is mounted to another container in the deployment, the token volume will be mounted to the same location in the openbao-agent containers. Otherwise it will be mounted at the default location of `/var/run/secrets/openbao.hashicorp.com/serviceaccount/`.
 
-- `openbao.openbao.org/agent-enable-quit` - enable the [`/agent/v1/quit` endpoint](/docs/agent-and-proxy/agent#quit) on an injected agent. This option defaults to false, and if true will be set on the existing cache listener, or a new localhost listener with a basic cache stanza configured. The [agent-cache-listener-port annotation](/docs/platform/k8s/injector/annotations#openbao-hashicorp-com-agent-cache-listener-port) can be used to change the port.
+- `openbao.openbao.org/agent-enable-quit` - enable the [`/agent/v1/quit` endpoint](../../../agent-and-proxy/agent/index.mdx#quit) on an injected agent. This option defaults to false, and if true will be set on the existing cache listener, or a new localhost listener with a basic cache stanza configured. The [agent-cache-listener-port annotation](annotations.mdx#openbao-hashicorp-com-agent-cache-listener-port) can be used to change the port.
 
-- `openbao.openbao.org/agent-telemetry` - specifies the [telemetry](/docs/configuration/telemetry) configuration for the
+- `openbao.openbao.org/agent-telemetry` - specifies the [telemetry](../../../configuration/telemetry.mdx) configuration for the
   OpenBao Agent sidecar. The name of the config is any unique string after
   `openbao.openbao.org/agent-telemetry-`, such as `openbao.hashicorp.com/agent-telemetry-prometheus_retention_time`.
   This annotation can be reused multiple times to configure multiple settings for the agent telemetry.
@@ -247,20 +247,20 @@ etc.
   This annotation can be reused multiple times to configure multiple settings for the authentication
   method. Some authentication methods may require additional secrets and should be mounted via the
   `openbao.openbao.org/agent-extra-secret` annotation. For a list of valid authentication configurations,
-  see the OpenBao Agent [auto-auth documentation](/docs/agent-and-proxy/autoauth/methods).
+  see the OpenBao Agent [auto-auth documentation](../../../agent-and-proxy/autoauth/methods/index.mdx).
 
 - `openbao.openbao.org/auth-path` - configures the authentication path for the Kubernetes
   auth method. Defaults to `auth/kubernetes`.
 
 - `openbao.openbao.org/auth-type` - configures the authentication type for OpenBao Agent.
   Defaults to `kubernetes`. For a list of valid authentication methods, see the OpenBao Agent
-  [auto-auth documentation](/docs/agent-and-proxy/autoauth/methods).
+  [auto-auth documentation](../../../agent-and-proxy/autoauth/methods/index.mdx).
 
-- `openbao.openbao.org/auth-min-backoff` - set the [min_backoff](/docs/agent-and-proxy/autoauth#min_backoff) option in the auto-auth config. Requires OpenBao 1.11+.
+- `openbao.openbao.org/auth-min-backoff` - set the [min_backoff](../../../agent-and-proxy/autoauth/index.mdx#min_backoff) option in the auto-auth config. Requires OpenBao 1.11+.
 
-- `openbao.openbao.org/auth-max-backoff` - set the [max_backoff](/docs/agent-and-proxy/autoauth#max_backoff) option in the auto-auth config
+- `openbao.openbao.org/auth-max-backoff` - set the [max_backoff](../../../agent-and-proxy/autoauth/index.mdx#max_backoff) option in the auto-auth config
 
-- `openbao.openbao.org/agent-auto-auth-exit-on-err` - set the [exit_on_err](/docs/agent-and-proxy/autoauth#exit_on_err) option in the auto-auth config
+- `openbao.openbao.org/agent-auto-auth-exit-on-err` - set the [exit_on_err](../../../agent-and-proxy/autoauth/index.mdx#exit_on_err) option in the auto-auth config
 
 - `openbao.openbao.org/ca-cert` - path of the CA certificate used to verify OpenBao's
   TLS.
@@ -311,14 +311,14 @@ etc.
   value to true in a production environment.
 
 - `openbao.openbao.org/agent-disable-idle-connections` - Comma-separated [list
-  of OpenBao Agent features](/docs/agent-and-proxy/agent#disable_idle_connections) where idle
+  of OpenBao Agent features](../../../agent-and-proxy/agent/index.mdx#disable_idle_connections) where idle
   connections should be disabled. Also available as a command-line option
   (`-disable-idle-connections`) or environment variable
   (`AGENT_INJECT_DISABLE_IDLE_CONNECTIONS`) to set the default for all injected
   Agents.
 
 - `openbao.openbao.org/agent-disable-keep-alives` - Comma-separated [list of
-  OpenBao Agent features](/docs/agent-and-proxy/agent#disable_keep_alives) where keep-alives
+  OpenBao Agent features](../../../agent-and-proxy/agent/index.mdx#disable_keep_alives) where keep-alives
   should be disabled. Also available as a command-line option
   (`-disable-keep-alives`) or environment variable
   (`AGENT_INJECT_DISABLE_KEEP_ALIVES`) to set the default for all injected

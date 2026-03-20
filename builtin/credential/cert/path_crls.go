@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fatih/structs"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -216,18 +215,25 @@ func (b *backend) pathCRLRead(ctx context.Context, req *logical.Request, d *fram
 	b.crlUpdateMutex.RLock()
 	defer b.crlUpdateMutex.RUnlock()
 
-	var retData map[string]interface{}
-
 	crl, ok := b.crls[name]
 	if !ok {
 		return logical.ErrorResponse("no such CRL %s", name), nil
 	}
 
-	retData = structs.New(&crl).Map()
+	data := make(map[string]any)
 
-	return &logical.Response{
-		Data: retData,
-	}, nil
+	if len(crl.Serials) > 0 {
+		data["serials"] = crl.Serials
+	}
+
+	if cdp := crl.CDP; cdp != nil {
+		data["cdp"] = map[string]any{
+			"url":         cdp.Url,
+			"valid_until": cdp.ValidUntil,
+		}
+	}
+
+	return &logical.Response{Data: data}, nil
 }
 
 func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -309,13 +315,13 @@ func (b *backend) setCRL(ctx context.Context, storage logical.Storage, certList 
 }
 
 type CDPInfo struct {
-	Url        string    `json:"url" structs:"url" mapstructure:"url"`
-	ValidUntil time.Time `json:"valid_until" structs:"valid_until" mapstructure:"valid_until"`
+	Url        string    `json:"url" mapstructure:"url"`
+	ValidUntil time.Time `json:"valid_until" mapstructure:"valid_until"`
 }
 
 type CRLInfo struct {
-	CDP     *CDPInfo                     `json:"cdp" structs:"cdp" mapstructure:"cdp"`
-	Serials map[string]RevokedSerialInfo `json:"serials" structs:"serials" mapstructure:"serials"`
+	CDP     *CDPInfo                     `json:"cdp" mapstructure:"cdp"`
+	Serials map[string]RevokedSerialInfo `json:"serials" mapstructure:"serials"`
 }
 
 type RevokedSerialInfo struct{}
@@ -326,7 +332,7 @@ Manage Certificate Revocation Lists checked during authentication.
 
 const pathCRLsHelpDesc = `
 This endpoint allows you to list, create, read, update, and delete the Certificate
-Revocation Lists checked during authentication, and/or CRL Distribution Point 
+Revocation Lists checked during authentication, and/or CRL Distribution Point
 URLs.
 
 When any CRLs are in effect, any login will check the trust chains sent by a

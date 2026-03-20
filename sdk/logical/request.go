@@ -173,8 +173,8 @@ type Request struct {
 	// accessible.
 	Unauthenticated bool `json:"unauthenticated" structs:"unauthenticated" mapstructure:"unauthenticated"`
 
-	// MFACreds holds the parsed MFA information supplied over the API as part of
-	// X-Vault-MFA header
+	// MFACreds holds the parsed MFA information supplied over the API as part
+	// of the X-Vault-MFA header.
 	MFACreds MFACreds `json:"mfa_creds" structs:"mfa_creds" mapstructure:"mfa_creds" sentinel:""`
 
 	// Cached token entry. This avoids another lookup in request handling when
@@ -185,8 +185,8 @@ type Request struct {
 	// properly use the token.
 	tokenEntry *TokenEntry
 
-	// ClientTokenSource tells us where the client token was sourced from, so
-	// we can delete it before sending off to plugins
+	// ClientTokenSource tells us where the client token was sourced from, so we
+	// can delete it before sending off to plugins
 	ClientTokenSource ClientTokenSource
 
 	// HTTPRequest, if set, can be used to access fields from the HTTP request

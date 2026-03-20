@@ -14,10 +14,10 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/random"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
-	"github.com/openbao/openbao/sdk/v2/helper/license"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/version"
 )
 
@@ -26,7 +26,7 @@ const passwordPolicySubPath = "sys/password_policy/"
 
 type dynamicSystemView struct {
 	core       *Core
-	mountEntry *MountEntry
+	mountEntry *routing.MountEntry
 }
 
 type extendedSystemView interface {
@@ -44,7 +44,7 @@ type extendedSystemViewImpl struct {
 func (e extendedSystemViewImpl) Auditor() logical.Auditor {
 	return genericAuditor{
 		mountType: e.mountEntry.Type,
-		namespace: e.mountEntry.Namespace(),
+		namespace: e.mountEntry.Namespace,
 		c:         e.core,
 	}
 }
@@ -180,12 +180,7 @@ func (d dynamicSystemView) LocalMount() bool {
 // Checks if this is a primary Vault instance. Caller should hold the stateLock
 // in read mode.
 func (d dynamicSystemView) ReplicationState() consts.ReplicationState {
-	state := d.core.ReplicationState()
-	return state
-}
-
-func (d dynamicSystemView) HasFeature(feature license.Features) bool {
-	return false
+	return d.core.ReplicationState()
 }
 
 // ResponseWrapData wraps the given data in a cubbyhole and returns the
@@ -294,7 +289,7 @@ func (d dynamicSystemView) EntityInfo(entityID string) (*logical.Entity, error) 
 
 	// Retrieve the entity from MemDB. Provision the namespace onto the
 	// context so that we can resolve the correct identity instance to use.
-	ctx := namespace.ContextWithNamespace(context.Background(), d.mountEntry.namespace)
+	ctx := namespace.ContextWithNamespace(context.Background(), d.mountEntry.Namespace)
 	entity, err := d.core.identityStore.MemDBEntityByID(ctx, entityID, false)
 	if err != nil {
 		return nil, err
@@ -353,8 +348,8 @@ func (d dynamicSystemView) GroupsForEntity(entityID string) ([]*logical.Group, e
 		return nil, errors.New("system view identity store is nil")
 	}
 
-	ctx := namespace.ContextWithNamespace(context.Background(), d.mountEntry.namespace)
-	groups, inheritedGroups, err := d.core.identityStore.groupsByEntityID(ctx, entityID)
+	ctx := namespace.ContextWithNamespace(context.Background(), d.mountEntry.Namespace)
+	groups, inheritedGroups, err := d.core.identityStore.GroupsByEntityID(ctx, entityID)
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +394,7 @@ func (d dynamicSystemView) GeneratePasswordFromPolicy(ctx context.Context, polic
 		defer cancel()
 	}
 
-	ctx = namespace.ContextWithNamespace(ctx, d.mountEntry.Namespace())
+	ctx = namespace.ContextWithNamespace(ctx, d.mountEntry.Namespace)
 
 	policyCfg, err := d.retrievePasswordPolicy(ctx, policyName)
 	if err != nil {
@@ -425,7 +420,7 @@ func (d dynamicSystemView) retrievePasswordPolicy(ctx context.Context, policyNam
 		return nil, err
 	}
 
-	storage := d.core.namespaceMountEntryView(ns, passwordPolicySubPath)
+	storage := NamespaceScopedView(d.core.barrier, ns).SubView(passwordPolicySubPath)
 	entry, err := storage.Get(ctx, policyName)
 	if err != nil {
 		return nil, err

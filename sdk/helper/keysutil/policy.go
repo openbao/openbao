@@ -363,7 +363,7 @@ type Policy struct {
 	// Stores whether it's been deleted. This acts as a guard for operations
 	// that may write data, e.g. if one request rotates and that request is
 	// served after a delete.
-	deleted uint32
+	deleted atomic.Bool
 
 	Name    string      `json:"name"`
 	Key     []byte      `json:"key,omitempty"`      // DEPRECATED
@@ -596,7 +596,7 @@ func (p *Policy) handleArchiving(ctx context.Context, storage logical.Storage) e
 }
 
 func (p *Policy) Persist(ctx context.Context, storage logical.Storage) (retErr error) {
-	if atomic.LoadUint32(&p.deleted) == 1 {
+	if p.deleted.Load() {
 		return errors.New("key has been deleted, not persisting")
 	}
 
@@ -678,7 +678,7 @@ func (p *Policy) NeedsUpgrade() bool {
 		return true
 	}
 
-	if p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey == nil || len(p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey) == 0 {
+	if len(p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey) == 0 {
 		return true
 	}
 
@@ -740,7 +740,7 @@ func (p *Policy) Upgrade(ctx context.Context, storage logical.Storage, randReade
 		persistNeeded = true
 	}
 
-	if p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey == nil || len(p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey) == 0 {
+	if len(p.Keys[strconv.Itoa(p.LatestVersion)].HMACKey) == 0 {
 		entry := p.Keys[strconv.Itoa(p.LatestVersion)]
 		hmacKey, err := uuid.GenerateRandomBytesWithReader(32, randReader)
 		if err != nil {
@@ -1685,9 +1685,10 @@ func (p *Policy) RotateInMemory(randReader io.Reader) (retErr error) {
 	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305, KeyType_HMAC:
 		// Default to 256 bit key
 		numBytes := 32
-		if p.Type == KeyType_AES128_GCM96 {
+		switch p.Type {
+		case KeyType_AES128_GCM96:
 			numBytes = 16
-		} else if p.Type == KeyType_HMAC {
+		case KeyType_HMAC:
 			numBytes = p.KeySize
 			if numBytes < HmacMinKeySize || numBytes > HmacMaxKeySize {
 				return fmt.Errorf("invalid key size for HMAC key, must be between %d and %d bytes", HmacMinKeySize, HmacMaxKeySize)
@@ -2279,9 +2280,10 @@ func (ke *KeyEntry) parseFromKey(PolKeyType KeyType, parsedKey any) error {
 		}
 
 		curve := elliptic.P256()
-		if PolKeyType == KeyType_ECDSA_P384 {
+		switch PolKeyType {
+		case KeyType_ECDSA_P384:
 			curve = elliptic.P384()
-		} else if PolKeyType == KeyType_ECDSA_P521 {
+		case KeyType_ECDSA_P521:
 			curve = elliptic.P521()
 		}
 
@@ -2347,9 +2349,10 @@ func (ke *KeyEntry) parseFromKey(PolKeyType KeyType, parsedKey any) error {
 		}
 
 		keyBytes := 256
-		if PolKeyType == KeyType_RSA3072 {
+		switch PolKeyType {
+		case KeyType_RSA3072:
 			keyBytes = 384
-		} else if PolKeyType == KeyType_RSA4096 {
+		case KeyType_RSA4096:
 			keyBytes = 512
 		}
 

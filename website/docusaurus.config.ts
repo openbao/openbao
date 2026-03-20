@@ -2,11 +2,26 @@ import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 import { includeMarkdown } from "@hashicorp/remark-plugins";
-import path from "path";
+import * as path from "path";
+import * as fs from "fs";
+import pluginSidebarJson from "./src/docusaurus-plugin-sidebar-json";
+
+function getDocVersions() {
+  if (process.env.VERSIONED_DOCS == "true") {
+    const filePath = path.join(__dirname, "doc-versions.json");
+    const fileContent = fs.readFileSync(filePath, "utf-8");
+    return JSON.parse(fileContent);
+  } else {
+    return {
+      current: { label: "Development" },
+    };
+  }
+}
 
 const config: Config = {
   title: "OpenBao",
-  tagline: "OpenBao is an open source, community-driven fork of HashiCorp Vault managed by the Linux Foundation to manage, store, and distribute sensitive data.",
+  tagline:
+    "OpenBao is an open source, community-driven fork of HashiCorp Vault managed by the Linux Foundation to manage, store, and distribute sensitive data.",
   favicon: "img/favicon.svg",
 
   // Set the production url of your site here
@@ -22,7 +37,6 @@ const config: Config = {
   projectName: "openbao", // Usually your repo name.
 
   onBrokenLinks: "throw",
-  onBrokenMarkdownLinks: "warn",
   // ignore broken anchors as most of them are false positives
   onBrokenAnchors: "ignore",
 
@@ -35,10 +49,40 @@ const config: Config = {
   },
   staticDirectories: ["public"],
 
+  future: {
+    v4: {
+      removeLegacyPostBuildHeadAttribute: true, // needed by experimental_faster
+    },
+    experimental_faster: true,
+  },
+
   markdown: {
     mermaid: true,
   },
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: [
+    "@docusaurus/theme-mermaid",
+    [
+      require.resolve("@easyops-cn/docusaurus-search-local"),
+      {
+        hashed: true,
+        indexDocs: true,
+        indexBlog: true,
+        indexPages: true,
+        docsRouteBasePath: ["docs", "api-docs"],
+        docsDir: ["content/docs", "content/api-docs"],
+        blogDir: "content/blog",
+        removeDefaultStemmer: true,
+        removeDefaultStopWordFilter: true,
+        explicitSearchResultPath: true,
+        searchContextByPaths: [
+          { label: "Docs", path: "docs" },
+          { label: "API Reference", path: "api-docs" },
+          { label: "Blog", path: "blog" },
+        ],
+        useAllContextsWithNoSearchContext: true,
+      },
+    ],
+  ],
   presets: [
     [
       "classic",
@@ -58,16 +102,18 @@ const config: Config = {
             ],
           ],
           path: "content/docs",
+          versions: getDocVersions(),
         },
         sitemap: {
-          lastmod: 'datetime',
-          changefreq: 'hourly',
+          lastmod: "datetime",
+          changefreq: "hourly",
           priority: 0.5,
-          filename: 'sitemap.xml',
+          filename: "sitemap.xml",
         },
         blog: {
-          blogTitle: 'OpenBao Blog',
-          blogDescription: 'Official blog of the Bao Evangelism Taskforce (BET)',
+          blogTitle: "OpenBao Blog",
+          blogDescription:
+            "Official blog of the Bao Evangelism Taskforce (BET)",
           path: "content/blog",
         },
         theme: {
@@ -98,6 +144,25 @@ const config: Config = {
             },
           ],
         ],
+        versions: getDocVersions(),
+      },
+    ],
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "ecosystem",
+        path: "content/ecosystem",
+        routeBasePath: "ecosystem",
+        editUrl: "https://github.com/openbao/openbao/tree/main/website/",
+        beforeDefaultRemarkPlugins: [
+          [
+            includeMarkdown,
+            {
+              resolveMdx: true,
+              resolveFrom: path.join(process.cwd(), "content", "partials"),
+            },
+          ],
+        ],
       },
     ],
     [
@@ -111,7 +176,7 @@ const config: Config = {
         ],
       },
     ],
-    require.resolve("docusaurus-lunr-search"),
+    pluginSidebarJson,
   ],
 
   themeConfig: {
@@ -126,6 +191,11 @@ const config: Config = {
         {
           to: "/blog/",
           label: "Blog",
+          position: "left",
+        },
+        {
+          to: "/ecosystem/",
+          label: "Ecosystem",
           position: "left",
         },
         {
@@ -149,8 +219,8 @@ const config: Config = {
               href: "https://github.com/openbao/openbao/discussions",
             },
             {
-              label: "Matrix Chat Server",
-              href: "https://chat.lfx.linuxfoundation.org/",
+              label: "Zulip Chat Server",
+              href: "https://linuxfoundation.zulipchat.com/",
             },
             {
               label: "LF Edge Wiki",
@@ -169,6 +239,17 @@ const config: Config = {
               to: "/docs/contributing/",
             },
           ],
+        },
+        {
+          type: "docsVersionDropdown",
+          versions: getDocVersions(),
+          position: "right",
+        },
+        {
+          type: "docsVersionDropdown",
+          versions: getDocVersions(),
+          docsPluginId: "api-docs",
+          position: "right",
         },
         {
           href: "https://github.com/openbao/openbao",
@@ -192,18 +273,22 @@ const config: Config = {
       additionalLanguages: ["hcl"],
     },
     metadata: [
-      { name: 'keywords', content: 'openbao, secrets management, open source, linux foundation, encryption as a service, key management system, pki, transit, ssh, secret vault, database passwords' },
-      { name: 'author', content: 'OpenBao a Series of LF Projects, LLC' },
-      { name: 'twitter:card', content: 'summary_large_image' },
+      {
+        name: "keywords",
+        content:
+          "openbao, secrets management, open source, linux foundation, encryption as a service, key management system, pki, transit, ssh, secret vault, database passwords",
+      },
+      { name: "author", content: "OpenBao a Series of LF Projects, LLC" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     headTags: [
       {
-        tagName: 'link',
+        tagName: "link",
         attributes: {
-          rel: 'sitemap',
-          type: 'application/xml',
-          title: 'Sitemap',
-          href: '/sitemap.xml',
+          rel: "sitemap",
+          type: "application/xml",
+          title: "Sitemap",
+          href: "/sitemap.xml",
         },
       },
     ],

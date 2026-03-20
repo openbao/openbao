@@ -45,8 +45,6 @@ export default ApplicationAdapter.extend({
       if (!query.path || !mountModel) {
         throw error;
       }
-      // control groups will throw a 403 permission denied error. If this happens return the mountModel
-      // error is handled on routing
     }
     return mountModel;
   },

@@ -26,7 +26,7 @@ project:
       social: https://github.com/karras
       primary: false
     - name: Alex Scheel
-      affiliation: GitHub
+      affiliation: GitLab
       email: ascheel@gitlab.com
       social: https://github.com/cipherboy
       primary: true

@@ -17,15 +17,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openbao/go-kms-wrapping/entropy/v2"
-
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
-	"github.com/openbao/openbao/sdk/v2/helper/license"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -220,14 +217,6 @@ func (b *Backend) HandleRequest(ctx context.Context, req *logical.Request) (*log
 		return nil, logical.ErrUnsupportedPath
 	}
 
-	// Check if a feature is required and if the license has that feature
-	if path.FeatureRequired != license.FeatureNone {
-		hasFeature := b.system.HasFeature(path.FeatureRequired)
-		if !hasFeature {
-			return nil, logical.CodedError(401, "Feature Not Enabled")
-		}
-	}
-
 	// Build up the data for the route, with the URL taking priority
 	// for the fields over the PUT data.
 	raw := make(map[string]interface{}, len(path.Fields))
@@ -410,14 +399,8 @@ func (b *Backend) Setup(ctx context.Context, config *logical.BackendConfig) erro
 	return nil
 }
 
-// GetRandomReader returns an io.Reader to use for generating key material in
-// backends. If the backend has access to an external entropy source it will
-// return that, otherwise it returns crypto/rand.Reader.
+// GetRandomReader returns crypto/rand.Reader.
 func (b *Backend) GetRandomReader() io.Reader {
-	if sourcer, ok := b.System().(entropy.Sourcer); ok {
-		return entropy.NewReader(sourcer)
-	}
-
 	return rand.Reader
 }
 

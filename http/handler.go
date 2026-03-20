@@ -28,9 +28,9 @@ import (
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
 	gziphandler "github.com/klauspost/compress/gzhttp"
+	"github.com/openbao/openbao/helper/configutil"
+	"github.com/openbao/openbao/helper/listenerutil"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
@@ -39,30 +39,6 @@ import (
 )
 
 const (
-	// WrapTTLHeaderName is the name of the header containing a directive to
-	// wrap the response
-	WrapTTLHeaderName = "X-Vault-Wrap-TTL"
-
-	// WrapFormatHeaderName is the name of the header containing the format to
-	// wrap in; has no effect if the wrap TTL is not set
-	WrapFormatHeaderName = "X-Vault-Wrap-Format"
-
-	// NoRequestForwardingHeaderName is the name of the header telling Vault
-	// not to use request forwarding
-	NoRequestForwardingHeaderName = "X-Vault-No-Request-Forwarding"
-
-	// MFAHeaderName represents the HTTP header which carries the credentials
-	// required to perform MFA on any path.
-	MFAHeaderName = "X-Vault-MFA"
-
-	// canonicalMFAHeaderName is the MFA header value's format in the request
-	// headers. Do not alter the casing of this string.
-	canonicalMFAHeaderName = "X-Vault-Mfa"
-
-	// PolicyOverrideHeaderName is the header set to request overriding
-	// soft-mandatory Sentinel policies.
-	PolicyOverrideHeaderName = "X-Vault-Policy-Override"
-
 	// DefaultMaxRequestSize is the default maximum accepted request size. This
 	// is to prevent a denial of service attack where no Content-Length is
 	// provided and the server is fed ever more data until it exhausts memory.
@@ -71,6 +47,10 @@ const (
 )
 
 var (
+	// canonicalMFAHeaderName is the MFA header value's format in the request
+	// headers. Do not alter the casing of this string.
+	canonicalMFAHeaderName = http.CanonicalHeaderKey(consts.MFAHeaderName)
+
 	// Set to false by stub_asset if the ui build tag isn't enabled
 	uiBuiltIn = true
 
@@ -175,42 +155,41 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/init", handleSysInit(core))
 		mux.Handle("/v1/sys/seal-status", handleSysSealStatus(core))
 		mux.Handle("/v1/sys/seal", handleSysSeal(core))
-		mux.Handle("/v1/sys/step-down", handleRequestForwarding(core, handleSysStepDown(core)))
+		mux.Handle("/v1/sys/step-down", handleSysStepDown(core))
 		mux.Handle("/v1/sys/unseal", handleSysUnseal(core))
 		mux.Handle("/v1/sys/leader", handleSysLeader(core))
 		mux.Handle("/v1/sys/health", handleSysHealth(core))
 		mux.Handle("/v1/sys/monitor", handleLogicalNoForward(core))
 
-		mux.Handle("/v1/sys/generate-root/attempt", handleRequestForwarding(core,
-			handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy))))
-		mux.Handle("/v1/sys/generate-root/update", handleRequestForwarding(core,
-			handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy))))
+		mux.Handle("/v1/sys/generate-root/attempt",
+			handleAuditNonLogical(core, handleSysGenerateRootAttempt(core, vault.GenerateStandardRootTokenStrategy)))
+		mux.Handle("/v1/sys/generate-root/update",
+			handleAuditNonLogical(core, handleSysGenerateRootUpdate(core, vault.GenerateStandardRootTokenStrategy)))
 
 		// Register without unauthenticated rekey, if necessary.
-		if props.ListenerConfig == nil || !props.ListenerConfig.DisableUnauthedRekeyEndpoints {
-			mux.Handle("/v1/sys/rekey/init", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyInit(core, false))))
-			mux.Handle("/v1/sys/rekey/update", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyUpdate(core, false))))
-			mux.Handle("/v1/sys/rekey/verify", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyVerify(core, false))))
-			mux.Handle("/v1/sys/rekey-recovery-key/init", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyInit(core, true))))
-			mux.Handle("/v1/sys/rekey-recovery-key/update", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyUpdate(core, true))))
-			mux.Handle("/v1/sys/rekey-recovery-key/verify", handleRequestForwarding(core,
-				handleAuditNonLogical(core, handleSysRekeyVerify(core, true))))
+		if props.ListenerConfig != nil && props.ListenerConfig.DisableUnauthedRekeyEndpoints != nil && !*props.ListenerConfig.DisableUnauthedRekeyEndpoints {
+			mux.Handle("/v1/sys/rekey/init",
+				handleAuditNonLogical(core, handleSysRekeyInit(core, false)))
+			mux.Handle("/v1/sys/rekey/update",
+				handleAuditNonLogical(core, handleSysRekeyUpdate(core, false)))
+			mux.Handle("/v1/sys/rekey/verify",
+				handleAuditNonLogical(core, handleSysRekeyVerify(core, false)))
+			mux.Handle("/v1/sys/rekey-recovery-key/init",
+				handleAuditNonLogical(core, handleSysRekeyInit(core, true)))
+			mux.Handle("/v1/sys/rekey-recovery-key/update",
+				handleAuditNonLogical(core, handleSysRekeyUpdate(core, true)))
+			mux.Handle("/v1/sys/rekey-recovery-key/verify",
+				handleAuditNonLogical(core, handleSysRekeyVerify(core, true)))
 		}
 
 		mux.Handle("/v1/sys/storage/raft/bootstrap", handleSysRaftBootstrap(core))
 		mux.Handle("/v1/sys/storage/raft/join", handleSysRaftJoin(core))
-		mux.Handle("/v1/sys/internal/ui/feature-flags", handleSysInternalFeatureFlags(core))
 
 		for _, path := range injectDataIntoTopRoutes {
-			mux.Handle(path, handleRequestForwarding(core, handleLogicalWithInjector(core)))
+			mux.Handle(path, handleLogicalWithInjector(core))
 		}
-		mux.Handle("/v1/sys/", handleRequestForwarding(core, handleLogical(core)))
-		mux.Handle("/v1/", handleRequestForwarding(core, handleLogical(core)))
+		mux.Handle("/v1/sys/", handleLogical(core))
+		mux.Handle("/v1/", handleLogical(core))
 		if core.UIEnabled() {
 			if uiBuiltIn {
 				mux.Handle("/ui/", http.StripPrefix("/ui/", gziphandler.GzipHandler(handleUIHeaders(core, handleUI(http.FileServer(&UIAssetWrapper{FileSystem: assetFS()}))))))
@@ -300,15 +279,11 @@ func (w *copyResponseWriter) WriteHeader(code int) {
 
 func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origBody := new(bytes.Buffer)
-		reader := io.NopCloser(io.TeeReader(r.Body, origBody))
-		r.Body = reader
-		req, _, status, err := buildLogicalRequestNoAuth(w, r)
+		req, status, err := buildLogicalRequestNoAuth(w, r)
 		if err != nil || status != 0 {
 			respondError(w, status, err)
 			return
 		}
-		r.Body = io.NopCloser(origBody)
 		input := &logical.LogInput{
 			Request: req,
 		}
@@ -321,10 +296,8 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		cw := newCopyResponseWriter(w)
 		h.ServeHTTP(cw, r)
 		data := make(map[string]interface{})
-		err = jsonutil.DecodeJSON(cw.body.Bytes(), &data)
-		if err != nil {
-			// best effort, ignore
-		}
+		// best effort, ignore error
+		_ = jsonutil.DecodeJSON(cw.body.Bytes(), &data)
 		httpResp := &logical.HTTPResponse{Data: data, Headers: cw.Header()}
 		input.Response = logical.HTTPResponseToLogicalResponse(httpResp)
 		err = core.AuditLogger().AuditResponse(ctx, input)
@@ -389,7 +362,7 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		} else {
 			ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
 		}
-		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
+		ctx = vault.ContextWithOriginalRequestPath(ctx, r.URL.Path)
 
 		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
 		if nsHeader != "" {
@@ -408,12 +381,12 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		if core.RaftNodeIDHeaderEnabled() {
 			nodeID := core.GetRaftNodeID()
 			if nodeID != "" {
-				nw.Header().Set("X-Vault-Raft-Node-ID", nodeID)
+				nw.Header().Set(consts.RaftNodeIDHeaderName, nodeID)
 			}
 		}
 
 		if core.HostnameHeaderEnabled() && hostname != "" {
-			nw.Header().Set("X-Vault-Hostname", hostname)
+			nw.Header().Set(consts.HostnameHeaderName, hostname)
 		}
 
 		isRestrictedSysAPI := nsHeader != "" && strings.HasPrefix(r.URL.Path, "/v1/sys/") &&
@@ -686,7 +659,7 @@ func handleUIStub() http.Handler {
 
 func handleUIRedirect() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		http.Redirect(w, req, "/ui/", 307)
+		http.Redirect(w, req, "/ui/", http.StatusTemporaryRedirect)
 	})
 }
 
@@ -730,20 +703,31 @@ func parseQuery(values url.Values) map[string]interface{} {
 	return nil
 }
 
-func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) (io.ReadCloser, error) {
+func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) error {
 	ctx := r.Context()
 
-	reader, _, _, err := NewSafeJSONReader(ctx, r.Body)
+	// Enforce limits on JSON complexity.
+	_, _, err := EnforceJSONComplexityLimits(ctx, r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to limit JSON input: %w", err)
+		return fmt.Errorf("failed to limit JSON input: %w", err)
 	}
 
-	err = jsonutil.DecodeJSONFromReader(reader, out)
+	// Reset to the beginning.
+	if err := resetBody(r); err != nil {
+		return fmt.Errorf("failed to reset body: %w", err)
+	}
+
+	err = jsonutil.DecodeJSONFromReader(r.Body, out)
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("failed to parse JSON input: %w", err)
+		return fmt.Errorf("failed to parse JSON input: %w", err)
 	}
 
-	return nil, err
+	// Reset to the beginning again.
+	if err := resetBody(r); err != nil {
+		return fmt.Errorf("failed to reset body: %w", err)
+	}
+
+	return err
 }
 
 // parseFormRequest parses values from a form POST.
@@ -774,47 +758,32 @@ func parseFormRequest(r *http.Request) (map[string]interface{}, error) {
 	return data, nil
 }
 
-// handleRequestForwarding determines whether to forward a request or not,
-// falling back on the older behavior of redirecting the client
-func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Note: in an HA setup, this call will also ensure that connections to
-		// the leader are set up, as that happens once the advertised cluster
-		// values are read during this function
-		isLeader, leaderAddr, _, err := core.Leader()
-		if err != nil {
-			if err == vault.ErrHANotEnabled {
-				// Standalone node, serve request normally
-				handler.ServeHTTP(w, r)
-				return
-			}
-			// Some internal error occurred
-			respondError(w, http.StatusInternalServerError, err)
-			return
-		}
-		if isLeader {
-			// No forwarding needed, we're leader
-			handler.ServeHTTP(w, r)
-			return
-		}
-		if leaderAddr == "" {
-			respondError(w, http.StatusInternalServerError, errors.New("local node not active but active cluster node not found"))
-			return
-		}
-
-		forwardRequest(core, w, r)
-	})
-}
-
 func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
+	// Reset our body before forwarding to ensure an accurate location.
+	if err := resetBody(r); err != nil {
+		respondStandby(core, w, r.URL)
+		return
+	}
+
 	if r.Header.Get(vault.IntNoForwardingHeaderName) != "" {
 		respondStandby(core, w, r.URL)
 		return
 	}
 
-	if r.Header.Get(NoRequestForwardingHeaderName) != "" {
+	_, leaderAddr, _, err := core.Leader()
+	if err != nil {
+		// Some internal error occurred
+		respondError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if leaderAddr == "" {
+		respondError(w, http.StatusInternalServerError, errors.New("local node not active but active cluster node not found"))
+		return
+	}
+
+	if r.Header.Get(consts.NoRequestForwardingHeaderName) != "" {
 		// Forwarding explicitly disabled, fall back to previous behavior
-		core.Logger().Debug("handleRequestForwarding: forwarding disabled by client request")
+		core.Logger().Debug("forwardRequest: forwarding disabled by client request")
 		respondStandby(core, w, r.URL)
 		return
 	}
@@ -852,11 +821,8 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 // case of an error.
 func request(core *vault.Core, w http.ResponseWriter, rawReq *http.Request, r *logical.Request) (*logical.Response, bool, bool) {
 	resp, err := core.HandleRequest(rawReq.Context(), r)
-	if errwrap.Contains(err, consts.ErrStandby.Error()) {
-		respondStandby(core, w, rawReq.URL)
-		return resp, false, false
-	}
-	if err != nil && errwrap.Contains(err, logical.ErrPerfStandbyPleaseForward.Error()) {
+
+	if logical.ShouldForward(err) || (resp != nil && logical.ShouldForward(resp.Error())) {
 		return nil, false, true
 	}
 
@@ -948,7 +914,7 @@ func respondStandby(core *vault.Core, w http.ResponseWriter, reqURL *url.URL) {
 	// because we don't actually know if its permanent and
 	// the request method should be preserved.
 	w.Header().Set("Location", finalURL.String())
-	w.WriteHeader(307)
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 // getTokenFromReq parse headers of the incoming request to extract token if
@@ -987,25 +953,10 @@ func requestAuth(r *http.Request, req *logical.Request) {
 	}
 }
 
-func requestPolicyOverride(r *http.Request, req *logical.Request) error {
-	raw := r.Header.Get(PolicyOverrideHeaderName)
-	if raw == "" {
-		return nil
-	}
-
-	override, err := parseutil.ParseBool(raw)
-	if err != nil {
-		return err
-	}
-
-	req.PolicyOverride = override
-	return nil
-}
-
 // requestWrapInfo adds the WrapInfo value to the logical.Request if wrap info exists
 func requestWrapInfo(r *http.Request, req *logical.Request) (*logical.Request, error) {
 	// First try for the header value
-	wrapTTL := r.Header.Get(WrapTTLHeaderName)
+	wrapTTL := r.Header.Get(consts.WrapTTLHeaderName)
 	if wrapTTL == "" {
 		return req, nil
 	}
@@ -1023,7 +974,7 @@ func requestWrapInfo(r *http.Request, req *logical.Request) (*logical.Request, e
 		TTL: dur,
 	}
 
-	wrapFormat := r.Header.Get(WrapFormatHeaderName)
+	wrapFormat := r.Header.Get(consts.WrapFormatHeaderName)
 	switch wrapFormat {
 	case "jwt":
 		req.WrapInfo.Format = "jwt"
@@ -1065,11 +1016,11 @@ func parseMFAHeader(req *logical.Request) error {
 
 		shardSplits := strings.SplitN(mfaHeaderValue, ":", 2)
 		if shardSplits[0] == "" {
-			return fmt.Errorf("invalid data in header %q; missing method name or ID", MFAHeaderName)
+			return fmt.Errorf("invalid data in header %q; missing method name or ID", consts.MFAHeaderName)
 		}
 
 		if shardSplits[1] == "" {
-			return fmt.Errorf("invalid data in header %q; missing method value", MFAHeaderName)
+			return fmt.Errorf("invalid data in header %q; missing method value", consts.MFAHeaderName)
 		}
 
 		req.MFACreds[shardSplits[0]] = append(req.MFACreds[shardSplits[0]], shardSplits[1])

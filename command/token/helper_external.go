@@ -115,7 +115,7 @@ func (h *ExternalTokenHelper) cmd(op string) (*exec.Cmd, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd.Env = h.Env
+	cmd.Env = append(os.Environ(), h.Env...)
 	return cmd, nil
 }
 

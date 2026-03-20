@@ -33,7 +33,7 @@ func (c *ScanCommand) Help() string {
 
 Usage: bao scan [options] PATH
 
-  Scans data from Vault at the given path. This can be used to scan keys in a
+  Scans data from OpenBao at the given path. This can be used to scan keys in a
   given secret engine. Scanning amounts to a recursive listing on all entries.
 
   Scan values under the "my-app" folder of the generic secret engine:

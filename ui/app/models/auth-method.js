@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import Model, { belongsTo, hasMany, attr } from '@ember-data/model';
+import Model, { belongsTo, attr } from '@ember-data/model';
 import { alias } from '@ember/object/computed'; // eslint-disable-line
 import { computed } from '@ember/object'; // eslint-disable-line
 import { inject as service } from '@ember/service';
@@ -32,7 +32,6 @@ const ModelExport = AuthMethodModel.extend({
   store: service(),
 
   config: belongsTo('mount-config', { async: false, inverse: null }), // one-to-none that replaces former fragment
-  authConfigs: hasMany('auth-config', { polymorphic: true, inverse: 'backend', async: false }),
   path: attr('string'),
   accessor: attr('string'),
   name: attr('string'),
@@ -40,7 +39,11 @@ const ModelExport = AuthMethodModel.extend({
   // namespaces introduced types with a `ns_` prefix for built-in engines
   // so we need to strip that to normalize the type
   methodType: computed('type', function () {
-    return this.type.replace(/^ns_/, '');
+    const type = this.type;
+    if (!type) {
+      return '';
+    }
+    return type.replace(/^ns_/, '');
   }),
   description: attr('string', {
     editType: 'textarea',

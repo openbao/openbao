@@ -54,18 +54,18 @@ type mockLegacyDatabase struct {
 	mock.Mock
 }
 
-func (m *mockLegacyDatabase) CreateUser(ctx context.Context, statements v4.Statements, usernameConfig v4.UsernameConfig, expiration time.Time) (username string, password string, err error) {
-	args := m.Called(ctx, statements, usernameConfig, expiration)
+func (m *mockLegacyDatabase) CreateUser(ctx context.Context, statements v4.Statements, usernameConfig v4.UsernameConfig, expiration time.Time) (username string, password string, err error) { //nolint:govet // we can't change this, the interface is released
+	args := m.Called(ctx, statements, usernameConfig, expiration) //nolint:govet // we can't change this, the interface is released
 	return args.String(0), args.String(1), args.Error(2)
 }
 
-func (m *mockLegacyDatabase) RenewUser(ctx context.Context, statements v4.Statements, username string, expiration time.Time) error {
-	args := m.Called(ctx, statements, username, expiration)
+func (m *mockLegacyDatabase) RenewUser(ctx context.Context, statements v4.Statements, username string, expiration time.Time) error { //nolint:govet // we can't change this, the interface is released
+	args := m.Called(ctx, statements, username, expiration) //nolint:govet // we can't change this, the interface is released
 	return args.Error(0)
 }
 
-func (m *mockLegacyDatabase) RevokeUser(ctx context.Context, statements v4.Statements, username string) error {
-	args := m.Called(ctx, statements, username)
+func (m *mockLegacyDatabase) RevokeUser(ctx context.Context, statements v4.Statements, username string) error { //nolint:govet // we can't change this, the interface is released
+	args := m.Called(ctx, statements, username) //nolint:govet // we can't change this, the interface is released
 	return args.Error(0)
 }
 
@@ -79,8 +79,8 @@ func (m *mockLegacyDatabase) GenerateCredentials(ctx context.Context) (string, e
 	return args.String(0), args.Error(1)
 }
 
-func (m *mockLegacyDatabase) SetCredentials(ctx context.Context, statements v4.Statements, staticConfig v4.StaticUserConfig) (username string, password string, err error) {
-	args := m.Called(ctx, statements, staticConfig)
+func (m *mockLegacyDatabase) SetCredentials(ctx context.Context, statements v4.Statements, staticConfig v4.StaticUserConfig) (username string, password string, err error) { //nolint:govet // we can't change this, the interface is released
+	args := m.Called(ctx, statements, staticConfig) //nolint:govet // we can't change this, the interface is released
 	return args.String(0), args.String(1), args.Error(2)
 }
 

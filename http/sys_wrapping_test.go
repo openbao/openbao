@@ -279,7 +279,7 @@ func TestHTTP_Wrapping(t *testing.T) {
 	client.SetWrappingLookupFunc(func(operation, path string) string {
 		return ""
 	})
-	secret, err = client.Logical().Write("sys/wrapping/wrap", data)
+	_, err = client.Logical().Write("sys/wrapping/wrap", data)
 	if err == nil {
 		t.Fatal("expected error")
 	}

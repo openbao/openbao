@@ -40,6 +40,7 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/builtin/logical/pki"
+	"github.com/openbao/openbao/helper/namespace"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -66,10 +67,8 @@ const (
 
 func generateTestCertAndConnState(t *testing.T, template *x509.Certificate) (string, tls.ConnectionState, error) {
 	t.Helper()
-	tempDir, err := os.MkdirTemp("", "vault-cert-auth-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tempDir := t.TempDir()
+
 	t.Logf("test %s, temp dir %s", t.Name(), tempDir)
 	caCertTemplate := &x509.Certificate{
 		Subject: pkix.Name{
@@ -194,7 +193,7 @@ func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
-	defer list.Close()
+	defer list.Close() //nolint:errcheck // try to close, ignore error
 
 	// Accept connections.
 	serverErrors := make(chan error, 1)
@@ -207,7 +206,7 @@ func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath
 			close(serverErrors)
 			return
 		}
-		defer serverConn.Close()
+		defer serverConn.Close() //nolint:errcheck // try to close, ignore error
 
 		// Read the ping
 		buf := make([]byte, 4)
@@ -439,11 +438,14 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 		config.HttpClient = client
 
 		// Set the above issued certificates as the client certificates
-		config.ConfigureTLS(&api.TLSConfig{
+		err := config.ConfigureTLS(&api.TLSConfig{
 			CACert:     caCertFile.Name(),
 			ClientCert: leafCertFile.Name(),
 			ClientKey:  leafCertKeyFile.Name(),
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		apiClient, err := api.NewClient(config)
 		if err != nil {
@@ -588,11 +590,14 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 		config.HttpClient = client
 
 		// Set the client certificates
-		config.ConfigureTLS(&api.TLSConfig{
+		err := config.ConfigureTLS(&api.TLSConfig{
 			CACertBytes: cluster.CACertPEM,
 			ClientCert:  "test-fixtures/root/rootcawextcert.pem",
 			ClientKey:   "test-fixtures/root/rootcawextkey.pem",
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		apiClient, err := api.NewClient(config)
 		if err != nil {
@@ -853,7 +858,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Login attempt after certificate expiry should fail
-	resp, err = b.HandleRequest(context.Background(), loginReq)
+	_, err = b.HandleRequest(context.Background(), loginReq)
 	if err == nil {
 		t.Fatal("expected error due to expired certificate")
 	}
@@ -1100,7 +1105,8 @@ func TestBackend_CRLs(t *testing.T) {
 
 func testFactory(t *testing.T) logical.Backend {
 	storage := &logical.InmemStorage{}
-	b, err := Factory(context.Background(), &logical.BackendConfig{
+	ctx := namespace.RootContext(t.Context())
+	b, err := Factory(ctx, &logical.BackendConfig{
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: 1000 * time.Second,
 			MaxLeaseTTLVal:     1800 * time.Second,
@@ -1110,7 +1116,7 @@ func testFactory(t *testing.T) logical.Backend {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
-	if err := b.Initialize(context.Background(), &logical.InitializationRequest{
+	if err := b.Initialize(ctx, &logical.InitializationRequest{
 		Storage: storage,
 	}); err != nil {
 		t.Fatalf("error: %s", err)
@@ -1344,9 +1350,6 @@ func TestBackend_dns_singleCert(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -1391,9 +1394,6 @@ func TestBackend_email_singleCert(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -1472,9 +1472,6 @@ func TestBackend_uri_singleCert(t *testing.T) {
 	}
 
 	tempDir, connState, err := generateTestCertAndConnState(t, certTemplate)
-	if tempDir != "" {
-		defer os.RemoveAll(tempDir)
-	}
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
@@ -1709,7 +1706,7 @@ func testAccStepReadCRL(t *testing.T, connState tls.ConnectionState) logicaltest
 			if len(crlInfo.Serials) != 1 {
 				t.Fatalf("bad: expected CRL with length 1, got %d", len(crlInfo.Serials))
 			}
-			if _, ok := crlInfo.Serials["637101449987587619778072672905061040630001617053"]; !ok {
+			if _, ok := crlInfo.Serials["665196038707549495932848523564088297973957177406"]; !ok {
 				t.Fatal("bad: expected serial number not found in CRL")
 			}
 			return nil
@@ -2083,13 +2080,13 @@ func testConnState(certPath, keyPath, rootCertPath string) (tls.ConnectionState,
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
-	defer list.Close()
+	defer list.Close() //nolint:errcheck // try to close, ignore error
 
 	// Accept connections.
 	serverErrors := make(chan error, 1)
 	connState := make(chan tls.ConnectionState)
 	go func() {
-		defer close(connState)
+		defer close(connState) //nolint:errcheck // try to close, ignore error
 		serverConn, err := list.Accept()
 		serverErrors <- err
 		if err != nil {
@@ -2188,7 +2185,7 @@ func Test_Renew(t *testing.T) {
 		Schema: pathCerts(b).Fields,
 	}
 
-	resp, err := b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2197,7 +2194,7 @@ func Test_Renew(t *testing.T) {
 		Raw:    map[string]interface{}{},
 		Schema: pathLogin(b).Fields,
 	}
-	resp, err = b.pathLogin(context.Background(), req, empty_login_fd)
+	resp, err := b.pathLogin(context.Background(), req, empty_login_fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2225,19 +2222,19 @@ func Test_Renew(t *testing.T) {
 
 	// Change the policies -- this should fail
 	fd.Raw["policies"] = "zip,zap"
-	resp, err = b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	resp, err = b.pathLoginRenew(context.Background(), req, empty_login_fd)
+	_, err = b.pathLoginRenew(context.Background(), req, empty_login_fd)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	// Put the policies back, this should be okay
 	fd.Raw["policies"] = "bar,foo"
-	resp, err = b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2256,7 +2253,7 @@ func Test_Renew(t *testing.T) {
 	// Add period value to cert entry
 	period := 350 * time.Second
 	fd.Raw["period"] = period.String()
-	resp, err = b.pathCertWrite(context.Background(), req, fd)
+	_, err = b.pathCertWrite(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2277,7 +2274,7 @@ func Test_Renew(t *testing.T) {
 	}
 
 	// Delete CA, make sure we can't renew
-	resp, err = b.pathCertDelete(context.Background(), req, fd)
+	_, err = b.pathCertDelete(context.Background(), req, fd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2716,11 +2713,14 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 		config.HttpClient = client
 
 		// Set the above issued certificates as the client certificates
-		config.ConfigureTLS(&api.TLSConfig{
+		err := config.ConfigureTLS(&api.TLSConfig{
 			CACert:     caCertFile.Name(),
 			ClientCert: leafCert,
 			ClientKey:  leafKey,
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		apiClient, err := api.NewClient(config)
 		if err != nil {

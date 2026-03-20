@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/armon/go-metrics"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -232,7 +232,7 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 	// Disable collection if configured.
 	if c.MetricSink().GaugeInterval == time.Duration(0) {
 		c.logger.Info("usage gauge collection is disabled")
-	} else if standby, _ := c.Standby(); !standby {
+	} else if standby := c.Standby(); !standby {
 		for _, init := range metricsInit {
 			if init.DisableEnvVar != "" {
 				if api.ReadBaoVariable(init.DisableEnvVar) != "" {
@@ -288,7 +288,7 @@ func (c *Core) findKvMounts() []*kvMount {
 				version = "1"
 			}
 			mounts = append(mounts, &kvMount{
-				Namespace:  entry.namespace,
+				Namespace:  entry.Namespace,
 				MountPoint: entry.Path,
 				Version:    version,
 				NumSecrets: 0,
@@ -406,14 +406,14 @@ func (c *Core) entityGaugeCollector(ctx context.Context) ([]metricsutil.GaugeLab
 		return []metricsutil.GaugeLabelValues{}, errors.New("nil identity store")
 	}
 
-	byNamespace, err := identityStore.countEntitiesByNamespace(ctx)
+	byNamespace, err := identityStore.CountEntitiesByNamespace(ctx)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
 
 	// No check for expiration here; the bulk of the work should be in
 	// counting the entities.
-	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := c.ListNamespaces(ctx)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -437,7 +437,7 @@ func (c *Core) entityGaugeCollectorByMount(ctx context.Context) ([]metricsutil.G
 		return []metricsutil.GaugeLabelValues{}, errors.New("nil identity store")
 	}
 
-	byAccessor, err := identityStore.countEntitiesByMountAccessor(ctx)
+	byAccessor, err := identityStore.CountEntitiesByMountAccessor(ctx)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -459,7 +459,7 @@ func (c *Core) entityGaugeCollectorByMount(ctx context.Context) ([]metricsutil.G
 		}
 		values = append(values, metricsutil.GaugeLabelValues{
 			Labels: []metrics.Label{
-				metricsutil.NamespaceLabel(mountEntry.namespace),
+				metricsutil.NamespaceLabel(mountEntry.Namespace),
 				{Name: "auth_method", Value: mountEntry.Type},
 				{Name: "mount_point", Value: "auth/" + mountEntry.Path},
 			},

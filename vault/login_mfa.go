@@ -26,8 +26,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-uuid"
 	"github.com/okta/okta-sdk-golang/v2/okta"
 	"github.com/okta/okta-sdk-golang/v2/okta/query"
 	"github.com/openbao/openbao/helper/identity"
@@ -37,6 +35,9 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
+	ident "github.com/openbao/openbao/vault/identity"
+	"github.com/openbao/openbao/vault/routing"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"
 	"google.golang.org/protobuf/proto"
@@ -44,11 +45,6 @@ import (
 )
 
 const (
-	mfaMethodTypeTOTP              = "totp"
-	mfaMethodTypeDuo               = "duo"
-	mfaMethodTypeOkta              = "okta"
-	mfaMethodTypePingID            = "pingid"
-	memDBLoginMFAConfigsTable      = "login_mfa_configs"
 	memDBMFALoginEnforcementsTable = "login_enforcements"
 	mfaTOTPKeysPrefix              = systemBarrierPrefix + "mfa/totpkeys/"
 
@@ -106,16 +102,12 @@ func (b *SystemBackend) loginMFAPaths() []*framework.Path {
 	}
 }
 
-func genericOptionalUUIDRegex(name string) string {
-	return fmt.Sprintf("(/(?P<%s>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))?", name)
-}
-
 type MFABackend struct {
+	*sync.RWMutex
 	Core        *Core
-	mfaLock     *sync.RWMutex
 	db          *memdb.MemDB
 	mfaLogger   hclog.Logger
-	namespacer  Namespacer
+	namespacer  ident.Namespacer
 	methodTable string
 	usedCodes   *zcache.Cache[string, struct{}]
 	rateLimits  *zcache.Cache[string, uint32]
@@ -133,15 +125,15 @@ func loginMFASchemaFuncs() []func() *memdb.TableSchema {
 }
 
 func NewLoginMFABackend(core *Core, logger hclog.Logger) *LoginMFABackend {
-	b := NewMFABackend(core, logger, memDBLoginMFAConfigsTable, loginMFASchemaFuncs())
+	b := NewMFABackend(core, logger, ident.MemDBLoginMFAConfigsTable, loginMFASchemaFuncs())
 	return &LoginMFABackend{b}
 }
 
 func NewMFABackend(core *Core, logger hclog.Logger, prefix string, schemaFuncs []func() *memdb.TableSchema) *MFABackend {
 	db, _ := SetupMFAMemDB(schemaFuncs)
 	return &MFABackend{
+		RWMutex:     &sync.RWMutex{},
 		Core:        core,
-		mfaLock:     &sync.RWMutex{},
 		db:          db,
 		mfaLogger:   logger.Named("mfa"),
 		namespacer:  core,
@@ -182,417 +174,10 @@ func (b *LoginMFABackend) ResetLoginMFAMemDB() error {
 	return nil
 }
 
-func (i *IdentityStore) handleMFAMethodListTOTP(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodList(ctx, req, d, mfaMethodTypeTOTP)
-}
-
-func (i *IdentityStore) handleMFAMethodListDuo(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodList(ctx, req, d, mfaMethodTypeDuo)
-}
-
-func (i *IdentityStore) handleMFAMethodListOkta(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodList(ctx, req, d, mfaMethodTypeOkta)
-}
-
-func (i *IdentityStore) handleMFAMethodListPingID(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodList(ctx, req, d, mfaMethodTypePingID)
-}
-
-func (i *IdentityStore) handleMFAMethodListGlobal(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	keys, configInfo, err := i.mfaBackend.mfaMethodList(ctx, "")
-	if err != nil {
-		return nil, err
-	}
-
-	return logical.ListResponseWithInfo(keys, configInfo), nil
-}
-
-func (i *IdentityStore) handleMFAMethodList(ctx context.Context, req *logical.Request, d *framework.FieldData, methodType string) (*logical.Response, error) {
-	keys, configInfo, err := i.mfaBackend.mfaMethodList(ctx, methodType)
-	if err != nil {
-		return nil, err
-	}
-
-	return logical.ListResponseWithInfo(keys, configInfo), nil
-}
-
-func (i *IdentityStore) handleMFAMethodTOTPRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodReadCommon(ctx, req, d, mfaMethodTypeTOTP)
-}
-
-func (i *IdentityStore) handleMFAMethodOKTARead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodReadCommon(ctx, req, d, mfaMethodTypeOkta)
-}
-
-func (i *IdentityStore) handleMFAMethodDuoRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodReadCommon(ctx, req, d, mfaMethodTypeDuo)
-}
-
-func (i *IdentityStore) handleMFAMethodPingIDRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodReadCommon(ctx, req, d, mfaMethodTypePingID)
-}
-
-func (i *IdentityStore) handleMFAMethodReadGlobal(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodReadCommon(ctx, req, d, "")
-}
-
-func (i *IdentityStore) handleMFAMethodReadCommon(ctx context.Context, req *logical.Request, d *framework.FieldData, methodType string) (*logical.Response, error) {
-	methodID := d.Get("method_id").(string)
-	if methodID == "" {
-		return logical.ErrorResponse("missing method ID"), nil
-	}
-
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	respData, err := i.mfaBackend.mfaConfigReadByMethodID(methodID)
-	if err != nil {
-		return nil, err
-	}
-
-	if respData == nil {
-		return nil, nil
-	}
-
-	mfaNs, err := i.namespacer.NamespaceByID(ctx, respData["namespace_id"].(string))
-	if err != nil {
-		return nil, err
-	}
-
-	// reading the method config either from the same namespace or from the parent or from the child should all work
-	if !(ns.ID == mfaNs.ID || mfaNs.HasParent(ns) || ns.HasParent(mfaNs)) {
-		return logical.ErrorResponse("request namespace does not match method namespace"), logical.ErrPermissionDenied
-	}
-
-	if methodType != "" && respData["type"] != methodType {
-		return logical.ErrorResponse("failed to find the method ID under MFA type %s.", methodType), nil
-	}
-
-	return &logical.Response{
-		Data: respData,
-	}, nil
-}
-
-func (i *IdentityStore) handleMFAMethodUpdateCommon(ctx context.Context, req *logical.Request, d *framework.FieldData, methodType string) (*logical.Response, error) {
-	var err error
-	var mConfig *mfa.Config
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	methodID := d.Get("method_id").(string)
-	methodName := d.Get("method_name").(string)
-
-	b := i.mfaBackend
-	b.mfaLock.Lock()
-	defer b.mfaLock.Unlock()
-
-	if methodID != "" {
-		mConfig, err = b.MemDBMFAConfigByID(methodID)
-		if err != nil {
-			return nil, err
-		}
-
-		// If methodID is specified, but we didn't find anything, return a 404
-		if mConfig == nil {
-			return nil, nil
-		}
-	}
-
-	// check if an MFA method configuration exists with that method name
-	if methodName != "" {
-		namedMfaConfig, err := b.MemDBMFAConfigByName(ctx, methodName)
-		if err != nil {
-			return nil, err
-		}
-		if namedMfaConfig != nil {
-			if mConfig == nil {
-				mConfig = namedMfaConfig
-			} else {
-				if mConfig.ID != namedMfaConfig.ID {
-					return nil, fmt.Errorf("a login MFA method configuration with the method name %s already exists", methodName)
-				}
-			}
-		}
-	}
-
-	if mConfig == nil {
-		configID, err := uuid.GenerateUUID()
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate an identifier for MFA config: %v", err)
-		}
-		mConfig = &mfa.Config{
-			ID:          configID,
-			Type:        methodType,
-			NamespaceID: ns.ID,
-		}
-	}
-
-	// Updating the method config name
-	if methodName != "" {
-		mConfig.Name = methodName
-	}
-
-	mfaNs, err := i.namespacer.NamespaceByID(ctx, mConfig.NamespaceID)
-	if err != nil {
-		return nil, err
-	}
-
-	// this logic assumes that the config namespace and the current
-	// namespace should be the same. Note an ancestor of mfaNs is not allowed
-	// to create/update methodID
-	if ns.ID != mfaNs.ID {
-		return logical.ErrorResponse("request namespace does not match method namespace"), nil
-	}
-
-	mConfig.Type = methodType
-	usernameRaw, ok := d.GetOk("username_format")
-	if ok {
-		mConfig.UsernameFormat = usernameRaw.(string)
-	}
-
-	switch methodType {
-	case mfaMethodTypeTOTP:
-		err = parseTOTPConfig(mConfig, d)
-		if err != nil {
-			return logical.ErrorResponse(err.Error()), nil
-		}
-
-	case mfaMethodTypeOkta:
-		err = parseOktaConfig(mConfig, d)
-		if err != nil {
-			return logical.ErrorResponse(err.Error()), nil
-		}
-
-	case mfaMethodTypeDuo:
-		err = parseDuoConfig(mConfig, d)
-		if err != nil {
-			return logical.ErrorResponse(err.Error()), nil
-		}
-
-	case mfaMethodTypePingID:
-		err = parsePingIDConfig(mConfig, d)
-		if err != nil {
-			return logical.ErrorResponse(err.Error()), nil
-		}
-
-	default:
-		return logical.ErrorResponse("unrecognized type %q", methodType), nil
-	}
-
-	// Store the config
-	err = b.putMFAConfigByID(ctx, mConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	// Back the config in MemDB
-	err = b.MemDBUpsertMFAConfig(ctx, mConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	if methodID == "" {
-		return &logical.Response{
-			Data: map[string]interface{}{
-				"method_id": mConfig.ID,
-			},
-		}, nil
-	} else {
-		return nil, nil
-	}
-}
-
-func (i *IdentityStore) handleMFAMethodTOTPUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodUpdateCommon(ctx, req, d, mfaMethodTypeTOTP)
-}
-
-func (i *IdentityStore) handleMFAMethodOKTAUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodUpdateCommon(ctx, req, d, mfaMethodTypeOkta)
-}
-
-func (i *IdentityStore) handleMFAMethodDuoUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodUpdateCommon(ctx, req, d, mfaMethodTypeDuo)
-}
-
-func (i *IdentityStore) handleMFAMethodPingIDUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodUpdateCommon(ctx, req, d, mfaMethodTypePingID)
-}
-
-func (i *IdentityStore) handleMFAMethodTOTPDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodDeleteCommon(ctx, req, d, mfaMethodTypeTOTP)
-}
-
-func (i *IdentityStore) handleMFAMethodOKTADelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodDeleteCommon(ctx, req, d, mfaMethodTypeOkta)
-}
-
-func (i *IdentityStore) handleMFAMethodDUODelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodDeleteCommon(ctx, req, d, mfaMethodTypeDuo)
-}
-
-func (i *IdentityStore) handleMFAMethodPingIDDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleMFAMethodDeleteCommon(ctx, req, d, mfaMethodTypePingID)
-}
-
-func (i *IdentityStore) handleMFAMethodDeleteCommon(ctx context.Context, req *logical.Request, d *framework.FieldData, methodType string) (*logical.Response, error) {
-	methodID := d.Get("method_id").(string)
-	if methodID == "" {
-		return logical.ErrorResponse("missing method ID"), nil
-	}
-	return nil, i.mfaBackend.deleteMFAConfigByMethodID(ctx, methodID, methodType, memDBLoginMFAConfigsTable)
-}
-
-func (i *IdentityStore) handleLoginMFAGenerateUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleLoginMFAGenerateCommon(ctx, req, d.Get("method_id").(string), req.EntityID)
-}
-
-func (i *IdentityStore) handleLoginMFAAdminGenerateUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return i.handleLoginMFAGenerateCommon(ctx, req, d.Get("method_id").(string), d.Get("entity_id").(string))
-}
-
-func (i *IdentityStore) handleLoginMFAGenerateCommon(ctx context.Context, req *logical.Request, methodID, entityID string) (*logical.Response, error) {
-	if methodID == "" {
-		return logical.ErrorResponse("missing method ID"), nil
-	}
-
-	if entityID == "" {
-		return logical.ErrorResponse("missing entityID"), nil
-	}
-
-	mConfig, err := i.mfaBackend.MemDBMFAConfigByID(methodID)
-	if err != nil {
-		return nil, err
-	}
-	if mConfig == nil {
-		return logical.ErrorResponse("configuration for method ID %q does not exist", methodID), nil
-	}
-	if mConfig.ID == "" {
-		return nil, fmt.Errorf("configuration for method ID %q does not contain an identifier", methodID)
-	}
-
-	entity, err := i.MemDBEntityByID(ctx, entityID, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find entity with ID %q: error: %w", entityID, err)
-	}
-
-	if entity == nil {
-		return logical.ErrorResponse("invalid entity ID"), nil
-	}
-
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return logical.ErrorResponse("failed to retrieve the namespace"), nil
-	}
-	if ns.ID != entity.NamespaceID {
-		return logical.ErrorResponse("entity namespace ID does not match the current namespace ID"), nil
-	}
-
-	entityNS, err := i.namespacer.NamespaceByID(ctx, entity.NamespaceID)
-	if err != nil {
-		return logical.ErrorResponse("entity namespace not found"), nil
-	}
-
-	configNS, err := i.namespacer.NamespaceByID(ctx, mConfig.NamespaceID)
-	if err != nil {
-		return logical.ErrorResponse("methodID namespace not found"), nil
-	}
-
-	if configNS.ID != entityNS.ID && !entityNS.HasParent(configNS) {
-		return logical.ErrorResponse("entity namespace %s outside of the config namespace %s", entityNS.Path, configNS.Path), nil
-	}
-
-	switch mConfig.Type {
-	case mfaMethodTypeTOTP:
-		return i.mfaBackend.handleMFAGenerateTOTP(ctx, mConfig, entityID)
-	default:
-		return logical.ErrorResponse("generate not available for MFA type %q", mConfig.Type), nil
-	}
-}
-
-// handleLoginMFAAdminDestroyUpdate does not remove the totp secret key from the storage
-func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	var entity *identity.Entity
-	var err error
-
-	methodID := d.Get("method_id").(string)
-	if methodID == "" {
-		return logical.ErrorResponse("missing method ID"), nil
-	}
-
-	entityID := d.Get("entity_id").(string)
-	if entityID == "" {
-		return logical.ErrorResponse("missing entity ID"), nil
-	}
-
-	entity, err = i.MemDBEntityByID(ctx, entityID, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find entity with ID %q: error: %w", entityID, err)
-	}
-
-	if entity == nil {
-		return logical.ErrorResponse("invalid entity ID"), nil
-	}
-
-	mConfig, err := i.mfaBackend.MemDBMFAConfigByID(methodID)
-	if err != nil {
-		return nil, err
-	}
-
-	if mConfig == nil {
-		return logical.ErrorResponse("configuration for method ID %q does not exist", methodID), nil
-	}
-
-	if mConfig.ID == "" {
-		return nil, fmt.Errorf("configuration for method ID %q does not contain an identifier", methodID)
-	}
-
-	if mConfig.Type != mfaMethodTypeTOTP {
-		return nil, errors.New("method ID does not match TOTP type")
-	}
-
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return logical.ErrorResponse("failed to retrieve the namespace"), nil
-	}
-	if ns.ID != entity.NamespaceID {
-		return logical.ErrorResponse("entity namespace ID does not match the current namespace ID"), nil
-	}
-
-	entityNS, err := i.namespacer.NamespaceByID(ctx, entity.NamespaceID)
-	if err != nil {
-		return logical.ErrorResponse("entity namespace not found"), nil
-	}
-
-	configNS, err := i.namespacer.NamespaceByID(ctx, mConfig.NamespaceID)
-	if err != nil {
-		return logical.ErrorResponse("methodID namespace not found"), nil
-	}
-
-	if configNS.ID != entityNS.ID && !entityNS.HasParent(configNS) {
-		return logical.ErrorResponse("entity namespace %s outside of the current namespace %s", entityNS.Path, ns.Path), nil
-	}
-
-	// destroying the secret on the entity
-	if entity.MFASecrets != nil {
-		delete(entity.MFASecrets, mConfig.ID)
-	}
-
-	err = i.upsertEntity(ctx, entity, nil, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to persist MFA secret in entity, error: %w", err)
-	}
-
-	return nil, nil
-}
-
 // loadMFAMethodConfigs loads MFA method configs for login MFA
 func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespace.Namespace) error {
 	b.mfaLogger.Trace("loading login MFA configurations")
-	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
 	existing, err := barrierView.List(ctx, "")
 	if err != nil {
 		return fmt.Errorf("failed to list MFA configurations for namespace %s and prefix %s: %w", ns.Path, loginMFAConfigPrefix, err)
@@ -628,7 +213,7 @@ func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespac
 // loadMFAEnforcementConfigs loads MFA method configs for login MFA
 func (b *LoginMFABackend) loadMFAEnforcementConfigs(ctx context.Context, ns *namespace.Namespace) ([]*mfa.MFAEnforcementConfig, error) {
 	b.mfaLogger.Trace("loading login MFA enforcement configurations")
-	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 	existing, err := barrierView.List(ctx, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list MFA enforcement configurations for namespace %s with prefix %s: %w", ns.Path, mfaLoginEnforcementPrefix, err)
@@ -846,196 +431,13 @@ func (c *Core) LoginMFACreateToken(ctx context.Context, reqPath string, cachedAu
 	return resp, err
 }
 
-func (i *IdentityStore) handleMFALoginEnforcementList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	keys, configInfo, err := i.mfaBackend.mfaLoginEnforcementList(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return logical.ListResponseWithInfo(keys, configInfo), nil
-}
-
-func (i *IdentityStore) handleMFALoginEnforcementRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	name := d.Get("name").(string)
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	respData, err := i.mfaBackend.mfaLoginEnforcementConfigByNameAndNamespace(name, ns.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	if respData == nil {
-		return nil, nil
-	}
-
-	// The config is readable only from the same namespace
-	if ns.ID != respData["namespace_id"].(string) {
-		return logical.ErrorResponse("request namespace does not match method namespace"), nil
-	}
-
-	return &logical.Response{
-		Data: respData,
-	}, nil
-}
-
-func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	var err error
-	var eConfig *mfa.MFAEnforcementConfig
-
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	name := d.Get("name").(string)
-	if name == "" {
-		return logical.ErrorResponse("missing enforcement name"), nil
-	}
-
-	b := i.mfaBackend
-	b.mfaLock.Lock()
-	defer b.mfaLock.Unlock()
-
-	eConfig, err = b.MemDBMFALoginEnforcementConfigByNameAndNamespace(name, ns.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	if eConfig == nil {
-		configID, err := uuid.GenerateUUID()
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate an identifier for MFA login enforcement config: %w", err)
-		}
-		eConfig = &mfa.MFAEnforcementConfig{
-			Name:        name,
-			NamespaceID: ns.ID,
-			ID:          configID,
-		}
-	}
-
-	mfaMethodIds, ok := d.GetOk("mfa_method_ids")
-	if !ok {
-		return logical.ErrorResponse("missing method ids"), nil
-	}
-
-	for _, mmid := range mfaMethodIds.([]string) {
-		// make sure this method id actually exists
-		config, err := b.mfaConfigReadByMethodID(mmid)
-		if err != nil {
-			return nil, err
-		}
-		if config == nil {
-			return logical.ErrorResponse("one of the provided method ids doesn't exist"), nil
-		}
-
-		mfaNs, err := i.namespacer.NamespaceByID(ctx, config["namespace_id"].(string))
-		if err != nil {
-			return logical.ErrorResponse("failed to retrieve config namespace"), nil
-		}
-
-		if ns.ID != mfaNs.ID && !ns.HasParent(mfaNs) {
-			return logical.ErrorResponse("one of the provided method ids is in an incompatible namespace and can't be used"), nil
-		}
-	}
-	eConfig.MFAMethodIDs = mfaMethodIds.([]string)
-
-	oneOfLastFour := false
-	authMethodAccessors, ok := d.GetOk("auth_method_accessors")
-	if ok {
-		for _, accessor := range authMethodAccessors.([]string) {
-			found, err := b.validateAuthEntriesForAccessorOrType(ctx, ns, func(entry *MountEntry) bool {
-				return accessor == entry.Accessor
-			})
-			if err != nil {
-				return nil, err
-			}
-			if !found {
-				return logical.ErrorResponse("one of the auth method accessors provided is invalid"), nil
-			}
-		}
-		eConfig.AuthMethodAccessors = authMethodAccessors.([]string)
-		oneOfLastFour = true
-	}
-
-	authMethodTypes, ok := d.GetOk("auth_method_types")
-	if ok {
-		for _, authType := range authMethodTypes.([]string) {
-			found, err := b.validateAuthEntriesForAccessorOrType(ctx, ns, func(entry *MountEntry) bool {
-				return authType == entry.Type
-			})
-			if err != nil {
-				return nil, err
-			}
-			if !found {
-				return logical.ErrorResponse("one of the auth method types provided is invalid"), nil
-			}
-		}
-		eConfig.AuthMethodTypes = authMethodTypes.([]string)
-		oneOfLastFour = true
-	}
-
-	identityGroupIds, ok := d.GetOk("identity_group_ids")
-	if ok {
-		for _, groupId := range identityGroupIds.([]string) {
-			group, err := i.MemDBGroupByID(ctx, groupId, true)
-			if err != nil {
-				return nil, err
-			}
-			if group == nil {
-				return logical.ErrorResponse("one of the provided group ids doesn't exist"), nil
-			}
-		}
-		eConfig.IdentityGroupIds = identityGroupIds.([]string)
-		oneOfLastFour = true
-	}
-
-	identityEntityIds, ok := d.GetOk("identity_entity_ids")
-	if ok {
-		for _, entityId := range identityEntityIds.([]string) {
-			entity, err := i.MemDBEntityByID(ctx, entityId, true)
-			if err != nil {
-				return nil, err
-			}
-			if entity == nil {
-				return logical.ErrorResponse("one of the provided entity ids doesn't exist"), nil
-			}
-		}
-		eConfig.IdentityEntityIDs = identityEntityIds.([]string)
-		oneOfLastFour = true
-	}
-
-	if !oneOfLastFour {
-		return logical.ErrorResponse("One of auth_method_accessors, auth_method_types, identity_group_ids, identity_entity_ids must be specified"), nil
-	}
-
-	// Store the config
-	err = b.putMFALoginEnforcementConfig(ctx, eConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	// Back the config in MemDB
-	return nil, b.MemDBUpsertMFALoginEnforcementConfig(ctx, eConfig)
-}
-
-func (i *IdentityStore) handleMFALoginEnforcementDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	name := d.Get("name").(string)
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return nil, i.mfaBackend.deleteMFALoginEnforcementConfigByNameAndNamespace(ctx, name, ns.ID)
-}
-
-func (b *LoginMFABackend) validateAuthEntriesForAccessorOrType(ctx context.Context, ns *namespace.Namespace, validFunc func(entry *MountEntry) bool) (bool, error) {
+func (b *LoginMFABackend) ValidateAuthEntriesForAccessorOrType(ctx context.Context, ns *namespace.Namespace, validFunc func(entry *routing.MountEntry) bool) (bool, error) {
 	b.Core.authLock.RLock()
 	defer b.Core.authLock.RUnlock()
 
 	for _, entry := range b.Core.auth.Entries {
 		// only check auth methods in the current namespace
-		if entry.Namespace().ID != ns.ID {
+		if entry.Namespace.ID != ns.ID {
 			continue
 		}
 
@@ -1061,7 +463,7 @@ func (c *Core) PersistTOTPKey(ctx context.Context, methodID, entityID, key strin
 		return err
 	}
 
-	view := NamespaceView(c.barrier, ns).SubView(mfaTOTPKeysPrefix).SubView(methodID + "/")
+	view := NamespaceScopedView(c.barrier, ns).SubView(mfaTOTPKeysPrefix).SubView(methodID + "/")
 	err = view.Put(ctx, &logical.StorageEntry{
 		Key:   entityID,
 		Value: val,
@@ -1075,7 +477,7 @@ func (c *Core) fetchTOTPKey(ctx context.Context, methodID, entityID string) (str
 		return "", err
 	}
 
-	view := NamespaceView(c.barrier, ns).SubView(mfaTOTPKeysPrefix).SubView(methodID + "/")
+	view := NamespaceScopedView(c.barrier, ns).SubView(mfaTOTPKeysPrefix).SubView(methodID + "/")
 	entry, err := view.Get(ctx, entityID)
 	if err != nil {
 		return "", err
@@ -1093,7 +495,7 @@ func (c *Core) fetchTOTPKey(ctx context.Context, methodID, entityID string) (str
 	return ks.Key, nil
 }
 
-func (b *MFABackend) handleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Config, entityID string) (*logical.Response, error) {
+func (b *MFABackend) HandleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Config, entityID string) (*logical.Response, error) {
 	var err error
 	var totpConfig *mfa.TOTPConfig
 
@@ -1108,8 +510,8 @@ func (b *MFABackend) handleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 		return logical.ErrorResponse("unknown MFA config type %q", mConfig.Type), nil
 	}
 
-	b.Core.identityStore.lock.Lock()
-	defer b.Core.identityStore.lock.Unlock()
+	b.Core.identityStore.Lock()
+	defer b.Core.identityStore.Unlock()
 
 	// Read the entity after acquiring the lock
 	entity, err := b.Core.identityStore.MemDBEntityByID(ctx, entityID, true)
@@ -1181,7 +583,7 @@ func (b *MFABackend) handleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 		},
 	}
 
-	err = b.Core.identityStore.upsertEntity(ctx, entity, nil, true)
+	err = b.Core.identityStore.UpsertEntity(ctx, entity, nil, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to persist MFA secret in entity: %w", err)
 	}
@@ -1194,92 +596,7 @@ func (b *MFABackend) handleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 	}, nil
 }
 
-func parseDuoConfig(mConfig *mfa.Config, d *framework.FieldData) error {
-	secretKey := d.Get("secret_key").(string)
-	if secretKey == "" {
-		return errors.New("secret_key is empty")
-	}
-
-	integrationKey := d.Get("integration_key").(string)
-	if integrationKey == "" {
-		return errors.New("integration_key is empty")
-	}
-
-	apiHostname := d.Get("api_hostname").(string)
-	if apiHostname == "" {
-		return errors.New("api_hostname is empty")
-	}
-
-	config := &mfa.DuoConfig{
-		SecretKey:      secretKey,
-		IntegrationKey: integrationKey,
-		APIHostname:    apiHostname,
-		PushInfo:       d.Get("push_info").(string),
-		UsePasscode:    d.Get("use_passcode").(bool),
-	}
-
-	mConfig.Config = &mfa.Config_DuoConfig{
-		DuoConfig: config,
-	}
-
-	return nil
-}
-
-func parsePingIDConfig(mConfig *mfa.Config, d *framework.FieldData) error {
-	fileString := d.Get("settings_file_base64").(string)
-	if fileString == "" {
-		return errors.New("settings_file_base64 is empty")
-	}
-
-	fileBytes, err := base64.StdEncoding.DecodeString(fileString)
-	if err != nil {
-		return err
-	}
-
-	config := &mfa.PingIDConfig{}
-	for _, line := range strings.Split(string(fileBytes), "\n") {
-		if strings.HasPrefix(line, "#") {
-			continue
-		}
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		splitLine := strings.SplitN(line, "=", 2)
-		if len(splitLine) != 2 {
-			return fmt.Errorf("pingid settings file contains a non-empty non-comment line that is not in key=value format: %q", line)
-		}
-		switch splitLine[0] {
-		case "use_base64_key":
-			config.UseBase64Key = splitLine[1]
-		case "use_signature":
-			result, err := parseutil.ParseBool(splitLine[1])
-			if err != nil {
-				return errors.New("error parsing use_signature value in pingid settings file")
-			}
-			config.UseSignature = result
-		case "token":
-			config.Token = splitLine[1]
-		case "idp_url":
-			config.IDPURL = splitLine[1]
-		case "org_alias":
-			config.OrgAlias = splitLine[1]
-		case "admin_url":
-			config.AdminURL = splitLine[1]
-		case "authenticator_url":
-			config.AuthenticatorURL = splitLine[1]
-		default:
-			return fmt.Errorf("unknown key %q in pingid settings file", splitLine[0])
-		}
-	}
-
-	mConfig.Config = &mfa.Config_PingIDConfig{
-		PingIDConfig: config,
-	}
-
-	return nil
-}
-
-func (b *LoginMFABackend) mfaConfigReadByMethodID(id string) (map[string]interface{}, error) {
+func (b *LoginMFABackend) MfaConfigReadByMethodID(id string) (map[string]interface{}, error) {
 	mConfig, err := b.MemDBMFAConfigByID(id)
 	if err != nil {
 		return nil, err
@@ -1291,7 +608,7 @@ func (b *LoginMFABackend) mfaConfigReadByMethodID(id string) (map[string]interfa
 	return b.mfaConfigToMap(mConfig)
 }
 
-func (b *LoginMFABackend) mfaMethodList(ctx context.Context, methodType string) ([]string, map[string]interface{}, error) {
+func (b *LoginMFABackend) MfaMethodList(ctx context.Context, methodType string) ([]string, map[string]interface{}, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -1301,8 +618,8 @@ func (b *LoginMFABackend) mfaMethodList(ctx context.Context, methodType string) 
 	txn := b.db.Txn(false)
 
 	var iter memdb.ResultIterator
-	switch {
-	case methodType == "":
+	switch methodType {
+	case "":
 		// get all the configs
 		iter, err = txn.Get(b.methodTable, "id")
 		if err != nil {
@@ -1342,7 +659,7 @@ func (b *LoginMFABackend) mfaMethodList(ctx context.Context, methodType string) 
 		}
 
 		// the namespaces have to match, or the config namespace needs to be a parent of the request namespace
-		if !(ns.ID == mfaNs.ID || ns.HasParent(mfaNs)) {
+		if ns.ID != mfaNs.ID && !ns.HasParent(mfaNs) {
 			continue
 		}
 
@@ -1357,7 +674,7 @@ func (b *LoginMFABackend) mfaMethodList(ctx context.Context, methodType string) 
 	return keys, configInfo, nil
 }
 
-func (b *LoginMFABackend) mfaLoginEnforcementList(ctx context.Context) ([]string, map[string]interface{}, error) {
+func (b *LoginMFABackend) MfaLoginEnforcementList(ctx context.Context) ([]string, map[string]interface{}, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -1401,7 +718,7 @@ func (b *LoginMFABackend) mfaLoginEnforcementList(ctx context.Context) ([]string
 	return keys, enforcementInfo, nil
 }
 
-func (b *LoginMFABackend) mfaLoginEnforcementConfigByNameAndNamespace(name, namespaceId string) (map[string]interface{}, error) {
+func (b *LoginMFABackend) MfaLoginEnforcementConfigByNameAndNamespace(name, namespaceId string) (map[string]interface{}, error) {
 	eConfig, err := b.MemDBMFALoginEnforcementConfigByNameAndNamespace(name, namespaceId)
 	if err != nil {
 		return nil, err
@@ -1489,144 +806,6 @@ func (b *MFABackend) mfaConfigToMap(mConfig *mfa.Config) (map[string]interface{}
 	return respData, nil
 }
 
-func parseTOTPConfig(mConfig *mfa.Config, d *framework.FieldData) error {
-	if mConfig == nil {
-		return errors.New("config is nil")
-	}
-
-	if d == nil {
-		return errors.New("field data is nil")
-	}
-
-	algorithm := d.Get("algorithm").(string)
-	var keyAlgorithm otplib.Algorithm
-	switch algorithm {
-	case "SHA1":
-		keyAlgorithm = otplib.AlgorithmSHA1
-	case "SHA256":
-		keyAlgorithm = otplib.AlgorithmSHA256
-	case "SHA512":
-		keyAlgorithm = otplib.AlgorithmSHA512
-	default:
-		return errors.New("unrecognized algorithm")
-	}
-
-	digits := d.Get("digits").(int)
-	var keyDigits otplib.Digits
-	switch digits {
-	case 6:
-		keyDigits = otplib.DigitsSix
-	case 8:
-		keyDigits = otplib.DigitsEight
-	default:
-		return errors.New("digits can only be 6 or 8")
-	}
-
-	period := d.Get("period").(int)
-	if period <= 0 {
-		return errors.New("period must be greater than zero")
-	}
-
-	skew := d.Get("skew").(int)
-	switch skew {
-	case 0:
-	case 1:
-	default:
-		return errors.New("skew must be 0 or 1")
-	}
-
-	keySize := d.Get("key_size").(int)
-	if keySize <= 0 {
-		return errors.New("key_size must be greater than zero")
-	}
-
-	issuer := d.Get("issuer").(string)
-	if issuer == "" {
-		return errors.New("issuer must be set")
-	}
-
-	maxValidationAttempt := d.Get("max_validation_attempts").(int)
-	if maxValidationAttempt < 0 {
-		return errors.New("max_validation_attempts must be greater than zero")
-	}
-	if maxValidationAttempt == 0 {
-		maxValidationAttempt = defaultMaxTOTPValidateAttempts
-	}
-
-	config := &mfa.TOTPConfig{
-		Issuer:                issuer,
-		Period:                uint32(period),
-		Algorithm:             int32(keyAlgorithm),
-		Digits:                int32(keyDigits),
-		Skew:                  uint32(skew),
-		KeySize:               uint32(keySize),
-		QRSize:                int32(d.Get("qr_size").(int)),
-		MaxValidationAttempts: uint32(maxValidationAttempt),
-	}
-	mConfig.Config = &mfa.Config_TOTPConfig{
-		TOTPConfig: config,
-	}
-
-	return nil
-}
-
-func parseOktaConfig(mConfig *mfa.Config, d *framework.FieldData) error {
-	if mConfig == nil {
-		return errors.New("config is nil")
-	}
-
-	if d == nil {
-		return errors.New("field data is nil")
-	}
-
-	oktaConfig := &mfa.OktaConfig{}
-
-	orgName := d.Get("org_name").(string)
-	if orgName == "" {
-		return errors.New("org_name must be set")
-	}
-	oktaConfig.OrgName = orgName
-
-	token := d.Get("api_token").(string)
-	if token == "" {
-		return errors.New("api_token must be set")
-	}
-	oktaConfig.APIToken = token
-
-	productionRaw, productionOk := d.GetOk("production")
-	if productionOk {
-		oktaConfig.Production = productionRaw.(bool)
-	} else {
-		oktaConfig.Production = true
-	}
-
-	baseURLRaw, ok := d.GetOk("base_url")
-	if ok {
-		oktaConfig.BaseURL = baseURLRaw.(string)
-	} else {
-		// Only set if not using legacy production flag
-		if !productionOk {
-			oktaConfig.BaseURL = "okta.com"
-		}
-	}
-
-	primaryEmailOnly := d.Get("primary_email").(bool)
-	if primaryEmailOnly {
-		oktaConfig.PrimaryEmail = true
-	}
-
-	_, err := url.Parse(fmt.Sprintf("https://%s,%s", oktaConfig.OrgName, oktaConfig.BaseURL))
-	if err != nil {
-		return fmt.Errorf("error parsing given base_url: %w", err)
-	}
-
-	mConfig.Config = &mfa.Config_OktaConfig{
-		OktaConfig: oktaConfig,
-	}
-
-	return nil
-}
-
 func (c *Core) validateLoginMFA(ctx context.Context, eConfig *mfa.MFAEnforcementConfig, entity *identity.Entity, requestConnRemoteAddr string, mfaCredsMap logical.MFACreds) error {
 	sanitizedMfaCreds, err := c.loginMFABackend.sanitizeMFACredsWithLoginEnforcementMethodIDs(ctx, mfaCredsMap, eConfig.MFAMethodIDs)
 	if err != nil {
@@ -1673,11 +852,11 @@ func (c *Core) validateLoginMFAInternal(ctx context.Context, methodID string, en
 
 	var finalUsername string
 	switch mConfig.Type {
-	case mfaMethodTypeDuo, mfaMethodTypeOkta, mfaMethodTypePingID:
+	case ident.MfaMethodTypeDuo, ident.MfaMethodTypeOkta, ident.MfaMethodTypePingID:
 		if mConfig.UsernameFormat == "" {
 			finalUsername = entity.Name
 		} else {
-			directGroups, inheritedGroups, err := c.identityStore.groupsByEntityID(ctx, entity.ID)
+			directGroups, inheritedGroups, err := c.identityStore.GroupsByEntityID(ctx, entity.ID)
 			if err != nil {
 				return fmt.Errorf("failed to fetch group memberships: %w", err)
 			}
@@ -1702,7 +881,7 @@ func (c *Core) validateLoginMFAInternal(ctx context.Context, methodID string, en
 	}
 
 	switch mConfig.Type {
-	case mfaMethodTypeTOTP:
+	case ident.MfaMethodTypeTOTP:
 		// Get the MFA secret data required to validate the supplied credentials
 		if entity.MFASecrets == nil {
 			return fmt.Errorf("MFA secret for method ID %q not present in entity %q", mConfig.ID, entity.ID)
@@ -1714,13 +893,13 @@ func (c *Core) validateLoginMFAInternal(ctx context.Context, methodID string, en
 
 		return c.validateTOTP(ctx, mfaFactors, entityMFASecret, mConfig.ID, entity.ID, mConfig.GetTOTPConfig().MaxValidationAttempts)
 
-	case mfaMethodTypeOkta:
+	case ident.MfaMethodTypeOkta:
 		return c.validateOkta(ctx, mConfig, finalUsername)
 
-	case mfaMethodTypeDuo:
+	case ident.MfaMethodTypeDuo:
 		return c.validateDuo(ctx, mfaFactors, mConfig, finalUsername, reqConnectionRemoteAddress)
 
-	case mfaMethodTypePingID:
+	case ident.MfaMethodTypePingID:
 		return c.validatePingID(ctx, mConfig, finalUsername)
 
 	default:
@@ -1775,7 +954,7 @@ ECONFIG_LOOP:
 			}
 
 			// Retrieve entity groups
-			directGroups, inheritedGroups, err := c.identityStore.groupsByEntityID(ctx, entity.ID)
+			directGroups, inheritedGroups, err := c.identityStore.GroupsByEntityID(ctx, entity.ID)
 			if err != nil {
 				return nil, errors.New("error on retrieving groups by entityID in MFA")
 			}
@@ -1876,17 +1055,18 @@ func (c *Core) validateDuo(ctx context.Context, mfaFactors *MFAFactor, mConfig *
 		return err
 	}
 	if check == nil {
+		//nolint:staticcheck // Duo is a proper name
 		return errors.New("Duo api check returned nil, possibly bad integration key")
 	}
 	var message string
 	var messageDetail string
-	if check.StatResult.Message != nil {
-		message = *check.StatResult.Message
+	if check.Message != nil {
+		message = *check.Message
 	}
-	if check.StatResult.Message_Detail != nil {
-		messageDetail = *check.StatResult.Message_Detail
+	if check.Message_Detail != nil {
+		messageDetail = *check.Message_Detail
 	}
-	if check.StatResult.Stat != "OK" {
+	if check.Stat != "OK" {
 		return fmt.Errorf("check against Duo failed; message (if given): %q; message detail (if given): %q", message, messageDetail)
 	}
 
@@ -1897,8 +1077,8 @@ func (c *Core) validateDuo(ctx context.Context, mfaFactors *MFAFactor, mConfig *
 	if preauth == nil {
 		return errors.New("failed to perform Duo preauth")
 	}
-	if preauth.StatResult.Stat != "OK" {
-		return fmt.Errorf("failed to perform Duo preauth: %q - %q", *preauth.StatResult.Message, *preauth.StatResult.Message_Detail)
+	if preauth.Stat != "OK" {
+		return fmt.Errorf("failed to perform Duo preauth: %q - %q", *preauth.Message, *preauth.Message_Detail)
 	}
 
 	switch preauth.Response.Result {
@@ -1934,8 +1114,8 @@ func (c *Core) validateDuo(ctx context.Context, mfaFactors *MFAFactor, mConfig *
 	if err != nil {
 		return fmt.Errorf("failed to authenticate with Duo: %w", err)
 	}
-	if result.StatResult.Stat != "OK" {
-		return fmt.Errorf("failed to authenticate with Duo: %q - %q", *result.StatResult.Message, *result.StatResult.Message_Detail)
+	if result.Stat != "OK" {
+		return fmt.Errorf("failed to authenticate with Duo: %q - %q", *result.Message, *result.Message_Detail)
 	}
 	if result.Response.Txid == "" {
 		return errors.New("failed to get transaction ID for Duo authentication")
@@ -1951,8 +1131,8 @@ func (c *Core) validateDuo(ctx context.Context, mfaFactors *MFAFactor, mConfig *
 		if statusResult == nil {
 			return fmt.Errorf("failed to get authentication status from Duo: %w", err)
 		}
-		if statusResult.StatResult.Stat != "OK" {
-			return fmt.Errorf("failed to get authentication status from Duo: %q - %q", *statusResult.StatResult.Message, *statusResult.StatResult.Message_Detail)
+		if statusResult.Stat != "OK" {
+			return fmt.Errorf("failed to get authentication status from Duo: %q - %q", *statusResult.Message, *statusResult.Message_Detail)
 		}
 
 		switch statusResult.Response.Result {
@@ -2178,7 +1358,7 @@ func (c *Core) validatePingID(ctx context.Context, mConfig *mfa.Config, username
 		}
 		bodyBytes := bytes.NewBuffer(nil)
 		_, err = bodyBytes.ReadFrom(resp.Body)
-		resp.Body.Close()
+		resp.Body.Close() //nolint:errcheck
 		if err != nil {
 			return nil, fmt.Errorf("error reading pingid response: %w", err)
 		}
@@ -2413,7 +1593,7 @@ func (c *Core) validateTOTP(ctx context.Context, mfaFactors *MFAFactor, entityMe
 
 func loginMFAConfigTableSchema() *memdb.TableSchema {
 	return &memdb.TableSchema{
-		Name: memDBLoginMFAConfigsTable,
+		Name: ident.MemDBLoginMFAConfigsTable,
 		Indexes: map[string]*memdb.IndexSchema{
 			"id": {
 				Name:   "id",
@@ -2677,15 +1857,15 @@ func (b *LoginMFABackend) MemDBMFALoginEnforcementConfigIterator() (memdb.Result
 	return it, nil
 }
 
-func (b *LoginMFABackend) deleteMFALoginEnforcementConfigByNameAndNamespace(ctx context.Context, name, namespaceId string) error {
+func (b *LoginMFABackend) DeleteMFALoginEnforcementConfigByNameAndNamespace(ctx context.Context, name, namespaceId string) error {
 	var err error
 
 	if name == "" {
 		return errors.New("missing config name")
 	}
 
-	b.mfaLock.Lock()
-	defer b.mfaLock.Unlock()
+	b.Lock()
+	defer b.Unlock()
 
 	// delete the config from storage
 	eConfig, err := b.MemDBMFALoginEnforcementConfigByNameAndNamespace(name, namespaceId)
@@ -2702,7 +1882,7 @@ func (b *LoginMFABackend) deleteMFALoginEnforcementConfigByNameAndNamespace(ctx 
 		return err
 	}
 
-	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 	err = barrierView.Delete(ctx, eConfig.ID)
 	if err != nil {
 		return err
@@ -2746,15 +1926,15 @@ func (b *LoginMFABackend) MemDBDeleteMFALoginEnforcementConfigByNameAndNamespace
 	return nil
 }
 
-func (b *LoginMFABackend) deleteMFAConfigByMethodID(ctx context.Context, configID, methodType, tableName string) error {
+func (b *LoginMFABackend) DeleteMFAConfigByMethodID(ctx context.Context, configID, methodType, tableName string) error {
 	var err error
 
 	if configID == "" {
 		return errors.New("missing config id")
 	}
 
-	b.mfaLock.Lock()
-	defer b.mfaLock.Unlock()
+	b.Lock()
+	defer b.Unlock()
 
 	eConfigIter, err := b.MemDBMFALoginEnforcementConfigIterator()
 	if err != nil {
@@ -2774,7 +1954,7 @@ func (b *LoginMFABackend) deleteMFAConfigByMethodID(ctx context.Context, configI
 		return err
 	}
 
-	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
 	err = barrierView.Delete(ctx, configID)
 	if err != nil {
 		return err
@@ -2811,7 +1991,7 @@ func (b *LoginMFABackend) deleteMFAConfigByMethodID(ctx context.Context, configI
 
 	if mConfig.Type == "totp" && mConfig.ID != "" {
 		// This is best effort; if they end up hanging around it's okay, they're encrypted anyways
-		viewToClear := NamespaceView(b.Core.barrier, ns).SubView(mfaTOTPKeysPrefix).SubView(mConfig.ID + "/")
+		viewToClear := NamespaceScopedView(b.Core.barrier, ns).SubView(mfaTOTPKeysPrefix).SubView(mConfig.ID + "/")
 		if err := logical.ClearView(ctx, viewToClear); err != nil {
 			b.mfaLogger.Warn("unable to clear TOTP keys", "method", mConfig.Name, "error", err)
 		}
@@ -2872,13 +2052,13 @@ func (b *LoginMFABackend) MemDBDeleteMFAConfigByIDInTxn(txn *memdb.Txn, configID
 	return nil
 }
 
-func (b *LoginMFABackend) putMFAConfigByID(ctx context.Context, mConfig *mfa.Config) error {
+func (b *LoginMFABackend) PutMFAConfigByID(ctx context.Context, mConfig *mfa.Config) error {
 	ns, err := b.namespacer.NamespaceByID(ctx, mConfig.NamespaceID)
 	if err != nil {
 		return err
 	}
 
-	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
 	marshaledEntry, err := proto.Marshal(mConfig)
 	if err != nil {
 		return err
@@ -2890,7 +2070,7 @@ func (b *LoginMFABackend) putMFAConfigByID(ctx context.Context, mConfig *mfa.Con
 	})
 }
 
-func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView BarrierView) (*mfa.Config, error) {
+func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView barrier.View) (*mfa.Config, error) {
 	entry, err := barrierView.Get(ctx, path)
 	if err != nil {
 		return nil, err
@@ -2909,7 +2089,7 @@ func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView 
 	return &mConfig, nil
 }
 
-func (b *LoginMFABackend) getMFALoginEnforcementConfig(ctx context.Context, path string, barrierView BarrierView) (*mfa.MFAEnforcementConfig, error) {
+func (b *LoginMFABackend) getMFALoginEnforcementConfig(ctx context.Context, path string, barrierView barrier.View) (*mfa.MFAEnforcementConfig, error) {
 	entry, err := barrierView.Get(ctx, path)
 	if err != nil {
 		return nil, err
@@ -2928,7 +2108,7 @@ func (b *LoginMFABackend) getMFALoginEnforcementConfig(ctx context.Context, path
 	return &mConfig, nil
 }
 
-func (b *LoginMFABackend) putMFALoginEnforcementConfig(ctx context.Context, eConfig *mfa.MFAEnforcementConfig) error {
+func (b *LoginMFABackend) PutMFALoginEnforcementConfig(ctx context.Context, eConfig *mfa.MFAEnforcementConfig) error {
 	marshaledEntry, err := proto.Marshal(eConfig)
 	if err != nil {
 		return err
@@ -2939,7 +2119,7 @@ func (b *LoginMFABackend) putMFALoginEnforcementConfig(ctx context.Context, eCon
 		return err
 	}
 
-	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	barrierView := NamespaceScopedView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 
 	return barrierView.Put(ctx, &logical.StorageEntry{
 		Key:   eConfig.ID,

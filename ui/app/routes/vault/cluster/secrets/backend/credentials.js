@@ -6,7 +6,6 @@
 import { resolve } from 'rsvp';
 import Route from '@ember/routing/route';
 import { inject as service } from '@ember/service';
-import ControlGroupError from 'vault/lib/control-group-error';
 
 const SUPPORTED_DYNAMIC_BACKENDS = ['database', 'ssh', 'aws', 'pki'];
 
@@ -30,11 +29,6 @@ export default Route.extend({
 
   getDatabaseCredential(backend, secret, roleType = '') {
     return this.store.queryRecord('database/credential', { backend, secret, roleType }).catch((error) => {
-      if (error instanceof ControlGroupError) {
-        throw error;
-      }
-      // Unless it's a control group error, we want to pass back error info
-      // so we can render it on the GenerateCredentialsDatabase component
       const status = error?.httpStatus;
       let title;
       let message = `We ran into a problem and could not continue: ${

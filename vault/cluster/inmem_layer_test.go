@@ -51,7 +51,7 @@ func TestInmemCluster_Connect(t *testing.T) {
 	}()
 
 	// Make sure two nodes can connect in
-	conn, err := cluster.layers[1].Dial(server.addr, 0, nil)
+	conn, err := cluster.layers[1].DialContext(t.Context(), server.addr, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestInmemCluster_Connect(t *testing.T) {
 		t.Fatal("nil conn")
 	}
 
-	conn, err = cluster.layers[2].Dial(server.addr, 0, nil)
+	conn, err = cluster.layers[2].DialContext(t.Context(), server.addr, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestInmemCluster_Disconnect(t *testing.T) {
 	}()
 
 	// Make sure node1 cannot connect in
-	conn, err := cluster.layers[1].Dial(server.addr, 0, nil)
+	conn, err := cluster.layers[1].DialContext(t.Context(), server.addr, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -127,7 +127,7 @@ func TestInmemCluster_Disconnect(t *testing.T) {
 	}
 
 	// Node2 should be able to connect
-	conn, err = cluster.layers[2].Dial(server.addr, 0, nil)
+	conn, err = cluster.layers[2].DialContext(t.Context(), server.addr, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestInmemCluster_DisconnectAll(t *testing.T) {
 	server.DisconnectAll()
 
 	// Make sure nodes cannot connect in
-	conn, err := cluster.layers[1].Dial(server.addr, 0, nil)
+	conn, err := cluster.layers[1].DialContext(t.Context(), server.addr, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -167,7 +167,7 @@ func TestInmemCluster_DisconnectAll(t *testing.T) {
 		t.Fatal("expected nil conn")
 	}
 
-	conn, err = cluster.layers[2].Dial(server.addr, 0, nil)
+	conn, err = cluster.layers[2].DialContext(t.Context(), server.addr, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -235,7 +235,7 @@ func TestInmemCluster_ConnectCluster(t *testing.T) {
 	// Make sure each node can connect to each other
 	for _, node1 := range cluster.layers {
 		for _, node2 := range cluster2.layers {
-			conn, err := node1.Dial(node2.addr, 0, nil)
+			conn, err := node1.DialContext(t.Context(), node2.addr, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -244,7 +244,7 @@ func TestInmemCluster_ConnectCluster(t *testing.T) {
 				t.Fatal("nil conn")
 			}
 
-			conn, err = node2.Dial(node1.addr, 0, nil)
+			conn, err = node2.DialContext(t.Context(), node1.addr, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

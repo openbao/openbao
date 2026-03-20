@@ -315,10 +315,11 @@ func encodeRSAPrivateKey(key *keysutil.KeyEntry, format string) (string, error) 
 	var derBytes []byte
 	var blockType string
 	var err error
-	if format == "" {
+	switch format {
+	case "":
 		derBytes = x509.MarshalPKCS1PrivateKey(key.RSAKey)
 		blockType = "RSA PRIVATE KEY"
-	} else if format == "der" || format == "pem" {
+	case "der", "pem":
 		derBytes, err = x509.MarshalPKCS8PrivateKey(key.RSAKey)
 		blockType = "PRIVATE KEY"
 	}
@@ -408,10 +409,11 @@ func keyEntryToECPrivateKey(k *keysutil.KeyEntry, curve elliptic.Curve, format s
 	var blockType string
 	var derBytes []byte
 	var err error
-	if format == "" {
+	switch format {
+	case "":
 		derBytes, err = x509.MarshalECPrivateKey(privKey)
 		blockType = "EC PRIVATE KEY"
-	} else if format == "der" || format == "pem" {
+	case "der", "pem":
 		derBytes, err = x509.MarshalPKCS8PrivateKey(privKey)
 		blockType = "PRIVATE KEY"
 	}

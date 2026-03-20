@@ -273,11 +273,6 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 		return nil, nil, err
 	}
 
-	var extraCas []*x509.Certificate
-	for _, t := range trusted {
-		extraCas = append(extraCas, t.Certificates...)
-	}
-
 	// If trustedNonCAs is not empty it means that client had registered a non-CA cert
 	// with the backend.
 	var retErr error
@@ -310,7 +305,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 	// If no trusted chain was found, client is not authenticated
 	// This check happens after checking for a matching configured non-CA certs
 	if len(trustedChains) == 0 {
-		if retErr == nil {
+		if retErr != nil {
 			return nil, logical.ErrorResponse("invalid certificate or no client certificate supplied; additionally got errors during verification: %v", retErr), nil
 		}
 		return nil, logical.ErrorResponse("invalid certificate or no client certificate supplied"), nil
@@ -516,7 +511,10 @@ func (b *backend) matchesCertificateExtensions(clientCert *x509.Certificate, con
 	clientExtMap := make(map[string]string, len(clientCert.Extensions))
 	for _, ext := range clientCert.Extensions {
 		var parsedValue string
-		asn1.Unmarshal(ext.Value, &parsedValue)
+		_, err := asn1.Unmarshal(ext.Value, &parsedValue)
+		if err != nil {
+			b.Logger().Trace("failed to unmarshal client certificate extension", "error", err)
+		}
 		clientExtMap[ext.Id.String()] = parsedValue
 	}
 	// If any of the required extensions don'log match the constraint fails
@@ -554,7 +552,10 @@ func (b *backend) certificateExtensionsMetadata(clientCert *x509.Certificate, co
 			// including its ASN.1 type tag bytes. For the sake of simplicity, assume string type
 			// and drop the tag bytes. And get the number of bytes from the tag.
 			var parsedValue string
-			asn1.Unmarshal(ext.Value, &parsedValue)
+			_, err := asn1.Unmarshal(ext.Value, &parsedValue)
+			if err != nil {
+				b.Logger().Trace("failed to unmarshal metadata certificate extension", "error", err)
+			}
 			metadata[metadataKey] = parsedValue
 		}
 	}
@@ -576,7 +577,7 @@ func (b *backend) loadTrustedCerts(ctx context.Context, storage logical.Storage,
 		names, err = storage.List(ctx, "cert/")
 		if err != nil {
 			b.Logger().Error("failed to list trusted certs", "error", err)
-			return
+			return pool, trusted, trustedNonCAs, conf
 		}
 	}
 
@@ -627,7 +628,7 @@ func (b *backend) loadTrustedCerts(ctx context.Context, storage logical.Storage,
 			conf.QueryAllServers = conf.QueryAllServers || entry.OcspQueryAllServers
 		}
 	}
-	return
+	return pool, trusted, trustedNonCAs, conf
 }
 
 func (b *backend) checkForCertInOCSP(ctx context.Context, clientCert *x509.Certificate, chain []*x509.Certificate, conf *ocsp.VerifyConfig) (bool, error) {
@@ -680,7 +681,7 @@ func parsePEM(raw []byte) (certs []*x509.Certificate) {
 		}
 		certs = append(certs, cert)
 	}
-	return
+	return certs
 }
 
 // validateConnState is used to validate that the TLS client is authorized

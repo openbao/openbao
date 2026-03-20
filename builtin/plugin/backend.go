@@ -225,7 +225,7 @@ func (b *PluginBackend) HandleRequest(ctx context.Context, req *logical.Request)
 		return merr
 	})
 
-	return
+	return resp, err
 }
 
 // HandleExistenceCheck is a thin wrapper implementation of HandleExistenceCheck
@@ -237,7 +237,7 @@ func (b *PluginBackend) HandleExistenceCheck(ctx context.Context, req *logical.R
 		return merr
 	})
 
-	return
+	return checkFound, exists, err
 }
 
 // Initialize is intentionally a no-op here, the backend will instead be

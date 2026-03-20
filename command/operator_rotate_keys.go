@@ -10,11 +10,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fatih/structs"
 	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/posener/complete"
 )
 
@@ -68,7 +68,7 @@ Usage: bao operator rotate-keys [options] [KEY]
   a TTY is available, the command will prompt for text.
 
   If the flag -target=recovery is supplied, then this operation will require a
-  quorum of recovery keys in order to generate a new set of recovery keys. 
+  quorum of recovery keys in order to generate a new set of recovery keys.
 
   Initialize a rotation:
 
@@ -643,7 +643,7 @@ func (c *OperatorRotateKeysCommand) backupRetrieve(client *api.Client) int {
 	}
 
 	secret := &api.Secret{
-		Data: structs.New(storedKeys).Map(),
+		Data: structtomap.Map(storedKeys),
 	}
 
 	return OutputSecret(c.UI, secret)

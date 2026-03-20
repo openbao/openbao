@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"context"
 	"encoding/base64"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/xor"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCore_GenerateRoot_Lifecycle(t *testing.T) {
@@ -20,7 +22,7 @@ func TestCore_GenerateRoot_Lifecycle(t *testing.T) {
 
 func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte) {
 	// Verify update not allowed
-	if _, err := c.GenerateRootUpdate(namespace.RootContext(nil), keys[0], "", GenerateStandardRootTokenStrategy); err == nil {
+	if _, err := c.GenerateRootUpdate(namespace.RootContext(context.TODO()), keys[0], "", GenerateStandardRootTokenStrategy); err == nil {
 		t.Fatal("no root generation in progress")
 	}
 
@@ -35,12 +37,8 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 
 	// Should be no config
 	conf, err := c.GenerateRootConfiguration()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if conf != nil {
-		t.Fatalf("bad: %v", conf)
-	}
+	require.Error(t, err)
+	require.Nil(t, conf)
 
 	// Cancel should be idempotent
 	err = c.GenerateRootCancel()
@@ -48,7 +46,8 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 		t.Fatalf("err: %v", err)
 	}
 
-	otp, err := base62.Random(TokenPrefixLength + TokenLength)
+	tokenLength := TokenLength
+	otp, err := base62.Random(TokenPrefixLength + tokenLength)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,12 +75,8 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 
 	// Should be no config
 	conf, err = c.GenerateRootConfiguration()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if conf != nil {
-		t.Fatalf("bad: %v", conf)
-	}
+	require.Error(t, err)
+	require.Nil(t, conf)
 }
 
 func TestCore_GenerateRoot_Init(t *testing.T) {
@@ -95,7 +90,8 @@ func TestCore_GenerateRoot_Init(t *testing.T) {
 }
 
 func testCore_GenerateRoot_Init_Common(t *testing.T, c *Core) {
-	otp, err := base62.Random(TokenPrefixLength + TokenLength)
+	tokenLength := TokenLength
+	otp, err := base62.Random(TokenPrefixLength + tokenLength)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +116,8 @@ func TestCore_GenerateRoot_InvalidRootNonce(t *testing.T) {
 }
 
 func testCore_GenerateRoot_InvalidRootNonce_Common(t *testing.T, c *Core, keys [][]byte) {
-	otp, err := base62.Random(TokenPrefixLength + TokenLength)
+	tokenLength := TokenLength
+	otp, err := base62.Random(TokenPrefixLength + tokenLength)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,14 +137,14 @@ func testCore_GenerateRoot_InvalidRootNonce_Common(t *testing.T, c *Core, keys [
 	}
 
 	// Provide the nonce (invalid)
-	_, err = c.GenerateRootUpdate(namespace.RootContext(nil), keys[0], "abcd", GenerateStandardRootTokenStrategy)
+	_, err = c.GenerateRootUpdate(namespace.RootContext(context.TODO()), keys[0], "abcd", GenerateStandardRootTokenStrategy)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	// Provide the root (invalid)
 	for _, key := range keys {
-		_, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rgconf.Nonce, GenerateStandardRootTokenStrategy)
+		_, err = c.GenerateRootUpdate(namespace.RootContext(context.TODO()), key, rgconf.Nonce, GenerateStandardRootTokenStrategy)
 	}
 	if err == nil {
 		t.Fatal("expected error")
@@ -160,7 +157,8 @@ func TestCore_GenerateRoot_Update_OTP(t *testing.T) {
 }
 
 func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byte) {
-	otp, err := base62.Random(TokenPrefixLength + TokenLength)
+	tokenLength := TokenLength
+	otp, err := base62.Random(TokenPrefixLength + tokenLength)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +181,7 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byt
 	// Provide the keys
 	var result *GenerateRootResult
 	for _, key := range keys {
-		result, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rkconf.Nonce, GenerateStandardRootTokenStrategy)
+		result, err = c.GenerateRootUpdate(namespace.RootContext(context.TODO()), key, rkconf.Nonce, GenerateStandardRootTokenStrategy)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -208,12 +206,8 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byt
 
 	// Should be no config
 	conf, err := c.GenerateRootConfiguration()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if conf != nil {
-		t.Fatalf("bad: %v", conf)
-	}
+	require.Error(t, err)
+	require.Nil(t, conf)
 
 	tokenBytes, err := base64.RawStdEncoding.DecodeString(encodedToken)
 	if err != nil {
@@ -228,7 +222,7 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byt
 	token := string(tokenBytes)
 
 	// Ensure that the token is a root token
-	te, err := c.tokenStore.Lookup(namespace.RootContext(nil), token)
+	te, err := c.tokenStore.Lookup(namespace.RootContext(context.TODO()), token)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -265,7 +259,7 @@ func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byt
 	// Provide the keys
 	var result *GenerateRootResult
 	for _, key := range keys {
-		result, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rkconf.Nonce, GenerateStandardRootTokenStrategy)
+		result, err = c.GenerateRootUpdate(namespace.RootContext(context.TODO()), key, rkconf.Nonce, GenerateStandardRootTokenStrategy)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -290,12 +284,8 @@ func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byt
 
 	// Should be no config
 	conf, err := c.GenerateRootConfiguration()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if conf != nil {
-		t.Fatalf("bad: %v", conf)
-	}
+	require.Error(t, err)
+	require.Nil(t, conf)
 
 	ptBuf, err := pgpkeys.DecryptBytes(encodedToken, pgpkeys.TestPrivKey1)
 	if err != nil {
@@ -308,7 +298,7 @@ func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byt
 	token := ptBuf.String()
 
 	// Ensure that the token is a root token
-	te, err := c.tokenStore.Lookup(namespace.RootContext(nil), token)
+	te, err := c.tokenStore.Lookup(namespace.RootContext(context.TODO()), token)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

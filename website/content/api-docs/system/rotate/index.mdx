@@ -28,6 +28,36 @@ OpenBao. These endpoints only apply to seals that support recovery keys.
 Depending on the variable in the request path (`root` or `recovery`) 
 operation is performed for the root or recovery keys.
 
+#### Rotation Process
+
+Rotation normally is a two- or three-step process:
+
+1. The [`.../init`](init.mdx) endpoint is called with rotation parameters,
+   yielding a nonce to be used on all subsequent operations.
+2. The [`.../update`](update.mdx) endpoint is called by a sufficient quorum,
+   providing an existing share to prove the validity of the operation.
+   - When the last necessary share has been provided, the new key shares will
+     be returned on the `update` call. These should be distributed to relevant
+     parties. When `require_verification=false` (default), the rotation is
+     finalized and the state reset.
+3. Optionally when `require_verification=true` is set, each _new_ share must
+   be provided to this endpoint separately. When the last necessary share has
+   been provided, the rotation is finalized and the state reset.
+
+The rotation may also be [cancelled](init.mdx#cancel-rotation) before it is
+finished. Attempting to start a new rotation while an existing rotation is
+happening will cause an error.
+
+When PGP keys are provided as encryption targets for key shares, the
+[`.../backup`](backup.mdx) endpoint can be called after rotation has been
+completed to preserve the current (encrypted) key shares.
+
+As a special case, when using [declarative self-initialization with an
+auto-unseal mechanism](/docs/configuration/self-init/), no recovery
+shares are provisioned by default. In this case, `sys/rotate/recovery/init`
+will immediately yield new key shares aligning with the specified
+configuration, as no existing key shares exist.
+
 ### Progress rotation
 
 `/sys/rotate/(root|recovery)/update` endpoint is used to enter a single
@@ -47,10 +77,10 @@ operation and a map of PGP key fingerprint to hex-encoded PGP-encrypted key.
 
 ## Supported rotation endpoints
 
-- [Rotate encryption key](/api-docs/system/rotate/keyring)
-- [Configure automatic encryption key rotation config](/api-docs/system/rotate/keyring-config)
-- [Rotate root key without providing existing key shares](/api-docs/system/rotate/root)
-- [Read, initialize or cancel rotation](/api-docs/system/rotate/init)
-- [Progress rotation](/api-docs/system/rotate/update)
-- [Read, progress or cancel rotation verification operation](/api-docs/system/rotate/verify)
-- [Read or delete backed-up rotation keys](/api-docs/system/rotate/backup)
+- [Rotate encryption key](keyring.mdx)
+- [Configure automatic encryption key rotation config](keyring-config.mdx)
+- [Rotate root key without providing existing key shares](root.mdx)
+- [Read, initialize or cancel rotation](init.mdx)
+- [Progress rotation](update.mdx)
+- [Read, progress or cancel rotation verification operation](verify.mdx)
+- [Read or delete backed-up rotation keys](backup.mdx)

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"slices"
 
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
@@ -139,12 +140,7 @@ func (sc *storageContext) listIssuersPage(after string, limit int) ([]string, er
 		return nil, err
 	}
 
-	issuerIds := make([]string, 0, len(strList))
-	for _, entry := range strList {
-		issuerIds = append(issuerIds, entry)
-	}
-
-	return issuerIds, nil
+	return slices.Clone(strList), nil
 }
 
 // fetchIssuerById returns an issuer entry based an identifier, if not found an error is returned

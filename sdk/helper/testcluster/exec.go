@@ -75,14 +75,14 @@ func NewTestExecDevCluster(t *testing.T, opts *ExecDevClusterOptions) *ExecDevCl
 }
 
 func NewExecDevCluster(ctx context.Context, opts *ExecDevClusterOptions) (*ExecDevCluster, error) {
+	if opts == nil {
+		opts = &ExecDevClusterOptions{}
+	}
 	dc := &ExecDevCluster{
 		ClusterName: opts.ClusterName,
 		stopCh:      make(chan struct{}),
 	}
 
-	if opts == nil {
-		opts = &ExecDevClusterOptions{}
-	}
 	if opts.NumCores == 0 {
 		opts.NumCores = 3
 	}
@@ -137,10 +137,10 @@ func (dc *ExecDevCluster) setupExecDevCluster(ctx context.Context, opts *ExecDev
 
 	clusterJsonPath := filepath.Join(dc.tmpDir, "cluster.json")
 	args := []string{"server", "-dev", "-dev-cluster-json", clusterJsonPath}
-	switch {
-	case opts.NumCores == 3:
+	switch opts.NumCores {
+	case 3:
 		args = append(args, "-dev-three-node")
-	case opts.NumCores == 1:
+	case 1:
 		args = append(args, "-dev-tls")
 	default:
 		return errors.New("NumCores=1 and NumCores=3 are the only supported options right now")

@@ -24,7 +24,7 @@ request secrets from OpenBao. This implies code changes to client applications
 along with additional testing and maintenance of the application.
 
 The following code example implements OpenBao API to authenticate with OpenBao
-through [AppRole auth method](/docs/auth/approle#code-example), and then uses
+through [AppRole auth method](../auth/approle.mdx#code-example), and then uses
 the returned client token to read secrets at `kv-v2/data/creds`.
 
 ```go
@@ -96,11 +96,11 @@ To learn more, refer to the [OpenBao Agent][openbaoagent] or [OpenBao
 Proxy][openbaoproxy] documentation page.
 
 
-[autoauth]: /docs/agent-and-proxy/autoauth
-[caching]: /docs/agent-and-proxy/agent/caching
-[apiproxy]: /docs/agent-and-proxy/proxy/apiproxy
-[template]: /docs/agent-and-proxy/agent/template
-[exec]: /docs/agent-and-proxy/agent/process-supervisor
-[openbaoagent]: /docs/agent-and-proxy/agent
-[openbaoproxy]: /docs/agent-and-proxy/proxy
-[winsvc]: /docs/agent-and-proxy/agent/winsvc
+[autoauth]: autoauth/index.mdx
+[caching]: agent/caching/index.mdx
+[apiproxy]: proxy/apiproxy.mdx
+[template]: agent/template.mdx
+[exec]: agent/process-supervisor.mdx
+[openbaoagent]: agent/index.mdx
+[openbaoproxy]: proxy/index.mdx
+[winsvc]: agent/winsvc.mdx

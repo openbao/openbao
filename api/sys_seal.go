@@ -113,6 +113,9 @@ type SealStatusResponse struct {
 	StorageType      string `json:"storage_type,omitempty"`
 	// unused in OpenBao, but present for compatibility
 	Warnings []string `json:"warnings,omitempty"`
+	// Deprecated: Use CommitDate instead.
+	// This field remains for backwards-compatibility with OpenBao < v2.6.0.
+	BuildDate string `json:"build_date"`
 }
 
 type UnsealOpts struct {

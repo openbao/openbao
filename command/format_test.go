@@ -118,7 +118,7 @@ Unseal Progress               3/1
 Unseal Nonce                  nonce
 Seal Migration in Progress    true
 Version                       version
-Build Date                    build date
+Commit Date                   commit date
 Storage Type                  storage type
 Cluster Name                  cluster name
 Cluster ID                    cluster id
@@ -149,7 +149,7 @@ Unseal Progress               3/1
 Unseal Nonce                  nonce
 Seal Migration in Progress    true
 Version                       version
-Build Date                    build date
+Commit Date                   commit date
 Storage Type                  type
 HA Enabled                    false`
 
@@ -176,7 +176,7 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			Progress:         3,
 			Nonce:            "nonce",
 			Version:          "version",
-			BuildDate:        "build date",
+			CommitDate:       "commit date",
 			Migration:        true,
 			ClusterName:      "cluster name",
 			ClusterID:        "cluster id",
@@ -206,7 +206,7 @@ func getMockStatusData(emptyFields bool) SealStatusOutput {
 			Progress:         3,
 			Nonce:            "nonce",
 			Version:          "version",
-			BuildDate:        "build date",
+			CommitDate:       "commit date",
 			Migration:        true,
 			ClusterName:      "",
 			ClusterID:        "",

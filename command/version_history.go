@@ -4,6 +4,7 @@
 package command
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -103,7 +104,7 @@ func (c *VersionHistoryCommand) Run(args []string) int {
 		return 2
 	}
 
-	table := []string{"Version | Installation Time | Build Date"}
+	table := []string{"Version | Installation Time | Commit Date"}
 	columnConfig := columnize.DefaultConfig()
 
 	for _, versionRaw := range keys {
@@ -122,7 +123,10 @@ func (c *VersionHistoryCommand) Run(args []string) int {
 			return 2
 		}
 
-		table = append(table, fmt.Sprintf("%s | %s | %s", version, versionInfo["timestamp_installed"], versionInfo["build_date"]))
+		// Fallback: Use build_date for backwards-compatibility with OpenBao < v2.6.0.
+		commitDate := cmp.Or(versionInfo["commit_date"], versionInfo["build_date"])
+
+		table = append(table, fmt.Sprintf("%s | %s | %s", version, versionInfo["timestamp_installed"], commitDate))
 	}
 
 	c.UI.Warn("")

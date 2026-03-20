@@ -2057,8 +2057,7 @@ func (i *IdentityStore) OidcPeriodicFunc(ctx context.Context) {
 	nextRun = now.Add(24 * time.Hour)
 	minJwksClientCacheDuration := time.Duration(math.MaxInt64)
 
-	nsPath := ns.Path
-	s := i.router.MatchingStorageByAPIPath(ctx, nsPath+"identity/oidc")
+	s := i.router.MatchingStorageByAPIPath(ctx, "identity/oidc")
 	if s == nil {
 		return
 	}

@@ -45,8 +45,7 @@ func testRouter_MountSubpath(t *testing.T, mountPoints []string) {
 	}
 	for _, mp := range mountPoints {
 		t.Logf("mounting %s", "auth/"+mp)
-		var err error
-		err = client.Sys().EnableAuthWithOptions("auth/"+mp, authInput)
+		err := client.Sys().EnableAuthWithOptions("auth/"+mp, authInput)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -58,8 +57,7 @@ func testRouter_MountSubpath(t *testing.T, mountPoints []string) {
 	}
 	for _, mp := range mountPoints {
 		t.Logf("mounting %s", "s/"+mp)
-		var err error
-		err = client.Sys().Mount("s/"+mp, mountInput)
+		err := client.Sys().Mount("s/"+mp, mountInput)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}

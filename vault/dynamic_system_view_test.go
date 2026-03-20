@@ -66,7 +66,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "sys/auth/ldap")
 	req.ClientToken = cluster.RootToken
 	req.Data["type"] = "ldap"
-	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.ReadOperation, "sys/auth")
 	req.ClientToken = cluster.RootToken
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 		"organization": "hashicorp",
 		"team":         "vault",
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 	req.Data["name"] = "alias1"
 	req.Data["canonical_id"] = entityID
 	req.Data["mount_accessor"] = accessor
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 	req.Data["metadata"] = map[string]string{
 		"group": "vault",
 	}
-	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 	groupID := resp.Data["id"].(string)
 
 	// Get the ldap mount
-	sysView := core.router.MatchingSystemView(namespace.RootContext(nil), "auth/ldap/")
+	sysView := core.router.MatchingSystemView(namespace.RootContext(context.TODO()), "auth/ldap/")
 
 	tCases := []struct {
 		tpl      string
@@ -206,7 +206,7 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_successful(t *testing.T) {
 	req.ClientToken = cluster.RootToken
 	req.Data["policy"] = b64Policy
 
-	_, err = core.HandleRequest(namespace.RootContext(nil), req)
+	_, err = core.HandleRequest(namespace.RootContext(context.TODO()), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -301,7 +301,7 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_namespaces(t *testing.T) {
 		&namespace.Namespace{Path: "foo/bar/"},
 	)
 
-	ctx := namespace.RootContext(nil)
+	ctx := namespace.RootContext(context.TODO())
 
 	fooNs, err := core.namespaceStore.GetNamespaceByPath(ctx, "foo/")
 	require.NoError(t, err)

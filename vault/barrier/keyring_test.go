@@ -104,7 +104,7 @@ func TestKeyring(t *testing.T) {
 	}
 
 	// Remove the active key should fail
-	k, err = k.RemoveKey(2)
+	_, err = k.RemoveKey(2)
 	if err == nil {
 		t.Fatalf("err: %v", err)
 	}

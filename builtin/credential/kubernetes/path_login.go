@@ -335,7 +335,7 @@ func (b *kubeAuthBackend) parseAndValidateJWT(ctx context.Context, client *http.
 		return nil, err
 	}
 
-	claims, err := validator.ValidateAllowMissingIatNbfExp(nil, jwtStr, expected)
+	claims, err := validator.ValidateAllowMissingIatNbfExp(context.Background(), jwtStr, expected)
 	if err != nil {
 		return nil, logical.CodedError(http.StatusForbidden, err.Error())
 	}

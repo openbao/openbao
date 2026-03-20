@@ -103,7 +103,7 @@ func (c *VersionHistoryCommand) Run(args []string) int {
 		return 2
 	}
 
-	table := []string{"Version | Installation Time | Build Date"}
+	table := []string{"Version | Installation Time | Commit Date"}
 	columnConfig := columnize.DefaultConfig()
 
 	for _, versionRaw := range keys {
@@ -122,7 +122,7 @@ func (c *VersionHistoryCommand) Run(args []string) int {
 			return 2
 		}
 
-		table = append(table, fmt.Sprintf("%s | %s | %s", version, versionInfo["timestamp_installed"], versionInfo["build_date"]))
+		table = append(table, fmt.Sprintf("%s | %s | %s", version, versionInfo["timestamp_installed"], versionInfo["commit_date"]))
 	}
 
 	c.UI.Warn("")

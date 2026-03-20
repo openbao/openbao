@@ -45,7 +45,7 @@ func TestSysSealStatus(t *testing.T) {
 		"recovery_seal": false,
 		"initialized":   true,
 		"migration":     false,
-		"build_date":    version.BuildDate,
+		"commit_date":   version.CommitDate,
 	}
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
@@ -130,7 +130,7 @@ func TestSysUnseal(t *testing.T) {
 			"recovery_seal": false,
 			"initialized":   true,
 			"migration":     false,
-			"build_date":    version.BuildDate,
+			"commit_date":   version.CommitDate,
 		}
 		if i == len(keys)-1 {
 			expected["sealed"] = false
@@ -369,7 +369,7 @@ func TestSysUnseal_Reset(t *testing.T) {
 			"recovery_seal": false,
 			"initialized":   true,
 			"migration":     false,
-			"build_date":    version.BuildDate,
+			"commit_date":   version.CommitDate,
 		}
 		testResponseStatus(t, resp, 200)
 		testResponseBody(t, resp, &actual)
@@ -409,7 +409,7 @@ func TestSysUnseal_Reset(t *testing.T) {
 		"type":          "shamir",
 		"recovery_seal": false,
 		"initialized":   true,
-		"build_date":    version.BuildDate,
+		"commit_date":   version.CommitDate,
 		"migration":     false,
 	}
 	testResponseStatus(t, resp, 200)

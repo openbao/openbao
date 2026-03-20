@@ -13,7 +13,7 @@ var (
 	GitDescribe string
 
 	// The compilation date. This will be filled in by the compiler.
-	BuildDate string
+	CommitDate string
 
 	// Whether cgo is enabled or not; set at build time
 	CgoEnabled bool

@@ -1218,7 +1218,7 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 									Type:     framework.TypeString,
 									Required: true,
 								},
-								"build_date": {
+								"commit_date": {
 									Type:     framework.TypeString,
 									Required: true,
 								},
@@ -1366,7 +1366,7 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 									Type:     framework.TypeString,
 									Required: true,
 								},
-								"build_date": {
+								"commit_date": {
 									Type:     framework.TypeString,
 									Required: true,
 								},

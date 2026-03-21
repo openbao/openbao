@@ -12,7 +12,7 @@ export default Base.extend({
   }),
 
   key: computed('params', function () {
-    return this.params.objectAt(1);
+    return this.params[1];
   }),
 
   messageArgs(model, key) {

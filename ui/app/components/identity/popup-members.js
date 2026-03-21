@@ -12,11 +12,11 @@ export default Base.extend({
   }),
 
   groupArray: computed('params', function () {
-    return this.params.objectAt(1);
+    return this.params[1];
   }),
 
   memberId: computed('params', function () {
-    return this.params.objectAt(2);
+    return this.params[2];
   }),
 
   messageArgs(/*model, groupArray, memberId*/) {

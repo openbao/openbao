@@ -303,7 +303,7 @@ module('Acceptance | transit', function (hooks) {
 
   test(`transit backend: list menu`, async function (assert) {
     await generateTransitKey(keyTypes[0], this.uid);
-    await secretListPage.secrets.objectAt(0).menuToggle();
+    await secretListPage.secrets[0].menuToggle();
     await settled();
     assert.strictEqual(secretListPage.menuItems.length, 2, 'shows 2 items in the menu');
   });
